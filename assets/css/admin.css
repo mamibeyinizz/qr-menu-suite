@@ -1,0 +1,307 @@
+/**
+ * QR Menu Suite — admin stilleri.
+ *
+ * Mobil öncelikli: tek sütun, büyük dokunma hedefleri (>= 44px), tablo yok.
+ */
+
+.qrms-wrap {
+	max-width: 640px;
+	margin: 0 auto;
+	padding: 12px 4px 48px;
+	box-sizing: border-box;
+}
+
+.qrms-title {
+	font-size: 22px;
+	line-height: 1.3;
+	margin: 8px 0 16px;
+	word-break: break-word;
+}
+
+.qrms-lead {
+	font-size: 15px;
+	line-height: 1.6;
+	margin: 0 0 20px;
+}
+
+.qrms-muted {
+	color: #50575e;
+	font-size: 15px;
+	line-height: 1.6;
+}
+
+/* Kartlar */
+
+.qrms-card {
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-radius: 8px;
+	padding: 20px 16px;
+	margin: 0 0 16px;
+	box-shadow: 0 1px 2px rgba( 0, 0, 0, 0.04 );
+}
+
+.qrms-card-title {
+	font-size: 17px;
+	margin: 0 0 12px;
+	padding: 0;
+}
+
+/* Form alanları */
+
+.qrms-form {
+	margin: 0;
+}
+
+.qrms-field {
+	margin: 0 0 20px;
+}
+
+.qrms-label {
+	display: block;
+	font-size: 15px;
+	font-weight: 600;
+	margin: 0 0 8px;
+}
+
+.qrms-label-small {
+	font-size: 13px;
+	font-weight: 400;
+	color: #50575e;
+}
+
+.qrms-input {
+	display: block;
+	width: 100%;
+	min-height: 48px;
+	padding: 10px 12px;
+	font-size: 16px; /* iOS'ta otomatik zoom'u engeller. */
+	line-height: 1.5;
+	border: 1px solid #8c8f94;
+	border-radius: 6px;
+	box-sizing: border-box;
+	background: #fff;
+}
+
+.qrms-input:focus {
+	border-color: #2271b1;
+	box-shadow: 0 0 0 1px #2271b1;
+	outline: 2px solid transparent;
+}
+
+.qrms-input-small {
+	min-height: 44px;
+	font-size: 15px;
+	color: #50575e;
+}
+
+.qrms-field-secondary {
+	margin-bottom: 24px;
+	opacity: 0.9;
+}
+
+.qrms-help {
+	margin: 6px 0 0;
+	font-size: 13px;
+	color: #646970;
+}
+
+/* Butonlar */
+
+.qrms-button {
+	display: block;
+	width: 100%;
+	min-height: 52px;
+	padding: 14px 20px;
+	font-size: 16px;
+	font-weight: 600;
+	line-height: 1.4;
+	text-align: center;
+	text-decoration: none;
+	border: 1px solid transparent;
+	border-radius: 6px;
+	cursor: pointer;
+	box-sizing: border-box;
+}
+
+.qrms-button-primary,
+.qrms-button-primary:hover,
+.qrms-button-primary:focus,
+.qrms-button-primary:visited {
+	background: #2271b1;
+	border-color: #2271b1;
+	color: #fff;
+}
+
+.qrms-button-primary:hover {
+	background: #135e96;
+	border-color: #135e96;
+}
+
+.qrms-button[disabled] {
+	opacity: 0.7;
+	cursor: default;
+}
+
+/* Bildirim kutuları */
+
+.qrms-alert {
+	border-radius: 6px;
+	padding: 12px 14px;
+	margin: 0 0 20px;
+	font-size: 15px;
+	line-height: 1.5;
+	border-left: 4px solid #dcdcde;
+	background: #f6f7f7;
+}
+
+.qrms-alert p {
+	margin: 0;
+	font-size: 15px;
+}
+
+.qrms-alert-success {
+	border-left-color: #00a32a;
+	background: #f0f6f1;
+}
+
+.qrms-alert-error {
+	border-left-color: #d63638;
+	background: #fcf0f1;
+}
+
+/* Modül listesi */
+
+.qrms-module-list {
+	list-style: none;
+	margin: 0 0 20px;
+	padding: 0;
+}
+
+.qrms-module-list-item {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	min-height: 44px;
+	padding: 8px 0;
+	font-size: 16px;
+	border-bottom: 1px solid #f0f0f1;
+}
+
+.qrms-module-list-item:last-child {
+	border-bottom: 0;
+}
+
+.qrms-module-list-item a {
+	text-decoration: none;
+	padding: 6px 0;
+}
+
+.qrms-check {
+	color: #00a32a;
+	font-weight: 700;
+}
+
+/* Durum listesi (tablo yerine) */
+
+.qrms-detail-list {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+
+.qrms-detail {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: space-between;
+	gap: 4px 16px;
+	padding: 12px 0;
+	border-bottom: 1px solid #f0f0f1;
+	min-height: 44px;
+	box-sizing: border-box;
+}
+
+.qrms-detail:last-child {
+	border-bottom: 0;
+}
+
+.qrms-detail-label {
+	color: #50575e;
+	font-size: 14px;
+}
+
+.qrms-detail-value {
+	font-size: 15px;
+	font-weight: 600;
+	text-align: right;
+}
+
+.qrms-detail-break {
+	word-break: break-all;
+	font-weight: 400;
+}
+
+.qrms-status-active {
+	color: #00733f;
+}
+
+.qrms-status-inactive,
+.qrms-status-unreachable,
+.qrms-status-unknown {
+	color: #996800;
+}
+
+.qrms-status-invalid,
+.qrms-status-domain_mismatch {
+	color: #b32d2e;
+}
+
+/* Yeniden doğrulama bölümü */
+
+.qrms-details {
+	padding: 0;
+}
+
+.qrms-summary {
+	display: block;
+	padding: 16px;
+	min-height: 52px;
+	font-size: 16px;
+	font-weight: 600;
+	cursor: pointer;
+	box-sizing: border-box;
+}
+
+.qrms-details[open] .qrms-summary {
+	border-bottom: 1px solid #f0f0f1;
+}
+
+.qrms-details-body {
+	padding: 16px;
+}
+
+/* Sihirbaz ekranı */
+
+.qrms-wizard .qrms-card {
+	padding: 24px 18px;
+}
+
+.qrms-wizard .qrms-title {
+	margin-top: 0;
+}
+
+.qrms-notice {
+	max-width: 640px;
+}
+
+/* Geniş ekranlarda da tek sütun kalır, sadece biraz nefes alır. */
+@media screen and ( min-width: 783px ) {
+
+	.qrms-wrap {
+		padding: 20px 0 60px;
+	}
+
+	.qrms-title {
+		font-size: 24px;
+	}
+}

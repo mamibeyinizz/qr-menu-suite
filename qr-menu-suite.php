@@ -1,0 +1,76 @@
+<?php
+/**
+ * Plugin Name:       QR Menu Suite
+ * Plugin URI:        https://qrmenuofficial.com
+ * Description:       Restoranlar için modüler QR menü sistemi. Modüller lisans sunucusundan gelen listeye göre etkinleşir.
+ * Version:           1.0.0
+ * Requires at least: 6.0
+ * Requires PHP:      7.4
+ * Author:            QR Menu Official
+ * Text Domain:       qrms
+ * Domain Path:       /languages
+ * License:           GPL-2.0-or-later
+ * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
+ *
+ * @package QR_Menu_Suite
+ */
+
+defined( 'ABSPATH' ) || exit;
+
+define( 'QRMS_VERSION', '1.0.0' );
+define( 'QRMS_PLUGIN_FILE', __FILE__ );
+define( 'QRMS_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
+define( 'QRMS_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
+
+require_once QRMS_PLUGIN_DIR . 'includes/class-helpers.php';
+require_once QRMS_PLUGIN_DIR . 'includes/class-license-client.php';
+require_once QRMS_PLUGIN_DIR . 'includes/class-module-loader.php';
+require_once QRMS_PLUGIN_DIR . 'includes/class-wizard.php';
+require_once QRMS_PLUGIN_DIR . 'includes/class-admin.php';
+
+/**
+ * Plugin bileşenlerinin hook'larını kaydeder.
+ *
+ * @return void
+ */
+function qrms_bootstrap() {
+	QRMS_License_Client::init();
+	QRMS_Module_Loader::init();
+	QRMS_Wizard::init();
+	QRMS_Admin::init();
+}
+qrms_bootstrap();
+
+/**
+ * Çeviri dosyalarını yükler.
+ *
+ * @return void
+ */
+function qrms_load_textdomain() {
+	load_plugin_textdomain( 'qrms', false, dirname( plugin_basename( QRMS_PLUGIN_FILE ) ) . '/languages' );
+}
+add_action( 'init', 'qrms_load_textdomain' );
+
+/**
+ * Aktivasyon: günlük lisans cron'unu kur, kurulum yapılmamışsa sihirbaza
+ * tek seferlik yönlendirme bayrağı bırak.
+ *
+ * @return void
+ */
+function qrms_activate() {
+	QRMS_License_Client::schedule_cron();
+	QRMS_Wizard::maybe_flag_activation_redirect();
+}
+register_activation_hook( __FILE__, 'qrms_activate' );
+
+/**
+ * Deaktivasyon: zamanlanmış lisans senkronizasyonunu temizle.
+ *
+ * Lisans option'ları (anahtar, modüller, durum) korunur.
+ *
+ * @return void
+ */
+function qrms_deactivate() {
+	QRMS_License_Client::unschedule_cron();
+}
+register_deactivation_hook( __FILE__, 'qrms_deactivate' );
