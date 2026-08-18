@@ -1,0 +1,831 @@
+<?php
+/**
+ * QR Menu Suite — stub tabanlı mantık testleri.
+ *
+ * Çalıştırmak için: php tests/test-suite.php
+ *
+ * Gerçek bir WordPress kurulumu gerekmez; WordPress fonksiyonları
+ * tests/stubs-wordpress.php içinde taklit edilir.
+ *
+ * @package QR_Menu_Suite
+ */
+
+require_once __DIR__ . '/stubs-wordpress.php';
+
+$GLOBALS['qrms_assertions'] = 0;
+$GLOBALS['qrms_failures']   = array();
+$GLOBALS['qrms_current']    = '';
+
+/**
+ * Test durumunu sıfırlar.
+ *
+ * @return void
+ */
+function qrms_reset() {
+	$GLOBALS['qrms_test']['options']    = array();
+	$GLOBALS['qrms_test']['transients'] = array();
+	$GLOBALS['qrms_test']['menus']      = array();
+	$GLOBALS['qrms_test']['submenus']   = array();
+	$GLOBALS['qrms_test']['removed']    = array();
+	$GLOBALS['qrms_test']['redirects']  = array();
+	$GLOBALS['qrms_test']['http']       = null;
+	$GLOBALS['qrms_test']['http_calls'] = array();
+	$GLOBALS['qrms_test']['can']        = true;
+	$_POST                              = array();
+	$_GET                               = array();
+}
+
+/**
+ * Bir testi çalıştırır.
+ *
+ * @param string   $name     Test adı.
+ * @param callable $callback Test gövdesi.
+ * @return void
+ */
+function qrms_test( $name, $callback ) {
+	qrms_reset();
+	$GLOBALS['qrms_current'] = $name;
+
+	try {
+		call_user_func( $callback );
+		echo "\033[32m  ✓\033[0m " . $name . "\n";
+	} catch ( Exception $e ) {
+		$GLOBALS['qrms_failures'][] = $name . ': ' . $e->getMessage();
+		echo "\033[31m  ✗\033[0m " . $name . ' — ' . $e->getMessage() . "\n";
+	}
+}
+
+/**
+ * Eşitlik doğrulaması.
+ *
+ * @param mixed  $expected Beklenen.
+ * @param mixed  $actual   Gerçekleşen.
+ * @param string $message  Mesaj.
+ * @return void
+ * @throws Exception Eşit değilse.
+ */
+function qrms_assert_same( $expected, $actual, $message = '' ) {
+	++$GLOBALS['qrms_assertions'];
+
+	if ( $expected !== $actual ) {
+		throw new Exception(
+			$message . ' | beklenen: ' . wp_json_encode( $expected ) . ', gelen: ' . wp_json_encode( $actual )
+		);
+	}
+}
+
+/**
+ * Doğruluk doğrulaması.
+ *
+ * @param mixed  $value   Değer.
+ * @param string $message Mesaj.
+ * @return void
+ * @throws Exception Değer doğru değilse.
+ */
+function qrms_assert_true( $value, $message = '' ) {
+	qrms_assert_same( true, (bool) $value, $message );
+}
+
+/**
+ * Yanlışlık doğrulaması.
+ *
+ * @param mixed  $value   Değer.
+ * @param string $message Mesaj.
+ * @return void
+ * @throws Exception Değer yanlış değilse.
+ */
+function qrms_assert_false( $value, $message = '' ) {
+	qrms_assert_same( false, (bool) $value, $message );
+}
+
+/**
+ * Metin içerme doğrulaması.
+ *
+ * @param string $needle   Aranan.
+ * @param string $haystack İçinde arananan metin.
+ * @param string $message  Mesaj.
+ * @return void
+ * @throws Exception Bulunamazsa.
+ */
+function qrms_assert_contains( $needle, $haystack, $message = '' ) {
+	++$GLOBALS['qrms_assertions'];
+
+	if ( false === strpos( $haystack, $needle ) ) {
+		throw new Exception( $message . ' | "' . $needle . '" bulunamadı' );
+	}
+}
+
+/**
+ * Sunucudan gelecek HTTP cevabını ayarlar.
+ *
+ * @param int   $code Durum kodu.
+ * @param array $body Gövde (dizi olarak).
+ * @return void
+ */
+function qrms_mock_http( $code, array $body ) {
+	$GLOBALS['qrms_test']['http'] = array(
+		'response' => array( 'code' => $code ),
+		'body'     => wp_json_encode( $body ),
+	);
+}
+
+/**
+ * Sunucuya ulaşılamama durumunu taklit eder.
+ *
+ * @return void
+ */
+function qrms_mock_http_error() {
+	$GLOBALS['qrms_test']['http'] = new WP_Error( 'http_request_failed', 'cURL error 28' );
+}
+
+/**
+ * Dokuz modülün tam listesi.
+ *
+ * @return string[]
+ */
+function qrms_all_modules() {
+	return QRMS_Helpers::MODULE_SLUGS;
+}
+
+echo "\nQR Menu Suite — mantık testleri\n\n";
+
+/* ---------------------------------------------------------------------------
+ * 1. Lisans istemcisi: durum dalları
+ * ------------------------------------------------------------------------ */
+
+echo "Lisans istemcisi\n";
+
+qrms_test(
+	'active → modüller yazılır, durum ve tarih güncellenir',
+	function () {
+		qrms_mock_http( 200, array(
+			'status'  => 'active',
+			'modules' => array( 'restoran-menu', 'qr-masa', 'qr-analiz' ),
+		) );
+
+		$result = qrms_validate_license( 'ANAHTAR-1', 'https://full.qrmenuofficial.com' );
+
+		qrms_assert_same( 'active', $result['status'], 'durum' );
+		qrms_assert_same( array( 'restoran-menu', 'qr-masa', 'qr-analiz' ), get_option( 'qrms_active_modules' ), 'modüller' );
+		qrms_assert_same( 'ANAHTAR-1', get_option( 'qrms_api_key' ), 'api key' );
+		qrms_assert_same( 'https://full.qrmenuofficial.com', get_option( 'qrms_server_url' ), 'sunucu' );
+		qrms_assert_same( 'active', get_option( 'qrms_last_status' ), 'last_status' );
+		qrms_assert_true( get_option( 'qrms_last_sync' ) > 0, 'last_sync' );
+	}
+);
+
+qrms_test(
+	'istek doğru endpoint ve gövde ile gider',
+	function () {
+		qrms_mock_http( 200, array( 'status' => 'active', 'modules' => array() ) );
+
+		qrms_validate_license( 'ANAHTAR-2', 'https://full.qrmenuofficial.com/' );
+
+		$call = $GLOBALS['qrms_test']['http_calls'][0];
+		qrms_assert_same( 'https://full.qrmenuofficial.com/wp-json/qmls/v1/validate', $call['url'], 'endpoint' );
+		qrms_assert_same( 15, $call['args']['timeout'], 'timeout' );
+
+		$body = json_decode( $call['args']['body'], true );
+		qrms_assert_same( 'ANAHTAR-2', $body['api_key'], 'api_key alanı' );
+		qrms_assert_same( 'restoran.test', $body['domain'], 'domain alanı' );
+	}
+);
+
+qrms_test(
+	'invalid (HTTP 404) → modüller korunur',
+	function () {
+		update_option( 'qrms_active_modules', array( 'restoran-menu', 'qr-masa' ) );
+		qrms_mock_http( 404, array( 'status' => 'invalid' ) );
+
+		$result = qrms_validate_license( 'YANLIS', 'https://full.qrmenuofficial.com' );
+
+		qrms_assert_same( 'invalid', $result['status'], 'durum' );
+		qrms_assert_same( 'invalid', get_option( 'qrms_last_status' ), 'last_status' );
+		qrms_assert_same( array( 'restoran-menu', 'qr-masa' ), get_option( 'qrms_active_modules' ), 'modüller korunmalı' );
+		qrms_assert_contains( 'Geçersiz API anahtarı', $result['message'], 'mesaj' );
+	}
+);
+
+qrms_test(
+	'inactive → modüller korunur',
+	function () {
+		update_option( 'qrms_active_modules', qrms_all_modules() );
+		qrms_mock_http( 200, array( 'status' => 'inactive' ) );
+
+		$result = qrms_validate_license( 'ANAHTAR', 'https://full.qrmenuofficial.com' );
+
+		qrms_assert_same( 'inactive', $result['status'], 'durum' );
+		qrms_assert_same( qrms_all_modules(), get_option( 'qrms_active_modules' ), 'modüller korunmalı' );
+		qrms_assert_contains( 'pasif durumda', $result['message'], 'mesaj' );
+	}
+);
+
+qrms_test(
+	'domain_mismatch → modüller korunur',
+	function () {
+		update_option( 'qrms_active_modules', array( 'qr-galeri' ) );
+		qrms_mock_http( 200, array( 'status' => 'domain_mismatch' ) );
+
+		$result = qrms_validate_license( 'ANAHTAR', 'https://full.qrmenuofficial.com' );
+
+		qrms_assert_same( 'domain_mismatch', $result['status'], 'durum' );
+		qrms_assert_same( array( 'qr-galeri' ), get_option( 'qrms_active_modules' ), 'modüller korunmalı' );
+		qrms_assert_contains( 'başka bir alan adına kayıtlı', $result['message'], 'mesaj' );
+	}
+);
+
+qrms_test(
+	'unreachable → modüller ve son bağlantı tarihi korunur',
+	function () {
+		update_option( 'qrms_active_modules', array( 'qr-chatbot' ) );
+		update_option( 'qrms_last_sync', 1000 );
+		qrms_mock_http_error();
+
+		$result = qrms_validate_license( 'ANAHTAR', 'https://full.qrmenuofficial.com' );
+
+		qrms_assert_same( 'unreachable', $result['status'], 'durum' );
+		qrms_assert_same( 'unreachable', get_option( 'qrms_last_status' ), 'last_status' );
+		qrms_assert_same( array( 'qr-chatbot' ), get_option( 'qrms_active_modules' ), 'modüller korunmalı' );
+		qrms_assert_same( 1000, get_option( 'qrms_last_sync' ), 'last_sync değişmemeli' );
+	}
+);
+
+qrms_test(
+	'bozuk/beklenmeyen cevap → unreachable gibi ele alınır',
+	function () {
+		update_option( 'qrms_active_modules', array( 'qr-masa' ) );
+		$GLOBALS['qrms_test']['http'] = array( 'response' => array( 'code' => 200 ), 'body' => '<html>hata</html>' );
+
+		$result = qrms_validate_license( 'ANAHTAR', 'https://full.qrmenuofficial.com' );
+
+		qrms_assert_same( 'unreachable', $result['status'], 'durum' );
+		qrms_assert_same( array( 'qr-masa' ), get_option( 'qrms_active_modules' ), 'modüller korunmalı' );
+	}
+);
+
+qrms_test(
+	'active → bilinmeyen slug\'lar süzülür, sıra sabit kalır',
+	function () {
+		qrms_mock_http( 200, array(
+			'status'  => 'active',
+			'modules' => array( 'qr-analiz', 'sahte-modul', 'restoran-menu', 'restoran-menu' ),
+		) );
+
+		qrms_validate_license( 'ANAHTAR', 'https://full.qrmenuofficial.com' );
+
+		qrms_assert_same( array( 'restoran-menu', 'qr-analiz' ), get_option( 'qrms_active_modules' ), 'süzülmüş liste' );
+	}
+);
+
+qrms_test(
+	'sunucu adresi boş bırakılırsa varsayılan kullanılır',
+	function () {
+		qrms_mock_http( 200, array( 'status' => 'active', 'modules' => array() ) );
+
+		qrms_validate_license( 'ANAHTAR', '' );
+
+		qrms_assert_same( 'https://full.qrmenuofficial.com', get_option( 'qrms_server_url' ), 'varsayılan sunucu' );
+	}
+);
+
+qrms_test(
+	'günlük cron: kayıtlı key ile sessizce yeniden doğrular',
+	function () {
+		update_option( 'qrms_api_key', 'KAYITLI' );
+		update_option( 'qrms_server_url', 'https://staging.qrmenuofficial.com' );
+		update_option( 'qrms_active_modules', array( 'qr-masa' ) );
+		qrms_mock_http( 200, array( 'status' => 'active', 'modules' => array( 'qr-masa', 'qr-galeri' ) ) );
+
+		QRMS_License_Client::run_daily_sync();
+
+		$call = $GLOBALS['qrms_test']['http_calls'][0];
+		qrms_assert_same( 'https://staging.qrmenuofficial.com/wp-json/qmls/v1/validate', $call['url'], 'kayıtlı sunucu kullanılmalı' );
+		qrms_assert_same( array( 'qr-masa', 'qr-galeri' ), get_option( 'qrms_active_modules' ), 'liste güncellenmeli' );
+	}
+);
+
+qrms_test(
+	'günlük cron: API anahtarı yoksa istek atılmaz',
+	function () {
+		QRMS_License_Client::run_daily_sync();
+
+		qrms_assert_same( 0, count( $GLOBALS['qrms_test']['http_calls'] ), 'istek sayısı' );
+	}
+);
+
+qrms_test(
+	'cron aktivasyonda kurulur, deaktivasyonda temizlenir',
+	function () {
+		QRMS_License_Client::schedule_cron();
+		qrms_assert_true( wp_next_scheduled( 'qrms_daily_license_sync' ), 'cron kurulmalı' );
+
+		$first = wp_next_scheduled( 'qrms_daily_license_sync' );
+		QRMS_License_Client::schedule_cron();
+		qrms_assert_same( $first, wp_next_scheduled( 'qrms_daily_license_sync' ), 'ikinci kez zamanlanmamalı' );
+
+		QRMS_License_Client::unschedule_cron();
+		qrms_assert_false( wp_next_scheduled( 'qrms_daily_license_sync' ), 'cron temizlenmeli' );
+	}
+);
+
+/* ---------------------------------------------------------------------------
+ * 2. Bilgilendirme notice'ı (3 gün kuralı)
+ * ------------------------------------------------------------------------ */
+
+echo "\nBilgilendirme notice'ı\n";
+
+qrms_test(
+	'durum active iken notice gösterilmez',
+	function () {
+		update_option( 'qrms_last_status', 'active' );
+		update_option( 'qrms_last_active_sync', time() - ( 10 * DAY_IN_SECONDS ) );
+
+		qrms_assert_false( QRMS_License_Client::should_show_notice(), 'notice olmamalı' );
+	}
+);
+
+qrms_test(
+	'sorunlu durum ama 3 günden yeni ise notice gösterilmez',
+	function () {
+		update_option( 'qrms_last_status', 'unreachable' );
+		update_option( 'qrms_last_active_sync', time() - ( 2 * DAY_IN_SECONDS ) );
+
+		qrms_assert_false( QRMS_License_Client::should_show_notice(), 'notice olmamalı' );
+	}
+);
+
+qrms_test(
+	'sorunlu durum ve 3 günden eski ise notice gösterilir',
+	function () {
+		update_option( 'qrms_last_status', 'domain_mismatch' );
+		update_option( 'qrms_last_active_sync', time() - ( 4 * DAY_IN_SECONDS ) );
+
+		qrms_assert_true( QRMS_License_Client::should_show_notice(), 'notice gösterilmeli' );
+	}
+);
+
+qrms_test(
+	'hiç başarılı bağlantı olmamışsa notice gösterilmez',
+	function () {
+		update_option( 'qrms_last_status', 'unreachable' );
+
+		qrms_assert_false( QRMS_License_Client::should_show_notice(), 'notice olmamalı' );
+	}
+);
+
+qrms_test(
+	'notice sadece plugin ekranlarında çizilir',
+	function () {
+		update_option( 'qrms_last_status', 'inactive' );
+		update_option( 'qrms_last_active_sync', time() - ( 5 * DAY_IN_SECONDS ) );
+		update_option( 'qrms_last_sync', time() - ( 5 * DAY_IN_SECONDS ) );
+
+		$_GET = array();
+		ob_start();
+		QRMS_License_Client::maybe_render_notice();
+		qrms_assert_same( '', ob_get_clean(), 'dashboard\'da çıkmamalı' );
+
+		$_GET = array( 'page' => 'qrms-settings' );
+		ob_start();
+		QRMS_License_Client::maybe_render_notice();
+		$html = ob_get_clean();
+
+		qrms_assert_contains( 'is-dismissible', $html, 'kapatılabilir notice' );
+		qrms_assert_contains( 'Mevcut modülleriniz etkilenmedi', $html, 'mesaj' );
+	}
+);
+
+/* ---------------------------------------------------------------------------
+ * 3. Kurulum sihirbazı
+ * ------------------------------------------------------------------------ */
+
+echo "\nKurulum sihirbazı\n";
+
+qrms_test(
+	'active cevabı kurulumu tamamlar ve modülleri listeler',
+	function () {
+		qrms_mock_http( 200, array( 'status' => 'active', 'modules' => array( 'restoran-menu', 'yorum-feedback' ) ) );
+		$_POST = array(
+			'qrms_submit_license' => '1',
+			'qrms_api_key'        => 'ANAHTAR',
+			'qrms_server_url'     => 'https://full.qrmenuofficial.com',
+		);
+
+		ob_start();
+		QRMS_Wizard::render_page();
+		$html = ob_get_clean();
+
+		qrms_assert_true( QRMS_Wizard::is_setup_completed(), 'setup_completed' );
+		qrms_assert_contains( 'Restoran Menü', $html, 'modül adı' );
+		qrms_assert_contains( 'Yorum &amp; Feedback', $html, 'modül adı' );
+		qrms_assert_contains( 'Devam Et', $html, 'devam butonu' );
+	}
+);
+
+qrms_test(
+	'invalid cevabı kurulumu tamamlamaz, form tekrar gösterilir',
+	function () {
+		qrms_mock_http( 404, array( 'status' => 'invalid' ) );
+		$_POST = array(
+			'qrms_submit_license' => '1',
+			'qrms_api_key'        => 'YANLIS',
+			'qrms_server_url'     => 'https://full.qrmenuofficial.com',
+		);
+
+		ob_start();
+		QRMS_Wizard::render_page();
+		$html = ob_get_clean();
+
+		qrms_assert_false( QRMS_Wizard::is_setup_completed(), 'setup_completed yazılmamalı' );
+		qrms_assert_contains( 'Geçersiz API anahtarı', $html, 'hata mesajı' );
+		qrms_assert_contains( 'name="qrms_api_key"', $html, 'form tekrar gösterilmeli' );
+	}
+);
+
+qrms_test(
+	'inactive ve domain_mismatch kurulumu tamamlamaz',
+	function () {
+		foreach ( array( 'inactive', 'domain_mismatch' ) as $status ) {
+			qrms_mock_http( 200, array( 'status' => $status ) );
+			$_POST = array(
+				'qrms_submit_license' => '1',
+				'qrms_api_key'        => 'ANAHTAR',
+				'qrms_server_url'     => 'https://full.qrmenuofficial.com',
+			);
+
+			ob_start();
+			QRMS_Wizard::render_page();
+			$html = ob_get_clean();
+
+			qrms_assert_false( QRMS_Wizard::is_setup_completed(), $status . ': setup_completed yazılmamalı' );
+			qrms_assert_contains( 'name="qrms_api_key"', $html, $status . ': form tekrar gösterilmeli' );
+		}
+	}
+);
+
+qrms_test(
+	'unreachable cevabında "Tekrar Dene" butonu gösterilir',
+	function () {
+		qrms_mock_http_error();
+		$_POST = array(
+			'qrms_submit_license' => '1',
+			'qrms_api_key'        => 'ANAHTAR',
+			'qrms_server_url'     => 'https://full.qrmenuofficial.com',
+		);
+
+		ob_start();
+		QRMS_Wizard::render_page();
+		$html = ob_get_clean();
+
+		qrms_assert_false( QRMS_Wizard::is_setup_completed(), 'setup_completed yazılmamalı' );
+		qrms_assert_contains( 'Sunucuya bağlanılamadı', $html, 'hata mesajı' );
+		qrms_assert_contains( 'Tekrar Dene', $html, 'tekrar dene butonu' );
+	}
+);
+
+qrms_test(
+	'boş API anahtarı ile sunucuya istek atılmaz',
+	function () {
+		$_POST = array(
+			'qrms_submit_license' => '1',
+			'qrms_api_key'        => '   ',
+			'qrms_server_url'     => 'https://full.qrmenuofficial.com',
+		);
+
+		$result = QRMS_Wizard::handle_submission();
+
+		qrms_assert_same( 'empty', $result['status'], 'durum' );
+		qrms_assert_same( 0, count( $GLOBALS['qrms_test']['http_calls'] ), 'istek sayısı' );
+	}
+);
+
+qrms_test(
+	'form varsayılan sunucu adresiyle gelir',
+	function () {
+		ob_start();
+		QRMS_Wizard::render_form();
+		$html = ob_get_clean();
+
+		qrms_assert_contains( 'value="https://full.qrmenuofficial.com"', $html, 'varsayılan sunucu' );
+		qrms_assert_contains( 'Doğrula ve Kur', $html, 'buton etiketi' );
+	}
+);
+
+qrms_test(
+	'kurulum yapılmamışken aktivasyon sonrası sihirbaza yönlendirilir',
+	function () {
+		QRMS_Wizard::maybe_flag_activation_redirect();
+
+		$redirected = false;
+
+		try {
+			QRMS_Wizard::maybe_redirect_to_wizard();
+		} catch ( QRMS_Test_Redirect $e ) {
+			$redirected = true;
+			qrms_assert_contains( 'page=qrms-wizard', $e->getMessage(), 'hedef adres' );
+		}
+
+		qrms_assert_true( $redirected, 'yönlendirme yapılmalı' );
+	}
+);
+
+qrms_test(
+	'kurulum tamamlandıysa bir daha ASLA otomatik yönlendirme olmaz',
+	function () {
+		update_option( 'qrms_setup_completed', true );
+		QRMS_Wizard::maybe_flag_activation_redirect();
+
+		// Bayrak hiç bırakılmamalı.
+		qrms_assert_false( get_transient( 'qrms_activation_redirect' ), 'bayrak bırakılmamalı' );
+
+		// Bayrak elle bırakılsa bile yönlendirme olmamalı.
+		set_transient( 'qrms_activation_redirect', 1, 60 );
+		QRMS_Wizard::maybe_redirect_to_wizard();
+
+		qrms_assert_same( 0, count( $GLOBALS['qrms_test']['redirects'] ), 'yönlendirme olmamalı' );
+	}
+);
+
+qrms_test(
+	'yönlendirme bayrağı tek kullanımlıktır',
+	function () {
+		QRMS_Wizard::maybe_flag_activation_redirect();
+
+		try {
+			QRMS_Wizard::maybe_redirect_to_wizard();
+		} catch ( QRMS_Test_Redirect $e ) {
+			unset( $e );
+		}
+
+		QRMS_Wizard::maybe_redirect_to_wizard(); // İkincisi sessizce dönmeli.
+
+		qrms_assert_same( 1, count( $GLOBALS['qrms_test']['redirects'] ), 'tek yönlendirme' );
+	}
+);
+
+qrms_test(
+	'Genel Ayarlar üzerinden yeniden doğrulama modül listesini günceller',
+	function () {
+		update_option( 'qrms_setup_completed', true );
+		update_option( 'qrms_active_modules', array( 'qr-masa' ) );
+		qrms_mock_http( 200, array( 'status' => 'active', 'modules' => array( 'qr-masa', 'qr-chatbot' ) ) );
+
+		$_GET  = array( 'page' => 'qrms-settings' );
+		$_POST = array(
+			'qrms_submit_license' => '1',
+			'qrms_api_key'        => 'YENI-ANAHTAR',
+			'qrms_server_url'     => 'https://full.qrmenuofficial.com',
+		);
+
+		ob_start();
+		QRMS_Admin::render_settings();
+		$html = ob_get_clean();
+
+		qrms_assert_same( array( 'qr-masa', 'qr-chatbot' ), get_option( 'qrms_active_modules' ), 'liste güncellenmeli' );
+		qrms_assert_contains( 'QR Chatbot', $html, 'yeni modül görünmeli' );
+		qrms_assert_same( 0, count( $GLOBALS['qrms_test']['redirects'] ), 'yönlendirme olmamalı' );
+	}
+);
+
+/* ---------------------------------------------------------------------------
+ * 4. Admin menüsü
+ * ------------------------------------------------------------------------ */
+
+echo "\nAdmin menüsü\n";
+
+/**
+ * Kayıtlı alt menü slug'larını döndürür.
+ *
+ * @return string[]
+ */
+function qrms_registered_submenu_slugs() {
+	return array_map(
+		function ( $item ) {
+			return $item['slug'];
+		},
+		$GLOBALS['qrms_test']['submenus']
+	);
+}
+
+qrms_test(
+	'modül yokken sadece Genel Bakış ve Genel Ayarlar görünür',
+	function () {
+		QRMS_Admin::register_menu();
+
+		$slugs = qrms_registered_submenu_slugs();
+
+		qrms_assert_same( array( 'qrms-overview', 'qrms-settings' ), $slugs, 'menü listesi' );
+
+		foreach ( qrms_all_modules() as $slug ) {
+			qrms_assert_false(
+				in_array( QRMS_Admin::get_module_page_slug( $slug ), $slugs, true ),
+				$slug . ' menüde görünmemeli'
+			);
+		}
+	}
+);
+
+qrms_test(
+	'sadece aktif modüller menüde görünür ve sıra korunur',
+	function () {
+		update_option( 'qrms_active_modules', array( 'qr-analiz', 'restoran-menu', 'qr-ceviri' ) );
+
+		QRMS_Admin::register_menu();
+
+		qrms_assert_same(
+			array(
+				'qrms-overview',
+				'qrms-module-restoran-menu',
+				'qrms-module-qr-analiz',
+				'qrms-module-qr-ceviri',
+				'qrms-settings',
+			),
+			qrms_registered_submenu_slugs(),
+			'menü sırası'
+		);
+	}
+);
+
+qrms_test(
+	'dokuz modül de aktifken hepsi menüde görünür',
+	function () {
+		update_option( 'qrms_active_modules', qrms_all_modules() );
+
+		QRMS_Admin::register_menu();
+
+		qrms_assert_same( 11, count( qrms_registered_submenu_slugs() ), 'Genel Bakış + 9 modül + Genel Ayarlar' );
+	}
+);
+
+qrms_test(
+	'sihirbaz sayfası kayıtlıdır ama menüde görünmez',
+	function () {
+		QRMS_Admin::register_menu();
+		QRMS_Wizard::register_page();
+
+		qrms_assert_false( in_array( 'qrms-wizard', qrms_registered_submenu_slugs(), true ), 'menüde olmamalı' );
+		qrms_assert_true( in_array( 'qrms-wizard', $GLOBALS['qrms_test']['removed'], true ), 'kaydedilip gizlenmeli' );
+	}
+);
+
+qrms_test(
+	'modül placeholder sayfası modül adını ve "yakında" metnini gösterir',
+	function () {
+		ob_start();
+		QRMS_Admin::render_module_placeholder( 'qr-masa-oturum-guvenligi' );
+		$html = ob_get_clean();
+
+		qrms_assert_contains( 'QR Masa Oturum Güvenliği', $html, 'başlık' );
+		qrms_assert_contains( 'Bu modül yakında burada olacak.', $html, 'metin' );
+	}
+);
+
+qrms_test(
+	'plugin ekranı tespiti sadece qrms sayfalarında true döner',
+	function () {
+		$_GET = array();
+		qrms_assert_false( QRMS_Admin::is_plugin_screen(), 'sayfa yok' );
+
+		$_GET = array( 'page' => 'edit-comments' );
+		qrms_assert_false( QRMS_Admin::is_plugin_screen(), 'başka sayfa' );
+
+		$_GET = array( 'page' => 'qrms-module-qr-masa' );
+		qrms_assert_true( QRMS_Admin::is_plugin_screen(), 'plugin sayfası' );
+	}
+);
+
+/* ---------------------------------------------------------------------------
+ * 5. Modül yükleyici
+ * ------------------------------------------------------------------------ */
+
+echo "\nModül yükleyici\n";
+
+qrms_test(
+	'init fonksiyon adı slug\'dan doğru türetilir',
+	function () {
+		qrms_assert_same( 'qrms_module_restoran_menu_init', QRMS_Module_Loader::get_init_function( 'restoran-menu' ), 'restoran-menu' );
+		qrms_assert_same(
+			'qrms_module_qr_masa_oturum_guvenligi_init',
+			QRMS_Module_Loader::get_init_function( 'qr-masa-oturum-guvenligi' ),
+			'qr-masa-oturum-guvenligi'
+		);
+	}
+);
+
+qrms_test(
+	'modül dosyaları yokken yükleme sessizce boş döner',
+	function () {
+		update_option( 'qrms_active_modules', qrms_all_modules() );
+
+		qrms_assert_same( array(), QRMS_Module_Loader::load_modules(), 'yüklenen modül olmamalı' );
+	}
+);
+
+qrms_test(
+	'aktif modülün dosyası varsa require edilir ve init fonksiyonu çağrılır',
+	function () {
+		$dir  = QRMS_PLUGIN_DIR . 'modules/qr-masa';
+		$file = $dir . '/module.php';
+
+		if ( ! is_dir( $dir ) ) {
+			mkdir( $dir, 0755, true );
+		}
+
+		file_put_contents(
+			$file,
+			"<?php\nfunction qrms_module_qr_masa_init() {\n\t\$GLOBALS['qrms_module_qr_masa_loaded'] = true;\n}\n"
+		);
+
+		try {
+			update_option( 'qrms_active_modules', array( 'qr-masa', 'qr-galeri' ) );
+
+			$loaded = QRMS_Module_Loader::load_modules();
+
+			qrms_assert_same( array( 'qr-masa' ), $loaded, 'sadece dosyası olan modül yüklenmeli' );
+			qrms_assert_true( isset( $GLOBALS['qrms_module_qr_masa_loaded'] ), 'init çağrılmalı' );
+		} finally {
+			unlink( $file );
+			rmdir( $dir );
+			unset( $GLOBALS['qrms_module_qr_masa_loaded'] );
+		}
+	}
+);
+
+qrms_test(
+	'aktif olmayan modülün dosyası olsa bile yüklenmez',
+	function () {
+		$dir  = QRMS_PLUGIN_DIR . 'modules/qr-galeri';
+		$file = $dir . '/module.php';
+
+		if ( ! is_dir( $dir ) ) {
+			mkdir( $dir, 0755, true );
+		}
+
+		file_put_contents( $file, "<?php\n\$GLOBALS['qrms_galeri_required'] = true;\n" );
+
+		try {
+			update_option( 'qrms_active_modules', array( 'qr-masa' ) );
+
+			QRMS_Module_Loader::load_modules();
+
+			qrms_assert_false( isset( $GLOBALS['qrms_galeri_required'] ), 'dosya require edilmemeli' );
+		} finally {
+			unlink( $file );
+			rmdir( $dir );
+		}
+	}
+);
+
+/* ---------------------------------------------------------------------------
+ * 6. Yardımcılar
+ * ------------------------------------------------------------------------ */
+
+echo "\nYardımcılar\n";
+
+qrms_test(
+	'dokuz modül slug\'ı ve Türkçe isimleri tanımlı',
+	function () {
+		$modules = QRMS_Helpers::get_modules();
+
+		qrms_assert_same( 9, count( QRMS_Helpers::MODULE_SLUGS ), 'slug sayısı' );
+		qrms_assert_same( 9, count( $modules ), 'isim sayısı' );
+		qrms_assert_same( array_values( QRMS_Helpers::MODULE_SLUGS ), array_keys( $modules ), 'slug listesi' );
+		qrms_assert_same( 'QR Çalışma Saatleri', QRMS_Helpers::get_module_name( 'qr-calisma-saatleri' ), 'isim' );
+		qrms_assert_same( 'Yorum & Feedback', QRMS_Helpers::get_module_name( 'yorum-feedback' ), 'isim' );
+	}
+);
+
+qrms_test(
+	'domain www öneki olmadan gönderilir',
+	function () {
+		qrms_assert_same( 'restoran.test', QRMS_Helpers::get_site_domain(), 'domain' );
+	}
+);
+
+qrms_test(
+	'sunucu adresi normalize edilir',
+	function () {
+		qrms_assert_same(
+			'https://full.qrmenuofficial.com',
+			QRMS_License_Client::normalize_server_url( 'https://full.qrmenuofficial.com/' ),
+			'sondaki eğik çizgi'
+		);
+		qrms_assert_same(
+			'https://staging.qrmenuofficial.com',
+			QRMS_License_Client::normalize_server_url( 'staging.qrmenuofficial.com' ),
+			'şema eklenir'
+		);
+	}
+);
+
+/* ------------------------------------------------------------------------ */
+
+echo "\n";
+
+if ( empty( $GLOBALS['qrms_failures'] ) ) {
+	echo "\033[32mTüm testler geçti\033[0m (" . $GLOBALS['qrms_assertions'] . " doğrulama)\n\n";
+	exit( 0 );
+}
+
+echo "\033[31m" . count( $GLOBALS['qrms_failures'] ) . " test başarısız\033[0m\n\n";
+exit( 1 );
