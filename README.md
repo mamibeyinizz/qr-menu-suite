@@ -88,19 +88,39 @@ zamanlama doğrudur.
 
 | Slug | İçerik | Yönetim sayfası |
 | --- | --- | --- |
+| `restoran-menu` | `rma_menu_item` CPT, `[restaurant_menu]`, `[qmo_one_cikan_slider]`, Elementor widget'ı | ✔ Sekmeli ayar ekranı |
 | `qr-masa` | Masa kayıtları (CRUD), masa QR adresleri, `[qr_aktif_masa]` | ✔ Masalar ekranı |
 | `qr-masa-oturum-guvenligi` | Sahte QR reddi, kilit ekranı, sayfa kilidi | ✔ Oturum limitleri |
+| `qr-analiz` | `POST /wp-json/qrservis/v1/analytics` — şube analitiği özeti | — (placeholder) |
 | `qr-chatbot` | `[gemini_chatbot]` kısa kodu, Gemini AJAX ucu | — (placeholder) |
 
-Kodları eski birleşik `qr-menu-official` eklentisinden **aynen** taşındı;
-yalnızca yeni klasör konumuna göre yol string'leri düzeltildi.
+Kodları kaynak eklentilerinden **aynen** taşındı (`restoran-menu` 12-menu
+deposundaki QR MENÜ eklentisinden, diğerleri birleşik `qr-menu-official`
+eklentisinden); yalnızca yeni klasör konumuna göre yol string'leri düzeltildi.
+
+`qr-analiz` ve `qr-chatbot` placeholder kalır çünkü ayar sayfaları henüz
+taşınmadı; ayarlar eskisi gibi option'lardan okunmaya devam eder
+(`qmo_firebase_sa` / `qmo_branch_id`, `gemini_api_key` vb.).
+
+`restoran-menu`'nün sekmeli ayar ekranı iki yerden açılır: suite menüsündeki
+"Restoran Menü" ve eklentinin kendi kaydı olan "Menü Ürünleri > Ayarlar".
+Ekranı basan metot tektir (`render_admin_page()`), ikisi de onu çağırır.
+
+> **Dağıtım notu:** `restoran-menu` modülü aktifken eski tekil **QR MENÜ**
+> eklentisi devre dışı bırakılmalıdır — modül onun yerini alır. Yan yana
+> bırakılırsa eski eklenti daha erken yüklendiği için `RMA_PLUGIN_URL` /
+> `QMO_PLUGIN_URL` sabitlerini o tanımlar ve varlık adresleri eski klasörü
+> gösterir. Sabitlerdeki `defined()` guard'ı ve `__DIR__` tabanlı require'lar
+> yalnızca notice ile çift yüklemeyi önler.
 
 ### `modules/_qmo-ortak/`
 
 Modül değildir (loader yalnızca `QRMS_Helpers::MODULE_SLUGS` içindeki
-slug'ları yükler), üç modülün ortak çalışma zeminidir: masa oturumu sınıfı
-(`QMO_Oturum`), yardımcılar, varlık kaydı ve chatbot renk varsayılanları.
-Her `module.php` bunu `require_once` ile yükler.
+slug'ları yükler), modüllerin ortak çalışma zeminidir: masa oturumu sınıfı
+(`QMO_Oturum`), Firestore istemcisi (`QMO_Firestore`), yardımcılar, varlık
+kaydı ve chatbot renk varsayılanları. İhtiyacı olan her `module.php` bunu
+`require_once` ile yükler. (`restoran-menu` yüklemez: kendi `RMA_`/`QMO_`
+ad alanıyla tamamen kendi kendine yeterlidir.)
 
 Masa oturumu sınıfı bilinçli olarak burada durur: `helpers.php`'deki
 `qmo_oturum()` / `qmo_oturum_zorla()` doğrudan `QMO_Oturum` üzerine
@@ -108,6 +128,14 @@ kuruludur, oysa modüller birbirinden bağımsız lisanslanır. Sınıf yalnızc
 `qr-masa-oturum-guvenligi` altında dursaydı, o modül lisanslı değilken
 chatbot her render'da ölümcül hata verirdi. Oturumun *zorlanması* (kilit
 ekranı, sayfa kilidi) o modülde kalır.
+
+`QMO_Firestore` aynı gerekçeyle burada durur: `qr-analiz`'in REST ucu
+çağıranın kimliğini ve rolünü onun üzerinden doğrular, ama sınıfı henüz
+taşınmamış dört dosya daha kullanır (`rest-order`, `ajax-waiter-bill`,
+`rest-create-user`, `admin/settings-page`). Service account JSON'ı koda
+gömülmez; sırasıyla `QMO_FIREBASE_SA_JSON` sabiti (wp-config),
+`qmo_firebase_sa` option'ı ve eski `qrservis_service_account_json()`
+snippet'i aranır.
 
 Taşınan kodun tamamı `class_exists()` / `function_exists()` / `defined()`
 guard'lıdır: eski `qr-menu-official` eklentisi aynı sitede hâlâ aktifse
@@ -146,9 +174,11 @@ includes/
   class-module-loader.php    modules/<slug>/module.php yükleyici
   class-admin.php            Menü çatısı, Genel Bakış, Genel Ayarlar, modül sayfa kaydı
 modules/
-  _qmo-ortak/                Modüllerin ortak zemini (oturum sınıfı, helpers, varlıklar)
+  _qmo-ortak/                Ortak zemin (oturum sınıfı, Firestore istemcisi, helpers, varlıklar)
+  restoran-menu/             Menü CPT'si, kısa kodlar, slider + sekmeli ayar ekranı
   qr-masa/                   Masa kayıtları + Masalar yönetim ekranı
   qr-masa-oturum-guvenligi/  Masa doğrulama, kilit ekranı + oturum ayarları
+  qr-analiz/                 Şube analitiği REST ucu
   qr-chatbot/                Gemini chatbot kısa kodu ve AJAX ucu
 assets/css/admin.css         Mobil öncelikli admin stilleri (dokunma ≥44px)
 assets/js/admin.js           Form gönderiminde buton kilidi (opsiyonel iyileştirme)
