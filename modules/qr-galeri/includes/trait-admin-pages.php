@@ -22,7 +22,7 @@ trait QRMGM_Admin_Pages_Trait {
 			'posts_per_page' => -1,
 		] );
 
-		include __DIR__ . '/includes/admin-page-sections.php';
+		include __DIR__ . '/admin-page-sections.php';
 	}
 
 	public function page_images(): void {
@@ -33,7 +33,7 @@ trait QRMGM_Admin_Pages_Trait {
 		$sections   = get_posts( [ 'post_type' => self::CPT_SECTION, 'post_status' => [ 'publish', 'draft' ], 'orderby' => 'menu_order', 'order' => 'ASC', 'posts_per_page' => -1 ] );
 		$current_id = isset( $_GET['section'] ) ? absint( $_GET['section'] ) : ( $sections[0]->ID ?? 0 );
 
-		include __DIR__ . '/includes/admin-page-images.php';
+		include __DIR__ . '/admin-page-images.php';
 	}
 
 	public function render_admin_image_cards( int $section_id ): void {
@@ -101,7 +101,7 @@ trait QRMGM_Admin_Pages_Trait {
 		}
 
 		$s = $this->get_settings();
-		include __DIR__ . '/includes/admin-page-settings.php';
+		include __DIR__ . '/admin-page-settings.php';
 	}
 
 	private function save_settings_from_request( array $data ): void {
