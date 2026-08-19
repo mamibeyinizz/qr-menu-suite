@@ -34,6 +34,8 @@ function qrms_module_qr_galeri_init() {
 
 	$manager = QRMenu_Gallery_Manager::instance();
 
+	// CPT kaydı yalnızca init kancasında yapılır; activate() burada çağrılmaz
+	// (plugins_loaded sırasında $wp_rewrite henüz hazır değildir).
 	add_option( QRMenu_Gallery_Manager::OPTION_SETTINGS, $manager->default_settings() );
 
 	if ( is_admin() ) {
