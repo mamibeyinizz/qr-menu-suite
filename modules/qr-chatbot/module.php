@@ -67,10 +67,17 @@ function qrms_module_qr_chatbot_admin_assets() {
 		'qmo-admin-chatbot',
 		'qmoChatbotAdmin',
 		array(
-			'presets'  => qmo_renk_sablonlari(),
-			'defaults' => qmo_renk_varsayilanlari(),
-			'colors'   => qmo_chatbot_renkleri_oku(),
-			'strings'  => array(
+			'presets'     => qmo_renk_sablonlari(),
+			'defaults'    => qmo_renk_varsayilanlari(),
+			'colors'      => qmo_chatbot_renkleri_oku(),
+			'defaultIcon' => qmo_varsayilan_ikon(),
+			'initial'     => array(
+				'botName'     => get_option( 'gemini_bot_name', 'Asistan' ),
+				'welcome'     => get_option( 'gemini_welcome_text', 'Merhaba! Size nasıl yardımcı olabilirim?' ),
+				'placeholder' => get_option( 'gemini_placeholder_text', 'Bir şeyler sorun...' ),
+				'iconUrl'     => get_option( 'gemini_bot_icon', '' ),
+			),
+			'strings'     => array(
 				'presetApplied' => 'Renk şablonu uygulandı. Değişiklikleri kaydetmeyi unutmayın.',
 				'selectIcon'    => 'Bot ikonu seç',
 				'useIcon'       => 'Bu görseli kullan',
