@@ -1,0 +1,984 @@
+/* =====================================================================
+   QR MENÜ — ADMIN ARAYÜZ STİLLERİ
+
+   Marka kimliği: koyu zemin + altın vurgu (frontend menü temasıyla
+   uyumlu). Tüm koyu kurallar .rma-admin kapsamındadır — bu sınıf
+   yalnızca eklentinin kendi "Ayarlar" ekranında bulunur. Ürün listesi
+   ve ürün düzenleme ekranları standart WordPress görünümünde kalır.
+
+   WordPress'in sol menüsüne, admin bar'ına veya .rma-admin dışındaki
+   hiçbir alana kural yazılmaz.
+===================================================================== */
+
+.rma-admin {
+    --rma-a-accent:      #c9a84c;
+    --rma-a-accent-soft: rgba(201, 168, 76, .14);
+    --rma-a-accent-dim:  rgba(201, 168, 76, .32);
+    --rma-a-accent-hi:   #e0c369;
+    --rma-a-page:        #0a0a0a;
+    --rma-a-surface:     #131313;
+    --rma-a-surface-2:   #1a1a1a;
+    --rma-a-raised:      #202020;
+    --rma-a-border:      #2e2e2e;
+    --rma-a-border-soft: #242424;
+    --rma-a-text:        #f5f0e8;
+    --rma-a-text-soft:   #c6c1b8;
+    --rma-a-muted:       #8f8a82;
+    --rma-a-success:     #3fbf67;
+    --rma-a-danger:      #e05252;
+    --rma-a-radius:      10px;
+
+    background: var(--rma-a-page);
+    border: 1px solid var(--rma-a-border);
+    border-radius: 14px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, .35);
+    color: var(--rma-a-text);
+    margin-right: 20px;
+    margin-top: 20px;
+    overflow: hidden;
+    padding: 28px 30px 34px;
+    position: relative;
+}
+
+/* Üstte ince altın şerit — panelin markalı olduğunu belli eden imza */
+.rma-admin::before {
+    background: linear-gradient(90deg, var(--rma-a-accent), rgba(201, 168, 76, .15) 65%, transparent);
+    content: '';
+    height: 3px;
+    left: 0;
+    position: absolute;
+    right: 0;
+    top: 0;
+}
+
+.rma-admin h1 {
+    color: var(--rma-a-text);
+    font-size: 23px;
+    font-weight: 600;
+    letter-spacing: -.01em;
+    margin: 0 0 4px;
+    padding: 0;
+}
+
+.rma-admin h1::before {
+    color: var(--rma-a-accent);
+    content: '◆';
+    font-size: 16px;
+    margin-right: 10px;
+    vertical-align: 2px;
+}
+
+.rma-admin-intro {
+    color: var(--rma-a-muted);
+    font-size: 13px;
+    margin: 0 0 22px;
+    max-width: 780px;
+}
+
+.rma-admin p,
+.rma-admin li,
+.rma-admin td {
+    color: var(--rma-a-text-soft);
+}
+
+.rma-admin strong {
+    color: var(--rma-a-text);
+}
+
+.rma-admin a:not(.button) {
+    color: var(--rma-a-accent);
+}
+
+.rma-admin a:not(.button):hover {
+    color: var(--rma-a-accent-hi);
+}
+
+.rma-admin code {
+    background: var(--rma-a-raised);
+    border-radius: 3px;
+    color: var(--rma-a-accent);
+    font-size: 12px;
+    padding: 2px 6px;
+}
+
+/* ---------------------------------------------------------------
+   ANA SEKMELER — altın aktif vurgusu
+--------------------------------------------------------------- */
+.rma-tabs {
+    border-bottom: 1px solid var(--rma-a-border);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin: 0 0 24px;
+    padding: 0;
+}
+
+.rma-tab {
+    appearance: none;
+    background: transparent;
+    border: none;
+    border-radius: 8px 8px 0 0;
+    color: var(--rma-a-muted);
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: .01em;
+    line-height: 1.4;
+    margin-bottom: -1px;
+    padding: 12px 18px 13px;
+    position: relative;
+    transition: color .18s, background-color .18s;
+}
+
+.rma-tab::after {
+    background: transparent;
+    border-radius: 2px 2px 0 0;
+    bottom: -1px;
+    content: '';
+    height: 3px;
+    left: 12px;
+    position: absolute;
+    right: 12px;
+    transition: background-color .18s;
+}
+
+.rma-tab:hover {
+    background: var(--rma-a-surface);
+    color: var(--rma-a-text-soft);
+}
+
+.rma-tab:focus-visible {
+    outline: 2px solid var(--rma-a-accent);
+    outline-offset: -3px;
+}
+
+.rma-tab.is-active {
+    background: var(--rma-a-accent-soft);
+    color: var(--rma-a-accent);
+}
+
+.rma-tab.is-active::after {
+    background: var(--rma-a-accent);
+}
+
+.rma-tabpanel[hidden] {
+    display: none;
+}
+
+/* ---------------------------------------------------------------
+   İÇ SEKMELER (Renkler / Tipografi / Hazır Paletler)
+--------------------------------------------------------------- */
+.rma-subtabs {
+    border-bottom: 1px solid var(--rma-a-border);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin: 0;
+}
+
+.rma-subtab {
+    appearance: none;
+    background: transparent;
+    border: none;
+    border-radius: 7px 7px 0 0;
+    color: var(--rma-a-muted);
+    cursor: pointer;
+    font-size: 13px;
+    line-height: 1.4;
+    margin-bottom: -1px;
+    padding: 10px 16px;
+    transition: color .18s, background-color .18s;
+}
+
+.rma-subtab:hover {
+    color: var(--rma-a-text-soft);
+}
+
+.rma-subtab.is-active {
+    background: var(--rma-a-surface-2);
+    border-bottom: 2px solid var(--rma-a-accent);
+    color: var(--rma-a-accent);
+    font-weight: 600;
+}
+
+.rma-subtabpanel {
+    background: var(--rma-a-surface);
+    border: 1px solid var(--rma-a-border);
+    border-radius: 0 var(--rma-a-radius) var(--rma-a-radius) var(--rma-a-radius);
+    border-top: none;
+    max-width: 900px;
+    padding: 30px;
+}
+
+.rma-subtabpanel[hidden] {
+    display: none;
+}
+
+/* ---------------------------------------------------------------
+   KART / PANEL
+--------------------------------------------------------------- */
+.rma-card {
+    background: var(--rma-a-surface);
+    border: 1px solid var(--rma-a-border);
+    border-radius: var(--rma-a-radius);
+    box-shadow: 0 2px 16px rgba(0, 0, 0, .38);
+    max-width: 900px;
+    padding: 28px 30px;
+    position: relative;
+}
+
+.rma-card + .rma-card {
+    margin-top: 18px;
+}
+
+.rma-card-title {
+    color: var(--rma-a-text);
+    font-size: 15px;
+    font-weight: 600;
+    margin: 0 0 6px;
+    padding: 0;
+}
+
+.rma-card-desc {
+    color: var(--rma-a-muted);
+    font-size: 13px;
+    line-height: 1.6;
+    margin: 0 0 22px;
+}
+
+/* ---------------------------------------------------------------
+   BÖLÜM BAŞLIĞI — altın, uppercase
+--------------------------------------------------------------- */
+.rma-section {
+    margin-bottom: 30px;
+}
+
+.rma-section:last-child {
+    margin-bottom: 0;
+}
+
+.rma-section-title {
+    border-bottom: 1px solid var(--rma-a-accent-dim);
+    color: var(--rma-a-accent);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .09em;
+    margin: 0 0 16px;
+    padding-bottom: 8px;
+    text-transform: uppercase;
+}
+
+.rma-section-desc {
+    color: var(--rma-a-muted);
+    font-size: 13px;
+    margin: -8px 0 16px;
+}
+
+/* ---------------------------------------------------------------
+   BİLDİRİM / TOAST
+--------------------------------------------------------------- */
+.rma-toast {
+    background: var(--rma-a-surface-2);
+    border: 1px solid var(--rma-a-border);
+    border-left: 3px solid var(--rma-a-success);
+    border-radius: 6px;
+    color: var(--rma-a-text);
+    display: none;
+    margin-bottom: 16px;
+    max-width: 900px;
+    padding: 12px 18px;
+}
+
+/* WordPress'in kendi bildirim kutuları koyu zeminde okunur hale gelir */
+.rma-admin .updated,
+.rma-admin .error,
+.rma-admin .notice {
+    background: var(--rma-a-surface-2);
+    border: 1px solid var(--rma-a-border);
+    border-radius: 6px;
+    box-shadow: none;
+    color: var(--rma-a-text);
+    margin: 0 0 18px;
+    max-width: 900px;
+    padding: 4px 18px;
+}
+
+.rma-admin .updated {
+    border-left: 3px solid var(--rma-a-success);
+}
+
+.rma-admin .error {
+    border-left: 3px solid var(--rma-a-danger);
+}
+
+.rma-admin .updated p,
+.rma-admin .error p,
+.rma-admin .notice p {
+    color: var(--rma-a-text);
+}
+
+/* ---------------------------------------------------------------
+   FORM — WordPress form-table koyu zemine uyarlanır
+--------------------------------------------------------------- */
+.rma-admin .rma-form-table {
+    margin: 0;
+}
+
+.rma-admin .form-table th {
+    color: var(--rma-a-text);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 16px 10px 16px 0;
+    width: 210px;
+}
+
+.rma-admin .form-table td {
+    color: var(--rma-a-text-soft);
+    padding: 14px 10px;
+}
+
+.rma-admin .form-table label {
+    color: var(--rma-a-text);
+}
+
+.rma-desc,
+.rma-admin .description {
+    color: var(--rma-a-muted);
+    font-size: 12px;
+    margin-top: 5px;
+}
+
+/* Metin / seçim alanları */
+.rma-admin input[type="text"],
+.rma-admin input[type="number"],
+.rma-admin input[type="search"],
+.rma-admin input[type="url"],
+.rma-admin select,
+.rma-admin textarea {
+    background: var(--rma-a-raised);
+    border: 1px solid var(--rma-a-border);
+    border-radius: 6px;
+    box-shadow: none;
+    color: var(--rma-a-text);
+    min-height: 34px;
+}
+
+.rma-admin input[type="text"]:focus,
+.rma-admin input[type="number"]:focus,
+.rma-admin select:focus,
+.rma-admin textarea:focus {
+    border-color: var(--rma-a-accent);
+    box-shadow: 0 0 0 1px var(--rma-a-accent);
+    outline: none;
+}
+
+.rma-admin select {
+    /* WP'nin açık temalı ok ikonunu koyu zemine uygun hale getirir */
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path fill="%23c9a84c" d="M5 6l5 5 5-5 2 1-7 7-7-7z"/></svg>');
+}
+
+.rma-admin input[type="file"] {
+    background: var(--rma-a-raised);
+    border: 1px dashed var(--rma-a-border);
+    border-radius: 6px;
+    color: var(--rma-a-text-soft);
+    max-width: 100%;
+    padding: 10px 12px;
+}
+
+.rma-admin input[type="file"]::file-selector-button {
+    background: var(--rma-a-accent);
+    border: none;
+    border-radius: 4px;
+    color: #0a0a0a;
+    cursor: pointer;
+    font-weight: 600;
+    margin-right: 12px;
+    padding: 6px 14px;
+}
+
+.rma-admin input[type="range"] {
+    accent-color: var(--rma-a-accent);
+    width: 200px;
+}
+
+.rma-admin input[type="checkbox"],
+.rma-admin input[type="radio"] {
+    accent-color: var(--rma-a-accent);
+    background: var(--rma-a-raised);
+    border-color: var(--rma-a-border);
+}
+
+.rma-range-row {
+    align-items: center;
+    display: flex;
+    gap: 14px;
+}
+
+.rma-range-val {
+    background: var(--rma-a-accent-soft);
+    border-radius: 4px;
+    color: var(--rma-a-accent);
+    font-size: 12px;
+    font-weight: 700;
+    min-width: 58px;
+    padding: 3px 8px;
+    text-align: center;
+}
+
+.rma-select-wide {
+    min-width: 220px;
+}
+
+.rma-select-narrow {
+    min-width: 140px;
+}
+
+.rma-check-row {
+    align-items: center;
+    color: var(--rma-a-text-soft);
+    cursor: pointer;
+    display: flex;
+    gap: 10px;
+}
+
+.rma-check-row input[type="checkbox"] {
+    height: 16px;
+    width: 16px;
+}
+
+/* ---------------------------------------------------------------
+   BUTONLAR — altın marka rengi (yalnızca .rma-admin içinde)
+--------------------------------------------------------------- */
+.rma-admin .button,
+.rma-admin .button-secondary {
+    background: var(--rma-a-raised);
+    border: 1px solid var(--rma-a-border);
+    border-radius: 6px;
+    box-shadow: none;
+    color: var(--rma-a-text);
+    font-weight: 500;
+    height: auto;
+    padding: 7px 16px;
+    text-shadow: none;
+    transition: border-color .18s, color .18s, background-color .18s;
+}
+
+.rma-admin .button:hover,
+.rma-admin .button-secondary:hover {
+    background: var(--rma-a-surface-2);
+    border-color: var(--rma-a-accent);
+    color: var(--rma-a-accent);
+}
+
+.rma-admin .button:focus {
+    border-color: var(--rma-a-accent);
+    box-shadow: 0 0 0 1px var(--rma-a-accent);
+    color: var(--rma-a-accent);
+    outline: none;
+}
+
+.rma-admin .button-primary {
+    background: var(--rma-a-accent);
+    border: 1px solid var(--rma-a-accent);
+    border-radius: 6px;
+    box-shadow: none;
+    color: #0a0a0a;
+    font-weight: 700;
+    letter-spacing: .01em;
+    padding: 8px 22px;
+    text-shadow: none;
+}
+
+.rma-admin .button-primary:hover,
+.rma-admin .button-primary:focus {
+    background: var(--rma-a-accent-hi);
+    border-color: var(--rma-a-accent-hi);
+    box-shadow: 0 2px 12px rgba(201, 168, 76, .3);
+    color: #0a0a0a;
+}
+
+.rma-admin .button-primary:active {
+    background: var(--rma-a-accent);
+    color: #0a0a0a;
+}
+
+/* ---------------------------------------------------------------
+   RENK SEÇİCİ (wpColorPicker / Iris) — koyu çerçeveye uyarlanır.
+   Iris'in kendi renk tuvaline (gradient kareler) dokunulmaz.
+--------------------------------------------------------------- */
+.rma-admin .wp-picker-container .wp-color-result.button {
+    background: var(--rma-a-raised);
+    border-color: var(--rma-a-border);
+}
+
+.rma-admin .wp-color-result-text {
+    background: var(--rma-a-surface-2);
+    border-left-color: var(--rma-a-border);
+    color: var(--rma-a-text-soft);
+}
+
+.rma-admin .wp-picker-container .wp-color-result:hover .wp-color-result-text {
+    color: var(--rma-a-accent);
+}
+
+.rma-admin .wp-picker-input-wrap .wp-color-picker[type="text"] {
+    background: var(--rma-a-raised);
+    border-color: var(--rma-a-border);
+    color: var(--rma-a-text);
+}
+
+.rma-admin .wp-picker-holder {
+    background: var(--rma-a-surface-2);
+    border: 1px solid var(--rma-a-border);
+    border-radius: 6px;
+    padding: 6px;
+}
+
+.rma-admin .iris-picker {
+    background: var(--rma-a-surface-2);
+    border-color: var(--rma-a-border);
+}
+
+.rma-admin .iris-picker .iris-square-inner {
+    border-radius: 3px;
+}
+
+/* ---------------------------------------------------------------
+   SEÇİM KARTLARI — nav presetleri, gösterge, öneri modu
+--------------------------------------------------------------- */
+.rma-choice-grid {
+    display: grid;
+    gap: 14px;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+}
+
+.rma-choice {
+    background: var(--rma-a-surface-2);
+    border: 1px solid var(--rma-a-border);
+    border-radius: 9px;
+    cursor: pointer;
+    display: block;
+    overflow: hidden;
+    padding: 0;
+    position: relative;
+    text-align: left;
+    transition: border-color .18s, box-shadow .18s, transform .18s;
+}
+
+.rma-choice:hover {
+    border-color: var(--rma-a-accent-dim);
+    transform: translateY(-1px);
+}
+
+.rma-choice.is-selected {
+    border-color: var(--rma-a-accent);
+    box-shadow: 0 0 0 1px var(--rma-a-accent), 0 4px 18px rgba(201, 168, 76, .16);
+}
+
+.rma-choice-pad {
+    padding: 14px 12px;
+    text-align: center;
+}
+
+.rma-choice-name {
+    color: var(--rma-a-text);
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.rma-choice.is-selected .rma-choice-name {
+    color: var(--rma-a-accent);
+}
+
+.rma-choice-sub {
+    color: var(--rma-a-muted);
+    display: block;
+    font-size: 12px;
+    line-height: 1.5;
+    margin-top: 5px;
+}
+
+.rma-badge {
+    background: var(--rma-a-accent);
+    border-radius: 10px;
+    color: #0a0a0a;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 9px;
+    position: absolute;
+    right: 8px;
+    top: 8px;
+}
+
+/* Nav tasarım preset önizlemesi — iç renkler frontend verisidir ve
+   inline gelir; burada yalnızca yerleşim/çerçeve tanımlanır. */
+.rma-preset-preview {
+    border-bottom: 1px solid var(--rma-a-border);
+    padding: 16px 10px 12px;
+}
+
+.rma-preset-strip {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+}
+
+.rma-preset-chip {
+    border-radius: 3px;
+    font-size: 11px;
+    padding: 4px 10px;
+}
+
+.rma-preset-chip.is-active {
+    border-radius: 20px;
+    font-weight: 700;
+}
+
+.rma-preset-meta {
+    padding: 12px 14px 14px;
+}
+
+/* ---------------------------------------------------------------
+   KAYAR BAŞLIK — CANLI ÖNİZLEME
+   Nav'ın kendi görünümü assets/css/rma-nav.css'ten gelir (frontend ile
+   ortak dosya). Buradaki kurallar yalnızca önizlemenin admin içindeki
+   çerçevesini/konumunu tanımlar.
+--------------------------------------------------------------- */
+.rma-preview-card {
+    position: sticky;
+    top: 42px;
+    z-index: 5;
+}
+
+.rma-nav-preview {
+    border: 1px solid var(--rma-a-border);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+/* Önizleme dekoratiftir: tıklama/imleç etkileşimi olmasın */
+.rma-nav-preview,
+.rma-nav-preview .rma-nav-btn {
+    cursor: default;
+    pointer-events: none;
+    user-select: none;
+}
+
+/* Frontend'de nav yatay kaydırılabilir; önizlemede çubuk görünmesin */
+.rma-nav-preview .rma-nav {
+    overflow-x: hidden;
+}
+
+/* ---------------------------------------------------------------
+   AÇILIR DETAY (CSV format bilgisi)
+--------------------------------------------------------------- */
+.rma-details {
+    border-top: 1px solid var(--rma-a-border-soft);
+    margin-top: 24px;
+    padding-top: 16px;
+}
+
+.rma-details > summary {
+    color: var(--rma-a-accent);
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    list-style: none;
+    padding: 4px 0;
+    user-select: none;
+}
+
+.rma-details > summary::-webkit-details-marker {
+    display: none;
+}
+
+.rma-details > summary::before {
+    content: '▸';
+    display: inline-block;
+    margin-right: 8px;
+    transition: transform .15s;
+}
+
+.rma-details[open] > summary::before {
+    transform: rotate(90deg);
+}
+
+.rma-details > summary:hover {
+    color: var(--rma-a-accent-hi);
+}
+
+.rma-details-table {
+    border-collapse: collapse;
+    font-size: 12px;
+    margin: 12px 0;
+    width: 100%;
+}
+
+.rma-details-table th,
+.rma-details-table td {
+    border-bottom: 1px solid var(--rma-a-border-soft);
+    padding: 7px 10px;
+    text-align: left;
+    vertical-align: top;
+}
+
+.rma-details-table th {
+    color: var(--rma-a-accent);
+    font-size: 11px;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+}
+
+.rma-details-table td:first-child {
+    color: var(--rma-a-muted);
+    width: 40px;
+}
+
+.rma-details-table td:nth-child(2) {
+    color: var(--rma-a-text);
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.rma-details-table td:last-child {
+    color: var(--rma-a-muted);
+}
+
+/* ---------------------------------------------------------------
+   PALET BUTONLARI
+--------------------------------------------------------------- */
+.rma-palette-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.rma-admin .rma-palette-btn {
+    height: auto;
+    padding: 11px 20px;
+}
+
+/* ---------------------------------------------------------------
+   KATEGORİ SIRALAMA LİSTESİ
+--------------------------------------------------------------- */
+.rma-sortable {
+    margin: 0;
+    max-width: 620px;
+    padding: 0;
+}
+
+.rma-sortable-item {
+    align-items: center;
+    background: var(--rma-a-surface-2);
+    border: 1px solid var(--rma-a-border);
+    border-radius: 8px;
+    color: var(--rma-a-text);
+    cursor: move;
+    display: flex;
+    font-weight: 600;
+    margin-bottom: 8px;
+    padding: 14px 16px;
+    transition: border-color .18s, background-color .18s;
+}
+
+.rma-sortable-item:hover {
+    background: var(--rma-a-raised);
+    border-color: var(--rma-a-accent-dim);
+}
+
+.rma-sortable-item .dashicons {
+    color: var(--rma-a-accent);
+    margin-right: 14px;
+    opacity: .7;
+}
+
+/* ---------------------------------------------------------------
+   ÖNERİLER — manuel ürün seçim listesi
+--------------------------------------------------------------- */
+.rma-mode-grid {
+    margin-bottom: 30px;
+}
+
+.rma-choice-inline {
+    align-items: flex-start;
+    display: flex;
+    gap: 12px;
+    padding: 16px 18px;
+}
+
+.rma-choice-inline input[type="radio"] {
+    flex-shrink: 0;
+    margin-top: 3px;
+}
+
+.rma-manual-scroll {
+    background: var(--rma-a-page);
+    border: 1px solid var(--rma-a-border);
+    border-radius: 8px;
+    max-height: 420px;
+    overflow-y: auto;
+    padding: 4px 12px;
+}
+
+.rma-manual-item-row {
+    align-items: center;
+    border-bottom: 1px solid var(--rma-a-border-soft);
+    color: var(--rma-a-text-soft);
+    cursor: pointer;
+    display: flex;
+    gap: 12px;
+    padding: 10px 6px;
+}
+
+.rma-manual-item-row:last-child {
+    border-bottom: none;
+}
+
+.rma-manual-item-row:hover {
+    background: var(--rma-a-surface-2);
+}
+
+.rma-manual-item-row input[type="checkbox"] {
+    flex-shrink: 0;
+    height: 16px;
+    width: 16px;
+}
+
+.rma-manual-thumb {
+    border-radius: 5px;
+    height: 36px;
+    object-fit: cover;
+    width: 36px;
+}
+
+.rma-manual-thumb-empty {
+    align-items: center;
+    background: var(--rma-a-accent-soft);
+    color: var(--rma-a-accent);
+    display: flex;
+    flex-shrink: 0;
+    justify-content: center;
+}
+
+.rma-manual-item-main {
+    flex: 1;
+    min-width: 0;
+}
+
+.rma-manual-item-title {
+    color: var(--rma-a-text);
+    display: block;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.rma-manual-item-price {
+    color: var(--rma-a-accent);
+    display: block;
+    font-size: 12px;
+}
+
+.rma-selected-badge {
+    background: var(--rma-a-accent);
+    border-radius: 10px;
+    color: #0a0a0a;
+    display: none;
+    flex-shrink: 0;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 3px 9px;
+}
+
+.rma-actions {
+    align-items: center;
+    display: flex;
+    gap: 14px;
+    margin-top: 24px;
+}
+
+.rma-spinner {
+    color: var(--rma-a-muted);
+    display: none;
+    font-size: 13px;
+}
+
+/* =====================================================================
+   KAPSAM DIŞI — ÜRÜN LİSTESİ TABLOSU
+   .rma-switch, CPT liste ekranındaki Göster/Gizle sütununda kullanılır.
+   O ekran standart WP görünümünde kalır; yalnızca bu özel anahtar
+   marka rengini taşır.
+===================================================================== */
+.rma-switch {
+    display: inline-block;
+    height: 24px;
+    margin-top: 5px;
+    position: relative;
+    width: 44px;
+}
+
+.rma-switch input {
+    height: 0;
+    opacity: 0;
+    width: 0;
+}
+
+.rma-slider {
+    background: #ccc;
+    border-radius: 24px;
+    bottom: 0;
+    cursor: pointer;
+    left: 0;
+    position: absolute;
+    right: 0;
+    top: 0;
+    transition: .3s;
+}
+
+.rma-slider:before {
+    background: #fff;
+    border-radius: 50%;
+    bottom: 4px;
+    content: '';
+    height: 16px;
+    left: 4px;
+    position: absolute;
+    transition: .3s;
+    width: 16px;
+}
+
+input:checked + .rma-slider {
+    background: #c9a84c;
+}
+
+input:checked + .rma-slider:before {
+    transform: translateX(20px);
+}
+
+/* ---------------------------------------------------------------
+   DAR EKRAN
+--------------------------------------------------------------- */
+@media screen and (max-width: 782px) {
+    .rma-admin {
+        margin-right: 10px;
+        padding: 20px 16px 24px;
+    }
+
+    .rma-card,
+    .rma-subtabpanel {
+        padding: 18px 16px;
+    }
+
+    .rma-tab {
+        padding: 10px 12px;
+    }
+
+    .rma-admin .form-table th {
+        color: var(--rma-a-text);
+        padding-bottom: 4px;
+        width: auto;
+    }
+}

@@ -1,0 +1,124 @@
+<?php
+/**
+ * Plugin Name: QR MENÜ
+ * Description: Premium Elementor uyumlu, AJAX destekli restoran menü sistemi.
+
+ * Version: 1.0
+ * Author: QRmenuofficial
+ * Text Domain: rma
+ */
+
+if ( ! defined( 'ABSPATH' ) ) exit;
+
+// Suite modülü olarak da, eski tekil eklenti olarak da yüklenebilsin diye
+// guard'lı: eski standalone QR MENÜ eklentisi hâlâ aktifse sabitleri o
+// tanımlar ve buradaki define'lar "already defined" notice'ı üretirdi.
+if ( ! defined( 'RMA_PLUGIN_DIR' ) ) {
+    define( 'RMA_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
+}
+if ( ! defined( 'RMA_PLUGIN_URL' ) ) {
+    define( 'RMA_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
+}
+
+require_once __DIR__ . '/includes/trait-helpers.php';
+require_once __DIR__ . '/includes/trait-post-types.php';
+require_once __DIR__ . '/includes/trait-admin-columns.php';
+require_once __DIR__ . '/includes/trait-admin-pages.php';
+require_once __DIR__ . '/includes/trait-nav-design.php';
+require_once __DIR__ . '/includes/trait-import-export.php';
+require_once __DIR__ . '/includes/trait-suggestions.php';
+require_once __DIR__ . '/includes/trait-frontend.php';
+require_once __DIR__ . '/includes/trait-ajax.php';
+require_once __DIR__ . '/includes/trait-category-fields.php';
+require_once __DIR__ . '/qmo-one-cikan-slider.php';
+
+/* =====================================================================
+   MAIN CLASS
+===================================================================== */
+class Restaurant_Menu_Automation {
+
+    use RMA_Helpers_Trait;
+    use RMA_Post_Types_Trait;
+    use RMA_Admin_Columns_Trait;
+    use RMA_Admin_Pages_Trait;
+    use RMA_Nav_Design_Trait;
+    use RMA_Import_Export_Trait;
+    use RMA_Suggestions_Trait;
+    use RMA_Frontend_Trait;
+    use RMA_Ajax_Trait;
+    use RMA_Category_Fields_Trait;
+
+    private static $instance = null;
+
+    public static function get_instance() {
+        if ( null === self::$instance ) {
+            self::$instance = new self();
+        }
+        return self::$instance;
+    }
+
+    private function __construct() {
+        add_action( 'init',                  [ $this, 'register_post_types' ] );
+        add_action( 'add_meta_boxes',        [ $this, 'add_menu_item_meta_boxes' ] );
+        add_action( 'save_post',             [ $this, 'save_menu_item_meta' ] );
+        add_action( 'wp_insert_post',        [ $this, 'set_default_active_status' ], 10, 3 );
+        add_filter( 'manage_rma_menu_item_posts_columns',        [ $this, 'add_admin_columns' ] );
+        add_action( 'manage_rma_menu_item_posts_custom_column',  [ $this, 'render_admin_columns' ], 10, 2 );
+        add_filter( 'posts_clauses', [ $this, 'admin_group_by_category' ], 10, 2 );
+        add_filter( 'post_row_actions',              [ $this, 'add_duplicate_post_link' ], 10, 2 );
+        add_action( 'admin_action_rma_duplicate_post', [ $this, 'duplicate_post_action' ] );
+        add_action( 'admin_enqueue_scripts', [ $this, 'admin_scripts' ] );
+        add_action( 'wp_ajax_rma_toggle_status',       [ $this, 'ajax_toggle_status' ] );
+        add_action( 'wp_ajax_rma_save_category_order', [ $this, 'ajax_save_category_order' ] );
+        add_action( 'admin_menu',  [ $this, 'add_admin_menus' ] );
+        add_action( 'admin_init',  [ $this, 'register_settings' ] );
+        add_action( 'admin_init',  [ $this, 'handle_csv_import' ] );
+        add_action( 'admin_init',  [ $this, 'handle_menu_import' ] );
+        add_action( 'admin_post_rma_export_menu', [ $this, 'handle_export_menu' ] );
+        add_action( 'rma_category_add_form_fields',  [ $this, 'add_category_custom_fields' ] );
+        add_action( 'rma_category_edit_form_fields', [ $this, 'edit_category_custom_fields' ] );
+        add_action( 'created_rma_category',          [ $this, 'save_category_custom_fields' ] );
+        add_action( 'edited_rma_category',           [ $this, 'save_category_custom_fields' ] );
+        add_action( 'wp_enqueue_scripts',                    [ $this, 'frontend_scripts_styles' ] );
+        add_action( 'wp_ajax_rma_load_items',                [ $this, 'ajax_load_items' ] );
+        add_action( 'wp_ajax_nopriv_rma_load_items',         [ $this, 'ajax_load_items' ] );
+        add_action( 'wp_ajax_rma_get_product_details',       [ $this, 'ajax_get_product_details' ] );
+        add_action( 'wp_ajax_nopriv_rma_get_product_details',[ $this, 'ajax_get_product_details' ] );
+        add_action( 'wp_ajax_rma_save_suggestions',          [ $this, 'ajax_save_suggestions' ] );
+        add_shortcode( 'restaurant_menu', [ $this, 'shortcode_menu' ] );
+        add_shortcode( 'rma_qr_notice', [ $this, 'shortcode_qr_notice' ] );
+        add_action( 'init', [ $this, 'register_default_allergen_terms' ], 20 );
+
+        /* -----------------------------------------------------------------
+           MENÜ ÖNBELLEĞİ — GEÇERSİZ KILMA KANCALARI
+
+           Frontend menü yanıtı (AJAX) ve ürün detayları sürüm damgalı
+           transient'larda saklanır. Aşağıdaki olaylardan biri gerçekleşince
+           damga artırılır ve tüm önbellek tek hamlede geçersizleşir; bir
+           sonraki ziyaretçi taze içeriği görür.
+
+           Not: rma_views sayacı bilinçli olarak hariç tutulur (bkz.
+           maybe_bump_cache_on_meta) — aksi hâlde her ürün görüntülemesi
+           önbelleği düşürürdü.
+        ----------------------------------------------------------------- */
+        add_action( 'save_post_rma_menu_item', [ $this, 'maybe_bump_cache_on_post' ], 20, 2 );
+        add_action( 'deleted_post',            [ $this, 'maybe_bump_cache_on_post' ], 20, 2 );
+        add_action( 'trashed_post',            [ $this, 'maybe_bump_cache_on_post' ], 20, 2 );
+        add_action( 'untrashed_post',          [ $this, 'maybe_bump_cache_on_post' ], 20, 2 );
+        add_action( 'added_post_meta',         [ $this, 'maybe_bump_cache_on_meta' ], 20, 3 );
+        add_action( 'updated_post_meta',       [ $this, 'maybe_bump_cache_on_meta' ], 20, 3 );
+        add_action( 'set_object_terms',        [ $this, 'maybe_bump_cache_on_terms' ], 20, 4 );
+        add_action( 'created_rma_category',    [ $this, 'bump_cache_version' ], 20 );
+        add_action( 'edited_rma_category',     [ $this, 'bump_cache_version' ], 20 );
+        add_action( 'delete_rma_category',     [ $this, 'bump_cache_version' ], 20 );
+        add_action( 'delete_rma_allergen',     [ $this, 'bump_cache_version' ], 20 );
+        add_action( 'update_option_rma_suggestions_settings', [ $this, 'bump_cache_version' ], 20 );
+    }
+}
+
+Restaurant_Menu_Automation::get_instance();
+
+/* =====================================================================
+   ELEMENTOR WIDGET
+===================================================================== */
+require_once __DIR__ . '/includes/class-elementor-widget.php';

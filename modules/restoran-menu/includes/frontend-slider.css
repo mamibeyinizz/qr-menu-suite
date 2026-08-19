@@ -1,0 +1,221 @@
+/* =====================================================================
+   QMO ÖNE ÇIKAN SLIDER — FRONTEND STİLLERİ
+   Dark gold tema · container query (cqi) · .qmo-slider- prefix
+===================================================================== */
+
+.qmo-slider-root {
+    --qmo-ink:        #0a0a0c;
+    --qmo-gold:       #c9a84c;
+    --qmo-gold-soft:  #e8c766;
+    --qmo-card:       #111114;
+    --qmo-border:     #2a2a30;
+    --qmo-text:       #f5f0e8;
+    --qmo-muted:      #8f8a82;
+    --qmo-font-display: 'Playfair Display', Georgia, serif;
+    --qmo-font-body:    'Manrope', system-ui, sans-serif;
+
+    container-type: inline-size;
+    container-name: qmo-slider;
+    background: var(--qmo-ink);
+    border: 1px solid var(--qmo-border);
+    border-radius: 1.2cqi;
+    color: var(--qmo-text);
+    font-family: var(--qmo-font-body);
+    overflow: hidden;
+    padding: 2.4cqi;
+    position: relative;
+    width: 100%;
+}
+
+.qmo-slider-viewport {
+    overflow: hidden;
+    position: relative;
+    width: 100%;
+}
+
+.qmo-slider-track {
+    display: flex;
+    transition: transform 0.55s cubic-bezier(0.4, 0, 0.2, 1);
+    width: 100%;
+}
+
+.qmo-slider-slide {
+    flex: 0 0 100%;
+    min-width: 100%;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.45s ease;
+}
+
+.qmo-slider-slide.is-active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.qmo-slider-title {
+    color: var(--qmo-gold-soft);
+    font-family: var(--qmo-font-display);
+    font-size: clamp(1.1rem, 4.5cqi, 1.75rem);
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    line-height: 1.25;
+    margin: 0 0 1.6cqi;
+    text-align: center;
+}
+
+.qmo-slider-grid {
+    display: grid;
+    gap: 1.2cqi;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+}
+
+@container qmo-slider (max-width: 720px) {
+    .qmo-slider-grid {
+        grid-template-columns: repeat(4, minmax(72cqi, 1fr));
+        padding-bottom: 0.6cqi;
+        scrollbar-width: thin;
+    }
+
+    .qmo-slider-product {
+        scroll-snap-align: start;
+    }
+}
+
+.qmo-slider-product {
+    background: var(--qmo-card);
+    border: 1px solid var(--qmo-border);
+    border-radius: 1cqi;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    overflow: hidden;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.qmo-slider-product:hover {
+    border-color: color-mix(in srgb, var(--qmo-gold) 45%, var(--qmo-border));
+    box-shadow: 0 0.8cqi 2cqi rgba(0, 0, 0, 0.35);
+}
+
+.qmo-slider-product-img-wrap {
+    aspect-ratio: 1;
+    background: #0d0d10;
+    overflow: hidden;
+    position: relative;
+}
+
+.qmo-slider-product-img {
+    display: block;
+    height: 100%;
+    object-fit: cover;
+    width: 100%;
+}
+
+.qmo-slider-product-body {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 0.5cqi;
+    padding: 1.2cqi;
+}
+
+.qmo-slider-product-title {
+    color: var(--qmo-text);
+    font-family: var(--qmo-font-display);
+    font-size: clamp(0.85rem, 2.8cqi, 1.05rem);
+    font-weight: 600;
+    line-height: 1.3;
+    margin: 0;
+}
+
+.qmo-slider-product-desc {
+    color: var(--qmo-muted);
+    flex: 1;
+    font-size: clamp(0.72rem, 2.2cqi, 0.82rem);
+    line-height: 1.45;
+    margin: 0;
+}
+
+.qmo-slider-product-price {
+    align-items: baseline;
+    display: flex;
+    flex-wrap: wrap;
+    font-size: clamp(0.82rem, 2.6cqi, 0.98rem);
+    font-weight: 700;
+    gap: 0.5cqi;
+    margin: 0;
+}
+
+.qmo-slider-product-price .qmo-kombin-old-price {
+    color: var(--qmo-muted);
+    font-size: 0.88em;
+    font-weight: 500;
+    text-decoration: line-through;
+}
+
+.qmo-slider-product-price .qmo-kombin-new-price {
+    color: var(--qmo-gold);
+}
+
+.qmo-slider-nav {
+    display: flex;
+    gap: 0.8cqi;
+    justify-content: center;
+    margin-top: 1.6cqi;
+}
+
+.qmo-slider-nav-btn {
+    align-items: center;
+    appearance: none;
+    background: color-mix(in srgb, var(--qmo-gold) 12%, var(--qmo-card));
+    border: 1px solid color-mix(in srgb, var(--qmo-gold) 35%, var(--qmo-border));
+    border-radius: 999px;
+    color: var(--qmo-gold-soft);
+    cursor: pointer;
+    display: inline-flex;
+    font-size: 1.35rem;
+    height: 2.6cqi;
+    justify-content: center;
+    line-height: 1;
+    min-height: 36px;
+    min-width: 36px;
+    padding: 0;
+    transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+    width: 2.6cqi;
+}
+
+.qmo-slider-nav-btn:hover,
+.qmo-slider-nav-btn:focus-visible {
+    background: color-mix(in srgb, var(--qmo-gold) 22%, var(--qmo-card));
+    border-color: var(--qmo-gold);
+    color: var(--qmo-gold-soft);
+    outline: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .qmo-slider-track,
+    .qmo-slider-slide {
+        transition: none;
+    }
+}
+
+/* Kombin fiyat stilleri — menü kartlarında da kullanılır */
+.qmo-kombin-old-price {
+    color: var(--rma-desc, #888888);
+    font-size: 0.88em;
+    font-weight: 500;
+    text-decoration: line-through;
+}
+
+.qmo-kombin-new-price {
+    color: #c9a84c;
+    font-weight: 700;
+}
+
+.rma-card-price-group .qmo-kombin-old-price + .qmo-kombin-new-price {
+    color: #c9a84c;
+}

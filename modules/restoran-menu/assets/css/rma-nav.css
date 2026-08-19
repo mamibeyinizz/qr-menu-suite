@@ -1,0 +1,67 @@
+/* =====================================================================
+   QR MENÜ — KAYAR KATEGORİ NAVİGASYONU (ORTAK)
+
+   Bu kurallar hem frontend menüsünde hem de admin'deki "Kayar Başlık"
+   canlı önizlemesinde kullanılır — tek kaynak. Görünüm tamamen
+   --rma-nav-* custom property'leriyle sürülür; frontend bunları
+   :root'a, admin önizlemesi ise önizleme kabına basar.
+
+   Aktif kategori göstergesi (pill / nokta / alt çizgi / yok) burada
+   DEĞİL, PHP'de üretilir: RMA_Helpers_Trait::get_nav_indicator_css().
+===================================================================== */
+
+.rma-nav-wrapper {
+    width: 100%;
+    box-sizing: border-box;
+    overflow: visible;
+    isolation: isolate;
+    position: relative;
+    z-index: 10;
+}
+
+.rma-nav {
+    display: flex;
+    overflow-x: auto;
+    overflow-y: visible;
+    white-space: nowrap;
+    background: var(--rma-nav-bg);
+    border-bottom: 1px solid var(--rma-nav-border);
+    scrollbar-width: none;
+    padding: var(--rma-nav-pt) 12px var(--rma-nav-pb);
+    box-sizing: border-box;
+    width: 100%;
+    -webkit-overflow-scrolling: touch;
+    transition: box-shadow .35s, background .35s;
+    position: relative;
+    z-index: 10;
+    gap: var(--rma-nav-btn-gap);
+}
+
+.rma-nav::-webkit-scrollbar { display:none; }
+
+.rma-nav-btn {
+    padding: var(--rma-nav-btn-pv) var(--rma-nav-btn-ph);
+    background: none;
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+    color: var(--rma-nav-text) !important;
+    border-bottom: 3px solid transparent;
+    font-family: var(--rma-font-body);
+    font-size: var(--rma-nav-font-size);
+    font-weight: var(--rma-nav-font-weight);
+    letter-spacing: .01em;
+    cursor: pointer;
+    transition: color .2s, border-color .2s, background .2s, text-shadow .2s;
+    white-space: nowrap;
+    flex-shrink: 0;
+    position: relative;
+    -webkit-appearance: none;
+    appearance: none;
+    line-height: 1.3;
+}
+
+.rma-nav-btn:hover { color: var(--rma-text); }
+
+.rma-nav-btn.rma-suggestions-btn { color: var(--rma-nav-active); font-weight: 700; }
+.rma-nav-btn.rma-suggestions-btn::before { content:'✦ '; font-size:.68em; opacity:.85; }
