@@ -3,8 +3,8 @@
  * Yönetim sayfası: QR Menü → QR Chatbot
  *
  * Gemini API, bot metinleri, renk şablonları ve canlı önizleme.
- * Firebase / Firestore ayarları bu sayfada YOK — onlar qr-analiz ve
- * sipariş uçları için ayrı taşınıyor.
+ * Firebase / Firestore alanları chatbot formunun DIŞINDA, ortak
+ * `qmo_firebase_ayar_formu()` ile basılır (qr-analiz ile aynı option'lar).
  *
  * @package QR_Menu_Suite
  */
@@ -435,6 +435,15 @@ if ( ! function_exists( 'qmo_chatbot_ayar_sayfasi' ) ) {
 
 				<?php submit_button( 'Kaydet', 'primary', 'qmo_chatbot_kaydet' ); ?>
 			</form>
+
+			<?php
+			// Firebase/şube bağlantısı: ortak bölüm, kendi ayar grubu ve kendi
+			// formu. Chatbot'un garson/hesap çağrısı ve sipariş yazımı buna
+			// bağlıdır (QMO_Firestore bu option'ları okur).
+			if ( function_exists( 'qmo_firebase_ayar_formu' ) ) {
+				qmo_firebase_ayar_formu();
+			}
+			?>
 
 			<div id="qmo-toast"></div>
 		</div>

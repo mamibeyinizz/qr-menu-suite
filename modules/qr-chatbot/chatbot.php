@@ -21,7 +21,46 @@ if ( ! defined( 'QMO_CHATBOT_URL' ) ) {
 
 require_once QMO_CHATBOT_DIR . 'includes/ajax-chat.php';
 require_once QMO_CHATBOT_DIR . 'includes/shortcode-chatbot.php';
+require_once QMO_CHATBOT_DIR . 'includes/shortcode-buttons.php';
+
+// Sipariş boru hattı: REST ucu ile chatbot AJAX ucu aynı qmo_siparis_isle()
+// fonksiyonuna düşer, bu yüzden ajax-order.php rest-order.php'den sonra
+// yüklenir. Garson/hesap çağrıları QMO_Firestore üzerinden yazar.
+require_once QMO_CHATBOT_DIR . 'rest-order.php';
+require_once QMO_CHATBOT_DIR . 'ajax-order.php';
+require_once QMO_CHATBOT_DIR . 'ajax-waiter-bill.php';
+
+add_action( 'wp_enqueue_scripts', 'qmo_chatbot_buton_varliklarini_kaydet', 5 );
 
 if ( is_admin() ) {
 	require_once QMO_CHATBOT_DIR . 'includes/admin/admin-sayfa.php';
+}
+
+/**
+ * Garson / hesap buton varlıklarını kaydet.
+ *
+ * Ortak assets.php bu handle'ları yorum satırına almıştı (dosyalar henüz
+ * yoktu). Kayıt burada yapılır; qmo_asset_enqueue() / qmo_icerikten_yukle()
+ * kayıtlı handle'ı yükler.
+ *
+ * @return void
+ */
+if ( ! function_exists( 'qmo_chatbot_buton_varliklarini_kaydet' ) ) {
+	function qmo_chatbot_buton_varliklarini_kaydet() {
+		static $kayitli = false;
+		if ( $kayitli ) {
+			return;
+		}
+		$kayitli = true;
+
+		$url = QMO_CHATBOT_URL . 'assets/';
+		$v   = QRMS_VERSION;
+
+		wp_register_style( 'qmo-buttons', $url . 'css/buttons.css', array(), $v );
+		wp_register_script( 'qmo-buttons', $url . 'js/buttons.js', array(), $v, true );
+
+		// [qr_garson_hesap] aynı varlıklara bağlanır; ayrı bir tema dosyası yok.
+		wp_register_style( 'qmo-garson-hesap', $url . 'css/buttons.css', array(), $v );
+		wp_register_script( 'qmo-garson-hesap', $url . 'js/buttons.js', array(), $v, true );
+	}
 }
