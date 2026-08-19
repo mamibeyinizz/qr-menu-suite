@@ -1,0 +1,56 @@
+/**
+ * QR Çalışma Saatleri — yönetim ekranı.
+ */
+
+.qrms-cs-wrap {
+	max-width: 720px;
+}
+
+.qrms-cs-day-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	margin-bottom: 12px;
+}
+
+.qrms-cs-day-title {
+	margin: 0;
+}
+
+.qrms-cs-closed-label {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	min-height: 44px;
+	font-size: 15px;
+	font-weight: 600;
+	cursor: pointer;
+	user-select: none;
+}
+
+.qrms-cs-closed-label input {
+	width: 20px;
+	height: 20px;
+	margin: 0;
+}
+
+.qrms-cs-times {
+	display: grid;
+	grid-template-columns: 1fr;
+	gap: 12px;
+}
+
+.qrms-cs-time-field {
+	margin: 0;
+}
+
+.qrms-cs-day.is-closed .qrms-cs-times {
+	opacity: 0.45;
+}
+
+@media screen and ( min-width: 600px ) {
+	.qrms-cs-times {
+		grid-template-columns: 1fr 1fr;
+	}
+}

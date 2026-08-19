@@ -859,6 +859,11 @@ qrms_test(
 	function () {
 		qrms_assert_same( 'qrms_module_restoran_menu_init', QRMS_Module_Loader::get_init_function( 'restoran-menu' ), 'restoran-menu' );
 		qrms_assert_same(
+			'qrms_module_qr_calisma_saatleri_init',
+			QRMS_Module_Loader::get_init_function( 'qr-calisma-saatleri' ),
+			'qr-calisma-saatleri'
+		);
+		qrms_assert_same(
 			'qrms_module_qr_masa_oturum_guvenligi_init',
 			QRMS_Module_Loader::get_init_function( 'qr-masa-oturum-guvenligi' ),
 			'qr-masa-oturum-guvenligi'
@@ -880,58 +885,28 @@ qrms_test(
 qrms_test(
 	'aktif modülün dosyası varsa require edilir ve init fonksiyonu çağrılır',
 	function () {
-		// Test geçici bir modül dosyası yazıp siler; bu yüzden HENÜZ
-		// paketlenmemiş bir slug seçilir. Depoda gerçek dosyası olan bir
-		// modül seçilseydi test o dosyayı silerdi.
-		$dir  = QRMS_PLUGIN_DIR . 'modules/qr-galeri';
-		$file = $dir . '/module.php';
+		// qr-calisma-saatleri stub ortamında yüklenebilir (is_admin false iken
+		// yalnızca kısa kod ve veri katmanı bağlanır).
+		update_option( 'qrms_active_modules', array( 'qr-calisma-saatleri' ) );
 
-		qrms_assert_false( is_dir( $dir ), 'test slug\'ı paketlenmemiş olmalı' );
+		$loaded = QRMS_Module_Loader::load_modules();
 
-		mkdir( $dir, 0755, true );
-
-		file_put_contents(
-			$file,
-			"<?php\nfunction qrms_module_qr_galeri_init() {\n\t\$GLOBALS['qrms_module_qr_galeri_loaded'] = true;\n}\n"
-		);
-
-		try {
-			update_option( 'qrms_active_modules', array( 'qr-galeri', 'qr-ceviri' ) );
-
-			$loaded = QRMS_Module_Loader::load_modules();
-
-			qrms_assert_same( array( 'qr-galeri' ), $loaded, 'sadece dosyası olan modül yüklenmeli' );
-			qrms_assert_true( isset( $GLOBALS['qrms_module_qr_galeri_loaded'] ), 'init çağrılmalı' );
-		} finally {
-			unlink( $file );
-			rmdir( $dir );
-			unset( $GLOBALS['qrms_module_qr_galeri_loaded'] );
-		}
+		qrms_assert_same( array( 'qr-calisma-saatleri' ), $loaded, 'saatler yüklenmeli' );
+		qrms_assert_true( function_exists( 'qrms_module_qr_calisma_saatleri_init' ), 'init tanımlı' );
+		qrms_assert_true( isset( $GLOBALS['qrms_test']['shortcodes']['qr_calisma_saatleri'] ), 'kısa kod kayıtlı' );
 	}
 );
 
 qrms_test(
 	'aktif olmayan modülün dosyası olsa bile yüklenmez',
 	function () {
-		$dir  = QRMS_PLUGIN_DIR . 'modules/qr-ceviri';
-		$file = $dir . '/module.php';
+		update_option( 'qrms_active_modules', array( 'qr-calisma-saatleri' ) );
 
-		qrms_assert_false( is_dir( $dir ), 'test slug\'ı paketlenmemiş olmalı' );
+		$loaded = QRMS_Module_Loader::load_modules();
 
-		mkdir( $dir, 0755, true );
-
-		file_put_contents( $file, "<?php\n\$GLOBALS['qrms_ceviri_required'] = true;\n" );
-
-		try {
-			update_option( 'qrms_active_modules', array( 'qr-galeri' ) );
-
-			QRMS_Module_Loader::load_modules();
-
-			qrms_assert_false( isset( $GLOBALS['qrms_ceviri_required'] ), 'dosya require edilmemeli' );
-		} finally {
-			unlink( $file );
-			rmdir( $dir );
-		}
+		qrms_assert_same( array( 'qr-calisma-saatleri' ), $loaded, 'yalnızca aktif slug' );
+		qrms_assert_false( in_array( 'restoran-menu', $loaded, true ), 'pasif dosya yüklenmemeli' );
+		qrms_assert_true( file_exists( QRMS_Module_Loader::get_module_file( 'restoran-menu' ) ), 'pasif dosya diskte durur' );
 	}
 );
 
@@ -1145,6 +1120,99 @@ qrms_test(
 			'https://staging.qrmenuofficial.com',
 			QRMS_License_Client::normalize_server_url( 'staging.qrmenuofficial.com' ),
 			'şema eklenir'
+		);
+	}
+);
+
+/* ---------------------------------------------------------------------------
+ * 8. QR Çalışma Saatleri
+ * ------------------------------------------------------------------------ */
+
+require_once QRMS_PLUGIN_DIR . 'modules/qr-calisma-saatleri/includes/hours.php';
+require_once QRMS_PLUGIN_DIR . 'modules/qr-calisma-saatleri/includes/admin-sayfa.php';
+
+echo "\nQR Çalışma Saatleri\n";
+
+qrms_test(
+	'eksik veya bozuk girdi varsayılan haftalık tabloya tamamlanır',
+	function () {
+		$hours = qrms_cs_sanitize( array( 'monday' => array( 'open' => '9:30', 'close' => 'bogus' ) ) );
+
+		qrms_assert_same( 7, count( $hours ), 'yedi gün' );
+		qrms_assert_same( '09:30', $hours['monday']['open'], 'saat pad' );
+		qrms_assert_same( '22:00', $hours['monday']['close'], 'geçersiz kapanış varsayılan' );
+		qrms_assert_false( $hours['monday']['closed'], 'kapalı değil' );
+		qrms_assert_same( '09:00', $hours['sunday']['open'], 'eksik gün varsayılan' );
+	}
+);
+
+qrms_test(
+	'kapalı gün açık kabul edilmez; normal ve gece yarısını aşan mesai doğru çözülür',
+	function () {
+		$hours = qrms_cs_defaults();
+		$hours['monday']['closed'] = true;
+		$hours['tuesday']['open']  = '09:00';
+		$hours['tuesday']['close'] = '17:00';
+		$hours['wednesday']['open']  = '18:00';
+		$hours['wednesday']['close'] = '02:00';
+		$hours['thursday']['closed'] = true;
+		$hours['friday']['open']     = '00:00';
+		$hours['friday']['close']    = '00:00';
+
+		// 2026-08-17 Pazartesi 12:00 UTC.
+		qrms_assert_false( qrms_cs_is_open_at( strtotime( '2026-08-17 12:00:00 UTC' ), $hours ), 'pazartesi kapalı' );
+		// 2026-08-18 Salı 12:00 UTC — 09–17 arasında.
+		qrms_assert_true( qrms_cs_is_open_at( strtotime( '2026-08-18 12:00:00 UTC' ), $hours ), 'salı öğlen açık' );
+		qrms_assert_false( qrms_cs_is_open_at( strtotime( '2026-08-18 20:00:00 UTC' ), $hours ), 'salı akşam kapalı' );
+		// Çarşamba 18:00–02:00: akşam açık, öğlen kapalı; Perşembe 01:00 hâlâ açık.
+		qrms_assert_true( qrms_cs_is_open_at( strtotime( '2026-08-19 20:00:00 UTC' ), $hours ), 'çarşamba gece açık' );
+		qrms_assert_false( qrms_cs_is_open_at( strtotime( '2026-08-19 01:00:00 UTC' ), $hours ), 'çarşamba sabah kapalı' );
+		qrms_assert_false( qrms_cs_is_open_at( strtotime( '2026-08-19 12:00:00 UTC' ), $hours ), 'çarşamba öğlen kapalı' );
+		qrms_assert_true( qrms_cs_is_open_at( strtotime( '2026-08-20 01:00:00 UTC' ), $hours ), 'perşembe 01:00 önceki günden açık' );
+		qrms_assert_false( qrms_cs_is_open_at( strtotime( '2026-08-20 03:00:00 UTC' ), $hours ), 'perşembe 03:00 kapalı' );
+		qrms_assert_true( qrms_cs_is_open_at( strtotime( '2026-08-21 15:00:00 UTC' ), $hours ), 'cuma 24 saat' );
+	}
+);
+
+qrms_test(
+	'yönetim kaydı option\'a sanitize edilmiş tablo yazar',
+	function () {
+		$_POST = array(
+			'qrms_cs_kaydet' => '1',
+			'qrms_cs_nonce'  => 'test-nonce',
+			'qrms_cs'        => array(
+				'saturday' => array(
+					'closed' => '1',
+					'open'   => '11:00',
+					'close'  => '15:00',
+				),
+			),
+		);
+
+		qrms_assert_true( qrms_cs_handle_save(), 'kaydedildi' );
+
+		$stored = get_option( QRMS_CS_OPTION );
+		qrms_assert_true( ! empty( $stored['saturday']['closed'] ), 'cumartesi kapalı' );
+		qrms_assert_same( '11:00', $stored['saturday']['open'], 'saat korundu' );
+		qrms_assert_same( 7, count( $stored ), 'tam hafta' );
+	}
+);
+
+qrms_test(
+	'modül sayfası kayıtlı callback ile saat formunu basar',
+	function () {
+		QRMS_Admin::register_module_page( 'qr-calisma-saatleri', 'qrms_cs_admin_sayfasi' );
+
+		ob_start();
+		QRMS_Admin::render_module_page( 'qr-calisma-saatleri' );
+		$html = ob_get_clean();
+
+		qrms_assert_contains( 'QR Çalışma Saatleri', $html, 'başlık' );
+		qrms_assert_contains( 'name="qrms_cs[monday][closed]"', $html, 'pazartesi kapalı' );
+		qrms_assert_contains( '[qr_calisma_saatleri]', $html, 'kısa kod' );
+		qrms_assert_false(
+			false !== strpos( $html, 'Bu modül yakında burada olacak.' ),
+			'placeholder basılmamalı'
 		);
 	}
 );
