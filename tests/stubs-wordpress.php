@@ -14,6 +14,9 @@ define( 'QRMS_VERSION', 'test' );
 define( 'QRMS_PLUGIN_DIR', dirname( __DIR__ ) . '/' );
 define( 'QRMS_PLUGIN_URL', 'https://example.test/wp-content/plugins/qr-menu-suite/' );
 
+$GLOBALS['menu']    = array();
+$GLOBALS['submenu'] = array();
+
 $GLOBALS['qrms_test'] = array(
 	'options'    => array(),
 	'transients' => array(),
@@ -495,11 +498,30 @@ class QRMS_Test_Redirect extends RuntimeException {}
  */
 function add_menu_page( $page_title, $menu_title, $capability, $menu_slug, $callback = '', $icon = '', $position = null ) {
 	$GLOBALS['qrms_test']['menus'][] = array(
-		'slug'  => $menu_slug,
-		'title' => $menu_title,
+		'slug'     => $menu_slug,
+		'title'    => $menu_title,
+		'position' => $position,
 	);
 
+	// WordPress menü satırlarını konumu anahtar yaparak $menu dizisinde tutar.
+	if ( null === $position ) {
+		$GLOBALS['menu'][] = array( $menu_title, $capability, $menu_slug );
+	} else {
+		$GLOBALS['menu'][ (string) $position ] = array( $menu_title, $capability, $menu_slug );
+	}
+
 	return 'toplevel_page_' . $menu_slug;
+}
+
+/**
+ * Filtre uygulaması (testte varsayılan değer aynen döner).
+ *
+ * @param string $hook  Filtre adı.
+ * @param mixed  $value Değer.
+ * @return mixed
+ */
+function apply_filters( $hook, $value ) {
+	return $value;
 }
 
 /**

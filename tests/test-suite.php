@@ -31,6 +31,8 @@ function qrms_reset() {
 	$GLOBALS['qrms_test']['http']       = null;
 	$GLOBALS['qrms_test']['http_calls'] = array();
 	$GLOBALS['qrms_test']['can']        = true;
+	$GLOBALS['menu']                    = array();
+	$GLOBALS['submenu']                 = array();
 	$_POST                              = array();
 	$_GET                               = array();
 }
@@ -658,13 +660,102 @@ qrms_test(
 );
 
 qrms_test(
-	'sihirbaz sayfası kayıtlıdır ama menüde görünmez',
+	'sihirbaz admin_menu sırasında KAYITLI KALIR (route çözümü buna bağlı)',
 	function () {
+		// Regresyon: remove_submenu_page() admin_menu içinde çağrılırsa
+		// WordPress sayfanın parent'ını bulamaz ve admin.php 403 verir.
 		QRMS_Admin::register_menu();
 		QRMS_Wizard::register_page();
 
-		qrms_assert_false( in_array( 'qrms-wizard', qrms_registered_submenu_slugs(), true ), 'menüde olmamalı' );
-		qrms_assert_true( in_array( 'qrms-wizard', $GLOBALS['qrms_test']['removed'], true ), 'kaydedilip gizlenmeli' );
+		qrms_assert_true( in_array( 'qrms-wizard', qrms_registered_submenu_slugs(), true ), 'admin_menu sonunda kayıtlı olmalı' );
+		qrms_assert_same( array(), $GLOBALS['qrms_test']['removed'], 'admin_menu sırasında kaldırılmamalı' );
+
+		// Gizleme, route çözüldükten sonra (current_screen) yapılır.
+		QRMS_Wizard::hide_page_from_menu();
+
+		qrms_assert_false( in_array( 'qrms-wizard', qrms_registered_submenu_slugs(), true ), 'gizlendikten sonra menüde olmamalı' );
+	}
+);
+
+qrms_test(
+	'sihirbaz gizleme current_screen hook\'una bağlı, admin_menu\'ye değil',
+	function () {
+		QRMS_Wizard::init();
+
+		$hooks = $GLOBALS['qrms_test']['actions'];
+
+		qrms_assert_true( isset( $hooks['current_screen'] ), 'current_screen hook\'u kayıtlı olmalı' );
+		qrms_assert_same(
+			1,
+			count( $hooks['admin_menu'] ),
+			'admin_menu\'ye yalnızca sayfa kaydı bağlanmalı'
+		);
+	}
+);
+
+qrms_test(
+	'gizli sihirbaz sayfasının başlığı elle set edilir',
+	function () {
+		// Regresyon: sayfa $submenu'den çıkınca WordPress başlığı bulamıyor,
+		// $title null kalıyor (boş tarayıcı başlığı + PHP 8.1+ deprecation).
+		unset( $GLOBALS['title'] );
+		$_GET = array( 'page' => 'qrms-wizard' );
+
+		QRMS_Wizard::hide_page_from_menu();
+
+		qrms_assert_same( 'QR Menu Suite Kurulumu', $GLOBALS['title'], 'başlık' );
+
+		unset( $GLOBALS['title'] );
+		$_GET = array( 'page' => 'qrms-settings' );
+
+		QRMS_Wizard::hide_page_from_menu();
+
+		qrms_assert_false( isset( $GLOBALS['title'] ), 'diğer ekranlarda başlığa dokunulmamalı' );
+	}
+);
+
+qrms_test(
+	'üst menü konumu tam sayı değil (slot çakışmasına karşı)',
+	function () {
+		// Regresyon: konum 30 gibi tam sayı olursa, aynı slotu kullanan başka
+		// bir plugin menüyü ezebiliyor ve "QR Menü" hiç görünmüyor.
+		qrms_assert_false( is_int( QRMS_Admin::MENU_POSITION ), 'konum tam sayı olmamalı' );
+
+		QRMS_Admin::register_menu();
+
+		qrms_assert_same( QRMS_Admin::MENU_POSITION, $GLOBALS['qrms_test']['menus'][0]['position'], 'kayıtlı konum' );
+		qrms_assert_true( isset( $GLOBALS['menu'][ (string) QRMS_Admin::MENU_POSITION ] ), 'menü satırı yerinde' );
+	}
+);
+
+qrms_test(
+	'üst menü başka bir plugin tarafından ezilirse geri gelir',
+	function () {
+		QRMS_Admin::register_menu();
+
+		// Eski nesil plugin davranışı: slotu doğrudan ezer.
+		$GLOBALS['menu'][ (string) QRMS_Admin::MENU_POSITION ] = array( 'Başka Plugin', 'manage_options', 'baska-plugin' );
+
+		QRMS_Admin::ensure_menu_registered();
+
+		$slugs = array_map(
+			function ( $item ) {
+				return $item[2];
+			},
+			$GLOBALS['menu']
+		);
+
+		qrms_assert_true( in_array( QRMS_Admin::MENU_SLUG, $slugs, true ), 'menü geri eklenmeli' );
+	}
+);
+
+qrms_test(
+	'menü yerindeyken emniyet kemeri tekrar eklemez',
+	function () {
+		QRMS_Admin::register_menu();
+		QRMS_Admin::ensure_menu_registered();
+
+		qrms_assert_same( 1, count( $GLOBALS['qrms_test']['menus'] ), 'tek kayıt olmalı' );
 	}
 );
 

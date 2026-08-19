@@ -76,6 +76,28 @@ Loader, modül lisansta aktifse dosyayı `require` eder ve bu fonksiyonu
 Admin menüsünde `Genel Bakış` ve `Genel Ayarlar` her zaman görünür; modül
 sayfaları yalnızca lisansta aktif olan modüller için eklenir.
 
+## Admin menüsüyle ilgili iki tasarım notu
+
+**Sihirbaz gizli ama erişilebilir.** `admin.php?page=qrms-wizard` gerçek bir
+alt menü olarak kaydedilir; menüden gizleme `current_screen` hook'unda yapılır.
+Gizlemeyi `admin_menu` içinde yapmak sayfayı erişilemez kılar: WordPress
+route'u `admin_menu`den sonra çözer (`wp-admin/admin.php` önce `menu.php`, sonra
+`get_plugin_page_hook()`) ve hook adını hesaplarken sayfanın parent'ını
+`$submenu` içinde arar. Alt menü o an silinmişse hook adı
+`admin_page_qrms-wizard` olarak hesaplanır, `$_registered_pages` ile eşleşmez ve
+sayfa 403 verir. `current_screen` route çözüldükten sonra, hem menü HTML'i hem
+de komut paleti verisi üretilmeden önce çalıştığı için doğru yerdir. Sayfa
+`$submenu`den çıktığında WordPress başlığı da bulamadığından `$title` sihirbaz
+ekranında elle set edilir.
+
+**Menü konumu ondalıklıdır.** WordPress menü satırlarını `$menu` dizisinde
+konumu anahtar yaparak tutar (`$menu['30']`). Aynı tam sayı konumunu kullanan
+başka bir plugin o slotu ezerse menü hiç görünmez. Bu yüzden konum `57.3` gibi
+bize özgü ondalıklı bir değerdir; ayrıca `admin_menu` zincirinin sonunda
+(öncelik 999) menü satırı hâlâ yerinde mi diye bakılır ve ezilmişse geri eklenir.
+Menüyü bilerek kaldıran siteler `qrms_ensure_menu_registered` filtresini `false`
+döndürerek bu emniyet kemerini kapatabilir.
+
 ## Dosya yapısı
 
 ```
