@@ -1,0 +1,64 @@
+<?php
+if (!defined('ABSPATH')) exit;
+
+// ÖZEL FORM BUILDER: AJAX GÖNDERİM (v4.2.0)
+
+add_action('wp_ajax_qrm_submit_custom_form', 'qrm_cf_ajax_submit');
+add_action('wp_ajax_nopriv_qrm_submit_custom_form', 'qrm_cf_ajax_submit');
+
+function qrm_cf_ajax_submit() {
+    check_ajax_referer('qrm_submit_custom_form', 'qrm_cf_nonce');
+
+    $form_id = isset($_POST['form_id']) ? intval($_POST['form_id']) : 0;
+    $form    = $form_id > 0 ? qrm_cf_get_form($form_id) : null;
+
+    if (!$form || $form->status !== 'active') {
+        wp_send_json(['success' => false, 'message' => 'Bu form şu anda gönderime kapalı.']);
+    }
+
+    $settings = qrm_cf_get_form_settings($form);
+
+    // Honeypot: bot doldurur, gerçek kullanıcı görmez. Bota başarı görünümü döndürülür
+    // (yeniden denemesin diye) ama hiçbir kayıt oluşturulmaz.
+    if (qrm_pro_honeypot_tripped()) {
+        wp_send_json(['success' => true, 'message' => $settings['success_message']]);
+    }
+
+    // Spam koruması: zaman tuzağı + akış koruması (captcha bu formlarda kullanılmaz).
+    $guard = qrm_pro_spam_guard_basic();
+    if ($guard !== true) {
+        wp_send_json(['success' => false, 'message' => $guard]);
+    }
+
+    $fields = qrm_cf_get_fields($form->id);
+    if (!$fields) {
+        wp_send_json(['success' => false, 'message' => 'Bu formda tanımlı alan yok.']);
+    }
+
+    // Sunucu tarafı doğrulama: tarayıcıdaki required/type özniteliklerine güvenilmez.
+    $validated = qrm_cf_validate_submission($fields, wp_unslash($_POST));
+    if (!$validated['ok']) {
+        wp_send_json(['success' => false, 'message' => implode(' ', $validated['errors'])]);
+    }
+
+    // v4.2.1: Ardışık gönderim kısıtı — yorum/iletişim formuyla aynı kuralı paylaşır.
+    // Kimlik anahtarları için formun e-posta ve telefon alanlarındaki değerler kullanılır.
+    $identifiers = qrm_cf_cooldown_identifiers($fields, $validated['data']);
+    $cooldown = qrm_pro_cooldown_guard($identifiers);
+    if ($cooldown !== true) {
+        wp_send_json(['success' => false, 'message' => $cooldown]);
+    }
+
+    $submission_id = qrm_cf_insert_submission($form->id, $validated['data'], qrm_pro_client_ip());
+    if (!$submission_id) {
+        wp_send_json(['success' => false, 'message' => 'Gönderiminiz kaydedilemedi, lütfen tekrar deneyin.']);
+    }
+
+    qrm_pro_cooldown_mark($identifiers);
+    qrm_cf_notify_admin($form, $fields, $validated['data']);
+
+    wp_send_json([
+        'success' => true,
+        'message' => $settings['success_message'],
+    ]);
+}

@@ -89,14 +89,18 @@ zamanlama doğrudur.
 | Slug | İçerik | Yönetim sayfası |
 | --- | --- | --- |
 | `restoran-menu` | `rma_menu_item` CPT, `[restaurant_menu]`, `[qmo_one_cikan_slider]`, Elementor widget'ı | ✔ Sekmeli ayar ekranı |
+| `yorum-feedback` | Çoklu kriter yorumlar, Google yönlendirme + ödül kodları, dinamik form oluşturucu, `[qr_menu_reviews]`, `[qr_menu_contact]`, `[qr_menu_form]` | ✔ Tüm Yorumlar ekranı |
 | `qr-masa` | Masa kayıtları (CRUD), masa QR adresleri, `[qr_aktif_masa]` | ✔ Masalar ekranı |
 | `qr-masa-oturum-guvenligi` | Sahte QR reddi, kilit ekranı, sayfa kilidi | ✔ Oturum limitleri |
 | `qr-analiz` | `POST /wp-json/qrservis/v1/analytics` — şube analitiği özeti | — (placeholder) |
 | `qr-chatbot` | `[gemini_chatbot]` kısa kodu, Gemini AJAX ucu | — (placeholder) |
 
 Kodları kaynak eklentilerinden **aynen** taşındı (`restoran-menu` 12-menu
-deposundaki QR MENÜ eklentisinden, diğerleri birleşik `qr-menu-official`
+deposundaki QR MENÜ eklentisinden, `yorum-feedback` `yorumfeedback`
+deposundaki v4.2.1 eklentisinden, diğerleri birleşik `qr-menu-official`
 eklentisinden); yalnızca yeni klasör konumuna göre yol string'leri düzeltildi.
+`yorum-feedback`'in 29 kaynak dosyasının hepsi kaynağıyla **birebir aynıdır**;
+modüle özgü her şey `module.php` içindedir.
 
 `qr-analiz` ve `qr-chatbot` placeholder kalır çünkü ayar sayfaları henüz
 taşınmadı; ayarlar eskisi gibi option'lardan okunmaya devam eder
@@ -112,6 +116,31 @@ Ekranı basan metot tektir (`render_admin_page()`), ikisi de onu çağırır.
 > `QMO_PLUGIN_URL` sabitlerini o tanımlar ve varlık adresleri eski klasörü
 > gösterir. Sabitlerdeki `defined()` guard'ı ve `__DIR__` tabanlı require'lar
 > yalnızca notice ile çift yüklemeyi önler.
+
+`yorum-feedback` de aynı deseni izler: eklentinin kendi **QR Yorumlar** üst
+menüsü ve beş alt sayfası (Tüm Yorumlar, Yorum Formu Ayarları, İletişim,
+Google & Ödül Sistemi, Formlar) kaynakta olduğu gibi kayıtlı kalır — menü
+rozetleri ve eski slug yönlendirmeleri dahil — ve suite menüsündeki "Yorum &
+Feedback" satırı da aynı Tüm Yorumlar ekranını (`qrm_pro_admin_dashboard()`)
+basar.
+
+Modül CPT ya da taksonomi kullanmaz; verisini altı kendi tablosunda tutar
+(`qrm_reviews`, `qrm_form_fields`, `qrm_reward_codes`, `qrm_custom_forms`,
+`qrm_custom_form_fields`, `qrm_custom_form_submissions`). Tablo adları
+`qrm_` ön ekini `qr-masa`'nın `qrm_tables` tablosuyla paylaşır ama hiçbiri
+çakışmaz. Kurulum, kaynağın `qrm_pro_maybe_upgrade()` fonksiyonu `module.php`
+içinden doğrudan çağrılarak yapılır: kaynağın iki kendi yolu da modül
+bağlamında ölüdür — `register_activation_hook()` bir eklenti dosyası olmadığı
+için hiç tetiklenmez, `plugins_loaded` (öncelik 10) kaydı ise modül zaten
+öncelik 20 içinde yüklendiğinden çoktan geçmiş bir önceliğe eklenir.
+
+> **Dağıtım notu:** `yorum-feedback` modülü aktifken eski tekil **QR Menü
+> Gelişmiş Müşteri Yorumları** eklentisi devre dışı bırakılmalıdır — modül
+> onun yerini alır. Kaynağın 190 fonksiyonunun hiçbirinde `function_exists()`
+> guard'ı yoktur, yani iki kopya yan yana yüklenirse çift tanım ölümcül
+> hatası verir. `module.php`'deki `QRM_PRO_VERSION` kontrolü bunu fatal
+> yerine sessiz devre dışı kalmaya çevirir (sabiti eski eklenti tanımlar ve
+> çalışmaya devam eder), ama iki kopyayı birlikte çalışır kılmaz.
 
 ### `modules/_qmo-ortak/`
 
@@ -176,6 +205,7 @@ includes/
 modules/
   _qmo-ortak/                Ortak zemin (oturum sınıfı, Firestore istemcisi, helpers, varlıklar)
   restoran-menu/             Menü CPT'si, kısa kodlar, slider + sekmeli ayar ekranı
+  yorum-feedback/            Yorumlar, ödül kodları, form oluşturucu + beş yönetim ekranı
   qr-masa/                   Masa kayıtları + Masalar yönetim ekranı
   qr-masa-oturum-guvenligi/  Masa doğrulama, kilit ekranı + oturum ayarları
   qr-analiz/                 Şube analitiği REST ucu
