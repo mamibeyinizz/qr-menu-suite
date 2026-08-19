@@ -17,6 +17,7 @@ if ( ! defined( 'QMO_CHATBOT_ADMIN_INIT' ) ) {
 	define( 'QMO_CHATBOT_ADMIN_INIT', true );
 
 	add_action( 'admin_init', 'qmo_chatbot_ayarlarini_kaydet' );
+	add_action( 'admin_post_qmo_chatbot_menu_guncelle', 'qmo_chatbot_menu_guncelle_handler' );
 }
 
 /**
@@ -112,6 +113,73 @@ if ( ! function_exists( 'qmo_chatbot_ayarlarini_kaydet' ) ) {
 }
 
 /**
+ * Restoran menü CPT'sinden chatbot menü JSON'ı üret.
+ *
+ * @return string
+ */
+if ( ! function_exists( 'qmo_chatbot_menu_json_uret' ) ) {
+	function qmo_chatbot_menu_json_uret() {
+		if ( ! post_type_exists( 'rma_menu_item' ) ) {
+			return '';
+		}
+
+		$posts = get_posts(
+			array(
+				'post_type'      => 'rma_menu_item',
+				'post_status'    => 'publish',
+				'posts_per_page' => 500,
+				'orderby'        => 'menu_order',
+				'order'          => 'ASC',
+			)
+		);
+
+		$urunler = array();
+		foreach ( $posts as $post ) {
+			$fiyat = get_post_meta( $post->ID, 'rma_price', true );
+			$kat   = wp_get_post_terms( $post->ID, 'rma_category', array( 'fields' => 'names' ) );
+			$urunler[] = array(
+				'kategori' => is_array( $kat ) && $kat ? $kat[0] : '',
+				'urunAdi'  => $post->post_title,
+				'aciklama' => wp_strip_all_tags( $post->post_excerpt ?: $post->post_content ),
+				'fiyat'    => is_numeric( $fiyat ) ? (string) $fiyat : (string) $fiyat,
+			);
+		}
+
+		return wp_json_encode( $urunler, JSON_UNESCAPED_UNICODE );
+	}
+}
+
+/**
+ * Menü JSON'unu CPT'den güncelle.
+ */
+if ( ! function_exists( 'qmo_chatbot_menu_guncelle_handler' ) ) {
+	function qmo_chatbot_menu_guncelle_handler() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( 'Bu sayfaya erişim yetkiniz yok.' );
+		}
+
+		check_admin_referer( 'qmo_chatbot_menu_guncelle' );
+
+		$json = qmo_chatbot_menu_json_uret();
+		if ( '' !== $json ) {
+			update_option( 'gemini_menu_json_data', $json );
+		}
+
+		wp_safe_redirect(
+			add_query_arg(
+				array(
+					'page'    => QRMS_Admin::get_module_page_slug( 'qr-chatbot' ),
+					'tab'     => 'yapayzeka',
+					'menu_ok' => 1,
+				),
+				admin_url( 'admin.php' )
+			)
+		);
+		exit;
+	}
+}
+
+/**
  * Chatbot ayarları sayfası.
  *
  * @return void
@@ -127,6 +195,11 @@ if ( ! function_exists( 'qmo_chatbot_ayar_sayfasi' ) ) {
 		$izinli = array( 'genel', 'gorunum', 'yapayzeka' );
 		if ( ! in_array( $sekme, $izinli, true ) ) {
 			$sekme = 'genel';
+		}
+
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		if ( isset( $_GET['menu_ok'] ) ) {
+			add_settings_error( 'qmo_chatbot', 'menu_ok', 'Menü verisi ürünlerden güncellendi.', 'updated' );
 		}
 
 		$sayfa_slug = QRMS_Admin::get_module_page_slug( 'qr-chatbot' );
@@ -346,7 +419,14 @@ if ( ! function_exists( 'qmo_chatbot_ayar_sayfasi' ) ) {
 								<textarea id="gemini_menu_json_data" name="gemini_menu_json_data" rows="12" class="large-text code"><?php echo esc_textarea( get_option( 'gemini_menu_json_data', '' ) ); ?></textarea>
 								<p class="description">
 									Asistanın ürün ve fiyat sorularında kullanacağı menü verisi.
-									Restoran Menü modülünden dışa aktarılan JSON buraya yapıştırılabilir.
+									<?php if ( post_type_exists( 'rma_menu_item' ) ) : ?>
+										<a class="button button-secondary" style="margin-top:6px;"
+											href="<?php echo esc_url( wp_nonce_url( admin_url( 'admin-post.php?action=qmo_chatbot_menu_guncelle' ), 'qmo_chatbot_menu_guncelle' ) ); ?>">
+											Restoran menü ürünlerinden güncelle
+										</a>
+									<?php else : ?>
+										Restoran Menü modülünden dışa aktarılan JSON buraya yapıştırılabilir.
+									<?php endif; ?>
 								</p>
 							</td>
 						</tr>
