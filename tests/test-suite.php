@@ -141,7 +141,26 @@ function qrms_mock_http_error() {
 }
 
 /**
- * Dokuz modülün tam listesi.
+ * Depoda modules/<slug>/ klasörü HENÜZ olmayan modül slug'ları.
+ *
+ * Yükleyici testleri bu listeyi kullanır: paketlenmiş modüllerin gerçek
+ * dosyaları WordPress'e bağlıdır, stub ortamında yüklenemez.
+ *
+ * @return string[]
+ */
+function qrms_paketlenmemis_moduller() {
+	return array_values(
+		array_filter(
+			qrms_all_modules(),
+			function ( $slug ) {
+				return ! is_dir( QRMS_PLUGIN_DIR . 'modules/' . $slug );
+			}
+		)
+	);
+}
+
+/**
+ * Tüm bilinen modül slug'ları.
  *
  * @return string[]
  */
@@ -772,6 +791,50 @@ qrms_test(
 );
 
 qrms_test(
+	'modül kendi sayfasını kaydetmediyse placeholder basılır',
+	function () {
+		ob_start();
+		QRMS_Admin::render_module_page( 'qr-galeri' );
+		$html = ob_get_clean();
+
+		qrms_assert_contains( 'Bu modül yakında burada olacak.', $html, 'placeholder' );
+	}
+);
+
+qrms_test(
+	'modül kendi sayfasını kaydettiyse placeholder yerine o basılır',
+	function () {
+		QRMS_Admin::register_module_page(
+			'qr-masa',
+			function () {
+				echo '<p>Masa yönetim ekranı</p>';
+			}
+		);
+
+		ob_start();
+		QRMS_Admin::render_module_page( 'qr-masa' );
+		$html = ob_get_clean();
+
+		qrms_assert_contains( 'Masa yönetim ekranı', $html, 'modül içeriği' );
+		qrms_assert_false(
+			false !== strpos( $html, 'Bu modül yakında burada olacak.' ),
+			'placeholder basılmamalı'
+		);
+	}
+);
+
+qrms_test(
+	'bilinmeyen slug veya çağrılamaz callback kaydedilmez',
+	function () {
+		QRMS_Admin::register_module_page( 'sahte-modul', '__return_true' );
+		QRMS_Admin::register_module_page( 'qr-ceviri', 'qrms_olmayan_fonksiyon' );
+
+		qrms_assert_true( null === QRMS_Admin::get_module_page_callback( 'sahte-modul' ), 'bilinmeyen slug' );
+		qrms_assert_true( null === QRMS_Admin::get_module_page_callback( 'qr-ceviri' ), 'çağrılamaz callback' );
+	}
+);
+
+qrms_test(
 	'plugin ekranı tespiti sadece qrms sayfalarında true döner',
 	function () {
 		$_GET = array();
@@ -806,7 +869,9 @@ qrms_test(
 qrms_test(
 	'modül dosyaları yokken yükleme sessizce boş döner',
 	function () {
-		update_option( 'qrms_active_modules', qrms_all_modules() );
+		// Yalnızca modules/ altında henüz paketlenmemiş slug'lar; paketlenmiş
+		// modüllerin gerçek dosyaları stub ortamında yüklenemez.
+		update_option( 'qrms_active_modules', qrms_paketlenmemis_moduller() );
 
 		qrms_assert_same( array(), QRMS_Module_Loader::load_modules(), 'yüklenen modül olmamalı' );
 	}
@@ -815,29 +880,32 @@ qrms_test(
 qrms_test(
 	'aktif modülün dosyası varsa require edilir ve init fonksiyonu çağrılır',
 	function () {
-		$dir  = QRMS_PLUGIN_DIR . 'modules/qr-masa';
+		// Test geçici bir modül dosyası yazıp siler; bu yüzden HENÜZ
+		// paketlenmemiş bir slug seçilir. Depoda gerçek dosyası olan bir
+		// modül seçilseydi test o dosyayı silerdi.
+		$dir  = QRMS_PLUGIN_DIR . 'modules/qr-galeri';
 		$file = $dir . '/module.php';
 
-		if ( ! is_dir( $dir ) ) {
-			mkdir( $dir, 0755, true );
-		}
+		qrms_assert_false( is_dir( $dir ), 'test slug\'ı paketlenmemiş olmalı' );
+
+		mkdir( $dir, 0755, true );
 
 		file_put_contents(
 			$file,
-			"<?php\nfunction qrms_module_qr_masa_init() {\n\t\$GLOBALS['qrms_module_qr_masa_loaded'] = true;\n}\n"
+			"<?php\nfunction qrms_module_qr_galeri_init() {\n\t\$GLOBALS['qrms_module_qr_galeri_loaded'] = true;\n}\n"
 		);
 
 		try {
-			update_option( 'qrms_active_modules', array( 'qr-masa', 'qr-galeri' ) );
+			update_option( 'qrms_active_modules', array( 'qr-galeri', 'qr-ceviri' ) );
 
 			$loaded = QRMS_Module_Loader::load_modules();
 
-			qrms_assert_same( array( 'qr-masa' ), $loaded, 'sadece dosyası olan modül yüklenmeli' );
-			qrms_assert_true( isset( $GLOBALS['qrms_module_qr_masa_loaded'] ), 'init çağrılmalı' );
+			qrms_assert_same( array( 'qr-galeri' ), $loaded, 'sadece dosyası olan modül yüklenmeli' );
+			qrms_assert_true( isset( $GLOBALS['qrms_module_qr_galeri_loaded'] ), 'init çağrılmalı' );
 		} finally {
 			unlink( $file );
 			rmdir( $dir );
-			unset( $GLOBALS['qrms_module_qr_masa_loaded'] );
+			unset( $GLOBALS['qrms_module_qr_galeri_loaded'] );
 		}
 	}
 );
@@ -845,21 +913,21 @@ qrms_test(
 qrms_test(
 	'aktif olmayan modülün dosyası olsa bile yüklenmez',
 	function () {
-		$dir  = QRMS_PLUGIN_DIR . 'modules/qr-galeri';
+		$dir  = QRMS_PLUGIN_DIR . 'modules/qr-ceviri';
 		$file = $dir . '/module.php';
 
-		if ( ! is_dir( $dir ) ) {
-			mkdir( $dir, 0755, true );
-		}
+		qrms_assert_false( is_dir( $dir ), 'test slug\'ı paketlenmemiş olmalı' );
 
-		file_put_contents( $file, "<?php\n\$GLOBALS['qrms_galeri_required'] = true;\n" );
+		mkdir( $dir, 0755, true );
+
+		file_put_contents( $file, "<?php\n\$GLOBALS['qrms_ceviri_required'] = true;\n" );
 
 		try {
-			update_option( 'qrms_active_modules', array( 'qr-masa' ) );
+			update_option( 'qrms_active_modules', array( 'qr-galeri' ) );
 
 			QRMS_Module_Loader::load_modules();
 
-			qrms_assert_false( isset( $GLOBALS['qrms_galeri_required'] ), 'dosya require edilmemeli' );
+			qrms_assert_false( isset( $GLOBALS['qrms_ceviri_required'] ), 'dosya require edilmemeli' );
 		} finally {
 			unlink( $file );
 			rmdir( $dir );

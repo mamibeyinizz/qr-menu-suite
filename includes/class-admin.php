@@ -47,6 +47,45 @@ class QRMS_Admin {
 	const MENU_POSITION = 57.3;
 
 	/**
+	 * Modül slug'ı -> kendi sayfasını basan callback.
+	 *
+	 * Modüller kendi init'lerinde (plugins_loaded, öncelik 20) kayıt olur;
+	 * kayıt olmayan modüller placeholder görmeye devam eder.
+	 *
+	 * @var array<string,callable>
+	 */
+	private static $module_pages = array();
+
+	/**
+	 * Bir modülün kendi yönetim sayfasını kaydeder.
+	 *
+	 * Modül yükleyici `admin_menu`'den önce çalıştığı için, register_menu()
+	 * alt menüyü kurarken bu kaydı görür ve placeholder yerine modülün kendi
+	 * ekranını bağlar.
+	 *
+	 * @param string   $slug     Modül slug'ı.
+	 * @param callable $callback Sayfayı basan çağrılabilir.
+	 * @return void
+	 */
+	public static function register_module_page( $slug, $callback ) {
+		if ( ! QRMS_Helpers::is_valid_module( $slug ) || ! is_callable( $callback ) ) {
+			return;
+		}
+
+		self::$module_pages[ $slug ] = $callback;
+	}
+
+	/**
+	 * Modülün kayıtlı sayfa callback'i (yoksa null).
+	 *
+	 * @param string $slug Modül slug'ı.
+	 * @return callable|null
+	 */
+	public static function get_module_page_callback( $slug ) {
+		return isset( self::$module_pages[ $slug ] ) ? self::$module_pages[ $slug ] : null;
+	}
+
+	/**
 	 * Hook kayıtları.
 	 *
 	 * @return void
@@ -136,7 +175,7 @@ class QRMS_Admin {
 				self::CAPABILITY,
 				self::get_module_page_slug( $slug ),
 				static function () use ( $slug ) {
-					QRMS_Admin::render_module_placeholder( $slug );
+					QRMS_Admin::render_module_page( $slug );
 				}
 			);
 		}
@@ -283,6 +322,28 @@ class QRMS_Admin {
 			</div>
 		</div>
 		<?php
+	}
+
+	/**
+	 * Modül sayfası: modül kendi ekranını kaydettiyse onu, aksi halde
+	 * placeholder'ı basar.
+	 *
+	 * @param string $slug Modül slug'ı.
+	 * @return void
+	 */
+	public static function render_module_page( $slug ) {
+		$callback = self::get_module_page_callback( $slug );
+
+		if ( null === $callback ) {
+			self::render_module_placeholder( $slug );
+			return;
+		}
+
+		if ( ! current_user_can( self::CAPABILITY ) ) {
+			wp_die( esc_html__( 'Bu sayfayı görüntüleme yetkiniz yok.', 'qrms' ) );
+		}
+
+		call_user_func( $callback );
 	}
 
 	/**

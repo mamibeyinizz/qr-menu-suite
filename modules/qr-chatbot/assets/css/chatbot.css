@@ -1,0 +1,441 @@
+/**
+ * QR Menu Official — Chatbot arayüzü.
+ *
+ * Renk/boyut değerleri ayarlar sayfasından gelir ve CSS değişkeni olarak
+ * wp_add_inline_style() ile eklenir (bkz. includes/shortcode-chatbot.php).
+ * Bu dosyada sabit değer yoktur; hepsi var(--gm-*) üzerinden okunur.
+ */
+
+.gemini-shortcode-container {
+	position: relative;
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+	display: inline-block;
+	color: var(--gm-text);
+}
+
+/* ================= TOGGLE BUTON (kapalı hal) ================= */
+.gemini-chat-toggle-btn {
+	position: relative;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 10px;
+	background: linear-gradient(135deg, color-mix(in srgb, var(--gm-toggle-bg) 100%, white 12%), color-mix(in srgb, var(--gm-toggle-bg) 100%, black 18%));
+	color: var(--gm-toggle-text);
+	padding: var(--gm-toggle-pad);
+	border: 1px solid color-mix(in srgb, var(--gm-toggle-bg) 100%, white 30%);
+	border-radius: 50px;
+	cursor: pointer;
+	font-weight: 600;
+	font-size: 15px;
+	letter-spacing: 0.1px;
+	box-shadow: 0 8px 24px -6px color-mix(in srgb, var(--gm-toggle-bg) 65%, transparent), 0 2px 8px rgba(0, 0, 0, 0.12);
+	transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.25s ease;
+	animation: gmFloatIn 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.3);
+}
+
+.gemini-chat-toggle-btn:hover {
+	transform: translateY(-3px) scale(1.02);
+	box-shadow: 0 12px 30px -6px color-mix(in srgb, var(--gm-toggle-bg) 75%, transparent), 0 4px 12px rgba(0, 0, 0, 0.16);
+}
+
+.gemini-chat-toggle-btn:active {
+	transform: translateY(-1px) scale(0.98);
+}
+
+.gemini-chat-toggle-btn::before {
+	content: "";
+	position: absolute;
+	inset: -6px;
+	border: 1.5px solid color-mix(in srgb, var(--gm-toggle-bg) 60%, transparent);
+	border-radius: 60px;
+	opacity: 0;
+	animation: gmPingRing 2.6s cubic-bezier(0.2, 0.7, 0.3, 1) infinite;
+	pointer-events: none;
+}
+
+@keyframes gmPingRing {
+	0%   { opacity: 0.55; transform: scale(0.92); }
+	70%  { opacity: 0;    transform: scale(1.12); }
+	100% { opacity: 0;    transform: scale(1.12); }
+}
+
+@keyframes gmFloatIn {
+	0%   { opacity: 0; transform: translateY(10px) scale(0.9); }
+	100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.gemini-chat-toggle-btn .gemini-icon-wrapper {
+	position: relative;
+	width: var(--gm-icon-size);
+	height: var(--gm-icon-size);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: rgba(255, 255, 255, 0.16);
+	border-radius: 50%;
+	padding: 6px;
+	box-sizing: border-box;
+}
+
+.gemini-chat-toggle-btn img {
+	width: 100%;
+	height: 100%;
+	border-radius: 50%;
+	object-fit: cover;
+}
+
+.gemini-icon-wrapper::after {
+	content: "";
+	position: absolute;
+	width: 9px;
+	height: 9px;
+	right: -1px;
+	bottom: -1px;
+	background: #22c55e;
+	border: 2px solid color-mix(in srgb, var(--gm-toggle-bg) 100%, black 18%);
+	border-radius: 50%;
+	box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.05);
+}
+
+.gemini-chat-header .gemini-icon-wrapper::after {
+	border-color: var(--gm-header-bg);
+}
+
+/* ================= TAM EKRAN SOHBET PANELİ ================= */
+.gemini-chat-overlay {
+	display: none;
+	position: fixed !important;
+	top: 0 !important;
+	left: 0 !important;
+	width: 100vw !important;
+	height: 100dvh !important;
+	background: var(--gm-chat-bg) !important;
+	z-index: 999999999999 !important;
+	flex-direction: column !important;
+	box-sizing: border-box !important;
+	margin: 0 !important;
+	padding: 0 !important;
+	animation: gmOverlayIn 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.gemini-chat-overlay.gemini-acik {
+	display: flex !important;
+}
+
+@keyframes gmOverlayIn {
+	0%   { opacity: 0; transform: scale(1.02); }
+	100% { opacity: 1; transform: scale(1); }
+}
+
+.gemini-chat-header {
+	background: linear-gradient(120deg, var(--gm-header-bg), color-mix(in srgb, var(--gm-header-bg) 100%, black 20%)) !important;
+	color: var(--gm-header-text) !important;
+	padding: 16px 20px !important;
+	font-weight: 600 !important;
+	font-size: 17px !important;
+	display: flex !important;
+	justify-content: space-between !important;
+	align-items: center !important;
+	position: relative !important;
+	flex-shrink: 0 !important;
+	height: 74px !important;
+	box-sizing: border-box !important;
+	box-shadow: 0 4px 18px rgba(0, 0, 0, 0.18) !important;
+}
+
+.gemini-chat-header-left {
+	display: flex !important;
+	align-items: center !important;
+	gap: 12px !important;
+}
+
+.gemini-chat-header-left .gemini-icon-wrapper {
+	position: relative;
+	width: 42px;
+	height: 42px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: rgba(255, 255, 255, 0.14);
+	border-radius: 50%;
+	padding: 7px;
+	box-sizing: border-box;
+	isolation: isolate;
+}
+
+/* Başlıktaki ikon çerçevesi: yavaşça dönen ışıltılı halka.
+   NOT: mask-composite yerine padding-box/border-box çift-arkaplan tekniği
+   kullanıldı — eski Android WebView'da mask-composite güvenilir değil. */
+.gemini-chat-header-left .gemini-icon-wrapper::before {
+	content: "";
+	position: absolute;
+	inset: -4px;
+	box-sizing: border-box;
+	border: 2px solid transparent;
+	border-radius: 50%;
+	background:
+		linear-gradient(var(--gm-header-bg), var(--gm-header-bg)) padding-box,
+		conic-gradient(from 0deg, transparent 0%, var(--gm-header-icon) 30%, transparent 55%, var(--gm-header-icon) 80%, transparent 100%) border-box;
+	animation: gmRingSpin 3.2s linear infinite;
+	z-index: -1;
+}
+
+@keyframes gmRingSpin {
+	to { transform: rotate(360deg); }
+}
+
+.gemini-chat-header-left img {
+	width: 100%;
+	height: 100%;
+	border-radius: 50%;
+	object-fit: cover;
+}
+
+.gemini-chat-header-left .gemini-header-textblock {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	line-height: 1.15;
+}
+
+.gemini-chat-header-left .gemini-header-status {
+	font-size: 12px;
+	font-weight: 500;
+	opacity: 0.8;
+	display: flex;
+	align-items: center;
+	gap: 5px;
+}
+
+.gemini-chat-header-left .gemini-header-status::before {
+	content: "";
+	width: 6px;
+	height: 6px;
+	background: #22c55e;
+	border-radius: 50%;
+	display: inline-block;
+	box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.25);
+}
+
+.gemini-chat-close {
+	position: absolute !important;
+	top: 50% !important;
+	right: 16px !important;
+	transform: translateY(-50%) !important;
+	cursor: pointer !important;
+	font-size: 24px !important;
+	line-height: 1 !important;
+	color: var(--gm-header-icon) !important;
+	z-index: 1000000000000 !important;
+	width: 36px;
+	height: 36px;
+	display: flex !important;
+	align-items: center !important;
+	justify-content: center !important;
+	background: rgba(255, 255, 255, 0.12);
+	border: 0;
+	border-radius: 50%;
+	transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.gemini-chat-close:hover {
+	background: rgba(255, 255, 255, 0.24);
+	transform: translateY(-50%) rotate(90deg);
+}
+
+/* Header'ın altındaki ince çizgi: sağa doğru akan ışıltı.
+   z-index şart: .gemini-chat-log opak arkaplanı DOM sırasında sonra
+   geldiği için z-index olmadan bu çizgiyi örtüyordu. */
+.gemini-chat-header::after {
+	content: "";
+	position: absolute !important;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	height: 2px;
+	background: linear-gradient(90deg, transparent, var(--gm-header-icon), transparent);
+	background-size: 200% 100%;
+	opacity: 0.9;
+	animation: gmHeaderShimmer 2.8s ease-in-out infinite;
+	pointer-events: none;
+	z-index: 5;
+}
+
+@keyframes gmHeaderShimmer {
+	0%   { background-position: -60% 0; }
+	100% { background-position: 160% 0; }
+}
+
+.gemini-chat-log {
+	position: absolute !important;
+	top: 74px !important;
+	bottom: 84px !important;
+	left: 0 !important;
+	right: 0 !important;
+	overflow-y: auto !important;
+	padding: 22px 18px !important;
+	display: flex !important;
+	flex-direction: column !important;
+	gap: 16px !important;
+	background:
+		radial-gradient(circle at 15% 8%, color-mix(in srgb, var(--gm-chat-bg) 100%, black 3%) 0%, transparent 45%),
+		var(--gm-chat-bg) !important;
+	box-sizing: border-box !important;
+	scroll-behavior: smooth;
+}
+
+.gemini-chat-log::-webkit-scrollbar {
+	width: 6px;
+}
+
+.gemini-chat-log::-webkit-scrollbar-thumb {
+	background: color-mix(in srgb, var(--gm-border) 100%, black 15%);
+	border-radius: 10px;
+}
+
+.gemini-chat-log::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+.gemini-msg-bubble {
+	padding: 13px 17px !important;
+	border: 1px solid var(--gm-border) !important;
+	border-radius: var(--gm-radius) !important;
+	max-width: 78% !important;
+	word-wrap: break-word !important;
+	line-height: 1.55 !important;
+	box-sizing: border-box !important;
+	font-size: 14.5px;
+	box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05) !important;
+	animation: gmBubbleIn 0.28s cubic-bezier(0.2, 0.85, 0.3, 1.15);
+}
+
+@keyframes gmBubbleIn {
+	0%   { opacity: 0; transform: translateY(8px) scale(0.96); }
+	100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.gemini-msg-user {
+	align-self: flex-end !important;
+	background: var(--gm-user-bg) !important;
+	color: var(--gm-user-text) !important;
+	border-bottom-right-radius: 5px !important;
+}
+
+.gemini-msg-bot {
+	align-self: flex-start !important;
+	background: var(--gm-bot-bg) !important;
+	color: var(--gm-bot-text) !important;
+	border-bottom-left-radius: 5px !important;
+}
+
+.gemini-msg-hata {
+	color: #d63638 !important;
+}
+
+.gemini-typing {
+	align-self: flex-start;
+	background: var(--gm-bot-bg);
+	border: 1px solid var(--gm-border);
+	border-radius: var(--gm-radius);
+	border-bottom-left-radius: 5px;
+	padding: 10px 16px !important;
+	font-size: 14px;
+	color: var(--gm-bot-text);
+	animation: gmTypingPulse 1.3s ease-in-out infinite, gmBubbleIn 0.28s cubic-bezier(0.2, 0.85, 0.3, 1.15);
+}
+
+@keyframes gmTypingPulse {
+	0%, 100% { opacity: 0.55; }
+	50%      { opacity: 1; }
+}
+
+.gemini-chat-input-area {
+	position: absolute !important;
+	bottom: 0 !important;
+	left: 0 !important;
+	width: 100% !important;
+	height: 84px !important;
+	padding: 16px 18px !important;
+	background: var(--gm-input-area-bg) !important;
+	border-top: 1px solid var(--gm-border) !important;
+	display: flex !important;
+	gap: 12px !important;
+	align-items: center !important;
+	box-sizing: border-box !important;
+	z-index: 999999999999 !important;
+	box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.04) !important;
+}
+
+.gemini-chat-input {
+	flex-grow: 1 !important;
+	padding: 13px 20px !important;
+	background: var(--gm-input-bg) !important;
+	border: 1.5px solid var(--gm-border) !important;
+	border-radius: 30px !important;
+	outline: none !important;
+	/* 16px altına düşürmeyin: iOS Safari input'a odaklanınca sayfayı zoomlar. */
+	font-size: 16px !important;
+	color: var(--gm-text) !important;
+	box-sizing: border-box !important;
+	height: 48px !important;
+	transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.gemini-chat-input:focus {
+	border-color: color-mix(in srgb, var(--gm-send-bg) 100%, transparent) !important;
+	box-shadow: 0 0 0 3px color-mix(in srgb, var(--gm-send-bg) 20%, transparent) !important;
+}
+
+.gemini-chat-send {
+	width: 48px !important;
+	height: 48px !important;
+	border: none !important;
+	border-radius: 50% !important;
+	background: linear-gradient(135deg, color-mix(in srgb, var(--gm-send-bg) 100%, white 10%), color-mix(in srgb, var(--gm-send-bg) 100%, black 12%)) !important;
+	color: var(--gm-send-icon) !important;
+	cursor: pointer !important;
+	display: flex !important;
+	align-items: center !important;
+	justify-content: center !important;
+	flex-shrink: 0 !important;
+	box-shadow: 0 4px 14px -3px color-mix(in srgb, var(--gm-send-bg) 60%, transparent) !important;
+	transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.18s ease;
+}
+
+.gemini-chat-send:hover {
+	transform: scale(1.08) rotate(8deg);
+}
+
+.gemini-chat-send:active {
+	transform: scale(0.94);
+}
+
+.gemini-chat-send svg {
+	width: 20px;
+	height: 20px;
+	fill: currentColor;
+	margin-left: -1px;
+}
+
+body.gemini-no-scroll {
+	overflow: hidden !important;
+	position: fixed !important;
+	width: 100% !important;
+	height: 100% !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.gemini-chat-toggle-btn,
+	.gemini-chat-toggle-btn::before,
+	.gemini-chat-overlay,
+	.gemini-msg-bubble,
+	.gemini-typing,
+	.gemini-chat-send,
+	.gemini-chat-header-left .gemini-icon-wrapper::before,
+	.gemini-chat-header::after {
+		animation: none !important;
+		transition: none !important;
+	}
+}

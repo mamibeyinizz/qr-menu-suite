@@ -1,0 +1,29 @@
+/**
+ * Oturum yokken kısa kodların bastığı bilgi kutusu.
+ * (Chatbot, sepet ve buton kısa kodları bunu kullanır.)
+ */
+
+.qmo-oturum-kutu {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 10px;
+	max-width: 460px;
+	margin: 18px auto;
+	padding: 16px 20px;
+	box-sizing: border-box;
+	background: linear-gradient(180deg, rgba(28, 24, 15, 0.55), rgba(14, 12, 8, 0.7));
+	border: 1px solid rgba(201, 168, 76, 0.4);
+	border-radius: 14px;
+	color: #e8d9a8;
+	font-family: "Manrope", -apple-system, BlinkMacSystemFont, sans-serif;
+	font-size: 14px;
+	font-weight: 600;
+	line-height: 1.5;
+	text-align: center;
+}
+
+.qmo-oturum-kutu-ikon {
+	font-size: 20px;
+	flex-shrink: 0;
+}

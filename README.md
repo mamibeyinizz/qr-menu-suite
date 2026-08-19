@@ -76,6 +76,43 @@ Loader, modül lisansta aktifse dosyayı `require` eder ve bu fonksiyonu
 Admin menüsünde `Genel Bakış` ve `Genel Ayarlar` her zaman görünür; modül
 sayfaları yalnızca lisansta aktif olan modüller için eklenir.
 
+### Modülün kendi yönetim sayfası
+
+Modül, init'i içinde `QRMS_Admin::register_module_page( $slug, $callback )`
+çağırırsa alt menü sayfası o callback'i basar; çağırmazsa "Bu modül yakında
+burada olacak" placeholder'ı görünmeye devam eder. Kayıt `plugins_loaded`
+(öncelik 20) sırasında yapılır, `admin_menu` bundan sonra çalıştığı için
+zamanlama doğrudur.
+
+### Paketlenmiş modüller
+
+| Slug | İçerik | Yönetim sayfası |
+| --- | --- | --- |
+| `qr-masa` | Masa kayıtları (CRUD), masa QR adresleri, `[qr_aktif_masa]` | ✔ Masalar ekranı |
+| `qr-masa-oturum-guvenligi` | Sahte QR reddi, kilit ekranı, sayfa kilidi | ✔ Oturum limitleri |
+| `qr-chatbot` | `[gemini_chatbot]` kısa kodu, Gemini AJAX ucu | — (placeholder) |
+
+Kodları eski birleşik `qr-menu-official` eklentisinden **aynen** taşındı;
+yalnızca yeni klasör konumuna göre yol string'leri düzeltildi.
+
+### `modules/_qmo-ortak/`
+
+Modül değildir (loader yalnızca `QRMS_Helpers::MODULE_SLUGS` içindeki
+slug'ları yükler), üç modülün ortak çalışma zeminidir: masa oturumu sınıfı
+(`QMO_Oturum`), yardımcılar, varlık kaydı ve chatbot renk varsayılanları.
+Her `module.php` bunu `require_once` ile yükler.
+
+Masa oturumu sınıfı bilinçli olarak burada durur: `helpers.php`'deki
+`qmo_oturum()` / `qmo_oturum_zorla()` doğrudan `QMO_Oturum` üzerine
+kuruludur, oysa modüller birbirinden bağımsız lisanslanır. Sınıf yalnızca
+`qr-masa-oturum-guvenligi` altında dursaydı, o modül lisanslı değilken
+chatbot her render'da ölümcül hata verirdi. Oturumun *zorlanması* (kilit
+ekranı, sayfa kilidi) o modülde kalır.
+
+Taşınan kodun tamamı `class_exists()` / `function_exists()` / `defined()`
+guard'lıdır: eski `qr-menu-official` eklentisi aynı sitede hâlâ aktifse
+çift tanım hatası olmaz, ilk yükleyen kazanır.
+
 ## Admin menüsüyle ilgili iki tasarım notu
 
 **Sihirbaz gizli ama erişilebilir.** `admin.php?page=qrms-wizard` gerçek bir
@@ -107,8 +144,12 @@ includes/
   class-license-client.php   Doğrulama, option'lar, günlük cron, notice
   class-wizard.php           Tek ekranlı kurulum sihirbazı + lisans formu
   class-module-loader.php    modules/<slug>/module.php yükleyici
-  class-admin.php            Menü çatısı, Genel Bakış, Genel Ayarlar
-modules/                     Modüller (henüz boş)
+  class-admin.php            Menü çatısı, Genel Bakış, Genel Ayarlar, modül sayfa kaydı
+modules/
+  _qmo-ortak/                Modüllerin ortak zemini (oturum sınıfı, helpers, varlıklar)
+  qr-masa/                   Masa kayıtları + Masalar yönetim ekranı
+  qr-masa-oturum-guvenligi/  Masa doğrulama, kilit ekranı + oturum ayarları
+  qr-chatbot/                Gemini chatbot kısa kodu ve AJAX ucu
 assets/css/admin.css         Mobil öncelikli admin stilleri (dokunma ≥44px)
 assets/js/admin.js           Form gönderiminde buton kilidi (opsiyonel iyileştirme)
 tests/                       WordPress'siz çalışan stub tabanlı testler
