@@ -591,6 +591,49 @@ function wp_enqueue_style( $handle, $src = '', $deps = array(), $ver = false ) {
 function wp_enqueue_script( $handle, $src = '', $deps = array(), $ver = false, $in_footer = false ) {}
 
 /**
+ * Stil handle kaydı (no-op).
+ *
+ * @return void
+ */
+function wp_register_style( $handle, $src = '', $deps = array(), $ver = false ) {}
+
+/**
+ * Yönetim ekranı mı?
+ *
+ * @return bool
+ */
+function is_admin() {
+	return ! empty( $GLOBALS['qrms_test']['is_admin'] );
+}
+
+/**
+ * Kısa kod kaydı.
+ *
+ * @param string   $tag      Etiket.
+ * @param callable $callback Callback.
+ * @return void
+ */
+function add_shortcode( $tag, $callback ) {
+	if ( ! isset( $GLOBALS['qrms_test']['shortcodes'] ) ) {
+		$GLOBALS['qrms_test']['shortcodes'] = array();
+	}
+	$GLOBALS['qrms_test']['shortcodes'][ $tag ] = $callback;
+}
+
+/**
+ * Kısa kod öznitelik varsayılanları.
+ *
+ * @param array $pairs Varsayılanlar.
+ * @param array $atts  Gelen.
+ * @param string $shortcode Etiket.
+ * @return array
+ */
+function shortcode_atts( $pairs, $atts, $shortcode = '' ) {
+	$atts = is_array( $atts ) ? $atts : array();
+	return array_merge( $pairs, $atts );
+}
+
+/**
  * Script'e veri geçirir (no-op).
  *
  * @param string $handle Handle.
