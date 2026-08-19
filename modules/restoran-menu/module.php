@@ -52,7 +52,216 @@ function qrms_module_restoran_menu_init() {
 		);
 
 		add_action( 'admin_enqueue_scripts', 'qrms_module_restoran_menu_admin_assets' );
+
+		// CPT ve taksonomi ekranlarının suite menüsündeki yeri ve vurgusu.
+		// Öncelik 20: hem çekirdeğin _add_post_type_submenus()'ü hem
+		// QRMS_Admin::register_menu() öncelik 10'da çalışır.
+		add_action( 'admin_menu', 'qrms_module_restoran_menu_admin_menu', 20 );
+		add_filter( 'parent_file', 'qrms_module_restoran_menu_parent_file' );
+		add_filter( 'submenu_file', 'qrms_module_restoran_menu_submenu_file' );
 	}
+}
+
+/**
+ * Modülün suite menüsündeki alt satırları: eksik olanları ekler, sırayı düzeltir.
+ *
+ * WordPress iki seviyeli bir admin menüsüne sahiptir — "Restoran Menü" girişinin
+ * ALTINA giriş eklenemez. Bu yüzden ürün/kategori ekranları "QR Menü"nün doğrudan
+ * alt öğesidir; modüle ait olduklarını göstermek için etiketleri "—" ile
+ * öneklenir. "Restoran Menü" girişinin kendisi zaten sekmeli ayar ekranını açar,
+ * bu yüzden ayrıca bir "Ayarlar" satırı yoktur.
+ *
+ * CPT'nin show_in_menu'sü bir string olduğunda çekirdek (_add_post_type_submenus,
+ * wp-includes/post.php) YALNIZCA ürün listesi satırını ekler; "Ürün Ekle" ve
+ * taksonomi satırları wp-admin/menu.php'de sadece top-level menü alan CPT'ler
+ * için üretildiğinden hiç oluşmaz. Bu yüzden taksonomilerin kendi show_in_menu
+ * ayarını değiştirmek bir işe yaramaz — üç satır burada elle eklenir.
+ *
+ * @return void
+ */
+function qrms_module_restoran_menu_admin_menu() {
+	global $submenu;
+
+	$parent = QRMS_Admin::MENU_SLUG;
+
+	// Modül lisansta aktif değilse "Restoran Menü" satırı hiç kaydolmaz;
+	// o zaman burada düzenlenecek bir şey de yoktur.
+	if ( empty( $submenu[ $parent ] ) ) {
+		return;
+	}
+
+	add_submenu_page(
+		$parent,
+		__( 'Ürün Ekle', 'qrms' ),
+		'— ' . __( 'Ürün Ekle', 'qrms' ),
+		'edit_posts',
+		'post-new.php?post_type=rma_menu_item'
+	);
+
+	add_submenu_page(
+		$parent,
+		__( 'Menü Kategorileri', 'qrms' ),
+		'— ' . __( 'Kategoriler', 'qrms' ),
+		'manage_categories',
+		'edit-tags.php?taxonomy=rma_category&post_type=rma_menu_item'
+	);
+
+	add_submenu_page(
+		$parent,
+		__( 'Alerjenler', 'qrms' ),
+		'— ' . __( 'Alerjenler', 'qrms' ),
+		'manage_categories',
+		'edit-tags.php?taxonomy=rma_allergen&post_type=rma_menu_item'
+	);
+
+	// Çekirdeğin eklediği ürün listesi satırının etiketi labels->all_items'tan
+	// gelir ("Menü Ürünleri"). Etiket öneki kaynak labels dizisine yazılmaz;
+	// tüm menü sunumu tek yerde, burada durur.
+	foreach ( $submenu[ $parent ] as $index => $row ) {
+		if ( isset( $row[2] ) && 'edit.php?post_type=rma_menu_item' === $row[2] ) {
+			$submenu[ $parent ][ $index ][0] = '— ' . __( 'Ürünler', 'qrms' );
+			break;
+		}
+	}
+
+	$submenu[ $parent ] = qrms_module_restoran_menu_submenu_sirala( $submenu[ $parent ] );
+}
+
+/**
+ * Modülün satırlarını "Restoran Menü" girişinin hemen ardına taşır.
+ *
+ * Sıralama pass'i şart: çekirdeğin _add_post_type_submenus() kancası WordPress
+ * önyüklemesi sırasında kaydolduğu için, aynı önceliğe (10) sahip
+ * QRMS_Admin::register_menu()'den ÖNCE çalışır ve ürün listesi satırını
+ * "Genel Bakış"tan bile önce diziye sokar.
+ *
+ * WordPress'e bağımlılığı yoktur (saf dizi dönüşümü), bu yüzden doğrudan test
+ * edilir. Sonuç array_values() ile yeniden indekslenir: WordPress alt menüleri
+ * anahtara göre sıraladığından 0..n indeksleme buradaki sırayı korur.
+ *
+ * @param array $rows $submenu[QRMS_Admin::MENU_SLUG] satırları.
+ * @return array Yeniden sıralanmış satırlar.
+ */
+function qrms_module_restoran_menu_submenu_sirala( array $rows ) {
+	$module_slug = QRMS_Admin::get_module_page_slug( 'restoran-menu' );
+
+	// İstenen sıra; dizideki gerçek konumlarından bağımsızdır.
+	$child_slugs = array(
+		'edit.php?post_type=rma_menu_item',
+		'post-new.php?post_type=rma_menu_item',
+		'edit-tags.php?taxonomy=rma_category&post_type=rma_menu_item',
+		'edit-tags.php?taxonomy=rma_allergen&post_type=rma_menu_item',
+	);
+
+	$others   = array();
+	$children = array();
+	$anchor   = -1;
+
+	foreach ( $rows as $row ) {
+		$slug = isset( $row[2] ) ? $row[2] : '';
+		$key  = array_search( $slug, $child_slugs, true );
+
+		if ( false !== $key ) {
+			$children[ $key ] = $row;
+			continue;
+		}
+
+		$others[] = $row;
+
+		if ( $module_slug === $slug ) {
+			$anchor = count( $others );
+		}
+	}
+
+	// "Restoran Menü" satırı yoksa taşınacak bir çapa da yok: satırlar
+	// bulundukları sırada bırakılır.
+	if ( -1 === $anchor ) {
+		return array_values( $rows );
+	}
+
+	ksort( $children );
+
+	return array_values(
+		array_merge(
+			array_slice( $others, 0, $anchor ),
+			array_values( $children ),
+			array_slice( $others, $anchor )
+		)
+	);
+}
+
+/**
+ * Modülün ekranlarında suite menüsünün açık ve vurgulu kalmasını sağlar.
+ *
+ * Bu ekranlarda çekirdek $parent_file'ı "edit.php?post_type=rma_menu_item"
+ * yapar; o artık bir top-level menü olmadığı için QR Menü ne açılır ne
+ * vurgulanırdı.
+ *
+ * @param string $parent_file Çekirdeğin belirlediği üst menü dosyası.
+ * @return string
+ */
+function qrms_module_restoran_menu_parent_file( $parent_file ) {
+	return qrms_module_restoran_menu_ekranimiz_mi() ? QRMS_Admin::MENU_SLUG : $parent_file;
+}
+
+/**
+ * Açık ekrana karşılık gelen alt menü satırını vurgular.
+ *
+ * @param string $submenu_file Çekirdeğin belirlediği alt menü dosyası.
+ * @return string
+ */
+function qrms_module_restoran_menu_submenu_file( $submenu_file ) {
+	if ( ! qrms_module_restoran_menu_ekranimiz_mi() ) {
+		return $submenu_file;
+	}
+
+	global $pagenow;
+
+	// phpcs:disable WordPress.Security.NonceVerification.Recommended
+	$taxonomy = isset( $_GET['taxonomy'] ) ? sanitize_key( wp_unslash( $_GET['taxonomy'] ) ) : '';
+	$page     = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '';
+	// phpcs:enable WordPress.Security.NonceVerification.Recommended
+
+	// Eski ayarlar adresi (edit.php?post_type=rma_menu_item&page=rma_settings).
+	// Sayfa erişilebilir kalmaya devam eder — kaydı $_registered_pages üzerinden
+	// çalışır, üst menüsünün görünür olması gerekmez; burada yalnızca doğru
+	// satır vurgulanır. İçe aktarma yönlendirmeleri hâlâ bu adrese düşüyor.
+	if ( 'rma_settings' === $page ) {
+		return QRMS_Admin::get_module_page_slug( 'restoran-menu' );
+	}
+
+	if ( 'edit-tags.php' === $pagenow || 'term.php' === $pagenow ) {
+		return 'edit-tags.php?taxonomy=' . $taxonomy . '&post_type=rma_menu_item';
+	}
+
+	if ( 'post-new.php' === $pagenow ) {
+		return 'post-new.php?post_type=rma_menu_item';
+	}
+
+	// Liste ekranı ve mevcut ürünün düzenleme ekranı "Ürünler" satırında kalır.
+	return 'edit.php?post_type=rma_menu_item';
+}
+
+/**
+ * Şu an modülün ekranlarından birinde miyiz?
+ *
+ * @return bool
+ */
+function qrms_module_restoran_menu_ekranimiz_mi() {
+	global $pagenow, $typenow;
+
+	if ( 'rma_menu_item' === $typenow ) {
+		return true;
+	}
+
+	if ( 'edit-tags.php' === $pagenow || 'term.php' === $pagenow ) {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$taxonomy = isset( $_GET['taxonomy'] ) ? sanitize_key( wp_unslash( $_GET['taxonomy'] ) ) : '';
+
+		return in_array( $taxonomy, array( 'rma_category', 'rma_allergen' ), true );
+	}
+
+	return false;
 }
 
 /**

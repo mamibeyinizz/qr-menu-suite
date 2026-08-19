@@ -936,7 +936,157 @@ qrms_test(
 );
 
 /* ---------------------------------------------------------------------------
- * 6. Yardımcılar
+ * 6. restoran-menu menü sıralaması
+ * ------------------------------------------------------------------------ */
+
+// module.php dosya kapsamında yalnızca fonksiyon tanımlar (yan etkisi yoktur),
+// bu yüzden stub ortamında doğrudan yüklenebilir. Test edilen sıralama
+// yardımcısının WordPress'e bağımlılığı yoktur: saf dizi dönüşümüdür.
+require_once QRMS_PLUGIN_DIR . 'modules/restoran-menu/module.php';
+
+echo "\nrestoran-menu menü sıralaması\n";
+
+/**
+ * Alt menü satırı üretir ($submenu dizisindeki biçimle aynı).
+ *
+ * @param string $label Görünen etiket.
+ * @param string $slug  Menü slug'ı / dosya adresi.
+ * @return array
+ */
+function qrms_submenu_satiri( $label, $slug ) {
+	return array( $label, 'manage_options', $slug );
+}
+
+/**
+ * Satır listesinden slug'ları çıkarır.
+ *
+ * @param array $rows Satırlar.
+ * @return string[]
+ */
+function qrms_submenu_sluglari( array $rows ) {
+	return array_map(
+		function ( $row ) {
+			return $row[2];
+		},
+		$rows
+	);
+}
+
+/**
+ * Gerçek dünyadaki dizilim: çekirdeğin _add_post_type_submenus() kancası
+ * ürün listesi satırını QRMS_Admin::register_menu()'den ÖNCE ekler, glue'un
+ * eklediği üç satır ise en sona düşer.
+ *
+ * @return array
+ */
+function qrms_submenu_ham_liste() {
+	return array(
+		qrms_submenu_satiri( 'Menü Ürünleri', 'edit.php?post_type=rma_menu_item' ),
+		qrms_submenu_satiri( 'Genel Bakış', QRMS_Admin::MENU_SLUG ),
+		qrms_submenu_satiri( 'Restoran Menü', QRMS_Admin::get_module_page_slug( 'restoran-menu' ) ),
+		qrms_submenu_satiri( 'QR Masa', QRMS_Admin::get_module_page_slug( 'qr-masa' ) ),
+		qrms_submenu_satiri( 'Genel Ayarlar', QRMS_Admin::SETTINGS_SLUG ),
+		qrms_submenu_satiri( '— Ürün Ekle', 'post-new.php?post_type=rma_menu_item' ),
+		qrms_submenu_satiri( '— Kategoriler', 'edit-tags.php?taxonomy=rma_category&post_type=rma_menu_item' ),
+		qrms_submenu_satiri( '— Alerjenler', 'edit-tags.php?taxonomy=rma_allergen&post_type=rma_menu_item' ),
+	);
+}
+
+qrms_test(
+	'modülün dört satırı Restoran Menü girişinin hemen ardına sıralanır',
+	function () {
+		$sirali = qrms_module_restoran_menu_submenu_sirala( qrms_submenu_ham_liste() );
+
+		qrms_assert_same(
+			array(
+				QRMS_Admin::MENU_SLUG,
+				QRMS_Admin::get_module_page_slug( 'restoran-menu' ),
+				'edit.php?post_type=rma_menu_item',
+				'post-new.php?post_type=rma_menu_item',
+				'edit-tags.php?taxonomy=rma_category&post_type=rma_menu_item',
+				'edit-tags.php?taxonomy=rma_allergen&post_type=rma_menu_item',
+				QRMS_Admin::get_module_page_slug( 'qr-masa' ),
+				QRMS_Admin::SETTINGS_SLUG,
+			),
+			qrms_submenu_sluglari( $sirali ),
+			'tam sıra'
+		);
+	}
+);
+
+qrms_test(
+	'çekirdeğin başa koyduğu ürün listesi satırı Genel Bakış\'ın önüne geçmez',
+	function () {
+		$ham = qrms_submenu_ham_liste();
+
+		// Hatanın gerçekten var olduğunu göster: düzeltilmemiş listede ürün
+		// listesi satırı ilk sırada.
+		qrms_assert_same( 'edit.php?post_type=rma_menu_item', $ham[0][2], 'düzeltilmemiş liste' );
+
+		$sirali = qrms_module_restoran_menu_submenu_sirala( $ham );
+
+		qrms_assert_same( QRMS_Admin::MENU_SLUG, $sirali[0][2], 'Genel Bakış en üstte' );
+	}
+);
+
+qrms_test(
+	'satırlar yeniden indekslenir ve etiketler korunur',
+	function () {
+		$sirali = qrms_module_restoran_menu_submenu_sirala( qrms_submenu_ham_liste() );
+
+		qrms_assert_same( range( 0, 7 ), array_keys( $sirali ), 'sıfırdan artan anahtarlar' );
+		qrms_assert_same( '— Kategoriler', $sirali[4][0], 'etiket korunur' );
+	}
+);
+
+qrms_test(
+	'eksik satırlar sorun çıkarmaz, diğer modüllerin sırası korunur',
+	function () {
+		// Yalnızca çekirdeğin eklediği satır var (glue satırları yetki
+		// yetersizliğinden eklenmemiş olabilir).
+		$ham = array(
+			qrms_submenu_satiri( 'Menü Ürünleri', 'edit.php?post_type=rma_menu_item' ),
+			qrms_submenu_satiri( 'Genel Bakış', QRMS_Admin::MENU_SLUG ),
+			qrms_submenu_satiri( 'Restoran Menü', QRMS_Admin::get_module_page_slug( 'restoran-menu' ) ),
+			qrms_submenu_satiri( 'QR Chatbot', QRMS_Admin::get_module_page_slug( 'qr-chatbot' ) ),
+			qrms_submenu_satiri( 'Genel Ayarlar', QRMS_Admin::SETTINGS_SLUG ),
+		);
+
+		qrms_assert_same(
+			array(
+				QRMS_Admin::MENU_SLUG,
+				QRMS_Admin::get_module_page_slug( 'restoran-menu' ),
+				'edit.php?post_type=rma_menu_item',
+				QRMS_Admin::get_module_page_slug( 'qr-chatbot' ),
+				QRMS_Admin::SETTINGS_SLUG,
+			),
+			qrms_submenu_sluglari( qrms_module_restoran_menu_submenu_sirala( $ham ) ),
+			'tek çocuk satırı'
+		);
+	}
+);
+
+qrms_test(
+	'Restoran Menü satırı yoksa liste değişmeden döner',
+	function () {
+		// Modül lisansta aktif değilken bu kod zaten çalışmaz; yine de
+		// yardımcı çapayı bulamazsa sırayı bozmamalı.
+		$ham = array(
+			qrms_submenu_satiri( 'Genel Bakış', QRMS_Admin::MENU_SLUG ),
+			qrms_submenu_satiri( 'QR Masa', QRMS_Admin::get_module_page_slug( 'qr-masa' ) ),
+			qrms_submenu_satiri( 'Genel Ayarlar', QRMS_Admin::SETTINGS_SLUG ),
+		);
+
+		qrms_assert_same(
+			qrms_submenu_sluglari( $ham ),
+			qrms_submenu_sluglari( qrms_module_restoran_menu_submenu_sirala( $ham ) ),
+			'sıra korunur'
+		);
+	}
+);
+
+/* ---------------------------------------------------------------------------
+ * 7. Yardımcılar
  * ------------------------------------------------------------------------ */
 
 echo "\nYardımcılar\n";

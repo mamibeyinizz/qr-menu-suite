@@ -106,9 +106,39 @@ modüle özgü her şey `module.php` içindedir.
 taşınmadı; ayarlar eskisi gibi option'lardan okunmaya devam eder
 (`qmo_firebase_sa` / `qmo_branch_id`, `gemini_api_key` vb.).
 
-`restoran-menu`'nün sekmeli ayar ekranı iki yerden açılır: suite menüsündeki
-"Restoran Menü" ve eklentinin kendi kaydı olan "Menü Ürünleri > Ayarlar".
-Ekranı basan metot tektir (`render_admin_page()`), ikisi de onu çağırır.
+`restoran-menu`'nün ürün, kategori ve ayar ekranlarının tamamı suite menüsünün
+altındadır — eklenti artık ayrı bir top-level "Menü" menüsü açmaz:
+
+```
+QR Menü
+├ Genel Bakış
+├ Restoran Menü      → sekmeli ayar ekranı
+├ — Ürünler
+├ — Ürün Ekle
+├ — Kategoriler
+├ — Alerjenler
+├ … (diğer aktif modüller)
+└ Genel Ayarlar
+```
+
+WordPress admin menüsü iki seviyelidir; bir alt menünün altına giriş eklenemez.
+Bu yüzden ürün/kategori satırları "QR Menü"nün doğrudan alt öğesidir ve modüle
+ait olduklarını göstermek için etiketleri `—` ile öneklenir. Ayrı bir "Ayarlar"
+satırı yoktur: "Restoran Menü" girişi zaten o ekranı açar.
+
+CPT `show_in_menu => QRMS_Admin::MENU_SLUG` ile kaydolur. Çekirdek bu durumda
+(`_add_post_type_submenus()`) yalnızca ürün listesi satırını ekler ve onu
+"Genel Bakış"tan önce diziye sokar; "Ürün Ekle" ile taksonomi satırları hiç
+oluşmaz (onlar yalnızca top-level menü alan CPT'ler için üretilir, bu yüzden
+taksonomilerin kendi `show_in_menu` ayarını değiştirmek işe yaramaz). Eksik üç
+satırın eklenmesi, etiketleme, sıralama ve menü vurgusu (`parent_file` /
+`submenu_file`) `modules/restoran-menu/module.php` içindeki menü glue'unda
+yapılır — ekran kodlarına dokunulmaz. Sıralama saf bir fonksiyona ayrıldığı için
+testlerde doğrulanır.
+
+Eski `edit.php?post_type=rma_menu_item&page=rma_settings` adresi çalışmaya devam
+eder (içe aktarma yönlendirmeleri hâlâ oraya düşer); ekranı basan metot tektir
+(`render_admin_page()`), suite menüsündeki giriş de onu çağırır.
 
 > **Dağıtım notu:** `restoran-menu` modülü aktifken eski tekil **QR MENÜ**
 > eklentisi devre dışı bırakılmalıdır — modül onun yerini alır. Yan yana
