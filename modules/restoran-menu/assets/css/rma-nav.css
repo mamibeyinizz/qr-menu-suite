@@ -14,8 +14,13 @@
     width: 100%;
     box-sizing: border-box;
     overflow: visible;
-    isolation: isolate;
     position: relative;
+}
+
+/* isolation/z-index yalnızca ön yüz .rma-wrap içinde: admin önizlemesi
+   WordPress #adminmenu flyout katmanıyla yarışmasın. */
+.rma-wrap .rma-nav-wrapper {
+    isolation: isolate;
     z-index: 10;
 }
 
@@ -33,8 +38,11 @@
     -webkit-overflow-scrolling: touch;
     transition: box-shadow .35s, background .35s;
     position: relative;
-    z-index: 10;
     gap: var(--rma-nav-btn-gap);
+}
+
+.rma-wrap .rma-nav {
+    z-index: 10;
 }
 
 .rma-nav::-webkit-scrollbar { display:none; }

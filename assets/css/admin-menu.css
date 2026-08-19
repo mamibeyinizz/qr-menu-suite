@@ -1,0 +1,52 @@
+/**
+ * WordPress sol menü flyout'larını koru.
+ *
+ * Masaüstünde alt menüler `display:none` ile değil `top: -1000em` ile
+ * gizlenir. Eklenti CSS'i `.wp-submenu` üzerinde display/position/top
+ * ezerse "QR Menü" alt menüsü açık kalır ve başka bir üst menünün
+ * flyout'uyla üst üste biner.
+ *
+ * Bu dosya yalnızca .wp-not-current-submenu alt menülerini yeniden park
+ * eder; açık sayfanın .wp-has-current-submenu satırı WordPress'e bırakılır.
+ */
+
+#adminmenu li.wp-not-current-submenu > .wp-submenu {
+	left: 160px;
+	position: absolute;
+	top: -1000em;
+}
+
+.js #adminmenu li.wp-not-current-submenu.opensub > .wp-submenu,
+.js #adminmenu li.wp-not-current-submenu > .wp-submenu.sub-open,
+#adminmenu li.wp-not-current-submenu > a.menu-top:focus + .wp-submenu,
+.no-js #adminmenu li.wp-not-current-submenu:hover > .wp-submenu {
+	top: -1px;
+}
+
+.folded #adminmenu li.wp-not-current-submenu.opensub > .wp-submenu,
+.folded #adminmenu li.wp-not-current-submenu > a.menu-top:focus + .wp-submenu,
+.folded #adminmenu li.wp-not-current-submenu > .wp-submenu.sub-open,
+.auto-fold #adminmenu li.wp-not-current-submenu.opensub > .wp-submenu,
+.auto-fold #adminmenu li.wp-not-current-submenu > a.menu-top:focus + .wp-submenu,
+.auto-fold #adminmenu li.wp-not-current-submenu > .wp-submenu.sub-open {
+	left: 36px;
+	top: 0;
+}
+
+@media screen and (max-width: 782px) {
+	#adminmenu li.wp-not-current-submenu > .wp-submenu {
+		display: none;
+		left: auto;
+		position: relative;
+		top: auto;
+	}
+
+	#adminmenu li.wp-not-current-submenu.selected > .wp-submenu,
+	#adminmenu li.wp-not-current-submenu.wp-menu-open > .wp-submenu {
+		display: block;
+	}
+
+	.auto-fold #adminmenu li.wp-not-current-submenu.opensub > .wp-submenu {
+		display: none;
+	}
+}

@@ -31,6 +31,7 @@ function qrms_reset() {
 	$GLOBALS['qrms_test']['http']       = null;
 	$GLOBALS['qrms_test']['http_calls'] = array();
 	$GLOBALS['qrms_test']['can']        = true;
+	$GLOBALS['qrms_test']['styles']     = array();
 	$GLOBALS['menu']                    = array();
 	$GLOBALS['submenu']                 = array();
 	$_POST                              = array();
@@ -775,6 +776,56 @@ qrms_test(
 		QRMS_Admin::ensure_menu_registered();
 
 		qrms_assert_same( 1, count( $GLOBALS['qrms_test']['menus'] ), 'tek kayıt olmalı' );
+	}
+);
+
+qrms_test(
+	'sol menü flyout CSS\'i plugin ekranı dışında da yüklenir',
+	function () {
+		$_GET = array();
+
+		QRMS_Admin::enqueue_admin_menu_css();
+		QRMS_Admin::enqueue_assets();
+
+		$handles = array_map(
+			function ( $style ) {
+				return $style['handle'];
+			},
+			$GLOBALS['qrms_test']['styles']
+		);
+
+		qrms_assert_true( in_array( 'qrms-admin-menu', $handles, true ), 'flyout stili' );
+		qrms_assert_false( in_array( 'qrms-admin', $handles, true ), 'ekran stili yüklenmemeli' );
+	}
+);
+
+qrms_test(
+	'admin CSS native #adminmenu flyout gizlemesini ezmez',
+	function () {
+		$files = array(
+			QRMS_PLUGIN_DIR . 'assets/css/admin.css',
+			QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/css/admin-ui.css',
+			QRMS_PLUGIN_DIR . 'modules/_qmo-ortak/assets/css/admin.css',
+		);
+
+		foreach ( $files as $file ) {
+			$css = file_get_contents( $file );
+			qrms_assert_true( is_string( $css ) && '' !== $css, basename( $file ) . ' okunmalı' );
+			$css = preg_replace( '#/\*.*?\*/#s', '', $css );
+			qrms_assert_false(
+				(bool) preg_match( '/#adminmenu|\.wp-submenu|\.wp-has-submenu/', $css ),
+				basename( $file ) . ' sol menüyü hedeflememeli'
+			);
+		}
+
+		$menu_css = file_get_contents( QRMS_PLUGIN_DIR . 'assets/css/admin-menu.css' );
+		qrms_assert_contains( 'wp-not-current-submenu', $menu_css, 'yalnızca açık olmayan menü' );
+		qrms_assert_contains( 'top: -1000em', $menu_css, 'WordPress gizleme noktası' );
+		$menu_css = preg_replace( '#/\*.*?\*/#s', '', $menu_css );
+		qrms_assert_false(
+			(bool) preg_match( '/wp-has-current-submenu/', $menu_css ),
+			'açık sayfanın alt menüsü gizlenmemeli'
+		);
 	}
 );
 
