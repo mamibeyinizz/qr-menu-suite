@@ -62,7 +62,14 @@ final class QRMenu_Gallery_Manager {
 		if ( false === get_option( self::OPTION_SETTINGS ) ) {
 			update_option( self::OPTION_SETTINGS, $this->default_settings() );
 		}
-		flush_rewrite_rules();
+		// CPT kaydı yalnızca init'te yapılır. Modül yüklemesi plugins_loaded
+		// sırasında olduğu için $wp_rewrite henüz yok; rewrite flush'u da
+		// init'e ertelenir.
+		if ( isset( $GLOBALS['wp_rewrite'] ) && $GLOBALS['wp_rewrite'] instanceof WP_Rewrite ) {
+			flush_rewrite_rules();
+		} else {
+			add_action( 'init', 'flush_rewrite_rules', 99 );
+		}
 	}
 
 	public function deactivate(): void {
