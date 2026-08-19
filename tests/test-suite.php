@@ -989,11 +989,14 @@ function qrms_submenu_ham_liste() {
 		qrms_submenu_satiri( '— Ürün Ekle', 'post-new.php?post_type=rma_menu_item' ),
 		qrms_submenu_satiri( '— Kategoriler', 'edit-tags.php?taxonomy=rma_category&post_type=rma_menu_item' ),
 		qrms_submenu_satiri( '— Alerjenler', 'edit-tags.php?taxonomy=rma_allergen&post_type=rma_menu_item' ),
+		qrms_submenu_satiri( '— Görünüm', 'qrms-rm-gorunum' ),
+		qrms_submenu_satiri( '— Öne Çıkanlar', 'qrms-rm-one-cikanlar' ),
+		qrms_submenu_satiri( '— Diğer Ayarlar', 'qrms-rm-diger' ),
 	);
 }
 
 qrms_test(
-	'modülün dört satırı Restoran Menü girişinin hemen ardına sıralanır',
+	'modülün yedi satırı Restoran Menü girişinin hemen ardına sıralanır',
 	function () {
 		$sirali = qrms_module_restoran_menu_submenu_sirala( qrms_submenu_ham_liste() );
 
@@ -1005,11 +1008,29 @@ qrms_test(
 				'post-new.php?post_type=rma_menu_item',
 				'edit-tags.php?taxonomy=rma_category&post_type=rma_menu_item',
 				'edit-tags.php?taxonomy=rma_allergen&post_type=rma_menu_item',
+				'qrms-rm-gorunum',
+				'qrms-rm-one-cikanlar',
+				'qrms-rm-diger',
 				QRMS_Admin::get_module_page_slug( 'qr-masa' ),
 				QRMS_Admin::SETTINGS_SLUG,
 			),
 			qrms_submenu_sluglari( $sirali ),
 			'tam sıra'
+		);
+	}
+);
+
+qrms_test(
+	'menüdeki sıra listesi modülün yedi ekranını kapsar',
+	function () {
+		// Sıra listesi ile menüye eklenen satırlar tek kaynaktan gelmeli:
+		// biri değişip diğeri unutulursa satır menüde yanlış yere düşer.
+		qrms_assert_same( 7, count( qrms_module_restoran_menu_child_slugs() ), 'satır sayısı' );
+
+		qrms_assert_same(
+			array( 'qrms-rm-gorunum', 'qrms-rm-one-cikanlar', 'qrms-rm-diger' ),
+			array_slice( qrms_module_restoran_menu_child_slugs(), 4 ),
+			'modülün kendi ayar sayfaları en sonda'
 		);
 	}
 );
@@ -1034,8 +1055,9 @@ qrms_test(
 	function () {
 		$sirali = qrms_module_restoran_menu_submenu_sirala( qrms_submenu_ham_liste() );
 
-		qrms_assert_same( range( 0, 7 ), array_keys( $sirali ), 'sıfırdan artan anahtarlar' );
+		qrms_assert_same( range( 0, 10 ), array_keys( $sirali ), 'sıfırdan artan anahtarlar' );
 		qrms_assert_same( '— Kategoriler', $sirali[4][0], 'etiket korunur' );
+		qrms_assert_same( '— Diğer Ayarlar', $sirali[8][0], 'son ayar satırının etiketi korunur' );
 	}
 );
 

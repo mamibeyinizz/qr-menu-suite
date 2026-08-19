@@ -99,10 +99,10 @@ trait RMA_Import_Export_Trait {
             wp_defer_term_counting( false );
             $this->force_bump_cache_version();
 
-            wp_redirect( admin_url( 'edit.php?post_type=rma_menu_item&page=rma_settings&tab=rma_csv_import&imported=' . $imported ) );
+            wp_redirect( $this->admin_page_url( 'qrms-rm-diger', [ 'imported' => $imported ], 'rma-ice-disa-aktar' ) );
             exit;
         }
-        wp_redirect( admin_url( 'edit.php?post_type=rma_menu_item&page=rma_settings&tab=rma_csv_import&csv_error=2' ) );
+        wp_redirect( $this->admin_page_url( 'qrms-rm-diger', [ 'csv_error' => 2 ], 'rma-ice-disa-aktar' ) );
         exit;
     }
 
@@ -149,9 +149,9 @@ trait RMA_Import_Export_Trait {
             array_map( fn( $col ) => $col[2], $columns ),   // örnek satır
         ];
         ?>
-        <div class="rma-card">
-            <h2 class="rma-card-title">CSV İle Toplu Ürün İçe Aktar</h2>
-            <p class="rma-card-desc">Hazırladığınız CSV dosyasını yükleyerek menüye toplu ürün ekleyin.</p>
+        <div class="rma-card" id="rma-ice-disa-aktar">
+            <h2 class="rma-card-title">Toplu Ürün Aktarımı (CSV)</h2>
+            <p class="rma-card-desc">Excel'de hazırladığınız listeyi CSV olarak kaydedip yükleyin, ürünler menüye tek seferde eklensin. Nasıl bir dosya gerektiğini görmek için önce "Örnek dosya indir" butonuna basabilirsiniz.</p>
 
             <form method="post" enctype="multipart/form-data">
                 <?php wp_nonce_field( 'rma_import_csv_action', 'rma_import_csv_nonce' ); ?>
@@ -160,28 +160,30 @@ trait RMA_Import_Export_Trait {
                         <td><input type="file" name="rma_csv_file" id="rma_csv_file" accept=".csv,text/csv" required></td></tr>
                 </table>
                 <p class="rma-actions">
-                    <?php submit_button( 'CSV Yükle ve Aktar', 'primary', 'rma_submit_csv', false ); ?>
+                    <?php submit_button( 'Dosyayı Yükle ve Ürünleri Ekle', 'primary', 'rma_submit_csv', false ); ?>
                     <button type="button" class="button" id="rma-csv-sample"
-                            data-csv="<?php echo esc_attr( wp_json_encode( $sample ) ); ?>">Örnek CSV indir</button>
+                            data-csv="<?php echo esc_attr( wp_json_encode( $sample ) ); ?>">Örnek dosya indir</button>
                 </p>
             </form>
 
             <details class="rma-details">
-                <summary>Format detayları</summary>
-                <p class="rma-desc">Sütunlar aşağıdaki sırada olmalıdır. 18. sütundan sonrası opsiyoneldir — eski CSV dosyalarınız bozulmadan çalışmaya devam eder.</p>
-                <table class="rma-details-table">
-                    <thead><tr><th>#</th><th>Sütun</th><th>Açıklama</th></tr></thead>
-                    <tbody>
-                        <?php foreach ( $columns as $i => $col ) : ?>
-                        <tr>
-                            <td><?php echo $i; ?></td>
-                            <td><?php echo esc_html( $col[0] ); ?></td>
-                            <td><?php echo esc_html( $col[1] ); ?></td>
-                        </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
-                <p class="rma-desc">Geçerli alerjen slug'ları: <code><?php echo esc_html( implode( ', ', array_keys( $this->get_allergen_definitions() ) ) ); ?></code></p>
+                <summary>Dosyada hangi sütunlar olmalı?</summary>
+                <p class="rma-desc">Sütunlar aşağıdaki sırada olmalıdır. 18. sütundan sonrası zorunlu değildir — eski dosyalarınız bozulmadan çalışmaya devam eder.</p>
+                <div class="rma-table-scroll">
+                    <table class="rma-details-table">
+                        <thead><tr><th>#</th><th>Sütun</th><th>Açıklama</th></tr></thead>
+                        <tbody>
+                            <?php foreach ( $columns as $i => $col ) : ?>
+                            <tr>
+                                <td><?php echo (int) $i; ?></td>
+                                <td><?php echo esc_html( $col[0] ); ?></td>
+                                <td><?php echo esc_html( $col[1] ); ?></td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+                <p class="rma-desc">Alerjen sütununa yazılabilecek değerler: <code><?php echo esc_html( implode( ', ', array_keys( $this->get_allergen_definitions() ) ) ); ?></code></p>
             </details>
         </div>
     <?php }
@@ -317,7 +319,7 @@ trait RMA_Import_Export_Trait {
         if ( ! current_user_can( 'edit_posts' ) ) return;
 
         if ( empty( $_FILES['rma_menu_json_file'] ) || $_FILES['rma_menu_json_file']['error'] !== UPLOAD_ERR_OK ) {
-            wp_redirect( admin_url( 'edit.php?post_type=rma_menu_item&page=rma_settings&tab=rma_menu_backup&rma_backup_error=1' ) );
+            wp_redirect( $this->admin_page_url( 'qrms-rm-diger', [ 'rma_backup_error' => 1 ], 'rma-yedekleme' ) );
             exit;
         }
 
@@ -326,7 +328,7 @@ trait RMA_Import_Export_Trait {
         unset( $raw );
 
         if ( ! is_array( $data ) || empty( $data['items'] ) || ! is_array( $data['items'] ) ) {
-            wp_redirect( admin_url( 'edit.php?post_type=rma_menu_item&page=rma_settings&tab=rma_menu_backup&rma_backup_error=2' ) );
+            wp_redirect( $this->admin_page_url( 'qrms-rm-diger', [ 'rma_backup_error' => 2 ], 'rma-yedekleme' ) );
             exit;
         }
 
@@ -438,7 +440,13 @@ trait RMA_Import_Export_Trait {
         wp_defer_term_counting( false );
         $this->force_bump_cache_version();
 
-        wp_redirect( admin_url( 'edit.php?post_type=rma_menu_item&page=rma_settings&tab=rma_menu_backup&rma_updated=' . $updated . '&rma_created=' . $created ) );
+        wp_redirect(
+            $this->admin_page_url(
+                'qrms-rm-diger',
+                [ 'rma_updated' => $updated, 'rma_created' => $created ],
+                'rma-yedekleme'
+            )
+        );
         exit;
     }
 
@@ -456,27 +464,32 @@ trait RMA_Import_Export_Trait {
             echo '<div class="error"><p>Dosya okunamadı veya format geçersiz. Lütfen bu sayfadan dışa aktarılmış bir JSON dosyası yükleyin.</p></div>';
         }
         ?>
-        <div class="rma-card">
-            <h2 class="rma-card-title">Dışa Aktar</h2>
-            <p class="rma-card-desc">Tüm menü ürünlerini (fiyat, açıklama, alerjen, kategori, görsel dahil) tek bir JSON dosyası olarak indirir.</p>
-            <a href="<?php echo esc_url( $export_url ); ?>" class="button button-primary">Menüyü JSON Olarak Dışa Aktar</a>
-        </div>
+        <div class="rma-card" id="rma-yedekleme">
+            <h2 class="rma-card-title">Yedekleme</h2>
+            <p class="rma-card-desc">Menünüzün tamamını (fiyat, açıklama, alerjen, kategori ve görseller dahil) tek bir dosyaya indirip saklayın. Bir sorun olursa aynı dosyayı geri yükleyerek menünüzü eski hâline döndürebilirsiniz.</p>
 
-        <div class="rma-card">
-            <h2 class="rma-card-title">İçe Aktar</h2>
-            <p class="rma-card-desc">Daha önce bu sayfadan alınmış bir JSON dosyasını yükleyin. Ürünler ID veya başlık ile eşleştirilir:
-            mevcut bir ürünle eşleşirse <strong>üzerine yazılır</strong>, eşleşme yoksa yeni ürün olarak eklenir.
-            Aynı dosyayı tekrar yüklemek ürünleri çoğaltmaz.</p>
-            <form method="post" enctype="multipart/form-data">
-                <?php wp_nonce_field( 'rma_import_menu_action', 'rma_import_menu_nonce' ); ?>
-                <table class="form-table rma-form-table">
-                    <tr>
-                        <th><label for="rma_menu_json_file">JSON Dosyası</label></th>
-                        <td><input type="file" name="rma_menu_json_file" id="rma_menu_json_file" accept=".json,application/json" required></td>
-                    </tr>
-                </table>
-                <?php submit_button( 'JSON Yükle ve İçe Aktar', 'primary', 'rma_submit_backup', false ); ?>
-            </form>
+            <div class="rma-section">
+                <h3 class="rma-section-title">Yedek Al</h3>
+                <p class="rma-desc">Dosyayı bilgisayarınıza indirir. Güvenli bir yerde saklayın.</p>
+                <p class="rma-actions">
+                    <a href="<?php echo esc_url( $export_url ); ?>" class="button button-primary">Menü Yedeğini İndir</a>
+                </p>
+            </div>
+
+            <div class="rma-section">
+                <h3 class="rma-section-title">Yedeği Geri Yükle</h3>
+                <p class="rma-desc">Daha önce bu sayfadan indirdiğiniz dosyayı yükleyin. Aynı ürün varsa <strong>üzerine yazılır</strong>, yoksa yeni eklenir — aynı dosyayı tekrar yüklemek ürünleri çoğaltmaz.</p>
+                <form method="post" enctype="multipart/form-data">
+                    <?php wp_nonce_field( 'rma_import_menu_action', 'rma_import_menu_nonce' ); ?>
+                    <table class="form-table rma-form-table">
+                        <tr>
+                            <th><label for="rma_menu_json_file">Yedek Dosyası</label></th>
+                            <td><input type="file" name="rma_menu_json_file" id="rma_menu_json_file" accept=".json,application/json" required></td>
+                        </tr>
+                    </table>
+                    <?php submit_button( 'Yedeği Geri Yükle', 'primary', 'rma_submit_backup', false ); ?>
+                </form>
+            </div>
         </div>
     <?php }
 }

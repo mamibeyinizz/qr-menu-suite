@@ -123,33 +123,64 @@ altındadır — eklenti artık ayrı bir top-level "Menü" menüsü açmaz:
 ```
 QR Menü
 ├ Genel Bakış
-├ Restoran Menü      → sekmeli ayar ekranı
-├ — Ürünler
-├ — Ürün Ekle
-├ — Kategoriler
-├ — Alerjenler
+├ Restoran Menü      → başlangıç ekranı (yedi işe giden kartlar)
+├ — Ürünlerim        → edit.php?post_type=rma_menu_item
+├ — Ürün Ekle        → post-new.php?post_type=rma_menu_item
+├ — Kategoriler      → edit-tags.php?taxonomy=rma_category
+├ — Alerjenler       → edit-tags.php?taxonomy=rma_allergen
+├ — Görünüm          → qrms-rm-gorunum
+├ — Öne Çıkanlar     → qrms-rm-one-cikanlar
+├ — Diğer Ayarlar    → qrms-rm-diger
 ├ … (diğer aktif modüller)
 └ Genel Ayarlar
 ```
 
-WordPress admin menüsü iki seviyelidir; bir alt menünün altına giriş eklenemez.
-Bu yüzden ürün/kategori satırları "QR Menü"nün doğrudan alt öğesidir ve modüle
-ait olduklarını göstermek için etiketleri `—` ile öneklenir. Ayrı bir "Ayarlar"
-satırı yoktur: "Restoran Menü" girişi zaten o ekranı açar.
+Yedi satırın hepsi `add_submenu_page()` ile kaydedilmiş **gerçek, ayrı
+sayfalardır**; JS ile gizlenip gösterilen sekme yoktur. WordPress admin menüsü
+iki seviyelidir ve bir alt menünün altına giriş eklenemez; bu yüzden satırlar
+"QR Menü"nün doğrudan alt öğesidir ve modüle ait olduklarını göstermek için
+etiketleri `—` ile öneklenir. "Restoran Menü" girişinin kendisi, teknik bilgisi
+olmayan kullanıcı için yedi işi kartlar hâlinde listeleyen başlangıç ekranını
+açar.
+
+Sayfaların hangi eski sekmeden geldiği:
+
+| Sayfa | Önceki yeri |
+| --- | --- |
+| Görünüm | "Genel Ayarlar" sekmesi (Renkler + Tipografi + Hazır Paletler iç sekmeleri) ve "Kayar Başlık" sekmesi |
+| Öne Çıkanlar | "Öneriler" sekmesi + menüden erişilemeyen `qmo_slide` (Öne Çıkan Slider) ekranı |
+| Diğer Ayarlar | "Kategori Sıralaması", "İçe/Dışa Aktar" ve "Yedekleme" sekmeleri, üç bölüm hâlinde |
+
+Sayfa tanımı tek yerdedir (`RMA_Admin_Pages_Trait::get_subpages()`); suite
+menüsündeki sunum (önek, sıra) `module.php` içindeki menü glue'unda,
+suite yokken (eski tekil eklenti kurulumu) kayıt `add_admin_menus()` içinde
+yapılır. Alanların hiçbiri düşmedi: az kullanılanlar `<details>` bölümlerine
+alındı.
 
 CPT `show_in_menu => QRMS_Admin::MENU_SLUG` ile kaydolur. Çekirdek bu durumda
 (`_add_post_type_submenus()`) yalnızca ürün listesi satırını ekler ve onu
 "Genel Bakış"tan önce diziye sokar; "Ürün Ekle" ile taksonomi satırları hiç
 oluşmaz (onlar yalnızca top-level menü alan CPT'ler için üretilir, bu yüzden
-taksonomilerin kendi `show_in_menu` ayarını değiştirmek işe yaramaz). Eksik üç
-satırın eklenmesi, etiketleme, sıralama ve menü vurgusu (`parent_file` /
+taksonomilerin kendi `show_in_menu` ayarını değiştirmek işe yaramaz). Eksik
+satırların eklenmesi, etiketleme, sıralama ve menü vurgusu (`parent_file` /
 `submenu_file`) `modules/restoran-menu/module.php` içindeki menü glue'unda
-yapılır — ekran kodlarına dokunulmaz. Sıralama saf bir fonksiyona ayrıldığı için
-testlerde doğrulanır.
+yapılır — ekran kodlarına dokunulmaz. Sıra listesi
+(`qrms_module_restoran_menu_child_slugs()`) ve sıralama saf birer fonksiyona
+ayrıldığı için testlerde doğrulanır.
 
-Eski `edit.php?post_type=rma_menu_item&page=rma_settings` adresi çalışmaya devam
-eder (içe aktarma yönlendirmeleri hâlâ oraya düşer); ekranı basan metot tektir
-(`render_admin_page()`), suite menüsündeki giriş de onu çağırır.
+Eski adresler çalışmaya devam eder: `page=rma_settings` ve altı eski sekme
+slug'ı (`rma_color_settings`, `rma_nav_design`, `rma_category_order`,
+`rma_suggestions_settings`, `rma_csv_import`, `rma_menu_backup`) gizli sayfa
+olarak kayıtlı kalır ve içeriğin taşındığı yeni sayfanın ilgili bölümüne
+yönlendirir — eski `&tab=` parametresi de dikkate alınır. İçe aktarma
+yönlendirmeleri artık doğrudan yeni sayfalara düşer (`admin_page_url()`, suite
+var/yok durumuna göre doğru adresi üretir).
+
+Yönetim ekranları mobil tarayıcı için uyarlanmıştır: `pointer: coarse`
+medya sorgusunda dokunma alanları en az 44px'e çıkar, dar ekranda `form-table`
+satırları alt alta bloklara açılır, geniş tablolar kendi içinde yatay kayar
+(`.rma-table-scroll`) ve kart ızgaraları tek sütuna iner. WordPress admin'in
+kendi mobil davranışına müdahale edilmez.
 
 > **Dağıtım notu:** `restoran-menu` modülü aktifken eski tekil **QR MENÜ**
 > eklentisi devre dışı bırakılmalıdır — modül onun yerini alır. Yan yana

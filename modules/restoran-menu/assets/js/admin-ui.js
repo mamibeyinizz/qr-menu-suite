@@ -1,11 +1,12 @@
 /* =====================================================================
    QR MENÜ — ORTAK ADMIN ARAYÜZ SCRIPT'İ
 
-   Daha önce dört ayrı yere dağılmıştı:
-     - admin_scripts() içindeki inline jQuery bloğu
-     - Ayarlar sayfasının kendi <script> bloğu (iç sekmeler + paletler)
-     - Kayar Başlık sayfasının <script> bloğu (preset uygulama)
-     - Öneriler sayfasının <script> bloğu (mod + kaydetme)
+   Modülün yönetim ekranlarının tamamına hizmet eder: hazır temalar,
+   renk seçiciler, kategori çubuğu önizlemesi, kategori sıralaması,
+   öne çıkan ürün seçimi ve örnek CSV indirme.
+
+   Sayfalar artık gerçek, ayrı WordPress sayfalarıdır — JS ile gizlenip
+   gösterilen sekme motoru kaldırıldı.
 
    Nonce ve ajax adresi PHP tarafından `RMA_ADMIN` nesnesiyle verilir
    (bkz. admin_scripts() içindeki wp_add_inline_script(..., 'before')).
@@ -40,60 +41,6 @@
         } catch (e) {
             /* URL API yoksa sessizce geç — bildirim yine de basılmış olur */
         }
-    }
-
-    /* -----------------------------------------------------------------
-       GENEL SEKME MOTORU
-       Hem ana sekmeleri hem de Ayarlar sayfasının iç sekmelerini aynı
-       kod sürer; fark yalnızca sınıf/veri adlarında.
-    ----------------------------------------------------------------- */
-    function initTabs(options) {
-        var $buttons = $(options.button);
-        if (!$buttons.length) return;
-
-        function activate(id, updateUrl) {
-            $buttons.each(function () {
-                var $btn = $(this);
-                var isActive = String($btn.data(options.dataKey)) === String(id);
-                $btn.toggleClass('is-active', isActive);
-                $btn.attr('aria-selected', isActive ? 'true' : 'false');
-            });
-
-            $(options.panel).each(function () {
-                var $panel = $(this);
-                var isActive = String($panel.data(options.panelKey)) === String(id);
-                $panel.prop('hidden', !isActive);
-            });
-
-            if (updateUrl && options.urlParam && window.history && window.history.replaceState) {
-                try {
-                    var url = new URL(window.location.href);
-                    url.searchParams.set(options.urlParam, id);
-                    window.history.replaceState({}, '', url);
-                } catch (e) {
-                    /* URL API yoksa sessizce geç — sekme yine çalışır */
-                }
-            }
-        }
-
-        $buttons.on('click', function (e) {
-            e.preventDefault();
-            activate($(this).data(options.dataKey), true);
-        });
-
-        // Klavye ile sol/sağ ok gezinmesi
-        $buttons.on('keydown', function (e) {
-            if (e.which !== 37 && e.which !== 39) return;
-            var idx = $buttons.index(this);
-            var next = e.which === 39 ? idx + 1 : idx - 1;
-            if (next < 0) next = $buttons.length - 1;
-            if (next >= $buttons.length) next = 0;
-            $buttons.eq(next).trigger('click').trigger('focus');
-        });
-
-        var initial = $buttons.filter('.is-active').first().data(options.dataKey);
-        if (typeof initial === 'undefined') initial = $buttons.first().data(options.dataKey);
-        activate(initial, false);
     }
 
     /* -----------------------------------------------------------------
@@ -253,11 +200,23 @@
     }
 
     /* -----------------------------------------------------------------
-       AYARLAR — HAZIR PALETLER
+       GÖRÜNÜM — HAZIR TEMALAR
+       Tema kartına dokununca renk seçicilere değerler yazılır; kullanıcı
+       "Görünümü Kaydet" ile onaylar. Renklerin bir kısmı "Diğer renk
+       ayarları" bölümünün içinde olabildiği için seçilen kart işaretlenir —
+       aksi hâlde tıklamanın işe yarayıp yaramadığı belli olmazdı.
     ----------------------------------------------------------------- */
     function initPalettes() {
-        $('.rma-palette-btn').on('click', function () {
+        var $cards = $('.rma-theme-card');
+        if (!$cards.length) return;
+
+        $cards.on('click', function () {
             var p = $(this).data('palette');
+            if (!p) return;
+
+            $cards.removeClass('is-selected');
+            $(this).addClass('is-selected');
+
             $.each(p, function (key, val) {
                 setPickerValue($('#rma_c_' + key), val);
             });
@@ -319,6 +278,14 @@
             // okumuyoruz: wpColorPicker('color', …) input.val()'i ne zaman
             // güncellediğine bağlı kalmamak için taze değerleri geçiriyoruz.
             syncPreview(vals);
+        });
+
+        // Kart bir <div> olduğu için klavye erişimi elle verilir
+        // (role="button" + tabindex="0" işaretlemesinin karşılığı).
+        $presets.on('keydown', function (e) {
+            if (e.which !== 13 && e.which !== 32) return;
+            e.preventDefault();
+            $(this).trigger('click');
         });
 
         $(document).on('change', 'input[name="rma_nav_design_settings[active_indicator]"]', syncIndicatorSelection);
@@ -408,22 +375,35 @@
     /* -----------------------------------------------------------------
        BAŞLAT
     ----------------------------------------------------------------- */
+    /* -----------------------------------------------------------------
+       BÖLÜM BAĞLANTILARI
+       "Diğer Ayarlar" sayfasındaki kısayollar bir karta atlar; hedef kart
+       kapalı bir açılır bölümün içindeyse önce o bölüm açılır.
+    ----------------------------------------------------------------- */
+    function openTargetDetails() {
+        var hash = window.location.hash;
+        if (!hash || hash.length < 2) return;
+
+        var target;
+        try {
+            target = document.querySelector(hash);
+        } catch (e) {
+            return;
+        }
+        if (!target) return;
+
+        var parent = target.closest ? target.closest('details') : null;
+        while (parent) {
+            parent.open = true;
+            parent = parent.parentElement && parent.parentElement.closest
+                ? parent.parentElement.closest('details')
+                : null;
+        }
+
+        target.scrollIntoView();
+    }
+
     $(function () {
-        initTabs({
-            button: '.rma-tab',
-            panel: '.rma-tabpanel',
-            dataKey: 'rmaTab',
-            panelKey: 'rmaPanel',
-            urlParam: 'tab'
-        });
-
-        initTabs({
-            button: '.rma-subtab',
-            panel: '.rma-subtabpanel',
-            dataKey: 'rmaSubtab',
-            panelKey: 'rmaSubpanel'
-        });
-
         stripNoticeArgs();
         initColorPickers();
         initStatusToggle();
@@ -433,5 +413,7 @@
         initNavDesignPresets();
         initSuggestions();
         initCsvSample();
+        openTargetDetails();
+        $(window).on('hashchange', openTargetDetails);
     });
 })(jQuery);
