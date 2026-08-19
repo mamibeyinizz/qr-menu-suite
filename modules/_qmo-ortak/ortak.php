@@ -16,11 +16,18 @@
  * dursaydı, o modül lisanslı değilken chatbot her render'da fatal verirdi.
  * Kilit ekranı ve sayfa kilidi (masa-dogrulama.php) modülünde kalır.
  *
- * class-qmo-firestore.php da aynı gerekçeyle buradadır: qr-analiz'in REST ucu
- * çağıranın kimliğini ve rolünü QMO_Firestore üzerinden doğrular, ama sınıfı
- * henüz taşınmamış dört dosya daha kullanır (rest-order, ajax-waiter-bill,
- * rest-create-user, admin/settings-page). Tek modülün altında dursaydı o
- * modül lisanslı değilken diğerleri fatal verirdi.
+ * class-qmo-firestore.php da aynı gerekçeyle buradadır: sınıfı iki modül
+ * birden kullanır — qr-analiz (rest-analytics, rest-create-user: ID token
+ * doğrulama + rol okuma) ve qr-chatbot (rest-order, ajax-order,
+ * ajax-waiter-bill: çağrı ve sipariş yazma). Tek modülün altında dursaydı o
+ * modül lisanslı değilken diğeri fatal verirdi.
+ *
+ * firebase-ayarlari.php (sınıfın okuduğu qmo_branch_id / qmo_firebase_sa /
+ * qmo_ana_site option'larının kaydı ve ortak form bölümü) bilinçli olarak
+ * BURADAN yüklenmez: yalnızca yönetim tarafında gerekir, bu yüzden onu
+ * ihtiyacı olan modül kendi module.php'sindeki is_admin() dalında
+ * require_once eder (qr-masa'nın masalar-sayfasi.php'yi yüklemesiyle aynı
+ * düzen).
  *
  * Dosya içerikleri eski eklentiden AYNEN taşındı. Hepsi function_exists() /
  * defined() guard'lı olduğundan tekrarlı yükleme ve eski qr-menu-official

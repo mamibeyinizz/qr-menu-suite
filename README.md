@@ -92,8 +92,8 @@ zamanlama doğrudur.
 | `yorum-feedback` | Çoklu kriter yorumlar, Google yönlendirme + ödül kodları, dinamik form oluşturucu, `[qr_menu_reviews]`, `[qr_menu_contact]`, `[qr_menu_form]` | ✔ Tüm Yorumlar ekranı |
 | `qr-masa` | Masa kayıtları (CRUD), masa QR adresleri, `[qr_aktif_masa]` | ✔ Masalar ekranı |
 | `qr-masa-oturum-guvenligi` | Sahte QR reddi, kilit ekranı, sayfa kilidi | ✔ Oturum limitleri |
-| `qr-analiz` | `POST /wp-json/qrservis/v1/analytics` — şube analitiği özeti | — (placeholder) |
-| `qr-chatbot` | `[gemini_chatbot]` kısa kodu, Gemini AJAX ucu | — (placeholder) |
+| `qr-analiz` | `POST /wp-json/qrservis/v1/analytics` — şube analitiği özeti; `POST /wp-json/qrservis/v1/create-user` — garson/müdür hesabı açma (yalnızca ana sitede) | ✔ Uç durumu + Firebase ayarları |
+| `qr-chatbot` | `[gemini_chatbot]` kısa kodu, Gemini AJAX ucu, garson/hesap çağrısı, sipariş ucu (`POST /wp-json/qrservis/v1/order`) | ✔ Chatbot ayarları + Firebase ayarları |
 
 Kodları kaynak eklentilerinden **aynen** taşındı (`restoran-menu` 12-menu
 deposundaki QR MENÜ eklentisinden, `yorum-feedback` `yorumfeedback`
@@ -102,9 +102,17 @@ eklentisinden); yalnızca yeni klasör konumuna göre yol string'leri düzeltild
 `yorum-feedback`'in 29 kaynak dosyasının hepsi kaynağıyla **birebir aynıdır**;
 modüle özgü her şey `module.php` içindedir.
 
-`qr-analiz` ve `qr-chatbot` placeholder kalır çünkü ayar sayfaları henüz
-taşınmadı; ayarlar eskisi gibi option'lardan okunmaya devam eder
-(`qmo_firebase_sa` / `qmo_branch_id`, `gemini_api_key` vb.).
+`qr-analiz` ve `qr-chatbot` artık placeholder değildir: eski eklentinin
+`admin/settings-page.php` ekranı ikiye ayrıldı. Chatbot'a özgü kısım
+(`gemini_*` alanları, renk şablonları, canlı önizleme) `qr-chatbot`
+altındadır; her iki modülün de ihtiyaç duyduğu Firebase/şube alanları
+`_qmo-ortak/firebase-ayarlari.php` içindeki ortak bölümdedir ve iki ekranda
+da görünür. Option adları değişmedi — canlı sitelerdeki kayıtlı değerler
+(`qmo_firebase_sa` / `qmo_branch_id`, `gemini_api_key` vb.) korunur.
+
+Chatbot'un menü verisi yükleme bölümü (`gemini_menu_json_data`) bu göçte
+taşınmadı; kaynak dosyası hâlâ eski eklentidedir ve ayar sayfası bölümü
+yalnızca o dosya yüklüyse basar.
 
 `restoran-menu`'nün ürün, kategori ve ayar ekranlarının tamamı suite menüsünün
 altındadır — eklenti artık ayrı bir top-level "Menü" menüsü açmaz:
@@ -188,13 +196,22 @@ kuruludur, oysa modüller birbirinden bağımsız lisanslanır. Sınıf yalnızc
 chatbot her render'da ölümcül hata verirdi. Oturumun *zorlanması* (kilit
 ekranı, sayfa kilidi) o modülde kalır.
 
-`QMO_Firestore` aynı gerekçeyle burada durur: `qr-analiz`'in REST ucu
-çağıranın kimliğini ve rolünü onun üzerinden doğrular, ama sınıfı henüz
-taşınmamış dört dosya daha kullanır (`rest-order`, `ajax-waiter-bill`,
-`rest-create-user`, `admin/settings-page`). Service account JSON'ı koda
+`QMO_Firestore` aynı gerekçeyle burada durur: sınıfı iki modül birden
+kullanır — `qr-analiz` (`rest-analytics`, `rest-create-user`: Firebase ID
+token doğrulama ve rol okuma) ve `qr-chatbot` (`rest-order`, `ajax-order`,
+`ajax-waiter-bill`: çağrı ve sipariş yazma). Service account JSON'ı koda
 gömülmez; sırasıyla `QMO_FIREBASE_SA_JSON` sabiti (wp-config),
 `qmo_firebase_sa` option'ı ve eski `qrservis_service_account_json()`
 snippet'i aranır.
+
+Sınıfın okuduğu üç option'ın (`qmo_branch_id`, `qmo_firebase_sa`,
+`qmo_ana_site`) kaydı ve ortak form bölümü `firebase-ayarlari.php`
+içindedir. Kendi ayar grubunda (`qmo_firebase_grup`) ve kendi `<form>`'unda
+durur, çünkü `options.php` gönderilen grubun *tüm* option'larını yeniden
+yazar: bölüm hem `qr-chatbot` hem `qr-analiz` ekranında göründüğü için ortak
+bir grup paylaşsalardı birinden kaydetmek diğerinin alanlarını silerdi. Bu
+dosya `ortak.php` ile değil, ihtiyacı olan modülün `module.php`'sindeki
+`is_admin()` dalıyla yüklenir.
 
 Taşınan kodun tamamı `class_exists()` / `function_exists()` / `defined()`
 guard'lıdır: eski `qr-menu-official` eklentisi aynı sitede hâlâ aktifse
@@ -238,8 +255,8 @@ modules/
   yorum-feedback/            Yorumlar, ödül kodları, form oluşturucu + beş yönetim ekranı
   qr-masa/                   Masa kayıtları + Masalar yönetim ekranı
   qr-masa-oturum-guvenligi/  Masa doğrulama, kilit ekranı + oturum ayarları
-  qr-analiz/                 Şube analitiği REST ucu
-  qr-chatbot/                Gemini chatbot kısa kodu ve AJAX ucu
+  qr-analiz/                 Analitik + kullanıcı oluşturma REST uçları, Firebase ayar ekranı
+  qr-chatbot/                Gemini chatbot kısa kodu, sohbet/çağrı/sipariş uçları + ayar ekranı
 assets/css/admin.css         Mobil öncelikli admin stilleri (dokunma ≥44px)
 assets/js/admin.js           Form gönderiminde buton kilidi (opsiyonel iyileştirme)
 tests/                       WordPress'siz çalışan stub tabanlı testler
