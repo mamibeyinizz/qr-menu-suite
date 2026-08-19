@@ -1,7 +1,11 @@
 /**
- * QR Menu Suite — admin stilleri.
+ * QR Menu Suite — admin sayfa stilleri.
  *
  * Mobil öncelikli: tek sütun, büyük dokunma hedefleri (>= 44px), tablo yok.
+ *
+ * Tüm kurallar .qrms-* önekli sınıflara bağlıdır. WordPress sol menüsüne
+ * (#adminmenu, .wp-has-submenu, .wp-submenu) buradan kural yazılmaz;
+ * native aç/kapa assets/css/admin-menu.css ile çekirdeğe bırakılır.
  */
 
 .qrms-wrap {

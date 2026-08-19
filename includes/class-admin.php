@@ -94,6 +94,8 @@ class QRMS_Admin {
 		add_action( 'admin_menu', array( __CLASS__, 'register_menu' ) );
 		add_action( 'admin_menu', array( __CLASS__, 'ensure_menu_registered' ), 999 );
 		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_assets' ) );
+		// Diğer modül stillerinden sonra yüklensin ki native menü gizleme kazansın.
+		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_admin_menu_css' ), 100 );
 	}
 
 	/**
@@ -247,6 +249,24 @@ class QRMS_Admin {
 			array( __CLASS__, 'render_overview' ),
 			self::get_menu_icon(),
 			self::MENU_POSITION
+		);
+	}
+
+	/**
+	 * WordPress sol menüsü için native flyout gizlemeyi geri yükler.
+	 *
+	 * Sayfa kartı stillerinden ayrıdır ve her yönetim ekranında yüklenir:
+	 * alt menü takılı kalınca çakışma başka bir üst menüde (Eklentiler vb.)
+	 * görünür.
+	 *
+	 * @return void
+	 */
+	public static function enqueue_admin_menu_css() {
+		wp_enqueue_style(
+			'qrms-admin-menu',
+			QRMS_PLUGIN_URL . 'assets/css/admin-menu.css',
+			array( 'admin-menu' ),
+			QRMS_VERSION
 		);
 	}
 

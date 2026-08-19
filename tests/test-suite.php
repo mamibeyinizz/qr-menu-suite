@@ -28,6 +28,7 @@ function qrms_reset() {
 	$GLOBALS['qrms_test']['submenus']   = array();
 	$GLOBALS['qrms_test']['removed']    = array();
 	$GLOBALS['qrms_test']['redirects']  = array();
+	$GLOBALS['qrms_test']['styles']     = array();
 	$GLOBALS['qrms_test']['http']       = null;
 	$GLOBALS['qrms_test']['http_calls'] = array();
 	$GLOBALS['qrms_test']['can']        = true;
@@ -775,6 +776,51 @@ qrms_test(
 		QRMS_Admin::ensure_menu_registered();
 
 		qrms_assert_same( 1, count( $GLOBALS['qrms_test']['menus'] ), 'tek kayıt olmalı' );
+	}
+);
+
+qrms_test(
+	'sayfa stilleri WordPress sol menüsüne kural yazmaz',
+	function () {
+		$css = file_get_contents( QRMS_PLUGIN_DIR . 'assets/css/admin.css' );
+		$css = preg_replace( '!\s*/\*.*?\*/!s', '', $css );
+
+		qrms_assert_false( false !== strpos( $css, '#adminmenu' ), '#adminmenu yok' );
+		qrms_assert_false( false !== strpos( $css, '.wp-submenu' ), '.wp-submenu yok' );
+		qrms_assert_false( false !== strpos( $css, '.wp-has-submenu' ), '.wp-has-submenu yok' );
+	}
+);
+
+qrms_test(
+	'admin-menu.css native flyout gizlemeyi geri yükler',
+	function () {
+		$css = file_get_contents( QRMS_PLUGIN_DIR . 'assets/css/admin-menu.css' );
+
+		qrms_assert_true( false !== strpos( $css, '#adminmenu' ), '#adminmenu' );
+		qrms_assert_true( false !== strpos( $css, '.wp-submenu' ), '.wp-submenu' );
+		qrms_assert_true( false !== strpos( $css, 'top: -1000em' ), 'gizleme top:-1000em' );
+		qrms_assert_true( false !== strpos( $css, 'wp-not-current-submenu' ), 'yalnızca current olmayan' );
+		qrms_assert_true( false !== strpos( $css, '.opensub' ), 'opensub ile açılır' );
+	}
+);
+
+qrms_test(
+	'sol menü stili her admin ekranında, sayfa stilleri yalnızca plugin ekranında yüklenir',
+	function () {
+		$_GET = array();
+		QRMS_Admin::enqueue_admin_menu_css();
+		QRMS_Admin::enqueue_assets();
+
+		qrms_assert_true( in_array( 'qrms-admin-menu', $GLOBALS['qrms_test']['styles'], true ), 'menü stili' );
+		qrms_assert_false( in_array( 'qrms-admin', $GLOBALS['qrms_test']['styles'], true ), 'sayfa stili yüklenmemeli' );
+
+		$GLOBALS['qrms_test']['styles'] = array();
+		$_GET                           = array( 'page' => 'qrms-overview' );
+		QRMS_Admin::enqueue_admin_menu_css();
+		QRMS_Admin::enqueue_assets();
+
+		qrms_assert_true( in_array( 'qrms-admin-menu', $GLOBALS['qrms_test']['styles'], true ), 'menü stili plugin ekranında' );
+		qrms_assert_true( in_array( 'qrms-admin', $GLOBALS['qrms_test']['styles'], true ), 'sayfa stili plugin ekranında' );
 	}
 );
 

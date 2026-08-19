@@ -1,0 +1,117 @@
+/**
+ * QR Menu Suite — WordPress sol menüsü.
+ *
+ * Suite ve modül stilleri native #adminmenu flyout'unu (özellikle
+ * .wp-has-submenu / .wp-submenu display-position-top) ezmesin diye
+ * çekirdekteki gizleme modelini geri yükler: kapalı alt menü
+ * top:-1000em ile sahneden çıkar; yalnızca .opensub, :focus, katlanmamış
+ * aktif menü veya (no-js) :hover görünür kılar.
+ *
+ * Sayfa kartları, formlar ve modül UI'si burada yoktur — onlar
+ * assets/css/admin.css ve .qrms- / .rma- / .qmo- önekli dosyalardadır.
+ */
+
+/* -------------------------------------------------------------------------
+   Masaüstü / katlanmamış (≥783px): çekirdek gizlemeyi top ile yapar,
+   display ile değil. display:block dayatması flyout'u kapanmaz bırakır.
+   ------------------------------------------------------------------------- */
+@media screen and (min-width: 783px) {
+
+	#adminmenumain #adminmenu li.wp-not-current-submenu:not(.opensub) > .wp-submenu {
+		top: -1000em;
+		left: 160px;
+		position: absolute;
+	}
+
+	.js #adminmenumain #adminmenu li.wp-not-current-submenu.opensub > .wp-submenu,
+	#adminmenumain #adminmenu li.wp-not-current-submenu > a.menu-top:focus + .wp-submenu,
+	.no-js #adminmenumain #adminmenu li.wp-not-current-submenu.wp-has-submenu:hover > .wp-submenu {
+		top: -1px;
+		left: 160px;
+		position: absolute;
+		z-index: 9999;
+	}
+
+	/*
+	 * Katlanmış kenar çubuğu: aktif menünün alt öğesi de flyout'tur.
+	 * Inline (position:relative) kalırsa başka bir üst menünün flyout'u
+	 * ile üst üste biner.
+	 */
+	.folded #adminmenumain #adminmenu li.wp-has-current-submenu:not(.opensub) > .wp-submenu {
+		top: -1000em;
+		left: 36px;
+		position: absolute;
+	}
+
+	.folded.js #adminmenumain #adminmenu li.wp-has-current-submenu.opensub > .wp-submenu,
+	.folded #adminmenumain #adminmenu li.wp-has-current-submenu > a.menu-top:focus + .wp-submenu,
+	.folded.no-js #adminmenumain #adminmenu li.wp-has-current-submenu:hover > .wp-submenu {
+		top: -1px;
+		left: 36px;
+		position: absolute;
+		z-index: 9999;
+	}
+}
+
+@media only screen and (min-width: 783px) and (max-width: 960px) {
+
+	.auto-fold #adminmenumain #adminmenu li.wp-has-current-submenu:not(.opensub) > .wp-submenu {
+		top: -1000em;
+		left: 36px;
+		position: absolute;
+	}
+
+	.auto-fold.js #adminmenumain #adminmenu li.wp-has-current-submenu.opensub > .wp-submenu,
+	.auto-fold #adminmenumain #adminmenu li.wp-has-current-submenu > a.menu-top:focus + .wp-submenu,
+	.auto-fold.no-js #adminmenumain #adminmenu li.wp-has-current-submenu:hover > .wp-submenu {
+		top: -1px;
+		left: 36px;
+		position: absolute;
+		z-index: 9999;
+	}
+
+	.auto-fold #adminmenumain #adminmenu li.wp-not-current-submenu:not(.opensub) > .wp-submenu {
+		top: -1000em;
+		left: 36px;
+		position: absolute;
+	}
+
+	.auto-fold.js #adminmenumain #adminmenu li.wp-not-current-submenu.opensub > .wp-submenu,
+	.auto-fold #adminmenumain #adminmenu li.wp-not-current-submenu > a.menu-top:focus + .wp-submenu,
+	.auto-fold.no-js #adminmenumain #adminmenu li.wp-not-current-submenu.wp-has-submenu:hover > .wp-submenu {
+		top: -1px;
+		left: 36px;
+		position: absolute;
+		z-index: 9999;
+	}
+}
+
+/* -------------------------------------------------------------------------
+   Dar ekran: çekirdek display:none / .wp-menu-open display:block kullanır.
+   Flyout top kuralları burada accordion'u bozmasın.
+   ------------------------------------------------------------------------- */
+@media screen and (max-width: 782px) {
+
+	#adminmenumain #adminmenu .wp-submenu {
+		position: relative;
+		left: auto;
+		top: auto;
+		display: none;
+		box-shadow: none;
+	}
+
+	.auto-fold #adminmenumain #adminmenu .wp-menu-open > .wp-submenu,
+	.auto-fold #adminmenumain #adminmenu .selected > .wp-submenu,
+	.wp-responsive-open #adminmenumain #adminmenu .wp-menu-open > .wp-submenu {
+		display: block;
+		position: relative;
+		top: 0;
+		left: auto;
+	}
+
+	/* Başka bir üst menü açılınca öncekinin alt menüsü kapanır. */
+	.auto-fold #adminmenumain #adminmenu li.wp-not-current-submenu:not(.wp-menu-open):not(.selected) > .wp-submenu,
+	.wp-responsive-open #adminmenumain #adminmenu li.wp-not-current-submenu:not(.wp-menu-open):not(.selected) > .wp-submenu {
+		display: none;
+	}
+}
