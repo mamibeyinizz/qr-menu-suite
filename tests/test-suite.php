@@ -1083,6 +1083,49 @@ qrms_test(
 );
 
 /* ---------------------------------------------------------------------------
+ * 6b. Admin CSS — WordPress sol menüsüne müdahale etmez
+ * ------------------------------------------------------------------------ */
+
+echo "\nadmin CSS kapsamı\n";
+
+/**
+ * Admin stil dosyalarında WordPress sol menüsünü hedefleyen seçici var mı?
+ *
+ * @param string $relative_path QRMS_PLUGIN_DIR'ye göre yol.
+ * @return void
+ */
+function qrms_assert_admin_css_skips_wp_menu( $relative_path ) {
+	$contents = file_get_contents( QRMS_PLUGIN_DIR . $relative_path );
+	// Yorum satırlarındaki uyarı metinlerini sayma.
+	$contents = preg_replace( '/\/\*.*?\*\//s', '', $contents );
+	$needles  = array( '#adminmenu', '.wp-submenu', '.wp-has-submenu', '#adminmenuwrap', '#adminmenuback' );
+
+	foreach ( $needles as $needle ) {
+		qrms_assert_false(
+			false !== strpos( $contents, $needle ),
+			$relative_path . ' içinde ' . $needle . ' bulunmamalı'
+		);
+	}
+}
+
+qrms_test(
+	'admin CSS dosyaları #adminmenu / .wp-submenu kuralları içermez',
+	function () {
+		$files = array(
+			'assets/css/admin.css',
+			'modules/_qmo-ortak/assets/css/admin.css',
+			'modules/qr-calisma-saatleri/assets/css/admin.css',
+			'modules/restoran-menu/assets/css/admin-ui.css',
+			'modules/restoran-menu/assets/css/rma-admin-list.css',
+		);
+
+		foreach ( $files as $file ) {
+			qrms_assert_admin_css_skips_wp_menu( $file );
+		}
+	}
+);
+
+/* ---------------------------------------------------------------------------
  * 7. Yardımcılar
  * ------------------------------------------------------------------------ */
 
