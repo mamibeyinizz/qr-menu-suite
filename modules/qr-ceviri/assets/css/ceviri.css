@@ -1,0 +1,148 @@
+/**
+ * QRMenu dil seçici.
+ *
+ * Sınıf adları v1.7 ile aynı bırakıldı; yalnızca ayara bağlı renkler CSS
+ * değişkenine taşındı (wp_add_inline_style ile besleniyor).
+ *
+ * Google Translate'e ait .goog-* / .skiptranslate gizleme kuralları v2.0'da
+ * kaldırıldı — widget artık yüklenmiyor. Özellikle eski
+ * "body { top:0 !important; position:static !important }" kuralı sabit
+ * (sticky) başlıklarla çakışabildiği için geri getirilmemeli.
+ */
+
+.qrmenu-lang-dropdown {
+	position: relative;
+	display: inline-block;
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+/* Ana buton — Bayrak + Metin modu */
+.qrmenu-current-btn {
+	background-color: var(--rma-ceviri-bg-text, #111111);
+	color: #fff;
+	padding: 10px 15px;
+	border-radius: 6px;
+	border: none !important;
+	outline: none !important;
+	box-shadow: none !important;
+	font-weight: 500;
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 10px;
+	font-size: 14px;
+	min-width: 140px;
+	transition: opacity 0.2s;
+	-webkit-appearance: none;
+	appearance: none;
+}
+
+.qrmenu-current-btn:hover {
+	opacity: 0.88;
+}
+
+.qrmenu-current-left {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.qrmenu-arrow {
+	font-size: 10px;
+}
+
+/* Sadece Bayrak — Kare mod */
+.qrmenu-flags-only-mod .qrmenu-current-btn {
+	background-color: var(--rma-ceviri-bg-only, #111111);
+	min-width: 44px;
+	width: 44px;
+	height: 44px;
+	padding: 0;
+	justify-content: center;
+	border-radius: 6px;
+}
+
+.qrmenu-flags-only-mod .qrmenu-current-left {
+	gap: 0;
+}
+
+.qrmenu-flags-only-mod .qrmenu-current-text,
+.qrmenu-flags-only-mod .qrmenu-arrow {
+	display: none;
+}
+
+.qrmenu-flags-only-mod .qrmenu-current-flag {
+	font-size: 22px;
+	line-height: 1;
+}
+
+/* Dropdown panel */
+.qrmenu-options-panel {
+	display: none;
+	position: absolute;
+	top: calc(100% + 6px);
+	left: 0;
+	width: auto;
+	min-width: 160px;
+	background-color: #141414;
+	border: 1px solid #2a2a2a;
+	border-radius: 8px;
+	box-shadow: 0 12px 36px rgba(0, 0, 0, 0.65);
+	z-index: 999999;
+	flex-direction: column;
+	overflow-y: auto;
+	max-height: 360px;
+}
+
+.qrmenu-options-panel::-webkit-scrollbar {
+	width: 4px;
+}
+
+.qrmenu-options-panel::-webkit-scrollbar-track {
+	background: #141414;
+}
+
+.qrmenu-options-panel::-webkit-scrollbar-thumb {
+	background: #333;
+	border-radius: 4px;
+}
+
+.qrmenu-options-panel.open {
+	display: flex;
+}
+
+/* Panel içi butonlar */
+.qrmenu-options-panel button {
+	background: transparent !important;
+	border: none !important;
+	border-bottom: 1px solid #222 !important;
+	outline: none !important;
+	box-shadow: none !important;
+	color: #ccc;
+	padding: 11px 14px;
+	font-size: 13px;
+	cursor: pointer;
+	text-align: left;
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	transition: background 0.18s, color 0.18s;
+	width: 100%;
+	-webkit-appearance: none;
+	appearance: none;
+}
+
+.qrmenu-options-panel button:last-child {
+	border-bottom: none !important;
+}
+
+.qrmenu-options-panel button:hover {
+	background: #2a2a2a !important;
+	color: #fff;
+}
+
+.qrmenu-options-panel button[aria-selected="true"] {
+	color: #fff;
+	background: #1f1f1f !important;
+}
