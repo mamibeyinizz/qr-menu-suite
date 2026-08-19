@@ -34,9 +34,7 @@ function qrms_module_qr_galeri_init() {
 
 	$manager = QRMenu_Gallery_Manager::instance();
 
-	if ( false === get_option( QRMenu_Gallery_Manager::OPTION_SETTINGS ) ) {
-		$manager->activate();
-	}
+	add_option( QRMenu_Gallery_Manager::OPTION_SETTINGS, $manager->default_settings() );
 
 	if ( is_admin() ) {
 		QRMS_Admin::register_module_page(

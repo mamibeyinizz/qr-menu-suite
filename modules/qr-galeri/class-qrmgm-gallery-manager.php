@@ -59,7 +59,6 @@ final class QRMenu_Gallery_Manager {
 	}
 
 	public function activate(): void {
-		$this->register_post_types();
 		if ( false === get_option( self::OPTION_SETTINGS ) ) {
 			update_option( self::OPTION_SETTINGS, $this->default_settings() );
 		}
