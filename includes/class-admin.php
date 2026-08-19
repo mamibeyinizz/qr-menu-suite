@@ -33,12 +33,27 @@ class QRMS_Admin {
 	const CAPABILITY = 'manage_options';
 
 	/**
+	 * Üst menünün konumu.
+	 *
+	 * Tam sayı yerine bilinçli olarak ondalıklı bir değer kullanılıyor:
+	 * WordPress menü öğelerini $menu dizisinde konumu anahtar yaparak tutar
+	 * (ör. $menu['30']). Aynı tam sayı konumunu kullanan başka bir plugin
+	 * (ör. eski qr-menu-official) diziye doğrudan yazdığında veya bizden sonra
+	 * kaydolduğunda o slotu ezer ve menümüz hiç görünmez. Ondalıklı ve bize
+	 * özgü bir konum bu çakışmayı pratikte imkânsız kılar.
+	 *
+	 * @var float
+	 */
+	const MENU_POSITION = 57.3;
+
+	/**
 	 * Hook kayıtları.
 	 *
 	 * @return void
 	 */
 	public static function init() {
 		add_action( 'admin_menu', array( __CLASS__, 'register_menu' ) );
+		add_action( 'admin_menu', array( __CLASS__, 'ensure_menu_registered' ), 999 );
 		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_assets' ) );
 	}
 
@@ -91,7 +106,7 @@ class QRMS_Admin {
 			self::MENU_SLUG,
 			array( __CLASS__, 'render_overview' ),
 			self::get_menu_icon(),
-			30
+			self::MENU_POSITION
 		);
 
 		// Genel Bakış: her zaman, en üstte.
@@ -134,6 +149,65 @@ class QRMS_Admin {
 			self::CAPABILITY,
 			self::SETTINGS_SLUG,
 			array( __CLASS__, 'render_settings' )
+		);
+	}
+
+	/**
+	 * Üst menü satırı $menu dizisinde duruyor mu?
+	 *
+	 * @return bool Menü dizisi henüz kurulmamışsa true döner (karışma).
+	 */
+	private static function is_menu_present() {
+		global $menu;
+
+		if ( ! is_array( $menu ) ) {
+			return true;
+		}
+
+		foreach ( $menu as $item ) {
+			if ( isset( $item[2] ) && self::MENU_SLUG === $item[2] ) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Üst menü başka bir plugin tarafından ezildiyse geri ekler.
+	 *
+	 * Menü satırlarını $menu dizisine doğrudan yazan (konum slotunu ezen)
+	 * pluginlere karşı emniyet kemeri; `admin_menu` zincirinin sonunda çalışır.
+	 * Sayfalar ilk kayıtta zaten $_registered_pages'e girdiği için burada
+	 * yalnızca menüdeki satır geri gelir, sayfa erişimi etkilenmez.
+	 *
+	 * Menüyü bilerek kaldıran siteler `qrms_ensure_menu_registered` filtresini
+	 * false döndürerek bu davranışı kapatabilir.
+	 *
+	 * @return void
+	 */
+	public static function ensure_menu_registered() {
+		/**
+		 * Ezilen üst menünün geri eklenip eklenmeyeceğini belirler.
+		 *
+		 * @param bool $ensure Varsayılan true.
+		 */
+		if ( ! apply_filters( 'qrms_ensure_menu_registered', true ) ) {
+			return;
+		}
+
+		if ( self::is_menu_present() ) {
+			return;
+		}
+
+		add_menu_page(
+			__( 'QR Menü', 'qrms' ),
+			__( 'QR Menü', 'qrms' ),
+			self::CAPABILITY,
+			self::MENU_SLUG,
+			array( __CLASS__, 'render_overview' ),
+			self::get_menu_icon(),
+			self::MENU_POSITION
 		);
 	}
 

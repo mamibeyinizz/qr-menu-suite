@@ -39,6 +39,7 @@ class QRMS_Wizard {
 	 */
 	public static function init() {
 		add_action( 'admin_menu', array( __CLASS__, 'register_page' ), 20 );
+		add_action( 'current_screen', array( __CLASS__, 'hide_page_from_menu' ) );
 		add_action( 'admin_init', array( __CLASS__, 'maybe_redirect_to_wizard' ) );
 	}
 
@@ -63,7 +64,11 @@ class QRMS_Wizard {
 	}
 
 	/**
-	 * Sihirbaz sayfasını kaydeder ve menüden gizler.
+	 * Sihirbaz sayfasını üst menümüzün gizli bir alt sayfası olarak kaydeder.
+	 *
+	 * Kayıt gerçek bir alt menü olarak yapılır (parent: QRMS_Admin::MENU_SLUG);
+	 * menüden gizleme işi `admin_head` üzerinden yapılır, bkz.
+	 * hide_page_from_menu().
 	 *
 	 * @return void
 	 */
@@ -76,9 +81,54 @@ class QRMS_Wizard {
 			self::PAGE_SLUG,
 			array( __CLASS__, 'render_page' )
 		);
+	}
 
-		// Sayfa erişilebilir kalsın ama menüde görünmesin.
+	/**
+	 * Sihirbazı menü çıktısından gizler.
+	 *
+	 * `admin_menu` içinde remove_submenu_page() çağırmak sayfayı erişilemez
+	 * hale getirir: WordPress, admin.php'de route'u `admin_menu`den SONRA
+	 * çözer (wp-admin/admin.php: önce menu.php, sonra get_plugin_page_hook())
+	 * ve sayfanın hook adını hesaplarken parent'ı $submenu içinde arar
+	 * (get_admin_page_parent()). Alt menü o sırada silinmiş olursa hook adı
+	 * "<üst menü>_page_qrms-wizard" yerine "admin_page_qrms-wizard" olarak
+	 * hesaplanır, $_registered_pages ile eşleşmez ve WordPress 403 "Bu sayfaya
+	 * erişmenize izin verilmiyor" der.
+	 *
+	 * `current_screen` ise route çözüldükten hemen sonra çalışır
+	 * (wp-admin/admin.php: get_plugin_page_hook() → set_current_screen()), yani
+	 * hem menü HTML'i basılmadan hem de komut paleti verisi ($menu/$submenu
+	 * üzerinden, WP 6.9+) toplanmadan önce. Gizlemenin doğru yeri burasıdır.
+	 *
+	 * @param WP_Screen|null $screen Geçerli ekran (current_screen hook'undan).
+	 * @return void
+	 */
+	public static function hide_page_from_menu( $screen = null ) {
 		remove_submenu_page( QRMS_Admin::MENU_SLUG, self::PAGE_SLUG );
+
+		// Sayfa $submenu'den çıkınca get_admin_page_title() başlığı bulamaz ve
+		// $title null kalır (boş tarayıcı başlığı + PHP 8.1+ deprecation
+		// uyarısı). Sihirbaz ekranındaysak başlığı elle veriyoruz.
+		if ( self::is_wizard_screen( $screen ) ) {
+			$GLOBALS['title'] = __( 'QR Menu Suite Kurulumu', 'qrms' );
+		}
+	}
+
+	/**
+	 * Geçerli ekran sihirbaz sayfası mı?
+	 *
+	 * @param WP_Screen|null $screen Ekran nesnesi.
+	 * @return bool
+	 */
+	private static function is_wizard_screen( $screen ) {
+		if ( isset( $screen->id ) && false !== strpos( (string) $screen->id, self::PAGE_SLUG ) ) {
+			return true;
+		}
+
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '';
+
+		return self::PAGE_SLUG === $page;
 	}
 
 	/**
