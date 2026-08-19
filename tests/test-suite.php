@@ -1217,6 +1217,84 @@ qrms_test(
 	}
 );
 
+/* ---------------------------------------------------------------------------
+ * 9. QR Analiz — menü sıralaması
+ * ------------------------------------------------------------------------ */
+
+// module.php dosya kapsamında yalnızca fonksiyon ve sabit tanımlar; sıralama
+// yardımcısı saf dizi dönüşümüdür ve WordPress'e bağımlı değildir.
+require_once QRMS_PLUGIN_DIR . 'modules/qr-analiz/module.php';
+
+echo "\nQR Analiz menü sıralaması\n";
+
+qrms_test(
+	'analitik satırı QR Analiz girişinin hemen ardına alınır',
+	function () {
+		// add_submenu_page satırı listenin sonuna ekler; sıralama onu
+		// modülün kendi satırının altına taşır.
+		$ham = array(
+			qrms_submenu_satiri( 'Genel Bakış', QRMS_Admin::MENU_SLUG ),
+			qrms_submenu_satiri( 'Restoran Menü', QRMS_Admin::get_module_page_slug( 'restoran-menu' ) ),
+			qrms_submenu_satiri( 'QR Analiz', QRMS_Admin::get_module_page_slug( 'qr-analiz' ) ),
+			qrms_submenu_satiri( 'QR Masa', QRMS_Admin::get_module_page_slug( 'qr-masa' ) ),
+			qrms_submenu_satiri( 'Genel Ayarlar', QRMS_Admin::SETTINGS_SLUG ),
+			qrms_submenu_satiri( '— Menü Analitiği', QRMS_ANALITIK_SAYFA ),
+		);
+
+		$sirali = qrms_module_qr_analiz_submenu_sirala( $ham );
+
+		qrms_assert_same(
+			array(
+				QRMS_Admin::MENU_SLUG,
+				QRMS_Admin::get_module_page_slug( 'restoran-menu' ),
+				QRMS_Admin::get_module_page_slug( 'qr-analiz' ),
+				QRMS_ANALITIK_SAYFA,
+				QRMS_Admin::get_module_page_slug( 'qr-masa' ),
+				QRMS_Admin::SETTINGS_SLUG,
+			),
+			qrms_submenu_sluglari( $sirali ),
+			'tam sıra'
+		);
+
+		qrms_assert_same( range( 0, 5 ), array_keys( $sirali ), 'sıfırdan artan anahtarlar' );
+		qrms_assert_same( '— Menü Analitiği', $sirali[3][0], 'etiket korunur' );
+	}
+);
+
+qrms_test(
+	'QR Analiz satırı yoksa liste değişmeden döner',
+	function () {
+		$ham = array(
+			qrms_submenu_satiri( 'Genel Bakış', QRMS_Admin::MENU_SLUG ),
+			qrms_submenu_satiri( 'Genel Ayarlar', QRMS_Admin::SETTINGS_SLUG ),
+			qrms_submenu_satiri( '— Menü Analitiği', QRMS_ANALITIK_SAYFA ),
+		);
+
+		qrms_assert_same(
+			qrms_submenu_sluglari( $ham ),
+			qrms_submenu_sluglari( qrms_module_qr_analiz_submenu_sirala( $ham ) ),
+			'sıra korunur'
+		);
+	}
+);
+
+qrms_test(
+	'analitik satırı hiç eklenmemişse sıra bozulmaz',
+	function () {
+		$ham = array(
+			qrms_submenu_satiri( 'Genel Bakış', QRMS_Admin::MENU_SLUG ),
+			qrms_submenu_satiri( 'QR Analiz', QRMS_Admin::get_module_page_slug( 'qr-analiz' ) ),
+			qrms_submenu_satiri( 'Genel Ayarlar', QRMS_Admin::SETTINGS_SLUG ),
+		);
+
+		qrms_assert_same(
+			qrms_submenu_sluglari( $ham ),
+			qrms_submenu_sluglari( qrms_module_qr_analiz_submenu_sirala( $ham ) ),
+			'sıra korunur'
+		);
+	}
+);
+
 /* ------------------------------------------------------------------------ */
 
 echo "\n";

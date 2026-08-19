@@ -1,0 +1,956 @@
+<?php
+/**
+ * QRMS Analitik — menü görüntüleme / ürün tıklama sayaçları ve masa bazlı takip.
+ *
+ * Eski bağımsız "RMA Analytics" eklentisinin suite'e taşınmış hâlidir. Veri
+ * tabanı tablosu bilinçli olarak aynı bırakıldı ({prefix}rma_analytics): canlı
+ * sitelerde birikmiş kayıtlar korunur, üzerine yalnızca `masa_no` sütunu
+ * eklenir (dbDelta migration).
+ *
+ * TAKİP NOKTASI
+ * Modül kendi izleme uçlarını AÇMAZ; restoran-menu modülünün zaten var olan
+ * iki AJAX ucuna öncelik 5 ile bağlanır:
+ *
+ *   - `rma_load_items`          → menü görüntüleme  (menu_view)
+ *   - `rma_get_product_details` → ürün tıklama      (product_click)
+ *
+ * Öncelik 5, asıl işleyicilerin (öncelik 10) yanıtı göndermesinden önce
+ * çalışmayı garanti eder; wp_send_json_* çağrısı isteği sonlandırdığı için
+ * daha geç bir öncelik hiç çalışmazdı.
+ *
+ * MASA BİLGİSİ
+ * Masa slug'ı üç kaynaktan sırayla aranır: isteğin kendi `masa` alanı (menü
+ * JS'i ?masa=... parametresini buraya taşır), imzalı masa oturumu çerezi
+ * (qr-masa-oturum-guvenligi modülü) ve son çare olarak referer adresindeki
+ * `?masa=`. Böylece JS önbellekten eski sürümüyle gelse bile kayıt masasız
+ * kalmaz.
+ *
+ * @package QR_Menu_Suite
+ */
+
+defined( 'ABSPATH' ) || exit;
+
+if ( class_exists( 'QRMS_Analitik' ) ) {
+	return;
+}
+
+/**
+ * Analitik veri toplama ve raporlama katmanı.
+ */
+class QRMS_Analitik {
+
+	/**
+	 * Şema sürümü. masa_no sütunu 1.1 ile geldi.
+	 */
+	const DB_SURUM = '1.1';
+
+	/**
+	 * Şema sürümünün tutulduğu option.
+	 */
+	const DB_OPT = 'qrms_analitik_db_surumu';
+
+	/**
+	 * Panel AJAX uçlarının nonce eylemi.
+	 */
+	const NONCE = 'qrms_analitik';
+
+	/**
+	 * CSV dışa aktarma nonce eylemi.
+	 */
+	const NONCE_CSV = 'qrms_analitik_csv';
+
+	/**
+	 * Masa sütununun uzunluğu (şemayla aynı tutulur).
+	 */
+	const MASA_UZUNLUK = 64;
+
+	/**
+	 * Panelde desteklenen dönemler.
+	 *
+	 * @var string[]
+	 */
+	const DONEMLER = array( 'hourly', 'daily', 'weekly', 'monthly', 'masalar' );
+
+	/**
+	 * "Masalara Göre" görünümünün kapsadığı gün sayısı.
+	 */
+	const MASA_GUN = 30;
+
+	/**
+	 * Hook kayıtları.
+	 *
+	 * @return void
+	 */
+	public static function init() {
+		// Şema kontrolü `init`e bağlıdır, `admin_init`e değil: tablo ilk kez
+		// bir ziyaretçi menüyü açtığında da hazır olmalı (admin-ajax istekleri
+		// de `init`i tetikler). Sürüm option'ı eşleştiğinde maliyeti tek bir
+		// autoload option okumasıdır.
+		add_action( 'init', array( __CLASS__, 'sema_kontrol' ), 5 );
+
+		// Eski bağımsız eklenti hâlâ etkinse takibi ona bırak: aksi hâlde her
+		// olay iki kez yazılır. Panel yine açılır, veriyi aynı tablodan okur.
+		if ( ! self::eski_eklenti_aktif() ) {
+			foreach ( array( '', 'nopriv_' ) as $on_ek ) {
+				add_action( "wp_ajax_{$on_ek}rma_load_items", array( __CLASS__, 'izle_menu_goruntuleme' ), 5 );
+				add_action( "wp_ajax_{$on_ek}rma_get_product_details", array( __CLASS__, 'izle_urun_tiklama' ), 5 );
+			}
+		}
+
+		add_action( 'wp_ajax_qrms_analitik_veri', array( __CLASS__, 'ajax_veri' ) );
+		add_action( 'wp_ajax_qrms_analitik_csv', array( __CLASS__, 'ajax_csv' ) );
+		add_action( 'wp_ajax_qrms_analitik_temizle', array( __CLASS__, 'ajax_temizle' ) );
+	}
+
+	/**
+	 * Eski bağımsız RMA Analytics eklentisi devrede mi?
+	 *
+	 * @return bool
+	 */
+	public static function eski_eklenti_aktif() {
+		return class_exists( 'RMA_Analytics' );
+	}
+
+	/* -----------------------------------------------------------------
+	   ŞEMA
+	----------------------------------------------------------------- */
+
+	/**
+	 * Olay tablosunun tam adı.
+	 *
+	 * @return string
+	 */
+	public static function tablo() {
+		global $wpdb;
+
+		return $wpdb->prefix . 'rma_analytics';
+	}
+
+	/**
+	 * Şema güncel değilse dbDelta çalıştırır.
+	 *
+	 * Sürüm option'ı eşleştiğinde tek bir option okumasına iner; her istekte
+	 * DESCRIBE çalıştırılmaz.
+	 *
+	 * @return void
+	 */
+	public static function sema_kontrol() {
+		if ( self::DB_SURUM === get_option( self::DB_OPT ) ) {
+			return;
+		}
+
+		self::tablo_kur();
+		update_option( self::DB_OPT, self::DB_SURUM, false );
+	}
+
+	/**
+	 * Tabloyu oluşturur veya eksik sütunlarını tamamlar.
+	 *
+	 * ÖNEMLİ: sorgu "CREATE TABLE IF NOT EXISTS" DEĞİLDİR. dbDelta tablo adını
+	 * `CREATE TABLE ([^ ]*)` kalıbıyla okur; "IF NOT EXISTS" yazıldığında tablo
+	 * adını "IF" sanır, mevcut şemayla karşılaştırma yapamaz ve masa_no sütunu
+	 * eski kurulumlara hiç eklenmezdi.
+	 *
+	 * @return void
+	 */
+	public static function tablo_kur() {
+		global $wpdb;
+
+		$tablo   = self::tablo();
+		$collate = $wpdb->get_charset_collate();
+
+		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+
+		dbDelta(
+			"CREATE TABLE {$tablo} (
+				id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+				event_type varchar(30) NOT NULL,
+				item_id bigint(20) unsigned NOT NULL DEFAULT 0,
+				item_name varchar(255) NOT NULL DEFAULT '',
+				category_name varchar(255) NOT NULL DEFAULT '',
+				masa_no varchar(64) NOT NULL DEFAULT '',
+				ip_hash varchar(32) NOT NULL DEFAULT '',
+				created_at datetime NOT NULL,
+				PRIMARY KEY  (id),
+				KEY idx_type (event_type),
+				KEY idx_item (item_id),
+				KEY idx_date (created_at),
+				KEY idx_td (event_type,created_at),
+				KEY idx_masa (masa_no),
+				KEY idx_masa_td (masa_no,event_type,created_at)
+			) {$collate};"
+		);
+	}
+
+	/* -----------------------------------------------------------------
+	   TAKİP
+	----------------------------------------------------------------- */
+
+	/**
+	 * Ziyaretçi IP'sinin tuzlanmış kısa hash'i.
+	 *
+	 * Ham IP hiçbir zaman saklanmaz. Hash biçimi eski eklentiyle birebir aynı
+	 * tutuldu; böylece geçiş öncesi ve sonrası kayıtlar aynı ziyaretçi için
+	 * aynı değeri üretir ve "tekil ziyaretçi" sayıları bölünmez.
+	 *
+	 * @return string
+	 */
+	private static function ip_hash() {
+		$ham = '';
+
+		foreach ( array( 'HTTP_CF_CONNECTING_IP', 'HTTP_X_FORWARDED_FOR', 'REMOTE_ADDR' ) as $anahtar ) {
+			if ( ! empty( $_SERVER[ $anahtar ] ) ) {
+				$ham = sanitize_text_field( wp_unslash( $_SERVER[ $anahtar ] ) );
+				break;
+			}
+		}
+
+		$ip   = trim( explode( ',', $ham )[0] );
+		$tuz  = defined( 'AUTH_SALT' ) ? AUTH_SALT : 'qrms_analitik';
+
+		return substr( hash( 'sha256', $ip . $tuz ), 0, 32 );
+	}
+
+	/**
+	 * Slug'ı normalize eder ve sütun uzunluğuna sığdırır.
+	 *
+	 * @param mixed $ham Ham değer.
+	 * @return string
+	 */
+	private static function masa_temizle( $ham ) {
+		if ( ! is_scalar( $ham ) ) {
+			return '';
+		}
+
+		return substr( sanitize_title( (string) $ham ), 0, self::MASA_UZUNLUK );
+	}
+
+	/**
+	 * Masa slug'ı gerçekten kayıtlı mı?
+	 *
+	 * qr-masa modülü kurulu değilse doğrulayacak bir kaynak yoktur; o durumda
+	 * slug olduğu gibi kabul edilir (sanitize_title'dan geçmiştir).
+	 *
+	 * @param string $masa Masa slug'ı.
+	 * @return bool
+	 */
+	private static function masa_gecerli( $masa ) {
+		if ( '' === $masa ) {
+			return false;
+		}
+
+		if ( function_exists( 'qmo_masa_gecerli_mi' ) ) {
+			return (bool) qmo_masa_gecerli_mi( $masa );
+		}
+
+		return true;
+	}
+
+	/**
+	 * İsteğin ait olduğu masa slug'ı (bulunamazsa boş string).
+	 *
+	 * Sıra bilinçlidir: istekle gelen değer en tazesidir, imzalı çerez en
+	 * güvenilirdir, referer ise yalnızca ikisi de yoksa devreye girer.
+	 *
+	 * @return string
+	 */
+	private static function masa_belirle() {
+		// phpcs:disable WordPress.Security.NonceVerification.Missing -- İzleme yalnızca okur; nonce kontrolünü asıl uç yapar.
+		$istek = isset( $_POST['masa'] ) ? self::masa_temizle( wp_unslash( $_POST['masa'] ) ) : '';
+		// phpcs:enable WordPress.Security.NonceVerification.Missing
+
+		if ( '' !== $istek && self::masa_gecerli( $istek ) ) {
+			return $istek;
+		}
+
+		if ( function_exists( 'qmo_oturum' ) ) {
+			$oturum = qmo_oturum();
+
+			if ( is_array( $oturum ) && ! empty( $oturum['masa'] ) ) {
+				return self::masa_temizle( $oturum['masa'] );
+			}
+		}
+
+		$referer = isset( $_SERVER['HTTP_REFERER'] ) ? esc_url_raw( wp_unslash( $_SERVER['HTTP_REFERER'] ) ) : '';
+
+		if ( '' !== $referer ) {
+			$sorgu = wp_parse_url( $referer, PHP_URL_QUERY );
+
+			if ( is_string( $sorgu ) && '' !== $sorgu ) {
+				$parcalar = array();
+				wp_parse_str( $sorgu, $parcalar );
+
+				if ( ! empty( $parcalar['masa'] ) ) {
+					$aday = self::masa_temizle( $parcalar['masa'] );
+
+					if ( self::masa_gecerli( $aday ) ) {
+						return $aday;
+					}
+				}
+			}
+		}
+
+		return '';
+	}
+
+	/**
+	 * Bir olayı tabloya yazar.
+	 *
+	 * @param array $satir Sütun => değer.
+	 * @return void
+	 */
+	private static function kaydet( array $satir ) {
+		global $wpdb;
+
+		$varsayilan = array(
+			'event_type'    => '',
+			'item_id'       => 0,
+			'item_name'     => '',
+			'category_name' => '',
+			'masa_no'       => self::masa_belirle(),
+			'ip_hash'       => self::ip_hash(),
+			'created_at'    => current_time( 'mysql' ),
+		);
+
+		$satir = array_merge( $varsayilan, $satir );
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$wpdb->insert(
+			self::tablo(),
+			$satir,
+			array( '%s', '%d', '%s', '%s', '%s', '%s', '%s' )
+		);
+	}
+
+	/**
+	 * Menü listesi isteği: bir görüntüleme kaydı.
+	 *
+	 * @return void
+	 */
+	public static function izle_menu_goruntuleme() {
+		// Nonce alanı hiç yoksa istek menü arayüzünden gelmiyordur (bot/ısınma).
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing
+		if ( empty( $_POST['security'] ) ) {
+			return;
+		}
+
+		self::kaydet( array( 'event_type' => 'menu_view' ) );
+	}
+
+	/**
+	 * Ürün detayı isteği: bir tıklama kaydı.
+	 *
+	 * Sessiz ön yüklemeler (prefetch=1) gerçek bir tıklama değildir; menü JS'i
+	 * komşu kartları arka planda ısıtırken bu uca uğrar ve sayılırsa her ürün
+	 * kendiliğinden popülerleşirdi.
+	 *
+	 * @return void
+	 */
+	public static function izle_urun_tiklama() {
+		// phpcs:disable WordPress.Security.NonceVerification.Missing
+		if ( empty( $_POST['security'] ) ) {
+			return;
+		}
+
+		if ( ! empty( $_POST['prefetch'] ) ) {
+			return;
+		}
+
+		$id = isset( $_POST['id'] ) ? absint( wp_unslash( $_POST['id'] ) ) : 0;
+		// phpcs:enable WordPress.Security.NonceVerification.Missing
+
+		if ( ! $id ) {
+			return;
+		}
+
+		$terimler = wp_get_post_terms( $id, 'rma_category' );
+		$kategori = ( ! is_wp_error( $terimler ) && ! empty( $terimler ) ) ? (string) $terimler[0]->name : '';
+
+		self::kaydet(
+			array(
+				'event_type'    => 'product_click',
+				'item_id'       => $id,
+				'item_name'     => (string) get_the_title( $id ),
+				'category_name' => $kategori,
+			)
+		);
+	}
+
+	/* -----------------------------------------------------------------
+	   SORGU YARDIMCILARI
+	----------------------------------------------------------------- */
+
+	/**
+	 * Masa filtresinin SQL parçası (hazır biçimde, boşsa boş string).
+	 *
+	 * Parça $wpdb->prepare ile ÜRETİLİR ve sorguya olduğu gibi eklenir; bütün
+	 * sorgu ikinci kez prepare'den geçirilmez (aksi hâlde DATE_FORMAT içindeki
+	 * % işaretleri kaçırılmak zorunda kalırdı).
+	 *
+	 * @param string $masa Masa slug'ı.
+	 * @return string
+	 */
+	private static function masa_sql( $masa ) {
+		global $wpdb;
+
+		if ( '' === $masa ) {
+			return '';
+		}
+
+		return $wpdb->prepare( ' AND masa_no = %s', $masa );
+	}
+
+	/**
+	 * Dönemin başlangıç zaman damgası (MySQL biçiminde).
+	 *
+	 * @param string $donem Dönem anahtarı.
+	 * @return string
+	 */
+	private static function donem_baslangici( $donem ) {
+		switch ( $donem ) {
+			case 'hourly':
+				return current_time( 'Y-m-d' ) . ' 00:00:00';
+
+			case 'weekly':
+				return gmdate( 'Y-m-d', strtotime( '-83 days', self::simdi() ) ) . ' 00:00:00';
+
+			case 'monthly':
+				return gmdate( 'Y-m-01', strtotime( '-11 months', self::simdi() ) ) . ' 00:00:00';
+
+			case 'masalar':
+				return gmdate( 'Y-m-d', strtotime( '-' . ( self::MASA_GUN - 1 ) . ' days', self::simdi() ) ) . ' 00:00:00';
+
+			case 'daily':
+			default:
+				return gmdate( 'Y-m-d', strtotime( '-29 days', self::simdi() ) ) . ' 00:00:00';
+		}
+	}
+
+	/**
+	 * Sitenin yerel saatiyle "şimdi" (unix damgası).
+	 *
+	 * Kayıtlar current_time('mysql') ile yazıldığı için tarih aralıkları da
+	 * yerel saatle hesaplanmalıdır.
+	 *
+	 * @return int
+	 */
+	private static function simdi() {
+		return (int) current_time( 'timestamp' ); // phpcs:ignore WordPress.DateTime.CurrentTimeTimestamp.Requested
+	}
+
+	/* -----------------------------------------------------------------
+	   RAPOR SORGULARI
+	----------------------------------------------------------------- */
+
+	/**
+	 * Üst kartların verisi.
+	 *
+	 * @param string $masa Masa filtresi (boş = tüm masalar).
+	 * @return array<string,int>
+	 */
+	public static function genel_bakis( $masa = '' ) {
+		global $wpdb;
+
+		$tablo   = self::tablo();
+		$masa_ek = self::masa_sql( $masa );
+		$bugun   = current_time( 'Y-m-d' );
+
+		$aralik = $wpdb->prepare( 'created_at BETWEEN %s AND %s', $bugun . ' 00:00:00', $bugun . ' 23:59:59' );
+		$hafta  = $wpdb->prepare( 'created_at >= %s', gmdate( 'Y-m-d', strtotime( '-6 days', self::simdi() ) ) . ' 00:00:00' );
+		$ay     = $wpdb->prepare( 'created_at >= %s', gmdate( 'Y-m-01', self::simdi() ) . ' 00:00:00' );
+
+		// phpcs:disable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		return array(
+			'mv_bugun' => (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$tablo} WHERE event_type='menu_view' AND {$aralik}{$masa_ek}" ),
+			'mv_hafta' => (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$tablo} WHERE event_type='menu_view' AND {$hafta}{$masa_ek}" ),
+			'mv_ay'    => (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$tablo} WHERE event_type='menu_view' AND {$ay}{$masa_ek}" ),
+			'pc_bugun' => (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$tablo} WHERE event_type='product_click' AND {$aralik}{$masa_ek}" ),
+			'pc_hafta' => (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$tablo} WHERE event_type='product_click' AND {$hafta}{$masa_ek}" ),
+			'pc_tumu'  => (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$tablo} WHERE event_type='product_click'{$masa_ek}" ),
+			'uv_bugun' => (int) $wpdb->get_var( "SELECT COUNT(DISTINCT ip_hash) FROM {$tablo} WHERE event_type='menu_view' AND {$aralik}{$masa_ek}" ),
+			'masa_gun' => (int) $wpdb->get_var( "SELECT COUNT(DISTINCT masa_no) FROM {$tablo} WHERE masa_no <> '' AND {$aralik}{$masa_ek}" ),
+		);
+		// phpcs:enable
+	}
+
+	/**
+	 * Grafik/tablo satırları: saatlik, günlük, haftalık, aylık.
+	 *
+	 * @param string $donem Dönem anahtarı.
+	 * @param string $masa  Masa filtresi.
+	 * @return array<int,array<string,mixed>>
+	 */
+	public static function grafik_verisi( $donem, $masa = '' ) {
+		global $wpdb;
+
+		$tablo   = self::tablo();
+		$masa_ek = self::masa_sql( $masa );
+
+		$toplam = "SUM(event_type='menu_view') AS mv,
+			SUM(event_type='product_click') AS pc,
+			COUNT(DISTINCT CASE WHEN event_type='menu_view' THEN ip_hash END) AS uv";
+
+		switch ( $donem ) {
+			case 'hourly':
+				$bugun = current_time( 'Y-m-d' );
+				$kosul = $wpdb->prepare( 'DATE(created_at) = %s', $bugun );
+
+				// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+				$ham = $wpdb->get_results(
+					"SELECT HOUR(created_at) AS k, {$toplam} FROM {$tablo}
+					 WHERE {$kosul}{$masa_ek}
+					 GROUP BY HOUR(created_at) ORDER BY HOUR(created_at)",
+					ARRAY_A
+				);
+
+				$harita = self::haritala( $ham );
+				$satir  = array();
+
+				for ( $s = 0; $s < 24; $s++ ) {
+					$satir[] = self::satir( sprintf( '%02d:00', $s ), $harita, $s );
+				}
+
+				return $satir;
+
+			case 'weekly':
+				$baslangic = self::donem_baslangici( 'weekly' );
+				$kosul     = $wpdb->prepare( 'created_at >= %s', $baslangic );
+
+				// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+				$ham = $wpdb->get_results(
+					"SELECT YEARWEEK(created_at,1) AS k, MIN(DATE(created_at)) AS ilk, {$toplam} FROM {$tablo}
+					 WHERE {$kosul}{$masa_ek}
+					 GROUP BY YEARWEEK(created_at,1) ORDER BY YEARWEEK(created_at,1)",
+					ARRAY_A
+				);
+
+				$satir = array();
+
+				foreach ( (array) $ham as $r ) {
+					$ilk     = (string) $r['ilk'];
+					$etiket  = date_i18n( 'j M', strtotime( $ilk ) ) . '–' . date_i18n( 'j M', strtotime( $ilk . ' +6 days' ) );
+					$satir[] = array(
+						'label' => $etiket,
+						'mv'    => (int) $r['mv'],
+						'pc'    => (int) $r['pc'],
+						'uv'    => (int) $r['uv'],
+					);
+				}
+
+				return $satir;
+
+			case 'monthly':
+				$baslangic = self::donem_baslangici( 'monthly' );
+				$kosul     = $wpdb->prepare( 'created_at >= %s', $baslangic );
+
+				// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+				$ham = $wpdb->get_results(
+					"SELECT DATE_FORMAT(created_at,'%Y-%m') AS k, {$toplam} FROM {$tablo}
+					 WHERE {$kosul}{$masa_ek}
+					 GROUP BY DATE_FORMAT(created_at,'%Y-%m') ORDER BY DATE_FORMAT(created_at,'%Y-%m')",
+					ARRAY_A
+				);
+
+				$harita = self::haritala( $ham );
+				$satir  = array();
+
+				for ( $i = 11; $i >= 0; $i-- ) {
+					$ay      = gmdate( 'Y-m', strtotime( "-{$i} months", self::simdi() ) );
+					$satir[] = self::satir( date_i18n( 'M Y', strtotime( $ay . '-01' ) ), $harita, $ay );
+				}
+
+				return $satir;
+
+			case 'daily':
+			default:
+				$baslangic = self::donem_baslangici( 'daily' );
+				$kosul     = $wpdb->prepare( 'created_at >= %s', $baslangic );
+
+				// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+				$ham = $wpdb->get_results(
+					"SELECT DATE(created_at) AS k, {$toplam} FROM {$tablo}
+					 WHERE {$kosul}{$masa_ek}
+					 GROUP BY DATE(created_at) ORDER BY DATE(created_at)",
+					ARRAY_A
+				);
+
+				$harita = self::haritala( $ham );
+				$satir  = array();
+
+				for ( $i = 29; $i >= 0; $i-- ) {
+					$gun     = gmdate( 'Y-m-d', strtotime( "-{$i} days", self::simdi() ) );
+					$satir[] = self::satir( date_i18n( 'j M', strtotime( $gun ) ), $harita, $gun );
+				}
+
+				return $satir;
+		}
+	}
+
+	/**
+	 * Sorgu sonucunu "k" sütunu anahtar olacak biçimde diziye çevirir.
+	 *
+	 * @param mixed $ham Sorgu sonucu.
+	 * @return array<string,array>
+	 */
+	private static function haritala( $ham ) {
+		$harita = array();
+
+		foreach ( (array) $ham as $r ) {
+			$harita[ (string) $r['k'] ] = $r;
+		}
+
+		return $harita;
+	}
+
+	/**
+	 * Haritadan tek bir grafik satırı üretir (kayıt yoksa sıfırlarla).
+	 *
+	 * @param string $etiket  Görünen etiket.
+	 * @param array  $harita  haritala() çıktısı.
+	 * @param mixed  $anahtar Aranan anahtar.
+	 * @return array<string,mixed>
+	 */
+	private static function satir( $etiket, array $harita, $anahtar ) {
+		$k = (string) $anahtar;
+
+		return array(
+			'label' => $etiket,
+			'mv'    => isset( $harita[ $k ] ) ? (int) $harita[ $k ]['mv'] : 0,
+			'pc'    => isset( $harita[ $k ] ) ? (int) $harita[ $k ]['pc'] : 0,
+			'uv'    => isset( $harita[ $k ] ) ? (int) $harita[ $k ]['uv'] : 0,
+		);
+	}
+
+	/**
+	 * "Masalara Göre" satırları: son 30 günde hangi masadan kaç hareket geldi.
+	 *
+	 * @param string $masa Masa filtresi (boş = tüm masalar).
+	 * @return array<int,array<string,mixed>>
+	 */
+	public static function masa_verisi( $masa = '' ) {
+		global $wpdb;
+
+		$tablo     = self::tablo();
+		$masa_ek   = self::masa_sql( $masa );
+		$baslangic = self::donem_baslangici( 'masalar' );
+		$kosul     = $wpdb->prepare( 'created_at >= %s', $baslangic );
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$ham = $wpdb->get_results(
+			"SELECT masa_no,
+				SUM(event_type='menu_view') AS mv,
+				SUM(event_type='product_click') AS pc,
+				COUNT(DISTINCT CASE WHEN event_type='menu_view' THEN ip_hash END) AS uv,
+				MAX(created_at) AS son
+			 FROM {$tablo}
+			 WHERE {$kosul}{$masa_ek}
+			 GROUP BY masa_no
+			 ORDER BY (SUM(event_type='menu_view') + SUM(event_type='product_click')) DESC",
+			ARRAY_A
+		);
+
+		$adlar = self::masa_adlari();
+		$satir = array();
+
+		foreach ( (array) $ham as $r ) {
+			$slug = (string) $r['masa_no'];
+
+			$satir[] = array(
+				'masa'  => $slug,
+				'label' => self::masa_etiketi( $slug, $adlar ),
+				'mv'    => (int) $r['mv'],
+				'pc'    => (int) $r['pc'],
+				'uv'    => (int) $r['uv'],
+				'son'   => (string) $r['son'],
+			);
+		}
+
+		return $satir;
+	}
+
+	/**
+	 * Masa slug'ı => görünen ad (qr-masa modülünün tablosundan).
+	 *
+	 * @return array<string,string>
+	 */
+	private static function masa_adlari() {
+		global $wpdb;
+
+		$tablo = $wpdb->prefix . 'qrm_tables';
+		$adlar = wp_cache_get( 'qrms_analitik_masa_adlari', 'qrms' );
+
+		if ( is_array( $adlar ) ) {
+			return $adlar;
+		}
+
+		$adlar = array();
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$var = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $tablo ) );
+
+		if ( $var ) {
+			// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+			$satirlar = $wpdb->get_results( "SELECT table_slug, table_name FROM {$tablo}", ARRAY_A );
+
+			foreach ( (array) $satirlar as $r ) {
+				$adlar[ (string) $r['table_slug'] ] = (string) $r['table_name'];
+			}
+		}
+
+		wp_cache_set( 'qrms_analitik_masa_adlari', $adlar, 'qrms', 300 );
+
+		return $adlar;
+	}
+
+	/**
+	 * Masanın panelde görünen adı.
+	 *
+	 * @param string $slug  Masa slug'ı ('' = masasız kayıt).
+	 * @param array  $adlar masa_adlari() çıktısı.
+	 * @return string
+	 */
+	private static function masa_etiketi( $slug, array $adlar = array() ) {
+		if ( '' === $slug ) {
+			return __( 'Masasız (doğrudan erişim)', 'qrms' );
+		}
+
+		if ( isset( $adlar[ $slug ] ) && '' !== $adlar[ $slug ] ) {
+			return $adlar[ $slug ];
+		}
+
+		return $slug;
+	}
+
+	/**
+	 * Filtre listesindeki masalar: kayıtlı masalar + veride görünen masalar.
+	 *
+	 * @return array<int,array{slug:string,label:string}>
+	 */
+	public static function masa_secenekleri() {
+		global $wpdb;
+
+		$tablo = self::tablo();
+		$adlar = self::masa_adlari();
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$gorulen = $wpdb->get_col( "SELECT DISTINCT masa_no FROM {$tablo} WHERE masa_no <> ''" );
+
+		$sluglar = array_unique( array_merge( array_keys( $adlar ), array_map( 'strval', (array) $gorulen ) ) );
+		sort( $sluglar, SORT_NATURAL );
+
+		$secenek = array();
+
+		foreach ( $sluglar as $slug ) {
+			if ( '' === $slug ) {
+				continue;
+			}
+
+			$secenek[] = array(
+				'slug'  => $slug,
+				'label' => self::masa_etiketi( $slug, $adlar ),
+			);
+		}
+
+		return $secenek;
+	}
+
+	/**
+	 * En çok tıklanan ürünler.
+	 *
+	 * @param string $donem Dönem anahtarı.
+	 * @param string $masa  Masa filtresi.
+	 * @param int    $limit Azami satır.
+	 * @return array<int,array<string,mixed>>
+	 */
+	public static function en_cok_tiklananlar( $donem, $masa = '', $limit = 30 ) {
+		global $wpdb;
+
+		$tablo     = self::tablo();
+		$masa_ek   = self::masa_sql( $masa );
+		$baslangic = self::donem_baslangici( $donem );
+
+		$kosul = $wpdb->prepare( 'created_at >= %s', $baslangic );
+		$sinir = $wpdb->prepare( 'LIMIT %d', max( 1, (int) $limit ) );
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$satir = $wpdb->get_results(
+			"SELECT item_id, item_name, category_name,
+				COUNT(*) AS toplam,
+				COUNT(DISTINCT ip_hash) AS tekil,
+				COUNT(DISTINCT NULLIF(masa_no,'')) AS masa_sayisi,
+				MAX(created_at) AS son
+			 FROM {$tablo}
+			 WHERE event_type='product_click' AND item_id > 0 AND {$kosul}{$masa_ek}
+			 GROUP BY item_id, item_name, category_name
+			 ORDER BY toplam DESC
+			 {$sinir}",
+			ARRAY_A
+		);
+
+		return is_array( $satir ) ? $satir : array();
+	}
+
+	/* -----------------------------------------------------------------
+	   AJAX UÇLARI
+	----------------------------------------------------------------- */
+
+	/**
+	 * İsteğin dönem parametresi.
+	 *
+	 * @param array $kaynak $_POST veya $_GET.
+	 * @return string
+	 */
+	private static function istek_donemi( array $kaynak ) {
+		$donem = isset( $kaynak['period'] ) ? sanitize_key( wp_unslash( $kaynak['period'] ) ) : 'hourly';
+
+		return in_array( $donem, self::DONEMLER, true ) ? $donem : 'hourly';
+	}
+
+	/**
+	 * İsteğin masa filtresi.
+	 *
+	 * @param array $kaynak $_POST veya $_GET.
+	 * @return string
+	 */
+	private static function istek_masasi( array $kaynak ) {
+		return isset( $kaynak['masa'] ) ? self::masa_temizle( wp_unslash( $kaynak['masa'] ) ) : '';
+	}
+
+	/**
+	 * Panel verisi.
+	 *
+	 * @return void
+	 */
+	public static function ajax_veri() {
+		check_ajax_referer( self::NONCE, 'security' );
+
+		if ( ! current_user_can( QRMS_Admin::CAPABILITY ) ) {
+			wp_send_json_error( array( 'mesaj' => __( 'Yetkiniz yok.', 'qrms' ) ), 403 );
+		}
+
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- check_ajax_referer yukarıda.
+		$donem = self::istek_donemi( $_POST );
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing
+		$masa = self::istek_masasi( $_POST );
+
+		$grafik = ( 'masalar' === $donem )
+			? self::masa_verisi( $masa )
+			: self::grafik_verisi( $donem, $masa );
+
+		wp_send_json_success(
+			array(
+				'donem'   => $donem,
+				'masa'    => $masa,
+				'genel'   => self::genel_bakis( $masa ),
+				'grafik'  => $grafik,
+				'urunler' => self::en_cok_tiklananlar( $donem, $masa, 30 ),
+				'masalar' => self::masa_secenekleri(),
+			)
+		);
+	}
+
+	/**
+	 * CSV dışa aktarma.
+	 *
+	 * "Masalara Göre" görünümünde masa özeti, diğer dönemlerde ürün listesi
+	 * indirilir — ekranda ne görünüyorsa o.
+	 *
+	 * @return void
+	 */
+	public static function ajax_csv() {
+		check_ajax_referer( self::NONCE_CSV, 'security' );
+
+		if ( ! current_user_can( QRMS_Admin::CAPABILITY ) ) {
+			wp_die( esc_html__( 'Yetkiniz yok.', 'qrms' ) );
+		}
+
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- check_ajax_referer yukarıda.
+		$donem = self::istek_donemi( $_GET );
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$masa = self::istek_masasi( $_GET );
+
+		$dosya = 'qr-analitik-' . $donem . ( '' !== $masa ? '-' . $masa : '' ) . '-' . gmdate( 'Ymd-His', self::simdi() ) . '.csv';
+
+		nocache_headers();
+		header( 'Content-Type: text/csv; charset=utf-8' );
+		header( 'Content-Disposition: attachment; filename="' . $dosya . '"' );
+
+		$cikti = fopen( 'php://output', 'w' );
+
+		// Excel'in UTF-8'i tanıması için BOM.
+		fwrite( $cikti, "\xEF\xBB\xBF" ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fwrite
+
+		if ( 'masalar' === $donem ) {
+			fputcsv( $cikti, array( 'Masa', 'Masa Kodu', 'Menü Görüntüleme', 'Ürün Tıklama', 'Tekil Ziyaretçi', 'Son Hareket' ), ';' );
+
+			foreach ( self::masa_verisi( $masa ) as $satir ) {
+				fputcsv(
+					$cikti,
+					array( $satir['label'], $satir['masa'], $satir['mv'], $satir['pc'], $satir['uv'], $satir['son'] ),
+					';'
+				);
+			}
+		} else {
+			fputcsv( $cikti, array( 'Sıra', 'Ürün ID', 'Ürün Adı', 'Kategori', 'Toplam Tıklama', 'Tekil Tıklama', 'Masa Sayısı', 'Son Tıklama' ), ';' );
+
+			foreach ( self::en_cok_tiklananlar( $donem, $masa, 10000 ) as $i => $satir ) {
+				fputcsv(
+					$cikti,
+					array(
+						$i + 1,
+						$satir['item_id'],
+						$satir['item_name'],
+						$satir['category_name'],
+						$satir['toplam'],
+						$satir['tekil'],
+						$satir['masa_sayisi'],
+						$satir['son'],
+					),
+					';'
+				);
+			}
+		}
+
+		fclose( $cikti ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
+		exit;
+	}
+
+	/**
+	 * Kayıtları siler. Masa filtresi doluysa yalnızca o masanın kayıtları.
+	 *
+	 * @return void
+	 */
+	public static function ajax_temizle() {
+		check_ajax_referer( self::NONCE, 'security' );
+
+		if ( ! current_user_can( QRMS_Admin::CAPABILITY ) ) {
+			wp_send_json_error( array( 'mesaj' => __( 'Yetkiniz yok.', 'qrms' ) ), 403 );
+		}
+
+		global $wpdb;
+
+		$tablo = self::tablo();
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- check_ajax_referer yukarıda.
+		$masa = self::istek_masasi( $_POST );
+
+		if ( '' !== $masa ) {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+			$wpdb->delete( $tablo, array( 'masa_no' => $masa ), array( '%s' ) );
+
+			wp_send_json_success(
+				array(
+					'mesaj' => sprintf(
+						/* translators: %s: masa adı. */
+						__( '%s masasının analitik kayıtları silindi.', 'qrms' ),
+						self::masa_etiketi( $masa, self::masa_adlari() )
+					),
+				)
+			);
+		}
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$wpdb->query( "TRUNCATE TABLE {$tablo}" );
+
+		wp_send_json_success( array( 'mesaj' => __( 'Tüm analitik kayıtları silindi.', 'qrms' ) ) );
+	}
+}
