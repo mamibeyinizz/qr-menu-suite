@@ -5,41 +5,137 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 trait RMA_Admin_Pages_Trait {
 
     /**
-     * Ayarlar sayfasının sekme tanımı — tek kaynak.
-     * Anahtarlar eski submenu slug'larıdır; sekme id'si olarak korunur
-     * (eski linkler ve import redirect'leri bu id'lerle çalışmaya devam eder).
+     * Modülün kendi yönetim sayfaları — TEK KAYNAK.
+     *
+     * Her satır gerçek, ayrı bir WordPress sayfasıdır (add_submenu_page ile
+     * kaydedilir); JS ile gizlenip gösterilen sahte sekme yoktur. Menüdeki
+     * sıra ve "—" öneki modülün menü kodunda (module.php) belirlenir.
+     *
+     * @return array<string,array{title:string,menu_title:string,render:string,desc:string,icon:string}>
      */
-    private function get_admin_tabs() {
+    public function get_subpages() {
         return [
-            'rma_color_settings'       => [ 'label' => 'Genel Ayarlar',        'render' => 'render_settings_page' ],
-            'rma_nav_design'           => [ 'label' => 'Kayar Başlık',         'render' => 'render_nav_design_page' ],
-            'rma_category_order'       => [ 'label' => 'Kategori Sıralaması',  'render' => 'render_category_order_page' ],
-            'rma_suggestions_settings' => [ 'label' => 'Öneriler',             'render' => 'render_suggestions_page' ],
-            'rma_csv_import'           => [ 'label' => 'İçe/Dışa Aktar',       'render' => 'render_csv_import_page' ],
-            'rma_menu_backup'          => [ 'label' => 'Yedekleme',            'render' => 'render_menu_backup_page' ],
+            'qrms-rm-gorunum' => [
+                'title'      => 'Menü Görünümü',
+                'menu_title' => 'Görünüm',
+                'render'     => 'render_appearance_page',
+                'desc'       => 'Menünüzün renkleri, yazı tipleri ve kategori çubuğu.',
+                'icon'       => 'dashicons-art',
+            ],
+            'qrms-rm-one-cikanlar' => [
+                'title'      => 'Öne Çıkanlar',
+                'menu_title' => 'Öne Çıkanlar',
+                'render'     => 'render_featured_page',
+                'desc'       => 'Menünün üstünde öne çıkarılacak ürünler ve slider.',
+                'icon'       => 'dashicons-star-filled',
+            ],
+            'qrms-rm-diger' => [
+                'title'      => 'Diğer Ayarlar',
+                'menu_title' => 'Diğer Ayarlar',
+                'render'     => 'render_other_settings_page',
+                'desc'       => 'Kategori sırası, toplu ürün aktarımı ve yedekleme.',
+                'icon'       => 'dashicons-admin-tools',
+            ],
+        ];
+    }
+
+    /**
+     * "Restoran Menü" başlangıç sayfasındaki kartlar.
+     *
+     * Ürün/kategori/alerjen ekranları WordPress'in kendi sayfalarıdır, bu
+     * yüzden get_subpages() içinde değil burada tanımlanır.
+     *
+     * @return array<int,array{url:string,title:string,desc:string,icon:string}>
+     */
+    private function get_hub_cards() {
+        $cards = [
+            [
+                'url'   => admin_url( 'edit.php?post_type=rma_menu_item' ),
+                'title' => 'Ürünlerim',
+                'desc'  => 'Menüdeki tüm ürünleri görün, düzenleyin, gösterip gizleyin.',
+                'icon'  => 'dashicons-list-view',
+            ],
+            [
+                'url'   => admin_url( 'post-new.php?post_type=rma_menu_item' ),
+                'title' => 'Ürün Ekle',
+                'desc'  => 'Menünüze yeni bir ürün ekleyin.',
+                'icon'  => 'dashicons-plus-alt',
+            ],
+            [
+                'url'   => admin_url( 'edit-tags.php?taxonomy=rma_category&post_type=rma_menu_item' ),
+                'title' => 'Kategoriler',
+                'desc'  => 'Çorbalar, ana yemekler, içecekler… Menü bölümlerinizi yönetin.',
+                'icon'  => 'dashicons-category',
+            ],
+            [
+                'url'   => admin_url( 'edit-tags.php?taxonomy=rma_allergen&post_type=rma_menu_item' ),
+                'title' => 'Alerjenler',
+                'desc'  => 'Ürünlerde işaretlenebilecek alerjen listesini yönetin.',
+                'icon'  => 'dashicons-warning',
+            ],
+        ];
+
+        foreach ( $this->get_subpages() as $slug => $page ) {
+            $cards[] = [
+                'url'   => $this->admin_page_url( $slug ),
+                'title' => $page['menu_title'],
+                'desc'  => $page['desc'],
+                'icon'  => $page['icon'],
+            ];
+        }
+
+        return $cards;
+    }
+
+    /**
+     * Eski (sekmeli) sayfa slug'ları -> yeni sayfa + bölüm çapası.
+     *
+     * Yer imleri, dış bağlantılar ve eski yönlendirmeler çalışmaya devam
+     * etsin diye her eski slug hâlâ kayıtlıdır; açıldığında içeriğin taşındığı
+     * yeni sayfaya yönlendirir.
+     *
+     * @return array<string,array{0:string,1:string}>
+     */
+    private function get_legacy_page_map() {
+        return [
+            'rma_settings'             => [ 'qrms-rm-gorunum',      '' ],
+            'rma_color_settings'       => [ 'qrms-rm-gorunum',      '' ],
+            'rma_nav_design'           => [ 'qrms-rm-gorunum',      'rma-kategori-cubugu' ],
+            'rma_suggestions_settings' => [ 'qrms-rm-one-cikanlar', '' ],
+            'rma_category_order'       => [ 'qrms-rm-diger',        'rma-kategori-sirasi' ],
+            'rma_csv_import'           => [ 'qrms-rm-diger',        'rma-ice-disa-aktar' ],
+            'rma_menu_backup'          => [ 'qrms-rm-diger',        'rma-yedekleme' ],
         ];
     }
 
     public function add_admin_menus() {
-        add_submenu_page(
-            'edit.php?post_type=rma_menu_item',
-            'QR Menü Ayarları',
-            'Ayarlar',
-            'manage_options',
-            'rma_settings',
-            [ $this, 'render_admin_page' ]
-        );
+        // Suite kuruluysa menü satırları "QR Menü" üst menüsünün altında,
+        // module.php tarafından kaydedilir (WordPress menüsü iki seviyelidir,
+        // "Restoran Menü" satırının altına üçüncü seviye eklenemez). Suite
+        // yoksa eski tekil eklentideki gibi ürün listesinin altına eklenir.
+        if ( ! class_exists( 'QRMS_Admin' ) ) {
+            foreach ( $this->get_subpages() as $slug => $page ) {
+                add_submenu_page(
+                    'edit.php?post_type=rma_menu_item',
+                    $page['title'],
+                    $page['menu_title'],
+                    'manage_options',
+                    $slug,
+                    [ $this, $page['render'] ]
+                );
+            }
+        }
 
         // Eski slug'lar gizli sayfa olarak kayıtlı kalır; yer imleri ve
-        // dış linkler yeni sayfanın ilgili sekmesine yönlendirilir.
+        // dış linkler içeriğin taşındığı yeni sayfaya yönlendirilir.
         // Üst menü olarak null yerine '' kullanılır: ikisi de aynı
         // (admin_page_<slug>) hook'unu üretir ama '' PHP 8.1+ üzerinde
         // plugin_basename() içindeki null deprecation uyarısını doğurmaz.
-        foreach ( $this->get_admin_tabs() as $slug => $tab ) {
+        foreach ( array_keys( $this->get_legacy_page_map() ) as $slug ) {
             add_submenu_page(
                 '',
-                $tab['label'],
-                $tab['label'],
+                'QR Menü',
+                'QR Menü',
                 'manage_options',
                 $slug,
                 [ $this, 'redirect_legacy_page' ]
@@ -48,53 +144,87 @@ trait RMA_Admin_Pages_Trait {
     }
 
     /**
-     * Eski submenu slug'ından yeni birleşik sayfaya yönlendirir.
+     * Eski submenu slug'ından içeriğin taşındığı yeni sayfaya yönlendirir.
      */
     public function redirect_legacy_page() {
         $slug = sanitize_key( wp_unslash( $_GET['page'] ?? '' ) );
-        $tabs = $this->get_admin_tabs();
-        $tab  = isset( $tabs[ $slug ] ) ? $slug : 'rma_color_settings';
+        $map  = $this->get_legacy_page_map();
 
-        wp_safe_redirect( admin_url( 'edit.php?post_type=rma_menu_item&page=rma_settings&tab=' . $tab ) );
+        // Eski "tab" parametresi de dikkate alınır: rma_settings&tab=rma_csv_import
+        // gibi adresler doğrudan ilgili bölüme gider.
+        $tab = sanitize_key( wp_unslash( $_GET['tab'] ?? '' ) );
+        if ( isset( $map[ $tab ] ) ) {
+            $slug = $tab;
+        }
+
+        $target = $map[ $slug ] ?? $map['rma_settings'];
+
+        wp_safe_redirect( $this->admin_page_url( $target[0], [], $target[1] ) );
         exit;
     }
 
+    /* -----------------------------------------------------------------
+       ORTAK SAYFA İSKELETİ
+    ----------------------------------------------------------------- */
+
     /**
-     * Tek admin sayfasının ortak iskeleti: başlık + sekme çubuğu +
-     * her sekmenin gövdesini basan panel döngüsü. Altı render_*_page()
-     * metodu artık yalnızca kendi gövdesini üretir.
+     * Sayfa başlığı + açıklama + (varsa) geri bağlantısı.
+     *
+     * @param string $title Sayfa başlığı.
+     * @param string $intro Kısa açıklama.
+     * @return void
+     */
+    private function page_header( $title, $intro = '' ) {
+        echo '<div class="wrap rma-admin">';
+        echo '<a class="rma-back-link" href="' . esc_url( $this->hub_url() ) . '">&larr; Restoran Menü</a>';
+        echo '<h1>' . esc_html( $title ) . '</h1>';
+        if ( '' !== $intro ) {
+            echo '<p class="rma-admin-intro">' . esc_html( $intro ) . '</p>';
+        }
+    }
+
+    private function page_footer() {
+        echo '</div>';
+    }
+
+    /**
+     * Başlangıç sayfasının adresi (suite modül sayfası ya da eski Ayarlar
+     * sayfası). page_header() geri bağlantısı için kullanılır.
+     *
+     * @return string
+     */
+    private function hub_url() {
+        if ( class_exists( 'QRMS_Admin' ) ) {
+            return admin_url( 'admin.php?page=' . QRMS_Admin::get_module_page_slug( 'restoran-menu' ) );
+        }
+        return admin_url( 'edit.php?post_type=rma_menu_item' );
+    }
+
+    /* -----------------------------------------------------------------
+       1) BAŞLANGIÇ SAYFASI — "Restoran Menü"
+    ----------------------------------------------------------------- */
+
+    /**
+     * "Restoran Menü" satırının açtığı başlangıç ekranı: her işin nerede
+     * olduğunu gösteren büyük kartlar.
      */
     public function render_admin_page() {
-        $tabs   = $this->get_admin_tabs();
-        $active = sanitize_key( wp_unslash( $_GET['tab'] ?? '' ) );
-        if ( ! isset( $tabs[ $active ] ) ) {
-            $active = 'rma_color_settings';
-        }
         ?>
         <div class="wrap rma-admin">
-            <h1>QR Menü Ayarları</h1>
-            <p class="rma-admin-intro">Menünün görünümü, sıralaması, önerileri ve yedekleme işlemleri tek yerden yönetilir.</p>
+            <h1>Restoran Menü</h1>
+            <p class="rma-admin-intro">Ne yapmak istiyorsanız aşağıdan seçin. Aynı başlıklar sol menüde de listelidir.</p>
 
-            <div class="rma-tabs" role="tablist">
-                <?php foreach ( $tabs as $slug => $tab ) : ?>
-                    <button type="button"
-                            class="rma-tab<?php echo $slug === $active ? ' is-active' : ''; ?>"
-                            role="tab"
-                            aria-selected="<?php echo $slug === $active ? 'true' : 'false'; ?>"
-                            aria-controls="rma-panel-<?php echo esc_attr( $slug ); ?>"
-                            data-rma-tab="<?php echo esc_attr( $slug ); ?>"><?php echo esc_html( $tab['label'] ); ?></button>
+            <div class="rma-hub-grid">
+                <?php foreach ( $this->get_hub_cards() as $card ) : ?>
+                    <a class="rma-hub-card" href="<?php echo esc_url( $card['url'] ); ?>">
+                        <span class="rma-hub-icon dashicons <?php echo esc_attr( $card['icon'] ); ?>" aria-hidden="true"></span>
+                        <span class="rma-hub-body">
+                            <span class="rma-hub-title"><?php echo esc_html( $card['title'] ); ?></span>
+                            <span class="rma-hub-desc"><?php echo esc_html( $card['desc'] ); ?></span>
+                        </span>
+                    </a>
                 <?php endforeach; ?>
             </div>
-
-            <?php foreach ( $tabs as $slug => $tab ) : ?>
-                <div class="rma-tabpanel"
-                     id="rma-panel-<?php echo esc_attr( $slug ); ?>"
-                     role="tabpanel"
-                     data-rma-panel="<?php echo esc_attr( $slug ); ?>"
-                     <?php echo $slug === $active ? '' : 'hidden'; ?>>
-                    <?php $this->{ $tab['render'] }(); ?>
-                </div>
-            <?php endforeach; ?>
         </div>
         <?php
     }
@@ -106,13 +236,20 @@ trait RMA_Admin_Pages_Trait {
         register_setting( 'rma_nav_design_group',    'rma_nav_design_settings', $args );
     }
 
-    public function render_settings_page() {
-        $def_c = $this->get_color_defaults();
-        $c     = $this->get_color_settings();
-        $def_t = $this->get_typo_defaults();
-        $t     = $this->get_typo_settings();
+    /* -----------------------------------------------------------------
+       2) GÖRÜNÜM SAYFASI
+       Eski "Genel Ayarlar" sekmesinin üç iç sekmesi (Renkler / Tipografi /
+       Hazır Paletler) ve "Kayar Başlık" sekmesi burada birleşti. Hiçbir
+       alan düşmedi; az kullanılanlar açılır bölümlere alındı.
+    ----------------------------------------------------------------- */
 
-        $font_options = [
+    /**
+     * Menünün frontend'de kullandığı font seçenekleri.
+     *
+     * @return string[]
+     */
+    private function get_font_options() {
+        return [
             'Plus Jakarta Sans',
             'Nunito',
             'Inter',
@@ -131,172 +268,382 @@ trait RMA_Admin_Pages_Trait {
             'serif',
             'sans-serif',
         ];
+    }
+
+    /**
+     * Hazır tema paletleri. Anahtarlar renk ayarlarının anahtarlarıyla
+     * birebir aynıdır — palete tıklayınca ilgili renk seçicilere yazılır.
+     *
+     * @return array
+     */
+    private function get_color_palettes() {
+        return [
+            [
+                'name'   => 'Premium Altın',
+                'sub'    => 'Koyu zemin, altın vurgu',
+                'colors' => [ 'bg' => '#0a0a0a', 'card' => '#111111', 'text' => '#f5f0e8', 'border' => '#2a2a2a', 'accent' => '#c9a84c', 'desc' => '#888888', 'toolbar_bg' => '#0a0a0a', 'modal_bg' => '#0a0a0a', 'section_title' => '#f5f0e8' ],
+            ],
+            [
+                'name'   => 'Klasik Turuncu',
+                'sub'    => 'Beyaz zemin, turuncu vurgu',
+                'colors' => [ 'bg' => '#ffffff', 'card' => '#ffffff', 'text' => '#333333', 'border' => '#eaeaea', 'accent' => '#ff6b00', 'desc' => '#777777', 'toolbar_bg' => '#f7f7f7', 'modal_bg' => '#ffffff', 'section_title' => '#333333' ],
+            ],
+            [
+                'name'   => 'Koyu Tema',
+                'sub'    => 'Siyah zemin, turuncu vurgu',
+                'colors' => [ 'bg' => '#121212', 'card' => '#1e1e1e', 'text' => '#ffffff', 'border' => '#2a2a2a', 'accent' => '#ff8533', 'desc' => '#aaaaaa', 'toolbar_bg' => '#121212', 'modal_bg' => '#121212', 'section_title' => '#ffffff' ],
+            ],
+            [
+                'name'   => 'Modern Mavi',
+                'sub'    => 'Açık zemin, mavi vurgu',
+                'colors' => [ 'bg' => '#f4f7f6', 'card' => '#ffffff', 'text' => '#2c3e50', 'border' => '#dcdde1', 'accent' => '#0984e3', 'desc' => '#7f8c8d', 'toolbar_bg' => '#f4f7f6', 'modal_bg' => '#ffffff', 'section_title' => '#2c3e50' ],
+            ],
+            [
+                'name'   => 'Doğal Yeşil',
+                'sub'    => 'Krem zemin, yeşil vurgu',
+                'colors' => [ 'bg' => '#faf9f5', 'card' => '#ffffff', 'text' => '#3e3e3e', 'border' => '#e0e0e0', 'accent' => '#27ae60', 'desc' => '#8e8e8e', 'toolbar_bg' => '#faf9f5', 'modal_bg' => '#ffffff', 'section_title' => '#3e3e3e' ],
+            ],
+        ];
+    }
+
+    /**
+     * Tek bir renk seçici satırı.
+     *
+     * @param string $key   Ayar anahtarı (rma_color_settings[$key]).
+     * @param string $label Görünen etiket.
+     * @param string $desc  Açıklama.
+     * @return void
+     */
+    private function render_color_row( $key, $label, $desc ) {
+        $c     = $this->get_color_settings();
+        $def_c = $this->get_color_defaults();
         ?>
+        <tr>
+            <th><label for="rma_c_<?php echo esc_attr( $key ); ?>"><?php echo esc_html( $label ); ?></label></th>
+            <td>
+                <input type="text"
+                       id="rma_c_<?php echo esc_attr( $key ); ?>"
+                       name="rma_color_settings[<?php echo esc_attr( $key ); ?>]"
+                       value="<?php echo esc_attr( $c[ $key ] ?? '#000000' ); ?>"
+                       class="rma-color-picker"
+                       data-default-color="<?php echo esc_attr( $def_c[ $key ] ?? '#000000' ); ?>">
+                <p class="description rma-desc"><?php echo esc_html( $desc ); ?></p>
+            </td>
+        </tr>
+        <?php
+    }
+
+    /**
+     * Tek bir tipografi alanı satırı.
+     *
+     * @param array $field Alan tanımı.
+     * @return void
+     */
+    private function render_typo_row( array $field ) {
+        $t     = $this->get_typo_settings();
+        $def_t = $this->get_typo_defaults();
+        $name  = $field['name'];
+        $val   = $t[ $name ] ?? '';
+        ?>
+        <tr>
+            <th><label for="rma_t_<?php echo esc_attr( $name ); ?>"><?php echo esc_html( $field['label'] ); ?></label></th>
+            <td>
+                <?php if ( 'font' === $field['type'] ) : ?>
+                    <select id="rma_t_<?php echo esc_attr( $name ); ?>" name="rma_typo_settings[<?php echo esc_attr( $name ); ?>]" class="rma-select-wide">
+                        <?php foreach ( $this->get_font_options() as $fo ) : ?>
+                            <option value="<?php echo esc_attr( $fo ); ?>" <?php selected( $val, $fo ); ?>><?php echo esc_html( $fo ); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                <?php elseif ( 'color' === $field['type'] ) : ?>
+                    <input type="text"
+                           id="rma_t_<?php echo esc_attr( $name ); ?>"
+                           name="rma_typo_settings[<?php echo esc_attr( $name ); ?>]"
+                           value="<?php echo esc_attr( $val ); ?>"
+                           class="rma-color-picker"
+                           data-default-color="<?php echo esc_attr( $def_t[ $name ] ?? '#ffffff' ); ?>">
+                <?php elseif ( 'select' === $field['type'] ) : ?>
+                    <select id="rma_t_<?php echo esc_attr( $name ); ?>" name="rma_typo_settings[<?php echo esc_attr( $name ); ?>]" class="rma-select-narrow">
+                        <?php foreach ( $field['options'] as $opt_val => $opt_label ) : ?>
+                            <option value="<?php echo esc_attr( $opt_val ); ?>" <?php selected( $val, (string) $opt_val ); ?>><?php echo esc_html( $opt_label ); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                <?php elseif ( 'range' === $field['type'] ) : ?>
+                    <div class="rma-range-row">
+                        <input type="range"
+                               id="rma_t_<?php echo esc_attr( $name ); ?>"
+                               name="rma_typo_settings[<?php echo esc_attr( $name ); ?>]"
+                               value="<?php echo esc_attr( $val ); ?>"
+                               min="<?php echo esc_attr( $field['min'] ); ?>"
+                               max="<?php echo esc_attr( $field['max'] ); ?>"
+                               step="<?php echo esc_attr( $field['step'] ); ?>"
+                               oninput="this.nextElementSibling.textContent=this.value+'rem'">
+                        <span class="rma-range-val"><?php echo esc_html( $val ); ?>rem</span>
+                    </div>
+                <?php endif; ?>
+                <?php if ( ! empty( $field['desc'] ) ) : ?>
+                    <p class="description rma-desc"><?php echo esc_html( $field['desc'] ); ?></p>
+                <?php endif; ?>
+            </td>
+        </tr>
+        <?php
+    }
+
+    /**
+     * Görünüm sayfası: hazır temalar, renkler, yazı tipleri ve kategori
+     * çubuğu tasarımı.
+     */
+    public function render_appearance_page() {
+        $this->page_header(
+            'Menü Görünümü',
+            'Önce hazır bir tema seçin, isterseniz altındaki bölümlerden tek tek değiştirin. Değişiklikler kaydettikten sonra menünüze yansır.'
+        );
+        ?>
+
         <form method="post" action="options.php">
-                <?php settings_fields( 'rma_color_options_group' ); ?>
+            <?php settings_fields( 'rma_color_options_group' ); ?>
 
-                <div>
-                    <div class="rma-subtabs" role="tablist">
-                        <button type="button" class="rma-subtab is-active" role="tab" data-rma-subtab="colors">Renkler</button>
-                        <button type="button" class="rma-subtab"           role="tab" data-rma-subtab="typography">Tipografi</button>
-                        <button type="button" class="rma-subtab"           role="tab" data-rma-subtab="palettes">Hazır Paletler</button>
-                    </div>
+            <div class="rma-card">
+                <h2 class="rma-card-title">1. Hazır Tema Seç</h2>
+                <p class="rma-card-desc">Bir temaya dokunun — renkler otomatik dolar. Sonra sayfanın altındaki <strong>Görünümü Kaydet</strong> butonuna basmayı unutmayın.</p>
 
-                    <div class="rma-subtabpanel" role="tabpanel" data-rma-subpanel="colors">
-                        <?php
-                        $color_fields = [
-                            'Genel Arka Plan & Yapı' => [
-                                'bg'   => [ 'Ana Arka Plan', 'Menünün tüm arka planı.' ],
-                                'card' => [ 'Kart Arka Planı', 'Her ürün kartının arka plan rengi.' ],
-                                'border' => [ 'Kenarlık Rengi', 'Kart çerçeveleri ve genel borderlar.' ],
-                            ],
-                            'Metin Renkleri' => [
-                                'text'          => [ 'Ana Metin Rengi', 'Ürün başlıkları ve genel metin.' ],
-                                'desc'          => [ 'Açıklama Rengi', 'Kısa açıklama metinleri.' ],
-                                'section_title' => [ 'Kategori Başlık Rengi', 'Menüdeki kategori başlıklarının rengi.' ],
-                            ],
-                            'Vurgu & Fiyat' => [
-                                'accent' => [ 'Ana Vurgu Rengi ⭐', 'Fiyatlar, aktif nav butonu, hover efektleri.' ],
-                            ],
-                            'Araç Çubuğu' => [
-    'toolbar_bg' => [ 'Toolbar Arka Plan', 'Arama ve filtre butonlarının bulunduğu şerit.' ],
-    // BURAYA EKLE:
-    'filter_btn_border' => [ 'Filtrele Butonu Kenarlık', 'Filtrele ve Sıfırla butonlarının kenarlık rengi.' ],
-    'filter_btn_text'   => [ 'Filtrele Butonu Yazı', 'Filtrele ve Sıfırla butonlarının yazı rengi.' ],
-],
-                            'Modal' => [
-                                'modal_bg' => [ 'Modal Arka Plan', 'Ürüne tıklandığında açılan detay penceresi.' ],
-                            ],
-                        ];
-                        foreach ( $color_fields as $group_label => $fields ) : ?>
-                            <div class="rma-section">
-                                <h3 class="rma-section-title"><?php echo $group_label; ?></h3>
-                                <table class="form-table rma-form-table">
-                                    <?php foreach ( $fields as $key => [$label, $desc] ) : ?>
-                                    <tr>
-                                        <th><label for="rma_c_<?php echo $key; ?>"><?php echo $label; ?></label></th>
-                                        <td>
-                                            <input type="text" id="rma_c_<?php echo $key; ?>" name="rma_color_settings[<?php echo $key; ?>]" value="<?php echo esc_attr( $c[$key] ?? '#000000' ); ?>" class="rma-color-picker" data-default-color="<?php echo esc_attr( $def_c[$key] ?? '#000000' ); ?>"/>
-                                            <p class="description rma-desc"><?php echo $desc; ?></p>
-                                        </td>
-                                    </tr>
-                                    <?php endforeach; ?>
-                                </table>
-                            </div>
-                        <?php endforeach; ?>
-                    </div>
-
-                    <div class="rma-subtabpanel" role="tabpanel" data-rma-subpanel="typography" hidden>
-                        <?php
-                        $typo_groups = [
-                            'Kategori Başlıkları' => [
-                                'description' => 'Menüde her kategorinin üst başlığı.',
-                                'fields' => [
-                                    [ 'label' => 'Font Ailesi',  'name' => 'heading_font',   'type' => 'font',   'key' => 'heading_font',   'desc' => 'Kategori başlık fontu.' ],
-                                    [ 'label' => 'Boyut (rem)',  'name' => 'heading_size',   'type' => 'range',  'min' => '0.8', 'max' => '3', 'step' => '0.05', 'key' => 'heading_size', 'desc' => 'Varsayılan: 1.42rem' ],
-                                    [ 'label' => 'Kalınlık',    'name' => 'heading_weight', 'type' => 'select', 'options' => [ '300','400','500','600','700','800' ], 'key' => 'heading_weight', 'desc' => '400 = normal, 700 = bold.' ],
-                                    [ 'label' => 'Stil',        'name' => 'heading_style',  'type' => 'select', 'options' => [ 'normal','italic','oblique' ], 'key' => 'heading_style', 'desc' => 'Normal mi, italik mi?' ],
-                                    [ 'label' => 'Renk',        'name' => 'heading_color',  'type' => 'color',  'key' => 'heading_color',  'desc' => 'Kategori başlık yazı rengi.' ],
-                                ],
-                            ],
-                            'Ürün Adları' => [
-                                'description' => 'Her ürün kartındaki ürün adı.',
-                                'fields' => [
-                                    [ 'label' => 'Font Ailesi', 'name' => 'body_font',   'type' => 'font',  'key' => 'body_font',  'desc' => 'Ürün adı fontu.' ],
-                                    [ 'label' => 'Boyut (rem)', 'name' => 'body_size',   'type' => 'range', 'min' => '0.7', 'max' => '1.6', 'step' => '0.01', 'key' => 'body_size', 'desc' => 'Varsayılan: 0.93rem' ],
-                                    [ 'label' => 'Kalınlık',   'name' => 'body_weight', 'type' => 'select', 'options' => [ '300','400','500','600','700' ], 'key' => 'body_weight', 'desc' => 'Ürün adı kalınlığı.' ],
-                                    [ 'label' => 'Renk',       'name' => 'body_color',  'type' => 'color', 'key' => 'body_color', 'desc' => 'Ürün adı yazı rengi.' ],
-                                ],
-                            ],
-                            'Ürün Açıklamaları' => [
-                                'description' => 'Karttaki kısa açıklama metni.',
-                                'fields' => [
-                                    [ 'label' => 'Boyut (rem)', 'name' => 'desc_size',  'type' => 'range', 'min' => '0.6', 'max' => '1.2', 'step' => '0.01', 'key' => 'desc_size', 'desc' => 'Varsayılan: 0.80rem' ],
-                                    [ 'label' => 'Renk',        'name' => 'desc_color', 'type' => 'color', 'key' => 'desc_color', 'desc' => 'Açıklama yazı rengi.' ],
-                                ],
-                            ],
-                            'Fiyat Yazısı' => [
-                                'description' => 'Kart altındaki fiyat gösterimi.',
-                                'fields' => [
-                                    [ 'label' => 'Font Ailesi', 'name' => 'price_font',  'type' => 'font', 'key' => 'price_font', 'desc' => 'Fiyat fontu.' ],
-                                    [ 'label' => 'Boyut (rem)', 'name' => 'price_size',  'type' => 'range', 'min' => '0.8', 'max' => '2', 'step' => '0.01', 'key' => 'price_size', 'desc' => 'Varsayılan: 1.02rem' ],
-                                    [ 'label' => 'Renk',        'name' => 'price_color', 'type' => 'color', 'key' => 'price_color', 'desc' => 'Fiyat yazı rengi.' ],
-                                ],
-                            ],
-                            'Modal Başlığı' => [
-                                'description' => 'Ürün detay penceresindeki büyük başlık.',
-                                'fields' => [
-                                    [ 'label' => 'Boyut (rem)', 'name' => 'modal_title_size', 'type' => 'range', 'min' => '1', 'max' => '3', 'step' => '0.05', 'key' => 'modal_title_size', 'desc' => 'Varsayılan: 1.55rem' ],
-                                ],
-                            ],
-                        ];
-                        foreach ( $typo_groups as $group_label => $group_data ) :
-                            $group_desc = $group_data['description'] ?? '';
+                <div class="rma-theme-grid">
+                    <?php
+                    $current_colors = $this->get_color_settings();
+                    foreach ( $this->get_color_palettes() as $pal ) :
+                        // Kayıtlı renkler bir paletle birebir aynıysa o kart
+                        // "seçili" görünür — kullanıcı hangi temada olduğunu
+                        // görebilsin diye. Palet adı ayrıca saklanmaz.
+                        $is_current = true;
+                        foreach ( $pal['colors'] as $key => $value ) {
+                            if ( strtolower( (string) ( $current_colors[ $key ] ?? '' ) ) !== strtolower( $value ) ) {
+                                $is_current = false;
+                                break;
+                            }
+                        }
                         ?>
-                            <div class="rma-section">
-                                <h3 class="rma-section-title"><?php echo $group_label; ?></h3>
-                                <?php if ( $group_desc ) : ?><p class="rma-section-desc"><?php echo $group_desc; ?></p><?php endif; ?>
-                                <table class="form-table rma-form-table">
-                                    <?php foreach ( $group_data['fields'] as $field ) :
-                                        $val = $t[ $field['key'] ] ?? '';
-                                    ?>
-                                    <tr>
-                                        <th><label><?php echo $field['label']; ?></label></th>
-                                        <td>
-                                            <?php if ( $field['type'] === 'font' ) : ?>
-                                                <select name="rma_typo_settings[<?php echo $field['name']; ?>]" class="rma-select-wide">
-                                                    <?php foreach ( $font_options as $fo ) : ?>
-                                                        <option value="<?php echo esc_attr( $fo ); ?>" <?php selected( $val, $fo ); ?>><?php echo $fo; ?></option>
-                                                    <?php endforeach; ?>
-                                                </select>
-                                            <?php elseif ( $field['type'] === 'color' ) : ?>
-                                                <input type="text" name="rma_typo_settings[<?php echo $field['name']; ?>]" value="<?php echo esc_attr( $val ); ?>" class="rma-color-picker" data-default-color="<?php echo esc_attr( $def_t[ $field['key'] ] ?? '#ffffff' ); ?>">
-                                            <?php elseif ( $field['type'] === 'select' ) : ?>
-                                                <select name="rma_typo_settings[<?php echo $field['name']; ?>]" class="rma-select-narrow">
-                                                    <?php foreach ( $field['options'] as $opt ) : ?>
-                                                        <option value="<?php echo $opt; ?>" <?php selected( $val, $opt ); ?>><?php echo $opt; ?></option>
-                                                    <?php endforeach; ?>
-                                                </select>
-                                            <?php elseif ( $field['type'] === 'range' ) : ?>
-                                                <div class="rma-range-row">
-                                                    <input type="range" name="rma_typo_settings[<?php echo $field['name']; ?>]" value="<?php echo esc_attr( $val ); ?>" min="<?php echo $field['min']; ?>" max="<?php echo $field['max']; ?>" step="<?php echo $field['step']; ?>" oninput="this.nextElementSibling.textContent=this.value+'rem'">
-                                                    <span class="rma-range-val"><?php echo $val; ?>rem</span>
-                                                </div>
-                                            <?php endif; ?>
-                                            <p class="description rma-desc"><?php echo $field['desc']; ?></p>
-                                        </td>
-                                    </tr>
-                                    <?php endforeach; ?>
-                                </table>
-                            </div>
-                        <?php endforeach; ?>
-                    </div>
-
-                    <div class="rma-subtabpanel" role="tabpanel" data-rma-subpanel="palettes" hidden>
-                        <p class="rma-card-desc">Bir palete tıklayın, ardından <strong>Ayarları Kaydet</strong>.</p>
-                        <div class="rma-palette-row">
-                            <?php
-                            $palettes = [
-                                [ 'name' => '◆ Premium Altın', 'colors' => [ 'bg' => '#0a0a0a', 'card' => '#111111', 'text' => '#f5f0e8', 'border' => '#2a2a2a', 'accent' => '#c9a84c', 'desc' => '#888888', 'toolbar_bg' => '#0a0a0a', 'modal_bg' => '#0a0a0a', 'section_title' => '#f5f0e8' ] ],
-                                [ 'name' => 'Klasik Turuncu',  'colors' => [ 'bg' => '#ffffff', 'card' => '#ffffff', 'text' => '#333333', 'border' => '#eaeaea', 'accent' => '#ff6b00', 'desc' => '#777777', 'toolbar_bg' => '#f7f7f7', 'modal_bg' => '#ffffff', 'section_title' => '#333333' ] ],
-                                [ 'name' => 'Koyu Tema',       'colors' => [ 'bg' => '#121212', 'card' => '#1e1e1e', 'text' => '#ffffff', 'border' => '#2a2a2a', 'accent' => '#ff8533', 'desc' => '#aaaaaa', 'toolbar_bg' => '#121212', 'modal_bg' => '#121212', 'section_title' => '#ffffff' ] ],
-                                [ 'name' => 'Modern Mavi',     'colors' => [ 'bg' => '#f4f7f6', 'card' => '#ffffff', 'text' => '#2c3e50', 'border' => '#dcdde1', 'accent' => '#0984e3', 'desc' => '#7f8c8d', 'toolbar_bg' => '#f4f7f6', 'modal_bg' => '#ffffff', 'section_title' => '#2c3e50' ] ],
-                                [ 'name' => 'Doğal Yeşil',     'colors' => [ 'bg' => '#faf9f5', 'card' => '#ffffff', 'text' => '#3e3e3e', 'border' => '#e0e0e0', 'accent' => '#27ae60', 'desc' => '#8e8e8e', 'toolbar_bg' => '#faf9f5', 'modal_bg' => '#ffffff', 'section_title' => '#3e3e3e' ] ],
-                            ];
-                            foreach ( $palettes as $pal ) : ?>
-                                <button type="button" class="button rma-palette-btn" data-palette='<?php echo json_encode( $pal['colors'] ); ?>'>
-                                    <?php echo $pal['name']; ?>
-                                </button>
-                            <?php endforeach; ?>
-                        </div>
-                    </div>
+                        <button type="button" class="rma-theme-card<?php echo $is_current ? ' is-selected' : ''; ?>" data-palette='<?php echo esc_attr( wp_json_encode( $pal['colors'] ) ); ?>'>
+                            <span class="rma-theme-preview" style="background:<?php echo esc_attr( $pal['colors']['bg'] ); ?>;">
+                                <span class="rma-theme-chip" style="background:<?php echo esc_attr( $pal['colors']['card'] ); ?>;border-color:<?php echo esc_attr( $pal['colors']['border'] ); ?>;">
+                                    <span class="rma-theme-line" style="background:<?php echo esc_attr( $pal['colors']['text'] ); ?>;"></span>
+                                    <span class="rma-theme-line rma-theme-line-sm" style="background:<?php echo esc_attr( $pal['colors']['desc'] ); ?>;"></span>
+                                    <span class="rma-theme-price" style="color:<?php echo esc_attr( $pal['colors']['accent'] ); ?>;">₺</span>
+                                </span>
+                            </span>
+                            <span class="rma-theme-name"><?php echo esc_html( $pal['name'] ); ?></span>
+                            <span class="rma-theme-sub"><?php echo esc_html( $pal['sub'] ); ?></span>
+                        </button>
+                    <?php endforeach; ?>
                 </div>
+            </div>
 
-                <p>
-                    <?php submit_button( 'Ayarları Kaydet', 'primary', 'rma_submit_settings', false ); ?>
-                </p>
-            </form>
-    <?php }
+            <div class="rma-card">
+                <h2 class="rma-card-title">2. Renkleri Özelleştir</h2>
+                <p class="rma-card-desc">En çok fark yaratan dört renk burada. Renk kutusuna dokunup istediğiniz tonu seçin.</p>
+
+                <table class="form-table rma-form-table">
+                    <?php
+                    $primary_colors = [
+                        'accent' => [ 'Vurgu Rengi', 'Fiyatlar, seçili kategori ve butonlar bu renkte görünür.' ],
+                        'bg'     => [ 'Menü Arka Planı', 'Menünün genel arka plan rengi.' ],
+                        'card'   => [ 'Ürün Kutusu Arka Planı', 'Her ürünün durduğu kutunun rengi.' ],
+                        'text'   => [ 'Ana Yazı Rengi', 'Ürün adları ve genel yazılar.' ],
+                    ];
+                    foreach ( $primary_colors as $key => $row ) {
+                        $this->render_color_row( $key, $row[0], $row[1] );
+                    }
+                    ?>
+                </table>
+
+                <details class="rma-details">
+                    <summary>Diğer renk ayarları</summary>
+                    <table class="form-table rma-form-table">
+                        <?php
+                        $other_colors = [
+                            'section_title'     => [ 'Kategori Başlığı Rengi', 'Menüdeki "Çorbalar", "Tatlılar" gibi başlıkların rengi.' ],
+                            'desc'              => [ 'Açıklama Yazısı Rengi', 'Ürün kutusundaki kısa açıklamalar.' ],
+                            'border'            => [ 'Çerçeve Rengi', 'Kutu çerçeveleri ve ayırıcı çizgiler.' ],
+                            'toolbar_bg'        => [ 'Arama Şeridi Arka Planı', 'Arama ve filtre butonlarının bulunduğu şerit.' ],
+                            'filter_btn_border' => [ 'Filtre Butonu Çerçevesi', '"Filtrele" ve "Sıfırla" butonlarının çerçeve rengi.' ],
+                            'filter_btn_text'   => [ 'Filtre Butonu Yazısı', '"Filtrele" ve "Sıfırla" butonlarının yazı rengi.' ],
+                            'modal_bg'          => [ 'Ürün Penceresi Arka Planı', 'Bir ürüne tıklanınca açılan detay penceresi.' ],
+                        ];
+                        foreach ( $other_colors as $key => $row ) {
+                            $this->render_color_row( $key, $row[0], $row[1] );
+                        }
+                        ?>
+                    </table>
+                </details>
+            </div>
+
+            <div class="rma-card">
+                <h2 class="rma-card-title">3. Yazı Tipleri</h2>
+                <p class="rma-card-desc">Menüde kullanılacak yazı tiplerini seçin.</p>
+
+                <table class="form-table rma-form-table">
+                    <?php
+                    $primary_typo = [
+                        [ 'label' => 'Kategori Başlıkları', 'name' => 'heading_font', 'type' => 'font', 'desc' => 'Menüdeki bölüm başlıklarının yazı tipi.' ],
+                        [ 'label' => 'Ürün Adları',         'name' => 'body_font',    'type' => 'font', 'desc' => 'Ürün isimlerinin yazı tipi.' ],
+                        [ 'label' => 'Fiyatlar',            'name' => 'price_font',   'type' => 'font', 'desc' => 'Fiyat yazılarının yazı tipi.' ],
+                    ];
+                    foreach ( $primary_typo as $field ) {
+                        $this->render_typo_row( $field );
+                    }
+                    ?>
+                </table>
+
+                <details class="rma-details">
+                    <summary>Yazı boyutu, kalınlık ve renk ayarları</summary>
+                    <?php
+                    $weights = [ '300' => '300 — İnce', '400' => '400 — Normal', '500' => '500 — Orta', '600' => '600 — Yarı kalın', '700' => '700 — Kalın', '800' => '800 — Çok kalın' ];
+
+                    $typo_groups = [
+                        'Kategori Başlıkları' => [
+                            [ 'label' => 'Boyut',    'name' => 'heading_size',   'type' => 'range',  'min' => '0.8', 'max' => '3', 'step' => '0.05', 'desc' => 'Varsayılan: 1.42' ],
+                            [ 'label' => 'Kalınlık', 'name' => 'heading_weight', 'type' => 'select', 'options' => $weights, 'desc' => '' ],
+                            [ 'label' => 'Stil',     'name' => 'heading_style',  'type' => 'select', 'options' => [ 'normal' => 'Normal', 'italic' => 'İtalik', 'oblique' => 'Eğik' ], 'desc' => '' ],
+                            [ 'label' => 'Renk',     'name' => 'heading_color',  'type' => 'color',  'desc' => 'Kategori başlıklarının yazı rengi.' ],
+                        ],
+                        'Ürün Adları' => [
+                            [ 'label' => 'Boyut',    'name' => 'body_size',   'type' => 'range',  'min' => '0.7', 'max' => '1.6', 'step' => '0.01', 'desc' => 'Varsayılan: 0.93' ],
+                            [ 'label' => 'Kalınlık', 'name' => 'body_weight', 'type' => 'select', 'options' => array_slice( $weights, 0, 5, true ), 'desc' => '' ],
+                            [ 'label' => 'Renk',     'name' => 'body_color',  'type' => 'color',  'desc' => 'Ürün adlarının yazı rengi.' ],
+                        ],
+                        'Ürün Açıklamaları' => [
+                            [ 'label' => 'Boyut', 'name' => 'desc_size',  'type' => 'range', 'min' => '0.6', 'max' => '1.2', 'step' => '0.01', 'desc' => 'Varsayılan: 0.80' ],
+                            [ 'label' => 'Renk',  'name' => 'desc_color', 'type' => 'color', 'desc' => 'Kısa açıklamaların yazı rengi.' ],
+                        ],
+                        'Fiyatlar' => [
+                            [ 'label' => 'Boyut', 'name' => 'price_size',  'type' => 'range', 'min' => '0.8', 'max' => '2', 'step' => '0.01', 'desc' => 'Varsayılan: 1.02' ],
+                            [ 'label' => 'Renk',  'name' => 'price_color', 'type' => 'color', 'desc' => 'Fiyat yazılarının rengi.' ],
+                        ],
+                        'Ürün Detay Penceresi' => [
+                            [ 'label' => 'Başlık Boyutu', 'name' => 'modal_title_size', 'type' => 'range', 'min' => '1', 'max' => '3', 'step' => '0.05', 'desc' => 'Varsayılan: 1.55' ],
+                        ],
+                    ];
+
+                    foreach ( $typo_groups as $group_label => $fields ) : ?>
+                        <div class="rma-section">
+                            <h3 class="rma-section-title"><?php echo esc_html( $group_label ); ?></h3>
+                            <table class="form-table rma-form-table">
+                                <?php foreach ( $fields as $field ) {
+                                    $this->render_typo_row( $field );
+                                } ?>
+                            </table>
+                        </div>
+                    <?php endforeach; ?>
+                </details>
+            </div>
+
+            <p class="rma-sticky-save">
+                <?php submit_button( 'Görünümü Kaydet', 'primary', 'rma_submit_settings', false ); ?>
+            </p>
+        </form>
+
+        <?php $this->render_nav_design_page(); ?>
+
+        <?php
+        $this->page_footer();
+    }
+
+    /* -----------------------------------------------------------------
+       3) ÖNE ÇIKANLAR SAYFASI
+       Eski "Öneriler" sekmesi + menüden erişilemeyen "Öne Çıkan Slider"
+       ekranı burada toplandı.
+    ----------------------------------------------------------------- */
+
+    public function render_featured_page() {
+        $this->page_header(
+            'Öne Çıkanlar',
+            'Menünün üst bölümünde müşterilerinize hangi ürünleri göstereceğinizi buradan belirlersiniz.'
+        );
+
+        $this->render_suggestions_page();
+        $this->render_slider_section();
+
+        $this->page_footer();
+    }
+
+    /**
+     * "Öne Çıkan Slider" bölümü — slide listesi ve düzenleme bağlantıları.
+     *
+     * Slider ekranı `qmo_slide` içerik türünde durur; menü kaydı üst menü
+     * olmayan bir slug'a bağlı olduğu için sol menüde hiç görünmüyordu.
+     * Bu bölüm ona erişimi geri kazandırır.
+     */
+    private function render_slider_section() {
+        if ( ! post_type_exists( 'qmo_slide' ) ) {
+            return;
+        }
+
+        $slides = class_exists( 'QMO_Slide_CPT' ) ? QMO_Slide_CPT::get_published_slides() : [];
+        ?>
+        <div class="rma-card" id="rma-slider">
+            <h2 class="rma-card-title">Öne Çıkan Slider</h2>
+            <p class="rma-card-desc">Menünün en üstünde kayan görsel şeritte gösterilecek ürün grupları. Her grupta en fazla 4 ürün gösterilir.</p>
+
+            <?php if ( empty( $slides ) ) : ?>
+                <p class="rma-empty">Henüz slider grubu eklenmemiş.</p>
+            <?php else : ?>
+                <ul class="rma-simple-list">
+                    <?php foreach ( $slides as $slide ) :
+                        $urunler = [];
+                        for ( $i = 1; $i <= 4; $i++ ) {
+                            $pid = (int) get_post_meta( $slide->ID, '_qmo_slide_urun_' . $i, true );
+                            if ( $pid ) {
+                                $urunler[] = get_the_title( $pid );
+                            }
+                        }
+                        ?>
+                        <?php $edit_link = get_edit_post_link( $slide->ID ); ?>
+                        <li class="rma-simple-item">
+                            <span class="rma-simple-main">
+                                <?php if ( $edit_link ) : ?>
+                                    <a href="<?php echo esc_url( $edit_link ); ?>"><?php echo esc_html( $slide->post_title ?: 'Başlıksız grup' ); ?></a>
+                                <?php else : ?>
+                                    <strong><?php echo esc_html( $slide->post_title ?: 'Başlıksız grup' ); ?></strong>
+                                <?php endif; ?>
+                                <span class="rma-simple-sub"><?php echo esc_html( $urunler ? implode( ', ', $urunler ) : 'Ürün seçilmemiş' ); ?></span>
+                            </span>
+                            <span class="rma-simple-meta">Sıra: <?php echo (int) $slide->menu_order; ?></span>
+                        </li>
+                    <?php endforeach; ?>
+                </ul>
+            <?php endif; ?>
+
+            <p class="rma-actions">
+                <a class="button button-primary" href="<?php echo esc_url( admin_url( 'post-new.php?post_type=qmo_slide' ) ); ?>">Yeni Slider Grubu Ekle</a>
+                <a class="button" href="<?php echo esc_url( admin_url( 'edit.php?post_type=qmo_slide' ) ); ?>">Tüm Grupları Yönet</a>
+            </p>
+        </div>
+        <?php
+    }
+
+    /* -----------------------------------------------------------------
+       4) DİĞER AYARLAR SAYFASI
+       Eski "Kategori Sıralaması", "İçe/Dışa Aktar" ve "Yedekleme"
+       sekmeleri burada üç bölüm hâlinde alt alta duruyor.
+    ----------------------------------------------------------------- */
+
+    public function render_other_settings_page() {
+        $this->page_header(
+            'Diğer Ayarlar',
+            'Sık kullanılmayan işlemler burada. İhtiyacınız olan bölüme aşağıdan geçebilirsiniz.'
+        );
+        ?>
+        <nav class="rma-anchor-nav" aria-label="Sayfa bölümleri">
+            <a href="#rma-kategori-sirasi">Kategori Sırası</a>
+            <a href="#rma-ice-disa-aktar">Toplu Ürün Aktarımı</a>
+            <a href="#rma-yedekleme">Yedekleme</a>
+        </nav>
+        <?php
+
+        $this->render_category_order_page();
+        $this->render_csv_import_page();
+        $this->render_menu_backup_page();
+
+        $this->page_footer();
+    }
 
     public function render_category_order_page() {
         $terms = get_terms( [ 'taxonomy' => 'rma_category', 'hide_empty' => false ] );
@@ -311,17 +658,17 @@ trait RMA_Admin_Pages_Trait {
         usort( $terms, function ( $a, $b ) use ( $term_order ) {
             return $term_order[ $a->term_id ] <=> $term_order[ $b->term_id ];
         } ); ?>
-        <div class="rma-card">
-            <h2 class="rma-card-title">Kategori Sıralaması</h2>
-            <p class="rma-card-desc">Kategorileri sürükleyerek menüdeki sırasını değiştirin — değişiklik anında kaydedilir.</p>
+        <div class="rma-card" id="rma-kategori-sirasi">
+            <h2 class="rma-card-title">Kategori Sırası</h2>
+            <p class="rma-card-desc">Kategorilerin menüde hangi sırayla görüneceğini belirleyin. Sürükleyip bırakın — değişiklik anında kaydedilir.</p>
             <div id="rma-category-sorter-msg" class="rma-toast">Kaydedildi!</div>
             <ul id="rma-category-list" class="rma-sortable">
-                <?php if ( empty( $terms ) || is_wp_error( $terms ) ) {
-                    echo '<li>Henüz kategori yok.</li>';
+                <?php if ( empty( $terms ) ) {
+                    echo '<li class="rma-empty">Henüz kategori yok.</li>';
                 } else {
                     foreach ( $terms as $t ) {
-                        echo "<li data-id='{$t->term_id}' class='rma-sortable-item'>
-                                <span class='dashicons dashicons-menu'></span>" . esc_html( $t->name ) . "
+                        echo "<li data-id='" . (int) $t->term_id . "' class='rma-sortable-item'>
+                                <span class='dashicons dashicons-menu' aria-hidden='true'></span>" . esc_html( $t->name ) . "
                               </li>";
                     }
                 } ?>
@@ -337,12 +684,13 @@ trait RMA_Admin_Pages_Trait {
 
         $page = sanitize_key( wp_unslash( $_GET['page'] ?? '' ) );
 
-        // Tüm sekmeler tek sayfada render edildiği için sortable ve renk
-        // seçici birlikte, yalnızca ayarlar sayfasında yüklenir.
-        $is_settings = ( $page === 'rma_settings' );
+        // Modülün kendi ayar sayfaları (suite yokken ürün listesinin altında
+        // kayıtlıdır). Renk seçici ve sürükle-bırak yalnızca bu ekranlarda
+        // gerekir.
+        $is_settings = array_key_exists( $page, $this->get_subpages() );
 
-        // PERF: admin-ui.js/css yalnızca gerçekten kullanıldığı iki ekranda
-        // gerekir — Ayarlar sayfası ve ürün listesi (Göster/Gizle anahtarı).
+        // PERF: admin-ui.js/css yalnızca gerçekten kullanıldığı ekranlarda
+        // gerekir — ayar sayfaları ve ürün listesi (Göster/Gizle anahtarı).
         // Ürün ekleme/düzenleme ve taksonomi ekranlarında hiçbir işlevi yok,
         // oralarda artık yüklenmiyor.
         $is_list = ( 'edit' === $screen->base );
@@ -375,9 +723,9 @@ trait RMA_Admin_Pages_Trait {
             true
         );
 
-        // Kayar Başlık sekmesindeki canlı önizleme, frontend'in gerçek nav
+        // Görünüm sayfasındaki canlı önizleme, frontend'in gerçek nav
         // stylesheet'ini kullanır — ayrı bir taklit değil.
-        if ( $is_settings ) {
+        if ( 'qrms-rm-gorunum' === $page ) {
             wp_enqueue_style(
                 'rma-nav',
                 RMA_PLUGIN_URL . 'assets/css/rma-nav.css',
@@ -388,15 +736,7 @@ trait RMA_Admin_Pages_Trait {
             // Aktif gösterge CSS'inin dört varyantı da frontend ile aynı
             // kaynaktan (get_nav_indicator_css) gelir; her biri önizleme
             // kabına hapsedilir ki admin sayfasının kalanına sızmasın.
-            $indicator_css = '';
-            foreach ( [ 'background', 'dot', 'none', 'bottom_line' ] as $variant ) {
-                $indicator_css .= str_replace(
-                    '.rma-nav-btn.active',
-                    '.rma-nav-preview[data-rma-ind="' . $variant . '"] .rma-nav-btn.active',
-                    $this->get_nav_indicator_css( $variant )
-                );
-            }
-            wp_add_inline_style( 'rma-nav', $indicator_css );
+            wp_add_inline_style( 'rma-nav', $this->get_nav_preview_css() );
         }
 
         $nonce = wp_create_nonce( 'rma_admin_nonce' );
@@ -409,6 +749,27 @@ trait RMA_Admin_Pages_Trait {
             ] ) . ';',
             'before'
         );
+    }
+
+    /**
+     * Canlı önizlemedeki aktif gösterge CSS'i — dört varyant da frontend ile
+     * aynı kaynaktan gelir, her biri önizleme kabına hapsedilir.
+     *
+     * Suite'in kendi varlık kuyruğu (module.php) da bu metodu kullanır;
+     * kural üretimi tek yerde durur.
+     *
+     * @return string
+     */
+    public function get_nav_preview_css() {
+        $css = '';
+        foreach ( [ 'background', 'dot', 'none', 'bottom_line' ] as $variant ) {
+            $css .= str_replace(
+                '.rma-nav-btn.active',
+                '.rma-nav-preview[data-rma-ind="' . $variant . '"] .rma-nav-btn.active',
+                $this->get_nav_indicator_css( $variant )
+            );
+        }
+        return $css;
     }
 
 }

@@ -331,6 +331,32 @@ trait RMA_Helpers_Trait {
         return $ver;
     }
 
+    /**
+     * Modülün bir yönetim sayfasının adresi.
+     *
+     * Sayfalar suite kuruluysa "QR Menü" üst menüsünün altında
+     * (admin.php?page=…), suite yoksa eski tekil eklentideki gibi ürün
+     * listesinin altında (edit.php?post_type=rma_menu_item&page=…) kayıtlıdır.
+     * Yönlendirmeler ve sayfalar arası bağlantılar adresi tek yerden, buradan
+     * alır.
+     *
+     * @param string $slug   Sayfa slug'ı.
+     * @param array  $args   URL'ye eklenecek sorgu argümanları.
+     * @param string $anchor Sayfa içi bölüm çapası (# olmadan).
+     * @return string
+     */
+    public function admin_page_url( $slug, $args = [], $anchor = '' ) {
+        $url = class_exists( 'QRMS_Admin' )
+            ? admin_url( 'admin.php?page=' . $slug )
+            : admin_url( 'edit.php?post_type=rma_menu_item&page=' . $slug );
+
+        if ( ! empty( $args ) ) {
+            $url = add_query_arg( $args, $url );
+        }
+
+        return '' !== $anchor ? $url . '#' . $anchor : $url;
+    }
+
     /* -----------------------------------------------------------------
        NAV DESIGN HELPERS
     ----------------------------------------------------------------- */

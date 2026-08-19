@@ -62,9 +62,9 @@ trait RMA_Suggestions_Trait {
         ?>
         <div id="rma-suggestions-saved" class="rma-toast">✔ Ayarlar kaydedildi.</div>
 
-        <div class="rma-card">
-            <h2 class="rma-card-title">Öneriler — Günün Menüsü</h2>
-            <p class="rma-card-desc">Menüde "Öneriler" bölümünde hangi ürünlerin görüneceğini belirleyin.</p>
+        <div class="rma-card" id="rma-oneriler">
+            <h2 class="rma-card-title">Günün Önerileri</h2>
+            <p class="rma-card-desc">Menüdeki "Öneriler" bölümünde hangi ürünlerin görüneceğini belirleyin.</p>
 
             <div class="rma-choice-grid rma-mode-grid">
                 <label class="rma-choice rma-choice-inline<?php echo $mode === 'system' ? ' is-selected' : ''; ?>" id="rma-mode-system-wrap">
@@ -85,6 +85,9 @@ trait RMA_Suggestions_Trait {
 
             <div id="rma-manual-items-wrap"<?php echo $mode === 'manual' ? '' : ' style="display:none;"'; ?>>
                 <h3 class="rma-section-title">Önerilecek Ürünleri Seç</h3>
+                <?php if ( empty( $grouped ) ) : ?>
+                    <p class="rma-empty">Seçilebilecek yayında ürün yok. Önce "Ürün Ekle" sayfasından ürün ekleyin.</p>
+                <?php endif; ?>
                 <?php foreach ( $grouped as $cat_name => $items ) : ?>
                     <div class="rma-section">
                         <div class="rma-section-title"><?php echo esc_html( $cat_name ); ?></div>
