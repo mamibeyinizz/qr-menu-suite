@@ -139,6 +139,39 @@ function rmaLang() {
 }
 
 /* -----------------------------------------------------------------
+   MASA BİLGİSİ
+   QR kod adresi ?masa=masa-31 biçimindedir. Değer menü isteklerine
+   eklenir; qr-analiz modülü görüntüleme/tıklama kayıtlarını buna göre
+   masa bazında tutar. Modül kurulu değilse alan sunucuda yok sayılır.
+
+   Adres çubuğunda parametre yoksa (ör. müşteri menüde gezerken adres
+   temizlendiyse) imzalı masa oturumu çerezinden okunur; çerezin ilk
+   alanı masa slug'ıdır ve içeriği sunucuda HMAC ile doğrulanır.
+----------------------------------------------------------------- */
+var rmaMasaCache = null;
+
+function rmaMasa() {
+    if (rmaMasaCache !== null) return rmaMasaCache;
+
+    var masa = '';
+
+    try {
+        var m = /[?&]masa=([^&#]*)/.exec(window.location.search);
+        if (m) masa = decodeURIComponent(m[1].replace(/\+/g, ' '));
+    } catch (e) { masa = ''; }
+
+    if (!masa) {
+        try {
+            var c = /(?:^|;\s*)qr_masa_token=([^;]*)/.exec(document.cookie);
+            if (c) masa = decodeURIComponent(c[1]).split('|')[0];
+        } catch (e2) { masa = ''; }
+    }
+
+    rmaMasaCache = String(masa || '').slice(0, 64);
+    return rmaMasaCache;
+}
+
+/* -----------------------------------------------------------------
    NAV YÜKSEKLİĞİ / STICKY
 ----------------------------------------------------------------- */
 var navOffsetTop = 0;
@@ -422,7 +455,8 @@ function loadAll() {
         sort_by     : state.sortBy,
         search      : state.search,
         suggest_cfg : JSON.stringify(typeof SUGGEST_CFG !== 'undefined' ? SUGGEST_CFG : {}),
-        lang        : rmaLang()
+        lang        : rmaLang(),
+        masa        : rmaMasa()
     }, function (res, status) {
         loader.style.display = 'none';
 
@@ -632,7 +666,7 @@ function rmaReleaseScrollRestoration() {
 function rmaFetch(id, prefetch, cb) {
     if (rmaCache[id]) { cb(rmaCache[id]); return; }
 
-    var payload = { action: 'rma_get_product_details', id: id, security: NONCE, lang: rmaLang() };
+    var payload = { action: 'rma_get_product_details', id: id, security: NONCE, lang: rmaLang(), masa: rmaMasa() };
     if (prefetch) payload.prefetch = '1';
 
     postForm(payload, function (res) {

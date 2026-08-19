@@ -94,7 +94,7 @@ zamanlama doğrudur.
 | `qr-masa-oturum-guvenligi` | Sahte QR reddi, kilit ekranı, sayfa kilidi | ✔ Oturum limitleri |
 | `qr-galeri` | Galeri CPT, bölümler, görseller | ✔ Galeri yönetim ekranları |
 | `qr-ceviri` | Çok dilli metin tarama, sözlük, CSV içe/dışa aktarma | ✔ Çeviri ekranı |
-| `qr-analiz` | `POST /wp-json/qrservis/v1/analytics` — şube analitiği özeti; `POST /wp-json/qrservis/v1/create-user` — garson/müdür hesabı açma (yalnızca ana sitede) | ✔ Uç durumu + Firebase ayarları |
+| `qr-analiz` | Menü analitiği (masa bazlı görüntüleme/tıklama takibi, panel); `POST /wp-json/qrservis/v1/analytics` — şube analitiği özeti; `POST /wp-json/qrservis/v1/create-user` — garson/müdür hesabı açma (yalnızca ana sitede) | ✔ Menü Analitiği paneli + uç durumu/Firebase ayarları |
 | `qr-chatbot` | `[gemini_chatbot]`, garson/hesap buton kısa kodları, Gemini AJAX ucu, sipariş ucu (`POST /wp-json/qrservis/v1/order`) | ✔ Chatbot ayarları + Firebase ayarları |
 
 Kodları kaynak eklentilerinden **aynen** taşındı (`restoran-menu` 12-menu
@@ -116,6 +116,55 @@ Chatbot ayar sayfası (`includes/admin/admin-sayfa.php`) Gemini, görünüm ve
 yapay zeka sekmelerini içerir; menü JSON'u Restoran Menü ürünlerinden
 güncellenebilir. Firebase/şube formu aynı ekranda, chatbot formunun dışında
 basılır.
+
+### Menü analitiği (masa bazlı takip)
+
+`qr-analiz` modülü REST uçlarının yanında **menü analitiğini** de barındırır
+(`class-qrms-analitik.php` + `analitik-sayfasi.php`). Eski bağımsız
+"RMA Analytics" eklentisinin yerini alır; tablo adı bilinçli olarak
+korunmuştur (`{prefix}rma_analytics`), böylece birikmiş kayıtlar taşınırken
+kaybolmaz.
+
+**Takip noktası.** Modül kendi izleme ucunu açmaz: `restoran-menu`'nün zaten
+var olan iki AJAX ucuna **öncelik 5** ile bağlanır — `rma_load_items`
+(menü görüntüleme) ve `rma_get_product_details` (ürün tıklama). Öncelik 5
+zorunludur: asıl işleyiciler (öncelik 10) `wp_send_json_*` ile isteği
+sonlandırır, daha geç bir öncelik hiç çalışmazdı. Ön yükleme istekleri
+(`prefetch=1`) sayılmaz — menü JS'i komşu kartları arka planda ısıtır, bunlar
+gerçek tıklama değildir.
+
+**Masa bilgisi.** Menü adresi `?masa=masa-31` biçimindedir. Menü JS'i bu
+değeri (adres çubuğunda yoksa imzalı `qr_masa_token` çerezinden okuyarak)
+iki isteğe de ekler; sunucu tarafında `masa_belirle()` sırayla istekteki
+değeri (kayıtlı masa mı diye `qmo_masa_gecerli_mi()` ile doğrulanır), masa
+oturumu çerezini ve son çare olarak referer adresindeki `?masa=`yı dener.
+Böylece JS önbellekten eski sürümüyle gelse bile kayıt masasız kalmaz.
+
+**Şema geçişi.** `masa_no varchar(64)` sütunu ve masa indeksleri mevcut
+tabloya `dbDelta` ile eklenir. Sorgu `CREATE TABLE IF NOT EXISTS` **değildir**:
+`dbDelta` tablo adını `CREATE TABLE ([^ ]*)` kalıbıyla okuduğu için
+"IF NOT EXISTS" yazıldığında tablo adını `IF` sanır ve mevcut tabloyu hiç
+karşılaştırmaz — eski kurulumlarda sütun eklenmezdi. Şema kontrolü `init`
+kancasındadır (frontend istekleri de kapsar) ve sürüm option'ı eşleştiğinde
+tek bir option okumasına iner.
+
+Eski bağımsız eklenti hâlâ etkinse modül izlemeyi kapatır (çift sayım olmaz),
+panelde bunu söyleyen bir uyarı gösterir ve veriyi aynı tablodan okumaya
+devam eder.
+
+**Panel.** "QR Menü → — Menü Analitiği" satırı (`qrms-analiz-panel`) ayrı bir
+sayfadır; REST/Firebase ayarları "QR Analiz" satırında kalır. Dönem sekmeleri
+saatlik / günlük / haftalık / aylık ve **Masalara Göre**'dir; bunların yanında
+tüm ekranı tek bir masaya daraltan masa filtresi vardır (o masanın kartları,
+grafiği ve en çok tıklanan ürünleri). "Verileri Sil" filtre açıkken yalnızca
+o masanın kayıtlarını siler. CSV indirme ekranda ne görünüyorsa onu verir:
+masalar sekmesinde masa özeti, diğerlerinde ürün listesi.
+
+Panel mobil önceliklidir (restoran sahibi telefondan bakar): kartlar dar
+ekranda alt alta dizilir, tablolar 660px altında kart görünümüne döner
+(başlıklar `data-label` ile hücrelerin soluna geçer), sekme çubuğu ve grafik
+yatay kayar, dokunmatik cihazlarda (`pointer: coarse`) tıklama hedefleri
+44px'e çıkar — `restoran-menu` yönetim ekranlarıyla aynı yaklaşım.
 
 `restoran-menu`'nün ürün, kategori ve ayar ekranlarının tamamı suite menüsünün
 altındadır — eklenti artık ayrı bir top-level "Menü" menüsü açmaz:
@@ -289,7 +338,7 @@ modules/
   yorum-feedback/            Yorumlar, ödül kodları, form oluşturucu + beş yönetim ekranı
   qr-masa/                   Masa kayıtları + Masalar yönetim ekranı
   qr-masa-oturum-guvenligi/  Masa doğrulama, kilit ekranı + oturum ayarları
-  qr-analiz/                 Analitik + kullanıcı oluşturma REST uçları, Firebase ayar ekranı
+  qr-analiz/                 Menü analitiği (masa bazlı takip + panel), analitik/kullanıcı REST uçları, Firebase ayar ekranı
   qr-chatbot/                Gemini chatbot, garson/hesap butonları, sohbet/çağrı/sipariş uçları + ayar ekranı
   qr-ceviri/                 Çok dilli sözlük + çeviri yönetim ekranı
   qr-galeri/                 Galeri CPT + yönetim ekranları

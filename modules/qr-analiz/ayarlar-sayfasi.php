@@ -35,6 +35,12 @@ if ( ! function_exists( 'qmo_analiz_ayar_sayfasi' ) ) {
 
 			<?php settings_errors(); ?>
 
+			<p class="qmo-aciklama">
+				Menüye kaç kişi baktığı, hangi ürünlerin tıklandığı ve hangi masadan geldiği
+				<a href="<?php echo esc_url( admin_url( 'admin.php?page=' . QRMS_ANALITIK_SAYFA ) ); ?>">Menü Analitiği</a>
+				ekranındadır. Bu sayfa yalnızca uygulamanın (müdür/garson paneli) kullandığı REST uçlarını yapılandırır.
+			</p>
+
 			<h2 class="title">REST Uçları</h2>
 			<table class="form-table" role="presentation">
 				<tr>
