@@ -20,8 +20,12 @@ trait RMA_Post_Types_Trait {
             ],
             'public'        => true,
             'show_ui'       => true,
-            'show_in_menu'  => true,
-            'menu_position' => 5,
+            // Suite'in "QR Menü" üst menüsünün altına alınır. Slug sabit string
+            // yerine QRMS_Admin::MENU_SLUG'dan okunur (tek kaynak). Suite yoksa
+            // eski davranışa dönülür: aksi hâlde var olmayan bir üst menüye
+            // bağlanıp menüden tamamen kaybolurdu. menu_position kaldırıldı —
+            // yalnızca top-level menüde okunur.
+            'show_in_menu'  => class_exists( 'QRMS_Admin' ) ? QRMS_Admin::MENU_SLUG : true,
             'menu_icon'     => 'dashicons-media-document',
             'supports'      => [ 'title', 'editor', 'thumbnail', 'excerpt' ],
             'has_archive'   => false,
