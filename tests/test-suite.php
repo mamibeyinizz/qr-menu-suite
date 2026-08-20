@@ -805,6 +805,7 @@ qrms_test(
 		$files = array(
 			QRMS_PLUGIN_DIR . 'assets/css/admin.css',
 			QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/css/admin-ui.css',
+			QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/css/rma-admin-list.css',
 			QRMS_PLUGIN_DIR . 'modules/_qmo-ortak/assets/css/admin.css',
 		);
 

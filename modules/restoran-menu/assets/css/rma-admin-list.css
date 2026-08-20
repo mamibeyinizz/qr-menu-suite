@@ -1,0 +1,72 @@
+/* =====================================================================
+   ÜRÜN LİSTESİ — Göster/Gizle anahtarı
+
+   Yalnızca edit.php?post_type=rma_menu_item liste ekranında yüklenir.
+   Tam admin-ui.css burada kasıtlı olarak yüklenmez: o dosya .rma-admin
+   kapsamına alınmış olsa da native WordPress ekranlarında gereksiz CSS
+   yüklemek admin menüsü gibi global alanlarda yan etki riskini artırır.
+
+   WordPress sol menüsüne (#adminmenu, .wp-submenu vb.) kural yazılmaz.
+===================================================================== */
+
+.rma-switch {
+    display: inline-block;
+    height: 24px;
+    margin-top: 5px;
+    position: relative;
+    width: 44px;
+}
+
+.rma-switch input {
+    height: 0;
+    opacity: 0;
+    width: 0;
+}
+
+.rma-slider {
+    background: #ccc;
+    border-radius: 24px;
+    bottom: 0;
+    cursor: pointer;
+    left: 0;
+    position: absolute;
+    right: 0;
+    top: 0;
+    transition: .3s;
+}
+
+.rma-slider:before {
+    background: #fff;
+    border-radius: 50%;
+    bottom: 4px;
+    content: '';
+    height: 16px;
+    left: 4px;
+    position: absolute;
+    transition: .3s;
+    width: 16px;
+}
+
+input:checked + .rma-slider {
+    background: #c9a84c;
+}
+
+input:checked + .rma-slider:before {
+    transform: translateX(20px);
+}
+
+@media (pointer: coarse) {
+    .rma-switch {
+        height: 30px;
+        width: 56px;
+    }
+
+    .rma-slider:before {
+        height: 22px;
+        width: 22px;
+    }
+
+    input:checked + .rma-slider:before {
+        transform: translateX(26px);
+    }
+}
