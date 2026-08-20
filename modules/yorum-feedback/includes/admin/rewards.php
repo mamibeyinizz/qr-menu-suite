@@ -34,8 +34,8 @@ function qrm_reward_admin_page() {
         <?php endforeach; ?>
 
         <h2 class="nav-tab-wrapper">
-            <a href="?page=qrm-pro-rewards" class="nav-tab <?php echo $view === 'settings' ? 'nav-tab-active' : ''; ?>">Ayarlar</a>
-            <a href="?page=qrm-pro-rewards&tab=codes" class="nav-tab <?php echo $view === 'codes' ? 'nav-tab-active' : ''; ?>">Ödül Kodları</a>
+            <a href="<?php echo esc_url(qrm_pro_admin_url('qrms-yf-odul')); ?>" class="nav-tab <?php echo $view === 'settings' ? 'nav-tab-active' : ''; ?>">Ayarlar</a>
+            <a href="<?php echo esc_url(qrm_pro_admin_url('qrms-yf-odul', ['tab' => 'codes'])); ?>" class="nav-tab <?php echo $view === 'codes' ? 'nav-tab-active' : ''; ?>">Ödül Kodları</a>
         </h2>
 
         <?php
@@ -460,6 +460,8 @@ function qrm_reward_admin_settings_view($settings, $sub = 'kurulum') {
     jQuery(document).ready(function($){
         var form = $('#qrm-reward-settings-form');
         var startSub = <?php echo wp_json_encode($sub); ?>;
+        // Sayfa slug'ı JS içine gömülmez; adres PHP tarafından üretilir.
+        var subUrlBase = <?php echo wp_json_encode(qrm_pro_admin_url('qrms-yf-odul', ['sub' => ''])); ?>;
 
         // --- Sekmeler: sayfa yenilenmez, POST tek seferde tüm alanları gönderir ---
         function showSub(name) {
@@ -468,7 +470,7 @@ function qrm_reward_admin_settings_view($settings, $sub = 'kurulum') {
             $('.qrm-rw-subtab').removeClass('nav-tab-active');
             $('.qrm-rw-subtab[data-sub="' + name + '"]').addClass('nav-tab-active');
             if (history.replaceState) {
-                history.replaceState(null, '', '?page=qrm-pro-rewards&sub=' + name);
+                history.replaceState(null, '', subUrlBase + encodeURIComponent(name));
             }
             paint();
         }

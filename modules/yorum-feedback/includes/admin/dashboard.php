@@ -3,9 +3,15 @@ if (!defined('ABSPATH')) exit;
 
 // 3. ADMİN: TÜM YORUMLAR (Puan kırılımları ile)
 //
-// v4.2.1: "Detaylı İçgörüler" ayrı bir menü maddesi olmaktan çıkıp bu sayfanın
-// ikinci sekmesi oldu. Her iki sekme de salt okunur listeler olduğu için
-// (satır aksiyonları GET ile çalışır) sekmeler birbirinin verisini etkilemez.
+// Suite'e taşınırken "İçgörüler" JS sekmesi buradan çıkarıldı ve kendi sayfası
+// oldu (qrms-yf-icgoruler). Sebep: sekmenin görünürlüğü de, hangi sekmenin aktif
+// olduğu da tamamen jQuery'ye bağlıydı; sayfadaki herhangi bir JS hatasında iki
+// sekme birden ölüyor ve hiçbiri aktif görünmüyordu. Ayrıca sekme, adres çubuğunu
+// history.replaceState ile BAŞKA bir sayfanın adresine çeviriyordu; suite
+// menüsünden açıldığında yenileme sonrası kullanıcı yanlış ekrana düşüyordu.
+// Artık iki ekran da gerçek WordPress sayfası — JS'siz de tam çalışır.
+
+/** Tüm Yorumlar ekranı. */
 function qrm_pro_admin_dashboard() {
     if (!current_user_can('manage_options')) {
         wp_die('Bu sayfayı görüntüleme yetkiniz yok.');
@@ -15,49 +21,106 @@ function qrm_pro_admin_dashboard() {
     $table_reviews = $wpdb->prefix . 'qrm_reviews';
     $settings = qrm_pro_get_settings();
     $g_threshold = floatval($settings['google_review_threshold']);
+    $self_url = qrm_pro_admin_url('qrms-yf-yorumlar');
 
-    if (isset($_GET['action']) && isset($_GET['id'])) {
-        $id = intval($_GET['id']);
-        if ($_GET['action'] == 'approve') $wpdb->update($table_reviews, ['status' => 1], ['id' => $id]);
-        if ($_GET['action'] == 'unapprove') $wpdb->update($table_reviews, ['status' => 0], ['id' => $id]);
-        if ($_GET['action'] == 'delete') $wpdb->delete($table_reviews, ['id' => $id]);
-        echo '<div class="notice notice-success is-dismissible"><p>İşlem yapıldı.</p></div>';
+    $notice = qrm_pro_admin_handle_review_actions();
+
+    // Onay bekleyenlere hızlı geçiş (başlangıç ekranındaki sayaç buraya bağlanır).
+    $durum = isset($_GET['durum']) ? sanitize_key($_GET['durum']) : '';
+    if (!in_array($durum, ['bekleyen', 'onayli'], true)) $durum = '';
+
+    $stats = qrm_pro_review_stats();
+    $reviews = [];
+
+    if ($stats['table_ok']) {
+        if ($durum === 'bekleyen') {
+            $reviews = $wpdb->get_results("SELECT * FROM $table_reviews WHERE status = 0 ORDER BY created_at DESC");
+        } elseif ($durum === 'onayli') {
+            $reviews = $wpdb->get_results("SELECT * FROM $table_reviews WHERE status = 1 ORDER BY created_at DESC");
+        } else {
+            $reviews = $wpdb->get_results("SELECT * FROM $table_reviews ORDER BY created_at DESC");
+        }
     }
-
-    $reviews = $wpdb->get_results("SELECT * FROM $table_reviews ORDER BY created_at DESC");
-    $tab = (isset($_GET['tab']) && sanitize_key($_GET['tab']) === 'insights') ? 'insights' : 'reviews';
     ?>
     <div class="wrap qrm-pro-wrap">
-        <h1 class="wp-heading-inline">Tüm Yorumlar</h1>
-        <hr class="wp-header-end">
+        <h1>Tüm Yorumlar</h1>
 
-        <h2 class="nav-tab-wrapper">
-            <a href="#" class="nav-tab qrm-dash-tab" data-tab="reviews">Yorumlar</a>
-            <a href="#" class="nav-tab qrm-dash-tab" data-tab="insights">İçgörüler</a>
-        </h2>
+        <?php if ($notice !== ''): ?>
+            <div class="notice notice-success is-dismissible"><p><?php echo esc_html($notice); ?></p></div>
+        <?php endif; ?>
 
-        <div class="qrm-dash-pane" data-pane="insights" style="margin-top:16px;">
-            <?php qrm_pro_admin_insights_pane(); ?>
-        </div>
+        <?php if (!$stats['table_ok']): ?>
+            <div class="notice notice-error">
+                <p>
+                    <strong>Yorum tablosu veritabanında bulunamadı.</strong>
+                    Liste bu yüzden boş — gelen yorumlar kaydedilemiyor olabilir. Genel Ayarlar sayfasından
+                    lisansı yeniden doğrulayın; sorun sürerse veritabanı kullanıcınızın tablo oluşturma
+                    yetkisi olmayabilir.
+                </p>
+            </div>
+        <?php endif; ?>
 
-        <div class="qrm-dash-pane" data-pane="reviews" style="margin-top:16px;">
-        <table class="wp-list-table widefat fixed striped">
+        <?php if ($stats['total'] > 0): ?>
+            <ul class="subsubsub">
+                <li>
+                    <a href="<?php echo esc_url($self_url); ?>" <?php echo $durum === '' ? 'class="current"' : ''; ?>>
+                        Tümü <span class="count">(<?php echo intval($stats['total']); ?>)</span>
+                    </a> |
+                </li>
+                <li>
+                    <a href="<?php echo esc_url(add_query_arg('durum', 'bekleyen', $self_url)); ?>" <?php echo $durum === 'bekleyen' ? 'class="current"' : ''; ?>>
+                        Onay Bekleyen <span class="count">(<?php echo intval($stats['pending']); ?>)</span>
+                    </a> |
+                </li>
+                <li>
+                    <a href="<?php echo esc_url(add_query_arg('durum', 'onayli', $self_url)); ?>" <?php echo $durum === 'onayli' ? 'class="current"' : ''; ?>>
+                        Yayında <span class="count">(<?php echo intval($stats['approved']); ?>)</span>
+                    </a>
+                </li>
+            </ul>
+        <?php endif; ?>
+
+        <table class="wp-list-table widefat fixed striped qrm-table-cards">
             <thead>
                 <tr>
                     <th style="width: 120px;">Tarih</th>
                     <th>Müşteri / Masa</th>
-                    <th style="width: 200px;">Puan & Detay</th>
+                    <th style="width: 200px;">Puan &amp; Detay</th>
                     <th>Yorum</th>
-                    <th style="width: 80px;">Durum</th>
-                    <th style="width: 130px;">İşlemler</th>
+                    <th style="width: 90px;">Durum</th>
+                    <th style="width: 150px;">İşlemler</th>
                 </tr>
             </thead>
             <tbody>
+                <?php if (empty($reviews)): ?>
+                <tr class="no-items">
+                    <td colspan="6" class="qrm-empty">
+                        <?php if (!$stats['table_ok']): ?>
+                            <strong>Liste yüklenemedi.</strong>
+                            <p>Yukarıdaki veritabanı uyarısını giderdikten sonra yorumlar burada görünecek.</p>
+                        <?php elseif ($durum !== ''): ?>
+                            <strong>Bu filtreye uyan yorum yok.</strong>
+                            <p><a href="<?php echo esc_url($self_url); ?>">Tüm yorumları göster</a></p>
+                        <?php else: ?>
+                            <strong>Henüz hiç yorum gelmemiş.</strong>
+                            <p>
+                                Müşterilerinizin yorum bırakabilmesi için <code>[qr_menu_reviews]</code> kısa kodunu
+                                menü ya da değerlendirme sayfanıza ekleyin. İlk değerlendirme geldiğinde bu listede
+                                görünecek ve onayınızı bekleyecek.
+                            </p>
+                        <?php endif; ?>
+                    </td>
+                </tr>
+                <?php endif; ?>
+
                 <?php foreach ($reviews as $r):
                     $name_display = $r->is_anonymous ? '<em>Anonim</em>' : esc_html($r->customer_name);
+                    if ($name_display === '') {
+                        $name_display = '<em>İsimsiz</em>';
+                    }
                     $name_display .= $r->table_no ? ' (Masa: '.esc_html($r->table_no).')' : '';
                     if (!empty($r->form_source) && $r->form_source === 'contact') {
-                        $name_display .= ' <span class="qrm-google-pill" style="background:#f3e8ff;color:#7e22ce;">İletişim</span>';
+                        $name_display .= ' <span class="qrm-google-pill qrm-source-pill">İletişim</span>';
                     }
 
                     // Kriter Kırılımını Hazırla
@@ -73,50 +136,78 @@ function qrm_pro_admin_dashboard() {
                     $breakdown_str = implode(', ', $breakdown);
                 ?>
                 <tr>
-                    <td><?php echo date('d.m.Y H:i', strtotime($r->created_at)); ?></td>
-                    <td><?php echo $name_display; ?></td>
-                    <td>
+                    <td data-label="Tarih"><?php echo esc_html(date_i18n('d.m.Y H:i', strtotime($r->created_at))); ?></td>
+                    <td data-label="Müşteri"><?php echo $name_display; ?></td>
+                    <td data-label="Puan">
                         <strong>Ort: <?php echo number_format($r->rating, 1); ?>/5</strong>
                         <?php if ($r->rating >= $g_threshold && !empty($settings['google_review_enabled'])): ?>
                             <span class="qrm-google-pill" title="Bu puan Google'a yönlendirme eşiğinin üzerinde">G Adayı</span>
                         <?php endif; ?>
-                        <span class="qrm-breakdown"><?php echo esc_html($breakdown_str); ?></span>
-                    </td>
-                    <td><?php echo esc_html($r->comment); ?></td>
-                    <td><?php echo $r->status ? '<span style="color:green;font-weight:bold;">Onaylı</span>' : '<span style="color:orange;font-weight:bold;">Bekliyor</span>'; ?></td>
-                    <td>
-                        <?php if (!$r->status): ?>
-                            <a href="?page=qrm-pro-main&action=approve&id=<?php echo $r->id; ?>" class="button button-small">Onayla</a>
-                        <?php else: ?>
-                            <a href="?page=qrm-pro-main&action=unapprove&id=<?php echo $r->id; ?>" class="button button-small">Reddet</a>
+                        <?php if ($breakdown_str !== ''): ?>
+                            <span class="qrm-breakdown"><?php echo esc_html($breakdown_str); ?></span>
                         <?php endif; ?>
-                        <a href="?page=qrm-pro-main&action=delete&id=<?php echo $r->id; ?>" class="button button-small" style="color:red;border-color:red;" onclick="return confirm('Sil?');">Sil</a>
+                    </td>
+                    <td data-label="Yorum" class="qrm-cell-block"><?php echo esc_html($r->comment); ?></td>
+                    <td data-label="Durum">
+                        <?php echo $r->status
+                            ? '<span class="qrm-status-approved">Yayında</span>'
+                            : '<span class="qrm-status-pending">Bekliyor</span>'; ?>
+                    </td>
+                    <td data-label="" class="qrm-row-actions">
+                        <?php
+                        $row_args = ['id' => intval($r->id)];
+                        if ($durum !== '') $row_args['durum'] = $durum;
+                        ?>
+                        <?php if (!$r->status): ?>
+                            <a href="<?php echo esc_url(wp_nonce_url(add_query_arg(['action' => 'approve'] + $row_args, $self_url), 'qrm_review_action_' . intval($r->id))); ?>" class="button button-small">Onayla</a>
+                        <?php else: ?>
+                            <a href="<?php echo esc_url(wp_nonce_url(add_query_arg(['action' => 'unapprove'] + $row_args, $self_url), 'qrm_review_action_' . intval($r->id))); ?>" class="button button-small">Yayından Kaldır</a>
+                        <?php endif; ?>
+                        <a href="<?php echo esc_url(wp_nonce_url(add_query_arg(['action' => 'delete'] + $row_args, $self_url), 'qrm_review_action_' . intval($r->id))); ?>"
+                           class="button button-small" style="color:#b32d2e;border-color:#d5b0b0;"
+                           onclick="return confirm('Bu yorum kalıcı olarak silinsin mi?');">Sil</a>
                     </td>
                 </tr>
                 <?php endforeach; ?>
             </tbody>
         </table>
-        </div>
     </div>
-
-    <script>
-    jQuery(document).ready(function($){
-        // Sekme geçişi sayfa yenilemeden (Google & Ödül Sistemi sayfasındaki desen).
-        function showTab(name) {
-            $('.qrm-dash-pane').hide();
-            $('.qrm-dash-pane[data-pane="' + name + '"]').show();
-            $('.qrm-dash-tab').removeClass('nav-tab-active');
-            $('.qrm-dash-tab[data-tab="' + name + '"]').addClass('nav-tab-active');
-            if (history.replaceState) {
-                history.replaceState(null, '', '?page=qrm-pro-main' + (name === 'insights' ? '&tab=insights' : ''));
-            }
-        }
-        $('.qrm-dash-tab').on('click', function(e){
-            e.preventDefault();
-            showTab($(this).data('tab'));
-        });
-        showTab(<?php echo wp_json_encode($tab); ?>);
-    });
-    </script>
     <?php
+}
+
+/**
+ * Satır aksiyonları (onayla / yayından kaldır / sil).
+ *
+ * Kaynakta bu aksiyonlar nonce'suz GET bağlantılarıydı: yönetici oturumu açık bir
+ * tarayıcıda üçüncü bir sitenin yerleştirdiği <img src="...action=delete&id=5">
+ * yorumu silmeye yetiyordu (CSRF). Bağlantılar artık wp_nonce_url ile üretilir ve
+ * burada doğrulanır.
+ *
+ * @return string Kullanıcıya gösterilecek mesaj (yoksa boş string).
+ */
+function qrm_pro_admin_handle_review_actions() {
+    if (!isset($_GET['action'], $_GET['id'])) return '';
+
+    $action = sanitize_key($_GET['action']);
+    $id     = intval($_GET['id']);
+
+    if ($id <= 0 || !in_array($action, ['approve', 'unapprove', 'delete'], true)) return '';
+    if (!current_user_can('manage_options')) return '';
+
+    check_admin_referer('qrm_review_action_' . $id);
+
+    global $wpdb;
+    $table_reviews = $wpdb->prefix . 'qrm_reviews';
+
+    if ($action === 'approve') {
+        $wpdb->update($table_reviews, ['status' => 1], ['id' => $id]);
+        return 'Yorum yayınlandı.';
+    }
+    if ($action === 'unapprove') {
+        $wpdb->update($table_reviews, ['status' => 0], ['id' => $id]);
+        return 'Yorum yayından kaldırıldı.';
+    }
+
+    $wpdb->delete($table_reviews, ['id' => $id]);
+    return 'Yorum silindi.';
 }

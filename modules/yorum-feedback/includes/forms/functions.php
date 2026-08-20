@@ -148,14 +148,14 @@ function qrm_cf_unique_form_key($key, $exclude_id = 0) {
 /**
  * Formlar sayfasının bağlantıları TEK yerden üretilir — admin slug'ı ile bağlantılar
  * arasında kayma olmasın diye (v4.2.0'daki 403 hatasının kaynağı buydu).
+ * Slug'ın kendisi de tek yerde durur: qrm_pro_admin_pages() kayıt defteri.
  *
  *   qrm_cf_admin_url()                                   -> Formlarım sekmesi
  *   qrm_cf_admin_url(['tab' => 'submissions'])           -> Gönderiler sekmesi
  *   qrm_cf_admin_url(['view' => 'edit', 'form_id' => 3]) -> Düzenleyici görünümü
  */
 function qrm_cf_admin_url($args = []) {
-    $args = array_merge(['page' => 'qrm-forms'], $args);
-    return admin_url('admin.php?' . http_build_query($args));
+    return qrm_pro_admin_url('qrms-yf-formlar', $args);
 }
 
 function qrm_cf_form_shortcode($form) {

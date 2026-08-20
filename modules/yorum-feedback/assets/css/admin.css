@@ -1,0 +1,528 @@
+/**
+ * Yorum & Feedback — yönetim ekranlarının stilleri.
+ *
+ * v4.2.1'e kadar bu kuralların tamamı includes/admin/menu.php içinden
+ * wp_add_inline_style() ile basılıyordu. Suite'e taşınırken gerçek bir dosyaya
+ * alındı: restoran-menu modülündeki desenin aynısı (assets/css/admin-ui.css),
+ * böylece kurallar tarayıcıda önbelleklenebiliyor ve mobil davranış tek yerden
+ * yönetilebiliyor.
+ *
+ * Kapsam: `.qrm-pro-wrap` sınıfını taşıyan ekranlar — Başlangıç, Tüm Yorumlar,
+ * Detaylı İçgörüler, Müşteri Bilgileri Formu, Ayarlar & Puanlama, İletişim,
+ * Google & Ödül Sistemi. "Formlar" ekranlarının kendi `qrm-cf-*` stilleri
+ * kaynağındaki satır içi bloklarda durur; oradaki mobil kuralları da aynı
+ * bloklarda, ezmek istedikleri kuralın yanında tutulur.
+ */
+
+/* --------------------------------------------------------------------------
+ * 1. Ortak yerleşim
+ * ------------------------------------------------------------------------ */
+
+.qrm-pro-wrap {
+	margin-top: 20px;
+	max-width: 1200px;
+}
+
+.qrm-pro-wrap .qrm-lead {
+	color: #646970;
+	font-size: 13px;
+	margin: 4px 0 20px;
+	max-width: 70ch;
+}
+
+.qrm-card {
+	background: #fff;
+	border-radius: 8px;
+	box-shadow: 0 1px 3px rgba( 0, 0, 0, 0.1 );
+	margin-bottom: 20px;
+	padding: 20px;
+}
+
+.qrm-card > h3:first-child {
+	margin-top: 0;
+}
+
+.qrm-card-row {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 20px;
+}
+
+.qrm-card-row > .qrm-card {
+	flex: 1 1 320px;
+}
+
+/* --------------------------------------------------------------------------
+ * 2. Başlangıç ekranı (kart ızgarası + özet)
+ * ------------------------------------------------------------------------ */
+
+.qrm-hub-summary {
+	display: grid;
+	gap: 16px;
+	grid-template-columns: repeat( auto-fit, minmax( 200px, 1fr ) );
+	margin: 20px 0 26px;
+}
+
+.qrm-hub-grid {
+	display: grid;
+	gap: 18px;
+	grid-template-columns: repeat( auto-fill, minmax( 300px, 1fr ) );
+}
+
+.qrm-hub-card {
+	background: #fff;
+	border: 1px solid #e2e8f0;
+	border-radius: 12px;
+	box-shadow: 0 1px 3px rgba( 0, 0, 0, 0.06 );
+	color: inherit;
+	display: flex;
+	gap: 14px;
+	padding: 20px;
+	text-decoration: none;
+	transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.qrm-hub-card:hover,
+.qrm-hub-card:focus {
+	border-color: #c3d9ee;
+	box-shadow: 0 10px 26px rgba( 0, 0, 0, 0.09 );
+	color: inherit;
+	transform: translateY( -3px );
+}
+
+.qrm-hub-card .dashicons {
+	color: #2271b1;
+	flex: 0 0 auto;
+	font-size: 26px;
+	height: 26px;
+	width: 26px;
+}
+
+.qrm-hub-card h2 {
+	font-size: 16px;
+	line-height: 1.35;
+	margin: 0 0 6px;
+}
+
+.qrm-hub-card p {
+	color: #646970;
+	font-size: 13px;
+	line-height: 1.55;
+	margin: 0;
+}
+
+.qrm-hub-card-badge {
+	background: #d63638;
+	border-radius: 20px;
+	color: #fff;
+	font-size: 11px;
+	font-weight: 700;
+	margin-left: 8px;
+	padding: 2px 9px;
+	vertical-align: middle;
+	white-space: nowrap;
+}
+
+/* --------------------------------------------------------------------------
+ * 3. İstatistik kutuları (Başlangıç özeti + Detaylı İçgörüler)
+ * ------------------------------------------------------------------------ */
+
+.qrm-insight-grid {
+	display: grid;
+	gap: 20px;
+	grid-template-columns: repeat( auto-fit, minmax( 250px, 1fr ) );
+	margin-bottom: 20px;
+}
+
+.qrm-stat-box {
+	background: #fff;
+	border-left: 4px solid #3b82f6;
+	border-radius: 8px;
+	box-shadow: 0 1px 3px rgba( 0, 0, 0, 0.1 );
+	padding: 20px;
+}
+
+.qrm-stat-box h3 {
+	color: #6b7280;
+	font-size: 14px;
+	margin: 0 0 10px;
+}
+
+.qrm-stat-box .value {
+	color: #111827;
+	font-size: 32px;
+	font-weight: bold;
+	line-height: 1.15;
+}
+
+.qrm-stat-box .value a {
+	text-decoration: none;
+}
+
+/* Kriter performans çubuğu. */
+.qrm-meter {
+	background: #e5e7eb;
+	border-radius: 10px;
+	height: 12px;
+	max-width: 300px;
+	overflow: hidden;
+	width: 100%;
+}
+
+.qrm-meter span {
+	background: #10b981;
+	display: block;
+	height: 100%;
+}
+
+/* --------------------------------------------------------------------------
+ * 4. Rozetler ve durum etiketleri
+ * ------------------------------------------------------------------------ */
+
+.qrm-breakdown {
+	color: #6b7280;
+	display: block;
+	font-size: 11px;
+	margin-top: 4px;
+}
+
+.qrm-google-pill {
+	background: #e8f0fe;
+	border-radius: 20px;
+	color: #1a73e8;
+	display: inline-block;
+	font-size: 10px;
+	font-weight: 700;
+	margin-left: 6px;
+	padding: 2px 7px;
+	vertical-align: middle;
+}
+
+.qrm-source-pill {
+	background: #f3e8ff;
+	color: #7e22ce;
+}
+
+.qrm-code-pill {
+	background: #f3f4f6;
+	border: 1px dashed #9ca3af;
+	border-radius: 6px;
+	display: inline-block;
+	font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+	font-weight: 700;
+	letter-spacing: 1px;
+	padding: 3px 9px;
+}
+
+.qrm-status-active {
+	color: #166534;
+	font-weight: 700;
+}
+
+.qrm-status-used {
+	color: #6b7280;
+	font-weight: 700;
+}
+
+.qrm-status-revoked {
+	color: #b91c1c;
+	font-weight: 700;
+}
+
+.qrm-status-expired {
+	color: #b45309;
+	font-weight: 700;
+}
+
+.qrm-status-approved {
+	color: #166534;
+	font-weight: 700;
+}
+
+.qrm-status-pending {
+	color: #b45309;
+	font-weight: 700;
+}
+
+/* --------------------------------------------------------------------------
+ * 5. Müşteri bilgileri form alanları (sürükle-bırak)
+ * ------------------------------------------------------------------------ */
+
+.qrm-field-row {
+	align-items: center;
+	background: #f9fafb;
+	border: 1px solid #e5e7eb;
+	border-radius: 6px;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 15px;
+	margin-bottom: 10px;
+	padding: 15px;
+}
+
+.qrm-field-row input[type="text"] {
+	flex: 1 1 200px;
+}
+
+.qrm-field-handle {
+	color: #9ca3af;
+	cursor: move;
+	/* Dokunmatikte sürükleme, tarayıcının kaydırma jestini kapatmayı gerektirir. */
+	touch-action: none;
+}
+
+.qrm-field-key {
+	color: #4b5563;
+	font-size: 12px;
+	letter-spacing: 0.4px;
+}
+
+/* Sürükle-bırakın erişilebilir karşılığı. */
+.qrm-field-move {
+	display: inline-flex;
+	gap: 4px;
+}
+
+.qrm-field-move .button {
+	line-height: 1;
+	min-width: 30px;
+	padding: 2px 6px;
+}
+
+.qrm-field-move .button[disabled] {
+	opacity: 0.4;
+}
+
+/* --------------------------------------------------------------------------
+ * 6. Boş durum
+ * ------------------------------------------------------------------------ */
+
+.qrm-empty {
+	color: #646970;
+	padding: 32px 20px;
+	text-align: center;
+}
+
+.qrm-empty strong {
+	color: #1d2327;
+	display: block;
+	font-size: 15px;
+	margin-bottom: 6px;
+}
+
+.qrm-empty p {
+	margin: 0 auto;
+	max-width: 60ch;
+}
+
+.qrm-empty code {
+	background: #f3f4f6;
+	border: 1px solid #d1d5db;
+	border-radius: 4px;
+	padding: 2px 7px;
+}
+
+/* --------------------------------------------------------------------------
+ * 7. Mobil: geniş tablolar kart görünümüne döner
+ *
+ * WordPress'in kendi `.widefat` tablosu dar ekranda sütunları sıkıştırır ve
+ * yorum metni okunamaz hâle gelir. `.qrm-table-cards` işaretli tablolarda her
+ * satır bir karta, her hücre "etiket + değer" satırına dönüşür; etiket
+ * `data-label` özniteliğinden gelir.
+ * ------------------------------------------------------------------------ */
+
+@media screen and ( max-width: 782px ) {
+
+	.qrm-pro-wrap {
+		margin-right: 10px;
+	}
+
+	.qrm-card {
+		padding: 16px 14px;
+	}
+
+	.qrm-card-row {
+		gap: 0;
+	}
+
+	.qrm-hub-summary,
+	.qrm-insight-grid {
+		gap: 12px;
+		grid-template-columns: 1fr;
+	}
+
+	.qrm-hub-grid {
+		grid-template-columns: 1fr;
+	}
+
+	.qrm-stat-box {
+		padding: 16px;
+	}
+
+	.qrm-stat-box .value {
+		font-size: 26px;
+	}
+
+	/* form-table dar ekranda iki sütuna sıkışır; etiket ve alan alt alta iner. */
+	.qrm-pro-wrap .form-table,
+	.qrm-pro-wrap .form-table tbody,
+	.qrm-pro-wrap .form-table tr,
+	.qrm-pro-wrap .form-table th,
+	.qrm-pro-wrap .form-table td {
+		display: block;
+		width: auto;
+	}
+
+	.qrm-pro-wrap .form-table th {
+		padding-bottom: 2px;
+	}
+
+	.qrm-pro-wrap .form-table td {
+		padding-top: 2px;
+	}
+
+	.qrm-pro-wrap .form-table .regular-text,
+	.qrm-pro-wrap .form-table select {
+		max-width: 100%;
+		width: 100%;
+	}
+
+	/* Kart tablosu. */
+	.qrm-table-cards,
+	.qrm-table-cards tbody,
+	.qrm-table-cards tr,
+	.qrm-table-cards td {
+		display: block;
+		width: auto;
+	}
+
+	.qrm-table-cards thead {
+		/* Başlıklar hücre başına data-label olarak tekrar ettiği için gizlenir. */
+		display: none;
+	}
+
+	.qrm-table-cards tr {
+		background: #fff;
+		border: 1px solid #dcdcde;
+		border-radius: 8px;
+		margin-bottom: 12px;
+		padding: 6px 4px;
+	}
+
+	/* Şeritli arka plan kart görünümünde satırları okunmaz kılıyor. */
+	.qrm-table-cards.striped > tbody > tr:nth-child( odd ),
+	.qrm-table-cards > tbody > tr:nth-child( odd ) {
+		background: #fff;
+	}
+
+	.qrm-table-cards td {
+		border: 0;
+		display: flex;
+		flex-wrap: wrap;
+		gap: 4px 12px;
+		padding: 7px 12px;
+	}
+
+	.qrm-table-cards td::before {
+		color: #646970;
+		content: attr( data-label );
+		flex: 0 0 34%;
+		font-size: 12px;
+		font-weight: 600;
+		text-transform: uppercase;
+	}
+
+	.qrm-table-cards td[data-label=""]::before {
+		display: none;
+	}
+
+	.qrm-table-cards td > * {
+		flex: 1 1 55%;
+	}
+
+	.qrm-table-cards .qrm-row-actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 8px;
+	}
+
+	.qrm-table-cards .qrm-row-actions .button {
+		flex: 1 1 auto;
+		text-align: center;
+	}
+
+	/* Kart görünümünde yorum metni tam genişlik alır. */
+	.qrm-table-cards td.qrm-cell-block {
+		display: block;
+	}
+
+	.qrm-table-cards td.qrm-cell-block::before {
+		display: block;
+		flex: none;
+		margin-bottom: 4px;
+	}
+}
+
+@media screen and ( max-width: 480px ) {
+
+	.qrm-pro-wrap {
+		margin-right: 6px;
+	}
+
+	.qrm-table-cards td {
+		display: block;
+	}
+
+	.qrm-table-cards td::before {
+		display: block;
+		margin-bottom: 2px;
+	}
+}
+
+/* --------------------------------------------------------------------------
+ * 8. Dokunmatik: parmakla rahat kullanılabilir hedef boyutları
+ * ------------------------------------------------------------------------ */
+
+@media ( pointer: coarse ) {
+
+	.qrm-pro-wrap .button,
+	.qrm-pro-wrap .button-primary,
+	.qrm-pro-wrap .button-secondary,
+	.qrm-pro-wrap .nav-tab {
+		min-height: 44px;
+		padding: 10px 18px;
+	}
+
+	.qrm-pro-wrap .button-small {
+		min-height: 40px;
+	}
+
+	.qrm-pro-wrap input[type="text"],
+	.qrm-pro-wrap input[type="email"],
+	.qrm-pro-wrap input[type="url"],
+	.qrm-pro-wrap input[type="number"],
+	.qrm-pro-wrap input[type="search"],
+	.qrm-pro-wrap select,
+	.qrm-pro-wrap textarea {
+		/* 16px: iOS Safari daha küçük yazı boyutlarında alana yakınlaşır. */
+		font-size: 16px;
+		min-height: 44px;
+	}
+
+	.qrm-pro-wrap input[type="checkbox"],
+	.qrm-pro-wrap input[type="radio"] {
+		height: 24px;
+		width: 24px;
+	}
+
+	.qrm-pro-wrap .qrm-field-handle {
+		font-size: 28px;
+		height: 28px;
+		padding: 8px;
+		width: 28px;
+	}
+
+	.qrm-hub-card {
+		min-height: 88px;
+	}
+}

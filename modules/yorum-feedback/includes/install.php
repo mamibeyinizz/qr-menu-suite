@@ -75,3 +75,53 @@ function qrm_pro_install() {
 
     update_option('qrm_db_version', QRM_PRO_VERSION, false);
 }
+
+/**
+ * Yorum tablosu veritabanında gerçekten var mı?
+ *
+ * Boş bir liste iki farklı sebepten gelebilir: hiç yorum yoktur ya da tablo hiç
+ * oluşmamıştır (ör. dbDelta CREATE yetkisi bulamamıştır). İkisi ekranda birebir
+ * aynı görünüyordu — "sorgu çalışmıyor" şüphesinin kaynağı buydu. Ekranlar artık
+ * bu kontrolle ikisini ayırıp farklı mesaj basar.
+ *
+ * Sonuç istek başına önbelleklenir; her ekran birden çok kez sorabilir.
+ *
+ * @return bool
+ */
+function qrm_pro_reviews_table_exists() {
+    static $exists = null;
+    if ($exists !== null) return $exists;
+
+    global $wpdb;
+    $table = $wpdb->prefix . 'qrm_reviews';
+
+    $found = $wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $wpdb->esc_like($table)));
+    $exists = ($found === $table);
+
+    return $exists;
+}
+
+/**
+ * Yorum sayaçları — başlangıç ekranı ve İçgörüler aynı kaynaktan okur.
+ *
+ * @return array{table_ok:bool,total:int,approved:int,pending:int,avg:float}
+ */
+function qrm_pro_review_stats() {
+    global $wpdb;
+    $table = $wpdb->prefix . 'qrm_reviews';
+
+    if (!qrm_pro_reviews_table_exists()) {
+        return ['table_ok' => false, 'total' => 0, 'approved' => 0, 'pending' => 0, 'avg' => 0.0];
+    }
+
+    $total    = (int) $wpdb->get_var("SELECT COUNT(*) FROM $table");
+    $approved = (int) $wpdb->get_var("SELECT COUNT(*) FROM $table WHERE status = 1");
+
+    return [
+        'table_ok' => true,
+        'total'    => $total,
+        'approved' => $approved,
+        'pending'  => $total - $approved,
+        'avg'      => (float) $wpdb->get_var("SELECT AVG(rating) FROM $table WHERE status = 1"),
+    ];
+}

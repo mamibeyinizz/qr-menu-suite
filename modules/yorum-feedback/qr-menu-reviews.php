@@ -139,6 +139,7 @@ require_once QRM_PRO_PATH . 'includes/install.php';
 
 // Admin
 require_once QRM_PRO_PATH . 'includes/admin/menu.php';
+require_once QRM_PRO_PATH . 'includes/admin/hub.php';
 require_once QRM_PRO_PATH . 'includes/admin/dashboard.php';
 require_once QRM_PRO_PATH . 'includes/admin/form-builder.php';
 require_once QRM_PRO_PATH . 'includes/admin/settings-page.php';

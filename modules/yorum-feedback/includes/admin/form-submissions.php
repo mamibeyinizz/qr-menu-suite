@@ -150,7 +150,7 @@ function qrm_cf_admin_submissions_pane() {
                     $data = qrm_cf_submission_data($row);
                 ?>
                     <tr class="<?php echo $row->status === 'new' ? 'qrm-sub-row-new' : ''; ?>">
-                        <td>
+                        <td data-label="Tarih">
                             <?php echo esc_html(mysql2date('d.m.Y H:i', $row->created_at)); ?>
                             <?php if ($row->ip_address !== ''): ?>
                                 <span class="qrm-sub-ip"><?php echo esc_html($row->ip_address); ?></span>
@@ -159,12 +159,12 @@ function qrm_cf_admin_submissions_pane() {
                         <?php foreach ($fields as $field):
                             $value = isset($data[$field->field_key]) ? qrm_cf_format_value($field, $data[$field->field_key]) : '';
                         ?>
-                            <td><?php echo $value === '' ? '<span class="qrm-sub-empty">—</span>' : nl2br(esc_html($value)); ?></td>
+                            <td data-label="<?php echo esc_attr($field->label); ?>"><?php echo $value === '' ? '<span class="qrm-sub-empty">—</span>' : nl2br(esc_html($value)); ?></td>
                         <?php endforeach; ?>
-                        <td>
+                        <td data-label="Durum">
                             <span class="qrm-cf-badge qrm-sub-status-<?php echo esc_attr($row->status); ?>"><?php echo esc_html(qrm_cf_submission_status_label($row->status)); ?></span>
                         </td>
-                        <td>
+                        <td data-label="">
                             <form method="post" class="qrm-sub-actions">
                                 <?php wp_nonce_field('qrm_cf_submissions'); ?>
                                 <input type="hidden" name="form_id" value="<?php echo intval($current->id); ?>">
@@ -237,6 +237,30 @@ function qrm_cf_admin_submissions_styles() {
         .qrm-sub-status-new { background:#dbeafe; color:#1e40af; }
         .qrm-sub-status-read { background:#f1f5f9; color:#475569; }
         .qrm-sub-status-archived { background:#f5f5f5; color:#787c82; }
+
+        /* Mobil: gönderim tablosunun sütun sayısı forma göre değişir, dar ekranda
+           asla sığmaz. Her satır bir karta, her hücre "etiket + değer" satırına
+           döner; etiket data-label'dan (alanın kendi etiketi) gelir. */
+        @media screen and (max-width: 782px) {
+            .qrm-sub-tab { flex:1 1 auto; justify-content:center; min-height:44px; }
+            .qrm-sub-toolbar { flex-direction:column; align-items:stretch; }
+
+            .qrm-sub-table, .qrm-sub-table tbody, .qrm-sub-table tr, .qrm-sub-table td { display:block; width:auto; }
+            .qrm-sub-table thead { display:none; }
+            .qrm-sub-table tr { background:#fff; border:1px solid #dcdcde; border-radius:8px; margin-bottom:12px; padding:6px 4px; }
+            .qrm-sub-table td { border:0; padding:7px 12px; }
+            .qrm-sub-table td::before { content:attr(data-label); display:block; font-size:12px; font-weight:600; color:#646970; text-transform:uppercase; margin-bottom:2px; }
+            .qrm-sub-table td[data-label=""]::before { display:none; }
+            .qrm-sub-row-new td { background:transparent; }
+            .qrm-sub-row-new { box-shadow:inset 3px 0 0 #2271b1; }
+            .qrm-sub-row-new td:first-child { box-shadow:none; }
+            .qrm-sub-actions .button { flex:1 1 auto; }
+        }
+
+        @media (pointer: coarse) {
+            .qrm-sub-filter, .qrm-sub-tab { min-height:44px; display:inline-flex; align-items:center; }
+            .qrm-sub-actions .button { min-height:40px; }
+        }
     </style>
     <?php
 }

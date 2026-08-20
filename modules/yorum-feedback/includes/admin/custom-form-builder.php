@@ -4,7 +4,7 @@ if (!defined('ABSPATH')) exit;
 // FORMLAR SAYFASI: FORM DÜZENLEYİCİ GÖRÜNÜMÜ (v4.2.0)
 //
 // v4.2.1: Düzenleyici artık ayrı bir admin sayfası değil, kayıtlı "Formlar"
-// sayfasının bir görünümü (?page=qrm-forms&view=edit). Gizli admin sayfası deseni
+// sayfasının bir görünümü (?page=qrms-yf-formlar&view=edit). Gizli admin sayfası deseni
 // WordPress'in hook adı çözümlemesini bozup 403'e yol açıyordu (bkz. menu.php).
 //
 // Not: includes/admin/form-builder.php (Müşteri Bilgileri Formu) mevcut yorum
@@ -340,6 +340,7 @@ function qrm_cf_admin_builder_styles() {
         .qrm-fb-item:hover .qrm-fb-item-bar, .qrm-fb-item.editing .qrm-fb-item-bar { opacity:1; }
         .qrm-fb-drag { cursor:grab; color:#94a3b8; }
         .qrm-fb-drag:active { cursor:grabbing; }
+        .qrm-fb-icon-btn[disabled] { opacity:.35; cursor:default; }
         .qrm-fb-item-type { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.4px; color:#94a3b8; }
         .qrm-fb-item-bar .spacer { flex:1; }
         .qrm-fb-icon-btn { background:none; border:none; padding:3px; cursor:pointer; color:#64748b; border-radius:5px; display:inline-flex; transition:background .15s ease, color .15s ease; }
@@ -393,6 +394,28 @@ function qrm_cf_admin_builder_styles() {
         .qrm-fb-previewing .qrm-fb-empty-fields { display:none; }
         .qrm-fb-preview-note { display:none; text-align:center; font-size:12.5px; color:#646970; margin:0 0 12px; }
         .qrm-fb-previewing .qrm-fb-preview-note { display:block; }
+
+        /* Mobil: üç panel ≤1100px'te zaten alt alta iner (yukarıda); burada
+           sadece dar ekran boşlukları ve dokunmatik hedef boyutları ayarlanır. */
+        @media screen and (max-width:782px) {
+            .qrm-fb-wrap { margin-right:10px; }
+            .qrm-fb-topbar { align-items:stretch; flex-direction:column; }
+            .qrm-fb-topbar .button, .qrm-fb-topbar .qrm-cf-btn-primary { justify-content:center; width:100%; }
+            .qrm-fb-palette-grid { grid-template-columns:1fr; }
+            .qrm-fb-row { flex-direction:column; }
+        }
+
+        @media (pointer: coarse) {
+            .qrm-fb-wrap .button, .qrm-fb-wrap .qrm-cf-btn-primary { min-height:44px; }
+            .qrm-fb-wrap input[type=text], .qrm-fb-wrap input[type=email], .qrm-fb-wrap input[type=number],
+            .qrm-fb-wrap select, .qrm-fb-wrap textarea { font-size:16px; min-height:44px; }
+            .qrm-fb-wrap input[type=checkbox], .qrm-fb-wrap input[type=radio] { height:24px; width:24px; }
+            /* Alanları sürükleme tutamacı parmakla yakalanabilir olmalı. */
+            /* Tutamak masaüstünde yalnızca hover'da beliriyor; dokunmatikte hover
+               yok, bu yüzden her zaman görünür ve parmakla yakalanabilir olmalı. */
+            .qrm-fb-item-bar { min-height:44px; opacity:1; }
+            .qrm-fb-drag { padding:10px; touch-action:none; }
+        }
     </style>
     <?php
 }
@@ -508,6 +531,11 @@ function qrm_cf_admin_builder_script($state, $types) {
                 html += '<span class="dashicons dashicons-menu qrm-fb-drag" title="Sıralamak için sürükleyin"></span>';
                 html += '<span class="qrm-fb-item-type">' + esc(typeLabel) + '</span>';
                 html += '<span class="spacer"></span>';
+                // Yukarı/aşağı butonları sürükle-bırakın erişilebilir karşılığıdır:
+                // HTML5 drag-and-drop dokunmatik ekranlarda hiç çalışmaz, klavyeyle
+                // de sürüklenemez. Sıralamanın telefondan da yapılabilmesini bunlar sağlar.
+                html += '<button type="button" class="qrm-fb-icon-btn" data-act="up" data-index="' + index + '" title="Yukarı taşı"' + (index === 0 ? ' disabled' : '') + '><span class="dashicons dashicons-arrow-up-alt2"></span></button>';
+                html += '<button type="button" class="qrm-fb-icon-btn" data-act="down" data-index="' + index + '" title="Aşağı taşı"' + (index === fields.length - 1 ? ' disabled' : '') + '><span class="dashicons dashicons-arrow-down-alt2"></span></button>';
                 html += '<button type="button" class="qrm-fb-icon-btn" data-act="edit" data-index="' + index + '" title="Düzenle"><span class="dashicons dashicons-edit"></span></button>';
                 html += '<button type="button" class="qrm-fb-icon-btn danger" data-act="delete" data-index="' + index + '" title="Sil"><span class="dashicons dashicons-trash"></span></button>';
                 html += '</div>';
@@ -560,6 +588,19 @@ function qrm_cf_admin_builder_script($state, $types) {
                 render();
             } else if (act === 'done') {
                 editingIndex = -1;
+                render();
+            } else if (act === 'up' || act === 'down') {
+                var hedef = act === 'up' ? index - 1 : index + 1;
+                if (hedef < 0 || hedef >= fields.length) return;
+
+                var tasinan = fields[index];
+                fields[index] = fields[hedef];
+                fields[hedef] = tasinan;
+
+                // Açık düzenleme paneli taşınan alanla birlikte gitmeli.
+                if (editingIndex === index) editingIndex = hedef;
+                else if (editingIndex === hedef) editingIndex = index;
+
                 render();
             }
         });
