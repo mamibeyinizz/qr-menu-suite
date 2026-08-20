@@ -30,6 +30,9 @@ require_once __DIR__ . '/includes/trait-suggestions.php';
 require_once __DIR__ . '/includes/trait-frontend.php';
 require_once __DIR__ . '/includes/trait-ajax.php';
 require_once __DIR__ . '/includes/trait-category-fields.php';
+require_once __DIR__ . '/includes/class-vitrin-db.php';
+require_once __DIR__ . '/includes/trait-vitrin-admin.php';
+require_once __DIR__ . '/includes/shortcode-vitrin.php';
 require_once __DIR__ . '/qmo-one-cikan-slider.php';
 
 /* =====================================================================
@@ -47,6 +50,7 @@ class Restaurant_Menu_Automation {
     use RMA_Frontend_Trait;
     use RMA_Ajax_Trait;
     use RMA_Category_Fields_Trait;
+    use RMA_Vitrin_Admin_Trait;
 
     private static $instance = null;
 
@@ -85,6 +89,15 @@ class Restaurant_Menu_Automation {
         add_action( 'wp_ajax_rma_get_product_details',       [ $this, 'ajax_get_product_details' ] );
         add_action( 'wp_ajax_nopriv_rma_get_product_details',[ $this, 'ajax_get_product_details' ] );
         add_action( 'wp_ajax_rma_save_suggestions',          [ $this, 'ajax_save_suggestions' ] );
+
+        /* -----------------------------------------------------------------
+           ÜRÜN VİTRİNİ
+           Menü temasından bağımsız, kendi kısa kodu olan vitrin bileşeni.
+           Kaydetme/silme admin-post üzerinden gider (bkz. trait-vitrin-admin).
+        ----------------------------------------------------------------- */
+        add_action( 'admin_post_rma_vitrin_kaydet', [ $this, 'handle_vitrin_save' ] );
+        add_action( 'admin_post_rma_vitrin_sil',    [ $this, 'handle_vitrin_delete' ] );
+
         add_shortcode( 'restaurant_menu', [ $this, 'shortcode_menu' ] );
         add_shortcode( 'rma_qr_notice', [ $this, 'shortcode_qr_notice' ] );
         add_action( 'init', [ $this, 'register_default_allergen_terms' ], 20 );
@@ -117,6 +130,9 @@ class Restaurant_Menu_Automation {
 }
 
 Restaurant_Menu_Automation::get_instance();
+
+// Vitrin kısa kodu ve varlıkları — sınıftan bağımsız, kendi kancalarını kurar.
+RMA_Vitrin_Shortcode::init();
 
 /* =====================================================================
    ELEMENTOR WIDGET

@@ -29,6 +29,13 @@ trait RMA_Admin_Pages_Trait {
                 'desc'       => 'Menünün üstünde öne çıkarılacak ürünler ve slider.',
                 'icon'       => 'dashicons-star-filled',
             ],
+            'qrms-rm-vitrin' => [
+                'title'      => 'Ürün Vitrini',
+                'menu_title' => 'Ürün Vitrini',
+                'render'     => 'render_showcase_page',
+                'desc'       => 'Seçtiğiniz ürünleri kayan bir vitrinde gösterin; kendi kısa kodu vardır.',
+                'icon'       => 'dashicons-slides',
+            ],
             'qrms-rm-diger' => [
                 'title'      => 'Diğer Ayarlar',
                 'menu_title' => 'Diğer Ayarlar',

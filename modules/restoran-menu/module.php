@@ -57,6 +57,12 @@ function qrms_module_restoran_menu_init() {
 		// Öncelik 20: hem çekirdeğin _add_post_type_submenus()'ü hem
 		// QRMS_Admin::register_menu() öncelik 10'da çalışır.
 		add_action( 'admin_menu', 'qrms_module_restoran_menu_admin_menu', 20 );
+
+		// Ürün Vitrini tabloları. Suite modüllerinin kendi
+		// register_activation_hook'u yok (loader plugins_loaded'da yükler),
+		// bu yüzden qr-ceviri'deki gibi sürüm guard'ıyla kurulur: option
+		// güncelse hiçbir şey yapılmaz, tek bir get_option maliyeti kalır.
+		add_action( 'admin_init', array( 'RMA_Vitrin_DB', 'belki_kur' ) );
 		add_filter( 'parent_file', 'qrms_module_restoran_menu_parent_file' );
 		add_filter( 'submenu_file', 'qrms_module_restoran_menu_submenu_file' );
 	}
@@ -66,7 +72,7 @@ function qrms_module_restoran_menu_init() {
  * Modülün suite menüsündeki alt satırları: eksik olanları ekler, sırayı düzeltir.
  *
  * WordPress iki seviyeli bir admin menüsüne sahiptir — "Restoran Menü" girişinin
- * ALTINA giriş eklenemez. Bu yüzden modülün yedi ekranı da "QR Menü"nün doğrudan
+ * ALTINA giriş eklenemez. Bu yüzden modülün sekiz ekranı da "QR Menü"nün doğrudan
  * alt öğesidir; modüle ait olduklarını göstermek için etiketleri "—" ile
  * öneklenir ve "Restoran Menü" satırının hemen ardına sıralanır. Hepsi
  * add_submenu_page ile kaydedilmiş gerçek, ayrı sayfalardır — JS ile gizlenip
@@ -159,6 +165,7 @@ function qrms_module_restoran_menu_child_slugs() {
 		'edit-tags.php?taxonomy=rma_allergen&post_type=rma_menu_item',
 		'qrms-rm-gorunum',
 		'qrms-rm-one-cikanlar',
+		'qrms-rm-vitrin',
 		'qrms-rm-diger',
 	);
 }

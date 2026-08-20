@@ -364,9 +364,28 @@
     outline: none;
 }
 
+/* Açılır menü oku.
+
+   Yukarıdaki kural `background` KISAYOLUNU kullanıyor; kısayol,
+   yazılmayan tüm background-* longhand'lerini başlangıç değerine
+   döndürür (repeat / 0% 0% / auto) ve WordPress'in kendi select
+   kuralındaki `no-repeat right 5px top 55% / 16px 16px` değerlerini de
+   siler. Ok ikonu yalnızca `background-image` ile eklenirse — SVG'nin
+   intrinsic boyutu da olmadığından — kutu yüksekliği kadar kare olarak
+   ölçeklenip select'in tüm genişliği boyunca DÖŞENİR: metnin üstünde
+   yan yana onlarca ok. Bu yüzden konum, tekrar ve boyut burada
+   longhand olarak TAM yazılır; kısayola geri dönülmemeli. */
 .rma-admin select {
-    /* WP'nin açık temalı ok ikonunu koyu zemine uygun hale getirir */
+    -webkit-appearance: none;
+    appearance: none;
     background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path fill="%23c9a84c" d="M5 6l5 5 5-5 2 1-7 7-7-7z"/></svg>');
+    background-position: right 10px center;
+    background-repeat: no-repeat;
+    background-size: 16px 16px;
+    /* Okun altına metin girmesin; uzun yazı tipi adları noktalanır. */
+    padding-left: 10px;
+    padding-right: 34px;
+    text-overflow: ellipsis;
 }
 
 .rma-admin input[type="file"] {
@@ -1294,5 +1313,302 @@ input:checked + .rma-slider:before {
 
     .rma-admin .rma-hub-card {
         padding: 16px 14px;
+    }
+}
+
+/* =====================================================================
+   ÜRÜN VİTRİNİ — YÖNETİM EKRANI
+
+   Dar ekranda çalışması esas: restoran sahibi vitrini çoğu zaman
+   telefondan düzenler. Seçim havuzu ve sıralama listesi geniş ekranda
+   yan yana, dar ekranda alt alta durur; ölçüler zaten var olan
+   `pointer: coarse` kurallarıyla birlikte parmakla kullanılabilir.
+===================================================================== */
+
+.rma-vitrin-list-head {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    justify-content: space-between;
+    margin-bottom: 16px;
+}
+
+.rma-vitrin-list-head .rma-card-title {
+    margin: 0;
+}
+
+.rma-vitrin-cards {
+    display: grid;
+    gap: 14px;
+}
+
+.rma-vitrin-card {
+    align-items: flex-start;
+    background: var(--rma-a-raised);
+    border: 1px solid var(--rma-a-border);
+    border-radius: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    justify-content: space-between;
+    padding: 16px;
+}
+
+.rma-vitrin-card-main {
+    flex: 1 1 260px;
+    min-width: 0;
+}
+
+.rma-vitrin-card-title {
+    color: var(--rma-a-text);
+    font-size: 15px;
+    margin: 0 0 4px;
+}
+
+.rma-vitrin-card-meta {
+    color: var(--rma-a-muted);
+    font-size: 12px;
+    margin: 0 0 10px;
+}
+
+.rma-vitrin-card-actions {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.rma-vitrin-card-actions form {
+    margin: 0;
+}
+
+.rma-admin .rma-btn-danger {
+    border-color: #7a2f2f;
+    color: #e08a8a;
+}
+
+.rma-admin .rma-btn-danger:hover {
+    background: #7a2f2f;
+    color: #fff;
+}
+
+/* Kısa kod satırı — tek dokunuşla kopyalanır. */
+.rma-shortcode-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.rma-admin .rma-shortcode-input {
+    flex: 1 1 220px;
+    font-family: Consolas, Monaco, monospace;
+    font-size: 12px;
+    min-width: 0;
+}
+
+.rma-vitrin-help {
+    color: var(--rma-a-text-soft);
+    font-size: 13px;
+    line-height: 1.7;
+    list-style: disc;
+    margin: 0;
+    padding-left: 20px;
+}
+
+/* ---------------------------------------------------------------------
+   ÜRÜN SEÇİCİ
+--------------------------------------------------------------------- */
+.rma-vitrin-picker {
+    display: grid;
+    gap: 20px;
+    grid-template-columns: 1fr 1fr;
+}
+
+.rma-vitrin-search-label {
+    color: var(--rma-a-text-soft);
+    display: block;
+    font-size: 12px;
+    margin-bottom: 4px;
+}
+
+.rma-admin .rma-vitrin-search {
+    margin-bottom: 10px;
+    width: 100%;
+}
+
+.rma-vitrin-pool-list {
+    border: 1px solid var(--rma-a-border);
+    border-radius: 8px;
+    max-height: 340px;
+    overflow-y: auto;
+}
+
+.rma-vitrin-pool-row {
+    align-items: center;
+    border-bottom: 1px solid var(--rma-a-border-soft);
+    color: var(--rma-a-text-soft);
+    cursor: pointer;
+    display: flex;
+    gap: 10px;
+    padding: 8px 10px;
+}
+
+.rma-vitrin-pool-row:last-child {
+    border-bottom: none;
+}
+
+.rma-vitrin-pool-row:hover {
+    background: var(--rma-a-raised);
+}
+
+.rma-vitrin-pool-row.is-selected {
+    background: var(--rma-a-accent-soft);
+    color: var(--rma-a-text);
+}
+
+/* Arama kutusuyla süzülen satırlar (admin-ui.js). */
+.rma-vitrin-pool-row.is-hidden {
+    display: none;
+}
+
+.rma-vitrin-pool-main {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.rma-vitrin-pool-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.rma-vitrin-pool-cat {
+    color: var(--rma-a-muted);
+    font-size: 11px;
+}
+
+.rma-vitrin-thumb {
+    border-radius: 6px;
+    flex-shrink: 0;
+    height: 38px;
+    object-fit: cover;
+    width: 38px;
+}
+
+.rma-vitrin-thumb-empty {
+    align-items: center;
+    background: var(--rma-a-raised);
+    color: var(--rma-a-accent);
+    display: flex;
+    font-size: 15px;
+    justify-content: center;
+}
+
+/* ---------------------------------------------------------------------
+   SIRALAMA LİSTESİ
+--------------------------------------------------------------------- */
+.rma-vitrin-sortable {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    list-style: none;
+    margin: 10px 0 0;
+    padding: 0;
+}
+
+.rma-vitrin-chip {
+    align-items: center;
+    background: var(--rma-a-raised);
+    border: 1px solid var(--rma-a-border);
+    border-radius: 8px;
+    display: flex;
+    gap: 10px;
+    padding: 8px 10px;
+    /* Dokunmatikte sürükleme sayfayı kaydırmasın. */
+    touch-action: none;
+}
+
+.rma-vitrin-chip.ui-sortable-helper {
+    border-color: var(--rma-a-accent);
+}
+
+/* jQuery UI'nin sürükleme sırasında bıraktığı boşluk göstergesi. */
+.rma-vitrin-placeholder {
+    background: var(--rma-a-accent-soft);
+    border: 1px dashed var(--rma-a-accent);
+    border-radius: 8px;
+    height: 56px;
+}
+
+.rma-vitrin-drag {
+    color: var(--rma-a-muted);
+    cursor: grab;
+    flex-shrink: 0;
+    font-size: 13px;
+    letter-spacing: -2px;
+}
+
+.rma-vitrin-chip-title {
+    color: var(--rma-a-text);
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.rma-vitrin-remove {
+    background: none;
+    border: none;
+    color: var(--rma-a-muted);
+    cursor: pointer;
+    flex-shrink: 0;
+    font-size: 20px;
+    line-height: 1;
+    padding: 0 4px;
+}
+
+.rma-vitrin-remove:hover {
+    color: #e08a8a;
+}
+
+@media (pointer: coarse) {
+    .rma-vitrin-pool-row,
+    .rma-vitrin-chip {
+        min-height: 52px;
+    }
+
+    .rma-vitrin-remove {
+        font-size: 24px;
+        min-height: 44px;
+        min-width: 44px;
+    }
+}
+
+@media screen and (max-width: 782px) {
+    /* Yan yana iki sütun telefonda her ikisini de kullanılmaz yapardı. */
+    .rma-vitrin-picker {
+        grid-template-columns: 1fr;
+    }
+
+    .rma-vitrin-pool-list {
+        max-height: 260px;
+    }
+
+    .rma-vitrin-card-actions {
+        width: 100%;
+    }
+
+    .rma-vitrin-card-actions .button {
+        flex: 1;
+        text-align: center;
+    }
+
+    /* Kısa kod alt satıra düştüğünde "Kopyala" da satırı doldursun —
+       yarım genişlikte tek başına kalması dar ekranda dengesiz duruyor. */
+    .rma-shortcode-row .rma-copy-shortcode {
+        flex: 1;
     }
 }
