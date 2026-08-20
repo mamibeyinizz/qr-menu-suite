@@ -1386,6 +1386,195 @@ qrms_test(
 	}
 );
 
+/* ---------------------------------------------------------------------------
+ * 10. Yorum & Feedback — sayfa kayıt defteri, eski adresler, menü sıralaması
+ * ------------------------------------------------------------------------ */
+
+// menu.php sayfa tanımlarını ve adres yardımcılarını içerir; dosya kapsamında
+// yalnızca bir add_action kaydı yapar (stub ortamında yan etkisizdir).
+// module.php ise sıralama yardımcısını tanımlar — saf dizi dönüşümü.
+require_once QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/admin/menu.php';
+require_once QRMS_PLUGIN_DIR . 'modules/yorum-feedback/module.php';
+
+echo "\nYorum & Feedback sayfaları\n";
+
+qrms_test(
+	'yedi ekranın hepsi kayıt defterinde ve her birinin callback\'i var',
+	function () {
+		$pages = qrm_pro_admin_pages();
+
+		qrms_assert_same(
+			array(
+				'qrms-yf-yorumlar',
+				'qrms-yf-icgoruler',
+				'qrms-yf-form-alanlari',
+				'qrms-yf-ayarlar',
+				'qrms-yf-iletisim',
+				'qrms-yf-odul',
+				'qrms-yf-formlar',
+			),
+			array_keys( $pages ),
+			'sayfa listesi'
+		);
+
+		foreach ( $pages as $slug => $page ) {
+			foreach ( array( 'title', 'menu_title', 'render', 'desc', 'icon' ) as $key ) {
+				qrms_assert_true( ! empty( $page[ $key ] ), $slug . ' -> ' . $key . ' dolu' );
+			}
+		}
+	}
+);
+
+qrms_test(
+	'modül sayfası tanıma hub ve alt sayfaların hepsini kapsar',
+	function () {
+		qrms_assert_true( qrm_pro_is_module_page( qrm_pro_hub_slug() ), 'hub' );
+		qrms_assert_true( qrm_pro_is_module_page( 'qrms-yf-odul' ), 'alt sayfa' );
+		qrms_assert_true( ! qrm_pro_is_module_page( 'qrms-rm-gorunum' ), 'başka modülün sayfası' );
+		qrms_assert_true( ! qrm_pro_is_module_page( '' ), 'boş slug' );
+	}
+);
+
+qrms_test(
+	'eski adresler yeni sayfalara yönlendirilir',
+	function () {
+		$bekleyen = array(
+			// [eski slug, parametreler, hedef slug, hedefte beklenen ek parametre]
+			array( 'qrm-pro-main', array(), 'qrms-yf-yorumlar', '' ),
+			array( 'qrm-pro-main', array( 'tab' => 'insights' ), 'qrms-yf-icgoruler', '' ),
+			array( 'qrm-pro-insights', array(), 'qrms-yf-icgoruler', '' ),
+			array( 'qrm-pro-settings', array(), 'qrms-yf-ayarlar', '' ),
+			array( 'qrm-pro-settings', array( 'sub' => 'alanlar' ), 'qrms-yf-form-alanlari', '' ),
+			array( 'qrm-pro-form', array(), 'qrms-yf-form-alanlari', '' ),
+			array( 'qrm-pro-contact', array(), 'qrms-yf-iletisim', '' ),
+			array( 'qrm-pro-rewards', array(), 'qrms-yf-odul', '' ),
+			array( 'qrm-pro-rewards', array( 'tab' => 'codes' ), 'qrms-yf-odul', 'tab=codes' ),
+			array( 'qrm-forms', array(), 'qrms-yf-formlar', '' ),
+			array( 'qrm-forms', array( 'tab' => 'submissions' ), 'qrms-yf-formlar', 'tab=submissions' ),
+			array( 'qrm-form-edit', array( 'form_id' => 3 ), 'qrms-yf-formlar', 'form_id=3' ),
+			array( 'qrm-form-submissions', array( 'form_id' => 7 ), 'qrms-yf-formlar', 'form_id=7' ),
+		);
+
+		foreach ( $bekleyen as $case ) {
+			list( $eski, $args, $hedef_slug, $ek ) = $case;
+
+			$target = qrm_pro_legacy_page_target( $eski, $args );
+
+			qrms_assert_true(
+				false !== strpos( $target, 'page=' . $hedef_slug ),
+				$eski . ' -> ' . $hedef_slug . ' (gelen: ' . $target . ')'
+			);
+
+			if ( '' !== $ek ) {
+				qrms_assert_true(
+					false !== strpos( $target, $ek ),
+					$eski . ' -> ' . $ek . ' korunur'
+				);
+			}
+		}
+	}
+);
+
+qrms_test(
+	'bilinmeyen ve güncel slug\'lar yönlendirilmez',
+	function () {
+		qrms_assert_same( '', qrm_pro_legacy_page_target( 'qrms-yf-yorumlar' ), 'güncel slug' );
+		qrms_assert_same( '', qrm_pro_legacy_page_target( 'baska-eklenti' ), 'yabancı slug' );
+		qrms_assert_same( '', qrm_pro_legacy_page_target( '' ), 'boş slug' );
+	}
+);
+
+qrms_test(
+	'form düzenleyici adresi düzenleyici görünümünü hedefler',
+	function () {
+		$target = qrm_pro_legacy_page_target( 'qrm-form-edit', array( 'form_id' => 3 ) );
+
+		qrms_assert_true( false !== strpos( $target, 'view=edit' ), 'view=edit korunur' );
+	}
+);
+
+echo "\nYorum & Feedback menü sıralaması\n";
+
+qrms_test(
+	'modülün yedi satırı Yorum & Feedback girişinin hemen ardına alınır',
+	function () {
+		// add_submenu_page satırları listenin sonuna ekler; sıralama onları
+		// modülün kendi satırının altına taşır.
+		$ham = array(
+			qrms_submenu_satiri( 'Genel Bakış', QRMS_Admin::MENU_SLUG ),
+			qrms_submenu_satiri( 'Restoran Menü', QRMS_Admin::get_module_page_slug( 'restoran-menu' ) ),
+			qrms_submenu_satiri( 'Yorum & Feedback', QRMS_Admin::get_module_page_slug( 'yorum-feedback' ) ),
+			qrms_submenu_satiri( 'Genel Ayarlar', QRMS_Admin::SETTINGS_SLUG ),
+		);
+
+		foreach ( qrm_pro_admin_pages() as $slug => $page ) {
+			$ham[] = qrms_submenu_satiri( '— ' . $page['menu_title'], $slug );
+		}
+
+		qrms_assert_same(
+			array_merge(
+				array(
+					QRMS_Admin::MENU_SLUG,
+					QRMS_Admin::get_module_page_slug( 'restoran-menu' ),
+					QRMS_Admin::get_module_page_slug( 'yorum-feedback' ),
+				),
+				array_keys( qrm_pro_admin_pages() ),
+				array( QRMS_Admin::SETTINGS_SLUG )
+			),
+			qrms_submenu_sluglari( qrms_module_yorum_feedback_submenu_sirala( $ham ) ),
+			'sıra'
+		);
+	}
+);
+
+qrms_test(
+	'Yorum & Feedback satırı yoksa liste değişmeden döner',
+	function () {
+		$ham = array(
+			qrms_submenu_satiri( 'Genel Bakış', QRMS_Admin::MENU_SLUG ),
+			qrms_submenu_satiri( '— Tüm Yorumlar', 'qrms-yf-yorumlar' ),
+			qrms_submenu_satiri( 'Genel Ayarlar', QRMS_Admin::SETTINGS_SLUG ),
+		);
+
+		qrms_assert_same(
+			qrms_submenu_sluglari( $ham ),
+			qrms_submenu_sluglari( qrms_module_yorum_feedback_submenu_sirala( $ham ) ),
+			'sıra korunur'
+		);
+	}
+);
+
+qrms_test(
+	'diğer modüllerin satırları göreli sırasını korur',
+	function () {
+		$ham = array(
+			qrms_submenu_satiri( 'Genel Bakış', QRMS_Admin::MENU_SLUG ),
+			qrms_submenu_satiri( 'Restoran Menü', QRMS_Admin::get_module_page_slug( 'restoran-menu' ) ),
+			qrms_submenu_satiri( '— Görünüm', 'qrms-rm-gorunum' ),
+			qrms_submenu_satiri( '— Diğer Ayarlar', 'qrms-rm-diger' ),
+			qrms_submenu_satiri( 'Yorum & Feedback', QRMS_Admin::get_module_page_slug( 'yorum-feedback' ) ),
+			qrms_submenu_satiri( 'Genel Ayarlar', QRMS_Admin::SETTINGS_SLUG ),
+			qrms_submenu_satiri( '— Tüm Yorumlar', 'qrms-yf-yorumlar' ),
+		);
+
+		$sirali = qrms_submenu_sluglari( qrms_module_yorum_feedback_submenu_sirala( $ham ) );
+
+		qrms_assert_same(
+			array(
+				QRMS_Admin::MENU_SLUG,
+				QRMS_Admin::get_module_page_slug( 'restoran-menu' ),
+				'qrms-rm-gorunum',
+				'qrms-rm-diger',
+				QRMS_Admin::get_module_page_slug( 'yorum-feedback' ),
+				'qrms-yf-yorumlar',
+				QRMS_Admin::SETTINGS_SLUG,
+			),
+			$sirali,
+			'restoran-menu satırları yerinde kalır'
+		);
+	}
+);
+
 /* ------------------------------------------------------------------------ */
 
 echo "\n";

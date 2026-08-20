@@ -148,7 +148,7 @@ function qrm_reward_admin_codes_tab($settings) {
     <div class="qrm-card">
         <h3>Ödül Kodları</h3>
         <form method="GET" style="margin-bottom:14px;">
-            <input type="hidden" name="page" value="qrm-pro-rewards">
+            <input type="hidden" name="page" value="qrms-yf-odul">
             <input type="hidden" name="tab" value="codes">
             <select name="status">
                 <option value="">Tüm durumlar</option>
@@ -159,11 +159,11 @@ function qrm_reward_admin_codes_tab($settings) {
             <input type="search" name="s" value="<?php echo esc_attr($search); ?>" placeholder="E-posta veya kod ara">
             <button type="submit" class="button">Filtrele</button>
             <?php if ($status_filter !== '' || $search !== ''): ?>
-                <a href="?page=qrm-pro-rewards&tab=codes" class="button">Temizle</a>
+                <a href="<?php echo esc_url(qrm_pro_admin_url('qrms-yf-odul', ['tab' => 'codes'])); ?>" class="button">Temizle</a>
             <?php endif; ?>
         </form>
 
-        <table class="wp-list-table widefat fixed striped">
+        <table class="wp-list-table widefat fixed striped qrm-table-cards">
             <thead>
                 <tr>
                     <th style="width:130px;">Oluşturulma</th>
@@ -177,20 +177,20 @@ function qrm_reward_admin_codes_tab($settings) {
             </thead>
             <tbody>
             <?php if (!$rows): ?>
-                <tr><td colspan="7">Kayıt bulunamadı.</td></tr>
+                <tr class="no-items"><td colspan="7" class="qrm-empty">Bu filtreye uyan kod yok.</td></tr>
             <?php else: foreach ($rows as $r): ?>
                 <tr>
-                    <td><?php echo esc_html(date('d.m.Y H:i', strtotime($r->created_at))); ?></td>
-                    <td>
+                    <td data-label="Oluşturulma"><?php echo esc_html(date_i18n('d.m.Y H:i', strtotime($r->created_at))); ?></td>
+                    <td data-label="E-posta">
                         <?php echo $r->email ? esc_html($r->email) : '<em>—</em>'; ?>
                         <?php if ($r->is_manual): ?><span class="qrm-google-pill" style="background:#fef3c7;color:#92400e;">Manuel</span><?php endif; ?>
                     </td>
-                    <td><span class="qrm-code-pill"><?php echo esc_html($r->code); ?></span></td>
-                    <td><?php echo esc_html($r->discount_label); ?></td>
-                    <td><span class="qrm-status-<?php echo esc_attr($r->status); ?>"><?php echo esc_html(qrm_reward_status_label($r->status)); ?></span></td>
-                    <td><?php echo $r->used_at ? esc_html(date('d.m.Y H:i', strtotime($r->used_at))) : '—'; ?></td>
-                    <td>
-                        <form method="POST" style="display:inline;">
+                    <td data-label="Kod"><span class="qrm-code-pill"><?php echo esc_html($r->code); ?></span></td>
+                    <td data-label="İndirim"><?php echo esc_html($r->discount_label); ?></td>
+                    <td data-label="Durum"><span class="qrm-status-<?php echo esc_attr($r->status); ?>"><?php echo esc_html(qrm_reward_status_label($r->status)); ?></span></td>
+                    <td data-label="Kullanım"><?php echo $r->used_at ? esc_html(date_i18n('d.m.Y H:i', strtotime($r->used_at))) : '—'; ?></td>
+                    <td data-label="" class="qrm-row-actions">
+                        <form method="POST" class="qrm-row-actions">
                             <?php wp_nonce_field('qrm_reward_codes'); ?>
                             <input type="hidden" name="code_id" value="<?php echo (int) $r->id; ?>">
                             <?php if ($r->status !== 'used'): ?>

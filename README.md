@@ -89,7 +89,7 @@ zamanlama doğrudur.
 | Slug | İçerik | Yönetim sayfası |
 | --- | --- | --- |
 | `restoran-menu` | `rma_menu_item` CPT, `[restaurant_menu]`, `[qmo_one_cikan_slider]`, Elementor widget'ı | ✔ Sekmeli ayar ekranı |
-| `yorum-feedback` | Çoklu kriter yorumlar, Google yönlendirme + ödül kodları, dinamik form oluşturucu, `[qr_menu_reviews]`, `[qr_menu_contact]`, `[qr_menu_form]` | ✔ Tüm Yorumlar ekranı |
+| `yorum-feedback` | Çoklu kriter yorumlar, Google yönlendirme + ödül kodları, dinamik form oluşturucu, `[qr_menu_reviews]`, `[qr_menu_contact]`, `[qr_menu_form]` | ✔ Başlangıç ekranı + yedi ayrı sayfa |
 | `qr-masa` | Masa kayıtları (CRUD), masa QR adresleri, `[qr_aktif_masa]` | ✔ Masalar ekranı |
 | `qr-masa-oturum-guvenligi` | Sahte QR reddi, kilit ekranı, sayfa kilidi | ✔ Oturum limitleri |
 | `qr-galeri` | Galeri CPT, bölümler, görseller | ✔ Galeri yönetim ekranları |
@@ -101,8 +101,11 @@ Kodları kaynak eklentilerinden **aynen** taşındı (`restoran-menu` 12-menu
 deposundaki QR MENÜ eklentisinden, `yorum-feedback` `yorumfeedback`
 deposundaki v4.2.1 eklentisinden, diğerleri birleşik `qr-menu-official`
 eklentisinden); yalnızca yeni klasör konumuna göre yol string'leri düzeltildi.
-`yorum-feedback`'in 29 kaynak dosyasının hepsi kaynağıyla **birebir aynıdır**;
-modüle özgü her şey `module.php` içindedir.
+
+`yorum-feedback` bu kuralın istisnasıdır: kaynağın kendi **QR Yorumlar** üst
+menüsü kaldırılıp yedi ekranı suite menüsüne taşındığı için yönetim
+dosyalarına dokunuldu (bkz. *Modül menüleri*). İş mantığı — ön yüz, AJAX,
+ödül/form modülleri, veritabanı katmanı — kaynağıyla aynı kaldı.
 
 `qr-analiz` ve `qr-chatbot` artık placeholder değildir: eski eklentinin
 `admin/settings-page.php` ekranı ikiye ayrıldı. Chatbot'a özgü kısım
@@ -238,12 +241,60 @@ kendi mobil davranışına müdahale edilmez.
 > gösterir. Sabitlerdeki `defined()` guard'ı ve `__DIR__` tabanlı require'lar
 > yalnızca notice ile çift yüklemeyi önler.
 
-`yorum-feedback` de aynı deseni izler: eklentinin kendi **QR Yorumlar** üst
-menüsü ve beş alt sayfası (Tüm Yorumlar, Yorum Formu Ayarları, İletişim,
-Google & Ödül Sistemi, Formlar) kaynakta olduğu gibi kayıtlı kalır — menü
-rozetleri ve eski slug yönlendirmeleri dahil — ve suite menüsündeki "Yorum &
-Feedback" satırı da aynı Tüm Yorumlar ekranını (`qrm_pro_admin_dashboard()`)
-basar.
+`yorum-feedback` de aynı deseni izler. Kaynakta modülün ekranları ayrı bir
+**QR Yorumlar** üst menüsünde duruyor, suite menüsündeki "Yorum & Feedback"
+satırı ise bunlardan yalnızca birini (Tüm Yorumlar) ikinci kez basıyordu:
+aynı ekran iki menüden açılıyor, diğer altı ekran suite menüsünde hiç
+görünmüyordu. Üst menü kaldırıldı; artık tek giriş noktası var:
+
+| Menü satırı | Slug | Ekran |
+| --- | --- | --- |
+| Yorum & Feedback | `qrms-module-yorum-feedback` | Başlangıç: özet sayaçlar + kart ızgarası |
+| — Tüm Yorumlar | `qrms-yf-yorumlar` | Yorum listesi, durum filtreleri, onay/sil |
+| — Detaylı İçgörüler | `qrms-yf-icgoruler` | Genel ortalama, kriter bazlı performans |
+| — Müşteri Bilgileri Formu | `qrms-yf-form-alanlari` | Yorum formunun alanları, sıralama |
+| — Ayarlar & Puanlama | `qrms-yf-ayarlar` | Kriterler, form görünümü, otomatik onay, spam |
+| — İletişim | `qrms-yf-iletisim` | İletişim formu başlığı + kısa kod |
+| — Google & Ödül Sistemi | `qrms-yf-odul` | Google yönlendirme, popup, indirim kodları |
+| — Formlar | `qrms-yf-formlar` | Özel form oluşturucu + gönderiler |
+
+Sayfa tanımı tek yerde durur (`qrm_pro_admin_pages()`,
+`includes/admin/menu.php`); menü satırları, başlangıç ekranındaki kartlar ve
+varlık kuyruğunun "bu benim sayfam mı" kontrolü aynı listeden beslenir.
+Bağlantılar `qrm_pro_admin_url()` ile üretilir — hiçbir slug JS'e ya da HTML'e
+gömülmez.
+
+v4.1.x ve v4.2.x adreslerinden (`qrm-pro-main`, `qrm-pro-settings&sub=alanlar`,
+`qrm-pro-insights`, `qrm-forms&view=edit` …) gelenler
+`qrm_pro_legacy_page_target()` ile yeni sayfalarına yönlendirilir; sekme/görünüm
+parametreleri hedefi belirlemekte kullanılır. Menü rozetleri (okunmamış form
+gönderimi, eksik ödül kurulumu) yalnızca ilgili alt satırda gösterilir.
+
+Kaynaktaki üç JS sekmesi (Tüm Yorumlar > İçgörüler, Ayarlar > Müşteri Bilgileri
+Formu) gerçek sayfaya dönüştürüldü. Bu sekmelerin hem görünürlüğü hem aktif
+göstergesi tamamen jQuery'ye bağlıydı: sayfadaki herhangi bir JS hatasında iki
+sekme birden ölüyor ve hiçbiri aktif görünmüyordu. Ayrıca `history.replaceState`
+ile adres çubuğunu **başka bir sayfanın** adresine çeviriyorlardı; suite
+menüsünden açıldığında yenileme sonrası yanlış ekrana düşülüyordu.
+
+Ekranlar sadeleştirildi: Ayarlar sayfasındaki Google/ödül bilgi kartı
+kaldırıldı (aynı checklist zaten "Google & Ödül Sistemi" sayfasının başında
+duruyordu), arayüzdeki sürüm notları temizlendi, tekrarlayan açıklama
+cümleleri teke indirildi. "Tüm Yorumlar" listesi artık boş kaldığında sebebini
+söyler: veri yoksa kısa kod yönlendirmesi, tablo eksikse veritabanı uyarısı
+basar (`qrm_pro_reviews_table_exists()`). Satır aksiyonları (onayla / yayından
+kaldır / sil) nonce'suz GET bağlantılarıydı; artık `wp_nonce_url` ile üretilip
+doğrulanır.
+
+Yönetim ekranları mobil tarayıcı için uyarlanmıştır
+(`modules/yorum-feedback/assets/css/admin.css`): `pointer: coarse` medya
+sorgusunda dokunma alanları en az 44px'e çıkar ve girdiler 16px'e büyür (iOS
+Safari'nin yakınlaştırmasını engeller), dar ekranda `form-table` satırları alt
+alta bloklara açılır, geniş tablolar (yorumlar, ödül kodları, form gönderileri)
+`data-label` başlıklarıyla kart görünümüne döner. Sürükle-bırak sıralama hem
+yorum formu alanlarında (jQuery UI) hem form oluşturucuda (HTML5 DnD)
+dokunmatikte çalışmadığı için her iki ekrana da yukarı/aşağı butonları eklendi;
+sıralama artık telefondan ve klavyeyle de yapılabilir.
 
 Modül CPT ya da taksonomi kullanmaz; verisini altı kendi tablosunda tutar
 (`qrm_reviews`, `qrm_form_fields`, `qrm_reward_codes`, `qrm_custom_forms`,
@@ -335,7 +386,7 @@ includes/
 modules/
   _qmo-ortak/                Ortak zemin (oturum sınıfı, Firestore istemcisi, helpers, varlıklar)
   restoran-menu/             Menü CPT'si, kısa kodlar, slider + sekmeli ayar ekranı
-  yorum-feedback/            Yorumlar, ödül kodları, form oluşturucu + beş yönetim ekranı
+  yorum-feedback/            Yorumlar, ödül kodları, form oluşturucu + başlangıç ekranı ve yedi yönetim sayfası
   qr-masa/                   Masa kayıtları + Masalar yönetim ekranı
   qr-masa-oturum-guvenligi/  Masa doğrulama, kilit ekranı + oturum ayarları
   qr-analiz/                 Menü analitiği (masa bazlı takip + panel), analitik/kullanıcı REST uçları, Firebase ayar ekranı

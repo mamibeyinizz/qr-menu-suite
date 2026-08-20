@@ -3,10 +3,11 @@ if (!defined('ABSPATH')) exit;
 
 // FORMLAR SAYFASI (v4.2.0, v4.2.1'de sekmeli tek sayfaya birleştirildi)
 //
-// Tek kayıtlı admin sayfası: qrm-forms
-//   ?page=qrm-forms                    -> "Formlarım" sekmesi
-//   ?page=qrm-forms&tab=submissions    -> "Gönderiler" sekmesi
-//   ?page=qrm-forms&view=edit&form_id= -> Form düzenleyici görünümü
+// Tek kayıtlı admin sayfası: qrms-yf-formlar
+//   ?page=qrms-yf-formlar                    -> "Formlarım" sekmesi
+//   ?page=qrms-yf-formlar&tab=submissions    -> "Gönderiler" sekmesi
+//   ?page=qrms-yf-formlar&view=edit&form_id= -> Form düzenleyici görünümü
+// Bağlantıların tamamı qrm_cf_admin_url() ile üretilir; slug hiçbir yere gömülmez.
 //
 // Düzenleyici bilerek ayrı bir (gizli) admin sayfası DEĞİL: v4.2.0'da gizli sayfa
 // deseni WordPress'in hook adı çözümlemesini bozup 403'e yol açmıştı (bkz. menu.php).
@@ -68,6 +69,13 @@ function qrm_cf_admin_forms_page() {
 
     <script>
     jQuery(document).ready(function($){
+        // Adresler PHP tarafından üretilir: sayfa slug'ı JS içine gömülmez, böylece
+        // menüdeki slug değişse bile adres çubuğu yanlış sayfayı göstermez.
+        var urls = <?php echo wp_json_encode([
+            'forms'       => qrm_cf_admin_url(),
+            'submissions' => qrm_cf_admin_url(['tab' => 'submissions']),
+        ]); ?>;
+
         // Sekme geçişi sayfa yenilemeden yapılır (Google & Ödül Sistemi sayfasındaki
         // desenin aynısı); adres çubuğu deep-link için güncellenir.
         function showTab(name) {
@@ -76,7 +84,7 @@ function qrm_cf_admin_forms_page() {
             $('.qrm-forms-tab').removeClass('nav-tab-active');
             $('.qrm-forms-tab[data-tab="' + name + '"]').addClass('nav-tab-active');
             if (history.replaceState) {
-                history.replaceState(null, '', '?page=qrm-forms' + (name === 'submissions' ? '&tab=submissions' : ''));
+                history.replaceState(null, '', name === 'submissions' ? urls.submissions : urls.forms);
             }
         }
         $('.qrm-forms-tab').on('click', function(e){
@@ -158,6 +166,28 @@ function qrm_cf_admin_styles() {
         .qrm-cf-empty-art { font-size:56px; line-height:1; margin-bottom:8px; }
         .qrm-cf-empty h2 { margin:12px 0 6px; font-size:21px; }
         .qrm-cf-empty p { color:#646970; font-size:14px; max-width:520px; margin:0 auto 22px; line-height:1.65; }
+
+        /* Mobil */
+        @media screen and (max-width: 782px) {
+            .qrm-cf-wrap { margin-right:10px; }
+            .qrm-cf-head { align-items:stretch; flex-direction:column; }
+            .qrm-cf-head .qrm-cf-btn-primary { justify-content:center; }
+            .qrm-cf-grid-cards { grid-template-columns:1fr; }
+            .qrm-cf-card { padding:16px 14px; }
+            .qrm-cf-metrics { gap:12px; justify-content:space-between; }
+            .qrm-cf-shortcode code { flex:1 1 100%; }
+            .qrm-cf-card-actions .button, .qrm-cf-card-actions .qrm-cf-copy { flex:1 1 auto; text-align:center; }
+            .qrm-cf-empty { padding:40px 18px; }
+        }
+
+        @media (pointer: coarse) {
+            .qrm-cf-btn-primary, .qrm-cf-copy, .qrm-cf-wrap .button { min-height:44px; }
+            .qrm-cf-wrap .button-small { min-height:40px; }
+            .qrm-cf-wrap .nav-tab { min-height:44px; display:inline-flex; align-items:center; }
+            .qrm-cf-wrap input[type="text"], .qrm-cf-wrap input[type="email"], .qrm-cf-wrap input[type="number"],
+            .qrm-cf-wrap select, .qrm-cf-wrap textarea { font-size:16px; min-height:44px; }
+            .qrm-cf-wrap input[type="checkbox"], .qrm-cf-wrap input[type="radio"] { height:24px; width:24px; }
+        }
     </style>
     <?php
 }
