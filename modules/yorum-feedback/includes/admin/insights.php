@@ -43,6 +43,63 @@ function qrm_pro_admin_insights() {
 
         <?php else: qrm_pro_admin_insights_body($stats); endif; ?>
 
+        <?php qrm_pro_admin_ai_card(); ?>
+
+    </div>
+    <?php
+}
+
+/**
+ * Yapay zekâ özeti kartı.
+ *
+ * Sayısal ortalamalar neyin düştüğünü söyler, NEDEN düştüğünü söylemez — o
+ * bilgi yorum metinlerindedir. Bu kart onları Gemini'ye özetletir.
+ *
+ * Çağrı sayfa açılışında YAPILMAZ (her açılış ücretli bir istek demek olurdu):
+ * özet butonla üretilir, sonuç saklanır ve yeni yorum geldiğinde kendiliğinden
+ * geçersizleşir (bkz. qrm_ai_cache_key).
+ *
+ * @return void
+ */
+function qrm_pro_admin_ai_card() {
+    $anahtar_var = qrm_ai_api_key() !== '';
+    $mevcut      = $anahtar_var ? qrm_ai_cached_summary() : '';
+    ?>
+    <div class="qrm-card qrm-ai-card">
+        <h2 class="qrm-ai-title">Yapay Zekâ Özeti</h2>
+
+        <?php if (!$anahtar_var): ?>
+
+            <p class="qrm-lead">
+                Yorumlarınızın yapay zekâ özeti için bir Gemini API anahtarı gerekiyor.
+                <strong>QR Chatbot</strong> modülünde anahtarı tanımladığınızda bu bölüm
+                kendiliğinden çalışmaya başlar — ikinci bir anahtar girmenize gerek yok.
+            </p>
+
+        <?php else: ?>
+
+            <p class="qrm-lead">
+                Yayındaki yorumlarınızda tekrar eden övgü ve şikâyetleri çıkarır.
+                <br>
+                <span class="qrm-ai-privacy">
+                    Gemini'ye yalnızca <strong>puanlar ve yorum metinleri</strong> gönderilir;
+                    müşteri adı, telefonu ve masa numarası gönderilmez.
+                </span>
+            </p>
+
+            <p>
+                <button type="button" class="button button-primary" id="qrm-ai-run"
+                        data-nonce="<?php echo esc_attr(wp_create_nonce('qrm_ai_summary')); ?>">
+                    <?php echo $mevcut !== '' ? 'Özeti yenile' : 'Özet oluştur'; ?>
+                </button>
+                <span class="qrm-ai-status" id="qrm-ai-status" role="status"></span>
+            </p>
+
+            <div class="qrm-ai-output" id="qrm-ai-output"<?php echo $mevcut === '' ? ' hidden' : ''; ?>><?php
+                echo esc_html($mevcut);
+            ?></div>
+
+        <?php endif; ?>
     </div>
     <?php
 }

@@ -1225,6 +1225,202 @@ qrms_test(
 );
 
 /* ---------------------------------------------------------------------------
+ * 6c. yorum-feedback — Gemini içgörüleri
+ *
+ * Gerçek Gemini çağrısı yapılmaz: stub'ların wp_remote_post taklidi
+ * ($GLOBALS['qrms_test']['http']) ile yanıt verilir ve giden istek incelenir.
+ * Asıl mesele, DIŞ BİR SERVİSE ne gönderildiği — testlerin çoğu bunu korur.
+ * ------------------------------------------------------------------------ */
+
+if ( ! defined( 'ARRAY_A' ) ) {
+	define( 'ARRAY_A', 'ARRAY_A' );
+}
+
+/**
+ * Yorum tablosu taklidi.
+ *
+ * Yalnızca ai-insights.php'nin kullandığı üç çağrıyı karşılar; çalıştırılan SQL
+ * $GLOBALS['qrms_son_sql']'e yazılır, böylece hangi sütunların seçildiği
+ * doğrulanabilir.
+ */
+class QRMS_Test_Wpdb {
+	public $prefix = 'wp_';
+
+	public function prepare( $sql, ...$args ) {
+		foreach ( $args as $a ) {
+			$sql = preg_replace( '/%d/', (string) (int) $a, $sql, 1 );
+		}
+		return $sql;
+	}
+
+	public function esc_like( $t ) {
+		return $t;
+	}
+
+	public function get_var( $sql ) {
+		if ( false !== stripos( $sql, 'SHOW TABLES' ) ) {
+			return 'wp_qrm_reviews';
+		}
+		if ( false !== stripos( $sql, 'CONCAT' ) ) {
+			return '3-9';
+		}
+		return 3;
+	}
+
+	public function get_results( $sql, $mode = null ) {
+		$GLOBALS['qrms_son_sql'] = $sql;
+		return $GLOBALS['qrms_sahte_yorumlar'];
+	}
+}
+
+$GLOBALS['wpdb'] = new QRMS_Test_Wpdb();
+$GLOBALS['qrms_sahte_yorumlar'] = array(
+	array( 'rating' => 4.6, 'comment' => "Yemekler   harika,\nözellikle künefe. Servis yavaştı." ),
+	array( 'rating' => 2.4, 'comment' => 'Çorba soğuk geldi, bekleme uzun sürdü.' ),
+	array( 'rating' => 5.0, 'comment' => 'Mükemmel, tekrar geleceğiz.' ),
+);
+
+require_once QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/settings.php';
+require_once QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/install.php';
+require_once QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/ai-insights.php';
+
+echo "\nyorum-feedback — Gemini içgörüleri\n";
+
+qrms_test(
+	'API anahtarı yokken hiç istek kurulmaz',
+	function () {
+		// Anahtar boşken tek bir HTTP çağrısı bile olmamalı: yapılandırılmamış
+		// bir kurulum sessizce dış servise gitmemeli.
+		update_option( 'gemini_api_key', '' );
+
+		$sonuc = qrm_ai_generate_summary();
+
+		qrms_assert_false( $sonuc['ok'], 'başarısız döner' );
+		qrms_assert_contains( 'anahtar', $sonuc['error'], 'sebep söylenir' );
+		qrms_assert_same( 0, count( $GLOBALS['qrms_test']['http_calls'] ), 'HTTP çağrısı yok' );
+	}
+);
+
+qrms_test(
+	'sorgu yalnızca puan ve yorum metnini seçer',
+	function () {
+		// Bu testin varlık sebebi: dış servise gönderilecek veri kümesi,
+		// gönderilmesi gerekmeyen hiçbir sütunu TAŞIMAMALI. Kişisel veri
+		// sorguya girmezse istem metnine de sızamaz.
+		qrm_ai_collect_reviews();
+
+		$sql = $GLOBALS['qrms_son_sql'];
+
+		qrms_assert_contains( 'SELECT rating, comment', $sql, 'iki sütun' );
+
+		foreach ( array( 'customer_name', 'customer_phone', 'table_no', 'SELECT *' ) as $yasak ) {
+			qrms_assert_false( false !== strpos( $sql, $yasak ), $yasak . ' seçilmez' );
+		}
+	}
+);
+
+qrms_test(
+	'istem metninde puan ve yorum var, kişisel veri yok',
+	function () {
+		$istem = qrm_ai_build_prompt(
+			array(
+				array( 'rating' => 4.6, 'comment' => 'Künefe harika' ),
+				array( 'rating' => 2.0, 'comment' => 'Çorba soğuktu' ),
+			)
+		);
+
+		qrms_assert_contains( '(4.6/5)', $istem, 'puan biçimi' );
+		qrms_assert_contains( 'Künefe harika', $istem, 'yorum metni' );
+		qrms_assert_contains( 'TÜRKÇE', $istem, 'yanıt dili istenir' );
+	}
+);
+
+qrms_test(
+	'gönderilen gövde yorum metnini taşır, isim/telefon taşımaz',
+	function () {
+		update_option( 'gemini_api_key', 'TEST-KEY' );
+
+		qrms_mock_http( 200, array() );
+		$GLOBALS['qrms_test']['http'] = array(
+			'body' => wp_json_encode(
+				array(
+					'candidates' => array(
+						array( 'content' => array( 'parts' => array( array( 'text' => "1. Övülen\n- Künefe (2 yorum)" ) ) ) ),
+					),
+				)
+			),
+		);
+
+		$sonuc = qrm_ai_generate_summary();
+
+		qrms_assert_true( $sonuc['ok'], 'özet üretilir' );
+		qrms_assert_contains( 'Künefe', $sonuc['text'], 'metin döner' );
+
+		$cagri = $GLOBALS['qrms_test']['http_calls'][0];
+
+		qrms_assert_contains( 'generativelanguage.googleapis.com', $cagri['url'], 'uç nokta' );
+		qrms_assert_contains( 'TEST-KEY', $cagri['url'], 'anahtar' );
+
+		// Gövde JSON: wp_json_encode Türkçe karakterleri \uXXXX'e kaçırdığı için
+		// ham dizede değil, çözülmüş istem metninde aranır.
+		$govde = json_decode( $cagri['args']['body'], true );
+		$istem = $govde['contents'][0]['parts'][0]['text'];
+
+		qrms_assert_contains( 'künefe', $istem, 'yorum metni gönderilir' );
+		qrms_assert_contains( '(4.6/5)', $istem, 'puan gönderilir' );
+		qrms_assert_false( false !== strpos( $istem, 'customer_name' ), 'kişisel alan adı geçmez' );
+	}
+);
+
+qrms_test(
+	'üç yorumdan az varsa API çağrılmaz',
+	function () {
+		update_option( 'gemini_api_key', 'TEST-KEY' );
+		$GLOBALS['qrms_sahte_yorumlar'] = array( array( 'rating' => 5.0, 'comment' => 'Tek yorum' ) );
+
+		$sonuc = qrm_ai_generate_summary();
+
+		qrms_assert_false( $sonuc['ok'], 'başarısız döner' );
+		qrms_assert_same( 0, count( $GLOBALS['qrms_test']['http_calls'] ), 'boşuna istek atılmaz' );
+
+		// Sonraki testler için geri al.
+		$GLOBALS['qrms_sahte_yorumlar'] = array(
+			array( 'rating' => 4.6, 'comment' => 'Künefe harika' ),
+			array( 'rating' => 2.4, 'comment' => 'Çorba soğuktu' ),
+			array( 'rating' => 5.0, 'comment' => 'Mükemmel' ),
+		);
+	}
+);
+
+qrms_test(
+	'hata yanıtlarının ayrıntısı ekrana sızmaz',
+	function () {
+		// API anahtarı ya da kota ayrıntısı yönetici ekranında görünmemeli;
+		// kullanıcıya ne yapacağını söyleyen sade bir mesaj döner.
+		$sonuc = qrm_ai_parse_response( array( 'error' => array( 'message' => 'API_KEY_INVALID: AIzaSyGizli' ) ) );
+
+		qrms_assert_false( $sonuc['ok'], 'başarısız' );
+		qrms_assert_false( false !== strpos( $sonuc['error'], 'AIzaSyGizli' ), 'anahtar sızmaz' );
+
+		qrms_assert_false( qrm_ai_parse_response( array( 'candidates' => array( array( 'finishReason' => 'SAFETY' ) ) ) )['ok'], 'yarım yanıt' );
+		qrms_assert_false( qrm_ai_parse_response( null )['ok'], 'bozuk yanıt' );
+		qrms_assert_false( qrm_ai_parse_response( array( 'candidates' => array( array( 'content' => array( 'parts' => array( array( 'text' => '   ' ) ) ) ) ) ) )['ok'], 'boş metin' );
+	}
+);
+
+qrms_test(
+	'özet anahtarı yorum sayısı değişince değişir',
+	function () {
+		// Yeni yorum geldiğinde eski özet kendiliğinden geçersizleşmeli;
+		// ayrı bir temizleme kancası yok, anahtar damgadan türüyor.
+		$ilk = qrm_ai_cache_key();
+
+		qrms_assert_contains( 'qrm_ai_ozet_', $ilk, 'önek' );
+		qrms_assert_same( $ilk, qrm_ai_cache_key(), 'aynı veride aynı anahtar' );
+	}
+);
+
+/* ---------------------------------------------------------------------------
  * 7. Yardımcılar
  * ------------------------------------------------------------------------ */
 

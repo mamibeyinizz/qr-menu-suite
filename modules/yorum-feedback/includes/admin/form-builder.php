@@ -39,7 +39,9 @@ function qrm_pro_admin_form_builder() {
             <div class="notice notice-success is-dismissible"><p><?php echo esc_html($notice); ?></p></div>
         <?php endif; ?>
 
-        <form method="POST">
+        <div class="qrm-fp-layout">
+        <div class="qrm-fp-settings">
+        <form method="POST" id="qrm-fields-form">
             <?php wp_nonce_field('qrm_save_review_form_fields'); ?>
 
             <div class="qrm-card">
@@ -57,7 +59,10 @@ function qrm_pro_admin_form_builder() {
                         <?php foreach ($fields as $f):
                             $is_core = in_array($f->field_key, ['comment'], true);
                         ?>
-                        <div class="qrm-field-row">
+                        <div class="qrm-field-row"
+                             data-key="<?php echo esc_attr($f->field_key); ?>"
+                             data-type="<?php echo esc_attr($f->field_type); ?>"
+                             data-core="<?php echo $is_core ? '1' : '0'; ?>">
                             <span class="dashicons dashicons-menu qrm-field-handle" title="Sıralamak için sürükleyin"></span>
                             <?php // Sürükle-bırakın erişilebilir karşılığı: jQuery UI sortable
                                   // dokunmatik ekranlarda çalışmaz, klavyeyle de sürüklenemez. ?>
@@ -87,8 +92,110 @@ function qrm_pro_admin_form_builder() {
             </p>
             <?php endif; ?>
         </form>
+        </div><!-- /.qrm-fp-settings -->
+
+        <?php qrm_pro_render_form_preview($fields, qrm_pro_get_settings()); ?>
+        </div><!-- /.qrm-fp-layout -->
     </div>
     <?php
+}
+
+/**
+ * Canlı form önizlemesi.
+ *
+ * Restoran sahibi, etiketi değiştirdiğinde ya da alanları sıraladığında formun
+ * müşteri tarafında nasıl görüneceğini KAYDETMEDEN görür. İlk hâli burada, PHP
+ * tarafında basılır: JS kapalıyken de doğru görünür, canlı güncelleme
+ * assets/js/form-preview.js ile eklenir.
+ *
+ * Bilinçli olarak yalnızca formun BİLGİ ADIMI önizlenir — bu sayfanın yönettiği
+ * şey o. Puanlama kriterleri "Ayarlar & Puanlama" sayfasına aittir.
+ *
+ * Yapı ve sınıf adları frontend'in gerçek formundan gelir
+ * (includes/frontend/form-render.php): `.qrm-input-group`, yarım genişlikteki
+ * alanlar, zorunluluk yıldızı ve güvenlik sorusu aynı yerde durur.
+ *
+ * @param array $fields   qrm_form_fields satırları (sort_order sırasında).
+ * @param array $settings qrm_pro_get_settings() çıktısı.
+ * @return void
+ */
+function qrm_pro_render_form_preview($fields, $settings) {
+    $dark = ($settings['theme_style'] === 'dark');
+    ?>
+    <div class="qrm-fp-preview">
+        <div class="qrm-fp-sticky">
+            <h2 class="qrm-fp-heading">Önizleme</h2>
+            <p class="qrm-fp-note">
+                Müşterinin göreceği bilgi adımı. Değişiklikleriniz burada anında görünür;
+                kalıcı olması için <strong>Kaydet</strong>'e basmayı unutmayın.
+            </p>
+
+            <div class="qrm-fp-box<?php echo $dark ? ' is-dark' : ''; ?>"
+                 id="qrm-form-preview"
+                 style="--qrm-fp-btn: <?php echo esc_attr($settings['btn_color']); ?>; --qrm-fp-btn-text: <?php echo esc_attr($settings['btn_text_color']); ?>;">
+
+                <div class="qrm-fp-title"><?php echo esc_html($settings['form_title']); ?></div>
+
+                <div class="qrm-fp-fields">
+                    <?php
+                    $active = array_filter((array) $fields, static function ($f) {
+                        return !empty($f->is_active);
+                    });
+
+                    if (empty($active)) : ?>
+                        <p class="qrm-fp-empty">Aktif alan yok — müşteriye yalnızca güvenlik sorusu gösterilir.</p>
+                    <?php else :
+                        foreach ($active as $f) {
+                            echo qrm_pro_form_preview_field($f->field_key, $f->field_type, $f->field_label, (int) $f->is_required);
+                        }
+                    endif; ?>
+                </div>
+
+                <div class="qrm-fp-captcha">
+                    <label>Güvenlik sorusu: 3 + 4 = ?</label>
+                    <input type="text" disabled>
+                </div>
+
+                <button type="button" class="qrm-fp-submit" disabled>Gönder</button>
+            </div>
+        </div>
+    </div>
+    <?php
+}
+
+/**
+ * Önizlemedeki tek bir alanın HTML'i.
+ *
+ * form-preview.js aynı yapıyı JS tarafında üretir; ikisi ayrışmasın diye
+ * işaretleme burada tek bir yerde tanımlıdır ve JS bu fonksiyonun ürettiği
+ * sınıf adlarını birebir kullanır.
+ *
+ * @param string $key      Alan anahtarı (customer_phone, table_no…).
+ * @param string $type     text | textarea | checkbox.
+ * @param string $label    Görünen etiket.
+ * @param int    $required 1 ise yıldız basılır.
+ * @return string
+ */
+function qrm_pro_form_preview_field($key, $type, $label, $required) {
+    // Yarım genişlikteki alanlar frontend ile aynı: ad, telefon, masa no.
+    $half  = in_array($key, ['customer_name', 'customer_phone', 'table_no'], true) ? ' half' : '';
+    $star  = $required ? ' <span class="qrm-fp-req">*</span>' : '';
+    $label = esc_html($label);
+
+    if ($type === 'checkbox') {
+        return '<div class="qrm-fp-group qrm-fp-check">'
+             . '<label><input type="checkbox" disabled> <span>' . $label . '</span></label>'
+             . '</div>';
+    }
+
+    $control = ($type === 'textarea')
+        ? '<textarea rows="3" disabled></textarea>'
+        : '<input type="text" disabled' . ($key === 'customer_phone' ? ' placeholder="0 (5__) ___ __ __"' : '') . '>';
+
+    return '<div class="qrm-fp-group' . $half . '">'
+         . '<label>' . $label . $star . '</label>'
+         . $control
+         . '</div>';
 }
 
 /**

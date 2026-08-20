@@ -216,8 +216,35 @@ function qrms_module_yorum_feedback_admin_assets() {
 		wp_add_inline_script( 'wp-color-picker', "jQuery(function($){ $('.qrm-color-picker').wpColorPicker(); });" );
 	}
 
+	// Yapay zekâ özeti yalnızca İçgörüler ekranında.
+	if ( 'qrms-yf-icgoruler' === $page ) {
+		wp_enqueue_script(
+			'qrm-ai-insights',
+			QRMS_PLUGIN_URL . 'modules/yorum-feedback/assets/js/ai-insights.js',
+			array(),
+			QRMS_VERSION,
+			true
+		);
+
+		wp_add_inline_script(
+			'qrm-ai-insights',
+			'var QRM_AI = ' . wp_json_encode( array( 'ajaxUrl' => admin_url( 'admin-ajax.php' ) ) ) . ';',
+			'before'
+		);
+	}
+
 	if ( 'qrms-yf-form-alanlari' === $page ) {
 		wp_enqueue_script( 'jquery-ui-sortable' );
+
+		// Canlı önizleme. Sıralama koduna bağlanmaz (listeyi MutationObserver
+		// ile izler), bu yüzden bağımlılığı yalnızca kendi DOM'u.
+		wp_enqueue_script(
+			'qrm-form-preview',
+			QRMS_PLUGIN_URL . 'modules/yorum-feedback/assets/js/form-preview.js',
+			array(),
+			QRMS_VERSION,
+			true
+		);
 
 		// Sürükle-bırak masaüstü için; sıralama telefondan da yapılabilsin diye
 		// her satırdaki yukarı/aşağı butonları satırları DOM'da yer değiştirir.

@@ -136,6 +136,7 @@ require_once QRM_PRO_PATH . 'includes/forms/db.php';
 require_once QRM_PRO_PATH . 'includes/forms/functions.php';
 
 require_once QRM_PRO_PATH . 'includes/install.php';
+require_once QRM_PRO_PATH . 'includes/ai-insights.php';
 
 // Admin
 require_once QRM_PRO_PATH . 'includes/admin/menu.php';
