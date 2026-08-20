@@ -1,0 +1,294 @@
+/* =====================================================================
+   ÜRÜN VİTRİNİ — FRONTEND
+
+   "Menü Görünümü" sayfasındaki tema ayarlarından BAĞIMSIZDIR: buradaki
+   --qrms-vitrin-* değişkenleri kendi varsayılanlarını taşır, menünün
+   --rma-* değişkenlerine hiç bakmaz. Restoran sahibi vitrini menüden ayrı
+   bir sayfaya koyduğunda da aynı görünür.
+
+   Kaydırma mekaniği tamamen CSS: overflow-x + scroll-snap. Dokunmatikte
+   parmakla kaydırma ve momentum tarayıcının kendi işi — JS yüklenmese
+   bile vitrin çalışır. vitrin.js yalnızca otomatik kayma, fare
+   sürüklemesi, ok butonları ve noktaları ekler.
+===================================================================== */
+
+.qrms-vitrin {
+    --qrms-vitrin-cols: 4;
+    --qrms-vitrin-rows: 1;
+    --qrms-vitrin-gap: 16px;
+    --qrms-vitrin-radius: 14px;
+    --qrms-vitrin-bg: transparent;
+    --qrms-vitrin-card-bg: #16161a;
+    --qrms-vitrin-border: #2a2a30;
+    --qrms-vitrin-text: #f2f2f2;
+    --qrms-vitrin-accent: #c9a84c;
+    --qrms-vitrin-nav-bg: rgba(0, 0, 0, .55);
+
+    background: var(--qrms-vitrin-bg);
+    box-sizing: border-box;
+    position: relative;
+    width: 100%;
+}
+
+.qrms-vitrin *,
+.qrms-vitrin *::before,
+.qrms-vitrin *::after {
+    box-sizing: border-box;
+}
+
+/* ---------------------------------------------------------------------
+   ŞERİT
+
+   Şerit, satır sayısı sabit / sütun sayısı akan bir grid: kartlar sütun
+   sütun dizilir (grid-auto-flow: column), sütun genişliği ayarlanan sütun
+   sayısından hesaplanır. Böylece "kaç sütun × kaç satır" tek bir CSS
+   değişkeni değişimiyle dar ekranda küçülebilir — sunucuda sabitlenmiş
+   sayfalara bölmek gerekmez.
+
+   Snap birimi karttır. Ok butonları bir ekran genişliği kaydırır; ekran
+   genişliği tam olarak sütun sayısı kadar kart adımına denk geldiği için
+   snap her zaman bir kart sınırına oturur.
+--------------------------------------------------------------------- */
+.qrms-vitrin-viewport {
+    display: grid;
+    gap: var(--qrms-vitrin-gap);
+    grid-auto-columns: calc(
+        (100% - (var(--qrms-vitrin-cols) - 1) * var(--qrms-vitrin-gap)) / var(--qrms-vitrin-cols)
+    );
+    grid-auto-flow: column;
+    grid-template-rows: repeat(var(--qrms-vitrin-rows), auto);
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-behavior: smooth;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    /* Yatay kaydırma sırasında tarayıcı sayfayı dikeyde kaydırmaya devam
+       edebilsin (mobilde vitrin dikey scroll'u kilitlemesin). */
+    touch-action: pan-x pan-y;
+    scrollbar-width: none;
+}
+
+.qrms-vitrin-viewport::-webkit-scrollbar {
+    display: none;
+}
+
+.qrms-vitrin-viewport:focus-visible {
+    outline: 2px solid var(--qrms-vitrin-accent);
+    outline-offset: 3px;
+}
+
+/* Fare sürüklemesi sırasında metin seçilmesin, görsel sürüklenmesin. */
+.qrms-vitrin.is-dragging .qrms-vitrin-viewport {
+    cursor: grabbing;
+    scroll-behavior: auto;
+    scroll-snap-type: none;
+    user-select: none;
+}
+
+.qrms-vitrin.is-draggable .qrms-vitrin-viewport {
+    cursor: grab;
+}
+
+.qrms-vitrin.is-dragging img {
+    pointer-events: none;
+}
+
+/* ---------------------------------------------------------------------
+   KART
+--------------------------------------------------------------------- */
+.qrms-vitrin-card {
+    background: var(--qrms-vitrin-card-bg);
+    scroll-snap-align: start;
+    border: 1px solid var(--qrms-vitrin-border);
+    border-radius: var(--qrms-vitrin-radius);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: border-color .25s, transform .25s;
+}
+
+.qrms-vitrin-card:hover {
+    border-color: var(--qrms-vitrin-accent);
+    transform: translateY(-2px);
+}
+
+.qrms-vitrin-media {
+    aspect-ratio: 1 / 1;
+    background: rgba(255, 255, 255, .03);
+    position: relative;
+    width: 100%;
+}
+
+.qrms-vitrin-img {
+    display: block;
+    height: 100%;
+    object-fit: cover;
+    width: 100%;
+}
+
+.qrms-vitrin-img-empty {
+    align-items: center;
+    color: var(--qrms-vitrin-accent);
+    display: flex;
+    font-size: 28px;
+    justify-content: center;
+    opacity: .5;
+}
+
+.qrms-vitrin-body {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 6px;
+    padding: 12px 14px 14px;
+}
+
+.qrms-vitrin-title {
+    color: var(--qrms-vitrin-text);
+    font-size: .95rem;
+    font-weight: 600;
+    line-height: 1.3;
+    margin: 0;
+    /* Uzun ürün adları kartı büyütmesin — grid satırları hizalı kalsın. */
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+}
+
+.qrms-vitrin-price {
+    color: var(--qrms-vitrin-accent);
+    font-size: .95rem;
+    font-weight: 700;
+    margin: auto 0 0;
+}
+
+/* ---------------------------------------------------------------------
+   DENETİMLER
+--------------------------------------------------------------------- */
+.qrms-vitrin-nav {
+    align-items: center;
+    background: var(--qrms-vitrin-nav-bg);
+    border: 1px solid var(--qrms-vitrin-border);
+    border-radius: 50%;
+    color: var(--qrms-vitrin-text);
+    cursor: pointer;
+    display: flex;
+    font-size: 22px;
+    height: 40px;
+    justify-content: center;
+    line-height: 1;
+    position: absolute;
+    top: calc(50% - 20px);
+    transition: background .2s, color .2s, opacity .2s;
+    width: 40px;
+    z-index: 2;
+}
+
+.qrms-vitrin-nav:hover {
+    background: var(--qrms-vitrin-accent);
+    color: #101010;
+}
+
+/* Şeridin başında/sonunda ilgili ok soluklaşır (vitrin.js işaretler). */
+.qrms-vitrin-nav[disabled] {
+    cursor: default;
+    opacity: .3;
+}
+
+.qrms-vitrin-prev { left: -8px; }
+.qrms-vitrin-next { right: -8px; }
+
+.qrms-vitrin-dots {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-top: 14px;
+}
+
+.qrms-vitrin-dot {
+    background: var(--qrms-vitrin-border);
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    height: 8px;
+    padding: 0;
+    transition: background .2s, width .2s;
+    width: 8px;
+}
+
+.qrms-vitrin-dot.is-active {
+    background: var(--qrms-vitrin-accent);
+    width: 20px;
+    border-radius: 4px;
+}
+
+/* ---------------------------------------------------------------------
+   DAR EKRAN
+
+   Sabit sütun sayısını korumak yerine sütun sayısı düşürülür ve kaydırma
+   yatay kalır: 360px'lik bir ekranda 4 sütun ≈ 78px kart demektir, görsel
+   ve fiyat okunmaz olur. Yatay swipe dokunmatikte zaten en doğal hareket.
+
+   Telefonda sayfa genişliği %82: sonraki karttan görünen "dilim",
+   ek bir ok/ipucu koymadan kaydırılabilirliği anlatır.
+--------------------------------------------------------------------- */
+@media (max-width: 1023px) {
+    .qrms-vitrin-viewport {
+        /* min(): ayar zaten 1-2 sütunsa olduğu gibi kalır. */
+        grid-auto-columns: calc(
+            (100% - (min(var(--qrms-vitrin-cols), 2) - 1) * var(--qrms-vitrin-gap))
+            / min(var(--qrms-vitrin-cols), 2)
+        );
+    }
+}
+
+@media (max-width: 599px) {
+    .qrms-vitrin {
+        --qrms-vitrin-gap: 12px;
+    }
+
+    .qrms-vitrin-viewport {
+        /* %82: sonraki karttan görünen "dilim" kaydırılabilirliği anlatır. */
+        grid-auto-columns: 82%;
+    }
+
+    /* Oklar dar ekranda kartların üstüne binerdi; parmak zaten kaydırıyor. */
+    .qrms-vitrin-nav {
+        display: none;
+    }
+}
+
+/* Dokunmatik cihazlarda noktalar parmakla hedeflenebilir olmalı. */
+@media (pointer: coarse) {
+    .qrms-vitrin-dot {
+        height: 10px;
+        min-height: 10px;
+        width: 10px;
+    }
+
+    .qrms-vitrin-dot.is-active {
+        width: 24px;
+    }
+
+    .qrms-vitrin-dots {
+        gap: 10px;
+        padding: 6px 0;
+    }
+}
+
+/* Hareket azaltma tercihi: yumuşak kaydırma ve otomatik kayma kapanır
+   (otomatik kaymayı vitrin.js de ayrıca kapatır). */
+@media (prefers-reduced-motion: reduce) {
+    .qrms-vitrin-viewport {
+        scroll-behavior: auto;
+    }
+
+    .qrms-vitrin-card {
+        transition: none;
+    }
+
+    .qrms-vitrin-card:hover {
+        transform: none;
+    }
+}

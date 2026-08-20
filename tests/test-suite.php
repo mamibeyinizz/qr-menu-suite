@@ -966,12 +966,13 @@ function qrms_submenu_ham_liste() {
 		qrms_submenu_satiri( '— Alerjenler', 'edit-tags.php?taxonomy=rma_allergen&post_type=rma_menu_item' ),
 		qrms_submenu_satiri( '— Görünüm', 'qrms-rm-gorunum' ),
 		qrms_submenu_satiri( '— Öne Çıkanlar', 'qrms-rm-one-cikanlar' ),
+		qrms_submenu_satiri( '— Ürün Vitrini', 'qrms-rm-vitrin' ),
 		qrms_submenu_satiri( '— Diğer Ayarlar', 'qrms-rm-diger' ),
 	);
 }
 
 qrms_test(
-	'modülün yedi satırı Restoran Menü girişinin hemen ardına sıralanır',
+	'modülün sekiz satırı Restoran Menü girişinin hemen ardına sıralanır',
 	function () {
 		$sirali = qrms_module_restoran_menu_submenu_sirala( qrms_submenu_ham_liste() );
 
@@ -985,6 +986,7 @@ qrms_test(
 				'edit-tags.php?taxonomy=rma_allergen&post_type=rma_menu_item',
 				'qrms-rm-gorunum',
 				'qrms-rm-one-cikanlar',
+				'qrms-rm-vitrin',
 				'qrms-rm-diger',
 				QRMS_Admin::get_module_page_slug( 'qr-masa' ),
 				QRMS_Admin::SETTINGS_SLUG,
@@ -996,14 +998,14 @@ qrms_test(
 );
 
 qrms_test(
-	'menüdeki sıra listesi modülün yedi ekranını kapsar',
+	'menüdeki sıra listesi modülün sekiz ekranını kapsar',
 	function () {
 		// Sıra listesi ile menüye eklenen satırlar tek kaynaktan gelmeli:
 		// biri değişip diğeri unutulursa satır menüde yanlış yere düşer.
-		qrms_assert_same( 7, count( qrms_module_restoran_menu_child_slugs() ), 'satır sayısı' );
+		qrms_assert_same( 8, count( qrms_module_restoran_menu_child_slugs() ), 'satır sayısı' );
 
 		qrms_assert_same(
-			array( 'qrms-rm-gorunum', 'qrms-rm-one-cikanlar', 'qrms-rm-diger' ),
+			array( 'qrms-rm-gorunum', 'qrms-rm-one-cikanlar', 'qrms-rm-vitrin', 'qrms-rm-diger' ),
 			array_slice( qrms_module_restoran_menu_child_slugs(), 4 ),
 			'modülün kendi ayar sayfaları en sonda'
 		);
@@ -1030,9 +1032,9 @@ qrms_test(
 	function () {
 		$sirali = qrms_module_restoran_menu_submenu_sirala( qrms_submenu_ham_liste() );
 
-		qrms_assert_same( range( 0, 10 ), array_keys( $sirali ), 'sıfırdan artan anahtarlar' );
+		qrms_assert_same( range( 0, 11 ), array_keys( $sirali ), 'sıfırdan artan anahtarlar' );
 		qrms_assert_same( '— Kategoriler', $sirali[4][0], 'etiket korunur' );
-		qrms_assert_same( '— Diğer Ayarlar', $sirali[8][0], 'son ayar satırının etiketi korunur' );
+		qrms_assert_same( '— Diğer Ayarlar', $sirali[9][0], 'son ayar satırının etiketi korunur' );
 	}
 );
 
@@ -1079,6 +1081,95 @@ qrms_test(
 			qrms_submenu_sluglari( qrms_module_restoran_menu_submenu_sirala( $ham ) ),
 			'sıra korunur'
 		);
+	}
+);
+
+/* ---------------------------------------------------------------------------
+ * 6b. Ürün Vitrini — ayar temizliği
+ *
+ * Sınıf yalnızca tanım içerir (dosya kapsamında kanca kaydetmez), bu yüzden
+ * doğrudan require edilebilir. Test edilenler $wpdb'ye dokunmayan saf
+ * dönüşümler: yönetim formundan gelen ham girdiyi şemaya uygun değerlere
+ * çeviren yol.
+ * ------------------------------------------------------------------------ */
+
+require_once QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/class-vitrin-db.php';
+
+echo "\nÜrün Vitrini ayarları\n";
+
+qrms_test(
+	'sütun ve satır sayısı şemanın sınırlarına kırpılır',
+	function () {
+		$temiz = RMA_Vitrin_DB::ayarlari_temizle(
+			array(
+				'title'        => 'Şefin Önerileri',
+				'grid_columns' => 99,
+				'grid_rows'    => 0,
+			)
+		);
+
+		qrms_assert_same( RMA_Vitrin_DB::MAX_COLUMNS, $temiz['grid_columns'], 'üst sınır' );
+		qrms_assert_same( RMA_Vitrin_DB::MIN_ROWS, $temiz['grid_rows'], 'alt sınır' );
+		qrms_assert_same( 'Şefin Önerileri', $temiz['title'], 'başlık korunur' );
+	}
+);
+
+qrms_test(
+	'kayma hızı sınırlanır, sayı olmayan girdi varsayılana düşer',
+	function () {
+		$hizli = RMA_Vitrin_DB::ayarlari_temizle( array( 'autoplay_speed' => 10 ) );
+		qrms_assert_same( RMA_Vitrin_DB::MIN_SPEED, $hizli['autoplay_speed'], 'alt sınır' );
+
+		$yavas = RMA_Vitrin_DB::ayarlari_temizle( array( 'autoplay_speed' => 999999 ) );
+		qrms_assert_same( RMA_Vitrin_DB::MAX_SPEED, $yavas['autoplay_speed'], 'üst sınır' );
+
+		$bozuk = RMA_Vitrin_DB::ayarlari_temizle( array( 'autoplay_speed' => 'hızlı' ) );
+		qrms_assert_same( 4000, $bozuk['autoplay_speed'], 'varsayılana düşer' );
+	}
+);
+
+qrms_test(
+	'işaretlenmemiş kutular 0, işaretliler 1 olur',
+	function () {
+		// İşaretsiz checkbox $_POST'a hiç gelmez; handler 0 geçirir.
+		$kapali = RMA_Vitrin_DB::ayarlari_temizle( array() );
+		qrms_assert_same( 0, $kapali['autoplay'], 'otomatik kayma kapalı' );
+		qrms_assert_same( 0, $kapali['drag_enabled'], 'sürükleme kapalı' );
+
+		$acik = RMA_Vitrin_DB::ayarlari_temizle( array( 'autoplay' => '1', 'show_price' => 'on' ) );
+		qrms_assert_same( 1, $acik['autoplay'], 'otomatik kayma açık' );
+		qrms_assert_same( 1, $acik['show_price'], 'fiyat açık' );
+	}
+);
+
+qrms_test(
+	'boş başlık yerine varsayılan ad konur',
+	function () {
+		// Şemada title NOT NULL; boş bırakılırsa liste ekranında adsız bir
+		// satır görünürdü.
+		$temiz = RMA_Vitrin_DB::ayarlari_temizle( array( 'title' => '   ' ) );
+
+		qrms_assert_same( 'Ürün Vitrini', $temiz['title'], 'varsayılan ad' );
+	}
+);
+
+qrms_test(
+	'ürün sırası temizlenir: sıra korunur, tekrar ve geçersiz kayıt düşer',
+	function () {
+		// Sıra formdan virgüllü dize olarak gelir (gizli #rma-vitrin-order).
+		qrms_assert_same(
+			array( 12, 5, 40 ),
+			RMA_Vitrin_DB::urun_idlerini_temizle( '12,5,12,0,40,-3,abc' ),
+			'dize girdi'
+		);
+
+		qrms_assert_same(
+			array( 7, 9 ),
+			RMA_Vitrin_DB::urun_idlerini_temizle( array( '7', 9, '9' ) ),
+			'dizi girdi'
+		);
+
+		qrms_assert_same( array(), RMA_Vitrin_DB::urun_idlerini_temizle( '' ), 'boş girdi' );
 	}
 );
 

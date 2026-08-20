@@ -373,6 +373,127 @@
     }
 
     /* -----------------------------------------------------------------
+       ÜRÜN VİTRİNİ — SEÇİM, SIRALAMA VE KISA KOD
+
+       Sıra ayrı bir AJAX ucuna yazılmaz: sortable her değişimde gizli
+       #rma-vitrin-order alanını tazeler, form gönderilirken sıra da
+       birlikte gider (bkz. trait-vitrin-admin.php).
+    ----------------------------------------------------------------- */
+    function vitrinSyncOrder() {
+        var ids = [];
+        $('#rma-vitrin-sortable .rma-vitrin-chip').each(function () {
+            ids.push($(this).data('id'));
+        });
+        $('#rma-vitrin-order').val(ids.join(','));
+        $('.rma-vitrin-empty').toggle(ids.length === 0);
+    }
+
+    function vitrinChip($row) {
+        var id  = $row.data('id');
+        var $li = $('<li class="rma-vitrin-chip"></li>').attr('data-id', id);
+
+        $li.append('<span class="rma-vitrin-drag" aria-hidden="true">⋮⋮</span>');
+        // Küçük görsel havuzdaki satırdan klonlanır — yeniden indirilmez.
+        $li.append($row.find('.rma-vitrin-thumb').first().clone());
+        $li.append($('<span class="rma-vitrin-chip-title"></span>').text($row.find('.rma-vitrin-pool-title').text()));
+        $li.append('<button type="button" class="rma-vitrin-remove" aria-label="Vitrinden çıkar">&times;</button>');
+
+        return $li;
+    }
+
+    function initVitrinPicker() {
+        var $form = $('#rma-vitrin-form');
+        if (!$form.length) return;
+
+        var $sortable = $('#rma-vitrin-sortable');
+
+        if (typeof $.fn.sortable === 'function') {
+            $sortable.sortable({
+                items: '.rma-vitrin-chip',
+                handle: '.rma-vitrin-drag',
+                placeholder: 'rma-vitrin-placeholder',
+                forcePlaceholderSize: true,
+                tolerance: 'pointer',
+                update: vitrinSyncOrder
+            });
+        }
+
+        // Havuzdaki işaret kutusu: seçilince sıraya eklenir, kaldırılınca çıkar.
+        $form.on('change', '.rma-vitrin-cb', function () {
+            var $row = $(this).closest('.rma-vitrin-pool-row');
+            var id   = $row.data('id');
+
+            $row.toggleClass('is-selected', this.checked);
+
+            if (this.checked) {
+                if (!$sortable.find('.rma-vitrin-chip[data-id="' + id + '"]').length) {
+                    $sortable.append(vitrinChip($row));
+                }
+            } else {
+                $sortable.find('.rma-vitrin-chip[data-id="' + id + '"]').remove();
+            }
+
+            vitrinSyncOrder();
+        });
+
+        // Sıradaki "×": kaydı çıkarır ve havuzdaki kutunun işaretini kaldırır.
+        $form.on('click', '.rma-vitrin-remove', function () {
+            var $chip = $(this).closest('.rma-vitrin-chip');
+            var id    = $chip.data('id');
+
+            $form.find('.rma-vitrin-pool-row[data-id="' + id + '"]')
+                 .removeClass('is-selected')
+                 .find('.rma-vitrin-cb').prop('checked', false);
+
+            $chip.remove();
+            vitrinSyncOrder();
+        });
+
+        // Arama — sunucuya gitmeden havuzu süzer.
+        $form.on('input', '#rma-vitrin-search', function () {
+            // $.trim değil: jQuery 4'te kaldırıldı, native karşılığı her sürümde var.
+            var q = String(this.value).trim().toLowerCase();
+
+            $form.find('.rma-vitrin-pool-row').each(function () {
+                var title = String($(this).data('title') || '').toLowerCase();
+                $(this).toggleClass('is-hidden', q !== '' && title.indexOf(q) === -1);
+            });
+        });
+
+        vitrinSyncOrder();
+    }
+
+    /**
+     * Kısa kodu panoya kopyalar. Pano API'si yoksa (http:// üzerinde
+     * çalışan siteler) metin seçili bırakılır — kullanıcı elle kopyalar.
+     */
+    function initShortcodeCopy() {
+        $(document).on('click', '.rma-copy-shortcode', function () {
+            var $btn = $(this);
+            var code = $btn.data('shortcode');
+            var $input = $btn.closest('.rma-shortcode-row').find('.rma-shortcode-input');
+
+            function done() {
+                var eski = $btn.text();
+                $btn.text('Kopyalandı ✓');
+                window.setTimeout(function () { $btn.text(eski); }, 1800);
+            }
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(code).then(done, function () { $input.trigger('select'); });
+                return;
+            }
+
+            $input.trigger('select');
+            try {
+                if (document.execCommand('copy')) done();
+            } catch (e) {
+                /* Seçili metin kullanıcıya bırakılır */
+            }
+        });
+    }
+
+    /* -----------------------------------------------------------------
        BAŞLAT
     ----------------------------------------------------------------- */
     /* -----------------------------------------------------------------
@@ -413,6 +534,8 @@
         initNavDesignPresets();
         initSuggestions();
         initCsvSample();
+        initVitrinPicker();
+        initShortcodeCopy();
         openTargetDetails();
         $(window).on('hashchange', openTargetDetails);
     });
