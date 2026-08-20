@@ -29,6 +29,7 @@ $GLOBALS['qrms_test'] = array(
 	'http'       => null, // wp_remote_post'un döndüreceği değer (veya callable).
 	'http_calls' => array(),
 	'can'        => true,
+	'styles'     => array(),
 );
 
 /** Basit WP_Error taklidi. */
@@ -576,7 +577,16 @@ function remove_submenu_page( $parent_slug, $menu_slug ) {
  * @param string $ver    Sürüm.
  * @return void
  */
-function wp_enqueue_style( $handle, $src = '', $deps = array(), $ver = false ) {}
+function wp_enqueue_style( $handle, $src = '', $deps = array(), $ver = false ) {
+	if ( ! isset( $GLOBALS['qrms_test']['styles'] ) ) {
+		$GLOBALS['qrms_test']['styles'] = array();
+	}
+
+	$GLOBALS['qrms_test']['styles'][] = array(
+		'handle' => $handle,
+		'src'    => $src,
+	);
+}
 
 /**
  * Script kaydı (no-op).

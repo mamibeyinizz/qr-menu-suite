@@ -1118,11 +1118,11 @@
     width: 16px;
 }
 
-input:checked + .rma-slider {
+.rma-switch input:checked + .rma-slider {
     background: #c9a84c;
 }
 
-input:checked + .rma-slider:before {
+.rma-switch input:checked + .rma-slider:before {
     transform: translateX(20px);
 }
 
@@ -1192,7 +1192,7 @@ input:checked + .rma-slider:before {
         width: 22px;
     }
 
-    input:checked + .rma-slider:before {
+    .rma-switch input:checked + .rma-slider:before {
         transform: translateX(26px);
     }
 }
