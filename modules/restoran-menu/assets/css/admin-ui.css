@@ -364,9 +364,28 @@
     outline: none;
 }
 
+/* Açılır menü oku.
+
+   Yukarıdaki kural `background` KISAYOLUNU kullanıyor; kısayol,
+   yazılmayan tüm background-* longhand'lerini başlangıç değerine
+   döndürür (repeat / 0% 0% / auto) ve WordPress'in kendi select
+   kuralındaki `no-repeat right 5px top 55% / 16px 16px` değerlerini de
+   siler. Ok ikonu yalnızca `background-image` ile eklenirse — SVG'nin
+   intrinsic boyutu da olmadığından — kutu yüksekliği kadar kare olarak
+   ölçeklenip select'in tüm genişliği boyunca DÖŞENİR: metnin üstünde
+   yan yana onlarca ok. Bu yüzden konum, tekrar ve boyut burada
+   longhand olarak TAM yazılır; kısayola geri dönülmemeli. */
 .rma-admin select {
-    /* WP'nin açık temalı ok ikonunu koyu zemine uygun hale getirir */
+    -webkit-appearance: none;
+    appearance: none;
     background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path fill="%23c9a84c" d="M5 6l5 5 5-5 2 1-7 7-7-7z"/></svg>');
+    background-position: right 10px center;
+    background-repeat: no-repeat;
+    background-size: 16px 16px;
+    /* Okun altına metin girmesin; uzun yazı tipi adları noktalanır. */
+    padding-left: 10px;
+    padding-right: 34px;
+    text-overflow: ellipsis;
 }
 
 .rma-admin input[type="file"] {
