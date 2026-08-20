@@ -819,6 +819,13 @@ qrms_test(
 			);
 		}
 
+		$frontend = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/css/rma-frontend.css' );
+		$frontend = preg_replace( '#/\*.*?\*/#s', '', $frontend );
+		qrms_assert_false(
+			(bool) preg_match( '/^\s*(html|body)\s*\{/m', $frontend ),
+			'frontend html/body kuralları wp-admin\'e sızmamalı'
+		);
+
 		$menu_css = file_get_contents( QRMS_PLUGIN_DIR . 'assets/css/admin-menu.css' );
 		qrms_assert_contains( 'wp-not-current-submenu', $menu_css, 'yalnızca açık olmayan menü' );
 		qrms_assert_contains( 'top: -1000em', $menu_css, 'WordPress gizleme noktası' );

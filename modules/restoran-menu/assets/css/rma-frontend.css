@@ -1,6 +1,8 @@
-*,*::before,*::after { box-sizing:border-box; }
-html { overflow-x:hidden; scroll-behavior:smooth; }
-body { overflow-x:hidden; }
+.rma-wrap,
+.rma-wrap *,
+.rma-wrap *::before,
+.rma-wrap *::after { box-sizing:border-box; }
+.rma-wrap { scroll-behavior:smooth; }
 
 .rma-wrap {
     background: var(--rma-bg);

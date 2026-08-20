@@ -264,7 +264,7 @@ class QRMS_Admin {
 		wp_enqueue_style(
 			'qrms-admin-menu',
 			QRMS_PLUGIN_URL . 'assets/css/admin-menu.css',
-			array(),
+			array( 'admin-menu' ),
 			QRMS_VERSION
 		);
 	}
