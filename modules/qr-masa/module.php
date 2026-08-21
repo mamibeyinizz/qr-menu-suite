@@ -59,6 +59,15 @@ function qrms_module_qr_masa_admin_assets() {
 		array(),
 		QRMS_VERSION
 	);
+
+	// Ekranın kendi yerleşimi ve mobil davranışı. Ortak dosyanın ardına
+	// alınır: oradaki masaüstü kurallarını daraltarak tamamlar.
+	wp_enqueue_style(
+		'qmo-admin-masalar',
+		QRMS_PLUGIN_URL . 'modules/qr-masa/assets/css/admin-masalar.css',
+		array( 'qmo-admin' ),
+		QRMS_VERSION
+	);
 	wp_enqueue_script( 'qmo-qrious', 'https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js', array(), '4.0.2', true );
 	wp_enqueue_script( 'qmo-jspdf', 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js', array(), '2.5.1', true );
 	wp_enqueue_script(

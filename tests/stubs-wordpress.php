@@ -58,6 +58,24 @@ class WP_Error {
 		$this->code    = $code;
 		$this->message = $message;
 	}
+
+	/**
+	 * Hata kodu (çekirdekteki erişimcinin karşılığı).
+	 *
+	 * @return string
+	 */
+	public function get_error_code() {
+		return $this->code;
+	}
+
+	/**
+	 * Hata mesajı (çekirdekteki erişimcinin karşılığı).
+	 *
+	 * @return string
+	 */
+	public function get_error_message() {
+		return $this->message;
+	}
 }
 
 /**
@@ -314,6 +332,29 @@ function wp_date( $format, $timestamp = null ) {
  */
 function sanitize_key( $key ) {
 	return preg_replace( '/[^a-z0-9_\-]/', '', strtolower( (string) $key ) );
+}
+
+/**
+ * Başlıktan slug üretir.
+ *
+ * Çekirdeğin sanitize_title()'ının test için yeterli sadeleştirmesi: Türkçe
+ * harfler ASCII karşılığına indirgenir, harf/rakam dışındaki her şey tireye
+ * dönüşür, baştaki ve sondaki tireler kırpılır.
+ *
+ * @param string $baslik Ham metin.
+ * @return string
+ */
+function sanitize_title( $baslik ) {
+	$harita = array(
+		'ı' => 'i', 'İ' => 'i', 'ğ' => 'g', 'Ğ' => 'g', 'ü' => 'u', 'Ü' => 'u',
+		'ş' => 's', 'Ş' => 's', 'ö' => 'o', 'Ö' => 'o', 'ç' => 'c', 'Ç' => 'c',
+	);
+
+	$slug = strtr( (string) $baslik, $harita );
+	$slug = strtolower( $slug );
+	$slug = preg_replace( '/[^a-z0-9]+/', '-', $slug );
+
+	return trim( (string) $slug, '-' );
 }
 
 /**

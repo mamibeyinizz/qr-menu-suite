@@ -137,6 +137,175 @@ if ( ! class_exists( 'QMO_Masalar' ) ) {
 		}
 
 		/**
+		 * Toplu oluşturmada tek seferde açılabilecek azami masa sayısı.
+		 *
+		 * Her masa ayrı bir INSERT'tür; sınır, yanlışlıkla girilen büyük bir
+		 * aralığın (1–99999) isteği zaman aşımına düşürmesini engeller.
+		 */
+		const TOPLU_AZAMI = 200;
+
+		/**
+		 * Toplu oluşturmada bir masanın slug'ı: "ic-masa" + 7 -> "ic-masa-7".
+		 *
+		 * Saf fonksiyon; testlerde doğrudan doğrulanır.
+		 *
+		 * @param string $onek Slug öneki (ham girdi).
+		 * @param int    $no   Masa numarası.
+		 * @return string Geçersiz önek/numara için boş string.
+		 */
+		public static function toplu_slug( $onek, $no ) {
+			$onek = sanitize_title( (string) $onek );
+			$no   = (int) $no;
+
+			if ( '' === $onek || $no < 1 ) {
+				return '';
+			}
+
+			return $onek . '-' . $no;
+		}
+
+		/**
+		 * Toplu oluşturmada bir masanın GÖRÜNEN adı.
+		 *
+		 * Ad, önekin okunabilir hâlidir ("ic-masa" + 7 -> "Ic Masa 7"). Ama
+		 * ekle() slug'ı ADDAN üretir; okunabilir ad sanitize_title'dan geçince
+		 * beklenen slug'ı vermiyorsa (Türkçe karakter, üst üste tire vb.) ad
+		 * doğrudan slug'a düşürülür — slug'ın doğruluğu görünüşten önemlidir.
+		 *
+		 * Saf fonksiyon; testlerde doğrudan doğrulanır.
+		 *
+		 * @param string $onek Slug öneki (ham girdi).
+		 * @param int    $no   Masa numarası.
+		 * @return string Geçersiz önek/numara için boş string.
+		 */
+		public static function toplu_ad( $onek, $no ) {
+			$slug = self::toplu_slug( $onek, $no );
+
+			if ( '' === $slug ) {
+				return '';
+			}
+
+			$okunabilir = ucwords( str_replace( '-', ' ', sanitize_title( (string) $onek ) ) ) . ' ' . (int) $no;
+
+			return sanitize_title( $okunabilir ) === $slug ? $okunabilir : $slug;
+		}
+
+		/**
+		 * Bir masanın filtre grubu: sondaki "-<sayı>" eki atılmış slug.
+		 *
+		 * "ic-masa-12" -> "ic-masa", "vip-3" -> "vip", "bahce" -> "bahce".
+		 * Masalar yönetim ekranındaki grup çipleri bununla üretilir.
+		 *
+		 * Saf fonksiyon; testlerde doğrudan doğrulanır.
+		 *
+		 * @param string $slug Masa slug'ı.
+		 * @return string
+		 */
+		public static function grup_adi( $slug ) {
+			$slug = (string) $slug;
+			$grup = preg_replace( '/-\d+$/', '', $slug );
+
+			// Slug'ın tamamı sayıysa ("12") geriye bir şey kalmaz; o zaman
+			// masanın kendisi tek başına bir gruptur.
+			return ( null === $grup || '' === $grup ) ? $slug : $grup;
+		}
+
+		/**
+		 * Toplu oluşturma girdisini doğrular ve normalize eder.
+		 *
+		 * Veritabanına hiç dokunmaz, bu yüzden doğrudan test edilir; sınır
+		 * kontrolleri döngü başlamadan burada biter.
+		 *
+		 * @param string $onek Slug öneki (ham girdi).
+		 * @param int    $bas  Başlangıç numarası.
+		 * @param int    $bit  Bitiş numarası.
+		 * @return array{onek:string,bas:int,bit:int,adet:int}|WP_Error
+		 */
+		public static function toplu_aralik_dogrula( $onek, $bas, $bit ) {
+			$onek = sanitize_title( (string) $onek );
+			$bas  = (int) $bas;
+			$bit  = (int) $bit;
+
+			if ( '' === $onek ) {
+				return new WP_Error( 'onek', 'Geçerli bir slug öneki girin (ör. ic-masa).' );
+			}
+
+			if ( $bas < 1 || $bit < 1 ) {
+				return new WP_Error( 'aralik', 'Başlangıç ve bitiş numarası 1 veya daha büyük olmalı.' );
+			}
+
+			if ( $bit < $bas ) {
+				return new WP_Error( 'aralik', 'Bitiş numarası başlangıçtan küçük olamaz.' );
+			}
+
+			$adet = ( $bit - $bas ) + 1;
+
+			if ( $adet > self::TOPLU_AZAMI ) {
+				return new WP_Error(
+					'sinir',
+					sprintf( 'Tek seferde en fazla %d masa oluşturulabilir; aralığı daraltın.', self::TOPLU_AZAMI )
+				);
+			}
+
+			return array(
+				'onek' => $onek,
+				'bas'  => $bas,
+				'bit'  => $bit,
+				'adet' => $adet,
+			);
+		}
+
+		/**
+		 * Numaralı bir aralıkta toplu masa oluşturur.
+		 *
+		 * Zaten var olan slug'lar ATLANIR (hata değildir): kullanıcı aralığı
+		 * genişletip yeniden gönderdiğinde yalnızca eksikler eklenir.
+		 *
+		 * @param string $onek Slug öneki (ör. "ic-masa").
+		 * @param int    $bas  Başlangıç numarası.
+		 * @param int    $bit  Bitiş numarası.
+		 * @return array{eklenen:int,atlanan:string[],hata:string[]}|WP_Error
+		 */
+		public static function toplu_ekle( $onek, $bas, $bit ) {
+			$aralik = self::toplu_aralik_dogrula( $onek, $bas, $bit );
+
+			if ( is_wp_error( $aralik ) ) {
+				return $aralik;
+			}
+
+			list( $onek, $bas, $bit ) = array( $aralik['onek'], $aralik['bas'], $aralik['bit'] );
+
+			$eklenen = 0;
+			$atlanan = array();
+			$hata    = array();
+
+			for ( $no = $bas; $no <= $bit; $no++ ) {
+				$ad    = self::toplu_ad( $onek, $no );
+				$sonuc = self::ekle( $ad );
+
+				if ( true === $sonuc ) {
+					$eklenen++;
+					continue;
+				}
+
+				$slug = self::toplu_slug( $onek, $no );
+
+				if ( is_wp_error( $sonuc ) && 'mevcut' === $sonuc->get_error_code() ) {
+					$atlanan[] = $slug;
+					continue;
+				}
+
+				$hata[] = $slug;
+			}
+
+			return array(
+				'eklenen' => $eklenen,
+				'atlanan' => $atlanan,
+				'hata'    => $hata,
+			);
+		}
+
+		/**
 		 * Masayı sil. Silinen masanın açık oturumları da geçersizleşir.
 		 *
 		 * @param int $id Masa ID'si.
