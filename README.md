@@ -530,6 +530,30 @@ için hiç tetiklenmez, `plugins_loaded` (öncelik 10) kaydı ise modül zaten
 > yerine sessiz devre dışı kalmaya çevirir (sabiti eski eklenti tanımlar ve
 > çalışmaya devam eder), ama iki kopyayı birlikte çalışır kılmaz.
 
+### QR Çeviri — yönetim ekranının mobil davranışı
+
+Modülün yönetim tarafında hiç stil dosyası yoktu: ölçüler doğrudan markup'a
+satır içi yazılmıştı. Satır içi stilin medya sorgusu olamaz, bu yüzden ekran
+dar ekranda sıkışıyordu — üç sorunun ortak kökü buydu.
+
+| Sorun | Çözüm |
+| --- | --- |
+| Durum tablosu 1 + N sütun (N = aktif hedef dil, **30'a kadar**) | 782px altında **kart görünümü**: her içerik satırı kendi kartı, her dil `data-label`'ından okunan "🇬🇧 English — 148" satırı. Sütun sayısı bu kadar değişkenken yatay kaydırma okunur kalmazdı |
+| Dil ızgarası satır içi `repeat(3,1fr)` — kırılımı yok | `auto-fill / minmax(230px)`: geniş ekranda sığdığı kadar sütun, 782px altında tek sütun |
+| Onay kutuları çekirdek 16px, satır tıklanamaz | Satırın tamamı tıklanabilir kutu, **min 48px**, checkbox 20px, `:focus-within` halkası |
+
+Aynı düzeltme kaynak/taksonomi seçim kutularına da uygulandı (aynı satır içi
+ızgaranın ikinci kopyasıydı); kaydırmalı listeler (bulunan metinler, Elementor
+sayfaları) dar ekranda tam genişliğe iner ve satırları 44px'e çıkar.
+
+Sütun başlığı dar kalsın diye tabloda dil **kodu** yazar; kart görünümündeki
+etiket ise bayrak + dil adıdır — orada yer vardır ve "en" yerine "English"
+okunur.
+
+Testler kuralı üç yerden koruyor: satır içi ölçülerin geri gelmediği,
+hücrelerin `data-label` taşıdığı ve dokunma yüksekliğinin 44px'in altına
+düşmediği doğrulanır.
+
 ### Açılış Ekranı (`qr-acilis-ekrani`)
 
 Ana sayfaya gelen ziyaretçiyi karşılayan tam ekran açılış. Bağımsız **Açılış

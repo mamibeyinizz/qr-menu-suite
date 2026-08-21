@@ -178,6 +178,7 @@ if ( ! function_exists( 'rma_ceviri_durum_paneli' ) ) {
 		$sayilar  = RMA_Ceviri_Tablo::tip_dil_sayilari();
 		$hedefler = rma_ceviri_hedef_diller();
 		$tipler   = rma_ceviri_gecerli_tipler();
+		$katalog  = qrmenu_get_langs();
 		?>
 		<h2 class="title">🔍 Sistem Durumu</h2>
 
@@ -201,22 +202,39 @@ if ( ! function_exists( 'rma_ceviri_durum_paneli' ) ) {
 			</p></div>
 		<?php endif; ?>
 
-		<table class="widefat striped" style="max-width:900px;margin-bottom:8px;">
+		<?php
+		/*
+		 * Dar ekranda bu tablo KART görünümüne döner (bkz. assets/css/admin.css):
+		 * her içerik satırı kendi kartı, her dil hücresi "Dil: adet" satırı olur.
+		 * Sütun sayısı aktif hedef dile bağlı olduğu ve 30'a kadar çıkabildiği
+		 * için yatay kaydırma değil kart tercih edildi. Hücrelerdeki data-label
+		 * kart görünümünde başlık yerine geçer — thead orada gizlenir.
+		 */
+		?>
+		<table class="widefat striped qrc-stats">
 			<thead>
 				<tr>
-					<th>İçerik</th>
+					<th scope="col">İçerik</th>
 					<?php foreach ( $hedefler as $dil ) : ?>
-						<th style="text-align:center;"><?php echo esc_html( $dil ); ?></th>
+						<th scope="col" class="qrc-stats-num"><?php echo esc_html( $dil ); ?></th>
 					<?php endforeach; ?>
 				</tr>
 			</thead>
 			<tbody>
 				<?php foreach ( $tipler as $tip ) : ?>
 					<tr>
-						<td><?php echo esc_html( rma_ceviri_tip_etiketi( $tip ) ); ?></td>
+						<th scope="row" class="qrc-stats-row-head"><?php echo esc_html( rma_ceviri_tip_etiketi( $tip ) ); ?></th>
 						<?php foreach ( $hedefler as $dil ) : ?>
-							<?php $adet = isset( $sayilar[ $tip ][ $dil ] ) ? (int) $sayilar[ $tip ][ $dil ] : 0; ?>
-							<td style="text-align:center;<?php echo 0 === $adet ? 'color:#a00;' : ''; ?>">
+							<?php
+							$adet = isset( $sayilar[ $tip ][ $dil ] ) ? (int) $sayilar[ $tip ][ $dil ] : 0;
+							// Sütun başlığı dar kalsın diye kod; kart görünümündeki
+							// etiket ise bayrak + dil adı (orada yer var, "en" yerine
+							// "İngilizce" okunur).
+							$etiket = isset( $katalog[ $dil ] )
+								? $katalog[ $dil ]['flag'] . ' ' . $katalog[ $dil ]['name']
+								: $dil;
+							?>
+							<td class="qrc-stats-num<?php echo 0 === $adet ? ' is-empty' : ''; ?>" data-label="<?php echo esc_attr( $etiket ); ?>">
 								<?php echo 0 === $adet ? '—' : (int) $adet; ?>
 							</td>
 						<?php endforeach; ?>
@@ -225,7 +243,7 @@ if ( ! function_exists( 'rma_ceviri_durum_paneli' ) ) {
 			</tbody>
 		</table>
 
-		<details style="max-width:900px;margin-bottom:24px;">
+		<details class="qrc-limit qrc-details">
 			<summary style="cursor:pointer;color:#2271b1;">ⓘ Bu tablo ne anlatıyor?</summary>
 			<p class="description" style="margin-top:8px;">
 				Her hücre, o içeriğin o dilde kaç çevirisinin kayıtlı olduğunu gösterir.
@@ -279,10 +297,12 @@ if ( ! function_exists( 'rma_ceviri_secim_kutulari' ) ) {
 			return;
 		}
 
-		echo '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;max-width:800px;">';
+		// Izgara sabit üç sütun DEĞİLDİR: geniş ekranda sığdığı kadar sütun,
+		// dokunmatik/dar ekranda tek sütun ve 48px dokunma yüksekliği.
+		echo '<div class="qrc-check-grid">';
 		foreach ( $nesneler as $slug => $etiket ) {
 			printf(
-				'<label style="display:flex;align-items:center;gap:6px;"><input type="checkbox" name="%1$s[]" value="%2$s" %3$s> <span>%4$s <code>%2$s</code></span></label>',
+				'<label class="qrc-check"><input type="checkbox" name="%1$s[]" value="%2$s" %3$s> <span>%4$s <code>%2$s</code></span></label>',
 				esc_attr( $ad ),
 				esc_attr( $slug ),
 				checked( in_array( $slug, $secili, true ), true, false ),
@@ -326,9 +346,9 @@ if ( ! function_exists( 'qrmenu_trans_page' ) ) {
 		$elementor_secili    = rma_ceviri_secili_elementor_sayfalari();
 		$dil_sayilari        = RMA_Ceviri_Tablo::dil_sayilari();
 		?>
-		<div class="wrap">
+		<div class="wrap qrc-wrap">
 			<h1>QR Çeviri</h1>
-			<p class="description" style="max-width:800px;">
+			<p class="description qrc-limit">
 				Çeviriler Excel/CSV ile toplu yönetilir: dosyayı indirin, çevirileri yazın,
 				geri yükleyin. Ziyaretçi dil seçtiğinde sayfa doğrudan o dilde açılır.
 			</p>
@@ -349,14 +369,14 @@ if ( ! function_exists( 'qrmenu_trans_page' ) ) {
 					<tr>
 						<th>Menüde gösterilecek diller</th>
 						<td>
-							<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;max-width:800px;">
+							<div class="qrc-check-grid qrc-lang-grid">
 								<?php foreach ( $all_langs as $code => $data ) : ?>
-									<label style="display:flex;align-items:center;gap:8px;">
+									<label class="qrc-check">
 										<input type="checkbox" name="qrmenu_langs[]" value="<?php echo esc_attr( $code ); ?>" <?php checked( in_array( $code, $active_langs, true ) ); ?>>
-										<span style="font-size:18px;"><?php echo $data['flag']; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></span>
-										<?php echo esc_html( $data['name'] ); ?>
+										<span class="qrc-flag"><?php echo $data['flag']; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></span>
+										<span class="qrc-lang-name"><?php echo esc_html( $data['name'] ); ?></span>
 										<?php if ( isset( $dil_sayilari[ $code ] ) ) : ?>
-											<small style="color:#666;">(<?php echo (int) $dil_sayilari[ $code ]; ?> çeviri)</small>
+											<small class="qrc-muted">(<?php echo (int) $dil_sayilari[ $code ]; ?> çeviri)</small>
 										<?php endif; ?>
 									</label>
 								<?php endforeach; ?>
@@ -367,7 +387,7 @@ if ( ! function_exists( 'qrmenu_trans_page' ) ) {
 				</table>
 
 				<h2 class="title">Çevrilmeyen metinler</h2>
-				<p class="description" style="max-width:800px;">
+				<p class="description qrc-limit">
 					Sitede çevrilmeyen bir metin mi var? Türkçe hâlini aşağıdaki kutuya
 					ekleyip Kaydet'e basın — sonraki CSV dışa aktarımında otomatik çıkar.
 					Tek tek aramak istemiyorsanız <strong>Metin Toplama</strong>'yı açıp
@@ -403,11 +423,11 @@ if ( ! function_exists( 'qrmenu_trans_page' ) ) {
 					<tr>
 						<th>Bulunan metinler (<?php echo count( $bulunanlar ); ?>)</th>
 						<td>
-							<div style="max-height:280px;overflow:auto;border:1px solid #ccd0d4;padding:10px;max-width:800px;background:#fff;">
+							<div class="qrc-scrollbox">
 								<?php foreach ( array_keys( $bulunanlar ) as $metin ) : ?>
-									<label style="display:block;margin-bottom:4px;">
+									<label class="qrc-check qrc-check-block">
 										<input type="checkbox" name="rma_bulunan[]" value="<?php echo esc_attr( $metin ); ?>">
-										<?php echo esc_html( $metin ); ?>
+										<span><?php echo esc_html( $metin ); ?></span>
 									</label>
 								<?php endforeach; ?>
 							</div>
@@ -440,7 +460,7 @@ if ( ! function_exists( 'qrmenu_trans_page' ) ) {
 						⚙️ Gelişmiş Ayarlar
 					</summary>
 
-					<p class="description" style="max-width:800px;">
+					<p class="description qrc-limit">
 						Bunlar genelde bir kez ayarlanır; emin değilseniz olduğu gibi bırakın.
 					</p>
 
@@ -548,12 +568,12 @@ if ( ! function_exists( 'qrmenu_trans_page' ) ) {
 			<hr>
 
 			<h2 class="title">📤 Çeviri CSV'sini Dışa Aktar</h2>
-			<p class="description" style="max-width:800px;">
+			<p class="description qrc-limit">
 				Menü ürünleri, kategoriler, menü linkleri ve sabit metinler her zaman
 				dahildir. Mevcut çeviriler dolu gelir — sıfırdan başlamanız gerekmez.
 				<strong>Sadece dil sütunlarını doldurun</strong>, ilk sütunlara dokunmayın.
 			</p>
-			<details style="max-width:800px;margin-bottom:12px;">
+			<details class="qrc-limit qrc-details">
 				<summary style="cursor:pointer;color:#2271b1;">ⓘ Neden ilk sütunlara dokunmamalıyım?</summary>
 				<p class="description" style="margin-top:6px;">
 					<code>item_id</code>, <code>item_type</code> ve <code>field</code> sütunları
@@ -580,12 +600,11 @@ if ( ! function_exists( 'qrmenu_trans_page' ) ) {
 							<?php if ( empty( $elementor_sayfalari ) ) : ?>
 								<em>Elementor ile düzenlenmiş içerik bulunamadı.</em>
 							<?php else : ?>
-								<div style="max-height:260px;overflow:auto;border:1px solid #ccd0d4;padding:10px;max-width:800px;background:#fff;">
+								<div class="qrc-scrollbox">
 									<?php foreach ( $elementor_sayfalari as $id => $baslik ) : ?>
-										<label style="display:block;margin-bottom:4px;">
+										<label class="qrc-check qrc-check-block">
 											<input type="checkbox" name="elementor_sayfalar[]" value="<?php echo (int) $id; ?>" <?php checked( in_array( (int) $id, $elementor_secili, true ) ); ?>>
-											<?php echo esc_html( $baslik ); ?>
-											<small style="color:#666;">#<?php echo (int) $id; ?></small>
+											<span><?php echo esc_html( $baslik ); ?> <small class="qrc-muted">#<?php echo (int) $id; ?></small></span>
 										</label>
 									<?php endforeach; ?>
 								</div>

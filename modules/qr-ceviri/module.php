@@ -41,5 +41,33 @@ function qrms_module_qr_ceviri_init() {
 
 	if ( is_admin() ) {
 		QRMS_Admin::register_module_page( 'qr-ceviri', 'qrmenu_trans_page' );
+
+		add_action( 'admin_enqueue_scripts', 'qrms_module_qr_ceviri_admin_assets' );
 	}
+}
+
+/**
+ * Yönetim stili — yalnızca bu modülün sayfasında.
+ *
+ * Taşınan eklentinin yönetim tarafında hiç stil dosyası yoktu; ölçüler
+ * markup'a satır içi yazılmıştı ve satır içi stilin kırılım noktası
+ * olamadığı için ekran dar ekranda sıkışıyordu. Kurallar artık
+ * assets/css/admin.css içinde.
+ *
+ * @return void
+ */
+function qrms_module_qr_ceviri_admin_assets() {
+	// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+	$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '';
+
+	if ( QRMS_Admin::get_module_page_slug( 'qr-ceviri' ) !== $page ) {
+		return;
+	}
+
+	wp_enqueue_style(
+		'qrms-ceviri-admin',
+		QRMS_PLUGIN_URL . 'modules/qr-ceviri/assets/css/admin.css',
+		array( 'qrms-admin' ),
+		QRMS_Helpers::asset_version( 'modules/qr-ceviri/assets/css/admin.css' )
+	);
 }
