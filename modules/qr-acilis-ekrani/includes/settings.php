@@ -127,6 +127,16 @@ trait QRMS_AE_Settings {
 			$options['divider_text'] = sanitize_text_field( wp_unslash( $_POST['divider_text'] ) );
 		}
 
+		// Dil düğmesi bu sayfanın onay kutusudur: işaretsizliği ancak BU sayfa
+		// gönderildiğinde "kapalı" demektir (bkz. save_settings başlığı).
+		$options['lang_toggle'] = isset( $_POST['lang_toggle'] ) ? 1 : 0;
+
+		foreach ( array( 'btn1', 'btn2', 'btn3', 'btn4', 'btn5', 'divider' ) as $key ) {
+			if ( isset( $_POST[ 'text_en_' . $key ] ) ) {
+				$options['texts_en'][ $key ] = sanitize_text_field( wp_unslash( $_POST[ 'text_en_' . $key ] ) );
+			}
+		}
+
 		for ( $i = 1; $i <= 6; $i++ ) {
 			if ( isset( $_POST[ 'button_text_' . $i ] ) ) {
 				$options['button_texts'][ 'btn' . $i ] = sanitize_text_field( wp_unslash( $_POST[ 'button_text_' . $i ] ) );

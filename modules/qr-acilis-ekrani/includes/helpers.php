@@ -3,9 +3,32 @@ defined( 'ABSPATH' ) || exit;
 
 trait QRMS_AE_Helpers {
 
+    /**
+     * Kayıtlı ayarlar, varsayılanlarla tamamlanmış.
+     *
+     * array_merge SIĞ birleştirir: kayıtta `button_texts` varsa dizinin
+     * TAMAMI kayıttan gelir ve içinde eksik olan alt anahtar (ör. 'btn5')
+     * varsayılandan gelmez — okuyan her yer "undefined index" verir. Eski bir
+     * sürümden gelen ya da elle düzenlenmiş bir option'da bu gerçek bir
+     * durumdur; iki dilli `texts_en` de aynı biçimde kırılgandır.
+     *
+     * Birlik operatörü (+) yalnızca EKSİK anahtarları doldurur: kayıtlı bir
+     * değeri asla ezmez ve array_merge'ün aksine sayısal listelere öğe
+     * eklemez (footer_icons gibi dört elemanlı listeler bozulmaz).
+     *
+     * @return array
+     */
     private function get_options() {
         $saved = get_option($this->option_name, array());
-        return array_merge($this->defaults, $saved);
+        $opts  = array_merge($this->defaults, is_array($saved) ? $saved : array());
+
+        foreach ($this->defaults as $key => $default) {
+            if (is_array($default) && isset($opts[$key]) && is_array($opts[$key])) {
+                $opts[$key] += $default;
+            }
+        }
+
+        return $opts;
     }
 
     /**

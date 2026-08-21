@@ -313,10 +313,11 @@ trait QRMS_AE_Frontend {
 
             $items[] = '<div class="sp-action">'
                 . '<a href="' . esc_url($link) . '" class="splash-badge sp-action-circle" data-splash-dismiss="1"'
-                . ' aria-label="' . esc_attr($label) . '" title="' . esc_attr($label) . '">'
+                . ' aria-label="' . esc_attr($label) . '" title="' . esc_attr($label) . '"'
+                . $this->lang_data($opts, $key, $label, 'aria-label title') . '>'
                 . $this->icon_svg($icon, 22)
                 . '</a>'
-                . '<span class="sp-action-label">' . esc_html($label) . '</span>'
+                . '<span class="sp-action-label"' . $this->lang_data($opts, $key, $label) . '>' . esc_html($label) . '</span>'
                 . '</div>';
         }
 
@@ -324,10 +325,11 @@ trait QRMS_AE_Frontend {
         $wifi_label = isset($opts['button_texts']['btn5']) ? $opts['button_texts']['btn5'] : 'Wifi';
         $items[] = '<div class="sp-action">'
             . '<button type="button" class="splash-badge sp-action-circle" id="wifi-btn"'
-            . ' aria-label="' . esc_attr($wifi_label) . '" title="' . esc_attr($wifi_label) . '">'
+            . ' aria-label="' . esc_attr($wifi_label) . '" title="' . esc_attr($wifi_label) . '"'
+            . $this->lang_data($opts, 'btn5', $wifi_label, 'aria-label title') . '>'
             . $this->icon_svg('wifi', 22)
             . '</button>'
-            . '<span class="sp-action-label">' . esc_html($wifi_label) . '</span>'
+            . '<span class="sp-action-label"' . $this->lang_data($opts, 'btn5', $wifi_label) . '>' . esc_html($wifi_label) . '</span>'
             . '</div>';
 
         return $items;
@@ -385,6 +387,92 @@ trait QRMS_AE_Frontend {
      * yönlendirme zamanlayıcısı kurmaz. Markup'ın geri kalanı frontend ile
      * BİREBİR aynıdır — önizlemenin ayrı bir taklidi yoktur.
      */
+    /**
+     * TR/EN düğmesi açık mı? (En az bir İngilizce metin girilmiş olmalı.)
+     *
+     * Düğme açık ama hiçbir çeviri yazılmamışsa ziyaretçiye iki kez aynı
+     * metni gösteren bir düğme kalırdı; o yüzden ikisi birden aranır.
+     *
+     * @param array $opts Ayarlar.
+     * @return bool
+     */
+    private function lang_toggle_active($opts) {
+        if (empty($opts['lang_toggle'])) return false;
+
+        $en = isset($opts['texts_en']) && is_array($opts['texts_en']) ? $opts['texts_en'] : array();
+
+        foreach ($en as $value) {
+            if (trim((string) $value) !== '') return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Bir metnin İngilizce karşılığı; girilmemişse Türkçesi.
+     *
+     * @param array  $opts Ayarlar.
+     * @param string $key  Metin anahtarı (btn1..btn5, divider).
+     * @param string $tr   Türkçe metin.
+     * @return string
+     */
+    private function text_en($opts, $key, $tr) {
+        $en = isset($opts['texts_en'][$key]) ? trim((string) $opts['texts_en'][$key]) : '';
+
+        return '' !== $en ? $en : $tr;
+    }
+
+    /**
+     * Bir metin düğümüne iki dili de taşıyan data nitelikleri.
+     *
+     * DİL SUNUCUDA SEÇİLMEZ. Ana sayfanın HTML'i her ziyaretçide birebir aynı
+     * kalmalı (tam sayfa cache güvenliği) — çerezden dallanan bir çıktı, ilk
+     * ziyaretçinin dilini herkese servis ederdi. Bu yüzden sunucu Türkçeyi
+     * basar, İngilizcesini yanında data niteliği olarak taşır; hangisinin
+     * görüneceğine çerezi okuyan istemci karar verir. Aynı desen splash'ın
+     * "gösterilsin mi" kararında da kullanılıyor.
+     *
+     * $attrs verilirse (ör. "aria-label title") JS metni o niteliklere yazar,
+     * eleman içeriğine değil.
+     *
+     * @param array  $opts  Ayarlar.
+     * @param string $key   Metin anahtarı.
+     * @param string $tr    Türkçe metin.
+     * @param string $attrs Boşlukla ayrılmış nitelik listesi.
+     * @return string Nitelik dizesi (düğme kapalıysa boş).
+     */
+    private function lang_data($opts, $key, $tr, $attrs = '') {
+        if (!$this->lang_toggle_active($opts)) return '';
+
+        // data-sp-key: yönetimdeki canlı önizleme, hangi ayar alanının hangi
+        // metin düğümünü beslediğini bu anahtardan bulur.
+        $out = ' data-sp-key="' . esc_attr($key) . '"'
+            . ' data-sp-tr="' . esc_attr($tr) . '"'
+            . ' data-sp-en="' . esc_attr($this->text_en($opts, $key, $tr)) . '"';
+
+        if ('' !== $attrs) {
+            $out .= ' data-sp-attr="' . esc_attr($attrs) . '"';
+        }
+
+        return $out;
+    }
+
+    /**
+     * TR|EN düğmesi. Sol üstte, sağ üstteki yüklenme göstergesinin karşısında.
+     *
+     * @param array $opts Ayarlar.
+     * @return void
+     */
+    private function render_lang_toggle($opts) {
+        if (!$this->lang_toggle_active($opts)) return;
+        ?>
+        <div class="splash-lang" role="group" aria-label="Dil / Language">
+            <button type="button" class="splash-lang-btn is-active" data-sp-lang="tr" aria-pressed="true" lang="tr">TR</button>
+            <button type="button" class="splash-lang-btn" data-sp-lang="en" aria-pressed="false" lang="en">EN</button>
+        </div>
+        <?php
+    }
+
     private function output_splash($opts, $is_preview = false) {
         $logo_url        = $opts['logo'] ? wp_get_attachment_image_url($opts['logo'], 'medium') : '';
         $animation_class = esc_attr($opts['animation_type']);
@@ -417,6 +505,8 @@ trait QRMS_AE_Frontend {
 
             <?php $this->render_loader($opts, $redirect_seconds); ?>
 
+            <?php $this->render_lang_toggle($opts); ?>
+
             <?php if ($logo_url): ?>
                 <?php // Tam genişlik üst şerit; yüksekliği ve zemin rengi/opaklığı admin'den gelir. ?>
                 <div class="splash-logo">
@@ -433,15 +523,15 @@ trait QRMS_AE_Frontend {
                     <?php endif; ?>
 
                     <?php if ($cta_link): ?>
-                        <a href="<?php echo esc_url($cta_link); ?>" class="splash-cta" data-splash-dismiss="1"><?php echo esc_html($cta_text); ?></a>
+                        <a href="<?php echo esc_url($cta_link); ?>" class="splash-cta" data-splash-dismiss="1"<?php echo $this->lang_data($opts, 'btn1', $cta_text); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>><?php echo esc_html($cta_text); ?></a>
                     <?php else: ?>
-                        <span class="splash-cta is-disabled"><?php echo esc_html($cta_text); ?></span>
+                        <span class="splash-cta is-disabled"<?php echo $this->lang_data($opts, 'btn1', $cta_text); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>><?php echo esc_html($cta_text); ?></span>
                     <?php endif; ?>
 
                     <?php if ($show_divider): ?>
                         <div class="splash-divider">
                             <span class="splash-divider-line" aria-hidden="true"></span>
-                            <span class="splash-divider-label"><?php echo esc_html($divider_text); ?></span>
+                            <span class="splash-divider-label"<?php echo $this->lang_data($opts, 'divider', $divider_text); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>><?php echo esc_html($divider_text); ?></span>
                             <span class="splash-divider-line" aria-hidden="true"></span>
                         </div>
                     <?php endif; ?>
@@ -455,12 +545,23 @@ trait QRMS_AE_Frontend {
             </div>
         </div>
 
+        <?php
+        /*
+         * Pencere metinleri eklentinin kendi metinleridir (kullanıcı girdisi
+         * değil), bu yüzden İngilizceleri sabittir. Şifrenin kendisi
+         * çevrilmez — iki dilde de aynı karakter dizisidir.
+         */
+        $wifi_baslik = 'Wifi Şifresi';
+        $wifi_bos    = 'Henüz bir şifre girilmedi.';
+        $iki_dil     = $this->lang_toggle_active($opts);
+        ?>
         <div class="splash-modal" id="wifi-modal">
             <div class="splash-modal-content">
                 <button type="button" class="splash-modal-close" aria-label="Kapat">&times;</button>
-                <h3>Wifi Şifresi</h3>
-                <p style="font-size:26px; margin:18px 0; word-break:break-all;">
-                    <?php echo esc_html($opts['wifi_password'] ?: 'Henüz bir şifre girilmedi.'); ?>
+                <h3<?php echo $iki_dil ? ' data-sp-tr="' . esc_attr($wifi_baslik) . '" data-sp-en="Wi-Fi Password"' : ''; ?>><?php echo esc_html($wifi_baslik); ?></h3>
+                <p style="font-size:26px; margin:18px 0; word-break:break-all;"
+                    <?php echo ( $iki_dil && empty($opts['wifi_password']) ) ? ' data-sp-tr="' . esc_attr($wifi_bos) . '" data-sp-en="No password has been set yet."' : ''; ?>>
+                    <?php echo esc_html($opts['wifi_password'] ?: $wifi_bos); ?>
                 </p>
             </div>
         </div>

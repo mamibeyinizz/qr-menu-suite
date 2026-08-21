@@ -22,6 +22,94 @@
         }
     }
 
+    /* ---------------- TR / EN düğmesi ----------------
+
+       Dil sunucuda seçilmez: ana sayfanın HTML'i her ziyaretçide birebir
+       aynıdır (tam sayfa cache güvenliği). Sunucu Türkçeyi basar, İngilizcesi
+       her metnin yanında data-sp-en olarak durur; hangisinin görüneceğine
+       çerezi okuyan istemci karar verir — splash'ın "gösterilsin mi"
+       kararındaki desenin aynısı.
+
+       Önizlemede (isPreview) çerez OKUNMAZ ve YAZILMAZ: yönetici önizlemede
+       EN'e bakınca kendi ziyaretçi tercihini değiştirmiş olmaz. */
+
+    var LANG_COOKIE = 'qrms_splash_lang';
+
+    function readLangCookie() {
+        var m = document.cookie.match(/(?:^|;\s*)qrms_splash_lang=(tr|en)/);
+        return m ? m[1] : '';
+    }
+
+    function applyLang(root, lang) {
+        var nodes = root.querySelectorAll('[data-sp-tr]');
+        var i, el, text, attrs, j;
+
+        for (i = 0; i < nodes.length; i++) {
+            el = nodes[i];
+            text = el.getAttribute('data-sp-' + lang);
+
+            if (text === null) continue;
+
+            attrs = el.getAttribute('data-sp-attr');
+
+            if (attrs) {
+                // Rozetin görünür metni yoktur; dil değişimi erişilebilirlik
+                // etiketine ve dokunma ipucuna yazılır.
+                attrs = attrs.split(/\s+/);
+                for (j = 0; j < attrs.length; j++) {
+                    if (attrs[j]) el.setAttribute(attrs[j], text);
+                }
+            } else {
+                el.textContent = text;
+            }
+        }
+
+        var buttons = root.querySelectorAll('.splash-lang-btn');
+        for (i = 0; i < buttons.length; i++) {
+            var on = buttons[i].getAttribute('data-sp-lang') === lang;
+            buttons[i].classList.toggle('is-active', on);
+            buttons[i].setAttribute('aria-pressed', on ? 'true' : 'false');
+        }
+
+        root.setAttribute('lang', lang);
+    }
+
+    function initLang(overlay, isPreview) {
+        var toggle = overlay.querySelector('.splash-lang');
+        if (!toggle) return;
+
+        // Modal overlay'in DIŞINDA durur; iki dilli metinleri o da taşır.
+        var roots = [ overlay ];
+        var modal = document.getElementById('wifi-modal');
+        if (modal) roots.push(modal);
+
+        function setLang(lang, persist) {
+            for (var i = 0; i < roots.length; i++) {
+                applyLang(roots[i], lang);
+            }
+
+            if (!persist || isPreview) return;
+
+            var date = new Date();
+            date.setTime(date.getTime() + (365 * 24 * 60 * 60 * 1000));
+            document.cookie = LANG_COOKIE + '=' + lang + '; expires=' + date.toUTCString() + '; path=/; SameSite=Lax';
+        }
+
+        toggle.addEventListener('click', function (event) {
+            var btn = event.target.closest('.splash-lang-btn');
+            if (!btn) return;
+
+            event.preventDefault();
+            event.stopPropagation();   // dil seçmek splash'ı kapatmaz
+            setLang(btn.getAttribute('data-sp-lang') === 'en' ? 'en' : 'tr', true);
+        });
+
+        var stored = isPreview ? '' : readLangCookie();
+        if (stored === 'en') {
+            setLang('en', false);
+        }
+    }
+
     function initSplash() {
         var overlay = getOverlay();
 
@@ -32,6 +120,9 @@
         if (overlay && overlay.getAttribute('data-preview') === '1') {
             clearHeadFailsafe();
             removeLoadingState();
+            // Dil düğmesi önizlemede de çalışır (çerezsiz): yönetici
+            // İngilizce hâli nasıl görünüyor diye bakabilmeli.
+            initLang(overlay, true);
             return;
         }
 
@@ -194,6 +285,8 @@
                 if (modal.style.display === 'flex') modal.style.display = 'none';
             });
         });
+
+        initLang(overlay, false);
 
         attachListeners();
         resetIdle();
