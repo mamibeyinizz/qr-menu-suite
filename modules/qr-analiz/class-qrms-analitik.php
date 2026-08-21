@@ -111,6 +111,209 @@ class QRMS_Analitik {
 		return class_exists( 'RMA_Analytics' );
 	}
 
+	/**
+	 * Eski eklentinin `active_plugins` içindeki dosya yolu ('' = bulunamadı).
+	 *
+	 * eski_eklenti_aktif() yalnızca "bir yerde RMA_Analytics sınıfı var" der;
+	 * kullanıcıya "şunu kapat" diyebilmek için hangi EKLENTİNİN tanımladığını
+	 * bilmek gerekir. Sınıfın dosyası Reflection ile bulunur, plugin_basename()
+	 * ile eklenti klasörüne indirgenir ve aktif eklenti listesiyle eşleştirilir.
+	 *
+	 * @return string Ör. "rma-analytics/rma-analytics.php".
+	 */
+	public static function eski_eklenti_dosyasi() {
+		if ( ! self::eski_eklenti_aktif() ) {
+			return '';
+		}
+
+		try {
+			$sinif = new ReflectionClass( 'RMA_Analytics' );
+			$yol   = (string) $sinif->getFileName();
+		} catch ( ReflectionException $e ) {
+			return '';
+		}
+
+		if ( '' === $yol ) {
+			return '';
+		}
+
+		return self::eklenti_dosyasini_bul(
+			plugin_basename( $yol ),
+			(array) get_option( 'active_plugins', array() )
+		);
+	}
+
+	/**
+	 * Bir kaynak dosyasının ait olduğu aktif eklentinin giriş dosyası.
+	 *
+	 * Sınıfın bulunduğu dosya eklentinin GİRİŞ dosyası olmak zorunda değildir
+	 * (ör. "rma-analytics/includes/class-analytics.php"); devre dışı bırakma
+	 * bağlantısı ise girişi ister. Eşleştirme klasör adı üzerinden yapılır,
+	 * tek dosyalık eklentiler için de tam yol karşılaştırılır.
+	 *
+	 * Saf fonksiyon (WordPress'e bağımlılığı yok), bu yüzden doğrudan test edilir.
+	 *
+	 * @param string   $goreli Eklentiler klasörüne göreli dosya yolu.
+	 * @param string[] $aktif  active_plugins listesi.
+	 * @return string Eşleşen giriş dosyası ya da boş string.
+	 */
+	public static function eklenti_dosyasini_bul( $goreli, array $aktif ) {
+		$goreli = ltrim( str_replace( '\\', '/', (string) $goreli ), '/' );
+
+		if ( '' === $goreli ) {
+			return '';
+		}
+
+		$klasor = strtok( $goreli, '/' );
+
+		foreach ( $aktif as $eklenti ) {
+			$eklenti = (string) $eklenti;
+
+			// Tek dosyalık eklenti: giriş dosyasının kendisi.
+			if ( $eklenti === $goreli ) {
+				return $eklenti;
+			}
+
+			// Klasörlü eklenti: aynı klasörden gelen her dosya ona aittir.
+			if ( false !== strpos( $eklenti, '/' ) && strtok( $eklenti, '/' ) === $klasor ) {
+				return $eklenti;
+			}
+		}
+
+		return '';
+	}
+
+	/**
+	 * Eski eklentinin görünen adı (bulunamazsa genel bir etiket).
+	 *
+	 * @return string
+	 */
+	public static function eski_eklenti_adi() {
+		$dosya = self::eski_eklenti_dosyasi();
+
+		if ( '' === $dosya ) {
+			return __( 'RMA Analytics', 'qrms' );
+		}
+
+		if ( ! function_exists( 'get_plugin_data' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		}
+
+		$veri = get_plugin_data( WP_PLUGIN_DIR . '/' . $dosya, false, false );
+		$ad   = isset( $veri['Name'] ) ? (string) $veri['Name'] : '';
+
+		return '' !== $ad ? $ad : __( 'RMA Analytics', 'qrms' );
+	}
+
+	/**
+	 * Eski eklentiyi tek tıkla devre dışı bırakan adres ('' = üretilemedi).
+	 *
+	 * WordPress'in Eklentiler ekranındaki bağlantının aynısıdır: aynı action,
+	 * aynı nonce. Yetkisi olmayan kullanıcıya hiç gösterilmez.
+	 *
+	 * @return string
+	 */
+	public static function eski_eklenti_kapat_url() {
+		$dosya = self::eski_eklenti_dosyasi();
+
+		if ( '' === $dosya || ! current_user_can( 'activate_plugins' ) ) {
+			return '';
+		}
+
+		return wp_nonce_url(
+			admin_url( 'plugins.php?action=deactivate&plugin=' . rawurlencode( $dosya ) . '&plugin_status=all' ),
+			'deactivate-plugin_' . $dosya
+		);
+	}
+
+	/* -----------------------------------------------------------------
+	   TEŞHİS
+	----------------------------------------------------------------- */
+
+	/**
+	 * Panelin "neden veri yok?" kutusunu besleyen bulgular.
+	 *
+	 * Sorun yoksa BOŞ dizi döner ve kutu hiç basılmaz. Sıra önem sırasıdır:
+	 * ilk madde, kullanıcının önce çözmesi gereken şeydir.
+	 *
+	 * @return array<int,array{tip:string,baslik:string,mesaj:string,url:string,etiket:string}>
+	 */
+	public static function teshis() {
+		global $wpdb;
+
+		$bulgu = array();
+
+		// 1) Eski eklenti izlemeyi tamamen durduruyor — diğer her şeyden önce.
+		if ( self::eski_eklenti_aktif() ) {
+			$bulgu[] = array(
+				'tip'     => 'kritik',
+				'baslik'  => sprintf(
+					/* translators: %s: eklenti adı. */
+					__( '"%s" eklentisi hâlâ etkin', 'qrms' ),
+					self::eski_eklenti_adi()
+				),
+				'mesaj'   => __( 'Kayıtları o topluyor; çift sayım olmasın diye bu modül izlemeyi tamamen kapattı. Eski eklenti masa bilgisini yazmadığı için "Masalara Göre" sekmesi de boş kalır. Masa bazlı takibin çalışması için eski eklentiyi devre dışı bırakın.', 'qrms' ),
+				'url'     => self::eski_eklenti_kapat_url(),
+				'etiket'  => __( 'Eski eklentiyi devre dışı bırak', 'qrms' ),
+			);
+
+			return $bulgu;
+		}
+
+		// 2) Tablo yoksa hiçbir sorgu çalışmaz.
+		$tablo = self::tablo();
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		if ( ! $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $tablo ) ) ) {
+			$bulgu[] = array(
+				'tip'    => 'kritik',
+				'baslik' => __( 'Analitik tablosu veritabanında yok', 'qrms' ),
+				'mesaj'  => __( 'Tablo kurulamamış olabilir (veritabanı kullanıcısının tablo oluşturma yetkisi yoksa bu olur). Genel Ayarlar sayfasından lisansı yeniden doğrulayın; sorun sürerse hosting sağlayıcınıza danışın.', 'qrms' ),
+				'url'    => admin_url( 'admin.php?page=' . QRMS_Admin::SETTINGS_SLUG ),
+				'etiket' => __( 'Genel Ayarlar', 'qrms' ),
+			);
+
+			return $bulgu;
+		}
+
+		// phpcs:disable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$toplam  = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$tablo}" );
+		$masali  = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$tablo} WHERE masa_no <> ''" );
+		// phpcs:enable
+
+		// 3) Hiç kayıt yok: izleme çalışıyor ama menü henüz açılmamış.
+		if ( 0 === $toplam ) {
+			$bulgu[] = array(
+				'tip'    => 'bilgi',
+				'baslik' => __( 'Henüz hiç kayıt yok', 'qrms' ),
+				'mesaj'  => __( 'İzleme açık ama tabloya bir şey yazılmamış. Menü sayfanızı ön yüzden bir kez açın; ilk görüntüleme kaydı oluştuktan sonra bu sayfayı yenileyin.', 'qrms' ),
+				'url'    => home_url( '/' ),
+				'etiket' => __( 'Menüyü aç', 'qrms' ),
+			);
+
+			return $bulgu;
+		}
+
+		// 4) Kayıt var ama hiçbirinde masa yok. En sık sebep: QR adreslerindeki
+		//    masa QR Masa modülünde KAYITLI DEĞİL. masa_belirle() kayıtsız
+		//    slug'ı reddeder ve olay masasız yazılır — sessizce.
+		if ( 0 === $masali ) {
+			$kayitli = count( self::masa_adlari() );
+
+			$bulgu[] = array(
+				'tip'    => 'uyari',
+				'baslik' => __( 'Kayıtların hiçbirinde masa bilgisi yok', 'qrms' ),
+				'mesaj'  => 0 === $kayitli
+					? __( 'QR Masa modülünde hiç masa tanımlı değil. Adreste ?masa=… olsa bile, kayıtlı olmayan bir masa güvenlik gereği yok sayılır ve hareket "Masasız" olarak yazılır. Önce masalarınızı oluşturun, sonra QR kodlarını o masalardan üretin.', 'qrms' )
+					: __( 'Masalarınız tanımlı ama gelen hareketlerin hiçbiri bir masaya bağlanamadı. Müşterilerin okuttuğu QR kodların adresinde ?masa=… parametresi olduğundan ve slug\'ın QR Masa\'daki masayla birebir aynı yazıldığından emin olun.', 'qrms' ),
+				'url'    => QRMS_Admin::get_module_page_url( 'qr-masa' ),
+				'etiket' => __( 'QR Masa\'yı aç', 'qrms' ),
+			);
+		}
+
+		return $bulgu;
+	}
+
 	/* -----------------------------------------------------------------
 	   ŞEMA
 	----------------------------------------------------------------- */
@@ -412,7 +615,10 @@ class QRMS_Analitik {
 				return current_time( 'Y-m-d' ) . ' 00:00:00';
 
 			case 'weekly':
-				return gmdate( 'Y-m-d', strtotime( '-83 days', self::simdi() ) ) . ' 00:00:00';
+				// 12 TAM ISO haftası: en eski kova pazartesiden başlar. Sabit
+				// "-83 gün" bugün haftanın ortasındaysa en eski haftayı yarım
+				// keserdi ve o haftanın sayıları olduğundan düşük görünürdü.
+				return gmdate( 'Y-m-d', self::hafta_basi( strtotime( '-11 weeks', self::simdi() ) ) ) . ' 00:00:00';
 
 			case 'monthly':
 				return gmdate( 'Y-m-01', strtotime( '-11 months', self::simdi() ) ) . ' 00:00:00';
@@ -424,6 +630,20 @@ class QRMS_Analitik {
 			default:
 				return gmdate( 'Y-m-d', strtotime( '-29 days', self::simdi() ) ) . ' 00:00:00';
 		}
+	}
+
+	/**
+	 * Verilen anın içinde bulunduğu ISO haftasının pazartesi 00:00'ı.
+	 *
+	 * MySQL tarafında haftalar YEARWEEK(created_at,1) ile gruplanır; o mod da
+	 * ISO-8601'dir (hafta pazartesi başlar). PHP'nin "monday this week" ifadesi
+	 * aynı tanımı kullanır, böylece iki taraf aynı kovayı gösterir.
+	 *
+	 * @param int $ts Unix zaman damgası.
+	 * @return int
+	 */
+	private static function hafta_basi( $ts ) {
+		return (int) strtotime( 'monday this week', (int) $ts );
 	}
 
 	/**
@@ -518,22 +738,26 @@ class QRMS_Analitik {
 
 				// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 				$ham = $wpdb->get_results(
-					"SELECT YEARWEEK(created_at,1) AS k, MIN(DATE(created_at)) AS ilk, {$toplam} FROM {$tablo}
+					"SELECT YEARWEEK(created_at,1) AS k, {$toplam} FROM {$tablo}
 					 WHERE {$kosul}{$masa_ek}
 					 GROUP BY YEARWEEK(created_at,1) ORDER BY YEARWEEK(created_at,1)",
 					ARRAY_A
 				);
 
-				$satir = array();
+				// Sıfır doldurma şart: yalnızca veri olan haftalar döndürülürse
+				// sessiz geçen bir hafta grafikten tamamen kaybolur ve x ekseni
+				// kesintisizmiş gibi görünür. Saatlik/günlük/aylık dallar da
+				// aynı şekilde tüm kovaları üretir.
+				$harita = self::haritala( $ham );
+				$satir  = array();
 
-				foreach ( (array) $ham as $r ) {
-					$ilk     = (string) $r['ilk'];
-					$etiket  = date_i18n( 'j M', strtotime( $ilk ) ) . '–' . date_i18n( 'j M', strtotime( $ilk . ' +6 days' ) );
-					$satir[] = array(
-						'label' => $etiket,
-						'mv'    => (int) $r['mv'],
-						'pc'    => (int) $r['pc'],
-						'uv'    => (int) $r['uv'],
+				for ( $i = 11; $i >= 0; $i-- ) {
+					$pazartesi = self::hafta_basi( strtotime( "-{$i} weeks", self::simdi() ) );
+
+					$satir[] = self::satir(
+						date_i18n( 'j M', $pazartesi ) . '–' . date_i18n( 'j M', strtotime( '+6 days', $pazartesi ) ),
+						$harita,
+						gmdate( 'oW', $pazartesi )
 					);
 				}
 
@@ -772,16 +996,30 @@ class QRMS_Analitik {
 		$kosul = $wpdb->prepare( 'created_at >= %s', $baslangic );
 		$sinir = $wpdb->prepare( 'LIMIT %d', max( 1, (int) $limit ) );
 
+		/*
+		 * Gruplama YALNIZCA item_id ile yapılır. Ada ve kategoriye göre de
+		 * gruplanırsa, adı düzeltilen ya da başka kategoriye taşınan bir ürün
+		 * iki ayrı satıra bölünür: tıklamaları paylaşır, listede iki kez
+		 * görünür ve ikisi de olduğundan aşağıda sıralanır.
+		 *
+		 * Ad ve kategori için EN SON kaydedilen değer alınır: created_at
+		 * DATETIME'ı 19 karakterlik sabit genişliktedir, bu yüzden
+		 * CONCAT(created_at, ad) üzerinde MAX() en yeni satırı verir ve
+		 * SUBSTRING(...,20) tarih önekini kırpar. (Kayıt anındaki ad saklanır
+		 * ki silinmiş ürünler de listede görünmeye devam etsin.)
+		 */
 		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$satir = $wpdb->get_results(
-			"SELECT item_id, item_name, category_name,
+			"SELECT item_id,
+				SUBSTRING(MAX(CONCAT(created_at, item_name)), 20) AS item_name,
+				SUBSTRING(MAX(CONCAT(created_at, category_name)), 20) AS category_name,
 				COUNT(*) AS toplam,
 				COUNT(DISTINCT ip_hash) AS tekil,
 				COUNT(DISTINCT NULLIF(masa_no,'')) AS masa_sayisi,
 				MAX(created_at) AS son
 			 FROM {$tablo}
 			 WHERE event_type='product_click' AND item_id > 0 AND {$kosul}{$masa_ek}
-			 GROUP BY item_id, item_name, category_name
+			 GROUP BY item_id
 			 ORDER BY toplam DESC
 			 {$sinir}",
 			ARRAY_A

@@ -1613,6 +1613,68 @@ qrms_test(
 	}
 );
 
+echo "\nQR Analiz teşhisi\n";
+
+// Sınıf dosya kapsamında yalnızca tanım içerir (kancalar init() içinde
+// kaydolur), bu yüzden stub ortamında doğrudan yüklenebilir. Test edilen
+// eşleştirici saf bir dizi/string dönüşümüdür.
+require_once QRMS_PLUGIN_DIR . 'modules/qr-analiz/class-qrms-analitik.php';
+
+qrms_test(
+	'sınıfın dosyası eklentinin GİRİŞ dosyasına eşlenir',
+	function () {
+		// Sınıf çoğu zaman alt klasörde durur; devre dışı bırakma bağlantısı
+		// ise eklentinin giriş dosyasını ister.
+		qrms_assert_same(
+			'rma-analytics/rma-analytics.php',
+			QRMS_Analitik::eklenti_dosyasini_bul(
+				'rma-analytics/includes/class-analytics.php',
+				array( 'akismet/akismet.php', 'rma-analytics/rma-analytics.php' )
+			),
+			'klasörlü eklenti'
+		);
+	}
+);
+
+qrms_test(
+	'tek dosyalık eklenti de eşleşir',
+	function () {
+		qrms_assert_same(
+			'rma-analytics.php',
+			QRMS_Analitik::eklenti_dosyasini_bul( 'rma-analytics.php', array( 'rma-analytics.php' ) ),
+			'kök dosya'
+		);
+	}
+);
+
+qrms_test(
+	'eşleşme yoksa boş string döner, yanlış eklenti kapatılmaz',
+	function () {
+		// Regresyon: gevşek bir eşleştirme başka bir eklentiyi devre dışı
+		// bırakma bağlantısı üretebilirdi.
+		qrms_assert_same(
+			'',
+			QRMS_Analitik::eklenti_dosyasini_bul( 'rma-analytics/rma.php', array( 'akismet/akismet.php' ) ),
+			'listede yok'
+		);
+		qrms_assert_same( '', QRMS_Analitik::eklenti_dosyasini_bul( '', array( 'akismet/akismet.php' ) ), 'boş yol' );
+	}
+);
+
+qrms_test(
+	'aynı adla başlayan başka bir klasör eşleşmez',
+	function () {
+		qrms_assert_same(
+			'',
+			QRMS_Analitik::eklenti_dosyasini_bul(
+				'rma-analytics/rma.php',
+				array( 'rma-analytics-pro/rma-analytics-pro.php' )
+			),
+			'klasör adı tam eşleşmeli'
+		);
+	}
+);
+
 qrms_test(
 	'modül aktifken iki ekran da gizli sayfa olarak kaydedilir',
 	function () {
