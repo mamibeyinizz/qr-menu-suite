@@ -8,8 +8,9 @@ trait RMA_Admin_Pages_Trait {
      * Modülün kendi yönetim sayfaları — TEK KAYNAK.
      *
      * Her satır gerçek, ayrı bir WordPress sayfasıdır (add_submenu_page ile
-     * kaydedilir); JS ile gizlenip gösterilen sahte sekme yoktur. Menüdeki
-     * sıra ve "—" öneki modülün menü kodunda (module.php) belirlenir.
+     * kaydedilir); JS ile gizlenip gösterilen sahte sekme yoktur. Sayfalar sol
+     * menüde görünmez — modülün hub ekranındaki kartlardan açılırlar; kayıt ve
+     * kart sırası modülün menü kodunda (module.php) belirlenir.
      *
      * @return array<string,array{title:string,menu_title:string,render:string,desc:string,icon:string}>
      */
@@ -47,7 +48,7 @@ trait RMA_Admin_Pages_Trait {
     }
 
     /**
-     * "Restoran Menü" başlangıç sayfasındaki kartlar.
+     * "Restoran Menü" hub ekranındaki kartlar.
      *
      * Ürün/kategori/alerjen ekranları WordPress'in kendi sayfalarıdır, bu
      * yüzden get_subpages() içinde değil burada tanımlanır.
@@ -183,7 +184,14 @@ trait RMA_Admin_Pages_Trait {
      */
     private function page_header( $title, $intro = '' ) {
         echo '<div class="wrap rma-admin">';
-        echo '<a class="rma-back-link" href="' . esc_url( $this->hub_url() ) . '">&larr; Restoran Menü</a>';
+
+        // Suite kuruluysa "geri" bağlantısını QRMS_Admin her alt sayfanın
+        // önüne kendisi basar (register_module_subpage); burada basmak onu
+        // ikilerdi. Suite yoksa (eski tekil eklenti) tek kaynak burasıdır.
+        if ( ! class_exists( 'QRMS_Admin' ) ) {
+            echo '<a class="rma-back-link" href="' . esc_url( $this->hub_url() ) . '">&larr; Restoran Menü</a>';
+        }
+
         echo '<h1>' . esc_html( $title ) . '</h1>';
         if ( '' !== $intro ) {
             echo '<p class="rma-admin-intro">' . esc_html( $intro ) . '</p>';
@@ -212,28 +220,22 @@ trait RMA_Admin_Pages_Trait {
     ----------------------------------------------------------------- */
 
     /**
-     * "Restoran Menü" satırının açtığı başlangıç ekranı: her işin nerede
-     * olduğunu gösteren büyük kartlar.
+     * "Restoran Menü" satırının açtığı hub ekranı: modülün her işini gösteren
+     * kart ızgarası.
+     *
+     * Sol admin menüsü tek seviyeye indirildiği için (yalnızca modül adları)
+     * alt ekranlara buradan dallanılır. Sunum tüm modüllerde ortak olan
+     * QRMS_Admin::render_hub() bileşenindedir; burada yalnızca kart listesi
+     * verilir.
      */
     public function render_admin_page() {
-        ?>
-        <div class="wrap rma-admin">
-            <h1>Restoran Menü</h1>
-            <p class="rma-admin-intro">Ne yapmak istiyorsanız aşağıdan seçin. Aynı başlıklar sol menüde de listelidir.</p>
-
-            <div class="rma-hub-grid">
-                <?php foreach ( $this->get_hub_cards() as $card ) : ?>
-                    <a class="rma-hub-card" href="<?php echo esc_url( $card['url'] ); ?>">
-                        <span class="rma-hub-icon dashicons <?php echo esc_attr( $card['icon'] ); ?>" aria-hidden="true"></span>
-                        <span class="rma-hub-body">
-                            <span class="rma-hub-title"><?php echo esc_html( $card['title'] ); ?></span>
-                            <span class="rma-hub-desc"><?php echo esc_html( $card['desc'] ); ?></span>
-                        </span>
-                    </a>
-                <?php endforeach; ?>
-            </div>
-        </div>
-        <?php
+        QRMS_Admin::render_hub( [
+            'title'  => 'Restoran Menü',
+            'intro'  => 'Menünüzle ilgili her iş burada. Ne yapmak istiyorsanız kartına dokunun.',
+            // Modülün marka vurgusu (frontend menü temasıyla aynı altın).
+            'accent' => '#c9a84c',
+            'cards'  => $this->get_hub_cards(),
+        ] );
     }
 
     public function register_settings() {

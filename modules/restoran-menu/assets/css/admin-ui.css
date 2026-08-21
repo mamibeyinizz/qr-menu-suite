@@ -119,65 +119,6 @@
 }
 
 /* ---------------------------------------------------------------
-   BAŞLANGIÇ EKRANI — "Restoran Menü" kartları
---------------------------------------------------------------- */
-.rma-hub-grid {
-    display: grid;
-    gap: 14px;
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-    max-width: 900px;
-}
-
-.rma-admin .rma-hub-card {
-    align-items: flex-start;
-    background: var(--rma-a-surface);
-    border: 1px solid var(--rma-a-border);
-    border-radius: var(--rma-a-radius);
-    color: var(--rma-a-text);
-    display: flex;
-    gap: 14px;
-    min-height: 88px;
-    padding: 18px 20px;
-    text-decoration: none;
-    transition: border-color .18s, transform .18s, box-shadow .18s;
-}
-
-.rma-admin .rma-hub-card:hover,
-.rma-admin .rma-hub-card:focus {
-    border-color: var(--rma-a-accent);
-    box-shadow: 0 4px 20px rgba(201, 168, 76, .14);
-    color: var(--rma-a-text);
-    transform: translateY(-1px);
-}
-
-.rma-hub-icon {
-    color: var(--rma-a-accent);
-    flex-shrink: 0;
-    font-size: 22px;
-    height: 22px;
-    width: 22px;
-}
-
-.rma-hub-body {
-    min-width: 0;
-}
-
-.rma-hub-title {
-    color: var(--rma-a-text);
-    display: block;
-    font-size: 15px;
-    font-weight: 600;
-}
-
-.rma-hub-desc {
-    color: var(--rma-a-muted);
-    display: block;
-    font-size: 12.5px;
-    line-height: 1.55;
-    margin-top: 5px;
-}
-
-/* ---------------------------------------------------------------
    BÖLÜM KISAYOLLARI — "Diğer Ayarlar" sayfası
 --------------------------------------------------------------- */
 .rma-anchor-nav {
@@ -1266,7 +1207,6 @@
         max-width: 100%;
     }
 
-    .rma-hub-grid,
     .rma-theme-grid,
     .rma-choice-grid {
         grid-template-columns: 1fr;
@@ -1309,10 +1249,6 @@
 
     .rma-card {
         padding: 16px 12px;
-    }
-
-    .rma-admin .rma-hub-card {
-        padding: 16px 14px;
     }
 }
 

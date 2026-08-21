@@ -3,28 +3,33 @@ if (!defined('ABSPATH')) exit;
 
 // 2. YÖNETİM SAYFALARI — KAYIT DEFTERİ, ADRESLER, ESKİ ADRES YÖNLENDİRMELERİ
 //
-// Suite'e taşınırken modülün kendi "QR Yorumlar" üst menüsü kaldırıldı: yedi
-// ekranın tamamı artık "QR Menü" menüsünün doğrudan alt satırı. Menü kaydının
-// kendisi module.php'de yapılır (suite entegrasyonu orada durur); burada
-// yalnızca sayfaların TANIMI, adres üretimi ve eski adres haritası vardır.
+// Suite'e taşınırken modülün kendi "QR Yorumlar" üst menüsü kaldırıldı: sol
+// menüde yalnızca "Yorum & Feedback" satırı var, yedi ekrana o satırın açtığı
+// hub ekranındaki kartlardan gidiliyor. Sayfa kaydının kendisi module.php'de
+// yapılır (suite entegrasyonu orada durur); burada yalnızca sayfaların TANIMI,
+// adres üretimi ve eski adres haritası vardır.
 //
-// Sayfa tanımı tek yerde (qrm_pro_admin_pages) durur; menü satırları, başlangıç
-// ekranındaki kartlar ve varlık kuyruğunun "bu benim sayfam mı" kontrolü aynı
-// listeden beslenir — restoran-menu modülündeki get_subpages() deseninin aynısı.
+// Sayfa tanımı tek yerde (qrm_pro_admin_pages) durur; sayfa kayıtları, hub
+// kartları ve varlık kuyruğunun "bu benim sayfam mı" kontrolü aynı listeden
+// beslenir — restoran-menu modülündeki get_subpages() deseninin aynısı.
 //
-// ÖNEMLİ (v4.2.0'daki 403 hatasının dersi): Bir admin sayfası ASLA
-// add_submenu_page() ile kaydedilip sonra remove_submenu_page() ile menüden
+// ÖNEMLİ (v4.2.0'daki 403 hatasının dersi): Bir admin sayfası ASLA `admin_menu`
+// sırasında add_submenu_page() ile kaydedilip remove_submenu_page() ile menüden
 // çıkarılmamalı. WordPress, admin.php?page=X isteklerinde üst menüyü $submenu
-// dizisini tarayarak bulur (get_admin_page_parent()); satır kaldırılınca parent
-// boş kalır, hook adı hesaplanamaz ve WordPress "bu sayfaya erişmenize izin
-// verilmiyor" der. Bu yüzden gizli sayfa yoktur: her satır gerçek bir sayfadır,
+// dizisini tarayarak bulur (get_admin_page_parent()); satır o anda kaldırılmışsa
+// parent boş kalır, hook adı hesaplanamaz ve WordPress "bu sayfaya erişmenize
+// izin verilmiyor" der. Bu yüzden her satır gerçek bir sayfa olarak kayıtlıdır;
 // düzenleyici gibi ara ekranlar ise kayıtlı bir sayfanın görünümüdür (view).
+//
+// Sayfaların sol menüde GÖRÜNMEMESİ ayrı bir iştir ve suite tarafından, route
+// çözüldükten sonra (`admin_head`) yapılır — bkz.
+// QRMS_Admin::hide_module_subpages(). Modül burada hiçbir şey gizlemez.
 
 /**
  * Modülün yönetim sayfaları — tek kaynak.
  *
- * Sıra, menüdeki sırayı belirler. `render` her sayfanın tek callback'idir;
- * `desc` ve `icon` yalnızca başlangıç ekranındaki kartlarda kullanılır.
+ * Sıra, hub ekranındaki kart sırasını belirler. `render` her sayfanın tek
+ * callback'idir; `desc` ve `icon` hub kartlarında kullanılır.
  *
  * @return array<string,array{title:string,menu_title:string,render:string,desc:string,icon:string}>
  */
@@ -111,16 +116,6 @@ function qrm_pro_hub_slug() {
 function qrm_pro_admin_url($slug, $args = []) {
     $args = array_merge(['page' => $slug], $args);
     return admin_url('admin.php?' . http_build_query($args));
-}
-
-/**
- * Bir sayfanın modüle ait olup olmadığı (hub dahil).
- *
- * @param string $page Sayfa slug'ı.
- * @return bool
- */
-function qrm_pro_is_module_page($page) {
-    return $page === qrm_pro_hub_slug() || array_key_exists($page, qrm_pro_admin_pages());
 }
 
 /**
@@ -218,9 +213,8 @@ function qrm_pro_legacy_page_target($page, $args = []) {
 /**
  * Menü rozetlerinin kaynağı — okunmamış form gönderimi ve eksik ödül kurulumu.
  *
- * Rozetler artık YALNIZCA ilgili alt satırda gösterilir. Kaynakta hem üst menüde
- * hem alt satırda aynı rozet basılıyordu; suite menüsünde bu, aynı bilginin iki
- * kez görünmesi demekti.
+ * Tek kaynak: hem sol menüdeki "Yorum & Feedback" satırı hem de hub
+ * ekranındaki kartlar buradan beslenir.
  *
  * @return array{formlar:int,odul:bool}
  */
@@ -243,20 +237,24 @@ function qrm_pro_menu_badge_state() {
 }
 
 /**
- * Bir menü satırının etiketine eklenecek rozet HTML'i (yoksa boş string).
+ * Modülün sol menüdeki satırına eklenecek rozet HTML'i (yoksa boş string).
  *
- * @param string $slug Sayfa slug'ı.
+ * Ekranların kendi menü satırları kaldırıldığı (sol menü tek seviyeye indi)
+ * için rozet artık modülün TEK satırında toplanır: okunmamış form gönderimi
+ * varsa sayısı, yoksa eksik ödül kurulumu için bir ünlem. Hangi ekranın
+ * ilgilendiği hub kartlarındaki rozetlerden okunur.
+ *
  * @return string
  */
-function qrm_pro_menu_badge($slug) {
+function qrm_pro_menu_badge() {
     $state = qrm_pro_menu_badge_state();
 
-    if ($slug === 'qrms-yf-formlar' && $state['formlar'] > 0) {
+    if ($state['formlar'] > 0) {
         return ' <span class="update-plugins count-' . intval($state['formlar']) . '" title="Okunmamış form gönderimi">'
             . '<span class="update-count">' . intval($state['formlar']) . '</span></span>';
     }
 
-    if ($slug === 'qrms-yf-odul' && $state['odul']) {
+    if ($state['odul']) {
         return ' <span class="update-plugins count-1" title="Ödül popup modülü açık ama Google Yorum Linki/yönlendirme eksik">'
             . '<span class="update-count">!</span></span>';
     }

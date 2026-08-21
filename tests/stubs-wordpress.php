@@ -544,6 +544,10 @@ function add_submenu_page( $parent_slug, $page_title, $menu_title, $capability, 
 		'callback' => $callback,
 	);
 
+	// WordPress satırı $submenu dizisinde de tutar; gizleme mantığı (beyaz
+	// liste + remove_submenu_page) doğrudan bu diziyle çalışır.
+	$GLOBALS['submenu'][ $parent_slug ][] = array( $menu_title, $capability, $menu_slug, $page_title );
+
 	return $parent_slug . '_page_' . $menu_slug;
 }
 
@@ -565,7 +569,27 @@ function remove_submenu_page( $parent_slug, $menu_slug ) {
 
 	$GLOBALS['qrms_test']['submenus'] = array_values( $GLOBALS['qrms_test']['submenus'] );
 
+	// Çekirdek yalnızca $submenu satırını düşürür (anahtarlar seyrek kalır);
+	// sayfa kaydı $_registered_pages'te durmaya devam eder.
+	if ( isset( $GLOBALS['submenu'][ $parent_slug ] ) ) {
+		foreach ( $GLOBALS['submenu'][ $parent_slug ] as $index => $row ) {
+			if ( isset( $row[2] ) && $menu_slug === $row[2] ) {
+				unset( $GLOBALS['submenu'][ $parent_slug ][ $index ] );
+			}
+		}
+	}
+
 	return true;
+}
+
+/**
+ * Yayın için güvenli HTML (testte metin aynen döner).
+ *
+ * @param string $html HTML.
+ * @return string
+ */
+function wp_kses_post( $html ) {
+	return $html;
 }
 
 /**
