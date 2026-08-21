@@ -1,16 +1,28 @@
 /**
  * QR Çalışma Saatleri — kısa kod.
  *
- * Renkler CSS özel değişkeninden okunur; değerleri yönetim ekranındaki renk
- * ayarları kapsayıcıya satır içi olarak basar (bkz. includes/renkler.php).
- * Her var() BUGÜNKÜ sabit değeri geri düşüş olarak taşır: hiçbir renk
- * seçilmemişken çıktı, renk ayarı eklenmeden önceki çıktının aynısıdır.
+ * Renkler ve yazı tipi CSS özel değişkeninden okunur; değerleri yönetim
+ * ekranındaki görünüm ayarları kapsayıcıya satır içi olarak basar (bkz.
+ * includes/renkler.php). Her var() BUGÜNKÜ sabit değeri geri düşüş olarak
+ * taşır: hiçbir ayar seçilmemişken çıktı, ayarlar eklenmeden önceki çıktının
+ * aynısıdır.
+ *
+ * KUTU AYARLARI (zemin, çerçeve, iç boşluk) bu kuralın en hassas yeridir:
+ * "1px solid transparent" bile satırları 2px kaydırırdı. Bu yüzden kalınlık
+ * ve iç boşluk da değişkendir ve PHP onları YALNIZCA kullanıcı zemin ya da
+ * çerçeve seçtiğinde basar; seçilmemişken kutu 0 kalınlık + 0 boşlukla
+ * bugünkü çıplak listeye eşittir.
  */
 
 .qrms-cs-list {
+	background: var(--qrms-cs-bg, transparent);
+	border: var(--qrms-cs-border-width, 0) solid var(--qrms-cs-border, transparent);
+	border-radius: var(--qrms-cs-radius, 0);
+	color: var(--qrms-cs-text, inherit);
+	font-family: var(--qrms-cs-font, inherit);
 	list-style: none;
 	margin: 0;
-	padding: 0;
+	padding: var(--qrms-cs-pad, 0);
 	max-width: 420px;
 }
 
@@ -29,13 +41,16 @@
 	border-bottom: 0;
 }
 
+/* Gün adı ve saat için ayrı renk seçilmemişse genel yazı rengine, o da
+   seçilmemişse temanın rengine düşer — iç içe var() tam olarak bu zinciri
+   kurar. */
 .qrms-cs-item-day {
 	font-weight: 600;
-	color: var(--qrms-cs-day, inherit);
+	color: var(--qrms-cs-day, var(--qrms-cs-text, inherit));
 }
 
 .qrms-cs-item-hours {
-	color: var(--qrms-cs-hours, inherit);
+	color: var(--qrms-cs-hours, var(--qrms-cs-text, inherit));
 }
 
 .qrms-cs-item.is-today .qrms-cs-item-day {

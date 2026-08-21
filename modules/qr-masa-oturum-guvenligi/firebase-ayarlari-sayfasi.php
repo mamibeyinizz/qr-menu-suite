@@ -1,14 +1,18 @@
 <?php
 /**
- * Yönetim sayfası: QR Menü → QR Analiz.
+ * Yönetim sayfası: QR Menü → Güvenlik Ayarı → Firebase & Şube Ayarları.
  *
- * Modülün iki REST ucu da (analytics, create-user) çağıranın kimliğini
+ * qr-analiz'in iki REST ucu da (analytics, create-user) çağıranın kimliğini
  * QMO_Firestore üzerinden doğrular; sayfanın işi bu doğrulamanın dayandığı
  * yapılandırmayı (service account + şube kimliği + ana site bayrağı) toplamak
- * ve uçların durumunu göstermektir.
+ * ve uçların durumunu göstermektir. Ekran v1.0'da qr-analiz modülünün
+ * altındaydı: yapılandırdığı şey raporlama değil kimlik doğrulama ve şube
+ * bağlantısı olduğu için güvenlik modülüne taşındı. Fonksiyon adı ve sayfa
+ * adresi (qrms-analiz-ayarlar) korunuyor — canlı sitelerdeki bağlantılar
+ * kırılmasın.
  *
  * Alanların kendisi _qmo-ortak/firebase-ayarlari.php içindeki ortak formdan
- * gelir: aynı üç option'ı qr-chatbot da kullanır ve iki modül bağımsız
+ * gelir: aynı üç option'ı qr-chatbot da kullanır ve modüller bağımsız
  * lisanslanır, bu yüzden form tek modülün altında duramaz.
  *
  * @package QR_Menu_Suite
@@ -17,7 +21,7 @@
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Analiz modülünün ayar sayfası.
+ * Firebase / şube ayar sayfası.
  *
  * @return void
  */
@@ -29,6 +33,11 @@ if ( ! function_exists( 'qmo_analiz_ayar_sayfasi' ) ) {
 
 		$hazir    = QMO_Firestore::hazir_mi();
 		$ana_site = (bool) get_option( 'qmo_ana_site', false );
+
+		// Menü analitiği AYRI bir modüldür (qr-analiz) ve bağımsız lisanslanır;
+		// bağlantı yalnızca o modül aktifken basılır, yoksa kullanıcı erişemeyeceği
+		// bir ekrana yönlendirilmiş olurdu.
+		$analiz_aktif = in_array( 'qr-analiz', QRMS_License_Client::get_active_modules(), true );
 		?>
 		<div class="wrap qmo-wrap">
 			<h1>Firebase &amp; Şube Ayarları</h1>
@@ -37,9 +46,14 @@ if ( ! function_exists( 'qmo_analiz_ayar_sayfasi' ) ) {
 
 			<p class="qmo-aciklama">
 				Bu sayfa yalnızca uygulamanın (müdür/garson paneli) kullandığı REST uçlarını yapılandırır.
-				Menüye kaç kişi baktığı, hangi ürünlerin tıklandığı ve hangi masadan geldiği
-				<a href="<?php echo esc_url( admin_url( 'admin.php?page=' . QRMS_ANALITIK_SAYFA ) ); ?>">Menü Analitiği</a>
-				ekranındadır.
+				<?php if ( $analiz_aktif ) : ?>
+					Menüye kaç kişi baktığı, hangi ürünlerin tıklandığı ve hangi masadan geldiği
+					<a href="<?php echo esc_url( QRMS_Admin::get_module_page_url( 'qr-analiz' ) ); ?>">QR Analiz</a>
+					ekranındadır.
+				<?php else : ?>
+					Menüye kaç kişi baktığı, hangi ürünlerin tıklandığı ve hangi masadan geldiği
+					QR Analiz modülünün ekranındadır.
+				<?php endif; ?>
 			</p>
 
 			<h2 class="title">REST Uçları</h2>

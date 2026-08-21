@@ -1,6 +1,6 @@
 <?php
 /**
- * QR Çalışma Saatleri — renk ayarları.
+ * QR Çalışma Saatleri — görünüm ayarları (renkler + yazı tipi).
  *
  * AYRI BİR OPTION'DA TUTULUR. Saatler `qrms_calisma_saatleri` içindedir ve
  * `qrms_cs_sanitize()` o diziyi gün anahtarlarına indirger — gün anahtarı
@@ -12,6 +12,7 @@
  * hiç basılmaz ve stylesheet'teki geri düşüş (fallback) devreye girer. Bu
  * sayede modül güncellendiğinde kimsenin sitesinin görünümü değişmez: hiçbir
  * renk seçilmemişken çıktı, renk ayarı eklenmeden önceki çıktının aynısıdır.
+ * Aynı kural yazı tipi için de geçerlidir — seçilmemişse tema fontu kalır.
  *
  * @package QR_Menu_Suite
  */
@@ -33,7 +34,25 @@ if ( ! defined( 'QRMS_CS_COLORS_OPTION' ) ) {
  */
 function qrms_cs_color_fields() {
 	return array(
-		'today'   => array(
+		'bg'       => array(
+			'label'    => __( 'Arka plan', 'qrms' ),
+			'desc'     => __( 'Listenin zemini. Boş bırakılırsa zemin olmaz, sayfanın rengi görünür.', 'qrms' ),
+			'fallback' => 'transparent',
+			'var'      => '--qrms-cs-bg',
+		),
+		'border'   => array(
+			'label'    => __( 'Kenar rengi', 'qrms' ),
+			'desc'     => __( 'Listenin çevresindeki çerçeve. Boş bırakılırsa çerçeve hiç çizilmez.', 'qrms' ),
+			'fallback' => '',
+			'var'      => '--qrms-cs-border',
+		),
+		'text'     => array(
+			'label'    => __( 'Yazı rengi', 'qrms' ),
+			'desc'     => __( 'Listenin genel yazı rengi. Gün adı ve saat için ayrı renk seçmezseniz onlar da bunu kullanır.', 'qrms' ),
+			'fallback' => '',
+			'var'      => '--qrms-cs-text',
+		),
+		'today'    => array(
 			'label'    => __( 'Bugünün vurgusu', 'qrms' ),
 			'desc'     => __( 'Listede içinde bulunulan günün adı bu renkte yazılır.', 'qrms' ),
 			'fallback' => '#c9a84c',
@@ -45,25 +64,25 @@ function qrms_cs_color_fields() {
 			'fallback' => 'transparent',
 			'var'      => '--qrms-cs-today-bg',
 		),
-		'day'     => array(
+		'day'      => array(
 			'label'    => __( 'Gün adı', 'qrms' ),
-			'desc'     => __( 'Boş bırakılırsa temanın yazı rengi kullanılır.', 'qrms' ),
+			'desc'     => __( 'Boş bırakılırsa yazı rengi (yoksa temanınki) kullanılır.', 'qrms' ),
 			'fallback' => '',
 			'var'      => '--qrms-cs-day',
 		),
-		'hours'   => array(
+		'hours'    => array(
 			'label'    => __( 'Saat metni', 'qrms' ),
-			'desc'     => __( 'Boş bırakılırsa temanın yazı rengi kullanılır.', 'qrms' ),
+			'desc'     => __( 'Boş bırakılırsa yazı rengi (yoksa temanınki) kullanılır.', 'qrms' ),
 			'fallback' => '',
 			'var'      => '--qrms-cs-hours',
 		),
-		'closed'  => array(
+		'closed'   => array(
 			'label'    => __( 'Kapalı gün', 'qrms' ),
 			'desc'     => __( '"Kapalı" yazan satırların rengi.', 'qrms' ),
 			'fallback' => '',
 			'var'      => '--qrms-cs-closed',
 		),
-		'divider' => array(
+		'divider'  => array(
 			'label'    => __( 'Satır ayracı', 'qrms' ),
 			'desc'     => __( 'Günleri ayıran ince çizgi.', 'qrms' ),
 			'fallback' => 'rgba(0, 0, 0, 0.08)',
@@ -73,10 +92,119 @@ function qrms_cs_color_fields() {
 }
 
 /**
- * Ham girdiyi geçerli hex renklere indirger.
+ * Yazı tipinin CSS değişkeni.
+ */
+if ( ! defined( 'QRMS_CS_FONT_VAR' ) ) {
+	define( 'QRMS_CS_FONT_VAR', '--qrms-cs-font' );
+}
+
+/**
+ * Seçilebilir yazı tipleri.
+ *
+ * Liste, Restoran Menü'nün Görünüm sayfasındaki seçicinin listesiyle BİREBİR
+ * aynıdır (bkz. RMA_Admin_Pages_Trait::get_font_options): restoran sahibi iki
+ * ekranda farklı fontlar görüp hangisini seçtiğini karıştırmasın. Liste orada
+ * private bir metottadır ve iki modül birbirinden bağımsız lisanslanır, bu
+ * yüzden paylaşılamaz — kopya bilinçlidir.
+ *
+ * Boş anahtar "temadan devral" seçeneğidir ve varsayılandır.
+ *
+ * @return string[]
+ */
+function qrms_cs_font_options() {
+	return array(
+		'Plus Jakarta Sans',
+		'Nunito',
+		'Inter',
+		'Nunito Sans',
+		'Cormorant Garamond',
+		'DM Sans',
+		'Playfair Display',
+		'Lato',
+		'Montserrat',
+		'Raleway',
+		'Open Sans',
+		'Roboto',
+		'Merriweather',
+		'Poppins',
+		'Georgia',
+		'serif',
+		'sans-serif',
+	);
+}
+
+/**
+ * Google Fonts'tan yüklenmesi gereken aileler.
+ *
+ * Listede olmayan seçenekler (Georgia, serif, sans-serif) sistem fontudur;
+ * dış istek yapılmaz. Aynı eşleşme restoran-menu modülünde de vardır.
+ *
+ * @return array<string,string> Font adı => css2 `family=` parametresi.
+ */
+function qrms_cs_google_font_map() {
+	return array(
+		'Plus Jakarta Sans'  => 'Plus+Jakarta+Sans:wght@400;600;700',
+		'Nunito'             => 'Nunito:wght@400;600;700',
+		'Nunito Sans'        => 'Nunito+Sans:wght@400;600;700',
+		'Inter'              => 'Inter:wght@400;600;700',
+		'Cormorant Garamond' => 'Cormorant+Garamond:wght@400;600;700',
+		'DM Sans'            => 'DM+Sans:wght@400;500;600',
+		'Playfair Display'   => 'Playfair+Display:wght@400;600;700',
+		'Lato'               => 'Lato:wght@400;700',
+		'Montserrat'         => 'Montserrat:wght@400;600;700',
+		'Raleway'            => 'Raleway:wght@400;600;700',
+		'Open Sans'          => 'Open+Sans:wght@400;600;700',
+		'Roboto'             => 'Roboto:wght@400;500;700',
+		'Merriweather'       => 'Merriweather:wght@400;700',
+		'Poppins'            => 'Poppins:wght@400;500;600;700',
+	);
+}
+
+/**
+ * Bir font seçiminin CSS `font-family` değeri.
+ *
+ * Jenerik aileler (serif/sans-serif) tırnaklanmaz; adı olanlar tırnaklanır ve
+ * arkalarına sistem geri düşüşü eklenir — font yüklenmezse yazı kaybolmaz.
+ *
+ * @param string $font Font adı.
+ * @return string Boş seçimde boş string.
+ */
+function qrms_cs_font_family( $font ) {
+	$font = (string) $font;
+
+	if ( '' === $font ) {
+		return '';
+	}
+
+	if ( 'serif' === $font || 'sans-serif' === $font ) {
+		return $font;
+	}
+
+	return "'" . $font . "', system-ui, sans-serif";
+}
+
+/**
+ * Google Fonts stil adresi (gerekmiyorsa boş).
+ *
+ * @param string $font Font adı.
+ * @return string
+ */
+function qrms_cs_google_font_url( $font ) {
+	$map = qrms_cs_google_font_map();
+
+	if ( '' === (string) $font || ! isset( $map[ $font ] ) ) {
+		return '';
+	}
+
+	return 'https://fonts.googleapis.com/css2?family=' . $map[ $font ] . '&display=swap';
+}
+
+/**
+ * Ham girdiyi geçerli hex renklere ve bilinen bir yazı tipine indirger.
  *
  * Geçersiz değer boşa düşer — yani "temadan devral"a. Böylece bozuk bir
- * girdi görünümü kırmak yerine ayarı yok saymış olur.
+ * girdi görünümü kırmak yerine ayarı yok saymış olur. Font beyaz listeyle
+ * doğrulanır: değer doğrudan CSS'e indiği için serbest metin kabul edilmez.
  *
  * @param mixed $input Ham dizi.
  * @return array<string,string>
@@ -92,11 +220,15 @@ function qrms_cs_sanitize_colors( $input ) {
 		$out[ $key ] = $hex ? $hex : '';
 	}
 
+	$font = isset( $input['font'] ) ? sanitize_text_field( (string) $input['font'] ) : '';
+
+	$out['font'] = in_array( $font, qrms_cs_font_options(), true ) ? $font : '';
+
 	return $out;
 }
 
 /**
- * Kayıtlı renkler (eksik anahtarlar boş).
+ * Kayıtlı görünüm ayarları (eksik anahtarlar boş).
  *
  * @return array<string,string>
  */
@@ -104,15 +236,26 @@ function qrms_cs_get_colors() {
 	/**
 	 * Çalışma saatleri renklerini filtreler.
 	 *
-	 * @param array $colors Sanitize edilmiş renk dizisi.
+	 * @param array $colors Sanitize edilmiş renk dizisi (+ 'font' anahtarı).
 	 */
 	return apply_filters( 'qrms_cs_colors', qrms_cs_sanitize_colors( get_option( QRMS_CS_COLORS_OPTION, array() ) ) );
 }
 
 /**
- * Seçilmiş renklerden CSS özel değişkeni bildirimleri.
+ * Kayıtlı yazı tipi (seçilmemişse boş).
  *
- * Seçilmemiş renk hiç basılmaz; stylesheet'teki geri düşüş devrede kalır.
+ * @return string
+ */
+function qrms_cs_get_font() {
+	$colors = qrms_cs_get_colors();
+
+	return isset( $colors['font'] ) ? $colors['font'] : '';
+}
+
+/**
+ * Seçilmiş renklerden ve fonttan CSS özel değişkeni bildirimleri.
+ *
+ * Seçilmemiş değer hiç basılmaz; stylesheet'teki geri düşüş devrede kalır.
  *
  * @param array|null $colors Renk dizisi; null ise kayıtlı olanlar.
  * @return string "--ad: değer; …" biçiminde, boşsa boş string.
@@ -133,7 +276,46 @@ function qrms_cs_color_declarations( $colors = null ) {
 		$out .= $field['var'] . ': ' . $colors[ $key ] . '; ';
 	}
 
+	$family = qrms_cs_font_family( isset( $colors['font'] ) ? $colors['font'] : '' );
+
+	if ( '' !== $family ) {
+		$out .= QRMS_CS_FONT_VAR . ': ' . $family . '; ';
+	}
+
+	$out .= qrms_cs_box_declarations( $colors );
+
 	return trim( $out );
+}
+
+/**
+ * Kutu ölçüleri — YALNIZCA görünür bir kutu istendiğinde.
+ *
+ * Zemin ya da çerçeve seçilmemişken liste bugünkü gibi çıplak durur: çerçeve
+ * kalınlığı 0, iç boşluk 0. "1px solid transparent" bile satırları kaydırır
+ * ve modül güncellemesi kimsenin sitesini oynatmamalıdır — bu yüzden ölçüler
+ * de renklerle birlikte basılır.
+ *
+ * @param array $colors Sanitize edilmiş ayarlar.
+ * @return string
+ */
+function qrms_cs_box_declarations( array $colors ) {
+	$border = ! empty( $colors['border'] );
+	$bg     = ! empty( $colors['bg'] );
+
+	if ( ! $border && ! $bg ) {
+		return '';
+	}
+
+	$out = '';
+
+	if ( $border ) {
+		$out .= '--qrms-cs-border-width: 1px; ';
+	}
+
+	// Zemin ya da çerçeve varken yazı kenara yapışmasın.
+	$out .= '--qrms-cs-pad: 12px 16px; --qrms-cs-radius: 10px; ';
+
+	return $out;
 }
 
 /**
@@ -141,7 +323,7 @@ function qrms_cs_color_declarations( $colors = null ) {
  *
  * Kurallar stylesheet'te kalır; buraya yalnızca siteye özel DEĞERLER iner.
  *
- * @return string style="..." için hazır dize (renk seçilmemişse boş).
+ * @return string style="..." için hazır dize (hiçbir ayar seçilmemişse boş).
  */
 function qrms_cs_inline_style_attr() {
 	$decl = qrms_cs_color_declarations();

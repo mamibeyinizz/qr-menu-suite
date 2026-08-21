@@ -1,6 +1,6 @@
 <?php
 /**
- * Yönetim sayfası: QR Menü → Oturum Güvenliği
+ * Yönetim sayfası: QR Menü → Güvenlik Ayarı → Oturum Limitleri
  *
  * @package QR_Menu_Official
  */
@@ -60,7 +60,7 @@ if ( ! function_exists( 'qmo_oturum_ayar_sayfasi' ) ) {
 		$opt = QMO_Oturum::OPT;
 		?>
 		<div class="wrap qmo-wrap">
-			<h1 class="qmo-baslik">QR Masa Oturum Güvenliği</h1>
+			<h1 class="qmo-baslik">Oturum Limitleri</h1>
 
 			<p class="qmo-aciklama">
 				Masa QR'ı ile giren cihazlara süreli oturum verilir. Limitler dolunca chatbot,

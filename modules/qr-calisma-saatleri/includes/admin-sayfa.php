@@ -123,10 +123,44 @@ function qrms_cs_admin_sayfasi() {
 			<?php endforeach; ?>
 
 			<div class="qrms-card qrms-cs-colors">
-				<h2 class="qrms-card-title"><?php esc_html_e( 'Renkler', 'qrms' ); ?></h2>
+				<h2 class="qrms-card-title"><?php esc_html_e( 'Görünüm', 'qrms' ); ?></h2>
 				<p class="qrms-muted">
-					<?php esc_html_e( 'Boş bıraktığınız renk temanızdan devralınır. Aşağıdaki önizleme kaydetmeden güncellenir.', 'qrms' ); ?>
+					<?php esc_html_e( 'Boş bıraktığınız renk ve yazı tipi temanızdan devralınır. Aşağıdaki önizleme kaydetmeden güncellenir.', 'qrms' ); ?>
 				</p>
+
+				<?php
+				/*
+				 * Yazı tipi listesi Restoran Menü'nün Görünüm sayfasındakiyle
+				 * BİREBİR aynıdır (bkz. qrms_cs_font_options): restoran sahibi
+				 * iki ekranda farklı listeler görüp hangisini seçtiğini
+				 * karıştırmasın.
+				 */
+				$font = isset( $colors['font'] ) ? $colors['font'] : '';
+				?>
+				<div class="qrms-field qrms-cs-font-field">
+					<label class="qrms-label" for="qrms-cs-renk-font"><?php esc_html_e( 'Yazı fontu', 'qrms' ); ?></label>
+					<select
+						id="qrms-cs-renk-font"
+						class="qrms-input qrms-cs-font-picker"
+						name="qrms_cs_renk[font]"
+						data-css-var="<?php echo esc_attr( QRMS_CS_FONT_VAR ); ?>"
+					>
+						<option value=""<?php selected( '', $font ); ?>><?php esc_html_e( 'Temadan devral', 'qrms' ); ?></option>
+						<?php foreach ( qrms_cs_font_options() as $secenek ) : ?>
+							<option
+								value="<?php echo esc_attr( $secenek ); ?>"
+								data-family="<?php echo esc_attr( qrms_cs_font_family( $secenek ) ); ?>"
+								data-google="<?php echo esc_attr( qrms_cs_google_font_url( $secenek ) ); ?>"
+								<?php selected( $secenek, $font ); ?>
+							>
+								<?php echo esc_html( $secenek ); ?>
+							</option>
+						<?php endforeach; ?>
+					</select>
+					<p class="qrms-help">
+						<?php esc_html_e( 'Listedeki adlandırılmış yazı tipleri ön yüzde Google Fonts üzerinden yüklenir; Georgia, serif ve sans-serif sistem yazı tipidir, dış istek yapılmaz.', 'qrms' ); ?>
+					</p>
+				</div>
 
 				<div class="qrms-cs-color-grid">
 					<?php foreach ( $fields as $key => $field ) : ?>
@@ -157,7 +191,7 @@ function qrms_cs_admin_sayfasi() {
 		<div class="qrms-card qrms-cs-preview-card">
 			<h2 class="qrms-card-title"><?php esc_html_e( 'Canlı Önizleme', 'qrms' ); ?></h2>
 			<p class="qrms-muted">
-				<?php esc_html_e( 'Müşterinin sayfada göreceği liste. Saat, kapalı gün ve renk değişiklikleri kaydetmeden burada görünür.', 'qrms' ); ?>
+				<?php esc_html_e( 'Müşterinin sayfada göreceği liste. Saat, kapalı gün, renk ve yazı tipi değişiklikleri kaydetmeden burada görünür.', 'qrms' ); ?>
 			</p>
 			<?php
 			/*

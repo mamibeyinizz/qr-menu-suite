@@ -67,7 +67,7 @@ bir bilgilendirme notice'ı gösterilir.
 | `qr-ceviri` | QR Çeviri |
 | `qr-chatbot` | QR Chatbot |
 | `qr-calisma-saatleri` | QR Çalışma Saatleri |
-| `qr-masa-oturum-guvenligi` | QR Masa Oturum Güvenliği |
+| `qr-masa-oturum-guvenligi` | Güvenlik Ayarı |
 | `qr-acilis-ekrani` | Açılış Ekranı |
 
 Bir modül eklemek için `modules/<slug>/module.php` dosyası oluşturmak ve
@@ -88,12 +88,12 @@ QR Menü
 ├ Restoran Menü                 → hub (8 kart)
 ├ Yorum & Feedback              → hub (7 kart + özet sayaçlar)
 ├ QR Masa                       → doğrudan Masalar ekranı
-├ QR Analiz                     → hub (2 kart)
+├ QR Analiz                     → doğrudan Menü Analitiği
 ├ QR Galeri                     → hub (3 kart)
 ├ QR Çeviri                     → doğrudan Çeviri ekranı
 ├ QR Chatbot                    → doğrudan Chatbot ayarları
 ├ QR Çalışma Saatleri           → doğrudan Saat tablosu
-├ QR Masa Oturum Güvenliği      → doğrudan Oturum limitleri
+├ Güvenlik Ayarı                → hub (2 kart)
 ├ Kısa Kodlar                   → modüllerin kısa kod rehberi
 └ Genel Ayarlar
 ```
@@ -259,10 +259,10 @@ bir kısa kod rehbere eklenmezse düşer.
 | `restoran-menu` | `rma_menu_item` CPT, `[restaurant_menu]`, `[qmo_one_cikan_slider]`, Elementor widget'ı | ✔ Hub + sekiz ekran |
 | `yorum-feedback` | Çoklu kriter yorumlar, Google yönlendirme + ödül kodları, dinamik form oluşturucu, `[qr_menu_reviews]`, `[qr_menu_contact]`, `[qr_menu_form]` | ✔ Hub + yedi ayrı sayfa |
 | `qr-masa` | Masa kayıtları (CRUD + toplu oluşturma), masa QR adresleri, `[qr_aktif_masa]` | ✔ Masalar ekranı |
-| `qr-masa-oturum-guvenligi` | Sahte QR reddi, kilit ekranı, sayfa kilidi | ✔ Oturum limitleri |
+| `qr-masa-oturum-guvenligi` | Sahte QR reddi, kilit ekranı, sayfa kilidi; uygulamanın REST uçlarının Firebase/şube yapılandırması | ✔ Hub + Oturum Limitleri / Firebase & Şube Ayarları |
 | `qr-galeri` | Galeri CPT, bölümler, görseller | ✔ Hub + Bölümler / Görseller / Ayarlar |
 | `qr-ceviri` | Çok dilli metin tarama, sözlük, CSV içe/dışa aktarma | ✔ Çeviri ekranı |
-| `qr-analiz` | Menü analitiği (masa bazlı görüntüleme/tıklama takibi, panel); `POST /wp-json/qrservis/v1/analytics` — şube analitiği özeti; `POST /wp-json/qrservis/v1/create-user` — garson/müdür hesabı açma (yalnızca ana sitede) | ✔ Hub + Menü Analitiği / Firebase & Şube Ayarları |
+| `qr-analiz` | Menü analitiği (masa bazlı görüntüleme/tıklama takibi, panel); `POST /wp-json/qrservis/v1/analytics` — şube analitiği özeti; `POST /wp-json/qrservis/v1/create-user` — garson/müdür hesabı açma (yalnızca ana sitede) | ✔ Menü Analitiği (tek ekran) |
 | `qr-chatbot` | `[gemini_chatbot]`, garson/hesap buton kısa kodları, Gemini AJAX ucu, sipariş ucu (`POST /wp-json/qrservis/v1/order`) | ✔ Chatbot ayarları + Firebase ayarları |
 | `qr-acilis-ekrani` | Ana sayfada tam ekran açılış: logo şeridi, arkaplan görseli, CTA + rozetler, wifi penceresi, sosyal hesaplar, ödeme yöntemleri. Kısa kodu yoktur | ✔ Hub + dört ayrı sayfa |
 
@@ -281,7 +281,7 @@ dosyalarına dokunuldu (bkz. *Modül menüleri*). İş mantığı — ön yüz, 
 (`gemini_*` alanları, renk şablonları, canlı önizleme) `qr-chatbot`
 altındadır; her iki modülün de ihtiyaç duyduğu Firebase/şube alanları
 `_qmo-ortak/firebase-ayarlari.php` içindeki ortak bölümdedir ve iki ekranda
-da görünür. Option adları değişmedi — canlı sitelerdeki kayıtlı değerler
+(Chatbot ayarları + Güvenlik Ayarı → Firebase & Şube Ayarları) da görünür. Option adları değişmedi — canlı sitelerdeki kayıtlı değerler
 (`qmo_firebase_sa` / `qmo_branch_id`, `gemini_api_key` vb.) korunur.
 
 Chatbot ayar sayfası (`includes/admin/admin-sayfa.php`) Gemini, görünüm ve
@@ -375,22 +375,35 @@ görünümüne döner; `pointer: coarse` altında çipler, alanlar ve butonlar e
 44px olur, alanların yazı boyutu 16px'e çıkar (iOS Safari'nin yakınlaştırmasını
 engeller).
 
-**Panel.** "QR Menü → QR Analiz" satırı iki kartlık bir hub açar: **Menü
-Analitiği** (`qrms-analiz-panel`) ve **Firebase & Şube Ayarları**
-(`qrms-analiz-ayarlar`). Ayar ekranı v1.0'da modül satırının kendisiydi; hub
-oraya gelince kendi slug'ına taşındı — eski adres kırılmaz, hub'ı açar.
-Dönem sekmeleri
-saatlik / günlük / haftalık / aylık ve **Masalara Göre**'dir; bunların yanında
-tüm ekranı tek bir masaya daraltan masa filtresi vardır (o masanın kartları,
-grafiği ve en çok tıklanan ürünleri). "Verileri Sil" filtre açıkken yalnızca
-o masanın kayıtlarını siler. CSV indirme ekranda ne görünüyorsa onu verir:
-masalar sekmesinde masa özeti, diğerlerinde ürün listesi.
+**Panel.** "QR Menü → QR Analiz" satırı **doğrudan** Menü Analitiği ekranını
+açar; modülün tek ekranı odur, hub yoktur. (v1.0'da satır iki kartlık bir hub
+açardı; ikinci kart olan **Firebase & Şube Ayarları** güvenlik modülüne
+taşındı — yapılandırdığı şey raporlama değil kimlik doğrulamadır. Ekranın
+adresi `qrms-analiz-ayarlar` olarak korundu.) Panelin eski adresi
+`qrms-analiz-panel` gizli sayfa olarak kayıtlı kalır ve modül satırına
+yönlendirir — yer imleri kırılmaz.
+
+**Kategoriler.** Veriler tek bir chip şeridiyle altı kategoriye bölünür:
+saatlik / günlük / haftalık / aylık, **Masalara Göre** ve **En Çok
+Tıklananlar**. Her seferinde yalnızca seçili kategorinin bölümü görünür, yani
+ekran bir tablo yığınına dönüşmez. Zaman kategorileri verinin penceresini,
+masa ve ürün kesitleri aynı pencerenin farklı görünümünü verir; ürün kesitinin
+kendi dönem seçicisi vardır ve zaman kategorisiyle eşleşir. Sunucu her yanıtta
+grafiği, masaları ve ürünleri birlikte döndürdüğü için yanıtlar dönem+masa
+anahtarıyla önbelleğe alınır: aynı pencerede kategori değiştirmek yeni istek
+doğurmaz. "Yenile" ve kayıt silme önbelleği düşürür.
+
+Şeridin altında tüm ekranı tek bir masaya daraltan masa filtresi vardır (o
+masanın kartları, grafiği ve en çok tıklanan ürünleri). "Verileri Sil" filtre
+açıkken yalnızca o masanın kayıtlarını siler. CSV indirme ekranda ne
+görünüyorsa onu verir: masalar kategorisinde masa özeti, diğerlerinde ürün
+listesi.
 
 Panel mobil önceliklidir (restoran sahibi telefondan bakar): kartlar dar
 ekranda alt alta dizilir, tablolar 660px altında kart görünümüne döner
-(başlıklar `data-label` ile hücrelerin soluna geçer), sekme çubuğu ve grafik
-yatay kayar, dokunmatik cihazlarda (`pointer: coarse`) tıklama hedefleri
-44px'e çıkar — `restoran-menu` yönetim ekranlarıyla aynı yaklaşım.
+(başlıklar `data-label` ile hücrelerin soluna geçer), kategori şeridi ve
+grafik yatay kayar, dokunmatik cihazlarda (`pointer: coarse`) tıklama
+hedefleri 44px'e çıkar — `restoran-menu` yönetim ekranlarıyla aynı yaklaşım.
 
 `restoran-menu`'nün ürün, kategori ve ayar ekranlarının tamamı suite menüsünün
 altındadır — eklenti artık ayrı bir top-level "Menü" menüsü açmaz. Sol menüde
@@ -555,7 +568,7 @@ Testler kuralı üç yerden koruyor: satır içi ölçülerin geri gelmediği,
 hücrelerin `data-label` taşıdığı ve dokunma yüksekliğinin 44px'in altına
 düşmediği doğrulanır.
 
-### QR Çalışma Saatleri — renkler ve canlı önizleme
+### QR Çalışma Saatleri — görünüm ayarları ve canlı önizleme
 
 Modülün görünümü stylesheet'teki sabit renklerden geliyordu (bugünün vurgusu
 `#c9a84c`, satır ayracı `rgba(0,0,0,.08)`) ve yönetim ekranında saatlerin
@@ -573,15 +586,36 @@ basılmaz; stylesheet'teki `var(--qrms-cs-today, #c9a84c)` geri düşüşü devr
 kalır. Bu yüzden modül güncellendiğinde hiçbir sitenin görünümü değişmez —
 testi de var ("hiç renk seçilmemişken çıktı eskisiyle birebir aynıdır").
 
-Altı alan: bugünün vurgusu, bugünün satır zemini, gün adı, saat metni, kapalı
-gün, satır ayracı. Alan işaretlemesi restoran-menu'nün renk seçicisiyle aynı
-(`data-default-color` taşıyan metin kutusu + `wpColorPicker`).
+Dokuz renk alanı: **arka plan**, **kenar rengi**, **yazı rengi**, bugünün
+vurgusu, bugünün satır zemini, gün adı, saat metni, kapalı gün, satır ayracı.
+Alan işaretlemesi restoran-menu'nün renk seçicisiyle aynı
+(`data-default-color` taşıyan metin kutusu + `wpColorPicker`). Gün adı ve saat
+için ayrı renk seçilmemişse iç içe `var()` zinciriyle önce genel yazı rengine,
+o da yoksa temaya düşerler.
+
+**Kutu ölçüleri renklerle birlikte basılır.** Çerçeve kalınlığı (`1px`), iç
+boşluk ve köşe yuvarlaması da CSS değişkenidir ve PHP onları yalnızca zemin ya
+da kenar rengi seçildiğinde yazar. Sebebi "boş renk = devral" kuralının aynısı:
+`1px solid transparent` bile satırları kaydırır, yani seçilmemiş bir ayar
+görünümü oynatmış olurdu. JS'teki önizleme de aynı kuralı uygular
+(`syncBox()` ↔ `qrms_cs_box_declarations()`).
+
+**Yazı tipi** aynı option'ın `font` anahtarındadır ve `--qrms-cs-font`
+değişkenine iner. Liste, Restoran Menü'nün Görünüm sayfasındaki seçicinin
+listesiyle birebir aynıdır — kopya bilinçlidir (liste orada private bir
+metottadır ve modüller bağımsız lisanslanır), ayrışmasını bir test yakalar.
+Değer doğrudan CSS'e indiği için serbest metin kabul edilmez: beyaz listede
+olmayan girdi "devral"a düşer. Adlandırılmış yazı tipleri ön yüzde Google
+Fonts'tan yüklenir (`qrms_cs_enqueue_font()`); Georgia/serif/sans-serif sistem
+fontudur ve tek bir dış istek bile yapılmaz.
 
 **Canlı önizleme kısa kodun taklidi değil, kendisidir:** `qrms_cs_shortcode()`
 yönetim ekranında da çağrılır ve ön yüzün gerçek `frontend.css`'i orada da
 kuyruğa alınır. Ayrı bir şablon tutulsaydı ikisi zamanla ayrışır ve önizleme
 yalan söylemeye başlardı. JS yalnızca hazır DOM'u günceller: saat alanı, kapalı
-kutusu ve renk seçicisi değiştikçe liste kaydetmeden yenilenir.
+kutusu, renk seçicileri ve font seçici değiştikçe liste kaydetmeden yenilenir.
+Font seçimi değişince seçilen ailenin Google Fonts stylesheet'i önizleme için
+sayfaya eklenir — restoran sahibi kaydetmeden gerçek yazı tipini görür.
 
 Saat metni iki yerde üretiliyor — sayfa açılışında PHP (`qrms_cs_format_day()`),
 değişiklikte JS. Metinlerin kendisi `wp_localize_script` ile PHP'den geçer
@@ -735,7 +769,7 @@ Sınıfın okuduğu üç option'ın (`qmo_branch_id`, `qmo_firebase_sa`,
 `qmo_ana_site`) kaydı ve ortak form bölümü `firebase-ayarlari.php`
 içindedir. Kendi ayar grubunda (`qmo_firebase_grup`) ve kendi `<form>`'unda
 durur, çünkü `options.php` gönderilen grubun *tüm* option'larını yeniden
-yazar: bölüm hem `qr-chatbot` hem `qr-analiz` ekranında göründüğü için ortak
+yazar: bölüm hem `qr-chatbot` hem `qr-masa-oturum-guvenligi` ekranında göründüğü için ortak
 bir grup paylaşsalardı birinden kaydetmek diğerinin alanlarını silerdi. Bu
 dosya `ortak.php` ile değil, ihtiyacı olan modülün `module.php`'sindeki
 `is_admin()` dalıyla yüklenir.
@@ -785,8 +819,8 @@ modules/
   restoran-menu/             Menü CPT'si, kısa kodlar, slider + hub ve sekiz yönetim ekranı
   yorum-feedback/            Yorumlar, ödül kodları, form oluşturucu + hub ve yedi yönetim sayfası
   qr-masa/                   Masa kayıtları + Masalar yönetim ekranı
-  qr-masa-oturum-guvenligi/  Masa doğrulama, kilit ekranı + oturum ayarları
-  qr-analiz/                 Menü analitiği (masa bazlı takip + panel), analitik/kullanıcı REST uçları, Firebase ayar ekranı
+  qr-masa-oturum-guvenligi/  Masa doğrulama, kilit ekranı + hub (oturum limitleri, Firebase & şube ayarları)
+  qr-analiz/                 Menü analitiği (masa bazlı takip + panel), analitik/kullanıcı REST uçları
   qr-chatbot/                Gemini chatbot, garson/hesap butonları, sohbet/çağrı/sipariş uçları + ayar ekranı
   qr-ceviri/                 Çok dilli sözlük + çeviri yönetim ekranı
   qr-galeri/                 Galeri CPT + yönetim ekranları

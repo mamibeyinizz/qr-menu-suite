@@ -22,6 +22,26 @@ function qrms_cs_register_frontend_assets() {
 }
 
 /**
+ * Seçilmiş yazı tipini Google Fonts'tan kuyruğa alır.
+ *
+ * Yalnızca ADLANDIRILMIŞ bir font seçilmişse istek yapılır: hiçbir şey
+ * seçilmemişken ya da sistem fontu (Georgia/serif/sans-serif) seçilmişken
+ * ön yüze tek bir dış istek bile eklenmez. Sürüm null'dır — Google adresi
+ * kendi sürümünü taşır, `?ver=` eklemek önbelleği bozardı.
+ *
+ * @return void
+ */
+function qrms_cs_enqueue_font() {
+	$url = qrms_cs_google_font_url( qrms_cs_get_font() );
+
+	if ( '' === $url ) {
+		return;
+	}
+
+	wp_enqueue_style( 'qrms-cs-font', $url, array(), null ); // phpcs:ignore WordPress.WP.EnqueuedResourceParameters.MissingVersion
+}
+
+/**
  * Haftalık çalışma saatleri listesi.
  *
  * @param array|string $atts Kısa kod öznitelikleri.
@@ -37,6 +57,7 @@ function qrms_cs_shortcode( $atts ) {
 	);
 
 	wp_enqueue_style( 'qrms-cs-frontend' );
+	qrms_cs_enqueue_font();
 
 	$hours  = qrms_cs_get();
 	$labels = qrms_cs_day_labels();

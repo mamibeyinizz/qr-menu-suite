@@ -2,7 +2,14 @@
 /**
  * Modül: QR Analiz (qr-analiz)
  *
- * Uygulamanın (admin/müdür paneli) konuştuğu Firebase kimlikli REST yüzeyi:
+ * Modülün TEK ekranı vardır: Menü Analitiği. Sol menüdeki "QR Analiz" satırı
+ * doğrudan o ekranı açar — hub yoktur, çünkü dallanacak ikinci bir ekran da
+ * yoktur. (v1.0'da modülün altında "Firebase & Şube Ayarları" ekranı da vardı;
+ * yapılandırdığı şey raporlama değil kimlik doğrulama olduğu için Güvenlik
+ * Ayarı modülüne taşındı — bkz. modules/qr-masa-oturum-guvenligi/module.php.)
+ *
+ * Uygulamanın (admin/müdür paneli) konuştuğu Firebase kimlikli REST yüzeyi
+ * modülün altında KALIR:
  *
  *   - `POST /wp-json/qrservis/v1/analytics`     — şube analitiği özeti.
  *   - `POST /wp-json/qrservis/v1/create-user`   — garson/müdür hesabı açma
@@ -46,16 +53,10 @@ function qrms_module_qr_analiz_init() {
 	QRMS_Analitik::init();
 
 	if ( is_admin() ) {
-		// Firebase service account / şube kimliği / ana site bayrağı: uçların
-		// dayandığı yapılandırma. Form _qmo-ortak altındadır, çünkü aynı
-		// option'ları qr-chatbot da kullanır.
-		require_once QRMS_PLUGIN_DIR . 'modules/_qmo-ortak/firebase-ayarlari.php';
-		require_once __DIR__ . '/ayarlar-sayfasi.php';
 		require_once __DIR__ . '/analitik-sayfasi.php';
 
-		// "QR Analiz" satırı, modülün iki ekranını kart olarak listeleyen hub
-		// ekranını açar; ekranların kendisi aşağıda ayrı sayfa olarak kaydedilir.
-		QRMS_Admin::register_module_page( 'qr-analiz', 'qrms_module_qr_analiz_hub' );
+		// "QR Analiz" satırı doğrudan analitik panelini açar.
+		QRMS_Admin::register_module_page( 'qr-analiz', 'qrms_analitik_sayfasi' );
 
 		add_action( 'admin_menu', 'qrms_module_qr_analiz_admin_menu', 20 );
 
@@ -64,108 +65,55 @@ function qrms_module_qr_analiz_init() {
 }
 
 /**
- * Analitik panelinin yönetim sayfası slug'ı.
+ * Analitik panelinin ESKİ yönetim sayfası slug'ı.
+ *
+ * Panel artık modül satırının kendisidir (qrms-module-qr-analiz). Bu adres
+ * yalnızca geriye dönük uyumluluk için kayıtlı kalır — yer imleri ve dış
+ * bağlantılar kırılmasın diye panele YÖNLENDİRİR. Aynı desen restoran-menu
+ * modülünde de var (bkz. get_legacy_page_map()).
  */
 const QRMS_ANALITIK_SAYFA = 'qrms-analiz-panel';
 
 /**
- * REST/Firebase ayar ekranının yönetim sayfası slug'ı.
+ * Panelin eski adresini gizli bir sayfa olarak kaydeder.
  *
- * v1.0'da bu ekran modülün kendi satırındaydı (qrms-module-qr-analiz). Sol menü
- * tek seviyeye indirilince o slug modülün hub ekranı oldu; ayar ekranı kendi
- * slug'ına taşındı. Eski adres kırılmaz — hub'ı açar, oradan bir kart uzaktadır.
- */
-const QRMS_ANALIZ_AYAR_SAYFA = 'qrms-analiz-ayarlar';
-
-/**
- * Modülün iki ekranını kaydeder — ikisi de sol menüde GİZLİDİR.
- *
- * Sol menüde yalnızca "QR Analiz" satırı durur ve hub ekranını açar; ekranlar
- * gerçek, ayrı WordPress sayfaları olarak kaydolur (bkz.
- * QRMS_Admin::hide_module_subpages).
+ * Üst menü olarak null yerine '' kullanılır: ikisi de aynı
+ * (admin_page_<slug>) hook'unu üretir ama '' PHP 8.1+ üzerinde
+ * plugin_basename() içindeki null deprecation uyarısını doğurmaz.
  *
  * @return void
  */
 function qrms_module_qr_analiz_admin_menu() {
 	global $submenu;
 
-	$parent = QRMS_Admin::MENU_SLUG;
-
 	// Modül lisansta aktif değilse "QR Analiz" satırı hiç kaydolmaz; o zaman
-	// ekranlarının da kaydedilmemesi gerekir.
-	if ( empty( $submenu[ $parent ] ) ) {
+	// eski adresinin de kaydedilmemesi gerekir.
+	if ( empty( $submenu[ QRMS_Admin::MENU_SLUG ] ) ) {
 		return;
 	}
 
-	foreach ( qrms_module_qr_analiz_sayfalar() as $slug => $page ) {
-		add_submenu_page(
-			$parent,
-			$page['title'],
-			$page['title'],
-			QRMS_Admin::CAPABILITY,
-			$slug,
-			QRMS_Admin::register_module_subpage( 'qr-analiz', $slug, $page['render'] )
-		);
-	}
-}
-
-/**
- * Modülün ekranları — TEK KAYNAK.
- *
- * Sayfa kaydı ve hub kartları aynı listeden beslenir; sıra kart sırasıdır.
- *
- * @return array<string,array{title:string,render:string,desc:string,icon:string}>
- */
-function qrms_module_qr_analiz_sayfalar() {
-	return array(
-		QRMS_ANALITIK_SAYFA      => array(
-			'title'  => __( 'Menü Analitiği', 'qrms' ),
-			'render' => 'qrms_analitik_sayfasi',
-			'desc'   => __( 'Menüye kaç kişi baktı, hangi ürünlere tıklandı, hangi masadan geldi.', 'qrms' ),
-			'icon'   => 'dashicons-chart-area',
-		),
-		QRMS_ANALIZ_AYAR_SAYFA   => array(
-			'title'  => __( 'Firebase & Şube Ayarları', 'qrms' ),
-			'render' => 'qmo_analiz_ayar_sayfasi',
-			'desc'   => __( 'Uygulamanın (müdür/garson paneli) kullandığı REST uçlarının yapılandırması.', 'qrms' ),
-			'icon'   => 'dashicons-admin-generic',
-		),
+	add_submenu_page(
+		'',
+		__( 'Menü Analitiği', 'qrms' ),
+		__( 'Menü Analitiği', 'qrms' ),
+		QRMS_Admin::CAPABILITY,
+		QRMS_ANALITIK_SAYFA,
+		'qrms_module_qr_analiz_eski_adresi_yonlendir'
 	);
 }
 
 /**
- * "QR Analiz" satırının açtığı hub ekranı.
+ * Eski panel adresinden modül satırına yönlendirir.
  *
  * @return void
  */
-function qrms_module_qr_analiz_hub() {
-	$cards = array();
-
-	foreach ( qrms_module_qr_analiz_sayfalar() as $slug => $page ) {
-		$cards[] = array(
-			'url'   => admin_url( 'admin.php?page=' . $slug ),
-			'title' => $page['title'],
-			'desc'  => $page['desc'],
-			'icon'  => $page['icon'],
-		);
-	}
-
-	QRMS_Admin::render_hub(
-		array(
-			'title' => __( 'QR Analiz', 'qrms' ),
-			'intro' => __( 'Menü hareketlerinizin raporu ve uygulamanın bağlandığı uçların ayarları.', 'qrms' ),
-			'cards' => $cards,
-		)
-	);
+function qrms_module_qr_analiz_eski_adresi_yonlendir() {
+	wp_safe_redirect( QRMS_Admin::get_module_page_url( 'qr-analiz' ) );
+	exit;
 }
 
 /**
- * Modülün ekranlarının yönetim varlıkları.
- *
- * Yalnızca bu modülün kendi sayfaları render edilirken yüklenir; ayar
- * ekranındaki ortak admin stili durum rozetlerini (qmo-durum-ok /
- * qmo-durum-eksik) biçimlendirir. Hub ekranının stili suite'in ortak
- * admin.css'inden gelir, burada bir şey gerekmez.
+ * Modülün ekranının yönetim varlıkları.
  *
  * @return void
  */
@@ -173,21 +121,11 @@ function qrms_module_qr_analiz_admin_assets() {
 	// phpcs:ignore WordPress.Security.NonceVerification.Recommended
 	$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '';
 
-	if ( QRMS_ANALITIK_SAYFA === $page ) {
-		qrms_module_qr_analiz_panel_assets();
+	if ( QRMS_Admin::get_module_page_slug( 'qr-analiz' ) !== $page ) {
 		return;
 	}
 
-	if ( QRMS_ANALIZ_AYAR_SAYFA !== $page ) {
-		return;
-	}
-
-	wp_enqueue_style(
-		'qmo-admin',
-		QRMS_PLUGIN_URL . 'modules/_qmo-ortak/assets/css/admin.css',
-		array(),
-		QRMS_Helpers::asset_version( 'modules/_qmo-ortak/assets/css/admin.css' )
-	);
+	qrms_module_qr_analiz_panel_assets();
 }
 
 /**
