@@ -74,6 +74,10 @@ function qrms_module_qr_calisma_saatleri_admin_assets() {
 	qrms_cs_register_frontend_assets();
 	wp_enqueue_style( 'qrms-cs-frontend' );
 
+	// Kayıtlı yazı tipi önizlemede de gerçek fontuyla görünsün. Seçici
+	// değiştirildiğinde yeni fontun stylesheet'ini JS ekler (bkz. admin.js).
+	qrms_cs_enqueue_font();
+
 	wp_enqueue_style( 'wp-color-picker' );
 
 	wp_enqueue_style(

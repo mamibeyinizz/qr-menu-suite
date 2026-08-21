@@ -50,6 +50,18 @@ if ( ! function_exists( 'qrms_analitik_sayfasi' ) ) {
 				</div>
 
 				<div class="qrms-an-header-actions">
+					<?php
+					/*
+					 * CSV, kategori bölümlerinin DIŞINDA durur: indirilen dosya
+					 * ekranda ne görünüyorsa odur (masalar kategorisinde masa
+					 * özeti, diğerlerinde ürün listesi), bu yüzden düğmenin
+					 * yalnızca tek bir kategoride görünmesi indirmenin bir
+					 * kısmını erişilemez kılardı.
+					 */
+					?>
+					<a id="qrms-an-csv" class="qrms-an-btn" href="<?php echo esc_url( $csv_url ); ?>">
+						<span aria-hidden="true">⬇</span> <?php esc_html_e( 'CSV indir', 'qrms' ); ?>
+					</a>
 					<button type="button" id="qrms-an-refresh" class="qrms-an-btn">
 						<span aria-hidden="true">↻</span> <?php esc_html_e( 'Yenile', 'qrms' ); ?>
 					</button>
@@ -160,10 +172,6 @@ if ( ! function_exists( 'qrms_analitik_sayfasi' ) ) {
 							<option value="weekly"><?php esc_html_e( 'Son 12 hafta', 'qrms' ); ?></option>
 							<option value="monthly"><?php esc_html_e( 'Son 12 ay', 'qrms' ); ?></option>
 						</select>
-
-						<a id="qrms-an-csv" class="qrms-an-btn qrms-an-btn-small" href="<?php echo esc_url( $csv_url ); ?>">
-							<span aria-hidden="true">⬇</span> <?php esc_html_e( 'CSV indir', 'qrms' ); ?>
-						</a>
 					</div>
 				</div>
 				<div id="qrms-an-products">

@@ -56,8 +56,22 @@
 }
 
 /* ---------------------------------------------------------------------------
-   Renk alanları
+   Görünüm alanları (yazı tipi + renkler)
    ------------------------------------------------------------------------ */
+
+/* Font seçici renk ızgarasının ÜSTÜNDE, tam genişlikte durur: yazı tipi
+   listenin tamamını etkiler, tek bir öğenin rengi gibi değildir. */
+.qrms-cs-font-field {
+	margin: 0 0 16px;
+}
+
+.qrms-cs-font-picker {
+	/* 16px: iOS Safari daha küçük yazıda alanı yakınlaştırır. */
+	font-size: 16px;
+	max-width: 100%;
+	min-height: 44px;
+	width: 100%;
+}
 
 .qrms-cs-color-grid {
 	display: grid;

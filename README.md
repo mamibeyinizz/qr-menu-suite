@@ -568,7 +568,7 @@ Testler kuralı üç yerden koruyor: satır içi ölçülerin geri gelmediği,
 hücrelerin `data-label` taşıdığı ve dokunma yüksekliğinin 44px'in altına
 düşmediği doğrulanır.
 
-### QR Çalışma Saatleri — renkler ve canlı önizleme
+### QR Çalışma Saatleri — görünüm ayarları ve canlı önizleme
 
 Modülün görünümü stylesheet'teki sabit renklerden geliyordu (bugünün vurgusu
 `#c9a84c`, satır ayracı `rgba(0,0,0,.08)`) ve yönetim ekranında saatlerin
@@ -586,15 +586,36 @@ basılmaz; stylesheet'teki `var(--qrms-cs-today, #c9a84c)` geri düşüşü devr
 kalır. Bu yüzden modül güncellendiğinde hiçbir sitenin görünümü değişmez —
 testi de var ("hiç renk seçilmemişken çıktı eskisiyle birebir aynıdır").
 
-Altı alan: bugünün vurgusu, bugünün satır zemini, gün adı, saat metni, kapalı
-gün, satır ayracı. Alan işaretlemesi restoran-menu'nün renk seçicisiyle aynı
-(`data-default-color` taşıyan metin kutusu + `wpColorPicker`).
+Dokuz renk alanı: **arka plan**, **kenar rengi**, **yazı rengi**, bugünün
+vurgusu, bugünün satır zemini, gün adı, saat metni, kapalı gün, satır ayracı.
+Alan işaretlemesi restoran-menu'nün renk seçicisiyle aynı
+(`data-default-color` taşıyan metin kutusu + `wpColorPicker`). Gün adı ve saat
+için ayrı renk seçilmemişse iç içe `var()` zinciriyle önce genel yazı rengine,
+o da yoksa temaya düşerler.
+
+**Kutu ölçüleri renklerle birlikte basılır.** Çerçeve kalınlığı (`1px`), iç
+boşluk ve köşe yuvarlaması da CSS değişkenidir ve PHP onları yalnızca zemin ya
+da kenar rengi seçildiğinde yazar. Sebebi "boş renk = devral" kuralının aynısı:
+`1px solid transparent` bile satırları kaydırır, yani seçilmemiş bir ayar
+görünümü oynatmış olurdu. JS'teki önizleme de aynı kuralı uygular
+(`syncBox()` ↔ `qrms_cs_box_declarations()`).
+
+**Yazı tipi** aynı option'ın `font` anahtarındadır ve `--qrms-cs-font`
+değişkenine iner. Liste, Restoran Menü'nün Görünüm sayfasındaki seçicinin
+listesiyle birebir aynıdır — kopya bilinçlidir (liste orada private bir
+metottadır ve modüller bağımsız lisanslanır), ayrışmasını bir test yakalar.
+Değer doğrudan CSS'e indiği için serbest metin kabul edilmez: beyaz listede
+olmayan girdi "devral"a düşer. Adlandırılmış yazı tipleri ön yüzde Google
+Fonts'tan yüklenir (`qrms_cs_enqueue_font()`); Georgia/serif/sans-serif sistem
+fontudur ve tek bir dış istek bile yapılmaz.
 
 **Canlı önizleme kısa kodun taklidi değil, kendisidir:** `qrms_cs_shortcode()`
 yönetim ekranında da çağrılır ve ön yüzün gerçek `frontend.css`'i orada da
 kuyruğa alınır. Ayrı bir şablon tutulsaydı ikisi zamanla ayrışır ve önizleme
 yalan söylemeye başlardı. JS yalnızca hazır DOM'u günceller: saat alanı, kapalı
-kutusu ve renk seçicisi değiştikçe liste kaydetmeden yenilenir.
+kutusu, renk seçicileri ve font seçici değiştikçe liste kaydetmeden yenilenir.
+Font seçimi değişince seçilen ailenin Google Fonts stylesheet'i önizleme için
+sayfaya eklenir — restoran sahibi kaydetmeden gerçek yazı tipini görür.
 
 Saat metni iki yerde üretiliyor — sayfa açılışında PHP (`qrms_cs_format_day()`),
 değişiklikte JS. Metinlerin kendisi `wp_localize_script` ile PHP'den geçer

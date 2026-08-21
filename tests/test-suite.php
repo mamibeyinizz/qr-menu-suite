@@ -2278,6 +2278,14 @@ qrms_test(
 		qrms_assert_contains( 'aria-controls="qrms-an-cat-urunler"', $kaynak, 'ürün bölümü' );
 		qrms_assert_contains( 'id="qrms-an-cat-urunler" role="tabpanel" hidden', $kaynak, 'ürün bölümü kapalı başlar' );
 
+		// CSV kategori bölümlerinin DIŞINDADIR: indirilen dosya ekranda ne
+		// görünüyorsa odur, düğme tek bir kategoriye kapatılırsa masa özeti
+		// indirilemez olurdu.
+		qrms_assert_true(
+			strpos( $kaynak, 'id="qrms-an-csv"' ) < strpos( $kaynak, 'qrms-an-cats' ),
+			'CSV chip şeridinden önce (sayfa başlığında)'
+		);
+
 		// Panel kimlikleri JS'in aradığı kimliklerle aynı olmalı: biri
 		// değişirse kategori geçişi sessizce çalışmaz olurdu.
 		$js = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/assets/js/analitik.js' );
@@ -3668,6 +3676,129 @@ qrms_test(
 		// Önizleme ayrı bir şablon değil, kısa kodun kendisi: aynı sınıflar.
 		qrms_assert_contains( 'qrms-cs-list', $html, 'kısa kod listesi' );
 		qrms_assert_contains( 'data-day="monday"', $html, 'satırlar gün anahtarı taşır' );
+	}
+);
+
+qrms_test(
+	'yeni görünüm alanları (zemin, kenar, yazı rengi) değişkene iner',
+	function () {
+		update_option(
+			QRMS_CS_COLORS_OPTION,
+			qrms_cs_sanitize_colors(
+				array(
+					'bg'     => '#ffffff',
+					'border' => '#dddddd',
+					'text'   => '#222222',
+				)
+			)
+		);
+
+		$decl = qrms_cs_color_declarations();
+
+		qrms_assert_contains( '--qrms-cs-bg: #ffffff', $decl, 'arka plan' );
+		qrms_assert_contains( '--qrms-cs-border: #dddddd', $decl, 'kenar rengi' );
+		qrms_assert_contains( '--qrms-cs-text: #222222', $decl, 'yazı rengi' );
+
+		// Kutu ölçüleri renklerle BİRLİKTE basılır: "1px solid transparent"
+		// bile satırları kaydırırdı (bkz. frontend.css başlığı).
+		qrms_assert_contains( '--qrms-cs-border-width: 1px', $decl, 'çerçeve kalınlığı' );
+		qrms_assert_contains( '--qrms-cs-pad: 12px 16px', $decl, 'iç boşluk' );
+
+		// Yalnızca zemin seçiliyken çerçeve kalınlığı basılmaz.
+		$sadece_zemin = qrms_cs_color_declarations( qrms_cs_sanitize_colors( array( 'bg' => '#000000' ) ) );
+
+		qrms_assert_contains( '--qrms-cs-pad', $sadece_zemin, 'zemin için boşluk' );
+		qrms_assert_false( strpos( $sadece_zemin, '--qrms-cs-border-width' ), 'çerçeve istenmedi' );
+
+		// Hiçbiri seçilmemişken tek bir ölçü bile basılmaz.
+		qrms_assert_same( '', qrms_cs_color_declarations( qrms_cs_sanitize_colors( array() ) ), 'çıplak liste' );
+	}
+);
+
+qrms_test(
+	'yazı tipi beyaz listeyle doğrulanır, uydurma değer devralmaya düşer',
+	function () {
+		// Değer doğrudan CSS'e iniyor: serbest metin kabul edilemez.
+		$temiz = qrms_cs_sanitize_colors( array( 'font' => 'Poppins' ) );
+
+		qrms_assert_same( 'Poppins', $temiz['font'], 'listedeki font' );
+		qrms_assert_same(
+			'',
+			qrms_cs_sanitize_colors( array( 'font' => 'Comic Sans; color:red' ) )['font'],
+			'liste dışı değer düşer'
+		);
+
+		update_option( QRMS_CS_COLORS_OPTION, $temiz );
+
+		qrms_assert_same( 'Poppins', qrms_cs_get_font(), 'kayıtlı font' );
+		qrms_assert_contains(
+			"--qrms-cs-font: 'Poppins', system-ui, sans-serif",
+			qrms_cs_color_declarations(),
+			'font değişkeni sistem geri düşüşüyle basılır'
+		);
+
+		// Jenerik aile tırnaklanmaz; sistem fontu için dış istek yapılmaz.
+		qrms_assert_same( 'serif', qrms_cs_font_family( 'serif' ), 'jenerik aile' );
+		qrms_assert_same( '', qrms_cs_google_font_url( 'Georgia' ), 'sistem fontu' );
+		qrms_assert_same( '', qrms_cs_google_font_url( '' ), 'seçim yok' );
+		qrms_assert_contains( 'family=Poppins', qrms_cs_google_font_url( 'Poppins' ), 'Google adresi' );
+	}
+);
+
+qrms_test(
+	'font listesi Restoran Menü\'nün Görünüm sayfasıyla BİREBİR aynıdır',
+	function () {
+		// İki ekranda farklı listeler olsaydı restoran sahibi hangisini
+		// seçtiğini karıştırırdı. Liste orada private bir metotta durduğu ve
+		// modüller bağımsız lisanslandığı için kopya bilinçli — bu test
+		// kopyanın ayrışmasını yakalar.
+		$kaynak = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-admin-pages.php' );
+
+		preg_match( '/private function get_font_options\(\) \{\s*return \[(.*?)\];/s', $kaynak, $m );
+		preg_match_all( "/'([^']+)'/", $m[1], $isimler );
+
+		qrms_assert_same( $isimler[1], qrms_cs_font_options(), 'liste aynı' );
+	}
+);
+
+qrms_test(
+	'yönetim ekranı font seçicisini basar, önizleme anında yansır',
+	function () {
+		update_option( QRMS_CS_COLORS_OPTION, qrms_cs_sanitize_colors( array( 'font' => 'Lato' ) ) );
+
+		ob_start();
+		qrms_cs_admin_sayfasi();
+		$html = ob_get_clean();
+
+		qrms_assert_contains( 'name="qrms_cs_renk[font]"', $html, 'font alanı' );
+		qrms_assert_contains( 'data-css-var="--qrms-cs-font"', $html, 'değişken adı' );
+		qrms_assert_contains( 'value="Lato"', $html, 'seçenekler listelenir' );
+		qrms_assert_contains( 'data-google="https://fonts.googleapis.com/css2?family=Lato', $html, 'Google adresi' );
+
+		// Önizlemeyi JS besler: değişken önizleme listesine yazılır, Google
+		// stylesheet'i seçim değişince eklenir.
+		$js = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-calisma-saatleri/assets/js/admin.js' );
+
+		qrms_assert_contains( "getElementById('qrms-cs-renk-font')", $js, 'JS seçiciyi bulur' );
+		qrms_assert_contains( 'function loadFont(url)', $js, 'JS fontu yükler' );
+		qrms_assert_contains( 'function syncBox()', $js, 'JS kutu kuralını PHP ile eşler' );
+	}
+);
+
+qrms_test(
+	'seçilen font ön yüzde yalnızca gerektiğinde yüklenir',
+	function () {
+		update_option( QRMS_CS_COLORS_OPTION, qrms_cs_sanitize_colors( array( 'font' => 'Georgia' ) ) );
+		qrms_cs_shortcode( array() );
+		qrms_assert_same( null, qrms_ae_style( 'qrms-cs-font' ), 'sistem fontu için dış istek yok' );
+
+		update_option( QRMS_CS_COLORS_OPTION, qrms_cs_sanitize_colors( array( 'font' => 'Inter' ) ) );
+		qrms_cs_shortcode( array() );
+
+		$stil = qrms_ae_style( 'qrms-cs-font' );
+
+		qrms_assert_true( null !== $stil, 'adlandırılmış font yüklenir' );
+		qrms_assert_contains( 'family=Inter', $stil['src'], 'doğru aile' );
 	}
 );
 

@@ -3,8 +3,8 @@
  *
  * İki iş yapar:
  *   1) "Kapalı" kutusu işaretlenince o günün saat alanlarını kilitler.
- *   2) Canlı önizlemeyi besler: saat, kapalı gün ve renk değişiklikleri
- *      kaydetmeden listeye yansır.
+ *   2) Canlı önizlemeyi besler: saat, kapalı gün, renk ve yazı tipi
+ *      değişiklikleri kaydetmeden listeye yansır.
  *
  * Önizleme kısa kodun GERÇEK çıktısıdır (PHP tarafında basılır) ve gerçek
  * frontend stylesheet'ini kullanır; buradaki kod yalnızca hazır DOM'u
@@ -93,9 +93,11 @@
 
 	/* ---------------- Renkler ---------------- */
 
-	function applyColor(input, value) {
+	/**
+	 * Bir CSS değişkenini önizlemeye yazar (boş değer -> devral).
+	 */
+	function setVar(name, value) {
 		var list = previewList();
-		var name = input.getAttribute('data-css-var');
 
 		if (!list || !name) {
 			return;
@@ -108,6 +110,76 @@
 		} else {
 			list.style.removeProperty(name);
 		}
+	}
+
+	/**
+	 * Kutu ölçüleri — PHP'deki qrms_cs_box_declarations() ile AYNI kural:
+	 * çerçeve kalınlığı yalnızca kenar rengi seçilince, iç boşluk ve köşe
+	 * yuvarlaması zemin ya da kenar seçilince basılır. Kural ayrışırsa
+	 * önizleme kaydettikten sonraki görünümden farklı çıkardı.
+	 */
+	function syncBox() {
+		var bg = document.getElementById('qrms-cs-renk-bg');
+		var border = document.getElementById('qrms-cs-renk-border');
+		var bgOn = !!(bg && bg.value);
+		var borderOn = !!(border && border.value);
+
+		setVar('--qrms-cs-border-width', borderOn ? '1px' : '');
+		setVar('--qrms-cs-pad', bgOn || borderOn ? '12px 16px' : '');
+		setVar('--qrms-cs-radius', bgOn || borderOn ? '10px' : '');
+	}
+
+	function applyColor(input, value) {
+		setVar(input.getAttribute('data-css-var'), value);
+
+		// Renk seçicinin kendi değeri, wpColorPicker'ın "change" olayında
+		// henüz alana yazılmamış olabilir; kutu kuralı okunan değere değil
+		// gelen değere bakabilsin diye önce alanı eşitliyoruz.
+		input.value = value;
+
+		syncBox();
+	}
+
+	/* ---------------- Yazı tipi ---------------- */
+
+	/**
+	 * Seçilen fontun Google Fonts stylesheet'ini bir kez ekler.
+	 *
+	 * Ön yüzde bu işi PHP yapar (qrms_cs_enqueue_font); burada yalnızca
+	 * önizleme içindir: kullanıcı seçimi kaydetmeden gerçek yazı tipini
+	 * görsün. Sistem fontlarında adres boştur, istek yapılmaz.
+	 */
+	function loadFont(url) {
+		if (!url || document.querySelector('link[data-qrms-cs-font="' + url + '"]')) {
+			return;
+		}
+
+		var link = document.createElement('link');
+
+		link.rel = 'stylesheet';
+		link.href = url;
+		link.setAttribute('data-qrms-cs-font', url);
+
+		document.head.appendChild(link);
+	}
+
+	function bindFont() {
+		var select = document.getElementById('qrms-cs-renk-font');
+
+		if (!select) {
+			return;
+		}
+
+		select.addEventListener('change', function () {
+			var option = select.options[select.selectedIndex];
+
+			if (!option) {
+				return;
+			}
+
+			loadFont(option.getAttribute('data-google'));
+			setVar(select.getAttribute('data-css-var'), option.getAttribute('data-family') || '');
+		});
 	}
 
 	function bindColors() {
@@ -144,5 +216,6 @@
 		}
 
 		bindColors();
+		bindFont();
 	});
 })(jQuery);
