@@ -91,6 +91,7 @@ QR Menü
 ├ QR Chatbot                    → doğrudan Chatbot ayarları
 ├ QR Çalışma Saatleri           → doğrudan Saat tablosu
 ├ QR Masa Oturum Güvenliği      → doğrudan Oturum limitleri
+├ Kısa Kodlar                   → modüllerin kısa kod rehberi
 └ Genel Ayarlar
 ```
 
@@ -169,13 +170,53 @@ sütundur; `pointer: coarse` cihazlarda kart yüksekliği ve ikonlar büyür.
 yazı tipi yığınına ve işletim sistemine göre kutu karakterine düşebiliyor.
 Stiller `assets/css/admin.css` içindeki `.qrms-hub-*` kurallarındadır.
 
+### Kısa kod rehberi
+
+Suite genelinde dokuz dosyada dağınık `add_shortcode()` çağrısı var ve hiçbiri
+kullanıcıya ne işe yaradığını söylemiyordu. `QRMS_Shortcodes` o bilginin tek
+kaydıdır; her modül kendi init'inde bildirir:
+
+```php
+QRMS_Shortcodes::register( 'restoran-menu', array(
+    array(
+        'tag'   => 'restaurant_menu',
+        'title' => 'Restoran Menüsü',
+        'desc'  => 'Ürünlerinizi kategorilere ayrılmış, aranabilir menü olarak gösterir.',
+        'usage' => '[restaurant_menu]',              // verilmezse "[tag]" olur
+        'note'  => 'Geçerli masa oturumu gerektirir.', // opsiyonel koşul
+        'attrs' => array(
+            array( 'name' => 'show_search', 'default' => 'yes', 'desc' => 'Gizlemek için "no".' ),
+        ),
+    ),
+) );
+```
+
+Sayfa (`qrms-shortcodes`) modül bazlı bölümler hâlinde kart ızgarası basar:
+kod bloğu + **Kopyala** butonu, başlık, tek cümlelik açıklama, varsa koşul
+notu ve parametre listesi. Liste **dinamiktir** — lisansta aktif olmayan bir
+modülün init'i hiç çalışmaz, kısa kodları da rehberde görünmez. Hiç kısa kod
+yoksa menü satırı da kaydedilmez (menü kaydı ile beyaz liste aynı koşulu,
+`QRMS_Shortcodes::has_any()`, kullanır).
+
+Kopyalama `navigator.clipboard` ile yapılır; güvenli olmayan bağlamda gizli
+alan + `execCommand` yedeğine, o da başarısız olursa kodu seçili hâle
+getirmeye düşer. Kartlar masaüstünde iki sütun, 782px altında tek sütundur.
+
+Beş kısa kod (`gemini_chatbot`, üç çağrı butonu, `qr_aktif_masa`) yalnızca
+geçerli bir masa oturumu varken render edilir; kartlarında bu koşul ayrıca
+yazar — yoksa "sayfaya koydum ama görünmüyor" kaçınılmaz olurdu.
+
+Kayıt defterinin gerçekle uyumu testle korunuyor: test, kaynak ağacındaki
+`add_shortcode()` çağrılarını tarayıp bildirilen listeyle karşılaştırır, yeni
+bir kısa kod rehbere eklenmezse düşer.
+
 ### Paketlenmiş modüller
 
 | Slug | İçerik | Yönetim sayfası |
 | --- | --- | --- |
 | `restoran-menu` | `rma_menu_item` CPT, `[restaurant_menu]`, `[qmo_one_cikan_slider]`, Elementor widget'ı | ✔ Hub + sekiz ekran |
 | `yorum-feedback` | Çoklu kriter yorumlar, Google yönlendirme + ödül kodları, dinamik form oluşturucu, `[qr_menu_reviews]`, `[qr_menu_contact]`, `[qr_menu_form]` | ✔ Hub + yedi ayrı sayfa |
-| `qr-masa` | Masa kayıtları (CRUD), masa QR adresleri, `[qr_aktif_masa]` | ✔ Masalar ekranı |
+| `qr-masa` | Masa kayıtları (CRUD + toplu oluşturma), masa QR adresleri, `[qr_aktif_masa]` | ✔ Masalar ekranı |
 | `qr-masa-oturum-guvenligi` | Sahte QR reddi, kilit ekranı, sayfa kilidi | ✔ Oturum limitleri |
 | `qr-galeri` | Galeri CPT, bölümler, görseller | ✔ Hub + Bölümler / Görseller / Ayarlar |
 | `qr-ceviri` | Çok dilli metin tarama, sözlük, CSV içe/dışa aktarma | ✔ Çeviri ekranı |
@@ -236,9 +277,60 @@ karşılaştırmaz — eski kurulumlarda sütun eklenmezdi. Şema kontrolü `ini
 kancasındadır (frontend istekleri de kapsar) ve sürüm option'ı eşleştiğinde
 tek bir option okumasına iner.
 
-Eski bağımsız eklenti hâlâ etkinse modül izlemeyi kapatır (çift sayım olmaz),
-panelde bunu söyleyen bir uyarı gösterir ve veriyi aynı tablodan okumaya
-devam eder.
+Eski bağımsız eklenti hâlâ etkinse modül izlemeyi kapatır (çift sayım olmaz)
+ve veriyi aynı tablodan okumaya devam eder.
+
+**Teşhis kutusu.** "Analitikte veri yok" şikayetinin sebebi çoğu zaman
+görünmüyordu. `QRMS_Analitik::teshis()` panelin üstünde, yalnızca gerçek bir
+engel varken bir kutu basar ve her bulguyu bir **eyleme** bağlar:
+
+| Bulgu | Eylem |
+| --- | --- |
+| Eski `RMA_Analytics` eklentisi etkin — modül `wp_ajax_rma_load_items` / `rma_get_product_details` kancalarını hiç kaydetmez | Eklentinin gerçek adı + **tek tıkla devre dışı bırakma** bağlantısı |
+| Analitik tablosu veritabanında yok | Genel Ayarlar'a yönlendirme |
+| Tabloda hiç kayıt yok | "Menüyü bir kez ön yüzden açın" |
+| Kayıt var ama hiçbirinde masa yok | QR Masa'ya yönlendirme |
+
+Son madde sessiz bir veri kaybını yakalar: `masa_belirle()` → `masa_gecerli()`
+adresteki `?masa=…` slug'ını `qrm_tables`'ta arar ve **kayıtlı değilse güvenlik
+gereği yok sayar**; olay masasız yazılır ve "Masalara Göre" sekmesinde yalnızca
+"Masasız (doğrudan erişim)" görünür.
+
+Devre dışı bırakma bağlantısı WordPress'in Eklentiler ekranındakinin aynısıdır
+(aynı action, aynı nonce). Sınıfın dosyası `ReflectionClass` ile bulunur,
+`plugin_basename()` ile eklenti klasörüne indirgenir ve `active_plugins` ile
+eşleştirilir; `activate_plugins` yetkisi olmayan kullanıcıya hiç gösterilmez.
+
+### QR Masa — toplu oluşturma ve grup filtresi
+
+Masalar ekranı iki kutuyla açılır: **Tek Masa** ve **Toplu Oluştur**. Toplu
+kutusuna bir slug öneki ve numara aralığı girilir (`ic-masa`, 1–10) ve
+`ic-masa-1` … `ic-masa-10` tek seferde açılır; gönderilmeden önce hangi
+slug'ların oluşacağı canlı önizlemede yazar.
+
+Zaten var olan slug'lar **atlanır** (hata değildir), böylece aralık genişletilip
+yeniden gönderildiğinde yalnızca eksikler eklenir. Sonuç tek cümlede
+raporlanır: *"8 masa oluşturuldu. 2 tanesi zaten vardı: ic-masa-3, ic-masa-7."*
+Girdi doğrulaması (boş önek, ters aralık, tek seferde 200 masa sınırı)
+`QMO_Masalar::toplu_aralik_dogrula()` içinde, döngü başlamadan ve veritabanına
+hiç gidilmeden biter.
+
+Kritik değişmez: `ekle()` slug'ı **addan** üretir. `toplu_ad()` okunabilir bir
+ad verir ("Ic Masa 7") ama `sanitize_title()` sonucu beklenen slug'ı vermezse
+adı doğrudan slug'a düşürür — masa yanlış adreste açılıp QR kodları tutmasın
+diye. Bu değişmez testte tüm önek/numara kombinasyonları için doğrulanır.
+
+Tablonun üstündeki çipler masaları slug önekine göre filtreler (`Tümü` ·
+`ic-masa 10` · `vip 4`). Grup, slug'ın sondaki `-<sayı>` eki atılarak
+türetilir (`ic-masa-12` → `ic-masa`); tamamı sayı olan slug kendi grubudur.
+Filtreleme tamamen sayfa içidir — satırlar gösterilip gizlenir, sunucuya
+istek gitmez. Tek grup varsa çip listesi hiç basılmaz.
+
+Ekran mobil için uyarlanmıştır (`modules/qr-masa/assets/css/admin-masalar.css`):
+782px altında kutular tek sütuna iner ve tablo `data-label` başlıklarıyla kart
+görünümüne döner; `pointer: coarse` altında çipler, alanlar ve butonlar en az
+44px olur, alanların yazı boyutu 16px'e çıkar (iOS Safari'nin yakınlaştırmasını
+engeller).
 
 **Panel.** "QR Menü → QR Analiz" satırı iki kartlık bir hub açar: **Menü
 Analitiği** (`qrms-analiz-panel`) ve **Firebase & Şube Ayarları**
@@ -468,6 +560,7 @@ includes/
   class-wizard.php           Tek ekranlı kurulum sihirbazı + lisans formu
   class-module-loader.php    modules/<slug>/module.php yükleyici
   class-admin.php            Menü çatısı, tek seviyeli menü, ortak hub bileşeni, Genel Bakış, Genel Ayarlar
+  class-shortcodes.php       Kısa kod kayıt defteri ve "Kısa Kodlar" rehber ekranı
 modules/
   _qmo-ortak/                Ortak zemin (oturum sınıfı, Firestore istemcisi, helpers, varlıklar)
   restoran-menu/             Menü CPT'si, kısa kodlar, slider + hub ve sekiz yönetim ekranı

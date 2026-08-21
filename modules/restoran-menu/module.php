@@ -42,6 +42,64 @@ defined( 'ABSPATH' ) || exit;
 function qrms_module_restoran_menu_init() {
 	require_once __DIR__ . '/qr-menu.php';
 
+	// Kısa kod rehberine bildirim. add_shortcode() çağrıları dosya kapsamında
+	// (qr-menu.php, shortcode-vitrin.php, shortcode-slider.php) yapılır; rehber
+	// yalnızca bu tek kayıttan beslenir.
+	QRMS_Shortcodes::register(
+		'restoran-menu',
+		array(
+			array(
+				'tag'   => 'restaurant_menu',
+				'title' => __( 'Restoran Menüsü', 'qrms' ),
+				'desc'  => __( 'Ürünlerinizi kategorilere ayrılmış, aranabilir ve filtrelenebilir menü olarak gösterir. Menü sayfanızın ana kısa kodu budur.', 'qrms' ),
+				'attrs' => array(
+					array(
+						'name'    => 'show_search',
+						'default' => 'yes',
+						'desc'    => __( 'Arama kutusunu gizlemek için "no" yazın.', 'qrms' ),
+					),
+				),
+			),
+			array(
+				'tag'   => 'qrms_urun_vitrini',
+				'title' => __( 'Ürün Vitrini', 'qrms' ),
+				'desc'  => __( 'Seçtiğiniz ürünleri kayan bir vitrin şeridinde gösterir. Her vitrinin kendi numarası vardır.', 'qrms' ),
+				'usage' => '[qrms_urun_vitrini id="1"]',
+				'attrs' => array(
+					array(
+						'name'    => 'id',
+						'default' => '',
+						'desc'    => __( 'Vitrin numarası — Ürün Vitrini ekranından öğrenin. Zorunludur.', 'qrms' ),
+					),
+				),
+			),
+			array(
+				'tag'   => 'qmo_one_cikan_slider',
+				'title' => __( 'Öne Çıkan Slider', 'qrms' ),
+				'desc'  => __( 'Menünün üstünde kayan görsel şerit: öne çıkarmak istediğiniz ürün grupları.', 'qrms' ),
+				'attrs' => array(
+					array(
+						'name'    => 'show_title',
+						'default' => 'yes',
+						'desc'    => __( 'Slayt başlıklarını gizlemek için "no" yazın.', 'qrms' ),
+					),
+				),
+			),
+			array(
+				'tag'   => 'rma_qr_notice',
+				'title' => __( 'Karekod Bilgilendirme Metni', 'qrms' ),
+				'desc'  => __( 'Karekod kullanamayan müşteriler için yasal bilgilendirme cümlesini basar.', 'qrms' ),
+				'attrs' => array(
+					array(
+						'name'    => 'style',
+						'default' => 'inline',
+						'desc'    => __( 'Dikkat çeken kutulu görünüm için "banner" yazın.', 'qrms' ),
+					),
+				),
+			),
+		)
+	);
+
 	if ( is_admin() ) {
 		// "Restoran Menü" satırı, modülün tüm işlerini listeleyen başlangıç
 		// ekranını açar; işlerin kendisi aşağıda ayrı ayrı sayfa olarak

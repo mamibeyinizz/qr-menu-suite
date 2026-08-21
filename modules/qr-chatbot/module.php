@@ -40,6 +40,42 @@ function qrms_module_qr_chatbot_init() {
 
 	require_once __DIR__ . '/chatbot.php';
 
+	QRMS_Shortcodes::register(
+		'qr-chatbot',
+		array(
+			array(
+				'tag'   => 'gemini_chatbot',
+				'title' => __( 'AI Asistan', 'qrms' ),
+				'desc'  => __( 'Müşterinin menü hakkında soru sorabildiği, sipariş verebildiği tam ekran yapay zekâ asistanı.', 'qrms' ),
+				'note'  => __( 'Yalnızca müşteri masadaki QR kodu okuttuysa açılır; oturum yoksa bilgi kutusu basılır.', 'qrms' ),
+			),
+			array(
+				'tag'   => 'garson_butonu',
+				'title' => __( 'Garson Çağır Butonu', 'qrms' ),
+				'desc'  => __( 'Müşterinin masaya garson çağırmasını sağlayan tek buton.', 'qrms' ),
+				'note'  => __( 'Yalnızca geçerli bir masa oturumu varken görünür.', 'qrms' ),
+			),
+			array(
+				'tag'   => 'hesap_iste_butonu',
+				'title' => __( 'Hesap İste Butonu', 'qrms' ),
+				'desc'  => __( 'Müşterinin hesap istemesini sağlayan tek buton.', 'qrms' ),
+				'note'  => __( 'Yalnızca geçerli bir masa oturumu varken görünür.', 'qrms' ),
+			),
+			array(
+				'tag'   => 'ikili_buton',
+				'title' => __( 'Garson + Hesap (ikili buton)', 'qrms' ),
+				'desc'  => __( 'Garson çağırma ve hesap isteme butonlarını yan yana basar.', 'qrms' ),
+				'note'  => __( 'Yalnızca geçerli bir masa oturumu varken görünür. [qr_garson_hesap] ile aynı çıktıyı verir.', 'qrms' ),
+			),
+			array(
+				'tag'   => 'qr_garson_hesap',
+				'title' => __( 'Garson + Hesap (ikinci ad)', 'qrms' ),
+				'desc'  => __( '[ikili_buton] kısa kodunun eş anlamlısı; eski sayfalarda kullanılmış olabilir.', 'qrms' ),
+				'note'  => __( 'Yalnızca geçerli bir masa oturumu varken görünür.', 'qrms' ),
+			),
+		)
+	);
+
 	if ( is_admin() ) {
 		// Firebase service account / şube kimliği: çağrı ve siparişlerin
 		// yazılabilmesi için gerekli yapılandırma. Form _qmo-ortak altındadır,

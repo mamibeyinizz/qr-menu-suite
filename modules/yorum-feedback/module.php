@@ -73,6 +73,35 @@ function qrms_module_yorum_feedback_init() {
 	// çağrılır; sürüm option'ları eşleştiğinde iki get_option ile erken döner.
 	qrm_pro_maybe_upgrade();
 
+	QRMS_Shortcodes::register(
+		'yorum-feedback',
+		array(
+			array(
+				'tag'   => 'qr_menu_reviews',
+				'title' => __( 'Yorum Formu ve Listesi', 'qrms' ),
+				'desc'  => __( 'Müşterilerin puan verip yorum bıraktığı form ile onaylanmış yorumların listesini birlikte gösterir.', 'qrms' ),
+			),
+			array(
+				'tag'   => 'qr_menu_contact',
+				'title' => __( 'İletişim Formu', 'qrms' ),
+				'desc'  => __( 'Yalnızca iletişim formu — puanlama ve yorum listesi olmadan. İletişim sayfanız için.', 'qrms' ),
+			),
+			array(
+				'tag'   => 'qr_menu_form',
+				'title' => __( 'Özel Form', 'qrms' ),
+				'desc'  => __( 'Formlar ekranında oluşturduğunuz kendi formlarınızdan birini (şikayet, rezervasyon, anket…) sayfaya yerleştirir.', 'qrms' ),
+				'usage' => '[qr_menu_form key="rezervasyon"]',
+				'attrs' => array(
+					array(
+						'name'    => 'key',
+						'default' => '',
+						'desc'    => __( 'Formun anahtarı — Formlar ekranından öğrenin. Zorunludur.', 'qrms' ),
+					),
+				),
+			),
+		)
+	);
+
 	if ( is_admin() ) {
 		// Suite menüsündeki "Yorum & Feedback" satırı, modülün yedi ekranını
 		// listeleyen başlangıç ekranını açar; ekranların kendisi aşağıda ayrı

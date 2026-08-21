@@ -23,6 +23,11 @@ class QRMS_Admin {
 	const SETTINGS_SLUG = 'qrms-settings';
 
 	/**
+	 * Kısa Kodlar rehberi sayfası slug'ı.
+	 */
+	const SHORTCODES_SLUG = 'qrms-shortcodes';
+
+	/**
 	 * Modül sayfalarının slug öneki.
 	 */
 	const MODULE_PAGE_PREFIX = 'qrms-module-';
@@ -166,9 +171,9 @@ class QRMS_Admin {
 	 * Sol menüde KALACAK satırların slug listesi.
 	 *
 	 * Tek seviyeli menünün tanımı burasıdır: Genel Bakış, lisansta aktif olan
-	 * modüllerin satırları ve Genel Ayarlar. Bunun dışındaki her satır (modül
-	 * alt sayfaları, çekirdeğin CPT'den ürettiği liste satırı, sihirbaz)
-	 * menüden düşürülür.
+	 * modüllerin satırları, (varsa) Kısa Kodlar ve Genel Ayarlar. Bunun
+	 * dışındaki her satır (modül alt sayfaları, çekirdeğin CPT'den ürettiği
+	 * liste satırı, sihirbaz) menüden düşürülür.
 	 *
 	 * @return string[]
 	 */
@@ -177,6 +182,12 @@ class QRMS_Admin {
 
 		foreach ( QRMS_License_Client::get_active_modules() as $slug ) {
 			$slugs[] = self::get_module_page_slug( $slug );
+		}
+
+		// Koşul register_menu() ile aynı kaynaktan gelir: satır kaydedilmişse
+		// beyaz listede de olur, kaydedilmemişse listede aranmaz.
+		if ( QRMS_Shortcodes::has_any() ) {
+			$slugs[] = self::SHORTCODES_SLUG;
 		}
 
 		$slugs[] = self::SETTINGS_SLUG;
@@ -515,6 +526,19 @@ class QRMS_Admin {
 				static function () use ( $slug ) {
 					QRMS_Admin::render_module_page( $slug );
 				}
+			);
+		}
+
+		// Kısa Kodlar: modüllerin bildirdiği kısa kodların rehberi. Hiç kısa
+		// kod yoksa (aktif modül yoksa) boş bir sayfa menüde yer kaplamaz.
+		if ( QRMS_Shortcodes::has_any() ) {
+			add_submenu_page(
+				self::MENU_SLUG,
+				__( 'Kısa Kodlar', 'qrms' ),
+				__( 'Kısa Kodlar', 'qrms' ),
+				self::CAPABILITY,
+				self::SHORTCODES_SLUG,
+				array( 'QRMS_Shortcodes', 'render_page' )
 			);
 		}
 

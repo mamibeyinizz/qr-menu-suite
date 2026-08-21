@@ -25,6 +25,11 @@ function qrms_reset() {
 	$GLOBALS['qrms_test']['options']    = array();
 	$GLOBALS['qrms_test']['transients'] = array();
 	$GLOBALS['qrms_test']['actions']    = array();
+
+	// Kısa kod defteri statik bir durumdur ve testler arasında taşınır: bir
+	// modülün init'ini çağıran test, sonraki testin menüsüne satır ekletirdi.
+	QRMS_Shortcodes::reset();
+
 	$GLOBALS['qrms_test']['menus']      = array();
 	$GLOBALS['qrms_test']['submenus']   = array();
 	$GLOBALS['qrms_test']['removed']    = array();
@@ -1542,6 +1547,244 @@ qrms_test(
 			false !== strpos( $html, 'Bu modül yakında burada olacak.' ),
 			'placeholder basılmamalı'
 		);
+	}
+);
+
+/* ---------------------------------------------------------------------------
+ * 8b. Kısa kod kayıt defteri ve rehber ekranı
+ * ------------------------------------------------------------------------ */
+
+echo "\nKısa kod rehberi\n";
+
+qrms_test(
+	'geçerli tanım eksiksiz biçime getirilir',
+	function () {
+		$kod = QRMS_Shortcodes::normalize(
+			array(
+				'tag'   => 'restaurant_menu',
+				'title' => 'Restoran Menüsü',
+				'desc'  => 'Menüyü basar.',
+				'attrs' => array( array( 'name' => 'show_search', 'default' => 'yes', 'desc' => 'Arama kutusu.' ) ),
+			)
+		);
+
+		qrms_assert_same( 'restaurant_menu', $kod['tag'], 'tag' );
+		qrms_assert_same( '[restaurant_menu]', $kod['usage'], 'usage verilmezse tag\'dan üretilir' );
+		qrms_assert_same( '', $kod['note'], 'note varsayılanı' );
+		qrms_assert_same( 1, count( $kod['attrs'] ), 'parametre sayısı' );
+		qrms_assert_same( 'yes', $kod['attrs'][0]['default'], 'parametre varsayılanı' );
+	}
+);
+
+qrms_test(
+	'köşeli parantezle yazılan tag temizlenir',
+	function () {
+		// Tanımı yazan kişi "[qr_aktif_masa]" yazabilir; kart iki kez parantez
+		// basmamalı.
+		$kod = QRMS_Shortcodes::normalize( array( 'tag' => '[qr_aktif_masa]', 'title' => 'Masa' ) );
+
+		qrms_assert_same( 'qr_aktif_masa', $kod['tag'], 'tag' );
+		qrms_assert_same( '[qr_aktif_masa]', $kod['usage'], 'usage' );
+	}
+);
+
+qrms_test(
+	'eksik tanım ve bozuk parametre atılır',
+	function () {
+		qrms_assert_same( null, QRMS_Shortcodes::normalize( array( 'title' => 'Ad yok' ) ), 'tag yok' );
+		qrms_assert_same( null, QRMS_Shortcodes::normalize( array( 'tag' => 'x' ) ), 'başlık yok' );
+		qrms_assert_same( null, QRMS_Shortcodes::normalize( array( 'tag' => '[]', 'title' => 'Boş' ) ), 'boş tag' );
+		qrms_assert_same( null, QRMS_Shortcodes::normalize( 'metin' ), 'dizi değil' );
+
+		$kod = QRMS_Shortcodes::normalize(
+			array(
+				'tag'   => 'x',
+				'title' => 'X',
+				'attrs' => array( array( 'desc' => 'adı yok' ), 'metin', array( 'name' => 'id' ) ),
+			)
+		);
+
+		qrms_assert_same( 1, count( $kod['attrs'] ), 'yalnızca adı olan parametre kalır' );
+		qrms_assert_same( 'id', $kod['attrs'][0]['name'], 'kalan parametre' );
+	}
+);
+
+qrms_test(
+	'bilinmeyen modülün kısa kodları kaydedilmez',
+	function () {
+		QRMS_Shortcodes::register( 'yok-boyle-modul', array( array( 'tag' => 'x', 'title' => 'X' ) ) );
+
+		qrms_assert_false( array_key_exists( 'yok-boyle-modul', QRMS_Shortcodes::all() ), 'kayıt yok' );
+	}
+);
+
+qrms_test(
+	'gruplar modül sırasına göre dizilir',
+	function () {
+		// Kayıt sırası ne olursa olsun rehber MODULE_SLUGS sırasını izler;
+		// kullanıcı her açtığında aynı düzeni görür.
+		QRMS_Shortcodes::register( 'qr-chatbot', array( array( 'tag' => 'gemini_chatbot', 'title' => 'Asistan' ) ) );
+		QRMS_Shortcodes::register( 'restoran-menu', array( array( 'tag' => 'restaurant_menu', 'title' => 'Menü' ) ) );
+
+		$sira = array_keys( QRMS_Shortcodes::all() );
+
+		qrms_assert_true(
+			array_search( 'restoran-menu', $sira, true ) < array_search( 'qr-chatbot', $sira, true ),
+			'restoran-menu qr-chatbot\'tan önce'
+		);
+	}
+);
+
+qrms_test(
+	'rehber kartları kodu, kopyala butonunu ve parametreleri basar',
+	function () {
+		QRMS_Shortcodes::register(
+			'restoran-menu',
+			array(
+				array(
+					'tag'   => 'qrms_urun_vitrini',
+					'title' => 'Ürün Vitrini',
+					'desc'  => 'Seçtiğiniz ürünleri kayan bir şeritte gösterir.',
+					'usage' => '[qrms_urun_vitrini id="1"]',
+					'note'  => 'Vitrin numarası zorunludur.',
+					'attrs' => array( array( 'name' => 'id', 'default' => '', 'desc' => 'Vitrin numarası.' ) ),
+				),
+			)
+		);
+
+		ob_start();
+		QRMS_Shortcodes::render_page();
+		$html = ob_get_clean();
+
+		qrms_assert_contains( 'Restoran Menü', $html, 'modül başlığı' );
+		qrms_assert_contains( '[qrms_urun_vitrini id=', $html, 'örnek kullanım' );
+		qrms_assert_contains( 'data-qrms-copy=', $html, 'kopyala butonu' );
+		qrms_assert_contains( 'Vitrin numarası zorunludur.', $html, 'koşul notu' );
+		qrms_assert_contains( 'Parametreler', $html, 'parametre başlığı' );
+	}
+);
+
+qrms_test(
+	'hiç kısa kod yoksa menü satırı da kaydedilmez',
+	function () {
+		// Regresyon: boş bir rehber sayfası menüde yer kaplamamalı; menü kaydı
+		// ile beyaz liste aynı koşulu kullanır, yoksa satır kaydolur ama
+		// beyaz listede olmadığı için admin_head'de gizlenirdi.
+		qrms_assert_false( QRMS_Shortcodes::has_any(), 'kayıt boş' );
+
+		update_option( 'qrms_active_modules', array( 'restoran-menu' ) );
+		QRMS_Admin::register_menu();
+
+		qrms_assert_false(
+			in_array( QRMS_Admin::SHORTCODES_SLUG, qrms_registered_submenu_slugs(), true ),
+			'menüde satır yok'
+		);
+		qrms_assert_false(
+			in_array( QRMS_Admin::SHORTCODES_SLUG, QRMS_Admin::get_menu_row_slugs(), true ),
+			'beyaz listede yok'
+		);
+	}
+);
+
+qrms_test(
+	'kısa kod varken satır menüye ve beyaz listeye birlikte girer',
+	function () {
+		QRMS_Shortcodes::register( 'restoran-menu', array( array( 'tag' => 'restaurant_menu', 'title' => 'Menü' ) ) );
+		update_option( 'qrms_active_modules', array( 'restoran-menu' ) );
+
+		QRMS_Admin::register_menu();
+
+		qrms_assert_true(
+			in_array( QRMS_Admin::SHORTCODES_SLUG, qrms_registered_submenu_slugs(), true ),
+			'menüde satır var'
+		);
+		qrms_assert_true(
+			in_array( QRMS_Admin::SHORTCODES_SLUG, QRMS_Admin::get_menu_row_slugs(), true ),
+			'beyaz listede var'
+		);
+
+		// Genel Ayarlar'dan ÖNCE gelmeli.
+		$slugs = qrms_registered_submenu_slugs();
+
+		qrms_assert_true(
+			array_search( QRMS_Admin::SHORTCODES_SLUG, $slugs, true ) < array_search( QRMS_Admin::SETTINGS_SLUG, $slugs, true ),
+			'Kısa Kodlar, Genel Ayarlar\'ın üstünde'
+		);
+	}
+);
+
+/**
+ * Kaynak ağacında GERÇEKTEN kayıtlı olan kısa kod adları.
+ *
+ * add_shortcode() çağrılarını tarar. Tek dolaylı çağrı shortcode-vitrin.php
+ * içindeki `self::SHORTCODE` sabitidir; o da aynı dosyadan çözülür.
+ *
+ * @return string[]
+ */
+function qrms_kaynaktaki_kisa_kodlar() {
+	$tags = array();
+
+	foreach ( glob( QRMS_PLUGIN_DIR . 'modules/*/{,*/,*/*/}*.php', GLOB_BRACE ) as $dosya ) {
+		$kaynak = (string) file_get_contents( $dosya );
+
+		if ( false === strpos( $kaynak, 'add_shortcode(' ) ) {
+			continue;
+		}
+
+		preg_match_all( "/add_shortcode\(\s*'([^']+)'/", $kaynak, $duz );
+		$tags = array_merge( $tags, $duz[1] );
+
+		// add_shortcode( self::SHORTCODE, ... ) — sabit aynı dosyadadır.
+		if ( preg_match( '/add_shortcode\(\s*self::SHORTCODE\b/', $kaynak )
+			&& preg_match( "/const\s+SHORTCODE\s*=\s*'([^']+)'/", $kaynak, $sabit ) ) {
+			$tags[] = $sabit[1];
+		}
+	}
+
+	$tags = array_values( array_unique( $tags ) );
+	sort( $tags );
+
+	return $tags;
+}
+
+/**
+ * Modüllerin rehbere BİLDİRDİĞİ kısa kod adları.
+ *
+ * Kayıtlar module.php dosyalarındaki QRMS_Shortcodes::register() çağrılarında
+ * durur; modülleri çalıştırmadan okunabilsin diye kaynak taranır.
+ *
+ * @return string[]
+ */
+function qrms_bildirilen_kisa_kodlar() {
+	$tags = array();
+
+	foreach ( glob( QRMS_PLUGIN_DIR . 'modules/*/module.php' ) as $dosya ) {
+		$kaynak = (string) file_get_contents( $dosya );
+
+		if ( false === strpos( $kaynak, 'QRMS_Shortcodes::register(' ) ) {
+			continue;
+		}
+
+		preg_match_all( "/'tag'\s*=>\s*'([^']+)'/", $kaynak, $eslesme );
+		$tags = array_merge( $tags, $eslesme[1] );
+	}
+
+	$tags = array_values( array_unique( $tags ) );
+	sort( $tags );
+
+	return $tags;
+}
+
+qrms_test(
+	'rehber kaydı kaynaktaki add_shortcode çağrılarıyla birebir örtüşür',
+	function () {
+		// Sürüklenme koruması: yeni bir kısa kod eklenip rehbere bildirilmezse
+		// (ya da kaldırılan bir kod rehberde kalırsa) bu test düşer.
+		$kaynakta   = qrms_kaynaktaki_kisa_kodlar();
+		$bildirilen = qrms_bildirilen_kisa_kodlar();
+
+		qrms_assert_same( 17, count( $kaynakta ), 'kaynaktaki kısa kod sayısı' );
+		qrms_assert_same( $kaynakta, $bildirilen, 'bildirilen liste kaynakla aynı' );
 	}
 );
 
