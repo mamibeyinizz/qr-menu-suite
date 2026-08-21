@@ -268,6 +268,23 @@ function wp_remote_retrieve_body( $response ) {
  * @param mixed $data Veri.
  * @return string
  */
+/**
+ * Varsayılanların üstüne verilen değerleri yazar (WordPress ile aynı davranış).
+ *
+ * @param array|object|string $args     Gelen değerler.
+ * @param array               $defaults Varsayılanlar.
+ * @return array
+ */
+function wp_parse_args( $args, $defaults = array() ) {
+	if ( is_object( $args ) ) {
+		$args = get_object_vars( $args );
+	} elseif ( ! is_array( $args ) ) {
+		parse_str( (string) $args, $args );
+	}
+
+	return array_merge( $defaults, $args );
+}
+
 function wp_json_encode( $data ) {
 	return wp_json_encode_impl( $data );
 }

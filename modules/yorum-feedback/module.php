@@ -210,7 +210,7 @@ function qrms_module_yorum_feedback_admin_assets() {
 			'qrm-ai-insights',
 			QRMS_PLUGIN_URL . 'modules/yorum-feedback/assets/js/ai-insights.js',
 			array(),
-			QRMS_VERSION,
+			QRMS_Helpers::asset_version( 'modules/yorum-feedback/assets/js/ai-insights.js' ),
 			true
 		);
 
@@ -230,7 +230,7 @@ function qrms_module_yorum_feedback_admin_assets() {
 			'qrm-form-preview',
 			QRMS_PLUGIN_URL . 'modules/yorum-feedback/assets/js/form-preview.js',
 			array(),
-			QRMS_VERSION,
+			QRMS_Helpers::asset_version( 'modules/yorum-feedback/assets/js/form-preview.js' ),
 			true
 		);
 

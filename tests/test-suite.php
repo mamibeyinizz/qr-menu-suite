@@ -1596,6 +1596,8 @@ $GLOBALS['qrms_sahte_yorumlar'] = array(
 	array( 'rating' => 5.0, 'comment' => 'Mükemmel, tekrar geleceğiz.' ),
 );
 
+// ai-insights.php settings.php'deki qrm_pro_debug_log'a ve install.php'deki
+// qrm_pro_reviews_table_exists'e bağlıdır; ikisi de gerçek dosyadan gelir.
 require_once QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/settings.php';
 require_once QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/install.php';
 require_once QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/ai-insights.php';
@@ -2465,9 +2467,9 @@ require_once QRMS_PLUGIN_DIR . 'modules/yorum-feedback/module.php';
  * option şemasına dayanır; burada test edilen şey sunum (hangi ekran nerede
  * görünüyor) olduğu için veri tarafı sabitlenir.
  */
-function qrm_pro_get_settings() {
-	return array( 'qrm_reward_enabled' => 1 );
-}
+// qrm_pro_get_settings() gerçek settings.php'den gelir (Gemini testleri onu
+// yükler); ödül rozetini süren tek ayar option üzerinden verilir.
+update_option( 'qrm_settings', array( 'qrm_reward_enabled' => 1 ) );
 
 function qrm_reward_is_active( $settings ) {
 	return false;
@@ -2477,15 +2479,8 @@ function qrm_cf_unread_total() {
 	return 2;
 }
 
-function qrm_pro_review_stats() {
-	return array(
-		'table_ok' => true,
-		'pending'  => 3,
-		'total'    => 12,
-		'approved' => 9,
-		'avg'      => 4.25,
-	);
-}
+// qrm_pro_review_stats() de gerçek install.php'den gelir; sayaçları yukarıdaki
+// QRMS_Test_Wpdb besler (tablo var, sayımlar sabit).
 
 echo "\nYorum & Feedback sayfaları\n";
 
