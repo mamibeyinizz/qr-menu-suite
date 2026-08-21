@@ -1,0 +1,348 @@
+/* Açılış Ekranı - yönetim ekranı stilleri.
+
+   Sekme kuralları suite'e taşınırken kaldırıldı (dört sekme = dört sayfa);
+   yerine iki sütunlu düzen ve canlı önizleme çerçevesi geldi. Form alanlarının
+   stilleri bağımsız eklentiden birebir taşındı. */
+
+.qrms-ae-wrap .qrms-ae-page-intro {
+    margin: 16px 0 4px;
+    color: #50575e;
+    font-size: 13px;
+    max-width: 760px;
+}
+
+.qrms-ae-wrap .theme-preset { margin: 0 8px 6px 0; }
+
+/* --- Medya alanları --- */
+.splash-media-field { max-width: 520px; }
+.splash-media-actions { margin: 0 0 8px; display: flex; align-items: center; gap: 12px; }
+.splash-media-actions .splash-remove-image { color: #b32d2e; text-decoration: none; }
+.splash-media-actions .splash-remove-image.hidden { display: none; }
+
+.splash-media-field .image-preview img {
+    display: block;
+    border: 1px solid #dcdcde;
+    border-radius: 6px;
+    background: #f6f7f7;
+}
+.splash-media-field .image-preview.is-portrait img { max-width: 120px; height: auto; }
+.splash-media-field .image-preview.is-wide img { max-width: 220px; height: auto; }
+.splash-media-field .image-preview.is-logo img { max-width: 150px; height: auto; }
+.splash-media-field .image-preview img { max-width: 150px; height: auto; }
+
+.splash-media-warnings:empty { display: none; }
+.splash-media-warnings {
+    margin-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.splash-media-warning {
+    background: #fcf9e8;
+    border-left: 4px solid #dba617;
+    padding: 8px 12px;
+    font-size: 13px;
+    color: #3c434a;
+}
+
+/* --- Yardım metni --- */
+.splash-help {
+    margin-top: 12px;
+    max-width: 620px;
+    background: #f6f7f7;
+    border: 1px solid #dcdcde;
+    border-radius: 6px;
+    padding: 12px 16px;
+    font-size: 13px;
+    color: #3c434a;
+}
+.splash-help p { margin: 0 0 8px; }
+.splash-help ul { margin: 0; padding-left: 18px; list-style: disc; }
+.splash-help li { margin: 0 0 4px; }
+
+/* --- Aralık (range) alanları --- */
+.splash-range { vertical-align: middle; width: 240px; max-width: 100%; }
+.splash-range-value {
+    display: inline-block;
+    min-width: 48px;
+    margin-left: 10px;
+    font-weight: 600;
+    vertical-align: middle;
+}
+
+.splash-inline-field {
+    display: inline-flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-right: 20px;
+}
+.splash-inline-field span { font-size: 12px; color: #50575e; }
+.splash-inline-field input { width: 110px; }
+
+/* --- Butonlar sekmesi --- */
+.splash-button-row {
+    background: #fff;
+    border: 1px solid #dcdcde;
+    border-radius: 6px;
+    padding: 14px 16px;
+    margin: 0 0 12px;
+    max-width: 900px;
+}
+.splash-button-row-head {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+}
+.splash-button-index { font-weight: 600; }
+.splash-button-desc { color: #50575e; font-size: 12px; }
+
+.splash-button-row-fields { display: flex; gap: 16px; flex-wrap: wrap; }
+.splash-button-row-fields label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1 1 280px;
+}
+.splash-button-row-fields label span { font-size: 12px; color: #50575e; }
+.splash-button-row-fields input { width: 100%; }
+.splash-button-row-fields label.is-disabled input { background: #f0f0f1; color: #8c8f94; }
+
+/* --- Ödeme sekmesi --- */
+.splash-pay-admin-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 10px;
+    max-width: 760px;
+    margin: 16px 0;
+}
+.splash-pay-admin-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #fff;
+    border: 1px solid #dcdcde;
+    border-radius: 6px;
+    padding: 10px 12px;
+    cursor: pointer;
+}
+.splash-pay-admin-item:hover { border-color: #2271b1; }
+.splash-pay-admin-item .splash-pay {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--sp-pay-color, #1d2327);
+}
+.splash-pay-admin-item .splash-pay-icon { flex: none; }
+.splash-pay-admin-item .splash-pay-label {
+    color: #1d2327;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+/* --- Sosyal medya sekmesi (checkbox + URL, en fazla 6) --- */
+.splash-social-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-width: 620px;
+    margin: 12px 0 6px;
+}
+.splash-social-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.splash-social-check-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 0 0 150px;
+    font-weight: 500;
+    cursor: pointer;
+}
+.splash-social-check-label:has(:disabled) { opacity: .55; cursor: default; }
+.splash-social-row input[type="url"] { flex: 1 1 auto; }
+.splash-social-limit-note {
+    display: none;
+    margin: 6px 0 0;
+    color: #b32d2e;
+    font-size: 12px;
+}
+.splash-social-limit-note.is-visible { display: block; }
+
+@media (max-width: 782px) {
+    .splash-social-row { flex-wrap: wrap; }
+    .splash-social-check-label { flex-basis: 100%; }
+}
+
+/* --- Radyo kartları (ör. ödeme görünüm modu) --- */
+.splash-radio-group {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 10px;
+    max-width: 760px;
+    margin: 12px 0 4px;
+}
+.splash-radio-card {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-template-areas:
+        "radio title"
+        ".     desc";
+    align-items: center;
+    column-gap: 8px;
+    row-gap: 4px;
+    background: #fff;
+    border: 1px solid #dcdcde;
+    border-radius: 6px;
+    padding: 12px 14px;
+    cursor: pointer;
+}
+.splash-radio-card:hover { border-color: #2271b1; }
+.splash-radio-card input[type="radio"] { grid-area: radio; margin: 0; }
+.splash-radio-card:has(input:checked) {
+    border-color: #2271b1;
+    box-shadow: 0 0 0 1px #2271b1;
+}
+.splash-radio-title { grid-area: title; font-weight: 600; }
+.splash-radio-desc { grid-area: desc; color: #50575e; font-size: 12px; line-height: 1.5; }
+
+/* --- Yapışkan kaydet çubuğu --- */
+.splash-save-bar {
+    position: sticky;
+    bottom: 0;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    margin-top: 24px;
+    padding: 12px 16px;
+    background: #fff;
+    border-top: 1px solid #dcdcde;
+    box-shadow: 0 -2px 6px rgba(0, 0, 0, 0.06);
+}
+.splash-preview-link { text-decoration: none; }
+
+@media (max-width: 782px) {
+    .splash-save-bar { flex-wrap: wrap; gap: 12px; }
+    .splash-range { width: 100%; }
+}
+
+/* Dikkat çekmesi gereken açıklama satırı (ör. logo şeffaflık uyarısı) */
+.splash-settings-wrap .splash-warn {
+    max-width: 620px;
+    margin-top: 8px;
+    padding: 8px 12px;
+    background: #fcf9e8;
+    border-left: 4px solid #dba617;
+    color: #3c434a;
+}
+
+/* --- Sayfa düzeni: form + canlı önizleme --- */
+
+/* Suite'in .qrms-wrap kabuğu 640px'e kilitlidir; iki sütunlu bu ekranda form
+   sütunu okunmaz hâle gelirdi. Diğer modüller de (yorum-feedback, restoran-menu)
+   kendi genişliklerini kendi kabuk sınıflarında tanımlar. */
+.qrms-ae-wrap {
+	max-width: 1180px;
+}
+
+.qrms-ae-layout {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) 340px;
+	gap: 28px;
+	align-items: start;
+}
+
+.qrms-ae-form { min-width: 0; }
+
+.qrms-ae-preview-col {
+	position: sticky;
+	top: 46px;
+}
+
+.qrms-ae-preview-col h2 {
+	font-size: 14px;
+	margin: 0 0 8px;
+}
+
+/* Önizleme çerçevesi: telefon oranında (9:19.5) sabit bir pencere. İçindeki
+   overlay frontend'de position:fixed'dir; burada çerçeveye hapsedilir. */
+.qrms-ae-preview-frame {
+	position: relative;
+	width: 100%;
+	max-width: 320px;
+	aspect-ratio: 9 / 19.5;
+	overflow: hidden;
+	border: 1px solid #c3c4c7;
+	border-radius: 22px;
+	background: var(--sp-bg, #f7f9fc);
+	box-shadow: 0 6px 20px rgba(0, 0, 0, .12);
+	contain: layout paint;
+}
+
+/* Ön yüzde overlay position:fixed ve height:100dvh'dir; burada çerçeveye
+   hapsedilir. Yükseklik AÇIKÇA ezilmeli: yalnızca inset vermek 100dvh'yi
+   geçersiz kılmaz, splash çerçevenin altından taşar. */
+.qrms-ae-preview-frame #custom-splash-overlay.is-preview {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	display: block;
+	visibility: visible;
+	animation: none;
+}
+
+/* Önizlemedeki modal frontend'de tam ekrandır; çerçeve içinde kalsın. */
+.qrms-ae-preview-frame .splash-modal { position: absolute; }
+
+.qrms-ae-preview-note {
+	margin: 10px 0 0;
+	color: #50575e;
+	font-size: 12px;
+	line-height: 1.6;
+}
+
+.qrms-ae-preview-note .button { margin-top: 6px; display: block; }
+
+/* Yapıyı değiştiren ayarlar yeni markup ister; o zaman önizleme "bayat" olur. */
+.qrms-ae-preview.is-stale .qrms-ae-preview-frame { opacity: .55; }
+
+.qrms-ae-preview.is-stale::before {
+	content: "Kaydedilince güncellenecek";
+	display: block;
+	margin-bottom: 8px;
+	padding: 6px 10px;
+	border-radius: 4px;
+	background: #fcf9e8;
+	border-left: 4px solid #dba617;
+	font-size: 12px;
+	color: #50575e;
+}
+
+.qrms-ae-save-bar {
+	display: flex;
+	align-items: center;
+	gap: 16px;
+	flex-wrap: wrap;
+	margin-top: 24px;
+	padding-top: 16px;
+	border-top: 1px solid #dcdcde;
+}
+
+/* Dar ekran: önizleme formun ALTINA iner ve yapışkanlığı kalkar; dokunmatikte
+   sabit bir sütun ekranın yarısını yemesin. */
+@media (max-width: 960px) {
+	.qrms-ae-layout { grid-template-columns: minmax(0, 1fr); }
+	.qrms-ae-preview-col { position: static; }
+	.qrms-ae-preview-frame { max-width: 260px; }
+}
+
+@media (max-width: 782px) {
+	.qrms-ae-preview-frame { max-width: 100%; }
+	.qrms-ae-save-bar .button { width: 100%; text-align: center; }
+	.splash-range { width: 100%; }
+}

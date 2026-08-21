@@ -746,6 +746,163 @@ function shortcode_atts( $pairs, $atts, $shortcode = '' ) {
  */
 function wp_localize_script( $handle, $name, $data ) {}
 
+/**
+ * Negatif olmayan tam sayı.
+ *
+ * @param mixed $maybeint Değer.
+ * @return int
+ */
+function absint( $maybeint ) {
+	return abs( (int) $maybeint );
+}
+
+/**
+ * Geçerli bir hex renk mi? Değilse null.
+ *
+ * @param string $color Renk.
+ * @return string|null
+ */
+function sanitize_hex_color( $color ) {
+	$color = (string) $color;
+
+	return preg_match( '/^#([A-Fa-f0-9]{3}){1,2}$/', $color ) ? $color : null;
+}
+
+/**
+ * Onay kutusu işaretli mi? (checked="checked")
+ *
+ * @param mixed $checked Değer.
+ * @param mixed $current Karşılaştırılan.
+ * @param bool  $echo    Basılsın mı.
+ * @return string
+ */
+function checked( $checked, $current = true, $echo = true ) {
+	$out = ( (string) $checked === (string) $current ) ? ' checked="checked"' : '';
+
+	if ( $echo ) {
+		echo $out; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+	}
+
+	return $out;
+}
+
+/**
+ * Seçili option mı? (selected="selected")
+ *
+ * @param mixed $selected Değer.
+ * @param mixed $current  Karşılaştırılan.
+ * @param bool  $echo     Basılsın mı.
+ * @return string
+ */
+function selected( $selected, $current = true, $echo = true ) {
+	$out = ( (string) $selected === (string) $current ) ? ' selected="selected"' : '';
+
+	if ( $echo ) {
+		echo $out; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+	}
+
+	return $out;
+}
+
+/**
+ * Ek dosyanın adresi. Testte kimlik varsa sahte bir adres döner.
+ *
+ * @param int    $id   Ek dosya kimliği.
+ * @param string $size Boyut.
+ * @return string
+ */
+function wp_get_attachment_image_url( $id, $size = 'thumbnail' ) {
+	$id = absint( $id );
+
+	return $id ? 'https://restoran.test/wp-content/uploads/' . $id . '-' . $size . '.jpg' : '';
+}
+
+/**
+ * Ek dosyanın srcset'i.
+ *
+ * @param int    $id   Ek dosya kimliği.
+ * @param string $size Boyut.
+ * @return string
+ */
+function wp_get_attachment_image_srcset( $id, $size = 'medium' ) {
+	$id = absint( $id );
+
+	return $id ? wp_get_attachment_image_url( $id, $size ) . ' 1024w' : '';
+}
+
+/**
+ * Ek dosyanın <img> etiketi.
+ *
+ * @param int    $id    Ek dosya kimliği.
+ * @param string $size  Boyut.
+ * @param bool   $icon  Kullanılmıyor.
+ * @param array  $attrs Ek nitelikler.
+ * @return string
+ */
+function wp_get_attachment_image( $id, $size = 'thumbnail', $icon = false, $attrs = array() ) {
+	$id = absint( $id );
+
+	if ( ! $id ) {
+		return '';
+	}
+
+	$out = '<img src="' . esc_url( wp_get_attachment_image_url( $id, $size ) ) . '"';
+	foreach ( (array) $attrs as $name => $value ) {
+		$out .= ' ' . $name . '="' . esc_attr( $value ) . '"';
+	}
+
+	return $out . ' />';
+}
+
+/**
+ * Medya kütüphanesi betikleri (no-op).
+ *
+ * @return void
+ */
+function wp_enqueue_media() {}
+
+/**
+ * Script'e ek veri işler (no-op).
+ *
+ * @param string $handle Handle.
+ * @param string $key    Anahtar.
+ * @param mixed  $value  Değer.
+ * @return bool
+ */
+function wp_script_add_data( $handle, $key, $value ) {
+	return true;
+}
+
+/**
+ * Satır içi script ekler (no-op).
+ *
+ * @param string $handle   Handle.
+ * @param string $data     Kod.
+ * @param string $position Konum.
+ * @return bool
+ */
+function wp_add_inline_script( $handle, $data, $position = 'after' ) {
+	return true;
+}
+
+/**
+ * Ana sayfada mıyız? Testte $GLOBALS['qrms_test']['is_front_page'] belirler.
+ *
+ * @return bool
+ */
+function is_front_page() {
+	return ! empty( $GLOBALS['qrms_test']['is_front_page'] );
+}
+
+/**
+ * Customizer önizlemesinde miyiz? Testte kapalıdır.
+ *
+ * @return bool
+ */
+function is_customize_preview() {
+	return ! empty( $GLOBALS['qrms_test']['is_customize_preview'] );
+}
+
 require_once QRMS_PLUGIN_DIR . 'includes/class-helpers.php';
 require_once QRMS_PLUGIN_DIR . 'includes/class-license-client.php';
 require_once QRMS_PLUGIN_DIR . 'includes/class-module-loader.php';

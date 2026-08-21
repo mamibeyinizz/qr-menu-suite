@@ -52,6 +52,7 @@ bir bilgilendirme notice'ı gösterilir.
 | `qrms_last_active_sync` | En son `active` cevabının alındığı an (notice zamanlaması) |
 | `qrms_license_notice` | Arka plan senkronizasyonunun bıraktığı durum bayrağı |
 | `qrms_setup_completed` | Sihirbaz tamamlandı mı? |
+| `splash_screen_options` | Açılış Ekranı modülünün tüm ayarları (bağımsız eklentiden taşınırken ad korundu) |
 
 ## Modüller
 
@@ -66,6 +67,7 @@ bir bilgilendirme notice'ı gösterilir.
 | `qr-chatbot` | QR Chatbot |
 | `qr-calisma-saatleri` | QR Çalışma Saatleri |
 | `qr-masa-oturum-guvenligi` | QR Masa Oturum Güvenliği |
+| `qr-acilis-ekrani` | Açılış Ekranı |
 
 Bir modül eklemek için `modules/<slug>/module.php` dosyası oluşturmak ve
 içinde `qrms_module_<slug_alt_çizgili>_init()` fonksiyonunu tanımlamak
@@ -261,6 +263,7 @@ bir kısa kod rehbere eklenmezse düşer.
 | `qr-ceviri` | Çok dilli metin tarama, sözlük, CSV içe/dışa aktarma | ✔ Çeviri ekranı |
 | `qr-analiz` | Menü analitiği (masa bazlı görüntüleme/tıklama takibi, panel); `POST /wp-json/qrservis/v1/analytics` — şube analitiği özeti; `POST /wp-json/qrservis/v1/create-user` — garson/müdür hesabı açma (yalnızca ana sitede) | ✔ Hub + Menü Analitiği / Firebase & Şube Ayarları |
 | `qr-chatbot` | `[gemini_chatbot]`, garson/hesap buton kısa kodları, Gemini AJAX ucu, sipariş ucu (`POST /wp-json/qrservis/v1/order`) | ✔ Chatbot ayarları + Firebase ayarları |
+| `qr-acilis-ekrani` | Ana sayfada tam ekran açılış: logo şeridi, arkaplan görseli, CTA + rozetler, wifi penceresi, sosyal hesaplar, ödeme yöntemleri. Kısa kodu yoktur | ✔ Hub + dört ayrı sayfa |
 
 Kodları kaynak eklentilerinden **aynen** taşındı (`restoran-menu` 12-menu
 deposundaki QR MENÜ eklentisinden, `yorum-feedback` `yorumfeedback`
@@ -527,6 +530,92 @@ için hiç tetiklenmez, `plugins_loaded` (öncelik 10) kaydı ise modül zaten
 > yerine sessiz devre dışı kalmaya çevirir (sabiti eski eklenti tanımlar ve
 > çalışmaya devam eder), ama iki kopyayı birlikte çalışır kılmaz.
 
+### Açılış Ekranı (`qr-acilis-ekrani`)
+
+Ana sayfaya gelen ziyaretçiyi karşılayan tam ekran açılış. Bağımsız **Açılış
+Ekranı (Splash Screen)** eklentisinden (v3.7) taşındı; ön yüz davranışı birebir
+korundu, değişen tek şey yönetim tarafı oldu.
+
+Ekranda ne var: tam genişlik logo şeridi (yükseklik/renk/opaklık ayarlanır),
+arkaplan görseli (geniş ekran için ayrı varyant + LCP preload) ve okunabilirlik
+gradyanı, sağ üstte yüklenme göstergesi (spinner / geri sayım halkası / nokta /
+nabız), birincil buton, telefon-takvim-yıldız-wifi rozetleri, ayraç, sosyal
+rozetler ve ödeme yöntemi satırı (ikonlu, yalnızca yazı ya da kayan şerit).
+
+**Çıktı çerezden bağımsızdır.** Ana sayfanın HTML'i her ziyaretçide birebir
+aynıdır; overlay her zaman `style="display:none"` ile basılır ve "gösterilsin
+mi" kararını `document.cookie` okuyan istemci tarafı verir. Tam sayfa cache
+(LiteSpeed, WP Rocket, CDN) altında doğru çalışmasının sebebi budur —
+sunucu tarafında çerez dallanması olsaydı ilk ziyaretçinin cevabı herkese
+servis edilirdi.
+
+**FOUC koruması.** `wp_head` önceliği 2'de küçük bir kritik CSS bloğu ve inline
+betik basılır: çerez yoksa `<html>` `splash-loading` sınıfını alır, gövde
+gizlenir ve overlay görünür olur. Betik hiç çalışmazsa sayfa sonsuza kadar
+gizli kalmasın diye 5 saniyelik bir zaman aşımı sigortası ve `<noscript>`
+kurtarması vardır.
+
+**Çerez yönlendirmeden ÖNCE yazılır.** Kapatma (`dismissSplash`) çerezi
+yazdıktan sonra navigasyona izin verir; aksi hâlde hedef sayfa açılırken
+splash yeniden görünürdü. Süre `dismiss_duration` (dakika) ile ayarlanır,
+0 = her ziyarette gösterilir.
+
+**Giriş animasyonu tek seferliktir.** `.splash-stack.is-animating` sınıfı
+`animationend` olayında kaldırılır; geride sürekli compositing yapan bir katman
+kalmaz. Üç tip: zarif yükseliş, dinamik yay, sinematik derinlik.
+
+#### Suite'e taşınırken değişenler
+
+| Bağımsız eklenti | Suite modülü |
+| --- | --- |
+| Kendi `Açılış Ekranı` üst menüsü | Suite menüsündeki tek satır + hub ekranı |
+| Tek sayfa, dört JS sekmesi | Dört **gerçek sayfa** (`qrms-ae-gorunum`, `-butonlar`, `-odeme`, `-davranis`) |
+| Tek form, tek kayıt | Sayfa başına form, nonce ve kayıt |
+| `SPLASH_SCREEN_VERSION` ile sabit varlık sürümü | `QRMS_Helpers::asset_version()` (dosya bazlı) |
+| Önizleme yok, "ana sayfayı aç" bağlantısı var | Her ayar sayfasında **canlı önizleme** |
+
+Sekmeler ayrı sayfalara bölününce doğan asıl risk kayıt tarafındadır: tek
+formda işaretsiz bir onay kutusu güvenle "kapalı" demekti, dört ayrı formda ise
+POST'ta bulunmayan kutu başka bir sayfada yapılmış seçimi siler. Bu yüzden
+onay kutuları yalnızca **sahibi sayfa** gönderildiğinde yazılır — Ödeme
+sayfasında yöntem seçip Davranış sayfasını kaydetmek seçimleri bozmaz. Testte
+karşılığı var.
+
+Ayarlar bağımsız eklentiyle **aynı option'da** (`splash_screen_options`)
+durur: mevcut bir kurulumda eklenti kapatılıp modül açıldığında ayarlar
+olduğu yerden okunmaya devam eder, göç adımı yoktur. Eski yer imleri de
+(`admin.php?page=splash-screen&tab=…`) karşılığı olan yeni sayfaya
+yönlendirilir.
+
+#### Canlı önizleme ve `isPreview` guard'ı
+
+Önizleme frontend'in **aynı markup'ı ve aynı stylesheet'i**dir; ayrı bir taklit
+yoktur. Tek fark overlay'in `data-preview="1"` bayrağı taşımasıdır ve bu bayrak
+iki tarafı birden korur:
+
+- `splash.js` bayrağı görürse hiç çalışmaz — çerez okunmaz/yazılmaz,
+  yönlendirme zamanlayıcısı kurulmaz. Yönetici önizlemeye bakarken kendi
+  tarayıcısında splash'ı "kapatmış" duruma düşmez.
+- Yönetim betiği de yalnızca bu bayrağı taşıyan overlay'e dokunur.
+
+Renk, opaklık ve ölçü ayarları CSS özel değişkenine indiği için kaydetmeden
+anında yansır; metin alanları da öyle. Yapıyı değiştiren ayarlar (görsel
+seçimi, ödeme yöntemi, sosyal hesap, gösterge tipi) yeni markup gerektirir —
+o durumda önizlemenin üstünde "kaydedilince güncellenecek" rozeti belirir.
+PHP ile JS'in aynı hesabı iki kez yapmaması için değişkenlerin tek kaynağı
+`build_css_vars()`'tır.
+
+#### Bilinmesi gerekenler
+
+- Ekran yalnızca **ana sayfada** basılır; Elementor editöründe ve Customizer
+  önizlemesinde basılmaz.
+- `button_padding` ve `button_font_size` option'ları v3.6'dan beri ön yüzü
+  etkilemiyor (CTA'nın ölçüsü stylesheet'te sabit). Anahtarlar ve admin
+  alanları veri kaybı olmasın diye korundu.
+- Modül, lisans sunucusundan gelen aktif modül listesinde `qr-acilis-ekrani`
+  slug'ı yoksa yüklenmez — dosyalar yerinde olsa bile yönetim ekranı
+  görünmez. Slug sunucudaki modül sözleşmesine de eklenmelidir.
+
 ### `modules/_qmo-ortak/`
 
 Modül değildir (loader yalnızca `QRMS_Helpers::MODULE_SLUGS` içindeki
@@ -610,6 +699,7 @@ modules/
   qr-chatbot/                Gemini chatbot, garson/hesap butonları, sohbet/çağrı/sipariş uçları + ayar ekranı
   qr-ceviri/                 Çok dilli sözlük + çeviri yönetim ekranı
   qr-galeri/                 Galeri CPT + yönetim ekranları
+  qr-acilis-ekrani/          Ana sayfa açılış ekranı + hub ve dört ayar sayfası
 assets/css/admin.css         Mobil öncelikli admin stilleri (dokunma ≥44px)
 assets/js/admin.js           Form gönderiminde buton kilidi (opsiyonel iyileştirme)
 tests/                       WordPress'siz çalışan stub tabanlı testler
