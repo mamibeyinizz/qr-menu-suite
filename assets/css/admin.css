@@ -368,6 +368,7 @@
 	display: block;
 	font-size: 12px;
 	line-height: 1.4;
+	margin: 0;
 }
 
 .qrms-hub-stat-value {
@@ -375,7 +376,7 @@
 	font-size: 22px;
 	font-weight: 600;
 	line-height: 1.3;
-	margin-top: 2px;
+	margin: 2px 0 0;
 }
 
 .qrms-hub-stat-value a {
@@ -430,11 +431,16 @@
 	min-width: 0;
 }
 
+/* h3/p elemanları: tarayıcının varsayılan başlık/paragraf boşlukları
+   sıfırlanır, ölçüler buradan verilir. */
 .qrms-hub-card-title {
+	color: inherit;
 	display: block;
 	font-size: 15px;
 	font-weight: 600;
 	line-height: 1.4;
+	margin: 0;
+	padding: 0;
 }
 
 .qrms-hub-desc {
@@ -442,7 +448,8 @@
 	display: block;
 	font-size: 13px;
 	line-height: 1.5;
-	margin-top: 5px;
+	margin: 5px 0 0;
+	padding: 0;
 }
 
 .qrms-hub-badge {

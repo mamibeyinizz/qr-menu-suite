@@ -194,7 +194,7 @@ function qrms_module_yorum_feedback_admin_assets() {
 		'qrm-admin',
 		QRMS_PLUGIN_URL . 'modules/yorum-feedback/assets/css/admin.css',
 		array(),
-		QRMS_VERSION
+		QRMS_Helpers::asset_version( 'modules/yorum-feedback/assets/css/admin.css' )
 	);
 
 	// Renk seçici ve sürükle-bırak yalnızca onlara ihtiyaç duyan ekranlarda.

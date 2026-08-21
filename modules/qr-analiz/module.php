@@ -186,7 +186,7 @@ function qrms_module_qr_analiz_admin_assets() {
 		'qmo-admin',
 		QRMS_PLUGIN_URL . 'modules/_qmo-ortak/assets/css/admin.css',
 		array(),
-		QRMS_VERSION
+		QRMS_Helpers::asset_version( 'modules/_qmo-ortak/assets/css/admin.css' )
 	);
 }
 
@@ -203,14 +203,14 @@ function qrms_module_qr_analiz_panel_assets() {
 		'qrms-analitik',
 		QRMS_PLUGIN_URL . 'modules/qr-analiz/assets/css/analitik.css',
 		array(),
-		QRMS_VERSION
+		QRMS_Helpers::asset_version( 'modules/qr-analiz/assets/css/analitik.css' )
 	);
 
 	wp_enqueue_script(
 		'qrms-analitik',
 		QRMS_PLUGIN_URL . 'modules/qr-analiz/assets/js/analitik.js',
 		array(),
-		QRMS_VERSION,
+		QRMS_Helpers::asset_version( 'modules/qr-analiz/assets/js/analitik.js' ),
 		true
 	);
 

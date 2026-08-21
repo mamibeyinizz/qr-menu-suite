@@ -69,7 +69,7 @@ function qrms_module_qr_masa_admin_assets() {
 		'qmo-admin',
 		QRMS_PLUGIN_URL . 'modules/_qmo-ortak/assets/css/admin.css',
 		array(),
-		QRMS_VERSION
+		QRMS_Helpers::asset_version( 'modules/_qmo-ortak/assets/css/admin.css' )
 	);
 
 	// Ekranın kendi yerleşimi ve mobil davranışı. Ortak dosyanın ardına
@@ -78,7 +78,7 @@ function qrms_module_qr_masa_admin_assets() {
 		'qmo-admin-masalar',
 		QRMS_PLUGIN_URL . 'modules/qr-masa/assets/css/admin-masalar.css',
 		array( 'qmo-admin' ),
-		QRMS_VERSION
+		QRMS_Helpers::asset_version( 'modules/qr-masa/assets/css/admin-masalar.css' )
 	);
 	wp_enqueue_script( 'qmo-qrious', 'https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js', array(), '4.0.2', true );
 	wp_enqueue_script( 'qmo-jspdf', 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js', array(), '2.5.1', true );
@@ -86,7 +86,7 @@ function qrms_module_qr_masa_admin_assets() {
 		'qmo-admin-masalar',
 		QRMS_PLUGIN_URL . 'modules/qr-masa/assets/js/admin-masalar.js',
 		array( 'qmo-qrious', 'qmo-jspdf' ),
-		QRMS_VERSION,
+		QRMS_Helpers::asset_version( 'modules/qr-masa/assets/js/admin-masalar.js' ),
 		true
 	);
 }

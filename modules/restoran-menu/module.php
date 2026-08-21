@@ -262,14 +262,16 @@ function qrms_module_restoran_menu_admin_assets() {
 
 	$deps = array( 'jquery', 'wp-color-picker', 'jquery-ui-sortable' );
 
-	wp_enqueue_style( 'rma-admin-ui', $url . 'assets/css/admin-ui.css', array(), QRMS_VERSION );
-	wp_enqueue_script( 'rma-admin-ui', $url . 'assets/js/admin-ui.js', $deps, QRMS_VERSION, true );
+	$modul = 'modules/restoran-menu/';
+
+	wp_enqueue_style( 'rma-admin-ui', $url . 'assets/css/admin-ui.css', array(), QRMS_Helpers::asset_version( $modul . 'assets/css/admin-ui.css' ) );
+	wp_enqueue_script( 'rma-admin-ui', $url . 'assets/js/admin-ui.js', $deps, QRMS_Helpers::asset_version( $modul . 'assets/js/admin-ui.js' ), true );
 
 	// Görünüm sayfasındaki canlı önizleme, frontend'in gerçek nav
 	// stylesheet'ini kullanır; aktif gösterge CSS'inin dört varyantı da
 	// ekranın kendi kaynağından (get_nav_indicator_css) gelir.
 	if ( 'qrms-rm-gorunum' === $page ) {
-		wp_enqueue_style( 'rma-nav', $url . 'assets/css/rma-nav.css', array( 'rma-admin-ui' ), QRMS_VERSION );
+		wp_enqueue_style( 'rma-nav', $url . 'assets/css/rma-nav.css', array( 'rma-admin-ui' ), QRMS_Helpers::asset_version( $modul . 'assets/css/rma-nav.css' ) );
 		wp_add_inline_style( 'rma-nav', $rma->get_nav_preview_css() );
 	}
 

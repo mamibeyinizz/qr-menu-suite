@@ -170,6 +170,45 @@ sütundur; `pointer: coarse` cihazlarda kart yüksekliği ve ikonlar büyür.
 yazı tipi yığınına ve işletim sistemine göre kutu karakterine düşebiliyor.
 Stiller `assets/css/admin.css` içindeki `.qrms-hub-*` kurallarındadır.
 
+### Varlık sürümleri — önbellek kırma
+
+Eklentinin CSS/JS dosyaları `wp_enqueue_style()`/`wp_enqueue_script()`'e
+**sabit** `QRMS_VERSION` ile veriliyordu. Bu, dosyanın adresini
+(`admin.css?ver=1.0.0`) eklenti sürümü yükseltilene kadar hiç değiştirmez:
+içerik değişse bile tarayıcı, sunucudaki sayfa önbelleği ve CDN eski kopyayı
+sunmaya devam eder. Hub kart ızgarası tam olarak böyle kayboldu — `.qrms-hub-*`
+kuralları `assets/css/admin.css`'e eklendi ama adres değişmediği için o
+kuralları içermeyen eski kopya sunuluyordu ve kartlar tek satıra çökmüş
+bağlantı metni olarak görünüyordu.
+
+Sürüm artık dosya başına hesaplanıyor:
+
+```php
+wp_enqueue_style(
+    'qrms-admin',
+    QRMS_PLUGIN_URL . 'assets/css/admin.css',
+    array(),
+    QRMS_Helpers::asset_version( 'assets/css/admin.css' )   // "1.1.0.1755766421"
+);
+```
+
+`QRMS_Helpers::asset_version()` eklenti sürümüne dosyanın `filemtime()`
+değerini ekler; dosya her değiştiğinde adres kendiliğinden değişir ve hiçbir
+sürüm numarasını elle yükseltmek gerekmez. Sonuç istek boyunca saklanır, aynı
+dosya birden çok yerde kuyruğa alınsa da disk bir kez okunur. Dosya yoksa
+eklenti sürümüne düşülür.
+
+Suite'in sahip olduğu **bütün** varlıklar (çekirdek + dokuz modül, 22 çağrı)
+bu yolu kullanır. İki test bunu korur: biri hub ekranında `admin.css`'in
+önbellek kıran bir sürümle kuyruğa alındığını doğrular, diğeri kaynak ağacını
+tarayıp sabit `QRMS_VERSION` ile kuyruğa alınan bir varlık kalmadığını
+kontrol eder.
+
+Hub kartlarının gövdesi ayrıca blok elemanlardan (`div`/`h3`/`p`) kurulur.
+HTML5'te `<a>` akış içeriği taşıyabilir; fark yalnızca stil dosyası ulaşmadığı
+durumda ortaya çıkar — `span`'lerle kart tek satıra çöküp okunmaz hâle
+gelirken blok elemanlarla alt alta dizilmiş okunabilir bir liste kalır.
+
 ### Kısa kod rehberi
 
 Suite genelinde dokuz dosyada dağınık `add_shortcode()` çağrısı var ve hiçbiri

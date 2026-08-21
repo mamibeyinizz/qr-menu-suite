@@ -72,14 +72,14 @@ function qrms_module_qr_calisma_saatleri_admin_assets() {
 		'qrms-cs-admin',
 		QRMS_PLUGIN_URL . 'modules/qr-calisma-saatleri/assets/css/admin.css',
 		array( 'qrms-admin' ),
-		QRMS_VERSION
+		QRMS_Helpers::asset_version( 'modules/qr-calisma-saatleri/assets/css/admin.css' )
 	);
 
 	wp_enqueue_script(
 		'qrms-cs-admin',
 		QRMS_PLUGIN_URL . 'modules/qr-calisma-saatleri/assets/js/admin.js',
 		array(),
-		QRMS_VERSION,
+		QRMS_Helpers::asset_version( 'modules/qr-calisma-saatleri/assets/js/admin.js' ),
 		true
 	);
 }
