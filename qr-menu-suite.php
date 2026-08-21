@@ -3,7 +3,7 @@
  * Plugin Name:       QR Menu Suite
  * Plugin URI:        https://qrmenuofficial.com
  * Description:       Restoranlar için modüler QR menü sistemi. Modüller lisans sunucusundan gelen listeye göre etkinleşir.
- * Version:           1.0.0
+ * Version:           1.1.0
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Author:            QR Menu Official
@@ -17,7 +17,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'QRMS_VERSION', '1.0.0' );
+define( 'QRMS_VERSION', '1.1.0' );
 define( 'QRMS_PLUGIN_FILE', __FILE__ );
 define( 'QRMS_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'QRMS_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
@@ -26,6 +26,7 @@ require_once QRMS_PLUGIN_DIR . 'includes/class-helpers.php';
 require_once QRMS_PLUGIN_DIR . 'includes/class-license-client.php';
 require_once QRMS_PLUGIN_DIR . 'includes/class-module-loader.php';
 require_once QRMS_PLUGIN_DIR . 'includes/class-wizard.php';
+require_once QRMS_PLUGIN_DIR . 'includes/class-shortcodes.php';
 require_once QRMS_PLUGIN_DIR . 'includes/class-admin.php';
 
 /**

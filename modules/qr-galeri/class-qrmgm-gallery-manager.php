@@ -41,7 +41,9 @@ final class QRMenu_Gallery_Manager {
 		register_deactivation_hook( QRMGM_FILE, [ $this, 'deactivate' ] );
 
 		add_action( 'init', [ $this, 'register_post_types' ] );
-		add_action( 'admin_menu', [ $this, 'register_admin_menu' ] );
+		// Öncelik 20: QRMS_Admin::register_menu() öncelik 10'da çalışır, yani
+		// "QR Galeri" satırı biz eklerken $submenu'de hazırdır.
+		add_action( 'admin_menu', [ $this, 'register_admin_menu' ], 20 );
 		add_action( 'admin_enqueue_scripts', [ $this, 'admin_assets' ] );
 		add_action( 'wp_enqueue_scripts', [ $this, 'maybe_frontend_assets' ] );
 		add_shortcode( 'qrmenu_gallery', [ $this, 'render_shortcode' ] );
@@ -136,23 +138,89 @@ final class QRMenu_Gallery_Manager {
 		] );
 	}
 
+	/**
+	 * Modülün ekranları — TEK KAYNAK.
+	 *
+	 * Sayfa kaydı ve hub kartları aynı listeden beslenir; sıra kart sırasıdır.
+	 *
+	 * @return array<string,array{title:string,render:string,desc:string,icon:string}>
+	 */
+	public function admin_pages(): array {
+		return [
+			'qrmgm-sections' => [
+				'title'  => 'Galeri Bölümleri',
+				'render' => 'page_sections',
+				'desc'   => 'Galerinizin bölümleri: ekleyin, sıralayın, yayından kaldırın.',
+				'icon'   => 'dashicons-category',
+			],
+			'qrmgm-images'   => [
+				'title'  => 'Tüm Görseller',
+				'render' => 'page_images',
+				'desc'   => 'Bölümlerdeki görselleri yükleyin, sıralayın ve silin.',
+				'icon'   => 'dashicons-format-gallery',
+			],
+			'qrmgm-settings' => [
+				'title'  => 'Galeri Ayarları',
+				'render' => 'page_settings',
+				'desc'   => 'Grid düzeni, renkler, lightbox ve WebP dönüşümü.',
+				'icon'   => 'dashicons-admin-settings',
+			],
+		];
+	}
+
+	/**
+	 * Modülün ekranlarını kaydeder — hepsi sol menüde GİZLİDİR.
+	 *
+	 * Sol menüde yalnızca "QR Galeri" satırı durur ve üç ekranı kart olarak
+	 * listeleyen hub ekranını (page_hub) açar. Ekranlar gerçek, ayrı WordPress
+	 * sayfaları olarak kaydolur (bkz. QRMS_Admin::hide_module_subpages).
+	 *
+	 * NOT: "Galeri Bölümleri" v1.0'da modülün kendi satırındaydı
+	 * (qrms-module-qr-galeri). Sol menü tek seviyeye indirilince o slug hub
+	 * ekranı oldu; bölümler `qrmgm-sections` slug'ına taşındı. Eski adres
+	 * kırılmaz — hub'ı açar, bölümler oradan bir kart uzaktadır.
+	 */
 	public function register_admin_menu(): void {
-		add_submenu_page(
-			QRMS_Admin::MENU_SLUG,
-			'QR Galeri — Tüm Görseller',
-			'— Galeri Görselleri',
-			self::CAP,
-			'qrmgm-images',
-			[ $this, 'page_images' ]
-		);
-		add_submenu_page(
-			QRMS_Admin::MENU_SLUG,
-			'QR Galeri — Ayarlar',
-			'— Galeri Ayarları',
-			self::CAP,
-			'qrmgm-settings',
-			[ $this, 'page_settings' ]
-		);
+		global $submenu;
+
+		// Modül lisansta aktif değilse "QR Galeri" satırı hiç kaydolmaz; o zaman
+		// ekranlarının da kaydedilmemesi gerekir.
+		if ( empty( $submenu[ QRMS_Admin::MENU_SLUG ] ) ) {
+			return;
+		}
+
+		foreach ( $this->admin_pages() as $slug => $page ) {
+			add_submenu_page(
+				QRMS_Admin::MENU_SLUG,
+				'QR Galeri — ' . $page['title'],
+				$page['title'],
+				self::CAP,
+				$slug,
+				QRMS_Admin::register_module_subpage( 'qr-galeri', $slug, [ $this, $page['render'] ] )
+			);
+		}
+	}
+
+	/**
+	 * "QR Galeri" satırının açtığı hub ekranı.
+	 */
+	public function page_hub(): void {
+		$cards = [];
+
+		foreach ( $this->admin_pages() as $slug => $page ) {
+			$cards[] = [
+				'url'   => admin_url( 'admin.php?page=' . $slug ),
+				'title' => $page['title'],
+				'desc'  => $page['desc'],
+				'icon'  => $page['icon'],
+			];
+		}
+
+		QRMS_Admin::render_hub( [
+			'title' => 'QR Galeri',
+			'intro' => 'Bölümleriniz, görselleriniz ve galerinin görünüm ayarları burada.',
+			'cards' => $cards,
+		] );
 	}
 
 	private function current_admin_page(): string {
@@ -160,9 +228,11 @@ final class QRMenu_Gallery_Manager {
 	}
 
 	public function admin_assets( string $hook ): void {
-		$page        = $this->current_admin_page();
-		$module_page = QRMS_Admin::get_module_page_slug( 'qr-galeri' );
-		if ( ! in_array( $page, [ $module_page, 'qrmgm-images', 'qrmgm-settings' ], true ) ) {
+		// Hub ekranının stili suite'in ortak admin.css'inden gelir; medya
+		// kitaplığı, sürükle-bırak ve renk seçici yalnızca üç yönetim
+		// ekranında gerekir.
+		$page = $this->current_admin_page();
+		if ( ! array_key_exists( $page, $this->admin_pages() ) ) {
 			return;
 		}
 

@@ -32,12 +32,30 @@ if ( ! function_exists( 'qmo_varliklari_kaydet' ) ) {
 		// altında duruyor; bu yüzden taban adres handle başına ayrılıyor.
 		$ortak   = QRMS_PLUGIN_URL . 'modules/_qmo-ortak/assets/';
 		$chatbot = QRMS_PLUGIN_URL . 'modules/qr-chatbot/assets/';
-		$v       = QRMS_VERSION;
 
-		wp_register_style( 'qmo-oturum-kutu', $ortak . 'css/oturum-kutu.css', array(), $v );
-		wp_register_style( 'qmo-chatbot', $chatbot . 'css/chatbot.css', array(), $v );
+		// Sürüm dosya başına hesaplanır; ortak bir $v kullanmak, dosyalardan
+		// yalnızca biri değiştiğinde adresin sabit kalmasına ve eski kopyanın
+		// sunulmasına yol açardı.
+		wp_register_style(
+			'qmo-oturum-kutu',
+			$ortak . 'css/oturum-kutu.css',
+			array(),
+			QRMS_Helpers::asset_version( 'modules/_qmo-ortak/assets/css/oturum-kutu.css' )
+		);
+		wp_register_style(
+			'qmo-chatbot',
+			$chatbot . 'css/chatbot.css',
+			array(),
+			QRMS_Helpers::asset_version( 'modules/qr-chatbot/assets/css/chatbot.css' )
+		);
 
-		wp_register_script( 'qmo-chatbot', $chatbot . 'js/chatbot.js', array(), $v, true );
+		wp_register_script(
+			'qmo-chatbot',
+			$chatbot . 'js/chatbot.js',
+			array(),
+			QRMS_Helpers::asset_version( 'modules/qr-chatbot/assets/js/chatbot.js' ),
+			true
+		);
 
 		// Sepet, buton ve garson/hesap varlıkları bu göçte taşınmadı (kaynak
 		// dosyaları henüz bir modüle ait değil). Modülleri geldiğinde kendi

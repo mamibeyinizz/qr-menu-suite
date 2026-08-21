@@ -52,6 +52,51 @@ class QRMS_Helpers {
 	}
 
 	/**
+	 * Bir varlık dosyasının önbellek kıran sürüm etiketi.
+	 *
+	 * NEDEN GEREKLİ: `wp_enqueue_style()`'a sabit `QRMS_VERSION` verildiğinde
+	 * dosyanın adresi (`admin.css?ver=1.0.0`) sürüm yükseltilene kadar HİÇ
+	 * değişmez. Dosyanın içeriği değişse bile tarayıcı, sunucudaki sayfa
+	 * önbelleği ve CDN eski kopyayı sunmaya devam eder — yeni eklenen kurallar
+	 * hiç uygulanmaz ve ekran stilsiz görünür. (Hub kart ızgarası tam olarak
+	 * böyle kayboldu: `.qrms-hub-*` kuralları dosyaya eklendi ama adres
+	 * değişmediği için eski, o kuralları içermeyen kopya sunuluyordu.)
+	 *
+	 * Sürüm eklenti sürümü + dosyanın son değişiklik zamanıdır: dosya her
+	 * değiştiğinde adres kendiliğinden değişir, hiçbir sürüm numarasını elle
+	 * yükseltmek gerekmez. Dosya okunamıyorsa eklenti sürümüne düşülür.
+	 *
+	 * `filemtime()` sonucu istek boyunca saklanır; aynı dosya birden çok yerde
+	 * kuyruğa alınsa da disk yalnızca bir kez okunur. (Aynı desen zaten
+	 * restoran-menu modülünün kendi kodunda var — bkz.
+	 * RMA_Helpers_Trait::asset_version.)
+	 *
+	 * @param string $relative_path Eklenti köküne göreli yol, ör. 'assets/css/admin.css'.
+	 * @return string
+	 */
+	public static function asset_version( $relative_path ) {
+		static $bellek = array();
+
+		$relative_path = ltrim( (string) $relative_path, '/' );
+
+		if ( isset( $bellek[ $relative_path ] ) ) {
+			return $bellek[ $relative_path ];
+		}
+
+		// is_file() şart: boş ya da dizin gösteren bir yol için is_readable()
+		// true döner ve filemtime() KLASÖRÜN zamanını verirdi — o zaman da
+		// klasöre her dosya eklendiğinde ilgisiz varlıkların adresi değişirdi.
+		$yol   = QRMS_PLUGIN_DIR . $relative_path;
+		$zaman = ( '' !== $relative_path && is_file( $yol ) ) ? filemtime( $yol ) : false;
+
+		$bellek[ $relative_path ] = false !== $zaman
+			? QRMS_VERSION . '.' . (int) $zaman
+			: QRMS_VERSION;
+
+		return $bellek[ $relative_path ];
+	}
+
+	/**
 	 * Tek bir modülün görünen ismini döndürür.
 	 *
 	 * @param string $slug Modül slug'ı.

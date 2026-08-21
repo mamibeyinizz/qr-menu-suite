@@ -10,11 +10,11 @@
  * MENÜ (suite'e uyarlama): kaynağın kendi "QR Yorumlar" ÜST MENÜSÜ kaldırıldı.
  * Kaynakta modülün yedi ekranı ayrı bir top-level menüde duruyordu ve suite
  * menüsündeki "Yorum & Feedback" satırı da bunlardan birini (Tüm Yorumlar)
- * ikinci kez basıyordu; aynı ekran iki menüden açılıyor, diğer altı ekran ise
- * suite menüsünde hiç görünmüyordu. Artık tek giriş noktası var: yedi ekranın
- * hepsi "QR Menü"nün doğrudan alt satırı, "Yorum & Feedback" ise onları
- * listeleyen başlangıç ekranı — restoran-menu modülündeki desenin aynısı.
- * Eski adreslerden gelenler qrm_pro_legacy_page_target() ile yönlendirilir.
+ * ikinci kez basıyordu. Artık tek giriş noktası var: sol menüde yalnızca
+ * "Yorum & Feedback" satırı durur ve yedi ekranı kart olarak listeleyen hub
+ * ekranını açar — restoran-menu modülündeki desenin aynısı. Ekranların
+ * kendisi gizli ama gerçek sayfalar olarak kayıtlıdır; eski adreslerden
+ * gelenler qrm_pro_legacy_page_target() ile yönlendirilir.
  *
  * Bu modül `_qmo-ortak/ortak.php`'yi YÜKLEMEZ: `qrm_pro_` / `qrm_reward_` /
  * `qrm_cf_` ad alanıyla tamamen kendi kendine yeterlidir. Kaynakta tek bir
@@ -73,6 +73,35 @@ function qrms_module_yorum_feedback_init() {
 	// çağrılır; sürüm option'ları eşleştiğinde iki get_option ile erken döner.
 	qrm_pro_maybe_upgrade();
 
+	QRMS_Shortcodes::register(
+		'yorum-feedback',
+		array(
+			array(
+				'tag'   => 'qr_menu_reviews',
+				'title' => __( 'Yorum Formu ve Listesi', 'qrms' ),
+				'desc'  => __( 'Müşterilerin puan verip yorum bıraktığı form ile onaylanmış yorumların listesini birlikte gösterir.', 'qrms' ),
+			),
+			array(
+				'tag'   => 'qr_menu_contact',
+				'title' => __( 'İletişim Formu', 'qrms' ),
+				'desc'  => __( 'Yalnızca iletişim formu — puanlama ve yorum listesi olmadan. İletişim sayfanız için.', 'qrms' ),
+			),
+			array(
+				'tag'   => 'qr_menu_form',
+				'title' => __( 'Özel Form', 'qrms' ),
+				'desc'  => __( 'Formlar ekranında oluşturduğunuz kendi formlarınızdan birini (şikayet, rezervasyon, anket…) sayfaya yerleştirir.', 'qrms' ),
+				'usage' => '[qr_menu_form key="rezervasyon"]',
+				'attrs' => array(
+					array(
+						'name'    => 'key',
+						'default' => '',
+						'desc'    => __( 'Formun anahtarı — Formlar ekranından öğrenin. Zorunludur.', 'qrms' ),
+					),
+				),
+			),
+		)
+	);
+
 	if ( is_admin() ) {
 		// Suite menüsündeki "Yorum & Feedback" satırı, modülün yedi ekranını
 		// listeleyen başlangıç ekranını açar; ekranların kendisi aşağıda ayrı
@@ -84,18 +113,19 @@ function qrms_module_yorum_feedback_init() {
 		// Öncelik 20: QRMS_Admin::register_menu() öncelik 10'da çalışır, yani
 		// "Yorum & Feedback" satırı biz eklerken $submenu'de hazırdır.
 		add_action( 'admin_menu', 'qrms_module_yorum_feedback_admin_menu', 20 );
+
+		add_filter( 'qrms_module_menu_label', 'qrms_module_yorum_feedback_menu_label', 10, 2 );
 	}
 }
 
 /**
- * Modülün suite menüsündeki alt satırları: ekranları ekler, sırayı düzeltir.
+ * Modülün yedi ekranını kaydeder — hepsi sol menüde GİZLİDİR.
  *
- * WordPress iki seviyeli bir admin menüsüne sahiptir — "Yorum & Feedback"
- * girişinin ALTINA giriş eklenemez. Bu yüzden modülün yedi ekranı da "QR
- * Menü"nün doğrudan alt öğesidir; modüle ait olduklarını göstermek için
- * etiketleri "—" ile öneklenir ve "Yorum & Feedback" satırının hemen ardına
- * sıralanır. Hepsi add_submenu_page ile kaydedilmiş gerçek, ayrı sayfalardır —
- * JS ile gizlenip gösterilen sekme yoktur.
+ * Sol admin menüsü tek seviyeye indirildi: orada yalnızca "Yorum & Feedback"
+ * satırı durur, o satır da yedi ekranı kart olarak listeleyen hub ekranını
+ * (qrm_pro_admin_hub) açar. Ekranlar gerçek, ayrı WordPress sayfaları olarak
+ * kaydolmaya devam eder — adresleri, hook adları ve yetkileri değişmez;
+ * yalnızca menüde boyanmazlar (bkz. QRMS_Admin::hide_module_subpages).
  *
  * @return void
  */
@@ -105,7 +135,7 @@ function qrms_module_yorum_feedback_admin_menu() {
 	$parent = QRMS_Admin::MENU_SLUG;
 
 	// Modül lisansta aktif değilse "Yorum & Feedback" satırı hiç kaydolmaz;
-	// o zaman burada düzenlenecek bir şey de yoktur.
+	// o zaman ekranlarının da kaydedilmemesi gerekir.
 	if ( empty( $submenu[ $parent ] ) ) {
 		return;
 	}
@@ -114,68 +144,27 @@ function qrms_module_yorum_feedback_admin_menu() {
 		add_submenu_page(
 			$parent,
 			$page['title'],
-			'— ' . $page['menu_title'] . qrm_pro_menu_badge( $slug ),
+			$page['menu_title'],
 			QRMS_Admin::CAPABILITY,
 			$slug,
-			$page['render']
+			QRMS_Admin::register_module_subpage( 'yorum-feedback', $slug, $page['render'] )
 		);
 	}
-
-	$submenu[ $parent ] = qrms_module_yorum_feedback_submenu_sirala( $submenu[ $parent ] );
 }
 
 /**
- * Modülün satırlarını "Yorum & Feedback" girişinin hemen ardına taşır.
+ * Modülün sol menüdeki satırına rozet ekler.
  *
- * WordPress'e bağımlılığı yoktur (saf dizi dönüşümü), bu yüzden doğrudan test
- * edilir. Sonuç array_values() ile yeniden indekslenir: WordPress alt menüleri
- * anahtara göre sıraladığından 0..n indeksleme buradaki sırayı korur.
+ * Alt satırlar kaldırıldığı için okunmamış form gönderimi ya da eksik ödül
+ * kurulumu artık yalnızca modülün kendi satırında görünebilir; rozetlerin
+ * ayrıntısı hub ekranındaki kartlarda durur.
  *
- * Diğer modüllerin (ör. restoran-menu) satırları "others" içinde göreli
- * sıralarını koruyarak geçer; iki modülün sıralama geçişi birbirini bozmaz.
- *
- * @param array $rows $submenu[QRMS_Admin::MENU_SLUG] satırları.
- * @return array Yeniden sıralanmış satırlar.
+ * @param string $label Modülün görünen adı.
+ * @param string $slug  Modül slug'ı.
+ * @return string
  */
-function qrms_module_yorum_feedback_submenu_sirala( array $rows ) {
-	$module_slug = QRMS_Admin::get_module_page_slug( 'yorum-feedback' );
-	$child_slugs = array_keys( qrm_pro_admin_pages() );
-
-	$others   = array();
-	$children = array();
-	$anchor   = -1;
-
-	foreach ( $rows as $row ) {
-		$slug = isset( $row[2] ) ? $row[2] : '';
-		$key  = array_search( $slug, $child_slugs, true );
-
-		if ( false !== $key ) {
-			$children[ $key ] = $row;
-			continue;
-		}
-
-		$others[] = $row;
-
-		if ( $module_slug === $slug ) {
-			$anchor = count( $others );
-		}
-	}
-
-	// "Yorum & Feedback" satırı yoksa taşınacak bir çapa da yok: satırlar
-	// bulundukları sırada bırakılır.
-	if ( -1 === $anchor ) {
-		return array_values( $rows );
-	}
-
-	ksort( $children );
-
-	return array_values(
-		array_merge(
-			array_slice( $others, 0, $anchor ),
-			array_values( $children ),
-			array_slice( $others, $anchor )
-		)
-	);
+function qrms_module_yorum_feedback_menu_label( $label, $slug ) {
+	return 'yorum-feedback' === $slug ? $label . qrm_pro_menu_badge() : $label;
 }
 
 /**
@@ -195,7 +184,9 @@ function qrms_module_yorum_feedback_admin_assets() {
 	// phpcs:ignore WordPress.Security.NonceVerification.Recommended
 	$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '';
 
-	if ( ! qrm_pro_is_module_page( $page ) ) {
+	// Hub ekranının stili suite'in ortak admin.css'inden gelir; modülün kendi
+	// varlıklarına yalnızca yedi yönetim ekranının ihtiyacı var.
+	if ( ! array_key_exists( $page, qrm_pro_admin_pages() ) ) {
 		return;
 	}
 
@@ -203,11 +194,8 @@ function qrms_module_yorum_feedback_admin_assets() {
 		'qrm-admin',
 		QRMS_PLUGIN_URL . 'modules/yorum-feedback/assets/css/admin.css',
 		array(),
-		QRMS_VERSION
+		QRMS_Helpers::asset_version( 'modules/yorum-feedback/assets/css/admin.css' )
 	);
-
-	// Başlangıç ekranındaki kart ikonları WordPress'in dashicons setinden gelir.
-	wp_enqueue_style( 'dashicons' );
 
 	// Renk seçici ve sürükle-bırak yalnızca onlara ihtiyaç duyan ekranlarda.
 	if ( in_array( $page, array( 'qrms-yf-ayarlar', 'qrms-yf-odul' ), true ) ) {

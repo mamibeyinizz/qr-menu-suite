@@ -25,6 +25,25 @@ function qrms_module_qr_calisma_saatleri_init() {
 	require_once __DIR__ . '/includes/shortcode.php';
 
 	add_shortcode( 'qr_calisma_saatleri', 'qrms_cs_shortcode' );
+
+	QRMS_Shortcodes::register(
+		'qr-calisma-saatleri',
+		array(
+			array(
+				'tag'   => 'qr_calisma_saatleri',
+				'title' => __( 'Çalışma Saatleri', 'qrms' ),
+				'desc'  => __( 'Haftalık açılış/kapanış saatlerinizi tablo hâlinde gösterir; o günün satırı vurgulanır.', 'qrms' ),
+				'attrs' => array(
+					array(
+						'name'    => 'today',
+						'default' => '0',
+						'desc'    => __( 'Tüm haftayı değil yalnızca bugünü göstermek için "1" yazın.', 'qrms' ),
+					),
+				),
+			),
+		)
+	);
+
 	add_action( 'wp_enqueue_scripts', 'qrms_cs_register_frontend_assets' );
 
 	if ( is_admin() ) {
@@ -53,14 +72,14 @@ function qrms_module_qr_calisma_saatleri_admin_assets() {
 		'qrms-cs-admin',
 		QRMS_PLUGIN_URL . 'modules/qr-calisma-saatleri/assets/css/admin.css',
 		array( 'qrms-admin' ),
-		QRMS_VERSION
+		QRMS_Helpers::asset_version( 'modules/qr-calisma-saatleri/assets/css/admin.css' )
 	);
 
 	wp_enqueue_script(
 		'qrms-cs-admin',
 		QRMS_PLUGIN_URL . 'modules/qr-calisma-saatleri/assets/js/admin.js',
 		array(),
-		QRMS_VERSION,
+		QRMS_Helpers::asset_version( 'modules/qr-calisma-saatleri/assets/js/admin.js' ),
 		true
 	);
 }

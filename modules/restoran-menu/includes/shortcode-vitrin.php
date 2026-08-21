@@ -73,11 +73,23 @@ class RMA_Vitrin_Shortcode {
 
         self::$assets_loaded = true;
 
-        $url    = RMA_PLUGIN_URL . 'assets/';
-        $surum  = defined( 'QRMS_VERSION' ) ? QRMS_VERSION : '1.0.0';
+        $url = RMA_PLUGIN_URL . 'assets/';
 
-        wp_enqueue_style( 'rma-vitrin', $url . 'css/vitrin.css', array(), $surum );
-        wp_enqueue_script( 'rma-vitrin', $url . 'js/vitrin.js', array(), $surum, true );
+        // Sürüm dosyanın son değişiklik zamanından gelir. Suite yoksa (eski
+        // tekil eklenti kurulumu) yardımcı sınıf da yoktur; o zaman dosyanın
+        // kendi filemtime'ı doğrudan kullanılır.
+        $vitrin = static function ( $dosya ) {
+            if ( class_exists( 'QRMS_Helpers' ) ) {
+                return QRMS_Helpers::asset_version( 'modules/restoran-menu/assets/' . $dosya );
+            }
+
+            $yol = RMA_PLUGIN_DIR . 'assets/' . $dosya;
+
+            return is_readable( $yol ) ? (string) filemtime( $yol ) : '1.0.0';
+        };
+
+        wp_enqueue_style( 'rma-vitrin', $url . 'css/vitrin.css', array(), $vitrin( 'css/vitrin.css' ) );
+        wp_enqueue_script( 'rma-vitrin', $url . 'js/vitrin.js', array(), $vitrin( 'js/vitrin.js' ), true );
     }
 
     /**

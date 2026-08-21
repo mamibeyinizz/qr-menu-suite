@@ -42,21 +42,76 @@ if ( ! function_exists( 'qmo_masalar_sayfasi' ) ) {
 				</div>
 			<?php endif; ?>
 
-			<div class="qmo-add-box">
-				<h3>Yeni Masa Oluştur</h3>
-				<form method="post" action="">
-					<?php wp_nonce_field( 'qmo_masa_ekle', 'qmo_nonce' ); ?>
-					<input type="text" name="table_name" placeholder="Örn: Masa 1" required class="regular-text">
-					<button type="submit" name="qmo_masa_ekle" value="1" class="button button-primary">Oluştur</button>
-				</form>
-				<p class="description">
-					Her masa için ana sayfanıza yönlenen <code>/?masa=masa-1</code> biçiminde
-					parametreli özel bir QR kod üretilir. Masa adı bir <strong>metin</strong> slug'a
-					dönüşür (<code>Masa 31</code> → <code>masa-31</code>, <code>VIP Salon</code> → <code>vip-salon</code>).
-				</p>
+			<div class="qmo-add-grid">
+				<div class="qmo-add-box">
+					<h3>Tek Masa Oluştur</h3>
+					<form method="post" action="" class="qmo-form">
+						<?php wp_nonce_field( 'qmo_masa_ekle', 'qmo_nonce' ); ?>
+						<div class="qmo-field">
+							<label for="qmo-table-name">Masa adı</label>
+							<input type="text" id="qmo-table-name" name="table_name" placeholder="Örn: Masa 1" required class="regular-text">
+						</div>
+						<button type="submit" name="qmo_masa_ekle" value="1" class="button button-primary">Oluştur</button>
+					</form>
+					<p class="description">
+						Her masa için ana sayfanıza yönlenen <code>/?masa=masa-1</code> biçiminde
+						parametreli özel bir QR kod üretilir. Masa adı bir <strong>metin</strong> slug'a
+						dönüşür (<code>Masa 31</code> → <code>masa-31</code>, <code>VIP Salon</code> → <code>vip-salon</code>).
+					</p>
+				</div>
+
+				<div class="qmo-add-box">
+					<h3>Toplu Oluştur</h3>
+					<form method="post" action="" class="qmo-form qmo-toplu-form">
+						<?php wp_nonce_field( 'qmo_masa_toplu_ekle', 'qmo_toplu_nonce' ); ?>
+
+						<div class="qmo-field">
+							<label for="qmo-onek">Slug öneki</label>
+							<input type="text" id="qmo-onek" name="onek" value="" placeholder="Örn: ic-masa" required class="regular-text">
+						</div>
+
+						<div class="qmo-field-row">
+							<div class="qmo-field">
+								<label for="qmo-bas">Başlangıç</label>
+								<input type="number" id="qmo-bas" name="bas" value="1" min="1" max="999" required class="small-text">
+							</div>
+							<div class="qmo-field">
+								<label for="qmo-bit">Bitiş</label>
+								<input type="number" id="qmo-bit" name="bit" value="10" min="1" max="999" required class="small-text">
+							</div>
+						</div>
+
+						<p class="qmo-onizleme" id="qmo-onizleme" aria-live="polite"></p>
+
+						<button type="submit" name="qmo_masa_toplu_ekle" value="1" class="button button-primary">Masaları Oluştur</button>
+					</form>
+					<p class="description">
+						Numaralı masaları tek seferde açar: <code>ic-masa</code> öneki ve 1–10 aralığı
+						<code>ic-masa-1</code> … <code>ic-masa-10</code> masalarını oluşturur. Zaten var olan
+						masalar atlanır, tek seferde en fazla <?php echo (int) QMO_Masalar::TOPLU_AZAMI; ?> masa açılır.
+					</p>
+				</div>
 			</div>
 
-			<table class="wp-list-table widefat fixed striped">
+			<?php
+			$gruplar = qmo_masalar_gruplari( $masalar );
+
+			// Tek grup varsa filtrenin anlamı yok; çip listesi hiç basılmaz.
+			if ( count( $gruplar ) > 1 ) :
+				?>
+				<div class="qmo-filtre" role="group" aria-label="Masa grubuna göre filtrele">
+					<button type="button" class="qmo-chip is-active" data-grup="">
+						Tümü <span class="qmo-chip-sayi"><?php echo (int) count( $masalar ); ?></span>
+					</button>
+					<?php foreach ( $gruplar as $grup => $adet ) : ?>
+						<button type="button" class="qmo-chip" data-grup="<?php echo esc_attr( $grup ); ?>">
+							<?php echo esc_html( $grup ); ?> <span class="qmo-chip-sayi"><?php echo (int) $adet; ?></span>
+						</button>
+					<?php endforeach; ?>
+				</div>
+			<?php endif; ?>
+
+			<table class="wp-list-table widefat fixed striped qmo-masa-tablo">
 				<thead>
 					<tr>
 						<th style="width:50px;">ID</th>
@@ -78,12 +133,13 @@ if ( ! function_exists( 'qmo_masalar_sayfasi' ) ) {
 							?>
 							<tr class="qmo-row"
 								data-name="<?php echo esc_attr( $t->table_name ); ?>"
+								data-grup="<?php echo esc_attr( QMO_Masalar::grup_adi( $t->table_slug ) ); ?>"
 								data-url="<?php echo esc_url( $hedef ); ?>">
-								<td><?php echo (int) $t->id; ?></td>
-								<td><strong><?php echo esc_html( $t->table_name ); ?></strong></td>
-								<td><code><?php echo esc_html( $hedef ); ?></code></td>
-								<td><img class="qmo-qr-preview" src="" alt="QR"></td>
-								<td>
+								<td data-label="ID"><?php echo (int) $t->id; ?></td>
+								<td data-label="Masa Adı"><strong><?php echo esc_html( $t->table_name ); ?></strong></td>
+								<td data-label="URL Parametresi"><code><?php echo esc_html( $hedef ); ?></code></td>
+								<td data-label="QR Kod"><img class="qmo-qr-preview" src="" alt="QR"></td>
+								<td data-label="İşlemler">
 									<button type="button" class="button qmo-dl-png qmo-action-btn">
 										<span class="dashicons dashicons-format-image"></span> PNG
 									</button>
@@ -95,6 +151,9 @@ if ( ! function_exists( 'qmo_masalar_sayfasi' ) ) {
 								</td>
 							</tr>
 						<?php endforeach; ?>
+						<tr class="qmo-bos-filtre" hidden>
+							<td colspan="5">Bu grupta masa yok.</td>
+						</tr>
 					<?php else : ?>
 						<tr><td colspan="5">Henüz masa oluşturulmadı.</td></tr>
 					<?php endif; ?>
@@ -136,6 +195,33 @@ if ( ! function_exists( 'qmo_masalar_islem' ) ) {
 			);
 		}
 
+		// --- Toplu masa ekle ---
+		if ( isset( $_POST['qmo_masa_toplu_ekle'] ) ) {
+			check_admin_referer( 'qmo_masa_toplu_ekle', 'qmo_toplu_nonce' );
+
+			if ( ! current_user_can( 'manage_options' ) ) {
+				wp_die( 'Yetkiniz yok.' );
+			}
+
+			$onek = isset( $_POST['onek'] ) ? sanitize_text_field( wp_unslash( $_POST['onek'] ) ) : '';
+			$bas  = isset( $_POST['bas'] ) ? (int) $_POST['bas'] : 0;
+			$bit  = isset( $_POST['bit'] ) ? (int) $_POST['bit'] : 0;
+
+			$sonuc = QMO_Masalar::toplu_ekle( $onek, $bas, $bit );
+
+			if ( is_wp_error( $sonuc ) ) {
+				return array(
+					'tip'   => 'error',
+					'mesaj' => $sonuc->get_error_message(),
+				);
+			}
+
+			return array(
+				'tip'   => $sonuc['eklenen'] > 0 ? 'success' : 'warning',
+				'mesaj' => qmo_toplu_sonuc_mesaji( $sonuc ),
+			);
+		}
+
 		// --- Masa sil ---
 		if ( isset( $_GET['action'], $_GET['id'] ) && 'delete' === $_GET['action'] ) {
 			$id = (int) $_GET['id'];
@@ -159,5 +245,100 @@ if ( ! function_exists( 'qmo_masalar_islem' ) ) {
 		}
 
 		return null;
+	}
+}
+
+/**
+ * Toplu oluşturma sonucunu tek cümlelik bir bildirime çevirir.
+ *
+ * Atlananlar ve hatalar AYRI AYRI söylenir: "10 istedim 8 oldu" durumunda
+ * kullanıcı hangi masaların neden açılmadığını görmelidir. Liste uzarsa ilk
+ * beşi yazılıp gerisi sayıyla özetlenir.
+ *
+ * Saf fonksiyon; testlerde doğrudan doğrulanır.
+ *
+ * @param array{eklenen:int,atlanan:string[],hata:string[]} $sonuc QMO_Masalar::toplu_ekle() çıktısı.
+ * @return string
+ */
+if ( ! function_exists( 'qmo_toplu_sonuc_mesaji' ) ) {
+	function qmo_toplu_sonuc_mesaji( array $sonuc ) {
+		$eklenen = isset( $sonuc['eklenen'] ) ? (int) $sonuc['eklenen'] : 0;
+		$atlanan = isset( $sonuc['atlanan'] ) ? (array) $sonuc['atlanan'] : array();
+		$hata    = isset( $sonuc['hata'] ) ? (array) $sonuc['hata'] : array();
+
+		$parca = array( 0 === $eklenen ? 'Hiç yeni masa oluşturulmadı.' : sprintf( '%d masa oluşturuldu.', $eklenen ) );
+
+		if ( $atlanan ) {
+			$parca[] = sprintf(
+				'%d tanesi zaten vardı: %s',
+				count( $atlanan ),
+				qmo_slug_listesi( $atlanan )
+			);
+		}
+
+		if ( $hata ) {
+			$parca[] = sprintf(
+				'%d tanesi kaydedilemedi: %s',
+				count( $hata ),
+				qmo_slug_listesi( $hata )
+			);
+		}
+
+		return implode( ' ', $parca );
+	}
+}
+
+/**
+ * Slug listesini kısaltılmış, okunabilir bir metne çevirir.
+ *
+ * @param string[] $sluglar Slug listesi.
+ * @param int      $azami   Yazılacak azami slug sayısı.
+ * @return string
+ */
+if ( ! function_exists( 'qmo_slug_listesi' ) ) {
+	function qmo_slug_listesi( array $sluglar, $azami = 5 ) {
+		$azami = max( 1, (int) $azami );
+
+		if ( count( $sluglar ) <= $azami ) {
+			return implode( ', ', $sluglar );
+		}
+
+		return implode( ', ', array_slice( $sluglar, 0, $azami ) )
+			. sprintf( ' ve %d tane daha', count( $sluglar ) - $azami );
+	}
+}
+
+/**
+ * Masa listesinden filtre gruplarını çıkarır: grup => masa sayısı.
+ *
+ * Sıra doğaldır (ic-masa-2, ic-masa-10 beklenen sırada), böylece çipler
+ * tabloyla aynı mantıkta dizilir.
+ *
+ * Saf fonksiyon; testlerde doğrudan doğrulanır.
+ *
+ * @param array $masalar QMO_Masalar::hepsi() çıktısı.
+ * @return array<string,int>
+ */
+if ( ! function_exists( 'qmo_masalar_gruplari' ) ) {
+	function qmo_masalar_gruplari( $masalar ) {
+		$gruplar = array();
+
+		foreach ( (array) $masalar as $t ) {
+			if ( ! isset( $t->table_slug ) ) {
+				continue;
+			}
+
+			$grup = QMO_Masalar::grup_adi( (string) $t->table_slug );
+
+			if ( '' === $grup ) {
+				continue;
+			}
+
+			$gruplar[ $grup ] = isset( $gruplar[ $grup ] ) ? $gruplar[ $grup ] + 1 : 1;
+		}
+
+		uksort( $gruplar, 'strnatcasecmp' );
+
+		return $gruplar;
 	}
 }

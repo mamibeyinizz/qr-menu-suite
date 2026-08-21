@@ -7,9 +7,10 @@
  * böylece kurallar tarayıcıda önbelleklenebiliyor ve mobil davranış tek yerden
  * yönetilebiliyor.
  *
- * Kapsam: `.qrm-pro-wrap` sınıfını taşıyan ekranlar — Başlangıç, Tüm Yorumlar,
+ * Kapsam: `.qrm-pro-wrap` sınıfını taşıyan ekranlar — Tüm Yorumlar,
  * Detaylı İçgörüler, Müşteri Bilgileri Formu, Ayarlar & Puanlama, İletişim,
- * Google & Ödül Sistemi. "Formlar" ekranlarının kendi `qrm-cf-*` stilleri
+ * Google & Ödül Sistemi. Hub ekranı suite'in ortak `.qrms-hub-*` bileşenini
+ * kullanır (assets/css/admin.css). "Formlar" ekranlarının kendi `qrm-cf-*` stilleri
  * kaynağındaki satır içi bloklarda durur; oradaki mobil kuralları da aynı
  * bloklarda, ezmek istedikleri kuralın yanında tutulur.
  */
@@ -53,78 +54,7 @@
 }
 
 /* --------------------------------------------------------------------------
- * 2. Başlangıç ekranı (kart ızgarası + özet)
- * ------------------------------------------------------------------------ */
-
-.qrm-hub-summary {
-	display: grid;
-	gap: 16px;
-	grid-template-columns: repeat( auto-fit, minmax( 200px, 1fr ) );
-	margin: 20px 0 26px;
-}
-
-.qrm-hub-grid {
-	display: grid;
-	gap: 18px;
-	grid-template-columns: repeat( auto-fill, minmax( 300px, 1fr ) );
-}
-
-.qrm-hub-card {
-	background: #fff;
-	border: 1px solid #e2e8f0;
-	border-radius: 12px;
-	box-shadow: 0 1px 3px rgba( 0, 0, 0, 0.06 );
-	color: inherit;
-	display: flex;
-	gap: 14px;
-	padding: 20px;
-	text-decoration: none;
-	transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
-}
-
-.qrm-hub-card:hover,
-.qrm-hub-card:focus {
-	border-color: #c3d9ee;
-	box-shadow: 0 10px 26px rgba( 0, 0, 0, 0.09 );
-	color: inherit;
-	transform: translateY( -3px );
-}
-
-.qrm-hub-card .dashicons {
-	color: #2271b1;
-	flex: 0 0 auto;
-	font-size: 26px;
-	height: 26px;
-	width: 26px;
-}
-
-.qrm-hub-card h2 {
-	font-size: 16px;
-	line-height: 1.35;
-	margin: 0 0 6px;
-}
-
-.qrm-hub-card p {
-	color: #646970;
-	font-size: 13px;
-	line-height: 1.55;
-	margin: 0;
-}
-
-.qrm-hub-card-badge {
-	background: #d63638;
-	border-radius: 20px;
-	color: #fff;
-	font-size: 11px;
-	font-weight: 700;
-	margin-left: 8px;
-	padding: 2px 9px;
-	vertical-align: middle;
-	white-space: nowrap;
-}
-
-/* --------------------------------------------------------------------------
- * 3. İstatistik kutuları (Başlangıç özeti + Detaylı İçgörüler)
+ * 2. İstatistik kutuları (Detaylı İçgörüler, Ödül kodları)
  * ------------------------------------------------------------------------ */
 
 .qrm-insight-grid {
@@ -176,7 +106,7 @@
 }
 
 /* --------------------------------------------------------------------------
- * 4. Rozetler ve durum etiketleri
+ * 3. Rozetler ve durum etiketleri
  * ------------------------------------------------------------------------ */
 
 .qrm-breakdown {
@@ -245,7 +175,7 @@
 }
 
 /* --------------------------------------------------------------------------
- * 5. Müşteri bilgileri form alanları (sürükle-bırak)
+ * 4. Müşteri bilgileri form alanları (sürükle-bırak)
  * ------------------------------------------------------------------------ */
 
 .qrm-field-row {
@@ -294,7 +224,7 @@
 }
 
 /* --------------------------------------------------------------------------
- * 6. Boş durum
+ * 5. Boş durum
  * ------------------------------------------------------------------------ */
 
 .qrm-empty {
@@ -323,7 +253,7 @@
 }
 
 /* --------------------------------------------------------------------------
- * 7. Mobil: geniş tablolar kart görünümüne döner
+ * 6. Mobil: geniş tablolar kart görünümüne döner
  *
  * WordPress'in kendi `.widefat` tablosu dar ekranda sütunları sıkıştırır ve
  * yorum metni okunamaz hâle gelir. `.qrm-table-cards` işaretli tablolarda her
@@ -345,13 +275,8 @@
 		gap: 0;
 	}
 
-	.qrm-hub-summary,
 	.qrm-insight-grid {
 		gap: 12px;
-		grid-template-columns: 1fr;
-	}
-
-	.qrm-hub-grid {
 		grid-template-columns: 1fr;
 	}
 
@@ -480,7 +405,7 @@
 }
 
 /* --------------------------------------------------------------------------
- * 8. Dokunmatik: parmakla rahat kullanılabilir hedef boyutları
+ * 7. Dokunmatik: parmakla rahat kullanılabilir hedef boyutları
  * ------------------------------------------------------------------------ */
 
 @media ( pointer: coarse ) {
@@ -520,10 +445,6 @@
 		height: 28px;
 		padding: 8px;
 		width: 28px;
-	}
-
-	.qrm-hub-card {
-		min-height: 88px;
 	}
 }
 

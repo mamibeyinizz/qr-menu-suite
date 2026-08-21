@@ -58,6 +58,24 @@ class WP_Error {
 		$this->code    = $code;
 		$this->message = $message;
 	}
+
+	/**
+	 * Hata kodu (çekirdekteki erişimcinin karşılığı).
+	 *
+	 * @return string
+	 */
+	public function get_error_code() {
+		return $this->code;
+	}
+
+	/**
+	 * Hata mesajı (çekirdekteki erişimcinin karşılığı).
+	 *
+	 * @return string
+	 */
+	public function get_error_message() {
+		return $this->message;
+	}
 }
 
 /**
@@ -317,6 +335,29 @@ function sanitize_key( $key ) {
 }
 
 /**
+ * Başlıktan slug üretir.
+ *
+ * Çekirdeğin sanitize_title()'ının test için yeterli sadeleştirmesi: Türkçe
+ * harfler ASCII karşılığına indirgenir, harf/rakam dışındaki her şey tireye
+ * dönüşür, baştaki ve sondaki tireler kırpılır.
+ *
+ * @param string $baslik Ham metin.
+ * @return string
+ */
+function sanitize_title( $baslik ) {
+	$harita = array(
+		'ı' => 'i', 'İ' => 'i', 'ğ' => 'g', 'Ğ' => 'g', 'ü' => 'u', 'Ü' => 'u',
+		'ş' => 's', 'Ş' => 's', 'ö' => 'o', 'Ö' => 'o', 'ç' => 'c', 'Ç' => 'c',
+	);
+
+	$slug = strtr( (string) $baslik, $harita );
+	$slug = strtolower( $slug );
+	$slug = preg_replace( '/[^a-z0-9]+/', '-', $slug );
+
+	return trim( (string) $slug, '-' );
+}
+
+/**
  * Metin temizler.
  *
  * @param string $value Değer.
@@ -544,6 +585,10 @@ function add_submenu_page( $parent_slug, $page_title, $menu_title, $capability, 
 		'callback' => $callback,
 	);
 
+	// WordPress satırı $submenu dizisinde de tutar; gizleme mantığı (beyaz
+	// liste + remove_submenu_page) doğrudan bu diziyle çalışır.
+	$GLOBALS['submenu'][ $parent_slug ][] = array( $menu_title, $capability, $menu_slug, $page_title );
+
 	return $parent_slug . '_page_' . $menu_slug;
 }
 
@@ -565,7 +610,27 @@ function remove_submenu_page( $parent_slug, $menu_slug ) {
 
 	$GLOBALS['qrms_test']['submenus'] = array_values( $GLOBALS['qrms_test']['submenus'] );
 
+	// Çekirdek yalnızca $submenu satırını düşürür (anahtarlar seyrek kalır);
+	// sayfa kaydı $_registered_pages'te durmaya devam eder.
+	if ( isset( $GLOBALS['submenu'][ $parent_slug ] ) ) {
+		foreach ( $GLOBALS['submenu'][ $parent_slug ] as $index => $row ) {
+			if ( isset( $row[2] ) && $menu_slug === $row[2] ) {
+				unset( $GLOBALS['submenu'][ $parent_slug ][ $index ] );
+			}
+		}
+	}
+
 	return true;
+}
+
+/**
+ * Yayın için güvenli HTML (testte metin aynen döner).
+ *
+ * @param string $html HTML.
+ * @return string
+ */
+function wp_kses_post( $html ) {
+	return $html;
 }
 
 /**
@@ -585,6 +650,7 @@ function wp_enqueue_style( $handle, $src = '', $deps = array(), $ver = false ) {
 	$GLOBALS['qrms_test']['styles'][] = array(
 		'handle' => $handle,
 		'src'    => $src,
+		'ver'    => $ver,
 	);
 }
 
@@ -598,7 +664,17 @@ function wp_enqueue_style( $handle, $src = '', $deps = array(), $ver = false ) {
  * @param bool   $in_footer Footer'da mı?
  * @return void
  */
-function wp_enqueue_script( $handle, $src = '', $deps = array(), $ver = false, $in_footer = false ) {}
+function wp_enqueue_script( $handle, $src = '', $deps = array(), $ver = false, $in_footer = false ) {
+	if ( ! isset( $GLOBALS['qrms_test']['scripts'] ) ) {
+		$GLOBALS['qrms_test']['scripts'] = array();
+	}
+
+	$GLOBALS['qrms_test']['scripts'][] = array(
+		'handle' => $handle,
+		'src'    => $src,
+		'ver'    => $ver,
+	);
+}
 
 /**
  * Stil handle kaydı (no-op).
@@ -657,4 +733,5 @@ require_once QRMS_PLUGIN_DIR . 'includes/class-helpers.php';
 require_once QRMS_PLUGIN_DIR . 'includes/class-license-client.php';
 require_once QRMS_PLUGIN_DIR . 'includes/class-module-loader.php';
 require_once QRMS_PLUGIN_DIR . 'includes/class-wizard.php';
+require_once QRMS_PLUGIN_DIR . 'includes/class-shortcodes.php';
 require_once QRMS_PLUGIN_DIR . 'includes/class-admin.php';

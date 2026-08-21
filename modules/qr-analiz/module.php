@@ -53,12 +53,10 @@ function qrms_module_qr_analiz_init() {
 		require_once __DIR__ . '/ayarlar-sayfasi.php';
 		require_once __DIR__ . '/analitik-sayfasi.php';
 
-		QRMS_Admin::register_module_page( 'qr-analiz', 'qmo_analiz_ayar_sayfasi' );
+		// "QR Analiz" satırı, modülün iki ekranını kart olarak listeleyen hub
+		// ekranını açar; ekranların kendisi aşağıda ayrı sayfa olarak kaydedilir.
+		QRMS_Admin::register_module_page( 'qr-analiz', 'qrms_module_qr_analiz_hub' );
 
-		// Analitik panel kendi satırıdır: ayar ekranıyla aynı sayfada sekme
-		// olarak durmaz. WordPress menüsü iki seviyeli olduğu için satır
-		// "QR Analiz"in altına değil, "QR Menü"nün altına eklenir ve
-		// etiketi "—" ile öneklenir (restoran-menu modülüyle aynı desen).
 		add_action( 'admin_menu', 'qrms_module_qr_analiz_admin_menu', 20 );
 
 		add_action( 'admin_enqueue_scripts', 'qrms_module_qr_analiz_admin_assets' );
@@ -71,7 +69,20 @@ function qrms_module_qr_analiz_init() {
 const QRMS_ANALITIK_SAYFA = 'qrms-analiz-panel';
 
 /**
- * Analitik panelini suite menüsüne ekler ve "QR Analiz"in hemen altına alır.
+ * REST/Firebase ayar ekranının yönetim sayfası slug'ı.
+ *
+ * v1.0'da bu ekran modülün kendi satırındaydı (qrms-module-qr-analiz). Sol menü
+ * tek seviyeye indirilince o slug modülün hub ekranı oldu; ayar ekranı kendi
+ * slug'ına taşındı. Eski adres kırılmaz — hub'ı açar, oradan bir kart uzaktadır.
+ */
+const QRMS_ANALIZ_AYAR_SAYFA = 'qrms-analiz-ayarlar';
+
+/**
+ * Modülün iki ekranını kaydeder — ikisi de sol menüde GİZLİDİR.
+ *
+ * Sol menüde yalnızca "QR Analiz" satırı durur ve hub ekranını açar; ekranlar
+ * gerçek, ayrı WordPress sayfaları olarak kaydolur (bkz.
+ * QRMS_Admin::hide_module_subpages).
  *
  * @return void
  */
@@ -81,76 +92,80 @@ function qrms_module_qr_analiz_admin_menu() {
 	$parent = QRMS_Admin::MENU_SLUG;
 
 	// Modül lisansta aktif değilse "QR Analiz" satırı hiç kaydolmaz; o zaman
-	// panelin de menüde yeri yoktur.
+	// ekranlarının da kaydedilmemesi gerekir.
 	if ( empty( $submenu[ $parent ] ) ) {
 		return;
 	}
 
-	add_submenu_page(
-		$parent,
-		__( 'Menü Analitiği', 'qrms' ),
-		'— ' . __( 'Menü Analitiği', 'qrms' ),
-		QRMS_Admin::CAPABILITY,
-		QRMS_ANALITIK_SAYFA,
-		'qrms_analitik_sayfasi'
-	);
-
-	$submenu[ $parent ] = qrms_module_qr_analiz_submenu_sirala( $submenu[ $parent ] );
+	foreach ( qrms_module_qr_analiz_sayfalar() as $slug => $page ) {
+		add_submenu_page(
+			$parent,
+			$page['title'],
+			$page['title'],
+			QRMS_Admin::CAPABILITY,
+			$slug,
+			QRMS_Admin::register_module_subpage( 'qr-analiz', $slug, $page['render'] )
+		);
+	}
 }
 
 /**
- * Analitik satırını "QR Analiz" satırının hemen ardına taşır.
+ * Modülün ekranları — TEK KAYNAK.
  *
- * Diğer satırların (çekirdek sayfalar, başka modüllerin ekranları) göreli
- * sırası korunur: yalnızca bu modülün satırı yer değiştirir. WordPress alt
- * menüleri diziyi anahtara göre sıraladığı için sonuç array_values() ile
- * yeniden indekslenir.
+ * Sayfa kaydı ve hub kartları aynı listeden beslenir; sıra kart sırasıdır.
  *
- * @param array $rows $submenu[QRMS_Admin::MENU_SLUG] satırları.
- * @return array
+ * @return array<string,array{title:string,render:string,desc:string,icon:string}>
  */
-function qrms_module_qr_analiz_submenu_sirala( array $rows ) {
-	$modul_slug = QRMS_Admin::get_module_page_slug( 'qr-analiz' );
+function qrms_module_qr_analiz_sayfalar() {
+	return array(
+		QRMS_ANALITIK_SAYFA      => array(
+			'title'  => __( 'Menü Analitiği', 'qrms' ),
+			'render' => 'qrms_analitik_sayfasi',
+			'desc'   => __( 'Menüye kaç kişi baktı, hangi ürünlere tıklandı, hangi masadan geldi.', 'qrms' ),
+			'icon'   => 'dashicons-chart-area',
+		),
+		QRMS_ANALIZ_AYAR_SAYFA   => array(
+			'title'  => __( 'Firebase & Şube Ayarları', 'qrms' ),
+			'render' => 'qmo_analiz_ayar_sayfasi',
+			'desc'   => __( 'Uygulamanın (müdür/garson paneli) kullandığı REST uçlarının yapılandırması.', 'qrms' ),
+			'icon'   => 'dashicons-admin-generic',
+		),
+	);
+}
 
-	$panel  = null;
-	$digeri = array();
-	$capa   = -1;
+/**
+ * "QR Analiz" satırının açtığı hub ekranı.
+ *
+ * @return void
+ */
+function qrms_module_qr_analiz_hub() {
+	$cards = array();
 
-	foreach ( $rows as $row ) {
-		$slug = isset( $row[2] ) ? $row[2] : '';
-
-		if ( QRMS_ANALITIK_SAYFA === $slug ) {
-			$panel = $row;
-			continue;
-		}
-
-		$digeri[] = $row;
-
-		if ( $modul_slug === $slug ) {
-			$capa = count( $digeri );
-		}
+	foreach ( qrms_module_qr_analiz_sayfalar() as $slug => $page ) {
+		$cards[] = array(
+			'url'   => admin_url( 'admin.php?page=' . $slug ),
+			'title' => $page['title'],
+			'desc'  => $page['desc'],
+			'icon'  => $page['icon'],
+		);
 	}
 
-	// Panel satırı yoksa ya da çapa ("QR Analiz") bulunamadıysa satırlar
-	// oldukları gibi bırakılır.
-	if ( null === $panel || -1 === $capa ) {
-		return array_values( $rows );
-	}
-
-	return array_values(
-		array_merge(
-			array_slice( $digeri, 0, $capa ),
-			array( $panel ),
-			array_slice( $digeri, $capa )
+	QRMS_Admin::render_hub(
+		array(
+			'title' => __( 'QR Analiz', 'qrms' ),
+			'intro' => __( 'Menü hareketlerinizin raporu ve uygulamanın bağlandığı uçların ayarları.', 'qrms' ),
+			'cards' => $cards,
 		)
 	);
 }
 
 /**
- * Analiz ekranının yönetim varlıkları.
+ * Modülün ekranlarının yönetim varlıkları.
  *
- * Yalnızca bu modülün kendi sayfası render edilirken yüklenir; ortak admin
- * stili durum rozetlerini (qmo-durum-ok / qmo-durum-eksik) biçimlendirir.
+ * Yalnızca bu modülün kendi sayfaları render edilirken yüklenir; ayar
+ * ekranındaki ortak admin stili durum rozetlerini (qmo-durum-ok /
+ * qmo-durum-eksik) biçimlendirir. Hub ekranının stili suite'in ortak
+ * admin.css'inden gelir, burada bir şey gerekmez.
  *
  * @return void
  */
@@ -163,7 +178,7 @@ function qrms_module_qr_analiz_admin_assets() {
 		return;
 	}
 
-	if ( QRMS_Admin::get_module_page_slug( 'qr-analiz' ) !== $page ) {
+	if ( QRMS_ANALIZ_AYAR_SAYFA !== $page ) {
 		return;
 	}
 
@@ -171,7 +186,7 @@ function qrms_module_qr_analiz_admin_assets() {
 		'qmo-admin',
 		QRMS_PLUGIN_URL . 'modules/_qmo-ortak/assets/css/admin.css',
 		array(),
-		QRMS_VERSION
+		QRMS_Helpers::asset_version( 'modules/_qmo-ortak/assets/css/admin.css' )
 	);
 }
 
@@ -188,14 +203,14 @@ function qrms_module_qr_analiz_panel_assets() {
 		'qrms-analitik',
 		QRMS_PLUGIN_URL . 'modules/qr-analiz/assets/css/analitik.css',
 		array(),
-		QRMS_VERSION
+		QRMS_Helpers::asset_version( 'modules/qr-analiz/assets/css/analitik.css' )
 	);
 
 	wp_enqueue_script(
 		'qrms-analitik',
 		QRMS_PLUGIN_URL . 'modules/qr-analiz/assets/js/analitik.js',
 		array(),
-		QRMS_VERSION,
+		QRMS_Helpers::asset_version( 'modules/qr-analiz/assets/js/analitik.js' ),
 		true
 	);
 

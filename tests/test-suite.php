@@ -24,6 +24,12 @@ $GLOBALS['qrms_current']    = '';
 function qrms_reset() {
 	$GLOBALS['qrms_test']['options']    = array();
 	$GLOBALS['qrms_test']['transients'] = array();
+	$GLOBALS['qrms_test']['actions']    = array();
+
+	// Kısa kod defteri statik bir durumdur ve testler arasında taşınır: bir
+	// modülün init'ini çağıran test, sonraki testin menüsüne satır ekletirdi.
+	QRMS_Shortcodes::reset();
+
 	$GLOBALS['qrms_test']['menus']      = array();
 	$GLOBALS['qrms_test']['submenus']   = array();
 	$GLOBALS['qrms_test']['removed']    = array();
@@ -32,6 +38,7 @@ function qrms_reset() {
 	$GLOBALS['qrms_test']['http_calls'] = array();
 	$GLOBALS['qrms_test']['can']        = true;
 	$GLOBALS['qrms_test']['styles']     = array();
+	$GLOBALS['qrms_test']['scripts']    = array();
 	$GLOBALS['menu']                    = array();
 	$GLOBALS['submenu']                 = array();
 	$_POST                              = array();
@@ -970,15 +977,15 @@ qrms_test(
 );
 
 /* ---------------------------------------------------------------------------
- * 6. restoran-menu menü sıralaması
+ * 6. Tek seviyeli sol menü ve ortak hub bileşeni
+ *
+ * Sol menüde yalnızca modül adları durur; modül alt sayfaları GERÇEK sayfa
+ * olarak kaydolur ama menüde boyanmaz. Burada test edilenler bu iki işin
+ * çekirdekteki karşılığı: beyaz liste, gizleme, alt sayfa kayıt defteri,
+ * menü vurgusu ve hub çıktısı.
  * ------------------------------------------------------------------------ */
 
-// module.php dosya kapsamında yalnızca fonksiyon tanımlar (yan etkisi yoktur),
-// bu yüzden stub ortamında doğrudan yüklenebilir. Test edilen sıralama
-// yardımcısının WordPress'e bağımlılığı yoktur: saf dizi dönüşümüdür.
-require_once QRMS_PLUGIN_DIR . 'modules/restoran-menu/module.php';
-
-echo "\nrestoran-menu menü sıralaması\n";
+echo "\nTek seviyeli sol menü\n";
 
 /**
  * Alt menü satırı üretir ($submenu dizisindeki biçimle aynı).
@@ -998,18 +1005,20 @@ function qrms_submenu_satiri( $label, $slug ) {
  * @return string[]
  */
 function qrms_submenu_sluglari( array $rows ) {
-	return array_map(
-		function ( $row ) {
-			return $row[2];
-		},
-		$rows
+	return array_values(
+		array_map(
+			function ( $row ) {
+				return $row[2];
+			},
+			$rows
+		)
 	);
 }
 
 /**
- * Gerçek dünyadaki dizilim: çekirdeğin _add_post_type_submenus() kancası
- * ürün listesi satırını QRMS_Admin::register_menu()'den ÖNCE ekler, glue'un
- * eklediği üç satır ise en sona düşer.
+ * Gerçek dünyadaki dizilim: çekirdeğin _add_post_type_submenus() kancası ürün
+ * listesi satırını QRMS_Admin::register_menu()'den ÖNCE ekler, modüllerin
+ * kendi ekranları ise en sona düşer.
  *
  * @return array
  */
@@ -1020,126 +1029,425 @@ function qrms_submenu_ham_liste() {
 		qrms_submenu_satiri( 'Restoran Menü', QRMS_Admin::get_module_page_slug( 'restoran-menu' ) ),
 		qrms_submenu_satiri( 'QR Masa', QRMS_Admin::get_module_page_slug( 'qr-masa' ) ),
 		qrms_submenu_satiri( 'Genel Ayarlar', QRMS_Admin::SETTINGS_SLUG ),
-		qrms_submenu_satiri( '— Ürün Ekle', 'post-new.php?post_type=rma_menu_item' ),
-		qrms_submenu_satiri( '— Kategoriler', 'edit-tags.php?taxonomy=rma_category&post_type=rma_menu_item' ),
-		qrms_submenu_satiri( '— Alerjenler', 'edit-tags.php?taxonomy=rma_allergen&post_type=rma_menu_item' ),
-		qrms_submenu_satiri( '— Görünüm', 'qrms-rm-gorunum' ),
-		qrms_submenu_satiri( '— Öne Çıkanlar', 'qrms-rm-one-cikanlar' ),
-		qrms_submenu_satiri( '— Ürün Vitrini', 'qrms-rm-vitrin' ),
-		qrms_submenu_satiri( '— Diğer Ayarlar', 'qrms-rm-diger' ),
+		qrms_submenu_satiri( 'Görünüm', 'qrms-rm-gorunum' ),
+		qrms_submenu_satiri( 'Öne Çıkanlar', 'qrms-rm-one-cikanlar' ),
+		qrms_submenu_satiri( 'Ürün Vitrini', 'qrms-rm-vitrin' ),
+		qrms_submenu_satiri( 'Diğer Ayarlar', 'qrms-rm-diger' ),
+		qrms_submenu_satiri( 'Kurulum', 'qrms-wizard' ),
 	);
 }
 
 qrms_test(
-	'modülün sekiz satırı Restoran Menü girişinin hemen ardına sıralanır',
+	'beyaz liste Genel Bakış + aktif modüller + Genel Ayarlar\'dan ibarettir',
 	function () {
-		$sirali = qrms_module_restoran_menu_submenu_sirala( qrms_submenu_ham_liste() );
+		update_option( 'qrms_active_modules', array( 'restoran-menu', 'qr-masa' ) );
 
 		qrms_assert_same(
 			array(
 				QRMS_Admin::MENU_SLUG,
 				QRMS_Admin::get_module_page_slug( 'restoran-menu' ),
+				QRMS_Admin::get_module_page_slug( 'qr-masa' ),
+				QRMS_Admin::SETTINGS_SLUG,
+			),
+			QRMS_Admin::get_menu_row_slugs(),
+			'tek seviyeli menü'
+		);
+	}
+);
+
+qrms_test(
+	'aktif olmayan modülün satırı beyaz listeye girmez',
+	function () {
+		update_option( 'qrms_active_modules', array( 'qr-masa' ) );
+
+		qrms_assert_false(
+			in_array( QRMS_Admin::get_module_page_slug( 'restoran-menu' ), QRMS_Admin::get_menu_row_slugs(), true ),
+			'pasif modül'
+		);
+	}
+);
+
+qrms_test(
+	'beyaz liste dışındaki her satır gizlenecekler listesine düşer',
+	function () {
+		$keep = array(
+			QRMS_Admin::MENU_SLUG,
+			QRMS_Admin::get_module_page_slug( 'restoran-menu' ),
+			QRMS_Admin::get_module_page_slug( 'qr-masa' ),
+			QRMS_Admin::SETTINGS_SLUG,
+		);
+
+		qrms_assert_same(
+			array(
+				// Çekirdeğin CPT'den ürettiği satır da kapsanır: modül onun
+				// için ayrı bir gizleme kodu yazmaz.
 				'edit.php?post_type=rma_menu_item',
-				'post-new.php?post_type=rma_menu_item',
-				'edit-tags.php?taxonomy=rma_category&post_type=rma_menu_item',
-				'edit-tags.php?taxonomy=rma_allergen&post_type=rma_menu_item',
 				'qrms-rm-gorunum',
 				'qrms-rm-one-cikanlar',
 				'qrms-rm-vitrin',
 				'qrms-rm-diger',
-				QRMS_Admin::get_module_page_slug( 'qr-masa' ),
-				QRMS_Admin::SETTINGS_SLUG,
+				'qrms-wizard',
 			),
-			qrms_submenu_sluglari( $sirali ),
-			'tam sıra'
+			QRMS_Admin::collect_hidden_rows( qrms_submenu_ham_liste(), $keep ),
+			'gizlenecek satırlar'
 		);
 	}
 );
 
 qrms_test(
-	'menüdeki sıra listesi modülün sekiz ekranını kapsar',
+	'boş ve tekrar eden slug\'lar gizlenecekler listesini bozmaz',
 	function () {
-		// Sıra listesi ile menüye eklenen satırlar tek kaynaktan gelmeli:
-		// biri değişip diğeri unutulursa satır menüde yanlış yere düşer.
-		qrms_assert_same( 8, count( qrms_module_restoran_menu_child_slugs() ), 'satır sayısı' );
+		$rows = array(
+			array( 'Etiket', 'manage_options' ),
+			qrms_submenu_satiri( 'Görünüm', 'qrms-rm-gorunum' ),
+			qrms_submenu_satiri( 'Görünüm (tekrar)', 'qrms-rm-gorunum' ),
+		);
 
 		qrms_assert_same(
-			array( 'qrms-rm-gorunum', 'qrms-rm-one-cikanlar', 'qrms-rm-vitrin', 'qrms-rm-diger' ),
-			array_slice( qrms_module_restoran_menu_child_slugs(), 4 ),
-			'modülün kendi ayar sayfaları en sonda'
+			array( 'qrms-rm-gorunum' ),
+			QRMS_Admin::collect_hidden_rows( $rows, array() ),
+			'tek kayıt'
 		);
 	}
 );
 
 qrms_test(
-	'çekirdeğin başa koyduğu ürün listesi satırı Genel Bakış\'ın önüne geçmez',
+	'gizleme sonrası menüde yalnızca tek seviyeli liste kalır',
 	function () {
-		$ham = qrms_submenu_ham_liste();
+		update_option( 'qrms_active_modules', array( 'restoran-menu', 'qr-masa' ) );
 
-		// Hatanın gerçekten var olduğunu göster: düzeltilmemiş listede ürün
-		// listesi satırı ilk sırada.
-		qrms_assert_same( 'edit.php?post_type=rma_menu_item', $ham[0][2], 'düzeltilmemiş liste' );
+		$GLOBALS['submenu'][ QRMS_Admin::MENU_SLUG ] = qrms_submenu_ham_liste();
 
-		$sirali = qrms_module_restoran_menu_submenu_sirala( $ham );
-
-		qrms_assert_same( QRMS_Admin::MENU_SLUG, $sirali[0][2], 'Genel Bakış en üstte' );
-	}
-);
-
-qrms_test(
-	'satırlar yeniden indekslenir ve etiketler korunur',
-	function () {
-		$sirali = qrms_module_restoran_menu_submenu_sirala( qrms_submenu_ham_liste() );
-
-		qrms_assert_same( range( 0, 11 ), array_keys( $sirali ), 'sıfırdan artan anahtarlar' );
-		qrms_assert_same( '— Kategoriler', $sirali[4][0], 'etiket korunur' );
-		qrms_assert_same( '— Diğer Ayarlar', $sirali[9][0], 'son ayar satırının etiketi korunur' );
-	}
-);
-
-qrms_test(
-	'eksik satırlar sorun çıkarmaz, diğer modüllerin sırası korunur',
-	function () {
-		// Yalnızca çekirdeğin eklediği satır var (glue satırları yetki
-		// yetersizliğinden eklenmemiş olabilir).
-		$ham = array(
-			qrms_submenu_satiri( 'Menü Ürünleri', 'edit.php?post_type=rma_menu_item' ),
-			qrms_submenu_satiri( 'Genel Bakış', QRMS_Admin::MENU_SLUG ),
-			qrms_submenu_satiri( 'Restoran Menü', QRMS_Admin::get_module_page_slug( 'restoran-menu' ) ),
-			qrms_submenu_satiri( 'QR Chatbot', QRMS_Admin::get_module_page_slug( 'qr-chatbot' ) ),
-			qrms_submenu_satiri( 'Genel Ayarlar', QRMS_Admin::SETTINGS_SLUG ),
-		);
+		QRMS_Admin::hide_module_subpages();
 
 		qrms_assert_same(
 			array(
 				QRMS_Admin::MENU_SLUG,
 				QRMS_Admin::get_module_page_slug( 'restoran-menu' ),
-				'edit.php?post_type=rma_menu_item',
-				QRMS_Admin::get_module_page_slug( 'qr-chatbot' ),
+				QRMS_Admin::get_module_page_slug( 'qr-masa' ),
 				QRMS_Admin::SETTINGS_SLUG,
 			),
-			qrms_submenu_sluglari( qrms_module_restoran_menu_submenu_sirala( $ham ) ),
-			'tek çocuk satırı'
+			qrms_submenu_sluglari( $GLOBALS['submenu'][ QRMS_Admin::MENU_SLUG ] ),
+			'kalan satırlar'
 		);
 	}
 );
 
 qrms_test(
-	'Restoran Menü satırı yoksa liste değişmeden döner',
+	'menü hiç kurulmamışsa gizleme sessizce çıkar',
 	function () {
-		// Modül lisansta aktif değilken bu kod zaten çalışmaz; yine de
-		// yardımcı çapayı bulamazsa sırayı bozmamalı.
-		$ham = array(
-			qrms_submenu_satiri( 'Genel Bakış', QRMS_Admin::MENU_SLUG ),
-			qrms_submenu_satiri( 'QR Masa', QRMS_Admin::get_module_page_slug( 'qr-masa' ) ),
-			qrms_submenu_satiri( 'Genel Ayarlar', QRMS_Admin::SETTINGS_SLUG ),
+		unset( $GLOBALS['submenu'][ QRMS_Admin::MENU_SLUG ] );
+
+		QRMS_Admin::hide_module_subpages();
+
+		qrms_assert_same( array(), $GLOBALS['qrms_test']['removed'], 'hiçbir satır kaldırılmadı' );
+	}
+);
+
+qrms_test(
+	'gizleme admin_head\'e bağlıdır — admin_menu\'ye ASLA bağlanmaz',
+	function () {
+		// Regresyon: satır admin_menu sırasında silinirse WordPress sayfanın
+		// üst menüsünü $submenu'de bulamaz, hook adı eşleşmez ve admin.php 403
+		// verir. Route çözüldükten sonrasına (admin_head) bağlı kalmalı.
+		QRMS_Admin::init();
+
+		$hooks = $GLOBALS['qrms_test']['actions'];
+
+		qrms_assert_true( isset( $hooks['admin_head'] ), 'admin_head kaydı var' );
+		qrms_assert_same(
+			2,
+			count( $hooks['admin_menu'] ),
+			'admin_menu\'de yalnızca menü kaydı ve emniyet kemeri olmalı'
+		);
+	}
+);
+
+qrms_test(
+	'alt sayfa kaydı modülüne bağlanır ve sayfanın önüne geri bağlantısı koyar',
+	function () {
+		$callback = QRMS_Admin::register_module_subpage(
+			'restoran-menu',
+			'qrms-rm-gorunum',
+			function () {
+				echo '<div class="wrap">içerik</div>';
+			}
 		);
 
+		qrms_assert_true( QRMS_Admin::is_module_subpage( 'qrms-rm-gorunum' ), 'kayıt defterinde' );
+		qrms_assert_false( QRMS_Admin::is_module_subpage( 'qrms-yok' ), 'kayıtsız sayfa' );
+
+		ob_start();
+		call_user_func( $callback );
+		$html = ob_get_clean();
+
+		qrms_assert_contains( 'qrms-back-link', $html, 'geri bağlantısı' );
+		qrms_assert_contains( 'Restoran Menü', $html, 'modül adı' );
+		qrms_assert_contains( 'page=' . QRMS_Admin::get_module_page_slug( 'restoran-menu' ), $html, 'hub adresi' );
+		qrms_assert_contains( 'içerik', $html, 'sayfanın kendi çıktısı' );
+	}
+);
+
+qrms_test(
+	'bilinmeyen modülün alt sayfası kaydedilmez, callback aynen döner',
+	function () {
+		$callback = 'strlen';
+
+		qrms_assert_same( $callback, QRMS_Admin::register_module_subpage( 'yok-boyle-modul', 'qrms-x', $callback ), 'callback değişmez' );
+		qrms_assert_false( QRMS_Admin::is_module_subpage( 'qrms-x' ), 'kayıt yok' );
+	}
+);
+
+qrms_test(
+	'alt sayfadayken sahibi modülün satırı vurgulanır',
+	function () {
+		QRMS_Admin::register_module_subpage( 'yorum-feedback', 'qrms-yf-odul', 'strlen' );
+
+		$_GET = array( 'page' => 'qrms-yf-odul' );
+
 		qrms_assert_same(
-			qrms_submenu_sluglari( $ham ),
-			qrms_submenu_sluglari( qrms_module_restoran_menu_submenu_sirala( $ham ) ),
-			'sıra korunur'
+			QRMS_Admin::MENU_SLUG,
+			QRMS_Admin::filter_parent_file( 'baska.php' ),
+			'üst menü QR Menü üzerinde kalır'
 		);
+		qrms_assert_same(
+			QRMS_Admin::get_module_page_slug( 'yorum-feedback' ),
+			QRMS_Admin::filter_submenu_file( 'qrms-yf-odul' ),
+			'modül satırı vurgulanır'
+		);
+	}
+);
+
+qrms_test(
+	'kayıtsız sayfalarda menü vurgusuna dokunulmaz',
+	function () {
+		$_GET = array( 'page' => 'baska-eklenti' );
+
+		qrms_assert_same( 'baska.php', QRMS_Admin::filter_parent_file( 'baska.php' ), 'üst menü' );
+		qrms_assert_same( 'baska-alt', QRMS_Admin::filter_submenu_file( 'baska-alt' ), 'alt menü' );
+	}
+);
+
+echo "\nVarlık sürümleri (önbellek kırma)\n";
+
+qrms_test(
+	'sürüm eklenti sürümü + dosyanın değişiklik zamanıdır',
+	function () {
+		$surum = QRMS_Helpers::asset_version( 'assets/css/admin.css' );
+		$zaman = filemtime( QRMS_PLUGIN_DIR . 'assets/css/admin.css' );
+
+		qrms_assert_same( QRMS_VERSION . '.' . $zaman, $surum, 'sürüm etiketi' );
+		qrms_assert_false( QRMS_VERSION === $surum, 'sabit sürümden farklı' );
+	}
+);
+
+qrms_test(
+	'her dosya sürümünü KENDİ değişiklik zamanından alır',
+	function () {
+		// Regresyon: tek bir $v değişkenini birden çok dosya için kullanmak,
+		// dosyalardan yalnızca biri değiştiğinde diğerinin adresini sabit
+		// bırakır ve eski kopya sunulmaya devam ederdi.
+		//
+		// "İki sürüm birbirinden farklı olmalı" diye bakılmaz: iki dosya aynı
+		// saniyede yazıldığında mtime'ları meşru biçimde eşit olabilir ve test
+		// dosya sistemi zamanlamasına göre rastgele düşerdi. Asıl kural her
+		// sürümün KENDİ dosyasından türemesidir.
+		foreach ( array( 'assets/css/admin.css', 'assets/js/admin.js', 'assets/css/admin-menu.css' ) as $yol ) {
+			qrms_assert_same(
+				QRMS_VERSION . '.' . filemtime( QRMS_PLUGIN_DIR . $yol ),
+				QRMS_Helpers::asset_version( $yol ),
+				$yol . ' kendi zamanını taşır'
+			);
+		}
+	}
+);
+
+qrms_test(
+	'okunamayan dosyada eklenti sürümüne düşülür',
+	function () {
+		qrms_assert_same( QRMS_VERSION, QRMS_Helpers::asset_version( 'assets/css/yok-boyle.css' ), 'geri düşüş' );
+		qrms_assert_same( QRMS_VERSION, QRMS_Helpers::asset_version( '' ), 'boş yol' );
+	}
+);
+
+qrms_test(
+	'hub ekranında admin.css önbellek kıran sürümle kuyruğa alınır',
+	function () {
+		// Regresyon (PR #19 testinde çıktı): admin.css'e .qrms-hub-* kuralları
+		// eklendi ama adres "admin.css?ver=1.0.0" olarak sabit kaldığı için
+		// tarayıcı/CDN eski kopyayı sunmaya devam etti; hub kartları tamamen
+		// stilsiz, tek satıra çökmüş bağlantı metni olarak göründü.
+		$_GET = array( 'page' => QRMS_Admin::get_module_page_slug( 'restoran-menu' ) );
+
+		QRMS_Admin::enqueue_assets();
+
+		$bulundu = null;
+
+		foreach ( $GLOBALS['qrms_test']['styles'] as $stil ) {
+			if ( 'qrms-admin' === $stil['handle'] ) {
+				$bulundu = $stil;
+			}
+		}
+
+		qrms_assert_true( null !== $bulundu, 'admin.css kuyruğa alındı' );
+		qrms_assert_contains( 'assets/css/admin.css', $bulundu['src'], 'kaynak' );
+		qrms_assert_same(
+			QRMS_Helpers::asset_version( 'assets/css/admin.css' ),
+			$bulundu['ver'],
+			'sürüm dosyaya göre hesaplanır'
+		);
+	}
+);
+
+qrms_test(
+	'modül alt sayfalarında da yüklenir',
+	function () {
+		// qr-galeri'nin ekranları "qrms" önekini taşımaz; hub stilleri ve geri
+		// bağlantısı orada da gerekli.
+		QRMS_Admin::register_module_subpage( 'qr-galeri', 'qrmgm-images', 'strlen' );
+		$_GET = array( 'page' => 'qrmgm-images' );
+
+		QRMS_Admin::enqueue_assets();
+
+		$handles = array_map(
+			function ( $stil ) {
+				return $stil['handle'];
+			},
+			$GLOBALS['qrms_test']['styles']
+		);
+
+		qrms_assert_true( in_array( 'qrms-admin', $handles, true ), 'admin.css' );
+		qrms_assert_true( in_array( 'dashicons', $handles, true ), 'dashicons' );
+	}
+);
+
+qrms_test(
+	'eklentinin hiçbir varlığı sabit QRMS_VERSION ile kuyruğa alınmaz',
+	function () {
+		// Sürüklenme koruması: yeni bir wp_enqueue_style/script çağrısı sabit
+		// sürümle eklenirse o dosyanın her değişikliği sessizce eski kopyayla
+		// sunulur. Kaynak taraması bunu yakalar.
+		$hatali = array();
+
+		foreach ( glob( QRMS_PLUGIN_DIR . '{includes,modules}/{,*/,*/*/}*.php', GLOB_BRACE ) as $dosya ) {
+			foreach ( file( $dosya ) as $no => $satir ) {
+				// Yalnızca sürüm ARGÜMANI olarak geçen kullanımlar; helper'ın
+				// kendi gövdesi ve yorumlar sayılmaz.
+				if ( preg_match( '/^\s*QRMS_VERSION,?\s*$/', $satir )
+					|| preg_match( '/,\s*QRMS_VERSION\s*[,)]/', $satir ) ) {
+					$hatali[] = str_replace( QRMS_PLUGIN_DIR, '', $dosya ) . ':' . ( $no + 1 );
+				}
+			}
+		}
+
+		qrms_assert_same( array(), $hatali, 'sabit sürümle kuyruğa alınan varlık yok' );
+	}
+);
+
+echo "\nHub bileşeni\n";
+
+qrms_test(
+	'hub kartları dashicon, başlık, açıklama ve adresle basılır',
+	function () {
+		ob_start();
+		QRMS_Admin::render_hub(
+			array(
+				'title' => 'Restoran Menü',
+				'intro' => 'Ne yapmak istiyorsanız kartına dokunun.',
+				'cards' => array(
+					array(
+						'url'   => admin_url( 'admin.php?page=qrms-rm-gorunum' ),
+						'title' => 'Görünüm',
+						'desc'  => 'Menünüzün renkleri ve yazı tipleri.',
+						'icon'  => 'dashicons-art',
+					),
+				),
+			)
+		);
+		$html = ob_get_clean();
+
+		qrms_assert_contains( 'qrms-hub-grid', $html, 'kart ızgarası' );
+		qrms_assert_contains( 'dashicons dashicons-art', $html, 'dashicon sınıfı' );
+		qrms_assert_contains( 'Görünüm', $html, 'kart başlığı' );
+		qrms_assert_contains( 'Menünüzün renkleri', $html, 'kart açıklaması' );
+		qrms_assert_contains( 'page=qrms-rm-gorunum', $html, 'kart adresi' );
+		qrms_assert_contains( 'Ne yapmak istiyorsanız', $html, 'giriş metni' );
+	}
+);
+
+qrms_test(
+	'ikonu verilmeyen kart yine de bir dashicon alır',
+	function () {
+		// Regresyon: ikon anahtarı unutulunca kart "dashicons" sınıfını tek
+		// başına alır ve kutu karakteri gibi boş bir alan bırakırdı.
+		ob_start();
+		QRMS_Admin::render_hub( array( 'cards' => array( array( 'url' => '#', 'title' => 'X' ) ) ) );
+		$html = ob_get_clean();
+
+		qrms_assert_contains( 'dashicons dashicons-admin-generic', $html, 'varsayılan ikon' );
+	}
+);
+
+qrms_test(
+	'rozet, uyarı, özet kutusu ve vurgu rengi yalnızca verildiklerinde basılır',
+	function () {
+		ob_start();
+		QRMS_Admin::render_hub( array( 'title' => 'Boş', 'cards' => array() ) );
+		$sade = ob_get_clean();
+
+		qrms_assert_false( false !== strpos( $sade, 'qrms-hub-badge' ), 'rozet yok' );
+		qrms_assert_false( false !== strpos( $sade, 'qrms-hub-stats' ), 'özet yok' );
+		qrms_assert_false( false !== strpos( $sade, '--qrms-hub-accent' ), 'vurgu rengi yok' );
+
+		ob_start();
+		QRMS_Admin::render_hub(
+			array(
+				'accent' => '#c9a84c',
+				'notice' => '<div class="notice notice-error"><p>Tablo yok.</p></div>',
+				'stats'  => array( array( 'label' => 'Onay Bekleyen', 'value' => 3, 'url' => admin_url( 'admin.php?page=x' ) ) ),
+				'cards'  => array( array( 'url' => '#', 'title' => 'Formlar', 'badge' => '2 yeni' ) ),
+			)
+		);
+		$dolu = ob_get_clean();
+
+		qrms_assert_contains( '--qrms-hub-accent:#c9a84c', $dolu, 'modül vurgu rengi' );
+		qrms_assert_contains( 'Tablo yok.', $dolu, 'uyarı' );
+		qrms_assert_contains( 'Onay Bekleyen', $dolu, 'özet etiketi' );
+		qrms_assert_contains( '2 yeni', $dolu, 'kart rozeti' );
+	}
+);
+
+qrms_test(
+	'hub çıktısı kaçış uygular',
+	function () {
+		ob_start();
+		QRMS_Admin::render_hub(
+			array(
+				'title' => '<script>x</script>',
+				'cards' => array( array( 'url' => '#', 'title' => '<b>kalın</b>', 'desc' => '<i>eğik</i>' ) ),
+			)
+		);
+		$html = ob_get_clean();
+
+		qrms_assert_false( false !== strpos( $html, '<script>' ), 'başlık kaçırıldı' );
+		qrms_assert_false( false !== strpos( $html, '<b>kalın</b>' ), 'kart başlığı kaçırıldı' );
+		qrms_assert_false( false !== strpos( $html, '<i>eğik</i>' ), 'açıklama kaçırıldı' );
+	}
+);
+
+qrms_test(
+	'hub kartlarında emoji ikon kullanılmaz',
+	function () {
+		// Emoji admin\'in yazı tipi yığınına göre kutu karakterine düşebiliyor;
+		// ikonlar dashicons olmalı. Bileşenin ürettiği HTML ve ortak CSS bu
+		// kuralın tek dayanağı.
+		$css = file_get_contents( QRMS_PLUGIN_DIR . 'assets/css/admin.css' );
+
+		qrms_assert_contains( '.qrms-hub-grid', $css, 'kart ızgarası kuralı' );
+		qrms_assert_contains( 'repeat(3, minmax(0, 1fr))', $css, 'masaüstünde üç sütun' );
+		qrms_assert_contains( 'max-width: 960px', $css, 'tablet kırılımı' );
+		qrms_assert_contains( 'max-width: 600px', $css, 'telefon kırılımı' );
+		qrms_assert_contains( 'pointer: coarse', $css, 'dokunmatik hedef büyütmesi' );
 	}
 );
 
@@ -1564,80 +1872,580 @@ qrms_test(
 );
 
 /* ---------------------------------------------------------------------------
- * 9. QR Analiz — menü sıralaması
+ * 8b. Kısa kod kayıt defteri ve rehber ekranı
  * ------------------------------------------------------------------------ */
 
-// module.php dosya kapsamında yalnızca fonksiyon ve sabit tanımlar; sıralama
-// yardımcısı saf dizi dönüşümüdür ve WordPress'e bağımlı değildir.
-require_once QRMS_PLUGIN_DIR . 'modules/qr-analiz/module.php';
-
-echo "\nQR Analiz menü sıralaması\n";
+echo "\nKısa kod rehberi\n";
 
 qrms_test(
-	'analitik satırı QR Analiz girişinin hemen ardına alınır',
+	'geçerli tanım eksiksiz biçime getirilir',
 	function () {
-		// add_submenu_page satırı listenin sonuna ekler; sıralama onu
-		// modülün kendi satırının altına taşır.
-		$ham = array(
-			qrms_submenu_satiri( 'Genel Bakış', QRMS_Admin::MENU_SLUG ),
-			qrms_submenu_satiri( 'Restoran Menü', QRMS_Admin::get_module_page_slug( 'restoran-menu' ) ),
-			qrms_submenu_satiri( 'QR Analiz', QRMS_Admin::get_module_page_slug( 'qr-analiz' ) ),
-			qrms_submenu_satiri( 'QR Masa', QRMS_Admin::get_module_page_slug( 'qr-masa' ) ),
-			qrms_submenu_satiri( 'Genel Ayarlar', QRMS_Admin::SETTINGS_SLUG ),
-			qrms_submenu_satiri( '— Menü Analitiği', QRMS_ANALITIK_SAYFA ),
+		$kod = QRMS_Shortcodes::normalize(
+			array(
+				'tag'   => 'restaurant_menu',
+				'title' => 'Restoran Menüsü',
+				'desc'  => 'Menüyü basar.',
+				'attrs' => array( array( 'name' => 'show_search', 'default' => 'yes', 'desc' => 'Arama kutusu.' ) ),
+			)
 		);
 
-		$sirali = qrms_module_qr_analiz_submenu_sirala( $ham );
+		qrms_assert_same( 'restaurant_menu', $kod['tag'], 'tag' );
+		qrms_assert_same( '[restaurant_menu]', $kod['usage'], 'usage verilmezse tag\'dan üretilir' );
+		qrms_assert_same( '', $kod['note'], 'note varsayılanı' );
+		qrms_assert_same( 1, count( $kod['attrs'] ), 'parametre sayısı' );
+		qrms_assert_same( 'yes', $kod['attrs'][0]['default'], 'parametre varsayılanı' );
+	}
+);
+
+qrms_test(
+	'köşeli parantezle yazılan tag temizlenir',
+	function () {
+		// Tanımı yazan kişi "[qr_aktif_masa]" yazabilir; kart iki kez parantez
+		// basmamalı.
+		$kod = QRMS_Shortcodes::normalize( array( 'tag' => '[qr_aktif_masa]', 'title' => 'Masa' ) );
+
+		qrms_assert_same( 'qr_aktif_masa', $kod['tag'], 'tag' );
+		qrms_assert_same( '[qr_aktif_masa]', $kod['usage'], 'usage' );
+	}
+);
+
+qrms_test(
+	'eksik tanım ve bozuk parametre atılır',
+	function () {
+		qrms_assert_same( null, QRMS_Shortcodes::normalize( array( 'title' => 'Ad yok' ) ), 'tag yok' );
+		qrms_assert_same( null, QRMS_Shortcodes::normalize( array( 'tag' => 'x' ) ), 'başlık yok' );
+		qrms_assert_same( null, QRMS_Shortcodes::normalize( array( 'tag' => '[]', 'title' => 'Boş' ) ), 'boş tag' );
+		qrms_assert_same( null, QRMS_Shortcodes::normalize( 'metin' ), 'dizi değil' );
+
+		$kod = QRMS_Shortcodes::normalize(
+			array(
+				'tag'   => 'x',
+				'title' => 'X',
+				'attrs' => array( array( 'desc' => 'adı yok' ), 'metin', array( 'name' => 'id' ) ),
+			)
+		);
+
+		qrms_assert_same( 1, count( $kod['attrs'] ), 'yalnızca adı olan parametre kalır' );
+		qrms_assert_same( 'id', $kod['attrs'][0]['name'], 'kalan parametre' );
+	}
+);
+
+qrms_test(
+	'bilinmeyen modülün kısa kodları kaydedilmez',
+	function () {
+		QRMS_Shortcodes::register( 'yok-boyle-modul', array( array( 'tag' => 'x', 'title' => 'X' ) ) );
+
+		qrms_assert_false( array_key_exists( 'yok-boyle-modul', QRMS_Shortcodes::all() ), 'kayıt yok' );
+	}
+);
+
+qrms_test(
+	'gruplar modül sırasına göre dizilir',
+	function () {
+		// Kayıt sırası ne olursa olsun rehber MODULE_SLUGS sırasını izler;
+		// kullanıcı her açtığında aynı düzeni görür.
+		QRMS_Shortcodes::register( 'qr-chatbot', array( array( 'tag' => 'gemini_chatbot', 'title' => 'Asistan' ) ) );
+		QRMS_Shortcodes::register( 'restoran-menu', array( array( 'tag' => 'restaurant_menu', 'title' => 'Menü' ) ) );
+
+		$sira = array_keys( QRMS_Shortcodes::all() );
+
+		qrms_assert_true(
+			array_search( 'restoran-menu', $sira, true ) < array_search( 'qr-chatbot', $sira, true ),
+			'restoran-menu qr-chatbot\'tan önce'
+		);
+	}
+);
+
+qrms_test(
+	'rehber kartları kodu, kopyala butonunu ve parametreleri basar',
+	function () {
+		QRMS_Shortcodes::register(
+			'restoran-menu',
+			array(
+				array(
+					'tag'   => 'qrms_urun_vitrini',
+					'title' => 'Ürün Vitrini',
+					'desc'  => 'Seçtiğiniz ürünleri kayan bir şeritte gösterir.',
+					'usage' => '[qrms_urun_vitrini id="1"]',
+					'note'  => 'Vitrin numarası zorunludur.',
+					'attrs' => array( array( 'name' => 'id', 'default' => '', 'desc' => 'Vitrin numarası.' ) ),
+				),
+			)
+		);
+
+		ob_start();
+		QRMS_Shortcodes::render_page();
+		$html = ob_get_clean();
+
+		qrms_assert_contains( 'Restoran Menü', $html, 'modül başlığı' );
+		qrms_assert_contains( '[qrms_urun_vitrini id=', $html, 'örnek kullanım' );
+		qrms_assert_contains( 'data-qrms-copy=', $html, 'kopyala butonu' );
+		qrms_assert_contains( 'Vitrin numarası zorunludur.', $html, 'koşul notu' );
+		qrms_assert_contains( 'Parametreler', $html, 'parametre başlığı' );
+	}
+);
+
+qrms_test(
+	'hiç kısa kod yoksa menü satırı da kaydedilmez',
+	function () {
+		// Regresyon: boş bir rehber sayfası menüde yer kaplamamalı; menü kaydı
+		// ile beyaz liste aynı koşulu kullanır, yoksa satır kaydolur ama
+		// beyaz listede olmadığı için admin_head'de gizlenirdi.
+		qrms_assert_false( QRMS_Shortcodes::has_any(), 'kayıt boş' );
+
+		update_option( 'qrms_active_modules', array( 'restoran-menu' ) );
+		QRMS_Admin::register_menu();
+
+		qrms_assert_false(
+			in_array( QRMS_Admin::SHORTCODES_SLUG, qrms_registered_submenu_slugs(), true ),
+			'menüde satır yok'
+		);
+		qrms_assert_false(
+			in_array( QRMS_Admin::SHORTCODES_SLUG, QRMS_Admin::get_menu_row_slugs(), true ),
+			'beyaz listede yok'
+		);
+	}
+);
+
+qrms_test(
+	'kısa kod varken satır menüye ve beyaz listeye birlikte girer',
+	function () {
+		QRMS_Shortcodes::register( 'restoran-menu', array( array( 'tag' => 'restaurant_menu', 'title' => 'Menü' ) ) );
+		update_option( 'qrms_active_modules', array( 'restoran-menu' ) );
+
+		QRMS_Admin::register_menu();
+
+		qrms_assert_true(
+			in_array( QRMS_Admin::SHORTCODES_SLUG, qrms_registered_submenu_slugs(), true ),
+			'menüde satır var'
+		);
+		qrms_assert_true(
+			in_array( QRMS_Admin::SHORTCODES_SLUG, QRMS_Admin::get_menu_row_slugs(), true ),
+			'beyaz listede var'
+		);
+
+		// Genel Ayarlar'dan ÖNCE gelmeli.
+		$slugs = qrms_registered_submenu_slugs();
+
+		qrms_assert_true(
+			array_search( QRMS_Admin::SHORTCODES_SLUG, $slugs, true ) < array_search( QRMS_Admin::SETTINGS_SLUG, $slugs, true ),
+			'Kısa Kodlar, Genel Ayarlar\'ın üstünde'
+		);
+	}
+);
+
+/**
+ * Kaynak ağacında GERÇEKTEN kayıtlı olan kısa kod adları.
+ *
+ * add_shortcode() çağrılarını tarar. Tek dolaylı çağrı shortcode-vitrin.php
+ * içindeki `self::SHORTCODE` sabitidir; o da aynı dosyadan çözülür.
+ *
+ * @return string[]
+ */
+function qrms_kaynaktaki_kisa_kodlar() {
+	$tags = array();
+
+	foreach ( glob( QRMS_PLUGIN_DIR . 'modules/*/{,*/,*/*/}*.php', GLOB_BRACE ) as $dosya ) {
+		$kaynak = (string) file_get_contents( $dosya );
+
+		if ( false === strpos( $kaynak, 'add_shortcode(' ) ) {
+			continue;
+		}
+
+		preg_match_all( "/add_shortcode\(\s*'([^']+)'/", $kaynak, $duz );
+		$tags = array_merge( $tags, $duz[1] );
+
+		// add_shortcode( self::SHORTCODE, ... ) — sabit aynı dosyadadır.
+		if ( preg_match( '/add_shortcode\(\s*self::SHORTCODE\b/', $kaynak )
+			&& preg_match( "/const\s+SHORTCODE\s*=\s*'([^']+)'/", $kaynak, $sabit ) ) {
+			$tags[] = $sabit[1];
+		}
+	}
+
+	$tags = array_values( array_unique( $tags ) );
+	sort( $tags );
+
+	return $tags;
+}
+
+/**
+ * Modüllerin rehbere BİLDİRDİĞİ kısa kod adları.
+ *
+ * Kayıtlar module.php dosyalarındaki QRMS_Shortcodes::register() çağrılarında
+ * durur; modülleri çalıştırmadan okunabilsin diye kaynak taranır.
+ *
+ * @return string[]
+ */
+function qrms_bildirilen_kisa_kodlar() {
+	$tags = array();
+
+	foreach ( glob( QRMS_PLUGIN_DIR . 'modules/*/module.php' ) as $dosya ) {
+		$kaynak = (string) file_get_contents( $dosya );
+
+		if ( false === strpos( $kaynak, 'QRMS_Shortcodes::register(' ) ) {
+			continue;
+		}
+
+		preg_match_all( "/'tag'\s*=>\s*'([^']+)'/", $kaynak, $eslesme );
+		$tags = array_merge( $tags, $eslesme[1] );
+	}
+
+	$tags = array_values( array_unique( $tags ) );
+	sort( $tags );
+
+	return $tags;
+}
+
+qrms_test(
+	'rehber kaydı kaynaktaki add_shortcode çağrılarıyla birebir örtüşür',
+	function () {
+		// Sürüklenme koruması: yeni bir kısa kod eklenip rehbere bildirilmezse
+		// (ya da kaldırılan bir kod rehberde kalırsa) bu test düşer.
+		$kaynakta   = qrms_kaynaktaki_kisa_kodlar();
+		$bildirilen = qrms_bildirilen_kisa_kodlar();
+
+		qrms_assert_same( 17, count( $kaynakta ), 'kaynaktaki kısa kod sayısı' );
+		qrms_assert_same( $kaynakta, $bildirilen, 'bildirilen liste kaynakla aynı' );
+	}
+);
+
+/* ---------------------------------------------------------------------------
+ * 9. QR Analiz — sayfa kayıt defteri ve hub
+ * ------------------------------------------------------------------------ */
+
+// module.php dosya kapsamında yalnızca fonksiyon ve sabit tanımlar; stub
+// ortamında yan etkisiz yüklenir.
+require_once QRMS_PLUGIN_DIR . 'modules/qr-analiz/module.php';
+
+echo "\nQR Analiz sayfaları\n";
+
+qrms_test(
+	'iki ekran da kayıt defterinde ve her birinin callback\'i var',
+	function () {
+		$pages = qrms_module_qr_analiz_sayfalar();
+
+		qrms_assert_same(
+			array( QRMS_ANALITIK_SAYFA, QRMS_ANALIZ_AYAR_SAYFA ),
+			array_keys( $pages ),
+			'sayfa listesi'
+		);
+
+		foreach ( $pages as $slug => $page ) {
+			foreach ( array( 'title', 'render', 'desc', 'icon' ) as $key ) {
+				qrms_assert_true( ! empty( $page[ $key ] ), $slug . ' -> ' . $key . ' dolu' );
+			}
+
+			qrms_assert_same( 0, strpos( $page['icon'], 'dashicons-' ), $slug . ' ikonu dashicon' );
+		}
+	}
+);
+
+qrms_test(
+	'ayar ekranının slug\'ı modül satırından ayrıdır',
+	function () {
+		// Modül satırı (qrms-module-qr-analiz) artık hub ekranıdır; ayar ekranı
+		// kendi slug'ına taşındı. Eski adres kırılmaz, hub'ı açar.
+		qrms_assert_false(
+			QRMS_ANALIZ_AYAR_SAYFA === QRMS_Admin::get_module_page_slug( 'qr-analiz' ),
+			'slug çakışması yok'
+		);
+	}
+);
+
+qrms_test(
+	'hub, iki ekranı da kart olarak basar',
+	function () {
+		ob_start();
+		qrms_module_qr_analiz_hub();
+		$html = ob_get_clean();
+
+		qrms_assert_contains( 'qrms-hub-grid', $html, 'ortak kart ızgarası' );
+		qrms_assert_contains( 'page=' . QRMS_ANALITIK_SAYFA, $html, 'analitik kartı' );
+		qrms_assert_contains( 'page=' . QRMS_ANALIZ_AYAR_SAYFA, $html, 'ayarlar kartı' );
+		qrms_assert_contains( 'Menü Analitiği', $html, 'analitik başlığı' );
+	}
+);
+
+qrms_test(
+	'modül lisansta aktif değilken hiçbir sayfa kaydedilmez',
+	function () {
+		// "QR Analiz" satırı yoksa $submenu de boştur; ekranların kaydedilmesi
+		// menüde ölü satır bırakırdı.
+		qrms_module_qr_analiz_admin_menu();
+
+		qrms_assert_same( array(), $GLOBALS['qrms_test']['submenus'], 'kayıt yok' );
+	}
+);
+
+echo "\nQR Analiz teşhisi\n";
+
+// Sınıf dosya kapsamında yalnızca tanım içerir (kancalar init() içinde
+// kaydolur), bu yüzden stub ortamında doğrudan yüklenebilir. Test edilen
+// eşleştirici saf bir dizi/string dönüşümüdür.
+require_once QRMS_PLUGIN_DIR . 'modules/qr-analiz/class-qrms-analitik.php';
+
+qrms_test(
+	'sınıfın dosyası eklentinin GİRİŞ dosyasına eşlenir',
+	function () {
+		// Sınıf çoğu zaman alt klasörde durur; devre dışı bırakma bağlantısı
+		// ise eklentinin giriş dosyasını ister.
+		qrms_assert_same(
+			'rma-analytics/rma-analytics.php',
+			QRMS_Analitik::eklenti_dosyasini_bul(
+				'rma-analytics/includes/class-analytics.php',
+				array( 'akismet/akismet.php', 'rma-analytics/rma-analytics.php' )
+			),
+			'klasörlü eklenti'
+		);
+	}
+);
+
+qrms_test(
+	'tek dosyalık eklenti de eşleşir',
+	function () {
+		qrms_assert_same(
+			'rma-analytics.php',
+			QRMS_Analitik::eklenti_dosyasini_bul( 'rma-analytics.php', array( 'rma-analytics.php' ) ),
+			'kök dosya'
+		);
+	}
+);
+
+qrms_test(
+	'eşleşme yoksa boş string döner, yanlış eklenti kapatılmaz',
+	function () {
+		// Regresyon: gevşek bir eşleştirme başka bir eklentiyi devre dışı
+		// bırakma bağlantısı üretebilirdi.
+		qrms_assert_same(
+			'',
+			QRMS_Analitik::eklenti_dosyasini_bul( 'rma-analytics/rma.php', array( 'akismet/akismet.php' ) ),
+			'listede yok'
+		);
+		qrms_assert_same( '', QRMS_Analitik::eklenti_dosyasini_bul( '', array( 'akismet/akismet.php' ) ), 'boş yol' );
+	}
+);
+
+qrms_test(
+	'aynı adla başlayan başka bir klasör eşleşmez',
+	function () {
+		qrms_assert_same(
+			'',
+			QRMS_Analitik::eklenti_dosyasini_bul(
+				'rma-analytics/rma.php',
+				array( 'rma-analytics-pro/rma-analytics-pro.php' )
+			),
+			'klasör adı tam eşleşmeli'
+		);
+	}
+);
+
+qrms_test(
+	'modül aktifken iki ekran da gizli sayfa olarak kaydedilir',
+	function () {
+		$GLOBALS['submenu'][ QRMS_Admin::MENU_SLUG ] = array(
+			qrms_submenu_satiri( 'QR Analiz', QRMS_Admin::get_module_page_slug( 'qr-analiz' ) ),
+		);
+
+		qrms_module_qr_analiz_admin_menu();
+
+		qrms_assert_same(
+			array( QRMS_ANALITIK_SAYFA, QRMS_ANALIZ_AYAR_SAYFA ),
+			array_map(
+				function ( $item ) {
+					return $item['slug'];
+				},
+				$GLOBALS['qrms_test']['submenus']
+			),
+			'kaydedilen sayfalar'
+		);
+
+		qrms_assert_true( QRMS_Admin::is_module_subpage( QRMS_ANALITIK_SAYFA ), 'kayıt defterinde' );
+
+		// Kayıt gerçek bir alt menüdir (parent: MENU_SLUG) — route çözümü buna
+		// bağlıdır; menüden düşürme işi admin_head'de yapılır.
+		qrms_assert_same( QRMS_Admin::MENU_SLUG, $GLOBALS['qrms_test']['submenus'][0]['parent'], 'üst menü' );
+	}
+);
+
+/* ---------------------------------------------------------------------------
+ * 9b. QR Masa — toplu oluşturma ve grup filtresi
+ * ------------------------------------------------------------------------ */
+
+// Sınıf dosya kapsamında yalnızca tanım ve bir add_shortcode kaydı yapar;
+// sayfa dosyası da yalnızca fonksiyon tanımlar. Test edilenler $wpdb'ye
+// dokunmayan saf dönüşümler ve DB'ye hiç gitmeyen doğrulama dalları.
+require_once QRMS_PLUGIN_DIR . 'modules/qr-masa/class-qmo-masalar.php';
+require_once QRMS_PLUGIN_DIR . 'modules/qr-masa/masalar-sayfasi.php';
+
+echo "\nQR Masa toplu oluşturma\n";
+
+qrms_test(
+	'toplu slug önek ve numaradan üretilir',
+	function () {
+		qrms_assert_same( 'ic-masa-1', QMO_Masalar::toplu_slug( 'ic-masa', 1 ), 'düz önek' );
+		qrms_assert_same( 'ic-masa-10', QMO_Masalar::toplu_slug( 'Ic Masa', 10 ), 'önek slug\'lanır' );
+		qrms_assert_same( 'bahce-3', QMO_Masalar::toplu_slug( 'Bahçe', 3 ), 'Türkçe harfler indirgenir' );
+	}
+);
+
+qrms_test(
+	'geçersiz önek veya numara boş slug döndürür',
+	function () {
+		qrms_assert_same( '', QMO_Masalar::toplu_slug( '', 5 ), 'boş önek' );
+		qrms_assert_same( '', QMO_Masalar::toplu_slug( '///', 5 ), 'slug\'a dönüşmeyen önek' );
+		qrms_assert_same( '', QMO_Masalar::toplu_slug( 'ic-masa', 0 ), 'sıfır numara' );
+	}
+);
+
+qrms_test(
+	'görünen ad okunabilirdir AMA ürettiği slug her zaman beklenendir',
+	function () {
+		// Kritik değişmez: ekle() slug'ı ADDAN üretir. Ad ile beklenen slug
+		// birbirinden kayarsa masa yanlış adreste açılır ve QR kodları tutmaz.
+		$ornekler = array( 'ic-masa', 'Ic Masa', 'Bahçe', 'vip', 'VIP Salon', 'teras-ust' );
+
+		foreach ( $ornekler as $onek ) {
+			foreach ( array( 1, 7, 42 ) as $no ) {
+				qrms_assert_same(
+					QMO_Masalar::toplu_slug( $onek, $no ),
+					sanitize_title( QMO_Masalar::toplu_ad( $onek, $no ) ),
+					$onek . '-' . $no . ' adı doğru slug\'ı üretir'
+				);
+			}
+		}
+
+		qrms_assert_same( 'Ic Masa 7', QMO_Masalar::toplu_ad( 'ic-masa', 7 ), 'okunabilir ad' );
+		qrms_assert_same( '', QMO_Masalar::toplu_ad( '', 7 ), 'geçersiz önek' );
+	}
+);
+
+qrms_test(
+	'toplu ekleme aralığı doğrulanır',
+	function () {
+		$hatali = array(
+			array( '', 1, 10, 'onek' ),
+			array( 'ic-masa', 0, 10, 'aralik' ),
+			array( 'ic-masa', 5, 3, 'aralik' ),
+			array( 'ic-masa', 1, 1000, 'sinir' ),
+		);
+
+		foreach ( $hatali as $durum ) {
+			$sonuc = QMO_Masalar::toplu_aralik_dogrula( $durum[0], $durum[1], $durum[2] );
+
+			qrms_assert_true( is_wp_error( $sonuc ), $durum[3] . ' hatası döner' );
+			qrms_assert_same( $durum[3], $sonuc->get_error_code(), $durum[3] . ' kodu' );
+		}
+	}
+);
+
+qrms_test(
+	'azami sınır tam sınırda geçer',
+	function () {
+		// 1..200 = 200 masa: sınırın kendisi reddedilmemeli.
+		$tam = QMO_Masalar::toplu_aralik_dogrula( 'ic-masa', 1, QMO_Masalar::TOPLU_AZAMI );
+
+		qrms_assert_false( is_wp_error( $tam ), 'tam sınır kabul edilir' );
+		qrms_assert_same( QMO_Masalar::TOPLU_AZAMI, $tam['adet'], 'adet' );
+		qrms_assert_same( 'ic-masa', $tam['onek'], 'önek normalize edilir' );
+
+		qrms_assert_true(
+			is_wp_error( QMO_Masalar::toplu_aralik_dogrula( 'ic-masa', 1, QMO_Masalar::TOPLU_AZAMI + 1 ) ),
+			'sınırın bir fazlası reddedilir'
+		);
+	}
+);
+
+echo "\nQR Masa grup filtresi\n";
+
+qrms_test(
+	'grup adı sondaki numarayı atar',
+	function () {
+		qrms_assert_same( 'ic-masa', QMO_Masalar::grup_adi( 'ic-masa-12' ), 'çok haneli numara' );
+		qrms_assert_same( 'vip', QMO_Masalar::grup_adi( 'vip-3' ), 'tek haneli numara' );
+		qrms_assert_same( 'bahce', QMO_Masalar::grup_adi( 'bahce' ), 'numarasız slug' );
+		qrms_assert_same( 'masa-2-kat', QMO_Masalar::grup_adi( 'masa-2-kat' ), 'ortadaki numara korunur' );
+		qrms_assert_same( '12', QMO_Masalar::grup_adi( '12' ), 'tamamı sayı olan slug kendi grubudur' );
+	}
+);
+
+qrms_test(
+	'gruplar doğal sırayla ve sayılarıyla çıkarılır',
+	function () {
+		$masalar = array();
+
+		foreach ( array( 'ic-masa-2', 'ic-masa-10', 'vip-1', 'bahce', 'ic-masa-1' ) as $slug ) {
+			$masalar[] = (object) array( 'table_slug' => $slug );
+		}
 
 		qrms_assert_same(
 			array(
-				QRMS_Admin::MENU_SLUG,
-				QRMS_Admin::get_module_page_slug( 'restoran-menu' ),
-				QRMS_Admin::get_module_page_slug( 'qr-analiz' ),
-				QRMS_ANALITIK_SAYFA,
-				QRMS_Admin::get_module_page_slug( 'qr-masa' ),
-				QRMS_Admin::SETTINGS_SLUG,
+				'bahce'   => 1,
+				'ic-masa' => 3,
+				'vip'     => 1,
 			),
-			qrms_submenu_sluglari( $sirali ),
-			'tam sıra'
-		);
-
-		qrms_assert_same( range( 0, 5 ), array_keys( $sirali ), 'sıfırdan artan anahtarlar' );
-		qrms_assert_same( '— Menü Analitiği', $sirali[3][0], 'etiket korunur' );
-	}
-);
-
-qrms_test(
-	'QR Analiz satırı yoksa liste değişmeden döner',
-	function () {
-		$ham = array(
-			qrms_submenu_satiri( 'Genel Bakış', QRMS_Admin::MENU_SLUG ),
-			qrms_submenu_satiri( 'Genel Ayarlar', QRMS_Admin::SETTINGS_SLUG ),
-			qrms_submenu_satiri( '— Menü Analitiği', QRMS_ANALITIK_SAYFA ),
-		);
-
-		qrms_assert_same(
-			qrms_submenu_sluglari( $ham ),
-			qrms_submenu_sluglari( qrms_module_qr_analiz_submenu_sirala( $ham ) ),
-			'sıra korunur'
+			qmo_masalar_gruplari( $masalar ),
+			'grup => adet'
 		);
 	}
 );
 
 qrms_test(
-	'analitik satırı hiç eklenmemişse sıra bozulmaz',
+	'slug\'ı olmayan satır grupları bozmaz',
 	function () {
-		$ham = array(
-			qrms_submenu_satiri( 'Genel Bakış', QRMS_Admin::MENU_SLUG ),
-			qrms_submenu_satiri( 'QR Analiz', QRMS_Admin::get_module_page_slug( 'qr-analiz' ) ),
-			qrms_submenu_satiri( 'Genel Ayarlar', QRMS_Admin::SETTINGS_SLUG ),
+		$masalar = array( (object) array( 'table_slug' => 'vip-1' ), (object) array( 'id' => 3 ) );
+
+		qrms_assert_same( array( 'vip' => 1 ), qmo_masalar_gruplari( $masalar ), 'eksik satır atlanır' );
+		qrms_assert_same( array(), qmo_masalar_gruplari( array() ), 'boş liste' );
+	}
+);
+
+echo "\nQR Masa toplu sonuç bildirimi\n";
+
+qrms_test(
+	'sonuç mesajı eklenen, atlanan ve hatalıyı ayrı ayrı söyler',
+	function () {
+		$mesaj = qmo_toplu_sonuc_mesaji(
+			array(
+				'eklenen' => 8,
+				'atlanan' => array( 'ic-masa-3', 'ic-masa-7' ),
+				'hata'    => array(),
+			)
 		);
 
-		qrms_assert_same(
-			qrms_submenu_sluglari( $ham ),
-			qrms_submenu_sluglari( qrms_module_qr_analiz_submenu_sirala( $ham ) ),
-			'sıra korunur'
+		qrms_assert_contains( '8 masa oluşturuldu', $mesaj, 'eklenen sayısı' );
+		qrms_assert_contains( '2 tanesi zaten vardı', $mesaj, 'atlanan sayısı' );
+		qrms_assert_contains( 'ic-masa-3, ic-masa-7', $mesaj, 'atlanan slug\'ları' );
+		qrms_assert_false( false !== strpos( $mesaj, 'kaydedilemedi' ), 'hata yokken hata cümlesi yok' );
+	}
+);
+
+qrms_test(
+	'hiç masa açılmadıysa bunu açıkça söyler',
+	function () {
+		$mesaj = qmo_toplu_sonuc_mesaji(
+			array(
+				'eklenen' => 0,
+				'atlanan' => array( 'vip-1' ),
+				'hata'    => array( 'vip-2' ),
+			)
 		);
+
+		qrms_assert_contains( 'Hiç yeni masa oluşturulmadı', $mesaj, 'sıfır durumu' );
+		qrms_assert_contains( '1 tanesi kaydedilemedi: vip-2', $mesaj, 'hata satırı' );
+	}
+);
+
+qrms_test(
+	'uzun slug listesi kısaltılır',
+	function () {
+		$sluglar = array( 'a-1', 'a-2', 'a-3', 'a-4', 'a-5', 'a-6', 'a-7' );
+
+		qrms_assert_same(
+			'a-1, a-2, a-3, a-4, a-5 ve 2 tane daha',
+			qmo_slug_listesi( $sluglar ),
+			'ilk beş + özet'
+		);
+		qrms_assert_same( 'a-1, a-2', qmo_slug_listesi( array( 'a-1', 'a-2' ) ), 'kısa liste olduğu gibi' );
 	}
 );
 
@@ -1649,7 +2457,35 @@ qrms_test(
 // yalnızca bir add_action kaydı yapar (stub ortamında yan etkisizdir).
 // module.php ise sıralama yardımcısını tanımlar — saf dizi dönüşümü.
 require_once QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/admin/menu.php';
+require_once QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/admin/hub.php';
 require_once QRMS_PLUGIN_DIR . 'modules/yorum-feedback/module.php';
+
+/*
+ * Rozetlerin ve hub özetinin beslendiği veri fonksiyonları $wpdb'ye ve modülün
+ * option şemasına dayanır; burada test edilen şey sunum (hangi ekran nerede
+ * görünüyor) olduğu için veri tarafı sabitlenir.
+ */
+function qrm_pro_get_settings() {
+	return array( 'qrm_reward_enabled' => 1 );
+}
+
+function qrm_reward_is_active( $settings ) {
+	return false;
+}
+
+function qrm_cf_unread_total() {
+	return 2;
+}
+
+function qrm_pro_review_stats() {
+	return array(
+		'table_ok' => true,
+		'pending'  => 3,
+		'total'    => 12,
+		'approved' => 9,
+		'avg'      => 4.25,
+	);
+}
 
 echo "\nYorum & Feedback sayfaları\n";
 
@@ -1681,12 +2517,13 @@ qrms_test(
 );
 
 qrms_test(
-	'modül sayfası tanıma hub ve alt sayfaların hepsini kapsar',
+	'hub slug\'ı suite\'in modül satırıyla aynıdır',
 	function () {
-		qrms_assert_true( qrm_pro_is_module_page( qrm_pro_hub_slug() ), 'hub' );
-		qrms_assert_true( qrm_pro_is_module_page( 'qrms-yf-odul' ), 'alt sayfa' );
-		qrms_assert_true( ! qrm_pro_is_module_page( 'qrms-rm-gorunum' ), 'başka modülün sayfası' );
-		qrms_assert_true( ! qrm_pro_is_module_page( '' ), 'boş slug' );
+		qrms_assert_same(
+			QRMS_Admin::get_module_page_slug( 'yorum-feedback' ),
+			qrm_pro_hub_slug(),
+			'hub slug\'ı'
+		);
 	}
 );
 
@@ -1748,85 +2585,101 @@ qrms_test(
 	}
 );
 
-echo "\nYorum & Feedback menü sıralaması\n";
+echo "\nYorum & Feedback menü ve hub\n";
 
 qrms_test(
-	'modülün yedi satırı Yorum & Feedback girişinin hemen ardına alınır',
+	'yedi ekran da gizli sayfa olarak kaydedilir, menüde satırları olmaz',
 	function () {
-		// add_submenu_page satırları listenin sonuna ekler; sıralama onları
-		// modülün kendi satırının altına taşır.
-		$ham = array(
+		$GLOBALS['submenu'][ QRMS_Admin::MENU_SLUG ] = array(
 			qrms_submenu_satiri( 'Genel Bakış', QRMS_Admin::MENU_SLUG ),
-			qrms_submenu_satiri( 'Restoran Menü', QRMS_Admin::get_module_page_slug( 'restoran-menu' ) ),
 			qrms_submenu_satiri( 'Yorum & Feedback', QRMS_Admin::get_module_page_slug( 'yorum-feedback' ) ),
 			qrms_submenu_satiri( 'Genel Ayarlar', QRMS_Admin::SETTINGS_SLUG ),
 		);
 
-		foreach ( qrm_pro_admin_pages() as $slug => $page ) {
-			$ham[] = qrms_submenu_satiri( '— ' . $page['menu_title'], $slug );
+		qrms_module_yorum_feedback_admin_menu();
+
+		qrms_assert_same(
+			array_keys( qrm_pro_admin_pages() ),
+			array_map(
+				function ( $item ) {
+					return $item['slug'];
+				},
+				$GLOBALS['qrms_test']['submenus']
+			),
+			'kaydedilen sayfalar'
+		);
+
+		// Etiketlerde artık "—" öneki yok: satırlar menüde hiç görünmüyor.
+		foreach ( $GLOBALS['qrms_test']['submenus'] as $item ) {
+			qrms_assert_false( 0 === strpos( $item['title'], '—' ), $item['slug'] . ' önekli değil' );
 		}
 
-		qrms_assert_same(
-			array_merge(
-				array(
-					QRMS_Admin::MENU_SLUG,
-					QRMS_Admin::get_module_page_slug( 'restoran-menu' ),
-					QRMS_Admin::get_module_page_slug( 'yorum-feedback' ),
-				),
-				array_keys( qrm_pro_admin_pages() ),
-				array( QRMS_Admin::SETTINGS_SLUG )
-			),
-			qrms_submenu_sluglari( qrms_module_yorum_feedback_submenu_sirala( $ham ) ),
-			'sıra'
-		);
-	}
-);
-
-qrms_test(
-	'Yorum & Feedback satırı yoksa liste değişmeden döner',
-	function () {
-		$ham = array(
-			qrms_submenu_satiri( 'Genel Bakış', QRMS_Admin::MENU_SLUG ),
-			qrms_submenu_satiri( '— Tüm Yorumlar', 'qrms-yf-yorumlar' ),
-			qrms_submenu_satiri( 'Genel Ayarlar', QRMS_Admin::SETTINGS_SLUG ),
-		);
-
-		qrms_assert_same(
-			qrms_submenu_sluglari( $ham ),
-			qrms_submenu_sluglari( qrms_module_yorum_feedback_submenu_sirala( $ham ) ),
-			'sıra korunur'
-		);
-	}
-);
-
-qrms_test(
-	'diğer modüllerin satırları göreli sırasını korur',
-	function () {
-		$ham = array(
-			qrms_submenu_satiri( 'Genel Bakış', QRMS_Admin::MENU_SLUG ),
-			qrms_submenu_satiri( 'Restoran Menü', QRMS_Admin::get_module_page_slug( 'restoran-menu' ) ),
-			qrms_submenu_satiri( '— Görünüm', 'qrms-rm-gorunum' ),
-			qrms_submenu_satiri( '— Diğer Ayarlar', 'qrms-rm-diger' ),
-			qrms_submenu_satiri( 'Yorum & Feedback', QRMS_Admin::get_module_page_slug( 'yorum-feedback' ) ),
-			qrms_submenu_satiri( 'Genel Ayarlar', QRMS_Admin::SETTINGS_SLUG ),
-			qrms_submenu_satiri( '— Tüm Yorumlar', 'qrms-yf-yorumlar' ),
-		);
-
-		$sirali = qrms_submenu_sluglari( qrms_module_yorum_feedback_submenu_sirala( $ham ) );
+		// Gizleme, beyaz liste üzerinden çekirdeğin işi.
+		update_option( 'qrms_active_modules', array( 'yorum-feedback' ) );
+		QRMS_Admin::hide_module_subpages();
 
 		qrms_assert_same(
 			array(
 				QRMS_Admin::MENU_SLUG,
-				QRMS_Admin::get_module_page_slug( 'restoran-menu' ),
-				'qrms-rm-gorunum',
-				'qrms-rm-diger',
 				QRMS_Admin::get_module_page_slug( 'yorum-feedback' ),
-				'qrms-yf-yorumlar',
 				QRMS_Admin::SETTINGS_SLUG,
 			),
-			$sirali,
-			'restoran-menu satırları yerinde kalır'
+			qrms_submenu_sluglari( $GLOBALS['submenu'][ QRMS_Admin::MENU_SLUG ] ),
+			'menüde kalan satırlar'
 		);
+	}
+);
+
+qrms_test(
+	'modül lisansta aktif değilken hiçbir sayfa kaydedilmez',
+	function () {
+		qrms_module_yorum_feedback_admin_menu();
+
+		qrms_assert_same( array(), $GLOBALS['qrms_test']['submenus'], 'kayıt yok' );
+	}
+);
+
+qrms_test(
+	'rozet modülün TEK satırında toplanır',
+	function () {
+		// Alt satırlar kalktığı için okunmamış gönderim sayısı yalnızca
+		// "Yorum & Feedback" satırında görünebilir.
+		$label = qrms_module_yorum_feedback_menu_label( 'Yorum & Feedback', 'yorum-feedback' );
+
+		qrms_assert_contains( 'Yorum & Feedback', $label, 'modül adı korunur' );
+		qrms_assert_contains( 'update-count', $label, 'okunmamış gönderim rozeti' );
+		qrms_assert_same(
+			'QR Masa',
+			qrms_module_yorum_feedback_menu_label( 'QR Masa', 'qr-masa' ),
+			'başka modülün etiketine dokunulmaz'
+		);
+	}
+);
+
+qrms_test(
+	'hub yedi ekranı da kart olarak basar',
+	function () {
+		ob_start();
+		qrm_pro_admin_hub();
+		$html = ob_get_clean();
+
+		qrms_assert_contains( 'qrms-hub-grid', $html, 'ortak kart ızgarası' );
+		qrms_assert_contains( 'qrms-hub-stats', $html, 'özet kutuları' );
+
+		foreach ( qrm_pro_admin_pages() as $slug => $page ) {
+			qrms_assert_contains( 'page=' . $slug, $html, $slug . ' kartı' );
+		}
+	}
+);
+
+qrms_test(
+	'her ekranın ikonu dashicon\'dur',
+	function () {
+		// Emoji admin'de kutu karakterine düşebiliyor; kart ikonları dashicons
+		// setinden gelmeli.
+		foreach ( qrm_pro_admin_pages() as $slug => $page ) {
+			qrms_assert_same( 0, strpos( $page['icon'], 'dashicons-' ), $slug . ' ikonu' );
+		}
 	}
 );
 

@@ -54,18 +54,33 @@ if ( ! function_exists( 'qrms_analitik_sayfasi' ) ) {
 				</div>
 			</div>
 
-			<?php if ( QRMS_Analitik::eski_eklenti_aktif() ) : ?>
-				<div class="notice notice-warning qrms-an-notice">
-					<p>
-						<?php
-						esc_html_e(
-							'Eski "RMA Analytics" eklentisi hâlâ etkin. Kayıtları o topluyor; çift sayım olmasın diye bu modül izlemeyi devre dışı bıraktı. Masa bazlı takibin çalışması için eski eklentiyi kapatın.',
-							'qrms'
-						);
-						?>
-					</p>
+			<?php
+			/*
+			 * "Neden veri yok?" kutusu. Yalnızca gerçek bir engel varsa basılır;
+			 * her şey yolundaysa hiç görünmez (bkz. QRMS_Analitik::teshis).
+			 * Her bulgunun bir de EYLEMİ vardır — kullanıcı sorunu okuyup ne
+			 * yapacağını aramak zorunda kalmasın.
+			 */
+			foreach ( QRMS_Analitik::teshis() as $bulgu ) :
+				?>
+				<div class="qrms-an-teshis qrms-an-teshis-<?php echo esc_attr( $bulgu['tip'] ); ?>">
+					<span class="qrms-an-teshis-icon dashicons <?php echo 'kritik' === $bulgu['tip'] ? 'dashicons-warning' : ( 'uyari' === $bulgu['tip'] ? 'dashicons-flag' : 'dashicons-info-outline' ); ?>" aria-hidden="true"></span>
+
+					<div class="qrms-an-teshis-body">
+						<h2 class="qrms-an-teshis-title"><?php echo esc_html( $bulgu['baslik'] ); ?></h2>
+						<p class="qrms-an-teshis-text"><?php echo esc_html( $bulgu['mesaj'] ); ?></p>
+
+						<?php if ( '' !== $bulgu['url'] ) : ?>
+							<a class="qrms-an-btn qrms-an-teshis-action<?php echo 'kritik' === $bulgu['tip'] ? ' qrms-an-btn-danger-solid' : ''; ?>"
+								href="<?php echo esc_url( $bulgu['url'] ); ?>">
+								<?php echo esc_html( $bulgu['etiket'] ); ?>
+							</a>
+						<?php endif; ?>
+					</div>
 				</div>
-			<?php endif; ?>
+				<?php
+			endforeach;
+			?>
 
 			<div class="qrms-an-cards" id="qrms-an-cards" aria-live="polite">
 				<div class="qrms-an-card qrms-an-skeleton"></div>

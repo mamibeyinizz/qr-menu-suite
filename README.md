@@ -73,28 +73,193 @@ yeterlidir (ör. `restoran-menu` → `qrms_module_restoran_menu_init()`).
 Loader, modül lisansta aktifse dosyayı `require` eder ve bu fonksiyonu
 çağırır; dosya yoksa sessizce atlar.
 
-Admin menüsünde `Genel Bakış` ve `Genel Ayarlar` her zaman görünür; modül
-sayfaları yalnızca lisansta aktif olan modüller için eklenir.
+### Sol menü tek seviyelidir
+
+`QR Menü` menüsünde **yalnızca** şunlar durur: `Genel Bakış`, lisansta aktif
+olan modüllerin adları ve `Genel Ayarlar`. Modüllerin alt ekranları menüye
+hiç yazılmaz; onlara modülün **hub ekranındaki kartlardan** gidilir.
+
+```
+QR Menü
+├ Genel Bakış
+├ Restoran Menü                 → hub (8 kart)
+├ Yorum & Feedback              → hub (7 kart + özet sayaçlar)
+├ QR Masa                       → doğrudan Masalar ekranı
+├ QR Analiz                     → hub (2 kart)
+├ QR Galeri                     → hub (3 kart)
+├ QR Çeviri                     → doğrudan Çeviri ekranı
+├ QR Chatbot                    → doğrudan Chatbot ayarları
+├ QR Çalışma Saatleri           → doğrudan Saat tablosu
+├ QR Masa Oturum Güvenliği      → doğrudan Oturum limitleri
+├ Kısa Kodlar                   → modüllerin kısa kod rehberi
+└ Genel Ayarlar
+```
+
+Hub, modülün **ikiden fazla ekranı olduğunda** vardır. Tek ekranlı modüllerde
+araya bir sayfa koymak fazladan tık demek olurdu; modül satırı doğrudan o
+ekranı açar.
+
+#### Alt sayfalar nasıl gizleniyor?
+
+Alt sayfalar `add_submenu_page( QRMS_Admin::MENU_SLUG, … )` ile **gerçek
+sayfalar olarak kaydolmaya devam eder** — adresleri, hook adları, yetkileri ve
+sayfa başlıkları değişmez. Menüden düşürülmeleri `admin_head` kancasında,
+beyaz liste dışında kalan her satır için `remove_submenu_page()` çağrılarak
+yapılır (`QRMS_Admin::hide_module_subpages()`).
+
+Zamanlama bilinçlidir; WordPress bir admin isteğinde sırasıyla:
+
+| # | Aşama | Satır ne durumda olmalı |
+| --- | --- | --- |
+| 1 | `wp-admin/menu.php` — route çözümü | **durmalı.** Hook adı hesaplanırken üst menü `$submenu`'de aranır; satır yoksa ad `qr-menu_page_X` yerine `admin_page_X` çıkar, `$_registered_pages` ile eşleşmez ve WordPress 403 verir |
+| 2 | `current_screen` | durmalı |
+| 3 | `get_admin_page_title()` | **durmalı.** Başlık da `$submenu` üzerinden bulunur; yoksa tarayıcı sekmesi boş kalır |
+| 4 | **`admin_head`** | **burada düşürülür** |
+| 5 | `menu-header.php` — sol menü basılır | yok |
+
+Beyaz liste (`QRMS_Admin::get_menu_row_slugs()`) modül başına gizleme kodu
+gerektirmez: çekirdeğin CPT'den ürettiği satır (`edit.php?post_type=…`) ve
+ileride eklenecek satırlar da otomatik kapsanır. Siteye özgü bir istisna
+gerekirse `qrms_menu_row_slugs` filtresi vardır.
+
+Açık alt sayfada sol menünün doğru yeri vurgulanır: `parent_file` filtresi
+üst menüyü `QR Menü` üzerinde tutar, `submenu_file` filtresi de sayfanın
+**sahibi modülün** satırını seçili gösterir (ör. "Görünüm" ekranındayken
+"Restoran Menü" vurgulu kalır).
 
 ### Modülün kendi yönetim sayfası
 
 Modül, init'i içinde `QRMS_Admin::register_module_page( $slug, $callback )`
-çağırırsa alt menü sayfası o callback'i basar; çağırmazsa "Bu modül yakında
+çağırırsa modül satırı o callback'i basar; çağırmazsa "Bu modül yakında
 burada olacak" placeholder'ı görünmeye devam eder. Kayıt `plugins_loaded`
 (öncelik 20) sırasında yapılır, `admin_menu` bundan sonra çalıştığı için
 zamanlama doğrudur.
+
+Alt ekranları olan modüller her ekranı şöyle kaydeder:
+
+```php
+add_submenu_page(
+    QRMS_Admin::MENU_SLUG, $baslik, $baslik, QRMS_Admin::CAPABILITY, $slug,
+    QRMS_Admin::register_module_subpage( 'restoran-menu', $slug, $callback )
+);
+```
+
+`register_module_subpage()` iki iş yapar: sayfayı modülüne bağlayan kayıt
+defterine yazar (menü vurgusu ve beyaz liste bunu kullanır) ve callback'i
+sayfanın en üstüne **`← Modül Adı` geri bağlantısı** basacak şekilde
+sarmalar — sol menüde alt satır kalmadığı için modüle dönüşün yolu budur.
+
+### Ortak hub bileşeni
+
+`QRMS_Admin::render_hub()` tüm modüllerde aynı ekranı üretir; modül yalnızca
+içeriği verir:
+
+```php
+QRMS_Admin::render_hub( [
+    'title'  => 'Restoran Menü',
+    'intro'  => 'Ne yapmak istiyorsanız kartına dokunun.',
+    'accent' => '#c9a84c',                 // opsiyonel, modülün marka rengi
+    'stats'  => [ /* opsiyonel özet kutuları */ ],
+    'cards'  => [ [ 'url' => …, 'title' => …, 'desc' => …, 'icon' => 'dashicons-art' ] ],
+] );
+```
+
+Kart ızgarası masaüstünde **üç sütun**, 960px altında iki, 600px altında tek
+sütundur; `pointer: coarse` cihazlarda kart yüksekliği ve ikonlar büyür.
+İkonlar **dashicons** setinden gelir — emoji kullanılmaz, çünkü emoji admin'in
+yazı tipi yığınına ve işletim sistemine göre kutu karakterine düşebiliyor.
+Stiller `assets/css/admin.css` içindeki `.qrms-hub-*` kurallarındadır.
+
+### Varlık sürümleri — önbellek kırma
+
+Eklentinin CSS/JS dosyaları `wp_enqueue_style()`/`wp_enqueue_script()`'e
+**sabit** `QRMS_VERSION` ile veriliyordu. Bu, dosyanın adresini
+(`admin.css?ver=1.0.0`) eklenti sürümü yükseltilene kadar hiç değiştirmez:
+içerik değişse bile tarayıcı, sunucudaki sayfa önbelleği ve CDN eski kopyayı
+sunmaya devam eder. Hub kart ızgarası tam olarak böyle kayboldu — `.qrms-hub-*`
+kuralları `assets/css/admin.css`'e eklendi ama adres değişmediği için o
+kuralları içermeyen eski kopya sunuluyordu ve kartlar tek satıra çökmüş
+bağlantı metni olarak görünüyordu.
+
+Sürüm artık dosya başına hesaplanıyor:
+
+```php
+wp_enqueue_style(
+    'qrms-admin',
+    QRMS_PLUGIN_URL . 'assets/css/admin.css',
+    array(),
+    QRMS_Helpers::asset_version( 'assets/css/admin.css' )   // "1.1.0.1755766421"
+);
+```
+
+`QRMS_Helpers::asset_version()` eklenti sürümüne dosyanın `filemtime()`
+değerini ekler; dosya her değiştiğinde adres kendiliğinden değişir ve hiçbir
+sürüm numarasını elle yükseltmek gerekmez. Sonuç istek boyunca saklanır, aynı
+dosya birden çok yerde kuyruğa alınsa da disk bir kez okunur. Dosya yoksa
+eklenti sürümüne düşülür.
+
+Suite'in sahip olduğu **bütün** varlıklar (çekirdek + dokuz modül, 22 çağrı)
+bu yolu kullanır. İki test bunu korur: biri hub ekranında `admin.css`'in
+önbellek kıran bir sürümle kuyruğa alındığını doğrular, diğeri kaynak ağacını
+tarayıp sabit `QRMS_VERSION` ile kuyruğa alınan bir varlık kalmadığını
+kontrol eder.
+
+Hub kartlarının gövdesi ayrıca blok elemanlardan (`div`/`h3`/`p`) kurulur.
+HTML5'te `<a>` akış içeriği taşıyabilir; fark yalnızca stil dosyası ulaşmadığı
+durumda ortaya çıkar — `span`'lerle kart tek satıra çöküp okunmaz hâle
+gelirken blok elemanlarla alt alta dizilmiş okunabilir bir liste kalır.
+
+### Kısa kod rehberi
+
+Suite genelinde dokuz dosyada dağınık `add_shortcode()` çağrısı var ve hiçbiri
+kullanıcıya ne işe yaradığını söylemiyordu. `QRMS_Shortcodes` o bilginin tek
+kaydıdır; her modül kendi init'inde bildirir:
+
+```php
+QRMS_Shortcodes::register( 'restoran-menu', array(
+    array(
+        'tag'   => 'restaurant_menu',
+        'title' => 'Restoran Menüsü',
+        'desc'  => 'Ürünlerinizi kategorilere ayrılmış, aranabilir menü olarak gösterir.',
+        'usage' => '[restaurant_menu]',              // verilmezse "[tag]" olur
+        'note'  => 'Geçerli masa oturumu gerektirir.', // opsiyonel koşul
+        'attrs' => array(
+            array( 'name' => 'show_search', 'default' => 'yes', 'desc' => 'Gizlemek için "no".' ),
+        ),
+    ),
+) );
+```
+
+Sayfa (`qrms-shortcodes`) modül bazlı bölümler hâlinde kart ızgarası basar:
+kod bloğu + **Kopyala** butonu, başlık, tek cümlelik açıklama, varsa koşul
+notu ve parametre listesi. Liste **dinamiktir** — lisansta aktif olmayan bir
+modülün init'i hiç çalışmaz, kısa kodları da rehberde görünmez. Hiç kısa kod
+yoksa menü satırı da kaydedilmez (menü kaydı ile beyaz liste aynı koşulu,
+`QRMS_Shortcodes::has_any()`, kullanır).
+
+Kopyalama `navigator.clipboard` ile yapılır; güvenli olmayan bağlamda gizli
+alan + `execCommand` yedeğine, o da başarısız olursa kodu seçili hâle
+getirmeye düşer. Kartlar masaüstünde iki sütun, 782px altında tek sütundur.
+
+Beş kısa kod (`gemini_chatbot`, üç çağrı butonu, `qr_aktif_masa`) yalnızca
+geçerli bir masa oturumu varken render edilir; kartlarında bu koşul ayrıca
+yazar — yoksa "sayfaya koydum ama görünmüyor" kaçınılmaz olurdu.
+
+Kayıt defterinin gerçekle uyumu testle korunuyor: test, kaynak ağacındaki
+`add_shortcode()` çağrılarını tarayıp bildirilen listeyle karşılaştırır, yeni
+bir kısa kod rehbere eklenmezse düşer.
 
 ### Paketlenmiş modüller
 
 | Slug | İçerik | Yönetim sayfası |
 | --- | --- | --- |
-| `restoran-menu` | `rma_menu_item` CPT, `[restaurant_menu]`, `[qmo_one_cikan_slider]`, Elementor widget'ı | ✔ Sekmeli ayar ekranı |
-| `yorum-feedback` | Çoklu kriter yorumlar, Google yönlendirme + ödül kodları, dinamik form oluşturucu, `[qr_menu_reviews]`, `[qr_menu_contact]`, `[qr_menu_form]` | ✔ Başlangıç ekranı + yedi ayrı sayfa |
-| `qr-masa` | Masa kayıtları (CRUD), masa QR adresleri, `[qr_aktif_masa]` | ✔ Masalar ekranı |
+| `restoran-menu` | `rma_menu_item` CPT, `[restaurant_menu]`, `[qmo_one_cikan_slider]`, Elementor widget'ı | ✔ Hub + sekiz ekran |
+| `yorum-feedback` | Çoklu kriter yorumlar, Google yönlendirme + ödül kodları, dinamik form oluşturucu, `[qr_menu_reviews]`, `[qr_menu_contact]`, `[qr_menu_form]` | ✔ Hub + yedi ayrı sayfa |
+| `qr-masa` | Masa kayıtları (CRUD + toplu oluşturma), masa QR adresleri, `[qr_aktif_masa]` | ✔ Masalar ekranı |
 | `qr-masa-oturum-guvenligi` | Sahte QR reddi, kilit ekranı, sayfa kilidi | ✔ Oturum limitleri |
-| `qr-galeri` | Galeri CPT, bölümler, görseller | ✔ Galeri yönetim ekranları |
+| `qr-galeri` | Galeri CPT, bölümler, görseller | ✔ Hub + Bölümler / Görseller / Ayarlar |
 | `qr-ceviri` | Çok dilli metin tarama, sözlük, CSV içe/dışa aktarma | ✔ Çeviri ekranı |
-| `qr-analiz` | Menü analitiği (masa bazlı görüntüleme/tıklama takibi, panel); `POST /wp-json/qrservis/v1/analytics` — şube analitiği özeti; `POST /wp-json/qrservis/v1/create-user` — garson/müdür hesabı açma (yalnızca ana sitede) | ✔ Menü Analitiği paneli + uç durumu/Firebase ayarları |
+| `qr-analiz` | Menü analitiği (masa bazlı görüntüleme/tıklama takibi, panel); `POST /wp-json/qrservis/v1/analytics` — şube analitiği özeti; `POST /wp-json/qrservis/v1/create-user` — garson/müdür hesabı açma (yalnızca ana sitede) | ✔ Hub + Menü Analitiği / Firebase & Şube Ayarları |
 | `qr-chatbot` | `[gemini_chatbot]`, garson/hesap buton kısa kodları, Gemini AJAX ucu, sipariş ucu (`POST /wp-json/qrservis/v1/order`) | ✔ Chatbot ayarları + Firebase ayarları |
 
 Kodları kaynak eklentilerinden **aynen** taşındı (`restoran-menu` 12-menu
@@ -151,12 +316,66 @@ karşılaştırmaz — eski kurulumlarda sütun eklenmezdi. Şema kontrolü `ini
 kancasındadır (frontend istekleri de kapsar) ve sürüm option'ı eşleştiğinde
 tek bir option okumasına iner.
 
-Eski bağımsız eklenti hâlâ etkinse modül izlemeyi kapatır (çift sayım olmaz),
-panelde bunu söyleyen bir uyarı gösterir ve veriyi aynı tablodan okumaya
-devam eder.
+Eski bağımsız eklenti hâlâ etkinse modül izlemeyi kapatır (çift sayım olmaz)
+ve veriyi aynı tablodan okumaya devam eder.
 
-**Panel.** "QR Menü → — Menü Analitiği" satırı (`qrms-analiz-panel`) ayrı bir
-sayfadır; REST/Firebase ayarları "QR Analiz" satırında kalır. Dönem sekmeleri
+**Teşhis kutusu.** "Analitikte veri yok" şikayetinin sebebi çoğu zaman
+görünmüyordu. `QRMS_Analitik::teshis()` panelin üstünde, yalnızca gerçek bir
+engel varken bir kutu basar ve her bulguyu bir **eyleme** bağlar:
+
+| Bulgu | Eylem |
+| --- | --- |
+| Eski `RMA_Analytics` eklentisi etkin — modül `wp_ajax_rma_load_items` / `rma_get_product_details` kancalarını hiç kaydetmez | Eklentinin gerçek adı + **tek tıkla devre dışı bırakma** bağlantısı |
+| Analitik tablosu veritabanında yok | Genel Ayarlar'a yönlendirme |
+| Tabloda hiç kayıt yok | "Menüyü bir kez ön yüzden açın" |
+| Kayıt var ama hiçbirinde masa yok | QR Masa'ya yönlendirme |
+
+Son madde sessiz bir veri kaybını yakalar: `masa_belirle()` → `masa_gecerli()`
+adresteki `?masa=…` slug'ını `qrm_tables`'ta arar ve **kayıtlı değilse güvenlik
+gereği yok sayar**; olay masasız yazılır ve "Masalara Göre" sekmesinde yalnızca
+"Masasız (doğrudan erişim)" görünür.
+
+Devre dışı bırakma bağlantısı WordPress'in Eklentiler ekranındakinin aynısıdır
+(aynı action, aynı nonce). Sınıfın dosyası `ReflectionClass` ile bulunur,
+`plugin_basename()` ile eklenti klasörüne indirgenir ve `active_plugins` ile
+eşleştirilir; `activate_plugins` yetkisi olmayan kullanıcıya hiç gösterilmez.
+
+### QR Masa — toplu oluşturma ve grup filtresi
+
+Masalar ekranı iki kutuyla açılır: **Tek Masa** ve **Toplu Oluştur**. Toplu
+kutusuna bir slug öneki ve numara aralığı girilir (`ic-masa`, 1–10) ve
+`ic-masa-1` … `ic-masa-10` tek seferde açılır; gönderilmeden önce hangi
+slug'ların oluşacağı canlı önizlemede yazar.
+
+Zaten var olan slug'lar **atlanır** (hata değildir), böylece aralık genişletilip
+yeniden gönderildiğinde yalnızca eksikler eklenir. Sonuç tek cümlede
+raporlanır: *"8 masa oluşturuldu. 2 tanesi zaten vardı: ic-masa-3, ic-masa-7."*
+Girdi doğrulaması (boş önek, ters aralık, tek seferde 200 masa sınırı)
+`QMO_Masalar::toplu_aralik_dogrula()` içinde, döngü başlamadan ve veritabanına
+hiç gidilmeden biter.
+
+Kritik değişmez: `ekle()` slug'ı **addan** üretir. `toplu_ad()` okunabilir bir
+ad verir ("Ic Masa 7") ama `sanitize_title()` sonucu beklenen slug'ı vermezse
+adı doğrudan slug'a düşürür — masa yanlış adreste açılıp QR kodları tutmasın
+diye. Bu değişmez testte tüm önek/numara kombinasyonları için doğrulanır.
+
+Tablonun üstündeki çipler masaları slug önekine göre filtreler (`Tümü` ·
+`ic-masa 10` · `vip 4`). Grup, slug'ın sondaki `-<sayı>` eki atılarak
+türetilir (`ic-masa-12` → `ic-masa`); tamamı sayı olan slug kendi grubudur.
+Filtreleme tamamen sayfa içidir — satırlar gösterilip gizlenir, sunucuya
+istek gitmez. Tek grup varsa çip listesi hiç basılmaz.
+
+Ekran mobil için uyarlanmıştır (`modules/qr-masa/assets/css/admin-masalar.css`):
+782px altında kutular tek sütuna iner ve tablo `data-label` başlıklarıyla kart
+görünümüne döner; `pointer: coarse` altında çipler, alanlar ve butonlar en az
+44px olur, alanların yazı boyutu 16px'e çıkar (iOS Safari'nin yakınlaştırmasını
+engeller).
+
+**Panel.** "QR Menü → QR Analiz" satırı iki kartlık bir hub açar: **Menü
+Analitiği** (`qrms-analiz-panel`) ve **Firebase & Şube Ayarları**
+(`qrms-analiz-ayarlar`). Ayar ekranı v1.0'da modül satırının kendisiydi; hub
+oraya gelince kendi slug'ına taşındı — eski adres kırılmaz, hub'ı açar.
+Dönem sekmeleri
 saatlik / günlük / haftalık / aylık ve **Masalara Göre**'dir; bunların yanında
 tüm ekranı tek bir masaya daraltan masa filtresi vardır (o masanın kartları,
 grafiği ve en çok tıklanan ürünleri). "Verileri Sil" filtre açıkken yalnızca
@@ -170,30 +389,26 @@ yatay kayar, dokunmatik cihazlarda (`pointer: coarse`) tıklama hedefleri
 44px'e çıkar — `restoran-menu` yönetim ekranlarıyla aynı yaklaşım.
 
 `restoran-menu`'nün ürün, kategori ve ayar ekranlarının tamamı suite menüsünün
-altındadır — eklenti artık ayrı bir top-level "Menü" menüsü açmaz:
+altındadır — eklenti artık ayrı bir top-level "Menü" menüsü açmaz. Sol menüde
+tek bir "Restoran Menü" satırı vardır; sekiz işin hepsine onun açtığı hub
+ekranındaki kartlardan gidilir:
 
-```
-QR Menü
-├ Genel Bakış
-├ Restoran Menü      → başlangıç ekranı (yedi işe giden kartlar)
-├ — Ürünlerim        → edit.php?post_type=rma_menu_item
-├ — Ürün Ekle        → post-new.php?post_type=rma_menu_item
-├ — Kategoriler      → edit-tags.php?taxonomy=rma_category
-├ — Alerjenler       → edit-tags.php?taxonomy=rma_allergen
-├ — Görünüm          → qrms-rm-gorunum
-├ — Öne Çıkanlar     → qrms-rm-one-cikanlar
-├ — Diğer Ayarlar    → qrms-rm-diger
-├ … (diğer aktif modüller)
-└ Genel Ayarlar
-```
+| Hub kartı | Adres |
+| --- | --- |
+| Ürünlerim | `edit.php?post_type=rma_menu_item` |
+| Ürün Ekle | `post-new.php?post_type=rma_menu_item` |
+| Kategoriler | `edit-tags.php?taxonomy=rma_category` |
+| Alerjenler | `edit-tags.php?taxonomy=rma_allergen` |
+| Görünüm | `qrms-rm-gorunum` |
+| Öne Çıkanlar | `qrms-rm-one-cikanlar` |
+| Ürün Vitrini | `qrms-rm-vitrin` |
+| Diğer Ayarlar | `qrms-rm-diger` |
 
-Yedi satırın hepsi `add_submenu_page()` ile kaydedilmiş **gerçek, ayrı
-sayfalardır**; JS ile gizlenip gösterilen sekme yoktur. WordPress admin menüsü
-iki seviyelidir ve bir alt menünün altına giriş eklenemez; bu yüzden satırlar
-"QR Menü"nün doğrudan alt öğesidir ve modüle ait olduklarını göstermek için
-etiketleri `—` ile öneklenir. "Restoran Menü" girişinin kendisi, teknik bilgisi
-olmayan kullanıcı için yedi işi kartlar hâlinde listeleyen başlangıç ekranını
-açar.
+Dördü çekirdeğin kendi ekranı, dördü modülün `add_submenu_page()` ile
+kaydettiği **gerçek, ayrı sayfalardır**; JS ile gizlenip gösterilen sekme
+yoktur. Hiçbirinin sol menüde satırı yoktur (bkz. *Alt sayfalar nasıl
+gizleniyor?*), ama adresleri değişmedi — eski yer imleri çalışmaya devam
+eder.
 
 Sayfaların hangi eski sekmeden geldiği:
 
@@ -203,22 +418,19 @@ Sayfaların hangi eski sekmeden geldiği:
 | Öne Çıkanlar | "Öneriler" sekmesi + menüden erişilemeyen `qmo_slide` (Öne Çıkan Slider) ekranı |
 | Diğer Ayarlar | "Kategori Sıralaması", "İçe/Dışa Aktar" ve "Yedekleme" sekmeleri, üç bölüm hâlinde |
 
-Sayfa tanımı tek yerdedir (`RMA_Admin_Pages_Trait::get_subpages()`); suite
-menüsündeki sunum (önek, sıra) `module.php` içindeki menü glue'unda,
-suite yokken (eski tekil eklenti kurulumu) kayıt `add_admin_menus()` içinde
-yapılır. Alanların hiçbiri düşmedi: az kullanılanlar `<details>` bölümlerine
-alındı.
+Sayfa tanımı tek yerdedir (`RMA_Admin_Pages_Trait::get_subpages()`); sayfa
+kayıtları ve hub kartları aynı listeden beslenir. Suite yokken (eski tekil
+eklenti kurulumu) kayıt `add_admin_menus()` içinde yapılır. Alanların hiçbiri
+düşmedi: az kullanılanlar `<details>` bölümlerine alındı.
 
-CPT `show_in_menu => QRMS_Admin::MENU_SLUG` ile kaydolur. Çekirdek bu durumda
-(`_add_post_type_submenus()`) yalnızca ürün listesi satırını ekler ve onu
-"Genel Bakış"tan önce diziye sokar; "Ürün Ekle" ile taksonomi satırları hiç
-oluşmaz (onlar yalnızca top-level menü alan CPT'ler için üretilir, bu yüzden
-taksonomilerin kendi `show_in_menu` ayarını değiştirmek işe yaramaz). Eksik
-satırların eklenmesi, etiketleme, sıralama ve menü vurgusu (`parent_file` /
-`submenu_file`) `modules/restoran-menu/module.php` içindeki menü glue'unda
-yapılır — ekran kodlarına dokunulmaz. Sıra listesi
-(`qrms_module_restoran_menu_child_slugs()`) ve sıralama saf birer fonksiyona
-ayrıldığı için testlerde doğrulanır.
+CPT `show_in_menu => QRMS_Admin::MENU_SLUG` ile kaydolur — böylece CPT
+ekranlarında `$parent_file` suite menüsüne çözülür. Çekirdeğin bu yüzden
+eklediği ürün listesi satırını beyaz liste düşürür; "Ürün Ekle" ve taksonomi
+satırları zaten hiç oluşmaz (onlar yalnızca top-level menü alan CPT'ler için
+üretilir). CPT, taksonomi ve Öne Çıkan Slider ekranlarında menü vurgusu
+`modules/restoran-menu/module.php` içindeki `parent_file` / `submenu_file`
+filtreleriyle "Restoran Menü" satırına sabitlenir — ekran kodlarına
+dokunulmaz.
 
 Eski adresler çalışmaya devam eder: `page=rma_settings` ve altı eski sekme
 slug'ı (`rma_color_settings`, `rma_nav_design`, `rma_category_order`,
@@ -247,28 +459,29 @@ satırı ise bunlardan yalnızca birini (Tüm Yorumlar) ikinci kez basıyordu:
 aynı ekran iki menüden açılıyor, diğer altı ekran suite menüsünde hiç
 görünmüyordu. Üst menü kaldırıldı; artık tek giriş noktası var:
 
-| Menü satırı | Slug | Ekran |
+| Ekran | Slug | İçerik |
 | --- | --- | --- |
-| Yorum & Feedback | `qrms-module-yorum-feedback` | Başlangıç: özet sayaçlar + kart ızgarası |
-| — Tüm Yorumlar | `qrms-yf-yorumlar` | Yorum listesi, durum filtreleri, onay/sil |
-| — Detaylı İçgörüler | `qrms-yf-icgoruler` | Genel ortalama, kriter bazlı performans |
-| — Müşteri Bilgileri Formu | `qrms-yf-form-alanlari` | Yorum formunun alanları, sıralama |
-| — Ayarlar & Puanlama | `qrms-yf-ayarlar` | Kriterler, form görünümü, otomatik onay, spam |
-| — İletişim | `qrms-yf-iletisim` | İletişim formu başlığı + kısa kod |
-| — Google & Ödül Sistemi | `qrms-yf-odul` | Google yönlendirme, popup, indirim kodları |
-| — Formlar | `qrms-yf-formlar` | Özel form oluşturucu + gönderiler |
+| **Yorum & Feedback** (sol menüdeki tek satır) | `qrms-module-yorum-feedback` | Hub: özet sayaçlar + yedi kart |
+| Tüm Yorumlar | `qrms-yf-yorumlar` | Yorum listesi, durum filtreleri, onay/sil |
+| Detaylı İçgörüler | `qrms-yf-icgoruler` | Genel ortalama, kriter bazlı performans |
+| Müşteri Bilgileri Formu | `qrms-yf-form-alanlari` | Yorum formunun alanları, sıralama |
+| Ayarlar & Puanlama | `qrms-yf-ayarlar` | Kriterler, form görünümü, otomatik onay, spam |
+| İletişim | `qrms-yf-iletisim` | İletişim formu başlığı + kısa kod |
+| Google & Ödül Sistemi | `qrms-yf-odul` | Google yönlendirme, popup, indirim kodları |
+| Formlar | `qrms-yf-formlar` | Özel form oluşturucu + gönderiler |
 
 Sayfa tanımı tek yerde durur (`qrm_pro_admin_pages()`,
-`includes/admin/menu.php`); menü satırları, başlangıç ekranındaki kartlar ve
-varlık kuyruğunun "bu benim sayfam mı" kontrolü aynı listeden beslenir.
-Bağlantılar `qrm_pro_admin_url()` ile üretilir — hiçbir slug JS'e ya da HTML'e
-gömülmez.
+`includes/admin/menu.php`); sayfa kayıtları, hub kartları ve varlık kuyruğunun
+"bu benim sayfam mı" kontrolü aynı listeden beslenir. Bağlantılar
+`qrm_pro_admin_url()` ile üretilir — hiçbir slug JS'e ya da HTML'e gömülmez.
 
 v4.1.x ve v4.2.x adreslerinden (`qrm-pro-main`, `qrm-pro-settings&sub=alanlar`,
 `qrm-pro-insights`, `qrm-forms&view=edit` …) gelenler
 `qrm_pro_legacy_page_target()` ile yeni sayfalarına yönlendirilir; sekme/görünüm
-parametreleri hedefi belirlemekte kullanılır. Menü rozetleri (okunmamış form
-gönderimi, eksik ödül kurulumu) yalnızca ilgili alt satırda gösterilir.
+parametreleri hedefi belirlemekte kullanılır. Rozetler (okunmamış form
+gönderimi, eksik ödül kurulumu) sol menüde modülün **tek** satırında toplanır
+(`qrms_module_menu_label` filtresi); hangi ekranın ilgilendiği hub
+kartlarındaki rozetlerden okunur.
 
 Kaynaktaki üç JS sekmesi (Tüm Yorumlar > İçgörüler, Ayarlar > Müşteri Bilgileri
 Formu) gerçek sayfaya dönüştürüldü. Bu sekmelerin hem görünürlüğü hem aktif
@@ -355,6 +568,9 @@ guard'lıdır: eski `qr-menu-official` eklentisi aynı sitede hâlâ aktifse
 
 **Sihirbaz gizli ama erişilebilir.** `admin.php?page=qrms-wizard` gerçek bir
 alt menü olarak kaydedilir; menüden gizleme `current_screen` hook'unda yapılır.
+(Beyaz liste de sihirbazı `admin_head`'de düşürür; sihirbazın kendi gizlemesi
+lisans doğrulanmamışken bile — yani modül satırları hiç kurulmamışken —
+çalıştığı için korunur.)
 Gizlemeyi `admin_menu` içinde yapmak sayfayı erişilemez kılar: WordPress
 route'u `admin_menu`den sonra çözer (`wp-admin/admin.php` önce `menu.php`, sonra
 `get_plugin_page_hook()`) ve hook adını hesaplarken sayfanın parent'ını
@@ -382,11 +598,12 @@ includes/
   class-license-client.php   Doğrulama, option'lar, günlük cron, notice
   class-wizard.php           Tek ekranlı kurulum sihirbazı + lisans formu
   class-module-loader.php    modules/<slug>/module.php yükleyici
-  class-admin.php            Menü çatısı, Genel Bakış, Genel Ayarlar, modül sayfa kaydı
+  class-admin.php            Menü çatısı, tek seviyeli menü, ortak hub bileşeni, Genel Bakış, Genel Ayarlar
+  class-shortcodes.php       Kısa kod kayıt defteri ve "Kısa Kodlar" rehber ekranı
 modules/
   _qmo-ortak/                Ortak zemin (oturum sınıfı, Firestore istemcisi, helpers, varlıklar)
-  restoran-menu/             Menü CPT'si, kısa kodlar, slider + sekmeli ayar ekranı
-  yorum-feedback/            Yorumlar, ödül kodları, form oluşturucu + başlangıç ekranı ve yedi yönetim sayfası
+  restoran-menu/             Menü CPT'si, kısa kodlar, slider + hub ve sekiz yönetim ekranı
+  yorum-feedback/            Yorumlar, ödül kodları, form oluşturucu + hub ve yedi yönetim sayfası
   qr-masa/                   Masa kayıtları + Masalar yönetim ekranı
   qr-masa-oturum-guvenligi/  Masa doğrulama, kilit ekranı + oturum ayarları
   qr-analiz/                 Menü analitiği (masa bazlı takip + panel), analitik/kullanıcı REST uçları, Firebase ayar ekranı
