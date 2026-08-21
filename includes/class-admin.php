@@ -23,6 +23,11 @@ class QRMS_Admin {
 	const SETTINGS_SLUG = 'qrms-settings';
 
 	/**
+	 * Kısa Kodlar rehberi sayfası slug'ı.
+	 */
+	const SHORTCODES_SLUG = 'qrms-shortcodes';
+
+	/**
 	 * Modül sayfalarının slug öneki.
 	 */
 	const MODULE_PAGE_PREFIX = 'qrms-module-';
@@ -86,6 +91,330 @@ class QRMS_Admin {
 	}
 
 	/**
+	 * Alt sayfa slug'ı -> sahibi modülün slug'ı.
+	 *
+	 * Modüller kendi alt sayfalarını register_module_subpage() ile kaydeder.
+	 * Bu defter iki işe yarar: (1) sol menüde hangi modül satırının vurgulanacağı,
+	 * (2) alt sayfanın üstündeki "geri" bağlantısının hedefi.
+	 *
+	 * @var array<string,string>
+	 */
+	private static $module_subpages = array();
+
+	/**
+	 * Bir modülün alt sayfasını kaydeder ve "geri" bağlantısını ekleyen
+	 * sarmalanmış callback'i döndürür.
+	 *
+	 * Kullanımı add_submenu_page() çağrısının içindedir:
+	 *
+	 *     add_submenu_page(
+	 *         QRMS_Admin::MENU_SLUG, $baslik, $baslik, QRMS_Admin::CAPABILITY, $slug,
+	 *         QRMS_Admin::register_module_subpage( 'restoran-menu', $slug, $callback )
+	 *     );
+	 *
+	 * Sayfa GERÇEK bir alt menü olarak kaydolmaya devam eder (parent:
+	 * MENU_SLUG); menüde görünmemesi hide_module_subpages() ile, route
+	 * çözüldükten SONRA sağlanır. Bkz. o metodun başlığındaki not.
+	 *
+	 * @param string   $module_slug Modül slug'ı.
+	 * @param string   $page_slug   Alt sayfanın slug'ı.
+	 * @param callable $callback    Sayfayı basan çağrılabilir.
+	 * @return callable Sarmalanmış callback (geçersiz kayıtta orijinali döner).
+	 */
+	public static function register_module_subpage( $module_slug, $page_slug, $callback ) {
+		if ( ! QRMS_Helpers::is_valid_module( $module_slug ) || '' === (string) $page_slug ) {
+			return $callback;
+		}
+
+		self::$module_subpages[ $page_slug ] = $module_slug;
+
+		if ( ! is_callable( $callback ) ) {
+			return $callback;
+		}
+
+		return static function () use ( $module_slug, $callback ) {
+			QRMS_Admin::render_subpage_back_link( $module_slug );
+			call_user_func( $callback );
+		};
+	}
+
+	/**
+	 * Kayıtlı alt sayfaların tamamı (slug => modül slug'ı).
+	 *
+	 * @return array<string,string>
+	 */
+	public static function get_module_subpages() {
+		return self::$module_subpages;
+	}
+
+	/**
+	 * Bir sayfa kayıtlı bir modül alt sayfası mı?
+	 *
+	 * @param string $page_slug Sayfa slug'ı.
+	 * @return bool
+	 */
+	public static function is_module_subpage( $page_slug ) {
+		return isset( self::$module_subpages[ $page_slug ] );
+	}
+
+	/**
+	 * Bir modülün başlangıç (hub) sayfasının tam adresi.
+	 *
+	 * @param string $module_slug Modül slug'ı.
+	 * @return string
+	 */
+	public static function get_module_page_url( $module_slug ) {
+		return admin_url( 'admin.php?page=' . self::get_module_page_slug( $module_slug ) );
+	}
+
+	/**
+	 * Sol menüde KALACAK satırların slug listesi.
+	 *
+	 * Tek seviyeli menünün tanımı burasıdır: Genel Bakış, lisansta aktif olan
+	 * modüllerin satırları, (varsa) Kısa Kodlar ve Genel Ayarlar. Bunun
+	 * dışındaki her satır (modül alt sayfaları, çekirdeğin CPT'den ürettiği
+	 * liste satırı, sihirbaz) menüden düşürülür.
+	 *
+	 * @return string[]
+	 */
+	public static function get_menu_row_slugs() {
+		$slugs = array( self::MENU_SLUG );
+
+		foreach ( QRMS_License_Client::get_active_modules() as $slug ) {
+			$slugs[] = self::get_module_page_slug( $slug );
+		}
+
+		// Koşul register_menu() ile aynı kaynaktan gelir: satır kaydedilmişse
+		// beyaz listede de olur, kaydedilmemişse listede aranmaz.
+		if ( QRMS_Shortcodes::has_any() ) {
+			$slugs[] = self::SHORTCODES_SLUG;
+		}
+
+		$slugs[] = self::SETTINGS_SLUG;
+
+		return $slugs;
+	}
+
+	/**
+	 * Verilen alt menü satırlarından beyaz listede OLMAYANLARIN slug'ları.
+	 *
+	 * Saf dizi fonksiyonu (WordPress'e bağımlılığı yok), bu yüzden doğrudan
+	 * test edilir.
+	 *
+	 * @param array    $rows $submenu[MENU_SLUG] satırları.
+	 * @param string[] $keep Menüde kalacak slug'lar.
+	 * @return string[] Menüden düşürülecek slug'lar.
+	 */
+	public static function collect_hidden_rows( array $rows, array $keep ) {
+		$hidden = array();
+
+		foreach ( $rows as $row ) {
+			$slug = isset( $row[2] ) ? $row[2] : '';
+
+			if ( '' === $slug || in_array( $slug, $keep, true ) || in_array( $slug, $hidden, true ) ) {
+				continue;
+			}
+
+			$hidden[] = $slug;
+		}
+
+		return $hidden;
+	}
+
+	/**
+	 * Modül alt sayfalarını sol menüden düşürür.
+	 *
+	 * ZAMANLAMA — bu metodun `admin_head`'e bağlı olması bilinçlidir ve
+	 * değiştirilmemelidir. WordPress bir admin isteğinde sırasıyla:
+	 *
+	 *   1. wp-admin/menu.php  — route çözülür; sayfanın hook adı hesaplanırken
+	 *      üst menü $submenu içinde ARANIR (get_admin_page_parent). Satır bu
+	 *      anda silinmiş olursa hook adı "qr-menu_page_X" yerine
+	 *      "admin_page_X" çıkar, $_registered_pages ile eşleşmez ve WordPress
+	 *      403 "Bu sayfaya erişmenize izin verilmiyor" der. (Bu, sihirbazın
+	 *      v1.0'daki hatasıydı; bkz. QRMS_Wizard::hide_page_from_menu.)
+	 *   2. current_screen  — route çözüldü ama sayfa başlığı henüz okunmadı.
+	 *   3. admin-header.php -> get_admin_page_title() — başlık yine $submenu
+	 *      üzerinden bulunur; satır burada da durmalıdır, yoksa tarayıcı
+	 *      sekmesi boş kalır (PHP 8.1+ deprecation uyarısıyla birlikte).
+	 *   4. admin_head  <-- BURADAYIZ. Route çözüldü, başlık okundu, sol menü
+	 *      HTML'i henüz basılmadı.
+	 *   5. menu-header.php — sol menü basılır; satır artık yok.
+	 *
+	 * Yani satırlar "hiç kaydedilmemiş" değil, "boyanmadan hemen önce
+	 * düşürülmüş" olur: sayfa slug'ları, hook adları, yetkiler ve adreslerin
+	 * hiçbiri değişmez — yalnızca menüde görünmezler.
+	 *
+	 * @return void
+	 */
+	public static function hide_module_subpages() {
+		global $submenu;
+
+		if ( empty( $submenu[ self::MENU_SLUG ] ) || ! is_array( $submenu[ self::MENU_SLUG ] ) ) {
+			return;
+		}
+
+		/**
+		 * Sol menüde kalacak satırların slug listesi.
+		 *
+		 * @param string[] $slugs Varsayılan beyaz liste.
+		 */
+		$keep = apply_filters( 'qrms_menu_row_slugs', self::get_menu_row_slugs() );
+
+		foreach ( self::collect_hidden_rows( $submenu[ self::MENU_SLUG ], (array) $keep ) as $slug ) {
+			remove_submenu_page( self::MENU_SLUG, $slug );
+		}
+	}
+
+	/**
+	 * Modül alt sayfalarındayken üst menüyü "QR Menü" üzerinde tutar.
+	 *
+	 * Emniyet kemeri: route çözümü $parent_file'ı zaten MENU_SLUG yapar, ama
+	 * satır menüden düştüğü için yeniden hesaplayan bir kod (ya da modülün
+	 * kendi parent_file filtresi) araya girerse menü vurgusu kaybolurdu.
+	 *
+	 * @param string $parent_file Çekirdeğin belirlediği üst menü dosyası.
+	 * @return string
+	 */
+	public static function filter_parent_file( $parent_file ) {
+		return self::is_module_subpage( self::get_current_page() ) ? self::MENU_SLUG : $parent_file;
+	}
+
+	/**
+	 * Alt sayfadayken SAHİBİ MODÜLÜN satırını vurgular.
+	 *
+	 * Açık sayfanın kendi satırı menüde olmadığı için WordPress hiçbir satırı
+	 * vurgulayamazdı; kullanıcı "Görünüm" ekranındayken sol menüde "Restoran
+	 * Menü" seçili görünür.
+	 *
+	 * @param string $submenu_file Çekirdeğin belirlediği alt menü dosyası.
+	 * @return string
+	 */
+	public static function filter_submenu_file( $submenu_file ) {
+		$page = self::get_current_page();
+
+		return self::is_module_subpage( $page )
+			? self::get_module_page_slug( self::$module_subpages[ $page ] )
+			: $submenu_file;
+	}
+
+	/**
+	 * İstekteki `page` parametresi.
+	 *
+	 * @return string
+	 */
+	private static function get_current_page() {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		return isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '';
+	}
+
+	/**
+	 * Alt sayfanın en üstündeki "← Modül Adı" bağlantısı.
+	 *
+	 * Sol menüde artık alt satır olmadığı için modüle dönüşün tek yolu budur;
+	 * register_module_subpage() her alt sayfanın önüne otomatik ekler.
+	 *
+	 * @param string $module_slug Modül slug'ı.
+	 * @return void
+	 */
+	public static function render_subpage_back_link( $module_slug ) {
+		?>
+		<div class="qrms-subpage-nav">
+			<a class="qrms-back-link" href="<?php echo esc_url( self::get_module_page_url( $module_slug ) ); ?>">
+				<span class="dashicons dashicons-arrow-left-alt2" aria-hidden="true"></span>
+				<?php echo esc_html( QRMS_Helpers::get_module_name( $module_slug ) ); ?>
+			</a>
+		</div>
+		<?php
+	}
+
+	/**
+	 * ORTAK HUB EKRANI — modül satırının açtığı kart ızgarası.
+	 *
+	 * Sol menü tek seviyeye indiği için her modülün alt işleri buradan
+	 * dallanır. Tüm modüller aynı bileşeni kullanır; modül yalnızca kart
+	 * listesini verir, sunum tek yerde durur.
+	 *
+	 * İkonlar dashicons setinden gelir — emoji DEĞİL. Emoji, admin'in yazı
+	 * tipi yığınına ve işletim sistemine göre kutu karakterine düşebiliyor;
+	 * dashicons WordPress admin'inde her zaman kayıtlı bir ikon fontudur.
+	 *
+	 * @param array $args {
+	 *     @type string $title  Sayfa başlığı.
+	 *     @type string $intro  Tek cümlelik açıklama (opsiyonel).
+	 *     @type string $accent Vurgu rengi (opsiyonel, modülün markası).
+	 *     @type string $notice Kartların üstünde gösterilecek uyarı HTML'i.
+	 *     @type array  $stats  Üstteki özet kutuları: label, value, url, accent.
+	 *     @type array  $cards  Kartlar: url, title, desc, icon, badge.
+	 * }
+	 * @return void
+	 */
+	public static function render_hub( array $args ) {
+		$args = array_merge(
+			array(
+				'title'  => '',
+				'intro'  => '',
+				'accent' => '',
+				'notice' => '',
+				'stats'  => array(),
+				'cards'  => array(),
+			),
+			$args
+		);
+
+		$style = '' !== $args['accent'] ? 'style="--qrms-hub-accent:' . esc_attr( $args['accent'] ) . '"' : '';
+		?>
+		<div class="wrap qrms-hub" <?php echo $style; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>
+			<h1 class="qrms-hub-heading"><?php echo esc_html( $args['title'] ); ?></h1>
+
+			<?php if ( '' !== $args['intro'] ) : ?>
+				<p class="qrms-hub-intro"><?php echo esc_html( $args['intro'] ); ?></p>
+			<?php endif; ?>
+
+			<?php if ( '' !== $args['notice'] ) : ?>
+				<?php echo wp_kses_post( $args['notice'] ); ?>
+			<?php endif; ?>
+
+			<?php if ( ! empty( $args['stats'] ) ) : ?>
+				<div class="qrms-hub-stats">
+					<?php foreach ( $args['stats'] as $stat ) : ?>
+						<div class="qrms-hub-stat" style="border-left-color:<?php echo esc_attr( isset( $stat['accent'] ) ? $stat['accent'] : '#c3c4c7' ); ?>">
+							<span class="qrms-hub-stat-label"><?php echo esc_html( $stat['label'] ); ?></span>
+							<span class="qrms-hub-stat-value">
+								<?php if ( ! empty( $stat['url'] ) ) : ?>
+									<a href="<?php echo esc_url( $stat['url'] ); ?>"><?php echo esc_html( $stat['value'] ); ?></a>
+								<?php else : ?>
+									<?php echo esc_html( $stat['value'] ); ?>
+								<?php endif; ?>
+							</span>
+						</div>
+					<?php endforeach; ?>
+				</div>
+			<?php endif; ?>
+
+			<div class="qrms-hub-grid">
+				<?php foreach ( $args['cards'] as $card ) : ?>
+					<a class="qrms-hub-card" href="<?php echo esc_url( $card['url'] ); ?>">
+						<span class="qrms-hub-icon dashicons <?php echo esc_attr( isset( $card['icon'] ) ? $card['icon'] : 'dashicons-admin-generic' ); ?>" aria-hidden="true"></span>
+						<span class="qrms-hub-body">
+							<span class="qrms-hub-card-title">
+								<?php echo esc_html( $card['title'] ); ?>
+								<?php if ( ! empty( $card['badge'] ) ) : ?>
+									<span class="qrms-hub-badge"><?php echo esc_html( $card['badge'] ); ?></span>
+								<?php endif; ?>
+							</span>
+							<?php if ( ! empty( $card['desc'] ) ) : ?>
+								<span class="qrms-hub-desc"><?php echo esc_html( $card['desc'] ); ?></span>
+							<?php endif; ?>
+						</span>
+					</a>
+				<?php endforeach; ?>
+			</div>
+		</div>
+		<?php
+	}
+
+	/**
 	 * Hook kayıtları.
 	 *
 	 * @return void
@@ -95,6 +424,12 @@ class QRMS_Admin {
 		add_action( 'admin_menu', array( __CLASS__, 'ensure_menu_registered' ), 999 );
 		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_admin_menu_css' ), 99 );
 		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_assets' ) );
+
+		// Modül alt sayfaları menüden yalnızca boyanmadan hemen önce düşürülür;
+		// gerekçe için hide_module_subpages() başlığına bakın.
+		add_action( 'admin_head', array( __CLASS__, 'hide_module_subpages' ) );
+		add_filter( 'parent_file', array( __CLASS__, 'filter_parent_file' ) );
+		add_filter( 'submenu_file', array( __CLASS__, 'filter_submenu_file' ) );
 	}
 
 	/**
@@ -169,15 +504,41 @@ class QRMS_Admin {
 
 			$name = QRMS_Helpers::get_module_name( $slug );
 
+			/**
+			 * Modülün sol menüdeki etiketi.
+			 *
+			 * Alt satırlar kaldırıldığı için bir modülün dikkat isteyen durumu
+			 * (ör. okunmamış form gönderimi rozeti) yalnızca kendi satırında
+			 * gösterilebilir. Etiket HTML içerebilir; sayfa başlığı düz metin
+			 * kalır.
+			 *
+			 * @param string $name Modülün görünen adı.
+			 * @param string $slug Modül slug'ı.
+			 */
+			$label = apply_filters( 'qrms_module_menu_label', $name, $slug );
+
 			add_submenu_page(
 				self::MENU_SLUG,
 				$name,
-				$name,
+				$label,
 				self::CAPABILITY,
 				self::get_module_page_slug( $slug ),
 				static function () use ( $slug ) {
 					QRMS_Admin::render_module_page( $slug );
 				}
+			);
+		}
+
+		// Kısa Kodlar: modüllerin bildirdiği kısa kodların rehberi. Hiç kısa
+		// kod yoksa (aktif modül yoksa) boş bir sayfa menüde yer kaplamaz.
+		if ( QRMS_Shortcodes::has_any() ) {
+			add_submenu_page(
+				self::MENU_SLUG,
+				__( 'Kısa Kodlar', 'qrms' ),
+				__( 'Kısa Kodlar', 'qrms' ),
+				self::CAPABILITY,
+				self::SHORTCODES_SLUG,
+				array( 'QRMS_Shortcodes', 'render_page' )
 			);
 		}
 
@@ -275,9 +636,15 @@ class QRMS_Admin {
 	 * @return void
 	 */
 	public static function enqueue_assets() {
-		if ( ! self::is_plugin_screen() ) {
+		// Modül alt sayfalarının bir kısmı `qrms` önekini taşımaz (ör. qr-galeri'nin
+		// `qrmgm-*` ekranları); "geri" bağlantısı ve hub stilleri orada da gerekli.
+		if ( ! self::is_plugin_screen() && ! self::is_module_subpage( self::get_current_page() ) ) {
 			return;
 		}
+
+		// Hub kartlarının ve "geri" bağlantısının ikonları dashicons setinden
+		// gelir; admin'de zaten kayıtlıdır, burada yalnızca kuyruğa alınır.
+		wp_enqueue_style( 'dashicons' );
 
 		wp_enqueue_style(
 			'qrms-admin',

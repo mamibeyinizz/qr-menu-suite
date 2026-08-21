@@ -10,7 +10,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-$sections_page = QRMS_Admin::get_module_page_slug( 'qr-galeri' );
+$sections_page = 'qrmgm-sections';
 ?>
 <div class="wrap qrmgm-wrap">
 	<h1 class="qrmgm-title">Tüm Görseller</h1>

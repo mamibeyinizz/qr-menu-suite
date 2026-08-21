@@ -31,14 +31,15 @@ if ( ! function_exists( 'qmo_analiz_ayar_sayfasi' ) ) {
 		$ana_site = (bool) get_option( 'qmo_ana_site', false );
 		?>
 		<div class="wrap qmo-wrap">
-			<h1>QR Menü — Analiz</h1>
+			<h1>Firebase &amp; Şube Ayarları</h1>
 
 			<?php settings_errors(); ?>
 
 			<p class="qmo-aciklama">
+				Bu sayfa yalnızca uygulamanın (müdür/garson paneli) kullandığı REST uçlarını yapılandırır.
 				Menüye kaç kişi baktığı, hangi ürünlerin tıklandığı ve hangi masadan geldiği
 				<a href="<?php echo esc_url( admin_url( 'admin.php?page=' . QRMS_ANALITIK_SAYFA ) ); ?>">Menü Analitiği</a>
-				ekranındadır. Bu sayfa yalnızca uygulamanın (müdür/garson paneli) kullandığı REST uçlarını yapılandırır.
+				ekranındadır.
 			</p>
 
 			<h2 class="title">REST Uçları</h2>

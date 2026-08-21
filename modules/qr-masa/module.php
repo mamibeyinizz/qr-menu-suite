@@ -25,6 +25,18 @@ function qrms_module_qr_masa_init() {
 
 	require_once __DIR__ . '/class-qmo-masalar.php';
 
+	QRMS_Shortcodes::register(
+		'qr-masa',
+		array(
+			array(
+				'tag'   => 'qr_aktif_masa',
+				'title' => __( 'Aktif Masa Bilgisi', 'qrms' ),
+				'desc'  => __( 'Müşteriye hangi masada olduğunu gösterir ("Masa 7"). Masa bilgisi doğrulanmış oturumdan okunur, adresten değil.', 'qrms' ),
+				'note'  => __( 'Yalnızca müşteri masadaki QR kodu okuttuysa görünür.', 'qrms' ),
+			),
+		)
+	);
+
 	if ( is_admin() ) {
 		require_once __DIR__ . '/masalar-sayfasi.php';
 
@@ -57,6 +69,15 @@ function qrms_module_qr_masa_admin_assets() {
 		'qmo-admin',
 		QRMS_PLUGIN_URL . 'modules/_qmo-ortak/assets/css/admin.css',
 		array(),
+		QRMS_VERSION
+	);
+
+	// Ekranın kendi yerleşimi ve mobil davranışı. Ortak dosyanın ardına
+	// alınır: oradaki masaüstü kurallarını daraltarak tamamlar.
+	wp_enqueue_style(
+		'qmo-admin-masalar',
+		QRMS_PLUGIN_URL . 'modules/qr-masa/assets/css/admin-masalar.css',
+		array( 'qmo-admin' ),
 		QRMS_VERSION
 	);
 	wp_enqueue_script( 'qmo-qrious', 'https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js', array(), '4.0.2', true );

@@ -71,6 +71,100 @@
 }
 
 /* =====================================================================
+   TEŞHİS KUTUSU — "neden veri yok?"
+
+   Panelin en üstünde, YALNIZCA gerçek bir engel varken görünür. Her kutu
+   sorunu bir cümleyle söyler ve bir eyleme bağlar; kullanıcı ne yapacağını
+   aramak zorunda kalmaz.
+===================================================================== */
+
+.qrms-an-teshis {
+	background: var(--qrms-an-bg);
+	border: 1px solid var(--qrms-an-line);
+	border-left: 4px solid var(--qrms-an-soft);
+	border-radius: 10px;
+	display: flex;
+	gap: 14px;
+	margin: 0 0 16px;
+	padding: 16px 18px;
+}
+
+.qrms-an-teshis-kritik {
+	background: #fef2f2;
+	border-color: #fecaca;
+	border-left-color: #dc2626;
+}
+
+.qrms-an-teshis-uyari {
+	background: #fffbeb;
+	border-color: #fde68a;
+	border-left-color: #f59e0b;
+}
+
+.qrms-an-teshis-bilgi {
+	background: #eff6ff;
+	border-color: #bfdbfe;
+	border-left-color: var(--qrms-an-blue);
+}
+
+.qrms-an-teshis-icon {
+	flex: 0 0 22px;
+	font-size: 22px;
+	height: 22px;
+	margin-top: 1px;
+	width: 22px;
+}
+
+.qrms-an-teshis-kritik .qrms-an-teshis-icon {
+	color: #dc2626;
+}
+
+.qrms-an-teshis-uyari .qrms-an-teshis-icon {
+	color: #b45309;
+}
+
+.qrms-an-teshis-bilgi .qrms-an-teshis-icon {
+	color: var(--qrms-an-blue);
+}
+
+.qrms-an-teshis-body {
+	min-width: 0;
+}
+
+.qrms-an-teshis-title {
+	color: var(--qrms-an-ink);
+	font-size: 15px;
+	font-weight: 600;
+	line-height: 1.4;
+	margin: 0;
+	padding: 0;
+}
+
+.qrms-an-teshis-text {
+	color: var(--qrms-an-muted);
+	font-size: 13.5px;
+	line-height: 1.6;
+	margin: 6px 0 0;
+	max-width: 78ch;
+}
+
+.qrms-an-teshis .qrms-an-teshis-action {
+	margin-top: 12px;
+	text-decoration: none;
+}
+
+@media screen and (max-width: 600px) {
+	.qrms-an-teshis {
+		padding: 14px;
+	}
+
+	.qrms-an-teshis .qrms-an-teshis-action {
+		justify-content: center;
+		width: 100%;
+	}
+}
+
+/* =====================================================================
    BUTONLAR
 ===================================================================== */
 

@@ -42,6 +42,64 @@ defined( 'ABSPATH' ) || exit;
 function qrms_module_restoran_menu_init() {
 	require_once __DIR__ . '/qr-menu.php';
 
+	// Kısa kod rehberine bildirim. add_shortcode() çağrıları dosya kapsamında
+	// (qr-menu.php, shortcode-vitrin.php, shortcode-slider.php) yapılır; rehber
+	// yalnızca bu tek kayıttan beslenir.
+	QRMS_Shortcodes::register(
+		'restoran-menu',
+		array(
+			array(
+				'tag'   => 'restaurant_menu',
+				'title' => __( 'Restoran Menüsü', 'qrms' ),
+				'desc'  => __( 'Ürünlerinizi kategorilere ayrılmış, aranabilir ve filtrelenebilir menü olarak gösterir. Menü sayfanızın ana kısa kodu budur.', 'qrms' ),
+				'attrs' => array(
+					array(
+						'name'    => 'show_search',
+						'default' => 'yes',
+						'desc'    => __( 'Arama kutusunu gizlemek için "no" yazın.', 'qrms' ),
+					),
+				),
+			),
+			array(
+				'tag'   => 'qrms_urun_vitrini',
+				'title' => __( 'Ürün Vitrini', 'qrms' ),
+				'desc'  => __( 'Seçtiğiniz ürünleri kayan bir vitrin şeridinde gösterir. Her vitrinin kendi numarası vardır.', 'qrms' ),
+				'usage' => '[qrms_urun_vitrini id="1"]',
+				'attrs' => array(
+					array(
+						'name'    => 'id',
+						'default' => '',
+						'desc'    => __( 'Vitrin numarası — Ürün Vitrini ekranından öğrenin. Zorunludur.', 'qrms' ),
+					),
+				),
+			),
+			array(
+				'tag'   => 'qmo_one_cikan_slider',
+				'title' => __( 'Öne Çıkan Slider', 'qrms' ),
+				'desc'  => __( 'Menünün üstünde kayan görsel şerit: öne çıkarmak istediğiniz ürün grupları.', 'qrms' ),
+				'attrs' => array(
+					array(
+						'name'    => 'show_title',
+						'default' => 'yes',
+						'desc'    => __( 'Slayt başlıklarını gizlemek için "no" yazın.', 'qrms' ),
+					),
+				),
+			),
+			array(
+				'tag'   => 'rma_qr_notice',
+				'title' => __( 'Karekod Bilgilendirme Metni', 'qrms' ),
+				'desc'  => __( 'Karekod kullanamayan müşteriler için yasal bilgilendirme cümlesini basar.', 'qrms' ),
+				'attrs' => array(
+					array(
+						'name'    => 'style',
+						'default' => 'inline',
+						'desc'    => __( 'Dikkat çeken kutulu görünüm için "banner" yazın.', 'qrms' ),
+					),
+				),
+			),
+		)
+	);
+
 	if ( is_admin() ) {
 		// "Restoran Menü" satırı, modülün tüm işlerini listeleyen başlangıç
 		// ekranını açar; işlerin kendisi aşağıda ayrı ayrı sayfa olarak
@@ -69,20 +127,19 @@ function qrms_module_restoran_menu_init() {
 }
 
 /**
- * Modülün suite menüsündeki alt satırları: eksik olanları ekler, sırayı düzeltir.
+ * Modülün ekranlarını kaydeder — hepsi sol menüde GİZLİDİR.
  *
- * WordPress iki seviyeli bir admin menüsüne sahiptir — "Restoran Menü" girişinin
- * ALTINA giriş eklenemez. Bu yüzden modülün sekiz ekranı da "QR Menü"nün doğrudan
- * alt öğesidir; modüle ait olduklarını göstermek için etiketleri "—" ile
- * öneklenir ve "Restoran Menü" satırının hemen ardına sıralanır. Hepsi
- * add_submenu_page ile kaydedilmiş gerçek, ayrı sayfalardır — JS ile gizlenip
- * gösterilen sekme yoktur.
+ * Sol admin menüsü tek seviyeye indirildi: orada yalnızca "Restoran Menü"
+ * satırı durur, o satır da modülün tüm işlerini kart olarak listeleyen hub
+ * ekranını (render_admin_page) açar. Buradaki sayfalar gerçek, ayrı
+ * WordPress sayfaları olarak kaydolmaya devam eder — adresleri, hook adları
+ * ve yetkileri değişmez; yalnızca menüde boyanmazlar
+ * (bkz. QRMS_Admin::hide_module_subpages).
  *
- * CPT'nin show_in_menu'sü bir string olduğunda çekirdek (_add_post_type_submenus,
- * wp-includes/post.php) YALNIZCA ürün listesi satırını ekler; "Ürün Ekle" ve
- * taksonomi satırları wp-admin/menu.php'de sadece top-level menü alan CPT'ler
- * için üretildiğinden hiç oluşmaz. Bu yüzden taksonomilerin kendi show_in_menu
- * ayarını değiştirmek bir işe yaramaz — o satırlar burada elle eklenir.
+ * Ürün listesi, "Ürün Ekle" ve taksonomi ekranları çekirdeğin kendi
+ * sayfalarıdır; onlar için menü satırı üretmeye artık gerek yok. CPT'nin
+ * show_in_menu'sü MENU_SLUG olarak kalır: ekranlarda $parent_file'ın
+ * çözülmesi buna bağlıdır, üretilen satırı da beyaz liste düşürür.
  *
  * @return void
  */
@@ -92,140 +149,24 @@ function qrms_module_restoran_menu_admin_menu() {
 	$parent = QRMS_Admin::MENU_SLUG;
 
 	// Modül lisansta aktif değilse "Restoran Menü" satırı hiç kaydolmaz;
-	// o zaman burada düzenlenecek bir şey de yoktur.
+	// o zaman alt ekranlarının da kaydedilmemesi gerekir.
 	if ( empty( $submenu[ $parent ] ) ) {
 		return;
 	}
 
-	add_submenu_page(
-		$parent,
-		__( 'Ürün Ekle', 'qrms' ),
-		'— ' . __( 'Ürün Ekle', 'qrms' ),
-		'edit_posts',
-		'post-new.php?post_type=rma_menu_item'
-	);
-
-	add_submenu_page(
-		$parent,
-		__( 'Menü Kategorileri', 'qrms' ),
-		'— ' . __( 'Kategoriler', 'qrms' ),
-		'manage_categories',
-		'edit-tags.php?taxonomy=rma_category&post_type=rma_menu_item'
-	);
-
-	add_submenu_page(
-		$parent,
-		__( 'Alerjenler', 'qrms' ),
-		'— ' . __( 'Alerjenler', 'qrms' ),
-		'manage_categories',
-		'edit-tags.php?taxonomy=rma_allergen&post_type=rma_menu_item'
-	);
-
-	// Görünüm / Öne Çıkanlar / Diğer Ayarlar — modülün kendi ekranları.
-	// Sayfa tanımı modülün içinde (get_subpages) tek yerde durur; burada
-	// yalnızca suite menüsündeki sunumu (önek, sıra) belirlenir.
+	// Sayfa tanımı modülün içinde (get_subpages) tek yerde durur.
 	$rma = Restaurant_Menu_Automation::get_instance();
 
 	foreach ( $rma->get_subpages() as $slug => $page ) {
 		add_submenu_page(
 			$parent,
 			$page['title'],
-			'— ' . $page['menu_title'],
+			$page['menu_title'],
 			QRMS_Admin::CAPABILITY,
 			$slug,
-			array( $rma, $page['render'] )
+			QRMS_Admin::register_module_subpage( 'restoran-menu', $slug, array( $rma, $page['render'] ) )
 		);
 	}
-
-	// Çekirdeğin eklediği ürün listesi satırının etiketi labels->all_items'tan
-	// gelir ("Menü Ürünleri"). Etiket öneki kaynak labels dizisine yazılmaz;
-	// tüm menü sunumu tek yerde, burada durur.
-	foreach ( $submenu[ $parent ] as $index => $row ) {
-		if ( isset( $row[2] ) && 'edit.php?post_type=rma_menu_item' === $row[2] ) {
-			$submenu[ $parent ][ $index ][0] = '— ' . __( 'Ürünlerim', 'qrms' );
-			break;
-		}
-	}
-
-	$submenu[ $parent ] = qrms_module_restoran_menu_submenu_sirala( $submenu[ $parent ] );
-}
-
-/**
- * Modülün satırlarının menüdeki sırası — tek kaynak.
- *
- * Hem sıralama pass'i hem de testler bu listeyi kullanır.
- *
- * @return string[]
- */
-function qrms_module_restoran_menu_child_slugs() {
-	return array(
-		'edit.php?post_type=rma_menu_item',
-		'post-new.php?post_type=rma_menu_item',
-		'edit-tags.php?taxonomy=rma_category&post_type=rma_menu_item',
-		'edit-tags.php?taxonomy=rma_allergen&post_type=rma_menu_item',
-		'qrms-rm-gorunum',
-		'qrms-rm-one-cikanlar',
-		'qrms-rm-vitrin',
-		'qrms-rm-diger',
-	);
-}
-
-/**
- * Modülün satırlarını "Restoran Menü" girişinin hemen ardına taşır.
- *
- * Sıralama pass'i şart: çekirdeğin _add_post_type_submenus() kancası WordPress
- * önyüklemesi sırasında kaydolduğu için, aynı önceliğe (10) sahip
- * QRMS_Admin::register_menu()'den ÖNCE çalışır ve ürün listesi satırını
- * "Genel Bakış"tan bile önce diziye sokar.
- *
- * WordPress'e bağımlılığı yoktur (saf dizi dönüşümü), bu yüzden doğrudan test
- * edilir. Sonuç array_values() ile yeniden indekslenir: WordPress alt menüleri
- * anahtara göre sıraladığından 0..n indeksleme buradaki sırayı korur.
- *
- * @param array $rows $submenu[QRMS_Admin::MENU_SLUG] satırları.
- * @return array Yeniden sıralanmış satırlar.
- */
-function qrms_module_restoran_menu_submenu_sirala( array $rows ) {
-	$module_slug = QRMS_Admin::get_module_page_slug( 'restoran-menu' );
-
-	// İstenen sıra; dizideki gerçek konumlarından bağımsızdır.
-	$child_slugs = qrms_module_restoran_menu_child_slugs();
-
-	$others   = array();
-	$children = array();
-	$anchor   = -1;
-
-	foreach ( $rows as $row ) {
-		$slug = isset( $row[2] ) ? $row[2] : '';
-		$key  = array_search( $slug, $child_slugs, true );
-
-		if ( false !== $key ) {
-			$children[ $key ] = $row;
-			continue;
-		}
-
-		$others[] = $row;
-
-		if ( $module_slug === $slug ) {
-			$anchor = count( $others );
-		}
-	}
-
-	// "Restoran Menü" satırı yoksa taşınacak bir çapa da yok: satırlar
-	// bulundukları sırada bırakılır.
-	if ( -1 === $anchor ) {
-		return array_values( $rows );
-	}
-
-	ksort( $children );
-
-	return array_values(
-		array_merge(
-			array_slice( $others, 0, $anchor ),
-			array_values( $children ),
-			array_slice( $others, $anchor )
-		)
-	);
 }
 
 /**
@@ -253,27 +194,10 @@ function qrms_module_restoran_menu_submenu_file( $submenu_file ) {
 		return $submenu_file;
 	}
 
-	global $pagenow, $typenow;
-
-	// phpcs:ignore WordPress.Security.NonceVerification.Recommended
-	$taxonomy = isset( $_GET['taxonomy'] ) ? sanitize_key( wp_unslash( $_GET['taxonomy'] ) ) : '';
-
-	// Öne Çıkan Slider (qmo_slide) ekranlarının menüde kendi satırı yoktur;
-	// slider yönetimi "Öne Çıkanlar" sayfasından yapılır, o satır vurgulanır.
-	if ( 'qmo_slide' === $typenow ) {
-		return 'qrms-rm-one-cikanlar';
-	}
-
-	if ( 'edit-tags.php' === $pagenow || 'term.php' === $pagenow ) {
-		return 'edit-tags.php?taxonomy=' . $taxonomy . '&post_type=rma_menu_item';
-	}
-
-	if ( 'post-new.php' === $pagenow ) {
-		return 'post-new.php?post_type=rma_menu_item';
-	}
-
-	// Liste ekranı ve mevcut ürünün düzenleme ekranı "Ürünlerim" satırında kalır.
-	return 'edit.php?post_type=rma_menu_item';
+	// Modülün ekranlarının menüde kendi satırı yoktur; ürün listesi, ürün
+	// düzenleme, taksonomiler ve Öne Çıkan Slider dahil hepsinde "Restoran
+	// Menü" satırı vurgulanır.
+	return QRMS_Admin::get_module_page_slug( 'restoran-menu' );
 }
 
 /**
@@ -311,7 +235,8 @@ function qrms_module_restoran_menu_ekranimiz_mi() {
  * kuyruğa alınır — ekranların kendi kodu değişmez.
  *
  * Koşul, qr-masa modülündeki desenin aynısı: varlıklar yalnızca bu modülün
- * kendi suite sayfaları render edilirken yüklenir.
+ * kendi form ekranları render edilirken yüklenir. Hub ekranı listenin dışındadır:
+ * onun ihtiyacı olan her şey suite'in ortak admin.css'indedir.
  *
  * @return void
  */
@@ -319,35 +244,26 @@ function qrms_module_restoran_menu_admin_assets() {
 	// phpcs:ignore WordPress.Security.NonceVerification.Recommended
 	$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '';
 
-	$rma       = Restaurant_Menu_Automation::get_instance();
-	$hub_slug  = QRMS_Admin::get_module_page_slug( 'restoran-menu' );
-	$sub_slugs = array_keys( $rma->get_subpages() );
+	$rma = Restaurant_Menu_Automation::get_instance();
 
-	if ( $hub_slug !== $page && ! in_array( $page, $sub_slugs, true ) ) {
+	// Hub ekranının stili suite'in ortak admin.css'inden gelir (QRMS_Admin
+	// onu her qrms* sayfasında kuyruğa alır); modülün kendi varlıklarına
+	// ihtiyacı yoktur.
+	if ( ! array_key_exists( $page, $rma->get_subpages() ) ) {
 		return;
 	}
 
 	$url = QRMS_PLUGIN_URL . 'modules/restoran-menu/';
 
-	// Başlangıç sayfasında yalnızca stil gerekir; form ekranlarında renk
-	// seçici ve sürükle-bırak da yüklenir.
-	$needs_form_assets = ( $hub_slug !== $page );
-	$deps              = array( 'jquery' );
+	// Form ekranlarının hepsinde renk seçici ve sürükle-bırak gerekir.
+	wp_enqueue_script( 'jquery-ui-sortable' );
+	wp_enqueue_style( 'wp-color-picker' );
+	wp_enqueue_script( 'wp-color-picker' );
 
-	if ( $needs_form_assets ) {
-		wp_enqueue_script( 'jquery-ui-sortable' );
-		wp_enqueue_style( 'wp-color-picker' );
-		wp_enqueue_script( 'wp-color-picker' );
-		$deps[] = 'wp-color-picker';
-		$deps[] = 'jquery-ui-sortable';
-	}
+	$deps = array( 'jquery', 'wp-color-picker', 'jquery-ui-sortable' );
 
 	wp_enqueue_style( 'rma-admin-ui', $url . 'assets/css/admin-ui.css', array(), QRMS_VERSION );
 	wp_enqueue_script( 'rma-admin-ui', $url . 'assets/js/admin-ui.js', $deps, QRMS_VERSION, true );
-
-	// Başlangıç sayfasındaki kart ikonları WordPress'in dashicons setinden
-	// gelir; admin'de zaten kayıtlı, burada yalnızca kuyruğa alınır.
-	wp_enqueue_style( 'dashicons' );
 
 	// Görünüm sayfasındaki canlı önizleme, frontend'in gerçek nav
 	// stylesheet'ini kullanır; aktif gösterge CSS'inin dört varyantı da

@@ -23,6 +23,22 @@ defined( 'ABSPATH' ) || exit;
 function qrms_module_qr_ceviri_init() {
 	require_once __DIR__ . '/ceviri.php';
 
+	QRMS_Shortcodes::register(
+		'qr-ceviri',
+		array(
+			array(
+				'tag'   => 'qrmenu_flags_only',
+				'title' => __( 'Dil Seçici (yalnızca bayrak)', 'qrms' ),
+				'desc'  => __( 'Menü dilini değiştiren kare bayrak butonu. Dar alanlar için.', 'qrms' ),
+			),
+			array(
+				'tag'   => 'qrmenu_flags_text',
+				'title' => __( 'Dil Seçici (bayrak + dil adı)', 'qrms' ),
+				'desc'  => __( 'Menü dilini değiştiren, bayrağın yanında dil adını da yazan seçici.', 'qrms' ),
+			),
+		)
+	);
+
 	if ( is_admin() ) {
 		QRMS_Admin::register_module_page( 'qr-ceviri', 'qrmenu_trans_page' );
 	}

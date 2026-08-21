@@ -38,10 +38,32 @@ function qrms_module_qr_galeri_init() {
 	// (plugins_loaded sırasında $wp_rewrite henüz hazır değildir).
 	add_option( QRMenu_Gallery_Manager::OPTION_SETTINGS, $manager->default_settings() );
 
+	QRMS_Shortcodes::register(
+		'qr-galeri',
+		array(
+			array(
+				'tag'   => 'qrmenu_gallery',
+				'title' => __( 'Galeri', 'qrms' ),
+				'desc'  => __( 'Görsellerinizi kayan bir ızgarada (masonry) gösterir; tıklanınca büyür. Bölüm verilmezse tüm bölümler filtreli olarak listelenir.', 'qrms' ),
+				'usage' => '[qrmenu_gallery section="ic-mekan"]',
+				'attrs' => array(
+					array(
+						'name'    => 'section',
+						'default' => '',
+						'desc'    => __( 'Tek bir bölümü göstermek için bölümün slug\'ı. Boş bırakırsanız hepsi listelenir.', 'qrms' ),
+					),
+				),
+			),
+		)
+	);
+
 	if ( is_admin() ) {
+		// "QR Galeri" satırı, modülün üç ekranını kart olarak listeleyen hub
+		// ekranını açar; ekranların kendisi register_admin_menu() içinde ayrı
+		// sayfa olarak kaydedilir.
 		QRMS_Admin::register_module_page(
 			'qr-galeri',
-			array( $manager, 'page_sections' )
+			array( $manager, 'page_hub' )
 		);
 	}
 }
