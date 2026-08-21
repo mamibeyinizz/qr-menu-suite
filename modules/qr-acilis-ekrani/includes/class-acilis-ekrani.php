@@ -108,6 +108,18 @@ class QRMS_Acilis_Ekrani {
 			'btn_surface_opacity' => 14,
 			'btn_surface_apply_cta' => 0,
 			'divider_text'        => 'Bizi takip edin',
+			// TR/EN düğmesi. Kapalıyken markup'a tek bir ek nitelik bile
+			// girmez; açıkken her metin İngilizce karşılığını data niteliği
+			// olarak yanında taşır (bkz. QRMS_AE_Frontend::lang_data()).
+			'lang_toggle'         => 0,
+			'texts_en'            => array(
+				'btn1'    => '',
+				'btn2'    => '',
+				'btn3'    => '',
+				'btn4'    => '',
+				'btn5'    => '',
+				'divider' => '',
+			),
 			'animation_type'      => 'anim-blur-up',
 			'button_texts'        => array(
 				'btn1' => 'Menüye Git',

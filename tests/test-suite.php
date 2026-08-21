@@ -3135,6 +3135,208 @@ qrms_test(
 );
 
 
+/* ---------------------------------------------------------------------------
+ * 15. Açılış Ekranı — TR/EN dil düğmesi
+ * ------------------------------------------------------------------------ */
+
+echo "\nAçılış Ekranı (TR/EN)\n";
+
+qrms_test(
+	'düğme kapalıyken markup\'a tek bir dil niteliği bile girmez',
+	function () {
+		$GLOBALS['qrms_test']['is_front_page'] = true;
+		update_option( 'splash_screen_options', array( 'lang_toggle' => 0 ) );
+
+		ob_start();
+		qrms_ae()->handle_frontend();
+		$html = ob_get_clean();
+
+		qrms_assert_false( strpos( $html, 'splash-lang' ), 'düğme yok' );
+		qrms_assert_false( strpos( $html, 'data-sp-en' ), 'ikinci dil niteliği yok' );
+	}
+);
+
+qrms_test(
+	'düğme açık ama hiç İngilizce metin yoksa yine basılmaz',
+	function () {
+		// Aksi hâlde ziyaretçiye iki kez aynı metni gösteren bir düğme kalırdı.
+		$GLOBALS['qrms_test']['is_front_page'] = true;
+		update_option(
+			'splash_screen_options',
+			array(
+				'lang_toggle' => 1,
+				'texts_en'    => array( 'btn1' => '', 'divider' => '' ),
+			)
+		);
+
+		ob_start();
+		qrms_ae()->handle_frontend();
+
+		qrms_assert_false( strpos( ob_get_clean(), 'splash-lang' ), 'düğme basılmaz' );
+	}
+);
+
+qrms_test(
+	'iki dil de aynı HTML\'de taşınır; çeviri boşsa Türkçesine düşer',
+	function () {
+		$GLOBALS['qrms_test']['is_front_page'] = true;
+		update_option(
+			'splash_screen_options',
+			array(
+				'lang_toggle'  => 1,
+				'divider_text' => 'Bizi takip edin',
+				'button_texts' => array( 'btn1' => 'Menüye Git', 'btn2' => 'İletişim', 'btn5' => 'Wifi Şifresi' ),
+				'button_links' => array( 'btn1' => 'https://restoran.test/menu', 'btn2' => 'tel:+900' ),
+				'texts_en'     => array( 'btn1' => 'View Menu', 'divider' => '' ),
+				'social_media_active' => array( 'instagram' ),
+				'social_media' => array( 'instagram' => 'https://instagram.com/x' ),
+			)
+		);
+
+		ob_start();
+		qrms_ae()->handle_frontend();
+		$html = ob_get_clean();
+
+		qrms_assert_contains( 'splash-lang', $html, 'düğme basılır' );
+		qrms_assert_contains( 'data-sp-key="btn1"', $html, 'metin anahtarı' );
+		qrms_assert_contains( 'data-sp-tr="Menüye Git"', $html, 'Türkçe metin' );
+		qrms_assert_contains( 'data-sp-en="View Menu"', $html, 'İngilizce metin' );
+		// Çevirisi girilmemiş metin İngilizcede de Türkçesini gösterir.
+		qrms_assert_contains( 'data-sp-en="Bizi takip edin"', $html, 'boş çeviri Türkçeye düşer' );
+		// Görünen metin her zaman Türkçedir; dili istemci seçer.
+		qrms_assert_contains( '>Menüye Git</a>', $html, 'sunucu Türkçeyi basar' );
+	}
+);
+
+qrms_test(
+	'rozetlerin erişilebilirlik etiketi de çevrilir',
+	function () {
+		$GLOBALS['qrms_test']['is_front_page'] = true;
+		update_option(
+			'splash_screen_options',
+			array(
+				'lang_toggle'  => 1,
+				'button_texts' => array( 'btn2' => 'İletişim' ),
+				'button_links' => array( 'btn2' => 'tel:+900' ),
+				'texts_en'     => array( 'btn2' => 'Call us' ),
+			)
+		);
+
+		ob_start();
+		qrms_ae()->handle_frontend();
+		$html = ob_get_clean();
+
+		// Rozetin görünür yazısı yoktur; dil değişimi aria-label ve title'a yazılır.
+		qrms_assert_contains( 'data-sp-attr="aria-label title"', $html, 'nitelik hedefi' );
+		qrms_assert_contains( 'data-sp-en="Call us"', $html, 'rozet çevirisi' );
+	}
+);
+
+qrms_test(
+	'dil açıkken de çıktı çerezden BAĞIMSIZ kalır',
+	function () {
+		// Dil sunucuda seçilseydi tam sayfa önbelleği ilk ziyaretçinin dilini
+		// herkese servis ederdi. Karar istemcide verilir; sunucu çıktısı sabit.
+		$GLOBALS['qrms_test']['is_front_page'] = true;
+		update_option(
+			'splash_screen_options',
+			array( 'lang_toggle' => 1, 'texts_en' => array( 'btn1' => 'View Menu' ) )
+		);
+
+		ob_start();
+		qrms_ae()->handle_frontend();
+		$cerezsiz = ob_get_clean();
+
+		$_COOKIE['qrms_splash_lang'] = 'en';
+
+		ob_start();
+		qrms_ae()->handle_frontend();
+		$cerezli = ob_get_clean();
+
+		unset( $_COOKIE['qrms_splash_lang'] );
+
+		qrms_assert_same( $cerezsiz, $cerezli, 'çıktı her ziyaretçide aynı' );
+	}
+);
+
+qrms_test(
+	'önizlemede dil düğmesi çalışır ama çerez yazılmaz',
+	function () {
+		update_option(
+			'splash_screen_options',
+			array( 'lang_toggle' => 1, 'texts_en' => array( 'btn1' => 'View Menu' ) )
+		);
+
+		ob_start();
+		qrms_ae()->render_splash_preview();
+		$html = ob_get_clean();
+
+		qrms_assert_contains( 'splash-lang', $html, 'düğme önizlemede de var' );
+
+		$js = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-acilis-ekrani/assets/js/splash.js' );
+
+		qrms_assert_contains( 'initLang(overlay, true)', $js, 'önizleme dili açık' );
+		qrms_assert_contains( 'if (!persist || isPreview) return;', $js, 'önizlemede çerez yazılmaz' );
+	}
+);
+
+qrms_test(
+	'kayıtta eksik alt anahtar varsayılandan tamamlanır',
+	function () {
+		// array_merge SIĞ birleştirir: kayıtta button_texts varsa dizinin
+		// tamamı kayıttan gelir ve eksik alt anahtar varsayılandan GELMEZ.
+		// Eski sürümden gelen bir option'da bu gerçek bir durum; sayfa
+		// "undefined index" uyarısı basıyordu.
+		update_option(
+			'splash_screen_options',
+			array(
+				'button_texts' => array( 'btn1' => 'Menüye Git' ),
+				'texts_en'     => array( 'btn1' => 'View Menu' ),
+			)
+		);
+
+		$html = qrms_ae_submit( 'qrms-ae-butonlar', array( 'button_text_1' => 'Menüye Git' ) );
+
+		qrms_assert_contains( 'name="button_text_5"', $html, 'eksik anahtarlı satır yine basılır' );
+		qrms_assert_contains( 'name="text_en_btn5"', $html, 'İngilizce alanı da' );
+
+		$opts = get_option( 'splash_screen_options' );
+
+		qrms_assert_same( 'Menüye Git', $opts['button_texts']['btn1'], 'kayıtlı değer ezilmez' );
+		qrms_assert_same( 'Wifi Şifresi', $opts['button_texts']['btn5'], 'eksik anahtar varsayılandan' );
+		qrms_assert_same( 4, count( $opts['footer_icons'] ), 'sayısal liste büyümez' );
+	}
+);
+
+qrms_test(
+	'yönetim: İngilizce alanlar ve düğme anahtarı Butonlar sayfasında',
+	function () {
+		$html = qrms_ae_submit(
+			'qrms-ae-butonlar',
+			array(
+				'lang_toggle'     => '1',
+				'button_text_1'   => 'Menüye Git',
+				'text_en_btn1'    => 'View Menu',
+				'text_en_divider' => 'Follow us',
+			)
+		);
+
+		$opts = get_option( 'splash_screen_options' );
+
+		qrms_assert_same( 1, $opts['lang_toggle'], 'düğme açıldı' );
+		qrms_assert_same( 'View Menu', $opts['texts_en']['btn1'], 'çeviri kaydedildi' );
+		qrms_assert_same( 'Follow us', $opts['texts_en']['divider'], 'ayraç çevirisi' );
+		qrms_assert_contains( 'name="text_en_btn1"', $html, 'alan basılır' );
+		qrms_assert_contains( 'name="lang_toggle"', $html, 'düğme anahtarı basılır' );
+
+		// Onay kutusu bu sayfanın: başka sayfayı kaydetmek onu kapatmamalı.
+		qrms_ae_submit( 'qrms-ae-davranis', array( 'wifi_password' => 'x' ) );
+
+		qrms_assert_same( 1, get_option( 'splash_screen_options' )['lang_toggle'], 'başka sayfa dili kapatmaz' );
+	}
+);
+
+
 if ( empty( $GLOBALS['qrms_failures'] ) ) {
 	echo "\033[32mTüm testler geçti\033[0m (" . $GLOBALS['qrms_assertions'] . " doğrulama)\n\n";
 	exit( 0 );

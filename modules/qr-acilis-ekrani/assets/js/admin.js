@@ -124,15 +124,82 @@
         $('[name="btn_surface_apply_cta"]').on('change', syncCtaBg);
 
         /* Metin alanları. */
-        function bindText(name, selector) {
+
+        /* --- İki dilli metinler ---
+
+           Önizlemedeki metin düğümleri iki dili de data niteliğinde taşır
+           (data-sp-tr / data-sp-en); hangisinin görüneceğine splash.js karar
+           verir. Yönetici yazarken NİTELİĞİ güncelliyoruz, görünen metni
+           değil: önizleme o an İngilizceye alınmışsa Türkçe alanına yazmak
+           ekrandaki İngilizce metni bozmamalı. */
+
+        function currentLang() {
+            return overlay.getAttribute('lang') === 'en' ? 'en' : 'tr';
+        }
+
+        function writeText(el, value) {
+            var attrs = el.getAttribute('data-sp-attr');
+
+            if (attrs) {
+                // Rozetin görünür yazısı yoktur; metin erişilebilirlik
+                // etiketine ve dokunma ipucuna yazılır.
+                attrs.split(/\s+/).forEach(function (attr) {
+                    if (attr) el.setAttribute(attr, value);
+                });
+            } else {
+                el.textContent = value;
+            }
+        }
+
+        /**
+         * Bir ayar alanını önizlemedeki metin düğümüne bağlar.
+         *
+         * Dil düğmesi AÇIKKEN düğüm iki dili de data niteliğinde taşır: o
+         * zaman yazılan değer ilgili niteliğe gider ve görünen metin ancak
+         * o an gösterilen dil buysa değişir. Aksi hâlde önizleme İngilizceye
+         * alınmışken Türkçe alana yazmak ekrandaki çeviriyi silerdi.
+         *
+         * Dil düğmesi KAPALIYKEN data niteliği hiç basılmaz; o durumda
+         * yedek seçici kullanılır ve metin doğrudan yazılır (eski davranış).
+         */
+        function bindLangText(name, key, lang, fallbackSelector) {
             $('[name="' + name + '"]').on('input change', function () {
-                var el = overlay.querySelector(selector);
-                if (el) el.textContent = this.value;
+                var value = this.value;
+                var nodes = overlay.querySelectorAll('[data-sp-key="' + key + '"]');
+
+                if (!nodes.length) {
+                    if ('tr' === lang && fallbackSelector) {
+                        overlay.querySelectorAll(fallbackSelector).forEach(function (el) {
+                            writeText(el, value);
+                        });
+                    }
+                    return;
+                }
+
+                nodes.forEach(function (el) {
+                    el.setAttribute('data-sp-' + lang, value);
+
+                    if (currentLang() === lang) {
+                        writeText(el, value);
+                    }
+                });
             });
         }
 
-        bindText('button_text_1', '.splash-cta');
-        bindText('divider_text', '.splash-divider-label');
+        // Bir rozetin görünür etiketi ile erişilebilirlik etiketi aynı metni
+        // paylaşır; ikisi de aynı data-sp-key'i taşıdığı için tek seferde
+        // bulunur.
+        // Yalnızca CTA ve ayracın görünür bir metni vardır; dil düğmesi
+        // kapalıyken canlı güncelleme onlarda yedek seçiciyle sürer.
+        var yedek = { btn1: '.splash-cta', divider: '.splash-divider-label' };
+
+        [1, 2, 3, 4, 5].forEach(function (i) {
+            bindLangText('button_text_' + i, 'btn' + i, 'tr', yedek[ 'btn' + i ]);
+            bindLangText('text_en_btn' + i, 'btn' + i, 'en');
+        });
+
+        bindLangText('divider_text', 'divider', 'tr', yedek.divider);
+        bindLangText('text_en_divider', 'divider', 'en');
 
         $('[name="wifi_password"]').on('input change', function () {
             var el = document.querySelector('#wifi-modal p');
@@ -150,8 +217,15 @@
         $('.qrms-ae-preview-replay').on('click', replayAnimation);
 
         /* Yapıyı değiştiren ayarlar yeni markup ister; önizleme bayatlar. */
-        $('[name="loader_type"], [name="bg_scheme"], [name="payment_display_mode"], [name="payment_methods[]"], [name="social_media_active[]"], .upload-image-btn, .splash-remove-image')
+        // Dil düğmesinin açılması/kapanması markup'ı değiştirir (düğme ve
+        // data nitelikleri), ayrıca ilk İngilizce metin girildiğinde düğme
+        // görünür hâle gelir — ikisi de kaydetmeyi gerektirir.
+        $('[name="loader_type"], [name="bg_scheme"], [name="payment_display_mode"], [name="payment_methods[]"], [name="social_media_active[]"], [name="lang_toggle"], .upload-image-btn, .splash-remove-image')
             .on('change click', markStale);
+
+        if (!overlay.querySelector('.splash-lang')) {
+            $('[name^="text_en_"]').on('input', markStale);
+        }
 
         // Sayfa açılışında animasyon bir kez oynasın.
         replayAnimation();

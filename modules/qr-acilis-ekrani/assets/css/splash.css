@@ -61,6 +61,55 @@ html.splash-loading #custom-splash-overlay { display: block !important; visibili
     to { opacity: 1; }
 }
 
+/* ---------------- TR / EN düğmesi ---------------- */
+/* Sol üstte, sağ üstteki yüklenme göstergesinin karşısında. Cam yüzey
+   rozetlerle aynı dilde (rgba dolgu + kenarlık, blur YOK — blur bütçesi
+   CTA, ödeme satırı ve logo şeridi için ayrılmıştır). */
+
+#custom-splash-overlay .splash-lang {
+    position: absolute;
+    z-index: 5;
+    top: calc(14px + env(safe-area-inset-top, 0px));
+    left: calc(14px + env(safe-area-inset-left, 0px));
+    display: flex;
+    gap: 2px;
+    padding: 2px;
+    border-radius: 999px;
+    background: var(--sp-glass-bg);
+    border: 1px solid var(--sp-glass-border);
+    box-shadow: var(--sp-glass-shadow);
+}
+
+#custom-splash-overlay .splash-lang-btn {
+    /* Dokunma hedefi her iki eksende de 44px: ekranın en üst köşesindeki
+       küçük bir kontrol, parmakla ıskalanan ilk şeydir. */
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0 10px;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--sp-text);
+    text-shadow: var(--sp-text-shadow);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+#custom-splash-overlay .splash-lang-btn.is-active {
+    background: rgba(var(--sp-accent-rgb, 0, 115, 170), 0.85);
+    color: var(--sp-btn-text, #fff);
+    text-shadow: none;
+}
+
+#custom-splash-overlay .splash-lang-btn:focus-visible {
+    outline: 2px solid var(--sp-accent, #0073aa);
+    outline-offset: 2px;
+}
+
 /* ---------------- Arkaplan görseli katmanı ---------------- */
 /* CSS background-image DEĞİL: gerçek <img> kullanılır, böylece srcset ve
    preload devreye girer ve görsel LCP elemanı olarak erken yüklenir. */

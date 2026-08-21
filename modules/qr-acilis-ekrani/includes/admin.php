@@ -490,6 +490,8 @@ trait QRMS_AE_Admin {
 	 * @return void
 	 */
 	private function render_page_butonlar( $options ) {
+		$texts_en    = isset( $options['texts_en'] ) && is_array( $options['texts_en'] ) ? $options['texts_en'] : array();
+		$lang_toggle = ! empty( $options['lang_toggle'] );
 		// btn6 (Sosyal Medya butonu) v3.2'de kaldırıldı: sosyal linkler artık
 		// doğrudan aksiyon rozeti satırına giriyor. Option anahtarı korunuyor.
 		$button_meta = array(
@@ -507,6 +509,29 @@ trait QRMS_AE_Admin {
                             <td>
                                 <input type="text" name="divider_text" id="divider_text" value="<?php echo esc_attr($options['divider_text']); ?>" class="regular-text" placeholder="Bizi takip edin" />
                                 <p class="description">Sosyal medya rozetlerinin üstündeki ayracın etiketi; boşsa ayraç basılmaz.</p>
+                                <label class="qrms-ae-en-field">
+                                    <span>English</span>
+                                    <input type="text" name="text_en_divider" value="<?php echo esc_attr( isset( $texts_en['divider'] ) ? $texts_en['divider'] : '' ); ?>" class="regular-text" placeholder="Follow us" />
+                                </label>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th><label for="lang_toggle">Dil Düğmesi</label></th>
+                            <td>
+                                <label>
+                                    <input type="checkbox" name="lang_toggle" id="lang_toggle" value="1" <?php checked( $lang_toggle ); ?> />
+                                    Ekranda TR/EN düğmesi göster
+                                </label>
+                                <p class="description">
+                                    Sol üstte küçük bir TR|EN düğmesi çıkar; ziyaretçinin seçimi bir yıl
+                                    hatırlanır. Düğme yalnızca İngilizce alanlardan <strong>en az biri
+                                    doluysa</strong> basılır — boş çeviriyle düğme aynı metni iki kez gösterirdi.
+                                </p>
+                                <p class="description">
+                                    Dil sunucuda değil tarayıcıda seçilir: sayfanın HTML'i her ziyaretçide
+                                    aynı kalır, böylece tam sayfa önbelleği ilk ziyaretçinin dilini
+                                    herkese servis etmez.
+                                </p>
                             </td>
                         </tr>
                     </table>
@@ -521,6 +546,10 @@ trait QRMS_AE_Admin {
                                 <label>
                                     <span>Buton yazısı</span>
                                     <input type="text" name="button_text_<?php echo (int) $i; ?>" value="<?php echo esc_attr($options['button_texts']['btn' . $i]); ?>" placeholder="<?php echo esc_attr($meta['label']); ?>" />
+                                </label>
+                                <label class="qrms-ae-en-field">
+                                    <span>Buton yazısı (English)</span>
+                                    <input type="text" name="text_en_btn<?php echo (int) $i; ?>" value="<?php echo esc_attr( isset( $texts_en[ 'btn' . $i ] ) ? $texts_en[ 'btn' . $i ] : '' ); ?>" placeholder="Boşsa Türkçesi gösterilir" />
                                 </label>
                                 <?php if ($meta['link']): ?>
                                     <label>
@@ -697,10 +726,23 @@ trait QRMS_AE_Admin {
 			array( 'qrms-admin', 'wp-color-picker', 'qrms-ae-splash' ),
 			QRMS_Helpers::asset_version( 'modules/qr-acilis-ekrani/assets/css/admin.css' )
 		);
+		/*
+		 * Ön yüz betiği önizlemede de yüklenir: içindeki data-preview guard'ı
+		 * çerez ve yönlendirme tarafını kapatır, TR/EN düğmesini ise çalışır
+		 * bırakır — yönetici İngilizce hâlin nasıl göründüğünü görebilmeli.
+		 */
+		wp_enqueue_script(
+			'qrms-ae-splash',
+			QRMS_PLUGIN_URL . 'modules/qr-acilis-ekrani/assets/js/splash.js',
+			array(),
+			QRMS_Helpers::asset_version( 'modules/qr-acilis-ekrani/assets/js/splash.js' ),
+			true
+		);
+
 		wp_enqueue_script(
 			'qrms-ae-admin',
 			QRMS_PLUGIN_URL . 'modules/qr-acilis-ekrani/assets/js/admin.js',
-			array( 'jquery', 'wp-color-picker' ),
+			array( 'jquery', 'wp-color-picker', 'qrms-ae-splash' ),
 			QRMS_Helpers::asset_version( 'modules/qr-acilis-ekrani/assets/js/admin.js' ),
 			true
 		);

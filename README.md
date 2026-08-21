@@ -605,6 +605,32 @@ o durumda önizlemenin üstünde "kaydedilince güncellenecek" rozeti belirir.
 PHP ile JS'in aynı hesabı iki kez yapmaması için değişkenlerin tek kaynağı
 `build_css_vars()`'tır.
 
+#### TR / EN dil düğmesi
+
+Kaynak eklentide yoktu; suite'te eklendi. **Butonlar** sayfasında her metnin
+altında bir *English* alanı vardır ve düğme oradaki anahtarla açılır.
+
+Düğme yalnızca **en az bir İngilizce metin girilmişse** basılır — boş bir
+çeviriyle düğme ziyaretçiye aynı metni iki kez gösteren bir kontrolden ibaret
+kalırdı. Çevirisi girilmemiş tek tek alanlar da İngilizcede Türkçesine düşer.
+
+**Dil sunucuda seçilmez.** Ana sayfanın HTML'i her ziyaretçide birebir aynı
+kalmalı (tam sayfa cache güvenliği) — çerezden dallanan bir çıktı, ilk
+ziyaretçinin dilini herkese servis ederdi. Sunucu Türkçeyi basar, İngilizcesini
+her metnin yanında `data-sp-en` olarak taşır; hangisinin görüneceğine çerezi
+okuyan istemci karar verir. Splash'ın "gösterilsin mi" kararındaki desenin
+aynısı, testi de aynı biçimde: iki farklı çerez durumunda sunucu çıktısı
+karakter karakter karşılaştırılır.
+
+Rozetlerin görünür yazısı yoktur; onlarda dil değişimi `data-sp-attr` ile
+`aria-label` ve `title` niteliklerine yazılır. Wifi penceresinin başlığı gibi
+eklentinin kendi metinlerinin İngilizcesi sabittir (kullanıcı girdisi değil);
+şifrenin kendisi çevrilmez.
+
+Düğme kapalıyken markup'a tek bir dil niteliği bile girmez. Ziyaretçinin
+seçimi bir yıl saklanır (`qrms_splash_lang`), dil seçmek splash'ı kapatmaz ve
+önizlemede çerez yazılmaz.
+
 #### Bilinmesi gerekenler
 
 - Ekran yalnızca **ana sayfada** basılır; Elementor editöründe ve Customizer
@@ -615,6 +641,13 @@ PHP ile JS'in aynı hesabı iki kez yapmaması için değişkenlerin tek kaynağ
 - Modül, lisans sunucusundan gelen aktif modül listesinde `qr-acilis-ekrani`
   slug'ı yoksa yüklenmez — dosyalar yerinde olsa bile yönetim ekranı
   görünmez. Slug sunucudaki modül sözleşmesine de eklenmelidir.
+- `get_options()` varsayılanları iki kademede uygular: önce `array_merge`,
+  sonra dizi biçimindeki her ayar için birlik operatörü. Sığ birleştirme tek
+  başına yetmiyordu — kayıtta `button_texts` varsa dizinin tamamı kayıttan
+  gelir ve içinde eksik olan alt anahtar varsayılandan gelmezdi (eski
+  sürümden yükseltilen kurulumda "undefined index"). Birlik operatörü yalnızca
+  eksik anahtarı doldurur, kayıtlı değeri ezmez ve sayısal listelere öğe
+  eklemez.
 
 ### `modules/_qmo-ortak/`
 
