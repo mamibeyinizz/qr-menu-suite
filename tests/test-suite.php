@@ -793,11 +793,10 @@ qrms_test(
 );
 
 qrms_test(
-	'sol menü flyout CSS\'i plugin ekranı dışında da yüklenir',
+	'sol menü flyout CSS\'i hiçbir admin ekranında yüklenmez',
 	function () {
 		$_GET = array();
 
-		QRMS_Admin::enqueue_admin_menu_css();
 		QRMS_Admin::enqueue_assets();
 
 		$handles = array_map(
@@ -807,30 +806,54 @@ qrms_test(
 			$GLOBALS['qrms_test']['styles']
 		);
 
-		qrms_assert_true( in_array( 'qrms-admin-menu', $handles, true ), 'flyout stili' );
+		qrms_assert_false( method_exists( 'QRMS_Admin', 'enqueue_admin_menu_css' ), 'kuyruk metodu kaldırıldı' );
+		qrms_assert_false( in_array( 'qrms-admin-menu', $handles, true ), 'flyout override yok' );
 		qrms_assert_false( in_array( 'qrms-admin', $handles, true ), 'ekran stili yüklenmemeli' );
+
+		$GLOBALS['qrms_test']['styles'] = array();
+		$_GET                           = array( 'page' => 'qrms-overview' );
+		QRMS_Admin::enqueue_assets();
+
+		$handles = array_map(
+			function ( $style ) {
+				return $style['handle'];
+			},
+			$GLOBALS['qrms_test']['styles']
+		);
+
+		qrms_assert_true( in_array( 'qrms-admin', $handles, true ), 'ekran stili plugin ekranında' );
+		qrms_assert_false( in_array( 'qrms-admin-menu', $handles, true ), 'flyout override plugin ekranında da yok' );
 	}
 );
 
 qrms_test(
-	'admin CSS native #adminmenu flyout gizlemesini ezmez',
+	'hiçbir CSS native #adminmenu flyout kurallarını ezmez',
 	function () {
-		$files = array(
-			QRMS_PLUGIN_DIR . 'assets/css/admin.css',
-			QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/css/admin-ui.css',
-			QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/css/rma-admin-list.css',
-			QRMS_PLUGIN_DIR . 'modules/_qmo-ortak/assets/css/admin.css',
+		qrms_assert_false(
+			file_exists( QRMS_PLUGIN_DIR . 'assets/css/admin-menu.css' ),
+			'admin-menu.css silinmiş olmalı'
 		);
 
-		foreach ( $files as $file ) {
-			$css = file_get_contents( $file );
-			qrms_assert_true( is_string( $css ) && '' !== $css, basename( $file ) . ' okunmalı' );
+		$bulunan = array();
+		$gezici  = new RecursiveIteratorIterator(
+			new RecursiveDirectoryIterator( QRMS_PLUGIN_DIR, FilesystemIterator::SKIP_DOTS )
+		);
+
+		foreach ( $gezici as $dosya ) {
+			if ( 'css' !== strtolower( $dosya->getExtension() ) ) {
+				continue;
+			}
+
+			$css = file_get_contents( $dosya->getPathname() );
+			qrms_assert_true( is_string( $css ) && '' !== $css, $dosya->getFilename() . ' okunmalı' );
 			$css = preg_replace( '#/\*.*?\*/#s', '', $css );
-			qrms_assert_false(
-				(bool) preg_match( '/#adminmenu|\.wp-submenu|\.wp-has-submenu/', $css ),
-				basename( $file ) . ' sol menüyü hedeflememeli'
-			);
+
+			if ( preg_match( '/#adminmenu|\.wp-submenu|\.wp-has-submenu/', $css ) ) {
+				$bulunan[] = str_replace( QRMS_PLUGIN_DIR, '', $dosya->getPathname() );
+			}
 		}
+
+		qrms_assert_same( array(), $bulunan, 'sol menü seçicisi yok' );
 
 		$frontend = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/css/rma-frontend.css' );
 		$frontend = preg_replace( '#/\*.*?\*/#s', '', $frontend );
@@ -838,15 +861,20 @@ qrms_test(
 			(bool) preg_match( '/^\s*(html|body)\s*\{/m', $frontend ),
 			'frontend html/body kuralları wp-admin\'e sızmamalı'
 		);
+	}
+);
 
-		$menu_css = file_get_contents( QRMS_PLUGIN_DIR . 'assets/css/admin-menu.css' );
-		qrms_assert_contains( 'wp-not-current-submenu', $menu_css, 'yalnızca açık olmayan menü' );
-		qrms_assert_contains( 'top: -1000em', $menu_css, 'WordPress gizleme noktası' );
-		$menu_css = preg_replace( '#/\*.*?\*/#s', '', $menu_css );
+qrms_test(
+	'ürün listesi anahtarı kapsamsız input:checked kuralı taşımaz',
+	function () {
+		$css = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/css/rma-admin-list.css' );
+		$css = preg_replace( '#/\*.*?\*/#s', '', $css );
+
 		qrms_assert_false(
-			(bool) preg_match( '/wp-has-current-submenu/', $menu_css ),
-			'açık sayfanın alt menüsü gizlenmemeli'
+			(bool) preg_match( '/^\s*input:checked\s*\+\s*\.rma-slider/m', $css ),
+			'kapsamsız input:checked yok'
 		);
+		qrms_assert_contains( '.rma-switch input:checked + .rma-slider', $css, 'anahtar .rma-switch altında' );
 	}
 );
 
@@ -1258,7 +1286,7 @@ qrms_test(
 		// saniyede yazıldığında mtime'ları meşru biçimde eşit olabilir ve test
 		// dosya sistemi zamanlamasına göre rastgele düşerdi. Asıl kural her
 		// sürümün KENDİ dosyasından türemesidir.
-		foreach ( array( 'assets/css/admin.css', 'assets/js/admin.js', 'assets/css/admin-menu.css' ) as $yol ) {
+		foreach ( array( 'assets/css/admin.css', 'assets/js/admin.js' ) as $yol ) {
 			qrms_assert_same(
 				QRMS_VERSION . '.' . filemtime( QRMS_PLUGIN_DIR . $yol ),
 				QRMS_Helpers::asset_version( $yol ),
