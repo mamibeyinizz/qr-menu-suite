@@ -38,6 +38,7 @@ function qrms_reset() {
 	$GLOBALS['qrms_test']['http_calls'] = array();
 	$GLOBALS['qrms_test']['can']        = true;
 	$GLOBALS['qrms_test']['styles']     = array();
+	$GLOBALS['qrms_test']['scripts']    = array();
 	$GLOBALS['menu']                    = array();
 	$GLOBALS['submenu']                 = array();
 	$_POST                              = array();
@@ -1216,6 +1217,114 @@ qrms_test(
 
 		qrms_assert_same( 'baska.php', QRMS_Admin::filter_parent_file( 'baska.php' ), 'üst menü' );
 		qrms_assert_same( 'baska-alt', QRMS_Admin::filter_submenu_file( 'baska-alt' ), 'alt menü' );
+	}
+);
+
+echo "\nVarlık sürümleri (önbellek kırma)\n";
+
+qrms_test(
+	'sürüm eklenti sürümü + dosyanın değişiklik zamanıdır',
+	function () {
+		$surum = QRMS_Helpers::asset_version( 'assets/css/admin.css' );
+		$zaman = filemtime( QRMS_PLUGIN_DIR . 'assets/css/admin.css' );
+
+		qrms_assert_same( QRMS_VERSION . '.' . $zaman, $surum, 'sürüm etiketi' );
+		qrms_assert_false( QRMS_VERSION === $surum, 'sabit sürümden farklı' );
+	}
+);
+
+qrms_test(
+	'her dosya kendi sürümünü alır',
+	function () {
+		// Regresyon: tek bir $v değişkenini birden çok dosya için kullanmak,
+		// dosyalardan yalnızca biri değiştiğinde diğerinin adresini sabit
+		// bırakır ve eski kopya sunulmaya devam ederdi.
+		qrms_assert_false(
+			QRMS_Helpers::asset_version( 'assets/css/admin.css' ) === QRMS_Helpers::asset_version( 'assets/js/admin.js' ),
+			'iki dosya aynı sürümü paylaşmaz'
+		);
+	}
+);
+
+qrms_test(
+	'okunamayan dosyada eklenti sürümüne düşülür',
+	function () {
+		qrms_assert_same( QRMS_VERSION, QRMS_Helpers::asset_version( 'assets/css/yok-boyle.css' ), 'geri düşüş' );
+		qrms_assert_same( QRMS_VERSION, QRMS_Helpers::asset_version( '' ), 'boş yol' );
+	}
+);
+
+qrms_test(
+	'hub ekranında admin.css önbellek kıran sürümle kuyruğa alınır',
+	function () {
+		// Regresyon (PR #19 testinde çıktı): admin.css'e .qrms-hub-* kuralları
+		// eklendi ama adres "admin.css?ver=1.0.0" olarak sabit kaldığı için
+		// tarayıcı/CDN eski kopyayı sunmaya devam etti; hub kartları tamamen
+		// stilsiz, tek satıra çökmüş bağlantı metni olarak göründü.
+		$_GET = array( 'page' => QRMS_Admin::get_module_page_slug( 'restoran-menu' ) );
+
+		QRMS_Admin::enqueue_assets();
+
+		$bulundu = null;
+
+		foreach ( $GLOBALS['qrms_test']['styles'] as $stil ) {
+			if ( 'qrms-admin' === $stil['handle'] ) {
+				$bulundu = $stil;
+			}
+		}
+
+		qrms_assert_true( null !== $bulundu, 'admin.css kuyruğa alındı' );
+		qrms_assert_contains( 'assets/css/admin.css', $bulundu['src'], 'kaynak' );
+		qrms_assert_same(
+			QRMS_Helpers::asset_version( 'assets/css/admin.css' ),
+			$bulundu['ver'],
+			'sürüm dosyaya göre hesaplanır'
+		);
+	}
+);
+
+qrms_test(
+	'modül alt sayfalarında da yüklenir',
+	function () {
+		// qr-galeri'nin ekranları "qrms" önekini taşımaz; hub stilleri ve geri
+		// bağlantısı orada da gerekli.
+		QRMS_Admin::register_module_subpage( 'qr-galeri', 'qrmgm-images', 'strlen' );
+		$_GET = array( 'page' => 'qrmgm-images' );
+
+		QRMS_Admin::enqueue_assets();
+
+		$handles = array_map(
+			function ( $stil ) {
+				return $stil['handle'];
+			},
+			$GLOBALS['qrms_test']['styles']
+		);
+
+		qrms_assert_true( in_array( 'qrms-admin', $handles, true ), 'admin.css' );
+		qrms_assert_true( in_array( 'dashicons', $handles, true ), 'dashicons' );
+	}
+);
+
+qrms_test(
+	'eklentinin hiçbir varlığı sabit QRMS_VERSION ile kuyruğa alınmaz',
+	function () {
+		// Sürüklenme koruması: yeni bir wp_enqueue_style/script çağrısı sabit
+		// sürümle eklenirse o dosyanın her değişikliği sessizce eski kopyayla
+		// sunulur. Kaynak taraması bunu yakalar.
+		$hatali = array();
+
+		foreach ( glob( QRMS_PLUGIN_DIR . '{includes,modules}/{,*/,*/*/}*.php', GLOB_BRACE ) as $dosya ) {
+			foreach ( file( $dosya ) as $no => $satir ) {
+				// Yalnızca sürüm ARGÜMANI olarak geçen kullanımlar; helper'ın
+				// kendi gövdesi ve yorumlar sayılmaz.
+				if ( preg_match( '/^\s*QRMS_VERSION,?\s*$/', $satir )
+					|| preg_match( '/,\s*QRMS_VERSION\s*[,)]/', $satir ) ) {
+					$hatali[] = str_replace( QRMS_PLUGIN_DIR, '', $dosya ) . ':' . ( $no + 1 );
+				}
+			}
+		}
+
+		qrms_assert_same( array(), $hatali, 'sabit sürümle kuyruğa alınan varlık yok' );
 	}
 );
 

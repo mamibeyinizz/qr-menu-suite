@@ -650,6 +650,7 @@ function wp_enqueue_style( $handle, $src = '', $deps = array(), $ver = false ) {
 	$GLOBALS['qrms_test']['styles'][] = array(
 		'handle' => $handle,
 		'src'    => $src,
+		'ver'    => $ver,
 	);
 }
 
@@ -663,7 +664,17 @@ function wp_enqueue_style( $handle, $src = '', $deps = array(), $ver = false ) {
  * @param bool   $in_footer Footer'da mı?
  * @return void
  */
-function wp_enqueue_script( $handle, $src = '', $deps = array(), $ver = false, $in_footer = false ) {}
+function wp_enqueue_script( $handle, $src = '', $deps = array(), $ver = false, $in_footer = false ) {
+	if ( ! isset( $GLOBALS['qrms_test']['scripts'] ) ) {
+		$GLOBALS['qrms_test']['scripts'] = array();
+	}
+
+	$GLOBALS['qrms_test']['scripts'][] = array(
+		'handle' => $handle,
+		'src'    => $src,
+		'ver'    => $ver,
+	);
+}
 
 /**
  * Stil handle kaydı (no-op).

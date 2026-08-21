@@ -17,7 +17,7 @@ function qrms_cs_register_frontend_assets() {
 		'qrms-cs-frontend',
 		QRMS_PLUGIN_URL . 'modules/qr-calisma-saatleri/assets/css/frontend.css',
 		array(),
-		QRMS_VERSION
+		QRMS_Helpers::asset_version( 'modules/qr-calisma-saatleri/assets/css/frontend.css' )
 	);
 }
 

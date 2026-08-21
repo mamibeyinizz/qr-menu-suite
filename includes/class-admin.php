@@ -379,36 +379,47 @@ class QRMS_Admin {
 				<div class="qrms-hub-stats">
 					<?php foreach ( $args['stats'] as $stat ) : ?>
 						<div class="qrms-hub-stat" style="border-left-color:<?php echo esc_attr( isset( $stat['accent'] ) ? $stat['accent'] : '#c3c4c7' ); ?>">
-							<span class="qrms-hub-stat-label"><?php echo esc_html( $stat['label'] ); ?></span>
-							<span class="qrms-hub-stat-value">
+							<div class="qrms-hub-stat-label"><?php echo esc_html( $stat['label'] ); ?></div>
+							<div class="qrms-hub-stat-value">
 								<?php if ( ! empty( $stat['url'] ) ) : ?>
 									<a href="<?php echo esc_url( $stat['url'] ); ?>"><?php echo esc_html( $stat['value'] ); ?></a>
 								<?php else : ?>
 									<?php echo esc_html( $stat['value'] ); ?>
 								<?php endif; ?>
-							</span>
+							</div>
 						</div>
 					<?php endforeach; ?>
 				</div>
 			<?php endif; ?>
 
 			<div class="qrms-hub-grid">
-				<?php foreach ( $args['cards'] as $card ) : ?>
+				<?php
+				/*
+				 * Kart gövdesi BLOK elemanlardan kurulur (div/h3/p), span'lerden
+				 * değil. HTML5'te <a> akış içeriği taşıyabilir ve fark yalnızca
+				 * stil dosyası ulaşmadığında ortaya çıkar: span'lerle kart tek
+				 * satıra çöküp okunmaz bir bağlantı metnine dönüşürdü, blok
+				 * elemanlarla alt alta dizilmiş okunabilir bir liste kalır.
+				 */
+				foreach ( $args['cards'] as $card ) :
+					?>
 					<a class="qrms-hub-card" href="<?php echo esc_url( $card['url'] ); ?>">
 						<span class="qrms-hub-icon dashicons <?php echo esc_attr( isset( $card['icon'] ) ? $card['icon'] : 'dashicons-admin-generic' ); ?>" aria-hidden="true"></span>
-						<span class="qrms-hub-body">
-							<span class="qrms-hub-card-title">
+						<div class="qrms-hub-body">
+							<h3 class="qrms-hub-card-title">
 								<?php echo esc_html( $card['title'] ); ?>
 								<?php if ( ! empty( $card['badge'] ) ) : ?>
 									<span class="qrms-hub-badge"><?php echo esc_html( $card['badge'] ); ?></span>
 								<?php endif; ?>
-							</span>
+							</h3>
 							<?php if ( ! empty( $card['desc'] ) ) : ?>
-								<span class="qrms-hub-desc"><?php echo esc_html( $card['desc'] ); ?></span>
+								<p class="qrms-hub-desc"><?php echo esc_html( $card['desc'] ); ?></p>
 							<?php endif; ?>
-						</span>
+						</div>
 					</a>
-				<?php endforeach; ?>
+					<?php
+				endforeach;
+				?>
 			</div>
 		</div>
 		<?php
@@ -626,7 +637,7 @@ class QRMS_Admin {
 			'qrms-admin-menu',
 			QRMS_PLUGIN_URL . 'assets/css/admin-menu.css',
 			array(),
-			QRMS_VERSION
+			QRMS_Helpers::asset_version( 'assets/css/admin-menu.css' )
 		);
 	}
 
@@ -650,14 +661,14 @@ class QRMS_Admin {
 			'qrms-admin',
 			QRMS_PLUGIN_URL . 'assets/css/admin.css',
 			array(),
-			QRMS_VERSION
+			QRMS_Helpers::asset_version( 'assets/css/admin.css' )
 		);
 
 		wp_enqueue_script(
 			'qrms-admin',
 			QRMS_PLUGIN_URL . 'assets/js/admin.js',
 			array(),
-			QRMS_VERSION,
+			QRMS_Helpers::asset_version( 'assets/js/admin.js' ),
 			true
 		);
 

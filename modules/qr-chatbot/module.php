@@ -104,7 +104,7 @@ function qrms_module_qr_chatbot_admin_assets() {
 		'qmo-admin',
 		QRMS_PLUGIN_URL . 'modules/_qmo-ortak/assets/css/admin.css',
 		array(),
-		QRMS_VERSION
+		QRMS_Helpers::asset_version( 'modules/_qmo-ortak/assets/css/admin.css' )
 	);
 
 	wp_enqueue_media();
@@ -113,7 +113,7 @@ function qrms_module_qr_chatbot_admin_assets() {
 		'qmo-admin-chatbot',
 		QRMS_PLUGIN_URL . 'modules/qr-chatbot/assets/js/admin-chatbot.js',
 		array(),
-		QRMS_VERSION,
+		QRMS_Helpers::asset_version( 'modules/qr-chatbot/assets/js/admin-chatbot.js' ),
 		true
 	);
 

@@ -84,7 +84,7 @@ if ( ! function_exists( 'qmo_kilit_ekrani' ) ) {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
 <title>Oturum Gerekli</title>
-<link rel="stylesheet" href="<?php echo esc_url( QRMS_PLUGIN_URL . 'modules/qr-masa-oturum-guvenligi/assets/css/kilit.css?ver=' . QRMS_VERSION ); ?>">
+<link rel="stylesheet" href="<?php echo esc_url( QRMS_PLUGIN_URL . 'modules/qr-masa-oturum-guvenligi/assets/css/kilit.css?ver=' . QRMS_Helpers::asset_version( 'modules/qr-masa-oturum-guvenligi/assets/css/kilit.css' ) ); ?>">
 </head>
 <body>
 	<div class="qmo-kilit-kart">

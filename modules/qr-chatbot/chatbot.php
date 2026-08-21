@@ -54,13 +54,17 @@ if ( ! function_exists( 'qmo_chatbot_buton_varliklarini_kaydet' ) ) {
 		$kayitli = true;
 
 		$url = QMO_CHATBOT_URL . 'assets/';
-		$v   = QRMS_VERSION;
 
-		wp_register_style( 'qmo-buttons', $url . 'css/buttons.css', array(), $v );
-		wp_register_script( 'qmo-buttons', $url . 'js/buttons.js', array(), $v, true );
+		// Sürüm dosyanın son değişiklik zamanından gelir; sabit bir sürüm
+		// kullanmak dosya değiştiğinde eski kopyanın sunulmasına yol açardı.
+		$css = QRMS_Helpers::asset_version( 'modules/qr-chatbot/assets/css/buttons.css' );
+		$js  = QRMS_Helpers::asset_version( 'modules/qr-chatbot/assets/js/buttons.js' );
+
+		wp_register_style( 'qmo-buttons', $url . 'css/buttons.css', array(), $css );
+		wp_register_script( 'qmo-buttons', $url . 'js/buttons.js', array(), $js, true );
 
 		// [qr_garson_hesap] aynı varlıklara bağlanır; ayrı bir tema dosyası yok.
-		wp_register_style( 'qmo-garson-hesap', $url . 'css/buttons.css', array(), $v );
-		wp_register_script( 'qmo-garson-hesap', $url . 'js/buttons.js', array(), $v, true );
+		wp_register_style( 'qmo-garson-hesap', $url . 'css/buttons.css', array(), $css );
+		wp_register_script( 'qmo-garson-hesap', $url . 'js/buttons.js', array(), $js, true );
 	}
 }
