@@ -48,7 +48,9 @@ class QRMS_Helpers {
 			'qr-ceviri'                => __( 'QR Çeviri', 'qrms' ),
 			'qr-chatbot'               => __( 'QR Chatbot', 'qrms' ),
 			'qr-calisma-saatleri'      => __( 'QR Çalışma Saatleri', 'qrms' ),
-			'qr-masa-oturum-guvenligi' => __( 'QR Masa Oturum Güvenliği', 'qrms' ),
+			// Slug değişmedi (lisans sözleşmesi ve kayıtlı option'lar ona bağlı);
+			// yalnızca görünen ad sadeleşti.
+			'qr-masa-oturum-guvenligi' => __( 'Güvenlik Ayarı', 'qrms' ),
 			'qr-acilis-ekrani'         => __( 'Açılış Ekranı', 'qrms' ),
 		);
 	}

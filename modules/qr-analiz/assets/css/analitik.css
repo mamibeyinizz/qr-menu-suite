@@ -365,69 +365,97 @@
 	padding: 0;
 }
 
+/* Bölüm başlığındaki eylem kümesi (dönem seçici + CSV) dar ekranda alta
+   iner, geniş ekranda başlığın karşısında kalır. */
+.qrms-an-panel-actions {
+	align-items: center;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
+/* Seçili olmayan kategorinin bölümü hidden gelir. .qrms-an-panel kendi
+   display'ini bildirmediği için tarayıcının [hidden] kuralı yeter; yine de
+   açıkça yazılır — ileride panele display verilirse kural sessizce
+   bozulmasın. */
+.qrms-an-cat-panel[hidden] {
+	display: none;
+}
+
 /* =====================================================================
-   DÖNEM SEKMELERİ
-   Dar ekranda taşmaz: çubuk yatay kayar, sekmeler kırpılmaz.
+   KATEGORİ CHİP'LERİ
+   Verinin altı kesiti (saatlik/günlük/haftalık/aylık, masalar, ürünler)
+   tek şeritte durur. Dar ekranda taşmaz: şerit yatay kayar, chip'ler
+   kırpılmaz.
 ===================================================================== */
 
-.qrms-an-tabbar {
+.qrms-an-cats {
 	-webkit-overflow-scrolling: touch;
-	border-bottom: 1px solid var(--qrms-an-line-soft);
+	background: var(--qrms-an-bg);
+	border: 1px solid var(--qrms-an-line);
+	border-radius: 12px;
 	display: flex;
-	gap: 2px;
+	gap: 6px;
+	margin: 0 0 12px;
 	overflow-x: auto;
 	overscroll-behavior-x: contain;
-	padding: 0 6px;
+	padding: 8px;
 	scrollbar-width: thin;
 }
 
-.qrms-an-tabbar::-webkit-scrollbar {
+.qrms-an-cats::-webkit-scrollbar {
 	height: 3px;
 }
 
-.qrms-an-tabbar::-webkit-scrollbar-thumb {
+.qrms-an-cats::-webkit-scrollbar-thumb {
 	background: var(--qrms-an-line);
 	border-radius: 2px;
 }
 
 .qrms-an-tab {
 	background: none;
-	border: 0;
-	border-bottom: 3px solid transparent;
+	border: 1px solid transparent;
+	border-radius: 999px;
 	color: var(--qrms-an-soft);
 	cursor: pointer;
 	flex: 0 0 auto;
 	font-size: 14px;
 	font-weight: 600;
-	min-height: 46px;
-	padding: 12px 14px;
+	min-height: 40px;
+	padding: 9px 14px;
 	white-space: nowrap;
 }
 
 .qrms-an-tab:hover {
+	background: rgba( 201, 168, 76, .1 );
 	color: #8a6f1f;
 }
 
 .qrms-an-tab.is-active {
-	border-bottom-color: var(--qrms-an-gold);
+	background: rgba( 201, 168, 76, .16 );
+	border-color: var(--qrms-an-gold);
 	color: #8a6f1f;
 }
 
 .qrms-an-tab:focus-visible {
 	outline: 2px solid var(--qrms-an-gold);
-	outline-offset: -2px;
+	outline-offset: 1px;
 }
 
 /* =====================================================================
    MASA FİLTRESİ
+   Kategori şeridinin altında, tüm kategoriler için ortak.
 ===================================================================== */
 
 .qrms-an-filter {
 	align-items: center;
-	border-bottom: 1px solid var(--qrms-an-line-soft);
+	background: var(--qrms-an-bg);
+	border: 1px solid var(--qrms-an-line);
+	border-radius: 12px;
 	display: flex;
 	flex-wrap: wrap;
 	gap: 8px;
+	margin: 0 0 18px;
 	padding: 12px 16px;
 }
 
@@ -451,8 +479,15 @@
 	width: 100%;
 }
 
+/* Bölüm başlığındaki dönem seçici: satır içinde durur, şeridi germez. */
+.qrms-an-select-small {
+	max-width: 100%;
+	width: auto;
+}
+
 .qrms-an-filtered .qrms-an-filter {
 	background: rgba( 201, 168, 76, .07 );
+	border-color: var(--qrms-an-gold);
 }
 
 /* =====================================================================
@@ -1063,7 +1098,7 @@
 	}
 
 	.qrms-an-tab {
-		min-height: 50px;
-		padding: 14px 16px;
+		min-height: 44px;
+		padding: 11px 16px;
 	}
 }

@@ -4,6 +4,15 @@
  * Sayfa iskeleti PHP'den gelir; kartlar, grafik ve tablolar burada tek bir
  * AJAX çağrısının sonucundan üretilir. jQuery kullanılmaz.
  *
+ * KATEGORİLER — chip şeridi altı kategoriye ayrılır: dört zaman kategorisi
+ * (saatlik/günlük/haftalık/aylık), masa kesiti ve ürün kesiti. Her seferinde
+ * yalnızca bir kategorinin bölümü görünür.
+ *
+ * KATEGORİ ≠ İSTEK — sunucu her yanıtta o dönemin grafiğini, masalarını ve
+ * ürünlerini birlikte döndürür. Bu yüzden yanıtlar dönem+masa anahtarıyla
+ * önbelleğe alınır: aynı pencerede kategori değiştirmek (ör. günlükten
+ * ürünlere geçmek) yeni bir istek DOĞURMAZ, yalnızca görünen bölüm değişir.
+ *
  * Tablolar dar ekranda karta dönüşür (CSS), bunun için her hücreye
  * data-label yazılır: kart görünümünde sütun başlığı hücrenin solunda
  * görünen etikettir.
@@ -14,10 +23,21 @@
 	var CFG = window.qrmsAnalitik || {};
 	var T   = CFG.i18n || {};
 
+	/** Dönem penceresi taşıyan kategoriler (masalar ve ürünler dışındakiler). */
+	var ZAMAN_KATEGORILERI = [ 'hourly', 'daily', 'weekly', 'monthly' ];
+
 	var state = {
+		// Seçili chip: zaman kategorilerinden biri, 'masalar' ya da 'urunler'.
+		kategori: 'hourly',
+		// Sunucuya gönderilen dönem — kategoriden türetilir.
 		donem: 'hourly',
+		// Ürün kesitinin penceresi; zaman kategorisi seçildikçe onunla eşleşir,
+		// böylece kullanıcı ürünlere geçtiğinde aynı pencerede kalır.
+		urunDonem: 'hourly',
 		masa: '',
 		masalar: [],
+		// donem|masa -> sunucu yanıtı.
+		onbellek: {},
 		yukleniyor: false
 	};
 
@@ -518,10 +538,81 @@
 	}
 
 	/* -----------------------------------------------------------------
+	   KATEGORİLER
+	----------------------------------------------------------------- */
+
+	/** Kategorinin sunucuya gönderilecek dönemi. */
+	function kategoriDonemi( kategori ) {
+		return 'urunler' === kategori ? state.urunDonem : kategori;
+	}
+
+	/** Seçili kategoriyi ekrana uygular — chip'ler ve görünen bölüm. */
+	function kategoriUygula() {
+		var chipler = el.wrap.querySelectorAll( '.qrms-an-tab' );
+		var urunMu  = 'urunler' === state.kategori;
+
+		Array.prototype.forEach.call( chipler, function ( chip ) {
+			var aktif = chip.getAttribute( 'data-cat' ) === state.kategori;
+
+			chip.classList.toggle( 'is-active', aktif );
+			chip.setAttribute( 'aria-selected', aktif ? 'true' : 'false' );
+
+			// Chip şeridi dar ekranda yatay kayar: seçilen chip görünür kalsın.
+			if ( aktif && chip.scrollIntoView ) {
+				try {
+					chip.scrollIntoView( { block: 'nearest', inline: 'nearest' } );
+				} catch ( e ) {
+					// Eski tarayıcı: seçenek nesnesini desteklemiyor, önemli değil.
+				}
+			}
+		} );
+
+		el.panelVeri.hidden    = urunMu;
+		el.panelUrunler.hidden = ! urunMu;
+
+		if ( el.urunDonem ) {
+			el.urunDonem.value = state.urunDonem;
+		}
+	}
+
+	/* -----------------------------------------------------------------
 	   VERİ YÜKLE
 	----------------------------------------------------------------- */
 
-	function yukle() {
+	function onbellekAnahtari( donem, masa ) {
+		return donem + '|' + masa;
+	}
+
+	/** Sunucu yanıtının tamamını ekrana basar. */
+	function veriyiBas( veri ) {
+		state.masa = veri.masa || '';
+
+		masaSecenekleriBas( veri.masalar );
+		kartlariBas( veri.genel );
+		grafikBas( veri.grafik );
+		donemTablosuBas( veri.grafik );
+		urunleriBas( veri.urunler );
+
+		el.chartTitle.textContent = donemBasligi();
+		csvAdresiGuncelle();
+	}
+
+	/**
+	 * Seçili kategorinin verisini gösterir.
+	 *
+	 * @param {boolean} zorla true ise önbellek atlanır (Yenile düğmesi).
+	 */
+	function yukle( zorla ) {
+		state.donem = kategoriDonemi( state.kategori );
+
+		var anahtar = onbellekAnahtari( state.donem, state.masa );
+
+		// Aynı pencere zaten yüklüyse kategori değişimi istek doğurmaz.
+		if ( ! zorla && state.onbellek[ anahtar ] ) {
+			veriyiBas( state.onbellek[ anahtar ] );
+			return;
+		}
+
 		state.yukleniyor = true;
 
 		el.cards.innerHTML =
@@ -545,16 +636,14 @@
 			},
 			function ( veri ) {
 				state.yukleniyor = false;
-				state.masa       = veri.masa || '';
 
-				masaSecenekleriBas( veri.masalar );
-				kartlariBas( veri.genel );
-				grafikBas( veri.grafik );
-				donemTablosuBas( veri.grafik );
-				urunleriBas( veri.urunler );
+				// İki anahtarla da saklanır: istenen masa ile sunucunun
+				// doğruladığı masa farklı olabilir (kayıtlı olmayan masa boşa
+				// düşer) ve o zaman aynı yanıt ikinci kez istenirdi.
+				state.onbellek[ anahtar ] = veri;
+				state.onbellek[ onbellekAnahtari( state.donem, veri.masa || '' ) ] = veri;
 
-				el.chartTitle.textContent = donemBasligi();
-				csvAdresiGuncelle();
+				veriyiBas( veri );
 			},
 			function () {
 				state.yukleniyor = false;
@@ -569,26 +658,21 @@
 	   OLAYLAR
 	----------------------------------------------------------------- */
 
-	function sekmeSec( dugme ) {
-		var sekmeler = el.wrap.querySelectorAll( '.qrms-an-tab' );
+	function kategoriSec( chip ) {
+		var kategori = chip.getAttribute( 'data-cat' );
 
-		Array.prototype.forEach.call( sekmeler, function ( s ) {
-			var aktif = s === dugme;
-
-			s.classList.toggle( 'is-active', aktif );
-			s.setAttribute( 'aria-selected', aktif ? 'true' : 'false' );
-		} );
-
-		// Sekme çubuğu dar ekranda yatay kayar: seçilen sekme görünür kalsın.
-		if ( dugme.scrollIntoView ) {
-			try {
-				dugme.scrollIntoView( { block: 'nearest', inline: 'nearest' } );
-			} catch ( e ) {
-				// Eski tarayıcı: seçenek nesnesini desteklemiyor, önemli değil.
-			}
+		if ( ! kategori || kategori === state.kategori ) {
+			return;
 		}
 
-		state.donem = dugme.getAttribute( 'data-period' );
+		state.kategori = kategori;
+
+		// Zaman kategorisi seçmek ürün kesitinin penceresini de taşır.
+		if ( -1 !== ZAMAN_KATEGORILERI.indexOf( kategori ) ) {
+			state.urunDonem = kategori;
+		}
+
+		kategoriUygula();
 		yukle();
 	}
 
@@ -607,10 +691,10 @@
 
 	function baglantilariKur() {
 		el.wrap.addEventListener( 'click', function ( olay ) {
-			var sekme = olay.target.closest( '.qrms-an-tab' );
+			var chip = olay.target.closest( '.qrms-an-tab' );
 
-			if ( sekme ) {
-				sekmeSec( sekme );
+			if ( chip ) {
+				kategoriSec( chip );
 				return;
 			}
 
@@ -632,8 +716,18 @@
 			yukle();
 		} );
 
+		if ( el.urunDonem ) {
+			el.urunDonem.addEventListener( 'change', function () {
+				state.urunDonem = el.urunDonem.value || 'hourly';
+				yukle();
+			} );
+		}
+
 		el.refresh.addEventListener( 'click', function () {
-			yukle();
+			// Yenile, önbelleği tümüyle düşürür: kullanıcı "şu an ne oluyor"u
+			// sorar, saklanmış bir yanıtı değil.
+			state.onbellek = {};
+			yukle( true );
 		} );
 
 		el.clear.addEventListener( 'click', modalAc );
@@ -667,7 +761,10 @@
 					el.confirmOk.textContent = eskiMetin;
 					el.confirmOk.disabled    = false;
 					modalKapat();
-					yukle();
+
+					// Kayıtlar silindi: saklanan yanıtların hepsi bayattır.
+					state.onbellek = {};
+					yukle( true );
 				},
 				function () {
 					el.confirmOk.textContent = eskiMetin;
@@ -686,10 +783,13 @@
 		}
 
 		el.cards         = $( 'qrms-an-cards' );
+		el.panelVeri     = $( 'qrms-an-cat-veri' );
+		el.panelUrunler  = $( 'qrms-an-cat-urunler' );
 		el.chart         = $( 'qrms-an-chart' );
 		el.chartTitle    = $( 'qrms-an-chart-title' );
 		el.table         = $( 'qrms-an-table' );
 		el.products      = $( 'qrms-an-products' );
+		el.urunDonem     = $( 'qrms-an-urun-donem' );
 		el.masa          = $( 'qrms-an-masa' );
 		el.masaTemizle   = $( 'qrms-an-masa-temizle' );
 		el.refresh       = $( 'qrms-an-refresh' );
@@ -701,6 +801,7 @@
 		el.confirmCancel = $( 'qrms-an-confirm-cancel' );
 
 		baglantilariKur();
+		kategoriUygula();
 		yukle();
 	} );
 }() );

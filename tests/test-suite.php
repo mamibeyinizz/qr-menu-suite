@@ -857,7 +857,7 @@ qrms_test(
 		QRMS_Admin::render_module_placeholder( 'qr-masa-oturum-guvenligi' );
 		$html = ob_get_clean();
 
-		qrms_assert_contains( 'QR Masa Oturum Güvenliği', $html, 'başlık' );
+		qrms_assert_contains( 'Güvenlik Ayarı', $html, 'başlık' );
 		qrms_assert_contains( 'Bu modül yakında burada olacak.', $html, 'metin' );
 	}
 );
@@ -1760,6 +1760,10 @@ qrms_test(
 		qrms_assert_same( array_values( QRMS_Helpers::MODULE_SLUGS ), array_keys( $modules ), 'slug listesi' );
 		qrms_assert_same( 'QR Çalışma Saatleri', QRMS_Helpers::get_module_name( 'qr-calisma-saatleri' ), 'isim' );
 		qrms_assert_same( 'Yorum & Feedback', QRMS_Helpers::get_module_name( 'yorum-feedback' ), 'isim' );
+
+		// Görünen ad sadeleşti ama slug (lisans sözleşmesinin anahtarı) aynı kaldı.
+		qrms_assert_same( 'Güvenlik Ayarı', QRMS_Helpers::get_module_name( 'qr-masa-oturum-guvenligi' ), 'güvenlik adı' );
+		qrms_assert_true( QRMS_Helpers::is_valid_module( 'qr-masa-oturum-guvenligi' ), 'slug korundu' );
 	}
 );
 
@@ -2118,7 +2122,7 @@ qrms_test(
 );
 
 /* ---------------------------------------------------------------------------
- * 9. QR Analiz — sayfa kayıt defteri ve hub
+ * 9. QR Analiz — tek ekran + eski adresin yönlendirmesi
  * ------------------------------------------------------------------------ */
 
 // module.php dosya kapsamında yalnızca fonksiyon ve sabit tanımlar; stub
@@ -2128,56 +2132,66 @@ require_once QRMS_PLUGIN_DIR . 'modules/qr-analiz/module.php';
 echo "\nQR Analiz sayfaları\n";
 
 qrms_test(
-	'iki ekran da kayıt defterinde ve her birinin callback\'i var',
+	'modülün TEK ekranı vardır: hub yoktur',
 	function () {
-		$pages = qrms_module_qr_analiz_sayfalar();
+		// Firebase ayarları güvenlik modülüne taşındıktan sonra dallanacak
+		// ikinci bir ekran kalmadı; modül satırı doğrudan paneli açar.
+		qrms_assert_false( function_exists( 'qrms_module_qr_analiz_hub' ), 'hub fonksiyonu yok' );
+		qrms_assert_false( function_exists( 'qrms_module_qr_analiz_sayfalar' ), 'sayfa listesi yok' );
+		qrms_assert_false( defined( 'QRMS_ANALIZ_AYAR_SAYFA' ), 'ayar slug sabiti taşındı' );
 
-		qrms_assert_same(
-			array( QRMS_ANALITIK_SAYFA, QRMS_ANALIZ_AYAR_SAYFA ),
-			array_keys( $pages ),
-			'sayfa listesi'
+		// Ayar ekranı dosyası artık güvenlik modülünün altındadır.
+		qrms_assert_false(
+			file_exists( QRMS_PLUGIN_DIR . 'modules/qr-analiz/ayarlar-sayfasi.php' ),
+			'eski konumda yok'
+		);
+		qrms_assert_true(
+			file_exists( QRMS_PLUGIN_DIR . 'modules/qr-masa-oturum-guvenligi/firebase-ayarlari-sayfasi.php' ),
+			'yeni konumda var'
+		);
+	}
+);
+
+qrms_test(
+	'panelin eski adresi kayıtlı kalır ve modül satırına yönlendirir',
+	function () {
+		$GLOBALS['submenu'][ QRMS_Admin::MENU_SLUG ] = array(
+			qrms_submenu_satiri( 'QR Analiz', QRMS_Admin::get_module_page_slug( 'qr-analiz' ) ),
 		);
 
-		foreach ( $pages as $slug => $page ) {
-			foreach ( array( 'title', 'render', 'desc', 'icon' ) as $key ) {
-				qrms_assert_true( ! empty( $page[ $key ] ), $slug . ' -> ' . $key . ' dolu' );
-			}
+		qrms_module_qr_analiz_admin_menu();
 
-			qrms_assert_same( 0, strpos( $page['icon'], 'dashicons-' ), $slug . ' ikonu dashicon' );
+		qrms_assert_same(
+			array( QRMS_ANALITIK_SAYFA ),
+			array_map(
+				function ( $item ) {
+					return $item['slug'];
+				},
+				$GLOBALS['qrms_test']['submenus']
+			),
+			'yalnızca eski adres'
+		);
+
+		// Üst menü '' — satır sol menüde hiç görünmez, yalnızca adres çalışır.
+		qrms_assert_same( '', $GLOBALS['qrms_test']['submenus'][0]['parent'], 'gizli sayfa' );
+
+		try {
+			qrms_module_qr_analiz_eski_adresi_yonlendir();
+			qrms_assert_true( false, 'yönlendirme bekleniyordu' );
+		} catch ( QRMS_Test_Redirect $e ) {
+			qrms_assert_same(
+				QRMS_Admin::get_module_page_url( 'qr-analiz' ),
+				$e->getMessage(),
+				'panel adresine gider'
+			);
 		}
 	}
 );
 
 qrms_test(
-	'ayar ekranının slug\'ı modül satırından ayrıdır',
+	'modül lisansta aktif değilken eski adres de kaydedilmez',
 	function () {
-		// Modül satırı (qrms-module-qr-analiz) artık hub ekranıdır; ayar ekranı
-		// kendi slug'ına taşındı. Eski adres kırılmaz, hub'ı açar.
-		qrms_assert_false(
-			QRMS_ANALIZ_AYAR_SAYFA === QRMS_Admin::get_module_page_slug( 'qr-analiz' ),
-			'slug çakışması yok'
-		);
-	}
-);
-
-qrms_test(
-	'hub, iki ekranı da kart olarak basar',
-	function () {
-		ob_start();
-		qrms_module_qr_analiz_hub();
-		$html = ob_get_clean();
-
-		qrms_assert_contains( 'qrms-hub-grid', $html, 'ortak kart ızgarası' );
-		qrms_assert_contains( 'page=' . QRMS_ANALITIK_SAYFA, $html, 'analitik kartı' );
-		qrms_assert_contains( 'page=' . QRMS_ANALIZ_AYAR_SAYFA, $html, 'ayarlar kartı' );
-		qrms_assert_contains( 'Menü Analitiği', $html, 'analitik başlığı' );
-	}
-);
-
-qrms_test(
-	'modül lisansta aktif değilken hiçbir sayfa kaydedilmez',
-	function () {
-		// "QR Analiz" satırı yoksa $submenu de boştur; ekranların kaydedilmesi
+		// "QR Analiz" satırı yoksa $submenu de boştur; ekranın kaydedilmesi
 		// menüde ölü satır bırakırdı.
 		qrms_module_qr_analiz_admin_menu();
 
@@ -2247,17 +2261,136 @@ qrms_test(
 	}
 );
 
+echo "\nQR Analiz (kategoriler)\n";
+
+qrms_test(
+	'veriler altı kategori chip\'ine bölünür ve her chip bir bölüme bağlıdır',
+	function () {
+		$kaynak = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/analitik-sayfasi.php' );
+
+		foreach ( array( 'hourly', 'daily', 'weekly', 'monthly', 'masalar', 'urunler' ) as $kategori ) {
+			qrms_assert_contains( 'data-cat="' . $kategori . '"', $kaynak, $kategori . ' chip\'i' );
+		}
+
+		// Chip'lerin hepsi bir tabpanel'e işaret eder; ürün kesiti kendi
+		// bölümündedir ve kapalı başlar (açılışta saatlik kategori seçili).
+		qrms_assert_contains( 'aria-controls="qrms-an-cat-veri"', $kaynak, 'grafik/tablo bölümü' );
+		qrms_assert_contains( 'aria-controls="qrms-an-cat-urunler"', $kaynak, 'ürün bölümü' );
+		qrms_assert_contains( 'id="qrms-an-cat-urunler" role="tabpanel" hidden', $kaynak, 'ürün bölümü kapalı başlar' );
+
+		// Panel kimlikleri JS'in aradığı kimliklerle aynı olmalı: biri
+		// değişirse kategori geçişi sessizce çalışmaz olurdu.
+		$js = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/assets/js/analitik.js' );
+
+		qrms_assert_contains( "\$( 'qrms-an-cat-veri' )", $js, 'JS grafik bölümünü bulur' );
+		qrms_assert_contains( "\$( 'qrms-an-cat-urunler' )", $js, 'JS ürün bölümünü bulur' );
+	}
+);
+
+qrms_test(
+	'aynı pencerede kategori değiştirmek yeni istek doğurmaz',
+	function () {
+		// Sunucu her yanıtta grafiği, masaları ve ürünleri BİRLİKTE döndürür;
+		// yanıt dönem+masa anahtarıyla saklanmazsa kategori geçişi aynı veriyi
+		// tekrar tekrar isterdi.
+		$js = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/assets/js/analitik.js' );
+
+		qrms_assert_contains( 'state.onbellek[ anahtar ]', $js, 'önbellekten okur' );
+		qrms_assert_contains( 'function onbellekAnahtari( donem, masa )', $js, 'anahtar dönem + masa' );
+
+		// Yenile ve silme sonrası önbellek düşer: kullanıcı bayat veri görmez.
+		qrms_assert_same( 2, substr_count( $js, 'state.onbellek = {};' ), 'yenile + silme' );
+	}
+);
+
+qrms_test(
+	'kategori şeridi ve tablolar dar ekranda taşmaz',
+	function () {
+		$css = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/assets/css/analitik.css' );
+
+		// Şerit kırpılmaz, yatay kayar; chip'ler sıkışıp okunmaz olmaz.
+		qrms_assert_contains( '.qrms-an-cats {', $css, 'kategori şeridi' );
+		qrms_assert_contains( 'overflow-x: auto', $css, 'yatay kaydırma' );
+
+		// Tablolar 660px altında karta döner (sütun başlığı hücrenin etiketi).
+		qrms_assert_contains( 'max-width: 660px', $css, 'kart görünümü kırılımı' );
+		qrms_assert_contains( 'content: attr( data-label )', $css, 'kart etiketi' );
+
+		// Seçili olmayan kategorinin bölümü gerçekten gizlenir.
+		qrms_assert_contains( '.qrms-an-cat-panel[hidden]', $css, 'gizli bölüm kuralı' );
+	}
+);
+
+/* ---------------------------------------------------------------------------
+ * 9a. Güvenlik Ayarı — sayfa kayıt defteri ve hub
+ * ------------------------------------------------------------------------ */
+
+// module.php dosya kapsamında yalnızca fonksiyon ve sabit tanımlar; stub
+// ortamında yan etkisiz yüklenir.
+require_once QRMS_PLUGIN_DIR . 'modules/qr-masa-oturum-guvenligi/module.php';
+
+echo "\nGüvenlik Ayarı sayfaları\n";
+
+qrms_test(
+	'iki ekran da kayıt defterinde ve her birinin callback\'i var',
+	function () {
+		$pages = qrms_module_qr_masa_oturum_guvenligi_sayfalar();
+
+		qrms_assert_same(
+			array( QRMS_GUVENLIK_OTURUM_SAYFA, QRMS_GUVENLIK_FIREBASE_SAYFA ),
+			array_keys( $pages ),
+			'sayfa listesi'
+		);
+
+		foreach ( $pages as $slug => $page ) {
+			foreach ( array( 'title', 'render', 'desc', 'icon' ) as $key ) {
+				qrms_assert_true( ! empty( $page[ $key ] ), $slug . ' -> ' . $key . ' dolu' );
+			}
+
+			qrms_assert_same( 0, strpos( $page['icon'], 'dashicons-' ), $slug . ' ikonu dashicon' );
+		}
+	}
+);
+
+qrms_test(
+	'Firebase ekranının ADRESİ taşınmadan önceki adrestir',
+	function () {
+		// Ekran qr-analiz'den buraya taşındı; canlı sitelerdeki yer imleri ve
+		// dahili bağlantılar kırılmasın diye slug DEĞERİ korunur.
+		qrms_assert_same( 'qrms-analiz-ayarlar', QRMS_GUVENLIK_FIREBASE_SAYFA, 'eski adres' );
+
+		qrms_assert_false(
+			QRMS_GUVENLIK_FIREBASE_SAYFA === QRMS_Admin::get_module_page_slug( 'qr-masa-oturum-guvenligi' ),
+			'modül satırıyla çakışmaz'
+		);
+	}
+);
+
+qrms_test(
+	'hub, iki ekranı da kart olarak basar',
+	function () {
+		ob_start();
+		qrms_module_qr_masa_oturum_guvenligi_hub();
+		$html = ob_get_clean();
+
+		qrms_assert_contains( 'qrms-hub-grid', $html, 'ortak kart ızgarası' );
+		qrms_assert_contains( 'page=' . QRMS_GUVENLIK_OTURUM_SAYFA, $html, 'oturum kartı' );
+		qrms_assert_contains( 'page=' . QRMS_GUVENLIK_FIREBASE_SAYFA, $html, 'Firebase kartı' );
+		qrms_assert_contains( 'Güvenlik Ayarı', $html, 'hub başlığı' );
+	}
+);
+
 qrms_test(
 	'modül aktifken iki ekran da gizli sayfa olarak kaydedilir',
 	function () {
 		$GLOBALS['submenu'][ QRMS_Admin::MENU_SLUG ] = array(
-			qrms_submenu_satiri( 'QR Analiz', QRMS_Admin::get_module_page_slug( 'qr-analiz' ) ),
+			qrms_submenu_satiri( 'Güvenlik Ayarı', QRMS_Admin::get_module_page_slug( 'qr-masa-oturum-guvenligi' ) ),
 		);
 
-		qrms_module_qr_analiz_admin_menu();
+		qrms_module_qr_masa_oturum_guvenligi_admin_menu();
 
 		qrms_assert_same(
-			array( QRMS_ANALITIK_SAYFA, QRMS_ANALIZ_AYAR_SAYFA ),
+			array( QRMS_GUVENLIK_OTURUM_SAYFA, QRMS_GUVENLIK_FIREBASE_SAYFA ),
 			array_map(
 				function ( $item ) {
 					return $item['slug'];
@@ -2267,11 +2400,20 @@ qrms_test(
 			'kaydedilen sayfalar'
 		);
 
-		qrms_assert_true( QRMS_Admin::is_module_subpage( QRMS_ANALITIK_SAYFA ), 'kayıt defterinde' );
+		qrms_assert_true( QRMS_Admin::is_module_subpage( QRMS_GUVENLIK_FIREBASE_SAYFA ), 'kayıt defterinde' );
 
 		// Kayıt gerçek bir alt menüdir (parent: MENU_SLUG) — route çözümü buna
 		// bağlıdır; menüden düşürme işi admin_head'de yapılır.
 		qrms_assert_same( QRMS_Admin::MENU_SLUG, $GLOBALS['qrms_test']['submenus'][0]['parent'], 'üst menü' );
+	}
+);
+
+qrms_test(
+	'modül lisansta aktif değilken hiçbir sayfa kaydedilmez',
+	function () {
+		qrms_module_qr_masa_oturum_guvenligi_admin_menu();
+
+		qrms_assert_same( array(), $GLOBALS['qrms_test']['submenus'], 'kayıt yok' );
 	}
 );
 
