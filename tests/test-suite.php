@@ -1234,15 +1234,23 @@ qrms_test(
 );
 
 qrms_test(
-	'her dosya kendi sürümünü alır',
+	'her dosya sürümünü KENDİ değişiklik zamanından alır',
 	function () {
 		// Regresyon: tek bir $v değişkenini birden çok dosya için kullanmak,
 		// dosyalardan yalnızca biri değiştiğinde diğerinin adresini sabit
 		// bırakır ve eski kopya sunulmaya devam ederdi.
-		qrms_assert_false(
-			QRMS_Helpers::asset_version( 'assets/css/admin.css' ) === QRMS_Helpers::asset_version( 'assets/js/admin.js' ),
-			'iki dosya aynı sürümü paylaşmaz'
-		);
+		//
+		// "İki sürüm birbirinden farklı olmalı" diye bakılmaz: iki dosya aynı
+		// saniyede yazıldığında mtime'ları meşru biçimde eşit olabilir ve test
+		// dosya sistemi zamanlamasına göre rastgele düşerdi. Asıl kural her
+		// sürümün KENDİ dosyasından türemesidir.
+		foreach ( array( 'assets/css/admin.css', 'assets/js/admin.js', 'assets/css/admin-menu.css' ) as $yol ) {
+			qrms_assert_same(
+				QRMS_VERSION . '.' . filemtime( QRMS_PLUGIN_DIR . $yol ),
+				QRMS_Helpers::asset_version( $yol ),
+				$yol . ' kendi zamanını taşır'
+			);
+		}
 	}
 );
 
