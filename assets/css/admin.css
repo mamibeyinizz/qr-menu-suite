@@ -5,7 +5,7 @@
  *
  * Tüm seçiciler `.qrms-` ile başlar. WordPress sol menüsüne
  * (`#adminmenu`, `.wp-submenu`, `.wp-has-submenu`) kural yazılmaz;
- * flyout aç/kapa `assets/css/admin-menu.css` ile korunur.
+ * flyout aç/kapa çekirdeğe bırakılır.
  */
 
 .qrms-wrap {
