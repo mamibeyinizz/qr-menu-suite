@@ -676,13 +676,19 @@ qrms_test(
 );
 
 qrms_test(
-	'dokuz modül de aktifken hepsi menüde görünür',
+	'tüm modüller aktifken hepsi menüde görünür',
 	function () {
 		update_option( 'qrms_active_modules', qrms_all_modules() );
 
 		QRMS_Admin::register_menu();
 
-		qrms_assert_same( 11, count( qrms_registered_submenu_slugs() ), 'Genel Bakış + 9 modül + Genel Ayarlar' );
+		// Genel Bakış + her modül + Genel Ayarlar. Sayı listeden türetilir ki
+		// yeni bir modül eklendiğinde test elle güncellenmek zorunda kalmasın.
+		qrms_assert_same(
+			count( QRMS_Helpers::MODULE_SLUGS ) + 2,
+			count( qrms_registered_submenu_slugs() ),
+			'Genel Bakış + modüller + Genel Ayarlar'
+		);
 	}
 );
 
@@ -1745,12 +1751,12 @@ qrms_test(
 echo "\nYardımcılar\n";
 
 qrms_test(
-	'dokuz modül slug\'ı ve Türkçe isimleri tanımlı',
+	'on modül slug\'ı ve Türkçe isimleri tanımlı',
 	function () {
 		$modules = QRMS_Helpers::get_modules();
 
-		qrms_assert_same( 9, count( QRMS_Helpers::MODULE_SLUGS ), 'slug sayısı' );
-		qrms_assert_same( 9, count( $modules ), 'isim sayısı' );
+		qrms_assert_same( 10, count( QRMS_Helpers::MODULE_SLUGS ), 'slug sayısı' );
+		qrms_assert_same( 10, count( $modules ), 'isim sayısı' );
 		qrms_assert_same( array_values( QRMS_Helpers::MODULE_SLUGS ), array_keys( $modules ), 'slug listesi' );
 		qrms_assert_same( 'QR Çalışma Saatleri', QRMS_Helpers::get_module_name( 'qr-calisma-saatleri' ), 'isim' );
 		qrms_assert_same( 'Yorum & Feedback', QRMS_Helpers::get_module_name( 'yorum-feedback' ), 'isim' );
@@ -2681,6 +2687,453 @@ qrms_test(
 /* ------------------------------------------------------------------------ */
 
 echo "\n";
+
+/* ---------------------------------------------------------------------------
+ * 14. Açılış Ekranı (qr-acilis-ekrani)
+ * ------------------------------------------------------------------------ */
+
+require_once QRMS_PLUGIN_DIR . 'modules/qr-acilis-ekrani/includes/class-acilis-ekrani.php';
+
+echo "\nAçılış Ekranı\n";
+
+/**
+ * Modülün taze bir örneği (hook kaydı yapmadan).
+ *
+ * @return QRMS_Acilis_Ekrani
+ */
+function qrms_ae() {
+	return new QRMS_Acilis_Ekrani();
+}
+
+/**
+ * Kuyruğa alınmış stili handle'ına göre bulur.
+ *
+ * @param string $handle Stil handle'ı.
+ * @return array|null
+ */
+function qrms_ae_style( $handle ) {
+	foreach ( $GLOBALS['qrms_test']['styles'] as $style ) {
+		if ( $handle === $style['handle'] ) {
+			return $style;
+		}
+	}
+
+	return null;
+}
+
+/**
+ * Bir yönetim sayfasını POST ile kaydeder ve çıktısını döndürür.
+ *
+ * @param string $slug Sayfa slug'ı.
+ * @param array  $post Gönderilen alanlar.
+ * @return string Sayfanın HTML çıktısı.
+ */
+function qrms_ae_submit( $slug, array $post ) {
+	$_POST = array_merge( array( 'qrms_ae_submit' => '1' ), $post );
+
+	$method = 'render_' . str_replace( '-', '_', $slug );
+
+	ob_start();
+	qrms_ae()->$method();
+
+	return ob_get_clean();
+}
+
+qrms_test(
+	'modül loader sözleşmesine uyar: slug, dosya ve init fonksiyonu',
+	function () {
+		qrms_assert_true(
+			in_array( 'qr-acilis-ekrani', QRMS_Helpers::MODULE_SLUGS, true ),
+			'slug bilinen modüller arasında'
+		);
+		qrms_assert_true( QRMS_Module_Loader::module_file_exists( 'qr-acilis-ekrani' ), 'module.php diskte' );
+		qrms_assert_same(
+			'qrms_module_qr_acilis_ekrani_init',
+			QRMS_Module_Loader::get_init_function( 'qr-acilis-ekrani' ),
+			'init fonksiyon adı'
+		);
+
+		update_option( 'qrms_active_modules', array( 'qr-acilis-ekrani' ) );
+
+		qrms_assert_same(
+			array( 'qr-acilis-ekrani' ),
+			QRMS_Module_Loader::load_modules(),
+			'aktifken yüklenir'
+		);
+	}
+);
+
+qrms_test(
+	'dört ekran gizli alt sayfa olarak kaydedilir, menüde satırları olmaz',
+	function () {
+		update_option( 'qrms_active_modules', array( 'qr-acilis-ekrani' ) );
+
+		QRMS_Admin::register_menu();
+		qrms_ae()->register_admin_pages();
+
+		$slugs = qrms_registered_submenu_slugs();
+
+		foreach ( array_keys( qrms_ae()->admin_pages() ) as $slug ) {
+			qrms_assert_true( in_array( $slug, $slugs, true ), $slug . ' kayıtlı' );
+		}
+
+		// Menüde görünmemeleri suite'in işi: beyaz listede olmadıkları için
+		// admin_head'de düşürülürler.
+		QRMS_Admin::hide_module_subpages();
+
+		foreach ( array_keys( qrms_ae()->admin_pages() ) as $slug ) {
+			qrms_assert_true(
+				in_array( $slug, $GLOBALS['qrms_test']['removed'], true ),
+				$slug . ' menüden düşer'
+			);
+		}
+	}
+);
+
+qrms_test(
+	'modül lisansta aktif değilken hiçbir ekran kaydedilmez',
+	function () {
+		// "Açılış Ekranı" satırı yoksa $submenu de boştur; ekranların
+		// kaydedilmesi menüde ölü satır bırakırdı.
+		qrms_ae()->register_admin_pages();
+
+		qrms_assert_same( array(), $GLOBALS['qrms_test']['submenus'], 'kayıt yok' );
+	}
+);
+
+qrms_test(
+	'hub dört ekranı da kart olarak basar ve ikonları dashicon\'dur',
+	function () {
+		ob_start();
+		qrms_ae()->render_hub();
+		$html = ob_get_clean();
+
+		qrms_assert_contains( 'qrms-hub-grid', $html, 'ortak kart ızgarası' );
+		qrms_assert_contains( 'qrms-hub-stats', $html, 'özet kutuları' );
+
+		foreach ( qrms_ae()->admin_pages() as $slug => $page ) {
+			qrms_assert_contains( 'page=' . $slug, $html, $slug . ' kartı' );
+			qrms_assert_same( 0, strpos( $page['icon'], 'dashicons-' ), $slug . ' ikonu' );
+		}
+	}
+);
+
+qrms_test(
+	'bir sayfayı kaydetmek diğer sayfaların ayarlarını silmez',
+	function () {
+		// Bu, sekmeli tek formdan dört ayrı sayfaya geçerken doğan asıl risk:
+		// POST'ta bulunmayan onay kutusu "kapalı" sayılırsa başka bir sayfada
+		// yapılmış seçim sessizce silinir.
+		update_option(
+			'splash_screen_options',
+			array(
+				'payment_methods'       => array( 'nakit', 'kart' ),
+				'social_media_active'   => array( 'instagram' ),
+				'social_media'          => array( 'instagram' => 'https://instagram.com/x' ),
+				'btn_surface_apply_cta' => 1,
+			)
+		);
+
+		qrms_ae_submit( 'qrms-ae-davranis', array( 'wifi_password' => 'misafir123' ) );
+
+		$opts = get_option( 'splash_screen_options' );
+
+		qrms_assert_same( 'misafir123', $opts['wifi_password'], 'kendi alanı yazılır' );
+		qrms_assert_same( array( 'nakit', 'kart' ), $opts['payment_methods'], 'ödeme seçimi korunur' );
+		qrms_assert_same( 1, $opts['btn_surface_apply_cta'], 'görünüm kutusu korunur' );
+
+		// Buna karşılık SAHİBİ sayfa gönderilince kutu gerçekten kapanabilmeli.
+		qrms_ae_submit( 'qrms-ae-gorunum', array( 'bg_color' => '#101010' ) );
+
+		$opts = get_option( 'splash_screen_options' );
+
+		qrms_assert_same( 0, $opts['btn_surface_apply_cta'], 'sahibi sayfa kutuyu kapatır' );
+		qrms_assert_same( array( 'nakit', 'kart' ), $opts['payment_methods'], 'ödeme yine korunur' );
+	}
+);
+
+qrms_test(
+	'ödeme sayfası gönderildiğinde işaretsiz yöntemler temizlenir',
+	function () {
+		update_option( 'splash_screen_options', array( 'payment_methods' => array( 'nakit', 'kart' ) ) );
+
+		qrms_ae_submit( 'qrms-ae-odeme', array( 'payment_methods' => array( 'sodexo' ) ) );
+
+		qrms_assert_same(
+			array( 'sodexo' ),
+			get_option( 'splash_screen_options' )['payment_methods'],
+			'yalnızca gönderilen kalır'
+		);
+
+		qrms_ae_submit( 'qrms-ae-odeme', array() );
+
+		qrms_assert_same(
+			array(),
+			get_option( 'splash_screen_options' )['payment_methods'],
+			'hiçbiri işaretsizse boşalır'
+		);
+	}
+);
+
+qrms_test(
+	'sayısal ayarlar sınırlarına kırpılır, bozuk renk varsayılana düşer',
+	function () {
+		qrms_ae_submit(
+			'qrms-ae-gorunum',
+			array(
+				'loader_size'         => 999,
+				'logo_bar_height'     => 1,
+				'bg_overlay_strength' => 250,
+				'btn_surface_opacity' => 150,
+				'bg_color'            => 'kırmızı',
+				'loader_type'         => 'diskoTopu',
+			)
+		);
+
+		$opts = get_option( 'splash_screen_options' );
+
+		qrms_assert_same( 44, $opts['loader_size'], 'gösterge boyutu üst sınıra' );
+		qrms_assert_same( 48, $opts['logo_bar_height'], 'şerit yüksekliği alt sınıra' );
+		qrms_assert_same( 100, $opts['bg_overlay_strength'], 'karartma üst sınıra' );
+		qrms_assert_same( 100, $opts['btn_surface_opacity'], 'opaklık üst sınıra' );
+		qrms_assert_same( '#f7f9fc', $opts['bg_color'], 'geçersiz renk varsayılana' );
+		qrms_assert_same( 'spinner', $opts['loader_type'], 'beyaz liste dışı tip varsayılana' );
+	}
+);
+
+qrms_test(
+	'sosyal hesap sırası işaretlenme sırasıdır ve altı hesapla sınırlıdır',
+	function () {
+		qrms_ae_submit(
+			'qrms-ae-davranis',
+			array(
+				'social_media_active'    => array( 'instagram', 'facebook', 'youtube', 'x', 'tiktok', 'whatsapp', 'linkedin' ),
+				'social_media_order'     => 'whatsapp,instagram,facebook,youtube,x,tiktok,linkedin',
+				'social_media_url_whatsapp' => 'https://wa.me/900000000',
+			)
+		);
+
+		$opts = get_option( 'splash_screen_options' );
+
+		qrms_assert_same( 6, count( $opts['social_media_active'] ), 'en fazla altı hesap' );
+		qrms_assert_same( 'whatsapp', $opts['social_media_active'][0], 'işaretlenme sırası korunur' );
+		qrms_assert_false(
+			in_array( 'linkedin', $opts['social_media_active'], true ),
+			'yedinci hesap düşer'
+		);
+	}
+);
+
+qrms_test(
+	'eski üç alanlı sosyal kayıt yeni sisteme kendiliğinden taşınır',
+	function () {
+		// v3.5 ve öncesinden yükseltilen kurulumda social_media_active hiç
+		// yazılmamıştır; eski bağlantılar tekrar kaydetmeden görünmelidir.
+		update_option(
+			'splash_screen_options',
+			array(
+				'social_links' => array(
+					'facebook'  => 'https://facebook.com/lokanta',
+					'instagram' => 'https://instagram.com/lokanta',
+					'twitter'   => 'https://x.com/lokanta',
+				),
+			)
+		);
+
+		ob_start();
+		qrms_ae()->render_splash_preview();
+		$html = ob_get_clean();
+
+		qrms_assert_contains( 'https://facebook.com/lokanta', $html, 'facebook rozeti' );
+		qrms_assert_contains( 'https://instagram.com/lokanta', $html, 'instagram rozeti' );
+		qrms_assert_contains( 'https://x.com/lokanta', $html, 'twitter -> x rozeti' );
+	}
+);
+
+qrms_test(
+	'kritik head çıktısı çerezden BAĞIMSIZDIR (tam sayfa cache güvenliği)',
+	function () {
+		$GLOBALS['qrms_test']['is_front_page'] = true;
+		update_option( 'splash_screen_options', array( 'bg_color' => '#101010' ) );
+
+		ob_start();
+		qrms_ae()->print_critical_head();
+		$cerezsiz = ob_get_clean();
+
+		$_COOKIE['splash_dismissed'] = '1';
+
+		ob_start();
+		qrms_ae()->print_critical_head();
+		$cerezli = ob_get_clean();
+
+		unset( $_COOKIE['splash_dismissed'] );
+
+		qrms_assert_same( $cerezsiz, $cerezli, 'çıktı her ziyaretçide aynı' );
+		qrms_assert_contains( '--sp-bg: #101010', $cerezsiz, 'değişkenler basılır' );
+		qrms_assert_contains( 'splash-loading', $cerezsiz, 'FOUC sınıfı betikten eklenir' );
+		qrms_assert_contains( 'splash_dismissed', $cerezsiz, 'karar client-side verilir' );
+	}
+);
+
+qrms_test(
+	'splash yalnızca ana sayfada basılır',
+	function () {
+		$GLOBALS['qrms_test']['is_front_page'] = false;
+
+		ob_start();
+		qrms_ae()->print_critical_head();
+		qrms_ae()->handle_frontend();
+
+		qrms_assert_same( '', ob_get_clean(), 'diğer sayfalarda hiçbir çıktı yok' );
+	}
+);
+
+qrms_test(
+	'ön yüzde overlay gizli başlar, önizlemede isPreview bayrağı taşır',
+	function () {
+		$GLOBALS['qrms_test']['is_front_page'] = true;
+		update_option( 'splash_screen_options', array( 'button_links' => array( 'btn1' => 'https://restoran.test/menu' ) ) );
+
+		ob_start();
+		qrms_ae()->handle_frontend();
+		$on_yuz = ob_get_clean();
+
+		ob_start();
+		qrms_ae()->render_splash_preview();
+		$onizleme = ob_get_clean();
+
+		qrms_assert_contains( 'style="display:none"', $on_yuz, 'ön yüzde gizli başlar' );
+		qrms_assert_false( strpos( $on_yuz, 'data-preview' ), 'ön yüzde önizleme bayrağı yok' );
+
+		qrms_assert_contains( 'data-preview="1"', $onizleme, 'önizlemede bayrak var' );
+		qrms_assert_false( strpos( $onizleme, 'style="display:none"' ), 'önizleme gizli başlamaz' );
+
+		// Önizleme frontend'in taklidi değil, aynı markup'ıdır.
+		qrms_assert_contains( 'https://restoran.test/menu', $on_yuz, 'ön yüzde CTA adresi' );
+		qrms_assert_contains( 'https://restoran.test/menu', $onizleme, 'önizlemede aynı adres' );
+	}
+);
+
+qrms_test(
+	'renk şeması: arkaplan görseli koyu, açık zemin light kabul edilir',
+	function () {
+		$GLOBALS['qrms_test']['is_front_page'] = true;
+
+		update_option( 'splash_screen_options', array( 'bg_scheme' => 'auto', 'bg_image' => 12 ) );
+		ob_start();
+		qrms_ae()->handle_frontend();
+		qrms_assert_contains( 'splash-scheme-dark', ob_get_clean(), 'görsel varken koyu' );
+
+		update_option( 'splash_screen_options', array( 'bg_scheme' => 'auto', 'bg_color' => '#ffffff' ) );
+		ob_start();
+		qrms_ae()->handle_frontend();
+		qrms_assert_contains( 'splash-scheme-light', ob_get_clean(), 'açık zeminde light' );
+	}
+);
+
+qrms_test(
+	'ödeme satırı: yöntem yoksa hiç basılmaz, yazı modunda ikon gelmez',
+	function () {
+		$GLOBALS['qrms_test']['is_front_page'] = true;
+
+		update_option( 'splash_screen_options', array( 'payment_methods' => array() ) );
+		ob_start();
+		qrms_ae()->handle_frontend();
+		qrms_assert_false( strpos( ob_get_clean(), 'splash-pay-row' ), 'seçim yoksa satır yok' );
+
+		update_option(
+			'splash_screen_options',
+			array(
+				'payment_methods'      => array( 'nakit' ),
+				'payment_display_mode' => 'text_only',
+			)
+		);
+		ob_start();
+		qrms_ae()->handle_frontend();
+		$html = ob_get_clean();
+
+		qrms_assert_contains( 'splash-pay-row', $html, 'satır basılır' );
+		qrms_assert_contains( 'Nakit', $html, 'etiket basılır' );
+		qrms_assert_false( strpos( $html, 'splash-pay-icon' ), 'yazı modunda ikon yok' );
+	}
+);
+
+qrms_test(
+	'bağlantısı olmayan rozet DOM\'a hiç girmez',
+	function () {
+		$GLOBALS['qrms_test']['is_front_page'] = true;
+		update_option(
+			'splash_screen_options',
+			array(
+				'button_links' => array( 'btn2' => 'tel:+900000000', 'btn3' => '', 'btn4' => '' ),
+			)
+		);
+
+		ob_start();
+		qrms_ae()->handle_frontend();
+		$html = ob_get_clean();
+
+		qrms_assert_contains( 'tel:+900000000', $html, 'adresi olan rozet basılır' );
+		// Wifi rozeti adres almaz; her zaman basılır.
+		qrms_assert_contains( 'id="wifi-btn"', $html, 'wifi rozeti her zaman var' );
+		qrms_assert_same( 2, substr_count( $html, 'sp-action-circle' ), 'yalnızca iki rozet' );
+	}
+);
+
+qrms_test(
+	'eski eklentinin adresleri yeni sayfalara yönlendirilir',
+	function () {
+		$_GET = array( 'page' => 'splash-screen', 'tab' => 'odeme' );
+
+		try {
+			qrms_ae()->maybe_redirect_legacy_pages();
+			qrms_assert_true( false, 'yönlendirme bekleniyordu' );
+		} catch ( QRMS_Test_Redirect $e ) {
+			qrms_assert_contains( 'page=qrms-ae-odeme', $e->getMessage(), 'sekme karşılığı sayfaya' );
+		}
+
+		$_GET = array( 'page' => 'splash-screen-links' );
+
+		try {
+			qrms_ae()->maybe_redirect_legacy_pages();
+			qrms_assert_true( false, 'yönlendirme bekleniyordu' );
+		} catch ( QRMS_Test_Redirect $e ) {
+			qrms_assert_contains( 'page=qrms-ae-butonlar', $e->getMessage(), 'eski bağlantılar sayfası' );
+		}
+
+		$GLOBALS['qrms_test']['redirects'] = array();
+		$_GET = array( 'page' => 'qrms-overview' );
+		qrms_ae()->maybe_redirect_legacy_pages();
+		qrms_assert_same( array(), $GLOBALS['qrms_test']['redirects'], 'başka sayfaya dokunulmaz' );
+	}
+);
+
+qrms_test(
+	'varlıklar dosya bazlı sürümle ve yalnızca kendi ekranlarında yüklenir',
+	function () {
+		$GLOBALS['qrms_test']['is_front_page'] = true;
+		qrms_ae()->enqueue_frontend_assets();
+
+		$splash = qrms_ae_style( 'qrms-ae-splash' );
+
+		qrms_assert_true( null !== $splash, 'ön yüz stili' );
+		qrms_assert_same(
+			QRMS_VERSION . '.' . filemtime( QRMS_PLUGIN_DIR . 'modules/qr-acilis-ekrani/assets/css/splash.css' ),
+			$splash['ver'],
+			'sürüm dosyanın kendi zamanını taşır'
+		);
+
+		// Modülün ekranında değilken yönetim varlıkları kuyruğa girmez.
+		$_GET = array( 'page' => 'qrms-overview' );
+		qrms_ae()->admin_enqueue_assets();
+		qrms_assert_same( null, qrms_ae_style( 'qrms-ae-admin' ), 'başka ekranda yüklenmez' );
+
+		$_GET = array( 'page' => 'qrms-ae-gorunum' );
+		qrms_ae()->admin_enqueue_assets();
+		qrms_assert_true( null !== qrms_ae_style( 'qrms-ae-admin' ), 'kendi ekranında yüklenir' );
+	}
+);
+
 
 if ( empty( $GLOBALS['qrms_failures'] ) ) {
 	echo "\033[32mTüm testler geçti\033[0m (" . $GLOBALS['qrms_assertions'] . " doğrulama)\n\n";

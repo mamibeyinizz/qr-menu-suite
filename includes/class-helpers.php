@@ -30,6 +30,7 @@ class QRMS_Helpers {
 		'qr-chatbot',
 		'qr-calisma-saatleri',
 		'qr-masa-oturum-guvenligi',
+		'qr-acilis-ekrani',
 	);
 
 	/**
@@ -48,6 +49,7 @@ class QRMS_Helpers {
 			'qr-chatbot'               => __( 'QR Chatbot', 'qrms' ),
 			'qr-calisma-saatleri'      => __( 'QR Çalışma Saatleri', 'qrms' ),
 			'qr-masa-oturum-guvenligi' => __( 'QR Masa Oturum Güvenliği', 'qrms' ),
+			'qr-acilis-ekrani'         => __( 'Açılış Ekranı', 'qrms' ),
 		);
 	}
 

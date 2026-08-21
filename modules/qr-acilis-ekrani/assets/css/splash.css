@@ -1,0 +1,713 @@
+/* Açılış Ekranı - frontend statik stilleri.
+   Site başına değişen değerler (--sp-bg, --sp-accent, --sp-accent-rgb,
+   --sp-btn-alpha, --sp-overlay, --sp-seconds, --splash-btn-bg,
+   --splash-btn-opacity, --sp-cta-bg, --sp-logo-bar-*, --sp-loader-*)
+   wp_head'e ufak bir :root bloğu olarak basılır; buradaki tüm selector'lar
+   statiktir ve cache'lenir.
+
+   backdrop-filter BÜTÇESİ - ekran başına 3 katman (kabul edilebilir üst sınır):
+     1) .splash-cta   2) .splash-pay-row   3) .splash-logo (üst şerit)
+   Rozetlerde blur YOK: cam etkisi rgba dolgu + kenarlık + inset highlight
+   ile veriliyor, okunabilirliği zaten gradient overlay sağlıyor. */
+
+html.splash-loading #custom-splash-overlay { display: block !important; visibility: visible; }
+
+#custom-splash-overlay {
+    /* Tasarım tokenları - koyu şema (varsayılan).
+       Rozet/cam dolgusu admin'den gelir; head'de değer basılmazsa
+       buradaki fallback'ler eski görünümü birebir korur. */
+    --sp-glass-bg: rgba(var(--splash-btn-bg, 255, 255, 255), var(--splash-btn-opacity, 0.14));
+    --sp-glass-border: rgba(255, 255, 255, 0.28);
+    --sp-glass-blur: blur(14px) saturate(140%);
+    --sp-glass-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+    --sp-text: #ffffff;
+    --sp-text-shadow: 0 1px 2px rgba(0, 0, 0, 0.40);
+
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    /* Mobil tarayıcılarda adres çubuğu kayarken 100% yükseklik zıplar ve
+       alta sabitlenmiş içerik çubuğun altında kalır; dvh destekleyen
+       tarayıcıda dinamik yükseklik kullanılır, desteklemeyende 100% kalır. */
+    height: 100%;
+    height: 100dvh;
+    background-color: var(--sp-bg, #f7f9fc);
+    z-index: 9999999;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: var(--sp-text);
+    box-sizing: border-box;
+    overscroll-behavior: contain;
+    overflow: hidden;
+    animation: splashOverlayFadeIn 0.4s ease forwards;
+}
+
+#custom-splash-overlay *,
+#custom-splash-overlay *::before,
+#custom-splash-overlay *::after { box-sizing: border-box; }
+
+/* Açık şema tokenları.
+   Açık zeminde aynı alfa değeri yüzeyi görünmez kılıyor; admin'den gelen
+   opaklığın üzerine sabit bir katkı eklenir (1.0'da kırpılır). */
+#custom-splash-overlay.splash-scheme-light {
+    --sp-glass-bg: rgba(var(--splash-btn-bg, 255, 255, 255), min(1, calc(var(--splash-btn-opacity, 0.14) + 0.41)));
+    --sp-glass-border: rgba(0, 0, 0, 0.10);
+    --sp-text: #1c1c1e;
+    --sp-text-shadow: none;
+}
+
+@keyframes splashOverlayFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* ---------------- Arkaplan görseli katmanı ---------------- */
+/* CSS background-image DEĞİL: gerçek <img> kullanılır, böylece srcset ve
+   preload devreye girer ve görsel LCP elemanı olarak erken yüklenir. */
+
+#custom-splash-overlay .splash-bg-picture {
+    position: absolute;
+    inset: 0;
+    display: block;
+    z-index: 0;
+}
+
+#custom-splash-overlay .splash-bg-img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    /* Üst kısmı önceliklendirir; ürün görseli tepeden kırpılmaz. */
+    object-position: center 35%;
+    z-index: 0;
+}
+
+/* Okunabilirlik katmanı: TEK gradient, blur YOK.
+   Sadece alt uçtaki alfa katkısı admin ayarından (--sp-overlay) gelir. */
+#custom-splash-overlay .splash-bg-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    background: linear-gradient(to bottom,
+        rgba(0, 0, 0, 0.34) 0%,
+        rgba(0, 0, 0, 0.06) 26%,
+        rgba(0, 0, 0, 0.42) 62%,
+        rgba(0, 0, 0, calc(0.30 + var(--sp-overlay, 0.55))) 100%);
+}
+
+#custom-splash-overlay.splash-scheme-light .splash-bg-overlay {
+    background: linear-gradient(to bottom,
+        rgba(0, 0, 0, 0.20) 0%,
+        rgba(255, 255, 255, 0.04) 26%,
+        rgba(255, 255, 255, 0.42) 62%,
+        rgba(255, 255, 255, calc(0.30 + var(--sp-overlay, 0.55))) 100%);
+}
+
+/* ---------------- Logo şeridi (tam genişlik üst banner) ---------------- */
+/* Logo artık kendi kutusunda değil, ekranın tamamını kaplayan bir şerittedir.
+   Şerit yüksekliği (--sp-logo-bar-h) ve zemin rengi/opaklığı
+   (--sp-logo-bar-rgb / --sp-logo-bar-alpha) admin'den gelir; logo şeridin
+   içinde yatay ve dikey olarak ortalanır.
+   NOT: Yüklenen logo dosyasının KENDİ arkaplanı opaksa (şeffaf PNG/SVG
+   değilse) şerit zemini görsel olarak o dosyanın altında kalır; bu CSS ile
+   çözülemez. */
+
+#custom-splash-overlay .splash-logo {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* Çentikli ekranlarda şerit çentiğin altına inmez; güvenli alan
+       yüksekliğe eklenir, logo yine görünen alanın ortasında kalır. */
+    min-height: calc(var(--sp-logo-bar-h, 96px) + env(safe-area-inset-top, 0px));
+    padding: 10px 20px;
+    padding-top: calc(10px + env(safe-area-inset-top, 0px));
+    background: rgba(var(--sp-logo-bar-rgb, 0, 0, 0), var(--sp-logo-bar-alpha, 0.32));
+    border-bottom: 1px solid var(--sp-glass-border);
+    -webkit-backdrop-filter: var(--sp-glass-blur);
+    backdrop-filter: var(--sp-glass-blur);
+    line-height: 0;
+    contain: layout paint;
+}
+
+#custom-splash-overlay .sp-logo-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    max-width: 100%;
+}
+
+#custom-splash-overlay .splash-logo img {
+    display: block;
+    /* Şerit büyüdükçe logo da büyür; şeridin içinde her zaman nefes payı kalır. */
+    max-height: calc(var(--sp-logo-bar-h, 96px) - 24px);
+    max-width: min(280px, 74vw);
+    width: auto;
+    height: auto;
+    object-fit: contain;
+}
+
+/* ---------------- İçerik sütunu (alttan sabit) ---------------- */
+/* Alttan sabitleme deterministiktir; sabit bir top yüzdesi verilmez.
+   Aksiyon rozetleri CTA'nın üstüne alındığı için CTA merkezi
+   360x780 - 430x932 aralığında %68-%74 bandına düşer. */
+
+#custom-splash-overlay .splash-content {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 2;
+    padding: 0 20px calc(20px + 2.4vh + env(safe-area-inset-bottom, 0px));
+}
+
+#custom-splash-overlay .splash-stack {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    max-width: 340px;
+    margin: 0 auto;
+    width: 100%;
+}
+
+/* Dikey ritim: tek tip gap yerine her blok kendi üst boşluğunu taşır,
+   böylece gruplar birbirinden ayrışır. */
+/* Aksiyon satırı artık ikon+etiket bloğu taşıdığı için ~15px daha yüksek.
+   CTA'nın ÜSTÜNDEKİ boşluk kısılı kalır (20 -> 14).
+
+   CTA + 4'lü grid yukarı alındı: yığın alttan sabitlendiği için CTA'nın
+   ALTINDAKİ boşlukları büyütmek ikiliyi yukarı taşır ve alttaki ödeme
+   alanına daha fazla nefes payı bırakır. Değerler sabit px değil, ekran
+   yüksekliğiyle oranlı clamp(): küçük telefonlarda eski aralığa yakın
+   kalır, uzun ekranlarda kayma belirginleşir. */
+#custom-splash-overlay .splash-cta { margin-top: 14px; }
+#custom-splash-overlay .splash-divider { margin-top: clamp(26px, 4.4vh, 46px); }
+#custom-splash-overlay .splash-social { margin-top: 14px; }
+#custom-splash-overlay .splash-pay-row { margin-top: clamp(24px, 3.6vh, 40px); }
+#custom-splash-overlay .splash-stack > :first-child { margin-top: 0; }
+
+/* ---------------- Giriş animasyonu ---------------- */
+/* Animasyon blur'suz sarmalayıcıda (.splash-stack) çalışır; içindeki cam
+   katmanlar animasyonlanmaz. Tek seferliktir, animationend'de JS sınıfı
+   kaldırır ve eleman aşağıdaki temel duruma (opacity:1) düşer. */
+
+#custom-splash-overlay .splash-stack { opacity: 1; }
+
+#custom-splash-overlay .splash-stack.is-animating.anim-blur-up {
+    animation: splashBlurUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) both 0.1s;
+}
+@keyframes splashBlurUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+#custom-splash-overlay .splash-stack.is-animating.anim-elastic {
+    animation: splashElastic 0.8s cubic-bezier(0.68, -0.55, 0.26, 1.55) both 0.1s;
+}
+@keyframes splashElastic {
+    from { opacity: 0; transform: scale(0.9); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+#custom-splash-overlay .splash-stack.is-animating.anim-zoom-out {
+    animation: splashZoomOut 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) both 0.1s;
+}
+@keyframes splashZoomOut {
+    from { opacity: 0; transform: scale(1.06); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+/* ---------------- Birincil CTA ---------------- */
+
+#custom-splash-overlay .splash-cta {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 56px;
+    padding: 0 20px;
+    border-radius: 28px;
+    /* CTA'yı ayıran şey dolgu koyuluğu değil, tam opak kenarlıktır.
+       --sp-cta-bg admin'den gelir: varsayılan olarak vurgu rengi + buton
+       şeffaflığı, "CTA da buton yüzeyini kullansın" işaretliyse rozetlerle
+       aynı --splash-btn-bg / --splash-btn-opacity dolgusu. */
+    background: var(--sp-cta-bg, rgba(var(--sp-accent-rgb, 0, 115, 170), var(--sp-btn-alpha, 0.22)));
+    border: 1.5px solid var(--sp-accent, #0073aa);
+    -webkit-backdrop-filter: var(--sp-glass-blur);
+    backdrop-filter: var(--sp-glass-blur);
+    box-shadow: var(--sp-glass-shadow);
+    color: var(--sp-text);
+    text-shadow: var(--sp-text-shadow);
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    text-decoration: none;
+    text-align: center;
+    cursor: pointer;
+    transition: transform 120ms ease;
+}
+
+/* Hover mobilde anlamsız; sadece :active ve :focus-visible tanımlı. */
+#custom-splash-overlay .splash-cta:active { transform: scale(0.98); }
+#custom-splash-overlay .splash-cta.is-disabled { opacity: 0.55; pointer-events: none; }
+
+/* ---------------- Ayraç ---------------- */
+
+#custom-splash-overlay .splash-divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+}
+
+#custom-splash-overlay .splash-divider-line {
+    flex: 1;
+    height: 1px;
+    background: var(--sp-glass-border);
+}
+
+#custom-splash-overlay .splash-divider-label {
+    font-size: 12.5px;
+    font-weight: 500;
+    opacity: 0.85;
+    color: var(--sp-text);
+    text-shadow: var(--sp-text-shadow);
+    white-space: nowrap;
+}
+
+/* ---------------- Dairesel rozetler ---------------- */
+/* Rozet satırlarının KONTEYNERİNDE arkaplan/kenarlık/blur/gölge YOK -
+   tamamen şeffaf, sadece hizalama görevi görür. Cam etkisi rozetlerin
+   kendisinde; rozetlerde backdrop-filter kullanılmaz. */
+
+#custom-splash-overlay .splash-actions,
+#custom-splash-overlay .splash-social {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+    background: none;
+    border: 0;
+    box-shadow: none;
+    padding: 0;
+    contain: layout paint;
+}
+
+/* Aksiyon satırı tam olarak 4 sabit öğe taşır (266px, 340px sütuna
+   garantili sığar) — asla sarmaz. Sosyal satır artık en fazla 6 platform
+   taşıyabildiği için (önceden sabit 3), dar ekranlarda gerekirse 2 satıra
+   sarar; tek satırda sığdığı sürece görünüm eskisiyle birebir aynıdır. */
+#custom-splash-overlay .splash-actions { flex-wrap: nowrap; }
+#custom-splash-overlay .splash-social { flex-wrap: wrap; row-gap: 10px; }
+
+/* Aksiyon rozeti = daire + altında mikro etiket. Etiket metni ilgili
+   butonun mevcut button_texts alanından gelir; ayrı bir ayar yoktur. */
+#custom-splash-overlay .sp-action {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    /* Daire sabit 56px; dar ekranda daralması gereken tek şey etikettir. */
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: 74px;
+}
+
+#custom-splash-overlay .sp-action-label {
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.15px;
+    color: var(--sp-text);
+    opacity: 0.68;
+    text-shadow: var(--sp-text-shadow);
+    margin-top: 5px;
+    text-align: center;
+    line-height: 1.25;
+    /* En fazla 2 satır: uzun etiketler artık ilk kelimenin ortasından
+       kesilmiyor. Sabit min-height, 1 ve 2 satırlık etiketlerin altındaki
+       hizayı eşitler; dairelere olan mesafe her rozette aynı kalır. */
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    max-width: 74px;
+    min-height: 23px;
+}
+
+#custom-splash-overlay .splash-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    width: 56px;
+    height: 56px;
+    padding: 0;
+    border-radius: 50%;
+    background: var(--sp-glass-bg);
+    border: 1px solid var(--sp-glass-border);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    color: var(--sp-text);
+    text-decoration: none;
+    cursor: pointer;
+    transition: transform 120ms ease;
+}
+
+/* Sosyal rozetler kasıtlı olarak küçük - hiyerarşi kurar. */
+#custom-splash-overlay .splash-badge-sm { width: 44px; height: 44px; }
+
+#custom-splash-overlay .splash-badge:active { transform: scale(0.94); }
+#custom-splash-overlay .splash-badge .splash-icon { display: block; }
+
+/* ---------------- Ödeme rozetleri ---------------- */
+/* TEK yüzey: dış konteyner cam, iç öğelerin kendi arkaplanı/kenarlığı YOK. */
+
+#custom-splash-overlay .splash-pay-row {
+    display: inline-flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 8px 16px;
+    width: auto;
+    max-width: 100%;
+    padding: 10px 14px;
+    border-radius: 18px;
+    background: var(--sp-glass-bg);
+    border: 1px solid var(--sp-glass-border);
+    -webkit-backdrop-filter: var(--sp-glass-blur);
+    backdrop-filter: var(--sp-glass-blur);
+    box-shadow: var(--sp-glass-shadow);
+    contain: layout paint;
+}
+
+#custom-splash-overlay .splash-pay {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    /* Bilgilendirme amaçlı; tıklanabilir değil. */
+    pointer-events: none;
+    user-select: none;
+}
+
+#custom-splash-overlay .splash-pay-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    color: var(--sp-pay-color, currentColor);
+}
+
+#custom-splash-overlay .splash-pay-label {
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+    color: var(--sp-text);
+    text-shadow: var(--sp-text-shadow);
+    white-space: nowrap;
+}
+
+/* Sadece yazı modu: ikon basılmadığı için satır arası boşluk biraz açılır. */
+#custom-splash-overlay .splash-pay-row.is-text-only { gap: 8px 18px; }
+
+/* --- Kayan şerit (marquee) --- */
+/* Sonsuz döngü tamamen CSS keyframe iledir; JS interval YOKTUR.
+   İçerik birebir iki kez basılır ve şerit -%50 ötelenir; ikinci kopya
+   birincinin bittiği yerde başladığı için ek yeri görünmez (seamless). */
+
+#custom-splash-overlay .splash-pay-row.is-marquee {
+    display: block;
+    /* İçerik sütunundan (340px) taşıp ekranın tamamına yayılır; kayan şerit
+       kenardan kenara okunur. Yığın zaten ekranda ortalı ve satır flex
+       hizalamasıyla ortalandığı için ek bir kaydırma gerekmez. Overlay
+       overflow:hidden olduğu için 100vw yatay kaydırma yaratmaz. */
+    width: 100vw;
+    max-width: 100vw;
+    padding: 10px 0;
+    /* Kenardan kenara uzanan bir şeritte yan kenarlık ve köşe yarıçapı
+       ekranın dışında kalır; sadece üst/alt çizgi anlamlıdır. */
+    border-radius: 0;
+    border-left: 0;
+    border-right: 0;
+    overflow: hidden;
+    /* Şeridin uçları sert kesilmez, zemine karışarak biter. */
+    -webkit-mask-image: linear-gradient(to right, transparent 0, #000 10%, #000 90%, transparent 100%);
+    mask-image: linear-gradient(to right, transparent 0, #000 10%, #000 90%, transparent 100%);
+}
+
+#custom-splash-overlay .splash-pay-track {
+    display: flex;
+    align-items: center;
+    width: max-content;
+    /* Compositor'a önceden haber verilir; her karede layout/paint yok,
+       sadece transform. */
+    will-change: transform;
+    animation: splashPayMarquee var(--sp-marquee-duration, 18s) linear infinite;
+}
+
+#custom-splash-overlay .splash-pay-seq {
+    display: flex;
+    align-items: center;
+    flex: none;
+}
+
+#custom-splash-overlay .splash-pay-row.is-marquee .splash-pay {
+    padding: 0 15px;
+}
+
+@keyframes splashPayMarquee {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+}
+
+/* ---------------- Odak görünürlüğü ---------------- */
+
+#custom-splash-overlay .splash-cta:focus-visible,
+#custom-splash-overlay .splash-badge:focus-visible,
+.splash-modal-close:focus-visible,
+.splash-modal-link:focus-visible {
+    outline: 2px solid var(--sp-accent, #0073aa);
+    outline-offset: 3px;
+}
+
+/* ---------------- Yüklenme göstergesi (sağ üst) ---------------- */
+/* Alttaki ilerleme çubuğunun yerini alır. Tüm tipler CSS keyframe'lerle
+   çalışır; JS animasyon frame'i yoktur. Hareket eden özellikler transform
+   ve opacity ile sınırlıdır (ring hariç: 44px'lik bir SVG'de dashoffset
+   maliyeti ihmal edilebilir). */
+
+#custom-splash-overlay .splash-loader {
+    position: absolute;
+    z-index: 4;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--sp-loader-size, 28px);
+    height: var(--sp-loader-size, 28px);
+    /* Göstergenin altındaki hiçbir şeyin dokunma alanını çalmaz. */
+    pointer-events: none;
+    /* Kendi katmanında kalır; arkasındaki logo şeridi yeniden boyanmaz. */
+    contain: strict;
+}
+
+#custom-splash-overlay .splash-loader.sp-loader-top-right {
+    top: calc(14px + env(safe-area-inset-top, 0px));
+    right: calc(14px + env(safe-area-inset-right, 0px));
+}
+
+/* --- Tip: spinner (dönen ince yay) --- */
+#custom-splash-overlay .sp-loader-arc {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    border: 2.5px solid rgba(var(--sp-loader-rgb, 255, 255, 255), 0.22);
+    border-top-color: var(--sp-loader, #ffffff);
+    will-change: transform;
+    animation: splashLoaderSpin 0.85s linear infinite;
+}
+@keyframes splashLoaderSpin {
+    to { transform: rotate(360deg); }
+}
+
+/* --- Tip: ring (geri sayımı boşalan halka) --- */
+/* Süre --sp-seconds'tan gelir; ziyaretçi ekrana dokununca JS animasyonu
+   baştan başlatır (yeni bir animasyon döngüsü kurmaz, mevcut CSS
+   animasyonunu resetler). */
+#custom-splash-overlay .sp-loader-ring {
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+}
+#custom-splash-overlay .sp-loader-ring circle {
+    fill: none;
+    stroke-width: 4;
+    stroke-linecap: round;
+}
+#custom-splash-overlay .sp-loader-ring-track {
+    stroke: rgba(var(--sp-loader-rgb, 255, 255, 255), 0.22);
+}
+#custom-splash-overlay .sp-loader-ring-bar {
+    stroke: var(--sp-loader, #ffffff);
+    /* 2 * pi * 18 ≈ 113.1 */
+    stroke-dasharray: 113.1;
+    stroke-dashoffset: 0;
+    animation: splashLoaderRing var(--sp-seconds, 7s) linear forwards;
+}
+@keyframes splashLoaderRing {
+    from { stroke-dashoffset: 0; }
+    to { stroke-dashoffset: 113.1; }
+}
+
+/* --- Tip: dots (sırayla nabzeden üç nokta) --- */
+#custom-splash-overlay .splash-loader.is-dots { gap: 3px; }
+#custom-splash-overlay .sp-loader-dot {
+    width: 22%;
+    height: 22%;
+    border-radius: 50%;
+    background: var(--sp-loader, #ffffff);
+    opacity: 0.3;
+    will-change: transform, opacity;
+    animation: splashLoaderDots 1.05s ease-in-out infinite;
+}
+#custom-splash-overlay .sp-loader-dot:nth-child(2) { animation-delay: 0.16s; }
+#custom-splash-overlay .sp-loader-dot:nth-child(3) { animation-delay: 0.32s; }
+@keyframes splashLoaderDots {
+    0%, 70%, 100% { transform: scale(0.7); opacity: 0.3; }
+    35% { transform: scale(1.15); opacity: 1; }
+}
+
+/* --- Tip: pulse (genişleyip sönen halka) --- */
+/* Konumlandırma bağlamı .splash-loader'ın kendisidir (position: absolute). */
+#custom-splash-overlay .sp-loader-pulse-core,
+#custom-splash-overlay .sp-loader-pulse-wave {
+    position: absolute;
+    border-radius: 50%;
+}
+#custom-splash-overlay .sp-loader-pulse-core {
+    width: 42%;
+    height: 42%;
+    background: var(--sp-loader, #ffffff);
+    opacity: 0.9;
+}
+#custom-splash-overlay .sp-loader-pulse-wave {
+    width: 100%;
+    height: 100%;
+    border: 2px solid var(--sp-loader, #ffffff);
+    will-change: transform, opacity;
+    animation: splashLoaderPulse 1.4s cubic-bezier(0.22, 0.61, 0.36, 1) infinite;
+}
+@keyframes splashLoaderPulse {
+    0% { transform: scale(0.35); opacity: 0.85; }
+    80%, 100% { transform: scale(1); opacity: 0; }
+}
+
+/* ---------------- Modal ---------------- */
+
+.splash-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.65);
+    align-items: center;
+    justify-content: center;
+    z-index: 10000000;
+}
+.splash-modal-content {
+    background: #fff;
+    padding: 28px 24px;
+    border-radius: 16px;
+    text-align: center;
+    max-width: 320px;
+    width: 90%;
+    position: relative;
+    color: #000;
+    animation: modalPop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+@keyframes modalPop {
+    from { transform: scale(0.9); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+}
+
+.splash-modal-close {
+    position: absolute;
+    top: 8px;
+    right: 14px;
+    font-size: 28px;
+    cursor: pointer;
+    background: none;
+    border: none;
+    line-height: 1;
+}
+.splash-modal-link { display: block; margin: 12px 0; font-size: 17px; color: #0073aa; text-decoration: none; font-weight: 500; }
+.splash-modal-link:hover { text-decoration: underline; }
+
+/* Çentikli cihazlarda yatay kullanımda içerik kameranın altına girmesin. */
+@supports (padding: env(safe-area-inset-left)) {
+    #custom-splash-overlay .splash-content {
+        padding-left: max(20px, env(safe-area-inset-left));
+        padding-right: max(20px, env(safe-area-inset-right));
+    }
+}
+
+/* ---------------- Dar ekran ---------------- */
+
+@media (max-width: 380px) {
+    #custom-splash-overlay .splash-content { padding-left: 14px; padding-right: 14px; }
+    #custom-splash-overlay .splash-pay-row { padding-left: 12px; padding-right: 12px; }
+    /* Kayan şerit tam genişlik kalır; yanlardan daraltılmaz. */
+    #custom-splash-overlay .splash-pay-row.is-marquee { padding-left: 0; padding-right: 0; }
+    /* 4x56 + 3x14 = 266px; 360px ekranda 332px sütuna sığar, sarma gerekmez. */
+    #custom-splash-overlay .splash-actions,
+    #custom-splash-overlay .splash-social { gap: 12px; }
+}
+
+/* ---------------- Yatay / kısa ekran ---------------- */
+/* Telefon yatay tutulduğunda (ya da küçük pencerede) yığın 560px'i geçmez ve
+   dikey ritim kısılır: aksi hâlde CTA ile ödeme satırı ekranın dışına taşar.
+   Değerler yalnızca bu koşulda ezilir; dikey kullanımdaki tasarım aynen kalır. */
+
+@media (max-height: 560px) and (orientation: landscape) {
+    #custom-splash-overlay .splash-content {
+        padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    }
+    #custom-splash-overlay .splash-stack { max-width: 560px; }
+    #custom-splash-overlay .splash-divider { margin-top: 14px; }
+    #custom-splash-overlay .splash-pay-row { margin-top: 12px; }
+    #custom-splash-overlay .splash-logo { --sp-logo-bar-h: 64px; }
+}
+
+/* ---------------- Hareket azaltma ---------------- */
+
+@media (prefers-reduced-motion: reduce) {
+    #custom-splash-overlay {
+        --sp-glass-blur: blur(7px) saturate(140%);
+    }
+    #custom-splash-overlay,
+    #custom-splash-overlay .splash-stack,
+    #custom-splash-overlay .splash-cta,
+    #custom-splash-overlay .splash-badge,
+    #custom-splash-overlay .splash-pay-track,
+    #custom-splash-overlay .sp-loader-dot,
+    #custom-splash-overlay .sp-loader-pulse-wave,
+    .splash-modal-content {
+        animation: none !important;
+        transition: none !important;
+    }
+
+    /* Gösterge tamamen durursa "bekleniyor" bilgisi kaybolur; spinner ve
+       halka çok yavaş bir tempoya çekilir, hızlı/atlamalı hareket kalmaz. */
+    #custom-splash-overlay .sp-loader-arc { animation-duration: 3s !important; }
+    #custom-splash-overlay .sp-loader-dot { opacity: 0.75 !important; transform: none !important; }
+    #custom-splash-overlay .sp-loader-pulse-wave { opacity: 0.45 !important; transform: none !important; }
+    /* Kayan şerit durur ve sabit, sarmalı bir satıra döner: duran şeritte
+       ikinci kopya gereksiz, taşan rozetler de kırpılmamalı. */
+    #custom-splash-overlay .splash-pay-row.is-marquee {
+        overflow: visible;
+        -webkit-mask-image: none;
+        mask-image: none;
+    }
+    #custom-splash-overlay .splash-pay-track {
+        width: 100%;
+        flex-wrap: wrap;
+        justify-content: center;
+        will-change: auto;
+    }
+    #custom-splash-overlay .splash-pay-seq {
+        /* Şerit dururken sıra max-content genişliğinde kalırsa rozetler
+           ekranın dışına taşar; sarabilmesi için tam genişliğe çekilir. */
+        flex: 1 1 auto;
+        width: 100%;
+        flex-wrap: wrap;
+        justify-content: center;
+        row-gap: 8px;
+    }
+    #custom-splash-overlay .splash-pay-seq + .splash-pay-seq { display: none; }
+}
