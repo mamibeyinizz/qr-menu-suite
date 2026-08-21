@@ -53,6 +53,7 @@ bir bilgilendirme notice'ı gösterilir.
 | `qrms_license_notice` | Arka plan senkronizasyonunun bıraktığı durum bayrağı |
 | `qrms_setup_completed` | Sihirbaz tamamlandı mı? |
 | `splash_screen_options` | Açılış Ekranı modülünün tüm ayarları (bağımsız eklentiden taşınırken ad korundu) |
+| `qrms_calisma_saatleri_renkler` | Çalışma saatleri listesinin renkleri (boş değer = temadan devral) |
 
 ## Modüller
 
@@ -529,6 +530,39 @@ için hiç tetiklenmez, `plugins_loaded` (öncelik 10) kaydı ise modül zaten
 > hatası verir. `module.php`'deki `QRM_PRO_VERSION` kontrolü bunu fatal
 > yerine sessiz devre dışı kalmaya çevirir (sabiti eski eklenti tanımlar ve
 > çalışmaya devam eder), ama iki kopyayı birlikte çalışır kılmaz.
+
+### QR Çalışma Saatleri — renkler ve canlı önizleme
+
+Modülün görünümü stylesheet'teki sabit renklerden geliyordu (bugünün vurgusu
+`#c9a84c`, satır ayracı `rgba(0,0,0,.08)`) ve yönetim ekranında saatlerin
+müşteri tarafında nasıl görüneceğini gösteren hiçbir şey yoktu.
+
+**Renkler ayrı bir option'da durur** (`qrms_calisma_saatleri_renkler`).
+Saatler `qrms_calisma_saatleri` içindedir ve `qrms_cs_sanitize()` o diziyi gün
+anahtarlarına indirger — gün anahtarı olmayan her şeyi düşürür. Renkleri aynı
+option'a koymak ya sessizce silinmelerine ya da çalışan saat şemasını yeniden
+yazmaya mal olurdu. Form yine tek: restoran sahibi için tek bir **Kaydet**
+vardır, iki option birlikte yazılır.
+
+**Boş renk = temadan devral.** Seçilmemiş renk CSS değişkeni olarak hiç
+basılmaz; stylesheet'teki `var(--qrms-cs-today, #c9a84c)` geri düşüşü devrede
+kalır. Bu yüzden modül güncellendiğinde hiçbir sitenin görünümü değişmez —
+testi de var ("hiç renk seçilmemişken çıktı eskisiyle birebir aynıdır").
+
+Altı alan: bugünün vurgusu, bugünün satır zemini, gün adı, saat metni, kapalı
+gün, satır ayracı. Alan işaretlemesi restoran-menu'nün renk seçicisiyle aynı
+(`data-default-color` taşıyan metin kutusu + `wpColorPicker`).
+
+**Canlı önizleme kısa kodun taklidi değil, kendisidir:** `qrms_cs_shortcode()`
+yönetim ekranında da çağrılır ve ön yüzün gerçek `frontend.css`'i orada da
+kuyruğa alınır. Ayrı bir şablon tutulsaydı ikisi zamanla ayrışır ve önizleme
+yalan söylemeye başlardı. JS yalnızca hazır DOM'u günceller: saat alanı, kapalı
+kutusu ve renk seçicisi değiştikçe liste kaydetmeden yenilenir.
+
+Saat metni iki yerde üretiliyor — sayfa açılışında PHP (`qrms_cs_format_day()`),
+değişiklikte JS. Metinlerin kendisi `wp_localize_script` ile PHP'den geçer
+(çeviri tek yerde kalır); dallanma (kapalı / açılış-kapanış eşitse 24 saat /
+aralık) iki tarafta da aynıdır ve **ikisi birden testle** doğrulanır.
 
 ### Açılış Ekranı (`qr-acilis-ekrani`)
 

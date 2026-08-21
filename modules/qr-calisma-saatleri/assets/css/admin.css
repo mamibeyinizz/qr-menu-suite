@@ -54,3 +54,55 @@
 		grid-template-columns: 1fr 1fr;
 	}
 }
+
+/* ---------------------------------------------------------------------------
+   Renk alanları
+   ------------------------------------------------------------------------ */
+
+.qrms-cs-color-grid {
+	display: grid;
+	grid-template-columns: 1fr;
+	gap: 16px;
+}
+
+.qrms-cs-color-field {
+	margin: 0;
+}
+
+/* wpColorPicker düğmesi mobilde parmakla açılabilmeli. */
+.qrms-cs-color-field .wp-color-result.button {
+	min-height: 44px;
+	line-height: 42px;
+}
+
+.qrms-cs-color-field .wp-picker-input-wrap input[type="text"] {
+	min-height: 40px;
+}
+
+.qrms-cs-colors .qrms-help {
+	margin-top: 4px;
+}
+
+/* ---------------------------------------------------------------------------
+   Canlı önizleme
+   ------------------------------------------------------------------------ */
+
+/* Kısa kodun gerçek çıktısı burada durur; kutu yalnızca onu müşteri
+   sayfasındaki gibi beyaz bir zemine oturtur. */
+.qrms-cs-preview {
+	padding: 14px 16px;
+	border: 1px solid #dcdcde;
+	border-radius: 8px;
+	background: #fff;
+	color: #1c1c1e;
+}
+
+.qrms-cs-preview .qrms-cs-list {
+	max-width: 100%;
+}
+
+@media screen and ( min-width: 600px ) {
+	.qrms-cs-color-grid {
+		grid-template-columns: 1fr 1fr;
+	}
+}

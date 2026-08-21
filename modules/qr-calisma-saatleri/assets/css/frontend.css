@@ -1,5 +1,10 @@
 /**
  * QR Çalışma Saatleri — kısa kod.
+ *
+ * Renkler CSS özel değişkeninden okunur; değerleri yönetim ekranındaki renk
+ * ayarları kapsayıcıya satır içi olarak basar (bkz. includes/renkler.php).
+ * Her var() BUGÜNKÜ sabit değeri geri düşüş olarak taşır: hiçbir renk
+ * seçilmemişken çıktı, renk ayarı eklenmeden önceki çıktının aynısıdır.
  */
 
 .qrms-cs-list {
@@ -15,7 +20,7 @@
 	align-items: center;
 	gap: 12px;
 	padding: 10px 0;
-	border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+	border-bottom: 1px solid var(--qrms-cs-divider, rgba(0, 0, 0, 0.08));
 	font-size: 15px;
 	line-height: 1.4;
 }
@@ -26,12 +31,32 @@
 
 .qrms-cs-item-day {
 	font-weight: 600;
+	color: var(--qrms-cs-day, inherit);
+}
+
+.qrms-cs-item-hours {
+	color: var(--qrms-cs-hours, inherit);
 }
 
 .qrms-cs-item.is-today .qrms-cs-item-day {
-	color: #c9a84c;
+	color: var(--qrms-cs-today, #c9a84c);
+}
+
+/* Zemin seçilmediğinde transparent kalır; satırın kendisi değişmez. */
+.qrms-cs-item.is-today {
+	background: var(--qrms-cs-today-bg, transparent);
 }
 
 .qrms-cs-item.is-closed .qrms-cs-item-hours {
 	opacity: 0.7;
+	color: var(--qrms-cs-closed, inherit);
+}
+
+/* Dar ekran: gün adı ve saat alt alta iner, satır sıkışıp kırpılmaz. */
+@media screen and (max-width: 380px) {
+	.qrms-cs-item {
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 2px;
+	}
 }

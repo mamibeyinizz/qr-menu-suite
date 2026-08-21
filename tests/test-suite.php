@@ -1791,6 +1791,8 @@ qrms_test(
  * ------------------------------------------------------------------------ */
 
 require_once QRMS_PLUGIN_DIR . 'modules/qr-calisma-saatleri/includes/hours.php';
+require_once QRMS_PLUGIN_DIR . 'modules/qr-calisma-saatleri/includes/renkler.php';
+require_once QRMS_PLUGIN_DIR . 'modules/qr-calisma-saatleri/includes/shortcode.php';
 require_once QRMS_PLUGIN_DIR . 'modules/qr-calisma-saatleri/includes/admin-sayfa.php';
 
 echo "\nQR Çalışma Saatleri\n";
@@ -3131,6 +3133,149 @@ qrms_test(
 		$_GET = array( 'page' => 'qrms-ae-gorunum' );
 		qrms_ae()->admin_enqueue_assets();
 		qrms_assert_true( null !== qrms_ae_style( 'qrms-ae-admin' ), 'kendi ekranında yüklenir' );
+	}
+);
+
+
+/* ---------------------------------------------------------------------------
+ * 16. QR Çalışma Saatleri — renkler ve canlı önizleme
+ * ------------------------------------------------------------------------ */
+
+echo "\nQR Çalışma Saatleri (renk + önizleme)\n";
+
+qrms_test(
+	'hiç renk seçilmemişken çıktı eskisiyle BİREBİR aynıdır',
+	function () {
+		// Bu modülün görünümü bugüne kadar stylesheet'teki sabit renklerden
+		// geliyordu. Renk ayarı eklemek kimsenin sitesini değiştirmemeli:
+		// seçilmemiş renk CSS değişkeni olarak hiç basılmaz, geri düşüş
+		// devrede kalır.
+		qrms_assert_same( '', qrms_cs_color_declarations(), 'bildirim yok' );
+		qrms_assert_same( '', qrms_cs_inline_style_attr(), 'satır içi stil yok' );
+
+		$html = qrms_cs_shortcode( array() );
+
+		qrms_assert_contains( '<ul class="qrms-cs-list">', $html, 'kapsayıcı çıplak' );
+
+		$css = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-calisma-saatleri/assets/css/frontend.css' );
+
+		qrms_assert_contains( 'var(--qrms-cs-today, #c9a84c)', $css, 'eski vurgu rengi geri düşüş' );
+		qrms_assert_contains( 'var(--qrms-cs-divider, rgba(0, 0, 0, 0.08))', $css, 'eski ayraç rengi geri düşüş' );
+	}
+);
+
+qrms_test(
+	'geçersiz renk ayarı yok sayılır, geçerli olan değişkene iner',
+	function () {
+		update_option(
+			QRMS_CS_COLORS_OPTION,
+			qrms_cs_sanitize_colors(
+				array(
+					'today'   => '#ff0000',
+					'divider' => 'kırmızı',   // geçersiz -> devral
+					'hours'   => '#0f0',      // kısa hex geçerli
+					'uydurma' => '#123456',   // bilinmeyen anahtar
+				)
+			)
+		);
+
+		$colors = qrms_cs_get_colors();
+
+		qrms_assert_same( '#ff0000', $colors['today'], 'geçerli hex korunur' );
+		qrms_assert_same( '', $colors['divider'], 'geçersiz değer devralmaya düşer' );
+		qrms_assert_same( '#0f0', $colors['hours'], 'kısa hex kabul' );
+		qrms_assert_false( isset( $colors['uydurma'] ), 'bilinmeyen anahtar düşer' );
+
+		$decl = qrms_cs_color_declarations();
+
+		qrms_assert_contains( '--qrms-cs-today: #ff0000', $decl, 'seçilen renk basılır' );
+		qrms_assert_false( strpos( $decl, '--qrms-cs-divider' ), 'seçilmeyen renk basılmaz' );
+
+		qrms_assert_contains( '--qrms-cs-today: #ff0000', qrms_cs_shortcode( array() ), 'kısa kod değişkeni taşır' );
+	}
+);
+
+qrms_test(
+	'renkler saatlerden AYRI option\'da durur, biri diğerini bozmaz',
+	function () {
+		// qrms_cs_sanitize() diziyi gün anahtarlarına indirger; renkler aynı
+		// option'da olsaydı ilk kayıtta sessizce silinirdi.
+		update_option( QRMS_CS_OPTION, qrms_cs_sanitize( array( 'monday' => array( 'open' => '11:00', 'close' => '23:30' ) ) ) );
+		update_option( QRMS_CS_COLORS_OPTION, qrms_cs_sanitize_colors( array( 'today' => '#123456' ) ) );
+
+		$hours  = qrms_cs_get();
+		$colors = qrms_cs_get_colors();
+
+		qrms_assert_same( '11:00', $hours['monday']['open'], 'saat korundu' );
+		qrms_assert_same( 7, count( $hours ), 'tam hafta' );
+		qrms_assert_same( '#123456', $colors['today'], 'renk korundu' );
+		qrms_assert_false( isset( $hours['today'] ), 'renk anahtarı saatlere sızmaz' );
+	}
+);
+
+qrms_test(
+	'form tek Kaydet ile hem saatleri hem renkleri yazar',
+	function () {
+		$_POST = array(
+			'qrms_cs_kaydet' => '1',
+			'qrms_cs'        => array( 'friday' => array( 'open' => '10:00', 'close' => '02:00' ) ),
+			'qrms_cs_renk'   => array( 'today' => '#abcdef', 'day' => 'bozuk' ),
+		);
+
+		ob_start();
+		qrms_cs_admin_sayfasi();
+		$html = ob_get_clean();
+
+		qrms_assert_same( '10:00', qrms_cs_get()['friday']['open'], 'saat kaydedildi' );
+		qrms_assert_same( '#abcdef', qrms_cs_get_colors()['today'], 'renk kaydedildi' );
+		qrms_assert_same( '', qrms_cs_get_colors()['day'], 'bozuk renk devralmaya düştü' );
+		qrms_assert_contains( 'Çalışma saatleri kaydedildi.', $html, 'kayıt bildirimi' );
+	}
+);
+
+qrms_test(
+	'yönetim ekranı renk alanlarını ve kısa kodun GERÇEK çıktısını basar',
+	function () {
+		ob_start();
+		qrms_cs_admin_sayfasi();
+		$html = ob_get_clean();
+
+		foreach ( array_keys( qrms_cs_color_fields() ) as $key ) {
+			qrms_assert_contains( 'name="qrms_cs_renk[' . $key . ']"', $html, $key . ' alanı' );
+		}
+
+		qrms_assert_contains( 'id="qrms-cs-preview"', $html, 'önizleme kutusu' );
+		// Önizleme ayrı bir şablon değil, kısa kodun kendisi: aynı sınıflar.
+		qrms_assert_contains( 'qrms-cs-list', $html, 'kısa kod listesi' );
+		qrms_assert_contains( 'data-day="monday"', $html, 'satırlar gün anahtarı taşır' );
+	}
+);
+
+qrms_test(
+	'önizlemenin saat metni PHP ile aynı üç dala sahiptir',
+	function () {
+		// Metin iki yerde üretiliyor: sayfa açılışında PHP, değişiklikte JS.
+		// Dallanma ayrışırsa önizleme yalan söyler; her iki taraf da burada
+		// doğrulanıyor.
+		qrms_assert_same( 'Kapalı', qrms_cs_format_day( array( 'closed' => true ) ), 'kapalı' );
+		qrms_assert_same(
+			'24 saat açık',
+			qrms_cs_format_day( array( 'closed' => false, 'open' => '00:00', 'close' => '00:00' ) ),
+			'eşit saat = 24 saat'
+		);
+		qrms_assert_same(
+			'09:00 – 22:00',
+			qrms_cs_format_day( array( 'closed' => false, 'open' => '09:00', 'close' => '22:00' ) ),
+			'aralık'
+		);
+
+		$js = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-calisma-saatleri/assets/js/admin.js' );
+
+		qrms_assert_contains( 'if (closed) {', $js, 'JS: kapalı dalı' );
+		qrms_assert_contains( 'if (open === close) {', $js, 'JS: 24 saat dalı' );
+		qrms_assert_contains( 'L.kapali', $js, 'JS metni PHP\'den alır' );
+		qrms_assert_contains( 'L.yirmiDort', $js, 'JS metni PHP\'den alır' );
+		qrms_assert_contains( 'L.aralik', $js, 'JS metni PHP\'den alır' );
 	}
 );
 
