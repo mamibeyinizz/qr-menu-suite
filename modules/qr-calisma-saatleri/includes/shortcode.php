@@ -45,7 +45,7 @@ function qrms_cs_shortcode( $atts ) {
 
 	ob_start();
 	?>
-	<ul class="qrms-cs-list">
+	<ul class="qrms-cs-list"<?php echo qrms_cs_inline_style_attr(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- esc_attr içeride. ?>>
 		<?php foreach ( qrms_cs_day_keys() as $key ) : ?>
 			<?php
 			if ( $only && $key !== $today ) {
@@ -64,7 +64,8 @@ function qrms_cs_shortcode( $atts ) {
 				$classes[] = 'is-closed';
 			}
 			?>
-			<li class="<?php echo esc_attr( implode( ' ', $classes ) ); ?>">
+			<?php // data-day: yönetimdeki canlı önizleme satırı gün kartıyla bu anahtardan eşleştirir. ?>
+			<li class="<?php echo esc_attr( implode( ' ', $classes ) ); ?>" data-day="<?php echo esc_attr( $key ); ?>">
 				<span class="qrms-cs-item-day"><?php echo esc_html( $labels[ $key ] ); ?></span>
 				<span class="qrms-cs-item-hours"><?php echo esc_html( qrms_cs_format_day( $day ) ); ?></span>
 			</li>

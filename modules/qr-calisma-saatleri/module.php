@@ -22,6 +22,7 @@ defined( 'ABSPATH' ) || exit;
  */
 function qrms_module_qr_calisma_saatleri_init() {
 	require_once __DIR__ . '/includes/hours.php';
+	require_once __DIR__ . '/includes/renkler.php';
 	require_once __DIR__ . '/includes/shortcode.php';
 
 	add_shortcode( 'qr_calisma_saatleri', 'qrms_cs_shortcode' );
@@ -68,18 +69,41 @@ function qrms_module_qr_calisma_saatleri_admin_assets() {
 		return;
 	}
 
+	// Önizleme, kısa kodun GERÇEK stylesheet'ini kullanır; ayrı bir taklit
+	// yoktur. Kayıt frontend'de wp_enqueue_scripts'te yapılıyor, burada elle.
+	qrms_cs_register_frontend_assets();
+	wp_enqueue_style( 'qrms-cs-frontend' );
+
+	wp_enqueue_style( 'wp-color-picker' );
+
 	wp_enqueue_style(
 		'qrms-cs-admin',
 		QRMS_PLUGIN_URL . 'modules/qr-calisma-saatleri/assets/css/admin.css',
-		array( 'qrms-admin' ),
+		array( 'qrms-admin', 'wp-color-picker', 'qrms-cs-frontend' ),
 		QRMS_Helpers::asset_version( 'modules/qr-calisma-saatleri/assets/css/admin.css' )
 	);
 
 	wp_enqueue_script(
 		'qrms-cs-admin',
 		QRMS_PLUGIN_URL . 'modules/qr-calisma-saatleri/assets/js/admin.js',
-		array(),
+		array( 'jquery', 'wp-color-picker' ),
 		QRMS_Helpers::asset_version( 'modules/qr-calisma-saatleri/assets/js/admin.js' ),
 		true
+	);
+
+	/*
+	 * Önizlemedeki saat metnini JS üretir; metinlerin KENDİSİ burada,
+	 * PHP tarafında kalır (çeviri tek yerde durur). Biçimlendirmenin
+	 * dallanması qrms_cs_format_day() ile birebir aynıdır ve testle
+	 * korunur — bkz. tests/test-suite.php.
+	 */
+	wp_localize_script(
+		'qrms-cs-admin',
+		'QRMS_CS',
+		array(
+			'kapali'  => __( 'Kapalı', 'qrms' ),
+			'yirmiDort' => __( '24 saat açık', 'qrms' ),
+			'aralik'  => __( '%1$s – %2$s', 'qrms' ),
+		)
 	);
 }

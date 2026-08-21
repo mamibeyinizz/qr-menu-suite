@@ -27,6 +27,12 @@ function qrms_cs_handle_save() {
 
 	update_option( QRMS_CS_OPTION, qrms_cs_sanitize( $raw ) );
 
+	// Renkler ayrı option'da durur (bkz. includes/renkler.php), ama aynı
+	// formdan gelir: restoran sahibi için tek bir "Kaydet" vardır.
+	$renkler = isset( $_POST['qrms_cs_renk'] ) ? wp_unslash( $_POST['qrms_cs_renk'] ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- qrms_cs_sanitize_colors temizler.
+
+	update_option( QRMS_CS_COLORS_OPTION, qrms_cs_sanitize_colors( $renkler ) );
+
 	return true;
 }
 
@@ -40,9 +46,11 @@ function qrms_cs_admin_sayfasi() {
 		wp_die( esc_html__( 'Bu sayfayı görüntüleme yetkiniz yok.', 'qrms' ) );
 	}
 
-	$saved = qrms_cs_handle_save();
-	$hours = qrms_cs_get();
-	$labels = qrms_cs_day_labels();
+	$saved   = qrms_cs_handle_save();
+	$hours   = qrms_cs_get();
+	$labels  = qrms_cs_day_labels();
+	$colors  = qrms_cs_get_colors();
+	$fields  = qrms_cs_color_fields();
 	?>
 	<div class="wrap qrms-wrap qrms-cs-wrap">
 		<h1 class="qrms-title"><?php esc_html_e( 'QR Çalışma Saatleri', 'qrms' ); ?></h1>
@@ -114,10 +122,54 @@ function qrms_cs_admin_sayfasi() {
 				</div>
 			<?php endforeach; ?>
 
+			<div class="qrms-card qrms-cs-colors">
+				<h2 class="qrms-card-title"><?php esc_html_e( 'Renkler', 'qrms' ); ?></h2>
+				<p class="qrms-muted">
+					<?php esc_html_e( 'Boş bıraktığınız renk temanızdan devralınır. Aşağıdaki önizleme kaydetmeden güncellenir.', 'qrms' ); ?>
+				</p>
+
+				<div class="qrms-cs-color-grid">
+					<?php foreach ( $fields as $key => $field ) : ?>
+						<div class="qrms-field qrms-cs-color-field">
+							<label class="qrms-label" for="qrms-cs-renk-<?php echo esc_attr( $key ); ?>">
+								<?php echo esc_html( $field['label'] ); ?>
+							</label>
+							<input
+								type="text"
+								id="qrms-cs-renk-<?php echo esc_attr( $key ); ?>"
+								class="qrms-cs-color-picker"
+								name="qrms_cs_renk[<?php echo esc_attr( $key ); ?>]"
+								value="<?php echo esc_attr( isset( $colors[ $key ] ) ? $colors[ $key ] : '' ); ?>"
+								data-default-color="<?php echo esc_attr( $field['fallback'] ); ?>"
+								data-css-var="<?php echo esc_attr( $field['var'] ); ?>"
+							>
+							<p class="qrms-help"><?php echo esc_html( $field['desc'] ); ?></p>
+						</div>
+					<?php endforeach; ?>
+				</div>
+			</div>
+
 			<button type="submit" name="qrms_cs_kaydet" value="1" class="qrms-button qrms-button-primary">
 				<?php esc_html_e( 'Kaydet', 'qrms' ); ?>
 			</button>
 		</form>
+
+		<div class="qrms-card qrms-cs-preview-card">
+			<h2 class="qrms-card-title"><?php esc_html_e( 'Canlı Önizleme', 'qrms' ); ?></h2>
+			<p class="qrms-muted">
+				<?php esc_html_e( 'Müşterinin sayfada göreceği liste. Saat, kapalı gün ve renk değişiklikleri kaydetmeden burada görünür.', 'qrms' ); ?>
+			</p>
+			<?php
+			/*
+			 * Önizleme kısa kodun TAKLİDİ DEĞİL, kendisidir: aynı fonksiyon,
+			 * aynı stylesheet. Ayrı bir şablon tutulsaydı ikisi zamanla
+			 * ayrışır ve önizleme yalan söylemeye başlardı.
+			 */
+			?>
+			<div class="qrms-cs-preview" id="qrms-cs-preview">
+				<?php echo qrms_cs_shortcode( array() ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- kısa kod kendi çıktısını kaçırır. ?>
+			</div>
+		</div>
 
 		<div class="qrms-card">
 			<h2 class="qrms-card-title"><?php esc_html_e( 'Kısa kod', 'qrms' ); ?></h2>
