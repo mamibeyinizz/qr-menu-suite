@@ -713,16 +713,23 @@ trait RMA_Admin_Pages_Trait {
             wp_enqueue_script( 'wp-color-picker' );
             $deps[] = 'wp-color-picker';
             $deps[] = 'jquery-ui-sortable';
-        }
 
-        // Ortak admin stili ürün listesi ekranında da gerekir
-        // (Göster/Gizle anahtarı orada kullanılıyor).
-        wp_enqueue_style(
-            'rma-admin-ui',
-            RMA_PLUGIN_URL . 'assets/css/admin-ui.css',
-            [],
-            $this->asset_version( 'assets/css/admin-ui.css' )
-        );
+            wp_enqueue_style(
+                'rma-admin-ui',
+                RMA_PLUGIN_URL . 'assets/css/admin-ui.css',
+                [],
+                $this->asset_version( 'assets/css/admin-ui.css' )
+            );
+        } elseif ( $is_list ) {
+            // Native WP liste ekranında yalnızca Göster/Gizle anahtarı stili
+            // gerekir; tam admin-ui.css burada kasıtlı olarak yüklenmez.
+            wp_enqueue_style(
+                'rma-admin-list',
+                RMA_PLUGIN_URL . 'assets/css/rma-admin-list.css',
+                [],
+                $this->asset_version( 'assets/css/rma-admin-list.css' )
+            );
+        }
 
         wp_enqueue_script(
             'rma-admin-ui',

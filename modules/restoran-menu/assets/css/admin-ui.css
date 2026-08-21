@@ -1016,58 +1016,6 @@
 }
 
 /* =====================================================================
-   KAPSAM DIŞI — ÜRÜN LİSTESİ TABLOSU
-   .rma-switch, CPT liste ekranındaki Göster/Gizle sütununda kullanılır.
-   O ekran standart WP görünümünde kalır; yalnızca bu özel anahtar
-   marka rengini taşır.
-===================================================================== */
-.rma-switch {
-    display: inline-block;
-    height: 24px;
-    margin-top: 5px;
-    position: relative;
-    width: 44px;
-}
-
-.rma-switch input {
-    height: 0;
-    opacity: 0;
-    width: 0;
-}
-
-.rma-slider {
-    background: #ccc;
-    border-radius: 24px;
-    bottom: 0;
-    cursor: pointer;
-    left: 0;
-    position: absolute;
-    right: 0;
-    top: 0;
-    transition: .3s;
-}
-
-.rma-slider:before {
-    background: #fff;
-    border-radius: 50%;
-    bottom: 4px;
-    content: '';
-    height: 16px;
-    left: 4px;
-    position: absolute;
-    transition: .3s;
-    width: 16px;
-}
-
-.rma-switch input:checked + .rma-slider {
-    background: #c9a84c;
-}
-
-.rma-switch input:checked + .rma-slider:before {
-    transform: translateX(20px);
-}
-
-/* =====================================================================
    DOKUNMATİK ERİŞİLEBİLİRLİK
    Restoran sahibi işlemlerin çoğunu telefondan yapar. İnce işaretçisi
    olmayan (parmakla kullanılan) cihazlarda tıklama alanları büyütülür.
@@ -1118,23 +1066,6 @@
     .rma-details > summary {
         min-height: 44px;
         padding: 12px 0;
-    }
-
-    /* Ürün listesindeki Göster/Gizle anahtarı — parmakla rahat çevrilir.
-       Anahtar .rma-admin dışında (WP liste tablosunda) durduğu için
-       ölçüler burada tek tek büyütülür. */
-    .rma-switch {
-        height: 30px;
-        width: 56px;
-    }
-
-    .rma-slider:before {
-        height: 22px;
-        width: 22px;
-    }
-
-    .rma-switch input:checked + .rma-slider:before {
-        transform: translateX(26px);
     }
 }
 

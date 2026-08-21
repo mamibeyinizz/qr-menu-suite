@@ -53,48 +53,38 @@ function qrm_cf_admin_forms_page() {
             <div class="notice notice-success is-dismissible"><p><?php echo esc_html($notice); ?></p></div>
         <?php endif; ?>
 
+        <?php
+        /*
+         * Sekmeler gerçek bağlantıdır, JS değil. Kaynakta iki panel de basılıp
+         * jQuery ile gizlenip gösteriliyordu: sayfadaki herhangi bir JS hatasında
+         * ikisi birden görünüyor, hiçbiri aktif işaretlenmiyordu. Ayrıca her açılışta
+         * iki panelin de sorguları çalışıyordu. Artık yalnızca aktif panel
+         * render edilir — dashboard/insights'ta yapılan dönüşümün aynısı.
+         */
+        $unread = qrm_cf_unread_total();
+        ?>
         <h2 class="nav-tab-wrapper">
-            <a href="#" class="nav-tab qrm-forms-tab" data-tab="forms">Formlarım</a>
-            <a href="#" class="nav-tab qrm-forms-tab" data-tab="submissions">
+            <a href="<?php echo esc_url(qrm_cf_admin_url()); ?>"
+               class="nav-tab<?php echo $tab === 'forms' ? ' nav-tab-active' : ''; ?>">Formlarım</a>
+            <a href="<?php echo esc_url(qrm_cf_admin_url(['tab' => 'submissions'])); ?>"
+               class="nav-tab<?php echo $tab === 'submissions' ? ' nav-tab-active' : ''; ?>">
                 Gönderiler
-                <?php $unread = qrm_cf_unread_total(); if ($unread > 0): ?>
+                <?php if ($unread > 0): ?>
                     <span class="qrm-cf-badge qrm-cf-badge-new"><?php echo intval($unread); ?></span>
                 <?php endif; ?>
             </a>
         </h2>
 
-        <div class="qrm-forms-pane" data-pane="forms"><?php qrm_cf_admin_forms_list_pane(); ?></div>
-        <div class="qrm-forms-pane" data-pane="submissions"><?php qrm_cf_admin_submissions_pane(); ?></div>
-    </div>
-
-    <script>
-    jQuery(document).ready(function($){
-        // Adresler PHP tarafından üretilir: sayfa slug'ı JS içine gömülmez, böylece
-        // menüdeki slug değişse bile adres çubuğu yanlış sayfayı göstermez.
-        var urls = <?php echo wp_json_encode([
-            'forms'       => qrm_cf_admin_url(),
-            'submissions' => qrm_cf_admin_url(['tab' => 'submissions']),
-        ]); ?>;
-
-        // Sekme geçişi sayfa yenilemeden yapılır (Google & Ödül Sistemi sayfasındaki
-        // desenin aynısı); adres çubuğu deep-link için güncellenir.
-        function showTab(name) {
-            $('.qrm-forms-pane').hide();
-            $('.qrm-forms-pane[data-pane="' + name + '"]').show();
-            $('.qrm-forms-tab').removeClass('nav-tab-active');
-            $('.qrm-forms-tab[data-tab="' + name + '"]').addClass('nav-tab-active');
-            if (history.replaceState) {
-                history.replaceState(null, '', name === 'submissions' ? urls.submissions : urls.forms);
+        <div class="qrm-forms-pane">
+            <?php
+            if ($tab === 'submissions') {
+                qrm_cf_admin_submissions_pane();
+            } else {
+                qrm_cf_admin_forms_list_pane();
             }
-        }
-        $('.qrm-forms-tab').on('click', function(e){
-            e.preventDefault();
-            showTab($(this).data('tab'));
-            $('html, body').animate({ scrollTop: 0 }, 150);
-        });
-        showTab(<?php echo wp_json_encode($tab); ?>);
-    });
-    </script>
+            ?>
+        </div>
+    </div>
     <?php
 }
 
