@@ -26,7 +26,12 @@ function qrm_pro_shortcode() {
                 // Popup JS gerektirdiği için, JS tamamen kapalı ziyaretçilere eski
                 // satır içi Google CTA'sı <noscript> içinde yedek olarak sunulur.
                 if (!empty($result['show_reward'])) {
-                    $auto_open_reward = true;
+                    // JS kapalı akışta popup'ı sunucu açar; kod talebini
+                    // yetkilendiren anahtar da bu yüzden popup'a gömülür.
+                    $auto_open_reward = [
+                        'review_id' => (int) $result['review_id'],
+                        'claim'     => (string) $result['reward_claim'],
+                    ];
                     $message .= '<noscript>' . qrm_pro_render_google_cta($settings, $result['avg']) . '</noscript>';
                 }
             }

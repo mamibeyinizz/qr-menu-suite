@@ -273,6 +273,130 @@ function qrm_reward_find_by_code($code) {
     return $wpdb->get_row($wpdb->prepare("SELECT * FROM $table WHERE code = %s", $code));
 }
 
+/* -------------------------------------------------------------------------
+ * KOD TALEBİ DOĞRULAMASI (v4.2.2)
+ *
+ * Popup'taki e-posta adımı, kod üretimini tetikleyen tek yerdir. Eskiden bu
+ * uç istemcinin gönderdiği review_id'ye körü körüne güveniyordu: değer hiçbir
+ * sahiplik, varlık ya da eşik kontrolünden geçmiyor, yalnızca source_review_id
+ * olarak kaydediliyordu. Yani "gerçekten eşiği geçen bir yorum bırakıldı mı?"
+ * sorusu sunucuda hiç sorulmuyordu; akışın tamamı istemcideki popup'a
+ * emanetti. Nonce da popup ile birlikte ön yüze basıldığı için, tek bir
+ * 5 yıldızlı yorum bırakan biri onu ele geçirip farklı e-postalarla kod
+ * üretmeye devam edebiliyordu.
+ *
+ * Çözüm: yorum KAYDEDİLİRKEN sunucuda tek kullanımlık bir "talep anahtarı"
+ * üretilir ve yalnızca o gönderimin yanıtıyla istemciye verilir. Kod ancak
+ * geçerli, süresi dolmamış ve henüz harcanmamış bir anahtarla üretilebilir.
+ * ---------------------------------------------------------------------- */
+
+/** Talep anahtarının transient adı. */
+function qrm_reward_claim_key($review_id) {
+    return 'qrm_rw_claim_' . (int) $review_id;
+}
+
+/** Talep anahtarının ömrü (saniye). Popup akışı dakikalar sürer, saat yeter. */
+function qrm_reward_claim_ttl() {
+    /**
+     * Ödül talep anahtarının geçerlilik süresi.
+     *
+     * @param int $ttl Saniye.
+     */
+    return (int) apply_filters('qrm_reward_claim_ttl', HOUR_IN_SECONDS);
+}
+
+/**
+ * Yeni bir talep anahtarı üretir ve saklar.
+ *
+ * Saklanan değer anahtarın KENDİSİ değil hash'idir: veritabanı okumasıyla
+ * geçerli anahtar ele geçirilemesin.
+ *
+ * @param int $review_id Yorum kimliği.
+ * @return string İstemciye verilecek anahtar ('' = üretilemedi).
+ */
+function qrm_reward_issue_claim($review_id) {
+    $review_id = (int) $review_id;
+    if ($review_id <= 0) return '';
+
+    $token = wp_generate_password(32, false);
+    set_transient(qrm_reward_claim_key($review_id), wp_hash($token), qrm_reward_claim_ttl());
+
+    return $token;
+}
+
+/** Anahtarı harcar (tek kullanımlık). */
+function qrm_reward_consume_claim($review_id) {
+    delete_transient(qrm_reward_claim_key($review_id));
+}
+
+/**
+ * Bu yorum için daha önce kod üretilmiş mi?
+ *
+ * @param int $review_id Yorum kimliği.
+ * @return bool
+ */
+function qrm_reward_review_has_code($review_id) {
+    global $wpdb;
+    $table = qrm_reward_table();
+
+    return (bool) $wpdb->get_var($wpdb->prepare(
+        "SELECT id FROM {$table} WHERE source_review_id = %d LIMIT 1",
+        (int) $review_id
+    ));
+}
+
+/**
+ * Kod talebini sunucu tarafında doğrular.
+ *
+ * Sırayla: anahtar geçerli mi -> yorum gerçekten var mı -> puanı Google
+ * eşiğini geçiyor mu -> bu yoruma daha önce kod verilmiş mi.
+ *
+ * @param int    $review_id Yorum kimliği (istemciden gelir, DOĞRULANIR).
+ * @param string $token     Talep anahtarı.
+ * @param array|null $settings Ayarlar.
+ * @return true|WP_Error
+ */
+function qrm_reward_verify_claim($review_id, $token, $settings = null) {
+    global $wpdb;
+
+    if ($settings === null) $settings = qrm_pro_get_settings();
+
+    $review_id = (int) $review_id;
+    $token     = is_string($token) ? trim($token) : '';
+
+    if ($review_id <= 0 || $token === '') {
+        return new WP_Error('qrm_reward_claim', 'Bu ödül talebi doğrulanamadı. Lütfen değerlendirmenizi yeniden gönderin.');
+    }
+
+    $saklanan = get_transient(qrm_reward_claim_key($review_id));
+    if (!is_string($saklanan) || $saklanan === '' || !hash_equals($saklanan, wp_hash($token))) {
+        return new WP_Error('qrm_reward_claim', 'Bu ödül talebi doğrulanamadı. Lütfen değerlendirmenizi yeniden gönderin.');
+    }
+
+    $table  = $wpdb->prefix . 'qrm_reviews';
+    $review = $wpdb->get_row($wpdb->prepare(
+        "SELECT id, rating FROM {$table} WHERE id = %d",
+        $review_id
+    ));
+
+    if (!$review) {
+        return new WP_Error('qrm_reward_claim', 'Değerlendirme bulunamadı.');
+    }
+
+    // Eşik, popup'ın gösterilme koşuluyla AYNI olmalı; aksi halde sunucu
+    // istemcinin gösterdiğinden farklı bir kural uygulardı.
+    $threshold = (float) $settings['google_review_threshold'];
+    if ((float) $review->rating < $threshold) {
+        return new WP_Error('qrm_reward_claim', 'Bu değerlendirme ödül koşulunu karşılamıyor.');
+    }
+
+    if (qrm_reward_review_has_code($review_id)) {
+        return new WP_Error('qrm_reward_claim', 'Bu değerlendirme için zaten bir indirim kodu üretilmiş.');
+    }
+
+    return true;
+}
+
 function qrm_reward_status_label($status) {
     $map = [
         'active'  => 'Geçerli',

@@ -650,6 +650,56 @@ function wp_create_nonce( $action = -1 ) {
 }
 
 /**
+ * Rastgele parola/anahtar üretimi.
+ *
+ * @param int  $length         Uzunluk.
+ * @param bool $special_chars  Özel karakter.
+ * @param bool $extra_special  Ek özel karakter.
+ * @return string
+ */
+function wp_generate_password( $length = 12, $special_chars = true, $extra_special = false ) {
+	$havuz = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+	$out   = '';
+
+	for ( $i = 0; $i < $length; $i++ ) {
+		$out .= $havuz[ random_int( 0, strlen( $havuz ) - 1 ) ];
+	}
+
+	return $out;
+}
+
+/**
+ * Tuzlanmış hash.
+ *
+ * @param string $data   Veri.
+ * @param string $scheme Şema.
+ * @return string
+ */
+function wp_hash( $data, $scheme = 'auth' ) {
+	return hash_hmac( 'md5', (string) $data, 'test-salt-' . $scheme );
+}
+
+/**
+ * E-posta temizleme.
+ *
+ * @param string $email E-posta.
+ * @return string
+ */
+function sanitize_email( $email ) {
+	return trim( (string) $email );
+}
+
+/**
+ * E-posta geçerli mi?
+ *
+ * @param string $email E-posta.
+ * @return string|false
+ */
+function is_email( $email ) {
+	return filter_var( (string) $email, FILTER_VALIDATE_EMAIL ) ? $email : false;
+}
+
+/**
  * Nonce doğrulaması.
  *
  * Gerçek doğrulamada olduğu gibi, nonce YALNIZCA üretildiği eylem için

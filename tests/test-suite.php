@@ -2514,6 +2514,12 @@ class QRMS_Yorum_Wpdb {
 		return array_shift( $this->vars );
 	}
 
+	public function get_row( $sql ) {
+		$this->queries[] = $sql;
+
+		return array_shift( $this->vars );
+	}
+
 	public function son_sorgu() {
 		return end( $this->queries ) ?: '';
 	}
@@ -2727,6 +2733,174 @@ qrms_test(
 		$yorum->rating = -3;
 		$html          = qrm_pro_render_review_card( $yorum );
 		qrms_assert_same( 5, substr_count( $html, '☆' ), 'taban 0 dolu yıldız' );
+	}
+);
+
+/* ---------------------------------------------------------------------------
+ * 8z-2. Yorum & Feedback — ödül kodu TALEP DOĞRULAMASI
+ * ------------------------------------------------------------------------ */
+
+require_once QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/rewards/db.php';
+require_once QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/rewards/functions.php';
+
+echo "\nÖdül kodu talep doğrulaması\n";
+
+qrms_test(
+	'anahtarsız talep reddedilir',
+	function () {
+		qrms_yorum_wpdb();
+
+		$sonuc = qrm_reward_verify_claim( 42, '', array( 'google_review_threshold' => 4 ) );
+
+		qrms_assert_true( is_wp_error( $sonuc ), 'reddedildi' );
+		qrms_assert_same( 'qrm_reward_claim', $sonuc->get_error_code(), 'hata kodu' );
+	}
+);
+
+qrms_test(
+	'uydurma anahtar reddedilir',
+	function () {
+		qrms_yorum_wpdb();
+		qrm_reward_issue_claim( 42 );
+
+		$sonuc = qrm_reward_verify_claim( 42, 'uydurma-anahtar', array( 'google_review_threshold' => 4 ) );
+
+		qrms_assert_true( is_wp_error( $sonuc ), 'reddedildi' );
+	}
+);
+
+qrms_test(
+	'başka bir yorumun anahtarı bu yorum için kullanılamaz',
+	function () {
+		qrms_yorum_wpdb();
+
+		$anahtar = qrm_reward_issue_claim( 7 );
+
+		// Saldırgan kendi yorumunun anahtarını başka review_id ile deniyor.
+		$sonuc = qrm_reward_verify_claim( 8, $anahtar, array( 'google_review_threshold' => 4 ) );
+
+		qrms_assert_true( is_wp_error( $sonuc ), 'çapraz kullanım engellenir' );
+	}
+);
+
+qrms_test(
+	'anahtar veritabanında ham saklanmaz',
+	function () {
+		qrms_yorum_wpdb();
+
+		$anahtar  = qrm_reward_issue_claim( 42 );
+		$saklanan = get_transient( qrm_reward_claim_key( 42 ) );
+
+		qrms_assert_true( '' !== (string) $saklanan, 'bir şey saklandı' );
+		qrms_assert_false( $anahtar === $saklanan, 'ham anahtar saklanmıyor' );
+		qrms_assert_same( wp_hash( $anahtar ), $saklanan, 'hash saklanıyor' );
+	}
+);
+
+qrms_test(
+	'geçerli anahtar + eşiği geçen yorum kabul edilir',
+	function () {
+		$db      = qrms_yorum_wpdb();
+		$anahtar = qrm_reward_issue_claim( 42 );
+
+		// 1) yorum satırı, 2) "bu yoruma kod verilmiş mi" -> hayır
+		$db->vars[] = (object) array( 'id' => 42, 'rating' => 4.8 );
+		$db->vars[] = null;
+
+		$sonuc = qrm_reward_verify_claim( 42, $anahtar, array( 'google_review_threshold' => 4.5 ) );
+
+		qrms_assert_true( true === $sonuc, 'kabul edildi' );
+	}
+);
+
+qrms_test(
+	'eşiğin ALTINDA kalan yorum için kod üretilemez',
+	function () {
+		$db      = qrms_yorum_wpdb();
+		$anahtar = qrm_reward_issue_claim( 42 );
+
+		$db->vars[] = (object) array( 'id' => 42, 'rating' => 2.0 );
+		$db->vars[] = null;
+
+		$sonuc = qrm_reward_verify_claim( 42, $anahtar, array( 'google_review_threshold' => 4.5 ) );
+
+		qrms_assert_true( is_wp_error( $sonuc ), 'reddedildi' );
+		qrms_assert_contains( 'koşulunu karşılamıyor', $sonuc->get_error_message(), 'sebep' );
+	}
+);
+
+qrms_test(
+	'var olmayan yorum kimliği reddedilir',
+	function () {
+		$db      = qrms_yorum_wpdb();
+		$anahtar = qrm_reward_issue_claim( 42 );
+
+		$db->vars[] = null; // yorum bulunamadı
+
+		$sonuc = qrm_reward_verify_claim( 42, $anahtar, array( 'google_review_threshold' => 4 ) );
+
+		qrms_assert_true( is_wp_error( $sonuc ), 'reddedildi' );
+		qrms_assert_contains( 'bulunamadı', $sonuc->get_error_message(), 'sebep' );
+	}
+);
+
+qrms_test(
+	'aynı yoruma ikinci kod verilmez',
+	function () {
+		$db      = qrms_yorum_wpdb();
+		$anahtar = qrm_reward_issue_claim( 42 );
+
+		$db->vars[] = (object) array( 'id' => 42, 'rating' => 5.0 );
+		$db->vars[] = 17; // bu yoruma zaten kod üretilmiş
+
+		$sonuc = qrm_reward_verify_claim( 42, $anahtar, array( 'google_review_threshold' => 4 ) );
+
+		qrms_assert_true( is_wp_error( $sonuc ), 'reddedildi' );
+		qrms_assert_contains( 'zaten', $sonuc->get_error_message(), 'sebep' );
+	}
+);
+
+qrms_test(
+	'anahtar TEK KULLANIMLIKTIR: harcandıktan sonra geçmez',
+	function () {
+		$db      = qrms_yorum_wpdb();
+		$anahtar = qrm_reward_issue_claim( 42 );
+
+		$db->vars[] = (object) array( 'id' => 42, 'rating' => 5.0 );
+		$db->vars[] = null;
+		qrms_assert_true( true === qrm_reward_verify_claim( 42, $anahtar, array( 'google_review_threshold' => 4 ) ), 'ilk kullanım' );
+
+		// Kod üretildiğinde uç bunu çağırır.
+		qrm_reward_consume_claim( 42 );
+
+		$sonuc = qrm_reward_verify_claim( 42, $anahtar, array( 'google_review_threshold' => 4 ) );
+		qrms_assert_true( is_wp_error( $sonuc ), 'ikinci kullanım reddedilir' );
+	}
+);
+
+qrms_test(
+	'geçersiz yorum kimliği için anahtar üretilmez',
+	function () {
+		qrms_assert_same( '', qrm_reward_issue_claim( 0 ), 'sıfır' );
+		qrms_assert_same( '', qrm_reward_issue_claim( -3 ), 'negatif' );
+	}
+);
+
+qrms_test(
+	'ödül ucu doğrulamayı e-posta kontrolünden ÖNCE yapar',
+	function () {
+		// Sıra önemli: yetkisiz bir istek, hangi e-postaların kod aldığını
+		// "already_used" cevabıyla sızdırmamalı.
+		$kaynak = file_get_contents(
+			QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/ajax/rewards.php'
+		);
+
+		$dogrulama = strpos( $kaynak, 'qrm_reward_verify_claim' );
+		$eposta    = strpos( $kaynak, 'qrm_reward_find_by_email' );
+
+		qrms_assert_true( false !== $dogrulama, 'doğrulama çağrılıyor' );
+		qrms_assert_true( false !== $eposta, 'e-posta kontrolü duruyor' );
+		qrms_assert_true( $dogrulama < $eposta, 'doğrulama önce gelir' );
 	}
 );
 
@@ -3267,8 +3441,13 @@ require_once QRMS_PLUGIN_DIR . 'modules/yorum-feedback/module.php';
 // yükler); ödül rozetini süren tek ayar option üzerinden verilir.
 update_option( 'qrm_settings', array( 'qrm_reward_enabled' => 1 ) );
 
-function qrm_reward_is_active( $settings ) {
-	return false;
+// 8z-2 bölümü ödül modülünün GERÇEK functions.php'sini yüklüyor; oradaki
+// qrm_reward_is_active zaten bu senaryoda false döner (google_review_url
+// boş). Gerçek fonksiyon yüklenmemişse diye taklidi burada duruyor.
+if ( ! function_exists( 'qrm_reward_is_active' ) ) {
+	function qrm_reward_is_active( $settings ) {
+		return false;
+	}
 }
 
 function qrm_cf_unread_total() {

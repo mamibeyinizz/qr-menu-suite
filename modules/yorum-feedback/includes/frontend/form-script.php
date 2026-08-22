@@ -165,7 +165,12 @@ function qrm_pro_render_form_script($settings, $js_limit = 0, $has_list = true) 
                         // Modül kapalıyken sunucu show_reward göndermez, akış eskisiyle aynıdır.
                         if (res.show_reward) {
                             if (window.qrmRewardPopup) {
-                                window.qrmRewardPopup.open({ reviewId: res.review_id || 0 });
+                                window.qrmRewardPopup.open({
+                                    reviewId: res.review_id || 0,
+                                    // Kod talebini yetkilendiren tek kullanımlık
+                                    // anahtar; sunucuda bu gönderim için üretildi.
+                                    claim: res.reward_claim || ''
+                                });
                             } else if (res.google_url) {
                                 // Yedek yol (v4.2.0): popup DOM'u sayfaya ulaşmamış (tema wp_footer
                                 // basmıyor, bir eklenti çıktıyı kırpmış vb.). Müşteri Google
