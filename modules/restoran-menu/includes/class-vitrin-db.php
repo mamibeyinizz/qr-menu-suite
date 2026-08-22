@@ -359,17 +359,31 @@ class RMA_Vitrin_DB {
 
         $wpdb->delete( $urunler, array( 'showcase_id' => $id ), array( '%d' ) );
 
-        foreach ( array_values( $urun_idler ) as $sira => $urun_id ) {
-            $wpdb->insert(
-                $urunler,
-                array(
-                    'showcase_id' => $id,
-                    'product_id'  => (int) $urun_id,
-                    'sort_order'  => (int) $sira,
-                ),
-                array( '%d', '%d', '%d' )
-            );
+        $idler = array_values( $urun_idler );
+
+        if ( empty( $idler ) ) {
+            return;
         }
+
+        // Ürün başına ayrı INSERT yerine tek sorgu (bkz. RMA_Kampanya_DB::anlik_yaz
+        // içindeki aynı gerekçe). Vitrinde N küçüktür ama desen aynı kalsın.
+        $degerler = array();
+        $params   = array();
+
+        foreach ( $idler as $sira => $urun_id ) {
+            $degerler[] = '(%d, %d, %d)';
+            $params[]   = (int) $id;
+            $params[]   = (int) $urun_id;
+            $params[]   = (int) $sira;
+        }
+
+        $wpdb->query(
+            $wpdb->prepare(
+                "INSERT INTO {$urunler} (showcase_id, product_id, sort_order)
+                 VALUES " . implode( ', ', $degerler ),
+                $params
+            )
+        );
     }
 
     /**

@@ -1063,3 +1063,4 @@ require_once QRMS_PLUGIN_DIR . 'includes/class-module-loader.php';
 require_once QRMS_PLUGIN_DIR . 'includes/class-wizard.php';
 require_once QRMS_PLUGIN_DIR . 'includes/class-shortcodes.php';
 require_once QRMS_PLUGIN_DIR . 'includes/class-admin.php';
+require_once QRMS_PLUGIN_DIR . 'includes/class-query-monitor.php';

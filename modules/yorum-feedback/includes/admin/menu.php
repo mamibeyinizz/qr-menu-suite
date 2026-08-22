@@ -261,3 +261,91 @@ function qrm_pro_menu_badge() {
 
     return '';
 }
+
+/* -------------------------------------------------------------------------
+ * ŞEMA (İNDEKS) GÜNCELLEMESİNİN YÖNETİCİYE BİLDİRİLMESİ
+ *
+ * Güncelleme admin_init'te kendiliğinden çalışır (bkz. qr-menu-reviews.php);
+ * burada yalnızca sonucu bildirilir. Başarısızsa — en sık sebebi veritabanı
+ * kullanıcısının ALTER yetkisinin olmamasıdır — yönetici sessizce yavaş bir
+ * siteyle baş başa kalmasın diye kalıcı bir uyarı ve elle tetikleme butonu
+ * gösterilir.
+ * ---------------------------------------------------------------------- */
+
+add_action('admin_notices', 'qrm_pro_schema_notice');
+/**
+ * Şema güncellemesinin sonucunu bildirir.
+ *
+ * @return void
+ */
+function qrm_pro_schema_notice() {
+    if (!current_user_can('manage_options')) return;
+
+    // Suite'in kendi ekranları dışında hiçbir yerde görünmez (lisans
+    // uyarısındaki davranışın aynısı) — panelin tamamını kirletmez.
+    if (!class_exists('QRMS_Admin') || !QRMS_Admin::is_plugin_screen()) return;
+
+    $sonuc = get_transient(QRM_PRO_SCHEMA_NOTICE);
+
+    if ($sonuc === 'ok') {
+        delete_transient(QRM_PRO_SCHEMA_NOTICE);
+        echo '<div class="notice notice-success is-dismissible"><p>'
+            . '<strong>Yorum veritabanı şeması güncellendi.</strong> '
+            . 'Yorum listesi ve puan ortalamaları için eksik olan indeksler oluşturuldu; '
+            . 'bu sorgular artık tablonun tamamını taramıyor.'
+            . '</p></div>';
+        return;
+    }
+
+    if (!qrm_pro_schema_pending()) return;
+
+    // Buraya düşüyorsa güncelleme denendi ve başarısız oldu (ya da yetki yoktu).
+    if ($sonuc === 'hata') delete_transient(QRM_PRO_SCHEMA_NOTICE);
+    ?>
+    <div class="notice notice-warning">
+        <p>
+            <strong>Yorum tablosunda eksik veritabanı indeksleri var.</strong>
+            İndeksler olmadan yorum listesi ve puan ortalamaları her sorguda tablonun
+            tamamını tarar; yorum sayısı arttıkça sayfalar belirgin şekilde yavaşlar.
+        </p>
+        <?php if ($sonuc === 'hata'): ?>
+            <p>
+                Otomatik oluşturma denendi ama <strong>başarısız oldu</strong>. En sık sebebi,
+                veritabanı kullanıcısının <code>ALTER</code> yetkisinin olmamasıdır — hosting
+                sağlayıcınızdan bu yetkiyi isteyip aşağıdaki butonla tekrar deneyebilirsiniz.
+            </p>
+        <?php endif; ?>
+        <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
+            <input type="hidden" name="action" value="qrm_pro_schema_upgrade">
+            <?php wp_nonce_field('qrm_pro_schema_upgrade'); ?>
+            <p>
+                <button type="submit" class="button button-primary">Eksik indeksleri şimdi oluştur</button>
+            </p>
+        </form>
+    </div>
+    <?php
+}
+
+add_action('admin_post_qrm_pro_schema_upgrade', 'qrm_pro_schema_upgrade_handler');
+/**
+ * "Eksik indeksleri şimdi oluştur" butonunun işleyicisi.
+ *
+ * @return void
+ */
+function qrm_pro_schema_upgrade_handler() {
+    if (!current_user_can('manage_options')) {
+        wp_die('Bu işlem için yetkiniz yok.');
+    }
+
+    check_admin_referer('qrm_pro_schema_upgrade');
+
+    set_transient(
+        QRM_PRO_SCHEMA_NOTICE,
+        qrm_pro_schema_upgrade() ? 'ok' : 'hata',
+        5 * MINUTE_IN_SECONDS
+    );
+
+    // Nereden tetiklendiyse oraya dön; referer yoksa modülün hub'ına.
+    wp_safe_redirect(wp_get_referer() ?: qrm_pro_admin_url('qrms-yf-yorumlar'));
+    exit;
+}

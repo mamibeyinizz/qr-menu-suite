@@ -72,8 +72,20 @@ function qrm_cf_install() {
         created_at datetime DEFAULT CURRENT_TIMESTAMP NOT NULL,
         PRIMARY KEY  (id),
         KEY form_id (form_id),
-        KEY status (status)
+        KEY status (status),
+        KEY idx_form_status_created (form_id, status, created_at),
+        KEY idx_form_created (form_id, created_at)
     ) $charset_collate;";
+    //
+    // İNDEKSLER (v4.2.3): tek sütunluk form_id / status indeksleri gönderim
+    // listesinin gerçek sorgusunu karşılamıyordu — filtre iki sütunu birden
+    // kullanıp üçüncüsüne göre sıralıyor, yani her sayfada filesort çıkıyordu:
+    //   idx_form_status_created -> WHERE form_id = %d AND status = %s ORDER BY created_at DESC
+    //   idx_form_created        -> WHERE form_id = %d ORDER BY created_at DESC (durum filtresi yokken)
+    //
+    // Eski form_id indeksi artık idx_form_created'ın önekiyle aynı işi görüyor
+    // ama BİLEREK bırakıldı: dbDelta indeks düşürmez, elle DROP etmek de eski
+    // kurulumlarda geri dönüşü olmayan bir şema müdahalesi olurdu.
 
     require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
     dbDelta($sql_forms);

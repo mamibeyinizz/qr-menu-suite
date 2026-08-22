@@ -27,8 +27,23 @@ function qrm_pro_install() {
         sentiment varchar(20) DEFAULT 'neutral',
         is_manual tinyint(1) DEFAULT 0,
         form_source varchar(20) DEFAULT 'review' NOT NULL,
-        PRIMARY KEY  (id)
+        PRIMARY KEY  (id),
+        KEY idx_status_created (status, created_at),
+        KEY idx_created (created_at)
     ) $charset_collate;";
+    //
+    // İNDEKSLER (v4.2.3) — tabloda uzun süre PRIMARY KEY dışında hiçbir indeks
+    // yoktu; üzerindeki her sorgu tam tablo taraması + filesort yapıyordu:
+    //
+    //   idx_status_created  ->  WHERE status = X ORDER BY created_at DESC LIMIT ...
+    //                           (ön yüz yorum listesi: HER ziyaretçide çalışır),
+    //                           WHERE status = 1 sayaçları ve yapay zekâ özetinin
+    //                           "son N yayındaki yorum" sorgusu.
+    //   idx_created         ->  filtresiz yönetim listesinin ORDER BY created_at'i.
+    //
+    // InnoDB ikincil indekslere birincil anahtarı örtük olarak eklediği için
+    // "ORDER BY created_at DESC, id DESC" da bu indekslerden karşılanır; ayrıca
+    // bir (…, id) sütunu yazmaya gerek yoktur.
 
     $sql_fields = "CREATE TABLE $table_fields (
         id mediumint(9) NOT NULL AUTO_INCREMENT,
@@ -39,8 +54,11 @@ function qrm_pro_install() {
         is_active tinyint(1) DEFAULT 1,
         sort_order int(11) DEFAULT 0,
         PRIMARY KEY  (id),
-        UNIQUE KEY field_key (field_key)
+        UNIQUE KEY field_key (field_key),
+        KEY idx_active_order (is_active, sort_order)
     ) $charset_collate;";
+    // idx_active_order: kısa kodun her render'ında çalışan
+    // "WHERE is_active = 1 ORDER BY sort_order ASC" sorgusu içindir.
 
     require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
     dbDelta($sql_reviews);

@@ -318,6 +318,7 @@ function qrm_cf_replace_fields($form_id, $fields) {
 
     $order = 0;
     $used_keys = [];
+    $yazilacak = [];
     $saved = 0;
 
     foreach ((array) $fields as $field) {
@@ -345,18 +346,39 @@ function qrm_cf_replace_fields($form_id, $fields) {
 
         $options = qrm_cf_type_has_options($type) ? qrm_cf_parse_options(isset($field['options']) ? $field['options'] : []) : [];
 
-        $wpdb->insert($table, [
-            'form_id'     => $form_id,
-            'field_key'   => $key,
-            'label'       => $label,
-            'field_type'  => $type,
-            'options'     => $options ? wp_json_encode($options) : '',
-            'is_required' => !empty($field['is_required']) ? 1 : 0,
-            'sort_order'  => $order,
-        ], ['%d', '%s', '%s', '%s', '%s', '%d', '%d']);
+        // Satır satır INSERT yerine biriktir; tek sorguda yazılır.
+        $yazilacak[] = [
+            $form_id,
+            $key,
+            $label,
+            $type,
+            $options ? wp_json_encode($options) : '',
+            !empty($field['is_required']) ? 1 : 0,
+            $order,
+        ];
 
         $order++;
         $saved++;
+    }
+
+    if ($yazilacak) {
+        // Alan sayısı kullanıcı tarafından belirlenir; tek dev sorgu
+        // max_allowed_packet'e takılmasın diye parçalanır.
+        foreach (array_chunk($yazilacak, 200) as $parca) {
+            $degerler = [];
+            $params   = [];
+
+            foreach ($parca as $satir) {
+                $degerler[] = '(%d, %s, %s, %s, %s, %d, %d)';
+                foreach ($satir as $deger) $params[] = $deger;
+            }
+
+            $wpdb->query($wpdb->prepare(
+                "INSERT INTO $table (form_id, field_key, label, field_type, options, is_required, sort_order)
+                 VALUES " . implode(', ', $degerler),
+                $params
+            ));
+        }
     }
 
     return $saved;

@@ -185,6 +185,115 @@ function qrm_pro_maybe_upgrade() {
     }
     qrm_pro_install();
     qrm_pro_cleanup_removed_settings();
+
+    // Tablolar bu yolda güncel şemayla (indeksler dahil) kurulmuş OLMALI —
+    // ama yalnızca gerçekten kurulduysa damgalanır. Aksi hâlde ALTER yetkisi
+    // olmayan bir kurulumda şema "güncel" görünür, admin_init'teki denetim
+    // devreye girmez ve site kalıcı olarak indekssiz kalırdı.
+    if (qrm_pro_schema_indexes_ok()) {
+        update_option(QRM_PRO_SCHEMA_OPTION, QRM_PRO_SCHEMA_VERSION, false);
+    }
+}
+
+/* -------------------------------------------------------------------------
+ * ŞEMA (İNDEKS) GÜNCELLEMESİ
+ *
+ * v4.2.3'te dört tabloya eksik indeksler eklendi. Eklenti sürümü değişmediği
+ * için yukarıdaki qrm_pro_maybe_upgrade() bunu tek başına yakalamaz; ayrı bir
+ * şema sürümü tutulur.
+ *
+ * ZAMANLAMA — güncelleme bilinçli olarak SADECE yönetim isteklerinde çalışır.
+ * ALTER TABLE, büyük bir yorum tablosunda birkaç saniye sürebilir ve o süre
+ * boyunca tabloyu meşgul eder. plugins_loaded'a bağlansaydı bu iş, menüyü açan
+ * rastgele bir MÜŞTERİNİN isteğinde yapılırdı; admin_init'e bağlıyken yöneticinin
+ * kendi sayfa yüklemesinde olur ve sonucu ona bir uyarı olarak bildirilir.
+ * ---------------------------------------------------------------------- */
+
+/** Şema (indeks) sürümü. İndeks tanımları değiştiğinde artırılır. */
+define('QRM_PRO_SCHEMA_VERSION', '2');
+
+/** Şema sürümünün saklandığı option. */
+define('QRM_PRO_SCHEMA_OPTION', 'qrm_pro_schema_version');
+
+/** Güncelleme sonucunun yöneticiye bir kez gösterilmesi için kullanılan transient. */
+define('QRM_PRO_SCHEMA_NOTICE', 'qrm_pro_schema_notice');
+
+/**
+ * Şema güncellemesi bekliyor mu?
+ *
+ * Maliyeti tek bir autoload option okumasıdır; sorgu açmaz.
+ *
+ * @return bool
+ */
+function qrm_pro_schema_pending() {
+    return get_option(QRM_PRO_SCHEMA_OPTION) !== QRM_PRO_SCHEMA_VERSION;
+}
+
+/**
+ * Eksik indeksleri oluşturur (dbDelta; mevcut satırlara dokunmaz).
+ *
+ * @return bool Şema güncel hâle geldiyse true.
+ */
+function qrm_pro_schema_upgrade() {
+    qrm_pro_install();
+
+    // dbDelta hatayı istisna olarak fırlatmaz; indeksin gerçekten oluştuğu
+    // doğrulanır ki başarısız bir ALTER "tamam" diye işaretlenmesin.
+    if (!qrm_pro_schema_indexes_ok()) {
+        return false;
+    }
+
+    update_option(QRM_PRO_SCHEMA_OPTION, QRM_PRO_SCHEMA_VERSION, false);
+
+    return true;
+}
+
+/**
+ * Kritik indeksler tabloda gerçekten var mı?
+ *
+ * Yalnızca yorum tablosu denetlenir: en büyük tablo odur ve sürüm damgası
+ * yalnızca onun indeksi kurulduğunda anlamlıdır.
+ *
+ * @return bool
+ */
+function qrm_pro_schema_indexes_ok() {
+    global $wpdb;
+
+    if (!qrm_pro_reviews_table_exists()) {
+        // Tablo yoksa yapacak indeks de yok; şema "güncel" sayılır.
+        return true;
+    }
+
+    $table = $wpdb->prefix . 'qrm_reviews';
+
+    $suppress = $wpdb->suppress_errors(true);
+    $rows     = $wpdb->get_col("SHOW INDEX FROM {$table}", 2); // Key_name sütunu
+    $wpdb->suppress_errors($suppress);
+
+    return is_array($rows) && in_array('idx_status_created', $rows, true);
+}
+
+add_action('admin_init', 'qrm_pro_schema_maybe_upgrade', 5);
+/**
+ * Yönetim isteğinde şemayı güncelle ve sonucu bir kez bildirilmek üzere sakla.
+ *
+ * @return void
+ */
+function qrm_pro_schema_maybe_upgrade() {
+    if (!qrm_pro_schema_pending()) {
+        return;
+    }
+
+    // Yetkisiz bir kullanıcının admin isteği ALTER TABLE tetiklemesin.
+    if (!current_user_can('manage_options')) {
+        return;
+    }
+
+    set_transient(
+        QRM_PRO_SCHEMA_NOTICE,
+        qrm_pro_schema_upgrade() ? 'ok' : 'hata',
+        5 * MINUTE_IN_SECONDS
+    );
 }
 
 /**

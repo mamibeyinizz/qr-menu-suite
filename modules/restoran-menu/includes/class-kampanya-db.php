@@ -829,17 +829,64 @@ class RMA_Kampanya_DB {
 
         $wpdb->delete( $tablo, array( 'campaign_id' => $id ), array( '%d' ) );
 
-        foreach ( $satirlar as $urun_id => $fiyat ) {
-            $wpdb->insert(
-                $tablo,
-                array(
-                    'campaign_id'    => $id,
-                    'product_id'     => (int) $urun_id,
-                    'original_price' => (float) $fiyat,
-                ),
-                array( '%d', '%d', '%f' )
+        if ( empty( $satirlar ) ) {
+            return;
+        }
+
+        /*
+         * TOPLU YAZIM — eskiden ürün başına bir $wpdb->insert() çalışıyordu.
+         * Menünün tamamını kapsayan bir kampanyada bu, tek bir yönetim
+         * işleminde yüzlerce ayrı sorgu (ve yüzlerce ağ gidiş-dönüşü) demekti;
+         * aktivasyon uzun sürüyor, bu sırada veritabanı bağlantısı da meşgul
+         * kalıyordu. Aynı satırlar tek INSERT'te yazılır.
+         *
+         * Parçalama şart: tek bir dev INSERT max_allowed_packet sınırına
+         * takılabilir. 500 satırlık parçalar hem güvenli hem yeterince az sorgu.
+         */
+        foreach ( array_chunk( self::anlik_satirlari( $id, $satirlar ), 500 ) as $parca ) {
+            $degerler = array();
+            $params   = array();
+
+            foreach ( $parca as $satir ) {
+                $degerler[] = '(%d, %d, %f)';
+                $params[]   = $satir['campaign_id'];
+                $params[]   = $satir['product_id'];
+                $params[]   = $satir['original_price'];
+            }
+
+            $wpdb->query(
+                $wpdb->prepare(
+                    "INSERT INTO {$tablo} (campaign_id, product_id, original_price)
+                     VALUES " . implode( ', ', $degerler ),
+                    $params
+                )
             );
         }
+    }
+
+    /**
+     * Fiyat fotoğrafı satırlarını normalize eder.
+     *
+     * Saf fonksiyon (WordPress'e bağımlılığı yok), bu yüzden doğrudan test
+     * edilir: toplu yazımda tip dönüşümünün satır satır yazımdakiyle birebir
+     * aynı kalması gerekir.
+     *
+     * @param int   $id       Kampanya ID.
+     * @param array $satirlar product_id => original_price eşlemesi.
+     * @return array<int,array{campaign_id:int,product_id:int,original_price:float}>
+     */
+    public static function anlik_satirlari( $id, array $satirlar ) {
+        $out = array();
+
+        foreach ( $satirlar as $urun_id => $fiyat ) {
+            $out[] = array(
+                'campaign_id'    => (int) $id,
+                'product_id'     => (int) $urun_id,
+                'original_price' => (float) $fiyat,
+            );
+        }
+
+        return $out;
     }
 
     /**

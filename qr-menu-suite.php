@@ -28,6 +28,7 @@ require_once QRMS_PLUGIN_DIR . 'includes/class-module-loader.php';
 require_once QRMS_PLUGIN_DIR . 'includes/class-wizard.php';
 require_once QRMS_PLUGIN_DIR . 'includes/class-shortcodes.php';
 require_once QRMS_PLUGIN_DIR . 'includes/class-admin.php';
+require_once QRMS_PLUGIN_DIR . 'includes/class-query-monitor.php';
 
 /**
  * Plugin bileşenlerinin hook'larını kaydeder.
@@ -39,6 +40,10 @@ function qrms_bootstrap() {
 	QRMS_Module_Loader::init();
 	QRMS_Wizard::init();
 	QRMS_Admin::init();
+
+	// Yavaş sorgu teşhisi. WP_DEBUG + SAVEQUERIES açık değilse kendisi
+	// hiçbir kanca kaydetmez; üretimde tamamen sessizdir.
+	QRMS_Query_Monitor::init();
 }
 qrms_bootstrap();
 

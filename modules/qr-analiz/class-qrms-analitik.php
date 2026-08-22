@@ -105,10 +105,28 @@ class QRMS_Analitik {
 	 * Silme işleminin tek turda kaldıracağı azami satır sayısı.
 	 *
 	 * Yıllardır biriken bir tabloda sınırsız DELETE, tabloyu uzun süre
-	 * kilitleyip cron isteğini zaman aşımına düşürebilir. Kalan satırlar
-	 * ertesi turda silinir.
+	 * kilitleyip cron isteğini zaman aşımına düşürebilir.
 	 */
 	const SAKLAMA_PARCA = 5000;
+
+	/**
+	 * Bir cron turunun silmeye ayıracağı azami süre (saniye).
+	 *
+	 * Temizlik eskiden GÜNDE TEK BİR 5000'lik parça siliyordu. Günde 5000'den
+	 * fazla olay üreten bir sitede bu, temizliğin BİRİKİME HİÇ YETİŞEMEMESİ
+	 * demekti: tablo sınırsız büyüyor, üzerindeki her sorgu giderek yavaşlıyordu.
+	 * Artık tur içinde parçalar peş peşe silinir; bütçe dolunca durulur, böylece
+	 * ne cron isteği zaman aşımına uğrar ne de tablo uzun süre meşgul edilir.
+	 */
+	const SAKLAMA_SURE = 10;
+
+	/**
+	 * Bir turdaki azami parça sayısı (emniyet freni).
+	 *
+	 * Süre bütçesi tek başına yeterlidir; bu sınır, sistem saati geriye
+	 * atlarsa döngünün sonsuza gitmemesi içindir.
+	 */
+	const SAKLAMA_TUR = 50;
 
 	/**
 	 * Hook kayıtları.
@@ -214,17 +232,40 @@ class QRMS_Analitik {
 		$tablo = self::tablo();
 		$sinir = gmdate( 'Y-m-d H:i:s', strtotime( '-' . $gun . ' days', self::simdi() ) );
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		$silinen = $wpdb->query(
-			$wpdb->prepare(
-				// created_at üzerinde idx_date var; aralık taraması indekslidir.
-				"DELETE FROM {$tablo} WHERE created_at < %s LIMIT %d",
-				$sinir,
-				self::SAKLAMA_PARCA
-			)
-		);
+		/**
+		 * Bir temizlik turunun süre bütçesi (saniye). 0 = tek parça sil.
+		 *
+		 * @param int $saniye Varsayılan SAKLAMA_SURE.
+		 */
+		$butce  = (int) apply_filters( 'qrms_analitik_temizlik_sure', self::SAKLAMA_SURE );
+		$baslar = microtime( true );
 
-		return (int) $silinen;
+		$toplam = 0;
+
+		for ( $tur = 0; $tur < self::SAKLAMA_TUR; $tur++ ) {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+			$silinen = (int) $wpdb->query(
+				$wpdb->prepare(
+					// created_at üzerinde idx_date var; aralık taraması indekslidir.
+					"DELETE FROM {$tablo} WHERE created_at < %s LIMIT %d",
+					$sinir,
+					self::SAKLAMA_PARCA
+				)
+			);
+
+			$toplam += $silinen;
+
+			// Parça dolmadıysa silinecek bir şey kalmamıştır.
+			if ( $silinen < self::SAKLAMA_PARCA ) {
+				break;
+			}
+
+			if ( $butce <= 0 || ( microtime( true ) - $baslar ) >= $butce ) {
+				break;
+			}
+		}
+
+		return $toplam;
 	}
 
 	/**
@@ -851,53 +892,76 @@ class QRMS_Analitik {
 		$ay     = $wpdb->prepare( 'created_at >= %s', gmdate( 'Y-m-01', self::simdi() ) . ' 00:00:00' );
 
 		/*
-		 * SEKİZ ayrı COUNT sorgusu yerine TEK sorgu. Sekizinin de WHERE'i aynı
-		 * tabloyu tarıyordu; koşullar koşullu toplamaya (SUM/COUNT DISTINCT +
-		 * CASE) taşındığında MySQL tabloyu bir kez tarar ve panel bir bağlantı
-		 * turunda dolar. En geniş kova zaten 'pc_tumu' (tarih koşulsuz), yani
-		 * birleşik sorgu ek satır da okumaz.
+		 * SEKİZ ayrı COUNT sorgusu yerine İKİ sorgu — ve ikisi de indeksli.
 		 *
-		 * Masa filtresi WHERE'de kalır: seçili masa dışındaki satırlar sekiz
-		 * kovanın hiçbirine girmiyordu, dışarıda bırakmak taramayı daraltır.
+		 * Ara bir sürümde bunlar tek sorguya indirilmişti; bağlantı sayısı
+		 * açısından doğruydu ama SORGU SÜRESİ açısından geriye gidişti: WHERE
+		 * kalmayınca MySQL 90 günlük tablonun tamamını satır satır taramak
+		 * zorunda kalıyordu. Oysa sekiz kovadan yedisi tarih sınırlıdır ve
+		 * idx_date / idx_td üzerinden dar bir aralıkla karşılanabilir.
+		 *
+		 * Bölünme bu yüzden şöyle:
+		 *   1) Tarihli yedi kova, ortak alt sınırı olan TEK bir aralık
+		 *      taramasında toplanır (koşullar SUM/COUNT DISTINCT + CASE'e taşınır).
+		 *   2) Tarih sınırı olmayan tek kova (pc_tumu) ayrı kalır; idx_type
+		 *      üzerinden index-only sayım yapar, satırlara hiç inmez.
+		 *
+		 * Alt sınır min(ay başı, hafta başı)'dır: ayın ilk günlerinde "son 7
+		 * gün" penceresi önceki aya taşar, sabit olarak ay başı alınsaydı o
+		 * günler sayımdan düşerdi.
 		 */
-		$where = '' !== $masa_ek ? ' WHERE 1=1' . $masa_ek : '';
+		$alt_sinir = min(
+			gmdate( 'Y-m-01', self::simdi() ),
+			gmdate( 'Y-m-d', strtotime( '-6 days', self::simdi() ) )
+		) . ' 00:00:00';
 
-		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$sinir_kosul = $wpdb->prepare( 'created_at >= %s', $alt_sinir );
+
+		// phpcs:disable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$satir = $wpdb->get_row(
 			"SELECT
-				SUM(event_type='menu_view'    AND {$aralik}) AS mv_bugun,
-				SUM(event_type='menu_view'    AND {$hafta})  AS mv_hafta,
-				SUM(event_type='menu_view'    AND {$ay})     AS mv_ay,
+				SUM(event_type='menu_view'     AND {$aralik}) AS mv_bugun,
+				SUM(event_type='menu_view'     AND {$hafta})  AS mv_hafta,
+				SUM(event_type='menu_view'     AND {$ay})     AS mv_ay,
 				SUM(event_type='product_click' AND {$aralik}) AS pc_bugun,
 				SUM(event_type='product_click' AND {$hafta})  AS pc_hafta,
-				SUM(event_type='product_click')               AS pc_tumu,
 				COUNT(DISTINCT CASE WHEN event_type='menu_view' AND {$aralik} THEN ip_hash END) AS uv_bugun,
 				COUNT(DISTINCT CASE WHEN masa_no <> '' AND {$aralik} THEN masa_no END)          AS masa_gun
-			 FROM {$tablo}{$where}",
+			 FROM {$tablo}
+			 WHERE {$sinir_kosul}{$masa_ek}",
 			ARRAY_A
 		);
 
-		$bos = array(
+		$pc_tumu = (int) $wpdb->get_var(
+			"SELECT COUNT(*) FROM {$tablo} WHERE event_type='product_click'{$masa_ek}"
+		);
+		// phpcs:enable
+
+		$sonuc = array(
 			'mv_bugun' => 0,
 			'mv_hafta' => 0,
 			'mv_ay'    => 0,
 			'pc_bugun' => 0,
 			'pc_hafta' => 0,
-			'pc_tumu'  => 0,
+			'pc_tumu'  => $pc_tumu,
 			'uv_bugun' => 0,
 			'masa_gun' => 0,
 		);
 
 		if ( ! is_array( $satir ) ) {
-			return $bos;
+			return $sonuc;
 		}
 
-		// Boş tabloda SUM() NULL döner; (int) hepsini sıfıra indirir.
-		foreach ( $bos as $anahtar => $varsayilan ) {
-			$bos[ $anahtar ] = isset( $satir[ $anahtar ] ) ? (int) $satir[ $anahtar ] : 0;
+		// Aralıkta hiç satır yoksa SUM() NULL döner; (int) hepsini sıfıra indirir.
+		foreach ( $sonuc as $anahtar => $varsayilan ) {
+			if ( 'pc_tumu' === $anahtar ) {
+				continue;
+			}
+
+			$sonuc[ $anahtar ] = isset( $satir[ $anahtar ] ) ? (int) $satir[ $anahtar ] : 0;
 		}
 
-		return $bos;
+		return $sonuc;
 	}
 
 	/**
