@@ -39,6 +39,8 @@ function qrms_reset() {
 	$GLOBALS['qrms_test']['can']        = true;
 	$GLOBALS['qrms_test']['styles']     = array();
 	$GLOBALS['qrms_test']['scripts']    = array();
+	$GLOBALS['qrms_test']['settings']       = array();
+	$GLOBALS['qrms_test']['settings_fields'] = array();
 	$GLOBALS['menu']                    = array();
 	$GLOBALS['submenu']                 = array();
 	$_POST                              = array();
@@ -2450,6 +2452,116 @@ qrms_test(
 		qrms_module_qr_masa_oturum_guvenligi_admin_menu();
 
 		qrms_assert_same( array(), $GLOBALS['qrms_test']['submenus'], 'kayıt yok' );
+	}
+);
+
+/* ---------------------------------------------------------------------------
+ * 9a-2. Güvenlik Ayarı — oturum limitleri ve SAYFA KİLİDİ ayar kaydı
+ * ------------------------------------------------------------------------ */
+
+// Oturum sınıfı ile ayar ekranı. İkisi de dosya kapsamında yalnızca tanım
+// yapar; add_action çağrıları stub ortamında yan etkisizdir.
+require_once QRMS_PLUGIN_DIR . 'modules/_qmo-ortak/class-qmo-oturum.php';
+require_once QRMS_PLUGIN_DIR . 'modules/qr-masa-oturum-guvenligi/oturum-ayarlari.php';
+require_once QRMS_PLUGIN_DIR . 'modules/qr-masa-oturum-guvenligi/masa-dogrulama.php';
+
+echo "\nGüvenlik Ayarı — ayar kaydı\n";
+
+qrms_test(
+	'ekrandaki HER form, register_setting ile kaydedilmiş bir gruba gönderir',
+	function () {
+		// Bu testin varlık sebebi gerçek bir hatadır: sayfa kilidi formu
+		// 'qmo_sayfa_grup' grubuna gönderiyordu ama o grup hiçbir yerde
+		// register_setting() ile kaydedilmemişti. WordPress gönderimi
+		// "seçenekler sayfası bulunamadı" diyerek reddediyor, ayar sessizce
+		// hiç yazılmıyor ve sayfa kilidi hiçbir zaman devreye girmiyordu.
+		qmo_oturum_ayarlarini_kaydet();
+
+		ob_start();
+		qmo_oturum_ayar_sayfasi();
+		ob_end_clean();
+
+		$kayitli = array_keys( $GLOBALS['qrms_test']['settings'] );
+		$formlar = $GLOBALS['qrms_test']['settings_fields'];
+
+		qrms_assert_true( count( $formlar ) >= 2, 'ekranda en az iki ayar formu var' );
+
+		foreach ( $formlar as $grup ) {
+			qrms_assert_true(
+				in_array( $grup, $kayitli, true ),
+				$grup . ' grubu register_setting ile kaydedilmiş'
+			);
+		}
+	}
+);
+
+qrms_test(
+	'sayfa kilidi option\'ı kendi grubuyla ve temizleyicisiyle kaydedilir',
+	function () {
+		qmo_oturum_ayarlarini_kaydet();
+
+		$kayitli = $GLOBALS['qrms_test']['settings'];
+
+		qrms_assert_true(
+			isset( $kayitli['qmo_sayfa_grup']['qmo_korumali_sayfalar'] ),
+			'sayfa kilidi option\'ı kayıtlı'
+		);
+		qrms_assert_same(
+			'qmo_korumali_sayfalar_temizle',
+			$kayitli['qmo_sayfa_grup']['qmo_korumali_sayfalar']['sanitize_callback'],
+			'temizleyici bağlı'
+		);
+
+		// Oturum limitleri ayrı grupta kalır; iki form birbirini ezmemeli.
+		qrms_assert_true(
+			isset( $kayitli['qr_masa_grup'][ QMO_Oturum::OPT ] ),
+			'oturum limitleri kendi grubunda'
+		);
+	}
+);
+
+qrms_test(
+	'slug listesi temizlenir: boşluk, büyük harf, Türkçe karakter, tekrar',
+	function () {
+		qrms_assert_same(
+			'menu,menu-tr',
+			qmo_korumali_sayfalar_temizle( ' Menu , Menu-TR ' ),
+			'boşluk kırpılır, küçük harfe iner'
+		);
+		qrms_assert_same(
+			'bahce-kat',
+			qmo_korumali_sayfalar_temizle( 'Bahçe Kat' ),
+			'Türkçe harfler indirgenir'
+		);
+		qrms_assert_same(
+			'menu',
+			qmo_korumali_sayfalar_temizle( 'menu,menu,,menu' ),
+			'tekrarlar ve boşlar atılır'
+		);
+		qrms_assert_same( '', qmo_korumali_sayfalar_temizle( '' ), 'boş girdi boş kalır' );
+	}
+);
+
+qrms_test(
+	'kaydedilen değer, kilidi okuyan taraf tarafından aynen çözülür',
+	function () {
+		// Asıl güvence: yazma tarafının ürettiği metin, okuma tarafının
+		// (qmo_korumali_sluglar) beklediği biçimle birebir uyuşmalı.
+		$kaydedilen = qmo_korumali_sayfalar_temizle( 'Menu, Bahçe Kat' );
+		update_option( 'qmo_korumali_sayfalar', $kaydedilen );
+
+		qrms_assert_same(
+			array( 'menu', 'bahce-kat' ),
+			array_values( qmo_korumali_sluglar() ),
+			'okuma tarafı iki slug görür'
+		);
+	}
+);
+
+qrms_test(
+	'ayar hiç kaydedilmemişken sayfa kilidi kapalıdır',
+	function () {
+		qrms_assert_same( array(), array_values( qmo_korumali_sluglar() ), 'boş liste' );
 	}
 );
 

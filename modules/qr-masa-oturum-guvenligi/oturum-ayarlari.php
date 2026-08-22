@@ -27,6 +27,44 @@ if ( ! defined( 'QR_MASA_ADMIN_INIT' ) ) {
 				'sanitize_callback' => 'qmo_oturum_ayar_temizle',
 			)
 		);
+
+		// Sayfa kilidi AYRI bir option ve AYRI bir ayar grubudur: ekrandaki
+		// ikinci form options.php'ye 'qmo_sayfa_grup' ile gönderiyor. Grup
+		// kaydedilmediği sürece WordPress bu gönderimi "seçenekler sayfası
+		// bulunamadı" diyerek reddeder; ayar hiç yazılmaz ve sayfa kilidi
+		// sessizce hiç devreye girmez (qmo_korumali_sayfalar hep boş kalır).
+		register_setting(
+			'qmo_sayfa_grup',
+			'qmo_korumali_sayfalar',
+			array(
+				'type'              => 'string',
+				'sanitize_callback' => 'qmo_korumali_sayfalar_temizle',
+				'default'           => '',
+			)
+		);
+	}
+}
+
+/**
+ * Korunacak sayfa slug listesini temizler.
+ *
+ * Girdi virgülle ayrılmış slug listesidir ("menu, menu-tr"). Her parça
+ * sanitize_title()'dan geçirilir — okuma tarafı (qmo_korumali_sluglar())
+ * zaten aynı dönüşümü uyguluyor; burada da uygulanınca veritabanına
+ * kaydedilen değer ile karşılaştırılan değer birebir aynı olur ve
+ * yönetici girdiğinin ne olduğunu ekranda doğrudan görür.
+ *
+ * Saf fonksiyon; testlerde doğrudan doğrulanır.
+ *
+ * @param mixed $in Form girdisi.
+ * @return string Normalleştirilmiş, virgülle ayrılmış slug listesi.
+ */
+if ( ! function_exists( 'qmo_korumali_sayfalar_temizle' ) ) {
+	function qmo_korumali_sayfalar_temizle( $in ) {
+		$sluglar = array_filter( array_map( 'sanitize_title', explode( ',', (string) $in ) ) );
+
+		// Aynı slug iki kez girilmişse tek kez saklanır.
+		return implode( ',', array_unique( $sluglar ) );
 	}
 }
 
