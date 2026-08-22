@@ -1679,6 +1679,27 @@ qrms_test(
 );
 
 qrms_test(
+	'mobil sütun sayısı kendi sınırlarına kırpılır, masaüstü sütunundan bağımsızdır',
+	function () {
+		$temiz = RMA_Vitrin_DB::ayarlari_temizle(
+			array(
+				'grid_columns'   => 6,
+				'mobile_columns' => 99,
+			)
+		);
+
+		qrms_assert_same( RMA_Vitrin_DB::MAX_MOBILE_COLUMNS, $temiz['mobile_columns'], 'üst sınır' );
+		qrms_assert_same( 6, $temiz['grid_columns'], 'masaüstü sütunu etkilenmez' );
+
+		$bozuk = RMA_Vitrin_DB::ayarlari_temizle( array( 'mobile_columns' => 'çok' ) );
+		qrms_assert_same( 2, $bozuk['mobile_columns'], 'varsayılana düşer' );
+
+		$sifir = RMA_Vitrin_DB::ayarlari_temizle( array( 'mobile_columns' => 0 ) );
+		qrms_assert_same( RMA_Vitrin_DB::MIN_MOBILE_COLUMNS, $sifir['mobile_columns'], 'alt sınır' );
+	}
+);
+
+qrms_test(
 	'kayma hızı sınırlanır, sayı olmayan girdi varsayılana düşer',
 	function () {
 		$hizli = RMA_Vitrin_DB::ayarlari_temizle( array( 'autoplay_speed' => 10 ) );

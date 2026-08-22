@@ -19,7 +19,7 @@ if ( ! class_exists( 'RMA_Vitrin_DB' ) ) :
 class RMA_Vitrin_DB {
 
     /** Şema sürümü. Değişince tablolar dbDelta ile tazelenir. */
-    const DB_VERSION = '1.0.0';
+    const DB_VERSION = '1.1.0';
 
     /** Sürümün saklandığı option adı. */
     const VERSION_OPTION = 'rma_vitrin_db_version';
@@ -31,6 +31,12 @@ class RMA_Vitrin_DB {
     const MAX_ROWS    = 3;
     const MIN_SPEED   = 1000;
     const MAX_SPEED   = 15000;
+
+    /* Mobilde yan yana görünecek kart sayısı — masaüstü `grid_columns`'tan
+       BAĞIMSIZ, ayrı bir sınır: mobilde 3'ten fazla sütun kart genişliğini
+       okunmaz hâle getirir (bkz. vitrin.css --qrms-vitrin-card-min). */
+    const MIN_MOBILE_COLUMNS = 1;
+    const MAX_MOBILE_COLUMNS = 3;
 
     /**
      * Vitrin tanımları tablosu.
@@ -77,6 +83,7 @@ class RMA_Vitrin_DB {
             title varchar(255) NOT NULL DEFAULT '',
             grid_columns tinyint(2) unsigned NOT NULL DEFAULT 4,
             grid_rows tinyint(2) unsigned NOT NULL DEFAULT 1,
+            mobile_columns tinyint(2) unsigned NOT NULL DEFAULT 2,
             autoplay tinyint(1) NOT NULL DEFAULT 0,
             autoplay_speed smallint(5) unsigned NOT NULL DEFAULT 4000,
             drag_enabled tinyint(1) NOT NULL DEFAULT 1,
@@ -133,6 +140,7 @@ class RMA_Vitrin_DB {
             'title'          => '',
             'grid_columns'   => 4,
             'grid_rows'      => 1,
+            'mobile_columns' => 2,
             'autoplay'       => 0,
             'autoplay_speed' => 4000,
             'drag_enabled'   => 1,
@@ -159,6 +167,7 @@ class RMA_Vitrin_DB {
             'title'          => '' !== $baslik ? $baslik : 'Ürün Vitrini',
             'grid_columns'   => self::sinirla( $ham['grid_columns'] ?? $v['grid_columns'], self::MIN_COLUMNS, self::MAX_COLUMNS, $v['grid_columns'] ),
             'grid_rows'      => self::sinirla( $ham['grid_rows'] ?? $v['grid_rows'], self::MIN_ROWS, self::MAX_ROWS, $v['grid_rows'] ),
+            'mobile_columns' => self::sinirla( $ham['mobile_columns'] ?? $v['mobile_columns'], self::MIN_MOBILE_COLUMNS, self::MAX_MOBILE_COLUMNS, $v['mobile_columns'] ),
             'autoplay'       => self::bayrak( $ham['autoplay'] ?? 0 ),
             'autoplay_speed' => self::sinirla( $ham['autoplay_speed'] ?? $v['autoplay_speed'], self::MIN_SPEED, self::MAX_SPEED, $v['autoplay_speed'] ),
             'drag_enabled'   => self::bayrak( $ham['drag_enabled'] ?? 0 ),
@@ -314,6 +323,7 @@ class RMA_Vitrin_DB {
             'title'          => $ayarlar['title'],
             'grid_columns'   => $ayarlar['grid_columns'],
             'grid_rows'      => $ayarlar['grid_rows'],
+            'mobile_columns' => $ayarlar['mobile_columns'],
             'autoplay'       => $ayarlar['autoplay'],
             'autoplay_speed' => $ayarlar['autoplay_speed'],
             'drag_enabled'   => $ayarlar['drag_enabled'],
@@ -321,7 +331,7 @@ class RMA_Vitrin_DB {
             'updated_at'     => $simdi,
         );
 
-        $format = array( '%s', '%d', '%d', '%d', '%d', '%d', '%d', '%s' );
+        $format = array( '%s', '%d', '%d', '%d', '%d', '%d', '%d', '%d', '%s' );
 
         if ( $id > 0 && self::getir( $id ) ) {
             $wpdb->update( $tablo, $veri, array( 'id' => $id ), $format, array( '%d' ) );
