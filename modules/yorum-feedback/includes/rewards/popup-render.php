@@ -106,9 +106,14 @@ function qrm_reward_render_popup_style_block($settings) {
  * düşüyordu. Altbilgide basmak hem bunu kökten çözer hem de popup'ı, konumu
  * bozabilecek (transform/filter uygulayan) tema sarmalayıcılarının dışına taşır.
  *
- * @param array $settings   Eklenti ayarları
- * @param bool  $auto_open  JS kapalı klasik POST akışında sayfa açılır açılmaz göster
- * @return string           Normalde boş; wp_footer kaçırıldıysa satır içi çıktı
+ * @param array      $settings  Eklenti ayarları
+ * @param bool|array $auto_open JS kapalı klasik POST akışında sayfa açılır
+ *                              açılmaz göster. Dizi verilirse ödül talebini
+ *                              yetkilendiren ['review_id' => int,
+ *                              'claim' => string] çifti taşınır — o akışta
+ *                              JS'ten gelen bir yanıt olmadığı için anahtar
+ *                              popup'a sunucudan gömülmek zorundadır.
+ * @return string               Normalde boş; wp_footer kaçırıldıysa satır içi
  */
 function qrm_reward_queue_popup($settings, $auto_open = false) {
     if (!empty($GLOBALS['qrm_reward_popup_printed'])) {
@@ -117,7 +122,7 @@ function qrm_reward_queue_popup($settings, $auto_open = false) {
 
     $GLOBALS['qrm_reward_popup_needed'] = true;
     if ($auto_open) {
-        $GLOBALS['qrm_reward_popup_auto_open'] = true;
+        $GLOBALS['qrm_reward_popup_auto_open'] = $auto_open;
     }
 
     // wp_footer çoktan çalıştıysa (ya da tema hiç çağırmıyorsa) satır içi bas:
@@ -143,7 +148,11 @@ function qrm_reward_print_popup_footer() {
         return;
     }
     $GLOBALS['qrm_reward_popup_printed'] = true;
-    echo qrm_reward_render_popup($settings, !empty($GLOBALS['qrm_reward_popup_auto_open']));
+    $auto_open = isset($GLOBALS['qrm_reward_popup_auto_open'])
+        ? $GLOBALS['qrm_reward_popup_auto_open']
+        : false;
+
+    echo qrm_reward_render_popup($settings, $auto_open);
 }
 
 /**
@@ -156,6 +165,13 @@ function qrm_reward_print_popup_footer() {
 function qrm_reward_render_popup($settings, $auto_open = false) {
     $wait_seconds = qrm_reward_wait_seconds($settings);
     $auto_seconds = qrm_reward_auto_seconds($settings);
+
+    // JS kapalı akışta popup'ı açan tek şey sunucudur; kod talebini
+    // yetkilendiren anahtar da o yüzden buraya gömülür.
+    $auto_claim = [
+        'reviewId' => is_array($auto_open) && isset($auto_open['review_id']) ? (int) $auto_open['review_id'] : 0,
+        'claim'    => is_array($auto_open) && isset($auto_open['claim']) ? (string) $auto_open['claim'] : '',
+    ];
 
     ob_start();
     echo qrm_reward_render_popup_style_block($settings);
@@ -236,7 +252,8 @@ function qrm_reward_render_popup($settings, $auto_open = false) {
             copyText:     <?php echo wp_json_encode($settings['qrm_reward_popup_copy_text']); ?>,
             copiedText:   <?php echo wp_json_encode($settings['qrm_reward_popup_copied_text']); ?>,
             errorText:    <?php echo wp_json_encode($settings['qrm_reward_popup_error_text']); ?>,
-            autoOpen:     <?php echo $auto_open ? 'true' : 'false'; ?>
+            autoOpen:     <?php echo $auto_open ? 'true' : 'false'; ?>,
+            autoClaim:    <?php echo wp_json_encode($auto_claim); ?>
         };
 
         var steps      = root.querySelectorAll('[data-rw-step]');
@@ -255,7 +272,7 @@ function qrm_reward_render_popup($settings, $auto_open = false) {
         var mailNote   = document.getElementById('qrmRwMailNote');
         var errorText  = document.getElementById('qrmRwErrorText');
 
-        var autoTimer = null, tickTimer = null, reviewId = 0, waited = false;
+        var autoTimer = null, tickTimer = null, reviewId = 0, claim = '', waited = false;
 
         // --- state makinesi: her state ayrı fonksiyon, iç içe if yok ---
         function setStep(name) {
@@ -348,6 +365,7 @@ function qrm_reward_render_popup($settings, $auto_open = false) {
 
         function open(opts) {
             reviewId = (opts && opts.reviewId) ? parseInt(opts.reviewId, 10) : 0;
+            claim    = (opts && opts.claim) ? String(opts.claim) : '';
             waited = false;
             goBtn.removeAttribute('data-rw-ready');
             root.hidden = false;
@@ -393,6 +411,7 @@ function qrm_reward_render_popup($settings, $auto_open = false) {
             fd.append('nonce', cfg.nonce);
             fd.append('email', value);
             fd.append('review_id', reviewId);
+            fd.append('claim', claim);
 
             fetch(cfg.ajaxUrl, { method: 'POST', credentials: 'same-origin', body: fd })
                 .then(function(r) { return r.json(); })
@@ -440,9 +459,9 @@ function qrm_reward_render_popup($settings, $auto_open = false) {
 
         if (cfg.autoOpen) {
             if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', function() { open({}); });
+                document.addEventListener('DOMContentLoaded', function() { open(cfg.autoClaim); });
             } else {
-                open({});
+                open(cfg.autoClaim);
             }
         }
     })();

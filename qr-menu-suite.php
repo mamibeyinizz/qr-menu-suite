@@ -65,13 +65,19 @@ function qrms_activate() {
 register_activation_hook( __FILE__, 'qrms_activate' );
 
 /**
- * Deaktivasyon: zamanlanmış lisans senkronizasyonunu temizle.
+ * Deaktivasyon: zamanlanmış görevleri temizle.
  *
- * Lisans option'ları (anahtar, modüller, durum) korunur.
+ * Lisans option'ları (anahtar, modüller, durum) ve toplanmış analitik
+ * kayıtları KORUNUR; yalnızca cron kayıtları kaldırılır.
  *
  * @return void
  */
 function qrms_deactivate() {
 	QRMS_License_Client::unschedule_cron();
+
+	// Analitik saklama görevi modül sınıfında tanımlıdır; modül lisansta
+	// kapalıysa sınıf hiç yüklenmemiş olabilir, o yüzden kanca adı doğrudan
+	// temizlenir (sınıfı yalnızca bunun için yüklemeye değmez).
+	wp_clear_scheduled_hook( 'qrms_analitik_temizlik' );
 }
 register_deactivation_hook( __FILE__, 'qrms_deactivate' );

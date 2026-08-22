@@ -94,6 +94,12 @@ function qrm_pro_handle_review_submission($settings) {
     $show_reward = $eligible && $reward_on;
     $show_google = $eligible && !$reward_on;
 
+    // v4.2.2: Ödül popup'ı açılacaksa, kod talebini yetkilendiren tek
+    // kullanımlık anahtar BURADA üretilir. Kod ucu artık yalnızca review_id'ye
+    // değil, bu anahtara bakar; böylece nonce'u ele geçiren biri farklı
+    // e-postalarla kod üretmeye devam edemez.
+    $reward_claim = $show_reward ? qrm_reward_issue_claim($review_id) : '';
+
     return [
         'success' => true,
         'status' => $status,
@@ -104,6 +110,7 @@ function qrm_pro_handle_review_submission($settings) {
         'google_url' => $eligible ? esc_url_raw($settings['google_review_url']) : '',
         'show_reward' => $show_reward,
         'review_id' => $show_reward ? $review_id : 0,
+        'reward_claim' => $reward_claim,
         'message' => $status == 1 ? 'Değerlendirmeniz yayınlandı.' : 'Değerlendirmeniz alındı, onay sonrası yayınlanacaktır.',
     ];
 }

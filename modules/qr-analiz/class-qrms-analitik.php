@@ -77,6 +77,40 @@ class QRMS_Analitik {
 	const MASA_GUN = 30;
 
 	/**
+	 * İzleme kaydı için doğrulanan nonce eylemi.
+	 *
+	 * Kancalandığı uçların (rma_load_items / rma_get_product_details) menü
+	 * modülünde ürettiği nonce ile AYNI olmak zorundadır:
+	 * modules/restoran-menu/includes/trait-frontend.php içindeki
+	 * wp_create_nonce( 'rma_ajax_nonce' ).
+	 */
+	const NONCE_TAKIP = 'rma_ajax_nonce';
+
+	/**
+	 * Eski kayıtları silen zamanlanmış görevin kanca adı.
+	 */
+	const CRON_TEMIZLIK = 'qrms_analitik_temizlik';
+
+	/**
+	 * Ham analitik kaydının varsayılan saklama süresi (gün).
+	 *
+	 * Tablo her menü görüntülemesi ve ürün tıklamasında büyür; saklama
+	 * politikası olmadan tek temizlik yolu tabloyu tamamen boşaltmaktı
+	 * (TRUNCATE), yani yönetici ya tüm geçmişini kaybediyor ya da tabloyu
+	 * büyütmeye devam ediyordu.
+	 */
+	const SAKLAMA_GUN = 90;
+
+	/**
+	 * Silme işleminin tek turda kaldıracağı azami satır sayısı.
+	 *
+	 * Yıllardır biriken bir tabloda sınırsız DELETE, tabloyu uzun süre
+	 * kilitleyip cron isteğini zaman aşımına düşürebilir. Kalan satırlar
+	 * ertesi turda silinir.
+	 */
+	const SAKLAMA_PARCA = 5000;
+
+	/**
 	 * Hook kayıtları.
 	 *
 	 * @return void
@@ -100,6 +134,97 @@ class QRMS_Analitik {
 		add_action( 'wp_ajax_qrms_analitik_veri', array( __CLASS__, 'ajax_veri' ) );
 		add_action( 'wp_ajax_qrms_analitik_csv', array( __CLASS__, 'ajax_csv' ) );
 		add_action( 'wp_ajax_qrms_analitik_temizle', array( __CLASS__, 'ajax_temizle' ) );
+
+		// Saklama süresi dolan ham kayıtları silen günlük görev.
+		add_action( self::CRON_TEMIZLIK, array( __CLASS__, 'eski_kayitlari_sil' ) );
+		add_action( 'init', array( __CLASS__, 'temizlik_planla' ), 5 );
+	}
+
+	/* -----------------------------------------------------------------
+	   SAKLAMA POLİTİKASI
+	----------------------------------------------------------------- */
+
+	/**
+	 * Ham kaydın saklanacağı gün sayısı.
+	 *
+	 * 0 döndürmek temizliği kapatır (sınırsız saklama). Alt sınır 7 gündür:
+	 * daha kısa bir değer, panelin "son 30 gün" görünümlerini boşaltırdı.
+	 *
+	 * @return int
+	 */
+	public static function saklama_gun() {
+		/**
+		 * Analitik ham kaydının saklama süresi (gün). 0 = temizlik kapalı.
+		 *
+		 * @param int $gun Varsayılan saklama süresi.
+		 */
+		$gun = (int) apply_filters( 'qrms_analitik_saklama_gun', self::SAKLAMA_GUN );
+
+		if ( $gun <= 0 ) {
+			return 0;
+		}
+
+		return max( 7, $gun );
+	}
+
+	/**
+	 * Günlük temizlik görevini (yoksa) planlar.
+	 *
+	 * @return void
+	 */
+	public static function temizlik_planla() {
+		if ( wp_next_scheduled( self::CRON_TEMIZLIK ) ) {
+			return;
+		}
+
+		wp_schedule_event( time() + HOUR_IN_SECONDS, 'daily', self::CRON_TEMIZLIK );
+	}
+
+	/**
+	 * Planlanmış temizlik görevini kaldırır (eklenti devre dışı bırakılırken).
+	 *
+	 * @return void
+	 */
+	public static function temizlik_iptal() {
+		wp_clear_scheduled_hook( self::CRON_TEMIZLIK );
+	}
+
+	/**
+	 * Saklama süresi dolan kayıtları siler.
+	 *
+	 * TRUNCATE'ten farkı: yalnızca eskiyen satırlar gider, yakın geçmişin
+	 * raporları olduğu gibi kalır. Tek turda en fazla SAKLAMA_PARCA satır
+	 * silinir; kalanı ertesi gün (ya da elle tetiklendiğinde) temizlenir.
+	 *
+	 * @return int Silinen satır sayısı.
+	 */
+	public static function eski_kayitlari_sil() {
+		global $wpdb;
+
+		$gun = self::saklama_gun();
+
+		if ( 0 === $gun ) {
+			return 0;
+		}
+
+		if ( ! self::tablo_var_mi() ) {
+			return 0;
+		}
+
+		$tablo = self::tablo();
+		$sinir = gmdate( 'Y-m-d H:i:s', strtotime( '-' . $gun . ' days', self::simdi() ) );
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$silinen = $wpdb->query(
+			$wpdb->prepare(
+				// created_at üzerinde idx_date var; aralık taraması indekslidir.
+				"DELETE FROM {$tablo} WHERE created_at < %s LIMIT %d",
+				$sinir,
+				self::SAKLAMA_PARCA
+			)
+		);
+
+		return (int) $silinen;
 	}
 
 	/**
@@ -330,6 +455,23 @@ class QRMS_Analitik {
 	}
 
 	/**
+	 * Olay tablosu veritabanında var mı?
+	 *
+	 * Tablo, veritabanı kullanıcısının CREATE yetkisi yoksa hiç oluşmamış
+	 * olabilir; temizlik görevi o kurulumlarda sessizce hiçbir şey yapmalı.
+	 *
+	 * @return bool
+	 */
+	public static function tablo_var_mi() {
+		global $wpdb;
+
+		$tablo = self::tablo();
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		return (bool) $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $tablo ) );
+	}
+
+	/**
 	 * Şema güncel değilse dbDelta çalıştırır.
 	 *
 	 * Sürüm option'ı eşleştiğinde tek bir option okumasına iner; her istekte
@@ -526,14 +668,38 @@ class QRMS_Analitik {
 	}
 
 	/**
+	 * İstek gerçekten menü arayüzünden mi geliyor?
+	 *
+	 * Eskiden yalnızca "security alanı boş mu?" diye bakılıyordu; alanın
+	 * DEĞERİ hiç doğrulanmadığı için `security=x` göndermek yeterliydi ve
+	 * tabloya kimlik doğrulaması olmadan sınırsız satır eklenebiliyordu.
+	 * Artık nonce gerçekten doğrulanır.
+	 *
+	 * Doğrulama başarısızsa istek REDDEDİLMEZ, yalnızca kayıt atlanır: asıl
+	 * uçlar (rma_load_items / rma_get_product_details) nonce'u bilinçli olarak
+	 * "yumuşak" kontrol ediyor, çünkü önbelleklenmiş bir sayfada nonce
+	 * eskimiş olabilir. Menünün çalışmaya devam etmesi, o menü açılışının
+	 * sayılmasından önemlidir.
+	 *
+	 * Saf bir istek incelemesidir ($wpdb'ye dokunmaz), bu yüzden doğrudan
+	 * test edilir.
+	 *
+	 * @return bool
+	 */
+	public static function izleme_gecerli_mi() {
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing
+		$nonce = isset( $_POST['security'] ) ? sanitize_text_field( wp_unslash( $_POST['security'] ) ) : '';
+
+		return '' !== $nonce && (bool) wp_verify_nonce( $nonce, self::NONCE_TAKIP );
+	}
+
+	/**
 	 * Menü listesi isteği: bir görüntüleme kaydı.
 	 *
 	 * @return void
 	 */
 	public static function izle_menu_goruntuleme() {
-		// Nonce alanı hiç yoksa istek menü arayüzünden gelmiyordur (bot/ısınma).
-		// phpcs:ignore WordPress.Security.NonceVerification.Missing
-		if ( empty( $_POST['security'] ) ) {
+		if ( ! self::izleme_gecerli_mi() ) {
 			return;
 		}
 
@@ -550,11 +716,11 @@ class QRMS_Analitik {
 	 * @return void
 	 */
 	public static function izle_urun_tiklama() {
-		// phpcs:disable WordPress.Security.NonceVerification.Missing
-		if ( empty( $_POST['security'] ) ) {
+		if ( ! self::izleme_gecerli_mi() ) {
 			return;
 		}
 
+		// phpcs:disable WordPress.Security.NonceVerification.Missing
 		if ( ! empty( $_POST['prefetch'] ) ) {
 			return;
 		}

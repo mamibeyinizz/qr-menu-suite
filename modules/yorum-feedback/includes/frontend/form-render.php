@@ -311,6 +311,9 @@ function qrm_pro_render_style_block($settings) {
 // Form kutusunu üretir: puanlama kriterleri + müşteri bilgi alanları + gönder butonu.
 // $form_source: 'review' (normal yorum formu) veya 'contact' (İletişim shortcode'u).
 // $auto_open_reward (v4.1.0): JS kapalı klasik POST akışında ödül popup'ı sayfa açılır açılmaz gösterilir.
+//   v4.2.2'den beri bool yerine ['review_id' => int, 'claim' => string] dizisi de olabilir:
+//   o akışta istemciye dönen bir AJAX yanıtı olmadığı için, kod talebini yetkilendiren
+//   tek kullanımlık anahtar popup'a sunucudan gömülmek zorundadır.
 function qrm_pro_render_review_form($settings, $active_fields, $message, $show_google_cta, $cta_avg, $form_source = 'review', $auto_open_reward = false) {
     $ac_index = 0;
     $form_title = ($form_source === 'contact') ? $settings['contact_form_title'] : $settings['form_title'];

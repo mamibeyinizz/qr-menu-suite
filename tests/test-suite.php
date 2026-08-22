@@ -39,6 +39,9 @@ function qrms_reset() {
 	$GLOBALS['qrms_test']['can']        = true;
 	$GLOBALS['qrms_test']['styles']     = array();
 	$GLOBALS['qrms_test']['scripts']    = array();
+	$GLOBALS['qrms_test']['settings']       = array();
+	$GLOBALS['qrms_test']['settings_fields'] = array();
+
 	$GLOBALS['menu']                    = array();
 	$GLOBALS['submenu']                 = array();
 	$_POST                              = array();
@@ -2454,6 +2457,789 @@ qrms_test(
 );
 
 /* ---------------------------------------------------------------------------
+ * 8z. Yorum & Feedback — yorum listesinin SAYFALAMASI
+ * ------------------------------------------------------------------------ */
+
+// Yalnızca fonksiyon tanımları; hook kaydı yok.
+require_once QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/settings.php';
+require_once QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/frontend/reviews-list.php';
+require_once QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/frontend/form-render.php';
+
+/**
+ * Yorum listesi sorguları için $wpdb taklidi.
+ *
+ * prepare() çekirdekteki gibi yer tutucuları doldurur; testler böylece
+ * ÜRETİLEN SQL'i — özellikle LIMIT/OFFSET değerlerini — doğrulayabilir.
+ * (ai-insights testlerinin kendi QRMS_Test_Wpdb'si ayrıdır; bu sınıf
+ * yalnızca aşağıdaki testler için $GLOBALS['wpdb']'ye takılır.)
+ */
+class QRMS_Yorum_Wpdb {
+	public $prefix  = 'wp_';
+	public $queries = array();
+	public $results = array();
+	public $vars    = array();
+
+	public function prepare( $sql, ...$args ) {
+		if ( 1 === count( $args ) && is_array( $args[0] ) ) {
+			$args = $args[0];
+		}
+
+		return preg_replace_callback(
+			'/%[dsf]/',
+			function ( $m ) use ( &$args ) {
+				$value = array_shift( $args );
+
+				if ( '%d' === $m[0] ) {
+					return (string) (int) $value;
+				}
+				if ( '%f' === $m[0] ) {
+					return (string) (float) $value;
+				}
+
+				return "'" . str_replace( "'", "\\'", (string) $value ) . "'";
+			},
+			$sql
+		);
+	}
+
+	public function get_results( $sql, $mode = null ) {
+		$this->queries[] = $sql;
+
+		return array_shift( $this->results ) ?: array();
+	}
+
+	public function get_var( $sql ) {
+		$this->queries[] = $sql;
+
+		return array_shift( $this->vars );
+	}
+
+	public function get_row( $sql ) {
+		$this->queries[] = $sql;
+
+		return array_shift( $this->vars );
+	}
+
+	public function son_sorgu() {
+		return end( $this->queries ) ?: '';
+	}
+}
+
+/**
+ * Yorum testleri için taze bir $wpdb takar.
+ *
+ * @return QRMS_Yorum_Wpdb
+ */
+function qrms_yorum_wpdb() {
+	$GLOBALS['wpdb'] = new QRMS_Yorum_Wpdb();
+
+	return $GLOBALS['wpdb'];
+}
+
+/**
+ * Test için sahte yorum satırı.
+ *
+ * @param int $id Satır kimliği.
+ * @return object
+ */
+function qrms_sahte_yorum( $id ) {
+	return (object) array(
+		'id'            => $id,
+		'rating'        => 4.5,
+		'comment'       => 'Yorum ' . $id,
+		'customer_name' => 'Müşteri ' . $id,
+		'is_anonymous'  => 0,
+		'created_at'    => '2026-01-01 12:00:00',
+	);
+}
+
+echo "\nYorum listesi sayfalaması\n";
+
+qrms_test(
+	'sayfa boyutu ayardan gelir',
+	function () {
+		qrms_assert_same( 3, qrm_pro_reviews_page_size( array( 'reviews_per_page' => '3' ) ), '3 yorum' );
+		qrms_assert_same( 5, qrm_pro_reviews_page_size( array( 'reviews_per_page' => '5' ) ), '5 yorum' );
+	}
+);
+
+qrms_test(
+	'"Tümü" ayarı sınırsız sorguya DÖNÜŞMEZ, üst sınıra çekilir',
+	function () {
+		// Asıl düzeltme bu: eskiden 'all' seçildiğinde sorgu LIMIT'siz
+		// çalışıyor, tüm onaylı yorumlar çekilip HTML'e basılıyordu.
+		$boyut = qrm_pro_reviews_page_size( array( 'reviews_per_page' => 'all' ) );
+
+		qrms_assert_same( 50, $boyut, 'üst sınıra çekilir' );
+		qrms_assert_true( $boyut > 0 && $boyut <= 50, 'her koşulda sınırlı' );
+	}
+);
+
+qrms_test(
+	'bozuk ya da eksik ayar güvenli varsayılana düşer',
+	function () {
+		qrms_assert_same( 3, qrm_pro_reviews_page_size( array() ), 'ayar yok' );
+		qrms_assert_same( 3, qrm_pro_reviews_page_size( array( 'reviews_per_page' => '0' ) ), 'sıfır' );
+		qrms_assert_same( 3, qrm_pro_reviews_page_size( array( 'reviews_per_page' => '-7' ) ), 'negatif' );
+		qrms_assert_same( 3, qrm_pro_reviews_page_size( array( 'reviews_per_page' => 'abc' ) ), 'metin' );
+	}
+);
+
+qrms_test(
+	'sayfa boyutu üst sınırı filtreyle daraltılabilir',
+	function () {
+		add_filter(
+			'qrm_reviews_max_page_size',
+			function () {
+				return 10;
+			}
+		);
+
+		qrms_assert_same( 10, qrm_pro_reviews_page_size( array( 'reviews_per_page' => 'all' ) ), '"tümü" daralır' );
+		qrms_assert_same( 5, qrm_pro_reviews_page_size( array( 'reviews_per_page' => '5' ) ), 'sınır altı korunur' );
+	}
+);
+
+qrms_test(
+	'sorgu GERÇEKTEN LIMIT ve OFFSET taşır',
+	function () {
+		$db = qrms_yorum_wpdb();
+		$db->results[] = array( qrms_sahte_yorum( 1 ), qrms_sahte_yorum( 2 ) );
+
+		qrm_pro_fetch_approved_reviews( 3, 6 );
+
+		$sorgu = $db->son_sorgu();
+
+		qrms_assert_true( false !== strpos( $sorgu, 'WHERE status = 1' ), 'yalnızca onaylılar' );
+		// Sayfa boyutundan BİR FAZLA istenir: fazladan satır "daha var mı?"
+		// sorusunu ayrı bir COUNT sorgusu olmadan cevaplar.
+		qrms_assert_true( false !== strpos( $sorgu, 'LIMIT 4' ), 'LIMIT = boyut + 1' );
+		qrms_assert_true( false !== strpos( $sorgu, 'OFFSET 6' ), 'OFFSET uygulanır' );
+	}
+);
+
+qrms_test(
+	'fazladan satır listeye girmez, yalnızca "daha var" der',
+	function () {
+		// 3 istendi, 4 döndü -> devamı var, ama kullanıcıya 3 kart gider.
+		$db = qrms_yorum_wpdb();
+		$db->results[] = array(
+			qrms_sahte_yorum( 1 ),
+			qrms_sahte_yorum( 2 ),
+			qrms_sahte_yorum( 3 ),
+			qrms_sahte_yorum( 4 ),
+		);
+
+		$sayfa = qrm_pro_fetch_approved_reviews( 3, 0 );
+
+		qrms_assert_same( 3, count( $sayfa['rows'] ), 'sayfa boyutu kadar satır' );
+		qrms_assert_true( $sayfa['has_more'], 'devamı var' );
+		qrms_assert_same( 3, (int) $sayfa['rows'][2]->id, 'fazladan satır atıldı' );
+	}
+);
+
+qrms_test(
+	'son sayfada "daha fazla" denmez',
+	function () {
+		$db = qrms_yorum_wpdb();
+		$db->results[] = array( qrms_sahte_yorum( 1 ), qrms_sahte_yorum( 2 ) );
+
+		$sayfa = qrm_pro_fetch_approved_reviews( 3, 0 );
+
+		qrms_assert_same( 2, count( $sayfa['rows'] ), 'gelen satırlar' );
+		qrms_assert_false( $sayfa['has_more'], 'devamı yok' );
+	}
+);
+
+qrms_test(
+	'hiç yorum yokken boş sayfa döner',
+	function () {
+		qrms_yorum_wpdb();
+
+		$sayfa = qrm_pro_fetch_approved_reviews( 3, 0 );
+
+		qrms_assert_same( array(), $sayfa['rows'], 'boş liste' );
+		qrms_assert_false( $sayfa['has_more'], 'devamı yok' );
+	}
+);
+
+qrms_test(
+	'negatif ya da sıfır sayfa boyutu sorguyu sınırsız bırakmaz',
+	function () {
+		$db = qrms_yorum_wpdb();
+
+		qrm_pro_fetch_approved_reviews( 0, -5 );
+
+		$sorgu = $db->son_sorgu();
+
+		qrms_assert_true( false !== strpos( $sorgu, 'LIMIT 2' ), 'en az 1 + 1' );
+		qrms_assert_true( false !== strpos( $sorgu, 'OFFSET 0' ), 'negatif offset sıfırlanır' );
+	}
+);
+
+qrms_test(
+	'toplam sayaç ayrı sorulur (LIMIT sayacı bozmasın diye)',
+	function () {
+		$db = qrms_yorum_wpdb();
+		$db->vars[] = '4231';
+
+		qrms_assert_same( 4231, qrm_pro_count_approved_reviews(), 'toplam' );
+		qrms_assert_true(
+			false !== strpos( $db->son_sorgu(), 'COUNT(*)' ),
+			'sayım sorgusu'
+		);
+	}
+);
+
+qrms_test(
+	'kart çıktısı müşteri adını ve yorumu kaçırarak basar',
+	function () {
+		$yorum                = qrms_sahte_yorum( 1 );
+		$yorum->customer_name = '<script>alert(1)</script>';
+		$yorum->comment       = 'Harika & lezzetli <b>çok</b>';
+
+		$html = qrm_pro_render_review_card( $yorum );
+
+		qrms_assert_true( false === strpos( $html, '<script>' ), 'ad kaçırıldı' );
+		qrms_assert_true( false === strpos( $html, '<b>çok</b>' ), 'yorum kaçırıldı' );
+		qrms_assert_true( false !== strpos( $html, 'qrm-review-item' ), 'kart sınıfı korundu' );
+	}
+);
+
+qrms_test(
+	'anonim yorumda müşteri adı hiç basılmaz',
+	function () {
+		$yorum                = qrms_sahte_yorum( 1 );
+		$yorum->customer_name = 'Gizli Kalmalı';
+		$yorum->is_anonymous  = 1;
+
+		$html = qrm_pro_render_review_card( $yorum );
+
+		qrms_assert_true( false === strpos( $html, 'Gizli Kalmalı' ), 'ad sızmaz' );
+		qrms_assert_true( false !== strpos( $html, 'Anonim Misafir' ), 'anonim etiketi' );
+	}
+);
+
+qrms_test(
+	'puan yıldızları 0-5 aralığının dışına taşmaz',
+	function () {
+		// str_repeat negatif sayıyla ölümcül hata verir; bozuk bir satır
+		// tüm listeyi düşürmemeli.
+		$yorum         = qrms_sahte_yorum( 1 );
+		$yorum->rating = 9.7;
+		$html          = qrm_pro_render_review_card( $yorum );
+		qrms_assert_same( 5, substr_count( $html, '★' ), 'tavan 5' );
+
+		$yorum->rating = -3;
+		$html          = qrm_pro_render_review_card( $yorum );
+		qrms_assert_same( 5, substr_count( $html, '☆' ), 'taban 0 dolu yıldız' );
+	}
+);
+
+/* ---------------------------------------------------------------------------
+ * 8z-2. Yorum & Feedback — ödül kodu TALEP DOĞRULAMASI
+ * ------------------------------------------------------------------------ */
+
+require_once QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/rewards/db.php';
+require_once QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/rewards/functions.php';
+
+echo "\nÖdül kodu talep doğrulaması\n";
+
+qrms_test(
+	'anahtarsız talep reddedilir',
+	function () {
+		qrms_yorum_wpdb();
+
+		$sonuc = qrm_reward_verify_claim( 42, '', array( 'google_review_threshold' => 4 ) );
+
+		qrms_assert_true( is_wp_error( $sonuc ), 'reddedildi' );
+		qrms_assert_same( 'qrm_reward_claim', $sonuc->get_error_code(), 'hata kodu' );
+	}
+);
+
+qrms_test(
+	'uydurma anahtar reddedilir',
+	function () {
+		qrms_yorum_wpdb();
+		qrm_reward_issue_claim( 42 );
+
+		$sonuc = qrm_reward_verify_claim( 42, 'uydurma-anahtar', array( 'google_review_threshold' => 4 ) );
+
+		qrms_assert_true( is_wp_error( $sonuc ), 'reddedildi' );
+	}
+);
+
+qrms_test(
+	'başka bir yorumun anahtarı bu yorum için kullanılamaz',
+	function () {
+		qrms_yorum_wpdb();
+
+		$anahtar = qrm_reward_issue_claim( 7 );
+
+		// Saldırgan kendi yorumunun anahtarını başka review_id ile deniyor.
+		$sonuc = qrm_reward_verify_claim( 8, $anahtar, array( 'google_review_threshold' => 4 ) );
+
+		qrms_assert_true( is_wp_error( $sonuc ), 'çapraz kullanım engellenir' );
+	}
+);
+
+qrms_test(
+	'anahtar veritabanında ham saklanmaz',
+	function () {
+		qrms_yorum_wpdb();
+
+		$anahtar  = qrm_reward_issue_claim( 42 );
+		$saklanan = get_transient( qrm_reward_claim_key( 42 ) );
+
+		qrms_assert_true( '' !== (string) $saklanan, 'bir şey saklandı' );
+		qrms_assert_false( $anahtar === $saklanan, 'ham anahtar saklanmıyor' );
+		qrms_assert_same( wp_hash( $anahtar ), $saklanan, 'hash saklanıyor' );
+	}
+);
+
+qrms_test(
+	'geçerli anahtar + eşiği geçen yorum kabul edilir',
+	function () {
+		$db      = qrms_yorum_wpdb();
+		$anahtar = qrm_reward_issue_claim( 42 );
+
+		// 1) yorum satırı, 2) "bu yoruma kod verilmiş mi" -> hayır
+		$db->vars[] = (object) array( 'id' => 42, 'rating' => 4.8 );
+		$db->vars[] = null;
+
+		$sonuc = qrm_reward_verify_claim( 42, $anahtar, array( 'google_review_threshold' => 4.5 ) );
+
+		qrms_assert_true( true === $sonuc, 'kabul edildi' );
+	}
+);
+
+qrms_test(
+	'eşiğin ALTINDA kalan yorum için kod üretilemez',
+	function () {
+		$db      = qrms_yorum_wpdb();
+		$anahtar = qrm_reward_issue_claim( 42 );
+
+		$db->vars[] = (object) array( 'id' => 42, 'rating' => 2.0 );
+		$db->vars[] = null;
+
+		$sonuc = qrm_reward_verify_claim( 42, $anahtar, array( 'google_review_threshold' => 4.5 ) );
+
+		qrms_assert_true( is_wp_error( $sonuc ), 'reddedildi' );
+		qrms_assert_contains( 'koşulunu karşılamıyor', $sonuc->get_error_message(), 'sebep' );
+	}
+);
+
+qrms_test(
+	'var olmayan yorum kimliği reddedilir',
+	function () {
+		$db      = qrms_yorum_wpdb();
+		$anahtar = qrm_reward_issue_claim( 42 );
+
+		$db->vars[] = null; // yorum bulunamadı
+
+		$sonuc = qrm_reward_verify_claim( 42, $anahtar, array( 'google_review_threshold' => 4 ) );
+
+		qrms_assert_true( is_wp_error( $sonuc ), 'reddedildi' );
+		qrms_assert_contains( 'bulunamadı', $sonuc->get_error_message(), 'sebep' );
+	}
+);
+
+qrms_test(
+	'aynı yoruma ikinci kod verilmez',
+	function () {
+		$db      = qrms_yorum_wpdb();
+		$anahtar = qrm_reward_issue_claim( 42 );
+
+		$db->vars[] = (object) array( 'id' => 42, 'rating' => 5.0 );
+		$db->vars[] = 17; // bu yoruma zaten kod üretilmiş
+
+		$sonuc = qrm_reward_verify_claim( 42, $anahtar, array( 'google_review_threshold' => 4 ) );
+
+		qrms_assert_true( is_wp_error( $sonuc ), 'reddedildi' );
+		qrms_assert_contains( 'zaten', $sonuc->get_error_message(), 'sebep' );
+	}
+);
+
+qrms_test(
+	'anahtar TEK KULLANIMLIKTIR: harcandıktan sonra geçmez',
+	function () {
+		$db      = qrms_yorum_wpdb();
+		$anahtar = qrm_reward_issue_claim( 42 );
+
+		$db->vars[] = (object) array( 'id' => 42, 'rating' => 5.0 );
+		$db->vars[] = null;
+		qrms_assert_true( true === qrm_reward_verify_claim( 42, $anahtar, array( 'google_review_threshold' => 4 ) ), 'ilk kullanım' );
+
+		// Kod üretildiğinde uç bunu çağırır.
+		qrm_reward_consume_claim( 42 );
+
+		$sonuc = qrm_reward_verify_claim( 42, $anahtar, array( 'google_review_threshold' => 4 ) );
+		qrms_assert_true( is_wp_error( $sonuc ), 'ikinci kullanım reddedilir' );
+	}
+);
+
+qrms_test(
+	'geçersiz yorum kimliği için anahtar üretilmez',
+	function () {
+		qrms_assert_same( '', qrm_reward_issue_claim( 0 ), 'sıfır' );
+		qrms_assert_same( '', qrm_reward_issue_claim( -3 ), 'negatif' );
+	}
+);
+
+qrms_test(
+	'ödül ucu doğrulamayı e-posta kontrolünden ÖNCE yapar',
+	function () {
+		// Sıra önemli: yetkisiz bir istek, hangi e-postaların kod aldığını
+		// "already_used" cevabıyla sızdırmamalı.
+		$kaynak = file_get_contents(
+			QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/ajax/rewards.php'
+		);
+
+		$dogrulama = strpos( $kaynak, 'qrm_reward_verify_claim' );
+		$eposta    = strpos( $kaynak, 'qrm_reward_find_by_email' );
+
+		qrms_assert_true( false !== $dogrulama, 'doğrulama çağrılıyor' );
+		qrms_assert_true( false !== $eposta, 'e-posta kontrolü duruyor' );
+		qrms_assert_true( $dogrulama < $eposta, 'doğrulama önce gelir' );
+	}
+);
+
+/* ---------------------------------------------------------------------------
+ * 9a-0. QR Analiz — izleme nonce'u ve saklama politikası
+ * ------------------------------------------------------------------------ */
+
+// Sınıf dosya kapsamında yalnızca tanım yapar; init() elle çağrılır.
+require_once QRMS_PLUGIN_DIR . 'modules/qr-analiz/class-qrms-analitik.php';
+
+echo "\nQR Analiz izleme nonce'u\n";
+
+qrms_test(
+	'uydurma nonce değeri artık kayıt açtırmaz',
+	function () {
+		// Eskiden yalnızca "alan boş mu?" diye bakılıyordu: security=x
+		// göndermek yeterliydi ve tabloya kimlik doğrulaması olmadan
+		// sınırsız satır eklenebiliyordu.
+		$_POST['security'] = 'x';
+		qrms_assert_false( QRMS_Analitik::izleme_gecerli_mi(), 'uydurma değer reddedilir' );
+
+		$_POST['security'] = 'test-nonce-baska_eylem';
+		qrms_assert_false( QRMS_Analitik::izleme_gecerli_mi(), 'başka eylemin nonce\'u reddedilir' );
+	}
+);
+
+qrms_test(
+	'geçerli menü nonce\'u kabul edilir',
+	function () {
+		$_POST['security'] = wp_create_nonce( QRMS_Analitik::NONCE_TAKIP );
+
+		qrms_assert_true( QRMS_Analitik::izleme_gecerli_mi(), 'menü nonce\'u geçer' );
+	}
+);
+
+qrms_test(
+	'izleme nonce eylemi menü modülünün ürettiğiyle AYNIDIR',
+	function () {
+		// Ad kayarsa izleme sessizce tamamen durur; bu yüzden üretim yeri
+		// doğrudan kaynaktan doğrulanır.
+		qrms_assert_same( 'rma_ajax_nonce', QRMS_Analitik::NONCE_TAKIP, 'sabit değeri' );
+
+		$menu_kaynak = file_get_contents(
+			QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-frontend.php'
+		);
+
+		qrms_assert_true(
+			false !== strpos( $menu_kaynak, "wp_create_nonce( '" . QRMS_Analitik::NONCE_TAKIP . "' )" ),
+			'menü tarafı aynı eylemle üretiyor'
+		);
+	}
+);
+
+qrms_test(
+	'nonce alanı hiç yoksa kayıt açılmaz',
+	function () {
+		qrms_assert_false( QRMS_Analitik::izleme_gecerli_mi(), 'alan yok' );
+
+		$_POST['security'] = '';
+		qrms_assert_false( QRMS_Analitik::izleme_gecerli_mi(), 'alan boş' );
+	}
+);
+
+echo "\nQR Analiz saklama politikası\n";
+
+qrms_test(
+	'varsayılan saklama süresi 90 gündür',
+	function () {
+		qrms_assert_same( 90, QRMS_Analitik::saklama_gun(), 'varsayılan' );
+		qrms_assert_same( 90, QRMS_Analitik::SAKLAMA_GUN, 'sabit' );
+	}
+);
+
+qrms_test(
+	'saklama süresi filtreyle değiştirilebilir, alt sınırı 7 gündür',
+	function () {
+		add_filter(
+			'qrms_analitik_saklama_gun',
+			function () {
+				return 30;
+			}
+		);
+
+		qrms_assert_same( 30, QRMS_Analitik::saklama_gun(), 'filtre uygulanır' );
+	}
+);
+
+qrms_test(
+	'çok kısa saklama süresi 7 güne yükseltilir',
+	function () {
+		// Daha kısası panelin "son 30 gün" görünümlerini boşaltırdı.
+		add_filter(
+			'qrms_analitik_saklama_gun',
+			function () {
+				return 1;
+			}
+		);
+
+		qrms_assert_same( 7, QRMS_Analitik::saklama_gun(), 'alt sınıra çekilir' );
+	}
+);
+
+qrms_test(
+	'sıfır ya da negatif değer temizliği tamamen kapatır',
+	function () {
+		add_filter(
+			'qrms_analitik_saklama_gun',
+			function () {
+				return 0;
+			}
+		);
+
+		qrms_assert_same( 0, QRMS_Analitik::saklama_gun(), 'temizlik kapalı' );
+	}
+);
+
+qrms_test(
+	'günlük temizlik görevi bir kez planlanır',
+	function () {
+		QRMS_Analitik::temizlik_planla();
+
+		$ilk = wp_next_scheduled( QRMS_Analitik::CRON_TEMIZLIK );
+		qrms_assert_true( (bool) $ilk, 'görev kuruldu' );
+
+		QRMS_Analitik::temizlik_planla();
+		qrms_assert_same( $ilk, wp_next_scheduled( QRMS_Analitik::CRON_TEMIZLIK ), 'ikinci kez planlanmaz' );
+
+		QRMS_Analitik::temizlik_iptal();
+		qrms_assert_false( wp_next_scheduled( QRMS_Analitik::CRON_TEMIZLIK ), 'iptal temizler' );
+	}
+);
+
+qrms_test(
+	'init() hem temizlik kancasını hem planlayıcıyı bağlar',
+	function () {
+		QRMS_Analitik::init();
+
+		$kancalar = $GLOBALS['qrms_test']['actions'];
+
+		qrms_assert_true(
+			isset( $kancalar[ QRMS_Analitik::CRON_TEMIZLIK ] ),
+			'cron kancası dinleniyor'
+		);
+		qrms_assert_true(
+			in_array(
+				array( 'QRMS_Analitik', 'temizlik_planla' ),
+				$kancalar['init'],
+				true
+			),
+			'init planlayıcıyı çağırıyor'
+		);
+	}
+);
+
+qrms_test(
+	'eklenti devre dışı bırakılırken temizlik görevi kaldırılır',
+	function () {
+		// Kanca adı kök eklenti dosyasında elle yazılıdır (modül lisansta
+		// kapalıyken sınıf yüklenmemiş olabilir); iki taraf kaymamalı.
+		$kok = file_get_contents( QRMS_PLUGIN_DIR . 'qr-menu-suite.php' );
+
+		qrms_assert_true(
+			false !== strpos( $kok, "wp_clear_scheduled_hook( '" . QRMS_Analitik::CRON_TEMIZLIK . "' )" ),
+			'deaktivasyon aynı kancayı temizliyor'
+		);
+	}
+);
+
+/* ---------------------------------------------------------------------------
+ * 9a-1. Ortak varlıklar — aynı dosyanın iki handle ile yüklenmesi
+ * ------------------------------------------------------------------------ */
+
+// assets.php dosya kapsamında yalnızca fonksiyon tanımlar ve stub'lanmış
+// add_action çağrıları yapar.
+require_once QRMS_PLUGIN_DIR . 'modules/_qmo-ortak/assets.php';
+
+echo "\nOrtak varlık handle'ları\n";
+
+qrms_test(
+	'aynı dosyayı gösteren handle tek kanonik ada indirgenir',
+	function () {
+		// [qr_garson_hesap] ve [ikili_buton] ile [garson_butonu] aynı
+		// buttons.css/buttons.js dosyalarını kullanıyor. Handle'lar ayrı
+		// kalırsa WordPress dosyayı iki kez basar, buttons.js iki kez çalışır
+		// ve butonlara olay dinleyicileri iki kez bağlanır.
+		qrms_assert_same( 'qmo-buttons', qmo_asset_kanonik_handle( 'qmo-garson-hesap' ), 'takma ad indirgenir' );
+		qrms_assert_same( 'qmo-buttons', qmo_asset_kanonik_handle( 'qmo-buttons' ), 'kanonik ad korunur' );
+	}
+);
+
+qrms_test(
+	'takma ad olmayan handle\'lar olduğu gibi geçer',
+	function () {
+		foreach ( array( 'qmo-chatbot', 'qmo-sepet', 'qmo-oturum-kutu', 'bilinmeyen-handle' ) as $handle ) {
+			qrms_assert_same( $handle, qmo_asset_kanonik_handle( $handle ), $handle . ' değişmez' );
+		}
+	}
+);
+
+qrms_test(
+	'takma ad handle\'ı KENDİ kaynağıyla kaydedilmez',
+	function () {
+		// Yapısal güvence: qmo-garson-hesap kaydı bir kaynak yolu taşırsa
+		// WordPress onu bağımsız bir dosya sayar ve çift yükleme geri gelir.
+		// Kayıt kaynaksız (false) olmalı ve qmo-buttons'a bağımlı durmalı.
+		$kaynak = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/chatbot.php' );
+
+		qrms_assert_true(
+			(bool) preg_match(
+				"/wp_register_script\(\s*'qmo-garson-hesap',\s*false,\s*array\(\s*'qmo-buttons'\s*\)/",
+				$kaynak
+			),
+			'script takma adı kaynaksız ve qmo-buttons bağımlı'
+		);
+		qrms_assert_true(
+			(bool) preg_match(
+				"/wp_register_style\(\s*'qmo-garson-hesap',\s*false,\s*array\(\s*'qmo-buttons'\s*\)/",
+				$kaynak
+			),
+			'stil takma adı kaynaksız ve qmo-buttons bağımlı'
+		);
+		qrms_assert_false(
+			(bool) preg_match( "/'qmo-garson-hesap',\s*\\\$url/", $kaynak ),
+			'takma ad artık kendi dosya yolunu göstermiyor'
+		);
+	}
+);
+
+/* ---------------------------------------------------------------------------
+ * 9a-2. Güvenlik Ayarı — oturum limitleri ve SAYFA KİLİDİ ayar kaydı
+ * ------------------------------------------------------------------------ */
+
+// Oturum sınıfı ile ayar ekranı. İkisi de dosya kapsamında yalnızca tanım
+// yapar; add_action çağrıları stub ortamında yan etkisizdir.
+require_once QRMS_PLUGIN_DIR . 'modules/_qmo-ortak/class-qmo-oturum.php';
+require_once QRMS_PLUGIN_DIR . 'modules/qr-masa-oturum-guvenligi/oturum-ayarlari.php';
+require_once QRMS_PLUGIN_DIR . 'modules/qr-masa-oturum-guvenligi/masa-dogrulama.php';
+
+echo "\nGüvenlik Ayarı — ayar kaydı\n";
+
+qrms_test(
+	'ekrandaki HER form, register_setting ile kaydedilmiş bir gruba gönderir',
+	function () {
+		// Bu testin varlık sebebi gerçek bir hatadır: sayfa kilidi formu
+		// 'qmo_sayfa_grup' grubuna gönderiyordu ama o grup hiçbir yerde
+		// register_setting() ile kaydedilmemişti. WordPress gönderimi
+		// "seçenekler sayfası bulunamadı" diyerek reddediyor, ayar sessizce
+		// hiç yazılmıyor ve sayfa kilidi hiçbir zaman devreye girmiyordu.
+		qmo_oturum_ayarlarini_kaydet();
+
+		ob_start();
+		qmo_oturum_ayar_sayfasi();
+		ob_end_clean();
+
+		$kayitli = array_keys( $GLOBALS['qrms_test']['settings'] );
+		$formlar = $GLOBALS['qrms_test']['settings_fields'];
+
+		qrms_assert_true( count( $formlar ) >= 2, 'ekranda en az iki ayar formu var' );
+
+		foreach ( $formlar as $grup ) {
+			qrms_assert_true(
+				in_array( $grup, $kayitli, true ),
+				$grup . ' grubu register_setting ile kaydedilmiş'
+			);
+		}
+	}
+);
+
+qrms_test(
+	'sayfa kilidi option\'ı kendi grubuyla ve temizleyicisiyle kaydedilir',
+	function () {
+		qmo_oturum_ayarlarini_kaydet();
+
+		$kayitli = $GLOBALS['qrms_test']['settings'];
+
+		qrms_assert_true(
+			isset( $kayitli['qmo_sayfa_grup']['qmo_korumali_sayfalar'] ),
+			'sayfa kilidi option\'ı kayıtlı'
+		);
+		qrms_assert_same(
+			'qmo_korumali_sayfalar_temizle',
+			$kayitli['qmo_sayfa_grup']['qmo_korumali_sayfalar']['sanitize_callback'],
+			'temizleyici bağlı'
+		);
+
+		// Oturum limitleri ayrı grupta kalır; iki form birbirini ezmemeli.
+		qrms_assert_true(
+			isset( $kayitli['qr_masa_grup'][ QMO_Oturum::OPT ] ),
+			'oturum limitleri kendi grubunda'
+		);
+	}
+);
+
+qrms_test(
+	'slug listesi temizlenir: boşluk, büyük harf, Türkçe karakter, tekrar',
+	function () {
+		qrms_assert_same(
+			'menu,menu-tr',
+			qmo_korumali_sayfalar_temizle( ' Menu , Menu-TR ' ),
+			'boşluk kırpılır, küçük harfe iner'
+		);
+		qrms_assert_same(
+			'bahce-kat',
+			qmo_korumali_sayfalar_temizle( 'Bahçe Kat' ),
+			'Türkçe harfler indirgenir'
+		);
+		qrms_assert_same(
+			'menu',
+			qmo_korumali_sayfalar_temizle( 'menu,menu,,menu' ),
+			'tekrarlar ve boşlar atılır'
+		);
+		qrms_assert_same( '', qmo_korumali_sayfalar_temizle( '' ), 'boş girdi boş kalır' );
+	}
+);
+
+qrms_test(
+	'kaydedilen değer, kilidi okuyan taraf tarafından aynen çözülür',
+	function () {
+		// Asıl güvence: yazma tarafının ürettiği metin, okuma tarafının
+		// (qmo_korumali_sluglar) beklediği biçimle birebir uyuşmalı.
+		$kaydedilen = qmo_korumali_sayfalar_temizle( 'Menu, Bahçe Kat' );
+		update_option( 'qmo_korumali_sayfalar', $kaydedilen );
+
+		qrms_assert_same(
+			array( 'menu', 'bahce-kat' ),
+			array_values( qmo_korumali_sluglar() ),
+			'okuma tarafı iki slug görür'
+		);
+	}
+);
+
+qrms_test(
+	'ayar hiç kaydedilmemişken sayfa kilidi kapalıdır',
+	function () {
+		qrms_assert_same( array(), array_values( qmo_korumali_sluglar() ), 'boş liste' );
+	}
+);
+
+/* ---------------------------------------------------------------------------
  * 9b. QR Masa — toplu oluşturma ve grup filtresi
  * ------------------------------------------------------------------------ */
 
@@ -2655,8 +3441,13 @@ require_once QRMS_PLUGIN_DIR . 'modules/yorum-feedback/module.php';
 // yükler); ödül rozetini süren tek ayar option üzerinden verilir.
 update_option( 'qrm_settings', array( 'qrm_reward_enabled' => 1 ) );
 
-function qrm_reward_is_active( $settings ) {
-	return false;
+// 8z-2 bölümü ödül modülünün GERÇEK functions.php'sini yüklüyor; oradaki
+// qrm_reward_is_active zaten bu senaryoda false döner (google_review_url
+// boş). Gerçek fonksiyon yüklenmemişse diye taklidi burada duruyor.
+if ( ! function_exists( 'qrm_reward_is_active' ) ) {
+	function qrm_reward_is_active( $settings ) {
+		return false;
+	}
 }
 
 function qrm_cf_unread_total() {

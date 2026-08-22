@@ -10,6 +10,8 @@
 
 define( 'ABSPATH', __DIR__ . '/' );
 define( 'DAY_IN_SECONDS', 86400 );
+define( 'HOUR_IN_SECONDS', 3600 );
+define( 'MINUTE_IN_SECONDS', 60 );
 define( 'QRMS_VERSION', 'test' );
 define( 'QRMS_PLUGIN_DIR', dirname( __DIR__ ) . '/' );
 define( 'QRMS_PLUGIN_URL', 'https://example.test/wp-content/plugins/qr-menu-suite/' );
@@ -529,6 +531,52 @@ function check_admin_referer( $action = -1, $name = '_wpnonce' ) {
 }
 
 /**
+ * Ayar kaydı (testte hangi grubun hangi option'ı kaydettiği saklanır).
+ *
+ * @param string $group   Ayar grubu.
+ * @param string $option  Option adı.
+ * @param array  $args    Ek argümanlar (sanitize_callback vb.).
+ * @return void
+ */
+function register_setting( $group, $option, $args = array() ) {
+	$GLOBALS['qrms_test']['settings'][ $group ][ $option ] = $args;
+}
+
+/**
+ * Ayar formunun gizli alanları.
+ *
+ * Çekirdekte bu çağrı, options.php'ye hangi ayar GRUBUNUN gönderileceğini
+ * belirler. Testte grup adı hem çıktıya basılır hem de kaydedilir; böylece
+ * "form şu grubu gönderiyor ama o grup register_setting ile hiç kaydedilmemiş"
+ * hatası yakalanabilir.
+ *
+ * @param string $group Ayar grubu.
+ * @return void
+ */
+function settings_fields( $group ) {
+	$GLOBALS['qrms_test']['settings_fields'][] = $group;
+
+	echo '<input type="hidden" name="option_page" value="' . esc_attr( $group ) . '" />';
+}
+
+/**
+ * Ayar hatası/bildirim kutuları (testte çıktı üretmez).
+ *
+ * @return void
+ */
+function settings_errors() {}
+
+/**
+ * Gönder butonu.
+ *
+ * @param string $text Buton metni.
+ * @return void
+ */
+function submit_button( $text = 'Kaydet' ) {
+	echo '<button type="submit" class="button button-primary">' . esc_html( $text ) . '</button>';
+}
+
+/**
  * Yönlendirme (testte sadece kaydedilir).
  *
  * @param string $location Adres.
@@ -580,7 +628,89 @@ function add_menu_page( $page_title, $menu_title, $capability, $menu_slug, $call
  * @return mixed
  */
 function apply_filters( $hook, $value ) {
+	if ( empty( $GLOBALS['qrms_test']['actions'][ $hook ] ) ) {
+		return $value;
+	}
+
+	foreach ( $GLOBALS['qrms_test']['actions'][ $hook ] as $callback ) {
+		$value = call_user_func( $callback, $value );
+	}
+
 	return $value;
+}
+
+/**
+ * Nonce üretimi (testte eylem adına bağlı, öngörülebilir bir değer).
+ *
+ * @param string $action Eylem adı.
+ * @return string
+ */
+function wp_create_nonce( $action = -1 ) {
+	return 'test-nonce-' . $action;
+}
+
+/**
+ * Rastgele parola/anahtar üretimi.
+ *
+ * @param int  $length         Uzunluk.
+ * @param bool $special_chars  Özel karakter.
+ * @param bool $extra_special  Ek özel karakter.
+ * @return string
+ */
+function wp_generate_password( $length = 12, $special_chars = true, $extra_special = false ) {
+	$havuz = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+	$out   = '';
+
+	for ( $i = 0; $i < $length; $i++ ) {
+		$out .= $havuz[ random_int( 0, strlen( $havuz ) - 1 ) ];
+	}
+
+	return $out;
+}
+
+/**
+ * Tuzlanmış hash.
+ *
+ * @param string $data   Veri.
+ * @param string $scheme Şema.
+ * @return string
+ */
+function wp_hash( $data, $scheme = 'auth' ) {
+	return hash_hmac( 'md5', (string) $data, 'test-salt-' . $scheme );
+}
+
+/**
+ * E-posta temizleme.
+ *
+ * @param string $email E-posta.
+ * @return string
+ */
+function sanitize_email( $email ) {
+	return trim( (string) $email );
+}
+
+/**
+ * E-posta geçerli mi?
+ *
+ * @param string $email E-posta.
+ * @return string|false
+ */
+function is_email( $email ) {
+	return filter_var( (string) $email, FILTER_VALIDATE_EMAIL ) ? $email : false;
+}
+
+/**
+ * Nonce doğrulaması.
+ *
+ * Gerçek doğrulamada olduğu gibi, nonce YALNIZCA üretildiği eylem için
+ * geçerlidir; başka bir eylemin nonce'u ya da uydurma bir değer reddedilir.
+ *
+ * @param string $nonce  Gelen değer.
+ * @param string $action Eylem adı.
+ * @return int|false
+ */
+function wp_verify_nonce( $nonce, $action = -1 ) {
+	return ( is_string( $nonce ) && $nonce === wp_create_nonce( $action ) ) ? 1 : false;
 }
 
 /**

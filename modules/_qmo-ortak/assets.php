@@ -117,6 +117,32 @@ if ( ! function_exists( 'qmo_icerikten_yukle' ) ) {
 }
 
 /**
+ * Aynı dosyayı gösteren handle'ların TEK karşılığı.
+ *
+ * Bazı kısa kodlar tarihsel olarak kendi handle adlarıyla çağrılıyor
+ * ([qr_garson_hesap] -> qmo-garson-hesap) ama arkalarındaki CSS/JS dosyası
+ * qmo-buttons ile birebir aynı. WordPress iki farklı handle'ı iki farklı
+ * varlık saydığı için, ikisi de aynı sayfada enqueue edilirse dosya iki kez
+ * basılır ve JS iki kez çalışır. Handle'lar burada tek bir kanonik ada
+ * indirgenir; takma ad kaydı (kaynaksız, qmo-buttons'a bağımlı) yalnızca
+ * doğrudan wp_enqueue_script() çağıran üçüncü taraf kod için durur.
+ *
+ * Saf fonksiyon; testlerde doğrudan doğrulanır.
+ *
+ * @param string $handle Ham handle.
+ * @return string Kanonik handle.
+ */
+if ( ! function_exists( 'qmo_asset_kanonik_handle' ) ) {
+	function qmo_asset_kanonik_handle( $handle ) {
+		$takma_adlar = array(
+			'qmo-garson-hesap' => 'qmo-buttons',
+		);
+
+		return isset( $takma_adlar[ $handle ] ) ? $takma_adlar[ $handle ] : $handle;
+	}
+}
+
+/**
  * Kısa kodların ihtiyaç duyduğu varlığı yükler.
  * Kayıt yapılmamışsa önce kaydeder (kısa kod erken çalışabilir).
  *
@@ -125,6 +151,11 @@ if ( ! function_exists( 'qmo_icerikten_yukle' ) ) {
 if ( ! function_exists( 'qmo_asset_enqueue' ) ) {
 	function qmo_asset_enqueue( $handle ) {
 		qmo_varliklari_kaydet();
+
+		// Aynı dosyanın ikinci bir handle üzerinden tekrar yüklenmesini
+		// engeller: buttons.js iki kez çalışırsa olay dinleyicileri iki kez
+		// bağlanır ve tek tıkta iki AJAX isteği gider.
+		$handle = qmo_asset_kanonik_handle( $handle );
 
 		if ( wp_style_is( $handle, 'registered' ) ) {
 			wp_enqueue_style( $handle );

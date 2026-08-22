@@ -35,6 +35,19 @@ function qrm_reward_ajax_request_code() {
         wp_send_json(['success' => false, 'message' => $guard]);
     }
 
+    // Kod talebi, GERÇEKTEN eşiği geçen bir yorum bırakılmış olmasına bağlıdır.
+    // review_id istemciden gelir ve tek başına hiçbir şey ispatlamaz; yanında
+    // yorum kaydedilirken sunucuda üretilmiş tek kullanımlık talep anahtarı
+    // gelmek zorundadır. (Doğrulama e-posta kontrolünden ÖNCE yapılır:
+    // yetkisiz bir istek, hangi e-postaların kod aldığını sızdırmasın.)
+    $review_id = isset($_POST['review_id']) ? intval($_POST['review_id']) : 0;
+    $claim     = isset($_POST['claim']) ? sanitize_text_field(wp_unslash($_POST['claim'])) : '';
+
+    $gecerli = qrm_reward_verify_claim($review_id, $claim, $settings);
+    if (is_wp_error($gecerli)) {
+        wp_send_json(['success' => false, 'message' => $gecerli->get_error_message()]);
+    }
+
     $email = qrm_reward_normalize_email(isset($_POST['email']) ? wp_unslash($_POST['email']) : '');
     if ($email === '') {
         wp_send_json(['success' => false, 'message' => 'Lütfen geçerli bir e-posta adresi girin.']);
@@ -49,12 +62,11 @@ function qrm_reward_ajax_request_code() {
         ]);
     }
 
-    $review_id = isset($_POST['review_id']) ? intval($_POST['review_id']) : 0;
     $result = qrm_reward_create_code([
         'email'            => $email,
         'template_id'      => '',   // otomatik: varsayılan/aktif şablon
         'is_manual'        => 0,
-        'source_review_id' => $review_id > 0 ? $review_id : null,
+        'source_review_id' => $review_id,
         'ip_address'       => qrm_pro_client_ip(),
     ]);
 
@@ -68,6 +80,10 @@ function qrm_reward_ajax_request_code() {
         }
         wp_send_json(['success' => false, 'message' => $result->get_error_message()]);
     }
+
+    // Anahtar tek kullanımlıktır: kod üretildiği anda harcanır, aynı yorumla
+    // ikinci bir kod istenemez.
+    qrm_reward_consume_claim($review_id);
 
     $emailed = qrm_reward_send_code_email($email, $result['code'], $result['discount_label']);
 

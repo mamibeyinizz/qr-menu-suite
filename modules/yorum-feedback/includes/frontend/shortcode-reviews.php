@@ -26,7 +26,12 @@ function qrm_pro_shortcode() {
                 // Popup JS gerektirdiği için, JS tamamen kapalı ziyaretçilere eski
                 // satır içi Google CTA'sı <noscript> içinde yedek olarak sunulur.
                 if (!empty($result['show_reward'])) {
-                    $auto_open_reward = true;
+                    // JS kapalı akışta popup'ı sunucu açar; kod talebini
+                    // yetkilendiren anahtar da bu yüzden popup'a gömülür.
+                    $auto_open_reward = [
+                        'review_id' => (int) $result['review_id'],
+                        'claim'     => (string) $result['reward_claim'],
+                    ];
                     $message .= '<noscript>' . qrm_pro_render_google_cta($settings, $result['avg']) . '</noscript>';
                 }
             }
@@ -36,10 +41,17 @@ function qrm_pro_shortcode() {
     }
 
     $active_fields = $wpdb->get_results("SELECT * FROM $table_fields WHERE is_active = 1 ORDER BY sort_order ASC");
-    $approved_reviews = $wpdb->get_results("SELECT * FROM $table_reviews WHERE status = 1 ORDER BY created_at DESC");
 
-    $per_page = isset($settings['reviews_per_page']) ? $settings['reviews_per_page'] : '3';
-    $js_limit = ($per_page === 'all') ? 9999 : intval($per_page);
+    // Sorgu GERÇEKTEN sayfalıdır: sonraki sayfaları "Daha Fazla Göster"
+    // butonu qrm_load_reviews ucundan ister. Eskiden tüm onaylı yorumlar
+    // çekilip basılıyor, ayar yalnızca JS ile gizleme yapıyordu.
+    $js_limit         = qrm_pro_reviews_page_size($settings);
+    $first_page       = qrm_pro_fetch_approved_reviews($js_limit, 0);
+    $approved_reviews = $first_page['rows'];
+    $has_more_reviews = $first_page['has_more'];
+
+    // "N Değerlendirme" sayacı artık çekilen satır sayısından okunamaz.
+    $total_reviews = qrm_pro_count_approved_reviews();
 
     ob_start();
     echo qrm_pro_render_style_block($settings);
@@ -48,7 +60,7 @@ function qrm_pro_shortcode() {
 
         <?php
         $show_stats = isset($settings['show_overall_stats']) ? $settings['show_overall_stats'] : 1;
-        if ($show_stats && count($approved_reviews) > 0):
+        if ($show_stats && $total_reviews > 0):
             $global_avg = $wpdb->get_var("SELECT AVG(rating) FROM $table_reviews WHERE status = 1");
         ?>
         <div class="qrm-stats-panel">
@@ -60,7 +72,7 @@ function qrm_pro_shortcode() {
                         echo str_repeat('★', $int_star) . str_repeat('☆', 5 - $int_star);
                     ?>
                 </div>
-                <div class="total-count"><?php echo count($approved_reviews); ?> Değerlendirme</div>
+                <div class="total-count"><?php echo (int) $total_reviews; ?> Değerlendirme</div>
             </div>
             <div class="qrm-crit-bars">
                 <?php
@@ -87,36 +99,13 @@ function qrm_pro_shortcode() {
 
         <div class="qrm-reviews-grid" id="qrm-reviews-container">
             <?php if ($approved_reviews): ?>
-                <?php foreach ($approved_reviews as $review):
-                    $display_name = $review->is_anonymous ? 'Anonim Misafir' : esc_html($review->customer_name);
-                    if (empty($display_name)) $display_name = 'Misafir';
-                ?>
-                    <div class="qrm-review-item">
-                        <div class="qrm-review-header">
-                            <div class="qrm-review-who">
-                                <?php echo qrm_pro_avatar_html($review->is_anonymous ? 'A' : $review->customer_name); ?>
-                                <div>
-                                    <span class="qrm-reviewer-name"><?php echo $display_name; ?></span>
-                                    <span class="qrm-review-stars">
-                                        <?php
-                                        $int_r = round($review->rating);
-                                        echo str_repeat('★', $int_r) . str_repeat('☆', 5 - $int_r);
-                                        ?>
-                                        <span style="font-size:12px; opacity:0.6;">(<?php echo number_format($review->rating, 1); ?>)</span>
-                                    </span>
-                                </div>
-                            </div>
-                            <span class="qrm-review-date"><?php echo date('d.m.Y', strtotime($review->created_at)); ?></span>
-                        </div>
-                        <p class="qrm-review-text"><?php echo nl2br(esc_html($review->comment)); ?></p>
-                    </div>
-                <?php endforeach; ?>
+                <?php echo qrm_pro_render_review_cards($approved_reviews); ?>
             <?php else: ?>
                 <div class="qrm-empty-state">Henüz yayınlanmış bir değerlendirme yok. İlk yorumu siz bırakın!</div>
             <?php endif; ?>
         </div>
 
-        <?php if ($approved_reviews && count($approved_reviews) > $js_limit): ?>
+        <?php if ($has_more_reviews): ?>
         <div class="qrm-load-more-wrap">
             <button id="qrm-load-more" class="qrm-load-more-btn">Daha Fazla Göster</button>
         </div>
