@@ -273,6 +273,10 @@ trait RMA_Helpers_Trait {
         // (örn. modal görselinin srcset/fetchpriority nitelikleri) eski
         // transient'lerin TTL'i dolmadan geçersizleşmesi için elle artırılır.
         $parts['__m']    = '2';
+        // Aktif fiyat kampanyası anahtara girer: kampanya açıldığında,
+        // kapandığında ya da kuralı değiştiğinde önbelleğe alınmış menü
+        // HTML'i kendiliğinden geçersizleşir (bkz. RMA_Kampanya::imza).
+        $parts['__kmp']  = class_exists( 'RMA_Kampanya' ) ? RMA_Kampanya::imza() : '0';
         return 'rma_' . $group . '_' . md5( wp_json_encode( $parts ) );
     }
 

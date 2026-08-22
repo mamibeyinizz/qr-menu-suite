@@ -422,14 +422,9 @@ trait RMA_Ajax_Trait {
     private function render_product_details( $post ) {
         $id = $post->ID;
 
-        $price = get_post_meta( $id, 'rma_price', true );
-        $price_html = esc_html( $price ) . ' ₺';
-        if ( function_exists( 'qmo_get_kombin_price_html' ) ) {
-            $kombin_html = qmo_get_kombin_price_html( $id );
-            if ( $kombin_html !== '' ) {
-                $price_html = $kombin_html;
-            }
-        }
+        // Fiyat gösterimi menü kartıyla aynı kaynaktan (aktif kampanya +
+        // kombin fiyatı dahil): bkz. class-kampanya.php.
+        $price_html = RMA_Kampanya::fiyat_html( $id );
 
         $title = $this->t_field( $id, 'product', 'title', $post->post_title );
         $img   = $this->render_modal_image( $id, $title );

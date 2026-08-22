@@ -135,7 +135,13 @@ if ( ! function_exists( 'qmo_chatbot_menu_json_uret' ) ) {
 
 		$urunler = array();
 		foreach ( $posts as $post ) {
-			$fiyat = get_post_meta( $post->ID, 'rma_price', true );
+			// Restoran Menü'de aktif bir fiyat kampanyası varsa (toplu zam /
+			// indirim) yapay zekâya kampanyalı fiyat gider; aksi hâlde bot
+			// müşteriye menüde görünmeyen eski fiyatı söylerdi. Köprü modül
+			// yoksa ham meta'ya düşer.
+			$fiyat = function_exists( 'rma_get_effective_price' )
+				? rma_get_effective_price( $post->ID )
+				: get_post_meta( $post->ID, 'rma_price', true );
 			$kat   = wp_get_post_terms( $post->ID, 'rma_category', array( 'fields' => 'names' ) );
 			$urunler[] = array(
 				'kategori' => is_array( $kat ) && $kat ? $kat[0] : '',

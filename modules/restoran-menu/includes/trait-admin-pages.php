@@ -37,6 +37,13 @@ trait RMA_Admin_Pages_Trait {
                 'desc'       => 'Seçtiğiniz ürünleri kayan bir vitrinde gösterin; kendi kısa kodu vardır.',
                 'icon'       => 'dashicons-slides',
             ],
+            'qrms-rm-kampanya' => [
+                'title'      => 'Fiyat Kampanyaları',
+                'menu_title' => 'Fiyat Kampanyaları',
+                'render'     => 'render_campaign_page',
+                'desc'       => 'Menüdeki fiyatları toplu zam/indirimle geçici olarak değiştirin; tek tıkla geri alın.',
+                'icon'       => 'dashicons-tag',
+            ],
             'qrms-rm-diger' => [
                 'title'      => 'Diğer Ayarlar',
                 'menu_title' => 'Diğer Ayarlar',

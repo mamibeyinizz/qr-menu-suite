@@ -377,7 +377,6 @@ JSCODE;
 
     private function render_card( $id ) {
         $img   = get_the_post_thumbnail_url( $id, 'thumbnail' ) ?: 'https://placehold.co/220x220/111111/c9a84c?text=%E2%97%86';
-        $price = get_post_meta( $id, 'rma_price', true );
 
         // Ham post alanları kullanılıyor: CSV'deki title/excerpt/content
         // sütunlarıyla birebir aynı metin, dolayısıyla çeviri eşleşmesi kesin.
@@ -401,6 +400,8 @@ JSCODE;
         if ( get_post_meta( $id, 'rma_badge_popular',     true ) === '1' ) $badges .= '<span class="rma-badge popular">' . esc_html( $this->t( 'Popüler' ) ) . '</span>';
         if ( get_post_meta( $id, 'rma_badge_new',         true ) === '1' ) $badges .= '<span class="rma-badge new">' . esc_html( $this->t( 'Yeni' ) ) . '</span>';
         if ( get_post_meta( $id, 'rma_badge_discount',    true ) === '1' ) $badges .= '<span class="rma-badge discount">%</span>';
+        // Aktif fiyat kampanyası indirimse otomatik rozet ("%15", "-10 ₺").
+        $badges .= RMA_Kampanya::rozet_html( $id );
 
         $prep_time = get_post_meta( $id, 'rma_prep_time', true );
         $prep_html = '';
@@ -408,13 +409,10 @@ JSCODE;
             $prep_html = '<span class="rma-card-prep" aria-label="' . esc_attr( $this->t( 'Hazırlanış süresi' ) ) . '"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>' . esc_html( (int) $prep_time ) . ' ' . esc_html( $this->t( 'dk' ) ) . '</span>';
         }
 
-        $price_inner = '<span class="rma-card-price">' . esc_html( $price ) . ' ₺</span>';
-        if ( function_exists( 'qmo_get_kombin_price_html' ) ) {
-            $kombin_html = qmo_get_kombin_price_html( $id );
-            if ( $kombin_html !== '' ) {
-                $price_inner = $kombin_html;
-            }
-        }
+        // Fiyat gösterimi tek yerden gelir: aktif kampanya varsa üstü çizili
+        // eski fiyat + yeni fiyat, yoksa (kombin dahil) kampanya öncesi çıktının
+        // birebir aynısı. Bkz. class-kampanya.php.
+        $price_inner = RMA_Kampanya::fiyat_html( $id, [ 'sinif' => 'rma-card-price' ] );
 
         return sprintf(
             '<div class="rma-card" data-id="%d" tabindex="0" role="button" aria-label="%s">

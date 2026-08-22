@@ -85,7 +85,7 @@ hiç yazılmaz; onlara modülün **hub ekranındaki kartlardan** gidilir.
 ```
 QR Menü
 ├ Genel Bakış
-├ Restoran Menü                 → hub (8 kart)
+├ Restoran Menü                 → hub (9 kart)
 ├ Yorum & Feedback              → hub (7 kart + özet sayaçlar)
 ├ QR Masa                       → doğrudan Masalar ekranı
 ├ QR Analiz                     → doğrudan Menü Analitiği
@@ -256,7 +256,7 @@ bir kısa kod rehbere eklenmezse düşer.
 
 | Slug | İçerik | Yönetim sayfası |
 | --- | --- | --- |
-| `restoran-menu` | `rma_menu_item` CPT, `[restaurant_menu]`, `[qmo_one_cikan_slider]`, Elementor widget'ı | ✔ Hub + sekiz ekran |
+| `restoran-menu` | `rma_menu_item` CPT, `[restaurant_menu]`, `[qmo_one_cikan_slider]`, toplu fiyat kampanyası, Elementor widget'ı | ✔ Hub + dokuz ekran |
 | `yorum-feedback` | Çoklu kriter yorumlar, Google yönlendirme + ödül kodları, dinamik form oluşturucu, `[qr_menu_reviews]`, `[qr_menu_contact]`, `[qr_menu_form]` | ✔ Hub + yedi ayrı sayfa |
 | `qr-masa` | Masa kayıtları (CRUD + toplu oluşturma), masa QR adresleri, `[qr_aktif_masa]` | ✔ Masalar ekranı |
 | `qr-masa-oturum-guvenligi` | Sahte QR reddi, kilit ekranı, sayfa kilidi; uygulamanın REST uçlarının Firebase/şube yapılandırması | ✔ Hub + Oturum Limitleri / Firebase & Şube Ayarları |
@@ -407,7 +407,7 @@ hedefleri 44px'e çıkar — `restoran-menu` yönetim ekranlarıyla aynı yakla�
 
 `restoran-menu`'nün ürün, kategori ve ayar ekranlarının tamamı suite menüsünün
 altındadır — eklenti artık ayrı bir top-level "Menü" menüsü açmaz. Sol menüde
-tek bir "Restoran Menü" satırı vardır; sekiz işin hepsine onun açtığı hub
+tek bir "Restoran Menü" satırı vardır; dokuz işin hepsine onun açtığı hub
 ekranındaki kartlardan gidilir:
 
 | Hub kartı | Adres |
@@ -419,9 +419,10 @@ ekranındaki kartlardan gidilir:
 | Görünüm | `qrms-rm-gorunum` |
 | Öne Çıkanlar | `qrms-rm-one-cikanlar` |
 | Ürün Vitrini | `qrms-rm-vitrin` |
+| Fiyat Kampanyaları | `qrms-rm-kampanya` |
 | Diğer Ayarlar | `qrms-rm-diger` |
 
-Dördü çekirdeğin kendi ekranı, dördü modülün `add_submenu_page()` ile
+Dördü çekirdeğin kendi ekranı, beşi modülün `add_submenu_page()` ile
 kaydettiği **gerçek, ayrı sayfalardır**; JS ile gizlenip gösterilen sekme
 yoktur. Hiçbirinin sol menüde satırı yoktur (bkz. *Alt sayfalar nasıl
 gizleniyor?*), ama adresleri değişmedi — eski yer imleri çalışmaya devam
@@ -462,6 +463,67 @@ medya sorgusunda dokunma alanları en az 44px'e çıkar, dar ekranda `form-table
 satırları alt alta bloklara açılır, geniş tablolar kendi içinde yatay kayar
 (`.rma-table-scroll`) ve kart ızgaraları tek sütuna iner. WordPress admin'in
 kendi mobil davranışına müdahale edilmez.
+
+### Toplu Fiyat Kampanyası (zam / indirim)
+
+Menüdeki fiyatlar toplu olarak, geçici şekilde değiştirilebilir: yüzde bazlı
+(%10 zam) ya da sabit tutar bazlı (−5 ₺); kapsam tüm menü, seçilen kategoriler
+ya da tek tek işaretlenen ürünler olabilir. Ekran: **Fiyat Kampanyaları**
+(`qrms-rm-kampanya`).
+
+**Fiyat verisine dokunulmaz.** Kampanya bir KURAL kaydıdır; ürünün `rma_price`
+(kombin ürünlerde `_qmo_kombin_fiyat`) alanına hiçbir zaman yazılmaz. Menüde
+görünen fiyat her render'da *orijinal fiyat + aktif kural* birleştirilerek
+üretilir (`RMA_Kampanya::fiyat_html()`). Bunun üç sonucu var:
+
+- **Geri alma güvenilirdir.** "Kampanyayı Geri Al" bir hesaplama değil, tek bir
+  durum değişikliğidir; ürünler aynı saniyede orijinal fiyatlarına döner.
+- **Kampanyalar birbirini bozamaz.** Ortada birikmiş bir "zamlanmış fiyat"
+  yoktur, dolayısıyla yarım kalan bir işlem fiyatları bozuk bırakamaz.
+- **Kapsam canlıdır.** "Tüm menü" ya da bir kategori seçiliyken sonradan
+  eklenen ürün de kampanyaya kendiliğinden dahil olur.
+
+**Aynı anda yalnızca bir kampanya aktiftir.** Yeni bir kampanya başlatıldığında
+çalışan kampanya kendiliğinden kapanır (`ended_at` damgalanır). Böylece "hangi
+kural geçerli?" sorusunun cevabı her zaman tektir ve yüzdeler üst üste binmez.
+
+**Önizleme zorunludur.** "Kampanyayı Başlat" butonu, formun o anki hâli için
+önizleme üretilene kadar kapalıdır; ayarların herhangi biri değişince önizleme
+bayatlar ve buton yeniden kilitlenir. Önizleme tablosu ürün ürün eski/yeni
+fiyatı ve farkı gösterir; fiyatı 0 ₺'ye düşen ve fiyatı hiç girilmemiş ürünler
+işaretlenir. Önizleme ile ön yüz aynı saf hesaplayıcıyı çağırır
+(`RMA_Kampanya_DB::yeni_fiyat()`), dolayısıyla görülen fiyat ile menüde çıkan
+fiyat tanım gereği aynıdır.
+
+| Kayıt yeri | İçerik |
+| --- | --- |
+| `{prefix}rma_price_campaigns` | Kampanya tanımı: kural, kapsam, durum, uygulama/bitiş damgası, etkilenen ürün sayısı |
+| `{prefix}rma_price_campaign_snapshot` | Aktivasyon anındaki fiyat fotoğrafı (denetim kaydı; kapsamın tanımı değildir) |
+| `_qrms_orijinal_fiyat` post meta | Orijinal fiyatın **write-once** yedeği — ikinci güvence katmanı, asla üzerine yazılmaz |
+
+Ön yüzde eski fiyat üstü çizili, yeni fiyat yanında görünür
+(`.rma-price-old` / `.rma-price-new`); indirim kampanyalarında ürün kartına
+otomatik rozet eklenir. Gösterim dört yüzeyde de aynı kaynaktan gelir: menü
+kartı, ürün detay modalı, ürün vitrini ve öne çıkan slider. Kombin ürünlerde
+kampanya paket fiyatına uygulanır ve üstü çizili fiyat kampanya öncesi paket
+fiyatı olur — bir kartta iki ayrı üstü çizili fiyat çıkmaz.
+
+Menü önbelleği kampanyayı tanır: aktif kampanyanın imzası önbellek anahtarına
+girer (`RMA_Kampanya::imza()`), kampanya açılıp kapandığında önbelleğe alınmış
+menü HTML'i kendiliğinden geçersizleşir. Chatbot'un yapay zekâya verdiği menü
+JSON'u da kampanyalı fiyatı kullanır (`rma_get_effective_price()` köprüsü).
+
+**İkinci faz için hazır.** Şemadaki `starts_at` / `ends_at` / `daily_start` /
+`daily_end` / `days_mask` sütunları ve bunları değerlendiren
+`RMA_Kampanya_DB::aktif_mi()` ilk günden yazıldı; v1 bu alanları doldurmaz ve
+boş alan "sınır yok" demektir. Zamanlanmış kampanya, Happy Hour ve gün bazlı
+kurallar için yalnızca form alanları eklemek yeterli — render ve önbellek
+tarafına dokunulmayacak.
+
+> **Bilinen sınır:** menüdeki "fiyata göre sırala" seçeneği sıralamayı
+> veritabanında `rma_price` üzerinden yapar, yani orijinal fiyata göre sıralar.
+> Tek kampanya + yüzde + tüm menü kapsamında sıra birebir aynı kalır;
+> kategori/sabit tutar kapsamında ufak sapma olabilir.
 
 > **Dağıtım notu:** `restoran-menu` modülü aktifken eski tekil **QR MENÜ**
 > eklentisi devre dışı bırakılmalıdır — modül onun yerini alır. Yan yana
@@ -816,7 +878,7 @@ includes/
   class-shortcodes.php       Kısa kod kayıt defteri ve "Kısa Kodlar" rehber ekranı
 modules/
   _qmo-ortak/                Ortak zemin (oturum sınıfı, Firestore istemcisi, helpers, varlıklar)
-  restoran-menu/             Menü CPT'si, kısa kodlar, slider + hub ve sekiz yönetim ekranı
+  restoran-menu/             Menü CPT'si, kısa kodlar, slider, fiyat kampanyası + hub ve dokuz yönetim ekranı
   yorum-feedback/            Yorumlar, ödül kodları, form oluşturucu + hub ve yedi yönetim sayfası
   qr-masa/                   Masa kayıtları + Masalar yönetim ekranı
   qr-masa-oturum-guvenligi/  Masa doğrulama, kilit ekranı + hub (oturum limitleri, Firebase & şube ayarları)
