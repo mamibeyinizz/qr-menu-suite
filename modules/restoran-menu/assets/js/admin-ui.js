@@ -494,6 +494,136 @@
     }
 
     /* -----------------------------------------------------------------
+       TOPLU FİYAT KAMPANYASI
+       Kapsam seçimi, ürün/kategori işaretleri ve canlı önizleme.
+
+       Kritik davranış: "Kampanyayı Başlat" butonu, formun O ANKİ hâli için
+       önizleme üretilene kadar KAPALIDIR. Ayarların herhangi biri değişince
+       önizleme bayatlar ve buton tekrar kilitlenir — kaza ile tüm menüyü
+       zamlamaya/indirmeye karşı asıl fren budur.
+    ----------------------------------------------------------------- */
+    function initKampanya() {
+        var $form = $('#rma-kmp-form');
+        if (!$form.length) return;
+
+        var $uygulaBtn = $('#rma-kmp-uygula-btn');
+        var $onizleme = $('#rma-kmp-onizleme');
+        var $gizliIdler = $('#rma-kmp-scope-ids');
+
+        function kapsam() {
+            return $form.find('input[name="scope_type"]:checked').val() || 'all';
+        }
+
+        function secimiSenkronla() {
+            var tur = kapsam();
+            var idler = [];
+
+            if (tur === 'category') {
+                $('.rma-kmp-kat-cb:checked').each(function () { idler.push($(this).val()); });
+            } else if (tur === 'manual') {
+                $('.rma-kmp-urun-cb:checked').each(function () { idler.push($(this).val()); });
+            }
+
+            $gizliIdler.val(idler.join(','));
+        }
+
+        function kapsamKutulari() {
+            var tur = kapsam();
+            $('.rma-kmp-kapsam-kutu').each(function () {
+                $(this).toggle($(this).data('kapsam') === tur);
+            });
+        }
+
+        function secimVurgusu() {
+            $('.rma-kmp-choice').each(function () {
+                $(this).toggleClass('is-selected', $(this).find('input').is(':checked'));
+            });
+        }
+
+        function birim() {
+            var tur = $form.find('input[name="calc_type"]:checked').val();
+            $('#rma-kmp-birim').text(tur === 'fixed' ? '₺' : '%');
+        }
+
+        function bayatla() {
+            $uygulaBtn.prop('disabled', true);
+            if ($onizleme.children().length) {
+                $onizleme.html('<p class="rma-kmp-bayat">Ayarları değiştirdiniz. Kampanyayı başlatmadan önce önizlemeyi tekrar alın.</p>');
+            }
+        }
+
+        $form.on('change', 'input[name="scope_type"]', function () {
+            kapsamKutulari();
+            secimiSenkronla();
+        });
+
+        // Seçili ürün satırı vitrin seçicisiyle aynı vurguyu alır.
+        $form.on('change', '.rma-kmp-urun-cb', function () {
+            $(this).closest('.rma-vitrin-pool-row').toggleClass('is-selected', $(this).is(':checked'));
+        });
+
+        $form.on('change', 'input, select', function () {
+            secimVurgusu();
+            birim();
+            secimiSenkronla();
+            bayatla();
+        });
+
+        $form.on('input', 'input[type="text"]', bayatla);
+
+        // Ürün arama — küçük harfe çevirme tarayıcıda yapılır ki arama kutusu
+        // ile satır başlıkları aynı Unicode kurallarını kullansın (Türkçe İ/I).
+        $('#rma-kmp-search').on('input', function () {
+            var q = ($(this).val() || '').toLocaleLowerCase();
+
+            $('.rma-kmp-urun-cb').closest('.rma-vitrin-pool-row').each(function () {
+                var ad = ($(this).data('title') || '').toString().toLocaleLowerCase();
+                $(this).toggle(q === '' || ad.indexOf(q) !== -1);
+            });
+        });
+
+        $('#rma-kmp-onizle').on('click', function () {
+            var $spinner = $('.rma-kmp-spinner');
+
+            secimiSenkronla();
+            $spinner.addClass('is-active');
+            $onizleme.html('');
+
+            $.post(AJAX_URL, {
+                action: 'rma_kampanya_onizleme',
+                nonce: NONCE,
+                title: $form.find('input[name="title"]').val(),
+                calc_type: $form.find('input[name="calc_type"]:checked').val(),
+                direction: $form.find('input[name="direction"]:checked').val(),
+                amount: $('#rma-kmp-amount').val(),
+                rounding: $('#rma-kmp-rounding').val(),
+                scope_type: kapsam(),
+                scope_ids: $gizliIdler.val(),
+                show_old_price: $form.find('input[name="show_old_price"]').is(':checked') ? 1 : 0
+            }, function (r) {
+                $spinner.removeClass('is-active');
+
+                if (!r || !r.success) {
+                    $onizleme.html('<p class="rma-kmp-bayat">Önizleme alınamadı. Sayfayı yenileyip tekrar deneyin.</p>');
+                    return;
+                }
+
+                $onizleme.html(r.data.html);
+                $uygulaBtn.prop('disabled', r.data.etkilenen < 1);
+            });
+        });
+
+        // Hangi butona basıldıysa "uygula" bayrağı ona göre gider.
+        $('#rma-kmp-kaydet').on('click', function () { $('#rma-kmp-uygula').val('0'); });
+        $uygulaBtn.on('click', function () { $('#rma-kmp-uygula').val('1'); });
+
+        kapsamKutulari();
+        secimVurgusu();
+        birim();
+        secimiSenkronla();
+    }
+
+    /* -----------------------------------------------------------------
        BAŞLAT
     ----------------------------------------------------------------- */
     /* -----------------------------------------------------------------
@@ -536,6 +666,7 @@
         initCsvSample();
         initVitrinPicker();
         initShortcodeCopy();
+        initKampanya();
         openTargetDetails();
         $(window).on('hashchange', openTargetDetails);
     });

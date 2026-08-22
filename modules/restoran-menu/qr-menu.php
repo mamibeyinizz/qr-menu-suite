@@ -32,6 +32,9 @@ require_once __DIR__ . '/includes/trait-ajax.php';
 require_once __DIR__ . '/includes/trait-category-fields.php';
 require_once __DIR__ . '/includes/class-vitrin-db.php';
 require_once __DIR__ . '/includes/trait-vitrin-admin.php';
+require_once __DIR__ . '/includes/class-kampanya-db.php';
+require_once __DIR__ . '/includes/class-kampanya.php';
+require_once __DIR__ . '/includes/trait-kampanya-admin.php';
 require_once __DIR__ . '/includes/shortcode-vitrin.php';
 require_once __DIR__ . '/qmo-one-cikan-slider.php';
 
@@ -51,6 +54,7 @@ class Restaurant_Menu_Automation {
     use RMA_Ajax_Trait;
     use RMA_Category_Fields_Trait;
     use RMA_Vitrin_Admin_Trait;
+    use RMA_Kampanya_Admin_Trait;
 
     private static $instance = null;
 
@@ -97,6 +101,19 @@ class Restaurant_Menu_Automation {
         ----------------------------------------------------------------- */
         add_action( 'admin_post_rma_vitrin_kaydet', [ $this, 'handle_vitrin_save' ] );
         add_action( 'admin_post_rma_vitrin_sil',    [ $this, 'handle_vitrin_delete' ] );
+
+        /* -----------------------------------------------------------------
+           TOPLU FİYAT KAMPANYASI
+           Ürün fiyatına HİÇ dokunulmaz: kural ayrı bir kayıtta durur, menüdeki
+           fiyat her render'da orijinal fiyat + kural birleştirilerek üretilir
+           (bkz. class-kampanya.php). Kaydetme/geri alma vitrindeki gibi
+           admin-post üzerinden; yalnızca önizleme AJAX'tır, çünkü henüz
+           kaydedilmemiş form değerleriyle çalışması gerekir.
+        ----------------------------------------------------------------- */
+        add_action( 'admin_post_rma_kampanya_kaydet',  [ $this, 'handle_kampanya_save' ] );
+        add_action( 'admin_post_rma_kampanya_geri_al', [ $this, 'handle_kampanya_undo' ] );
+        add_action( 'admin_post_rma_kampanya_sil',     [ $this, 'handle_kampanya_delete' ] );
+        add_action( 'wp_ajax_rma_kampanya_onizleme',   [ $this, 'ajax_kampanya_onizleme' ] );
 
         add_shortcode( 'restaurant_menu', [ $this, 'shortcode_menu' ] );
         add_shortcode( 'rma_qr_notice', [ $this, 'shortcode_qr_notice' ] );

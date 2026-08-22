@@ -139,13 +139,9 @@ class QMO_Shortcode_Slider {
                 ? wp_trim_words( strip_shortcodes( $excerpt_raw ), 12, '…' )
                 : '';
 
-            $price_html = function_exists( 'qmo_get_kombin_price_html' )
-                ? qmo_get_kombin_price_html( $product_id )
-                : '';
-            if ( $price_html === '' ) {
-                $price = get_post_meta( $product_id, 'rma_price', true );
-                $price_html = $price !== '' ? esc_html( $price ) . ' ₺' : '';
-            }
+            // Aktif fiyat kampanyası, kombin fiyatı ve düz fiyat tek yerden
+            // çözülür (bkz. class-kampanya.php).
+            $price_html = RMA_Kampanya::fiyat_html( $product_id );
 
             $img = get_the_post_thumbnail_url( $product_id, 'medium' )
                 ?: 'https://placehold.co/220x220/111111/c9a84c?text=%E2%97%86';

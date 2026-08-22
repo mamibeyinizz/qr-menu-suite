@@ -1479,3 +1479,293 @@
         flex: 1;
     }
 }
+
+/* =====================================================================
+   TOPLU FİYAT KAMPANYASI
+   Aktif kampanya göstergesi, kural/kapsam seçimleri ve önizleme tablosu.
+   Tablolar dar ekranda karta döner (hücre başlıkları data-label'dan gelir)
+   — modülün diğer yönetim tablolarıyla aynı yaklaşım.
+===================================================================== */
+
+.rma-admin .rma-kmp-durum.is-aktif {
+    border-color: var(--rma-a-accent-dim);
+    box-shadow: inset 3px 0 0 var(--rma-a-accent);
+}
+
+.rma-admin .rma-kmp-durum-head {
+    align-items: flex-start;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    justify-content: space-between;
+}
+
+.rma-admin .rma-kmp-rozet {
+    background: var(--rma-a-accent-soft);
+    border: 1px solid var(--rma-a-accent-dim);
+    border-radius: 999px;
+    color: var(--rma-a-accent-hi);
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .04em;
+    margin-bottom: 8px;
+    padding: 3px 10px;
+    text-transform: uppercase;
+}
+
+.rma-admin .rma-kmp-ozet {
+    border-collapse: collapse;
+    margin: 14px 0 6px;
+    width: 100%;
+}
+
+.rma-admin .rma-kmp-ozet td {
+    background: var(--rma-a-surface-2);
+    border: 1px solid var(--rma-a-border-soft);
+    color: var(--rma-a-text-soft);
+    padding: 10px 12px;
+}
+
+.rma-admin .rma-kmp-tablo {
+    border-collapse: collapse;
+    width: 100%;
+}
+
+.rma-admin .rma-kmp-tablo th {
+    border-bottom: 1px solid var(--rma-a-border);
+    color: var(--rma-a-muted);
+    font-size: 12px;
+    letter-spacing: .03em;
+    padding: 8px 10px;
+    text-align: left;
+    text-transform: uppercase;
+}
+
+.rma-admin .rma-kmp-tablo td {
+    border-bottom: 1px solid var(--rma-a-border-soft);
+    color: var(--rma-a-text-soft);
+    padding: 10px;
+    vertical-align: middle;
+}
+
+.rma-admin .rma-kmp-islem {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.rma-admin .rma-kmp-etiket {
+    background: var(--rma-a-raised);
+    border-radius: 4px;
+    color: var(--rma-a-muted);
+    font-size: 11px;
+    margin-left: 6px;
+    padding: 1px 6px;
+}
+
+/* Kural / kapsam seçimleri — radyo düğmeleri kart gibi görünür. */
+.rma-admin .rma-kmp-secim {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 12px 0;
+}
+
+.rma-admin .rma-kmp-choice {
+    background: var(--rma-a-surface-2);
+    border: 1px solid var(--rma-a-border);
+    border-radius: var(--rma-a-radius);
+    cursor: pointer;
+    flex: 1 1 180px;
+    padding: 12px 14px;
+    transition: border-color .18s, background .18s;
+}
+
+.rma-admin .rma-kmp-choice:hover {
+    border-color: var(--rma-a-accent-dim);
+}
+
+.rma-admin .rma-kmp-choice.is-selected {
+    background: var(--rma-a-accent-soft);
+    border-color: var(--rma-a-accent);
+}
+
+.rma-admin .rma-kmp-choice input {
+    margin-right: 8px;
+}
+
+.rma-admin .rma-kmp-choice-ic {
+    font-weight: 600;
+}
+
+.rma-admin .rma-kmp-kapsam-kutu {
+    background: var(--rma-a-surface-2);
+    border: 1px solid var(--rma-a-border-soft);
+    border-radius: var(--rma-a-radius);
+    margin-top: 12px;
+    padding: 14px;
+}
+
+.rma-admin .rma-kmp-kategori-liste {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.rma-admin .rma-kmp-kategori {
+    background: var(--rma-a-raised);
+    border: 1px solid var(--rma-a-border);
+    border-radius: 6px;
+    cursor: pointer;
+    padding: 8px 12px;
+}
+
+.rma-admin .rma-kmp-kategori em {
+    color: var(--rma-a-muted);
+    font-style: normal;
+}
+
+.rma-admin .rma-kmp-amount-row {
+    align-items: center;
+    display: flex;
+    gap: 8px;
+}
+
+.rma-admin .rma-kmp-amount-row input {
+    max-width: 140px;
+}
+
+.rma-admin .rma-kmp-birim {
+    color: var(--rma-a-accent);
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.rma-admin .rma-kmp-zorunlu {
+    color: var(--rma-a-muted);
+    font-size: 13px;
+    font-weight: 400;
+}
+
+.rma-admin .rma-kmp-spinner {
+    float: none;
+    margin: 0 0 0 6px;
+}
+
+.rma-admin .rma-kmp-ozet-kutu {
+    background: var(--rma-a-surface-2);
+    border: 1px solid var(--rma-a-border);
+    border-left: 3px solid var(--rma-a-accent);
+    border-radius: var(--rma-a-radius);
+    color: var(--rma-a-text-soft);
+    margin-bottom: 14px;
+    padding: 12px 14px;
+}
+
+.rma-admin .rma-kmp-ozet-kutu.has-uyari {
+    border-left-color: var(--rma-a-danger);
+}
+
+.rma-admin .rma-kmp-uyari-metin {
+    color: var(--rma-a-danger);
+    display: block;
+    margin-top: 4px;
+}
+
+.rma-admin .rma-kmp-bayat {
+    color: var(--rma-a-muted);
+    font-style: italic;
+}
+
+/* Uzun önizleme listesi sayfayı değil, kendi kabını uzatır. */
+.rma-admin .rma-kmp-onizleme-kaydir {
+    max-height: 460px;
+    overflow: auto;
+}
+
+.rma-admin .rma-kmp-onizleme-tablo .durum-sifir td,
+.rma-admin .rma-kmp-onizleme-tablo .durum-fiyat_yok td {
+    background: rgba(224, 82, 82, .09);
+}
+
+.rma-admin .rma-kmp-not {
+    color: var(--rma-a-danger);
+    font-size: 12px;
+}
+
+.rma-admin .rma-kmp-onizleme-tablo .durum-degismez .rma-kmp-not {
+    color: var(--rma-a-muted);
+}
+
+.rma-admin .rma-kmp-submit {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+@media (pointer: coarse) {
+    .rma-admin .rma-kmp-choice,
+    .rma-admin .rma-kmp-kategori {
+        min-height: 44px;
+    }
+}
+
+@media screen and (max-width: 782px) {
+    /* Tablolar karta döner: her satır bir kart, hücre başlıkları
+       data-label'dan gelir (bkz. qr-masa yönetim tablosu). */
+    .rma-admin .rma-kmp-tablo thead {
+        display: none;
+    }
+
+    .rma-admin .rma-kmp-tablo tr {
+        background: var(--rma-a-surface-2);
+        border: 1px solid var(--rma-a-border-soft);
+        border-radius: var(--rma-a-radius);
+        display: block;
+        margin-bottom: 10px;
+        padding: 6px 10px;
+    }
+
+    .rma-admin .rma-kmp-tablo td,
+    .rma-admin .rma-kmp-ozet td {
+        border: 0;
+        border-bottom: 1px solid var(--rma-a-border-soft);
+        display: flex;
+        gap: 10px;
+        justify-content: space-between;
+        padding: 8px 0;
+        text-align: right;
+    }
+
+    .rma-admin .rma-kmp-tablo td:last-child,
+    .rma-admin .rma-kmp-ozet td:last-child {
+        border-bottom: 0;
+    }
+
+    .rma-admin .rma-kmp-tablo td::before,
+    .rma-admin .rma-kmp-ozet td::before {
+        color: var(--rma-a-muted);
+        content: attr(data-label);
+        font-size: 12px;
+        text-align: left;
+    }
+
+    .rma-admin .rma-kmp-ozet,
+    .rma-admin .rma-kmp-ozet tr {
+        display: block;
+    }
+
+    .rma-admin .rma-kmp-islem {
+        justify-content: flex-end;
+    }
+
+    .rma-admin .rma-kmp-submit .button {
+        flex: 1 1 100%;
+        text-align: center;
+    }
+
+    .rma-admin .rma-kmp-choice {
+        flex: 1 1 100%;
+    }
+}

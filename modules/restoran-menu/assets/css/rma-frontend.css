@@ -536,6 +536,8 @@
 .rma-badge.popular     { background:linear-gradient(135deg,var(--rma-accent),#a07830); }
 .rma-badge.discount    { background:linear-gradient(135deg,#c0392b,#96281b); color:#fff; }
 .rma-badge.recommended { background:linear-gradient(135deg,#8e44ad,#6c3483); color:#fff; }
+/* Aktif fiyat kampanyası indirimse otomatik basılır (bkz. RMA_Kampanya::rozet_html). */
+.rma-badge.campaign    { background:linear-gradient(135deg,#e74c3c,#b03a2e); color:#fff; }
 
 .rma-card-body {
     flex: 1;
@@ -561,6 +563,14 @@
 .qmo-kombin-new-price { color: #c9a84c; font-family: var(--rma-font-price); font-size: var(--rma-price-size); font-weight: 700; letter-spacing: -.02em; line-height: 1; }
 .rma-modal-price .qmo-kombin-old-price { margin-right: 7px; }
 .rma-modal-price .qmo-kombin-new-price { color: #c9a84c; }
+
+/* Fiyat kampanyası: üstü çizili eski fiyat + kampanyalı yeni fiyat.
+   Dar kartta ikisi alt alta sarar (.rma-card-price-group flex-wrap). */
+.rma-price-old { color: var(--rma-desc); font-size: .88em; font-weight: 500; text-decoration: line-through; }
+.rma-price-new { color: var(--rma-price-color); font-family: var(--rma-font-price); font-weight: 700; letter-spacing: -.02em; line-height: 1; }
+.rma-card-price-group .rma-price-old + .rma-price-new { color: #c9a84c; }
+.rma-modal-price .rma-price-old { margin-right: 7px; }
+.rma-modal-price .rma-price-new { color: #c9a84c; }
 .rma-card-prep { display:inline-flex; align-items:center; gap:3px; font-size:.7rem; font-weight:600; color: var(--rma-desc); opacity:.85; }
 .rma-card-prep svg { flex-shrink:0; opacity:.8; }
 .rma-card-arrow { width: 20px; height: 20px; border-radius: 50%; border: 1px solid var(--rma-border); display: flex; align-items: center; justify-content: center; color: var(--rma-desc); font-size: .72rem; transition: border-color .2s, color .2s, background .2s; flex-shrink: 0; }

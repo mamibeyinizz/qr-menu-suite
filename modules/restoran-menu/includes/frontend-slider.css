@@ -219,3 +219,21 @@
 .rma-card-price-group .qmo-kombin-old-price + .qmo-kombin-new-price {
     color: #c9a84c;
 }
+
+/* Fiyat kampanyası — üstü çizili eski fiyat + kampanyalı fiyat.
+   Kombin fiyat gösterimiyle aynı görsel dil. */
+.rma-price-old {
+    color: var(--rma-desc, #888888);
+    font-size: 0.88em;
+    font-weight: 500;
+    text-decoration: line-through;
+}
+
+.rma-price-new {
+    color: #c9a84c;
+    font-weight: 700;
+}
+
+.qmo-slider-product-price .rma-price-old {
+    margin-right: 6px;
+}

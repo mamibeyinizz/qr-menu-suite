@@ -241,23 +241,16 @@ class RMA_Vitrin_Shortcode {
     }
 
     /**
-     * Ürünün fiyat HTML'i — kombin ürünlerde kombin fiyatı önceliklidir.
+     * Ürünün fiyat HTML'i.
+     *
+     * Aktif fiyat kampanyası, kombin fiyatı ve düz fiyat dallarının hepsi
+     * RMA_Kampanya::fiyat_html() içinde tek yerde çözülür.
      *
      * @param int $id Ürün ID.
      * @return string
      */
     private static function fiyat_html( $id ) {
-        if ( function_exists( 'qmo_get_kombin_price_html' ) ) {
-            $kombin = qmo_get_kombin_price_html( $id );
-
-            if ( '' !== $kombin ) {
-                return $kombin;
-            }
-        }
-
-        $fiyat = get_post_meta( $id, 'rma_price', true );
-
-        return '' !== (string) $fiyat ? esc_html( $fiyat ) . ' ₺' : '';
+        return RMA_Kampanya::fiyat_html( $id );
     }
 }
 

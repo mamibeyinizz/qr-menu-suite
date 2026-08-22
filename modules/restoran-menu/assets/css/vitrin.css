@@ -163,6 +163,24 @@
     margin: auto 0 0;
 }
 
+/* Fiyat kampanyası ve kombin fiyatı — üstü çizili eski fiyat + yeni fiyat.
+   Dar kartta alt alta sarar. */
+.qrms-vitrin-price {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: baseline;
+}
+
+.qrms-vitrin-price .rma-price-old,
+.qrms-vitrin-price .qmo-kombin-old-price {
+    color: inherit;
+    font-size: .85em;
+    font-weight: 500;
+    opacity: .6;
+    text-decoration: line-through;
+}
+
 /* ---------------------------------------------------------------------
    DENETİMLER
 --------------------------------------------------------------------- */

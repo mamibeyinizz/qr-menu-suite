@@ -121,6 +121,7 @@ function qrms_module_restoran_menu_init() {
 		// bu yüzden qr-ceviri'deki gibi sürüm guard'ıyla kurulur: option
 		// güncelse hiçbir şey yapılmaz, tek bir get_option maliyeti kalır.
 		add_action( 'admin_init', array( 'RMA_Vitrin_DB', 'belki_kur' ) );
+		add_action( 'admin_init', array( 'RMA_Kampanya_DB', 'belki_kur' ) );
 		add_filter( 'parent_file', 'qrms_module_restoran_menu_parent_file' );
 		add_filter( 'submenu_file', 'qrms_module_restoran_menu_submenu_file' );
 	}
