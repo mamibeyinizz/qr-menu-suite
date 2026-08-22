@@ -173,6 +173,36 @@ sütundur; `pointer: coarse` cihazlarda kart yüksekliği ve ikonlar büyür.
 yazı tipi yığınına ve işletim sistemine göre kutu karakterine düşebiliyor.
 Stiller `assets/css/admin.css` içindeki `.qrms-hub-*` kurallarındadır.
 
+### Genel Bakış — kategorili kart ızgarası
+
+`Genel Bakış` (`admin.php?page=qrms-overview`) modülleri düz bir liste yerine
+**dört kategoride** kart ızgarası olarak gösterir:
+
+| Kategori | İçindekiler |
+| --- | --- |
+| Menü & Ürünler | Restoran Menü, QR Galeri, Açılış Ekranı |
+| Müşteri Etkileşimi | Yorum & Feedback, QR Chatbot, QR Çeviri |
+| Masa & Servis | QR Masa, Güvenlik Ayarı, QR Çalışma Saatleri |
+| Analiz & Ayarlar | QR Analiz, Kısa Kodlar, Genel Ayarlar |
+
+Gruplama `QRMS_Admin::get_overview_groups()` içinde **tek yerde** durur;
+kartların ikon ve açıklamaları modül isimleriyle aynı dosyadadır
+(`QRMS_Helpers::get_module_meta()`). Bir modül yeni eklenir de gruplamaya
+yazılmayı unutulursa ekrandan düşmez: `build_overview_groups()` onu sondaki
+"Diğer Modüller" kategorisine alır. Bir test her modülün kategorilerde tam
+olarak bir kez geçtiğini korur.
+
+Kart görseli hub bileşeniyle **ortaktır** (`.qrms-hub-card`) — aynı dizilim,
+aynı 3/2/1 sütun kırılımları, aynı dokunmatik büyütmesi. Genel Bakış'a özgü
+tek fark lisans durumudur:
+
+- **Aktif** modül → tıklanabilir kart, sağında yeşil tik.
+- **Pasif** modül → soluk, kesik çerçeveli, `Pasif` rozetli **bağlantısız**
+  kutu. Pasif modülün sayfası kayıtlı olmadığı için adres de basılmaz; kart
+  bağlantı olsaydı WordPress'in "izin verilmiyor" ekranına götürürdü.
+- **Kısa Kodlar / Genel Ayarlar** lisansa bağlı değildir, rozet almaz ve
+  kategori sayacına (`2/3 aktif`) girmez.
+
 ### Varlık sürümleri — önbellek kırma
 
 Eklentinin CSS/JS dosyaları `wp_enqueue_style()`/`wp_enqueue_script()`'e

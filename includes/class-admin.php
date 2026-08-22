@@ -33,6 +33,20 @@ class QRMS_Admin {
 	const MODULE_PAGE_PREFIX = 'qrms-module-';
 
 	/**
+	 * Genel Bakış gruplamasındaki çekirdek (lisansa bağlı olmayan) kalemler.
+	 *
+	 * Modül slug'ı olmadıkları belli olsun diye iki nokta üst üste taşırlar;
+	 * sanitize_key() böyle bir değer üretmediği için bir modül slug'ıyla
+	 * asla çakışmazlar.
+	 */
+	const OVERVIEW_CORE_SHORTCODES = 'core:shortcodes';
+
+	/**
+	 * Genel Bakış'taki "Genel Ayarlar" kaleminin anahtarı.
+	 */
+	const OVERVIEW_CORE_SETTINGS = 'core:settings';
+
+	/**
 	 * Sayfaların gerektirdiği yetki.
 	 */
 	const CAPABILITY = 'manage_options';
@@ -663,7 +677,192 @@ class QRMS_Admin {
 	}
 
 	/**
-	 * Genel Bakış ekranı.
+	 * Genel Bakış'ın kategorileri ve her kategorinin kalemleri.
+	 *
+	 * Kalem ya bir modül slug'ıdır ('restoran-menu') ya da çekirdek sayfa
+	 * anahtarı (self::OVERVIEW_CORE_* sabitleri). Gruplama tek yerde,
+	 * BURADA durur; kartların sunumu build_overview_groups() ve
+	 * render_overview() içindedir.
+	 *
+	 * Bir modül birden çok kategoriye konmamalı ve hiçbir kategoride
+	 * unutulmamalıdır; ikisi de testle korunur. Yine de unutulan bir modül
+	 * ekrandan DÜŞMEZ: build_overview_groups() onu sondaki "Diğer Modüller"
+	 * kategorisine alır.
+	 *
+	 * @return array<int,array{title:string,icon:string,items:string[]}>
+	 */
+	public static function get_overview_groups() {
+		return array(
+			array(
+				'title' => __( 'Menü & Ürünler', 'qrms' ),
+				'icon'  => 'dashicons-food',
+				'items' => array( 'restoran-menu', 'qr-galeri', 'qr-acilis-ekrani' ),
+			),
+			array(
+				'title' => __( 'Müşteri Etkileşimi', 'qrms' ),
+				'icon'  => 'dashicons-groups',
+				'items' => array( 'yorum-feedback', 'qr-chatbot', 'qr-ceviri' ),
+			),
+			array(
+				'title' => __( 'Masa & Servis', 'qrms' ),
+				'icon'  => 'dashicons-store',
+				'items' => array( 'qr-masa', 'qr-masa-oturum-guvenligi', 'qr-calisma-saatleri' ),
+			),
+			array(
+				'title' => __( 'Analiz & Ayarlar', 'qrms' ),
+				'icon'  => 'dashicons-admin-tools',
+				'items' => array( 'qr-analiz', self::OVERVIEW_CORE_SHORTCODES, self::OVERVIEW_CORE_SETTINGS ),
+			),
+		);
+	}
+
+	/**
+	 * Bir çekirdek sayfanın (lisansa bağlı olmayan kalemin) kart bilgisi.
+	 *
+	 * @param string $key            Kalem anahtarı.
+	 * @param bool   $has_shortcodes Kayıtlı kısa kod var mı?
+	 * @return array|null Kart dizisi; kalem gösterilmeyecekse null.
+	 */
+	private static function get_overview_core_card( $key, $has_shortcodes ) {
+		if ( self::OVERVIEW_CORE_SHORTCODES === $key ) {
+			// Sol menüdeki satırla aynı koşul: hiç kısa kod yoksa kart da yok.
+			if ( ! $has_shortcodes ) {
+				return null;
+			}
+
+			return array(
+				'url'   => admin_url( 'admin.php?page=' . self::SHORTCODES_SLUG ),
+				'title' => __( 'Kısa Kodlar', 'qrms' ),
+				'desc'  => __( 'Modüllerin sunduğu kısa kodların rehberi.', 'qrms' ),
+				'icon'  => 'dashicons-editor-code',
+				'state' => 'core',
+			);
+		}
+
+		if ( self::OVERVIEW_CORE_SETTINGS === $key ) {
+			return array(
+				'url'   => admin_url( 'admin.php?page=' . self::SETTINGS_SLUG ),
+				'title' => __( 'Genel Ayarlar', 'qrms' ),
+				'desc'  => __( 'Lisans durumu, API anahtarı ve sunucu adresi.', 'qrms' ),
+				'icon'  => 'dashicons-admin-settings',
+				'state' => 'core',
+			);
+		}
+
+		return null;
+	}
+
+	/**
+	 * Genel Bakış'ta basılacak kategorileri kartlarıyla birlikte kurar.
+	 *
+	 * Saf fonksiyon: lisans istemcisine ve kısa kod defterine kendisi
+	 * bakmaz, ikisini de argüman alır — bu yüzden doğrudan test edilir.
+	 *
+	 * Pasif modüller de listelenir (soluk, tıklanamaz kart): kullanıcı
+	 * lisansında olmayanı da görür. Çekirdek sayfalar lisansa bağlı
+	 * olmadığı için 'core' durumundadır ve aktiflik sayacına girmez.
+	 *
+	 * @param string[] $active         Aktif modül slug'ları.
+	 * @param bool     $has_shortcodes Kayıtlı kısa kod var mı?
+	 * @return array<int,array{title:string,icon:string,cards:array,total:int,active:int}>
+	 */
+	public static function build_overview_groups( array $active, $has_shortcodes ) {
+		$groups  = array();
+		$mapped  = array();
+		$modules = QRMS_Helpers::MODULE_SLUGS;
+
+		foreach ( self::get_overview_groups() as $group ) {
+			$cards  = array();
+			$total  = 0;
+			$sayaci = 0;
+
+			foreach ( $group['items'] as $item ) {
+				if ( ! QRMS_Helpers::is_valid_module( $item ) ) {
+					$card = self::get_overview_core_card( $item, (bool) $has_shortcodes );
+
+					if ( null !== $card ) {
+						$cards[] = $card;
+					}
+
+					continue;
+				}
+
+				$mapped[] = $item;
+				++$total;
+
+				$is_active = in_array( $item, $active, true );
+
+				if ( $is_active ) {
+					++$sayaci;
+				}
+
+				$cards[] = array(
+					// Pasif modülün sayfası kayıtlı DEĞİLDİR; adres verilirse
+					// kart WordPress'in "izin verilmiyor" ekranına götürürdü.
+					'url'   => $is_active ? admin_url( 'admin.php?page=' . self::get_module_page_slug( $item ) ) : '',
+					'title' => QRMS_Helpers::get_module_name( $item ),
+					'desc'  => QRMS_Helpers::get_module_description( $item ),
+					'icon'  => QRMS_Helpers::get_module_icon( $item ),
+					'state' => $is_active ? 'active' : 'passive',
+				);
+			}
+
+			if ( empty( $cards ) ) {
+				continue;
+			}
+
+			$groups[] = array(
+				'title'  => $group['title'],
+				'icon'   => $group['icon'],
+				'cards'  => $cards,
+				'total'  => $total,
+				'active' => $sayaci,
+			);
+		}
+
+		// Emniyet kemeri: yeni bir modül eklenip gruplamaya yazılmayı unutursa
+		// ekrandan sessizce kaybolmasın.
+		$missing = array_values( array_diff( $modules, $mapped ) );
+
+		if ( ! empty( $missing ) ) {
+			$cards  = array();
+			$sayaci = 0;
+
+			foreach ( $missing as $slug ) {
+				$is_active = in_array( $slug, $active, true );
+
+				if ( $is_active ) {
+					++$sayaci;
+				}
+
+				$cards[] = array(
+					'url'   => $is_active ? admin_url( 'admin.php?page=' . self::get_module_page_slug( $slug ) ) : '',
+					'title' => QRMS_Helpers::get_module_name( $slug ),
+					'desc'  => QRMS_Helpers::get_module_description( $slug ),
+					'icon'  => QRMS_Helpers::get_module_icon( $slug ),
+					'state' => $is_active ? 'active' : 'passive',
+				);
+			}
+
+			$groups[] = array(
+				'title'  => __( 'Diğer Modüller', 'qrms' ),
+				'icon'   => 'dashicons-admin-generic',
+				'cards'  => $cards,
+				'total'  => count( $missing ),
+				'active' => $sayaci,
+			);
+		}
+
+		return $groups;
+	}
+
+	/**
+	 * Genel Bakış ekranı: modüller kategorilere ayrılmış kart ızgarasında.
+	 *
+	 * Kart görseli modül hub'larıyla ORTAKTIR (.qrms-hub-card): aynı ikon +
+	 * başlık + açıklama dizilimi, aynı kırılım noktaları. Genel Bakış'a özgü
+	 * tek fark kartın lisans durumudur — aktif kart bağlantı, pasif kart
+	 * tıklanamaz bir kutudur.
 	 *
 	 * @return void
 	 */
@@ -673,31 +872,79 @@ class QRMS_Admin {
 		}
 
 		$active = QRMS_License_Client::get_active_modules();
+		$groups = self::build_overview_groups( $active, QRMS_Shortcodes::has_any() );
 		?>
-		<div class="wrap qrms-wrap">
-			<h1 class="qrms-title"><?php esc_html_e( 'QR Menü — Genel Bakış', 'qrms' ); ?></h1>
+		<div class="wrap qrms-hub qrms-overview">
+			<h1 class="qrms-hub-heading"><?php esc_html_e( 'QR Menü — Genel Bakış', 'qrms' ); ?></h1>
+			<p class="qrms-hub-intro"><?php esc_html_e( 'Modülleriniz konularına göre gruplandı. Ne yapmak istiyorsanız kartına dokunun.', 'qrms' ); ?></p>
 
-			<div class="qrms-card">
-				<h2 class="qrms-card-title"><?php esc_html_e( 'Aktif Modülleriniz', 'qrms' ); ?></h2>
-
-				<?php if ( empty( $active ) ) : ?>
-					<p class="qrms-muted"><?php esc_html_e( 'Henüz aktif modül yok. Lisansınızı doğruladığınızda modülleriniz burada listelenir.', 'qrms' ); ?></p>
+			<?php if ( empty( $active ) ) : ?>
+				<div class="qrms-alert qrms-overview-alert">
+					<p><?php esc_html_e( 'Henüz aktif modül yok. Lisansınızı doğruladığınızda modülleriniz burada açılır.', 'qrms' ); ?></p>
 					<a class="qrms-button qrms-button-primary" href="<?php echo esc_url( admin_url( 'admin.php?page=' . self::SETTINGS_SLUG ) ); ?>">
 						<?php esc_html_e( 'Lisansı Doğrula', 'qrms' ); ?>
 					</a>
-				<?php else : ?>
-					<ul class="qrms-module-list">
-						<?php foreach ( $active as $slug ) : ?>
-							<li class="qrms-module-list-item">
-								<span class="qrms-check" aria-hidden="true">&#10003;</span>
-								<a href="<?php echo esc_url( admin_url( 'admin.php?page=' . self::get_module_page_slug( $slug ) ) ); ?>">
-									<?php echo esc_html( QRMS_Helpers::get_module_name( $slug ) ); ?>
+				</div>
+			<?php endif; ?>
+
+			<?php foreach ( $groups as $group ) : ?>
+				<section class="qrms-overview-group">
+					<h2 class="qrms-overview-group-title">
+						<span class="qrms-overview-group-icon dashicons <?php echo esc_attr( $group['icon'] ); ?>" aria-hidden="true"></span>
+						<span class="qrms-overview-group-name"><?php echo esc_html( $group['title'] ); ?></span>
+						<?php if ( $group['total'] > 0 ) : ?>
+							<span class="qrms-overview-group-count">
+								<?php
+								printf(
+									/* translators: 1: aktif modül sayısı, 2: kategorideki toplam modül sayısı. */
+									esc_html__( '%1$d/%2$d aktif', 'qrms' ),
+									(int) $group['active'],
+									(int) $group['total']
+								);
+								?>
+							</span>
+						<?php endif; ?>
+					</h2>
+
+					<div class="qrms-hub-grid">
+						<?php
+						foreach ( $group['cards'] as $card ) :
+							$is_passive = ( 'passive' === $card['state'] );
+							$classes    = 'qrms-hub-card qrms-overview-card qrms-overview-card-' . $card['state'];
+							?>
+							<?php if ( $is_passive ) : ?>
+								<div class="<?php echo esc_attr( $classes ); ?>">
+							<?php else : ?>
+								<a class="<?php echo esc_attr( $classes ); ?>" href="<?php echo esc_url( $card['url'] ); ?>">
+							<?php endif; ?>
+
+								<span class="qrms-hub-icon dashicons <?php echo esc_attr( $card['icon'] ); ?>" aria-hidden="true"></span>
+
+								<div class="qrms-hub-body">
+									<h3 class="qrms-hub-card-title"><?php echo esc_html( $card['title'] ); ?></h3>
+									<?php if ( '' !== $card['desc'] ) : ?>
+										<p class="qrms-hub-desc"><?php echo esc_html( $card['desc'] ); ?></p>
+									<?php endif; ?>
+								</div>
+
+								<?php if ( 'active' === $card['state'] ) : ?>
+									<span class="qrms-overview-state qrms-overview-state-active">
+										<span class="qrms-check" aria-hidden="true">&#10003;</span>
+										<span class="screen-reader-text"><?php esc_html_e( 'Aktif', 'qrms' ); ?></span>
+									</span>
+								<?php elseif ( $is_passive ) : ?>
+									<span class="qrms-overview-state qrms-overview-state-passive"><?php esc_html_e( 'Pasif', 'qrms' ); ?></span>
+								<?php endif; ?>
+
+							<?php if ( $is_passive ) : ?>
+								</div>
+							<?php else : ?>
 								</a>
-							</li>
+							<?php endif; ?>
 						<?php endforeach; ?>
-					</ul>
-				<?php endif; ?>
-			</div>
+					</div>
+				</section>
+			<?php endforeach; ?>
 		</div>
 		<?php
 	}

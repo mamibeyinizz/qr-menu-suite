@@ -56,6 +56,86 @@ class QRMS_Helpers {
 	}
 
 	/**
+	 * Modül slug -> kart bilgisi (dashicon + tek satırlık iş tarifi).
+	 *
+	 * Genel Bakış'taki kart ızgarası bu tabloyu kullanır. İsimlerle aynı
+	 * yerde durur ki yeni bir modül eklendiğinde tek dosya güncellensin.
+	 *
+	 * İkonlar dashicons setinden gelir — emoji DEĞİL; gerekçe için
+	 * QRMS_Admin::render_hub() başlığına bakın.
+	 *
+	 * @return array<string,array{icon:string,desc:string}>
+	 */
+	public static function get_module_meta() {
+		return array(
+			'restoran-menu'            => array(
+				'icon' => 'dashicons-food',
+				'desc' => __( 'Ürünler, kategoriler, fiyatlar ve menünün görünümü.', 'qrms' ),
+			),
+			'yorum-feedback'           => array(
+				'icon' => 'dashicons-testimonial',
+				'desc' => __( 'Misafir yorumları, puanlar ve geri bildirim formları.', 'qrms' ),
+			),
+			'qr-masa'                  => array(
+				'icon' => 'dashicons-editor-table',
+				'desc' => __( 'Masa QR kodları, oturumlar ve masaya özel bağlantılar.', 'qrms' ),
+			),
+			'qr-analiz'                => array(
+				'icon' => 'dashicons-chart-bar',
+				'desc' => __( 'Menü okutmaları, en çok bakılan ürünler ve raporlar.', 'qrms' ),
+			),
+			'qr-galeri'                => array(
+				'icon' => 'dashicons-format-gallery',
+				'desc' => __( 'Restoranınızın fotoğraf galerisi ve albümleri.', 'qrms' ),
+			),
+			'qr-ceviri'                => array(
+				'icon' => 'dashicons-translation',
+				'desc' => __( 'Menünün yabancı dillerdeki karşılıkları.', 'qrms' ),
+			),
+			'qr-chatbot'               => array(
+				'icon' => 'dashicons-format-chat',
+				'desc' => __( 'Misafirin sorularını yanıtlayan sohbet asistanı.', 'qrms' ),
+			),
+			'qr-calisma-saatleri'      => array(
+				'icon' => 'dashicons-clock',
+				'desc' => __( 'Açılış–kapanış saatleri ve tatil günleri.', 'qrms' ),
+			),
+			'qr-masa-oturum-guvenligi' => array(
+				'icon' => 'dashicons-lock',
+				'desc' => __( 'Masa oturumunun güvenlik limitleri ve kimlik ayarları.', 'qrms' ),
+			),
+			'qr-acilis-ekrani'         => array(
+				'icon' => 'dashicons-visibility',
+				'desc' => __( 'Menü açılmadan önce görünen karşılama ekranı.', 'qrms' ),
+			),
+		);
+	}
+
+	/**
+	 * Bir modülün kart ikonu.
+	 *
+	 * @param string $slug Modül slug'ı.
+	 * @return string Tanımsız slug'da genel ikon döner.
+	 */
+	public static function get_module_icon( $slug ) {
+		$meta = self::get_module_meta();
+
+		return isset( $meta[ $slug ]['icon'] ) ? $meta[ $slug ]['icon'] : 'dashicons-admin-generic';
+	}
+
+	/**
+	 * Bir modülün kart açıklaması.
+	 *
+	 * @param string $slug Modül slug'ı.
+	 * @return string Tanımsız slug'da boş metin döner (kart açıklamasız basılır).
+	 */
+	public static function get_module_description( $slug ) {
+		$meta = self::get_module_meta();
+
+		return isset( $meta[ $slug ]['desc'] ) ? $meta[ $slug ]['desc'] : '';
+	}
+
+	/**
 	 * Bir varlık dosyasının önbellek kıran sürüm etiketi.
 	 *
 	 * NEDEN GEREKLİ: `wp_enqueue_style()`'a sabit `QRMS_VERSION` verildiğinde
