@@ -539,6 +539,73 @@
 /* Aktif fiyat kampanyası indirimse otomatik basılır (bkz. RMA_Kampanya::rozet_html). */
 .rma-badge.campaign    { background:linear-gradient(135deg,#e74c3c,#b03a2e); color:#fff; }
 
+/* Tükendi: ürün menüde kalır ama soluk görünür. Rozet görselin alt
+   şeridindedir — kart gövdesindeki başlık/fiyat satırını itmez. */
+.rma-card.is-tukendi {
+    opacity: .72;
+}
+.rma-card.is-tukendi:hover {
+    transform: none;
+    box-shadow: none;
+}
+.rma-card.is-tukendi .rma-card-img {
+    filter: grayscale(.45);
+    opacity: .85;
+}
+.rma-card.is-tukendi:hover .rma-card-img { transform: none; }
+.rma-card.is-tukendi .rma-card-arrow { opacity: .45; }
+
+.rma-tukendi-rozet {
+    background: #8b1e1e;
+    bottom: 0;
+    color: #fff;
+    font-family: var(--rma-font-body, system-ui, sans-serif);
+    font-size: .68rem;
+    font-weight: 800;
+    letter-spacing: .08em;
+    line-height: 1.2;
+    left: 0;
+    padding: 5px 4px;
+    position: absolute;
+    right: 0;
+    text-align: center;
+    text-transform: uppercase;
+    white-space: nowrap;
+    z-index: 3;
+}
+@media (max-width: 379px) {
+    .rma-tukendi-rozet {
+        font-size: .6rem;
+        letter-spacing: .05em;
+        padding: 4px 2px;
+    }
+}
+
+.rma-modal-tukendi {
+    background: rgba(139, 30, 30, .18);
+    border: 1px solid rgba(192, 57, 43, .45);
+    border-radius: 8px;
+    color: #e74c3c;
+    font-size: .84rem;
+    font-weight: 700;
+    letter-spacing: .02em;
+    margin: 0 0 10px;
+    padding: 8px 12px;
+}
+.rma-attr-tukendi {
+    background: rgba(192, 57, 43, .14);
+    border-color: rgba(192, 57, 43, .4);
+    color: #e74c3c;
+}
+.rma-modal-img-wrap.is-tukendi .rma-modal-img {
+    filter: grayscale(.35);
+    opacity: .8;
+}
+.rma-modal-img-wrap .rma-tukendi-rozet {
+    font-size: .82rem;
+    padding: 8px 10px;
+}
+
 .rma-card-body {
     flex: 1;
     min-width: 0;

@@ -68,9 +68,12 @@ class QMO_Shortcode_Slider {
                     <?php endif; ?>
                     <div class="qmo-slider-grid">
                         <?php foreach ( $slide['products'] as $product ) : ?>
-                            <article class="qmo-slider-product">
+                            <article class="qmo-slider-product<?php echo ! empty( $product['tukendi'] ) ? ' is-tukendi' : ''; ?>">
                                 <div class="qmo-slider-product-img-wrap">
                                     <img src="<?php echo esc_url( $product['img'] ); ?>" alt="<?php echo esc_attr( $product['title'] ); ?>" class="qmo-slider-product-img" loading="lazy" decoding="async" width="220" height="220">
+                                    <?php if ( ! empty( $product['tukendi'] ) ) : ?>
+                                        <span class="rma-tukendi-rozet"><?php echo esc_html( $product['tukendi_etiket'] ); ?></span>
+                                    <?php endif; ?>
                                 </div>
                                 <div class="qmo-slider-product-body">
                                     <h3 class="qmo-slider-product-title"><?php echo esc_html( $product['title'] ); ?></h3>
@@ -120,7 +123,7 @@ class QMO_Shortcode_Slider {
     }
 
     /**
-     * @return array<int,array{title:string,desc:string,price_html:string,img:string}>
+     * @return array<int,array{title:string,desc:string,price_html:string,img:string,tukendi:bool,tukendi_etiket:string}>
      */
     private static function get_slide_products( $slide_id ) {
         $items = [];
@@ -146,11 +149,15 @@ class QMO_Shortcode_Slider {
             $img = get_the_post_thumbnail_url( $product_id, 'medium' )
                 ?: 'https://placehold.co/220x220/111111/c9a84c?text=%E2%97%86';
 
+            $tukendi = class_exists( 'RMA_Tukendi' ) && RMA_Tukendi::urun_tukendi( $product_id );
+
             $items[] = [
-                'title'      => $title,
-                'desc'       => $desc,
-                'price_html' => $price_html,
-                'img'        => $img,
+                'title'          => $title,
+                'desc'           => $desc,
+                'price_html'     => $price_html,
+                'img'            => $img,
+                'tukendi'        => $tukendi,
+                'tukendi_etiket' => $tukendi ? RMA_Tukendi::etiket() : '',
             ];
         }
 

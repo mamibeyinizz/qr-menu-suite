@@ -51,6 +51,15 @@
     background: #c9a84c;
 }
 
+.rma-switch.rma-switch-tukendi input:checked + .rma-slider {
+    background: #c0392b;
+}
+
+.column-rma_status,
+.column-rma_tukendi {
+    width: 88px;
+}
+
 .rma-switch input:checked + .rma-slider:before {
     transform: translateX(20px);
 }

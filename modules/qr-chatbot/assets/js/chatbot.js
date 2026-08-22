@@ -181,7 +181,15 @@
 							items: JSON.stringify( urunler )
 						} ).then( function ( sy ) {
 							if ( ! sy || ! sy.success ) {
-								balon( 'Siparişiniz iletilemedi, lütfen garsona bildirin.', 'bot', true );
+								var msg = 'Siparişiniz iletilemedi, lütfen garsona bildirin.';
+								if ( sy && sy.data ) {
+									if ( 'string' === typeof sy.data ) {
+										msg = sy.data;
+									} else if ( sy.data.mesaj ) {
+										msg = sy.data.mesaj;
+									}
+								}
+								balon( msg, 'bot', true );
 							}
 						} ).catch( function () {
 							balon( 'Siparişiniz iletilemedi, lütfen garsona bildirin.', 'bot', true );

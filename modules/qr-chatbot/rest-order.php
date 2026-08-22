@@ -232,6 +232,16 @@ if ( ! function_exists( 'qmo_siparis_isle' ) ) {
 			);
 		}
 
+		// Restoran menü "Tükendi" durumu siparişi burada keser (varsa).
+		$engel = apply_filters( 'qmo_siparis_onay_oncesi', null, $temiz );
+		if ( is_string( $engel ) && '' !== $engel ) {
+			return array(
+				'success' => false,
+				'msg'     => $engel,
+				'http'    => 409,
+			);
+		}
+
 		// ÖNCE ham notlarla yaz (çeviri yok) — müşteri beklemesin, garson
 		// siparişi anında görsün. Çeviri arka planda tamamlanır.
 		$fs_items = array();

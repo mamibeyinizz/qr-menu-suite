@@ -4981,6 +4981,100 @@ qrms_test(
 );
 
 
+/* ---------------------------------------------------------------------------
+ * 13. Ürün Tükendi (stok durumu)
+ *
+ * Göster/Gizle (`rma_active`) ürünü menüden kaldırır. Tükendi ayrı bir
+ * meta'dır (`_rma_tukendi`): orijinal görünürlük alanını ezmez, menü
+ * sorgusundan ürünü düşürmez.
+ * ------------------------------------------------------------------------ */
+
+require_once QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/class-tukendi.php';
+
+echo "\nÜrün Tükendi — stok durumu\n";
+
+qrms_test(
+	'yalnızca açık 1 değeri tükendi sayılır',
+	function () {
+		qrms_assert_true( RMA_Tukendi::meta_tukendi_mi( '1' ), 'string 1' );
+		qrms_assert_false( RMA_Tukendi::meta_tukendi_mi( '0' ), 'sıfır' );
+		qrms_assert_false( RMA_Tukendi::meta_tukendi_mi( '' ), 'boş meta' );
+		qrms_assert_false( RMA_Tukendi::meta_tukendi_mi( null ), 'null' );
+		qrms_assert_false( RMA_Tukendi::meta_tukendi_mi( 'yes' ), 'rastgele metin' );
+	}
+);
+
+qrms_test(
+	'ürün adı büyük/küçük harf ve boşluk farkını yok sayar',
+	function () {
+		qrms_assert_true( RMA_Tukendi::ad_eslesir( 'Adana Kebap', 'adana kebap' ), 'küçük harf' );
+		qrms_assert_true( RMA_Tukendi::ad_eslesir( '  Adana Kebap ', 'Adana Kebap' ), 'kırpılmış boşluk' );
+		qrms_assert_false( RMA_Tukendi::ad_eslesir( 'Adana Kebap', 'Urfa Kebap' ), 'farklı ürün' );
+		qrms_assert_false( RMA_Tukendi::ad_eslesir( '', '' ), 'iki boş ad eşleşmez' );
+		qrms_assert_same( 'adana kebap', RMA_Tukendi::ad_normalize( ' Adana Kebap ' ), 'normalize' );
+	}
+);
+
+qrms_test(
+	'tükendi rma_active alanına yazmaz, ayrı meta kullanır',
+	function () {
+		$kaynak = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/class-tukendi.php' );
+
+		qrms_assert_contains( "const META = '_rma_tukendi'", $kaynak, 'ayrı meta anahtarı' );
+		qrms_assert_false(
+			(bool) preg_match( "/update_post_meta\([^;]*'rma_active'/", $kaynak ),
+			'Göster/Gizle alanına yazılmaz'
+		);
+
+		$kaydet = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-post-types.php' );
+		qrms_assert_contains( 'RMA_Tukendi::kaydet', $kaydet, 'ürün kaydında ayrı yazılır' );
+		qrms_assert_false(
+			(bool) preg_match( "/\\\$checkboxes = \[[^\]]*rma_tukendi/", $kaydet ),
+			'genel checkbox listesine karışmaz'
+		);
+	}
+);
+
+qrms_test(
+	'menü sorgusu tükendi ürünleri gizlemez; kart ve vitrin işareti basar',
+	function () {
+		$ajax = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-ajax.php' );
+		qrms_assert_contains( "'key' => 'rma_active'", $ajax, 'gizleme hâlâ rma_active' );
+		qrms_assert_false(
+			(bool) preg_match( "/'key'\s*=>\s*'_rma_tukendi'/", $ajax ),
+			'tükendi meta_query filtresi değil'
+		);
+
+		$kart = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-frontend.php' );
+		qrms_assert_contains( 'is-tukendi', $kart, 'kart sınıfı' );
+		qrms_assert_contains( 'RMA_Tukendi::rozet_html', $kart, 'kart rozeti' );
+
+		$vitrin = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/shortcode-vitrin.php' );
+		qrms_assert_contains( 'RMA_Tukendi::urun_tukendi', $vitrin, 'vitrin durumu' );
+
+		$slider = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/shortcode-slider.php' );
+		qrms_assert_contains( 'RMA_Tukendi::urun_tukendi', $slider, 'slider durumu' );
+	}
+);
+
+qrms_test(
+	'chatbot siparişi tükendi filtresinden geçer',
+	function () {
+		$siparis = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/rest-order.php' );
+		qrms_assert_contains( 'qmo_siparis_onay_oncesi', $siparis, 'sipariş kancası' );
+
+		$menu = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/qr-menu.php' );
+		qrms_assert_contains( "add_filter( 'qmo_siparis_onay_oncesi'", $menu, 'menü bağlar' );
+
+		$json = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/includes/admin/admin-sayfa.php' );
+		qrms_assert_contains( "'tukendi'", $json, 'menü JSON alanı' );
+
+		qrms_assert_same( null, RMA_Tukendi::siparis_engeli( array() ), 'boş sipariş' );
+		qrms_assert_same( 'önceki', RMA_Tukendi::siparis_filtresi( 'önceki', array() ), 'önceki engel korunur' );
+	}
+);
+
+
 if ( empty( $GLOBALS['qrms_failures'] ) ) {
 	echo "\033[32mTüm testler geçti\033[0m (" . $GLOBALS['qrms_assertions'] . " doğrulama)\n\n";
 	exit( 0 );

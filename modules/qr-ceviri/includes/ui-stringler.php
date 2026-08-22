@@ -85,6 +85,8 @@ if ( ! function_exists( 'rma_ceviri_varsayilan_ui_metinleri' ) ) {
 			'Öneriler',
 			'Diğer',
 			'Ürün bulunamadı.',
+			'Tükendi',
+			'Bu ürün şu an tükendi',
 
 			/* Yalnızca JS'te basılanlar — RMA_I18N köprüsüyle taşınır */
 			'Yükleme hatası oluştu. Lütfen sayfayı yenileyin.',
