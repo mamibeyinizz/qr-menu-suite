@@ -10,6 +10,8 @@
 
 define( 'ABSPATH', __DIR__ . '/' );
 define( 'DAY_IN_SECONDS', 86400 );
+define( 'HOUR_IN_SECONDS', 3600 );
+define( 'MINUTE_IN_SECONDS', 60 );
 define( 'QRMS_VERSION', 'test' );
 define( 'QRMS_PLUGIN_DIR', dirname( __DIR__ ) . '/' );
 define( 'QRMS_PLUGIN_URL', 'https://example.test/wp-content/plugins/qr-menu-suite/' );
@@ -626,7 +628,39 @@ function add_menu_page( $page_title, $menu_title, $capability, $menu_slug, $call
  * @return mixed
  */
 function apply_filters( $hook, $value ) {
+	if ( empty( $GLOBALS['qrms_test']['actions'][ $hook ] ) ) {
+		return $value;
+	}
+
+	foreach ( $GLOBALS['qrms_test']['actions'][ $hook ] as $callback ) {
+		$value = call_user_func( $callback, $value );
+	}
+
 	return $value;
+}
+
+/**
+ * Nonce üretimi (testte eylem adına bağlı, öngörülebilir bir değer).
+ *
+ * @param string $action Eylem adı.
+ * @return string
+ */
+function wp_create_nonce( $action = -1 ) {
+	return 'test-nonce-' . $action;
+}
+
+/**
+ * Nonce doğrulaması.
+ *
+ * Gerçek doğrulamada olduğu gibi, nonce YALNIZCA üretildiği eylem için
+ * geçerlidir; başka bir eylemin nonce'u ya da uydurma bir değer reddedilir.
+ *
+ * @param string $nonce  Gelen değer.
+ * @param string $action Eylem adı.
+ * @return int|false
+ */
+function wp_verify_nonce( $nonce, $action = -1 ) {
+	return ( is_string( $nonce ) && $nonce === wp_create_nonce( $action ) ) ? 1 : false;
 }
 
 /**
