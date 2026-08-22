@@ -1,6 +1,18 @@
 <?php
 if (!defined('ABSPATH')) exit;
 
+/**
+ * Yorum/iletişim formunun ön yüz script'i.
+ *
+ * @param array $settings Eklenti ayarları.
+ * @param int   $js_limit Sayfa boyutu. v4.2.2'den beri JS bu değeri
+ *                        kullanmaz — sayfalama sunucuda yapılır ve boyut
+ *                        AJAX ucunda ayardan okunur. Parametre çağrı
+ *                        yerlerini kırmamak için duruyor.
+ * @param bool  $has_list Sayfada yorum listesi var mı (yalnızca yorum kısa
+ *                        kodunda true; iletişim formunda liste yoktur).
+ * @return string
+ */
 function qrm_pro_render_form_script($settings, $js_limit = 0, $has_list = true) {
     ob_start();
     ?>
@@ -12,6 +24,7 @@ function qrm_pro_render_form_script($settings, $js_limit = 0, $has_list = true) 
             subtext: <?php echo wp_json_encode($settings['google_review_subtext']); ?>,
             btnText: <?php echo wp_json_encode($settings['google_review_btn_text']); ?>,
             skipText: <?php echo wp_json_encode($settings['google_review_skip_text']); ?>,
+            loadNonce: <?php echo wp_json_encode(wp_create_nonce('qrm_load_reviews')); ?>,
             genericError: 'Bir şeyler ters gitti, lütfen tekrar deneyin.'
         };
 
@@ -182,34 +195,61 @@ function qrm_pro_render_form_script($settings, $js_limit = 0, $has_list = true) 
         }
 
         <?php if ($has_list): ?>
+        // "Daha Fazla Göster" artık DOM'da gizlenmiş kartları açmıyor: her
+        // sayfa sunucudan ayrı isteniyor. Eskiden tüm onaylı yorumlar ilk
+        // yüklemede basılıp CSS ile gizleniyordu; yani sayfa ağırlığı yorum
+        // sayısıyla doğrusal büyüyordu.
         function initLoadMore() {
-            var visibleLimit = <?php echo (int) $js_limit; ?>;
-            var step = visibleLimit;
-            var items = document.querySelectorAll('.qrm-review-item');
             var btn = document.getElementById('qrm-load-more');
+            if (!btn) return;
 
-            if (items.length > visibleLimit) {
-                items.forEach(function(item, index) {
-                    if (index >= visibleLimit) item.style.display = 'none';
-                });
+            var container = document.getElementById('qrm-reviews-container');
+            if (!container) return;
 
-                if (btn) {
-                    btn.addEventListener('click', function(e) {
-                        e.preventDefault();
-                        var hiddenItems = Array.from(items).filter(function(item) {
-                            return item.style.display === 'none';
-                        });
+            var offset  = container.querySelectorAll('.qrm-review-item').length;
+            var loading = false;
+            var label   = btn.textContent;
 
-                        for (var i = 0; i < step && i < hiddenItems.length; i++) {
-                            hiddenItems[i].style.display = '';
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                if (loading) return;
+
+                loading = true;
+                btn.disabled = true;
+                btn.textContent = 'Yükleniyor…';
+
+                var fd = new FormData();
+                fd.append('action', 'qrm_load_reviews');
+                fd.append('nonce', qrmCfg.loadNonce);
+                fd.append('offset', offset);
+
+                fetch(qrmCfg.ajaxUrl, { method: 'POST', credentials: 'same-origin', body: fd })
+                    .then(function(r) { return r.json(); })
+                    .then(function(res) {
+                        loading = false;
+                        btn.disabled = false;
+                        btn.textContent = label;
+
+                        if (!res || !res.success || !res.data) {
+                            btn.textContent = qrmCfg.genericError;
+                            return;
                         }
 
-                        if (document.querySelectorAll('.qrm-review-item[style*="display: none"]').length === 0) {
-                            btn.style.display = 'none';
+                        if (res.data.html) {
+                            container.insertAdjacentHTML('beforeend', res.data.html);
+                            offset += (res.data.count || 0);
                         }
+
+                        if (!res.data.has_more) {
+                            btn.parentElement.removeChild(btn);
+                        }
+                    })
+                    .catch(function() {
+                        loading = false;
+                        btn.disabled = false;
+                        btn.textContent = qrmCfg.genericError;
                     });
-                }
-            }
+            });
         }
         <?php endif; ?>
 

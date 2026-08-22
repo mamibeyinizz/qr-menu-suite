@@ -155,6 +155,9 @@ require_once QRM_PRO_PATH . 'includes/admin/form-submissions.php';
 // Ön yüz
 require_once QRM_PRO_PATH . 'includes/frontend/form-render.php';
 require_once QRM_PRO_PATH . 'includes/frontend/form-script.php';
+// Yorum listesinin sayfalaması ve kart çıktısı; kısa kod da AJAX ucu da
+// buradan geçer, bu yüzden ikisinden de önce yüklenir.
+require_once QRM_PRO_PATH . 'includes/frontend/reviews-list.php';
 require_once QRM_PRO_PATH . 'includes/frontend/shortcode-reviews.php';
 require_once QRM_PRO_PATH . 'includes/frontend/shortcode-contact.php';
 require_once QRM_PRO_PATH . 'includes/forms/render.php';
@@ -162,6 +165,7 @@ require_once QRM_PRO_PATH . 'includes/frontend/shortcode-form.php';
 
 // AJAX
 require_once QRM_PRO_PATH . 'includes/ajax/submit-review.php';
+require_once QRM_PRO_PATH . 'includes/ajax/load-reviews.php';
 require_once QRM_PRO_PATH . 'includes/ajax/rewards.php';
 require_once QRM_PRO_PATH . 'includes/ajax/submit-custom-form.php';
 

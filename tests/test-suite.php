@@ -41,6 +41,7 @@ function qrms_reset() {
 	$GLOBALS['qrms_test']['scripts']    = array();
 	$GLOBALS['qrms_test']['settings']       = array();
 	$GLOBALS['qrms_test']['settings_fields'] = array();
+
 	$GLOBALS['menu']                    = array();
 	$GLOBALS['submenu']                 = array();
 	$_POST                              = array();
@@ -2452,6 +2453,280 @@ qrms_test(
 		qrms_module_qr_masa_oturum_guvenligi_admin_menu();
 
 		qrms_assert_same( array(), $GLOBALS['qrms_test']['submenus'], 'kayıt yok' );
+	}
+);
+
+/* ---------------------------------------------------------------------------
+ * 8z. Yorum & Feedback — yorum listesinin SAYFALAMASI
+ * ------------------------------------------------------------------------ */
+
+// Yalnızca fonksiyon tanımları; hook kaydı yok.
+require_once QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/settings.php';
+require_once QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/frontend/reviews-list.php';
+require_once QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/frontend/form-render.php';
+
+/**
+ * Yorum listesi sorguları için $wpdb taklidi.
+ *
+ * prepare() çekirdekteki gibi yer tutucuları doldurur; testler böylece
+ * ÜRETİLEN SQL'i — özellikle LIMIT/OFFSET değerlerini — doğrulayabilir.
+ * (ai-insights testlerinin kendi QRMS_Test_Wpdb'si ayrıdır; bu sınıf
+ * yalnızca aşağıdaki testler için $GLOBALS['wpdb']'ye takılır.)
+ */
+class QRMS_Yorum_Wpdb {
+	public $prefix  = 'wp_';
+	public $queries = array();
+	public $results = array();
+	public $vars    = array();
+
+	public function prepare( $sql, ...$args ) {
+		if ( 1 === count( $args ) && is_array( $args[0] ) ) {
+			$args = $args[0];
+		}
+
+		return preg_replace_callback(
+			'/%[dsf]/',
+			function ( $m ) use ( &$args ) {
+				$value = array_shift( $args );
+
+				if ( '%d' === $m[0] ) {
+					return (string) (int) $value;
+				}
+				if ( '%f' === $m[0] ) {
+					return (string) (float) $value;
+				}
+
+				return "'" . str_replace( "'", "\\'", (string) $value ) . "'";
+			},
+			$sql
+		);
+	}
+
+	public function get_results( $sql, $mode = null ) {
+		$this->queries[] = $sql;
+
+		return array_shift( $this->results ) ?: array();
+	}
+
+	public function get_var( $sql ) {
+		$this->queries[] = $sql;
+
+		return array_shift( $this->vars );
+	}
+
+	public function son_sorgu() {
+		return end( $this->queries ) ?: '';
+	}
+}
+
+/**
+ * Yorum testleri için taze bir $wpdb takar.
+ *
+ * @return QRMS_Yorum_Wpdb
+ */
+function qrms_yorum_wpdb() {
+	$GLOBALS['wpdb'] = new QRMS_Yorum_Wpdb();
+
+	return $GLOBALS['wpdb'];
+}
+
+/**
+ * Test için sahte yorum satırı.
+ *
+ * @param int $id Satır kimliği.
+ * @return object
+ */
+function qrms_sahte_yorum( $id ) {
+	return (object) array(
+		'id'            => $id,
+		'rating'        => 4.5,
+		'comment'       => 'Yorum ' . $id,
+		'customer_name' => 'Müşteri ' . $id,
+		'is_anonymous'  => 0,
+		'created_at'    => '2026-01-01 12:00:00',
+	);
+}
+
+echo "\nYorum listesi sayfalaması\n";
+
+qrms_test(
+	'sayfa boyutu ayardan gelir',
+	function () {
+		qrms_assert_same( 3, qrm_pro_reviews_page_size( array( 'reviews_per_page' => '3' ) ), '3 yorum' );
+		qrms_assert_same( 5, qrm_pro_reviews_page_size( array( 'reviews_per_page' => '5' ) ), '5 yorum' );
+	}
+);
+
+qrms_test(
+	'"Tümü" ayarı sınırsız sorguya DÖNÜŞMEZ, üst sınıra çekilir',
+	function () {
+		// Asıl düzeltme bu: eskiden 'all' seçildiğinde sorgu LIMIT'siz
+		// çalışıyor, tüm onaylı yorumlar çekilip HTML'e basılıyordu.
+		$boyut = qrm_pro_reviews_page_size( array( 'reviews_per_page' => 'all' ) );
+
+		qrms_assert_same( 50, $boyut, 'üst sınıra çekilir' );
+		qrms_assert_true( $boyut > 0 && $boyut <= 50, 'her koşulda sınırlı' );
+	}
+);
+
+qrms_test(
+	'bozuk ya da eksik ayar güvenli varsayılana düşer',
+	function () {
+		qrms_assert_same( 3, qrm_pro_reviews_page_size( array() ), 'ayar yok' );
+		qrms_assert_same( 3, qrm_pro_reviews_page_size( array( 'reviews_per_page' => '0' ) ), 'sıfır' );
+		qrms_assert_same( 3, qrm_pro_reviews_page_size( array( 'reviews_per_page' => '-7' ) ), 'negatif' );
+		qrms_assert_same( 3, qrm_pro_reviews_page_size( array( 'reviews_per_page' => 'abc' ) ), 'metin' );
+	}
+);
+
+qrms_test(
+	'sayfa boyutu üst sınırı filtreyle daraltılabilir',
+	function () {
+		add_filter(
+			'qrm_reviews_max_page_size',
+			function () {
+				return 10;
+			}
+		);
+
+		qrms_assert_same( 10, qrm_pro_reviews_page_size( array( 'reviews_per_page' => 'all' ) ), '"tümü" daralır' );
+		qrms_assert_same( 5, qrm_pro_reviews_page_size( array( 'reviews_per_page' => '5' ) ), 'sınır altı korunur' );
+	}
+);
+
+qrms_test(
+	'sorgu GERÇEKTEN LIMIT ve OFFSET taşır',
+	function () {
+		$db = qrms_yorum_wpdb();
+		$db->results[] = array( qrms_sahte_yorum( 1 ), qrms_sahte_yorum( 2 ) );
+
+		qrm_pro_fetch_approved_reviews( 3, 6 );
+
+		$sorgu = $db->son_sorgu();
+
+		qrms_assert_true( false !== strpos( $sorgu, 'WHERE status = 1' ), 'yalnızca onaylılar' );
+		// Sayfa boyutundan BİR FAZLA istenir: fazladan satır "daha var mı?"
+		// sorusunu ayrı bir COUNT sorgusu olmadan cevaplar.
+		qrms_assert_true( false !== strpos( $sorgu, 'LIMIT 4' ), 'LIMIT = boyut + 1' );
+		qrms_assert_true( false !== strpos( $sorgu, 'OFFSET 6' ), 'OFFSET uygulanır' );
+	}
+);
+
+qrms_test(
+	'fazladan satır listeye girmez, yalnızca "daha var" der',
+	function () {
+		// 3 istendi, 4 döndü -> devamı var, ama kullanıcıya 3 kart gider.
+		$db = qrms_yorum_wpdb();
+		$db->results[] = array(
+			qrms_sahte_yorum( 1 ),
+			qrms_sahte_yorum( 2 ),
+			qrms_sahte_yorum( 3 ),
+			qrms_sahte_yorum( 4 ),
+		);
+
+		$sayfa = qrm_pro_fetch_approved_reviews( 3, 0 );
+
+		qrms_assert_same( 3, count( $sayfa['rows'] ), 'sayfa boyutu kadar satır' );
+		qrms_assert_true( $sayfa['has_more'], 'devamı var' );
+		qrms_assert_same( 3, (int) $sayfa['rows'][2]->id, 'fazladan satır atıldı' );
+	}
+);
+
+qrms_test(
+	'son sayfada "daha fazla" denmez',
+	function () {
+		$db = qrms_yorum_wpdb();
+		$db->results[] = array( qrms_sahte_yorum( 1 ), qrms_sahte_yorum( 2 ) );
+
+		$sayfa = qrm_pro_fetch_approved_reviews( 3, 0 );
+
+		qrms_assert_same( 2, count( $sayfa['rows'] ), 'gelen satırlar' );
+		qrms_assert_false( $sayfa['has_more'], 'devamı yok' );
+	}
+);
+
+qrms_test(
+	'hiç yorum yokken boş sayfa döner',
+	function () {
+		qrms_yorum_wpdb();
+
+		$sayfa = qrm_pro_fetch_approved_reviews( 3, 0 );
+
+		qrms_assert_same( array(), $sayfa['rows'], 'boş liste' );
+		qrms_assert_false( $sayfa['has_more'], 'devamı yok' );
+	}
+);
+
+qrms_test(
+	'negatif ya da sıfır sayfa boyutu sorguyu sınırsız bırakmaz',
+	function () {
+		$db = qrms_yorum_wpdb();
+
+		qrm_pro_fetch_approved_reviews( 0, -5 );
+
+		$sorgu = $db->son_sorgu();
+
+		qrms_assert_true( false !== strpos( $sorgu, 'LIMIT 2' ), 'en az 1 + 1' );
+		qrms_assert_true( false !== strpos( $sorgu, 'OFFSET 0' ), 'negatif offset sıfırlanır' );
+	}
+);
+
+qrms_test(
+	'toplam sayaç ayrı sorulur (LIMIT sayacı bozmasın diye)',
+	function () {
+		$db = qrms_yorum_wpdb();
+		$db->vars[] = '4231';
+
+		qrms_assert_same( 4231, qrm_pro_count_approved_reviews(), 'toplam' );
+		qrms_assert_true(
+			false !== strpos( $db->son_sorgu(), 'COUNT(*)' ),
+			'sayım sorgusu'
+		);
+	}
+);
+
+qrms_test(
+	'kart çıktısı müşteri adını ve yorumu kaçırarak basar',
+	function () {
+		$yorum                = qrms_sahte_yorum( 1 );
+		$yorum->customer_name = '<script>alert(1)</script>';
+		$yorum->comment       = 'Harika & lezzetli <b>çok</b>';
+
+		$html = qrm_pro_render_review_card( $yorum );
+
+		qrms_assert_true( false === strpos( $html, '<script>' ), 'ad kaçırıldı' );
+		qrms_assert_true( false === strpos( $html, '<b>çok</b>' ), 'yorum kaçırıldı' );
+		qrms_assert_true( false !== strpos( $html, 'qrm-review-item' ), 'kart sınıfı korundu' );
+	}
+);
+
+qrms_test(
+	'anonim yorumda müşteri adı hiç basılmaz',
+	function () {
+		$yorum                = qrms_sahte_yorum( 1 );
+		$yorum->customer_name = 'Gizli Kalmalı';
+		$yorum->is_anonymous  = 1;
+
+		$html = qrm_pro_render_review_card( $yorum );
+
+		qrms_assert_true( false === strpos( $html, 'Gizli Kalmalı' ), 'ad sızmaz' );
+		qrms_assert_true( false !== strpos( $html, 'Anonim Misafir' ), 'anonim etiketi' );
+	}
+);
+
+qrms_test(
+	'puan yıldızları 0-5 aralığının dışına taşmaz',
+	function () {
+		// str_repeat negatif sayıyla ölümcül hata verir; bozuk bir satır
+		// tüm listeyi düşürmemeli.
+		$yorum         = qrms_sahte_yorum( 1 );
+		$yorum->rating = 9.7;
+		$html          = qrm_pro_render_review_card( $yorum );
+		qrms_assert_same( 5, substr_count( $html, '★' ), 'tavan 5' );
+
+		$yorum->rating = -3;
+		$html          = qrm_pro_render_review_card( $yorum );
+		qrms_assert_same( 5, substr_count( $html, '☆' ), 'taban 0 dolu yıldız' );
 	}
 );
 
