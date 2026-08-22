@@ -5794,7 +5794,7 @@ qrms_test(
 		$siparis = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/rest-order.php' );
 
 		$anahtar_konum = strpos( $siparis, '$api_key = get_option( \'gemini_api_key\' );' );
-		$birakma_konum = strpos( $siparis, '$db_kapali = qmo_db_serbest_birak();' );
+		$birakma_konum = strpos( $siparis, '$db_kapali = qmo_db_serbest_birak();', false !== $anahtar_konum ? $anahtar_konum : 0 );
 
 		qrms_assert_true( false !== $anahtar_konum, 'anahtar önceden çözülüyor' );
 		qrms_assert_true( false !== $birakma_konum, 'bırakma noktası var' );

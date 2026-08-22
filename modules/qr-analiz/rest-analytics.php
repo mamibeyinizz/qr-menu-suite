@@ -84,8 +84,14 @@ if ( ! function_exists( 'qmo_rest_analytics' ) ) {
 		}
 
 		// 2) Rol kontrolü (sadece admin/müdür).
+		// Token + kullanıcı dokümanı dış istek; bağlantı bu süre boyunca
+		// kullanılmaz, tek bırak/geri-al ile sarılır. Sonraki $wpdb
+		// sorgularından ÖNCE geri açılır.
+		$db_kapali = qmo_db_serbest_birak();
+
 		$token = QMO_Firestore::access_token( QMO_Firestore::SCOPE_DATASTORE );
 		if ( is_wp_error( $token ) ) {
+			qmo_db_geri_baglan( $db_kapali );
 			return new WP_REST_Response(
 				array(
 					'success' => false,
@@ -97,6 +103,7 @@ if ( ! function_exists( 'qmo_rest_analytics' ) ) {
 
 		$u = QMO_Firestore::kullanici_doc( $token, $project, $uid );
 		if ( is_wp_error( $u ) ) {
+			qmo_db_geri_baglan( $db_kapali );
 			return new WP_REST_Response(
 				array(
 					'success' => false,
@@ -105,6 +112,9 @@ if ( ! function_exists( 'qmo_rest_analytics' ) ) {
 				403
 			);
 		}
+
+		qmo_db_geri_baglan( $db_kapali );
+
 		if ( ! in_array( $u['rol'], array( 'admin', 'mudur' ), true ) ) {
 			return new WP_REST_Response(
 				array(
