@@ -542,6 +542,142 @@
 }
 
 /* =====================================================================
+   GENEL BAKIŞ — kategorilere ayrılmış modül ızgarası
+
+   Kartın KENDİSİ hub bileşeninden gelir (.qrms-hub-card): aynı ikon +
+   başlık + açıklama dizilimi, aynı 3/2/1 sütun kırılımları, aynı
+   dokunmatik büyütmesi. Burada yalnızca Genel Bakış'a özgü iki şey var:
+   kategori başlığı ve kartın lisans durumu.
+
+   Durum kartın SONUNDA durur (margin-left: auto ile sağa itilir), çünkü
+   ikon-başlık dizilimi hub kartlarıyla birebir aynı kalmalı; dar ekranda
+   da başlığın altına kaymaz, sağ üstte kalır.
+===================================================================== */
+
+.qrms-overview-alert .qrms-button {
+	display: inline-block;
+	width: auto;
+	max-width: 100%;
+	margin-top: 12px;
+}
+
+/* Kategori başlığı */
+
+.qrms-overview-group {
+	margin: 0 0 28px;
+}
+
+.qrms-overview-group:last-child {
+	margin-bottom: 0;
+}
+
+.qrms-overview-group-title {
+	align-items: center;
+	border-bottom: 1px solid #dcdcde;
+	display: flex;
+	flex-wrap: wrap;
+	font-size: 15px;
+	font-weight: 600;
+	gap: 4px 8px;
+	line-height: 1.4;
+	margin: 0 0 14px;
+	padding: 0 0 8px;
+}
+
+.qrms-overview-group-icon {
+	color: #646970;
+	flex: 0 0 20px;
+	font-size: 20px;
+	height: 20px;
+	width: 20px;
+}
+
+.qrms-overview-group-name {
+	word-break: break-word;
+}
+
+.qrms-overview-group-count {
+	background: #f0f0f1;
+	border-radius: 9px;
+	color: #646970;
+	font-size: 12px;
+	font-weight: 400;
+	line-height: 1.8;
+	padding: 0 9px;
+	white-space: nowrap;
+}
+
+/* Kartın lisans durumu */
+
+.qrms-overview-card .qrms-hub-body {
+	flex: 1 1 auto;
+}
+
+.qrms-overview-state {
+	flex: 0 0 auto;
+	margin-left: auto;
+	padding-left: 8px;
+}
+
+.qrms-overview-state-active .qrms-check {
+	font-size: 16px;
+	line-height: 1.4;
+}
+
+.qrms-overview-state-passive {
+	background: #f0f0f1;
+	border-radius: 9px;
+	color: #646970;
+	font-size: 11px;
+	font-weight: 600;
+	line-height: 1.8;
+	padding: 0 8px;
+}
+
+/* Pasif kart: bağlantı değil, bilgi kutusu. Fare imleci ve gölge
+   değişimi de kalkar ki tıklanabilir sanılmasın. */
+
+.qrms-overview-card-passive {
+	background: #fbfbfc;
+	box-shadow: none;
+	border-style: dashed;
+	cursor: default;
+}
+
+/* Hub kartının hover kuralı bir <div>'e de uyar; burada geri alınır. */
+.qrms-overview-card-passive:hover {
+	border-color: #dcdcde;
+	box-shadow: none;
+	transform: none;
+}
+
+.qrms-overview-card-passive .qrms-hub-icon,
+.qrms-overview-card-passive .qrms-hub-card-title {
+	color: #8c8f94;
+}
+
+.qrms-overview-card-passive .qrms-hub-desc {
+	color: #8c8f94;
+}
+
+/* Telefon: başlık küçülür, sayaç satır sonuna sarkabilir */
+
+@media screen and (max-width: 600px) {
+	.qrms-overview-group {
+		margin-bottom: 22px;
+	}
+
+	.qrms-overview-group-title {
+		font-size: 14px;
+	}
+
+	.qrms-overview-alert .qrms-button {
+		display: block;
+		width: 100%;
+	}
+}
+
+/* =====================================================================
    KISA KODLAR REHBERİ
 
    Hub kartlarından farklı: bunlar tıklanabilir bağlantı değil, okunacak

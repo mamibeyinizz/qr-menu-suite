@@ -1488,6 +1488,166 @@ qrms_test(
 	}
 );
 
+echo "\nGenel Bakış — kategoriler\n";
+
+qrms_test(
+	'her modül kategorilerde tam olarak bir kez geçer',
+	function () {
+		$gecenler = array();
+
+		foreach ( QRMS_Admin::get_overview_groups() as $grup ) {
+			foreach ( $grup['items'] as $kalem ) {
+				if ( QRMS_Helpers::is_valid_module( $kalem ) ) {
+					$gecenler[] = $kalem;
+				}
+			}
+		}
+
+		qrms_assert_same( array(), array_diff( QRMS_Helpers::MODULE_SLUGS, $gecenler ), 'kategorisiz modül yok' );
+		qrms_assert_same( count( $gecenler ), count( array_unique( $gecenler ) ), 'modül iki kategoride birden değil' );
+
+		// Çekirdek kalemler modül slug'ıyla çakışmamalı.
+		qrms_assert_false( QRMS_Helpers::is_valid_module( QRMS_Admin::OVERVIEW_CORE_SHORTCODES ), 'kısa kodlar modül değil' );
+		qrms_assert_false( QRMS_Helpers::is_valid_module( QRMS_Admin::OVERVIEW_CORE_SETTINGS ), 'ayarlar modül değil' );
+	}
+);
+
+qrms_test(
+	'her modülün kart ikonu ve açıklaması tanımlı',
+	function () {
+		foreach ( QRMS_Helpers::MODULE_SLUGS as $slug ) {
+			qrms_assert_contains( 'dashicons-', QRMS_Helpers::get_module_icon( $slug ), $slug . ' ikonu' );
+			qrms_assert_true( '' !== QRMS_Helpers::get_module_description( $slug ), $slug . ' açıklaması' );
+		}
+
+		// Emoji değil, dashicons: hub bileşeniyle aynı kural.
+		$json = wp_json_encode( QRMS_Helpers::get_module_meta() );
+
+		qrms_assert_same( 0, preg_match( '/\\\\ud[89ab][0-9a-f]{2}/i', $json ), 'meta tablosunda emoji yok' );
+	}
+);
+
+qrms_test(
+	'kartlar lisans durumunu taşır, pasif modülün adresi olmaz',
+	function () {
+		$gruplar = QRMS_Admin::build_overview_groups( array( 'restoran-menu' ), false );
+		$kartlar = array();
+
+		foreach ( $gruplar as $grup ) {
+			foreach ( $grup['cards'] as $kart ) {
+				$kartlar[ $kart['title'] ] = $kart;
+			}
+		}
+
+		qrms_assert_same( 'active', $kartlar['Restoran Menü']['state'], 'aktif modül' );
+		qrms_assert_contains( 'page=qrms-module-restoran-menu', $kartlar['Restoran Menü']['url'], 'aktif kartın adresi' );
+
+		qrms_assert_same( 'passive', $kartlar['QR Analiz']['state'], 'pasif modül' );
+		qrms_assert_same( '', $kartlar['QR Analiz']['url'], 'pasif kart adres taşımaz' );
+
+		// Çekirdek sayfalar lisansa bağlı değildir.
+		qrms_assert_same( 'core', $kartlar['Genel Ayarlar']['state'], 'genel ayarlar her zaman açık' );
+		qrms_assert_false( isset( $kartlar['Kısa Kodlar'] ), 'kısa kod yokken kartı da yok' );
+
+		// Kısa kod varsa kart görünür — sol menüdeki satırla aynı koşul.
+		$kisa_kodlu = QRMS_Admin::build_overview_groups( array(), true );
+		$basliklar  = array();
+
+		foreach ( $kisa_kodlu as $grup ) {
+			foreach ( $grup['cards'] as $kart ) {
+				$basliklar[] = $kart['title'];
+			}
+		}
+
+		qrms_assert_true( in_array( 'Kısa Kodlar', $basliklar, true ), 'kısa kod varken kartı da var' );
+	}
+);
+
+qrms_test(
+	'kategori sayacı yalnızca modülleri sayar',
+	function () {
+		$gruplar = QRMS_Admin::build_overview_groups( array( 'qr-analiz' ), true );
+		$analiz  = null;
+
+		foreach ( $gruplar as $grup ) {
+			if ( 'Analiz & Ayarlar' === $grup['title'] ) {
+				$analiz = $grup;
+			}
+		}
+
+		qrms_assert_true( null !== $analiz, 'kategori bulundu' );
+
+		// Kategoride üç kart var (Analiz + Kısa Kodlar + Genel Ayarlar) ama
+		// yalnızca biri lisansa bağlı.
+		qrms_assert_same( 3, count( $analiz['cards'] ), 'kart sayısı' );
+		qrms_assert_same( 1, $analiz['total'], 'sayaçta yalnızca modüller' );
+		qrms_assert_same( 1, $analiz['active'], 'aktif modül sayısı' );
+	}
+);
+
+qrms_test(
+	'Genel Bakış kategorileri kart ızgarasında basar',
+	function () {
+		update_option( 'qrms_active_modules', array( 'restoran-menu', 'qr-analiz' ) );
+
+		ob_start();
+		QRMS_Admin::render_overview();
+		$html = ob_get_clean();
+
+		qrms_assert_contains( 'qrms-hub-grid', $html, 'kart ızgarası' );
+		qrms_assert_contains( 'qrms-overview-group-title', $html, 'kategori başlığı' );
+		qrms_assert_contains( 'Menü &amp; Ürünler', $html, 'ilk kategori' );
+		qrms_assert_contains( 'Masa &amp; Servis', $html, 'üçüncü kategori' );
+		qrms_assert_contains( 'dashicons dashicons-food', $html, 'modül ikonu' );
+		qrms_assert_contains( 'Ürünler, kategoriler', $html, 'kart açıklaması' );
+		qrms_assert_contains( 'page=qrms-module-restoran-menu', $html, 'aktif kartın adresi' );
+		qrms_assert_contains( '1/3 aktif', $html, 'kategori sayacı' );
+
+		// Aktif kart bağlantı, pasif kart tıklanamaz kutu.
+		qrms_assert_contains( 'qrms-overview-card-active', $html, 'aktif kart' );
+		qrms_assert_contains( 'qrms-overview-card-passive', $html, 'pasif kart' );
+		qrms_assert_contains( 'Pasif', $html, 'pasif etiketi' );
+		qrms_assert_false(
+			false !== strpos( $html, 'page=qrms-module-qr-galeri' ),
+			'pasif modüle bağlantı verilmez'
+		);
+
+		// Eski düz liste kalmadı.
+		qrms_assert_false( false !== strpos( $html, 'qrms-module-list' ), 'düz liste kaldırıldı' );
+	}
+);
+
+qrms_test(
+	'aktif modül yokken lisans uyarısı çıkar ve modüller pasif görünür',
+	function () {
+		ob_start();
+		QRMS_Admin::render_overview();
+		$html = ob_get_clean();
+
+		qrms_assert_contains( 'Lisansı Doğrula', $html, 'lisans butonu' );
+		qrms_assert_contains( 'page=qrms-settings', $html, 'ayarlar adresi' );
+		qrms_assert_contains( '0/3 aktif', $html, 'sayaç sıfır' );
+		qrms_assert_false( false !== strpos( $html, 'qrms-overview-card-active' ), 'aktif kart yok' );
+	}
+);
+
+qrms_test(
+	'Genel Bakış ızgarası dar ekranda tek sütuna düşer',
+	function () {
+		// Kart görselinin kendisi hub bileşeninden geldiği için kırılım
+		// noktaları da ortaktır; burada Genel Bakış'a özgü kurallar aranır.
+		$css = file_get_contents( QRMS_PLUGIN_DIR . 'assets/css/admin.css' );
+
+		qrms_assert_contains( '.qrms-overview-group-title', $css, 'kategori başlığı kuralı' );
+		qrms_assert_contains( '.qrms-overview-card-passive', $css, 'pasif kart kuralı' );
+		qrms_assert_contains( '.qrms-overview-card-passive:hover', $css, 'pasif kartta hover geri alınır' );
+
+		// Izgara .qrms-hub-grid ile aynı sınıfı kullanır; onun telefon
+		// kırılımı tek sütun olmalı.
+		qrms_assert_contains( "\t.qrms-hub-grid {\n\t\tgrid-template-columns: 1fr;", $css, 'telefonda tek sütun' );
+	}
+);
+
 /* ---------------------------------------------------------------------------
  * 6b. Ürün Vitrini — ayar temizliği
  *
