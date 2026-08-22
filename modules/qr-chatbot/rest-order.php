@@ -273,6 +273,10 @@ if ( ! function_exists( 'qmo_siparis_isle' ) ) {
 			);
 		}
 
+		// Firestore yazımı 15 saniyeye kadar sürebilir; bağlantı o süre
+		// boyunca kullanılmayacağı için bırakılır.
+		$db_kapali = qmo_db_serbest_birak();
+
 		$res = QMO_Firestore::call_yaz(
 			array(
 				'branchId'     => array( 'stringValue' => QMO_Firestore::branch_id() ),
@@ -286,6 +290,9 @@ if ( ! function_exists( 'qmo_siparis_isle' ) ) {
 				'createdAt'    => array( 'timestampValue' => gmdate( 'Y-m-d\TH:i:s\Z' ) ),
 			)
 		);
+
+		qmo_db_geri_baglan( $db_kapali );
+
 		if ( is_wp_error( $res ) ) {
 			qmo_log( 'Sipariş yazılamadı: ' . $res->get_error_message() );
 			return array(

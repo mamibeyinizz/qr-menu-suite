@@ -162,6 +162,11 @@ if ( ! function_exists( 'qmo_rest_create_user' ) ) {
 
 		// 6) Auth hesabı oluştur (Identity Toolkit admin).
 		$email = $kullanici_adi . '@qrservis.local';
+
+		// Üç ardışık dış istek (hesap oluştur, Firestore yaz, hata halinde
+		// geri al) boyunca bağlantı kullanılmaz; tek bırak/geri-al ile sarılır.
+		$db_kapali = qmo_db_serbest_birak();
+
 		$acc   = wp_remote_post(
 			"https://identitytoolkit.googleapis.com/v1/projects/{$project}/accounts",
 			array(
@@ -180,6 +185,7 @@ if ( ! function_exists( 'qmo_rest_create_user' ) ) {
 			)
 		);
 		if ( is_wp_error( $acc ) ) {
+			qmo_db_geri_baglan( $db_kapali );
 			return new WP_REST_Response(
 				array(
 					'success' => false,
@@ -195,6 +201,7 @@ if ( ! function_exists( 'qmo_rest_create_user' ) ) {
 			if ( false !== stripos( $err, 'EMAIL_EXISTS' ) ) {
 				$err = 'Bu kullanıcı adı zaten kullanılıyor';
 			}
+			qmo_db_geri_baglan( $db_kapali );
 			return new WP_REST_Response(
 				array(
 					'success' => false,
@@ -242,6 +249,7 @@ if ( ! function_exists( 'qmo_rest_create_user' ) ) {
 					'body'    => wp_json_encode( array( 'localId' => $new_uid ) ),
 				)
 			);
+			qmo_db_geri_baglan( $db_kapali );
 			return new WP_REST_Response(
 				array(
 					'success' => false,
@@ -250,6 +258,8 @@ if ( ! function_exists( 'qmo_rest_create_user' ) ) {
 				500
 			);
 		}
+
+		qmo_db_geri_baglan( $db_kapali );
 
 		return new WP_REST_Response(
 			array(

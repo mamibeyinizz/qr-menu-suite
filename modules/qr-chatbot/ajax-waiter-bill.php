@@ -83,7 +83,16 @@ if ( ! function_exists( 'qmo_cagri_gonder' ) ) {
 			wp_send_json_error( array( 'msg' => 'Çağrınız iletildi, lütfen bekleyin.' ), 429 );
 		}
 
+		// Firestore yazımı 15 saniyeye kadar sürebilir; bağlantı o süre
+		// boyunca kullanılmayacağı için bırakılır.
+		$db_kapali = qmo_db_serbest_birak();
+
 		$sonuc = QMO_Firestore::cagri_olustur( $masa, $tip );
+
+		// Yanıtı basmadan önce geri bağlan: wp_send_json_* → wp_die zinciri
+		// (ve shutdown kancaları) veritabanına dokunabilir.
+		qmo_db_geri_baglan( $db_kapali );
+
 		if ( is_wp_error( $sonuc ) ) {
 			qmo_log( 'Çağrı yazılamadı: ' . $sonuc->get_error_message() );
 			wp_send_json_error( array( 'msg' => 'Çağrı iletilemedi, lütfen tekrar deneyin.' ), 500 );
