@@ -15,6 +15,12 @@
 .qrms-vitrin {
     --qrms-vitrin-cols: 4;
     --qrms-vitrin-rows: 1;
+    /* Admin ayarı satır içi style ile gelmezse (eski önbellek/HTML) diye
+       yedek: eski tek-kart-kaydırma görünümüne yakın bir varsayılan. */
+    --qrms-vitrin-mobile-cols: 2;
+    /* Kartın hiçbir mobil genişlikte altına düşmeyeceği alt sınır — ürün
+       adının en az kısmen okunabilmesi için (bkz. DAR EKRAN bölümü). */
+    --qrms-vitrin-card-min: 132px;
     --qrms-vitrin-gap: 16px;
     --qrms-vitrin-radius: 14px;
     --qrms-vitrin-bg: transparent;
@@ -276,31 +282,49 @@
 /* ---------------------------------------------------------------------
    DAR EKRAN
 
-   Sabit sütun sayısını korumak yerine sütun sayısı düşürülür ve kaydırma
-   yatay kalır: 360px'lik bir ekranda 4 sütun ≈ 78px kart demektir, görsel
-   ve fiyat okunmaz olur. Yatay swipe dokunmatikte zaten en doğal hareket.
+   Masaüstü sütun sayısını (--qrms-vitrin-cols) korumak yerine, admin'in
+   "Mobilde sütun sayısı" ayarı (--qrms-vitrin-mobile-cols) kullanılır:
+   360px'lik bir ekranda 4-6 masaüstü sütununu korumak ≈ 78px kart demektir,
+   görsel ve isim okunmaz olur. Yatay swipe dokunmatikte zaten en doğal
+   hareket, o yüzden ekrana sığmayan sütunlar kaydırmayla görülür.
 
-   Telefonda sayfa genişliği %82: sonraki karttan görünen "dilim",
-   ek bir ok/ipucu koymadan kaydırılabilirliği anlatır.
+   clamp(--qrms-vitrin-card-min, …, 92%): admin mobil sütun sayısını ne
+   kadar yüksek seçerse seçsin (örn. 3), kart bu alt sınırın altına
+   düşmez — gerekirse satır ekrandan taşar ve kaydırmayla devam eder,
+   kartlar sıkışıp isim/fiyatı kesmez. Üst sınır %92: sütun sayısı 1
+   iken kart tam genişliğe değil, sonraki karttan görünen bir "dilim"
+   bırakır — ek bir ok/ipucu koymadan kaydırılabilirliği anlatır.
+
+   clamp() kasıtlı olarak grid'in minmax() sözdizimi YERİNE kullanılır:
+   minmax(min, max) sütunları "esnek" track olarak ele alır ve toplam
+   kart sayısı ekrana sığmadığında (bir carousel'de neredeyse her zaman)
+   TÜM sütunları alt sınıra kilitler — istenen sütun sayısı görmezden
+   gelinir. clamp() ise tek, sabit bir uzunluğa çözülür (masaüstündeki
+   sade calc() kuralı gibi): her kart bağımsız olarak aynı sabit
+   genişliği alır, ekrana sığmayan kartlar sıkışmadan kaydırmaya taşar.
 --------------------------------------------------------------------- */
 @media (max-width: 1023px) {
     .qrms-vitrin-viewport {
-        /* min(): ayar zaten 1-2 sütunsa olduğu gibi kalır. */
-        grid-auto-columns: calc(
-            (100% - (min(var(--qrms-vitrin-cols), 2) - 1) * var(--qrms-vitrin-gap))
-            / min(var(--qrms-vitrin-cols), 2)
+        grid-auto-columns: clamp(
+            var(--qrms-vitrin-card-min),
+            calc(
+                (100% - (var(--qrms-vitrin-mobile-cols) - 1) * var(--qrms-vitrin-gap))
+                / var(--qrms-vitrin-mobile-cols)
+            ),
+            92%
         );
+    }
+
+    /* Sütun genişliği admin ayarına göre daralsa da kart bu genişliğin
+       altına inmez — grid taşarsa kaydırma devam eder, kart sıkışmaz. */
+    .qrms-vitrin-card {
+        min-width: var(--qrms-vitrin-card-min);
     }
 }
 
 @media (max-width: 599px) {
     .qrms-vitrin {
         --qrms-vitrin-gap: 12px;
-    }
-
-    .qrms-vitrin-viewport {
-        /* %82: sonraki karttan görünen "dilim" kaydırılabilirliği anlatır. */
-        grid-auto-columns: 82%;
     }
 
     /* Oklar dar ekranda kartların üstüne binerdi; parmak zaten kaydırıyor. */

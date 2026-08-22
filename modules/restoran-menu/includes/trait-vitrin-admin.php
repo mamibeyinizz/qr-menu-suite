@@ -120,7 +120,8 @@ trait RMA_Vitrin_Admin_Trait {
                                 <h3 class="rma-vitrin-card-title"><?php echo esc_html( $v->title ); ?></h3>
                                 <p class="rma-vitrin-card-meta">
                                     <?php echo (int) $v->urun_sayisi; ?> ürün ·
-                                    <?php echo (int) $v->grid_columns; ?> sütun × <?php echo (int) $v->grid_rows; ?> satır ·
+                                    <?php echo (int) $v->grid_columns; ?> sütun × <?php echo (int) $v->grid_rows; ?> satır (masaüstü) ·
+                                    mobilde <?php echo (int) $v->mobile_columns; ?> sütun ·
                                     <?php echo $v->autoplay ? 'otomatik kayma açık' : 'otomatik kayma kapalı'; ?>
                                 </p>
 
@@ -177,6 +178,7 @@ trait RMA_Vitrin_Admin_Trait {
             'title'          => $yeni ? '' : $kayit->title,
             'grid_columns'   => $yeni ? $v['grid_columns'] : (int) $kayit->grid_columns,
             'grid_rows'      => $yeni ? $v['grid_rows'] : (int) $kayit->grid_rows,
+            'mobile_columns' => $yeni ? $v['mobile_columns'] : (int) $kayit->mobile_columns,
             'autoplay'       => $yeni ? $v['autoplay'] : (int) $kayit->autoplay,
             'autoplay_speed' => $yeni ? $v['autoplay_speed'] : (int) $kayit->autoplay_speed,
             'drag_enabled'   => $yeni ? $v['drag_enabled'] : (int) $kayit->drag_enabled,
@@ -309,6 +311,17 @@ trait RMA_Vitrin_Admin_Trait {
                         </td>
                     </tr>
                     <tr>
+                        <th><label for="rma-vitrin-mobile-cols">Mobilde sütun sayısı</label></th>
+                        <td>
+                            <select name="mobile_columns" id="rma-vitrin-mobile-cols" class="rma-select-narrow">
+                                <?php for ( $i = RMA_Vitrin_DB::MIN_MOBILE_COLUMNS; $i <= RMA_Vitrin_DB::MAX_MOBILE_COLUMNS; $i++ ) : ?>
+                                    <option value="<?php echo (int) $i; ?>" <?php selected( $deger['mobile_columns'], $i ); ?>><?php echo (int) $i; ?> sütun</option>
+                                <?php endfor; ?>
+                            </select>
+                            <p class="description rma-desc">Telefonda bir ekranda yan yana kaç ürün duracağı. Ekran çok dar kalırsa kart yine de okunabilir bir genişliğin altına düşmez.</p>
+                        </td>
+                    </tr>
+                    <tr>
                         <th>Fiyat</th>
                         <td>
                             <label class="rma-check-row">
@@ -436,6 +449,7 @@ trait RMA_Vitrin_Admin_Trait {
                 'title'          => isset( $_POST['title'] ) ? sanitize_text_field( wp_unslash( $_POST['title'] ) ) : '',
                 'grid_columns'   => isset( $_POST['grid_columns'] ) ? wp_unslash( $_POST['grid_columns'] ) : null,
                 'grid_rows'      => isset( $_POST['grid_rows'] ) ? wp_unslash( $_POST['grid_rows'] ) : null,
+                'mobile_columns' => isset( $_POST['mobile_columns'] ) ? wp_unslash( $_POST['mobile_columns'] ) : null,
                 'autoplay'       => isset( $_POST['autoplay'] ) ? wp_unslash( $_POST['autoplay'] ) : 0,
                 'autoplay_speed' => isset( $_POST['autoplay_speed'] ) ? wp_unslash( $_POST['autoplay_speed'] ) : null,
                 'drag_enabled'   => isset( $_POST['drag_enabled'] ) ? wp_unslash( $_POST['drag_enabled'] ) : 0,

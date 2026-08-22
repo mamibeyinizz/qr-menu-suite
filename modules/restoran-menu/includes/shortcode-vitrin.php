@@ -115,8 +115,9 @@ class RMA_Vitrin_Shortcode {
 
         self::enqueue_assets();
 
-        $sutun = (int) $vitrin->grid_columns;
-        $satir = (int) $vitrin->grid_rows;
+        $sutun        = (int) $vitrin->grid_columns;
+        $satir        = (int) $vitrin->grid_rows;
+        $mobil_sutun  = (int) $vitrin->mobile_columns;
 
         // Kartlar TEK bir düz liste olarak basılır; kaç tanesinin yan yana
         // görüneceğine CSS karar verir (dar ekranda sütun sayısı düşer).
@@ -129,7 +130,7 @@ class RMA_Vitrin_Shortcode {
      data-autoplay="<?php echo (int) $vitrin->autoplay; ?>"
      data-speed="<?php echo (int) $vitrin->autoplay_speed; ?>"
      data-drag="<?php echo (int) $vitrin->drag_enabled; ?>"
-     style="--qrms-vitrin-cols:<?php echo (int) $sutun; ?>;--qrms-vitrin-rows:<?php echo (int) $satir; ?>;"
+     style="--qrms-vitrin-cols:<?php echo (int) $sutun; ?>;--qrms-vitrin-rows:<?php echo (int) $satir; ?>;--qrms-vitrin-mobile-cols:<?php echo (int) $mobil_sutun; ?>;"
      role="region"
      aria-roledescription="karusel"
      aria-label="<?php echo esc_attr( $vitrin->title ); ?>">
