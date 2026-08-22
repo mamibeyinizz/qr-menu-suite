@@ -63,8 +63,18 @@ if ( ! function_exists( 'qmo_chatbot_buton_varliklarini_kaydet' ) ) {
 		wp_register_style( 'qmo-buttons', $url . 'css/buttons.css', array(), $css );
 		wp_register_script( 'qmo-buttons', $url . 'js/buttons.js', array(), $js, true );
 
-		// [qr_garson_hesap] aynı varlıklara bağlanır; ayrı bir tema dosyası yok.
-		wp_register_style( 'qmo-garson-hesap', $url . 'css/buttons.css', array(), $css );
-		wp_register_script( 'qmo-garson-hesap', $url . 'js/buttons.js', array(), $js, true );
+		// [qr_garson_hesap] / [ikili_buton] aynı dosyaları kullanır; ayrı bir
+		// tema dosyası yok. Bu handle bir TAKMA ADDIR: kendi kaynağı yoktur,
+		// yalnızca qmo-buttons'a bağımlıdır.
+		//
+		// Eskiden aynı dosyalar ikinci kez, ayrı kaynakla kaydediliyordu.
+		// WordPress iki farklı handle'ı iki farklı varlık saydığı için, bir
+		// sayfada hem [garson_butonu] hem [ikili_buton] varsa buttons.js İKİ
+		// KEZ basılıyor, olay dinleyicileri butonlara iki kez bağlanıyor ve
+		// tek tıkta iki AJAX isteği gidiyordu. İkinci istek çağrı ucundaki 60
+		// saniyelik hız sınırına takıldığı için müşteri, çağrısı aslında
+		// iletilmişken uyarı mesajı görüyordu.
+		wp_register_style( 'qmo-garson-hesap', false, array( 'qmo-buttons' ), $css );
+		wp_register_script( 'qmo-garson-hesap', false, array( 'qmo-buttons' ), $js, true );
 	}
 }

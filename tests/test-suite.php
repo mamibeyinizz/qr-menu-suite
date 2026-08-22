@@ -2456,6 +2456,66 @@ qrms_test(
 );
 
 /* ---------------------------------------------------------------------------
+ * 9a-1. Ortak varlıklar — aynı dosyanın iki handle ile yüklenmesi
+ * ------------------------------------------------------------------------ */
+
+// assets.php dosya kapsamında yalnızca fonksiyon tanımlar ve stub'lanmış
+// add_action çağrıları yapar.
+require_once QRMS_PLUGIN_DIR . 'modules/_qmo-ortak/assets.php';
+
+echo "\nOrtak varlık handle'ları\n";
+
+qrms_test(
+	'aynı dosyayı gösteren handle tek kanonik ada indirgenir',
+	function () {
+		// [qr_garson_hesap] ve [ikili_buton] ile [garson_butonu] aynı
+		// buttons.css/buttons.js dosyalarını kullanıyor. Handle'lar ayrı
+		// kalırsa WordPress dosyayı iki kez basar, buttons.js iki kez çalışır
+		// ve butonlara olay dinleyicileri iki kez bağlanır.
+		qrms_assert_same( 'qmo-buttons', qmo_asset_kanonik_handle( 'qmo-garson-hesap' ), 'takma ad indirgenir' );
+		qrms_assert_same( 'qmo-buttons', qmo_asset_kanonik_handle( 'qmo-buttons' ), 'kanonik ad korunur' );
+	}
+);
+
+qrms_test(
+	'takma ad olmayan handle\'lar olduğu gibi geçer',
+	function () {
+		foreach ( array( 'qmo-chatbot', 'qmo-sepet', 'qmo-oturum-kutu', 'bilinmeyen-handle' ) as $handle ) {
+			qrms_assert_same( $handle, qmo_asset_kanonik_handle( $handle ), $handle . ' değişmez' );
+		}
+	}
+);
+
+qrms_test(
+	'takma ad handle\'ı KENDİ kaynağıyla kaydedilmez',
+	function () {
+		// Yapısal güvence: qmo-garson-hesap kaydı bir kaynak yolu taşırsa
+		// WordPress onu bağımsız bir dosya sayar ve çift yükleme geri gelir.
+		// Kayıt kaynaksız (false) olmalı ve qmo-buttons'a bağımlı durmalı.
+		$kaynak = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/chatbot.php' );
+
+		qrms_assert_true(
+			(bool) preg_match(
+				"/wp_register_script\(\s*'qmo-garson-hesap',\s*false,\s*array\(\s*'qmo-buttons'\s*\)/",
+				$kaynak
+			),
+			'script takma adı kaynaksız ve qmo-buttons bağımlı'
+		);
+		qrms_assert_true(
+			(bool) preg_match(
+				"/wp_register_style\(\s*'qmo-garson-hesap',\s*false,\s*array\(\s*'qmo-buttons'\s*\)/",
+				$kaynak
+			),
+			'stil takma adı kaynaksız ve qmo-buttons bağımlı'
+		);
+		qrms_assert_false(
+			(bool) preg_match( "/'qmo-garson-hesap',\s*\\\$url/", $kaynak ),
+			'takma ad artık kendi dosya yolunu göstermiyor'
+		);
+	}
+);
+
+/* ---------------------------------------------------------------------------
  * 9a-2. Güvenlik Ayarı — oturum limitleri ve SAYFA KİLİDİ ayar kaydı
  * ------------------------------------------------------------------------ */
 
