@@ -101,27 +101,171 @@ function qrm_pro_reviews_table_exists() {
     return $exists;
 }
 
+/** Yorum istatistiklerinin saklandığı transient. */
+const QRM_PRO_STATS_TRANSIENT = 'qrm_pro_review_stats';
+
+/** İstatistik önbelleğinin ömrü. */
+const QRM_PRO_STATS_TTL = 5 * MINUTE_IN_SECONDS;
+
 /**
- * Yorum sayaçları — başlangıç ekranı ve İçgörüler aynı kaynaktan okur.
+ * Tablo yokken (ya da hiç yorum yokken) dönen boş istatistik.
  *
- * @return array{table_ok:bool,total:int,approved:int,pending:int,avg:float}
+ * @param float $threshold Google eşiği — önbellek karşılaştırmasında kullanılır.
+ * @return array
  */
-function qrm_pro_review_stats() {
+function qrm_pro_empty_review_stats($threshold = 0.0) {
+    return [
+        'table_ok'        => false,
+        'total'           => 0,
+        'approved'        => 0,
+        'pending'         => 0,
+        'avg'             => 0.0,
+        'google_eligible' => 0,
+        'threshold'       => (float) $threshold,
+        'crit'            => [1 => 0.0, 2 => 0.0, 3 => 0.0, 4 => 0.0, 5 => 0.0],
+    ];
+}
+
+/**
+ * Yorum tablosunun BÜTÜN sayaçlarını TEK sorguda çeker.
+ *
+ * Eskiden aynı ekranı basmak için tablo altı ila on kez ayrı ayrı taranıyordu:
+ * iki COUNT, genel AVG, Google eşiği sayacı ve her kriter için bir AVG daha
+ * (kriterlerin beşi de varsayılan olarak açıktır). Aynı desen ön yüzdeki
+ * `[qr_menu_reviews]` kısa kodunda da vardı, yani her ZİYARETÇİ için altı
+ * aggregate sorgusu açılıyordu — "Too many connections" hatasının en büyük
+ * kaynağı buydu.
+ *
+ * Hepsi tek bir SELECT'te toplandı: MySQL tabloyu bir kez tarar, bağlantı bir
+ * kez kullanılır. Kriter ortalamaları AYARDAN BAĞIMSIZ olarak beşi birden
+ * hesaplanır — aynı taramanın içinde maliyetsizdir ve önbelleğin ayarlara göre
+ * bölünmesini önler; hangi kriterin ekranda görüneceğine sunum katmanı karar
+ * verir.
+ *
+ * Yalnızca tablonun VAR OLDUĞU bilindiğinde çağrılır. Sorgu okunamazsa null
+ * döner — çağıran o durumu "tablo yok" ile karıştırmamalı ve sonucu
+ * önbelleğe yazmamalıdır.
+ *
+ * @param float $threshold Google yönlendirme eşiği.
+ * @return array|null
+ */
+function qrm_pro_fetch_review_stats($threshold) {
     global $wpdb;
+
     $table = $wpdb->prefix . 'qrm_reviews';
 
-    if (!qrm_pro_reviews_table_exists()) {
-        return ['table_ok' => false, 'total' => 0, 'approved' => 0, 'pending' => 0, 'avg' => 0.0];
+    $row = $wpdb->get_row($wpdb->prepare(
+        "SELECT
+            COUNT(*) AS total,
+            SUM(CASE WHEN status = 1 THEN 1 ELSE 0 END) AS approved,
+            AVG(CASE WHEN status = 1 THEN rating END) AS avg_rating,
+            SUM(CASE WHEN status = 1 AND rating >= %f THEN 1 ELSE 0 END) AS google_eligible,
+            AVG(CASE WHEN status = 1 AND rating_1 > 0 THEN rating_1 END) AS crit_1,
+            AVG(CASE WHEN status = 1 AND rating_2 > 0 THEN rating_2 END) AS crit_2,
+            AVG(CASE WHEN status = 1 AND rating_3 > 0 THEN rating_3 END) AS crit_3,
+            AVG(CASE WHEN status = 1 AND rating_4 > 0 THEN rating_4 END) AS crit_4,
+            AVG(CASE WHEN status = 1 AND rating_5 > 0 THEN rating_5 END) AS crit_5
+         FROM {$table}",
+        (float) $threshold
+    ), ARRAY_A);
+
+    if (!is_array($row)) {
+        return null;
     }
 
-    $total    = (int) $wpdb->get_var("SELECT COUNT(*) FROM $table");
-    $approved = (int) $wpdb->get_var("SELECT COUNT(*) FROM $table WHERE status = 1");
+    $total    = (int) $row['total'];
+    $approved = (int) $row['approved'];
+
+    $crit = [];
+    for ($i = 1; $i <= 5; $i++) {
+        // Hiç oy almamış kriterde AVG() NULL döner; (float) onu 0.0 yapar.
+        $crit[$i] = (float) $row['crit_' . $i];
+    }
 
     return [
-        'table_ok' => true,
-        'total'    => $total,
-        'approved' => $approved,
-        'pending'  => $total - $approved,
-        'avg'      => (float) $wpdb->get_var("SELECT AVG(rating) FROM $table WHERE status = 1"),
+        'table_ok'        => true,
+        'total'           => $total,
+        'approved'        => $approved,
+        'pending'         => $total - $approved,
+        'avg'             => (float) $row['avg_rating'],
+        'google_eligible' => (int) $row['google_eligible'],
+        'threshold'       => (float) $threshold,
+        'crit'            => $crit,
     ];
+}
+
+/**
+ * Yorum sayaçları — başlangıç ekranı, İçgörüler, yorum listesi ve ön yüzdeki
+ * kısa kod hepsi buradan okur.
+ *
+ * İki katmanlı önbellek: istek içinde statik memo (aynı sayfa birden çok kez
+ * sorar), istekler arasında kısa ömürlü transient. Sayılar yorum eklendiğinde
+ * ya da durumu değiştiğinde qrm_pro_flush_review_stats() ile geçersizlenir,
+ * yani TTL yalnızca bir emniyet kemeridir.
+ *
+ * Google eşiği ayardan gelir; ayar değiştiğinde saklanan sonuç kendiliğinden
+ * kabul edilmez (aşağıdaki eşik karşılaştırması) — ayrı bir kanca gerekmez.
+ *
+ * @param bool $taze true ise önbellekler atlanır (test ve elle tazeleme için).
+ * @return array{table_ok:bool,total:int,approved:int,pending:int,avg:float,google_eligible:int,threshold:float,crit:array<int,float>}
+ */
+function qrm_pro_review_stats($taze = false) {
+    // Memo bilinçli olarak $GLOBALS'ta durur, fonksiyon içi static'te değil:
+    // qrm_pro_flush_review_stats() aynı istek içinde onu da temizleyebilmeli
+    // (ör. yorum onaylandıktan hemen sonra basılan sayaçlar).
+    $memo = isset($GLOBALS['qrm_pro_stats_memo']) ? $GLOBALS['qrm_pro_stats_memo'] : null;
+
+    if (!$taze && is_array($memo)) {
+        return $memo;
+    }
+
+    $settings  = qrm_pro_get_settings();
+    $threshold = (float) $settings['google_review_threshold'];
+
+    if (!qrm_pro_reviews_table_exists()) {
+        $GLOBALS['qrm_pro_stats_memo'] = qrm_pro_empty_review_stats($threshold);
+        return $GLOBALS['qrm_pro_stats_memo'];
+    }
+
+    if (!$taze) {
+        $cached = get_transient(QRM_PRO_STATS_TRANSIENT);
+
+        if (is_array($cached) && isset($cached['threshold'], $cached['crit'])
+            && abs((float) $cached['threshold'] - $threshold) < 0.0001) {
+            $GLOBALS['qrm_pro_stats_memo'] = $cached;
+            return $cached;
+        }
+    }
+
+    $stats = qrm_pro_fetch_review_stats($threshold);
+
+    // Sorgu okunamadı: tablo VAR olduğu için ekranlar "tablo bulunamadı"
+    // uyarısını basmamalı — sayaçlar sıfır görünür. Böyle bir sonuç
+    // önbelleğe de yazılmaz, sonraki istek yeniden dener.
+    if (!is_array($stats)) {
+        $stats             = qrm_pro_empty_review_stats($threshold);
+        $stats['table_ok'] = true;
+
+        $GLOBALS['qrm_pro_stats_memo'] = $stats;
+
+        return $stats;
+    }
+
+    set_transient(QRM_PRO_STATS_TRANSIENT, $stats, QRM_PRO_STATS_TTL);
+    $GLOBALS['qrm_pro_stats_memo'] = $stats;
+
+    return $stats;
+}
+
+/**
+ * İstatistik önbelleğini geçersizler.
+ *
+ * Yorum eklendiğinde, onaylandığında, yayından kaldırıldığında ve silindiğinde
+ * çağrılır — sayaçlar bu yüzden TTL'i beklemeden tazelenir.
+ *
+ * @return void
+ */
+function qrm_pro_flush_review_stats() {
+    unset($GLOBALS['qrm_pro_stats_memo']);
+    delete_transient(QRM_PRO_STATS_TRANSIENT);
 }

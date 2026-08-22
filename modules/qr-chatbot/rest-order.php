@@ -36,12 +36,20 @@ if ( ! function_exists( 'qmo_rest_order_kaydet' ) ) {
  * Tek bir notu Gemini ile Türkçeye çevir.
  * Hata/timeout → orijinal metin + hata bayrağı.
  *
- * @param string $not Müşteri notu.
- * @param string $dil Notun dili (bilgi amaçlı).
+ * $api_key ve $model bilinçli olarak dışarıdan alınabilir: bu fonksiyon,
+ * veritabanı bağlantısı BIRAKILMIŞ hâlde bir döngü içinde çağrılır
+ * (bkz. qmo_order_ceviri_tamamla). O sırada get_option() bir sorgu açmak
+ * zorunda kalırsa sessizce false döner ve çeviri sebepsiz yere hataya
+ * düşerdi; çağıran ikisini de bağlantı açıkken çözüp buraya geçirir.
+ *
+ * @param string      $not     Müşteri notu.
+ * @param string      $dil     Notun dili (bilgi amaçlı).
+ * @param string|null $api_key Önceden çözülmüş Gemini anahtarı.
+ * @param string|null $model   Önceden çözülmüş model adı.
  * @return array{notTr:string,hata:bool}
  */
 if ( ! function_exists( 'qmo_not_cevir' ) ) {
-	function qmo_not_cevir( $not, $dil ) {
+	function qmo_not_cevir( $not, $dil, $api_key = null, $model = null ) {
 		unset( $dil ); // Dil algılamasına güvenilmez; not boş değilse daima çevrilir.
 
 		$not = trim( (string) $not );
@@ -52,7 +60,9 @@ if ( ! function_exists( 'qmo_not_cevir' ) ) {
 			);
 		}
 
-		$api_key = get_option( 'gemini_api_key' );
+		if ( null === $api_key ) {
+			$api_key = get_option( 'gemini_api_key' );
+		}
 		if ( ! $api_key ) {
 			return array(
 				'notTr' => $not,
@@ -60,7 +70,11 @@ if ( ! function_exists( 'qmo_not_cevir' ) ) {
 			);
 		}
 
-		$url  = 'https://generativelanguage.googleapis.com/v1beta/models/' . qmo_gemini_model() . ':generateContent?key=' . rawurlencode( $api_key );
+		if ( null === $model || '' === $model ) {
+			$model = qmo_gemini_model();
+		}
+
+		$url  = 'https://generativelanguage.googleapis.com/v1beta/models/' . $model . ':generateContent?key=' . rawurlencode( $api_key );
 		$body = array(
 			'contents'          => array( array( 'parts' => array( array( 'text' => $not ) ) ) ),
 			'systemInstruction' => array(
@@ -321,19 +335,37 @@ if ( ! function_exists( 'qmo_siparis_isle' ) ) {
  */
 if ( ! function_exists( 'qmo_order_ceviri_tamamla' ) ) {
 	function qmo_order_ceviri_tamamla( $temiz, $dil, $doc_name, $fs_items ) {
-		// Bağlantıyı kapat ki müşteri beklemesin (destekleyen sunucularda).
+		// HTTP bağlantısını kapat ki müşteri beklemesin (destekleyen sunucularda).
 		if ( function_exists( 'fastcgi_finish_request' ) ) {
 			fastcgi_finish_request();
 		}
 
+		// Access token transient'ten okunur (gerekirse yazılır), yani BU adım
+		// hâlâ veritabanına ihtiyaç duyar — bu yüzden bırakmadan önce yapılır.
 		$token = QMO_Firestore::access_token( QMO_Firestore::SCOPE_DATASTORE );
 		if ( is_wp_error( $token ) ) {
 			return;
 		}
 
+		/*
+		 * Buradan sonrası tamamen dış istek: her not için 20 saniyeye kadar bir
+		 * Gemini çevirisi (yirmi üründe dakikalar) ve ardından 30 saniyelik
+		 * Firestore PATCH'i. Müşteri çoktan yanıtını almış, sayfa kapanmış olsa
+		 * bile PHP süreci — ve tuttuğu MySQL bağlantısı — bütün bu süre boyunca
+		 * ayakta kalıyordu. Tek bir sorgu bile çalıştırmadan.
+		 *
+		 * Bağlantı bu yüzden bırakılır; önce döngünün ihtiyaç duyduğu ayarlar
+		 * (anahtar ve model) bağlantı AÇIKKEN çözülür, iş bitince de bağlantı
+		 * geri açılır — shutdown zincirinin kalanı veritabanına dokunabilir.
+		 */
+		$api_key = get_option( 'gemini_api_key' );
+		$model   = qmo_gemini_model();
+
+		$db_kapali = qmo_db_serbest_birak();
+
 		$yeni = array();
 		foreach ( $temiz as $idx => $it ) {
-			$cev = qmo_not_cevir( $it['not'], $dil );
+			$cev = qmo_not_cevir( $it['not'], $dil, $api_key, $model );
 			$m   = $fs_items[ $idx ]['mapValue']['fields'];
 
 			$m['notTr']       = array( 'stringValue' => $cev['notTr'] );
@@ -361,5 +393,9 @@ if ( ! function_exists( 'qmo_order_ceviri_tamamla' ) ) {
 				),
 			)
 		);
+
+		// shutdown zincirinin geri kalanı (obje önbelleği kapanışı, cron
+		// tetikleme vb.) veritabanına dokunabilir; bağlantı geri açılır.
+		qmo_db_geri_baglan( $db_kapali );
 	}
 }

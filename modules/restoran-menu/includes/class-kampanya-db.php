@@ -38,6 +38,12 @@ class RMA_Kampanya_DB {
     const MAX_YUZDE = 90;
     const MAX_TUTAR = 100000;
 
+    /** Aktif kampanyanın saklandığı transient. */
+    const AKTIF_TRANSIENT = 'rma_kampanya_aktif';
+
+    /** Aktif kampanya önbelleğinin ömrü. */
+    const AKTIF_TTL = 5 * MINUTE_IN_SECONDS;
+
     /**
      * Kampanya tanımları tablosu.
      *
@@ -616,9 +622,36 @@ class RMA_Kampanya_DB {
     public static function aktif_kayit() {
         global $wpdb;
 
-        $tablo = self::tablo();
+        // Bu sorgu ön yüzdeki HER menü render'ında çalışır (menü önbelleğinin
+        // anahtarı aktif kampanyayı içerir, bkz. RMA_Kampanya::imza), yani her
+        // ziyaretçi için bir bağlantı kullanımı demektir. Oysa kampanya
+        // tablosu nadiren değişir: sonuç transient'te tutulur ve yalnızca
+        // kaydet/aktifleştir/pasifleştir/sil yollarından geçersizlenir.
+        $onbellek = get_transient( self::AKTIF_TRANSIENT );
 
-        return $wpdb->get_row( "SELECT * FROM {$tablo} WHERE status = 'active' ORDER BY id DESC LIMIT 1" );
+        if ( is_array( $onbellek ) && array_key_exists( 'kayit', $onbellek ) ) {
+            return $onbellek['kayit'];
+        }
+
+        $tablo = self::tablo();
+        $kayit = $wpdb->get_row( "SELECT * FROM {$tablo} WHERE status = 'active' ORDER BY id DESC LIMIT 1" );
+
+        // "Aktif kampanya yok" da geçerli bir cevaptır ve saklanır; aksi hâlde
+        // kampanyasız sitelerde (çoğunluk) önbellek hiç isabet etmezdi. Sarmalayıcı
+        // dizi bu yüzden var: null sonuç, get_transient'ın "kayıt yok" cevabı olan
+        // false'tan böyle ayrılır.
+        set_transient( self::AKTIF_TRANSIENT, array( 'kayit' => $kayit ), self::AKTIF_TTL );
+
+        return $kayit;
+    }
+
+    /**
+     * Aktif kampanya önbelleğini geçersizler.
+     *
+     * @return void
+     */
+    public static function onbellek_temizle() {
+        delete_transient( self::AKTIF_TRANSIENT );
     }
 
     /**
@@ -651,6 +684,10 @@ class RMA_Kampanya_DB {
 
         if ( $id > 0 && self::getir( $id ) ) {
             $wpdb->update( $tablo, $veri, array( 'id' => $id ), $format, array( '%d' ) );
+
+            // Aktif kampanyanın kuralı değişmiş olabilir; önbellek satırın
+            // kendisini sakladığı için burada da geçersizlenmeli.
+            self::onbellek_temizle();
 
             return $id;
         }
@@ -713,6 +750,8 @@ class RMA_Kampanya_DB {
             )
         );
 
+        self::onbellek_temizle();
+
         return true;
     }
 
@@ -734,7 +773,7 @@ class RMA_Kampanya_DB {
             return false;
         }
 
-        return (bool) $wpdb->update(
+        $ok = (bool) $wpdb->update(
             self::tablo(),
             array(
                 'status'     => 'passive',
@@ -745,6 +784,10 @@ class RMA_Kampanya_DB {
             array( '%s', '%s', '%s' ),
             array( '%d' )
         );
+
+        self::onbellek_temizle();
+
+        return $ok;
     }
 
     /**
@@ -764,7 +807,11 @@ class RMA_Kampanya_DB {
 
         $wpdb->delete( self::anlik_tablo(), array( 'campaign_id' => $id ), array( '%d' ) );
 
-        return (bool) $wpdb->delete( self::tablo(), array( 'id' => $id ), array( '%d' ) );
+        $ok = (bool) $wpdb->delete( self::tablo(), array( 'id' => $id ), array( '%d' ) );
+
+        self::onbellek_temizle();
+
+        return $ok;
     }
 
     /**

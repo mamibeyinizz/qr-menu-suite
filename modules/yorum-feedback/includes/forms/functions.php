@@ -254,6 +254,8 @@ function qrm_cf_delete_form($id) {
 
     $wpdb->delete(qrm_cf_fields_table(), ['form_id' => $id], ['%d']);
     $wpdb->delete(qrm_cf_submissions_table(), ['form_id' => $id], ['%d']);
+
+    qrm_cf_flush_unread_total();
     return (bool) $wpdb->delete(qrm_cf_forms_table(), ['id' => $id], ['%d']);
 }
 
@@ -500,6 +502,8 @@ function qrm_cf_insert_submission($form_id, $data, $ip = '') {
         'created_at' => current_time('mysql'),
     ], ['%d', '%s', '%s', '%s', '%s']);
 
+    qrm_cf_flush_unread_total();
+
     return (int) $wpdb->insert_id;
 }
 
@@ -538,38 +542,93 @@ function qrm_cf_count_submissions($form_id, $status = '') {
     ));
 }
 
-/** Tüm formlardaki okunmamış gönderim sayısı (admin menü rozeti için). */
+/** Okunmamış gönderim sayacının saklandığı transient. */
+const QRM_CF_UNREAD_TRANSIENT = 'qrm_cf_unread_total';
+
+/** Sayaç önbelleğinin ömrü. */
+const QRM_CF_UNREAD_TTL = 5 * MINUTE_IN_SECONDS;
+
+/**
+ * Tüm formlardaki okunmamış gönderim sayısı (admin menü rozeti için).
+ *
+ * Bu sayaç sol menü etiketinden okunur, yani wp-admin'in HER sayfasında —
+ * eklentinin kendi ekranlarında değil, panelin tamamında — bir COUNT sorgusu
+ * açıyordu. Yönetici bir oturumda onlarca sayfa gezdiğinde bu, hiç değişmeyen
+ * bir sayı için onlarca bağlantı kullanımı demekti.
+ *
+ * Artık kısa ömürlü bir transient'te durur ve gönderim geldiğinde / okundu
+ * işaretlendiğinde / silindiğinde qrm_cf_flush_unread_total() ile
+ * geçersizlenir; TTL yalnızca emniyet kemeridir.
+ *
+ * @return int
+ */
 function qrm_cf_unread_total() {
     global $wpdb;
-    static $cached = null;
-    if ($cached !== null) return $cached;
+
+    // Memo $GLOBALS'ta durur ki flush aynı istek içinde onu da temizleyebilsin.
+    if (isset($GLOBALS['qrm_cf_unread_memo'])) {
+        return (int) $GLOBALS['qrm_cf_unread_memo'];
+    }
+
+    $saklanan = get_transient(QRM_CF_UNREAD_TRANSIENT);
+    if ($saklanan !== false) {
+        $GLOBALS['qrm_cf_unread_memo'] = (int) $saklanan;
+        return (int) $saklanan;
+    }
 
     $table = qrm_cf_submissions_table();
     $suppress = $wpdb->suppress_errors(true);
-    $cached = (int) $wpdb->get_var("SELECT COUNT(*) FROM $table WHERE status = 'new'");
+    $sayi = (int) $wpdb->get_var("SELECT COUNT(*) FROM $table WHERE status = 'new'");
     $wpdb->suppress_errors($suppress);
 
-    return $cached;
+    set_transient(QRM_CF_UNREAD_TRANSIENT, $sayi, QRM_CF_UNREAD_TTL);
+    $GLOBALS['qrm_cf_unread_memo'] = $sayi;
+
+    return $sayi;
+}
+
+/**
+ * Okunmamış gönderim sayacını geçersizler.
+ *
+ * @return void
+ */
+function qrm_cf_flush_unread_total() {
+    unset($GLOBALS['qrm_cf_unread_memo']);
+    delete_transient(QRM_CF_UNREAD_TRANSIENT);
 }
 
 function qrm_cf_set_submission_status($id, $status) {
     global $wpdb;
     if (!in_array($status, ['new', 'read', 'archived'], true)) return false;
-    return (bool) $wpdb->update(qrm_cf_submissions_table(), ['status' => $status], ['id' => intval($id)], ['%s'], ['%d']);
+
+    $ok = (bool) $wpdb->update(qrm_cf_submissions_table(), ['status' => $status], ['id' => intval($id)], ['%s'], ['%d']);
+
+    qrm_cf_flush_unread_total();
+
+    return $ok;
 }
 
 function qrm_cf_mark_all_read($form_id) {
     global $wpdb;
     $table = qrm_cf_submissions_table();
-    return (int) $wpdb->query($wpdb->prepare(
+    $sayi = (int) $wpdb->query($wpdb->prepare(
         "UPDATE $table SET status = 'read' WHERE form_id = %d AND status = 'new'",
         intval($form_id)
     ));
+
+    qrm_cf_flush_unread_total();
+
+    return $sayi;
 }
 
 function qrm_cf_delete_submission($id) {
     global $wpdb;
-    return (bool) $wpdb->delete(qrm_cf_submissions_table(), ['id' => intval($id)], ['%d']);
+
+    $ok = (bool) $wpdb->delete(qrm_cf_submissions_table(), ['id' => intval($id)], ['%d']);
+
+    qrm_cf_flush_unread_total();
+
+    return $ok;
 }
 
 /** Gönderim satırındaki JSON veriyi diziye çevirir. */

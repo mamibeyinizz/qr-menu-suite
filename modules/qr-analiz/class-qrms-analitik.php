@@ -401,10 +401,15 @@ class QRMS_Analitik {
 			return $bulgu;
 		}
 
-		// phpcs:disable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		$toplam  = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$tablo}" );
-		$masali  = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$tablo} WHERE masa_no <> ''" );
-		// phpcs:enable
+		// İki sayaç aynı taramadan çıkar; ayrı ayrı sorulmasına gerek yok.
+		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$sayim = $wpdb->get_row(
+			"SELECT COUNT(*) AS toplam, SUM(masa_no <> '') AS masali FROM {$tablo}",
+			ARRAY_A
+		);
+
+		$toplam = is_array( $sayim ) ? (int) $sayim['toplam'] : 0;
+		$masali = is_array( $sayim ) ? (int) $sayim['masali'] : 0;
 
 		// 3) Hiç kayıt yok: izleme çalışıyor ama menü henüz açılmamış.
 		if ( 0 === $toplam ) {
@@ -845,18 +850,54 @@ class QRMS_Analitik {
 		$hafta  = $wpdb->prepare( 'created_at >= %s', gmdate( 'Y-m-d', strtotime( '-6 days', self::simdi() ) ) . ' 00:00:00' );
 		$ay     = $wpdb->prepare( 'created_at >= %s', gmdate( 'Y-m-01', self::simdi() ) . ' 00:00:00' );
 
-		// phpcs:disable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		return array(
-			'mv_bugun' => (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$tablo} WHERE event_type='menu_view' AND {$aralik}{$masa_ek}" ),
-			'mv_hafta' => (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$tablo} WHERE event_type='menu_view' AND {$hafta}{$masa_ek}" ),
-			'mv_ay'    => (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$tablo} WHERE event_type='menu_view' AND {$ay}{$masa_ek}" ),
-			'pc_bugun' => (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$tablo} WHERE event_type='product_click' AND {$aralik}{$masa_ek}" ),
-			'pc_hafta' => (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$tablo} WHERE event_type='product_click' AND {$hafta}{$masa_ek}" ),
-			'pc_tumu'  => (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$tablo} WHERE event_type='product_click'{$masa_ek}" ),
-			'uv_bugun' => (int) $wpdb->get_var( "SELECT COUNT(DISTINCT ip_hash) FROM {$tablo} WHERE event_type='menu_view' AND {$aralik}{$masa_ek}" ),
-			'masa_gun' => (int) $wpdb->get_var( "SELECT COUNT(DISTINCT masa_no) FROM {$tablo} WHERE masa_no <> '' AND {$aralik}{$masa_ek}" ),
+		/*
+		 * SEKİZ ayrı COUNT sorgusu yerine TEK sorgu. Sekizinin de WHERE'i aynı
+		 * tabloyu tarıyordu; koşullar koşullu toplamaya (SUM/COUNT DISTINCT +
+		 * CASE) taşındığında MySQL tabloyu bir kez tarar ve panel bir bağlantı
+		 * turunda dolar. En geniş kova zaten 'pc_tumu' (tarih koşulsuz), yani
+		 * birleşik sorgu ek satır da okumaz.
+		 *
+		 * Masa filtresi WHERE'de kalır: seçili masa dışındaki satırlar sekiz
+		 * kovanın hiçbirine girmiyordu, dışarıda bırakmak taramayı daraltır.
+		 */
+		$where = '' !== $masa_ek ? ' WHERE 1=1' . $masa_ek : '';
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$satir = $wpdb->get_row(
+			"SELECT
+				SUM(event_type='menu_view'    AND {$aralik}) AS mv_bugun,
+				SUM(event_type='menu_view'    AND {$hafta})  AS mv_hafta,
+				SUM(event_type='menu_view'    AND {$ay})     AS mv_ay,
+				SUM(event_type='product_click' AND {$aralik}) AS pc_bugun,
+				SUM(event_type='product_click' AND {$hafta})  AS pc_hafta,
+				SUM(event_type='product_click')               AS pc_tumu,
+				COUNT(DISTINCT CASE WHEN event_type='menu_view' AND {$aralik} THEN ip_hash END) AS uv_bugun,
+				COUNT(DISTINCT CASE WHEN masa_no <> '' AND {$aralik} THEN masa_no END)          AS masa_gun
+			 FROM {$tablo}{$where}",
+			ARRAY_A
 		);
-		// phpcs:enable
+
+		$bos = array(
+			'mv_bugun' => 0,
+			'mv_hafta' => 0,
+			'mv_ay'    => 0,
+			'pc_bugun' => 0,
+			'pc_hafta' => 0,
+			'pc_tumu'  => 0,
+			'uv_bugun' => 0,
+			'masa_gun' => 0,
+		);
+
+		if ( ! is_array( $satir ) ) {
+			return $bos;
+		}
+
+		// Boş tabloda SUM() NULL döner; (int) hepsini sıfıra indirir.
+		foreach ( $bos as $anahtar => $varsayilan ) {
+			$bos[ $anahtar ] = isset( $satir[ $anahtar ] ) ? (int) $satir[ $anahtar ] : 0;
+		}
+
+		return $bos;
 	}
 
 	/**

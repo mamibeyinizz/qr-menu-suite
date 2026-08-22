@@ -77,6 +77,12 @@ if ( ! function_exists( 'qmo_ajax_chat' ) ) {
 
 		$url = 'https://generativelanguage.googleapis.com/v1beta/models/' . qmo_gemini_model() . ':generateContent?key=' . rawurlencode( $api_key );
 
+		// Buraya kadarki veritabanı işi (oturum doğrulama, mesaj limiti, ayar
+		// okuma) bitti; sıradaki adım 45 saniyeye kadar sürebilen bir Gemini
+		// çağrısı. Bağlantı o süre boyunca kullanılmayacağı için bırakılır —
+		// yoğun saatte eşzamanlı sohbetler havuzu böyle tüketmez.
+		$db_kapali = qmo_db_serbest_birak();
+
 		$response = wp_remote_post(
 			$url,
 			array(
@@ -90,6 +96,10 @@ if ( ! function_exists( 'qmo_ajax_chat' ) ) {
 				),
 			)
 		);
+
+		// Yanıtı basmadan önce geri bağlan: wp_send_json_* → wp_die zinciri
+		// (ve shutdown kancaları) veritabanına dokunabilir.
+		qmo_db_geri_baglan( $db_kapali );
 
 		if ( is_wp_error( $response ) ) {
 			wp_send_json_error( 'Bağlantı hatası: ' . $response->get_error_message() );

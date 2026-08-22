@@ -11,14 +11,104 @@ if (!defined('ABSPATH')) exit;
 // menüsünden açıldığında yenileme sonrası kullanıcı yanlış ekrana düşüyordu.
 // Artık iki ekran da gerçek WordPress sayfası — JS'siz de tam çalışır.
 
+/**
+ * Yönetim listesinde bir sayfada gösterilecek yorum sayısı.
+ *
+ * @return int
+ */
+function qrm_pro_admin_reviews_per_page() {
+    /**
+     * Yönetimdeki yorum listesinin sayfa boyutu.
+     *
+     * @param int $per_page Varsayılan 25.
+     */
+    $per_page = (int) apply_filters('qrm_admin_reviews_per_page', 25);
+
+    return max(1, min(200, $per_page));
+}
+
+/**
+ * Filtreye göre toplam kayıt sayısı — EK SORGU AÇMADAN.
+ *
+ * Üç sayacın üçü de qrm_pro_review_stats()'in tek sorgusundan gelir; sayfalama
+ * bu yüzden listeye ayrı bir COUNT eklemez.
+ *
+ * @param string $durum '' | 'bekleyen' | 'onayli'.
+ * @param array  $stats qrm_pro_review_stats() çıktısı.
+ * @return int
+ */
+function qrm_pro_admin_reviews_total($durum, array $stats) {
+    if ($durum === 'bekleyen') return (int) $stats['pending'];
+    if ($durum === 'onayli')   return (int) $stats['approved'];
+
+    return (int) $stats['total'];
+}
+
+/**
+ * İstenen sayfa numarasını geçerli aralığa çeker.
+ *
+ * Saf fonksiyon (WordPress'e bağımlılığı yok), bu yüzden doğrudan test edilir.
+ * Elle girilmiş `&paged=9999` gibi bir değer son sayfaya iner; boş bir OFFSET
+ * ile veritabanına gidilmez.
+ *
+ * @param int $paged    İstenen sayfa (1 tabanlı).
+ * @param int $total    Toplam kayıt.
+ * @param int $per_page Sayfa boyutu.
+ * @return int
+ */
+function qrm_pro_admin_reviews_clamp_page($paged, $total, $per_page) {
+    $per_page = max(1, (int) $per_page);
+    $son      = max(1, (int) ceil(max(0, (int) $total) / $per_page));
+
+    return min(max(1, (int) $paged), $son);
+}
+
+/**
+ * Yorumların BİR SAYFASINI çeker.
+ *
+ * Eskiden burada üç dalın üçü de LIMIT'siz `SELECT *` çalıştırıyordu: binlerce
+ * yorumu olan bir sitede yönetici sayfayı her açtığında tablonun tamamı
+ * çekiliyor, tek bir istek veritabanı bağlantısını uzun süre meşgul ediyor ve
+ * PHP bellek limitini zorluyordu.
+ *
+ * @param string $durum    '' | 'bekleyen' | 'onayli'.
+ * @param int    $per_page Sayfa boyutu.
+ * @param int    $paged    Sayfa numarası (1 tabanlı, sınırlanmış).
+ * @return array
+ */
+function qrm_pro_admin_fetch_reviews($durum, $per_page, $paged) {
+    global $wpdb;
+
+    $table    = $wpdb->prefix . 'qrm_reviews';
+    $per_page = max(1, (int) $per_page);
+    $offset   = (max(1, (int) $paged) - 1) * $per_page;
+
+    if ($durum === 'bekleyen' || $durum === 'onayli') {
+        $status = ($durum === 'onayli') ? 1 : 0;
+
+        $rows = $wpdb->get_results($wpdb->prepare(
+            "SELECT * FROM {$table} WHERE status = %d ORDER BY created_at DESC, id DESC LIMIT %d OFFSET %d",
+            $status,
+            $per_page,
+            $offset
+        ));
+    } else {
+        $rows = $wpdb->get_results($wpdb->prepare(
+            "SELECT * FROM {$table} ORDER BY created_at DESC, id DESC LIMIT %d OFFSET %d",
+            $per_page,
+            $offset
+        ));
+    }
+
+    return is_array($rows) ? $rows : [];
+}
+
 /** Tüm Yorumlar ekranı. */
 function qrm_pro_admin_dashboard() {
     if (!current_user_can('manage_options')) {
         wp_die('Bu sayfayı görüntüleme yetkiniz yok.');
     }
 
-    global $wpdb;
-    $table_reviews = $wpdb->prefix . 'qrm_reviews';
     $settings = qrm_pro_get_settings();
     $g_threshold = floatval($settings['google_review_threshold']);
     $self_url = qrm_pro_admin_url('qrms-yf-yorumlar');
@@ -29,17 +119,17 @@ function qrm_pro_admin_dashboard() {
     $durum = isset($_GET['durum']) ? sanitize_key($_GET['durum']) : '';
     if (!in_array($durum, ['bekleyen', 'onayli'], true)) $durum = '';
 
-    $stats = qrm_pro_review_stats();
+    $stats    = qrm_pro_review_stats();
+    $per_page = qrm_pro_admin_reviews_per_page();
+    $toplam   = qrm_pro_admin_reviews_total($durum, $stats);
+
+    // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- yalnızca sayfa numarası.
+    $paged   = isset($_GET['paged']) ? (int) $_GET['paged'] : 1;
+    $paged   = qrm_pro_admin_reviews_clamp_page($paged, $toplam, $per_page);
     $reviews = [];
 
-    if ($stats['table_ok']) {
-        if ($durum === 'bekleyen') {
-            $reviews = $wpdb->get_results("SELECT * FROM $table_reviews WHERE status = 0 ORDER BY created_at DESC");
-        } elseif ($durum === 'onayli') {
-            $reviews = $wpdb->get_results("SELECT * FROM $table_reviews WHERE status = 1 ORDER BY created_at DESC");
-        } else {
-            $reviews = $wpdb->get_results("SELECT * FROM $table_reviews ORDER BY created_at DESC");
-        }
+    if ($stats['table_ok'] && $toplam > 0) {
+        $reviews = qrm_pro_admin_fetch_reviews($durum, $per_page, $paged);
     }
     ?>
     <div class="wrap qrm-pro-wrap">
@@ -114,6 +204,8 @@ function qrm_pro_admin_dashboard() {
                 <?php endif; ?>
 
                 <?php foreach ($reviews as $r):
+                    // Satır aksiyonu, kullanıcıyı bulunduğu sayfada bıraksın.
+                    $row_page = $paged > 1 ? ['paged' => $paged] : [];
                     $name_display = $r->is_anonymous ? '<em>Anonim</em>' : esc_html($r->customer_name);
                     if ($name_display === '') {
                         $name_display = '<em>İsimsiz</em>';
@@ -155,7 +247,7 @@ function qrm_pro_admin_dashboard() {
                     </td>
                     <td data-label="" class="qrm-row-actions">
                         <?php
-                        $row_args = ['id' => intval($r->id)];
+                        $row_args = ['id' => intval($r->id)] + $row_page;
                         if ($durum !== '') $row_args['durum'] = $durum;
                         ?>
                         <?php if (!$r->status): ?>
@@ -171,6 +263,32 @@ function qrm_pro_admin_dashboard() {
                 <?php endforeach; ?>
             </tbody>
         </table>
+
+        <?php
+        $sayfa_sayisi = (int) ceil($toplam / $per_page);
+
+        if ($sayfa_sayisi > 1):
+            $page_args = [];
+            if ($durum !== '') $page_args['durum'] = $durum;
+        ?>
+            <div class="tablenav bottom">
+                <div class="tablenav-pages">
+                    <span class="displaying-num">
+                        <?php echo esc_html(sprintf('%d kayıt', $toplam)); ?>
+                    </span>
+                    <?php
+                    echo paginate_links([
+                        'base'      => add_query_arg($page_args, $self_url) . '&paged=%#%',
+                        'format'    => '',
+                        'prev_text' => '&laquo;',
+                        'next_text' => '&raquo;',
+                        'total'     => $sayfa_sayisi,
+                        'current'   => $paged,
+                    ]);
+                    ?>
+                </div>
+            </div>
+        <?php endif; ?>
     </div>
     <?php
 }
@@ -201,13 +319,16 @@ function qrm_pro_admin_handle_review_actions() {
 
     if ($action === 'approve') {
         $wpdb->update($table_reviews, ['status' => 1], ['id' => $id]);
+        qrm_pro_flush_review_stats();
         return 'Yorum yayınlandı.';
     }
     if ($action === 'unapprove') {
         $wpdb->update($table_reviews, ['status' => 0], ['id' => $id]);
+        qrm_pro_flush_review_stats();
         return 'Yorum yayından kaldırıldı.';
     }
 
     $wpdb->delete($table_reviews, ['id' => $id]);
+    qrm_pro_flush_review_stats();
     return 'Yorum silindi.';
 }

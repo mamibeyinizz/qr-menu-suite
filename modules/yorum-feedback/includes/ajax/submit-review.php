@@ -82,6 +82,9 @@ function qrm_pro_handle_review_submission($settings) {
     $wpdb->insert($table_reviews, $insert_data);
     $review_id = (int) $wpdb->insert_id;
 
+    // Sayaçlar ve ortalamalar önbellekli; yeni yorum onları geçersizler.
+    qrm_pro_flush_review_stats();
+
     // Cooldown penceresi yalnızca gerçekten kayıt oluştuktan sonra başlatılır.
     qrm_pro_cooldown_mark(['phone' => $phone_norm], $settings);
 

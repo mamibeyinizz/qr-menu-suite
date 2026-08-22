@@ -5,7 +5,6 @@ if (!defined('ABSPATH')) exit;
 add_shortcode('qr_menu_reviews', 'qrm_pro_shortcode');
 function qrm_pro_shortcode() {
     global $wpdb;
-    $table_reviews = $wpdb->prefix . 'qrm_reviews';
     $table_fields = $wpdb->prefix . 'qrm_form_fields';
     $settings = qrm_pro_get_settings();
     $message = '';
@@ -51,7 +50,14 @@ function qrm_pro_shortcode() {
     $has_more_reviews = $first_page['has_more'];
 
     // "N Değerlendirme" sayacı artık çekilen satır sayısından okunamaz.
-    $total_reviews = qrm_pro_count_approved_reviews();
+    //
+    // Sayaç ve ortalamalar TEK sorgudan, üstelik önbellekten gelir: eskiden bu
+    // kısa kod her ziyaretçi için ayrı ayrı bir COUNT, bir genel AVG ve beş
+    // kriter AVG'si (toplam yedi aggregate) çalıştırıyordu. Menü sayfası
+    // yoğun saatte saniyede onlarca kez açıldığında bağlantı havuzunu tüketen
+    // asıl yük buydu.
+    $stats         = qrm_pro_review_stats();
+    $total_reviews = $stats['approved'];
 
     ob_start();
     echo qrm_pro_render_style_block($settings);
@@ -61,7 +67,7 @@ function qrm_pro_shortcode() {
         <?php
         $show_stats = isset($settings['show_overall_stats']) ? $settings['show_overall_stats'] : 1;
         if ($show_stats && $total_reviews > 0):
-            $global_avg = $wpdb->get_var("SELECT AVG(rating) FROM $table_reviews WHERE status = 1");
+            $global_avg = $stats['avg'];
         ?>
         <div class="qrm-stats-panel">
             <div class="qrm-global-score">
@@ -79,7 +85,7 @@ function qrm_pro_shortcode() {
                 for ($i = 1; $i <= 5; $i++) {
                     if ($settings['crit_'.$i.'_active']) {
                         $c_name = $settings['crit_'.$i.'_name'];
-                        $c_avg = $wpdb->get_var("SELECT AVG(rating_$i) FROM $table_reviews WHERE status = 1 AND rating_$i > 0");
+                        $c_avg  = isset($stats['crit'][$i]) ? (float) $stats['crit'][$i] : 0.0;
                         if ($c_avg > 0) {
                             $pct = ($c_avg / 5) * 100;
                             echo '<div class="qrm-crit-bar-row">
