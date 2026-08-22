@@ -1033,9 +1033,34 @@ function is_customize_preview() {
 	return ! empty( $GLOBALS['qrms_test']['is_customize_preview'] );
 }
 
+/**
+ * Sitenin yerel saatiyle "şimdi".
+ *
+ * Testte site saati UTC kabul edilir; sabit bir an gerekiyorsa
+ * $GLOBALS['qrms_test']['now'] ile verilebilir.
+ *
+ * @param string $type      'mysql' | 'timestamp' | date() biçimi.
+ * @param int    $gmt       Yok sayılır (test saati zaten UTC).
+ * @return string|int
+ */
+function current_time( $type, $gmt = 0 ) {
+	$now = isset( $GLOBALS['qrms_test']['now'] ) ? (int) $GLOBALS['qrms_test']['now'] : time();
+
+	if ( 'timestamp' === $type ) {
+		return $now;
+	}
+
+	if ( 'mysql' === $type ) {
+		return gmdate( 'Y-m-d H:i:s', $now );
+	}
+
+	return gmdate( $type, $now );
+}
+
 require_once QRMS_PLUGIN_DIR . 'includes/class-helpers.php';
 require_once QRMS_PLUGIN_DIR . 'includes/class-license-client.php';
 require_once QRMS_PLUGIN_DIR . 'includes/class-module-loader.php';
 require_once QRMS_PLUGIN_DIR . 'includes/class-wizard.php';
 require_once QRMS_PLUGIN_DIR . 'includes/class-shortcodes.php';
 require_once QRMS_PLUGIN_DIR . 'includes/class-admin.php';
+require_once QRMS_PLUGIN_DIR . 'includes/class-query-monitor.php';

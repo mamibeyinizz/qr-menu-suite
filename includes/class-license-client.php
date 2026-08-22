@@ -150,6 +150,12 @@ class QRMS_License_Client {
 		$server_url = self::normalize_server_url( $server_url );
 		$domain     = QRMS_Helpers::get_site_domain();
 
+		// Doğrulama günlük cron'dan da çağrılır ve WP cron bir ZİYARETÇİNİN
+		// isteği üzerinde çalışır: 15 saniyelik bu istek boyunca o ziyaretçinin
+		// veritabanı bağlantısı hiç kullanılmadan açık kalıyordu. Sonuç
+		// option'lara yazılana kadar veritabanına ihtiyaç yok, bağlantı bırakılır.
+		$db_kapali = self::db_serbest_birak();
+
 		$response = wp_remote_post(
 			$server_url . self::ENDPOINT_PATH,
 			array(
@@ -166,6 +172,9 @@ class QRMS_License_Client {
 				),
 			)
 		);
+
+		// store_result() option yazar; bağlantı öncesinde geri açılmalı.
+		self::db_geri_baglan( $db_kapali );
 
 		// Sunucuya hiç ulaşılamadı: modüllere ve son bağlantı tarihine dokunma.
 		if ( is_wp_error( $response ) ) {
@@ -202,6 +211,59 @@ class QRMS_License_Client {
 		}
 
 		self::validate( $api_key, self::get_server_url() );
+	}
+
+	/**
+	 * Veritabanı bağlantısını lisans isteği boyunca serbest bırakır.
+	 *
+	 * Modüllerdeki qmo_db_serbest_birak()'ın çekirdek karşılığı; çekirdek
+	 * modüllere bağımlı olmadığı için tekrarlanır.
+	 *
+	 * DİKKAT: wpdb::close() sonrası bağlantı kendiliğinden geri gelmez —
+	 * `ready` bayrağı düşer ve sonraki sorgular sessizce false döner. Geri
+	 * açmak db_geri_baglan()'ın işidir.
+	 *
+	 * @return bool Bağlantı gerçekten kapatıldıysa true.
+	 */
+	private static function db_serbest_birak() {
+		global $wpdb;
+
+		/**
+		 * Lisans isteği boyunca veritabanı bağlantısı bırakılsın mı?
+		 *
+		 * Kalıcı bağlantı kullanan kurulumlarda (ör. HyperDB)
+		 * `add_filter( 'qrms_db_baglanti_serbest', '__return_false' )`.
+		 *
+		 * @param bool $serbest Varsayılan true.
+		 */
+		if ( ! apply_filters( 'qrms_db_baglanti_serbest', true ) ) {
+			return false;
+		}
+
+		if ( ! isset( $wpdb ) || ! is_object( $wpdb )
+			|| ! method_exists( $wpdb, 'close' ) || ! method_exists( $wpdb, 'db_connect' ) ) {
+			return false;
+		}
+
+		return (bool) $wpdb->close();
+	}
+
+	/**
+	 * db_serbest_birak() ile kapatılan bağlantıyı geri açar.
+	 *
+	 * @param bool $kapatildi db_serbest_birak() çıktısı.
+	 * @return void
+	 */
+	private static function db_geri_baglan( $kapatildi ) {
+		global $wpdb;
+
+		if ( ! $kapatildi ) {
+			return;
+		}
+
+		if ( isset( $wpdb ) && is_object( $wpdb ) && method_exists( $wpdb, 'db_connect' ) ) {
+			$wpdb->db_connect();
+		}
 	}
 
 	/**

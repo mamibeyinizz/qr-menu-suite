@@ -112,15 +112,12 @@ function qrm_pro_admin_ai_card() {
  * @return void
  */
 function qrm_pro_admin_insights_body($stats) {
-    global $wpdb;
-    $table = $wpdb->prefix . 'qrm_reviews';
     $settings = qrm_pro_get_settings();
 
+    // Eşik sayacı da, kriter ortalamaları da $stats'in içinden gelir: ekran
+    // artık veritabanına HİÇ dokunmaz (bkz. qrm_pro_fetch_review_stats).
     $g_threshold = floatval($settings['google_review_threshold']);
-    $g_eligible  = (int) $wpdb->get_var($wpdb->prepare(
-        "SELECT COUNT(*) FROM $table WHERE status = 1 AND rating >= %f",
-        $g_threshold
-    ));
+    $g_eligible  = (int) $stats['google_eligible'];
     ?>
     <div class="qrm-insight-grid">
         <div class="qrm-stat-box" style="border-left-color:#8b5cf6;">
@@ -151,8 +148,9 @@ function qrm_pro_admin_insights_body($stats) {
             <?php for ($i = 1; $i <= 5; $i++):
                 if (empty($settings['crit_' . $i . '_active'])) continue;
 
-                // Sadece o kritere oy verenlerin ortalaması alınır.
-                $c_avg = (float) $wpdb->get_var("SELECT AVG(rating_$i) FROM $table WHERE status = 1 AND rating_$i > 0");
+                // Sadece o kritere oy verenlerin ortalaması (birleşik sorguda
+                // AVG(CASE WHEN rating_i > 0 ...) olarak hesaplandı).
+                $c_avg = isset($stats['crit'][$i]) ? (float) $stats['crit'][$i] : 0.0;
                 $pct   = max(0, min(100, ($c_avg / 5) * 100));
             ?>
                 <tr>

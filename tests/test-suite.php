@@ -5235,6 +5235,907 @@ qrms_test(
 );
 
 
+/* ---------------------------------------------------------------------------
+ * 14. VERİTABANI BAĞLANTI OPTİMİZASYONU
+ *
+ * Canlıda "Too many connections" hatasına yol açan üç desen burada korunur:
+ *   (a) aynı tabloyu defalarca tarayan ayrı ayrı aggregate sorguları,
+ *   (b) LIMIT'siz liste sorguları,
+ *   (c) uzun bir dış API isteği boyunca boşuna açık tutulan bağlantı.
+ * ------------------------------------------------------------------------ */
+
+// Yönetimdeki liste sayfalaması ve bağlantı yardımcıları buradan gelir.
+// (forms/functions.php YÜKLENMEZ: yukarıda qrm_cf_unread_total'ın taklidi
+// tanımlı, gerçeği çift tanım hatası verirdi — o yüzden okunmamış gönderim
+// sayacı bu bölümde kaynak üzerinden doğrulanır.)
+require_once QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/admin/dashboard.php';
+require_once QRMS_PLUGIN_DIR . 'modules/_qmo-ortak/helpers.php';
+
+/**
+ * Çalıştırılan HER sorguyu kaydeden $wpdb taklidi.
+ *
+ * Bu bölümün asıl güvencesi sorgu SAYISIdır: birleştirilen sorgular yeniden
+ * bölünürse testler düşer.
+ */
+class QRMS_Sayan_Wpdb {
+	public $prefix  = 'wp_';
+	public $queries = array();
+	public $rows    = array();
+	public $vars    = array();
+	public $results = array();
+	public $dbh     = true;
+	public $kapandi = 0;
+	public $acildi  = 0;
+
+	public function prepare( $sql, ...$args ) {
+		if ( 1 === count( $args ) && is_array( $args[0] ) ) {
+			$args = $args[0];
+		}
+
+		return preg_replace_callback(
+			'/%[dsf]/',
+			function ( $m ) use ( &$args ) {
+				$value = array_shift( $args );
+
+				if ( '%d' === $m[0] ) {
+					return (string) (int) $value;
+				}
+				if ( '%f' === $m[0] ) {
+					return (string) (float) $value;
+				}
+
+				return "'" . str_replace( "'", "\\'", (string) $value ) . "'";
+			},
+			$sql
+		);
+	}
+
+	public function esc_like( $t ) {
+		return $t;
+	}
+
+	public function suppress_errors( $suppress = true ) {
+		return false;
+	}
+
+	public function get_row( $sql, $mode = null ) {
+		$this->queries[] = $sql;
+
+		return array_shift( $this->rows );
+	}
+
+	public function get_var( $sql ) {
+		$this->queries[] = $sql;
+
+		return array_shift( $this->vars );
+	}
+
+	public function get_results( $sql, $mode = null ) {
+		$this->queries[] = $sql;
+
+		$next = array_shift( $this->results );
+
+		return is_array( $next ) ? $next : array();
+	}
+
+	public function close() {
+		$this->kapandi++;
+		$this->dbh = null;
+
+		return true;
+	}
+
+	public function db_connect( $allow_bail = true ) {
+		$this->acildi++;
+		$this->dbh = true;
+
+		return true;
+	}
+
+	/** Kaydedilen sorgulardan verilen parçayı içerenlerin sayısı. */
+	public function kac_kez( $parca ) {
+		$sayi = 0;
+
+		foreach ( $this->queries as $q ) {
+			if ( false !== stripos( $q, $parca ) ) {
+				$sayi++;
+			}
+		}
+
+		return $sayi;
+	}
+}
+
+/**
+ * Bu bölüm için taze bir $wpdb takar ve önbellekleri temizler.
+ *
+ * @return QRMS_Sayan_Wpdb
+ */
+function qrms_sayan_wpdb() {
+	$GLOBALS['wpdb'] = new QRMS_Sayan_Wpdb();
+
+	$GLOBALS['qrms_test']['transients'] = array();
+	unset( $GLOBALS['qrm_pro_stats_memo'], $GLOBALS['qrm_cf_unread_memo'] );
+
+	return $GLOBALS['wpdb'];
+}
+
+/** Birleşik istatistik sorgusunun döndürdüğü satırın taklidi. */
+function qrms_sahte_stat_satiri( $args = array() ) {
+	return array_merge(
+		array(
+			'total'           => 40,
+			'approved'        => 30,
+			'avg_rating'      => 4.25,
+			'google_eligible' => 22,
+			'crit_1'          => 4.5,
+			'crit_2'          => 3.5,
+			'crit_3'          => 4.0,
+			'crit_4'          => null,
+			'crit_5'          => 2.0,
+		),
+		$args
+	);
+}
+
+echo "\nYorum istatistikleri — tek sorgu\n";
+
+qrms_test(
+	'altı ayrı AVG/COUNT sorgusu TEK sorguya indi',
+	function () {
+		$wpdb = qrms_sayan_wpdb();
+		$wpdb->rows[] = qrms_sahte_stat_satiri();
+
+		$stats = qrm_pro_fetch_review_stats( 3.5 );
+
+		qrms_assert_same( 1, count( $wpdb->queries ), 'toplam sorgu sayısı' );
+		qrms_assert_same( 1, $wpdb->kac_kez( 'FROM wp_qrm_reviews' ), 'tablo bir kez taranır' );
+
+		$sql = $wpdb->queries[0];
+
+		// Beş kriterin de aynı SELECT'in içinde olması şart.
+		for ( $i = 1; $i <= 5; $i++ ) {
+			qrms_assert_contains( 'rating_' . $i, $sql, 'kriter ' . $i . ' aynı sorguda' );
+		}
+
+		qrms_assert_contains( 'AS google_eligible', $sql, 'Google eşiği aynı sorguda' );
+		qrms_assert_contains( "rating >= 3.5", $sql, 'eşik değeri yerine kondu' );
+
+		qrms_assert_same( 40, $stats['total'], 'toplam' );
+		qrms_assert_same( 30, $stats['approved'], 'yayında' );
+		qrms_assert_same( 10, $stats['pending'], 'bekleyen türetilir' );
+		qrms_assert_same( 22, $stats['google_eligible'], 'eşiği geçen' );
+		qrms_assert_same( 4.5, $stats['crit'][1], 'kriter 1 ortalaması' );
+	}
+);
+
+qrms_test(
+	'hiç oy almamış kriterin NULL ortalaması sıfıra iner',
+	function () {
+		$wpdb = qrms_sayan_wpdb();
+		$wpdb->rows[] = qrms_sahte_stat_satiri();
+
+		$stats = qrm_pro_fetch_review_stats( 3.5 );
+
+		qrms_assert_same( 0.0, $stats['crit'][4], 'NULL kriter' );
+	}
+);
+
+qrms_test(
+	'okunamayan sorgu "tablo yok" ile karıştırılmaz ve önbelleğe yazılmaz',
+	function () {
+		$wpdb = qrms_sayan_wpdb();
+		$wpdb->rows[] = null; // Sorgu başarısız.
+
+		qrms_assert_same( null, qrm_pro_fetch_review_stats( 3.5 ), 'ham çekim null döner' );
+
+		$stats = qrm_pro_review_stats( true );
+
+		qrms_assert_true( $stats['table_ok'], 'tablo var sayılır (yanlış tanı basılmaz)' );
+		qrms_assert_same( 0, $stats['total'], 'sayaçlar sıfır' );
+		qrms_assert_false(
+			get_transient( QRM_PRO_STATS_TRANSIENT ),
+			'başarısız okuma önbelleğe yazılmaz'
+		);
+	}
+);
+
+echo "\nYorum istatistikleri — önbellek\n";
+
+qrms_test(
+	'ikinci çağrı veritabanına hiç gitmez',
+	function () {
+		$wpdb = qrms_sayan_wpdb();
+		$wpdb->rows[] = qrms_sahte_stat_satiri();
+
+		$ilk = qrm_pro_review_stats( true );
+		$sorgu_sayisi = count( $wpdb->queries );
+
+		// Memo devrede: aynı istek içinde ikinci çağrı sorgu açmaz.
+		$ikinci = qrm_pro_review_stats();
+		qrms_assert_same( $sorgu_sayisi, count( $wpdb->queries ), 'memo isabet etti' );
+		qrms_assert_same( $ilk['total'], $ikinci['total'], 'aynı sonuç' );
+
+		// Memo düşse bile transient devrede.
+		unset( $GLOBALS['qrm_pro_stats_memo'] );
+		$ucuncu = qrm_pro_review_stats();
+		qrms_assert_same( $sorgu_sayisi, count( $wpdb->queries ), 'transient isabet etti' );
+		qrms_assert_same( $ilk['approved'], $ucuncu['approved'], 'aynı sonuç' );
+	}
+);
+
+qrms_test(
+	'flush hem transient\'i hem istek içi memo\'yu temizler',
+	function () {
+		$wpdb = qrms_sayan_wpdb();
+		$wpdb->rows[] = qrms_sahte_stat_satiri();
+		$wpdb->rows[] = qrms_sahte_stat_satiri( array( 'total' => 41, 'approved' => 31 ) );
+
+		qrms_assert_same( 40, qrm_pro_review_stats( true )['total'], 'ilk okuma' );
+
+		qrm_pro_flush_review_stats();
+
+		qrms_assert_false( get_transient( QRM_PRO_STATS_TRANSIENT ), 'transient gitti' );
+		qrms_assert_false( isset( $GLOBALS['qrm_pro_stats_memo'] ), 'memo gitti' );
+
+		// Yeni yorum sonrası sayaç GERÇEKTEN tazelenmeli; bayat kalırsa
+		// yönetici onay bekleyen yorumu hiç görmez.
+		qrms_assert_same( 41, qrm_pro_review_stats()['total'], 'tazelenmiş sayaç' );
+	}
+);
+
+qrms_test(
+	'Google eşiği değişince saklanan sonuç kabul edilmez',
+	function () {
+		$wpdb = qrms_sayan_wpdb();
+		$wpdb->rows[] = qrms_sahte_stat_satiri();
+		$wpdb->rows[] = qrms_sahte_stat_satiri( array( 'google_eligible' => 5 ) );
+
+		$ayarlar = qrm_pro_get_settings();
+		$ayarlar['google_review_threshold'] = 3.5;
+		update_option( 'qrm_settings', $ayarlar );
+
+		qrms_assert_same( 22, qrm_pro_review_stats( true )['google_eligible'], 'eşik 3.5' );
+
+		// Eşik değişti: aynı transient artık geçerli değil.
+		unset( $GLOBALS['qrm_pro_stats_memo'] );
+		$ayarlar['google_review_threshold'] = 4.5;
+		update_option( 'qrm_settings', $ayarlar );
+
+		qrms_assert_same( 5, qrm_pro_review_stats()['google_eligible'], 'eşik 4.5 ile yeniden sorulur' );
+	}
+);
+
+echo "\nYönetimdeki yorum listesi — sayfalama\n";
+
+qrms_test(
+	'liste sorgusu LIMIT/OFFSET taşır — üç filtrede de',
+	function () {
+		$wpdb = qrms_sayan_wpdb();
+
+		qrm_pro_admin_fetch_reviews( '', 25, 3 );
+		qrms_assert_contains( 'LIMIT 25 OFFSET 50', $wpdb->queries[0], 'tümü' );
+		qrms_assert_false( false !== stripos( $wpdb->queries[0], 'WHERE' ), 'tümünde durum koşulu yok' );
+
+		qrm_pro_admin_fetch_reviews( 'bekleyen', 10, 1 );
+		qrms_assert_contains( 'status = 0', $wpdb->queries[1], 'bekleyen filtresi' );
+		qrms_assert_contains( 'LIMIT 10 OFFSET 0', $wpdb->queries[1], 'ilk sayfa' );
+
+		qrm_pro_admin_fetch_reviews( 'onayli', 10, 2 );
+		qrms_assert_contains( 'status = 1', $wpdb->queries[2], 'onaylı filtresi' );
+		qrms_assert_contains( 'LIMIT 10 OFFSET 10', $wpdb->queries[2], 'ikinci sayfa' );
+	}
+);
+
+qrms_test(
+	'sayfa numarası geçerli aralığa çekilir',
+	function () {
+		// Elle girilen &paged=9999 boş bir OFFSET'le veritabanına gitmemeli.
+		qrms_assert_same( 4, qrm_pro_admin_reviews_clamp_page( 9999, 100, 25 ), 'son sayfa' );
+		qrms_assert_same( 1, qrm_pro_admin_reviews_clamp_page( 0, 100, 25 ), 'sıfır → ilk sayfa' );
+		qrms_assert_same( 1, qrm_pro_admin_reviews_clamp_page( -3, 100, 25 ), 'negatif → ilk sayfa' );
+		qrms_assert_same( 1, qrm_pro_admin_reviews_clamp_page( 5, 0, 25 ), 'kayıt yokken tek sayfa' );
+		qrms_assert_same( 3, qrm_pro_admin_reviews_clamp_page( 3, 100, 25 ), 'geçerli sayfa korunur' );
+	}
+);
+
+qrms_test(
+	'sayfalama toplamı EK SORGU açmadan istatistikten okunur',
+	function () {
+		$stats = array( 'total' => 40, 'approved' => 30, 'pending' => 10 );
+
+		qrms_assert_same( 40, qrm_pro_admin_reviews_total( '', $stats ), 'tümü' );
+		qrms_assert_same( 10, qrm_pro_admin_reviews_total( 'bekleyen', $stats ), 'bekleyen' );
+		qrms_assert_same( 30, qrm_pro_admin_reviews_total( 'onayli', $stats ), 'onaylı' );
+	}
+);
+
+qrms_test(
+	'LIMIT\'siz "SELECT *" ekrana geri sızmadı',
+	function () {
+		// Regresyon koruması: liste sorgusu kaynakta LIMIT'siz yazılamaz.
+		$kaynak = file_get_contents(
+			QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/admin/dashboard.php'
+		);
+
+		qrms_assert_false(
+			(bool) preg_match( '/SELECT \* FROM \{?\$?\w+\}?(?![^"\']*LIMIT)[^"\']*["\']/', $kaynak ),
+			'LIMIT\'siz tam tablo sorgusu yok'
+		);
+		qrms_assert_contains( 'LIMIT %d OFFSET %d', $kaynak, 'sayfalı sorgu' );
+	}
+);
+
+echo "\nOkunmamış form gönderimi sayacı\n";
+
+qrms_test(
+	'sayaç her admin sayfasında yeniden sorulmaz',
+	function () {
+		// Bu sayaç sol menü etiketinden okunur, yani wp-admin'in HER
+		// sayfasında çalışıyordu. Artık transient'ten gelir.
+		$kaynak = file_get_contents(
+			QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/forms/functions.php'
+		);
+
+		// Yalnızca ilgili fonksiyonun gövdesine bakılır; aynı sayım deseni
+		// dosyanın başka yerlerinde de geçiyor.
+		$bas    = strpos( $kaynak, 'function qrm_cf_unread_total()' );
+		$govde  = substr( $kaynak, $bas, strpos( $kaynak, 'function qrm_cf_flush_unread_total()' ) - $bas );
+
+		$okuma = strpos( $govde, 'get_transient(QRM_CF_UNREAD_TRANSIENT)' );
+		$sorgu = strpos( $govde, 'SELECT COUNT(*) FROM ' . '$table' );
+
+		qrms_assert_true( false !== $bas, 'fonksiyon bulundu' );
+		qrms_assert_true( false !== $okuma, 'önbellekten okuyor' );
+		qrms_assert_true( false !== $sorgu, 'sorgu hâlâ var (önbellek boşken)' );
+		qrms_assert_true( $okuma < $sorgu, 'önce önbelleğe, sonra veritabanına bakılıyor' );
+		qrms_assert_contains( 'set_transient(QRM_CF_UNREAD_TRANSIENT', $govde, 'sonuç saklanıyor' );
+	}
+);
+
+qrms_test(
+	'sayacı değiştiren her yol önbelleği temizler',
+	function () {
+		$kaynak = file_get_contents(
+			QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/forms/functions.php'
+		);
+
+		// Beş yazma yolu: yeni gönderim, durum değişikliği, toplu okundu,
+		// gönderim silme, form silme (gönderimlerini de siler).
+		qrms_assert_true(
+			substr_count( $kaynak, 'qrm_cf_flush_unread_total();' ) >= 5,
+			'bütün yazma yolları temizliyor'
+		);
+	}
+);
+
+echo "\nQR Analiz — genel bakış tek sorgu\n";
+
+/** genel_bakis()'in beklediği satır ve pc_tumu sayacı. */
+function qrms_analitik_besle( $wpdb, $satir = array(), $pc_tumu = 900 ) {
+	$wpdb->rows[] = array_merge(
+		array(
+			'mv_bugun' => 12,
+			'mv_hafta' => 60,
+			'mv_ay'    => 200,
+			'pc_bugun' => 5,
+			'pc_hafta' => 30,
+			'uv_bugun' => 9,
+			'masa_gun' => 4,
+		),
+		$satir
+	);
+	$wpdb->vars[] = $pc_tumu;
+}
+
+qrms_test(
+	'sekiz ayrı COUNT sorgusu ikiye indi',
+	function () {
+		$wpdb = qrms_sayan_wpdb();
+		qrms_analitik_besle( $wpdb );
+
+		$genel = QRMS_Analitik::genel_bakis();
+
+		qrms_assert_same( 2, count( $wpdb->queries ), 'toplam sorgu sayısı' );
+		qrms_assert_same( 12, $genel['mv_bugun'], 'bugünkü görüntüleme' );
+		qrms_assert_same( 900, $genel['pc_tumu'], 'tüm zamanlar tıklama' );
+		qrms_assert_same( 4, $genel['masa_gun'], 'bugün hareket eden masa' );
+	}
+);
+
+qrms_test(
+	'tarihli kovalar İNDEKSLİ bir aralıkla sınırlanır',
+	function () {
+		// Regresyon koruması: bu sorgu bir ara WHERE'siz yazılmıştı ve 90
+		// günlük tablonun tamamını satır satır tarıyordu. Alt sınır olmadan
+		// idx_date/idx_td kullanılamaz.
+		$wpdb = qrms_sayan_wpdb();
+		qrms_analitik_besle( $wpdb );
+
+		QRMS_Analitik::genel_bakis();
+
+		qrms_assert_contains( 'WHERE created_at >=', $wpdb->queries[0], 'aralık sınırı var' );
+
+		// Alt sınır ay başını da hafta başını da kapsamalı: ayın ilk
+		// günlerinde "son 7 gün" penceresi önceki aya taşar.
+		$ay_basi    = gmdate( 'Y-m-01' );
+		$hafta_basi = gmdate( 'Y-m-d', strtotime( '-6 days' ) );
+		$beklenen   = min( $ay_basi, $hafta_basi );
+
+		qrms_assert_contains( $beklenen . ' 00:00:00', $wpdb->queries[0], 'alt sınır en eski kovayı kapsıyor' );
+
+		// Tarih sınırı OLMAYAN tek kova ayrı ve index-only sayımdır.
+		qrms_assert_contains( "COUNT(*)", $wpdb->queries[1], 'pc_tumu ayrı sayım' );
+		qrms_assert_false(
+			false !== strpos( $wpdb->queries[1], 'created_at' ),
+			'pc_tumu tarih koşulu taşımaz'
+		);
+	}
+);
+
+qrms_test(
+	'aralıkta kayıt yokken NULL toplamlar sıfıra iner',
+	function () {
+		$wpdb = qrms_sayan_wpdb();
+		qrms_analitik_besle(
+			$wpdb,
+			array(
+				'mv_bugun' => null,
+				'mv_hafta' => null,
+				'mv_ay'    => null,
+				'pc_bugun' => null,
+				'pc_hafta' => null,
+				'uv_bugun' => null,
+				'masa_gun' => null,
+			),
+			0
+		);
+
+		$genel = QRMS_Analitik::genel_bakis();
+
+		foreach ( $genel as $anahtar => $deger ) {
+			qrms_assert_same( 0, $deger, $anahtar . ' sıfır' );
+		}
+	}
+);
+
+qrms_test(
+	'masa filtresi İKİ sorguya birden uygulanır',
+	function () {
+		$wpdb = qrms_sayan_wpdb();
+		qrms_analitik_besle( $wpdb );
+
+		QRMS_Analitik::genel_bakis( 'masa-3' );
+
+		// Filtre yalnızca birine uygulanırsa pc_tumu bütün masaları sayar ve
+		// panel seçili masa için yanlış bir toplam gösterir.
+		qrms_assert_contains( "masa_no = 'masa-3'", $wpdb->queries[0], 'aralık sorgusunda filtre' );
+		qrms_assert_contains( "masa_no = 'masa-3'", $wpdb->queries[1], 'pc_tumu sorgusunda filtre' );
+	}
+);
+
+echo "\nUzun dış istekler — bağlantı serbest bırakma\n";
+
+qrms_test(
+	'yardımcılar bağlantıyı kapatır ve GERİ AÇAR',
+	function () {
+		$wpdb = qrms_sayan_wpdb();
+
+		$kapandi = qmo_db_serbest_birak();
+
+		qrms_assert_true( $kapandi, 'bağlantı kapatıldı' );
+		qrms_assert_same( 1, $wpdb->kapandi, 'close() çağrıldı' );
+
+		qmo_db_geri_baglan( $kapandi );
+
+		qrms_assert_same( 1, $wpdb->acildi, 'db_connect() çağrıldı' );
+		qrms_assert_true( (bool) $wpdb->dbh, 'bağlantı yeniden hazır' );
+	}
+);
+
+qrms_test(
+	'kapatılmadıysa geri açma da denenmez',
+	function () {
+		$wpdb = qrms_sayan_wpdb();
+
+		qmo_db_geri_baglan( false );
+
+		qrms_assert_same( 0, $wpdb->acildi, 'gereksiz yeniden bağlanma yok' );
+	}
+);
+
+qrms_test(
+	'filtre ile tamamen kapatılabilir',
+	function () {
+		$wpdb = qrms_sayan_wpdb();
+
+		// HyperDB / kalıcı bağlantı kullanan kurulumlar için çıkış kapısı.
+		add_filter(
+			'qmo_db_baglanti_serbest',
+			function () {
+				return false;
+			}
+		);
+
+		qrms_assert_false( qmo_db_serbest_birak(), 'bırakma atlandı' );
+		qrms_assert_same( 0, $wpdb->kapandi, 'bağlantıya dokunulmadı' );
+
+		// Filtre sonraki testlere sızmasın.
+		unset( $GLOBALS['qrms_test']['actions']['qmo_db_baglanti_serbest'] );
+	}
+);
+
+qrms_test(
+	'üç uzun çağrının üçü de bırak/geri-aç çiftiyle sarılı',
+	function () {
+		// Sarmanın YARISI (bırakma var, geri açma yok) sessiz veri kaybı
+		// demektir: kapalı bağlantıda sorgular false döner. Bu yüzden her
+		// dosyada iki tarafın da bulunduğu doğrulanır.
+		$dosyalar = array(
+			'modules/qr-chatbot/includes/ajax-chat.php'         => array( 'qmo_db_serbest_birak', 'qmo_db_geri_baglan' ),
+			'modules/qr-chatbot/rest-order.php'                 => array( 'qmo_db_serbest_birak', 'qmo_db_geri_baglan' ),
+			'modules/yorum-feedback/includes/ai-insights.php'   => array( 'qrm_db_serbest_birak', 'qrm_db_geri_baglan' ),
+		);
+
+		foreach ( $dosyalar as $yol => $cift ) {
+			$kaynak = file_get_contents( QRMS_PLUGIN_DIR . $yol );
+
+			qrms_assert_contains( $cift[0] . '()', $kaynak, $yol . ' bırakıyor' );
+			qrms_assert_contains( $cift[1] . '(', $kaynak, $yol . ' geri açıyor' );
+		}
+	}
+);
+
+qrms_test(
+	'bağlantı kapalıyken okunacak ayarlar önceden çözülüyor',
+	function () {
+		// get_option() kapalı bağlantıda sessizce false döner; çeviri o yüzden
+		// sebepsiz hataya düşerdi. Anahtar ve model bırakmadan ÖNCE okunur.
+		$siparis = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/rest-order.php' );
+
+		$anahtar_konum = strpos( $siparis, '$api_key = get_option( \'gemini_api_key\' );' );
+		$birakma_konum = strpos( $siparis, '$db_kapali = qmo_db_serbest_birak();' );
+
+		qrms_assert_true( false !== $anahtar_konum, 'anahtar önceden çözülüyor' );
+		qrms_assert_true( false !== $birakma_konum, 'bırakma noktası var' );
+		qrms_assert_true( $anahtar_konum < $birakma_konum, 'anahtar bırakmadan ÖNCE okunuyor' );
+		qrms_assert_contains( 'qmo_not_cevir( $it[\'not\'], $dil, $api_key, $model )', $siparis, 'döngüye geçiriliyor' );
+	}
+);
+
+
+/* ---------------------------------------------------------------------------
+ * 15. YAVAŞ SORGU CEPHESİ — İNDEKSLER, N+1, CRON, TEŞHİS
+ *
+ * Hosting'in kesin teşhisi "bağlantı limiti değil, sorguların 1 saniyenin
+ * altında bitmemesi" olduktan sonra eklenen korumalar.
+ * ------------------------------------------------------------------------ */
+
+echo "\nŞema — eksik indeksler\n";
+
+/**
+ * Bir CREATE TABLE metninde verilen indeks tanımlı mı?
+ *
+ * Sütun listesi boşluk farkına takılmasın diye normalize edilerek aranır.
+ *
+ * @param string $sema    CREATE TABLE metnini içeren kaynak.
+ * @param string $sutunlar Ör. "status, created_at".
+ * @return bool
+ */
+function qrms_indeks_var_mi( $sema, $sutunlar ) {
+	$sutunlar = preg_replace( '/\s+/', '', $sutunlar );
+	$sema     = preg_replace( '/\s+/', '', $sema );
+
+	return false !== stripos( $sema, '(' . $sutunlar . ')' );
+}
+
+qrms_test(
+	'yorum tablosu artık PRIMARY KEY dışında indeks taşıyor',
+	function () {
+		// Regresyon koruması: tablo uzun süre indekssizdi ve üzerindeki HER
+		// sorgu tam tablo taraması + filesort yapıyordu.
+		$sema = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/install.php' );
+
+		qrms_assert_true(
+			qrms_indeks_var_mi( $sema, 'status, created_at' ),
+			'idx_status_created — ön yüz listesi ve sayaçlar'
+		);
+		qrms_assert_contains( 'KEY idx_created (created_at)', $sema, 'idx_created — filtresiz yönetim listesi' );
+		qrms_assert_true(
+			qrms_indeks_var_mi( $sema, 'is_active, sort_order' ),
+			'form alanları — her ön yüz render\'ında sorgulanır'
+		);
+	}
+);
+
+qrms_test(
+	'indeksler gerçekten çalışan sorgulara karşılık geliyor',
+	function () {
+		// İndeksin işe yaraması için sütun SIRASI sorgudakiyle uyumlu olmalı:
+		// önce eşitlik (status), sonra sıralama (created_at).
+		$liste = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/frontend/reviews-list.php' );
+
+		qrms_assert_contains( 'WHERE status = 1 ORDER BY created_at DESC', $liste, 'ön yüz sorgusu' );
+
+		$admin = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/admin/dashboard.php' );
+
+		qrms_assert_contains( 'WHERE status = %d ORDER BY created_at DESC', $admin, 'yönetim sorgusu' );
+	}
+);
+
+qrms_test(
+	'ödül ve gönderim tablolarının indeksleri de sorgularla eşleşiyor',
+	function () {
+		$odul = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/rewards/db.php' );
+
+		qrms_assert_true( qrms_indeks_var_mi( $odul, 'status, created_at' ), 'ödül: durum filtresi + sıralama' );
+		qrms_assert_contains( 'KEY idx_source_review (source_review_id)', $odul, 'ödül: yorum başına kod kontrolü' );
+
+		$formlar = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/forms/db.php' );
+
+		qrms_assert_true(
+			qrms_indeks_var_mi( $formlar, 'form_id, status, created_at' ),
+			'gönderim: iki sütunluk filtre + sıralama'
+		);
+		qrms_assert_true( qrms_indeks_var_mi( $formlar, 'form_id, created_at' ), 'gönderim: durum filtresi yokken' );
+	}
+);
+
+echo "\nŞema — güncelleme akışı\n";
+
+qrms_test(
+	'şema güncellemesi ön yüz isteğinde ÇALIŞMAZ',
+	function () {
+		// ALTER TABLE büyük bir tabloda saniyeler sürebilir. plugins_loaded'a
+		// bağlanmış olsaydı bu, menüyü açan bir MÜŞTERİNİN isteğinde olurdu.
+		$kaynak = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/qr-menu-reviews.php' );
+
+		qrms_assert_contains(
+			"add_action('admin_init', 'qrm_pro_schema_maybe_upgrade'",
+			$kaynak,
+			'yalnızca yönetim isteğinde'
+		);
+		qrms_assert_false(
+			false !== strpos( $kaynak, "add_action('plugins_loaded', 'qrm_pro_schema_maybe_upgrade'" ),
+			'plugins_loaded\'a bağlı değil'
+		);
+		qrms_assert_contains( "current_user_can('manage_options')", $kaynak, 'yetki kontrolü var' );
+	}
+);
+
+qrms_test(
+	'başarısız ALTER "tamam" diye işaretlenmez',
+	function () {
+		// Veritabanı kullanıcısının ALTER yetkisi yoksa dbDelta sessizce
+		// başarısız olur; sürüm damgası yine de atılırsa site kalıcı olarak
+		// indekssiz kalır ve kimse fark etmez.
+		$kaynak = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/qr-menu-reviews.php' );
+
+		// Sürüm damgası atan HER yol önce indeksi doğrulamalı: doğrulamayan
+		// bir yol, ALTER yetkisi olmayan kurulumu kalıcı olarak indekssiz
+		// bırakır ve admin_init'teki denetim bir daha hiç devreye girmez.
+		$damgalar = array();
+		$son      = 0;
+
+		while ( false !== ( $son = strpos( $kaynak, 'update_option(QRM_PRO_SCHEMA_OPTION, QRM_PRO_SCHEMA_VERSION, false);', $son ) ) ) {
+			$damgalar[] = $son;
+			$son++;
+		}
+
+		qrms_assert_true( count( $damgalar ) >= 2, 'iki yol da damga atıyor' );
+
+		foreach ( $damgalar as $i => $konum ) {
+			// Damgadan hemen önceki 400 karakterde bir doğrulama çağrısı olmalı.
+			$onceki = substr( $kaynak, max( 0, $konum - 400 ), min( 400, $konum ) );
+
+			qrms_assert_true(
+				false !== strpos( $onceki, 'qrm_pro_schema_indexes_ok()' ),
+				'damga ' . ( $i + 1 ) . ' doğrulamanın ardında'
+			);
+		}
+
+		qrms_assert_contains( 'SHOW INDEX FROM', $kaynak, 'gerçekten tabloya bakıyor' );
+	}
+);
+
+// import_title_key() saf bir yardımcıdır; trait'i taşıyan minik bir sınıfla
+// doğrudan çağrılır (asıl sınıf WordPress'in tamamına bağımlı).
+require_once QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-import-export.php';
+
+class RMA_Menu_Test_Import {
+	use RMA_Import_Export_Trait;
+}
+
+echo "\nDöngü içi sorgular (N+1)\n";
+
+qrms_test(
+	'içe aktarma artık satır başına wp_posts taraması yapmıyor',
+	function () {
+		$kaynak = file_get_contents(
+			QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-import-export.php'
+		);
+
+		// wp_posts.post_title WordPress çekirdeğinde İNDEKSLİ DEĞİLDİR; satır
+		// başına bir eşitlik sorgusu, satır başına bir tam tarama demekti.
+		qrms_assert_false(
+			false !== strpos( $kaynak, 'AND post_title = %s' ),
+			'satır başına eşitlik sorgusu kalmadı'
+		);
+		qrms_assert_contains( 'post_title IN (', $kaynak, 'tek sorguda toplu arama' );
+
+		// Harita döngüden ÖNCE kurulmalı, yoksa hiçbir şey kazanılmaz.
+		$harita = strpos( $kaynak, '$baslik_haritasi = $this->import_title_map(' );
+		$dongu  = strpos( $kaynak, "foreach ( \$data['items'] as \$item )" );
+
+		qrms_assert_true( false !== $harita, 'harita kuruluyor' );
+		qrms_assert_true( $harita < $dongu, 'döngüden önce kuruluyor' );
+	}
+);
+
+qrms_test(
+	'aynı dosyada tekrar eden başlık ikinci ürünü açmaz',
+	function () {
+		// Satır başına sorgu yapan eski kod, az önce oluşturulan kaydı
+		// kendiliğinden buluyordu; harita bunu elle sürdürmeli.
+		$kaynak = file_get_contents(
+			QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-import-export.php'
+		);
+
+		qrms_assert_contains(
+			'$baslik_haritasi[ $this->import_title_key( $title ) ] = (int) $pid;',
+			$kaynak,
+			'yeni kayıt haritaya ekleniyor'
+		);
+	}
+);
+
+qrms_test(
+	'başlık anahtarı MySQL harmanlaması gibi büyük/küçük harf ayırmaz',
+	function () {
+		$menu = new RMA_Menu_Test_Import();
+
+		qrms_assert_same(
+			$menu->import_title_key( '  Adana Kebap  ' ),
+			$menu->import_title_key( 'adana kebap' ),
+			'harf büyüklüğü ve kenar boşluğu yok sayılır'
+		);
+		qrms_assert_false(
+			$menu->import_title_key( 'Adana Kebap' ) === $menu->import_title_key( 'Urfa Kebap' ),
+			'farklı ürünler ayrı kalır'
+		);
+	}
+);
+
+qrms_test(
+	'toplu yazımlar ürün başına ayrı INSERT açmıyor',
+	function () {
+		// Menünün tamamını kapsayan bir kampanyada bu, tek işlemde yüzlerce
+		// sorgu demekti.
+		$kampanya = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/class-kampanya-db.php' );
+		$vitrin   = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/class-vitrin-db.php' );
+		$formlar  = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/forms/functions.php' );
+
+		qrms_assert_contains( 'INSERT INTO {$tablo} (campaign_id, product_id, original_price)', $kampanya, 'kampanya toplu' );
+		qrms_assert_contains( 'INSERT INTO {$urunler} (showcase_id, product_id, sort_order)', $vitrin, 'vitrin toplu' );
+		qrms_assert_contains( 'INSERT INTO $table (form_id, field_key', $formlar, 'form alanları toplu' );
+
+		// Parçalama olmadan tek dev sorgu max_allowed_packet'e takılabilir.
+		qrms_assert_contains( 'array_chunk', $kampanya, 'kampanya parçalanıyor' );
+	}
+);
+
+qrms_test(
+	'toplu yazımda tip dönüşümü satır satır yazımdakiyle aynı',
+	function () {
+		$satirlar = RMA_Kampanya_DB::anlik_satirlari( '7', array( '12' => '19,90', 3 => 45.5 ) );
+
+		qrms_assert_same( 2, count( $satirlar ), 'satır sayısı' );
+		qrms_assert_same( 7, $satirlar[0]['campaign_id'], 'kampanya ID int' );
+		qrms_assert_same( 12, $satirlar[0]['product_id'], 'ürün ID int' );
+		qrms_assert_same( 19.0, $satirlar[0]['original_price'], 'fiyat float' );
+		qrms_assert_same( 45.5, $satirlar[1]['original_price'], 'ondalık korunur' );
+	}
+);
+
+echo "\nCron — ağır işlemler\n";
+
+qrms_test(
+	'analitik temizliği birikime yetişebiliyor',
+	function () {
+		// Eskiden GÜNDE tek bir 5000'lik parça siliniyordu: günde 5000'den
+		// fazla olay üreten bir sitede temizlik hiçbir zaman yetişemez, tablo
+		// sınırsız büyür ve üzerindeki her sorgu yavaşlardı.
+		$kaynak = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/class-qrms-analitik.php' );
+
+		qrms_assert_contains( 'for ( $tur = 0; $tur < self::SAKLAMA_TUR', $kaynak, 'tur içinde döngü var' );
+		qrms_assert_contains( 'qrms_analitik_temizlik_sure', $kaynak, 'süre bütçesi filtrelenebilir' );
+		qrms_assert_contains( 'if ( $silinen < self::SAKLAMA_PARCA )', $kaynak, 'silinecek kalmayınca durur' );
+		qrms_assert_contains( 'self::SAKLAMA_TUR', $kaynak, 'sonsuz döngüye karşı emniyet freni' );
+	}
+);
+
+qrms_test(
+	'lisans cron\'u 15 sn\'lik istek boyunca bağlantı tutmuyor',
+	function () {
+		// WP cron bir ZİYARETÇİNİN isteği üzerinde çalışır; o ziyaretçinin
+		// bağlantısı 15 saniye boyunca boşuna açık kalıyordu.
+		$kaynak = file_get_contents( QRMS_PLUGIN_DIR . 'includes/class-license-client.php' );
+
+		$birak  = strpos( $kaynak, '$db_kapali = self::db_serbest_birak();' );
+		$istek  = strpos( $kaynak, '$response = wp_remote_post(' );
+		$geri   = strpos( $kaynak, 'self::db_geri_baglan( $db_kapali );' );
+
+		qrms_assert_true( false !== $birak, 'bağlantı bırakılıyor' );
+		qrms_assert_true( $birak < $istek, 'istekten ÖNCE bırakılıyor' );
+		qrms_assert_true( $istek < $geri, 'istekten SONRA geri açılıyor' );
+
+		// store_result() option yazar; geri açma ondan önce olmalı.
+		$yazma = strpos( $kaynak, "return self::store_result( 'unreachable'" );
+		qrms_assert_true( $geri < $yazma, 'yazmadan önce geri açılıyor' );
+	}
+);
+
+echo "\nYavaş sorgu teşhisi\n";
+
+qrms_test(
+	'üretimde tamamen sessizdir',
+	function () {
+		// WP_DEBUG ve SAVEQUERIES tanımlı değil (test ortamı = üretim gibi).
+		qrms_assert_false( QRMS_Query_Monitor::etkin_mi(), 'kendiliğinden açılmaz' );
+	}
+);
+
+qrms_test(
+	'yalnızca eşiği aşan sorgular raporlanır, en yavaş önce',
+	function () {
+		$kayitlar = array(
+			array( 'SELECT 1', 0.01, 'wpdb->query, hizli_fonksiyon' ),
+			array( 'SELECT * FROM wp_qrm_reviews WHERE status = 1', 1.25, 'wpdb->get_results, qrm_pro_fetch_approved_reviews, qrm_pro_shortcode' ),
+			array( 'SELECT COUNT(*) FROM wp_rma_analytics', 0.60, 'wpdb->get_var, QRMS_Analitik::genel_bakis' ),
+			array( 'SELECT 2', 0.49, 'wpdb->query, sinirda_fonksiyon' ),
+		);
+
+		$yavas = QRMS_Query_Monitor::yavaslari_ayikla( $kayitlar, 0.5 );
+
+		qrms_assert_same( 2, count( $yavas ), 'eşiğin altındakiler elendi' );
+		qrms_assert_same( 1.25, $yavas[0]['sure'], 'en yavaş başta' );
+		qrms_assert_contains( 'qrm_reviews', $yavas[0]['sorgu'], 'sorgu metni taşınıyor' );
+	}
+);
+
+qrms_test(
+	'çağrı zinciri okunabilir hâle getirilir',
+	function () {
+		// wpdb'nin kendi metotları teşhise katkı sağlamaz, elenir; kalan
+		// zincir dıştan içe okunur.
+		qrms_assert_same(
+			'qrm_pro_shortcode -> qrm_pro_fetch_approved_reviews',
+			QRMS_Query_Monitor::cagriyi_kisalt( 'wpdb->get_results, qrm_pro_fetch_approved_reviews, qrm_pro_shortcode' ),
+			'zincir çevrildi ve wpdb halkaları atıldı'
+		);
+		qrms_assert_same( 'bilinmiyor', QRMS_Query_Monitor::cagriyi_kisalt( '' ), 'boş zincir' );
+		qrms_assert_same( 'bilinmiyor', QRMS_Query_Monitor::cagriyi_kisalt( 'wpdb->query' ), 'yalnızca wpdb halkası' );
+	}
+);
+
+qrms_test(
+	'uzun sorgu metni günlüğü şişirmez',
+	function () {
+		$uzun = 'SELECT ' . str_repeat( 'sutun_adi, ', 200 ) . 'son FROM tablo';
+		$kisa = QRMS_Query_Monitor::sorguyu_kisalt( $uzun );
+
+		qrms_assert_true( mb_strlen( $kisa ) <= 301, 'kırpıldı' );
+		qrms_assert_contains( '…', $kisa, 'kırpma işareti' );
+
+		// Çok satırlı sorgu tek satıra iner (günlük satır satır okunur).
+		qrms_assert_same(
+			'SELECT a FROM b WHERE c = 1',
+			QRMS_Query_Monitor::sorguyu_kisalt( "SELECT a\n  FROM b\n  WHERE c = 1" ),
+			'satır sonları düzleştirildi'
+		);
+	}
+);
+
 if ( empty( $GLOBALS['qrms_failures'] ) ) {
 	echo "\033[32mTüm testler geçti\033[0m (" . $GLOBALS['qrms_assertions'] . " doğrulama)\n\n";
 	exit( 0 );

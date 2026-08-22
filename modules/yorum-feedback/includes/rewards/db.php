@@ -35,8 +35,18 @@ function qrm_reward_install() {
         ip_address varchar(100) DEFAULT '',
         PRIMARY KEY  (id),
         UNIQUE KEY email (email),
-        UNIQUE KEY code (code)
+        UNIQUE KEY code (code),
+        KEY idx_status_created (status, created_at),
+        KEY idx_created (created_at),
+        KEY idx_source_review (source_review_id)
     ) $charset_collate;";
+    //
+    // İNDEKSLER (v4.2.3):
+    //   idx_status_created  ->  kod listesinin "WHERE status = %s ORDER BY created_at DESC"
+    //                           filtresi ve durum sayaçlarının GROUP BY status'ü,
+    //   idx_created         ->  filtresiz listenin ORDER BY created_at'i,
+    //   idx_source_review   ->  "bu yoruma daha önce kod verilmiş mi?" kontrolü
+    //                           (qrm_reward_kod_var_mi; her ödül talebinde çalışır).
 
     require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
     dbDelta($sql);

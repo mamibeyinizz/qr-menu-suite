@@ -294,6 +294,93 @@ trait RMA_Import_Export_Trait {
     }
 
     /**
+     * Başlık eşleştirmesinin anahtarı.
+     *
+     * MySQL'in varsayılan (…_ci) harmanlaması büyük/küçük harf ayrımı yapmaz ve
+     * kenar boşluklarını yok sayar; eski satır-başına sorgu bu davranışla
+     * eşleşiyordu. Harita da aynı normalizasyonu kullanmalı, yoksa yalnızca harf
+     * büyüklüğü farklı bir başlık yeni ürün olarak açılırdı.
+     *
+     * Türkçe'de strtolower() "I" harfini bozduğu için mb_strtolower tercih
+     * edilir (bkz. RMA_Tukendi::ad_normalize).
+     *
+     * Saf fonksiyon — doğrudan test edilir.
+     *
+     * @param string $title Ürün başlığı.
+     * @return string
+     */
+    public function import_title_key( $title ) {
+        $title = trim( (string) $title );
+
+        return function_exists( 'mb_strtolower' )
+            ? mb_strtolower( $title, 'UTF-8' )
+            : strtolower( $title );
+    }
+
+    /**
+     * İçe aktarılacak başlıklar için "başlık => ürün ID" haritası.
+     *
+     * Yalnızca dosyada GEÇEN başlıklar sorulur (IN listesi), tablonun tamamı
+     * değil; büyük menülerde bu, taramayı da döndürülen satır sayısını da
+     * sınırlar. Liste çok uzunsa sorgu parçalara bölünür: tek bir dev IN(...)
+     * ifadesi hem max_allowed_packet sınırına takılabilir hem de sorgu
+     * planlayıcısını zorlar.
+     *
+     * Aynı başlıkta birden çok ürün varsa EN KÜÇÜK ID kazanır; eski
+     * "… ORDER BY yok, LIMIT 1" sorgusu da pratikte ilk (en eski) kaydı
+     * getiriyordu, davranış böylece hem korunur hem deterministik olur.
+     *
+     * @param array $items İçe aktarılacak kalemler.
+     * @return array<string,int> Normalize başlık => ürün ID.
+     */
+    private function import_title_map( array $items ) {
+        global $wpdb;
+
+        $basliklar = [];
+
+        foreach ( $items as $item ) {
+            $title = isset( $item['title'] ) ? sanitize_text_field( $item['title'] ) : '';
+
+            if ( '' === $title ) continue;
+
+            $basliklar[ $this->import_title_key( $title ) ] = $title;
+        }
+
+        if ( empty( $basliklar ) ) {
+            return [];
+        }
+
+        $harita = [];
+
+        foreach ( array_chunk( array_values( $basliklar ), 200 ) as $parca ) {
+            $yer_tutucu = implode( ', ', array_fill( 0, count( $parca ), '%s' ) );
+
+            $satirlar = $wpdb->get_results(
+                $wpdb->prepare(
+                    "SELECT ID, post_title FROM {$wpdb->posts}
+                     WHERE post_type = 'rma_menu_item'
+                       AND post_status != 'trash'
+                       AND post_title IN ({$yer_tutucu})
+                     ORDER BY ID ASC",
+                    $parca
+                ),
+                ARRAY_A
+            );
+
+            foreach ( (array) $satirlar as $satir ) {
+                $anahtar = $this->import_title_key( $satir['post_title'] );
+
+                // ORDER BY ID ASC + ilk gelen kazanır = en küçük ID.
+                if ( ! isset( $harita[ $anahtar ] ) ) {
+                    $harita[ $anahtar ] = (int) $satir['ID'];
+                }
+            }
+        }
+
+        return $harita;
+    }
+
+    /**
      * Bir gönderinin terim slug'ları — terim cache'inden okur (ek sorgu yok).
      *
      * @param int    $post_id
@@ -344,6 +431,17 @@ trait RMA_Import_Export_Trait {
         $allowed_allergens = array_keys( $this->get_allergen_definitions() );
         $cat_term_cache    = [];   // slug => term_id (satır başına sorgu yerine tek sorgu)
 
+        // PERF: başlık -> ID haritası döngüden ÖNCE tek sorguda kurulur.
+        //
+        // Eskiden her satır için ayrı bir "WHERE post_title = %s" sorgusu
+        // açılıyordu. WordPress çekirdeğinde `post_title` İNDEKSLİ DEĞİLDİR
+        // (wp_posts indeksleri: post_name, type_status_date, post_parent,
+        // post_author), yani her satır wp_posts'un menü kayıtlarını baştan
+        // sona tarıyordu: 500 ürünlük bir içe aktarma 500 tarama demekti ve
+        // tek bir istek veritabanını dakikalarca meşgul edebiliyordu.
+        // Tek sorgu aynı taramayı bir kez yapar, gerisi bellekte çözülür.
+        $baslik_haritasi = $this->import_title_map( $data['items'] );
+
         foreach ( $data['items'] as $item ) {
             $title = isset( $item['title'] ) ? sanitize_text_field( $item['title'] ) : '';
             if ( '' === $title ) continue;
@@ -360,11 +458,11 @@ trait RMA_Import_Export_Trait {
 
             // 2) Başlık ile eşleşme (aynı başlıkta ürün varsa üzerine yazılır)
             if ( ! $pid ) {
-                $found = $wpdb->get_var( $wpdb->prepare(
-                    "SELECT ID FROM {$wpdb->posts} WHERE post_type = 'rma_menu_item' AND post_status != 'trash' AND post_title = %s LIMIT 1",
-                    $title
-                ) );
-                if ( $found ) $pid = (int) $found;
+                $anahtar = $this->import_title_key( $title );
+
+                if ( isset( $baslik_haritasi[ $anahtar ] ) ) {
+                    $pid = (int) $baslik_haritasi[ $anahtar ];
+                }
             }
 
             $postarr = [
@@ -384,6 +482,12 @@ trait RMA_Import_Export_Trait {
                 $pid = wp_insert_post( $postarr );
                 if ( ! $pid || is_wp_error( $pid ) ) continue;
                 $created++;
+
+                // Yeni kayıt haritaya da girer: aynı dosyada aynı başlık ikinci
+                // kez geçerse ikinci bir ürün açılmaz, az önce oluşturulanın
+                // üzerine yazılır. (Satır başına sorgu yapan eski kod bunu
+                // kendiliğinden sağlıyordu; harita da sağlamalı.)
+                $baslik_haritasi[ $this->import_title_key( $title ) ] = (int) $pid;
             }
 
             // Meta alanları — sadece rma_ önekli olanlar, item içinde gelenlerle üzerine yazılır

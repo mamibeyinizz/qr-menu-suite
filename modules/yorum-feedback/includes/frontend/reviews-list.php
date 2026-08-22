@@ -90,6 +90,10 @@ function qrm_pro_fetch_approved_reviews($limit, $offset = 0) {
  * Sorgu artık LIMIT'li olduğu için "N Değerlendirme" sayacı çekilen satır
  * sayısından okunamaz; toplam ayrıca sorulur. status sütunu indekslidir.
  *
+ * NOT: Kısa kod bu fonksiyonu artık ÇAĞIRMAZ — sayacı, diğer bütün
+ * ortalamalarla birlikte tek sorguda üreten qrm_pro_review_stats()'ten okur.
+ * Fonksiyon, sayacı tek başına isteyen dış kod (tema/snippet) için durur.
+ *
  * @return int
  */
 function qrm_pro_count_approved_reviews() {

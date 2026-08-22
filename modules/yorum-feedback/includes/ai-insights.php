@@ -203,6 +203,58 @@ function qrm_ai_cached_summary() {
 }
 
 /**
+ * Veritabanı bağlantısını uzun bir dış istek boyunca serbest bırakır.
+ *
+ * Bu modül bilinçli olarak `_qmo-ortak`'ı yüklemez (bkz. module.php başlığı),
+ * bu yüzden oradaki qmo_db_serbest_birak()'ın eşi burada kendi ad alanında
+ * durur. Gerekçe aynı: 45 saniyelik bir Gemini çağrısı boyunca MySQL bağlantısı
+ * tek bir sorgu çalıştırmadan havuzda yer kaplıyordu.
+ *
+ * DİKKAT: wpdb::close() sonrası bağlantı kendiliğinden geri gelmez —
+ * sonraki sorgular sessizce false döner. Geri açmak qrm_db_geri_baglan()'ın
+ * işidir ve veritabanına dokunan her kod onun ARDINDA olmalıdır.
+ *
+ * @return bool Bağlantı gerçekten kapatıldıysa true.
+ */
+function qrm_db_serbest_birak() {
+    global $wpdb;
+
+    /**
+     * Uzun dış istekler boyunca veritabanı bağlantısı bırakılsın mı?
+     *
+     * @param bool $serbest Varsayılan true.
+     */
+    if (!apply_filters('qrm_db_baglanti_serbest', true)) {
+        return false;
+    }
+
+    if (!isset($wpdb) || !is_object($wpdb)
+        || !method_exists($wpdb, 'close') || !method_exists($wpdb, 'db_connect')) {
+        return false;
+    }
+
+    return (bool) $wpdb->close();
+}
+
+/**
+ * qrm_db_serbest_birak() ile kapatılan bağlantıyı geri açar.
+ *
+ * @param bool $kapatildi qrm_db_serbest_birak() çıktısı.
+ * @return void
+ */
+function qrm_db_geri_baglan($kapatildi) {
+    global $wpdb;
+
+    if (!$kapatildi) {
+        return;
+    }
+
+    if (isset($wpdb) && is_object($wpdb) && method_exists($wpdb, 'db_connect')) {
+        $wpdb->db_connect();
+    }
+}
+
+/**
  * Özeti üretir ve saklar.
  *
  * @return array{ok:bool,text:string,error:string}
@@ -220,8 +272,14 @@ function qrm_ai_generate_summary() {
         return ['ok' => false, 'text' => '', 'error' => 'Özet için en az 3 yayındaki yorum gerekir.'];
     }
 
+    // Model adı bağlantı açıkken çözülür; aşağıdaki 45 saniyelik çağrı
+    // boyunca veritabanına gidilemeyecek.
+    $model = qrm_ai_model();
+
+    $db_kapali = qrm_db_serbest_birak();
+
     $response = wp_remote_post(
-        'https://generativelanguage.googleapis.com/v1beta/models/' . qrm_ai_model()
+        'https://generativelanguage.googleapis.com/v1beta/models/' . $model
             . ':generateContent?key=' . rawurlencode($key),
         [
             'timeout' => 45,
@@ -234,6 +292,10 @@ function qrm_ai_generate_summary() {
             ]),
         ]
     );
+
+    // Bundan sonrası (transient anahtarı bir sorgu açar, ardından yazma)
+    // veritabanına dokunur — geri bağlanmadan devam edilemez.
+    qrm_db_geri_baglan($db_kapali);
 
     if (is_wp_error($response)) {
         return ['ok' => false, 'text' => '', 'error' => 'Bağlantı hatası: ' . $response->get_error_message()];

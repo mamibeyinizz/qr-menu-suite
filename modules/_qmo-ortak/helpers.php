@@ -134,9 +134,22 @@ if ( ! function_exists( 'qmo_masa_gecerli_mi' ) ) {
 		}
 
 		$cache_key = 'qmo_masa_' . md5( $slug );
-		$cached    = wp_cache_get( $cache_key, 'qmo' );
+
+		// Önce obje önbelleği: kalıcı bir obje önbelleği (Redis/Memcached)
+		// kurulu olan sitelerde en ucuz yol budur.
+		$cached = wp_cache_get( $cache_key, 'qmo' );
 		if ( false !== $cached ) {
 			return (bool) $cached;
+		}
+
+		// Kalıcı obje önbelleği YOKSA — paylaşımlı hosting'de tipik durum —
+		// wp_cache_* yalnızca istek içinde yaşar, yani masa doğrulaması her
+		// ziyaretçi isteğinde yeniden sorgu açardı. Masa listesi ise nadiren
+		// değişir; transient ikinci katman olarak o boşluğu kapatır.
+		$saklanan = get_transient( $cache_key );
+		if ( false !== $saklanan ) {
+			wp_cache_set( $cache_key, (int) $saklanan, 'qmo', 300 );
+			return ( (int) $saklanan ) > 0;
 		}
 
 		$tablo = $wpdb->prefix . 'qrm_tables';
@@ -146,6 +159,13 @@ if ( ! function_exists( 'qmo_masa_gecerli_mi' ) ) {
 		$ok = ( (int) $var ) > 0;
 
 		wp_cache_set( $cache_key, $ok ? 1 : 0, 'qmo', 300 );
+
+		// Olumsuz sonuç da saklanır ama çok kısa süreyle: sahte bir QR'ın
+		// sorguyu her istekte tekrarlaması engellenir, buna karşılık yeni
+		// eklenen bir masa en fazla bir dakika "yok" görünür (masa
+		// eklendiğinde qmo_masa_cache_temizle zaten çağrılır).
+		set_transient( $cache_key, $ok ? 1 : 0, $ok ? 5 * MINUTE_IN_SECONDS : MINUTE_IN_SECONDS );
+
 		return $ok;
 	}
 }
@@ -157,7 +177,10 @@ if ( ! function_exists( 'qmo_masa_gecerli_mi' ) ) {
  */
 if ( ! function_exists( 'qmo_masa_cache_temizle' ) ) {
 	function qmo_masa_cache_temizle( $slug ) {
-		wp_cache_delete( 'qmo_masa_' . md5( sanitize_title( $slug ) ), 'qmo' );
+		$cache_key = 'qmo_masa_' . md5( sanitize_title( $slug ) );
+
+		wp_cache_delete( $cache_key, 'qmo' );
+		delete_transient( $cache_key );
 	}
 }
 
@@ -190,6 +213,77 @@ if ( ! function_exists( 'qmo_hiz_siniri' ) ) {
 		}
 		set_transient( $k, 1, max( 1, (int) $saniye ) );
 		return true;
+	}
+}
+
+/* -------------------------------------------------------------------------
+ * VERİTABANI BAĞLANTISININ UZUN DIŞ İSTEKLER BOYUNCA SERBEST BIRAKILMASI
+ *
+ * PHP, MySQL bağlantısını isteğin sonuna kadar açık tutar. Bu modüllerde
+ * "isteğin sonu" 45 saniyelik bir Gemini çağrısının ya da arka planda tamamlanan
+ * bir sipariş çevirisinin ardı demek olabiliyor — o süre boyunca bağlantı
+ * TAMAMEN KULLANILMADAN havuzda yer kaplar. Aynı anda yirmi müşteri chatbot'a
+ * yazdığında yirmi bağlantı, hiçbiri sorgu çalıştırmadan dakikalarca tutulur;
+ * "Too many connections" hatasının en pahalı sebebi budur.
+ *
+ * Çözüm, HTTP çağrısını iki yardımcının arasına almaktır. Dikkat: wpdb::close()
+ * sonrasında bağlantı KENDİLİĞİNDEN geri gelmez — wpdb `ready` bayrağını
+ * düşürür ve sonraki sorgular sessizce false döner. Bu yüzden geri bağlanma
+ * açıkça yapılır ve HTTP'den sonra veritabanına ihtiyaç duyan her kod
+ * qmo_db_geri_baglan()'ın ARDINDA durmalıdır.
+ * ---------------------------------------------------------------------- */
+
+/**
+ * Veritabanı bağlantısını geçici olarak kapatır.
+ *
+ * Yalnızca uzun süren bir dış istekten HEMEN ÖNCE çağrılmalıdır; ardından
+ * qmo_db_geri_baglan() ile geri açılır.
+ *
+ * @return bool Bağlantı gerçekten kapatıldıysa true.
+ */
+if ( ! function_exists( 'qmo_db_serbest_birak' ) ) {
+	function qmo_db_serbest_birak() {
+		global $wpdb;
+
+		/**
+		 * Uzun dış istekler boyunca veritabanı bağlantısı bırakılsın mı?
+		 *
+		 * Kalıcı bağlantı kullanan ya da wpdb'yi değiştiren kurulumlarda
+		 * (ör. HyperDB) `add_filter( 'qmo_db_baglanti_serbest', '__return_false' )`
+		 * ile kapatılabilir.
+		 *
+		 * @param bool $serbest Varsayılan true.
+		 */
+		if ( ! apply_filters( 'qmo_db_baglanti_serbest', true ) ) {
+			return false;
+		}
+
+		if ( ! isset( $wpdb ) || ! is_object( $wpdb ) || ! method_exists( $wpdb, 'close' )
+			|| ! method_exists( $wpdb, 'db_connect' ) ) {
+			return false;
+		}
+
+		return (bool) $wpdb->close();
+	}
+}
+
+/**
+ * qmo_db_serbest_birak() ile kapatılan bağlantıyı geri açar.
+ *
+ * @param bool $kapatildi qmo_db_serbest_birak() çıktısı.
+ * @return void
+ */
+if ( ! function_exists( 'qmo_db_geri_baglan' ) ) {
+	function qmo_db_geri_baglan( $kapatildi ) {
+		global $wpdb;
+
+		if ( ! $kapatildi ) {
+			return;
+		}
+
+		if ( isset( $wpdb ) && is_object( $wpdb ) && method_exists( $wpdb, 'db_connect' ) ) {
+			$wpdb->db_connect();
+		}
 	}
 }
 
