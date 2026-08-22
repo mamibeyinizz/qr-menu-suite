@@ -35,6 +35,7 @@ require_once __DIR__ . '/includes/trait-vitrin-admin.php';
 require_once __DIR__ . '/includes/class-kampanya-db.php';
 require_once __DIR__ . '/includes/class-kampanya.php';
 require_once __DIR__ . '/includes/trait-kampanya-admin.php';
+require_once __DIR__ . '/includes/class-tukendi.php';
 require_once __DIR__ . '/includes/shortcode-vitrin.php';
 require_once __DIR__ . '/qmo-one-cikan-slider.php';
 
@@ -77,6 +78,7 @@ class Restaurant_Menu_Automation {
         add_action( 'admin_action_rma_duplicate_post', [ $this, 'duplicate_post_action' ] );
         add_action( 'admin_enqueue_scripts', [ $this, 'admin_scripts' ] );
         add_action( 'wp_ajax_rma_toggle_status',       [ $this, 'ajax_toggle_status' ] );
+        add_action( 'wp_ajax_rma_toggle_tukendi',      [ $this, 'ajax_toggle_tukendi' ] );
         add_action( 'wp_ajax_rma_save_category_order', [ $this, 'ajax_save_category_order' ] );
         add_action( 'admin_menu',  [ $this, 'add_admin_menus' ] );
         add_action( 'admin_init',  [ $this, 'register_settings' ] );
@@ -143,6 +145,10 @@ class Restaurant_Menu_Automation {
         add_action( 'delete_rma_category',     [ $this, 'bump_cache_version' ], 20 );
         add_action( 'delete_rma_allergen',     [ $this, 'bump_cache_version' ], 20 );
         add_action( 'update_option_rma_suggestions_settings', [ $this, 'bump_cache_version' ], 20 );
+
+        // Chatbot / REST sipariş ucu varsa tükendi ürünleri orada kesilir.
+        // Filtre chatbot modülünde tanımlıdır; modül yoksa kanca no-op'dur.
+        add_filter( 'qmo_siparis_onay_oncesi', [ 'RMA_Tukendi', 'siparis_filtresi' ], 10, 2 );
     }
 }
 

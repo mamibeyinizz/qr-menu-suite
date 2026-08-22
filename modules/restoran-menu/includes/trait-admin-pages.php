@@ -67,7 +67,7 @@ trait RMA_Admin_Pages_Trait {
             [
                 'url'   => admin_url( 'edit.php?post_type=rma_menu_item' ),
                 'title' => 'Ürünlerim',
-                'desc'  => 'Menüdeki tüm ürünleri görün, düzenleyin, gösterip gizleyin.',
+                'desc'  => 'Menüdeki tüm ürünleri görün, düzenleyin, gösterip gizleyin veya tükendi işaretleyin.',
                 'icon'  => 'dashicons-list-view',
             ],
             [

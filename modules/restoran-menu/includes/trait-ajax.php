@@ -16,6 +16,28 @@ trait RMA_Ajax_Trait {
         wp_send_json_error();
     }
 
+    /**
+     * Ürün listesindeki Tükendi anahtarı.
+     *
+     * Göster/Gizle'den bağımsızdır: rma_active'e dokunulmaz, yalnızca
+     * `_rma_tukendi` yazılır. Menü önbelleği meta kancasıyla tazelenir.
+     */
+    public function ajax_toggle_tukendi() {
+        check_ajax_referer( 'rma_admin_nonce', 'security' );
+
+        $post_id = isset( $_POST['id'] ) ? (int) $_POST['id'] : 0;
+        if ( $post_id < 1 || get_post_type( $post_id ) !== 'rma_menu_item' ) {
+            wp_send_json_error();
+        }
+        if ( ! current_user_can( 'edit_post', $post_id ) ) {
+            wp_send_json_error();
+        }
+
+        RMA_Tukendi::kaydet( $post_id, ( $_POST['status'] ?? '' ) === '1' );
+        $this->bump_cache_version();
+        wp_send_json_success();
+    }
+
     public function ajax_save_category_order() {
         check_ajax_referer( 'rma_admin_nonce', 'security' );
         if ( ! current_user_can( 'manage_categories' ) ) wp_send_json_error();
@@ -428,6 +450,10 @@ trait RMA_Ajax_Trait {
 
         $title = $this->t_field( $id, 'product', 'title', $post->post_title );
         $img   = $this->render_modal_image( $id, $title );
+        $tukendi_banner = '';
+        if ( RMA_Tukendi::urun_tukendi( $id ) ) {
+            $tukendi_banner = '<p class="rma-modal-tukendi">' . esc_html( $this->t( RMA_Tukendi::MESAJ ) ) . '</p>';
+        }
 
         // Çeviri, the_content filtresinden ÖNCE uygulanıyor: kısa kod ve oEmbed
         // işleme çevrilmiş metin üzerinde çalışsın.
@@ -437,6 +463,9 @@ trait RMA_Ajax_Trait {
         }
 
         $attrs = '';
+        if ( RMA_Tukendi::urun_tukendi( $id ) ) {
+            $attrs .= '<span class="rma-attr rma-attr-tukendi">' . esc_html( $this->t( RMA_Tukendi::ETIKET ) ) . '</span>';
+        }
         if ( get_post_meta( $id, 'rma_badge_recommended', true ) === '1' ) $attrs .= '<span class="rma-attr">⭐ ' . esc_html( $this->t( 'Önerilen' ) ) . '</span>';
         if ( get_post_meta( $id, 'rma_is_vegan',          true ) === '1' ) $attrs .= '<span class="rma-attr">🌿 ' . esc_html( $this->t( 'Vegan' ) ) . '</span>';
         if ( get_post_meta( $id, 'rma_is_vegetarian',     true ) === '1' ) $attrs .= '<span class="rma-attr">🥦 ' . esc_html( $this->t( 'Vejetaryen' ) ) . '</span>';
@@ -489,19 +518,24 @@ trait RMA_Ajax_Trait {
         $compliance_html = $compliance ? '<div class="rma-attrs rma-compliance-row">' . $compliance . '</div>' : '';
 
         return sprintf(
-            '<div class="rma-modal-img-wrap">
+            '<div class="rma-modal-img-wrap%s">
+                %s
                 %s
             </div>
             <div class="rma-modal-body">
                 <h2 class="rma-modal-title">%s</h2>
+                %s
                 <p class="rma-modal-price">%s</p>
                 <div class="rma-modal-desc">%s</div>
                 %s
                 %s
                 %s
             </div>',
+            RMA_Tukendi::urun_tukendi( $id ) ? ' is-tukendi' : '',
             $img,
+            RMA_Tukendi::rozet_html( $id ),
             esc_html( $title ),
+            $tukendi_banner,
             $price_html,
             $desc,
             $attrs ? '<div class="rma-attrs">' . $attrs . '</div>' : '',

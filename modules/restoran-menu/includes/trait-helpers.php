@@ -224,8 +224,11 @@ trait RMA_Helpers_Trait {
      * @param string $meta_key
      */
     public function maybe_bump_cache_on_meta( $meta_id, $object_id, $meta_key ) {
-        if ( 0 !== strpos( (string) $meta_key, 'rma_' ) ) return;
-        if ( 'rma_views' === $meta_key ) return;
+        $key = (string) $meta_key;
+        // `rma_active` gibi düz anahtarlar ve `_rma_tukendi` gibi gizli
+        // (alt çizgili) anahtarlar görünümü etkiler. rma_views sayacı değil.
+        if ( 0 !== strpos( $key, 'rma_' ) && 0 !== strpos( $key, '_rma_' ) ) return;
+        if ( 'rma_views' === $key ) return;
         if ( get_post_type( $object_id ) !== 'rma_menu_item' ) return;
         $this->bump_cache_version();
     }

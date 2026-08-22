@@ -153,12 +153,23 @@
        ÜRÜN LİSTESİ — Göster/Gizle anahtarı
     ----------------------------------------------------------------- */
     function initStatusToggle() {
-        $('.rma-toggle-status').on('change', function () {
+        bindListToggle('.rma-toggle-status', 'rma_toggle_status');
+    }
+
+    /* -----------------------------------------------------------------
+       ÜRÜN LİSTESİ — Tükendi anahtarı (Göster/Gizle'den bağımsız)
+    ----------------------------------------------------------------- */
+    function initTukendiToggle() {
+        bindListToggle('.rma-toggle-tukendi', 'rma_toggle_tukendi');
+    }
+
+    function bindListToggle(selector, action) {
+        $(selector).on('change', function () {
             var isChecked = $(this).is(':checked') ? '1' : '0';
             var postId = $(this).data('id');
             var tog = $(this);
             $.post(AJAX_URL, {
-                action: 'rma_toggle_status',
+                action: action,
                 id: postId,
                 status: isChecked,
                 security: NONCE
@@ -658,6 +669,7 @@
         stripNoticeArgs();
         initColorPickers();
         initStatusToggle();
+        initTukendiToggle();
         initCategorySorter();
         initPalettes();
         initNavPreview();

@@ -181,6 +181,38 @@
     text-decoration: line-through;
 }
 
+.qrms-vitrin-card.is-tukendi {
+    opacity: .72;
+}
+.qrms-vitrin-card.is-tukendi:hover {
+    transform: none;
+}
+.qrms-vitrin-card.is-tukendi .qrms-vitrin-img {
+    filter: grayscale(.45);
+}
+.qrms-vitrin-card .rma-tukendi-rozet {
+    background: #8b1e1e;
+    bottom: 0;
+    color: #fff;
+    font-size: .72rem;
+    font-weight: 800;
+    letter-spacing: .08em;
+    line-height: 1.2;
+    left: 0;
+    padding: 6px 8px;
+    position: absolute;
+    right: 0;
+    text-align: center;
+    text-transform: uppercase;
+    z-index: 2;
+}
+@media (max-width: 480px) {
+    .qrms-vitrin-card .rma-tukendi-rozet {
+        font-size: .64rem;
+        padding: 5px 6px;
+    }
+}
+
 /* ---------------------------------------------------------------------
    DENETİMLER
 --------------------------------------------------------------------- */

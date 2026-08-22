@@ -403,6 +403,11 @@ JSCODE;
         // Aktif fiyat kampanyası indirimse otomatik rozet ("%15", "-10 ₺").
         $badges .= RMA_Kampanya::rozet_html( $id );
 
+        $tukendi     = RMA_Tukendi::urun_tukendi( $id );
+        $tukendi_rozet = RMA_Tukendi::rozet_html( $id );
+        $kart_sinif  = 'rma-card' . ( $tukendi ? ' is-tukendi' : '' );
+        $aria_label  = $tukendi ? $title . ' (' . RMA_Tukendi::etiket() . ')' : $title;
+
         $prep_time = get_post_meta( $id, 'rma_prep_time', true );
         $prep_html = '';
         if ( $prep_time !== '' && (int) $prep_time > 0 ) {
@@ -415,10 +420,11 @@ JSCODE;
         $price_inner = RMA_Kampanya::fiyat_html( $id, [ 'sinif' => 'rma-card-price' ] );
 
         return sprintf(
-            '<div class="rma-card" data-id="%d" tabindex="0" role="button" aria-label="%s">
+            '<div class="%s" data-id="%d"%s tabindex="0" role="button" aria-label="%s">
                 <div class="rma-card-img-wrap">
                     <div class="rma-card-badges">%s</div>
                     <img src="%s" class="rma-card-img" alt="%s" loading="lazy" decoding="async" width="220" height="220">
+                    %s
                 </div>
                 <div class="rma-card-body">
                     <h3 class="rma-card-title">%s</h3>
@@ -432,11 +438,14 @@ JSCODE;
                     </div>
                 </div>
             </div>',
+            esc_attr( $kart_sinif ),
             $id,
-            esc_attr( $title ),
+            $tukendi ? ' data-tukendi="1"' : '',
+            esc_attr( $aria_label ),
             $badges,
             esc_url( $img ),
             esc_attr( $title ),
+            $tukendi_rozet,
             esc_html( $title ),
             esc_html( $desc ),
             $price_inner,

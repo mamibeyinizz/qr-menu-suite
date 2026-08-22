@@ -118,6 +118,15 @@ trait RMA_Post_Types_Trait {
         }
         echo '</div>';
 
+        /* ---- Tükendi (stok) — Göster/Gizle'den ayrı, ürünü menüden silmez ---- */
+        $tukendi_checked = RMA_Tukendi::urun_tukendi( $post->ID ) ? 'checked' : '';
+        echo '<hr><div style="margin:10px 0 6px;"><strong>Stok durumu</strong></div>';
+        echo "<label style='display:block;'>
+                <input type='checkbox' name='rma_tukendi' value='1' {$tukendi_checked}/>
+                Tükendi — ürün menüde görünür kalır, sipariş alınmaz
+              </label>";
+        echo '<p style="color:#777;font-size:12px;margin:6px 0 0;">Göster/Gizle ürünü menüden tamamen kaldırır. Tükendi ise ürünü yerinde bırakır ve "Tükendi" etiketi basar.</p>';
+
         /* ---- 1 Temmuz 2026 Şeffaf Menü Yönetmeliği Alanları ---- */
         echo '<hr><div style="margin:10px 0 6px;"><strong style="color:#b8860b;">📋 Şeffaf Menü Bilgileri (1 Temmuz 2026 Yönetmeliği)</strong></div>';
         echo '<div style="display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start;">';
@@ -183,6 +192,9 @@ trait RMA_Post_Types_Trait {
         foreach ( $checkboxes as $cb ) {
             update_post_meta( $post_id, $cb, isset( $_POST[ $cb ] ) ? '1' : '0' );
         }
+
+        // Tükendi, Göster/Gizle'den bağımsız ayrı meta'dır (rma_active ezilmez).
+        RMA_Tukendi::kaydet( $post_id, isset( $_POST['rma_tukendi'] ) );
 
         // Et menşei — whitelist kontrolü
         if ( isset( $_POST['rma_meat_origin'] ) ) {

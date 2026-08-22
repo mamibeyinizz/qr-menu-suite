@@ -237,3 +237,26 @@
 .qmo-slider-product-price .rma-price-old {
     margin-right: 6px;
 }
+
+.qmo-slider-product.is-tukendi {
+    opacity: .72;
+}
+.qmo-slider-product.is-tukendi .qmo-slider-product-img {
+    filter: grayscale(.45);
+}
+.qmo-slider-product .rma-tukendi-rozet {
+    background: #8b1e1e;
+    bottom: 0;
+    color: #fff;
+    font-size: clamp(0.62rem, 2.2cqi, 0.78rem);
+    font-weight: 800;
+    letter-spacing: .08em;
+    line-height: 1.2;
+    left: 0;
+    padding: 0.45em 0.4em;
+    position: absolute;
+    right: 0;
+    text-align: center;
+    text-transform: uppercase;
+    z-index: 2;
+}

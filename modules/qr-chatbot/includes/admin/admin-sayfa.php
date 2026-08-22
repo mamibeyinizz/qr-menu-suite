@@ -148,6 +148,7 @@ if ( ! function_exists( 'qmo_chatbot_menu_json_uret' ) ) {
 				'urunAdi'  => $post->post_title,
 				'aciklama' => wp_strip_all_tags( $post->post_excerpt ?: $post->post_content ),
 				'fiyat'    => is_numeric( $fiyat ) ? (string) $fiyat : (string) $fiyat,
+				'tukendi'  => ( function_exists( 'rma_urun_tukendi' ) && rma_urun_tukendi( $post->ID ) ) ? 1 : 0,
 			);
 		}
 

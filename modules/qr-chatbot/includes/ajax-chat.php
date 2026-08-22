@@ -136,7 +136,8 @@ if ( ! function_exists( 'qmo_chat_siparis_talimati' ) ) {
 			. "2) Kullanıcı çapraz satış önerisine cevap verdikten veya başka ürün ekleyip eklemeyeceğini belirttikten sonra: [SIPARIS] bloğu HÂLÂ ÜRETME. Bu adımda siparişin özetini (ürünler, adetler, toplam TL tutarı) yaz ve net bir onay sorusu sor (örnek: 'Onaylarsanız hemen siparişi mutfağa/garsona ileteceğim, onaylıyor musunuz?').\n"
 			. "3) Kullanıcı açıkça onay verdiğinde (örnek: 'evet', 'onaylıyorum', 'tamam gönder', 'olur' gibi doğal onay ifadeleri) — SADECE bu turda, cevabının EN BAŞINA şu formatta bir blok ekle: [SIPARIS]json[/SIPARIS]. Buradaki json şu dizidir: [{\"urunAdi\":\"...\",\"adet\":1,\"not\":\"...\"}]. Kurallar: urunAdi MUTLAKA menüdeki ürünün TÜRKÇE adı olsun (kullanıcı başka dilde yazsa bile menüdeki Türkçe karşılığını yaz). adet tam sayı olsun. not alanına müşterinin özel isteğini (soğansız, acısız, az pişmiş vb.) MUTLAKA TÜRKÇE yaz; özel istek yoksa not boş string olsun. Sipariş bloğundan sonra kullanıcıya kendi dilinde kısa bir onay mesajı yaz (örnek: siparişin mutfağa iletildi).\n"
 			. "4) Kullanıcı henüz onay vermeden başka bir şey sorarsa, ürün eklemek/çıkarmak isterse konuşmaya doğal şekilde devam et, esnek kal.\n"
-			. '5) Menüde olmayan bir ürün istenirse [SIPARIS] bloğu hiçbir zaman eklenmez, kibarca o ürünün olmadığını söyle.';
+			. "5) Menüde olmayan bir ürün istenirse [SIPARIS] bloğu hiçbir zaman eklenmez, kibarca o ürünün olmadığını söyle.\n"
+			. "6) Menü JSON'unda tukendi değeri 1 olan ürünler şu an stokta yoktur. Müşteri bunları isterse [SIPARIS] bloğu KESİNLİKLE üretilmez; kullanıcıya 'Bu ürün şu an tükendi' de.";
 	}
 }
 

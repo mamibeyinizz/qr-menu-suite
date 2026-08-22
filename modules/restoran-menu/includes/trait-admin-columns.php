@@ -8,7 +8,10 @@ trait RMA_Admin_Columns_Trait {
         $new = [];
         foreach ( $columns as $key => $title ) {
             $new[ $key ] = $title;
-            if ( $key === 'title' ) $new['rma_status'] = 'Göster/Gizle';
+            if ( $key === 'title' ) {
+                $new['rma_status']  = 'Göster/Gizle';
+                $new['rma_tukendi'] = 'Tükendi';
+            }
         }
         return $new;
     }
@@ -51,6 +54,14 @@ trait RMA_Admin_Columns_Trait {
                     <span class='rma-slider round'></span>
                   </label>";
         }
+
+        if ( $column === 'rma_tukendi' ) {
+            $checked = RMA_Tukendi::urun_tukendi( $post_id ) ? 'checked' : '';
+            echo "<label class='rma-switch rma-switch-tukendi'>
+                    <input type='checkbox' class='rma-toggle-tukendi' data-id='{$post_id}' {$checked}>
+                    <span class='rma-slider round'></span>
+                  </label>";
+        }
     }
 
     /* -----------------------------------------------------------------
@@ -87,6 +98,7 @@ trait RMA_Admin_Columns_Trait {
                 foreach ( $values as $value ) add_post_meta( $new_id, $key, maybe_unserialize( $value ) );
             }
             update_post_meta( $new_id, 'rma_active', '1' );
+            RMA_Tukendi::kaydet( $new_id, false );
             foreach ( get_object_taxonomies( $post->post_type ) as $tax ) {
                 wp_set_object_terms( $new_id, wp_get_object_terms( $post_id, $tax, [ 'fields' => 'slugs' ] ), $tax, false );
             }

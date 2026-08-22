@@ -137,7 +137,7 @@ class RMA_Vitrin_Shortcode {
     <div class="qrms-vitrin-viewport" data-qrms-viewport tabindex="0"
          aria-label="<?php echo esc_attr( count( $urunler ) . ' ürün — kaydırarak gezinin' ); ?>">
         <?php foreach ( $urunler as $urun ) : ?>
-            <article class="qrms-vitrin-card">
+            <article class="qrms-vitrin-card<?php echo ! empty( $urun['tukendi'] ) ? ' is-tukendi' : ''; ?>">
                 <div class="qrms-vitrin-media">
                     <?php if ( '' !== $urun['img'] ) : ?>
                         <img src="<?php echo esc_url( $urun['img'] ); ?>"
@@ -146,6 +146,9 @@ class RMA_Vitrin_Shortcode {
                              loading="lazy" decoding="async">
                     <?php else : ?>
                         <span class="qrms-vitrin-img qrms-vitrin-img-empty" aria-hidden="true">◆</span>
+                    <?php endif; ?>
+                    <?php if ( ! empty( $urun['tukendi'] ) ) : ?>
+                        <span class="rma-tukendi-rozet"><?php echo esc_html( $urun['tukendi_etiket'] ); ?></span>
                     <?php endif; ?>
                 </div>
                 <div class="qrms-vitrin-body">
@@ -187,7 +190,7 @@ class RMA_Vitrin_Shortcode {
      *
      * @param int[] $idler      Sıralı ürün ID listesi.
      * @param int   $fiyat_goster 1 ise fiyat hazırlanır.
-     * @return array<int,array{title:string,price_html:string,img:string}>
+     * @return array<int,array{title:string,price_html:string,img:string,tukendi:bool,tukendi_etiket:string}>
      */
     private static function urunleri_hazirla( array $idler, $fiyat_goster ) {
         if ( empty( $idler ) ) {
@@ -230,10 +233,14 @@ class RMA_Vitrin_Shortcode {
                 continue;
             }
 
+            $tukendi = RMA_Tukendi::urun_tukendi( $id );
+
             $kartlar[] = array(
-                'title'      => get_the_title( $id ),
-                'price_html' => $fiyat_goster ? self::fiyat_html( $id ) : '',
-                'img'        => (string) ( get_the_post_thumbnail_url( $id, 'medium' ) ?: '' ),
+                'title'          => get_the_title( $id ),
+                'price_html'     => $fiyat_goster ? self::fiyat_html( $id ) : '',
+                'img'            => (string) ( get_the_post_thumbnail_url( $id, 'medium' ) ?: '' ),
+                'tukendi'        => $tukendi,
+                'tukendi_etiket' => $tukendi ? RMA_Tukendi::etiket() : '',
             );
         }
 
