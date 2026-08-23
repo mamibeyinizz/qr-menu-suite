@@ -235,9 +235,10 @@ function qrms_module_restoran_menu_ekranimiz_mi() {
  * ekranların ihtiyaç duyduğu varlıklar birebir aynı handle ve bağımlılıklarla
  * kuyruğa alınır — ekranların kendi kodu değişmez.
  *
- * Koşul, qr-masa modülündeki desenin aynısı: varlıklar yalnızca bu modülün
- * kendi form ekranları render edilirken yüklenir. Hub ekranı listenin dışındadır:
- * onun ihtiyacı olan her şey suite'in ortak admin.css'indedir.
+ * Koşul, qr-masa modülündeki desenin aynısı: form varlıkları yalnızca bu
+ * modülün kendi form ekranları render edilirken yüklenir. Hub ekranı form
+ * varlıklarını almaz; kart ızgarası ve özet satırı için yalnızca hub.css
+ * kuyruğa alınır.
  *
  * @return void
  */
@@ -247,9 +248,22 @@ function qrms_module_restoran_menu_admin_assets() {
 
 	$rma = Restaurant_Menu_Automation::get_instance();
 
-	// Hub ekranının stili suite'in ortak admin.css'inden gelir (QRMS_Admin
-	// onu her qrms* sayfasında kuyruğa alır); modülün kendi varlıklarına
-	// ihtiyacı yoktur.
+	$hub_slug = class_exists( 'QRMS_Admin' )
+		? QRMS_Admin::get_module_page_slug( 'restoran-menu' )
+		: 'qrms-module-restoran-menu';
+
+	// Hub kart ızgarası, ikon hizası ve özet satırı bu sayfaya özgüdür;
+	// ortak admin.css diğer modül hub'larını etkilemesin diye ayrı yüklenir.
+	if ( $hub_slug === $page ) {
+		wp_enqueue_style(
+			'rma-hub',
+			QRMS_PLUGIN_URL . 'modules/restoran-menu/assets/css/hub.css',
+			array( 'qrms-admin' ),
+			QRMS_Helpers::asset_version( 'modules/restoran-menu/assets/css/hub.css' )
+		);
+		return;
+	}
+
 	if ( ! array_key_exists( $page, $rma->get_subpages() ) ) {
 		return;
 	}
