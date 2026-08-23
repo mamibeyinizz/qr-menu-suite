@@ -372,3 +372,19 @@
 .qrms-ae-wrap .qrms-ae-en-field input {
 	width: 100%;
 }
+
+/* --- Dil seçici (Görünüm) --- */
+
+.qrms-ae-wrap .splash-lang-selector-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+	gap: 6px 12px;
+	margin-top: 8px;
+}
+
+.qrms-ae-wrap .splash-lang-selector-check {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 13px;
+}

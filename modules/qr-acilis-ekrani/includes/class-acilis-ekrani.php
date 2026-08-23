@@ -112,6 +112,9 @@ class QRMS_Acilis_Ekrani {
 			// girmez; açıkken her metin İngilizce karşılığını data niteliği
 			// olarak yanında taşır (bkz. QRMS_AE_Frontend::lang_data()).
 			'lang_toggle'         => 0,
+			// QR Çeviri modülüyle entegre bayrak dil seçici (sol üst).
+			'lang_selector'       => 0,
+			'lang_selector_langs' => array(),
 			'texts_en'            => array(
 				'btn1'    => '',
 				'btn2'    => '',

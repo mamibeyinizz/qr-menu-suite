@@ -463,6 +463,52 @@ trait QRMS_AE_Admin {
                             </td>
                         </tr>
                         <tr>
+                            <th colspan="2">
+                                <h3 style="margin-bottom:4px;">Dil Seçici</h3>
+                                <p class="description" style="font-weight:400;">QR Çeviri modülünün dil mekanizmasını kullanan mini bayrak seçici (sol üst).</p>
+                            </th>
+                        </tr>
+                        <tr>
+                            <th><label for="lang_selector">Dil Seçici</label></th>
+                            <td>
+                                <?php
+                                $lang_selector     = ! empty( $options['lang_selector'] );
+                                $selector_langs    = isset( $options['lang_selector_langs'] ) && is_array( $options['lang_selector_langs'] )
+                                    ? $options['lang_selector_langs']
+                                    : array();
+                                $qrmenu_available  = function_exists( 'qrmenu_get_langs' );
+                                ?>
+                                <label>
+                                    <input type="checkbox" name="lang_selector" id="lang_selector" value="1" <?php checked( $lang_selector ); ?> <?php disabled( ! $qrmenu_available ); ?> />
+                                    Sol üstte bayrak dil seçici göster
+                                </label>
+                                <?php if ( ! $qrmenu_available ) : ?>
+                                    <p class="description"><strong>QR Çeviri modülü yüklü değil</strong> — dil seçici kullanılamaz.</p>
+                                <?php else : ?>
+                                    <p class="description">
+                                        Ziyaretçi splash sırasında dil seçer; menü ve site çevirisi QR Çeviri'nin
+                                        <code>rma_lang</code> çerezi üzerinden devreye girer. Splash metinleri şimdilik
+                                        sabit Türkçe kalır; sayfa splash sırasında yenilenmez.
+                                    </p>
+                                    <p class="description">
+                                        TR/EN düğmesi ile aynı köşede çakışabilir; ikisini birlikte açmayın.
+                                    </p>
+                                    <fieldset class="splash-lang-selector-fieldset" style="margin-top:12px;">
+                                        <legend class="screen-reader-text">Gösterilecek diller</legend>
+                                        <p class="description" style="margin-top:0;">Hiçbiri işaretlenmezse QR Çeviri'nin aktif dilleri kullanılır. En az iki dil gerekir.</p>
+                                        <div class="splash-lang-selector-grid">
+                                            <?php foreach ( qrmenu_get_langs() as $code => $meta ) : ?>
+                                                <label class="splash-lang-selector-check">
+                                                    <input type="checkbox" name="lang_selector_langs[]" value="<?php echo esc_attr( $code ); ?>" <?php checked( in_array( $code, $selector_langs, true ) ); ?> />
+                                                    <span><?php echo esc_html( $meta['flag'] . ' ' . $meta['name'] ); ?></span>
+                                                </label>
+                                            <?php endforeach; ?>
+                                        </div>
+                                    </fieldset>
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                        <tr>
                             <th><label for="button_padding_v">Buton İç Boşluğu</label></th>
                             <td>
                                 <label class="splash-inline-field">

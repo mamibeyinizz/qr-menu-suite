@@ -110,6 +110,95 @@ html.splash-loading #custom-splash-overlay { display: block !important; visibili
     outline-offset: 2px;
 }
 
+/* ---------------- QR Çeviri bayrak dil seçici ---------------- */
+/* Sol üstte, yüklenme göstergesinin karşısında. Cam yüzey rozetlerle aynı
+   dilde; QR Çeviri'nin koyu dropdown'ından farklı olarak splash temasına uyumlu. */
+
+#custom-splash-overlay .splash-lang-picker {
+    position: absolute;
+    z-index: 5;
+    top: calc(14px + env(safe-area-inset-top, 0px));
+    left: calc(14px + env(safe-area-inset-left, 0px));
+}
+
+#custom-splash-overlay .splash-lang-picker-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 1px solid var(--sp-glass-border);
+    border-radius: 999px;
+    background: var(--sp-glass-bg);
+    box-shadow: var(--sp-glass-shadow);
+    cursor: pointer;
+    line-height: 1;
+}
+
+#custom-splash-overlay .splash-lang-picker-flag {
+    font-size: 22px;
+    line-height: 1;
+}
+
+#custom-splash-overlay .splash-lang-picker-panel {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    min-width: 148px;
+    max-height: 240px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    padding: 4px;
+    border: 1px solid var(--sp-glass-border);
+    border-radius: 14px;
+    background: var(--sp-glass-bg);
+    -webkit-backdrop-filter: var(--sp-glass-blur);
+    backdrop-filter: var(--sp-glass-blur);
+    box-shadow: var(--sp-glass-shadow);
+}
+
+#custom-splash-overlay .splash-lang-picker-panel[hidden] {
+    display: none !important;
+}
+
+#custom-splash-overlay .splash-lang-picker-opt {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 8px 10px;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--sp-text);
+    text-shadow: var(--sp-text-shadow);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    text-align: left;
+    cursor: pointer;
+}
+
+#custom-splash-overlay .splash-lang-picker-opt-flag {
+    font-size: 18px;
+    line-height: 1;
+}
+
+#custom-splash-overlay .splash-lang-picker-opt:hover,
+#custom-splash-overlay .splash-lang-picker-opt[aria-selected="true"] {
+    background: rgba(var(--sp-accent-rgb, 0, 115, 170), 0.55);
+    color: var(--sp-btn-text, #fff);
+    text-shadow: none;
+}
+
+#custom-splash-overlay .splash-lang-picker-btn:focus-visible,
+#custom-splash-overlay .splash-lang-picker-opt:focus-visible {
+    outline: 2px solid var(--sp-accent, #0073aa);
+    outline-offset: 2px;
+}
+
 /* ---------------- Arkaplan görseli katmanı ---------------- */
 /* CSS background-image DEĞİL: gerçek <img> kullanılır, böylece srcset ve
    preload devreye girer ve görsel LCP elemanı olarak erken yüklenir. */
@@ -518,6 +607,8 @@ html.splash-loading #custom-splash-overlay { display: block !important; visibili
 
 #custom-splash-overlay .splash-cta:focus-visible,
 #custom-splash-overlay .splash-badge:focus-visible,
+#custom-splash-overlay .splash-lang-picker-btn:focus-visible,
+#custom-splash-overlay .splash-lang-picker-opt:focus-visible,
 .splash-modal-close:focus-visible,
 .splash-modal-link:focus-visible {
     outline: 2px solid var(--sp-accent, #0073aa);

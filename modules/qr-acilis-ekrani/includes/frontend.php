@@ -458,6 +458,103 @@ trait QRMS_AE_Frontend {
     }
 
     /**
+     * QR Çeviri dil seçici için gösterilecek diller.
+     *
+     * Admin listesi boşsa QR Çeviri'nin aktif dilleri kullanılır.
+     *
+     * @param array $opts Ayarlar.
+     * @return array<string,array{name:string,flag:string}>
+     */
+    private function resolve_lang_selector_langs($opts) {
+        if (!function_exists('qrmenu_get_langs')) {
+            return array();
+        }
+
+        $all = qrmenu_get_langs();
+        $admin = isset($opts['lang_selector_langs']) && is_array($opts['lang_selector_langs'])
+            ? $opts['lang_selector_langs']
+            : array();
+
+        if (empty($admin)) {
+            $codes = function_exists('rma_ceviri_aktif_diller')
+                ? rma_ceviri_aktif_diller()
+                : array_keys($all);
+        } else {
+            $codes = $admin;
+        }
+
+        $langs = array();
+        foreach ($codes as $code) {
+            $code = sanitize_key($code);
+            if (isset($all[$code])) {
+                $langs[$code] = $all[$code];
+            }
+        }
+
+        return $langs;
+    }
+
+    /**
+     * Bayrak dil seçici açık ve en az iki dil var mı?
+     *
+     * @param array $opts Ayarlar.
+     * @return bool
+     */
+    private function lang_selector_active($opts) {
+        if (empty($opts['lang_selector'])) {
+            return false;
+        }
+
+        return count($this->resolve_lang_selector_langs($opts)) >= 2;
+    }
+
+    /**
+     * QR Çeviri entegre bayrak dil seçici — sol üst, mini bayrak + açılır liste.
+     *
+     * Sunucu aktif dili seçmez (tam sayfa cache güvenliği); bayrak ve seçim
+     * istemci tarafında cookie/URL'den okunur. Dil değişimi QR Çeviri'nin
+     * rma_lang çerezi ve sessionStorage mekanizmasını kullanır; splash
+     * sırasında sayfa yenilenmez.
+     *
+     * @param array $opts Ayarlar.
+     * @return void
+     */
+    private function render_lang_selector($opts) {
+        if (!$this->lang_selector_active($opts)) {
+            return;
+        }
+
+        $langs = $this->resolve_lang_selector_langs($opts);
+        $cookie = defined('RMA_CEVIRI_COOKIE') ? RMA_CEVIRI_COOKIE : 'rma_lang';
+        $default_code = isset($langs['tr']) ? 'tr' : array_key_first($langs);
+        $default_flag = $langs[$default_code]['flag'];
+
+        echo '<div class="splash-lang-picker" role="group" aria-label="Dil seç"'
+            . ' data-lang-cookie="' . esc_attr($cookie) . '">';
+
+        echo '<button type="button" class="splash-lang-picker-btn"'
+            . ' aria-haspopup="listbox" aria-expanded="false" aria-label="Dil seç">';
+        echo '<span class="splash-lang-picker-flag" aria-hidden="true">'
+            . esc_html($default_flag)
+            . '</span>';
+        echo '</button>';
+
+        echo '<div class="splash-lang-picker-panel" role="listbox" hidden>';
+
+        foreach ($langs as $code => $meta) {
+            echo '<button type="button" role="option" class="splash-lang-picker-opt"'
+                . ' data-lang="' . esc_attr($code) . '"'
+                . ' aria-selected="false">';
+            echo '<span class="splash-lang-picker-opt-flag" aria-hidden="true">'
+                . esc_html($meta['flag']) . '</span>';
+            echo '<span class="splash-lang-picker-opt-name">' . esc_html($meta['name']) . '</span>';
+            echo '</button>';
+        }
+
+        echo '</div></div>';
+    }
+
+    /**
      * TR|EN düğmesi. Sol üstte, sağ üstteki yüklenme göstergesinin karşısında.
      *
      * @param array $opts Ayarlar.
@@ -504,6 +601,8 @@ trait QRMS_AE_Frontend {
             <?php $this->render_background_layer($opts); ?>
 
             <?php $this->render_loader($opts, $redirect_seconds); ?>
+
+            <?php $this->render_lang_selector($opts); ?>
 
             <?php $this->render_lang_toggle($opts); ?>
 

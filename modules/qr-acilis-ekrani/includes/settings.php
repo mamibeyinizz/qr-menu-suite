@@ -116,6 +116,25 @@ trait QRMS_AE_Settings {
 		// Konum şimdilik tek seçenek; option ileriye dönük olarak yazılır.
 		$options['loader_position'] = 'top-right';
 
+		// --- Dil seçici (QR Çeviri entegrasyonu) ---
+		$options['lang_selector'] = isset( $_POST['lang_selector'] ) ? 1 : 0;
+
+		$valid_codes = array();
+		if ( function_exists( 'qrmenu_get_langs' ) ) {
+			$valid_codes = array_keys( qrmenu_get_langs() );
+		}
+
+		$selected = array();
+		if ( isset( $_POST['lang_selector_langs'] ) && is_array( $_POST['lang_selector_langs'] ) ) {
+			foreach ( wp_unslash( $_POST['lang_selector_langs'] ) as $raw_code ) {
+				$code = sanitize_key( $raw_code );
+				if ( in_array( $code, $valid_codes, true ) && ! in_array( $code, $selected, true ) ) {
+					$selected[] = $code;
+				}
+			}
+		}
+		$options['lang_selector_langs'] = $selected;
+
 		return $options;
 	}
 

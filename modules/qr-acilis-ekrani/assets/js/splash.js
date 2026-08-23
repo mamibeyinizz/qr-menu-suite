@@ -3,6 +3,9 @@
 
     var DISMISS_EVENTS = ['click', 'touchstart', 'keydown'];
 
+    var selectedCeviriLang = 'tr';
+    var splashAppendLang = null;
+
     function hasDismissCookie() {
         return document.cookie.indexOf('splash_dismissed=1') !== -1;
     }
@@ -110,6 +113,170 @@
         }
     }
 
+    /* ---------------- QR Çeviri bayrak seçici ----------------
+
+       qrmenuTranslate() sayfayı yeniden yükler; splash sırasında bunu
+       istemiyoruz. Aynı çerez (rma_lang), sessionStorage (rma_dil) ve
+       window.rmaCeviriDil kullanılır; sayfa yenilenmez. Splash kapandığında
+       veya menü bağlantısına tıklandığında URL'ye ?lang= eklenir. */
+
+    function updateQueryParam(url, ad, deger) {
+        if (window.rmaCeviriUpdateQueryParam) {
+            return window.rmaCeviriUpdateQueryParam(url, ad, deger);
+        }
+
+        var parca = String(url).split('#');
+        var temel = parca[0];
+        var hash = parca[1] ? '#' + parca[1] : '';
+        var bolum = temel.split('?');
+        var yol = bolum[0];
+        var sorgu = bolum[1] || '';
+        var parcalar = sorgu ? sorgu.split('&') : [];
+        var yeni = [];
+        var bulundu = false;
+        var i;
+
+        for (i = 0; i < parcalar.length; i++) {
+            if (!parcalar[i]) continue;
+            if (parcalar[i].split('=')[0] === ad) {
+                if (!bulundu) {
+                    yeni.push(ad + '=' + encodeURIComponent(deger));
+                    bulundu = true;
+                }
+                continue;
+            }
+            yeni.push(parcalar[i]);
+        }
+
+        if (!bulundu) {
+            yeni.push(ad + '=' + encodeURIComponent(deger));
+        }
+
+        return yol + (yeni.length ? '?' + yeni.join('&') : '') + hash;
+    }
+
+    function appendLangToUrl(url, lang) {
+        if (!url || !lang || lang === 'tr') return url;
+        return updateQueryParam(url, 'lang', lang);
+    }
+
+    function initLangSelector(overlay, isPreview) {
+        var picker = overlay.querySelector('.splash-lang-picker');
+        if (!picker) {
+            splashAppendLang = null;
+            return;
+        }
+
+        var cookieName = picker.getAttribute('data-lang-cookie') ||
+            (window.rmaCeviri && window.rmaCeviri.cookie) || 'rma_lang';
+        var btn = picker.querySelector('.splash-lang-picker-btn');
+        var panel = picker.querySelector('.splash-lang-picker-panel');
+        var flagEl = picker.querySelector('.splash-lang-picker-flag');
+        var opts = picker.querySelectorAll('.splash-lang-picker-opt');
+        var panelOpen = false;
+
+        splashAppendLang = appendLangToUrl;
+
+        function validLang(code) {
+            var i;
+            for (i = 0; i < opts.length; i++) {
+                if (opts[i].getAttribute('data-lang') === code) return true;
+            }
+            return false;
+        }
+
+        function readUrlLang() {
+            var m = location.search.match(/[?&]lang=([^&]+)/);
+            return m ? decodeURIComponent(m[1]) : '';
+        }
+
+        function readCeviriCookie() {
+            var re = new RegExp('(?:^|;\\s*)' + cookieName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '=([^;]*)');
+            var m = document.cookie.match(re);
+            return m ? decodeURIComponent(m[1]) : '';
+        }
+
+        function closePanel() {
+            panelOpen = false;
+            if (panel) panel.hidden = true;
+            if (btn) btn.setAttribute('aria-expanded', 'false');
+        }
+
+        function openPanel() {
+            panelOpen = true;
+            if (panel) panel.hidden = false;
+            if (btn) btn.setAttribute('aria-expanded', 'true');
+        }
+
+        function applyPickerUi(lang) {
+            var i, opt, flag;
+            selectedCeviriLang = lang;
+
+            for (i = 0; i < opts.length; i++) {
+                opt = opts[i];
+                var on = opt.getAttribute('data-lang') === lang;
+                opt.setAttribute('aria-selected', on ? 'true' : 'false');
+                if (on) {
+                    flag = opt.querySelector('.splash-lang-picker-opt-flag');
+                    if (flag && flagEl) flagEl.textContent = flag.textContent;
+                }
+            }
+        }
+
+        function persistCeviriLang(lang) {
+            try {
+                document.cookie = cookieName + '=' + encodeURIComponent(lang) +
+                    ';path=/;max-age=31536000;samesite=lax';
+            } catch (e) {}
+
+            window.rmaCeviriDil = lang;
+            try {
+                sessionStorage.setItem('rma_dil', lang);
+            } catch (e) {}
+        }
+
+        function setCeviriLang(lang, persist) {
+            if (!validLang(lang)) lang = 'tr';
+            applyPickerUi(lang);
+            if (persist && !isPreview) persistCeviriLang(lang);
+        }
+
+        if (btn) {
+            btn.addEventListener('click', function (event) {
+                event.preventDefault();
+                event.stopPropagation();
+                if (panelOpen) closePanel();
+                else openPanel();
+            });
+        }
+
+        picker.addEventListener('click', function (event) {
+            var opt = event.target.closest('.splash-lang-picker-opt');
+            if (!opt) return;
+
+            event.preventDefault();
+            event.stopPropagation();
+            setCeviriLang(opt.getAttribute('data-lang') || 'tr', true);
+            closePanel();
+        });
+
+        document.addEventListener('click', function (event) {
+            if (!panelOpen || picker.contains(event.target)) return;
+            closePanel();
+        });
+
+        var stored = isPreview ? '' : (readUrlLang() || readCeviriCookie() ||
+            (window.rmaCeviriDil || '') || (function () {
+                try { return sessionStorage.getItem('rma_dil') || ''; } catch (e) { return ''; }
+            })());
+
+        if (stored && validLang(stored)) {
+            setCeviriLang(stored, !isPreview);
+        } else {
+            setCeviriLang('tr', false);
+        }
+    }
+
     function initSplash() {
         var overlay = getOverlay();
 
@@ -123,6 +290,7 @@
             // Dil düğmesi önizlemede de çalışır (çerezsiz): yönetici
             // İngilizce hâli nasıl görünüyor diye bakabilmeli.
             initLang(overlay, true);
+            initLangSelector(overlay, true);
             return;
         }
 
@@ -173,6 +341,17 @@
             listenersAttached = false;
         }
 
+        function syncPageLangUrl() {
+            if (!splashAppendLang || selectedCeviriLang === 'tr') return;
+
+            try {
+                var next = splashAppendLang(location.href, selectedCeviriLang);
+                if (next !== location.href) {
+                    history.replaceState(null, '', next);
+                }
+            } catch (e) {}
+        }
+
         function dismissSplash() {
             var expires = '';
             if (dismissMinutes > 0) {
@@ -181,6 +360,8 @@
                 expires = '; expires=' + date.toUTCString();
             }
             document.cookie = 'splash_dismissed=1' + expires + '; path=/; SameSite=Lax';
+
+            syncPageLangUrl();
 
             clearTimeout(idleTimer);
             clearHeadFailsafe();
@@ -218,7 +399,9 @@
             var targetPath = redirectUrl.split('#')[0].replace(/\/$/, '');
 
             if (targetPath && targetPath !== currentPath) {
-                window.location.href = redirectUrl;
+                window.location.href = splashAppendLang
+                    ? splashAppendLang(redirectUrl, selectedCeviriLang)
+                    : redirectUrl;
             } else {
                 dismissSplash();
             }
@@ -257,7 +440,12 @@
         // Menü/İletişim/Rezervasyon/Yorum: tıklayınca splash kapanır (navigasyon devam eder).
         // Sosyal medya rozetleri yeni sekmede açıldığı için dismiss etmez.
         overlay.querySelectorAll('[data-splash-dismiss]').forEach(function (el) {
-            el.addEventListener('click', dismissSplash);
+            el.addEventListener('click', function () {
+                if (splashAppendLang && el.href) {
+                    el.href = splashAppendLang(el.href, selectedCeviriLang);
+                }
+                dismissSplash();
+            });
         });
 
         // Wifi: SADECE modal açar, splash'ı kapatmaz.
@@ -287,6 +475,7 @@
         });
 
         initLang(overlay, false);
+        initLangSelector(overlay, false);
 
         attachListeners();
         resetIdle();
