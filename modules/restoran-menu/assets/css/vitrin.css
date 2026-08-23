@@ -81,6 +81,24 @@
     width: 100vw;
 }
 
+/* Elementor/Gutenberg içinde 100vw/-50vw full-bleed hack'i KULLANILMAZ
+   (bkz. rma-frontend.css'teki aynı gerekçe): dikey scrollbar genişliği ve
+   en yakın konumlanmış ebeveynin genişliği hesaplamayı kaydırıp kartların
+   ortalanmamış görünmesine (sağda boşluk) yol açıyordu. Widget zaten
+   kullanıcının 100% genişlik verdiği kapsayıcının içinde olduğundan, o
+   kapsayıcıyı doldurmak yeterlidir. */
+.elementor-widget-container .qrms-vitrin.qrms-vitrin-fullwidth,
+.elementor-column .qrms-vitrin.qrms-vitrin-fullwidth,
+.e-con .qrms-vitrin.qrms-vitrin-fullwidth,
+.wp-block-group .qrms-vitrin.qrms-vitrin-fullwidth {
+    width: 100%;
+    max-width: 100%;
+    left: auto;
+    right: auto;
+    margin-left: 0;
+    margin-right: 0;
+}
+
 .qrms-vitrin *,
 .qrms-vitrin *::before,
 .qrms-vitrin *::after {
