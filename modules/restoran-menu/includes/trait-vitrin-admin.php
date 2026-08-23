@@ -211,15 +211,36 @@ trait RMA_Vitrin_Admin_Trait {
             <?php /* Sürükle-bırak sırası bu alana yazılır (admin-ui.js). */ ?>
             <input type="hidden" name="urun_sirasi" id="rma-vitrin-order" value="<?php echo esc_attr( implode( ',', $secili_idler ) ); ?>">
 
+            <?php
+            $rma_vitrin_adimlar = array(
+                1 => array( 'Ad', 'Vitrin Adı' ),
+                2 => array( 'Ürünler', 'Ürünleri Seç' ),
+                3 => array( 'Düzen', 'Düzen' ),
+                4 => array( 'Boyut', 'Kart Boyutu' ),
+                5 => array( 'Kayma', 'Kayma Davranışı' ),
+            );
+            ?>
+            <div class="rma-vitrin-steps" id="rma-vitrin-steps" role="tablist" aria-label="Vitrin ayarları adımları">
+                <?php foreach ( $rma_vitrin_adimlar as $adim_no => $adim ) : ?>
+                    <button type="button" class="rma-vitrin-step-btn<?php echo 1 === $adim_no ? ' is-active' : ''; ?>"
+                            data-step-target="<?php echo (int) $adim_no; ?>"
+                            role="tab" aria-selected="<?php echo 1 === $adim_no ? 'true' : 'false'; ?>">
+                        <span class="rma-vitrin-step-num"><?php echo (int) $adim_no; ?></span>
+                        <span class="rma-vitrin-step-label"><?php echo esc_html( $adim[0] ); ?></span>
+                    </button>
+                <?php endforeach; ?>
+            </div>
+            <p class="rma-vitrin-step-compact" id="rma-vitrin-step-compact">Adım 1/5: Vitrin Adı</p>
+
             <div class="rma-vitrin-layout-wrap">
                 <div class="rma-vitrin-layout-fields">
-            <div class="rma-card">
+            <div class="rma-card rma-vitrin-step" data-step="1" data-step-title="Vitrin Adı">
                 <h2 class="rma-card-title">1. Vitrin Adı</h2>
                 <p class="rma-card-desc">Yalnızca yönetim panelinde görünür; vitrinleri birbirinden ayırmanız için.</p>
                 <input type="text" name="title" class="regular-text" value="<?php echo esc_attr( $deger['title'] ); ?>" placeholder="Örn. Şefin Önerileri">
             </div>
 
-            <div class="rma-card">
+            <div class="rma-card rma-vitrin-step" data-step="2" data-step-title="Ürünleri Seç">
                 <h2 class="rma-card-title">2. Ürünleri Seç</h2>
                 <p class="rma-card-desc">Vitrinde gösterilecek ürünleri işaretleyin. Seçtikleriniz "Vitrindeki Sıra" listesine eklenir.</p>
 
@@ -292,7 +313,7 @@ trait RMA_Vitrin_Admin_Trait {
                 <?php endif; ?>
             </div>
 
-                    <div class="rma-card">
+                    <div class="rma-card rma-vitrin-step" data-step="3" data-step-title="Düzen">
                         <h2 class="rma-card-title">3. Düzen</h2>
                         <p class="rma-card-desc">Bir sayfada kaç ürün görünsün? Dar ekranlarda sütun sayısı otomatik azalır, vitrin yatay kaydırılır.</p>
 
@@ -353,7 +374,7 @@ trait RMA_Vitrin_Admin_Trait {
                         </table>
                     </div>
 
-                    <div class="rma-card">
+                    <div class="rma-card rma-vitrin-step" data-step="4" data-step-title="Kart Boyutu">
                         <h2 class="rma-card-title">4. Kart Boyutu</h2>
                         <p class="rma-card-desc">Sütun/satır sayısı grid yapısını belirler; buradaki ayarlar kartın kendisini — genişliğini, boşluğunu ve görselinin oranını — tamamlar. Masaüstü ve mobil için ayrı ayarlanır.</p>
 
@@ -452,7 +473,7 @@ trait RMA_Vitrin_Admin_Trait {
                         </table>
                     </div>
 
-                    <div class="rma-card">
+                    <div class="rma-card rma-vitrin-step" data-step="5" data-step-title="Kayma Davranışı">
                         <h2 class="rma-card-title">5. Kayma Davranışı</h2>
                         <p class="rma-card-desc">Vitrin kendiliğinden mi kaysın, yoksa ziyaretçi mi kaydırsın?</p>
 
@@ -495,10 +516,12 @@ trait RMA_Vitrin_Admin_Trait {
                         </table>
                     </div>
 
-                    <p class="submit">
-                        <button type="submit" class="button button-primary">Vitrini Kaydet</button>
-                        <a class="button" href="<?php echo esc_url( $this->vitrin_url() ); ?>">Vazgeç</a>
-                    </p>
+                    <div class="rma-vitrin-step-nav" id="rma-vitrin-step-nav">
+                        <button type="button" class="button rma-vitrin-step-prev" disabled>&larr; Geri Dön</button>
+                        <button type="button" class="button button-primary rma-vitrin-step-next">Devam Et &rarr;</button>
+                        <button type="submit" class="button button-primary rma-vitrin-step-submit" style="display:none;">Vitrini Kaydet</button>
+                        <a class="button rma-vitrin-step-cancel" href="<?php echo esc_url( $this->vitrin_url() ); ?>">Vazgeç</a>
+                    </div>
                 </div>
 
                 <div class="rma-vitrin-layout-preview">

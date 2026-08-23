@@ -10,6 +10,18 @@
    hiçbir alana kural yazılmaz.
 ===================================================================== */
 
+/* WP çekirdeği zaten box-sizing:border-box uygular, ama bu kural ona
+   bağımlı kalmadan burada da tekrarlanır: aksi hâlde width:100% + padding
+   içeren herhangi bir öğe (bkz. .rma-vitrin-preview-card) konteynerini
+   padding kadar taşırabilir — vitrin canlı önizlemesindeki taşma
+   hatasının kök nedenlerinden biri buydu. */
+.rma-admin,
+.rma-admin *,
+.rma-admin *::before,
+.rma-admin *::after {
+    box-sizing: border-box;
+}
+
 .rma-admin {
     --rma-a-accent:      #c9a84c;
     --rma-a-accent-soft: rgba(201, 168, 76, .14);
@@ -1472,15 +1484,22 @@
     overflow: visible;
 }
 
+/* display:flex + flex-basis YERİNE bilerek CSS Grid: flex öğesi
+   position:sticky olunca bazı motorlarda (WebKit/Blink, özellikle içinde
+   yüzde tabanlı genişlik hesaplayan bir grid/clamp() barındığında)
+   genişliğini flex-basis'ten değil içeriğin shrink-to-fit boyutundan
+   alıp sütunu taşırıyordu — önizleme sağdan taşan asıl sebep buydu.
+   Grid track genişliği kendi konteynerine göre kesin (definite) hesaplanır
+   ve grid öğesi varsayılan olarak o genişliğe stretch edilir; sticky
+   olduğunda da bu genişlik korunur. */
 .rma-vitrin-layout-wrap {
     align-items: flex-start;
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
     gap: 24px;
+    grid-template-columns: minmax(0, 1fr);
 }
 
 .rma-vitrin-layout-fields {
-    flex: 1 1 480px;
     min-width: 0;
 }
 
@@ -1495,9 +1514,8 @@
 
 .rma-vitrin-layout-preview {
     align-self: flex-start;
-    flex: 1 1 340px;
     max-height: calc(100vh - var(--rma-vitrin-sticky-top) - 16px);
-    min-width: 300px;
+    min-width: 0;
     /* WP admin bar (99999) / menü (9990) altında; form içeriğinin üstünde. */
     z-index: 4;
 }
@@ -1562,7 +1580,9 @@
 
 @media screen and (min-width: 1024px) {
     .rma-vitrin-layout-wrap {
-        flex-wrap: nowrap;
+        /* Sağ sütun (önizleme) 300-420px arasında kesin bir track
+           genişliğine sahip olur; sticky olduğunda taşamaz. */
+        grid-template-columns: minmax(0, 1fr) minmax(300px, 420px);
     }
 
     .rma-vitrin-layout-preview {
@@ -1585,15 +1605,10 @@
 }
 
 @media screen and (max-width: 1023px) {
-    /* Yapışkan konum yalnızca masaüstünde; dar ekranda sütunlar alt alta. */
-    .rma-vitrin-layout-wrap {
-        flex-direction: column;
-        flex-wrap: nowrap;
-    }
-
+    /* Yapışkan konum yalnızca masaüstünde; dar ekranda sütunlar alt alta
+       (grid-template-columns tanımsız haldeki tek sütuna geri döner). */
     .rma-vitrin-layout-fields,
     .rma-vitrin-layout-preview {
-        flex: 1 1 auto;
         max-height: none;
         min-width: 0;
         width: 100%;
@@ -1606,6 +1621,132 @@
 
     .rma-vitrin-preview-stage {
         overflow: visible;
+    }
+}
+
+/* ---------------------------------------------------------------------
+   VİTRİN FORMU — ADIM ADIM (STEPPER)
+
+   Beş .rma-card bölümü (Vitrin Adı / Ürünleri Seç / Düzen / Kart Boyutu /
+   Kayma Davranışı) tek uzun sayfa yerine tek seferde bir tanesi görünür
+   şekilde gösterilir. Bölme SAF görsel/UX: gizli adımların form alanları
+   DOM'dan kaldırılmaz, yalnızca display:none olur — bu yüzden submit
+   TÜM adımların verisini gönderir (bkz. admin-ui.js initVitrinStepper).
+   JS çalışmazsa .rma-vitrin-step'lerin hiçbirine display:none eklenmez
+   ve hepsi normal akışta alt alta görünür kalır — sayfa yine kullanılabilir,
+   sadece adımlara bölünmemiş olur.
+--------------------------------------------------------------------- */
+.rma-vitrin-steps {
+    display: flex;
+    gap: 4px;
+    margin: 0 0 22px;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+}
+
+.rma-vitrin-step-btn {
+    align-items: center;
+    background: transparent;
+    border: 0;
+    border-bottom: 2px solid var(--rma-a-border);
+    color: var(--rma-a-muted);
+    cursor: pointer;
+    display: flex;
+    flex: 1 1 auto;
+    gap: 8px;
+    padding: 0 12px 10px;
+    transition: border-color .15s ease, color .15s ease;
+    white-space: nowrap;
+}
+
+.rma-vitrin-step-btn:hover {
+    color: var(--rma-a-text-soft);
+}
+
+.rma-vitrin-step-num {
+    align-items: center;
+    background: var(--rma-a-surface-2);
+    border: 1px solid var(--rma-a-border);
+    border-radius: 50%;
+    display: inline-flex;
+    flex: 0 0 auto;
+    font-size: 12px;
+    font-weight: 600;
+    height: 22px;
+    justify-content: center;
+    width: 22px;
+}
+
+.rma-vitrin-step-label {
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.rma-vitrin-step-btn.is-active {
+    border-bottom-color: var(--rma-a-accent);
+    color: var(--rma-a-text);
+}
+
+.rma-vitrin-step-btn.is-active .rma-vitrin-step-num {
+    background: var(--rma-a-accent);
+    border-color: var(--rma-a-accent);
+    color: #101010;
+}
+
+.rma-vitrin-step-btn.is-done .rma-vitrin-step-num {
+    background: var(--rma-a-accent-soft);
+    border-color: var(--rma-a-accent-dim);
+    color: var(--rma-a-accent-hi);
+}
+
+.rma-vitrin-step-btn.is-done .rma-vitrin-step-num::before {
+    content: '✓';
+}
+
+/* Dar admin ekranında adım şeridi yerine tek satır kompakt gösterim. */
+.rma-vitrin-step-compact {
+    color: var(--rma-a-muted);
+    display: none;
+    font-size: 13px;
+    font-weight: 600;
+    margin: 0 0 16px;
+}
+
+.rma-vitrin-step-nav {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 22px;
+}
+
+.rma-vitrin-step-cancel {
+    margin-left: auto;
+}
+
+@media screen and (max-width: 480px) {
+    .rma-vitrin-steps {
+        display: none;
+    }
+
+    .rma-vitrin-step-compact {
+        display: block;
+    }
+
+    .rma-vitrin-step-nav {
+        justify-content: stretch;
+    }
+
+    .rma-vitrin-step-nav .button {
+        flex: 1 1 auto;
+        text-align: center;
+    }
+
+    .rma-vitrin-step-cancel {
+        margin-left: 0;
+        order: 3;
     }
 }
 
