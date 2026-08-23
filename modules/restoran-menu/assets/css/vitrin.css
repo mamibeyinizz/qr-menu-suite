@@ -107,10 +107,16 @@
     scroll-snap-align: start;
     border: 1px solid var(--qrms-vitrin-border);
     border-radius: var(--qrms-vitrin-radius);
+    cursor: pointer;
     display: flex;
     flex-direction: column;
     overflow: hidden;
     transition: border-color .25s, transform .25s;
+}
+
+.qrms-vitrin-card:focus-visible {
+    outline: 2px solid var(--qrms-vitrin-accent);
+    outline-offset: 2px;
 }
 
 .qrms-vitrin-card:hover {

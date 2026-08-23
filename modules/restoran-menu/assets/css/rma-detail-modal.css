@@ -1,0 +1,287 @@
+/* =====================================================================
+   ÜRÜN DETAY MODALI — Vitrin ve Slider için paylaşılan hafif modal.
+
+   "Menü Görünümü" (rma-frontend.css) içindeki `#rma-modal` ile AYNI
+   AJAX uç noktasını (`rma_get_product_details`) ve aynı iç HTML
+   yapısını (`.rma-modal-img-wrap`, `.rma-modal-body`, …) kullanır,
+   ama Vitrin/Slider ana menüden bağımsız sayfalarda da görünebildiği
+   için menünün `--rma-*` tema değişkenlerine bağlı KALMAZ — kendi
+   sabit renk paletini taşır. İç içerik kuralları `.qrms-detail-inner`
+   altında tutulur ki aynı sayfada rma-frontend.css de yüklüyse (ör.
+   vitrin ana menü sayfasına gömülüyse) iki stil seti çakışmasın.
+===================================================================== */
+
+.qrms-detail-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 100000;
+    background: rgba(8, 8, 10, .72);
+    align-items: flex-end;
+    justify-content: center;
+    padding: 0;
+}
+
+.qrms-detail-overlay.open {
+    display: flex;
+}
+
+@media (min-width: 640px) {
+    .qrms-detail-overlay {
+        align-items: center;
+        padding: 20px;
+    }
+}
+
+.qrms-detail-box {
+    position: relative;
+    width: 100%;
+    max-width: 560px;
+    max-height: 92vh;
+    overflow-y: auto;
+    background: #141417;
+    color: #f2f2f2;
+    border-radius: 20px 20px 0 0;
+    -webkit-overflow-scrolling: touch;
+}
+
+@media (min-width: 640px) {
+    .qrms-detail-box {
+        border-radius: 20px;
+        border: 1px solid #2a2a30;
+        max-height: 88vh;
+    }
+}
+
+.qrms-detail-close {
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, .08);
+    border: 1px solid #2a2a30;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ccc;
+    cursor: pointer;
+    z-index: 2;
+    font-size: 15px;
+    line-height: 1;
+    transition: background .2s, color .2s;
+}
+
+.qrms-detail-close:hover {
+    background: #c9a84c;
+    color: #0a0a0a;
+    border-color: #c9a84c;
+}
+
+.qrms-detail-loading {
+    min-height: 220px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.qrms-detail-loading::after {
+    content: '';
+    display: block;
+    width: 28px;
+    height: 28px;
+    border: 2px solid #2a2a30;
+    border-top-color: #c9a84c;
+    border-radius: 50%;
+    animation: qrmsDetailSpin .9s linear infinite;
+}
+
+@keyframes qrmsDetailSpin {
+    to { transform: rotate(360deg); }
+}
+
+.qrms-detail-error {
+    padding: 40px 24px;
+    text-align: center;
+    color: #a0a0a6;
+    font-size: .88rem;
+}
+
+/* ---------------------------------------------------------------------
+   AJAX'tan gelen sabit iç yapı — sınıf adları trait-ajax.php'deki
+   render_product_details() ile birebir eşleşir.
+--------------------------------------------------------------------- */
+.qrms-detail-inner .rma-modal-img-wrap {
+    position: relative;
+    overflow: hidden;
+    background: #141417;
+}
+
+.qrms-detail-inner .rma-modal-img {
+    width: 100%;
+    height: 230px;
+    object-fit: cover;
+    display: block;
+    border-radius: 20px 20px 0 0;
+}
+
+@media (min-width: 640px) {
+    .qrms-detail-inner .rma-modal-img { height: 260px; }
+}
+
+.qrms-detail-inner .rma-modal-img-wrap.is-tukendi .rma-modal-img {
+    filter: grayscale(.35);
+    opacity: .8;
+}
+
+.qrms-detail-inner .rma-modal-body {
+    padding: 18px 20px 26px;
+}
+
+.qrms-detail-inner .rma-modal-tukendi {
+    background: rgba(139, 30, 30, .18);
+    border: 1px solid rgba(192, 57, 43, .45);
+    border-radius: 8px;
+    color: #e74c3c;
+    font-size: .84rem;
+    font-weight: 700;
+    letter-spacing: .02em;
+    margin: 0 0 10px;
+    padding: 8px 12px;
+}
+
+.qrms-detail-inner .rma-modal-title {
+    font-size: 1.32rem;
+    font-weight: 700;
+    margin: 0 0 7px;
+    color: #f2f2f2;
+    letter-spacing: -.02em;
+    line-height: 1.2;
+}
+
+.qrms-detail-inner .rma-modal-price {
+    font-size: 1.28rem;
+    font-weight: 700;
+    color: #c9a84c;
+    margin: 0 0 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    letter-spacing: -.02em;
+}
+
+.qrms-detail-inner .rma-modal-price .rma-price-old,
+.qrms-detail-inner .rma-modal-price .qmo-kombin-old-price {
+    color: #a0a0a6;
+    font-size: .85em;
+    font-weight: 500;
+    text-decoration: line-through;
+    margin-right: 7px;
+}
+
+.qrms-detail-inner .rma-modal-desc {
+    font-size: .88rem;
+    font-weight: 400;
+    color: #b7b7bd;
+    line-height: 1.7;
+    margin-bottom: 18px;
+    border-bottom: 1px solid #2a2a30;
+    padding-bottom: 16px;
+}
+
+.qrms-detail-inner .rma-modal-desc p:first-child { margin-top: 0; }
+.qrms-detail-inner .rma-modal-desc p:last-child  { margin-bottom: 0; }
+
+.qrms-detail-inner .rma-attrs {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.qrms-detail-inner .rma-attr {
+    background: rgba(201, 168, 76, .07);
+    border: 1px solid rgba(201, 168, 76, .22);
+    padding: 5px 11px;
+    border-radius: 20px;
+    font-size: .76rem;
+    font-weight: 600;
+    color: #c9a84c;
+    letter-spacing: .01em;
+}
+
+.qrms-detail-inner .rma-attr-tukendi {
+    background: rgba(192, 57, 43, .14);
+    border-color: rgba(192, 57, 43, .4);
+    color: #e74c3c;
+}
+
+.qrms-detail-inner .rma-compliance-row {
+    margin-top: 8px;
+}
+
+.qrms-detail-inner .rma-compliance-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 5px 11px;
+    border-radius: 20px;
+    font-size: .76rem;
+    font-weight: 600;
+}
+
+.qrms-detail-inner .rma-compliance-tag.meat {
+    background: rgba(120, 120, 120, .09);
+    border: 1px solid rgba(120, 120, 120, .25);
+    color: #888;
+}
+
+.qrms-detail-inner .rma-compliance-tag.warn {
+    background: rgba(214, 69, 69, .08);
+    border: 1px solid rgba(214, 69, 69, .3);
+    color: #c94b4b;
+}
+
+.qrms-detail-inner .rma-modal-allergens {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed rgba(201, 168, 76, .25);
+    font-size: .78rem;
+}
+
+.qrms-detail-inner .rma-modal-allergens strong {
+    color: #c94b4b;
+    display: block;
+    margin-bottom: 6px;
+}
+
+.qrms-detail-inner .rma-allergen-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.qrms-detail-inner .rma-allergen-tag {
+    background: rgba(214, 69, 69, .07);
+    border: 1px solid rgba(214, 69, 69, .22);
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: .72rem;
+    font-weight: 600;
+    color: #c94b4b;
+}
+
+.qrms-detail-inner .rma-modal-img-wrap .rma-tukendi-rozet {
+    font-size: .82rem;
+    padding: 8px 10px;
+}
+
+/* Modal açıkken arka plan kaydırmasını engelle. */
+html.qrms-detail-lock,
+body.qrms-detail-lock {
+    overflow: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .qrms-detail-loading::after { animation: none; }
+}

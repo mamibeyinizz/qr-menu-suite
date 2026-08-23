@@ -16,6 +16,27 @@
 
     var prevBtn = root.querySelector('.qmo-slider-nav-prev');
     var nextBtn = root.querySelector('.qmo-slider-nav-next');
+
+    /* Ürün detayı: kart tıklanınca/Enter-Space ile paylaşımlı modal açılır
+       (bkz. rma-detail-modal.js, vitrin.js ile aynı desen). */
+    var products = root.querySelectorAll('.qmo-slider-product');
+    for (var p = 0; p < products.length; p++) {
+        (function (card) {
+            var id = card.getAttribute('data-id');
+            if (!id) return;
+
+            card.addEventListener('click', function () {
+                if (window.QRMSDetailModal) window.QRMSDetailModal.open(id);
+            });
+
+            card.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    if (window.QRMSDetailModal) window.QRMSDetailModal.open(id);
+                }
+            });
+        })(products[p]);
+    }
     var current = 0;
     var timer = null;
     var visible = false;

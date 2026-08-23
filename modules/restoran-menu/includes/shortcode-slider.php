@@ -38,6 +38,50 @@ class QMO_Shortcode_Slider {
             [ 'qmo-slider-fonts' ],
             file_exists( QMO_PLUGIN_DIR . 'includes/frontend-slider.css' ) ? filemtime( QMO_PLUGIN_DIR . 'includes/frontend-slider.css' ) : '1.0.0'
         );
+
+        self::enqueue_detail_modal();
+    }
+
+    /**
+     * Ürün detay modalını (Vitrin ile paylaşılan) kuyruğa alır.
+     *
+     * Slaytlardaki ürünler tıklanınca `rma-detail-modal.js` bu modalı
+     * açar ve ana menüyle AYNI uç noktayı (`rma_get_product_details`)
+     * çağırır — bkz. modules/restoran-menu/includes/trait-ajax.php ve
+     * shortcode-vitrin.php::enqueue_modal_config() (aynı desen).
+     *
+     * @return void
+     */
+    private static function enqueue_detail_modal() {
+        $css = QMO_PLUGIN_DIR . 'assets/css/rma-detail-modal.css';
+        $js  = QMO_PLUGIN_DIR . 'assets/js/rma-detail-modal.js';
+
+        wp_enqueue_style(
+            'rma-detail-modal',
+            QMO_PLUGIN_URL . 'assets/css/rma-detail-modal.css',
+            [],
+            file_exists( $css ) ? filemtime( $css ) : '1.0.0'
+        );
+
+        wp_enqueue_script(
+            'rma-detail-modal',
+            QMO_PLUGIN_URL . 'assets/js/rma-detail-modal.js',
+            [],
+            file_exists( $js ) ? filemtime( $js ) : '1.0.0',
+            true
+        );
+
+        $config = [
+            'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+            'nonce'   => wp_create_nonce( 'rma_ajax_nonce' ),
+            'lang'    => function_exists( 'rma_get_current_lang' ) ? rma_get_current_lang() : 'tr',
+        ];
+
+        wp_add_inline_script(
+            'rma-detail-modal',
+            'window.RMA_MODAL_CFG = ' . wp_json_encode( $config ) . ';',
+            'before'
+        );
     }
 
     private static function script_url() {
@@ -68,7 +112,10 @@ class QMO_Shortcode_Slider {
                     <?php endif; ?>
                     <div class="qmo-slider-grid">
                         <?php foreach ( $slide['products'] as $product ) : ?>
-                            <article class="qmo-slider-product<?php echo ! empty( $product['tukendi'] ) ? ' is-tukendi' : ''; ?>">
+                            <article class="qmo-slider-product<?php echo ! empty( $product['tukendi'] ) ? ' is-tukendi' : ''; ?>"
+                                     data-id="<?php echo (int) $product['id']; ?>"
+                                     tabindex="0" role="button"
+                                     aria-label="<?php echo esc_attr( $product['title'] ); ?>">
                                 <div class="qmo-slider-product-img-wrap">
                                     <img src="<?php echo esc_url( $product['img'] ); ?>" alt="<?php echo esc_attr( $product['title'] ); ?>" class="qmo-slider-product-img" loading="lazy" decoding="async" width="220" height="220">
                                     <?php if ( ! empty( $product['tukendi'] ) ) : ?>
@@ -123,7 +170,7 @@ class QMO_Shortcode_Slider {
     }
 
     /**
-     * @return array<int,array{title:string,desc:string,price_html:string,img:string,tukendi:bool,tukendi_etiket:string}>
+     * @return array<int,array{id:int,title:string,desc:string,price_html:string,img:string,tukendi:bool,tukendi_etiket:string}>
      */
     private static function get_slide_products( $slide_id ) {
         $items = [];
@@ -152,6 +199,7 @@ class QMO_Shortcode_Slider {
             $tukendi = class_exists( 'RMA_Tukendi' ) && RMA_Tukendi::urun_tukendi( $product_id );
 
             $items[] = [
+                'id'             => $product_id,
                 'title'          => $title,
                 'desc'           => $desc,
                 'price_html'     => $price_html,

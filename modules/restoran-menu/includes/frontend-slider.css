@@ -89,6 +89,7 @@
     background: var(--qmo-card);
     border: 1px solid var(--qmo-border);
     border-radius: 1cqi;
+    cursor: pointer;
     display: flex;
     flex-direction: column;
     min-width: 0;
@@ -99,6 +100,11 @@
 .qmo-slider-product:hover {
     border-color: color-mix(in srgb, var(--qmo-gold) 45%, var(--qmo-border));
     box-shadow: 0 0.8cqi 2cqi rgba(0, 0, 0, 0.35);
+}
+
+.qmo-slider-product:focus-visible {
+    outline: 2px solid var(--qmo-gold);
+    outline-offset: 2px;
 }
 
 .qmo-slider-product-img-wrap {
