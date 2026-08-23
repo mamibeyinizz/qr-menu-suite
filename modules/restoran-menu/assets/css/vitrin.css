@@ -38,9 +38,16 @@
     --qrms-vitrin-text: #f2f2f2;
     --qrms-vitrin-accent: #c9a84c;
     --qrms-vitrin-nav-bg: rgba(0, 0, 0, .55);
+    /* Kenar boşluğu: grid tam genişlikte kalır, içerik simetrik iç boşlukta
+       ortalanır; oklar bu boşlukta konumlanır (bkz. DENETİMLER). */
+    --qrms-vitrin-edge-padding: var(--qrms-vitrin-gap);
 
     background: var(--qrms-vitrin-bg);
     box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-inline: var(--qrms-vitrin-edge-padding);
     position: relative;
     width: 100%;
 }
@@ -94,7 +101,7 @@
    snap her zaman bir kart sınırına oturur.
 --------------------------------------------------------------------- */
 .qrms-vitrin-viewport {
-    display: grid;
+    display: inline-grid;
     gap: var(--qrms-vitrin-gap);
     /* clamp() bilerek grid'in minmax() sözdizimi YERİNE kullanılır — aynı
        gerekçeyle aşağıdaki DAR EKRAN bölümündeki gibi: minmax() taşan
@@ -111,6 +118,10 @@
     );
     grid-auto-flow: column;
     grid-template-rows: repeat(var(--qrms-vitrin-rows), auto);
+    /* İçerik dar olduğunda shrink-wrap; taşınca %100'e kadar genişleyip kayar. */
+    width: max-content;
+    max-width: 100%;
+    align-self: center;
     overflow-x: auto;
     overflow-y: hidden;
     scroll-behavior: smooth;
@@ -314,8 +325,9 @@
     opacity: .3;
 }
 
-.qrms-vitrin-prev { left: -8px; }
-.qrms-vitrin-next { right: -8px; }
+/* Kenar boşluğuyla simetrik; önceki -8px ofseti korunur. */
+.qrms-vitrin-prev { left: calc(var(--qrms-vitrin-edge-padding) - 8px); }
+.qrms-vitrin-next { right: calc(var(--qrms-vitrin-edge-padding) - 8px); }
 
 /* Tam genişlikte (bkz. .qrms-vitrin-fullwidth) kutu artık tarayıcı
    kenarına kadar uzandığı için -8px'lik taşma sayfa dışına çıkıp yatay
@@ -324,6 +336,7 @@
 .qrms-vitrin-fullwidth .qrms-vitrin-next { right: 4px; }
 
 .qrms-vitrin-dots {
+    align-self: stretch;
     display: flex;
     gap: 8px;
     justify-content: center;
