@@ -112,20 +112,25 @@ trait QRMS_AE_Helpers {
 
     /**
      * "14px 28px" biçimindeki option değerini iki sayısal alana ayırır.
-     * Option formatı DEĞİŞMEZ; bu sadece admin formunda göstermek içindir.
+     * Option formatı DEĞİŞMEZ. 0 geçerli bir iç boşluktur (eski sürüm 0'ı
+     * varsayılana çeviriyordu; ayar frontend'e basılınca bu görünmez kalırdı).
      *
      * @return array [dikey, yatay]
      */
     private function parse_padding($value) {
-        $parts = preg_split('/\s+/', trim((string) $value));
+        $raw = trim( (string) $value );
+        if ( '' === $raw ) {
+            return array( 14, 28 );
+        }
 
-        $vertical   = isset($parts[0]) ? absint(preg_replace('/[^0-9]/', '', $parts[0])) : 0;
-        $horizontal = isset($parts[1]) ? absint(preg_replace('/[^0-9]/', '', $parts[1])) : $vertical;
+        $parts = preg_split( '/\s+/', $raw );
 
-        if ($vertical <= 0)   $vertical   = 14;
-        if ($horizontal <= 0) $horizontal = 28;
+        $vertical   = absint( preg_replace( '/[^0-9]/', '', isset( $parts[0] ) ? $parts[0] : '' ) );
+        $horizontal = isset( $parts[1] )
+            ? absint( preg_replace( '/[^0-9]/', '', $parts[1] ) )
+            : $vertical;
 
-        return array(min($vertical, 60), min($horizontal, 90));
+        return array( min( $vertical, 60 ), min( $horizontal, 90 ) );
     }
 
     /**

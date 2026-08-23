@@ -334,9 +334,20 @@
             return;
         }
 
-        // İkinci kontrol: tam sayfa cache eski/bayat HTML servis ediyor olabilir.
-        // Cookie varsa hiçbir zamanlayıcı/dinleyici kurmadan temizleyip çık.
-        if (hasDismissCookie()) {
+        var redirectUrl = overlay.getAttribute('data-redirect-url') || '';
+        var redirectMs = parseInt(overlay.getAttribute('data-redirect-ms'), 10) || 0;
+        var dismissMinutes = parseInt(overlay.getAttribute('data-dismiss-minutes'), 10);
+        if (isNaN(dismissMinutes) || dismissMinutes < 0) {
+            dismissMinutes = 0;
+        }
+
+        // 0 = her ziyarette göster: çerez kontrolü yok. Eski oturum
+        // çerezi (önceki sürüm 0'da expires'siz yazıyordu) silinir.
+        if (dismissMinutes === 0) {
+            document.cookie = 'splash_dismissed=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; SameSite=Lax';
+        } else if (hasDismissCookie()) {
+            // Tam sayfa cache eski/bayat HTML servis ediyor olabilir.
+            // Cookie varsa hiçbir zamanlayıcı/dinleyici kurmadan temizleyip çık.
             clearHeadFailsafe();
             removeLoadingState();
             overlay.remove();
@@ -348,10 +359,6 @@
         // yapan CSS kuralı bu sınıfa bağlı. Sınıf sadece dismissSplash()'te kaldırılır.
         clearHeadFailsafe();
         document.body.style.overflow = 'hidden';
-
-        var redirectUrl = overlay.getAttribute('data-redirect-url') || '';
-        var redirectMs = parseInt(overlay.getAttribute('data-redirect-ms'), 10) || 0;
-        var dismissMinutes = parseInt(overlay.getAttribute('data-dismiss-minutes'), 10) || 0;
         var ceviri = noopCeviri();
 
         var idleTimer = null;
@@ -374,13 +381,12 @@
         }
 
         function dismissSplash(fromLink) {
-            var expires = '';
+            // 0 = süresiz gizleme yok; çerez yazılmaz ki yenilemede tekrar görünsün.
             if (dismissMinutes > 0) {
                 var date = new Date();
                 date.setTime(date.getTime() + (dismissMinutes * 60 * 1000));
-                expires = '; expires=' + date.toUTCString();
+                document.cookie = 'splash_dismissed=1; expires=' + date.toUTCString() + '; path=/; SameSite=Lax';
             }
-            document.cookie = 'splash_dismissed=1' + expires + '; path=/; SameSite=Lax';
 
             clearTimeout(idleTimer);
             clearHeadFailsafe();
@@ -388,8 +394,8 @@
             removeLoadingState();
 
             // Aynı sayfada kalınıyorsa menünün yeni dilde basılması için
-            // QR Çeviri'nin kendi yenilemesini çağır (çerez zaten yazıldı,
-            // splash_dismissed de yazıldı — splash tekrar görünmez).
+            // QR Çeviri'nin kendi yenilemesini çağır (dil çerezi yazıldı;
+            // dismiss_duration > 0 ise splash_dismissed de yazıldı).
             if (!fromLink && ceviri.shouldReload()) {
                 ceviri.navigate();
                 return;

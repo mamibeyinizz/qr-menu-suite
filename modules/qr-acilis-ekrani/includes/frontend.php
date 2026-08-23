@@ -80,6 +80,8 @@ trait QRMS_AE_Frontend {
         $loader_rgb  = $this->hex_to_rgb_triplet($this->opt_hex($opts, 'loader_color'), '255,255,255');
         $loader_size = $this->opt_int($opts, 'loader_size', 18, 44);
 
+        list( $pad_v, $pad_h ) = $this->parse_padding( isset( $opts['button_padding'] ) ? $opts['button_padding'] : '' );
+
         return array(
             '--sp-bg'              => $bg_color,
             '--sp-accent'          => $button_bg_color,
@@ -92,6 +94,8 @@ trait QRMS_AE_Frontend {
             '--splash-btn-bg'      => $surface_rgb,
             '--splash-btn-opacity' => (string) $surface_alpha,
             '--sp-cta-bg'          => $cta_bg,
+            // CTA iç boşluğu — admin "Buton İç Boşluğu" (dikey/yatay px).
+            '--sp-cta-pad'         => $pad_v . 'px ' . $pad_h . 'px',
             // Logo şeridi
             '--sp-logo-bar-h'      => $logo_bar_h . 'px',
             '--sp-logo-bar-rgb'    => $logo_bar_rgb,
@@ -117,8 +121,9 @@ trait QRMS_AE_Frontend {
     public function print_critical_head() {
         if (!$this->should_render()) return;
 
-        $opts  = $this->get_options();
-        $bg_id = absint($opts['bg_image']);
+        $opts             = $this->get_options();
+        $bg_id            = absint($opts['bg_image']);
+        $dismiss_minutes  = absint($opts['dismiss_duration']);
         ?>
         <style id="splash-critical-style">
             :root { <?php echo $this->css_vars_declarations($opts); ?> }
@@ -145,7 +150,14 @@ trait QRMS_AE_Frontend {
         <script id="splash-critical-script">
             (function () {
                 try {
-                    if (document.cookie.indexOf('splash_dismissed=1') === -1) {
+                    // 0 = her ziyarette göster: eski oturum çerezini sil ve
+                    // splash_dismissed kontrolünü atla. Değer siteden gelir,
+                    // ziyaretçi çerezinden değil (tam sayfa cache güvenli).
+                    var dismissMinutes = <?php echo (int) $dismiss_minutes; ?>;
+                    if (dismissMinutes === 0) {
+                        document.cookie = 'splash_dismissed=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; SameSite=Lax';
+                    }
+                    if (dismissMinutes === 0 || document.cookie.indexOf('splash_dismissed=1') === -1) {
                         document.documentElement.classList.add('splash-loading');
                         // Zaman aşımı sigortası: frontend.js hiç çalışmazsa (engellendi,
                         // optimizasyon eklentisi bozdu, overlay cache'te eksik kaldı vb.)

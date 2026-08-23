@@ -1,9 +1,9 @@
 <?php
 /**
- * Modülün yönetim ekranları: hub + dört ayar sayfası.
+ * Modülün yönetim ekranları: hub + ayar sayfaları.
  *
  * Bağımsız eklentide tek sayfa ve dört JS sekmesi vardı. Suite'te sol menü tek
- * seviyedir: "Açılış Ekranı" satırı hub'ı açar, dört ekran oradaki kartlardan
+ * seviyedir: "Açılış Ekranı" satırı hub'ı açar, ekranlar oradaki kartlardan
  * gidilen GERÇEK sayfalardır (bkz. QRMS_Admin::register_module_subpage ve
  * yorum-feedback/restoran-menu'deki aynı desen). Sekme kaybolmaz, adres kazanır:
  * her ekranın kendi adresi, kendi formu ve kendi kaydı vardır.
@@ -47,10 +47,17 @@ trait QRMS_AE_Admin {
 				'icon'   => 'dashicons-money-alt',
 			),
 			'qrms-ae-davranis' => array(
-				'title'  => __( 'Davranış & Sosyal', 'qrms' ),
+				'title'  => __( 'Ayarlar', 'qrms' ),
 				'group'  => 'davranis',
 				'render' => 'render_page_davranis',
-				'desc'   => __( 'Otomatik kapanma süresi, yönlendirme adresi, wifi şifresi ve sosyal hesaplar.', 'qrms' ),
+				'desc'   => __( 'Otomatik kapanma süresi, yönlendirme adresi, tekrar gösterme süresi ve wifi şifresi.', 'qrms' ),
+				'icon'   => 'dashicons-admin-generic',
+			),
+			'qrms-ae-sosyal'   => array(
+				'title'  => __( 'Sosyal Medya Bağlantısı', 'qrms' ),
+				'group'  => 'sosyal',
+				'render' => 'render_page_sosyal',
+				'desc'   => __( 'Instagram, Facebook, YouTube, X, WhatsApp ve diğer hesap bağlantıları.', 'qrms' ),
 				'icon'   => 'dashicons-share',
 			),
 		);
@@ -67,7 +74,7 @@ trait QRMS_AE_Admin {
 	}
 
 	/**
-	 * Modülün dört ekranını kaydeder — hepsi sol menüde gizlidir.
+	 * Modülün ayar ekranlarını kaydeder — hepsi sol menüde gizlidir.
 	 *
 	 * @return void
 	 */
@@ -99,7 +106,7 @@ trait QRMS_AE_Admin {
 	}
 
 	/**
-	 * Hub: dört ekranı kart olarak listeler.
+	 * Hub: ayar ekranlarını kart olarak listeler.
 	 *
 	 * @return void
 	 */
@@ -220,9 +227,14 @@ trait QRMS_AE_Admin {
 		$this->render_settings_shell( 'qrms-ae-odeme' );
 	}
 
-	/** Davranış sayfası. @return void */
+	/** Ayarlar sayfası. @return void */
 	public function render_qrms_ae_davranis() {
 		$this->render_settings_shell( 'qrms-ae-davranis' );
+	}
+
+	/** Sosyal medya bağlantıları sayfası. @return void */
+	public function render_qrms_ae_sosyal() {
+		$this->render_settings_shell( 'qrms-ae-sosyal' );
 	}
 
 	/**
@@ -538,7 +550,6 @@ trait QRMS_AE_Admin {
 	 * @return void
 	 */
 	private function render_page_butonlar( $options ) {
-		$texts_en    = isset( $options['texts_en'] ) && is_array( $options['texts_en'] ) ? $options['texts_en'] : array();
 		$lang_toggle = ! empty( $options['lang_toggle'] );
 		// btn6 (Sosyal Medya butonu) v3.2'de kaldırıldı: sosyal linkler artık
 		// doğrudan aksiyon rozeti satırına giriyor. Option anahtarı korunuyor.
@@ -557,10 +568,6 @@ trait QRMS_AE_Admin {
                             <td>
                                 <input type="text" name="divider_text" id="divider_text" value="<?php echo esc_attr($options['divider_text']); ?>" class="regular-text" placeholder="Bizi takip edin" />
                                 <p class="description">Sosyal medya rozetlerinin üstündeki ayracın etiketi; boşsa ayraç basılmaz.</p>
-                                <label class="qrms-ae-en-field">
-                                    <span>English</span>
-                                    <input type="text" name="text_en_divider" value="<?php echo esc_attr( isset( $texts_en['divider'] ) ? $texts_en['divider'] : '' ); ?>" class="regular-text" placeholder="Follow us" />
-                                </label>
                             </td>
                         </tr>
                         <tr>
@@ -572,8 +579,8 @@ trait QRMS_AE_Admin {
                                 </label>
                                 <p class="description">
                                     Sol üstte küçük bir TR|EN düğmesi çıkar; ziyaretçinin seçimi bir yıl
-                                    hatırlanır. Düğme yalnızca İngilizce alanlardan <strong>en az biri
-                                    doluysa</strong> basılır — boş çeviriyle düğme aynı metni iki kez gösterirdi.
+                                    hatırlanır. Düğme yalnızca kayıtlı İngilizce çevirilerden <strong>en az
+                                    biri doluysa</strong> basılır — boş çeviriyle düğme aynı metni iki kez gösterirdi.
                                 </p>
                                 <p class="description">
                                     Dil sunucuda değil tarayıcıda seçilir: sayfanın HTML'i her ziyaretçide
@@ -594,10 +601,6 @@ trait QRMS_AE_Admin {
                                 <label>
                                     <span>Buton yazısı</span>
                                     <input type="text" name="button_text_<?php echo (int) $i; ?>" value="<?php echo esc_attr($options['button_texts']['btn' . $i]); ?>" placeholder="<?php echo esc_attr($meta['label']); ?>" />
-                                </label>
-                                <label class="qrms-ae-en-field">
-                                    <span>Buton yazısı (English)</span>
-                                    <input type="text" name="text_en_btn<?php echo (int) $i; ?>" value="<?php echo esc_attr( isset( $texts_en[ 'btn' . $i ] ) ? $texts_en[ 'btn' . $i ] : '' ); ?>" placeholder="Boşsa Türkçesi gösterilir" />
                                 </label>
                                 <?php if ($meta['link']): ?>
                                     <label>
@@ -682,19 +685,14 @@ trait QRMS_AE_Admin {
 	}
 
 	/**
-	 * Davranış sayfasının gövdesi: süreler, yönlendirme, wifi ve sosyal hesaplar.
+	 * Ayarlar sayfasının gövdesi: süreler, yönlendirme ve wifi.
 	 *
-	 * Markup bağımsız eklentideki sekmeden birebir taşındı; yalnızca sekme
-	 * kabuğu (section sarmalayıcısı ve giriş paragrafı) sayfa kabuğuna devredildi.
+	 * Sosyal hesaplar ayrı "Sosyal Medya Bağlantısı" sayfasındadır.
 	 *
 	 * @param array $options Mevcut ayarlar.
 	 * @return void
 	 */
 	private function render_page_davranis( $options ) {
-		$social_map    = $this->social_media_map();
-		$social_state  = $this->resolve_social_media_state( $options );
-		$social_active = $social_state['active'];
-		$social_urls   = $social_state['urls'];
 		?>
 
                     <table class="form-table">
@@ -727,6 +725,24 @@ trait QRMS_AE_Admin {
                             </td>
                         </tr>
                     </table>
+		<?php
+	}
+
+	/**
+	 * Sosyal medya bağlantıları: checkbox + URL, en fazla 6 aktif hesap.
+	 *
+	 * Option anahtarları (social_media, social_media_active) Ayarlar
+	 * sayfasından taşındı; kayıtlı değerler aynı yerde durur.
+	 *
+	 * @param array $options Mevcut ayarlar.
+	 * @return void
+	 */
+	private function render_page_sosyal( $options ) {
+		$social_map    = $this->social_media_map();
+		$social_state  = $this->resolve_social_media_state( $options );
+		$social_active = $social_state['active'];
+		$social_urls   = $social_state['urls'];
+		?>
 
                     <h3 style="margin-bottom:4px;">Sosyal Medya</h3>
                     <p class="description" style="font-weight:400;">Aktif ettiğiniz hesaplar rozet olarak görünür; en fazla 6 hesap seçebilirsiniz.</p>

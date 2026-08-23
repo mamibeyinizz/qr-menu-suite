@@ -1,7 +1,7 @@
 /* Açılış Ekranı - frontend statik stilleri.
    Site başına değişen değerler (--sp-bg, --sp-accent, --sp-accent-rgb,
    --sp-btn-alpha, --sp-overlay, --sp-seconds, --splash-btn-bg,
-   --splash-btn-opacity, --sp-cta-bg, --sp-logo-bar-*, --sp-loader-*)
+   --splash-btn-opacity, --sp-cta-bg, --sp-cta-pad, --sp-logo-bar-*, --sp-loader-*)
    wp_head'e ufak bir :root bloğu olarak basılır; buradaki tüm selector'lar
    statiktir ve cache'lenir.
 
@@ -126,19 +126,21 @@ html.splash-loading #custom-splash-overlay { display: block !important; visibili
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 44px;
-    height: 44px;
-    padding: 0;
+    width: auto;
+    height: auto;
+    padding: 3px;
     border: 1px solid var(--sp-glass-border);
-    border-radius: 12px;
+    border-radius: 8px;
     background: var(--sp-glass-bg);
     box-shadow: var(--sp-glass-shadow);
     color: var(--sp-text);
     cursor: pointer;
     font: inherit;
+    line-height: 1;
 }
 
 #custom-splash-overlay .splash-ceviri-flag {
+    display: block;
     font-size: 22px;
     line-height: 1;
 }
@@ -200,9 +202,10 @@ html.splash-loading #custom-splash-overlay { display: block !important; visibili
     text-shadow: none;
 }
 
-/* İki dil kontrolü birden açıksa TR/EN, bayrağın sağına kayar. */
+/* İki dil kontrolü birden açıksa TR/EN, bayrağın sağına kayar.
+   Bayrak kutusu içerik boyutunda (22px glif + 3px padding + 1px kenarlık). */
 #custom-splash-overlay:has(.splash-ceviri) .splash-lang {
-    left: calc(14px + 44px + 8px + env(safe-area-inset-left, 0px));
+    left: calc(14px + 32px + 8px + env(safe-area-inset-left, 0px));
 }
 
 /* ---------------- Arkaplan görseli katmanı ---------------- */
@@ -376,8 +379,9 @@ html.splash-loading #custom-splash-overlay { display: block !important; visibili
     align-items: center;
     justify-content: center;
     width: 100%;
-    height: 56px;
-    padding: 0 20px;
+    height: auto;
+    min-height: 44px;
+    padding: var(--sp-cta-pad, 14px 28px);
     border-radius: 28px;
     /* CTA'yı ayıran şey dolgu koyuluğu değil, tam opak kenarlıktır.
        --sp-cta-bg admin'den gelir: varsayılan olarak vurgu rengi + buton

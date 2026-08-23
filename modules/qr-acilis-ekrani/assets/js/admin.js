@@ -121,6 +121,20 @@
             $('[name="' + name + '"]').on('input change', function () { numberVars[name](this.value); });
         });
 
+        function clampInt(value, min, max, fallback) {
+            var n = parseInt(value, 10);
+            if (isNaN(n)) return fallback;
+            return Math.max(min, Math.min(max, n));
+        }
+
+        function syncCtaPad() {
+            var v = clampInt(val('button_padding_v'), 0, 60, 14);
+            var h = clampInt(val('button_padding_h'), 0, 90, 28);
+            setVar('--sp-cta-pad', v + 'px ' + h + 'px');
+        }
+
+        $('[name="button_padding_v"], [name="button_padding_h"]').on('input change', syncCtaPad);
+
         $('[name="btn_surface_apply_cta"]').on('change', syncCtaBg);
 
         /* Metin alanları. */
@@ -195,11 +209,9 @@
 
         [1, 2, 3, 4, 5].forEach(function (i) {
             bindLangText('button_text_' + i, 'btn' + i, 'tr', yedek[ 'btn' + i ]);
-            bindLangText('text_en_btn' + i, 'btn' + i, 'en');
         });
 
         bindLangText('divider_text', 'divider', 'tr', yedek.divider);
-        bindLangText('text_en_divider', 'divider', 'en');
 
         $('[name="wifi_password"]').on('input change', function () {
             var el = document.querySelector('#wifi-modal p');
@@ -224,7 +236,7 @@
             .on('change click', markStale);
 
         if (!overlay.querySelector('.splash-lang')) {
-            $('[name^="text_en_"]').on('input', markStale);
+            $('[name="lang_toggle"]').on('change', markStale);
         }
 
         // Sayfa açılışında animasyon bir kez oynasın.
