@@ -585,69 +585,6 @@
         $(window).on('resize', applyOffset);
     }
 
-    /* -----------------------------------------------------------------
-       ÜRÜN VİTRİNİ — ADIM ADIM (STEPPER)
-
-       Saf UI bölmesi: beş .rma-vitrin-step kartı DOM'da hep birlikte
-       kalır, yalnızca aktif olmayanlar gizlenir (display:none). Böylece
-       hiçbir form alanı submit'ten düşmez, hiçbir ayar adımlar arası
-       geçişte kaybolmaz — kaydetme her zaman TÜM adımların verisini
-       gönderir (bkz. trait-vitrin-admin.php handle_vitrin_save()).
-       Gerçek bir "wizard validation" yoktur: adımlar arasında serbestçe
-       ileri/geri/atlama yapılabilir, hiçbir alan zorunlu kılınmaz.
-    ----------------------------------------------------------------- */
-    function initVitrinStepper() {
-        var $form = $('#rma-vitrin-form');
-        var $steps = $('.rma-vitrin-step');
-
-        if (!$form.length || !$steps.length) return;
-
-        var toplam = $steps.length;
-        var mevcut = 1;
-
-        var $stepBtns = $('#rma-vitrin-steps .rma-vitrin-step-btn');
-        var $compact = $('#rma-vitrin-step-compact');
-        var $prev = $('.rma-vitrin-step-prev');
-        var $next = $('.rma-vitrin-step-next');
-        var $submit = $('.rma-vitrin-step-submit');
-
-        function baslik(adimNo) {
-            return $steps.filter('[data-step="' + adimNo + '"]').data('step-title') || '';
-        }
-
-        function goster(adimNo) {
-            mevcut = Math.min(Math.max(adimNo, 1), toplam);
-
-            $steps.each(function () {
-                var no = parseInt($(this).data('step'), 10);
-                $(this).toggle(no === mevcut);
-            });
-
-            $stepBtns.each(function () {
-                var no = parseInt($(this).data('step-target'), 10);
-                $(this)
-                    .toggleClass('is-active', no === mevcut)
-                    .toggleClass('is-done', no < mevcut)
-                    .attr('aria-selected', no === mevcut ? 'true' : 'false');
-            });
-
-            $compact.text('Adım ' + mevcut + '/' + toplam + ': ' + baslik(mevcut));
-
-            $prev.prop('disabled', mevcut === 1);
-            $next.toggle(mevcut < toplam);
-            $submit.toggle(mevcut === toplam);
-        }
-
-        $stepBtns.on('click', function () {
-            goster(parseInt($(this).data('step-target'), 10));
-        });
-
-        $prev.on('click', function () { goster(mevcut - 1); });
-        $next.on('click', function () { goster(mevcut + 1); });
-
-        goster(1);
-    }
-
     /**
      * Kısa kodu panoya kopyalar. Pano API'si yoksa (http:// üzerinde
      * çalışan siteler) metin seçili bırakılır — kullanıcı elle kopyalar.
@@ -852,7 +789,6 @@
         initCsvSample();
         initVitrinPicker();
         initVitrinPreview();
-        initVitrinStepper();
         initShortcodeCopy();
         initKampanya();
         openTargetDetails();
