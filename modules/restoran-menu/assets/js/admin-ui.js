@@ -555,6 +555,34 @@
         });
 
         applyPreview();
+        initVitrinPreviewSticky();
+    }
+
+    /**
+     * Canlı önizleme sütununun sticky `top` ofsetini WP admin bar
+     * yüksekliğine göre yazar. Sabit olmayan (mobilde kaydırılan) bar
+     * yok sayılır; dar ekranda sticky CSS zaten kapalıdır.
+     */
+    function initVitrinPreviewSticky() {
+        var root = document.querySelector('.rma-admin');
+        if (!root) return;
+
+        function applyOffset() {
+            var bar = document.getElementById('wpadminbar');
+            var top = 32;
+
+            if (bar) {
+                var pos = window.getComputedStyle(bar).position;
+                top = (pos === 'fixed' || pos === 'sticky') ? bar.offsetHeight : 0;
+            } else {
+                top = 0;
+            }
+
+            root.style.setProperty('--rma-vitrin-sticky-top', top + 'px');
+        }
+
+        applyOffset();
+        $(window).on('resize', applyOffset);
     }
 
     /**

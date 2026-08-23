@@ -882,6 +882,36 @@ qrms_test(
 );
 
 qrms_test(
+	'ürün vitrini canlı önizlemesi masaüstünde sticky, overflow ata kırmaz',
+	function () {
+		$css = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/css/admin-ui.css' );
+		$css = preg_replace( '#/\*.*?\*/#s', '', $css );
+
+		qrms_assert_true(
+			(bool) preg_match( '/\.rma-admin:has\(#rma-vitrin-form\)\s*\{[^}]*overflow:\s*visible/s', $css ),
+			'sticky ata overflow visible'
+		);
+		qrms_assert_contains( '@media screen and (min-width: 1024px)', $css, 'sticky masaüstü breakpoint' );
+		qrms_assert_contains( 'position: sticky', $css, 'önizleme sticky' );
+		qrms_assert_contains( 'max-height: calc(100vh - var(--rma-vitrin-sticky-top) - 16px)', $css, 'viewport yüksekliği' );
+
+		$php = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-vitrin-admin.php' );
+		qrms_assert_true(
+			strpos( $php, 'rma-vitrin-layout-wrap' ) < strpos( $php, '1. Vitrin Adı' ),
+			'önizleme sütunu tüm formu sarar'
+		);
+		qrms_assert_true(
+			strpos( $php, '5. Kayma Davranışı' ) < strpos( $php, 'rma-vitrin-layout-preview' ),
+			'kayma bölümü sol sütunda, önizlemeden önce'
+		);
+
+		$js = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/js/admin-ui.js' );
+		qrms_assert_contains( 'initVitrinPreviewSticky', $js, 'admin bar ofseti' );
+		qrms_assert_contains( '--rma-vitrin-sticky-top', $js, 'sticky CSS değişkeni' );
+	}
+);
+
+qrms_test(
 	'modül placeholder sayfası modül adını ve "yakında" metnini gösterir',
 	function () {
 		ob_start();
