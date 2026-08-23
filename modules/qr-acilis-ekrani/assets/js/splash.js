@@ -110,6 +110,144 @@
         }
     }
 
+    /* ---------------- QR Çeviri dil seçicisi ----------------
+
+       Markup yalnızca admin'den açıkken ve QR Çeviri yüklüyken basılır;
+       bu fonksiyon seçici DOM'da yoksa hemen döner — dinleyici kurulmaz.
+
+       Dil değişimi splash'ın kendi sözlüğüyle yapılmaz: QR Çeviri'nin
+       rma_lang çerezi + sessionStorage['rma_dil'] + ?lang= sözleşmesi
+       yazılır. Sayfa çevirisi splash kapandıktan sonraki yüklemede
+       sunucuda uygulanır. */
+
+    function updateLangQuery(url, lang) {
+        if (typeof window.rmaCeviriUpdateQueryParam === 'function') {
+            return window.rmaCeviriUpdateQueryParam(url, 'lang', lang);
+        }
+        try {
+            var u = new URL(url, window.location.href);
+            u.searchParams.set('lang', lang);
+            return u.toString();
+        } catch (e) {
+            return url;
+        }
+    }
+
+    function initLangPicker(overlay, isPreview) {
+        var picker = overlay.querySelector('.splash-i18n');
+        if (!picker) return null;
+
+        var btn = picker.querySelector('.splash-i18n-btn');
+        var flagEl = picker.querySelector('.splash-i18n-flag');
+        var cookieName = picker.getAttribute('data-cookie') || 'rma_lang';
+        var selected = picker.getAttribute('data-default') || 'tr';
+        var options = picker.querySelectorAll('.splash-i18n-opt');
+
+        function findOpt(code) {
+            var i;
+            for (i = 0; i < options.length; i++) {
+                if (options[i].getAttribute('data-lang') === code) {
+                    return options[i];
+                }
+            }
+            return null;
+        }
+
+        function allowed(code) {
+            return !!findOpt(code);
+        }
+
+        function readLang() {
+            try {
+                var params = window.location.search.match(/[?&]lang=([^&]+)/);
+                if (params) {
+                    var fromUrl = decodeURIComponent(params[1].replace(/\+/g, ' '));
+                    if (allowed(fromUrl)) return fromUrl;
+                }
+            } catch (e) {}
+
+            if (window.rmaCeviriDil && allowed(window.rmaCeviriDil)) {
+                return window.rmaCeviriDil;
+            }
+
+            try {
+                var escaped = cookieName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                var match = document.cookie.match(new RegExp('(?:^|;\\s*)' + escaped + '=([^;]*)'));
+                if (match) {
+                    var fromCookie = decodeURIComponent(match[1]);
+                    if (allowed(fromCookie)) return fromCookie;
+                }
+            } catch (e2) {}
+
+            return selected;
+        }
+
+        function persist(code) {
+            if (isPreview) return;
+            try {
+                document.cookie = cookieName + '=' + encodeURIComponent(code) +
+                    ';path=/;max-age=31536000;samesite=lax';
+            } catch (e) {}
+            window.rmaCeviriDil = code;
+            try {
+                sessionStorage.setItem('rma_dil', code);
+            } catch (e2) {}
+        }
+
+        function paint(code) {
+            var opt = findOpt(code);
+            selected = code;
+            if (opt && flagEl) {
+                flagEl.textContent = opt.getAttribute('data-flag') || '';
+            }
+            var i, on;
+            for (i = 0; i < options.length; i++) {
+                on = options[i].getAttribute('data-lang') === code;
+                options[i].classList.toggle('is-active', on);
+                options[i].setAttribute('aria-selected', on ? 'true' : 'false');
+            }
+            picker.setAttribute('data-lang', code);
+        }
+
+        function closePanel() {
+            picker.classList.remove('is-open');
+            if (btn) btn.setAttribute('aria-expanded', 'false');
+        }
+
+        function togglePanel() {
+            var open = picker.classList.toggle('is-open');
+            if (btn) btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        }
+
+        selected = readLang();
+        paint(selected);
+
+        picker.addEventListener('click', function (event) {
+            var opt = event.target.closest('.splash-i18n-opt');
+            if (opt) {
+                event.preventDefault();
+                var code = opt.getAttribute('data-lang');
+                if (!code) return;
+                paint(code);
+                persist(code);
+                closePanel();
+                return;
+            }
+            if (event.target.closest('.splash-i18n-btn')) {
+                event.preventDefault();
+                togglePanel();
+            }
+        });
+
+        overlay.addEventListener('click', function (event) {
+            if (!picker.contains(event.target)) closePanel();
+        });
+
+        return {
+            getLang: function () { return selected; }
+        };
+    }
+
     function initSplash() {
         var overlay = getOverlay();
 
@@ -123,6 +261,7 @@
             // Dil düğmesi önizlemede de çalışır (çerezsiz): yönetici
             // İngilizce hâli nasıl görünüyor diye bakabilmeli.
             initLang(overlay, true);
+            initLangPicker(overlay, true);
             return;
         }
 
@@ -153,9 +292,23 @@
         var redirectUrl = overlay.getAttribute('data-redirect-url') || '';
         var redirectMs = parseInt(overlay.getAttribute('data-redirect-ms'), 10) || 0;
         var dismissMinutes = parseInt(overlay.getAttribute('data-dismiss-minutes'), 10) || 0;
+        var pageLangAtLoad = window.rmaCeviriDil || 'tr';
+        var langPicker = initLangPicker(overlay, false);
 
         var idleTimer = null;
         var listenersAttached = false;
+
+        function langChanged() {
+            return !!(langPicker && langPicker.getLang() && langPicker.getLang() !== pageLangAtLoad);
+        }
+
+        function canCarryLang(url) {
+            var lower = String(url || '').toLowerCase();
+            return lower.indexOf('tel:') !== 0 &&
+                lower.indexOf('mailto:') !== 0 &&
+                lower.indexOf('sms:') !== 0 &&
+                lower.indexOf('whatsapp:') !== 0;
+        }
 
         function attachListeners() {
             if (listenersAttached) return;
@@ -173,7 +326,7 @@
             listenersAttached = false;
         }
 
-        function dismissSplash() {
+        function dismissSplash(navUrl) {
             var expires = '';
             if (dismissMinutes > 0) {
                 var date = new Date();
@@ -186,6 +339,12 @@
             clearHeadFailsafe();
             detachListeners();
             removeLoadingState();
+
+            if (langChanged()) {
+                var dest = navUrl || redirectUrl || window.location.href;
+                window.location.href = updateLangQuery(dest, langPicker.getLang());
+                return;
+            }
 
             var overlayDom = getOverlay();
             if (overlayDom) {
@@ -218,7 +377,9 @@
             var targetPath = redirectUrl.split('#')[0].replace(/\/$/, '');
 
             if (targetPath && targetPath !== currentPath) {
-                window.location.href = redirectUrl;
+                window.location.href = langChanged()
+                    ? updateLangQuery(redirectUrl, langPicker.getLang())
+                    : redirectUrl;
             } else {
                 dismissSplash();
             }
@@ -257,7 +418,15 @@
         // Menü/İletişim/Rezervasyon/Yorum: tıklayınca splash kapanır (navigasyon devam eder).
         // Sosyal medya rozetleri yeni sekmede açıldığı için dismiss etmez.
         overlay.querySelectorAll('[data-splash-dismiss]').forEach(function (el) {
-            el.addEventListener('click', dismissSplash);
+            el.addEventListener('click', function (event) {
+                var href = el.getAttribute('href') || '';
+                if (langChanged() && canCarryLang(href)) {
+                    event.preventDefault();
+                    dismissSplash(href || window.location.href);
+                    return;
+                }
+                dismissSplash();
+            });
         });
 
         // Wifi: SADECE modal açar, splash'ı kapatmaz.
@@ -284,6 +453,12 @@
             document.querySelectorAll('.splash-modal').forEach(function (modal) {
                 if (modal.style.display === 'flex') modal.style.display = 'none';
             });
+            var pickerOpen = overlay.querySelector('.splash-i18n.is-open');
+            if (pickerOpen) {
+                pickerOpen.classList.remove('is-open');
+                var pickerBtn = pickerOpen.querySelector('.splash-i18n-btn');
+                if (pickerBtn) pickerBtn.setAttribute('aria-expanded', 'false');
+            }
         });
 
         initLang(overlay, false);

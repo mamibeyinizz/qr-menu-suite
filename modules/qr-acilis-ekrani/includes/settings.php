@@ -116,6 +116,26 @@ trait QRMS_AE_Settings {
 		// Konum şimdilik tek seçenek; option ileriye dönük olarak yazılır.
 		$options['loader_position'] = 'top-right';
 
+		// Dil seçicisi bu sayfanın onay kutusudur: işaretsizlik ancak BU
+		// sayfa gönderildiğinde "kapalı" demektir (bkz. save_settings).
+		$options['lang_picker'] = isset( $_POST['lang_picker'] ) ? 1 : 0;
+
+		// Dil listesi yalnızca QR Çeviri yüklüyken formda basılır; aksi halde
+		// Görünüm'ü kaydetmek seçilmiş dilleri silmesin.
+		if ( function_exists( 'qrmenu_get_langs' ) ) {
+			$valid    = array_keys( qrmenu_get_langs() );
+			$selected = array();
+			if ( isset( $_POST['lang_picker_langs'] ) && is_array( $_POST['lang_picker_langs'] ) ) {
+				foreach ( wp_unslash( $_POST['lang_picker_langs'] ) as $raw ) {
+					$kod = sanitize_text_field( $raw );
+					if ( in_array( $kod, $valid, true ) && ! in_array( $kod, $selected, true ) ) {
+						$selected[] = $kod;
+					}
+				}
+			}
+			$options['lang_picker_langs'] = $selected;
+		}
+
 		return $options;
 	}
 

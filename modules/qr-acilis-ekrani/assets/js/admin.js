@@ -220,7 +220,7 @@
         // Dil düğmesinin açılması/kapanması markup'ı değiştirir (düğme ve
         // data nitelikleri), ayrıca ilk İngilizce metin girildiğinde düğme
         // görünür hâle gelir — ikisi de kaydetmeyi gerektirir.
-        $('[name="loader_type"], [name="bg_scheme"], [name="payment_display_mode"], [name="payment_methods[]"], [name="social_media_active[]"], [name="lang_toggle"], .upload-image-btn, .splash-remove-image')
+        $('[name="loader_type"], [name="bg_scheme"], [name="payment_display_mode"], [name="payment_methods[]"], [name="social_media_active[]"], [name="lang_toggle"], [name="lang_picker"], [name="lang_picker_langs[]"], .upload-image-btn, .splash-remove-image')
             .on('change click', markStale);
 
         if (!overlay.querySelector('.splash-lang')) {
@@ -400,11 +400,26 @@
         updateLimitState();
     }
 
+    /* Dil seçici: kapalıyken dil listesini gizle. Checkbox'lar disabled
+       edilmez; kaydetmek seçilmiş dilleri korur, yalnızca seçiciyi kapatır. */
+    function initLangPickerAdmin() {
+        var $toggle = $('#lang_picker');
+        if (!$toggle.length) return;
+
+        var $row = $('.qrms-ae-lang-picker-langs');
+        function sync() {
+            $row.css('display', $toggle.is(':checked') ? '' : 'none');
+        }
+        $toggle.on('change', sync);
+        sync();
+    }
+
     $(function () {
         initPreview();
         initColors();
         initRanges();
         initMedia();
         initSocialMedia();
+        initLangPickerAdmin();
     });
 })(jQuery);

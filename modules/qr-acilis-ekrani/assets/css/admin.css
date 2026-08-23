@@ -231,13 +231,42 @@
 }
 
 /* Dikkat çekmesi gereken açıklama satırı (ör. logo şeffaflık uyarısı) */
-.splash-settings-wrap .splash-warn {
+.splash-settings-wrap .splash-warn,
+.qrms-ae-wrap .splash-warn {
     max-width: 620px;
     margin-top: 8px;
     padding: 8px 12px;
     background: #fcf9e8;
     border-left: 4px solid #dba617;
     color: #3c434a;
+}
+
+/* Dil seçici — QR Çeviri dilleri */
+.qrms-ae-lang-picker-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 8px;
+    max-width: 620px;
+    margin: 4px 0 8px;
+}
+.qrms-ae-lang-picker-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #fff;
+    border: 1px solid #dcdcde;
+    border-radius: 6px;
+    padding: 8px 10px;
+    cursor: pointer;
+    font-size: 13px;
+}
+.qrms-ae-lang-picker-item:hover { border-color: #2271b1; }
+.qrms-ae-lang-picker-flag {
+    font-size: 18px;
+    line-height: 1;
+}
+.qrms-ae-form:not(:has(#lang_picker:checked)) .qrms-ae-lang-picker-langs {
+    display: none;
 }
 
 /* --- Sayfa düzeni: form + canlı önizleme --- */

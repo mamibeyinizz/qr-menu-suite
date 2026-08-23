@@ -458,6 +458,82 @@ trait QRMS_AE_Frontend {
     }
 
     /**
+     * QR Çeviri dil seçicisinde gösterilecek dil kodları.
+     *
+     * Kapalıysa, QR Çeviri yoksa veya geçerli dil kalmadıysa boş dizi —
+     * çağıran markup basmaz (DOM'a hiç girmez).
+     *
+     * @param array $opts Ayarlar.
+     * @return string[]
+     */
+    private function lang_picker_codes($opts) {
+        if (empty($opts['lang_picker'])) {
+            return array();
+        }
+        if (!function_exists('qrmenu_get_langs') || !function_exists('rma_ceviri_aktif_diller')) {
+            return array();
+        }
+
+        $tumu    = qrmenu_get_langs();
+        $aktif   = rma_ceviri_aktif_diller();
+        $secilen = isset($opts['lang_picker_langs']) && is_array($opts['lang_picker_langs'])
+            ? $opts['lang_picker_langs']
+            : array();
+
+        $kodlar = array();
+        foreach ($secilen as $kod) {
+            if (!is_string($kod) || !isset($tumu[$kod])) {
+                continue;
+            }
+            if (!in_array($kod, $aktif, true) || in_array($kod, $kodlar, true)) {
+                continue;
+            }
+            $kodlar[] = $kod;
+        }
+
+        return $kodlar;
+    }
+
+    /**
+     * Sol üst mini bayrak. QR Çeviri'nin qrmenuTranslate / ?lang= / rma_lang
+     * mekanizmasının ince UI katmanıdır; kendi sözlüğü yoktur.
+     *
+     * HTML çerezden bağımsızdır (tam sayfa cache): görünür bayrak her zaman
+     * listedeki ilk dildir, istemci URL/çerezden düzeltir.
+     *
+     * @param array $opts Ayarlar.
+     * @return void
+     */
+    private function render_lang_picker($opts) {
+        $kodlar = $this->lang_picker_codes($opts);
+        if (count($kodlar) < 2) {
+            return;
+        }
+
+        $tumu   = qrmenu_get_langs();
+        $cookie = defined('RMA_CEVIRI_COOKIE') ? RMA_CEVIRI_COOKIE : 'rma_lang';
+        $ilk    = in_array('tr', $kodlar, true) ? 'tr' : $kodlar[0];
+        ?>
+        <div class="splash-i18n" data-cookie="<?php echo esc_attr($cookie); ?>" data-default="<?php echo esc_attr($ilk); ?>">
+            <button type="button" class="splash-i18n-btn" aria-haspopup="listbox" aria-expanded="false" aria-label="Dil seç">
+                <span class="splash-i18n-flag" aria-hidden="true"><?php echo esc_html($tumu[$ilk]['flag']); ?></span>
+            </button>
+            <div class="splash-i18n-panel" role="listbox">
+                <?php foreach ($kodlar as $kod) : ?>
+                    <button type="button" class="splash-i18n-opt" role="option"
+                            data-lang="<?php echo esc_attr($kod); ?>"
+                            data-flag="<?php echo esc_attr($tumu[$kod]['flag']); ?>"
+                            data-name="<?php echo esc_attr($tumu[$kod]['name']); ?>">
+                        <span class="splash-i18n-opt-flag" aria-hidden="true"><?php echo esc_html($tumu[$kod]['flag']); ?></span>
+                        <span class="splash-i18n-opt-name"><?php echo esc_html($tumu[$kod]['name']); ?></span>
+                    </button>
+                <?php endforeach; ?>
+            </div>
+        </div>
+        <?php
+    }
+
+    /**
      * TR|EN düğmesi. Sol üstte, sağ üstteki yüklenme göstergesinin karşısında.
      *
      * @param array $opts Ayarlar.
@@ -504,6 +580,8 @@ trait QRMS_AE_Frontend {
             <?php $this->render_background_layer($opts); ?>
 
             <?php $this->render_loader($opts, $redirect_seconds); ?>
+
+            <?php $this->render_lang_picker($opts); ?>
 
             <?php $this->render_lang_toggle($opts); ?>
 

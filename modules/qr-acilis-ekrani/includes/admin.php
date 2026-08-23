@@ -29,7 +29,7 @@ trait QRMS_AE_Admin {
 				'title'  => __( 'Görünüm', 'qrms' ),
 				'group'  => 'gorunum',
 				'render' => 'render_page_gorunum',
-				'desc'   => __( 'Arkaplan görseli, renk paleti, logo şeridi, giriş animasyonu ve yüklenme göstergesi.', 'qrms' ),
+				'desc'   => __( 'Arkaplan görseli, renk paleti, logo şeridi, giriş animasyonu, yüklenme göstergesi ve dil seçici.', 'qrms' ),
 				'icon'   => 'dashicons-art',
 			),
 			'qrms-ae-butonlar' => array(
@@ -463,6 +463,13 @@ trait QRMS_AE_Admin {
                             </td>
                         </tr>
                         <tr>
+                            <th colspan="2">
+                                <h3 style="margin-bottom:4px;">Dil Seçici</h3>
+                                <p class="description" style="font-weight:400;">Sol üstte, sağ üstteki yüklenme göstergesinin karşısında mini bayrak. QR Çeviri modülünün dilini değiştirir; splash metinleri çevrilmez.</p>
+                            </th>
+                        </tr>
+                        <?php $this->render_lang_picker_admin( $options ); ?>
+                        <tr>
                             <th><label for="button_padding_v">Buton İç Boşluğu</label></th>
                             <td>
                                 <label class="splash-inline-field">
@@ -477,6 +484,73 @@ trait QRMS_AE_Admin {
                             </td>
                         </tr>
                     </table>
+		<?php
+	}
+
+	/**
+	 * Görünüm sayfasındaki "Dil Seçici" satırları.
+	 *
+	 * QR Çeviri yüklü değilse dil listesi basılmaz (kayıtta seçimler
+	 * korunur); anahtar yine de yazılır ki modül açılınca hazır olsun.
+	 *
+	 * @param array $options Mevcut ayarlar.
+	 * @return void
+	 */
+	private function render_lang_picker_admin( $options ) {
+		$enabled = ! empty( $options['lang_picker'] );
+		$saved   = isset( $options['lang_picker_langs'] ) && is_array( $options['lang_picker_langs'] )
+			? $options['lang_picker_langs']
+			: array();
+		$ceviri  = function_exists( 'qrmenu_get_langs' ) && function_exists( 'rma_ceviri_aktif_diller' );
+		?>
+                        <tr>
+                            <th><label for="lang_picker">Göster</label></th>
+                            <td>
+                                <label>
+                                    <input type="checkbox" name="lang_picker" id="lang_picker" value="1" <?php checked( $enabled ); ?> />
+                                    Sol üstte bayraklı dil seçici göster
+                                </label>
+                                <p class="description">
+                                    Ziyaretçi bir bayrağa dokununca QR Çeviri'nin dili değişir
+                                    (<code>rma_lang</code> çerezi ve <code>?lang=</code>). Açılış
+                                    ekranı kapandıktan sonra menü o dilde açılır.
+                                </p>
+                                <?php if ( ! $ceviri ) : ?>
+                                    <p class="description splash-warn">
+                                        <strong>QR Çeviri modülü kapalı.</strong> Seçici, o modül
+                                        açılana kadar ekranda görünmez.
+                                        <?php if ( class_exists( 'QRMS_Admin' ) ) : ?>
+                                            <a href="<?php echo esc_url( QRMS_Admin::get_module_page_url( 'qr-ceviri' ) ); ?>">QR Çeviri ayarları</a>
+                                        <?php endif; ?>
+                                    </p>
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                        <?php if ( $ceviri ) : ?>
+                        <tr class="qrms-ae-lang-picker-langs">
+                            <th><label>Gösterilecek Diller</label></th>
+                            <td>
+                                <div class="qrms-ae-lang-picker-grid">
+                                    <?php
+                                    $tumu  = qrmenu_get_langs();
+                                    $aktif = rma_ceviri_aktif_diller();
+                                    foreach ( $aktif as $kod ) {
+                                        if ( ! isset( $tumu[ $kod ] ) ) {
+                                            continue;
+                                        }
+                                        $id = 'lang_picker_lang_' . preg_replace( '/[^A-Za-z0-9_-]/', '', $kod );
+                                        echo '<label class="qrms-ae-lang-picker-item" for="' . esc_attr( $id ) . '">';
+                                        echo '<input type="checkbox" id="' . esc_attr( $id ) . '" name="lang_picker_langs[]" value="' . esc_attr( $kod ) . '" ' . checked( in_array( $kod, $saved, true ), true, false ) . ' />';
+                                        echo '<span class="qrms-ae-lang-picker-flag" aria-hidden="true">' . $tumu[ $kod ]['flag'] . '</span>';
+                                        echo '<span>' . esc_html( $tumu[ $kod ]['name'] ) . '</span>';
+                                        echo '</label>';
+                                    }
+                                    ?>
+                                </div>
+                                <p class="description">Liste, QR Çeviri'de açık olan dillerdir. Hiçbiri işaretlenmezse seçici basılmaz.</p>
+                            </td>
+                        </tr>
+                        <?php endif; ?>
 		<?php
 	}
 

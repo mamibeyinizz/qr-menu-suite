@@ -120,6 +120,13 @@ class QRMS_Acilis_Ekrani {
 				'btn5'    => '',
 				'divider' => '',
 			),
+			// QR Çeviri dil seçicisi (sol üst mini bayrak). Kapalıyken DOM'a
+			// hiç girmez. Açıkken QR Çeviri'nin rma_lang çerezi + ?lang=
+			// mekanizmasını tetikler; ayrı bir çeviri motoru yoktur.
+			// lang_picker_langs boş dizi olmalı: get_options() sayısal
+			// listeleri += ile tamamlar, dolu bir varsayılan seçimi şişirirdi.
+			'lang_picker'         => 0,
+			'lang_picker_langs'   => array(),
 			'animation_type'      => 'anim-blur-up',
 			'button_texts'        => array(
 				'btn1' => 'Menüye Git',
