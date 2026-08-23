@@ -18,16 +18,23 @@
     box-sizing: border-box;
     overflow-x: hidden;
 }
+/* Elementor/Gutenberg içinde full-bleed (100vw/-50vw) hack'i KULLANILMAZ:
+   bu hesap, dikey scrollbar genişliğine ve en yakın konumlanmış
+   ebeveynin (Elementor editör iframe'i dahil) genişliğine göre kaydığı
+   için "Container %100 genişlik" seçiliyken bile pembe seçim outline'ı
+   ile gerçek render birbirini tutmuyordu. Elementor/Gutenberg'de widget
+   zaten kendi (kullanıcının 100% genişlik verdiği) kapsayıcısının içinde
+   olduğundan, sadece o kapsayıcıyı doldurmak yeterli ve tutarlıdır. */
 .elementor-widget-container .rma-wrap,
 .elementor-column .rma-wrap,
 .e-con .rma-wrap,
 .wp-block-group .rma-wrap {
-    width: 100vw;
-    max-width: 100vw;
-    margin-left: -50vw;
-    margin-right: -50vw;
-    left: 50%;
-    position: relative;
+    width: 100%;
+    max-width: 100%;
+    left: auto;
+    right: auto;
+    margin-left: 0;
+    margin-right: 0;
 }
 /* Kumlama (noise) dokusu.
    PERF: SVG feTurbulence filtresi eskiden tüm viewport boyutuna
