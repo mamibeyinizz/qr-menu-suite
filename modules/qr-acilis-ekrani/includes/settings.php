@@ -116,6 +116,28 @@ trait QRMS_AE_Settings {
 		// Konum şimdilik tek seçenek; option ileriye dönük olarak yazılır.
 		$options['loader_position'] = 'top-right';
 
+		// --- Dil seçici (QR Çeviri bayrağı, sol üst) ---
+		// Bu sayfanın onay kutusu: işaretsizlik ancak GÖRÜNÜM gönderilince
+		// "kapalı" demektir (bkz. save_settings başlığı).
+		$options['ceviri_selector'] = isset( $_POST['ceviri_selector'] ) ? 1 : 0;
+
+		// Dil listesi QR Çeviri kapalıyken formda yoktur; o durumda kayıtlı
+		// seçimi silmeyiz. Açıkken işaretsizlik "hiçbiri" demektir.
+		if ( $this->ceviri_available() ) {
+			$valid    = rma_ceviri_aktif_diller();
+			$selected = array();
+			if ( isset( $_POST['ceviri_selector_langs'] ) && is_array( $_POST['ceviri_selector_langs'] ) ) {
+				foreach ( wp_unslash( $_POST['ceviri_selector_langs'] ) as $raw_kod ) {
+					// zh-CN gibi kodlar tire taşır; sanitize_key küçük harfe çevirir.
+					$kod = sanitize_text_field( $raw_kod );
+					if ( in_array( $kod, $valid, true ) && ! in_array( $kod, $selected, true ) ) {
+						$selected[] = $kod;
+					}
+				}
+			}
+			$options['ceviri_selector_langs'] = $selected;
+		}
+
 		return $options;
 	}
 

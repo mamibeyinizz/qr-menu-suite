@@ -220,7 +220,7 @@
         // Dil düğmesinin açılması/kapanması markup'ı değiştirir (düğme ve
         // data nitelikleri), ayrıca ilk İngilizce metin girildiğinde düğme
         // görünür hâle gelir — ikisi de kaydetmeyi gerektirir.
-        $('[name="loader_type"], [name="bg_scheme"], [name="payment_display_mode"], [name="payment_methods[]"], [name="social_media_active[]"], [name="lang_toggle"], .upload-image-btn, .splash-remove-image')
+        $('[name="loader_type"], [name="bg_scheme"], [name="payment_display_mode"], [name="payment_methods[]"], [name="social_media_active[]"], [name="lang_toggle"], [name="ceviri_selector"], [name="ceviri_selector_langs[]"], .upload-image-btn, .splash-remove-image')
             .on('change click', markStale);
 
         if (!overlay.querySelector('.splash-lang')) {
@@ -400,11 +400,29 @@
         updateLimitState();
     }
 
+    /* Dil seçici açık/kapalı — dil listesini görsel olarak soldurur.
+       Checkbox'lar disable EDİLMEZ: POST'tan düşerlerse kayıtlı seçim
+       silinirdi. */
+
+    function initCeviriSelector() {
+        var $toggle = $('[name="ceviri_selector"]');
+        var $list = $('.splash-ceviri-langs');
+        if (!$toggle.length || !$list.length) return;
+
+        function sync() {
+            $list.toggleClass('is-disabled', !$toggle.is(':checked'));
+        }
+
+        $toggle.on('change', sync);
+        sync();
+    }
+
     $(function () {
         initPreview();
         initColors();
         initRanges();
         initMedia();
         initSocialMedia();
+        initCeviriSelector();
     });
 })(jQuery);

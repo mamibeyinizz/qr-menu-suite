@@ -458,7 +458,61 @@ trait QRMS_AE_Frontend {
     }
 
     /**
+     * QR Çeviri bayrak seçici. Sol üstte, sağ üstteki yüklenme göstergesinin karşısında.
+     *
+     * Kendi çeviri motoru YOKTUR: dil listesi QR Çeviri'den gelir, tıklama
+     * rma_lang çerezine ve (splash kapandıktan sonra) ?lang= anahtarına
+     * yazılır. Splash metinleri QR Çeviri sözlüğünde olmadığı için Türkçe
+     * kalır — MVP olarak yalnızca menü diline yönlendirme yeterlidir.
+     *
+     * Dil SUNUCUDA SEÇİLMEZ. Aktif bayrak her ziyaretçide aynı varsayılanla
+     * basılır; hangisinin görüneceğine çerezi/URL'i okuyan istemci karar
+     * verir (tam sayfa cache güvenliği, lang_data() ile aynı desen).
+     *
+     * Kapalıyken ya da gösterilecek dil yokken DOM'a hiç girmez.
+     *
+     * @param array $opts Ayarlar.
+     * @return void
+     */
+    private function render_ceviri_selector($opts) {
+        if (!$this->ceviri_selector_active($opts)) return;
+
+        $tumu   = qrmenu_get_langs();
+        $diller = $this->ceviri_selector_langs($opts);
+        $cookie = defined('RMA_CEVIRI_COOKIE') ? RMA_CEVIRI_COOKIE : 'rma_lang';
+
+        // Cache-güvenli varsayılan: listede TR varsa o, yoksa ilk dil.
+        // Ziyaretçinin gerçek dili JS'te boyanır, sunucu çıktısı sabit kalır.
+        $varsayilan = in_array('tr', $diller, true) ? 'tr' : $diller[0];
+        $bayrak     = isset($tumu[$varsayilan]['flag']) ? $tumu[$varsayilan]['flag'] : '';
+        $ad         = isset($tumu[$varsayilan]['name']) ? $tumu[$varsayilan]['name'] : $varsayilan;
+        ?>
+        <div class="splash-ceviri" data-cookie="<?php echo esc_attr($cookie); ?>" data-default="<?php echo esc_attr($varsayilan); ?>">
+            <button type="button" class="splash-ceviri-btn" aria-haspopup="listbox" aria-expanded="false" aria-label="<?php echo esc_attr(sprintf('Dil seç (%s)', $ad)); ?>">
+                <span class="splash-ceviri-flag" aria-hidden="true"><?php echo esc_html($bayrak); ?></span>
+            </button>
+            <div class="splash-ceviri-panel" role="listbox">
+                <?php foreach ($diller as $kod) :
+                    if (!isset($tumu[$kod])) continue;
+                    $secili = ($kod === $varsayilan);
+                    ?>
+                    <button type="button" role="option" class="splash-ceviri-opt"
+                        data-lang="<?php echo esc_attr($kod); ?>"
+                        data-flag="<?php echo esc_attr($tumu[$kod]['flag']); ?>"
+                        data-name="<?php echo esc_attr($tumu[$kod]['name']); ?>"
+                        aria-selected="<?php echo $secili ? 'true' : 'false'; ?>">
+                        <span class="splash-ceviri-opt-flag" aria-hidden="true"><?php echo esc_html($tumu[$kod]['flag']); ?></span>
+                        <span class="splash-ceviri-opt-name"><?php echo esc_html($tumu[$kod]['name']); ?></span>
+                    </button>
+                <?php endforeach; ?>
+            </div>
+        </div>
+        <?php
+    }
+
+    /**
      * TR|EN düğmesi. Sol üstte, sağ üstteki yüklenme göstergesinin karşısında.
+     * QR Çeviri bayrağı da açıksa onun sağına kayar (CSS :has).
      *
      * @param array $opts Ayarlar.
      * @return void
@@ -504,6 +558,8 @@ trait QRMS_AE_Frontend {
             <?php $this->render_background_layer($opts); ?>
 
             <?php $this->render_loader($opts, $redirect_seconds); ?>
+
+            <?php $this->render_ceviri_selector($opts); ?>
 
             <?php $this->render_lang_toggle($opts); ?>
 

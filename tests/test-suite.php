@@ -4488,6 +4488,240 @@ qrms_test(
 
 
 /* ---------------------------------------------------------------------------
+ * 15b. Açılış Ekranı — QR Çeviri bayrak seçici
+ * ------------------------------------------------------------------------ */
+
+echo "\nAçılış Ekranı (QR Çeviri seçici)\n";
+
+/**
+ * Testlerde QR Çeviri fonksiyonlarının ince bir taklidi.
+ *
+ * ceviri.php yüklenmez (aktivasyon hook'u ve tablo katmanı stub'larda yok);
+ * splash yalnızca dil listesini ve aktif dil kodlarını sorduğu için bu yeter.
+ *
+ * @return void
+ */
+function qrms_ae_stub_ceviri() {
+	if ( ! function_exists( 'qrmenu_get_langs' ) ) {
+		/**
+		 * @return array<string,array{name:string,flag:string}>
+		 */
+		function qrmenu_get_langs() {
+			return array(
+				'tr' => array( 'name' => 'Türkçe', 'flag' => 'TR' ),
+				'en' => array( 'name' => 'English', 'flag' => 'EN' ),
+				'de' => array( 'name' => 'Deutsch', 'flag' => 'DE' ),
+			);
+		}
+	}
+	if ( ! function_exists( 'rma_ceviri_aktif_diller' ) ) {
+		/**
+		 * @return string[]
+		 */
+		function rma_ceviri_aktif_diller() {
+			$aktif = get_option( 'qrmenu_active_langs', array( 'tr', 'en', 'de' ) );
+			return is_array( $aktif ) ? $aktif : array( 'tr', 'en', 'de' );
+		}
+	}
+}
+
+qrms_test(
+	'seçici kapalıyken bayrak markup\'a hiç girmez',
+	function () {
+		$GLOBALS['qrms_test']['is_front_page'] = true;
+		update_option( 'qrms_active_modules', array( 'qr-acilis-ekrani', 'qr-ceviri' ) );
+		update_option(
+			'splash_screen_options',
+			array(
+				'ceviri_selector'       => 0,
+				'ceviri_selector_langs' => array( 'tr', 'en' ),
+			)
+		);
+
+		qrms_ae_stub_ceviri();
+
+		ob_start();
+		qrms_ae()->handle_frontend();
+		$html = ob_get_clean();
+
+		qrms_assert_false( strpos( $html, 'splash-ceviri' ), 'seçici yok' );
+	}
+);
+
+qrms_test(
+	'QR Çeviri kapalıyken seçici açık olsa da basılmaz',
+	function () {
+		$GLOBALS['qrms_test']['is_front_page'] = true;
+		update_option( 'qrms_active_modules', array( 'qr-acilis-ekrani' ) );
+		update_option(
+			'splash_screen_options',
+			array(
+				'ceviri_selector'       => 1,
+				'ceviri_selector_langs' => array( 'tr', 'en' ),
+			)
+		);
+
+		qrms_ae_stub_ceviri();
+
+		ob_start();
+		qrms_ae()->handle_frontend();
+
+		qrms_assert_false( strpos( ob_get_clean(), 'splash-ceviri' ), 'modül yokken basılmaz' );
+	}
+);
+
+qrms_test(
+	'açık ama hiç dil seçilmemişse yine basılmaz',
+	function () {
+		$GLOBALS['qrms_test']['is_front_page'] = true;
+		update_option( 'qrms_active_modules', array( 'qr-acilis-ekrani', 'qr-ceviri' ) );
+		update_option(
+			'splash_screen_options',
+			array(
+				'ceviri_selector'       => 1,
+				'ceviri_selector_langs' => array(),
+			)
+		);
+
+		qrms_ae_stub_ceviri();
+
+		ob_start();
+		qrms_ae()->handle_frontend();
+
+		qrms_assert_false( strpos( ob_get_clean(), 'splash-ceviri' ), 'dil yokken basılmaz' );
+	}
+);
+
+qrms_test(
+	'açıkken yalnızca işaretli diller basılır, çıktı çerezden bağımsızdır',
+	function () {
+		$GLOBALS['qrms_test']['is_front_page'] = true;
+		update_option( 'qrms_active_modules', array( 'qr-acilis-ekrani', 'qr-ceviri' ) );
+		update_option(
+			'splash_screen_options',
+			array(
+				'ceviri_selector'       => 1,
+				'ceviri_selector_langs' => array( 'tr', 'en', 'xx' ),
+			)
+		);
+
+		qrms_ae_stub_ceviri();
+
+		ob_start();
+		qrms_ae()->handle_frontend();
+		$cerezsiz = ob_get_clean();
+
+		$_COOKIE['rma_lang'] = 'en';
+		$_GET['lang']        = 'en';
+
+		ob_start();
+		qrms_ae()->handle_frontend();
+		$cerezli = ob_get_clean();
+
+		unset( $_COOKIE['rma_lang'], $_GET['lang'] );
+
+		qrms_assert_same( $cerezsiz, $cerezli, 'çıktı her ziyaretçide aynı' );
+		qrms_assert_contains( 'splash-ceviri', $cerezsiz, 'seçici basılır' );
+		qrms_assert_contains( 'data-lang="tr"', $cerezsiz, 'Türkçe seçenek' );
+		qrms_assert_contains( 'data-lang="en"', $cerezsiz, 'İngilizce seçenek' );
+		qrms_assert_false( strpos( $cerezsiz, 'data-lang="xx"' ), 'QR Çeviri dışı kod düşer' );
+		qrms_assert_false( strpos( $cerezsiz, 'data-lang="de"' ), 'işaretsiz dil basılmaz' );
+		qrms_assert_contains( 'data-cookie="rma_lang"', $cerezsiz, 'QR Çeviri çerezi' );
+	}
+);
+
+qrms_test(
+	'QR Çeviri bir dili kapatırsa splash seçeneği de düşer',
+	function () {
+		$GLOBALS['qrms_test']['is_front_page'] = true;
+		update_option( 'qrms_active_modules', array( 'qr-acilis-ekrani', 'qr-ceviri' ) );
+		update_option( 'qrmenu_active_langs', array( 'tr', 'en' ) );
+		update_option(
+			'splash_screen_options',
+			array(
+				'ceviri_selector'       => 1,
+				'ceviri_selector_langs' => array( 'tr', 'en', 'de' ),
+			)
+		);
+
+		qrms_ae_stub_ceviri();
+
+		ob_start();
+		qrms_ae()->handle_frontend();
+		$html = ob_get_clean();
+
+		qrms_assert_contains( 'data-lang="en"', $html, 'açık dil kalır' );
+		qrms_assert_false( strpos( $html, 'data-lang="de"' ), 'QR Çeviri\'de kapalı dil düşer' );
+
+		update_option( 'qrmenu_active_langs', array( 'tr', 'en', 'de' ) );
+	}
+);
+
+qrms_test(
+	'önizlemede seçici çalışır; JS dinleyiciyi elemente bağlar',
+	function () {
+		update_option( 'qrms_active_modules', array( 'qr-acilis-ekrani', 'qr-ceviri' ) );
+		update_option(
+			'splash_screen_options',
+			array(
+				'ceviri_selector'       => 1,
+				'ceviri_selector_langs' => array( 'tr', 'en' ),
+			)
+		);
+
+		qrms_ae_stub_ceviri();
+
+		ob_start();
+		qrms_ae()->render_splash_preview();
+		$html = ob_get_clean();
+
+		qrms_assert_contains( 'splash-ceviri', $html, 'seçici önizlemede de var' );
+
+		$js = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-acilis-ekrani/assets/js/splash.js' );
+
+		qrms_assert_contains( 'if (!root) return noopCeviri()', $js, 'element yoksa dinleyici yok' );
+		qrms_assert_contains( 'qrmenuTranslate', $js, 'QR Çeviri fonksiyonuna bağlanır' );
+		qrms_assert_contains( 'rma_dil', $js, 'sessionStorage anahtarı QR Çeviri ile aynı' );
+	}
+);
+
+qrms_test(
+	'yönetim: Dil Seçici Görünüm sayfasındadır, başka sayfa kapatmaz',
+	function () {
+		update_option( 'qrms_active_modules', array( 'qr-acilis-ekrani', 'qr-ceviri' ) );
+		qrms_ae_stub_ceviri();
+
+		$html = qrms_ae_submit(
+			'qrms-ae-gorunum',
+			array(
+				'ceviri_selector'       => '1',
+				'ceviri_selector_langs' => array( 'tr', 'en', 'de', 'xx' ),
+				'bg_color'              => '#101010',
+			)
+		);
+
+		$opts = get_option( 'splash_screen_options' );
+
+		qrms_assert_same( 1, $opts['ceviri_selector'], 'seçici açıldı' );
+		qrms_assert_same( array( 'tr', 'en', 'de' ), $opts['ceviri_selector_langs'], 'geçerli diller kalır, xx düşer' );
+		qrms_assert_contains( 'name="ceviri_selector"', $html, 'anahtar basılır' );
+		qrms_assert_contains( 'name="ceviri_selector_langs[]"', $html, 'dil listesi basılır' );
+
+		qrms_ae_submit( 'qrms-ae-davranis', array( 'wifi_password' => 'x' ) );
+
+		$opts = get_option( 'splash_screen_options' );
+
+		qrms_assert_same( 1, $opts['ceviri_selector'], 'başka sayfa seçiciyi kapatmaz' );
+		qrms_assert_same( array( 'tr', 'en', 'de' ), $opts['ceviri_selector_langs'], 'dil listesi korunur' );
+
+		qrms_ae_submit( 'qrms-ae-gorunum', array( 'bg_color' => '#202020' ) );
+
+		qrms_assert_same( 0, get_option( 'splash_screen_options' )['ceviri_selector'], 'sahibi sayfa kutuyu kapatır' );
+	}
+);
+
+
+/* ---------------------------------------------------------------------------
  * 16. QR Çeviri — yönetim ekranının mobil davranışı
  * ------------------------------------------------------------------------ */
 

@@ -29,7 +29,7 @@ trait QRMS_AE_Admin {
 				'title'  => __( 'Görünüm', 'qrms' ),
 				'group'  => 'gorunum',
 				'render' => 'render_page_gorunum',
-				'desc'   => __( 'Arkaplan görseli, renk paleti, logo şeridi, giriş animasyonu ve yüklenme göstergesi.', 'qrms' ),
+				'desc'   => __( 'Arkaplan görseli, renk paleti, logo şeridi, giriş animasyonu, yüklenme göstergesi ve dil seçici.', 'qrms' ),
 				'icon'   => 'dashicons-art',
 			),
 			'qrms-ae-butonlar' => array(
@@ -226,7 +226,7 @@ trait QRMS_AE_Admin {
 	}
 
 	/**
-	 * Görünüm sayfasının gövdesi: arkaplan, palet, logo şeridi, animasyon, yüklenme göstergesi.
+	 * Görünüm sayfasının gövdesi: arkaplan, palet, logo şeridi, animasyon, yüklenme göstergesi, dil seçici.
 	 *
 	 * Markup bağımsız eklentideki sekmeden birebir taşındı; yalnızca sekme
 	 * kabuğu (section sarmalayıcısı ve giriş paragrafı) sayfa kabuğuna devredildi.
@@ -462,6 +462,54 @@ trait QRMS_AE_Admin {
                                 <p class="description">Gösterge boyutu; konumu sağ üst köşede sabittir.</p>
                             </td>
                         </tr>
+                        <tr>
+                            <th colspan="2">
+                                <h3 style="margin-bottom:4px;">Dil Seçici</h3>
+                                <p class="description" style="font-weight:400;">Sol üstteki bayrak ikonu; tıklanınca QR Çeviri'nin dilini değiştirir. Splash metinlerini çevirmez.</p>
+                            </th>
+                        </tr>
+                        <tr>
+                            <th><label for="ceviri_selector">Bayraklı dil seçici</label></th>
+                            <td>
+                                <label>
+                                    <input type="checkbox" name="ceviri_selector" id="ceviri_selector" value="1" <?php checked( ! empty( $options['ceviri_selector'] ) ); ?> />
+                                    Açılış ekranının sol üst köşesinde göster
+                                </label>
+                                <?php if ( $this->ceviri_available() ) : ?>
+                                    <p class="description">Ziyaretçi bir bayrağa dokununca menü, splash kapandıktan sonra o dilde açılır. Altyapı QR Çeviri'nindir (rma_lang çerezi ve ?lang=).</p>
+                                <?php else : ?>
+                                    <p class="description splash-warn">QR Çeviri modülü kapalı. Dil seçici o modülün dil listesini ve çerezini kullanır; önce <a href="<?php echo esc_url( QRMS_Admin::get_module_page_url( 'qr-ceviri' ) ); ?>">QR Çeviri</a>'yi etkinleştirin. Açık/kapalı tercih kaydedilir, bayrak ise modül açılana kadar basılmaz.</p>
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                        <?php if ( $this->ceviri_available() ) : ?>
+                        <tr>
+                            <th>Gösterilecek diller</th>
+                            <td>
+                                <fieldset class="splash-ceviri-langs">
+                                    <legend class="screen-reader-text">Dil seçicide gösterilecek diller</legend>
+                                    <?php
+                                    $tumu          = qrmenu_get_langs();
+                                    $aktif_diller  = rma_ceviri_aktif_diller();
+                                    $secili_diller = isset( $options['ceviri_selector_langs'] ) && is_array( $options['ceviri_selector_langs'] )
+                                        ? $options['ceviri_selector_langs']
+                                        : array();
+                                    foreach ( $aktif_diller as $kod ) :
+                                        if ( ! isset( $tumu[ $kod ] ) ) {
+                                            continue;
+                                        }
+                                        $etiket = $tumu[ $kod ]['flag'] . ' ' . $tumu[ $kod ]['name'];
+                                        ?>
+                                        <label>
+                                            <input type="checkbox" name="ceviri_selector_langs[]" value="<?php echo esc_attr( $kod ); ?>" <?php checked( in_array( $kod, $secili_diller, true ) ); ?> />
+                                            <?php echo esc_html( $etiket ); ?>
+                                        </label>
+                                    <?php endforeach; ?>
+                                </fieldset>
+                                <p class="description">QR Çeviri'de açık olan diller. Hiçbiri seçili değilse bayrak ikonu basılmaz.</p>
+                            </td>
+                        </tr>
+                        <?php endif; ?>
                         <tr>
                             <th><label for="button_padding_v">Buton İç Boşluğu</label></th>
                             <td>

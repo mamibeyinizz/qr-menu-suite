@@ -136,4 +136,64 @@ trait QRMS_AE_Helpers {
         if ($size <= 0) $size = 16;
         return max(12, min(24, $size));
     }
+
+    /**
+     * QR Çeviri bu istekte konuşulabilir mi?
+     *
+     * Dil seçici kendi motorunu yazmaz: dil listesi, çerez adı ve ?lang=
+     * anahtarı QR Çeviri'den gelir. Modül kapalıysa ya da fonksiyonları
+     * yoksa seçici hiç basılmaz.
+     *
+     * @return bool
+     */
+    private function ceviri_available() {
+        if ( ! class_exists( 'QRMS_Module_Loader' ) || ! QRMS_Module_Loader::is_module_active( 'qr-ceviri' ) ) {
+            return false;
+        }
+
+        return function_exists( 'qrmenu_get_langs' ) && function_exists( 'rma_ceviri_aktif_diller' );
+    }
+
+    /**
+     * Splash'taki bayrak seçici DOM'a girsin mi?
+     *
+     * Kapalıyken (veya gösterilecek dil kalmamışken) markup'a tek bir düğüm
+     * bile eklenmez — JS de elementi bulamayınca dinleyici bağlamaz.
+     *
+     * @param array $opts Ayarlar.
+     * @return bool
+     */
+    private function ceviri_selector_active( $opts ) {
+        return ! empty( $opts['ceviri_selector'] ) && count( $this->ceviri_selector_langs( $opts ) ) > 0;
+    }
+
+    /**
+     * Seçicide gösterilecek dil kodları.
+     *
+     * Yönetici işaretleriyle QR Çeviri'nin o an açık dillerinin kesişimi.
+     * QR Çeviri bir dili kapatırsa splash'ta da kaybolur.
+     *
+     * @param array $opts Ayarlar.
+     * @return string[]
+     */
+    private function ceviri_selector_langs( $opts ) {
+        if ( ! $this->ceviri_available() ) {
+            return array();
+        }
+
+        $aktif  = rma_ceviri_aktif_diller();
+        $secili = isset( $opts['ceviri_selector_langs'] ) && is_array( $opts['ceviri_selector_langs'] )
+            ? $opts['ceviri_selector_langs']
+            : array();
+        $out    = array();
+
+        foreach ( $secili as $kod ) {
+            $kod = is_string( $kod ) ? $kod : '';
+            if ( '' !== $kod && in_array( $kod, $aktif, true ) && ! in_array( $kod, $out, true ) ) {
+                $out[] = $kod;
+            }
+        }
+
+        return $out;
+    }
 }
