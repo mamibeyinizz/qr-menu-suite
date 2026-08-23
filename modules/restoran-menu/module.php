@@ -219,7 +219,7 @@ function qrms_module_restoran_menu_ekranimiz_mi() {
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		$taxonomy = isset( $_GET['taxonomy'] ) ? sanitize_key( wp_unslash( $_GET['taxonomy'] ) ) : '';
 
-		return in_array( $taxonomy, array( 'rma_category', 'rma_allergen' ), true );
+		return in_array( $taxonomy, array( 'rma_category', 'rma_allergen', 'rma_ingredient' ), true );
 	}
 
 	return false;
