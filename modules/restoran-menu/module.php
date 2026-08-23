@@ -276,6 +276,13 @@ function qrms_module_restoran_menu_admin_assets() {
 		wp_add_inline_style( 'rma-nav', $rma->get_nav_preview_css() );
 	}
 
+	// Ürün Vitrini formundaki canlı önizleme, frontend'in GERÇEK vitrin.css'ini
+	// kullanır (sahte bir önizleme stili yerine) — bkz. initVitrinPreview()
+	// admin-ui.js içinde ve render_vitrin_preview_cards() trait-vitrin-admin.php'de.
+	if ( 'qrms-rm-vitrin' === $page ) {
+		wp_enqueue_style( 'rma-vitrin', $url . 'assets/css/vitrin.css', array( 'rma-admin-ui' ), QRMS_Helpers::asset_version( $modul . 'assets/css/vitrin.css' ) );
+	}
+
 	wp_add_inline_script(
 		'rma-admin-ui',
 		'var RMA_ADMIN = ' . wp_json_encode(

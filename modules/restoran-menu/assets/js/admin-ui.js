@@ -474,6 +474,89 @@
         vitrinSyncOrder();
     }
 
+    /* -----------------------------------------------------------------
+       ÜRÜN VİTRİNİ — CANLI ÖNİZLEME
+
+       "3. Düzen" ve "4. Kart Boyutu" alanlarındaki her değişiklik, sayfa
+       yenilenmeden #rma-vitrin-preview'e yansır. Önizleme gerçek
+       vitrin.css'i kullandığı için burada yapılan tek şey, seçilen moda
+       (masaüstü/mobil) göre doğru alan grubunu okuyup aynı CSS
+       değişkenlerine ('--qrms-vitrin-*') yazmak — desen NAV_VARS/
+       syncPreview() ile aynı (bkz. yukarısı).
+    ----------------------------------------------------------------- */
+    var VITRIN_PREVIEW_FIELDS = {
+        desktop: {
+            cols:    'rma-vitrin-cols',
+            rows:    'rma-vitrin-rows',
+            gap:     'rma-vitrin-desktop-gap',
+            cardMin: 'rma-vitrin-desktop-card-min',
+            ratio:   'rma-vitrin-desktop-ratio'
+        },
+        mobile: {
+            cols:    'rma-vitrin-mobile-cols',
+            rows:    'rma-vitrin-mobile-rows',
+            gap:     'rma-vitrin-mobile-gap',
+            cardMin: 'rma-vitrin-mobile-card-min',
+            ratio:   'rma-vitrin-mobile-ratio'
+        }
+    };
+
+    function initVitrinPreview() {
+        var $form  = $('#rma-vitrin-form');
+        var $stage = $('#rma-vitrin-preview-stage');
+        var $preview = $('#rma-vitrin-preview');
+
+        if (!$form.length || !$preview.length) return;
+
+        var mode = 'desktop';
+        var previewEl = $preview.get(0);
+
+        function fieldVal(id, fallback) {
+            var $el = $('#' + id);
+            return $el.length ? $el.val() : fallback;
+        }
+
+        function applyPreview() {
+            var f = VITRIN_PREVIEW_FIELDS[mode];
+            var m = VITRIN_PREVIEW_FIELDS.mobile;
+
+            previewEl.style.setProperty('--qrms-vitrin-cols', fieldVal(f.cols, 4));
+            previewEl.style.setProperty('--qrms-vitrin-rows', fieldVal(f.rows, 1));
+            previewEl.style.setProperty('--qrms-vitrin-gap', fieldVal(f.gap, 16) + 'px');
+            previewEl.style.setProperty('--qrms-vitrin-card-min', fieldVal(f.cardMin, 200) + 'px');
+            previewEl.style.setProperty('--qrms-vitrin-image-ratio', fieldVal(f.ratio, 100));
+
+            // vitrin.css'in GERÇEK dar ekran medya sorgusu (<1023px) admin
+            // penceresi kendisi o kadar darsa yine devreye girer; --mobile-*
+            // değişkenleri burada da her zaman güncel tutulur ki o durumda
+            // "Masaüstü Önizleme" seçiliyken bile boş/tanımsız değere düşmesin.
+            previewEl.style.setProperty('--qrms-vitrin-mobile-cols', fieldVal(m.cols, 2));
+            previewEl.style.setProperty('--qrms-vitrin-mobile-rows', fieldVal(m.rows, 1));
+            previewEl.style.setProperty('--qrms-vitrin-mobile-gap', fieldVal(m.gap, 12) + 'px');
+            previewEl.style.setProperty('--qrms-vitrin-mobile-card-min', fieldVal(m.cardMin, 132) + 'px');
+            previewEl.style.setProperty('--qrms-vitrin-mobile-image-ratio', fieldVal(m.ratio, 100));
+
+            $stage.toggleClass('is-mobile-mode', mode === 'mobile');
+            $stage.toggleClass('is-price-hidden', !$('#rma-vitrin-show-price').is(':checked'));
+        }
+
+        var allFieldIds = [];
+        $.each(VITRIN_PREVIEW_FIELDS, function (_, f) {
+            $.each(f, function (_, id) { allFieldIds.push('#' + id); });
+        });
+
+        $form.on('input change', allFieldIds.join(', ') + ', #rma-vitrin-show-price', applyPreview);
+
+        $form.on('click', '.rma-vitrin-preview-btn', function () {
+            mode = $(this).data('preview-mode');
+            $('.rma-vitrin-preview-btn').removeClass('is-active');
+            $(this).addClass('is-active');
+            applyPreview();
+        });
+
+        applyPreview();
+    }
+
     /**
      * Kısa kodu panoya kopyalar. Pano API'si yoksa (http:// üzerinde
      * çalışan siteler) metin seçili bırakılır — kullanıcı elle kopyalar.
@@ -677,6 +760,7 @@
         initSuggestions();
         initCsvSample();
         initVitrinPicker();
+        initVitrinPreview();
         initShortcodeCopy();
         initKampanya();
         openTargetDetails();

@@ -1441,6 +1441,74 @@
     color: #e08a8a;
 }
 
+/* ---------------------------------------------------------------------
+   KART BOYUTU + CANLI ÖNİZLEME
+
+   Sol sütun form alanları ("3. Düzen" + "4. Kart Boyutu"), sağ sütun
+   canlı önizleme — geniş ekranda yan yana, dar admin ekranında (bkz.
+   782px breakpoint'i) alt alta. Önizleme kendi sahte stilini TAŞIMAZ:
+   içindeki .qrms-vitrin/.qrms-vitrin-card gerçek vitrin.css'ten (frontend
+   dosyasının aynısı, admin'de de kuyruğa alınır) boyanır — burada yalnızca
+   çerçeve/toggle/stage görünümü var.
+--------------------------------------------------------------------- */
+.rma-vitrin-layout-wrap {
+    align-items: flex-start;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 24px;
+}
+
+.rma-vitrin-layout-fields {
+    flex: 1 1 480px;
+    min-width: 320px;
+}
+
+.rma-vitrin-layout-preview {
+    flex: 1 1 340px;
+    min-width: 300px;
+    position: sticky;
+    top: 32px;
+}
+
+.rma-vitrin-preview-toggle {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+
+.rma-vitrin-preview-btn.is-active {
+    background: var(--rma-a-accent);
+    border-color: var(--rma-a-accent);
+    color: #101010;
+}
+
+.rma-vitrin-preview-stage {
+    background: var(--rma-a-page);
+    border: 1px solid var(--rma-a-border);
+    border-radius: var(--rma-a-radius);
+    padding: 16px;
+    transition: max-width .2s ease;
+}
+
+/* "Mobil Önizleme" seçiliyken sahne telefon genişliğine daralır — grid'in
+   kendisi zaten JS ile mobil değişkenlere geçer (bkz. admin-ui.js), bu
+   sadece görsel çerçevedir. */
+.rma-vitrin-preview-stage.is-mobile-mode {
+    margin: 0 auto;
+    max-width: 380px;
+}
+
+.rma-vitrin-preview-stage .qrms-vitrin-viewport {
+    max-height: 70vh;
+}
+
+/* "Kartlarda fiyatı göster" kapalıyken fiyat satırı önizlemede gizlenir;
+   öğe DOM'dan hiç kaldırılmaz ki kutu işaretlenince JS'in gösterecek bir
+   şeyi olsun (bkz. render_vitrin_preview_cards()). */
+.rma-vitrin-preview-stage.is-price-hidden .qrms-vitrin-price {
+    display: none;
+}
+
 @media (pointer: coarse) {
     .rma-vitrin-pool-row,
     .rma-vitrin-chip {
@@ -1458,6 +1526,12 @@
     /* Yan yana iki sütun telefonda her ikisini de kullanılmaz yapardı. */
     .rma-vitrin-picker {
         grid-template-columns: 1fr;
+    }
+
+    /* Önizleme, form alanlarının altına düşer ve sticky konumlaması kalkar. */
+    .rma-vitrin-layout-preview {
+        position: static;
+        width: 100%;
     }
 
     .rma-vitrin-pool-list {

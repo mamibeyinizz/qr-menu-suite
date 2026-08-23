@@ -175,14 +175,21 @@ trait RMA_Vitrin_Admin_Trait {
         $v    = RMA_Vitrin_DB::varsayilanlar();
 
         $deger = array(
-            'title'          => $yeni ? '' : $kayit->title,
-            'grid_columns'   => $yeni ? $v['grid_columns'] : (int) $kayit->grid_columns,
-            'grid_rows'      => $yeni ? $v['grid_rows'] : (int) $kayit->grid_rows,
-            'mobile_columns' => $yeni ? $v['mobile_columns'] : (int) $kayit->mobile_columns,
-            'autoplay'       => $yeni ? $v['autoplay'] : (int) $kayit->autoplay,
-            'autoplay_speed' => $yeni ? $v['autoplay_speed'] : (int) $kayit->autoplay_speed,
-            'drag_enabled'   => $yeni ? $v['drag_enabled'] : (int) $kayit->drag_enabled,
-            'show_price'     => $yeni ? $v['show_price'] : (int) $kayit->show_price,
+            'title'               => $yeni ? '' : $kayit->title,
+            'grid_columns'        => $yeni ? $v['grid_columns'] : (int) $kayit->grid_columns,
+            'grid_rows'           => $yeni ? $v['grid_rows'] : (int) $kayit->grid_rows,
+            'mobile_columns'      => $yeni ? $v['mobile_columns'] : (int) $kayit->mobile_columns,
+            'mobile_rows'         => $yeni ? $v['mobile_rows'] : (int) $kayit->mobile_rows,
+            'desktop_gap'         => $yeni ? $v['desktop_gap'] : (int) $kayit->desktop_gap,
+            'desktop_card_min'    => $yeni ? $v['desktop_card_min'] : (int) $kayit->desktop_card_min,
+            'desktop_image_ratio' => $yeni ? $v['desktop_image_ratio'] : (int) $kayit->desktop_image_ratio,
+            'mobile_gap'          => $yeni ? $v['mobile_gap'] : (int) $kayit->mobile_gap,
+            'mobile_card_min'     => $yeni ? $v['mobile_card_min'] : (int) $kayit->mobile_card_min,
+            'mobile_image_ratio'  => $yeni ? $v['mobile_image_ratio'] : (int) $kayit->mobile_image_ratio,
+            'autoplay'            => $yeni ? $v['autoplay'] : (int) $kayit->autoplay,
+            'autoplay_speed'      => $yeni ? $v['autoplay_speed'] : (int) $kayit->autoplay_speed,
+            'drag_enabled'        => $yeni ? $v['drag_enabled'] : (int) $kayit->drag_enabled,
+            'show_price'          => $yeni ? $v['show_price'] : (int) $kayit->show_price,
         );
 
         $secili_idler = $yeni ? array() : RMA_Vitrin_DB::urun_idleri( $id );
@@ -283,58 +290,192 @@ trait RMA_Vitrin_Admin_Trait {
                 <?php endif; ?>
             </div>
 
-            <div class="rma-card">
-                <h2 class="rma-card-title">3. Düzen</h2>
-                <p class="rma-card-desc">Bir sayfada kaç ürün görünsün? Dar ekranlarda sütun sayısı otomatik azalır, vitrin yatay kaydırılır.</p>
+            <div class="rma-vitrin-layout-wrap">
+                <div class="rma-vitrin-layout-fields">
+                    <div class="rma-card">
+                        <h2 class="rma-card-title">3. Düzen</h2>
+                        <p class="rma-card-desc">Bir sayfada kaç ürün görünsün? Dar ekranlarda sütun sayısı otomatik azalır, vitrin yatay kaydırılır.</p>
 
-                <table class="form-table rma-form-table">
-                    <tr>
-                        <th><label for="rma-vitrin-cols">Sütun sayısı</label></th>
-                        <td>
-                            <select name="grid_columns" id="rma-vitrin-cols" class="rma-select-narrow">
-                                <?php for ( $i = RMA_Vitrin_DB::MIN_COLUMNS; $i <= RMA_Vitrin_DB::MAX_COLUMNS; $i++ ) : ?>
-                                    <option value="<?php echo (int) $i; ?>" <?php selected( $deger['grid_columns'], $i ); ?>><?php echo (int) $i; ?> sütun</option>
-                                <?php endfor; ?>
-                            </select>
-                            <p class="description rma-desc">Masaüstünde bir sayfada yan yana kaç ürün duracağı.</p>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th><label for="rma-vitrin-rows">Satır sayısı</label></th>
-                        <td>
-                            <select name="grid_rows" id="rma-vitrin-rows" class="rma-select-narrow">
-                                <?php for ( $i = RMA_Vitrin_DB::MIN_ROWS; $i <= RMA_Vitrin_DB::MAX_ROWS; $i++ ) : ?>
-                                    <option value="<?php echo (int) $i; ?>" <?php selected( $deger['grid_rows'], $i ); ?>><?php echo (int) $i; ?> satır</option>
-                                <?php endfor; ?>
-                            </select>
-                            <p class="description rma-desc">Alt alta kaç sıra gösterileceği. Sayfa başına ürün = sütun × satır.</p>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th><label for="rma-vitrin-mobile-cols">Mobilde sütun sayısı</label></th>
-                        <td>
-                            <select name="mobile_columns" id="rma-vitrin-mobile-cols" class="rma-select-narrow">
-                                <?php for ( $i = RMA_Vitrin_DB::MIN_MOBILE_COLUMNS; $i <= RMA_Vitrin_DB::MAX_MOBILE_COLUMNS; $i++ ) : ?>
-                                    <option value="<?php echo (int) $i; ?>" <?php selected( $deger['mobile_columns'], $i ); ?>><?php echo (int) $i; ?> sütun</option>
-                                <?php endfor; ?>
-                            </select>
-                            <p class="description rma-desc">Telefonda bir ekranda yan yana kaç ürün duracağı. Ekran çok dar kalırsa kart yine de okunabilir bir genişliğin altına düşmez.</p>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th>Fiyat</th>
-                        <td>
-                            <label class="rma-check-row">
-                                <input type="checkbox" name="show_price" value="1" <?php checked( 1, $deger['show_price'] ); ?>>
-                                <span>Kartlarda fiyatı göster</span>
-                            </label>
-                        </td>
-                    </tr>
-                </table>
+                        <table class="form-table rma-form-table">
+                            <tr>
+                                <th><label for="rma-vitrin-cols">Sütun sayısı</label></th>
+                                <td>
+                                    <select name="grid_columns" id="rma-vitrin-cols" class="rma-select-narrow">
+                                        <?php for ( $i = RMA_Vitrin_DB::MIN_COLUMNS; $i <= RMA_Vitrin_DB::MAX_COLUMNS; $i++ ) : ?>
+                                            <option value="<?php echo (int) $i; ?>" <?php selected( $deger['grid_columns'], $i ); ?>><?php echo (int) $i; ?> sütun</option>
+                                        <?php endfor; ?>
+                                    </select>
+                                    <p class="description rma-desc">Masaüstünde bir sayfada yan yana kaç ürün duracağı.</p>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th><label for="rma-vitrin-rows">Satır sayısı</label></th>
+                                <td>
+                                    <select name="grid_rows" id="rma-vitrin-rows" class="rma-select-narrow">
+                                        <?php for ( $i = RMA_Vitrin_DB::MIN_ROWS; $i <= RMA_Vitrin_DB::MAX_ROWS; $i++ ) : ?>
+                                            <option value="<?php echo (int) $i; ?>" <?php selected( $deger['grid_rows'], $i ); ?>><?php echo (int) $i; ?> satır</option>
+                                        <?php endfor; ?>
+                                    </select>
+                                    <p class="description rma-desc">Alt alta kaç sıra gösterileceği. Sayfa başına ürün = sütun × satır.</p>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th><label for="rma-vitrin-mobile-cols">Mobilde sütun sayısı</label></th>
+                                <td>
+                                    <select name="mobile_columns" id="rma-vitrin-mobile-cols" class="rma-select-narrow">
+                                        <?php for ( $i = RMA_Vitrin_DB::MIN_MOBILE_COLUMNS; $i <= RMA_Vitrin_DB::MAX_MOBILE_COLUMNS; $i++ ) : ?>
+                                            <option value="<?php echo (int) $i; ?>" <?php selected( $deger['mobile_columns'], $i ); ?>><?php echo (int) $i; ?> sütun</option>
+                                        <?php endfor; ?>
+                                    </select>
+                                    <p class="description rma-desc">Telefonda bir ekranda yan yana kaç ürün duracağı. Ekran çok dar kalırsa kart yine de okunabilir bir genişliğin altına düşmez.</p>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th><label for="rma-vitrin-mobile-rows">Mobilde satır sayısı</label></th>
+                                <td>
+                                    <select name="mobile_rows" id="rma-vitrin-mobile-rows" class="rma-select-narrow">
+                                        <?php for ( $i = RMA_Vitrin_DB::MIN_MOBILE_ROWS; $i <= RMA_Vitrin_DB::MAX_MOBILE_ROWS; $i++ ) : ?>
+                                            <option value="<?php echo (int) $i; ?>" <?php selected( $deger['mobile_rows'], $i ); ?>><?php echo (int) $i; ?> satır</option>
+                                        <?php endfor; ?>
+                                    </select>
+                                    <p class="description rma-desc">Telefonda bir ekranda kaç sıra ürün gösterileceği. Ekran başına ürün = mobil sütun × mobil satır.</p>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Fiyat</th>
+                                <td>
+                                    <label class="rma-check-row">
+                                        <input type="checkbox" name="show_price" id="rma-vitrin-show-price" value="1" <?php checked( 1, $deger['show_price'] ); ?>>
+                                        <span>Kartlarda fiyatı göster</span>
+                                    </label>
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+
+                    <div class="rma-card">
+                        <h2 class="rma-card-title">4. Kart Boyutu</h2>
+                        <p class="rma-card-desc">Sütun/satır sayısı grid yapısını belirler; buradaki ayarlar kartın kendisini — genişliğini, boşluğunu ve görselinin oranını — tamamlar. Masaüstü ve mobil için ayrı ayarlanır.</p>
+
+                        <h3 class="rma-section-title">Masaüstü</h3>
+                        <table class="form-table rma-form-table">
+                            <tr>
+                                <th><label for="rma-vitrin-desktop-card-min">Kart min-genişliği</label></th>
+                                <td>
+                                    <div class="rma-range-row">
+                                        <input type="range" name="desktop_card_min" id="rma-vitrin-desktop-card-min"
+                                               min="<?php echo (int) RMA_Vitrin_DB::MIN_DESKTOP_CARD_MIN; ?>"
+                                               max="<?php echo (int) RMA_Vitrin_DB::MAX_DESKTOP_CARD_MIN; ?>"
+                                               step="10"
+                                               value="<?php echo (int) $deger['desktop_card_min']; ?>"
+                                               oninput="this.nextElementSibling.textContent=this.value+'px'">
+                                        <span class="rma-range-val"><?php echo (int) $deger['desktop_card_min']; ?>px</span>
+                                    </div>
+                                    <p class="description rma-desc">Kart, sütun sayısı ne olursa olsun bu genişliğin altına sıkışmaz; sığmayan sütunlar kaydırmayla görülür.</p>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th><label for="rma-vitrin-desktop-gap">Kartlar arası boşluk</label></th>
+                                <td>
+                                    <div class="rma-range-row">
+                                        <input type="range" name="desktop_gap" id="rma-vitrin-desktop-gap"
+                                               min="<?php echo (int) RMA_Vitrin_DB::MIN_GAP; ?>"
+                                               max="<?php echo (int) RMA_Vitrin_DB::MAX_GAP; ?>"
+                                               step="2"
+                                               value="<?php echo (int) $deger['desktop_gap']; ?>"
+                                               oninput="this.nextElementSibling.textContent=this.value+'px'">
+                                        <span class="rma-range-val"><?php echo (int) $deger['desktop_gap']; ?>px</span>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th><label for="rma-vitrin-desktop-ratio">Görsel yükseklik oranı</label></th>
+                                <td>
+                                    <div class="rma-range-row">
+                                        <input type="range" name="desktop_image_ratio" id="rma-vitrin-desktop-ratio"
+                                               min="<?php echo (int) RMA_Vitrin_DB::MIN_IMAGE_RATIO; ?>"
+                                               max="<?php echo (int) RMA_Vitrin_DB::MAX_IMAGE_RATIO; ?>"
+                                               step="1"
+                                               value="<?php echo (int) $deger['desktop_image_ratio']; ?>"
+                                               oninput="this.nextElementSibling.textContent=this.value+'%'">
+                                        <span class="rma-range-val"><?php echo (int) $deger['desktop_image_ratio']; ?>%</span>
+                                    </div>
+                                    <p class="description rma-desc">Ürün görselinin yüksekliği, genişliğinin yüzde kaçı olsun. 100 = kare, düşük değer = daha yatay/kısa.</p>
+                                </td>
+                            </tr>
+                        </table>
+
+                        <h3 class="rma-section-title">Mobil</h3>
+                        <table class="form-table rma-form-table">
+                            <tr>
+                                <th><label for="rma-vitrin-mobile-card-min">Kart min-genişliği</label></th>
+                                <td>
+                                    <div class="rma-range-row">
+                                        <input type="range" name="mobile_card_min" id="rma-vitrin-mobile-card-min"
+                                               min="<?php echo (int) RMA_Vitrin_DB::MIN_MOBILE_CARD_MIN; ?>"
+                                               max="<?php echo (int) RMA_Vitrin_DB::MAX_MOBILE_CARD_MIN; ?>"
+                                               step="4"
+                                               value="<?php echo (int) $deger['mobile_card_min']; ?>"
+                                               oninput="this.nextElementSibling.textContent=this.value+'px'">
+                                        <span class="rma-range-val"><?php echo (int) $deger['mobile_card_min']; ?>px</span>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th><label for="rma-vitrin-mobile-gap">Kartlar arası boşluk</label></th>
+                                <td>
+                                    <div class="rma-range-row">
+                                        <input type="range" name="mobile_gap" id="rma-vitrin-mobile-gap"
+                                               min="<?php echo (int) RMA_Vitrin_DB::MIN_GAP; ?>"
+                                               max="<?php echo (int) RMA_Vitrin_DB::MAX_GAP; ?>"
+                                               step="2"
+                                               value="<?php echo (int) $deger['mobile_gap']; ?>"
+                                               oninput="this.nextElementSibling.textContent=this.value+'px'">
+                                        <span class="rma-range-val"><?php echo (int) $deger['mobile_gap']; ?>px</span>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th><label for="rma-vitrin-mobile-ratio">Görsel yükseklik oranı</label></th>
+                                <td>
+                                    <div class="rma-range-row">
+                                        <input type="range" name="mobile_image_ratio" id="rma-vitrin-mobile-ratio"
+                                               min="<?php echo (int) RMA_Vitrin_DB::MIN_IMAGE_RATIO; ?>"
+                                               max="<?php echo (int) RMA_Vitrin_DB::MAX_IMAGE_RATIO; ?>"
+                                               step="1"
+                                               value="<?php echo (int) $deger['mobile_image_ratio']; ?>"
+                                               oninput="this.nextElementSibling.textContent=this.value+'%'">
+                                        <span class="rma-range-val"><?php echo (int) $deger['mobile_image_ratio']; ?>%</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="rma-vitrin-layout-preview">
+                    <div class="rma-card rma-vitrin-preview-card">
+                        <h2 class="rma-card-title">Canlı Önizleme</h2>
+                        <p class="rma-card-desc">Kaydetmeden önce nasıl görüneceğini kontrol edin. Yukarıdaki her değişiklik anında yansır.</p>
+
+                        <div class="rma-vitrin-preview-toggle">
+                            <button type="button" class="button rma-vitrin-preview-btn is-active" data-preview-mode="desktop">Masaüstü Önizleme</button>
+                            <button type="button" class="button rma-vitrin-preview-btn" data-preview-mode="mobile">Mobil Önizleme</button>
+                        </div>
+
+                        <div class="rma-vitrin-preview-stage<?php echo $deger['show_price'] ? '' : ' is-price-hidden'; ?>" id="rma-vitrin-preview-stage">
+                            <div class="qrms-vitrin" id="rma-vitrin-preview">
+                                <div class="qrms-vitrin-viewport">
+                                    <?php $this->render_vitrin_preview_cards( $urunler, $secili_idler ); ?>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div class="rma-card">
-                <h2 class="rma-card-title">4. Kayma Davranışı</h2>
+                <h2 class="rma-card-title">5. Kayma Davranışı</h2>
                 <p class="rma-card-desc">Vitrin kendiliğinden mi kaysın, yoksa ziyaretçi mi kaydırsın?</p>
 
                 <table class="form-table rma-form-table">
@@ -430,6 +571,71 @@ trait RMA_Vitrin_Admin_Trait {
         return $liste;
     }
 
+    /**
+     * Canlı önizleme kartları — "4. Kart Boyutu" bölümünün yanındaki
+     * `.qrms-vitrin` örneğini doldurur.
+     *
+     * Gerçek frontend markup'ıyla (bkz. RMA_Vitrin_Shortcode::render())
+     * BİREBİR aynı sınıflar kullanılır ki önizleme sahte bir stil değil,
+     * vitrin.css'in kendisiyle boyansın. Seçili ürün varsa onlar, yoksa/
+     * yetmezse yer tutucu kartlarla doldurulur — form ilk açıldığında
+     * (henüz ürün seçilmemişken) bile önizleme boş kalmasın diye.
+     *
+     * Fiyat satırı "Kartlarda fiyatı göster" kapalı olsa da HER ZAMAN
+     * basılır: JS bu kutuyu işaretlediğinde önizlemede gösterecek bir
+     * öğe bulabilsin (bkz. admin-ui.js initVitrinPreview, ve
+     * .rma-vitrin-preview-stage.is-price-hidden kuralı).
+     *
+     * @param array $urunler      vitrin_urun_listesi() çıktısı.
+     * @param int[] $secili_idler Seçili ürünlerin sıralı ID listesi.
+     * @return void
+     */
+    private function render_vitrin_preview_cards( array $urunler, array $secili_idler ) {
+        $azami = 8;
+
+        $harita = array();
+        foreach ( $urunler as $urun ) {
+            $harita[ $urun['id'] ] = $urun;
+        }
+
+        $kartlar = array();
+        foreach ( $secili_idler as $id ) {
+            if ( count( $kartlar ) >= $azami ) {
+                break;
+            }
+            if ( isset( $harita[ $id ] ) ) {
+                $kartlar[] = $harita[ $id ];
+            }
+        }
+
+        // Seçili ürün azsa/yoksa yer tutucularla tamamla — önizleme grid'i
+        // her zaman anlamlı sayıda kart göstersin.
+        while ( count( $kartlar ) < min( $azami, 6 ) ) {
+            $kartlar[] = null;
+        }
+
+        foreach ( $kartlar as $urun ) :
+            $baslik = $urun ? $urun['title'] : 'Ürün Adı';
+            $gorsel = $urun ? $urun['img'] : '';
+            $fiyat  = $urun ? RMA_Kampanya::fiyat_html( $urun['id'] ) : '';
+            ?>
+            <article class="qrms-vitrin-card">
+                <div class="qrms-vitrin-media">
+                    <?php if ( '' !== $gorsel ) : ?>
+                        <img src="<?php echo esc_url( $gorsel ); ?>" alt="" class="qrms-vitrin-img">
+                    <?php else : ?>
+                        <span class="qrms-vitrin-img qrms-vitrin-img-empty" aria-hidden="true">◆</span>
+                    <?php endif; ?>
+                </div>
+                <div class="qrms-vitrin-body">
+                    <h3 class="qrms-vitrin-title"><?php echo esc_html( $baslik ); ?></h3>
+                    <p class="qrms-vitrin-price"><?php echo '' !== $fiyat ? wp_kses_post( $fiyat ) : '₺0,00'; ?></p>
+                </div>
+            </article>
+        <?php
+        endforeach;
+    }
+
     /* -----------------------------------------------------------------
        KAYDETME / SİLME
     ----------------------------------------------------------------- */
@@ -446,14 +652,21 @@ trait RMA_Vitrin_Admin_Trait {
 
         $ayarlar = RMA_Vitrin_DB::ayarlari_temizle(
             array(
-                'title'          => isset( $_POST['title'] ) ? sanitize_text_field( wp_unslash( $_POST['title'] ) ) : '',
-                'grid_columns'   => isset( $_POST['grid_columns'] ) ? wp_unslash( $_POST['grid_columns'] ) : null,
-                'grid_rows'      => isset( $_POST['grid_rows'] ) ? wp_unslash( $_POST['grid_rows'] ) : null,
-                'mobile_columns' => isset( $_POST['mobile_columns'] ) ? wp_unslash( $_POST['mobile_columns'] ) : null,
-                'autoplay'       => isset( $_POST['autoplay'] ) ? wp_unslash( $_POST['autoplay'] ) : 0,
-                'autoplay_speed' => isset( $_POST['autoplay_speed'] ) ? wp_unslash( $_POST['autoplay_speed'] ) : null,
-                'drag_enabled'   => isset( $_POST['drag_enabled'] ) ? wp_unslash( $_POST['drag_enabled'] ) : 0,
-                'show_price'     => isset( $_POST['show_price'] ) ? wp_unslash( $_POST['show_price'] ) : 0,
+                'title'               => isset( $_POST['title'] ) ? sanitize_text_field( wp_unslash( $_POST['title'] ) ) : '',
+                'grid_columns'        => isset( $_POST['grid_columns'] ) ? wp_unslash( $_POST['grid_columns'] ) : null,
+                'grid_rows'           => isset( $_POST['grid_rows'] ) ? wp_unslash( $_POST['grid_rows'] ) : null,
+                'mobile_columns'      => isset( $_POST['mobile_columns'] ) ? wp_unslash( $_POST['mobile_columns'] ) : null,
+                'mobile_rows'         => isset( $_POST['mobile_rows'] ) ? wp_unslash( $_POST['mobile_rows'] ) : null,
+                'desktop_gap'         => isset( $_POST['desktop_gap'] ) ? wp_unslash( $_POST['desktop_gap'] ) : null,
+                'desktop_card_min'    => isset( $_POST['desktop_card_min'] ) ? wp_unslash( $_POST['desktop_card_min'] ) : null,
+                'desktop_image_ratio' => isset( $_POST['desktop_image_ratio'] ) ? wp_unslash( $_POST['desktop_image_ratio'] ) : null,
+                'mobile_gap'          => isset( $_POST['mobile_gap'] ) ? wp_unslash( $_POST['mobile_gap'] ) : null,
+                'mobile_card_min'     => isset( $_POST['mobile_card_min'] ) ? wp_unslash( $_POST['mobile_card_min'] ) : null,
+                'mobile_image_ratio'  => isset( $_POST['mobile_image_ratio'] ) ? wp_unslash( $_POST['mobile_image_ratio'] ) : null,
+                'autoplay'            => isset( $_POST['autoplay'] ) ? wp_unslash( $_POST['autoplay'] ) : 0,
+                'autoplay_speed'      => isset( $_POST['autoplay_speed'] ) ? wp_unslash( $_POST['autoplay_speed'] ) : null,
+                'drag_enabled'        => isset( $_POST['drag_enabled'] ) ? wp_unslash( $_POST['drag_enabled'] ) : 0,
+                'show_price'          => isset( $_POST['show_price'] ) ? wp_unslash( $_POST['show_price'] ) : 0,
             )
         );
 

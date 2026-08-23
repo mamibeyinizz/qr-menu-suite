@@ -1700,6 +1700,50 @@ qrms_test(
 );
 
 qrms_test(
+	'mobil satır sayısı kendi sınırlarına kırpılır, masaüstü satırından bağımsızdır',
+	function () {
+		$temiz = RMA_Vitrin_DB::ayarlari_temizle(
+			array(
+				'grid_rows'   => 3,
+				'mobile_rows' => 99,
+			)
+		);
+
+		qrms_assert_same( RMA_Vitrin_DB::MAX_MOBILE_ROWS, $temiz['mobile_rows'], 'üst sınır' );
+		qrms_assert_same( 3, $temiz['grid_rows'], 'masaüstü satırı etkilenmez' );
+
+		$sifir = RMA_Vitrin_DB::ayarlari_temizle( array( 'mobile_rows' => 0 ) );
+		qrms_assert_same( RMA_Vitrin_DB::MIN_MOBILE_ROWS, $sifir['mobile_rows'], 'alt sınır' );
+	}
+);
+
+qrms_test(
+	'kart boyutu ayarları (boşluk, min-genişlik, görsel oranı) masaüstü/mobil ayrı sınırlanır',
+	function () {
+		$temiz = RMA_Vitrin_DB::ayarlari_temizle(
+			array(
+				'desktop_gap'         => 9999,
+				'desktop_card_min'    => 1,
+				'desktop_image_ratio' => 1,
+				'mobile_gap'          => -5,
+				'mobile_card_min'     => 9999,
+				'mobile_image_ratio'  => 9999,
+			)
+		);
+
+		qrms_assert_same( RMA_Vitrin_DB::MAX_GAP, $temiz['desktop_gap'], 'masaüstü boşluk üst sınırı' );
+		qrms_assert_same( RMA_Vitrin_DB::MIN_DESKTOP_CARD_MIN, $temiz['desktop_card_min'], 'masaüstü min-genişlik alt sınırı' );
+		qrms_assert_same( RMA_Vitrin_DB::MIN_IMAGE_RATIO, $temiz['desktop_image_ratio'], 'masaüstü görsel oranı alt sınırı' );
+		qrms_assert_same( RMA_Vitrin_DB::MIN_GAP, $temiz['mobile_gap'], 'mobil boşluk alt sınırı' );
+		qrms_assert_same( RMA_Vitrin_DB::MAX_MOBILE_CARD_MIN, $temiz['mobile_card_min'], 'mobil min-genişlik üst sınırı — masaüstünden bağımsız' );
+		qrms_assert_same( RMA_Vitrin_DB::MAX_IMAGE_RATIO, $temiz['mobile_image_ratio'], 'mobil görsel oranı üst sınırı' );
+
+		$bozuk = RMA_Vitrin_DB::ayarlari_temizle( array( 'desktop_gap' => 'çok' ) );
+		qrms_assert_same( 16, $bozuk['desktop_gap'], 'varsayılana düşer' );
+	}
+);
+
+qrms_test(
 	'kayma hızı sınırlanır, sayı olmayan girdi varsayılana düşer',
 	function () {
 		$hizli = RMA_Vitrin_DB::ayarlari_temizle( array( 'autoplay_speed' => 10 ) );
