@@ -120,6 +120,12 @@ class QRMS_Acilis_Ekrani {
 				'btn5'    => '',
 				'divider' => '',
 			),
+			// QR Çeviri dil seçici (sol üst bayrak). Kapalıyken DOM'a
+			// hiç girmez; açıkken yalnızca işaretli diller basılır ve
+			// tıklama QR Çeviri'nin rma_lang çerezi + ?lang= anahtarına
+			// yazılır — splash kendi çeviri motorunu taşımaz.
+			'ceviri_selector'      => 0,
+			'ceviri_selector_langs' => array(),
 			'animation_type'      => 'anim-blur-up',
 			'button_texts'        => array(
 				'btn1' => 'Menüye Git',

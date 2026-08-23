@@ -110,6 +110,204 @@
         }
     }
 
+    /* ---------------- QR Çeviri bayrak seçici ----------------
+
+       Kendi çeviri motoru yok. Element DOM'da yoksa (admin kapalı) hemen
+       çıkar — dinleyici, zamanlayıcı, sürekli çalışan kod yok.
+
+       Tıklama splash'ı kapatmaz ve sayfayı o anda yenilemez (splash iki
+       kez görünmesin). Dil QR Çeviri'nin rma_lang çerezine + sessionStorage
+       rma_dil'e yazılır; splash kapandıktan sonra menü URL'sine ?lang=
+       eklenir. qrmenuTranslate() varsa aynı sayfada kalındığında o çağrılır. */
+
+    function noopCeviri() {
+        return {
+            applyToUrl: function (url) { return url; },
+            shouldReload: function () { return false; },
+            navigate: function () {}
+        };
+    }
+
+        function initCeviri(overlay, isPreview, onActivity) {
+        var root = overlay.querySelector('.splash-ceviri');
+        if (!root) return noopCeviri();
+
+        var cookieName = root.getAttribute('data-cookie') || 'rma_lang';
+        var btn = root.querySelector('.splash-ceviri-btn');
+        var flagEl = root.querySelector('.splash-ceviri-flag');
+        var selectedLang = root.getAttribute('data-default') || 'tr';
+        var selectedFlag = flagEl ? flagEl.textContent : '';
+        var selectedName = '';
+
+        function updateQueryParam(url, ad, deger) {
+            if (typeof window.rmaCeviriUpdateQueryParam === 'function') {
+                return window.rmaCeviriUpdateQueryParam(url, ad, deger);
+            }
+
+            var parca = String(url).split('#');
+            var temel = parca[0];
+            var hash = parca[1] ? '#' + parca[1] : '';
+            var bolum = temel.split('?');
+            var yol = bolum[0];
+            var sorgu = bolum[1] || '';
+            var parcalar = sorgu ? sorgu.split('&') : [];
+            var yeni = [];
+            var bulundu = false;
+            var i;
+
+            for (i = 0; i < parcalar.length; i++) {
+                if (!parcalar[i]) continue;
+                if (parcalar[i].split('=')[0] === ad) {
+                    if (!bulundu) {
+                        yeni.push(ad + '=' + encodeURIComponent(deger));
+                        bulundu = true;
+                    }
+                    continue;
+                }
+                yeni.push(parcalar[i]);
+            }
+            if (!bulundu) {
+                yeni.push(ad + '=' + encodeURIComponent(deger));
+            }
+
+            return yol + (yeni.length ? '?' + yeni.join('&') : '') + hash;
+        }
+
+        function removeQueryParam(url, ad) {
+            var parca = String(url).split('#');
+            var temel = parca[0];
+            var hash = parca[1] ? '#' + parca[1] : '';
+            var bolum = temel.split('?');
+            var yol = bolum[0];
+            var sorgu = bolum[1] || '';
+            if (!sorgu) return url;
+
+            var parcalar = sorgu.split('&');
+            var yeni = [];
+            var i;
+
+            for (i = 0; i < parcalar.length; i++) {
+                if (!parcalar[i]) continue;
+                if (parcalar[i].split('=')[0] === ad) continue;
+                yeni.push(parcalar[i]);
+            }
+
+            return yol + (yeni.length ? '?' + yeni.join('&') : '') + hash;
+        }
+
+        function applyToUrl(url, lang) {
+            if (!url || !lang) return url;
+            return lang === 'tr' ? removeQueryParam(url, 'lang') : updateQueryParam(url, 'lang', lang);
+        }
+
+        function urlLang() {
+            var m = window.location.search.match(/[?&]lang=([^&]+)/);
+            return m ? decodeURIComponent(m[1]) : 'tr';
+        }
+
+        function closePanel() {
+            root.classList.remove('is-open');
+            if (btn) btn.setAttribute('aria-expanded', 'false');
+        }
+
+        function paint(lang) {
+            var opts = root.querySelectorAll('.splash-ceviri-opt');
+            var i, on, optLang;
+
+            for (i = 0; i < opts.length; i++) {
+                optLang = opts[i].getAttribute('data-lang');
+                on = optLang === lang;
+                opts[i].setAttribute('aria-selected', on ? 'true' : 'false');
+                if (!on) continue;
+
+                selectedLang = optLang;
+                selectedFlag = opts[i].getAttribute('data-flag') || '';
+                selectedName = opts[i].getAttribute('data-name') || optLang;
+                if (flagEl) flagEl.textContent = selectedFlag;
+                if (btn) btn.setAttribute('aria-label', 'Dil seç (' + selectedName + ')');
+            }
+        }
+
+        function persist(lang) {
+            paint(lang);
+
+            window.rmaCeviriDil = lang;
+            try { sessionStorage.setItem('rma_dil', lang); } catch (e) {}
+
+            if (!isPreview) {
+                try {
+                    document.cookie = cookieName + '=' + encodeURIComponent(lang) +
+                        ';path=/;max-age=31536000;samesite=lax';
+                } catch (e) {}
+
+                overlay.querySelectorAll('a[data-splash-dismiss]').forEach(function (a) {
+                    var href = a.getAttribute('href');
+                    if (href) a.setAttribute('href', applyToUrl(href, lang));
+                });
+
+                var redirect = overlay.getAttribute('data-redirect-url') || '';
+                if (redirect) {
+                    overlay.setAttribute('data-redirect-url', applyToUrl(redirect, lang));
+                }
+            }
+        }
+
+        function detectLang() {
+            var m = window.location.search.match(/[?&]lang=([^&]+)/);
+            if (m) return decodeURIComponent(m[1]);
+            if (window.rmaCeviriDil) return window.rmaCeviriDil;
+
+            var escaped = cookieName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            m = document.cookie.match(new RegExp('(?:^|;\\s*)' + escaped + '=([^;]*)'));
+            if (m) return decodeURIComponent(m[1]);
+
+            return root.getAttribute('data-default') || 'tr';
+        }
+
+        root.addEventListener('click', function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+            if (typeof onActivity === 'function') onActivity();
+
+            var opt = event.target.closest('.splash-ceviri-opt');
+            if (opt) {
+                persist(opt.getAttribute('data-lang'));
+                closePanel();
+                return;
+            }
+
+            if (event.target.closest('.splash-ceviri-btn')) {
+                var open = root.classList.toggle('is-open');
+                if (btn) btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+            }
+        });
+
+        document.addEventListener('click', closePanel);
+
+        var initial = detectLang();
+        var hasInitial = false;
+        root.querySelectorAll('.splash-ceviri-opt').forEach(function (opt) {
+            if (opt.getAttribute('data-lang') === initial) hasInitial = true;
+        });
+        if (hasInitial) {
+            persist(initial);
+        }
+
+        return {
+            applyToUrl: function (url) { return applyToUrl(url, selectedLang); },
+            shouldReload: function () {
+                return !isPreview && selectedLang && selectedLang !== urlLang();
+            },
+            navigate: function () {
+                if (typeof window.qrmenuTranslate === 'function') {
+                    window.qrmenuTranslate(selectedLang, selectedFlag, selectedName);
+                    return;
+                }
+                window.location.href = applyToUrl(window.location.href, selectedLang);
+            }
+        };
+    }
+
     function initSplash() {
         var overlay = getOverlay();
 
@@ -123,6 +321,7 @@
             // Dil düğmesi önizlemede de çalışır (çerezsiz): yönetici
             // İngilizce hâli nasıl görünüyor diye bakabilmeli.
             initLang(overlay, true);
+            initCeviri(overlay, true);
             return;
         }
 
@@ -153,6 +352,7 @@
         var redirectUrl = overlay.getAttribute('data-redirect-url') || '';
         var redirectMs = parseInt(overlay.getAttribute('data-redirect-ms'), 10) || 0;
         var dismissMinutes = parseInt(overlay.getAttribute('data-dismiss-minutes'), 10) || 0;
+        var ceviri = noopCeviri();
 
         var idleTimer = null;
         var listenersAttached = false;
@@ -173,7 +373,7 @@
             listenersAttached = false;
         }
 
-        function dismissSplash() {
+        function dismissSplash(fromLink) {
             var expires = '';
             if (dismissMinutes > 0) {
                 var date = new Date();
@@ -186,6 +386,14 @@
             clearHeadFailsafe();
             detachListeners();
             removeLoadingState();
+
+            // Aynı sayfada kalınıyorsa menünün yeni dilde basılması için
+            // QR Çeviri'nin kendi yenilemesini çağır (çerez zaten yazıldı,
+            // splash_dismissed de yazıldı — splash tekrar görünmez).
+            if (!fromLink && ceviri.shouldReload()) {
+                ceviri.navigate();
+                return;
+            }
 
             var overlayDom = getOverlay();
             if (overlayDom) {
@@ -214,11 +422,12 @@
             var checkOverlay = getOverlay();
             if (!checkOverlay) return;
 
+            var dest = ceviri.applyToUrl(checkOverlay.getAttribute('data-redirect-url') || redirectUrl);
             var currentPath = window.location.href.split('#')[0].replace(/\/$/, '');
-            var targetPath = redirectUrl.split('#')[0].replace(/\/$/, '');
+            var targetPath = dest.split('#')[0].replace(/\/$/, '');
 
             if (targetPath && targetPath !== currentPath) {
-                window.location.href = redirectUrl;
+                window.location.href = dest;
             } else {
                 dismissSplash();
             }
@@ -257,7 +466,10 @@
         // Menü/İletişim/Rezervasyon/Yorum: tıklayınca splash kapanır (navigasyon devam eder).
         // Sosyal medya rozetleri yeni sekmede açıldığı için dismiss etmez.
         overlay.querySelectorAll('[data-splash-dismiss]').forEach(function (el) {
-            el.addEventListener('click', dismissSplash);
+            el.addEventListener('click', function () {
+                var href = el.tagName === 'A' ? el.getAttribute('href') : '';
+                dismissSplash(!!href);
+            });
         });
 
         // Wifi: SADECE modal açar, splash'ı kapatmaz.
@@ -284,9 +496,16 @@
             document.querySelectorAll('.splash-modal').forEach(function (modal) {
                 if (modal.style.display === 'flex') modal.style.display = 'none';
             });
+            var openSel = overlay.querySelector('.splash-ceviri.is-open');
+            if (openSel) {
+                openSel.classList.remove('is-open');
+                var openBtn = openSel.querySelector('.splash-ceviri-btn');
+                if (openBtn) openBtn.setAttribute('aria-expanded', 'false');
+            }
         });
 
         initLang(overlay, false);
+        ceviri = initCeviri(overlay, false, resetIdle);
 
         attachListeners();
         resetIdle();
