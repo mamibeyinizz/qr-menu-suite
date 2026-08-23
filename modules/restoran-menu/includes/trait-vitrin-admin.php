@@ -211,6 +211,8 @@ trait RMA_Vitrin_Admin_Trait {
             <?php /* Sürükle-bırak sırası bu alana yazılır (admin-ui.js). */ ?>
             <input type="hidden" name="urun_sirasi" id="rma-vitrin-order" value="<?php echo esc_attr( implode( ',', $secili_idler ) ); ?>">
 
+            <div class="rma-vitrin-layout-wrap">
+                <div class="rma-vitrin-layout-fields">
             <div class="rma-card">
                 <h2 class="rma-card-title">1. Vitrin Adı</h2>
                 <p class="rma-card-desc">Yalnızca yönetim panelinde görünür; vitrinleri birbirinden ayırmanız için.</p>
@@ -290,8 +292,6 @@ trait RMA_Vitrin_Admin_Trait {
                 <?php endif; ?>
             </div>
 
-            <div class="rma-vitrin-layout-wrap">
-                <div class="rma-vitrin-layout-fields">
                     <div class="rma-card">
                         <h2 class="rma-card-title">3. Düzen</h2>
                         <p class="rma-card-desc">Bir sayfada kaç ürün görünsün? Dar ekranlarda sütun sayısı otomatik azalır, vitrin yatay kaydırılır.</p>
@@ -451,12 +451,60 @@ trait RMA_Vitrin_Admin_Trait {
                             </tr>
                         </table>
                     </div>
+
+                    <div class="rma-card">
+                        <h2 class="rma-card-title">5. Kayma Davranışı</h2>
+                        <p class="rma-card-desc">Vitrin kendiliğinden mi kaysın, yoksa ziyaretçi mi kaydırsın?</p>
+
+                        <table class="form-table rma-form-table">
+                            <tr>
+                                <th>Otomatik kayma</th>
+                                <td>
+                                    <label class="rma-check-row">
+                                        <input type="checkbox" name="autoplay" id="rma-vitrin-autoplay" value="1" <?php checked( 1, $deger['autoplay'] ); ?>>
+                                        <span>Vitrin kendiliğinden kaysın</span>
+                                    </label>
+                                    <p class="description rma-desc">Ziyaretçi vitrine dokunduğunda ya da fareyle üzerine geldiğinde kayma durur.</p>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th><label for="rma-vitrin-speed">Kayma hızı</label></th>
+                                <td>
+                                    <div class="rma-range-row">
+                                        <input type="range" name="autoplay_speed" id="rma-vitrin-speed"
+                                               min="<?php echo (int) RMA_Vitrin_DB::MIN_SPEED; ?>"
+                                               max="<?php echo (int) RMA_Vitrin_DB::MAX_SPEED; ?>"
+                                               step="500"
+                                               value="<?php echo (int) $deger['autoplay_speed']; ?>"
+                                               oninput="this.nextElementSibling.textContent=(this.value/1000).toFixed(1)+' sn'">
+                                        <span class="rma-range-val"><?php echo esc_html( number_format( $deger['autoplay_speed'] / 1000, 1 ) ); ?> sn</span>
+                                    </div>
+                                    <p class="description rma-desc">İki sayfa arasındaki bekleme süresi.</p>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Elle kaydırma</th>
+                                <td>
+                                    <label class="rma-check-row">
+                                        <input type="checkbox" name="drag_enabled" value="1" <?php checked( 1, $deger['drag_enabled'] ); ?>>
+                                        <span>Fareyle sürükleyerek kaydırılabilsin</span>
+                                    </label>
+                                    <p class="description rma-desc">Dokunmatik ekranda parmakla kaydırma bu ayardan bağımsız olarak her zaman açıktır.</p>
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+
+                    <p class="submit">
+                        <button type="submit" class="button button-primary">Vitrini Kaydet</button>
+                        <a class="button" href="<?php echo esc_url( $this->vitrin_url() ); ?>">Vazgeç</a>
+                    </p>
                 </div>
 
                 <div class="rma-vitrin-layout-preview">
                     <div class="rma-card rma-vitrin-preview-card">
                         <h2 class="rma-card-title">Canlı Önizleme</h2>
-                        <p class="rma-card-desc">Kaydetmeden önce nasıl görüneceğini kontrol edin. Yukarıdaki her değişiklik anında yansır.</p>
+                        <p class="rma-card-desc">Kaydetmeden önce nasıl görüneceğini kontrol edin. Soldaki her değişiklik anında yansır.</p>
 
                         <div class="rma-vitrin-preview-toggle">
                             <button type="button" class="button rma-vitrin-preview-btn is-active" data-preview-mode="desktop">Masaüstü Önizleme</button>
@@ -473,54 +521,6 @@ trait RMA_Vitrin_Admin_Trait {
                     </div>
                 </div>
             </div>
-
-            <div class="rma-card">
-                <h2 class="rma-card-title">5. Kayma Davranışı</h2>
-                <p class="rma-card-desc">Vitrin kendiliğinden mi kaysın, yoksa ziyaretçi mi kaydırsın?</p>
-
-                <table class="form-table rma-form-table">
-                    <tr>
-                        <th>Otomatik kayma</th>
-                        <td>
-                            <label class="rma-check-row">
-                                <input type="checkbox" name="autoplay" id="rma-vitrin-autoplay" value="1" <?php checked( 1, $deger['autoplay'] ); ?>>
-                                <span>Vitrin kendiliğinden kaysın</span>
-                            </label>
-                            <p class="description rma-desc">Ziyaretçi vitrine dokunduğunda ya da fareyle üzerine geldiğinde kayma durur.</p>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th><label for="rma-vitrin-speed">Kayma hızı</label></th>
-                        <td>
-                            <div class="rma-range-row">
-                                <input type="range" name="autoplay_speed" id="rma-vitrin-speed"
-                                       min="<?php echo (int) RMA_Vitrin_DB::MIN_SPEED; ?>"
-                                       max="<?php echo (int) RMA_Vitrin_DB::MAX_SPEED; ?>"
-                                       step="500"
-                                       value="<?php echo (int) $deger['autoplay_speed']; ?>"
-                                       oninput="this.nextElementSibling.textContent=(this.value/1000).toFixed(1)+' sn'">
-                                <span class="rma-range-val"><?php echo esc_html( number_format( $deger['autoplay_speed'] / 1000, 1 ) ); ?> sn</span>
-                            </div>
-                            <p class="description rma-desc">İki sayfa arasındaki bekleme süresi.</p>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th>Elle kaydırma</th>
-                        <td>
-                            <label class="rma-check-row">
-                                <input type="checkbox" name="drag_enabled" value="1" <?php checked( 1, $deger['drag_enabled'] ); ?>>
-                                <span>Fareyle sürükleyerek kaydırılabilsin</span>
-                            </label>
-                            <p class="description rma-desc">Dokunmatik ekranda parmakla kaydırma bu ayardan bağımsız olarak her zaman açıktır.</p>
-                        </td>
-                    </tr>
-                </table>
-            </div>
-
-            <p class="submit">
-                <button type="submit" class="button button-primary">Vitrini Kaydet</button>
-                <a class="button" href="<?php echo esc_url( $this->vitrin_url() ); ?>">Vazgeç</a>
-            </p>
         </form>
         <?php
         $this->page_footer();
@@ -572,7 +572,7 @@ trait RMA_Vitrin_Admin_Trait {
     }
 
     /**
-     * Canlı önizleme kartları — "4. Kart Boyutu" bölümünün yanındaki
+     * Canlı önizleme kartları — formun sağ sütunundaki
      * `.qrms-vitrin` örneğini doldurur.
      *
      * Gerçek frontend markup'ıyla (bkz. RMA_Vitrin_Shortcode::render())
