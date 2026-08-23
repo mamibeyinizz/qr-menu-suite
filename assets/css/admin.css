@@ -470,6 +470,10 @@
    `.wrap` ile aynı sol boşluğu kullanır ki başlıkla hizalı dursun. */
 
 .qrms-subpage-nav {
+	align-items: center;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px 6px;
 	margin: 12px 20px 0 2px;
 }
 
@@ -493,6 +497,19 @@
 	font-size: 18px;
 	height: 18px;
 	width: 18px;
+}
+
+.qrms-subpage-sep {
+	color: #8c8f94;
+	font-size: 13px;
+	line-height: 1.5;
+}
+
+.qrms-subpage-current {
+	color: #1d2327;
+	font-size: 13px;
+	font-weight: 600;
+	line-height: 1.5;
 }
 
 /* Tablet: iki sütun */

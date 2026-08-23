@@ -122,8 +122,9 @@ trait QRMS_AE_Frontend {
     public function print_critical_head() {
         if (!$this->should_render()) return;
 
-        $opts  = $this->get_options();
-        $bg_id = absint($opts['bg_image']);
+        $opts             = $this->get_options();
+        $bg_id            = absint($opts['bg_image']);
+        $dismiss_minutes  = absint($opts['dismiss_duration']);
         ?>
         <style id="splash-critical-style">
             :root { <?php echo $this->css_vars_declarations($opts); ?> }
@@ -150,7 +151,14 @@ trait QRMS_AE_Frontend {
         <script id="splash-critical-script">
             (function () {
                 try {
-                    if (document.cookie.indexOf('splash_dismissed=1') === -1) {
+                    // 0 = her ziyarette göster: eski oturum çerezini sil ve
+                    // splash_dismissed kontrolünü atla. Değer siteden gelir,
+                    // ziyaretçi çerezinden değil (tam sayfa cache güvenli).
+                    var dismissMinutes = <?php echo (int) $dismiss_minutes; ?>;
+                    if (dismissMinutes === 0) {
+                        document.cookie = 'splash_dismissed=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; SameSite=Lax';
+                    }
+                    if (dismissMinutes === 0 || document.cookie.indexOf('splash_dismissed=1') === -1) {
                         document.documentElement.classList.add('splash-loading');
                         // Zaman aşımı sigortası: frontend.js hiç çalışmazsa (engellendi,
                         // optimizasyon eklentisi bozdu, overlay cache'te eksik kaldı vb.)

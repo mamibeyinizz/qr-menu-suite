@@ -111,6 +111,8 @@ class QRMS_Acilis_Ekrani {
 			// TR/EN düğmesi. Kapalıyken markup'a tek bir ek nitelik bile
 			// girmez; açıkken her metin İngilizce karşılığını data niteliği
 			// olarak yanında taşır (bkz. QRMS_AE_Frontend::lang_data()).
+			// Yönetim formundaki İngilizce input'lar kaldırıldı; anahtar
+			// eski kayıtlardaki çevirilerin kaybolmaması için duruyor.
 			'lang_toggle'         => 0,
 			'texts_en'            => array(
 				'btn1'    => '',

@@ -196,11 +196,9 @@
 
         [1, 2, 3, 4, 5].forEach(function (i) {
             bindLangText('button_text_' + i, 'btn' + i, 'tr', yedek[ 'btn' + i ]);
-            bindLangText('text_en_btn' + i, 'btn' + i, 'en');
         });
 
         bindLangText('divider_text', 'divider', 'tr', yedek.divider);
-        bindLangText('text_en_divider', 'divider', 'en');
 
         $('[name="wifi_password"]').on('input change', function () {
             var el = document.querySelector('#wifi-modal p');
@@ -225,7 +223,7 @@
             .on('change click', markStale);
 
         if (!overlay.querySelector('.splash-lang')) {
-            $('[name^="text_en_"]').on('input', markStale);
+            $('[name="lang_toggle"]').on('change', markStale);
         }
 
         // Sayfa açılışında animasyon bir kez oynasın.

@@ -1214,12 +1214,18 @@ qrms_test(
 		qrms_assert_true( QRMS_Admin::is_module_subpage( 'qrms-rm-gorunum' ), 'kayıt defterinde' );
 		qrms_assert_false( QRMS_Admin::is_module_subpage( 'qrms-yok' ), 'kayıtsız sayfa' );
 
+		$GLOBALS['title'] = 'Görünüm';
+
 		ob_start();
 		call_user_func( $callback );
 		$html = ob_get_clean();
 
+		unset( $GLOBALS['title'] );
+
 		qrms_assert_contains( 'qrms-back-link', $html, 'geri bağlantısı' );
 		qrms_assert_contains( 'Restoran Menü', $html, 'modül adı' );
+		qrms_assert_contains( 'qrms-subpage-current', $html, 'aktif sayfa breadcrumb\'da' );
+		qrms_assert_contains( 'Görünüm', $html, 'aktif sayfa adı' );
 		qrms_assert_contains( 'page=' . QRMS_Admin::get_module_page_slug( 'restoran-menu' ), $html, 'hub adresi' );
 		qrms_assert_contains( 'içerik', $html, 'sayfanın kendi çıktısı' );
 	}
@@ -3958,7 +3964,7 @@ qrms_test(
 );
 
 qrms_test(
-	'dört ekran gizli alt sayfa olarak kaydedilir, menüde satırları olmaz',
+	'ayar ekranları gizli alt sayfa olarak kaydedilir, menüde satırları olmaz',
 	function () {
 		update_option( 'qrms_active_modules', array( 'qr-acilis-ekrani' ) );
 
@@ -3996,7 +4002,7 @@ qrms_test(
 );
 
 qrms_test(
-	'hub dört ekranı da kart olarak basar ve ikonları dashicon\'dur',
+	'hub tüm ekranları kart olarak basar ve ikonları dashicon\'dur',
 	function () {
 		ob_start();
 		qrms_ae()->render_hub();
@@ -4034,6 +4040,7 @@ qrms_test(
 
 		qrms_assert_same( 'misafir123', $opts['wifi_password'], 'kendi alanı yazılır' );
 		qrms_assert_same( array( 'nakit', 'kart' ), $opts['payment_methods'], 'ödeme seçimi korunur' );
+		qrms_assert_same( array( 'instagram' ), $opts['social_media_active'], 'sosyal hesap Ayarlar kaydında korunur' );
 		qrms_assert_same( 1, $opts['btn_surface_apply_cta'], 'görünüm kutusu korunur' );
 
 		// Buna karşılık SAHİBİ sayfa gönderilince kutu gerçekten kapanabilmeli.
@@ -4099,7 +4106,7 @@ qrms_test(
 	'sosyal hesap sırası işaretlenme sırasıdır ve altı hesapla sınırlıdır',
 	function () {
 		qrms_ae_submit(
-			'qrms-ae-davranis',
+			'qrms-ae-sosyal',
 			array(
 				'social_media_active'    => array( 'instagram', 'facebook', 'youtube', 'x', 'tiktok', 'whatsapp', 'linkedin' ),
 				'social_media_order'     => 'whatsapp,instagram,facebook,youtube,x,tiktok,linkedin',
@@ -4492,7 +4499,7 @@ qrms_test(
 		$html = qrms_ae_submit( 'qrms-ae-butonlar', array( 'button_text_1' => 'Menüye Git' ) );
 
 		qrms_assert_contains( 'name="button_text_5"', $html, 'eksik anahtarlı satır yine basılır' );
-		qrms_assert_contains( 'name="text_en_btn5"', $html, 'İngilizce alanı da' );
+		qrms_assert_false( strpos( $html, 'name="text_en_btn5"' ), 'İngilizce alanı yok' );
 
 		$opts = get_option( 'splash_screen_options' );
 
@@ -4503,30 +4510,142 @@ qrms_test(
 );
 
 qrms_test(
-	'yönetim: İngilizce alanlar ve düğme anahtarı Butonlar sayfasında',
+	'yönetim: İngilizce çeviri alanları kaldırıldı, düğme anahtarı durur',
 	function () {
+		update_option(
+			'splash_screen_options',
+			array(
+				'texts_en' => array( 'btn1' => 'View Menu', 'divider' => 'Follow us' ),
+			)
+		);
+
 		$html = qrms_ae_submit(
 			'qrms-ae-butonlar',
 			array(
 				'lang_toggle'     => '1',
 				'button_text_1'   => 'Menüye Git',
-				'text_en_btn1'    => 'View Menu',
-				'text_en_divider' => 'Follow us',
+				'text_en_btn1'    => 'Should Not Save',
+				'text_en_divider' => 'Should Not Save Either',
 			)
 		);
 
 		$opts = get_option( 'splash_screen_options' );
 
 		qrms_assert_same( 1, $opts['lang_toggle'], 'düğme açıldı' );
-		qrms_assert_same( 'View Menu', $opts['texts_en']['btn1'], 'çeviri kaydedildi' );
-		qrms_assert_same( 'Follow us', $opts['texts_en']['divider'], 'ayraç çevirisi' );
-		qrms_assert_contains( 'name="text_en_btn1"', $html, 'alan basılır' );
+		qrms_assert_same( 'View Menu', $opts['texts_en']['btn1'], 'eski çeviri ezilmez' );
+		qrms_assert_same( 'Follow us', $opts['texts_en']['divider'], 'eski ayraç çevirisi durur' );
+		qrms_assert_false( strpos( $html, 'name="text_en_btn1"' ), 'buton İngilizce alanı yok' );
+		qrms_assert_false( strpos( $html, 'name="text_en_divider"' ), 'ayraç İngilizce alanı yok' );
+		qrms_assert_false( strpos( $html, 'Buton yazısı (English)' ), 'İngilizce etiket yok' );
 		qrms_assert_contains( 'name="lang_toggle"', $html, 'düğme anahtarı basılır' );
+		qrms_assert_contains( 'name="button_text_1"', $html, 'Türkçe yazı alanı durur' );
 
-		// Onay kutusu bu sayfanın: başka sayfayı kaydetmek onu kapatmamalı.
 		qrms_ae_submit( 'qrms-ae-davranis', array( 'wifi_password' => 'x' ) );
 
 		qrms_assert_same( 1, get_option( 'splash_screen_options' )['lang_toggle'], 'başka sayfa dili kapatmaz' );
+	}
+);
+
+qrms_test(
+	'Ayarlar ve Sosyal Medya Bağlantısı ayrı sayfalardır',
+	function () {
+		$pages = qrms_ae()->admin_pages();
+
+		qrms_assert_true( isset( $pages['qrms-ae-davranis'] ), 'Ayarlar slug durur' );
+		qrms_assert_same( 'Ayarlar', $pages['qrms-ae-davranis']['title'], 'sekme adı Ayarlar' );
+		qrms_assert_false( strpos( $pages['qrms-ae-davranis']['title'], 'Sosyal' ), 'Ayarlar adında Sosyal yok' );
+
+		qrms_assert_true( isset( $pages['qrms-ae-sosyal'] ), 'sosyal sayfa kayıtlı' );
+		qrms_assert_same( 'Sosyal Medya Bağlantısı', $pages['qrms-ae-sosyal']['title'], 'yeni sekme adı' );
+
+		$ayarlar = qrms_ae_submit( 'qrms-ae-davranis', array() );
+		$sosyal  = qrms_ae_submit( 'qrms-ae-sosyal', array() );
+
+		qrms_assert_contains( 'name="dismiss_duration"', $ayarlar, 'süre Ayarlar\'da' );
+		qrms_assert_contains( 'name="wifi_password"', $ayarlar, 'wifi Ayarlar\'da' );
+		qrms_assert_false( strpos( $ayarlar, 'name="social_media_active[]"' ), 'sosyal kutu Ayarlar\'da yok' );
+
+		qrms_assert_contains( 'name="social_media_active[]"', $sosyal, 'sosyal kutu yeni sayfada' );
+		qrms_assert_false( strpos( $sosyal, 'name="wifi_password"' ), 'wifi sosyal sayfada yok' );
+	}
+);
+
+qrms_test(
+	'sosyal sayfayı kaydetmek wifi şifresini silmez, Ayarlar sosyal seçimi silmez',
+	function () {
+		update_option(
+			'splash_screen_options',
+			array(
+				'wifi_password'       => 'misafir123',
+				'social_media_active' => array( 'instagram' ),
+				'social_media'        => array( 'instagram' => 'https://instagram.com/x' ),
+			)
+		);
+
+		qrms_ae_submit( 'qrms-ae-sosyal', array( 'social_media_active' => array( 'facebook' ) ) );
+
+		$opts = get_option( 'splash_screen_options' );
+
+		qrms_assert_same( 'misafir123', $opts['wifi_password'], 'wifi durur' );
+		qrms_assert_same( array( 'facebook' ), $opts['social_media_active'], 'sosyal sahibi sayfada yazılır' );
+
+		qrms_ae_submit( 'qrms-ae-davranis', array( 'wifi_password' => 'yeni-sifre' ) );
+
+		$opts = get_option( 'splash_screen_options' );
+
+		qrms_assert_same( 'yeni-sifre', $opts['wifi_password'], 'wifi Ayarlar\'da yazılır' );
+		qrms_assert_same( array( 'facebook' ), $opts['social_media_active'], 'sosyal Ayarlar kaydında durur' );
+	}
+);
+
+qrms_test(
+	'bayrak boyutu CSS değişkenine basılır, buton padding anahtarı silinir',
+	function () {
+		$GLOBALS['qrms_test']['is_front_page'] = true;
+
+		update_option(
+			'splash_screen_options',
+			array(
+				'button_padding' => '14px 28px',
+			)
+		);
+
+		qrms_ae_submit(
+			'qrms-ae-gorunum',
+			array(
+				'ceviri_flag_size' => '40',
+			)
+		);
+
+		ob_start();
+		qrms_ae()->print_critical_head();
+		$html = ob_get_clean();
+
+		qrms_assert_contains( '--sp-flag-size: 40px', $html, 'bayrak boyutu CSS\'e basılır' );
+		qrms_assert_false( isset( get_option( 'splash_screen_options' )['button_padding'] ), 'eski padding anahtarı silinir' );
+		qrms_assert_false( strpos( $html, '--sp-cta-pad' ), 'CTA padding değişkeni basılmaz' );
+	}
+);
+
+qrms_test(
+	'tekrar göstermeme süresi 0 iken çerez yazılmaz, kontrol atlanır',
+	function () {
+		$js   = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-acilis-ekrani/assets/js/splash.js' );
+		$head = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-acilis-ekrani/includes/frontend.php' );
+
+		qrms_assert_contains( 'if (dismissMinutes > 0)', $js, 'çerez yalnızca süre > 0 iken yazılır' );
+		qrms_assert_contains( 'else if (hasDismissCookie())', $js, '0 iken çerez kontrolü atlanır' );
+		qrms_assert_contains( 'dismissMinutes === 0', $head, 'kritik head 0\'ı ayrı ele alır' );
+
+		$GLOBALS['qrms_test']['is_front_page'] = true;
+		update_option( 'splash_screen_options', array( 'dismiss_duration' => 0 ) );
+
+		ob_start();
+		qrms_ae()->print_critical_head();
+		$html = ob_get_clean();
+
+		qrms_assert_contains( 'var dismissMinutes = 0;', $html, 'süre head betiğine basılır' );
+		qrms_assert_contains( 'splash-loading', $html, '0 iken splash yine gösterilir' );
 	}
 );
 

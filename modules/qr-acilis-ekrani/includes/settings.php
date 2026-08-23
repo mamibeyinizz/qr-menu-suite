@@ -25,7 +25,7 @@ trait QRMS_AE_Settings {
 	 * alır, diğer grupların anahtarlarına hiç dokunmaz.
 	 *
 	 * @param array  $options Mevcut ayarlar.
-	 * @param string $group   Gönderen sayfa: gorunum|butonlar|odeme|davranis.
+	 * @param string $group   Gönderen sayfa: gorunum|butonlar|odeme|davranis|sosyal.
 	 * @return array Kaydedilen ayarlar.
 	 */
 	private function save_settings( $options, $group ) {
@@ -37,6 +37,8 @@ trait QRMS_AE_Settings {
 			$options = $this->save_group_odeme( $options );
 		} elseif ( 'davranis' === $group ) {
 			$options = $this->save_group_davranis( $options );
+		} elseif ( 'sosyal' === $group ) {
+			$options = $this->save_group_sosyal( $options );
 		} else {
 			return $options;
 		}
@@ -153,12 +155,6 @@ trait QRMS_AE_Settings {
 		// gönderildiğinde "kapalı" demektir (bkz. save_settings başlığı).
 		$options['lang_toggle'] = isset( $_POST['lang_toggle'] ) ? 1 : 0;
 
-		foreach ( array( 'btn1', 'btn2', 'btn3', 'btn4', 'btn5', 'divider' ) as $key ) {
-			if ( isset( $_POST[ 'text_en_' . $key ] ) ) {
-				$options['texts_en'][ $key ] = sanitize_text_field( wp_unslash( $_POST[ 'text_en_' . $key ] ) );
-			}
-		}
-
 		for ( $i = 1; $i <= 6; $i++ ) {
 			if ( isset( $_POST[ 'button_text_' . $i ] ) ) {
 				$options['button_texts'][ 'btn' . $i ] = sanitize_text_field( wp_unslash( $_POST[ 'button_text_' . $i ] ) );
@@ -207,7 +203,7 @@ trait QRMS_AE_Settings {
 	}
 
 	/**
-	 * Davranış: süreler, yönlendirme, wifi ve sosyal medya.
+	 * Ayarlar: süreler, yönlendirme ve wifi. Sosyal hesaplara dokunmaz.
 	 */
 	private function save_group_davranis( $options ) {
 		$options['redirect_url']     = isset($_POST['redirect_url']) ? esc_url_raw(wp_unslash($_POST['redirect_url'])) : $options['redirect_url'];
@@ -215,7 +211,16 @@ trait QRMS_AE_Settings {
 		$options['dismiss_duration'] = isset($_POST['dismiss_duration']) ? absint($_POST['dismiss_duration']) : $options['dismiss_duration'];
 		$options['wifi_password']    = isset($_POST['wifi_password']) ? sanitize_text_field(wp_unslash($_POST['wifi_password'])) : $options['wifi_password'];
 
-		// --- Sosyal Medya ---
+		return $options;
+	}
+
+	/**
+	 * Sosyal medya: aktif hesaplar ve URL'ler.
+	 *
+	 * Anahtarlar (social_media, social_media_active) Ayarlar sayfasından
+	 * taşındı; sanitize kuralları aynıdır.
+	 */
+	private function save_group_sosyal( $options ) {
 		$valid_social  = array_keys( $this->social_media_map() );
 		$posted_active = array();
 		if ( isset( $_POST['social_media_active'] ) && is_array( $_POST['social_media_active'] ) ) {

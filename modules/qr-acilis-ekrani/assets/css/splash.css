@@ -127,7 +127,7 @@ html.splash-loading #custom-splash-overlay { display: block !important; visibili
     justify-content: center;
     width: auto;
     height: auto;
-    padding: 4px;
+    padding: 3px;
     border: 1px solid var(--sp-glass-border);
     border-radius: 8px;
     background: var(--sp-glass-bg);
@@ -135,6 +135,7 @@ html.splash-loading #custom-splash-overlay { display: block !important; visibili
     color: var(--sp-text);
     cursor: pointer;
     font: inherit;
+    line-height: 1;
 }
 
 #custom-splash-overlay .splash-ceviri-flag {

@@ -323,21 +323,36 @@ class QRMS_Admin {
 	}
 
 	/**
-	 * Alt sayfanın en üstündeki "← Modül Adı" bağlantısı.
+	 * Alt sayfanın en üstündeki "← Modül Adı > Aktif sayfa" breadcrumb'ı.
 	 *
 	 * Sol menüde artık alt satır olmadığı için modüle dönüşün tek yolu budur;
-	 * register_module_subpage() her alt sayfanın önüne otomatik ekler.
+	 * register_module_subpage() her alt sayfanın önüne otomatik ekler. Aktif
+	 * sayfa adı WordPress'in sayfa başlığından gelir (`get_admin_page_title`).
 	 *
 	 * @param string $module_slug Modül slug'ı.
 	 * @return void
 	 */
 	public static function render_subpage_back_link( $module_slug ) {
+		$module_name = QRMS_Helpers::get_module_name( $module_slug );
+		$current     = function_exists( 'get_admin_page_title' ) ? get_admin_page_title() : '';
+
+		if ( '' === $current && isset( $GLOBALS['title'] ) ) {
+			$current = (string) $GLOBALS['title'];
+		}
+
+		if ( $current === $module_name ) {
+			$current = '';
+		}
 		?>
 		<div class="qrms-subpage-nav">
 			<a class="qrms-back-link" href="<?php echo esc_url( self::get_module_page_url( $module_slug ) ); ?>">
 				<span class="dashicons dashicons-arrow-left-alt2" aria-hidden="true"></span>
-				<?php echo esc_html( QRMS_Helpers::get_module_name( $module_slug ) ); ?>
+				<?php echo esc_html( $module_name ); ?>
 			</a>
+			<?php if ( '' !== $current ) : ?>
+				<span class="qrms-subpage-sep" aria-hidden="true">&gt;</span>
+				<span class="qrms-subpage-current"><?php echo esc_html( $current ); ?></span>
+			<?php endif; ?>
 		</div>
 		<?php
 	}
