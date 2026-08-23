@@ -45,6 +45,35 @@
     width: 100%;
 }
 
+/* ---------------------------------------------------------------------
+   TAM GENİŞLİK (full-bleed)
+
+   Tema/sayfa oluşturucunun içerik sütunu (ör. .entry-content, Elementor
+   "Boxed" container) genelde sayfadan dar bir genişliğe kilitlidir.
+   Vitrin bir "ürün şeridi" olarak tasarlandığı için o sütunun
+   genişliğine değil, tarayıcı görünür alanının TAMAMINA yayılır —
+   klasik "full-bleed" tekniği: kutu, ebeveyninin genişliğinden bağımsız
+   olarak viewport'a göre ortalanıp kenarlara kadar uzatılır.
+
+   Yalnızca FRONTEND çıktısına (RMA_Vitrin_Shortcode::render()) özel
+   .qrms-vitrin-fullwidth değiştirici sınıfıyla uygulanır — admin
+   panelindeki Canlı Önizleme de aynı vitrin.css'i paylaşır ama
+   .rma-vitrin-preview-stage'in İÇİNDE sabit bir kutuya sığması gerekir;
+   çıplak .qrms-vitrin'e uygulansaydı önizleme kendi kapsayıcısını
+   taşardı. Kartlar tarayıcı kenarına yapışmasın diye yatay padding
+   eklenir — kaydırma alanı ekranın tam genişliği, kartlar bu boşluk
+   kadar içeriden başlar/biter.
+--------------------------------------------------------------------- */
+.qrms-vitrin.qrms-vitrin-fullwidth {
+    left: 50%;
+    margin-left: -50vw;
+    margin-right: -50vw;
+    max-width: 100vw;
+    padding: 0 20px;
+    right: 50%;
+    width: 100vw;
+}
+
 .qrms-vitrin *,
 .qrms-vitrin *::before,
 .qrms-vitrin *::after {
@@ -287,6 +316,12 @@
 
 .qrms-vitrin-prev { left: -8px; }
 .qrms-vitrin-next { right: -8px; }
+
+/* Tam genişlikte (bkz. .qrms-vitrin-fullwidth) kutu artık tarayıcı
+   kenarına kadar uzandığı için -8px'lik taşma sayfa dışına çıkıp yatay
+   scroll doğururdu; burada kenarın hemen İÇİNE alınır. */
+.qrms-vitrin-fullwidth .qrms-vitrin-prev { left: 4px; }
+.qrms-vitrin-fullwidth .qrms-vitrin-next { right: 4px; }
 
 .qrms-vitrin-dots {
     display: flex;

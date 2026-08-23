@@ -173,13 +173,19 @@ class RMA_Vitrin_Shortcode {
             $mobil_oran
         );
 
+        // Boşsa vitrin.css'in kendi --qrms-vitrin-bg varsayılanı (şeffaf)
+        // geçerli kalır; admin'de renk seçilmişse burada ezilir.
+        if ( '' !== (string) $vitrin->bg_color ) {
+            $stil .= sprintf( '--qrms-vitrin-bg:%s;', $vitrin->bg_color );
+        }
+
         // Kartlar TEK bir düz liste olarak basılır; kaç tanesinin yan yana
         // görüneceğine CSS karar verir (dar ekranda sütun sayısı düşer).
         // Sunucuda "sayfa"lara bölmek, mobilde bir sayfanın 4 kartı alt alta
         // yığması demek olurdu — bin pikselden uzun bir vitrin.
         ob_start();
         ?>
-<div class="qrms-vitrin"
+<div class="qrms-vitrin qrms-vitrin-fullwidth"
      data-qrms-vitrin
      data-autoplay="<?php echo (int) $vitrin->autoplay; ?>"
      data-speed="<?php echo (int) $vitrin->autoplay_speed; ?>"

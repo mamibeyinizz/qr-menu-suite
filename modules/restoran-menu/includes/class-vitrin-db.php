@@ -19,7 +19,7 @@ if ( ! class_exists( 'RMA_Vitrin_DB' ) ) :
 class RMA_Vitrin_DB {
 
     /** Şema sürümü. Değişince tablolar dbDelta ile tazelenir. */
-    const DB_VERSION = '1.2.0';
+    const DB_VERSION = '1.3.0';
 
     /** Sürümün saklandığı option adı. */
     const VERSION_OPTION = 'rma_vitrin_db_version';
@@ -115,6 +115,7 @@ class RMA_Vitrin_DB {
             mobile_gap smallint(4) unsigned NOT NULL DEFAULT 12,
             mobile_card_min smallint(4) unsigned NOT NULL DEFAULT 132,
             mobile_image_ratio smallint(4) unsigned NOT NULL DEFAULT 100,
+            bg_color varchar(20) NOT NULL DEFAULT '',
             autoplay tinyint(1) NOT NULL DEFAULT 0,
             autoplay_speed smallint(5) unsigned NOT NULL DEFAULT 4000,
             drag_enabled tinyint(1) NOT NULL DEFAULT 1,
@@ -179,6 +180,7 @@ class RMA_Vitrin_DB {
             'mobile_gap'          => 12,
             'mobile_card_min'     => 132,
             'mobile_image_ratio'  => 100,
+            'bg_color'            => '',
             'autoplay'            => 0,
             'autoplay_speed'      => 4000,
             'drag_enabled'        => 1,
@@ -213,6 +215,7 @@ class RMA_Vitrin_DB {
             'mobile_gap'          => self::sinirla( $ham['mobile_gap'] ?? $v['mobile_gap'], self::MIN_GAP, self::MAX_GAP, $v['mobile_gap'] ),
             'mobile_card_min'     => self::sinirla( $ham['mobile_card_min'] ?? $v['mobile_card_min'], self::MIN_MOBILE_CARD_MIN, self::MAX_MOBILE_CARD_MIN, $v['mobile_card_min'] ),
             'mobile_image_ratio'  => self::sinirla( $ham['mobile_image_ratio'] ?? $v['mobile_image_ratio'], self::MIN_IMAGE_RATIO, self::MAX_IMAGE_RATIO, $v['mobile_image_ratio'] ),
+            'bg_color'            => self::hex_renk( $ham['bg_color'] ?? '' ),
             'autoplay'            => self::bayrak( $ham['autoplay'] ?? 0 ),
             'autoplay_speed'      => self::sinirla( $ham['autoplay_speed'] ?? $v['autoplay_speed'], self::MIN_SPEED, self::MAX_SPEED, $v['autoplay_speed'] ),
             'drag_enabled'        => self::bayrak( $ham['drag_enabled'] ?? 0 ),
@@ -238,6 +241,19 @@ class RMA_Vitrin_DB {
         }
 
         return (int) max( $min, min( $max, (int) $deger ) );
+    }
+
+    /**
+     * Hex renk girdisini doğrular; geçersiz/boşsa boş dize (= şeffaf,
+     * vitrin.css'in kendi varsayılanı) döner.
+     *
+     * @param mixed $deger Ham değer.
+     * @return string
+     */
+    public static function hex_renk( $deger ) {
+        $renk = sanitize_hex_color( trim( (string) $deger ) );
+
+        return $renk ? $renk : '';
     }
 
     /**
@@ -376,6 +392,7 @@ class RMA_Vitrin_DB {
             'mobile_gap'          => $ayarlar['mobile_gap'],
             'mobile_card_min'     => $ayarlar['mobile_card_min'],
             'mobile_image_ratio'  => $ayarlar['mobile_image_ratio'],
+            'bg_color'            => $ayarlar['bg_color'],
             'autoplay'            => $ayarlar['autoplay'],
             'autoplay_speed'      => $ayarlar['autoplay_speed'],
             'drag_enabled'        => $ayarlar['drag_enabled'],
@@ -383,7 +400,7 @@ class RMA_Vitrin_DB {
             'updated_at'          => $simdi,
         );
 
-        $format = array( '%s', '%d', '%d', '%d', '%d', '%d', '%d', '%d', '%d', '%d', '%d', '%d', '%d', '%d', '%d', '%s' );
+        $format = array( '%s', '%d', '%d', '%d', '%d', '%d', '%d', '%d', '%d', '%d', '%d', '%s', '%d', '%d', '%d', '%d', '%s' );
 
         if ( $id > 0 && self::getir( $id ) ) {
             $wpdb->update( $tablo, $veri, array( 'id' => $id ), $format, array( '%d' ) );
