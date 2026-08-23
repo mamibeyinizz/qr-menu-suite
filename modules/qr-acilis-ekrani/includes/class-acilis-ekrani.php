@@ -96,10 +96,10 @@ class QRMS_Acilis_Ekrani {
 			'bg_color'            => '#f7f9fc',
 			'button_bg_color'     => '#0073aa',
 			'button_text_color'   => '#ffffff',
-			// NOT: button_padding ve button_font_size v3.6'dan beri frontend'i
-			// etkilemiyor — CTA'nın ölçüsü stylesheet'te sabittir. Anahtarlar
-			// veri kaybı olmasın diye korunuyor, admin alanları da duruyor.
-			'button_padding'      => '14px 28px',
+			// NOT: button_font_size v3.6'dan beri frontend'i etkilemiyor —
+			// CTA'nın ölçüsü stylesheet'te sabittir. Anahtar veri kaybı
+			// olmasın diye korunuyor. button_padding kaldırıldı; CTA
+			// iç boşluğu splash.css'teki sabittir.
 			'button_font_size'    => '16px',
 			'button_opacity'      => 22,
 			// Rozet/cam yüzeylerin (4'lü grid, sosyal, ödeme satırı) dolgusu.
@@ -120,12 +120,14 @@ class QRMS_Acilis_Ekrani {
 				'btn5'    => '',
 				'divider' => '',
 			),
-			// QR Çeviri dil seçici (sol üst bayrak). Kapalıyken DOM'a
+			// QR Çeviri dil seçici (logo şeridindeki bayrak). Kapalıyken DOM'a
 			// hiç girmez; açıkken yalnızca işaretli diller basılır ve
 			// tıklama QR Çeviri'nin rma_lang çerezi + ?lang= anahtarına
 			// yazılır — splash kendi çeviri motorunu taşımaz.
 			'ceviri_selector'      => 0,
 			'ceviri_selector_langs' => array(),
+			// Logo şeridindeki dil bayrağı kutusu (genişlik px, yükseklik 3:2).
+			'ceviri_flag_size'     => 32,
 			'animation_type'      => 'anim-blur-up',
 			'button_texts'        => array(
 				'btn1' => 'Menüye Git',

@@ -80,6 +80,9 @@ trait QRMS_AE_Frontend {
         $loader_rgb  = $this->hex_to_rgb_triplet($this->opt_hex($opts, 'loader_color'), '255,255,255');
         $loader_size = $this->opt_int($opts, 'loader_size', 18, 44);
 
+        // --- Dil bayrağı (logo şeridi, 3:2 kutu) ---
+        $flag_size = $this->opt_int($opts, 'ceviri_flag_size', 20, 48);
+
         return array(
             '--sp-bg'              => $bg_color,
             '--sp-accent'          => $button_bg_color,
@@ -96,10 +99,12 @@ trait QRMS_AE_Frontend {
             '--sp-logo-bar-h'      => $logo_bar_h . 'px',
             '--sp-logo-bar-rgb'    => $logo_bar_rgb,
             '--sp-logo-bar-alpha'  => (string) $logo_bar_alpha,
-            // Yüklenme göstergesi (sağ üst)
+            // Yüklenme göstergesi (logo şeridinin sağı)
             '--sp-loader'          => $this->opt_hex($opts, 'loader_color'),
             '--sp-loader-rgb'      => $loader_rgb,
             '--sp-loader-size'     => $loader_size . 'px',
+            // Dil bayrağı (logo şeridinin sol tarafı)
+            '--sp-flag-size'       => $flag_size . 'px',
         );
     }
 
@@ -239,7 +244,7 @@ trait QRMS_AE_Frontend {
     }
 
     /**
-     * Sağ üst köşedeki yüklenme göstergesi.
+     * Logo şeridinin sağındaki yüklenme göstergesi.
      *
      * Eski alt ilerleme çubuğunun (.splash-progress-track) yerini alır.
      * Tüm hareket CSS keyframe'lerinden gelir; JS animasyon döngüsü yoktur.
@@ -458,7 +463,7 @@ trait QRMS_AE_Frontend {
     }
 
     /**
-     * QR Çeviri bayrak seçici. Sol üstte, sağ üstteki yüklenme göstergesinin karşısında.
+     * QR Çeviri bayrak seçici. Logo şeridinin solunda, yüklenme göstergesinin karşısında.
      *
      * Kendi çeviri motoru YOKTUR: dil listesi QR Çeviri'den gelir, tıklama
      * rma_lang çerezine ve (splash kapandıktan sonra) ?lang= anahtarına
@@ -511,8 +516,7 @@ trait QRMS_AE_Frontend {
     }
 
     /**
-     * TR|EN düğmesi. Sol üstte, sağ üstteki yüklenme göstergesinin karşısında.
-     * QR Çeviri bayrağı da açıksa onun sağına kayar (CSS :has).
+     * TR|EN düğmesi. Logo şeridinin solunda, bayrak açıksa onun yanında.
      *
      * @param array $opts Ayarlar.
      * @return void
@@ -557,18 +561,21 @@ trait QRMS_AE_Frontend {
 
             <?php $this->render_background_layer($opts); ?>
 
-            <?php $this->render_loader($opts, $redirect_seconds); ?>
-
-            <?php $this->render_ceviri_selector($opts); ?>
-
-            <?php $this->render_lang_toggle($opts); ?>
-
-            <?php if ($logo_url): ?>
-                <?php // Tam genişlik üst şerit; yüksekliği ve zemin rengi/opaklığı admin'den gelir. ?>
-                <div class="splash-logo">
-                    <div class="sp-logo-wrap"><img src="<?php echo esc_url($logo_url); ?>" alt="" /></div>
+            <?php // Tam genişlik üst şerit: sol bayrak/dil, orta logo, sağ yüklenme göstergesi. ?>
+            <div class="splash-logo">
+                <div class="splash-logo-side splash-logo-side-start">
+                    <?php $this->render_ceviri_selector($opts); ?>
+                    <?php $this->render_lang_toggle($opts); ?>
                 </div>
-            <?php endif; ?>
+                <div class="sp-logo-wrap">
+                    <?php if ($logo_url): ?>
+                        <img src="<?php echo esc_url($logo_url); ?>" alt="" />
+                    <?php endif; ?>
+                </div>
+                <div class="splash-logo-side splash-logo-side-end">
+                    <?php $this->render_loader($opts, $redirect_seconds); ?>
+                </div>
+            </div>
 
             <div class="splash-content">
                 <?php // Giriş animasyonu blur'suz bu sarmalayıcıda çalışır; biter bitmez JS sınıfı kaldırır. ?>

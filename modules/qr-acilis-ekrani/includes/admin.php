@@ -235,7 +235,6 @@ trait QRMS_AE_Admin {
 	 * @return void
 	 */
 	private function render_page_gorunum( $options ) {
-		list( $padding_v, $padding_h ) = $this->parse_padding( $options['button_padding'] );
 		$font_size = $this->parse_font_size( $options['button_font_size'] );
 
 		// Yeni anahtarlar eski kayıtlarda bulunmaz; hepsi isset() kontrollü
@@ -246,6 +245,7 @@ trait QRMS_AE_Admin {
 		$loader_type         = $this->opt_choice( $options, 'loader_type', array( 'spinner', 'ring', 'dots', 'pulse', 'none' ) );
 		$loader_color        = $this->opt_hex( $options, 'loader_color' );
 		$loader_size         = $this->opt_int( $options, 'loader_size', 18, 44 );
+		$ceviri_flag_size    = $this->opt_int( $options, 'ceviri_flag_size', 20, 48 );
 		$btn_surface_color   = $this->opt_hex( $options, 'btn_surface_color' );
 		$btn_surface_opacity = $this->opt_int( $options, 'btn_surface_opacity', 0, 100 );
 		$btn_surface_cta     = ! empty( $options['btn_surface_apply_cta'] );
@@ -429,7 +429,7 @@ trait QRMS_AE_Admin {
                         <tr>
                             <th colspan="2">
                                 <h3 style="margin-bottom:4px;">Yüklenme Göstergesi</h3>
-                                <p class="description" style="font-weight:400;">Ekranın sağ üst köşesindeki bekleme animasyonu.</p>
+                                <p class="description" style="font-weight:400;">Logo şeridinin sağındaki bekleme animasyonu.</p>
                             </th>
                         </tr>
                         <tr>
@@ -459,13 +459,13 @@ trait QRMS_AE_Admin {
                                        value="<?php echo esc_attr($loader_size); ?>"
                                        class="splash-range" data-output="loader_size_out" data-suffix="px" />
                                 <output id="loader_size_out" class="splash-range-value"><?php echo esc_html($loader_size); ?>px</output>
-                                <p class="description">Gösterge boyutu; konumu sağ üst köşede sabittir.</p>
+                                <p class="description">Gösterge boyutu; konumu logo şeridinin sağında, dikey ortadadır.</p>
                             </td>
                         </tr>
                         <tr>
                             <th colspan="2">
                                 <h3 style="margin-bottom:4px;">Dil Seçici</h3>
-                                <p class="description" style="font-weight:400;">Sol üstteki bayrak ikonu; tıklanınca QR Çeviri'nin dilini değiştirir. Splash metinlerini çevirmez.</p>
+                                <p class="description" style="font-weight:400;">Logo şeridinin solundaki bayrak ikonu; tıklanınca QR Çeviri'nin dilini değiştirir. Splash metinlerini çevirmez.</p>
                             </th>
                         </tr>
                         <tr>
@@ -473,7 +473,7 @@ trait QRMS_AE_Admin {
                             <td>
                                 <label>
                                     <input type="checkbox" name="ceviri_selector" id="ceviri_selector" value="1" <?php checked( ! empty( $options['ceviri_selector'] ) ); ?> />
-                                    Açılış ekranının sol üst köşesinde göster
+                                    Açılış ekranının logo şeridinde, solda göster
                                 </label>
                                 <?php if ( $this->ceviri_available() ) : ?>
                                     <p class="description">Ziyaretçi bir bayrağa dokununca menü, splash kapandıktan sonra o dilde açılır. Altyapı QR Çeviri'nindir (rma_lang çerezi ve ?lang=).</p>
@@ -511,17 +511,13 @@ trait QRMS_AE_Admin {
                         </tr>
                         <?php endif; ?>
                         <tr>
-                            <th><label for="button_padding_v">Buton İç Boşluğu</label></th>
+                            <th><label for="ceviri_flag_size">Bayrak Boyutu</label></th>
                             <td>
-                                <label class="splash-inline-field">
-                                    <span>Dikey boşluk (px)</span>
-                                    <input type="number" name="button_padding_v" id="button_padding_v" min="0" max="60" step="1" value="<?php echo esc_attr($padding_v); ?>" />
-                                </label>
-                                <label class="splash-inline-field">
-                                    <span>Yatay boşluk (px)</span>
-                                    <input type="number" name="button_padding_h" id="button_padding_h" min="0" max="90" step="1" value="<?php echo esc_attr($padding_h); ?>" />
-                                </label>
-                                <p class="description">Butonun iç boşluğunu (yükseklik/genişlik) belirler.</p>
+                                <input type="range" name="ceviri_flag_size" id="ceviri_flag_size" min="20" max="48" step="1"
+                                       value="<?php echo esc_attr( $ceviri_flag_size ); ?>"
+                                       class="splash-range" data-output="ceviri_flag_size_out" data-suffix="px" />
+                                <output id="ceviri_flag_size_out" class="splash-range-value"><?php echo esc_html( $ceviri_flag_size ); ?>px</output>
+                                <p class="description">Dil bayrağı kutusunun genişliği; yükseklik 3:2 oranına göre hesaplanır.</p>
                             </td>
                         </tr>
                     </table>

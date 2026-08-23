@@ -114,6 +114,7 @@
             logo_bar_height: function (v) { setVar('--sp-logo-bar-h', (parseInt(v, 10) || 0) + 'px'); },
             logo_bar_opacity: function (v) { setVar('--sp-logo-bar-alpha', (parseInt(v, 10) || 0) / 100); },
             loader_size: function (v) { setVar('--sp-loader-size', (parseInt(v, 10) || 0) + 'px'); },
+            ceviri_flag_size: function (v) { setVar('--sp-flag-size', (parseInt(v, 10) || 0) + 'px'); },
             redirect_seconds: function (v) { setVar('--sp-seconds', (parseInt(v, 10) || 0) + 's'); }
         };
 

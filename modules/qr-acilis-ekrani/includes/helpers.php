@@ -111,24 +111,6 @@ trait QRMS_AE_Helpers {
     }
 
     /**
-     * "14px 28px" biçimindeki option değerini iki sayısal alana ayırır.
-     * Option formatı DEĞİŞMEZ; bu sadece admin formunda göstermek içindir.
-     *
-     * @return array [dikey, yatay]
-     */
-    private function parse_padding($value) {
-        $parts = preg_split('/\s+/', trim((string) $value));
-
-        $vertical   = isset($parts[0]) ? absint(preg_replace('/[^0-9]/', '', $parts[0])) : 0;
-        $horizontal = isset($parts[1]) ? absint(preg_replace('/[^0-9]/', '', $parts[1])) : $vertical;
-
-        if ($vertical <= 0)   $vertical   = 14;
-        if ($horizontal <= 0) $horizontal = 28;
-
-        return array(min($vertical, 60), min($horizontal, 90));
-    }
-
-    /**
      * "16px" biçimindeki option değerinden sayıyı çıkarır ve 12–24 arasına sıkıştırır.
      */
     private function parse_font_size($value) {

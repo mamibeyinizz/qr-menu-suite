@@ -1,7 +1,7 @@
 /* Açılış Ekranı - frontend statik stilleri.
    Site başına değişen değerler (--sp-bg, --sp-accent, --sp-accent-rgb,
    --sp-btn-alpha, --sp-overlay, --sp-seconds, --splash-btn-bg,
-   --splash-btn-opacity, --sp-cta-bg, --sp-logo-bar-*, --sp-loader-*)
+   --splash-btn-opacity, --sp-cta-bg, --sp-logo-bar-*, --sp-loader-*, --sp-flag-size)
    wp_head'e ufak bir :root bloğu olarak basılır; buradaki tüm selector'lar
    statiktir ve cache'lenir.
 
@@ -62,16 +62,15 @@ html.splash-loading #custom-splash-overlay { display: block !important; visibili
 }
 
 /* ---------------- TR / EN düğmesi ---------------- */
-/* Sol üstte, sağ üstteki yüklenme göstergesinin karşısında. Cam yüzey
+/* Logo şeridinin sol tarafında, bayrak açıksa onun yanında. Cam yüzey
    rozetlerle aynı dilde (rgba dolgu + kenarlık, blur YOK — blur bütçesi
    CTA, ödeme satırı ve logo şeridi için ayrılmıştır). */
 
 #custom-splash-overlay .splash-lang {
-    position: absolute;
+    position: relative;
     z-index: 5;
-    top: calc(14px + env(safe-area-inset-top, 0px));
-    left: calc(14px + env(safe-area-inset-left, 0px));
     display: flex;
+    align-items: center;
     gap: 2px;
     padding: 2px;
     border-radius: 999px;
@@ -111,26 +110,26 @@ html.splash-loading #custom-splash-overlay { display: block !important; visibili
 }
 
 /* ---------------- QR Çeviri bayrak seçici ---------------- */
-/* Sol üstte, sağ üstteki yüklenme göstergesinin karşısında. Cam yüzey
+/* Logo şeridinin solunda, yüklenme göstergesinin karşısında. Cam yüzey
    TR/EN düğmesiyle aynı dilde (rgba dolgu + kenarlık, blur YOK — blur
-   bütçesi CTA, ödeme satırı ve logo şeridi için ayrılmıştır). */
+   bütçesi CTA, ödeme satırı ve logo şeridi için ayrılmıştır).
+   Boyut --sp-flag-size (genişlik) ile gelir; kutu 3:2 tutulur. */
 
 #custom-splash-overlay .splash-ceviri {
-    position: absolute;
+    position: relative;
     z-index: 5;
-    top: calc(14px + env(safe-area-inset-top, 0px));
-    left: calc(14px + env(safe-area-inset-left, 0px));
+    flex: none;
 }
 
 #custom-splash-overlay .splash-ceviri-btn {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 44px;
-    height: 44px;
-    padding: 0;
+    width: auto;
+    height: auto;
+    padding: 4px;
     border: 1px solid var(--sp-glass-border);
-    border-radius: 12px;
+    border-radius: 8px;
     background: var(--sp-glass-bg);
     box-shadow: var(--sp-glass-shadow);
     color: var(--sp-text);
@@ -139,7 +138,13 @@ html.splash-loading #custom-splash-overlay { display: block !important; visibili
 }
 
 #custom-splash-overlay .splash-ceviri-flag {
-    font-size: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--sp-flag-size, 32px);
+    height: calc(var(--sp-flag-size, 32px) * 2 / 3);
+    overflow: hidden;
+    font-size: calc(var(--sp-flag-size, 32px) * 2 / 3);
     line-height: 1;
 }
 
@@ -200,11 +205,6 @@ html.splash-loading #custom-splash-overlay { display: block !important; visibili
     text-shadow: none;
 }
 
-/* İki dil kontrolü birden açıksa TR/EN, bayrağın sağına kayar. */
-#custom-splash-overlay:has(.splash-ceviri) .splash-lang {
-    left: calc(14px + 44px + 8px + env(safe-area-inset-left, 0px));
-}
-
 /* ---------------- Arkaplan görseli katmanı ---------------- */
 /* CSS background-image DEĞİL: gerçek <img> kullanılır, böylece srcset ve
    preload devreye girer ve görsel LCP elemanı olarak erken yüklenir. */
@@ -252,8 +252,10 @@ html.splash-loading #custom-splash-overlay { display: block !important; visibili
 /* ---------------- Logo şeridi (tam genişlik üst banner) ---------------- */
 /* Logo artık kendi kutusunda değil, ekranın tamamını kaplayan bir şerittedir.
    Şerit yüksekliği (--sp-logo-bar-h) ve zemin rengi/opaklığı
-   (--sp-logo-bar-rgb / --sp-logo-bar-alpha) admin'den gelir; logo şeridin
-   içinde yatay ve dikey olarak ortalanır.
+   (--sp-logo-bar-rgb / --sp-logo-bar-alpha) admin'den gelir.
+   Üç sütunlu flex: sol bayrak/dil, orta logo, sağ yüklenme göstergesi.
+   Kenar sütunları eşit flex aldığı için logo yatayda ortada kalır; tüm
+   çocuklar align-items:center ile şeridin dikey eksenine oturur.
    NOT: Yüklenen logo dosyasının KENDİ arkaplanı opaksa (şeffaf PNG/SVG
    değilse) şerit zemini görsel olarak o dosyanın altında kalır; bu CSS ile
    çözülemez. */
@@ -267,26 +269,49 @@ html.splash-loading #custom-splash-overlay { display: block !important; visibili
     display: flex;
     align-items: center;
     justify-content: center;
+    gap: 8px;
     /* Çentikli ekranlarda şerit çentiğin altına inmez; güvenli alan
        yüksekliğe eklenir, logo yine görünen alanın ortasında kalır. */
     min-height: calc(var(--sp-logo-bar-h, 96px) + env(safe-area-inset-top, 0px));
-    padding: 10px 20px;
+    padding: 10px 16px;
     padding-top: calc(10px + env(safe-area-inset-top, 0px));
+    padding-left: calc(16px + env(safe-area-inset-left, 0px));
+    padding-right: calc(16px + env(safe-area-inset-right, 0px));
     background: rgba(var(--sp-logo-bar-rgb, 0, 0, 0), var(--sp-logo-bar-alpha, 0.32));
     border-bottom: 1px solid var(--sp-glass-border);
     -webkit-backdrop-filter: var(--sp-glass-blur);
     backdrop-filter: var(--sp-glass-blur);
-    line-height: 0;
-    contain: layout paint;
+    /* Bayrak paneli şeridin altına taşar; paint containment kırpar. */
+    contain: layout;
+}
+
+#custom-splash-overlay .splash-logo-side {
+    flex: 1 1 0;
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    z-index: 1;
+}
+
+#custom-splash-overlay .splash-logo-side-start {
+    justify-content: flex-start;
+    gap: 8px;
+}
+
+#custom-splash-overlay .splash-logo-side-end {
+    justify-content: flex-end;
 }
 
 #custom-splash-overlay .sp-logo-wrap {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 100%;
+    flex: 0 1 auto;
+    min-width: 0;
     height: 100%;
-    max-width: 100%;
+    max-width: 74vw;
+    z-index: 0;
+    line-height: 0;
 }
 
 #custom-splash-overlay .splash-logo img {
@@ -377,6 +402,7 @@ html.splash-loading #custom-splash-overlay { display: block !important; visibili
     justify-content: center;
     width: 100%;
     height: 56px;
+    /* İç boşluk ayarı kaldırıldı; CTA yüksekliği + yatay padding sabittir. */
     padding: 0 20px;
     border-radius: 28px;
     /* CTA'yı ayıran şey dolgu koyuluğu değil, tam opak kenarlıktır.
@@ -619,29 +645,27 @@ html.splash-loading #custom-splash-overlay { display: block !important; visibili
     outline-offset: 3px;
 }
 
-/* ---------------- Yüklenme göstergesi (sağ üst) ---------------- */
+/* ---------------- Yüklenme göstergesi (logo şeridinin sağı) ---------------- */
 /* Alttaki ilerleme çubuğunun yerini alır. Tüm tipler CSS keyframe'lerle
    çalışır; JS animasyon frame'i yoktur. Hareket eden özellikler transform
    ve opacity ile sınırlıdır (ring hariç: 44px'lik bir SVG'de dashoffset
-   maliyeti ihmal edilebilir). */
+   maliyeti ihmal edilebilir).
+   Konum logo şeridinin flex akışındadır; dikey ortalama şeridin
+   align-items:center değerinden gelir. */
 
 #custom-splash-overlay .splash-loader {
-    position: absolute;
+    position: relative;
     z-index: 4;
     display: flex;
     align-items: center;
     justify-content: center;
+    flex: none;
     width: var(--sp-loader-size, 28px);
     height: var(--sp-loader-size, 28px);
     /* Göstergenin altındaki hiçbir şeyin dokunma alanını çalmaz. */
     pointer-events: none;
     /* Kendi katmanında kalır; arkasındaki logo şeridi yeniden boyanmaz. */
     contain: strict;
-}
-
-#custom-splash-overlay .splash-loader.sp-loader-top-right {
-    top: calc(14px + env(safe-area-inset-top, 0px));
-    right: calc(14px + env(safe-area-inset-right, 0px));
 }
 
 /* --- Tip: spinner (dönen ince yay) --- */
@@ -706,7 +730,7 @@ html.splash-loading #custom-splash-overlay { display: block !important; visibili
 }
 
 /* --- Tip: pulse (genişleyip sönen halka) --- */
-/* Konumlandırma bağlamı .splash-loader'ın kendisidir (position: absolute). */
+/* Konumlandırma bağlamı .splash-loader'ın kendisidir (position: relative). */
 #custom-splash-overlay .sp-loader-pulse-core,
 #custom-splash-overlay .sp-loader-pulse-wave {
     position: absolute;

@@ -66,13 +66,6 @@ trait QRMS_AE_Settings {
 			$options['bg_scheme'] = in_array($scheme, array('auto', 'light', 'dark'), true) ? $scheme : 'auto';
 		}
 
-		// Padding ve font boyutu formda ayrı sayısal alanlar olarak sunulur,
-		// option'a eski string formatında yazılır (geriye dönük uyum).
-		if ( isset( $_POST['button_padding_v'] ) || isset( $_POST['button_padding_h'] ) ) {
-			$pv = isset($_POST['button_padding_v']) ? absint($_POST['button_padding_v']) : 14;
-			$ph = isset($_POST['button_padding_h']) ? absint($_POST['button_padding_h']) : 28;
-			$options['button_padding'] = max(0, min(60, $pv)) . 'px ' . max(0, min(90, $ph)) . 'px';
-		}
 		if ( isset( $_POST['button_font_size_px'] ) ) {
 			$options['button_font_size'] = max(12, min(24, absint($_POST['button_font_size_px']))) . 'px';
 		}
@@ -100,7 +93,7 @@ trait QRMS_AE_Settings {
 			$options['logo_bar_opacity'] = max(0, min(100, absint($_POST['logo_bar_opacity'])));
 		}
 
-		// --- Yüklenme göstergesi (sağ üst) ---
+		// --- Yüklenme göstergesi (logo şeridinin sağı) ---
 		if ( isset( $_POST['loader_type'] ) ) {
 			$loader_type = sanitize_key( wp_unslash( $_POST['loader_type'] ) );
 			$options['loader_type'] = in_array($loader_type, array('spinner', 'ring', 'dots', 'pulse', 'none'), true)
@@ -116,10 +109,17 @@ trait QRMS_AE_Settings {
 		// Konum şimdilik tek seçenek; option ileriye dönük olarak yazılır.
 		$options['loader_position'] = 'top-right';
 
-		// --- Dil seçici (QR Çeviri bayrağı, sol üst) ---
+		// --- Dil seçici (QR Çeviri bayrağı, logo şeridinin solu) ---
 		// Bu sayfanın onay kutusu: işaretsizlik ancak GÖRÜNÜM gönderilince
 		// "kapalı" demektir (bkz. save_settings başlığı).
 		$options['ceviri_selector'] = isset( $_POST['ceviri_selector'] ) ? 1 : 0;
+
+		if ( isset( $_POST['ceviri_flag_size'] ) ) {
+			$options['ceviri_flag_size'] = max( 20, min( 48, absint( wp_unslash( $_POST['ceviri_flag_size'] ) ) ) );
+		}
+
+		// Eski "Buton İç Boşluğu" anahtarı artık kullanılmıyor.
+		unset( $options['button_padding'] );
 
 		// Dil listesi QR Çeviri kapalıyken formda yoktur; o durumda kayıtlı
 		// seçimi silmeyiz. Açıkken işaretsizlik "hiçbiri" demektir.
