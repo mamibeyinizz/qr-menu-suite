@@ -145,6 +145,33 @@ class RMA_Vitrin_Shortcode {
         $sutun        = (int) $vitrin->grid_columns;
         $satir        = (int) $vitrin->grid_rows;
         $mobil_sutun  = (int) $vitrin->mobile_columns;
+        $mobil_satir  = (int) $vitrin->mobile_rows;
+
+        // Sütun/satır sayısı grid YAPISINI belirler; boşluk, min-genişlik ve
+        // görsel oranı ise kart BOYUTUNU — ikisi birbirini bozmadan, ayrı
+        // CSS değişkenleriyle taşınır (bkz. vitrin.css).
+        $masaustu_bosluk = (int) $vitrin->desktop_gap;
+        $masaustu_min    = (int) $vitrin->desktop_card_min;
+        $masaustu_oran   = (int) $vitrin->desktop_image_ratio;
+        $mobil_bosluk    = (int) $vitrin->mobile_gap;
+        $mobil_min       = (int) $vitrin->mobile_card_min;
+        $mobil_oran      = (int) $vitrin->mobile_image_ratio;
+
+        $stil = sprintf(
+            '--qrms-vitrin-cols:%1$d;--qrms-vitrin-rows:%2$d;--qrms-vitrin-mobile-cols:%3$d;--qrms-vitrin-mobile-rows:%4$d;'
+            . '--qrms-vitrin-gap:%5$dpx;--qrms-vitrin-card-min:%6$dpx;--qrms-vitrin-image-ratio:%7$d;'
+            . '--qrms-vitrin-mobile-gap:%8$dpx;--qrms-vitrin-mobile-card-min:%9$dpx;--qrms-vitrin-mobile-image-ratio:%10$d;',
+            $sutun,
+            $satir,
+            $mobil_sutun,
+            $mobil_satir,
+            $masaustu_bosluk,
+            $masaustu_min,
+            $masaustu_oran,
+            $mobil_bosluk,
+            $mobil_min,
+            $mobil_oran
+        );
 
         // Kartlar TEK bir düz liste olarak basılır; kaç tanesinin yan yana
         // görüneceğine CSS karar verir (dar ekranda sütun sayısı düşer).
@@ -157,7 +184,7 @@ class RMA_Vitrin_Shortcode {
      data-autoplay="<?php echo (int) $vitrin->autoplay; ?>"
      data-speed="<?php echo (int) $vitrin->autoplay_speed; ?>"
      data-drag="<?php echo (int) $vitrin->drag_enabled; ?>"
-     style="--qrms-vitrin-cols:<?php echo (int) $sutun; ?>;--qrms-vitrin-rows:<?php echo (int) $satir; ?>;--qrms-vitrin-mobile-cols:<?php echo (int) $mobil_sutun; ?>;"
+     style="<?php echo esc_attr( $stil ); ?>"
      role="region"
      aria-roledescription="karusel"
      aria-label="<?php echo esc_attr( $vitrin->title ); ?>">

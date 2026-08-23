@@ -18,10 +18,19 @@
     /* Admin ayarı satır içi style ile gelmezse (eski önbellek/HTML) diye
        yedek: eski tek-kart-kaydırma görünümüne yakın bir varsayılan. */
     --qrms-vitrin-mobile-cols: 2;
-    /* Kartın hiçbir mobil genişlikte altına düşmeyeceği alt sınır — ürün
-       adının en az kısmen okunabilmesi için (bkz. DAR EKRAN bölümü). */
-    --qrms-vitrin-card-min: 132px;
+    --qrms-vitrin-mobile-rows: 1;
+    /* Kartın hiçbir masaüstü genişlikte altına düşmeyeceği alt sınır —
+       "3. Düzen" sütun/satır sayısını değiştirmez, yalnızca o sütunların ne
+       kadar sıkışabileceğini sınırlar (bkz. ŞERİT bölümü). */
+    --qrms-vitrin-card-min: 200px;
+    /* Mobildeki karşılığı — ürün adının en az kısmen okunabilmesi için
+       (bkz. DAR EKRAN bölümü). */
+    --qrms-vitrin-mobile-card-min: 132px;
     --qrms-vitrin-gap: 16px;
+    --qrms-vitrin-mobile-gap: 12px;
+    /* Kart görselinin yükseklik oranı — genişliğin yüzdesi (100 = kare). */
+    --qrms-vitrin-image-ratio: 100;
+    --qrms-vitrin-mobile-image-ratio: 100;
     --qrms-vitrin-radius: 14px;
     --qrms-vitrin-bg: transparent;
     --qrms-vitrin-card-bg: #16161a;
@@ -58,8 +67,18 @@
 .qrms-vitrin-viewport {
     display: grid;
     gap: var(--qrms-vitrin-gap);
-    grid-auto-columns: calc(
-        (100% - (var(--qrms-vitrin-cols) - 1) * var(--qrms-vitrin-gap)) / var(--qrms-vitrin-cols)
+    /* clamp() bilerek grid'in minmax() sözdizimi YERİNE kullanılır — aynı
+       gerekçeyle aşağıdaki DAR EKRAN bölümündeki gibi: minmax() taşan
+       track'lerin hepsini alt sınıra kilitler, clamp() tek bir sabit
+       uzunluğa çözülür. --qrms-vitrin-card-min "Kart Boyutu" ayarından
+       gelir; "Sütun sayısı" ayarını (--qrms-vitrin-cols) DEĞİŞTİRMEZ,
+       yalnızca o sütunların ne kadar sıkışabileceğini sınırlar. */
+    grid-auto-columns: clamp(
+        var(--qrms-vitrin-card-min),
+        calc(
+            (100% - (var(--qrms-vitrin-cols) - 1) * var(--qrms-vitrin-gap)) / var(--qrms-vitrin-cols)
+        ),
+        100%
     );
     grid-auto-flow: column;
     grid-template-rows: repeat(var(--qrms-vitrin-rows), auto);
@@ -110,6 +129,12 @@
     cursor: pointer;
     display: flex;
     flex-direction: column;
+    /* Grid öğesinin varsayılan min-width:auto'su içerik yüzünden track'i
+       clamp()'in belirlediği genişlikten büyütebilir; bu, o genişliği
+       DAR EKRAN bölümündeki gibi masaüstünde de açıkça sabitler. Değişken
+       DAR EKRAN bölümünde mobil karşılığına geçtiği için burada tek satır
+       hem masaüstünü hem mobili kapsar. */
+    min-width: var(--qrms-vitrin-card-min);
     overflow: hidden;
     transition: border-color .25s, transform .25s;
 }
@@ -125,7 +150,9 @@
 }
 
 .qrms-vitrin-media {
-    aspect-ratio: 1 / 1;
+    /* Yükseklik oranı "Kart Boyutu" ayarından gelir (100 = kare); DAR EKRAN
+       bölümünde --qrms-vitrin-image-ratio mobil karşılığına geçer. */
+    aspect-ratio: 100 / var(--qrms-vitrin-image-ratio);
     background: rgba(255, 255, 255, .03);
     position: relative;
     width: 100%;
@@ -294,6 +321,15 @@
    görsel ve isim okunmaz olur. Yatay swipe dokunmatikte zaten en doğal
    hareket, o yüzden ekrana sığmayan sütunlar kaydırmayla görülür.
 
+   Mobil ayarlar (sütun/satır/boşluk/min-genişlik/görsel oranı) AYRI
+   `--qrms-vitrin-mobile-*` değişkenleriyle gelir; burada tek yapılan, bu
+   breakpoint boyunca "temel" değişkenleri (--qrms-vitrin-cols, -rows,
+   -gap, -card-min, -image-ratio) mobil karşılıklarına ÇEVİRMEK. Grid
+   formülü (ŞERİT), kart min-width'i ve görsel aspect-ratio'su (KART) hep
+   aynı temel değişkenleri okur — böylece burada tekrar yazılmaz, sadece
+   üst sınır (100% → 92%) farklı olduğu için grid-auto-columns yine de
+   yeniden tanımlanır.
+
    clamp(--qrms-vitrin-card-min, …, 92%): admin mobil sütun sayısını ne
    kadar yüksek seçerse seçsin (örn. 3), kart bu alt sınırın altına
    düşmez — gerekirse satır ekrandan taşar ve kaydırmayla devam eder,
@@ -310,29 +346,27 @@
    genişliği alır, ekrana sığmayan kartlar sıkışmadan kaydırmaya taşar.
 --------------------------------------------------------------------- */
 @media (max-width: 1023px) {
+    .qrms-vitrin {
+        --qrms-vitrin-cols: var(--qrms-vitrin-mobile-cols);
+        --qrms-vitrin-rows: var(--qrms-vitrin-mobile-rows);
+        --qrms-vitrin-gap: var(--qrms-vitrin-mobile-gap);
+        --qrms-vitrin-card-min: var(--qrms-vitrin-mobile-card-min);
+        --qrms-vitrin-image-ratio: var(--qrms-vitrin-mobile-image-ratio);
+    }
+
     .qrms-vitrin-viewport {
         grid-auto-columns: clamp(
             var(--qrms-vitrin-card-min),
             calc(
-                (100% - (var(--qrms-vitrin-mobile-cols) - 1) * var(--qrms-vitrin-gap))
-                / var(--qrms-vitrin-mobile-cols)
+                (100% - (var(--qrms-vitrin-cols) - 1) * var(--qrms-vitrin-gap))
+                / var(--qrms-vitrin-cols)
             ),
             92%
         );
     }
-
-    /* Sütun genişliği admin ayarına göre daralsa da kart bu genişliğin
-       altına inmez — grid taşarsa kaydırma devam eder, kart sıkışmaz. */
-    .qrms-vitrin-card {
-        min-width: var(--qrms-vitrin-card-min);
-    }
 }
 
 @media (max-width: 599px) {
-    .qrms-vitrin {
-        --qrms-vitrin-gap: 12px;
-    }
-
     /* Oklar dar ekranda kartların üstüne binerdi; parmak zaten kaydırıyor. */
     .qrms-vitrin-nav {
         display: none;

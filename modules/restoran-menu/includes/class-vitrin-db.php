@@ -19,7 +19,7 @@ if ( ! class_exists( 'RMA_Vitrin_DB' ) ) :
 class RMA_Vitrin_DB {
 
     /** Şema sürümü. Değişince tablolar dbDelta ile tazelenir. */
-    const DB_VERSION = '1.1.0';
+    const DB_VERSION = '1.2.0';
 
     /** Sürümün saklandığı option adı. */
     const VERSION_OPTION = 'rma_vitrin_db_version';
@@ -37,6 +37,30 @@ class RMA_Vitrin_DB {
        okunmaz hâle getirir (bkz. vitrin.css --qrms-vitrin-card-min). */
     const MIN_MOBILE_COLUMNS = 1;
     const MAX_MOBILE_COLUMNS = 3;
+
+    /* Mobilde alt alta görünecek sıra sayısı — masaüstü `grid_rows`'tan
+       BAĞIMSIZ, ayrı bir sınır (telefon ekranı dikeyde masaüstünden farklı
+       davranır: daha fazla sıraya yer olabilir). */
+    const MIN_MOBILE_ROWS = 1;
+    const MAX_MOBILE_ROWS = 4;
+
+    /* Kart arası boşluk (px) — masaüstü ve mobil için ayrı ayarlanır. */
+    const MIN_GAP = 4;
+    const MAX_GAP = 40;
+
+    /* Kart min-genişlik (px) — sütun/satır sayısının belirlediği grid
+       yapısını BOZMADAN kart boyutunu tamamlar: grid formülü hep aynı sayıda
+       sütun/satır üretir, bu değer o sütunların ne kadar sıkışabileceğinin
+       alt sınırıdır (bkz. vitrin.css clamp() kullanımı). */
+    const MIN_DESKTOP_CARD_MIN = 120;
+    const MAX_DESKTOP_CARD_MIN = 400;
+    const MIN_MOBILE_CARD_MIN  = 100;
+    const MAX_MOBILE_CARD_MIN  = 220;
+
+    /* Kart görselinin yükseklik oranı — genişliğin yüzdesi olarak
+       (100 = kare, 56 ≈ 16:9 yatay, 133 ≈ 3:4 dikey). */
+    const MIN_IMAGE_RATIO = 50;
+    const MAX_IMAGE_RATIO = 150;
 
     /**
      * Vitrin tanımları tablosu.
@@ -84,6 +108,13 @@ class RMA_Vitrin_DB {
             grid_columns tinyint(2) unsigned NOT NULL DEFAULT 4,
             grid_rows tinyint(2) unsigned NOT NULL DEFAULT 1,
             mobile_columns tinyint(2) unsigned NOT NULL DEFAULT 2,
+            mobile_rows tinyint(2) unsigned NOT NULL DEFAULT 1,
+            desktop_gap smallint(4) unsigned NOT NULL DEFAULT 16,
+            desktop_card_min smallint(4) unsigned NOT NULL DEFAULT 200,
+            desktop_image_ratio smallint(4) unsigned NOT NULL DEFAULT 100,
+            mobile_gap smallint(4) unsigned NOT NULL DEFAULT 12,
+            mobile_card_min smallint(4) unsigned NOT NULL DEFAULT 132,
+            mobile_image_ratio smallint(4) unsigned NOT NULL DEFAULT 100,
             autoplay tinyint(1) NOT NULL DEFAULT 0,
             autoplay_speed smallint(5) unsigned NOT NULL DEFAULT 4000,
             drag_enabled tinyint(1) NOT NULL DEFAULT 1,
@@ -137,14 +168,21 @@ class RMA_Vitrin_DB {
      */
     public static function varsayilanlar() {
         return array(
-            'title'          => '',
-            'grid_columns'   => 4,
-            'grid_rows'      => 1,
-            'mobile_columns' => 2,
-            'autoplay'       => 0,
-            'autoplay_speed' => 4000,
-            'drag_enabled'   => 1,
-            'show_price'     => 1,
+            'title'               => '',
+            'grid_columns'        => 4,
+            'grid_rows'           => 1,
+            'mobile_columns'      => 2,
+            'mobile_rows'         => 1,
+            'desktop_gap'         => 16,
+            'desktop_card_min'    => 200,
+            'desktop_image_ratio' => 100,
+            'mobile_gap'          => 12,
+            'mobile_card_min'     => 132,
+            'mobile_image_ratio'  => 100,
+            'autoplay'            => 0,
+            'autoplay_speed'      => 4000,
+            'drag_enabled'        => 1,
+            'show_price'          => 1,
         );
     }
 
@@ -164,14 +202,21 @@ class RMA_Vitrin_DB {
         $baslik = isset( $ham['title'] ) ? trim( (string) $ham['title'] ) : '';
 
         return array(
-            'title'          => '' !== $baslik ? $baslik : 'Ürün Vitrini',
-            'grid_columns'   => self::sinirla( $ham['grid_columns'] ?? $v['grid_columns'], self::MIN_COLUMNS, self::MAX_COLUMNS, $v['grid_columns'] ),
-            'grid_rows'      => self::sinirla( $ham['grid_rows'] ?? $v['grid_rows'], self::MIN_ROWS, self::MAX_ROWS, $v['grid_rows'] ),
-            'mobile_columns' => self::sinirla( $ham['mobile_columns'] ?? $v['mobile_columns'], self::MIN_MOBILE_COLUMNS, self::MAX_MOBILE_COLUMNS, $v['mobile_columns'] ),
-            'autoplay'       => self::bayrak( $ham['autoplay'] ?? 0 ),
-            'autoplay_speed' => self::sinirla( $ham['autoplay_speed'] ?? $v['autoplay_speed'], self::MIN_SPEED, self::MAX_SPEED, $v['autoplay_speed'] ),
-            'drag_enabled'   => self::bayrak( $ham['drag_enabled'] ?? 0 ),
-            'show_price'     => self::bayrak( $ham['show_price'] ?? 0 ),
+            'title'               => '' !== $baslik ? $baslik : 'Ürün Vitrini',
+            'grid_columns'        => self::sinirla( $ham['grid_columns'] ?? $v['grid_columns'], self::MIN_COLUMNS, self::MAX_COLUMNS, $v['grid_columns'] ),
+            'grid_rows'           => self::sinirla( $ham['grid_rows'] ?? $v['grid_rows'], self::MIN_ROWS, self::MAX_ROWS, $v['grid_rows'] ),
+            'mobile_columns'      => self::sinirla( $ham['mobile_columns'] ?? $v['mobile_columns'], self::MIN_MOBILE_COLUMNS, self::MAX_MOBILE_COLUMNS, $v['mobile_columns'] ),
+            'mobile_rows'         => self::sinirla( $ham['mobile_rows'] ?? $v['mobile_rows'], self::MIN_MOBILE_ROWS, self::MAX_MOBILE_ROWS, $v['mobile_rows'] ),
+            'desktop_gap'         => self::sinirla( $ham['desktop_gap'] ?? $v['desktop_gap'], self::MIN_GAP, self::MAX_GAP, $v['desktop_gap'] ),
+            'desktop_card_min'    => self::sinirla( $ham['desktop_card_min'] ?? $v['desktop_card_min'], self::MIN_DESKTOP_CARD_MIN, self::MAX_DESKTOP_CARD_MIN, $v['desktop_card_min'] ),
+            'desktop_image_ratio' => self::sinirla( $ham['desktop_image_ratio'] ?? $v['desktop_image_ratio'], self::MIN_IMAGE_RATIO, self::MAX_IMAGE_RATIO, $v['desktop_image_ratio'] ),
+            'mobile_gap'          => self::sinirla( $ham['mobile_gap'] ?? $v['mobile_gap'], self::MIN_GAP, self::MAX_GAP, $v['mobile_gap'] ),
+            'mobile_card_min'     => self::sinirla( $ham['mobile_card_min'] ?? $v['mobile_card_min'], self::MIN_MOBILE_CARD_MIN, self::MAX_MOBILE_CARD_MIN, $v['mobile_card_min'] ),
+            'mobile_image_ratio'  => self::sinirla( $ham['mobile_image_ratio'] ?? $v['mobile_image_ratio'], self::MIN_IMAGE_RATIO, self::MAX_IMAGE_RATIO, $v['mobile_image_ratio'] ),
+            'autoplay'            => self::bayrak( $ham['autoplay'] ?? 0 ),
+            'autoplay_speed'      => self::sinirla( $ham['autoplay_speed'] ?? $v['autoplay_speed'], self::MIN_SPEED, self::MAX_SPEED, $v['autoplay_speed'] ),
+            'drag_enabled'        => self::bayrak( $ham['drag_enabled'] ?? 0 ),
+            'show_price'          => self::bayrak( $ham['show_price'] ?? 0 ),
         );
     }
 
@@ -320,18 +365,25 @@ class RMA_Vitrin_DB {
         $simdi = current_time( 'mysql' );
 
         $veri = array(
-            'title'          => $ayarlar['title'],
-            'grid_columns'   => $ayarlar['grid_columns'],
-            'grid_rows'      => $ayarlar['grid_rows'],
-            'mobile_columns' => $ayarlar['mobile_columns'],
-            'autoplay'       => $ayarlar['autoplay'],
-            'autoplay_speed' => $ayarlar['autoplay_speed'],
-            'drag_enabled'   => $ayarlar['drag_enabled'],
-            'show_price'     => $ayarlar['show_price'],
-            'updated_at'     => $simdi,
+            'title'               => $ayarlar['title'],
+            'grid_columns'        => $ayarlar['grid_columns'],
+            'grid_rows'           => $ayarlar['grid_rows'],
+            'mobile_columns'      => $ayarlar['mobile_columns'],
+            'mobile_rows'         => $ayarlar['mobile_rows'],
+            'desktop_gap'         => $ayarlar['desktop_gap'],
+            'desktop_card_min'    => $ayarlar['desktop_card_min'],
+            'desktop_image_ratio' => $ayarlar['desktop_image_ratio'],
+            'mobile_gap'          => $ayarlar['mobile_gap'],
+            'mobile_card_min'     => $ayarlar['mobile_card_min'],
+            'mobile_image_ratio'  => $ayarlar['mobile_image_ratio'],
+            'autoplay'            => $ayarlar['autoplay'],
+            'autoplay_speed'      => $ayarlar['autoplay_speed'],
+            'drag_enabled'        => $ayarlar['drag_enabled'],
+            'show_price'          => $ayarlar['show_price'],
+            'updated_at'          => $simdi,
         );
 
-        $format = array( '%s', '%d', '%d', '%d', '%d', '%d', '%d', '%d', '%s' );
+        $format = array( '%s', '%d', '%d', '%d', '%d', '%d', '%d', '%d', '%d', '%d', '%d', '%d', '%d', '%d', '%d', '%s' );
 
         if ( $id > 0 && self::getir( $id ) ) {
             $wpdb->update( $tablo, $veri, array( 'id' => $id ), $format, array( '%d' ) );
