@@ -39,6 +39,19 @@ require_once __DIR__ . '/includes/class-tukendi.php';
 require_once __DIR__ . '/includes/shortcode-vitrin.php';
 require_once __DIR__ . '/qmo-one-cikan-slider.php';
 
+/* -----------------------------------------------------------------
+   "ÜRÜNÜM YOK" — malzeme bazlı stok katmanı.
+   Mevcut CPT/taksonomi/render dosyalarının HİÇBİRİNE dokunmadan, üzerine
+   eklenen ayrı bir katman (bkz. includes/urunum-yok/). Standalone
+   sınıflar kendi hook'larını kendi init()'inde kaydeder (RMA_Vitrin_Shortcode
+   ile aynı desen); yalnızca admin ekranları trait olarak sınıfa eklenir.
+----------------------------------------------------------------- */
+require_once __DIR__ . '/includes/urunum-yok/class-ingredient-taxonomy.php';
+require_once __DIR__ . '/includes/urunum-yok/class-stock.php';
+require_once __DIR__ . '/includes/urunum-yok/class-cron.php';
+require_once __DIR__ . '/includes/urunum-yok/class-badge.php';
+require_once __DIR__ . '/includes/urunum-yok/trait-admin.php';
+
 /* =====================================================================
    MAIN CLASS
 ===================================================================== */
@@ -56,6 +69,7 @@ class Restaurant_Menu_Automation {
     use RMA_Category_Fields_Trait;
     use RMA_Vitrin_Admin_Trait;
     use RMA_Kampanya_Admin_Trait;
+    use RMA_Urunum_Yok_Admin_Trait;
 
     private static $instance = null;
 
@@ -149,6 +163,17 @@ class Restaurant_Menu_Automation {
         // Chatbot / REST sipariş ucu varsa tükendi ürünleri orada kesilir.
         // Filtre chatbot modülünde tanımlıdır; modül yoksa kanca no-op'dur.
         add_filter( 'qmo_siparis_onay_oncesi', [ 'RMA_Tukendi', 'siparis_filtresi' ], 10, 2 );
+
+        /* -----------------------------------------------------------------
+           "ÜRÜNÜM YOK" — işaretleme formu, tekil geri alma ve CSV dışa/içe
+           aktarma admin-post uçları. Sayfanın kendisi (qrms-rm-urunum-yok)
+           get_subpages() üzerinden otomatik kaydolur.
+        ----------------------------------------------------------------- */
+        add_action( 'admin_post_qmo_uy_isaretle',             [ $this, 'handle_urunum_yok_mark' ] );
+        add_action( 'admin_post_qmo_uy_aktiflestir',           [ $this, 'handle_urunum_yok_reactivate' ] );
+        add_action( 'admin_post_qmo_uy_csv_export',            [ $this, 'handle_ingredient_csv_export' ] );
+        add_action( 'admin_post_qmo_uy_csv_import_preview',    [ $this, 'handle_ingredient_csv_import_preview' ] );
+        add_action( 'admin_post_qmo_uy_csv_import_confirm',    [ $this, 'handle_ingredient_csv_import_confirm' ] );
     }
 }
 
@@ -156,6 +181,12 @@ Restaurant_Menu_Automation::get_instance();
 
 // Vitrin kısa kodu ve varlıkları — sınıftan bağımsız, kendi kancalarını kurar.
 RMA_Vitrin_Shortcode::init();
+
+// "Ürünüm Yok" katmanı — taksonomi, stok motoru, cron ve rozet köprüleri de
+// kendi kancalarını kendi init()'lerinde kurar.
+RMA_Ingredient_Taxonomy::init();
+RMA_Urunum_Yok_Cron::init();
+RMA_Urunum_Yok_Badge::init();
 
 /* =====================================================================
    ELEMENTOR WIDGET

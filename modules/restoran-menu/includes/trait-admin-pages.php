@@ -51,6 +51,13 @@ trait RMA_Admin_Pages_Trait {
                 'desc'       => 'Kategori sırası, toplu ürün aktarımı ve yedekleme.',
                 'icon'       => 'dashicons-admin-tools',
             ],
+            'qrms-rm-urunum-yok' => [
+                'title'      => 'Ürünüm Yok',
+                'menu_title' => 'Ürünüm Yok',
+                'render'     => 'render_urunum_yok_page',
+                'desc'       => 'Tükenen malzemeye göre ürünleri toplu "Tükendi" işaretleyin; belirlediğiniz saatte otomatik tekrar aktif olur.',
+                'icon'       => 'dashicons-clock',
+            ],
         ];
     }
 
@@ -87,6 +94,12 @@ trait RMA_Admin_Pages_Trait {
                 'title' => 'Alerjenler',
                 'desc'  => 'Ürünlerde işaretlenebilecek alerjen listesini yönetin.',
                 'icon'  => 'dashicons-warning',
+            ],
+            [
+                'url'   => admin_url( 'edit-tags.php?taxonomy=rma_ingredient&post_type=rma_menu_item' ),
+                'title' => 'Malzemeler',
+                'desc'  => 'Ürünlerde kullanılan malzemeleri yönetin; "Ürünüm Yok" ekranı bu listeden beslenir.',
+                'icon'  => 'dashicons-food',
             ],
         ];
 
@@ -236,11 +249,26 @@ trait RMA_Admin_Pages_Trait {
      * verilir.
      */
     public function render_admin_page() {
+        // "Ürünüm Yok" katmanının merkezi sayacı — sol menü rozeti ve Genel
+        // Bakış kartıyla AYNI kaynak (bkz. urunum-yok/class-stock.php).
+        $uy_ozet = function_exists( 'qmo_urunum_yok_eksik_ozet' )
+            ? qmo_urunum_yok_eksik_ozet()
+            : [ 'toplam' => 0, 'malzemeler' => [], 'elle' => 0 ];
+
         QRMS_Admin::render_hub( [
             'title'  => 'Restoran Menü',
             'intro'  => 'Menünüzle ilgili her iş burada. Ne yapmak istiyorsanız kartına dokunun.',
             // Modülün marka vurgusu (frontend menü temasıyla aynı altın).
             'accent' => '#c9a84c',
+            'stats'  => [
+                [
+                    'label'  => 'Eksik Ürün (Tükendi)',
+                    'value'  => $uy_ozet['toplam'],
+                    'url'    => $uy_ozet['toplam'] > 0 ? $this->admin_page_url( 'qrms-rm-urunum-yok' ) : '',
+                    'accent' => $uy_ozet['toplam'] > 0 ? '#e11d48' : '#10b981',
+                ],
+            ],
+            'notice' => method_exists( $this, 'render_eksik_urun_notice' ) ? $this->render_eksik_urun_notice( $uy_ozet ) : '',
             'cards'  => $this->get_hub_cards(),
         ] );
     }
@@ -650,12 +678,16 @@ trait RMA_Admin_Pages_Trait {
         <nav class="rma-anchor-nav" aria-label="Sayfa bölümleri">
             <a href="#rma-kategori-sirasi">Kategori Sırası</a>
             <a href="#rma-ice-disa-aktar">Toplu Ürün Aktarımı</a>
+            <a href="#rma-malzeme-aktar">Malzeme Aktarımı</a>
             <a href="#rma-yedekleme">Yedekleme</a>
         </nav>
         <?php
 
         $this->render_category_order_page();
         $this->render_csv_import_page();
+        if ( method_exists( $this, 'render_ingredient_csv_section' ) ) {
+            $this->render_ingredient_csv_section();
+        }
         $this->render_menu_backup_page();
 
         $this->page_footer();

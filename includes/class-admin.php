@@ -804,6 +804,17 @@ class QRMS_Admin {
 					'desc'  => QRMS_Helpers::get_module_description( $item ),
 					'icon'  => QRMS_Helpers::get_module_icon( $item ),
 					'state' => $is_active ? 'active' : 'passive',
+					/**
+					 * Aktif modülün Genel Bakış kartındaki rozet metni (ör. kırmızı
+					 * sayı). Varsayılan boş — hiçbir modül dokunmazsa kart değişmez.
+					 * Aynı sayaç kaynağının sol menü ve modül hub'ıyla tutarlı
+					 * kalması modülün kendi sorumluluğudur (bkz. restoran-menu'nün
+					 * qmo_tukendi_urun_sayisi() merkezi sayacı).
+					 *
+					 * @param string $badge Varsayılan rozet metni (boş).
+					 * @param string $slug  Modül slug'ı.
+					 */
+					'badge' => $is_active ? (string) apply_filters( 'qrms_module_overview_badge', '', $item ) : '',
 				);
 			}
 
@@ -921,7 +932,12 @@ class QRMS_Admin {
 								<span class="qrms-hub-icon dashicons <?php echo esc_attr( $card['icon'] ); ?>" aria-hidden="true"></span>
 
 								<div class="qrms-hub-body">
-									<h3 class="qrms-hub-card-title"><?php echo esc_html( $card['title'] ); ?></h3>
+									<h3 class="qrms-hub-card-title">
+										<?php echo esc_html( $card['title'] ); ?>
+										<?php if ( ! empty( $card['badge'] ) ) : ?>
+											<span class="qrms-hub-badge"><?php echo esc_html( $card['badge'] ); ?></span>
+										<?php endif; ?>
+									</h3>
 									<?php if ( '' !== $card['desc'] ) : ?>
 										<p class="qrms-hub-desc"><?php echo esc_html( $card['desc'] ); ?></p>
 									<?php endif; ?>
