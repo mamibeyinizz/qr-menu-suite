@@ -72,7 +72,21 @@ trait RMA_Admin_Pages_Trait {
      * @return array<int,array{url:string,title:string,desc:string,icon:string}>
      */
     private function get_hub_cards() {
-        $cards = [
+        $sub = $this->get_subpages();
+
+        $from_sub = static function ( $self, $slug ) use ( $sub ) {
+            $page = $sub[ $slug ];
+            return [
+                'url'   => $self->admin_page_url( $slug ),
+                'title' => isset( $page['hub_title'] ) ? $page['hub_title'] : $page['menu_title'],
+                'desc'  => $page['desc'],
+                'icon'  => $page['icon'],
+            ];
+        };
+
+        // Sıra referans gruplamaya göre (başlık satırı yok, tek ızgara akışı):
+        // Ürünler → Materyaller → Görünüm.
+        return [
             [
                 'url'   => admin_url( 'edit.php?post_type=rma_menu_item' ),
                 'title' => 'Ürünlerim',
@@ -85,6 +99,8 @@ trait RMA_Admin_Pages_Trait {
                 'desc'  => 'Menünüze yeni bir ürün ekleyin.',
                 'icon'  => 'dashicons-plus-alt',
             ],
+            $from_sub( $this, 'qrms-rm-urunum-yok' ),
+            $from_sub( $this, 'qrms-rm-kampanya' ),
             [
                 'url'   => admin_url( 'edit-tags.php?taxonomy=rma_category&post_type=rma_menu_item' ),
                 'title' => 'Kategoriler',
@@ -103,18 +119,11 @@ trait RMA_Admin_Pages_Trait {
                 'desc'  => 'Ürünlerde kullanılan malzemeleri yönetin; "Ürünüm Yok" ekranı bu listeden beslenir.',
                 'icon'  => 'dashicons-food',
             ],
+            $from_sub( $this, 'qrms-rm-gorunum' ),
+            $from_sub( $this, 'qrms-rm-one-cikanlar' ),
+            $from_sub( $this, 'qrms-rm-vitrin' ),
+            $from_sub( $this, 'qrms-rm-diger' ),
         ];
-
-        foreach ( $this->get_subpages() as $slug => $page ) {
-            $cards[] = [
-                'url'   => $this->admin_page_url( $slug ),
-                'title' => isset( $page['hub_title'] ) ? $page['hub_title'] : $page['menu_title'],
-                'desc'  => $page['desc'],
-                'icon'  => $page['icon'],
-            ];
-        }
-
-        return $cards;
     }
 
     /**

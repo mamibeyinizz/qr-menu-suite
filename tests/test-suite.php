@@ -927,6 +927,8 @@ qrms_test(
 		qrms_assert_contains( 'grid-template-columns: 1fr', $css, 'dar ekranda özet alt alta' );
 		qrms_assert_contains( '@media screen and (max-width: 600px)', $css, 'telefon kırılımı' );
 		qrms_assert_contains( 'minmax(0, 1fr)', $css, 'mobilde tek sütun ızgara' );
+		qrms_assert_contains( '.rma-hub .qrms-stat-value', $css, 'ortak değer class' );
+		qrms_assert_contains( 'font-weight: 600', $css, 'değer başlıkla aynı ağırlık' );
 	}
 );
 
@@ -953,6 +955,28 @@ qrms_test(
 		qrms_assert_contains( 'echo \'<div class="rma-hub">\'', $php, 'kapsül sarmalayıcı' );
 		qrms_assert_contains( "'title' => 'Ürünlerim'", $php, 'Ürünlerim durur' );
 		qrms_assert_contains( "'title' => 'Ürün Ekle'", $php, 'Ürün Ekle durur' );
+
+		$hub_fn = substr( $php, strpos( $php, 'function get_hub_cards' ), strpos( $php, 'function get_legacy_page_map' ) - strpos( $php, 'function get_hub_cards' ) );
+		$sira   = array(
+			"'title' => 'Ürünlerim'",
+			"'title' => 'Ürün Ekle'",
+			'qrms-rm-urunum-yok',
+			'qrms-rm-kampanya',
+			"'title' => 'Kategoriler'",
+			"'title' => 'Alerjenler'",
+			"'title' => 'Malzemeler'",
+			'qrms-rm-gorunum',
+			'qrms-rm-one-cikanlar',
+			'qrms-rm-vitrin',
+			'qrms-rm-diger',
+		);
+		$onceki = -1;
+		foreach ( $sira as $parca ) {
+			$pos = strpos( $hub_fn, $parca );
+			qrms_assert_true( false !== $pos, $parca . ' hub kartında' );
+			qrms_assert_true( $pos > $onceki, $parca . ' sırası' );
+			$onceki = $pos;
+		}
 
 		$modul = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/module.php' );
 		qrms_assert_contains( "modules/restoran-menu/assets/css/hub.css", $modul, 'hub.css kuyruğa alınır' );
@@ -1536,6 +1560,17 @@ qrms_test(
 		qrms_assert_contains( 'Tablo yok.', $dolu, 'uyarı' );
 		qrms_assert_contains( 'Onay Bekleyen', $dolu, 'özet etiketi' );
 		qrms_assert_contains( '2 yeni', $dolu, 'kart rozeti' );
+		qrms_assert_contains( 'class="qrms-stat-value"', $dolu, 'linkli özet ortak class' );
+
+		ob_start();
+		QRMS_Admin::render_hub(
+			array(
+				'stats' => array( array( 'label' => 'Eksik Ürün (Tükendi)', 'value' => 0 ) ),
+				'cards' => array(),
+			)
+		);
+		$urlsiz = ob_get_clean();
+		qrms_assert_contains( '<span class="qrms-stat-value">', $urlsiz, 'linksiz özet ortak class' );
 	}
 );
 

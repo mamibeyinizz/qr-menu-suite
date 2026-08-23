@@ -67,6 +67,33 @@
 	top: 0;
 }
 
+/*
+ * Özet değerleri: kart başlığıyla (h3.qrms-hub-card-title) aynı aile ve
+ * ağırlık. Linkli kartlarda <a> WP admin mavisini / varsayılan link
+ * fontunu almasın diye değer her zaman .qrms-stat-value taşır.
+ */
+.rma-hub .qrms-hub-card-title,
+.rma-hub .qrms-stat-value {
+	font-family: inherit;
+	font-style: normal;
+	font-weight: 600;
+	letter-spacing: normal;
+}
+
+.rma-hub .qrms-stat-value {
+	color: #1d2327;
+	display: inline-block;
+	font-size: 22px;
+	line-height: 1.3;
+	text-decoration: none;
+}
+
+.rma-hub a.qrms-stat-value:hover,
+.rma-hub a.qrms-stat-value:focus {
+	color: #1d2327;
+	text-decoration: underline;
+}
+
 @media screen and (max-width: 782px) {
 	.rma-hub .qrms-hub-stats {
 		grid-template-columns: 1fr;
