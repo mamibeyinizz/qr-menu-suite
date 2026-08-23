@@ -38,6 +38,28 @@
         var next     = root.querySelector('[data-qrms-next]');
 
         /* -------------------------------------------------------------
+           ÜRÜN DETAYI
+           Kart tıklanınca/Enter-Space ile paylaşımlı modal açılır (bkz.
+           rma-detail-modal.js). Sürükleme sonrası tetiklenen "tık"lar
+           aşağıdaki fare-sürükleme bölümünde zaten engelleniyor.
+        ------------------------------------------------------------- */
+        cards.forEach(function (card) {
+            var id = card.getAttribute('data-id');
+            if (!id) return;
+
+            card.addEventListener('click', function () {
+                if (window.QRMSDetailModal) window.QRMSDetailModal.open(id);
+            });
+
+            card.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    if (window.QRMSDetailModal) window.QRMSDetailModal.open(id);
+                }
+            });
+        });
+
+        /* -------------------------------------------------------------
            ÖLÇÜLER
            Sütun genişliği ve boşluk CSS'ten gelir (dar ekranda değişir),
            bu yüzden sabit varsayılmaz — her seferinde DOM'dan okunur.

@@ -88,8 +88,35 @@ class RMA_Vitrin_Shortcode {
             return is_readable( $yol ) ? (string) filemtime( $yol ) : '1.0.0';
         };
 
+        wp_enqueue_style( 'rma-detail-modal', $url . 'css/rma-detail-modal.css', array(), $vitrin( 'css/rma-detail-modal.css' ) );
+        wp_enqueue_script( 'rma-detail-modal', $url . 'js/rma-detail-modal.js', array(), $vitrin( 'js/rma-detail-modal.js' ), true );
+        self::enqueue_modal_config();
+
         wp_enqueue_style( 'rma-vitrin', $url . 'css/vitrin.css', array(), $vitrin( 'css/vitrin.css' ) );
-        wp_enqueue_script( 'rma-vitrin', $url . 'js/vitrin.js', array(), $vitrin( 'js/vitrin.js' ), true );
+        wp_enqueue_script( 'rma-vitrin', $url . 'js/vitrin.js', array( 'rma-detail-modal' ), $vitrin( 'js/vitrin.js' ), true );
+    }
+
+    /**
+     * Ürün detay modalının AJAX yapılandırmasını sayfaya basar.
+     *
+     * Kartlar tıklandığında `rma-detail-modal.js` bu global'i okuyarak
+     * ana menüyle AYNI uç noktayı (`rma_get_product_details`) çağırır —
+     * bkz. modules/restoran-menu/includes/trait-ajax.php.
+     *
+     * @return void
+     */
+    private static function enqueue_modal_config() {
+        $config = array(
+            'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+            'nonce'   => wp_create_nonce( 'rma_ajax_nonce' ),
+            'lang'    => function_exists( 'rma_get_current_lang' ) ? rma_get_current_lang() : 'tr',
+        );
+
+        wp_add_inline_script(
+            'rma-detail-modal',
+            'window.RMA_MODAL_CFG = ' . wp_json_encode( $config ) . ';',
+            'before'
+        );
     }
 
     /**
@@ -138,7 +165,10 @@ class RMA_Vitrin_Shortcode {
     <div class="qrms-vitrin-viewport" data-qrms-viewport tabindex="0"
          aria-label="<?php echo esc_attr( count( $urunler ) . ' ürün — kaydırarak gezinin' ); ?>">
         <?php foreach ( $urunler as $urun ) : ?>
-            <article class="qrms-vitrin-card<?php echo ! empty( $urun['tukendi'] ) ? ' is-tukendi' : ''; ?>">
+            <article class="qrms-vitrin-card<?php echo ! empty( $urun['tukendi'] ) ? ' is-tukendi' : ''; ?>"
+                      data-id="<?php echo (int) $urun['id']; ?>"
+                      tabindex="0" role="button"
+                      aria-label="<?php echo esc_attr( $urun['title'] ); ?>">
                 <div class="qrms-vitrin-media">
                     <?php if ( '' !== $urun['img'] ) : ?>
                         <img src="<?php echo esc_url( $urun['img'] ); ?>"
@@ -191,7 +221,7 @@ class RMA_Vitrin_Shortcode {
      *
      * @param int[] $idler      Sıralı ürün ID listesi.
      * @param int   $fiyat_goster 1 ise fiyat hazırlanır.
-     * @return array<int,array{title:string,price_html:string,img:string,tukendi:bool,tukendi_etiket:string}>
+     * @return array<int,array{id:int,title:string,price_html:string,img:string,tukendi:bool,tukendi_etiket:string}>
      */
     private static function urunleri_hazirla( array $idler, $fiyat_goster ) {
         if ( empty( $idler ) ) {
@@ -237,6 +267,7 @@ class RMA_Vitrin_Shortcode {
             $tukendi = RMA_Tukendi::urun_tukendi( $id );
 
             $kartlar[] = array(
+                'id'             => $id,
                 'title'          => get_the_title( $id ),
                 'price_html'     => $fiyat_goster ? self::fiyat_html( $id ) : '',
                 'img'            => (string) ( get_the_post_thumbnail_url( $id, 'medium' ) ?: '' ),
