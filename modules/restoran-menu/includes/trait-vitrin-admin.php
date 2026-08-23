@@ -186,6 +186,7 @@ trait RMA_Vitrin_Admin_Trait {
             'mobile_gap'          => $yeni ? $v['mobile_gap'] : (int) $kayit->mobile_gap,
             'mobile_card_min'     => $yeni ? $v['mobile_card_min'] : (int) $kayit->mobile_card_min,
             'mobile_image_ratio'  => $yeni ? $v['mobile_image_ratio'] : (int) $kayit->mobile_image_ratio,
+            'bg_color'            => $yeni ? $v['bg_color'] : (string) $kayit->bg_color,
             'autoplay'            => $yeni ? $v['autoplay'] : (int) $kayit->autoplay,
             'autoplay_speed'      => $yeni ? $v['autoplay_speed'] : (int) $kayit->autoplay_speed,
             'drag_enabled'        => $yeni ? $v['drag_enabled'] : (int) $kayit->drag_enabled,
@@ -240,7 +241,7 @@ trait RMA_Vitrin_Admin_Trait {
                 <input type="text" name="title" class="regular-text" value="<?php echo esc_attr( $deger['title'] ); ?>" placeholder="Örn. Şefin Önerileri">
             </div>
 
-            <div class="rma-card rma-vitrin-step" data-step="2" data-step-title="Ürünleri Seç">
+            <div class="rma-card rma-vitrin-step" data-step="2" data-step-title="Ürünleri Seç" style="display:none;">
                 <h2 class="rma-card-title">2. Ürünleri Seç</h2>
                 <p class="rma-card-desc">Vitrinde gösterilecek ürünleri işaretleyin. Seçtikleriniz "Vitrindeki Sıra" listesine eklenir.</p>
 
@@ -256,12 +257,22 @@ trait RMA_Vitrin_Admin_Trait {
                                 <?php foreach ( $urunler as $urun ) :
                                     $secili = in_array( $urun['id'], $secili_idler, true );
                                     ?>
+                                    <?php
+                                    // Canlı önizleme JS'i bu satırdan okur (bkz. admin-ui.js
+                                    // vitrinBuildProductMap): checkbox işaretlenince/ürün
+                                    // sıralanınca sayfa yenilenmeden gerçek ad/görsel/fiyat
+                                    // önizlemeye yansısın diye — placeholder yalnızca hiç
+                                    // ürün seçilmediğinde gösterilir.
+                                    $fiyat_veri = '' !== $urun['price'] ? $urun['price'] : '₺0,00';
+                                    ?>
                                     <label class="rma-vitrin-pool-row<?php echo $secili ? ' is-selected' : ''; ?>"
                                            data-id="<?php echo (int) $urun['id']; ?>"
                                            <?php /* Küçük harfe çevirme JS'te yapılır: hem mbstring
                                                      bağımlılığı doğmaz, hem de arama kutusuyla aynı
                                                      Unicode kuralları kullanılır (Türkçe İ/I). */ ?>
-                                           data-title="<?php echo esc_attr( $urun['title'] ); ?>">
+                                           data-title="<?php echo esc_attr( $urun['title'] ); ?>"
+                                           data-img="<?php echo esc_url( $urun['img'] ); ?>"
+                                           data-price="<?php echo esc_attr( $fiyat_veri ); ?>">
                                         <input type="checkbox" class="rma-vitrin-cb" value="<?php echo (int) $urun['id']; ?>" <?php checked( $secili ); ?>>
                                         <?php if ( '' !== $urun['img'] ) : ?>
                                             <img src="<?php echo esc_url( $urun['img'] ); ?>" alt="" class="rma-vitrin-thumb">
@@ -313,7 +324,7 @@ trait RMA_Vitrin_Admin_Trait {
                 <?php endif; ?>
             </div>
 
-                    <div class="rma-card rma-vitrin-step" data-step="3" data-step-title="Düzen">
+                    <div class="rma-card rma-vitrin-step" data-step="3" data-step-title="Düzen" style="display:none;">
                         <h2 class="rma-card-title">3. Düzen</h2>
                         <p class="rma-card-desc">Bir sayfada kaç ürün görünsün? Dar ekranlarda sütun sayısı otomatik azalır, vitrin yatay kaydırılır.</p>
 
@@ -374,9 +385,23 @@ trait RMA_Vitrin_Admin_Trait {
                         </table>
                     </div>
 
-                    <div class="rma-card rma-vitrin-step" data-step="4" data-step-title="Kart Boyutu">
+                    <div class="rma-card rma-vitrin-step" data-step="4" data-step-title="Kart Boyutu" style="display:none;">
                         <h2 class="rma-card-title">4. Kart Boyutu</h2>
                         <p class="rma-card-desc">Sütun/satır sayısı grid yapısını belirler; buradaki ayarlar kartın kendisini — genişliğini, boşluğunu ve görselinin oranını — tamamlar. Masaüstü ve mobil için ayrı ayarlanır.</p>
+
+                        <h3 class="rma-section-title">Genel</h3>
+                        <table class="form-table rma-form-table">
+                            <tr>
+                                <th><label for="rma-vitrin-bg-color">Vitrin Arka Plan Rengi</label></th>
+                                <td>
+                                    <input type="text" name="bg_color" id="rma-vitrin-bg-color"
+                                           value="<?php echo esc_attr( $deger['bg_color'] ); ?>"
+                                           class="rma-vitrin-color-picker"
+                                           data-default-color="">
+                                    <p class="description rma-desc">Vitrin kartlarının arkasındaki alan. Boş bırakılırsa şeffaf kalır (sayfanın kendi arka planı görünür).</p>
+                                </td>
+                            </tr>
+                        </table>
 
                         <h3 class="rma-section-title">Masaüstü</h3>
                         <table class="form-table rma-form-table">
@@ -473,7 +498,7 @@ trait RMA_Vitrin_Admin_Trait {
                         </table>
                     </div>
 
-                    <div class="rma-card rma-vitrin-step" data-step="5" data-step-title="Kayma Davranışı">
+                    <div class="rma-card rma-vitrin-step" data-step="5" data-step-title="Kayma Davranışı" style="display:none;">
                         <h2 class="rma-card-title">5. Kayma Davranışı</h2>
                         <p class="rma-card-desc">Vitrin kendiliğinden mi kaysın, yoksa ziyaretçi mi kaydırsın?</p>
 
@@ -556,7 +581,7 @@ trait RMA_Vitrin_Admin_Trait {
      * cache'leri ve öne çıkan görseller toplu ısıtılır, böylece ürün başına
      * ek sorgu doğmaz.
      *
-     * @return array<int,array{id:int,title:string,category:string,img:string}>
+     * @return array<int,array{id:int,title:string,category:string,img:string,price:string}>
      */
     private function vitrin_urun_listesi() {
         $sorgu = new WP_Query(
@@ -588,6 +613,7 @@ trait RMA_Vitrin_Admin_Trait {
                 'title'    => $post->post_title,
                 'category' => $kategori,
                 'img'      => (string) ( get_the_post_thumbnail_url( $post->ID, 'thumbnail' ) ?: '' ),
+                'price'    => RMA_Kampanya::fiyat_html( $post->ID ),
             );
         }
 
@@ -600,9 +626,14 @@ trait RMA_Vitrin_Admin_Trait {
      *
      * Gerçek frontend markup'ıyla (bkz. RMA_Vitrin_Shortcode::render())
      * BİREBİR aynı sınıflar kullanılır ki önizleme sahte bir stil değil,
-     * vitrin.css'in kendisiyle boyansın. Seçili ürün varsa onlar, yoksa/
-     * yetmezse yer tutucu kartlarla doldurulur — form ilk açıldığında
-     * (henüz ürün seçilmemişken) bile önizleme boş kalmasın diye.
+     * vitrin.css'in kendisiyle boyansın.
+     *
+     * Yer tutucu kartlar YALNIZCA hiç ürün seçilmemişken basılır (form ilk
+     * açıldığında bile önizleme boş kalmasın diye). Ürün seçiliyse önizleme
+     * SADECE gerçek seçimi gösterir — 6'ya tamamlamak için sahte kartlarla
+     * doldurulmaz. Aynı kural admin-ui.js'teki vitrinRenderPreviewCards()'ta
+     * da geçerli: adımlar arası geçişte/canlı seçimde bu fonksiyon yalnızca
+     * SAYFA İLK YÜKLENİRKEN çalışır, sonrası JS'in elindedir.
      *
      * Fiyat satırı "Kartlarda fiyatı göster" kapalı olsa da HER ZAMAN
      * basılır: JS bu kutuyu işaretlediğinde önizlemede gösterecek bir
@@ -616,47 +647,56 @@ trait RMA_Vitrin_Admin_Trait {
     private function render_vitrin_preview_cards( array $urunler, array $secili_idler ) {
         $azami = 8;
 
+        if ( empty( $secili_idler ) ) {
+            for ( $i = 0; $i < 6; $i++ ) {
+                $this->render_vitrin_preview_card( null );
+            }
+            return;
+        }
+
         $harita = array();
         foreach ( $urunler as $urun ) {
             $harita[ $urun['id'] ] = $urun;
         }
 
-        $kartlar = array();
+        $basilan = 0;
         foreach ( $secili_idler as $id ) {
-            if ( count( $kartlar ) >= $azami ) {
+            if ( $basilan >= $azami ) {
                 break;
             }
-            if ( isset( $harita[ $id ] ) ) {
-                $kartlar[] = $harita[ $id ];
+            if ( ! isset( $harita[ $id ] ) ) {
+                continue;
             }
+            $this->render_vitrin_preview_card( $harita[ $id ] );
+            $basilan++;
         }
+    }
 
-        // Seçili ürün azsa/yoksa yer tutucularla tamamla — önizleme grid'i
-        // her zaman anlamlı sayıda kart göstersin.
-        while ( count( $kartlar ) < min( $azami, 6 ) ) {
-            $kartlar[] = null;
-        }
-
-        foreach ( $kartlar as $urun ) :
-            $baslik = $urun ? $urun['title'] : 'Ürün Adı';
-            $gorsel = $urun ? $urun['img'] : '';
-            $fiyat  = $urun ? RMA_Kampanya::fiyat_html( $urun['id'] ) : '';
-            ?>
-            <article class="qrms-vitrin-card">
-                <div class="qrms-vitrin-media">
-                    <?php if ( '' !== $gorsel ) : ?>
-                        <img src="<?php echo esc_url( $gorsel ); ?>" alt="" class="qrms-vitrin-img">
-                    <?php else : ?>
-                        <span class="qrms-vitrin-img qrms-vitrin-img-empty" aria-hidden="true">◆</span>
-                    <?php endif; ?>
-                </div>
-                <div class="qrms-vitrin-body">
-                    <h3 class="qrms-vitrin-title"><?php echo esc_html( $baslik ); ?></h3>
-                    <p class="qrms-vitrin-price"><?php echo '' !== $fiyat ? wp_kses_post( $fiyat ) : '₺0,00'; ?></p>
-                </div>
-            </article>
+    /**
+     * Tek bir önizleme kartı basar.
+     *
+     * @param array|null $urun vitrin_urun_listesi() satırı ya da null (yer tutucu).
+     * @return void
+     */
+    private function render_vitrin_preview_card( $urun ) {
+        $baslik = $urun ? $urun['title'] : 'Ürün Adı';
+        $gorsel = $urun ? $urun['img'] : '';
+        $fiyat  = $urun && '' !== $urun['price'] ? $urun['price'] : '';
+        ?>
+        <article class="qrms-vitrin-card">
+            <div class="qrms-vitrin-media">
+                <?php if ( '' !== $gorsel ) : ?>
+                    <img src="<?php echo esc_url( $gorsel ); ?>" alt="" class="qrms-vitrin-img">
+                <?php else : ?>
+                    <span class="qrms-vitrin-img qrms-vitrin-img-empty" aria-hidden="true">◆</span>
+                <?php endif; ?>
+            </div>
+            <div class="qrms-vitrin-body">
+                <h3 class="qrms-vitrin-title"><?php echo esc_html( $baslik ); ?></h3>
+                <p class="qrms-vitrin-price"><?php echo '' !== $fiyat ? wp_kses_post( $fiyat ) : '₺0,00'; ?></p>
+            </div>
+        </article>
         <?php
-        endforeach;
     }
 
     /* -----------------------------------------------------------------
@@ -686,6 +726,7 @@ trait RMA_Vitrin_Admin_Trait {
                 'mobile_gap'          => isset( $_POST['mobile_gap'] ) ? wp_unslash( $_POST['mobile_gap'] ) : null,
                 'mobile_card_min'     => isset( $_POST['mobile_card_min'] ) ? wp_unslash( $_POST['mobile_card_min'] ) : null,
                 'mobile_image_ratio'  => isset( $_POST['mobile_image_ratio'] ) ? wp_unslash( $_POST['mobile_image_ratio'] ) : null,
+                'bg_color'            => isset( $_POST['bg_color'] ) ? sanitize_text_field( wp_unslash( $_POST['bg_color'] ) ) : '',
                 'autoplay'            => isset( $_POST['autoplay'] ) ? wp_unslash( $_POST['autoplay'] ) : 0,
                 'autoplay_speed'      => isset( $_POST['autoplay_speed'] ) ? wp_unslash( $_POST['autoplay_speed'] ) : null,
                 'drag_enabled'        => isset( $_POST['drag_enabled'] ) ? wp_unslash( $_POST['drag_enabled'] ) : 0,

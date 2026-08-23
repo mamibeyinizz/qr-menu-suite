@@ -397,6 +397,92 @@
         });
         $('#rma-vitrin-order').val(ids.join(','));
         $('.rma-vitrin-empty').toggle(ids.length === 0);
+        vitrinRenderPreviewCards();
+    }
+
+    /**
+     * Ürün havuzundaki her satırın ad/görsel/fiyat verisini id'ye göre
+     * haritalar (bkz. trait-vitrin-admin.php data-title/data-img/data-price).
+     * Satırlar sayfa yüklendiğinde sabitlendiği için tek seferde çıkarılıp
+     * önbelleğe alınır.
+     *
+     * @return Object<string,{title:string,img:string,price:string}>
+     */
+    var vitrinProductMapCache = null;
+
+    function vitrinBuildProductMap() {
+        if (vitrinProductMapCache) return vitrinProductMapCache;
+
+        var map = {};
+        $('.rma-vitrin-pool-row').each(function () {
+            var $row = $(this);
+            map[String($row.data('id'))] = {
+                title: String($row.data('title') || ''),
+                img: String($row.data('img') || ''),
+                price: String($row.data('price') || '')
+            };
+        });
+
+        vitrinProductMapCache = map;
+        return map;
+    }
+
+    /**
+     * Canlı önizleme kartlarını (#rma-vitrin-preview .qrms-vitrin-viewport)
+     * o an "Vitrindeki Sıra" listesinde duran ürünlerin GERÇEK verisiyle
+     * yeniden çizer — trait-vitrin-admin.php render_vitrin_preview_card()
+     * ile BİREBİR aynı markup/sınıflar kullanılır ki vitrin.css'ten aynı
+     * şekilde boyansın.
+     *
+     * Yer tutucu kartlar YALNIZCA hiç ürün seçilmemişken gösterilir; ürün
+     * seçiliyse önizleme sadece o seçimi gösterir (6'ya tamamlanmaz).
+     * "Vitrindeki Sıra" listesi DOM'da kaldığı sürece (adımlar arası
+     * geçişte yalnızca display:none olur, kaldırılmaz) bu state hiç
+     * kaybolmaz.
+     */
+    function vitrinRenderPreviewCards() {
+        var $viewport = $('#rma-vitrin-preview .qrms-vitrin-viewport');
+        if (!$viewport.length) return;
+
+        var map = vitrinBuildProductMap();
+        var azami = 8;
+
+        var ids = [];
+        $('#rma-vitrin-sortable .rma-vitrin-chip').each(function () {
+            ids.push(String($(this).data('id')));
+        });
+
+        var kartlar = [];
+        if (ids.length === 0) {
+            for (var i = 0; i < 6; i++) kartlar.push(null);
+        } else {
+            ids.slice(0, azami).forEach(function (id) {
+                kartlar.push(map[id] || null);
+            });
+        }
+
+        $viewport.empty();
+
+        kartlar.forEach(function (urun) {
+            var $card = $('<article class="qrms-vitrin-card"></article>');
+            var $media = $('<div class="qrms-vitrin-media"></div>');
+
+            if (urun && urun.img) {
+                $media.append($('<img class="qrms-vitrin-img" alt="">').attr('src', urun.img));
+            } else {
+                $media.append('<span class="qrms-vitrin-img qrms-vitrin-img-empty" aria-hidden="true">◆</span>');
+            }
+
+            var $body = $('<div class="qrms-vitrin-body"></div>');
+            $body.append($('<h3 class="qrms-vitrin-title"></h3>').text(urun ? urun.title : 'Ürün Adı'));
+            // Fiyat kampanya/kombin işaretlemesi (ör. üstü çizili eski fiyat)
+            // barındırabileceği için .html() ile yazılır; kaynağı kendi
+            // sunucu render'ımız (data-price), kullanıcı girdisi değil.
+            $body.append($('<p class="qrms-vitrin-price"></p>').html(urun && urun.price ? urun.price : '₺0,00'));
+
+            $card.append($media, $body);
+            $viewport.append($card);
+        });
     }
 
     function vitrinChip($row) {
@@ -536,6 +622,9 @@
             previewEl.style.setProperty('--qrms-vitrin-mobile-card-min', fieldVal(m.cardMin, 132) + 'px');
             previewEl.style.setProperty('--qrms-vitrin-mobile-image-ratio', fieldVal(m.ratio, 100));
 
+            var bg = fieldVal('rma-vitrin-bg-color', '');
+            previewEl.style.setProperty('--qrms-vitrin-bg', bg ? bg : 'transparent');
+
             $stage.toggleClass('is-mobile-mode', mode === 'mobile');
             $stage.toggleClass('is-price-hidden', !$('#rma-vitrin-show-price').is(':checked'));
         }
@@ -545,7 +634,22 @@
             $.each(f, function (_, id) { allFieldIds.push('#' + id); });
         });
 
-        $form.on('input change', allFieldIds.join(', ') + ', #rma-vitrin-show-price', applyPreview);
+        $form.on('input change', allFieldIds.join(', ') + ', #rma-vitrin-show-price, #rma-vitrin-bg-color', applyPreview);
+
+        // wpColorPicker Iris ile sürüklenirken text input'un value'su henüz
+        // güncellenmemiş olabilir (bkz. initColorPickers'taki aynı not) —
+        // taze değeri ui.color'dan alıp doğrudan CSS değişkenine yazıyoruz.
+        var $bgColor = $('#rma-vitrin-bg-color');
+        if ($bgColor.length && typeof $.fn.wpColorPicker === 'function') {
+            $bgColor.wpColorPicker({
+                change: function (event, ui) {
+                    previewEl.style.setProperty('--qrms-vitrin-bg', ui.color.toString());
+                },
+                clear: function () {
+                    previewEl.style.setProperty('--qrms-vitrin-bg', 'transparent');
+                }
+            });
+        }
 
         $form.on('click', '.rma-vitrin-preview-btn', function () {
             mode = $(this).data('preview-mode');

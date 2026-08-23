@@ -1632,9 +1632,12 @@
    şekilde gösterilir. Bölme SAF görsel/UX: gizli adımların form alanları
    DOM'dan kaldırılmaz, yalnızca display:none olur — bu yüzden submit
    TÜM adımların verisini gönderir (bkz. admin-ui.js initVitrinStepper).
-   JS çalışmazsa .rma-vitrin-step'lerin hiçbirine display:none eklenmez
-   ve hepsi normal akışta alt alta görünür kalır — sayfa yine kullanılabilir,
-   sadece adımlara bölünmemiş olur.
+
+   Adım 1 dışındakiler `display:none` ile SUNUCUDA (PHP render'da) baştan
+   gizlenir — JS'e bırakılırsa sayfa bir an tüm adımları tek uzun sayfa
+   hâlinde açık gösterip sonra adım 1'e daralan bir "flaş" (FOUC) verirdi.
+   JS yalnızca sonraki adım geçişlerini yönetir; WP admin zaten JS'siz
+   çalışmayan bir arayüz olduğundan bu, kabul edilen bir bağımlılıktır.
 --------------------------------------------------------------------- */
 .rma-vitrin-steps {
     display: flex;
