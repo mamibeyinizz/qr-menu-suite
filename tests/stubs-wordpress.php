@@ -531,6 +531,16 @@ function check_admin_referer( $action = -1, $name = '_wpnonce' ) {
 }
 
 /**
+ * Yönetim sayfasının başlığı. WordPress admin-header.php bunu $title
+ * globaline yazar; alt sayfa breadcrumb'ı aynı kaynaktan okur.
+ *
+ * @return string
+ */
+function get_admin_page_title() {
+	return isset( $GLOBALS['title'] ) ? (string) $GLOBALS['title'] : '';
+}
+
+/**
  * Ayar kaydı (testte hangi grubun hangi option'ı kaydettiği saklanır).
  *
  * @param string $group   Ayar grubu.

@@ -96,9 +96,8 @@ class QRMS_Acilis_Ekrani {
 			'bg_color'            => '#f7f9fc',
 			'button_bg_color'     => '#0073aa',
 			'button_text_color'   => '#ffffff',
-			// NOT: button_padding ve button_font_size v3.6'dan beri frontend'i
-			// etkilemiyor — CTA'nın ölçüsü stylesheet'te sabittir. Anahtarlar
-			// veri kaybı olmasın diye korunuyor, admin alanları da duruyor.
+			// CTA iç boşluğu CSS'e --sp-cta-pad olarak basılır. Font boyutu
+			// hâlâ stylesheet'te sabittir; anahtar veri kaybı olmasın diye durur.
 			'button_padding'      => '14px 28px',
 			'button_font_size'    => '16px',
 			'button_opacity'      => 22,
@@ -111,6 +110,8 @@ class QRMS_Acilis_Ekrani {
 			// TR/EN düğmesi. Kapalıyken markup'a tek bir ek nitelik bile
 			// girmez; açıkken her metin İngilizce karşılığını data niteliği
 			// olarak yanında taşır (bkz. QRMS_AE_Frontend::lang_data()).
+			// Yönetim formundaki İngilizce input'lar kaldırıldı; anahtar
+			// eski kayıtlardaki çevirilerin kaybolmaması için duruyor.
 			'lang_toggle'         => 0,
 			'texts_en'            => array(
 				'btn1'    => '',
