@@ -1,0 +1,87 @@
+/* =====================================================================
+   RESTORAN MENÜ HUB — yalnızca admin.php?page=qrms-module-restoran-menu
+
+   Ortak .qrms-hub-* bileşenini bu sayfada hizalar: kart ızgarası eşit
+   dağılır, ikon başlıkla dikey ortalanır, başlık altına ince ayırıcı
+   gelir. İkon boyutu/rengi ve kart açıklamaları değişmez. Vurgu paleti
+   ortak hub'ın --qrms-hub-accent değişkeni + dark gold (#c9a84c).
+===================================================================== */
+
+.rma-hub .qrms-hub-grid {
+	display: grid;
+	gap: 16px;
+	grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+	justify-content: center;
+}
+
+/* İkon + başlık aynı satırda dikey orta; açıklama tam genişlikte alta. */
+.rma-hub .qrms-hub-card {
+	align-items: stretch;
+	display: grid;
+	gap: 0 14px;
+	grid-template-columns: auto 1fr;
+}
+
+.rma-hub .qrms-hub-icon {
+	align-self: center;
+	grid-column: 1;
+	grid-row: 1;
+	line-height: 1;
+}
+
+.rma-hub .qrms-hub-body {
+	display: contents;
+}
+
+.rma-hub .qrms-hub-card-title {
+	align-self: center;
+	grid-column: 2;
+	grid-row: 1;
+	min-width: 0;
+}
+
+/* Ayırıcı: ikon+başlık satırının altında, kart genişliğinde. */
+.rma-hub .qrms-hub-desc {
+	border-top: 0.5px solid rgba(201, 168, 76, 0.35);
+	grid-column: 1 / -1;
+	grid-row: 2;
+	margin-top: 10px;
+	padding-top: 10px;
+}
+
+/* Üst özet: üç kart eşit sütun; dar ekranda alt alta. */
+.rma-hub .qrms-hub-stats {
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.rma-hub .qrms-hub-stat {
+	position: relative;
+}
+
+.rma-hub .qrms-hub-stat-value a::after {
+	bottom: 0;
+	content: "";
+	left: 0;
+	position: absolute;
+	right: 0;
+	top: 0;
+}
+
+@media screen and (max-width: 782px) {
+	.rma-hub .qrms-hub-stats {
+		grid-template-columns: 1fr;
+	}
+}
+
+@media screen and (max-width: 600px) {
+	.rma-hub .qrms-hub-grid {
+		grid-template-columns: minmax(0, 1fr);
+		justify-content: stretch;
+	}
+}
+
+@media (pointer: coarse) {
+	.rma-hub .qrms-hub-card {
+		gap: 0 16px;
+	}
+}

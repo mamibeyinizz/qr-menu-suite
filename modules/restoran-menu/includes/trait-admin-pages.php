@@ -19,6 +19,7 @@ trait RMA_Admin_Pages_Trait {
             'qrms-rm-gorunum' => [
                 'title'      => 'Menü Görünümü',
                 'menu_title' => 'Görünüm',
+                'hub_title'  => 'Menü Görünümü',
                 'render'     => 'render_appearance_page',
                 'desc'       => 'Menünüzün renkleri, yazı tipleri ve kategori çubuğu.',
                 'icon'       => 'dashicons-art',
@@ -54,6 +55,7 @@ trait RMA_Admin_Pages_Trait {
             'qrms-rm-urunum-yok' => [
                 'title'      => 'Ürünüm Yok',
                 'menu_title' => 'Ürünüm Yok',
+                'hub_title'  => 'Stok Durumu',
                 'render'     => 'render_urunum_yok_page',
                 'desc'       => 'Tükenen malzemeye göre ürünleri toplu "Tükendi" işaretleyin; belirlediğiniz saatte otomatik tekrar aktif olur.',
                 'icon'       => 'dashicons-clock',
@@ -106,7 +108,7 @@ trait RMA_Admin_Pages_Trait {
         foreach ( $this->get_subpages() as $slug => $page ) {
             $cards[] = [
                 'url'   => $this->admin_page_url( $slug ),
-                'title' => $page['menu_title'],
+                'title' => isset( $page['hub_title'] ) ? $page['hub_title'] : $page['menu_title'],
                 'desc'  => $page['desc'],
                 'icon'  => $page['icon'],
             ];
@@ -255,22 +257,118 @@ trait RMA_Admin_Pages_Trait {
             ? qmo_urunum_yok_eksik_ozet()
             : [ 'toplam' => 0, 'malzemeler' => [], 'elle' => 0 ];
 
+        echo '<div class="rma-hub">';
         QRMS_Admin::render_hub( [
             'title'  => 'Restoran Menü',
             'intro'  => 'Menünüzle ilgili her iş burada. Ne yapmak istiyorsanız kartına dokunun.',
             // Modülün marka vurgusu (frontend menü temasıyla aynı altın).
             'accent' => '#c9a84c',
-            'stats'  => [
-                [
-                    'label'  => 'Eksik Ürün (Tükendi)',
-                    'value'  => $uy_ozet['toplam'],
-                    'url'    => $uy_ozet['toplam'] > 0 ? $this->admin_page_url( 'qrms-rm-urunum-yok' ) : '',
-                    'accent' => $uy_ozet['toplam'] > 0 ? '#e11d48' : '#10b981',
-                ],
-            ],
+            'stats'  => $this->get_hub_stats( $uy_ozet ),
             'notice' => method_exists( $this, 'render_eksik_urun_notice' ) ? $this->render_eksik_urun_notice( $uy_ozet ) : '',
             'cards'  => $this->get_hub_cards(),
         ] );
+        echo '</div>';
+    }
+
+    /**
+     * Hub üstündeki özet kartları: tükendi, okunmayan yorum, bugünkü görüntüleme.
+     *
+     * @param array{toplam:int,malzemeler:array,elle:int} $uy_ozet Ürünüm Yok özeti.
+     * @return array<int,array{label:string,value:string|int,url:string,accent:string}>
+     */
+    private function get_hub_stats( $uy_ozet ) {
+        $unread = $this->hub_unread_comment_count();
+        $views  = $this->hub_today_view_count();
+
+        $unread_url = function_exists( 'qrm_pro_admin_url' )
+            ? qrm_pro_admin_url( 'qrms-yf-formlar', array( 'tab' => 'submissions' ) )
+            : admin_url( 'admin.php?page=qrms-yf-formlar&tab=submissions' );
+
+        $analiz_url = class_exists( 'QRMS_Admin' )
+            ? QRMS_Admin::get_module_page_url( 'qr-analiz' )
+            : admin_url( 'admin.php?page=qrms-module-qr-analiz' );
+
+        return [
+            [
+                'label'  => 'Eksik Ürün (Tükendi)',
+                'value'  => $uy_ozet['toplam'],
+                'url'    => $uy_ozet['toplam'] > 0 ? $this->admin_page_url( 'qrms-rm-urunum-yok' ) : '',
+                'accent' => $uy_ozet['toplam'] > 0 ? '#e11d48' : '#10b981',
+            ],
+            [
+                'label'  => 'Okunmayan Yorum',
+                'value'  => sprintf( '%d okunmayan yorum', $unread ),
+                'url'    => $unread_url,
+                'accent' => $unread > 0 ? '#f59e0b' : '#10b981',
+            ],
+            [
+                'label'  => 'Bugün Görüntülenme',
+                'value'  => sprintf( '%d görüntülenme (bugün)', $views ),
+                'url'    => $analiz_url,
+                'accent' => '#c9a84c',
+            ],
+        ];
+    }
+
+    /**
+     * Yorum & Feedback formlarındaki okunmamış gönderim sayısı.
+     *
+     * Modülün kendi qrm_cf_unread_total() sayacını kullanır (transient +
+     * istek içi memo); yoksa 0 döner. Başka modüle yazılmaz.
+     *
+     * @return int
+     */
+    private function hub_unread_comment_count() {
+        if ( function_exists( 'qrm_cf_unread_total' ) ) {
+            return (int) qrm_cf_unread_total();
+        }
+        return 0;
+    }
+
+    /**
+     * QR Analiz tablosundaki bugünkü menü görüntüleme sayısı.
+     *
+     * genel_bakis() sekiz kovayı birden hesaplar; hub yalnızca bugünkü
+     * menu_view sayısını ister. Sonuç 5 dakikalık transient'te tutulur.
+     *
+     * @return int
+     */
+    private function hub_today_view_count() {
+        $gun = current_time( 'Y-m-d' );
+        $key = 'rma_hub_today_views_' . $gun;
+        $cached = get_transient( $key );
+        if ( false !== $cached ) {
+            return (int) $cached;
+        }
+
+        $count = 0;
+
+        if ( class_exists( 'QRMS_Analitik' ) && method_exists( 'QRMS_Analitik', 'tablo_var_mi' ) && QRMS_Analitik::tablo_var_mi() ) {
+            global $wpdb;
+            if ( isset( $wpdb ) && is_object( $wpdb ) && method_exists( $wpdb, 'get_var' ) && method_exists( $wpdb, 'prepare' ) ) {
+                $tablo = QRMS_Analitik::tablo();
+                $bas   = $gun . ' 00:00:00';
+                $son   = $gun . ' 23:59:59';
+                if ( method_exists( $wpdb, 'suppress_errors' ) ) {
+                    $suppress = $wpdb->suppress_errors( true );
+                }
+                // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+                $count = (int) $wpdb->get_var(
+                    $wpdb->prepare(
+                        "SELECT COUNT(*) FROM {$tablo} WHERE event_type = %s AND created_at BETWEEN %s AND %s",
+                        'menu_view',
+                        $bas,
+                        $son
+                    )
+                );
+                if ( isset( $suppress ) ) {
+                    $wpdb->suppress_errors( $suppress );
+                }
+            }
+        }
+
+        set_transient( $key, $count, 5 * MINUTE_IN_SECONDS );
+        return $count;
     }
 
     public function register_settings() {

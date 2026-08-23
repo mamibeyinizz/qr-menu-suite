@@ -912,6 +912,55 @@ qrms_test(
 );
 
 qrms_test(
+	'restoran menü hub ızgarası auto-fit, ikon hizalı ve başlık ayırıcılı',
+	function () {
+		$css = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/css/hub.css' );
+
+		qrms_assert_contains( '.rma-hub .qrms-hub-grid', $css, 'ızgara bu sayfaya kapsüllü' );
+		qrms_assert_contains( 'repeat(auto-fit, minmax(280px, 1fr))', $css, 'eşit dağılan sütunlar' );
+		qrms_assert_contains( 'justify-content: center', $css, 'ızgara ortalanır' );
+		qrms_assert_contains( 'display: contents', $css, 'ikon başlıkla aynı satırda' );
+		qrms_assert_contains( 'align-self: center', $css, 'ikon dikey orta' );
+		qrms_assert_contains( 'border-top: 0.5px solid', $css, 'başlık altı ayırıcı' );
+		qrms_assert_contains( 'rgba(201, 168, 76, 0.35)', $css, 'gold palet ayırıcı rengi' );
+		qrms_assert_contains( 'repeat(3, minmax(0, 1fr))', $css, 'üç özet kartı' );
+		qrms_assert_contains( 'grid-template-columns: 1fr', $css, 'dar ekranda özet alt alta' );
+		qrms_assert_contains( '@media screen and (max-width: 600px)', $css, 'telefon kırılımı' );
+		qrms_assert_contains( 'minmax(0, 1fr)', $css, 'mobilde tek sütun ızgara' );
+	}
+);
+
+qrms_test(
+	'restoran menü hub kart başlıkları ve üç özet kutusu tanımlı',
+	function () {
+		$php = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-admin-pages.php' );
+
+		qrms_assert_contains( "'hub_title'  => 'Menü Görünümü'", $php, 'Görünüm netleşir' );
+		qrms_assert_contains( "'hub_title'  => 'Stok Durumu'", $php, 'Ürünüm Yok → Stok Durumu' );
+		qrms_assert_contains( "isset( \$page['hub_title'] ) ? \$page['hub_title'] : \$page['menu_title']", $php, 'hub başlığı alt sayfa adını bozmaz' );
+		qrms_assert_contains( "'label'  => 'Eksik Ürün (Tükendi)'", $php, 'mevcut özet kartı durur' );
+		qrms_assert_contains( "'label'  => 'Okunmayan Yorum'", $php, 'yorum özeti' );
+		qrms_assert_contains( "'label'  => 'Bugün Görüntülenme'", $php, 'analiz özeti' );
+		qrms_assert_contains( '%d okunmayan yorum', $php, 'yorum değeri biçimi' );
+		qrms_assert_contains( '%d görüntülenme (bugün)', $php, 'görüntülenme değeri biçimi' );
+		qrms_assert_contains( 'qrm_cf_unread_total', $php, 'okunmamış yorum sayacı' );
+		qrms_assert_contains( "qrms-yf-formlar", $php, 'yorum form listesi adresi' );
+		qrms_assert_contains( "tab' => 'submissions'", $php, 'gönderiler sekmesi' );
+		qrms_assert_contains( "get_module_page_url( 'qr-analiz' )", $php, 'QR Analiz adresi' );
+		qrms_assert_contains( 'rma_hub_today_views_', $php, 'görüntülenme transient anahtarı' );
+		qrms_assert_contains( "event_type = %s", $php, 'tek COUNT sorgusu' );
+		qrms_assert_contains( "'menu_view'", $php, 'menü görüntüleme olayı' );
+		qrms_assert_contains( 'echo \'<div class="rma-hub">\'', $php, 'kapsül sarmalayıcı' );
+		qrms_assert_contains( "'title' => 'Ürünlerim'", $php, 'Ürünlerim durur' );
+		qrms_assert_contains( "'title' => 'Ürün Ekle'", $php, 'Ürün Ekle durur' );
+
+		$modul = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/module.php' );
+		qrms_assert_contains( "modules/restoran-menu/assets/css/hub.css", $modul, 'hub.css kuyruğa alınır' );
+		qrms_assert_contains( "array( 'qrms-admin' )", $modul, 'ortak admin.css sonrası yüklenir' );
+	}
+);
+
+qrms_test(
 	'modül placeholder sayfası modül adını ve "yakında" metnini gösterir',
 	function () {
 		ob_start();
