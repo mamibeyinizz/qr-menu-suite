@@ -335,6 +335,12 @@
 .qrms-vitrin-fullwidth .qrms-vitrin-prev { left: 4px; }
 .qrms-vitrin-fullwidth .qrms-vitrin-next { right: 4px; }
 
+/* Tam genişlikte (bkz. .qrms-vitrin-fullwidth) kutu artık tarayıcı
+   kenarına kadar uzandığı için -8px'lik taşma sayfa dışına çıkıp yatay
+   scroll doğururdu; burada kenarın hemen İÇİNE alınır. */
+.qrms-vitrin-fullwidth .qrms-vitrin-prev { left: 4px; }
+.qrms-vitrin-fullwidth .qrms-vitrin-next { right: 4px; }
+
 .qrms-vitrin-dots {
     align-self: stretch;
     display: flex;
