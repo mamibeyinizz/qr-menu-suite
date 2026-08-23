@@ -411,9 +411,9 @@ class QRMS_Admin {
 							<div class="qrms-hub-stat-label"><?php echo esc_html( $stat['label'] ); ?></div>
 							<div class="qrms-hub-stat-value">
 								<?php if ( ! empty( $stat['url'] ) ) : ?>
-									<a href="<?php echo esc_url( $stat['url'] ); ?>"><?php echo esc_html( $stat['value'] ); ?></a>
+									<a class="qrms-stat-value" href="<?php echo esc_url( $stat['url'] ); ?>"><?php echo esc_html( $stat['value'] ); ?></a>
 								<?php else : ?>
-									<?php echo esc_html( $stat['value'] ); ?>
+									<span class="qrms-stat-value"><?php echo esc_html( $stat['value'] ); ?></span>
 								<?php endif; ?>
 							</div>
 						</div>
