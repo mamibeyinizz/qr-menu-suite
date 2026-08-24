@@ -167,11 +167,21 @@ QRMS_Admin::render_hub( [
 ] );
 ```
 
-Kart ızgarası masaüstünde **üç sütun**, 960px altında iki, 600px altında tek
-sütundur; `pointer: coarse` cihazlarda kart yüksekliği ve ikonlar büyür.
-İkonlar **dashicons** setinden gelir — emoji kullanılmaz, çünkü emoji admin'in
-yazı tipi yığınına ve işletim sistemine göre kutu karakterine düşebiliyor.
-Stiller `assets/css/admin.css` içindeki `.qrms-hub-*` kurallarındadır.
+Kartlar başlıklı bölümler hâlinde de verilebilir: `cards` yerine
+`card_groups` (`[ [ 'title' => 'Ürünler', 'cards' => [ … ] ], … ]`) geçilirse
+her grup kendi `<h2 class="qrms-hub-group-title">` başlığı + ayrı bir
+`.qrms-hub-grid` ile art arda basılır (Restoran Menü hub'ı böyle kullanır —
+bkz. `RMA_Admin_Pages_Trait::get_hub_cards()`). `card_groups` verilmezse
+davranış eskisi gibi tek, başlıksız bir ızgaradır.
+
+Kart ızgarası (her grup içinde ayrı ayrı) masaüstünde **üç sütun**, 960px
+altında iki, 600px altında tek sütundur; `pointer: coarse` cihazlarda kart
+yüksekliği ve ikonlar büyür. İkonlar **dashicons** setinden gelir — emoji
+kullanılmaz, çünkü emoji admin'in yazı tipi yığınına ve işletim sistemine
+göre kutu karakterine düşebiliyor. Stiller `assets/css/admin.css` içindeki
+`.qrms-hub-*` kurallarındadır; grup başlığının serif/dark-gold stili
+modüle özgü olduğu için `modules/restoran-menu/assets/css/hub.css`
+içindedir.
 
 ### Genel Bakış — kategorili kart ızgarası
 

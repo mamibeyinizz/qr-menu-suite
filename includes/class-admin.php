@@ -369,24 +369,29 @@ class QRMS_Admin {
 	 * dashicons WordPress admin'inde her zaman kayıtlı bir ikon fontudur.
 	 *
 	 * @param array $args {
-	 *     @type string $title  Sayfa başlığı.
-	 *     @type string $intro  Tek cümlelik açıklama (opsiyonel).
-	 *     @type string $accent Vurgu rengi (opsiyonel, modülün markası).
-	 *     @type string $notice Kartların üstünde gösterilecek uyarı HTML'i.
-	 *     @type array  $stats  Üstteki özet kutuları: label, value, url, accent.
-	 *     @type array  $cards  Kartlar: url, title, desc, icon, badge.
+	 *     @type string $title       Sayfa başlığı.
+	 *     @type string $intro       Tek cümlelik açıklama (opsiyonel).
+	 *     @type string $accent      Vurgu rengi (opsiyonel, modülün markası).
+	 *     @type string $notice      Kartların üstünde gösterilecek uyarı HTML'i.
+	 *     @type array  $stats       Üstteki özet kutuları: label, value, url, accent.
+	 *     @type array  $cards       Kartlar (tek ızgara, başlıksız): url, title, desc, icon, badge.
+	 *     @type array  $card_groups Kartlar başlıklı bölümler hâlinde: her öge
+	 *                               {title:string, cards:array} — verilirse
+	 *                               $cards yok sayılır, her grup kendi
+	 *                               `<h2>` başlığı + ayrı bir ızgarayla basılır.
 	 * }
 	 * @return void
 	 */
 	public static function render_hub( array $args ) {
 		$args = array_merge(
 			array(
-				'title'  => '',
-				'intro'  => '',
-				'accent' => '',
-				'notice' => '',
-				'stats'  => array(),
-				'cards'  => array(),
+				'title'       => '',
+				'intro'       => '',
+				'accent'      => '',
+				'notice'      => '',
+				'stats'       => array(),
+				'cards'       => array(),
+				'card_groups' => array(),
 			),
 			$args
 		);
@@ -421,36 +426,59 @@ class QRMS_Admin {
 				</div>
 			<?php endif; ?>
 
-			<div class="qrms-hub-grid">
-				<?php
-				/*
-				 * Kart gövdesi BLOK elemanlardan kurulur (div/h3/p), span'lerden
-				 * değil. HTML5'te <a> akış içeriği taşıyabilir ve fark yalnızca
-				 * stil dosyası ulaşmadığında ortaya çıkar: span'lerle kart tek
-				 * satıra çöküp okunmaz bir bağlantı metnine dönüşürdü, blok
-				 * elemanlarla alt alta dizilmiş okunabilir bir liste kalır.
-				 */
-				foreach ( $args['cards'] as $card ) :
-					?>
-					<a class="qrms-hub-card" href="<?php echo esc_url( $card['url'] ); ?>">
-						<span class="qrms-hub-icon dashicons <?php echo esc_attr( isset( $card['icon'] ) ? $card['icon'] : 'dashicons-admin-generic' ); ?>" aria-hidden="true"></span>
-						<div class="qrms-hub-body">
-							<h3 class="qrms-hub-card-title">
-								<?php echo esc_html( $card['title'] ); ?>
-								<?php if ( ! empty( $card['badge'] ) ) : ?>
-									<span class="qrms-hub-badge"><?php echo esc_html( $card['badge'] ); ?></span>
-								<?php endif; ?>
-							</h3>
-							<?php if ( ! empty( $card['desc'] ) ) : ?>
-								<p class="qrms-hub-desc"><?php echo esc_html( $card['desc'] ); ?></p>
-							<?php endif; ?>
-						</div>
-					</a>
-					<?php
-				endforeach;
-				?>
-			</div>
+			<?php if ( ! empty( $args['card_groups'] ) ) : ?>
+				<?php foreach ( $args['card_groups'] as $group ) : ?>
+					<h2 class="qrms-hub-group-title">
+						<?php echo esc_html( $group['title'] ); ?>
+						<span class="qrms-hub-group-divider" aria-hidden="true">&#9670;</span>
+					</h2>
+					<div class="qrms-hub-grid">
+						<?php foreach ( $group['cards'] as $card ) : ?>
+							<?php self::render_hub_card( $card ); ?>
+						<?php endforeach; ?>
+					</div>
+				<?php endforeach; ?>
+			<?php else : ?>
+				<div class="qrms-hub-grid">
+					<?php foreach ( $args['cards'] as $card ) : ?>
+						<?php self::render_hub_card( $card ); ?>
+					<?php endforeach; ?>
+				</div>
+			<?php endif; ?>
 		</div>
+		<?php
+	}
+
+	/**
+	 * Tek bir hub kartını basar — hem başlıksız (`cards`) hem gruplu
+	 * (`card_groups`) ızgaralarda aynı kart işaretlemesi kullanılsın diye
+	 * render_hub()'tan ayrılmıştır.
+	 *
+	 * Kart gövdesi BLOK elemanlardan kurulur (div/h3/p), span'lerden değil.
+	 * HTML5'te <a> akış içeriği taşıyabilir ve fark yalnızca stil dosyası
+	 * ulaşmadığında ortaya çıkar: span'lerle kart tek satıra çöküp okunmaz
+	 * bir bağlantı metnine dönüşürdü, blok elemanlarla alt alta dizilmiş
+	 * okunabilir bir liste kalır.
+	 *
+	 * @param array $card { @type string $url, $title, $desc, $icon, $badge }
+	 * @return void
+	 */
+	private static function render_hub_card( array $card ) {
+		?>
+		<a class="qrms-hub-card" href="<?php echo esc_url( $card['url'] ); ?>">
+			<span class="qrms-hub-icon dashicons <?php echo esc_attr( isset( $card['icon'] ) ? $card['icon'] : 'dashicons-admin-generic' ); ?>" aria-hidden="true"></span>
+			<div class="qrms-hub-body">
+				<h3 class="qrms-hub-card-title">
+					<?php echo esc_html( $card['title'] ); ?>
+					<?php if ( ! empty( $card['badge'] ) ) : ?>
+						<span class="qrms-hub-badge"><?php echo esc_html( $card['badge'] ); ?></span>
+					<?php endif; ?>
+				</h3>
+				<?php if ( ! empty( $card['desc'] ) ) : ?>
+					<p class="qrms-hub-desc"><?php echo esc_html( $card['desc'] ); ?></p>
+				<?php endif; ?>
+			</div>
+		</a>
 		<?php
 	}
 
