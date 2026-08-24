@@ -7,11 +7,16 @@
    ortak hub'ın --qrms-hub-accent değişkeni + dark gold (#c9a84c).
 ===================================================================== */
 
+/*
+ * Sütun sayısı BURADA yeniden tanımlanmaz: ortak admin.css zaten masaüstünde
+ * sabit 3, tablette 2, telefonda 1 sütun tanımlıyor (satır grupları buna
+ * göre kurgulandı — bkz. get_hub_cards()). auto-fit/minmax burada
+ * kullanılırsa geniş ekranda 4+ sütuna çıkıp satır gruplarını bozar; bu
+ * yüzden yalnızca boşluk mirasla kalır, grid-template-columns admin.css'e
+ * bırakılır.
+ */
 .rma-hub .qrms-hub-grid {
-	display: grid;
 	gap: 16px;
-	grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-	justify-content: center;
 }
 
 /* İkon + başlık aynı satırda dikey orta; açıklama tam genişlikte alta. */
@@ -70,7 +75,9 @@
 /*
  * Özet değerleri: kart başlığıyla (h3.qrms-hub-card-title) aynı aile ve
  * ağırlık. Linkli kartlarda <a> WP admin mavisini / varsayılan link
- * fontunu almasın diye değer her zaman .qrms-stat-value taşır.
+ * fontunu almasın diye değer her zaman .qrms-stat-value taşır — hem <a>
+ * hem <span> aynı class'ı taşıdığı için kural class bazlıdır (tag bazlı
+ * değil), üçü de birebir aynı font-size/weight alır.
  */
 .rma-hub .qrms-hub-card-title,
 .rma-hub .qrms-stat-value {

@@ -912,13 +912,16 @@ qrms_test(
 );
 
 qrms_test(
-	'restoran menü hub ızgarası auto-fit, ikon hizalı ve başlık ayırıcılı',
+	'restoran menü hub ızgarası sabit 3 sütun, ikon hizalı ve başlık ayırıcılı',
 	function () {
 		$css = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/css/hub.css' );
 
 		qrms_assert_contains( '.rma-hub .qrms-hub-grid', $css, 'ızgara bu sayfaya kapsüllü' );
-		qrms_assert_contains( 'repeat(auto-fit, minmax(280px, 1fr))', $css, 'eşit dağılan sütunlar' );
-		qrms_assert_contains( 'justify-content: center', $css, 'ızgara ortalanır' );
+		// auto-fit/minmax burada YENİDEN TANIMLANMAMALI: ortak admin.css'in
+		// masaüstünde sabit 3, tablette 2, telefonda 1 sütun kuralını ezip
+		// geniş ekranda 4+ sütuna çıkarır, satır gruplarını (get_hub_cards())
+		// bozardı — bkz. hub.css'teki açıklama.
+		qrms_assert_true( false === strpos( $css, 'repeat(auto-fit' ), 'sütun sayısı admin.css\'e bırakılır, auto-fit yok' );
 		qrms_assert_contains( 'display: contents', $css, 'ikon başlıkla aynı satırda' );
 		qrms_assert_contains( 'align-self: center', $css, 'ikon dikey orta' );
 		qrms_assert_contains( 'border-top: 0.5px solid', $css, 'başlık altı ayırıcı' );
