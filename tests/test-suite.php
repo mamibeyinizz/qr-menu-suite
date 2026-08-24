@@ -917,9 +917,8 @@ qrms_test(
 		$css = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/css/hub.css' );
 
 		qrms_assert_contains( '.rma-hub .qrms-hub-grid', $css, 'ızgara bu sayfaya kapsüllü' );
-		// auto-fit/minmax grid burada YENİDEN TANIMLANMAMALI: geniş ekranda
-		// 4+ sütuna çıkıp satır gruplarını (get_hub_cards()) bozardı.
 		qrms_assert_true( false === strpos( $css, 'repeat(auto-fit' ), 'auto-fit yok' );
+		qrms_assert_true( 1 !== preg_match( '/\.qrms-hub-grid[^{]*\{[^}]*display:\s*grid/', $css ), 'ızgara display:grid yazmaz' );
 		qrms_assert_contains( 'display: contents', $css, 'ikon başlıkla aynı satırda' );
 		qrms_assert_contains( 'align-self: center', $css, 'ikon dikey orta' );
 		qrms_assert_contains( 'border-top: 0.5px solid', $css, 'başlık altı ayırıcı' );
@@ -927,17 +926,8 @@ qrms_test(
 		qrms_assert_contains( 'repeat(3, minmax(0, 1fr))', $css, 'üç özet kartı' );
 		qrms_assert_contains( 'grid-template-columns: 1fr', $css, 'dar ekranda özet alt alta' );
 		qrms_assert_contains( '@media screen and (max-width: 600px)', $css, 'telefon kırılımı' );
-		qrms_assert_contains( 'flex: 1 1 100%', $css, 'mobilde tek sütun ızgara' );
 		qrms_assert_contains( '.rma-hub .qrms-stat-value', $css, 'ortak değer class' );
 		qrms_assert_contains( 'font-weight: 600', $css, 'değer başlıkla aynı ağırlık' );
-
-		// Eksik son satır ortalaması: 4 kartlı grupta 4. kart sola yaslanmasın.
-		qrms_assert_contains( 'display: flex', $css, 'ızgara flex' );
-		qrms_assert_contains( 'flex-wrap: wrap', $css, 'satır kaydırma' );
-		qrms_assert_contains( 'justify-content: center', $css, 'eksik satır ortalanır' );
-		qrms_assert_contains( 'calc((100% - 32px) / 3)', $css, 'masaüstü kart genişliği 3 sütun + gap' );
-		qrms_assert_contains( 'calc((100% - 16px) / 2)', $css, 'tablet kart genişliği 2 sütun + gap' );
-		qrms_assert_contains( '@media screen and (max-width: 960px)', $css, 'tablet kırılımı admin.css ile aynı' );
 	}
 );
 
@@ -1644,7 +1634,8 @@ qrms_test(
 
 		// card_groups verilince TAM OLARAK iki ızgara basılır (grup başına
 		// bir tane) — eski düz tek-ızgara yolu devreye girmez.
-		qrms_assert_same( 2, substr_count( $html, 'class="qrms-hub-grid"' ), 'grup başına bir ızgara' );
+		qrms_assert_same( 2, preg_match_all( '/class="qrms-hub-grid(?: |")/', $html ), 'grup başına bir ızgara' );
+		qrms_assert_same( 2, substr_count( $html, 'qrms-hub-grid--has-partial-row' ), 'eksik satır modifier' );
 	}
 );
 
@@ -1663,7 +1654,39 @@ qrms_test(
 		$html = ob_get_clean();
 
 		qrms_assert_contains( 'Tek Kart', $html, 'düz kart basılır' );
+		qrms_assert_contains( 'qrms-hub-grid--has-partial-row', $html, 'tek kart eksik satır' );
 		qrms_assert_false( false !== strpos( $html, 'qrms-hub-group-title' ), 'grup başlığı yok' );
+	}
+);
+
+qrms_test(
+	'üçün katı olan grupta partial-row class yok, 4 kartta var',
+	function () {
+		$kart = static function ( $ad ) {
+			return array( 'url' => '#', 'title' => $ad );
+		};
+
+		ob_start();
+		QRMS_Admin::render_hub(
+			array(
+				'card_groups' => array(
+					array(
+						'title' => 'Ürünler',
+						'cards' => array( $kart( 'Ürünlerim' ), $kart( 'Ürün Ekle' ), $kart( 'Stok Durumu' ), $kart( 'Fiyat Kampanyaları' ) ),
+					),
+					array(
+						'title' => 'Ürün Materyalleri',
+						'cards' => array( $kart( 'Kategoriler' ), $kart( 'Alerjenler' ), $kart( 'Malzemeler' ) ),
+					),
+				),
+			)
+		);
+		$html = ob_get_clean();
+
+		preg_match_all( '/<div class="([^"]*qrms-hub-grid[^"]*)">/', $html, $m );
+		qrms_assert_same( 2, count( $m[1] ), 'iki ızgara' );
+		qrms_assert_true( false !== strpos( $m[1][0], 'qrms-hub-grid--has-partial-row' ), '4 kartlı Ürünler eksik satır' );
+		qrms_assert_false( false !== strpos( $m[1][1], 'qrms-hub-grid--has-partial-row' ), '3 kartlı Materyaller tam satır' );
 	}
 );
 
@@ -1711,13 +1734,15 @@ qrms_test(
 qrms_test(
 	'hub kartlarında emoji ikon kullanılmaz',
 	function () {
-		// Emoji admin\'in yazı tipi yığınına göre kutu karakterine düşebiliyor;
-		// ikonlar dashicons olmalı. Bileşenin ürettiği HTML ve ortak CSS bu
-		// kuralın tek dayanağı.
 		$css = file_get_contents( QRMS_PLUGIN_DIR . 'assets/css/admin.css' );
 
 		qrms_assert_contains( '.qrms-hub-grid', $css, 'kart ızgarası kuralı' );
-		qrms_assert_contains( 'repeat(3, minmax(0, 1fr))', $css, 'masaüstünde üç sütun' );
+		qrms_assert_contains( 'display: flex !important', $css, 'ızgara flex — grid leftover sola yaslar' );
+		qrms_assert_contains( 'flex-wrap: wrap', $css, 'satır kaydırma' );
+		qrms_assert_contains( 'justify-content: center', $css, 'eksik satır ortalanır' );
+		qrms_assert_contains( 'calc(33.333% - 10.67px)', $css, 'masaüstü üç sütun kart genişliği' );
+		qrms_assert_contains( 'min-width: 280px', $css, 'kart min genişlik' );
+		qrms_assert_true( false === strpos( $css, 'grid-template-columns: repeat(3, minmax(0, 1fr))' ), 'kart ızgarasında 3 sütunlu grid yok' );
 		qrms_assert_contains( 'max-width: 960px', $css, 'tablet kırılımı' );
 		qrms_assert_contains( 'max-width: 600px', $css, 'telefon kırılımı' );
 		qrms_assert_contains( 'pointer: coarse', $css, 'dokunmatik hedef büyütmesi' );
@@ -1878,9 +1903,8 @@ qrms_test(
 		qrms_assert_contains( '.qrms-overview-card-passive', $css, 'pasif kart kuralı' );
 		qrms_assert_contains( '.qrms-overview-card-passive:hover', $css, 'pasif kartta hover geri alınır' );
 
-		// Izgara .qrms-hub-grid ile aynı sınıfı kullanır; onun telefon
-		// kırılımı tek sütun olmalı.
-		qrms_assert_contains( "\t.qrms-hub-grid {\n\t\tgrid-template-columns: 1fr;", $css, 'telefonda tek sütun' );
+		// Izgara flex; telefonda kartlar tam genişlik.
+		qrms_assert_contains( 'flex: 1 1 100%', $css, 'telefonda tek sütun' );
 	}
 );
 
