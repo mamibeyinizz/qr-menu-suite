@@ -64,12 +64,12 @@ trait RMA_Admin_Pages_Trait {
     }
 
     /**
-     * "Restoran Menü" hub ekranındaki kartlar.
+     * "Restoran Menü" hub ekranındaki kartlar — üç mantıksal gruba ayrılmış.
      *
      * Ürün/kategori/alerjen ekranları WordPress'in kendi sayfalarıdır, bu
      * yüzden get_subpages() içinde değil burada tanımlanır.
      *
-     * @return array<int,array{url:string,title:string,desc:string,icon:string}>
+     * @return array<int,array{title:string,cards:array<int,array{url:string,title:string,desc:string,icon:string}>}>
      */
     private function get_hub_cards() {
         $sub = $this->get_subpages();
@@ -84,45 +84,58 @@ trait RMA_Admin_Pages_Trait {
             ];
         };
 
-        // Sıra referans gruplamaya göre (başlık satırı yok, tek ızgara akışı):
-        // Ürünler → Materyaller → Görünüm.
         return [
             [
-                'url'   => admin_url( 'edit.php?post_type=rma_menu_item' ),
-                'title' => 'Ürünlerim',
-                'desc'  => 'Menüdeki tüm ürünleri görün, düzenleyin, gösterip gizleyin veya tükendi işaretleyin.',
-                'icon'  => 'dashicons-list-view',
+                'title' => 'Ürünler',
+                'cards' => [
+                    [
+                        'url'   => admin_url( 'edit.php?post_type=rma_menu_item' ),
+                        'title' => 'Ürünlerim',
+                        'desc'  => 'Menüdeki tüm ürünleri görün, düzenleyin, gösterip gizleyin veya tükendi işaretleyin.',
+                        'icon'  => 'dashicons-list-view',
+                    ],
+                    [
+                        'url'   => admin_url( 'post-new.php?post_type=rma_menu_item' ),
+                        'title' => 'Ürün Ekle',
+                        'desc'  => 'Menünüze yeni bir ürün ekleyin.',
+                        'icon'  => 'dashicons-plus-alt',
+                    ],
+                    $from_sub( $this, 'qrms-rm-urunum-yok' ),
+                    $from_sub( $this, 'qrms-rm-kampanya' ),
+                ],
             ],
             [
-                'url'   => admin_url( 'post-new.php?post_type=rma_menu_item' ),
-                'title' => 'Ürün Ekle',
-                'desc'  => 'Menünüze yeni bir ürün ekleyin.',
-                'icon'  => 'dashicons-plus-alt',
+                'title' => 'Ürün Materyalleri',
+                'cards' => [
+                    [
+                        'url'   => admin_url( 'edit-tags.php?taxonomy=rma_category&post_type=rma_menu_item' ),
+                        'title' => 'Kategoriler',
+                        'desc'  => 'Çorbalar, ana yemekler, içecekler… Menü bölümlerinizi yönetin.',
+                        'icon'  => 'dashicons-category',
+                    ],
+                    [
+                        'url'   => admin_url( 'edit-tags.php?taxonomy=rma_allergen&post_type=rma_menu_item' ),
+                        'title' => 'Alerjenler',
+                        'desc'  => 'Ürünlerde işaretlenebilecek alerjen listesini yönetin.',
+                        'icon'  => 'dashicons-warning',
+                    ],
+                    [
+                        'url'   => admin_url( 'edit-tags.php?taxonomy=rma_ingredient&post_type=rma_menu_item' ),
+                        'title' => 'Malzemeler',
+                        'desc'  => 'Ürünlerde kullanılan malzemeleri yönetin; "Ürünüm Yok" ekranı bu listeden beslenir.',
+                        'icon'  => 'dashicons-food',
+                    ],
+                ],
             ],
-            $from_sub( $this, 'qrms-rm-urunum-yok' ),
-            $from_sub( $this, 'qrms-rm-kampanya' ),
             [
-                'url'   => admin_url( 'edit-tags.php?taxonomy=rma_category&post_type=rma_menu_item' ),
-                'title' => 'Kategoriler',
-                'desc'  => 'Çorbalar, ana yemekler, içecekler… Menü bölümlerinizi yönetin.',
-                'icon'  => 'dashicons-category',
+                'title' => 'Görünüm',
+                'cards' => [
+                    $from_sub( $this, 'qrms-rm-gorunum' ),
+                    $from_sub( $this, 'qrms-rm-one-cikanlar' ),
+                    $from_sub( $this, 'qrms-rm-vitrin' ),
+                    $from_sub( $this, 'qrms-rm-diger' ),
+                ],
             ],
-            [
-                'url'   => admin_url( 'edit-tags.php?taxonomy=rma_allergen&post_type=rma_menu_item' ),
-                'title' => 'Alerjenler',
-                'desc'  => 'Ürünlerde işaretlenebilecek alerjen listesini yönetin.',
-                'icon'  => 'dashicons-warning',
-            ],
-            [
-                'url'   => admin_url( 'edit-tags.php?taxonomy=rma_ingredient&post_type=rma_menu_item' ),
-                'title' => 'Malzemeler',
-                'desc'  => 'Ürünlerde kullanılan malzemeleri yönetin; "Ürünüm Yok" ekranı bu listeden beslenir.',
-                'icon'  => 'dashicons-food',
-            ],
-            $from_sub( $this, 'qrms-rm-gorunum' ),
-            $from_sub( $this, 'qrms-rm-one-cikanlar' ),
-            $from_sub( $this, 'qrms-rm-vitrin' ),
-            $from_sub( $this, 'qrms-rm-diger' ),
         ];
     }
 
@@ -268,13 +281,13 @@ trait RMA_Admin_Pages_Trait {
 
         echo '<div class="rma-hub">';
         QRMS_Admin::render_hub( [
-            'title'  => 'Restoran Menü',
-            'intro'  => 'Menünüzle ilgili her iş burada. Ne yapmak istiyorsanız kartına dokunun.',
+            'title'       => 'Restoran Menü',
+            'intro'       => 'Menünüzle ilgili her iş burada. Ne yapmak istiyorsanız kartına dokunun.',
             // Modülün marka vurgusu (frontend menü temasıyla aynı altın).
-            'accent' => '#c9a84c',
-            'stats'  => $this->get_hub_stats( $uy_ozet ),
-            'notice' => method_exists( $this, 'render_eksik_urun_notice' ) ? $this->render_eksik_urun_notice( $uy_ozet ) : '',
-            'cards'  => $this->get_hub_cards(),
+            'accent'      => '#c9a84c',
+            'stats'       => $this->get_hub_stats( $uy_ozet ),
+            'notice'      => method_exists( $this, 'render_eksik_urun_notice' ) ? $this->render_eksik_urun_notice( $uy_ozet ) : '',
+            'card_groups' => $this->get_hub_cards(),
         ] );
         echo '</div>';
     }

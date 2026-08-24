@@ -1596,6 +1596,113 @@ qrms_test(
 );
 
 qrms_test(
+	'card_groups verilince kartlar başlıklı bölümlere ayrılır',
+	function () {
+		ob_start();
+		QRMS_Admin::render_hub(
+			array(
+				'title'       => 'Restoran Menü',
+				'card_groups' => array(
+					array(
+						'title' => 'Ürünler',
+						'cards' => array(
+							array( 'url' => '#', 'title' => 'Ürünlerim' ),
+							array( 'url' => '#', 'title' => 'Ürün Ekle' ),
+						),
+					),
+					array(
+						'title' => 'Görünüm',
+						'cards' => array(
+							array( 'url' => '#', 'title' => 'Menü Görünümü' ),
+						),
+					),
+				),
+			)
+		);
+		$html = ob_get_clean();
+
+		qrms_assert_contains( '<h2 class="qrms-hub-group-title">', $html, 'grup başlığı elementi' );
+		qrms_assert_contains( 'qrms-hub-group-divider', $html, 'dekoratif ayırıcı' );
+
+		// İki grup başlığı da basıldı, DOĞRU sırada ve her biri kendi
+		// kartlarından ÖNCE geliyor (başlık -> o gruba ait ızgara).
+		$grup1_baslik = strpos( $html, 'Ürünler' );
+		$grup1_kart   = strpos( $html, 'Ürünlerim' );
+		$grup2_baslik = strpos( $html, 'Görünüm' );
+		$grup2_kart   = strpos( $html, 'Menü Görünümü' );
+
+		qrms_assert_true( false !== $grup1_baslik && false !== $grup1_kart && false !== $grup2_baslik && false !== $grup2_kart, 'tüm başlık ve kartlar basıldı' );
+		qrms_assert_true( $grup1_baslik < $grup1_kart, 'Ürünler başlığı kendi kartlarından önce' );
+		qrms_assert_true( $grup1_kart < $grup2_baslik, 'birinci grup ikinciden önce biter' );
+		qrms_assert_true( $grup2_baslik < $grup2_kart, 'Görünüm başlığı kendi kartından önce' );
+
+		// card_groups verilince TAM OLARAK iki ızgara basılır (grup başına
+		// bir tane) — eski düz tek-ızgara yolu devreye girmez.
+		qrms_assert_same( 2, substr_count( $html, 'class="qrms-hub-grid"' ), 'grup başına bir ızgara' );
+	}
+);
+
+qrms_test(
+	'card_groups verilmeyince eski düz tek ızgara davranışı bozulmaz',
+	function () {
+		// Diğer modüllerin hepsi hâlâ düz `cards` ile çağırıyor (bkz.
+		// yorum-feedback, qr-masa-oturum-guvenligi, qr-galeri, qr-acilis-ekrani);
+		// card_groups eklenmeden önceki davranışları AYNI kalmalı.
+		ob_start();
+		QRMS_Admin::render_hub(
+			array(
+				'cards' => array( array( 'url' => '#', 'title' => 'Tek Kart' ) ),
+			)
+		);
+		$html = ob_get_clean();
+
+		qrms_assert_contains( 'Tek Kart', $html, 'düz kart basılır' );
+		qrms_assert_false( false !== strpos( $html, 'qrms-hub-group-title' ), 'grup başlığı yok' );
+	}
+);
+
+qrms_test(
+	'restoran menü hub grup başlıkları doğru sırada ve dark gold paletiyle tanımlı',
+	function () {
+		$php = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-admin-pages.php' );
+
+		$hub_fn = substr( $php, strpos( $php, 'function get_hub_cards' ), strpos( $php, 'function get_legacy_page_map' ) - strpos( $php, 'function get_hub_cards' ) );
+		$sira   = array(
+			"'title' => 'Ürünler'",
+			"'title' => 'Ürünlerim'",
+			"'title' => 'Ürün Ekle'",
+			'qrms-rm-urunum-yok',
+			'qrms-rm-kampanya',
+			"'title' => 'Ürün Materyalleri'",
+			"'title' => 'Kategoriler'",
+			"'title' => 'Alerjenler'",
+			"'title' => 'Malzemeler'",
+			"'title' => 'Görünüm'",
+			'qrms-rm-gorunum',
+			'qrms-rm-one-cikanlar',
+			'qrms-rm-vitrin',
+			'qrms-rm-diger',
+		);
+		$onceki = -1;
+		foreach ( $sira as $parca ) {
+			$pos = strpos( $hub_fn, $parca );
+			qrms_assert_true( false !== $pos, $parca . ' hub kartında' );
+			qrms_assert_true( $pos > $onceki, $parca . ' sırası' );
+			$onceki = $pos;
+		}
+
+		qrms_assert_contains( "'card_groups' => \$this->get_hub_cards()", $php, 'hub gruplu kartları alır' );
+
+		$css = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/css/hub.css' );
+		qrms_assert_contains( '.rma-hub .qrms-hub-group-title', $css, 'grup başlığı kuralı' );
+		qrms_assert_contains( "font-family: 'Playfair Display', Georgia, serif;", $css, 'serif marka fontu' );
+		qrms_assert_contains( 'color: #1d2327;', $css, 'kart başlığıyla aynı ink rengi' );
+		qrms_assert_contains( 'rgba(201, 168, 76,', $css, 'ayırıcıda muted gold tonu' );
+		qrms_assert_contains( '.rma-hub .qrms-hub-group-title:first-of-type', $css, 'ilk grupta fazla boşluk yok' );
+	}
+);
+
+qrms_test(
 	'hub kartlarında emoji ikon kullanılmaz',
 	function () {
 		// Emoji admin\'in yazı tipi yığınına göre kutu karakterine düşebiliyor;
