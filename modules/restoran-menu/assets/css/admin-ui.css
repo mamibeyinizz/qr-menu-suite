@@ -859,6 +859,11 @@
     text-align: center;
 }
 
+.rma-admin table.widefat tbody tr:hover th,
+.rma-admin table.widefat tbody tr:hover td {
+    background: var(--rma-a-raised);
+}
+
 /* ---------------------------------------------------------------
    GENİŞ TABLOLAR — dar ekranda sayfayı taşırmaz, kendi içinde kayar
 --------------------------------------------------------------- */

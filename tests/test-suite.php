@@ -917,11 +917,9 @@ qrms_test(
 		$css = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/css/hub.css' );
 
 		qrms_assert_contains( '.rma-hub .qrms-hub-grid', $css, 'ızgara bu sayfaya kapsüllü' );
-		// auto-fit/minmax burada YENİDEN TANIMLANMAMALI: ortak admin.css'in
-		// masaüstünde sabit 3, tablette 2, telefonda 1 sütun kuralını ezip
-		// geniş ekranda 4+ sütuna çıkarır, satır gruplarını (get_hub_cards())
-		// bozardı — bkz. hub.css'teki açıklama.
-		qrms_assert_true( false === strpos( $css, 'repeat(auto-fit' ), 'sütun sayısı admin.css\'e bırakılır, auto-fit yok' );
+		// auto-fit/minmax grid burada YENİDEN TANIMLANMAMALI: geniş ekranda
+		// 4+ sütuna çıkıp satır gruplarını (get_hub_cards()) bozardı.
+		qrms_assert_true( false === strpos( $css, 'repeat(auto-fit' ), 'auto-fit yok' );
 		qrms_assert_contains( 'display: contents', $css, 'ikon başlıkla aynı satırda' );
 		qrms_assert_contains( 'align-self: center', $css, 'ikon dikey orta' );
 		qrms_assert_contains( 'border-top: 0.5px solid', $css, 'başlık altı ayırıcı' );
@@ -929,9 +927,17 @@ qrms_test(
 		qrms_assert_contains( 'repeat(3, minmax(0, 1fr))', $css, 'üç özet kartı' );
 		qrms_assert_contains( 'grid-template-columns: 1fr', $css, 'dar ekranda özet alt alta' );
 		qrms_assert_contains( '@media screen and (max-width: 600px)', $css, 'telefon kırılımı' );
-		qrms_assert_contains( 'minmax(0, 1fr)', $css, 'mobilde tek sütun ızgara' );
+		qrms_assert_contains( 'flex: 1 1 100%', $css, 'mobilde tek sütun ızgara' );
 		qrms_assert_contains( '.rma-hub .qrms-stat-value', $css, 'ortak değer class' );
 		qrms_assert_contains( 'font-weight: 600', $css, 'değer başlıkla aynı ağırlık' );
+
+		// Eksik son satır ortalaması: 4 kartlı grupta 4. kart sola yaslanmasın.
+		qrms_assert_contains( 'display: flex', $css, 'ızgara flex' );
+		qrms_assert_contains( 'flex-wrap: wrap', $css, 'satır kaydırma' );
+		qrms_assert_contains( 'justify-content: center', $css, 'eksik satır ortalanır' );
+		qrms_assert_contains( 'calc((100% - 32px) / 3)', $css, 'masaüstü kart genişliği 3 sütun + gap' );
+		qrms_assert_contains( 'calc((100% - 16px) / 2)', $css, 'tablet kart genişliği 2 sütun + gap' );
+		qrms_assert_contains( '@media screen and (max-width: 960px)', $css, 'tablet kırılımı admin.css ile aynı' );
 	}
 );
 
@@ -5873,6 +5879,50 @@ qrms_test(
 
 		qrms_assert_same( null, RMA_Tukendi::siparis_engeli( array() ), 'boş sipariş' );
 		qrms_assert_same( 'önceki', RMA_Tukendi::siparis_filtresi( 'önceki', array() ), 'önceki engel korunur' );
+	}
+);
+
+echo "\nÜrünüm Yok — elle kapatılanlar listesi\n";
+
+qrms_test(
+	'eksik özet elle kapatılan ürün id\'lerini de tutar, ikinci sorgu yok',
+	function () {
+		$stok = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/urunum-yok/class-stock.php' );
+
+		qrms_assert_contains( "'elle_ids'   => []", $stok, 'elle_ids kovası' );
+		qrms_assert_contains( "\$ozet['elle_ids'][] = (int) \$id", $stok, 'elle id aynı döngüde eklenir' );
+		qrms_assert_contains( "\$ozet['elle']++", $stok, 'elle sayacı durur' );
+
+		// Tek get_posts: hem malzeme kırılımı hem elle id listesi aynı taramadan.
+		qrms_assert_same( 1, substr_count( $stok, "function qmo_urunum_yok_eksik_ozet" ), 'tek özet fonksiyonu' );
+	}
+);
+
+qrms_test(
+	'Ürünüm Yok sayfası elle kapatılanları malzeme listesinin üstünde basar',
+	function () {
+		$admin = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/urunum-yok/trait-admin.php' );
+
+		qrms_assert_contains( 'render_urunum_yok_elle_liste', $admin, 'elle liste metodu' );
+		qrms_assert_contains( 'Elle Kapatılan Ürünler', $admin, 'bölüm başlığı' );
+		qrms_assert_contains( 'Elle kapatılan ürün yok.', $admin, 'boş durum mesajı' );
+		qrms_assert_contains( 'Tekrar Aktif Et', $admin, 'geri alma butonu' );
+		qrms_assert_contains( 'qmo_urunum_yok_eksik_ozet', $admin, 'aynı özet kaynağı' );
+		qrms_assert_contains( "\$ozet['elle_ids']", $admin, 'id listesi özettendir' );
+		qrms_assert_contains( 'qmo_uy_aktiflestir', $admin, 'mevcut aktifleştirme ucu' );
+		qrms_assert_contains( 'qmo_uy_reactivate_', $admin, 'mevcut nonce' );
+		qrms_assert_contains( '$limit = 50', $admin, 'sayfalama limiti' );
+		qrms_assert_contains( "edit.php?post_type=rma_menu_item", $admin, 'Ürünlerim devam linki' );
+		qrms_assert_contains( 'widefat striped', $admin, 'malzeme listesiyle aynı tablo' );
+		qrms_assert_contains( 'tbody tr:hover', file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/css/admin-ui.css' ), 'satır hover' );
+
+		$elle  = strpos( $admin, 'function render_urunum_yok_elle_liste' );
+		$malz  = strpos( $admin, 'function render_urunum_yok_aktif_liste' );
+		$cagri_elle = strpos( $admin, '$this->render_urunum_yok_elle_liste();' );
+		$cagri_malz = strpos( $admin, '$this->render_urunum_yok_aktif_liste();' );
+
+		qrms_assert_true( false !== $elle && false !== $malz, 'iki render metodu da var' );
+		qrms_assert_true( $cagri_elle < $cagri_malz, 'elle liste malzeme listesinin üstünde çağrılır' );
 	}
 );
 

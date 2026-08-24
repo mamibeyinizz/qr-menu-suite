@@ -91,6 +91,7 @@ trait RMA_Urunum_Yok_Admin_Trait {
             $this->render_urunum_yok_urun_listesi( $secili_term );
         }
 
+        $this->render_urunum_yok_elle_liste();
         $this->render_urunum_yok_aktif_liste();
 
         $this->page_footer();
@@ -159,6 +160,65 @@ trait RMA_Urunum_Yok_Admin_Trait {
         echo '</form>';
 
         echo '<script>(function(){var h=document.getElementById("qmo-uy-hepsi");if(!h)return;h.addEventListener("change",function(){document.querySelectorAll(".qmo-uy-urun-cb").forEach(function(cb){cb.checked=h.checked;});});})();</script>';
+
+        echo '</div>';
+    }
+
+    /**
+     * Elle (malzemeyle ilişkisiz) tükendi işaretlenmiş ürünler.
+     *
+     * Veri kaynağı hub bildirim şeridindeki "Elle işaretlenmiş" sayacıyla
+     * AYNI sorgudur (qmo_urunum_yok_eksik_ozet); ikinci bir tarama yok.
+     * "Tekrar Aktif Et" malzeme listesindeki "Şimdi Aktif Et" ile aynı
+     * admin-post ucunu (qmo_uy_aktiflestir) kullanır.
+     *
+     * @return void
+     */
+    private function render_urunum_yok_elle_liste() {
+        $ozet = function_exists( 'qmo_urunum_yok_eksik_ozet' )
+            ? qmo_urunum_yok_eksik_ozet()
+            : [ 'elle' => 0, 'elle_ids' => [] ];
+
+        $ids   = isset( $ozet['elle_ids'] ) ? (array) $ozet['elle_ids'] : [];
+        $limit = 50;
+
+        echo '<div class="rma-card" id="rma-uy-elle">';
+        echo '<h2 class="rma-card-title">Elle Kapatılan Ürünler</h2>';
+
+        if ( empty( $ids ) ) {
+            echo '<p class="rma-empty">Elle kapatılan ürün yok.</p></div>';
+            return;
+        }
+
+        $goster = array_slice( $ids, 0, $limit );
+
+        echo '<table class="widefat striped"><thead><tr><th>Ürün</th><th>Kategori</th><th></th></tr></thead><tbody>';
+        foreach ( $goster as $id ) {
+            $id    = (int) $id;
+            $cats  = wp_get_object_terms( $id, 'rma_category', [ 'fields' => 'names' ] );
+            $cats  = is_wp_error( $cats ) ? [] : $cats;
+            $reactivate_url = wp_nonce_url(
+                admin_url( 'admin-post.php?action=qmo_uy_aktiflestir&urun_id=' . $id ),
+                'qmo_uy_reactivate_' . $id
+            );
+
+            printf(
+                '<tr><td><a href="%1$s">%2$s</a></td><td>%3$s</td><td><a class="button button-small" href="%4$s">Tekrar Aktif Et</a></td></tr>',
+                esc_url( (string) get_edit_post_link( $id ) ),
+                esc_html( get_the_title( $id ) ),
+                esc_html( implode( ', ', $cats ) ),
+                esc_url( $reactivate_url )
+            );
+        }
+        echo '</tbody></table>';
+
+        if ( count( $ids ) > $limit ) {
+            printf(
+                '<p class="rma-card-desc">İlk %d ürün listeleniyor; kalanını <a href="%s">Ürünlerim</a> sayfasından yönetebilirsiniz.</p>',
+                $limit,
+                esc_url( admin_url( 'edit.php?post_type=rma_menu_item' ) )
+            );
+        }
 
         echo '</div>';
     }
@@ -284,7 +344,7 @@ trait RMA_Urunum_Yok_Admin_Trait {
     ----------------------------------------------------------------- */
 
     /**
-     * @param array{toplam:int,malzemeler:array<string,int>,elle:int} $ozet
+     * @param array{toplam:int,malzemeler:array<string,int>,elle:int,elle_ids?:int[]} $ozet
      * @return string HTML (boşsa '').
      */
     public function render_eksik_urun_notice( array $ozet ) {

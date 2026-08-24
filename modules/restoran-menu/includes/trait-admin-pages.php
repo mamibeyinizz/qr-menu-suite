@@ -277,7 +277,7 @@ trait RMA_Admin_Pages_Trait {
         // Bakış kartıyla AYNI kaynak (bkz. urunum-yok/class-stock.php).
         $uy_ozet = function_exists( 'qmo_urunum_yok_eksik_ozet' )
             ? qmo_urunum_yok_eksik_ozet()
-            : [ 'toplam' => 0, 'malzemeler' => [], 'elle' => 0 ];
+            : [ 'toplam' => 0, 'malzemeler' => [], 'elle' => 0, 'elle_ids' => [] ];
 
         echo '<div class="rma-hub">';
         QRMS_Admin::render_hub( [
@@ -295,7 +295,7 @@ trait RMA_Admin_Pages_Trait {
     /**
      * Hub üstündeki özet kartları: tükendi, okunmayan yorum, bugünkü görüntüleme.
      *
-     * @param array{toplam:int,malzemeler:array,elle:int} $uy_ozet Ürünüm Yok özeti.
+     * @param array{toplam:int,malzemeler:array,elle:int,elle_ids?:int[]} $uy_ozet Ürünüm Yok özeti.
      * @return array<int,array{label:string,value:string|int,url:string,accent:string}>
      */
     private function get_hub_stats( $uy_ozet ) {

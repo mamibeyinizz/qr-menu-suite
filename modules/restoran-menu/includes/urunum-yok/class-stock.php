@@ -220,7 +220,7 @@ if ( ! function_exists( 'qmo_urunum_yok_eksik_ozet' ) ) {
      * kaç ürünün etkilendiği + elle işaretlenmiş (malzemeyle ilgisi olmayan)
      * ürün sayısı.
      *
-     * @return array{toplam:int,malzemeler:array<string,int>,elle:int}
+     * @return array{toplam:int,malzemeler:array<string,int>,elle:int,elle_ids:int[]}
      */
     function qmo_urunum_yok_eksik_ozet() {
         static $ozet = null;
@@ -232,6 +232,7 @@ if ( ! function_exists( 'qmo_urunum_yok_eksik_ozet' ) ) {
             'toplam'     => qmo_tukendi_urun_sayisi(),
             'malzemeler' => [],
             'elle'       => 0,
+            'elle_ids'   => [],
         ];
 
         $ids = get_posts( [
@@ -240,6 +241,8 @@ if ( ! function_exists( 'qmo_urunum_yok_eksik_ozet' ) ) {
             'posts_per_page' => -1,
             'fields'         => 'ids',
             'no_found_rows'  => true,
+            'orderby'        => 'title',
+            'order'          => 'ASC',
             'meta_key'       => '_rma_tukendi',
             'meta_value'     => '1',
         ] );
@@ -249,6 +252,7 @@ if ( ! function_exists( 'qmo_urunum_yok_eksik_ozet' ) ) {
 
             if ( empty( $kayitlar ) ) {
                 $ozet['elle']++;
+                $ozet['elle_ids'][] = (int) $id;
                 continue;
             }
 
