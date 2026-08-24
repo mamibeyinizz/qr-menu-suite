@@ -8,15 +8,35 @@
 ===================================================================== */
 
 /*
- * Sütun sayısı BURADA yeniden tanımlanmaz: ortak admin.css zaten masaüstünde
- * sabit 3, tablette 2, telefonda 1 sütun tanımlıyor (satır grupları buna
- * göre kurgulandı — bkz. get_hub_cards()). auto-fit/minmax burada
- * kullanılırsa geniş ekranda 4+ sütuna çıkıp satır gruplarını bozar; bu
- * yüzden yalnızca boşluk mirasla kalır, grid-template-columns admin.css'e
- * bırakılır.
+ * Kart ızgarası flex + wrap: sütun sayısı admin.css ile aynı kalır
+ * (masaüstü 3, tablet 2, telefon 1) ama 4/7/10 gibi 3'ün katı olmayan
+ * gruplarda son satırdaki kart(lar) sayfanın ortasında durur. CSS Grid
+ * leftover öğeleri ilk sütuna yaslar; justify-content:center grid'de
+ * bunu düzeltmez. auto-fit/minmax kullanılmaz — geniş ekranda 4+ sütuna
+ * çıkıp satır gruplarını (bkz. get_hub_cards()) bozardı. Gap 16px
+ * admin.css ile birebir.
  */
 .rma-hub .qrms-hub-grid {
+	display: flex;
+	flex-wrap: wrap;
 	gap: 16px;
+	justify-content: center;
+}
+
+.rma-hub .qrms-hub-grid > .qrms-hub-card {
+	box-sizing: border-box;
+	flex: 0 1 calc((100% - 32px) / 3);
+	max-width: calc((100% - 32px) / 3);
+	min-width: 0;
+	width: calc((100% - 32px) / 3);
+}
+
+@media screen and (max-width: 960px) {
+	.rma-hub .qrms-hub-grid > .qrms-hub-card {
+		flex-basis: calc((100% - 16px) / 2);
+		max-width: calc((100% - 16px) / 2);
+		width: calc((100% - 16px) / 2);
+	}
 }
 
 /* İkon + başlık aynı satırda dikey orta; açıklama tam genişlikte alta. */
@@ -154,8 +174,13 @@
 
 @media screen and (max-width: 600px) {
 	.rma-hub .qrms-hub-grid {
-		grid-template-columns: minmax(0, 1fr);
 		justify-content: stretch;
+	}
+
+	.rma-hub .qrms-hub-grid > .qrms-hub-card {
+		flex: 1 1 100%;
+		max-width: none;
+		width: 100%;
 	}
 
 	.rma-hub .qrms-hub-group-title {
