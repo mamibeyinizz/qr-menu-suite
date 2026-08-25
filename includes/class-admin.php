@@ -432,14 +432,14 @@ class QRMS_Admin {
 						<?php echo esc_html( $group['title'] ); ?>
 						<span class="qrms-hub-group-divider" aria-hidden="true">&#9670;</span>
 					</h2>
-					<div class="<?php echo esc_attr( self::hub_grid_class( isset( $group['cards'] ) ? $group['cards'] : array() ) ); ?>">
+					<div class="qrms-hub-grid">
 						<?php foreach ( $group['cards'] as $card ) : ?>
 							<?php self::render_hub_card( $card ); ?>
 						<?php endforeach; ?>
 					</div>
 				<?php endforeach; ?>
 			<?php else : ?>
-				<div class="<?php echo esc_attr( self::hub_grid_class( $args['cards'] ) ); ?>">
+				<div class="qrms-hub-grid">
 					<?php foreach ( $args['cards'] as $card ) : ?>
 						<?php self::render_hub_card( $card ); ?>
 					<?php endforeach; ?>
@@ -447,24 +447,6 @@ class QRMS_Admin {
 			<?php endif; ?>
 		</div>
 		<?php
-	}
-
-	/**
-	 * Hub kart ızgarasının class listesi.
-	 *
-	 * Kart sayısı 3'ün katı değilse son satır eksiktir. Asıl ortalama
-	 * `display:flex` ile admin.css'te tüm ızgaralara uygulanır; modifier
-	 * eksik satırlı grupları işaretler (test ve gerekirse ek kural).
-	 *
-	 * @param array $cards Kart listesi.
-	 * @return string
-	 */
-	private static function hub_grid_class( array $cards ) {
-		$class = 'qrms-hub-grid';
-		if ( count( $cards ) % 3 !== 0 ) {
-			$class .= ' qrms-hub-grid--has-partial-row';
-		}
-		return $class;
 	}
 
 	/**
@@ -978,7 +960,7 @@ class QRMS_Admin {
 						<?php endif; ?>
 					</h2>
 
-					<div class="<?php echo esc_attr( self::hub_grid_class( $group['cards'] ) ); ?>">
+					<div class="qrms-hub-grid">
 						<?php
 						foreach ( $group['cards'] as $card ) :
 							$is_passive = ( 'passive' === $card['state'] );

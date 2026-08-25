@@ -8,10 +8,12 @@
 ===================================================================== */
 
 /*
- * Kart ızgarasının sütun/ortalama kuralları ortak admin.css'tedir
- * (.qrms-hub-grid flex + wrap). Burada yalnızca bu sayfaya özgü
- * boşluk kalır; CSS Grid ASLA yazılmaz — leftover kartı sola
- * yaslardı ve justify-content:center grid'de işe yaramazdı.
+ * Sütun sayısı BURADA yeniden tanımlanmaz: ortak admin.css zaten masaüstünde
+ * sabit 3, tablette 2, telefonda 1 sütun tanımlıyor (satır grupları buna
+ * göre kurgulandı — bkz. get_hub_cards()). auto-fit/minmax burada
+ * kullanılırsa geniş ekranda 4+ sütuna çıkıp satır gruplarını bozar; bu
+ * yüzden yalnızca boşluk mirasla kalır, grid-template-columns admin.css'e
+ * bırakılır.
  */
 .rma-hub .qrms-hub-grid {
 	gap: 16px;
