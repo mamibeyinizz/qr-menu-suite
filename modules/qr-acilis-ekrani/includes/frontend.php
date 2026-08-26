@@ -279,7 +279,9 @@ trait QRMS_AE_Frontend {
         // diye saklanıyor ve sınıf adına yazılıyor.
         $position = $this->opt_choice($opts, 'loader_position', array('top-right'));
 
-        echo '<div class="splash-loader sp-loader-' . esc_attr($position) . ' is-' . esc_attr($type) . '" role="status" aria-label="Yükleniyor">';
+        echo '<div class="splash-loader sp-loader-' . esc_attr($position) . ' is-' . esc_attr($type) . '" role="status"'
+            . $this->lang_data($opts, 'loading', 'Yükleniyor', 'aria-label')
+            . ' aria-label="Yükleniyor">';
 
         if ($type === 'ring') {
             // 18 yarıçaplı daire: çevre = 2*pi*18 ≈ 113.1
@@ -455,16 +457,25 @@ trait QRMS_AE_Frontend {
      * @return string Nitelik dizesi (düğme kapalıysa boş).
      */
     private function lang_data($opts, $key, $tr, $attrs = '') {
-        if (!$this->lang_toggle_active($opts)) return '';
+        if ( ! $this->i18n_active( $opts ) ) {
+            return '';
+        }
+
+        $langs = $this->i18n_langs( $opts );
+        if ( count( $langs ) <= 1 ) {
+            return '';
+        }
 
         // data-sp-key: yönetimdeki canlı önizleme, hangi ayar alanının hangi
         // metin düğümünü beslediğini bu anahtardan bulur.
-        $out = ' data-sp-key="' . esc_attr($key) . '"'
-            . ' data-sp-tr="' . esc_attr($tr) . '"'
-            . ' data-sp-en="' . esc_attr($this->text_en($opts, $key, $tr)) . '"';
+        $out = ' data-sp-key="' . esc_attr( $key ) . '"';
 
-        if ('' !== $attrs) {
-            $out .= ' data-sp-attr="' . esc_attr($attrs) . '"';
+        foreach ( $langs as $lang ) {
+            $out .= ' data-sp-' . esc_attr( $lang ) . '="' . esc_attr( $this->text_for_lang( $opts, $key, $tr, $lang ) ) . '"';
+        }
+
+        if ( '' !== $attrs ) {
+            $out .= ' data-sp-attr="' . esc_attr( $attrs ) . '"';
         }
 
         return $out;
@@ -475,8 +486,8 @@ trait QRMS_AE_Frontend {
      *
      * Kendi çeviri motoru YOKTUR: dil listesi QR Çeviri'den gelir, tıklama
      * rma_lang çerezine ve (splash kapandıktan sonra) ?lang= anahtarına
-     * yazılır. Splash metinleri QR Çeviri sözlüğünde olmadığı için Türkçe
-     * kalır — MVP olarak yalnızca menü diline yönlendirme yeterlidir.
+     * yazılır. Splash metinleri i18n kataloğundan data-sp-{kod} ile taşınır;
+     * bayrak seçildiğinde istemci anında günceller.
      *
      * Dil SUNUCUDA SEÇİLMEZ. Aktif bayrak her ziyaretçide aynı varsayılanla
      * basılır; hangisinin görüneceğine çerezi/URL'i okuyan istemci karar
@@ -499,8 +510,13 @@ trait QRMS_AE_Frontend {
         $varsayilan = in_array('tr', $diller, true) ? 'tr' : $diller[0];
         $bayrak     = isset($tumu[$varsayilan]['flag']) ? $tumu[$varsayilan]['flag'] : '';
         $ad         = isset($tumu[$varsayilan]['name']) ? $tumu[$varsayilan]['name'] : $varsayilan;
+        $lang_attrs = '';
+        foreach ( $this->i18n_langs( $opts ) as $kod ) {
+            $lang_attrs .= ' data-sp-lang-select-' . esc_attr( $kod ) . '="'
+                . esc_attr( $this->i18n_translate( 'lang_select', $kod, 'Dil seç (%s)' ) ) . '"';
+        }
         ?>
-        <div class="splash-ceviri" data-cookie="<?php echo esc_attr($cookie); ?>" data-default="<?php echo esc_attr($varsayilan); ?>">
+        <div class="splash-ceviri" data-cookie="<?php echo esc_attr($cookie); ?>" data-default="<?php echo esc_attr($varsayilan); ?>"<?php echo $lang_attrs; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>
             <button type="button" class="splash-ceviri-btn" aria-haspopup="listbox" aria-expanded="false" aria-label="<?php echo esc_attr(sprintf('Dil seç (%s)', $ad)); ?>">
                 <span class="splash-ceviri-flag" aria-hidden="true"><?php echo esc_html($bayrak); ?></span>
             </button>
@@ -619,20 +635,20 @@ trait QRMS_AE_Frontend {
         <?php
         /*
          * Pencere metinleri eklentinin kendi metinleridir (kullanıcı girdisi
-         * değil), bu yüzden İngilizceleri sabittir. Şifrenin kendisi
-         * çevrilmez — iki dilde de aynı karakter dizisidir.
+         * değil). Şifrenin kendisi çevrilmez — iki dilde de aynı karakter
+         * dizisidir.
          */
         $wifi_baslik = 'Wifi Şifresi';
         $wifi_bos    = 'Henüz bir şifre girilmedi.';
-        $iki_dil     = $this->lang_toggle_active($opts);
+        $iki_dil     = $this->i18n_active( $opts );
         ?>
         <div class="splash-modal" id="wifi-modal">
             <div class="splash-modal-content">
-                <button type="button" class="splash-modal-close" aria-label="Kapat">&times;</button>
-                <h3<?php echo $iki_dil ? ' data-sp-tr="' . esc_attr($wifi_baslik) . '" data-sp-en="Wi-Fi Password"' : ''; ?>><?php echo esc_html($wifi_baslik); ?></h3>
+                <button type="button" class="splash-modal-close" aria-label="Kapat"<?php echo $iki_dil ? $this->lang_data( $opts, 'close', 'Kapat', 'aria-label' ) : ''; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>&times;</button>
+                <h3<?php echo $iki_dil ? $this->lang_data( $opts, 'wifi_title', $wifi_baslik ) : ''; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>><?php echo esc_html( $wifi_baslik ); ?></h3>
                 <p style="font-size:26px; margin:18px 0; word-break:break-all;"
-                    <?php echo ( $iki_dil && empty($opts['wifi_password']) ) ? ' data-sp-tr="' . esc_attr($wifi_bos) . '" data-sp-en="No password has been set yet."' : ''; ?>>
-                    <?php echo esc_html($opts['wifi_password'] ?: $wifi_bos); ?>
+                    <?php echo ( $iki_dil && empty( $opts['wifi_password'] ) ) ? $this->lang_data( $opts, 'wifi_empty', $wifi_bos ) : ''; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>
+                    <?php echo esc_html( $opts['wifi_password'] ?: $wifi_bos ); ?>
                 </p>
             </div>
         </div>
