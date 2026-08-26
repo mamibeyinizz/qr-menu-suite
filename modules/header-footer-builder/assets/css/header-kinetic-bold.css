@@ -1,0 +1,57 @@
+/* Kinetic Bold Header */
+
+.hfb-header--kinetic-bold {
+  background: var(--hfb-bg);
+  color: var(--hfb-text);
+  border-bottom: 2px solid var(--hfb-border);
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+}
+
+.hfb-header--kinetic-bold.hfb-header--sticky {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+
+.hfb-header--kinetic-bold .hfb-header__inner--kinetic {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1.25rem 1.5rem;
+}
+
+.hfb-header--kinetic-bold .hfb-logo--text {
+  font-size: 1.5rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: -0.04em;
+}
+
+.hfb-header--kinetic-bold .hfb-header__nav--kinetic .hfb-header__menu {
+  gap: 2rem;
+}
+
+.hfb-header--kinetic-bold .hfb-header__nav--kinetic .hfb-header__menu a {
+  font-weight: 600;
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-variation-settings: 'wght' 600, 'wdth' 100;
+  transition: font-variation-settings 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), letter-spacing 0.35s ease;
+}
+
+.hfb-header--kinetic-bold .hfb-header__nav--kinetic .hfb-header__menu a:hover {
+  opacity: 1;
+  font-variation-settings: 'wght' 700, 'wdth' 115;
+  letter-spacing: 0.14em;
+}
+
+@supports not (font-variation-settings: normal) {
+  .hfb-header--kinetic-bold .hfb-header__nav--kinetic .hfb-header__menu a:hover {
+    font-weight: 800;
+    letter-spacing: 0.12em;
+  }
+}

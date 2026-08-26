@@ -2265,12 +2265,12 @@ qrms_test(
 echo "\nYardımcılar\n";
 
 qrms_test(
-	'on modül slug\'ı ve Türkçe isimleri tanımlı',
+	'on bir modül slug\'ı ve Türkçe isimleri tanımlı',
 	function () {
 		$modules = QRMS_Helpers::get_modules();
 
-		qrms_assert_same( 10, count( QRMS_Helpers::MODULE_SLUGS ), 'slug sayısı' );
-		qrms_assert_same( 10, count( $modules ), 'isim sayısı' );
+		qrms_assert_same( 11, count( QRMS_Helpers::MODULE_SLUGS ), 'slug sayısı' );
+		qrms_assert_same( 11, count( $modules ), 'isim sayısı' );
 		qrms_assert_same( array_values( QRMS_Helpers::MODULE_SLUGS ), array_keys( $modules ), 'slug listesi' );
 		qrms_assert_same( 'QR Çalışma Saatleri', QRMS_Helpers::get_module_name( 'qr-calisma-saatleri' ), 'isim' );
 		qrms_assert_same( 'Yorum & Feedback', QRMS_Helpers::get_module_name( 'yorum-feedback' ), 'isim' );
@@ -6891,6 +6891,103 @@ qrms_test(
 			QRMS_Query_Monitor::sorguyu_kisalt( "SELECT a\n  FROM b\n  WHERE c = 1" ),
 			'satır sonları düzleştirildi'
 		);
+	}
+);
+
+/* ---------------------------------------------------------------------------
+ * 15. Header Footer Builder (header-footer-builder)
+ * ------------------------------------------------------------------------ */
+
+require_once QRMS_PLUGIN_DIR . 'modules/header-footer-builder/includes/class-header-footer-builder.php';
+
+echo "\nHeader Footer Builder\n";
+
+/**
+ * Modül örneği (hook kaydı yapmadan).
+ *
+ * @return QRMS_Header_Footer_Builder
+ */
+function qrms_hfb() {
+	return new QRMS_Header_Footer_Builder();
+}
+
+qrms_test(
+	'modül loader sözleşmesine uyar: slug, dosya ve init fonksiyonu',
+	function () {
+		qrms_assert_true(
+			in_array( 'header-footer-builder', QRMS_Helpers::MODULE_SLUGS, true ),
+			'slug bilinen modüller arasında'
+		);
+		qrms_assert_true( QRMS_Module_Loader::module_file_exists( 'header-footer-builder' ), 'module.php diskte' );
+		qrms_assert_same(
+			'qrms_module_header_footer_builder_init',
+			QRMS_Module_Loader::get_init_function( 'header-footer-builder' ),
+			'init fonksiyon adı'
+		);
+
+		update_option( 'qrms_active_modules', array( 'header-footer-builder' ) );
+
+		qrms_assert_same(
+			array( 'header-footer-builder' ),
+			QRMS_Module_Loader::load_modules(),
+			'aktifken yüklenir'
+		);
+	}
+);
+
+qrms_test(
+	'header ve footer kısa kodları render eder',
+	function () {
+		$hfb = qrms_hfb();
+		$header = $hfb->render_header( $hfb->get_header_options() );
+		$footer = $hfb->render_footer( $hfb->get_footer_options() );
+
+		qrms_assert_contains( 'hfb-header--minimal-sticky', $header, 'varsayılan header varyantı' );
+		qrms_assert_contains( 'hfb-footer--utility-minimal', $footer, 'varsayılan footer varyantı' );
+		qrms_assert_contains( 'hfb-mobile-panel', $header, 'mobil panel' );
+	}
+);
+
+qrms_test(
+	'header varyantları farklı sınıflar üretir',
+	function () {
+		$hfb  = qrms_hfb();
+		$opts = $hfb->get_header_options();
+
+		foreach ( array( 'minimal-sticky', 'glass-bento', 'kinetic-bold' ) as $variant ) {
+			$opts['variant'] = $variant;
+			$html = $hfb->render_header( $opts );
+			qrms_assert_contains( 'hfb-header--' . $variant, $html, $variant . ' sınıfı' );
+		}
+	}
+);
+
+qrms_test(
+	'footer varyantları farklı sınıflar üretir',
+	function () {
+		$hfb  = qrms_hfb();
+		$opts = $hfb->get_footer_options();
+
+		foreach ( array( 'utility-minimal', 'bento-grid', 'contact-first' ) as $variant ) {
+			$opts['variant'] = $variant;
+			$html = $hfb->render_footer( $opts );
+			qrms_assert_contains( 'hfb-footer--' . $variant, $html, $variant . ' sınıfı' );
+		}
+	}
+);
+
+qrms_test(
+	'kısa kod kaydı rehbere düşer',
+	function () {
+		update_option( 'qrms_active_modules', array( 'header-footer-builder' ) );
+		QRMS_Module_Loader::load_modules();
+
+		$gruplar = QRMS_Shortcodes::all();
+		qrms_assert_true( isset( $gruplar['header-footer-builder'] ), 'modül kayıtlı' );
+		$kodlar = $gruplar['header-footer-builder'];
+		qrms_assert_same( 2, count( $kodlar ), 'iki kısa kod' );
+		qrms_assert_same( 'hfb_header', $kodlar[0]['tag'], 'header tag' );
+		qrms_assert_same( 'hfb_footer', $kodlar[1]['tag'], 'footer tag' );
 	}
 );
 
