@@ -13,6 +13,7 @@
 defined( 'ABSPATH' ) || exit;
 
 require_once __DIR__ . '/helpers.php';
+require_once __DIR__ . '/i18n.php';
 require_once __DIR__ . '/icons.php';
 require_once __DIR__ . '/payments.php';
 require_once __DIR__ . '/frontend.php';
@@ -25,6 +26,7 @@ require_once __DIR__ . '/admin.php';
 class QRMS_Acilis_Ekrani {
 
 	use QRMS_AE_Helpers;
+	use QRMS_AE_I18n;
 	use QRMS_AE_Icons;
 	use QRMS_AE_Payments;
 	use QRMS_AE_Frontend;
@@ -125,7 +127,7 @@ class QRMS_Acilis_Ekrani {
 			// QR Çeviri dil seçici (logo şeridindeki bayrak). Kapalıyken DOM'a
 			// hiç girmez; açıkken yalnızca işaretli diller basılır ve
 			// tıklama QR Çeviri'nin rma_lang çerezi + ?lang= anahtarına
-			// yazılır — splash kendi çeviri motorunu taşımaz.
+			// yazılır. Splash metinleri i18n kataloğundan çevrilir.
 			'ceviri_selector'      => 0,
 			'ceviri_selector_langs' => array(),
 			// Logo şeridindeki dil bayrağı kutusu (genişlik px, yükseklik 3:2).

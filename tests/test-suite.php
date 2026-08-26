@@ -5137,6 +5137,50 @@ qrms_test(
 	}
 );
 
+qrms_test(
+	'bayrak seçici açıkken splash metinleri tüm dillerde taşınır',
+	function () {
+		$GLOBALS['qrms_test']['is_front_page'] = true;
+		update_option( 'qrms_active_modules', array( 'qr-acilis-ekrani', 'qr-ceviri' ) );
+		update_option(
+			'splash_screen_options',
+			array(
+				'ceviri_selector'       => 1,
+				'ceviri_selector_langs' => array( 'tr', 'en', 'de' ),
+				'button_texts'          => array( 'btn1' => 'Menüye Git', 'btn2' => 'İletişim' ),
+				'button_links'          => array( 'btn1' => 'https://restoran.test/menu', 'btn2' => 'tel:+900' ),
+				'divider_text'          => 'Bizi takip edin',
+				'social_media_active'   => array( 'instagram' ),
+				'social_media'          => array( 'instagram' => 'https://instagram.com/x' ),
+			)
+		);
+
+		qrms_ae_stub_ceviri();
+
+		ob_start();
+		qrms_ae()->handle_frontend();
+		$html = ob_get_clean();
+
+		qrms_assert_contains( 'data-sp-tr="Menüye Git"', $html, 'Türkçe CTA' );
+		qrms_assert_contains( 'data-sp-en="View Menu"', $html, 'İngilizce CTA' );
+		qrms_assert_contains( 'data-sp-de="Zum Menü"', $html, 'Almanca CTA' );
+		qrms_assert_contains( 'data-sp-de="Kontakt"', $html, 'Almanca rozet' );
+		qrms_assert_contains( 'data-sp-de="Folgen Sie uns"', $html, 'Almanca ayraç' );
+		qrms_assert_contains( 'data-sp-lang-select-de="Sprache wählen (%s)"', $html, 'Almanca bayrak etiketi' );
+		qrms_assert_contains( '>Menüye Git</a>', $html, 'sunucu yine Türkçeyi basar' );
+	}
+);
+
+qrms_test(
+	'bayrak seçici ile dil çevirisi istemcide uygulanır',
+	function () {
+		$js = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-acilis-ekrani/assets/js/splash.js' );
+
+		qrms_assert_contains( 'applySplashLang(overlay, lang)', $js, 'seçimde metin güncellenir' );
+		qrms_assert_contains( 'data-sp-lang-select-', $js, 'bayrak etiketi şablonu okunur' );
+	}
+);
+
 
 /* ---------------------------------------------------------------------------
  * 16. QR Çeviri — yönetim ekranının mobil davranışı

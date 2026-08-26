@@ -74,6 +74,18 @@
         root.setAttribute('lang', lang);
     }
 
+    function applySplashLang(overlay, lang) {
+        if (!lang || !overlay) return;
+
+        var roots = [overlay];
+        var modal = document.getElementById('wifi-modal');
+        if (modal) roots.push(modal);
+
+        for (var i = 0; i < roots.length; i++) {
+            applyLang(roots[i], lang);
+        }
+    }
+
     function initLang(overlay, isPreview) {
         var toggle = overlay.querySelector('.splash-lang');
         if (!toggle) return;
@@ -105,7 +117,8 @@
         });
 
         var stored = isPreview ? '' : readLangCookie();
-        if (stored === 'en') {
+        // Bayrak seçici varsa başlangıç dili ondan gelir; çift uygulama olmasın.
+        if (stored === 'en' && !overlay.querySelector('.splash-ceviri')) {
             setLang('en', false);
         }
     }
@@ -117,8 +130,9 @@
 
        Tıklama splash'ı kapatmaz ve sayfayı o anda yenilemez (splash iki
        kez görünmesin). Dil QR Çeviri'nin rma_lang çerezine + sessionStorage
-       rma_dil'e yazılır; splash kapandıktan sonra menü URL'sine ?lang=
-       eklenir. qrmenuTranslate() varsa aynı sayfada kalındığında o çağrılır. */
+       rma_dil'e yazılır; aynı anda splash metinleri de anında güncellenir.
+       Splash kapandıktan sonra menü URL'sine ?lang= eklenir.
+       qrmenuTranslate() varsa aynı sayfada kalındığında o çağrılır. */
 
     function noopCeviri() {
         return {
@@ -224,12 +238,16 @@
                 selectedFlag = opts[i].getAttribute('data-flag') || '';
                 selectedName = opts[i].getAttribute('data-name') || optLang;
                 if (flagEl) flagEl.textContent = selectedFlag;
-                if (btn) btn.setAttribute('aria-label', 'Dil seç (' + selectedName + ')');
+                if (btn) {
+                    var template = root.getAttribute('data-sp-lang-select-' + lang) || 'Dil seç (%s)';
+                    btn.setAttribute('aria-label', template.replace('%s', selectedName));
+                }
             }
         }
 
         function persist(lang) {
             paint(lang);
+            applySplashLang(overlay, lang);
 
             window.rmaCeviriDil = lang;
             try { sessionStorage.setItem('rma_dil', lang); } catch (e) {}
