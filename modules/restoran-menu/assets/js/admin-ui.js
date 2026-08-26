@@ -913,6 +913,106 @@
     }
 
     /* -----------------------------------------------------------------
+       HIZLI DÜZENLE — görsel + alerjenler
+
+       WordPress satırı açarken inlineEditPost.edit()'i çağırır; kaydetmede
+       inlineEditPost.save() #edit-{id} içindeki tüm :input'ları serialize
+       eder (inline-save AJAX). edit'i sarmalayarak #inline_{id} içindeki
+       rma_thumb_* / rma_allergen verisini kopyalanmış satıra doldururuz.
+       save sarmalaması çekirdeğin serialize'ına dokunmaz; yalnızca edit
+       ile aynı koruma altında tanımlıdır (inlineEditPost yoksa no-op).
+    ----------------------------------------------------------------- */
+    function rmaQeFillImage($row, thumbId, thumbUrl) {
+        var id = parseInt(thumbId, 10) || 0;
+        $row.find('.rma-qe-thumb-id').val(id > 0 ? id : 0);
+
+        var $img = $row.find('.rma-qe-thumb-preview');
+        if (id > 0 && thumbUrl) {
+            $img.attr('src', thumbUrl).prop('hidden', false);
+            $row.find('.rma-qe-remove-image').prop('hidden', false);
+        } else {
+            $img.attr('src', '').prop('hidden', true);
+            $row.find('.rma-qe-remove-image').prop('hidden', true);
+        }
+    }
+
+    function rmaQeFillAllergens($row, idsCsv) {
+        var ids = String(idsCsv || '')
+            .split(',')
+            .map(function (v) { return String(v).trim(); })
+            .filter(function (v) { return v && v !== '0'; });
+
+        var $boxes = $row.find('ul.rma_allergen-checklist :checkbox');
+        $boxes.prop('checked', false);
+        if (ids.length) {
+            $boxes.val(ids);
+        }
+    }
+
+    function initQuickEdit() {
+        if (typeof window.inlineEditPost === 'undefined') return;
+
+        var origEdit = inlineEditPost.edit;
+        inlineEditPost.edit = function (id) {
+            origEdit.apply(this, arguments);
+
+            var postId = (typeof id === 'object') ? parseInt(this.getId(id), 10) : parseInt(id, 10);
+            if (!postId) return;
+
+            var $editRow = $('#edit-' + postId);
+            var $data = $('#inline_' + postId);
+            if (!$editRow.length || !$data.length) return;
+
+            rmaQeFillImage(
+                $editRow,
+                $data.find('.rma_thumb_id').text(),
+                $data.find('.rma_thumb_url').text()
+            );
+            rmaQeFillAllergens($editRow, $data.find('.rma_allergen').text());
+        };
+
+        var origSave = inlineEditPost.save;
+        inlineEditPost.save = function (id) {
+            return origSave.apply(this, arguments);
+        };
+
+        var mediaFrame = null;
+
+        $(document).on('click', '.inline-edit-row .rma-qe-select-image', function (e) {
+            e.preventDefault();
+
+            if (typeof wp === 'undefined' || !wp.media) return;
+
+            var $row = $(this).closest('.inline-edit-row');
+
+            if (mediaFrame) {
+                mediaFrame.off('select');
+            } else {
+                mediaFrame = wp.media({
+                    title: 'Görsel Seç',
+                    button: { text: 'Görsel Seç' },
+                    multiple: false
+                });
+            }
+
+            mediaFrame.on('select', function () {
+                var att = mediaFrame.state().get('selection').first().toJSON();
+                var url = (att.sizes && att.sizes.thumbnail && att.sizes.thumbnail.url)
+                    ? att.sizes.thumbnail.url
+                    : att.url;
+                rmaQeFillImage($row, att.id, url);
+            });
+
+            mediaFrame.open();
+        });
+
+        $(document).on('click', '.inline-edit-row .rma-qe-remove-image', function (e) {
+            e.preventDefault();
+            rmaQeFillImage($(this).closest('.inline-edit-row'), 0, '');
+        });
+    }
+
+    /* -----------------------------------------------------------------
        BAŞLAT
     ----------------------------------------------------------------- */
     /* -----------------------------------------------------------------
@@ -959,6 +1059,7 @@
         initVitrinStepper();
         initShortcodeCopy();
         initKampanya();
+        initQuickEdit();
         openTargetDetails();
         $(window).on('hashchange', openTargetDetails);
     });
