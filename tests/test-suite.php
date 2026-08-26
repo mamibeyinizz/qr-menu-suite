@@ -927,7 +927,8 @@ qrms_test(
 		qrms_assert_contains( 'grid-template-columns: 1fr', $css, 'dar ekranda özet alt alta' );
 		qrms_assert_contains( '@media screen and (max-width: 600px)', $css, 'telefon kırılımı' );
 		qrms_assert_contains( '.rma-hub .qrms-stat-value', $css, 'ortak değer class' );
-		qrms_assert_contains( 'font-weight: 600', $css, 'değer başlıkla aynı ağırlık' );
+		qrms_assert_contains( 'font-size: 18px', $css, 'özet değer boyutu' );
+		qrms_assert_contains( 'font-weight: 300', $css, 'özet değer ağırlığı' );
 	}
 );
 
