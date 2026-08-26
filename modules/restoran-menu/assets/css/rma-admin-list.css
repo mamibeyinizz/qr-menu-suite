@@ -79,3 +79,124 @@
         transform: translateX(26px);
     }
 }
+
+/* =====================================================================
+   HIZLI DÜZENLE — görsel + alerjenler
+
+   Native Quick Edit üç sütunlu fieldset düzenini kullanır. Özel alanlar
+   o satırın içine düşer; 782px altında çekirdek zaten %100'e çeker, burada
+   yatay taşmayı ve dokunma hedeflerini sıkılaştırırız. #adminmenu'ye
+   dokunulmaz.
+===================================================================== */
+
+.inline-edit-row .rma-qe-fieldset {
+    box-sizing: border-box;
+    clear: both;
+    float: none;
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: hidden;
+    width: 100%;
+}
+
+.inline-edit-row .rma-qe-image-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.inline-edit-row .rma-qe-thumb-preview {
+    background: #f0f0f1;
+    border: 1px solid #c3c4c7;
+    border-radius: 2px;
+    box-sizing: border-box;
+    display: block;
+    flex: 0 0 auto;
+    height: 60px;
+    object-fit: cover;
+    width: 60px;
+}
+
+.inline-edit-row .rma-qe-thumb-preview[hidden] {
+    display: none;
+}
+
+.inline-edit-row .rma-qe-image-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 0;
+}
+
+.inline-edit-row ul.cat-checklist.rma_allergen-checklist {
+    box-sizing: border-box;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    height: auto;
+    max-height: 12em;
+    max-width: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
+    width: 100%;
+}
+
+.inline-edit-row ul.cat-checklist.rma_allergen-checklist li {
+    margin: 0;
+    min-width: 0;
+}
+
+.inline-edit-row ul.cat-checklist.rma_allergen-checklist .selectit {
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    padding: 4px 2px;
+}
+
+@media screen and (max-width: 782px) {
+    .inline-edit-row .rma-qe-fieldset,
+    .inline-edit-row .rma-qe-fieldset .inline-edit-col {
+        float: none;
+        width: 100%;
+        max-width: 100%;
+    }
+
+    .inline-edit-row .rma-qe-image-controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .inline-edit-row .rma-qe-thumb-preview {
+        height: auto;
+        max-width: 100%;
+        width: 100%;
+        aspect-ratio: 1 / 1;
+        max-height: 160px;
+    }
+
+    .inline-edit-row .rma-qe-image-buttons .button {
+        flex: 1 1 auto;
+        min-height: 44px;
+        padding: 8px 12px;
+    }
+
+    .inline-edit-row ul.cat-checklist.rma_allergen-checklist {
+        grid-template-columns: 1fr;
+        max-height: none;
+    }
+
+    .inline-edit-row ul.cat-checklist.rma_allergen-checklist .selectit {
+        min-height: 44px;
+        padding: 10px 4px;
+    }
+
+    .inline-edit-row ul.cat-checklist.rma_allergen-checklist input[type="checkbox"] {
+        height: 20px;
+        margin: 0;
+        width: 20px;
+    }
+}

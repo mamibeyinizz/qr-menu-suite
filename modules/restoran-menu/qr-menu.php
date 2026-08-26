@@ -87,6 +87,9 @@ class Restaurant_Menu_Automation {
         add_action( 'wp_insert_post',        [ $this, 'set_default_active_status' ], 10, 3 );
         add_filter( 'manage_rma_menu_item_posts_columns',        [ $this, 'add_admin_columns' ] );
         add_action( 'manage_rma_menu_item_posts_custom_column',  [ $this, 'render_admin_columns' ], 10, 2 );
+        add_action( 'quick_edit_custom_box', [ $this, 'render_quick_edit_box' ], 10, 2 );
+        add_action( 'add_inline_data',       [ $this, 'add_quick_edit_inline_data' ], 10, 2 );
+        add_action( 'save_post_rma_menu_item', [ $this, 'save_quick_edit_fields' ] );
         add_filter( 'posts_clauses', [ $this, 'admin_group_by_category' ], 10, 2 );
         add_filter( 'post_row_actions',              [ $this, 'add_duplicate_post_link' ], 10, 2 );
         add_action( 'admin_action_rma_duplicate_post', [ $this, 'duplicate_post_action' ] );

@@ -882,6 +882,38 @@ qrms_test(
 );
 
 qrms_test(
+	'ürün listesi hızlı düzenle görsel ve alerjen alanlarını taşır',
+	function () {
+		$php = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-admin-columns.php' );
+		qrms_assert_contains( 'quick_edit_custom_box', file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/qr-menu.php' ), 'quick edit kancası' );
+		qrms_assert_contains( 'render_quick_edit_box', $php, 'quick edit markup' );
+		qrms_assert_contains( 'save_quick_edit_fields', $php, 'quick edit kayıt' );
+		qrms_assert_contains( 'rma_qe_nonce', $php, 'quick edit nonce' );
+		qrms_assert_contains( 'rma_qe_thumbnail_id', $php, 'görsel gizli input' );
+		qrms_assert_contains( 'set_post_thumbnail', $php, 'görsel kaydı' );
+		qrms_assert_contains( "wp_set_object_terms( \$post_id, \$term_ids, 'rma_allergen', false )", $php, 'alerjen kaydı' );
+		qrms_assert_contains( 'cat-checklist rma_allergen-checklist', $php, 'kategori checklist kalıbı' );
+		qrms_assert_contains( 'name="rma_qe_allergens[]"', $php, 'alerjen checkbox name' );
+		qrms_assert_contains( 'add_quick_edit_inline_data', $php, 'inline veri' );
+
+		$js = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/js/admin-ui.js' );
+		qrms_assert_contains( 'inlineEditPost.edit', $js, 'quick edit açılış sarmalı' );
+		qrms_assert_contains( 'inlineEditPost.save', $js, 'inline save sarmalı' );
+		qrms_assert_contains( 'wp.media', $js, 'medya seçici' );
+		qrms_assert_contains( 'ul.rma_allergen-checklist :checkbox', $js, 'alerjen doldurma' );
+
+		$pages = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-admin-pages.php' );
+		qrms_assert_contains( 'wp_enqueue_media', $pages, 'liste ekranında media' );
+		qrms_assert_contains( 'inline-edit-post', $pages, 'inline edit bağımlılığı' );
+
+		$css = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/css/rma-admin-list.css' );
+		qrms_assert_contains( '@media screen and (max-width: 782px)', $css, 'WP admin mobil kırılımı' );
+		qrms_assert_contains( 'grid-template-columns: 1fr', $css, 'dar ekranda tek sütun' );
+		qrms_assert_contains( 'min-height: 44px', $css, 'dokunma hedefi' );
+	}
+);
+
+qrms_test(
 	'ürün vitrini canlı önizlemesi masaüstünde sticky, overflow ata kırmaz',
 	function () {
 		$css = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/css/admin-ui.css' );

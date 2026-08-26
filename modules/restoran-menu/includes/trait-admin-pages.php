@@ -888,6 +888,10 @@ trait RMA_Admin_Pages_Trait {
                 [],
                 $this->asset_version( 'assets/css/rma-admin-list.css' )
             );
+
+            // Hızlı Düzenle görsel seçici (wp.media) + satır açma kancası.
+            wp_enqueue_media();
+            $deps[] = 'inline-edit-post';
         }
 
         wp_enqueue_script(
