@@ -395,26 +395,12 @@
 	outline-offset: 2px;
 }
 
-/* Kart ızgarası: masaüstünde üç sütun.
- *
- * CSS Grid leftover item'ları ilk sütuna (sola) yaslar; container tam
- * genişlik olduğu için justify-content:center grid'de işe yaramaz.
- * Flex + wrap + center, 4/7/10 kartta son satırı gerçekten ortalar.
- * Kart genişliği: (100% - 2*16px gap) / 3.
- */
-.qrms-hub-grid {
-	display: flex !important;
-	flex-wrap: wrap;
-	gap: 16px;
-	justify-content: center;
-	width: 100%;
-}
+/* Kart ızgarası: masaüstünde üç sütun */
 
-.qrms-hub-grid > .qrms-hub-card {
-	box-sizing: border-box;
-	flex: 0 1 calc(33.333% - 10.67px);
-	max-width: calc(33.333% - 10.67px);
-	min-width: 280px;
+.qrms-hub-grid {
+	display: grid;
+	gap: 16px;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .qrms-hub-card {
@@ -541,24 +527,17 @@
 /* Tablet: iki sütun */
 
 @media screen and (max-width: 960px) {
+	.qrms-hub-grid,
 	.qrms-hub-stats {
 		grid-template-columns: repeat(2, minmax(0, 1fr));
-	}
-
-	.qrms-hub-grid > .qrms-hub-card {
-		flex-basis: calc(50% - 8px);
-		max-width: calc(50% - 8px);
 	}
 }
 
 /* Telefon: tek sütun kart, özet kutuları ikili kalır */
 
 @media screen and (max-width: 600px) {
-	.qrms-hub-grid > .qrms-hub-card {
-		flex: 1 1 100%;
-		max-width: none;
-		min-width: 0;
-		width: 100%;
+	.qrms-hub-grid {
+		grid-template-columns: 1fr;
 	}
 
 	.qrms-hub-heading {
