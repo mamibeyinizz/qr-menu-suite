@@ -142,7 +142,27 @@ trait QRMS_HFB_Live_Preview {
 			$opts['logo_width'] = max( 60, min( 320, absint( $raw['logo_width'] ) ) );
 		}
 
-		$color_keys = array( 'bg_color', 'text_color', 'border_color', 'hamburger_color', 'mobile_panel_bg', 'mobile_panel_text_color', 'mobile_close_icon_color' );
+		if ( isset( $raw['logo_text_size'] ) ) {
+			$opts['logo_text_size'] = max( 14, min( 36, absint( $raw['logo_text_size'] ) ) );
+		}
+
+		$color_keys = array(
+			'bg_color',
+			'text_color',
+			'border_color',
+			'brand_color',
+			'hamburger_color',
+			'mobile_panel_bg',
+			'mobile_panel_gradient_start',
+			'mobile_panel_gradient_end',
+			'mobile_panel_text_color',
+			'mobile_close_icon_color',
+			'lang_border_color',
+			'lang_text_color',
+			'cta_bg_color',
+			'cta_text_color',
+			'social_color',
+		);
 		foreach ( $color_keys as $key ) {
 			if ( isset( $raw[ $key ] ) ) {
 				$opts[ $key ] = sanitize_hex_color( $raw[ $key ] ) ?: $opts[ $key ];
@@ -162,7 +182,7 @@ trait QRMS_HFB_Live_Preview {
 
 		if ( isset( $raw['mobile_panel_style'] ) ) {
 			$style = sanitize_key( $raw['mobile_panel_style'] );
-			if ( in_array( $style, array( 'slide', 'fullscreen' ), true ) ) {
+			if ( in_array( $style, array( 'slide', 'fullscreen', 'menulux' ), true ) ) {
 				$opts['mobile_panel_style'] = $style;
 			}
 		}
@@ -191,6 +211,14 @@ trait QRMS_HFB_Live_Preview {
 
 		if ( isset( $raw['mobile_close_icon_size'] ) ) {
 			$opts['mobile_close_icon_size'] = max( 16, min( 40, absint( $raw['mobile_close_icon_size'] ) ) );
+		}
+
+		if ( isset( $raw['cta_phone'] ) ) {
+			$opts['cta_phone'] = sanitize_text_field( $raw['cta_phone'] );
+		}
+
+		if ( isset( $raw['lang_alt_code'] ) ) {
+			$opts['lang_alt_code'] = sanitize_text_field( $raw['lang_alt_code'] );
 		}
 
 		return $opts;

@@ -141,6 +141,11 @@ trait QRMS_HFB_Admin {
 			</div>
 
 			<div class="qrms-field">
+				<label class="qrms-label" for="hfb_header_logo_text_size"><?php esc_html_e( 'Logo metin boyutu (px)', 'qrms' ); ?></label>
+				<input type="number" id="hfb_header_logo_text_size" name="hfb_header_logo_text_size" class="qrms-input hfb-preview-trigger" min="14" max="36" value="<?php echo esc_attr( (int) $opts['logo_text_size'] ); ?>" />
+			</div>
+
+			<div class="qrms-field">
 				<label class="qrms-label" for="hfb_header_logo_alignment"><?php esc_html_e( 'Logo hizalama', 'qrms' ); ?></label>
 				<select id="hfb_header_logo_alignment" name="hfb_header_logo_alignment" class="qrms-input hfb-preview-trigger">
 					<option value="left" <?php selected( $opts['logo_alignment'], 'left' ); ?>><?php esc_html_e( 'Sol', 'qrms' ); ?></option>
@@ -165,6 +170,7 @@ trait QRMS_HFB_Admin {
 			$this->render_color_field( 'hfb_header_bg_color', __( 'Arka plan', 'qrms' ), $opts['bg_color'] );
 			$this->render_color_field( 'hfb_header_text_color', __( 'Yazı rengi', 'qrms' ), $opts['text_color'] );
 			$this->render_color_field( 'hfb_header_border_color', __( 'Alt çizgi', 'qrms' ), $opts['border_color'] );
+			$this->render_color_field( 'hfb_header_brand_color', __( 'Marka rengi (logo)', 'qrms' ), $opts['brand_color'] );
 			$this->render_color_field( 'hfb_hamburger_color', __( 'Hamburger ikon rengi', 'qrms' ), $opts['hamburger_color'] );
 			?>
 			<div class="qrms-field">
@@ -182,11 +188,14 @@ trait QRMS_HFB_Admin {
 				<select id="hfb_mobile_panel_style" name="hfb_mobile_panel_style" class="qrms-input hfb-preview-trigger">
 					<option value="slide" <?php selected( $opts['mobile_panel_style'], 'slide' ); ?>><?php esc_html_e( 'Yandan kayan', 'qrms' ); ?></option>
 					<option value="fullscreen" <?php selected( $opts['mobile_panel_style'], 'fullscreen' ); ?>><?php esc_html_e( 'Tam ekran', 'qrms' ); ?></option>
+					<option value="menulux" <?php selected( $opts['mobile_panel_style'], 'menulux' ); ?>><?php esc_html_e( 'Menulux (gradient)', 'qrms' ); ?></option>
 				</select>
 			</div>
 
 			<?php
 			$this->render_color_field( 'hfb_mobile_panel_bg', __( 'Panel arka plan', 'qrms' ), $opts['mobile_panel_bg'] );
+			$this->render_color_field( 'hfb_mobile_panel_gradient_start', __( 'Gradient başlangıç rengi', 'qrms' ), $opts['mobile_panel_gradient_start'] );
+			$this->render_color_field( 'hfb_mobile_panel_gradient_end', __( 'Gradient bitiş rengi', 'qrms' ), $opts['mobile_panel_gradient_end'] );
 			?>
 
 			<div class="qrms-field">
@@ -229,6 +238,54 @@ trait QRMS_HFB_Admin {
 				<label class="qrms-label" for="hfb_mobile_close_icon_size"><?php esc_html_e( 'Kapatma ikon boyutu (px)', 'qrms' ); ?></label>
 				<input type="number" id="hfb_mobile_close_icon_size" name="hfb_mobile_close_icon_size" class="qrms-input hfb-preview-trigger" min="16" max="40" value="<?php echo esc_attr( (int) $opts['mobile_close_icon_size'] ); ?>" />
 			</div>
+		</div>
+
+		<div class="qrms-card">
+			<h2 class="qrms-card-title"><?php esc_html_e( 'Menulux — Dil, CTA & Sosyal', 'qrms' ); ?></h2>
+			<div class="qrms-field">
+				<label class="qrms-label" for="hfb_lang_code"><?php esc_html_e( 'Mevcut dil kodu', 'qrms' ); ?></label>
+				<input type="text" id="hfb_lang_code" name="hfb_lang_code" class="qrms-input hfb-preview-trigger" maxlength="5" value="<?php echo esc_attr( $opts['lang_code'] ); ?>" />
+			</div>
+			<div class="qrms-field">
+				<label class="qrms-label" for="hfb_lang_alt_code"><?php esc_html_e( 'Dil seçici etiketi', 'qrms' ); ?></label>
+				<input type="text" id="hfb_lang_alt_code" name="hfb_lang_alt_code" class="qrms-input hfb-preview-trigger" maxlength="5" value="<?php echo esc_attr( $opts['lang_alt_code'] ); ?>" />
+			</div>
+			<div class="qrms-field">
+				<label class="qrms-label" for="hfb_lang_alt_url"><?php esc_html_e( 'Dil seçici URL', 'qrms' ); ?></label>
+				<input type="url" id="hfb_lang_alt_url" name="hfb_lang_alt_url" class="qrms-input hfb-preview-trigger" value="<?php echo esc_attr( $opts['lang_alt_url'] ); ?>" placeholder="https://" />
+			</div>
+			<?php
+			$this->render_color_field( 'hfb_lang_border_color', __( 'Dil seçici çerçeve rengi', 'qrms' ), $opts['lang_border_color'] );
+			$this->render_color_field( 'hfb_lang_text_color', __( 'Dil seçici yazı rengi', 'qrms' ), $opts['lang_text_color'] );
+			?>
+			<div class="qrms-field">
+				<label class="qrms-label" for="hfb_cta_phone"><?php esc_html_e( 'CTA telefon numarası', 'qrms' ); ?></label>
+				<input type="text" id="hfb_cta_phone" name="hfb_cta_phone" class="qrms-input hfb-preview-trigger" value="<?php echo esc_attr( $opts['cta_phone'] ); ?>" placeholder="0850 346 6586" />
+			</div>
+			<?php
+			$this->render_color_field( 'hfb_cta_bg_color', __( 'CTA buton rengi', 'qrms' ), $opts['cta_bg_color'] );
+			$this->render_color_field( 'hfb_cta_text_color', __( 'CTA yazı rengi', 'qrms' ), $opts['cta_text_color'] );
+			$this->render_color_field( 'hfb_social_color', __( 'Sosyal ikon rengi', 'qrms' ), $opts['social_color'] );
+			?>
+			<p class="description"><?php esc_html_e( 'Menulux mobil panelinde gösterilecek sosyal medya bağlantıları.', 'qrms' ); ?></p>
+			<?php
+			$social_map    = $this->social_media_map();
+			$social_state  = $this->resolve_social_media_state( $opts );
+			$social_active = $social_state['active'];
+			$social_urls   = isset( $opts['social_media'] ) && is_array( $opts['social_media'] ) ? $opts['social_media'] : array();
+
+			foreach ( $social_map as $key => $meta ) :
+				$checked = in_array( $key, $social_active, true );
+				$url_val = isset( $social_urls[ $key ] ) ? $social_urls[ $key ] : '';
+				?>
+				<div class="qrms-field hfb-social-field">
+					<label>
+						<input type="checkbox" name="hfb_header_social_media_active[]" value="<?php echo esc_attr( $key ); ?>" <?php checked( $checked ); ?> />
+						<?php echo esc_html( $meta['label'] ); ?>
+					</label>
+					<input type="url" name="hfb_header_social_media_url_<?php echo esc_attr( $key ); ?>" class="qrms-input" value="<?php echo esc_attr( $url_val ); ?>" placeholder="https://" />
+				</div>
+			<?php endforeach; ?>
 		</div>
 		<?php
 	}
