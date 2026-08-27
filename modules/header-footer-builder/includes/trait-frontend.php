@@ -2,6 +2,10 @@
 /**
  * Header Footer Builder — ön yüz render ve varlıklar.
  *
+ * Tek tasarım: siyah zemin (#0a0a0c) + gold (#c9a84c) marka, Playfair
+ * Display başlık tipografisi. Renk/varyant seçeneği yoktur; markup ve CSS
+ * bilinçli olarak sabittir.
+ *
  * @package QR_Menu_Suite
  */
 
@@ -17,8 +21,15 @@ trait QRMS_HFB_Frontend {
 	 */
 	public function shortcode_header( $atts = array() ) {
 		unset( $atts );
+
+		if ( ! $this->should_render( 'header' ) ) {
+			return '';
+		}
+
 		$opts = $this->get_header_options();
-		$this->enqueue_header_assets( $opts );
+		$this->enqueue_frontend_styles();
+		$this->enqueue_header_script();
+		$this->mark_rendered( 'header' );
 
 		return $this->render_header( $opts );
 	}
@@ -31,8 +42,14 @@ trait QRMS_HFB_Frontend {
 	 */
 	public function shortcode_footer( $atts = array() ) {
 		unset( $atts );
+
+		if ( ! $this->should_render( 'footer' ) ) {
+			return '';
+		}
+
 		$opts = $this->get_footer_options();
-		$this->enqueue_footer_assets( $opts );
+		$this->enqueue_frontend_styles();
+		$this->mark_rendered( 'footer' );
 
 		return $this->render_footer( $opts );
 	}
@@ -43,31 +60,18 @@ trait QRMS_HFB_Frontend {
 	 * @return void
 	 */
 	public function maybe_enqueue_frontend_assets() {
-		if ( $this->page_needs_header_assets() ) {
-			$this->enqueue_header_assets( $this->get_header_options() );
+		$needs_header = $this->page_has_hfb_shortcode( 'hfb_header' );
+		$needs_footer = $this->page_has_hfb_shortcode( 'hfb_footer' );
+
+		if ( ! $needs_header && ! $needs_footer ) {
+			return;
 		}
 
-		if ( $this->page_needs_footer_assets() ) {
-			$this->enqueue_footer_assets( $this->get_footer_options() );
+		$this->enqueue_frontend_styles();
+
+		if ( $needs_header ) {
+			$this->enqueue_header_script();
 		}
-	}
-
-	/**
-	 * Sayfada header kısa kodu var mı?
-	 *
-	 * @return bool
-	 */
-	private function page_needs_header_assets() {
-		return $this->page_has_hfb_shortcode( 'hfb_header' );
-	}
-
-	/**
-	 * Sayfada footer kısa kodu var mı?
-	 *
-	 * @return bool
-	 */
-	private function page_needs_footer_assets() {
-		return $this->page_has_hfb_shortcode( 'hfb_footer' );
 	}
 
 	/**
@@ -90,7 +94,7 @@ trait QRMS_HFB_Frontend {
 			return true;
 		}
 
-		if ( did_action( 'elementor/loaded' ) || class_exists( '\Elementor\Plugin' ) ) {
+		if ( $this->elementor_loaded() ) {
 			$data = get_post_meta( $post->ID, '_elementor_data', true );
 			if ( is_string( $data ) && false !== strpos( $data, $tag ) ) {
 				return true;
@@ -101,35 +105,38 @@ trait QRMS_HFB_Frontend {
 	}
 
 	/**
-	 * Header varlıklarını yükler (yalnızca aktif varyant).
+	 * Ortak ön yüz stili (tek dosya).
 	 *
-	 * @param array<string,mixed> $opts Ayarlar.
+	 * Tüm kurallar `.hfb-header-wrap` / `.hfb-footer-wrap` altına
+	 * kapsanmıştır; Elementor'un kendi stilleriyle seçici çakışmaz.
+	 *
 	 * @return void
 	 */
-	private function enqueue_header_assets( $opts ) {
-		static $done = false;
-		if ( $done ) {
-			return;
-		}
-		$done = true;
-
-		$base    = 'modules/header-footer-builder/assets/';
-		$variant = isset( $opts['variant'] ) ? $opts['variant'] : 'minimal-sticky';
+	public function enqueue_frontend_styles() {
+		$base = 'modules/header-footer-builder/assets/';
 
 		wp_enqueue_style(
-			'hfb-base',
-			QRMS_PLUGIN_URL . $base . 'css/frontend-base.css',
+			'hfb-frontend',
+			QRMS_PLUGIN_URL . $base . 'css/frontend.css',
 			array(),
-			QRMS_Helpers::asset_version( $base . 'css/frontend-base.css' )
+			QRMS_Helpers::asset_version( $base . 'css/frontend.css' )
 		);
 
-		$css = 'css/header-' . $variant . '.css';
 		wp_enqueue_style(
-			'hfb-header-' . $variant,
-			QRMS_PLUGIN_URL . $base . $css,
-			array( 'hfb-base' ),
-			QRMS_Helpers::asset_version( $base . $css )
+			'hfb-font-display',
+			'https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&display=swap',
+			array(),
+			null
 		);
+	}
+
+	/**
+	 * Header davranış script'i.
+	 *
+	 * @return void
+	 */
+	public function enqueue_header_script() {
+		$base = 'modules/header-footer-builder/assets/';
 
 		wp_enqueue_script(
 			'hfb-frontend',
@@ -137,52 +144,6 @@ trait QRMS_HFB_Frontend {
 			array(),
 			QRMS_Helpers::asset_version( $base . 'js/frontend.js' ),
 			true
-		);
-
-		$url = $this->google_font_url( $opts['mobile_panel_font'] );
-		if ( $url ) {
-			wp_enqueue_style( 'hfb-header-font', esc_url( $url ), array(), null );
-		}
-
-		if ( 'kinetic-bold' === $variant ) {
-			wp_enqueue_style(
-				'hfb-kinetic-font',
-				'https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap',
-				array(),
-				null
-			);
-		}
-	}
-
-	/**
-	 * Footer varlıklarını yükler (yalnızca aktif varyant).
-	 *
-	 * @param array<string,mixed> $opts Ayarlar.
-	 * @return void
-	 */
-	private function enqueue_footer_assets( $opts ) {
-		static $done = false;
-		if ( $done ) {
-			return;
-		}
-		$done = true;
-
-		$base    = 'modules/header-footer-builder/assets/';
-		$variant = isset( $opts['variant'] ) ? $opts['variant'] : 'utility-minimal';
-
-		wp_enqueue_style(
-			'hfb-base',
-			QRMS_PLUGIN_URL . $base . 'css/frontend-base.css',
-			array(),
-			QRMS_Helpers::asset_version( $base . 'css/frontend-base.css' )
-		);
-
-		$css = 'css/footer-' . $variant . '.css';
-		wp_enqueue_style(
-			'hfb-footer-' . $variant,
-			QRMS_PLUGIN_URL . $base . $css,
-			array( 'hfb-base' ),
-			QRMS_Helpers::asset_version( $base . $css )
 		);
 	}
 
@@ -193,38 +154,51 @@ trait QRMS_HFB_Frontend {
 	 * @return string
 	 */
 	public function render_header( $opts ) {
-		$variant = isset( $opts['variant'] ) ? $opts['variant'] : 'minimal-sticky';
-		$logo    = $this->render_logo( $opts, 'header' );
-		$nav     = $this->render_nav_menu( (int) $opts['menu_id'], 'hfb-header__menu' );
-		$styles  = $this->header_inline_styles( $opts );
+		$brand = $this->render_brand( $opts, 'header' );
 
-		$sticky_class = ! empty( $opts['sticky'] ) ? ' hfb-header--sticky' : '';
-		$align_class  = ' hfb-header--align-' . sanitize_html_class( $opts['logo_alignment'] );
+		// Menü bir kez üretilir, iki kez basılır (masaüstü + mobil panel).
+		// wp_nav_menu her <li>'ye `id` verdiği için kopyaların id'leri ayrı
+		// bir ön ekle taşınır; aksi hâlde sayfada çift id oluşurdu.
+		$nav_raw    = $this->render_nav_menu( (int) $opts['menu_id'], 'hfb-header__menu' );
+		$nav        = $this->scope_nav_ids( $nav_raw, 'hfb-h-' );
+		$panel_nav  = $this->scope_nav_ids( $nav_raw, 'hfb-m-' );
+		$social     = $this->render_social_icons( $opts );
+		$lang       = $this->render_lang_switcher( $opts );
+
+		$classes = 'hfb-header';
+		if ( ! empty( $opts['sticky'] ) ) {
+			$classes .= ' hfb-header--sticky';
+		}
+		if ( $this->elementor_is_edit_mode() ) {
+			$classes .= ' hfb-header--editor';
+		}
 
 		ob_start();
 		?>
-		<div class="hfb-header-wrap" data-hfb="header" style="<?php echo esc_attr( $styles ); ?>">
-			<header class="hfb-header hfb-header--<?php echo esc_attr( $variant ); ?><?php echo esc_attr( $sticky_class . $align_class ); ?>" role="banner">
-				<?php
-				if ( 'glass-bento' === $variant ) {
-					$this->render_header_glass_bento( $logo, $nav );
-				} elseif ( 'kinetic-bold' === $variant ) {
-					$this->render_header_kinetic_bold( $logo, $nav );
-				} elseif ( 'menulux' === $variant ) {
-					$this->render_header_menulux( $logo, $nav, $opts );
-				} else {
-					$this->render_header_minimal_sticky( $logo, $nav );
-				}
-				?>
-				<?php if ( 'menulux' !== $variant ) : ?>
-				<button type="button" class="hfb-header__toggle" aria-expanded="false" aria-controls="hfb-mobile-panel" aria-label="<?php esc_attr_e( 'Menüyü aç', 'qrms' ); ?>">
-					<span class="hfb-header__toggle-bar"></span>
-					<span class="hfb-header__toggle-bar"></span>
-					<span class="hfb-header__toggle-bar"></span>
-				</button>
-				<?php endif; ?>
+		<div class="hfb-header-wrap" data-hfb="header">
+			<header class="<?php echo esc_attr( $classes ); ?>" role="banner">
+				<div class="hfb-header__inner">
+					<div class="hfb-header__brand"><?php echo $brand; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></div>
+
+					<?php if ( $nav ) : ?>
+						<nav class="hfb-header__nav" aria-label="<?php esc_attr_e( 'Ana menü', 'qrms' ); ?>">
+							<?php echo $nav; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+						</nav>
+					<?php endif; ?>
+
+					<div class="hfb-header__actions">
+						<?php echo $social; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+						<?php echo $lang; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+					</div>
+
+					<button type="button" class="hfb-header__toggle" aria-expanded="false" aria-controls="hfb-mobile-panel" aria-label="<?php esc_attr_e( 'Menüyü aç', 'qrms' ); ?>">
+						<span class="hfb-header__toggle-bar"></span>
+						<span class="hfb-header__toggle-bar"></span>
+						<span class="hfb-header__toggle-bar"></span>
+					</button>
+				</div>
 			</header>
-			<?php echo $this->render_mobile_panel( $opts, $nav ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+			<?php echo $this->render_mobile_panel( $opts, $panel_nav, $brand, $social, $lang ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 		</div>
 		<?php
 		return (string) ob_get_clean();
@@ -237,21 +211,42 @@ trait QRMS_HFB_Frontend {
 	 * @return string
 	 */
 	public function render_footer( $opts ) {
-		$variant = isset( $opts['variant'] ) ? $opts['variant'] : 'utility-minimal';
+		$brand   = $this->render_brand( $opts, 'footer' );
+		$nav     = $this->scope_nav_ids( $this->render_nav_menu( (int) $opts['menu_id'], 'hfb-footer__menu' ), 'hfb-f-' );
+		$social  = $this->render_social_icons( $opts );
+		$contact = $this->render_contact_lines( $opts );
 
 		ob_start();
 		?>
 		<div class="hfb-footer-wrap" data-hfb="footer">
-			<footer class="hfb-footer hfb-footer--<?php echo esc_attr( $variant ); ?>" role="contentinfo">
-				<?php
-				if ( 'bento-grid' === $variant ) {
-					$this->render_footer_bento_grid( $opts );
-				} elseif ( 'contact-first' === $variant ) {
-					$this->render_footer_contact_first( $opts );
-				} else {
-					$this->render_footer_utility_minimal( $opts );
-				}
-				?>
+			<footer class="hfb-footer" role="contentinfo">
+				<div class="hfb-footer__inner">
+					<div class="hfb-footer__col hfb-footer__col--brand">
+						<?php echo $brand; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+						<?php if ( ! empty( $opts['description'] ) ) : ?>
+							<p class="hfb-footer__desc"><?php echo esc_html( $opts['description'] ); ?></p>
+						<?php endif; ?>
+					</div>
+
+					<?php if ( $nav ) : ?>
+						<nav class="hfb-footer__col hfb-footer__col--links" aria-label="<?php esc_attr_e( 'Hızlı bağlantılar', 'qrms' ); ?>">
+							<?php echo $nav; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+						</nav>
+					<?php endif; ?>
+
+					<?php if ( $contact || $social ) : ?>
+						<div class="hfb-footer__col hfb-footer__col--contact">
+							<?php echo $contact; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+							<?php echo $social; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+						</div>
+					<?php endif; ?>
+				</div>
+
+				<?php if ( ! empty( $opts['copyright'] ) ) : ?>
+					<div class="hfb-footer__bar">
+						<p class="hfb-footer__copyright"><?php echo esc_html( $opts['copyright'] ); ?></p>
+					</div>
+				<?php endif; ?>
 			</footer>
 		</div>
 		<?php
@@ -259,190 +254,49 @@ trait QRMS_HFB_Frontend {
 	}
 
 	/**
-	 * Header inline CSS değişkenleri.
-	 *
-	 * @param array<string,mixed> $opts Ayarlar.
-	 * @return string
-	 */
-	private function header_inline_styles( $opts ) {
-		$vars = array(
-			'--hfb-bg'                    => $opts['bg_color'],
-			'--hfb-text'                  => $opts['text_color'],
-			'--hfb-border'                => $opts['border_color'],
-			'--hfb-logo-width'            => (int) $opts['logo_width'] . 'px',
-			'--hfb-logo-text-size'        => (int) $opts['logo_text_size'] . 'px',
-			'--hfb-brand-color'           => $opts['brand_color'],
-			'--hfb-hamburger'             => $opts['hamburger_color'],
-			'--hfb-panel-bg'              => $opts['mobile_panel_bg'],
-			'--hfb-panel-bg-alpha'        => ( (int) $opts['mobile_panel_bg_opacity'] / 100 ),
-			'--hfb-panel-gradient-start'  => $opts['mobile_panel_gradient_start'],
-			'--hfb-panel-gradient-end'    => $opts['mobile_panel_gradient_end'],
-			'--hfb-panel-text'            => $opts['mobile_panel_text_color'],
-			'--hfb-panel-font-size'       => (int) $opts['mobile_panel_text_size'] . 'px',
-			'--hfb-panel-font'            => $this->font_family_css( $opts['mobile_panel_font'] ),
-			'--hfb-close-color'           => $opts['mobile_close_icon_color'],
-			'--hfb-close-size'            => (int) $opts['mobile_close_icon_size'] . 'px',
-			'--hfb-lang-border'           => $opts['lang_border_color'],
-			'--hfb-lang-text'             => $opts['lang_text_color'],
-			'--hfb-cta-bg'                => $opts['cta_bg_color'],
-			'--hfb-cta-text'              => $opts['cta_text_color'],
-			'--hfb-social-color'          => $opts['social_color'],
-		);
-
-		$parts = array();
-		foreach ( $vars as $key => $value ) {
-			$parts[] = $key . ':' . $value;
-		}
-
-		return implode( ';', $parts );
-	}
-
-	/**
-	 * Minimal Sticky header iç yapısı.
-	 *
-	 * @param string $logo Logo HTML.
-	 * @param string $nav  Menü HTML.
-	 * @return void
-	 */
-	private function render_header_minimal_sticky( $logo, $nav ) {
-		?>
-		<div class="hfb-header__inner">
-			<div class="hfb-header__logo"><?php echo $logo; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></div>
-			<nav class="hfb-header__nav hfb-header__nav--desktop" aria-label="<?php esc_attr_e( 'Ana menü', 'qrms' ); ?>">
-				<?php echo $nav; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
-			</nav>
-		</div>
-		<?php
-	}
-
-	/**
-	 * Glass Bento header iç yapısı.
-	 *
-	 * @param string $logo Logo HTML.
-	 * @param string $nav  Menü HTML.
-	 * @return void
-	 */
-	private function render_header_glass_bento( $logo, $nav ) {
-		?>
-		<div class="hfb-bento">
-			<div class="hfb-bento__cell hfb-bento__cell--logo">
-				<?php echo $logo; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
-			</div>
-			<div class="hfb-bento__cell hfb-bento__cell--nav">
-				<nav class="hfb-header__nav hfb-header__nav--desktop" aria-label="<?php esc_attr_e( 'Ana menü', 'qrms' ); ?>">
-					<?php echo $nav; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
-				</nav>
-			</div>
-		</div>
-		<?php
-	}
-
-	/**
-	 * Kinetic Bold header iç yapısı.
-	 *
-	 * @param string $logo Logo HTML.
-	 * @param string $nav  Menü HTML.
-	 * @return void
-	 */
-	private function render_header_kinetic_bold( $logo, $nav ) {
-		?>
-		<div class="hfb-header__inner hfb-header__inner--kinetic">
-			<div class="hfb-header__brand">
-				<?php echo $logo; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
-			</div>
-			<nav class="hfb-header__nav hfb-header__nav--desktop hfb-header__nav--kinetic" aria-label="<?php esc_attr_e( 'Ana menü', 'qrms' ); ?>">
-				<?php echo $nav; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
-			</nav>
-		</div>
-		<?php
-	}
-
-	/**
-	 * Menulux header iç yapısı — hamburger sol, logo ortada.
-	 *
-	 * @param string              $logo Logo HTML.
-	 * @param string              $nav  Menü HTML.
-	 * @param array<string,mixed> $opts Ayarlar.
-	 * @return void
-	 */
-	private function render_header_menulux( $logo, $nav, $opts ) {
-		unset( $opts );
-		?>
-		<div class="hfb-header__inner hfb-header__inner--menulux">
-			<button type="button" class="hfb-header__toggle" aria-expanded="false" aria-controls="hfb-mobile-panel" aria-label="<?php esc_attr_e( 'Menüyü aç', 'qrms' ); ?>">
-				<span class="hfb-header__toggle-bar"></span>
-				<span class="hfb-header__toggle-bar"></span>
-				<span class="hfb-header__toggle-bar"></span>
-			</button>
-			<div class="hfb-header__logo"><?php echo $logo; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></div>
-			<div class="hfb-header__spacer" aria-hidden="true"></div>
-			<nav class="hfb-header__nav hfb-header__nav--desktop" aria-label="<?php esc_attr_e( 'Ana menü', 'qrms' ); ?>">
-				<?php echo $nav; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
-			</nav>
-		</div>
-		<?php
-	}
-
-	/**
-	 * Menulux panel stili kullanılıyor mu?
-	 *
-	 * @param array<string,mixed> $opts Ayarlar.
-	 * @return bool
-	 */
-	private function uses_menulux_panel( $opts ) {
-		$variant = isset( $opts['variant'] ) ? $opts['variant'] : 'minimal-sticky';
-		$style   = isset( $opts['mobile_panel_style'] ) ? $opts['mobile_panel_style'] : 'slide';
-
-		return 'menulux' === $variant || 'menulux' === $style;
-	}
-
-	/**
 	 * Mobil panel HTML.
 	 *
-	 * @param array<string,mixed> $opts Ayarlar.
-	 * @param string              $nav  Menü HTML.
+	 * Üst çubukta yalnızca marka + hamburger kalır; menü, dil bayrağı, CTA
+	 * ve sosyal ikonlar bu panelde toplanır.
+	 *
+	 * @param array<string,mixed> $opts   Ayarlar.
+	 * @param string              $nav    Menü HTML.
+	 * @param string              $brand  Marka HTML.
+	 * @param string              $social Sosyal ikon HTML.
+	 * @param string              $lang   Dil seçici HTML.
 	 * @return string
 	 */
-	private function render_mobile_panel( $opts, $nav ) {
-		$style       = $this->uses_menulux_panel( $opts ) ? 'menulux' : sanitize_html_class( $opts['mobile_panel_style'] );
-		$icon        = $this->render_close_icon( $opts['mobile_close_icon'] );
-		$logo        = $this->render_logo( $opts, 'header' );
-		$social      = $this->render_social_icons( $opts );
-		$lang        = $this->render_lang_switcher( $opts );
-		$cta         = $this->render_mobile_cta( $opts );
-		$is_menulux  = 'menulux' === $style;
+	private function render_mobile_panel( $opts, $nav, $brand, $social, $lang ) {
+		$cta = $this->render_cta( $opts );
 
 		ob_start();
 		?>
-		<div id="hfb-mobile-panel" class="hfb-mobile-panel hfb-mobile-panel--<?php echo esc_attr( $style ); ?>" aria-hidden="true">
+		<div id="hfb-mobile-panel" class="hfb-mobile-panel" aria-hidden="true">
 			<div class="hfb-mobile-panel__backdrop" tabindex="-1"></div>
-			<div class="hfb-mobile-panel__sheet">
-				<?php if ( $is_menulux ) : ?>
-					<div class="hfb-mobile-panel__topbar">
-						<?php echo $lang; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
-						<div class="hfb-mobile-panel__brand"><?php echo $logo; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></div>
-						<button type="button" class="hfb-mobile-panel__close" aria-label="<?php esc_attr_e( 'Menüyü kapat', 'qrms' ); ?>">
-							<?php echo $icon; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
-						</button>
-					</div>
-					<div class="hfb-mobile-panel__body">
+			<div class="hfb-mobile-panel__sheet" role="dialog" aria-modal="true" aria-label="<?php esc_attr_e( 'Mobil menü', 'qrms' ); ?>">
+				<div class="hfb-mobile-panel__topbar">
+					<div class="hfb-mobile-panel__brand"><?php echo $brand; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></div>
+					<button type="button" class="hfb-mobile-panel__close" aria-label="<?php esc_attr_e( 'Menüyü kapat', 'qrms' ); ?>">
+						<svg class="hfb-icon hfb-icon--close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+					</button>
+				</div>
+
+				<div class="hfb-mobile-panel__body">
+					<?php if ( $lang ) : ?>
+						<div class="hfb-mobile-panel__lang"><?php echo $lang; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></div>
+					<?php endif; ?>
+					<?php if ( $nav ) : ?>
 						<nav class="hfb-mobile-panel__nav" aria-label="<?php esc_attr_e( 'Mobil menü', 'qrms' ); ?>">
 							<?php echo $nav; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 						</nav>
-					</div>
-					<?php if ( $cta || $social ) : ?>
-						<div class="hfb-mobile-panel__footer">
-							<?php echo $cta; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
-							<?php echo $social; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
-						</div>
 					<?php endif; ?>
-				<?php else : ?>
-					<button type="button" class="hfb-mobile-panel__close" aria-label="<?php esc_attr_e( 'Menüyü kapat', 'qrms' ); ?>">
-						<?php echo $icon; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
-					</button>
-					<nav class="hfb-mobile-panel__nav" aria-label="<?php esc_attr_e( 'Mobil menü', 'qrms' ); ?>">
-						<?php echo $nav; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
-					</nav>
+				</div>
+
+				<?php if ( $cta || $social ) : ?>
+					<div class="hfb-mobile-panel__footer">
+						<?php echo $cta; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+						<?php echo $social; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+					</div>
 				<?php endif; ?>
 			</div>
 		</div>
@@ -451,188 +305,129 @@ trait QRMS_HFB_Frontend {
 	}
 
 	/**
-	 * Dil seçici butonu.
+	 * Çeviri modülünün dil seçicisi kullanılabilir mi?
 	 *
-	 * @param array<string,mixed> $opts Ayarlar.
-	 * @return string
+	 * Gevşek bağ: çeviri modülü kapalıysa kısa kod hiç kayıtlı olmaz ve
+	 * burada sessizce `false` döner — ölümcül hata veya boş kutu yok.
+	 *
+	 * @return bool
 	 */
-	private function render_lang_switcher( $opts ) {
-		$label = ! empty( $opts['lang_alt_code'] ) ? $opts['lang_alt_code'] : 'EN';
-		$url   = ! empty( $opts['lang_alt_url'] ) ? $opts['lang_alt_url'] : '';
-
-		if ( empty( $url ) ) {
-			return '<span class="hfb-mobile-panel__lang" aria-hidden="true">' . esc_html( $label ) . '</span>';
-		}
-
-		return '<a class="hfb-mobile-panel__lang" href="' . esc_url( $url ) . '" aria-label="' . esc_attr(
-			sprintf(
-				/* translators: %s: language code */
-				__( 'Dili değiştir: %s', 'qrms' ),
-				$label
-			)
-		) . '">' . esc_html( $label ) . '</a>';
+	public function lang_switcher_available() {
+		return function_exists( 'shortcode_exists' ) && shortcode_exists( self::LANG_SHORTCODE );
 	}
 
 	/**
-	 * Mobil panel CTA (telefon) butonu.
+	 * Dil seçici (çeviri modülünün bayrak kısa kodu).
+	 *
+	 * @param array<string,mixed> $opts Header ayarları.
+	 * @return string
+	 */
+	public function render_lang_switcher( $opts ) {
+		if ( empty( $opts['lang_show'] ) || ! $this->lang_switcher_available() ) {
+			return '';
+		}
+
+		$html = do_shortcode( '[' . self::LANG_SHORTCODE . ']' );
+
+		if ( '' === trim( (string) $html ) ) {
+			return '';
+		}
+
+		return '<div class="hfb-lang">' . $html . '</div>';
+	}
+
+	/**
+	 * CTA (telefon) butonu.
 	 *
 	 * @param array<string,mixed> $opts Ayarlar.
 	 * @return string
 	 */
-	private function render_mobile_cta( $opts ) {
+	private function render_cta( $opts ) {
 		if ( empty( $opts['cta_phone'] ) ) {
 			return '';
 		}
 
 		$tel  = preg_replace( '/[^0-9+]/', '', $opts['cta_phone'] );
-		$icon = $this->phone_icon_svg();
+		$icon = '<svg class="hfb-icon hfb-icon--phone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>';
 
-		return '<a class="hfb-mobile-panel__cta" href="tel:' . esc_attr( $tel ) . '">' . $icon . esc_html( $opts['cta_phone'] ) . '</a>';
-	}
-
-	/**
-	 * Telefon ikonu SVG.
-	 *
-	 * @return string
-	 */
-	private function phone_icon_svg() {
-		return '<svg class="hfb-icon hfb-icon--phone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>';
-	}
-
-	/**
-	 * Utility Minimal footer.
-	 *
-	 * @param array<string,mixed> $opts Ayarlar.
-	 * @return void
-	 */
-	private function render_footer_utility_minimal( $opts ) {
-		$logo = $this->render_logo( $opts, 'footer' );
-		$nav  = $this->render_nav_menu( (int) $opts['menu_id'], 'hfb-footer__menu' );
-		?>
-		<div class="hfb-footer__inner hfb-footer__inner--utility">
-			<div class="hfb-footer__brand">
-				<?php echo $logo; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
-				<?php if ( ! empty( $opts['copyright'] ) ) : ?>
-					<p class="hfb-footer__copyright"><?php echo esc_html( $opts['copyright'] ); ?></p>
-				<?php endif; ?>
-			</div>
-			<?php if ( $nav ) : ?>
-				<nav class="hfb-footer__links" aria-label="<?php esc_attr_e( 'Hızlı bağlantılar', 'qrms' ); ?>">
-					<?php echo $nav; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
-				</nav>
-			<?php endif; ?>
-		</div>
-		<?php
-	}
-
-	/**
-	 * Bento Grid footer.
-	 *
-	 * @param array<string,mixed> $opts Ayarlar.
-	 * @return void
-	 */
-	private function render_footer_bento_grid( $opts ) {
-		$logo   = $this->render_logo( $opts, 'footer' );
-		$nav    = $this->render_nav_menu( (int) $opts['menu_id'], 'hfb-footer__menu' );
-		$social = $this->render_social_icons( $opts );
-		?>
-		<div class="hfb-footer__bento">
-			<div class="hfb-footer__bento-cell hfb-footer__bento-cell--brand">
-				<?php echo $logo; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
-				<?php if ( ! empty( $opts['description'] ) ) : ?>
-					<p class="hfb-footer__desc"><?php echo esc_html( $opts['description'] ); ?></p>
-				<?php endif; ?>
-			</div>
-			<div class="hfb-footer__bento-cell hfb-footer__bento-cell--contact">
-				<h3 class="hfb-footer__bento-title"><?php esc_html_e( 'İletişim', 'qrms' ); ?></h3>
-				<?php $this->render_contact_lines( $opts ); ?>
-			</div>
-			<div class="hfb-footer__bento-cell hfb-footer__bento-cell--links">
-				<h3 class="hfb-footer__bento-title"><?php esc_html_e( 'Hızlı Linkler', 'qrms' ); ?></h3>
-				<nav aria-label="<?php esc_attr_e( 'Hızlı bağlantılar', 'qrms' ); ?>">
-					<?php echo $nav; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
-				</nav>
-			</div>
-			<?php if ( $social ) : ?>
-				<div class="hfb-footer__bento-cell hfb-footer__bento-cell--social">
-					<h3 class="hfb-footer__bento-title"><?php esc_html_e( 'Sosyal Medya', 'qrms' ); ?></h3>
-					<?php echo $social; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
-				</div>
-			<?php endif; ?>
-		</div>
-		<?php if ( ! empty( $opts['copyright'] ) ) : ?>
-			<p class="hfb-footer__copyright hfb-footer__copyright--center"><?php echo esc_html( $opts['copyright'] ); ?></p>
-		<?php endif; ?>
-		<?php
-	}
-
-	/**
-	 * Contact-First footer.
-	 *
-	 * @param array<string,mixed> $opts Ayarlar.
-	 * @return void
-	 */
-	private function render_footer_contact_first( $opts ) {
-		$logo   = $this->render_logo( $opts, 'footer' );
-		$social = $this->render_social_icons( $opts );
-		?>
-		<div class="hfb-footer__inner hfb-footer__inner--contact-first">
-			<div class="hfb-footer__contact-col">
-				<?php $this->render_contact_lines( $opts, true ); ?>
-			</div>
-			<div class="hfb-footer__logo-col">
-				<?php echo $logo; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
-				<?php if ( ! empty( $opts['description'] ) ) : ?>
-					<p class="hfb-footer__desc"><?php echo esc_html( $opts['description'] ); ?></p>
-				<?php endif; ?>
-			</div>
-			<div class="hfb-footer__social-col">
-				<?php echo $social; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
-			</div>
-		</div>
-		<?php if ( ! empty( $opts['copyright'] ) ) : ?>
-			<p class="hfb-footer__copyright hfb-footer__copyright--center"><?php echo esc_html( $opts['copyright'] ); ?></p>
-		<?php endif; ?>
-		<?php
+		return '<a class="hfb-cta" href="tel:' . esc_attr( $tel ) . '">' . $icon . esc_html( $opts['cta_phone'] ) . '</a>';
 	}
 
 	/**
 	 * İletişim satırları.
 	 *
 	 * @param array<string,mixed> $opts Ayarlar.
-	 * @param bool                $prominent Öne çıkan stil.
-	 * @return void
+	 * @return string
 	 */
-	private function render_contact_lines( $opts, $prominent = false ) {
-		$class = $prominent ? 'hfb-footer__contact hfb-footer__contact--prominent' : 'hfb-footer__contact';
-		if ( ! empty( $opts['phone'] ) ) :
-			$tel = preg_replace( '/[^0-9+]/', '', $opts['phone'] );
-			?>
-			<a class="<?php echo esc_attr( $class ); ?>" href="tel:<?php echo esc_attr( $tel ); ?>"><?php echo esc_html( $opts['phone'] ); ?></a>
-		<?php endif; ?>
-		<?php if ( ! empty( $opts['email'] ) ) : ?>
-			<a class="<?php echo esc_attr( $class ); ?>" href="mailto:<?php echo esc_attr( $opts['email'] ); ?>"><?php echo esc_html( $opts['email'] ); ?></a>
-		<?php endif;
+	private function render_contact_lines( $opts ) {
+		$html = '';
+
+		if ( ! empty( $opts['phone'] ) ) {
+			$tel   = preg_replace( '/[^0-9+]/', '', $opts['phone'] );
+			$html .= '<a class="hfb-footer__contact" href="tel:' . esc_attr( $tel ) . '">' . esc_html( $opts['phone'] ) . '</a>';
+		}
+
+		if ( ! empty( $opts['email'] ) ) {
+			$html .= '<a class="hfb-footer__contact" href="mailto:' . esc_attr( $opts['email'] ) . '">' . esc_html( $opts['email'] ) . '</a>';
+		}
+
+		return $html;
 	}
 
 	/**
-	 * Logo HTML.
+	 * Marka bloğu: logo görseli varsa o, yoksa QR ikonu + iki satırlık ad.
 	 *
-	 * @param array<string,mixed> $opts Ayarlar.
+	 * @param array<string,mixed> $opts    Ayarlar.
 	 * @param string              $context header|footer.
 	 * @return string
 	 */
-	private function render_logo( $opts, $context ) {
-		$id = isset( $opts['logo'] ) ? (int) $opts['logo'] : 0;
+	private function render_brand( $opts, $context ) {
+		$id   = isset( $opts['logo'] ) ? (int) $opts['logo'] : 0;
+		$home = esc_url( home_url( '/' ) );
 
 		if ( $id > 0 ) {
-			$img = wp_get_attachment_image( $id, 'medium', false, array( 'class' => 'hfb-logo__img', 'loading' => 'lazy' ) );
+			$img = wp_get_attachment_image(
+				$id,
+				'medium',
+				false,
+				array(
+					'class'   => 'hfb-brand__img',
+					'loading' => 'lazy',
+				)
+			);
+
 			if ( $img ) {
-				return '<a href="' . esc_url( home_url( '/' ) ) . '" class="hfb-logo hfb-logo--' . esc_attr( $context ) . '">' . $img . '</a>';
+				return '<a href="' . $home . '" class="hfb-brand hfb-brand--image hfb-brand--' . esc_attr( $context ) . '">' . $img . '</a>';
 			}
 		}
 
-		return '<a href="' . esc_url( home_url( '/' ) ) . '" class="hfb-logo hfb-logo--text hfb-logo--' . esc_attr( $context ) . '">' . esc_html( get_bloginfo( 'name' ) ) . '</a>';
+		$line1 = isset( $opts['brand_line1'] ) && '' !== $opts['brand_line1'] ? $opts['brand_line1'] : get_bloginfo( 'name' );
+		$line2 = isset( $opts['brand_line2'] ) ? $opts['brand_line2'] : '';
+
+		$html  = '<a href="' . $home . '" class="hfb-brand hfb-brand--' . esc_attr( $context ) . '">';
+		$html .= $this->qr_mark_svg();
+		$html .= '<span class="hfb-brand__text">';
+		$html .= '<span class="hfb-brand__line hfb-brand__line--1">' . esc_html( $line1 ) . '</span>';
+
+		if ( '' !== $line2 ) {
+			$html .= '<span class="hfb-brand__line hfb-brand__line--2">' . esc_html( $line2 ) . '</span>';
+		}
+
+		$html .= '</span></a>';
+
+		return $html;
+	}
+
+	/**
+	 * Marka QR kod ikonu.
+	 *
+	 * @return string
+	 */
+	private function qr_mark_svg() {
+		return '<svg class="hfb-brand__mark" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">'
+			. '<path d="M3 3h7v7H3V3zm2 2v3h3V5H5zM14 3h7v7h-7V3zm2 2v3h3V5h-3zM3 14h7v7H3v-7zm2 2v3h3v-3H5z"/>'
+			. '<path d="M14 14h3v3h-3zM19 14h2v2h-2zM14 19h2v2h-2zM18 18h3v3h-3z"/>'
+			. '</svg>';
 	}
 
 	/**
@@ -649,14 +444,33 @@ trait QRMS_HFB_Frontend {
 
 		return (string) wp_nav_menu(
 			array(
-				'menu'       => $menu_id,
-				'container'  => false,
-				'menu_class' => $class,
-				'fallback_cb'=> false,
-				'echo'       => false,
-				'depth'      => 2,
+				'menu'        => $menu_id,
+				'container'   => false,
+				'menu_class'  => $class,
+				'menu_id'     => 'menu',
+				'fallback_cb' => false,
+				'echo'        => false,
+				'depth'       => 2,
 			)
 		);
+	}
+
+	/**
+	 * Menü HTML'indeki tüm `id` değerlerini bir ön eke taşır.
+	 *
+	 * Aynı menü sayfada birden çok yerde basıldığında (masaüstü + mobil
+	 * panel, header + footer) çift id oluşmasını engeller.
+	 *
+	 * @param string $html   Menü HTML'i.
+	 * @param string $prefix Ön ek.
+	 * @return string
+	 */
+	private function scope_nav_ids( $html, $prefix ) {
+		if ( '' === $html || '' === $prefix ) {
+			return $html;
+		}
+
+		return (string) preg_replace( '/\bid="([^"]*)"/', 'id="' . $prefix . '$1"', $html );
 	}
 
 	/**
@@ -688,24 +502,6 @@ trait QRMS_HFB_Frontend {
 	}
 
 	/**
-	 * Kapatma ikonu SVG.
-	 *
-	 * @param string $type x|arrow|chevron.
-	 * @return string
-	 */
-	private function render_close_icon( $type ) {
-		$paths = array(
-			'x'       => '<path d="M6 6l12 12M18 6L6 18"/>',
-			'arrow'   => '<path d="M19 12H5M12 5l-7 7 7 7"/>',
-			'chevron' => '<path d="M15 6l-6 6 6 6"/>',
-		);
-
-		$path = isset( $paths[ $type ] ) ? $paths[ $type ] : $paths['x'];
-
-		return '<svg class="hfb-icon hfb-icon--close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">' . $path . '</svg>';
-	}
-
-	/**
 	 * Sosyal ikon SVG.
 	 *
 	 * @param string $icon İkon anahtarı.
@@ -713,14 +509,14 @@ trait QRMS_HFB_Frontend {
 	 */
 	private function social_icon_svg( $icon ) {
 		$paths = array(
-			'instagram' => '<rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/>',
+			'instagram' => '<rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.2" cy="6.8" r="0.9" fill="currentColor" stroke="none"/>',
 			'facebook'  => '<path d="M15 3.5h-1.8A3.7 3.7 0 0 0 9.5 7.2V20.5"/><path d="M6.6 10.6h7.2"/>',
 			'youtube'   => '<rect x="2.5" y="6" width="19" height="12" rx="4"/><path fill="currentColor" stroke="none" d="M10.3 9.3v5.4l4.9-2.7Z"/>',
 			'x'         => '<path fill="currentColor" stroke="none" d="M3.5 3h3.4l13.6 18h-3.4z"/><path fill="currentColor" stroke="none" d="M18.2 3h2.3L6.1 21H3.8z"/>',
 			'tiktok'    => '<path d="M14 3v10.6a3.4 3.4 0 1 1-3-3.37"/><path d="M14 3c.4 3.1 2.7 5.3 5.8 5.6"/>',
 			'whatsapp'  => '<path d="M12 3a9 9 0 0 0-7.8 13.5L3 21l4.7-1.2A9 9 0 1 0 12 3Z"/>',
 			'linkedin'  => '<rect x="3" y="3" width="18" height="18" rx="4"/><path d="M8 10.5V17"/><circle cx="8" cy="7.2" r="0.9" fill="currentColor" stroke="none"/><path d="M12.3 17v-4a2.4 2.4 0 0 1 4.8 0v4"/>',
-			'pinterest' => '<circle cx="12" cy="12" r="9"/><path d="M12 6.5c-2.2 0-3.8 1.5-3.8 3.4 0 1.3.7 2.2 1.8 2.6-.2-.8-.1-1.8.2-2.7.2-.7 1.3-4.6 1.3-4.6s-.3-.6-.3-1.5c0-1.4.8-2.5 1.9-2.5.9 0 1.3.7 1.3 1.5 0 .9-.6 2.3-.9 3.6-.3 1.1.6 2 1.7 2 2 0 3.5-2.1 3.5-5.2 0-2.7-1.9-4.6-4.7-4.6-3.2 0-5.1 2.4-5.1 4.9 0 1 .4 2.1 1.3 2.5.1 0 .3.1.3.4-.1.3-.2.9-.2 1.1-.1.3-.3.4-.6.3-1.7-.8-2.8-3.3-2.8-5.3 0-4.3 3.1-8.3 9-8.3 4.7 0 8.4 3.4 8.4 7.9 0 4.7-3 8.5-7.1 8.5-1.4 0-2.7-.7-3.1-1.6l-.9 3.3c-.3 1.1-1.1 2.5-1.6 3.3 1.2.4 2.5.6 3.8.6 5.5 0 10-4.5 10-10S17.5 2.5 12 2.5"/>',
+			'pinterest' => '<circle cx="12" cy="12" r="9"/><path d="M10.4 19.2c-.3-1 0-2.3.3-3.3l1-4.2"/><path d="M8.6 9.9a3.4 3.4 0 1 1 6.8.4c0 2.3-1.2 3.9-2.9 3.9-.9 0-1.6-.7-1.4-1.6"/>',
 		);
 
 		$path = isset( $paths[ $icon ] ) ? $paths[ $icon ] : '<circle cx="12" cy="12" r="9"/>';

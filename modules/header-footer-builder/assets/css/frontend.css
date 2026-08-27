@@ -1,0 +1,628 @@
+/**
+ * Header Footer Builder — ön yüz (tek sabit tasarım).
+ *
+ * Palet projenin dark-gold kimliğinden gelir: ink #0a0a0c, gold #c9a84c.
+ * Varyant / tema seçeneği YOKTUR; kullanıcı yalnızca içeriği yönetir.
+ *
+ * Kapsam kuralı: her seçici `.hfb-header-wrap` veya `.hfb-footer-wrap`
+ * altındadır. Böylece Elementor'un (ya da temanın) kendi kuralları ile
+ * seçici çakışması oluşmaz ve modülün CSS'i sayfaya sızmaz.
+ */
+
+.hfb-header-wrap,
+.hfb-footer-wrap {
+  --hfb-ink: #0a0a0c;
+  --hfb-gold: #c9a84c;
+  --hfb-gold-soft: #e8c766;
+  --hfb-text: #f5f0e8;
+  --hfb-muted: #8f8a82;
+  --hfb-border: #2a2a30;
+  --hfb-font-display: 'Playfair Display', Georgia, serif;
+  box-sizing: border-box;
+}
+
+.hfb-header-wrap *,
+.hfb-footer-wrap * {
+  box-sizing: border-box;
+}
+
+/* ---------------------------------------------------------------- Header */
+
+.hfb-header {
+  background: var(--hfb-ink);
+  border-bottom: 1px solid var(--hfb-border);
+  color: var(--hfb-text);
+  container-name: hfb-header;
+  container-type: inline-size;
+  width: 100%;
+}
+
+.hfb-header--sticky {
+  position: sticky;
+  top: 0;
+  z-index: 999;
+}
+
+/* Elementor editöründe sticky, tuvalin kaydırmasıyla çakışıyor. */
+.hfb-header--editor {
+  position: relative;
+  top: auto;
+}
+
+.hfb-header__inner {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  margin: 0 auto;
+  max-width: 1200px;
+  min-height: 72px;
+  padding: 0.75rem 1.25rem;
+  width: 100%;
+}
+
+/* Marka ------------------------------------------------------------------ */
+
+.hfb-header-wrap .hfb-brand,
+.hfb-footer-wrap .hfb-brand {
+  align-items: center;
+  color: var(--hfb-gold);
+  display: inline-flex;
+  gap: 0.6rem;
+  text-decoration: none;
+}
+
+.hfb-header-wrap .hfb-brand:hover,
+.hfb-footer-wrap .hfb-brand:hover {
+  color: var(--hfb-gold-soft);
+}
+
+.hfb-brand__mark {
+  display: block;
+  flex-shrink: 0;
+  height: 34px;
+  width: 34px;
+}
+
+.hfb-brand__img {
+  display: block;
+  height: auto;
+  max-width: 160px;
+}
+
+.hfb-brand__text {
+  display: flex;
+  flex-direction: column;
+  font-family: var(--hfb-font-display);
+  line-height: 1.05;
+}
+
+.hfb-brand__line {
+  display: block;
+}
+
+.hfb-brand__line--1 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.hfb-brand__line--2 {
+  font-size: 0.8rem;
+  font-weight: 500;
+  letter-spacing: 0.28em;
+}
+
+/* Masaüstü menü ---------------------------------------------------------- */
+
+.hfb-header__nav {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.hfb-header-wrap .hfb-header__menu {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.75rem;
+  justify-content: center;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.hfb-header-wrap .hfb-header__menu li {
+  list-style: none;
+  margin: 0;
+  position: relative;
+}
+
+.hfb-header-wrap .hfb-header__menu a {
+  color: var(--hfb-text);
+  display: inline-block;
+  font-size: 0.95rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  padding: 0.35rem 0;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.hfb-header-wrap .hfb-header__menu a:hover,
+.hfb-header-wrap .hfb-header__menu a:focus-visible,
+.hfb-header-wrap .hfb-header__menu .current-menu-item > a {
+  color: var(--hfb-gold);
+}
+
+/* Alt menü (masaüstü) */
+.hfb-header-wrap .hfb-header__menu .sub-menu {
+  background: var(--hfb-ink);
+  border: 1px solid var(--hfb-border);
+  border-radius: 8px;
+  display: none;
+  left: 0;
+  list-style: none;
+  margin: 0;
+  min-width: 200px;
+  padding: 0.5rem 0;
+  position: absolute;
+  top: 100%;
+  z-index: 20;
+}
+
+.hfb-header-wrap .hfb-header__menu li:hover > .sub-menu,
+.hfb-header-wrap .hfb-header__menu li:focus-within > .sub-menu {
+  display: block;
+}
+
+.hfb-header-wrap .hfb-header__menu .sub-menu a {
+  display: block;
+  padding: 0.5rem 1rem;
+  white-space: nowrap;
+}
+
+/* Sağ blok: sosyal + dil ------------------------------------------------- */
+
+.hfb-header__actions {
+  align-items: center;
+  display: flex;
+  flex-shrink: 0;
+  gap: 0.85rem;
+  margin-left: auto;
+}
+
+.hfb-header-wrap .hfb-social,
+.hfb-footer-wrap .hfb-social {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.hfb-header-wrap .hfb-social__link,
+.hfb-footer-wrap .hfb-social__link {
+  align-items: center;
+  border: 1px solid var(--hfb-gold);
+  border-radius: 50%;
+  color: var(--hfb-gold);
+  display: inline-flex;
+  height: 36px;
+  justify-content: center;
+  text-decoration: none;
+  transition: background-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
+  width: 36px;
+}
+
+.hfb-header-wrap .hfb-social__link:hover,
+.hfb-footer-wrap .hfb-social__link:hover,
+.hfb-header-wrap .hfb-social__link:focus-visible,
+.hfb-footer-wrap .hfb-social__link:focus-visible {
+  background-color: var(--hfb-gold);
+  color: var(--hfb-ink);
+  transform: translateY(-1px);
+}
+
+.hfb-icon--social {
+  height: 18px;
+  width: 18px;
+}
+
+/* Dil seçici: çeviri modülünün kısa kod çıktısını saran kap.
+   Kısa kodun kendi sınıfları korunur; yalnızca dark-gold başlığa
+   oturması için kapsanmış birkaç düzeltme yapılır. */
+.hfb-lang {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.hfb-header-wrap .hfb-lang .qrmenu-current-btn {
+  background-color: transparent;
+  border: 1px solid var(--hfb-gold) !important;
+  border-radius: 50%;
+  color: var(--hfb-text);
+  height: 36px;
+  min-width: 36px;
+  width: 36px;
+}
+
+.hfb-header-wrap .hfb-lang .qrmenu-options-panel {
+  left: auto;
+  right: 0;
+}
+
+/* Hamburger -------------------------------------------------------------- */
+
+.hfb-header__toggle {
+  align-items: center;
+  background: none;
+  border: 0;
+  color: var(--hfb-gold);
+  cursor: pointer;
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  margin-left: auto;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0.5rem;
+}
+
+.hfb-header__toggle-bar {
+  background: currentColor;
+  border-radius: 2px;
+  display: block;
+  height: 2px;
+  margin: 3px 0;
+  width: 22px;
+}
+
+/* Mobil panel ------------------------------------------------------------ */
+
+.hfb-mobile-panel {
+  inset: 0;
+  pointer-events: none;
+  position: fixed;
+  visibility: hidden;
+  z-index: 99999;
+}
+
+.hfb-mobile-panel.is-open {
+  pointer-events: auto;
+  visibility: visible;
+}
+
+.hfb-mobile-panel__backdrop {
+  background: rgba(0, 0, 0, 0.6);
+  inset: 0;
+  opacity: 0;
+  position: absolute;
+  transition: opacity 0.3s ease;
+}
+
+.hfb-mobile-panel.is-open .hfb-mobile-panel__backdrop {
+  opacity: 1;
+}
+
+.hfb-mobile-panel__sheet {
+  background: var(--hfb-ink);
+  color: var(--hfb-text);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  inset: 0;
+  opacity: 0;
+  overflow: hidden;
+  position: absolute;
+  transform: translateY(-10px);
+  transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  width: 100%;
+}
+
+.hfb-mobile-panel.is-open .hfb-mobile-panel__sheet {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.hfb-mobile-panel__topbar {
+  align-items: center;
+  border-bottom: 1px solid var(--hfb-border);
+  display: flex;
+  flex-shrink: 0;
+  justify-content: space-between;
+  min-height: 72px;
+  padding: 0.75rem 1.25rem;
+}
+
+.hfb-mobile-panel__close {
+  align-items: center;
+  background: none;
+  border: 0;
+  color: var(--hfb-gold);
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0.25rem;
+}
+
+.hfb-icon--close {
+  height: 24px;
+  width: 24px;
+}
+
+.hfb-mobile-panel__body {
+  -webkit-overflow-scrolling: touch;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 1.5rem 1.25rem;
+  text-align: center;
+}
+
+.hfb-mobile-panel__lang {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+}
+
+.hfb-mobile-panel__nav .hfb-header__menu {
+  flex-direction: column;
+  gap: 0;
+}
+
+.hfb-mobile-panel__nav .hfb-header__menu > li {
+  border-bottom: 1px solid var(--hfb-border);
+  width: 100%;
+}
+
+.hfb-mobile-panel__nav .hfb-header__menu a {
+  display: block;
+  font-size: 1.05rem;
+  min-height: 44px;
+  padding: 0.85rem 0.5rem;
+}
+
+.hfb-mobile-panel__nav .sub-menu {
+  border: 0;
+  display: none;
+  margin: 0;
+  padding: 0 0 0.5rem;
+  position: static;
+}
+
+.hfb-mobile-panel__nav .menu-item-has-children.is-open > .sub-menu {
+  display: block;
+}
+
+.hfb-mobile-panel__nav .sub-menu a {
+  font-size: 0.95rem;
+  opacity: 0.85;
+  padding: 0.6rem 0.5rem;
+}
+
+.hfb-mobile-panel__nav .menu-item-has-children > a::after {
+  border-bottom: 2px solid currentColor;
+  border-right: 2px solid currentColor;
+  content: '';
+  display: inline-block;
+  height: 0.4em;
+  margin-left: 0.45em;
+  transform: rotate(45deg) translateY(-2px);
+  transition: transform 0.25s ease;
+  width: 0.4em;
+}
+
+.hfb-mobile-panel__nav .menu-item-has-children.is-open > a::after {
+  transform: rotate(225deg) translateY(1px);
+}
+
+.hfb-mobile-panel__footer {
+  border-top: 1px solid var(--hfb-border);
+  flex-shrink: 0;
+  padding: 1.25rem 1.25rem 2rem;
+  text-align: center;
+}
+
+.hfb-mobile-panel__footer .hfb-social {
+  justify-content: center;
+  margin-top: 1rem;
+}
+
+.hfb-header-wrap .hfb-cta {
+  align-items: center;
+  background: var(--hfb-gold);
+  border-radius: 999px;
+  color: var(--hfb-ink);
+  display: inline-flex;
+  font-weight: 600;
+  gap: 0.5rem;
+  justify-content: center;
+  min-height: 48px;
+  padding: 0.7rem 1.5rem;
+  text-decoration: none;
+}
+
+.hfb-header-wrap .hfb-cta:hover {
+  background: var(--hfb-gold-soft);
+}
+
+.hfb-icon--phone {
+  flex-shrink: 0;
+  height: 18px;
+  width: 18px;
+}
+
+/* ---------------------------------------------------------------- Footer */
+
+.hfb-footer {
+  background: var(--hfb-ink);
+  border-top: 1px solid var(--hfb-border);
+  color: var(--hfb-text);
+  container-name: hfb-footer;
+  container-type: inline-size;
+  width: 100%;
+}
+
+.hfb-footer__inner {
+  display: grid;
+  gap: 2rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  margin: 0 auto;
+  max-width: 1200px;
+  padding: 2.5rem 1.25rem;
+  width: 100%;
+}
+
+.hfb-footer__desc {
+  color: var(--hfb-muted);
+  font-size: 0.9375rem;
+  margin: 0.75rem 0 0;
+  max-width: 36ch;
+}
+
+.hfb-footer-wrap .hfb-footer__menu {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.hfb-footer-wrap .hfb-footer__menu li {
+  list-style: none;
+  margin: 0;
+}
+
+.hfb-footer-wrap .hfb-footer__menu a {
+  color: var(--hfb-text);
+  font-size: 0.9375rem;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.hfb-footer-wrap .hfb-footer__menu a:hover,
+.hfb-footer-wrap .hfb-footer__menu a:focus-visible {
+  color: var(--hfb-gold);
+}
+
+.hfb-footer-wrap .hfb-footer__menu .sub-menu {
+  list-style: none;
+  margin: 0.35rem 0 0;
+  padding: 0 0 0 0.85rem;
+}
+
+.hfb-footer__contact {
+  color: var(--hfb-text);
+  display: block;
+  font-size: 0.9375rem;
+  margin-bottom: 0.5rem;
+  text-decoration: none;
+}
+
+.hfb-footer__contact:hover {
+  color: var(--hfb-gold);
+}
+
+.hfb-footer__col--contact .hfb-social {
+  margin-top: 1rem;
+}
+
+.hfb-footer__bar {
+  border-top: 1px solid var(--hfb-border);
+}
+
+.hfb-footer__copyright {
+  color: var(--hfb-muted);
+  font-size: 0.8125rem;
+  margin: 0 auto;
+  max-width: 1200px;
+  padding: 1rem 1.25rem;
+  text-align: center;
+}
+
+/* ------------------------------------------------------------- Kırılımlar */
+
+/*
+ * Kırılımlar ekran değil KAP genişliğine bağlı. İki kazancı var:
+ * (1) yönetimdeki önizleme sahnesi 390px'e daraltıldığında header gerçekten
+ *     hamburger'a çöker — mobil görünüm ekranda test edilebilir;
+ * (2) header dar bir Elementor sütununa konursa da doğru davranır.
+ * `container-type` yalnızca <header>/<footer> üzerindedir; sabit konumlu
+ * mobil panel kapsayıcının DIŞINDA kalır, böylece `position: fixed`
+ * viewport'a göre çalışmayı sürdürür.
+ */
+
+@container hfb-header (max-width: 900px) {
+  .hfb-header-wrap .hfb-header__menu {
+    gap: 1.15rem;
+  }
+
+  .hfb-header__inner {
+    gap: 1rem;
+  }
+}
+
+@container hfb-header (max-width: 768px) {
+  .hfb-header__nav,
+  .hfb-header__actions {
+    display: none;
+  }
+
+  .hfb-header__toggle {
+    display: inline-flex;
+  }
+
+  .hfb-header__inner {
+    justify-content: space-between;
+    min-height: 64px;
+  }
+}
+
+@container hfb-footer (max-width: 768px) {
+  .hfb-footer__inner {
+    grid-template-columns: 1fr;
+    padding: 2rem 1.25rem;
+  }
+}
+
+/* Kap sorgusu desteklemeyen tarayıcılar için ekran tabanlı karşılık. */
+@supports not (container-type: inline-size) {
+  @media (max-width: 900px) {
+    .hfb-header-wrap .hfb-header__menu {
+      gap: 1.15rem;
+    }
+
+    .hfb-header__inner {
+      gap: 1rem;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .hfb-header__nav,
+    .hfb-header__actions {
+      display: none;
+    }
+
+    .hfb-header__toggle {
+      display: inline-flex;
+    }
+
+    .hfb-header__inner {
+      justify-content: space-between;
+      min-height: 64px;
+    }
+
+    .hfb-footer__inner {
+      grid-template-columns: 1fr;
+      padding: 2rem 1.25rem;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hfb-mobile-panel__sheet,
+  .hfb-mobile-panel__backdrop,
+  .hfb-header-wrap .hfb-social__link,
+  .hfb-footer-wrap .hfb-social__link {
+    transition: none;
+  }
+}

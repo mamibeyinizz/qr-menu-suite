@@ -2,6 +2,13 @@
 /**
  * Header Footer Builder — yönetim paneli.
  *
+ * Sayfa tek bir formdur; sekmeler (Header / Footer / Dil) yalnızca görsel
+ * gruplamadır ve JS ile sayfa yenilenmeden değişir. Canlı önizleme sekme
+ * DEĞİLDİR: forma komşu, sayfada her zaman duran sabit bir paneldir.
+ * Gerekçe: önizlemeyi ayrı bir sekmeye koymak, önizlemenin beslendiği
+ * formun DOM'da bulunmadığı bir durum yaratıyordu — eski sürümdeki
+ * "önizleme çalışmıyor" hatasının kökeni tam olarak buydu.
+ *
  * @package QR_Menu_Suite
  */
 
@@ -10,7 +17,7 @@ defined( 'ABSPATH' ) || exit;
 trait QRMS_HFB_Admin {
 
 	/**
-	 * Ana yönetim sayfası (Header / Footer / Canlı Önizleme sekmeleri).
+	 * Ayar sayfası.
 	 *
 	 * @return void
 	 */
@@ -20,42 +27,35 @@ trait QRMS_HFB_Admin {
 		}
 
 		$saved = false;
-		$tab   = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : 'header';
 
 		if ( isset( $_POST['hfb_save'] ) && check_admin_referer( 'hfb_save_settings', 'hfb_nonce' ) ) {
-			$save_tab = isset( $_POST['hfb_tab'] ) ? sanitize_key( wp_unslash( $_POST['hfb_tab'] ) ) : 'header';
-
-			if ( 'footer' === $save_tab ) {
-				$this->save_footer_settings();
-				$tab = 'footer';
-			} else {
-				$this->save_header_settings();
-				$tab = 'header';
-			}
-
+			// Alanların her biri sanitize_header_input()/sanitize_footer_input()
+			// içinde tek tek temizlenir; burada yalnızca slash'lar çözülür.
+			$this->save_settings( wp_unslash( $_POST ) ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 			$saved = true;
 		}
 
 		$header_opts = $this->get_header_options();
 		$footer_opts = $this->get_footer_options();
 		$menus       = $this->get_nav_menus();
-		$tabs        = array(
-			'header'  => __( 'Header', 'qrms' ),
-			'footer'  => __( 'Footer', 'qrms' ),
-			'preview' => __( 'Canlı Önizleme', 'qrms' ),
+
+		$tabs = array(
+			'header' => __( 'Header', 'qrms' ),
+			'footer' => __( 'Footer', 'qrms' ),
+			'lang'   => __( 'Dil / Çeviri', 'qrms' ),
 		);
 
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$tab = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : 'header';
 		if ( ! array_key_exists( $tab, $tabs ) ) {
 			$tab = 'header';
 		}
-
-		$base_url = admin_url( 'admin.php?page=' . rawurlencode( QRMS_Admin::get_module_page_slug( self::MODULE ) ) );
 		?>
 		<div class="wrap qrms-wrap hfb-wrap">
 			<h1 class="qrms-title"><?php esc_html_e( 'Header Footer Builder', 'qrms' ); ?></h1>
 
 			<p class="qrms-muted">
-				<?php esc_html_e( 'Header ve footer bileşenlerini yapılandırın. Elementor Shortcode widget\'ına [hfb_header] ve [hfb_footer] kısa kodlarını ekleyin.', 'qrms' ); ?>
+				<?php esc_html_e( 'Header ve footer içeriğini yapılandırın. Tasarım sabittir (siyah + gold). Elementor Shortcode widget\'ına [hfb_header] ve [hfb_footer] kısa kodlarını ekleyin.', 'qrms' ); ?>
 			</p>
 
 			<?php if ( $saved ) : ?>
@@ -64,54 +64,53 @@ trait QRMS_HFB_Admin {
 				</div>
 			<?php endif; ?>
 
-			<nav class="hfb-tabs" aria-label="<?php esc_attr_e( 'Ayar sekmeleri', 'qrms' ); ?>">
-				<?php foreach ( $tabs as $slug => $label ) : ?>
-					<a
-						href="<?php echo esc_url( add_query_arg( 'tab', $slug, $base_url ) ); ?>"
-						class="hfb-tabs__link<?php echo $tab === $slug ? ' is-active' : ''; ?>"
-					><?php echo esc_html( $label ); ?></a>
-				<?php endforeach; ?>
-			</nav>
+			<div class="hfb-layout">
+				<div class="hfb-layout__main">
+					<nav class="nav-tab-wrapper hfb-tabs" role="tablist" aria-label="<?php esc_attr_e( 'Ayar sekmeleri', 'qrms' ); ?>">
+						<?php foreach ( $tabs as $slug => $label ) : ?>
+							<button
+								type="button"
+								class="nav-tab hfb-tabs__link<?php echo $tab === $slug ? ' nav-tab-active' : ''; ?>"
+								role="tab"
+								id="hfb-tab-<?php echo esc_attr( $slug ); ?>"
+								data-hfb-tab="<?php echo esc_attr( $slug ); ?>"
+								aria-controls="hfb-panel-<?php echo esc_attr( $slug ); ?>"
+								aria-selected="<?php echo $tab === $slug ? 'true' : 'false'; ?>"
+							><?php echo esc_html( $label ); ?></button>
+						<?php endforeach; ?>
+					</nav>
 
-			<?php if ( 'preview' === $tab ) : ?>
-				<?php $this->render_live_preview_tab( $header_opts, $footer_opts ); ?>
-			<?php else : ?>
-				<form method="post" class="qrms-form hfb-form" data-hfb-tab="<?php echo esc_attr( $tab ); ?>">
-					<?php wp_nonce_field( 'hfb_save_settings', 'hfb_nonce' ); ?>
-					<input type="hidden" name="hfb_tab" value="<?php echo esc_attr( $tab ); ?>" />
+					<form method="post" class="qrms-form hfb-form" id="hfb-settings-form">
+						<?php wp_nonce_field( 'hfb_save_settings', 'hfb_nonce' ); ?>
 
-					<?php
-					if ( 'footer' === $tab ) {
-						$this->render_footer_fields( $footer_opts, $menus );
-					} else {
-						$this->render_header_fields( $header_opts, $menus );
-					}
-					?>
+						<div class="hfb-tab-panel<?php echo 'header' === $tab ? ' is-active' : ''; ?>" id="hfb-panel-header" role="tabpanel" aria-labelledby="hfb-tab-header" data-hfb-panel="header"<?php echo 'header' === $tab ? '' : ' hidden'; ?>>
+							<?php $this->render_header_fields( $header_opts, $menus ); ?>
+						</div>
 
-					<button type="submit" name="hfb_save" value="1" class="qrms-button qrms-button-primary">
-						<?php esc_html_e( 'Kaydet', 'qrms' ); ?>
-					</button>
-				</form>
+						<div class="hfb-tab-panel<?php echo 'footer' === $tab ? ' is-active' : ''; ?>" id="hfb-panel-footer" role="tabpanel" aria-labelledby="hfb-tab-footer" data-hfb-panel="footer"<?php echo 'footer' === $tab ? '' : ' hidden'; ?>>
+							<?php $this->render_footer_fields( $footer_opts, $menus ); ?>
+						</div>
 
-				<div class="qrms-card hfb-inline-preview">
-					<h2 class="qrms-card-title"><?php esc_html_e( 'Hızlı Önizleme', 'qrms' ); ?></h2>
-					<div id="hfb-preview-inline" class="hfb-preview-frame" data-preview-type="<?php echo esc_attr( $tab ); ?>">
-						<?php
-						if ( 'footer' === $tab ) {
-							echo $this->render_footer( $footer_opts ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-						} else {
-							echo $this->render_header( $header_opts ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-						}
-						?>
-					</div>
+						<div class="hfb-tab-panel<?php echo 'lang' === $tab ? ' is-active' : ''; ?>" id="hfb-panel-lang" role="tabpanel" aria-labelledby="hfb-tab-lang" data-hfb-panel="lang"<?php echo 'lang' === $tab ? '' : ' hidden'; ?>>
+							<?php $this->render_lang_fields( $header_opts ); ?>
+						</div>
+
+						<p class="hfb-form__actions">
+							<button type="submit" name="hfb_save" value="1" class="qrms-button qrms-button-primary">
+								<?php esc_html_e( 'Kaydet', 'qrms' ); ?>
+							</button>
+						</p>
+					</form>
 				</div>
-			<?php endif; ?>
+
+				<?php $this->render_live_preview_panel( $header_opts, $footer_opts ); ?>
+			</div>
 		</div>
 		<?php
 	}
 
 	/**
-	 * Header form alanları.
+	 * Header sekmesi alanları.
 	 *
 	 * @param array<string,mixed> $opts  Ayarlar.
 	 * @param array<int,string>   $menus Menü listesi.
@@ -120,209 +119,89 @@ trait QRMS_HFB_Admin {
 	private function render_header_fields( $opts, $menus ) {
 		?>
 		<div class="qrms-card">
-			<h2 class="qrms-card-title"><?php esc_html_e( 'Header Varyantı', 'qrms' ); ?></h2>
+			<h2 class="qrms-card-title"><?php esc_html_e( 'Marka', 'qrms' ); ?></h2>
+			<p class="description">
+				<?php esc_html_e( 'Logo seçilmezse QR ikonu ve iki satırlık marka yazısı kullanılır.', 'qrms' ); ?>
+			</p>
+
+			<?php $this->render_media_field( 'hfb_header_logo', __( 'Logo (isteğe bağlı)', 'qrms' ), (int) $opts['logo'] ); ?>
+
 			<div class="qrms-field">
-				<label class="qrms-label" for="hfb_header_variant"><?php esc_html_e( 'Tasarım', 'qrms' ); ?></label>
-				<select id="hfb_header_variant" name="hfb_header_variant" class="qrms-input hfb-preview-trigger">
-					<?php foreach ( $this->header_variants() as $key => $label ) : ?>
-						<option value="<?php echo esc_attr( $key ); ?>" <?php selected( $opts['variant'], $key ); ?>><?php echo esc_html( $label ); ?></option>
-					<?php endforeach; ?>
-				</select>
+				<label class="qrms-label" for="hfb_header_brand_line1"><?php esc_html_e( 'Marka — üst satır', 'qrms' ); ?></label>
+				<input type="text" id="hfb_header_brand_line1" name="hfb_header_brand_line1" class="qrms-input hfb-preview-trigger" value="<?php echo esc_attr( $opts['brand_line1'] ); ?>" placeholder="QR MENU" />
+			</div>
+
+			<div class="qrms-field">
+				<label class="qrms-label" for="hfb_header_brand_line2"><?php esc_html_e( 'Marka — alt satır', 'qrms' ); ?></label>
+				<input type="text" id="hfb_header_brand_line2" name="hfb_header_brand_line2" class="qrms-input hfb-preview-trigger" value="<?php echo esc_attr( $opts['brand_line2'] ); ?>" placeholder="OFFİCİAL" />
 			</div>
 		</div>
 
 		<div class="qrms-card">
-			<h2 class="qrms-card-title"><?php esc_html_e( 'Logo & Menü', 'qrms' ); ?></h2>
-			<?php $this->render_media_field( 'hfb_header_logo', __( 'Logo', 'qrms' ), (int) $opts['logo'] ); ?>
-
-			<div class="qrms-field">
-				<label class="qrms-label" for="hfb_header_logo_width"><?php esc_html_e( 'Logo genişliği (px)', 'qrms' ); ?></label>
-				<input type="number" id="hfb_header_logo_width" name="hfb_header_logo_width" class="qrms-input hfb-preview-trigger" min="60" max="320" value="<?php echo esc_attr( (int) $opts['logo_width'] ); ?>" />
-			</div>
-
-			<div class="qrms-field">
-				<label class="qrms-label" for="hfb_header_logo_text_size"><?php esc_html_e( 'Logo metin boyutu (px)', 'qrms' ); ?></label>
-				<input type="number" id="hfb_header_logo_text_size" name="hfb_header_logo_text_size" class="qrms-input hfb-preview-trigger" min="14" max="36" value="<?php echo esc_attr( (int) $opts['logo_text_size'] ); ?>" />
-			</div>
-
-			<div class="qrms-field">
-				<label class="qrms-label" for="hfb_header_logo_alignment"><?php esc_html_e( 'Logo hizalama', 'qrms' ); ?></label>
-				<select id="hfb_header_logo_alignment" name="hfb_header_logo_alignment" class="qrms-input hfb-preview-trigger">
-					<option value="left" <?php selected( $opts['logo_alignment'], 'left' ); ?>><?php esc_html_e( 'Sol', 'qrms' ); ?></option>
-					<option value="center" <?php selected( $opts['logo_alignment'], 'center' ); ?>><?php esc_html_e( 'Orta', 'qrms' ); ?></option>
-					<option value="right" <?php selected( $opts['logo_alignment'], 'right' ); ?>><?php esc_html_e( 'Sağ', 'qrms' ); ?></option>
-				</select>
-			</div>
+			<h2 class="qrms-card-title"><?php esc_html_e( 'Menü & Davranış', 'qrms' ); ?></h2>
 
 			<div class="qrms-field">
 				<label class="qrms-label" for="hfb_header_menu_id"><?php esc_html_e( 'Menü', 'qrms' ); ?></label>
-				<select id="hfb_header_menu_id" name="hfb_header_menu_id" class="qrms-input">
+				<select id="hfb_header_menu_id" name="hfb_header_menu_id" class="qrms-input hfb-preview-trigger">
 					<?php foreach ( $menus as $id => $name ) : ?>
 						<option value="<?php echo esc_attr( (string) $id ); ?>" <?php selected( (int) $opts['menu_id'], (int) $id ); ?>><?php echo esc_html( $name ); ?></option>
 					<?php endforeach; ?>
 				</select>
 			</div>
-		</div>
 
-		<div class="qrms-card">
-			<h2 class="qrms-card-title"><?php esc_html_e( 'Renkler & Davranış', 'qrms' ); ?></h2>
-			<?php
-			$this->render_color_field( 'hfb_header_bg_color', __( 'Arka plan', 'qrms' ), $opts['bg_color'] );
-			$this->render_color_field( 'hfb_header_text_color', __( 'Yazı rengi', 'qrms' ), $opts['text_color'] );
-			$this->render_color_field( 'hfb_header_border_color', __( 'Alt çizgi', 'qrms' ), $opts['border_color'] );
-			$this->render_color_field( 'hfb_header_brand_color', __( 'Marka rengi (logo)', 'qrms' ), $opts['brand_color'] );
-			$this->render_color_field( 'hfb_hamburger_color', __( 'Hamburger ikon rengi', 'qrms' ), $opts['hamburger_color'] );
-			?>
 			<div class="qrms-field">
 				<label>
 					<input type="checkbox" name="hfb_header_sticky" value="1" class="hfb-preview-trigger" <?php checked( ! empty( $opts['sticky'] ) ); ?> />
-					<?php esc_html_e( 'Scroll\'da küçülen sticky header', 'qrms' ); ?>
+					<?php esc_html_e( 'Sayfa kaydırılırken header üstte sabit kalsın', 'qrms' ); ?>
 				</label>
 			</div>
-		</div>
-
-		<div class="qrms-card">
-			<h2 class="qrms-card-title"><?php esc_html_e( 'Mobil Hamburger Paneli', 'qrms' ); ?></h2>
-			<div class="qrms-field">
-				<label class="qrms-label" for="hfb_mobile_panel_style"><?php esc_html_e( 'Panel stili', 'qrms' ); ?></label>
-				<select id="hfb_mobile_panel_style" name="hfb_mobile_panel_style" class="qrms-input hfb-preview-trigger">
-					<option value="slide" <?php selected( $opts['mobile_panel_style'], 'slide' ); ?>><?php esc_html_e( 'Yandan kayan', 'qrms' ); ?></option>
-					<option value="fullscreen" <?php selected( $opts['mobile_panel_style'], 'fullscreen' ); ?>><?php esc_html_e( 'Tam ekran', 'qrms' ); ?></option>
-					<option value="menulux" <?php selected( $opts['mobile_panel_style'], 'menulux' ); ?>><?php esc_html_e( 'Menulux (gradient)', 'qrms' ); ?></option>
-				</select>
-			</div>
-
-			<?php
-			$this->render_color_field( 'hfb_mobile_panel_bg', __( 'Panel arka plan', 'qrms' ), $opts['mobile_panel_bg'] );
-			$this->render_color_field( 'hfb_mobile_panel_gradient_start', __( 'Gradient başlangıç rengi', 'qrms' ), $opts['mobile_panel_gradient_start'] );
-			$this->render_color_field( 'hfb_mobile_panel_gradient_end', __( 'Gradient bitiş rengi', 'qrms' ), $opts['mobile_panel_gradient_end'] );
-			?>
 
 			<div class="qrms-field">
-				<label class="qrms-label" for="hfb_mobile_panel_bg_opacity"><?php esc_html_e( 'Panel opaklığı (%)', 'qrms' ); ?></label>
-				<input type="number" id="hfb_mobile_panel_bg_opacity" name="hfb_mobile_panel_bg_opacity" class="qrms-input hfb-preview-trigger" min="0" max="100" value="<?php echo esc_attr( (int) $opts['mobile_panel_bg_opacity'] ); ?>" />
-			</div>
-
-			<div class="qrms-field">
-				<label class="qrms-label" for="hfb_mobile_panel_font"><?php esc_html_e( 'Panel yazı fontu', 'qrms' ); ?></label>
-				<select id="hfb_mobile_panel_font" name="hfb_mobile_panel_font" class="qrms-input hfb-preview-trigger">
-					<?php foreach ( $this->font_options() as $font ) : ?>
-						<option value="<?php echo esc_attr( $font ); ?>" <?php selected( $opts['mobile_panel_font'], $font ); ?>><?php echo esc_html( $font ); ?></option>
-					<?php endforeach; ?>
-				</select>
-			</div>
-
-			<?php
-			$this->render_color_field( 'hfb_mobile_panel_text_color', __( 'Panel yazı rengi', 'qrms' ), $opts['mobile_panel_text_color'] );
-			?>
-
-			<div class="qrms-field">
-				<label class="qrms-label" for="hfb_mobile_panel_text_size"><?php esc_html_e( 'Panel yazı boyutu (px)', 'qrms' ); ?></label>
-				<input type="number" id="hfb_mobile_panel_text_size" name="hfb_mobile_panel_text_size" class="qrms-input hfb-preview-trigger" min="14" max="28" value="<?php echo esc_attr( (int) $opts['mobile_panel_text_size'] ); ?>" />
-			</div>
-
-			<div class="qrms-field">
-				<label class="qrms-label" for="hfb_mobile_close_icon"><?php esc_html_e( 'Kapatma ikonu', 'qrms' ); ?></label>
-				<select id="hfb_mobile_close_icon" name="hfb_mobile_close_icon" class="qrms-input hfb-preview-trigger">
-					<?php foreach ( $this->close_icon_options() as $key => $label ) : ?>
-						<option value="<?php echo esc_attr( $key ); ?>" <?php selected( $opts['mobile_close_icon'], $key ); ?>><?php echo esc_html( $label ); ?></option>
-					<?php endforeach; ?>
-				</select>
-			</div>
-
-			<?php
-			$this->render_color_field( 'hfb_mobile_close_icon_color', __( 'Kapatma ikon rengi', 'qrms' ), $opts['mobile_close_icon_color'] );
-			?>
-
-			<div class="qrms-field">
-				<label class="qrms-label" for="hfb_mobile_close_icon_size"><?php esc_html_e( 'Kapatma ikon boyutu (px)', 'qrms' ); ?></label>
-				<input type="number" id="hfb_mobile_close_icon_size" name="hfb_mobile_close_icon_size" class="qrms-input hfb-preview-trigger" min="16" max="40" value="<?php echo esc_attr( (int) $opts['mobile_close_icon_size'] ); ?>" />
+				<label class="qrms-label" for="hfb_header_cta_phone"><?php esc_html_e( 'Mobil menüdeki telefon butonu', 'qrms' ); ?></label>
+				<input type="text" id="hfb_header_cta_phone" name="hfb_header_cta_phone" class="qrms-input hfb-preview-trigger" value="<?php echo esc_attr( $opts['cta_phone'] ); ?>" placeholder="0850 346 6586" />
+				<p class="description"><?php esc_html_e( 'Boş bırakılırsa buton görünmez.', 'qrms' ); ?></p>
 			</div>
 		</div>
 
 		<div class="qrms-card">
-			<h2 class="qrms-card-title"><?php esc_html_e( 'Menulux — Dil, CTA & Sosyal', 'qrms' ); ?></h2>
-			<div class="qrms-field">
-				<label class="qrms-label" for="hfb_lang_code"><?php esc_html_e( 'Mevcut dil kodu', 'qrms' ); ?></label>
-				<input type="text" id="hfb_lang_code" name="hfb_lang_code" class="qrms-input hfb-preview-trigger" maxlength="5" value="<?php echo esc_attr( $opts['lang_code'] ); ?>" />
-			</div>
-			<div class="qrms-field">
-				<label class="qrms-label" for="hfb_lang_alt_code"><?php esc_html_e( 'Dil seçici etiketi', 'qrms' ); ?></label>
-				<input type="text" id="hfb_lang_alt_code" name="hfb_lang_alt_code" class="qrms-input hfb-preview-trigger" maxlength="5" value="<?php echo esc_attr( $opts['lang_alt_code'] ); ?>" />
-			</div>
-			<div class="qrms-field">
-				<label class="qrms-label" for="hfb_lang_alt_url"><?php esc_html_e( 'Dil seçici URL', 'qrms' ); ?></label>
-				<input type="url" id="hfb_lang_alt_url" name="hfb_lang_alt_url" class="qrms-input hfb-preview-trigger" value="<?php echo esc_attr( $opts['lang_alt_url'] ); ?>" placeholder="https://" />
-			</div>
-			<?php
-			$this->render_color_field( 'hfb_lang_border_color', __( 'Dil seçici çerçeve rengi', 'qrms' ), $opts['lang_border_color'] );
-			$this->render_color_field( 'hfb_lang_text_color', __( 'Dil seçici yazı rengi', 'qrms' ), $opts['lang_text_color'] );
-			?>
-			<div class="qrms-field">
-				<label class="qrms-label" for="hfb_cta_phone"><?php esc_html_e( 'CTA telefon numarası', 'qrms' ); ?></label>
-				<input type="text" id="hfb_cta_phone" name="hfb_cta_phone" class="qrms-input hfb-preview-trigger" value="<?php echo esc_attr( $opts['cta_phone'] ); ?>" placeholder="0850 346 6586" />
-			</div>
-			<?php
-			$this->render_color_field( 'hfb_cta_bg_color', __( 'CTA buton rengi', 'qrms' ), $opts['cta_bg_color'] );
-			$this->render_color_field( 'hfb_cta_text_color', __( 'CTA yazı rengi', 'qrms' ), $opts['cta_text_color'] );
-			$this->render_color_field( 'hfb_social_color', __( 'Sosyal ikon rengi', 'qrms' ), $opts['social_color'] );
-			?>
-			<p class="description"><?php esc_html_e( 'Menulux mobil panelinde gösterilecek sosyal medya bağlantıları.', 'qrms' ); ?></p>
-			<?php
-			$social_map    = $this->social_media_map();
-			$social_state  = $this->resolve_social_media_state( $opts );
-			$social_active = $social_state['active'];
-			$social_urls   = isset( $opts['social_media'] ) && is_array( $opts['social_media'] ) ? $opts['social_media'] : array();
-
-			foreach ( $social_map as $key => $meta ) :
-				$checked = in_array( $key, $social_active, true );
-				$url_val = isset( $social_urls[ $key ] ) ? $social_urls[ $key ] : '';
-				?>
-				<div class="qrms-field hfb-social-field">
-					<label>
-						<input type="checkbox" name="hfb_header_social_media_active[]" value="<?php echo esc_attr( $key ); ?>" <?php checked( $checked ); ?> />
-						<?php echo esc_html( $meta['label'] ); ?>
-					</label>
-					<input type="url" name="hfb_header_social_media_url_<?php echo esc_attr( $key ); ?>" class="qrms-input" value="<?php echo esc_attr( $url_val ); ?>" placeholder="https://" />
-				</div>
-			<?php endforeach; ?>
+			<h2 class="qrms-card-title"><?php esc_html_e( 'Sosyal Medya', 'qrms' ); ?></h2>
+			<p class="description"><?php esc_html_e( 'Header\'ın sağ ucunda altın çerçeveli daireler olarak görünür. En fazla 6 tanesi gösterilir.', 'qrms' ); ?></p>
+			<?php $this->render_social_fields( $opts, 'hfb_header_' ); ?>
 		</div>
 		<?php
 	}
 
 	/**
-	 * Footer form alanları.
+	 * Footer sekmesi alanları.
 	 *
 	 * @param array<string,mixed> $opts  Ayarlar.
 	 * @param array<int,string>   $menus Menü listesi.
 	 * @return void
 	 */
 	private function render_footer_fields( $opts, $menus ) {
-		$social_map    = $this->social_media_map();
-		$social_state  = $this->resolve_social_media_state( $opts );
-		$social_active = $social_state['active'];
-		$social_urls   = isset( $opts['social_media'] ) && is_array( $opts['social_media'] ) ? $opts['social_media'] : array();
 		?>
 		<div class="qrms-card">
-			<h2 class="qrms-card-title"><?php esc_html_e( 'Footer Varyantı', 'qrms' ); ?></h2>
-			<div class="qrms-field">
-				<label class="qrms-label" for="hfb_footer_variant"><?php esc_html_e( 'Tasarım', 'qrms' ); ?></label>
-				<select id="hfb_footer_variant" name="hfb_footer_variant" class="qrms-input hfb-preview-trigger">
-					<?php foreach ( $this->footer_variants() as $key => $label ) : ?>
-						<option value="<?php echo esc_attr( $key ); ?>" <?php selected( $opts['variant'], $key ); ?>><?php echo esc_html( $label ); ?></option>
-					<?php endforeach; ?>
-				</select>
-			</div>
-		</div>
+			<h2 class="qrms-card-title"><?php esc_html_e( 'Marka & Açıklama', 'qrms' ); ?></h2>
+			<?php $this->render_media_field( 'hfb_footer_logo', __( 'Logo (isteğe bağlı)', 'qrms' ), (int) $opts['logo'] ); ?>
 
-		<div class="qrms-card">
-			<h2 class="qrms-card-title"><?php esc_html_e( 'İçerik', 'qrms' ); ?></h2>
-			<?php $this->render_media_field( 'hfb_footer_logo', __( 'Logo', 'qrms' ), (int) $opts['logo'] ); ?>
+			<div class="qrms-field">
+				<label class="qrms-label" for="hfb_footer_brand_line1"><?php esc_html_e( 'Marka — üst satır', 'qrms' ); ?></label>
+				<input type="text" id="hfb_footer_brand_line1" name="hfb_footer_brand_line1" class="qrms-input hfb-preview-trigger" value="<?php echo esc_attr( $opts['brand_line1'] ); ?>" placeholder="QR MENU" />
+			</div>
+
+			<div class="qrms-field">
+				<label class="qrms-label" for="hfb_footer_brand_line2"><?php esc_html_e( 'Marka — alt satır', 'qrms' ); ?></label>
+				<input type="text" id="hfb_footer_brand_line2" name="hfb_footer_brand_line2" class="qrms-input hfb-preview-trigger" value="<?php echo esc_attr( $opts['brand_line2'] ); ?>" placeholder="OFFİCİAL" />
+			</div>
 
 			<div class="qrms-field">
 				<label class="qrms-label" for="hfb_footer_description"><?php esc_html_e( 'Kısa açıklama', 'qrms' ); ?></label>
 				<textarea id="hfb_footer_description" name="hfb_footer_description" class="qrms-input hfb-preview-trigger" rows="3"><?php echo esc_textarea( $opts['description'] ); ?></textarea>
 			</div>
+		</div>
+
+		<div class="qrms-card">
+			<h2 class="qrms-card-title"><?php esc_html_e( 'İletişim & Menü', 'qrms' ); ?></h2>
 
 			<div class="qrms-field">
 				<label class="qrms-label" for="hfb_footer_phone"><?php esc_html_e( 'Telefon', 'qrms' ); ?></label>
@@ -341,7 +220,7 @@ trait QRMS_HFB_Admin {
 
 			<div class="qrms-field">
 				<label class="qrms-label" for="hfb_footer_menu_id"><?php esc_html_e( 'Hızlı linkler menüsü', 'qrms' ); ?></label>
-				<select id="hfb_footer_menu_id" name="hfb_footer_menu_id" class="qrms-input">
+				<select id="hfb_footer_menu_id" name="hfb_footer_menu_id" class="qrms-input hfb-preview-trigger">
 					<?php foreach ( $menus as $id => $name ) : ?>
 						<option value="<?php echo esc_attr( (string) $id ); ?>" <?php selected( (int) $opts['menu_id'], (int) $id ); ?>><?php echo esc_html( $name ); ?></option>
 					<?php endforeach; ?>
@@ -351,23 +230,89 @@ trait QRMS_HFB_Admin {
 
 		<div class="qrms-card">
 			<h2 class="qrms-card-title"><?php esc_html_e( 'Sosyal Medya', 'qrms' ); ?></h2>
-			<?php foreach ( $social_map as $key => $item ) : ?>
-				<div class="qrms-field hfb-social-row">
-					<label>
-						<input type="checkbox" name="hfb_social_media_active[]" value="<?php echo esc_attr( $key ); ?>" <?php checked( in_array( $key, $social_active, true ) ); ?> />
-						<?php echo esc_html( $item['label'] ); ?>
-					</label>
-					<input
-						type="url"
-						name="hfb_social_media_url_<?php echo esc_attr( $key ); ?>"
-						class="qrms-input"
-						placeholder="https://"
-						value="<?php echo esc_attr( isset( $social_urls[ $key ] ) ? $social_urls[ $key ] : '' ); ?>"
-					/>
-				</div>
-			<?php endforeach; ?>
+			<?php $this->render_social_fields( $opts, 'hfb_' ); ?>
 		</div>
 		<?php
+	}
+
+	/**
+	 * Dil / Çeviri sekmesi.
+	 *
+	 * @param array<string,mixed> $opts Header ayarları.
+	 * @return void
+	 */
+	private function render_lang_fields( $opts ) {
+		$available = $this->lang_switcher_available();
+		?>
+		<div class="qrms-card">
+			<h2 class="qrms-card-title"><?php esc_html_e( 'Dil Seçici', 'qrms' ); ?></h2>
+
+			<div class="qrms-field">
+				<label>
+					<input type="checkbox" name="hfb_lang_show" value="1" class="hfb-preview-trigger" <?php checked( ! empty( $opts['lang_show'] ) ); ?> />
+					<?php esc_html_e( 'Dil Seçeneğini Header\'da Göster', 'qrms' ); ?>
+				</label>
+				<p class="description">
+					<?php esc_html_e( 'Açıkken bayrak masaüstünde header\'ın en sağında, mobilde açılan menünün üstünde görünür. Kapalıyken hiçbir yerde görünmez.', 'qrms' ); ?>
+				</p>
+			</div>
+
+			<?php if ( $available ) : ?>
+				<p class="description">
+					<?php
+					printf(
+						/* translators: %s: shortcode tag */
+						esc_html__( 'Bayrak, QR Çeviri modülünün %s kısa kodundan gelir; dil listesi o modülden yönetilir.', 'qrms' ),
+						'<code>[' . esc_html( self::LANG_SHORTCODE ) . ']</code>'
+					);
+					?>
+				</p>
+			<?php else : ?>
+				<div class="qrms-alert">
+					<p><?php esc_html_e( 'QR Çeviri modülü şu anda etkin değil. Bu seçenek açık olsa bile modül etkinleşene kadar bayrak görünmez — hata oluşmaz.', 'qrms' ); ?></p>
+				</div>
+			<?php endif; ?>
+		</div>
+		<?php
+	}
+
+	/**
+	 * Sosyal medya alan grubu.
+	 *
+	 * @param array<string,mixed> $opts   Ayarlar.
+	 * @param string              $prefix Alan adı ön eki.
+	 * @return void
+	 */
+	private function render_social_fields( $opts, $prefix ) {
+		$map    = $this->social_media_map();
+		$state  = $this->resolve_social_media_state( $opts );
+		$active = isset( $opts['social_media_active'] ) && is_array( $opts['social_media_active'] ) ? $opts['social_media_active'] : $state['active'];
+		$urls   = isset( $opts['social_media'] ) && is_array( $opts['social_media'] ) ? $opts['social_media'] : array();
+
+		foreach ( $map as $key => $meta ) :
+			$url_val = isset( $urls[ $key ] ) ? $urls[ $key ] : '';
+			?>
+			<div class="qrms-field hfb-social-row">
+				<label>
+					<input
+						type="checkbox"
+						name="<?php echo esc_attr( $prefix ); ?>social_media_active[]"
+						value="<?php echo esc_attr( $key ); ?>"
+						class="hfb-preview-trigger"
+						<?php checked( in_array( $key, $active, true ) ); ?>
+					/>
+					<?php echo esc_html( $meta['label'] ); ?>
+				</label>
+				<input
+					type="url"
+					name="<?php echo esc_attr( $prefix ); ?>social_media_url_<?php echo esc_attr( $key ); ?>"
+					class="qrms-input hfb-preview-trigger"
+					placeholder="https://"
+					value="<?php echo esc_attr( $url_val ); ?>"
+				/>
+			</div>
+			<?php
+		endforeach;
 	}
 
 	/**
@@ -396,24 +341,11 @@ trait QRMS_HFB_Admin {
 	}
 
 	/**
-	 * Renk seçici alanı.
-	 *
-	 * @param string $name  Alan adı.
-	 * @param string $label Etiket.
-	 * @param string $value Değer.
-	 * @return void
-	 */
-	private function render_color_field( $name, $label, $value ) {
-		?>
-		<div class="qrms-field">
-			<label class="qrms-label" for="<?php echo esc_attr( $name ); ?>"><?php echo esc_html( $label ); ?></label>
-			<input type="text" id="<?php echo esc_attr( $name ); ?>" name="<?php echo esc_attr( $name ); ?>" class="qrms-input hfb-color-picker hfb-preview-trigger" value="<?php echo esc_attr( $value ); ?>" data-default-color="<?php echo esc_attr( $value ); ?>" />
-		</div>
-		<?php
-	}
-
-	/**
 	 * Yönetim varlıkları.
+	 *
+	 * Yalnızca modülün kendi sayfasında yüklenir. Elementor editörü de bir
+	 * admin ekranıdır; bu kontrol olmasa modülün admin JS'i editörde de
+	 * çalışır ve çakışırdı.
 	 *
 	 * @param string $hook Sayfa kancası.
 	 * @return void
@@ -433,19 +365,18 @@ trait QRMS_HFB_Admin {
 		$this->enqueue_preview_styles();
 
 		wp_enqueue_media();
-		wp_enqueue_style( 'wp-color-picker' );
 
 		wp_enqueue_style(
 			'hfb-admin',
 			QRMS_PLUGIN_URL . $base . 'css/admin.css',
-			array( 'qrms-admin', 'wp-color-picker' ),
+			array( 'qrms-admin' ),
 			QRMS_Helpers::asset_version( $base . 'css/admin.css' )
 		);
 
 		wp_enqueue_script(
 			'hfb-admin',
 			QRMS_PLUGIN_URL . $base . 'js/admin.js',
-			array( 'jquery', 'wp-color-picker' ),
+			array( 'jquery' ),
 			QRMS_Helpers::asset_version( $base . 'js/admin.js' ),
 			true
 		);
@@ -456,6 +387,10 @@ trait QRMS_HFB_Admin {
 			array(
 				'ajaxUrl' => admin_url( 'admin-ajax.php' ),
 				'nonce'   => wp_create_nonce( 'hfb_preview' ),
+				'i18n'    => array(
+					'updating' => __( 'Güncelleniyor…', 'qrms' ),
+					'error'    => __( 'Önizleme güncellenemedi.', 'qrms' ),
+				),
 			)
 		);
 	}
