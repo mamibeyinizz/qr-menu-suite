@@ -498,7 +498,7 @@
     border-radius: var(--rma-radius);
     cursor: pointer;
     background: var(--rma-card);
-    width: 100%;
+    max-width: 100%;
     box-sizing: border-box;
     position: relative;
     overflow: hidden;
