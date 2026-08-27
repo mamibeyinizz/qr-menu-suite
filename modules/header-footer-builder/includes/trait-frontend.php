@@ -210,15 +210,19 @@ trait QRMS_HFB_Frontend {
 					$this->render_header_glass_bento( $logo, $nav );
 				} elseif ( 'kinetic-bold' === $variant ) {
 					$this->render_header_kinetic_bold( $logo, $nav );
+				} elseif ( 'menulux' === $variant ) {
+					$this->render_header_menulux( $logo, $nav, $opts );
 				} else {
 					$this->render_header_minimal_sticky( $logo, $nav );
 				}
 				?>
+				<?php if ( 'menulux' !== $variant ) : ?>
 				<button type="button" class="hfb-header__toggle" aria-expanded="false" aria-controls="hfb-mobile-panel" aria-label="<?php esc_attr_e( 'Menüyü aç', 'qrms' ); ?>">
 					<span class="hfb-header__toggle-bar"></span>
 					<span class="hfb-header__toggle-bar"></span>
 					<span class="hfb-header__toggle-bar"></span>
 				</button>
+				<?php endif; ?>
 			</header>
 			<?php echo $this->render_mobile_panel( $opts, $nav ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 		</div>
@@ -262,18 +266,27 @@ trait QRMS_HFB_Frontend {
 	 */
 	private function header_inline_styles( $opts ) {
 		$vars = array(
-			'--hfb-bg'              => $opts['bg_color'],
-			'--hfb-text'            => $opts['text_color'],
-			'--hfb-border'          => $opts['border_color'],
-			'--hfb-logo-width'      => (int) $opts['logo_width'] . 'px',
-			'--hfb-hamburger'       => $opts['hamburger_color'],
-			'--hfb-panel-bg'        => $opts['mobile_panel_bg'],
-			'--hfb-panel-bg-alpha'  => ( (int) $opts['mobile_panel_bg_opacity'] / 100 ),
-			'--hfb-panel-text'      => $opts['mobile_panel_text_color'],
-			'--hfb-panel-font-size' => (int) $opts['mobile_panel_text_size'] . 'px',
-			'--hfb-panel-font'      => $this->font_family_css( $opts['mobile_panel_font'] ),
-			'--hfb-close-color'     => $opts['mobile_close_icon_color'],
-			'--hfb-close-size'      => (int) $opts['mobile_close_icon_size'] . 'px',
+			'--hfb-bg'                    => $opts['bg_color'],
+			'--hfb-text'                  => $opts['text_color'],
+			'--hfb-border'                => $opts['border_color'],
+			'--hfb-logo-width'            => (int) $opts['logo_width'] . 'px',
+			'--hfb-logo-text-size'        => (int) $opts['logo_text_size'] . 'px',
+			'--hfb-brand-color'           => $opts['brand_color'],
+			'--hfb-hamburger'             => $opts['hamburger_color'],
+			'--hfb-panel-bg'              => $opts['mobile_panel_bg'],
+			'--hfb-panel-bg-alpha'        => ( (int) $opts['mobile_panel_bg_opacity'] / 100 ),
+			'--hfb-panel-gradient-start'  => $opts['mobile_panel_gradient_start'],
+			'--hfb-panel-gradient-end'    => $opts['mobile_panel_gradient_end'],
+			'--hfb-panel-text'            => $opts['mobile_panel_text_color'],
+			'--hfb-panel-font-size'       => (int) $opts['mobile_panel_text_size'] . 'px',
+			'--hfb-panel-font'            => $this->font_family_css( $opts['mobile_panel_font'] ),
+			'--hfb-close-color'           => $opts['mobile_close_icon_color'],
+			'--hfb-close-size'            => (int) $opts['mobile_close_icon_size'] . 'px',
+			'--hfb-lang-border'           => $opts['lang_border_color'],
+			'--hfb-lang-text'             => $opts['lang_text_color'],
+			'--hfb-cta-bg'                => $opts['cta_bg_color'],
+			'--hfb-cta-text'              => $opts['cta_text_color'],
+			'--hfb-social-color'          => $opts['social_color'],
 		);
 
 		$parts = array();
@@ -345,6 +358,45 @@ trait QRMS_HFB_Frontend {
 	}
 
 	/**
+	 * Menulux header iç yapısı — hamburger sol, logo ortada.
+	 *
+	 * @param string              $logo Logo HTML.
+	 * @param string              $nav  Menü HTML.
+	 * @param array<string,mixed> $opts Ayarlar.
+	 * @return void
+	 */
+	private function render_header_menulux( $logo, $nav, $opts ) {
+		unset( $opts );
+		?>
+		<div class="hfb-header__inner hfb-header__inner--menulux">
+			<button type="button" class="hfb-header__toggle" aria-expanded="false" aria-controls="hfb-mobile-panel" aria-label="<?php esc_attr_e( 'Menüyü aç', 'qrms' ); ?>">
+				<span class="hfb-header__toggle-bar"></span>
+				<span class="hfb-header__toggle-bar"></span>
+				<span class="hfb-header__toggle-bar"></span>
+			</button>
+			<div class="hfb-header__logo"><?php echo $logo; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></div>
+			<div class="hfb-header__spacer" aria-hidden="true"></div>
+			<nav class="hfb-header__nav hfb-header__nav--desktop" aria-label="<?php esc_attr_e( 'Ana menü', 'qrms' ); ?>">
+				<?php echo $nav; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+			</nav>
+		</div>
+		<?php
+	}
+
+	/**
+	 * Menulux panel stili kullanılıyor mu?
+	 *
+	 * @param array<string,mixed> $opts Ayarlar.
+	 * @return bool
+	 */
+	private function uses_menulux_panel( $opts ) {
+		$variant = isset( $opts['variant'] ) ? $opts['variant'] : 'minimal-sticky';
+		$style   = isset( $opts['mobile_panel_style'] ) ? $opts['mobile_panel_style'] : 'slide';
+
+		return 'menulux' === $variant || 'menulux' === $style;
+	}
+
+	/**
 	 * Mobil panel HTML.
 	 *
 	 * @param array<string,mixed> $opts Ayarlar.
@@ -352,24 +404,99 @@ trait QRMS_HFB_Frontend {
 	 * @return string
 	 */
 	private function render_mobile_panel( $opts, $nav ) {
-		$style = sanitize_html_class( $opts['mobile_panel_style'] );
-		$icon  = $this->render_close_icon( $opts['mobile_close_icon'] );
+		$style       = $this->uses_menulux_panel( $opts ) ? 'menulux' : sanitize_html_class( $opts['mobile_panel_style'] );
+		$icon        = $this->render_close_icon( $opts['mobile_close_icon'] );
+		$logo        = $this->render_logo( $opts, 'header' );
+		$social      = $this->render_social_icons( $opts );
+		$lang        = $this->render_lang_switcher( $opts );
+		$cta         = $this->render_mobile_cta( $opts );
+		$is_menulux  = 'menulux' === $style;
 
 		ob_start();
 		?>
 		<div id="hfb-mobile-panel" class="hfb-mobile-panel hfb-mobile-panel--<?php echo esc_attr( $style ); ?>" aria-hidden="true">
 			<div class="hfb-mobile-panel__backdrop" tabindex="-1"></div>
 			<div class="hfb-mobile-panel__sheet">
-				<button type="button" class="hfb-mobile-panel__close" aria-label="<?php esc_attr_e( 'Menüyü kapat', 'qrms' ); ?>">
-					<?php echo $icon; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
-				</button>
-				<nav class="hfb-mobile-panel__nav" aria-label="<?php esc_attr_e( 'Mobil menü', 'qrms' ); ?>">
-					<?php echo $nav; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
-				</nav>
+				<?php if ( $is_menulux ) : ?>
+					<div class="hfb-mobile-panel__topbar">
+						<?php echo $lang; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+						<div class="hfb-mobile-panel__brand"><?php echo $logo; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></div>
+						<button type="button" class="hfb-mobile-panel__close" aria-label="<?php esc_attr_e( 'Menüyü kapat', 'qrms' ); ?>">
+							<?php echo $icon; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+						</button>
+					</div>
+					<div class="hfb-mobile-panel__body">
+						<nav class="hfb-mobile-panel__nav" aria-label="<?php esc_attr_e( 'Mobil menü', 'qrms' ); ?>">
+							<?php echo $nav; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+						</nav>
+					</div>
+					<?php if ( $cta || $social ) : ?>
+						<div class="hfb-mobile-panel__footer">
+							<?php echo $cta; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+							<?php echo $social; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+						</div>
+					<?php endif; ?>
+				<?php else : ?>
+					<button type="button" class="hfb-mobile-panel__close" aria-label="<?php esc_attr_e( 'Menüyü kapat', 'qrms' ); ?>">
+						<?php echo $icon; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+					</button>
+					<nav class="hfb-mobile-panel__nav" aria-label="<?php esc_attr_e( 'Mobil menü', 'qrms' ); ?>">
+						<?php echo $nav; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+					</nav>
+				<?php endif; ?>
 			</div>
 		</div>
 		<?php
 		return (string) ob_get_clean();
+	}
+
+	/**
+	 * Dil seçici butonu.
+	 *
+	 * @param array<string,mixed> $opts Ayarlar.
+	 * @return string
+	 */
+	private function render_lang_switcher( $opts ) {
+		$label = ! empty( $opts['lang_alt_code'] ) ? $opts['lang_alt_code'] : 'EN';
+		$url   = ! empty( $opts['lang_alt_url'] ) ? $opts['lang_alt_url'] : '';
+
+		if ( empty( $url ) ) {
+			return '<span class="hfb-mobile-panel__lang" aria-hidden="true">' . esc_html( $label ) . '</span>';
+		}
+
+		return '<a class="hfb-mobile-panel__lang" href="' . esc_url( $url ) . '" aria-label="' . esc_attr(
+			sprintf(
+				/* translators: %s: language code */
+				__( 'Dili değiştir: %s', 'qrms' ),
+				$label
+			)
+		) . '">' . esc_html( $label ) . '</a>';
+	}
+
+	/**
+	 * Mobil panel CTA (telefon) butonu.
+	 *
+	 * @param array<string,mixed> $opts Ayarlar.
+	 * @return string
+	 */
+	private function render_mobile_cta( $opts ) {
+		if ( empty( $opts['cta_phone'] ) ) {
+			return '';
+		}
+
+		$tel  = preg_replace( '/[^0-9+]/', '', $opts['cta_phone'] );
+		$icon = $this->phone_icon_svg();
+
+		return '<a class="hfb-mobile-panel__cta" href="tel:' . esc_attr( $tel ) . '">' . $icon . esc_html( $opts['cta_phone'] ) . '</a>';
+	}
+
+	/**
+	 * Telefon ikonu SVG.
+	 *
+	 * @return string
+	 */
+	private function phone_icon_svg() {
+		return '<svg class="hfb-icon hfb-icon--phone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>';
 	}
 
 	/**
@@ -593,6 +720,7 @@ trait QRMS_HFB_Frontend {
 			'tiktok'    => '<path d="M14 3v10.6a3.4 3.4 0 1 1-3-3.37"/><path d="M14 3c.4 3.1 2.7 5.3 5.8 5.6"/>',
 			'whatsapp'  => '<path d="M12 3a9 9 0 0 0-7.8 13.5L3 21l4.7-1.2A9 9 0 1 0 12 3Z"/>',
 			'linkedin'  => '<rect x="3" y="3" width="18" height="18" rx="4"/><path d="M8 10.5V17"/><circle cx="8" cy="7.2" r="0.9" fill="currentColor" stroke="none"/><path d="M12.3 17v-4a2.4 2.4 0 0 1 4.8 0v4"/>',
+			'pinterest' => '<circle cx="12" cy="12" r="9"/><path d="M12 6.5c-2.2 0-3.8 1.5-3.8 3.4 0 1.3.7 2.2 1.8 2.6-.2-.8-.1-1.8.2-2.7.2-.7 1.3-4.6 1.3-4.6s-.3-.6-.3-1.5c0-1.4.8-2.5 1.9-2.5.9 0 1.3.7 1.3 1.5 0 .9-.6 2.3-.9 3.6-.3 1.1.6 2 1.7 2 2 0 3.5-2.1 3.5-5.2 0-2.7-1.9-4.6-4.7-4.6-3.2 0-5.1 2.4-5.1 4.9 0 1 .4 2.1 1.3 2.5.1 0 .3.1.3.4-.1.3-.2.9-.2 1.1-.1.3-.3.4-.6.3-1.7-.8-2.8-3.3-2.8-5.3 0-4.3 3.1-8.3 9-8.3 4.7 0 8.4 3.4 8.4 7.9 0 4.7-3 8.5-7.1 8.5-1.4 0-2.7-.7-3.1-1.6l-.9 3.3c-.3 1.1-1.1 2.5-1.6 3.3 1.2.4 2.5.6 3.8.6 5.5 0 10-4.5 10-10S17.5 2.5 12 2.5"/>',
 		);
 
 		$path = isset( $paths[ $icon ] ) ? $paths[ $icon ] : '<circle cx="12" cy="12" r="9"/>';

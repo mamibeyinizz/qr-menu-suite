@@ -49,6 +49,7 @@ trait QRMS_HFB_Settings_Page {
 			'minimal-sticky' => __( 'Minimal Sticky', 'qrms' ),
 			'glass-bento'    => __( 'Glass Bento', 'qrms' ),
 			'kinetic-bold'   => __( 'Kinetic Bold', 'qrms' ),
+			'menulux'        => __( 'Menulux', 'qrms' ),
 		);
 	}
 
@@ -143,6 +144,7 @@ trait QRMS_HFB_Settings_Page {
 			'tiktok'    => array( 'label' => 'TikTok', 'icon' => 'tiktok' ),
 			'whatsapp'  => array( 'label' => 'WhatsApp', 'icon' => 'whatsapp' ),
 			'linkedin'  => array( 'label' => 'LinkedIn', 'icon' => 'linkedin' ),
+			'pinterest' => array( 'label' => 'Pinterest', 'icon' => 'pinterest' ),
 		);
 	}
 
@@ -196,6 +198,7 @@ trait QRMS_HFB_Settings_Page {
 
 		$options['logo']           = isset( $_POST['hfb_header_logo'] ) ? absint( $_POST['hfb_header_logo'] ) : $options['logo'];
 		$options['logo_width']     = isset( $_POST['hfb_header_logo_width'] ) ? max( 60, min( 320, absint( $_POST['hfb_header_logo_width'] ) ) ) : $options['logo_width'];
+		$options['logo_text_size'] = isset( $_POST['hfb_header_logo_text_size'] ) ? max( 14, min( 36, absint( $_POST['hfb_header_logo_text_size'] ) ) ) : $options['logo_text_size'];
 		$options['menu_id']        = isset( $_POST['hfb_header_menu_id'] ) ? absint( $_POST['hfb_header_menu_id'] ) : $options['menu_id'];
 
 		$align = isset( $_POST['hfb_header_logo_alignment'] ) ? sanitize_key( wp_unslash( $_POST['hfb_header_logo_alignment'] ) ) : $options['logo_alignment'];
@@ -204,13 +207,16 @@ trait QRMS_HFB_Settings_Page {
 		$options['bg_color']     = isset( $_POST['hfb_header_bg_color'] ) ? ( sanitize_hex_color( wp_unslash( $_POST['hfb_header_bg_color'] ) ) ?: $options['bg_color'] ) : $options['bg_color'];
 		$options['text_color']   = isset( $_POST['hfb_header_text_color'] ) ? ( sanitize_hex_color( wp_unslash( $_POST['hfb_header_text_color'] ) ) ?: $options['text_color'] ) : $options['text_color'];
 		$options['border_color'] = isset( $_POST['hfb_header_border_color'] ) ? ( sanitize_hex_color( wp_unslash( $_POST['hfb_header_border_color'] ) ) ?: $options['border_color'] ) : $options['border_color'];
+		$options['brand_color']  = isset( $_POST['hfb_header_brand_color'] ) ? ( sanitize_hex_color( wp_unslash( $_POST['hfb_header_brand_color'] ) ) ?: $options['brand_color'] ) : $options['brand_color'];
 		$options['sticky']       = isset( $_POST['hfb_header_sticky'] ) ? 1 : 0;
 
 		$panel = isset( $_POST['hfb_mobile_panel_style'] ) ? sanitize_key( wp_unslash( $_POST['hfb_mobile_panel_style'] ) ) : $options['mobile_panel_style'];
-		$options['mobile_panel_style'] = in_array( $panel, array( 'slide', 'fullscreen' ), true ) ? $panel : $options['mobile_panel_style'];
+		$options['mobile_panel_style'] = in_array( $panel, array( 'slide', 'fullscreen', 'menulux' ), true ) ? $panel : $options['mobile_panel_style'];
 
 		$options['mobile_panel_bg']         = isset( $_POST['hfb_mobile_panel_bg'] ) ? ( sanitize_hex_color( wp_unslash( $_POST['hfb_mobile_panel_bg'] ) ) ?: $options['mobile_panel_bg'] ) : $options['mobile_panel_bg'];
 		$options['mobile_panel_bg_opacity'] = isset( $_POST['hfb_mobile_panel_bg_opacity'] ) ? max( 0, min( 100, absint( $_POST['hfb_mobile_panel_bg_opacity'] ) ) ) : $options['mobile_panel_bg_opacity'];
+		$options['mobile_panel_gradient_start'] = isset( $_POST['hfb_mobile_panel_gradient_start'] ) ? ( sanitize_hex_color( wp_unslash( $_POST['hfb_mobile_panel_gradient_start'] ) ) ?: $options['mobile_panel_gradient_start'] ) : $options['mobile_panel_gradient_start'];
+		$options['mobile_panel_gradient_end']   = isset( $_POST['hfb_mobile_panel_gradient_end'] ) ? ( sanitize_hex_color( wp_unslash( $_POST['hfb_mobile_panel_gradient_end'] ) ) ?: $options['mobile_panel_gradient_end'] ) : $options['mobile_panel_gradient_end'];
 
 		$font = isset( $_POST['hfb_mobile_panel_font'] ) ? sanitize_text_field( wp_unslash( $_POST['hfb_mobile_panel_font'] ) ) : $options['mobile_panel_font'];
 		$options['mobile_panel_font'] = in_array( $font, $this->font_options(), true ) ? $font : $options['mobile_panel_font'];
@@ -224,6 +230,41 @@ trait QRMS_HFB_Settings_Page {
 		$options['mobile_close_icon_color'] = isset( $_POST['hfb_mobile_close_icon_color'] ) ? ( sanitize_hex_color( wp_unslash( $_POST['hfb_mobile_close_icon_color'] ) ) ?: $options['mobile_close_icon_color'] ) : $options['mobile_close_icon_color'];
 		$options['mobile_close_icon_size']  = isset( $_POST['hfb_mobile_close_icon_size'] ) ? max( 16, min( 40, absint( $_POST['hfb_mobile_close_icon_size'] ) ) ) : $options['mobile_close_icon_size'];
 		$options['hamburger_color']         = isset( $_POST['hfb_hamburger_color'] ) ? ( sanitize_hex_color( wp_unslash( $_POST['hfb_hamburger_color'] ) ) ?: $options['hamburger_color'] ) : $options['hamburger_color'];
+
+		$options['lang_code']         = isset( $_POST['hfb_lang_code'] ) ? sanitize_text_field( wp_unslash( $_POST['hfb_lang_code'] ) ) : $options['lang_code'];
+		$options['lang_url']          = isset( $_POST['hfb_lang_url'] ) ? esc_url_raw( wp_unslash( $_POST['hfb_lang_url'] ) ) : $options['lang_url'];
+		$options['lang_alt_code']     = isset( $_POST['hfb_lang_alt_code'] ) ? sanitize_text_field( wp_unslash( $_POST['hfb_lang_alt_code'] ) ) : $options['lang_alt_code'];
+		$options['lang_alt_url']      = isset( $_POST['hfb_lang_alt_url'] ) ? esc_url_raw( wp_unslash( $_POST['hfb_lang_alt_url'] ) ) : $options['lang_alt_url'];
+		$options['lang_border_color'] = isset( $_POST['hfb_lang_border_color'] ) ? ( sanitize_hex_color( wp_unslash( $_POST['hfb_lang_border_color'] ) ) ?: $options['lang_border_color'] ) : $options['lang_border_color'];
+		$options['lang_text_color']   = isset( $_POST['hfb_lang_text_color'] ) ? ( sanitize_hex_color( wp_unslash( $_POST['hfb_lang_text_color'] ) ) ?: $options['lang_text_color'] ) : $options['lang_text_color'];
+		$options['cta_phone']         = isset( $_POST['hfb_cta_phone'] ) ? sanitize_text_field( wp_unslash( $_POST['hfb_cta_phone'] ) ) : $options['cta_phone'];
+		$options['cta_bg_color']      = isset( $_POST['hfb_cta_bg_color'] ) ? ( sanitize_hex_color( wp_unslash( $_POST['hfb_cta_bg_color'] ) ) ?: $options['cta_bg_color'] ) : $options['cta_bg_color'];
+		$options['cta_text_color']    = isset( $_POST['hfb_cta_text_color'] ) ? ( sanitize_hex_color( wp_unslash( $_POST['hfb_cta_text_color'] ) ) ?: $options['cta_text_color'] ) : $options['cta_text_color'];
+		$options['social_color']      = isset( $_POST['hfb_social_color'] ) ? ( sanitize_hex_color( wp_unslash( $_POST['hfb_social_color'] ) ) ?: $options['social_color'] ) : $options['social_color'];
+
+		$valid_social = array_keys( $this->social_media_map() );
+		$active       = array();
+
+		if ( isset( $_POST['hfb_header_social_media_active'] ) && is_array( $_POST['hfb_header_social_media_active'] ) ) {
+			foreach ( wp_unslash( $_POST['hfb_header_social_media_active'] ) as $raw_key ) {
+				$key = sanitize_key( $raw_key );
+				if ( in_array( $key, $valid_social, true ) && ! in_array( $key, $active, true ) ) {
+					$active[] = $key;
+				}
+			}
+		}
+
+		$options['social_media_active'] = array_slice( $active, 0, 6 );
+
+		if ( ! isset( $options['social_media'] ) || ! is_array( $options['social_media'] ) ) {
+			$options['social_media'] = array();
+		}
+
+		foreach ( $valid_social as $key ) {
+			if ( isset( $_POST[ 'hfb_header_social_media_url_' . $key ] ) ) {
+				$options['social_media'][ $key ] = esc_url_raw( wp_unslash( $_POST[ 'hfb_header_social_media_url_' . $key ] ) );
+			}
+		}
 
 		update_option( $this->header_option, $options );
 	}
