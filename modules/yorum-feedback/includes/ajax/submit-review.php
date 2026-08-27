@@ -25,6 +25,11 @@ function qrm_pro_handle_review_submission($settings) {
         $val = 0;
         if (!empty($settings['crit_'.$i.'_active']) && isset($_POST['rating_'.$i])) {
             $val = intval($_POST['rating_'.$i]);
+            // Puan aralığı sunucuda zorlanır: form 1-5 gönderse de istek elle
+            // hazırlanabilir; aralık dışı değer ortalamayı ve eşik mantığını bozar.
+            if ($val < 0 || $val > 5) {
+                $val = 0;
+            }
             if ($val > 0) {
                 $total_score += $val;
                 $score_count++;
@@ -79,7 +84,32 @@ function qrm_pro_handle_review_submission($settings) {
         'form_source' => (isset($_POST['qrm_form_source']) && $_POST['qrm_form_source'] === 'contact') ? 'contact' : 'review',
     ];
 
-    $wpdb->insert($table_reviews, $insert_data);
+    // Sütun formatları $insert_data ile AYNI SIRADA verilir: format dizisi
+    // olmadan wpdb her değeri %s'e düşürür ve tip zorlaması yapılmaz.
+    $insert_format = [
+        '%f', // rating
+        '%d', // rating_1
+        '%d', // rating_2
+        '%d', // rating_3
+        '%d', // rating_4
+        '%d', // rating_5
+        '%s', // comment
+        '%s', // customer_name
+        '%s', // customer_phone
+        '%s', // table_no
+        '%d', // is_anonymous
+        '%d', // status
+        '%s', // form_source
+    ];
+
+    // Yazma başarısız olabilir (tablo yok, bağlantı düştü, sütun taşması).
+    // Sonuç kontrol edilmezse cooldown başlatılır, önbellek boşuna geçersizlenir
+    // ve kullanıcıya hiç kaydedilmemiş bir yorum için "alındı" denirdi.
+    $inserted = $wpdb->insert($table_reviews, $insert_data, $insert_format);
+    if ($inserted === false) {
+        return ['success' => false, 'message' => 'Değerlendirmeniz kaydedilemedi, lütfen tekrar deneyin.'];
+    }
+
     $review_id = (int) $wpdb->insert_id;
 
     // Sayaçlar ve ortalamalar önbellekli; yeni yorum onları geçersizler.

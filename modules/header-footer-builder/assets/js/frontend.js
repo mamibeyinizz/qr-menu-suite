@@ -1,6 +1,40 @@
 (function () {
   'use strict';
 
+  function initSubmenus(panel) {
+    var items = panel.querySelectorAll('.menu-item-has-children > a');
+    if (!items.length) {
+      return;
+    }
+
+    items.forEach(function (link) {
+      link.addEventListener('click', function (e) {
+        var parent = link.parentElement;
+        var submenu = parent.querySelector(':scope > .sub-menu');
+        if (!submenu) {
+          return;
+        }
+
+        e.preventDefault();
+        var isOpen = parent.classList.contains('is-open');
+        panel.querySelectorAll('.menu-item-has-children.is-open').forEach(function (openItem) {
+          if (openItem !== parent) {
+            openItem.classList.remove('is-open');
+            var openLink = openItem.querySelector(':scope > a');
+            if (openLink) {
+              openLink.setAttribute('aria-expanded', 'false');
+            }
+          }
+        });
+        parent.classList.toggle('is-open', !isOpen);
+        link.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
+      });
+
+      link.setAttribute('aria-expanded', 'false');
+      link.setAttribute('aria-haspopup', 'true');
+    });
+  }
+
   function initHeaderWrap(wrap) {
     var header = wrap.querySelector('.hfb-header');
     var toggle = wrap.querySelector('.hfb-header__toggle');
@@ -11,11 +45,17 @@
 
     var closeBtn = panel.querySelector('.hfb-mobile-panel__close');
     var backdrop = panel.querySelector('.hfb-mobile-panel__backdrop');
+    var isMenulux = panel.classList.contains('hfb-mobile-panel--menulux');
+
+    if (isMenulux) {
+      initSubmenus(panel);
+    }
 
     function openPanel() {
       panel.classList.add('is-open');
       panel.setAttribute('aria-hidden', 'false');
       toggle.setAttribute('aria-expanded', 'true');
+      toggle.setAttribute('aria-label', toggle.getAttribute('data-label-close') || 'Menüyü kapat');
       document.body.style.overflow = 'hidden';
     }
 
@@ -23,7 +63,21 @@
       panel.classList.remove('is-open');
       panel.setAttribute('aria-hidden', 'true');
       toggle.setAttribute('aria-expanded', 'false');
+      toggle.setAttribute('aria-label', toggle.getAttribute('data-label-open') || 'Menüyü aç');
       document.body.style.overflow = '';
+
+      panel.querySelectorAll('.menu-item-has-children.is-open').forEach(function (item) {
+        item.classList.remove('is-open');
+        var link = item.querySelector(':scope > a');
+        if (link) {
+          link.setAttribute('aria-expanded', 'false');
+        }
+      });
+    }
+
+    if (!toggle.getAttribute('data-label-open')) {
+      toggle.setAttribute('data-label-open', toggle.getAttribute('aria-label') || 'Menüyü aç');
+      toggle.setAttribute('data-label-close', 'Menüyü kapat');
     }
 
     toggle.addEventListener('click', function () {
@@ -38,7 +92,7 @@
       closeBtn.addEventListener('click', closePanel);
     }
 
-    if (backdrop) {
+    if (backdrop && !isMenulux) {
       backdrop.addEventListener('click', closePanel);
     }
 

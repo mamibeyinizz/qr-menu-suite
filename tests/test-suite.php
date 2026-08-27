@@ -3421,6 +3421,335 @@ qrms_test(
 );
 
 /* ---------------------------------------------------------------------------
+ * 8z-3. Yorum gönderimi — puan aralığı ve yazma sonucu
+ *
+ * qrm_pro_handle_review_submission hem AJAX hem klasik POST akışının ortak
+ * yoludur; burada GERÇEK spam/cooldown yardımcıları (security.php) yüklenir ki
+ * doğrulama sırası da testin kapsamında kalsın.
+ * ------------------------------------------------------------------------ */
+
+require_once QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/security.php';
+require_once QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/ajax/submit-review.php';
+
+// Bu bölümün taklidi yalnızca insert() karşılar; sonraki bölümlere sızmaması
+// için o ana kadarki $wpdb saklanır ve bölüm sonunda geri takılır.
+$qrms_gonderim_onceki_wpdb = $GLOBALS['wpdb'];
+
+/**
+ * insert() çağrılarını kaydeden $wpdb taklidi.
+ *
+ * $sonuc = false yapılarak yazma hatası (tablo yok, bağlantı düştü, sütun
+ * taşması) taklit edilir; gerçek $wpdb->insert de bu durumda false döner.
+ */
+class QRMS_Yorum_Insert_Wpdb {
+	public $prefix    = 'wp_';
+	public $inserts   = array();
+	public $insert_id = 0;
+	public $sonuc     = 1;
+
+	public function insert( $table, $data, $format = null ) {
+		$this->inserts[] = array(
+			'table'  => $table,
+			'data'   => $data,
+			'format' => $format,
+		);
+
+		if ( false === $this->sonuc ) {
+			return false;
+		}
+
+		$this->insert_id = 101;
+
+		return 1;
+	}
+
+	public function son_insert() {
+		return end( $this->inserts ) ?: array();
+	}
+}
+
+/**
+ * Yorum gönderimi testleri için taze bir $wpdb takar.
+ *
+ * @param mixed $sonuc insert() dönüş değeri (false = yazma hatası).
+ * @return QRMS_Yorum_Insert_Wpdb
+ */
+function qrms_gonderim_wpdb( $sonuc = 1 ) {
+	$db        = new QRMS_Yorum_Insert_Wpdb();
+	$db->sonuc = $sonuc;
+
+	$GLOBALS['wpdb'] = $db;
+
+	return $db;
+}
+
+/**
+ * Gönderim ayarları (beş kriter de açık, ödül/Google kapalı).
+ *
+ * @param array $ek Üzerine yazılacak ayarlar.
+ * @return array
+ */
+function qrms_gonderim_ayarlari( $ek = array() ) {
+	$ayarlar = array(
+		'auto_approve_rating'       => 0,
+		'google_review_enabled'     => 0,
+		'google_review_url'         => '',
+		'google_review_threshold'   => 3.5,
+		'qrm_spam_cooldown_minutes' => 10,
+	);
+
+	for ( $i = 1; $i <= 5; $i++ ) {
+		$ayarlar[ 'crit_' . $i . '_active' ] = 1;
+	}
+
+	return array_merge( $ayarlar, $ek );
+}
+
+/**
+ * Spam korumasını geçen geçerli bir $_POST hazırlar.
+ *
+ * Zaman tuzağı en az 3 saniye beklemeyi şart koştuğu için imzalı damga geçmişe
+ * tarihlenir; captcha cevabı da aynı imza şemasıyla üretilir.
+ *
+ * @param array $puanlar rating_N => değer.
+ * @param array $ek      Ek POST alanları.
+ * @return void
+ */
+function qrms_gonderim_postu( $puanlar, $ek = array() ) {
+	$damga = time() - 10;
+
+	$_POST = array(
+		'qrm_ts'           => $damga . '.' . hash_hmac( 'sha256', $damga . '|qrm_ts', wp_salt( 'auth' ) ),
+		'qrm_captcha'      => 7,
+		'qrm_captcha_hash' => hash_hmac( 'sha256', '7', wp_salt( 'nonce' ) ),
+	);
+
+	foreach ( $puanlar as $kriter => $puan ) {
+		$_POST[ 'rating_' . $kriter ] = $puan;
+	}
+
+	foreach ( $ek as $anahtar => $deger ) {
+		$_POST[ $anahtar ] = $deger;
+	}
+
+	// Cooldown yalnızca yetkisiz ziyaretçilere uygulanır; testler gerçek
+	// müşteri akışını izlesin diye yetki kapatılır.
+	$GLOBALS['qrms_test']['can'] = false;
+}
+
+echo "\nYorum gönderimi — puan aralığı ve yazma sonucu\n";
+
+qrms_test(
+	'5 üstü puan sunucuda 0\'a düşer ve ortalamaya katılmaz',
+	function () {
+		// Form 1-5 gönderir; istek elle hazırlandığında aralık dışı değer
+		// eskiden olduğu gibi kaydediliyor, ortalamayı 5'in üstüne çıkarıyordu.
+		$db = qrms_gonderim_wpdb();
+		qrms_gonderim_postu( array( 1 => 4, 2 => 99 ) );
+
+		$sonuc = qrm_pro_handle_review_submission( qrms_gonderim_ayarlari() );
+		$veri  = $db->son_insert();
+
+		qrms_assert_true( $sonuc['success'], 'gönderim kabul edilir' );
+		qrms_assert_same( 0, $veri['data']['rating_2'], 'aralık dışı puan sıfırlanır' );
+		qrms_assert_same( 4, $veri['data']['rating_1'], 'geçerli puan korunur' );
+		qrms_assert_same( 4.0, $sonuc['avg'], 'ortalama yalnızca geçerli puandan hesaplanır' );
+	}
+);
+
+qrms_test(
+	'negatif puan da 0\'a düşer',
+	function () {
+		$db = qrms_gonderim_wpdb();
+		qrms_gonderim_postu( array( 1 => 5, 3 => -4 ) );
+
+		$sonuc = qrm_pro_handle_review_submission( qrms_gonderim_ayarlari() );
+		$veri  = $db->son_insert();
+
+		qrms_assert_same( 0, $veri['data']['rating_3'], 'negatif puan sıfırlanır' );
+		qrms_assert_same( 5.0, $sonuc['avg'], 'ortalama negatiften etkilenmez' );
+	}
+);
+
+qrms_test(
+	'aralık dışı puan TEK kriterse gönderim reddedilir',
+	function () {
+		// Sıfıra düşen puan "puanlanmamış" sayılır: ortalama 0 kalır ve
+		// kayıt hiç açılmaz.
+		$db = qrms_gonderim_wpdb();
+		qrms_gonderim_postu( array( 1 => 12 ) );
+
+		$sonuc = qrm_pro_handle_review_submission( qrms_gonderim_ayarlari() );
+
+		qrms_assert_false( $sonuc['success'], 'reddedilir' );
+		qrms_assert_same( 0, count( $db->inserts ), 'kayıt açılmaz' );
+	}
+);
+
+qrms_test(
+	'5 sınır değeri geçerli sayılır',
+	function () {
+		$db = qrms_gonderim_wpdb();
+		qrms_gonderim_postu( array( 1 => 5 ) );
+
+		$sonuc = qrm_pro_handle_review_submission( qrms_gonderim_ayarlari() );
+
+		qrms_assert_true( $sonuc['success'], 'üst sınır kabul edilir' );
+		qrms_assert_same( 5, $db->son_insert()['data']['rating_1'], '5 korunur' );
+	}
+);
+
+qrms_test(
+	'insert sütun formatlarıyla çağrılır, sıra veriyle örtüşür',
+	function () {
+		$db = qrms_gonderim_wpdb();
+		qrms_gonderim_postu( array( 1 => 4 ), array( 'is_anonymous' => '1', 'table_no' => 'A12' ) );
+
+		qrm_pro_handle_review_submission( qrms_gonderim_ayarlari() );
+
+		$veri = $db->son_insert();
+
+		qrms_assert_true( is_array( $veri['format'] ), 'format dizisi verilir' );
+		qrms_assert_same(
+			count( $veri['data'] ),
+			count( $veri['format'] ),
+			'her sütun için bir format'
+		);
+		qrms_assert_same(
+			array( '%f', '%d', '%d', '%d', '%d', '%d', '%s', '%s', '%s', '%s', '%d', '%d', '%s' ),
+			$veri['format'],
+			'formatlar sütun sırasına göre'
+		);
+		qrms_assert_same(
+			array(
+				'rating',
+				'rating_1',
+				'rating_2',
+				'rating_3',
+				'rating_4',
+				'rating_5',
+				'comment',
+				'customer_name',
+				'customer_phone',
+				'table_no',
+				'is_anonymous',
+				'status',
+				'form_source',
+			),
+			array_keys( $veri['data'] ),
+			'sütun sırası formatla aynı'
+		);
+	}
+);
+
+qrms_test(
+	'yazma başarısız olursa success:false döner',
+	function () {
+		// Eskiden insert()'in dönüşü okunmuyordu: kayıt açılmasa bile
+		// kullanıcıya "alındı" deniyordu.
+		qrms_gonderim_wpdb( false );
+		qrms_gonderim_postu( array( 1 => 4 ) );
+
+		$sonuc = qrm_pro_handle_review_submission( qrms_gonderim_ayarlari() );
+
+		qrms_assert_false( $sonuc['success'], 'başarısızlık bildirilir' );
+		qrms_assert_contains( 'kaydedilemedi', $sonuc['message'], 'kullanıcıya tekrar deneme mesajı' );
+	}
+);
+
+qrms_test(
+	'yazma başarısız olursa cooldown penceresi BAŞLAMAZ',
+	function () {
+		// Aksi hâlde kaydı oluşmayan müşteri, dakikalarca tekrar deneyemezdi.
+		qrms_gonderim_wpdb( false );
+		qrms_gonderim_postu( array( 1 => 4 ), array( 'customer_phone' => '0555 111 22 33' ) );
+
+		qrm_pro_handle_review_submission( qrms_gonderim_ayarlari() );
+
+		foreach ( qrm_pro_cooldown_keys( array( 'phone' => '05551112233' ) ) as $anahtar ) {
+			qrms_assert_false( get_transient( $anahtar ), 'cooldown işaretlenmedi: ' . $anahtar );
+		}
+
+		// Kısıt gerçekten çalışıyor olsun diye kontrol: başarılı gönderim işaretler.
+		qrms_gonderim_wpdb();
+		qrms_gonderim_postu( array( 1 => 4 ), array( 'customer_phone' => '0555 111 22 33' ) );
+		qrm_pro_handle_review_submission( qrms_gonderim_ayarlari() );
+
+		qrms_assert_true(
+			(bool) get_transient( qrm_pro_cooldown_keys( array( 'phone' => '05551112233' ) )[0] ),
+			'başarılı gönderim cooldown başlatır'
+		);
+	}
+);
+
+qrms_test(
+	'yazma başarısız olursa istatistik önbelleği boşuna geçersizlenmez',
+	function () {
+		set_transient( QRM_PRO_STATS_TRANSIENT, array( 'total' => 7 ), 60 );
+
+		qrms_gonderim_wpdb( false );
+		qrms_gonderim_postu( array( 1 => 4 ) );
+
+		qrm_pro_handle_review_submission( qrms_gonderim_ayarlari() );
+
+		qrms_assert_same(
+			array( 'total' => 7 ),
+			get_transient( QRM_PRO_STATS_TRANSIENT ),
+			'önbellek yerinde kalır'
+		);
+	}
+);
+
+qrms_test(
+	'başarılı yazmada review_id insert_id\'den gelir ve akış sürer',
+	function () {
+		$db = qrms_gonderim_wpdb();
+		set_transient( QRM_PRO_STATS_TRANSIENT, array( 'total' => 7 ), 60 );
+		qrms_gonderim_postu( array( 1 => 5 ) );
+
+		$ayarlar = qrms_gonderim_ayarlari(
+			array(
+				'auto_approve_rating'   => 4,
+				'google_review_enabled' => 1,
+				'google_review_url'     => 'https://example.test/review',
+				'qrm_reward_enabled'    => 1,
+			)
+		);
+
+		$sonuc = qrm_pro_handle_review_submission( $ayarlar );
+
+		qrms_assert_true( $sonuc['success'], 'başarı' );
+		qrms_assert_same( 1, $sonuc['status'], 'eşiği geçen yorum yayınlanır' );
+		qrms_assert_same( 101, $sonuc['review_id'], 'kimlik insert_id\'den' );
+		qrms_assert_true( $sonuc['show_reward'], 'ödül popup\'ı açılır' );
+		qrms_assert_false( get_transient( QRM_PRO_STATS_TRANSIENT ), 'önbellek geçersizlendi' );
+	}
+);
+
+qrms_test(
+	'AJAX ucu ile klasik POST akışı aynı fonksiyonu kullanır',
+	function () {
+		// Tek kod yolu: doğrulama düzeltmeleri iki akışta da geçerli olsun.
+		$kaynak = file_get_contents(
+			QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/ajax/submit-review.php'
+		);
+
+		qrms_assert_same(
+			1,
+			substr_count( $kaynak, 'function qrm_pro_handle_review_submission' ),
+			'tek işleyici tanımı'
+		);
+		qrms_assert_same(
+			1,
+			substr_count( $kaynak, '$wpdb->insert(' ),
+			'tek yazma noktası'
+		);
+	}
+);
+$GLOBALS['wpdb'] = $qrms_gonderim_onceki_wpdb;
+unset( $qrms_gonderim_onceki_wpdb );
+
+/* ---------------------------------------------------------------------------
  * 9a-0. QR Analiz — izleme nonce'u ve saklama politikası
  * ------------------------------------------------------------------------ */
 

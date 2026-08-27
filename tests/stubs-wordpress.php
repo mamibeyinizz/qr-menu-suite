@@ -1067,6 +1067,43 @@ function current_time( $type, $gmt = 0 ) {
 	return gmdate( $type, $now );
 }
 
+/**
+ * Metin alanı temizleme (çok satırlı).
+ *
+ * @param string $value Değer.
+ * @return string
+ */
+function sanitize_textarea_field( $value ) {
+	return trim( strip_tags( (string) $value ) );
+}
+
+/**
+ * Kurulum tuzu.
+ *
+ * Gerçek wp_salt gibi şemaya göre farklı, çalışma boyunca sabit bir değer
+ * döndürür; imzalı zaman tuzağı ve captcha testleri bunun kararlılığına dayanır.
+ *
+ * @param string $scheme Şema.
+ * @return string
+ */
+function wp_salt( $scheme = 'auth' ) {
+	return 'test-salt-' . $scheme;
+}
+
+/**
+ * Rastgele tam sayı.
+ *
+ * @param int $min Alt sınır.
+ * @param int $max Üst sınır.
+ * @return int
+ */
+function wp_rand( $min = 0, $max = 0 ) {
+	if ( $max <= $min ) {
+		return $min;
+	}
+
+	return random_int( $min, $max );
+}
 require_once QRMS_PLUGIN_DIR . 'includes/class-helpers.php';
 require_once QRMS_PLUGIN_DIR . 'includes/class-license-client.php';
 require_once QRMS_PLUGIN_DIR . 'includes/class-module-loader.php';

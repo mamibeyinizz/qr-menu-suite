@@ -1,0 +1,90 @@
+/* Menulux Header — kapalı durum */
+
+.hfb-header--menulux {
+  background: var(--hfb-bg);
+  color: var(--hfb-text);
+  border-bottom: 1px solid var(--hfb-border);
+}
+
+.hfb-header--menulux.hfb-header--sticky {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+
+.hfb-header--menulux .hfb-header__inner--menulux {
+  display: grid;
+  grid-template-columns: minmax(44px, auto) 1fr minmax(44px, auto);
+  align-items: center;
+  gap: 0.75rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0.75rem 1rem;
+  min-height: 56px;
+}
+
+.hfb-header--menulux .hfb-header__toggle {
+  grid-column: 1;
+  justify-self: start;
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.hfb-header--menulux .hfb-header__logo {
+  grid-column: 2;
+  justify-self: center;
+  text-align: center;
+  max-width: none;
+}
+
+.hfb-header--menulux .hfb-logo--text {
+  color: var(--hfb-brand-color);
+  font-size: var(--hfb-logo-text-size);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1.1;
+}
+
+.hfb-header--menulux .hfb-header__spacer {
+  grid-column: 3;
+  width: 44px;
+  height: 44px;
+}
+
+.hfb-header--menulux .hfb-header__nav--desktop {
+  display: none;
+}
+
+@media (min-width: 769px) {
+  .hfb-header--menulux .hfb-header__inner--menulux {
+    grid-template-columns: auto 1fr auto;
+    padding: 1rem 1.5rem;
+  }
+
+  .hfb-header--menulux .hfb-header__toggle,
+  .hfb-header--menulux .hfb-header__spacer {
+    display: none;
+  }
+
+  .hfb-header--menulux .hfb-header__logo {
+    grid-column: 1;
+    justify-self: start;
+  }
+
+  .hfb-header--menulux .hfb-header__nav--desktop {
+    display: block;
+    grid-column: 2;
+    justify-self: end;
+  }
+
+  .hfb-header--menulux .hfb-header__menu {
+    align-items: center;
+    justify-content: flex-end;
+  }
+
+  .hfb-header--menulux .hfb-header__menu a {
+    font-size: 0.9375rem;
+    font-weight: 500;
+  }
+}
