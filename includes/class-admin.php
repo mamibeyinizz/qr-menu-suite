@@ -739,7 +739,7 @@ class QRMS_Admin {
 			array(
 				'title' => __( 'Menü & Ürünler', 'qrms' ),
 				'icon'  => 'dashicons-food',
-				'items' => array( 'restoran-menu', 'qr-galeri', 'qr-acilis-ekrani' ),
+				'items' => array( 'restoran-menu', 'qr-galeri', 'qr-acilis-ekrani', 'header-footer-builder' ),
 			),
 			array(
 				'title' => __( 'Müşteri Etkileşimi', 'qrms' ),

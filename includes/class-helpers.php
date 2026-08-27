@@ -31,6 +31,7 @@ class QRMS_Helpers {
 		'qr-calisma-saatleri',
 		'qr-masa-oturum-guvenligi',
 		'qr-acilis-ekrani',
+		'header-footer-builder',
 	);
 
 	/**
@@ -52,6 +53,7 @@ class QRMS_Helpers {
 			// yalnızca görünen ad sadeleşti.
 			'qr-masa-oturum-guvenligi' => __( 'Güvenlik Ayarı', 'qrms' ),
 			'qr-acilis-ekrani'         => __( 'Açılış Ekranı', 'qrms' ),
+			'header-footer-builder'  => __( 'Header Footer Builder', 'qrms' ),
 		);
 	}
 
@@ -107,6 +109,10 @@ class QRMS_Helpers {
 			'qr-acilis-ekrani'         => array(
 				'icon' => 'dashicons-visibility',
 				'desc' => __( 'Menü açılmadan önce görünen karşılama ekranı.', 'qrms' ),
+			),
+			'header-footer-builder'  => array(
+				'icon' => 'dashicons-layout',
+				'desc' => __( 'Elementor uyumlu header ve footer oluşturucu; kısa kodlarla sayfaya yerleştirin.', 'qrms' ),
 			),
 		);
 	}
