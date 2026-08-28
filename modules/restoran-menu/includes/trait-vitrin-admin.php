@@ -1017,7 +1017,13 @@ trait RMA_Vitrin_Admin_Trait {
             exit;
         }
 
-        wp_safe_redirect( $this->vitrin_url( array( 'vitrin' => $kayit_id, 'vitrin_msg' => 'kaydedildi' ) ) );
+        // Kaydeden kullanıcı sihirbazda DEĞİL, vitrin listesinde bırakılır:
+        // "Vitrini Kaydet" sihirbazın son adımıdır, iş bitmiştir. Düzenleme
+        // formuna geri dönmek (eski davranış) kullanıcıyı aynı sihirbazın
+        // 1. adımında bırakıyor, kaydın gerçekleşip gerçekleşmediği
+        // belirsiz kalıyordu. Bildirim listede basılır
+        // (bkz. render_vitrin_list() → vitrin_notice()).
+        wp_safe_redirect( $this->vitrin_url( array( 'vitrin_msg' => 'kaydedildi' ) ) );
         exit;
     }
 
