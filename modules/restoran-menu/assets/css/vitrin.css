@@ -31,6 +31,25 @@
     /* Kart görselinin yükseklik oranı — genişliğin yüzdesi (100 = kare). */
     --qrms-vitrin-image-ratio: 100;
     --qrms-vitrin-mobile-image-ratio: 100;
+    /* Kart yazı tipi ("5. Yazı Tipi" adımı). Varsayılanlar ayar
+       eklenmeden önceki sabit değerlerin px karşılığıdır (.95rem ≈ 15px),
+       böylece ayara hiç dokunulmamış eski vitrinler aynı görünür.
+       Mobil karşılıkları DAR EKRAN bölümünde devreye girer. */
+    --qrms-vitrin-card-font: inherit;
+    --qrms-vitrin-title-size: 15px;
+    --qrms-vitrin-title-weight: 600;
+    --qrms-vitrin-title-align: left;
+    --qrms-vitrin-title-color: var(--qrms-vitrin-text);
+    --qrms-vitrin-title-size-mobile: 14px;
+    --qrms-vitrin-title-weight-mobile: 600;
+    --qrms-vitrin-title-align-mobile: left;
+    --qrms-vitrin-price-size: 15px;
+    --qrms-vitrin-price-weight: 700;
+    --qrms-vitrin-price-justify: flex-start;
+    --qrms-vitrin-price-color: var(--qrms-vitrin-accent);
+    --qrms-vitrin-price-size-mobile: 14px;
+    --qrms-vitrin-price-weight-mobile: 700;
+    --qrms-vitrin-price-justify-mobile: flex-start;
     --qrms-vitrin-radius: 14px;
     --qrms-vitrin-bg: transparent;
     --qrms-vitrin-card-bg: #16161a;
@@ -241,11 +260,13 @@
 }
 
 .qrms-vitrin-title {
-    color: var(--qrms-vitrin-text);
-    font-size: .95rem;
-    font-weight: 600;
+    color: var(--qrms-vitrin-title-color);
+    font-family: var(--qrms-vitrin-card-font);
+    font-size: var(--qrms-vitrin-title-size);
+    font-weight: var(--qrms-vitrin-title-weight);
     line-height: 1.3;
     margin: 0;
+    text-align: var(--qrms-vitrin-title-align);
     /* Uzun ürün adları kartı büyütmesin — grid satırları hizalı kalsın. */
     display: -webkit-box;
     -webkit-box-orient: vertical;
@@ -254,19 +275,25 @@
 }
 
 .qrms-vitrin-price {
-    color: var(--qrms-vitrin-accent);
-    font-size: .95rem;
-    font-weight: 700;
+    color: var(--qrms-vitrin-price-color);
+    font-family: var(--qrms-vitrin-card-font);
+    font-size: var(--qrms-vitrin-price-size);
+    font-weight: var(--qrms-vitrin-price-weight);
     margin: auto 0 0;
 }
 
 /* Fiyat kampanyası ve kombin fiyatı — üstü çizili eski fiyat + yeni fiyat.
    Dar kartta alt alta sarar. */
+/* Fiyat bir flex satırı (eski fiyat + yeni fiyat) olduğu için hizalama
+   text-align ile değil justify-content ile uygulanır: aynı ayarın flex
+   karşılığı --qrms-vitrin-price-justify olarak yazılır
+   (bkz. RMA_Vitrin_DB::hizalama_justify). */
 .qrms-vitrin-price {
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
     align-items: baseline;
+    justify-content: var(--qrms-vitrin-price-justify);
 }
 
 .qrms-vitrin-price .rma-price-old,
@@ -424,6 +451,12 @@
         --qrms-vitrin-gap: var(--qrms-vitrin-mobile-gap);
         --qrms-vitrin-card-min: var(--qrms-vitrin-mobile-card-min);
         --qrms-vitrin-image-ratio: var(--qrms-vitrin-mobile-image-ratio);
+        --qrms-vitrin-title-size: var(--qrms-vitrin-title-size-mobile);
+        --qrms-vitrin-title-weight: var(--qrms-vitrin-title-weight-mobile);
+        --qrms-vitrin-title-align: var(--qrms-vitrin-title-align-mobile);
+        --qrms-vitrin-price-size: var(--qrms-vitrin-price-size-mobile);
+        --qrms-vitrin-price-weight: var(--qrms-vitrin-price-weight-mobile);
+        --qrms-vitrin-price-justify: var(--qrms-vitrin-price-justify-mobile);
     }
 
     .qrms-vitrin-viewport {

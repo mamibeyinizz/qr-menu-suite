@@ -191,6 +191,21 @@ trait RMA_Vitrin_Admin_Trait {
             'autoplay_speed'      => $yeni ? $v['autoplay_speed'] : (int) $kayit->autoplay_speed,
             'drag_enabled'        => $yeni ? $v['drag_enabled'] : (int) $kayit->drag_enabled,
             'show_price'          => $yeni ? $v['show_price'] : (int) $kayit->show_price,
+            'title_font'          => $yeni ? $v['title_font'] : (string) RMA_Vitrin_DB::ayar( $kayit, 'title_font' ),
+            'title_size'          => $yeni ? $v['title_size'] : (int) RMA_Vitrin_DB::ayar( $kayit, 'title_size' ),
+            'title_size_mobile'   => $yeni ? $v['title_size_mobile'] : (int) RMA_Vitrin_DB::ayar( $kayit, 'title_size_mobile' ),
+            'title_weight'        => $yeni ? $v['title_weight'] : (int) RMA_Vitrin_DB::ayar( $kayit, 'title_weight' ),
+            'title_weight_mobile' => $yeni ? $v['title_weight_mobile'] : (int) RMA_Vitrin_DB::ayar( $kayit, 'title_weight_mobile' ),
+            'title_align'         => $yeni ? $v['title_align'] : (string) RMA_Vitrin_DB::ayar( $kayit, 'title_align' ),
+            'title_align_mobile'  => $yeni ? $v['title_align_mobile'] : (string) RMA_Vitrin_DB::ayar( $kayit, 'title_align_mobile' ),
+            'title_color'         => $yeni ? $v['title_color'] : (string) RMA_Vitrin_DB::ayar( $kayit, 'title_color' ),
+            'price_size'          => $yeni ? $v['price_size'] : (int) RMA_Vitrin_DB::ayar( $kayit, 'price_size' ),
+            'price_size_mobile'   => $yeni ? $v['price_size_mobile'] : (int) RMA_Vitrin_DB::ayar( $kayit, 'price_size_mobile' ),
+            'price_weight'        => $yeni ? $v['price_weight'] : (int) RMA_Vitrin_DB::ayar( $kayit, 'price_weight' ),
+            'price_weight_mobile' => $yeni ? $v['price_weight_mobile'] : (int) RMA_Vitrin_DB::ayar( $kayit, 'price_weight_mobile' ),
+            'price_align'         => $yeni ? $v['price_align'] : (string) RMA_Vitrin_DB::ayar( $kayit, 'price_align' ),
+            'price_align_mobile'  => $yeni ? $v['price_align_mobile'] : (string) RMA_Vitrin_DB::ayar( $kayit, 'price_align_mobile' ),
+            'price_color'         => $yeni ? $v['price_color'] : (string) RMA_Vitrin_DB::ayar( $kayit, 'price_color' ),
         );
 
         $secili_idler = $yeni ? array() : RMA_Vitrin_DB::urun_idleri( $id );
@@ -218,7 +233,8 @@ trait RMA_Vitrin_Admin_Trait {
                 2 => array( 'Ürünler', 'Ürünleri Seç' ),
                 3 => array( 'Düzen', 'Düzen' ),
                 4 => array( 'Boyut', 'Kart Boyutu' ),
-                5 => array( 'Kayma', 'Kayma Davranışı' ),
+                5 => array( 'Yazı', 'Yazı Tipi' ),
+                6 => array( 'Kayma', 'Kayma Davranışı' ),
             );
             ?>
             <div class="rma-vitrin-steps" id="rma-vitrin-steps" role="tablist" aria-label="Vitrin ayarları adımları">
@@ -231,7 +247,7 @@ trait RMA_Vitrin_Admin_Trait {
                     </button>
                 <?php endforeach; ?>
             </div>
-            <p class="rma-vitrin-step-compact" id="rma-vitrin-step-compact">Adım 1/5: Vitrin Adı</p>
+            <p class="rma-vitrin-step-compact" id="rma-vitrin-step-compact">Adım 1/<?php echo (int) count( $rma_vitrin_adimlar ); ?>: <?php echo esc_html( $rma_vitrin_adimlar[1][1] ); ?></p>
 
             <div class="rma-vitrin-layout-wrap">
                 <div class="rma-vitrin-layout-fields">
@@ -498,8 +514,116 @@ trait RMA_Vitrin_Admin_Trait {
                         </table>
                     </div>
 
-                    <div class="rma-card rma-vitrin-step" data-step="5" data-step-title="Kayma Davranışı" style="display:none;">
-                        <h2 class="rma-card-title">5. Kayma Davranışı</h2>
+                    <div class="rma-card rma-vitrin-step" data-step="5" data-step-title="Yazı Tipi" style="display:none;">
+                        <h2 class="rma-card-title">5. Yazı Tipi</h2>
+                        <p class="rma-card-desc">Kart üzerindeki ürün adı ve fiyatın nasıl görüneceği. Yazı tipi ve renkler tüm cihazlarda ortaktır; boyut, kalınlık ve hizalama masaüstü ve mobil için ayrı ayarlanır — telefonda kart daraldığı için ad çoğu zaman bir tık küçük olmalıdır.</p>
+
+                        <h3 class="rma-section-title">Genel</h3>
+                        <table class="form-table rma-form-table">
+                            <tr>
+                                <th><label for="rma-vitrin-title-font">Yazı tipi</label></th>
+                                <td>
+                                    <select name="title_font" id="rma-vitrin-title-font" class="rma-select-wide">
+                                        <?php foreach ( RMA_Vitrin_DB::yazi_tipleri() as $font_anahtar => $font_bilgi ) : ?>
+                                            <option value="<?php echo esc_attr( $font_anahtar ); ?>" <?php selected( $deger['title_font'], $font_anahtar ); ?>><?php echo esc_html( $font_bilgi['etiket'] ); ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                    <p class="description rma-desc">Ürün adı ve fiyat bu yazı tipiyle basılır. "Tema yazı tipi" seçiliyken vitrin sayfanın kendi fontunu kullanır ve hiçbir ek font indirilmez.</p>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th><label for="rma-vitrin-title-color">Ürün adı rengi</label></th>
+                                <td>
+                                    <input type="text" name="title_color" id="rma-vitrin-title-color"
+                                           value="<?php echo esc_attr( $deger['title_color'] ); ?>"
+                                           class="rma-vitrin-color-picker"
+                                           data-default-color="">
+                                    <p class="description rma-desc">Boş bırakılırsa vitrinin kendi açık gri metin rengi kullanılır.</p>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th><label for="rma-vitrin-price-color">Fiyat rengi</label></th>
+                                <td>
+                                    <input type="text" name="price_color" id="rma-vitrin-price-color"
+                                           value="<?php echo esc_attr( $deger['price_color'] ); ?>"
+                                           class="rma-vitrin-color-picker"
+                                           data-default-color="">
+                                    <p class="description rma-desc">Boş bırakılırsa altın vurgu rengi (#c9a84c) kullanılır.</p>
+                                </td>
+                            </tr>
+                        </table>
+
+                        <h3 class="rma-section-title">Ürün adı — Masaüstü</h3>
+                        <table class="form-table rma-form-table">
+                            <?php
+                            $this->vitrin_font_size_row(
+                                'rma-vitrin-title-size',
+                                'title_size',
+                                $deger['title_size'],
+                                RMA_Vitrin_DB::MIN_FONT_SIZE,
+                                RMA_Vitrin_DB::MAX_FONT_SIZE,
+                                'Yazı boyutu',
+                                'Ürün adı, kart genişliği ne olursa olsun bu boyutta basılır; iki satırı aşan adlar kırpılır. 15-16px çoğu kart genişliğinde tek/iki satıra sığar.'
+                            );
+                            $this->vitrin_weight_row( 'rma-vitrin-title-weight', 'title_weight', $deger['title_weight'], 'Yazı kalınlığı', 'Koyu zeminde 600 (Semibold) okunurluğu artırır; 700 daha vurgulu, 400 daha sakin durur.' );
+                            $this->vitrin_align_row( 'rma-vitrin-title-align', 'title_align', $deger['title_align'], 'Metin hizalama', 'Ürün adının kart içindeki yaslanması.' );
+                            ?>
+                        </table>
+
+                        <h3 class="rma-section-title">Ürün adı — Mobil</h3>
+                        <table class="form-table rma-form-table">
+                            <?php
+                            $this->vitrin_font_size_row(
+                                'rma-vitrin-title-size-mobile',
+                                'title_size_mobile',
+                                $deger['title_size_mobile'],
+                                RMA_Vitrin_DB::MIN_MOBILE_FONT_SIZE,
+                                RMA_Vitrin_DB::MAX_MOBILE_FONT_SIZE,
+                                'Yazı boyutu',
+                                'Telefonda kart daralır: aynı ad masaüstündeki boyutta taşar. 13-14px iki satırda rahat okunur.'
+                            );
+                            $this->vitrin_weight_row( 'rma-vitrin-title-weight-mobile', 'title_weight_mobile', $deger['title_weight_mobile'], 'Yazı kalınlığı', 'Küçük boyutta kalınlık okunurluğu taşıdığı için mobilde bir kademe artırmak işe yarar.' );
+                            $this->vitrin_align_row( 'rma-vitrin-title-align-mobile', 'title_align_mobile', $deger['title_align_mobile'], 'Metin hizalama', 'Dar kartta ortalı hizalama iki satırlı adlarda daha derli toplu görünür.' );
+                            ?>
+                        </table>
+
+                        <h3 class="rma-section-title">Fiyat — Masaüstü</h3>
+                        <table class="form-table rma-form-table">
+                            <?php
+                            $this->vitrin_font_size_row(
+                                'rma-vitrin-price-size',
+                                'price_size',
+                                $deger['price_size'],
+                                RMA_Vitrin_DB::MIN_FONT_SIZE,
+                                RMA_Vitrin_DB::MAX_FONT_SIZE,
+                                'Yazı boyutu',
+                                'Kampanyalı üründe üstü çizili eski fiyat bu boyutun %85\'i kadar basılır, ikisi tek satıra sığar.'
+                            );
+                            $this->vitrin_weight_row( 'rma-vitrin-price-weight', 'price_weight', $deger['price_weight'], 'Yazı kalınlığı', 'Fiyat karttaki en belirleyici bilgidir; 700 (Bold) onu ürün adından ayırır.' );
+                            $this->vitrin_align_row( 'rma-vitrin-price-align', 'price_align', $deger['price_align'], 'Metin hizalama', 'Fiyatın kart içindeki yaslanması. Ürün adıyla aynı olması gerekmez.' );
+                            ?>
+                        </table>
+
+                        <h3 class="rma-section-title">Fiyat — Mobil</h3>
+                        <table class="form-table rma-form-table">
+                            <?php
+                            $this->vitrin_font_size_row(
+                                'rma-vitrin-price-size-mobile',
+                                'price_size_mobile',
+                                $deger['price_size_mobile'],
+                                RMA_Vitrin_DB::MIN_MOBILE_FONT_SIZE,
+                                RMA_Vitrin_DB::MAX_MOBILE_FONT_SIZE,
+                                'Yazı boyutu',
+                                'Telefonda fiyat ürün adıyla aynı boyutta kalırsa kart kalabalıklaşır; bir tık küçük iyi çalışır.'
+                            );
+                            $this->vitrin_weight_row( 'rma-vitrin-price-weight-mobile', 'price_weight_mobile', $deger['price_weight_mobile'], 'Yazı kalınlığı', 'Mobilde fiyatın kalın kalması, küçülen boyutta bile ilk okunan bilgi olmasını sağlar.' );
+                            $this->vitrin_align_row( 'rma-vitrin-price-align-mobile', 'price_align_mobile', $deger['price_align_mobile'], 'Metin hizalama', 'Fiyatın dar karttaki yaslanması.' );
+                            ?>
+                        </table>
+                    </div>
+
+                    <div class="rma-card rma-vitrin-step" data-step="6" data-step-title="Kayma Davranışı" style="display:none;">
+                        <h2 class="rma-card-title">6. Kayma Davranışı</h2>
                         <p class="rma-card-desc">Vitrin kendiliğinden mi kaysın, yoksa ziyaretçi mi kaydırsın?</p>
 
                         <table class="form-table rma-form-table">
@@ -572,6 +696,130 @@ trait RMA_Vitrin_Admin_Trait {
         </form>
         <?php
         $this->page_footer();
+    }
+
+    /**
+     * "Yazı Tipi" adımındaki px slider satırı.
+     *
+     * Slider + değer kutusu ikilisi, "4. Kart Boyutu" adımındaki
+     * .rma-range-row deseninin aynısıdır (oninput ile anlık px yazımı);
+     * canlı önizleme ayrıca admin-ui.js tarafından bağlanır.
+     *
+     * @param string $id      Alan id'si (önizleme JS'i bunu okur).
+     * @param string $name    Form alanı adı = veritabanı sütunu.
+     * @param int    $deger   Mevcut değer.
+     * @param int    $min     Alt sınır (px).
+     * @param int    $max     Üst sınır (px).
+     * @param string $etiket  Satır başlığı.
+     * @param string $aciklama Slider altındaki açıklama.
+     * @return void
+     */
+    private function vitrin_font_size_row( $id, $name, $deger, $min, $max, $etiket, $aciklama ) {
+        ?>
+        <tr>
+            <th><label for="<?php echo esc_attr( $id ); ?>"><?php echo esc_html( $etiket ); ?></label></th>
+            <td>
+                <div class="rma-range-row">
+                    <input type="range" name="<?php echo esc_attr( $name ); ?>" id="<?php echo esc_attr( $id ); ?>"
+                           min="<?php echo (int) $min; ?>"
+                           max="<?php echo (int) $max; ?>"
+                           step="1"
+                           value="<?php echo (int) $deger; ?>"
+                           oninput="this.nextElementSibling.textContent=this.value+'px'">
+                    <span class="rma-range-val"><?php echo (int) $deger; ?>px</span>
+                </div>
+                <p class="description rma-desc"><?php echo esc_html( $aciklama ); ?></p>
+            </td>
+        </tr>
+        <?php
+    }
+
+    /**
+     * "Yazı Tipi" adımındaki kalınlık açılır listesi.
+     *
+     * @param string $id       Alan id'si.
+     * @param string $name     Form alanı adı = veritabanı sütunu.
+     * @param int    $deger    Mevcut değer.
+     * @param string $etiket   Satır başlığı.
+     * @param string $aciklama Alan altındaki açıklama.
+     * @return void
+     */
+    private function vitrin_weight_row( $id, $name, $deger, $etiket, $aciklama ) {
+        $secenekler = array(
+            400 => '400 — Normal',
+            500 => '500 — Medium',
+            600 => '600 — Semibold',
+            700 => '700 — Bold',
+        );
+        ?>
+        <tr>
+            <th><label for="<?php echo esc_attr( $id ); ?>"><?php echo esc_html( $etiket ); ?></label></th>
+            <td>
+                <select name="<?php echo esc_attr( $name ); ?>" id="<?php echo esc_attr( $id ); ?>" class="rma-select-narrow">
+                    <?php foreach ( $secenekler as $kalinlik => $kalinlik_etiket ) : ?>
+                        <option value="<?php echo (int) $kalinlik; ?>" <?php selected( (int) $deger, $kalinlik ); ?>><?php echo esc_html( $kalinlik_etiket ); ?></option>
+                    <?php endforeach; ?>
+                </select>
+                <p class="description rma-desc"><?php echo esc_html( $aciklama ); ?></p>
+            </td>
+        </tr>
+        <?php
+    }
+
+    /**
+     * "Yazı Tipi" adımındaki Sol/Orta/Sağ buton grubu.
+     *
+     * Görsel dil "Renk seçin" düğmeleriyle aynı (.rma-align-btn seçili
+     * hâlde altın vurgu alır); erişilebilirlik için altta gerçek radio
+     * girdileri durur, böylece klavye ve ekran okuyucu doğal çalışır ve
+     * form gönderimi JS'siz de doğru değeri taşır.
+     *
+     * @param string $id       Grubun id ön eki (önizleme JS'i bunu okur).
+     * @param string $name     Form alanı adı = veritabanı sütunu.
+     * @param string $deger    Mevcut değer (left|center|right).
+     * @param string $etiket   Satır başlığı.
+     * @param string $aciklama Grup altındaki açıklama.
+     * @return void
+     */
+    private function vitrin_align_row( $id, $name, $deger, $etiket, $aciklama ) {
+        $deger = RMA_Vitrin_DB::hizalama( $deger );
+
+        // İkonlar: üç çizgi, hizaya göre kaydırılmış (WordPress'in kendi
+        // hizalama düğmelerinin sadeleştirilmiş hâli).
+        $secenekler = array(
+            'left'   => array( 'Sol', array( 0, 0, 0 ) ),
+            'center' => array( 'Orta', array( 0, 3, 1.5 ) ),
+            'right'  => array( 'Sağ', array( 0, 6, 3 ) ),
+        );
+        ?>
+        <tr>
+            <th><span class="rma-align-label"><?php echo esc_html( $etiket ); ?></span></th>
+            <td>
+                <div class="rma-align-group" role="radiogroup" aria-label="<?php echo esc_attr( $etiket ); ?>">
+                    <?php foreach ( $secenekler as $hiza => $secenek ) :
+                        list( $hiza_etiket, $ofset ) = $secenek;
+                        $secili = $hiza === $deger;
+                        ?>
+                        <label class="rma-align-btn<?php echo $secili ? ' is-selected' : ''; ?>">
+                            <input type="radio" name="<?php echo esc_attr( $name ); ?>"
+                                   id="<?php echo esc_attr( $id . '-' . $hiza ); ?>"
+                                   class="rma-align-input"
+                                   value="<?php echo esc_attr( $hiza ); ?>"
+                                   data-align-field="<?php echo esc_attr( $id ); ?>"
+                                   <?php checked( $secili ); ?>>
+                            <svg class="rma-align-ic" viewBox="0 0 16 12" width="16" height="12" aria-hidden="true" focusable="false">
+                                <rect x="<?php echo esc_attr( (string) $ofset[0] ); ?>" y="1" width="16" height="2" rx="1"></rect>
+                                <rect x="<?php echo esc_attr( (string) $ofset[1] ); ?>" y="5" width="10" height="2" rx="1"></rect>
+                                <rect x="<?php echo esc_attr( (string) $ofset[2] ); ?>" y="9" width="13" height="2" rx="1"></rect>
+                            </svg>
+                            <span><?php echo esc_html( $hiza_etiket ); ?></span>
+                        </label>
+                    <?php endforeach; ?>
+                </div>
+                <p class="description rma-desc"><?php echo esc_html( $aciklama ); ?></p>
+            </td>
+        </tr>
+        <?php
     }
 
     /**
@@ -731,6 +979,21 @@ trait RMA_Vitrin_Admin_Trait {
                 'autoplay_speed'      => isset( $_POST['autoplay_speed'] ) ? wp_unslash( $_POST['autoplay_speed'] ) : null,
                 'drag_enabled'        => isset( $_POST['drag_enabled'] ) ? wp_unslash( $_POST['drag_enabled'] ) : 0,
                 'show_price'          => isset( $_POST['show_price'] ) ? wp_unslash( $_POST['show_price'] ) : 0,
+                'title_font'          => isset( $_POST['title_font'] ) ? sanitize_text_field( wp_unslash( $_POST['title_font'] ) ) : '',
+                'title_size'          => isset( $_POST['title_size'] ) ? wp_unslash( $_POST['title_size'] ) : null,
+                'title_size_mobile'   => isset( $_POST['title_size_mobile'] ) ? wp_unslash( $_POST['title_size_mobile'] ) : null,
+                'title_weight'        => isset( $_POST['title_weight'] ) ? wp_unslash( $_POST['title_weight'] ) : null,
+                'title_weight_mobile' => isset( $_POST['title_weight_mobile'] ) ? wp_unslash( $_POST['title_weight_mobile'] ) : null,
+                'title_align'         => isset( $_POST['title_align'] ) ? sanitize_text_field( wp_unslash( $_POST['title_align'] ) ) : null,
+                'title_align_mobile'  => isset( $_POST['title_align_mobile'] ) ? sanitize_text_field( wp_unslash( $_POST['title_align_mobile'] ) ) : null,
+                'title_color'         => isset( $_POST['title_color'] ) ? sanitize_text_field( wp_unslash( $_POST['title_color'] ) ) : '',
+                'price_size'          => isset( $_POST['price_size'] ) ? wp_unslash( $_POST['price_size'] ) : null,
+                'price_size_mobile'   => isset( $_POST['price_size_mobile'] ) ? wp_unslash( $_POST['price_size_mobile'] ) : null,
+                'price_weight'        => isset( $_POST['price_weight'] ) ? wp_unslash( $_POST['price_weight'] ) : null,
+                'price_weight_mobile' => isset( $_POST['price_weight_mobile'] ) ? wp_unslash( $_POST['price_weight_mobile'] ) : null,
+                'price_align'         => isset( $_POST['price_align'] ) ? sanitize_text_field( wp_unslash( $_POST['price_align'] ) ) : null,
+                'price_align_mobile'  => isset( $_POST['price_align_mobile'] ) ? sanitize_text_field( wp_unslash( $_POST['price_align_mobile'] ) ) : null,
+                'price_color'         => isset( $_POST['price_color'] ) ? sanitize_text_field( wp_unslash( $_POST['price_color'] ) ) : '',
             )
         );
 

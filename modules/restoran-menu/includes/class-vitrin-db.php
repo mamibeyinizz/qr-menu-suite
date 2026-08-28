@@ -19,7 +19,7 @@ if ( ! class_exists( 'RMA_Vitrin_DB' ) ) :
 class RMA_Vitrin_DB {
 
     /** Şema sürümü. Değişince tablolar dbDelta ile tazelenir. */
-    const DB_VERSION = '1.3.0';
+    const DB_VERSION = '1.4.0';
 
     /** Sürümün saklandığı option adı. */
     const VERSION_OPTION = 'rma_vitrin_db_version';
@@ -61,6 +61,113 @@ class RMA_Vitrin_DB {
        (100 = kare, 56 ≈ 16:9 yatay, 133 ≈ 3:4 dikey). */
     const MIN_IMAGE_RATIO = 50;
     const MAX_IMAGE_RATIO = 150;
+
+    /* Kart yazı boyutu (px) — ürün adı ve fiyat için ortak sınırlar.
+       Mobil aralık daha dar: dar kartta 20px üzeri bir ad ikinci satıra
+       taşıp kırpılır (bkz. vitrin.css -webkit-line-clamp: 2). */
+    const MIN_FONT_SIZE        = 12;
+    const MAX_FONT_SIZE        = 28;
+    const MIN_MOBILE_FONT_SIZE = 12;
+    const MAX_MOBILE_FONT_SIZE = 20;
+
+    /* Kalınlık ve hizalama beyaz listeleri. Serbest metin kabul edilmez:
+       değerler doğrudan CSS'e (inline style) yazılır. */
+    const FONT_WEIGHTS = array( 400, 500, 600, 700 );
+    const TEXT_ALIGNS  = array( 'left', 'center', 'right' );
+
+    /**
+     * Kart yazı tipi seçenekleri.
+     *
+     * TEK KAYNAK: admin açılır listesi, sanitize beyaz listesi ve
+     * frontend'in font yükleme/CSS yazımı hep buradan okur.
+     *
+     * `google` boşsa hiçbir dış istek yapılmaz (tema fontu ve sistem
+     * yığınları) — vitrin gereksiz bir font indirmesi başlatmaz. Dolu
+     * olanların spec'i trait-frontend.php'deki menü font haritasıyla
+     * BİREBİR aynıdır: menü ve vitrin aynı sayfadaysa tarayıcı aynı
+     * Google Fonts adresini ikinci kez indirmez.
+     *
+     * @return array<string,array{etiket:string,stack:string,google:string}>
+     */
+    public static function yazi_tipleri() {
+        return array(
+            ''                 => array(
+                'etiket' => 'Tema yazı tipi (varsayılan)',
+                'stack'  => '',
+                'google' => '',
+            ),
+            'system'           => array(
+                'etiket' => 'Sistem yazı tipi',
+                'stack'  => 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+                'google' => '',
+            ),
+            'Playfair Display' => array(
+                'etiket' => 'Playfair Display (serif)',
+                'stack'  => "'Playfair Display', Georgia, serif",
+                'google' => 'Playfair+Display:ital,wght@0,400;0,600;1,400',
+            ),
+            'Manrope'          => array(
+                'etiket' => 'Manrope',
+                'stack'  => "'Manrope', system-ui, sans-serif",
+                'google' => 'Manrope:wght@400;500;600;700',
+            ),
+            'Inter'            => array(
+                'etiket' => 'Inter',
+                'stack'  => "'Inter', system-ui, sans-serif",
+                'google' => 'Inter:wght@300;400;500;600;700',
+            ),
+            'Poppins'          => array(
+                'etiket' => 'Poppins',
+                'stack'  => "'Poppins', system-ui, sans-serif",
+                'google' => 'Poppins:wght@300;400;500;600;700',
+            ),
+            'Montserrat'       => array(
+                'etiket' => 'Montserrat',
+                'stack'  => "'Montserrat', system-ui, sans-serif",
+                'google' => 'Montserrat:wght@300;400;600;700',
+            ),
+            'Georgia'          => array(
+                'etiket' => 'Georgia (serif)',
+                'stack'  => 'Georgia, "Times New Roman", serif',
+                'google' => '',
+            ),
+        );
+    }
+
+    /**
+     * Kayıttaki ayarı, sütun henüz yoksa varsayılanına düşerek okur.
+     *
+     * Şema `admin_init`'te tazelenir (belki_kur); yeni sütunlar eklenen bir
+     * sürümde ilk ÖN YÜZ isteği yönetici paneline hiç uğramadan gelebilir
+     * ve kayıt nesnesinde o sütun bulunmaz. Bu okuma o aradaki isteklerde
+     * uyarı üretmeden eski görünümü sürdürür.
+     *
+     * @param object|null $kayit   Vitrin satırı.
+     * @param string      $anahtar Ayar/sütun adı.
+     * @return mixed
+     */
+    public static function ayar( $kayit, $anahtar ) {
+        $varsayilan = self::varsayilanlar();
+
+        if ( is_object( $kayit ) && isset( $kayit->$anahtar ) ) {
+            return $kayit->$anahtar;
+        }
+
+        return isset( $varsayilan[ $anahtar ] ) ? $varsayilan[ $anahtar ] : '';
+    }
+
+    /**
+     * Seçilen yazı tipinin CSS font-family yığını.
+     *
+     * @param string $anahtar yazi_tipleri() anahtarı.
+     * @return string Boş dize = tema fontu miras alınır.
+     */
+    public static function yazi_tipi_stack( $anahtar ) {
+        $tipler = self::yazi_tipleri();
+        $anahtar = (string) $anahtar;
+
+        return isset( $tipler[ $anahtar ] ) ? $tipler[ $anahtar ]['stack'] : '';
+    }
 
     /**
      * Vitrin tanımları tablosu.
@@ -116,6 +223,21 @@ class RMA_Vitrin_DB {
             mobile_card_min smallint(4) unsigned NOT NULL DEFAULT 132,
             mobile_image_ratio smallint(4) unsigned NOT NULL DEFAULT 100,
             bg_color varchar(20) NOT NULL DEFAULT '',
+            title_font varchar(40) NOT NULL DEFAULT '',
+            title_size smallint(3) unsigned NOT NULL DEFAULT 15,
+            title_size_mobile smallint(3) unsigned NOT NULL DEFAULT 14,
+            title_weight smallint(3) unsigned NOT NULL DEFAULT 600,
+            title_weight_mobile smallint(3) unsigned NOT NULL DEFAULT 600,
+            title_align varchar(10) NOT NULL DEFAULT 'left',
+            title_align_mobile varchar(10) NOT NULL DEFAULT 'left',
+            title_color varchar(20) NOT NULL DEFAULT '',
+            price_size smallint(3) unsigned NOT NULL DEFAULT 15,
+            price_size_mobile smallint(3) unsigned NOT NULL DEFAULT 14,
+            price_weight smallint(3) unsigned NOT NULL DEFAULT 700,
+            price_weight_mobile smallint(3) unsigned NOT NULL DEFAULT 700,
+            price_align varchar(10) NOT NULL DEFAULT 'left',
+            price_align_mobile varchar(10) NOT NULL DEFAULT 'left',
+            price_color varchar(20) NOT NULL DEFAULT '',
             autoplay tinyint(1) NOT NULL DEFAULT 0,
             autoplay_speed smallint(5) unsigned NOT NULL DEFAULT 4000,
             drag_enabled tinyint(1) NOT NULL DEFAULT 1,
@@ -181,6 +303,24 @@ class RMA_Vitrin_DB {
             'mobile_card_min'     => 132,
             'mobile_image_ratio'  => 100,
             'bg_color'            => '',
+            // Yazı tipi varsayılanları, vitrin.css'in eski sabit
+            // değerlerinin px karşılığıdır (.95rem ≈ 15px): ayar eklenmeden
+            // önceki görünüm bozulmadan korunur, mobilde bir tık küçülür.
+            'title_font'          => '',
+            'title_size'          => 15,
+            'title_size_mobile'   => 14,
+            'title_weight'        => 600,
+            'title_weight_mobile' => 600,
+            'title_align'         => 'left',
+            'title_align_mobile'  => 'left',
+            'title_color'         => '',
+            'price_size'          => 15,
+            'price_size_mobile'   => 14,
+            'price_weight'        => 700,
+            'price_weight_mobile' => 700,
+            'price_align'         => 'left',
+            'price_align_mobile'  => 'left',
+            'price_color'         => '',
             'autoplay'            => 0,
             'autoplay_speed'      => 4000,
             'drag_enabled'        => 1,
@@ -216,6 +356,21 @@ class RMA_Vitrin_DB {
             'mobile_card_min'     => self::sinirla( $ham['mobile_card_min'] ?? $v['mobile_card_min'], self::MIN_MOBILE_CARD_MIN, self::MAX_MOBILE_CARD_MIN, $v['mobile_card_min'] ),
             'mobile_image_ratio'  => self::sinirla( $ham['mobile_image_ratio'] ?? $v['mobile_image_ratio'], self::MIN_IMAGE_RATIO, self::MAX_IMAGE_RATIO, $v['mobile_image_ratio'] ),
             'bg_color'            => self::hex_renk( $ham['bg_color'] ?? '' ),
+            'title_font'          => self::yazi_tipi( $ham['title_font'] ?? '' ),
+            'title_size'          => self::sinirla( $ham['title_size'] ?? $v['title_size'], self::MIN_FONT_SIZE, self::MAX_FONT_SIZE, $v['title_size'] ),
+            'title_size_mobile'   => self::sinirla( $ham['title_size_mobile'] ?? $v['title_size_mobile'], self::MIN_MOBILE_FONT_SIZE, self::MAX_MOBILE_FONT_SIZE, $v['title_size_mobile'] ),
+            'title_weight'        => self::yazi_kalinligi( $ham['title_weight'] ?? $v['title_weight'], $v['title_weight'] ),
+            'title_weight_mobile' => self::yazi_kalinligi( $ham['title_weight_mobile'] ?? $v['title_weight_mobile'], $v['title_weight_mobile'] ),
+            'title_align'         => self::hizalama( $ham['title_align'] ?? $v['title_align'] ),
+            'title_align_mobile'  => self::hizalama( $ham['title_align_mobile'] ?? $v['title_align_mobile'] ),
+            'title_color'         => self::hex_renk( $ham['title_color'] ?? '' ),
+            'price_size'          => self::sinirla( $ham['price_size'] ?? $v['price_size'], self::MIN_FONT_SIZE, self::MAX_FONT_SIZE, $v['price_size'] ),
+            'price_size_mobile'   => self::sinirla( $ham['price_size_mobile'] ?? $v['price_size_mobile'], self::MIN_MOBILE_FONT_SIZE, self::MAX_MOBILE_FONT_SIZE, $v['price_size_mobile'] ),
+            'price_weight'        => self::yazi_kalinligi( $ham['price_weight'] ?? $v['price_weight'], $v['price_weight'] ),
+            'price_weight_mobile' => self::yazi_kalinligi( $ham['price_weight_mobile'] ?? $v['price_weight_mobile'], $v['price_weight_mobile'] ),
+            'price_align'         => self::hizalama( $ham['price_align'] ?? $v['price_align'] ),
+            'price_align_mobile'  => self::hizalama( $ham['price_align_mobile'] ?? $v['price_align_mobile'] ),
+            'price_color'         => self::hex_renk( $ham['price_color'] ?? '' ),
             'autoplay'            => self::bayrak( $ham['autoplay'] ?? 0 ),
             'autoplay_speed'      => self::sinirla( $ham['autoplay_speed'] ?? $v['autoplay_speed'], self::MIN_SPEED, self::MAX_SPEED, $v['autoplay_speed'] ),
             'drag_enabled'        => self::bayrak( $ham['drag_enabled'] ?? 0 ),
@@ -254,6 +409,65 @@ class RMA_Vitrin_DB {
         $renk = sanitize_hex_color( trim( (string) $deger ) );
 
         return $renk ? $renk : '';
+    }
+
+    /**
+     * Yazı tipi anahtarını beyaz listeye göre doğrular.
+     *
+     * Listede olmayan girdi tema fontuna (boş dize) düşer.
+     *
+     * @param mixed $deger Ham değer.
+     * @return string
+     */
+    public static function yazi_tipi( $deger ) {
+        $deger = trim( (string) $deger );
+
+        return array_key_exists( $deger, self::yazi_tipleri() ) ? $deger : '';
+    }
+
+    /**
+     * Yazı kalınlığını beyaz listeye göre doğrular.
+     *
+     * @param mixed $deger      Ham değer.
+     * @param int   $varsayilan Listede yoksa kullanılacak değer.
+     * @return int
+     */
+    public static function yazi_kalinligi( $deger, $varsayilan = 600 ) {
+        $deger = (int) $deger;
+
+        return in_array( $deger, self::FONT_WEIGHTS, true ) ? $deger : (int) $varsayilan;
+    }
+
+    /**
+     * Metin hizalamasını beyaz listeye göre doğrular.
+     *
+     * @param mixed $deger Ham değer.
+     * @return string
+     */
+    public static function hizalama( $deger ) {
+        $deger = strtolower( trim( (string) $deger ) );
+
+        return in_array( $deger, self::TEXT_ALIGNS, true ) ? $deger : 'left';
+    }
+
+    /**
+     * Hizalamanın flex karşılığı.
+     *
+     * Fiyat satırı bir flex kutusudur (eski + yeni fiyat yan yana), bu
+     * yüzden text-align değil justify-content okur — bkz. vitrin.css
+     * `--qrms-vitrin-price-justify`.
+     *
+     * @param mixed $deger Ham hizalama değeri.
+     * @return string flex-start | center | flex-end
+     */
+    public static function hizalama_justify( $deger ) {
+        $harita = array(
+            'left'   => 'flex-start',
+            'center' => 'center',
+            'right'  => 'flex-end',
+        );
+
+        return $harita[ self::hizalama( $deger ) ];
     }
 
     /**
@@ -393,6 +607,21 @@ class RMA_Vitrin_DB {
             'mobile_card_min'     => $ayarlar['mobile_card_min'],
             'mobile_image_ratio'  => $ayarlar['mobile_image_ratio'],
             'bg_color'            => $ayarlar['bg_color'],
+            'title_font'          => $ayarlar['title_font'],
+            'title_size'          => $ayarlar['title_size'],
+            'title_size_mobile'   => $ayarlar['title_size_mobile'],
+            'title_weight'        => $ayarlar['title_weight'],
+            'title_weight_mobile' => $ayarlar['title_weight_mobile'],
+            'title_align'         => $ayarlar['title_align'],
+            'title_align_mobile'  => $ayarlar['title_align_mobile'],
+            'title_color'         => $ayarlar['title_color'],
+            'price_size'          => $ayarlar['price_size'],
+            'price_size_mobile'   => $ayarlar['price_size_mobile'],
+            'price_weight'        => $ayarlar['price_weight'],
+            'price_weight_mobile' => $ayarlar['price_weight_mobile'],
+            'price_align'         => $ayarlar['price_align'],
+            'price_align_mobile'  => $ayarlar['price_align_mobile'],
+            'price_color'         => $ayarlar['price_color'],
             'autoplay'            => $ayarlar['autoplay'],
             'autoplay_speed'      => $ayarlar['autoplay_speed'],
             'drag_enabled'        => $ayarlar['drag_enabled'],
@@ -400,7 +629,13 @@ class RMA_Vitrin_DB {
             'updated_at'          => $simdi,
         );
 
-        $format = array( '%s', '%d', '%d', '%d', '%d', '%d', '%d', '%d', '%d', '%d', '%d', '%s', '%d', '%d', '%d', '%d', '%s' );
+        // Sıra $veri ile birebir: title … updated_at.
+        $format = array(
+            '%s', '%d', '%d', '%d', '%d', '%d', '%d', '%d', '%d', '%d', '%d', '%s',
+            '%s', '%d', '%d', '%d', '%d', '%s', '%s', '%s',
+            '%d', '%d', '%d', '%d', '%s', '%s', '%s',
+            '%d', '%d', '%d', '%d', '%s',
+        );
 
         if ( $id > 0 && self::getir( $id ) ) {
             $wpdb->update( $tablo, $veri, array( 'id' => $id ), $format, array( '%d' ) );

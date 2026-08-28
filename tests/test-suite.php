@@ -938,7 +938,7 @@ qrms_test(
 			'önizleme sütunu tüm formu sarar'
 		);
 		qrms_assert_true(
-			strpos( $php, '5. Kayma Davranışı' ) < strpos( $php, 'rma-vitrin-layout-preview' ),
+			strpos( $php, '6. Kayma Davranışı' ) < strpos( $php, 'rma-vitrin-layout-preview' ),
 			'kayma bölümü sol sütunda, önizlemeden önce'
 		);
 
@@ -2036,6 +2036,89 @@ qrms_test(
 
 		$bozuk = RMA_Vitrin_DB::ayarlari_temizle( array( 'desktop_gap' => 'çok' ) );
 		qrms_assert_same( 16, $bozuk['desktop_gap'], 'varsayılana düşer' );
+	}
+);
+
+qrms_test(
+	'yazı tipi ayarları sınırlanır; kalınlık/hizalama/font beyaz listeden geçer',
+	function () {
+		$temiz = RMA_Vitrin_DB::ayarlari_temizle(
+			array(
+				'title_size'          => 999,
+				'title_size_mobile'   => 999,
+				'price_size'          => 1,
+				'price_size_mobile'   => 1,
+				'title_weight'        => 850,
+				'title_align'         => 'justify',
+				'title_font'          => 'Comic Sans',
+			)
+		);
+
+		// Mobil aralık masaüstünden BAĞIMSIZ ve daha dardır: dar kartta
+		// büyük ad iki satırı aşıp kırpılır.
+		qrms_assert_same( RMA_Vitrin_DB::MAX_FONT_SIZE, $temiz['title_size'], 'masaüstü üst sınır' );
+		qrms_assert_same( RMA_Vitrin_DB::MAX_MOBILE_FONT_SIZE, $temiz['title_size_mobile'], 'mobil üst sınır' );
+		qrms_assert_same( RMA_Vitrin_DB::MIN_FONT_SIZE, $temiz['price_size'], 'masaüstü alt sınır' );
+		qrms_assert_same( RMA_Vitrin_DB::MIN_MOBILE_FONT_SIZE, $temiz['price_size_mobile'], 'mobil alt sınır' );
+
+		// Beyaz liste dışı değerler CSS'e yazılmadan önce varsayılana düşer.
+		qrms_assert_same( 600, $temiz['title_weight'], 'kalınlık varsayılana düşer' );
+		qrms_assert_same( 'left', $temiz['title_align'], 'hizalama varsayılana düşer' );
+		qrms_assert_same( '', $temiz['title_font'], 'bilinmeyen font tema fontuna düşer' );
+
+		$gecerli = RMA_Vitrin_DB::ayarlari_temizle(
+			array(
+				'title_weight' => 700,
+				'title_align'  => 'center',
+				'title_font'   => 'Playfair Display',
+				'price_align'  => 'right',
+			)
+		);
+
+		qrms_assert_same( 700, $gecerli['title_weight'], 'geçerli kalınlık korunur' );
+		qrms_assert_same( 'center', $gecerli['title_align'], 'geçerli hizalama korunur' );
+		qrms_assert_same( 'Playfair Display', $gecerli['title_font'], 'geçerli font korunur' );
+		qrms_assert_same( 'flex-end', RMA_Vitrin_DB::hizalama_justify( $gecerli['price_align'] ), 'fiyat hizası flex karşılığına çevrilir' );
+
+		// Varsayılanlar ayar eklenmeden önceki sabit .95rem ≈ 15px görünümü
+		// korur: eski vitrinler güncellemeyle birlikte değişmez.
+		$vars = RMA_Vitrin_DB::varsayilanlar();
+		qrms_assert_same( 15, $vars['title_size'], 'masaüstü varsayılanı eski görünümle aynı' );
+		qrms_assert_same( 700, $vars['price_weight'], 'fiyat kalınlığı eski görünümle aynı' );
+	}
+);
+
+qrms_test(
+	'yazı tipi listesi tek kaynaktır; yalnızca Google fontları istek doğurur',
+	function () {
+		$tipler = RMA_Vitrin_DB::yazi_tipleri();
+
+		// Tema fontu ve sistem yığınları dış istek yapmamalı — vitrin
+		// gereksiz bir font indirmesi başlatmaz.
+		qrms_assert_same( '', $tipler['']['google'], 'tema fontu istek doğurmaz' );
+		qrms_assert_same( '', $tipler['system']['google'], 'sistem fontu istek doğurmaz' );
+		qrms_assert_same( '', $tipler['Georgia']['google'], 'Georgia istek doğurmaz' );
+		qrms_assert_true( '' !== $tipler['Playfair Display']['google'], 'Playfair Google fontu' );
+
+		// Spec, menü modülünün haritasıyla birebir aynı olmalı: iki modül
+		// aynı sayfadaysa tarayıcı aynı adresi ikinci kez indirmesin.
+		$menu = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-frontend.php' );
+		foreach ( array( 'Playfair Display', 'Inter', 'Poppins', 'Montserrat' ) as $aile ) {
+			qrms_assert_contains( "'" . $tipler[ $aile ]['google'] . "'", $menu, $aile . ': menüyle aynı spec' );
+		}
+
+		// Frontend CSS değişkenleri ve admin önizlemesi aynı isimleri kullanır.
+		$css = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/css/vitrin.css' );
+		$js  = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/js/admin-ui.js' );
+
+		foreach ( array( '--qrms-vitrin-card-font', '--qrms-vitrin-title-size', '--qrms-vitrin-price-justify' ) as $degisken ) {
+			qrms_assert_contains( $degisken, $css, $degisken . ' frontend' );
+			qrms_assert_contains( $degisken, $js, $degisken . ' önizleme' );
+		}
+
+		// Mobil değerler breakpoint'te temel değişkenlere çevrilir (kart
+		// boyutu ayarlarındaki desenin aynısı).
+		qrms_assert_contains( '--qrms-vitrin-title-size: var(--qrms-vitrin-title-size-mobile)', $css, 'mobil boyut devri' );
 	}
 );
 

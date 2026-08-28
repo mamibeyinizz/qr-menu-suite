@@ -309,6 +309,26 @@ function qrms_module_restoran_menu_admin_assets() {
 	// admin-ui.js içinde ve render_vitrin_preview_cards() trait-vitrin-admin.php'de.
 	if ( 'qrms-rm-vitrin' === $page ) {
 		wp_enqueue_style( 'rma-vitrin', $url . 'assets/css/vitrin.css', array( 'rma-admin-ui' ), QRMS_Helpers::asset_version( $modul . 'assets/css/vitrin.css' ) );
+
+		// "5. Yazı Tipi" adımındaki seçimler önizlemede GERÇEK fontuyla
+		// görünsün diye listedeki Google aileleri bu tek admin ekranında
+		// yüklenir; ön yüzde yalnızca SEÇİLEN aile indirilir
+		// (bkz. RMA_Vitrin_Shortcode::maybe_enqueue_font).
+		$aileler = array();
+		foreach ( RMA_Vitrin_DB::yazi_tipleri() as $font_bilgi ) {
+			if ( '' !== $font_bilgi['google'] ) {
+				$aileler[] = 'family=' . $font_bilgi['google'];
+			}
+		}
+
+		if ( ! empty( $aileler ) ) {
+			wp_enqueue_style(
+				'rma-vitrin-fonts',
+				'https://fonts.googleapis.com/css2?' . implode( '&', array_unique( $aileler ) ) . '&display=swap',
+				array(),
+				null
+			);
+		}
 	}
 
 	wp_add_inline_script(
