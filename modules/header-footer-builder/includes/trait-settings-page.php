@@ -1,6 +1,15 @@
 <?php
 /**
- * Header Footer Builder — ayar şeması ve kayıt.
+ * Header Footer Builder — ayar şeması, temizleme ve kayıt.
+ *
+ * Tasarım seçenekleri (varyant, renk, gradient, gölge, tipografi) bilinçli
+ * olarak YOKTUR: header ve footer, projenin dark-gold kimliğine sabitlenmiş
+ * tek bir tasarımla render edilir. Burada yalnızca içerik alanları ve
+ * davranış anahtarları tutulur.
+ *
+ * Hem form kaydı hem canlı önizleme AYNI temizleyicileri kullanır
+ * (sanitize_header_input / sanitize_footer_input). Böylece önizlemede
+ * görünen çıktı ile kaydedilen çıktı birbirinden ayrışamaz.
  *
  * @package QR_Menu_Suite
  */
@@ -15,13 +24,7 @@ trait QRMS_HFB_Settings_Page {
 	 * @return array<string,mixed>
 	 */
 	public function get_header_options() {
-		$stored = get_option( $this->header_option, array() );
-
-		if ( ! is_array( $stored ) ) {
-			$stored = array();
-		}
-
-		return wp_parse_args( $stored, $this->header_defaults );
+		return $this->merge_options( get_option( $this->header_option, array() ), $this->header_defaults );
 	}
 
 	/**
@@ -30,104 +33,28 @@ trait QRMS_HFB_Settings_Page {
 	 * @return array<string,mixed>
 	 */
 	public function get_footer_options() {
-		$stored = get_option( $this->footer_option, array() );
+		return $this->merge_options( get_option( $this->footer_option, array() ), $this->footer_defaults );
+	}
 
+	/**
+	 * Depodaki değerleri varsayılanlarla birleştirir ve ARTIK TANIMLI
+	 * OLMAYAN anahtarları atar.
+	 *
+	 * Bu sürümde tasarım ayarları (varyant, renkler, gradient, tipografi)
+	 * kaldırıldı. Eski kurulumların option'ında bu anahtarlar duruyor;
+	 * budama olmadan hem okunmaya devam eder hem de her kayıtta geri
+	 * yazılırlardı.
+	 *
+	 * @param mixed               $stored   Depodaki değer.
+	 * @param array<string,mixed> $defaults Varsayılanlar.
+	 * @return array<string,mixed>
+	 */
+	private function merge_options( $stored, $defaults ) {
 		if ( ! is_array( $stored ) ) {
 			$stored = array();
 		}
 
-		return wp_parse_args( $stored, $this->footer_defaults );
-	}
-
-	/**
-	 * Header varyant seçenekleri.
-	 *
-	 * @return array<string,string>
-	 */
-	public function header_variants() {
-		return array(
-			'minimal-sticky' => __( 'Minimal Sticky', 'qrms' ),
-			'glass-bento'    => __( 'Glass Bento', 'qrms' ),
-			'kinetic-bold'   => __( 'Kinetic Bold', 'qrms' ),
-			'menulux'        => __( 'Menulux', 'qrms' ),
-		);
-	}
-
-	/**
-	 * Footer varyant seçenekleri.
-	 *
-	 * @return array<string,string>
-	 */
-	public function footer_variants() {
-		return array(
-			'utility-minimal' => __( 'Utility Minimal', 'qrms' ),
-			'bento-grid'      => __( 'Bento Grid Footer', 'qrms' ),
-			'contact-first'   => __( 'Contact-First Footer', 'qrms' ),
-		);
-	}
-
-	/**
-	 * Google Fonts / sistem font listesi.
-	 *
-	 * @return string[]
-	 */
-	public function font_options() {
-		return array(
-			'Inter',
-			'Poppins',
-			'Roboto',
-			'Open Sans',
-			'Montserrat',
-			'Playfair Display',
-			'DM Sans',
-			'Space Grotesk',
-			'Georgia, serif',
-			'system-ui, sans-serif',
-		);
-	}
-
-	/**
-	 * Google Fonts URL haritası.
-	 *
-	 * @return array<string,string>
-	 */
-	public function google_font_map() {
-		return array(
-			'Inter'             => 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap',
-			'Poppins'           => 'https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap',
-			'Roboto'            => 'https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap',
-			'Open Sans'         => 'https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap',
-			'Montserrat'        => 'https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap',
-			'Playfair Display'  => 'https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&display=swap',
-			'DM Sans'           => 'https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap',
-			'Space Grotesk'     => 'https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap',
-		);
-	}
-
-	/**
-	 * Font için CSS font-family değeri.
-	 *
-	 * @param string $font Font adı.
-	 * @return string
-	 */
-	public function font_family_css( $font ) {
-		if ( 'Georgia, serif' === $font || 'system-ui, sans-serif' === $font ) {
-			return $font;
-		}
-
-		return "'" . $font . "', sans-serif";
-	}
-
-	/**
-	 * Google Font URL'i.
-	 *
-	 * @param string $font Font adı.
-	 * @return string
-	 */
-	public function google_font_url( $font ) {
-		$map = $this->google_font_map();
-
-		return isset( $map[ $font ] ) ? $map[ $font ] : '';
+		return array_intersect_key( wp_parse_args( $stored, $defaults ), $defaults );
 	}
 
 	/**
@@ -137,10 +64,10 @@ trait QRMS_HFB_Settings_Page {
 	 */
 	public function social_media_map() {
 		return array(
-			'instagram' => array( 'label' => 'Instagram', 'icon' => 'instagram' ),
 			'facebook'  => array( 'label' => 'Facebook', 'icon' => 'facebook' ),
-			'youtube'   => array( 'label' => 'YouTube', 'icon' => 'youtube' ),
 			'x'         => array( 'label' => 'X (Twitter)', 'icon' => 'x' ),
+			'youtube'   => array( 'label' => 'YouTube', 'icon' => 'youtube' ),
+			'instagram' => array( 'label' => 'Instagram', 'icon' => 'instagram' ),
 			'tiktok'    => array( 'label' => 'TikTok', 'icon' => 'tiktok' ),
 			'whatsapp'  => array( 'label' => 'WhatsApp', 'icon' => 'whatsapp' ),
 			'linkedin'  => array( 'label' => 'LinkedIn', 'icon' => 'linkedin' ),
@@ -151,7 +78,7 @@ trait QRMS_HFB_Settings_Page {
 	/**
 	 * Sosyal medya durumunu çözümler.
 	 *
-	 * @param array<string,mixed> $opts Footer ayarları.
+	 * @param array<string,mixed> $opts Ayarlar.
 	 * @return array{active:string[],urls:array<string,string>}
 	 */
 	public function resolve_social_media_state( $opts ) {
@@ -173,145 +100,151 @@ trait QRMS_HFB_Settings_Page {
 	}
 
 	/**
-	 * Hamburger kapatma ikon seçenekleri.
+	 * Bir girdi dizisinden sosyal medya alanlarını çözer.
 	 *
-	 * @return array<string,string>
+	 * @param array<string,mixed> $input   Ham girdi.
+	 * @param array<string,mixed> $current Mevcut ayarlar.
+	 * @param string              $prefix  Alan adı ön eki.
+	 * @return array{social_media_active:string[],social_media:array<string,string>}
 	 */
-	public function close_icon_options() {
+	private function sanitize_social_input( $input, $current, $prefix ) {
+		$valid  = array_keys( $this->social_media_map() );
+		$active = array();
+		$urls   = isset( $current['social_media'] ) && is_array( $current['social_media'] ) ? $current['social_media'] : array();
+
+		$raw_active = isset( $input[ $prefix . 'social_media_active' ] ) ? $input[ $prefix . 'social_media_active' ] : array();
+		if ( is_array( $raw_active ) ) {
+			foreach ( $raw_active as $raw_key ) {
+				$key = sanitize_key( $raw_key );
+				if ( in_array( $key, $valid, true ) && ! in_array( $key, $active, true ) ) {
+					$active[] = $key;
+				}
+			}
+		}
+
+		foreach ( $valid as $key ) {
+			$field = $prefix . 'social_media_url_' . $key;
+			if ( isset( $input[ $field ] ) ) {
+				$urls[ $key ] = esc_url_raw( (string) $input[ $field ] );
+			}
+		}
+
 		return array(
-			'x'       => __( 'X (kapat)', 'qrms' ),
-			'arrow'   => __( 'Ok', 'qrms' ),
-			'chevron' => __( 'Chevron', 'qrms' ),
+			'social_media_active' => array_slice( $active, 0, 6 ),
+			'social_media'        => $urls,
 		);
 	}
 
 	/**
-	 * Header ayarlarını kaydeder.
+	 * Bir onay kutusunun girdideki değeri.
 	 *
-	 * @return void
+	 * Form ve önizleme yükü tam gönderilir; alan yoksa kutu işaretsizdir.
+	 *
+	 * @param array<string,mixed> $input Ham girdi.
+	 * @param string              $field Alan adı.
+	 * @return int
 	 */
-	public function save_header_settings() {
-		$options = $this->get_header_options();
-
-		$variant = isset( $_POST['hfb_header_variant'] ) ? sanitize_key( wp_unslash( $_POST['hfb_header_variant'] ) ) : $options['variant'];
-		$options['variant'] = array_key_exists( $variant, $this->header_variants() ) ? $variant : $options['variant'];
-
-		$options['logo']           = isset( $_POST['hfb_header_logo'] ) ? absint( $_POST['hfb_header_logo'] ) : $options['logo'];
-		$options['logo_width']     = isset( $_POST['hfb_header_logo_width'] ) ? max( 60, min( 320, absint( $_POST['hfb_header_logo_width'] ) ) ) : $options['logo_width'];
-		$options['logo_text_size'] = isset( $_POST['hfb_header_logo_text_size'] ) ? max( 14, min( 36, absint( $_POST['hfb_header_logo_text_size'] ) ) ) : $options['logo_text_size'];
-		$options['menu_id']        = isset( $_POST['hfb_header_menu_id'] ) ? absint( $_POST['hfb_header_menu_id'] ) : $options['menu_id'];
-
-		$align = isset( $_POST['hfb_header_logo_alignment'] ) ? sanitize_key( wp_unslash( $_POST['hfb_header_logo_alignment'] ) ) : $options['logo_alignment'];
-		$options['logo_alignment'] = in_array( $align, array( 'left', 'center', 'right' ), true ) ? $align : $options['logo_alignment'];
-
-		$options['bg_color']     = isset( $_POST['hfb_header_bg_color'] ) ? ( sanitize_hex_color( wp_unslash( $_POST['hfb_header_bg_color'] ) ) ?: $options['bg_color'] ) : $options['bg_color'];
-		$options['text_color']   = isset( $_POST['hfb_header_text_color'] ) ? ( sanitize_hex_color( wp_unslash( $_POST['hfb_header_text_color'] ) ) ?: $options['text_color'] ) : $options['text_color'];
-		$options['border_color'] = isset( $_POST['hfb_header_border_color'] ) ? ( sanitize_hex_color( wp_unslash( $_POST['hfb_header_border_color'] ) ) ?: $options['border_color'] ) : $options['border_color'];
-		$options['brand_color']  = isset( $_POST['hfb_header_brand_color'] ) ? ( sanitize_hex_color( wp_unslash( $_POST['hfb_header_brand_color'] ) ) ?: $options['brand_color'] ) : $options['brand_color'];
-		$options['sticky']       = isset( $_POST['hfb_header_sticky'] ) ? 1 : 0;
-
-		$panel = isset( $_POST['hfb_mobile_panel_style'] ) ? sanitize_key( wp_unslash( $_POST['hfb_mobile_panel_style'] ) ) : $options['mobile_panel_style'];
-		$options['mobile_panel_style'] = in_array( $panel, array( 'slide', 'fullscreen', 'menulux' ), true ) ? $panel : $options['mobile_panel_style'];
-
-		$options['mobile_panel_bg']         = isset( $_POST['hfb_mobile_panel_bg'] ) ? ( sanitize_hex_color( wp_unslash( $_POST['hfb_mobile_panel_bg'] ) ) ?: $options['mobile_panel_bg'] ) : $options['mobile_panel_bg'];
-		$options['mobile_panel_bg_opacity'] = isset( $_POST['hfb_mobile_panel_bg_opacity'] ) ? max( 0, min( 100, absint( $_POST['hfb_mobile_panel_bg_opacity'] ) ) ) : $options['mobile_panel_bg_opacity'];
-		$options['mobile_panel_gradient_start'] = isset( $_POST['hfb_mobile_panel_gradient_start'] ) ? ( sanitize_hex_color( wp_unslash( $_POST['hfb_mobile_panel_gradient_start'] ) ) ?: $options['mobile_panel_gradient_start'] ) : $options['mobile_panel_gradient_start'];
-		$options['mobile_panel_gradient_end']   = isset( $_POST['hfb_mobile_panel_gradient_end'] ) ? ( sanitize_hex_color( wp_unslash( $_POST['hfb_mobile_panel_gradient_end'] ) ) ?: $options['mobile_panel_gradient_end'] ) : $options['mobile_panel_gradient_end'];
-
-		$font = isset( $_POST['hfb_mobile_panel_font'] ) ? sanitize_text_field( wp_unslash( $_POST['hfb_mobile_panel_font'] ) ) : $options['mobile_panel_font'];
-		$options['mobile_panel_font'] = in_array( $font, $this->font_options(), true ) ? $font : $options['mobile_panel_font'];
-
-		$options['mobile_panel_text_color'] = isset( $_POST['hfb_mobile_panel_text_color'] ) ? ( sanitize_hex_color( wp_unslash( $_POST['hfb_mobile_panel_text_color'] ) ) ?: $options['mobile_panel_text_color'] ) : $options['mobile_panel_text_color'];
-		$options['mobile_panel_text_size']  = isset( $_POST['hfb_mobile_panel_text_size'] ) ? max( 14, min( 28, absint( $_POST['hfb_mobile_panel_text_size'] ) ) ) : $options['mobile_panel_text_size'];
-
-		$icon = isset( $_POST['hfb_mobile_close_icon'] ) ? sanitize_key( wp_unslash( $_POST['hfb_mobile_close_icon'] ) ) : $options['mobile_close_icon'];
-		$options['mobile_close_icon'] = array_key_exists( $icon, $this->close_icon_options() ) ? $icon : $options['mobile_close_icon'];
-
-		$options['mobile_close_icon_color'] = isset( $_POST['hfb_mobile_close_icon_color'] ) ? ( sanitize_hex_color( wp_unslash( $_POST['hfb_mobile_close_icon_color'] ) ) ?: $options['mobile_close_icon_color'] ) : $options['mobile_close_icon_color'];
-		$options['mobile_close_icon_size']  = isset( $_POST['hfb_mobile_close_icon_size'] ) ? max( 16, min( 40, absint( $_POST['hfb_mobile_close_icon_size'] ) ) ) : $options['mobile_close_icon_size'];
-		$options['hamburger_color']         = isset( $_POST['hfb_hamburger_color'] ) ? ( sanitize_hex_color( wp_unslash( $_POST['hfb_hamburger_color'] ) ) ?: $options['hamburger_color'] ) : $options['hamburger_color'];
-
-		$options['lang_code']         = isset( $_POST['hfb_lang_code'] ) ? sanitize_text_field( wp_unslash( $_POST['hfb_lang_code'] ) ) : $options['lang_code'];
-		$options['lang_url']          = isset( $_POST['hfb_lang_url'] ) ? esc_url_raw( wp_unslash( $_POST['hfb_lang_url'] ) ) : $options['lang_url'];
-		$options['lang_alt_code']     = isset( $_POST['hfb_lang_alt_code'] ) ? sanitize_text_field( wp_unslash( $_POST['hfb_lang_alt_code'] ) ) : $options['lang_alt_code'];
-		$options['lang_alt_url']      = isset( $_POST['hfb_lang_alt_url'] ) ? esc_url_raw( wp_unslash( $_POST['hfb_lang_alt_url'] ) ) : $options['lang_alt_url'];
-		$options['lang_border_color'] = isset( $_POST['hfb_lang_border_color'] ) ? ( sanitize_hex_color( wp_unslash( $_POST['hfb_lang_border_color'] ) ) ?: $options['lang_border_color'] ) : $options['lang_border_color'];
-		$options['lang_text_color']   = isset( $_POST['hfb_lang_text_color'] ) ? ( sanitize_hex_color( wp_unslash( $_POST['hfb_lang_text_color'] ) ) ?: $options['lang_text_color'] ) : $options['lang_text_color'];
-		$options['cta_phone']         = isset( $_POST['hfb_cta_phone'] ) ? sanitize_text_field( wp_unslash( $_POST['hfb_cta_phone'] ) ) : $options['cta_phone'];
-		$options['cta_bg_color']      = isset( $_POST['hfb_cta_bg_color'] ) ? ( sanitize_hex_color( wp_unslash( $_POST['hfb_cta_bg_color'] ) ) ?: $options['cta_bg_color'] ) : $options['cta_bg_color'];
-		$options['cta_text_color']    = isset( $_POST['hfb_cta_text_color'] ) ? ( sanitize_hex_color( wp_unslash( $_POST['hfb_cta_text_color'] ) ) ?: $options['cta_text_color'] ) : $options['cta_text_color'];
-		$options['social_color']      = isset( $_POST['hfb_social_color'] ) ? ( sanitize_hex_color( wp_unslash( $_POST['hfb_social_color'] ) ) ?: $options['social_color'] ) : $options['social_color'];
-
-		$valid_social = array_keys( $this->social_media_map() );
-		$active       = array();
-
-		if ( isset( $_POST['hfb_header_social_media_active'] ) && is_array( $_POST['hfb_header_social_media_active'] ) ) {
-			foreach ( wp_unslash( $_POST['hfb_header_social_media_active'] ) as $raw_key ) {
-				$key = sanitize_key( $raw_key );
-				if ( in_array( $key, $valid_social, true ) && ! in_array( $key, $active, true ) ) {
-					$active[] = $key;
-				}
-			}
-		}
-
-		$options['social_media_active'] = array_slice( $active, 0, 6 );
-
-		if ( ! isset( $options['social_media'] ) || ! is_array( $options['social_media'] ) ) {
-			$options['social_media'] = array();
-		}
-
-		foreach ( $valid_social as $key ) {
-			if ( isset( $_POST[ 'hfb_header_social_media_url_' . $key ] ) ) {
-				$options['social_media'][ $key ] = esc_url_raw( wp_unslash( $_POST[ 'hfb_header_social_media_url_' . $key ] ) );
-			}
-		}
-
-		update_option( $this->header_option, $options );
+	private function sanitize_checkbox( $input, $field ) {
+		return ( isset( $input[ $field ] ) && '' !== $input[ $field ] && '0' !== (string) $input[ $field ] ) ? 1 : 0;
 	}
 
 	/**
-	 * Footer ayarlarını kaydeder.
+	 * Header girdisini temizler.
 	 *
+	 * @param array<string,mixed> $input   Ham girdi (POST alan adlarıyla).
+	 * @param array<string,mixed> $current Mevcut ayarlar.
+	 * @return array<string,mixed>
+	 */
+	public function sanitize_header_input( $input, $current ) {
+		$opts = $current;
+
+		if ( isset( $input['hfb_header_logo'] ) ) {
+			$opts['logo'] = absint( $input['hfb_header_logo'] );
+		}
+
+		if ( isset( $input['hfb_header_brand_line1'] ) ) {
+			$opts['brand_line1'] = sanitize_text_field( (string) $input['hfb_header_brand_line1'] );
+		}
+
+		if ( isset( $input['hfb_header_brand_line2'] ) ) {
+			$opts['brand_line2'] = sanitize_text_field( (string) $input['hfb_header_brand_line2'] );
+		}
+
+		if ( isset( $input['hfb_header_menu_id'] ) ) {
+			$opts['menu_id'] = absint( $input['hfb_header_menu_id'] );
+		}
+
+		if ( isset( $input['hfb_header_cta_phone'] ) ) {
+			$opts['cta_phone'] = sanitize_text_field( (string) $input['hfb_header_cta_phone'] );
+		}
+
+		$opts['sticky']    = $this->sanitize_checkbox( $input, 'hfb_header_sticky' );
+		$opts['lang_show'] = $this->sanitize_checkbox( $input, 'hfb_lang_show' );
+
+		$social = $this->sanitize_social_input( $input, $current, 'hfb_header_' );
+
+		return array_merge( $opts, $social );
+	}
+
+	/**
+	 * Footer girdisini temizler.
+	 *
+	 * @param array<string,mixed> $input   Ham girdi (POST alan adlarıyla).
+	 * @param array<string,mixed> $current Mevcut ayarlar.
+	 * @return array<string,mixed>
+	 */
+	public function sanitize_footer_input( $input, $current ) {
+		$opts = $current;
+
+		if ( isset( $input['hfb_footer_logo'] ) ) {
+			$opts['logo'] = absint( $input['hfb_footer_logo'] );
+		}
+
+		if ( isset( $input['hfb_footer_brand_line1'] ) ) {
+			$opts['brand_line1'] = sanitize_text_field( (string) $input['hfb_footer_brand_line1'] );
+		}
+
+		if ( isset( $input['hfb_footer_brand_line2'] ) ) {
+			$opts['brand_line2'] = sanitize_text_field( (string) $input['hfb_footer_brand_line2'] );
+		}
+
+		if ( isset( $input['hfb_footer_description'] ) ) {
+			$opts['description'] = sanitize_textarea_field( (string) $input['hfb_footer_description'] );
+		}
+
+		if ( isset( $input['hfb_footer_phone'] ) ) {
+			$opts['phone'] = sanitize_text_field( (string) $input['hfb_footer_phone'] );
+		}
+
+		if ( isset( $input['hfb_footer_email'] ) ) {
+			$opts['email'] = sanitize_email( (string) $input['hfb_footer_email'] );
+		}
+
+		if ( isset( $input['hfb_footer_copyright'] ) ) {
+			$opts['copyright'] = sanitize_text_field( (string) $input['hfb_footer_copyright'] );
+		}
+
+		if ( isset( $input['hfb_footer_menu_id'] ) ) {
+			$opts['menu_id'] = absint( $input['hfb_footer_menu_id'] );
+		}
+
+		$social = $this->sanitize_social_input( $input, $current, 'hfb_' );
+
+		return array_merge( $opts, $social );
+	}
+
+	/**
+	 * Tek formdan gelen header + footer + dil ayarlarını kaydeder.
+	 *
+	 * Ayarlar sayfası tek form / tek "Kaydet" düğmesidir; sekmeler yalnızca
+	 * görsel gruplamadır. Bu yüzden kayıt da tek noktadan yapılır.
+	 *
+	 * @param array<string,mixed> $input Ham girdi.
 	 * @return void
 	 */
-	public function save_footer_settings() {
-		$options = $this->get_footer_options();
-
-		$variant = isset( $_POST['hfb_footer_variant'] ) ? sanitize_key( wp_unslash( $_POST['hfb_footer_variant'] ) ) : $options['variant'];
-		$options['variant'] = array_key_exists( $variant, $this->footer_variants() ) ? $variant : $options['variant'];
-
-		$options['logo']        = isset( $_POST['hfb_footer_logo'] ) ? absint( $_POST['hfb_footer_logo'] ) : $options['logo'];
-		$options['description']   = isset( $_POST['hfb_footer_description'] ) ? sanitize_textarea_field( wp_unslash( $_POST['hfb_footer_description'] ) ) : $options['description'];
-		$options['phone']       = isset( $_POST['hfb_footer_phone'] ) ? sanitize_text_field( wp_unslash( $_POST['hfb_footer_phone'] ) ) : $options['phone'];
-		$options['email']       = isset( $_POST['hfb_footer_email'] ) ? sanitize_email( wp_unslash( $_POST['hfb_footer_email'] ) ) : $options['email'];
-		$options['copyright']   = isset( $_POST['hfb_footer_copyright'] ) ? sanitize_text_field( wp_unslash( $_POST['hfb_footer_copyright'] ) ) : $options['copyright'];
-		$options['menu_id']     = isset( $_POST['hfb_footer_menu_id'] ) ? absint( $_POST['hfb_footer_menu_id'] ) : $options['menu_id'];
-
-		$valid_social = array_keys( $this->social_media_map() );
-		$active       = array();
-
-		if ( isset( $_POST['hfb_social_media_active'] ) && is_array( $_POST['hfb_social_media_active'] ) ) {
-			foreach ( wp_unslash( $_POST['hfb_social_media_active'] ) as $raw_key ) {
-				$key = sanitize_key( $raw_key );
-				if ( in_array( $key, $valid_social, true ) && ! in_array( $key, $active, true ) ) {
-					$active[] = $key;
-				}
-			}
-		}
-
-		$options['social_media_active'] = array_slice( $active, 0, 6 );
-
-		if ( ! isset( $options['social_media'] ) || ! is_array( $options['social_media'] ) ) {
-			$options['social_media'] = array();
-		}
-
-		foreach ( $valid_social as $key ) {
-			if ( isset( $_POST[ 'hfb_social_media_url_' . $key ] ) ) {
-				$options['social_media'][ $key ] = esc_url_raw( wp_unslash( $_POST[ 'hfb_social_media_url_' . $key ] ) );
-			}
-		}
-
-		update_option( $this->footer_option, $options );
+	public function save_settings( $input ) {
+		update_option( $this->header_option, $this->sanitize_header_input( $input, $this->get_header_options() ) );
+		update_option( $this->footer_option, $this->sanitize_footer_input( $input, $this->get_footer_options() ) );
 	}
 
 	/**
@@ -323,8 +256,10 @@ trait QRMS_HFB_Settings_Page {
 		$menus = wp_get_nav_menus();
 		$list  = array( 0 => __( '— Menü seçin —', 'qrms' ) );
 
-		foreach ( $menus as $menu ) {
-			$list[ (int) $menu->term_id ] = $menu->name;
+		if ( is_array( $menus ) ) {
+			foreach ( $menus as $menu ) {
+				$list[ (int) $menu->term_id ] = $menu->name;
+			}
 		}
 
 		return $list;

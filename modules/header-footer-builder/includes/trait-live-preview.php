@@ -2,6 +2,22 @@
 /**
  * Header Footer Builder — canlı önizleme.
  *
+ * Eski sürümde önizleme çalışmıyordu; nedenleri ve karşılıkları:
+ *
+ * 1. Önizleme ayrı bir SEKMEYDİ ve o sekmede form yoktu. JS hem formu hem
+ *    `#hfb-preview-inline` hedefini arıyordu, ikisi aynı ekranda hiç
+ *    bulunmuyordu → istek hiç kurulmuyordu. Artık önizleme forma komşu
+ *    sabit paneldir, form her zaman DOM'dadır.
+ * 2. Yönetim tarafında bazı varyantların CSS'i hiç kuyruğa alınmıyordu
+ *    (ör. header-menulux) → önizleme stilsiz görünüyordu. Artık tek bir
+ *    frontend.css var; eksik kalabilecek dosya yok.
+ * 3. JS, sunucudan gelen HTML'in üzerine EKSİK bir CSS değişkeni dizisi
+ *    yazıp satır içi stilleri eziyordu. Artık istemci hiç stil yazmaz;
+ *    tüm çıktı sunucudan gelir.
+ * 4. Formun yalnızca elle sayılan birkaç alanı toplanıyordu; yeni alanlar
+ *    önizlemeye yansımıyordu. Artık form olduğu gibi serileştirilir ve
+ *    kayıtla AYNI temizleyicilerden geçer.
+ *
  * @package QR_Menu_Suite
  */
 
@@ -10,90 +26,86 @@ defined( 'ABSPATH' ) || exit;
 trait QRMS_HFB_Live_Preview {
 
 	/**
-	 * Canlı önizleme sekmesi.
+	 * Form ile yan yana duran sabit önizleme paneli.
 	 *
 	 * @param array<string,mixed> $header_opts Header ayarları.
 	 * @param array<string,mixed> $footer_opts Footer ayarları.
 	 * @return void
 	 */
-	public function render_live_preview_tab( $header_opts, $footer_opts ) {
+	public function render_live_preview_panel( $header_opts, $footer_opts ) {
 		?>
-		<div class="qrms-card hfb-preview-card">
-			<h2 class="qrms-card-title"><?php esc_html_e( 'Canlı Önizleme', 'qrms' ); ?></h2>
-			<p class="qrms-muted">
-				<?php esc_html_e( 'Header ve footer bileşenlerinin birlikte görünümü. Ayar sekmelerindeki değişiklikler kaydetmeden burada güncellenir.', 'qrms' ); ?>
-			</p>
+		<aside class="hfb-layout__side">
+			<div class="qrms-card hfb-preview" id="hfb-preview">
+				<h2 class="qrms-card-title"><?php esc_html_e( 'Canlı Önizleme', 'qrms' ); ?></h2>
+				<p class="qrms-muted">
+					<?php esc_html_e( 'Formdaki her değişiklik kaydetmeden burada görünür.', 'qrms' ); ?>
+				</p>
 
-			<div class="hfb-preview-toolbar">
-				<button type="button" class="button hfb-preview-refresh"><?php esc_html_e( 'Önizlemeyi yenile', 'qrms' ); ?></button>
-				<label class="hfb-preview-device">
-					<?php esc_html_e( 'Görünüm:', 'qrms' ); ?>
-					<select id="hfb-preview-viewport">
-						<option value="desktop"><?php esc_html_e( 'Masaüstü', 'qrms' ); ?></option>
-						<option value="mobile"><?php esc_html_e( 'Mobil', 'qrms' ); ?></option>
-					</select>
-				</label>
-			</div>
+				<div class="hfb-preview__toolbar">
+					<label class="hfb-preview__device">
+						<?php esc_html_e( 'Görünüm:', 'qrms' ); ?>
+						<select id="hfb-preview-viewport">
+							<option value="desktop"><?php esc_html_e( 'Masaüstü', 'qrms' ); ?></option>
+							<option value="mobile"><?php esc_html_e( 'Mobil', 'qrms' ); ?></option>
+						</select>
+					</label>
+					<button type="button" class="button hfb-preview__refresh"><?php esc_html_e( 'Yenile', 'qrms' ); ?></button>
+					<span class="hfb-preview__status" id="hfb-preview-status" role="status" aria-live="polite"></span>
+				</div>
 
-			<div id="hfb-preview-full" class="hfb-preview-frame hfb-preview-frame--full" data-viewport="desktop">
-				<div class="hfb-preview-section" data-section="header">
-					<?php echo $this->render_header( $header_opts ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
-				</div>
-				<div class="hfb-preview-placeholder">
-					<p><?php esc_html_e( 'Sayfa içeriği alanı', 'qrms' ); ?></p>
-				</div>
-				<div class="hfb-preview-section" data-section="footer">
-					<?php echo $this->render_footer( $footer_opts ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+				<?php
+				/*
+				 * Sahne dar (yan panel), ön yüz kırılımları ise kap
+				 * genişliğine bağlı. "Masaüstü" seçiliyken gerçekten
+				 * masaüstü yerleşimi görünsün diye tuval 1100px olarak
+				 * basılır ve panele sığacak kadar ölçeklenir (bkz.
+				 * assets/js/admin.js -> fitPreview). Ölçekleme görsel
+				 * bir dönüşümdür; kap sorgusu tuvalin 1100px'ini görür.
+				 */
+				?>
+				<div class="hfb-preview__stage" id="hfb-preview-stage" data-viewport="desktop">
+					<div class="hfb-preview__canvas" id="hfb-preview-canvas">
+						<div class="hfb-preview__section" data-preview="header">
+							<?php echo $this->render_header( $header_opts ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+						</div>
+						<div class="hfb-preview__placeholder">
+							<p><?php esc_html_e( 'Sayfa içeriği alanı', 'qrms' ); ?></p>
+						</div>
+						<div class="hfb-preview__section" data-preview="footer">
+							<?php echo $this->render_footer( $footer_opts ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+						</div>
+					</div>
 				</div>
 			</div>
-		</div>
+		</aside>
 		<?php
 	}
 
 	/**
-	 * Önizleme için tüm frontend stillerini yükler.
+	 * Önizlemenin ön yüzle birebir aynı görünmesi için gereken stiller.
 	 *
 	 * @return void
 	 */
 	public function enqueue_preview_styles() {
-		$base = 'modules/header-footer-builder/assets/';
+		$this->enqueue_frontend_styles();
 
-		wp_enqueue_style(
-			'hfb-base',
-			QRMS_PLUGIN_URL . $base . 'css/frontend-base.css',
-			array(),
-			QRMS_Helpers::asset_version( $base . 'css/frontend-base.css' )
-		);
-
-		$variants = array(
-			'header-minimal-sticky',
-			'header-glass-bento',
-			'header-kinetic-bold',
-			'footer-utility-minimal',
-			'footer-bento-grid',
-			'footer-contact-first',
-		);
-
-		foreach ( $variants as $handle ) {
-			$css = 'css/' . $handle . '.css';
+		// Çeviri modülü etkinse dil seçicinin kendi stili de gerekir; yoksa
+		// bayrak zaten render edilmez.
+		if ( defined( 'RMA_CEVIRI_URL' ) && $this->lang_switcher_available() ) {
 			wp_enqueue_style(
-				'hfb-' . $handle,
-				QRMS_PLUGIN_URL . $base . $css,
-				array( 'hfb-base' ),
-				QRMS_Helpers::asset_version( $base . $css )
+				'rma-ceviri',
+				RMA_CEVIRI_URL . 'assets/css/ceviri.css',
+				array(),
+				defined( 'RMA_CEVIRI_VERSION' ) ? RMA_CEVIRI_VERSION : QRMS_VERSION
 			);
 		}
-
-		wp_enqueue_style(
-			'hfb-kinetic-font',
-			'https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap',
-			array(),
-			null
-		);
 	}
 
 	/**
-	 * AJAX önizleme endpoint'i.
+	 * AJAX önizleme uç noktası.
+	 *
+	 * Kaydetmeyle aynı temizleyicileri kullanır; önizleme ile kaydedilen
+	 * çıktı birbirinden ayrışamaz.
 	 *
 	 * @return void
 	 */
@@ -104,158 +116,21 @@ trait QRMS_HFB_Live_Preview {
 			wp_send_json_error( array( 'message' => 'forbidden' ), 403 );
 		}
 
-		$type = isset( $_POST['type'] ) ? sanitize_key( wp_unslash( $_POST['type'] ) ) : 'header';
-		$raw  = isset( $_POST['data'] ) ? wp_unslash( $_POST['data'] ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+		// Her alan sanitize_*_input() içinde tek tek temizlenir.
+		$raw = isset( $_POST['data'] ) ? wp_unslash( $_POST['data'] ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 
 		if ( ! is_array( $raw ) ) {
 			$raw = array();
 		}
 
-		if ( 'footer' === $type ) {
-			$opts = $this->preview_sanitize_footer( $raw );
-			$html = $this->render_footer( $opts );
-		} else {
-			$opts = $this->preview_sanitize_header( $raw );
-			$html = $this->render_header( $opts );
-		}
+		$header = $this->sanitize_header_input( $raw, $this->get_header_options() );
+		$footer = $this->sanitize_footer_input( $raw, $this->get_footer_options() );
 
-		wp_send_json_success( array( 'html' => $html ) );
-	}
-
-	/**
-	 * Önizleme için header verisini temizler.
-	 *
-	 * @param array<string,mixed> $raw Ham veri.
-	 * @return array<string,mixed>
-	 */
-	private function preview_sanitize_header( $raw ) {
-		$opts = $this->get_header_options();
-
-		if ( isset( $raw['variant'] ) ) {
-			$variant = sanitize_key( $raw['variant'] );
-			if ( array_key_exists( $variant, $this->header_variants() ) ) {
-				$opts['variant'] = $variant;
-			}
-		}
-
-		if ( isset( $raw['logo_width'] ) ) {
-			$opts['logo_width'] = max( 60, min( 320, absint( $raw['logo_width'] ) ) );
-		}
-
-		if ( isset( $raw['logo_text_size'] ) ) {
-			$opts['logo_text_size'] = max( 14, min( 36, absint( $raw['logo_text_size'] ) ) );
-		}
-
-		$color_keys = array(
-			'bg_color',
-			'text_color',
-			'border_color',
-			'brand_color',
-			'hamburger_color',
-			'mobile_panel_bg',
-			'mobile_panel_gradient_start',
-			'mobile_panel_gradient_end',
-			'mobile_panel_text_color',
-			'mobile_close_icon_color',
-			'lang_border_color',
-			'lang_text_color',
-			'cta_bg_color',
-			'cta_text_color',
-			'social_color',
+		wp_send_json_success(
+			array(
+				'header' => $this->render_header( $header ),
+				'footer' => $this->render_footer( $footer ),
+			)
 		);
-		foreach ( $color_keys as $key ) {
-			if ( isset( $raw[ $key ] ) ) {
-				$opts[ $key ] = sanitize_hex_color( $raw[ $key ] ) ?: $opts[ $key ];
-			}
-		}
-
-		if ( isset( $raw['logo_alignment'] ) ) {
-			$align = sanitize_key( $raw['logo_alignment'] );
-			if ( in_array( $align, array( 'left', 'center', 'right' ), true ) ) {
-				$opts['logo_alignment'] = $align;
-			}
-		}
-
-		if ( isset( $raw['sticky'] ) ) {
-			$opts['sticky'] = (int) $raw['sticky'];
-		}
-
-		if ( isset( $raw['mobile_panel_style'] ) ) {
-			$style = sanitize_key( $raw['mobile_panel_style'] );
-			if ( in_array( $style, array( 'slide', 'fullscreen', 'menulux' ), true ) ) {
-				$opts['mobile_panel_style'] = $style;
-			}
-		}
-
-		if ( isset( $raw['mobile_panel_bg_opacity'] ) ) {
-			$opts['mobile_panel_bg_opacity'] = max( 0, min( 100, absint( $raw['mobile_panel_bg_opacity'] ) ) );
-		}
-
-		if ( isset( $raw['mobile_panel_font'] ) ) {
-			$font = sanitize_text_field( $raw['mobile_panel_font'] );
-			if ( in_array( $font, $this->font_options(), true ) ) {
-				$opts['mobile_panel_font'] = $font;
-			}
-		}
-
-		if ( isset( $raw['mobile_panel_text_size'] ) ) {
-			$opts['mobile_panel_text_size'] = max( 14, min( 28, absint( $raw['mobile_panel_text_size'] ) ) );
-		}
-
-		if ( isset( $raw['mobile_close_icon'] ) ) {
-			$icon = sanitize_key( $raw['mobile_close_icon'] );
-			if ( array_key_exists( $icon, $this->close_icon_options() ) ) {
-				$opts['mobile_close_icon'] = $icon;
-			}
-		}
-
-		if ( isset( $raw['mobile_close_icon_size'] ) ) {
-			$opts['mobile_close_icon_size'] = max( 16, min( 40, absint( $raw['mobile_close_icon_size'] ) ) );
-		}
-
-		if ( isset( $raw['cta_phone'] ) ) {
-			$opts['cta_phone'] = sanitize_text_field( $raw['cta_phone'] );
-		}
-
-		if ( isset( $raw['lang_alt_code'] ) ) {
-			$opts['lang_alt_code'] = sanitize_text_field( $raw['lang_alt_code'] );
-		}
-
-		return $opts;
-	}
-
-	/**
-	 * Önizleme için footer verisini temizler.
-	 *
-	 * @param array<string,mixed> $raw Ham veri.
-	 * @return array<string,mixed>
-	 */
-	private function preview_sanitize_footer( $raw ) {
-		$opts = $this->get_footer_options();
-
-		if ( isset( $raw['variant'] ) ) {
-			$variant = sanitize_key( $raw['variant'] );
-			if ( array_key_exists( $variant, $this->footer_variants() ) ) {
-				$opts['variant'] = $variant;
-			}
-		}
-
-		if ( isset( $raw['description'] ) ) {
-			$opts['description'] = sanitize_textarea_field( $raw['description'] );
-		}
-
-		if ( isset( $raw['phone'] ) ) {
-			$opts['phone'] = sanitize_text_field( $raw['phone'] );
-		}
-
-		if ( isset( $raw['email'] ) ) {
-			$opts['email'] = sanitize_email( $raw['email'] );
-		}
-
-		if ( isset( $raw['copyright'] ) ) {
-			$opts['copyright'] = sanitize_text_field( $raw['copyright'] );
-		}
-
-		return $opts;
 	}
 }

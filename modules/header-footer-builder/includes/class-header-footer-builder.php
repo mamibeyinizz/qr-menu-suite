@@ -8,16 +8,21 @@
 defined( 'ABSPATH' ) || exit;
 
 require_once __DIR__ . '/trait-settings-page.php';
+require_once __DIR__ . '/trait-elementor.php';
 require_once __DIR__ . '/trait-admin.php';
 require_once __DIR__ . '/trait-frontend.php';
 require_once __DIR__ . '/trait-live-preview.php';
 
 /**
- * Header ve footer oluşturucu modülü.
+ * Header ve footer modülü.
+ *
+ * Tasarım tektir ve koda sabitlenmiştir (siyah #0a0a0c + gold #c9a84c);
+ * kullanıcı yalnızca içeriği ve birkaç davranış anahtarını yönetir.
  */
 class QRMS_Header_Footer_Builder {
 
 	use QRMS_HFB_Settings_Page;
+	use QRMS_HFB_Elementor;
 	use QRMS_HFB_Admin;
 	use QRMS_HFB_Frontend;
 	use QRMS_HFB_Live_Preview;
@@ -26,6 +31,14 @@ class QRMS_Header_Footer_Builder {
 	 * Modül slug'ı.
 	 */
 	const MODULE = 'header-footer-builder';
+
+	/**
+	 * Çeviri modülünün dil seçici kısa kodu.
+	 *
+	 * Gevşek bağ: modül kapalıysa kısa kod kayıtlı olmaz, bayrak sessizce
+	 * çıkmaz — hata üretilmez.
+	 */
+	const LANG_SHORTCODE = 'qrmenu_flags_only';
 
 	/**
 	 * Header ayar option anahtarı.
@@ -54,6 +67,20 @@ class QRMS_Header_Footer_Builder {
 	 * @var array<string,mixed>
 	 */
 	private $footer_defaults;
+
+	/**
+	 * Bu istekte hangi bölümler render edildi.
+	 *
+	 * Aynı sayfada kısa kod iki kez bulunursa (ör. hem Elementor şablonunda
+	 * hem içerikte) ikinci çıktı basılmaz: mobil panel `id` çakışması ve
+	 * çift sticky header oluşmasın.
+	 *
+	 * @var array<string,bool>
+	 */
+	private $rendered = array(
+		'header' => false,
+		'footer' => false,
+	);
 
 	/**
 	 * Tek örnek.
@@ -90,53 +117,28 @@ class QRMS_Header_Footer_Builder {
 	 */
 	public function __construct() {
 		$this->header_defaults = array(
-			'variant'                 => 'minimal-sticky',
-			'logo'                    => 0,
-			'logo_width'              => 140,
-			'logo_text_size'          => 22,
-			'logo_alignment'          => 'left',
-			'menu_id'                 => 0,
-			'bg_color'                => '#ffffff',
-			'text_color'              => '#111827',
-			'border_color'            => '#e5e7eb',
-			'brand_color'             => '#e91e8c',
-			'sticky'                  => 1,
-			'mobile_panel_style'      => 'slide',
-			'mobile_panel_bg'         => '#0f172a',
-			'mobile_panel_bg_opacity' => 95,
-			'mobile_panel_gradient_start' => '#e91e8c',
-			'mobile_panel_gradient_end'   => '#6b21a8',
-			'mobile_panel_font'       => 'Inter',
-			'mobile_panel_text_color' => '#f8fafc',
-			'mobile_panel_text_size'  => 18,
-			'mobile_close_icon'       => 'x',
-			'mobile_close_icon_color' => '#f8fafc',
-			'mobile_close_icon_size'  => 24,
-			'hamburger_color'         => '#111827',
-			'lang_code'               => 'TR',
-			'lang_url'                => '',
-			'lang_alt_code'           => 'EN',
-			'lang_alt_url'            => '',
-			'lang_border_color'       => '#ffffff',
-			'lang_text_color'         => '#ffffff',
-			'cta_phone'               => '',
-			'cta_bg_color'            => '#39d339',
-			'cta_text_color'          => '#ffffff',
-			'social_media'            => array(),
-			'social_media_active'     => array(),
-			'social_color'            => '#ffffff',
+			'logo'                => 0,
+			'brand_line1'         => 'QR MENU',
+			'brand_line2'         => 'OFFİCİAL',
+			'menu_id'             => 0,
+			'sticky'              => 1,
+			'cta_phone'           => '',
+			'lang_show'           => 1,
+			'social_media'        => array(),
+			'social_media_active' => array( 'facebook', 'x', 'youtube' ),
 		);
 
 		$this->footer_defaults = array(
-			'variant'             => 'utility-minimal',
 			'logo'                => 0,
+			'brand_line1'         => 'QR MENU',
+			'brand_line2'         => 'OFFİCİAL',
 			'description'         => '',
 			'phone'               => '',
 			'email'               => '',
 			'copyright'           => '© ' . gmdate( 'Y' ) . ' ' . get_bloginfo( 'name' ),
 			'menu_id'             => 0,
 			'social_media'        => array(),
-			'social_media_active' => array(),
+			'social_media_active' => array( 'facebook', 'x', 'youtube' ),
 		);
 	}
 

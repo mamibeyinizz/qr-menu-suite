@@ -32,6 +32,8 @@ $GLOBALS['qrms_test'] = array(
 	'http_calls' => array(),
 	'can'        => true,
 	'styles'     => array(),
+	'shortcodes' => array(),
+	'json'       => null,
 );
 
 /** Basit WP_Error taklidi. */
@@ -1104,6 +1106,200 @@ function wp_rand( $min = 0, $max = 0 ) {
 
 	return random_int( $min, $max );
 }
+/**
+ * Öznitelik için kaçışlanmış metni basar.
+ *
+ * @param string $text   Metin.
+ * @param string $domain Metin alanı.
+ * @return void
+ */
+function esc_attr_e( $text, $domain = 'default' ) {
+	echo esc_attr( $text ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+}
+
+/**
+ * AJAX nonce doğrulaması. Testlerde her zaman geçerli sayılır.
+ *
+ * @param string $action Eylem.
+ * @param string $query  Alan adı.
+ * @return bool
+ */
+function check_ajax_referer( $action = -1, $query = false ) {
+	return true;
+}
+
+/**
+ * Başarılı JSON yanıtı — testlerde çıktı yerine global'e yazılır.
+ *
+ * @param mixed $data Veri.
+ * @return void
+ */
+function wp_send_json_success( $data = null ) {
+	$GLOBALS['qrms_test']['json'] = array(
+		'success' => true,
+		'data'    => $data,
+	);
+}
+
+/**
+ * Hatalı JSON yanıtı.
+ *
+ * @param mixed $data   Veri.
+ * @param int   $status HTTP durumu.
+ * @return void
+ */
+function wp_send_json_error( $data = null, $status = 0 ) {
+	$GLOBALS['qrms_test']['json'] = array(
+		'success' => false,
+		'data'    => $data,
+		'status'  => $status,
+	);
+}
+
+/**
+ * Site bilgisi.
+ *
+ * @param string $show Alan adı.
+ * @return string
+ */
+function get_bloginfo( $show = 'name' ) {
+	$map = array(
+		'name'        => 'Test Restoran',
+		'description' => 'Test açıklaması',
+		'url'         => 'https://restoran.test',
+	);
+
+	return isset( $map[ $show ] ) ? $map[ $show ] : '';
+}
+
+/**
+ * Kısa kod kayıtlı mı?
+ *
+ * @param string $tag Etiket.
+ * @return bool
+ */
+function shortcode_exists( $tag ) {
+	return isset( $GLOBALS['qrms_test']['shortcodes'][ $tag ] );
+}
+
+/**
+ * Kısa kodu çalıştırır (yalnızca "[tag]" biçimini çözer — testler için yeter).
+ *
+ * @param string $content İçerik.
+ * @return string
+ */
+function do_shortcode( $content ) {
+	if ( ! preg_match( '/^\[([a-z0-9_]+)\]$/i', trim( (string) $content ), $m ) ) {
+		return (string) $content;
+	}
+
+	if ( ! shortcode_exists( $m[1] ) ) {
+		return (string) $content;
+	}
+
+	return (string) call_user_func( $GLOBALS['qrms_test']['shortcodes'][ $m[1] ], array() );
+}
+
+/**
+ * İçerikte kısa kod var mı?
+ *
+ * @param string $content İçerik.
+ * @param string $tag     Etiket.
+ * @return bool
+ */
+function has_shortcode( $content, $tag ) {
+	return false !== strpos( (string) $content, '[' . $tag );
+}
+
+/**
+ * Tekil içerik görüntüleniyor mu? (Testlerde her zaman hayır.)
+ *
+ * @return bool
+ */
+function is_singular() {
+	return false;
+}
+
+/**
+ * Geçerli yazı. (Testlerde yok.)
+ *
+ * @return null
+ */
+function get_post() {
+	return null;
+}
+
+/**
+ * Yazı meta değeri. (Testlerde boş.)
+ *
+ * @param int    $post_id Yazı kimliği.
+ * @param string $key     Anahtar.
+ * @param bool   $single  Tek değer mi?
+ * @return string
+ */
+function get_post_meta( $post_id, $key = '', $single = false ) {
+	return '';
+}
+
+/**
+ * Kanca kaç kez çalıştı?
+ *
+ * @param string $tag Kanca adı.
+ * @return int
+ */
+function did_action( $tag ) {
+	return 0;
+}
+
+/**
+ * Kayıtlı menüler. (Testlerde tek bir sahte menü.)
+ *
+ * @return object[]
+ */
+function wp_get_nav_menus() {
+	$menu           = new stdClass();
+	$menu->term_id  = 7;
+	$menu->name     = 'Ana Menü';
+
+	return array( $menu );
+}
+
+/**
+ * Menü çıktısı.
+ *
+ * @param array $args Argümanlar.
+ * @return string
+ */
+function wp_nav_menu( $args = array() ) {
+	$class = isset( $args['menu_class'] ) ? $args['menu_class'] : 'menu';
+	$id    = isset( $args['menu_id'] ) ? $args['menu_id'] : 'menu';
+
+	// Gerçek wp_nav_menu her <li>'ye ve <ul>'ye id verir; çift basım
+	// senaryosunu yakalayabilmek için stub da veriyor.
+	$html = '<ul id="' . esc_attr( $id ) . '" class="' . esc_attr( $class ) . '">'
+		. '<li id="menu-item-101" class="menu-item"><a href="#">Menü</a></li>'
+		. '<li id="menu-item-102" class="menu-item"><a href="#">İletişim</a></li>'
+		. '</ul>';
+
+	if ( empty( $args['echo'] ) ) {
+		return $html;
+	}
+
+	echo $html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+
+	return '';
+}
+
+/**
+ * Textarea içeriği kaçışlar.
+ *
+ * @param string $text Metin.
+ * @return string
+ */
+function esc_textarea( $text ) {
+	return htmlspecialchars( (string) $text, ENT_QUOTES );
+}
+
 require_once QRMS_PLUGIN_DIR . 'includes/class-helpers.php';
 require_once QRMS_PLUGIN_DIR . 'includes/class-license-client.php';
 require_once QRMS_PLUGIN_DIR . 'includes/class-module-loader.php';

@@ -30,6 +30,11 @@ function qrms_reset() {
 	// modülün init'ini çağıran test, sonraki testin menüsüne satır ekletirdi.
 	QRMS_Shortcodes::reset();
 
+	// add_shortcode() taklidinin defteri de aynı nedenle sıfırlanır; aksi
+	// hâlde bir testte kaydedilen kısa kod sonraki testte "kurulu" görünür.
+	$GLOBALS['qrms_test']['shortcodes'] = array();
+	$GLOBALS['qrms_test']['json']       = null;
+
 	$GLOBALS['qrms_test']['menus']      = array();
 	$GLOBALS['qrms_test']['submenus']   = array();
 	$GLOBALS['qrms_test']['removed']    = array();
@@ -7273,6 +7278,20 @@ function qrms_hfb() {
 	return new QRMS_Header_Footer_Builder();
 }
 
+/**
+ * Çeviri modülünün dil seçici kısa kodunu taklit eder.
+ *
+ * @return void
+ */
+function qrms_hfb_fake_lang_shortcode() {
+	add_shortcode(
+		'qrmenu_flags_only',
+		function () {
+			return '<div class="qrmenu-lang-dropdown qrmenu-flags-only-mod">TR-BAYRAK</div>';
+		}
+	);
+}
+
 qrms_test(
 	'modül loader sözleşmesine uyar: slug, dosya ve init fonksiyonu',
 	function () {
@@ -7298,43 +7317,283 @@ qrms_test(
 );
 
 qrms_test(
-	'header ve footer kısa kodları render eder',
+	'tek sabit tasarım basılır: QR marka, iki satır, mobil panel',
 	function () {
-		$hfb = qrms_hfb();
+		$hfb    = qrms_hfb();
 		$header = $hfb->render_header( $hfb->get_header_options() );
 		$footer = $hfb->render_footer( $hfb->get_footer_options() );
 
-		qrms_assert_contains( 'hfb-header--minimal-sticky', $header, 'varsayılan header varyantı' );
-		qrms_assert_contains( 'hfb-footer--utility-minimal', $footer, 'varsayılan footer varyantı' );
+		qrms_assert_contains( 'hfb-header-wrap', $header, 'header sarmalayıcı' );
+		qrms_assert_contains( 'hfb-brand__mark', $header, 'QR kod ikonu' );
+		qrms_assert_contains( 'QR MENU', $header, 'marka üst satırı' );
+		qrms_assert_contains( 'OFFİCİAL', $header, 'marka alt satırı' );
+		qrms_assert_contains( 'hfb-header__toggle', $header, 'hamburger düğmesi' );
 		qrms_assert_contains( 'hfb-mobile-panel', $header, 'mobil panel' );
+		qrms_assert_contains( 'hfb-footer-wrap', $footer, 'footer sarmalayıcı' );
 	}
 );
 
 qrms_test(
-	'header varyantları farklı sınıflar üretir',
+	'tasarım seçenekleri kaldırıldı: varyant ve renk anahtarı yok',
 	function () {
 		$hfb  = qrms_hfb();
 		$opts = $hfb->get_header_options();
 
-		foreach ( array( 'minimal-sticky', 'glass-bento', 'kinetic-bold' ) as $variant ) {
-			$opts['variant'] = $variant;
-			$html = $hfb->render_header( $opts );
-			qrms_assert_contains( 'hfb-header--' . $variant, $html, $variant . ' sınıfı' );
+		foreach ( array( 'variant', 'bg_color', 'text_color', 'border_color', 'brand_color', 'mobile_panel_gradient_start', 'social_color' ) as $kaldirilan ) {
+			qrms_assert_true( ! array_key_exists( $kaldirilan, $opts ), $kaldirilan . ' ayarı yok' );
+		}
+
+		qrms_assert_true(
+			! array_key_exists( 'variant', $hfb->get_footer_options() ),
+			'footer varyantı yok'
+		);
+
+		$header = $hfb->render_header( $opts );
+		foreach ( array( 'minimal-sticky', 'glass-bento', 'kinetic-bold', 'menulux' ) as $eski ) {
+			qrms_assert_true(
+				false === strpos( $header, 'hfb-header--' . $eski ),
+				$eski . ' varyant sınıfı basılmıyor'
+			);
 		}
 	}
 );
 
 qrms_test(
-	'footer varyantları farklı sınıflar üretir',
+	'eski kurulumun tasarım ayarları okunurken budanır',
+	function () {
+		// Yükseltme senaryosu: option'da v1.1'in varyant/renk anahtarları var.
+		update_option(
+			'hfb_header_options',
+			array(
+				'variant'                     => 'menulux',
+				'bg_color'                    => '#ffffff',
+				'mobile_panel_gradient_start' => '#e91e8c',
+				'logo_width'                  => 240,
+				'menu_id'                     => 7,
+			)
+		);
+
+		$hfb  = qrms_hfb();
+		$opts = $hfb->get_header_options();
+
+		foreach ( array( 'variant', 'bg_color', 'mobile_panel_gradient_start', 'logo_width' ) as $eski ) {
+			qrms_assert_true( ! array_key_exists( $eski, $opts ), $eski . ' budandı' );
+		}
+
+		qrms_assert_same( 7, (int) $opts['menu_id'], 'korunan ayar taşındı' );
+		qrms_assert_same( 'QR MENU', $opts['brand_line1'], 'yeni alan varsayılana düştü' );
+
+		// Budanan anahtarlar kayıtta da geri yazılmaz.
+		$hfb->save_settings( array( 'hfb_header_menu_id' => '7' ) );
+		qrms_assert_true(
+			! array_key_exists( 'variant', get_option( 'hfb_header_options' ) ),
+			'kayıtta da yok'
+		);
+	}
+);
+
+qrms_test(
+	'sticky kapatılabilir; tasarımın kalanı değişmez',
 	function () {
 		$hfb  = qrms_hfb();
-		$opts = $hfb->get_footer_options();
+		$opts = $hfb->get_header_options();
 
-		foreach ( array( 'utility-minimal', 'bento-grid', 'contact-first' ) as $variant ) {
-			$opts['variant'] = $variant;
-			$html = $hfb->render_footer( $opts );
-			qrms_assert_contains( 'hfb-footer--' . $variant, $html, $variant . ' sınıfı' );
-		}
+		qrms_assert_contains( 'hfb-header--sticky', $hfb->render_header( $opts ), 'varsayılan sticky' );
+
+		$opts['sticky'] = 0;
+		$html           = $hfb->render_header( $opts );
+
+		qrms_assert_true( false === strpos( $html, 'hfb-header--sticky' ), 'kapalıyken sınıf yok' );
+		qrms_assert_contains( 'hfb-brand__mark', $html, 'marka yerinde' );
+	}
+);
+
+qrms_test(
+	'sosyal ikonlar yalnızca URL girilmiş platformlar için basılır',
+	function () {
+		$hfb  = qrms_hfb();
+		$opts = $hfb->get_header_options();
+
+		qrms_assert_same( array( 'facebook', 'x', 'youtube' ), $opts['social_media_active'], 'varsayılan üçlü' );
+		qrms_assert_true(
+			false === strpos( $hfb->render_header( $opts ), 'hfb-social__link' ),
+			'URL yokken ikon basılmaz'
+		);
+
+		$opts['social_media'] = array(
+			'facebook' => 'https://facebook.com/qrmenu',
+			'youtube'  => 'https://youtube.com/@qrmenu',
+		);
+
+		$html = $hfb->render_header( $opts );
+
+		qrms_assert_contains( 'hfb-social__link--facebook', $html, 'facebook ikonu' );
+		qrms_assert_contains( 'hfb-social__link--youtube', $html, 'youtube ikonu' );
+		qrms_assert_true( false === strpos( $html, 'hfb-social__link--x"' ), 'URL girilmemiş X basılmaz' );
+	}
+);
+
+qrms_test(
+	'dil seçici: çeviri modülü yokken sessizce çıkmaz',
+	function () {
+		$hfb  = qrms_hfb();
+		$opts = $hfb->get_header_options();
+
+		qrms_assert_same( 1, (int) $opts['lang_show'], 'toggle varsayılan açık' );
+		qrms_assert_true( ! $hfb->lang_switcher_available(), 'kısa kod kayıtlı değil' );
+		qrms_assert_same( '', $hfb->render_lang_switcher( $opts ), 'çıktı boş' );
+		qrms_assert_true(
+			false === strpos( $hfb->render_header( $opts ), 'hfb-lang' ),
+			'header\'da dil kabı yok'
+		);
+	}
+);
+
+qrms_test(
+	'dil seçici açıkken hem masaüstü hem mobil panelde görünür',
+	function () {
+		qrms_hfb_fake_lang_shortcode();
+
+		$hfb  = qrms_hfb();
+		$opts = $hfb->get_header_options();
+
+		qrms_assert_true( $hfb->lang_switcher_available(), 'kısa kod bulundu' );
+
+		$html = $hfb->render_header( $opts );
+
+		qrms_assert_same( 2, substr_count( $html, 'TR-BAYRAK' ), 'header sağ ucu + mobil panel' );
+		qrms_assert_contains( 'hfb-header__actions', $html, 'sağ blok' );
+		qrms_assert_contains( 'hfb-mobile-panel__lang', $html, 'mobil paneldeki dil kabı' );
+	}
+);
+
+qrms_test(
+	'dil toggle kapalıyken bayrak hiçbir yerde görünmez',
+	function () {
+		qrms_hfb_fake_lang_shortcode();
+
+		$hfb              = qrms_hfb();
+		$opts             = $hfb->get_header_options();
+		$opts['lang_show'] = 0;
+
+		$html = $hfb->render_header( $opts );
+
+		qrms_assert_true( false === strpos( $html, 'TR-BAYRAK' ), 'masaüstünde yok' );
+		qrms_assert_true( false === strpos( $html, 'hfb-mobile-panel__lang' ), 'mobilde de yok' );
+	}
+);
+
+qrms_test(
+	'toggle, kayıtta ve önizlemede aynı biçimde çözülür',
+	function () {
+		$hfb = qrms_hfb();
+
+		$acik = $hfb->sanitize_header_input(
+			array( 'hfb_lang_show' => '1' ),
+			$hfb->get_header_options()
+		);
+		qrms_assert_same( 1, $acik['lang_show'], 'işaretliyken 1' );
+
+		// Onay kutusu işaretsizken tarayıcı alanı hiç göndermez.
+		$kapali = $hfb->sanitize_header_input( array(), $hfb->get_header_options() );
+		qrms_assert_same( 0, $kapali['lang_show'], 'işaretsizken 0' );
+		qrms_assert_same( 0, $kapali['sticky'], 'sticky de aynı kuralla' );
+	}
+);
+
+qrms_test(
+	'önizleme ile kayıt aynı temizleyiciden geçer, çıktı birebir aynı',
+	function () {
+		$hfb   = qrms_hfb();
+		$girdi = array(
+			'hfb_header_brand_line1'         => '  Deneme Marka  ',
+			'hfb_header_brand_line2'         => 'ALT SATIR',
+			'hfb_header_sticky'              => '1',
+			'hfb_lang_show'                  => '1',
+			'hfb_header_social_media_active' => array( 'facebook' ),
+			'hfb_header_social_media_url_facebook' => 'https://facebook.com/deneme',
+			'hfb_footer_copyright'           => '© 2026 Deneme',
+			'hfb_footer_email'               => 'bilgi@deneme.test',
+		);
+
+		// Önizleme yolu: kaydetmeden render.
+		$onizleme = $hfb->render_header( $hfb->sanitize_header_input( $girdi, $hfb->get_header_options() ) );
+
+		// Kayıt yolu: option'a yaz, sonra depodan oku.
+		$hfb->save_settings( $girdi );
+		$kayitli = $hfb->render_header( $hfb->get_header_options() );
+
+		qrms_assert_same( $onizleme, $kayitli, 'önizleme ve kayıt aynı HTML' );
+		qrms_assert_contains( 'Deneme Marka', $kayitli, 'marka kaydedildi' );
+		qrms_assert_contains( 'hfb-social__link--facebook', $kayitli, 'sosyal bağlantı kaydedildi' );
+
+		$footer = $hfb->render_footer( $hfb->get_footer_options() );
+		qrms_assert_contains( '© 2026 Deneme', $footer, 'telif kaydedildi' );
+		qrms_assert_contains( 'bilgi@deneme.test', $footer, 'e-posta kaydedildi' );
+	}
+);
+
+qrms_test(
+	'aynı istekte ikinci kez render edilmez (Elementor çift çıktı freni)',
+	function () {
+		$hfb = qrms_hfb();
+
+		qrms_assert_true( $hfb->should_render( 'header' ), 'ilk çağrı serbest' );
+		$hfb->mark_rendered( 'header' );
+		qrms_assert_true( ! $hfb->should_render( 'header' ), 'ikinci çağrı engellenir' );
+		qrms_assert_true( $hfb->should_render( 'footer' ), 'footer ayrı sayılır' );
+
+		// Elementor yüklü değilken uyumluluk kontrolleri sessizce false döner.
+		qrms_assert_true( ! $hfb->elementor_loaded(), 'Elementor yok' );
+		qrms_assert_true( ! $hfb->elementor_is_edit_mode(), 'editör modu değil' );
+		qrms_assert_true( ! $hfb->theme_location_has_template( 'header' ), 'Theme Builder şablonu yok' );
+	}
+);
+
+qrms_test(
+	'AJAX önizleme uç noktası header ve footer\'ı birlikte döndürür',
+	function () {
+		$hfb = qrms_hfb();
+
+		$_POST = array(
+			'nonce' => 'test',
+			'data'  => array(
+				'hfb_header_brand_line1' => 'Önizleme Marka',
+				'hfb_header_menu_id'     => '7',
+				'hfb_footer_copyright'   => '© 2026 Önizleme',
+			),
+		);
+
+		$hfb->ajax_preview();
+		$yanit = $GLOBALS['qrms_test']['json'];
+
+		qrms_assert_true( is_array( $yanit ) && ! empty( $yanit['success'] ), 'başarılı yanıt' );
+		qrms_assert_contains( 'Önizleme Marka', $yanit['data']['header'], 'header taze veriyle döndü' );
+		qrms_assert_contains( '© 2026 Önizleme', $yanit['data']['footer'], 'footer taze veriyle döndü' );
+
+		// Önizleme hiçbir şeyi kaydetmez.
+		qrms_assert_same( 'QR MENU', $hfb->get_header_options()['brand_line1'], 'depo değişmedi' );
+	}
+);
+
+qrms_test(
+	'aynı menü iki kez basılır ama id\'ler çakışmaz',
+	function () {
+		$hfb             = qrms_hfb();
+		$h               = $hfb->get_header_options();
+		$h['menu_id']    = 7;
+		$f               = $hfb->get_footer_options();
+		$f['menu_id']    = 7;
+
+		$html = $hfb->render_header( $h ) . $hfb->render_footer( $f );
+
+		preg_match_all( '/\bid="([^"]+)"/', $html, $eslesme );
+		$idler = $eslesme[1];
+
+		qrms_assert_same( count( $idler ), count( array_unique( $idler ) ), 'tekrar eden id yok' );
+		qrms_assert_contains( 'hfb-h-menu-item-101', $html, 'masaüstü menüsü kendi id alanında' );
+		qrms_assert_contains( 'hfb-m-menu-item-101', $html, 'mobil panel kendi id alanında' );
+		qrms_assert_contains( 'hfb-f-menu-item-101', $html, 'footer kendi id alanında' );
 	}
 );
 
@@ -7342,7 +7601,7 @@ qrms_test(
 	'kısa kod kaydı rehbere düşer',
 	function () {
 		update_option( 'qrms_active_modules', array( 'header-footer-builder' ) );
-		QRMS_Module_Loader::load_modules();
+		qrms_hfb()->register_hooks();
 
 		$gruplar = QRMS_Shortcodes::all();
 		qrms_assert_true( isset( $gruplar['header-footer-builder'] ), 'modül kayıtlı' );
@@ -7352,6 +7611,7 @@ qrms_test(
 		qrms_assert_same( 'hfb_footer', $kodlar[1]['tag'], 'footer tag' );
 	}
 );
+
 
 if ( empty( $GLOBALS['qrms_failures'] ) ) {
 	echo "\033[32mTüm testler geçti\033[0m (" . $GLOBALS['qrms_assertions'] . " doğrulama)\n\n";

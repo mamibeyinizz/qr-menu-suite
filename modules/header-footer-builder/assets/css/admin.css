@@ -1,76 +1,138 @@
-/* Header Footer Builder — admin */
+/**
+ * Header Footer Builder — yönetim ekranı.
+ *
+ * Sekmeler WordPress'in kendi `nav-tab` deseniyle basılır; burada yalnızca
+ * düğme olarak render edildikleri için gereken düzeltmeler ve iki sütunlu
+ * (form + sabit önizleme) yerleşim var.
+ */
 
-.hfb-wrap .hfb-tabs {
-  display: flex;
-  gap: 0.5rem;
-  margin: 1.25rem 0 1.5rem;
-  border-bottom: 1px solid #dcdcde;
-  padding-bottom: 0;
+/*
+ * Ortak `.qrms-wrap` bilinçli olarak 640px'e sabitlenmiş tek sütundur.
+ * Bu ekranda önizlemenin formla birlikte görünmesi gerekiyor; kapsam
+ * yalnızca `.hfb-wrap` için genişletilir, diğer modül ekranları
+ * etkilenmez. Yerleşim mobil öncelikli: dar ekranda önizleme formun
+ * altına iner, yalnızca geniş ekranda yana geçer.
+ */
+.hfb-wrap.qrms-wrap {
+  max-width: 1400px;
 }
 
-.hfb-wrap .hfb-tabs__link {
-  display: inline-block;
-  padding: 0.625rem 1rem;
-  text-decoration: none;
-  color: #50575e;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
-  font-weight: 500;
-}
-
-.hfb-wrap .hfb-tabs__link.is-active {
-  color: #0073aa;
-  border-bottom-color: #0073aa;
-}
-
-.hfb-form .qrms-card + .qrms-card {
+.hfb-wrap .hfb-layout {
+  align-items: start;
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: minmax(0, 1fr);
   margin-top: 1rem;
 }
 
-.hfb-media-field .hfb-media-preview {
+.hfb-wrap .hfb-layout__main,
+.hfb-wrap .hfb-layout__side {
+  min-width: 0;
+}
+
+/* Sekmeler --------------------------------------------------------------- */
+
+.hfb-wrap .hfb-tabs {
+  margin: 0 0 1rem;
+}
+
+/* `.nav-tab` çekirdekte <a> için yazılmış; <button> olarak basıldığında
+   yalnızca yazı tipi ve imleç normalizasyonu gerekir. */
+.hfb-wrap .hfb-tabs__link {
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.71428571;
+}
+
+.hfb-wrap .hfb-tabs__link:focus-visible {
+  box-shadow: 0 0 0 2px #2271b1;
+  outline: none;
+}
+
+.hfb-wrap .hfb-tab-panel[hidden] {
+  display: none;
+}
+
+.hfb-wrap .hfb-form .qrms-card + .qrms-card {
+  margin-top: 1rem;
+}
+
+.hfb-wrap .hfb-form__actions {
+  margin: 1.25rem 0 0;
+}
+
+/* Alanlar ---------------------------------------------------------------- */
+
+.hfb-wrap .hfb-media-field .hfb-media-preview {
   margin: 0.5rem 0;
   min-height: 48px;
 }
 
-.hfb-media-field .hfb-media-preview img {
-  max-width: 120px;
-  height: auto;
-  border-radius: 6px;
+.hfb-wrap .hfb-media-field .hfb-media-preview img {
   border: 1px solid #dcdcde;
+  border-radius: 6px;
+  height: auto;
+  max-width: 120px;
 }
 
-.hfb-social-row {
-  display: grid;
-  grid-template-columns: 140px 1fr;
-  gap: 0.75rem;
+.hfb-wrap .hfb-social-row {
   align-items: center;
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: 150px minmax(0, 1fr);
 }
 
-.hfb-inline-preview,
-.hfb-preview-card {
-  margin-top: 1.5rem;
+/* Önizleme --------------------------------------------------------------- */
+
+.hfb-wrap .hfb-preview__toolbar {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
 }
 
-.hfb-preview-frame {
+.hfb-wrap .hfb-preview__device select {
+  margin-left: 0.35rem;
+}
+
+.hfb-wrap .hfb-preview__status {
+  color: #646970;
+  font-size: 0.8125rem;
+}
+
+.hfb-wrap .hfb-preview__stage {
+  background: #fff;
   border: 1px solid #dcdcde;
   border-radius: 8px;
-  background: #fff;
-  overflow: hidden;
-  position: relative;
-}
-
-.hfb-preview-frame--full {
-  min-height: 480px;
-}
-
-.hfb-preview-frame[data-viewport="mobile"] {
-  max-width: 390px;
   margin: 0 auto;
+  max-height: 70vh;
+  overflow: auto;
+  position: relative;
+  width: 100%;
 }
 
-.hfb-preview-placeholder {
-  padding: 4rem 2rem;
-  text-align: center;
+.hfb-wrap .hfb-preview__stage[data-viewport="mobile"] {
+  max-width: 390px;
+}
+
+/*
+ * Masaüstü modunda tuval sabit 1280px basılır ve panele sığacak kadar
+ * `transform: scale()` ile küçültülür. Ölçekleme yalnızca görseldir:
+ * kap sorgusu tuvali 1280px olarak gördüğü için önizlemede gerçek
+ * masaüstü yerleşimi çıkar. Yükseklik JS tarafından ölçekle çarpılır.
+ */
+.hfb-wrap .hfb-preview__canvas {
+  transform-origin: top left;
+  width: 100%;
+}
+
+.hfb-wrap .hfb-preview__stage[data-viewport="desktop"] .hfb-preview__canvas {
+  width: 1100px;
+}
+
+.hfb-wrap .hfb-preview__placeholder {
   background: repeating-linear-gradient(
     -45deg,
     #f6f7f7,
@@ -79,15 +141,37 @@
     #ececec 20px
   );
   color: #646970;
+  padding: 3.5rem 1.5rem;
+  text-align: center;
 }
 
-.hfb-preview-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  margin-bottom: 1rem;
+/*
+ * Önizleme içindeki ön yüz bileşenleri yönetim ekranını ele geçirmemeli:
+ * sticky header ve fixed mobil panel sahnenin içine hapsedilir.
+ */
+.hfb-wrap .hfb-preview__stage .hfb-header--sticky {
+  position: relative;
+  top: auto;
 }
 
-.hfb-preview-device select {
-  margin-left: 0.35rem;
+.hfb-wrap .hfb-preview__stage .hfb-mobile-panel {
+  position: absolute;
+}
+
+@media (max-width: 782px) {
+  .hfb-wrap .hfb-social-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Geniş ekran: form solda, önizleme sağda ve kaydırırken sabit. */
+@media (min-width: 1200px) {
+  .hfb-wrap .hfb-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(360px, 560px);
+  }
+
+  .hfb-wrap .hfb-layout__side {
+    position: sticky;
+    top: 46px;
+  }
 }
