@@ -572,20 +572,61 @@
     ----------------------------------------------------------------- */
     var VITRIN_PREVIEW_FIELDS = {
         desktop: {
-            cols:    'rma-vitrin-cols',
-            rows:    'rma-vitrin-rows',
-            gap:     'rma-vitrin-desktop-gap',
-            cardMin: 'rma-vitrin-desktop-card-min',
-            ratio:   'rma-vitrin-desktop-ratio'
+            cols:         'rma-vitrin-cols',
+            rows:         'rma-vitrin-rows',
+            gap:          'rma-vitrin-desktop-gap',
+            cardMin:      'rma-vitrin-desktop-card-min',
+            ratio:        'rma-vitrin-desktop-ratio',
+            titleSize:    'rma-vitrin-title-size',
+            titleWeight:  'rma-vitrin-title-weight',
+            titleAlign:   'rma-vitrin-title-align',
+            priceSize:    'rma-vitrin-price-size',
+            priceWeight:  'rma-vitrin-price-weight',
+            priceAlign:   'rma-vitrin-price-align'
         },
         mobile: {
-            cols:    'rma-vitrin-mobile-cols',
-            rows:    'rma-vitrin-mobile-rows',
-            gap:     'rma-vitrin-mobile-gap',
-            cardMin: 'rma-vitrin-mobile-card-min',
-            ratio:   'rma-vitrin-mobile-ratio'
+            cols:         'rma-vitrin-mobile-cols',
+            rows:         'rma-vitrin-mobile-rows',
+            gap:          'rma-vitrin-mobile-gap',
+            cardMin:      'rma-vitrin-mobile-card-min',
+            ratio:        'rma-vitrin-mobile-ratio',
+            titleSize:    'rma-vitrin-title-size-mobile',
+            titleWeight:  'rma-vitrin-title-weight-mobile',
+            titleAlign:   'rma-vitrin-title-align-mobile',
+            priceSize:    'rma-vitrin-price-size-mobile',
+            priceWeight:  'rma-vitrin-price-weight-mobile',
+            priceAlign:   'rma-vitrin-price-align-mobile'
         }
     };
+
+    /* Yazı tipi açılır listesinin CSS karşılıkları — RMA_Vitrin_DB::yazi_tipleri()
+       ile BİREBİR aynı yığınlar. Önizlemenin sunucuya gitmeden doğru fontu
+       göstermesi için burada da duruyor; kaynak liste PHP tarafındadır. */
+    var VITRIN_FONT_STACKS = {
+        '':                  'inherit',
+        'system':            'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+        'Playfair Display':  "'Playfair Display', Georgia, serif",
+        'Manrope':           "'Manrope', system-ui, sans-serif",
+        'Inter':             "'Inter', system-ui, sans-serif",
+        'Poppins':           "'Poppins', system-ui, sans-serif",
+        'Montserrat':        "'Montserrat', system-ui, sans-serif",
+        'Georgia':           'Georgia, "Times New Roman", serif'
+    };
+
+    /* Fiyat satırı flex olduğu için hizalama justify-content'e çevrilir
+       (bkz. vitrin.css --qrms-vitrin-price-justify). */
+    var VITRIN_JUSTIFY = { left: 'flex-start', center: 'center', right: 'flex-end' };
+
+    /**
+     * Hizalama buton grubunun (radio) o anki değeri.
+     *
+     * @param {string} id Grup id ön eki (data-align-field).
+     * @return {string} left | center | right
+     */
+    function vitrinAlignVal(id) {
+        var $secili = $('.rma-align-input[data-align-field="' + id + '"]:checked');
+        return $secili.length ? String($secili.val()) : 'left';
+    }
 
     function initVitrinPreview() {
         var $form  = $('#rma-vitrin-form');
@@ -625,6 +666,33 @@
             var bg = fieldVal('rma-vitrin-bg-color', '');
             previewEl.style.setProperty('--qrms-vitrin-bg', bg ? bg : 'transparent');
 
+            /* Yazı tipi ayarları. Boyut/kalınlık/hizalama seçili moddan
+               okunur; mobil karşılıkları burada da her zaman yazılır (kart
+               boyutu ayarlarındaki aynı gerekçe: admin penceresi 1023px'in
+               altındaysa vitrin.css'in gerçek medya sorgusu devreye girer). */
+            previewEl.style.setProperty('--qrms-vitrin-title-size', fieldVal(f.titleSize, 15) + 'px');
+            previewEl.style.setProperty('--qrms-vitrin-title-weight', fieldVal(f.titleWeight, 600));
+            previewEl.style.setProperty('--qrms-vitrin-title-align', vitrinAlignVal(f.titleAlign));
+            previewEl.style.setProperty('--qrms-vitrin-price-size', fieldVal(f.priceSize, 15) + 'px');
+            previewEl.style.setProperty('--qrms-vitrin-price-weight', fieldVal(f.priceWeight, 700));
+            previewEl.style.setProperty('--qrms-vitrin-price-justify', VITRIN_JUSTIFY[vitrinAlignVal(f.priceAlign)]);
+
+            previewEl.style.setProperty('--qrms-vitrin-title-size-mobile', fieldVal(m.titleSize, 14) + 'px');
+            previewEl.style.setProperty('--qrms-vitrin-title-weight-mobile', fieldVal(m.titleWeight, 600));
+            previewEl.style.setProperty('--qrms-vitrin-title-align-mobile', vitrinAlignVal(m.titleAlign));
+            previewEl.style.setProperty('--qrms-vitrin-price-size-mobile', fieldVal(m.priceSize, 14) + 'px');
+            previewEl.style.setProperty('--qrms-vitrin-price-weight-mobile', fieldVal(m.priceWeight, 700));
+            previewEl.style.setProperty('--qrms-vitrin-price-justify-mobile', VITRIN_JUSTIFY[vitrinAlignVal(m.priceAlign)]);
+
+            var font = String(fieldVal('rma-vitrin-title-font', ''));
+            previewEl.style.setProperty('--qrms-vitrin-card-font', VITRIN_FONT_STACKS[font] || 'inherit');
+
+            var titleColor = fieldVal('rma-vitrin-title-color', '');
+            previewEl.style.setProperty('--qrms-vitrin-title-color', titleColor ? titleColor : 'var(--qrms-vitrin-text)');
+
+            var priceColor = fieldVal('rma-vitrin-price-color', '');
+            previewEl.style.setProperty('--qrms-vitrin-price-color', priceColor ? priceColor : 'var(--qrms-vitrin-accent)');
+
             $stage.toggleClass('is-mobile-mode', mode === 'mobile');
             $stage.toggleClass('is-price-hidden', !$('#rma-vitrin-show-price').is(':checked'));
         }
@@ -634,20 +702,41 @@
             $.each(f, function (_, id) { allFieldIds.push('#' + id); });
         });
 
-        $form.on('input change', allFieldIds.join(', ') + ', #rma-vitrin-show-price, #rma-vitrin-bg-color', applyPreview);
+        // Hizalama grubu radio'dur: id'leri alan listesine değil, sınıfına
+        // göre bağlanır (aynı ad altında üç girdi vardır).
+        $form.on('input change', allFieldIds.join(', ') + ', #rma-vitrin-show-price, #rma-vitrin-bg-color, #rma-vitrin-title-font, #rma-vitrin-title-color, #rma-vitrin-price-color', applyPreview);
+
+        $form.on('change', '.rma-align-input', function () {
+            $(this).closest('.rma-align-group').find('.rma-align-btn').each(function () {
+                $(this).toggleClass('is-selected', $(this).find('.rma-align-input').is(':checked'));
+            });
+            applyPreview();
+        });
 
         // wpColorPicker Iris ile sürüklenirken text input'un value'su henüz
         // güncellenmemiş olabilir (bkz. initColorPickers'taki aynı not) —
         // taze değeri ui.color'dan alıp doğrudan CSS değişkenine yazıyoruz.
-        var $bgColor = $('#rma-vitrin-bg-color');
-        if ($bgColor.length && typeof $.fn.wpColorPicker === 'function') {
-            $bgColor.wpColorPicker({
-                change: function (event, ui) {
-                    previewEl.style.setProperty('--qrms-vitrin-bg', ui.color.toString());
-                },
-                clear: function () {
-                    previewEl.style.setProperty('--qrms-vitrin-bg', 'transparent');
-                }
+        // Renk seçicileri aynı desenle kurulur: her biri kendi CSS
+        // değişkenini yazar, temizlenince vitrin.css'in varsayılanına döner.
+        var colorFields = [
+            { id: 'rma-vitrin-bg-color',    varName: '--qrms-vitrin-bg',          bos: 'transparent' },
+            { id: 'rma-vitrin-title-color', varName: '--qrms-vitrin-title-color', bos: 'var(--qrms-vitrin-text)' },
+            { id: 'rma-vitrin-price-color', varName: '--qrms-vitrin-price-color', bos: 'var(--qrms-vitrin-accent)' }
+        ];
+
+        if (typeof $.fn.wpColorPicker === 'function') {
+            colorFields.forEach(function (alan) {
+                var $input = $('#' + alan.id);
+                if (!$input.length) return;
+
+                $input.wpColorPicker({
+                    change: function (event, ui) {
+                        previewEl.style.setProperty(alan.varName, ui.color.toString());
+                    },
+                    clear: function () {
+                        previewEl.style.setProperty(alan.varName, alan.bos);
+                    }
+                });
             });
         }
 

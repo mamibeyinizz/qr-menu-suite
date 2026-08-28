@@ -120,6 +120,33 @@ class RMA_Vitrin_Shortcode {
     }
 
     /**
+     * Kart yazı tipi Google Fonts'tan geliyorsa onu kuyruğa alır.
+     *
+     * Tema fontu, sistem yığını ve Georgia için HİÇBİR istek yapılmaz —
+     * ayar eklenmeden önceki davranış (vitrin hiç font indirmez) bu
+     * seçeneklerde aynen korunur. Aile spec'i RMA_Vitrin_DB::yazi_tipleri()
+     * içinde menü modülüyle birebir aynı yazıldığı için, menü de aynı
+     * sayfadaysa tarayıcı aynı adresi ikinci kez indirmez.
+     *
+     * @param string $anahtar yazi_tipleri() anahtarı.
+     * @return void
+     */
+    private static function maybe_enqueue_font( $anahtar ) {
+        $tipler = RMA_Vitrin_DB::yazi_tipleri();
+
+        if ( ! isset( $tipler[ $anahtar ] ) || '' === $tipler[ $anahtar ]['google'] ) {
+            return;
+        }
+
+        wp_enqueue_style(
+            'rma-vitrin-fonts',
+            'https://fonts.googleapis.com/css2?family=' . $tipler[ $anahtar ]['google'] . '&display=swap',
+            array(),
+            null
+        );
+    }
+
+    /**
      * Kısa kodu render eder.
      *
      * @param array $atts Kısa kod nitelikleri.
@@ -172,6 +199,51 @@ class RMA_Vitrin_Shortcode {
             $mobil_min,
             $mobil_oran
         );
+
+        // Kart yazı tipi ayarları ("5. Yazı Tipi" adımı). Boyut/kalınlık/
+        // hizalama masaüstü ve mobil için AYRI; font ailesi ve renkler
+        // cihazdan bağımsız tek ayardır. Mobil değerler --*-mobile
+        // değişkenlerine yazılır, breakpoint'te vitrin.css onları temel
+        // değişkenlere çevirir — kart boyutu ayarlarındaki desenin aynısı.
+        $stil .= sprintf(
+            '--qrms-vitrin-title-size:%1$dpx;--qrms-vitrin-title-weight:%2$d;--qrms-vitrin-title-align:%3$s;'
+            . '--qrms-vitrin-title-size-mobile:%4$dpx;--qrms-vitrin-title-weight-mobile:%5$d;--qrms-vitrin-title-align-mobile:%6$s;'
+            . '--qrms-vitrin-price-size:%7$dpx;--qrms-vitrin-price-weight:%8$d;--qrms-vitrin-price-justify:%9$s;'
+            . '--qrms-vitrin-price-size-mobile:%10$dpx;--qrms-vitrin-price-weight-mobile:%11$d;--qrms-vitrin-price-justify-mobile:%12$s;',
+            (int) RMA_Vitrin_DB::ayar( $vitrin, 'title_size' ),
+            (int) RMA_Vitrin_DB::ayar( $vitrin, 'title_weight' ),
+            RMA_Vitrin_DB::hizalama( RMA_Vitrin_DB::ayar( $vitrin, 'title_align' ) ),
+            (int) RMA_Vitrin_DB::ayar( $vitrin, 'title_size_mobile' ),
+            (int) RMA_Vitrin_DB::ayar( $vitrin, 'title_weight_mobile' ),
+            RMA_Vitrin_DB::hizalama( RMA_Vitrin_DB::ayar( $vitrin, 'title_align_mobile' ) ),
+            (int) RMA_Vitrin_DB::ayar( $vitrin, 'price_size' ),
+            (int) RMA_Vitrin_DB::ayar( $vitrin, 'price_weight' ),
+            RMA_Vitrin_DB::hizalama_justify( RMA_Vitrin_DB::ayar( $vitrin, 'price_align' ) ),
+            (int) RMA_Vitrin_DB::ayar( $vitrin, 'price_size_mobile' ),
+            (int) RMA_Vitrin_DB::ayar( $vitrin, 'price_weight_mobile' ),
+            RMA_Vitrin_DB::hizalama_justify( RMA_Vitrin_DB::ayar( $vitrin, 'price_align_mobile' ) )
+        );
+
+        // Boş bırakılan alanlarda vitrin.css'in kendi varsayılanı geçerli
+        // kalır (tema fontu / --qrms-vitrin-text / --qrms-vitrin-accent).
+        $font_stack = RMA_Vitrin_DB::yazi_tipi_stack( RMA_Vitrin_DB::ayar( $vitrin, 'title_font' ) );
+
+        if ( '' !== $font_stack ) {
+            $stil .= sprintf( '--qrms-vitrin-card-font:%s;', $font_stack );
+        }
+
+        $baslik_rengi = (string) RMA_Vitrin_DB::ayar( $vitrin, 'title_color' );
+        $fiyat_rengi  = (string) RMA_Vitrin_DB::ayar( $vitrin, 'price_color' );
+
+        if ( '' !== $baslik_rengi ) {
+            $stil .= sprintf( '--qrms-vitrin-title-color:%s;', $baslik_rengi );
+        }
+
+        if ( '' !== $fiyat_rengi ) {
+            $stil .= sprintf( '--qrms-vitrin-price-color:%s;', $fiyat_rengi );
+        }
+
+        self::maybe_enqueue_font( (string) RMA_Vitrin_DB::ayar( $vitrin, 'title_font' ) );
 
         // Boşsa vitrin.css'in kendi --qrms-vitrin-bg varsayılanı (şeffaf)
         // geçerli kalır; admin'de renk seçilmişse burada ezilir.

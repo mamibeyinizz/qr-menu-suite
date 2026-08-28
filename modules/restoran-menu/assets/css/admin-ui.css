@@ -411,6 +411,62 @@
     width: 16px;
 }
 
+/* Hizalama seçici — "Renk seçin" düğmeleriyle aynı yüzey/kenarlık dili.
+   Radio girdisi görünmez ama odaklanabilir kalır: klavye ve ekran
+   okuyucu doğal çalışır, seçili düğme altın vurgu alır. */
+.rma-align-group {
+    display: flex;
+    gap: 8px;
+}
+
+.rma-admin .rma-align-btn {
+    align-items: center;
+    background: var(--rma-a-surface-2);
+    border: 1px solid var(--rma-a-border);
+    border-radius: var(--rma-a-radius);
+    color: var(--rma-a-text-soft);
+    cursor: pointer;
+    display: inline-flex;
+    font-size: 12px;
+    font-weight: 600;
+    gap: 7px;
+    padding: 8px 12px;
+    transition: border-color .18s, background .18s, color .18s;
+}
+
+.rma-admin .rma-align-btn:hover {
+    border-color: var(--rma-a-accent-dim);
+}
+
+.rma-admin .rma-align-btn.is-selected,
+.rma-admin .rma-align-btn:has(.rma-align-input:checked) {
+    background: var(--rma-a-accent-soft);
+    border-color: var(--rma-a-accent);
+    color: var(--rma-a-accent);
+}
+
+.rma-admin .rma-align-btn:focus-within {
+    box-shadow: 0 0 0 2px var(--rma-a-accent-dim);
+}
+
+.rma-admin .rma-align-input {
+    height: 1px;
+    margin: 0;
+    opacity: 0;
+    pointer-events: none;
+    position: absolute;
+    width: 1px;
+}
+
+.rma-admin .rma-align-ic {
+    fill: currentColor;
+    flex: none;
+}
+
+.rma-align-label {
+    font-weight: 600;
+}
+
 /* ---------------------------------------------------------------
    BUTONLAR — altın marka rengi (yalnızca .rma-admin içinde)
 --------------------------------------------------------------- */
