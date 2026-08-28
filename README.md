@@ -296,7 +296,7 @@ bir kısa kod rehbere eklenmezse düşer.
 
 | Slug | İçerik | Yönetim sayfası |
 | --- | --- | --- |
-| `restoran-menu` | `rma_menu_item` CPT, `[restaurant_menu]`, `[qmo_one_cikan_slider]`, toplu fiyat kampanyası, Elementor widget'ı | ✔ Hub + dokuz ekran |
+| `restoran-menu` | `rma_menu_item` CPT, `[restaurant_menu]`, `[qmo_one_cikan_slider]`, `[qmo_banner_slider]` (`qmo_banner_slide` CPT), toplu fiyat kampanyası, Elementor widget'ı | ✔ Hub + dokuz ekran |
 | `yorum-feedback` | Çoklu kriter yorumlar, Google yönlendirme + ödül kodları, dinamik form oluşturucu, `[qr_menu_reviews]`, `[qr_menu_contact]`, `[qr_menu_form]` | ✔ Hub + yedi ayrı sayfa |
 | `qr-masa` | Masa kayıtları (CRUD + toplu oluşturma), masa QR adresleri, `[qr_aktif_masa]` | ✔ Masalar ekranı |
 | `qr-masa-oturum-guvenligi` | Sahte QR reddi, kilit ekranı, sayfa kilidi; uygulamanın REST uçlarının Firebase/şube yapılandırması | ✔ Hub + Oturum Limitleri / Firebase & Şube Ayarları |
@@ -473,7 +473,7 @@ Sayfaların hangi eski sekmeden geldiği:
 | Sayfa | Önceki yeri |
 | --- | --- |
 | Görünüm | "Genel Ayarlar" sekmesi (Renkler + Tipografi + Hazır Paletler iç sekmeleri) ve "Kayar Başlık" sekmesi |
-| Öne Çıkanlar | "Öneriler" sekmesi + menüden erişilemeyen `qmo_slide` (Öne Çıkan Slider) ekranı |
+| Öne Çıkanlar | "Öneriler" sekmesi + menüden erişilemeyen `qmo_slide` (Öne Çıkan Slider) ve `qmo_banner_slide` (Kampanya Banner) ekranları |
 | Diğer Ayarlar | "Kategori Sıralaması", "İçe/Dışa Aktar" ve "Yedekleme" sekmeleri, üç bölüm hâlinde |
 
 Sayfa tanımı tek yerdedir (`RMA_Admin_Pages_Trait::get_subpages()`); sayfa
@@ -485,8 +485,8 @@ CPT `show_in_menu => QRMS_Admin::MENU_SLUG` ile kaydolur — böylece CPT
 ekranlarında `$parent_file` suite menüsüne çözülür. Çekirdeğin bu yüzden
 eklediği ürün listesi satırını beyaz liste düşürür; "Ürün Ekle" ve taksonomi
 satırları zaten hiç oluşmaz (onlar yalnızca top-level menü alan CPT'ler için
-üretilir). CPT, taksonomi ve Öne Çıkan Slider ekranlarında menü vurgusu
-`modules/restoran-menu/module.php` içindeki `parent_file` / `submenu_file`
+üretilir). CPT, taksonomi, Öne Çıkan Slider ve Kampanya Banner ekranlarında
+menü vurgusu `modules/restoran-menu/module.php` içindeki `parent_file` / `submenu_file`
 filtreleriyle "Restoran Menü" satırına sabitlenir — ekran kodlarına
 dokunulmaz.
 

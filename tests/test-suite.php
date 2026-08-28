@@ -2643,7 +2643,9 @@ function qrms_kaynaktaki_kisa_kodlar() {
 function qrms_bildirilen_kisa_kodlar() {
 	$tags = array();
 
-	foreach ( glob( QRMS_PLUGIN_DIR . 'modules/*/module.php' ) as $dosya ) {
+	// Kayıt çoğunlukla module.php'dedir; header-footer-builder gibi modüller
+	// bunu kendi sınıf dosyasında yapar, o yüzden modülün tüm PHP'si taranır.
+	foreach ( glob( QRMS_PLUGIN_DIR . 'modules/*/{,*/,*/*/}*.php', GLOB_BRACE ) as $dosya ) {
 		$kaynak = (string) file_get_contents( $dosya );
 
 		if ( false === strpos( $kaynak, 'QRMS_Shortcodes::register(' ) ) {
@@ -2668,7 +2670,7 @@ qrms_test(
 		$kaynakta   = qrms_kaynaktaki_kisa_kodlar();
 		$bildirilen = qrms_bildirilen_kisa_kodlar();
 
-		qrms_assert_same( 17, count( $kaynakta ), 'kaynaktaki kısa kod sayısı' );
+		qrms_assert_same( 20, count( $kaynakta ), 'kaynaktaki kısa kod sayısı' );
 		qrms_assert_same( $kaynakta, $bildirilen, 'bildirilen liste kaynakla aynı' );
 	}
 );
@@ -7609,6 +7611,66 @@ qrms_test(
 		qrms_assert_same( 2, count( $kodlar ), 'iki kısa kod' );
 		qrms_assert_same( 'hfb_header', $kodlar[0]['tag'], 'header tag' );
 		qrms_assert_same( 'hfb_footer', $kodlar[1]['tag'], 'footer tag' );
+	}
+);
+
+
+echo "\nKampanya Banner slider\n";
+
+qrms_test(
+	'banner modülü ürün vitrini slider\'ından bağımsızdır',
+	function () {
+		// İki slider ayrı dosyalarda, ayrı prefix'lerle durur: birinin
+		// stili/betiği diğerinin seçicilerine dokunmaz.
+		$dizin = QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/';
+
+		foreach ( array( 'admin-cpt-banner.php', 'shortcode-banner-slider.php', 'frontend-banner-slider.css', 'frontend-banner-slider.js' ) as $dosya ) {
+			qrms_assert_true( file_exists( $dizin . $dosya ), $dosya . ' var' );
+		}
+
+		$css = file_get_contents( $dizin . 'frontend-banner-slider.css' );
+		$js  = file_get_contents( $dizin . 'frontend-banner-slider.js' );
+
+		qrms_assert_false( strpos( $css, '.qmo-slider-' ) !== false, 'banner css ürün slider seçicisine dokunmaz' );
+		qrms_assert_false( strpos( $js, 'qmo-slider-' ) !== false, 'banner betiği ürün slider seçicisine dokunmaz' );
+
+		// 16:9, tam genişlik, peek yok.
+		qrms_assert_contains( 'aspect-ratio: 16 / 9', $css, 'banner oranı' );
+		qrms_assert_contains( 'flex: 0 0 100%', $css, 'slayt tüm alanı kaplar' );
+
+		// Autoplay + IntersectionObserver + hareket tercihi + swipe.
+		qrms_assert_contains( 'IntersectionObserver', $js, 'viewport tetikli autoplay' );
+		qrms_assert_contains( 'prefers-reduced-motion', $js, 'hareket tercihi' );
+		qrms_assert_contains( 'touchend', $js, 'swipe' );
+
+		// Bootstrap: yeni CPT ve kısa kod ana dosyadan başlatılır.
+		$boot = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/qmo-one-cikan-slider.php' );
+		qrms_assert_contains( 'QMO_Banner_CPT::init()', $boot, 'CPT başlatılır' );
+		qrms_assert_contains( 'QMO_Shortcode_Banner_Slider::init()', $boot, 'kısa kod başlatılır' );
+	}
+);
+
+qrms_test(
+	'banner kaydı nonce/yetki geçer, görselsizken sessizce basılmaz',
+	function () {
+		$dizin = QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/';
+		$cpt   = file_get_contents( $dizin . 'admin-cpt-banner.php' );
+		$kod   = file_get_contents( $dizin . 'shortcode-banner-slider.php' );
+
+		// Kaydetme güvenliği mevcut qmo_slide deseninin aynısı.
+		qrms_assert_contains( 'wp_nonce_field( self::NONCE_ACTION, self::NONCE_FIELD )', $cpt, 'nonce alanı' );
+		qrms_assert_contains( 'wp_verify_nonce', $cpt, 'nonce doğrulaması' );
+		qrms_assert_contains( 'current_user_can( \'edit_post\', $post_id )', $cpt, 'yetki kontrolü' );
+		qrms_assert_contains( 'esc_url_raw', $cpt, 'bağlantı temizliği' );
+
+		// Görseli olmayan banner atlanır; hiç kalmazsa kısa kod boş döner.
+		qrms_assert_contains( 'if ( empty( $banners ) ) return \'\';', $kod, 'sessiz fallback' );
+
+		// Boyut uyarıları (GÖREV 3).
+		qrms_assert_contains( '1600x900px (16:9), JPG/WEBP, maksimum 300KB', $cpt, 'banner boyut notu' );
+
+		$slide = file_get_contents( $dizin . 'admin-cpt-slide.php' );
+		qrms_assert_contains( '1080x1080px (1:1 kare), JPG/WEBP, maksimum 200KB', $slide, 'ürün görseli boyut notu' );
 	}
 );
 
