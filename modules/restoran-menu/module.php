@@ -43,7 +43,8 @@ function qrms_module_restoran_menu_init() {
 	require_once __DIR__ . '/qr-menu.php';
 
 	// Kısa kod rehberine bildirim. add_shortcode() çağrıları dosya kapsamında
-	// (qr-menu.php, shortcode-vitrin.php, shortcode-slider.php) yapılır; rehber
+	// (qr-menu.php, shortcode-vitrin.php, shortcode-slider.php,
+	// shortcode-banner-slider.php) yapılır; rehber
 	// yalnızca bu tek kayıttan beslenir.
 	QRMS_Shortcodes::register(
 		'restoran-menu',
@@ -82,6 +83,18 @@ function qrms_module_restoran_menu_init() {
 						'name'    => 'show_title',
 						'default' => 'yes',
 						'desc'    => __( 'Slayt başlıklarını gizlemek için "no" yazın.', 'qrms' ),
+					),
+				),
+			),
+			array(
+				'tag'   => 'qmo_banner_slider',
+				'title' => __( 'Kampanya Banner', 'qrms' ),
+				'desc'  => __( 'Sayfanın en üstünde tam genişlikte, kendi kendine dönen kampanya görselleri. İçeriği "Kampanya Banner" ekranından yönetilir.', 'qrms' ),
+				'attrs' => array(
+					array(
+						'name'    => 'autoplay',
+						'default' => '4500',
+						'desc'    => __( 'Görseller arası bekleme (milisaniye). Otomatik geçişi kapatmak için 0 yazın.', 'qrms' ),
 					),
 				),
 			),
@@ -209,9 +222,10 @@ function qrms_module_restoran_menu_submenu_file( $submenu_file ) {
 function qrms_module_restoran_menu_ekranimiz_mi() {
 	global $pagenow, $typenow;
 
-	// Öne Çıkan Slider da modülün bir parçasıdır: kendi ekranlarında suite
-	// menüsü açık kalmalı ve "Öne Çıkanlar" satırı vurgulanmalıdır.
-	if ( 'rma_menu_item' === $typenow || 'qmo_slide' === $typenow ) {
+	// Öne Çıkan Slider ve Kampanya Banner da modülün bir parçasıdır: kendi
+	// ekranlarında suite menüsü açık kalmalı ve "Öne Çıkanlar" satırı
+	// vurgulanmalıdır.
+	if ( in_array( $typenow, array( 'rma_menu_item', 'qmo_slide', 'qmo_banner_slide' ), true ) ) {
 		return true;
 	}
 

@@ -117,7 +117,7 @@ class QMO_Shortcode_Slider {
                                      tabindex="0" role="button"
                                      aria-label="<?php echo esc_attr( $product['title'] ); ?>">
                                 <div class="qmo-slider-product-img-wrap">
-                                    <img src="<?php echo esc_url( $product['img'] ); ?>" alt="<?php echo esc_attr( $product['title'] ); ?>" class="qmo-slider-product-img" loading="lazy" decoding="async" width="220" height="220">
+                                    <img src="<?php echo esc_url( $product['img'] ); ?>" alt="<?php echo esc_attr( $product['title'] ); ?>" class="qmo-slider-product-img" loading="lazy" decoding="async" width="220" height="275">
                                     <?php if ( ! empty( $product['tukendi'] ) ) : ?>
                                         <span class="rma-tukendi-rozet"><?php echo esc_html( $product['tukendi_etiket'] ); ?></span>
                                     <?php endif; ?>
@@ -194,7 +194,7 @@ class QMO_Shortcode_Slider {
             $price_html = RMA_Kampanya::fiyat_html( $product_id );
 
             $img = get_the_post_thumbnail_url( $product_id, 'medium' )
-                ?: 'https://placehold.co/220x220/111111/c9a84c?text=%E2%97%86';
+                ?: 'https://placehold.co/440x550/111111/c9a84c?text=%E2%97%86';
 
             $tukendi = class_exists( 'RMA_Tukendi' ) && RMA_Tukendi::urun_tukendi( $product_id );
 

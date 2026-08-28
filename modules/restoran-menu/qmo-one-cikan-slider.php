@@ -24,6 +24,11 @@ require_once __DIR__ . '/includes/admin-kombin-meta.php';
 require_once __DIR__ . '/includes/admin-cpt-slide.php';
 require_once __DIR__ . '/includes/shortcode-slider.php';
 
+// Kampanya banner slider'ı: ürün vitrininden bağımsız, kendi CPT'si ve
+// varlıklarıyla çalışan ayrı modül.
+require_once __DIR__ . '/includes/admin-cpt-banner.php';
+require_once __DIR__ . '/includes/shortcode-banner-slider.php';
+
 /* =====================================================================
    MAIN CLASS
 ===================================================================== */
@@ -55,10 +60,13 @@ final class QMO_One_Cikan_Slider {
         QMO_Kombin_Meta::init();
         QMO_Slide_CPT::init();
         QMO_Shortcode_Slider::init();
+        QMO_Banner_CPT::init();
+        QMO_Shortcode_Banner_Slider::init();
 
         add_action( 'updated_post_meta', [ __CLASS__, 'maybe_bump_rma_cache' ], 20, 4 );
         add_action( 'added_post_meta',   [ __CLASS__, 'maybe_bump_rma_cache' ], 20, 4 );
         add_action( 'save_post_qmo_slide', [ __CLASS__, 'bump_rma_cache_on_slide_save' ], 20 );
+        add_action( 'save_post_' . QMO_Banner_CPT::POST_TYPE, [ __CLASS__, 'bump_rma_cache_on_slide_save' ], 20 );
     }
 
     public static function missing_dependency_notice() {
@@ -76,7 +84,7 @@ final class QMO_One_Cikan_Slider {
         if ( 0 !== strpos( (string) $meta_key, '_qmo_' ) ) return;
 
         $post_type = get_post_type( $object_id );
-        if ( 'rma_menu_item' !== $post_type && 'qmo_slide' !== $post_type ) return;
+        if ( ! in_array( $post_type, [ 'rma_menu_item', 'qmo_slide', QMO_Banner_CPT::POST_TYPE ], true ) ) return;
 
         self::bump_rma_cache();
     }

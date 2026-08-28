@@ -14,6 +14,12 @@
     --qmo-font-display: 'Playfair Display', Georgia, serif;
     --qmo-font-body:    'Manrope', system-ui, sans-serif;
 
+    /* Kart geometrisi tek yerden: ızgara peek hesabı da (aşağıda) bu iki
+       değişkenden türetilir, kart yarıçapı da. */
+    --qmo-card-gap:    3.2cqi;
+    --qmo-card-radius: 19px;
+
+    box-sizing: border-box;
     container-type: inline-size;
     container-name: qmo-slider;
     background: var(--qmo-ink);
@@ -65,19 +71,30 @@
 
 .qmo-slider-grid {
     display: grid;
-    gap: 1.2cqi;
+    gap: var(--qmo-card-gap);
     grid-template-columns: repeat(4, minmax(0, 1fr));
     overflow-x: auto;
     overscroll-behavior-x: contain;
+    /* Gölge kartın kutusunun dışına taşar; alt/üst kırpılmasın diye ızgaraya
+       gölge payı bırakılır (overflow-x: auto y ekseninde de kırpar). */
+    padding-bottom: 1.2cqi;
     scroll-snap-type: x mandatory;
     -webkit-overflow-scrolling: touch;
 }
 
+/* Dar container: tek satırda 1.3 kart. Sonraki kartın kenarı görünür kalır,
+   şeridin kaydırılabilir olduğu ilk bakışta anlaşılır.
+   Kart genişliği: (görünür alan - bir gap) / 1.3 */
 @container qmo-slider (max-width: 720px) {
     .qmo-slider-grid {
-        grid-template-columns: repeat(4, minmax(72cqi, 1fr));
-        padding-bottom: 0.6cqi;
-        scrollbar-width: thin;
+        grid-auto-columns: calc((100cqi - var(--qmo-card-gap)) / 1.3);
+        grid-auto-flow: column;
+        grid-template-columns: none;
+        scrollbar-width: none;
+    }
+
+    .qmo-slider-grid::-webkit-scrollbar {
+        display: none;
     }
 
     .qmo-slider-product {
@@ -85,21 +102,31 @@
     }
 }
 
+/* Kart TEK yuvarlatılmış blok: görsel tüm yüzeyi kaplar, bilgi bandı
+   görselin üzerine gradient overlay olarak biner (bkz. -body). */
 .qmo-slider-product {
+    aspect-ratio: 4 / 5;
     background: var(--qmo-card);
     border: 1px solid var(--qmo-border);
-    border-radius: 1cqi;
+    border-radius: var(--qmo-card-radius);
+    box-shadow: 0 0.9cqi 2.2cqi rgba(0, 0, 0, 0.35);
+    /* Kartın kendisi de container: iç tipografi ve boşluklar kart
+       genişliğine göre ölçeklenir (4 sütunlu masaüstünde de, 1.3 kartlık
+       şeritte de aynı oranlar). */
+    container-type: inline-size;
+    container-name: qmo-card;
     cursor: pointer;
-    display: flex;
-    flex-direction: column;
+    display: block;
     min-width: 0;
     overflow: hidden;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    position: relative;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 .qmo-slider-product:hover {
     border-color: color-mix(in srgb, var(--qmo-gold) 45%, var(--qmo-border));
-    box-shadow: 0 0.8cqi 2cqi rgba(0, 0, 0, 0.35);
+    box-shadow: 0 1.4cqi 3cqi rgba(0, 0, 0, 0.45);
+    transform: translateY(-2px);
 }
 
 .qmo-slider-product:focus-visible {
@@ -108,10 +135,10 @@
 }
 
 .qmo-slider-product-img-wrap {
-    aspect-ratio: 1;
     background: #0d0d10;
+    inset: 0;
     overflow: hidden;
-    position: relative;
+    position: absolute;
 }
 
 .qmo-slider-product-img {
@@ -121,49 +148,76 @@
     width: 100%;
 }
 
+/* Bilgi bandı: sert kesik yok — şeffaftan #0a0a0c'ye giden gradient,
+   görselin alt kısmına biner. */
 .qmo-slider-product-body {
+    background: linear-gradient(
+        to top,
+        var(--qmo-ink) 0%,
+        rgba(10, 10, 12, 0.94) 38%,
+        rgba(10, 10, 12, 0.72) 68%,
+        rgba(10, 10, 12, 0) 100%
+    );
+    bottom: 0;
     display: flex;
-    flex: 1;
     flex-direction: column;
-    gap: 0.5cqi;
-    padding: 1.2cqi;
+    gap: 1.6cqi;
+    left: 0;
+    padding: 14cqi 6cqi 6cqi;
+    position: absolute;
+    right: 0;
+    z-index: 1;
 }
 
 .qmo-slider-product-title {
     color: var(--qmo-text);
     font-family: var(--qmo-font-display);
-    font-size: clamp(0.85rem, 2.8cqi, 1.05rem);
+    font-size: clamp(0.85rem, 8.4cqi, 1.05rem);
     font-weight: 600;
-    line-height: 1.3;
+    line-height: 1.25;
     margin: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .qmo-slider-product-desc {
     color: var(--qmo-muted);
-    flex: 1;
-    font-size: clamp(0.72rem, 2.2cqi, 0.82rem);
-    line-height: 1.45;
+    display: -webkit-box;
+    font-size: clamp(0.72rem, 6.4cqi, 0.82rem);
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    line-height: 1.4;
     margin: 0;
+    overflow: hidden;
 }
 
+/* Fiyat: eski + yeni tek satırda, bant içinde kompakt. */
 .qmo-slider-product-price {
     align-items: baseline;
     display: flex;
-    flex-wrap: wrap;
-    font-size: clamp(0.82rem, 2.6cqi, 0.98rem);
+    flex-wrap: nowrap;
+    font-size: clamp(0.82rem, 7.6cqi, 0.98rem);
     font-weight: 700;
-    gap: 0.5cqi;
+    gap: 1.6cqi;
+    line-height: 1.2;
     margin: 0;
+    min-width: 0;
+    white-space: nowrap;
 }
 
-.qmo-slider-product-price .qmo-kombin-old-price {
+.qmo-slider-product-price .qmo-kombin-old-price,
+.qmo-slider-product-price .rma-price-old {
     color: var(--qmo-muted);
-    font-size: 0.88em;
+    font-size: 0.8em;
     font-weight: 500;
+    margin-right: 0;
     text-decoration: line-through;
 }
 
-.qmo-slider-product-price .qmo-kombin-new-price {
+.qmo-slider-product-price .qmo-kombin-new-price,
+.qmo-slider-product-price .rma-price-new {
     color: var(--qmo-gold);
 }
 
@@ -207,6 +261,10 @@
     .qmo-slider-slide {
         transition: none;
     }
+
+    .qmo-slider-product:hover {
+        transform: none;
+    }
 }
 
 /* Kombin fiyat stilleri — menü kartlarında da kullanılır */
@@ -240,29 +298,25 @@
     font-weight: 700;
 }
 
-.qmo-slider-product-price .rma-price-old {
-    margin-right: 6px;
-}
-
 .qmo-slider-product.is-tukendi {
     opacity: .72;
 }
 .qmo-slider-product.is-tukendi .qmo-slider-product-img {
     filter: grayscale(.45);
 }
+/* Rozet üstte: kartın altı artık bilgi bandına ait. */
 .qmo-slider-product .rma-tukendi-rozet {
     background: #8b1e1e;
-    bottom: 0;
+    border-radius: 999px;
     color: #fff;
-    font-size: clamp(0.62rem, 2.2cqi, 0.78rem);
+    font-size: clamp(0.62rem, 5.6cqi, 0.78rem);
     font-weight: 800;
+    left: 5cqi;
     letter-spacing: .08em;
     line-height: 1.2;
-    left: 0;
-    padding: 0.45em 0.4em;
+    padding: 0.4em 0.75em;
     position: absolute;
-    right: 0;
-    text-align: center;
     text-transform: uppercase;
+    top: 5cqi;
     z-index: 2;
 }

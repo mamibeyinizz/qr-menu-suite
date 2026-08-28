@@ -1,0 +1,123 @@
+/* =====================================================================
+   QMO KAMPANYA BANNER SLIDER — FRONTEND STİLLERİ
+   Sayfa başı, tam genişlik, 16:9 · peek YOK (tek görsel tüm alanı kaplar)
+   Dark gold tema · container query (cqi) · .qmo-banner- prefix
+
+   Ürün vitrini slider'ının (frontend-slider.css) stilleriyle hiçbir seçici
+   paylaşmaz; iki modül birbirini etkilemez.
+===================================================================== */
+
+.qmo-banner-root {
+    --qmo-ink:       #0a0a0c;
+    --qmo-gold:      #c9a84c;
+    --qmo-gold-soft: #e8c766;
+    --qmo-font-body: 'Manrope', system-ui, sans-serif;
+
+    box-sizing: border-box;
+    container-type: inline-size;
+    container-name: qmo-banner;
+    background: var(--qmo-ink);
+    display: block;
+    font-family: var(--qmo-font-body);
+    overflow: hidden;
+    position: relative;
+    width: 100%;
+}
+
+.qmo-banner-viewport {
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    position: relative;
+    width: 100%;
+}
+
+.qmo-banner-track {
+    display: flex;
+    height: 100%;
+    transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: transform;
+    width: 100%;
+}
+
+/* Peek yok: her slayt viewport'un tamamı. */
+.qmo-banner-slide {
+    display: block;
+    flex: 0 0 100%;
+    height: 100%;
+    min-width: 100%;
+    position: relative;
+    text-decoration: none;
+}
+
+a.qmo-banner-slide:focus-visible {
+    outline: 2px solid var(--qmo-gold);
+    outline-offset: -4px;
+}
+
+.qmo-banner-img {
+    display: block;
+    height: 100%;
+    object-fit: cover;
+    -webkit-user-drag: none;
+    user-select: none;
+    width: 100%;
+}
+
+.qmo-banner-dots {
+    align-items: center;
+    background: linear-gradient(to top, rgba(10, 10, 12, 0.55), rgba(10, 10, 12, 0));
+    bottom: 0;
+    display: flex;
+    gap: 1.2cqi;
+    justify-content: center;
+    left: 0;
+    padding: 4cqi 2cqi 2.2cqi;
+    position: absolute;
+    right: 0;
+    z-index: 2;
+}
+
+.qmo-banner-dot {
+    appearance: none;
+    background: rgba(245, 240, 232, 0.45);
+    border: 0;
+    border-radius: 999px;
+    cursor: pointer;
+    height: 8px;
+    padding: 0;
+    position: relative;
+    transition: background 0.25s ease, width 0.25s ease;
+    width: 8px;
+}
+
+.qmo-banner-dot:hover {
+    background: var(--qmo-gold-soft);
+}
+
+.qmo-banner-dot.is-active {
+    background: var(--qmo-gold);
+    width: 22px;
+}
+
+.qmo-banner-dot:focus-visible {
+    outline: 2px solid var(--qmo-gold-soft);
+    outline-offset: 3px;
+}
+
+/* Dokunmatik hedef en az 24px kalsın: nokta küçük görünür, tıklama alanı
+   ::after ile büyütülür. */
+.qmo-banner-dot::after {
+    content: '';
+    inset: -8px;
+    position: absolute;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .qmo-banner-track {
+        transition: none;
+    }
+
+    .qmo-banner-dot {
+        transition: none;
+    }
+}

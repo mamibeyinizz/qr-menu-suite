@@ -67,6 +67,9 @@ class QMO_Slide_CPT {
     public static function render_products_meta_box( $post ) {
         wp_nonce_field( self::NONCE_ACTION, self::NONCE_FIELD );
         echo '<p style="color:#666;font-size:12px;margin-top:0;">Her slide\'da en fazla 4 ürün gösterilir. Başlık (post title) frontend\'de opsiyonel olarak kullanılır.</p>';
+        // Slide'ın görselleri seçilen ürünlerin öne çıkan görselleridir;
+        // boyut önerisi bu yüzden ürün görseli için verilir.
+        echo '<p class="description" style="margin-top:4px;">Ürün görselleri için önerilen boyut: 1080x1080px (1:1 kare), JPG/WEBP, maksimum 200KB</p>';
         echo '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-top:12px;">';
 
         for ( $i = 1; $i <= 4; $i++ ) {
