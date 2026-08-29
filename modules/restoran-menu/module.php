@@ -82,7 +82,7 @@ function qrms_module_restoran_menu_init() {
 					array(
 						'name'    => 'show_title',
 						'default' => 'yes',
-						'desc'    => __( 'Slayt başlıklarını gizlemek için "no" yazın.', 'qrms' ),
+						'desc'    => __( 'Yönetim panelindeki varsayılanı ezmek için "yes" veya "no" yazın. Boş bırakılırsa Öne Çıkanlar ekranındaki ayar kullanılır.', 'qrms' ),
 					),
 				),
 			),
@@ -329,6 +329,25 @@ function qrms_module_restoran_menu_admin_assets() {
 				null
 			);
 		}
+	}
+
+	// Öne Çıkan Slider görünüm sihirbazının canlı önizlemesi, frontend'in
+	// GERÇEK frontend-slider.css'ini kullanır (vitrin önizlemesindeki
+	// aynı desen). Playfair + Manrope admin'de her ikisi de yüklüdür ki
+	// açılır listedeki değişim anında görünsün.
+	if ( 'qrms-rm-one-cikanlar' === $page ) {
+		wp_enqueue_style(
+			'qmo-slider',
+			$url . 'includes/frontend-slider.css',
+			array( 'rma-admin-ui' ),
+			QRMS_Helpers::asset_version( $modul . 'includes/frontend-slider.css' )
+		);
+		wp_enqueue_style(
+			'qmo-slider-fonts',
+			'https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap',
+			array(),
+			null
+		);
 	}
 
 	wp_add_inline_script(

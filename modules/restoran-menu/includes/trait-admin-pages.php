@@ -724,6 +724,7 @@ trait RMA_Admin_Pages_Trait {
 
         $this->render_suggestions_page();
         $this->render_slider_section();
+        $this->render_slider_appearance_form();
         $this->render_banner_section();
 
         $this->page_footer();
@@ -779,6 +780,7 @@ trait RMA_Admin_Pages_Trait {
             <p class="rma-actions">
                 <a class="button button-primary" href="<?php echo esc_url( admin_url( 'post-new.php?post_type=qmo_slide' ) ); ?>">Yeni Slider Grubu Ekle</a>
                 <a class="button" href="<?php echo esc_url( admin_url( 'edit.php?post_type=qmo_slide' ) ); ?>">Tüm Grupları Yönet</a>
+                <a class="button" href="#qmo-slider-gorunum">Görünümü Ayarla</a>
             </p>
         </div>
         <?php

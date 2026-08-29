@@ -27,7 +27,7 @@
     border-radius: 1.2cqi;
     color: var(--qmo-text);
     font-family: var(--qmo-font-body);
-    overflow: hidden;
+    overflow: visible;
     padding: 2.4cqi;
     position: relative;
     width: 100%;
@@ -59,14 +59,18 @@
 }
 
 .qmo-slider-title {
-    color: var(--qmo-gold-soft);
-    font-family: var(--qmo-font-display);
-    font-size: clamp(1.1rem, 4.5cqi, 1.75rem);
-    font-weight: 600;
+    color: var(--qmo-slider-title-color, var(--qmo-gold-soft));
+    font-family: var(--qmo-slider-title-font, var(--qmo-font-display));
+    font-size: var(--qmo-slider-title-size, 28px);
+    font-weight: var(--qmo-slider-title-weight, 600);
     letter-spacing: 0.02em;
     line-height: 1.25;
     margin: 0 0 1.6cqi;
-    text-align: center;
+    text-align: var(--qmo-slider-title-align, center);
+}
+
+.qmo-slider-root.is-title-hidden .qmo-slider-title {
+    display: none;
 }
 
 .qmo-slider-grid {
@@ -86,6 +90,10 @@
    şeridin kaydırılabilir olduğu ilk bakışta anlaşılır.
    Kart genişliği: (görünür alan - bir gap) / 1.3 */
 @container qmo-slider (max-width: 720px) {
+    .qmo-slider-title {
+        font-size: var(--qmo-slider-title-size-mobile, 18px);
+    }
+
     .qmo-slider-grid {
         grid-auto-columns: calc((100cqi - var(--qmo-card-gap)) / 1.3);
         grid-auto-flow: column;
@@ -222,38 +230,61 @@
 }
 
 .qmo-slider-nav {
-    display: flex;
-    gap: 0.8cqi;
-    justify-content: center;
-    margin-top: 1.6cqi;
+    inset: 0;
+    pointer-events: none;
+    position: absolute;
+    z-index: 3;
+}
+
+.qmo-slider-root.is-nav-hidden .qmo-slider-nav {
+    display: none;
 }
 
 .qmo-slider-nav-btn {
     align-items: center;
     appearance: none;
-    background: color-mix(in srgb, var(--qmo-gold) 12%, var(--qmo-card));
-    border: 1px solid color-mix(in srgb, var(--qmo-gold) 35%, var(--qmo-border));
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    background: rgba(10, 10, 12, 0.55);
+    border: 1px solid rgba(201, 168, 76, 0.45);
     border-radius: 999px;
+    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.38);
     color: var(--qmo-gold-soft);
     cursor: pointer;
     display: inline-flex;
-    font-size: 1.35rem;
-    height: 2.6cqi;
+    font-size: 1.45rem;
+    height: 44px;
     justify-content: center;
     line-height: 1;
-    min-height: 36px;
-    min-width: 36px;
     padding: 0;
-    transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
-    width: 2.6cqi;
+    pointer-events: auto;
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+    width: 44px;
+}
+
+.qmo-slider-nav-prev {
+    left: 10px;
+}
+
+.qmo-slider-nav-next {
+    right: 10px;
 }
 
 .qmo-slider-nav-btn:hover,
 .qmo-slider-nav-btn:focus-visible {
-    background: color-mix(in srgb, var(--qmo-gold) 22%, var(--qmo-card));
+    background: rgba(10, 10, 12, 0.88);
     border-color: var(--qmo-gold);
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5);
     color: var(--qmo-gold-soft);
     outline: none;
+    transform: translateY(-50%) scale(1.06);
+}
+
+.qmo-slider-nav-btn:focus-visible {
+    box-shadow: 0 0 0 2px var(--qmo-ink), 0 0 0 4px var(--qmo-gold), 0 10px 28px rgba(0, 0, 0, 0.5);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -264,6 +295,11 @@
 
     .qmo-slider-product:hover {
         transform: none;
+    }
+
+    .qmo-slider-nav-btn:hover,
+    .qmo-slider-nav-btn:focus-visible {
+        transform: translateY(-50%);
     }
 }
 

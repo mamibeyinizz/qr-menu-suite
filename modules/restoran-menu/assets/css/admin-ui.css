@@ -1685,6 +1685,27 @@
     }
 }
 
+/* Öne Çıkan Slider canlı önizlemesi — frontend-slider.css ile boyanır;
+   yer tutucu görsel ve admin sütununa sığdırma burada. */
+.rma-vitrin-preview-stage .qmo-slider-root {
+    padding: 12px;
+}
+
+.rma-vitrin-preview-stage .qmo-slider-preview-empty {
+    align-items: center;
+    background: #0d0d10;
+    color: #c9a84c;
+    display: flex;
+    font-size: 1.6rem;
+    height: 100%;
+    justify-content: center;
+    width: 100%;
+}
+
+.rma-vitrin-preview-stage .qmo-slider-nav-btn {
+    pointer-events: none;
+}
+
 /* ---------------------------------------------------------------------
    VİTRİN FORMU — ADIM ADIM (STEPPER)
 

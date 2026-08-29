@@ -120,6 +120,7 @@ class Restaurant_Menu_Automation {
         ----------------------------------------------------------------- */
         add_action( 'admin_post_rma_vitrin_kaydet', [ $this, 'handle_vitrin_save' ] );
         add_action( 'admin_post_rma_vitrin_sil',    [ $this, 'handle_vitrin_delete' ] );
+        add_action( 'admin_post_qmo_slider_kaydet', [ $this, 'handle_slider_settings_save' ] );
 
         /* -----------------------------------------------------------------
            TOPLU FİYAT KAMPANYASI
@@ -162,6 +163,7 @@ class Restaurant_Menu_Automation {
         add_action( 'delete_rma_category',     [ $this, 'bump_cache_version' ], 20 );
         add_action( 'delete_rma_allergen',     [ $this, 'bump_cache_version' ], 20 );
         add_action( 'update_option_rma_suggestions_settings', [ $this, 'bump_cache_version' ], 20 );
+        add_action( 'update_option_qmo_slider_settings',      [ $this, 'bump_cache_version' ], 20 );
 
         // Chatbot / REST sipariş ucu varsa tükendi ürünleri orada kesilir.
         // Filtre chatbot modülünde tanımlıdır; modül yoksa kanca no-op'dur.
