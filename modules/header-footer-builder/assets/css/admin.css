@@ -162,6 +162,33 @@
   padding-top: 0;
 }
 
+.hfb-wrap .hfb-section-sub {
+  color: #646970;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  margin: 1rem 0 0.5rem;
+  text-transform: uppercase;
+}
+
+.hfb-wrap .hfb-subpanel {
+  background: #f6f7f7;
+  border: 1px solid #dcdcde;
+  border-radius: 8px;
+  margin: 0 0 1.25rem;
+  padding: 1rem 1.15rem;
+}
+
+.hfb-wrap .hfb-subpanel__title {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0 0 0.75rem;
+}
+
+.hfb-wrap .hfb-typo {
+  margin-top: 0.5rem;
+}
+
 .hfb-wrap .hfb-notice {
   background: #f6f7f7;
   border-left: 3px solid #c9a84c;
@@ -439,6 +466,40 @@
   font-size: var(--hfb-panel-font-size-mobile, 16px);
   font-weight: var(--hfb-panel-font-weight-m, 500);
   text-align: var(--hfb-panel-font-align-m, center);
+}
+
+.hfb-wrap .hfb-preview__stage[data-viewport="mobile"] .hfb-footer-wrap .hfb-brand__text,
+.hfb-wrap .hfb-preview__stage[data-viewport="mobile"] .hfb-footer-wrap .hfb-footer__desc {
+  font-size: var(--hfb-footer-brand-size-mobile, 14px);
+}
+
+.hfb-wrap .hfb-preview__stage[data-viewport="mobile"] .hfb-footer-wrap .hfb-footer__col--brand .hfb-brand__img {
+  height: var(--hfb-footer-logo-h-mobile, auto);
+  width: var(--hfb-footer-logo-w-mobile, 120px);
+}
+
+.hfb-wrap .hfb-preview__stage[data-viewport="mobile"] .hfb-footer__col--links .hfb-footer__heading {
+  font-size: var(--hfb-footer-links-title-size-m, 16px);
+}
+
+.hfb-wrap .hfb-preview__stage[data-viewport="mobile"] .hfb-footer-wrap .hfb-footer__menu a {
+  font-size: var(--hfb-footer-links-item-size-m, 14px);
+}
+
+.hfb-wrap .hfb-preview__stage[data-viewport="mobile"] .hfb-footer__col--hours .hfb-footer__heading {
+  font-size: var(--hfb-footer-hours-title-size-m, 16px);
+}
+
+.hfb-wrap .hfb-preview__stage[data-viewport="mobile"] .hfb-footer__hours-row {
+  font-size: var(--hfb-footer-hours-item-size-m, 13px);
+}
+
+.hfb-wrap .hfb-preview__stage[data-viewport="mobile"] .hfb-footer__col--contact .hfb-footer__heading {
+  font-size: var(--hfb-footer-contact-title-size-m, 16px);
+}
+
+.hfb-wrap .hfb-preview__stage[data-viewport="mobile"] .hfb-footer__contact {
+  font-size: var(--hfb-footer-contact-item-size-m, 13px);
 }
 
 .hfb-wrap .hfb-preview__canvas {
