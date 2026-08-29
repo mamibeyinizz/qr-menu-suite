@@ -510,6 +510,12 @@ trait QRMS_HFB_Settings_Page {
 			$block['content'] = isset( $current['content'] ) ? (string) $current['content'] : '';
 		}
 
+		// Logo bloğunun altındaki tanıtım cümlesi (referans tasarımdaki
+		// marka açıklaması). Boşken hiç basılmaz.
+		if ( 'logo' === $type ) {
+			$block['description'] = isset( $current['description'] ) ? (string) $current['description'] : '';
+		}
+
 		if ( 'button' === $type ) {
 			$shapes = array_keys( $this->hamburger_button_shapes() );
 			$shape  = isset( $current['shape'] ) ? sanitize_key( (string) $current['shape'] ) : 'pill';
@@ -522,6 +528,7 @@ trait QRMS_HFB_Settings_Page {
 			$block['font']        = isset( $current['font'] ) ? (string) $current['font'] : $this->hamburger_defaults['font_family'];
 			$block['font_size']   = isset( $current['font_size'] ) ? (int) $current['font_size'] : 15;
 			$block['font_weight'] = isset( $current['font_weight'] ) ? (int) $current['font_weight'] : 600;
+			$block['full_width']  = ! empty( $current['full_width'] ) ? 1 : 0;
 		}
 
 		return $block;
@@ -832,6 +839,39 @@ trait QRMS_HFB_Settings_Page {
 		$opts['logo_height_auto_mobile'] = $mobile_h['auto'];
 		$opts['logo_height_mobile']      = $mobile_h['height'];
 
+		$opts['content_full_width'] = $this->sanitize_checkbox( $input, 'hfb_header_content_full_width' );
+
+		if ( isset( $input['hfb_header_content_width'] ) ) {
+			$opts['content_width'] = $this->sanitize_int_range(
+				$input['hfb_header_content_width'],
+				self::CONTENT_WIDTH_MIN,
+				self::CONTENT_WIDTH_MAX,
+				$this->header_defaults['content_width']
+			);
+		}
+
+		$paddings = array(
+			'padding_x_desktop' => array( 'hfb_header_padding_x_desktop', self::PADDING_X_MIN, self::PADDING_X_MAX ),
+			'padding_y_desktop' => array( 'hfb_header_padding_y_desktop', self::PADDING_Y_MIN, self::PADDING_Y_MAX ),
+			'padding_x_mobile'  => array( 'hfb_header_padding_x_mobile', self::PADDING_X_MIN, self::PADDING_X_MOBILE_MAX ),
+			'padding_y_mobile'  => array( 'hfb_header_padding_y_mobile', self::PADDING_Y_MIN, self::PADDING_Y_MOBILE_MAX ),
+		);
+
+		foreach ( $paddings as $key => $meta ) {
+			list( $field, $min, $max ) = $meta;
+
+			if ( ! isset( $input[ $field ] ) ) {
+				continue;
+			}
+
+			$opts[ $key ] = $this->sanitize_int_range(
+				$input[ $field ],
+				$min,
+				$max,
+				$this->header_defaults[ $key ]
+			);
+		}
+
 		$opts['bg_color']             = $this->sanitize_color_field( $input, 'hfb_header_bg_color', $current['bg_color'] );
 		$opts['icon_color']           = $this->sanitize_color_field( $input, 'hfb_header_icon_color', $current['icon_color'] );
 		$opts['hamburger_icon_color'] = $this->sanitize_color_field( $input, 'hfb_header_hamburger_icon_color', $current['hamburger_icon_color'] );
@@ -1116,6 +1156,16 @@ trait QRMS_HFB_Settings_Page {
 				}
 			}
 
+			if ( 'logo' === $type ) {
+				if ( isset( $raw_block['description'] ) ) {
+					$block['description'] = sanitize_textarea_field( (string) $raw_block['description'] );
+				} elseif ( isset( $fallback['description'] ) ) {
+					$block['description'] = (string) $fallback['description'];
+				} else {
+					$block['description'] = '';
+				}
+			}
+
 			if ( 'button' === $type ) {
 				$shapes = array_keys( $this->hamburger_button_shapes() );
 				$shape  = isset( $raw_block['shape'] ) ? sanitize_key( (string) $raw_block['shape'] ) : 'pill';
@@ -1156,6 +1206,8 @@ trait QRMS_HFB_Settings_Page {
 					isset( $raw_block['font_weight'] ) ? $raw_block['font_weight'] : ( isset( $fallback['font_weight'] ) ? $fallback['font_weight'] : 600 ),
 					600
 				);
+
+				$block['full_width'] = $this->sanitize_checkbox( $raw_block, 'full_width' );
 			}
 
 			$sanitized_by_id[ $id ] = $block;

@@ -128,6 +128,7 @@ trait QRMS_HFB_Admin {
 			1 => array( 'Logo', 'Logo Boyutu' ),
 			2 => array( 'Görünüm', 'Header Görünümü' ),
 			3 => array( 'İkonlar', 'İkon ve Buton Renkleri' ),
+			4 => array( 'Yerleşim', 'Yerleşim / Boşluklar' ),
 		);
 
 		$this->render_stepper_bar( 'header', $adimlar );
@@ -275,6 +276,84 @@ trait QRMS_HFB_Admin {
 				'#c9a84c'
 			);
 			?>
+		</div>
+
+		<div class="qrms-card hfb-step" data-step="4" data-step-title="<?php esc_attr_e( 'Yerleşim / Boşluklar', 'qrms' ); ?>" style="display:none;">
+			<h2 class="qrms-card-title"><?php esc_html_e( '4. Yerleşim / Boşluklar', 'qrms' ); ?></h2>
+			<p class="description">
+				<?php esc_html_e( 'Header içeriğinin sayfada kapladığı genişlik ve kenarlardan bıraktığı boşluk. Masaüstü ve mobil için ayrı boşluk setleri vardır; sağdaki Masaüstü/Mobil Önizleme düğmeleriyle ikisini de görebilirsiniz.', 'qrms' ); ?>
+			</p>
+
+			<h3 class="hfb-section-title"><?php esc_html_e( 'Genel', 'qrms' ); ?></h3>
+			<div class="qrms-field">
+				<label class="hfb-check-row">
+					<input type="checkbox" name="hfb_header_content_full_width" id="hfb_header_content_full_width" value="1" class="hfb-preview-trigger hfb-full-width-toggle" data-hfb-width="hfb_header_content_width" <?php checked( ! empty( $opts['content_full_width'] ) ); ?> />
+					<span><?php esc_html_e( 'Tam genişlik (içerik ekranın tamamına yayılsın)', 'qrms' ); ?></span>
+				</label>
+				<p class="description"><?php esc_html_e( 'Açıkken maksimum genişlik sınırı kalkar; aşağıdaki kaydırıcı devre dışı kalır.', 'qrms' ); ?></p>
+			</div>
+
+			<div class="hfb-content-width-row<?php echo ! empty( $opts['content_full_width'] ) ? ' is-disabled' : ''; ?>">
+				<?php
+				$this->hfb_size_row(
+					'hfb_header_content_width',
+					'hfb_header_content_width',
+					(int) $opts['content_width'],
+					self::CONTENT_WIDTH_MIN,
+					self::CONTENT_WIDTH_MAX,
+					__( 'İçerik maksimum genişliği', 'qrms' ),
+					__( 'Header içeriğinin ortalanacağı en geniş ölçü. Sayfa gövdenizin genişliğiyle aynı tutmak hizayı bozmaz.', 'qrms' )
+				);
+				?>
+			</div>
+
+			<h3 class="hfb-section-title"><?php esc_html_e( 'Masaüstü', 'qrms' ); ?></h3>
+			<div class="hfb-size-group" data-hfb-preview-bp="desktop">
+				<?php
+				$this->hfb_size_row(
+					'hfb_header_padding_x_desktop',
+					'hfb_header_padding_x_desktop',
+					(int) $opts['padding_x_desktop'],
+					self::PADDING_X_MIN,
+					self::PADDING_X_MAX,
+					__( 'Sol/sağ iç boşluk', 'qrms' ),
+					__( 'Header içeriğinin sol ve sağ kenardan uzaklığı.', 'qrms' )
+				);
+				$this->hfb_size_row(
+					'hfb_header_padding_y_desktop',
+					'hfb_header_padding_y_desktop',
+					(int) $opts['padding_y_desktop'],
+					self::PADDING_Y_MIN,
+					self::PADDING_Y_MAX,
+					__( 'Üst/alt iç boşluk', 'qrms' ),
+					__( 'Header çubuğunun yüksekliğini belirleyen dikey boşluk.', 'qrms' )
+				);
+				?>
+			</div>
+
+			<h3 class="hfb-section-title"><?php esc_html_e( 'Mobil', 'qrms' ); ?></h3>
+			<div class="hfb-size-group" data-hfb-preview-bp="mobile">
+				<?php
+				$this->hfb_size_row(
+					'hfb_header_padding_x_mobile',
+					'hfb_header_padding_x_mobile',
+					(int) $opts['padding_x_mobile'],
+					self::PADDING_X_MIN,
+					self::PADDING_X_MOBILE_MAX,
+					__( 'Sol/sağ iç boşluk', 'qrms' ),
+					__( 'Telefonda kenar boşluğu. Dar ekranda masaüstünden küçük tutmak taşmayı önler.', 'qrms' )
+				);
+				$this->hfb_size_row(
+					'hfb_header_padding_y_mobile',
+					'hfb_header_padding_y_mobile',
+					(int) $opts['padding_y_mobile'],
+					self::PADDING_Y_MIN,
+					self::PADDING_Y_MOBILE_MAX,
+					__( 'Üst/alt iç boşluk', 'qrms' ),
+					__( 'Telefonda header çubuğunun dikey boşluğu.', 'qrms' )
+				);
+				?>
+			</div>
 		</div>
 
 		<?php
@@ -868,6 +947,11 @@ trait QRMS_HFB_Admin {
 					</div>
 				<?php elseif ( 'logo' === $type ) : ?>
 					<p class="description"><?php esc_html_e( 'Header sekmesinde yüklenen logo (veya marka yazısı) panel içinde bu sırada görünür.', 'qrms' ); ?></p>
+					<div class="qrms-field">
+						<label class="qrms-label" for="hfb_logo_desc_<?php echo esc_attr( $id ); ?>"><?php esc_html_e( 'Logo altı açıklama', 'qrms' ); ?></label>
+						<textarea id="hfb_logo_desc_<?php echo esc_attr( $id ); ?>" name="<?php echo esc_attr( $prefix ); ?>[description]" class="qrms-input hfb-preview-trigger" rows="3"><?php echo esc_textarea( isset( $block['description'] ) ? (string) $block['description'] : '' ); ?></textarea>
+						<p class="description"><?php esc_html_e( 'Marka adının altında görünen kısa tanıtım cümlesi. Boş bırakılırsa basılmaz.', 'qrms' ); ?></p>
+					</div>
 				<?php elseif ( 'lang' === $type ) : ?>
 					<p class="description"><?php esc_html_e( 'QR Çeviri modülünün dil seçici bayrağı. Panelde bu sırada görünür.', 'qrms' ); ?></p>
 				<?php elseif ( 'button' === $type ) : ?>
@@ -905,6 +989,13 @@ trait QRMS_HFB_Admin {
 									<option value="<?php echo esc_attr( $shape_key ); ?>" <?php selected( isset( $block['shape'] ) ? (string) $block['shape'] : 'pill', $shape_key ); ?>><?php echo esc_html( $shape_label ); ?></option>
 								<?php endforeach; ?>
 							</select>
+						</div>
+						<div class="qrms-field">
+							<label class="hfb-check-row">
+								<input type="checkbox" name="<?php echo esc_attr( $prefix ); ?>[full_width]" value="1" class="hfb-preview-trigger" <?php checked( ! empty( $block['full_width'] ) ); ?> />
+								<span><?php esc_html_e( 'Tam genişlik (panelde satırı boydan boya kaplasın)', 'qrms' ); ?></span>
+							</label>
+							<p class="description"><?php esc_html_e( 'Referans tasarımdaki dolgun CTA görünümü için açın.', 'qrms' ); ?></p>
 						</div>
 						<div class="qrms-field">
 							<label class="qrms-label" for="hfb_btn_font_<?php echo esc_attr( $id ); ?>"><?php esc_html_e( 'Yazı tipi', 'qrms' ); ?></label>

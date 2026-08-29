@@ -431,6 +431,33 @@
     });
   }
 
+  /* ------------------------------------------ Header tam genişlik anahtarı */
+
+  /**
+   * "Tam genişlik" açıkken maksimum genişlik kaydırıcısı anlamsızdır:
+   * logo yüksekliği "otomatik oran" kutusuyla aynı desen — satır soluklaşır
+   * ve alan devre dışı kalır (devre dışı alan serileştirmeye de girmez,
+   * sunucu kayıtlı değeri korur).
+   */
+  function syncContentWidthToggle($box) {
+    var target = $box.data('hfb-width');
+    var on = $box.is(':checked');
+    var $row = $('#' + target).closest('.hfb-content-width-row');
+
+    $row.toggleClass('is-disabled', on);
+    $row.find('input[type="range"]').prop('disabled', on);
+  }
+
+  function initContentWidthToggle() {
+    $('.hfb-full-width-toggle').each(function () {
+      syncContentWidthToggle($(this));
+    });
+
+    $(document).on('change', '.hfb-full-width-toggle', function () {
+      syncContentWidthToggle($(this));
+    });
+  }
+
   /* --------------------------------------------- Hamburger blok sıralama */
 
   var blockIdCounter = 0;
@@ -598,6 +625,7 @@
     initMediaUploader();
     initColorPickers();
     initLogoHeightAuto();
+    initContentWidthToggle();
     initBlockSortable();
     bootPreviewHeader();
 

@@ -75,6 +75,22 @@ class QRMS_Header_Footer_Builder {
 	const LOGO_HEIGHT_MAX = 200;
 
 	/**
+	 * Header içerik genişliği aralığı (px). 0 = tam genişlik (max-width: none).
+	 */
+	const CONTENT_WIDTH_MIN = 960;
+	const CONTENT_WIDTH_MAX = 1600;
+
+	/**
+	 * Header iç boşluk aralıkları (px). Mobil ayrı ve daha dar tutulur.
+	 */
+	const PADDING_X_MIN        = 0;
+	const PADDING_X_MAX        = 80;
+	const PADDING_Y_MIN        = 0;
+	const PADDING_Y_MAX        = 40;
+	const PADDING_X_MOBILE_MAX = 32;
+	const PADDING_Y_MOBILE_MAX = 32;
+
+	/**
 	 * Hamburger panel yazı boyutu aralığı (px).
 	 */
 	const FONT_SIZE_MIN         = 12;
@@ -174,6 +190,12 @@ class QRMS_Header_Footer_Builder {
 			'bg_color'                 => '#0a0a0c',
 			'icon_color'               => '#c9a84c',
 			'hamburger_icon_color'     => '#c9a84c',
+			'content_width'            => 1200,
+			'content_full_width'       => 0,
+			'padding_x_desktop'        => 20,
+			'padding_y_desktop'        => 12,
+			'padding_x_mobile'         => 20,
+			'padding_y_mobile'         => 12,
 		);
 
 		$this->footer_defaults = array(
