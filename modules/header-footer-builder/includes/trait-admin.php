@@ -705,7 +705,8 @@ trait QRMS_HFB_Admin {
 		$adimlar = array(
 			1 => array( 'Açılış', 'Açılış Davranışı' ),
 			2 => array( 'Bloklar', 'İçerik Blokları ve Sıralama' ),
-			3 => array( 'Yazı', 'Yazı Tipi ve Renk' ),
+			3 => array( 'Görünüm', 'Panel Görünümü' ),
+			4 => array( 'Yazı', 'Yazı Tipi ve Renk' ),
 		);
 
 		$this->render_stepper_bar( 'hamburger', $adimlar );
@@ -797,8 +798,169 @@ trait QRMS_HFB_Admin {
 			</div>
 		</div>
 
-		<div class="qrms-card hfb-step" data-step="3" data-step-title="<?php esc_attr_e( 'Yazı Tipi ve Renk', 'qrms' ); ?>" style="display:none;">
-			<h2 class="qrms-card-title"><?php esc_html_e( '3. Yazı Tipi ve Renk', 'qrms' ); ?></h2>
+		<div class="qrms-card hfb-step" data-step="3" data-step-title="<?php esc_attr_e( 'Panel Görünümü', 'qrms' ); ?>" style="display:none;">
+			<h2 class="qrms-card-title"><?php esc_html_e( '3. Panel Görünümü', 'qrms' ); ?></h2>
+			<p class="description">
+				<?php esc_html_e( 'Bloklar adımı panelde NE görüneceğini belirler; bu adım NASIL görüneceğini. Buradaki her ayar yalnızca hamburger panelini etkiler — header ve footer kendi ayarlarını kullanmaya devam eder. Değişiklikler kaydetmeden sağdaki önizlemede görünür; paneli açmak için "Önizlemede Aç" düğmesini kullanın.', 'qrms' ); ?>
+			</p>
+
+			<h3 class="hfb-section-title"><?php esc_html_e( 'Genel', 'qrms' ); ?></h3>
+			<div class="hfb-notice">
+				<p><?php esc_html_e( 'Panel arka plan RENGİ ve kapatma (X) ikonu rengi 1. Açılış adımında ayarlanır; burada tekrarlanmaz. Aşağıdaki arka plan görseli, o renkli zeminin üzerine biner.', 'qrms' ); ?></p>
+			</div>
+
+			<?php
+			$this->render_media_field(
+				'hfb_hamburger_panel_bg_image',
+				__( 'Panel arka plan görseli', 'qrms' ),
+				(int) $opts['panel_bg_image']
+			);
+			?>
+			<p class="description">
+				<?php esc_html_e( 'İsteğe bağlıdır. Seçilen görsel panelin zemin rengi üzerine tam kaplayan bir örtü olarak biner. "Kaldır" düğmesi görseli tamamen kapatır; geriye yalnızca zemin rengi kalır.', 'qrms' ); ?>
+			</p>
+
+			<?php
+			$this->hfb_percent_row(
+				'hfb_hamburger_panel_bg_opacity',
+				'hfb_hamburger_panel_bg_opacity',
+				(int) $opts['panel_bg_opacity'],
+				self::PANEL_BG_OPACITY_MIN,
+				self::PANEL_BG_OPACITY_MAX,
+				__( 'Arka plan görseli opaklığı', 'qrms' ),
+				__( 'Düşük değerlerde zemin rengi görselin altından okunur; %100 görselin zemini tümüyle kapatması demektir. Görsel seçilmemişse etkisizdir.', 'qrms' )
+			);
+			?>
+
+			<h3 class="hfb-section-title"><?php esc_html_e( 'Panel içi logo boyutu', 'qrms' ); ?></h3>
+			<p class="description">
+				<?php esc_html_e( 'Panelin logo bloğundaki görselin ölçüsü. Header sekmesindeki logo boyutundan bağımsızdır — biri değişince diğeri değişmez.', 'qrms' ); ?>
+			</p>
+
+			<h4 class="hfb-section-sub"><?php esc_html_e( 'Masaüstü', 'qrms' ); ?></h4>
+			<div class="hfb-size-group" data-hfb-preview-bp="desktop">
+				<?php
+				$this->hfb_size_row(
+					'hfb_hamburger_logo_width_desktop',
+					'hfb_hamburger_logo_width_desktop',
+					(int) $opts['logo_width_desktop'],
+					self::LOGO_WIDTH_MIN,
+					self::LOGO_WIDTH_MAX,
+					__( 'Logo genişlik', 'qrms' ),
+					__( 'Geniş ekranda panel logosunun genişliği.', 'qrms' )
+				);
+				$this->hfb_logo_height_block(
+					'desktop',
+					(int) $opts['logo_height_desktop'],
+					! empty( $opts['logo_height_auto_desktop'] ),
+					'hfb_hamburger'
+				);
+				?>
+			</div>
+
+			<h4 class="hfb-section-sub"><?php esc_html_e( 'Mobil', 'qrms' ); ?></h4>
+			<div class="hfb-size-group" data-hfb-preview-bp="mobile">
+				<?php
+				$this->hfb_size_row(
+					'hfb_hamburger_logo_width_mobile',
+					'hfb_hamburger_logo_width_mobile',
+					(int) $opts['logo_width_mobile'],
+					self::LOGO_WIDTH_MIN,
+					self::LOGO_WIDTH_MAX,
+					__( 'Logo genişlik', 'qrms' ),
+					__( 'Telefonda panel logosunun genişliği. Masaüstünden bağımsızdır.', 'qrms' )
+				);
+				$this->hfb_logo_height_block(
+					'mobile',
+					(int) $opts['logo_height_mobile'],
+					! empty( $opts['logo_height_auto_mobile'] ),
+					'hfb_hamburger'
+				);
+				?>
+			</div>
+
+			<h3 class="hfb-section-title"><?php esc_html_e( 'Liste / menü satırı renkleri', 'qrms' ); ?></h3>
+			<p class="description">
+				<?php esc_html_e( 'Menü bloğundaki satırların renkleri. Yazı tipi ve punto 4. Yazı adımından gelir; burada yalnızca renkler ayarlanır.', 'qrms' ); ?>
+			</p>
+
+			<?php
+			$this->hfb_color_field(
+				'hfb_hamburger_menu_link_color',
+				'hfb_hamburger_menu_link_color',
+				(string) $opts['menu_link_color'],
+				__( 'Satır metin rengi', 'qrms' ),
+				__( 'Menü bağlantılarının duruş hâlindeki rengi.', 'qrms' ),
+				'#f5f0e8'
+			);
+			$this->hfb_color_field(
+				'hfb_hamburger_menu_hover_color',
+				'hfb_hamburger_menu_hover_color',
+				(string) $opts['menu_hover_color'],
+				__( 'Satır hover / aktif rengi', 'qrms' ),
+				__( 'Üzerine gelindiğinde ya da klavyeyle odaklanıldığında satırın rengi. Satır zemini de bu rengin soluk bir tonuyla boyanır.', 'qrms' ),
+				'#c9a84c'
+			);
+			$this->hfb_color_field(
+				'hfb_hamburger_menu_divider_color',
+				'hfb_hamburger_menu_divider_color',
+				(string) $opts['menu_divider_color'],
+				__( 'Ayraç çizgisi rengi', 'qrms' ),
+				__( 'Satırlar arasındaki ince çizgi (border-bottom). Çizgi seçilen rengin soluk tonuyla basılır; \'ince ayraç\' görünümü korunur.', 'qrms' ),
+				'#c9a84c'
+			);
+			$this->hfb_color_field(
+				'hfb_hamburger_menu_arrow_color',
+				'hfb_hamburger_menu_arrow_color',
+				(string) $opts['menu_arrow_color'],
+				__( 'Sağdaki ok ikonu rengi', 'qrms' ),
+				__( 'Satırların sağ ucundaki ok ve alt menüsü olan satırlardaki açılır ok bu rengi kullanır.', 'qrms' ),
+				'#c9a84c'
+			);
+			?>
+
+			<h3 class="hfb-section-title"><?php esc_html_e( 'Sosyal medya ikon renkleri', 'qrms' ); ?></h3>
+			<p class="description">
+				<?php esc_html_e( 'Panelin sosyal bloğundaki daire ikonlar. Header\'ın sağ ucundaki ikonlardan bağımsızdır; onlar Header sekmesindeki ikon rengini kullanır.', 'qrms' ); ?>
+			</p>
+
+			<?php
+			$this->hfb_color_field(
+				'hfb_hamburger_social_border_color',
+				'hfb_hamburger_social_border_color',
+				(string) $opts['social_border_color'],
+				__( 'İkon çerçeve rengi', 'qrms' ),
+				__( 'Daireyi çevreleyen 1px çerçevenin rengi.', 'qrms' ),
+				'#c9a84c'
+			);
+			$this->hfb_color_field(
+				'hfb_hamburger_social_bg_color',
+				'hfb_hamburger_social_bg_color',
+				(string) $opts['social_bg_color'],
+				__( 'İkon arka plan rengi', 'qrms' ),
+				__( 'Dairenin içini dolduran renk. Boş bırakılırsa (renk seçicideki "Temizle") zemin şeffaf kalır — varsayılan budur.', 'qrms' ),
+				''
+			);
+			$this->hfb_color_field(
+				'hfb_hamburger_social_icon_color',
+				'hfb_hamburger_social_icon_color',
+				(string) $opts['social_icon_color'],
+				__( 'İkon rengi', 'qrms' ),
+				__( 'Dairenin içindeki logonun (glyph) rengi. Üzerine gelindiğinde bu renk zemine, panel arka plan rengi glyph\'e geçer.', 'qrms' ),
+				'#c9a84c'
+			);
+			?>
+
+			<h3 class="hfb-section-title"><?php esc_html_e( 'Buton bloğu varsayılanları', 'qrms' ); ?></h3>
+			<p class="description">
+				<?php esc_html_e( 'Panele yeni eklenen buton blokları bu ayarlarla başlar. Her buton bloğu 2. Bloklar adımında kendi rengini, şeklini ve yazı tipini belirleyip bu varsayılanı ezebilir.', 'qrms' ); ?>
+			</p>
+
+			<?php $this->hfb_button_style_fields( 'hfb_hamburger_', $opts, '' ); ?>
+		</div>
+
+		<div class="qrms-card hfb-step" data-step="4" data-step-title="<?php esc_attr_e( 'Yazı Tipi ve Renk', 'qrms' ); ?>" style="display:none;">
+			<h2 class="qrms-card-title"><?php esc_html_e( '4. Yazı Tipi ve Renk', 'qrms' ); ?></h2>
 			<p class="description">
 				<?php esc_html_e( 'Hamburger panelindeki tüm metinler — menü bağlantıları, metin bloğu — bu ayarları kullanır. Yazı tipi ve renk tüm cihazlarda ortaktır; boyut, kalınlık ve hizalama masaüstü ile mobil için ayrıdır.', 'qrms' ); ?>
 			</p>
@@ -1154,6 +1316,37 @@ trait QRMS_HFB_Admin {
 	}
 
 	/**
+	 * Yüzde kaydırıcısı — hfb_size_row()'un % birimli karşılığı.
+	 *
+	 * @param string $id       Alan id'si.
+	 * @param string $name     Form alanı adı.
+	 * @param int    $deger    Mevcut değer.
+	 * @param int    $min      Alt sınır (%).
+	 * @param int    $max      Üst sınır (%).
+	 * @param string $etiket   Satır başlığı.
+	 * @param string $aciklama Slider altındaki açıklama.
+	 * @return void
+	 */
+	private function hfb_percent_row( $id, $name, $deger, $min, $max, $etiket, $aciklama ) {
+		?>
+		<div class="qrms-field hfb-size-row">
+			<label class="qrms-label" for="<?php echo esc_attr( $id ); ?>"><?php echo esc_html( $etiket ); ?></label>
+			<div class="hfb-range-row">
+				<input type="range" name="<?php echo esc_attr( $name ); ?>" id="<?php echo esc_attr( $id ); ?>"
+					   class="hfb-preview-trigger"
+					   min="<?php echo (int) $min; ?>"
+					   max="<?php echo (int) $max; ?>"
+					   step="1"
+					   value="<?php echo (int) $deger; ?>"
+					   oninput="this.nextElementSibling.textContent=this.value+'%'">
+				<span class="hfb-range-val"><?php echo (int) $deger; ?>%</span>
+			</div>
+			<p class="description"><?php echo esc_html( $aciklama ); ?></p>
+		</div>
+		<?php
+	}
+
+	/**
 	 * Logo yüksekliği: otomatik oran kutusu + px slider.
 	 *
 	 * @param string $bp     desktop|tablet|mobile.
@@ -1439,14 +1632,19 @@ trait QRMS_HFB_Admin {
 	/**
 	 * Footer garson/hesap buton stil alanları.
 	 *
-	 * @param string              $form_prefix Form öneki (hfb_footer_).
+	 * @param string              $form_prefix Form öneki (hfb_footer_ / hfb_hamburger_).
 	 * @param array<string,mixed> $opts        btn_* anahtarlarını taşıyan ayarlar.
+	 * @param string              $baslik      Bölüm başlığı; boşsa hiç basılmaz.
 	 * @return void
 	 */
-	private function hfb_button_style_fields( $form_prefix, $opts ) {
-		?>
-		<h3 class="hfb-section-title"><?php esc_html_e( 'Buton stili', 'qrms' ); ?></h3>
-		<?php
+	private function hfb_button_style_fields( $form_prefix, $opts, $baslik = null ) {
+		$baslik = null === $baslik ? __( 'Buton stili', 'qrms' ) : $baslik;
+
+		if ( '' !== $baslik ) :
+			?>
+			<h3 class="hfb-section-title"><?php echo esc_html( $baslik ); ?></h3>
+			<?php
+		endif;
 		$this->hfb_color_field(
 			$form_prefix . 'btn_bg_color',
 			$form_prefix . 'btn_bg_color',

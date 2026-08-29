@@ -55,13 +55,76 @@ trait QRMS_HFB_Settings_Page {
 			}
 		}
 
+		$stored = $this->migrate_hamburger_appearance( $stored );
+
 		$merged = $this->merge_options( $stored, $this->hamburger_defaults );
 
 		if ( isset( $merged['blocks'] ) && is_array( $merged['blocks'] ) ) {
-			$merged['blocks'] = $this->normalize_hamburger_blocks( $merged['blocks'] );
+			$merged['blocks'] = $this->normalize_hamburger_blocks(
+				$merged['blocks'],
+				$this->hamburger_button_defaults( $merged )
+			);
 		}
 
 		return $merged;
+	}
+
+	/**
+	 * "Görünüm" adımı öncesindeki kayıtları, görüntü değişmeden taşır.
+	 *
+	 * Adım eklenmeden önce panelin bu değerleri ayarlanabilir değildi ve
+	 * başka ayarlardan türüyordu:
+	 *
+	 * - Menü satırı hover/ayraç/ok ve sosyal ikon çerçeve/glyph rengi
+	 *   header'ın ikon renginden (`--hfb-icon-color`) geliyordu.
+	 * - Menü satırı metin rengi panelin yazı renginden geliyordu.
+	 * - Panel logosu header'ın MOBİL logo ölçüsünü her kırılımda
+	 *   kullanıyordu.
+	 *
+	 * Kayıtta yeni anahtarlar yoksa eski kaynak buraya kopyalanır; böylece
+	 * kullanıcı hiçbir şey kaydetmeden panel bugünküyle aynı görünür. Bir
+	 * kez kaydedildikten sonra anahtarlar depoda durur ve bu geçiş bir daha
+	 * çalışmaz.
+	 *
+	 * @param array<string,mixed> $stored Depodaki hamburger ayarları.
+	 * @return array<string,mixed>
+	 */
+	private function migrate_hamburger_appearance( $stored ) {
+		$header = $this->get_header_options();
+
+		// Renkler: header ikon rengi + panel yazı rengi.
+		$icon = isset( $header['icon_color'] ) ? (string) $header['icon_color'] : $this->hamburger_defaults['menu_arrow_color'];
+		$text = isset( $stored['font_color'] ) ? (string) $stored['font_color'] : $this->hamburger_defaults['menu_link_color'];
+
+		$devralinan = array(
+			'menu_link_color'     => $text,
+			'menu_hover_color'    => $icon,
+			'menu_divider_color'  => $icon,
+			'menu_arrow_color'    => $icon,
+			'social_border_color' => $icon,
+			'social_icon_color'   => $icon,
+		);
+
+		foreach ( $devralinan as $key => $value ) {
+			if ( ! isset( $stored[ $key ] ) ) {
+				$stored[ $key ] = $value;
+			}
+		}
+
+		// Panel logosu: header'ın mobil ölçüsü her iki kırılıma da taşınır.
+		if ( ! isset( $stored['logo_width_mobile'] ) ) {
+			$auto  = ! empty( $header['logo_height_auto_mobile'] ) ? 1 : 0;
+			$width = isset( $header['logo_width_mobile'] ) ? (int) $header['logo_width_mobile'] : (int) $this->hamburger_defaults['logo_width_mobile'];
+
+			$stored['logo_width_desktop']       = $width;
+			$stored['logo_width_mobile']        = $width;
+			$stored['logo_height_auto_desktop'] = $auto;
+			$stored['logo_height_auto_mobile']  = $auto;
+			$stored['logo_height_desktop']      = $auto ? 0 : (int) $header['logo_height_mobile'];
+			$stored['logo_height_mobile']       = $auto ? 0 : (int) $header['logo_height_mobile'];
+		}
+
+		return $stored;
 	}
 
 	/**
@@ -456,10 +519,11 @@ trait QRMS_HFB_Settings_Page {
 	/**
 	 * Blok dizisini şemaya uygun hâle getirir.
 	 *
-	 * @param array<int,mixed> $blocks Ham blok listesi.
+	 * @param array<int,mixed>         $blocks       Ham blok listesi.
+	 * @param array<string,mixed>|null $btn_defaults Panel geneli buton varsayılanları.
 	 * @return array<int,array<string,mixed>>
 	 */
-	private function normalize_hamburger_blocks( $blocks ) {
+	private function normalize_hamburger_blocks( $blocks, $btn_defaults = null ) {
 		$valid_types = array_keys( $this->hamburger_block_types() );
 		$normalized  = array();
 		$seen_ids    = array();
@@ -480,7 +544,7 @@ trait QRMS_HFB_Settings_Page {
 			}
 
 			$seen_ids[] = $id;
-			$normalized[] = $this->default_hamburger_block( $type, $id, $block );
+			$normalized[] = $this->default_hamburger_block( $type, $id, $block, $btn_defaults );
 		}
 
 		if ( empty( $normalized ) ) {
@@ -493,12 +557,13 @@ trait QRMS_HFB_Settings_Page {
 	/**
 	 * Tek blok için varsayılan alanları birleştirir.
 	 *
-	 * @param string              $type    Blok tipi.
-	 * @param string              $id      Blok kimliği.
-	 * @param array<string,mixed> $current Mevcut değerler.
+	 * @param string                   $type         Blok tipi.
+	 * @param string                   $id           Blok kimliği.
+	 * @param array<string,mixed>      $current      Mevcut değerler.
+	 * @param array<string,mixed>|null $btn_defaults Panel geneli buton varsayılanları.
 	 * @return array<string,mixed>
 	 */
-	private function default_hamburger_block( $type, $id, $current = array() ) {
+	private function default_hamburger_block( $type, $id, $current = array(), $btn_defaults = null ) {
 		$block = array(
 			'id'      => $id,
 			'type'    => $type,
@@ -517,17 +582,20 @@ trait QRMS_HFB_Settings_Page {
 		}
 
 		if ( 'button' === $type ) {
+			// Blok kendi değerini taşımıyorsa panel geneli buton
+			// varsayılanları devreye girer.
+			$btn    = is_array( $btn_defaults ) ? $btn_defaults : $this->hamburger_button_defaults();
 			$shapes = array_keys( $this->hamburger_button_shapes() );
-			$shape  = isset( $current['shape'] ) ? sanitize_key( (string) $current['shape'] ) : 'pill';
+			$shape  = isset( $current['shape'] ) ? sanitize_key( (string) $current['shape'] ) : (string) $btn['shape'];
 
 			$block['label']       = isset( $current['label'] ) ? (string) $current['label'] : __( 'Buton', 'qrms' );
 			$block['url']         = isset( $current['url'] ) ? (string) $current['url'] : '';
-			$block['bg_color']    = isset( $current['bg_color'] ) ? (string) $current['bg_color'] : '#c9a84c';
-			$block['text_color']  = isset( $current['text_color'] ) ? (string) $current['text_color'] : '#0a0a0c';
+			$block['bg_color']    = isset( $current['bg_color'] ) ? (string) $current['bg_color'] : (string) $btn['bg_color'];
+			$block['text_color']  = isset( $current['text_color'] ) ? (string) $current['text_color'] : (string) $btn['text_color'];
 			$block['shape']       = in_array( $shape, $shapes, true ) ? $shape : 'pill';
-			$block['font']        = isset( $current['font'] ) ? (string) $current['font'] : $this->hamburger_defaults['font_family'];
-			$block['font_size']   = isset( $current['font_size'] ) ? (int) $current['font_size'] : 15;
-			$block['font_weight'] = isset( $current['font_weight'] ) ? (int) $current['font_weight'] : 600;
+			$block['font']        = isset( $current['font'] ) ? (string) $current['font'] : (string) $btn['font'];
+			$block['font_size']   = isset( $current['font_size'] ) ? (int) $current['font_size'] : (int) $btn['font_size'];
+			$block['font_weight'] = isset( $current['font_weight'] ) ? (int) $current['font_weight'] : (int) $btn['font_weight'];
 			$block['full_width']  = ! empty( $current['full_width'] ) ? 1 : 0;
 		}
 
@@ -669,6 +737,34 @@ trait QRMS_HFB_Settings_Page {
 		$color = sanitize_hex_color( $raw );
 
 		return $color ? $color : $fallback;
+	}
+
+	/**
+	 * Boş bırakılabilen hex rengi temizler.
+	 *
+	 * `sanitize_color_field()` boş değeri varsayılana çevirir; burada boş
+	 * değer korunur ve "şeffaf" anlamına gelir. Renk seçici temizlendiğinde
+	 * ilgili CSS değişkeni hiç basılmaz, kural kendi fallback'ine düşer.
+	 *
+	 * @param array<string,mixed> $input   Ham girdi.
+	 * @param string              $field   Alan adı.
+	 * @param string              $current Mevcut değer.
+	 * @return string Hex renk ya da boş dize.
+	 */
+	private function sanitize_optional_color_field( $input, $field, $current ) {
+		if ( ! isset( $input[ $field ] ) ) {
+			return (string) $current;
+		}
+
+		$raw = trim( (string) $input[ $field ] );
+
+		if ( '' === $raw ) {
+			return '';
+		}
+
+		$color = sanitize_hex_color( $raw );
+
+		return $color ? $color : (string) $current;
 	}
 
 	/**
@@ -1018,15 +1114,23 @@ trait QRMS_HFB_Settings_Page {
 	 * @return array<string,mixed>
 	 */
 	public function sanitize_hamburger_input( $input, $current ) {
-		$opts = $current;
+		$defaults = $this->hamburger_defaults;
 
-		$opts['close_icon_color'] = $this->sanitize_color_field( $input, 'hfb_hamburger_close_icon_color', $current['close_icon_color'] );
-		$opts['panel_bg_color']   = $this->sanitize_color_field( $input, 'hfb_hamburger_panel_bg_color', $current['panel_bg_color'] );
-		$opts['font_color']       = $this->sanitize_color_field( $input, 'hfb_hamburger_font_color', $current['font_color'] );
+		// Görünüm adımıyla gelen anahtarları taşımayan eski bir option
+		// kaydı da bu temizleyiciden geçebilir; eksik anahtarlar
+		// varsayılanla tamamlanır, mevcut değerler olduğu gibi korunur.
+		$opts = wp_parse_args( is_array( $current ) ? $current : array(), $defaults );
+
+		$opts['close_icon_color'] = $this->sanitize_color_field( $input, 'hfb_hamburger_close_icon_color', $opts['close_icon_color'] );
+		$opts['panel_bg_color']   = $this->sanitize_color_field( $input, 'hfb_hamburger_panel_bg_color', $opts['panel_bg_color'] );
+		$opts['font_color']       = $this->sanitize_color_field( $input, 'hfb_hamburger_font_color', $opts['font_color'] );
+
+		$opts = $this->sanitize_hamburger_appearance( $input, $opts, $defaults );
 
 		$opts['blocks'] = $this->sanitize_hamburger_blocks(
 			$input,
-			isset( $current['blocks'] ) && is_array( $current['blocks'] ) ? $current['blocks'] : $this->hamburger_defaults['blocks']
+			isset( $current['blocks'] ) && is_array( $current['blocks'] ) ? $current['blocks'] : $defaults['blocks'],
+			$this->hamburger_button_defaults( $opts )
 		);
 
 		if ( isset( $input['hfb_hamburger_font_family'] ) ) {
@@ -1086,15 +1190,108 @@ trait QRMS_HFB_Settings_Page {
 	}
 
 	/**
+	 * Görünüm adımının alanlarını temizler.
+	 *
+	 * Panel arka plan rengi ile kapatma ikonu rengi Açılış adımında durur;
+	 * burada tekrarlanmaz. Bu adım panelin geri kalan görsel ayarlarını
+	 * (arka plan görseli, panel içi logo ölçüsü, menü satırı ve sosyal ikon
+	 * renkleri, buton varsayılanları) kapsar.
+	 *
+	 * @param array<string,mixed> $input    Ham girdi.
+	 * @param array<string,mixed> $opts     Mevcut ayarlar.
+	 * @param array<string,mixed> $defaults Varsayılanlar.
+	 * @return array<string,mixed>
+	 */
+	private function sanitize_hamburger_appearance( $input, $opts, $defaults ) {
+		// Arka plan görseli: ek (attachment) kimliği. 0 = görsel yok.
+		if ( isset( $input['hfb_hamburger_panel_bg_image'] ) ) {
+			$opts['panel_bg_image'] = absint( $input['hfb_hamburger_panel_bg_image'] );
+		}
+
+		if ( isset( $input['hfb_hamburger_panel_bg_opacity'] ) ) {
+			$opts['panel_bg_opacity'] = $this->sanitize_int_range(
+				$input['hfb_hamburger_panel_bg_opacity'],
+				self::PANEL_BG_OPACITY_MIN,
+				self::PANEL_BG_OPACITY_MAX,
+				$defaults['panel_bg_opacity']
+			);
+		}
+
+		// Panel içi logo ölçüsü — header'daki logo boyutundan bağımsızdır.
+		foreach ( array( 'desktop', 'mobile' ) as $bp ) {
+			$width_field = 'hfb_hamburger_logo_width_' . $bp;
+
+			if ( isset( $input[ $width_field ] ) ) {
+				$opts[ 'logo_width_' . $bp ] = $this->sanitize_int_range(
+					$input[ $width_field ],
+					self::LOGO_WIDTH_MIN,
+					self::LOGO_WIDTH_MAX,
+					$defaults[ 'logo_width_' . $bp ]
+				);
+			}
+
+			$height = $this->sanitize_logo_height(
+				$input,
+				'hfb_hamburger_logo_height_auto_' . $bp,
+				'hfb_hamburger_logo_height_' . $bp,
+				(int) $opts[ 'logo_height_' . $bp ]
+			);
+
+			$opts[ 'logo_height_auto_' . $bp ] = $height['auto'];
+			$opts[ 'logo_height_' . $bp ]      = $height['height'];
+		}
+
+		// Menü/liste satırı renkleri.
+		$opts['menu_link_color']    = $this->sanitize_color_field( $input, 'hfb_hamburger_menu_link_color', $opts['menu_link_color'] );
+		$opts['menu_hover_color']   = $this->sanitize_color_field( $input, 'hfb_hamburger_menu_hover_color', $opts['menu_hover_color'] );
+		$opts['menu_divider_color'] = $this->sanitize_color_field( $input, 'hfb_hamburger_menu_divider_color', $opts['menu_divider_color'] );
+		$opts['menu_arrow_color']   = $this->sanitize_color_field( $input, 'hfb_hamburger_menu_arrow_color', $opts['menu_arrow_color'] );
+
+		// Sosyal ikon renkleri. Zemin boş bırakılabilir: boş = şeffaf.
+		$opts['social_border_color'] = $this->sanitize_color_field( $input, 'hfb_hamburger_social_border_color', $opts['social_border_color'] );
+		$opts['social_icon_color']   = $this->sanitize_color_field( $input, 'hfb_hamburger_social_icon_color', $opts['social_icon_color'] );
+		$opts['social_bg_color']     = $this->sanitize_optional_color_field( $input, 'hfb_hamburger_social_bg_color', $opts['social_bg_color'] );
+
+		// Panel geneli buton varsayılanları; footer ile aynı alan seti.
+		$opts = $this->sanitize_button_style( $input, $opts, $defaults, 'hfb_hamburger_' );
+
+		return $opts;
+	}
+
+	/**
+	 * Panel geneli buton varsayılan seti.
+	 *
+	 * Buton bloğu kendi renk/şekil/tipografi ayarını taşımıyorsa bu set
+	 * devreye girer; taşıyorsa blok kendi değerini kullanır.
+	 *
+	 * @param array<string,mixed>|null $opts Hamburger ayarları; null ise varsayılanlar.
+	 * @return array{bg_color:string,text_color:string,shape:string,font:string,font_size:int,font_weight:int}
+	 */
+	private function hamburger_button_defaults( $opts = null ) {
+		$source = is_array( $opts ) ? wp_parse_args( $opts, $this->hamburger_defaults ) : $this->hamburger_defaults;
+
+		return array(
+			'bg_color'    => (string) $source['btn_bg_color'],
+			'text_color'  => (string) $source['btn_text_color'],
+			'shape'       => (string) $source['btn_shape'],
+			'font'        => (string) $source['btn_font_family'],
+			'font_size'   => (int) $source['btn_font_size'],
+			'font_weight' => (int) $source['btn_font_weight'],
+		);
+	}
+
+	/**
 	 * Dinamik hamburger blok listesini temizler.
 	 *
-	 * @param array<string,mixed>              $input   Ham girdi.
-	 * @param array<int,array<string,mixed>> $current Mevcut bloklar.
+	 * @param array<string,mixed>            $input        Ham girdi.
+	 * @param array<int,array<string,mixed>> $current      Mevcut bloklar.
+	 * @param array<string,mixed>|null       $btn_defaults Panel geneli buton varsayılanları.
 	 * @return array<int,array<string,mixed>>
 	 */
-	private function sanitize_hamburger_blocks( $input, $current ) {
+	private function sanitize_hamburger_blocks( $input, $current, $btn_defaults = null ) {
 		$valid_types = array_keys( $this->hamburger_block_types() );
 		$raw_blocks  = $this->extract_hamburger_blocks_from_input( $input );
+		$btn         = is_array( $btn_defaults ) ? $btn_defaults : $this->hamburger_button_defaults();
 
 		$order_raw = isset( $input['hfb_hamburger_block_order'] )
 			? $input['hfb_hamburger_block_order']
@@ -1168,7 +1365,9 @@ trait QRMS_HFB_Settings_Page {
 
 			if ( 'button' === $type ) {
 				$shapes = array_keys( $this->hamburger_button_shapes() );
-				$shape  = isset( $raw_block['shape'] ) ? sanitize_key( (string) $raw_block['shape'] ) : 'pill';
+				$shape  = isset( $raw_block['shape'] )
+					? sanitize_key( (string) $raw_block['shape'] )
+					: ( isset( $fallback['shape'] ) ? sanitize_key( (string) $fallback['shape'] ) : (string) $btn['shape'] );
 
 				$block['label'] = isset( $raw_block['label'] )
 					? sanitize_text_field( (string) $raw_block['label'] )
@@ -1181,30 +1380,30 @@ trait QRMS_HFB_Settings_Page {
 				$block['bg_color'] = $this->sanitize_color_field(
 					$raw_block,
 					'bg_color',
-					isset( $fallback['bg_color'] ) ? (string) $fallback['bg_color'] : '#c9a84c'
+					isset( $fallback['bg_color'] ) ? (string) $fallback['bg_color'] : (string) $btn['bg_color']
 				);
 
 				$block['text_color'] = $this->sanitize_color_field(
 					$raw_block,
 					'text_color',
-					isset( $fallback['text_color'] ) ? (string) $fallback['text_color'] : '#0a0a0c'
+					isset( $fallback['text_color'] ) ? (string) $fallback['text_color'] : (string) $btn['text_color']
 				);
 
 				$block['shape'] = in_array( $shape, $shapes, true ) ? $shape : 'pill';
 
-				$font = isset( $raw_block['font'] ) ? (string) $raw_block['font'] : ( isset( $fallback['font'] ) ? (string) $fallback['font'] : $this->hamburger_defaults['font_family'] );
+				$font = isset( $raw_block['font'] ) ? (string) $raw_block['font'] : ( isset( $fallback['font'] ) ? (string) $fallback['font'] : (string) $btn['font'] );
 				$block['font'] = array_key_exists( $font, $this->font_catalog() ) ? $font : $this->hamburger_defaults['font_family'];
 
 				$block['font_size'] = $this->sanitize_int_range(
-					isset( $raw_block['font_size'] ) ? $raw_block['font_size'] : ( isset( $fallback['font_size'] ) ? $fallback['font_size'] : 15 ),
+					isset( $raw_block['font_size'] ) ? $raw_block['font_size'] : ( isset( $fallback['font_size'] ) ? $fallback['font_size'] : $btn['font_size'] ),
 					10,
 					32,
-					15
+					(int) $btn['font_size']
 				);
 
 				$block['font_weight'] = $this->sanitize_font_weight(
-					isset( $raw_block['font_weight'] ) ? $raw_block['font_weight'] : ( isset( $fallback['font_weight'] ) ? $fallback['font_weight'] : 600 ),
-					600
+					isset( $raw_block['font_weight'] ) ? $raw_block['font_weight'] : ( isset( $fallback['font_weight'] ) ? $fallback['font_weight'] : $btn['font_weight'] ),
+					(int) $btn['font_weight']
 				);
 
 				$block['full_width'] = $this->sanitize_checkbox( $raw_block, 'full_width' );
@@ -1226,10 +1425,10 @@ trait QRMS_HFB_Settings_Page {
 		}
 
 		if ( empty( $ordered ) ) {
-			return $this->normalize_hamburger_blocks( $this->hamburger_defaults['blocks'] );
+			return $this->normalize_hamburger_blocks( $this->hamburger_defaults['blocks'], $btn );
 		}
 
-		return $this->normalize_hamburger_blocks( $ordered );
+		return $this->normalize_hamburger_blocks( $ordered, $btn );
 	}
 
 	/**

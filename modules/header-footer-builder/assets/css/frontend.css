@@ -401,6 +401,29 @@
   transform: translateY(0);
 }
 
+/* Arka plan görseli zemin renginin ÜSTÜNE biner; opaklık ayarlanabilir,
+   böylece renk görselin altından istenen ölçüde okunur. Katman yalnızca
+   görsel seçilmişse basılır (bkz. trait-frontend.php). */
+.hfb-mobile-panel__bg {
+  background-image: var(--hfb-panel-bg-image, none);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  inset: 0;
+  opacity: var(--hfb-panel-bg-opacity, 1);
+  pointer-events: none;
+  position: absolute;
+  z-index: 0;
+}
+
+/* Görsel katmanı altta kalsın: içerik her zaman üstte akar. */
+.hfb-mobile-panel__topbar,
+.hfb-mobile-panel__body,
+.hfb-mobile-panel__footer {
+  position: relative;
+  z-index: 1;
+}
+
 .hfb-mobile-panel__topbar {
   align-items: center;
   border-bottom: 1px solid var(--hfb-border);
@@ -510,9 +533,20 @@
   justify-content: inherit;
 }
 
+/* Panel sosyal ikonları kendi renk setini kullanır; header'daki ikon
+   renginden bağımsızdır. Zemin varsayılan olarak şeffaftır. */
 .hfb-header-wrap .hfb-mobile-panel__block--social .hfb-social__link {
+  background-color: var(--hfb-panel-social-bg, transparent);
+  border-color: var(--hfb-panel-social-border, var(--hfb-icon-color, var(--hfb-gold)));
+  color: var(--hfb-panel-social-icon, var(--hfb-icon-color, var(--hfb-gold)));
   height: 46px;
   width: 46px;
+}
+
+.hfb-header-wrap .hfb-mobile-panel__block--social .hfb-social__link:hover,
+.hfb-header-wrap .hfb-mobile-panel__block--social .hfb-social__link:focus-visible {
+  background-color: var(--hfb-panel-social-icon, var(--hfb-icon-color, var(--hfb-gold)));
+  color: var(--hfb-panel-bg, var(--hfb-ink));
 }
 
 .hfb-mobile-panel__block--social .hfb-icon--social {
@@ -549,10 +583,19 @@
   justify-content: flex-end;
 }
 
+/* Panel geneli buton varsayılanları. Her buton bloğu kendi ayarını satır
+   içi stille yazar; bu değişkenler yalnızca blok bir değer taşımadığında
+   görünür. */
 .hfb-mobile-panel__btn {
+  background-color: var(--hfb-panel-btn-bg, var(--hfb-gold));
   border: 0;
+  border-radius: var(--hfb-panel-btn-radius, 999px);
+  color: var(--hfb-panel-btn-color, var(--hfb-ink));
   cursor: pointer;
   display: inline-block;
+  font-family: var(--hfb-panel-btn-font, inherit);
+  font-size: var(--hfb-panel-btn-size, 15px);
+  font-weight: var(--hfb-panel-btn-weight, 600);
   line-height: 1.3;
   padding: 1rem 1.75rem;
   text-align: center;
@@ -602,20 +645,25 @@
   width: 100%;
 }
 
-/* Satır satır liste: aralarında ince altın ayraç, sağ uçta ok. */
+/* Satır satır liste: aralarında ince ayraç, sağ uçta ok. Ayraç seçilen
+   rengin %22'si olarak basılır — çizgi "ince" kalır, rengi ayarlanır. */
 .hfb-mobile-panel__nav .hfb-header__menu > li {
   border-bottom: 1px solid
-    color-mix(in srgb, var(--hfb-icon-color, var(--hfb-gold)) 22%, transparent);
+    color-mix(in srgb,
+      var(--hfb-panel-menu-divider, var(--hfb-icon-color, var(--hfb-gold))) 22%,
+      transparent);
   width: 100%;
 }
 
 .hfb-mobile-panel__nav .hfb-header__menu > li:first-child {
   border-top: 1px solid
-    color-mix(in srgb, var(--hfb-icon-color, var(--hfb-gold)) 22%, transparent);
+    color-mix(in srgb,
+      var(--hfb-panel-menu-divider, var(--hfb-icon-color, var(--hfb-gold))) 22%,
+      transparent);
 }
 
 .hfb-mobile-panel__nav .hfb-header__menu a {
-  color: var(--hfb-panel-font-color, var(--hfb-text));
+  color: var(--hfb-panel-menu-color, var(--hfb-panel-font-color, var(--hfb-text)));
   display: block;
   font-size: inherit;
   font-weight: inherit;
@@ -628,14 +676,16 @@
 .hfb-mobile-panel__nav .hfb-header__menu > li > a:hover,
 .hfb-mobile-panel__nav .hfb-header__menu > li > a:focus-visible {
   background-color:
-    color-mix(in srgb, var(--hfb-icon-color, var(--hfb-gold)) 10%, transparent);
-  color: var(--hfb-icon-color, var(--hfb-gold));
+    color-mix(in srgb,
+      var(--hfb-panel-menu-hover, var(--hfb-icon-color, var(--hfb-gold))) 10%,
+      transparent);
+  color: var(--hfb-panel-menu-hover, var(--hfb-icon-color, var(--hfb-gold)));
 }
 
 /* Alt menüsü olmayan satırların sağ ucundaki › işareti. Alt menülü
    satırlarda bunun yerine aşağıdaki dönen chevron kullanılır. */
 .hfb-mobile-panel__nav .hfb-header__menu > li:not(.menu-item-has-children) > a::after {
-  color: var(--hfb-icon-color, var(--hfb-gold));
+  color: var(--hfb-panel-menu-arrow, var(--hfb-icon-color, var(--hfb-gold)));
   content: '\203A';
   font-size: 1.35em;
   line-height: 1;
@@ -664,8 +714,8 @@
 }
 
 .hfb-mobile-panel__nav .menu-item-has-children > a::after {
-  border-bottom: 2px solid var(--hfb-icon-color, var(--hfb-gold));
-  border-right: 2px solid var(--hfb-icon-color, var(--hfb-gold));
+  border-bottom: 2px solid var(--hfb-panel-menu-arrow, var(--hfb-icon-color, var(--hfb-gold)));
+  border-right: 2px solid var(--hfb-panel-menu-arrow, var(--hfb-icon-color, var(--hfb-gold)));
   content: '';
   display: inline-block;
   height: 0.4em;
@@ -1120,6 +1170,14 @@
   }
 }
 
+/* Panel içi logo, header'daki logo boyutundan bağımsız ölçülenir.
+   Mobil set aşağıdaki kırılımda bunu ezer; bu yüzden masaüstü kuralı
+   kırılımdan ÖNCE gelir (ikisi de tek sınıf, sıralama belirleyici). */
+.hfb-mobile-panel .hfb-brand__img {
+  height: var(--hfb-panel-logo-h, auto);
+  width: var(--hfb-panel-logo-w, 120px);
+}
+
 /* Hamburger panel metinleri: gerçek sitede viewport, önizlemede sahne. */
 @media (max-width: 768px) {
   .hfb-mobile-panel__sheet {
@@ -1127,11 +1185,11 @@
     font-weight: var(--hfb-panel-font-weight-m, 500);
     text-align: var(--hfb-panel-font-align-m, center);
   }
-}
 
-.hfb-mobile-panel .hfb-brand__img {
-  height: var(--hfb-logo-h-mobile, auto);
-  width: var(--hfb-logo-w-mobile, 120px);
+  .hfb-mobile-panel .hfb-brand__img {
+    height: var(--hfb-panel-logo-h-m, auto);
+    width: var(--hfb-panel-logo-w-m, 120px);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
