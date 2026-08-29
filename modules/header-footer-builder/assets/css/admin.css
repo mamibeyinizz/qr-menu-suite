@@ -195,7 +195,8 @@
   text-align: center;
 }
 
-.hfb-wrap .hfb-logo-height-row.is-disabled {
+.hfb-wrap .hfb-logo-height-row.is-disabled,
+.hfb-wrap .hfb-content-width-row.is-disabled {
   opacity: 0.45;
   pointer-events: none;
 }

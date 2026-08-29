@@ -28,6 +28,12 @@ trait QRMS_HFB_Live_Preview {
 	/**
 	 * Form ile yan yana duran sabit önizleme paneli.
 	 *
+	 * Yerleşim adımı (içerik genişliği + iç boşluklar) da bu panelde
+	 * doğrulanır. Değerler sunucuda `--hfb-header-*` değişkenlerine
+	 * yazıldığı ve kırılım kap sorgusuna bağlı olduğu için, tuval mobil
+	 * genişliğine (390px) indiğinde mobil boşluk seti önizlemede de
+	 * kendiliğinden devreye girer; istemci ayrıca stil hesaplamaz.
+	 *
 	 * @param array<string,mixed>      $header_opts    Header ayarları.
 	 * @param array<string,mixed>      $footer_opts    Footer ayarları.
 	 * @param array<string,mixed>|null $hamburger_opts Hamburger ayarları.
@@ -43,6 +49,10 @@ trait QRMS_HFB_Live_Preview {
 				<h2 class="qrms-card-title"><?php esc_html_e( 'Canlı Önizleme', 'qrms' ); ?></h2>
 				<p class="qrms-muted">
 					<?php esc_html_e( 'Formdaki her değişiklik kaydetmeden burada görünür.', 'qrms' ); ?>
+				</p>
+
+				<p class="qrms-muted hfb-preview__hint">
+					<?php esc_html_e( 'Yerleşim adımındaki boşluklar da buradan izlenir: masaüstü seti Masaüstü Önizleme\'de, mobil seti Mobil Önizleme\'de geçerlidir. Masaüstü tuvali 1100px olduğu için bunun üzerindeki maksimum genişlik değerleri önizlemede aynı görünür.', 'qrms' ); ?>
 				</p>
 
 				<div class="hfb-preview__toolbar">

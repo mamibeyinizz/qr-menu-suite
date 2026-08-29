@@ -270,7 +270,18 @@ trait QRMS_HFB_Frontend {
 		$logo_h_tablet  = ! empty( $opts['logo_height_auto_tablet'] ) ? 'auto' : (int) $opts['logo_height_tablet'] . 'px';
 		$logo_h_mobile  = ! empty( $opts['logo_height_auto_mobile'] ) ? 'auto' : (int) $opts['logo_height_mobile'] . 'px';
 
+		// Tam genişlik seçiliyken `none` basılır: kural sabit bir piksel
+		// değerine değil, her zaman değişkene bakar.
+		$max_width = ! empty( $opts['content_full_width'] )
+			? 'none'
+			: (int) $opts['content_width'] . 'px';
+
 		$vars = array(
+			'--hfb-header-max-width'       => $max_width,
+			'--hfb-header-padding-x'       => (int) $opts['padding_x_desktop'] . 'px',
+			'--hfb-header-padding-y'       => (int) $opts['padding_y_desktop'] . 'px',
+			'--hfb-header-padding-x-m'     => (int) $opts['padding_x_mobile'] . 'px',
+			'--hfb-header-padding-y-m'     => (int) $opts['padding_y_mobile'] . 'px',
 			'--hfb-header-bg'              => (string) $opts['bg_color'],
 			'--hfb-icon-color'             => (string) $opts['icon_color'],
 			'--hfb-hamburger-icon'         => (string) $opts['hamburger_icon_color'],
@@ -429,7 +440,12 @@ trait QRMS_HFB_Frontend {
 		switch ( $type ) {
 			case 'logo':
 				if ( $brand ) {
-					$inner = $brand;
+					$inner       = $brand;
+					$description = isset( $block['description'] ) ? trim( (string) $block['description'] ) : '';
+
+					if ( '' !== $description ) {
+						$inner .= '<p class="hfb-mobile-panel__desc">' . esc_html( $description ) . '</p>';
+					}
 				}
 				break;
 
@@ -498,10 +514,15 @@ trait QRMS_HFB_Frontend {
 		$tag   = $url ? 'a' : 'span';
 		$attrs = $url ? ' href="' . $url . '"' : '';
 
+		$classes = 'hfb-mobile-panel__btn hfb-mobile-panel__btn--' . $shape;
+		if ( ! empty( $block['full_width'] ) ) {
+			$classes .= ' hfb-mobile-panel__btn--full';
+		}
+
 		return sprintf(
-			'<%1$s class="hfb-mobile-panel__btn hfb-mobile-panel__btn--%2$s" style="%3$s"%4$s>%5$s</%1$s>',
+			'<%1$s class="%2$s" style="%3$s"%4$s>%5$s</%1$s>',
 			$tag,
-			esc_attr( $shape ),
+			esc_attr( $classes ),
 			$style,
 			$attrs,
 			esc_html( $label )

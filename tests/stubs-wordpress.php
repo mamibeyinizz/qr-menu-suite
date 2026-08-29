@@ -289,6 +289,36 @@ function wp_parse_args( $args, $defaults = array() ) {
 	return array_merge( $defaults, $args );
 }
 
+/**
+ * Dizi/nesne listesinden tek bir alanı toplar (WordPress ile aynı davranış).
+ *
+ * @param array       $list      Liste.
+ * @param string      $field     Alınacak alan.
+ * @param string|null $index_key Anahtar olarak kullanılacak alan.
+ * @return array
+ */
+function wp_list_pluck( $list, $field, $index_key = null ) {
+	$out = array();
+
+	foreach ( (array) $list as $key => $item ) {
+		$item  = is_object( $item ) ? get_object_vars( $item ) : (array) $item;
+		$value = isset( $item[ $field ] ) ? $item[ $field ] : null;
+
+		if ( null === $index_key ) {
+			$out[] = $value;
+			continue;
+		}
+
+		if ( isset( $item[ $index_key ] ) ) {
+			$out[ $item[ $index_key ] ] = $value;
+		} else {
+			$out[ $key ] = $value;
+		}
+	}
+
+	return $out;
+}
+
 function wp_json_encode( $data ) {
 	return wp_json_encode_impl( $data );
 }
