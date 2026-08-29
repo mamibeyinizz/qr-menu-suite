@@ -26,6 +26,12 @@ function qrms_reset() {
 	$GLOBALS['qrms_test']['transients'] = array();
 	$GLOBALS['qrms_test']['actions']    = array();
 
+	// Önbellek temizleme izleri: hangi eylemler tetiklendi, hangi gruplar
+	// boşaltıldı, arka uç grup bazlı temizliği destekliyor mu.
+	$GLOBALS['qrms_test']['fired_actions']  = array();
+	$GLOBALS['qrms_test']['cache_flush']    = array();
+	$GLOBALS['qrms_test']['cache_supports'] = array();
+
 	// Kısa kod defteri statik bir durumdur ve testler arasında taşınır: bir
 	// modülün init'ini çağıran test, sonraki testin menüsüne satır ekletirdi.
 	QRMS_Shortcodes::reset();
@@ -8082,9 +8088,9 @@ qrms_test(
 					),
 				),
 				'hfb_hamburger_font_family'         => 'Comic Sans',
-				'hfb_hamburger_font_size_desktop'   => '99',
-				'hfb_hamburger_font_weight_desktop' => '550',
-				'hfb_hamburger_font_align_mobile'   => 'justify',
+				'hfb_hamburger_font_size'           => '99',
+				'hfb_hamburger_font_weight'         => '550',
+				'hfb_hamburger_font_align'          => 'justify',
 				'hfb_hamburger_close_icon_color'    => '#ff00aa',
 				'hfb_hamburger_panel_bg_color'      => '#111111',
 			),
@@ -8103,9 +8109,9 @@ qrms_test(
 		qrms_assert_same( 'left', $by_type['logo']['align'], 'geçerli blok hizası korunur' );
 		qrms_assert_same( 'center', $by_type['text']['align'], 'geçersiz blok hizası varsayılan' );
 		qrms_assert_same( 'Playfair Display', $temiz['font_family'], 'bilinmeyen font reddedildi' );
-		qrms_assert_same( 32, (int) $temiz['font_size_desktop'], 'punto üst sınır' );
-		qrms_assert_same( 500, (int) $temiz['font_weight_desktop'], 'geçersiz kalınlık varsayılan' );
-		qrms_assert_same( 'center', $temiz['font_align_mobile'], 'geçersiz hiza varsayılan' );
+		qrms_assert_same( 32, (int) $temiz['font_size'], 'punto üst sınır' );
+		qrms_assert_same( 500, (int) $temiz['font_weight'], 'geçersiz kalınlık varsayılan' );
+		qrms_assert_same( 'center', $temiz['font_align'], 'geçersiz hiza varsayılan' );
 		qrms_assert_same( '#ff00aa', $temiz['close_icon_color'], 'kapatma rengi' );
 		// Zararlı etiket ayıklaması wp_kses_post'un işidir; testte taklit
 		// edildiği için burada yalnızca metnin korunduğu doğrulanır.
@@ -8359,11 +8365,10 @@ qrms_test(
 		qrms_assert_same( '#ff0066', $opts['social_icon_color'], 'sosyal glyph header ikon renginden' );
 		qrms_assert_same( '', $opts['social_bg_color'], 'sosyal zemin şeffaf kalır' );
 
-		// Panel logosu header'ın MOBİL ölçüsünü her iki kırılımda kullanırdı.
-		qrms_assert_same( 210, (int) $opts['logo_width_desktop'], 'masaüstü panel logo devralındı' );
-		qrms_assert_same( 210, (int) $opts['logo_width_mobile'], 'mobil panel logo devralındı' );
-		qrms_assert_same( 70, (int) $opts['logo_height_desktop'], 'sabit yükseklik devralındı' );
-		qrms_assert_same( 0, (int) $opts['logo_height_auto_desktop'], 'otomatik oran kapalı devralındı' );
+		// Panel logosu header'ın MOBİL ölçüsünü devralır (tek set).
+		qrms_assert_same( 210, (int) $opts['logo_width'], 'panel logo genişliği devralındı' );
+		qrms_assert_same( 70, (int) $opts['logo_height'], 'sabit yükseklik devralındı' );
+		qrms_assert_same( 0, (int) $opts['logo_height_auto'], 'otomatik oran kapalı devralındı' );
 
 		// Mevcut kaydedilmiş veri korunur.
 		qrms_assert_same( '#111111', $opts['panel_bg_color'], 'panel zemini korunur' );
@@ -8382,7 +8387,102 @@ qrms_test(
 		$kayitli = $hfb->get_hamburger_options();
 
 		qrms_assert_same( '#00ff00', $kayitli['menu_arrow_color'], 'kaydedilmiş ok rengi korunur' );
-		qrms_assert_same( 88, (int) $kayitli['logo_width_mobile'], 'kaydedilmiş panel logo korunur' );
+		qrms_assert_same( 88, (int) $kayitli['logo_width'], 'kaydedilmiş panel logo korunur' );
+	}
+);
+
+qrms_test(
+	'hamburger masaüstü/mobil ayrımı tek sete birleşir, veri kaybolmaz',
+	function () {
+		$hfb = qrms_hfb();
+
+		// Ayrım kaldırılmadan ÖNCEKİ kayıt: iki ayrı set.
+		update_option(
+			'hfb_hamburger_options',
+			array(
+				'font_size_desktop'         => 30,
+				'font_size_mobile'          => 21,
+				'font_weight_desktop'       => 700,
+				'font_weight_mobile'        => 400,
+				'font_align_desktop'        => 'left',
+				'font_align_mobile'         => 'right',
+				'logo_width_desktop'        => 300,
+				'logo_width_mobile'         => 95,
+				'logo_height_desktop'       => 180,
+				'logo_height_mobile'        => 60,
+				'logo_height_auto_desktop'  => 0,
+				'logo_height_auto_mobile'   => 0,
+			)
+		);
+
+		$opts = $hfb->get_hamburger_options();
+
+		// Panel yalnızca mobilde açılır: gerçekte görünen MOBİL değerdir,
+		// tek sete o taşınır.
+		qrms_assert_same( 21, (int) $opts['font_size'], 'punto mobil değerden' );
+		qrms_assert_same( 400, (int) $opts['font_weight'], 'kalınlık mobil değerden' );
+		qrms_assert_same( 'right', $opts['font_align'], 'hizalama mobil değerden' );
+		qrms_assert_same( 95, (int) $opts['logo_width'], 'logo genişliği mobil değerden' );
+		qrms_assert_same( 60, (int) $opts['logo_height'], 'logo yüksekliği mobil değerden' );
+		qrms_assert_same( 0, (int) $opts['logo_height_auto'], 'otomatik oran mobil değerden' );
+
+		// Kırılım anahtarları artık şemada yok: merge_options() budar.
+		foreach ( array( 'font_size_desktop', 'font_size_mobile', 'logo_width_desktop', 'logo_width_mobile' ) as $eski ) {
+			qrms_assert_true( ! array_key_exists( $eski, $opts ), $eski . ' anahtarı kalmaz' );
+		}
+
+		// Mobil anahtar hiç yoksa masaüstü değeri kurtarılır — veri kaybı yok.
+		update_option(
+			'hfb_hamburger_options',
+			array(
+				'font_size_desktop'  => 26,
+				'logo_width_desktop' => 175,
+			)
+		);
+
+		$yalniz_masaustu = $hfb->get_hamburger_options();
+
+		qrms_assert_same( 26, (int) $yalniz_masaustu['font_size'], 'mobil yoksa masaüstü puntosu taşınır' );
+		qrms_assert_same( 175, (int) $yalniz_masaustu['logo_width'], 'mobil yoksa masaüstü logosu taşınır' );
+	}
+);
+
+qrms_test(
+	'hamburger sekmesinde masaüstü/mobil alanı yok, panel logosu 50px\'e inebilir',
+	function () {
+		$hfb = qrms_hfb();
+		$GLOBALS['qrms_test']['can'] = true;
+
+		ob_start();
+		$hfb->render_admin_page();
+		$html = ob_get_clean();
+
+		// Tek set alan adları basılır.
+		foreach ( array( 'hfb_hamburger_font_size', 'hfb_hamburger_font_weight', 'hfb_hamburger_font_align', 'hfb_hamburger_logo_width', 'hfb_hamburger_logo_height', 'hfb_hamburger_logo_height_auto' ) as $alan ) {
+			qrms_assert_contains( 'name="' . $alan . '"', $html, $alan . ' alanı' );
+		}
+
+		// Kırılıma bölünmüş hamburger alanları TAMAMEN kalkar.
+		foreach ( array( 'hfb_hamburger_font_size_desktop', 'hfb_hamburger_font_size_mobile', 'hfb_hamburger_font_weight_desktop', 'hfb_hamburger_font_align_desktop', 'hfb_hamburger_logo_width_desktop', 'hfb_hamburger_logo_width_mobile', 'hfb_hamburger_logo_height_auto_desktop' ) as $eski ) {
+			qrms_assert_true(
+				false === strpos( $html, 'name="' . $eski . '"' ),
+				$eski . ' arayüzden çıkar'
+			);
+		}
+
+		// Header sekmesinin kırılım ayrımına DOKUNULMAZ.
+		qrms_assert_contains( 'name="hfb_header_logo_width_desktop"', $html, 'header masaüstü logosu durur' );
+		qrms_assert_contains( 'name="hfb_header_logo_width_tablet"', $html, 'header tablet logosu durur' );
+		qrms_assert_contains( 'name="hfb_header_logo_width_mobile"', $html, 'header mobil logosu durur' );
+
+		// Panel logo kaydırıcısının alt sınırı 50px (header'ınki 80px kalır).
+		qrms_assert_contains(
+			'id="hfb_hamburger_logo_width"',
+			$html,
+			'panel logo kaydırıcısı'
+		);
+		$parca = substr( $html, (int) strpos( $html, 'id="hfb_hamburger_logo_width"' ) - 200, 400 );
+		qrms_assert_contains( 'min="50"', $parca, 'panel logo alt sınırı 50px' );
 	}
 );
 
@@ -8396,8 +8496,7 @@ qrms_test(
 			'data'  => array(
 				'hfb_hamburger_panel_bg_image'      => '7',
 				'hfb_hamburger_panel_bg_opacity'    => '35',
-				'hfb_hamburger_logo_width_desktop'  => '210',
-				'hfb_hamburger_logo_width_mobile'   => '95',
+				'hfb_hamburger_logo_width'          => '95',
 				'hfb_hamburger_menu_link_color'     => '#eeeeee',
 				'hfb_hamburger_menu_hover_color'    => '#00cc88',
 				'hfb_hamburger_menu_divider_color'  => '#334455',
@@ -8419,8 +8518,11 @@ qrms_test(
 		// Kaydetmeden, formdaki her Görünüm alanı önizlemeye iner.
 		qrms_assert_contains( 'hfb-mobile-panel__bg', $html, 'arka plan katmanı' );
 		qrms_assert_contains( '--hfb-panel-bg-opacity:0.35', $html, 'opaklık' );
-		qrms_assert_contains( '--hfb-panel-logo-w:210px', $html, 'masaüstü panel logo' );
-		qrms_assert_contains( '--hfb-panel-logo-w-m:95px', $html, 'mobil panel logo' );
+		qrms_assert_contains( '--hfb-panel-logo-w:95px', $html, 'panel logo ölçüsü (tek set)' );
+		qrms_assert_true(
+			false === strpos( $html, '--hfb-panel-logo-w-m' ),
+			'kırılıma özel ikinci logo değişkeni basılmaz'
+		);
 		qrms_assert_contains( '--hfb-panel-menu-color:#eeeeee', $html, 'satır metin rengi' );
 		qrms_assert_contains( '--hfb-panel-menu-hover:#00cc88', $html, 'satır hover rengi' );
 		qrms_assert_contains( '--hfb-panel-menu-divider:#334455', $html, 'ayraç rengi' );
@@ -8458,10 +8560,8 @@ qrms_test(
 			array(
 				'hfb_hamburger_panel_bg_image',
 				'hfb_hamburger_panel_bg_opacity',
-				'hfb_hamburger_logo_width_desktop',
-				'hfb_hamburger_logo_height_auto_desktop',
-				'hfb_hamburger_logo_width_mobile',
-				'hfb_hamburger_logo_height_auto_mobile',
+				'hfb_hamburger_logo_width',
+				'hfb_hamburger_logo_height_auto',
 				'hfb_hamburger_menu_link_color',
 				'hfb_hamburger_menu_hover_color',
 				'hfb_hamburger_menu_divider_color',
@@ -8506,11 +8606,9 @@ qrms_test(
 				// Arka plan görseli + opaklık.
 				'hfb_hamburger_panel_bg_image'         => '42abc',
 				'hfb_hamburger_panel_bg_opacity'       => '250',
-				// Panel içi logo — header logosundan bağımsız.
-				'hfb_hamburger_logo_width_desktop'     => '900',
-				'hfb_hamburger_logo_height_desktop'    => '90',
-				'hfb_hamburger_logo_width_mobile'      => '10',
-				'hfb_hamburger_logo_height_auto_mobile' => '1',
+				// Panel içi logo — header logosundan bağımsız, tek set.
+				'hfb_hamburger_logo_width'             => '900',
+				'hfb_hamburger_logo_height'            => '90',
 				// Liste satırı renkleri.
 				'hfb_hamburger_menu_link_color'        => '#AABBCC',
 				'hfb_hamburger_menu_hover_color'       => 'javascript:alert(1)',
@@ -8533,12 +8631,29 @@ qrms_test(
 		qrms_assert_same( 42, (int) $temiz['panel_bg_image'], 'ek kimliği absint' );
 		qrms_assert_same( 100, (int) $temiz['panel_bg_opacity'], 'opaklık üst sınıra sıkışır' );
 
-		qrms_assert_same( 320, (int) $temiz['logo_width_desktop'], 'panel logo genişliği üst sınıra sıkışır' );
-		qrms_assert_same( 0, (int) $temiz['logo_height_auto_desktop'], 'kutu işaretsizken otomatik oran kapalı' );
-		qrms_assert_same( 90, (int) $temiz['logo_height_desktop'], 'sabit yükseklik korunur' );
-		qrms_assert_same( 80, (int) $temiz['logo_width_mobile'], 'panel logo genişliği alt sınıra sıkışır' );
-		qrms_assert_same( 1, (int) $temiz['logo_height_auto_mobile'], 'mobilde otomatik oran açık' );
-		qrms_assert_same( 0, (int) $temiz['logo_height_mobile'], 'otomatik oranda yükseklik sıfırlanır' );
+		qrms_assert_same( 320, (int) $temiz['logo_width'], 'panel logo genişliği üst sınıra sıkışır' );
+		qrms_assert_same( 0, (int) $temiz['logo_height_auto'], 'kutu işaretsizken otomatik oran kapalı' );
+		qrms_assert_same( 90, (int) $temiz['logo_height'], 'sabit yükseklik korunur' );
+
+		// Panel logosunun alt sınırı header'ın 80px'i değil 50px'tir.
+		$dar = $hfb->sanitize_hamburger_input(
+			array( 'hfb_hamburger_logo_width' => '55' ),
+			$hfb->get_hamburger_options()
+		);
+		qrms_assert_same( 55, (int) $dar['logo_width'], '50–80 arası değer kabul edilir' );
+
+		$cok_dar = $hfb->sanitize_hamburger_input(
+			array( 'hfb_hamburger_logo_width' => '10' ),
+			$hfb->get_hamburger_options()
+		);
+		qrms_assert_same( 50, (int) $cok_dar['logo_width'], 'panel logo genişliği 50px alt sınırına sıkışır' );
+
+		$otomatik = $hfb->sanitize_hamburger_input(
+			array( 'hfb_hamburger_logo_height_auto' => '1' ),
+			$hfb->get_hamburger_options()
+		);
+		qrms_assert_same( 1, (int) $otomatik['logo_height_auto'], 'otomatik oran açık' );
+		qrms_assert_same( 0, (int) $otomatik['logo_height'], 'otomatik oranda yükseklik sıfırlanır' );
 
 		qrms_assert_same( '#AABBCC', $temiz['menu_link_color'], 'geçerli hex olduğu gibi korunur' );
 		qrms_assert_same( '#c9a84c', $temiz['menu_hover_color'], 'geçersiz renk varsayılana düşer' );
@@ -8589,8 +8704,7 @@ qrms_test(
 		$hamburger['panel_bg_opacity']    = 40;
 		$hamburger['social_bg_color']     = '#101014';
 		$hamburger['menu_arrow_color']    = '#ff0000';
-		$hamburger['logo_width_desktop']  = 200;
-		$hamburger['logo_width_mobile']   = 90;
+		$hamburger['logo_width']          = 200;
 		$hamburger['btn_shape']           = 'square';
 
 		$ozel = $hfb->render_header( $opts, $hamburger );
@@ -8600,8 +8714,7 @@ qrms_test(
 		qrms_assert_contains( '--hfb-panel-bg-opacity:0.4', $ozel, 'opaklık 0–1 aralığına çevrilir' );
 		qrms_assert_contains( '--hfb-panel-social-bg:#101014', $ozel, 'sosyal zemin rengi' );
 		qrms_assert_contains( '--hfb-panel-menu-arrow:#ff0000', $ozel, 'ok rengi' );
-		qrms_assert_contains( '--hfb-panel-logo-w:200px', $ozel, 'masaüstü panel logo' );
-		qrms_assert_contains( '--hfb-panel-logo-w-m:90px', $ozel, 'mobil panel logo' );
+		qrms_assert_contains( '--hfb-panel-logo-w:200px', $ozel, 'panel logo ölçüsü (tek set)' );
 		qrms_assert_contains( '--hfb-panel-btn-radius:0', $ozel, 'köşeli buton' );
 	}
 );
@@ -8866,6 +8979,217 @@ qrms_test(
 
 		$slide = file_get_contents( $dizin . 'admin-cpt-slide.php' );
 		qrms_assert_contains( '1080x1080px (1:1 kare), JPG/WEBP, maksimum 200KB', $slide, 'ürün görseli boyut notu' );
+	}
+);
+
+
+/* ---------------------------------------------------------------------------
+ * 24. HFB — "Yeni Blok Ekle" listesi, canlı önizleme yükü, önbellek temizliği
+ * ------------------------------------------------------------------------ */
+
+echo "\n\033[1mHFB — açılır liste, önizleme yükü, önbellek\033[0m\n";
+
+qrms_test(
+	'"Yeni Blok Ekle" listesi sayfa akışını itmez, düğmenin üstüne binmez',
+	function () {
+		$css = file_get_contents( QRMS_PLUGIN_DIR . 'modules/header-footer-builder/assets/css/admin.css' );
+		$js  = file_get_contents( QRMS_PLUGIN_DIR . 'modules/header-footer-builder/assets/js/admin.js' );
+
+		preg_match( '/\.hfb-wrap \.hfb-block-add \{(.*?)\}/s', $css, $sarmalayici );
+		preg_match( '/\.hfb-wrap \.hfb-block-add__menu \{(.*?)\}/s', $css, $liste );
+
+		qrms_assert_contains( 'position: relative', $sarmalayici[1], 'sarmalayıcı konumlandırma bağlamı kurar' );
+
+		// Ofsetsiz bir mutlak kutu STATİK konumunda kalır — yani tetikleyen
+		// düğmenin yerinde — ve onun üzerine biner. Ofset zorunludur.
+		qrms_assert_contains( 'position: absolute', $liste[1], 'liste akıştan çıkar' );
+		qrms_assert_contains( 'top: calc(100% + 6px)', $liste[1], 'düğmenin altına çapalanır' );
+		qrms_assert_contains( 'left: 0', $liste[1], 'yatay çapa' );
+
+		preg_match( '/z-index: (\d+)/', $liste[1], $z );
+		qrms_assert_true( (int) $z[1] >= 100, 'altındaki gezinme şeridinin üstünde kalır' );
+
+		// `[hidden]` tek özgüllük birimidir; `.hfb-wrap .hfb-block-add__menu`
+		// üzerindeki display kuralı onu ezer ve liste KAPALIYKEN de görünürdü.
+		qrms_assert_contains(
+			'.hfb-wrap .hfb-block-add__menu[hidden] {',
+			$css,
+			'gizleme kuralı aynı özgüllükte tekrarlanır'
+		);
+
+		// Dışarı tıklama ve Escape kapatır; odak geri verilirken sayfa kaymaz.
+		qrms_assert_contains( 'setBlockMenuOpen(false)', $js, 'kapatma yardımcısı' );
+		qrms_assert_contains( "e.key === 'Escape'", $js, 'Escape kapatır' );
+		qrms_assert_contains( 'preventScroll: true', $js, 'odak scroll konumunu bozmaz' );
+	}
+);
+
+qrms_test(
+	'önizleme yükü iç içe kurulur; blok alanları PHP tarafında bozulmadan çözülür',
+	function () {
+		$js = file_get_contents( QRMS_PLUGIN_DIR . 'modules/header-footer-builder/assets/js/admin.js' );
+
+		// Tek delege dinleyici formun tamamını kapsar: sınıf listesine
+		// bakılmaz, sonradan eklenen blok alanları da kendiliğinden girer.
+		qrms_assert_contains( "on('input change', '#hfb-settings-form'", $js, 'form kökünde delegasyon' );
+		qrms_assert_contains( "is('input, select, textarea')", $js, 'her alan tipi kapsanır' );
+		qrms_assert_true(
+			false === strpos( $js, "'#hfb-settings-form .hfb-preview-trigger'" ),
+			'sınıfa bağlı eski dinleyici kaldırıldı'
+		);
+		qrms_assert_contains( 'var DEBOUNCE_MS = 300;', $js, 'debounce korunur' );
+
+		/*
+		 * Asıl kök neden: düz anahtarla gönderilen blok alanları
+		 * `data[hfb_hamburger_blocks[blk_1][enabled]]` hâline geliyor, PHP
+		 * ise İLK kapanan paranteze göre ayrıştırıp anahtarı
+		 * `hfb_hamburger_blocks[blk_1` diye bozuyordu. Aşağıdaki iki
+		 * doğrulama, bozuk ve düzeltilmiş yükün sunucudaki karşılığını
+		 * yan yana gösterir.
+		 */
+		parse_str( 'data%5Bhfb_hamburger_blocks%5Bblk_1%5D%5Benabled%5D%5D=1', $bozuk );
+		qrms_assert_true(
+			! isset( $bozuk['data']['hfb_hamburger_blocks'] ),
+			'düz anahtar sunucuda bloklara hiç ulaşmaz'
+		);
+
+		parse_str( 'data%5Bhfb_hamburger_blocks%5D%5Bblk_1%5D%5Benabled%5D=1', $duzgun );
+		qrms_assert_same(
+			'1',
+			$duzgun['data']['hfb_hamburger_blocks']['blk_1']['enabled'],
+			'iç içe yük doğru çözülür'
+		);
+
+		qrms_assert_contains( 'function nameToPath(', $js, 'alan adı yola çevrilir' );
+		qrms_assert_contains( 'function assignPath(', $js, 'yol boyunca yazılır' );
+	}
+);
+
+qrms_test(
+	'iç içe önizleme yükü blok değişikliklerini kaydetmeden yansıtır',
+	function () {
+		$hfb = qrms_hfb();
+
+		// Tarayıcının artık gönderdiği şekil: hfb_hamburger_blocks bir
+		// dizidir, düz "…[blk_1][enabled]" anahtarı değil.
+		$_POST = array(
+			'nonce' => 'test',
+			'data'  => array(
+				'hfb_hamburger_block_order' => 'blk_9,blk_8',
+				'hfb_hamburger_blocks'      => array(
+					'blk_9' => array(
+						'type'    => 'text',
+						'enabled' => '1',
+						'align'   => 'left',
+						'content' => 'Kaydetmeden görünen not',
+					),
+					'blk_8' => array(
+						'type'    => 'logo',
+						'enabled' => '1',
+						'align'   => 'center',
+					),
+				),
+			),
+		);
+
+		$hfb->ajax_preview();
+		$yanit = $GLOBALS['qrms_test']['json'];
+
+		qrms_assert_true( is_array( $yanit ) && ! empty( $yanit['success'] ), 'başarılı yanıt' );
+		qrms_assert_contains( 'Kaydetmeden görünen not', $yanit['data']['header'], 'yeni metin bloğu önizlemede' );
+
+		// Kayıt DEĞİŞMEZ: önizleme salt okunurdur.
+		$kayitli = $hfb->get_hamburger_options();
+		foreach ( $kayitli['blocks'] as $block ) {
+			qrms_assert_true(
+				! isset( $block['content'] ) || false === strpos( (string) $block['content'], 'Kaydetmeden görünen not' ),
+				'önizleme kaydetmez'
+			);
+		}
+	}
+);
+
+qrms_test(
+	'qmo_tum_onbellek_temizle nesne önbelleğini ve kurulu eklentileri temizler',
+	function () {
+		// Kurulu eklenti taklitleri: yalnızca function_exists() dallarının
+		// çalıştığını göstermek için. Gerçekte kurulu değilse dal atlanır.
+		if ( ! function_exists( 'rocket_clean_domain' ) ) {
+			function rocket_clean_domain() {
+				$GLOBALS['qrms_test']['eklenti_temizlik'][] = 'rocket';
+			}
+		}
+		if ( ! function_exists( 'wp_cache_clear_cache' ) ) {
+			function wp_cache_clear_cache() {
+				$GLOBALS['qrms_test']['eklenti_temizlik'][] = 'super_cache';
+			}
+		}
+		if ( ! function_exists( 'autoptimize_flush_pagecache' ) ) {
+			function autoptimize_flush_pagecache() {
+				$GLOBALS['qrms_test']['eklenti_temizlik'][] = 'autoptimize';
+			}
+		}
+
+		$GLOBALS['qrms_test']['eklenti_temizlik'] = array();
+
+		$temizlenen = qmo_tum_onbellek_temizle();
+
+		qrms_assert_true( in_array( '*', $GLOBALS['qrms_test']['cache_flush'], true ), 'nesne önbelleği boşaltıldı' );
+		qrms_assert_true( in_array( 'wp_rocket', $temizlenen, true ), 'WP Rocket temizlendi' );
+		qrms_assert_true( in_array( 'wp_super_cache', $temizlenen, true ), 'WP Super Cache temizlendi' );
+		qrms_assert_true( in_array( 'autoptimize', $temizlenen, true ), 'Autoptimize temizlendi' );
+		qrms_assert_same(
+			array( 'rocket', 'super_cache', 'autoptimize' ),
+			$GLOBALS['qrms_test']['eklenti_temizlik'],
+			'her eklenti bir kez çağrıldı'
+		);
+
+		// Kurulu OLMAYAN eklenti sessizce atlanır — ölümcül hata yok.
+		qrms_assert_true( ! in_array( 'w3tc', $temizlenen, true ), 'W3TC kurulu değil, atlandı' );
+		qrms_assert_true(
+			in_array( 'qmo_onbellek_temizlendi', $GLOBALS['qrms_test']['fired_actions'], true ),
+			'genişletme kancası tetiklenir'
+		);
+
+		// Arka uç grup bazlı temizliği destekliyorsa daha dar kapsam seçilir.
+		$GLOBALS['qrms_test']['cache_flush']    = array();
+		$GLOBALS['qrms_test']['cache_supports'] = array( 'flush_group' => true );
+
+		$dar = qmo_tum_onbellek_temizle( 'qmo' );
+
+		qrms_assert_true( in_array( 'qmo', $GLOBALS['qrms_test']['cache_flush'], true ), 'yalnızca grup boşaltıldı' );
+		qrms_assert_true( in_array( 'wp_cache_flush_group:qmo', $dar, true ), 'grup temizliği raporlanır' );
+		qrms_assert_true( ! in_array( '*', $GLOBALS['qrms_test']['cache_flush'], true ), 'genel flush yapılmaz' );
+
+		// Mevcut masa yardımcısı DEĞİŞMEDEN durur.
+		qrms_assert_true( function_exists( 'qmo_masa_cache_temizle' ), 'masa yardımcısı yerinde' );
+	}
+);
+
+qrms_test(
+	'HFB kaydı başarılı olduğunda önbellek kendiliğinden temizlenir',
+	function () {
+		$hfb = qrms_hfb();
+
+		$GLOBALS['qrms_test']['cache_flush']   = array();
+		$GLOBALS['qrms_test']['fired_actions'] = array();
+
+		$hfb->save_settings( array( 'hfb_header_brand_line1' => 'Yeni Marka' ) );
+
+		qrms_assert_same( 'Yeni Marka', get_option( 'hfb_header_options' )['brand_line1'], 'ayar kaydedildi' );
+		qrms_assert_true(
+			! empty( $GLOBALS['qrms_test']['cache_flush'] ),
+			'kayıttan hemen sonra önbellek temizlenir'
+		);
+		qrms_assert_true(
+			in_array( 'qmo_onbellek_temizlendi', $GLOBALS['qrms_test']['fired_actions'], true ),
+			'ortak temizleyici çağrıldı'
+		);
+
+		// Nonce/yetki kontrolü kayıt akışında yerinde durur.
+		$admin = file_get_contents( QRMS_PLUGIN_DIR . 'modules/header-footer-builder/includes/trait-admin.php' );
+		qrms_assert_contains( "current_user_can( QRMS_Admin::CAPABILITY )", $admin, 'yetki kontrolü' );
+		qrms_assert_contains( "check_admin_referer( 'hfb_save_settings', 'hfb_nonce' )", $admin, 'nonce kontrolü' );
 	}
 );
 
