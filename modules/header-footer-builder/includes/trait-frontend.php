@@ -177,6 +177,15 @@ trait QRMS_HFB_Frontend {
 
 		$keys = array_unique( array_filter( $keys ) );
 
+		// Yönetimde canlı önizleme kaydetmeden font değiştirir; katalogdaki
+		// Google yüzleri peşinen yüklenir ki --hfb-btn-font anında görünsün.
+		if ( is_admin() ) {
+			foreach ( array_keys( $catalog ) as $key ) {
+				$keys[] = $key;
+			}
+			$keys = array_unique( array_filter( $keys ) );
+		}
+
 		foreach ( $keys as $key ) {
 			if ( 'Playfair Display' === $key ) {
 				continue;
@@ -442,7 +451,8 @@ trait QRMS_HFB_Frontend {
 		?>
 		<div class="hfb-footer-wrap" data-hfb="footer"<?php echo $style ? ' style="' . esc_attr( $style ) . '"' : ''; ?>>
 			<footer class="hfb-footer" role="contentinfo">
-				<div class="hfb-footer__inner">
+				<div class="hfb-footer__cq">
+					<div class="hfb-footer__inner">
 					<div class="hfb-footer__col hfb-footer__col--brand">
 						<?php echo $brand; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 						<?php if ( ! empty( $opts['description'] ) ) : ?>
@@ -479,6 +489,7 @@ trait QRMS_HFB_Frontend {
 							<?php echo $social; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 						</div>
 					<?php endif; ?>
+					</div>
 				</div>
 
 				<?php if ( $call ) : ?>
@@ -638,13 +649,32 @@ trait QRMS_HFB_Frontend {
 
 		$html  = '<div class="hfb-footer__call qmo-cagri-bar">';
 		$html .= '<button type="button" class="hfb-btn hfb-footer__call-btn"' . ( $live ? ' data-qmo-cagri="garson"' : '' ) . '>';
+		$html .= $this->call_button_icon_svg( 'garson' );
 		$html .= '<span>' . esc_html( $garson ) . '</span></button>';
 		$html .= '<button type="button" class="hfb-btn hfb-footer__call-btn"' . ( $live ? ' data-qmo-cagri="hesap"' : '' ) . '>';
+		$html .= $this->call_button_icon_svg( 'hesap' );
 		$html .= '<span>' . esc_html( $hesap ) . '</span></button>';
 		$html .= '<p class="qmo-cagri-durum" hidden></p>';
 		$html .= '</div>';
 
 		return $html;
+	}
+
+	/**
+	 * Garson (zil) / hesap (fiş) SVG ikonu. Rengi currentColor olduğu için
+	 * `--hfb-btn-color` otomatik iner.
+	 *
+	 * @param string $tip garson|hesap.
+	 * @return string
+	 */
+	private function call_button_icon_svg( $tip ) {
+		if ( 'hesap' === $tip ) {
+			$path = '<path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M8 7h8M8 11h8M8 15h5"/>';
+		} else {
+			$path = '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>';
+		}
+
+		return '<svg class="hfb-icon hfb-icon--call" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">' . $path . '</svg>';
 	}
 
 	/**

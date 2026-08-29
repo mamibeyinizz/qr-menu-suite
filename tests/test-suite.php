@@ -8892,6 +8892,119 @@ qrms_test(
 		qrms_assert_contains( 'Garson Çağır', $onizleme, 'garson metni' );
 		qrms_assert_contains( 'Hesap İste', $onizleme, 'hesap metni' );
 		qrms_assert_true( false === strpos( $onizleme, 'data-qmo-cagri' ), 'önizlemede AJAX bağlanmaz' );
+		qrms_assert_contains( 'hfb-icon--call', $onizleme, 'önizlemede zil/fiş ikonu' );
+		qrms_assert_contains( 'hfb-footer__cq', $onizleme, 'sütun kabı çağrı çubuğunun dışında' );
+	}
+);
+
+qrms_test(
+	'footer çağrı buton stili admin altı alanı CSS değişkenine basılır',
+	function () {
+		$hfb  = qrms_hfb();
+		$opts = $hfb->get_footer_options();
+		$opts['call_enabled']    = 1;
+		$opts['btn_bg_color']    = '#112233';
+		$opts['btn_text_color']  = '#fefefe';
+		$opts['btn_shape']       = 'rounded';
+		$opts['btn_font_family'] = 'Inter';
+		$opts['btn_font_size']   = 18;
+		$opts['btn_font_weight'] = 700;
+
+		$html = $hfb->render_footer( $opts );
+
+		qrms_assert_contains( '--hfb-btn-bg:#112233', $html, 'zemin rengi değişkeni' );
+		qrms_assert_contains( '--hfb-btn-color:#fefefe', $html, 'yazı rengi değişkeni' );
+		qrms_assert_contains( '--hfb-btn-radius:10px', $html, 'yuvarlatılmış şekil' );
+		qrms_assert_contains( '--hfb-btn-font:', $html, 'font yığını basılır' );
+		qrms_assert_contains( 'Inter', $html, 'Inter font yığını' );
+		qrms_assert_contains( '--hfb-btn-size:18px', $html, 'punto' );
+		qrms_assert_contains( '--hfb-btn-weight:700', $html, 'kalınlık' );
+		qrms_assert_contains( 'hfb-footer__call--warn', $html, 'oturumsuz uyarı sınıfı (sticky seçici)' );
+		qrms_assert_true( false === strpos( $html, 'data-qmo-cagri' ), 'oturumsuzken AJAX yok' );
+
+		$GLOBALS['qrms_test']['is_admin'] = true;
+		$onizleme = $hfb->render_footer( $opts );
+		qrms_assert_contains( '--hfb-btn-bg:#112233', $onizleme, 'önizlemede zemin' );
+		qrms_assert_contains( '--hfb-btn-radius:10px', $onizleme, 'önizlemede şekil' );
+		qrms_assert_contains( 'hfb-icon--call', $onizleme, 'önizlemede ikon' );
+		qrms_assert_true( false === strpos( $onizleme, 'data-qmo-cagri' ), 'önizlemede AJAX yok' );
+	}
+);
+
+qrms_test(
+	'AJAX önizleme footer buton stil alanlarını döndürür',
+	function () {
+		$hfb = qrms_hfb();
+		$GLOBALS['qrms_test']['is_admin'] = true;
+
+		$_POST = array(
+			'nonce' => 'test',
+			'data'  => array(
+				'hfb_footer_call_enabled'     => '1',
+				'hfb_footer_call_garson_label' => 'Garson',
+				'hfb_footer_btn_bg_color'     => '#445566',
+				'hfb_footer_btn_text_color'   => '#aabbcc',
+				'hfb_footer_btn_shape'        => 'square',
+				'hfb_footer_btn_font_family'  => 'Poppins',
+				'hfb_footer_btn_font_size'    => '20',
+				'hfb_footer_btn_font_weight'  => '500',
+			),
+		);
+
+		$hfb->ajax_preview();
+		$yanit = $GLOBALS['qrms_test']['json'];
+
+		qrms_assert_true( is_array( $yanit ) && ! empty( $yanit['success'] ), 'başarılı yanıt' );
+		$footer = $yanit['data']['footer'];
+		qrms_assert_contains( '--hfb-btn-bg:#445566', $footer, 'önizleme zemin' );
+		qrms_assert_contains( '--hfb-btn-color:#aabbcc', $footer, 'önizleme yazı' );
+		qrms_assert_contains( '--hfb-btn-radius:0', $footer, 'önizleme köşeli' );
+		qrms_assert_contains( 'Poppins', $footer, 'önizleme font' );
+		qrms_assert_contains( '--hfb-btn-size:20px', $footer, 'önizleme punto' );
+		qrms_assert_contains( '--hfb-btn-weight:500', $footer, 'önizleme kalınlık' );
+		qrms_assert_contains( 'hfb-footer__call-btn', $footer, 'önizlemede buton (admin)' );
+	}
+);
+
+qrms_test(
+	'footer çağrı butonu CSS admin değişkenlerini okur, sticky yalnızca mobilde',
+	function () {
+		$css = file_get_contents(
+			QRMS_PLUGIN_DIR . 'modules/header-footer-builder/assets/css/frontend.css'
+		);
+
+		qrms_assert_contains( 'background-color: var(--hfb-btn-bg, var(--hfb-gold))', $css, 'zemin değişkeni' );
+		qrms_assert_contains( 'border: 1.5px solid var(--hfb-btn-bg, var(--hfb-gold))', $css, 'kenarlık accent' );
+		qrms_assert_contains( 'border-radius: var(--hfb-btn-radius, 999px)', $css, 'şekil değişkeni, sabit 50px yok' );
+		qrms_assert_contains( 'font-family: var(--hfb-btn-font, inherit)', $css, 'font değişkeni' );
+		qrms_assert_contains( 'font-size: var(--hfb-btn-size, 14px)', $css, 'punto değişkeni' );
+		qrms_assert_contains( 'font-weight: var(--hfb-btn-weight, 600)', $css, 'kalınlık değişkeni' );
+		qrms_assert_contains( 'linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(0, 0, 0, 0.08))', $css, 'gradient overlay' );
+		qrms_assert_contains( 'background-blend-mode: overlay', $css, 'blend overlay' );
+		qrms_assert_contains( 'transform: translateY(-3px)', $css, 'hover kalkış' );
+		qrms_assert_contains( '@keyframes btn-spin', $css, 'spinner animasyonu' );
+		qrms_assert_contains( '.hfb-footer__call-btn.is-disabled', $css, 'disabled durumu' );
+		qrms_assert_contains( '.hfb-footer__call-btn.is-success', $css, 'success durumu' );
+		qrms_assert_contains( '@media (max-width: 767px)', $css, 'mobil sticky kırılımı' );
+		qrms_assert_contains( '.hfb-footer__call-wrap:has(.qmo-cagri-bar)', $css, 'butonlu wrap sticky' );
+		qrms_assert_contains( '.hfb-footer__call-wrap:has(.hfb-footer__call--warn)', $css, 'uyarı wrap sticky' );
+		qrms_assert_contains( 'position: fixed', $css, 'ekrana sabit' );
+		qrms_assert_contains( 'padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px))', $css, 'body boşluğu' );
+		qrms_assert_true( false === strpos( $css, 'border-radius: 50px' ), 'sabit 50px radius yok' );
+		qrms_assert_contains( 'container-name: hfb-footer', $css, 'footer kap sorgusu durur' );
+		qrms_assert_contains( '.hfb-footer__cq', $css, 'kap çağrı çubuğunun dışında' );
+
+		$js = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/assets/js/buttons.js' );
+		qrms_assert_contains( '[data-qmo-cagri]', $js, 'tıklama seçicisi durur' );
+		qrms_assert_contains( "getAttribute( 'data-qmo-cagri' )", $js, 'tip okuma durur' );
+		qrms_assert_contains( "'hesap' === tip", $js, 'hesap action durur' );
+
+		$kayit = file_get_contents( QRMS_PLUGIN_DIR . 'modules/header-footer-builder/includes/trait-settings-page.php' );
+		qrms_assert_contains( "function_exists( 'qmo_tum_onbellek_temizle' )", $kayit, 'kaydet sonrası ortak önbellek temizliği' );
+		qrms_assert_contains( 'qmo_tum_onbellek_temizle()', $kayit, 'qmo_tum_onbellek_temizle çağrılır' );
+
+		$yardimci = file_get_contents( QRMS_PLUGIN_DIR . 'modules/_qmo-ortak/helpers.php' );
+		qrms_assert_contains( "function_exists( 'rocket_clean_domain' )", $yardimci, 'WP Rocket ortak yardımcıda' );
 	}
 );
 

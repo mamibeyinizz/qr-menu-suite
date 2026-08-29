@@ -1586,7 +1586,8 @@ trait QRMS_HFB_Settings_Page {
 		update_option( $this->hamburger_option, $this->sanitize_hamburger_input( $input, $this->get_hamburger_options() ) );
 
 		// Ortak yardımcı; modül tek başına (ortak dosya yüklenmeden) test
-		// edilirse sessizce atlanır.
+		// edilirse sessizce atlanır. WP Rocket / LiteSpeed / W3TC uçları
+		// bu yardımcıda toplanır — burada tekrarlanmaz.
 		if ( function_exists( 'qmo_tum_onbellek_temizle' ) ) {
 			qmo_tum_onbellek_temizle();
 		}
