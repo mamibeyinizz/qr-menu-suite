@@ -16,7 +16,9 @@
  *    tüm çıktı sunucudan gelir.
  * 4. Formun yalnızca elle sayılan birkaç alanı toplanıyordu; yeni alanlar
  *    önizlemeye yansımıyordu. Artık form olduğu gibi serileştirilir ve
- *    kayıtla AYNI temizleyicilerden geçer.
+ *    kayıtla AYNI temizleyicilerden geçer. Footer'ın dört adımı (Logo/
+ *    Slogan, Hızlı Menü, Çalışma Saatleri+İletişim, Garson/Hesap) da bu
+ *    yoldan geçer — ayrı bir önizleme yolu yoktur.
  *
  * @package QR_Menu_Suite
  */

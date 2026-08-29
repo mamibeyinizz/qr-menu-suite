@@ -289,36 +289,6 @@ function wp_parse_args( $args, $defaults = array() ) {
 	return array_merge( $defaults, $args );
 }
 
-/**
- * Dizi/nesne listesinden tek bir alanı toplar (WordPress ile aynı davranış).
- *
- * @param array       $list      Liste.
- * @param string      $field     Alınacak alan.
- * @param string|null $index_key Anahtar olarak kullanılacak alan.
- * @return array
- */
-function wp_list_pluck( $list, $field, $index_key = null ) {
-	$out = array();
-
-	foreach ( (array) $list as $key => $item ) {
-		$item  = is_object( $item ) ? get_object_vars( $item ) : (array) $item;
-		$value = isset( $item[ $field ] ) ? $item[ $field ] : null;
-
-		if ( null === $index_key ) {
-			$out[] = $value;
-			continue;
-		}
-
-		if ( isset( $item[ $index_key ] ) ) {
-			$out[ $item[ $index_key ] ] = $value;
-		} else {
-			$out[ $key ] = $value;
-		}
-	}
-
-	return $out;
-}
-
 function wp_json_encode( $data ) {
 	return wp_json_encode_impl( $data );
 }
@@ -383,6 +353,45 @@ function wp_date( $format, $timestamp = null ) {
  */
 function sanitize_key( $key ) {
 	return preg_replace( '/[^a-z0-9_\-]/', '', strtolower( (string) $key ) );
+}
+
+/**
+ * Dizideki her öğeden bir alan çeker (WP çekirdeğinin sade taklidi).
+ *
+ * @param array<int|string,array<string,mixed>|object> $input_list Liste.
+ * @param string                                       $field      Alan adı.
+ * @param string|null                                  $index_key  İsteğe bağlı indeks alanı.
+ * @return array<int|string,mixed>
+ */
+function wp_list_pluck( $input_list, $field, $index_key = null ) {
+	$output = array();
+
+	foreach ( (array) $input_list as $item ) {
+		if ( is_object( $item ) ) {
+			$item = get_object_vars( $item );
+		}
+
+		if ( ! is_array( $item ) || ! array_key_exists( $field, $item ) ) {
+			continue;
+		}
+
+		if ( null === $index_key ) {
+			$output[] = $item[ $field ];
+			continue;
+		}
+
+		$key = is_array( $item ) && array_key_exists( $index_key, $item )
+			? $item[ $index_key ]
+			: null;
+
+		if ( null === $key || '' === $key ) {
+			$output[] = $item[ $field ];
+		} else {
+			$output[ $key ] = $item[ $field ];
+		}
+	}
+
+	return $output;
 }
 
 /**

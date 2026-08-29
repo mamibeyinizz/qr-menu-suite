@@ -160,6 +160,220 @@ trait QRMS_HFB_Settings_Page {
 	}
 
 	/**
+	 * Buton şekil kataloğu — footer garson/hesap butonları.
+	 * Anahtarlar hamburger buton bloğu şekilleriyle aynıdır (hap / yuvarlatılmış / köşeli).
+	 *
+	 * @return array<string,array{etiket:string,radius:string}>
+	 */
+	public function button_shape_map() {
+		return array(
+			'pill'    => array(
+				'etiket'   => __( 'Hap', 'qrms' ),
+				'radius' => '999px',
+			),
+			'rounded' => array(
+				'etiket'   => __( 'Yuvarlatılmış', 'qrms' ),
+				'radius' => '10px',
+			),
+			'square'  => array(
+				'etiket'   => __( 'Köşeli', 'qrms' ),
+				'radius' => '0',
+			),
+		);
+	}
+
+	/**
+	 * Şekil anahtarından CSS radius değeri.
+	 *
+	 * @param string $shape pill|rounded|square.
+	 * @return string
+	 */
+	public function button_radius( $shape ) {
+		$map = $this->button_shape_map();
+
+		return isset( $map[ $shape ] ) ? $map[ $shape ]['radius'] : $map['pill']['radius'];
+	}
+
+	/**
+	 * Hizalamayı flex justify-content değerine çevirir.
+	 *
+	 * @param string $align left|center|right.
+	 * @return string
+	 */
+	public function align_to_flex( $align ) {
+		$map = array(
+			'left'   => 'flex-start',
+			'center' => 'center',
+			'right'  => 'flex-end',
+		);
+
+		return isset( $map[ $align ] ) ? $map[ $align ] : 'flex-start';
+	}
+
+	/**
+	 * Çalışma saatleri modülü bu istekte kullanılabilir mi?
+	 *
+	 * Gevşek bağ: modül kapalıysa sütun sessizce gizlenir.
+	 *
+	 * @return bool
+	 */
+	public function hours_module_available() {
+		return function_exists( 'qrms_cs_get' ) && function_exists( 'qrms_cs_day_labels' );
+	}
+
+	/**
+	 * Garson/hesap AJAX uçları kayıtlı mı?
+	 *
+	 * @return bool
+	 */
+	public function call_buttons_available() {
+		return function_exists( 'qmo_oturum' ) && function_exists( 'qmo_ajax_garson_cagir' );
+	}
+
+	/**
+	 * Tipografi grubu anahtarları (font, renk, kalınlık, masaüstü/mobil punto).
+	 *
+	 * @param string $group Option anahtar öneki (ör. brand, links_title).
+	 * @return array{family:string,color:string,weight:string,size_desktop:string,size_mobile:string}
+	 */
+	private function typo_keys( $group ) {
+		return array(
+			'family'       => $group . '_font_family',
+			'color'        => $group . '_font_color',
+			'weight'       => $group . '_font_weight',
+			'size_desktop' => $group . '_font_size_desktop',
+			'size_mobile'  => $group . '_font_size_mobile',
+		);
+	}
+
+	/**
+	 * Footer ve hamburger'ın paylaştığı tipografi gruplarını temizler.
+	 *
+	 * @param array<string,mixed> $input       Ham girdi.
+	 * @param array<string,mixed> $opts        Mevcut ayarlar.
+	 * @param array<string,mixed> $defaults    Varsayılanlar.
+	 * @param string              $form_prefix Form alanı öneki (hfb_footer_ / hfb_hamburger_).
+	 * @param string              $group       Option anahtar öneki.
+	 * @return array<string,mixed>
+	 */
+	private function sanitize_typo_group( $input, $opts, $defaults, $form_prefix, $group ) {
+		$keys = $this->typo_keys( $group );
+
+		$family_field = $form_prefix . $keys['family'];
+		if ( isset( $input[ $family_field ] ) ) {
+			$family = (string) $input[ $family_field ];
+			$opts[ $keys['family'] ] = array_key_exists( $family, $this->font_catalog() )
+				? $family
+				: $defaults[ $keys['family'] ];
+		}
+
+		$opts[ $keys['color'] ] = $this->sanitize_color_field(
+			$input,
+			$form_prefix . $keys['color'],
+			isset( $opts[ $keys['color'] ] ) ? $opts[ $keys['color'] ] : $defaults[ $keys['color'] ]
+		);
+
+		$weight_field = $form_prefix . $keys['weight'];
+		if ( isset( $input[ $weight_field ] ) ) {
+			$opts[ $keys['weight'] ] = $this->sanitize_font_weight(
+				$input[ $weight_field ],
+				$defaults[ $keys['weight'] ]
+			);
+		}
+
+		$size_d_field = $form_prefix . $keys['size_desktop'];
+		if ( isset( $input[ $size_d_field ] ) ) {
+			$opts[ $keys['size_desktop'] ] = $this->sanitize_int_range(
+				$input[ $size_d_field ],
+				self::FONT_SIZE_MIN,
+				self::FONT_SIZE_MAX,
+				$defaults[ $keys['size_desktop'] ]
+			);
+		}
+
+		$size_m_field = $form_prefix . $keys['size_mobile'];
+		if ( isset( $input[ $size_m_field ] ) ) {
+			$opts[ $keys['size_mobile'] ] = $this->sanitize_int_range(
+				$input[ $size_m_field ],
+				self::FONT_SIZE_MOBILE_MIN,
+				self::FONT_SIZE_MOBILE_MAX,
+				$defaults[ $keys['size_mobile'] ]
+			);
+		}
+
+		return $opts;
+	}
+
+	/**
+	 * Footer garson/hesap buton stil alanlarını temizler.
+	 *
+	 * Option anahtarları `btn_*`; form alanları `{form_prefix}btn_*`.
+	 *
+	 * @param array<string,mixed> $input       Ham girdi.
+	 * @param array<string,mixed> $opts        Mevcut ayarlar.
+	 * @param array<string,mixed> $defaults    Varsayılanlar.
+	 * @param string              $form_prefix Form alanı öneki.
+	 * @return array<string,mixed>
+	 */
+	private function sanitize_button_style( $input, $opts, $defaults, $form_prefix ) {
+		$opts['btn_bg_color']   = $this->sanitize_color_field( $input, $form_prefix . 'btn_bg_color', $opts['btn_bg_color'] );
+		$opts['btn_text_color'] = $this->sanitize_color_field( $input, $form_prefix . 'btn_text_color', $opts['btn_text_color'] );
+
+		$shape_field = $form_prefix . 'btn_shape';
+		if ( isset( $input[ $shape_field ] ) ) {
+			$shape = sanitize_key( (string) $input[ $shape_field ] );
+			$opts['btn_shape'] = array_key_exists( $shape, $this->button_shape_map() )
+				? $shape
+				: $defaults['btn_shape'];
+		}
+
+		$family_field = $form_prefix . 'btn_font_family';
+		if ( isset( $input[ $family_field ] ) ) {
+			$family = (string) $input[ $family_field ];
+			$opts['btn_font_family'] = array_key_exists( $family, $this->font_catalog() )
+				? $family
+				: $defaults['btn_font_family'];
+		}
+
+		$size_field = $form_prefix . 'btn_font_size';
+		if ( isset( $input[ $size_field ] ) ) {
+			$opts['btn_font_size'] = $this->sanitize_int_range(
+				$input[ $size_field ],
+				self::FONT_SIZE_MIN,
+				self::FONT_SIZE_MAX,
+				$defaults['btn_font_size']
+			);
+		}
+
+		$weight_field = $form_prefix . 'btn_font_weight';
+		if ( isset( $input[ $weight_field ] ) ) {
+			$opts['btn_font_weight'] = $this->sanitize_font_weight(
+				$input[ $weight_field ],
+				$defaults['btn_font_weight']
+			);
+		}
+
+		return $opts;
+	}
+
+	/**
+	 * Buton stili CSS değişkenleri.
+	 *
+	 * @param array<string,mixed> $opts Ayarlar (btn_* anahtarları).
+	 * @return array<string,string>
+	 */
+	public function button_style_css_vars( $opts ) {
+		return array(
+			'--hfb-btn-bg'     => (string) $opts['btn_bg_color'],
+			'--hfb-btn-color'  => (string) $opts['btn_text_color'],
+			'--hfb-btn-radius' => $this->button_radius( (string) $opts['btn_shape'] ),
+			'--hfb-btn-font'   => $this->font_stack( (string) $opts['btn_font_family'] ),
+			'--hfb-btn-size'   => (int) $opts['btn_font_size'] . 'px',
+			'--hfb-btn-weight' => (string) (int) $opts['btn_font_weight'],
+		);
+	}
+
+	/**
 	 * Hamburger panelindeki sıralanabilir blok tipleri.
 	 *
 	 * @return array<string,string> anahtar => etiket
@@ -675,7 +889,8 @@ trait QRMS_HFB_Settings_Page {
 	 * @return array<string,mixed>
 	 */
 	public function sanitize_footer_input( $input, $current ) {
-		$opts = $current;
+		$opts     = $current;
+		$defaults = $this->footer_defaults;
 
 		if ( isset( $input['hfb_footer_logo'] ) ) {
 			$opts['logo'] = absint( $input['hfb_footer_logo'] );
@@ -693,6 +908,10 @@ trait QRMS_HFB_Settings_Page {
 			$opts['description'] = sanitize_textarea_field( (string) $input['hfb_footer_description'] );
 		}
 
+		if ( isset( $input['hfb_footer_address'] ) ) {
+			$opts['address'] = sanitize_textarea_field( (string) $input['hfb_footer_address'] );
+		}
+
 		if ( isset( $input['hfb_footer_phone'] ) ) {
 			$opts['phone'] = sanitize_text_field( (string) $input['hfb_footer_phone'] );
 		}
@@ -708,6 +927,83 @@ trait QRMS_HFB_Settings_Page {
 		if ( isset( $input['hfb_footer_menu_id'] ) ) {
 			$opts['menu_id'] = absint( $input['hfb_footer_menu_id'] );
 		}
+
+		if ( isset( $input['hfb_footer_links_title'] ) ) {
+			$opts['links_title'] = sanitize_text_field( (string) $input['hfb_footer_links_title'] );
+		}
+
+		if ( isset( $input['hfb_footer_hours_title'] ) ) {
+			$opts['hours_title'] = sanitize_text_field( (string) $input['hfb_footer_hours_title'] );
+		}
+
+		if ( isset( $input['hfb_footer_contact_title'] ) ) {
+			$opts['contact_title'] = sanitize_text_field( (string) $input['hfb_footer_contact_title'] );
+		}
+
+		if ( isset( $input['hfb_footer_call_garson_label'] ) ) {
+			$opts['call_garson_label'] = sanitize_text_field( (string) $input['hfb_footer_call_garson_label'] );
+		}
+
+		if ( isset( $input['hfb_footer_call_hesap_label'] ) ) {
+			$opts['call_hesap_label'] = sanitize_text_field( (string) $input['hfb_footer_call_hesap_label'] );
+		}
+
+		$opts['call_enabled'] = $this->sanitize_checkbox( $input, 'hfb_footer_call_enabled' );
+
+		if ( isset( $input['hfb_footer_logo_width_desktop'] ) ) {
+			$opts['logo_width_desktop'] = $this->sanitize_int_range(
+				$input['hfb_footer_logo_width_desktop'],
+				self::LOGO_WIDTH_MIN,
+				self::LOGO_WIDTH_MAX,
+				$defaults['logo_width_desktop']
+			);
+		}
+
+		if ( isset( $input['hfb_footer_logo_width_mobile'] ) ) {
+			$opts['logo_width_mobile'] = $this->sanitize_int_range(
+				$input['hfb_footer_logo_width_mobile'],
+				self::LOGO_WIDTH_MIN,
+				self::LOGO_WIDTH_MAX,
+				$defaults['logo_width_mobile']
+			);
+		}
+
+		$desktop_h = $this->sanitize_logo_height(
+			$input,
+			'hfb_footer_logo_height_auto_desktop',
+			'hfb_footer_logo_height_desktop',
+			isset( $current['logo_height_desktop'] ) ? (int) $current['logo_height_desktop'] : 0
+		);
+		$opts['logo_height_auto_desktop'] = $desktop_h['auto'];
+		$opts['logo_height_desktop']      = $desktop_h['height'];
+
+		$mobile_h = $this->sanitize_logo_height(
+			$input,
+			'hfb_footer_logo_height_auto_mobile',
+			'hfb_footer_logo_height_mobile',
+			isset( $current['logo_height_mobile'] ) ? (int) $current['logo_height_mobile'] : 0
+		);
+		$opts['logo_height_auto_mobile'] = $mobile_h['auto'];
+		$opts['logo_height_mobile']      = $mobile_h['height'];
+
+		foreach ( array( 'brand', 'links', 'hours', 'contact' ) as $col ) {
+			$align_field = 'hfb_footer_' . $col . '_align';
+			if ( isset( $input[ $align_field ] ) ) {
+				$opts[ $col . '_align' ] = $this->sanitize_align( $input[ $align_field ], $defaults[ $col . '_align' ] );
+			}
+		}
+
+		foreach ( array( 'brand', 'links_title', 'links_item', 'hours_title', 'hours_item', 'contact_title', 'contact_item' ) as $group ) {
+			$opts = $this->sanitize_typo_group( $input, $opts, $defaults, 'hfb_footer_', $group );
+		}
+
+		$opts['links_item_hover_color'] = $this->sanitize_color_field(
+			$input,
+			'hfb_footer_links_item_hover_color',
+			$opts['links_item_hover_color']
+		);
+
+		$opts = $this->sanitize_button_style( $input, $opts, $defaults, 'hfb_footer_' );
 
 		$social = $this->sanitize_social_input( $input, $current, 'hfb_' );
 

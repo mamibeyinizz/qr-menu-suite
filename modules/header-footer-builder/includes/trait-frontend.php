@@ -131,12 +131,12 @@ trait QRMS_HFB_Frontend {
 	}
 
 	/**
-	 * Marka + hamburger panelinde seçilen Google Fonts adresi.
+	 * Marka + hamburger blokları + footer'da seçilen Google Fonts adresi.
 	 *
 	 * @return string
 	 */
 	private function google_fonts_url() {
-		$families = array( 'Playfair+Display:wght@500;600;700' );
+		$families = array( 'Playfair+Display:wght@400;500;600;700' );
 		$catalog  = $this->font_catalog();
 		$chosen   = $this->get_hamburger_options();
 		$keys     = array();
@@ -156,6 +156,22 @@ trait QRMS_HFB_Frontend {
 				if ( '' !== $btn_font ) {
 					$keys[] = $btn_font;
 				}
+			}
+		}
+
+		$footer = $this->get_footer_options();
+		foreach ( array(
+			'brand_font_family',
+			'links_title_font_family',
+			'links_item_font_family',
+			'hours_title_font_family',
+			'hours_item_font_family',
+			'contact_title_font_family',
+			'contact_item_font_family',
+			'btn_font_family',
+		) as $field ) {
+			if ( ! empty( $footer[ $field ] ) ) {
+				$keys[] = (string) $footer[ $field ];
 			}
 		}
 
@@ -303,6 +319,16 @@ trait QRMS_HFB_Frontend {
 			'--hfb-panel-font-align-m'     => (string) $hamburger['font_align_mobile'],
 		);
 
+		return $this->css_vars_string( $vars );
+	}
+
+	/**
+	 * CSS değişken dizisini satır içi style değerine çevirir.
+	 *
+	 * @param array<string,string> $vars Ad => değer.
+	 * @return string
+	 */
+	private function css_vars_string( $vars ) {
 		$parts = array();
 		foreach ( $vars as $name => $value ) {
 			$value = trim( (string) $value );
@@ -318,6 +344,10 @@ trait QRMS_HFB_Frontend {
 	/**
 	 * Footer HTML çıktısı.
 	 *
+	 * Dört sütun: marka, hızlı menü, çalışma saatleri, iletişim.
+	 * Saatler yalnızca qr-calisma-saatleri aktifken basılır. Garson/hesap
+	 * butonları telif çubuğunun üstünde durur.
+	 *
 	 * @param array<string,mixed> $opts Ayarlar.
 	 * @return string
 	 */
@@ -326,10 +356,20 @@ trait QRMS_HFB_Frontend {
 		$nav     = $this->scope_nav_ids( $this->render_nav_menu( (int) $opts['menu_id'], 'hfb-footer__menu' ), 'hfb-f-' );
 		$social  = $this->render_social_icons( $opts );
 		$contact = $this->render_contact_lines( $opts );
+		$hours   = $this->render_hours_column( $opts );
+		$call    = $this->render_footer_call_buttons( $opts );
+		$style   = $this->footer_css_vars( $opts );
+
+		$links_title   = isset( $opts['links_title'] ) ? trim( (string) $opts['links_title'] ) : '';
+		$contact_title = isset( $opts['contact_title'] ) ? trim( (string) $opts['contact_title'] ) : '';
+		$hours_title   = isset( $opts['hours_title'] ) ? trim( (string) $opts['hours_title'] ) : '';
+
+		$show_links   = (bool) $nav || '' !== $links_title;
+		$show_contact = (bool) $contact || (bool) $social || '' !== $contact_title;
 
 		ob_start();
 		?>
-		<div class="hfb-footer-wrap" data-hfb="footer">
+		<div class="hfb-footer-wrap" data-hfb="footer"<?php echo $style ? ' style="' . esc_attr( $style ) . '"' : ''; ?>>
 			<footer class="hfb-footer" role="contentinfo">
 				<div class="hfb-footer__inner">
 					<div class="hfb-footer__col hfb-footer__col--brand">
@@ -339,19 +379,42 @@ trait QRMS_HFB_Frontend {
 						<?php endif; ?>
 					</div>
 
-					<?php if ( $nav ) : ?>
-						<nav class="hfb-footer__col hfb-footer__col--links" aria-label="<?php esc_attr_e( 'Hızlı bağlantılar', 'qrms' ); ?>">
-							<?php echo $nav; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+					<?php if ( $show_links ) : ?>
+						<nav class="hfb-footer__col hfb-footer__col--links" aria-label="<?php echo esc_attr( '' !== $links_title ? $links_title : __( 'Hızlı Menü', 'qrms' ) ); ?>">
+							<?php if ( '' !== $links_title ) : ?>
+								<h3 class="hfb-footer__heading"><?php echo esc_html( $links_title ); ?></h3>
+							<?php endif; ?>
+							<?php if ( $nav ) : ?>
+								<?php echo $nav; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+							<?php endif; ?>
 						</nav>
 					<?php endif; ?>
 
-					<?php if ( $contact || $social ) : ?>
+					<?php if ( $hours ) : ?>
+						<div class="hfb-footer__col hfb-footer__col--hours">
+							<?php if ( '' !== $hours_title ) : ?>
+								<h3 class="hfb-footer__heading"><?php echo esc_html( $hours_title ); ?></h3>
+							<?php endif; ?>
+							<?php echo $hours; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+						</div>
+					<?php endif; ?>
+
+					<?php if ( $show_contact ) : ?>
 						<div class="hfb-footer__col hfb-footer__col--contact">
+							<?php if ( '' !== $contact_title ) : ?>
+								<h3 class="hfb-footer__heading"><?php echo esc_html( $contact_title ); ?></h3>
+							<?php endif; ?>
 							<?php echo $contact; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 							<?php echo $social; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 						</div>
 					<?php endif; ?>
 				</div>
+
+				<?php if ( $call ) : ?>
+					<div class="hfb-footer__call-wrap">
+						<?php echo $call; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+					</div>
+				<?php endif; ?>
 
 				<?php if ( ! empty( $opts['copyright'] ) ) : ?>
 					<div class="hfb-footer__bar">
@@ -362,6 +425,155 @@ trait QRMS_HFB_Frontend {
 		</div>
 		<?php
 		return (string) ob_get_clean();
+	}
+
+	/**
+	 * Footer sarmalayıcısına yazılacak `--hfb-footer-*` değişkenleri.
+	 *
+	 * @param array<string,mixed> $opts Footer ayarları.
+	 * @return string
+	 */
+	public function footer_css_vars( $opts ) {
+		$logo_h_desktop = ! empty( $opts['logo_height_auto_desktop'] ) ? 'auto' : (int) $opts['logo_height_desktop'] . 'px';
+		$logo_h_mobile  = ! empty( $opts['logo_height_auto_mobile'] ) ? 'auto' : (int) $opts['logo_height_mobile'] . 'px';
+
+		$vars = array(
+			'--hfb-footer-logo-w-desktop'        => (int) $opts['logo_width_desktop'] . 'px',
+			'--hfb-footer-logo-h-desktop'        => $logo_h_desktop,
+			'--hfb-footer-logo-w-mobile'         => (int) $opts['logo_width_mobile'] . 'px',
+			'--hfb-footer-logo-h-mobile'         => $logo_h_mobile,
+			'--hfb-footer-brand-align'           => (string) $opts['brand_align'],
+			'--hfb-footer-brand-justify'         => $this->align_to_flex( (string) $opts['brand_align'] ),
+			'--hfb-footer-brand-font'            => $this->font_stack( (string) $opts['brand_font_family'] ),
+			'--hfb-footer-brand-color'           => (string) $opts['brand_font_color'],
+			'--hfb-footer-brand-weight'          => (string) (int) $opts['brand_font_weight'],
+			'--hfb-footer-brand-size'            => (int) $opts['brand_font_size_desktop'] . 'px',
+			'--hfb-footer-brand-size-mobile'     => (int) $opts['brand_font_size_mobile'] . 'px',
+			'--hfb-footer-links-align'           => (string) $opts['links_align'],
+			'--hfb-footer-links-justify'         => $this->align_to_flex( (string) $opts['links_align'] ),
+			'--hfb-footer-links-title-font'      => $this->font_stack( (string) $opts['links_title_font_family'] ),
+			'--hfb-footer-links-title-color'     => (string) $opts['links_title_font_color'],
+			'--hfb-footer-links-title-weight'    => (string) (int) $opts['links_title_font_weight'],
+			'--hfb-footer-links-title-size'      => (int) $opts['links_title_font_size_desktop'] . 'px',
+			'--hfb-footer-links-title-size-m'    => (int) $opts['links_title_font_size_mobile'] . 'px',
+			'--hfb-footer-links-item-font'       => $this->font_stack( (string) $opts['links_item_font_family'] ),
+			'--hfb-footer-links-item-color'      => (string) $opts['links_item_font_color'],
+			'--hfb-footer-links-item-weight'     => (string) (int) $opts['links_item_font_weight'],
+			'--hfb-footer-links-item-size'       => (int) $opts['links_item_font_size_desktop'] . 'px',
+			'--hfb-footer-links-item-size-m'     => (int) $opts['links_item_font_size_mobile'] . 'px',
+			'--hfb-footer-links-item-hover'      => (string) $opts['links_item_hover_color'],
+			'--hfb-footer-hours-align'           => (string) $opts['hours_align'],
+			'--hfb-footer-hours-justify'         => $this->align_to_flex( (string) $opts['hours_align'] ),
+			'--hfb-footer-hours-title-font'      => $this->font_stack( (string) $opts['hours_title_font_family'] ),
+			'--hfb-footer-hours-title-color'     => (string) $opts['hours_title_font_color'],
+			'--hfb-footer-hours-title-weight'    => (string) (int) $opts['hours_title_font_weight'],
+			'--hfb-footer-hours-title-size'      => (int) $opts['hours_title_font_size_desktop'] . 'px',
+			'--hfb-footer-hours-title-size-m'    => (int) $opts['hours_title_font_size_mobile'] . 'px',
+			'--hfb-footer-hours-item-font'       => $this->font_stack( (string) $opts['hours_item_font_family'] ),
+			'--hfb-footer-hours-item-color'      => (string) $opts['hours_item_font_color'],
+			'--hfb-footer-hours-item-weight'     => (string) (int) $opts['hours_item_font_weight'],
+			'--hfb-footer-hours-item-size'       => (int) $opts['hours_item_font_size_desktop'] . 'px',
+			'--hfb-footer-hours-item-size-m'     => (int) $opts['hours_item_font_size_mobile'] . 'px',
+			'--hfb-footer-contact-align'         => (string) $opts['contact_align'],
+			'--hfb-footer-contact-justify'       => $this->align_to_flex( (string) $opts['contact_align'] ),
+			'--hfb-footer-contact-title-font'    => $this->font_stack( (string) $opts['contact_title_font_family'] ),
+			'--hfb-footer-contact-title-color'   => (string) $opts['contact_title_font_color'],
+			'--hfb-footer-contact-title-weight'  => (string) (int) $opts['contact_title_font_weight'],
+			'--hfb-footer-contact-title-size'    => (int) $opts['contact_title_font_size_desktop'] . 'px',
+			'--hfb-footer-contact-title-size-m'  => (int) $opts['contact_title_font_size_mobile'] . 'px',
+			'--hfb-footer-contact-item-font'     => $this->font_stack( (string) $opts['contact_item_font_family'] ),
+			'--hfb-footer-contact-item-color'    => (string) $opts['contact_item_font_color'],
+			'--hfb-footer-contact-item-weight'   => (string) (int) $opts['contact_item_font_weight'],
+			'--hfb-footer-contact-item-size'     => (int) $opts['contact_item_font_size_desktop'] . 'px',
+			'--hfb-footer-contact-item-size-m'   => (int) $opts['contact_item_font_size_mobile'] . 'px',
+		);
+
+		$vars = array_merge( $vars, $this->button_style_css_vars( $opts ) );
+
+		return $this->css_vars_string( $vars );
+	}
+
+	/**
+	 * Çalışma saatleri sütunu — veri tek kaynaktan (qrms_cs_get).
+	 *
+	 * @param array<string,mixed> $opts Footer ayarları.
+	 * @return string
+	 */
+	private function render_hours_column( $opts ) {
+		unset( $opts );
+
+		if ( ! $this->hours_module_available() ) {
+			return '';
+		}
+
+		$hours  = qrms_cs_get();
+		$labels = qrms_cs_day_labels();
+		$html   = '<ul class="hfb-footer__hours">';
+
+		foreach ( qrms_cs_day_keys() as $key ) {
+			$day   = isset( $hours[ $key ] ) ? $hours[ $key ] : array();
+			$label = isset( $labels[ $key ] ) ? $labels[ $key ] : $key;
+			$range = function_exists( 'qrms_cs_format_day' ) ? qrms_cs_format_day( $day ) : '';
+			$html .= '<li class="hfb-footer__hours-row">';
+			$html .= '<span class="hfb-footer__hours-day">' . esc_html( $label ) . '</span>';
+			$html .= '<span class="hfb-footer__hours-sep" aria-hidden="true"></span>';
+			$html .= '<span class="hfb-footer__hours-time">' . esc_html( $range ) . '</span>';
+			$html .= '</li>';
+		}
+
+		$html .= '</ul>';
+
+		return $html;
+	}
+
+	/**
+	 * Footer garson/hesap butonları.
+	 *
+	 * AJAX uçları qr-chatbot'taki mevcut garson_cagir / hesap_iste
+	 * mekanizmasıdır; burada yalnızca aynı `data-qmo-cagri` sözleşmesi
+	 * bağlanır. Geçerli masa oturumu yoksa buton basılmaz, uyarı basılır.
+	 * Yönetim önizlemesinde (oturum yok) stilli butonlar yine görünür.
+	 *
+	 * @param array<string,mixed> $opts Footer ayarları.
+	 * @return string
+	 */
+	private function render_footer_call_buttons( $opts ) {
+		if ( empty( $opts['call_enabled'] ) ) {
+			return '';
+		}
+
+		$preview = is_admin() || $this->elementor_is_edit_mode();
+		$session = function_exists( 'qmo_oturum' ) ? qmo_oturum() : false;
+		$live    = $session && function_exists( 'qmo_asset_enqueue' );
+
+		if ( ! $preview && ! $session ) {
+			$msg = __( 'Lütfen QR kodunu okutarak masanızdan erişin', 'qrms' );
+			return '<div class="hfb-footer__call hfb-footer__call--warn"><p class="hfb-footer__call-msg">' . esc_html( $msg ) . '</p></div>';
+		}
+
+		if ( $live ) {
+			if ( function_exists( 'qmo_chatbot_buton_varliklarini_kaydet' ) ) {
+				qmo_chatbot_buton_varliklarini_kaydet();
+			}
+			qmo_asset_enqueue( 'qmo-buttons' );
+		}
+
+		$garson = isset( $opts['call_garson_label'] ) && '' !== trim( (string) $opts['call_garson_label'] )
+			? (string) $opts['call_garson_label']
+			: __( 'Garson Çağır', 'qrms' );
+		$hesap = isset( $opts['call_hesap_label'] ) && '' !== trim( (string) $opts['call_hesap_label'] )
+			? (string) $opts['call_hesap_label']
+			: __( 'Hesap İste', 'qrms' );
+
+		$html  = '<div class="hfb-footer__call qmo-cagri-bar">';
+		$html .= '<button type="button" class="hfb-btn hfb-footer__call-btn"' . ( $live ? ' data-qmo-cagri="garson"' : '' ) . '>';
+		$html .= '<span>' . esc_html( $garson ) . '</span></button>';
+		$html .= '<button type="button" class="hfb-btn hfb-footer__call-btn"' . ( $live ? ' data-qmo-cagri="hesap"' : '' ) . '>';
+		$html .= '<span>' . esc_html( $hesap ) . '</span></button>';
+		$html .= '<p class="qmo-cagri-durum" hidden></p>';
+		$html .= '</div>';
+
+		return $html;
 	}
 
 	/**
@@ -609,16 +821,44 @@ trait QRMS_HFB_Frontend {
 	private function render_contact_lines( $opts ) {
 		$html = '';
 
+		if ( ! empty( $opts['address'] ) ) {
+			$html .= '<p class="hfb-footer__contact hfb-footer__contact--address">'
+				. $this->contact_icon_svg( 'pin' )
+				. '<span>' . nl2br( esc_html( (string) $opts['address'] ), false ) . '</span></p>';
+		}
+
 		if ( ! empty( $opts['phone'] ) ) {
 			$tel   = preg_replace( '/[^0-9+]/', '', $opts['phone'] );
-			$html .= '<a class="hfb-footer__contact" href="tel:' . esc_attr( $tel ) . '">' . esc_html( $opts['phone'] ) . '</a>';
+			$html .= '<a class="hfb-footer__contact hfb-footer__contact--phone" href="tel:' . esc_attr( $tel ) . '">'
+				. $this->contact_icon_svg( 'phone' )
+				. '<span>' . esc_html( $opts['phone'] ) . '</span></a>';
 		}
 
 		if ( ! empty( $opts['email'] ) ) {
-			$html .= '<a class="hfb-footer__contact" href="mailto:' . esc_attr( $opts['email'] ) . '">' . esc_html( $opts['email'] ) . '</a>';
+			$html .= '<a class="hfb-footer__contact hfb-footer__contact--email" href="mailto:' . esc_attr( $opts['email'] ) . '">'
+				. $this->contact_icon_svg( 'mail' )
+				. '<span>' . esc_html( $opts['email'] ) . '</span></a>';
 		}
 
 		return $html;
+	}
+
+	/**
+	 * İletişim satırı ikonu (konum / telefon / zarf).
+	 *
+	 * @param string $icon pin|phone|mail.
+	 * @return string
+	 */
+	private function contact_icon_svg( $icon ) {
+		$paths = array(
+			'pin'   => '<path d="M12 21s7-5.4 7-11a7 7 0 1 0-14 0c0 5.6 7 11 7 11z"/><circle cx="12" cy="10" r="2.2"/>',
+			'phone' => '<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>',
+			'mail'  => '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 7 9-7"/>',
+		);
+
+		$path = isset( $paths[ $icon ] ) ? $paths[ $icon ] : $paths['pin'];
+
+		return '<svg class="hfb-icon hfb-icon--contact" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">' . $path . '</svg>';
 	}
 
 	/**
