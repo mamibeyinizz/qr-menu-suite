@@ -251,12 +251,33 @@ class QRMS_Header_Footer_Builder {
 		$this->hamburger_defaults = array(
 			'close_icon_color'     => '#c9a84c',
 			'panel_bg_color'       => '#0a0a0c',
-			'block_order'          => array( 'logo', 'menu', 'social', 'text' ),
-			'block_logo'           => 1,
-			'block_menu'           => 1,
-			'block_social'         => 1,
-			'block_text'           => 0,
-			'text'                 => '',
+			'blocks'               => array(
+				array(
+					'id'      => 'blk_1',
+					'type'    => 'logo',
+					'enabled' => true,
+					'align'   => 'center',
+				),
+				array(
+					'id'      => 'blk_2',
+					'type'    => 'menu',
+					'enabled' => true,
+					'align'   => 'center',
+				),
+				array(
+					'id'      => 'blk_3',
+					'type'    => 'social',
+					'enabled' => true,
+					'align'   => 'center',
+				),
+				array(
+					'id'      => 'blk_4',
+					'type'    => 'text',
+					'enabled' => false,
+					'align'   => 'center',
+					'content' => '',
+				),
+			),
 			'font_family'          => 'Playfair Display',
 			'font_color'           => '#f5f0e8',
 			'font_size_desktop'    => 17,
@@ -265,12 +286,6 @@ class QRMS_Header_Footer_Builder {
 			'font_size_mobile'     => 16,
 			'font_weight_mobile'   => 500,
 			'font_align_mobile'    => 'center',
-			'btn_bg_color'         => '#c9a84c',
-			'btn_text_color'       => '#0a0a0c',
-			'btn_shape'            => 'pill',
-			'btn_font_family'      => 'Playfair Display',
-			'btn_font_size'        => 14,
-			'btn_font_weight'      => 600,
 		);
 	}
 

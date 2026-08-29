@@ -131,18 +131,33 @@ trait QRMS_HFB_Frontend {
 	}
 
 	/**
-	 * Marka + hamburger + footer'da seçilen Google Fonts adresi.
+	 * Marka + hamburger blokları + footer'da seçilen Google Fonts adresi.
 	 *
 	 * @return string
 	 */
 	private function google_fonts_url() {
 		$families = array( 'Playfair+Display:wght@400;500;600;700' );
 		$catalog  = $this->font_catalog();
+		$chosen   = $this->get_hamburger_options();
 		$keys     = array();
 
-		$hamburger = $this->get_hamburger_options();
-		$keys[]    = isset( $hamburger['font_family'] ) ? (string) $hamburger['font_family'] : '';
-		$keys[]    = isset( $hamburger['btn_font_family'] ) ? (string) $hamburger['btn_font_family'] : '';
+		$panel_font = isset( $chosen['font_family'] ) ? (string) $chosen['font_family'] : '';
+		if ( '' !== $panel_font ) {
+			$keys[] = $panel_font;
+		}
+
+		if ( isset( $chosen['blocks'] ) && is_array( $chosen['blocks'] ) ) {
+			foreach ( $chosen['blocks'] as $block ) {
+				if ( ! is_array( $block ) || 'button' !== ( $block['type'] ?? '' ) || empty( $block['enabled'] ) ) {
+					continue;
+				}
+
+				$btn_font = isset( $block['font'] ) ? (string) $block['font'] : '';
+				if ( '' !== $btn_font ) {
+					$keys[] = $btn_font;
+				}
+			}
+		}
 
 		$footer = $this->get_footer_options();
 		foreach ( array(
@@ -160,18 +175,19 @@ trait QRMS_HFB_Frontend {
 			}
 		}
 
-		$seen = array( 'Playfair Display' => true );
+		$keys = array_unique( array_filter( $keys ) );
+
 		foreach ( $keys as $key ) {
-			if ( '' === $key || isset( $seen[ $key ] ) || ! isset( $catalog[ $key ] ) ) {
+			if ( 'Playfair Display' === $key ) {
 				continue;
 			}
-			$seen[ $key ] = true;
-			if ( '' !== $catalog[ $key ]['google'] ) {
+
+			if ( isset( $catalog[ $key ] ) && '' !== $catalog[ $key ]['google'] ) {
 				$families[] = $catalog[ $key ]['google'];
 			}
 		}
 
-		return 'https://fonts.googleapis.com/css2?family=' . implode( '&family=', $families ) . '&display=swap';
+		return 'https://fonts.googleapis.com/css2?family=' . implode( '&family=', array_unique( $families ) ) . '&display=swap';
 	}
 
 	/**
@@ -291,8 +307,6 @@ trait QRMS_HFB_Frontend {
 			'--hfb-panel-font-weight-m'    => (string) (int) $hamburger['font_weight_mobile'],
 			'--hfb-panel-font-align-m'     => (string) $hamburger['font_align_mobile'],
 		);
-
-		$vars = array_merge( $vars, $this->button_style_css_vars( $hamburger ) );
 
 		return $this->css_vars_string( $vars );
 	}
@@ -554,10 +568,9 @@ trait QRMS_HFB_Frontend {
 	/**
 	 * Mobil panel HTML.
 	 *
-	 * Üst çubukta yalnızca kapatma (X) ikonu sağ üstte durur. Logo, menü,
-	 * sosyal ve metin blokları `block_order` sırasıyla gövdeye basılır;
-	 * kapalı bloklar hiç görünmez. Dil seçici ve CTA blok sırasının
-	 * dışındadır (dil üstte, telefon altta).
+	 * Logo, menü, sosyal, metin, buton ve dil blokları `blocks` dizisindeki
+	 * sırayla gövdeye basılır; kapalı bloklar hiç görünmez. CTA telefon
+	 * blok sırasının dışında altta kalır.
 	 *
 	 * @param array<string,mixed> $opts      Header ayarları.
 	 * @param array<string,mixed> $hamburger Hamburger ayarları.
@@ -568,28 +581,10 @@ trait QRMS_HFB_Frontend {
 	 * @return string
 	 */
 	private function render_mobile_panel( $opts, $hamburger, $nav, $brand, $social, $lang ) {
-		$cta   = $this->render_cta( $opts );
-		$order = isset( $hamburger['block_order'] ) && is_array( $hamburger['block_order'] )
-			? $hamburger['block_order']
-			: array( 'logo', 'menu', 'social', 'text' );
-
-		$blocks = array();
-
-		if ( ! empty( $hamburger['block_logo'] ) && $brand ) {
-			$blocks['logo'] = '<div class="hfb-mobile-panel__block hfb-mobile-panel__block--logo">' . $brand . '</div>';
-		}
-
-		if ( ! empty( $hamburger['block_menu'] ) && $nav ) {
-			$blocks['menu'] = '<nav class="hfb-mobile-panel__block hfb-mobile-panel__block--menu hfb-mobile-panel__nav" aria-label="' . esc_attr( __( 'Mobil menü', 'qrms' ) ) . '">' . $nav . '</nav>';
-		}
-
-		if ( ! empty( $hamburger['block_social'] ) && $social ) {
-			$blocks['social'] = '<div class="hfb-mobile-panel__block hfb-mobile-panel__block--social">' . $social . '</div>';
-		}
-
-		if ( ! empty( $hamburger['block_text'] ) && '' !== trim( (string) $hamburger['text'] ) ) {
-			$blocks['text'] = '<div class="hfb-mobile-panel__block hfb-mobile-panel__block--text hfb-mobile-panel__text">' . wp_kses_post( $hamburger['text'] ) . '</div>';
-		}
+		$cta    = $this->render_cta( $opts );
+		$blocks = isset( $hamburger['blocks'] ) && is_array( $hamburger['blocks'] )
+			? $hamburger['blocks']
+			: $this->hamburger_defaults['blocks'];
 
 		ob_start();
 		?>
@@ -604,14 +599,9 @@ trait QRMS_HFB_Frontend {
 				</div>
 
 				<div class="hfb-mobile-panel__body">
-					<?php if ( $lang ) : ?>
-						<div class="hfb-mobile-panel__lang"><?php echo $lang; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></div>
-					<?php endif; ?>
 					<?php
-					foreach ( $order as $key ) {
-						if ( isset( $blocks[ $key ] ) ) {
-							echo $blocks[ $key ]; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-						}
+					foreach ( $blocks as $block ) {
+						echo $this->render_hamburger_panel_block( $block, $opts, $nav, $brand, $social, $lang ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 					}
 					?>
 				</div>
@@ -625,6 +615,131 @@ trait QRMS_HFB_Frontend {
 		</div>
 		<?php
 		return (string) ob_get_clean();
+	}
+
+	/**
+	 * Tek bir hamburger panel bloğunu render eder.
+	 *
+	 * @param array<string,mixed> $block  Blok verisi.
+	 * @param array<string,mixed> $opts   Header ayarları.
+	 * @param string              $nav    Menü HTML.
+	 * @param string              $brand  Marka HTML.
+	 * @param string              $social Sosyal ikon HTML.
+	 * @param string              $lang   Dil seçici HTML.
+	 * @return string
+	 */
+	private function render_hamburger_panel_block( $block, $opts, $nav, $brand, $social, $lang ) {
+		if ( ! is_array( $block ) || empty( $block['enabled'] ) ) {
+			return '';
+		}
+
+		$type  = isset( $block['type'] ) ? (string) $block['type'] : '';
+		$align = isset( $block['align'] ) ? (string) $block['align'] : 'center';
+		$align = in_array( $align, array( 'left', 'center', 'right' ), true ) ? $align : 'center';
+		$inner = '';
+
+		switch ( $type ) {
+			case 'logo':
+				if ( $brand ) {
+					$inner = $brand;
+				}
+				break;
+
+			case 'menu':
+				if ( $nav ) {
+					$inner = '<nav class="hfb-mobile-panel__nav" aria-label="' . esc_attr( __( 'Mobil menü', 'qrms' ) ) . '">' . $nav . '</nav>';
+				}
+				break;
+
+			case 'social':
+				if ( $social ) {
+					$inner = $social;
+				}
+				break;
+
+			case 'text':
+				$content = isset( $block['content'] ) ? trim( (string) $block['content'] ) : '';
+				if ( '' !== $content ) {
+					$inner = '<div class="hfb-mobile-panel__text">' . wp_kses_post( $content ) . '</div>';
+				}
+				break;
+
+			case 'button':
+				$inner = $this->render_hamburger_button_block( $block );
+				break;
+
+			case 'lang':
+				$inner = $this->render_panel_lang_switcher( $opts );
+				break;
+		}
+
+		if ( '' === $inner ) {
+			return '';
+		}
+
+		return '<div class="hfb-mobile-panel__block hfb-mobile-panel__block--' . esc_attr( $type ) . ' hfb-mobile-panel__block--align-' . esc_attr( $align ) . '">' . $inner . '</div>';
+	}
+
+	/**
+	 * Hamburger panel buton bloğu.
+	 *
+	 * @param array<string,mixed> $block Blok verisi.
+	 * @return string
+	 */
+	private function render_hamburger_button_block( $block ) {
+		$label = isset( $block['label'] ) ? trim( (string) $block['label'] ) : '';
+		if ( '' === $label ) {
+			return '';
+		}
+
+		$url    = isset( $block['url'] ) ? esc_url( (string) $block['url'] ) : '';
+		$shape  = isset( $block['shape'] ) ? sanitize_key( (string) $block['shape'] ) : 'pill';
+		$shapes = array_keys( $this->hamburger_button_shapes() );
+		$shape  = in_array( $shape, $shapes, true ) ? $shape : 'pill';
+
+		$font_key = isset( $block['font'] ) ? (string) $block['font'] : $this->hamburger_defaults['font_family'];
+		$style    = sprintf(
+			'background-color:%1$s;color:%2$s;font-family:%3$s;font-size:%4$dpx;font-weight:%5$d;',
+			esc_attr( isset( $block['bg_color'] ) ? (string) $block['bg_color'] : '#c9a84c' ),
+			esc_attr( isset( $block['text_color'] ) ? (string) $block['text_color'] : '#0a0a0c' ),
+			esc_attr( $this->font_stack( $font_key ) ),
+			isset( $block['font_size'] ) ? (int) $block['font_size'] : 15,
+			isset( $block['font_weight'] ) ? (int) $block['font_weight'] : 600
+		);
+
+		$tag   = $url ? 'a' : 'span';
+		$attrs = $url ? ' href="' . $url . '"' : '';
+
+		return sprintf(
+			'<%1$s class="hfb-mobile-panel__btn hfb-mobile-panel__btn--%2$s" style="%3$s"%4$s>%5$s</%1$s>',
+			$tag,
+			esc_attr( $shape ),
+			$style,
+			$attrs,
+			esc_html( $label )
+		);
+	}
+
+	/**
+	 * Panel içi dil seçici (header lang_show ayarından bağımsız).
+	 *
+	 * @param array<string,mixed> $opts Header ayarları.
+	 * @return string
+	 */
+	private function render_panel_lang_switcher( $opts ) {
+		unset( $opts );
+
+		if ( ! $this->lang_switcher_available() ) {
+			return '';
+		}
+
+		$html = do_shortcode( '[' . self::LANG_SHORTCODE . ']' );
+
+		if ( '' === trim( (string) $html ) ) {
+			return '';
+		}
+
+		return '<div class="hfb-lang">' . $html . '</div>';
 	}
 
 	/**
@@ -673,7 +788,7 @@ trait QRMS_HFB_Frontend {
 		$tel  = preg_replace( '/[^0-9+]/', '', $opts['cta_phone'] );
 		$icon = '<svg class="hfb-icon hfb-icon--phone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>';
 
-		return '<a class="hfb-btn hfb-cta" href="tel:' . esc_attr( $tel ) . '">' . $icon . esc_html( $opts['cta_phone'] ) . '</a>';
+		return '<a class="hfb-cta" href="tel:' . esc_attr( $tel ) . '">' . $icon . esc_html( $opts['cta_phone'] ) . '</a>';
 	}
 
 	/**

@@ -7635,10 +7635,30 @@ qrms_test(
 			'hfb_header_social_media_url_facebook' => 'https://facebook.com/deneme',
 			'hfb_footer_copyright'                 => '© 2026 Deneme',
 			'hfb_footer_email'                     => 'bilgi@deneme.test',
-			'hfb_hamburger_block_logo'             => '1',
-			'hfb_hamburger_block_menu'             => '1',
-			'hfb_hamburger_block_social'           => '1',
-			'hfb_hamburger_block_order'            => 'logo,menu,social,text',
+			'hfb_hamburger_block_order'            => 'blk_1,blk_2,blk_3,blk_4',
+			'hfb_hamburger_blocks'                 => array(
+				'blk_1' => array(
+					'type'    => 'logo',
+					'enabled' => '1',
+					'align'   => 'center',
+				),
+				'blk_2' => array(
+					'type'    => 'menu',
+					'enabled' => '1',
+					'align'   => 'center',
+				),
+				'blk_3' => array(
+					'type'    => 'social',
+					'enabled' => '1',
+					'align'   => 'center',
+				),
+				'blk_4' => array(
+					'type'    => 'text',
+					'enabled' => '0',
+					'align'   => 'center',
+					'content' => '',
+				),
+			),
 		);
 
 		$header_in    = $hfb->sanitize_header_input( $girdi, $hfb->get_header_options() );
@@ -7815,12 +7835,47 @@ qrms_test(
 		$header['social_media_active'] = array( 'instagram' );
 		$header['cta_phone']           = '0850 000 00 00';
 
-		$hamburger['block_order']  = array( 'text', 'social', 'logo', 'menu' );
-		$hamburger['block_logo']   = 1;
-		$hamburger['block_menu']   = 0;
-		$hamburger['block_social'] = 1;
-		$hamburger['block_text']   = 1;
-		$hamburger['text']         = '<p>Açık büfe</p>';
+		$hamburger['blocks'] = array(
+			array(
+				'id'      => 'blk_1',
+				'type'    => 'text',
+				'enabled' => true,
+				'align'   => 'center',
+				'content' => '<p>Açık büfe</p>',
+			),
+			array(
+				'id'      => 'blk_2',
+				'type'    => 'social',
+				'enabled' => true,
+				'align'   => 'center',
+			),
+			array(
+				'id'      => 'blk_3',
+				'type'    => 'logo',
+				'enabled' => true,
+				'align'   => 'center',
+			),
+			array(
+				'id'      => 'blk_4',
+				'type'    => 'menu',
+				'enabled' => false,
+				'align'   => 'center',
+			),
+			array(
+				'id'          => 'blk_5',
+				'type'        => 'button',
+				'enabled'     => true,
+				'align'       => 'center',
+				'label'       => 'Rezervasyon',
+				'url'         => 'https://ornek.test/rezervasyon',
+				'bg_color'    => '#c9a84c',
+				'text_color'  => '#0a0a0c',
+				'shape'       => 'pill',
+				'font'        => 'Playfair Display',
+				'font_size'   => 15,
+				'font_weight' => 600,
+			),
+		);
 
 		$html = $hfb->render_header( $header, $hamburger );
 
@@ -7830,6 +7885,8 @@ qrms_test(
 		qrms_assert_contains( 'hfb-mobile-panel__block--logo', $html, 'logo blok' );
 		qrms_assert_true( false === strpos( $html, 'hfb-mobile-panel__block--menu' ), 'kapalı menü yok' );
 		qrms_assert_contains( 'hfb-cta', $html, 'telefon CTA blok sırasının dışında altta' );
+		qrms_assert_contains( 'hfb-mobile-panel__btn', $html, 'buton bloğu' );
+		qrms_assert_contains( 'Rezervasyon', $html, 'buton metni' );
 
 		$text_pos   = strpos( $html, 'hfb-mobile-panel__block--text' );
 		$social_pos = strpos( $html, 'hfb-mobile-panel__block--social' );
@@ -7845,29 +7902,75 @@ qrms_test(
 
 		$temiz = $hfb->sanitize_hamburger_input(
 			array(
-				'hfb_hamburger_block_order'           => 'text,hack,logo,logo,menu',
-				'hfb_hamburger_block_logo'            => '1',
-				'hfb_hamburger_block_text'            => '1',
-				'hfb_hamburger_text'                  => '<p>Merhaba</p><script>x</script>',
-				'hfb_hamburger_font_family'           => 'Comic Sans',
-				'hfb_hamburger_font_size_desktop'     => '99',
-				'hfb_hamburger_font_weight_desktop'   => '550',
-				'hfb_hamburger_font_align_mobile'     => 'justify',
-				'hfb_hamburger_close_icon_color'      => '#ff00aa',
-				'hfb_hamburger_panel_bg_color'        => '#111111',
+				'hfb_hamburger_block_order'         => 'blk_4,hack,blk_1,blk_1,blk_2',
+				'hfb_hamburger_blocks'              => array(
+					'blk_1' => array(
+						'type'    => 'logo',
+						'enabled' => '1',
+						'align'   => 'center',
+					),
+					'blk_2' => array(
+						'type'    => 'menu',
+						'enabled' => '0',
+						'align'   => 'center',
+					),
+					'blk_3' => array(
+						'type'    => 'social',
+						'enabled' => '1',
+						'align'   => 'center',
+					),
+					'blk_4' => array(
+						'type'    => 'text',
+						'enabled' => '1',
+						'align'   => 'center',
+						'content' => '<p>Merhaba</p><script>x</script>',
+					),
+					'blk_5' => array(
+						'type'        => 'button',
+						'enabled'     => '1',
+						'align'       => 'center',
+						'label'       => '  Rezervasyon  ',
+						'url'         => 'https://ornek.test/rezervasyon',
+						'bg_color'    => 'red',
+						'shape'       => 'hexagon',
+						'font'        => 'Comic Sans',
+						'font_size'   => '99',
+						'font_weight' => '550',
+					),
+				),
+				'hfb_hamburger_font_family'         => 'Comic Sans',
+				'hfb_hamburger_font_size_desktop'   => '99',
+				'hfb_hamburger_font_weight_desktop' => '550',
+				'hfb_hamburger_font_align_mobile'   => 'justify',
+				'hfb_hamburger_close_icon_color'    => '#ff00aa',
+				'hfb_hamburger_panel_bg_color'      => '#111111',
 			),
 			$hfb->get_hamburger_options()
 		);
 
-		qrms_assert_same( array( 'text', 'logo', 'menu', 'social' ), $temiz['block_order'], 'sıra + eksik tamamlandı' );
-		qrms_assert_same( 1, (int) $temiz['block_logo'], 'logo açık' );
-		qrms_assert_same( 0, (int) $temiz['block_menu'], 'menü kapalı (kutu yok)' );
+		$types = array_values( array_map( static function ( $block ) {
+			return $block['type'];
+		}, $temiz['blocks'] ) );
+		$by_type = array();
+		foreach ( $temiz['blocks'] as $block ) {
+			$by_type[ $block['type'] ] = $block;
+		}
+
+		qrms_assert_same( array( 'text', 'logo', 'menu', 'social', 'button' ), $types, 'sıra + eksik tamamlandı' );
+		qrms_assert_same( 1, (int) $by_type['logo']['enabled'], 'logo açık' );
+		qrms_assert_same( 0, (int) $by_type['menu']['enabled'], 'menü kapalı (kutu yok)' );
 		qrms_assert_same( 'Playfair Display', $temiz['font_family'], 'bilinmeyen font reddedildi' );
 		qrms_assert_same( 32, (int) $temiz['font_size_desktop'], 'punto üst sınır' );
 		qrms_assert_same( 500, (int) $temiz['font_weight_desktop'], 'geçersiz kalınlık varsayılan' );
 		qrms_assert_same( 'center', $temiz['font_align_mobile'], 'geçersiz hiza varsayılan' );
 		qrms_assert_same( '#ff00aa', $temiz['close_icon_color'], 'kapatma rengi' );
-		qrms_assert_contains( 'Merhaba', $temiz['text'], 'metin durur' );
+		qrms_assert_contains( 'Merhaba', $by_type['text']['content'], 'metin durur' );
+		qrms_assert_true( false === strpos( $by_type['text']['content'], '<script>' ), 'script yok' );
+		qrms_assert_same( 'Rezervasyon', $by_type['button']['label'], 'buton metni' );
+		qrms_assert_same( '#c9a84c', $by_type['button']['bg_color'], 'geçersiz buton rengi varsayılan' );
+		qrms_assert_same( 'pill', $by_type['button']['shape'], 'geçersiz şekil varsayılan' );
+		qrms_assert_same( 'Playfair Display', $by_type['button']['font'], 'bilinmeyen buton fontu reddedildi' );
+		qrms_assert_same( 32, (int) $by_type['button']['font_size'], 'buton punto üst sınır' );
 	}
 );
 
@@ -7879,12 +7982,32 @@ qrms_test(
 		$_POST = array(
 			'nonce' => 'test',
 			'data'  => array(
-				'hfb_header_brand_line1'    => 'Önizleme Marka',
-				'hfb_hamburger_block_text'  => '1',
-				'hfb_hamburger_block_logo'  => '1',
-				'hfb_hamburger_text'        => 'Panel notu',
-				'hfb_hamburger_block_order' => 'text,logo,menu,social',
-				'hfb_footer_copyright'      => '© 2026 Önizleme',
+				'hfb_header_brand_line1'        => 'Önizleme Marka',
+				'hfb_hamburger_block_order'     => 'blk_4,blk_1,blk_2,blk_3',
+				'hfb_hamburger_blocks'          => array(
+					'blk_1' => array(
+						'type'    => 'logo',
+						'enabled' => '1',
+						'align'   => 'center',
+					),
+					'blk_2' => array(
+						'type'    => 'menu',
+						'enabled' => '1',
+						'align'   => 'center',
+					),
+					'blk_3' => array(
+						'type'    => 'social',
+						'enabled' => '1',
+						'align'   => 'center',
+					),
+					'blk_4' => array(
+						'type'    => 'text',
+						'enabled' => '1',
+						'align'   => 'center',
+						'content' => 'Panel notu',
+					),
+				),
+				'hfb_footer_copyright'          => '© 2026 Önizleme',
 			),
 		);
 
@@ -7894,7 +8017,14 @@ qrms_test(
 		qrms_assert_true( is_array( $yanit ) && ! empty( $yanit['success'] ), 'başarılı yanıt' );
 		qrms_assert_contains( 'Panel notu', $yanit['data']['header'], 'hamburger metni önizlemede' );
 		qrms_assert_contains( 'hfb-mobile-panel__block--text', $yanit['data']['header'], 'metin bloğu sınıfı' );
-		qrms_assert_same( '', $hfb->get_hamburger_options()['text'], 'depo değişmedi' );
+
+		$stored_text = '';
+		foreach ( $hfb->get_hamburger_options()['blocks'] as $block ) {
+			if ( 'text' === $block['type'] ) {
+				$stored_text = isset( $block['content'] ) ? (string) $block['content'] : '';
+			}
+		}
+		qrms_assert_same( '', $stored_text, 'depo değişmedi' );
 	}
 );
 

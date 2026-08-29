@@ -43,7 +43,25 @@ trait QRMS_HFB_Settings_Page {
 	 * @return array<string,mixed>
 	 */
 	public function get_hamburger_options() {
-		return $this->merge_options( get_option( $this->hamburger_option, array() ), $this->hamburger_defaults );
+		$stored = get_option( $this->hamburger_option, array() );
+
+		if ( ! is_array( $stored ) ) {
+			$stored = array();
+		}
+
+		if ( ! isset( $stored['blocks'] ) || ! is_array( $stored['blocks'] ) || empty( $stored['blocks'] ) ) {
+			if ( isset( $stored['block_order'] ) || isset( $stored['block_logo'] ) || isset( $stored['block_menu'] ) || isset( $stored['block_social'] ) || isset( $stored['block_text'] ) || isset( $stored['text'] ) ) {
+				$stored['blocks'] = $this->migrate_hamburger_blocks( $stored );
+			}
+		}
+
+		$merged = $this->merge_options( $stored, $this->hamburger_defaults );
+
+		if ( isset( $merged['blocks'] ) && is_array( $merged['blocks'] ) ) {
+			$merged['blocks'] = $this->normalize_hamburger_blocks( $merged['blocks'] );
+		}
+
+		return $merged;
 	}
 
 	/**
@@ -142,8 +160,8 @@ trait QRMS_HFB_Settings_Page {
 	}
 
 	/**
-	 * Buton şekil kataloğu — hamburger CTA ve footer garson/hesap butonları
-	 * aynı anahtarları kullanır (hap / yuvarlatılmış / köşeli).
+	 * Buton şekil kataloğu — footer garson/hesap butonları.
+	 * Anahtarlar hamburger buton bloğu şekilleriyle aynıdır (hap / yuvarlatılmış / köşeli).
 	 *
 	 * @return array<string,array{etiket:string,radius:string}>
 	 */
@@ -287,7 +305,7 @@ trait QRMS_HFB_Settings_Page {
 	}
 
 	/**
-	 * Paylaşılan buton stil alanlarını temizler (hamburger CTA + footer çağrı).
+	 * Footer garson/hesap buton stil alanlarını temizler.
 	 *
 	 * Option anahtarları `btn_*`; form alanları `{form_prefix}btn_*`.
 	 *
@@ -361,12 +379,174 @@ trait QRMS_HFB_Settings_Page {
 	 * @return array<string,string> anahtar => etiket
 	 */
 	public function hamburger_block_types() {
-		return array(
+		$types = array(
 			'logo'   => __( 'Logo', 'qrms' ),
 			'menu'   => __( 'Menü', 'qrms' ),
 			'social' => __( 'Sosyal medya', 'qrms' ),
-			'text'   => __( 'Metin', 'qrms' ),
+			'text'   => __( 'Metin Kutusu', 'qrms' ),
+			'button' => __( 'Buton', 'qrms' ),
 		);
+
+		if ( $this->lang_switcher_available() ) {
+			$types['lang'] = __( 'Dil Seçici', 'qrms' );
+		}
+
+		return $types;
+	}
+
+	/**
+	 * Hamburger buton şekil seçenekleri.
+	 *
+	 * @return array<string,string>
+	 */
+	public function hamburger_button_shapes() {
+		return array(
+			'square'  => __( 'Köşeli', 'qrms' ),
+			'rounded' => __( 'Yuvarlak köşe', 'qrms' ),
+			'pill'    => __( 'Tam yuvarlak (pill)', 'qrms' ),
+		);
+	}
+
+	/**
+	 * Eski sabit blok formatını dinamik `blocks` dizisine dönüştürür.
+	 *
+	 * @param array<string,mixed> $stored Depodaki ham değer.
+	 * @return array<int,array<string,mixed>>
+	 */
+	private function migrate_hamburger_blocks( $stored ) {
+		$legacy_order = array( 'logo', 'menu', 'social', 'text' );
+
+		if ( isset( $stored['block_order'] ) && is_array( $stored['block_order'] ) ) {
+			$legacy_order = $this->sanitize_legacy_block_order( $stored['block_order'] );
+		}
+
+		$blocks     = array();
+		$id_counter = 1;
+
+		foreach ( $legacy_order as $type ) {
+			$enabled_key = 'block_' . $type;
+			$enabled     = isset( $stored[ $enabled_key ] ) ? (bool) $stored[ $enabled_key ] : true;
+
+			if ( 'text' === $type && isset( $stored['block_text'] ) ) {
+				$enabled = (bool) $stored['block_text'];
+			}
+
+			$block = array(
+				'id'      => 'blk_' . $id_counter,
+				'type'    => $type,
+				'enabled' => $enabled,
+				'align'   => 'center',
+			);
+
+			if ( 'text' === $type && isset( $stored['text'] ) ) {
+				$block['content'] = (string) $stored['text'];
+			}
+
+			$blocks[] = $block;
+			++$id_counter;
+		}
+
+		if ( empty( $blocks ) ) {
+			return $this->hamburger_defaults['blocks'];
+		}
+
+		return $this->normalize_hamburger_blocks( $blocks );
+	}
+
+	/**
+	 * Blok dizisini şemaya uygun hâle getirir.
+	 *
+	 * @param array<int,mixed> $blocks Ham blok listesi.
+	 * @return array<int,array<string,mixed>>
+	 */
+	private function normalize_hamburger_blocks( $blocks ) {
+		$valid_types = array_keys( $this->hamburger_block_types() );
+		$normalized  = array();
+		$seen_ids    = array();
+
+		foreach ( $blocks as $block ) {
+			if ( ! is_array( $block ) ) {
+				continue;
+			}
+
+			$type = isset( $block['type'] ) ? sanitize_key( (string) $block['type'] ) : '';
+			if ( ! in_array( $type, $valid_types, true ) ) {
+				continue;
+			}
+
+			$id = isset( $block['id'] ) ? sanitize_key( (string) $block['id'] ) : '';
+			if ( '' === $id || in_array( $id, $seen_ids, true ) ) {
+				$id = $this->next_hamburger_block_id( $normalized );
+			}
+
+			$seen_ids[] = $id;
+			$normalized[] = $this->default_hamburger_block( $type, $id, $block );
+		}
+
+		if ( empty( $normalized ) ) {
+			return $this->hamburger_defaults['blocks'];
+		}
+
+		return $normalized;
+	}
+
+	/**
+	 * Tek blok için varsayılan alanları birleştirir.
+	 *
+	 * @param string              $type    Blok tipi.
+	 * @param string              $id      Blok kimliği.
+	 * @param array<string,mixed> $current Mevcut değerler.
+	 * @return array<string,mixed>
+	 */
+	private function default_hamburger_block( $type, $id, $current = array() ) {
+		$block = array(
+			'id'      => $id,
+			'type'    => $type,
+			'enabled' => ! empty( $current['enabled'] ),
+			'align'   => $this->sanitize_align( isset( $current['align'] ) ? $current['align'] : 'center', 'center' ),
+		);
+
+		if ( 'text' === $type ) {
+			$block['content'] = isset( $current['content'] ) ? (string) $current['content'] : '';
+		}
+
+		if ( 'button' === $type ) {
+			$shapes = array_keys( $this->hamburger_button_shapes() );
+			$shape  = isset( $current['shape'] ) ? sanitize_key( (string) $current['shape'] ) : 'pill';
+
+			$block['label']       = isset( $current['label'] ) ? (string) $current['label'] : __( 'Buton', 'qrms' );
+			$block['url']         = isset( $current['url'] ) ? (string) $current['url'] : '';
+			$block['bg_color']    = isset( $current['bg_color'] ) ? (string) $current['bg_color'] : '#c9a84c';
+			$block['text_color']  = isset( $current['text_color'] ) ? (string) $current['text_color'] : '#0a0a0c';
+			$block['shape']       = in_array( $shape, $shapes, true ) ? $shape : 'pill';
+			$block['font']        = isset( $current['font'] ) ? (string) $current['font'] : $this->hamburger_defaults['font_family'];
+			$block['font_size']   = isset( $current['font_size'] ) ? (int) $current['font_size'] : 15;
+			$block['font_weight'] = isset( $current['font_weight'] ) ? (int) $current['font_weight'] : 600;
+		}
+
+		return $block;
+	}
+
+	/**
+	 * Yeni blok kimliği üretir.
+	 *
+	 * @param array<int,array<string,mixed>> $blocks Mevcut bloklar.
+	 * @return string
+	 */
+	private function next_hamburger_block_id( $blocks ) {
+		$max = 0;
+
+		foreach ( $blocks as $block ) {
+			if ( ! isset( $block['id'] ) ) {
+				continue;
+			}
+
+			if ( preg_match( '/^blk_(\d+)$/', (string) $block['id'], $matches ) ) {
+				$max = max( $max, (int) $matches[1] );
+			}
+		}
+
+		return 'blk_' . ( $max + 1 );
 	}
 
 	/**
@@ -799,24 +979,14 @@ trait QRMS_HFB_Settings_Page {
 	 */
 	public function sanitize_hamburger_input( $input, $current ) {
 		$opts = $current;
-		$keys = array_keys( $this->hamburger_block_types() );
 
 		$opts['close_icon_color'] = $this->sanitize_color_field( $input, 'hfb_hamburger_close_icon_color', $current['close_icon_color'] );
 		$opts['panel_bg_color']   = $this->sanitize_color_field( $input, 'hfb_hamburger_panel_bg_color', $current['panel_bg_color'] );
 		$opts['font_color']       = $this->sanitize_color_field( $input, 'hfb_hamburger_font_color', $current['font_color'] );
 
-		$opts['block_logo']   = $this->sanitize_checkbox( $input, 'hfb_hamburger_block_logo' );
-		$opts['block_menu']   = $this->sanitize_checkbox( $input, 'hfb_hamburger_block_menu' );
-		$opts['block_social'] = $this->sanitize_checkbox( $input, 'hfb_hamburger_block_social' );
-		$opts['block_text']   = $this->sanitize_checkbox( $input, 'hfb_hamburger_block_text' );
-
-		if ( isset( $input['hfb_hamburger_text'] ) ) {
-			$opts['text'] = wp_kses_post( (string) $input['hfb_hamburger_text'] );
-		}
-
-		$opts['block_order'] = $this->sanitize_block_order(
-			isset( $input['hfb_hamburger_block_order'] ) ? $input['hfb_hamburger_block_order'] : $current['block_order'],
-			$keys
+		$opts['blocks'] = $this->sanitize_hamburger_blocks(
+			$input,
+			isset( $current['blocks'] ) && is_array( $current['blocks'] ) ? $current['blocks'] : $this->hamburger_defaults['blocks']
 		);
 
 		if ( isset( $input['hfb_hamburger_font_family'] ) ) {
@@ -872,25 +1042,233 @@ trait QRMS_HFB_Settings_Page {
 			);
 		}
 
-		$opts = $this->sanitize_button_style( $input, $opts, $this->hamburger_defaults, 'hfb_hamburger_' );
-
 		return $opts;
 	}
 
 	/**
-	 * Blok sırasını beyaz listeye indirger; eksik tipleri sona ekler.
+	 * Dinamik hamburger blok listesini temizler.
+	 *
+	 * @param array<string,mixed>              $input   Ham girdi.
+	 * @param array<int,array<string,mixed>> $current Mevcut bloklar.
+	 * @return array<int,array<string,mixed>>
+	 */
+	private function sanitize_hamburger_blocks( $input, $current ) {
+		$valid_types = array_keys( $this->hamburger_block_types() );
+		$raw_blocks  = $this->extract_hamburger_blocks_from_input( $input );
+
+		$order_raw = isset( $input['hfb_hamburger_block_order'] )
+			? $input['hfb_hamburger_block_order']
+			: '';
+
+		$order = $this->sanitize_hamburger_block_order_ids( $order_raw, array_keys( $raw_blocks ) );
+
+		if ( empty( $raw_blocks ) && ! empty( $current ) ) {
+			$raw_blocks = array();
+			foreach ( $current as $block ) {
+				if ( isset( $block['id'] ) ) {
+					$raw_blocks[ (string) $block['id'] ] = $block;
+				}
+			}
+			$order = wp_list_pluck( $current, 'id' );
+		}
+
+		$current_by_id = array();
+		foreach ( $current as $block ) {
+			if ( isset( $block['id'] ) ) {
+				$current_by_id[ (string) $block['id'] ] = $block;
+			}
+		}
+
+		$sanitized_by_id = array();
+
+		foreach ( $raw_blocks as $raw_id => $raw_block ) {
+			if ( ! is_array( $raw_block ) ) {
+				continue;
+			}
+
+			$id   = sanitize_key( (string) $raw_id );
+			$type = isset( $raw_block['type'] ) ? sanitize_key( (string) $raw_block['type'] ) : '';
+
+			if ( '' === $id || ! in_array( $type, $valid_types, true ) ) {
+				continue;
+			}
+
+			$fallback = isset( $current_by_id[ $id ] ) ? $current_by_id[ $id ] : array();
+			$enabled  = isset( $raw_block['enabled'] ) && '' !== (string) $raw_block['enabled'] && '0' !== (string) $raw_block['enabled'];
+
+			$block = array(
+				'id'      => $id,
+				'type'    => $type,
+				'enabled' => $enabled,
+				'align'   => $this->sanitize_align(
+					isset( $raw_block['align'] ) ? $raw_block['align'] : ( isset( $fallback['align'] ) ? $fallback['align'] : 'center' ),
+					'center'
+				),
+			);
+
+			if ( 'text' === $type ) {
+				if ( isset( $raw_block['content'] ) ) {
+					$block['content'] = wp_kses_post( (string) $raw_block['content'] );
+				} elseif ( isset( $fallback['content'] ) ) {
+					$block['content'] = (string) $fallback['content'];
+				} else {
+					$block['content'] = '';
+				}
+			}
+
+			if ( 'button' === $type ) {
+				$shapes = array_keys( $this->hamburger_button_shapes() );
+				$shape  = isset( $raw_block['shape'] ) ? sanitize_key( (string) $raw_block['shape'] ) : 'pill';
+
+				$block['label'] = isset( $raw_block['label'] )
+					? sanitize_text_field( (string) $raw_block['label'] )
+					: ( isset( $fallback['label'] ) ? sanitize_text_field( (string) $fallback['label'] ) : '' );
+
+				$block['url'] = isset( $raw_block['url'] )
+					? esc_url_raw( (string) $raw_block['url'] )
+					: ( isset( $fallback['url'] ) ? esc_url_raw( (string) $fallback['url'] ) : '' );
+
+				$block['bg_color'] = $this->sanitize_color_field(
+					$raw_block,
+					'bg_color',
+					isset( $fallback['bg_color'] ) ? (string) $fallback['bg_color'] : '#c9a84c'
+				);
+
+				$block['text_color'] = $this->sanitize_color_field(
+					$raw_block,
+					'text_color',
+					isset( $fallback['text_color'] ) ? (string) $fallback['text_color'] : '#0a0a0c'
+				);
+
+				$block['shape'] = in_array( $shape, $shapes, true ) ? $shape : 'pill';
+
+				$font = isset( $raw_block['font'] ) ? (string) $raw_block['font'] : ( isset( $fallback['font'] ) ? (string) $fallback['font'] : $this->hamburger_defaults['font_family'] );
+				$block['font'] = array_key_exists( $font, $this->font_catalog() ) ? $font : $this->hamburger_defaults['font_family'];
+
+				$block['font_size'] = $this->sanitize_int_range(
+					isset( $raw_block['font_size'] ) ? $raw_block['font_size'] : ( isset( $fallback['font_size'] ) ? $fallback['font_size'] : 15 ),
+					10,
+					32,
+					15
+				);
+
+				$block['font_weight'] = $this->sanitize_font_weight(
+					isset( $raw_block['font_weight'] ) ? $raw_block['font_weight'] : ( isset( $fallback['font_weight'] ) ? $fallback['font_weight'] : 600 ),
+					600
+				);
+			}
+
+			$sanitized_by_id[ $id ] = $block;
+		}
+
+		$ordered = array();
+		foreach ( $order as $id ) {
+			if ( isset( $sanitized_by_id[ $id ] ) ) {
+				$ordered[] = $sanitized_by_id[ $id ];
+				unset( $sanitized_by_id[ $id ] );
+			}
+		}
+
+		foreach ( $sanitized_by_id as $block ) {
+			$ordered[] = $block;
+		}
+
+		if ( empty( $ordered ) ) {
+			return $this->normalize_hamburger_blocks( $this->hamburger_defaults['blocks'] );
+		}
+
+		return $this->normalize_hamburger_blocks( $ordered );
+	}
+
+	/**
+	 * Blok kimlik sırasını beyaz listeye indirger.
 	 *
 	 * @param mixed    $raw  Virgülle ayrılmış dize veya dizi.
-	 * @param string[] $keys Geçerli blok anahtarları.
+	 * @param string[] $keys Geçerli blok kimlikleri.
 	 * @return string[]
 	 */
-	private function sanitize_block_order( $raw, $keys ) {
+	private function sanitize_hamburger_block_order_ids( $raw, $keys ) {
 		if ( is_string( $raw ) ) {
 			$raw = preg_split( '/\s*,\s*/', $raw );
 		}
 
 		if ( ! is_array( $raw ) ) {
 			$raw = $keys;
+		}
+
+		$ordered = array();
+
+		foreach ( $raw as $item ) {
+			$key = sanitize_key( (string) $item );
+			if ( in_array( $key, $keys, true ) && ! in_array( $key, $ordered, true ) ) {
+				$ordered[] = $key;
+			}
+		}
+
+		foreach ( $keys as $key ) {
+			if ( ! in_array( $key, $ordered, true ) ) {
+				$ordered[] = $key;
+			}
+		}
+
+		return $ordered;
+	}
+
+	/**
+	 * Form girdisinden hamburger blok alanlarını çıkarır.
+	 *
+	 * Normal POST iç içe dizileri doğrudan verir; AJAX önizleme ise
+	 * `hfb_hamburger_blocks[blk_1][enabled]` biçiminde düz anahtarlar gönderir.
+	 *
+	 * @param array<string,mixed> $input Ham girdi.
+	 * @return array<string,array<string,mixed>>
+	 */
+	private function extract_hamburger_blocks_from_input( $input ) {
+		$blocks = array();
+
+		if ( isset( $input['hfb_hamburger_blocks'] ) && is_array( $input['hfb_hamburger_blocks'] ) ) {
+			foreach ( $input['hfb_hamburger_blocks'] as $id => $fields ) {
+				if ( is_array( $fields ) ) {
+					$blocks[ sanitize_key( (string) $id ) ] = $fields;
+				}
+			}
+		}
+
+		$pattern = '/^hfb_hamburger_blocks\[([^\]]+)\]\[([^\]]+)\]$/';
+
+		foreach ( $input as $key => $value ) {
+			if ( ! is_string( $key ) || ! preg_match( $pattern, $key, $matches ) ) {
+				continue;
+			}
+
+			$id    = sanitize_key( $matches[1] );
+			$field = sanitize_key( $matches[2] );
+
+			if ( ! isset( $blocks[ $id ] ) || ! is_array( $blocks[ $id ] ) ) {
+				$blocks[ $id ] = array();
+			}
+
+			$blocks[ $id ][ $field ] = $value;
+		}
+
+		return $blocks;
+	}
+
+	/**
+	 * Eski sabit blok sırasını temizler (göç için).
+	 *
+	 * @param mixed $raw Ham sıra.
+	 * @return string[]
+	 */
+	private function sanitize_legacy_block_order( $raw ) {
+		$keys = array( 'logo', 'menu', 'social', 'text' );
+
+		if ( is_string( $raw ) ) {
+			$raw = preg_split( '/\s*,\s*/', $raw );
+		}
+
+		if ( ! is_array( $raw ) ) {
+			return $keys;
 		}
 
 		$ordered = array();
