@@ -1554,6 +1554,42 @@ trait QRMS_HFB_Settings_Page {
 		update_option( $this->header_option, $this->sanitize_header_input( $input, $this->get_header_options() ) );
 		update_option( $this->footer_option, $this->sanitize_footer_input( $input, $this->get_footer_options() ) );
 		update_option( $this->hamburger_option, $this->sanitize_hamburger_input( $input, $this->get_hamburger_options() ) );
+		$this->flush_page_caches();
+	}
+
+	/**
+	 * Kaydet sonrası tam sayfa önbelleğini boşaltır.
+	 *
+	 * Buton renkleri satır içi CSS değişkenidir; WP Rocket vb. eski HTML'i
+	 * sunarsa yeni ayar görünmez. `qmo_tum_onbellek_temizle()` yoksa yaygın
+	 * önbellek eklentilerinin kendi uçları çağrılır.
+	 *
+	 * @return void
+	 */
+	private function flush_page_caches() {
+		if ( function_exists( 'qmo_tum_onbellek_temizle' ) ) {
+			qmo_tum_onbellek_temizle();
+		}
+
+		if ( function_exists( 'rocket_clean_domain' ) ) {
+			rocket_clean_domain();
+		}
+
+		if ( function_exists( 'w3tc_flush_all' ) ) {
+			w3tc_flush_all();
+		}
+
+		if ( function_exists( 'wp_cache_clear_cache' ) ) {
+			wp_cache_clear_cache();
+		}
+
+		if ( function_exists( 'wp_cache_flush' ) ) {
+			wp_cache_flush();
+		}
+
+		if ( function_exists( 'do_action' ) ) {
+			do_action( 'litespeed_purge_all' );
+		}
 	}
 
 	/**

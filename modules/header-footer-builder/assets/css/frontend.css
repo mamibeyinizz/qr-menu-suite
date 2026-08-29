@@ -771,9 +771,12 @@
 
 .hfb-footer-wrap .hfb-btn {
   align-items: center;
-  background: var(--hfb-btn-bg, var(--hfb-gold));
-  border: 0;
+  background-blend-mode: overlay;
+  background-color: var(--hfb-btn-bg, var(--hfb-gold));
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(0, 0, 0, 0.08));
+  border: 1.5px solid var(--hfb-btn-bg, var(--hfb-gold));
   border-radius: var(--hfb-btn-radius, 999px);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.05);
   color: var(--hfb-btn-color, var(--hfb-ink));
   cursor: pointer;
   display: inline-flex;
@@ -785,10 +788,58 @@
   min-height: 44px;
   padding: 0.7rem 1.25rem;
   text-decoration: none;
+  transition: transform 0.25s ease, box-shadow 0.25s ease, background 0.25s ease, border-color 0.25s ease;
 }
 
 .hfb-footer-wrap .hfb-btn:hover {
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.08);
   filter: brightness(1.08);
+  transform: translateY(-3px);
+}
+
+.hfb-footer-wrap .hfb-footer__call-btn .hfb-icon--call {
+  color: currentColor;
+  flex-shrink: 0;
+  height: 18px;
+  width: 18px;
+}
+
+.hfb-footer-wrap .hfb-footer__call-btn.is-disabled,
+.hfb-footer-wrap .hfb-footer__call-btn:disabled {
+  box-shadow: none;
+  cursor: not-allowed;
+  filter: none;
+  opacity: 0.55;
+  pointer-events: none;
+  transform: none;
+}
+
+.hfb-footer-wrap .hfb-footer__call-btn.is-success {
+  background-color: #1d7a4c;
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(0, 0, 0, 0.08));
+  border-color: #15803d;
+  color: #fff;
+}
+
+.hfb-footer-wrap .hfb-footer__call-btn .hfb-btn-spinner {
+  animation: btn-spin 0.7s linear infinite;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  height: 16px;
+  width: 16px;
+}
+
+@keyframes btn-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .hfb-icon--phone {
@@ -799,10 +850,24 @@
 
 /* ---------------------------------------------------------------- Footer */
 
+.hfb-footer-wrap {
+  --hfb-footer-bg: var(--hfb-ink);
+}
+
 .hfb-footer {
   background: var(--hfb-ink);
   border-top: 1px solid var(--hfb-border);
   color: var(--hfb-text);
+  width: 100%;
+}
+
+/*
+ * Kap sorgusu sütunları saran iç kabukta durur; garson/hesap çubuğu
+ * kardeş olarak dışında kalır. `container-type: inline-size` layout
+ * containment verdiği için `position: fixed` torunları viewport'a
+ * değil kaba bağlardı — sticky bar o yüzden bu kabın DIŞINDadır.
+ */
+.hfb-footer__cq {
   container-name: hfb-footer;
   container-type: inline-size;
   width: 100%;
@@ -1017,6 +1082,14 @@
 .hfb-footer__call-msg {
   color: var(--hfb-muted);
   margin: 0;
+  text-align: center;
+  width: 100%;
+}
+
+.hfb-footer__call--warn {
+  justify-content: center;
+  text-align: center;
+  width: 100%;
 }
 
 .hfb-footer__bar {
@@ -1032,6 +1105,59 @@
   text-align: center;
 }
 
+/*
+ * Mobilde garson/hesap (veya oturumsuz uyarı) ekranın altına sabitlenir.
+ * Viewport media query bilinçli: `position: fixed` kap genişliğine değil
+ * gerçek ekrana bağlanır. Masaüstü (≥768px) akışta kalır.
+ * Yönetim önizlemesi (.wp-admin) viewport'u ele geçirmesin diye hariç.
+ */
+@media (max-width: 767px) {
+  .hfb-footer__call-wrap:has(.qmo-cagri-bar),
+  .hfb-footer__call-wrap:has(.hfb-footer__call--warn) {
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    background: var(--hfb-footer-bg, rgba(10, 10, 12, 0.92));
+    border-top: 1px solid var(--hfb-border, rgba(201, 168, 76, 0.28));
+    bottom: 0;
+    box-shadow: 0 -6px 22px rgba(0, 0, 0, 0.35);
+    left: 0;
+    margin: 0;
+    max-width: none;
+    padding: 0.6rem 0.9rem calc(0.6rem + env(safe-area-inset-bottom, 0px));
+    position: fixed;
+    right: 0;
+    z-index: 9999;
+  }
+
+  .hfb-footer__call-wrap:has(.qmo-cagri-bar) .hfb-footer__call,
+  .hfb-footer__call-wrap:has(.hfb-footer__call--warn) .hfb-footer__call {
+    width: 100%;
+  }
+
+  .hfb-footer__call-wrap:has(.qmo-cagri-bar) .hfb-footer__call-btn {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  body:has(.hfb-footer__call-wrap .qmo-cagri-bar):not(.wp-admin),
+  body:has(.hfb-footer__call-wrap .hfb-footer__call--warn):not(.wp-admin) {
+    padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .wp-admin .hfb-footer__call-wrap:has(.qmo-cagri-bar),
+  .wp-admin .hfb-footer__call-wrap:has(.hfb-footer__call--warn) {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: transparent;
+    border-top: 0;
+    box-shadow: none;
+    margin: 0 auto;
+    max-width: 1200px;
+    padding: 0 1.25rem 1.5rem;
+    position: static;
+  }
+}
+
 /* ------------------------------------------------------------- Kırılımlar */
 
 /*
@@ -1039,8 +1165,9 @@
  * (1) yönetimdeki önizleme sahnesi 390px'e daraltıldığında header gerçekten
  *     hamburger'a çöker — mobil görünüm ekranda test edilebilir;
  * (2) header dar bir Elementor sütununa konursa da doğru davranır.
- * `container-type` yalnızca <header>/<footer> üzerindedir; sabit konumlu
- * mobil panel kapsayıcının DIŞINDA kalır, böylece `position: fixed`
+ * `container-type` header'da <header> üzerindedir, footer'da sütunları
+ * saran `.hfb-footer__cq` üzerindedir; sabit konumlu mobil panel ve
+ * garson/hesap çubuğu bu kapların DIŞINDA kalır, böylece `position: fixed`
  * viewport'a göre çalışmayı sürdürür.
  */
 
@@ -1196,7 +1323,14 @@
   .hfb-mobile-panel__sheet,
   .hfb-mobile-panel__backdrop,
   .hfb-header-wrap .hfb-social__link,
-  .hfb-footer-wrap .hfb-social__link {
+  .hfb-footer-wrap .hfb-social__link,
+  .hfb-footer-wrap .hfb-btn,
+  .hfb-footer-wrap .hfb-btn:hover {
     transition: none;
+    transform: none;
+  }
+
+  .hfb-footer-wrap .hfb-footer__call-btn .hfb-btn-spinner {
+    animation: none;
   }
 }
