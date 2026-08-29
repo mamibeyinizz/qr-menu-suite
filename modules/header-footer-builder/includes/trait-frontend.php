@@ -319,7 +319,82 @@ trait QRMS_HFB_Frontend {
 			'--hfb-panel-font-align-m'     => (string) $hamburger['font_align_mobile'],
 		);
 
-		return $this->css_vars_string( $vars );
+		return $this->css_vars_string( array_merge( $vars, $this->panel_appearance_css_vars( $hamburger ) ) );
+	}
+
+	/**
+	 * Hamburger "Görünüm" adımının `--hfb-panel-*` değişkenleri.
+	 *
+	 * Boş dönen değer `css_vars_string()` tarafından atlanır; kural o zaman
+	 * CSS'teki kendi fallback'ine düşer. Sosyal ikon zemini bu yolla
+	 * varsayılan olarak şeffaf kalır.
+	 *
+	 * @param array<string,mixed> $hamburger Hamburger ayarları.
+	 * @return array<string,string>
+	 */
+	private function panel_appearance_css_vars( $hamburger ) {
+		$logo_h        = ! empty( $hamburger['logo_height_auto_desktop'] ) ? 'auto' : (int) $hamburger['logo_height_desktop'] . 'px';
+		$logo_h_mobile = ! empty( $hamburger['logo_height_auto_mobile'] ) ? 'auto' : (int) $hamburger['logo_height_mobile'] . 'px';
+
+		$vars = array(
+			'--hfb-panel-logo-w'        => (int) $hamburger['logo_width_desktop'] . 'px',
+			'--hfb-panel-logo-h'        => $logo_h,
+			'--hfb-panel-logo-w-m'      => (int) $hamburger['logo_width_mobile'] . 'px',
+			'--hfb-panel-logo-h-m'      => $logo_h_mobile,
+			'--hfb-panel-menu-color'    => (string) $hamburger['menu_link_color'],
+			'--hfb-panel-menu-hover'    => (string) $hamburger['menu_hover_color'],
+			'--hfb-panel-menu-divider'  => (string) $hamburger['menu_divider_color'],
+			'--hfb-panel-menu-arrow'    => (string) $hamburger['menu_arrow_color'],
+			'--hfb-panel-social-border' => (string) $hamburger['social_border_color'],
+			'--hfb-panel-social-bg'     => (string) $hamburger['social_bg_color'],
+			'--hfb-panel-social-icon'   => (string) $hamburger['social_icon_color'],
+			'--hfb-panel-btn-bg'        => (string) $hamburger['btn_bg_color'],
+			'--hfb-panel-btn-color'     => (string) $hamburger['btn_text_color'],
+			'--hfb-panel-btn-radius'    => $this->button_radius( (string) $hamburger['btn_shape'] ),
+			'--hfb-panel-btn-font'      => $this->font_stack( (string) $hamburger['btn_font_family'] ),
+			'--hfb-panel-btn-size'      => (int) $hamburger['btn_font_size'] . 'px',
+			'--hfb-panel-btn-weight'    => (string) (int) $hamburger['btn_font_weight'],
+		);
+
+		$bg_image = $this->panel_bg_image_url( $hamburger );
+
+		if ( '' !== $bg_image ) {
+			$vars['--hfb-panel-bg-image']   = 'url(' . $bg_image . ')';
+			$vars['--hfb-panel-bg-opacity'] = (string) round( $this->panel_bg_opacity( $hamburger ), 2 );
+		}
+
+		return $vars;
+	}
+
+	/**
+	 * Panel arka plan görselinin adresi (yoksa boş dize).
+	 *
+	 * @param array<string,mixed> $hamburger Hamburger ayarları.
+	 * @return string
+	 */
+	private function panel_bg_image_url( $hamburger ) {
+		$id = isset( $hamburger['panel_bg_image'] ) ? (int) $hamburger['panel_bg_image'] : 0;
+
+		if ( $id <= 0 ) {
+			return '';
+		}
+
+		$url = wp_get_attachment_image_url( $id, 'full' );
+
+		return $url ? esc_url_raw( $url ) : '';
+	}
+
+	/**
+	 * Panel arka plan görselinin örtü opaklığı (0–1).
+	 *
+	 * @param array<string,mixed> $hamburger Hamburger ayarları.
+	 * @return float
+	 */
+	private function panel_bg_opacity( $hamburger ) {
+		$percent = isset( $hamburger['panel_bg_opacity'] ) ? (int) $hamburger['panel_bg_opacity'] : self::PANEL_BG_OPACITY_MAX;
+		$percent = max( self::PANEL_BG_OPACITY_MIN, min( self::PANEL_BG_OPACITY_MAX, $percent ) );
+
+		return $percent / 100;
 	}
 
 	/**
@@ -597,11 +672,19 @@ trait QRMS_HFB_Frontend {
 			? $hamburger['blocks']
 			: $this->hamburger_defaults['blocks'];
 
+		// Arka plan görseli seçilmemişse katman hiç basılmaz: görsel
+		// olmayan kurulumlarda panelin DOM'u değişmez.
+		$has_bg_image = '' !== $this->panel_bg_image_url( $hamburger );
+
 		ob_start();
 		?>
 		<div id="hfb-mobile-panel" class="hfb-mobile-panel" aria-hidden="true">
 			<div class="hfb-mobile-panel__backdrop" tabindex="-1"></div>
 			<div class="hfb-mobile-panel__sheet" role="dialog" aria-modal="true" aria-label="<?php esc_attr_e( 'Mobil menü', 'qrms' ); ?>">
+				<?php if ( $has_bg_image ) : ?>
+					<div class="hfb-mobile-panel__bg" aria-hidden="true"></div>
+				<?php endif; ?>
+
 				<div class="hfb-mobile-panel__topbar">
 					<span class="hfb-mobile-panel__topbar-spacer" aria-hidden="true"></span>
 					<button type="button" class="hfb-mobile-panel__close" aria-label="<?php esc_attr_e( 'Menüyü kapat', 'qrms' ); ?>">
@@ -612,7 +695,7 @@ trait QRMS_HFB_Frontend {
 				<div class="hfb-mobile-panel__body">
 					<?php
 					foreach ( $blocks as $block ) {
-						echo $this->render_hamburger_panel_block( $block, $opts, $nav, $brand, $social, $lang ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+						echo $this->render_hamburger_panel_block( $block, $opts, $hamburger, $nav, $brand, $social, $lang ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 					}
 					?>
 				</div>
@@ -631,15 +714,16 @@ trait QRMS_HFB_Frontend {
 	/**
 	 * Tek bir hamburger panel bloğunu render eder.
 	 *
-	 * @param array<string,mixed> $block  Blok verisi.
-	 * @param array<string,mixed> $opts   Header ayarları.
-	 * @param string              $nav    Menü HTML.
-	 * @param string              $brand  Marka HTML.
-	 * @param string              $social Sosyal ikon HTML.
-	 * @param string              $lang   Dil seçici HTML.
+	 * @param array<string,mixed> $block     Blok verisi.
+	 * @param array<string,mixed> $opts      Header ayarları.
+	 * @param array<string,mixed> $hamburger Hamburger ayarları (buton varsayılanları).
+	 * @param string              $nav       Menü HTML.
+	 * @param string              $brand     Marka HTML.
+	 * @param string              $social    Sosyal ikon HTML.
+	 * @param string              $lang      Dil seçici HTML.
 	 * @return string
 	 */
-	private function render_hamburger_panel_block( $block, $opts, $nav, $brand, $social, $lang ) {
+	private function render_hamburger_panel_block( $block, $opts, $hamburger, $nav, $brand, $social, $lang ) {
 		if ( ! is_array( $block ) || empty( $block['enabled'] ) ) {
 			return '';
 		}
@@ -681,7 +765,7 @@ trait QRMS_HFB_Frontend {
 				break;
 
 			case 'button':
-				$inner = $this->render_hamburger_button_block( $block );
+				$inner = $this->render_hamburger_button_block( $block, $hamburger );
 				break;
 
 			case 'lang':
@@ -699,28 +783,33 @@ trait QRMS_HFB_Frontend {
 	/**
 	 * Hamburger panel buton bloğu.
 	 *
-	 * @param array<string,mixed> $block Blok verisi.
+	 * Blok kendi renk/şekil/tipografi değerini taşımıyorsa Görünüm
+	 * adımındaki panel geneli buton varsayılanları kullanılır.
+	 *
+	 * @param array<string,mixed>      $block     Blok verisi.
+	 * @param array<string,mixed>|null $hamburger Hamburger ayarları.
 	 * @return string
 	 */
-	private function render_hamburger_button_block( $block ) {
+	private function render_hamburger_button_block( $block, $hamburger = null ) {
 		$label = isset( $block['label'] ) ? trim( (string) $block['label'] ) : '';
 		if ( '' === $label ) {
 			return '';
 		}
 
+		$btn    = $this->hamburger_button_defaults( is_array( $hamburger ) ? $hamburger : null );
 		$url    = isset( $block['url'] ) ? esc_url( (string) $block['url'] ) : '';
-		$shape  = isset( $block['shape'] ) ? sanitize_key( (string) $block['shape'] ) : 'pill';
+		$shape  = isset( $block['shape'] ) ? sanitize_key( (string) $block['shape'] ) : sanitize_key( (string) $btn['shape'] );
 		$shapes = array_keys( $this->hamburger_button_shapes() );
 		$shape  = in_array( $shape, $shapes, true ) ? $shape : 'pill';
 
-		$font_key = isset( $block['font'] ) ? (string) $block['font'] : $this->hamburger_defaults['font_family'];
+		$font_key = isset( $block['font'] ) ? (string) $block['font'] : (string) $btn['font'];
 		$style    = sprintf(
 			'background-color:%1$s;color:%2$s;font-family:%3$s;font-size:%4$dpx;font-weight:%5$d;',
-			esc_attr( isset( $block['bg_color'] ) ? (string) $block['bg_color'] : '#c9a84c' ),
-			esc_attr( isset( $block['text_color'] ) ? (string) $block['text_color'] : '#0a0a0c' ),
+			esc_attr( isset( $block['bg_color'] ) ? (string) $block['bg_color'] : (string) $btn['bg_color'] ),
+			esc_attr( isset( $block['text_color'] ) ? (string) $block['text_color'] : (string) $btn['text_color'] ),
 			esc_attr( $this->font_stack( $font_key ) ),
-			isset( $block['font_size'] ) ? (int) $block['font_size'] : 15,
-			isset( $block['font_weight'] ) ? (int) $block['font_weight'] : 600
+			isset( $block['font_size'] ) ? (int) $block['font_size'] : (int) $btn['font_size'],
+			isset( $block['font_weight'] ) ? (int) $block['font_weight'] : (int) $btn['font_weight']
 		);
 
 		$tag   = $url ? 'a' : 'span';

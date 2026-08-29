@@ -8202,6 +8202,329 @@ qrms_test(
 );
 
 qrms_test(
+	'Görünüm adımı öncesi kayıtlar görüntü değişmeden taşınır',
+	function () {
+		$hfb = qrms_hfb();
+
+		// Adım eklenmeden ÖNCEKİ kayıt: Görünüm anahtarları yok, header'ın
+		// ikon rengi ve mobil logo ölçüsü özelleştirilmiş.
+		update_option(
+			'hfb_header_options',
+			array(
+				'icon_color'              => '#ff0066',
+				'logo_width_mobile'       => 210,
+				'logo_height_mobile'      => 70,
+				'logo_height_auto_mobile' => 0,
+			)
+		);
+		update_option(
+			'hfb_hamburger_options',
+			array(
+				'panel_bg_color' => '#111111',
+				'font_color'     => '#dddddd',
+			)
+		);
+
+		$opts = $hfb->get_hamburger_options();
+
+		// Renkler eski kaynaklarından devralınır.
+		qrms_assert_same( '#dddddd', $opts['menu_link_color'], 'satır metni panel yazı renginden' );
+		qrms_assert_same( '#ff0066', $opts['menu_hover_color'], 'hover header ikon renginden' );
+		qrms_assert_same( '#ff0066', $opts['menu_divider_color'], 'ayraç header ikon renginden' );
+		qrms_assert_same( '#ff0066', $opts['menu_arrow_color'], 'ok header ikon renginden' );
+		qrms_assert_same( '#ff0066', $opts['social_border_color'], 'sosyal çerçeve header ikon renginden' );
+		qrms_assert_same( '#ff0066', $opts['social_icon_color'], 'sosyal glyph header ikon renginden' );
+		qrms_assert_same( '', $opts['social_bg_color'], 'sosyal zemin şeffaf kalır' );
+
+		// Panel logosu header'ın MOBİL ölçüsünü her iki kırılımda kullanırdı.
+		qrms_assert_same( 210, (int) $opts['logo_width_desktop'], 'masaüstü panel logo devralındı' );
+		qrms_assert_same( 210, (int) $opts['logo_width_mobile'], 'mobil panel logo devralındı' );
+		qrms_assert_same( 70, (int) $opts['logo_height_desktop'], 'sabit yükseklik devralındı' );
+		qrms_assert_same( 0, (int) $opts['logo_height_auto_desktop'], 'otomatik oran kapalı devralındı' );
+
+		// Mevcut kaydedilmiş veri korunur.
+		qrms_assert_same( '#111111', $opts['panel_bg_color'], 'panel zemini korunur' );
+		qrms_assert_same( '#dddddd', $opts['font_color'], 'yazı rengi korunur' );
+
+		// Kaydedilmiş bir Görünüm değeri varsa geçiş onu EZMEZ.
+		update_option(
+			'hfb_hamburger_options',
+			array(
+				'font_color'        => '#dddddd',
+				'menu_arrow_color'  => '#00ff00',
+				'logo_width_mobile' => 88,
+			)
+		);
+
+		$kayitli = $hfb->get_hamburger_options();
+
+		qrms_assert_same( '#00ff00', $kayitli['menu_arrow_color'], 'kaydedilmiş ok rengi korunur' );
+		qrms_assert_same( 88, (int) $kayitli['logo_width_mobile'], 'kaydedilmiş panel logo korunur' );
+	}
+);
+
+qrms_test(
+	'AJAX önizleme Görünüm adımının alanlarını da yansıtır ve kaydetmez',
+	function () {
+		$hfb = qrms_hfb();
+
+		$_POST = array(
+			'nonce' => 'test',
+			'data'  => array(
+				'hfb_hamburger_panel_bg_image'      => '7',
+				'hfb_hamburger_panel_bg_opacity'    => '35',
+				'hfb_hamburger_logo_width_desktop'  => '210',
+				'hfb_hamburger_logo_width_mobile'   => '95',
+				'hfb_hamburger_menu_link_color'     => '#eeeeee',
+				'hfb_hamburger_menu_hover_color'    => '#00cc88',
+				'hfb_hamburger_menu_divider_color'  => '#334455',
+				'hfb_hamburger_menu_arrow_color'    => '#ff2200',
+				'hfb_hamburger_social_border_color' => '#445566',
+				'hfb_hamburger_social_bg_color'     => '#0b0b0f',
+				'hfb_hamburger_social_icon_color'   => '#ffcc00',
+				'hfb_hamburger_btn_bg_color'        => '#123123',
+				'hfb_hamburger_btn_shape'           => 'rounded',
+			),
+		);
+
+		$hfb->ajax_preview();
+		$yanit = $GLOBALS['qrms_test']['json'];
+		$html  = $yanit['data']['header'];
+
+		qrms_assert_true( is_array( $yanit ) && ! empty( $yanit['success'] ), 'başarılı yanıt' );
+
+		// Kaydetmeden, formdaki her Görünüm alanı önizlemeye iner.
+		qrms_assert_contains( 'hfb-mobile-panel__bg', $html, 'arka plan katmanı' );
+		qrms_assert_contains( '--hfb-panel-bg-opacity:0.35', $html, 'opaklık' );
+		qrms_assert_contains( '--hfb-panel-logo-w:210px', $html, 'masaüstü panel logo' );
+		qrms_assert_contains( '--hfb-panel-logo-w-m:95px', $html, 'mobil panel logo' );
+		qrms_assert_contains( '--hfb-panel-menu-color:#eeeeee', $html, 'satır metin rengi' );
+		qrms_assert_contains( '--hfb-panel-menu-hover:#00cc88', $html, 'satır hover rengi' );
+		qrms_assert_contains( '--hfb-panel-menu-divider:#334455', $html, 'ayraç rengi' );
+		qrms_assert_contains( '--hfb-panel-menu-arrow:#ff2200', $html, 'ok rengi' );
+		qrms_assert_contains( '--hfb-panel-social-border:#445566', $html, 'sosyal çerçeve' );
+		qrms_assert_contains( '--hfb-panel-social-bg:#0b0b0f', $html, 'sosyal zemin' );
+		qrms_assert_contains( '--hfb-panel-social-icon:#ffcc00', $html, 'sosyal glyph' );
+		qrms_assert_contains( '--hfb-panel-btn-bg:#123123', $html, 'buton zemini' );
+		qrms_assert_contains( '--hfb-panel-btn-radius:10px', $html, 'yuvarlatılmış buton' );
+
+		// Önizleme depoya yazmaz.
+		$kayitli = $hfb->get_hamburger_options();
+		qrms_assert_same( 0, (int) $kayitli['panel_bg_image'], 'görsel kaydedilmedi' );
+		qrms_assert_same( '#c9a84c', $kayitli['menu_arrow_color'], 'renk kaydedilmedi' );
+
+		$_POST = array();
+	}
+);
+
+qrms_test(
+	'Görünüm adımı tek formda; alanlar ve Açılış adımına referans basılır',
+	function () {
+		$hfb = qrms_hfb();
+		ob_start();
+		$hfb->render_admin_page();
+		$html = (string) ob_get_clean();
+
+		// Tek form / tek Kaydet düğmesi korunur.
+		qrms_assert_same( 1, substr_count( $html, 'id="hfb-settings-form"' ), 'tek form' );
+		qrms_assert_same( 1, substr_count( $html, 'name="hfb_save"' ), 'tek Kaydet düğmesi' );
+		qrms_assert_contains( 'name="hfb_nonce"', $html, 'nonce alanı' );
+
+		// Görünüm adımının alanları.
+		foreach (
+			array(
+				'hfb_hamburger_panel_bg_image',
+				'hfb_hamburger_panel_bg_opacity',
+				'hfb_hamburger_logo_width_desktop',
+				'hfb_hamburger_logo_height_auto_desktop',
+				'hfb_hamburger_logo_width_mobile',
+				'hfb_hamburger_logo_height_auto_mobile',
+				'hfb_hamburger_menu_link_color',
+				'hfb_hamburger_menu_hover_color',
+				'hfb_hamburger_menu_divider_color',
+				'hfb_hamburger_menu_arrow_color',
+				'hfb_hamburger_social_border_color',
+				'hfb_hamburger_social_bg_color',
+				'hfb_hamburger_social_icon_color',
+				'hfb_hamburger_btn_bg_color',
+				'hfb_hamburger_btn_text_color',
+				'hfb_hamburger_btn_shape',
+				'hfb_hamburger_btn_font_family',
+				'hfb_hamburger_btn_font_size',
+				'hfb_hamburger_btn_font_weight',
+			) as $alan
+		) {
+			qrms_assert_contains( 'name="' . $alan . '"', $html, $alan . ' alanı' );
+		}
+
+		// Panel arka plan RENGİ ve kapatma ikonu Açılış adımında kalır;
+		// Görünüm adımında tekrar oluşturulmaz.
+		qrms_assert_same(
+			1,
+			substr_count( $html, 'name="hfb_hamburger_panel_bg_color"' ),
+			'panel arka plan rengi tek yerde (Açılış adımı)'
+		);
+		qrms_assert_same(
+			1,
+			substr_count( $html, 'name="hfb_hamburger_close_icon_color"' ),
+			'kapatma ikonu rengi tek yerde (Açılış adımı)'
+		);
+		qrms_assert_contains( '1. Açılış adımında ayarlanır', $html, 'Açılış adımına referans' );
+	}
+);
+
+qrms_test(
+	'sanitize_hamburger_input Görünüm adımının alanlarını temizler',
+	function () {
+		$hfb = qrms_hfb();
+
+		$temiz = $hfb->sanitize_hamburger_input(
+			array(
+				// Arka plan görseli + opaklık.
+				'hfb_hamburger_panel_bg_image'         => '42abc',
+				'hfb_hamburger_panel_bg_opacity'       => '250',
+				// Panel içi logo — header logosundan bağımsız.
+				'hfb_hamburger_logo_width_desktop'     => '900',
+				'hfb_hamburger_logo_height_desktop'    => '90',
+				'hfb_hamburger_logo_width_mobile'      => '10',
+				'hfb_hamburger_logo_height_auto_mobile' => '1',
+				// Liste satırı renkleri.
+				'hfb_hamburger_menu_link_color'        => '#AABBCC',
+				'hfb_hamburger_menu_hover_color'       => 'javascript:alert(1)',
+				'hfb_hamburger_menu_divider_color'     => '#123456',
+				'hfb_hamburger_menu_arrow_color'       => '#654321',
+				// Sosyal ikon renkleri; zemin boş = şeffaf.
+				'hfb_hamburger_social_border_color'    => '#0f0f0f',
+				'hfb_hamburger_social_bg_color'        => '   ',
+				'hfb_hamburger_social_icon_color'      => '#ff8800',
+				// Panel geneli buton varsayılanları.
+				'hfb_hamburger_btn_bg_color'           => '#010203',
+				'hfb_hamburger_btn_shape'              => 'hexagon',
+				'hfb_hamburger_btn_font_family'        => 'Comic Sans',
+				'hfb_hamburger_btn_font_size'          => '99',
+				'hfb_hamburger_btn_font_weight'        => '550',
+			),
+			$hfb->get_hamburger_options()
+		);
+
+		qrms_assert_same( 42, (int) $temiz['panel_bg_image'], 'ek kimliği absint' );
+		qrms_assert_same( 100, (int) $temiz['panel_bg_opacity'], 'opaklık üst sınıra sıkışır' );
+
+		qrms_assert_same( 320, (int) $temiz['logo_width_desktop'], 'panel logo genişliği üst sınıra sıkışır' );
+		qrms_assert_same( 0, (int) $temiz['logo_height_auto_desktop'], 'kutu işaretsizken otomatik oran kapalı' );
+		qrms_assert_same( 90, (int) $temiz['logo_height_desktop'], 'sabit yükseklik korunur' );
+		qrms_assert_same( 80, (int) $temiz['logo_width_mobile'], 'panel logo genişliği alt sınıra sıkışır' );
+		qrms_assert_same( 1, (int) $temiz['logo_height_auto_mobile'], 'mobilde otomatik oran açık' );
+		qrms_assert_same( 0, (int) $temiz['logo_height_mobile'], 'otomatik oranda yükseklik sıfırlanır' );
+
+		qrms_assert_same( '#AABBCC', $temiz['menu_link_color'], 'geçerli hex olduğu gibi korunur' );
+		qrms_assert_same( '#c9a84c', $temiz['menu_hover_color'], 'geçersiz renk varsayılana düşer' );
+		qrms_assert_same( '#123456', $temiz['menu_divider_color'], 'ayraç rengi' );
+		qrms_assert_same( '#654321', $temiz['menu_arrow_color'], 'ok rengi' );
+
+		qrms_assert_same( '#0f0f0f', $temiz['social_border_color'], 'sosyal çerçeve rengi' );
+		qrms_assert_same( '', $temiz['social_bg_color'], 'boş bırakılan zemin şeffaf kalır' );
+		qrms_assert_same( '#ff8800', $temiz['social_icon_color'], 'sosyal glyph rengi' );
+
+		qrms_assert_same( '#010203', $temiz['btn_bg_color'], 'buton zemini' );
+		qrms_assert_same( 'pill', $temiz['btn_shape'], 'bilinmeyen şekil varsayılana düşer' );
+		qrms_assert_same( 'Playfair Display', $temiz['btn_font_family'], 'bilinmeyen font reddedildi' );
+		qrms_assert_same( 32, (int) $temiz['btn_font_size'], 'punto üst sınır' );
+		qrms_assert_same( 600, (int) $temiz['btn_font_weight'], 'geçersiz kalınlık varsayılan' );
+
+		// Yazı adımı ve bloklar bu adımdan etkilenmez.
+		qrms_assert_same( '#f5f0e8', $temiz['font_color'], 'yazı rengi korunur' );
+		qrms_assert_true( count( $temiz['blocks'] ) > 0, 'blok listesi korunur' );
+	}
+);
+
+qrms_test(
+	'Görünüm ayarları panel CSS değişkeni olarak basılır',
+	function () {
+		$hfb       = qrms_hfb();
+		$opts      = $hfb->get_header_options();
+		$hamburger = $hfb->get_hamburger_options();
+
+		// Varsayılan hâl: görsel yok, sosyal zemin şeffaf.
+		$varsayilan = $hfb->render_header( $opts, $hamburger );
+
+		qrms_assert_contains( '--hfb-panel-logo-w:120px', $varsayilan, 'panel logo genişliği' );
+		qrms_assert_contains( '--hfb-panel-logo-h:auto', $varsayilan, 'otomatik oran' );
+		qrms_assert_contains( '--hfb-panel-menu-color:#f5f0e8', $varsayilan, 'satır metin rengi' );
+		qrms_assert_contains( '--hfb-panel-menu-divider:#c9a84c', $varsayilan, 'ayraç rengi' );
+		qrms_assert_contains( '--hfb-panel-btn-radius:999px', $varsayilan, 'buton şekli yarıçapa çevrilir' );
+		qrms_assert_true(
+			false === strpos( $varsayilan, '--hfb-panel-social-bg' ),
+			'şeffaf zemin için değişken hiç basılmaz'
+		);
+		qrms_assert_true(
+			false === strpos( $varsayilan, 'hfb-mobile-panel__bg' ),
+			'görsel yokken arka plan katmanı basılmaz'
+		);
+
+		$hamburger['panel_bg_image']      = 42;
+		$hamburger['panel_bg_opacity']    = 40;
+		$hamburger['social_bg_color']     = '#101014';
+		$hamburger['menu_arrow_color']    = '#ff0000';
+		$hamburger['logo_width_desktop']  = 200;
+		$hamburger['logo_width_mobile']   = 90;
+		$hamburger['btn_shape']           = 'square';
+
+		$ozel = $hfb->render_header( $opts, $hamburger );
+
+		qrms_assert_contains( 'hfb-mobile-panel__bg', $ozel, 'arka plan katmanı basılır' );
+		qrms_assert_contains( '--hfb-panel-bg-image:url(https://restoran.test', $ozel, 'görsel adresi' );
+		qrms_assert_contains( '--hfb-panel-bg-opacity:0.4', $ozel, 'opaklık 0–1 aralığına çevrilir' );
+		qrms_assert_contains( '--hfb-panel-social-bg:#101014', $ozel, 'sosyal zemin rengi' );
+		qrms_assert_contains( '--hfb-panel-menu-arrow:#ff0000', $ozel, 'ok rengi' );
+		qrms_assert_contains( '--hfb-panel-logo-w:200px', $ozel, 'masaüstü panel logo' );
+		qrms_assert_contains( '--hfb-panel-logo-w-m:90px', $ozel, 'mobil panel logo' );
+		qrms_assert_contains( '--hfb-panel-btn-radius:0', $ozel, 'köşeli buton' );
+	}
+);
+
+qrms_test(
+	'buton bloğu kendi ayarını taşımıyorsa panel varsayılanını kullanır',
+	function () {
+		$hfb = qrms_hfb();
+
+		// Panel varsayılanları değiştirilir; blok yalnızca etiket taşır.
+		update_option(
+			'hfb_hamburger_options',
+			array(
+				'btn_bg_color'   => '#00ff00',
+				'btn_text_color' => '#111111',
+				'btn_shape'      => 'square',
+				'btn_font_size'  => 22,
+				'blocks'         => array(
+					array(
+						'id'      => 'blk_1',
+						'type'    => 'button',
+						'enabled' => true,
+						'align'   => 'center',
+						'label'   => 'Rezervasyon',
+					),
+				),
+			)
+		);
+
+		$hamburger = $hfb->get_hamburger_options();
+		$html      = $hfb->render_header( $hfb->get_header_options(), $hamburger );
+
+		qrms_assert_contains( 'background-color:#00ff00', $html, 'panel varsayılanı butona iner' );
+		qrms_assert_contains( 'color:#111111', $html, 'panel yazı rengi' );
+		qrms_assert_contains( 'font-size:22px', $html, 'panel punto varsayılanı' );
+		qrms_assert_contains( 'hfb-mobile-panel__btn--square', $html, 'panel şekil varsayılanı' );
+
+		// Blok kendi rengini taşıyorsa panel varsayılanını ezer.
+		$hamburger['blocks'][0]['bg_color'] = '#0000ff';
+		$ezilmis = $hfb->render_header( $hfb->get_header_options(), $hamburger );
+
+		qrms_assert_contains( 'background-color:#0000ff', $ezilmis, 'blok kendi rengini kullanır' );
+	}
+);
+
+qrms_test(
 	'ayar sayfası sekmeleri ve adım başlıklarını basar',
 	function () {
 		$hfb = qrms_hfb();
@@ -8219,7 +8542,8 @@ qrms_test(
 		qrms_assert_contains( 'hfb_header_padding_x_mobile', $html, 'mobil yan boşluk kaydırıcısı' );
 		qrms_assert_contains( '1. Açılış Davranışı', $html, 'hamburger adım 1' );
 		qrms_assert_contains( '2. İçerik Blokları ve Sıralama', $html, 'hamburger adım 2' );
-		qrms_assert_contains( '3. Yazı Tipi ve Renk', $html, 'hamburger adım 3' );
+		qrms_assert_contains( '3. Panel Görünümü', $html, 'hamburger adım 3' );
+		qrms_assert_contains( '4. Yazı Tipi ve Renk', $html, 'hamburger adım 4' );
 		qrms_assert_contains( '1. Logo ve Slogan', $html, 'footer adım 1' );
 		qrms_assert_contains( '2. Hızlı Menü', $html, 'footer adım 2' );
 		qrms_assert_contains( '3. Çalışma Saatleri ve İletişim', $html, 'footer adım 3' );

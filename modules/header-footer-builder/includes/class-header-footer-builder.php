@@ -99,6 +99,15 @@ class QRMS_Header_Footer_Builder {
 	const FONT_SIZE_MOBILE_MAX  = 28;
 
 	/**
+	 * Hamburger panel arka plan görselinin örtü opaklığı (%).
+	 *
+	 * 0 = görsel tamamen saydam (yalnızca zemin rengi görünür),
+	 * 100 = görsel zemin rengini tümüyle kapatır.
+	 */
+	const PANEL_BG_OPACITY_MIN = 0;
+	const PANEL_BG_OPACITY_MAX = 100;
+
+	/**
 	 * Header varsayılanları.
 	 *
 	 * @var array<string,mixed>
@@ -308,6 +317,40 @@ class QRMS_Header_Footer_Builder {
 			'font_size_mobile'     => 16,
 			'font_weight_mobile'   => 500,
 			'font_align_mobile'    => 'center',
+
+			/*
+			 * Görünüm adımı. Varsayılanlar, adım eklenmeden ÖNCEKİ sabit
+			 * görünümün birebir karşılığıdır: panel bu alanlar kaydedilmeden
+			 * de bugünküyle aynı görünür.
+			 *
+			 * - Menü satırı/ok/ayraç ve sosyal çerçeve rengi eskiden
+			 *   `--hfb-icon-color` (altın) üzerinden geliyordu.
+			 * - Sosyal ikon zemini eskiden hiç boyanmıyordu; boş dize
+			 *   "şeffaf" demektir ve CSS değişkeni hiç basılmaz.
+			 * - Panel logosu eskiden header'ın mobil logo ölçüsünü
+			 *   (120px + otomatik oran) her kırılımda kullanıyordu.
+			 */
+			'panel_bg_image'       => 0,
+			'panel_bg_opacity'     => 100,
+			'logo_width_desktop'   => 120,
+			'logo_height_desktop'  => 0,
+			'logo_height_auto_desktop' => 1,
+			'logo_width_mobile'    => 120,
+			'logo_height_mobile'   => 0,
+			'logo_height_auto_mobile'  => 1,
+			'menu_link_color'      => '#f5f0e8',
+			'menu_hover_color'     => '#c9a84c',
+			'menu_divider_color'   => '#c9a84c',
+			'menu_arrow_color'     => '#c9a84c',
+			'social_border_color'  => '#c9a84c',
+			'social_bg_color'      => '',
+			'social_icon_color'    => '#c9a84c',
+			'btn_bg_color'         => '#c9a84c',
+			'btn_text_color'       => '#0a0a0c',
+			'btn_shape'            => 'pill',
+			'btn_font_family'      => 'Playfair Display',
+			'btn_font_size'        => 15,
+			'btn_font_weight'      => 600,
 		);
 	}
 

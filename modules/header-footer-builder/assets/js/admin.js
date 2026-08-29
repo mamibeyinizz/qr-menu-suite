@@ -362,8 +362,13 @@
       var targetId = $(this).data('target');
       var $input = $('#' + targetId);
       var $field = $(this).closest('.hfb-media-field');
+
+      // Alan yalnızca logo için değil (panel arka plan görseli de bunu
+      // kullanır); başlık alanın kendi etiketinden okunur.
+      var baslik = $.trim($field.find('.qrms-label').first().text()) || 'Görsel seç';
+
       var frame = wp.media({
-        title: 'Logo seç',
+        title: baslik,
         button: { text: 'Seç' },
         multiple: false
       });
