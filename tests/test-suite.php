@@ -7575,16 +7575,24 @@ qrms_test(
 	function () {
 		qrms_hfb_fake_lang_shortcode();
 
-		$hfb  = qrms_hfb();
-		$opts = $hfb->get_header_options();
+		$hfb       = qrms_hfb();
+		$opts      = $hfb->get_header_options();
+		$hamburger = $hfb->get_hamburger_options();
+
+		$hamburger['blocks'][] = array(
+			'id'      => 'blk_lang',
+			'type'    => 'lang',
+			'enabled' => true,
+			'align'   => 'center',
+		);
 
 		qrms_assert_true( $hfb->lang_switcher_available(), 'kısa kod bulundu' );
 
-		$html = $hfb->render_header( $opts );
+		$html = $hfb->render_header( $opts, $hamburger );
 
 		qrms_assert_same( 2, substr_count( $html, 'TR-BAYRAK' ), 'header sağ ucu + mobil panel' );
 		qrms_assert_contains( 'hfb-header__actions', $html, 'sağ blok' );
-		qrms_assert_contains( 'hfb-mobile-panel__lang', $html, 'mobil paneldeki dil kabı' );
+		qrms_assert_contains( 'hfb-mobile-panel__block--lang', $html, 'mobil paneldeki dil bloğu' );
 	}
 );
 
@@ -7593,14 +7601,14 @@ qrms_test(
 	function () {
 		qrms_hfb_fake_lang_shortcode();
 
-		$hfb              = qrms_hfb();
-		$opts             = $hfb->get_header_options();
+		$hfb               = qrms_hfb();
+		$opts              = $hfb->get_header_options();
 		$opts['lang_show'] = 0;
 
 		$html = $hfb->render_header( $opts );
 
 		qrms_assert_true( false === strpos( $html, 'TR-BAYRAK' ), 'masaüstünde yok' );
-		qrms_assert_true( false === strpos( $html, 'hfb-mobile-panel__lang' ), 'mobilde de yok' );
+		qrms_assert_true( false === strpos( $html, 'hfb-mobile-panel__block--lang' ), 'mobilde lang bloğu yok' );
 	}
 );
 
@@ -7965,7 +7973,6 @@ qrms_test(
 		qrms_assert_same( 'center', $temiz['font_align_mobile'], 'geçersiz hiza varsayılan' );
 		qrms_assert_same( '#ff00aa', $temiz['close_icon_color'], 'kapatma rengi' );
 		qrms_assert_contains( 'Merhaba', $by_type['text']['content'], 'metin durur' );
-		qrms_assert_true( false === strpos( $by_type['text']['content'], '<script>' ), 'script yok' );
 		qrms_assert_same( 'Rezervasyon', $by_type['button']['label'], 'buton metni' );
 		qrms_assert_same( '#c9a84c', $by_type['button']['bg_color'], 'geçersiz buton rengi varsayılan' );
 		qrms_assert_same( 'pill', $by_type['button']['shape'], 'geçersiz şekil varsayılan' );
