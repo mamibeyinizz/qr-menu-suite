@@ -28,11 +28,15 @@ trait QRMS_HFB_Live_Preview {
 	/**
 	 * Form ile yan yana duran sabit önizleme paneli.
 	 *
-	 * @param array<string,mixed> $header_opts Header ayarları.
-	 * @param array<string,mixed> $footer_opts Footer ayarları.
+	 * @param array<string,mixed>      $header_opts    Header ayarları.
+	 * @param array<string,mixed>      $footer_opts    Footer ayarları.
+	 * @param array<string,mixed>|null $hamburger_opts Hamburger ayarları.
 	 * @return void
 	 */
-	public function render_live_preview_panel( $header_opts, $footer_opts ) {
+	public function render_live_preview_panel( $header_opts, $footer_opts, $hamburger_opts = null ) {
+		if ( null === $hamburger_opts ) {
+			$hamburger_opts = $this->get_hamburger_options();
+		}
 		?>
 		<aside class="hfb-layout__side">
 			<div class="qrms-card hfb-preview" id="hfb-preview">
@@ -42,13 +46,11 @@ trait QRMS_HFB_Live_Preview {
 				</p>
 
 				<div class="hfb-preview__toolbar">
-					<label class="hfb-preview__device">
-						<?php esc_html_e( 'Görünüm:', 'qrms' ); ?>
-						<select id="hfb-preview-viewport">
-							<option value="desktop"><?php esc_html_e( 'Masaüstü', 'qrms' ); ?></option>
-							<option value="mobile"><?php esc_html_e( 'Mobil', 'qrms' ); ?></option>
-						</select>
-					</label>
+					<div class="hfb-preview__toggle" role="group" aria-label="<?php esc_attr_e( 'Önizleme kırılımı', 'qrms' ); ?>">
+						<button type="button" class="button hfb-preview__mode-btn is-active" data-preview-mode="desktop"><?php esc_html_e( 'Masaüstü Önizleme', 'qrms' ); ?></button>
+						<button type="button" class="button hfb-preview__mode-btn" data-preview-mode="mobile"><?php esc_html_e( 'Mobil Önizleme', 'qrms' ); ?></button>
+					</div>
+					<button type="button" class="button hfb-preview__open-panel" data-hfb-open-panel="1"><?php esc_html_e( 'Önizlemede Aç', 'qrms' ); ?></button>
 					<button type="button" class="button hfb-preview__refresh"><?php esc_html_e( 'Yenile', 'qrms' ); ?></button>
 					<span class="hfb-preview__status" id="hfb-preview-status" role="status" aria-live="polite"></span>
 				</div>
@@ -66,7 +68,7 @@ trait QRMS_HFB_Live_Preview {
 				<div class="hfb-preview__stage" id="hfb-preview-stage" data-viewport="desktop">
 					<div class="hfb-preview__canvas" id="hfb-preview-canvas">
 						<div class="hfb-preview__section" data-preview="header">
-							<?php echo $this->render_header( $header_opts ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+							<?php echo $this->render_header( $header_opts, $hamburger_opts ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 						</div>
 						<div class="hfb-preview__placeholder">
 							<p><?php esc_html_e( 'Sayfa içeriği alanı', 'qrms' ); ?></p>
@@ -123,12 +125,13 @@ trait QRMS_HFB_Live_Preview {
 			$raw = array();
 		}
 
-		$header = $this->sanitize_header_input( $raw, $this->get_header_options() );
-		$footer = $this->sanitize_footer_input( $raw, $this->get_footer_options() );
+		$header    = $this->sanitize_header_input( $raw, $this->get_header_options() );
+		$footer    = $this->sanitize_footer_input( $raw, $this->get_footer_options() );
+		$hamburger = $this->sanitize_hamburger_input( $raw, $this->get_hamburger_options() );
 
 		wp_send_json_success(
 			array(
-				'header' => $this->render_header( $header ),
+				'header' => $this->render_header( $header, $hamburger ),
 				'footer' => $this->render_footer( $footer ),
 			)
 		);

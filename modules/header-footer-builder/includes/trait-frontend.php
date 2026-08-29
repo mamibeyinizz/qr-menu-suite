@@ -2,9 +2,9 @@
 /**
  * Header Footer Builder — ön yüz render ve varlıklar.
  *
- * Tek tasarım: siyah zemin (#0a0a0c) + gold (#c9a84c) marka, Playfair
- * Display başlık tipografisi. Renk/varyant seçeneği yoktur; markup ve CSS
- * bilinçli olarak sabittir.
+ * Varsayılan palet dark-gold'dur; kullanıcı ayarları `--hfb-*` CSS
+ * değişkenleri olarak sarmalayıcıya yazılır. Markup tek kalır, görünüm
+ * option'lardan gelir.
  *
  * @package QR_Menu_Suite
  */
@@ -31,7 +31,7 @@ trait QRMS_HFB_Frontend {
 		$this->enqueue_header_script();
 		$this->mark_rendered( 'header' );
 
-		return $this->render_header( $opts );
+		return $this->render_header( $opts, $this->get_hamburger_options() );
 	}
 
 	/**
@@ -123,11 +123,29 @@ trait QRMS_HFB_Frontend {
 		);
 
 		wp_enqueue_style(
-			'hfb-font-display',
-			'https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&display=swap',
+			'hfb-fonts',
+			$this->google_fonts_url(),
 			array(),
 			null
 		);
+	}
+
+	/**
+	 * Marka + hamburger panelinde seçilen Google Fonts adresi.
+	 *
+	 * @return string
+	 */
+	private function google_fonts_url() {
+		$families = array( 'Playfair+Display:wght@500;600;700' );
+		$catalog  = $this->font_catalog();
+		$chosen   = $this->get_hamburger_options();
+		$key      = isset( $chosen['font_family'] ) ? (string) $chosen['font_family'] : '';
+
+		if ( isset( $catalog[ $key ] ) && '' !== $catalog[ $key ]['google'] && 'Playfair Display' !== $key ) {
+			$families[] = $catalog[ $key ]['google'];
+		}
+
+		return 'https://fonts.googleapis.com/css2?family=' . implode( '&family=', $families ) . '&display=swap';
 	}
 
 	/**
@@ -150,32 +168,42 @@ trait QRMS_HFB_Frontend {
 	/**
 	 * Header HTML çıktısı.
 	 *
-	 * @param array<string,mixed> $opts Ayarlar.
+	 * @param array<string,mixed>      $opts      Header ayarları.
+	 * @param array<string,mixed>|null $hamburger Hamburger ayarları; null ise depodan okunur.
 	 * @return string
 	 */
-	public function render_header( $opts ) {
+	public function render_header( $opts, $hamburger = null ) {
+		if ( null === $hamburger ) {
+			$hamburger = $this->get_hamburger_options();
+		}
+
 		$brand = $this->render_brand( $opts, 'header' );
 
 		// Menü bir kez üretilir, iki kez basılır (masaüstü + mobil panel).
 		// wp_nav_menu her <li>'ye `id` verdiği için kopyaların id'leri ayrı
 		// bir ön ekle taşınır; aksi hâlde sayfada çift id oluşurdu.
-		$nav_raw    = $this->render_nav_menu( (int) $opts['menu_id'], 'hfb-header__menu' );
-		$nav        = $this->scope_nav_ids( $nav_raw, 'hfb-h-' );
-		$panel_nav  = $this->scope_nav_ids( $nav_raw, 'hfb-m-' );
-		$social     = $this->render_social_icons( $opts );
-		$lang       = $this->render_lang_switcher( $opts );
+		$nav_raw   = $this->render_nav_menu( (int) $opts['menu_id'], 'hfb-header__menu' );
+		$nav       = $this->scope_nav_ids( $nav_raw, 'hfb-h-' );
+		$panel_nav = $this->scope_nav_ids( $nav_raw, 'hfb-m-' );
+		$social    = $this->render_social_icons( $opts );
+		$lang      = $this->render_lang_switcher( $opts );
 
 		$classes = 'hfb-header';
 		if ( ! empty( $opts['sticky'] ) ) {
 			$classes .= ' hfb-header--sticky';
 		}
+		if ( ! empty( $opts['sticky'] ) && ! empty( $opts['sticky_blur'] ) ) {
+			$classes .= ' hfb-header--sticky-blur';
+		}
 		if ( $this->elementor_is_edit_mode() ) {
 			$classes .= ' hfb-header--editor';
 		}
 
+		$style = $this->header_css_vars( $opts, $hamburger );
+
 		ob_start();
 		?>
-		<div class="hfb-header-wrap" data-hfb="header">
+		<div class="hfb-header-wrap" data-hfb="header"<?php echo $style ? ' style="' . esc_attr( $style ) . '"' : ''; ?>>
 			<header class="<?php echo esc_attr( $classes ); ?>" role="banner">
 				<div class="hfb-header__inner">
 					<div class="hfb-header__brand"><?php echo $brand; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></div>
@@ -198,10 +226,56 @@ trait QRMS_HFB_Frontend {
 					</button>
 				</div>
 			</header>
-			<?php echo $this->render_mobile_panel( $opts, $panel_nav, $brand, $social, $lang ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+			<?php echo $this->render_mobile_panel( $opts, $hamburger, $panel_nav, $brand, $social, $lang ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 		</div>
 		<?php
 		return (string) ob_get_clean();
+	}
+
+	/**
+	 * Header sarmalayıcısına yazılacak `--hfb-*` değişkenleri.
+	 *
+	 * @param array<string,mixed> $opts      Header ayarları.
+	 * @param array<string,mixed> $hamburger Hamburger ayarları.
+	 * @return string
+	 */
+	public function header_css_vars( $opts, $hamburger ) {
+		$logo_h_desktop = ! empty( $opts['logo_height_auto_desktop'] ) ? 'auto' : (int) $opts['logo_height_desktop'] . 'px';
+		$logo_h_tablet  = ! empty( $opts['logo_height_auto_tablet'] ) ? 'auto' : (int) $opts['logo_height_tablet'] . 'px';
+		$logo_h_mobile  = ! empty( $opts['logo_height_auto_mobile'] ) ? 'auto' : (int) $opts['logo_height_mobile'] . 'px';
+
+		$vars = array(
+			'--hfb-header-bg'              => (string) $opts['bg_color'],
+			'--hfb-icon-color'             => (string) $opts['icon_color'],
+			'--hfb-hamburger-icon'         => (string) $opts['hamburger_icon_color'],
+			'--hfb-logo-w-desktop'         => (int) $opts['logo_width_desktop'] . 'px',
+			'--hfb-logo-h-desktop'         => $logo_h_desktop,
+			'--hfb-logo-w-tablet'          => (int) $opts['logo_width_tablet'] . 'px',
+			'--hfb-logo-h-tablet'          => $logo_h_tablet,
+			'--hfb-logo-w-mobile'          => (int) $opts['logo_width_mobile'] . 'px',
+			'--hfb-logo-h-mobile'          => $logo_h_mobile,
+			'--hfb-panel-bg'               => (string) $hamburger['panel_bg_color'],
+			'--hfb-close-color'            => (string) $hamburger['close_icon_color'],
+			'--hfb-panel-font'             => $this->font_stack( $hamburger['font_family'] ),
+			'--hfb-panel-font-color'       => (string) $hamburger['font_color'],
+			'--hfb-panel-font-size'        => (int) $hamburger['font_size_desktop'] . 'px',
+			'--hfb-panel-font-weight'      => (string) (int) $hamburger['font_weight_desktop'],
+			'--hfb-panel-font-align'       => (string) $hamburger['font_align_desktop'],
+			'--hfb-panel-font-size-mobile' => (int) $hamburger['font_size_mobile'] . 'px',
+			'--hfb-panel-font-weight-m'    => (string) (int) $hamburger['font_weight_mobile'],
+			'--hfb-panel-font-align-m'     => (string) $hamburger['font_align_mobile'],
+		);
+
+		$parts = array();
+		foreach ( $vars as $name => $value ) {
+			$value = trim( (string) $value );
+			if ( '' === $value ) {
+				continue;
+			}
+			$parts[] = $name . ':' . $value;
+		}
+
+		return implode( ';', $parts );
 	}
 
 	/**
@@ -256,18 +330,42 @@ trait QRMS_HFB_Frontend {
 	/**
 	 * Mobil panel HTML.
 	 *
-	 * Üst çubukta yalnızca marka + hamburger kalır; menü, dil bayrağı, CTA
-	 * ve sosyal ikonlar bu panelde toplanır.
+	 * Üst çubukta yalnızca kapatma (X) ikonu sağ üstte durur. Logo, menü,
+	 * sosyal ve metin blokları `block_order` sırasıyla gövdeye basılır;
+	 * kapalı bloklar hiç görünmez. Dil seçici ve CTA blok sırasının
+	 * dışındadır (dil üstte, telefon altta).
 	 *
-	 * @param array<string,mixed> $opts   Ayarlar.
-	 * @param string              $nav    Menü HTML.
-	 * @param string              $brand  Marka HTML.
-	 * @param string              $social Sosyal ikon HTML.
-	 * @param string              $lang   Dil seçici HTML.
+	 * @param array<string,mixed> $opts      Header ayarları.
+	 * @param array<string,mixed> $hamburger Hamburger ayarları.
+	 * @param string              $nav       Menü HTML.
+	 * @param string              $brand     Marka HTML.
+	 * @param string              $social    Sosyal ikon HTML.
+	 * @param string              $lang      Dil seçici HTML.
 	 * @return string
 	 */
-	private function render_mobile_panel( $opts, $nav, $brand, $social, $lang ) {
-		$cta = $this->render_cta( $opts );
+	private function render_mobile_panel( $opts, $hamburger, $nav, $brand, $social, $lang ) {
+		$cta   = $this->render_cta( $opts );
+		$order = isset( $hamburger['block_order'] ) && is_array( $hamburger['block_order'] )
+			? $hamburger['block_order']
+			: array( 'logo', 'menu', 'social', 'text' );
+
+		$blocks = array();
+
+		if ( ! empty( $hamburger['block_logo'] ) && $brand ) {
+			$blocks['logo'] = '<div class="hfb-mobile-panel__block hfb-mobile-panel__block--logo">' . $brand . '</div>';
+		}
+
+		if ( ! empty( $hamburger['block_menu'] ) && $nav ) {
+			$blocks['menu'] = '<nav class="hfb-mobile-panel__block hfb-mobile-panel__block--menu hfb-mobile-panel__nav" aria-label="' . esc_attr( __( 'Mobil menü', 'qrms' ) ) . '">' . $nav . '</nav>';
+		}
+
+		if ( ! empty( $hamburger['block_social'] ) && $social ) {
+			$blocks['social'] = '<div class="hfb-mobile-panel__block hfb-mobile-panel__block--social">' . $social . '</div>';
+		}
+
+		if ( ! empty( $hamburger['block_text'] ) && '' !== trim( (string) $hamburger['text'] ) ) {
+			$blocks['text'] = '<div class="hfb-mobile-panel__block hfb-mobile-panel__block--text hfb-mobile-panel__text">' . wp_kses_post( $hamburger['text'] ) . '</div>';
+		}
 
 		ob_start();
 		?>
@@ -275,7 +373,7 @@ trait QRMS_HFB_Frontend {
 			<div class="hfb-mobile-panel__backdrop" tabindex="-1"></div>
 			<div class="hfb-mobile-panel__sheet" role="dialog" aria-modal="true" aria-label="<?php esc_attr_e( 'Mobil menü', 'qrms' ); ?>">
 				<div class="hfb-mobile-panel__topbar">
-					<div class="hfb-mobile-panel__brand"><?php echo $brand; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></div>
+					<span class="hfb-mobile-panel__topbar-spacer" aria-hidden="true"></span>
 					<button type="button" class="hfb-mobile-panel__close" aria-label="<?php esc_attr_e( 'Menüyü kapat', 'qrms' ); ?>">
 						<svg class="hfb-icon hfb-icon--close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
 					</button>
@@ -285,17 +383,18 @@ trait QRMS_HFB_Frontend {
 					<?php if ( $lang ) : ?>
 						<div class="hfb-mobile-panel__lang"><?php echo $lang; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></div>
 					<?php endif; ?>
-					<?php if ( $nav ) : ?>
-						<nav class="hfb-mobile-panel__nav" aria-label="<?php esc_attr_e( 'Mobil menü', 'qrms' ); ?>">
-							<?php echo $nav; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
-						</nav>
-					<?php endif; ?>
+					<?php
+					foreach ( $order as $key ) {
+						if ( isset( $blocks[ $key ] ) ) {
+							echo $blocks[ $key ]; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+						}
+					}
+					?>
 				</div>
 
-				<?php if ( $cta || $social ) : ?>
+				<?php if ( $cta ) : ?>
 					<div class="hfb-mobile-panel__footer">
 						<?php echo $cta; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
-						<?php echo $social; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 					</div>
 				<?php endif; ?>
 			</div>

@@ -1,7 +1,7 @@
 /**
  * Header Footer Builder — yönetim ekranı.
  *
- * İki iş yapar: sekme geçişi (sayfa yenilemeden) ve canlı önizleme.
+ * Üç iş: sekme geçişi, sekme-içi adım sihirbazı, canlı önizleme.
  *
  * Önizlemenin sözleşmesi basit tutuldu: istemci HİÇ stil/HTML üretmez,
  * formu olduğu gibi serileştirip sunucuya gönderir ve dönen HTML'i basar.
@@ -16,6 +16,7 @@
   var debounceTimer = null;
   var requestSeq = 0;
   var lastPayload = null;
+  var keepPanelOpen = false;
 
   /* ------------------------------------------------------------ Sekmeler */
 
@@ -37,8 +38,10 @@
       $(this).toggleClass('is-active', isActive).prop('hidden', !isActive);
     });
 
-    // Sekme, sayfa yenilenmeden değişir; adres çubuğu yine de güncellenir ki
-    // "Kaydet" sonrası aynı sekmeye dönülsün ve bağlantı paylaşılabilsin.
+    if (slug === 'hamburger') {
+      setPreviewMode('mobile');
+    }
+
     if (window.history && window.history.replaceState) {
       try {
         var url = new URL(window.location.href);
@@ -77,6 +80,72 @@
       var $target = $tabs.eq(next);
       activateTab($target.data('hfb-tab'));
       $target.trigger('focus');
+    });
+  }
+
+  /* -------------------------------------------------------- Adım sihirbazı */
+
+  /**
+   * Her sekme kendi adımlarını taşır. Kartlar DOM'da kalır (display:none);
+   * submit tüm adımların verisini gönderir — vitrin initVitrinStepper ile
+   * aynı sözleşme, ayrı "adım kaydet" yoktur.
+   */
+  function initSteppers() {
+    $('.hfb-tab-panel').each(function () {
+      var $panel = $(this);
+      var $steps = $panel.find('.hfb-step');
+
+      if (!$steps.length) {
+        return;
+      }
+
+      var slug = $panel.data('hfb-panel');
+      var toplam = $steps.length;
+      var mevcut = 1;
+      var $btns = $panel.find('.hfb-step-btn');
+      var $compact = $panel.find('[data-hfb-step-compact]');
+      var $prev = $panel.find('.hfb-step-prev');
+      var $next = $panel.find('.hfb-step-next');
+
+      function baslik(adimNo) {
+        return $steps.filter('[data-step="' + adimNo + '"]').data('step-title') || '';
+      }
+
+      function goster(adimNo) {
+        mevcut = Math.min(Math.max(adimNo, 1), toplam);
+
+        $steps.each(function () {
+          var no = parseInt($(this).data('step'), 10);
+          $(this).toggle(no === mevcut);
+        });
+
+        $btns.each(function () {
+          var no = parseInt($(this).data('step-target'), 10);
+          $(this)
+            .toggleClass('is-active', no === mevcut)
+            .toggleClass('is-done', no < mevcut)
+            .attr('aria-selected', no === mevcut ? 'true' : 'false');
+        });
+
+        $compact.text('Adım ' + mevcut + '/' + toplam + ': ' + baslik(mevcut));
+        $prev.prop('disabled', mevcut === 1);
+        $next.toggle(mevcut < toplam);
+      }
+
+      $btns.on('click', function () {
+        goster(parseInt($(this).data('step-target'), 10));
+      });
+
+      $prev.on('click', function () {
+        goster(mevcut - 1);
+      });
+
+      $next.on('click', function () {
+        goster(mevcut + 1);
+      });
+
+      goster(1);
+      $panel.data('hfb-stepper-slug', slug);
     });
   }
 
@@ -130,14 +199,6 @@
 
   var DESKTOP_CANVAS = 1100;
 
-  /**
-   * Masaüstü önizlemesini panele sığdırır.
-   *
-   * Tuval 1100px basılır (ön yüz kırılımları kap genişliğine bağlı, bu
-   * yüzden dar bir panelde tuval küçültülmeden masaüstü yerleşimi hiç
-   * görünmezdi). `scale` yalnızca görseldir; sahnenin yüksekliği de aynı
-   * oranla kısaltılır ki altında boşluk kalmasın.
-   */
   function fitPreview() {
     var stage = document.getElementById('hfb-preview-stage');
     var canvas = document.getElementById('hfb-preview-canvas');
@@ -157,6 +218,70 @@
 
     canvas.style.transform = scale < 1 ? 'scale(' + scale + ')' : '';
     stage.style.height = Math.ceil(canvas.offsetHeight * scale) + 'px';
+  }
+
+  function setPreviewMode(mode) {
+    var $stage = $('#hfb-preview-stage');
+    var resolved = mode === 'tablet' ? 'tablet' : mode === 'mobile' ? 'mobile' : 'desktop';
+
+    $stage.attr('data-viewport', resolved);
+    $('.hfb-preview__mode-btn')
+      .removeClass('is-active')
+      .filter('[data-preview-mode="' + (resolved === 'tablet' ? 'desktop' : resolved) + '"]')
+      .addClass('is-active');
+
+    if (resolved === 'tablet') {
+      $('.hfb-preview__mode-btn').removeClass('is-active');
+    }
+
+    fitPreview();
+  }
+
+  function bootPreviewHeader() {
+    var stage = document.getElementById('hfb-preview-stage');
+
+    if (typeof window.qrmsHfbBoot === 'function' && stage) {
+      window.qrmsHfbBoot(stage);
+    }
+  }
+
+  function setPreviewPanelOpen(open) {
+    var stage = document.getElementById('hfb-preview-stage');
+    var $btn = $('.hfb-preview__open-panel');
+    var i18n = typeof HFB_ADMIN !== 'undefined' && HFB_ADMIN.i18n ? HFB_ADMIN.i18n : {};
+
+    keepPanelOpen = !!open;
+
+    if (!stage) {
+      return;
+    }
+
+    var wrap = stage.querySelector('.hfb-header-wrap');
+    var toggle = wrap ? wrap.querySelector('.hfb-header__toggle') : null;
+    var panel = wrap ? wrap.querySelector('.hfb-mobile-panel') : null;
+
+    $(stage).toggleClass('is-panel-open', keepPanelOpen);
+
+    if (keepPanelOpen) {
+      setPreviewMode('mobile');
+      if (panel) {
+        panel.classList.add('is-open');
+        panel.setAttribute('aria-hidden', 'false');
+      }
+      if (toggle) {
+        toggle.setAttribute('aria-expanded', 'true');
+      }
+      $btn.text(i18n.closePanel || 'Önizlemede Kapat');
+    } else if (panel) {
+      panel.classList.remove('is-open');
+      panel.setAttribute('aria-hidden', 'true');
+      if (toggle) {
+        toggle.setAttribute('aria-expanded', 'false');
+      }
+      $btn.text(i18n.openPanel || 'Önizlemede Aç');
+    }
+
+    fitPreview();
   }
 
   function refreshPreview(force) {
@@ -190,7 +315,7 @@
     })
       .done(function (response) {
         if (seq !== requestSeq) {
-          return; // Gecikmiş yanıt: daha tazesi zaten basıldı.
+          return;
         }
 
         if (!response || !response.success || !response.data) {
@@ -200,6 +325,12 @@
 
         $stage.find('[data-preview="header"]').html(response.data.header || '');
         $stage.find('[data-preview="footer"]').html(response.data.footer || '');
+        bootPreviewHeader();
+
+        if (keepPanelOpen) {
+          setPreviewPanelOpen(true);
+        }
+
         fitPreview();
         setStatus('');
       })
@@ -256,6 +387,83 @@
     });
   }
 
+  /* -------------------------------------------------------- Renk seçici */
+
+  function initColorPickers() {
+    var $pickers = $('.hfb-color-picker');
+
+    if (!$pickers.length || typeof $.fn.wpColorPicker !== 'function') {
+      return;
+    }
+
+    $pickers.wpColorPicker({
+      change: function () {
+        debouncedPreview();
+      },
+      clear: function () {
+        debouncedPreview();
+      }
+    });
+  }
+
+  /* ------------------------------------------------- Logo yükseklik auto */
+
+  function syncLogoHeightAuto($box) {
+    var target = $box.data('hfb-height');
+    var on = $box.is(':checked');
+    var $row = $box.closest('.hfb-size-group').find('#' + target).closest('.hfb-logo-height-row');
+
+    if (!$row.length) {
+      $row = $('#' + target).closest('.hfb-logo-height-row');
+    }
+
+    $row.toggleClass('is-disabled', on);
+    $row.find('input[type="range"]').prop('disabled', on);
+  }
+
+  function initLogoHeightAuto() {
+    $('.hfb-logo-height-auto').each(function () {
+      syncLogoHeightAuto($(this));
+    });
+
+    $(document).on('change', '.hfb-logo-height-auto', function () {
+      syncLogoHeightAuto($(this));
+    });
+  }
+
+  /* --------------------------------------------- Hamburger blok sıralama */
+
+  function writeBlockOrder() {
+    var order = [];
+
+    $('#hfb-block-sortable .hfb-block-item').each(function () {
+      var key = $(this).data('block');
+      if (key) {
+        order.push(key);
+      }
+    });
+
+    $('#hfb_hamburger_block_order').val(order.join(','));
+  }
+
+  function initBlockSortable() {
+    var $list = $('#hfb-block-sortable');
+
+    if (!$list.length || typeof $.fn.sortable !== 'function') {
+      return;
+    }
+
+    $list.sortable({
+      handle: '.hfb-block-drag',
+      placeholder: 'hfb-block-item',
+      axis: 'y',
+      update: function () {
+        writeBlockOrder();
+        debouncedPreview();
+      }
+    });
+  }
+
   /* ------------------------------------------------------------- Başlat */
 
   $(function () {
@@ -264,15 +472,35 @@
     }
 
     initTabs();
+    initSteppers();
     initMediaUploader();
+    initColorPickers();
+    initLogoHeightAuto();
+    initBlockSortable();
+    bootPreviewHeader();
 
-    // Olaylar `document` üzerinde dinlenir: gizli sekmelerdeki alanlar ve
-    // sonradan basılan düğümler de ilk andan itibaren önizlemeyi tetikler.
     $(document).on('input change', '#hfb-settings-form .hfb-preview-trigger', debouncedPreview);
 
-    $(document).on('change', '#hfb-preview-viewport', function () {
-      $('#hfb-preview-stage').attr('data-viewport', $(this).val());
-      fitPreview();
+    $(document).on('focus input', '[data-hfb-preview-bp] .hfb-preview-trigger', function () {
+      var bp = $(this).closest('[data-hfb-preview-bp]').data('hfb-preview-bp');
+      if (bp) {
+        setPreviewMode(bp);
+      }
+    });
+
+    $(document).on('click', '.hfb-preview__mode-btn', function (e) {
+      e.preventDefault();
+      setPreviewMode($(this).data('preview-mode'));
+    });
+
+    $(document).on('click', '.hfb-preview__open-panel', function (e) {
+      e.preventDefault();
+      setPreviewPanelOpen(!keepPanelOpen);
+    });
+
+    $(document).on('click', '.hfb-align-btn', function () {
+      $(this).closest('.hfb-align-group').find('.hfb-align-btn').removeClass('is-selected');
+      $(this).addClass('is-selected');
     });
 
     $(window).on('resize', fitPreview);

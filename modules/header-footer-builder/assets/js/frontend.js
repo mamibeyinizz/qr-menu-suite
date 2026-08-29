@@ -16,6 +16,10 @@
       return true;
     }
 
+    if (wrap.closest && wrap.closest('#hfb-preview-stage')) {
+      return true;
+    }
+
     try {
       return !!(window.elementorFrontend &&
         typeof window.elementorFrontend.isEditMode === 'function' &&
@@ -190,4 +194,6 @@
 
     boot(document);
   });
+
+  window.qrmsHfbBoot = boot;
 })();
