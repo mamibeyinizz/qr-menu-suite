@@ -1107,23 +1107,25 @@
 
 /*
  * Mobilde garson/hesap (veya oturumsuz uyarı) ekranın altına sabitlenir.
- * Viewport media query bilinçli: `position: fixed` kap genişliğine değil
- * gerçek ekrana bağlanır. Masaüstü (≥768px) akışta kalır.
+ * Referans: .qrs-bar / .qrs-btn (qrservis_buttons_shortcode).
+ * Viewport media query bilinçli: masaüstü (≥768px) footer akışında kalır.
  * Yönetim önizlemesi (.wp-admin) viewport'u ele geçirmesin diye hariç.
  */
 @media (max-width: 767px) {
   .hfb-footer__call-wrap:has(.qmo-cagri-bar),
   .hfb-footer__call-wrap:has(.hfb-footer__call--warn) {
-    backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    background: var(--hfb-footer-bg, rgba(10, 10, 12, 0.92));
-    border-top: 1px solid var(--hfb-border, rgba(201, 168, 76, 0.28));
+    backdrop-filter: blur(12px);
+    background: rgba(10, 10, 12, 0.82);
+    border-top: 1px solid rgba(201, 168, 76, 0.28);
     bottom: 0;
     box-shadow: 0 -6px 22px rgba(0, 0, 0, 0.35);
+    display: flex;
+    gap: 10px;
     left: 0;
     margin: 0;
     max-width: none;
-    padding: 0.6rem 0.9rem calc(0.6rem + env(safe-area-inset-bottom, 0px));
+    padding: 8px 12px calc(8px + env(safe-area-inset-bottom, 0px));
     position: fixed;
     right: 0;
     z-index: 9999;
@@ -1131,26 +1133,106 @@
 
   .hfb-footer__call-wrap:has(.qmo-cagri-bar) .hfb-footer__call,
   .hfb-footer__call-wrap:has(.hfb-footer__call--warn) .hfb-footer__call {
+    display: flex;
+    flex: 1 1 auto;
+    gap: 10px;
+    justify-content: stretch;
+    min-width: 0;
     width: 100%;
   }
 
   .hfb-footer__call-wrap:has(.qmo-cagri-bar) .hfb-footer__call-btn {
+    align-items: center;
+    background-blend-mode: overlay;
+    background-color: var(--hfb-btn-bg, var(--hfb-gold));
+    background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(0, 0, 0, 0.18));
+    border: 1px solid color-mix(in srgb, var(--hfb-btn-bg, var(--hfb-gold)) 50%, transparent);
+    border-radius: 12px;
+    box-shadow: none;
+    box-sizing: border-box;
+    color: var(--hfb-btn-color, var(--hfb-ink));
+    display: inline-flex;
+    filter: none;
     flex: 1 1 0;
+    font-family: var(--hfb-btn-font, inherit);
+    font-size: var(--hfb-btn-size, 14px);
+    font-weight: var(--hfb-btn-weight, 600);
+    gap: 8px;
+    height: 44px;
+    justify-content: center;
+    letter-spacing: 0.2px;
+    line-height: 1;
+    min-height: 44px;
     min-width: 0;
+    padding: 0 12px;
+    text-decoration: none;
+    transform: none;
+    transition: transform 0.18s ease, border-color 0.2s ease, background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+    white-space: nowrap;
+  }
+
+  .hfb-footer__call-wrap:has(.qmo-cagri-bar) .hfb-footer__call-btn .hfb-icon--call {
+    color: currentColor;
+    flex-shrink: 0;
+    height: 17px;
+    width: 17px;
+  }
+
+  .hfb-footer__call-wrap:has(.qmo-cagri-bar) .hfb-footer__call-btn:active {
+    transform: scale(0.97);
+  }
+
+  .hfb-footer__call-wrap:has(.qmo-cagri-bar) .hfb-footer__call-btn.is-disabled,
+  .hfb-footer__call-wrap:has(.qmo-cagri-bar) .hfb-footer__call-btn:disabled {
+    box-shadow: none;
+    cursor: not-allowed;
+    filter: none;
+    opacity: 0.5;
+    pointer-events: none;
+    transform: none;
+  }
+
+  .hfb-footer__call-wrap:has(.qmo-cagri-bar) .hfb-footer__call-btn.is-success {
+    background-blend-mode: normal;
+    background-color: #1b5e20;
+    background-image: linear-gradient(180deg, #2e7d32, #1b5e20);
+    border-color: #66bb6a;
+    color: #fff;
+  }
+
+  @media (hover: hover) {
+    .hfb-footer__call-wrap:has(.qmo-cagri-bar) .hfb-footer__call-btn:hover {
+      background-color: var(--hfb-btn-bg, var(--hfb-gold));
+      background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.28), rgba(0, 0, 0, 0.08));
+      border-color: color-mix(in srgb, var(--hfb-btn-bg, var(--hfb-gold)) 85%, #fff);
+      box-shadow: 0 6px 18px color-mix(in srgb, var(--hfb-btn-bg, var(--hfb-gold)) 35%, transparent);
+      color: var(--hfb-btn-color, var(--hfb-ink));
+      filter: none;
+      transform: none;
+    }
+
+    .hfb-footer__call-wrap:has(.qmo-cagri-bar) .hfb-footer__call-btn.is-success:hover {
+      background-image: linear-gradient(180deg, #2e7d32, #1b5e20);
+      border-color: #66bb6a;
+      box-shadow: 0 6px 18px rgba(46, 125, 50, 0.35);
+      color: #fff;
+    }
   }
 
   body:has(.hfb-footer__call-wrap .qmo-cagri-bar):not(.wp-admin),
   body:has(.hfb-footer__call-wrap .hfb-footer__call--warn):not(.wp-admin) {
-    padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(66px + env(safe-area-inset-bottom, 0px));
   }
 
   .wp-admin .hfb-footer__call-wrap:has(.qmo-cagri-bar),
   .wp-admin .hfb-footer__call-wrap:has(.hfb-footer__call--warn) {
-    backdrop-filter: none;
     -webkit-backdrop-filter: none;
+    backdrop-filter: none;
     background: transparent;
     border-top: 0;
     box-shadow: none;
+    display: block;
+    gap: 0;
     margin: 0 auto;
     max-width: 1200px;
     padding: 0 1.25rem 1.5rem;
@@ -1313,7 +1395,8 @@
   .hfb-header-wrap .hfb-social__link,
   .hfb-footer-wrap .hfb-social__link,
   .hfb-footer-wrap .hfb-btn,
-  .hfb-footer-wrap .hfb-btn:hover {
+  .hfb-footer-wrap .hfb-btn:hover,
+  .hfb-footer-wrap .hfb-btn:active {
     transition: none;
     transform: none;
   }
