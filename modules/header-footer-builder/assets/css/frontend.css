@@ -1171,25 +1171,13 @@
 }
 
 /* Panel içi logo, header'daki logo boyutundan bağımsız ölçülenir.
-   Mobil set aşağıdaki kırılımda bunu ezer; bu yüzden masaüstü kuralı
-   kırılımdan ÖNCE gelir (ikisi de tek sınıf, sıralama belirleyici). */
+
+   Panel yalnızca mobilde açılır (masaüstünde hamburger ikonu basılmaz), bu
+   yüzden logo ve yazı ölçüleri TEK settir; kırılıma göre ezen ikinci bir
+   kural yoktur. */
 .hfb-mobile-panel .hfb-brand__img {
   height: var(--hfb-panel-logo-h, auto);
   width: var(--hfb-panel-logo-w, 120px);
-}
-
-/* Hamburger panel metinleri: gerçek sitede viewport, önizlemede sahne. */
-@media (max-width: 768px) {
-  .hfb-mobile-panel__sheet {
-    font-size: var(--hfb-panel-font-size-mobile, 16px);
-    font-weight: var(--hfb-panel-font-weight-m, 500);
-    text-align: var(--hfb-panel-font-align-m, center);
-  }
-
-  .hfb-mobile-panel .hfb-brand__img {
-    height: var(--hfb-panel-logo-h-m, auto);
-    width: var(--hfb-panel-logo-w-m, 120px);
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {

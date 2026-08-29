@@ -834,46 +834,24 @@ trait QRMS_HFB_Admin {
 
 			<h3 class="hfb-section-title"><?php esc_html_e( 'Panel içi logo boyutu', 'qrms' ); ?></h3>
 			<p class="description">
-				<?php esc_html_e( 'Panelin logo bloğundaki görselin ölçüsü. Header sekmesindeki logo boyutundan bağımsızdır — biri değişince diğeri değişmez.', 'qrms' ); ?>
+				<?php esc_html_e( 'Panelin logo bloğundaki görselin ölçüsü. Header sekmesindeki logo boyutundan bağımsızdır — biri değişince diğeri değişmez. Panel yalnızca mobilde açıldığı için tek ölçü yeterlidir; masaüstü/mobil ayrımı yoktur.', 'qrms' ); ?>
 			</p>
 
-			<h4 class="hfb-section-sub"><?php esc_html_e( 'Masaüstü', 'qrms' ); ?></h4>
-			<div class="hfb-size-group" data-hfb-preview-bp="desktop">
-				<?php
-				$this->hfb_size_row(
-					'hfb_hamburger_logo_width_desktop',
-					'hfb_hamburger_logo_width_desktop',
-					(int) $opts['logo_width_desktop'],
-					self::LOGO_WIDTH_MIN,
-					self::LOGO_WIDTH_MAX,
-					__( 'Logo genişlik', 'qrms' ),
-					__( 'Geniş ekranda panel logosunun genişliği.', 'qrms' )
-				);
-				$this->hfb_logo_height_block(
-					'desktop',
-					(int) $opts['logo_height_desktop'],
-					! empty( $opts['logo_height_auto_desktop'] ),
-					'hfb_hamburger'
-				);
-				?>
-			</div>
-
-			<h4 class="hfb-section-sub"><?php esc_html_e( 'Mobil', 'qrms' ); ?></h4>
 			<div class="hfb-size-group" data-hfb-preview-bp="mobile">
 				<?php
 				$this->hfb_size_row(
-					'hfb_hamburger_logo_width_mobile',
-					'hfb_hamburger_logo_width_mobile',
-					(int) $opts['logo_width_mobile'],
-					self::LOGO_WIDTH_MIN,
+					'hfb_hamburger_logo_width',
+					'hfb_hamburger_logo_width',
+					(int) $opts['logo_width'],
+					self::PANEL_LOGO_WIDTH_MIN,
 					self::LOGO_WIDTH_MAX,
 					__( 'Logo genişlik', 'qrms' ),
-					__( 'Telefonda panel logosunun genişliği. Masaüstünden bağımsızdır.', 'qrms' )
+					__( 'Panel logosunun genişliği. Header logosundan daha küçük değerler seçilebilir.', 'qrms' )
 				);
 				$this->hfb_logo_height_block(
-					'mobile',
-					(int) $opts['logo_height_mobile'],
-					! empty( $opts['logo_height_auto_mobile'] ),
+					'',
+					(int) $opts['logo_height'],
+					! empty( $opts['logo_height_auto'] ),
 					'hfb_hamburger'
 				);
 				?>
@@ -962,7 +940,7 @@ trait QRMS_HFB_Admin {
 		<div class="qrms-card hfb-step" data-step="4" data-step-title="<?php esc_attr_e( 'Yazı Tipi ve Renk', 'qrms' ); ?>" style="display:none;">
 			<h2 class="qrms-card-title"><?php esc_html_e( '4. Yazı Tipi ve Renk', 'qrms' ); ?></h2>
 			<p class="description">
-				<?php esc_html_e( 'Hamburger panelindeki tüm metinler — menü bağlantıları, metin bloğu — bu ayarları kullanır. Yazı tipi ve renk tüm cihazlarda ortaktır; boyut, kalınlık ve hizalama masaüstü ile mobil için ayrıdır.', 'qrms' ); ?>
+				<?php esc_html_e( 'Hamburger panelindeki tüm metinler — menü bağlantıları, metin bloğu — bu ayarları kullanır. Panel yalnızca mobilde açıldığı için tek bir ayar seti vardır; masaüstü/mobil ayrımı yoktur.', 'qrms' ); ?>
 			</p>
 
 			<h3 class="hfb-section-title"><?php esc_html_e( 'Genel', 'qrms' ); ?></h3>
@@ -986,60 +964,31 @@ trait QRMS_HFB_Admin {
 			);
 			?>
 
-			<h3 class="hfb-section-title"><?php esc_html_e( 'Masaüstü', 'qrms' ); ?></h3>
-			<div class="hfb-size-group" data-hfb-preview-bp="desktop">
+			<h3 class="hfb-section-title"><?php esc_html_e( 'Boyut, kalınlık ve hizalama', 'qrms' ); ?></h3>
+			<div class="hfb-size-group" data-hfb-preview-bp="mobile">
 				<?php
 				$this->hfb_size_row(
-					'hfb_hamburger_font_size_desktop',
-					'hfb_hamburger_font_size_desktop',
-					(int) $opts['font_size_desktop'],
+					'hfb_hamburger_font_size',
+					'hfb_hamburger_font_size',
+					(int) $opts['font_size'],
 					self::FONT_SIZE_MIN,
 					self::FONT_SIZE_MAX,
 					__( 'Yazı boyutu', 'qrms' ),
-					__( 'Geniş ekranda panel metinlerinin punto değeri.', 'qrms' )
+					__( 'Panel metinlerinin punto değeri.', 'qrms' )
 				);
 				$this->hfb_weight_row(
-					'hfb_hamburger_font_weight_desktop',
-					'hfb_hamburger_font_weight_desktop',
-					(int) $opts['font_weight_desktop'],
+					'hfb_hamburger_font_weight',
+					'hfb_hamburger_font_weight',
+					(int) $opts['font_weight'],
 					__( 'Yazı kalınlığı', 'qrms' ),
 					__( '400 sakin, 600–700 daha vurgulu durur.', 'qrms' )
 				);
 				$this->hfb_align_row(
-					'hfb_hamburger_font_align_desktop',
-					'hfb_hamburger_font_align_desktop',
-					(string) $opts['font_align_desktop'],
+					'hfb_hamburger_font_align',
+					'hfb_hamburger_font_align',
+					(string) $opts['font_align'],
 					__( 'Metin hizalama', 'qrms' ),
 					__( 'Panel metinlerinin yaslanması.', 'qrms' )
-				);
-				?>
-			</div>
-
-			<h3 class="hfb-section-title"><?php esc_html_e( 'Mobil', 'qrms' ); ?></h3>
-			<div class="hfb-size-group" data-hfb-preview-bp="mobile">
-				<?php
-				$this->hfb_size_row(
-					'hfb_hamburger_font_size_mobile',
-					'hfb_hamburger_font_size_mobile',
-					(int) $opts['font_size_mobile'],
-					self::FONT_SIZE_MOBILE_MIN,
-					self::FONT_SIZE_MOBILE_MAX,
-					__( 'Yazı boyutu', 'qrms' ),
-					__( 'Telefonda panel metinlerinin punto değeri. Masaüstünden bağımsızdır.', 'qrms' )
-				);
-				$this->hfb_weight_row(
-					'hfb_hamburger_font_weight_mobile',
-					'hfb_hamburger_font_weight_mobile',
-					(int) $opts['font_weight_mobile'],
-					__( 'Yazı kalınlığı', 'qrms' ),
-					__( 'Küçük boyutta bir kademe kalın okunurluğu artırır.', 'qrms' )
-				);
-				$this->hfb_align_row(
-					'hfb_hamburger_font_align_mobile',
-					'hfb_hamburger_font_align_mobile',
-					(string) $opts['font_align_mobile'],
-					__( 'Metin hizalama', 'qrms' ),
-					__( 'Dar ekranda panel metinlerinin yaslanması.', 'qrms' )
 				);
 				?>
 			</div>
@@ -1349,15 +1298,17 @@ trait QRMS_HFB_Admin {
 	/**
 	 * Logo yüksekliği: otomatik oran kutusu + px slider.
 	 *
-	 * @param string $bp     desktop|tablet|mobile.
+	 * @param string $bp     desktop|tablet|mobile; boş dize = kırılımsız tek
+	 *                       set (hamburger paneli — yalnızca mobilde açılır).
 	 * @param int    $height Mevcut yükseklik.
 	 * @param bool   $auto   Otomatik oran açık mı.
 	 * @param string $prefix Form alanı öneki (hfb_header / hfb_footer).
 	 * @return void
 	 */
 	private function hfb_logo_height_block( $bp, $height, $auto, $prefix = 'hfb_header' ) {
-		$auto_id  = $prefix . '_logo_height_auto_' . $bp;
-		$range_id = $prefix . '_logo_height_' . $bp;
+		$son      = '' !== (string) $bp ? '_' . $bp : '';
+		$auto_id  = $prefix . '_logo_height_auto' . $son;
+		$range_id = $prefix . '_logo_height' . $son;
 		$shown    = $auto ? self::LOGO_HEIGHT_MIN : max( self::LOGO_HEIGHT_MIN, (int) $height );
 		?>
 		<div class="qrms-field">

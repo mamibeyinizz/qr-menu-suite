@@ -69,6 +69,16 @@ class QRMS_Header_Footer_Builder {
 	const LOGO_WIDTH_MAX = 320;
 
 	/**
+	 * Hamburger panelindeki logo genişlik alt sınırı (px).
+	 *
+	 * Header logosu bir marka bloğudur ve 80px'in altında okunmaz; panel
+	 * logosu ise tek sütunlu bir listenin başında durur ve çok daha küçük
+	 * kullanılmak istenir. Bu yüzden alt sınır yalnızca panel için
+	 * gevşetilir — header/footer LOGO_WIDTH_MIN'i kullanmaya devam eder.
+	 */
+	const PANEL_LOGO_WIDTH_MIN = 50;
+
+	/**
 	 * Logo yükseklik aralığı (px). 0 = otomatik oran.
 	 */
 	const LOGO_HEIGHT_MIN = 24;
@@ -91,7 +101,11 @@ class QRMS_Header_Footer_Builder {
 	const PADDING_Y_MOBILE_MAX = 32;
 
 	/**
-	 * Hamburger panel yazı boyutu aralığı (px).
+	 * Yazı boyutu aralıkları (px).
+	 *
+	 * MOBILE seti footer'ın masaüstü/mobil ayrımı içindir. Hamburger paneli
+	 * yalnızca mobilde açıldığı için tek bir sete indirgenmiştir ve
+	 * FONT_SIZE_MIN/MAX kullanır.
 	 */
 	const FONT_SIZE_MIN         = 12;
 	const FONT_SIZE_MAX         = 32;
@@ -311,12 +325,17 @@ class QRMS_Header_Footer_Builder {
 			),
 			'font_family'          => 'Playfair Display',
 			'font_color'           => '#f5f0e8',
-			'font_size_desktop'    => 17,
-			'font_weight_desktop'  => 500,
-			'font_align_desktop'   => 'center',
-			'font_size_mobile'     => 16,
-			'font_weight_mobile'   => 500,
-			'font_align_mobile'    => 'center',
+
+			/*
+			 * Panel yalnızca mobilde açılır: header'da masaüstü hamburger
+			 * ikonu yoktur. Bu yüzden yazı ve logo ölçüleri TEK settir —
+			 * masaüstü/mobil ayrımı kaldırılmıştır (eski `*_desktop` /
+			 * `*_mobile` kayıtları migrate_hamburger_breakpoints() ile
+			 * buraya birleşir).
+			 */
+			'font_size'            => 16,
+			'font_weight'          => 500,
+			'font_align'           => 'center',
 
 			/*
 			 * Görünüm adımı. Varsayılanlar, adım eklenmeden ÖNCEKİ sabit
@@ -328,16 +347,13 @@ class QRMS_Header_Footer_Builder {
 			 * - Sosyal ikon zemini eskiden hiç boyanmıyordu; boş dize
 			 *   "şeffaf" demektir ve CSS değişkeni hiç basılmaz.
 			 * - Panel logosu eskiden header'ın mobil logo ölçüsünü
-			 *   (120px + otomatik oran) her kırılımda kullanıyordu.
+			 *   (120px + otomatik oran) kullanıyordu.
 			 */
 			'panel_bg_image'       => 0,
 			'panel_bg_opacity'     => 100,
-			'logo_width_desktop'   => 120,
-			'logo_height_desktop'  => 0,
-			'logo_height_auto_desktop' => 1,
-			'logo_width_mobile'    => 120,
-			'logo_height_mobile'   => 0,
-			'logo_height_auto_mobile'  => 1,
+			'logo_width'           => 120,
+			'logo_height'          => 0,
+			'logo_height_auto'     => 1,
 			'menu_link_color'      => '#f5f0e8',
 			'menu_hover_color'     => '#c9a84c',
 			'menu_divider_color'   => '#c9a84c',

@@ -311,12 +311,10 @@ trait QRMS_HFB_Frontend {
 			'--hfb-close-color'            => (string) $hamburger['close_icon_color'],
 			'--hfb-panel-font'             => $this->font_stack( $hamburger['font_family'] ),
 			'--hfb-panel-font-color'       => (string) $hamburger['font_color'],
-			'--hfb-panel-font-size'        => (int) $hamburger['font_size_desktop'] . 'px',
-			'--hfb-panel-font-weight'      => (string) (int) $hamburger['font_weight_desktop'],
-			'--hfb-panel-font-align'       => (string) $hamburger['font_align_desktop'],
-			'--hfb-panel-font-size-mobile' => (int) $hamburger['font_size_mobile'] . 'px',
-			'--hfb-panel-font-weight-m'    => (string) (int) $hamburger['font_weight_mobile'],
-			'--hfb-panel-font-align-m'     => (string) $hamburger['font_align_mobile'],
+			// Panel yalnızca mobilde açılır: tek yazı seti, kırılım yok.
+			'--hfb-panel-font-size'        => (int) $hamburger['font_size'] . 'px',
+			'--hfb-panel-font-weight'      => (string) (int) $hamburger['font_weight'],
+			'--hfb-panel-font-align'       => (string) $hamburger['font_align'],
 		);
 
 		return $this->css_vars_string( array_merge( $vars, $this->panel_appearance_css_vars( $hamburger ) ) );
@@ -333,14 +331,12 @@ trait QRMS_HFB_Frontend {
 	 * @return array<string,string>
 	 */
 	private function panel_appearance_css_vars( $hamburger ) {
-		$logo_h        = ! empty( $hamburger['logo_height_auto_desktop'] ) ? 'auto' : (int) $hamburger['logo_height_desktop'] . 'px';
-		$logo_h_mobile = ! empty( $hamburger['logo_height_auto_mobile'] ) ? 'auto' : (int) $hamburger['logo_height_mobile'] . 'px';
+		// Panel logosu tek settir; kırılıma göre ikinci bir ölçü yoktur.
+		$logo_h = ! empty( $hamburger['logo_height_auto'] ) ? 'auto' : (int) $hamburger['logo_height'] . 'px';
 
 		$vars = array(
-			'--hfb-panel-logo-w'        => (int) $hamburger['logo_width_desktop'] . 'px',
+			'--hfb-panel-logo-w'        => (int) $hamburger['logo_width'] . 'px',
 			'--hfb-panel-logo-h'        => $logo_h,
-			'--hfb-panel-logo-w-m'      => (int) $hamburger['logo_width_mobile'] . 'px',
-			'--hfb-panel-logo-h-m'      => $logo_h_mobile,
 			'--hfb-panel-menu-color'    => (string) $hamburger['menu_link_color'],
 			'--hfb-panel-menu-hover'    => (string) $hamburger['menu_hover_color'],
 			'--hfb-panel-menu-divider'  => (string) $hamburger['menu_divider_color'],

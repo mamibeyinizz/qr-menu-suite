@@ -691,6 +691,61 @@ function apply_filters( $hook, $value ) {
 }
 
 /**
+ * Eylem tetikleme — kayıtlı callback'leri çağırır ve tetiklemeyi not eder.
+ *
+ * @param string $hook Eylem adı.
+ * @param mixed  ...$args Argümanlar.
+ * @return void
+ */
+function do_action( $hook, ...$args ) {
+	$GLOBALS['qrms_test']['fired_actions'][] = $hook;
+
+	if ( empty( $GLOBALS['qrms_test']['actions'][ $hook ] ) ) {
+		return;
+	}
+
+	foreach ( $GLOBALS['qrms_test']['actions'][ $hook ] as $callback ) {
+		call_user_func_array( $callback, $args );
+	}
+}
+
+/**
+ * Nesne önbelleğini tümüyle boşaltır (testte yalnızca not edilir).
+ *
+ * @return bool
+ */
+function wp_cache_flush() {
+	$GLOBALS['qrms_test']['cache_flush'][] = '*';
+
+	return true;
+}
+
+/**
+ * Nesne önbelleği arka ucunun yeteneği.
+ *
+ * Varsayılan WordPress kurulumu (kalıcı obje önbelleği yok) grup bazlı
+ * temizliği desteklemez; test de bu varsayılanı taklit eder.
+ *
+ * @param string $feature Yetenek adı.
+ * @return bool
+ */
+function wp_cache_supports( $feature ) {
+	return ! empty( $GLOBALS['qrms_test']['cache_supports'][ $feature ] );
+}
+
+/**
+ * Tek bir önbellek grubunu boşaltır (testte yalnızca not edilir).
+ *
+ * @param string $group Grup adı.
+ * @return bool
+ */
+function wp_cache_flush_group( $group ) {
+	$GLOBALS['qrms_test']['cache_flush'][] = (string) $group;
+
+	return true;
+}
+
+/**
  * Nonce üretimi (testte eylem adına bağlı, öngörülebilir bir değer).
  *
  * @param string $action Eylem adı.
