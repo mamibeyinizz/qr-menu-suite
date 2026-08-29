@@ -2217,6 +2217,129 @@ qrms_test(
 );
 
 /* ---------------------------------------------------------------------------
+ * 6b-2. Öne Çıkan Slider — görünüm ayarları
+ *
+ * QMO_Slider_Settings WordPress'e bağımlılığı olmayan saf dönüşümler
+ * içerir (checkbox → 0/1, renk → hex, font → beyaz liste). Kısa kod ve
+ * admin sihirbazı bu sınıfı okur; option hiç yoksa eski görünüm korunur.
+ * ------------------------------------------------------------------------ */
+
+require_once QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/class-slider-settings.php';
+
+echo "\nÖne Çıkan Slider — görünüm ayarları\n";
+
+qrms_test(
+	'slider varsayılanları mevcut görünümü korur',
+	function () {
+		$v = QMO_Slider_Settings::varsayilanlar();
+
+		qrms_assert_same( 1, $v['show_nav'], 'oklar açık' );
+		qrms_assert_same( 1, $v['show_title'], 'başlık açık' );
+		qrms_assert_same( 'Playfair Display', $v['title_font'], 'Playfair' );
+		qrms_assert_same( '#e8c766', $v['title_color'], 'gold-soft' );
+		qrms_assert_same( 28, $v['title_size'], 'masaüstü punto' );
+		qrms_assert_same( 18, $v['title_size_mobile'], 'mobil punto' );
+		qrms_assert_same( 600, $v['title_weight'], 'semibold' );
+		qrms_assert_same( 'center', $v['title_align'], 'ortalı' );
+	}
+);
+
+qrms_test(
+	'slider sanitize: checkbox kapalı 0, açık 1 olur',
+	function () {
+		$kapali = QMO_Slider_Settings::sanitize( array() );
+		qrms_assert_same( 0, $kapali['show_nav'], 'ok kapalı' );
+		qrms_assert_same( 0, $kapali['show_title'], 'başlık kapalı' );
+
+		$acik = QMO_Slider_Settings::sanitize( array( 'show_nav' => '1', 'show_title' => 'on' ) );
+		qrms_assert_same( 1, $acik['show_nav'], 'ok açık' );
+		qrms_assert_same( 1, $acik['show_title'], 'başlık açık' );
+	}
+);
+
+qrms_test(
+	'slider sanitize: renk, font, punto, kalınlık ve hizalama temizlenir',
+	function () {
+		$temiz = QMO_Slider_Settings::sanitize(
+			array(
+				'title_color'       => 'red',
+				'title_font'        => 'Comic Sans',
+				'title_size'        => 999,
+				'title_size_mobile' => 1,
+				'title_weight'      => 850,
+				'title_align'       => 'justify',
+			)
+		);
+
+		qrms_assert_same( '#e8c766', $temiz['title_color'], 'geçersiz renk varsayılana düşer' );
+		qrms_assert_same( 'Playfair Display', $temiz['title_font'], 'bilinmeyen font Playfair\'e düşer' );
+		qrms_assert_same( QMO_Slider_Settings::MAX_TITLE_SIZE, $temiz['title_size'], 'masaüstü üst sınır' );
+		qrms_assert_same( QMO_Slider_Settings::MIN_TITLE_SIZE_MOBILE, $temiz['title_size_mobile'], 'mobil alt sınır' );
+		qrms_assert_same( 600, $temiz['title_weight'], 'kalınlık varsayılana düşer' );
+		qrms_assert_same( 'center', $temiz['title_align'], 'hizalama varsayılana düşer' );
+
+		$gecerli = QMO_Slider_Settings::sanitize(
+			array(
+				'title_color'       => '#c9a84c',
+				'title_font'        => 'Manrope',
+				'title_size'        => 22,
+				'title_size_mobile' => 16,
+				'title_weight'      => 700,
+				'title_align'       => 'right',
+			)
+		);
+
+		qrms_assert_same( '#c9a84c', $gecerli['title_color'], 'geçerli renk' );
+		qrms_assert_same( 'Manrope', $gecerli['title_font'], 'geçerli font' );
+		qrms_assert_same( 22, $gecerli['title_size'], 'geçerli punto' );
+		qrms_assert_same( 16, $gecerli['title_size_mobile'], 'geçerli mobil punto' );
+		qrms_assert_same( 700, $gecerli['title_weight'], 'geçerli kalınlık' );
+		qrms_assert_same( 'right', $gecerli['title_align'], 'geçerli hizalama' );
+	}
+);
+
+qrms_test(
+	'slider option yokken get() varsayılanları döner',
+	function () {
+		$ayar = QMO_Slider_Settings::get();
+		qrms_assert_same( 1, $ayar['show_nav'], 'kayıt yokken oklar açık kalır' );
+		qrms_assert_same( 1, $ayar['show_title'], 'kayıt yokken başlık açık kalır' );
+	}
+);
+
+qrms_test(
+	'slider CSS değişkenleri ve kısa kod ayarları bağlanır',
+	function () {
+		$css = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/frontend-slider.css' );
+		$php = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/shortcode-slider.php' );
+		$js  = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/js/admin-ui.js' );
+		$admin = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-vitrin-admin.php' );
+
+		foreach ( array( '--qmo-slider-title-font', '--qmo-slider-title-color', '--qmo-slider-title-size', '--qmo-slider-title-size-mobile', '--qmo-slider-title-weight', '--qmo-slider-title-align' ) as $degisken ) {
+			qrms_assert_contains( $degisken, $css, $degisken . ' frontend' );
+			qrms_assert_contains( $degisken, $js, $degisken . ' önizleme' );
+		}
+
+		qrms_assert_contains( 'QMO_Slider_Settings::get', $php, 'kısa kod ayar okur' );
+		qrms_assert_contains( '$show_nav', $php, 'ok bloğu ayara bağlı' );
+		qrms_assert_contains( 'Ok navigasyonunu göster', $admin, 'ok checkbox' );
+		qrms_assert_contains( 'Slide başlığını göster', $admin, 'başlık checkbox' );
+		qrms_assert_contains( 'handle_slider_settings_save', $admin, 'kaydetme ucu' );
+		qrms_assert_contains( 'check_admin_referer( $this->slider_nonce_action )', $admin, 'nonce' );
+		qrms_assert_contains( 'initSliderPreview', $js, 'canlı önizleme' );
+	}
+);
+
+qrms_test(
+	'slider kaydetme ucu ve önbellek kancası kayıtlı',
+	function () {
+		$boot = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/qr-menu.php' );
+		qrms_assert_contains( "admin_post_qmo_slider_kaydet", $boot, 'kaydetme ucu' );
+		qrms_assert_contains( "update_option_qmo_slider_settings", $boot, 'önbellek kancası' );
+	}
+);
+
+/* ---------------------------------------------------------------------------
  * 6c. yorum-feedback — Gemini içgörüleri
  *
  * Gerçek Gemini çağrısı yapılmaz: stub'ların wp_remote_post taklidi

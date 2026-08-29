@@ -22,6 +22,7 @@ if ( ! defined( 'QMO_PLUGIN_URL' ) ) {
 
 require_once __DIR__ . '/includes/admin-kombin-meta.php';
 require_once __DIR__ . '/includes/admin-cpt-slide.php';
+require_once __DIR__ . '/includes/class-slider-settings.php';
 require_once __DIR__ . '/includes/shortcode-slider.php';
 
 // Kampanya banner slider'ı: ürün vitrininden bağımsız, kendi CPT'si ve
