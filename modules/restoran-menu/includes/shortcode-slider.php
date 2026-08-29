@@ -94,15 +94,31 @@ class QMO_Shortcode_Slider {
 
         self::enqueue_styles();
 
+        $ayar = class_exists( 'QMO_Slider_Settings' ) ? QMO_Slider_Settings::get() : array(
+            'show_nav'   => 1,
+            'show_title' => 1,
+        );
+
+        // Kısa kod niteliği hâlâ geçerlidir ve admin varsayılanını ezer
+        // (eski [qmo_one_cikan_slider show_title="no"] kullanımları bozulmasın).
         $a = shortcode_atts( [
-            'show_title' => 'yes',
+            'show_title' => '',
         ], $atts, 'qmo_one_cikan_slider' );
 
-        $show_title = $a['show_title'] !== 'no';
+        if ( 'no' === $a['show_title'] ) {
+            $show_title = false;
+        } elseif ( 'yes' === $a['show_title'] ) {
+            $show_title = true;
+        } else {
+            $show_title = ! empty( $ayar['show_title'] );
+        }
+
+        $show_nav = ! empty( $ayar['show_nav'] ) && count( $slides ) > 1;
+        $stil     = class_exists( 'QMO_Slider_Settings' ) ? QMO_Slider_Settings::css_degiskenleri( $ayar ) : '';
 
         ob_start();
         ?>
-<div class="qmo-slider-root" data-qmo-slider>
+<div class="qmo-slider-root" data-qmo-slider<?php echo '' !== $stil ? ' style="' . esc_attr( $stil ) . '"' : ''; ?>>
     <div class="qmo-slider-viewport">
         <div class="qmo-slider-track">
             <?php foreach ( $slides as $index => $slide ) : ?>
@@ -137,7 +153,7 @@ class QMO_Shortcode_Slider {
         </div>
     </div>
 
-    <?php if ( count( $slides ) > 1 ) : ?>
+    <?php if ( $show_nav ) : ?>
         <div class="qmo-slider-nav" aria-label="Slide navigasyonu">
             <button type="button" class="qmo-slider-nav-btn qmo-slider-nav-prev" aria-label="Önceki slide">&#8249;</button>
             <button type="button" class="qmo-slider-nav-btn qmo-slider-nav-next" aria-label="Sonraki slide">&#8250;</button>

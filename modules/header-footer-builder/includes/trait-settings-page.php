@@ -55,6 +55,7 @@ trait QRMS_HFB_Settings_Page {
 			}
 		}
 
+		$stored = $this->migrate_hamburger_breakpoints( $stored );
 		$stored = $this->migrate_hamburger_appearance( $stored );
 
 		$merged = $this->merge_options( $stored, $this->hamburger_defaults );
@@ -70,6 +71,53 @@ trait QRMS_HFB_Settings_Page {
 	}
 
 	/**
+	 * Masaüstü/mobil ayrımını tek sete indirger.
+	 *
+	 * Hamburger paneli yalnızca mobilde açılır — header'da masaüstü için
+	 * hamburger ikonu hiç basılmaz. Buna karşın panel ayarları bir dönem
+	 * `*_desktop` / `*_mobile` diye ikiye ayrılmıştı; masaüstü seti
+	 * kullanıcıya hiçbir zaman görünmeyen bir çıktıyı ayarlıyordu.
+	 *
+	 * Ayrım kaldırıldı. Eski kayıtlarda MOBİL değer gerçekte görünen
+	 * değerdir; bu yüzden tek sete o taşınır. Mobil anahtar yoksa (çok eski
+	 * ya da yarım kayıt) masaüstü değeri kullanılır — hiçbir durumda veri
+	 * kaybı olmaz. Tek anahtar bir kez yazıldıktan sonra bu geçiş bir daha
+	 * çalışmaz; eski anahtarları merge_options() budar.
+	 *
+	 * @param array<string,mixed> $stored Depodaki hamburger ayarları.
+	 * @return array<string,mixed>
+	 */
+	private function migrate_hamburger_breakpoints( $stored ) {
+		if ( ! is_array( $stored ) ) {
+			return array();
+		}
+
+		$eslesme = array(
+			'font_size'        => array( 'font_size_mobile', 'font_size_desktop' ),
+			'font_weight'      => array( 'font_weight_mobile', 'font_weight_desktop' ),
+			'font_align'       => array( 'font_align_mobile', 'font_align_desktop' ),
+			'logo_width'       => array( 'logo_width_mobile', 'logo_width_desktop' ),
+			'logo_height'      => array( 'logo_height_mobile', 'logo_height_desktop' ),
+			'logo_height_auto' => array( 'logo_height_auto_mobile', 'logo_height_auto_desktop' ),
+		);
+
+		foreach ( $eslesme as $tek => $eskiler ) {
+			if ( isset( $stored[ $tek ] ) ) {
+				continue;
+			}
+
+			foreach ( $eskiler as $eski ) {
+				if ( isset( $stored[ $eski ] ) ) {
+					$stored[ $tek ] = $stored[ $eski ];
+					break;
+				}
+			}
+		}
+
+		return $stored;
+	}
+
+	/**
 	 * "Görünüm" adımı öncesindeki kayıtları, görüntü değişmeden taşır.
 	 *
 	 * Adım eklenmeden önce panelin bu değerleri ayarlanabilir değildi ve
@@ -78,8 +126,7 @@ trait QRMS_HFB_Settings_Page {
 	 * - Menü satırı hover/ayraç/ok ve sosyal ikon çerçeve/glyph rengi
 	 *   header'ın ikon renginden (`--hfb-icon-color`) geliyordu.
 	 * - Menü satırı metin rengi panelin yazı renginden geliyordu.
-	 * - Panel logosu header'ın MOBİL logo ölçüsünü her kırılımda
-	 *   kullanıyordu.
+	 * - Panel logosu header'ın MOBİL logo ölçüsünü kullanıyordu.
 	 *
 	 * Kayıtta yeni anahtarlar yoksa eski kaynak buraya kopyalanır; böylece
 	 * kullanıcı hiçbir şey kaydetmeden panel bugünküyle aynı görünür. Bir
@@ -111,17 +158,14 @@ trait QRMS_HFB_Settings_Page {
 			}
 		}
 
-		// Panel logosu: header'ın mobil ölçüsü her iki kırılıma da taşınır.
-		if ( ! isset( $stored['logo_width_mobile'] ) ) {
+		// Panel logosu: header'ın mobil ölçüsü panelin tek setine taşınır.
+		if ( ! isset( $stored['logo_width'] ) ) {
 			$auto  = ! empty( $header['logo_height_auto_mobile'] ) ? 1 : 0;
-			$width = isset( $header['logo_width_mobile'] ) ? (int) $header['logo_width_mobile'] : (int) $this->hamburger_defaults['logo_width_mobile'];
+			$width = isset( $header['logo_width_mobile'] ) ? (int) $header['logo_width_mobile'] : (int) $this->hamburger_defaults['logo_width'];
 
-			$stored['logo_width_desktop']       = $width;
-			$stored['logo_width_mobile']        = $width;
-			$stored['logo_height_auto_desktop'] = $auto;
-			$stored['logo_height_auto_mobile']  = $auto;
-			$stored['logo_height_desktop']      = $auto ? 0 : (int) $header['logo_height_mobile'];
-			$stored['logo_height_mobile']       = $auto ? 0 : (int) $header['logo_height_mobile'];
+			$stored['logo_width']       = $width;
+			$stored['logo_height_auto'] = $auto;
+			$stored['logo_height']      = $auto ? 0 : (int) $header['logo_height_mobile'];
 		}
 
 		return $stored;
@@ -1140,49 +1184,28 @@ trait QRMS_HFB_Settings_Page {
 				: $this->hamburger_defaults['font_family'];
 		}
 
-		if ( isset( $input['hfb_hamburger_font_size_desktop'] ) ) {
-			$opts['font_size_desktop'] = $this->sanitize_int_range(
-				$input['hfb_hamburger_font_size_desktop'],
+		// Panel yalnızca mobilde açıldığı için yazı ayarları TEK settir;
+		// masaüstü/mobil ayrımı yoktur.
+		if ( isset( $input['hfb_hamburger_font_size'] ) ) {
+			$opts['font_size'] = $this->sanitize_int_range(
+				$input['hfb_hamburger_font_size'],
 				self::FONT_SIZE_MIN,
 				self::FONT_SIZE_MAX,
-				$this->hamburger_defaults['font_size_desktop']
+				$this->hamburger_defaults['font_size']
 			);
 		}
 
-		if ( isset( $input['hfb_hamburger_font_size_mobile'] ) ) {
-			$opts['font_size_mobile'] = $this->sanitize_int_range(
-				$input['hfb_hamburger_font_size_mobile'],
-				self::FONT_SIZE_MOBILE_MIN,
-				self::FONT_SIZE_MOBILE_MAX,
-				$this->hamburger_defaults['font_size_mobile']
+		if ( isset( $input['hfb_hamburger_font_weight'] ) ) {
+			$opts['font_weight'] = $this->sanitize_font_weight(
+				$input['hfb_hamburger_font_weight'],
+				$this->hamburger_defaults['font_weight']
 			);
 		}
 
-		if ( isset( $input['hfb_hamburger_font_weight_desktop'] ) ) {
-			$opts['font_weight_desktop'] = $this->sanitize_font_weight(
-				$input['hfb_hamburger_font_weight_desktop'],
-				$this->hamburger_defaults['font_weight_desktop']
-			);
-		}
-
-		if ( isset( $input['hfb_hamburger_font_weight_mobile'] ) ) {
-			$opts['font_weight_mobile'] = $this->sanitize_font_weight(
-				$input['hfb_hamburger_font_weight_mobile'],
-				$this->hamburger_defaults['font_weight_mobile']
-			);
-		}
-
-		if ( isset( $input['hfb_hamburger_font_align_desktop'] ) ) {
-			$opts['font_align_desktop'] = $this->sanitize_align(
-				$input['hfb_hamburger_font_align_desktop'],
-				$this->hamburger_defaults['font_align_desktop']
-			);
-		}
-
-		if ( isset( $input['hfb_hamburger_font_align_mobile'] ) ) {
-			$opts['font_align_mobile'] = $this->sanitize_align(
-				$input['hfb_hamburger_font_align_mobile'],
-				$this->hamburger_defaults['font_align_mobile']
+		if ( isset( $input['hfb_hamburger_font_align'] ) ) {
+			$opts['font_align'] = $this->sanitize_align(
+				$input['hfb_hamburger_font_align'],
+				$this->hamburger_defaults['font_align']
 			);
 		}
 
@@ -1217,29 +1240,30 @@ trait QRMS_HFB_Settings_Page {
 			);
 		}
 
-		// Panel içi logo ölçüsü — header'daki logo boyutundan bağımsızdır.
-		foreach ( array( 'desktop', 'mobile' ) as $bp ) {
-			$width_field = 'hfb_hamburger_logo_width_' . $bp;
-
-			if ( isset( $input[ $width_field ] ) ) {
-				$opts[ 'logo_width_' . $bp ] = $this->sanitize_int_range(
-					$input[ $width_field ],
-					self::LOGO_WIDTH_MIN,
-					self::LOGO_WIDTH_MAX,
-					$defaults[ 'logo_width_' . $bp ]
-				);
-			}
-
-			$height = $this->sanitize_logo_height(
-				$input,
-				'hfb_hamburger_logo_height_auto_' . $bp,
-				'hfb_hamburger_logo_height_' . $bp,
-				(int) $opts[ 'logo_height_' . $bp ]
+		/*
+		 * Panel içi logo ölçüsü — header'daki logo boyutundan bağımsızdır ve
+		 * TEK settir (panel yalnızca mobilde açılır). Alt sınır header'ın
+		 * 80px'i değil PANEL_LOGO_WIDTH_MIN (50px): panel logosu tek sütunlu
+		 * listenin başında durur ve çok daha küçük kullanılabilir.
+		 */
+		if ( isset( $input['hfb_hamburger_logo_width'] ) ) {
+			$opts['logo_width'] = $this->sanitize_int_range(
+				$input['hfb_hamburger_logo_width'],
+				self::PANEL_LOGO_WIDTH_MIN,
+				self::LOGO_WIDTH_MAX,
+				$defaults['logo_width']
 			);
-
-			$opts[ 'logo_height_auto_' . $bp ] = $height['auto'];
-			$opts[ 'logo_height_' . $bp ]      = $height['height'];
 		}
+
+		$height = $this->sanitize_logo_height(
+			$input,
+			'hfb_hamburger_logo_height_auto',
+			'hfb_hamburger_logo_height',
+			(int) $opts['logo_height']
+		);
+
+		$opts['logo_height_auto'] = $height['auto'];
+		$opts['logo_height']      = $height['height'];
 
 		// Menü/liste satırı renkleri.
 		$opts['menu_link_color']    = $this->sanitize_color_field( $input, 'hfb_hamburger_menu_link_color', $opts['menu_link_color'] );
@@ -1547,6 +1571,12 @@ trait QRMS_HFB_Settings_Page {
 	 * adımlar yalnızca görsel gruplamadır. Bu yüzden kayıt da tek
 	 * noktadan yapılır.
 	 *
+	 * Header ve footer her sayfanın en üstünde/altında basılır; bu yüzden
+	 * neredeyse her sayfa önbelleği bu ayarlara bağımlıdır. Kayıttan sonra
+	 * önbellek temizlenmezse kullanıcı sayfayı yenilese bile eski çıktıyı
+	 * görür — bu yüzden başarılı kaydın hemen ardından ortak temizleyici
+	 * çağrılır (yetki/nonce kontrolü çağıran render_admin_page()'de yapılır).
+	 *
 	 * @param array<string,mixed> $input Ham girdi.
 	 * @return void
 	 */
@@ -1554,41 +1584,12 @@ trait QRMS_HFB_Settings_Page {
 		update_option( $this->header_option, $this->sanitize_header_input( $input, $this->get_header_options() ) );
 		update_option( $this->footer_option, $this->sanitize_footer_input( $input, $this->get_footer_options() ) );
 		update_option( $this->hamburger_option, $this->sanitize_hamburger_input( $input, $this->get_hamburger_options() ) );
-		$this->flush_page_caches();
-	}
 
-	/**
-	 * Kaydet sonrası tam sayfa önbelleğini boşaltır.
-	 *
-	 * Buton renkleri satır içi CSS değişkenidir; WP Rocket vb. eski HTML'i
-	 * sunarsa yeni ayar görünmez. `qmo_tum_onbellek_temizle()` yoksa yaygın
-	 * önbellek eklentilerinin kendi uçları çağrılır.
-	 *
-	 * @return void
-	 */
-	private function flush_page_caches() {
+		// Ortak yardımcı; modül tek başına (ortak dosya yüklenmeden) test
+		// edilirse sessizce atlanır. WP Rocket / LiteSpeed / W3TC uçları
+		// bu yardımcıda toplanır — burada tekrarlanmaz.
 		if ( function_exists( 'qmo_tum_onbellek_temizle' ) ) {
 			qmo_tum_onbellek_temizle();
-		}
-
-		if ( function_exists( 'rocket_clean_domain' ) ) {
-			rocket_clean_domain();
-		}
-
-		if ( function_exists( 'w3tc_flush_all' ) ) {
-			w3tc_flush_all();
-		}
-
-		if ( function_exists( 'wp_cache_clear_cache' ) ) {
-			wp_cache_clear_cache();
-		}
-
-		if ( function_exists( 'wp_cache_flush' ) ) {
-			wp_cache_flush();
-		}
-
-		if ( function_exists( 'do_action' ) ) {
-			do_action( 'litespeed_purge_all' );
 		}
 	}
 

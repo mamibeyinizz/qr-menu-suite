@@ -151,6 +151,87 @@
 
   /* ---------------------------------------------------------- Önizleme */
 
+  /**
+   * PHP tarzı alan adını yola çevirir.
+   *
+   *   "hfb_hamburger_blocks[blk_1][enabled]" -> ['hfb_hamburger_blocks','blk_1','enabled']
+   *   "hfb_header_social_media_active[]"     -> ['hfb_header_social_media_active','']
+   *
+   * Köşeli parantezli adlar DÜZ bir anahtar olarak gönderilirse istek
+   * `data[hfb_hamburger_blocks[blk_1][enabled]]` hâline gelir; PHP bunu
+   * eşleşen parantezlere göre değil, İLK kapanan paranteze göre ayrıştırır ve
+   * anahtar `hfb_hamburger_blocks[blk_1` diye bozulur. Sunucu o yüzden hiç blok
+   * göremez, kayıtlı bloklara geri düşer — panel/blok değişiklikleri
+   * önizlemede görünmezdi. Yükü baştan iç içe kurunca jQuery
+   * `data[hfb_hamburger_blocks][blk_1][enabled]` üretir ve PHP doğru çözer.
+   *
+   * @param {string} name Alan adı.
+   * @return {string[]} Yol parçaları.
+   */
+  function nameToPath(name) {
+    var head = name.indexOf('[');
+
+    if (head === -1) {
+      return [name];
+    }
+
+    var path = [name.slice(0, head)];
+    var re = /\[([^\[\]]*)\]/g;
+    var match;
+
+    while ((match = re.exec(name)) !== null) {
+      path.push(match[1]);
+    }
+
+    return path;
+  }
+
+  /**
+   * Yol boyunca ilerleyip değeri yazar. Boş parça ("[]") diziye ekler.
+   *
+   * @param {Object} data  Hedef nesne.
+   * @param {string[]} path Yol.
+   * @param {*} value      Değer.
+   * @param {boolean} push Yalnızca kabı hazırla, değeri ekleme.
+   * @return {void}
+   */
+  function assignPath(data, path, value, push) {
+    var node = data;
+
+    for (var i = 0; i < path.length - 1; i++) {
+      var key = path[i];
+      var nextIsList = path[i + 1] === '';
+
+      if (typeof node[key] !== 'object' || node[key] === null) {
+        node[key] = nextIsList ? [] : {};
+      }
+
+      node = node[key];
+    }
+
+    var last = path[path.length - 1];
+
+    if (last === '') {
+      // "[]" — kap her hâlükârda oluşur (hiçbiri işaretli değilse boş dizi).
+      if (!push) {
+        node.push(value);
+      }
+      return;
+    }
+
+    node[last] = value;
+  }
+
+  /**
+   * Formu, kayıt POST'uyla AYNI yapıda bir nesneye çevirir.
+   *
+   * Devre dışı alanlar atlanır (tarayıcı da göndermez); işaretsiz onay kutusu
+   * boş dize olarak gider, böylece sunucu "kutu kapalı" ile "alan hiç yok"
+   * arasında ayrım yapabilir.
+   *
+   * @param {jQuery} $form Form.
+   * @return {Object}
+   */
   function serializeForm($form) {
     var data = {};
 
@@ -162,32 +243,28 @@
         return;
       }
 
+      var path = nameToPath(name);
       var type = ($el.attr('type') || '').toLowerCase();
 
       if (type === 'checkbox') {
-        if (name.slice(-2) === '[]') {
-          var key = name.slice(0, -2);
-          if (!data[key]) {
-            data[key] = [];
-          }
-          if ($el.is(':checked')) {
-            data[key].push($el.val());
-          }
+        if (path[path.length - 1] === '') {
+          // Kabı her zaman kur; değeri yalnızca işaretliyse ekle.
+          assignPath(data, path, $el.val(), !$el.is(':checked'));
           return;
         }
 
-        data[name] = $el.is(':checked') ? $el.val() : '';
+        assignPath(data, path, $el.is(':checked') ? $el.val() : '');
         return;
       }
 
       if (type === 'radio') {
         if ($el.is(':checked')) {
-          data[name] = $el.val();
+          assignPath(data, path, $el.val());
         }
         return;
       }
 
-      data[name] = $el.val();
+      assignPath(data, path, $el.val());
     });
 
     return data;
@@ -563,6 +640,41 @@
     debouncedPreview();
   }
 
+  /**
+   * "Yeni Blok Ekle" listesi açık mı?
+   *
+   * @return {boolean}
+   */
+  function isBlockMenuOpen() {
+    var menu = document.getElementById('hfb-block-add-menu');
+
+    return !!menu && !menu.hidden;
+  }
+
+  /**
+   * Listeyi açar/kapatır.
+   *
+   * Liste mutlak konumludur ve sayfa akışına girmez; açılıp kapanması
+   * altındaki adım gezinme şeridini oynatmaz, scroll konumu değişmez.
+   *
+   * @param {boolean} open Açık mı.
+   * @return {void}
+   */
+  function setBlockMenuOpen(open) {
+    var menu = document.getElementById('hfb-block-add-menu');
+    var toggle = document.getElementById('hfb-block-add-toggle');
+
+    if (!menu) {
+      return;
+    }
+
+    menu.hidden = !open;
+
+    if (toggle) {
+      toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }
+  }
+
   function initBlockSortable() {
     var $list = $('#hfb-block-sortable');
 
@@ -580,27 +692,36 @@
       }
     });
 
-    $('#hfb-block-add-toggle').on('click', function (e) {
+    $(document).on('click', '#hfb-block-add-toggle', function (e) {
       e.preventDefault();
-      var $menu = $('#hfb-block-add-menu');
-      var open = !$menu.prop('hidden');
-      $menu.prop('hidden', open);
-      $(this).attr('aria-expanded', open ? 'false' : 'true');
+      setBlockMenuOpen(!isBlockMenuOpen());
     });
 
     $(document).on('click', '.hfb-block-add-type', function (e) {
       e.preventDefault();
       addHamburgerBlock($(this).data('block-type'));
-      $('#hfb-block-add-menu').prop('hidden', true);
-      $('#hfb-block-add-toggle').attr('aria-expanded', 'false');
+      setBlockMenuOpen(false);
     });
 
+    // Dışarı tıklama kapatır. Tetikleyici düğme de sarmalayıcının içindedir;
+    // kendi işleyicisi zaten çalıştığı için burada elenir, aksi hâlde açılan
+    // liste aynı tıklamada kapanırdı.
     $(document).on('click', function (e) {
       if ($(e.target).closest('.hfb-block-add').length) {
         return;
       }
-      $('#hfb-block-add-menu').prop('hidden', true);
-      $('#hfb-block-add-toggle').attr('aria-expanded', 'false');
+      setBlockMenuOpen(false);
+    });
+
+    $(document).on('keydown', function (e) {
+      if (e.key === 'Escape' && isBlockMenuOpen()) {
+        setBlockMenuOpen(false);
+        // Odağı düğmeye geri verirken sayfa kaydırılmaz.
+        var toggle = document.getElementById('hfb-block-add-toggle');
+        if (toggle) {
+          toggle.focus({ preventScroll: true });
+        }
+      }
     });
 
     $(document).on('click', '.hfb-block-delete', function (e) {
@@ -634,7 +755,24 @@
     initBlockSortable();
     bootPreviewHeader();
 
-    $(document).on('input change', '#hfb-settings-form .hfb-preview-trigger', debouncedPreview);
+    /*
+     * Önizleme senkronizasyonu TEK bir delege dinleyicidir ve formun
+     * TAMAMINI kapsar: `.hfb-preview-trigger` sınıfı taşıyıp taşımadığına
+     * bakılmaksızın her input/select/textarea. Sınıfa bağlı eski kurulumda
+     * sonradan eklenen bir alana sınıfı koymayı unutmak, o alanı sessizce
+     * önizleme dışında bırakıyordu; delegasyon formun kökünde durduğu için
+     * JS ile eklenen blok alanları da kendiliğinden kapsanır.
+     *
+     * `input` her tuş vuruşunda ateşlenir; istek debounce edilir
+     * (DEBOUNCE_MS) ve aynı yük iki kez gönderilmez (bkz. lastPayload).
+     */
+    $(document).on('input change', '#hfb-settings-form', function (e) {
+      if (!$(e.target).is('input, select, textarea')) {
+        return;
+      }
+
+      debouncedPreview();
+    });
 
     $(document).on('focus input', '[data-hfb-preview-bp] .hfb-preview-trigger', function () {
       var bp = $(this).closest('[data-hfb-preview-bp]').data('hfb-preview-bp');

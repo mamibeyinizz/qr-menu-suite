@@ -779,30 +779,121 @@
     }
 
     /* -----------------------------------------------------------------
+       ÖNE ÇIKAN SLIDER — CANLI ÖNİZLEME
+
+       Vitrin önizlemesindeki desenin aynısı: form değerleri
+       --qmo-slider-title-* değişkenlerine yazılır; ok/başlık aç-kapa
+       sınıfları kök öğede açılıp kapanır. Önizleme gerçek
+       frontend-slider.css'i kullandığı için sahte bir stil yoktur.
+    ----------------------------------------------------------------- */
+    var SLIDER_FONT_STACKS = {
+        'Playfair Display': "'Playfair Display', Georgia, serif",
+        'Manrope':          "'Manrope', system-ui, sans-serif"
+    };
+
+    function initSliderPreview() {
+        var $form    = $('#qmo-slider-form');
+        var $stage   = $('#qmo-slider-preview-stage');
+        var $preview = $('#qmo-slider-preview');
+
+        if (!$form.length || !$preview.length) return;
+
+        var mode = 'desktop';
+        var previewEl = $preview.get(0);
+
+        function fieldVal(id, fallback) {
+            var $el = $('#' + id);
+            return $el.length ? $el.val() : fallback;
+        }
+
+        function applyPreview() {
+            var sizeDesktop = fieldVal('qmo-slider-title-size', 28);
+            var sizeMobile  = fieldVal('qmo-slider-title-size-mobile', 18);
+            var size        = mode === 'mobile' ? sizeMobile : sizeDesktop;
+
+            /* Önizleme sütunu 720px'in altında olduğu için container query
+               her zaman mobil puntoyu yazardı. Seçili modun puntosunu
+               HER İKİ değişkene de basıyoruz ki CQ önizlemeyi bozmasın;
+               gerçek ön yüzde CSS yine --qmo-slider-title-size-mobile'a
+               geçer (bkz. frontend-slider.css). */
+            previewEl.style.setProperty('--qmo-slider-title-size', size + 'px');
+            previewEl.style.setProperty('--qmo-slider-title-size-mobile', size + 'px');
+            previewEl.style.setProperty('--qmo-slider-title-weight', fieldVal('qmo-slider-title-weight', 600));
+            previewEl.style.setProperty('--qmo-slider-title-align', vitrinAlignVal('qmo-slider-title-align'));
+
+            var font = String(fieldVal('qmo-slider-title-font', 'Playfair Display'));
+            previewEl.style.setProperty('--qmo-slider-title-font', SLIDER_FONT_STACKS[font] || SLIDER_FONT_STACKS['Playfair Display']);
+
+            var titleColor = fieldVal('qmo-slider-title-color', '#e8c766');
+            previewEl.style.setProperty('--qmo-slider-title-color', titleColor ? titleColor : '#e8c766');
+
+            $preview.toggleClass('is-title-hidden', !$('#qmo-slider-show-title').is(':checked'));
+            $preview.toggleClass('is-nav-hidden', !$('#qmo-slider-show-nav').is(':checked'));
+            $stage.toggleClass('is-mobile-mode', mode === 'mobile');
+        }
+
+        $form.on(
+            'input change',
+            '#qmo-slider-show-nav, #qmo-slider-show-title, #qmo-slider-title-font, #qmo-slider-title-color, #qmo-slider-title-size, #qmo-slider-title-size-mobile, #qmo-slider-title-weight',
+            applyPreview
+        );
+
+        $form.on('change', '.rma-align-input', function () {
+            $(this).closest('.rma-align-group').find('.rma-align-btn').each(function () {
+                $(this).toggleClass('is-selected', $(this).find('.rma-align-input').is(':checked'));
+            });
+            applyPreview();
+        });
+
+        if (typeof $.fn.wpColorPicker === 'function') {
+            var $color = $('#qmo-slider-title-color');
+            if ($color.length) {
+                $color.wpColorPicker({
+                    change: function (event, ui) {
+                        previewEl.style.setProperty('--qmo-slider-title-color', ui.color.toString());
+                    },
+                    clear: function () {
+                        previewEl.style.setProperty('--qmo-slider-title-color', '#e8c766');
+                    }
+                });
+            }
+        }
+
+        $form.on('click', '.rma-vitrin-preview-btn', function () {
+            mode = $(this).data('preview-mode');
+            $form.find('.rma-vitrin-preview-btn').removeClass('is-active');
+            $(this).addClass('is-active');
+            applyPreview();
+        });
+
+        applyPreview();
+        initVitrinPreviewSticky();
+    }
+
+    /* -----------------------------------------------------------------
        ÜRÜN VİTRİNİ — ADIM ADIM (STEPPER)
 
-       Saf UI bölmesi: beş .rma-vitrin-step kartı DOM'da hep birlikte
+       Saf UI bölmesi: .rma-vitrin-step kartları DOM'da hep birlikte
        kalır, yalnızca aktif olmayanlar gizlenir (display:none). Böylece
        hiçbir form alanı submit'ten düşmez, hiçbir ayar adımlar arası
        geçişte kaybolmaz — kaydetme her zaman TÜM adımların verisini
-       gönderir (bkz. trait-vitrin-admin.php handle_vitrin_save()).
-       Gerçek bir "wizard validation" yoktur: adımlar arasında serbestçe
-       ileri/geri/atlama yapılabilir, hiçbir alan zorunlu kılınmaz.
+       gönderir (bkz. trait-vitrin-admin.php handle_vitrin_save() ve
+       handle_slider_settings_save()). Gerçek bir "wizard validation"
+       yoktur: adımlar arasında serbestçe ileri/geri/atlama yapılabilir.
     ----------------------------------------------------------------- */
-    function initVitrinStepper() {
-        var $form = $('#rma-vitrin-form');
-        var $steps = $('.rma-vitrin-step');
+    function initFormStepper($form) {
+        var $steps = $form.find('.rma-vitrin-step');
 
         if (!$form.length || !$steps.length) return;
 
         var toplam = $steps.length;
         var mevcut = 1;
 
-        var $stepBtns = $('#rma-vitrin-steps .rma-vitrin-step-btn');
-        var $compact = $('#rma-vitrin-step-compact');
-        var $prev = $('.rma-vitrin-step-prev');
-        var $next = $('.rma-vitrin-step-next');
-        var $submit = $('.rma-vitrin-step-submit');
+        var $stepBtns = $form.find('.rma-vitrin-step-btn');
+        var $compact = $form.find('.rma-vitrin-step-compact');
+        var $prev = $form.find('.rma-vitrin-step-prev');
+        var $next = $form.find('.rma-vitrin-step-next');
+        var $submit = $form.find('.rma-vitrin-step-submit');
 
         function baslik(adimNo) {
             return $steps.filter('[data-step="' + adimNo + '"]').data('step-title') || '';
@@ -839,6 +930,11 @@
         $next.on('click', function () { goster(mevcut + 1); });
 
         goster(1);
+    }
+
+    function initVitrinStepper() {
+        initFormStepper($('#rma-vitrin-form'));
+        initFormStepper($('#qmo-slider-form'));
     }
 
     /**
@@ -1145,6 +1241,7 @@
         initCsvSample();
         initVitrinPicker();
         initVitrinPreview();
+        initSliderPreview();
         initVitrinStepper();
         initShortcodeCopy();
         initKampanya();

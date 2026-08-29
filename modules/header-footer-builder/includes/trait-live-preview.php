@@ -19,6 +19,20 @@
  *    kayıtla AYNI temizleyicilerden geçer. Footer'ın dört adımı (Logo/
  *    Slogan, Hızlı Menü, Çalışma Saatleri+İletişim, Garson/Hesap) da bu
  *    yoldan geçer — ayrı bir önizleme yolu yoktur.
+ * 5. İstemci yükü DÜZ bir sözlük olarak kuruyordu. Köşeli parantez taşıyan
+ *    alan adları (`hfb_hamburger_blocks[blk_1][enabled]`) bu sözlükte anahtar
+ *    olunca istek `data[hfb_hamburger_blocks[blk_1][enabled]]` hâline
+ *    geliyordu; PHP parantezleri EŞLEŞTİRMEZ, ilk kapanan paranteze göre
+ *    ayrıştırır ve anahtar `hfb_hamburger_blocks[blk_1` diye bozulurdu.
+ *    Sonuç: sunucu hiç blok göremiyor, sanitize_hamburger_blocks() KAYITLI
+ *    bloklara geri düşüyordu — blok ekleme/silme/sıralama, hizalama, metin
+ *    ve buton ayarları önizlemede hiç görünmüyordu. Yük artık istemcide iç
+ *    içe kurulur (bkz. assets/js/admin.js -> nameToPath/assignPath) ve
+ *    `data[hfb_hamburger_blocks][blk_1][enabled]` olarak gider.
+ * 6. Önizleme dinleyicisi `.hfb-preview-trigger` sınıfına bağlıydı; sınıfı
+ *    unutulan her yeni alan sessizce önizleme dışında kalıyordu. Dinleyici
+ *    artık formun kökünde tek bir delegasyondur ve her input/select/textarea
+ *    (JS ile sonradan eklenen blok alanları dâhil) kapsanır.
  *
  * @package QR_Menu_Suite
  */

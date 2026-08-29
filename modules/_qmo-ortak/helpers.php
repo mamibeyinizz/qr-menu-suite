@@ -185,6 +185,97 @@ if ( ! function_exists( 'qmo_masa_cache_temizle' ) ) {
 }
 
 /**
+ * Tüm önbellekleri temizler — nesne önbelleği + kurulu önbellek eklentileri.
+ *
+ * Bir ayar kaydedildiğinde ön yüz çıktısı değişir, ama sayfa çoğu kurulumda
+ * bir önbellek katmanının arkasındadır: kullanıcı "Kaydet" deyip sayfayı
+ * yenilese bile eski HTML'i görür ve değişikliğin kaydedilmediğini sanır.
+ * Bu yüzden kayıt akışları (HFB, vitrin, banner…) kayıttan HEMEN SONRA
+ * burayı çağırır.
+ *
+ * Eklenti temizlikleri koşulludur: kurulu olmayan eklenti sessizce atlanır,
+ * hiçbir zaman ölümcül hata üretilmez. qmo_masa_cache_temizle() tek bir masa
+ * anahtarını hedefler ve bu fonksiyondan bağımsızdır; ikisi birbirinin yerine
+ * geçmez.
+ *
+ * @param string $cache_group Yalnızca bu nesne önbelleği grubu temizlensin
+ *                            (ör. 'qmo'). Boşsa ya da kurulum grup bazlı
+ *                            temizliği desteklemiyorsa genel flush yapılır.
+ * @return string[] Gerçekten çalıştırılan temizleyicilerin adları.
+ */
+if ( ! function_exists( 'qmo_tum_onbellek_temizle' ) ) {
+	function qmo_tum_onbellek_temizle( $cache_group = '' ) {
+		$temizlenen = array();
+
+		/*
+		 * 1) WordPress nesne önbelleği.
+		 *
+		 * Grup bazlı temizlik daha dar kapsamlıdır ama her arka uç
+		 * desteklemez (wp_cache_supports() WP 6.1+). Desteklenmiyorsa
+		 * genel flush'a düşülür — ayar kaydı seyrek bir işlemdir, genel
+		 * flush'ın bedeli kabul edilebilir.
+		 */
+		$cache_group = is_string( $cache_group ) ? trim( $cache_group ) : '';
+
+		if ( '' !== $cache_group
+			&& function_exists( 'wp_cache_supports' ) && wp_cache_supports( 'flush_group' )
+			&& function_exists( 'wp_cache_flush_group' ) ) {
+			wp_cache_flush_group( $cache_group );
+			$temizlenen[] = 'wp_cache_flush_group:' . $cache_group;
+		} elseif ( function_exists( 'wp_cache_flush' ) ) {
+			wp_cache_flush();
+			$temizlenen[] = 'wp_cache_flush';
+		}
+
+		// 2) WP Rocket.
+		if ( function_exists( 'rocket_clean_domain' ) ) {
+			rocket_clean_domain();
+			$temizlenen[] = 'wp_rocket';
+		}
+
+		// 3) LiteSpeed Cache — önce genel fonksiyon, yoksa eylem kancası.
+		if ( function_exists( 'litespeed_purge_all' ) ) {
+			litespeed_purge_all();
+			$temizlenen[] = 'litespeed';
+		} elseif ( defined( 'LSCWP_V' ) || class_exists( 'LiteSpeed\\Core' ) ) {
+			do_action( 'litespeed_purge_all' );
+			$temizlenen[] = 'litespeed';
+		}
+
+		// 4) W3 Total Cache.
+		if ( class_exists( 'W3TC\\Dispatcher' ) ) {
+			$flush = \W3TC\Dispatcher::component( 'CacheFlush' );
+			if ( is_object( $flush ) && method_exists( $flush, 'flush_all' ) ) {
+				$flush->flush_all();
+				$temizlenen[] = 'w3tc';
+			}
+		}
+
+		// 5) WP Super Cache.
+		if ( function_exists( 'wp_cache_clear_cache' ) ) {
+			wp_cache_clear_cache();
+			$temizlenen[] = 'wp_super_cache';
+		}
+
+		// 6) Autoptimize (birleştirilmiş CSS/JS sayfa önbelleği).
+		if ( function_exists( 'autoptimize_flush_pagecache' ) ) {
+			autoptimize_flush_pagecache();
+			$temizlenen[] = 'autoptimize';
+		}
+
+		/**
+		 * Listede olmayan bir önbellek katmanı için kanca.
+		 *
+		 * @param string[] $temizlenen  Çalıştırılan temizleyiciler.
+		 * @param string   $cache_group İstenen nesne önbelleği grubu.
+		 */
+		do_action( 'qmo_onbellek_temizlendi', $temizlenen, $cache_group );
+
+		return $temizlenen;
+	}
+}
+
+/**
  * İstemci IP'sinin kısa hash'i — hız sınırlama anahtarlarında kullanılır.
  * Ham IP saklanmaz.
  *
