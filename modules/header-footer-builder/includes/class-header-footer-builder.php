@@ -16,8 +16,9 @@ require_once __DIR__ . '/trait-live-preview.php';
 /**
  * Header ve footer modülü.
  *
- * Tasarım tektir ve koda sabitlenmiştir (siyah #0a0a0c + gold #c9a84c);
- * kullanıcı yalnızca içeriği ve birkaç davranış anahtarını yönetir.
+ * Varsayılan palet projenin dark-gold kimliğidir (siyah #0a0a0c + gold
+ * #c9a84c); kullanıcı artık header görünümünü, logo boyutunu, ikon
+ * renklerini ve hamburger panelini ayar sayfasından değiştirir.
  */
 class QRMS_Header_Footer_Builder {
 
@@ -55,6 +56,33 @@ class QRMS_Header_Footer_Builder {
 	private $footer_option = 'hfb_footer_options';
 
 	/**
+	 * Hamburger panel ayar option anahtarı.
+	 *
+	 * @var string
+	 */
+	private $hamburger_option = 'hfb_hamburger_options';
+
+	/**
+	 * Logo genişlik aralığı (px).
+	 */
+	const LOGO_WIDTH_MIN = 80;
+	const LOGO_WIDTH_MAX = 320;
+
+	/**
+	 * Logo yükseklik aralığı (px). 0 = otomatik oran.
+	 */
+	const LOGO_HEIGHT_MIN = 24;
+	const LOGO_HEIGHT_MAX = 200;
+
+	/**
+	 * Hamburger panel yazı boyutu aralığı (px).
+	 */
+	const FONT_SIZE_MIN         = 12;
+	const FONT_SIZE_MAX         = 32;
+	const FONT_SIZE_MOBILE_MIN  = 12;
+	const FONT_SIZE_MOBILE_MAX  = 28;
+
+	/**
 	 * Header varsayılanları.
 	 *
 	 * @var array<string,mixed>
@@ -67,6 +95,13 @@ class QRMS_Header_Footer_Builder {
 	 * @var array<string,mixed>
 	 */
 	private $footer_defaults;
+
+	/**
+	 * Hamburger panel varsayılanları.
+	 *
+	 * @var array<string,mixed>
+	 */
+	private $hamburger_defaults;
 
 	/**
 	 * Bu istekte hangi bölümler render edildi.
@@ -117,15 +152,28 @@ class QRMS_Header_Footer_Builder {
 	 */
 	public function __construct() {
 		$this->header_defaults = array(
-			'logo'                => 0,
-			'brand_line1'         => 'QR MENU',
-			'brand_line2'         => 'OFFİCİAL',
-			'menu_id'             => 0,
-			'sticky'              => 1,
-			'cta_phone'           => '',
-			'lang_show'           => 1,
-			'social_media'        => array(),
-			'social_media_active' => array( 'facebook', 'x', 'youtube' ),
+			'logo'                     => 0,
+			'brand_line1'              => 'QR MENU',
+			'brand_line2'              => 'OFFİCİAL',
+			'menu_id'                  => 0,
+			'sticky'                   => 1,
+			'sticky_blur'              => 0,
+			'cta_phone'                => '',
+			'lang_show'                => 1,
+			'social_media'             => array(),
+			'social_media_active'      => array( 'facebook', 'x', 'youtube' ),
+			'logo_width_desktop'       => 160,
+			'logo_height_desktop'      => 0,
+			'logo_height_auto_desktop' => 1,
+			'logo_width_tablet'        => 140,
+			'logo_height_tablet'       => 0,
+			'logo_height_auto_tablet'  => 1,
+			'logo_width_mobile'        => 120,
+			'logo_height_mobile'       => 0,
+			'logo_height_auto_mobile'  => 1,
+			'bg_color'                 => '#0a0a0c',
+			'icon_color'               => '#c9a84c',
+			'hamburger_icon_color'     => '#c9a84c',
 		);
 
 		$this->footer_defaults = array(
@@ -139,6 +187,25 @@ class QRMS_Header_Footer_Builder {
 			'menu_id'             => 0,
 			'social_media'        => array(),
 			'social_media_active' => array( 'facebook', 'x', 'youtube' ),
+		);
+
+		$this->hamburger_defaults = array(
+			'close_icon_color'     => '#c9a84c',
+			'panel_bg_color'       => '#0a0a0c',
+			'block_order'          => array( 'logo', 'menu', 'social', 'text' ),
+			'block_logo'           => 1,
+			'block_menu'           => 1,
+			'block_social'         => 1,
+			'block_text'           => 0,
+			'text'                 => '',
+			'font_family'          => 'Playfair Display',
+			'font_color'           => '#f5f0e8',
+			'font_size_desktop'    => 17,
+			'font_weight_desktop'  => 500,
+			'font_align_desktop'   => 'center',
+			'font_size_mobile'     => 16,
+			'font_weight_mobile'   => 500,
+			'font_align_mobile'    => 'center',
 		);
 	}
 

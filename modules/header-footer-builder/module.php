@@ -3,8 +3,8 @@
  * Modül: Header Footer Builder (header-footer-builder)
  *
  * Elementor kısa kod uyumlu header/footer oluşturucu. Ayarlar
- * `hfb_header_options` ve `hfb_footer_options` option'larında tutulur.
- * Kısa kodlar: [hfb_header], [hfb_footer].
+ * `hfb_header_options`, `hfb_footer_options` ve `hfb_hamburger_options`
+ * option'larında tutulur. Kısa kodlar: [hfb_header], [hfb_footer].
  *
  * @package QR_Menu_Suite
  */

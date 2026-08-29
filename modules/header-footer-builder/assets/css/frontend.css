@@ -1,8 +1,9 @@
 /**
- * Header Footer Builder — ön yüz (tek sabit tasarım).
+ * Header Footer Builder — ön yüz.
  *
- * Palet projenin dark-gold kimliğinden gelir: ink #0a0a0c, gold #c9a84c.
- * Varyant / tema seçeneği YOKTUR; kullanıcı yalnızca içeriği yönetir.
+ * Varsayılan palet dark-gold: ink #0a0a0c, gold #c9a84c. Kullanıcı
+ * ayarları `.hfb-header-wrap` üzerindeki `--hfb-*` değişkenleriyle
+ * bu değerleri ezer.
  *
  * Kapsam kuralı: her seçici `.hfb-header-wrap` veya `.hfb-footer-wrap`
  * altındadır. Böylece Elementor'un (ya da temanın) kendi kuralları ile
@@ -29,7 +30,7 @@
 /* ---------------------------------------------------------------- Header */
 
 .hfb-header {
-  background: var(--hfb-ink);
+  background: var(--hfb-header-bg, var(--hfb-ink));
   border-bottom: 1px solid var(--hfb-border);
   color: var(--hfb-text);
   container-name: hfb-header;
@@ -41,6 +42,12 @@
   position: sticky;
   top: 0;
   z-index: 999;
+}
+
+.hfb-header--sticky.hfb-header--sticky-blur.is-scrolled {
+  background: color-mix(in srgb, var(--hfb-header-bg, var(--hfb-ink)) 78%, transparent);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
 }
 
 /* Elementor editöründe sticky, tuvalin kaydırmasıyla çakışıyor. */
@@ -85,8 +92,10 @@
 
 .hfb-brand__img {
   display: block;
-  height: auto;
-  max-width: 160px;
+  height: var(--hfb-logo-h-desktop, auto);
+  max-width: 100%;
+  object-fit: contain;
+  width: var(--hfb-logo-w-desktop, 160px);
 }
 
 .hfb-brand__text {
@@ -200,9 +209,9 @@
 .hfb-header-wrap .hfb-social__link,
 .hfb-footer-wrap .hfb-social__link {
   align-items: center;
-  border: 1px solid var(--hfb-gold);
+  border: 1px solid var(--hfb-icon-color, var(--hfb-gold));
   border-radius: 50%;
-  color: var(--hfb-gold);
+  color: var(--hfb-icon-color, var(--hfb-gold));
   display: inline-flex;
   height: 36px;
   justify-content: center;
@@ -215,7 +224,7 @@
 .hfb-footer-wrap .hfb-social__link:hover,
 .hfb-header-wrap .hfb-social__link:focus-visible,
 .hfb-footer-wrap .hfb-social__link:focus-visible {
-  background-color: var(--hfb-gold);
+  background-color: var(--hfb-icon-color, var(--hfb-gold));
   color: var(--hfb-ink);
   transform: translateY(-1px);
 }
@@ -235,9 +244,9 @@
 
 .hfb-header-wrap .hfb-lang .qrmenu-current-btn {
   background-color: transparent;
-  border: 1px solid var(--hfb-gold) !important;
+  border: 1px solid var(--hfb-icon-color, var(--hfb-gold)) !important;
   border-radius: 50%;
-  color: var(--hfb-text);
+  color: var(--hfb-icon-color, var(--hfb-text));
   height: 36px;
   min-width: 36px;
   width: 36px;
@@ -254,7 +263,7 @@
   align-items: center;
   background: none;
   border: 0;
-  color: var(--hfb-gold);
+  color: var(--hfb-hamburger-icon, var(--hfb-gold));
   cursor: pointer;
   display: none;
   flex-direction: column;
@@ -302,15 +311,19 @@
 }
 
 .hfb-mobile-panel__sheet {
-  background: var(--hfb-ink);
-  color: var(--hfb-text);
+  background: var(--hfb-panel-bg, var(--hfb-ink));
+  color: var(--hfb-panel-font-color, var(--hfb-text));
   display: flex;
   flex-direction: column;
+  font-family: var(--hfb-panel-font, inherit);
+  font-size: var(--hfb-panel-font-size, 17px);
+  font-weight: var(--hfb-panel-font-weight, 500);
   height: 100%;
   inset: 0;
   opacity: 0;
   overflow: hidden;
   position: absolute;
+  text-align: var(--hfb-panel-font-align, center);
   transform: translateY(-10px);
   transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   width: 100%;
@@ -331,14 +344,19 @@
   padding: 0.75rem 1.25rem;
 }
 
+.hfb-mobile-panel__topbar-spacer {
+  flex: 1 1 auto;
+}
+
 .hfb-mobile-panel__close {
   align-items: center;
   background: none;
   border: 0;
-  color: var(--hfb-gold);
+  color: var(--hfb-close-color, var(--hfb-gold));
   cursor: pointer;
   display: flex;
   justify-content: center;
+  margin-left: auto;
   min-height: 44px;
   min-width: 44px;
   padding: 0.25rem;
@@ -354,7 +372,37 @@
   flex: 1 1 auto;
   overflow-y: auto;
   padding: 1.5rem 1.25rem;
-  text-align: center;
+  text-align: inherit;
+}
+
+.hfb-mobile-panel__block {
+  margin: 0 0 1.5rem;
+}
+
+.hfb-mobile-panel__block:last-child {
+  margin-bottom: 0;
+}
+
+.hfb-mobile-panel__block--logo {
+  display: flex;
+  justify-content: inherit;
+}
+
+.hfb-mobile-panel__block--logo .hfb-brand {
+  margin: 0 auto;
+}
+
+.hfb-mobile-panel__block--social .hfb-social {
+  justify-content: inherit;
+}
+
+.hfb-mobile-panel__text {
+  color: var(--hfb-panel-font-color, var(--hfb-text));
+  line-height: 1.5;
+}
+
+.hfb-mobile-panel__text a {
+  color: var(--hfb-icon-color, var(--hfb-gold));
 }
 
 .hfb-mobile-panel__lang {
@@ -374,8 +422,10 @@
 }
 
 .hfb-mobile-panel__nav .hfb-header__menu a {
+  color: var(--hfb-panel-font-color, var(--hfb-text));
   display: block;
-  font-size: 1.05rem;
+  font-size: inherit;
+  font-weight: inherit;
   min-height: 44px;
   padding: 0.85rem 0.5rem;
 }
@@ -428,7 +478,7 @@
 
 .hfb-header-wrap .hfb-cta {
   align-items: center;
-  background: var(--hfb-gold);
+  background: var(--hfb-icon-color, var(--hfb-gold));
   border-radius: 999px;
   color: var(--hfb-ink);
   display: inline-flex;
@@ -559,6 +609,11 @@
   .hfb-header__inner {
     gap: 1rem;
   }
+
+  .hfb-header-wrap .hfb-brand__img {
+    height: var(--hfb-logo-h-tablet, auto);
+    width: var(--hfb-logo-w-tablet, 140px);
+  }
 }
 
 @container hfb-header (max-width: 768px) {
@@ -574,6 +629,11 @@
   .hfb-header__inner {
     justify-content: space-between;
     min-height: 64px;
+  }
+
+  .hfb-header-wrap .hfb-brand__img {
+    height: var(--hfb-logo-h-mobile, auto);
+    width: var(--hfb-logo-w-mobile, 120px);
   }
 }
 
@@ -616,6 +676,20 @@
       padding: 2rem 1.25rem;
     }
   }
+}
+
+/* Hamburger panel metinleri: gerçek sitede viewport, önizlemede sahne. */
+@media (max-width: 768px) {
+  .hfb-mobile-panel__sheet {
+    font-size: var(--hfb-panel-font-size-mobile, 16px);
+    font-weight: var(--hfb-panel-font-weight-m, 500);
+    text-align: var(--hfb-panel-font-align-m, center);
+  }
+}
+
+.hfb-mobile-panel .hfb-brand__img {
+  height: var(--hfb-logo-h-mobile, auto);
+  width: var(--hfb-logo-w-mobile, 120px);
 }
 
 @media (prefers-reduced-motion: reduce) {
