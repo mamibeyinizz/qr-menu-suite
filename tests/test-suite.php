@@ -34,6 +34,7 @@ function qrms_reset() {
 	// hâlde bir testte kaydedilen kısa kod sonraki testte "kurulu" görünür.
 	$GLOBALS['qrms_test']['shortcodes'] = array();
 	$GLOBALS['qrms_test']['json']       = null;
+	$GLOBALS['qrms_test']['is_admin']   = false;
 
 	$GLOBALS['qrms_test']['menus']      = array();
 	$GLOBALS['qrms_test']['submenus']   = array();
@@ -7913,11 +7914,145 @@ qrms_test(
 		qrms_assert_contains( '1. Açılış Davranışı', $html, 'hamburger adım 1' );
 		qrms_assert_contains( '2. İçerik Blokları ve Sıralama', $html, 'hamburger adım 2' );
 		qrms_assert_contains( '3. Yazı Tipi ve Renk', $html, 'hamburger adım 3' );
+		qrms_assert_contains( '1. Logo ve Slogan', $html, 'footer adım 1' );
+		qrms_assert_contains( '2. Hızlı Menü', $html, 'footer adım 2' );
+		qrms_assert_contains( '3. Çalışma Saatleri ve İletişim', $html, 'footer adım 3' );
+		qrms_assert_contains( '4. Garson / Hesap Butonu', $html, 'footer adım 4' );
 		qrms_assert_contains( 'hfb-color-picker', $html, 'renk seçici' );
 		qrms_assert_contains( 'hfb-block-sortable', $html, 'sürükle-bırak liste' );
 		qrms_assert_contains( 'Masaüstü Önizleme', $html, 'masaüstü önizleme düğmesi' );
 		qrms_assert_contains( 'Önizlemede Aç', $html, 'hamburger panel önizleme' );
 		qrms_assert_true( false === strpos( $html, 'Tasarım sabittir' ), 'eski sabit tasarım metni yok' );
+	}
+);
+
+qrms_test(
+	'footer dört sütun basar: marka, menü, saatler, iletişim',
+	function () {
+		$hfb  = qrms_hfb();
+		$opts = $hfb->get_footer_options();
+		$opts['description'] = 'Lezzetin adresi.';
+		$opts['menu_id']     = 7;
+		$opts['phone']       = '0850 000 00 00';
+		$opts['email']       = 'info@ornek.test';
+		$opts['address']     = "Atatürk Cad.\nNo: 12";
+
+		$html = $hfb->render_footer( $opts );
+
+		qrms_assert_contains( 'hfb-footer__col--brand', $html, 'marka sütunu' );
+		qrms_assert_contains( 'Lezzetin adresi.', $html, 'açıklama' );
+		qrms_assert_contains( 'hfb-footer__col--links', $html, 'hızlı menü sütunu' );
+		qrms_assert_contains( 'Hızlı Menü', $html, 'varsayılan menü başlığı' );
+		qrms_assert_contains( 'hfb-footer__col--hours', $html, 'saat sütunu (modül yüklü)' );
+		qrms_assert_contains( 'Çalışma Saatlerimiz', $html, 'saat başlığı' );
+		qrms_assert_contains( 'hfb-footer__hours-day', $html, 'gün adı' );
+		qrms_assert_contains( 'hfb-footer__col--contact', $html, 'iletişim sütunu' );
+		qrms_assert_contains( 'İletişim', $html, 'iletişim başlığı' );
+		qrms_assert_contains( 'hfb-icon--contact', $html, 'iletişim ikonu' );
+		qrms_assert_contains( 'Atatürk Cad.', $html, 'adres' );
+		qrms_assert_contains( '--hfb-footer-brand-align:left', $html, 'CSS değişkeni' );
+		qrms_assert_true( false === strpos( $html, 'data-qmo-cagri' ), 'çağrı kapalıyken buton yok' );
+	}
+);
+
+qrms_test(
+	'sanitize_footer_input yeni alanları temizler, mevcutları korur',
+	function () {
+		$hfb = qrms_hfb();
+		$cur = $hfb->get_footer_options();
+		$cur['brand_line1'] = 'Kayıtlı Marka';
+		$cur['phone']       = '0212 111 22 33';
+
+		$temiz = $hfb->sanitize_footer_input(
+			array(
+				'hfb_footer_brand_line1'             => '  Yeni Marka  ',
+				'hfb_footer_address'                 => "Cadde 1\n<script>x</script>",
+				'hfb_footer_links_title'             => 'Hızlı Menü',
+				'hfb_footer_hours_title'             => 'Çalışma Saatlerimiz',
+				'hfb_footer_contact_title'           => 'İletişim',
+				'hfb_footer_phone'                   => '0212 111 22 33',
+				'hfb_footer_email'                   => 'info@ornek.test',
+				'hfb_footer_brand_align'             => 'center',
+				'hfb_footer_links_align'             => 'justify',
+				'hfb_footer_brand_font_family'       => 'Comic Sans',
+				'hfb_footer_brand_font_size_desktop' => '99',
+				'hfb_footer_brand_font_color'        => '#abcdef',
+				'hfb_footer_logo_width_desktop'      => '999',
+				'hfb_footer_call_enabled'            => '1',
+				'hfb_footer_call_garson_label'       => '  Garson  ',
+				'hfb_footer_btn_bg_color'            => 'red',
+				'hfb_footer_btn_shape'               => 'hexagon',
+				'hfb_footer_btn_font_size'           => '12',
+			),
+			$cur
+		);
+
+		qrms_assert_same( 'Yeni Marka', $temiz['brand_line1'], 'marka temizlendi' );
+		qrms_assert_same( '0212 111 22 33', $temiz['phone'], 'telefon durur' );
+		qrms_assert_contains( 'Cadde 1', $temiz['address'], 'adres durur' );
+		qrms_assert_true( false === strpos( $temiz['address'], '<script>' ), 'script yok' );
+		qrms_assert_same( 'info@ornek.test', $temiz['email'], 'e-posta durur' );
+		qrms_assert_same( 'center', $temiz['brand_align'], 'hizalama' );
+		qrms_assert_same( 'left', $temiz['links_align'], 'geçersiz hiza varsayılan' );
+		qrms_assert_same( 'Playfair Display', $temiz['brand_font_family'], 'bilinmeyen font reddedildi' );
+		qrms_assert_same( 32, (int) $temiz['brand_font_size_desktop'], 'punto üst sınır' );
+		qrms_assert_same( '#abcdef', $temiz['brand_font_color'], 'renk' );
+		qrms_assert_same( 320, (int) $temiz['logo_width_desktop'], 'logo genişlik üst sınır' );
+		qrms_assert_same( 1, (int) $temiz['call_enabled'], 'çağrı açık' );
+		qrms_assert_same( 'Garson', $temiz['call_garson_label'], 'buton metni' );
+		qrms_assert_same( '#c9a84c', $temiz['btn_bg_color'], 'geçersiz buton rengi varsayılan' );
+		qrms_assert_same( 'pill', $temiz['btn_shape'], 'geçersiz şekil varsayılan' );
+		qrms_assert_same( 12, (int) $temiz['btn_font_size'], 'buton punto' );
+		qrms_assert_same( 'QR MENU', $hfb->get_footer_options()['brand_line1'], 'depo değişmedi' );
+	}
+);
+
+qrms_test(
+	'garson butonları oturum yokken uyarı basar, önizlemede stilli görünür',
+	function () {
+		$hfb  = qrms_hfb();
+		$opts = $hfb->get_footer_options();
+		$opts['call_enabled']      = 1;
+		$opts['call_garson_label'] = 'Garson Çağır';
+		$opts['call_hesap_label']  = 'Hesap İste';
+
+		$html = $hfb->render_footer( $opts );
+		qrms_assert_contains( 'Lütfen QR kodunu okutarak masanızdan erişin', $html, 'oturumsuz uyarı' );
+		qrms_assert_true( false === strpos( $html, 'data-qmo-cagri' ), 'sahte çağrı yok' );
+
+		$GLOBALS['qrms_test']['is_admin'] = true;
+		$onizleme = $hfb->render_footer( $opts );
+		qrms_assert_contains( 'hfb-footer__call-btn', $onizleme, 'önizlemede buton' );
+		qrms_assert_contains( 'Garson Çağır', $onizleme, 'garson metni' );
+		qrms_assert_contains( 'Hesap İste', $onizleme, 'hesap metni' );
+		qrms_assert_true( false === strpos( $onizleme, 'data-qmo-cagri' ), 'önizlemede AJAX bağlanmaz' );
+	}
+);
+
+qrms_test(
+	'AJAX önizleme footer saat ve başlık alanlarını döndürür',
+	function () {
+		$hfb = qrms_hfb();
+
+		$_POST = array(
+			'nonce' => 'test',
+			'data'  => array(
+				'hfb_footer_links_title'   => 'Hızlı Menü',
+				'hfb_footer_hours_title'   => 'Çalışma Saatlerimiz',
+				'hfb_footer_contact_title' => 'İletişim',
+				'hfb_footer_address'       => 'Test Sokak 1',
+				'hfb_footer_copyright'     => '© 2026 Önizleme',
+			),
+		);
+
+		$hfb->ajax_preview();
+		$yanit = $GLOBALS['qrms_test']['json'];
+
+		qrms_assert_true( is_array( $yanit ) && ! empty( $yanit['success'] ), 'başarılı yanıt' );
+		qrms_assert_contains( 'Hızlı Menü', $yanit['data']['footer'], 'menü başlığı' );
+		qrms_assert_contains( 'Çalışma Saatlerimiz', $yanit['data']['footer'], 'saat başlığı' );
+		qrms_assert_contains( 'Test Sokak 1', $yanit['data']['footer'], 'adres' );
+		qrms_assert_contains( '© 2026 Önizleme', $yanit['data']['footer'], 'telif' );
 	}
 );
 
