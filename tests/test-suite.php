@@ -2123,6 +2123,38 @@ qrms_test(
 );
 
 qrms_test(
+	'kaydetme sihirbazdan çıkıp vitrin listesine döner',
+	function () {
+		// Sihirbazın son adımı kaydetmektir; kullanıcıyı düzenleme formuna
+		// geri atmak onu aynı sihirbazın 1. adımında bırakıyor ve kaydın
+		// gerçekleşip gerçekleşmediğini belirsiz kılıyordu.
+		$php = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-vitrin-admin.php' );
+
+		qrms_assert_contains(
+			"wp_safe_redirect( \$this->vitrin_url( array( 'vitrin_msg' => 'kaydedildi' ) ) );",
+			$php,
+			'liste adresine yönlendirir'
+		);
+		qrms_assert_false(
+			strpos( $php, "'vitrin' => \$kayit_id, 'vitrin_msg' => 'kaydedildi'" ) !== false,
+			'düzenleme formuna geri dönmez'
+		);
+
+		// Yetki/nonce akışı değişmedi: her iki handler da aynı ortak
+		// girişten geçer.
+		qrms_assert_contains( '$this->vitrin_yetki_kontrol();', $php, 'nonce + yetki kontrolü yerinde' );
+		qrms_assert_contains( 'check_admin_referer( $this->vitrin_nonce_action )', $php, 'nonce eylemi aynı' );
+
+		// Bildirim listede basılır.
+		qrms_assert_true(
+			strpos( $php, '$this->vitrin_notice();' ) < strpos( $php, 'Vitrinlerim' ),
+			'liste ekranı bildirimi basar'
+		);
+		qrms_assert_contains( "'kaydedildi' => array( 'success', 'Vitrin kaydedildi.' )", $php, 'başarı bildirimi' );
+	}
+);
+
+qrms_test(
 	'kayma hızı sınırlanır, sayı olmayan girdi varsayılana düşer',
 	function () {
 		$hizli = RMA_Vitrin_DB::ayarlari_temizle( array( 'autoplay_speed' => 10 ) );
