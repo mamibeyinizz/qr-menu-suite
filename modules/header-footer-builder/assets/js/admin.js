@@ -433,17 +433,102 @@
 
   /* --------------------------------------------- Hamburger blok sıralama */
 
+  var blockIdCounter = 0;
+
+  function nextBlockId() {
+    var max = 0;
+
+    $('#hfb-block-sortable .hfb-block-item').each(function () {
+      var id = String($(this).data('block-id') || '');
+      var match = id.match(/^blk_(\d+)$/);
+
+      if (match) {
+        max = Math.max(max, parseInt(match[1], 10));
+      }
+    });
+
+    blockIdCounter = Math.max(blockIdCounter, max) + 1;
+    return 'blk_' + blockIdCounter;
+  }
+
   function writeBlockOrder() {
     var order = [];
 
     $('#hfb-block-sortable .hfb-block-item').each(function () {
-      var key = $(this).data('block');
-      if (key) {
-        order.push(key);
+      var id = $(this).data('block-id');
+      if (id) {
+        order.push(id);
       }
     });
 
     $('#hfb_hamburger_block_order').val(order.join(','));
+  }
+
+  function initBlockColorPickers($scope) {
+    if (typeof $.fn.wpColorPicker !== 'function') {
+      return;
+    }
+
+    ($scope || $(document)).find('.hfb-color-picker').each(function () {
+      var $picker = $(this);
+
+      if ($picker.closest('.wp-picker-container').length) {
+        return;
+      }
+
+      $picker.wpColorPicker({
+        change: function () {
+          debouncedPreview();
+        },
+        clear: function () {
+          debouncedPreview();
+        }
+      });
+    });
+  }
+
+  function replaceBlockIds($item, newId) {
+    $item.attr('data-block-id', newId);
+
+    $item.find('[name]').each(function () {
+      var name = $(this).attr('name');
+      if (name) {
+        $(this).attr('name', name.replace(/hfb_hamburger_blocks\[[^\]]+\]/, 'hfb_hamburger_blocks[' + newId + ']'));
+      }
+    });
+
+    $item.find('[id]').each(function () {
+      var id = $(this).attr('id');
+      if (id && id.indexOf('__ID__') !== -1) {
+        $(this).attr('id', id.replace(/__ID__/g, newId));
+      } else if (id) {
+        $(this).attr('id', id.replace(/_blk_\d+$/, '_' + newId).replace(/__ID__/g, newId));
+      }
+    });
+
+    $item.find('[for]').each(function () {
+      var htmlFor = $(this).attr('for');
+      if (htmlFor && htmlFor.indexOf('__ID__') !== -1) {
+        $(this).attr('for', htmlFor.replace(/__ID__/g, newId));
+      }
+    });
+  }
+
+  function addHamburgerBlock(type) {
+    var $template = $('#hfb-block-tpl-' + type);
+
+    if (!$template.length) {
+      return;
+    }
+
+    var newId = nextBlockId();
+    var $item = $($template.html().trim());
+
+    replaceBlockIds($item, newId);
+    $('#hfb-block-sortable').append($item);
+    initBlockColorPickers($item);
+    writeBlockOrder();
+    debouncedPreview();
   }
 
   function initBlockSortable() {
@@ -462,6 +547,43 @@
         debouncedPreview();
       }
     });
+
+    $('#hfb-block-add-toggle').on('click', function (e) {
+      e.preventDefault();
+      var $menu = $('#hfb-block-add-menu');
+      var open = !$menu.prop('hidden');
+      $menu.prop('hidden', open);
+      $(this).attr('aria-expanded', open ? 'false' : 'true');
+    });
+
+    $(document).on('click', '.hfb-block-add-type', function (e) {
+      e.preventDefault();
+      addHamburgerBlock($(this).data('block-type'));
+      $('#hfb-block-add-menu').prop('hidden', true);
+      $('#hfb-block-add-toggle').attr('aria-expanded', 'false');
+    });
+
+    $(document).on('click', function (e) {
+      if ($(e.target).closest('.hfb-block-add').length) {
+        return;
+      }
+      $('#hfb-block-add-menu').prop('hidden', true);
+      $('#hfb-block-add-toggle').attr('aria-expanded', 'false');
+    });
+
+    $(document).on('click', '.hfb-block-delete', function (e) {
+      e.preventDefault();
+      $(this).closest('.hfb-block-item').remove();
+      writeBlockOrder();
+      debouncedPreview();
+    });
+
+    $(document).on('click', '.hfb-block-align .hfb-align-btn', function () {
+      $(this).closest('.hfb-block-align').find('.hfb-align-btn').removeClass('is-selected');
+      $(this).addClass('is-selected');
+    });
+
+    writeBlockOrder();
   }
 
   /* ------------------------------------------------------------- Başlat */

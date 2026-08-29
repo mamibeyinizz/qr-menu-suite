@@ -454,55 +454,58 @@ trait QRMS_HFB_Admin {
 		<div class="qrms-card hfb-step" data-step="2" data-step-title="<?php esc_attr_e( 'İçerik Blokları ve Sıralama', 'qrms' ); ?>" style="display:none;">
 			<h2 class="qrms-card-title"><?php esc_html_e( '2. İçerik Blokları ve Sıralama', 'qrms' ); ?></h2>
 			<p class="description">
-				<?php esc_html_e( 'Açılan panelde hangi blokların görüneceğini işaretleyin ve sürükleyerek sıralayın. İşaretsiz blok panelde hiç görünmez. Sıra değişince sağdaki önizleme anında güncellenir.', 'qrms' ); ?>
+				<?php esc_html_e( 'Açılan panelde hangi blokların görüneceğini işaretleyin ve sürükleyerek sıralayın. İşaretsiz blok panelde hiç görünmez. Aynı tipten birden fazla blok ekleyebilirsiniz. Sıra değişince sağdaki önizleme anında güncellenir.', 'qrms' ); ?>
 			</p>
 
-			<input type="hidden" name="hfb_hamburger_block_order" id="hfb_hamburger_block_order" class="hfb-preview-trigger" value="<?php echo esc_attr( implode( ',', (array) $opts['block_order'] ) ); ?>" />
+			<?php
+			$types  = $this->hamburger_block_types();
+			$blocks = isset( $opts['blocks'] ) && is_array( $opts['blocks'] ) ? $opts['blocks'] : array();
+			$order  = wp_list_pluck( $blocks, 'id' );
+			?>
+
+			<input type="hidden" name="hfb_hamburger_block_order" id="hfb_hamburger_block_order" class="hfb-preview-trigger" value="<?php echo esc_attr( implode( ',', array_map( 'strval', $order ) ) ); ?>" />
 
 			<ul class="hfb-block-sortable" id="hfb-block-sortable">
 				<?php
-				$types = $this->hamburger_block_types();
-				$order = isset( $opts['block_order'] ) && is_array( $opts['block_order'] ) ? $opts['block_order'] : array_keys( $types );
-				foreach ( $order as $block ) :
-					if ( ! isset( $types[ $block ] ) ) {
-						continue;
-					}
-					$enabled = ! empty( $opts[ 'block_' . $block ] );
-					?>
-					<li class="hfb-block-item" data-block="<?php echo esc_attr( $block ); ?>">
-						<span class="hfb-block-drag" aria-hidden="true">⋮⋮</span>
-						<div class="hfb-block-item__body">
-							<label class="hfb-check-row">
-								<input type="checkbox" name="hfb_hamburger_block_<?php echo esc_attr( $block ); ?>" value="1" class="hfb-preview-trigger" <?php checked( $enabled ); ?> />
-								<strong><?php echo esc_html( $types[ $block ] ); ?></strong>
-							</label>
-
-							<?php if ( 'menu' === $block ) : ?>
-								<div class="qrms-field">
-									<label class="qrms-label" for="hfb_header_menu_id"><?php esc_html_e( 'WordPress menüsü', 'qrms' ); ?></label>
-									<select id="hfb_header_menu_id" name="hfb_header_menu_id" class="qrms-input hfb-preview-trigger">
-										<?php foreach ( $menus as $id => $name ) : ?>
-											<option value="<?php echo esc_attr( (string) $id ); ?>" <?php selected( (int) $header_opts['menu_id'], (int) $id ); ?>><?php echo esc_html( $name ); ?></option>
-										<?php endforeach; ?>
-									</select>
-									<p class="description"><?php esc_html_e( 'Aynı menü masaüstü header\'ında da kullanılır.', 'qrms' ); ?></p>
-								</div>
-							<?php elseif ( 'social' === $block ) : ?>
-								<p class="description"><?php esc_html_e( 'Header\'ın sağ ucunda ve hamburger panelinde altın çerçeveli daireler olarak görünür. En fazla 6 tanesi gösterilir.', 'qrms' ); ?></p>
-								<?php $this->render_social_fields( $header_opts, 'hfb_header_' ); ?>
-							<?php elseif ( 'text' === $block ) : ?>
-								<div class="qrms-field">
-									<label class="qrms-label" for="hfb_hamburger_text"><?php esc_html_e( 'Serbest metin / HTML', 'qrms' ); ?></label>
-									<textarea id="hfb_hamburger_text" name="hfb_hamburger_text" class="qrms-input hfb-preview-trigger" rows="4"><?php echo esc_textarea( $opts['text'] ); ?></textarea>
-									<p class="description"><?php esc_html_e( 'İzin verilen HTML (paragraf, bağlantı, vurgu) kaydedilir; zararlı etiketler temizlenir.', 'qrms' ); ?></p>
-								</div>
-							<?php elseif ( 'logo' === $block ) : ?>
-								<p class="description"><?php esc_html_e( 'Header sekmesinde yüklenen logo (veya marka yazısı) panel içinde bu sırada görünür.', 'qrms' ); ?></p>
-							<?php endif; ?>
-						</div>
-					</li>
-				<?php endforeach; ?>
+				$social_fields_rendered = false;
+				foreach ( $blocks as $block ) :
+					$this->render_hamburger_block_item( $block, $header_opts, $menus, $types, false, $social_fields_rendered );
+				endforeach;
+				?>
 			</ul>
+
+			<div class="hfb-block-add">
+				<div class="hfb-block-add__menu" id="hfb-block-add-menu" hidden>
+					<?php foreach ( $types as $type_key => $type_label ) : ?>
+						<button type="button" class="button hfb-block-add-type" data-block-type="<?php echo esc_attr( $type_key ); ?>">
+							<?php echo esc_html( $type_label ); ?>
+						</button>
+					<?php endforeach; ?>
+				</div>
+				<button type="button" class="button button-secondary" id="hfb-block-add-toggle" aria-expanded="false" aria-controls="hfb-block-add-menu">
+					<?php esc_html_e( 'Yeni Blok Ekle', 'qrms' ); ?>
+				</button>
+			</div>
+
+			<div id="hfb-block-templates" hidden aria-hidden="true">
+				<?php
+				foreach ( $types as $type_key => $type_label ) {
+					$template_block = $this->default_hamburger_block(
+						$type_key,
+						'__ID__',
+						array(
+							'enabled' => true,
+							'align'   => 'center',
+							'content' => '',
+							'label'   => __( 'Buton', 'qrms' ),
+						)
+					);
+					echo '<template id="hfb-block-tpl-' . esc_attr( $type_key ) . '">';
+					$this->render_hamburger_block_item( $template_block, $header_opts, $menus, $types, true );
+					echo '</template>';
+				}
+				?>
+			</div>
 		</div>
 
 		<div class="qrms-card hfb-step" data-step="3" data-step-title="<?php esc_attr_e( 'Yazı Tipi ve Renk', 'qrms' ); ?>" style="display:none;">
@@ -593,6 +596,177 @@ trait QRMS_HFB_Admin {
 
 		<?php
 		$this->render_step_nav( 'hamburger' );
+	}
+
+	/**
+	 * Hamburger paneli için tek bir blok satırı.
+	 *
+	 * @param array<string,mixed> $block       Blok verisi.
+	 * @param array<string,mixed> $header_opts Header ayarları.
+	 * @param array<int,string>   $menus       Menü listesi.
+	 * @param array<string,string> $types      Blok tip etiketleri.
+	 * @param bool                $template    Şablon çıktısı mı (id yer tutuculu).
+	 * @param bool                $social_fields_rendered Sosyal alanlar basıldı mı (referans).
+	 * @return void
+	 */
+	private function render_hamburger_block_item( $block, $header_opts, $menus, $types, $template = false, &$social_fields_rendered = false ) {
+		$id      = isset( $block['id'] ) ? (string) $block['id'] : '';
+		$type    = isset( $block['type'] ) ? (string) $block['type'] : '';
+		$enabled = ! empty( $block['enabled'] );
+		$align   = isset( $block['align'] ) ? (string) $block['align'] : 'center';
+		$label   = isset( $types[ $type ] ) ? $types[ $type ] : $type;
+		$prefix  = 'hfb_hamburger_blocks[' . $id . ']';
+		?>
+		<li class="hfb-block-item" data-block-id="<?php echo esc_attr( $id ); ?>" data-block-type="<?php echo esc_attr( $type ); ?>">
+			<span class="hfb-block-drag" aria-hidden="true">⋮⋮</span>
+			<div class="hfb-block-item__body">
+				<div class="hfb-block-item__head">
+					<label class="hfb-check-row hfb-block-item__title">
+						<input type="checkbox" name="<?php echo esc_attr( $prefix ); ?>[enabled]" value="1" class="hfb-preview-trigger" <?php checked( $enabled ); ?> />
+						<strong><?php echo esc_html( $label ); ?></strong>
+					</label>
+					<input type="hidden" name="<?php echo esc_attr( $prefix ); ?>[type]" value="<?php echo esc_attr( $type ); ?>" />
+					<?php $this->hfb_block_align_row( $prefix . '[align]', $align, $id ); ?>
+					<button type="button" class="button-link hfb-block-delete" title="<?php esc_attr_e( 'Bloğu sil', 'qrms' ); ?>" aria-label="<?php esc_attr_e( 'Bloğu sil', 'qrms' ); ?>">
+						<span class="dashicons dashicons-trash" aria-hidden="true"></span>
+					</button>
+				</div>
+
+				<?php if ( 'menu' === $type ) : ?>
+					<div class="qrms-field">
+						<label class="qrms-label" for="hfb_header_menu_id_<?php echo esc_attr( $id ); ?>"><?php esc_html_e( 'WordPress menüsü', 'qrms' ); ?></label>
+						<select id="hfb_header_menu_id_<?php echo esc_attr( $id ); ?>" name="hfb_header_menu_id" class="qrms-input hfb-preview-trigger">
+							<?php foreach ( $menus as $menu_id => $name ) : ?>
+								<option value="<?php echo esc_attr( (string) $menu_id ); ?>" <?php selected( (int) $header_opts['menu_id'], (int) $menu_id ); ?>><?php echo esc_html( $name ); ?></option>
+							<?php endforeach; ?>
+						</select>
+						<p class="description"><?php esc_html_e( 'Aynı menü masaüstü header\'ında da kullanılır.', 'qrms' ); ?></p>
+					</div>
+				<?php elseif ( 'social' === $type ) : ?>
+					<p class="description"><?php esc_html_e( 'Header\'ın sağ ucunda ve hamburger panelinde altın çerçeveli daireler olarak görünür. En fazla 6 tanesi gösterilir.', 'qrms' ); ?></p>
+					<?php if ( ! $template && ! $social_fields_rendered ) : ?>
+						<?php $this->render_social_fields( $header_opts, 'hfb_header_' ); ?>
+						<?php $social_fields_rendered = true; ?>
+					<?php elseif ( ! $template ) : ?>
+						<p class="description"><?php esc_html_e( 'Sosyal medya bağlantıları yukarıdaki ilk Sosyal medya bloğunda veya Header sekmesinde düzenlenir.', 'qrms' ); ?></p>
+					<?php endif; ?>
+				<?php elseif ( 'text' === $type ) : ?>
+					<div class="qrms-field">
+						<label class="qrms-label" for="hfb_hamburger_text_<?php echo esc_attr( $id ); ?>"><?php esc_html_e( 'Serbest metin / HTML', 'qrms' ); ?></label>
+						<textarea id="hfb_hamburger_text_<?php echo esc_attr( $id ); ?>" name="<?php echo esc_attr( $prefix ); ?>[content]" class="qrms-input hfb-preview-trigger" rows="4"><?php echo esc_textarea( isset( $block['content'] ) ? (string) $block['content'] : '' ); ?></textarea>
+						<p class="description"><?php esc_html_e( 'İzin verilen HTML (paragraf, bağlantı, vurgu) kaydedilir; zararlı etiketler temizlenir.', 'qrms' ); ?></p>
+					</div>
+				<?php elseif ( 'logo' === $type ) : ?>
+					<p class="description"><?php esc_html_e( 'Header sekmesinde yüklenen logo (veya marka yazısı) panel içinde bu sırada görünür.', 'qrms' ); ?></p>
+				<?php elseif ( 'lang' === $type ) : ?>
+					<p class="description"><?php esc_html_e( 'QR Çeviri modülünün dil seçici bayrağı. Panelde bu sırada görünür.', 'qrms' ); ?></p>
+				<?php elseif ( 'button' === $type ) : ?>
+					<div class="hfb-button-block-fields">
+						<div class="qrms-field">
+							<label class="qrms-label" for="hfb_btn_label_<?php echo esc_attr( $id ); ?>"><?php esc_html_e( 'Buton metni', 'qrms' ); ?></label>
+							<input type="text" id="hfb_btn_label_<?php echo esc_attr( $id ); ?>" name="<?php echo esc_attr( $prefix ); ?>[label]" class="qrms-input hfb-preview-trigger" value="<?php echo esc_attr( isset( $block['label'] ) ? (string) $block['label'] : '' ); ?>" />
+						</div>
+						<div class="qrms-field">
+							<label class="qrms-label" for="hfb_btn_url_<?php echo esc_attr( $id ); ?>"><?php esc_html_e( 'Bağlantı (URL)', 'qrms' ); ?></label>
+							<input type="url" id="hfb_btn_url_<?php echo esc_attr( $id ); ?>" name="<?php echo esc_attr( $prefix ); ?>[url]" class="qrms-input hfb-preview-trigger" value="<?php echo esc_attr( isset( $block['url'] ) ? (string) $block['url'] : '' ); ?>" placeholder="https://" />
+						</div>
+						<?php
+						$this->hfb_color_field(
+							'hfb_btn_bg_' . $id,
+							$prefix . '[bg_color]',
+							isset( $block['bg_color'] ) ? (string) $block['bg_color'] : '#c9a84c',
+							__( 'Buton rengi', 'qrms' ),
+							__( 'Arka plan rengi.', 'qrms' ),
+							'#c9a84c'
+						);
+						$this->hfb_color_field(
+							'hfb_btn_text_' . $id,
+							$prefix . '[text_color]',
+							isset( $block['text_color'] ) ? (string) $block['text_color'] : '#0a0a0c',
+							__( 'Yazı rengi', 'qrms' ),
+							__( 'Buton metninin rengi.', 'qrms' ),
+							'#0a0a0c'
+						);
+						?>
+						<div class="qrms-field">
+							<label class="qrms-label" for="hfb_btn_shape_<?php echo esc_attr( $id ); ?>"><?php esc_html_e( 'Şekil', 'qrms' ); ?></label>
+							<select id="hfb_btn_shape_<?php echo esc_attr( $id ); ?>" name="<?php echo esc_attr( $prefix ); ?>[shape]" class="qrms-input hfb-preview-trigger">
+								<?php foreach ( $this->hamburger_button_shapes() as $shape_key => $shape_label ) : ?>
+									<option value="<?php echo esc_attr( $shape_key ); ?>" <?php selected( isset( $block['shape'] ) ? (string) $block['shape'] : 'pill', $shape_key ); ?>><?php echo esc_html( $shape_label ); ?></option>
+								<?php endforeach; ?>
+							</select>
+						</div>
+						<div class="qrms-field">
+							<label class="qrms-label" for="hfb_btn_font_<?php echo esc_attr( $id ); ?>"><?php esc_html_e( 'Yazı tipi', 'qrms' ); ?></label>
+							<select id="hfb_btn_font_<?php echo esc_attr( $id ); ?>" name="<?php echo esc_attr( $prefix ); ?>[font]" class="qrms-input hfb-preview-trigger">
+								<?php foreach ( $this->font_catalog() as $font_key => $font_meta ) : ?>
+									<option value="<?php echo esc_attr( $font_key ); ?>" <?php selected( isset( $block['font'] ) ? (string) $block['font'] : 'Playfair Display', $font_key ); ?>><?php echo esc_html( $font_meta['etiket'] ); ?></option>
+								<?php endforeach; ?>
+							</select>
+						</div>
+						<?php
+						$this->hfb_size_row(
+							'hfb_btn_size_' . $id,
+							$prefix . '[font_size]',
+							isset( $block['font_size'] ) ? (int) $block['font_size'] : 15,
+							10,
+							32,
+							__( 'Yazı boyutu', 'qrms' ),
+							__( 'Buton metninin punto değeri.', 'qrms' )
+						);
+						$this->hfb_weight_row(
+							'hfb_btn_weight_' . $id,
+							$prefix . '[font_weight]',
+							isset( $block['font_weight'] ) ? (int) $block['font_weight'] : 600,
+							__( 'Yazı kalınlığı', 'qrms' ),
+							__( '400 sakin, 600–700 daha vurgulu durur.', 'qrms' )
+						);
+						?>
+					</div>
+				<?php endif; ?>
+			</div>
+		</li>
+		<?php
+	}
+
+	/**
+	 * Blok satırı için kompakt hizalama seçici.
+	 *
+	 * @param string $name  Form alanı adı.
+	 * @param string $deger Mevcut değer.
+	 * @param string $id    Blok kimliği (benzersiz id ön eki).
+	 * @return void
+	 */
+	private function hfb_block_align_row( $name, $deger, $id ) {
+		$deger = in_array( $deger, array( 'left', 'center', 'right' ), true ) ? $deger : 'center';
+
+		$secenekler = array(
+			'left'   => array( 'Sol', array( 0, 0, 0 ) ),
+			'center' => array( 'Orta', array( 0, 3, 1.5 ) ),
+			'right'  => array( 'Sağ', array( 0, 6, 3 ) ),
+		);
+		?>
+		<div class="hfb-block-align" role="radiogroup" aria-label="<?php esc_attr_e( 'Blok hizalama', 'qrms' ); ?>">
+			<?php
+			foreach ( $secenekler as $hiza => $secenek ) :
+				list( $hiza_etiket, $ofset ) = $secenek;
+				$secili                      = $hiza === $deger;
+				?>
+				<label class="hfb-align-btn hfb-align-btn--compact<?php echo $secili ? ' is-selected' : ''; ?>" title="<?php echo esc_attr( $hiza_etiket ); ?>">
+					<input type="radio" name="<?php echo esc_attr( $name ); ?>"
+						   class="hfb-align-input hfb-preview-trigger"
+						   value="<?php echo esc_attr( $hiza ); ?>"
+						   <?php checked( $secili ); ?>>
+					<svg class="hfb-align-ic" viewBox="0 0 16 12" width="14" height="10" aria-hidden="true" focusable="false">
+						<rect x="<?php echo esc_attr( (string) $ofset[0] ); ?>" y="1" width="16" height="2" rx="1"></rect>
+						<rect x="<?php echo esc_attr( (string) $ofset[1] ); ?>" y="5" width="10" height="2" rx="1"></rect>
+						<rect x="<?php echo esc_attr( (string) $ofset[2] ); ?>" y="9" width="13" height="2" rx="1"></rect>
+					</svg>
+					<span class="screen-reader-text"><?php echo esc_html( $hiza_etiket ); ?></span>
+				</label>
+			<?php endforeach; ?>
+		</div>
+		<?php
 	}
 
 	/**
