@@ -35,6 +35,7 @@ require_once __DIR__ . '/includes/trait-vitrin-admin.php';
 require_once __DIR__ . '/includes/class-kampanya-db.php';
 require_once __DIR__ . '/includes/class-kampanya.php';
 require_once __DIR__ . '/includes/trait-kampanya-admin.php';
+require_once __DIR__ . '/includes/trait-kampanya-banner-admin.php';
 require_once __DIR__ . '/includes/class-tukendi.php';
 require_once __DIR__ . '/includes/shortcode-vitrin.php';
 require_once __DIR__ . '/qmo-one-cikan-slider.php';
@@ -69,6 +70,7 @@ class Restaurant_Menu_Automation {
     use RMA_Category_Fields_Trait;
     use RMA_Vitrin_Admin_Trait;
     use RMA_Kampanya_Admin_Trait;
+    use RMA_Kampanya_Banner_Admin_Trait;
     use RMA_Urunum_Yok_Admin_Trait;
 
     private static $instance = null;
@@ -135,11 +137,17 @@ class Restaurant_Menu_Automation {
         add_action( 'admin_post_rma_kampanya_sil',     [ $this, 'handle_kampanya_delete' ] );
         add_action( 'wp_ajax_rma_kampanya_onizleme',   [ $this, 'ajax_kampanya_onizleme' ] );
 
-        // Kampanya banner'ının görünüm ayarları (oran, geçiş, oklar, başlık).
-        // Banner görsellerinin kendisi CPT ekranından yönetilir; bu uç
-        // yalnızca wp_options'taki görünüm kaydını yazar
-        // (bkz. QMO_Banner_Slider_Settings ve trait-kampanya-admin.php).
+        /* -----------------------------------------------------------------
+           KAMPANYA BANNER (banner GÖRSELLERİ — fiyat kampanyasıyla ilgisi yok)
+           Yönetimin tamamı "Menü Görünümü" sayfasındaki üç adımlı sihirbazda
+           toplandı (bkz. trait-kampanya-banner-admin.php). Görünüm ayarı
+           admin-post ile, hazır şablonla görsel üretme ise AJAX ile gider:
+           görsel tarayıcıda (canvas) çizilir, sunucu yalnızca PNG'yi
+           doğrulayıp medya kütüphanesine ve yeni bir qmo_banner_slide
+           kaydına yazar. Veri katmanı (CPT, meta, option) değişmedi.
+        ----------------------------------------------------------------- */
         add_action( 'admin_post_qmo_banner_ayar_kaydet', [ $this, 'handle_banner_settings_save' ] );
+        add_action( 'wp_ajax_qmo_banner_gorsel_olustur', [ $this, 'ajax_banner_gorsel_olustur' ] );
 
         add_shortcode( 'restaurant_menu', [ $this, 'shortcode_menu' ] );
         add_shortcode( 'rma_qr_notice', [ $this, 'shortcode_qr_notice' ] );

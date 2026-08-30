@@ -21,7 +21,7 @@ trait RMA_Admin_Pages_Trait {
                 'menu_title' => 'Görünüm',
                 'hub_title'  => 'Menü Görünümü',
                 'render'     => 'render_appearance_page',
-                'desc'       => 'Menünüzün renkleri, yazı tipleri ve kategori çubuğu.',
+                'desc'       => 'Menünüzün renkleri, yazı tipleri, kategori çubuğu ve kampanya banner\'ı.',
                 'icon'       => 'dashicons-art',
             ],
             'qrms-rm-one-cikanlar' => [
@@ -44,14 +44,6 @@ trait RMA_Admin_Pages_Trait {
                 'render'     => 'render_campaign_page',
                 'desc'       => 'Menüdeki fiyatları toplu zam/indirimle geçici olarak değiştirin; tek tıkla geri alın.',
                 'icon'       => 'dashicons-tag',
-            ],
-            'qrms-rm-banner-ayar' => [
-                'title'      => 'Banner Görünümü',
-                'menu_title' => 'Banner Görünümü',
-                'hub_title'  => 'Kampanya Banner',
-                'render'     => 'render_banner_settings_page',
-                'desc'       => 'Sayfa başındaki kampanya banner\'ının oranı, geçişi, okları ve başlığı.',
-                'icon'       => 'dashicons-images-alt2',
             ],
             'qrms-rm-diger' => [
                 'title'      => 'Diğer Ayarlar',
@@ -141,7 +133,20 @@ trait RMA_Admin_Pages_Trait {
                     $from_sub( $this, 'qrms-rm-gorunum' ),
                     $from_sub( $this, 'qrms-rm-one-cikanlar' ),
                     $from_sub( $this, 'qrms-rm-vitrin' ),
-                    $from_sub( $this, 'qrms-rm-banner-ayar' ),
+                    // Kampanya Banner'ın kendi sayfası yok: "Menü Görünümü"
+                    // sayfasındaki üç adımlı sihirbazın bölümüdür (bkz.
+                    // trait-kampanya-banner-admin.php). Hub'da yine kendi
+                    // kartıyla durur ki kullanıcı onu aramak zorunda kalmasın.
+                    [
+                        'url'   => $this->admin_page_url(
+                            'qrms-rm-gorunum',
+                            [ 'banner_adim' => 'ozet' ],
+                            self::banner_anchor()
+                        ),
+                        'title' => 'Kampanya Banner',
+                        'desc'  => 'Sayfa başındaki kampanya görselleri: kampanya ekleyin, oran/geçiş/ok/başlık ayarlayın, hazır şablonla görsel üretin.',
+                        'icon'  => 'dashicons-images-alt2',
+                    ],
                     $from_sub( $this, 'qrms-rm-diger' ),
                 ],
             ],
@@ -155,7 +160,10 @@ trait RMA_Admin_Pages_Trait {
      * etsin diye her eski slug hâlâ kayıtlıdır; açıldığında içeriğin taşındığı
      * yeni sayfaya yönlendirir.
      *
-     * @return array<string,array{0:string,1:string}>
+     * Üçüncü eleman (opsiyonel) hedefe eklenecek query arg'larıdır: içerik
+     * bir sayfanın belirli bir ADIMINA taşındıysa çapa tek başına yetmez.
+     *
+     * @return array<string,array{0:string,1:string,2?:array<string,string>}>
      */
     private function get_legacy_page_map() {
         return [
@@ -166,6 +174,12 @@ trait RMA_Admin_Pages_Trait {
             'rma_category_order'       => [ 'qrms-rm-diger',        'rma-kategori-sirasi' ],
             'rma_csv_import'           => [ 'qrms-rm-diger',        'rma-ice-disa-aktar' ],
             'rma_menu_backup'          => [ 'qrms-rm-diger',        'rma-yedekleme' ],
+
+            // "Banner Görünümü" ayrı bir sayfaydı (qrms-rm-banner-ayar);
+            // içeriği Menü Görünümü sayfasındaki Kampanya Banner sihirbazının
+            // 2. adımına taşındı. Slug kayıtlı kalır ve oraya yönlendirir —
+            // eski yer imleri ve dış linkler 404 vermez.
+            'qrms-rm-banner-ayar'      => [ 'qrms-rm-gorunum', self::banner_anchor(), [ 'banner_adim' => 'kampanyalar' ] ],
         ];
     }
 
@@ -220,7 +234,7 @@ trait RMA_Admin_Pages_Trait {
 
         $target = $map[ $slug ] ?? $map['rma_settings'];
 
-        wp_safe_redirect( $this->admin_page_url( $target[0], [], $target[1] ) );
+        wp_safe_redirect( $this->admin_page_url( $target[0], $target[2] ?? [], $target[1] ) );
         exit;
     }
 
@@ -716,6 +730,14 @@ trait RMA_Admin_Pages_Trait {
         <?php $this->render_nav_design_page(); ?>
 
         <?php
+        // Kampanya Banner sihirbazı — renk/yazı tipi/kategori çubuğu
+        // bölümlerinin ALTINDA, onlara dokunmadan. Kendi trait'inde durur
+        // (bkz. trait-kampanya-banner-admin.php): bu dosya modülün tüm sayfa
+        // iskeletini taşıdığı için banner'ın ~900 satırı buraya sığmazdı.
+        if ( method_exists( $this, 'render_banner_wizard_section' ) ) {
+            $this->render_banner_wizard_section();
+        }
+
         $this->page_footer();
     }
 
@@ -927,6 +949,30 @@ trait RMA_Admin_Pages_Trait {
             // kaynaktan (get_nav_indicator_css) gelir; her biri önizleme
             // kabına hapsedilir ki admin sayfasının kalanına sızmasın.
             wp_add_inline_style( 'rma-nav', $this->get_nav_preview_css() );
+
+            // Kampanya Banner sihirbazı bu sayfanın bölümüdür: canlı
+            // önizleme ön yüzün GERÇEK stylesheet'ini kullanır, 3. adımdaki
+            // görsel üretme aracı ise kendi bağımsız betiğiyle gelir.
+            // (Suite kuruluysa aynı varlıklar module.php'den kuyruğa girer.)
+            wp_enqueue_style(
+                'qmo-banner-slider',
+                RMA_PLUGIN_URL . 'includes/frontend-banner-slider.css',
+                [ 'rma-admin-ui' ],
+                $this->asset_version( 'includes/frontend-banner-slider.css' )
+            );
+            wp_enqueue_style(
+                'qmo-slider-fonts',
+                'https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap',
+                [],
+                null
+            );
+            wp_enqueue_script(
+                'qmo-banner-olustur',
+                RMA_PLUGIN_URL . 'assets/js/banner-olustur.js',
+                [],
+                $this->asset_version( 'assets/js/banner-olustur.js' ),
+                true
+            );
         }
 
         $nonce = wp_create_nonce( 'rma_admin_nonce' );

@@ -2169,3 +2169,215 @@
         flex: 1 1 100%;
     }
 }
+
+/* =====================================================================
+   KAMPANYA BANNER SİHİRBAZI ("Menü Görünümü" sayfasının bölümü)
+
+   Adım şeridi Ürün Vitrini'nin .rma-vitrin-step* stilini yeniden kullanır;
+   tek fark adımların <button> değil <a> olmasıdır (her adım gerçek bir
+   sayfa yüklemesidir, JS ile gizlenen kart değil). Aşağıdaki kurallar
+   yalnızca bu farkı ve sihirbaza özgü üç bileşeni kapatır.
+===================================================================== */
+.rma-kb-wizard {
+    border-top: 1px solid var(--rma-a-border);
+    margin-top: 32px;
+    padding-top: 24px;
+}
+
+.rma-kb-heading {
+    font-size: 20px;
+    margin: 0 0 6px;
+}
+
+.rma-kb-subheading {
+    font-size: 15px;
+    margin: 26px 0 4px;
+}
+
+a.rma-vitrin-step-btn {
+    text-decoration: none;
+}
+
+a.rma-vitrin-step-btn:focus {
+    box-shadow: none;
+    outline: 2px solid var(--rma-a-accent);
+    outline-offset: 2px;
+}
+
+/* --- 1. adım: özet satırları, önizleme ve iki yön kartı --- */
+.rma-kb-ozet {
+    display: grid;
+    gap: 10px;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    list-style: none;
+    margin: 16px 0;
+    padding: 0;
+}
+
+.rma-kb-ozet li {
+    background: var(--rma-a-surface-2);
+    border: 1px solid var(--rma-a-border);
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin: 0;
+    padding: 12px 14px;
+}
+
+.rma-kb-ozet-etiket {
+    color: var(--rma-a-muted);
+    font-size: 12px;
+}
+
+.rma-kb-ozet-deger {
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.rma-kb-onizleme {
+    background: #0d0d10;
+    border: 1px solid var(--rma-a-border);
+    border-radius: 8px;
+    margin: 0 0 16px;
+    max-width: 520px;
+    overflow: hidden;
+}
+
+.rma-kb-onizleme img {
+    display: block;
+    height: 100%;
+    object-fit: cover;
+    width: 100%;
+}
+
+.rma-kb-nav-grid {
+    display: grid;
+    gap: 16px;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    margin-bottom: 20px;
+}
+
+.rma-kb-nav-card {
+    background: var(--rma-a-surface);
+    border: 1px solid var(--rma-a-border);
+    border-radius: 10px;
+    color: inherit;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 18px;
+    text-decoration: none;
+    transition: border-color .15s ease, transform .15s ease;
+}
+
+.rma-kb-nav-card:hover,
+.rma-kb-nav-card:focus {
+    border-color: var(--rma-a-accent);
+    color: inherit;
+    transform: translateY(-1px);
+}
+
+.rma-kb-nav-card .dashicons {
+    color: var(--rma-a-accent);
+    font-size: 26px;
+    height: 26px;
+    width: 26px;
+}
+
+.rma-kb-nav-title {
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.rma-kb-nav-desc {
+    color: var(--rma-a-muted);
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.rma-kb-nav-git {
+    color: var(--rma-a-accent);
+    font-size: 13px;
+    font-weight: 600;
+    margin-top: 4px;
+}
+
+/* --- 3. adım: şablon seçimi ve canvas önizlemesi --- */
+.rma-kb-sablon-grid {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    margin: 0 0 18px;
+}
+
+.rma-kb-sablon {
+    cursor: pointer;
+    display: block;
+    text-align: center;
+}
+
+.rma-kb-sablon input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.rma-kb-sablon-onizleme {
+    align-items: center;
+    aspect-ratio: 16 / 9;
+    border: 2px solid var(--rma-a-border);
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    justify-content: center;
+    transition: border-color .15s ease;
+}
+
+.rma-kb-sablon input:checked + .rma-kb-sablon-onizleme {
+    border-color: var(--rma-a-accent);
+}
+
+.rma-kb-sablon input:focus-visible + .rma-kb-sablon-onizleme {
+    outline: 2px solid var(--rma-a-accent);
+    outline-offset: 2px;
+}
+
+.rma-kb-sablon-cizgi {
+    border-radius: 2px;
+    height: 3px;
+    width: 32px;
+}
+
+.rma-kb-sablon-metin {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 20px;
+}
+
+.rma-kb-sablon-ad {
+    display: block;
+    font-size: 13px;
+    margin-top: 6px;
+}
+
+.rma-kb-canvas-wrap {
+    background: var(--rma-a-surface-2);
+    border: 1px solid var(--rma-a-border);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.rma-kb-canvas-wrap canvas {
+    display: block;
+    height: auto;
+    max-width: 100%;
+}
+
+.rma-kb-uret-sonuc:empty {
+    display: none;
+}
+
+.rma-kb-uret-sonuc .notice {
+    margin: 12px 0 0;
+}

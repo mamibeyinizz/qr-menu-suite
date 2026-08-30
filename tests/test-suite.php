@@ -9187,29 +9187,106 @@ qrms_test(
 );
 
 qrms_test(
-	'banner yönetim bölümü Fiyat Kampanyaları sayfasında durur',
+	'banner yönetimi Menü Görünümü sihirbazına taşındı, Fiyat Kampanyaları temiz',
 	function () {
-		// Yönetim ekranı Öne Çıkanlar'dan Fiyat Kampanyaları'na taşındı;
+		// İSİMLENDİRME: "Kampanya" = banner görselleri, "Fiyat Kampanyası" =
+		// toplu zam/indirim. İkisi ayrı ekranlardır ve ortak kodu yoktur;
 		// ön yüzdeki [qmo_banner_slider] kısa kodu bu taşımadan etkilenmez.
-		$dizin     = QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/';
-		$one_cikan = file_get_contents( $dizin . 'trait-admin-pages.php' );
-		$kampanya  = file_get_contents( $dizin . 'trait-kampanya-admin.php' );
+		$dizin    = QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/';
+		$sayfa    = file_get_contents( $dizin . 'trait-admin-pages.php' );
+		$kampanya = file_get_contents( $dizin . 'trait-kampanya-admin.php' );
+		$banner   = file_get_contents( $dizin . 'trait-kampanya-banner-admin.php' );
 
-		qrms_assert_false( strpos( $one_cikan, 'render_banner_section' ) !== false, 'Öne Çıkanlar sayfasında banner kalmadı' );
-		qrms_assert_false( strpos( $one_cikan, 'qmo_banner_slide' ) !== false, 'Öne Çıkanlar banner CPT\'sine bakmıyor' );
+		// Fiyat Kampanyaları sayfasında banner'dan eser kalmadı.
+		// (Dosyada yalnızca "buraya geri eklenmemeli" notu kalır; kod kalmadı.)
+		qrms_assert_false( strpos( $kampanya, 'function render_banner_section' ) !== false, 'liste bölümü kampanya ekranından çıktı' );
+		qrms_assert_false( strpos( $kampanya, '$this->render_banner_section();' ) !== false, 'kampanya listesi artık banner basmıyor' );
+		qrms_assert_false( strpos( $kampanya, 'function render_banner_settings_page' ) !== false, 'ayar ekranı kampanya ekranından çıktı' );
+		qrms_assert_false( strpos( $kampanya, 'function handle_banner_settings_save' ) !== false, 'kaydetme ucu kampanya ekranından çıktı' );
+		qrms_assert_false( strpos( $kampanya, 'qmo_banner_slide' ) !== false, 'kampanya ekranı banner CPT\'sine bakmıyor' );
+		qrms_assert_false( strpos( $kampanya, 'QMO_Banner_Slider_Settings' ) !== false, 'kampanya ekranı banner ayarına bakmıyor' );
 
-		qrms_assert_contains( 'private function render_banner_section()', $kampanya, 'bölüm kampanya ekranında tanımlı' );
-		qrms_assert_contains( '$this->render_banner_section();', $kampanya, 'kampanya listesi bölümü basıyor' );
+		// Fiyat tarafının kendi içeriği bozulmadan duruyor.
+		qrms_assert_contains( 'private function render_kampanya_list()', $kampanya, 'fiyat kampanyası listesi' );
+		qrms_assert_contains( 'Kampanyalarım', $kampanya, 'geçmiş kampanya kartı' );
+		qrms_assert_contains( '+ Yeni Kampanya', $kampanya, 'yeni kampanya butonu' );
+		qrms_assert_contains( 'rma_kampanya_geri_al', $kampanya, 'geri alma ucu' );
 
-		// Bölüm olduğu gibi taşındı: liste, kısa kod notu ve iki eylem butonu.
-		qrms_assert_contains( '[qmo_banner_slider]', $kampanya, 'kısa kod açıklaması' );
-		qrms_assert_contains( 'Yeni Banner Ekle', $kampanya, 'ekleme butonu' );
-		qrms_assert_contains( 'Tüm Banner\'ları Yönet', $kampanya, 'yönetim butonu' );
+		// Sihirbaz Menü Görünümü sayfasına tek giriş noktasından bağlanıyor.
+		qrms_assert_contains( '$this->render_banner_wizard_section();', $sayfa, 'görünüm sayfası sihirbazı basıyor' );
+		qrms_assert_contains( 'public function render_banner_wizard_section()', $banner, 'sihirbaz giriş metodu' );
 
-		// Çağrı "Kampanyalarım" kartından sonra, sayfa kapanışından önce gelir.
-		$kampanyalarim = strpos( $kampanya, 'Kampanyalarım' );
-		$banner_cagri  = strpos( $kampanya, '$this->render_banner_section();' );
-		qrms_assert_true( $kampanyalarim < $banner_cagri, 'banner kartı Kampanyalarım altında' );
+		// Üç adım da tanımlı.
+		foreach ( array( 'ozet', 'kampanyalar', 'olustur' ) as $adim ) {
+			qrms_assert_contains( "'" . $adim . "'", $banner, $adim . ' adımı tanımlı' );
+		}
+		qrms_assert_contains( 'private function render_banner_adim_ozet()', $banner, '1. adım' );
+		qrms_assert_contains( 'private function render_banner_adim_kampanyalar()', $banner, '2. adım' );
+		qrms_assert_contains( 'private function render_banner_adim_olustur()', $banner, '3. adım' );
+
+		// Liste olduğu gibi taşındı: kısa kod notu ve iki eylem butonu.
+		qrms_assert_contains( '[qmo_banner_slider]', $banner, 'kısa kod açıklaması' );
+		qrms_assert_contains( 'Yeni Kampanya Ekle', $banner, 'ekleme butonu' );
+		qrms_assert_contains( 'Tüm Kampanyaları Yönet', $banner, 'yönetim butonu' );
+
+		// Veri katmanı DEĞİŞMEDİ: CPT ve meta anahtarları sabit üzerinden.
+		qrms_assert_contains( 'QMO_Banner_CPT::POST_TYPE', $banner, 'CPT slug\'ı sabitten' );
+		qrms_assert_contains( 'QMO_Banner_CPT::META_IMAGE', $banner, 'görsel meta anahtarı sabitten' );
+	}
+);
+
+qrms_test(
+	'eski qrms-rm-banner-ayar adresi yeni konuma yönlendirir',
+	function () {
+		// Sayfa kaldırıldı ama slug silinmedi: kırık link/404 bırakılmaz.
+		$sayfa = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-admin-pages.php' );
+
+		// Artık gerçek bir sayfa DEĞİL: get_subpages() kaydı düştü.
+		qrms_assert_false( strpos( $sayfa, "'render'     => 'render_banner_settings_page'" ) !== false, 'sayfa kaydı kaldırıldı' );
+
+		// Ama eski slug hâlâ kayıtlı ve yönlendiriliyor.
+		qrms_assert_contains( "'qrms-rm-banner-ayar'      => [ 'qrms-rm-gorunum'", $sayfa, 'eski slug yönlendirme tablosunda' );
+		qrms_assert_contains( "[ 'banner_adim' => 'kampanyalar' ]", $sayfa, 'hedef 2. adım' );
+
+		// Yönlendirme, tablodaki query arg'larını da taşır.
+		qrms_assert_contains( '$this->admin_page_url( $target[0], $target[2] ?? [], $target[1] )', $sayfa, 'arg\'lar hedefe taşınır' );
+		qrms_assert_contains( 'wp_safe_redirect(', $sayfa, 'güvenli yönlendirme' );
+	}
+);
+
+qrms_test(
+	'toplu kampanya görseli: canvas -> AJAX -> medya kütüphanesi + banner kaydı',
+	function () {
+		$banner = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-kampanya-banner-admin.php' );
+		$js     = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/js/banner-olustur.js' );
+		$boot   = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/qr-menu.php' );
+
+		// Uç kayıtlı ve nonce + yetki kontrolü mevcut kod tabanı desenine uyuyor.
+		qrms_assert_contains( 'wp_ajax_qmo_banner_gorsel_olustur', $boot, 'AJAX ucu kayıtlı' );
+		qrms_assert_contains( 'check_ajax_referer( $this->banner_olustur_nonce_action', $banner, 'nonce doğrulaması' );
+		qrms_assert_contains( 'QRMS_Admin::CAPABILITY', $banner, 'yetki kontrolü' );
+
+		// Data URI dört kademede doğrulanır; hiçbiri atlanmaz.
+		qrms_assert_contains( "'data:image/png;base64,'", $banner, 'önek kontrolü' );
+		qrms_assert_contains( 'base64_decode(', $banner, 'base64 çözümü' );
+		qrms_assert_contains( '"\x89PNG\r\n\x1a\n"', $banner, 'PNG imza kontrolü' );
+		qrms_assert_contains( 'getimagesize(', $banner, 'dosyaya yazıldıktan sonra doğrulama' );
+		qrms_assert_contains( 'banner_uretim_max_byte()', $banner, 'boyut sınırı' );
+
+		// Üretilen görsel CPT'nin BEKLEDİĞİ yere bağlanır (featured image değil,
+		// _qmo_banner_gorsel_id meta'sı) ki listede ve ön yüzde görünsün.
+		qrms_assert_contains( 'wp_insert_attachment(', $banner, 'medya kaydı' );
+		qrms_assert_contains( 'wp_generate_attachment_metadata(', $banner, 'ek meta üretimi' );
+		qrms_assert_contains( "update_post_meta( \$kayit_id, QMO_Banner_CPT::META_IMAGE", $banner, 'görsel banner kaydına bağlanır' );
+		qrms_assert_contains( "'post_status' => 'publish'", $banner, 'kayıt yayına alınır' );
+
+		// Oran seçenekleri QMO_Banner_Slider_Settings ile aynı kaynaktan gelir.
+		qrms_assert_contains( 'QMO_Banner_Slider_Settings::oranlar()', $banner, 'oran listesi tek kaynaktan' );
+
+		// Şablonlar tek kaynakta; JS renkleri data-* üzerinden okur, sabit renk tutmaz.
+		qrms_assert_contains( 'public static function banner_sablonlari()', $banner, 'şablon tanımı' );
+		qrms_assert_contains( "getAttribute('data-bg-bas')", $js, 'JS rengi markup\'tan okur' );
+		qrms_assert_contains( "toDataURL('image/png')", $js, 'canvas dışa aktarımı' );
 	}
 );
 
@@ -9367,7 +9444,7 @@ qrms_test(
 		$kod   = file_get_contents( $dizin . 'shortcode-banner-slider.php' );
 		$css   = file_get_contents( $dizin . 'frontend-banner-slider.css' );
 		$js    = file_get_contents( $dizin . 'frontend-banner-slider.js' );
-		$admin = file_get_contents( $dizin . 'trait-kampanya-admin.php' );
+		$admin = file_get_contents( $dizin . 'trait-kampanya-banner-admin.php' );
 		$sayfa = file_get_contents( $dizin . 'trait-admin-pages.php' );
 		$adminjs = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/js/admin-ui.js' );
 
@@ -9397,13 +9474,18 @@ qrms_test(
 		qrms_assert_false( strpos( $css, '.qmo-slider-' ) !== false, 'banner css ürün slider seçicisine dokunmaz' );
 		qrms_assert_false( strpos( $js, 'qmo-slider-' ) !== false, 'banner betiği ürün slider seçicisine dokunmaz' );
 
-		// Admin: ayrı sayfa, kaydetme ucu ve nonce.
-		qrms_assert_contains( "'qrms-rm-banner-ayar'", $sayfa, 'ayar sayfası kayıtlı' );
-		qrms_assert_contains( 'render_banner_settings_page', $sayfa, 'render metodu bağlı' );
-		qrms_assert_contains( 'public function render_banner_settings_page()', $admin, 'render metodu tanımlı' );
+		// Admin: Menü Görünümü sayfasının bölümü, kaydetme ucu ve nonce.
+		// (Ayar formu ayrı bir sayfa değil artık; alanların hiçbiri düşmedi.)
+		qrms_assert_contains( '$this->render_banner_wizard_section();', $sayfa, 'sihirbaz görünüm sayfasına bağlı' );
+		qrms_assert_contains( 'private function render_banner_ayar_formu()', $admin, 'ayar formu tanımlı' );
 		qrms_assert_contains( 'public function handle_banner_settings_save()', $admin, 'kaydetme ucu' );
 		qrms_assert_contains( 'check_admin_referer( $this->banner_nonce_action )', $admin, 'nonce' );
 		qrms_assert_contains( 'initBannerPreview', $adminjs, 'canlı önizleme' );
+
+		// Görünüm formundaki HİÇBİR alan taşımada düşmedi.
+		foreach ( array( '[oran]', '[gecis]', '[show_nav]', '[show_dots]', '[autoplay]', '[show_title]', '[title_font]', '[title_color]', '[title_size]', '[title_size_mobile]', '[title_weight]', '[title_align]' ) as $alan ) {
+			qrms_assert_contains( 'qmo_banner_slider_settings' . $alan, $admin, $alan . ' alanı korundu' );
+		}
 	}
 );
 
