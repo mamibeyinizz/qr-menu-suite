@@ -86,9 +86,13 @@
   /* -------------------------------------------------------- Adım sihirbazı */
 
   /**
-   * Her sekme kendi adımlarını taşır. Kartlar DOM'da kalır (display:none);
-   * submit tüm adımların verisini gönderir — vitrin initVitrinStepper ile
+   * Her sekme kendi adımlarını taşır. Toplam, DOM'daki `.hfb-step`
+   * kartlarından okunur (footer 5, header 4, hamburger 4, dil 1);
+   * sabit bir "4/4" yoktur. Kartlar display:none ile gizlenir, submit
+   * tüm adımların verisini gönderir — vitrin initVitrinStepper ile
    * aynı sözleşme, ayrı "adım kaydet" yoktur.
+   *
+   * Son adımda "Devam Et" gizlenir; Kaydet formun altındadır.
    */
   function initSteppers() {
     $('.hfb-tab-panel').each(function () {
@@ -111,8 +115,16 @@
         return $steps.filter('[data-step="' + adimNo + '"]').data('step-title') || '';
       }
 
+      function sinirla(adimNo) {
+        var n = parseInt(adimNo, 10);
+        if (isNaN(n)) {
+          return 1;
+        }
+        return Math.min(Math.max(n, 1), toplam);
+      }
+
       function goster(adimNo) {
-        mevcut = Math.min(Math.max(adimNo, 1), toplam);
+        mevcut = sinirla(adimNo);
 
         $steps.each(function () {
           var no = parseInt($(this).data('step'), 10);
