@@ -17,6 +17,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+// WPCode / Code Snippets üzerindeki eski "QMO Sepet — Menüden Direkt
+// Sipariş" snippet'i hâlâ [qmo_sepet] kaydediyorsa WordPress son
+// add_shortcode çağrısını tutar — hangisinin kazandığı yükleme sırasına
+// bağlıdır. Eski snippet'i kapatın; aksi halde bu kayıt ezilebilir.
 add_shortcode( 'qmo_sepet', 'qmo_sepet_shortcode' );
 
 /**

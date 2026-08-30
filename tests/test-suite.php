@@ -2935,6 +2935,45 @@ require_once QRMS_PLUGIN_DIR . 'modules/qr-chatbot/includes/shortcode-sepet.php'
 echo "\nQMO Sepet — masa kısıtı ve modal seçicileri\n";
 
 qrms_test(
+	'module.php init shortcode-sepet.php\'yi require eder',
+	function () {
+		$php = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/module.php' );
+
+		qrms_assert_contains(
+			"require_once __DIR__ . '/includes/shortcode-sepet.php'",
+			$php,
+			'init zincirinde require var'
+		);
+		qrms_assert_true(
+			file_exists( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/includes/shortcode-sepet.php' ),
+			'dosya yolu gerçek'
+		);
+	}
+);
+
+qrms_test(
+	'sepet JS/CSS kayıtlı handle ile enqueue edilir',
+	function () {
+		$kayit = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/chatbot.php' );
+		$kisa  = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/includes/shortcode-sepet.php' );
+
+		qrms_assert_contains( "wp_register_style( 'qmo-sepet'", $kayit, 'CSS kaydı' );
+		qrms_assert_contains( "wp_register_script( 'qmo-sepet'", $kayit, 'JS kaydı' );
+		qrms_assert_contains( 'css/sepet.css', $kayit, 'CSS yolu' );
+		qrms_assert_contains( 'js/sepet.js', $kayit, 'JS yolu' );
+		qrms_assert_contains( "qmo_asset_enqueue( 'qmo-sepet' )", $kisa, 'kısa kod render\'da enqueue' );
+		qrms_assert_true(
+			file_exists( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/assets/js/sepet.js' ),
+			'sepet.js durur'
+		);
+		qrms_assert_true(
+			file_exists( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/assets/css/sepet.css' ),
+			'sepet.css durur'
+		);
+	}
+);
+
+qrms_test(
 	'sepet JS dış kapsayıcıyı qrms-detail-* ile arar, içerik class\'larına dokunmaz',
 	function () {
 		$js = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/assets/js/sepet.js' );
