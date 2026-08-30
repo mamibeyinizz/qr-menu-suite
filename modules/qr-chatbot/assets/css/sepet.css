@@ -1,0 +1,400 @@
+/**
+ * [qmo_sepet] — menüden direkt sipariş (müşteri arayüzü).
+ *
+ * Alt sabit sepet çubuğu + açılır çekmece. Adet ve not düzenleme ÇEKMECEDE
+ * yapılır (kart üzerinde değil): ürün kartları detay modalına tıklanabilir
+ * olduğu için kart üstü form yerleşimi bozuyordu.
+ */
+
+.qmo-sepet-root {
+	--qmo-bg: #0a0a0c;
+	--qmo-card: #16161a;
+	--qmo-gold: #c9a84c;
+	--qmo-gold2: #e8c766;
+	--qmo-txt: #f5f5f0;
+	--qmo-mut: #9a9a94;
+
+	font-family: "Manrope", -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.qmo-add {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	margin-top: 8px;
+	padding: 8px 14px;
+	border: 1px solid rgba(201, 168, 76, 0.55);
+	border-radius: 10px;
+	background: linear-gradient(180deg, rgba(28, 24, 15, 0.6), rgba(14, 12, 8, 0.75));
+	color: #e8d9a8;
+	font: 600 13px/1 "Manrope", sans-serif;
+	cursor: pointer;
+	transition: transform 0.15s ease, background 0.2s ease, color 0.2s ease;
+	-webkit-tap-highlight-color: transparent;
+}
+
+.qmo-add:active {
+	transform: scale(0.96);
+}
+
+.qmo-add.qmo-added {
+	background: linear-gradient(180deg, #2e7d32, #1b5e20);
+	border-color: #66bb6a;
+	color: #fff;
+}
+
+/* Ürün detay modalına enjekte edilen not + adet + ekle bloğu */
+.qmo-md {
+	margin-top: 16px;
+	padding-top: 14px;
+	border-top: 1px dashed rgba(201, 168, 76, 0.3);
+}
+
+.qmo-md .qmo-not {
+	margin-top: 0;
+}
+
+.qmo-md-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 10px;
+	margin-top: 10px;
+}
+
+.qmo-md .qmo-add {
+	margin-top: 0;
+	flex: 1;
+	justify-content: center;
+	padding: 12px 14px;
+	font-size: 14px;
+}
+
+/* Alt sabit sepet çubuğu */
+.qmo-bar {
+	position: fixed;
+	left: 12px;
+	right: 12px;
+	bottom: calc(74px + env(safe-area-inset-bottom, 0px));
+	z-index: 2147482999;
+	display: none;
+	align-items: center;
+	justify-content: space-between;
+	gap: 10px;
+	padding: 11px 16px;
+	border: 1px solid rgba(201, 168, 76, 0.35);
+	border-radius: 14px;
+	background: rgba(12, 12, 15, 0.97);
+	box-shadow: 0 8px 28px rgba(0, 0, 0, 0.5);
+	cursor: pointer;
+	transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.qmo-bar.qmo-gizle {
+	opacity: 0 !important;
+	transform: translateY(12px);
+	pointer-events: none;
+}
+
+.qmo-bar.qmo-on {
+	display: flex;
+}
+
+.qmo-bar-l {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	color: var(--qmo-txt);
+	font-weight: 600;
+	font-size: 14px;
+}
+
+.qmo-bar-badge {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 24px;
+	height: 24px;
+	padding: 0 7px;
+	border-radius: 12px;
+	background: var(--qmo-gold);
+	color: #0f0d08;
+	font-weight: 800;
+	font-size: 13px;
+}
+
+.qmo-bar-r {
+	color: var(--qmo-gold2);
+	font-weight: 700;
+	font-size: 14px;
+	white-space: nowrap;
+}
+
+/* Çekmece */
+.qmo-ov {
+	position: fixed;
+	inset: 0;
+	z-index: 2147483000;
+	background: rgba(0, 0, 0, 0.6);
+	display: none;
+}
+
+.qmo-ov.qmo-on {
+	display: block;
+}
+
+.qmo-dr {
+	position: fixed;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	z-index: 2147483001;
+	transform: translateY(105%);
+	transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+	background: var(--qmo-bg);
+	border-radius: 20px 20px 0 0;
+	border-top: 1px solid rgba(201, 168, 76, 0.35);
+	max-height: 82vh;
+	display: flex;
+	flex-direction: column;
+}
+
+.qmo-dr.qmo-on {
+	transform: translateY(0);
+}
+
+.qmo-dr-h {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 16px 18px 10px;
+}
+
+.qmo-dr-h h3 {
+	margin: 0;
+	color: var(--qmo-gold2);
+	font: 700 18px "Playfair Display", serif;
+	letter-spacing: 0.3px;
+}
+
+.qmo-x {
+	background: none;
+	border: 0;
+	color: var(--qmo-mut);
+	font-size: 22px;
+	cursor: pointer;
+	padding: 4px 8px;
+}
+
+.qmo-list {
+	overflow-y: auto;
+	padding: 0 16px;
+	flex: 1;
+}
+
+.qmo-it {
+	background: var(--qmo-card);
+	border: 1px solid rgba(255, 255, 255, 0.05);
+	border-radius: 14px;
+	padding: 12px;
+	margin-bottom: 10px;
+}
+
+.qmo-it-top {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+}
+
+.qmo-it-img {
+	width: 46px;
+	height: 46px;
+	border-radius: 10px;
+	object-fit: cover;
+	flex-shrink: 0;
+	border: 1px solid rgba(201, 168, 76, 0.25);
+}
+
+.qmo-it-ad {
+	color: var(--qmo-txt);
+	font-weight: 700;
+	font-size: 14px;
+	flex: 1;
+	min-width: 0;
+}
+
+.qmo-it-fy {
+	color: var(--qmo-gold2);
+	font-weight: 700;
+	font-size: 13px;
+	white-space: nowrap;
+}
+
+.qmo-it-yak {
+	color: var(--qmo-mut);
+	font-weight: 500;
+}
+
+/* Adet seçici */
+.qmo-st {
+	display: inline-flex;
+	align-items: center;
+	gap: 0;
+	border: 1px solid rgba(201, 168, 76, 0.4);
+	border-radius: 9px;
+	overflow: hidden;
+}
+
+.qmo-st button {
+	width: 32px;
+	height: 30px;
+	background: rgba(201, 168, 76, 0.12);
+	border: 0;
+	color: var(--qmo-gold2);
+	font-size: 16px;
+	font-weight: 800;
+	cursor: pointer;
+}
+
+.qmo-st span {
+	min-width: 30px;
+	text-align: center;
+	color: var(--qmo-txt);
+	font-weight: 700;
+	font-size: 14px;
+}
+
+.qmo-del {
+	background: none;
+	border: 0;
+	color: #e5534b;
+	font-size: 16px;
+	cursor: pointer;
+	padding: 4px 6px;
+}
+
+.qmo-not {
+	width: 100%;
+	box-sizing: border-box;
+	margin-top: 9px;
+	background: #0e0e11;
+	border: 1px solid rgba(255, 255, 255, 0.08);
+	border-radius: 9px;
+	color: var(--qmo-txt);
+	font: 400 13px/1.4 "Manrope", sans-serif;
+	padding: 8px 10px;
+	resize: none;
+	min-height: 38px;
+}
+
+.qmo-not::placeholder {
+	color: #6c6c66;
+}
+
+/* Alt toplam bloğu */
+.qmo-ft {
+	padding: 12px 16px calc(16px + env(safe-area-inset-bottom, 0px));
+	border-top: 1px solid rgba(255, 255, 255, 0.06);
+	background: var(--qmo-bg);
+}
+
+.qmo-tot {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	margin-bottom: 4px;
+}
+
+.qmo-tot b {
+	color: var(--qmo-txt);
+	font-size: 15px;
+}
+
+.qmo-tot span {
+	color: var(--qmo-gold2);
+	font-weight: 800;
+	font-size: 18px;
+}
+
+.qmo-yak {
+	color: var(--qmo-mut);
+	font-size: 12px;
+	text-align: right;
+	min-height: 15px;
+}
+
+.qmo-tl {
+	color: var(--qmo-mut);
+	font-size: 11px;
+	margin: 4px 0 10px;
+	text-align: right;
+}
+
+/* Gönder butonu — tema butonlarının ezmemesi için yüksek özgüllük. */
+#qmo-sepet-root .qmo-send {
+	display: block !important;
+	width: 100% !important;
+	box-sizing: border-box !important;
+	padding: 15px !important;
+	margin: 0 !important;
+	border: 0 !important;
+	border-radius: 12px !important;
+	background: linear-gradient(180deg, #e8c766, #c9a84c) !important;
+	background-color: #c9a84c !important;
+	color: #0f0d08 !important;
+	font: 800 15px "Manrope", sans-serif !important;
+	letter-spacing: 0.3px;
+	cursor: pointer;
+	transition: transform 0.15s ease, opacity 0.2s;
+	appearance: none;
+	-webkit-appearance: none;
+	text-shadow: none !important;
+	box-shadow: 0 4px 16px rgba(201, 168, 76, 0.35) !important;
+	min-height: 48px;
+	opacity: 1 !important;
+	visibility: visible !important;
+}
+
+#qmo-sepet-root .qmo-send:active {
+	transform: scale(0.98);
+}
+
+#qmo-sepet-root .qmo-send[disabled] {
+	opacity: 0.55 !important;
+	pointer-events: none;
+}
+
+.qmo-empty {
+	color: var(--qmo-mut);
+	text-align: center;
+	padding: 34px 0;
+	font-size: 14px;
+}
+
+.qmo-toast {
+	position: fixed;
+	left: 50%;
+	transform: translateX(-50%);
+	bottom: calc(140px + env(safe-area-inset-bottom, 0px));
+	z-index: 2147483002;
+	background: #16161a;
+	border: 1px solid rgba(201, 168, 76, 0.5);
+	color: var(--qmo-txt);
+	padding: 11px 18px;
+	border-radius: 12px;
+	font: 600 13px "Manrope", sans-serif;
+	opacity: 0;
+	pointer-events: none;
+	transition: opacity 0.25s;
+}
+
+.qmo-toast.qmo-on {
+	opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.qmo-dr {
+		transition: none;
+	}
+}

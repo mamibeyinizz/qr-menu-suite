@@ -8,6 +8,7 @@
  *   - `garson_cagir` / `hesap_iste` / `qrservis_call` (ajax-waiter-bill.php)
  *   - `gemini_bot_siparis` (ajax-order.php) → qmo_siparis_isle()
  *   - `POST /wp-json/qrservis/v1/order` (rest-order.php)
+ *   - `[qmo_sepet]` menüden direkt sipariş (shortcode-sepet.php)
  *
  * Bu üç dosya da QMO_Firestore üzerinden yazar: chatbot yanıtındaki
  * [CALL_WAITER] / [CALL_BILL] / [SIPARIS] etiketleri assets/js/chatbot.js
@@ -72,6 +73,12 @@ function qrms_module_qr_chatbot_init() {
 				'title' => __( 'Garson + Hesap (ikinci ad)', 'qrms' ),
 				'desc'  => __( '[ikili_buton] kısa kodunun eş anlamlısı; eski sayfalarda kullanılmış olabilir.', 'qrms' ),
 				'note'  => __( 'Yalnızca geçerli bir masa oturumu varken görünür.', 'qrms' ),
+			),
+			array(
+				'tag'   => 'qmo_sepet',
+				'title' => __( 'QMO Sepet — Menüden Direkt Sipariş', 'qrms' ),
+				'desc'  => __( 'Ürün detayından sepete ekleme, alt sepet çubuğu ve siparişi mutfağa gönderme.', 'qrms' ),
+				'note'  => __( 'Yalnızca müşteri masadaki QR kodu okuttuysa görünür; yöneticiler test için her zaman görür. Oturum yoksa hiçbir şey basılmaz.', 'qrms' ),
 			),
 		)
 	);
