@@ -22,6 +22,7 @@ if ( ! defined( 'QMO_CHATBOT_URL' ) ) {
 require_once QMO_CHATBOT_DIR . 'includes/ajax-chat.php';
 require_once QMO_CHATBOT_DIR . 'includes/shortcode-chatbot.php';
 require_once QMO_CHATBOT_DIR . 'includes/shortcode-buttons.php';
+require_once QMO_CHATBOT_DIR . 'includes/shortcode-sepet.php';
 
 // Sipariş boru hattı: REST ucu ile chatbot AJAX ucu aynı qmo_siparis_isle()
 // fonksiyonuna düşer, bu yüzden ajax-order.php rest-order.php'den sonra
@@ -37,7 +38,7 @@ if ( is_admin() ) {
 }
 
 /**
- * Garson / hesap buton varlıklarını kaydet.
+ * Garson / hesap buton ve sepet varlıklarını kaydet.
  *
  * Ortak assets.php bu handle'ları yorum satırına almıştı (dosyalar henüz
  * yoktu). Kayıt burada yapılır; qmo_asset_enqueue() / qmo_icerikten_yukle()
@@ -76,5 +77,12 @@ if ( ! function_exists( 'qmo_chatbot_buton_varliklarini_kaydet' ) ) {
 		// iletilmişken uyarı mesajı görüyordu.
 		wp_register_style( 'qmo-garson-hesap', false, array( 'qmo-buttons' ), $css );
 		wp_register_script( 'qmo-garson-hesap', false, array( 'qmo-buttons' ), $js, true );
+
+		// [qmo_sepet] — menüden direkt sipariş. Ortak assets.php bu handle'ı
+		// yorum satırına almıştı (dosya henüz yoktu); kayıt burada yapılır.
+		$sepet_css = QRMS_Helpers::asset_version( 'modules/qr-chatbot/assets/css/sepet.css' );
+		$sepet_js  = QRMS_Helpers::asset_version( 'modules/qr-chatbot/assets/js/sepet.js' );
+		wp_register_style( 'qmo-sepet', $url . 'css/sepet.css', array(), $sepet_css );
+		wp_register_script( 'qmo-sepet', $url . 'js/sepet.js', array(), $sepet_js, true );
 	}
 }

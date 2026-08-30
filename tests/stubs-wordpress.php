@@ -521,6 +521,15 @@ function esc_html_e( $text, $domain = 'default' ) {
 }
 
 /**
+ * Oturum açmış kullanıcı var mı?
+ *
+ * @return bool
+ */
+function is_user_logged_in() {
+	return ! empty( $GLOBALS['qrms_test']['logged_in'] );
+}
+
+/**
  * Yetki kontrolü.
  *
  * @param string $capability Yetki.

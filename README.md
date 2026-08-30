@@ -284,9 +284,10 @@ Kopyalama `navigator.clipboard` ile yapılır; güvenli olmayan bağlamda gizli
 alan + `execCommand` yedeğine, o da başarısız olursa kodu seçili hâle
 getirmeye düşer. Kartlar masaüstünde iki sütun, 782px altında tek sütundur.
 
-Beş kısa kod (`gemini_chatbot`, üç çağrı butonu, `qr_aktif_masa`) yalnızca
+Altı kısa kod (`gemini_chatbot`, üç çağrı butonu, `qmo_sepet`, `qr_aktif_masa`) yalnızca
 geçerli bir masa oturumu varken render edilir; kartlarında bu koşul ayrıca
-yazar — yoksa "sayfaya koydum ama görünmüyor" kaçınılmaz olurdu.
+yazar — yoksa "sayfaya koydum ama görünmüyor" kaçınılmaz olurdu. `qmo_sepet`
+oturum yoksa bilgi kutusu basmaz, boş döner; yöneticiler test için görür.
 
 Kayıt defterinin gerçekle uyumu testle korunuyor: test, kaynak ağacındaki
 `add_shortcode()` çağrılarını tarayıp bildirilen listeyle karşılaştırır, yeni
@@ -303,7 +304,7 @@ bir kısa kod rehbere eklenmezse düşer.
 | `qr-galeri` | Galeri CPT, bölümler, görseller | ✔ Hub + Bölümler / Görseller / Ayarlar |
 | `qr-ceviri` | Çok dilli metin tarama, sözlük, CSV içe/dışa aktarma | ✔ Çeviri ekranı |
 | `qr-analiz` | Menü analitiği (masa bazlı görüntüleme/tıklama takibi, panel); `POST /wp-json/qrservis/v1/analytics` — şube analitiği özeti; `POST /wp-json/qrservis/v1/create-user` — garson/müdür hesabı açma (yalnızca ana sitede) | ✔ Menü Analitiği (tek ekran) |
-| `qr-chatbot` | `[gemini_chatbot]`, garson/hesap buton kısa kodları, Gemini AJAX ucu, sipariş ucu (`POST /wp-json/qrservis/v1/order`) | ✔ Chatbot ayarları + Firebase ayarları |
+| `qr-chatbot` | `[gemini_chatbot]`, garson/hesap buton kısa kodları, `[qmo_sepet]`, Gemini AJAX ucu, sipariş ucu (`POST /wp-json/qrservis/v1/order`) | ✔ Chatbot ayarları + Firebase ayarları |
 | `qr-acilis-ekrani` | Ana sayfada tam ekran açılış: logo şeridi, arkaplan görseli, CTA + rozetler, wifi penceresi, sosyal hesaplar, ödeme yöntemleri. Kısa kodu yoktur | ✔ Hub + dört ayrı sayfa |
 
 Kodları kaynak eklentilerinden **aynen** taşındı (`restoran-menu` 12-menu

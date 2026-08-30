@@ -49,6 +49,7 @@ function qrms_reset() {
 	$GLOBALS['qrms_test']['http']       = null;
 	$GLOBALS['qrms_test']['http_calls'] = array();
 	$GLOBALS['qrms_test']['can']        = true;
+	$GLOBALS['qrms_test']['logged_in']  = false;
 	$GLOBALS['qrms_test']['styles']     = array();
 	$GLOBALS['qrms_test']['scripts']    = array();
 	$GLOBALS['qrms_test']['settings']       = array();
@@ -58,6 +59,7 @@ function qrms_reset() {
 	$GLOBALS['submenu']                 = array();
 	$_POST                              = array();
 	$_GET                               = array();
+	$_COOKIE                            = array();
 }
 
 /**
@@ -2917,8 +2919,89 @@ qrms_test(
 		$kaynakta   = qrms_kaynaktaki_kisa_kodlar();
 		$bildirilen = qrms_bildirilen_kisa_kodlar();
 
-		qrms_assert_same( 20, count( $kaynakta ), 'kaynaktaki kısa kod sayısı' );
+		qrms_assert_same( 21, count( $kaynakta ), 'kaynaktaki kısa kod sayısı' );
 		qrms_assert_same( $kaynakta, $bildirilen, 'bildirilen liste kaynakla aynı' );
+	}
+);
+
+/* ---------------------------------------------------------------------------
+ * 8c. [qmo_sepet] — modal class uyumu ve masa oturumu kısıtı
+ * ------------------------------------------------------------------------ */
+
+require_once QRMS_PLUGIN_DIR . 'modules/_qmo-ortak/class-qmo-oturum.php';
+require_once QRMS_PLUGIN_DIR . 'modules/_qmo-ortak/helpers.php';
+require_once QRMS_PLUGIN_DIR . 'modules/qr-chatbot/includes/shortcode-sepet.php';
+
+echo "\nQMO Sepet — masa kısıtı ve modal seçicileri\n";
+
+qrms_test(
+	'sepet JS dış kapsayıcıyı qrms-detail-* ile arar, içerik class\'larına dokunmaz',
+	function () {
+		$js = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/assets/js/sepet.js' );
+
+		qrms_assert_contains( "body.closest( '.qrms-detail-box, .rma-modal-box' )", $js, 'görsel kutusu yeni + eski dış class' );
+		qrms_assert_contains( "kutu.querySelector( '.rma-modal-img' )", $js, 'görsel class\'ı AJAX içeriğinde durur' );
+		qrms_assert_contains( "'.qrms-detail-overlay, .qrms-detail-box, .rma-modal-overlay, .rma-modal-box, .rma-modal-body'", $js, 'modalAcikMi yeni dış + duran iç class' );
+		qrms_assert_contains( "'.rma-modal-body:not([data-qmo])'", $js, 'enjeksiyon hedefi hâlâ rma-modal-body' );
+		qrms_assert_contains( "'.rma-modal-title'", $js, 'başlık class\'ı durur' );
+		qrms_assert_contains( "'.rma-modal-price'", $js, 'fiyat class\'ı durur' );
+		qrms_assert_contains( "'.rma-card, .qrms-vitrin-card, .qmo-slider-product'", $js, 'vitrin/slider kartı da modal yakalar' );
+		qrms_assert_contains( 'qmoSepet.endpoint', $js, 'sipariş qmoSepet.endpoint üzerinden gider' );
+		$php = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/includes/shortcode-sepet.php' );
+		qrms_assert_contains( 'qrservis/v1/order', $php, 'REST adresi shortcode\'da üretilir' );
+	}
+);
+
+qrms_test(
+	'AJAX ürün detayı hâlâ rma-modal-body ve rma-modal-img basar',
+	function () {
+		$php = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-ajax.php' );
+		$js  = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/js/rma-detail-modal.js' );
+
+		qrms_assert_contains( '<div class="rma-modal-body">', $php, 'iç HTML kökünde rma-modal-body' );
+		qrms_assert_contains( 'class="rma-modal-img"', $php, 'img class\'ı rma-modal-img' );
+		qrms_assert_contains( "inner.innerHTML = html", $js, 'içerik qrms-detail-inner\'a enjekte edilir' );
+		qrms_assert_contains( "overlay.className = 'qrms-detail-overlay'", $js, 'dış overlay yeni class' );
+		qrms_assert_contains( "'<div class=\"qrms-detail-box\">'", $js, 'dış kutu yeni class' );
+	}
+);
+
+qrms_test(
+	'masa oturumu yokken ve yönetici değilken sepet boş döner',
+	function () {
+		$GLOBALS['qrms_test']['can']       = false;
+		$GLOBALS['qrms_test']['logged_in'] = false;
+		unset( $_COOKIE[ QMO_Oturum::COOKIE ] );
+
+		qrms_assert_false( qmo_sepet_izinli_mi(), 'izin yok' );
+		qrms_assert_same( '', qmo_sepet_shortcode(), 'çıktı boş' );
+	}
+);
+
+qrms_test(
+	'yönetici masa parametresi olmadan da sepeti görür',
+	function () {
+		$GLOBALS['qrms_test']['can']       = true;
+		$GLOBALS['qrms_test']['logged_in'] = true;
+		unset( $_COOKIE[ QMO_Oturum::COOKIE ] );
+
+		qrms_assert_true( qmo_sepet_izinli_mi(), 'admin muaf' );
+	}
+);
+
+qrms_test(
+	'geçerli masa oturumu olan müşteri sepeti görür',
+	function () {
+		$GLOBALS['qrms_test']['can']       = false;
+		$GLOBALS['qrms_test']['logged_in'] = false;
+		$GLOBALS['qrms_test']['options'][ QMO_Oturum::OPT_KEY ] = 'test-hmac-anahtari-sepet-icin-yeterince-uzun';
+
+		$token = QMO_Oturum::token_uret( 'masa-31' );
+		$_COOKIE[ QMO_Oturum::COOKIE ] = $token;
+
+		qrms_assert_true( qmo_sepet_izinli_mi(), 'oturum geçerli' );
+		qrms_assert_true( false !== qmo_oturum(), 'qmo_oturum HMAC çerezini okur' );
+		qrms_assert_same( 'masa-31', qmo_oturum()['masa'], 'masa slug\'ı korunur' );
 	}
 );
 

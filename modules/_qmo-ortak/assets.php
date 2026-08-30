@@ -57,17 +57,9 @@ if ( ! function_exists( 'qmo_varliklari_kaydet' ) ) {
 			true
 		);
 
-		// Sepet, buton ve garson/hesap varlıkları bu göçte taşınmadı (kaynak
-		// dosyaları henüz bir modüle ait değil). Modülleri geldiğinde kendi
-		// klasörlerini göstererek geri açılacak; şimdi kaydedilirlerse var
-		// olmayan dosyalara işaret ederlerdi.
-		// wp_register_style( 'qmo-buttons', $css . 'buttons.css', array(), $v );
-		// wp_register_style( 'qmo-sepet', $css . 'sepet.css', array(), $v );
-		// wp_register_style( 'qmo-garson-hesap', $css . 'garson-hesap.css', array(), $v );
-		// wp_register_style( 'qmo-debug', $css . 'debug.css', array(), $v );
-		// wp_register_script( 'qmo-buttons', $js . 'buttons.js', array(), $v, true );
-		// wp_register_script( 'qmo-sepet', $js . 'sepet.js', array(), $v, true );
-		// wp_register_script( 'qmo-garson-hesap', $js . 'garson-hesap.js', array(), $v, true );
+		// Buton ve sepet varlıkları qr-chatbot/chatbot.php içinde kaydedilir
+		// (dosyalar o modüle aittir). Burada kaydedilirlerse var olmayan
+		// ortak bir assets/ yoluna işaret ederlerdi.
 	}
 }
 add_action( 'wp_enqueue_scripts', 'qmo_varliklari_kaydet', 5 );
