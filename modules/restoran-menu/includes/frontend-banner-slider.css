@@ -1,6 +1,6 @@
 /* =====================================================================
    QMO KAMPANYA BANNER SLIDER — FRONTEND STİLLERİ
-   Sayfa başı, tam genişlik · peek YOK (tek görsel tüm alanı kaplar)
+   Sayfa başı, tam genişlik · peek (komşu slaytların kenarı görünür)
    Dark gold tema · container query (cqi) · .qmo-banner- prefix
 
    Oran, geçiş biçimi, oklar ve başlık yönetimden gelir
@@ -16,6 +16,14 @@
     --qmo-gold:      #c9a84c;
     --qmo-gold-soft: #e8c766;
     --qmo-font-body: 'Manrope', system-ui, sans-serif;
+
+    /* Peek: aktif slayt ortada, iki yanda komşularının kenarı görünür.
+       Gutter %6, slaytlar arası boşluk 8-12px arasında kalır (dar
+       ekranda 8'e, geniş ekranda 12'ye oturur). Görünen komşu şeridi
+       gutter eksi boşluk kadardır, yani ~%5. */
+    --qmo-banner-peek:   6%;
+    --qmo-banner-gap:    clamp(8px, 1cqi, 12px);
+    --qmo-banner-radius: 14px;
 
     box-sizing: border-box;
     container-type: inline-size;
@@ -33,12 +41,17 @@
        ikincisi ayardan gelen oranı uygular. */
     aspect-ratio: 16 / 9;
     aspect-ratio: var(--qmo-banner-oran, 16 / 9);
+    box-sizing: border-box;
     overflow: hidden;
     position: relative;
     width: 100%;
 }
 
 .qmo-banner-track {
+    /* border-box şart: peek, track'in İÇ genişliğini daraltan bir
+       padding'le kuruluyor (aşağıya bkz.). content-box kalsaydı padding
+       genişliğe eklenir, slaytlar viewport'u taşırdı. */
+    box-sizing: border-box;
     display: flex;
     height: 100%;
     transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
@@ -46,8 +59,12 @@
     width: 100%;
 }
 
-/* Peek yok: her slayt viewport'un tamamı. */
+/* Slayt, track'in İÇ genişliğinin tamamıdır. Peek kapalıyken bu
+   viewport'un tamamı; peek açıkken track padding'i kadar daralmış
+   hâlidir (%88). Yüzdeler flex kapsayıcısının content box'ına
+   çözüldüğü için tek kural iki durumu da karşılar. */
 .qmo-banner-slide {
+    box-sizing: border-box;
     display: block;
     flex: 0 0 100%;
     height: 100%;
@@ -71,10 +88,67 @@ a.qmo-banner-slide:focus-visible {
 }
 
 /* ---------------------------------------------------------------------
+   PEEK (is-peek)
+   Aktif slayt ortada durur, iki yanda komşu slaytların kenarı ince bir
+   şerit hâlinde görünür.
+
+   Teknik: track'e --qmo-banner-peek kadar YATAY PADDING verilir. Padding
+   yüzdesi kapsayan bloğun (viewport) genişliğine çözülür, slaytın
+   `flex: 0 0 100%` yüzdesi ise flex kapsayıcısının CONTENT BOX'ına — yani
+   padding düşülmüş genişliğe. Böylece slayt kendiliğinden %88 olur ve
+   ilk slayt padding sayesinde zaten ortalanmış başlar; ayrıca bir
+   telafi transform'u gerekmez.
+
+   `is-peek` sınıfını kısa kod YALNIZCA birden fazla banner varken basar
+   (bkz. shortcode-banner-slider.php): tek banner'da yanında gösterilecek
+   komşu olmadığı için peek yalnızca iki yanda boş koyu şerit bırakırdı.
+
+   Uç slaytlar: ilk slaytta sol, son slaytta sağ gutter boş kalır
+   (slaytlar klonlanmıyor; setActive yalnızca index'i döndürüyor). Bu,
+   kaydırmalı karusellerin bilinen ve beklenen görünümüdür — sonsuz
+   döngü hissi için DOM'da slayt kopyalamak gerekirdi ki bu da noktaların
+   ve aria etiketlerinin sayısını bozardı.
+--------------------------------------------------------------------- */
+.qmo-banner-root.is-peek:not(.is-fade) .qmo-banner-track {
+    gap: var(--qmo-banner-gap);
+    padding-inline: var(--qmo-banner-peek);
+}
+
+.qmo-banner-root.is-peek:not(.is-fade) .qmo-banner-slide {
+    /* Köşe yuvarlama peek'in bir parçası: slayt artık kenardan kenara
+       değil, çerçevenin içinde duran bir kart gibi görünüyor. */
+    border-radius: var(--qmo-banner-radius);
+    overflow: hidden;
+    transition: opacity 0.4s ease;
+}
+
+/* Komşu şeritler hafifçe geri çekilir; odak ortadaki slaytta kalır.
+   Solma modunda görünürlüğü zaten .is-fade kuralları yönettiği için bu
+   seçici :not(.is-fade) altındadır — iki kural asla çakışmaz. */
+.qmo-banner-root.is-peek:not(.is-fade) .qmo-banner-slide:not(.is-active) {
+    opacity: 0.55;
+}
+
+/* Oklar peek gutter'ının üstüne binmesin: gutter komşu slaytın şeridi,
+   ok ise aktif slaytın kenarına oturmalı. */
+.qmo-banner-root.is-peek:not(.is-fade) .qmo-banner-nav-prev {
+    left: calc(var(--qmo-banner-peek) + 1.5cqi);
+}
+
+.qmo-banner-root.is-peek:not(.is-fade) .qmo-banner-nav-next {
+    right: calc(var(--qmo-banner-peek) + 1.5cqi);
+}
+
+/* ---------------------------------------------------------------------
    SOLMA GEÇİŞİ (is-fade)
    Slaytlar üst üste yığılır; kayma yerine opaklık değişir. Track'in
    transform'u JS tarafında hiç yazılmaz, yine de burada sıfırlanır ki
    biçim ortada değiştirilse bile kalıntı kaymasın.
+
+   Peek bu modda KAPALIDIR (yukarıdaki kuralların hepsi :not(.is-fade)
+   altında): slaytlar üst üste durduğu için "komşunun kenarı" diye bir
+   şey yoktur — gutter'da görünecek slayt zaten opacity:0 olurdu ve
+   yanlarda yalnızca boş koyu şeritler kalırdı.
 --------------------------------------------------------------------- */
 .qmo-banner-root.is-fade .qmo-banner-track {
     display: block;
@@ -227,6 +301,19 @@ a.qmo-banner-slide:focus-visible {
 
 /* Dar kapsayıcıda başlık ve oklar küçülür. */
 @container qmo-banner (max-width: 720px) {
+    /* Gutter daraldıkça slaytlar arası boşluk onun daha büyük bir payını
+       yiyor: 375px'te %6 gutter 22,5px, gap 8px, geriye görünen komşu
+       şeridi olarak 14,5px (%3,9) kalıyor. Peek'i biraz açarak şeridi
+       masaüstündeki ~%5 seviyesinde tutuyoruz.
+
+       Değişken track ve nav'a yazılıyor, köke değil: @container kuralları
+       sorguladıkları kapsayıcının KENDİSİNİ (.qmo-banner-root) seçemez,
+       yalnızca torunlarını. Peek'i kullanan iki yer de bunlar. */
+    .qmo-banner-root.is-peek:not(.is-fade) .qmo-banner-track,
+    .qmo-banner-root.is-peek:not(.is-fade) .qmo-banner-nav {
+        --qmo-banner-peek: 7.5%;
+    }
+
     .qmo-banner-title {
         font-size: var(--qmo-banner-title-size-mobile, 20px);
     }
@@ -243,7 +330,8 @@ a.qmo-banner-slide:focus-visible {
         transition: none;
     }
 
-    .qmo-banner-root.is-fade .qmo-banner-slide {
+    .qmo-banner-root.is-fade .qmo-banner-slide,
+    .qmo-banner-root.is-peek .qmo-banner-slide {
         transition: none;
     }
 

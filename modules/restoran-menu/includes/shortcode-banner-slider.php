@@ -110,6 +110,15 @@ class QMO_Shortcode_Banner_Slider {
             $kok_sinif .= ' is-fade';
         }
 
+        // Peek (komşu slaytların kenarının görünmesi) yalnızca birden fazla
+        // banner varken anlamlıdır: tek banner'da yanlarda gösterilecek
+        // komşu olmadığı için iki yanda boş koyu şerit kalırdı. Solma
+        // modunda CSS peek'i zaten devre dışı bırakır
+        // (bkz. frontend-banner-slider.css).
+        if ( $count > 1 ) {
+            $kok_sinif .= ' is-peek';
+        }
+
         ob_start();
         ?>
 <div class="<?php echo esc_attr( $kok_sinif ); ?>" data-qmo-banner-slider data-autoplay="<?php echo esc_attr( (string) $autoplay ); ?>" data-gecis="<?php echo esc_attr( $gecis ); ?>" role="region" aria-roledescription="karusel" aria-label="Kampanya banner'ları"<?php echo '' !== $stil ? ' style="' . esc_attr( $stil ) . '"' : ''; ?>>

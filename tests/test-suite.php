@@ -9113,9 +9113,9 @@ qrms_test(
 		qrms_assert_false( strpos( $css, '.qmo-slider-' ) !== false, 'banner css ürün slider seçicisine dokunmaz' );
 		qrms_assert_false( strpos( $js, 'qmo-slider-' ) !== false, 'banner betiği ürün slider seçicisine dokunmaz' );
 
-		// 16:9, tam genişlik, peek yok.
+		// 16:9; slayt track'in iç genişliğinin tamamı (peek açıkken %88).
 		qrms_assert_contains( 'aspect-ratio: 16 / 9', $css, 'banner oranı' );
-		qrms_assert_contains( 'flex: 0 0 100%', $css, 'slayt tüm alanı kaplar' );
+		qrms_assert_contains( 'flex: 0 0 100%', $css, 'slayt track iç genişliğini kaplar' );
 
 		// Autoplay + IntersectionObserver + hareket tercihi + swipe.
 		qrms_assert_contains( 'IntersectionObserver', $js, 'viewport tetikli autoplay' );
@@ -9404,6 +9404,49 @@ qrms_test(
 		qrms_assert_contains( 'public function handle_banner_settings_save()', $admin, 'kaydetme ucu' );
 		qrms_assert_contains( 'check_admin_referer( $this->banner_nonce_action )', $admin, 'nonce' );
 		qrms_assert_contains( 'initBannerPreview', $adminjs, 'canlı önizleme' );
+	}
+);
+
+qrms_test(
+	'banner peek: komşu slaytların kenarı görünür, tek banner\'da kapalı',
+	function () {
+		$dizin = QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/';
+
+		$css = file_get_contents( $dizin . 'frontend-banner-slider.css' );
+		$js  = file_get_contents( $dizin . 'frontend-banner-slider.js' );
+		$kod = file_get_contents( $dizin . 'shortcode-banner-slider.php' );
+
+		// Peek, track'e verilen yatay padding'le kurulur; slaytın
+		// `flex: 0 0 100%` yüzdesi kendiliğinden daralır. Bunun çalışması
+		// track'in border-box olmasına bağlıdır.
+		qrms_assert_contains( '--qmo-banner-peek', $css, 'peek değişkeni' );
+		qrms_assert_contains( 'padding-inline: var(--qmo-banner-peek)', $css, 'track yatay padding' );
+		qrms_assert_contains( 'box-sizing: border-box', $css, 'track kutu modeli' );
+		qrms_assert_contains( 'gap: var(--qmo-banner-gap)', $css, 'slaytlar arası boşluk' );
+		qrms_assert_contains( 'border-radius: var(--qmo-banner-radius)', $css, 'yuvarlak köşe' );
+
+		// Peek yalnızca birden fazla banner varken açılır: tek banner'da
+		// yanlarda gösterilecek komşu yok.
+		qrms_assert_contains( "\$kok_sinif .= ' is-peek';", $kod, 'is-peek sınıfı' );
+		qrms_assert_contains( 'if ( $count > 1 ) {', $kod, 'yalnızca 2+ banner' );
+
+		// Solma modunda peek kapalı: slaytlar üst üste, komşu kenarı yok.
+		foreach ( array( 'track', 'slide' ) as $parca ) {
+			qrms_assert_contains(
+				'.qmo-banner-root.is-peek:not(.is-fade) .qmo-banner-' . $parca,
+				$css,
+				$parca . ' peek kuralı fade dışında'
+			);
+		}
+
+		// Transform artık yüzde değil piksel: slayt genişliği + gap
+		// runtime'da ölçülür (gap cqi tabanlı clamp, sabit yüzdeyle
+		// ifade edilemez), pencere boyutu değişince yeniden hesaplanır.
+		qrms_assert_contains( 'function slideStep()', $js, 'adım ölçümü' );
+		qrms_assert_contains( 'getBoundingClientRect().left', $js, 'gerçek konum okunur' );
+		qrms_assert_contains( "translateX(' + (-slideStep() * current) + 'px)", $js, 'px cinsinden transform' );
+		qrms_assert_contains( "addEventListener('resize'", $js, 'yeniden boyutlandırma' );
+		qrms_assert_false( strpos( $js, "(-100 * current) + '%'" ) !== false, 'eski yüzde hesabı kaldırıldı' );
 	}
 );
 
