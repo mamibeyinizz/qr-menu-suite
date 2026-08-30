@@ -8967,7 +8967,7 @@ qrms_test(
 );
 
 qrms_test(
-	'footer çağrı butonu CSS admin değişkenlerini okur, sticky yalnızca mobilde',
+	'footer çağrı butonu CSS admin değişkenlerini okur, sticky her viewport\'ta',
 	function () {
 		$css = file_get_contents(
 			QRMS_PLUGIN_DIR . 'modules/header-footer-builder/assets/css/frontend.css'
@@ -8985,14 +8985,18 @@ qrms_test(
 		qrms_assert_contains( '@keyframes btn-spin', $css, 'spinner animasyonu' );
 		qrms_assert_contains( '.hfb-footer__call-btn.is-disabled', $css, 'disabled durumu' );
 		qrms_assert_contains( '.hfb-footer__call-btn.is-success', $css, 'success durumu' );
-		qrms_assert_contains( '@media (max-width: 767px)', $css, 'mobil sticky kırılımı' );
-		qrms_assert_contains( '.hfb-footer__call-wrap:has(.qmo-cagri-bar)', $css, 'butonlu wrap sticky' );
-		qrms_assert_contains( '.hfb-footer__call-wrap:has(.hfb-footer__call--warn)', $css, 'uyarı wrap sticky' );
+		// Çubuk artık masaüstü dâhil her genişlikte sabit: kurallar bir
+		// kırılımın içinde değil, satır başında (girintisiz) global durur.
+		qrms_assert_true( false === strpos( $css, '@media (max-width: 767px)' ), 'mobil-özel sticky kırılımı kalktı' );
+		qrms_assert_contains( "\n.hfb-footer__call-wrap:has(.qmo-cagri-bar),", $css, 'butonlu wrap her viewport\'ta sticky' );
+		qrms_assert_contains( "\n.hfb-footer__call-wrap:has(.hfb-footer__call--warn) {", $css, 'uyarı wrap her viewport\'ta sticky' );
 		qrms_assert_contains( 'position: fixed', $css, 'ekrana sabit' );
+		qrms_assert_contains( "\nbody:has(.hfb-footer__call-wrap .qmo-cagri-bar):not(.wp-admin),", $css, 'body boşluğu kırılımsız' );
 		qrms_assert_contains( 'padding-bottom: calc(66px + env(safe-area-inset-bottom, 0px))', $css, 'body boşluğu' );
-		qrms_assert_contains( 'border-radius: 12px', $css, 'mobilde köşeli-yuvarlak' );
-		qrms_assert_contains( 'flex: 1 1 0', $css, 'mobilde eşit genişlik' );
-		qrms_assert_contains( 'transform: scale(0.97)', $css, 'mobil :active dokunma' );
+		qrms_assert_contains( "\n.wp-admin .hfb-footer__call-wrap:has(.qmo-cagri-bar),", $css, 'admin önizlemesi akışta kalır' );
+		qrms_assert_contains( 'border-radius: 12px', $css, 'köşeli-yuvarlak buton' );
+		qrms_assert_contains( 'flex: 1 1 0', $css, 'iki buton eşit genişlik' );
+		qrms_assert_contains( 'transform: scale(0.97)', $css, ':active dokunma' );
 		qrms_assert_contains( 'background: rgba(10, 10, 12, 0.82)', $css, 'sticky bar zemini' );
 		qrms_assert_true( false === strpos( $css, 'border-radius: 50px' ), 'sabit 50px radius yok' );
 		qrms_assert_true( false === strpos( $css, '#d4af37' ), 'hardcoded altın yok' );
