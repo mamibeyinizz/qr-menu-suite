@@ -41,6 +41,10 @@ function qrms_module_qr_chatbot_init() {
 
 	require_once __DIR__ . '/chatbot.php';
 
+	// [qmo_sepet] kayıtı: add_shortcode dosya kapsamında çalışır.
+	// chatbot.php de aynı dosyayı require_once eder; ikinci çağrı no-op.
+	require_once __DIR__ . '/includes/shortcode-sepet.php';
+
 	QRMS_Shortcodes::register(
 		'qr-chatbot',
 		array(
