@@ -141,10 +141,19 @@ class QMO_Banner_CPT {
         if ( ! current_user_can( 'edit_post', $post_id ) ) return;
 
         if ( isset( $_POST['menu_order'] ) ) {
+            // wp_update_post() kaydı yeniden yazdığı için `save_post_*`
+            // kancasını bir kez daha tetikler; o kanca bu metodun kendisidir.
+            // Kanca geçici olarak kaldırılmazsa save_meta -> wp_update_post ->
+            // save_meta sonsuz özyinelemeye girer ve istek bellek tükenmesiyle
+            // wp-admin/post.php üzerinde fatal error verir.
+            remove_action( 'save_post_' . self::POST_TYPE, [ __CLASS__, 'save_meta' ] );
+
             wp_update_post( [
                 'ID'         => $post_id,
                 'menu_order' => absint( $_POST['menu_order'] ),
             ] );
+
+            add_action( 'save_post_' . self::POST_TYPE, [ __CLASS__, 'save_meta' ] );
         }
 
         $image_id = isset( $_POST[ self::META_IMAGE ] ) ? absint( $_POST[ self::META_IMAGE ] ) : 0;

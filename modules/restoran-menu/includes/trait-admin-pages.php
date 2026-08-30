@@ -725,7 +725,6 @@ trait RMA_Admin_Pages_Trait {
         $this->render_suggestions_page();
         $this->render_slider_section();
         $this->render_slider_appearance_form();
-        $this->render_banner_section();
 
         $this->page_footer();
     }
@@ -781,61 +780,6 @@ trait RMA_Admin_Pages_Trait {
                 <a class="button button-primary" href="<?php echo esc_url( admin_url( 'post-new.php?post_type=qmo_slide' ) ); ?>">Yeni Slider Grubu Ekle</a>
                 <a class="button" href="<?php echo esc_url( admin_url( 'edit.php?post_type=qmo_slide' ) ); ?>">Tüm Grupları Yönet</a>
                 <a class="button" href="#qmo-slider-gorunum">Görünümü Ayarla</a>
-            </p>
-        </div>
-        <?php
-    }
-
-    /**
-     * "Kampanya Banner" bölümü — sayfa başındaki tam genişlik banner slider'ı.
-     *
-     * Öne Çıkan Slider bölümüyle aynı gerekçe ve aynı desen: CPT'nin menü
-     * kaydı üst menü olmayan bir slug'a bağlı olduğu için sol menüde
-     * görünmez; erişim buradan verilir.
-     */
-    private function render_banner_section() {
-        if ( ! post_type_exists( 'qmo_banner_slide' ) ) {
-            return;
-        }
-
-        $banners = class_exists( 'QMO_Banner_CPT' ) ? QMO_Banner_CPT::get_published_banners() : [];
-        ?>
-        <div class="rma-card" id="rma-banner">
-            <h2 class="rma-card-title">Kampanya Banner</h2>
-            <p class="rma-card-desc">Sayfanın en üstünde tam genişlikte dönen kampanya görselleri. Sayfaya <code>[qmo_banner_slider]</code> kısa koduyla eklenir.</p>
-
-            <?php if ( empty( $banners ) ) : ?>
-                <p class="rma-empty">Henüz banner eklenmemiş.</p>
-            <?php else : ?>
-                <ul class="rma-simple-list">
-                    <?php foreach ( $banners as $banner ) :
-                        $gorsel_id = (int) get_post_meta( $banner->ID, QMO_Banner_CPT::META_IMAGE, true );
-                        $link      = (string) get_post_meta( $banner->ID, QMO_Banner_CPT::META_LINK, true );
-                        $edit_link = get_edit_post_link( $banner->ID );
-                        ?>
-                        <li class="rma-simple-item">
-                            <span class="rma-simple-main">
-                                <?php if ( $edit_link ) : ?>
-                                    <a href="<?php echo esc_url( $edit_link ); ?>"><?php echo esc_html( $banner->post_title ?: 'Başlıksız banner' ); ?></a>
-                                <?php else : ?>
-                                    <strong><?php echo esc_html( $banner->post_title ?: 'Başlıksız banner' ); ?></strong>
-                                <?php endif; ?>
-                                <span class="rma-simple-sub">
-                                    <?php
-                                    echo esc_html( $gorsel_id ? 'Görsel seçili' : 'Görsel seçilmemiş — bu banner gösterilmez' );
-                                    echo $link ? ' · ' . esc_html( $link ) : '';
-                                    ?>
-                                </span>
-                            </span>
-                            <span class="rma-simple-meta">Sıra: <?php echo (int) $banner->menu_order; ?></span>
-                        </li>
-                    <?php endforeach; ?>
-                </ul>
-            <?php endif; ?>
-
-            <p class="rma-actions">
-                <a class="button button-primary" href="<?php echo esc_url( admin_url( 'post-new.php?post_type=qmo_banner_slide' ) ); ?>">Yeni Banner Ekle</a>
-                <a class="button" href="<?php echo esc_url( admin_url( 'edit.php?post_type=qmo_banner_slide' ) ); ?>">Tüm Banner'ları Yönet</a>
             </p>
         </div>
         <?php
