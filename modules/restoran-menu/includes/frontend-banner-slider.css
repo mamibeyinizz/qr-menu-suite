@@ -54,9 +54,11 @@
     /* border-box şart: peek, track'in İÇ genişliğini daraltan bir
        padding'le kuruluyor (aşağıya bkz.). content-box kalsaydı padding
        genişliğe eklenir, slaytlar viewport'u taşırdı. */
+    align-items: stretch;
     box-sizing: border-box;
     display: flex;
     height: 100%;
+    min-height: 0;
     transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
     will-change: transform;
     width: 100%;
@@ -71,11 +73,13 @@
     display: block;
     flex: 0 0 100%;
     height: 100%;
-    /* min-width: auto (varsayılan) görselin 1600px intrinsic genişliğine
-       kilitlenirdi; yüzde-yüz min-width ise bazı motorlarda track'in
-       padding'li kutusuna (viewport kadar) çözülüp peek'i yutar. 0,
-       flex-basis'in content box'a göre %100 kalmasına izin verir. */
+    /* min-width/min-height: auto (varsayılan) görselin intrinsic
+       boyutuna kilitlenirdi; 2. ve 3. slaytlar 16:9 ipucuyla
+       viewport'un 3:1 kutusunu "patlatırdı". 0, flex-basis'in
+       content box'a göre %100 kalmasına izin verir. */
+    min-height: 0;
     min-width: 0;
+    overflow: hidden;
     position: relative;
     text-decoration: none;
 }
@@ -86,9 +90,16 @@ a.qmo-banner-slide:focus-visible {
 }
 
 .qmo-banner-img {
+    /* Akıştan çıkarılır: intrinsic en-boy oranı slaydın kutusunu
+       büyütmez. object-fit her slaytta aynı kırpmayı uygular
+       (:first-child yok — tüm .qmo-banner-img). */
     display: block;
     height: 100%;
+    left: 0;
     object-fit: cover;
+    object-position: center;
+    position: absolute;
+    top: 0;
     -webkit-user-drag: none;
     user-select: none;
     width: 100%;
@@ -112,11 +123,11 @@ a.qmo-banner-slide:focus-visible {
    (bkz. shortcode-banner-slider.php): tek banner'da yanında gösterilecek
    komşu olmadığı için peek yalnızca iki yanda boş koyu şerit bırakırdı.
 
-   Uç slaytlar: ilk slaytta sol, son slaytta sağ gutter boş kalır
-   (slaytlar klonlanmıyor; setActive yalnızca index'i döndürüyor). Bu,
-   kaydırmalı karusellerin bilinen ve beklenen görünümüdür — sonsuz
-   döngü hissi için DOM'da slayt kopyalamak gerekirdi ki bu da noktaların
-   ve aria etiketlerinin sayısını bozardı.
+   Uç slaytlar: kaydırma modunda JS son slaydın klonunu başa, ilk
+   slaydın klonunu sona ekler (bkz. frontend-banner-slider.js). Peek
+   her iki uçta da gerçek bir komşu gösterir; sınırda transition
+   kapatılıp gerçek slayta atlanır. Klonlar nokta/aria sayısına
+   girmez (data-qmo-banner-clone). Solma modunda klon yoktur.
 --------------------------------------------------------------------- */
 .qmo-banner-root.is-peek:not(.is-fade) .qmo-banner-track {
     /* 1cqi burada (torun) geçerlidir; kökteki yedek px'i ezer. */
@@ -139,6 +150,7 @@ a.qmo-banner-slide:focus-visible {
     border-radius: var(--qmo-banner-radius);
     flex: 0 0 auto;
     max-width: 100%;
+    min-height: 0;
     min-width: 0;
     overflow: hidden;
     transition: opacity 0.4s ease;

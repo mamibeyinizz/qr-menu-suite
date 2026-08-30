@@ -241,6 +241,36 @@ class QMO_Banner_Slider_Settings {
     }
 
     /**
+     * Üretim ve HTML width/height için önerilen piksel boyutu.
+     *
+     * Uzun kenar 1600px'tir (Toplu Kampanya Görseli Oluştur aracıyla aynı);
+     * yükseklik seçilen orana göre hesaplanır. Böylece canvas export,
+     * kısa koddaki <img> ipucu ve CSS --qmo-banner-oran aynı oranı paylaşır.
+     *
+     * @param string|null $oran oranlar() anahtarı; null ise kayıtlı ayar.
+     * @return array{0:int,1:int} Genişlik ve yükseklik.
+     */
+    public static function onerilen_px( $oran = null ) {
+        if ( null === $oran ) {
+            $oran = self::get()['oran'];
+        }
+
+        $oran  = self::oran( $oran );
+        $parca = explode( ':', $oran );
+        $en    = isset( $parca[0] ) ? (float) $parca[0] : 16.0;
+        $boy   = isset( $parca[1] ) ? (float) $parca[1] : 9.0;
+
+        if ( $en <= 0 || $boy <= 0 ) {
+            $en  = 16.0;
+            $boy = 9.0;
+        }
+
+        $genislik = 1600;
+
+        return array( $genislik, (int) round( $genislik * $boy / $en ) );
+    }
+
+    /**
      * Yazı tipi anahtarının CSS font-family yığını.
      *
      * @param string $anahtar yazi_tipleri() anahtarı.

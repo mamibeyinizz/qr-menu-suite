@@ -211,6 +211,70 @@
     }
 
     /* -----------------------------------------------------------------
+       KAMPANYA BANNER SIRASI
+       Aktif Kampanyalar listesindeki ▲▼ okları. Sürükle-bırak yerine ok
+       seçildi: liste zaten "Sıra: N" gösterir, ok o değeri değiştirmenin
+       en az bağımlılıklı karşılığıdır (jquery-ui-sortable gerekmez).
+       Kaynak tek: menu_order (ön yüz kısa kodu da bunu okur).
+    ----------------------------------------------------------------- */
+    function initBannerOrder() {
+        var $list = $('[data-banner-sira]');
+        if (!$list.length) return;
+
+        function satirlar() {
+            return $list.children('li[data-banner-id]');
+        }
+
+        function guncelleUi() {
+            var $items = satirlar();
+            $items.each(function (i) {
+                var $item = $(this);
+                $item.find('[data-sira-etiket]').text('Sıra: ' + (i + 1));
+                $item.find('[data-yon="up"]').prop('disabled', i === 0);
+                $item.find('[data-yon="down"]').prop('disabled', i === $items.length - 1);
+            });
+        }
+
+        function kaydet() {
+            var order = [];
+            satirlar().each(function () {
+                order.push($(this).data('banner-id'));
+            });
+            $.post(AJAX_URL, {
+                action: 'qmo_banner_sira_kaydet',
+                order: order,
+                security: NONCE
+            }).fail(function () {
+                alert('Sıra kaydedilemedi.');
+            });
+        }
+
+        $list.on('click', '.rma-banner-sira-btn', function (e) {
+            e.preventDefault();
+            var $btn = $(this);
+            if ($btn.prop('disabled')) return;
+
+            var $item = $btn.closest('li[data-banner-id]');
+            var $komsu = $btn.data('yon') === 'up'
+                ? $item.prev('li[data-banner-id]')
+                : $item.next('li[data-banner-id]');
+
+            if (!$komsu.length) return;
+
+            if ($btn.data('yon') === 'up') {
+                $item.insertBefore($komsu);
+            } else {
+                $item.insertAfter($komsu);
+            }
+
+            guncelleUi();
+            kaydet();
+        });
+
+        guncelleUi();
+    }
+
+    /* -----------------------------------------------------------------
        GÖRÜNÜM — HAZIR TEMALAR
        Tema kartına dokununca renk seçicilere değerler yazılır; kullanıcı
        "Görünümü Kaydet" ile onaylar. Renklerin bir kısmı "Diğer renk
@@ -1331,6 +1395,7 @@
         initStatusToggle();
         initTukendiToggle();
         initCategorySorter();
+        initBannerOrder();
         initPalettes();
         initNavPreview();
         initNavDesignPresets();

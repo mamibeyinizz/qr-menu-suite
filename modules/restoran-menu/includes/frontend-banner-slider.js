@@ -50,10 +50,40 @@
        frontend-banner-slider.css içinde). */
     var fade = root.getAttribute('data-gecis') === 'fade';
 
-    var current = 0;
     var timer = null;
     var visible = false;
     var reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var wrapping = false;
+
+    /* Sonsuz kaydırma: son slaydın klonu başa, ilk slaydın klonu sona.
+       Peek bozulmaz (uçta gerçek komşu görünür); sınırda transition
+       kapatılıp gerçek slayta atlanır. Solma ve reduced-motion'da
+       klon yok — orada "yön" zaten anlamsız / istenmez. */
+    var realCount = slides.length;
+    var looping = !fade && !reducedMotion && realCount > 1;
+
+    function cloneSlide(el) {
+        var copy = el.cloneNode(true);
+        copy.classList.remove('is-active');
+        copy.removeAttribute('data-qmo-banner-slide');
+        copy.setAttribute('data-qmo-banner-clone', '1');
+        copy.setAttribute('aria-hidden', 'true');
+        copy.removeAttribute('aria-roledescription');
+        copy.removeAttribute('aria-label');
+        copy.setAttribute('tabindex', '-1');
+        var img = copy.querySelector('img');
+        if (img) img.setAttribute('loading', 'eager');
+        return copy;
+    }
+
+    if (looping) {
+        track.insertBefore(cloneSlide(slides[realCount - 1]), slides[0]);
+        track.appendChild(cloneSlide(slides[0]));
+        slides = track.querySelectorAll('.qmo-banner-slide');
+    }
+
+    /* looping: [klonSon, gerçek0..gerçekN-1, klonİlk] — ilk gerçek index 1. */
+    var current = looping ? 1 : 0;
 
     // 0 = otomatik geçiş kapalı (kısa kod attribute'u; bkz. shortcode-banner-slider.php).
     var intervalMs = parseInt(root.getAttribute('data-autoplay'), 10);
@@ -100,31 +130,95 @@
         return (slides[0].offsetWidth || 0) + gap;
     }
 
-    function setActive(index) {
-        if (index < 0) index = slides.length - 1;
-        if (index >= slides.length) index = 0;
-        current = index;
+    function realIndex(trackIndex) {
+        if (!looping) return trackIndex;
+        if (trackIndex <= 0) return realCount - 1;
+        if (trackIndex >= realCount + 1) return 0;
+        return trackIndex - 1;
+    }
 
-        if (!fade) {
-            track.style.transform = 'translateX(' + (-slideStep() * current) + 'px)';
+    function applyTransform(trackIndex, instant) {
+        if (fade) return;
+        if (instant) track.style.transition = 'none';
+        track.style.transform = 'translateX(' + (-slideStep() * trackIndex) + 'px)';
+        if (instant) {
+            void track.offsetWidth;
+            track.style.transition = '';
         }
+    }
 
+    function syncUi(trackIndex) {
+        var real = realIndex(trackIndex);
         for (var s = 0; s < slides.length; s++) {
-            slides[s].classList.toggle('is-active', s === current);
+            slides[s].classList.toggle('is-active', s === trackIndex);
         }
-
         for (var i = 0; i < dots.length; i++) {
-            var isActive = i === current;
+            var isActive = i === real;
             dots[i].classList.toggle('is-active', isActive);
             dots[i].setAttribute('aria-selected', isActive ? 'true' : 'false');
         }
     }
 
+    function snapIfNeeded() {
+        if (!wrapping) return;
+        wrapping = false;
+        if (current === 0) {
+            current = realCount;
+            applyTransform(current, true);
+            syncUi(current);
+        } else if (current === realCount + 1) {
+            current = 1;
+            applyTransform(current, true);
+            syncUi(current);
+        }
+    }
+
+    function setActive(index, instant) {
+        if (fade || !looping) {
+            if (index < 0) index = realCount - 1;
+            if (index >= realCount) index = 0;
+            current = index;
+            applyTransform(current, instant);
+            syncUi(current);
+            return;
+        }
+
+        current = index;
+        applyTransform(current, instant);
+        syncUi(current);
+
+        if (!instant && (current === 0 || current === realCount + 1)) {
+            wrapping = true;
+            /* transitionend kaçarsa (eski motor, reduced-motion geçişi)
+               0.5s CSS süresinin ardından yine de sıçra. */
+            window.setTimeout(snapIfNeeded, 600);
+        }
+    }
+
+    function goToReal(realIdx) {
+        if (!looping) {
+            setActive(realIdx);
+            return;
+        }
+        var hedef = realIdx + 1;
+        var simdi = realIndex(current);
+        /* Son → ilk ve ilk → son nokta tıklamasında klon üzerinden
+           doğru yönde kay (geriye tüm slaytları tarama). */
+        if (simdi === realCount - 1 && realIdx === 0) {
+            hedef = realCount + 1;
+        } else if (simdi === 0 && realIdx === realCount - 1) {
+            hedef = 0;
+        }
+        setActive(hedef);
+    }
+
     function next() {
+        if (wrapping) return;
         setActive(current + 1);
     }
 
     function prev() {
+        if (wrapping) return;
         setActive(current - 1);
     }
 
@@ -137,7 +231,7 @@
 
     function startAutoplay() {
         stopAutoplay();
-        if (reducedMotion || intervalMs <= 0 || slides.length < 2 || !visible) return;
+        if (reducedMotion || intervalMs <= 0 || realCount < 2 || !visible) return;
         timer = setInterval(next, intervalMs);
     }
 
@@ -159,7 +253,8 @@
     for (var d = 0; d < dots.length; d++) {
         (function (dot, index) {
             dot.addEventListener('click', function () {
-                setActive(index);
+                if (wrapping) return;
+                goToReal(index);
                 startAutoplay();
             });
         })(dots[d], d);
@@ -206,7 +301,8 @@
         var dx = endX - startX;
 
         if (Math.abs(dx) > 40) {
-            setActive(current + (dx < 0 ? 1 : -1));
+            if (dx < 0) next();
+            else prev();
         }
         startAutoplay();
     });
@@ -232,10 +328,10 @@
 
         resizeTimer = setTimeout(function () {
             resizeTimer = null;
-            track.style.transition = 'none';
-            setActive(current);
-            void track.offsetWidth; // reflow: transition'ı geri açmadan önce
-            track.style.transition = '';
+            if (looping && (current === 0 || current === realCount + 1)) {
+                current = current === 0 ? realCount : 1;
+            }
+            setActive(current, true);
         }, 120);
     });
 
@@ -246,7 +342,7 @@
                 if (visible) {
                     /* İlk ölçüm gizli/0 genişlikteydiysa görünür olunca
                        peek adımı yeniden hesaplanır. */
-                    if (!fade) setActive(current);
+                    if (!fade) setActive(current, true);
                     startAutoplay();
                 } else {
                     stopAutoplay();
@@ -273,22 +369,30 @@
         if (visible) startAutoplay();
     });
 
-    setActive(0);
+    if (looping) {
+        track.addEventListener('transitionend', function (e) {
+            if (e.target !== track) return;
+            if (e.propertyName && e.propertyName.indexOf('transform') === -1) return;
+            snapIfNeeded();
+        });
+    }
+
+    setActive(current, true);
 
     /* defer betik parse bitince çalışır ama stiller henüz uygulanmamış
        olabilir (asenkron CSS). İlk karede 0 okunan adım bir kare sonra
        ve window.load'da tekrar ölçülür. */
     if (typeof requestAnimationFrame === 'function') {
         requestAnimationFrame(function () {
-            if (!fade) setActive(current);
+            if (!fade) setActive(current, true);
             requestAnimationFrame(function () {
-                if (!fade) setActive(current);
+                if (!fade) setActive(current, true);
             });
         });
     }
 
     window.addEventListener('load', function () {
-        if (!fade) setActive(current);
+        if (!fade) setActive(current, true);
     });
     } // init
 })();

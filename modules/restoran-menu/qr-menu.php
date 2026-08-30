@@ -148,6 +148,7 @@ class Restaurant_Menu_Automation {
         ----------------------------------------------------------------- */
         add_action( 'admin_post_qmo_banner_ayar_kaydet', [ $this, 'handle_banner_settings_save' ] );
         add_action( 'wp_ajax_qmo_banner_gorsel_olustur', [ $this, 'ajax_banner_gorsel_olustur' ] );
+        add_action( 'wp_ajax_qmo_banner_sira_kaydet', [ 'QMO_Banner_CPT', 'ajax_save_order' ] );
 
         add_shortcode( 'restaurant_menu', [ $this, 'shortcode_menu' ] );
         add_shortcode( 'rma_qr_notice', [ $this, 'shortcode_qr_notice' ] );

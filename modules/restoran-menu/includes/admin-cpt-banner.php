@@ -98,19 +98,23 @@ class QMO_Banner_CPT {
         $image_id = (int) get_post_meta( $post->ID, self::META_IMAGE, true );
         $link     = (string) get_post_meta( $post->ID, self::META_LINK, true );
         $img_url  = $image_id ? wp_get_attachment_image_url( $image_id, 'large' ) : '';
+        $oran_css = '16 / 9';
+        if ( class_exists( 'QMO_Banner_Slider_Settings' ) ) {
+            $oran_css = QMO_Banner_Slider_Settings::oran_css( QMO_Banner_Slider_Settings::get()['oran'] );
+        }
         ?>
         <div class="qmo-banner-media" data-qmo-banner-media>
             <input type="hidden" name="<?php echo esc_attr( self::META_IMAGE ); ?>" value="<?php echo esc_attr( (string) $image_id ); ?>" data-qmo-banner-input />
 
-            <div class="qmo-banner-preview" data-qmo-banner-preview style="aspect-ratio:16/9;max-width:520px;background:#0d0d10;border:1px solid #ccd0d4;border-radius:6px;overflow:hidden;margin-bottom:10px;<?php echo $img_url ? '' : 'display:none;'; ?>">
-                <img src="<?php echo esc_url( $img_url ); ?>" alt="" style="display:block;width:100%;height:100%;object-fit:cover;" data-qmo-banner-img />
+            <div class="qmo-banner-preview" data-qmo-banner-preview style="aspect-ratio:<?php echo esc_attr( $oran_css ); ?>;max-width:520px;background:#0d0d10;border:1px solid #ccd0d4;border-radius:6px;overflow:hidden;margin-bottom:10px;<?php echo $img_url ? '' : 'display:none;'; ?>">
+                <img src="<?php echo esc_url( $img_url ); ?>" alt="" style="display:block;width:100%;height:100%;object-fit:cover;object-position:center;" data-qmo-banner-img />
             </div>
 
             <p>
                 <button type="button" class="button" data-qmo-banner-select><?php echo $image_id ? 'Görseli Değiştir' : 'Görsel Seç'; ?></button>
                 <button type="button" class="button-link" data-qmo-banner-remove style="<?php echo $image_id ? '' : 'display:none;'; ?>margin-left:8px;color:#b32d2e;">Kaldır</button>
             </p>
-            <p class="description"><?php echo esc_html( self::BOYUT_NOTU ); ?></p>
+            <p class="description"><?php echo esc_html( self::boyut_notu() ); ?></p>
         </div>
 
         <p style="margin-top:18px;">
@@ -169,6 +173,53 @@ class QMO_Banner_CPT {
         } else {
             delete_post_meta( $post_id, self::META_LINK );
         }
+    }
+
+    /**
+     * `wp_ajax_qmo_banner_sira_kaydet` — yönetim listesindeki sıra değişimi.
+     *
+     * Gelen ID sırası 1, 2, 3… olarak menu_order'a yazılır (ön yüz kısa kodu
+     * aynı alanı okur). save_meta nonce'su bu istekte olmadığı için
+     * wp_update_post özyinelemesi tetiklenmez.
+     *
+     * @return void
+     */
+    public static function ajax_save_order() {
+        check_ajax_referer( 'rma_admin_nonce', 'security' );
+
+        $yetki = class_exists( 'QRMS_Admin' ) ? QRMS_Admin::CAPABILITY : 'manage_options';
+
+        if ( ! current_user_can( $yetki ) ) {
+            wp_send_json_error( array( 'message' => 'yetki' ), 403 );
+        }
+
+        $ids = isset( $_POST['order'] ) ? array_map( 'absint', (array) wp_unslash( $_POST['order'] ) ) : array();
+        $ids = array_values( array_filter( $ids ) );
+
+        if ( empty( $ids ) ) {
+            wp_send_json_error( array( 'message' => 'bos' ), 400 );
+        }
+
+        $sira = 1;
+
+        foreach ( $ids as $id ) {
+            if ( $id < 1 || get_post_type( $id ) !== self::POST_TYPE ) {
+                continue;
+            }
+            if ( ! current_user_can( 'edit_post', $id ) ) {
+                continue;
+            }
+
+            wp_update_post(
+                array(
+                    'ID'         => $id,
+                    'menu_order' => $sira,
+                )
+            );
+            ++$sira;
+        }
+
+        wp_send_json_success( array( 'count' => $sira - 1 ) );
     }
 
     private static function is_valid_image( $id ) {
@@ -280,18 +331,74 @@ JS;
     /**
      * Yayınlanmış banner'ları menu_order'a göre döndürür.
      *
+     * Ön yüz kısa kodu ve özet kartı bunu kullanır: yalnızca yayındaki
+     * kayıtlar. Yönetim listesi get_admin_banners() kullanır.
+     *
      * @return WP_Post[]
      */
     public static function get_published_banners() {
-        return get_posts( [
-            'post_type'              => self::POST_TYPE,
-            'post_status'            => 'publish',
-            'posts_per_page'         => -1,
-            'orderby'                => 'menu_order',
-            'order'                  => 'ASC',
-            'no_found_rows'          => true,
-            'update_post_meta_cache' => true,
-            'update_post_term_cache' => false,
-        ] );
+        return self::query_banners( array( 'publish' ) );
+    }
+
+    /**
+     * Yönetim listesi için tüm banner kayıtları (çöp ve otomatik taslak hariç).
+     *
+     * posts_per_page -1 + nopaging: varsayılan 5/20 sınırı uygulanmaz.
+     * Taslaklar da görünür; aksi hâlde "Sıra: 1, 3, 4" boşlukları oluşur.
+     *
+     * @return WP_Post[]
+     */
+    public static function get_admin_banners() {
+        return self::query_banners( array( 'publish', 'draft', 'pending', 'private', 'future' ) );
+    }
+
+    /**
+     * Banner CPT sorgusu — tek kaynak (ön yüz ve yönetim aynı sıra alanını
+     * okur: menu_order, sonra ID).
+     *
+     * @param string[] $statuslar WP post_status listesi.
+     * @return WP_Post[]
+     */
+    private static function query_banners( array $statuslar ) {
+        $sorgu = new WP_Query(
+            array(
+                'post_type'              => self::POST_TYPE,
+                'post_status'            => $statuslar,
+                'posts_per_page'         => -1,
+                'nopaging'               => true,
+                'orderby'                => array(
+                    'menu_order' => 'ASC',
+                    'ID'         => 'ASC',
+                ),
+                'no_found_rows'          => true,
+                'ignore_sticky_posts'    => true,
+                'update_post_meta_cache' => true,
+                'update_post_term_cache' => false,
+            )
+        );
+
+        return is_array( $sorgu->posts ) ? $sorgu->posts : array();
+    }
+
+    /**
+     * Görsel yükleme alanının boyut önerisi — kayıtlı en-boy oranına göre.
+     *
+     * @return string
+     */
+    public static function boyut_notu() {
+        $oran = '16:9';
+        $px   = array( 1600, 900 );
+
+        if ( class_exists( 'QMO_Banner_Slider_Settings' ) ) {
+            $oran = QMO_Banner_Slider_Settings::get()['oran'];
+            $px   = QMO_Banner_Slider_Settings::onerilen_px( $oran );
+        }
+
+        return sprintf(
+            'Önerilen boyut: %dx%dpx (%s), JPG/WEBP, maksimum 300KB. Farklı orandaki görseller banner alanına ortalanarak kırpılır.',
+            (int) $px[0],
+            (int) $px[1],
+            $oran
+        );
     }
 }

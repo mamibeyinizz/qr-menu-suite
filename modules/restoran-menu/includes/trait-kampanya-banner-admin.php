@@ -289,25 +289,37 @@ trait RMA_Kampanya_Banner_Admin_Trait {
      * @return void
      */
     private function render_banner_kampanya_listesi() {
-        $banners = QMO_Banner_CPT::get_published_banners();
+        $banners = QMO_Banner_CPT::get_admin_banners();
+        $toplam  = count( $banners );
         ?>
         <div class="rma-card" id="rma-banner">
             <div class="rma-vitrin-list-head">
                 <h3 class="rma-card-title">Aktif Kampanyalar</h3>
                 <a class="button" href="<?php echo esc_url( $this->banner_wizard_url( 'olustur' ) ); ?>">Hazır şablonla görsel üret</a>
             </div>
-            <p class="rma-card-desc">Sayfanın en üstünde tam genişlikte dönen kampanya görselleri. Sayfaya <code>[qmo_banner_slider]</code> kısa koduyla eklenir. Görseli seçilmemiş kayıtlar gösterilmez.</p>
+            <p class="rma-card-desc">Sayfanın en üstünde tam genişlikte dönen kampanya görselleri. Sayfaya <code>[qmo_banner_slider]</code> kısa koduyla eklenir. Görseli seçilmemiş kayıtlar gösterilmez. Sırayı oklarla değiştirin — ön yüz aynı <code>menu_order</code> alanını okur.</p>
 
             <?php if ( empty( $banners ) ) : ?>
                 <p class="rma-empty">Henüz kampanya eklenmemiş.</p>
             <?php else : ?>
-                <ul class="rma-simple-list">
-                    <?php foreach ( $banners as $banner ) :
+                <ul class="rma-simple-list" id="rma-banner-sira-listesi" data-banner-sira>
+                    <?php foreach ( $banners as $index => $banner ) :
                         $gorsel_id = (int) get_post_meta( $banner->ID, QMO_Banner_CPT::META_IMAGE, true );
                         $link      = (string) get_post_meta( $banner->ID, QMO_Banner_CPT::META_LINK, true );
                         $edit_link = get_edit_post_link( $banner->ID );
+                        $thumb     = $gorsel_id ? wp_get_attachment_image_url( $gorsel_id, 'thumbnail' ) : '';
+                        $sira_no = $index + 1;
+                        $durum   = get_post_status_object( $banner->post_status );
+                        $durum_etiket = ( $durum && 'publish' !== $banner->post_status )
+                            ? (string) $durum->label
+                            : '';
                         ?>
-                        <li class="rma-simple-item">
+                        <li class="rma-simple-item" data-banner-id="<?php echo (int) $banner->ID; ?>">
+                            <?php if ( $thumb ) : ?>
+                                <img class="rma-banner-thumb" src="<?php echo esc_url( $thumb ); ?>" alt="" width="80" height="45">
+                            <?php else : ?>
+                                <span class="rma-banner-thumb is-empty" aria-hidden="true"></span>
+                            <?php endif; ?>
                             <span class="rma-simple-main">
                                 <?php if ( $edit_link ) : ?>
                                     <a href="<?php echo esc_url( $edit_link ); ?>"><?php echo esc_html( $banner->post_title ?: 'Başlıksız kampanya' ); ?></a>
@@ -318,10 +330,17 @@ trait RMA_Kampanya_Banner_Admin_Trait {
                                     <?php
                                     echo esc_html( $gorsel_id ? 'Görsel seçili' : 'Görsel seçilmemiş — bu kampanya gösterilmez' );
                                     echo $link ? ' · ' . esc_html( $link ) : '';
+                                    echo $durum_etiket ? ' · ' . esc_html( $durum_etiket ) : '';
                                     ?>
                                 </span>
                             </span>
-                            <span class="rma-simple-meta">Sıra: <?php echo (int) $banner->menu_order; ?></span>
+                            <span class="rma-banner-sira">
+                                <span class="rma-simple-meta" data-sira-etiket>Sıra: <?php echo (int) $sira_no; ?></span>
+                                <span class="rma-banner-sira-btns">
+                                    <button type="button" class="button rma-banner-sira-btn" data-yon="up" aria-label="Yukarı taşı"<?php echo 0 === $index ? ' disabled' : ''; ?>>&#9650;</button>
+                                    <button type="button" class="button rma-banner-sira-btn" data-yon="down" aria-label="Aşağı taşı"<?php echo ( $index === $toplam - 1 ) ? ' disabled' : ''; ?>>&#9660;</button>
+                                </span>
+                            </span>
                         </li>
                     <?php endforeach; ?>
                 </ul>
@@ -473,7 +492,7 @@ trait RMA_Kampanya_Banner_Admin_Trait {
                 <div class="rma-vitrin-layout-fields">
                     <div class="rma-card rma-vitrin-step" data-step="1" data-step-title="Oran ve Geçiş">
                         <h2 class="rma-card-title">1. Oran ve Geçiş</h2>
-                        <p class="rma-card-desc">Banner alanının yüksekliği en-boy oranıyla belirlenir; görseller bu alana kırpılarak sığdırılır. Önerilen görsel boyutu 16:9 için 1600x900px'dir.</p>
+                        <p class="rma-card-desc">Banner alanının yüksekliği en-boy oranıyla belirlenir; görseller bu alana ortalanarak kırpılır (object-fit). 16:9 için önerilen boyut 1600x900px; 21:9 ve 3:1 seçilince yükseklik o orana göre düşer. Farklı oranda yüklenen görseller de aynı kutuya sığar.</p>
 
                         <table class="form-table rma-form-table">
                             <tr>
@@ -740,13 +759,18 @@ trait RMA_Kampanya_Banner_Admin_Trait {
     /**
      * Oran anahtarından ("16:9") üretilecek görselin piksel boyutu.
      *
-     * QMO_Banner_Slider_Settings::oranlar() TEK KAYNAK olarak kalır; burada
-     * yalnızca anahtarı sayıya çeviririz, o sınıfa hiç dokunulmaz.
+     * QMO_Banner_Slider_Settings::onerilen_px() TEK KAYNAK: canvas export,
+     * kısa kod width/height ipucu ve CSS --qmo-banner-oran aynı hesabı
+     * paylaşır.
      *
      * @param string $oran Oran anahtarı.
      * @return array{0:int,1:int} Genişlik ve yükseklik (px).
      */
     private function banner_oran_boyutu( $oran ) {
+        if ( class_exists( 'QMO_Banner_Slider_Settings' ) ) {
+            return QMO_Banner_Slider_Settings::onerilen_px( $oran );
+        }
+
         $parca = explode( ':', (string) $oran );
         $en    = isset( $parca[0] ) ? (float) $parca[0] : 16.0;
         $boy   = isset( $parca[1] ) ? (float) $parca[1] : 9.0;
@@ -946,7 +970,7 @@ trait RMA_Kampanya_Banner_Admin_Trait {
         // Yeni kampanya en sona düşsün: mevcut en büyük sıra + 1.
         $sira = 0;
 
-        foreach ( QMO_Banner_CPT::get_published_banners() as $mevcut ) {
+        foreach ( QMO_Banner_CPT::get_admin_banners() as $mevcut ) {
             $sira = max( $sira, (int) $mevcut->menu_order + 1 );
         }
 

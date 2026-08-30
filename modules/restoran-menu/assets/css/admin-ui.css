@@ -904,6 +904,47 @@
     font-size: 12px;
 }
 
+.rma-banner-thumb {
+    background: var(--rma-a-surface-2);
+    border-radius: 4px;
+    flex-shrink: 0;
+    height: 45px;
+    object-fit: cover;
+    object-position: center;
+    width: 80px;
+}
+
+.rma-banner-thumb.is-empty {
+    border: 1px dashed var(--rma-a-border);
+}
+
+.rma-banner-sira {
+    align-items: center;
+    display: flex;
+    flex-shrink: 0;
+    gap: 8px;
+}
+
+.rma-banner-sira-btns {
+    display: inline-flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.rma-admin .rma-banner-sira-btn {
+    font-size: 9px;
+    height: 22px;
+    line-height: 1;
+    min-height: 22px;
+    min-width: 28px;
+    padding: 0 6px;
+}
+
+.rma-admin .rma-banner-sira-btn:disabled {
+    cursor: default;
+    opacity: .35;
+}
+
 .rma-admin .rma-empty {
     background: var(--rma-a-surface-2);
     border: 1px dashed var(--rma-a-border);
@@ -2237,6 +2278,7 @@ a.rma-vitrin-step-btn:focus {
     display: block;
     height: 100%;
     object-fit: cover;
+    object-position: center;
     width: 100%;
 }
 
