@@ -145,10 +145,10 @@ class QMO_Shortcode_Banner_Slider {
                     role="group" aria-roledescription="slayt" aria-label="<?php echo esc_attr( $label ); ?>"
                     data-qmo-banner-slide="<?php echo esc_attr( (string) $index ); ?>">
                     <img src="<?php echo esc_url( $banner['img'] ); ?>"
-                         srcset="<?php echo esc_attr( $banner['srcset'] ); ?>"
-                         sizes="100vw"
+                         <?php if ( '' !== $banner['srcset'] ) : ?>srcset="<?php echo esc_attr( $banner['srcset'] ); ?>" sizes="100vw"<?php endif; ?>
                          alt="<?php echo esc_attr( $banner['alt'] ); ?>"
                          class="qmo-banner-img"
+                         <?php if ( '' !== $banner['odak'] ) : ?>style="object-position:<?php echo esc_attr( $banner['odak'] ); ?>;"<?php endif; ?>
                          width="<?php echo (int) $img_w; ?>" height="<?php echo (int) $img_h; ?>"
                          loading="<?php echo 0 === $index ? 'eager' : 'lazy'; ?>"
                          decoding="async">
@@ -193,24 +193,51 @@ class QMO_Shortcode_Banner_Slider {
      * Görseli olmayan (ya da eki silinmiş) kayıt sessizce atlanır; hiç
      * kalmazsa render_shortcode() boş döner.
      *
-     * @return array<int,array{img:string,srcset:string,alt:string,title:string,link:string}>
+     * @return array<int,array{img:string,srcset:string,alt:string,title:string,link:string,odak:string}>
      */
     private static function build_banner_payloads() {
         $banners = [];
+        $oran    = class_exists( 'QMO_Banner_Slider_Settings' ) ? QMO_Banner_Slider_Settings::get()['oran'] : '16:9';
 
         foreach ( QMO_Banner_CPT::get_published_banners() as $post ) {
             $image_id = (int) get_post_meta( $post->ID, QMO_Banner_CPT::META_IMAGE, true );
             if ( ! $image_id ) continue;
 
-            $img = wp_get_attachment_image_url( $image_id, 'full' );
-            if ( ! $img ) continue;
+            // Sunucuda kırpılmış sürüm varsa ON U basılır: tüm slaytlar
+            // dosya düzeyinde aynı orandadır, dolayısıyla hepsi aynı
+            // biçimde görünür. Kırpma yoksa (eski kayıt ya da görsel
+            // zaten doğru oranda) orijinale düşülür.
+            $kirpildi = false;
+            $odak_css = 'center center';
+            $img      = '';
+
+            if ( class_exists( 'QMO_Banner_Kirpma' ) ) {
+                $odak     = QMO_Banner_Kirpma::banner_odagi( $post->ID );
+                $odak_css = QMO_Banner_Kirpma::odak_css( $odak );
+                $gorsel   = QMO_Banner_Kirpma::gorsel( $image_id, $oran, $odak );
+
+                if ( $gorsel ) {
+                    $img      = $gorsel['url'];
+                    $kirpildi = ! empty( $gorsel['kirpildi'] );
+                }
+            }
+
+            if ( '' === $img ) {
+                $img = (string) wp_get_attachment_image_url( $image_id, 'full' );
+            }
+
+            if ( '' === $img ) continue;
 
             $alt = (string) get_post_meta( $image_id, '_wp_attachment_image_alt', true );
             if ( '' === trim( $alt ) ) {
                 $alt = trim( $post->post_title );
             }
 
-            $srcset = wp_get_attachment_image_srcset( $image_id, 'full' );
+            // srcset YALNIZCA kırpılmamış orijinal basılırken anlamlıdır:
+            // adayların hepsi orijinalle aynı orandadır. Kırpılmış sürüm
+            // tek dosyadır; orijinalin srcset'iyle karıştırılırsa tarayıcı
+            // farklı oranda bir adayı seçip kırpma tutarlılığını bozardı.
+            $srcset = $kirpildi ? '' : wp_get_attachment_image_srcset( $image_id, 'full' );
 
             $banners[] = [
                 'img'    => $img,
@@ -218,6 +245,9 @@ class QMO_Shortcode_Banner_Slider {
                 'alt'    => $alt,
                 'title'  => trim( $post->post_title ),
                 'link'   => (string) get_post_meta( $post->ID, QMO_Banner_CPT::META_LINK, true ),
+                // Kırpılmış dosyada kadraj zaten doğru; object-position
+                // yalnızca henüz kırpılmamış eski görsellerde işe yarar.
+                'odak'   => $kirpildi ? '' : $odak_css,
             ];
         }
 

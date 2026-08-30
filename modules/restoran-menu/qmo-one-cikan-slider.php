@@ -29,6 +29,7 @@ require_once __DIR__ . '/includes/shortcode-slider.php';
 // varlıklarıyla çalışan ayrı modül.
 require_once __DIR__ . '/includes/admin-cpt-banner.php';
 require_once __DIR__ . '/includes/class-banner-slider-settings.php';
+require_once __DIR__ . '/includes/class-banner-kirpma.php';
 require_once __DIR__ . '/includes/shortcode-banner-slider.php';
 
 /* =====================================================================

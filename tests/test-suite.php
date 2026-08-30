@@ -9780,6 +9780,207 @@ qrms_test(
 
 
 /* ---------------------------------------------------------------------------
+ * Kampanya Banner — SUNUCU TARAFI KIRPMA
+ *
+ * Kırpma tutarsızlığının kökü, görsellerin yalnızca CSS object-fit ile
+ * "kesilmesiydi": dosyalar farklı oranlarda kaldığı için her slayttan farklı
+ * bir bölge kayboluyordu. Artık dosyanın kendisi hedef orana getiriliyor
+ * (wp_get_image_editor), CSS yalnızca güvenlik ağı.
+ * ------------------------------------------------------------------------ */
+
+require_once QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/class-banner-kirpma.php';
+
+qrms_test(
+	'kırpma kutusu: kare, dikey ve geniş görseller aynı orana iner',
+	function () {
+		$hedef = QMO_Banner_Kirpma::oran_orani( '16:9' );
+
+		// KARE (1000x1000) — dikeyde kesilir, yatay tam kalır.
+		$kare = QMO_Banner_Kirpma::kirpma_kutusu( 1000, 1000, $hedef );
+		qrms_assert_same( 0, $kare['x'], 'kare: yatayda kesilmez' );
+		qrms_assert_same( 219, $kare['y'], 'kare: üstten ve alttan eşit pay' );
+		qrms_assert_same( 1000, $kare['en'], 'kare: tam genişlik' );
+		qrms_assert_same( 563, $kare['boy'], 'kare: 16:9 yüksekliği' );
+
+		// DİKEY (800x1200) — yine dikeyde kesilir, kayıp daha büyüktür.
+		$dikey = QMO_Banner_Kirpma::kirpma_kutusu( 800, 1200, $hedef );
+		qrms_assert_same( 375, $dikey['y'], 'dikey: merkezden' );
+		qrms_assert_same( 800, $dikey['en'], 'dikey: tam genişlik' );
+		qrms_assert_same( 450, $dikey['boy'], 'dikey: 16:9 yüksekliği' );
+
+		// ÇOK GENİŞ (3000x1000) — bu kez yatayda kesilir.
+		$genis = QMO_Banner_Kirpma::kirpma_kutusu( 3000, 1000, $hedef );
+		qrms_assert_same( 611, $genis['x'], 'geniş: soldan ve sağdan eşit pay' );
+		qrms_assert_same( 0, $genis['y'], 'geniş: dikeyde kesilmez' );
+		qrms_assert_same( 1778, $genis['en'], 'geniş: 16:9 genişliği' );
+		qrms_assert_same( 1000, $genis['boy'], 'geniş: tam yükseklik' );
+
+		// ÜÇÜNÜN DE ÇIKTISI AYNI ORANDA: tutarsızlığın kalıcı çözümü bu.
+		foreach ( array( $kare, $dikey, $genis ) as $kutu ) {
+			qrms_assert_true(
+				abs( ( $kutu['cikti_en'] / $kutu['cikti_boy'] ) / $hedef - 1 ) <= QMO_Banner_Kirpma::TOLERANS,
+				'çıktı 16:9 toleransında'
+			);
+		}
+
+		// Çıktı kaynaktan büyütülmez (upscale bulanıklık üretir).
+		$kucuk = QMO_Banner_Kirpma::kirpma_kutusu( 400, 400, $hedef );
+		qrms_assert_same( 400, $kucuk['cikti_en'], 'küçük görsel büyütülmez' );
+		qrms_assert_same( 225, $kucuk['cikti_boy'], 'küçük görselin 16:9 yüksekliği' );
+
+		// Uzun kenar önerilen 1600px'i aşmaz.
+		qrms_assert_same( 1600, $genis['cikti_en'], 'çıktı 1600px ile sınırlı' );
+		qrms_assert_same( 900, $genis['cikti_boy'], '1600x900' );
+	}
+);
+
+qrms_test(
+	'kırpma odağı kesilen kenarı kaydırır, beyaz liste dışına çıkmaz',
+	function () {
+		$hedef = QMO_Banner_Kirpma::oran_orani( '16:9' );
+		$ucluk = QMO_Banner_Kirpma::oran_orani( '3:1' );
+
+		// Yatay kesimde sol/sağ, dikey kesimde üst/alt anlamlıdır.
+		qrms_assert_same( 0, QMO_Banner_Kirpma::kirpma_kutusu( 3000, 1000, $hedef, 'sol' )['x'], 'sol kenar' );
+		qrms_assert_same( 1222, QMO_Banner_Kirpma::kirpma_kutusu( 3000, 1000, $hedef, 'sag' )['x'], 'sağ kenar' );
+		qrms_assert_same( 0, QMO_Banner_Kirpma::kirpma_kutusu( 1000, 1000, $ucluk, 'ust' )['y'], 'üst kenar' );
+		qrms_assert_same( 667, QMO_Banner_Kirpma::kirpma_kutusu( 1000, 1000, $ucluk, 'alt' )['y'], 'alt kenar' );
+
+		// Bilinmeyen odak merkeze düşer; kutu merkezî kırpmanın aynısı olur.
+		qrms_assert_same( 'merkez', QMO_Banner_Kirpma::odak( 'çapraz' ), 'bilinmeyen odak merkez' );
+		qrms_assert_same( 'sag', QMO_Banner_Kirpma::odak( ' SAG ' ), 'boşluk ve büyük harf temizlenir' );
+		qrms_assert_same(
+			QMO_Banner_Kirpma::kirpma_kutusu( 3000, 1000, $hedef, 'merkez' )['x'],
+			QMO_Banner_Kirpma::kirpma_kutusu( 3000, 1000, $hedef, 'çapraz' )['x'],
+			'geçersiz odak merkezî kırpma verir'
+		);
+
+		// object-position karşılıkları: yönetim önizlemesi ve henüz
+		// kırpılmamış eski görseller bunu kullanır.
+		qrms_assert_same( 'center center', QMO_Banner_Kirpma::odak_css( 'merkez' ), 'merkez css' );
+		qrms_assert_same( 'center bottom', QMO_Banner_Kirpma::odak_css( 'alt' ), 'alt css' );
+		qrms_assert_same( 'left center', QMO_Banner_Kirpma::odak_css( 'sol' ), 'sol css' );
+	}
+);
+
+qrms_test(
+	'zaten doğru orandaki görsel yeniden yazılmaz, boyut adı orana özeldir',
+	function () {
+		$hedef = QMO_Banner_Kirpma::oran_orani( '16:9' );
+
+		qrms_assert_true( QMO_Banner_Kirpma::oran_uyuyor( 1600, 900, $hedef ), 'tam 16:9' );
+		qrms_assert_true( QMO_Banner_Kirpma::oran_uyuyor( 1600, 901, $hedef ), '1px sapma toleransta — CSS yutar' );
+		qrms_assert_false( QMO_Banner_Kirpma::oran_uyuyor( 1000, 1000, $hedef ), 'kare uymaz' );
+		qrms_assert_false( QMO_Banner_Kirpma::oran_uyuyor( 800, 1200, $hedef ), 'dikey uymaz' );
+		qrms_assert_false( QMO_Banner_Kirpma::oran_uyuyor( 0, 900, $hedef ), 'ölçüsüz görsel uymaz' );
+
+		// Kırpılmış sürüm ORAN BAŞINA ayrı bir ek boyutta durur: 16:9'dan
+		// 3:1'e geçilince eskisi silinmez, sadece kullanılmaz.
+		qrms_assert_same( 'qmo-banner-16x9', QMO_Banner_Kirpma::boyut_adi( '16:9' ), '16:9 boyut adı' );
+		qrms_assert_same( 'qmo-banner-3x1', QMO_Banner_Kirpma::boyut_adi( '3:1' ), '3:1 boyut adı' );
+		qrms_assert_same( 'qmo-banner-16x9', QMO_Banner_Kirpma::boyut_adi( '9:16' ), 'bilinmeyen oran varsayılana düşer' );
+
+		// oranlar() listesindeki her oran için ayrı bir ad üretilir.
+		$adlar = array();
+		foreach ( array_keys( QMO_Banner_Slider_Settings::oranlar() ) as $oran ) {
+			$adlar[] = QMO_Banner_Kirpma::boyut_adi( $oran );
+		}
+		qrms_assert_same( count( $adlar ), count( array_unique( $adlar ) ), 'her oranın adı benzersiz' );
+	}
+);
+
+qrms_test(
+	'kırpma kaydetme akışına, ön yüze ve yönetim önizlemesine bağlı',
+	function () {
+		$dizin  = QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/';
+		$kirpma = file_get_contents( $dizin . 'class-banner-kirpma.php' );
+		$cpt    = file_get_contents( $dizin . 'admin-cpt-banner.php' );
+		$kod    = file_get_contents( $dizin . 'shortcode-banner-slider.php' );
+		$banner = file_get_contents( $dizin . 'trait-kampanya-banner-admin.php' );
+		$boot   = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/qmo-one-cikan-slider.php' );
+
+		// GERÇEK kırpma WordPress'in görüntü düzenleyicisiyle yapılır;
+		// doğrudan GD/Imagick çağrısı yok.
+		qrms_assert_contains( 'wp_get_image_editor(', $kirpma, 'WP görüntü düzenleyici' );
+		qrms_assert_contains( '$editor->crop(', $kirpma, 'sunucu tarafında kırpma' );
+		qrms_assert_contains( '$editor->save(', $kirpma, 'kırpılmış dosya yazılır' );
+		qrms_assert_false( strpos( $kirpma, 'imagecreatefrom' ) !== false, 'doğrudan GD çağrısı yok' );
+		qrms_assert_false( strpos( $kirpma, 'new Imagick' ) !== false, 'doğrudan Imagick çağrısı yok' );
+
+		// Orijinal korunur: sonuç ek boyut olarak metadata'ya yazılır.
+		qrms_assert_contains( "\$meta['sizes'][ \$ad ]", $kirpma, 'ek boyut kaydı' );
+		qrms_assert_contains( 'wp_update_attachment_metadata(', $kirpma, 'metadata güncellenir' );
+
+		// Kaydetme akışı: görsel seçilince kırpma çalışır.
+		qrms_assert_contains( 'QMO_Banner_Kirpma::banner_kirp( $post_id )', $cpt, 'kayıtta kırpılır' );
+		qrms_assert_contains( 'QMO_Banner_Kirpma::META_ODAK', $cpt, 'odak alanı kaydedilir' );
+
+		// Ön yüz kırpılmış sürümü basar; kırpılmışta srcset basılmaz
+		// (adaylar farklı oranda olurdu).
+		qrms_assert_contains( 'QMO_Banner_Kirpma::gorsel(', $kod, 'ön yüz kırpılmışı okur' );
+		qrms_assert_contains( "\$srcset = \$kirpildi ? '' :", $kod, 'kırpılmışta srcset yok' );
+
+		// Yönetim önizlemesi ön yüzle AYNI dosyayı gösterir.
+		qrms_assert_contains( 'QMO_Banner_Kirpma::gorsel(', $banner, 'önizleme kırpılmışı okur' );
+		qrms_assert_contains( 'QMO_Banner_Kirpma::gorsel(', $cpt, 'meta kutusu kırpılmışı okur' );
+
+		// Sınıf bootstrap'a bağlı.
+		qrms_assert_contains( 'class-banner-kirpma.php', $boot, 'kırpma sınıfı yüklenir' );
+
+		// CSS güvenlik ağı olarak DURUR ama artık tek başına iş görmez.
+		$css = file_get_contents( $dizin . 'frontend-banner-slider.css' );
+		qrms_assert_contains( 'object-fit: cover', $css, 'güvenlik ağı yerinde' );
+		qrms_assert_contains( 'GÜVENLİK AĞIDIR', $css, 'CSS\'in rolü belgelenmiş' );
+	}
+);
+
+qrms_test(
+	'eski görseller için yeniden kırpma: toplu düğme, satır uyarısı ve oran değişimi',
+	function () {
+		$dizin  = QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/';
+		$banner = file_get_contents( $dizin . 'trait-kampanya-banner-admin.php' );
+		$cpt    = file_get_contents( $dizin . 'admin-cpt-banner.php' );
+		$boot   = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/qr-menu.php' );
+
+		// admin_post ucu kayıtlı, nonce ve yetki kontrollü.
+		qrms_assert_contains( 'admin_post_qmo_banner_kirp', $boot, 'yeniden kırpma ucu kayıtlı' );
+		qrms_assert_contains( 'public function handle_banner_kirp()', $banner, 'işleyici tanımlı' );
+		qrms_assert_contains( 'check_admin_referer( $this->banner_kirp_nonce_action )', $banner, 'nonce' );
+		qrms_assert_contains( 'QRMS_Admin::CAPABILITY', $banner, 'yetki' );
+
+		// İki kapsam: tek kayıt ve tümü.
+		qrms_assert_contains( 'QMO_Banner_Kirpma::toplu_kirp()', $banner, 'toplu kırpma' );
+		qrms_assert_contains( 'QMO_Banner_Kirpma::banner_kirp( $banner_id )', $banner, 'tek kayıt kırpma' );
+		qrms_assert_contains( 'Tüm görselleri yeniden kırp', $banner, 'toplu düğme' );
+		qrms_assert_contains( 'Yeniden kırp', $banner, 'satır düğmesi' );
+
+		// Satır eylemi bir <span> içinde durduğu için <form> değil nonce'lu
+		// bağlantıdır (WordPress'in kendi satır eylemi deseni).
+		qrms_assert_contains( 'wp_nonce_url(', $banner, 'bağlantı nonce\'lu' );
+		qrms_assert_false( strpos( $banner, 'banner_kirp_formu' ) !== false, 'span içinde form yok' );
+
+		// Satır başına durum rozeti: kullanıcı hangi görselin eski
+		// olduğunu görmeden bırakılmaz.
+		qrms_assert_contains( 'QMO_Banner_Kirpma::durum(', $banner, 'liste durumu okur' );
+		qrms_assert_contains( 'rma-kb-kirpma-rozet', $banner, 'durum rozeti' );
+		qrms_assert_contains( 'QMO_Banner_Kirpma::bekleyen_sayisi(', $banner, 'bekleyen sayısı' );
+
+		// WordPress\'in kendi liste ekranı da uyarır.
+		qrms_assert_contains( 'Güncel orana kırpılmadı', $cpt, 'CPT liste sütunu uyarısı' );
+
+		// Oran sonradan değişirse kullanıcı bilgilendirilir.
+		qrms_assert_contains( "'oran_degisti'", $banner, 'oran değişimi bildirimi' );
+		qrms_assert_contains( 'yeniden kırpılması gerekiyor', $banner, 'bildirim metni' );
+
+		// Durum rozetlerinin stili admin CSS\'inde tanımlı.
+		$css = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/css/admin-ui.css' );
+		qrms_assert_contains( '.rma-kb-kirpma-rozet', $css, 'rozet stili' );
+		qrms_assert_contains( '.rma-kb-kirpma-uyari', $css, 'uyarı kutusu stili' );
+	}
+);
+
+
+/* ---------------------------------------------------------------------------
  * 24. HFB — "Yeni Blok Ekle" listesi, canlı önizleme yükü, önbellek temizliği
  * ------------------------------------------------------------------------ */
 

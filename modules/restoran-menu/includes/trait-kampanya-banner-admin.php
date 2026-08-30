@@ -39,6 +39,9 @@ trait RMA_Kampanya_Banner_Admin_Trait {
     /** Toplu görsel oluşturma AJAX ucunun nonce eylemi (= wp_ajax eylemi). */
     private $banner_olustur_nonce_action = 'qmo_banner_gorsel_olustur';
 
+    /** Görselleri yeniden kırpma ucunun nonce eylemi (= admin_post eylemi). */
+    private $banner_kirp_nonce_action = 'qmo_banner_kirp';
+
     /*
      * Sabitler `const` değil metottur: trait sabitleri PHP 8.2 ile geldi,
      * eklentinin alt sınırı ise PHP 7.4 (bkz. qr-menu-suite.php başlığı).
@@ -289,8 +292,11 @@ trait RMA_Kampanya_Banner_Admin_Trait {
      * @return void
      */
     private function render_banner_kampanya_listesi() {
-        $banners = QMO_Banner_CPT::get_admin_banners();
-        $toplam  = count( $banners );
+        $banners  = QMO_Banner_CPT::get_admin_banners();
+        $toplam   = count( $banners );
+        $oran     = QMO_Banner_Slider_Settings::get()['oran'];
+        $kirpma   = class_exists( 'QMO_Banner_Kirpma' );
+        $bekleyen = $kirpma ? QMO_Banner_Kirpma::bekleyen_sayisi( $oran, $banners ) : 0;
         ?>
         <div class="rma-card" id="rma-banner">
             <div class="rma-vitrin-list-head">
@@ -298,6 +304,18 @@ trait RMA_Kampanya_Banner_Admin_Trait {
                 <a class="button" href="<?php echo esc_url( $this->banner_wizard_url( 'olustur' ) ); ?>">Hazır şablonla görsel üret</a>
             </div>
             <p class="rma-card-desc">Sayfanın en üstünde tam genişlikte dönen kampanya görselleri. Sayfaya <code>[qmo_banner_slider]</code> kısa koduyla eklenir. Görseli seçilmemiş kayıtlar gösterilmez. Sırayı oklarla değiştirin — ön yüz aynı <code>menu_order</code> alanını okur.</p>
+
+            <?php if ( $kirpma && $bekleyen > 0 ) : ?>
+                <div class="rma-kb-kirpma-uyari">
+                    <p>
+                        <strong><?php echo (int) $bekleyen; ?> kampanya görseli</strong> güncel <?php echo esc_html( $oran ); ?> oranına göre sunucuda kırpılmamış.
+                        Bu görseller ön yüzde yalnızca tarayıcı tarafından kesilir; slaytlar birbirini tutmayabilir.
+                    </p>
+                    <a class="button button-primary" href="<?php echo esc_url( $this->banner_kirp_url() ); ?>">Tüm görselleri yeniden kırp</a>
+                </div>
+            <?php elseif ( $kirpma && $toplam > 0 ) : ?>
+                <p class="rma-card-desc rma-kb-kirpma-ok">Tüm kampanya görselleri güncel <?php echo esc_html( $oran ); ?> oranına göre hazır.</p>
+            <?php endif; ?>
 
             <?php if ( empty( $banners ) ) : ?>
                 <p class="rma-empty">Henüz kampanya eklenmemiş.</p>
@@ -313,6 +331,10 @@ trait RMA_Kampanya_Banner_Admin_Trait {
                         $durum_etiket = ( $durum && 'publish' !== $banner->post_status )
                             ? (string) $durum->label
                             : '';
+
+                        $kirpma_durum = ( $kirpma && $gorsel_id )
+                            ? QMO_Banner_Kirpma::durum( $gorsel_id, $oran, QMO_Banner_Kirpma::banner_odagi( $banner->ID ) )
+                            : 'gorsel-yok';
                         ?>
                         <li class="rma-simple-item" data-banner-id="<?php echo (int) $banner->ID; ?>">
                             <?php if ( $thumb ) : ?>
@@ -333,6 +355,16 @@ trait RMA_Kampanya_Banner_Admin_Trait {
                                     echo $durum_etiket ? ' · ' . esc_html( $durum_etiket ) : '';
                                     ?>
                                 </span>
+                                <?php if ( 'bekliyor' === $kirpma_durum ) : ?>
+                                    <span class="rma-kb-kirpma-rozet is-bekliyor">
+                                        Bu görsel eski: <?php echo esc_html( $oran ); ?> oranına kırpılmadı
+                                        <a href="<?php echo esc_url( $this->banner_kirp_url( (int) $banner->ID ) ); ?>">Yeniden kırp</a>
+                                    </span>
+                                <?php elseif ( 'hazir' === $kirpma_durum ) : ?>
+                                    <span class="rma-kb-kirpma-rozet is-hazir"><?php echo esc_html( $oran ); ?> oranına kırpıldı</span>
+                                <?php elseif ( 'uygun' === $kirpma_durum ) : ?>
+                                    <span class="rma-kb-kirpma-rozet is-hazir">Zaten <?php echo esc_html( $oran ); ?> oranında</span>
+                                <?php endif; ?>
                             </span>
                             <span class="rma-banner-sira">
                                 <span class="rma-simple-meta" data-sira-etiket>Sıra: <?php echo (int) $sira_no; ?></span>
@@ -386,11 +418,23 @@ trait RMA_Kampanya_Banner_Admin_Trait {
             $ham = wp_unslash( $_POST['qmo_banner_slider_settings'] );
         }
 
-        QMO_Banner_Slider_Settings::kaydet( $ham );
+        $onceki = QMO_Banner_Slider_Settings::get()['oran'];
+        $temiz  = QMO_Banner_Slider_Settings::kaydet( $ham );
+
+        // ORAN DEĞİŞTİYSE mevcut kırpmalar bayatlar: kırpılmış sürümler oran
+        // başına ayrı saklandığı için hiçbiri silinmez, ama yeni oranın
+        // kırpması henüz yoktur. Kullanıcıyı karanlıkta bırakmamak için
+        // liste ekranına "yeniden kırpılması gereken N görsel var" bildirimi
+        // ile döneriz; oradaki tek düğme hepsini üretir.
+        $mesaj = 'kaydedildi';
+
+        if ( $onceki !== $temiz['oran'] && class_exists( 'QMO_Banner_Kirpma' ) && QMO_Banner_Kirpma::bekleyen_sayisi( $temiz['oran'] ) > 0 ) {
+            $mesaj = 'oran_degisti';
+        }
 
         // Ayar formu sihirbazın 2. adımıdır; kaydeden kullanıcı geldiği
         // yere döner.
-        wp_safe_redirect( $this->banner_wizard_url( 'kampanyalar', array( 'banner_msg' => 'kaydedildi' ) ) );
+        wp_safe_redirect( $this->banner_wizard_url( 'kampanyalar', array( 'banner_msg' => $mesaj ) ) );
         exit;
     }
 
@@ -404,16 +448,113 @@ trait RMA_Kampanya_Banner_Admin_Trait {
         $durum = isset( $_GET['banner_msg'] ) ? sanitize_key( wp_unslash( $_GET['banner_msg'] ) ) : '';
 
         $mesajlar = array(
-            'kaydedildi' => 'Banner görünümü kaydedildi.',
+            'kaydedildi' => array( 'success', 'Banner görünümü kaydedildi.' ),
+            'oran_degisti' => array( 'warning', 'Banner görünümü kaydedildi. En-boy oranı değiştiği için mevcut görsellerin yeni orana göre yeniden kırpılması gerekiyor — aşağıdaki “Tüm görselleri yeniden kırp” düğmesini kullanın.' ),
         );
+
+        if ( 'kirpildi' === $durum ) {
+            // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+            $ok = isset( $_GET['kirp_ok'] ) ? absint( $_GET['kirp_ok'] ) : 0;
+            // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+            $hata = isset( $_GET['kirp_hata'] ) ? absint( $_GET['kirp_hata'] ) : 0;
+
+            printf(
+                '<div class="notice notice-%1$s is-dismissible"><p>%2$s</p></div>',
+                esc_attr( $hata ? 'warning' : 'success' ),
+                esc_html(
+                    sprintf(
+                        '%d görsel güncel orana göre yeniden kırpıldı.%s',
+                        $ok,
+                        $hata ? sprintf( ' %d görsel kırpılamadı — sunucuda GD/Imagick eksik ya da dosya okunamıyor olabilir.', $hata ) : ''
+                    )
+                )
+            );
+
+            return;
+        }
 
         if ( ! isset( $mesajlar[ $durum ] ) ) {
             return;
         }
 
         printf(
-            '<div class="notice notice-success is-dismissible"><p>%s</p></div>',
-            esc_html( $mesajlar[ $durum ] )
+            '<div class="notice notice-%1$s is-dismissible"><p>%2$s</p></div>',
+            esc_attr( $mesajlar[ $durum ][0] ),
+            esc_html( $mesajlar[ $durum ][1] )
+        );
+    }
+
+    /**
+     * `admin_post_qmo_banner_kirp` — görselleri güncel orana yeniden kırpar.
+     *
+     * İKİ KAPSAM: `banner` alanı boşsa bütün kampanyalar taranır (oran
+     * değişince tek tıkla toparlanır), `banner=<ID>` ise yalnızca o kayıt
+     * işlenir (liste satırındaki "Yeniden kırp" düğmesi). İki yol da aynı kırpma
+     * fonksiyonuna gider; ayrı olmalarının nedeni yalnızca kullanıcının
+     * seçim özgürlüğüdür.
+     *
+     * @return void
+     */
+    public function handle_banner_kirp() {
+        check_admin_referer( $this->banner_kirp_nonce_action );
+
+        $yetki = class_exists( 'QRMS_Admin' ) ? QRMS_Admin::CAPABILITY : 'manage_options';
+
+        if ( ! current_user_can( $yetki ) ) {
+            wp_die( esc_html__( 'Bu işlem için yetkiniz yok.', 'qrms' ), '', array( 'response' => 403 ) );
+        }
+
+        if ( ! class_exists( 'QMO_Banner_Kirpma' ) ) {
+            wp_safe_redirect( $this->banner_wizard_url( 'kampanyalar' ) );
+            exit;
+        }
+
+        $banner_id = isset( $_GET['banner'] ) ? absint( wp_unslash( $_GET['banner'] ) ) : 0;
+
+        if ( $banner_id > 0 ) {
+            $islem = QMO_Banner_Kirpma::banner_kirp( $banner_id );
+            $sonuc = array(
+                'ok'   => ( true === $islem ) ? 1 : 0,
+                'hata' => is_wp_error( $islem ) ? 1 : 0,
+            );
+        } else {
+            $sonuc = QMO_Banner_Kirpma::toplu_kirp();
+        }
+
+        wp_safe_redirect(
+            $this->banner_wizard_url(
+                'kampanyalar',
+                array(
+                    'banner_msg' => 'kirpildi',
+                    'kirp_ok'    => (int) $sonuc['ok'],
+                    'kirp_hata'  => (int) $sonuc['hata'],
+                )
+            )
+        );
+        exit;
+    }
+
+    /**
+     * Yeniden kırpma bağlantısının adresi (nonce'lu).
+     *
+     * Form değil bağlantı: satır eylemi liste öğesinin İÇİNDE, bir <span>
+     * altında duruyor — oraya <form> koymak geçersiz HTML olurdu. Nonce'lu
+     * bağlantı WordPress'in kendi satır eylemi (çöpe taşı, geri al)
+     * deseninin aynısıdır; yetki ve nonce yine sunucuda doğrulanır.
+     *
+     * @param int $banner_id 0 = tüm kampanyalar.
+     * @return string
+     */
+    private function banner_kirp_url( $banner_id = 0 ) {
+        $args = array( 'action' => 'qmo_banner_kirp' );
+
+        if ( $banner_id > 0 ) {
+            $args['banner'] = (int) $banner_id;
+        }
+
+        return wp_nonce_url(
+            add_query_arg( $args, admin_url( 'admin-post.php' ) ),
+            $this->banner_kirp_nonce_action
         );
     }
 
@@ -435,6 +576,17 @@ trait RMA_Kampanya_Banner_Admin_Trait {
 
             if ( ! $gorsel_id ) {
                 continue;
+            }
+
+            // Ön yüzle AYNI dosyayı göster: kırpılmış sürüm varsa o.
+            // Önizlemenin 'large' okuması, yönetim ile ön yüzün farklı
+            // görünmesinin ikinci kaynağıydı.
+            if ( class_exists( 'QMO_Banner_Kirpma' ) ) {
+                $gorsel = QMO_Banner_Kirpma::gorsel( $gorsel_id, null, QMO_Banner_Kirpma::banner_odagi( $banner->ID ) );
+
+                if ( $gorsel ) {
+                    return $gorsel['url'];
+                }
             }
 
             $url = wp_get_attachment_image_url( $gorsel_id, 'large' );
@@ -492,7 +644,8 @@ trait RMA_Kampanya_Banner_Admin_Trait {
                 <div class="rma-vitrin-layout-fields">
                     <div class="rma-card rma-vitrin-step" data-step="1" data-step-title="Oran ve Geçiş">
                         <h2 class="rma-card-title">1. Oran ve Geçiş</h2>
-                        <p class="rma-card-desc">Banner alanının yüksekliği en-boy oranıyla belirlenir; görseller bu alana ortalanarak kırpılır (object-fit). 16:9 için önerilen boyut 1600x900px; 21:9 ve 3:1 seçilince yükseklik o orana göre düşer. Farklı oranda yüklenen görseller de aynı kutuya sığar.</p>
+                        <p class="rma-card-desc">Banner alanının yüksekliği en-boy oranıyla belirlenir. Yüklenen görseller kaydedilirken <strong>sunucuda</strong> bu orana kırpılır (orijinal dosya korunur), böylece hangi oranda yüklenmiş olurlarsa olsunlar tüm slaytlar aynı görünür. 16:9 için önerilen boyut 1600x900px; 21:9 ve 3:1 seçilince yükseklik o orana göre düşer.</p>
+                        <p class="description rma-desc">Oranı sonradan değiştirirseniz mevcut görsellerin yeni orana göre yeniden kırpılması gerekir; kaydettikten sonra yukarıdaki listede tek tıklık bir düğme çıkar.</p>
 
                         <table class="form-table rma-form-table">
                             <tr>
@@ -505,7 +658,7 @@ trait RMA_Kampanya_Banner_Admin_Trait {
                                                     <?php selected( $ayar['oran'], $oran_anahtar ); ?>><?php echo esc_html( $oran_bilgi['etiket'] ); ?></option>
                                         <?php endforeach; ?>
                                     </select>
-                                    <p class="description rma-desc">Dar bir şerit istiyorsanız 21:9 ya da 3:1 seçin; görselleriniz o orana göre kırpılacaktır.</p>
+                                    <p class="description rma-desc">Dar bir şerit istiyorsanız 21:9 ya da 3:1 seçin; görselleriniz sunucuda o orana yeniden kırpılır.</p>
                                 </td>
                             </tr>
                             <tr>
@@ -991,6 +1144,14 @@ trait RMA_Kampanya_Banner_Admin_Trait {
         }
 
         update_post_meta( $kayit_id, QMO_Banner_CPT::META_IMAGE, (int) $ek_id );
+
+        // Üretilen görsel seçilen oranda çizilir; ama kullanıcı araçta
+        // banner ayarından FARKLI bir oran seçmiş olabilir. Elle yüklenen
+        // görsellerle aynı yoldan geçirilir: uyuyorsa kırpma üretilmez,
+        // uymuyorsa sunucuda kırpılır.
+        if ( class_exists( 'QMO_Banner_Kirpma' ) ) {
+            QMO_Banner_Kirpma::banner_kirp( $kayit_id );
+        }
 
         wp_send_json_success(
             array(
