@@ -9153,6 +9153,66 @@ qrms_test(
 	}
 );
 
+qrms_test(
+	'sıra no kaydı save_post içinde sonsuz özyinelemeye girmez',
+	function () {
+		// REGRESYON: wp_update_post() `save_post_*` kancasını yeniden tetikler.
+		// Kanca kaldırılmadan çağrılırsa save_meta -> wp_update_post -> save_meta
+		// döngüsü bellek tükenmesiyle wp-admin/post.php üzerinde fatal error
+		// verirdi (banner görseli kaydedilirken "ciddi bir sorun çıktı").
+		$dizin = QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/';
+
+		$beklenen = array(
+			'admin-cpt-banner.php' => "remove_action( 'save_post_' . self::POST_TYPE, [ __CLASS__, 'save_meta' ] );",
+			'admin-cpt-slide.php'  => "remove_action( 'save_post_qmo_slide', [ __CLASS__, 'save_meta' ] );",
+		);
+
+		foreach ( $beklenen as $dosya => $kaldirma ) {
+			$kod = file_get_contents( $dizin . $dosya );
+
+			$kaldirma_yeri = strpos( $kod, $kaldirma );
+			$guncelleme    = strpos( $kod, 'wp_update_post( [' );
+			// strrpos: aynı add_action satırı init() içinde de geçer, aranan
+			// olan save_meta'daki geri ekleme dosyadaki son örnektir.
+			$geri_ekleme   = strrpos( $kod, str_replace( 'remove_action', 'add_action', $kaldirma ) );
+
+			qrms_assert_true( false !== $kaldirma_yeri, $dosya . ': kanca kaldırılıyor' );
+			qrms_assert_true( false !== $geri_ekleme, $dosya . ': kanca geri ekleniyor' );
+
+			// Sıra: kaldır -> güncelle -> geri ekle.
+			qrms_assert_true( $kaldirma_yeri < $guncelleme, $dosya . ': kaldırma wp_update_post öncesinde' );
+			qrms_assert_true( $guncelleme < $geri_ekleme, $dosya . ': geri ekleme wp_update_post sonrasında' );
+		}
+	}
+);
+
+qrms_test(
+	'banner yönetim bölümü Fiyat Kampanyaları sayfasında durur',
+	function () {
+		// Yönetim ekranı Öne Çıkanlar'dan Fiyat Kampanyaları'na taşındı;
+		// ön yüzdeki [qmo_banner_slider] kısa kodu bu taşımadan etkilenmez.
+		$dizin     = QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/';
+		$one_cikan = file_get_contents( $dizin . 'trait-admin-pages.php' );
+		$kampanya  = file_get_contents( $dizin . 'trait-kampanya-admin.php' );
+
+		qrms_assert_false( strpos( $one_cikan, 'render_banner_section' ) !== false, 'Öne Çıkanlar sayfasında banner kalmadı' );
+		qrms_assert_false( strpos( $one_cikan, 'qmo_banner_slide' ) !== false, 'Öne Çıkanlar banner CPT\'sine bakmıyor' );
+
+		qrms_assert_contains( 'private function render_banner_section()', $kampanya, 'bölüm kampanya ekranında tanımlı' );
+		qrms_assert_contains( '$this->render_banner_section();', $kampanya, 'kampanya listesi bölümü basıyor' );
+
+		// Bölüm olduğu gibi taşındı: liste, kısa kod notu ve iki eylem butonu.
+		qrms_assert_contains( '[qmo_banner_slider]', $kampanya, 'kısa kod açıklaması' );
+		qrms_assert_contains( 'Yeni Banner Ekle', $kampanya, 'ekleme butonu' );
+		qrms_assert_contains( 'Tüm Banner\'ları Yönet', $kampanya, 'yönetim butonu' );
+
+		// Çağrı "Kampanyalarım" kartından sonra, sayfa kapanışından önce gelir.
+		$kampanyalarim = strpos( $kampanya, 'Kampanyalarım' );
+		$banner_cagri  = strpos( $kampanya, '$this->render_banner_section();' );
+		qrms_assert_true( $kampanyalarim < $banner_cagri, 'banner kartı Kampanyalarım altında' );
+	}
+);
+
 
 /* ---------------------------------------------------------------------------
  * 24. HFB — "Yeni Blok Ekle" listesi, canlı önizleme yükü, önbellek temizliği

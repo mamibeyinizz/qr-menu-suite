@@ -473,7 +473,8 @@ Sayfaların hangi eski sekmeden geldiği:
 | Sayfa | Önceki yeri |
 | --- | --- |
 | Görünüm | "Genel Ayarlar" sekmesi (Renkler + Tipografi + Hazır Paletler iç sekmeleri) ve "Kayar Başlık" sekmesi |
-| Öne Çıkanlar | "Öneriler" sekmesi + menüden erişilemeyen `qmo_slide` (Öne Çıkan Slider) ve `qmo_banner_slide` (Kampanya Banner) ekranları |
+| Öne Çıkanlar | "Öneriler" sekmesi + menüden erişilemeyen `qmo_slide` (Öne Çıkan Slider) ekranı |
+| Fiyat Kampanyaları | Toplu fiyat kampanyası ekranı + menüden erişilemeyen `qmo_banner_slide` (Kampanya Banner) ekranı |
 | Diğer Ayarlar | "Kategori Sıralaması", "İçe/Dışa Aktar" ve "Yedekleme" sekmeleri, üç bölüm hâlinde |
 
 Sayfa tanımı tek yerdedir (`RMA_Admin_Pages_Trait::get_subpages()`); sayfa

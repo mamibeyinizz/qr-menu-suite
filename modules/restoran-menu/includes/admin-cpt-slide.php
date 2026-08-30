@@ -123,10 +123,17 @@ class QMO_Slide_CPT {
         if ( ! current_user_can( 'edit_post', $post_id ) ) return;
 
         if ( isset( $_POST['menu_order'] ) ) {
+            // Bkz. admin-cpt-banner.php: wp_update_post() `save_post_*`
+            // kancasını yeniden tetikler, kanca da bu metottur. Geçici olarak
+            // kaldırılmazsa sonsuz özyineleme ve fatal error oluşur.
+            remove_action( 'save_post_qmo_slide', [ __CLASS__, 'save_meta' ] );
+
             wp_update_post( [
                 'ID'         => $post_id,
                 'menu_order' => absint( $_POST['menu_order'] ),
             ] );
+
+            add_action( 'save_post_qmo_slide', [ __CLASS__, 'save_meta' ] );
         }
 
         for ( $i = 1; $i <= 4; $i++ ) {
