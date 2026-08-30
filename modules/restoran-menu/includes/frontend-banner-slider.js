@@ -1,7 +1,8 @@
 /* =====================================================================
    QMO KAMPANYA BANNER SLIDER — FRONTEND SCRIPT
    document.currentScript kapsamı · IntersectionObserver autoplay ·
-   ok navigasyonu · kaydırma/solma geçişi · swipe · prefers-reduced-motion
+   ok navigasyonu · kaydırma/solma geçişi · peek · swipe ·
+   prefers-reduced-motion
 
    Ürün vitrini slider'ının betiğinden (frontend-slider.js) bağımsızdır;
    yalnızca kendi kökünü (data-qmo-banner-slider) sürer.
@@ -38,13 +39,40 @@
     var intervalMs = parseInt(root.getAttribute('data-autoplay'), 10);
     if (isNaN(intervalMs)) intervalMs = 4500;
 
+    /**
+     * Bir slayttan diğerine geçerken kaydırılacak piksel mesafesi:
+     * slayt genişliği + aralarındaki boşluk.
+     *
+     * Neden ölçüm, neden sabit yüzde değil: peek açıkken slayt artık
+     * viewport'un %100'ü değil, track padding'i düşülmüş hâli (%88) ve
+     * araya --qmo-banner-gap kadar bir boşluk giriyor. Bu boşluk cqi
+     * tabanlı bir clamp(), yani ekran genişliğine göre 8-12px arasında
+     * değişiyor — tek bir yüzdeyle ifade edilemez. İki komşu slaytın sol
+     * kenarları arasındaki fark ikisini birden tek okumada verir ve CSS
+     * değerleri değişse bile doğru kalır.
+     *
+     * Track'in o an uygulanmış transform'u iki slaytı da aynı miktarda
+     * kaydırdığı için farkı etkilemez; geçiş animasyonu sürerken çağrılsa
+     * bile sonuç doğrudur.
+     *
+     * @return {number} Piksel cinsinden adım; tek slaytta 0.
+     */
+    function slideStep() {
+        if (slides.length < 2) return 0;
+
+        return Math.abs(
+            slides[1].getBoundingClientRect().left -
+            slides[0].getBoundingClientRect().left
+        );
+    }
+
     function setActive(index) {
         if (index < 0) index = slides.length - 1;
         if (index >= slides.length) index = 0;
         current = index;
 
         if (!fade) {
-            track.style.transform = 'translateX(' + (-100 * current) + '%)';
+            track.style.transform = 'translateX(' + (-slideStep() * current) + 'px)';
         }
 
         for (var s = 0; s < slides.length; s++) {
@@ -155,6 +183,27 @@
         moved = false;
         e.preventDefault();
     }, true);
+
+    /* Transform px cinsinden olduğu için slayt genişliği değişince
+       (pencere yeniden boyutlandırma, mobil döndürme) yeniden
+       hesaplanmalı; aksi hâlde slaytlar viewport'a göre kayar. Geçiş
+       animasyonu bu tek karede kapatılır: yeniden ölçüm bir "geçiş"
+       değil, aynı slaydın yeni konumudur. */
+    var resizeTimer = null;
+
+    window.addEventListener('resize', function () {
+        if (fade) return;
+
+        if (resizeTimer) clearTimeout(resizeTimer);
+
+        resizeTimer = setTimeout(function () {
+            resizeTimer = null;
+            track.style.transition = 'none';
+            setActive(current);
+            void track.offsetWidth; // reflow: transition'ı geri açmadan önce
+            track.style.transition = '';
+        }, 120);
+    });
 
     if ('IntersectionObserver' in window) {
         var observer = new IntersectionObserver(function (entries) {
