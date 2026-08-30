@@ -1,7 +1,7 @@
 /* =====================================================================
    QMO KAMPANYA BANNER SLIDER — FRONTEND SCRIPT
    document.currentScript kapsamı · IntersectionObserver autoplay ·
-   swipe · prefers-reduced-motion
+   ok navigasyonu · kaydırma/solma geçişi · swipe · prefers-reduced-motion
 
    Ürün vitrini slider'ının betiğinden (frontend-slider.js) bağımsızdır;
    yalnızca kendi kökünü (data-qmo-banner-slider) sürer.
@@ -20,6 +20,14 @@
     if (!track || slides.length < 1) return;
 
     var dots = root.querySelectorAll('[data-qmo-banner-dot]');
+    var prevBtn = root.querySelector('[data-qmo-banner-prev]');
+    var nextBtn = root.querySelector('[data-qmo-banner-next]');
+
+    /* Geçiş biçimi yönetimden gelir (bkz. QMO_Banner_Slider_Settings).
+       'fade' ise track hiç kaydırılmaz: slaytlar üst üste durur ve
+       görünürlük .is-active sınıfıyla değişir (bkz. .is-fade kuralları
+       frontend-banner-slider.css içinde). */
+    var fade = root.getAttribute('data-gecis') === 'fade';
 
     var current = 0;
     var timer = null;
@@ -35,7 +43,13 @@
         if (index >= slides.length) index = 0;
         current = index;
 
-        track.style.transform = 'translateX(' + (-100 * current) + '%)';
+        if (!fade) {
+            track.style.transform = 'translateX(' + (-100 * current) + '%)';
+        }
+
+        for (var s = 0; s < slides.length; s++) {
+            slides[s].classList.toggle('is-active', s === current);
+        }
 
         for (var i = 0; i < dots.length; i++) {
             var isActive = i === current;
@@ -46,6 +60,10 @@
 
     function next() {
         setActive(current + 1);
+    }
+
+    function prev() {
+        setActive(current - 1);
     }
 
     function stopAutoplay() {
@@ -59,6 +77,21 @@
         stopAutoplay();
         if (reducedMotion || intervalMs <= 0 || slides.length < 2 || !visible) return;
         timer = setInterval(next, intervalMs);
+    }
+
+    /* Oklar: yönetimden kapatılabildiği için DOM'da olmayabilir. */
+    if (prevBtn) {
+        prevBtn.addEventListener('click', function () {
+            prev();
+            startAutoplay();
+        });
+    }
+
+    if (nextBtn) {
+        nextBtn.addEventListener('click', function () {
+            next();
+            startAutoplay();
+        });
     }
 
     for (var d = 0; d < dots.length; d++) {

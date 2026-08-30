@@ -135,6 +135,12 @@ class Restaurant_Menu_Automation {
         add_action( 'admin_post_rma_kampanya_sil',     [ $this, 'handle_kampanya_delete' ] );
         add_action( 'wp_ajax_rma_kampanya_onizleme',   [ $this, 'ajax_kampanya_onizleme' ] );
 
+        // Kampanya banner'ının görünüm ayarları (oran, geçiş, oklar, başlık).
+        // Banner görsellerinin kendisi CPT ekranından yönetilir; bu uç
+        // yalnızca wp_options'taki görünüm kaydını yazar
+        // (bkz. QMO_Banner_Slider_Settings ve trait-kampanya-admin.php).
+        add_action( 'admin_post_qmo_banner_ayar_kaydet', [ $this, 'handle_banner_settings_save' ] );
+
         add_shortcode( 'restaurant_menu', [ $this, 'shortcode_menu' ] );
         add_shortcode( 'rma_qr_notice', [ $this, 'shortcode_qr_notice' ] );
         add_action( 'init', [ $this, 'register_default_allergen_terms' ], 20 );
@@ -164,6 +170,7 @@ class Restaurant_Menu_Automation {
         add_action( 'delete_rma_allergen',     [ $this, 'bump_cache_version' ], 20 );
         add_action( 'update_option_rma_suggestions_settings', [ $this, 'bump_cache_version' ], 20 );
         add_action( 'update_option_qmo_slider_settings',      [ $this, 'bump_cache_version' ], 20 );
+        add_action( 'update_option_qmo_banner_slider_settings', [ $this, 'bump_cache_version' ], 20 );
 
         // Chatbot / REST sipariş ucu varsa tükendi ürünleri orada kesilir.
         // Filtre chatbot modülünde tanımlıdır; modül yoksa kanca no-op'dur.

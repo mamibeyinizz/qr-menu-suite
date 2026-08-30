@@ -94,7 +94,7 @@ function qrms_module_restoran_menu_init() {
 					array(
 						'name'    => 'autoplay',
 						'default' => '4500',
-						'desc'    => __( 'Görseller arası bekleme (milisaniye). Otomatik geçişi kapatmak için 0 yazın.', 'qrms' ),
+						'desc'    => __( 'Görseller arası bekleme (milisaniye). Yazılmazsa Banner Görünümü ekranındaki ayar geçerlidir; otomatik geçişi kapatmak için 0 yazın.', 'qrms' ),
 					),
 				),
 			),
@@ -341,6 +341,25 @@ function qrms_module_restoran_menu_admin_assets() {
 			$url . 'includes/frontend-slider.css',
 			array( 'rma-admin-ui' ),
 			QRMS_Helpers::asset_version( $modul . 'includes/frontend-slider.css' )
+		);
+		wp_enqueue_style(
+			'qmo-slider-fonts',
+			'https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap',
+			array(),
+			null
+		);
+	}
+
+	// Kampanya Banner görünüm sihirbazının canlı önizlemesi de ön yüzün
+	// GERÇEK frontend-banner-slider.css'ini kullanır (slider ekranındaki
+	// aynı desen); iki font ailesi de yüklüdür ki açılır listedeki
+	// değişim anında görünsün.
+	if ( 'qrms-rm-banner-ayar' === $page ) {
+		wp_enqueue_style(
+			'qmo-banner-slider',
+			$url . 'includes/frontend-banner-slider.css',
+			array( 'rma-admin-ui' ),
+			QRMS_Helpers::asset_version( $modul . 'includes/frontend-banner-slider.css' )
 		);
 		wp_enqueue_style(
 			'qmo-slider-fonts',

@@ -1,7 +1,11 @@
 /* =====================================================================
    QMO KAMPANYA BANNER SLIDER — FRONTEND STİLLERİ
-   Sayfa başı, tam genişlik, 16:9 · peek YOK (tek görsel tüm alanı kaplar)
+   Sayfa başı, tam genişlik · peek YOK (tek görsel tüm alanı kaplar)
    Dark gold tema · container query (cqi) · .qmo-banner- prefix
+
+   Oran, geçiş biçimi, oklar ve başlık yönetimden gelir
+   (bkz. QMO_Banner_Slider_Settings); kök öğeye yazılan
+   --qmo-banner-* değişkenleri buradaki varsayılanları ezer.
 
    Ürün vitrini slider'ının (frontend-slider.css) stilleriyle hiçbir seçici
    paylaşmaz; iki modül birbirini etkilemez.
@@ -25,7 +29,10 @@
 }
 
 .qmo-banner-viewport {
+    /* İlk satır --qmo-banner-oran'ı desteklemeyen tarayıcının payı;
+       ikincisi ayardan gelen oranı uygular. */
     aspect-ratio: 16 / 9;
+    aspect-ratio: var(--qmo-banner-oran, 16 / 9);
     overflow: hidden;
     position: relative;
     width: 100%;
@@ -61,6 +68,112 @@ a.qmo-banner-slide:focus-visible {
     -webkit-user-drag: none;
     user-select: none;
     width: 100%;
+}
+
+/* ---------------------------------------------------------------------
+   SOLMA GEÇİŞİ (is-fade)
+   Slaytlar üst üste yığılır; kayma yerine opaklık değişir. Track'in
+   transform'u JS tarafında hiç yazılmaz, yine de burada sıfırlanır ki
+   biçim ortada değiştirilse bile kalıntı kaymasın.
+--------------------------------------------------------------------- */
+.qmo-banner-root.is-fade .qmo-banner-track {
+    display: block;
+    position: relative;
+    transform: none;
+    transition: none;
+}
+
+.qmo-banner-root.is-fade .qmo-banner-slide {
+    inset: 0;
+    opacity: 0;
+    pointer-events: none;
+    position: absolute;
+    transition: opacity 0.6s ease;
+}
+
+.qmo-banner-root.is-fade .qmo-banner-slide.is-active {
+    opacity: 1;
+    pointer-events: auto;
+    z-index: 1;
+}
+
+/* ---------------------------------------------------------------------
+   BANNER BAŞLIĞI
+   Görselin alt kısmına binen okunur bir şerit. Yazı tipi, renk, punto,
+   kalınlık ve hizalama yönetimden gelir.
+--------------------------------------------------------------------- */
+.qmo-banner-caption {
+    background: linear-gradient(to top, rgba(10, 10, 12, 0.72), rgba(10, 10, 12, 0));
+    bottom: 0;
+    box-sizing: border-box;
+    display: block;
+    left: 0;
+    padding: 8cqi 4cqi 7cqi;
+    pointer-events: none;
+    position: absolute;
+    right: 0;
+    z-index: 1;
+}
+
+.qmo-banner-title {
+    color: var(--qmo-banner-title-color, #f5f0e8);
+    display: block;
+    font-family: var(--qmo-banner-title-font, 'Playfair Display', Georgia, serif);
+    font-size: var(--qmo-banner-title-size, 32px);
+    font-weight: var(--qmo-banner-title-weight, 600);
+    line-height: 1.2;
+    margin: 0;
+    text-align: var(--qmo-banner-title-align, center);
+    text-shadow: 0 2px 12px rgba(0, 0, 0, 0.45);
+}
+
+/* ---------------------------------------------------------------------
+   OK NAVİGASYONU
+   Yönetimden kapatılabilir; tek banner varken kısa kod zaten basmaz.
+--------------------------------------------------------------------- */
+.qmo-banner-nav {
+    display: block;
+    inset: 0;
+    pointer-events: none;
+    position: absolute;
+    z-index: 3;
+}
+
+.qmo-banner-nav-btn {
+    align-items: center;
+    appearance: none;
+    background: rgba(10, 10, 12, 0.45);
+    border: 1px solid rgba(232, 199, 102, 0.35);
+    border-radius: 999px;
+    color: var(--qmo-gold-soft);
+    cursor: pointer;
+    display: flex;
+    font-family: var(--qmo-font-body);
+    font-size: 22px;
+    height: 40px;
+    justify-content: center;
+    line-height: 1;
+    padding: 0 0 3px;
+    pointer-events: auto;
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    transition: background 0.25s ease, color 0.25s ease, border-color 0.25s ease;
+    width: 40px;
+}
+
+.qmo-banner-nav-prev { left: 2.5cqi; }
+.qmo-banner-nav-next { right: 2.5cqi; }
+
+.qmo-banner-nav-btn:hover {
+    background: rgba(10, 10, 12, 0.75);
+    border-color: var(--qmo-gold);
+    color: #fff;
+}
+
+.qmo-banner-nav-btn:focus-visible {
+    outline: 2px solid var(--qmo-gold-soft);
+    outline-offset: 2px;
 }
 
 .qmo-banner-dots {
@@ -112,12 +225,30 @@ a.qmo-banner-slide:focus-visible {
     position: absolute;
 }
 
+/* Dar kapsayıcıda başlık ve oklar küçülür. */
+@container qmo-banner (max-width: 720px) {
+    .qmo-banner-title {
+        font-size: var(--qmo-banner-title-size-mobile, 20px);
+    }
+
+    .qmo-banner-nav-btn {
+        font-size: 18px;
+        height: 32px;
+        width: 32px;
+    }
+}
+
 @media (prefers-reduced-motion: reduce) {
     .qmo-banner-track {
         transition: none;
     }
 
-    .qmo-banner-dot {
+    .qmo-banner-root.is-fade .qmo-banner-slide {
+        transition: none;
+    }
+
+    .qmo-banner-dot,
+    .qmo-banner-nav-btn {
         transition: none;
     }
 }
