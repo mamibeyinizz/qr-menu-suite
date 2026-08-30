@@ -18,11 +18,11 @@
     --qmo-font-body: 'Manrope', system-ui, sans-serif;
 
     /* Peek: aktif slayt ortada, iki yanda komşularının kenarı görünür.
-       Gutter %6, slaytlar arası boşluk 8-12px arasında kalır (dar
-       ekranda 8'e, geniş ekranda 12'ye oturur). Görünen komşu şeridi
-       gutter eksi boşluk kadardır, yani ~%5. */
+       Gutter %6. Gap, cqi kullandığı için kapsayıcının KENDİSİNDE
+       geçersizdir (1cqi yalnızca torunlarda çözülür); px yedek burada,
+       asıl clamp track üzerindeki peek kuralında yazılır. */
     --qmo-banner-peek:   6%;
-    --qmo-banner-gap:    clamp(8px, 1cqi, 12px);
+    --qmo-banner-gap:    10px;
     --qmo-banner-radius: 14px;
 
     box-sizing: border-box;
@@ -31,6 +31,9 @@
     background: var(--qmo-ink);
     display: block;
     font-family: var(--qmo-font-body);
+    /* Elementor sütunu / flex ebeveyn içinde yüzde hesabı kilitlenmesin. */
+    min-width: 0;
+    max-width: 100%;
     overflow: hidden;
     position: relative;
     width: 100%;
@@ -68,7 +71,11 @@
     display: block;
     flex: 0 0 100%;
     height: 100%;
-    min-width: 100%;
+    /* min-width: auto (varsayılan) görselin 1600px intrinsic genişliğine
+       kilitlenirdi; yüzde-yüz min-width ise bazı motorlarda track'in
+       padding'li kutusuna (viewport kadar) çözülüp peek'i yutar. 0,
+       flex-basis'in content box'a göre %100 kalmasına izin verir. */
+    min-width: 0;
     position: relative;
     text-decoration: none;
 }
@@ -93,11 +100,13 @@ a.qmo-banner-slide:focus-visible {
    şerit hâlinde görünür.
 
    Teknik: track'e --qmo-banner-peek kadar YATAY PADDING verilir. Padding
-   yüzdesi kapsayan bloğun (viewport) genişliğine çözülür, slaytın
-   `flex: 0 0 100%` yüzdesi ise flex kapsayıcısının CONTENT BOX'ına — yani
+   yüzdesi kapsayan bloğun (viewport) genişliğine çözülür; peek slaytın
+   `width: 100%` yüzdesi flex kapsayıcısının CONTENT BOX'ına — yani
    padding düşülmüş genişliğe. Böylece slayt kendiliğinden %88 olur ve
    ilk slayt padding sayesinde zaten ortalanmış başlar; ayrıca bir
-   telafi transform'u gerekmez.
+   telafi transform'u gerekmez. min-width sıfır şarttır: yüzde-yüz
+   min-width bazı motorlarda track'in border-box'ına çözülüp komşu
+   şeridi yutardı.
 
    `is-peek` sınıfını kısa kod YALNIZCA birden fazla banner varken basar
    (bkz. shortcode-banner-slider.php): tek banner'da yanında gösterilecek
@@ -110,16 +119,30 @@ a.qmo-banner-slide:focus-visible {
    ve aria etiketlerinin sayısını bozardı.
 --------------------------------------------------------------------- */
 .qmo-banner-root.is-peek:not(.is-fade) .qmo-banner-track {
+    /* 1cqi burada (torun) geçerlidir; kökteki yedek px'i ezer. */
+    --qmo-banner-gap: clamp(8px, 1cqi, 12px);
     gap: var(--qmo-banner-gap);
     padding-inline: var(--qmo-banner-peek);
 }
 
 .qmo-banner-root.is-peek:not(.is-fade) .qmo-banner-slide {
     /* Köşe yuvarlama peek'in bir parçası: slayt artık kenardan kenara
-       değil, çerçevenin içinde duran bir kart gibi görünüyor. */
+       değil, çerçevenin içinde duran bir kart gibi görünüyor.
+
+       flex: 0 0 auto + width: 100% — yüzde, track'in CONTENT box'ına
+       (padding düşülmüş %88) çözülür. Eski yüzde-yüz min-width bazı
+       tarayıcılarda track'in border-box'ına (viewport) çözülüyordu:
+       slayt tam genişlik kalır, sağdaki komşu overflow:hidden ile
+       kesilir, soldaki %6 gutter ise kök ile aynı koyu renkte
+       kaybolur — canlı sitede "peek yok, slaytlar tam genişlik"
+       görünümünün nedeni buydu. */
     border-radius: var(--qmo-banner-radius);
+    flex: 0 0 auto;
+    max-width: 100%;
+    min-width: 0;
     overflow: hidden;
     transition: opacity 0.4s ease;
+    width: 100%;
 }
 
 /* Komşu şeritler hafifçe geri çekilir; odak ortadaki slaytta kalır.
