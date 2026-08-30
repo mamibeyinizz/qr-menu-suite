@@ -105,6 +105,17 @@ class QMO_Shortcode_Banner_Slider {
 
         $stil = class_exists( 'QMO_Banner_Slider_Settings' ) ? QMO_Banner_Slider_Settings::css_degiskenleri( $ayar ) : '';
 
+        // width/height ipucu CSS --qmo-banner-oran ile aynı oranda olsun;
+        // aksi hâlde her <img> 1600×900 (16:9) basılır, 3:1 viewport'ta
+        // 2. ve 3. slaytların intrinsic kutusu patlardı.
+        $img_w = 1600;
+        $img_h = 900;
+        if ( class_exists( 'QMO_Banner_Slider_Settings' ) ) {
+            $oran_px = QMO_Banner_Slider_Settings::onerilen_px( $ayar['oran'] );
+            $img_w   = (int) $oran_px[0];
+            $img_h   = (int) $oran_px[1];
+        }
+
         $kok_sinif = 'qmo-banner-root';
         if ( 'fade' === $gecis ) {
             $kok_sinif .= ' is-fade';
@@ -138,7 +149,7 @@ class QMO_Shortcode_Banner_Slider {
                          sizes="100vw"
                          alt="<?php echo esc_attr( $banner['alt'] ); ?>"
                          class="qmo-banner-img"
-                         width="1600" height="900"
+                         width="<?php echo (int) $img_w; ?>" height="<?php echo (int) $img_h; ?>"
                          loading="<?php echo 0 === $index ? 'eager' : 'lazy'; ?>"
                          decoding="async">
                     <?php if ( $show_title && '' !== $banner['title'] ) : ?>

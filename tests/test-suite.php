@@ -9425,6 +9425,23 @@ qrms_test(
 );
 
 qrms_test(
+	'önerilen px canvas ve CSS oranıyla birebir eşleşir',
+	function () {
+		$onalti = QMO_Banner_Slider_Settings::onerilen_px( '16:9' );
+		qrms_assert_same( 1600, $onalti[0], '16:9 genişlik' );
+		qrms_assert_same( 900, $onalti[1], '16:9 yükseklik' );
+
+		$uc = QMO_Banner_Slider_Settings::onerilen_px( '3:1' );
+		qrms_assert_same( 1600, $uc[0], '3:1 genişlik' );
+		qrms_assert_same( (int) round( 1600 / 3 ), $uc[1], '3:1 yükseklik' );
+
+		$yirmi = QMO_Banner_Slider_Settings::onerilen_px( '21:9' );
+		qrms_assert_same( 1600, $yirmi[0], '21:9 genişlik' );
+		qrms_assert_same( (int) round( 1600 * 9 / 21 ), $yirmi[1], '21:9 yükseklik' );
+	}
+);
+
+qrms_test(
 	'banner kaydet() option\'a yazar, get() geri okur',
 	function () {
 		qrms_reset();
@@ -9549,9 +9566,81 @@ qrms_test(
 		qrms_assert_contains( 'getBoundingClientRect().left', $js, 'gerçek konum okunur' );
 		qrms_assert_contains( 'offsetLeft', $js, 'layout yokken yedek ölçüm' );
 		qrms_assert_contains( 'requestAnimationFrame', $js, 'stil uygulandıktan sonra yeniden ölçülür' );
-		qrms_assert_contains( "translateX(' + (-slideStep() * current) + 'px)", $js, 'px cinsinden transform' );
+		qrms_assert_contains( "translateX(' + (-slideStep() * trackIndex) + 'px)", $js, 'px cinsinden transform' );
 		qrms_assert_contains( "addEventListener('resize'", $js, 'yeniden boyutlandırma' );
 		qrms_assert_false( strpos( $js, "(-100 * current) + '%'" ) !== false, 'eski yüzde hesabı kaldırıldı' );
+	}
+);
+
+qrms_test(
+	'banner görselleri tüm slaytlarda object-fit ile kırpılır',
+	function () {
+		$dizin = QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/';
+		$css   = file_get_contents( $dizin . 'frontend-banner-slider.css' );
+		$kod   = file_get_contents( $dizin . 'shortcode-banner-slider.php' );
+		$cpt   = file_get_contents( $dizin . 'admin-cpt-banner.php' );
+		$ayar  = file_get_contents( $dizin . 'class-banner-slider-settings.php' );
+
+		// Tüm slayt görselleri: :first-child yok, object-fit her .qmo-banner-img'e.
+		qrms_assert_contains( '.qmo-banner-img', $css, 'görsel seçici' );
+		qrms_assert_contains( 'object-fit: cover', $css, 'object-fit cover' );
+		qrms_assert_contains( 'object-position: center', $css, 'object-position center' );
+		qrms_assert_false( strpos( $css, '.qmo-banner-slide:first-child' ) !== false, 'ilk slayta özel kırpma yok' );
+		qrms_assert_contains( 'position: absolute', $css, 'görsel akıştan çıkar' );
+		qrms_assert_contains( 'min-height: 0', $css, 'flex min-height kilitlenmez' );
+
+		// width/height ipucu kayıtlı orana göre, döngüde sızmaz.
+		qrms_assert_contains( 'QMO_Banner_Slider_Settings::onerilen_px', $kod, 'oranla eşleşen px' );
+		qrms_assert_contains( 'function onerilen_px', $ayar, 'önerilen px tek kaynak' );
+
+		// Boyut uyarısı oran-duyarlı; 16:9 varsayılanı dosyada durur.
+		qrms_assert_contains( '1600x900px (16:9), JPG/WEBP, maksimum 300KB', $cpt, 'banner boyut notu' );
+		qrms_assert_contains( 'function boyut_notu()', $cpt, 'dinamik boyut notu' );
+	}
+);
+
+qrms_test(
+	'kaydırma modunda sonsuz karusel klon tekniği, solma etkilenmez',
+	function () {
+		$js = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/frontend-banner-slider.js' );
+
+		qrms_assert_contains( 'data-qmo-banner-clone', $js, 'klon işareti' );
+		qrms_assert_contains( 'cloneSlide', $js, 'klon üretici' );
+		qrms_assert_contains( 'insertBefore', $js, 'son slayt başa' );
+		qrms_assert_contains( 'appendChild', $js, 'ilk slayt sona' );
+		qrms_assert_contains( 'snapIfNeeded', $js, 'sınırda anlık sıçrama' );
+		qrms_assert_contains( "var looping = !fade && !reducedMotion && realCount > 1", $js, 'solma ve reduced-motion klonlamaz' );
+		qrms_assert_contains( 'transitionend', $js, 'geçiş bitince sıçra' );
+	}
+);
+
+qrms_test(
+	'admin kampanya listesi tüm kayıtları çeker ve sıra AJAX ile değişir',
+	function () {
+		$dizin  = QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/';
+		$cpt    = file_get_contents( $dizin . 'admin-cpt-banner.php' );
+		$banner = file_get_contents( $dizin . 'trait-kampanya-banner-admin.php' );
+		$js     = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/js/admin-ui.js' );
+		$boot   = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/qr-menu.php' );
+		$kisa   = file_get_contents( $dizin . 'shortcode-banner-slider.php' );
+
+		qrms_assert_contains( 'function get_admin_banners', $cpt, 'yönetim sorgusu' );
+		qrms_assert_contains( "'posts_per_page'         => -1", $cpt, 'limit yok' );
+		qrms_assert_contains( "'nopaging'               => true", $cpt, 'sayfalama kapalı' );
+		qrms_assert_contains( "'draft'", $cpt, 'taslaklar da listelenir' );
+		qrms_assert_contains( 'QMO_Banner_CPT::get_admin_banners()', $banner, 'liste admin sorgusunu kullanır' );
+
+		qrms_assert_contains( 'data-yon="up"', $banner, 'yukarı ok' );
+		qrms_assert_contains( 'data-yon="down"', $banner, 'aşağı ok' );
+		qrms_assert_contains( 'initBannerOrder', $js, 'ok tıklaması bağlanır' );
+		qrms_assert_contains( 'qmo_banner_sira_kaydet', $js, 'AJAX eylemi JS' );
+		qrms_assert_contains( 'wp_ajax_qmo_banner_sira_kaydet', $boot, 'AJAX ucu kayıtlı' );
+		qrms_assert_contains( 'check_ajax_referer( \'rma_admin_nonce\', \'security\' )', $cpt, 'nonce' );
+		qrms_assert_contains( 'QRMS_Admin::CAPABILITY', $cpt, 'yetki' );
+
+		// Ön yüz ve admin aynı sıra alanını kullanır.
+		qrms_assert_contains( 'QMO_Banner_CPT::get_published_banners()', $kisa, 'ön yüz yayınlanmış + menu_order' );
+		qrms_assert_contains( "'menu_order' => 'ASC'", $cpt, 'ortak sıra alanı' );
 	}
 );
 
