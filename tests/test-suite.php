@@ -9187,7 +9187,7 @@ qrms_test(
 );
 
 qrms_test(
-	'banner yönetimi Menü Görünümü sihirbazına taşındı, Fiyat Kampanyaları temiz',
+	'banner yönetimi kendi sayfasında, Fiyat Kampanyaları ve Menü Görünümü temiz',
 	function () {
 		// İSİMLENDİRME: "Kampanya" = banner görselleri, "Fiyat Kampanyası" =
 		// toplu zam/indirim. İkisi ayrı ekranlardır ve ortak kodu yoktur;
@@ -9212,9 +9212,22 @@ qrms_test(
 		qrms_assert_contains( '+ Yeni Kampanya', $kampanya, 'yeni kampanya butonu' );
 		qrms_assert_contains( 'rma_kampanya_geri_al', $kampanya, 'geri alma ucu' );
 
-		// Sihirbaz Menü Görünümü sayfasına tek giriş noktasından bağlanıyor.
-		qrms_assert_contains( '$this->render_banner_wizard_section();', $sayfa, 'görünüm sayfası sihirbazı basıyor' );
-		qrms_assert_contains( 'public function render_banner_wizard_section()', $banner, 'sihirbaz giriş metodu' );
+		// Sihirbaz KENDİ sayfasında: get_subpages()'te bağımsız bir slug'ı var.
+		qrms_assert_contains( "'qrms-rm-kampanya-banner' => [", $sayfa, 'sayfa kayıtlı' );
+		qrms_assert_contains( "'render'     => 'render_kampanya_banner_page'", $sayfa, 'render metodu bağlı' );
+		qrms_assert_contains( 'public function render_kampanya_banner_page()', $banner, 'sayfa render metodu tanımlı' );
+		qrms_assert_contains( 'public function render_banner_wizard_section()', $banner, 'sihirbaz gövdesi' );
+
+		// Hub'da kendi kartı var.
+		qrms_assert_contains( "\$from_sub( \$this, 'qrms-rm-kampanya-banner' )", $sayfa, 'hub kartı' );
+
+		// Menü Görünümü sayfasında banner'a dair HİÇBİR iz kalmadı.
+		qrms_assert_false( strpos( $sayfa, 'render_banner_wizard_section' ) !== false, 'görünüm sayfası sihirbazı basmıyor' );
+		qrms_assert_false( strpos( $sayfa, 'banner_anchor' ) !== false, 'görünüm sayfasında banner çapası yok' );
+
+		// Sihirbaz adımları da yeni sayfaya bakıyor, Menü Görünümü'ne değil.
+		qrms_assert_contains( "'qrms-rm-kampanya-banner',", $banner, 'adım adresleri kendi sayfasına' );
+		qrms_assert_false( strpos( $banner, "'qrms-rm-gorunum'" ) !== false, 'sihirbaz görünüm sayfasına link vermiyor' );
 
 		// Üç adım da tanımlı.
 		foreach ( array( 'ozet', 'kampanyalar', 'olustur' ) as $adim ) {
@@ -9241,11 +9254,13 @@ qrms_test(
 		// Sayfa kaldırıldı ama slug silinmedi: kırık link/404 bırakılmaz.
 		$sayfa = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-admin-pages.php' );
 
-		// Artık gerçek bir sayfa DEĞİL: get_subpages() kaydı düştü.
+		// Artık gerçek bir sayfa DEĞİL: get_subpages() kaydı düştü ve aynı
+		// işlev iki slug'ta tutulmuyor.
 		qrms_assert_false( strpos( $sayfa, "'render'     => 'render_banner_settings_page'" ) !== false, 'sayfa kaydı kaldırıldı' );
+		qrms_assert_false( strpos( $sayfa, "'qrms-rm-banner-ayar' => [" ) !== false, 'eski slug artık sayfa değil' );
 
-		// Ama eski slug hâlâ kayıtlı ve yönlendiriliyor.
-		qrms_assert_contains( "'qrms-rm-banner-ayar'      => [ 'qrms-rm-gorunum'", $sayfa, 'eski slug yönlendirme tablosunda' );
+		// Ama eski slug hâlâ kayıtlı ve YENİ BAĞIMSIZ sayfaya yönlendiriliyor.
+		qrms_assert_contains( "'qrms-rm-banner-ayar'      => [ 'qrms-rm-kampanya-banner'", $sayfa, 'eski slug yeni sayfaya yönlenir' );
 		qrms_assert_contains( "[ 'banner_adim' => 'kampanyalar' ]", $sayfa, 'hedef 2. adım' );
 
 		// Yönlendirme, tablodaki query arg'larını da taşır.
@@ -9474,9 +9489,10 @@ qrms_test(
 		qrms_assert_false( strpos( $css, '.qmo-slider-' ) !== false, 'banner css ürün slider seçicisine dokunmaz' );
 		qrms_assert_false( strpos( $js, 'qmo-slider-' ) !== false, 'banner betiği ürün slider seçicisine dokunmaz' );
 
-		// Admin: Menü Görünümü sayfasının bölümü, kaydetme ucu ve nonce.
-		// (Ayar formu ayrı bir sayfa değil artık; alanların hiçbiri düşmedi.)
-		qrms_assert_contains( '$this->render_banner_wizard_section();', $sayfa, 'sihirbaz görünüm sayfasına bağlı' );
+		// Admin: kendi sayfası, kaydetme ucu ve nonce.
+		// (Ayar formu sihirbazın 2. adımı; alanların hiçbiri düşmedi.)
+		qrms_assert_contains( "'qrms-rm-kampanya-banner' => [", $sayfa, 'sayfa kayıtlı' );
+		qrms_assert_contains( 'render_kampanya_banner_page', $sayfa, 'render metodu bağlı' );
 		qrms_assert_contains( 'private function render_banner_ayar_formu()', $admin, 'ayar formu tanımlı' );
 		qrms_assert_contains( 'public function handle_banner_settings_save()', $admin, 'kaydetme ucu' );
 		qrms_assert_contains( 'check_admin_referer( $this->banner_nonce_action )', $admin, 'nonce' );

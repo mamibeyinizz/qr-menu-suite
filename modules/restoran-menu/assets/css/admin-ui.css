@@ -2171,24 +2171,13 @@
 }
 
 /* =====================================================================
-   KAMPANYA BANNER SİHİRBAZI ("Menü Görünümü" sayfasının bölümü)
+   KAMPANYA BANNER SİHİRBAZI (kendi sayfası: qrms-rm-kampanya-banner)
 
    Adım şeridi Ürün Vitrini'nin .rma-vitrin-step* stilini yeniden kullanır;
    tek fark adımların <button> değil <a> olmasıdır (her adım gerçek bir
    sayfa yüklemesidir, JS ile gizlenen kart değil). Aşağıdaki kurallar
    yalnızca bu farkı ve sihirbaza özgü üç bileşeni kapatır.
 ===================================================================== */
-.rma-kb-wizard {
-    border-top: 1px solid var(--rma-a-border);
-    margin-top: 32px;
-    padding-top: 24px;
-}
-
-.rma-kb-heading {
-    font-size: 20px;
-    margin: 0 0 6px;
-}
-
 .rma-kb-subheading {
     font-size: 15px;
     margin: 26px 0 4px;
