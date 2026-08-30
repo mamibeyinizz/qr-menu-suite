@@ -871,6 +871,102 @@
     }
 
     /* -----------------------------------------------------------------
+       KAMPANYA BANNER — CANLI ÖNİZLEME
+
+       Slider önizlemesindeki desenin aynısı: form değerleri
+       --qmo-banner-* değişkenlerine yazılır, geçiş biçimi kök öğedeki
+       .is-fade sınıfıyla, ok/nokta/başlık aç-kapa ise ilgili kutuların
+       görünürlüğüyle yansır. Önizleme gerçek frontend-banner-slider.css'i
+       kullandığı için sahte bir stil yoktur.
+    ----------------------------------------------------------------- */
+    function initBannerPreview() {
+        var $form    = $('#qmo-banner-form');
+        var $stage   = $('#qmo-banner-preview-stage');
+        var $preview = $('#qmo-banner-preview');
+
+        if (!$form.length || !$preview.length) return;
+
+        var mode = 'desktop';
+        var previewEl = $preview.get(0);
+
+        function fieldVal(id, fallback) {
+            var $el = $('#' + id);
+            return $el.length ? $el.val() : fallback;
+        }
+
+        function applyPreview() {
+            var $oran = $('#qmo-banner-oran');
+            var oranCss = $oran.length ? $oran.find('option:selected').data('oran-css') : '16 / 9';
+            previewEl.style.setProperty('--qmo-banner-oran', oranCss || '16 / 9');
+
+            var sizeDesktop = fieldVal('qmo-banner-title-size', 32);
+            var sizeMobile  = fieldVal('qmo-banner-title-size-mobile', 20);
+            var size        = mode === 'mobile' ? sizeMobile : sizeDesktop;
+
+            /* Önizleme sütunu 720px'in altında olduğu için container query
+               her zaman mobil puntoyu yazardı. Seçili modun puntosunu
+               HER İKİ değişkene de basıyoruz ki CQ önizlemeyi bozmasın;
+               gerçek ön yüzde CSS yine --qmo-banner-title-size-mobile'a
+               geçer (bkz. frontend-banner-slider.css). */
+            previewEl.style.setProperty('--qmo-banner-title-size', size + 'px');
+            previewEl.style.setProperty('--qmo-banner-title-size-mobile', size + 'px');
+            previewEl.style.setProperty('--qmo-banner-title-weight', fieldVal('qmo-banner-title-weight', 600));
+            previewEl.style.setProperty('--qmo-banner-title-align', vitrinAlignVal('qmo-banner-title-align'));
+
+            var font = String(fieldVal('qmo-banner-title-font', 'Playfair Display'));
+            previewEl.style.setProperty('--qmo-banner-title-font', SLIDER_FONT_STACKS[font] || SLIDER_FONT_STACKS['Playfair Display']);
+
+            var titleColor = fieldVal('qmo-banner-title-color', '#f5f0e8');
+            previewEl.style.setProperty('--qmo-banner-title-color', titleColor ? titleColor : '#f5f0e8');
+
+            $preview.toggleClass('is-fade', fieldVal('qmo-banner-gecis', 'slide') === 'fade');
+
+            $preview.find('[data-qmo-banner-caption]').toggle($('#qmo-banner-show-title').is(':checked'));
+            $preview.find('[data-qmo-banner-nav]').toggle($('#qmo-banner-show-nav').is(':checked'));
+            $preview.find('[data-qmo-banner-dots]').toggle($('#qmo-banner-show-dots').is(':checked'));
+
+            $stage.toggleClass('is-mobile-mode', mode === 'mobile');
+        }
+
+        $form.on(
+            'input change',
+            '#qmo-banner-oran, #qmo-banner-gecis, #qmo-banner-show-nav, #qmo-banner-show-dots, #qmo-banner-show-title, #qmo-banner-title-font, #qmo-banner-title-color, #qmo-banner-title-size, #qmo-banner-title-size-mobile, #qmo-banner-title-weight',
+            applyPreview
+        );
+
+        $form.on('change', '.rma-align-input', function () {
+            $(this).closest('.rma-align-group').find('.rma-align-btn').each(function () {
+                $(this).toggleClass('is-selected', $(this).find('.rma-align-input').is(':checked'));
+            });
+            applyPreview();
+        });
+
+        if (typeof $.fn.wpColorPicker === 'function') {
+            var $color = $('#qmo-banner-title-color');
+            if ($color.length) {
+                $color.wpColorPicker({
+                    change: function (event, ui) {
+                        previewEl.style.setProperty('--qmo-banner-title-color', ui.color.toString());
+                    },
+                    clear: function () {
+                        previewEl.style.setProperty('--qmo-banner-title-color', '#f5f0e8');
+                    }
+                });
+            }
+        }
+
+        $form.on('click', '.rma-vitrin-preview-btn', function () {
+            mode = $(this).data('preview-mode');
+            $form.find('.rma-vitrin-preview-btn').removeClass('is-active');
+            $(this).addClass('is-active');
+            applyPreview();
+        });
+
+        applyPreview();
+        initVitrinPreviewSticky();
+    }
+
+    /* -----------------------------------------------------------------
        ÜRÜN VİTRİNİ — ADIM ADIM (STEPPER)
 
        Saf UI bölmesi: .rma-vitrin-step kartları DOM'da hep birlikte
@@ -935,6 +1031,7 @@
     function initVitrinStepper() {
         initFormStepper($('#rma-vitrin-form'));
         initFormStepper($('#qmo-slider-form'));
+        initFormStepper($('#qmo-banner-form'));
     }
 
     /**
@@ -1242,6 +1339,7 @@
         initVitrinPicker();
         initVitrinPreview();
         initSliderPreview();
+        initBannerPreview();
         initVitrinStepper();
         initShortcodeCopy();
         initKampanya();

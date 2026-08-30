@@ -66,21 +66,53 @@ class QMO_Shortcode_Banner_Slider {
 
         self::enqueue_styles();
 
-        $a = shortcode_atts( [
-            'autoplay' => '4500',
-        ], $atts, self::SHORTCODE );
+        $ayar = class_exists( 'QMO_Banner_Slider_Settings' )
+            ? QMO_Banner_Slider_Settings::get()
+            : array(
+                'show_nav'   => 0,
+                'show_dots'  => 1,
+                'show_title' => 0,
+                'gecis'      => 'slide',
+                'autoplay'   => 4500,
+            );
+
+        // Kısa kod niteliği yönetim varsayılanını ezer; nitelik hiç
+        // yazılmamışsa ayar geçerlidir (eski [qmo_banner_slider autoplay="0"]
+        // kullanımları bozulmasın diye ham dizi de kontrol edilir).
+        $ham_atts = is_array( $atts ) ? $atts : array();
+
+        $a = shortcode_atts( array(
+            'autoplay' => (string) $ayar['autoplay'],
+        ), $atts, self::SHORTCODE );
 
         // 0 = otomatik geçiş kapalı. Aksi hâlde 1.5–15 sn arasına kırpılır.
-        $autoplay = absint( $a['autoplay'] );
+        $autoplay = isset( $ham_atts['autoplay'] )
+            ? absint( $a['autoplay'] )
+            : (int) $ayar['autoplay'];
+
         if ( $autoplay > 0 ) {
             $autoplay = min( 15000, max( 1500, $autoplay ) );
         }
 
         $count = count( $banners );
 
+        $show_nav   = ! empty( $ayar['show_nav'] ) && $count > 1;
+        $show_dots  = ! empty( $ayar['show_dots'] ) && $count > 1;
+        $show_title = ! empty( $ayar['show_title'] );
+        $gecis      = class_exists( 'QMO_Banner_Slider_Settings' )
+            ? QMO_Banner_Slider_Settings::gecis( $ayar['gecis'] )
+            : 'slide';
+
+        $stil = class_exists( 'QMO_Banner_Slider_Settings' ) ? QMO_Banner_Slider_Settings::css_degiskenleri( $ayar ) : '';
+
+        $kok_sinif = 'qmo-banner-root';
+        if ( 'fade' === $gecis ) {
+            $kok_sinif .= ' is-fade';
+        }
+
         ob_start();
         ?>
-<div class="qmo-banner-root" data-qmo-banner-slider data-autoplay="<?php echo esc_attr( (string) $autoplay ); ?>" role="region" aria-roledescription="karusel" aria-label="Kampanya banner'ları">
+<div class="<?php echo esc_attr( $kok_sinif ); ?>" data-qmo-banner-slider data-autoplay="<?php echo esc_attr( (string) $autoplay ); ?>" data-gecis="<?php echo esc_attr( $gecis ); ?>" role="region" aria-roledescription="karusel" aria-label="Kampanya banner'ları"<?php echo '' !== $stil ? ' style="' . esc_attr( $stil ) . '"' : ''; ?>>
     <div class="qmo-banner-viewport">
         <div class="qmo-banner-track" data-qmo-banner-track>
             <?php foreach ( $banners as $index => $banner ) : ?>
@@ -88,7 +120,7 @@ class QMO_Shortcode_Banner_Slider {
                 $tag   = '' !== $banner['link'] ? 'a' : 'div';
                 $label = sprintf( '%d / %d', $index + 1, $count );
                 ?>
-                <<?php echo $tag; ?> class="qmo-banner-slide"
+                <<?php echo $tag; ?> class="qmo-banner-slide<?php echo 0 === $index ? ' is-active' : ''; ?>"
                     <?php if ( 'a' === $tag ) : ?>href="<?php echo esc_url( $banner['link'] ); ?>" rel="noopener"<?php endif; ?>
                     role="group" aria-roledescription="slayt" aria-label="<?php echo esc_attr( $label ); ?>"
                     data-qmo-banner-slide="<?php echo esc_attr( (string) $index ); ?>">
@@ -100,12 +132,24 @@ class QMO_Shortcode_Banner_Slider {
                          width="1600" height="900"
                          loading="<?php echo 0 === $index ? 'eager' : 'lazy'; ?>"
                          decoding="async">
+                    <?php if ( $show_title && '' !== $banner['title'] ) : ?>
+                        <span class="qmo-banner-caption">
+                            <span class="qmo-banner-title"><?php echo esc_html( $banner['title'] ); ?></span>
+                        </span>
+                    <?php endif; ?>
                 </<?php echo $tag; ?>>
             <?php endforeach; ?>
         </div>
     </div>
 
-    <?php if ( $count > 1 ) : ?>
+    <?php if ( $show_nav ) : ?>
+        <div class="qmo-banner-nav">
+            <button type="button" class="qmo-banner-nav-btn qmo-banner-nav-prev" data-qmo-banner-prev aria-label="Önceki banner">&#8249;</button>
+            <button type="button" class="qmo-banner-nav-btn qmo-banner-nav-next" data-qmo-banner-next aria-label="Sonraki banner">&#8250;</button>
+        </div>
+    <?php endif; ?>
+
+    <?php if ( $show_dots ) : ?>
         <div class="qmo-banner-dots" role="tablist" aria-label="Banner seçimi">
             <?php foreach ( $banners as $index => $banner ) : ?>
                 <button type="button"
@@ -129,7 +173,7 @@ class QMO_Shortcode_Banner_Slider {
      * Görseli olmayan (ya da eki silinmiş) kayıt sessizce atlanır; hiç
      * kalmazsa render_shortcode() boş döner.
      *
-     * @return array<int,array{img:string,srcset:string,alt:string,link:string}>
+     * @return array<int,array{img:string,srcset:string,alt:string,title:string,link:string}>
      */
     private static function build_banner_payloads() {
         $banners = [];
@@ -152,6 +196,7 @@ class QMO_Shortcode_Banner_Slider {
                 'img'    => $img,
                 'srcset' => is_string( $srcset ) ? $srcset : '',
                 'alt'    => $alt,
+                'title'  => trim( $post->post_title ),
                 'link'   => (string) get_post_meta( $post->ID, QMO_Banner_CPT::META_LINK, true ),
             ];
         }

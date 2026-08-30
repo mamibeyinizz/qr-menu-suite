@@ -1706,6 +1706,25 @@
     pointer-events: none;
 }
 
+/* Kampanya Banner canlı önizlemesi — frontend-banner-slider.css ile
+   boyanır; yer tutucu görsel ve tıklanamaz kontroller burada. */
+.rma-vitrin-preview-stage .qmo-banner-preview-empty {
+    align-items: center;
+    background: repeating-linear-gradient(45deg, #0d0d10, #0d0d10 12px, #14141a 12px, #14141a 24px);
+    color: #c9a84c;
+    display: flex;
+    font-size: 0.95rem;
+    height: 100%;
+    justify-content: center;
+    letter-spacing: 0.08em;
+    width: 100%;
+}
+
+.rma-vitrin-preview-stage .qmo-banner-nav-btn,
+.rma-vitrin-preview-stage .qmo-banner-dot {
+    pointer-events: none;
+}
+
 /* ---------------------------------------------------------------------
    VİTRİN FORMU — ADIM ADIM (STEPPER)
 

@@ -45,6 +45,14 @@ trait RMA_Admin_Pages_Trait {
                 'desc'       => 'Menüdeki fiyatları toplu zam/indirimle geçici olarak değiştirin; tek tıkla geri alın.',
                 'icon'       => 'dashicons-tag',
             ],
+            'qrms-rm-banner-ayar' => [
+                'title'      => 'Banner Görünümü',
+                'menu_title' => 'Banner Görünümü',
+                'hub_title'  => 'Kampanya Banner',
+                'render'     => 'render_banner_settings_page',
+                'desc'       => 'Sayfa başındaki kampanya banner\'ının oranı, geçişi, okları ve başlığı.',
+                'icon'       => 'dashicons-images-alt2',
+            ],
             'qrms-rm-diger' => [
                 'title'      => 'Diğer Ayarlar',
                 'menu_title' => 'Diğer Ayarlar',
@@ -133,6 +141,7 @@ trait RMA_Admin_Pages_Trait {
                     $from_sub( $this, 'qrms-rm-gorunum' ),
                     $from_sub( $this, 'qrms-rm-one-cikanlar' ),
                     $from_sub( $this, 'qrms-rm-vitrin' ),
+                    $from_sub( $this, 'qrms-rm-banner-ayar' ),
                     $from_sub( $this, 'qrms-rm-diger' ),
                 ],
             ],

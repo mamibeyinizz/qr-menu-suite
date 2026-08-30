@@ -296,7 +296,7 @@ bir kısa kod rehbere eklenmezse düşer.
 
 | Slug | İçerik | Yönetim sayfası |
 | --- | --- | --- |
-| `restoran-menu` | `rma_menu_item` CPT, `[restaurant_menu]`, `[qmo_one_cikan_slider]`, `[qmo_banner_slider]` (`qmo_banner_slide` CPT), toplu fiyat kampanyası, Elementor widget'ı | ✔ Hub + dokuz ekran |
+| `restoran-menu` | `rma_menu_item` CPT, `[restaurant_menu]`, `[qmo_one_cikan_slider]`, `[qmo_banner_slider]` (`qmo_banner_slide` CPT + Banner Görünümü ekranı), toplu fiyat kampanyası, Elementor widget'ı | ✔ Hub + on ekran |
 | `yorum-feedback` | Çoklu kriter yorumlar, Google yönlendirme + ödül kodları, dinamik form oluşturucu, `[qr_menu_reviews]`, `[qr_menu_contact]`, `[qr_menu_form]` | ✔ Hub + yedi ayrı sayfa |
 | `qr-masa` | Masa kayıtları (CRUD + toplu oluşturma), masa QR adresleri, `[qr_aktif_masa]` | ✔ Masalar ekranı |
 | `qr-masa-oturum-guvenligi` | Sahte QR reddi, kilit ekranı, sayfa kilidi; uygulamanın REST uçlarının Firebase/şube yapılandırması | ✔ Hub + Oturum Limitleri / Firebase & Şube Ayarları |
@@ -447,7 +447,7 @@ hedefleri 44px'e çıkar — `restoran-menu` yönetim ekranlarıyla aynı yakla�
 
 `restoran-menu`'nün ürün, kategori ve ayar ekranlarının tamamı suite menüsünün
 altındadır — eklenti artık ayrı bir top-level "Menü" menüsü açmaz. Sol menüde
-tek bir "Restoran Menü" satırı vardır; dokuz işin hepsine onun açtığı hub
+tek bir "Restoran Menü" satırı vardır; on işin hepsine onun açtığı hub
 ekranındaki kartlardan gidilir:
 
 | Hub kartı | Adres |
@@ -460,9 +460,10 @@ ekranındaki kartlardan gidilir:
 | Öne Çıkanlar | `qrms-rm-one-cikanlar` |
 | Ürün Vitrini | `qrms-rm-vitrin` |
 | Fiyat Kampanyaları | `qrms-rm-kampanya` |
+| Kampanya Banner | `qrms-rm-banner-ayar` |
 | Diğer Ayarlar | `qrms-rm-diger` |
 
-Dördü çekirdeğin kendi ekranı, beşi modülün `add_submenu_page()` ile
+Dördü çekirdeğin kendi ekranı, altısı modülün `add_submenu_page()` ile
 kaydettiği **gerçek, ayrı sayfalardır**; JS ile gizlenip gösterilen sekme
 yoktur. Hiçbirinin sol menüde satırı yoktur (bkz. *Alt sayfalar nasıl
 gizleniyor?*), ama adresleri değişmedi — eski yer imleri çalışmaya devam
@@ -475,6 +476,7 @@ Sayfaların hangi eski sekmeden geldiği:
 | Görünüm | "Genel Ayarlar" sekmesi (Renkler + Tipografi + Hazır Paletler iç sekmeleri) ve "Kayar Başlık" sekmesi |
 | Öne Çıkanlar | "Öneriler" sekmesi + menüden erişilemeyen `qmo_slide` (Öne Çıkan Slider) ekranı |
 | Fiyat Kampanyaları | Toplu fiyat kampanyası ekranı + menüden erişilemeyen `qmo_banner_slide` (Kampanya Banner) ekranı |
+| Kampanya Banner | Yeni: `[qmo_banner_slider]` görünüm ayarları (oran, geçiş, oklar/noktalar, otomatik geçiş, başlık) — `qmo_banner_slider_settings` option'ında durur |
 | Diğer Ayarlar | "Kategori Sıralaması", "İçe/Dışa Aktar" ve "Yedekleme" sekmeleri, üç bölüm hâlinde |
 
 Sayfa tanımı tek yerdedir (`RMA_Admin_Pages_Trait::get_subpages()`); sayfa

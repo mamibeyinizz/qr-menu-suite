@@ -9213,6 +9213,212 @@ qrms_test(
 	}
 );
 
+/* ---------------------------------------------------------------------------
+ * Kampanya Banner — görünüm ayarları
+ *
+ * QMO_Banner_Slider_Settings, QMO_Slider_Settings ile aynı deseni izler ama
+ * ayrı bir option'da (qmo_banner_slider_settings) ve kendi alan kümesiyle
+ * durur: oran, geçiş biçimi, otomatik geçiş, oklar/noktalar ve başlık.
+ * Option hiç yoksa eski görünüm korunur.
+ * ------------------------------------------------------------------------ */
+
+require_once QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/class-banner-slider-settings.php';
+
+qrms_test(
+	'banner varsayılanları mevcut görünümü korur',
+	function () {
+		$v = QMO_Banner_Slider_Settings::varsayilanlar();
+
+		qrms_assert_same( 1, $v['show_nav'], 'oklar açık' );
+		qrms_assert_same( 1, $v['show_dots'], 'noktalar açık' );
+		qrms_assert_same( 0, $v['show_title'], 'başlık kapalı — görsel tek başına basılırdı' );
+		qrms_assert_same( 'slide', $v['gecis'], 'kaydırma geçişi' );
+		qrms_assert_same( '16:9', $v['oran'], '16:9 oran' );
+		qrms_assert_same( 4500, $v['autoplay'], 'kısa kodun eski varsayılanı' );
+		qrms_assert_same( 'Playfair Display', $v['title_font'], 'Playfair' );
+		qrms_assert_same( 32, $v['title_size'], 'masaüstü punto' );
+		qrms_assert_same( 20, $v['title_size_mobile'], 'mobil punto' );
+	}
+);
+
+qrms_test(
+	'banner sanitize: oran, geçiş ve otomatik geçiş beyaz listeye çekilir',
+	function () {
+		$temiz = QMO_Banner_Slider_Settings::sanitize(
+			array(
+				'oran'     => '9:16',
+				'gecis'    => 'zoom',
+				'autoplay' => 999999,
+			)
+		);
+
+		qrms_assert_same( '16:9', $temiz['oran'], 'bilinmeyen oran varsayılana düşer' );
+		qrms_assert_same( 'slide', $temiz['gecis'], 'bilinmeyen geçiş varsayılana düşer' );
+		qrms_assert_same( QMO_Banner_Slider_Settings::MAX_AUTOPLAY, $temiz['autoplay'], 'autoplay üst sınır' );
+
+		$gecerli = QMO_Banner_Slider_Settings::sanitize(
+			array(
+				'oran'     => '21:9',
+				'gecis'    => 'fade',
+				'autoplay' => 6000,
+			)
+		);
+
+		qrms_assert_same( '21:9', $gecerli['oran'], 'geçerli oran' );
+		qrms_assert_same( 'fade', $gecerli['gecis'], 'geçerli geçiş' );
+		qrms_assert_same( 6000, $gecerli['autoplay'], 'geçerli autoplay' );
+
+		// 0 "kapalı" demektir: alt sınıra çekilmez.
+		$kapali = QMO_Banner_Slider_Settings::sanitize( array( 'autoplay' => 0 ) );
+		qrms_assert_same( 0, $kapali['autoplay'], 'otomatik geçiş kapatılabilir' );
+
+		// 0'dan büyük ama çok küçük değer alt sınıra çekilir.
+		$kucuk = QMO_Banner_Slider_Settings::sanitize( array( 'autoplay' => 200 ) );
+		qrms_assert_same( QMO_Banner_Slider_Settings::MIN_AUTOPLAY, $kucuk['autoplay'], 'autoplay alt sınır' );
+	}
+);
+
+qrms_test(
+	'banner sanitize: checkbox, renk, font, punto ve hizalama temizlenir',
+	function () {
+		$kapali = QMO_Banner_Slider_Settings::sanitize( array() );
+		qrms_assert_same( 0, $kapali['show_nav'], 'ok kapalı' );
+		qrms_assert_same( 0, $kapali['show_dots'], 'nokta kapalı' );
+		qrms_assert_same( 0, $kapali['show_title'], 'başlık kapalı' );
+
+		$acik = QMO_Banner_Slider_Settings::sanitize(
+			array(
+				'show_nav'          => '1',
+				'show_dots'         => 'on',
+				'show_title'        => 1,
+				'title_color'       => 'mavi',
+				'title_font'        => 'Comic Sans',
+				'title_size'        => 999,
+				'title_size_mobile' => 1,
+				'title_weight'      => 850,
+				'title_align'       => 'justify',
+			)
+		);
+
+		qrms_assert_same( 1, $acik['show_nav'], 'ok açık' );
+		qrms_assert_same( 1, $acik['show_dots'], 'nokta açık' );
+		qrms_assert_same( 1, $acik['show_title'], 'başlık açık' );
+		qrms_assert_same( '#f5f0e8', $acik['title_color'], 'geçersiz renk varsayılana düşer' );
+		qrms_assert_same( 'Playfair Display', $acik['title_font'], 'bilinmeyen font Playfair\'e düşer' );
+		qrms_assert_same( QMO_Banner_Slider_Settings::MAX_TITLE_SIZE, $acik['title_size'], 'masaüstü üst sınır' );
+		qrms_assert_same( QMO_Banner_Slider_Settings::MIN_TITLE_SIZE_MOBILE, $acik['title_size_mobile'], 'mobil alt sınır' );
+		qrms_assert_same( 600, $acik['title_weight'], 'kalınlık varsayılana düşer' );
+		qrms_assert_same( 'center', $acik['title_align'], 'hizalama varsayılana düşer' );
+	}
+);
+
+qrms_test(
+	'banner option yokken get() varsayılanları döner, css değişkenleri basılır',
+	function () {
+		$ayar = QMO_Banner_Slider_Settings::get();
+		qrms_assert_same( 1, $ayar['show_nav'], 'kayıt yokken oklar açık' );
+		qrms_assert_same( '16:9', $ayar['oran'], 'kayıt yokken 16:9' );
+
+		$css = QMO_Banner_Slider_Settings::css_degiskenleri( $ayar );
+		qrms_assert_contains( '--qmo-banner-oran:16 / 9', $css, 'oran değişkeni' );
+		qrms_assert_contains( "--qmo-banner-title-font:'Playfair Display'", $css, 'font yığını' );
+		qrms_assert_contains( '--qmo-banner-title-size:32px', $css, 'masaüstü punto' );
+		qrms_assert_contains( '--qmo-banner-title-size-mobile:20px', $css, 'mobil punto' );
+
+		$fade = QMO_Banner_Slider_Settings::css_degiskenleri(
+			QMO_Banner_Slider_Settings::sanitize( array( 'oran' => '3:1' ) )
+		);
+		qrms_assert_contains( '--qmo-banner-oran:3 / 1', $fade, 'seçilen oran CSS\'e çevrilir' );
+	}
+);
+
+qrms_test(
+	'banner kaydet() option\'a yazar, get() geri okur',
+	function () {
+		qrms_reset();
+
+		QMO_Banner_Slider_Settings::kaydet(
+			array(
+				'show_nav'   => '0',
+				'gecis'      => 'fade',
+				'oran'       => '21:9',
+				'show_title' => '1',
+				'autoplay'   => '8000',
+			)
+		);
+
+		$ayar = QMO_Banner_Slider_Settings::get();
+
+		qrms_assert_same( 0, $ayar['show_nav'], 'ok kapatıldı' );
+		qrms_assert_same( 'fade', $ayar['gecis'], 'solma geçişi' );
+		qrms_assert_same( '21:9', $ayar['oran'], 'oran' );
+		qrms_assert_same( 1, $ayar['show_title'], 'başlık açık' );
+		qrms_assert_same( 8000, $ayar['autoplay'], 'autoplay' );
+
+		qrms_reset();
+	}
+);
+
+qrms_test(
+	'banner ayarları kısa kod, css, js ve admin ekranına bağlanır',
+	function () {
+		$dizin = QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/';
+
+		$kod   = file_get_contents( $dizin . 'shortcode-banner-slider.php' );
+		$css   = file_get_contents( $dizin . 'frontend-banner-slider.css' );
+		$js    = file_get_contents( $dizin . 'frontend-banner-slider.js' );
+		$admin = file_get_contents( $dizin . 'trait-kampanya-admin.php' );
+		$sayfa = file_get_contents( $dizin . 'trait-admin-pages.php' );
+		$adminjs = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/js/admin-ui.js' );
+
+		// Kısa kod ayarı okur ve ok/nokta/başlık/geçiş çıktısına yansıtır.
+		qrms_assert_contains( 'QMO_Banner_Slider_Settings::get', $kod, 'kısa kod ayar okur' );
+		qrms_assert_contains( '$show_nav', $kod, 'ok bloğu ayara bağlı' );
+		qrms_assert_contains( 'data-qmo-banner-prev', $kod, 'önceki oku' );
+		qrms_assert_contains( 'data-qmo-banner-next', $kod, 'sonraki oku' );
+		qrms_assert_contains( 'qmo-banner-title', $kod, 'başlık öğesi' );
+		qrms_assert_contains( 'data-gecis', $kod, 'geçiş biçimi betiğe taşınır' );
+
+		// CSS: oran değişkeni, solma geçişi, ok ve başlık stilleri.
+		foreach ( array( '--qmo-banner-oran', '--qmo-banner-title-font', '--qmo-banner-title-color', '--qmo-banner-title-size', '--qmo-banner-title-size-mobile', '--qmo-banner-title-weight', '--qmo-banner-title-align' ) as $degisken ) {
+			qrms_assert_contains( $degisken, $css, $degisken . ' frontend' );
+			qrms_assert_contains( $degisken, $adminjs, $degisken . ' önizleme' );
+		}
+
+		qrms_assert_contains( '.qmo-banner-root.is-fade .qmo-banner-slide', $css, 'solma geçişi' );
+		qrms_assert_contains( '.qmo-banner-nav-btn', $css, 'ok stili' );
+
+		// Betik: oklar ve solma mantığı.
+		qrms_assert_contains( "data-qmo-banner-prev", $js, 'ok butonu bağlanır' );
+		qrms_assert_contains( "getAttribute('data-gecis')", $js, 'geçiş biçimi okunur' );
+		qrms_assert_contains( "classList.toggle('is-active'", $js, 'aktif slayt sınıfı' );
+
+		// İki slider hâlâ birbirinden bağımsız.
+		qrms_assert_false( strpos( $css, '.qmo-slider-' ) !== false, 'banner css ürün slider seçicisine dokunmaz' );
+		qrms_assert_false( strpos( $js, 'qmo-slider-' ) !== false, 'banner betiği ürün slider seçicisine dokunmaz' );
+
+		// Admin: ayrı sayfa, kaydetme ucu ve nonce.
+		qrms_assert_contains( "'qrms-rm-banner-ayar'", $sayfa, 'ayar sayfası kayıtlı' );
+		qrms_assert_contains( 'render_banner_settings_page', $sayfa, 'render metodu bağlı' );
+		qrms_assert_contains( 'public function render_banner_settings_page()', $admin, 'render metodu tanımlı' );
+		qrms_assert_contains( 'public function handle_banner_settings_save()', $admin, 'kaydetme ucu' );
+		qrms_assert_contains( 'check_admin_referer( $this->banner_nonce_action )', $admin, 'nonce' );
+		qrms_assert_contains( 'initBannerPreview', $adminjs, 'canlı önizleme' );
+	}
+);
+
+qrms_test(
+	'banner kaydetme ucu ve önbellek kancası kayıtlı',
+	function () {
+		$boot = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/qr-menu.php' );
+		qrms_assert_contains( 'admin_post_qmo_banner_ayar_kaydet', $boot, 'kaydetme ucu' );
+		qrms_assert_contains( 'update_option_qmo_banner_slider_settings', $boot, 'önbellek kancası' );
+
+		$slider_boot = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/qmo-one-cikan-slider.php' );
+		qrms_assert_contains( 'class-banner-slider-settings.php', $slider_boot, 'ayar sınıfı yüklenir' );
+	}
+);
+
 
 /* ---------------------------------------------------------------------------
  * 24. HFB — "Yeni Blok Ekle" listesi, canlı önizleme yükü, önbellek temizliği
