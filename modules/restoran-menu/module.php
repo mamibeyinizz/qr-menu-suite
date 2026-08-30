@@ -89,12 +89,12 @@ function qrms_module_restoran_menu_init() {
 			array(
 				'tag'   => 'qmo_banner_slider',
 				'title' => __( 'Kampanya Banner', 'qrms' ),
-				'desc'  => __( 'Sayfanın en üstünde tam genişlikte, kendi kendine dönen kampanya görselleri. İçeriği Menü Görünümü sayfasındaki "Kampanya Banner" bölümünden yönetilir.', 'qrms' ),
+				'desc'  => __( 'Sayfanın en üstünde tam genişlikte, kendi kendine dönen kampanya görselleri. İçeriği "Kampanya Banner" ekranından yönetilir.', 'qrms' ),
 				'attrs' => array(
 					array(
 						'name'    => 'autoplay',
 						'default' => '4500',
-						'desc'    => __( 'Görseller arası bekleme (milisaniye). Yazılmazsa Menü Görünümü sayfasındaki Kampanya Banner ayarı geçerlidir; otomatik geçişi kapatmak için 0 yazın.', 'qrms' ),
+						'desc'    => __( 'Görseller arası bekleme (milisaniye). Yazılmazsa Kampanya Banner ekranındaki ayar geçerlidir; otomatik geçişi kapatmak için 0 yazın.', 'qrms' ),
 					),
 				),
 			),
@@ -302,12 +302,13 @@ function qrms_module_restoran_menu_admin_assets() {
 	if ( 'qrms-rm-gorunum' === $page ) {
 		wp_enqueue_style( 'rma-nav', $url . 'assets/css/rma-nav.css', array( 'rma-admin-ui' ), QRMS_Helpers::asset_version( $modul . 'assets/css/rma-nav.css' ) );
 		wp_add_inline_style( 'rma-nav', $rma->get_nav_preview_css() );
+	}
 
-		// Kampanya Banner sihirbazı bu sayfanın bir bölümüdür (eskiden ayrı
-		// bir sayfaydı): canlı önizleme ön yüzün GERÇEK
-		// frontend-banner-slider.css'ini kullanır, iki font ailesi de
-		// yüklüdür ki hem önizleme hem canvas ile üretilen görsel doğru
-		// yazı tipiyle çizilsin.
+	// Kampanya Banner sihirbazının canlı önizlemesi ön yüzün GERÇEK
+	// frontend-banner-slider.css'ini kullanır (slider ekranındaki aynı
+	// desen); iki font ailesi de yüklüdür ki hem önizleme hem 3. adımda
+	// canvas ile üretilen görsel doğru yazı tipiyle çizilsin.
+	if ( 'qrms-rm-kampanya-banner' === $page ) {
 		wp_enqueue_style(
 			'qmo-banner-slider',
 			$url . 'includes/frontend-banner-slider.css',

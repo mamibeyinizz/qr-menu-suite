@@ -21,7 +21,7 @@ trait RMA_Admin_Pages_Trait {
                 'menu_title' => 'Görünüm',
                 'hub_title'  => 'Menü Görünümü',
                 'render'     => 'render_appearance_page',
-                'desc'       => 'Menünüzün renkleri, yazı tipleri, kategori çubuğu ve kampanya banner\'ı.',
+                'desc'       => 'Menünüzün renkleri, yazı tipleri ve kategori çubuğu.',
                 'icon'       => 'dashicons-art',
             ],
             'qrms-rm-one-cikanlar' => [
@@ -44,6 +44,14 @@ trait RMA_Admin_Pages_Trait {
                 'render'     => 'render_campaign_page',
                 'desc'       => 'Menüdeki fiyatları toplu zam/indirimle geçici olarak değiştirin; tek tıkla geri alın.',
                 'icon'       => 'dashicons-tag',
+            ],
+            'qrms-rm-kampanya-banner' => [
+                'title'      => 'Kampanya Banner',
+                'menu_title' => 'Kampanya Banner',
+                'hub_title'  => 'Kampanya Banner',
+                'render'     => 'render_kampanya_banner_page',
+                'desc'       => 'Sayfanın en üstünde tam genişlikte dönen kampanya görselleri: görseller, görünüm ayarları ve hazır şablonla görsel üretme.',
+                'icon'       => 'dashicons-images-alt2',
             ],
             'qrms-rm-diger' => [
                 'title'      => 'Diğer Ayarlar',
@@ -102,6 +110,7 @@ trait RMA_Admin_Pages_Trait {
                     ],
                     $from_sub( $this, 'qrms-rm-urunum-yok' ),
                     $from_sub( $this, 'qrms-rm-kampanya' ),
+                    $from_sub( $this, 'qrms-rm-kampanya-banner' ),
                 ],
             ],
             [
@@ -133,20 +142,6 @@ trait RMA_Admin_Pages_Trait {
                     $from_sub( $this, 'qrms-rm-gorunum' ),
                     $from_sub( $this, 'qrms-rm-one-cikanlar' ),
                     $from_sub( $this, 'qrms-rm-vitrin' ),
-                    // Kampanya Banner'ın kendi sayfası yok: "Menü Görünümü"
-                    // sayfasındaki üç adımlı sihirbazın bölümüdür (bkz.
-                    // trait-kampanya-banner-admin.php). Hub'da yine kendi
-                    // kartıyla durur ki kullanıcı onu aramak zorunda kalmasın.
-                    [
-                        'url'   => $this->admin_page_url(
-                            'qrms-rm-gorunum',
-                            [ 'banner_adim' => 'ozet' ],
-                            self::banner_anchor()
-                        ),
-                        'title' => 'Kampanya Banner',
-                        'desc'  => 'Sayfa başındaki kampanya görselleri: kampanya ekleyin, oran/geçiş/ok/başlık ayarlayın, hazır şablonla görsel üretin.',
-                        'icon'  => 'dashicons-images-alt2',
-                    ],
                     $from_sub( $this, 'qrms-rm-diger' ),
                 ],
             ],
@@ -175,11 +170,11 @@ trait RMA_Admin_Pages_Trait {
             'rma_csv_import'           => [ 'qrms-rm-diger',        'rma-ice-disa-aktar' ],
             'rma_menu_backup'          => [ 'qrms-rm-diger',        'rma-yedekleme' ],
 
-            // "Banner Görünümü" ayrı bir sayfaydı (qrms-rm-banner-ayar);
-            // içeriği Menü Görünümü sayfasındaki Kampanya Banner sihirbazının
-            // 2. adımına taşındı. Slug kayıtlı kalır ve oraya yönlendirir —
-            // eski yer imleri ve dış linkler 404 vermez.
-            'qrms-rm-banner-ayar'      => [ 'qrms-rm-gorunum', self::banner_anchor(), [ 'banner_adim' => 'kampanyalar' ] ],
+            // Eski "Banner Görünümü" sayfası (qrms-rm-banner-ayar) kaldırıldı;
+            // içeriği "Kampanya Banner" sayfasındaki sihirbazın 2. adımıdır.
+            // Slug kayıtlı kalır ve oraya yönlendirir — eski yer imleri ve
+            // dış linkler 404 vermez.
+            'qrms-rm-banner-ayar'      => [ 'qrms-rm-kampanya-banner', '', [ 'banner_adim' => 'kampanyalar' ] ],
         ];
     }
 
@@ -730,14 +725,6 @@ trait RMA_Admin_Pages_Trait {
         <?php $this->render_nav_design_page(); ?>
 
         <?php
-        // Kampanya Banner sihirbazı — renk/yazı tipi/kategori çubuğu
-        // bölümlerinin ALTINDA, onlara dokunmadan. Kendi trait'inde durur
-        // (bkz. trait-kampanya-banner-admin.php): bu dosya modülün tüm sayfa
-        // iskeletini taşıdığı için banner'ın ~900 satırı buraya sığmazdı.
-        if ( method_exists( $this, 'render_banner_wizard_section' ) ) {
-            $this->render_banner_wizard_section();
-        }
-
         $this->page_footer();
     }
 
@@ -949,11 +936,13 @@ trait RMA_Admin_Pages_Trait {
             // kaynaktan (get_nav_indicator_css) gelir; her biri önizleme
             // kabına hapsedilir ki admin sayfasının kalanına sızmasın.
             wp_add_inline_style( 'rma-nav', $this->get_nav_preview_css() );
+        }
 
-            // Kampanya Banner sihirbazı bu sayfanın bölümüdür: canlı
-            // önizleme ön yüzün GERÇEK stylesheet'ini kullanır, 3. adımdaki
-            // görsel üretme aracı ise kendi bağımsız betiğiyle gelir.
-            // (Suite kuruluysa aynı varlıklar module.php'den kuyruğa girer.)
+        // Kampanya Banner sayfasının canlı önizlemesi ön yüzün GERÇEK
+        // stylesheet'ini kullanır; 3. adımdaki görsel üretme aracı ise kendi
+        // bağımsız betiğiyle gelir. (Suite kuruluysa aynı varlıklar
+        // module.php'den kuyruğa girer.)
+        if ( 'qrms-rm-kampanya-banner' === $page ) {
             wp_enqueue_style(
                 'qmo-banner-slider',
                 RMA_PLUGIN_URL . 'includes/frontend-banner-slider.css',

@@ -1,6 +1,6 @@
 <?php
 /**
- * Kampanya Banner — yönetim sihirbazı ("Menü Görünümü" sayfasının bölümü).
+ * Kampanya Banner — yönetim sihirbazı (kendi başına ayrı bir admin sayfası).
  *
  * KAVRAM AYRIMI (ÖNEMLİ):
  *   "Kampanya"        = sayfa başındaki banner GÖRSELLERİ (qmo_banner_slide).
@@ -14,9 +14,12 @@
  * buraya toplandı. Modülün mevcut deseni "konuya özel trait" olduğu için
  * (trait-vitrin-admin.php, trait-kampanya-admin.php, urunum-yok/trait-admin.php)
  * bu iş de kendi trait'ine alındı: trait-admin-pages.php zaten ~1000 satır ve
- * modülün TÜM sayfa iskeletini taşıyor, banner'ın ~500 satırı orayı okunmaz
- * hâle getirirdi. Sayfaya tek bir giriş noktasından bağlanır:
- * render_appearance_page() -> render_banner_wizard_section().
+ * modülün TÜM sayfa iskeletini taşıyor, banner'ın ~900 satırı orayı okunmaz
+ * hâle getirirdi.
+ *
+ * KENDİ SAYFASI: ekran `qrms-rm-kampanya-banner` slug'ıyla get_subpages()
+ * içinde kayıtlıdır ve hub'da kendi kartı vardır — başka bir sayfanın alt
+ * bölümü DEĞİLDİR. Giriş noktası render_kampanya_banner_page().
  *
  * VERİ KATMANI DEĞİŞMEDİ: CPT slug'ı (qmo_banner_slide), meta anahtarları
  * (_qmo_banner_gorsel_id, _qmo_banner_link), option adı
@@ -111,22 +114,43 @@ trait RMA_Kampanya_Banner_Admin_Trait {
      */
     private function banner_wizard_url( $adim = 'ozet', array $args = array() ) {
         return $this->admin_page_url(
-            'qrms-rm-gorunum',
-            array_merge( array( 'banner_adim' => $adim ), $args ),
-            self::banner_anchor()
+            'qrms-rm-kampanya-banner',
+            array_merge( array( 'banner_adim' => $adim ), $args )
         );
     }
 
     /**
-     * "Menü Görünümü" sayfasının Kampanya Banner bölümü.
+     * "Kampanya Banner" sayfası — get_subpages()'teki qrms-rm-kampanya-banner
+     * kaydının render'ı.
      *
-     * render_appearance_page() bunu renk/yazı tipi/kategori çubuğu
-     * bölümlerinin ALTINDA çağırır; o bölümlerin hiçbirine dokunmaz.
+     * Başka bir sayfanın bölümü değil, kendi başına bir ekrandır; hub'da da
+     * kendi kartı vardır.
+     *
+     * @return void
+     */
+    public function render_kampanya_banner_page() {
+        $this->page_header(
+            'Kampanya Banner',
+            'Sayfanın en üstünde tam genişlikte dönen kampanya görselleri. Görsellerin kendisi, görünüm ayarları ve hazır görsel üretme aracı bu üç adımda toplandı.'
+        );
+
+        $this->render_banner_wizard_section();
+
+        $this->page_footer();
+    }
+
+    /**
+     * Üç adımlı Kampanya Banner sihirbazı.
+     *
+     * Sayfa iskeletinden (page_header/page_footer) bilerek ayrı durur:
+     * sihirbazın kendisi bu metottadır, sayfaya bağlanması
+     * render_kampanya_banner_page()'in işidir.
      *
      * @return void
      */
     public function render_banner_wizard_section() {
         if ( ! post_type_exists( QMO_Banner_CPT::POST_TYPE ) || ! class_exists( 'QMO_Banner_Slider_Settings' ) ) {
+            echo '<div class="rma-card"><p class="rma-empty">Kampanya Banner bileşeni yüklü değil.</p></div>';
             return;
         }
 
@@ -135,9 +159,6 @@ trait RMA_Kampanya_Banner_Admin_Trait {
         $toplam   = count( $adimlar );
         ?>
         <div class="rma-kb-wizard" id="<?php echo esc_attr( self::banner_anchor() ); ?>">
-            <h2 class="rma-kb-heading">Kampanya Banner</h2>
-            <p class="rma-card-desc">Sayfanın en üstünde tam genişlikte dönen kampanya görselleri. Görsellerin kendisi, görünüm ayarları ve hazır görsel üretme aracı bu üç adımda toplandı.</p>
-
             <?php $this->banner_notice(); ?>
 
             <nav class="rma-vitrin-steps" aria-label="Kampanya Banner adımları">
@@ -348,8 +369,8 @@ trait RMA_Kampanya_Banner_Admin_Trait {
 
         QMO_Banner_Slider_Settings::kaydet( $ham );
 
-        // Ayar formu artık Menü Görünümü sayfasının 2. adımındadır; kaydeden
-        // kullanıcı geldiği yere döner.
+        // Ayar formu sihirbazın 2. adımıdır; kaydeden kullanıcı geldiği
+        // yere döner.
         wp_safe_redirect( $this->banner_wizard_url( 'kampanyalar', array( 'banner_msg' => 'kaydedildi' ) ) );
         exit;
     }
@@ -411,8 +432,8 @@ trait RMA_Kampanya_Banner_Admin_Trait {
      * Kampanya Banner görünüm formu — oran, geçiş, oklar ve başlık.
      *
      * Eski render_banner_settings_page() gövdesinin aynısı; yalnızca sayfa
-     * başlığı/iskeleti (page_header/page_footer) düştü, çünkü artık ayrı
-     * bir sayfa değil Menü Görünümü'nün bir bölümü.
+     * iskeleti (page_header/page_footer) düştü, çünkü artık kendi başına bir
+     * sayfa değil Kampanya Banner sihirbazının 2. adımıdır.
      *
      * @return void
      */

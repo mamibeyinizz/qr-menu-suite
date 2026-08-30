@@ -13,7 +13,7 @@
  * İSİMLENDİRME: bu dosya YALNIZCA "Fiyat Kampanyaları"dır (toplu zam/indirim).
  * Banner GÖRSELLERİ artık "Kampanya" adıyla ayrı bir ekranda yönetilir ve bu
  * sayfayla hiçbir ortak kodu kalmadı — bkz. trait-kampanya-banner-admin.php
- * ("Menü Görünümü" sayfasının Kampanya Banner bölümü). İki kavram bilerek
+ * (kendi başına ayrı bir ekran: qrms-rm-kampanya-banner). İki kavram bilerek
  * birbirinden ayrıldı; buraya banner kodu geri eklenmemelidir.
  *
  * @package QR_Menu_Suite
@@ -218,11 +218,11 @@ trait RMA_Kampanya_Admin_Trait {
        Banner görsellerinin listesi (eski render_banner_section) ve banner
        görünüm ayarları (eski render_banner_settings_page +
        handle_banner_settings_save) artık bu dosyada DEĞİL: ikisi de
-       trait-kampanya-banner-admin.php'ye taşındı ve "Menü Görünümü"
-       sayfasının (qrms-rm-gorunum) Kampanya Banner bölümünde, üç adımlı
-       sihirbaz olarak render ediliyor. Eski `qrms-rm-banner-ayar` sayfası
-       kaldırıldı; o adrese gelen istekler get_legacy_page_map() üzerinden
-       yeni konuma yönlendiriliyor (bkz. trait-admin-pages.php).
+       trait-kampanya-banner-admin.php'ye taşındı ve kendi başına ayrı bir
+       ekranda (qrms-rm-kampanya-banner) üç adımlı sihirbaz olarak render
+       ediliyor. Eski `qrms-rm-banner-ayar` sayfası kaldırıldı; o adrese
+       gelen istekler get_legacy_page_map() üzerinden yeni sayfaya
+       yönlendiriliyor (bkz. trait-admin-pages.php).
 
        Bu sayfa artık yalnızca FİYAT kampanyalarını (toplu zam/indirim)
        yönetir; banner ile hiçbir ortak kodu yoktur.

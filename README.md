@@ -296,7 +296,7 @@ bir kısa kod rehbere eklenmezse düşer.
 
 | Slug | İçerik | Yönetim sayfası |
 | --- | --- | --- |
-| `restoran-menu` | `rma_menu_item` CPT, `[restaurant_menu]`, `[qmo_one_cikan_slider]`, `[qmo_banner_slider]` (`qmo_banner_slide` CPT + Menü Görünümü'ndeki Kampanya Banner sihirbazı), toplu fiyat kampanyası, Elementor widget'ı | ✔ Hub + dokuz ekran |
+| `restoran-menu` | `rma_menu_item` CPT, `[restaurant_menu]`, `[qmo_one_cikan_slider]`, `[qmo_banner_slider]` (`qmo_banner_slide` CPT + Kampanya Banner sihirbazı), toplu fiyat kampanyası, Elementor widget'ı | ✔ Hub + on ekran |
 | `yorum-feedback` | Çoklu kriter yorumlar, Google yönlendirme + ödül kodları, dinamik form oluşturucu, `[qr_menu_reviews]`, `[qr_menu_contact]`, `[qr_menu_form]` | ✔ Hub + yedi ayrı sayfa |
 | `qr-masa` | Masa kayıtları (CRUD + toplu oluşturma), masa QR adresleri, `[qr_aktif_masa]` | ✔ Masalar ekranı |
 | `qr-masa-oturum-guvenligi` | Sahte QR reddi, kilit ekranı, sayfa kilidi; uygulamanın REST uçlarının Firebase/şube yapılandırması | ✔ Hub + Oturum Limitleri / Firebase & Şube Ayarları |
@@ -460,13 +460,12 @@ ekranındaki kartlardan gidilir:
 | Öne Çıkanlar | `qrms-rm-one-cikanlar` |
 | Ürün Vitrini | `qrms-rm-vitrin` |
 | Fiyat Kampanyaları | `qrms-rm-kampanya` |
-| Kampanya Banner | `qrms-rm-gorunum&banner_adim=ozet#rma-kampanya-banner` |
+| Kampanya Banner | `qrms-rm-kampanya-banner` |
 | Diğer Ayarlar | `qrms-rm-diger` |
 
-Dördü çekirdeğin kendi ekranı, beşi modülün `add_submenu_page()` ile
+Dördü çekirdeğin kendi ekranı, altısı modülün `add_submenu_page()` ile
 kaydettiği **gerçek, ayrı sayfalardır**; JS ile gizlenip gösterilen sekme
-yoktur. "Kampanya Banner" kartı ayrı bir sayfa değil, "Menü Görünümü"
-sayfasının içindeki üç adımlı sihirbazın giriş adresidir. Hiçbirinin sol menüde satırı yoktur (bkz. *Alt sayfalar nasıl
+yoktur. Hiçbirinin sol menüde satırı yoktur (bkz. *Alt sayfalar nasıl
 gizleniyor?*), ama adresleri değişmedi — eski yer imleri çalışmaya devam
 eder.
 
@@ -477,20 +476,21 @@ Sayfaların hangi eski sekmeden geldiği:
 | Görünüm | "Genel Ayarlar" sekmesi (Renkler + Tipografi + Hazır Paletler iç sekmeleri) ve "Kayar Başlık" sekmesi |
 | Öne Çıkanlar | "Öneriler" sekmesi + menüden erişilemeyen `qmo_slide` (Öne Çıkan Slider) ekranı |
 | Fiyat Kampanyaları | Toplu fiyat kampanyası ekranı — **yalnızca fiyat zam/indirimi**; banner görselleriyle ilgisi yoktur |
+| Kampanya Banner | Menüden erişilemeyen `qmo_banner_slide` ekranı + eski "Banner Görünümü" sayfası (`qrms-rm-banner-ayar`), üç adımlı tek bir sihirbazda |
 | Diğer Ayarlar | "Kategori Sıralaması", "İçe/Dışa Aktar" ve "Yedekleme" sekmeleri, üç bölüm hâlinde |
 
-### Kampanya Banner: "Menü Görünümü" içindeki üç adımlı sihirbaz
+### Kampanya Banner: kendi sayfasındaki üç adımlı sihirbaz
 
 İsimlendirme netleştirildi: **"Kampanya" = banner görselleri**
 (`qmo_banner_slide`), **"Fiyat Kampanyası" = toplu zam/indirim**
 (`RMA_Kampanya_DB`). İki kavram ayrı ekranlardadır ve ortak kodu yoktur.
 
-Banner'la ilgili her şey — görsel CRUD'u ve görünüm ayarları — "Menü
-Görünümü" sayfasının (`qrms-rm-gorunum`) altındaki tek bir bölümde,
+Banner'la ilgili her şey — görsel CRUD'u ve görünüm ayarları — **kendi
+bağımsız sayfasında** (`qrms-rm-kampanya-banner`, hub'da kendi kartı var),
 `banner_adim` query arg'ıyla sürülen üç adımda toplandı
 (`RMA_Kampanya_Banner_Admin_Trait`, `includes/trait-kampanya-banner-admin.php`).
-Sayfanın mevcut renk / yazı tipi / kategori çubuğu bölümlerine dokunulmadı;
-sihirbaz onların altına eklendi.
+Başka bir ekranın alt bölümü değildir: "Menü Görünümü" sayfası yalnızca
+renk / yazı tipi / kategori çubuğu içerir, banner'a dair hiçbir şey barındırmaz.
 
 | Adım | Adres | İçerik |
 | --- | --- | --- |
@@ -505,8 +505,9 @@ yüzden her adım ayrı ayrı yer imlenebilir.
 Eski **`qrms-rm-banner-ayar`** sayfası kaldırıldı ama slug'ı silinmedi:
 `get_legacy_page_map()` içinde kayıtlıdır ve o adrese gelen istekler
 `redirect_legacy_page()` ile
-`qrms-rm-gorunum&banner_adim=kampanyalar#rma-kampanya-banner` adresine
-`wp_safe_redirect` edilir. Eski yer imleri ve dış linkler 404 vermez.
+`qrms-rm-kampanya-banner&banner_adim=kampanyalar` adresine
+`wp_safe_redirect` edilir. Eski yer imleri ve dış linkler 404 vermez; aynı
+işlev iki slug'ta tutulmaz.
 
 **3. adım — görsel üretme neden tarayıcı tarafında?** Kod tabanında hiçbir
 yerde GD/Imagick ile çizim yok (tek görüntü işleme `qr-galeri`'deki
