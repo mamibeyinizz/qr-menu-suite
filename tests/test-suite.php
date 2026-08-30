@@ -8782,13 +8782,62 @@ qrms_test(
 		qrms_assert_contains( '4. Yazı Tipi ve Renk', $html, 'hamburger adım 4' );
 		qrms_assert_contains( '1. Logo ve Slogan', $html, 'footer adım 1' );
 		qrms_assert_contains( '2. Hızlı Menü', $html, 'footer adım 2' );
-		qrms_assert_contains( '3. Çalışma Saatleri ve İletişim', $html, 'footer adım 3' );
-		qrms_assert_contains( '4. Garson / Hesap Butonu', $html, 'footer adım 4' );
+		qrms_assert_contains( '3. Çalışma Saatleri', $html, 'footer adım 3' );
+		qrms_assert_contains( '4. İletişim Bilgileri', $html, 'footer adım 4' );
+		qrms_assert_contains( '5. Garson / Hesap Butonu', $html, 'footer adım 5' );
+		qrms_assert_true( false === strpos( $html, '3. Çalışma Saatleri ve İletişim' ), 'eski birleşik saatler+iletişim başlığı yok' );
+		qrms_assert_true( false === strpos( $html, '4. Garson / Hesap Butonu' ), 'çağrı artık 5. adım' );
+		qrms_assert_contains( 'Başlık yazı rengi', $html, 'başlık rengi etiketi ayrışmış' );
+		qrms_assert_contains( 'Link yazı rengi', $html, 'link rengi etiketi ayrışmış' );
+		qrms_assert_contains( 'Gün/saat yazı rengi', $html, 'saat satır rengi etiketi ayrışmış' );
+		qrms_assert_contains( 'İletişim satır yazı rengi', $html, 'iletişim satır rengi etiketi ayrışmış' );
+		qrms_assert_contains( 'id="hfb-steps-footer"', $html, 'footer adım şeridi' );
+		qrms_assert_contains( 'Adım 1/5: Logo ve Slogan', $html, 'footer ilerleme 5 adım' );
+
+		if ( preg_match( '/id="hfb-panel-footer"(.*?)<div class="hfb-tab-panel/s', $html, $footer_panel ) ) {
+			$footer_html = $footer_panel[1];
+
+			qrms_assert_contains( 'data-step="5"', $footer_html, 'çağrı data-step=5' );
+
+			if ( preg_match( '/data-step="3"[^>]*>(.*?)<div class="qrms-card hfb-step" data-step="4"/s', $footer_html, $saatler ) ) {
+				qrms_assert_contains( 'hfb_footer_hours_title', $saatler[1], 'saatler adımında saat başlığı' );
+				qrms_assert_true( false === strpos( $saatler[1], 'hfb_footer_contact_title' ), 'saatler adımında iletişim yok' );
+				qrms_assert_true( false === strpos( $saatler[1], 'hfb_footer_address' ), 'saatler adımında adres yok' );
+			} else {
+				qrms_assert_true( false, 'footer adım 3 kartı bulunamadı' );
+			}
+
+			if ( preg_match( '/data-step="4"[^>]*>(.*?)<div class="qrms-card hfb-step" data-step="5"/s', $footer_html, $iletisim ) ) {
+				qrms_assert_contains( 'hfb_footer_contact_title', $iletisim[1], 'iletişim adımında iletişim başlığı' );
+				qrms_assert_contains( 'hfb_footer_address', $iletisim[1], 'iletişim adımında adres' );
+				qrms_assert_true( false === strpos( $iletisim[1], 'hfb_footer_hours_title' ), 'iletişim adımında saat başlığı yok' );
+			} else {
+				qrms_assert_true( false, 'footer adım 4 kartı bulunamadı' );
+			}
+
+			qrms_assert_contains( 'hfb_footer_call_enabled', $footer_html, 'çağrı alanı footer panelinde' );
+			qrms_assert_contains( 'hfb_footer_call_garson_label', $footer_html, 'garson metni duruyor' );
+		} else {
+			qrms_assert_true( false, 'footer paneli bulunamadı' );
+		}
 		qrms_assert_contains( 'hfb-color-picker', $html, 'renk seçici' );
 		qrms_assert_contains( 'hfb-block-sortable', $html, 'sürükle-bırak liste' );
 		qrms_assert_contains( 'Masaüstü Önizleme', $html, 'masaüstü önizleme düğmesi' );
 		qrms_assert_contains( 'Önizlemede Aç', $html, 'hamburger panel önizleme' );
 		qrms_assert_true( false === strpos( $html, 'Tasarım sabittir' ), 'eski sabit tasarım metni yok' );
+	}
+);
+
+qrms_test(
+	'footer adım sihirbazı DOM kart sayısını kullanır, sabit 4 yoktur',
+	function () {
+		$js = file_get_contents( QRMS_PLUGIN_DIR . 'modules/header-footer-builder/assets/js/admin.js' );
+
+		qrms_assert_contains( 'var toplam = $steps.length;', $js, 'toplam DOM\'daki kart sayısı' );
+		qrms_assert_contains( 'function sinirla(adimNo)', $js, 'adım sınır kontrolü' );
+		qrms_assert_contains( '$next.toggle(mevcut < toplam);', $js, 'son adımda Devam Et gizlenir' );
+		qrms_assert_true( false === strpos( $js, 'var toplam = 4' ), 'sabit 4 adım yok' );
+		qrms_assert_true( false === strpos( $js, "'4/4'" ), 'sabit 4/4 metni yok' );
 	}
 );
 

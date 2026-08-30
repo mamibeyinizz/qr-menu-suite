@@ -371,15 +371,16 @@ trait QRMS_HFB_Admin {
 		$adimlar = array(
 			1 => array( 'Logo', 'Logo ve Slogan' ),
 			2 => array( 'Menü', 'Hızlı Menü' ),
-			3 => array( 'Saatler', 'Çalışma Saatleri ve İletişim' ),
-			4 => array( 'Çağrı', 'Garson / Hesap Butonu' ),
+			3 => array( 'Saatler', 'Çalışma Saatleri' ),
+			4 => array( 'İletişim', 'İletişim Bilgileri' ),
+			5 => array( 'Çağrı', 'Garson / Hesap Butonu' ),
 		);
 
 		$this->render_stepper_bar( 'footer', $adimlar );
 		?>
 		<div class="qrms-card hfb-step" data-step="1" data-step-title="<?php esc_attr_e( 'Logo ve Slogan', 'qrms' ); ?>">
 			<h2 class="qrms-card-title"><?php esc_html_e( '1. Logo ve Slogan', 'qrms' ); ?></h2>
-			<p class="description"><?php esc_html_e( 'Footer\'ın sol sütunundaki logo, iki satırlık marka adı ve kısa açıklama. Logo seçilmezse QR ikonu ve marka yazısı kullanılır.', 'qrms' ); ?></p>
+			<p class="description"><?php esc_html_e( 'Footer\'ın 1. sütunu: logo, marka adı ve kısa açıklama.', 'qrms' ); ?></p>
 
 			<h3 class="hfb-section-title"><?php esc_html_e( 'Genel', 'qrms' ); ?></h3>
 			<?php $this->render_media_field( 'hfb_footer_logo', __( 'Logo (isteğe bağlı)', 'qrms' ), (int) $opts['logo'] ); ?>
@@ -454,7 +455,12 @@ trait QRMS_HFB_Admin {
 				$opts,
 				'brand',
 				array(
-					'title' => __( 'Slogan ve açıklama yazısı', 'qrms' ),
+					'title'        => __( 'Slogan ve açıklama yazısı', 'qrms' ),
+					'desc'         => __( 'Sol sütundaki marka adı ve kısa açıklama', 'qrms' ),
+					'color_label'  => __( 'Slogan yazı rengi', 'qrms' ),
+					'size_label'   => __( 'Slogan yazı boyutu', 'qrms' ),
+					'family_label' => __( 'Slogan yazı tipi', 'qrms' ),
+					'weight_label' => __( 'Slogan yazı kalınlığı', 'qrms' ),
 				)
 			);
 			?>
@@ -462,10 +468,10 @@ trait QRMS_HFB_Admin {
 
 		<div class="qrms-card hfb-step" data-step="2" data-step-title="<?php esc_attr_e( 'Hızlı Menü', 'qrms' ); ?>" style="display:none;">
 			<h2 class="qrms-card-title"><?php esc_html_e( '2. Hızlı Menü', 'qrms' ); ?></h2>
-			<p class="description"><?php esc_html_e( 'Footer\'ın ikinci sütunu. Başlık metnini ve WordPress menüsünü seçin; bağlantılar ok ikonuyla listelenir.', 'qrms' ); ?></p>
+			<p class="description"><?php esc_html_e( 'Footer\'ın 2. sütunundaki başlık ve hızlı menü listesi.', 'qrms' ); ?></p>
 
 			<div class="qrms-field">
-				<label class="qrms-label" for="hfb_footer_links_title"><?php esc_html_e( 'Başlık', 'qrms' ); ?></label>
+				<label class="qrms-label" for="hfb_footer_links_title"><?php esc_html_e( 'Sütun başlığı', 'qrms' ); ?></label>
 				<input type="text" id="hfb_footer_links_title" name="hfb_footer_links_title" class="qrms-input hfb-preview-trigger" value="<?php echo esc_attr( $opts['links_title'] ); ?>" placeholder="<?php esc_attr_e( 'Hızlı Menü', 'qrms' ); ?>" />
 			</div>
 
@@ -491,7 +497,12 @@ trait QRMS_HFB_Admin {
 				$opts,
 				'links_title',
 				array(
-					'title' => __( 'Başlık yazısı', 'qrms' ),
+					'title'        => __( 'Başlık yazısı', 'qrms' ),
+					'desc'         => __( 'Hızlı Menü sütununun başlık satırı', 'qrms' ),
+					'color_label'  => __( 'Başlık yazı rengi', 'qrms' ),
+					'size_label'   => __( 'Başlık yazı boyutu', 'qrms' ),
+					'family_label' => __( 'Başlık yazı tipi', 'qrms' ),
+					'weight_label' => __( 'Başlık yazı kalınlığı', 'qrms' ),
 				)
 			);
 			$this->hfb_typo_block(
@@ -499,25 +510,30 @@ trait QRMS_HFB_Admin {
 				$opts,
 				'links_item',
 				array(
-					'title'       => __( 'Menü bağlantıları', 'qrms' ),
-					'hover_key'   => 'links_item_hover_color',
-					'hover_label' => __( 'Hover rengi', 'qrms' ),
-					'hover_desc'  => __( 'Bağlantının üzerine gelince kullanılan renk.', 'qrms' ),
+					'title'        => __( 'Menü bağlantıları', 'qrms' ),
+					'desc'         => __( 'Hızlı Menü listesindeki link satırları (başlık DEĞİL)', 'qrms' ),
+					'color_label'  => __( 'Link yazı rengi', 'qrms' ),
+					'size_label'   => __( 'Link yazı boyutu', 'qrms' ),
+					'family_label' => __( 'Link yazı tipi', 'qrms' ),
+					'weight_label' => __( 'Link yazı kalınlığı', 'qrms' ),
+					'hover_key'    => 'links_item_hover_color',
+					'hover_label'  => __( 'Link hover rengi', 'qrms' ),
+					'hover_desc'   => __( 'Bağlantının üzerine gelince kullanılan renk.', 'qrms' ),
 				)
 			);
 			?>
 		</div>
 
-		<div class="qrms-card hfb-step" data-step="3" data-step-title="<?php esc_attr_e( 'Çalışma Saatleri ve İletişim', 'qrms' ); ?>" style="display:none;">
-			<h2 class="qrms-card-title"><?php esc_html_e( '3. Çalışma Saatleri ve İletişim', 'qrms' ); ?></h2>
-			<p class="description"><?php esc_html_e( 'Görseldeki gibi yan yana duran iki sütun. Saatler QR Çalışma Saatleri modülünden okunur; iletişim bilgileri burada girilir.', 'qrms' ); ?></p>
+		<div class="qrms-card hfb-step" data-step="3" data-step-title="<?php esc_attr_e( 'Çalışma Saatleri', 'qrms' ); ?>" style="display:none;">
+			<h2 class="qrms-card-title"><?php esc_html_e( '3. Çalışma Saatleri', 'qrms' ); ?></h2>
+			<p class="description"><?php esc_html_e( 'Footer\'ın 3. sütunundaki gün/saat listesi.', 'qrms' ); ?></p>
 
 			<div class="hfb-subpanel">
 				<h3 class="hfb-subpanel__title"><?php esc_html_e( 'Çalışma Saatleri', 'qrms' ); ?></h3>
 				<?php if ( $this->hours_module_available() ) : ?>
-					<p class="description"><?php esc_html_e( 'Gün ve saat aralıkları QR Çalışma Saatleri modülünden gelir; burada yeniden girilmez. Yalnızca görünüm ayarlanır.', 'qrms' ); ?></p>
+					<p class="description"><?php esc_html_e( 'Gün/saat listesi modülden gelir; burada yalnızca görünüm ayarlanır.', 'qrms' ); ?></p>
 					<div class="qrms-field">
-						<label class="qrms-label" for="hfb_footer_hours_title"><?php esc_html_e( 'Başlık', 'qrms' ); ?></label>
+						<label class="qrms-label" for="hfb_footer_hours_title"><?php esc_html_e( 'Sütun başlığı', 'qrms' ); ?></label>
 						<input type="text" id="hfb_footer_hours_title" name="hfb_footer_hours_title" class="qrms-input hfb-preview-trigger" value="<?php echo esc_attr( $opts['hours_title'] ); ?>" placeholder="<?php esc_attr_e( 'Çalışma Saatlerimiz', 'qrms' ); ?>" />
 					</div>
 					<?php
@@ -533,7 +549,12 @@ trait QRMS_HFB_Admin {
 						$opts,
 						'hours_title',
 						array(
-							'title' => __( 'Başlık yazısı', 'qrms' ),
+							'title'        => __( 'Başlık yazısı', 'qrms' ),
+							'desc'         => __( 'Saat sütununun başlık satırı', 'qrms' ),
+							'color_label'  => __( 'Başlık yazı rengi', 'qrms' ),
+							'size_label'   => __( 'Başlık yazı boyutu', 'qrms' ),
+							'family_label' => __( 'Başlık yazı tipi', 'qrms' ),
+							'weight_label' => __( 'Başlık yazı kalınlığı', 'qrms' ),
 						)
 					);
 					$this->hfb_typo_block(
@@ -541,7 +562,12 @@ trait QRMS_HFB_Admin {
 						$opts,
 						'hours_item',
 						array(
-							'title' => __( 'Gün ve saat metinleri', 'qrms' ),
+							'title'        => __( 'Gün ve saat metinleri', 'qrms' ),
+							'desc'         => __( 'Gün adı ve saat aralığı satırları', 'qrms' ),
+							'color_label'  => __( 'Gün/saat yazı rengi', 'qrms' ),
+							'size_label'   => __( 'Gün/saat yazı boyutu', 'qrms' ),
+							'family_label' => __( 'Gün/saat yazı tipi', 'qrms' ),
+							'weight_label' => __( 'Gün/saat yazı kalınlığı', 'qrms' ),
 						)
 					);
 					?>
@@ -552,11 +578,17 @@ trait QRMS_HFB_Admin {
 					<input type="hidden" name="hfb_footer_hours_title" value="<?php echo esc_attr( $opts['hours_title'] ); ?>" />
 				<?php endif; ?>
 			</div>
+		</div>
+
+		<div class="qrms-card hfb-step" data-step="4" data-step-title="<?php esc_attr_e( 'İletişim Bilgileri', 'qrms' ); ?>" style="display:none;">
+			<h2 class="qrms-card-title"><?php esc_html_e( '4. İletişim Bilgileri', 'qrms' ); ?></h2>
+			<p class="description"><?php esc_html_e( 'Footer\'ın 4. sütunundaki adres, telefon ve sosyal ikonlar.', 'qrms' ); ?></p>
 
 			<div class="hfb-subpanel">
 				<h3 class="hfb-subpanel__title"><?php esc_html_e( 'İletişim', 'qrms' ); ?></h3>
+				<p class="description"><?php esc_html_e( 'Footer\'ın 4. sütunundaki adres/telefon/sosyal ikonlar.', 'qrms' ); ?></p>
 				<div class="qrms-field">
-					<label class="qrms-label" for="hfb_footer_contact_title"><?php esc_html_e( 'Başlık', 'qrms' ); ?></label>
+					<label class="qrms-label" for="hfb_footer_contact_title"><?php esc_html_e( 'Sütun başlığı', 'qrms' ); ?></label>
 					<input type="text" id="hfb_footer_contact_title" name="hfb_footer_contact_title" class="qrms-input hfb-preview-trigger" value="<?php echo esc_attr( $opts['contact_title'] ); ?>" placeholder="<?php esc_attr_e( 'İletişim', 'qrms' ); ?>" />
 				</div>
 
@@ -580,7 +612,7 @@ trait QRMS_HFB_Admin {
 					<input type="text" id="hfb_footer_copyright" name="hfb_footer_copyright" class="qrms-input hfb-preview-trigger" value="<?php echo esc_attr( $opts['copyright'] ); ?>" />
 				</div>
 
-				<p class="description"><?php esc_html_e( 'İletişim sütununda görünen sosyal ikonlar. En fazla 6 tanesi gösterilir.', 'qrms' ); ?></p>
+				<p class="description"><?php esc_html_e( '4. sütundaki sosyal ikonlar; en fazla 6 tanesi gösterilir.', 'qrms' ); ?></p>
 				<?php $this->render_social_fields( $opts, 'hfb_' ); ?>
 
 				<?php
@@ -596,7 +628,12 @@ trait QRMS_HFB_Admin {
 					$opts,
 					'contact_title',
 					array(
-						'title' => __( 'Başlık yazısı', 'qrms' ),
+						'title'        => __( 'Başlık yazısı', 'qrms' ),
+						'desc'         => __( 'İletişim sütununun başlık satırı', 'qrms' ),
+						'color_label'  => __( 'Başlık yazı rengi', 'qrms' ),
+						'size_label'   => __( 'Başlık yazı boyutu', 'qrms' ),
+						'family_label' => __( 'Başlık yazı tipi', 'qrms' ),
+						'weight_label' => __( 'Başlık yazı kalınlığı', 'qrms' ),
 					)
 				);
 				$this->hfb_typo_block(
@@ -604,15 +641,20 @@ trait QRMS_HFB_Admin {
 					$opts,
 					'contact_item',
 					array(
-						'title' => __( 'Adres, telefon ve e-posta satırları', 'qrms' ),
+						'title'        => __( 'Adres, telefon ve e-posta satırları', 'qrms' ),
+						'desc'         => __( 'Adres, telefon, e-posta ve telif satırları', 'qrms' ),
+						'color_label'  => __( 'İletişim satır yazı rengi', 'qrms' ),
+						'size_label'   => __( 'İletişim satır yazı boyutu', 'qrms' ),
+						'family_label' => __( 'İletişim satır yazı tipi', 'qrms' ),
+						'weight_label' => __( 'İletişim satır yazı kalınlığı', 'qrms' ),
 					)
 				);
 				?>
 			</div>
 		</div>
 
-		<div class="qrms-card hfb-step" data-step="4" data-step-title="<?php esc_attr_e( 'Garson / Hesap Butonu', 'qrms' ); ?>" style="display:none;">
-			<h2 class="qrms-card-title"><?php esc_html_e( '4. Garson / Hesap Butonu', 'qrms' ); ?></h2>
+		<div class="qrms-card hfb-step" data-step="5" data-step-title="<?php esc_attr_e( 'Garson / Hesap Butonu', 'qrms' ); ?>" style="display:none;">
+			<h2 class="qrms-card-title"><?php esc_html_e( '5. Garson / Hesap Butonu', 'qrms' ); ?></h2>
 			<p class="description"><?php esc_html_e( 'Footer\'da görünen Garson Çağır ve Hesap İste kısayolları. Tıklama, mevcut masa oturumu + AJAX çağrı mekanizmasına gider; burada yeniden yazılmaz.', 'qrms' ); ?></p>
 
 			<?php if ( ! $this->call_buttons_available() ) : ?>
@@ -1465,16 +1507,24 @@ trait QRMS_HFB_Admin {
 	 * @param string              $form_prefix Form öneki (hfb_footer_).
 	 * @param array<string,mixed> $opts        Ayarlar.
 	 * @param string              $group       Option öneki (brand, links_title…).
-	 * @param array<string,mixed> $args        title, color_label, hover_key, hover_label.
+	 * @param array<string,mixed> $args        title, desc, color_label, size_label, family_label, weight_label, hover_key, hover_label.
 	 * @return void
 	 */
 	private function hfb_typo_block( $form_prefix, $opts, $group, $args = array() ) {
-		$keys  = $this->typo_keys( $group );
-		$title = isset( $args['title'] ) ? (string) $args['title'] : '';
+		$keys         = $this->typo_keys( $group );
+		$title        = isset( $args['title'] ) ? (string) $args['title'] : '';
+		$desc         = isset( $args['desc'] ) ? (string) $args['desc'] : '';
+		$color_label  = isset( $args['color_label'] ) ? (string) $args['color_label'] : __( 'Yazı rengi', 'qrms' );
+		$size_label   = isset( $args['size_label'] ) ? (string) $args['size_label'] : __( 'Yazı boyutu', 'qrms' );
+		$family_label = isset( $args['family_label'] ) ? (string) $args['family_label'] : __( 'Yazı tipi', 'qrms' );
+		$weight_label = isset( $args['weight_label'] ) ? (string) $args['weight_label'] : __( 'Yazı kalınlığı', 'qrms' );
 		?>
 		<div class="hfb-typo">
 			<?php if ( '' !== $title ) : ?>
 				<h3 class="hfb-section-title"><?php echo esc_html( $title ); ?></h3>
+				<?php if ( '' !== $desc ) : ?>
+					<p class="description"><?php echo esc_html( $desc ); ?></p>
+				<?php endif; ?>
 			<?php endif; ?>
 
 			<h4 class="hfb-section-sub"><?php esc_html_e( 'Genel', 'qrms' ); ?></h4>
@@ -1483,21 +1533,21 @@ trait QRMS_HFB_Admin {
 				$form_prefix . $keys['family'],
 				$form_prefix . $keys['family'],
 				(string) $opts[ $keys['family'] ],
-				__( 'Yazı tipi', 'qrms' ),
+				$family_label,
 				isset( $args['family_desc'] ) ? (string) $args['family_desc'] : __( 'Bu metin grubunun yazı tipi.', 'qrms' )
 			);
 			$this->hfb_weight_row(
 				$form_prefix . $keys['weight'],
 				$form_prefix . $keys['weight'],
 				(int) $opts[ $keys['weight'] ],
-				__( 'Yazı kalınlığı', 'qrms' ),
+				$weight_label,
 				__( '400 sakin, 600–700 daha vurgulu durur.', 'qrms' )
 			);
 			$this->hfb_color_field(
 				$form_prefix . $keys['color'],
 				$form_prefix . $keys['color'],
 				(string) $opts[ $keys['color'] ],
-				isset( $args['color_label'] ) ? (string) $args['color_label'] : __( 'Yazı rengi', 'qrms' ),
+				$color_label,
 				isset( $args['color_desc'] ) ? (string) $args['color_desc'] : __( 'Bu metin grubunun rengi.', 'qrms' ),
 				(string) $opts[ $keys['color'] ]
 			);
@@ -1524,7 +1574,7 @@ trait QRMS_HFB_Admin {
 					(int) $opts[ $keys['size_desktop'] ],
 					self::FONT_SIZE_MIN,
 					self::FONT_SIZE_MAX,
-					__( 'Yazı boyutu', 'qrms' ),
+					$size_label,
 					__( 'Geniş ekranda punto değeri.', 'qrms' )
 				);
 				?>
@@ -1539,7 +1589,7 @@ trait QRMS_HFB_Admin {
 					(int) $opts[ $keys['size_mobile'] ],
 					self::FONT_SIZE_MOBILE_MIN,
 					self::FONT_SIZE_MOBILE_MAX,
-					__( 'Yazı boyutu', 'qrms' ),
+					$size_label,
 					__( 'Telefonda punto değeri. Masaüstünden bağımsızdır.', 'qrms' )
 				);
 				?>

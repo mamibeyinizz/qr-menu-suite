@@ -16,9 +16,10 @@
  *    tüm çıktı sunucudan gelir.
  * 4. Formun yalnızca elle sayılan birkaç alanı toplanıyordu; yeni alanlar
  *    önizlemeye yansımıyordu. Artık form olduğu gibi serileştirilir ve
- *    kayıtla AYNI temizleyicilerden geçer. Footer'ın dört adımı (Logo/
- *    Slogan, Hızlı Menü, Çalışma Saatleri+İletişim, Garson/Hesap) da bu
- *    yoldan geçer — ayrı bir önizleme yolu yoktur.
+ *    kayıtla AYNI temizleyicilerden geçer. Footer'ın beş adımı (Logo/
+ *    Slogan, Hızlı Menü, Çalışma Saatleri, İletişim, Garson/Hesap) da bu
+ *    yoldan geçer — ayrı bir önizleme yolu yoktur. Adım numarası yalnızca
+ *    yönetim sihirbazını böler; önizleme formu olduğu gibi serileştirir.
  * 5. İstemci yükü DÜZ bir sözlük olarak kuruyordu. Köşeli parantez taşıyan
  *    alan adları (`hfb_hamburger_blocks[blk_1][enabled]`) bu sözlükte anahtar
  *    olunca istek `data[hfb_hamburger_blocks[blk_1][enabled]]` hâline
