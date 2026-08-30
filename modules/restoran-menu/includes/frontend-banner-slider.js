@@ -10,12 +10,32 @@
 (function () {
     'use strict';
 
+    /* currentScript, betik değerlendirilirken okunmalı; DOMContentLoaded
+       beklenirse o anda zaten null'dır. defer/birleştirilmiş kopyada da
+       null olabilir — o zaman henüz bağlanmamış kökü DOM'dan buluruz. */
     var script = document.currentScript;
-    if (!script) return;
 
-    var root = script.previousElementSibling;
-    if (!root || !root.matches('[data-qmo-banner-slider]')) return;
+    function boot() {
+        var preferred = script && script.previousElementSibling &&
+            script.previousElementSibling.matches &&
+            script.previousElementSibling.matches('[data-qmo-banner-slider]')
+            ? [script.previousElementSibling]
+            : document.querySelectorAll('[data-qmo-banner-slider]:not([data-qmo-banner-ready])');
 
+        for (var i = 0; i < preferred.length; i++) {
+            if (preferred[i].getAttribute('data-qmo-banner-ready')) continue;
+            preferred[i].setAttribute('data-qmo-banner-ready', '1');
+            init(preferred[i]);
+        }
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', boot);
+    } else {
+        boot();
+    }
+
+    function init(root) {
     var track = root.querySelector('[data-qmo-banner-track]');
     var slides = root.querySelectorAll('.qmo-banner-slide');
     if (!track || slides.length < 1) return;
@@ -60,10 +80,24 @@
     function slideStep() {
         if (slides.length < 2) return 0;
 
-        return Math.abs(
+        var fromRect = Math.abs(
             slides[1].getBoundingClientRect().left -
             slides[0].getBoundingClientRect().left
         );
+        if (fromRect > 0) return fromRect;
+
+        /* Layout henüz yoksa (CSS asenkron, display:none ebeveyn) rect
+           0 döner. offsetLeft transform'dan bağımsızdır ve aynı adımı
+           verir; o da 0'sa görsel genişlik + gap yedeği. */
+        var fromOffset = slides[1].offsetLeft - slides[0].offsetLeft;
+        if (fromOffset > 0) return fromOffset;
+
+        var gap = 0;
+        if (window.getComputedStyle) {
+            gap = parseFloat(window.getComputedStyle(track).columnGap || window.getComputedStyle(track).gap) || 0;
+        }
+
+        return (slides[0].offsetWidth || 0) + gap;
     }
 
     function setActive(index) {
@@ -210,6 +244,9 @@
             entries.forEach(function (entry) {
                 visible = entry.isIntersecting;
                 if (visible) {
+                    /* İlk ölçüm gizli/0 genişlikteydiysa görünür olunca
+                       peek adımı yeniden hesaplanır. */
+                    if (!fade) setActive(current);
                     startAutoplay();
                 } else {
                     stopAutoplay();
@@ -237,4 +274,21 @@
     });
 
     setActive(0);
+
+    /* defer betik parse bitince çalışır ama stiller henüz uygulanmamış
+       olabilir (asenkron CSS). İlk karede 0 okunan adım bir kare sonra
+       ve window.load'da tekrar ölçülür. */
+    if (typeof requestAnimationFrame === 'function') {
+        requestAnimationFrame(function () {
+            if (!fade) setActive(current);
+            requestAnimationFrame(function () {
+                if (!fade) setActive(current);
+            });
+        });
+    }
+
+    window.addEventListener('load', function () {
+        if (!fade) setActive(current);
+    });
+    } // init
 })();

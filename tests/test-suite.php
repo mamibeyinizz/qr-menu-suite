@@ -9424,11 +9424,16 @@ qrms_test(
 		qrms_assert_contains( 'box-sizing: border-box', $css, 'track kutu modeli' );
 		qrms_assert_contains( 'gap: var(--qmo-banner-gap)', $css, 'slaytlar arası boşluk' );
 		qrms_assert_contains( 'border-radius: var(--qmo-banner-radius)', $css, 'yuvarlak köşe' );
+		qrms_assert_contains( 'min-width: 0', $css, 'slayt içerik minine kilitlenmez' );
+		qrms_assert_contains( 'flex: 0 0 auto', $css, 'peek slayt genişliği width:100% ile' );
+		qrms_assert_false( strpos( $css, 'min-width: 100%' ) !== false, 'min-width:100% peek\'i yutardı' );
 
 		// Peek yalnızca birden fazla banner varken açılır: tek banner'da
 		// yanlarda gösterilecek komşu yok.
 		qrms_assert_contains( "\$kok_sinif .= ' is-peek';", $kod, 'is-peek sınıfı' );
 		qrms_assert_contains( 'if ( $count > 1 ) {', $kod, 'yalnızca 2+ banner' );
+		qrms_assert_contains( 'filemtime( $css )', $kod, 'css sürümü dosya zamanı' );
+		qrms_assert_contains( 'filemtime( $js )', $kod, 'js sürümü dosya zamanı' );
 
 		// Solma modunda peek kapalı: slaytlar üst üste, komşu kenarı yok.
 		foreach ( array( 'track', 'slide' ) as $parca ) {
@@ -9444,6 +9449,8 @@ qrms_test(
 		// ifade edilemez), pencere boyutu değişince yeniden hesaplanır.
 		qrms_assert_contains( 'function slideStep()', $js, 'adım ölçümü' );
 		qrms_assert_contains( 'getBoundingClientRect().left', $js, 'gerçek konum okunur' );
+		qrms_assert_contains( 'offsetLeft', $js, 'layout yokken yedek ölçüm' );
+		qrms_assert_contains( 'requestAnimationFrame', $js, 'stil uygulandıktan sonra yeniden ölçülür' );
 		qrms_assert_contains( "translateX(' + (-slideStep() * current) + 'px)", $js, 'px cinsinden transform' );
 		qrms_assert_contains( "addEventListener('resize'", $js, 'yeniden boyutlandırma' );
 		qrms_assert_false( strpos( $js, "(-100 * current) + '%'" ) !== false, 'eski yüzde hesabı kaldırıldı' );
