@@ -296,7 +296,7 @@ bir kısa kod rehbere eklenmezse düşer.
 
 | Slug | İçerik | Yönetim sayfası |
 | --- | --- | --- |
-| `restoran-menu` | `rma_menu_item` CPT, `[restaurant_menu]`, `[qmo_one_cikan_slider]`, `[qmo_banner_slider]` (`qmo_banner_slide` CPT + Banner Görünümü ekranı), toplu fiyat kampanyası, Elementor widget'ı | ✔ Hub + on ekran |
+| `restoran-menu` | `rma_menu_item` CPT, `[restaurant_menu]`, `[qmo_one_cikan_slider]`, `[qmo_banner_slider]` (`qmo_banner_slide` CPT + Menü Görünümü'ndeki Kampanya Banner sihirbazı), toplu fiyat kampanyası, Elementor widget'ı | ✔ Hub + dokuz ekran |
 | `yorum-feedback` | Çoklu kriter yorumlar, Google yönlendirme + ödül kodları, dinamik form oluşturucu, `[qr_menu_reviews]`, `[qr_menu_contact]`, `[qr_menu_form]` | ✔ Hub + yedi ayrı sayfa |
 | `qr-masa` | Masa kayıtları (CRUD + toplu oluşturma), masa QR adresleri, `[qr_aktif_masa]` | ✔ Masalar ekranı |
 | `qr-masa-oturum-guvenligi` | Sahte QR reddi, kilit ekranı, sayfa kilidi; uygulamanın REST uçlarının Firebase/şube yapılandırması | ✔ Hub + Oturum Limitleri / Firebase & Şube Ayarları |
@@ -460,12 +460,13 @@ ekranındaki kartlardan gidilir:
 | Öne Çıkanlar | `qrms-rm-one-cikanlar` |
 | Ürün Vitrini | `qrms-rm-vitrin` |
 | Fiyat Kampanyaları | `qrms-rm-kampanya` |
-| Kampanya Banner | `qrms-rm-banner-ayar` |
+| Kampanya Banner | `qrms-rm-gorunum&banner_adim=ozet#rma-kampanya-banner` |
 | Diğer Ayarlar | `qrms-rm-diger` |
 
-Dördü çekirdeğin kendi ekranı, altısı modülün `add_submenu_page()` ile
+Dördü çekirdeğin kendi ekranı, beşi modülün `add_submenu_page()` ile
 kaydettiği **gerçek, ayrı sayfalardır**; JS ile gizlenip gösterilen sekme
-yoktur. Hiçbirinin sol menüde satırı yoktur (bkz. *Alt sayfalar nasıl
+yoktur. "Kampanya Banner" kartı ayrı bir sayfa değil, "Menü Görünümü"
+sayfasının içindeki üç adımlı sihirbazın giriş adresidir. Hiçbirinin sol menüde satırı yoktur (bkz. *Alt sayfalar nasıl
 gizleniyor?*), ama adresleri değişmedi — eski yer imleri çalışmaya devam
 eder.
 
@@ -475,9 +476,54 @@ Sayfaların hangi eski sekmeden geldiği:
 | --- | --- |
 | Görünüm | "Genel Ayarlar" sekmesi (Renkler + Tipografi + Hazır Paletler iç sekmeleri) ve "Kayar Başlık" sekmesi |
 | Öne Çıkanlar | "Öneriler" sekmesi + menüden erişilemeyen `qmo_slide` (Öne Çıkan Slider) ekranı |
-| Fiyat Kampanyaları | Toplu fiyat kampanyası ekranı + menüden erişilemeyen `qmo_banner_slide` (Kampanya Banner) ekranı |
-| Kampanya Banner | Yeni: `[qmo_banner_slider]` görünüm ayarları (oran, geçiş, oklar/noktalar, otomatik geçiş, başlık) — `qmo_banner_slider_settings` option'ında durur |
+| Fiyat Kampanyaları | Toplu fiyat kampanyası ekranı — **yalnızca fiyat zam/indirimi**; banner görselleriyle ilgisi yoktur |
 | Diğer Ayarlar | "Kategori Sıralaması", "İçe/Dışa Aktar" ve "Yedekleme" sekmeleri, üç bölüm hâlinde |
+
+### Kampanya Banner: "Menü Görünümü" içindeki üç adımlı sihirbaz
+
+İsimlendirme netleştirildi: **"Kampanya" = banner görselleri**
+(`qmo_banner_slide`), **"Fiyat Kampanyası" = toplu zam/indirim**
+(`RMA_Kampanya_DB`). İki kavram ayrı ekranlardadır ve ortak kodu yoktur.
+
+Banner'la ilgili her şey — görsel CRUD'u ve görünüm ayarları — "Menü
+Görünümü" sayfasının (`qrms-rm-gorunum`) altındaki tek bir bölümde,
+`banner_adim` query arg'ıyla sürülen üç adımda toplandı
+(`RMA_Kampanya_Banner_Admin_Trait`, `includes/trait-kampanya-banner-admin.php`).
+Sayfanın mevcut renk / yazı tipi / kategori çubuğu bölümlerine dokunulmadı;
+sihirbaz onların altına eklendi.
+
+| Adım | Adres | İçerik |
+| --- | --- | --- |
+| 1 — Kampanya Banner | `banner_adim=ozet` | Yayındaki kampanya sayısı, oran/otomatik geçiş özeti, önizleme, `[qmo_banner_slider]` kısa kodu ve diğer iki adıma giden kartlar |
+| 2 — Kampanyalar | `banner_adim=kampanyalar` | Aktif kampanya listesi (görsel seçili mi, sıra, bağlantı), "Yeni Kampanya Ekle" / "Tüm Kampanyaları Yönet" + görünüm ayarları formu (Biçim / Gezinme / Başlık alt sekmeleri) |
+| 3 — Görsel Oluştur | `banner_adim=olustur` | Hazır şablonla kampanya görseli üretme aracı |
+
+Adımlar JS ile gizlenen kartlar değil gerçek sayfa yüklemeleridir (2. adımda
+`admin-post`'a giden bir form, 3. adımda AJAX ile çalışan bir araç var), bu
+yüzden her adım ayrı ayrı yer imlenebilir.
+
+Eski **`qrms-rm-banner-ayar`** sayfası kaldırıldı ama slug'ı silinmedi:
+`get_legacy_page_map()` içinde kayıtlıdır ve o adrese gelen istekler
+`redirect_legacy_page()` ile
+`qrms-rm-gorunum&banner_adim=kampanyalar#rma-kampanya-banner` adresine
+`wp_safe_redirect` edilir. Eski yer imleri ve dış linkler 404 vermez.
+
+**3. adım — görsel üretme neden tarayıcı tarafında?** Kod tabanında hiçbir
+yerde GD/Imagick ile çizim yok (tek görüntü işleme `qr-galeri`'deki
+`wp_get_image_editor` webp dönüşümü). Sunucuda metin basmak `imagettftext` +
+paketlenmiş bir TTF + FreeType desteği isterdi; paylaşımlı hostinglerde bu
+garanti değil. Görsel bu yüzden `<canvas>` üzerinde çizilir
+(`assets/js/banner-olustur.js`), `toDataURL('image/png')` ile
+`wp_ajax_qmo_banner_gorsel_olustur` ucuna gönderilir; sunucu PNG'yi önek /
+base64 / dosya imzası / `getimagesize` olmak üzere dört kademede doğrulayıp
+medya kütüphanesine yazar ve yayında yeni bir `qmo_banner_slide` kaydı
+oluşturup `_qmo_banner_gorsel_id` meta'sını bağlar.
+
+Veri katmanı taşımadan etkilenmedi: CPT slug'ı (`qmo_banner_slide`), meta
+anahtarları (`_qmo_banner_gorsel_id`, `_qmo_banner_link`), option
+(`qmo_banner_slider_settings`) ve `admin_post_qmo_banner_ayar_kaydet` ucu
+aynen korundu — `class-banner-slider-settings.php`, `admin-cpt-banner.php` ve
+`shortcode-banner-slider.php` dosyalarına hiç dokunulmadı.
 
 Sayfa tanımı tek yerdedir (`RMA_Admin_Pages_Trait::get_subpages()`); sayfa
 kayıtları ve hub kartları aynı listeden beslenir. Suite yokken (eski tekil
