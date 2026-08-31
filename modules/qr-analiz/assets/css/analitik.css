@@ -649,6 +649,19 @@
 	width: 18px;
 }
 
+/* Sayfanın asıl eylemi: diğer düğmelerden ayrılsın. */
+.qrms-an-btn-primary {
+	background: var(--qrms-an-gold);
+	border-color: var(--qrms-an-gold);
+	color: #fff;
+}
+
+.qrms-an-btn-primary:hover,
+.qrms-an-btn-primary:focus {
+	color: #fff;
+	filter: brightness( .95 );
+}
+
 /* Odaklanılan masanın satırı: liste daralmadığı için satırın kendisi
    işaretlenir, kullanıcı seçtiği masayı listede kaybetmesin. */
 .qrms-an-row-focus > td {

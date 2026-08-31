@@ -13,6 +13,11 @@
  * kaydedilir ama menüye satır EKLEMEZ; QRMS_Admin::hide_module_subpages()
  * onları boyanmadan hemen önce düşürür.
  *
+ * DOLU KATEGORİLER kendi dosyalarındadır (genel-, urunler-, masalar-,
+ * sistem-sayfasi.php); buradaki placeholder yalnızca veri toplama beklediği
+ * için henüz açılmamış kategoriler içindir (Sepet, Müşteri Etkileşimi, Açılış
+ * Ekranı — bkz. Faz 6-8).
+ *
  * PAYLAŞILAN FİLTRE. Kategoriler aynı verinin farklı kesitleridir, bu yüzden
  * zaman aralığı ve masa seçimi sayfalar arasında TAŞINIR; her bağlantı
  * QRMS_Analitik_Filtre::url() üzerinden kurulur (bkz. o sınıfın başlığı).
@@ -23,16 +28,12 @@
 defined( 'ABSPATH' ) || exit;
 
 /**
- * NOT: "Genel Bakış" (genel-sayfasi.php), "Ürünler" (urunler-sayfasi.php) ve
- * "Masalar" (masalar-sayfasi.php) kategorileri artık doludur ve kendi
- * dosyalarındadır; buradaki placeholder'lar yalnızca henüz taşınmamış
- * kategoriler içindir.
+ * Klasik (tek sayfalık) analitik panelinin slug'ı — ARTIK BİR EKRAN DEĞİL.
  *
- * Klasik (tek sayfalık) analitik panelinin yeni slug'ı.
- *
- * Kategori sayfaları doldurulana kadar mevcut panel olduğu gibi erişilebilir
- * kalır; hub'da kendi kartı vardır. Kategoriler tamamlandığında bu ekran
- * kalkacak, slug'ı hub'a yönlenecektir.
+ * Panelin bütün bölümleri kendi kategorilerine taşındı ve dosyası
+ * (analitik-sayfasi.php) silindi. Slug yalnızca yönlendirme olarak kayıtlı
+ * kalır: bu geçiş sırasında verilmiş bir bağlantı ya da yer imi 404 yerine
+ * hub'ı açar. Aynı desen QRMS_ANALITIK_SAYFA için de geçerlidir.
  */
 const QRMS_ANALITIK_KLASIK_SAYFA = 'qrms-an-klasik';
 
@@ -80,8 +81,16 @@ if ( ! function_exists( 'qrms_module_qr_analiz_sayfalar' ) ) {
 	 *   render : sayfayı basan çağrılabilir.
 	 *   desc   : hub kartındaki tek cümlelik açıklama.
 	 *   icon   : dashicon — EMOJİ DEĞİL (bkz. QRMS_Admin::render_hub başlığı).
+	 *   modul  : kategorinin BAĞLI OLDUĞU modül ('' = çekirdek analitik).
+	 *            Lisansta pasifse kategori hiç kaydedilmez ve hub'da hiç
+	 *            görünmez — kullanıcıya satın almadığı bir şeyin boş ekranı
+	 *            gösterilmez.
+	 *   hazir  : bölüm doldu mu? false olanlar kartta "Yakında" rozetiyle
+	 *            görünür ve açıldıklarında ne bekleneceğini söyler. Kartı
+	 *            tümüyle gizlemek "böyle bir şey yok" demek olurdu; rozetsiz
+	 *            göstermek ise boş ekranı hata gibi hissettirirdi.
 	 *
-	 * @return array<string,array{title:string,render:callable,desc:string,icon:string}>
+	 * @return array<string,array{title:string,render:callable,desc:string,icon:string,modul:string,hazir:bool}>
 	 */
 	function qrms_module_qr_analiz_sayfalar() {
 		return array(
@@ -90,44 +99,95 @@ if ( ! function_exists( 'qrms_module_qr_analiz_sayfalar' ) ) {
 				'render' => 'qrms_analitik_sayfa_genel',
 				'desc'   => __( 'Menü okutma, tekil ziyaretçi ve zaman içindeki hareket grafiği.', 'qrms' ),
 				'icon'   => 'dashicons-dashboard',
+				'modul'  => '',
+				'hazir'  => true,
 			),
 			'qrms-an-urunler'   => array(
 				'title'  => __( 'Ürünler', 'qrms' ),
 				'render' => 'qrms_analitik_sayfa_urunler',
 				'desc'   => __( 'En çok ve en az tıklanan ürünler ile kategori dağılımı.', 'qrms' ),
 				'icon'   => 'dashicons-food',
+				'modul'  => '',
+				'hazir'  => true,
 			),
 			'qrms-an-masalar'   => array(
 				'title'  => __( 'Masalar', 'qrms' ),
 				'render' => 'qrms_analitik_sayfa_masalar',
 				'desc'   => __( 'Hangi masadan kaç hareket geldi; hiç okutulmayan masalar dahil.', 'qrms' ),
 				'icon'   => 'dashicons-editor-table',
+				// Masa bilgisi qr-masa kurulu olmasa da (oturum çerezi ya da
+				// adresteki ?masa=) kaydedilebiliyor; kategori bu yüzden
+				// modüle BAĞLI DEĞİL — kayıtlı masa listesi yoksa sayfa
+				// yalnızca veride görünen masaları listeler.
+				'modul'  => '',
+				'hazir'  => true,
 			),
 			'qrms-an-sepet'     => array(
 				'title'  => __( 'Sepet & Sipariş', 'qrms' ),
 				'render' => 'qrms_analitik_sayfa_sepet',
 				'desc'   => __( 'Sepete eklenen, gönderilen ve terk edilen siparişler.', 'qrms' ),
 				'icon'   => 'dashicons-cart',
+				'modul'  => 'qr-chatbot',
+				'hazir'  => false,
 			),
 			'qrms-an-etkilesim' => array(
 				'title'  => __( 'Müşteri Etkileşimi', 'qrms' ),
 				'render' => 'qrms_analitik_sayfa_etkilesim',
 				'desc'   => __( 'Chatbot mesajları, yorum ve form gönderimleri, ödül kodları.', 'qrms' ),
 				'icon'   => 'dashicons-groups',
+				'modul'  => '',
+				'hazir'  => false,
 			),
 			'qrms-an-acilis'    => array(
 				'title'  => __( 'Açılış Ekranı', 'qrms' ),
 				'render' => 'qrms_analitik_sayfa_acilis',
 				'desc'   => __( 'Açılış ekranı gösterimi, menüye geçiş ve atlanma oranları.', 'qrms' ),
 				'icon'   => 'dashicons-visibility',
+				'modul'  => 'qr-acilis-ekrani',
+				'hazir'  => false,
 			),
 			'qrms-an-sistem'    => array(
 				'title'  => __( 'Veri & Sistem', 'qrms' ),
 				'render' => 'qrms_analitik_sayfa_sistem',
 				'desc'   => __( 'CSV dışa aktarma, saklama süresi, tablo boyutu ve teşhis.', 'qrms' ),
 				'icon'   => 'dashicons-admin-tools',
+				'modul'  => '',
+				'hazir'  => true,
 			),
 		);
+	}
+}
+
+if ( ! function_exists( 'qrms_module_qr_analiz_gecerli_sayfalar' ) ) {
+
+	/**
+	 * Bu kurulumda GEÇERLİ olan kategoriler.
+	 *
+	 * Bir kategori, beslendiği modül lisansta pasifse hiç yoktur: sayfası
+	 * kaydedilmez, kartı basılmaz. Sepet & Sipariş chatbot'a, Açılış Ekranı
+	 * açılış modülüne, Masalar da QR Masa'ya bağlıdır. (Modül yükleyicisi
+	 * yoksa — ör. testte — hepsi geçerli sayılır.)
+	 *
+	 * @return array<string,array<string,mixed>>
+	 */
+	function qrms_module_qr_analiz_gecerli_sayfalar() {
+		$sayfalar = qrms_module_qr_analiz_sayfalar();
+
+		if ( ! class_exists( 'QRMS_Module_Loader' ) ) {
+			return $sayfalar;
+		}
+
+		foreach ( $sayfalar as $slug => $sayfa ) {
+			if ( '' === $sayfa['modul'] ) {
+				continue;
+			}
+
+			if ( ! QRMS_Module_Loader::is_module_active( $sayfa['modul'] ) ) {
+				unset( $sayfalar[ $slug ] );
+			}
+		}
+
+		return $sayfalar;
 	}
 }
 
@@ -145,23 +205,17 @@ if ( ! function_exists( 'qrms_module_qr_analiz_hub_kartlari' ) ) {
 	function qrms_module_qr_analiz_hub_kartlari() {
 		$kartlar = array();
 
-		foreach ( qrms_module_qr_analiz_sayfalar() as $slug => $sayfa ) {
+		foreach ( qrms_module_qr_analiz_gecerli_sayfalar() as $slug => $sayfa ) {
 			$kartlar[] = array(
 				'url'   => QRMS_Analitik_Filtre::url( $slug ),
 				'title' => $sayfa['title'],
 				'desc'  => $sayfa['desc'],
 				'icon'  => $sayfa['icon'],
+				// Boş bir ekranı sürprize çevirmemek için: kart daha
+				// tıklanmadan ne bulacağını söyler.
+				'badge' => empty( $sayfa['hazir'] ) ? __( 'Yakında', 'qrms' ) : '',
 			);
 		}
-
-		// Klasik panel: kategoriler doldurulana kadar tüm veriye erişimin
-		// kesintisiz kaldığı yer. Kategori listesinin SONUNDA durur.
-		$kartlar[] = array(
-			'url'   => QRMS_Analitik_Filtre::url( QRMS_ANALITIK_KLASIK_SAYFA ),
-			'title' => __( 'Tüm Veriler (klasik görünüm)', 'qrms' ),
-			'desc'  => __( 'Henüz taşınmamış bölüm: veri yönetimi düğmeleri ve teşhis.', 'qrms' ),
-			'icon'  => 'dashicons-list-view',
-		);
 
 		return $kartlar;
 	}
@@ -174,8 +228,8 @@ if ( ! function_exists( 'qrms_module_qr_analiz_teshis_html' ) ) {
 	 *
 	 * Hub'ın `notice` argümanına verilir: kullanıcı hangi kategoriye girmek
 	 * üzere olursa olsun, önce engeli görür. Kutu klasik panelde de aynı
-	 * bulgularla basılır (bkz. analitik-sayfasi.php) — kaynak tektir:
-	 * QRMS_Analitik::teshis().
+	 * bulgularla, tam liste ve çözüm adımlarıyla "Veri & Sistem" sayfasında da
+	 * basılır (bkz. sistem-sayfasi.php) — kaynak tektir: QRMS_Analitik::teshis().
 	 *
 	 * @return string wp_kses_post ile basılabilir işaretleme.
 	 */
@@ -376,16 +430,3 @@ if ( ! function_exists( 'qrms_analitik_sayfa_acilis' ) ) {
 	}
 }
 
-if ( ! function_exists( 'qrms_analitik_sayfa_sistem' ) ) {
-
-	/**
-	 * Veri & Sistem kategorisi (Faz 5'te doldurulacak).
-	 *
-	 * @return void
-	 */
-	function qrms_analitik_sayfa_sistem() {
-		$sayfalar = qrms_module_qr_analiz_sayfalar();
-
-		qrms_analitik_hazirlaniyor( $sayfalar['qrms-an-sistem']['title'], $sayfalar['qrms-an-sistem']['desc'] );
-	}
-}

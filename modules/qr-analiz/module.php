@@ -63,10 +63,10 @@ function qrms_module_qr_analiz_init() {
 
 		// Paylaşılan filtre çubuğu bileşeni ve onu kullanan ekranlar.
 		require_once __DIR__ . '/filtre-cubugu.php';
-		require_once __DIR__ . '/analitik-sayfasi.php';
 		require_once __DIR__ . '/genel-sayfasi.php';
 		require_once __DIR__ . '/urunler-sayfasi.php';
 		require_once __DIR__ . '/masalar-sayfasi.php';
+		require_once __DIR__ . '/sistem-sayfasi.php';
 		require_once __DIR__ . '/hub-sayfasi.php';
 
 		// "İstatistikler" satırı artık hub ekranıdır; klasik panel onun bir
@@ -131,9 +131,9 @@ function qrms_module_qr_analiz_admin_menu() {
 		return;
 	}
 
-	$modul = QRMS_Helpers::get_module_name( 'qr-analiz' );
-
-	foreach ( qrms_module_qr_analiz_sayfalar() as $slug => $sayfa ) {
+	// Lisansta pasif modüle bağlı kategoriler HİÇ kaydedilmez: kartı
+	// basılmayan bir sayfanın adresi de olmamalı.
+	foreach ( qrms_module_qr_analiz_gecerli_sayfalar() as $slug => $sayfa ) {
 		add_submenu_page(
 			QRMS_Admin::MENU_SLUG,
 			$sayfa['title'],
@@ -144,24 +144,18 @@ function qrms_module_qr_analiz_admin_menu() {
 		);
 	}
 
-	// Klasik panel: kategoriler doldurulana kadar tüm veriye erişim.
-	add_submenu_page(
-		QRMS_Admin::MENU_SLUG,
-		$modul . ' — ' . __( 'Tüm Veriler', 'qrms' ),
-		__( 'Tüm Veriler', 'qrms' ),
-		QRMS_Admin::CAPABILITY,
-		QRMS_ANALITIK_KLASIK_SAYFA,
-		QRMS_Admin::register_module_subpage( 'qr-analiz', QRMS_ANALITIK_KLASIK_SAYFA, 'qrms_analitik_sayfasi' )
-	);
-
-	add_submenu_page(
-		'',
-		__( 'Menü Analitiği', 'qrms' ),
-		__( 'Menü Analitiği', 'qrms' ),
-		QRMS_Admin::CAPABILITY,
-		QRMS_ANALITIK_SAYFA,
-		'qrms_module_qr_analiz_eski_adresi_yonlendir'
-	);
+	// Eski adresler: klasik panelin kendisi ve ondan da önceki panel slug'ı.
+	// İkisi de hub'a yönlendirir — yer imleri ve dış bağlantılar kırılmaz.
+	foreach ( array( QRMS_ANALITIK_SAYFA, QRMS_ANALITIK_KLASIK_SAYFA ) as $eski ) {
+		add_submenu_page(
+			'',
+			__( 'Menü Analitiği', 'qrms' ),
+			__( 'Menü Analitiği', 'qrms' ),
+			QRMS_Admin::CAPABILITY,
+			$eski,
+			'qrms_module_qr_analiz_eski_adresi_yonlendir'
+		);
+	}
 }
 
 /**
@@ -187,8 +181,8 @@ function qrms_module_qr_analiz_admin_assets() {
 	// phpcs:ignore WordPress.Security.NonceVerification.Recommended
 	$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '';
 
-	if ( QRMS_ANALITIK_KLASIK_SAYFA === $page ) {
-		qrms_module_qr_analiz_panel_assets();
+	if ( 'qrms-an-sistem' === $page ) {
+		qrms_module_qr_analiz_sistem_assets();
 		return;
 	}
 
@@ -459,52 +453,37 @@ function qrms_module_qr_analiz_panel_stili() {
 }
 
 /**
- * Analitik panelinin stil ve script'i.
+ * "Veri & Sistem" kategorisinin varlıkları.
  *
- * Panelin tüm içeriği (kartlar, grafik, tablolar) tek bir AJAX çağrısıyla
- * dolduğu için script'e nonce'lar ve JS'te basılan metinler buradan geçilir.
+ * Sayfanın sayıları PHP'de basılır; betik yalnızca silme akışını (onay
+ * modalı) ve filtre çubuğunu canlandırır.
  *
  * @return void
  */
-function qrms_module_qr_analiz_panel_assets() {
+function qrms_module_qr_analiz_sistem_assets() {
 	qrms_module_qr_analiz_panel_stili();
 	qrms_module_qr_analiz_ortak_betik();
 
 	wp_enqueue_script(
-		'qrms-analitik',
-		QRMS_PLUGIN_URL . 'modules/qr-analiz/assets/js/analitik.js',
+		'qrms-analitik-sistem',
+		QRMS_PLUGIN_URL . 'modules/qr-analiz/assets/js/analitik-sistem.js',
 		array( 'qrms-analitik-ortak' ),
-		QRMS_Helpers::asset_version( 'modules/qr-analiz/assets/js/analitik.js' ),
+		QRMS_Helpers::asset_version( 'modules/qr-analiz/assets/js/analitik-sistem.js' ),
 		true
 	);
 
+	$masa = QRMS_Analitik_Filtre::masa();
+
 	wp_localize_script(
-		'qrms-analitik',
-		'qrmsAnalitik',
+		'qrms-analitik-sistem',
+		'qrmsAnalitikSistem',
 		array(
-			'ajaxUrl'  => admin_url( 'admin-ajax.php' ),
-			'nonce'    => wp_create_nonce( QRMS_Analitik::NONCE ),
-			'csvNonce' => wp_create_nonce( QRMS_Analitik::NONCE_CSV ),
-			// Masa filtresi ADRESTEN gelir; "Bu masayı incele" düğmesi de
-			// sayfayı bu şablonla yeniler (bkz. analitik.js).
-			'masa'     => QRMS_Analitik_Filtre::masa(),
-			'masaUrl'  => QRMS_Analitik_Filtre::url(
-				QRMS_ANALITIK_KLASIK_SAYFA,
-				array( QRMS_Analitik_Filtre::ARG_MASA => '__MASA__' )
-			),
-			// Yalnızca sayfada KALAN masa kesitinin metinleri; taşınan
-			// bölümlerin dizeleri kendi ekranlarının varlıklarıyla gelir.
-			'i18n'     => array(
-				'colMasa'      => __( 'Masa', 'qrms' ),
-				'cardViews'    => __( 'Menü Görüntüleme', 'qrms' ),
-				'cardClicks'   => __( 'Ürün Tıklama', 'qrms' ),
-				'cardUnique'   => __( 'Tekil Ziyaretçi', 'qrms' ),
-				'lastSeen'     => __( 'Son hareket', 'qrms' ),
-				'action'       => __( 'İşlem', 'qrms' ),
-				'filterTable'  => __( 'Bu masayı incele', 'qrms' ),
-				'total'        => __( 'TOPLAM', 'qrms' ),
-				'loading'      => __( 'Yükleniyor', 'qrms' ),
-				'loadError'    => __( 'Veri yüklenemedi. Sayfayı yenileyin.', 'qrms' ),
+			'ajaxUrl'     => admin_url( 'admin-ajax.php' ),
+			'nonce'       => wp_create_nonce( QRMS_Analitik::NONCE ),
+			'masa'        => $masa,
+			'masaEtiketi' => '' !== $masa ? qrms_analitik_masa_etiketi( $masa ) : '',
+			'yenileUrl'   => QRMS_Analitik_Filtre::url( 'qrms-an-sistem' ),
+			'i18n'        => array(
 				'confirmAll'   => __( 'Tüm görüntüleme ve tıklama kayıtları kalıcı olarak silinecek. Bu işlem geri alınamaz.', 'qrms' ),
 				'confirmTable' => __( 'Yalnızca bu masanın kayıtları silinecek:', 'qrms' ),
 				'deleting'     => __( 'Siliniyor…', 'qrms' ),

@@ -1,6 +1,13 @@
 /**
  * QR Menü — Analitik paneli (klasik/tüm veriler görünümü).
  *
+ * ARTIK KULLANILMIYOR — hiçbir ekran bu dosyayı yüklemiyor.
+ *
+ * Beslediği sayfa (analitik-sayfasi.php) kaldırıldı: son iki aracı (Yenile /
+ * Verileri Sil onay akışı) "Veri & Sistem" kategorisine, oradaki
+ * analitik-sistem.js'e taşındı. Dosya, kalan ölü kodun topluca ele alınacağı
+ * temizlik turuna kadar duruyor; o zamana kadar buraya YENİ İŞ EKLENMEZ.
+ *
  * KAPSAM DARALDI. Özet kartları ve zaman grafiği "Genel Bakış"
  * (analitik-genel.js), ürün listesi "Ürünler" (analitik-urunler.js), masa
  * kesiti "Masalar" (analitik-masalar.js) kategorisine taşındı. Bu ekranda

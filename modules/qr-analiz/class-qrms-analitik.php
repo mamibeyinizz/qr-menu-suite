@@ -102,6 +102,16 @@ class QRMS_Analitik {
 	const SAKLAMA_GUN = 90;
 
 	/**
+	 * Ham CSV'nin tek seferde belleğe alacağı satır sayısı.
+	 */
+	const CSV_PARCA = 2000;
+
+	/**
+	 * Ham CSV'nin yazacağı azami satır sayısı (aşılırsa dosya sonuna uyarı).
+	 */
+	const CSV_TAVAN = 200000;
+
+	/**
 	 * Silme işleminin tek turda kaldıracağı azami satır sayısı.
 	 *
 	 * Yıllardır biriken bir tabloda sınırsız DELETE, tabloyu uzun süre
@@ -154,6 +164,7 @@ class QRMS_Analitik {
 		add_action( 'wp_ajax_qrms_analitik_masalar', array( __CLASS__, 'ajax_masalar' ) );
 		add_action( 'wp_ajax_qrms_analitik_csv', array( __CLASS__, 'ajax_csv' ) );
 		add_action( 'wp_ajax_qrms_analitik_temizle', array( __CLASS__, 'ajax_temizle' ) );
+		add_action( 'admin_post_qrms_analitik_saklama', array( __CLASS__, 'saklama_formu' ) );
 
 		// Saklama süresi dolan ham kayıtları silen günlük görev.
 		add_action( self::CRON_TEMIZLIK, array( __CLASS__, 'eski_kayitlari_sil' ) );
@@ -165,7 +176,20 @@ class QRMS_Analitik {
 	----------------------------------------------------------------- */
 
 	/**
+	 * Kullanıcının belirlediği saklama süresinin option adı.
+	 *
+	 * Yoksa SAKLAMA_GUN geçerlidir; option yalnızca "Veri & Sistem" ekranından
+	 * yazılır.
+	 */
+	const SAKLAMA_OPT = 'qrms_analitik_saklama_gun';
+
+	/**
 	 * Ham kaydın saklanacağı gün sayısı.
+	 *
+	 * Üç katman, bu sırayla: sabit varsayılan → yöneticinin ekrandan
+	 * kaydettiği değer → filtre. Filtre EN SONDA kalır ki kodla sabitleyen
+	 * kurulumlar (ör. bir mu-plugin) ekrandan gelen değerle ezilmesin; ekran
+	 * da bu durumu görünür kılar (bkz. saklama_kilitli_mi).
 	 *
 	 * 0 döndürmek temizliği kapatır (sınırsız saklama). Alt sınır 7 gündür:
 	 * daha kısa bir değer, panelin "son 30 gün" görünümlerini boşaltırdı.
@@ -176,15 +200,140 @@ class QRMS_Analitik {
 		/**
 		 * Analitik ham kaydının saklama süresi (gün). 0 = temizlik kapalı.
 		 *
-		 * @param int $gun Varsayılan saklama süresi.
+		 * @param int $gun Kayıtlı (ya da varsayılan) saklama süresi.
 		 */
-		$gun = (int) apply_filters( 'qrms_analitik_saklama_gun', self::SAKLAMA_GUN );
+		$gun = (int) apply_filters( 'qrms_analitik_saklama_gun', self::saklama_ayari() );
 
 		if ( $gun <= 0 ) {
 			return 0;
 		}
 
 		return max( 7, $gun );
+	}
+
+	/**
+	 * Ekrandan kaydedilmiş saklama süresi (yoksa sabit varsayılan).
+	 *
+	 * @return int
+	 */
+	public static function saklama_ayari() {
+		$kayitli = get_option( self::SAKLAMA_OPT, null );
+
+		if ( null === $kayitli || '' === $kayitli ) {
+			return self::SAKLAMA_GUN;
+		}
+
+		return (int) $kayitli;
+	}
+
+	/**
+	 * Saklama süresi bir filtreyle KODDAN sabitlenmiş mi?
+	 *
+	 * Ekran, kaydedilen değerin geçerli olmayacağı bir kurulumda kullanıcıyı
+	 * boşuna uğraştırmasın diye bunu sorar: kaydet düğmesi çalışır ama
+	 * sonucu değiştirmez, o yüzden uyarı basılır.
+	 *
+	 * @return bool
+	 */
+	public static function saklama_kilitli_mi() {
+		$ayar = self::saklama_ayari();
+
+		/** This filter is documented in modules/qr-analiz/class-qrms-analitik.php */
+		return (int) apply_filters( 'qrms_analitik_saklama_gun', $ayar ) !== $ayar;
+	}
+
+	/**
+	 * Saklama süresini kaydeder.
+	 *
+	 * @param int $gun Gün sayısı (0 = temizlik kapalı, aksi hâlde en az 7).
+	 * @return int Kaydedilen değer.
+	 */
+	public static function saklama_kaydet( $gun ) {
+		$gun = (int) $gun;
+		$gun = $gun <= 0 ? 0 : max( 7, $gun );
+
+		update_option( self::SAKLAMA_OPT, $gun, false );
+
+		return $gun;
+	}
+
+	/**
+	 * Tablonun boyut/kapsam bilgisi — TRANSIENT ile önbelleklenir.
+	 *
+	 * Satır sayısı ve disk boyutu her sayfa açılışında sorulacak şeyler
+	 * değildir: COUNT(*) büyük bir tabloda tam tarama, information_schema ise
+	 * kimi kurulumlarda gözle görülür biçimde yavaştır. Bir saatlik önbellek
+	 * bu ekran için fazlasıyla tazedir; kayıt silindiğinde önbellek zaten
+	 * düşürülür (bkz. ajax_temizle).
+	 *
+	 * @param bool $yenile true ise önbellek atlanır.
+	 * @return array{var:bool,satir:int,boyut:int,ilk:string,guncel:bool}
+	 */
+	public static function tablo_istatistikleri( $yenile = false ) {
+		global $wpdb;
+
+		$anahtar = 'qrms_analitik_tablo_istat';
+
+		if ( ! $yenile ) {
+			$onbellek = get_transient( $anahtar );
+
+			if ( is_array( $onbellek ) ) {
+				return $onbellek;
+			}
+		}
+
+		$istat = array(
+			'var'    => false,
+			'satir'  => 0,
+			'boyut'  => 0,
+			'ilk'    => '',
+			'guncel' => ( self::DB_SURUM === get_option( self::DB_OPT ) ),
+		);
+
+		if ( ! self::tablo_var_mi() ) {
+			set_transient( $anahtar, $istat, HOUR_IN_SECONDS );
+
+			return $istat;
+		}
+
+		$istat['var'] = true;
+		$tablo        = self::tablo();
+
+		// Satır sayısı ve en eski kayıt aynı taramadan çıkar; ikisi için ayrı
+		// sorgu açmanın anlamı yok.
+		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$satir = $wpdb->get_row( "SELECT COUNT(*) AS satir, MIN(created_at) AS ilk FROM {$tablo}", ARRAY_A );
+
+		if ( is_array( $satir ) ) {
+			$istat['satir'] = (int) $satir['satir'];
+			$istat['ilk']   = (string) $satir['ilk'];
+		}
+
+		// Disk boyutu yaklaşıktır: InnoDB'nin bildirdiği veri + indeks
+		// uzunluğu, silinen satırların bıraktığı boşluğu da içerir.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$boyut = $wpdb->get_var(
+			$wpdb->prepare(
+				'SELECT DATA_LENGTH + INDEX_LENGTH FROM information_schema.TABLES
+				 WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s',
+				$tablo
+			)
+		);
+
+		$istat['boyut'] = (int) $boyut;
+
+		set_transient( $anahtar, $istat, HOUR_IN_SECONDS );
+
+		return $istat;
+	}
+
+	/**
+	 * Tablo istatistiği önbelleğini düşürür.
+	 *
+	 * @return void
+	 */
+	public static function istatistik_onbellegini_temizle() {
+		delete_transient( 'qrms_analitik_tablo_istat' );
 	}
 
 	/**
@@ -1744,6 +1893,11 @@ class QRMS_Analitik {
 			return;
 		}
 
+		if ( 'ham' === $kategori ) {
+			self::csv_ham( $ham );
+			return;
+		}
+
 		$donem = self::istek_donemi( $ham );
 		$masa  = self::istek_masasi( $ham );
 
@@ -1895,6 +2049,128 @@ class QRMS_Analitik {
 	}
 
 	/**
+	 * HAM OLAY KAYDI CSV'si — seçili aralıktaki bütün satırlar.
+	 *
+	 * Diğer indirmeler özet tablolarıdır; bu, tablonun kendisidir. Bu yüzden
+	 * tek fark performans değil, BELLEKTİR: milyonlarca satırlık bir tabloyu
+	 * get_results ile diziye almak PHP'nin bellek sınırını aşar ve indirme
+	 * yarıda ölür.
+	 *
+	 * Çözüm iki katmanlı:
+	 *   1. AKIŞ — satırlar CSV_PARCA'lık dilimler hâlinde çekilir, her dilim
+	 *      yazılıp bellekten düşer. Sayfalama OFFSET ile değil id > son_id ile
+	 *      yapılır: OFFSET büyüdükçe MySQL atlanan satırları da okumak zorunda
+	 *      kalır, id üzerinden ilerlemek PRIMARY KEY taramasıdır.
+	 *   2. TAVAN — yine de sınırsız bir indirme (ve sınırsız bir istek süresi)
+	 *      bırakılmaz: CSV_TAVAN satırda durulur ve dosyanın SONUNA bir uyarı
+	 *      satırı yazılır. Sessizce kesmek, eksik veriyi tam sanmaktan
+	 *      kötüdür.
+	 *
+	 * @param array $ham İsteğin ham query arg'ları.
+	 * @return void
+	 */
+	private static function csv_ham( array $ham ) {
+		global $wpdb;
+
+		$baglam = QRMS_Analitik_Filtre::coz( $ham );
+		$aralik = QRMS_Analitik_Filtre::aralik( $ham );
+		$masa   = $baglam['masa'];
+
+		$dosya = 'qr-analitik-ham-' . $baglam['donem']
+			. ( '' !== $masa ? '-' . $masa : '' )
+			. '-' . gmdate( 'Ymd-His', self::simdi() ) . '.csv';
+
+		nocache_headers();
+		header( 'Content-Type: text/csv; charset=utf-8' );
+		header( 'Content-Disposition: attachment; filename="' . $dosya . '"' );
+
+		$cikti = fopen( 'php://output', 'w' );
+
+		// Excel'in UTF-8'i tanıması için BOM.
+		fwrite( $cikti, "\xEF\xBB\xBF" ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fwrite
+
+		fputcsv( $cikti, array( 'Olay', 'Ürün ID', 'Ürün Adı', 'Kategori', 'Masa', 'Tarih' ), ';' );
+
+		if ( ! self::tablo_var_mi() ) {
+			fclose( $cikti ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
+			exit;
+		}
+
+		$tablo   = self::tablo();
+		$masa_ek = self::masa_sql( $masa );
+		$kosul   = $wpdb->prepare( 'created_at BETWEEN %s AND %s', $aralik['bas'], $aralik['bit'] );
+
+		$son_id  = 0;
+		$yazilan = 0;
+		$kesildi = false;
+
+		while ( $yazilan < self::CSV_TAVAN ) {
+			$parca = min( self::CSV_PARCA, self::CSV_TAVAN - $yazilan );
+			$sinir = $wpdb->prepare( 'id > %d', $son_id );
+			$adet  = $wpdb->prepare( 'LIMIT %d', $parca );
+
+			// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+			$satirlar = $wpdb->get_results(
+				"SELECT id, event_type, item_id, item_name, category_name, masa_no, created_at
+				 FROM {$tablo}
+				 WHERE {$sinir} AND {$kosul}{$masa_ek}
+				 ORDER BY id ASC
+				 {$adet}",
+				ARRAY_A
+			);
+
+			if ( empty( $satirlar ) ) {
+				break;
+			}
+
+			foreach ( $satirlar as $satir ) {
+				fputcsv(
+					$cikti,
+					array(
+						$satir['event_type'],
+						$satir['item_id'],
+						$satir['item_name'],
+						$satir['category_name'],
+						$satir['masa_no'],
+						$satir['created_at'],
+					),
+					';'
+				);
+
+				$son_id = (int) $satir['id'];
+				++$yazilan;
+			}
+
+			// Dilim yazıldı: tampon boşaltılıp bellek serbest bırakılır.
+			unset( $satirlar );
+			flush();
+
+			if ( $yazilan >= self::CSV_TAVAN ) {
+				$kesildi = true;
+				break;
+			}
+		}
+
+		if ( $kesildi ) {
+			fputcsv( $cikti, array(), ';' );
+			fputcsv(
+				$cikti,
+				array(
+					sprintf(
+						/* translators: %s: satır sayısı. */
+						__( 'UYARI: Dosya %s satırda kesildi. Daha dar bir tarih aralığı seçip yeniden indirin.', 'qrms' ),
+						number_format_i18n( self::CSV_TAVAN )
+					),
+				),
+				';'
+			);
+		}
+
+		fclose( $cikti ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
+		exit;
+	}
+
+	/**
 	 * "Masalar" kategorisinin CSV'si: masa listesi + grup toplamları.
 	 *
 	 * Ekranı besleyen fonksiyonun AYNISINDAN gelir; indirilen dosya ekranda
@@ -1977,6 +2253,39 @@ class QRMS_Analitik {
 	}
 
 	/**
+	 * "Veri & Sistem" ekranındaki saklama süresi formunu işler.
+	 *
+	 * Yıkıcı olmayan ama etkisi kalıcı bir ayardır (kısaltmak, bir sonraki
+	 * cron turunda veri siler): nonce ve yetki kontrolü silme akışıyla aynı
+	 * sıkılıktadır.
+	 *
+	 * @return void
+	 */
+	public static function saklama_formu() {
+		check_admin_referer( 'qrms_analitik_saklama' );
+
+		if ( ! current_user_can( QRMS_Admin::CAPABILITY ) ) {
+			wp_die( esc_html__( 'Bu işlem için yetkiniz yok.', 'qrms' ), '', array( 'response' => 403 ) );
+		}
+
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- check_admin_referer yukarıda.
+		$gun = isset( $_POST['saklama_gun'] ) ? (int) $_POST['saklama_gun'] : self::SAKLAMA_GUN;
+
+		self::saklama_kaydet( $gun );
+
+		wp_safe_redirect(
+			add_query_arg(
+				array(
+					'page'         => 'qrms-an-sistem',
+					'saklama_msg'  => 'kaydedildi',
+				),
+				admin_url( 'admin.php' )
+			)
+		);
+		exit;
+	}
+
+	/**
 	 * Kayıtları siler. Masa filtresi doluysa yalnızca o masanın kayıtları.
 	 *
 	 * @return void
@@ -1998,6 +2307,8 @@ class QRMS_Analitik {
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 			$wpdb->delete( $tablo, array( 'masa_no' => $masa ), array( '%s' ) );
 
+			self::istatistik_onbellegini_temizle();
+
 			wp_send_json_success(
 				array(
 					'mesaj' => sprintf(
@@ -2011,6 +2322,8 @@ class QRMS_Analitik {
 
 		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$wpdb->query( "TRUNCATE TABLE {$tablo}" );
+
+		self::istatistik_onbellegini_temizle();
 
 		wp_send_json_success( array( 'mesaj' => __( 'Tüm analitik kayıtları silindi.', 'qrms' ) ) );
 	}
