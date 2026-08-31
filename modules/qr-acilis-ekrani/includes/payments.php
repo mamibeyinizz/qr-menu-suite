@@ -19,6 +19,7 @@ trait QRMS_AE_Payments {
         return array(
             'nakit' => array(
                 'label' => 'Nakit',
+                'i18n'  => 'pay_nakit',
                 'color' => '#1a9850',
                 'glyph' => 'note',
             ),
@@ -26,6 +27,7 @@ trait QRMS_AE_Payments {
             // referanstaki kompakt dille uyumludur.
             'kart' => array(
                 'label' => 'Kart',
+                'i18n'  => 'pay_kart',
                 'color' => '#2b6cb0',
                 'glyph' => 'card',
             ),
@@ -136,12 +138,21 @@ trait QRMS_AE_Payments {
      * amaçlı <span>); admin önizlemesinde de aynı markup kullanılır.
      *
      * $with_icon = false → sadece yazı (text_only ve ikonsuz marquee modu).
+     *
+     * Nakit/Kart i18n anahtarı taşır: sunucu Türkçeyi basar, diğer diller
+     * data-sp-{kod} ile yanına yazılır (lang_data; tam sayfa cache). Marka
+     * adları (Edenred, Multinet, Sodexo, Setcard) çevrilmez.
+     *
+     * @param string     $key       Yöntem anahtarı.
+     * @param bool       $with_icon İkon basılsın mı.
+     * @param array|null $opts      Splash ayarları; i18n için gerekli.
      */
-    private function payment_badge_markup($key, $with_icon = true) {
+    private function payment_badge_markup($key, $with_icon = true, $opts = null) {
         $map = $this->payment_methods_map();
         if (!isset($map[$key])) return '';
 
         $method = $map[$key];
+        $opts   = is_array($opts) ? $opts : array();
 
         $icon = $with_icon
             ? '<svg class="splash-pay-icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">'
@@ -149,9 +160,14 @@ trait QRMS_AE_Payments {
                 . '</svg>'
             : '';
 
+        $label_attrs = '';
+        if (!empty($method['i18n'])) {
+            $label_attrs = $this->lang_data($opts, $method['i18n'], $method['label']);
+        }
+
         return '<span class="splash-pay" style="--sp-pay-color:' . esc_attr($method['color']) . '">'
             . $icon
-            . '<span class="splash-pay-label">' . esc_html($method['label']) . '</span>'
+            . '<span class="splash-pay-label"' . $label_attrs . '>' . esc_html($method['label']) . '</span>'
             . '</span>';
     }
 
@@ -188,7 +204,7 @@ trait QRMS_AE_Payments {
 
         $badges = '';
         foreach ($active as $key) {
-            $badges .= $this->payment_badge_markup($key, $with_icon);
+            $badges .= $this->payment_badge_markup($key, $with_icon, $opts);
         }
 
         if ($mode === 'marquee') {
@@ -227,7 +243,7 @@ trait QRMS_AE_Payments {
             $id = 'splash_pay_' . $key;
             echo '<label class="splash-pay-admin-item" for="' . esc_attr($id) . '">';
             echo '<input type="checkbox" id="' . esc_attr($id) . '" name="payment_methods[]" value="' . esc_attr($key) . '" ' . checked(in_array($key, $active, true), true, false) . ' />';
-            echo $this->payment_badge_markup($key);
+            echo $this->payment_badge_markup($key, true, $opts);
             echo '</label>';
         }
         echo '</div>';

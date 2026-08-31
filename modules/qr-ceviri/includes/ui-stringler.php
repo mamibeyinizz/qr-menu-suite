@@ -293,7 +293,10 @@ if ( ! function_exists( 'rma_ceviri_gecerli_tipler' ) ) {
 if ( ! function_exists( 'rma_ceviri_modul_kaynak_metinleri' ) ) {
 	function rma_ceviri_modul_kaynak_metinleri() {
 		$katalog = array(
-			'splash'  => array(),
+			'splash'  => array(
+				'Nakit',
+				'Kart',
+			),
 			'hours'   => array(
 				'Pazartesi',
 				'Salı',

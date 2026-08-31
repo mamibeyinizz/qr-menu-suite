@@ -7742,6 +7742,42 @@ qrms_test(
 		qrms_assert_contains( 'splash-pay-row', $html, 'satır basılır' );
 		qrms_assert_contains( 'Nakit', $html, 'etiket basılır' );
 		qrms_assert_false( strpos( $html, 'splash-pay-icon' ), 'yazı modunda ikon yok' );
+		qrms_assert_false( strpos( $html, 'data-sp-en' ), 'i18n kapalıyken ödeme niteliği yok' );
+	}
+);
+
+qrms_test(
+	'Nakit ve Kart data-sp ile çevrilir; marka adları çevrilmez',
+	function () {
+		$GLOBALS['qrms_test']['is_front_page'] = true;
+		update_option(
+			'splash_screen_options',
+			array(
+				'lang_toggle'          => 1,
+				'texts_en'             => array( 'btn1' => 'View Menu' ),
+				'payment_methods'      => array( 'nakit', 'kart', 'edenred', 'multinet', 'sodexo', 'setcard' ),
+				'payment_display_mode' => 'text_only',
+			)
+		);
+
+		ob_start();
+		qrms_ae()->handle_frontend();
+		$html = ob_get_clean();
+
+		qrms_assert_contains( 'data-sp-key="pay_nakit"', $html, 'Nakit anahtarı' );
+		qrms_assert_contains( 'data-sp-tr="Nakit"', $html, 'Nakit TR' );
+		qrms_assert_contains( 'data-sp-en="Cash"', $html, 'Nakit katalog EN' );
+		qrms_assert_contains( 'data-sp-key="pay_kart"', $html, 'Kart anahtarı' );
+		qrms_assert_contains( 'data-sp-tr="Kart"', $html, 'Kart TR' );
+		qrms_assert_contains( 'data-sp-en="Card"', $html, 'Kart katalog EN' );
+		qrms_assert_contains( '>Nakit</span>', $html, 'sunucu Türkçe Nakit basar' );
+		qrms_assert_contains( '>Kart</span>', $html, 'sunucu Türkçe Kart basar' );
+
+		foreach ( array( 'Edenred', 'Multinet', 'Sodexo', 'Setcard' ) as $marka ) {
+			qrms_assert_contains( '>' . $marka . '</span>', $html, $marka . ' basılır' );
+		}
+		qrms_assert_false( strpos( $html, 'data-sp-key="pay_edenred"' ), 'Edenred i18n yok' );
+		qrms_assert_false( strpos( $html, 'data-sp-en="Edenred"' ), 'Edenred data-sp yok' );
 	}
 );
 
@@ -13173,6 +13209,144 @@ qrms_test(
 			(bool) preg_match( "/rma_ceviri_modul\(\s*'lock',\s*\\\$mesaj,\s*\\\$/", $kaynak ),
 			'uyarı kutusu kilit dilini zorlamaz'
 		);
+	}
+);
+
+echo "\nQR Çeviri (P0 köprü / açılış ödeme)\n";
+
+qrms_test(
+	'splash kaynak metinleri Nakit ve Kart; marka adı yok',
+	function () {
+		$metinler = rma_ceviri_modul_stringleri( 'splash' );
+
+		qrms_assert_same( 'Nakit', $metinler[ rma_ceviri_ui_anahtari( 'Nakit' ) ], 'Nakit' );
+		qrms_assert_same( 'Kart', $metinler[ rma_ceviri_ui_anahtari( 'Kart' ) ], 'Kart' );
+		foreach ( array( 'Edenred', 'Multinet', 'Sodexo', 'Setcard' ) as $marka ) {
+			qrms_assert_false( isset( $metinler[ rma_ceviri_ui_anahtari( $marka ) ] ), $marka . ' katalogda yok' );
+		}
+	}
+);
+
+qrms_test(
+	'ödeme katalogu 11 dili taşır; boş anahtar Türkçeye düşer',
+	function () {
+		$ae    = qrms_ae();
+		$kat   = new ReflectionMethod( $ae, 'i18n_catalog' );
+		$kat->setAccessible( true );
+		$cevir = new ReflectionMethod( $ae, 'i18n_translate' );
+		$cevir->setAccessible( true );
+
+		$katalog = $kat->invoke( $ae );
+		$diller  = array( 'tr', 'en', 'de', 'fr', 'es', 'it', 'ru', 'ar', 'nl', 'pl', 'pt' );
+
+		foreach ( array( 'pay_nakit', 'pay_kart' ) as $anahtar ) {
+			qrms_assert_true( isset( $katalog[ $anahtar ] ), $anahtar . ' katalogda' );
+			foreach ( $diller as $dil ) {
+				qrms_assert_true(
+					isset( $katalog[ $anahtar ][ $dil ] ) && '' !== $katalog[ $anahtar ][ $dil ],
+					$anahtar . ' ' . $dil
+				);
+			}
+		}
+
+		qrms_assert_same( 'Nakit', $katalog['pay_nakit']['tr'], 'Nakit TR' );
+		qrms_assert_same( 'Cash', $katalog['pay_nakit']['en'], 'Nakit EN' );
+		qrms_assert_same( 'Kart', $katalog['pay_kart']['tr'], 'Kart TR' );
+		qrms_assert_same( 'Card', $katalog['pay_kart']['en'], 'Kart EN' );
+		qrms_assert_same( 'Yok', $cevir->invoke( $ae, 'olmayan_anahtar', 'en', 'Yok' ), 'katalog boşsa Türkçe' );
+	}
+);
+
+qrms_test(
+	'splash çeviri sırası: tablo → texts_en → katalog → Türkçe',
+	function () {
+		if ( ! function_exists( 'rma_ceviri_anahtar' ) ) {
+			/**
+			 * @param string $tip   Tip.
+			 * @param int    $id    ID.
+			 * @param string $field Alan.
+			 * @return string
+			 */
+			function rma_ceviri_anahtar( $tip, $id, $field ) {
+				return $tip . '|' . (int) $id . '|' . $field;
+			}
+		}
+		if ( ! function_exists( 'rma_ceviri_sozluk' ) ) {
+			/**
+			 * @param string $lang Dil.
+			 * @return array{anahtar:array<string,string>,metin:array<string,string>}
+			 */
+			function rma_ceviri_sozluk( $lang ) {
+				$tum = isset( $GLOBALS['qrms_test']['splash_sozluk'] ) ? $GLOBALS['qrms_test']['splash_sozluk'] : array();
+				return isset( $tum[ $lang ] ) ? $tum[ $lang ] : array( 'anahtar' => array(), 'metin' => array() );
+			}
+		}
+
+		$ae   = qrms_ae();
+		$fn   = new ReflectionMethod( $ae, 'text_for_lang' );
+		$fn->setAccessible( true );
+		$opts = array(
+			'lang_toggle' => 1,
+			'texts_en'    => array(
+				'btn1'      => 'View Menu',
+				'pay_nakit' => 'Cash Legacy',
+			),
+		);
+
+		$GLOBALS['qrms_test']['splash_sozluk'] = array();
+		qrms_assert_same( 'Nakit', $fn->invoke( $ae, $opts, 'pay_nakit', 'Nakit', 'tr' ), 'TR kaynak' );
+		qrms_assert_same( 'Cash Legacy', $fn->invoke( $ae, $opts, 'pay_nakit', 'Nakit', 'en' ), 'texts_en' );
+		qrms_assert_same( 'Cash', $fn->invoke( $ae, array(), 'pay_nakit', 'Nakit', 'en' ), 'katalog (toggle kapalı)' );
+		qrms_assert_same( 'Nakit', $fn->invoke( $ae, array(), 'yok', 'Nakit', 'de' ), 'katalog boşsa Türkçe' );
+
+		$alan = rma_ceviri_anahtar( 'splash', 0, rma_ceviri_ui_anahtari( 'Nakit' ) );
+		$GLOBALS['qrms_test']['splash_sozluk'] = array(
+			'en' => array( 'anahtar' => array( $alan => 'Table Cash' ), 'metin' => array() ),
+		);
+		qrms_assert_same( 'Table Cash', $fn->invoke( $ae, $opts, 'pay_nakit', 'Nakit', 'en' ), 'tablo texts_en\'den önce' );
+
+		$GLOBALS['qrms_test']['splash_sozluk'] = array();
+	}
+);
+
+qrms_test(
+	'aria etiketleri cache-güvenli data-sp deseniyle güncellenir',
+	function () {
+		$front = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-acilis-ekrani/includes/frontend.php' );
+		$js    = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-acilis-ekrani/assets/js/splash.js' );
+
+		qrms_assert_contains( "lang_data(\$opts, 'loading', 'Yükleniyor', 'aria-label')", $front, 'loader data-sp-attr' );
+		qrms_assert_contains( 'aria-label="Yükleniyor"', $front, 'loader TR yedek' );
+		qrms_assert_contains( "lang_data( \$opts, 'close', 'Kapat', 'aria-label' )", $front, 'wifi kapat data-sp-attr' );
+		qrms_assert_contains( 'aria-label="Kapat"', $front, 'wifi kapat TR yedek' );
+		qrms_assert_contains( 'data-sp-lang-select-', $front, 'dil seç şablon nitelikleri' );
+		qrms_assert_contains( "sprintf('Dil seç (%s)'", $front, 'dil seç TR yedek' );
+		qrms_assert_contains( "data-sp-lang-select-' + lang", $js, 'JS şablonu okur' );
+		qrms_assert_contains( "template.replace('%s', selectedName)", $js, 'JS %s doldurur' );
+
+		$GLOBALS['qrms_test']['is_front_page'] = true;
+		update_option( 'qrms_active_modules', array( 'qr-acilis-ekrani', 'qr-ceviri' ) );
+		qrms_ae_stub_ceviri();
+		update_option(
+			'splash_screen_options',
+			array(
+				'ceviri_selector'       => 1,
+				'ceviri_selector_langs' => array( 'tr', 'en' ),
+				'lang_toggle'           => 1,
+				'texts_en'              => array( 'btn1' => 'View Menu' ),
+			)
+		);
+
+		ob_start();
+		qrms_ae()->handle_frontend();
+		$html = ob_get_clean();
+
+		qrms_assert_contains( 'data-sp-attr="aria-label"', $html, 'loader/kapat nitelik hedefi' );
+		qrms_assert_contains( 'data-sp-en="Loading"', $html, 'Yükleniyor EN' );
+		qrms_assert_contains( 'data-sp-en="Close"', $html, 'Kapat EN' );
+		qrms_assert_contains( 'data-sp-lang-select-en="Select language (%s)"', $html, 'dil seç EN şablon' );
+		qrms_assert_contains( 'aria-label="Yükleniyor"', $html, 'loader yedek HTML\'de' );
+		qrms_assert_contains( 'aria-label="Kapat"', $html, 'kapat yedek HTML\'de' );
 	}
 );
 
