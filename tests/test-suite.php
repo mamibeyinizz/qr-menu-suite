@@ -3020,6 +3020,23 @@ qrms_test(
 );
 
 qrms_test(
+	'sepet TL yazımı kuruşu korur, tam sayıda ondalığı gizler',
+	function () {
+		$js = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/assets/js/sepet.js' );
+
+		qrms_assert_contains( 'function fiyatYazi', $js, 'TL biçimleyici' );
+		qrms_assert_contains( 'RMA_Kampanya_DB::bicimle()', $js, 'ürün kartı kuralıyla aynı' );
+		qrms_assert_contains( "fiyatYazi( x.fiyat * x.adet )", $js, 'satır fiyatı' );
+		qrms_assert_contains( 'barTot.textContent = \'₺\' + fiyatYazi( t )', $js, 'çubuk toplamı' );
+		qrms_assert_contains( 'tot.textContent = \'₺\' + fiyatYazi( t )', $js, 'çekmece toplamı' );
+		qrms_assert_contains( "',00' === metin.slice( -3 )", $js, 'tam sayıda ,00 gizlenir' );
+		qrms_assert_contains( 'parseFloat( t )', $js, 'fiyat parseFloat' );
+		qrms_assert_false( false !== strpos( $js, 'toFixed( 0 )' ), 'toFixed(0) boşluklu yok' );
+		qrms_assert_false( false !== strpos( $js, 'toFixed(0)' ), 'toFixed(0) yok' );
+	}
+);
+
+qrms_test(
 	'AJAX ürün detayı hâlâ rma-modal-body ve rma-modal-img basar',
 	function () {
 		$php = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-ajax.php' );
