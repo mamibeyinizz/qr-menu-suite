@@ -313,7 +313,12 @@ if ( ! function_exists( 'rma_ceviri_modul_kaynak_metinleri' ) ) {
 				'Tümü',
 				'Galeri bulunamadı.',
 			),
-			'lock'    => array(),
+			'lock'    => array(
+				'Oturum Gerekli',
+				'Bu masa için geçerli bir QR kod bulunamadı. Lütfen masanızdaki QR kodu okutun.',
+				'Oturumunuz sona erdi. Devam etmek için masadaki QR kodu tekrar okutun.',
+				'Bu bölümü kullanmak için masanızdaki QR kodu okutun.',
+			),
 		);
 
 		/**

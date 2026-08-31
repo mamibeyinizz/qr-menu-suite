@@ -399,7 +399,12 @@ if ( ! function_exists( 'qmo_gemini_model' ) ) {
 if ( ! function_exists( 'qmo_oturum_uyari_kutusu' ) ) {
 	function qmo_oturum_uyari_kutusu( $mesaj = '' ) {
 		if ( '' === $mesaj ) {
-			$mesaj = 'Bu bölümü kullanmak için masanızdaki QR kodu okutun.';
+			$mesaj = __( 'Bu bölümü kullanmak için masanızdaki QR kodu okutun.', 'qrms' );
+			if ( function_exists( 'rma_ceviri_modul' ) ) {
+				// Uyarı kutusu kilit ekranı değildir: Accept-Language yok,
+				// rma_get_current_lang() (?lang= → cookie → tr) kullanılır.
+				$mesaj = rma_ceviri_modul( 'lock', $mesaj );
+			}
 		}
 		qmo_asset_enqueue( 'qmo-oturum-kutu' );
 		return '<div class="qmo-oturum-kutu"><span class="qmo-oturum-kutu-ikon">🔒</span>'

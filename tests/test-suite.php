@@ -13027,6 +13027,155 @@ qrms_test(
 	}
 );
 
+echo "\nQR Çeviri (P0 köprü / kilit ekranı)\n";
+
+qrms_test(
+	'kilit kaynak metinleri katalogda ve anahtarları kararlı',
+	function () {
+		$metinler = rma_ceviri_modul_stringleri( 'lock' );
+		$beklenen = array(
+			'Oturum Gerekli',
+			'Bu masa için geçerli bir QR kod bulunamadı. Lütfen masanızdaki QR kodu okutun.',
+			'Oturumunuz sona erdi. Devam etmek için masadaki QR kodu tekrar okutun.',
+			'Bu bölümü kullanmak için masanızdaki QR kodu okutun.',
+		);
+
+		foreach ( $beklenen as $metin ) {
+			qrms_assert_same(
+				$metin,
+				$metinler[ rma_ceviri_ui_anahtari( $metin ) ],
+				$metin
+			);
+		}
+	}
+);
+
+qrms_test(
+	'masa QR adresi ?lang= taşımaz; kilit ?lang= varsa onu ilk kaynak sayar',
+	function () {
+		$kaynak = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-masa/class-qmo-masalar.php' );
+
+		qrms_assert_contains( "add_query_arg( 'masa'", $kaynak, 'QR masa parametresi' );
+		qrms_assert_false(
+			(bool) preg_match( "/add_query_arg\(\s*'lang'/", $kaynak ),
+			'QR lang parametresi yok'
+		);
+	}
+);
+
+qrms_test(
+	'Accept-Language yalnızca kilit ekranındadır, genel dil zincirinde yoktur',
+	function () {
+		$kilit = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-masa-oturum-guvenligi/masa-dogrulama.php' );
+		$dil   = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-ceviri/includes/dil.php' );
+
+		qrms_assert_contains( 'HTTP_ACCEPT_LANGUAGE', $kilit, 'kilit Accept-Language okur' );
+		qrms_assert_contains( 'qmo_kilit_ekrani_dili', $kilit, 'kilit dil çözücü' );
+		qrms_assert_false(
+			(bool) preg_match( '/HTTP_ACCEPT_LANGUAGE/', $dil ),
+			'rma_get_current_lang Accept-Language kullanmaz'
+		);
+		qrms_assert_contains( "?lang → cookie → 'tr'", $dil, 'genel zincir duruyor' );
+	}
+);
+
+qrms_test(
+	'kilit dili: ?lang= → cookie → Accept-Language (etkin) → tr',
+	function () {
+		qrms_ae_stub_ceviri();
+		update_option( 'qrmenu_active_langs', array( 'tr', 'en', 'de' ) );
+
+		$_GET['lang']                        = 'en';
+		$_COOKIE['rma_lang']                 = 'de';
+		$_SERVER['HTTP_ACCEPT_LANGUAGE']     = 'de-DE,de;q=0.9';
+		qrms_assert_same( 'en', qmo_kilit_ekrani_dili(), '?lang= kazanır' );
+
+		$_GET['lang'] = 'zz';
+		qrms_assert_same( 'de', qmo_kilit_ekrani_dili(), 'geçersiz ?lang= cookie\'ye düşer' );
+
+		unset( $_GET['lang'] );
+		$_COOKIE['rma_lang']             = 'en';
+		$_SERVER['HTTP_ACCEPT_LANGUAGE'] = 'de;q=1';
+		qrms_assert_same( 'en', qmo_kilit_ekrani_dili(), 'cookie Accept-Language\'dan önce' );
+
+		unset( $_COOKIE['rma_lang'] );
+		$_SERVER['HTTP_ACCEPT_LANGUAGE'] = 'en-US,en;q=0.9';
+		qrms_assert_same( 'en', qmo_kilit_ekrani_dili(), 'en-US etkin en\'e iner' );
+
+		$_SERVER['HTTP_ACCEPT_LANGUAGE'] = 'en;q=0.4,de;q=0.8';
+		qrms_assert_same( 'de', qmo_kilit_ekrani_dili(), 'q-değeri yüksek olan' );
+
+		$_SERVER['HTTP_ACCEPT_LANGUAGE'] = 'ja-JP,ja;q=0.9';
+		qrms_assert_same( 'tr', qmo_kilit_ekrani_dili(), 'etkin olmayan tarayıcı dili Türkçe' );
+
+		unset( $_SERVER['HTTP_ACCEPT_LANGUAGE'] );
+		qrms_assert_same( 'tr', qmo_kilit_ekrani_dili(), 'sinyal yokken Türkçe' );
+	}
+);
+
+qrms_test(
+	'kilit ön yüzü rma_ceviri_modul köprüsünü kullanır; html lang çözülen dildir',
+	function () {
+		$kaynak = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-masa-oturum-guvenligi/masa-dogrulama.php' );
+
+		qrms_assert_contains( "rma_ceviri_modul( 'lock'", $kaynak, 'köprü çağrısı' );
+		qrms_assert_contains( "__( 'Oturum Gerekli', 'qrms' )", $kaynak, 'textdomain başlık' );
+		qrms_assert_contains(
+			"__( 'Bu masa için geçerli bir QR kod bulunamadı. Lütfen masanızdaki QR kodu okutun.', 'qrms' )",
+			$kaynak,
+			'textdomain sahte QR'
+		);
+		qrms_assert_contains(
+			"__( 'Oturumunuz sona erdi. Devam etmek için masadaki QR kodu tekrar okutun.', 'qrms' )",
+			$kaynak,
+			'textdomain oturum bitti'
+		);
+		qrms_assert_contains( 'esc_attr( $metin[\'dil\'] )', $kaynak, 'html lang kilit diline bağlı' );
+		qrms_assert_false(
+			(bool) preg_match( '/<html lang="tr">/', $kaynak ),
+			'sabit lang=tr kalmadı'
+		);
+
+		qrms_ae_stub_ceviri();
+		update_option( 'qrmenu_active_langs', array( 'tr', 'en' ) );
+		$_GET  = array();
+		$_COOKIE = array();
+		unset( $_SERVER['HTTP_ACCEPT_LANGUAGE'] );
+
+		$metin = qmo_kilit_ekrani_metinleri( __( 'Oturumunuz sona erdi. Devam etmek için masadaki QR kodu tekrar okutun.', 'qrms' ) );
+		qrms_assert_same( 'tr', $metin['dil'], 'varsayılan dil' );
+		qrms_assert_same( 'Oturum Gerekli', $metin['baslik'], 'başlık Türkçe' );
+		qrms_assert_same(
+			'Oturumunuz sona erdi. Devam etmek için masadaki QR kodu tekrar okutun.',
+			$metin['mesaj'],
+			'mesaj Türkçe'
+		);
+		qrms_assert_false( $metin['rtl'], 'TR RTL değil' );
+	}
+);
+
+qrms_test(
+	'uyarı kutusu lock metnini genel dille çevirir, Accept-Language kullanmaz',
+	function () {
+		$kaynak = file_get_contents( QRMS_PLUGIN_DIR . 'modules/_qmo-ortak/helpers.php' );
+
+		qrms_assert_contains( "rma_ceviri_modul( 'lock'", $kaynak, 'köprü çağrısı' );
+		qrms_assert_contains(
+			"__( 'Bu bölümü kullanmak için masanızdaki QR kodu okutun.', 'qrms' )",
+			$kaynak,
+			'textdomain varsayılan kutu'
+		);
+		qrms_assert_false(
+			(bool) preg_match( '/HTTP_ACCEPT_LANGUAGE/', $kaynak ),
+			'uyarı kutusu Accept-Language okumaz'
+		);
+		qrms_assert_false(
+			(bool) preg_match( "/rma_ceviri_modul\(\s*'lock',\s*\\\$mesaj,\s*\\\$/", $kaynak ),
+			'uyarı kutusu kilit dilini zorlamaz'
+		);
+	}
+);
+
 
 if ( empty( $GLOBALS['qrms_failures'] ) ) {
 	echo "\033[32mTüm testler geçti\033[0m (" . $GLOBALS['qrms_assertions'] . " doğrulama)\n\n";
