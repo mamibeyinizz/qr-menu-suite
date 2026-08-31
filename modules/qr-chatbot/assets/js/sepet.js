@@ -114,6 +114,20 @@
 		return isNaN( f ) ? 0 : f;
 	}
 
+	/* TL yazımı — RMA_Kampanya_DB::bicimle() ile aynı kural:
+	   kuruş varsa iki hane ve virgül (80,50), tam sayıda ,00 yok (368),
+	   binlik ayracı nokta (1.250,25). */
+	function fiyatYazi( n ) {
+		var f = parseFloat( n );
+		if ( isNaN( f ) ) {
+			f = 0;
+		}
+		var parca = Math.abs( f ).toFixed( 2 ).split( '.' );
+		var tam   = parca[ 0 ].replace( /\B(?=(\d{3})+(?!\d))/g, '.' );
+		var metin = ( f < 0 ? '-' : '' ) + tam + ',' + parca[ 1 ];
+		return ( ',00' === metin.slice( -3 ) ) ? metin.slice( 0, -3 ) : metin;
+	}
+
 	/* ---- UI referansları ---- */
 
 	var bar     = document.getElementById( 'qmo-bar' );
@@ -342,7 +356,7 @@
 
 		var fy = document.createElement( 'div' );
 		fy.className = 'qmo-it-fy';
-		fy.appendChild( document.createTextNode( '₺' + ( x.fiyat * x.adet ).toFixed( 0 ) ) );
+		fy.appendChild( document.createTextNode( '₺' + fiyatYazi( x.fiyat * x.adet ) ) );
 		var y2 = yaklasik( x.fiyat * x.adet );
 		if ( y2 ) {
 			fy.appendChild( document.createElement( 'br' ) );
@@ -421,7 +435,7 @@
 		} );
 
 		badge.textContent = n;
-		barTot.textContent = '₺' + t.toFixed( 0 );
+		barTot.textContent = '₺' + fiyatYazi( t );
 		document.getElementById( 'qmo-bar-txt' ).textContent = T( 'sepet' );
 		document.getElementById( 'qmo-dr-title' ).textContent = T( 'sepetiniz' );
 		document.getElementById( 'qmo-t-top' ).textContent = T( 'toplam' );
@@ -433,7 +447,7 @@
 			kapat();
 		}
 
-		tot.textContent = '₺' + t.toFixed( 0 );
+		tot.textContent = '₺' + fiyatYazi( t );
 		yakEl.textContent = yaklasik( t );
 
 		list.textContent = '';
