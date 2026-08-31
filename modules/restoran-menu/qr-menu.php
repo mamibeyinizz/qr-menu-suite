@@ -93,6 +93,8 @@ class Restaurant_Menu_Automation {
         add_action( 'add_inline_data',       [ $this, 'add_quick_edit_inline_data' ], 10, 2 );
         add_action( 'save_post_rma_menu_item', [ $this, 'save_quick_edit_fields' ] );
         add_filter( 'posts_clauses', [ $this, 'admin_group_by_category' ], 10, 2 );
+        add_action( 'pre_get_posts', [ $this, 'filter_tukendi_list' ] );
+        add_filter( 'views_edit-rma_menu_item', [ $this, 'tukendi_views' ] );
         add_filter( 'post_row_actions',              [ $this, 'add_duplicate_post_link' ], 10, 2 );
         add_action( 'admin_action_rma_duplicate_post', [ $this, 'duplicate_post_action' ] );
         add_action( 'admin_enqueue_scripts', [ $this, 'admin_scripts' ] );

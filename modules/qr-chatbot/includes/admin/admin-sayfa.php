@@ -186,6 +186,39 @@ if ( ! function_exists( 'qmo_chatbot_menu_guncelle_handler' ) ) {
 	}
 }
 
+if ( ! function_exists( 'qmo_chatbot_admin_pages' ) ) {
+	/**
+	 * Chatbot ayar sekmeleri — TEK KAYNAK.
+	 *
+	 * Hub/Genel Bakış alt listesi ve sayfa üstündeki sekmeler aynı listeden
+	 * türer; yeni sekme eklenince ikisi de güncellenir.
+	 *
+	 * @return array<int,array{url:string,title:string,tab:string}>
+	 */
+	function qmo_chatbot_admin_pages() {
+		$sayfa = class_exists( 'QRMS_Admin' )
+			? QRMS_Admin::get_module_page_slug( 'qr-chatbot' )
+			: 'qrms-module-qr-chatbot';
+
+		$sekmeler = array(
+			'genel'     => __( 'Genel', 'qrms' ),
+			'gorunum'   => __( 'Görünüm & Renkler', 'qrms' ),
+			'yapayzeka' => __( 'Yapay Zeka', 'qrms' ),
+		);
+
+		$liste = array();
+		foreach ( $sekmeler as $tab => $title ) {
+			$liste[] = array(
+				'tab'   => $tab,
+				'title' => $title,
+				'url'   => admin_url( 'admin.php?page=' . $sayfa . '&tab=' . $tab ),
+			);
+		}
+
+		return $liste;
+	}
+}
+
 /**
  * Chatbot ayarları sayfası.
  *
@@ -197,9 +230,14 @@ if ( ! function_exists( 'qmo_chatbot_ayar_sayfasi' ) ) {
 			wp_die( 'Bu sayfaya erişim yetkiniz yok.' );
 		}
 
+		$sayfalar = qmo_chatbot_admin_pages();
+		$izinli   = array();
+		foreach ( $sayfalar as $sayfa ) {
+			$izinli[] = $sayfa['tab'];
+		}
+
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		$sekme = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : 'genel';
-		$izinli = array( 'genel', 'gorunum', 'yapayzeka' );
 		if ( ! in_array( $sekme, $izinli, true ) ) {
 			$sekme = 'genel';
 		}
@@ -209,7 +247,6 @@ if ( ! function_exists( 'qmo_chatbot_ayar_sayfasi' ) ) {
 			add_settings_error( 'qmo_chatbot', 'menu_ok', 'Menü verisi ürünlerden güncellendi.', 'updated' );
 		}
 
-		$sayfa_slug = QRMS_Admin::get_module_page_slug( 'qr-chatbot' );
 		$renkler    = qmo_chatbot_renkleri_oku();
 		$sablonlar  = qmo_renk_sablonlari();
 		$aktif      = (string) get_option( 'gemini_active_preset', '' );
@@ -230,12 +267,10 @@ if ( ! function_exists( 'qmo_chatbot_ayar_sayfasi' ) ) {
 			<?php settings_errors( 'qmo_chatbot' ); ?>
 
 			<nav class="nav-tab-wrapper wp-clearfix" style="margin-bottom:20px;">
-				<a href="<?php echo esc_url( admin_url( 'admin.php?page=' . $sayfa_slug . '&tab=genel' ) ); ?>"
-					class="nav-tab <?php echo 'genel' === $sekme ? 'nav-tab-active' : ''; ?>">Genel</a>
-				<a href="<?php echo esc_url( admin_url( 'admin.php?page=' . $sayfa_slug . '&tab=gorunum' ) ); ?>"
-					class="nav-tab <?php echo 'gorunum' === $sekme ? 'nav-tab-active' : ''; ?>">Görünüm & Renkler</a>
-				<a href="<?php echo esc_url( admin_url( 'admin.php?page=' . $sayfa_slug . '&tab=yapayzeka' ) ); ?>"
-					class="nav-tab <?php echo 'yapayzeka' === $sekme ? 'nav-tab-active' : ''; ?>">Yapay Zeka</a>
+				<?php foreach ( $sayfalar as $sayfa ) : ?>
+					<a href="<?php echo esc_url( $sayfa['url'] ); ?>"
+						class="nav-tab <?php echo $sayfa['tab'] === $sekme ? 'nav-tab-active' : ''; ?>"><?php echo esc_html( $sayfa['title'] ); ?></a>
+				<?php endforeach; ?>
 			</nav>
 
 			<form method="post" action="" id="qmo-chatbot-form">

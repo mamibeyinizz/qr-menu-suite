@@ -149,6 +149,41 @@ trait RMA_Admin_Pages_Trait {
     }
 
     /**
+     * Genel Bakış kartındaki alt bağlantılar — hub kartlarıyla AYNI kaynak.
+     *
+     * get_hub_cards() sırası korunur; alt sayfa başlığı title'dır (hub
+     * "Stok Durumu" / menü "Görünüm" derken Genel Bakış "Ürünüm Yok" /
+     * "Menü Görünümü" der).
+     *
+     * @return array<int,array{url:string,title:string}>
+     */
+    public function get_overview_links() {
+        $sub   = $this->get_subpages();
+        $links = array();
+
+        foreach ( $this->get_hub_cards() as $group ) {
+            foreach ( $group['cards'] as $card ) {
+                $title = $card['title'];
+
+                foreach ( $sub as $slug => $page ) {
+                    if ( ! preg_match( '/[?&]page=' . preg_quote( $slug, '/' ) . '(?:&|$|#)/', $card['url'] ) ) {
+                        continue;
+                    }
+                    $title = isset( $page['title'] ) ? $page['title'] : $card['title'];
+                    break;
+                }
+
+                $links[] = array(
+                    'url'   => $card['url'],
+                    'title' => $title,
+                );
+            }
+        }
+
+        return $links;
+    }
+
+    /**
      * Eski (sekmeli) sayfa slug'ları -> yeni sayfa + bölüm çapası.
      *
      * Yer imleri, dış bağlantılar ve eski yönlendirmeler çalışmaya devam

@@ -688,13 +688,13 @@ function add_menu_page( $page_title, $menu_title, $capability, $menu_slug, $call
  * @param mixed  $value Değer.
  * @return mixed
  */
-function apply_filters( $hook, $value ) {
+function apply_filters( $hook, $value, ...$args ) {
 	if ( empty( $GLOBALS['qrms_test']['actions'][ $hook ] ) ) {
 		return $value;
 	}
 
 	foreach ( $GLOBALS['qrms_test']['actions'][ $hook ] as $callback ) {
-		$value = call_user_func( $callback, $value );
+		$value = call_user_func( $callback, $value, ...$args );
 	}
 
 	return $value;
@@ -1003,14 +1003,20 @@ function shortcode_atts( $pairs, $atts, $shortcode = '' ) {
 }
 
 /**
- * Script'e veri geçirir (no-op).
+ * Script'e veri geçirir.
  *
  * @param string $handle Handle.
  * @param string $name   Nesne adı.
  * @param array  $data   Veri.
  * @return void
  */
-function wp_localize_script( $handle, $name, $data ) {}
+function wp_localize_script( $handle, $name, $data ) {
+	$GLOBALS['qrms_test']['localized'][] = array(
+		'handle' => $handle,
+		'name'   => $name,
+		'data'   => $data,
+	);
+}
 
 /**
  * Negatif olmayan tam sayı.
