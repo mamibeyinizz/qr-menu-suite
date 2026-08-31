@@ -3777,6 +3777,7 @@ require_once QRMS_PLUGIN_DIR . 'modules/qr-analiz/genel-sayfasi.php';
 require_once QRMS_PLUGIN_DIR . 'modules/qr-analiz/urunler-sayfasi.php';
 require_once QRMS_PLUGIN_DIR . 'modules/qr-analiz/masalar-sayfasi.php';
 require_once QRMS_PLUGIN_DIR . 'modules/qr-analiz/sepet-sayfasi.php';
+require_once QRMS_PLUGIN_DIR . 'modules/qr-analiz/etkilesim-sayfasi.php';
 require_once QRMS_PLUGIN_DIR . 'modules/qr-analiz/sistem-sayfasi.php';
 require_once QRMS_PLUGIN_DIR . 'modules/qr-analiz/hub-sayfasi.php';
 
@@ -3831,8 +3832,8 @@ qrms_test(
 
 		// Henüz dolmamış kategoriler gizlenmez, ROZETLENİR: gizlemek "böyle
 		// bir şey yok" demek olurdu, rozetsiz göstermek boş ekranı hata gibi
-		// hissettirirdi. Sepet Faz 7'de doldu; kalan iki (etkileşim, açılış)
-		// Faz 8'e kalır.
+		// hissettirirdi. Sepet Faz 7'de, etkileşim Faz 8B'de doldu; kalan
+		// açılış Faz 8C'ye kalır.
 		$rozetli = array();
 
 		foreach ( $kartlar as $kart ) {
@@ -3841,7 +3842,7 @@ qrms_test(
 			}
 		}
 
-		qrms_assert_same( 2, count( $rozetli ), 'iki kategori "Yakında"' );
+		qrms_assert_same( 1, count( $rozetli ), 'bir kategori "Yakında"' );
 
 		// Ayar ekranı dosyası artık güvenlik modülünün altındadır.
 		qrms_assert_false( defined( 'QRMS_ANALIZ_AYAR_SAYFA' ), 'ayar slug sabiti taşındı' );
@@ -3863,15 +3864,17 @@ qrms_test(
 
 		qrms_assert_false( isset( $gecerli['qrms-an-sepet'] ), 'chatbot pasif: sepet yok' );
 		qrms_assert_false( isset( $gecerli['qrms-an-acilis'] ), 'açılış pasif: kategori yok' );
+		qrms_assert_false( isset( $gecerli['qrms-an-etkilesim'] ), 'etkileşim bağlı modüller pasif: kategori yok' );
 		qrms_assert_true( isset( $gecerli['qrms-an-genel'] ), 'çekirdek kategoriler durur' );
 		qrms_assert_true( isset( $gecerli['qrms-an-masalar'] ), 'masalar modüle bağlı değil' );
 
-		// Chatbot açılınca kategori geri gelir.
+		// Chatbot açılınca sepet ve (OR bağlı) etkileşim geri gelir.
 		update_option( 'qrms_active_modules', array( 'qr-analiz', 'qr-chatbot' ) );
 
 		$gecerli = qrms_module_qr_analiz_gecerli_sayfalar();
 
 		qrms_assert_true( isset( $gecerli['qrms-an-sepet'] ), 'chatbot aktif: sepet var' );
+		qrms_assert_true( isset( $gecerli['qrms-an-etkilesim'] ), 'chatbot aktif: etkileşim var' );
 
 		update_option( 'qrms_active_modules', array() );
 	}
@@ -5025,6 +5028,144 @@ qrms_test(
 			false !== strpos( $hub, 'function qrms_analitik_sayfa_sepet' ),
 			'placeholder fonksiyon hub\'dan kalktı'
 		);
+	}
+);
+
+qrms_test(
+	'etkileşim hesaplaması saf fonksiyondur: ödül dönüşümü sıfıra bölünmez',
+	function () {
+		$bos = qrms_analitik_etkilesim_hesapla( array() );
+
+		qrms_assert_true( $bos['bos'], 'boş girdi' );
+		qrms_assert_same( 0, $bos['ozet']['reward_oran'], 'üretilen yokken oran 0' );
+
+		$sonuc = qrms_analitik_etkilesim_hesapla(
+			array(
+				array(
+					'event_type' => 'chatbot_message',
+					'item_name'  => '',
+					'adet'       => 4,
+				),
+				array(
+					'event_type' => 'form_submit',
+					'item_name'  => 'Rezervasyon',
+					'adet'       => 3,
+				),
+				array(
+					'event_type' => 'form_submit',
+					'item_name'  => 'İletişim',
+					'adet'       => 1,
+				),
+				array(
+					'event_type' => 'reward_issued',
+					'item_name'  => '',
+					'adet'       => 10,
+				),
+				array(
+					'event_type' => 'reward_redeemed',
+					'item_name'  => '',
+					'adet'       => 4,
+				),
+				array(
+					'event_type' => 'lang_switch',
+					'item_name'  => 'en',
+					'adet'       => 6,
+				),
+				array(
+					'event_type' => 'lang_switch',
+					'item_name'  => 'ar',
+					'adet'       => 2,
+				),
+				array(
+					'event_type' => 'gallery_view',
+					'item_name'  => '',
+					'adet'       => 5,
+				),
+			)
+		);
+
+		qrms_assert_false( $sonuc['bos'], 'dolu girdi' );
+		qrms_assert_same( 4, $sonuc['ozet']['chatbot'], 'chatbot' );
+		qrms_assert_same( 4, $sonuc['ozet']['form'], 'form toplam' );
+		qrms_assert_same( 40, $sonuc['ozet']['reward_oran'], '4/10 dönüşüm' );
+		qrms_assert_same( 'Rezervasyon', $sonuc['formlar'][0]['ad'], 'form sırası adet' );
+		qrms_assert_same( 8, $sonuc['ozet']['lang'], 'dil toplam' );
+		qrms_assert_same( 'en', $sonuc['diller'][0]['kod'], 'en önde' );
+		qrms_assert_same( 75, $sonuc['diller'][0]['pay'], 'en payı' );
+		qrms_assert_same( 5, $sonuc['ozet']['gallery'], 'galeri' );
+	}
+);
+
+qrms_test(
+	'etkileşim CSV\'si ayrı kategori anahtarı kullanır',
+	function () {
+		$sinif = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/class-qrms-analitik.php' );
+		$sayfa = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/etkilesim-sayfasi.php' );
+
+		qrms_assert_contains( "if ( 'etkilesim' === \$kategori )", $sinif, 'ayrı kategori anahtarı' );
+		qrms_assert_contains( 'csv_etkilesim', $sinif, 'etkileşim CSV üreticisi' );
+		qrms_assert_contains( "'kategori' => 'etkilesim'", $sayfa, 'sayfa kendi indirmesini ister' );
+		qrms_assert_contains( 'qr-analitik-etkilesim-', $sinif, 'dosya adı çakışmaz' );
+	}
+);
+
+qrms_test(
+	'etkileşim sayfası paylaşılan filtreyi kullanır ve bağlı olmayan bölümü basmaz',
+	function () {
+		$sayfa = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/etkilesim-sayfasi.php' );
+		$js    = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/assets/js/analitik-etkilesim.js' );
+		$hub   = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/hub-sayfasi.php' );
+
+		qrms_assert_contains( "qrms_analitik_filtre_cubugu( 'qrms-an-etkilesim' )", $sayfa, 'paylaşılan filtre' );
+		qrms_assert_contains( 'qrms_analitik_etkilesim', $js, 'AJAX ucu' );
+		qrms_assert_contains( 'justStarted', $js, 'yeni başladı boş durumu' );
+		qrms_assert_contains( "'hazir'    => true", $hub, 'etkileşim kartı yakında değil' );
+		qrms_assert_false(
+			false !== strpos( $hub, 'function qrms_analitik_sayfa_etkilesim' ),
+			'placeholder fonksiyon hub\'dan kalktı'
+		);
+		qrms_assert_contains( 'moduller', $hub, 'OR lisans süzmesi' );
+	}
+);
+
+qrms_test(
+	'etkileşim bağlı modüller pasifken sayfa yine kayıtlıdır ama hub kartı yoktur',
+	function () {
+		update_option( 'qrms_active_modules', array( 'qr-analiz' ) );
+		QRMS_Analitik_Filtre::sifirla();
+
+		$GLOBALS['submenu'][ QRMS_Admin::MENU_SLUG ] = array(
+			qrms_submenu_satiri( 'İstatistikler', QRMS_Admin::get_module_page_slug( 'qr-analiz' ) ),
+		);
+
+		qrms_module_qr_analiz_admin_menu();
+
+		$sluglar = array_map(
+			function ( $item ) {
+				return $item['slug'];
+			},
+			$GLOBALS['qrms_test']['submenus']
+		);
+
+		qrms_assert_true( in_array( 'qrms-an-etkilesim', $sluglar, true ), 'doğrudan URL çalışsın diye kayıtlı' );
+
+		$etk_kart = false;
+		foreach ( qrms_module_qr_analiz_hub_kartlari() as $kart ) {
+			if ( false !== strpos( $kart['url'], 'page=qrms-an-etkilesim' ) ) {
+				$etk_kart = true;
+			}
+		}
+
+		qrms_assert_false( $etk_kart, 'hub kartı basılmaz' );
+
+		ob_start();
+		qrms_analitik_sayfa_etkilesim();
+		$html = ob_get_clean();
+
+		qrms_assert_contains( 'Bu kategori bu lisansta kapalı', $html, 'anlamlı mesaj' );
+		qrms_assert_false( false !== strpos( $html, 'id="qrms-an-etk-chatbot-cards"' ), 'boş tablo yok' );
+
+		update_option( 'qrms_active_modules', array() );
 	}
 );
 

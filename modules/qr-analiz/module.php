@@ -67,6 +67,7 @@ function qrms_module_qr_analiz_init() {
 		require_once __DIR__ . '/urunler-sayfasi.php';
 		require_once __DIR__ . '/masalar-sayfasi.php';
 		require_once __DIR__ . '/sepet-sayfasi.php';
+		require_once __DIR__ . '/etkilesim-sayfasi.php';
 		require_once __DIR__ . '/sistem-sayfasi.php';
 		require_once __DIR__ . '/hub-sayfasi.php';
 
@@ -206,6 +207,11 @@ function qrms_module_qr_analiz_admin_assets() {
 
 	if ( 'qrms-an-sepet' === $page ) {
 		qrms_module_qr_analiz_sepet_assets();
+		return;
+	}
+
+	if ( 'qrms-an-etkilesim' === $page ) {
+		qrms_module_qr_analiz_etkilesim_assets();
 		return;
 	}
 
@@ -500,6 +506,71 @@ function qrms_module_qr_analiz_sepet_assets() {
 				'firebaseTitle'     => __( 'Firebase yapılandırmasını kontrol edin', 'qrms' ),
 				'firebaseText'      => __( 'Başarısız siparişler genelde Firestore yazımının düşmesinden gelir. Service account ve şube ayarlarını gözden geçirin.', 'qrms' ),
 				'firebaseLink'      => __( 'Güvenlik Ayarı > Firebase & Şube Ayarları', 'qrms' ),
+				'loading'           => __( 'Yükleniyor', 'qrms' ),
+				'loadError'         => __( 'Veri yüklenemedi. Sayfayı yenileyin.', 'qrms' ),
+			),
+		)
+	);
+}
+
+/**
+ * "Müşteri Etkileşimi" kategorisinin varlıkları.
+ *
+ * Bağlı modüllerin hiçbiri lisanslı değilse sayfa PHP'den bir mesaj basar;
+ * betik kuyruğa girmez — boş tabloyu AJAX'ın doldurmasını beklemeyiz.
+ *
+ * @return void
+ */
+function qrms_module_qr_analiz_etkilesim_assets() {
+	qrms_module_qr_analiz_panel_stili();
+
+	if ( ! qrms_analitik_etkilesim_lisansli() ) {
+		return;
+	}
+
+	qrms_module_qr_analiz_ortak_betik();
+
+	wp_enqueue_script(
+		'qrms-analitik-etkilesim',
+		QRMS_PLUGIN_URL . 'modules/qr-analiz/assets/js/analitik-etkilesim.js',
+		array( 'qrms-analitik-ortak' ),
+		QRMS_Helpers::asset_version( 'modules/qr-analiz/assets/js/analitik-etkilesim.js' ),
+		true
+	);
+
+	wp_localize_script(
+		'qrms-analitik-etkilesim',
+		'qrmsAnalitikEtkilesim',
+		array(
+			'ajaxUrl'       => admin_url( 'admin-ajax.php' ),
+			'nonce'         => wp_create_nonce( QRMS_Analitik::NONCE ),
+			'donem'         => QRMS_Analitik_Filtre::donem(),
+			'masa'          => QRMS_Analitik_Filtre::masa(),
+			'bas'           => QRMS_Analitik_Filtre::bas(),
+			'bit'           => QRMS_Analitik_Filtre::bit(),
+			'aralikEtiketi' => QRMS_Analitik_Filtre::etiket(),
+			'i18n'          => array(
+				'cardChatbot'       => __( 'Chatbot mesajı', 'qrms' ),
+				'cardReview'        => __( 'Yorum gönderimi', 'qrms' ),
+				'cardForm'          => __( 'Form gönderimi', 'qrms' ),
+				'cardIssued'        => __( 'Üretilen kod', 'qrms' ),
+				'cardRedeemed'      => __( 'Kullanılan kod', 'qrms' ),
+				'cardRate'          => __( 'Dönüşüm oranı', 'qrms' ),
+				'cardGallery'       => __( 'Galeri görüntüleme', 'qrms' ),
+				'events'            => __( 'olay', 'qrms' ),
+				'chatbotMsg'        => __( 'Mesaj', 'qrms' ),
+				'formName'          => __( 'Form', 'qrms' ),
+				'submissions'       => __( 'Gönderim', 'qrms' ),
+				'rewardSource'      => __( 'Ödül tablosuyla aynı zaman ekseni', 'qrms' ),
+				'rewardRateHint'    => __( 'Kullanılan / üretilen', 'qrms' ),
+				'language'          => __( 'Dil', 'qrms' ),
+				'switches'          => __( 'Seçim', 'qrms' ),
+				'share'             => __( 'Pay', 'qrms' ),
+				'justStartedTitle'  => __( 'Toplanmaya yeni başlandı', 'qrms' ),
+				'justStarted'       => __( 'Etkileşim olayları toplanmaya yeni başladı. Bu bir hata değil; chatbot, yorum, dil seçimi ve galeri kullanıldıkça sayılar burada görünecek.', 'qrms' ),
+				'noChatbot'         => __( 'Bu aralıkta chatbot mesajı yok.', 'qrms' ),
+				'noForm'            => __( 'Bu aralıkta form gönderimi yok.', 'qrms' ),
+				'noLang'            => __( 'Bu aralıkta dil değişimi yok.', 'qrms' ),
 				'loading'           => __( 'Yükleniyor', 'qrms' ),
 				'loadError'         => __( 'Veri yüklenemedi. Sayfayı yenileyin.', 'qrms' ),
 			),
