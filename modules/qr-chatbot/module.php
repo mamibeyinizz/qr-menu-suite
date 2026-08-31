@@ -93,13 +93,57 @@ function qrms_module_qr_chatbot_init() {
 		// çünkü aynı option'ları qr-analiz de kullanır.
 		require_once QRMS_PLUGIN_DIR . 'modules/_qmo-ortak/firebase-ayarlari.php';
 
+		// "QR Chatbot" satırı hub ekranını açar; formlar aşağıda ayrı
+		// sayfa olarak kaydedilir (sol menüde gizli).
 		QRMS_Admin::register_module_page( 'qr-chatbot', 'qmo_chatbot_ayar_sayfasi' );
+
+		add_action( 'admin_menu', 'qrms_module_qr_chatbot_admin_menu', 20 );
 		add_action( 'admin_enqueue_scripts', 'qrms_module_qr_chatbot_admin_assets' );
 	}
 }
 
 /**
- * Chatbot ayarları ekranının yönetim varlıkları.
+ * Modülün alt sayfalarını kaydeder — hepsi sol menüde GİZLİDİR.
+ *
+ * Restoran Menü ile aynı desen: sayfalar gerçek WordPress sayfalarıdır
+ * (parent: MENU_SLUG); menüde görünmemeleri hide_module_subpages() ile,
+ * route çözüldükten sonra sağlanır. parent_slug = null kullanılmaz —
+ * o hook adını değiştirip 403 üretir (bkz. QRMS_Admin::hide_module_subpages).
+ *
+ * @return void
+ */
+function qrms_module_qr_chatbot_admin_menu() {
+	global $submenu;
+
+	$parent = QRMS_Admin::MENU_SLUG;
+
+	if ( empty( $submenu[ $parent ] ) ) {
+		return;
+	}
+
+	foreach ( qmo_chatbot_sayfalar() as $slug => $page ) {
+		// Eşleştirmeyi kaydet (sol menü vurgusu, is_module_subpage).
+		// Sarmalanmış callback kullanılmaz: geri bağlantısı sayfanın kendi
+		// iskeletinde "← QR Chatbot" olarak basılır (hub başlığıyla aynı).
+		QRMS_Admin::register_module_subpage( 'qr-chatbot', $slug, $page['render'] );
+
+		add_submenu_page(
+			$parent,
+			$page['title'],
+			$page['title'],
+			QRMS_Admin::CAPABILITY,
+			$slug,
+			$page['render']
+		);
+	}
+}
+
+/**
+ * Chatbot hub ve alt sayfalarının yönetim varlıkları.
+ *
+ * Hub, Restoran Menü hub'ının CSS'ini kopyalamadan kuyruğa alır
+ * (modules/restoran-menu/assets/css/hub.css). Form ekranları mevcut
+ * qmo-admin + admin-chatbot.js varlıklarını kullanır.
  *
  * @return void
  */
@@ -107,7 +151,20 @@ function qrms_module_qr_chatbot_admin_assets() {
 	// phpcs:ignore WordPress.Security.NonceVerification.Recommended
 	$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '';
 
-	if ( QRMS_Admin::get_module_page_slug( 'qr-chatbot' ) !== $page ) {
+	$hub_slug = QRMS_Admin::get_module_page_slug( 'qr-chatbot' );
+	$altlar   = function_exists( 'qmo_chatbot_sayfalar' ) ? array_keys( qmo_chatbot_sayfalar() ) : array();
+
+	if ( $hub_slug === $page ) {
+		wp_enqueue_style(
+			'rma-hub',
+			QRMS_PLUGIN_URL . 'modules/restoran-menu/assets/css/hub.css',
+			array( 'qrms-admin' ),
+			QRMS_Helpers::asset_version( 'modules/restoran-menu/assets/css/hub.css' )
+		);
+		return;
+	}
+
+	if ( ! in_array( $page, $altlar, true ) ) {
 		return;
 	}
 
@@ -117,6 +174,11 @@ function qrms_module_qr_chatbot_admin_assets() {
 		array(),
 		QRMS_Helpers::asset_version( 'modules/_qmo-ortak/assets/css/admin.css' )
 	);
+
+	$js_sayfalari = array( 'qrms-chatbot-bot-identity', 'qrms-chatbot-appearance' );
+	if ( ! in_array( $page, $js_sayfalari, true ) ) {
+		return;
+	}
 
 	wp_enqueue_media();
 

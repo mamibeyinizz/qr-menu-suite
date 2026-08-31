@@ -3626,6 +3626,191 @@ qrms_test(
 );
 
 /* ---------------------------------------------------------------------------
+ * 8d. QR Chatbot — kart tabanlı hub ve gizli alt sayfalar
+ * ------------------------------------------------------------------------ */
+
+require_once QRMS_PLUGIN_DIR . 'modules/qr-chatbot/includes/admin/admin-sayfa.php';
+require_once QRMS_PLUGIN_DIR . 'modules/qr-chatbot/module.php';
+
+echo "\nQR Chatbot hub\n";
+
+qrms_test(
+	'alt sayfalar tek kaynakta, hub grupları ve slug\'lar tanımlı',
+	function () {
+		$pages = qmo_chatbot_sayfalar();
+
+		qrms_assert_same(
+			array(
+				'qrms-chatbot-bot-identity',
+				'qrms-chatbot-appearance',
+				'qrms-chatbot-gemini',
+				'qrms-chatbot-ai-behavior',
+				'qrms-chatbot-firebase',
+				'qrms-chatbot-ana-site',
+			),
+			array_keys( $pages ),
+			'sayfa listesi'
+		);
+
+		foreach ( $pages as $slug => $page ) {
+			foreach ( array( 'title', 'render', 'desc', 'icon', 'group' ) as $key ) {
+				qrms_assert_true( ! empty( $page[ $key ] ), $slug . ' -> ' . $key . ' dolu' );
+			}
+			qrms_assert_same( 0, strpos( $page['icon'], 'dashicons-' ), $slug . ' ikonu dashicon' );
+			qrms_assert_true( is_callable( $page['render'] ), $slug . ' callback çağrılabilir' );
+		}
+
+		qrms_assert_same( 'Bot', $pages['qrms-chatbot-bot-identity']['group'], 'Bot grubu' );
+		qrms_assert_same( 'Bot', $pages['qrms-chatbot-appearance']['group'], 'Görünüm Bot grubunda' );
+		qrms_assert_same( 'Yapay Zeka', $pages['qrms-chatbot-gemini']['group'], 'Gemini grubu' );
+		qrms_assert_same( 'Yapay Zeka', $pages['qrms-chatbot-ai-behavior']['group'], 'Davranış grubu' );
+		qrms_assert_same( 'Entegrasyon', $pages['qrms-chatbot-firebase']['group'], 'Firebase grubu' );
+		qrms_assert_same( 'Entegrasyon', $pages['qrms-chatbot-ana-site']['group'], 'Ana site grubu' );
+	}
+);
+
+qrms_test(
+	'hub kart ızgarası form içermez, bölüm başlıkları ve kartlar basılır',
+	function () {
+		ob_start();
+		qmo_chatbot_ayar_sayfasi();
+		$html = ob_get_clean();
+
+		qrms_assert_contains( 'class="rma-hub"', $html, 'Restoran Menü kapsülü' );
+		qrms_assert_contains( 'QR Chatbot', $html, 'hub başlığı' );
+		qrms_assert_contains( 'Gemini destekli masa asistanı', $html, 'açıklama' );
+		qrms_assert_contains( '[gemini_chatbot]', $html, 'kısa kod' );
+		qrms_assert_contains( 'qrms-hub-group-title', $html, 'bölüm başlığı' );
+		qrms_assert_contains( 'qrms-hub-group-title">Bot', $html, 'Bot bölümü' );
+		qrms_assert_contains( 'Yapay Zeka', $html, 'Yapay Zeka bölümü' );
+		qrms_assert_contains( 'Entegrasyon', $html, 'Entegrasyon bölümü' );
+		qrms_assert_contains( 'page=qrms-chatbot-bot-identity', $html, 'Bot Kimliği kartı' );
+		qrms_assert_contains( 'page=qrms-chatbot-appearance', $html, 'Görünüm kartı' );
+		qrms_assert_contains( 'page=qrms-chatbot-gemini', $html, 'Gemini kartı' );
+		qrms_assert_contains( 'page=qrms-chatbot-ai-behavior', $html, 'Davranış kartı' );
+		qrms_assert_contains( 'page=qrms-chatbot-firebase', $html, 'Firebase kartı' );
+		qrms_assert_contains( 'page=qrms-chatbot-ana-site', $html, 'Ana site kartı' );
+		qrms_assert_contains( '✗ Henüz yapılandırılmadı', $html, 'Firebase uyarı rozeti' );
+		qrms_assert_false( false !== strpos( $html, '<form' ), 'hub form basmaz' );
+		qrms_assert_false( false !== strpos( $html, 'nav-tab' ), 'eski sekmeler yok' );
+	}
+);
+
+qrms_test(
+	'eski ?tab= yer imleri ilgili alt sayfaya yönlenir',
+	function () {
+		$_GET['tab'] = 'gorunum';
+		try {
+			qmo_chatbot_ayar_sayfasi();
+			qrms_assert_true( false, 'yönlendirme beklenirdi' );
+		} catch ( QRMS_Test_Redirect $e ) {
+			qrms_assert_contains( 'page=qrms-chatbot-appearance', $e->getMessage(), 'görünüm sayfası' );
+		}
+
+		$_GET['tab'] = 'yapayzeka';
+		try {
+			qmo_chatbot_ayar_sayfasi();
+			qrms_assert_true( false, 'yönlendirme beklenirdi' );
+		} catch ( QRMS_Test_Redirect $e ) {
+			qrms_assert_contains( 'page=qrms-chatbot-ai-behavior', $e->getMessage(), 'davranış sayfası' );
+		}
+	}
+);
+
+qrms_test(
+	'modül aktifken alt sayfalar gizli kayıtlıdır, option adları durur',
+	function () {
+		$GLOBALS['submenu'][ QRMS_Admin::MENU_SLUG ] = array(
+			qrms_submenu_satiri( 'Chatbot Asistan', QRMS_Admin::get_module_page_slug( 'qr-chatbot' ) ),
+		);
+
+		qrms_module_qr_chatbot_admin_menu();
+
+		$sluglar = array_map(
+			function ( $item ) {
+				return $item['slug'];
+			},
+			$GLOBALS['qrms_test']['submenus']
+		);
+
+		qrms_assert_same( array_keys( qmo_chatbot_sayfalar() ), $sluglar, 'kaydedilen sayfalar' );
+		qrms_assert_true( QRMS_Admin::is_module_subpage( 'qrms-chatbot-bot-identity' ), 'kayıt defterinde' );
+		qrms_assert_same( QRMS_Admin::MENU_SLUG, $GLOBALS['qrms_test']['submenus'][0]['parent'], 'üst menü' );
+
+		$php = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/includes/admin/admin-sayfa.php' );
+		foreach ( array(
+			'gemini_api_key',
+			'qmo_gemini_model',
+			'gemini_bot_name',
+			'gemini_welcome_text',
+			'gemini_placeholder_text',
+			'gemini_show_toggle_text',
+			'gemini_bot_icon',
+			'gemini_icon_size',
+			'gemini_border_radius',
+			'gemini_system_prompt',
+			'gemini_menu_json_data',
+			'qmo_branch_id',
+			'qmo_firebase_sa',
+			'qmo_ana_site',
+			'QMO_FIREBASE_SA_JSON',
+		) as $alan ) {
+			qrms_assert_contains( $alan, $php, $alan . ' durur' );
+		}
+
+		$modul = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/module.php' );
+		qrms_assert_contains( 'modules/restoran-menu/assets/css/hub.css', $modul, 'hub.css kuyruğa alınır' );
+		qrms_assert_contains( "array( 'qrms-admin' )", $modul, 'ortak admin.css sonrası yüklenir' );
+	}
+);
+
+qrms_test(
+	'modül lisansta aktif değilken chatbot alt sayfası kaydedilmez',
+	function () {
+		qrms_module_qr_chatbot_admin_menu();
+		qrms_assert_same( array(), $GLOBALS['qrms_test']['submenus'], 'kayıt yok' );
+	}
+);
+
+qrms_test(
+	'Bot Kimliği sayfasında geri bağlantısı, nonce ve Kaydet vardır',
+	function () {
+		ob_start();
+		qmo_chatbot_sayfa_bot_kimligi();
+		$html = ob_get_clean();
+
+		qrms_assert_contains( 'qrms-back-link', $html, 'geri bağlantısı' );
+		qrms_assert_contains( 'QR Chatbot', $html, 'geri metni' );
+		qrms_assert_contains( 'name="gemini_bot_name"', $html, 'bot adı alanı' );
+		qrms_assert_contains( 'name="gemini_welcome_text"', $html, 'karşılama' );
+		qrms_assert_contains( 'name="gemini_placeholder_text"', $html, 'placeholder' );
+		qrms_assert_contains( 'name="gemini_show_toggle_text"', $html, 'toggle' );
+		qrms_assert_contains( 'name="gemini_bot_icon"', $html, 'ikon' );
+		qrms_assert_contains( 'qmo_chatbot_nonce', $html, 'nonce' );
+		qrms_assert_contains( 'Kaydet', $html, 'Kaydet' );
+		qrms_assert_contains( "submit_button( 'Kaydet', 'primary', 'qmo_chatbot_kaydet' )", file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/includes/admin/admin-sayfa.php' ), 'Kaydet düğmesi adı' );
+		qrms_assert_false( false !== strpos( $html, 'name="gemini_api_key"' ), 'API anahtarı bu sayfada değil' );
+	}
+);
+
+qrms_test(
+	'Firebase sayfasında güvenlik açıklaması durur, ana site kutusu yoktur',
+	function () {
+		ob_start();
+		qmo_chatbot_sayfa_firebase();
+		$html = ob_get_clean();
+
+		qrms_assert_contains( 'name="qmo_branch_id"', $html, 'şube kimliği' );
+		qrms_assert_contains( 'name="qmo_firebase_sa"', $html, 'service account' );
+		qrms_assert_contains( 'QMO_FIREBASE_SA_JSON', $html, 'wp-config önerisi' );
+		qrms_assert_contains( '✗ Henüz yapılandırılmadı', $html, 'uyarı rozeti' );
+		qrms_assert_contains( 'action="options.php"', $html, 'options.php' );
+		qrms_assert_true( in_array( 'qmo_firebase_grup', $GLOBALS['qrms_test']['settings_fields'], true ), 'settings_fields grubu' );
+		qrms_assert_false( false !== strpos( $html, 'Bu site ana site mi?' ), 'ana site kutusu bu sayfada değil' );
+	}
+);
+
+/* ---------------------------------------------------------------------------
  * 9. QR Analiz — hub + kategori alt sayfaları + eski adresin yönlendirmesi
  * ------------------------------------------------------------------------ */
 
