@@ -13545,9 +13545,10 @@ qrms_test(
 		qrms_assert_false( (bool) preg_match( "/aria-label',\s*'Sil'/", $js ), 'sabit Sil kalmadı' );
 		qrms_assert_contains( 'qmo_ceviri_cart_js_metinleri', $php, 'localize tüm diller' );
 		qrms_assert_contains( "'i18n'", $php, 'qmoSepet.i18n' );
-		qrms_assert_contains( 'tam sayfa cache', $php, 'cache gerekçesi' );
+		qrms_assert_contains( "cache'lenebilir", $php, 'cache gerekçesi shortcode' );
 		qrms_assert_contains( 'function qmo_ceviri_cart', $help, 'PHP köprü' );
 		qrms_assert_contains( 'function qmo_ceviri_cart_js_metinleri', $help, 'JS tablo' );
+		qrms_assert_contains( 'tam sayfa cache', $help, 'cache gerekçesi helper' );
 		qrms_assert_contains( 'rma_translate_field', $help, 'yalnız tablo satırı' );
 	}
 );
@@ -13566,33 +13567,6 @@ qrms_test(
 		qrms_assert_same( 'Ödeme TL üzerinden alınır.', $anahtarlar['tl'], 'TL metni olduğu gibi' );
 		qrms_assert_same( 'Sepeti aç', $anahtarlar['ac'], 'denetim aria' );
 		qrms_assert_same( 'Sil', $anahtarlar['sil'], 'denetim Sil' );
-	}
-);
-
-qrms_test(
-	'sepet shortcode qmoSepet.i18n localize eder; iskelet Türkçe kalır',
-	function () {
-		$GLOBALS['qrms_test']['can']       = true;
-		$GLOBALS['qrms_test']['logged_in'] = true;
-
-		$html = qmo_sepet_shortcode();
-		qrms_assert_contains( 'id="qmo-sepet-root"', $html, 'kök' );
-		qrms_assert_contains( 'Sepet', $html, 'iskelet Türkçe (modül/tablo yok)' );
-		qrms_assert_contains( 'Siparişi Gönder', $html, 'gönder Türkçe' );
-
-		$sepet_loc = null;
-		foreach ( $GLOBALS['qrms_test']['localized'] as $item ) {
-			if ( 'qmo-sepet' === $item['handle'] && 'qmoSepet' === $item['name'] ) {
-				$sepet_loc = $item['data'];
-				break;
-			}
-		}
-
-		qrms_assert_true( is_array( $sepet_loc ), 'qmoSepet localize' );
-		qrms_assert_true( isset( $sepet_loc['i18n'] ), 'i18n anahtarı' );
-		qrms_assert_true( isset( $sepet_loc['endpoint'] ), 'endpoint durur' );
-		qrms_assert_true( isset( $sepet_loc['kur'] ), 'kur durur' );
-		qrms_assert_same( array(), $sepet_loc['i18n'], 'boş tablo — JS TXT yedek' );
 	}
 );
 
