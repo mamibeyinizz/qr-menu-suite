@@ -76,6 +76,35 @@ function qrm_pro_get_settings() {
 }
 
 /**
+ * Olumlu/olumsuz yorum ayrımının VARSAYILAN eşiği.
+ *
+ * Yorum listesindeki "Olumlu" / "Olumsuz" sekmeleri, sekme sayaçları ve
+ * sayaçları üreten SQL'in tamamı bu tek değerden beslenir; eşik hiçbir yere
+ * ikinci kez yazılmaz.
+ */
+const QRM_PRO_SENTIMENT_THRESHOLD = 3.0;
+
+/**
+ * Olumlu/olumsuz ayrımının eşiği.
+ *
+ * Ortalama puanı eşiğe EŞİT ya da üzerinde olan yorum olumlu, altındaki
+ * olumsuz sayılır — nötr bir üçüncü kova yoktur, her yorum ikisinden birine
+ * düşer.
+ *
+ * @return float 0-5 aralığına sıkıştırılmış eşik.
+ */
+function qrm_pro_sentiment_threshold() {
+    /**
+     * Olumlu/olumsuz ayrımının eşiği.
+     *
+     * @param float $threshold Varsayılan QRM_PRO_SENTIMENT_THRESHOLD.
+     */
+    $threshold = (float) apply_filters('qrm_pro_sentiment_threshold', QRM_PRO_SENTIMENT_THRESHOLD);
+
+    return max(0.0, min(5.0, $threshold));
+}
+
+/**
  * Geliştirme günlüğü (v4.2.0). Üretimde tamamen sessizdir: yalnızca WP_DEBUG
  * ve WP_DEBUG_LOG açıkken yazar. Kod tabanında doğrudan error_log() çağrısı
  * yapılmaz, gerekiyorsa bu yardımcı kullanılır.

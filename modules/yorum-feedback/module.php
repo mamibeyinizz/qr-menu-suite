@@ -8,10 +8,10 @@
  * Müşteri Yorumları & Değerlendirme" (v4.2.1) eklentisinden taşındı.
  *
  * MENÜ (suite'e uyarlama): kaynağın kendi "QR Yorumlar" ÜST MENÜSÜ kaldırıldı.
- * Kaynakta modülün yedi ekranı ayrı bir top-level menüde duruyordu ve suite
+ * Kaynakta modülün ekranları ayrı bir top-level menüde duruyordu ve suite
  * menüsündeki "Yorum & Feedback" satırı da bunlardan birini (Tüm Yorumlar)
  * ikinci kez basıyordu. Artık tek giriş noktası var: sol menüde yalnızca
- * "Yorum & Feedback" satırı durur ve yedi ekranı kart olarak listeleyen hub
+ * "Yorum & Feedback" satırı durur ve altı ekranı kart olarak listeleyen hub
  * ekranını açar — restoran-menu modülündeki desenin aynısı. Ekranların
  * kendisi gizli ama gerçek sayfalar olarak kayıtlıdır; eski adreslerden
  * gelenler qrm_pro_legacy_page_target() ile yönlendirilir.
@@ -89,13 +89,13 @@ function qrms_module_yorum_feedback_init() {
 			array(
 				'tag'   => 'qr_menu_form',
 				'title' => __( 'Özel Form', 'qrms' ),
-				'desc'  => __( 'Formlar ekranında oluşturduğunuz kendi formlarınızdan birini (şikayet, rezervasyon, anket…) sayfaya yerleştirir.', 'qrms' ),
+				'desc'  => __( 'Özel Formlar ekranında oluşturduğunuz kendi formlarınızdan birini (şikayet, rezervasyon, anket…) sayfaya yerleştirir.', 'qrms' ),
 				'usage' => '[qr_menu_form key="rezervasyon"]',
 				'attrs' => array(
 					array(
 						'name'    => 'key',
 						'default' => '',
-						'desc'    => __( 'Formun anahtarı — Formlar ekranından öğrenin. Zorunludur.', 'qrms' ),
+						'desc'    => __( 'Formun anahtarı — Özel Formlar ekranından öğrenin. Zorunludur.', 'qrms' ),
 					),
 				),
 			),
@@ -103,7 +103,7 @@ function qrms_module_yorum_feedback_init() {
 	);
 
 	if ( is_admin() ) {
-		// Suite menüsündeki "Yorum & Feedback" satırı, modülün yedi ekranını
+		// Suite menüsündeki "Yorum & Feedback" satırı, modülün altı ekranını
 		// listeleyen başlangıç ekranını açar; ekranların kendisi aşağıda ayrı
 		// ayrı sayfa olarak kaydedilir.
 		QRMS_Admin::register_module_page( 'yorum-feedback', 'qrm_pro_admin_hub' );
@@ -119,10 +119,10 @@ function qrms_module_yorum_feedback_init() {
 }
 
 /**
- * Modülün yedi ekranını kaydeder — hepsi sol menüde GİZLİDİR.
+ * Modülün altı ekranını kaydeder — hepsi sol menüde GİZLİDİR.
  *
  * Sol admin menüsü tek seviyeye indirildi: orada yalnızca "Yorum & Feedback"
- * satırı durur, o satır da yedi ekranı kart olarak listeleyen hub ekranını
+ * satırı durur, o satır da altı ekranı kart olarak listeleyen hub ekranını
  * (qrm_pro_admin_hub) açar. Ekranlar gerçek, ayrı WordPress sayfaları olarak
  * kaydolmaya devam eder — adresleri, hook adları ve yetkileri değişmez;
  * yalnızca menüde boyanmazlar (bkz. QRMS_Admin::hide_module_subpages).
@@ -155,9 +155,9 @@ function qrms_module_yorum_feedback_admin_menu() {
 /**
  * Modülün sol menüdeki satırına rozet ekler.
  *
- * Alt satırlar kaldırıldığı için okunmamış form gönderimi ya da eksik ödül
- * kurulumu artık yalnızca modülün kendi satırında görünebilir; rozetlerin
- * ayrıntısı hub ekranındaki kartlarda durur.
+ * Alt satırlar kaldırıldığı için onay bekleyen yorum, okunmamış form gönderimi
+ * ya da eksik ödül kurulumu artık yalnızca modülün kendi satırında görünebilir;
+ * rozetlerin ayrıntısı hub ekranındaki kartlarda durur.
  *
  * @param string $label Modülün görünen adı.
  * @param string $slug  Modül slug'ı.
@@ -185,7 +185,7 @@ function qrms_module_yorum_feedback_admin_assets() {
 	$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '';
 
 	// Hub ekranının stili suite'in ortak admin.css'inden gelir; modülün kendi
-	// varlıklarına yalnızca yedi yönetim ekranının ihtiyacı var.
+	// varlıklarına yalnızca altı yönetim ekranının ihtiyacı var.
 	if ( ! array_key_exists( $page, qrm_pro_admin_pages() ) ) {
 		return;
 	}
@@ -202,23 +202,6 @@ function qrms_module_yorum_feedback_admin_assets() {
 		wp_enqueue_style( 'wp-color-picker' );
 		wp_enqueue_script( 'wp-color-picker' );
 		wp_add_inline_script( 'wp-color-picker', "jQuery(function($){ $('.qrm-color-picker').wpColorPicker(); });" );
-	}
-
-	// Yapay zekâ özeti yalnızca İçgörüler ekranında.
-	if ( 'qrms-yf-icgoruler' === $page ) {
-		wp_enqueue_script(
-			'qrm-ai-insights',
-			QRMS_PLUGIN_URL . 'modules/yorum-feedback/assets/js/ai-insights.js',
-			array(),
-			QRMS_Helpers::asset_version( 'modules/yorum-feedback/assets/js/ai-insights.js' ),
-			true
-		);
-
-		wp_add_inline_script(
-			'qrm-ai-insights',
-			'var QRM_AI = ' . wp_json_encode( array( 'ajaxUrl' => admin_url( 'admin-ajax.php' ) ) ) . ';',
-			'before'
-		);
 	}
 
 	if ( 'qrms-yf-form-alanlari' === $page ) {

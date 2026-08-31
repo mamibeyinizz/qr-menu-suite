@@ -396,6 +396,22 @@ a.qrms-hub-stat:focus-visible {
 	outline-offset: 2px;
 }
 
+/* Bekleyen iş bildiren kutu: renk tek başına yeterli bir sinyal değil, kutu
+   zeminiyle de öne çıkar (ör. "Onay Bekleyen" sıfırdan büyükken). */
+.qrms-hub-stat-alert {
+	background: #fef8ee;
+	border-color: #f0c88a;
+}
+
+a.qrms-hub-stat-alert:hover,
+a.qrms-hub-stat-alert:focus {
+	border-color: #dba617;
+}
+
+.qrms-hub-stat-alert .qrms-hub-stat-value {
+	color: #8a5700;
+}
+
 .qrms-hub-stat-label {
 	color: #646970;
 	display: block;
@@ -426,6 +442,26 @@ a.qrms-hub-stat:focus-visible {
 .qrms-hub-stat-value a:focus-visible {
 	outline: 2px solid var(--qrms-hub-accent, #2271b1);
 	outline-offset: 2px;
+}
+
+/* Tek satırlık yönlendirme (ör. hiç yorumu olmayan Yorum & Feedback hub'ı):
+   kısa metin + kopyalanabilir kısa kod, kartların hemen üstünde. */
+
+.qrms-hub-hint {
+	margin: 0 0 18px;
+}
+
+.qrms-hub-hint p {
+	align-items: center;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin: 0.5em 0;
+}
+
+.qrms-hub-hint .qrms-sc-tag {
+	display: inline-block;
+	padding: 3px 8px;
 }
 
 /* Genel Bakış analiz şeridi: kart değil, ince kutular, iki satır. */

@@ -19,8 +19,8 @@ function qrm_pro_admin_contact() {
     $settings = qrm_pro_get_settings();
     ?>
     <div class="wrap qrm-pro-wrap">
-        <h1>İletişim</h1>
-        <p class="qrm-lead">İletişim sayfanıza özel form. Yorum listesi ve puan ortalaması burada gösterilmez.</p>
+        <h1><?php esc_html_e('İletişim Formu', 'qrms'); ?></h1>
+        <p class="qrm-lead"><?php esc_html_e('İletişim sayfanıza özel form. Yorum listesi ve puan ortalaması burada gösterilmez.', 'qrms'); ?></p>
 
         <?php if ($notice !== ''): ?>
             <div class="notice notice-success is-dismissible"><p><?php echo esc_html($notice); ?></p></div>

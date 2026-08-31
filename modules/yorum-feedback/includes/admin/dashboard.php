@@ -3,13 +3,82 @@ if (!defined('ABSPATH')) exit;
 
 // 3. ADMİN: TÜM YORUMLAR (Puan kırılımları ile)
 //
-// Suite'e taşınırken "İçgörüler" JS sekmesi buradan çıkarıldı ve kendi sayfası
-// oldu (qrms-yf-icgoruler). Sebep: sekmenin görünürlüğü de, hangi sekmenin aktif
-// olduğu da tamamen jQuery'ye bağlıydı; sayfadaki herhangi bir JS hatasında iki
-// sekme birden ölüyor ve hiçbiri aktif görünmüyordu. Ayrıca sekme, adres çubuğunu
-// history.replaceState ile BAŞKA bir sayfanın adresine çeviriyordu; suite
-// menüsünden açıldığında yenileme sonrası kullanıcı yanlış ekrana düşüyordu.
-// Artık iki ekran da gerçek WordPress sayfası — JS'siz de tam çalışır.
+// Tek sayfa, üç sekme: Tüm Yorumlar / Olumlu Yorumlar / Olumsuz Yorumlar.
+// Ayrım tek bir eşikten yapılır (qrm_pro_sentiment_threshold): ortalama puanı
+// eşiğe eşit ya da üzerinde olan yorum olumlu, altındaki olumsuzdur — nötr
+// kova yoktur, her yorum ikisinden birine düşer.
+//
+// Sekmeler gerçek BAĞLANTIDIR, JS değil: aktif sekme `sekme` sorgu
+// parametresinde taşınır, sayfa yenilense de, satır aksiyonu çalışsa da,
+// sayfalar arasında gezilse de korunur. (Kaynaktaki "İçgörüler" sekmesi bunun
+// tersiydi: görünürlüğü de aktifliği de jQuery'ye bağlıydı, adres çubuğunu
+// history.replaceState ile başka bir sayfanın adresine çeviriyordu ve sayfadaki
+// herhangi bir JS hatasında iki sekme birden ölüyordu.)
+//
+// Filtreleme SQL'de yapılır: sekme de, durum filtresi de sorgunun WHERE'ine
+// girer. Tablonun tamamı PHP'ye çekilip orada elenmez.
+
+/**
+ * Yorum listesinin sekmeleri — anahtar => başlık.
+ *
+ * Sıra sekme çubuğundaki sırayı belirler. Anahtarlar hem URL'de (`sekme=`) hem
+ * de sayaç dizisinde ($stats['sentiment']) kullanılır.
+ *
+ * @return array<string,string>
+ */
+function qrm_pro_admin_review_tabs() {
+    return [
+        ''        => __( 'Tüm Yorumlar', 'qrms' ),
+        'olumlu'  => __( 'Olumlu Yorumlar', 'qrms' ),
+        'olumsuz' => __( 'Olumsuz Yorumlar', 'qrms' ),
+    ];
+}
+
+/**
+ * İstekteki sekmeyi geçerli bir sekme anahtarına indirger.
+ *
+ * Saf fonksiyon: bilinmeyen değer "tümü" sekmesine (boş string) düşer, yani
+ * elle yazılmış bir `&sekme=` parametresi sorguya sızamaz.
+ *
+ * @param string $sekme Ham istek değeri.
+ * @return string '' | 'olumlu' | 'olumsuz'
+ */
+function qrm_pro_admin_review_tab($sekme) {
+    // `?sekme[]=x` gibi bir istek dizi taşır; metne çevrilmeden elenir.
+    if (!is_scalar($sekme)) return '';
+
+    $sekme = sanitize_key((string) $sekme);
+
+    return array_key_exists($sekme, qrm_pro_admin_review_tabs()) ? $sekme : '';
+}
+
+/**
+ * Bir sekmenin durum kırılımı (toplam / yayında / bekleyen).
+ *
+ * Üç sekmenin üçü de qrm_pro_review_stats()'in TEK sorgusundan beslenir;
+ * sekmeye tıklamak ekstra bir COUNT sorgusu açmaz.
+ *
+ * @param string $sekme '' | 'olumlu' | 'olumsuz'.
+ * @param array  $stats qrm_pro_review_stats() çıktısı.
+ * @return array{total:int,approved:int,pending:int}
+ */
+function qrm_pro_admin_review_tab_counts($sekme, array $stats) {
+    if ($sekme === 'olumlu' || $sekme === 'olumsuz') {
+        $kirilim = isset($stats['sentiment'][$sekme]) ? $stats['sentiment'][$sekme] : [];
+
+        return [
+            'total'    => isset($kirilim['total']) ? (int) $kirilim['total'] : 0,
+            'approved' => isset($kirilim['approved']) ? (int) $kirilim['approved'] : 0,
+            'pending'  => isset($kirilim['pending']) ? (int) $kirilim['pending'] : 0,
+        ];
+    }
+
+    return [
+        'total'    => isset($stats['total']) ? (int) $stats['total'] : 0,
+        'approved' => isset($stats['approved']) ? (int) $stats['approved'] : 0,
+        'pending'  => isset($stats['pending']) ? (int) $stats['pending'] : 0,
+    ];
+}
 
 /**
  * Yönetim listesinde bir sayfada gösterilecek yorum sayısı.
@@ -30,18 +99,57 @@ function qrm_pro_admin_reviews_per_page() {
 /**
  * Filtreye göre toplam kayıt sayısı — EK SORGU AÇMADAN.
  *
- * Üç sayacın üçü de qrm_pro_review_stats()'in tek sorgusundan gelir; sayfalama
- * bu yüzden listeye ayrı bir COUNT eklemez.
+ * Sayaçların tamamı qrm_pro_review_stats()'in tek sorgusundan gelir; sayfalama
+ * bu yüzden listeye ayrı bir COUNT eklemez — sekme ile durum filtresi bir arada
+ * kullanıldığında da.
  *
  * @param string $durum '' | 'bekleyen' | 'onayli'.
  * @param array  $stats qrm_pro_review_stats() çıktısı.
+ * @param string $sekme '' | 'olumlu' | 'olumsuz'.
  * @return int
  */
-function qrm_pro_admin_reviews_total($durum, array $stats) {
-    if ($durum === 'bekleyen') return (int) $stats['pending'];
-    if ($durum === 'onayli')   return (int) $stats['approved'];
+function qrm_pro_admin_reviews_total($durum, array $stats, $sekme = '') {
+    $sayaclar = qrm_pro_admin_review_tab_counts($sekme, $stats);
 
-    return (int) $stats['total'];
+    if ($durum === 'bekleyen') return (int) $sayaclar['pending'];
+    if ($durum === 'onayli')   return (int) $sayaclar['approved'];
+
+    return (int) $sayaclar['total'];
+}
+
+/**
+ * Liste sorgusunun WHERE parçası — sekme ve durum filtresi birlikte.
+ *
+ * Saf fonksiyon (WordPress'e ve $wpdb'ye bağımlılığı yok): koşul metnini
+ * yer tutucularla, değerleri ayrı bir dizide döndürür; prepare çağıranın işi.
+ * Hiçbir filtre yoksa boş string döner ve sorgu WHERE'siz kalır.
+ *
+ * @param string $durum     '' | 'bekleyen' | 'onayli'.
+ * @param string $sekme     '' | 'olumlu' | 'olumsuz'.
+ * @param float  $threshold Olumlu/olumsuz eşiği.
+ * @return array{0:string,1:array} [WHERE parçası, parametreler]
+ */
+function qrm_pro_admin_reviews_where($durum, $sekme, $threshold) {
+    $kosullar = [];
+    $params   = [];
+
+    if ($durum === 'bekleyen' || $durum === 'onayli') {
+        $kosullar[] = 'status = %d';
+        $params[]   = ($durum === 'onayli') ? 1 : 0;
+    }
+
+    // Nötr kova yok: eşiğe eşit ve üzeri olumlu, altı olumsuz. İki koşul
+    // birbirinin tümleyeni olduğu için sekmelerin sayaçları toplamı her zaman
+    // toplam kayıt sayısını verir.
+    if ($sekme === 'olumlu' || $sekme === 'olumsuz') {
+        $kosullar[] = ($sekme === 'olumlu') ? 'rating >= %f' : 'rating < %f';
+        $params[]   = (float) $threshold;
+    }
+
+    return [
+        $kosullar ? ' WHERE ' . implode(' AND ', $kosullar) : '',
+        $params,
+    ];
 }
 
 /**
@@ -71,42 +179,44 @@ function qrm_pro_admin_reviews_clamp_page($paged, $total, $per_page) {
  * çekiliyor, tek bir istek veritabanı bağlantısını uzun süre meşgul ediyor ve
  * PHP bellek limitini zorluyordu.
  *
- * @param string $durum    '' | 'bekleyen' | 'onayli'.
- * @param int    $per_page Sayfa boyutu.
- * @param int    $paged    Sayfa numarası (1 tabanlı, sınırlanmış).
+ * Sekme filtresi de aynı sorguya girer: olumlu/olumsuz ayrımı için tablonun
+ * tamamı çekilip PHP'de elenmez.
+ *
+ * @param string     $durum     '' | 'bekleyen' | 'onayli'.
+ * @param int        $per_page  Sayfa boyutu.
+ * @param int        $paged     Sayfa numarası (1 tabanlı, sınırlanmış).
+ * @param string     $sekme     '' | 'olumlu' | 'olumsuz'.
+ * @param float|null $threshold Olumlu/olumsuz eşiği; null ise filtreden okunur.
  * @return array
  */
-function qrm_pro_admin_fetch_reviews($durum, $per_page, $paged) {
+function qrm_pro_admin_fetch_reviews($durum, $per_page, $paged, $sekme = '', $threshold = null) {
     global $wpdb;
 
     $table    = $wpdb->prefix . 'qrm_reviews';
     $per_page = max(1, (int) $per_page);
     $offset   = (max(1, (int) $paged) - 1) * $per_page;
 
-    if ($durum === 'bekleyen' || $durum === 'onayli') {
-        $status = ($durum === 'onayli') ? 1 : 0;
-
-        $rows = $wpdb->get_results($wpdb->prepare(
-            "SELECT * FROM {$table} WHERE status = %d ORDER BY created_at DESC, id DESC LIMIT %d OFFSET %d",
-            $status,
-            $per_page,
-            $offset
-        ));
-    } else {
-        $rows = $wpdb->get_results($wpdb->prepare(
-            "SELECT * FROM {$table} ORDER BY created_at DESC, id DESC LIMIT %d OFFSET %d",
-            $per_page,
-            $offset
-        ));
+    if ($threshold === null) {
+        $threshold = qrm_pro_sentiment_threshold();
     }
+
+    list($where, $params) = qrm_pro_admin_reviews_where($durum, $sekme, $threshold);
+
+    $params[] = $per_page;
+    $params[] = $offset;
+
+    $rows = $wpdb->get_results($wpdb->prepare(
+        "SELECT * FROM {$table}{$where} ORDER BY created_at DESC, id DESC LIMIT %d OFFSET %d",
+        $params
+    ));
 
     return is_array($rows) ? $rows : [];
 }
 
-/** Tüm Yorumlar ekranı. */
+/** Tüm Yorumlar ekranı — üç sekmeli tek sayfa. */
 function qrm_pro_admin_dashboard() {
     if (!current_user_can('manage_options')) {
-        wp_die('Bu sayfayı görüntüleme yetkiniz yok.');
+        wp_die(esc_html__('Bu sayfayı görüntüleme yetkiniz yok.', 'qrms'));
     }
 
     $settings = qrm_pro_get_settings();
@@ -115,13 +225,21 @@ function qrm_pro_admin_dashboard() {
 
     $notice = qrm_pro_admin_handle_review_actions();
 
+    // Aktif sekme adreste taşınır; yenilemede, sayfalamada ve satır aksiyonu
+    // sonrasında korunur.
+    // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- yalnızca görünüm filtresi.
+    $sekme = qrm_pro_admin_review_tab(isset($_GET['sekme']) ? wp_unslash($_GET['sekme']) : '');
+
     // Onay bekleyenlere hızlı geçiş (başlangıç ekranındaki sayaç buraya bağlanır).
-    $durum = isset($_GET['durum']) ? sanitize_key($_GET['durum']) : '';
+    // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- yalnızca görünüm filtresi.
+    $durum = (isset($_GET['durum']) && is_scalar($_GET['durum'])) ? sanitize_key(wp_unslash($_GET['durum'])) : '';
     if (!in_array($durum, ['bekleyen', 'onayli'], true)) $durum = '';
 
-    $stats    = qrm_pro_review_stats();
-    $per_page = qrm_pro_admin_reviews_per_page();
-    $toplam   = qrm_pro_admin_reviews_total($durum, $stats);
+    $stats     = qrm_pro_review_stats();
+    $esik      = qrm_pro_sentiment_threshold();
+    $per_page  = qrm_pro_admin_reviews_per_page();
+    $toplam    = qrm_pro_admin_reviews_total($durum, $stats, $sekme);
+    $sekme_url = $sekme === '' ? $self_url : add_query_arg(['sekme' => $sekme], $self_url);
 
     // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- yalnızca sayfa numarası.
     $paged   = isset($_GET['paged']) ? (int) $_GET['paged'] : 1;
@@ -129,11 +247,11 @@ function qrm_pro_admin_dashboard() {
     $reviews = [];
 
     if ($stats['table_ok'] && $toplam > 0) {
-        $reviews = qrm_pro_admin_fetch_reviews($durum, $per_page, $paged);
+        $reviews = qrm_pro_admin_fetch_reviews($durum, $per_page, $paged, $sekme, $esik);
     }
     ?>
     <div class="wrap qrm-pro-wrap">
-        <h1>Tüm Yorumlar</h1>
+        <h1><?php esc_html_e('Tüm Yorumlar', 'qrms'); ?></h1>
 
         <?php if ($notice !== ''): ?>
             <div class="notice notice-success is-dismissible"><p><?php echo esc_html($notice); ?></p></div>
@@ -142,29 +260,50 @@ function qrm_pro_admin_dashboard() {
         <?php if (!$stats['table_ok']): ?>
             <div class="notice notice-error">
                 <p>
-                    <strong>Yorum tablosu veritabanında bulunamadı.</strong>
-                    Liste bu yüzden boş — gelen yorumlar kaydedilemiyor olabilir. Genel Ayarlar sayfasından
-                    lisansı yeniden doğrulayın; sorun sürerse veritabanı kullanıcınızın tablo oluşturma
-                    yetkisi olmayabilir.
+                    <strong><?php esc_html_e('Yorum tablosu veritabanında bulunamadı.', 'qrms'); ?></strong>
+                    <?php esc_html_e('Liste bu yüzden boş — gelen yorumlar kaydedilemiyor olabilir. Genel Ayarlar sayfasından lisansı yeniden doğrulayın; sorun sürerse veritabanı kullanıcınızın tablo oluşturma yetkisi olmayabilir.', 'qrms'); ?>
                 </p>
             </div>
         <?php endif; ?>
 
-        <?php if ($stats['total'] > 0): ?>
+        <h2 class="nav-tab-wrapper qrm-review-tabs">
+            <?php foreach (qrm_pro_admin_review_tabs() as $anahtar => $baslik):
+                $sayac = qrm_pro_admin_review_tab_counts($anahtar, $stats);
+
+                // Sekme değişince durum filtresi ve sayfa numarası sıfırlanır:
+                // yeni sekmede aynı sayfa numarası var olmayabilir.
+                $url = $anahtar === '' ? $self_url : add_query_arg(['sekme' => $anahtar], $self_url);
+            ?>
+                <a class="nav-tab<?php echo $sekme === $anahtar ? ' nav-tab-active' : ''; ?>"
+                   href="<?php echo esc_url($url); ?>"
+                   <?php echo $sekme === $anahtar ? 'aria-current="page"' : ''; ?>>
+                    <?php echo esc_html($baslik); ?>
+                    <span class="qrm-tab-count"><?php echo esc_html(number_format_i18n($sayac['total'])); ?></span>
+                </a>
+            <?php endforeach; ?>
+        </h2>
+
+        <?php
+        $sekme_sayaclari = qrm_pro_admin_review_tab_counts($sekme, $stats);
+        if ($sekme_sayaclari['total'] > 0):
+        ?>
             <ul class="subsubsub">
                 <li>
-                    <a href="<?php echo esc_url($self_url); ?>" <?php echo $durum === '' ? 'class="current"' : ''; ?>>
-                        Tümü <span class="count">(<?php echo intval($stats['total']); ?>)</span>
+                    <a href="<?php echo esc_url($sekme_url); ?>" <?php echo $durum === '' ? 'class="current"' : ''; ?>>
+                        <?php esc_html_e('Tümü', 'qrms'); ?>
+                        <span class="count">(<?php echo esc_html(number_format_i18n($sekme_sayaclari['total'])); ?>)</span>
                     </a> |
                 </li>
                 <li>
-                    <a href="<?php echo esc_url(add_query_arg('durum', 'bekleyen', $self_url)); ?>" <?php echo $durum === 'bekleyen' ? 'class="current"' : ''; ?>>
-                        Onay Bekleyen <span class="count">(<?php echo intval($stats['pending']); ?>)</span>
+                    <a href="<?php echo esc_url(add_query_arg(['durum' => 'bekleyen'], $sekme_url)); ?>" <?php echo $durum === 'bekleyen' ? 'class="current"' : ''; ?>>
+                        <?php esc_html_e('Onay Bekleyen', 'qrms'); ?>
+                        <span class="count">(<?php echo esc_html(number_format_i18n($sekme_sayaclari['pending'])); ?>)</span>
                     </a> |
                 </li>
                 <li>
-                    <a href="<?php echo esc_url(add_query_arg('durum', 'onayli', $self_url)); ?>" <?php echo $durum === 'onayli' ? 'class="current"' : ''; ?>>
-                        Yayında <span class="count">(<?php echo intval($stats['approved']); ?>)</span>
+                    <a href="<?php echo esc_url(add_query_arg(['durum' => 'onayli'], $sekme_url)); ?>" <?php echo $durum === 'onayli' ? 'class="current"' : ''; ?>>
+                        <?php esc_html_e('Yayında', 'qrms'); ?>
+                        <span class="count">(<?php echo esc_html(number_format_i18n($sekme_sayaclari['approved'])); ?>)</span>
                     </a>
                 </li>
             </ul>
@@ -173,12 +312,12 @@ function qrm_pro_admin_dashboard() {
         <table class="wp-list-table widefat fixed striped qrm-table-cards">
             <thead>
                 <tr>
-                    <th style="width: 120px;">Tarih</th>
-                    <th>Müşteri / Masa</th>
-                    <th style="width: 200px;">Puan &amp; Detay</th>
-                    <th>Yorum</th>
-                    <th style="width: 90px;">Durum</th>
-                    <th style="width: 150px;">İşlemler</th>
+                    <th style="width: 120px;"><?php esc_html_e('Tarih', 'qrms'); ?></th>
+                    <th><?php esc_html_e('Müşteri / Masa', 'qrms'); ?></th>
+                    <th style="width: 200px;"><?php esc_html_e('Puan & Detay', 'qrms'); ?></th>
+                    <th><?php esc_html_e('Yorum', 'qrms'); ?></th>
+                    <th style="width: 90px;"><?php esc_html_e('Durum', 'qrms'); ?></th>
+                    <th style="width: 150px;"><?php esc_html_e('İşlemler', 'qrms'); ?></th>
                 </tr>
             </thead>
             <tbody>
@@ -186,17 +325,21 @@ function qrm_pro_admin_dashboard() {
                 <tr class="no-items">
                     <td colspan="6" class="qrm-empty">
                         <?php if (!$stats['table_ok']): ?>
-                            <strong>Liste yüklenemedi.</strong>
-                            <p>Yukarıdaki veritabanı uyarısını giderdikten sonra yorumlar burada görünecek.</p>
-                        <?php elseif ($durum !== ''): ?>
-                            <strong>Bu filtreye uyan yorum yok.</strong>
-                            <p><a href="<?php echo esc_url($self_url); ?>">Tüm yorumları göster</a></p>
+                            <strong><?php esc_html_e('Liste yüklenemedi.', 'qrms'); ?></strong>
+                            <p><?php esc_html_e('Yukarıdaki veritabanı uyarısını giderdikten sonra yorumlar burada görünecek.', 'qrms'); ?></p>
+                        <?php elseif ($durum !== '' || $sekme !== ''): ?>
+                            <strong><?php esc_html_e('Bu filtreye uyan yorum yok.', 'qrms'); ?></strong>
+                            <p><a href="<?php echo esc_url($self_url); ?>"><?php esc_html_e('Tüm yorumları göster', 'qrms'); ?></a></p>
                         <?php else: ?>
-                            <strong>Henüz hiç yorum gelmemiş.</strong>
+                            <strong><?php esc_html_e('Henüz hiç yorum gelmemiş.', 'qrms'); ?></strong>
                             <p>
-                                Müşterilerinizin yorum bırakabilmesi için <code>[qr_menu_reviews]</code> kısa kodunu
-                                menü ya da değerlendirme sayfanıza ekleyin. İlk değerlendirme geldiğinde bu listede
-                                görünecek ve onayınızı bekleyecek.
+                                <?php
+                                printf(
+                                    /* translators: %s: yorum formunun kısa kodu. */
+                                    esc_html__('Müşterilerinizin yorum bırakabilmesi için %s kısa kodunu menü ya da değerlendirme sayfanıza ekleyin. İlk değerlendirme geldiğinde bu listede görünecek ve onayınızı bekleyecek.', 'qrms'),
+                                    '<code>[qr_menu_reviews]</code>'
+                                );
+                                ?>
                             </p>
                         <?php endif; ?>
                     </td>
@@ -206,13 +349,16 @@ function qrm_pro_admin_dashboard() {
                 <?php foreach ($reviews as $r):
                     // Satır aksiyonu, kullanıcıyı bulunduğu sayfada bıraksın.
                     $row_page = $paged > 1 ? ['paged' => $paged] : [];
-                    $name_display = $r->is_anonymous ? '<em>Anonim</em>' : esc_html($r->customer_name);
+                    $name_display = $r->is_anonymous ? '<em>' . esc_html__('Anonim', 'qrms') . '</em>' : esc_html($r->customer_name);
                     if ($name_display === '') {
-                        $name_display = '<em>İsimsiz</em>';
+                        $name_display = '<em>' . esc_html__('İsimsiz', 'qrms') . '</em>';
                     }
-                    $name_display .= $r->table_no ? ' (Masa: '.esc_html($r->table_no).')' : '';
+                    if ($r->table_no) {
+                        /* translators: %s: masa numarası. */
+                        $name_display .= ' ' . sprintf(esc_html__('(Masa: %s)', 'qrms'), esc_html($r->table_no));
+                    }
                     if (!empty($r->form_source) && $r->form_source === 'contact') {
-                        $name_display .= ' <span class="qrm-google-pill qrm-source-pill">İletişim</span>';
+                        $name_display .= ' <span class="qrm-google-pill qrm-source-pill">' . esc_html__('İletişim', 'qrms') . '</span>';
                     }
 
                     // Kriter Kırılımını Hazırla
@@ -228,36 +374,44 @@ function qrm_pro_admin_dashboard() {
                     $breakdown_str = implode(', ', $breakdown);
                 ?>
                 <tr>
-                    <td data-label="Tarih"><?php echo esc_html(date_i18n('d.m.Y H:i', strtotime($r->created_at))); ?></td>
-                    <td data-label="Müşteri"><?php echo $name_display; ?></td>
-                    <td data-label="Puan">
-                        <strong>Ort: <?php echo number_format($r->rating, 1); ?>/5</strong>
+                    <td data-label="<?php esc_attr_e('Tarih', 'qrms'); ?>"><?php echo esc_html(date_i18n('d.m.Y H:i', strtotime($r->created_at))); ?></td>
+                    <td data-label="<?php esc_attr_e('Müşteri', 'qrms'); ?>"><?php echo wp_kses_post($name_display); ?></td>
+                    <td data-label="<?php esc_attr_e('Puan', 'qrms'); ?>">
+                        <strong><?php
+                            /* translators: %s: yorumun ortalama puanı. */
+                            printf(esc_html__('Ort: %s/5', 'qrms'), esc_html(number_format_i18n((float) $r->rating, 1)));
+                        ?></strong>
                         <?php if ($r->rating >= $g_threshold && !empty($settings['google_review_enabled'])): ?>
-                            <span class="qrm-google-pill" title="Bu puan Google'a yönlendirme eşiğinin üzerinde">G Adayı</span>
+                            <span class="qrm-google-pill" title="<?php esc_attr_e('Bu puan Google\'a yönlendirme eşiğinin üzerinde', 'qrms'); ?>"><?php esc_html_e('G Adayı', 'qrms'); ?></span>
                         <?php endif; ?>
                         <?php if ($breakdown_str !== ''): ?>
                             <span class="qrm-breakdown"><?php echo esc_html($breakdown_str); ?></span>
                         <?php endif; ?>
                     </td>
-                    <td data-label="Yorum" class="qrm-cell-block"><?php echo esc_html($r->comment); ?></td>
-                    <td data-label="Durum">
-                        <?php echo $r->status
-                            ? '<span class="qrm-status-approved">Yayında</span>'
-                            : '<span class="qrm-status-pending">Bekliyor</span>'; ?>
+                    <td data-label="<?php esc_attr_e('Yorum', 'qrms'); ?>" class="qrm-cell-block"><?php echo esc_html($r->comment); ?></td>
+                    <td data-label="<?php esc_attr_e('Durum', 'qrms'); ?>">
+                        <?php if ($r->status): ?>
+                            <span class="qrm-status-approved"><?php esc_html_e('Yayında', 'qrms'); ?></span>
+                        <?php else: ?>
+                            <span class="qrm-status-pending"><?php esc_html_e('Bekliyor', 'qrms'); ?></span>
+                        <?php endif; ?>
                     </td>
                     <td data-label="" class="qrm-row-actions">
                         <?php
+                        // Aksiyon sonrası kullanıcı aynı sekmede, aynı filtrede ve
+                        // aynı sayfada kalır.
                         $row_args = ['id' => intval($r->id)] + $row_page;
                         if ($durum !== '') $row_args['durum'] = $durum;
+                        if ($sekme !== '') $row_args['sekme'] = $sekme;
                         ?>
                         <?php if (!$r->status): ?>
-                            <a href="<?php echo esc_url(wp_nonce_url(add_query_arg(['action' => 'approve'] + $row_args, $self_url), 'qrm_review_action_' . intval($r->id))); ?>" class="button button-small">Onayla</a>
+                            <a href="<?php echo esc_url(wp_nonce_url(add_query_arg(['action' => 'approve'] + $row_args, $self_url), 'qrm_review_action_' . intval($r->id))); ?>" class="button button-small"><?php esc_html_e('Onayla', 'qrms'); ?></a>
                         <?php else: ?>
-                            <a href="<?php echo esc_url(wp_nonce_url(add_query_arg(['action' => 'unapprove'] + $row_args, $self_url), 'qrm_review_action_' . intval($r->id))); ?>" class="button button-small">Yayından Kaldır</a>
+                            <a href="<?php echo esc_url(wp_nonce_url(add_query_arg(['action' => 'unapprove'] + $row_args, $self_url), 'qrm_review_action_' . intval($r->id))); ?>" class="button button-small"><?php esc_html_e('Yayından Kaldır', 'qrms'); ?></a>
                         <?php endif; ?>
                         <a href="<?php echo esc_url(wp_nonce_url(add_query_arg(['action' => 'delete'] + $row_args, $self_url), 'qrm_review_action_' . intval($r->id))); ?>"
                            class="button button-small" style="color:#b32d2e;border-color:#d5b0b0;"
-                           onclick="return confirm('Bu yorum kalıcı olarak silinsin mi?');">Sil</a>
+                           onclick="return confirm('<?php echo esc_js(__('Bu yorum kalıcı olarak silinsin mi?', 'qrms')); ?>');"><?php esc_html_e('Sil', 'qrms'); ?></a>
                     </td>
                 </tr>
                 <?php endforeach; ?>
@@ -270,11 +424,18 @@ function qrm_pro_admin_dashboard() {
         if ($sayfa_sayisi > 1):
             $page_args = [];
             if ($durum !== '') $page_args['durum'] = $durum;
+            if ($sekme !== '') $page_args['sekme'] = $sekme;
         ?>
             <div class="tablenav bottom">
                 <div class="tablenav-pages">
                     <span class="displaying-num">
-                        <?php echo esc_html(sprintf('%d kayıt', $toplam)); ?>
+                        <?php
+                        printf(
+                            /* translators: %s: listedeki kayıt sayısı. */
+                            esc_html(_n('%s kayıt', '%s kayıt', $toplam, 'qrms')),
+                            esc_html(number_format_i18n($toplam))
+                        );
+                        ?>
                     </span>
                     <?php
                     echo paginate_links([
@@ -306,7 +467,7 @@ function qrm_pro_admin_dashboard() {
 function qrm_pro_admin_handle_review_actions() {
     if (!isset($_GET['action'], $_GET['id'])) return '';
 
-    $action = sanitize_key($_GET['action']);
+    $action = sanitize_key(wp_unslash($_GET['action']));
     $id     = intval($_GET['id']);
 
     if ($id <= 0 || !in_array($action, ['approve', 'unapprove', 'delete'], true)) return '';
@@ -320,15 +481,15 @@ function qrm_pro_admin_handle_review_actions() {
     if ($action === 'approve') {
         $wpdb->update($table_reviews, ['status' => 1], ['id' => $id]);
         qrm_pro_flush_review_stats();
-        return 'Yorum yayınlandı.';
+        return __('Yorum yayınlandı.', 'qrms');
     }
     if ($action === 'unapprove') {
         $wpdb->update($table_reviews, ['status' => 0], ['id' => $id]);
         qrm_pro_flush_review_stats();
-        return 'Yorum yayından kaldırıldı.';
+        return __('Yorum yayından kaldırıldı.', 'qrms');
     }
 
     $wpdb->delete($table_reviews, ['id' => $id]);
     qrm_pro_flush_review_stats();
-    return 'Yorum silindi.';
+    return __('Yorum silindi.', 'qrms');
 }

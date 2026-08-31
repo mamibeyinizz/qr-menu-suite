@@ -744,7 +744,7 @@ class QRMS_Admin {
 	 *     @type string $class       Wrap'e eklenecek ek sınıf (ör. qrms-overview).
 	 *     @type string $notice      Kartların üstünde gösterilecek uyarı HTML'i.
 	 *     @type array  $stats       Üstteki özet kutuları: düz liste
-	 *                               ({label,value,url,accent}) ya da satırlı
+	 *                               ({label,value,url,accent,class}) ya da satırlı
 	 *                               ({title,items:array}).
 	 *     @type array  $cards       Kartlar (tek ızgara, başlıksız): url, title, desc, icon, badge.
 	 *     @type array  $card_groups Kartlar başlıklı bölümler hâlinde: her öge
@@ -862,16 +862,24 @@ class QRMS_Admin {
 	/**
 	 * Tek bir özet kutusu. Adresi varsa kutunun tamamı tıklanabilir.
 	 *
-	 * @param array $stat { @type string $label, $value, $url, $accent }
+	 * `class` isteğe bağlıdır: bekleyen iş bildiren kutular kendilerini
+	 * vurgulamak için ek bir sınıf geçer (ör. `qrms-hub-stat-alert`).
+	 *
+	 * @param array $stat { @type string $label, $value, $url, $accent, $class }
 	 * @return void
 	 */
 	private static function render_hub_stat( array $stat ) {
-		$accent = isset( $stat['accent'] ) ? $stat['accent'] : '#c3c4c7';
-		$url    = isset( $stat['url'] ) ? $stat['url'] : '';
-		$tag    = '' !== $url ? 'a' : 'div';
-		$href   = '' !== $url ? ' href="' . esc_url( $url ) . '"' : '';
+		$accent  = isset( $stat['accent'] ) ? $stat['accent'] : '#c3c4c7';
+		$url     = isset( $stat['url'] ) ? $stat['url'] : '';
+		$tag     = '' !== $url ? 'a' : 'div';
+		$href    = '' !== $url ? ' href="' . esc_url( $url ) . '"' : '';
+		$classes = 'qrms-hub-stat';
+
+		if ( ! empty( $stat['class'] ) ) {
+			$classes .= ' ' . $stat['class'];
+		}
 		?>
-		<<?php echo $tag; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?> class="qrms-hub-stat"<?php echo $href; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?> style="border-left-color:<?php echo esc_attr( $accent ); ?>">
+		<<?php echo $tag; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?> class="<?php echo esc_attr( $classes ); ?>"<?php echo $href; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?> style="border-left-color:<?php echo esc_attr( $accent ); ?>">
 			<div class="qrms-hub-stat-label"><?php echo esc_html( $stat['label'] ); ?></div>
 			<div class="qrms-hub-stat-value">
 				<span class="qrms-stat-value"><?php echo esc_html( $stat['value'] ); ?></span>

@@ -41,8 +41,8 @@ function qrm_cf_admin_forms_page() {
     <div class="wrap qrm-cf-wrap">
         <div class="qrm-cf-head">
             <div>
-                <h1>Formlar</h1>
-                <p class="qrm-cf-sub">Şikayet, geri bildirim, rezervasyon, anket… Kendi formlarınızı oluşturun, kısa kodla sayfaya yerleştirin, gönderimleri buradan takip edin.</p>
+                <h1><?php esc_html_e('Özel Formlar', 'qrms'); ?></h1>
+                <p class="qrm-cf-sub"><?php esc_html_e('Şikayet, geri bildirim, rezervasyon, anket… Kendi formlarınızı oluşturun, kısa kodla sayfaya yerleştirin, gönderimleri buradan takip edin.', 'qrms'); ?></p>
             </div>
             <a class="qrm-cf-btn-primary" href="<?php echo esc_url(qrm_cf_admin_url(['view' => 'edit'])); ?>">
                 <span class="dashicons dashicons-plus-alt2" style="font-size:17px;width:17px;height:17px;"></span> Yeni Form Oluştur

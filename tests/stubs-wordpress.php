@@ -1298,6 +1298,30 @@ function esc_attr_e( $text, $domain = 'default' ) {
 }
 
 /**
+ * Öznitelik için çeviri + kaçış.
+ *
+ * @param string $text   Metin.
+ * @param string $domain Metin alanı.
+ * @return string
+ */
+function esc_attr__( $text, $domain = 'default' ) {
+	return esc_attr( $text );
+}
+
+/**
+ * Çoğul çeviri stub'ı — sayıya göre tekil/çoğul kalıbı seçer.
+ *
+ * @param string $single Tekil kalıp.
+ * @param string $plural Çoğul kalıp.
+ * @param int    $number Sayı.
+ * @param string $domain Metin alanı.
+ * @return string
+ */
+function _n( $single, $plural, $number, $domain = 'default' ) {
+	return 1 === (int) $number ? $single : $plural;
+}
+
+/**
  * AJAX nonce doğrulaması. Testlerde her zaman geçerli sayılır.
  *
  * @param string $action Eylem.

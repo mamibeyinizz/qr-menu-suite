@@ -136,7 +136,6 @@ require_once QRM_PRO_PATH . 'includes/forms/db.php';
 require_once QRM_PRO_PATH . 'includes/forms/functions.php';
 
 require_once QRM_PRO_PATH . 'includes/install.php';
-require_once QRM_PRO_PATH . 'includes/ai-insights.php';
 
 // Admin
 require_once QRM_PRO_PATH . 'includes/admin/menu.php';
@@ -144,7 +143,6 @@ require_once QRM_PRO_PATH . 'includes/admin/hub.php';
 require_once QRM_PRO_PATH . 'includes/admin/dashboard.php';
 require_once QRM_PRO_PATH . 'includes/admin/form-builder.php';
 require_once QRM_PRO_PATH . 'includes/admin/settings-page.php';
-require_once QRM_PRO_PATH . 'includes/admin/insights.php';
 require_once QRM_PRO_PATH . 'includes/admin/contact.php';
 require_once QRM_PRO_PATH . 'includes/admin/rewards.php';
 require_once QRM_PRO_PATH . 'includes/admin/reward-codes.php';

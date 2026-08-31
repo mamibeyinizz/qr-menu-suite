@@ -8,7 +8,7 @@
  * yönetilebiliyor.
  *
  * Kapsam: `.qrm-pro-wrap` sınıfını taşıyan ekranlar — Tüm Yorumlar,
- * Detaylı İçgörüler, Müşteri Bilgileri Formu, Ayarlar & Puanlama, İletişim,
+ * Müşteri Bilgileri Formu, Ayarlar & Puanlama, İletişim Formu,
  * Google & Ödül Sistemi. Hub ekranı suite'in ortak `.qrms-hub-*` bileşenini
  * kullanır (assets/css/admin.css). "Formlar" ekranlarının kendi `qrm-cf-*` stilleri
  * kaynağındaki satır içi bloklarda durur; oradaki mobil kuralları da aynı
@@ -54,7 +54,7 @@
 }
 
 /* --------------------------------------------------------------------------
- * 2. İstatistik kutuları (Detaylı İçgörüler, Ödül kodları)
+ * 2. İstatistik kutuları (Ödül kodları)
  * ------------------------------------------------------------------------ */
 
 .qrm-insight-grid {
@@ -89,20 +89,32 @@
 	text-decoration: none;
 }
 
-/* Kriter performans çubuğu. */
-.qrm-meter {
-	background: #e5e7eb;
-	border-radius: 10px;
-	height: 12px;
-	max-width: 300px;
-	overflow: hidden;
-	width: 100%;
+/* --------------------------------------------------------------------------
+ * 2b. Yorum listesinin sekmeleri (Tümü / Olumlu / Olumsuz)
+ *
+ * Çekirdeğin `.nav-tab` bileşeni kullanılır; buradaki tek ek, sekme başlığının
+ * yanındaki kayıt sayacıdır.
+ * ------------------------------------------------------------------------ */
+
+.qrm-review-tabs {
+	margin-bottom: 12px;
 }
 
-.qrm-meter span {
-	background: #10b981;
-	display: block;
-	height: 100%;
+.qrm-tab-count {
+	background: #f0f0f1;
+	border-radius: 10px;
+	color: #50575e;
+	display: inline-block;
+	font-size: 11px;
+	font-weight: 600;
+	line-height: 1.6;
+	margin-left: 6px;
+	padding: 0 7px;
+}
+
+.nav-tab-active .qrm-tab-count {
+	background: #dcdcde;
+	color: #1d2327;
 }
 
 /* --------------------------------------------------------------------------
@@ -612,47 +624,5 @@
 
 	.qrm-fp-box {
 		max-width: 460px;
-	}
-}
-
-/* =====================================================================
-   YAPAY ZEKÂ ÖZETİ KARTI
-===================================================================== */
-
-.qrm-ai-title {
-	margin: 0 0 6px;
-	font-size: 15px;
-}
-
-.qrm-ai-privacy {
-	color: #646970;
-	font-size: 12px;
-}
-
-.qrm-ai-status {
-	color: #646970;
-	font-size: 13px;
-	margin-left: 10px;
-}
-
-/* Gemini yanıtı düz metindir (JS textContent ile basar); satır sonları ve
-   madde girintileri korunsun diye pre-wrap. */
-.qrm-ai-output {
-	background: #f6f7f7;
-	border: 1px solid #dcdcde;
-	border-radius: 8px;
-	font-size: 13px;
-	line-height: 1.7;
-	margin-top: 12px;
-	max-height: 460px;
-	overflow-y: auto;
-	padding: 16px;
-	white-space: pre-wrap;
-	word-wrap: break-word;
-}
-
-@media ( pointer: coarse ) {
-	.qrm-ai-output {
-		max-height: none;
 	}
 }

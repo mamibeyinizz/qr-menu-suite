@@ -2894,11 +2894,12 @@ qrms_test(
 );
 
 /* ---------------------------------------------------------------------------
- * 6c. yorum-feedback — Gemini içgörüleri
+ * 6c. yorum-feedback — ortak $wpdb taklidi
  *
- * Gerçek Gemini çağrısı yapılmaz: stub'ların wp_remote_post taklidi
- * ($GLOBALS['qrms_test']['http']) ile yanıt verilir ve giden istek incelenir.
- * Asıl mesele, DIŞ BİR SERVİSE ne gönderildiği — testlerin çoğu bunu korur.
+ * Kaldırılan "Detaylı İçgörüler" ekranıyla birlikte Gemini özeti de gitti
+ * (ai-insights.php); bu bölümdeki testler de onunla birlikte kaldırıldı.
+ * Aşağıdaki taklit ve require'lar duruyor: sonraki bölümler modülün gerçek
+ * settings.php/install.php dosyalarına ve bir $wpdb'ye ihtiyaç duyuyor.
  * ------------------------------------------------------------------------ */
 
 if ( ! defined( 'ARRAY_A' ) ) {
@@ -2906,11 +2907,7 @@ if ( ! defined( 'ARRAY_A' ) ) {
 }
 
 /**
- * Yorum tablosu taklidi.
- *
- * Yalnızca ai-insights.php'nin kullandığı üç çağrıyı karşılar; çalıştırılan SQL
- * $GLOBALS['qrms_son_sql']'e yazılır, böylece hangi sütunların seçildiği
- * doğrulanabilir.
+ * Yorum tablosu taklidi — yalnızca tablo varlığı ve basit sayımlar.
  */
 class QRMS_Test_Wpdb {
 	public $prefix = 'wp_';
@@ -2930,166 +2927,30 @@ class QRMS_Test_Wpdb {
 		if ( false !== stripos( $sql, 'SHOW TABLES' ) ) {
 			return 'wp_qrm_reviews';
 		}
-		if ( false !== stripos( $sql, 'CONCAT' ) ) {
-			return '3-9';
-		}
 		return 3;
+	}
+
+	public function get_row( $sql, $mode = null ) {
+		$GLOBALS['qrms_son_sql'] = $sql;
+		return null;
 	}
 
 	public function get_results( $sql, $mode = null ) {
 		$GLOBALS['qrms_son_sql'] = $sql;
-		return $GLOBALS['qrms_sahte_yorumlar'];
+		return array();
 	}
 }
 
 $GLOBALS['wpdb'] = new QRMS_Test_Wpdb();
-$GLOBALS['qrms_sahte_yorumlar'] = array(
-	array( 'rating' => 4.6, 'comment' => "Yemekler   harika,\nözellikle künefe. Servis yavaştı." ),
-	array( 'rating' => 2.4, 'comment' => 'Çorba soğuk geldi, bekleme uzun sürdü.' ),
-	array( 'rating' => 5.0, 'comment' => 'Mükemmel, tekrar geleceğiz.' ),
-);
 
-// ai-insights.php settings.php'deki qrm_pro_debug_log'a ve install.php'deki
-// qrm_pro_reviews_table_exists'e bağlıdır; ikisi de gerçek dosyadan gelir.
 require_once QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/settings.php';
 require_once QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/install.php';
-require_once QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/ai-insights.php';
 
-echo "\nyorum-feedback — Gemini içgörüleri\n";
-
-qrms_test(
-	'API anahtarı yokken hiç istek kurulmaz',
-	function () {
-		// Anahtar boşken tek bir HTTP çağrısı bile olmamalı: yapılandırılmamış
-		// bir kurulum sessizce dış servise gitmemeli.
-		update_option( 'gemini_api_key', '' );
-
-		$sonuc = qrm_ai_generate_summary();
-
-		qrms_assert_false( $sonuc['ok'], 'başarısız döner' );
-		qrms_assert_contains( 'anahtar', $sonuc['error'], 'sebep söylenir' );
-		qrms_assert_same( 0, count( $GLOBALS['qrms_test']['http_calls'] ), 'HTTP çağrısı yok' );
-	}
-);
-
-qrms_test(
-	'sorgu yalnızca puan ve yorum metnini seçer',
-	function () {
-		// Bu testin varlık sebebi: dış servise gönderilecek veri kümesi,
-		// gönderilmesi gerekmeyen hiçbir sütunu TAŞIMAMALI. Kişisel veri
-		// sorguya girmezse istem metnine de sızamaz.
-		qrm_ai_collect_reviews();
-
-		$sql = $GLOBALS['qrms_son_sql'];
-
-		qrms_assert_contains( 'SELECT rating, comment', $sql, 'iki sütun' );
-
-		foreach ( array( 'customer_name', 'customer_phone', 'table_no', 'SELECT *' ) as $yasak ) {
-			qrms_assert_false( false !== strpos( $sql, $yasak ), $yasak . ' seçilmez' );
-		}
-	}
-);
-
-qrms_test(
-	'istem metninde puan ve yorum var, kişisel veri yok',
-	function () {
-		$istem = qrm_ai_build_prompt(
-			array(
-				array( 'rating' => 4.6, 'comment' => 'Künefe harika' ),
-				array( 'rating' => 2.0, 'comment' => 'Çorba soğuktu' ),
-			)
-		);
-
-		qrms_assert_contains( '(4.6/5)', $istem, 'puan biçimi' );
-		qrms_assert_contains( 'Künefe harika', $istem, 'yorum metni' );
-		qrms_assert_contains( 'TÜRKÇE', $istem, 'yanıt dili istenir' );
-	}
-);
-
-qrms_test(
-	'gönderilen gövde yorum metnini taşır, isim/telefon taşımaz',
-	function () {
-		update_option( 'gemini_api_key', 'TEST-KEY' );
-
-		qrms_mock_http( 200, array() );
-		$GLOBALS['qrms_test']['http'] = array(
-			'body' => wp_json_encode(
-				array(
-					'candidates' => array(
-						array( 'content' => array( 'parts' => array( array( 'text' => "1. Övülen\n- Künefe (2 yorum)" ) ) ) ),
-					),
-				)
-			),
-		);
-
-		$sonuc = qrm_ai_generate_summary();
-
-		qrms_assert_true( $sonuc['ok'], 'özet üretilir' );
-		qrms_assert_contains( 'Künefe', $sonuc['text'], 'metin döner' );
-
-		$cagri = $GLOBALS['qrms_test']['http_calls'][0];
-
-		qrms_assert_contains( 'generativelanguage.googleapis.com', $cagri['url'], 'uç nokta' );
-		qrms_assert_contains( 'TEST-KEY', $cagri['url'], 'anahtar' );
-
-		// Gövde JSON: wp_json_encode Türkçe karakterleri \uXXXX'e kaçırdığı için
-		// ham dizede değil, çözülmüş istem metninde aranır.
-		$govde = json_decode( $cagri['args']['body'], true );
-		$istem = $govde['contents'][0]['parts'][0]['text'];
-
-		qrms_assert_contains( 'künefe', $istem, 'yorum metni gönderilir' );
-		qrms_assert_contains( '(4.6/5)', $istem, 'puan gönderilir' );
-		qrms_assert_false( false !== strpos( $istem, 'customer_name' ), 'kişisel alan adı geçmez' );
-	}
-);
-
-qrms_test(
-	'üç yorumdan az varsa API çağrılmaz',
-	function () {
-		update_option( 'gemini_api_key', 'TEST-KEY' );
-		$GLOBALS['qrms_sahte_yorumlar'] = array( array( 'rating' => 5.0, 'comment' => 'Tek yorum' ) );
-
-		$sonuc = qrm_ai_generate_summary();
-
-		qrms_assert_false( $sonuc['ok'], 'başarısız döner' );
-		qrms_assert_same( 0, count( $GLOBALS['qrms_test']['http_calls'] ), 'boşuna istek atılmaz' );
-
-		// Sonraki testler için geri al.
-		$GLOBALS['qrms_sahte_yorumlar'] = array(
-			array( 'rating' => 4.6, 'comment' => 'Künefe harika' ),
-			array( 'rating' => 2.4, 'comment' => 'Çorba soğuktu' ),
-			array( 'rating' => 5.0, 'comment' => 'Mükemmel' ),
-		);
-	}
-);
-
-qrms_test(
-	'hata yanıtlarının ayrıntısı ekrana sızmaz',
-	function () {
-		// API anahtarı ya da kota ayrıntısı yönetici ekranında görünmemeli;
-		// kullanıcıya ne yapacağını söyleyen sade bir mesaj döner.
-		$sonuc = qrm_ai_parse_response( array( 'error' => array( 'message' => 'API_KEY_INVALID: AIzaSyGizli' ) ) );
-
-		qrms_assert_false( $sonuc['ok'], 'başarısız' );
-		qrms_assert_false( false !== strpos( $sonuc['error'], 'AIzaSyGizli' ), 'anahtar sızmaz' );
-
-		qrms_assert_false( qrm_ai_parse_response( array( 'candidates' => array( array( 'finishReason' => 'SAFETY' ) ) ) )['ok'], 'yarım yanıt' );
-		qrms_assert_false( qrm_ai_parse_response( null )['ok'], 'bozuk yanıt' );
-		qrms_assert_false( qrm_ai_parse_response( array( 'candidates' => array( array( 'content' => array( 'parts' => array( array( 'text' => '   ' ) ) ) ) ) ) )['ok'], 'boş metin' );
-	}
-);
-
-qrms_test(
-	'özet anahtarı yorum sayısı değişince değişir',
-	function () {
-		// Yeni yorum geldiğinde eski özet kendiliğinden geçersizleşmeli;
-		// ayrı bir temizleme kancası yok, anahtar damgadan türüyor.
-		$ilk = qrm_ai_cache_key();
-
-		qrms_assert_contains( 'qrm_ai_ozet_', $ilk, 'önek' );
-		qrms_assert_same( $ilk, qrm_ai_cache_key(), 'aynı veride aynı anahtar' );
-	}
-);
+// qrm_pro_reviews_table_exists() sonucu istek başına bir kez hesaplanıp
+// fonksiyon içi static'te tutulur — test sürecinin tamamı tek "istek" sayılır.
+// Sonraki bölümlerin $wpdb taklitleri SHOW TABLES'a yanıt vermediği için
+// static burada, tablonun VAR olduğu bilinen taklitle sabitlenir.
+qrm_pro_reviews_table_exists();
 
 /* ---------------------------------------------------------------------------
  * 7. Yardımcılar
@@ -5631,7 +5492,7 @@ require_once QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/frontend/form-re
  *
  * prepare() çekirdekteki gibi yer tutucuları doldurur; testler böylece
  * ÜRETİLEN SQL'i — özellikle LIMIT/OFFSET değerlerini — doğrulayabilir.
- * (ai-insights testlerinin kendi QRMS_Test_Wpdb'si ayrıdır; bu sınıf
+ * (6c bölümünün QRMS_Test_Wpdb'si ayrıdır; bu sınıf
  * yalnızca aşağıdaki testler için $GLOBALS['wpdb']'ye takılır.)
  */
 class QRMS_Yorum_Wpdb {
@@ -7174,32 +7035,103 @@ function qrm_cf_unread_total() {
 // qrm_pro_review_stats() de gerçek install.php'den gelir; sayaçları yukarıdaki
 // QRMS_Test_Wpdb besler (tablo var, sayımlar sabit).
 
+/**
+ * Yorum sayaçlarının taklidi — hub ve rozet testleri için.
+ *
+ * qrm_pro_review_stats() istek içi memo'yu ($GLOBALS['qrm_pro_stats_memo'])
+ * olduğu gibi döndürdüğü için ekranlar veritabanına hiç gitmeden beslenebilir.
+ *
+ * @param array $args Ezilecek alanlar.
+ * @return array
+ */
+function qrms_sahte_yorum_stats( $args = array() ) {
+	$stats = array_merge(
+		array(
+			'table_ok'        => true,
+			'total'           => 40,
+			'approved'        => 36,
+			'pending'         => 4,
+			'avg'             => 3.9,
+			'google_eligible' => 20,
+			'threshold'       => 3.5,
+			'crit'            => array( 1 => 4.0, 2 => 4.0, 3 => 4.0, 4 => 4.0, 5 => 4.0 ),
+		),
+		$args
+	);
+
+	$stats['sentiment'] = qrm_pro_empty_sentiment_stats( qrm_pro_sentiment_threshold() );
+
+	return $stats;
+}
+
+/**
+ * Bir özet kutusunun sınıf özniteliği (etiketinden bulunur).
+ *
+ * @param string $html  Hub çıktısı.
+ * @param string $label Kutunun etiketi.
+ * @return string Bulunamazsa boş string.
+ */
+function qrms_yf_stat_class( $html, $label ) {
+	$desen = '/<a class="([^"]+)"[^>]*>\s*<div class="qrms-hub-stat-label">'
+		. preg_quote( $label, '/' ) . '</u';
+
+	return preg_match( $desen, $html, $m ) ? $m[1] : '';
+}
+
+/**
+ * Hub ekranını verilen sayaçlarla basar ve HTML'ini döndürür.
+ *
+ * @param array|null $stats qrms_sahte_yorum_stats() argümanları.
+ * @return string
+ */
+function qrms_yf_hub_html( $stats = array() ) {
+	$GLOBALS['qrm_pro_stats_memo'] = qrms_sahte_yorum_stats( $stats );
+
+	ob_start();
+	qrm_pro_admin_hub();
+
+	return ob_get_clean();
+}
+
 echo "\nYorum & Feedback sayfaları\n";
 
 qrms_test(
-	'yedi ekranın hepsi kayıt defterinde ve her birinin callback\'i var',
+	'altı ekranın hepsi kayıt defterinde ve her birinin callback\'i var',
 	function () {
 		$pages = qrm_pro_admin_pages();
 
+		// "Detaylı İçgörüler" (qrms-yf-icgoruler) kaldırıldı; kalan altı ekran
+		// hub'daki grup sırasıyla durur.
 		qrms_assert_same(
 			array(
 				'qrms-yf-yorumlar',
-				'qrms-yf-icgoruler',
 				'qrms-yf-form-alanlari',
-				'qrms-yf-ayarlar',
 				'qrms-yf-iletisim',
-				'qrms-yf-odul',
 				'qrms-yf-formlar',
+				'qrms-yf-ayarlar',
+				'qrms-yf-odul',
 			),
 			array_keys( $pages ),
 			'sayfa listesi'
 		);
 
 		foreach ( $pages as $slug => $page ) {
-			foreach ( array( 'title', 'menu_title', 'render', 'desc', 'icon' ) as $key ) {
+			foreach ( array( 'title', 'menu_title', 'render', 'desc', 'icon', 'group' ) as $key ) {
 				qrms_assert_true( ! empty( $page[ $key ] ), $slug . ' -> ' . $key . ' dolu' );
 			}
+
+			qrms_assert_true(
+				array_key_exists( $page['group'], qrm_pro_admin_page_groups() ),
+				$slug . ' -> tanımlı bir gruba ait'
+			);
 		}
+
+		qrms_assert_false(
+			array_key_exists( 'qrms-yf-icgoruler', $pages ),
+			'kaldırılan İçgörüler ekranı kayıtlı değil'
+		);
+		qrms_assert_false( function_exists( 'qrm_pro_admin_insights' ), 'callback de kalmadı' );
+		qrms_assert_false( function_exists( 'qrm_ai_generate_summary' ), 'Gemini özeti de kalmadı' );
 	}
 );
 
@@ -7220,8 +7152,9 @@ qrms_test(
 		$bekleyen = array(
 			// [eski slug, parametreler, hedef slug, hedefte beklenen ek parametre]
 			array( 'qrm-pro-main', array(), 'qrms-yf-yorumlar', '' ),
-			array( 'qrm-pro-main', array( 'tab' => 'insights' ), 'qrms-yf-icgoruler', '' ),
-			array( 'qrm-pro-insights', array(), 'qrms-yf-icgoruler', '' ),
+			// Kaldırılan İçgörüler ekranının iki adresi de yorum listesine düşer.
+			array( 'qrm-pro-main', array( 'tab' => 'insights' ), 'qrms-yf-yorumlar', '' ),
+			array( 'qrm-pro-insights', array(), 'qrms-yf-yorumlar', '' ),
 			array( 'qrm-pro-settings', array(), 'qrms-yf-ayarlar', '' ),
 			array( 'qrm-pro-settings', array( 'sub' => 'alanlar' ), 'qrms-yf-form-alanlari', '' ),
 			array( 'qrm-pro-form', array(), 'qrms-yf-form-alanlari', '' ),
@@ -7327,14 +7260,23 @@ qrms_test(
 );
 
 qrms_test(
-	'rozet modülün TEK satırında toplanır',
+	'rozet modülün TEK satırında toplanır — bekleyen yorum dahil',
 	function () {
-		// Alt satırlar kalktığı için okunmamış gönderim sayısı yalnızca
-		// "Yorum & Feedback" satırında görünebilir.
+		// Alt satırlar kalktığı için bekleyen iş yalnızca "Yorum & Feedback"
+		// satırında görünebilir. qrm_pro_menu_badge_state() istek başına bir kez
+		// hesaplanıp static'te tutulduğu için sayaçlar ilk çağrıdan ÖNCE
+		// sabitlenir (yorum sayaçları burada memo üzerinden verilir).
+		$GLOBALS['qrm_pro_stats_memo'] = qrms_sahte_yorum_stats( array( 'pending' => 3 ) );
+
 		$label = qrms_module_yorum_feedback_menu_label( 'Yorum & Feedback', 'yorum-feedback' );
 
 		qrms_assert_contains( 'Yorum & Feedback', $label, 'modül adı korunur' );
-		qrms_assert_contains( 'update-count', $label, 'okunmamış gönderim rozeti' );
+		qrms_assert_contains( 'update-count', $label, 'bekleyen iş rozeti' );
+
+		// 3 onay bekleyen yorum + 2 okunmamış gönderim (qrm_cf_unread_total taklidi).
+		qrms_assert_contains( '>5<', $label, 'iki sayaç toplanır' );
+		qrms_assert_contains( 'onay bekleyen yorum', $label, 'rozetin sebebi başlıkta' );
+
 		qrms_assert_same(
 			'QR Masa',
 			qrms_module_yorum_feedback_menu_label( 'QR Masa', 'qr-masa' ),
@@ -7344,11 +7286,9 @@ qrms_test(
 );
 
 qrms_test(
-	'hub yedi ekranı da kart olarak basar',
+	'hub altı ekranı da üç başlık altında basar',
 	function () {
-		ob_start();
-		qrm_pro_admin_hub();
-		$html = ob_get_clean();
+		$html = qrms_yf_hub_html();
 
 		qrms_assert_contains( 'qrms-hub-grid', $html, 'ortak kart ızgarası' );
 		qrms_assert_contains( 'qrms-hub-stats', $html, 'özet kutuları' );
@@ -7356,6 +7296,88 @@ qrms_test(
 		foreach ( qrm_pro_admin_pages() as $slug => $page ) {
 			qrms_assert_contains( 'page=' . $slug, $html, $slug . ' kartı' );
 		}
+
+		// Üç grup başlığı, kayıt defterindeki sırayla.
+		$sira = array();
+		foreach ( qrm_pro_admin_page_groups() as $baslik ) {
+			$konum = strpos( $html, '>' . $baslik . '<' );
+			qrms_assert_true( false !== $konum, $baslik . ' başlığı basılır' );
+			$sira[] = $konum;
+		}
+
+		$sirali = $sira;
+		sort( $sirali );
+		qrms_assert_same( $sirali, $sira, 'başlık sırası: Yorumlar, Formlar, Ayarlar' );
+
+		// Karışan iki ad netleştirildi.
+		qrms_assert_contains( 'İletişim Formu', $html, 'iletişim kartının tam adı' );
+		qrms_assert_contains( 'Özel Formlar', $html, 'özel formlar kartının tam adı' );
+		qrms_assert_false( false !== strpos( $html, 'İçgörüler' ), 'kaldırılan kart yok' );
+	}
+);
+
+qrms_test(
+	'dört özet kutusunun dördü de filtrelenmiş listeye gider',
+	function () {
+		$html = qrms_yf_hub_html( array( 'pending' => 4, 'total' => 40, 'approved' => 36 ) );
+
+		// Kutular <a> olarak basılır: sayıyı gören, kayıtlara da tıklayarak gider.
+		qrms_assert_same( 4, substr_count( $html, 'qrms-hub-stat-label' ), 'dört kutu' );
+		qrms_assert_same( 4, substr_count( $html, '<a class="qrms-hub-stat' ), 'dördü de bağlantı' );
+
+		qrms_assert_contains( 'page=qrms-yf-yorumlar&amp;durum=bekleyen', $html, 'onay bekleyen -> bekleyen filtresi' );
+		qrms_assert_contains( 'page=qrms-yf-yorumlar&amp;durum=onayli', $html, 'genel ortalama -> yayındakiler' );
+		qrms_assert_contains( 'page=qrms-yf-formlar&amp;tab=submissions', $html, 'okunmamış gönderim -> gönderiler' );
+
+		// Bekleyen iş varken kutu vurgulanır.
+		qrms_assert_contains(
+			'qrms-hub-stat-alert',
+			qrms_yf_stat_class( $html, 'Onay Bekleyen' ),
+			'onay bekleyen kutusu vurgulanır'
+		);
+		qrms_assert_contains( '3.9 ★', $html, 'ortalama basılır' );
+	}
+);
+
+qrms_test(
+	'bekleyen yorum yokken kutu vurgulanmaz, puan yokken "—" yazmaz',
+	function () {
+		$html = qrms_yf_hub_html( array( 'pending' => 0, 'total' => 0, 'approved' => 0 ) );
+
+		qrms_assert_false(
+			false !== strpos( qrms_yf_stat_class( $html, 'Onay Bekleyen' ), 'qrms-hub-stat-alert' ),
+			'vurgu yok'
+		);
+
+		// Boş ortalamanın "—" hâli hiçbir şey anlatmıyordu.
+		qrms_assert_contains( 'Henüz puan yok', $html, 'boş ortalama açıklanır' );
+		qrms_assert_false(
+			false !== strpos( $html, '<span class="qrms-stat-value">—</span>' ),
+			'kutuda tire kalmadı'
+		);
+	}
+);
+
+qrms_test(
+	'hiç yorum yokken kartların üstünde kısa kod yönlendirmesi çıkar',
+	function () {
+		$bos = qrms_yf_hub_html( array( 'pending' => 0, 'total' => 0, 'approved' => 0 ) );
+
+		qrms_assert_contains( 'qrms-hub-hint', $bos, 'yönlendirme basılır' );
+		qrms_assert_contains( '[qr_menu_reviews]', $bos, 'kısa kod' );
+		qrms_assert_contains( 'data-qrms-copy=', $bos, 'kopyalama butonu (ortak admin.js)' );
+		qrms_assert_contains( 'QR kodunuzu', $bos, 'QR kodun paylaşılması gerektiği söylenir' );
+
+		// Kartların ÜSTÜNDE: ilk kart ızgarasından önce gelir.
+		qrms_assert_true(
+			strpos( $bos, 'qrms-hub-hint' ) < strpos( $bos, 'qrms-hub-grid' ),
+			'kartlardan önce'
+		);
+
+		// Tek yorum bile gelmişse yönlendirme kaybolur.
+		$dolu = qrms_yf_hub_html( array( 'total' => 1, 'approved' => 1, 'pending' => 0 ) );
+
+		qrms_assert_false( false !== strpos( $dolu, 'qrms-hub-hint' ), 'yorum gelince kaybolur' );
 	}
 );
 
@@ -9377,6 +9399,8 @@ function qrms_sahte_stat_satiri( $args = array() ) {
 			'approved'        => 30,
 			'avg_rating'      => 4.25,
 			'google_eligible' => 22,
+			'positive_total'    => 28,
+			'positive_approved' => 24,
 			'crit_1'          => 4.5,
 			'crit_2'          => 3.5,
 			'crit_3'          => 4.0,
@@ -9409,6 +9433,11 @@ qrms_test(
 
 		qrms_assert_contains( 'AS google_eligible', $sql, 'Google eşiği aynı sorguda' );
 		qrms_assert_contains( "rating >= 3.5", $sql, 'eşik değeri yerine kondu' );
+
+		// Sekme sayaçları (olumlu/olumsuz) da AYNI taramadan gelir; sekmeye
+		// tıklamak ekstra bir COUNT sorgusu açmamalı.
+		qrms_assert_contains( 'AS positive_total', $sql, 'olumlu sayacı aynı sorguda' );
+		qrms_assert_contains( 'AS positive_approved', $sql, 'olumlu/yayında sayacı aynı sorguda' );
 
 		qrms_assert_same( 40, $stats['total'], 'toplam' );
 		qrms_assert_same( 30, $stats['approved'], 'yayında' );
@@ -9556,6 +9585,139 @@ qrms_test(
 		qrms_assert_same( 40, qrm_pro_admin_reviews_total( '', $stats ), 'tümü' );
 		qrms_assert_same( 10, qrm_pro_admin_reviews_total( 'bekleyen', $stats ), 'bekleyen' );
 		qrms_assert_same( 30, qrm_pro_admin_reviews_total( 'onayli', $stats ), 'onaylı' );
+	}
+);
+
+echo "\nYönetimdeki yorum listesi — üç sekme\n";
+
+qrms_test(
+	'olumlu/olumsuz eşiği TEK yerden gelir ve filtreyle değişir',
+	function () {
+		qrms_assert_same( 3.0, qrm_pro_sentiment_threshold(), 'varsayılan eşik' );
+		qrms_assert_same( 3.0, (float) QRM_PRO_SENTIMENT_THRESHOLD, 'sabit ile aynı' );
+
+		add_filter(
+			'qrm_pro_sentiment_threshold',
+			function () {
+				return 4.0;
+			}
+		);
+
+		qrms_assert_same( 4.0, qrm_pro_sentiment_threshold(), 'filtre geçerli' );
+
+		// Aralık dışı bir değer sorguya sızmamalı.
+		unset( $GLOBALS['qrms_test']['actions']['qrm_pro_sentiment_threshold'] );
+		add_filter(
+			'qrm_pro_sentiment_threshold',
+			function () {
+				return 99;
+			}
+		);
+
+		qrms_assert_same( 5.0, qrm_pro_sentiment_threshold(), '0-5 aralığına sıkışır' );
+
+		unset( $GLOBALS['qrms_test']['actions']['qrm_pro_sentiment_threshold'] );
+	}
+);
+
+qrms_test(
+	'bilinmeyen sekme değeri sorguya sızmaz',
+	function () {
+		qrms_assert_same( '', qrm_pro_admin_review_tab( '' ), 'boş -> tümü' );
+		qrms_assert_same( 'olumlu', qrm_pro_admin_review_tab( 'olumlu' ), 'olumlu' );
+		qrms_assert_same( 'olumsuz', qrm_pro_admin_review_tab( 'olumsuz' ), 'olumsuz' );
+		qrms_assert_same( '', qrm_pro_admin_review_tab( 'notr' ), 'bilinmeyen -> tümü' );
+		qrms_assert_same( '', qrm_pro_admin_review_tab( '1 OR 1=1' ), 'enjeksiyon denemesi -> tümü' );
+		qrms_assert_same( '', qrm_pro_admin_review_tab( array( 'olumlu' ) ), 'dizi -> tümü' );
+
+		// Nötr kategori yok: her yorum iki sekmeden birine düşer.
+		qrms_assert_same(
+			array( '', 'olumlu', 'olumsuz' ),
+			array_keys( qrm_pro_admin_review_tabs() ),
+			'üç sekme'
+		);
+	}
+);
+
+qrms_test(
+	'sekme filtresi SQL tarafında uygulanır',
+	function () {
+		// Asıl mesele bu: tablonun tamamı PHP'ye çekilip orada elenirse, çok
+		// yorumlu bir sitede sayfa açılmaz olur.
+		$wpdb = qrms_sayan_wpdb();
+
+		qrm_pro_admin_fetch_reviews( '', 25, 1, 'olumlu', 3.0 );
+		qrms_assert_contains( 'WHERE rating >= 3', $wpdb->queries[0], 'olumlu koşulu SQL\'de' );
+		qrms_assert_contains( 'LIMIT 25 OFFSET 0', $wpdb->queries[0], 'sayfalama duruyor' );
+
+		qrm_pro_admin_fetch_reviews( '', 25, 2, 'olumsuz', 3.0 );
+		qrms_assert_contains( 'WHERE rating < 3', $wpdb->queries[1], 'olumsuz koşulu SQL\'de' );
+		qrms_assert_contains( 'LIMIT 25 OFFSET 25', $wpdb->queries[1], 'ikinci sayfa' );
+
+		// Sekme ve durum filtresi birlikte de tek sorguda birleşir.
+		qrm_pro_admin_fetch_reviews( 'bekleyen', 10, 1, 'olumsuz', 3.0 );
+		qrms_assert_contains( 'WHERE status = 0 AND rating < 3', $wpdb->queries[2], 'iki filtre birlikte' );
+
+		// Eşik filtreden geliyorsa da sorguya o değer girer.
+		qrm_pro_admin_fetch_reviews( '', 10, 1, 'olumlu', 4.5 );
+		qrms_assert_contains( 'rating >= 4.5', $wpdb->queries[3], 'eşik değeri yerine kondu' );
+	}
+);
+
+qrms_test(
+	'sekme sayaçları ve sayfalama toplamı EK SORGU açmaz',
+	function () {
+		$wpdb = qrms_sayan_wpdb();
+		$wpdb->rows[] = qrms_sahte_stat_satiri();
+
+		$stats = qrm_pro_review_stats( true );
+
+		qrms_assert_same( 1, count( $wpdb->queries ), 'tek sorgu' );
+
+		// 40 kayıt, 28'i olumlu -> 12'si olumsuz; nötr kova yok.
+		qrms_assert_same( 28, $stats['sentiment']['olumlu']['total'], 'olumlu toplam' );
+		qrms_assert_same( 12, $stats['sentiment']['olumsuz']['total'], 'olumsuz toplam' );
+		qrms_assert_same(
+			$stats['total'],
+			$stats['sentiment']['olumlu']['total'] + $stats['sentiment']['olumsuz']['total'],
+			'iki sekme toplamı = tüm yorumlar'
+		);
+
+		// 30 yayında, 24'ü olumlu -> olumsuz yayında 6, olumsuz bekleyen 6.
+		qrms_assert_same( 24, $stats['sentiment']['olumlu']['approved'], 'olumlu yayında' );
+		qrms_assert_same( 4, $stats['sentiment']['olumlu']['pending'], 'olumlu bekleyen' );
+		qrms_assert_same( 6, $stats['sentiment']['olumsuz']['approved'], 'olumsuz yayında' );
+		qrms_assert_same( 6, $stats['sentiment']['olumsuz']['pending'], 'olumsuz bekleyen' );
+
+		// Sayfalama toplamı sekme + durum kombinasyonunda da aynı diziden okunur.
+		qrms_assert_same( 28, qrm_pro_admin_reviews_total( '', $stats, 'olumlu' ), 'olumlu / tümü' );
+		qrms_assert_same( 6, qrm_pro_admin_reviews_total( 'bekleyen', $stats, 'olumsuz' ), 'olumsuz / bekleyen' );
+		qrms_assert_same( 40, qrm_pro_admin_reviews_total( '', $stats ), 'sekmesiz davranış korunur' );
+
+		qrms_assert_same( 1, count( $wpdb->queries ), 'sayaçlar için ek sorgu yok' );
+	}
+);
+
+qrms_test(
+	'olumlu/olumsuz eşiği değişince saklanan sayaçlar kabul edilmez',
+	function () {
+		$wpdb = qrms_sayan_wpdb();
+		$wpdb->rows[] = qrms_sahte_stat_satiri();
+		$wpdb->rows[] = qrms_sahte_stat_satiri( array( 'positive_total' => 9 ) );
+
+		qrms_assert_same( 28, qrm_pro_review_stats( true )['sentiment']['olumlu']['total'], 'eşik 3.0' );
+
+		unset( $GLOBALS['qrm_pro_stats_memo'] );
+		add_filter(
+			'qrm_pro_sentiment_threshold',
+			function () {
+				return 4.0;
+			}
+		);
+
+		qrms_assert_same( 9, qrm_pro_review_stats()['sentiment']['olumlu']['total'], 'eşik 4.0 ile yeniden sorulur' );
+
+		unset( $GLOBALS['qrms_test']['actions']['qrm_pro_sentiment_threshold'] );
 	}
 );
 
@@ -9924,7 +10086,7 @@ qrms_test(
 );
 
 qrms_test(
-	'üç uzun çağrının üçü de bırak/geri-aç çiftiyle sarılı',
+	'uzun çağrıların hepsi bırak/geri-aç çiftiyle sarılı',
 	function () {
 		// Sarmanın YARISI (bırakma var, geri açma yok) sessiz veri kaybı
 		// demektir: kapalı bağlantıda sorgular false döner. Bu yüzden her
@@ -9932,7 +10094,6 @@ qrms_test(
 		$dosyalar = array(
 			'modules/qr-chatbot/includes/ajax-chat.php'         => array( 'qmo_db_serbest_birak', 'qmo_db_geri_baglan' ),
 			'modules/qr-chatbot/rest-order.php'                 => array( 'qmo_db_serbest_birak', 'qmo_db_geri_baglan' ),
-			'modules/yorum-feedback/includes/ai-insights.php'   => array( 'qrm_db_serbest_birak', 'qrm_db_geri_baglan' ),
 		);
 
 		foreach ( $dosyalar as $yol => $cift ) {
@@ -10015,9 +10176,13 @@ qrms_test(
 
 		qrms_assert_contains( 'WHERE status = 1 ORDER BY created_at DESC', $liste, 'ön yüz sorgusu' );
 
-		$admin = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/admin/dashboard.php' );
+		// Yönetim sorgusu artık dinamik kurulur (sekme + durum filtresi); sütun
+		// sırası üretilen SQL üzerinden doğrulanır.
+		$wpdb = qrms_sayan_wpdb();
 
-		qrms_assert_contains( 'WHERE status = %d ORDER BY created_at DESC', $admin, 'yönetim sorgusu' );
+		qrm_pro_admin_fetch_reviews( 'bekleyen', 10, 1, '', 3.0 );
+
+		qrms_assert_contains( 'WHERE status = 0 ORDER BY created_at DESC', $wpdb->queries[0], 'yönetim sorgusu' );
 	}
 );
 
