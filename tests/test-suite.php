@@ -3776,6 +3776,7 @@ require_once QRMS_PLUGIN_DIR . 'modules/qr-analiz/filtre-cubugu.php';
 require_once QRMS_PLUGIN_DIR . 'modules/qr-analiz/genel-sayfasi.php';
 require_once QRMS_PLUGIN_DIR . 'modules/qr-analiz/urunler-sayfasi.php';
 require_once QRMS_PLUGIN_DIR . 'modules/qr-analiz/masalar-sayfasi.php';
+require_once QRMS_PLUGIN_DIR . 'modules/qr-analiz/sepet-sayfasi.php';
 require_once QRMS_PLUGIN_DIR . 'modules/qr-analiz/sistem-sayfasi.php';
 require_once QRMS_PLUGIN_DIR . 'modules/qr-analiz/hub-sayfasi.php';
 
@@ -3830,7 +3831,8 @@ qrms_test(
 
 		// Henüz dolmamış kategoriler gizlenmez, ROZETLENİR: gizlemek "böyle
 		// bir şey yok" demek olurdu, rozetsiz göstermek boş ekranı hata gibi
-		// hissettirirdi.
+		// hissettirirdi. Sepet Faz 7'de doldu; kalan iki (etkileşim, açılış)
+		// Faz 8'e kalır.
 		$rozetli = array();
 
 		foreach ( $kartlar as $kart ) {
@@ -3839,7 +3841,7 @@ qrms_test(
 			}
 		}
 
-		qrms_assert_same( 3, count( $rozetli ), 'üç kategori "Yakında"' );
+		qrms_assert_same( 2, count( $rozetli ), 'iki kategori "Yakında"' );
 
 		// Ayar ekranı dosyası artık güvenlik modülünün altındadır.
 		qrms_assert_false( defined( 'QRMS_ANALIZ_AYAR_SAYFA' ), 'ayar slug sabiti taşındı' );
@@ -3870,6 +3872,53 @@ qrms_test(
 		$gecerli = qrms_module_qr_analiz_gecerli_sayfalar();
 
 		qrms_assert_true( isset( $gecerli['qrms-an-sepet'] ), 'chatbot aktif: sepet var' );
+
+		update_option( 'qrms_active_modules', array() );
+	}
+);
+
+qrms_test(
+	'chatbot pasifken sepet sayfası yine kayıtlıdır ama hub kartı yoktur',
+	function () {
+		update_option( 'qrms_active_modules', array( 'qr-analiz' ) );
+		QRMS_Analitik_Filtre::sifirla();
+
+		$GLOBALS['submenu'][ QRMS_Admin::MENU_SLUG ] = array(
+			qrms_submenu_satiri( 'İstatistikler', QRMS_Admin::get_module_page_slug( 'qr-analiz' ) ),
+		);
+
+		qrms_module_qr_analiz_admin_menu();
+
+		$sluglar = array_map(
+			function ( $item ) {
+				return $item['slug'];
+			},
+			$GLOBALS['qrms_test']['submenus']
+		);
+
+		qrms_assert_true( in_array( 'qrms-an-sepet', $sluglar, true ), 'doğrudan URL çalışsın diye kayıtlı' );
+
+		$kart_url = array();
+		foreach ( qrms_module_qr_analiz_hub_kartlari() as $kart ) {
+			$kart_url[] = $kart['url'];
+		}
+
+		$sepet_kart = false;
+		foreach ( $kart_url as $url ) {
+			if ( false !== strpos( $url, 'page=qrms-an-sepet' ) ) {
+				$sepet_kart = true;
+			}
+		}
+
+		qrms_assert_false( $sepet_kart, 'hub kartı basılmaz' );
+
+		ob_start();
+		qrms_analitik_sayfa_sepet();
+		$html = ob_get_clean();
+
+		qrms_assert_contains( 'Chatbot Asistan bu lisansta kapalı', $html, 'anlamlı mesaj' );
+		qrms_assert_false( false !== strpos( $html, 'id="qrms-an-cards"' ), 'boş tablo yok' );
+		qrms_assert_false( false !== strpos( $html, 'qrms-an-table' ), 'tablo iskeleti yok' );
 
 		update_option( 'qrms_active_modules', array() );
 	}
@@ -4623,13 +4672,14 @@ qrms_test(
 );
 
 qrms_test(
-	'garson çağırma / hesap isteme bölümü Faz 6\'ya kadar BASILMAZ',
+	'garson çağırma / hesap isteme bölümü Masalar ekranında BASILMAZ',
 	function () {
 		$sayfa = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/masalar-sayfasi.php' );
 
-		// Boş bir tablo, veri yokluğunu hata gibi gösterirdi; bölüm hiç
-		// basılmaz ama yeri yorumla işaretlidir.
-		qrms_assert_contains( 'FAZ 6', $sayfa, 'yer işareti' );
+		// Faz 6 olayları yazıyor; Masalar raporu henüz bağlamaz. Boş bir
+		// tablo veri yokluğunu hata gibi gösterirdi; bölüm hiç basılmaz
+		// ama yeri yorumla işaretlidir.
+		qrms_assert_contains( 'Garson çağırma / hesap isteme sayaçları', $sayfa, 'yer işareti' );
 		qrms_assert_contains( 'waiter_call', $sayfa, 'olay adı yazılı' );
 		qrms_assert_contains( 'bill_request', $sayfa, 'olay adı yazılı' );
 
@@ -4637,6 +4687,344 @@ qrms_test(
 
 		qrms_assert_false( false !== strpos( $js, 'waiter' ), 'ekranda bölüm yok' );
 		qrms_assert_false( false !== strpos( $js, 'bill' ), 'ekranda bölüm yok' );
+	}
+);
+
+echo "\nQR Analiz — Sepet & Sipariş kategorisi\n";
+
+qrms_test(
+	'Faz 6 yazım stratejisi: debounce toplu gönderim, sipariş kalem başına tek satır',
+	function () {
+		$js  = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/assets/js/sepet.js' );
+		$sip = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/rest-order.php' );
+
+		qrms_assert_contains( 'ANALITIK_PENCERE = 3000', $js, '3 sn debounce' );
+		qrms_assert_contains( 'istemci debounce + toplu gönderim seçildi', $js, 'strateji debounce, oturum sonu değil' );
+		qrms_assert_contains( 'Adet kadar satır YAZILMAZ', $sip, 'sipariş kalem başına' );
+		qrms_assert_contains( 'Her kalem (satır) için bir olay', $sip, 'adet çoğaltılmaz' );
+	}
+);
+
+qrms_test(
+	'terk oturum bazlıdır: cart_add var, order_sent yok',
+	function () {
+		// İki oturum: biri terk, biri dönüşmüş. Olay sayısı 3+1 olsa da
+		// terk 1 oturumdur — olay bazlı saymak yanıltırdı.
+		$gruplar = array(
+			array(
+				'ip_hash'    => 'aaa',
+				'masa_no'    => 'masa-1',
+				'pencere'    => '2026-03-10 12',
+				'event_type' => 'cart_add',
+				'item_id'    => 10,
+				'item_name'  => 'Burger',
+				'category_name' => 'Ana',
+				'adet'       => 3,
+			),
+			array(
+				'ip_hash'    => 'bbb',
+				'masa_no'    => 'masa-2',
+				'pencere'    => '2026-03-10 12',
+				'event_type' => 'cart_add',
+				'item_id'    => 10,
+				'item_name'  => 'Burger',
+				'category_name' => 'Ana',
+				'adet'       => 1,
+			),
+			array(
+				'ip_hash'    => 'bbb',
+				'masa_no'    => 'masa-2',
+				'pencere'    => '2026-03-10 12',
+				'event_type' => 'order_sent',
+				'item_id'    => 10,
+				'item_name'  => 'Burger',
+				'category_name' => 'Ana',
+				'adet'       => 1,
+			),
+		);
+
+		$sonuc = qrms_analitik_sepet_hesapla( $gruplar, 1, 0 );
+
+		qrms_assert_same( 4, $sonuc['ozet']['cart_add'], 'olay sayısı (3+1), porsiyon değil' );
+		qrms_assert_same( 1, $sonuc['ozet']['cart_add_urun'], 'tekil ürün' );
+		qrms_assert_same( 1, $sonuc['ozet']['order_sent'], 'dönüşen oturum' );
+		qrms_assert_same( 1, $sonuc['ozet']['terk'], 'terk oturum' );
+		qrms_assert_same( 2, $sonuc['ozet']['oturum_add'], 'sepeti olan oturum' );
+		qrms_assert_same( 50, $sonuc['ozet']['terk_oran'], 'terk oranı %50' );
+		qrms_assert_false( $sonuc['bos'], 'veri var' );
+
+		// Burger: terk oturumunda dönüşmedi, dönüşen oturumda dönüştü.
+		qrms_assert_same( 1, count( $sonuc['terk_urun'] ), 'yalnızca dönüşmeyen oturumdaki ürün' );
+		qrms_assert_same( 10, $sonuc['terk_urun'][0]['id'], 'burger' );
+		qrms_assert_same( 1, $sonuc['terk_urun'][0]['terk'], 'bir oturum terk' );
+		qrms_assert_same( 3, $sonuc['terk_urun'][0]['ekleme'], 'terk oturumundaki ekleme olayı' );
+	}
+);
+
+qrms_test(
+	'siparişe dönüşen kalem terk tablosuna girmez; aynı oturumda kalan girer',
+	function () {
+		// Burger + ayran eklendi, yalnızca ayran sipariş edildi: burger
+		// fiyat direnci tablosundadır, oturum ise TERK DEĞİLDİR (order_sent var).
+		$gruplar = array(
+			array(
+				'ip_hash'    => 'aaa',
+				'masa_no'    => 'masa-1',
+				'pencere'    => '2026-03-10 12',
+				'event_type' => 'cart_add',
+				'item_id'    => 10,
+				'item_name'  => 'Burger',
+				'adet'       => 1,
+			),
+			array(
+				'ip_hash'    => 'aaa',
+				'masa_no'    => 'masa-1',
+				'pencere'    => '2026-03-10 12',
+				'event_type' => 'cart_add',
+				'item_id'    => 11,
+				'item_name'  => 'Ayran',
+				'adet'       => 1,
+			),
+			array(
+				'ip_hash'    => 'aaa',
+				'masa_no'    => 'masa-1',
+				'pencere'    => '2026-03-10 12',
+				'event_type' => 'order_sent',
+				'item_id'    => 11,
+				'item_name'  => 'Ayran',
+				'adet'       => 1,
+			),
+		);
+
+		$sonuc = qrms_analitik_sepet_hesapla( $gruplar, 1, 0 );
+
+		qrms_assert_same( 0, $sonuc['ozet']['terk'], 'oturum sipariş verdi' );
+		qrms_assert_same( 1, $sonuc['ozet']['order_sent'], 'gönderildi' );
+		qrms_assert_same( 1, count( $sonuc['terk_urun'] ), 'burger dönüşmedi' );
+		qrms_assert_same( 'Burger', $sonuc['terk_urun'][0]['ad'], 'dönüşmeyen ürün' );
+	}
+);
+
+qrms_test(
+	'sepetten çıkarma oranı küresel ekleme/çıkarma sayısından hesaplanır',
+	function () {
+		$gruplar = array(
+			array(
+				'ip_hash'    => 'a',
+				'masa_no'    => 'm1',
+				'pencere'    => '2026-03-10 12',
+				'event_type' => 'cart_add',
+				'item_id'    => 7,
+				'item_name'  => 'Künefe',
+				'adet'       => 4,
+			),
+			array(
+				'ip_hash'    => 'a',
+				'masa_no'    => 'm1',
+				'pencere'    => '2026-03-10 12',
+				'event_type' => 'cart_remove',
+				'item_id'    => 7,
+				'item_name'  => 'Künefe',
+				'adet'       => 2,
+			),
+			array(
+				'ip_hash'    => 'b',
+				'masa_no'    => 'm2',
+				'pencere'    => '2026-03-10 14',
+				'event_type' => 'cart_remove',
+				'item_id'    => 8,
+				'item_name'  => 'Çay',
+				'adet'       => 1,
+			),
+		);
+
+		$sonuc = qrms_analitik_sepet_hesapla( $gruplar, 1, 0 );
+
+		qrms_assert_same( 2, count( $sonuc['cikarilan'] ), 'iki ürün çıkarıldı' );
+		qrms_assert_same( 'Künefe', $sonuc['cikarilan'][0]['ad'], 'daha çok çıkan üstte' );
+		qrms_assert_same( 2, $sonuc['cikarilan'][0]['cikarma'], 'çıkarma' );
+		qrms_assert_same( 4, $sonuc['cikarilan'][0]['ekleme'], 'ekleme' );
+		qrms_assert_same( 2.0, $sonuc['cikarilan'][0]['oran'], '4/2=2' );
+		qrms_assert_same( 'Çay', $sonuc['cikarilan'][1]['ad'], 'ikinci' );
+		qrms_assert_same( 0, $sonuc['cikarilan'][1]['ekleme'], 'hiç eklenmeden çıkarılmış olabilir' );
+		qrms_assert_same( 0.0, $sonuc['cikarilan'][1]['oran'], '0/1=0' );
+	}
+);
+
+qrms_test(
+	'engellenen sipariş ürüne toplanır; hatalar sıfırsa dağılım boştur',
+	function () {
+		$gruplar = array(
+			array(
+				'ip_hash'    => 'a',
+				'masa_no'    => 'm1',
+				'pencere'    => '2026-03-10 12',
+				'event_type' => 'order_blocked',
+				'item_id'    => 3,
+				'item_name'  => 'Izgara',
+				'adet'       => 2,
+			),
+			array(
+				'ip_hash'    => 'b',
+				'masa_no'    => 'm2',
+				'pencere'    => '2026-03-10 12',
+				'event_type' => 'order_blocked',
+				'item_id'    => 3,
+				'item_name'  => 'Izgara',
+				'adet'       => 1,
+			),
+		);
+
+		$sonuc = qrms_analitik_sepet_hesapla( $gruplar, 1, 0 );
+
+		qrms_assert_same( 3, $sonuc['ozet']['blocked'], 'kaçırılan sipariş olayı' );
+		qrms_assert_same( 1, count( $sonuc['engellenen'] ), 'tek ürün' );
+		qrms_assert_same( 3, $sonuc['engellenen'][0]['siparis'], 'ürüne toplanır' );
+		qrms_assert_same( 0, $sonuc['ozet']['failed'], 'hata yok' );
+		qrms_assert_same( array(), $sonuc['hatalar'], 'dağılım basılmaz' );
+	}
+);
+
+qrms_test(
+	'sipariş hataları oturum bazlı zaman kovasına düşer; çok kalemli sipariş tek sayılır',
+	function () {
+		$gruplar = array(
+			array(
+				'ip_hash'    => 'a',
+				'masa_no'    => 'm1',
+				'pencere'    => '2026-03-10 12',
+				'event_type' => 'order_failed',
+				'item_id'    => 1,
+				'item_name'  => 'A',
+				'adet'       => 1,
+			),
+			array(
+				'ip_hash'    => 'a',
+				'masa_no'    => 'm1',
+				'pencere'    => '2026-03-10 12',
+				'event_type' => 'order_failed',
+				'item_id'    => 2,
+				'item_name'  => 'B',
+				'adet'       => 1,
+			),
+			array(
+				'ip_hash'    => 'c',
+				'masa_no'    => 'm2',
+				'pencere'    => '2026-03-11 08',
+				'event_type' => 'order_failed',
+				'item_id'    => 1,
+				'item_name'  => 'A',
+				'adet'       => 1,
+			),
+		);
+
+		$gun = qrms_analitik_sepet_hesapla( $gruplar, 1, 0 );
+		qrms_assert_same( 2, $gun['ozet']['failed'], 'iki oturum' );
+		qrms_assert_same( 2, count( $gun['hatalar'] ), 'iki pencere (tek gün kırılımı)' );
+
+		$ay = qrms_analitik_sepet_hesapla( $gruplar, 7, 0 );
+		qrms_assert_same( 2, count( $ay['hatalar'] ), 'güne indirgenir' );
+		qrms_assert_same( '2026-03-10', $ay['hatalar'][0]['label'], 'ilk gün' );
+		qrms_assert_same( 1, $ay['hatalar'][0]['sayi'], 'o gün bir oturum' );
+	}
+);
+
+qrms_test(
+	'boş girdi "toplanmaya yeni başlandı" durumudur, hata değil',
+	function () {
+		$sonuc = qrms_analitik_sepet_hesapla( array(), 1, 0 );
+
+		qrms_assert_true( $sonuc['bos'], 'boş bayrağı' );
+		qrms_assert_same( 0, $sonuc['ozet']['cart_add'], 'sıfır' );
+		qrms_assert_same( array(), $sonuc['terk_urun'], 'tablo boş' );
+	}
+);
+
+qrms_test(
+	'sepet grupları tek GROUP BY, indeksli aralık, istek içi önbellekli',
+	function () {
+		$wpdb            = qrms_sayan_wpdb();
+		$wpdb->results[] = array(
+			array(
+				'ip_hash'       => 'x',
+				'masa_no'       => 'masa-1',
+				'pencere'       => '2026-03-10 12',
+				'event_type'    => 'cart_add',
+				'item_id'       => 10,
+				'item_name'     => 'Burger',
+				'category_name' => 'Ana',
+				'adet'          => 1,
+				'ilk'           => '2026-03-10 12:01:00',
+				'son'           => '2026-03-10 12:01:00',
+			),
+		);
+
+		QRMS_Analitik::sepet_onbellegini_temizle();
+		qrms_analitik_onbellek_sifirla();
+
+		$grup = QRMS_Analitik::sepet_olay_gruplari( '2026-03-10 00:00:00', '2026-03-10 23:59:59', 'masa-1' );
+
+		qrms_assert_same( 1, count( $wpdb->queries ), 'tek sorgu' );
+		qrms_assert_contains( 'created_at BETWEEN', $wpdb->queries[0], 'idx_td/idx_date aralığı' );
+		qrms_assert_contains( "event_type IN ('cart_add','cart_remove','order_sent','order_failed','order_blocked')", $wpdb->queries[0], 'beş olay tipi' );
+		qrms_assert_contains( 'GROUP BY ip_hash, masa_no', $wpdb->queries[0], 'oturum gruplaması SQL\'de' );
+		qrms_assert_contains( "masa_no = 'masa-1'", $wpdb->queries[0], 'masa filtresi idx_masa_td' );
+		qrms_assert_false( false !== strpos( $wpdb->queries[0], 'LIMIT %d OFFSET' ), 'OFFSET yok' );
+
+		// İkinci çağrı aynı istekte sorgu açmaz.
+		QRMS_Analitik::sepet_olay_gruplari( '2026-03-10 00:00:00', '2026-03-10 23:59:59', 'masa-1' );
+		qrms_assert_same( 1, count( $wpdb->queries ), 'istek içi önbellek' );
+
+		qrms_analitik_onbellek_sifirla();
+		$veri = qrms_analitik_sepet_verisi(
+			array(
+				'bas' => '2026-03-10 00:00:00',
+				'bit' => '2026-03-10 23:59:59',
+				'gun' => 1,
+			),
+			'masa-1'
+		);
+		qrms_assert_same( 1, $veri['ozet']['cart_add'], 'hesaplama gruplardan' );
+		qrms_assert_same( 1, count( $wpdb->queries ), 'veri fonksiyonu yeni sorgu açmaz' );
+
+		qrms_assert_same( 1, count( $grup ), 'grup satırı' );
+	}
+);
+
+qrms_test(
+	'sepet CSV\'si sistem ham/ürün/masa indirmesinden ayrıdır',
+	function () {
+		$sinif = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/class-qrms-analitik.php' );
+		$sayfa = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/sepet-sayfasi.php' );
+		$sistem = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/sistem-sayfasi.php' );
+
+		qrms_assert_contains( "if ( 'sepet' === \$kategori )", $sinif, 'ayrı kategori anahtarı' );
+		qrms_assert_contains( 'csv_sepet', $sinif, 'sepet CSV üreticisi' );
+		qrms_assert_contains( "'kategori' => 'sepet'", $sayfa, 'sayfa kendi indirmesini ister' );
+		qrms_assert_false( false !== strpos( $sistem, "'kategori' => 'sepet'" ), 'sistem sayfası sepet CSV üretmez' );
+		qrms_assert_contains( 'qr-analitik-sepet-', $sinif, 'dosya adı çakışmaz' );
+	}
+);
+
+qrms_test(
+	'sepet sayfası paylaşılan filtreyi kullanır ve Ürünüm Yok bağlantısı filtreyi taşır',
+	function () {
+		$sayfa = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/sepet-sayfasi.php' );
+		$js    = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/assets/js/analitik-sepet.js' );
+		$hub   = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/hub-sayfasi.php' );
+
+		qrms_assert_contains( "qrms_analitik_filtre_cubugu( 'qrms-an-sepet' )", $sayfa, 'paylaşılan filtre' );
+		qrms_assert_contains( 'qrms-rm-urunum-yok', $sayfa, 'Ürünüm Yok bağlantısı' );
+		qrms_assert_contains( 'QRMS_Analitik_Filtre::args()', $sayfa, 'filtre taşınır' );
+		qrms_assert_contains( 'qrms-analiz-ayarlar', $sayfa, 'Firebase ayar slug yedek' );
+		qrms_assert_contains( 'qrms_analitik_sepet', $js, 'AJAX ucu' );
+		qrms_assert_contains( 'hataPanel.hidden', $js, 'sıfır hatada bölüm basılmaz' );
+		qrms_assert_contains( 'justStarted', $js, 'yeni başladı boş durumu' );
+		qrms_assert_contains( "'hazir'  => true", $hub, 'sepet kartı yakında değil' );
+		qrms_assert_false(
+			false !== strpos( $hub, 'function qrms_analitik_sayfa_sepet' ),
+			'placeholder fonksiyon hub\'dan kalktı'
+		);
 	}
 );
 

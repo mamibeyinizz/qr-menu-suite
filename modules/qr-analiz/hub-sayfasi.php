@@ -14,9 +14,9 @@
  * onları boyanmadan hemen önce düşürür.
  *
  * DOLU KATEGORİLER kendi dosyalarındadır (genel-, urunler-, masalar-,
- * sistem-sayfasi.php); buradaki placeholder yalnızca veri toplama beklediği
- * için henüz açılmamış kategoriler içindir (Sepet, Müşteri Etkileşimi, Açılış
- * Ekranı — bkz. Faz 6-8).
+ * sepet-, sistem-sayfasi.php); buradaki placeholder yalnızca henüz
+ * açılmamış kategoriler içindir (Müşteri Etkileşimi, Açılış Ekranı —
+ * bkz. Faz 8).
  *
  * PAYLAŞILAN FİLTRE. Kategoriler aynı verinin farklı kesitleridir, bu yüzden
  * zaman aralığı ve masa seçimi sayfalar arasında TAŞINIR; her bağlantı
@@ -82,9 +82,9 @@ if ( ! function_exists( 'qrms_module_qr_analiz_sayfalar' ) ) {
 	 *   desc   : hub kartındaki tek cümlelik açıklama.
 	 *   icon   : dashicon — EMOJİ DEĞİL (bkz. QRMS_Admin::render_hub başlığı).
 	 *   modul  : kategorinin BAĞLI OLDUĞU modül ('' = çekirdek analitik).
-	 *            Lisansta pasifse kategori hiç kaydedilmez ve hub'da hiç
-	 *            görünmez — kullanıcıya satın almadığı bir şeyin boş ekranı
-	 *            gösterilmez.
+	 *            Lisansta pasifse hub'da kartı basılmaz. Sayfa kayıtlı
+	 *            kalır: doğrudan URL boş tablo değil anlamlı bir mesaj
+	 *            gösterir (bkz. qrms_analitik_sayfa_sepet).
 	 *   hazir  : bölüm doldu mu? false olanlar kartta "Yakında" rozetiyle
 	 *            görünür ve açıldıklarında ne bekleneceğini söyler. Kartı
 	 *            tümüyle gizlemek "böyle bir şey yok" demek olurdu; rozetsiz
@@ -128,7 +128,7 @@ if ( ! function_exists( 'qrms_module_qr_analiz_sayfalar' ) ) {
 				'desc'   => __( 'Sepete eklenen, gönderilen ve terk edilen siparişler.', 'qrms' ),
 				'icon'   => 'dashicons-cart',
 				'modul'  => 'qr-chatbot',
-				'hazir'  => false,
+				'hazir'  => true,
 			),
 			'qrms-an-etkilesim' => array(
 				'title'  => __( 'Müşteri Etkileşimi', 'qrms' ),
@@ -163,10 +163,10 @@ if ( ! function_exists( 'qrms_module_qr_analiz_gecerli_sayfalar' ) ) {
 	/**
 	 * Bu kurulumda GEÇERLİ olan kategoriler.
 	 *
-	 * Bir kategori, beslendiği modül lisansta pasifse hiç yoktur: sayfası
-	 * kaydedilmez, kartı basılmaz. Sepet & Sipariş chatbot'a, Açılış Ekranı
-	 * açılış modülüne, Masalar da QR Masa'ya bağlıdır. (Modül yükleyicisi
-	 * yoksa — ör. testte — hepsi geçerli sayılır.)
+	 * Bir kategori, beslendiği modül lisansta pasifse hub'da yoktur: kartı
+	 * basılmaz. Sayfa yine de kaydedilir ki doğrudan URL anlamlı bir mesaj
+	 * göstersin. Sepet & Sipariş chatbot'a, Açılış Ekranı açılış modülüne
+	 * bağlıdır. (Modül yükleyicisi yoksa — ör. testte — hepsi geçerli sayılır.)
 	 *
 	 * @return array<string,array<string,mixed>>
 	 */
@@ -385,20 +385,6 @@ if ( ! function_exists( 'qrms_analitik_hazirlaniyor' ) ) {
 			</div>
 		</div>
 		<?php
-	}
-}
-
-if ( ! function_exists( 'qrms_analitik_sayfa_sepet' ) ) {
-
-	/**
-	 * Sepet & Sipariş kategorisi (Faz 7'de doldurulacak).
-	 *
-	 * @return void
-	 */
-	function qrms_analitik_sayfa_sepet() {
-		$sayfalar = qrms_module_qr_analiz_sayfalar();
-
-		qrms_analitik_hazirlaniyor( $sayfalar['qrms-an-sepet']['title'], $sayfalar['qrms-an-sepet']['desc'] );
 	}
 }
 

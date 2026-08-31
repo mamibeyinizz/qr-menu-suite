@@ -271,6 +271,7 @@
 .qrms-an-card:nth-child(2) { border-bottom-color: #10b981; }
 .qrms-an-card:nth-child(3) { border-bottom-color: var(--qrms-an-blue); }
 .qrms-an-card:nth-child(4) { border-bottom-color: #8b5cf6; }
+.qrms-an-card:nth-child(5) { border-bottom-color: #ef4444; }
 
 .qrms-an-card-tag {
 	background: rgba( 201, 168, 76, .12 );
@@ -647,6 +648,15 @@
 	height: 18px;
 	vertical-align: text-bottom;
 	width: 18px;
+}
+
+/* Sepet & Sipariş: teşhis kutusunun kartlardan önce nefes alması. */
+#qrms-an-sepet-bos {
+	margin-bottom: 18px;
+}
+
+#qrms-an-sepet-bos[hidden] {
+	display: none;
 }
 
 /* Sayfanın asıl eylemi: diğer düğmelerden ayrılsın. */
@@ -1306,11 +1316,19 @@
 	.qrms-an-title {
 		font-size: 24px;
 	}
+
+	.qrms-an-sepet .qrms-an-cards {
+		grid-template-columns: repeat( 3, minmax( 0, 1fr ) );
+	}
 }
 
 @media screen and ( min-width: 1100px ) {
 	.qrms-an-cards {
 		grid-template-columns: repeat( 4, minmax( 0, 1fr ) );
+	}
+
+	.qrms-an-sepet .qrms-an-cards {
+		grid-template-columns: repeat( 5, minmax( 0, 1fr ) );
 	}
 }
 
