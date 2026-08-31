@@ -42,7 +42,7 @@ final class QRMenu_Gallery_Manager {
 
 		add_action( 'init', [ $this, 'register_post_types' ] );
 		// Öncelik 20: QRMS_Admin::register_menu() öncelik 10'da çalışır, yani
-		// "QR Galeri" satırı biz eklerken $submenu'de hazırdır.
+		// "Fotoğraf Galerisi" satırı biz eklerken $submenu'de hazırdır.
 		add_action( 'admin_menu', [ $this, 'register_admin_menu' ], 20 );
 		add_action( 'admin_enqueue_scripts', [ $this, 'admin_assets' ] );
 		add_action( 'wp_enqueue_scripts', [ $this, 'maybe_frontend_assets' ] );
@@ -171,7 +171,7 @@ final class QRMenu_Gallery_Manager {
 	/**
 	 * Modülün ekranlarını kaydeder — hepsi sol menüde GİZLİDİR.
 	 *
-	 * Sol menüde yalnızca "QR Galeri" satırı durur ve üç ekranı kart olarak
+	 * Sol menüde yalnızca "Fotoğraf Galerisi" satırı durur ve üç ekranı kart olarak
 	 * listeleyen hub ekranını (page_hub) açar. Ekranlar gerçek, ayrı WordPress
 	 * sayfaları olarak kaydolur (bkz. QRMS_Admin::hide_module_subpages).
 	 *
@@ -183,7 +183,7 @@ final class QRMenu_Gallery_Manager {
 	public function register_admin_menu(): void {
 		global $submenu;
 
-		// Modül lisansta aktif değilse "QR Galeri" satırı hiç kaydolmaz; o zaman
+		// Modül lisansta aktif değilse "Fotoğraf Galerisi" satırı hiç kaydolmaz; o zaman
 		// ekranlarının da kaydedilmemesi gerekir.
 		if ( empty( $submenu[ QRMS_Admin::MENU_SLUG ] ) ) {
 			return;
@@ -192,7 +192,7 @@ final class QRMenu_Gallery_Manager {
 		foreach ( $this->admin_pages() as $slug => $page ) {
 			add_submenu_page(
 				QRMS_Admin::MENU_SLUG,
-				'QR Galeri — ' . $page['title'],
+				QRMS_Helpers::get_module_name( 'qr-galeri' ) . ' — ' . $page['title'],
 				$page['title'],
 				self::CAP,
 				$slug,
@@ -202,7 +202,7 @@ final class QRMenu_Gallery_Manager {
 	}
 
 	/**
-	 * "QR Galeri" satırının açtığı hub ekranı.
+	 * "Fotoğraf Galerisi" satırının açtığı hub ekranı.
 	 */
 	public function page_hub(): void {
 		$cards = [];
@@ -217,7 +217,10 @@ final class QRMenu_Gallery_Manager {
 		}
 
 		QRMS_Admin::render_hub( [
-			'title' => 'QR Galeri',
+			// Modülün görünen adı tek yerdedir (QRMS_Helpers::get_modules);
+			// hub başlığı sol menüdeki satırla ve "geri" bağlantısıyla aynı
+			// kelimeyi kullansın.
+			'title' => QRMS_Helpers::get_module_name( 'qr-galeri' ),
 			'intro' => 'Bölümleriniz, görselleriniz ve galerinin görünüm ayarları burada.',
 			'cards' => $cards,
 		] );

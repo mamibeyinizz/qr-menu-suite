@@ -25,6 +25,7 @@ function qrms_reset() {
 	$GLOBALS['qrms_test']['options']    = array();
 	$GLOBALS['qrms_test']['transients'] = array();
 	$GLOBALS['qrms_test']['actions']    = array();
+	$GLOBALS['qrms_test']['priorities'] = array();
 
 	// Önbellek temizleme izleri: hangi eylemler tetiklendi, hangi gruplar
 	// boşaltıldı, arka uç grup bazlı temizliği destekliyor mu.
@@ -52,6 +53,7 @@ function qrms_reset() {
 	$GLOBALS['qrms_test']['logged_in']  = false;
 	$GLOBALS['qrms_test']['styles']     = array();
 	$GLOBALS['qrms_test']['scripts']    = array();
+	$GLOBALS['qrms_test']['inline_styles'] = array();
 	$GLOBALS['qrms_test']['settings']       = array();
 	$GLOBALS['qrms_test']['settings_fields'] = array();
 
@@ -633,7 +635,7 @@ qrms_test(
 		$html = ob_get_clean();
 
 		qrms_assert_same( array( 'qr-masa', 'qr-chatbot' ), get_option( 'qrms_active_modules' ), 'liste güncellenmeli' );
-		qrms_assert_contains( 'QR Chatbot', $html, 'yeni modül görünmeli' );
+		qrms_assert_contains( 'Chatbot Asistan', $html, 'yeni modül görünmeli' );
 		qrms_assert_same( 0, count( $GLOBALS['qrms_test']['redirects'] ), 'yönlendirme olmamalı' );
 	}
 );
@@ -814,47 +816,90 @@ qrms_test(
 	}
 );
 
+/**
+ * Kuyruğa alınan stil handle'ları.
+ *
+ * @return string[]
+ */
+function qrms_stil_handlelari() {
+	return array_map(
+		function ( $style ) {
+			return $style['handle'];
+		},
+		$GLOBALS['qrms_test']['styles']
+	);
+}
+
 qrms_test(
-	'sol menü flyout CSS\'i hiçbir admin ekranında yüklenmez',
+	'ekran stili yalnızca eklentinin ekranlarında yüklenir',
 	function () {
 		$_GET = array();
 
 		QRMS_Admin::enqueue_assets();
 
-		$handles = array_map(
-			function ( $style ) {
-				return $style['handle'];
-			},
-			$GLOBALS['qrms_test']['styles']
-		);
-
-		qrms_assert_false( method_exists( 'QRMS_Admin', 'enqueue_admin_menu_css' ), 'kuyruk metodu kaldırıldı' );
-		qrms_assert_false( in_array( 'qrms-admin-menu', $handles, true ), 'flyout override yok' );
-		qrms_assert_false( in_array( 'qrms-admin', $handles, true ), 'ekran stili yüklenmemeli' );
+		qrms_assert_false( in_array( 'qrms-admin', qrms_stil_handlelari(), true ), 'ekran stili yüklenmemeli' );
 
 		$GLOBALS['qrms_test']['styles'] = array();
 		$_GET                           = array( 'page' => 'qrms-overview' );
 		QRMS_Admin::enqueue_assets();
 
-		$handles = array_map(
-			function ( $style ) {
-				return $style['handle'];
-			},
-			$GLOBALS['qrms_test']['styles']
-		);
-
-		qrms_assert_true( in_array( 'qrms-admin', $handles, true ), 'ekran stili plugin ekranında' );
-		qrms_assert_false( in_array( 'qrms-admin-menu', $handles, true ), 'flyout override plugin ekranında da yok' );
+		qrms_assert_true( in_array( 'qrms-admin', qrms_stil_handlelari(), true ), 'ekran stili plugin ekranında' );
+		qrms_assert_false( in_array( 'qrms-admin-menu', qrms_stil_handlelari(), true ), 'menü stili ekran kuyruğunda değil' );
 	}
 );
 
 qrms_test(
-	'hiçbir CSS native #adminmenu flyout kurallarını ezmez',
+	'sol menü stili ve betiği HER admin ekranında yüklenir',
 	function () {
-		qrms_assert_false(
-			file_exists( QRMS_PLUGIN_DIR . 'assets/css/admin-menu.css' ),
-			'admin-menu.css silinmiş olmalı'
+		// Menü her sayfada görünür; grup başlıkları yalnızca eklentinin
+		// ekranlarında kurulsaydı diğer sayfalarda menü dağılırdı.
+		$_GET = array();
+
+		QRMS_Admin::enqueue_menu_assets();
+
+		$scripts = array_map(
+			function ( $script ) {
+				return $script['handle'];
+			},
+			$GLOBALS['qrms_test']['scripts']
 		);
+
+		qrms_assert_true( in_array( 'qrms-admin-menu', qrms_stil_handlelari(), true ), 'menü stili' );
+		qrms_assert_true( in_array( 'qrms-admin-menu', $scripts, true ), 'menü betiği' );
+
+		// Renkler tek kaynaktan (get_menu_groups) satır içi stile iner.
+		$inline = $GLOBALS['qrms_test']['inline_styles'];
+
+		qrms_assert_same( 1, count( $inline ), 'tek satır içi stil' );
+		qrms_assert_contains( '--qrms-menu-accent', $inline[0]['data'], 'renk değişkeni' );
+
+		foreach ( QRMS_Admin::get_menu_groups() as $grup ) {
+			qrms_assert_contains( '.qrms-mg-' . $grup['key'], $inline[0]['data'], $grup['key'] . ' rengi' );
+		}
+	}
+);
+
+qrms_test(
+	'yetkisiz kullanıcıya menü varlıkları yüklenmez',
+	function () {
+		$GLOBALS['qrms_test']['can'] = false;
+
+		QRMS_Admin::enqueue_menu_assets();
+
+		qrms_assert_same( array(), $GLOBALS['qrms_test']['styles'], 'stil yok' );
+		qrms_assert_same( array(), $GLOBALS['qrms_test']['scripts'], 'betik yok' );
+	}
+);
+
+qrms_test(
+	'sol menüye kural yazan TEK dosya admin-menu.css\'tir',
+	function () {
+		// Regresyon: sol menüye serbestçe kural yazıldığında çekirdeğin uçan
+		// menüsü (folded flyout) bozuluyordu. Menü artık gruplanıyor ama
+		// kurallar tek dosyada ve yalnızca KENDİ satırlarımızda kalmalı.
+		$menu_css = QRMS_PLUGIN_DIR . 'assets/css/admin-menu.css';
+
+		qrms_assert_true( file_exists( $menu_css ), 'menü stili var' );
 
 		$bulunan = array();
 		$gezici  = new RecursiveIteratorIterator(
@@ -870,18 +915,77 @@ qrms_test(
 			qrms_assert_true( is_string( $css ) && '' !== $css, $dosya->getFilename() . ' okunmalı' );
 			$css = preg_replace( '#/\*.*?\*/#s', '', $css );
 
+			if ( $dosya->getPathname() === $menu_css ) {
+				continue;
+			}
+
 			if ( preg_match( '/#adminmenu|\.wp-submenu|\.wp-has-submenu/', $css ) ) {
 				$bulunan[] = str_replace( QRMS_PLUGIN_DIR, '', $dosya->getPathname() );
 			}
 		}
 
-		qrms_assert_same( array(), $bulunan, 'sol menü seçicisi yok' );
+		qrms_assert_same( array(), $bulunan, 'başka dosyada sol menü seçicisi yok' );
 
 		$frontend = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/css/rma-frontend.css' );
 		$frontend = preg_replace( '#/\*.*?\*/#s', '', $frontend );
 		qrms_assert_false(
 			(bool) preg_match( '/^\s*(html|body)\s*\{/m', $frontend ),
 			'frontend html/body kuralları wp-admin\'e sızmamalı'
+		);
+	}
+);
+
+qrms_test(
+	'menü stilinin HER seçicisi kendi sınıfımızla kapsanır (flyout korunur)',
+	function () {
+		// Çekirdeğin menü mekaniğine (konum, genişlik, açılma) dokunmamanın
+		// makinece kontrol edilebilir tanımı: `.wp-submenu`/`#adminmenu`
+		// yalnızca kapsam daraltmak için kullanılabilir, her seçicide bizim
+		// bir sınıfımız bulunmalıdır.
+		$css = file_get_contents( QRMS_PLUGIN_DIR . 'assets/css/admin-menu.css' );
+		$css = preg_replace( '#/\*.*?\*/#s', '', $css );
+
+		$kapsamsiz = array();
+
+		preg_match_all( '/([^{}]+)\{/', $css, $eslesmeler );
+
+		foreach ( $eslesmeler[1] as $secici_grubu ) {
+			$secici_grubu = trim( $secici_grubu );
+
+			// @media gibi at-kuralları seçici değildir.
+			if ( '' === $secici_grubu || '@' === $secici_grubu[0] ) {
+				continue;
+			}
+
+			foreach ( explode( ',', $secici_grubu ) as $secici ) {
+				$secici = trim( $secici );
+
+				if ( '' !== $secici && false === strpos( $secici, '.qrms-' ) ) {
+					$kapsamsiz[] = $secici;
+				}
+			}
+		}
+
+		qrms_assert_same( array(), $kapsamsiz, 'kapsamsız seçici yok' );
+
+		// Katlanmış menüde ve dar ekranda katlama devre dışı kalmalı; yoksa
+		// uçan menüde satırlar gizli görünürdü.
+		qrms_assert_contains( '.folded #adminmenu', $css, 'katlanmış menü istisnası' );
+		qrms_assert_contains( '.auto-fold #adminmenu', $css, 'dar ekran istisnası' );
+		qrms_assert_true(
+			(bool) preg_match( '/\.folded[^{]*is-hidden[^{]*,\s*\.auto-fold[^{]*is-hidden[^{]*\{[^}]*display:\s*block/s', $css ),
+			'gizli satırlar uçan menüde geri gelir'
+		);
+
+		// Arka plan koyu temanın kendi rengi olarak kalır: satırlara background
+		// yazılmaz, renk yalnızca ikonda ve sol kenar şeridindedir.
+		qrms_assert_true(
+			(bool) preg_match( '/a\.qrms-menu-item\s*\{[^}]*border-left:\s*3px solid var\( --qrms-menu-accent/s', $css ),
+			'sol kenar şeridi'
+		);
+		qrms_assert_false(
+			(bool) preg_match( '/a\.qrms-menu-item\s*\{[^}]*background(-color)?:\s*(?!none)/s', $css ),
+			'satır arka planına dokunulmaz'
 		);
 	}
 );
@@ -1332,6 +1436,166 @@ qrms_test(
 		QRMS_Admin::hide_module_subpages();
 
 		qrms_assert_same( array(), $GLOBALS['qrms_test']['removed'], 'hiçbir satır kaldırılmadı' );
+	}
+);
+
+/* --- Gruplama (kategori başlıkları + renkler) ---------------------------- */
+
+qrms_test(
+	'satırlar grup sırasına girer, gruba yazılmayanlar sona düşer',
+	function () {
+		$rows = array(
+			qrms_submenu_satiri( 'Kısa Kodlar', QRMS_Admin::SHORTCODES_SLUG ),
+			qrms_submenu_satiri( 'Genel Ayarlar', QRMS_Admin::SETTINGS_SLUG ),
+			qrms_submenu_satiri( 'İstatistikler', QRMS_Admin::get_module_page_slug( 'qr-analiz' ) ),
+			qrms_submenu_satiri( 'Bilinmeyen', 'qrms-yeni-satir' ),
+			qrms_submenu_satiri( 'Genel Bakış', QRMS_Admin::MENU_SLUG ),
+			qrms_submenu_satiri( 'Restoran Menü', QRMS_Admin::get_module_page_slug( 'restoran-menu' ) ),
+		);
+
+		$sirali = QRMS_Admin::build_menu_rows( $rows, QRMS_Admin::get_menu_groups() );
+
+		qrms_assert_same(
+			array(
+				QRMS_Admin::MENU_SLUG,
+				QRMS_Admin::SETTINGS_SLUG,
+				QRMS_Admin::get_module_page_slug( 'restoran-menu' ),
+				QRMS_Admin::get_module_page_slug( 'qr-analiz' ),
+				QRMS_Admin::SHORTCODES_SLUG,
+				'qrms-yeni-satir',
+			),
+			qrms_submenu_sluglari( $sirali ),
+			'grup sırası'
+		);
+	}
+);
+
+qrms_test(
+	'her satır grup sınıfını ve kategori ikonunu taşır',
+	function () {
+		$rows = array(
+			qrms_submenu_satiri( 'İstatistikler', QRMS_Admin::get_module_page_slug( 'qr-analiz' ) ),
+			qrms_submenu_satiri( 'Bilinmeyen', 'qrms-yeni-satir' ),
+		);
+
+		$sirali = QRMS_Admin::build_menu_rows( $rows, QRMS_Admin::get_menu_groups() );
+
+		// WordPress alt menü dizisinin 4. dizinini <li> ve <a>'nın class'ına
+		// geçirir; JavaScript grup başlıklarını bu sınıftan bulur.
+		qrms_assert_same( 'qrms-menu-item qrms-mg-araclar', $sirali[0][4], 'grup sınıfı' );
+		qrms_assert_contains( 'dashicons-chart-bar', $sirali[0][0], 'modül ikonu' );
+		qrms_assert_contains( '<span class="qrms-menu-label">İstatistikler</span>', $sirali[0][0], 'etiket korunur' );
+
+		// Gruplanmayan satıra dokunulmaz.
+		qrms_assert_same( 'Bilinmeyen', $sirali[1][0], 'etiket olduğu gibi' );
+		qrms_assert_false( isset( $sirali[1][4] ), 'sınıf eklenmez' );
+
+		// Rozet taşıyan etiket (qrms_module_menu_label) bozulmadan içeride kalır.
+		$rozetli = QRMS_Admin::build_menu_rows(
+			array( qrms_submenu_satiri( 'Yorum <span class="update-plugins">3</span>', QRMS_Admin::get_module_page_slug( 'yorum-feedback' ) ) ),
+			QRMS_Admin::get_menu_groups()
+		);
+
+		qrms_assert_contains( '<span class="update-plugins">3</span>', $rozetli[0][0], 'rozet korunur' );
+	}
+);
+
+qrms_test(
+	'menüdeki her satır bir ve yalnız bir gruptadır',
+	function () {
+		// Emniyet kemeri: yeni bir modül eklenip gruplamaya yazılmayı unutursa
+		// satır menüden DÜŞMEZ ama sona kayar; bu test o durumu erken yakalar.
+		update_option( 'qrms_active_modules', qrms_all_modules() );
+		QRMS_Shortcodes::register( 'restoran-menu', array( array( 'tag' => 'restaurant_menu', 'title' => 'Menü' ) ) );
+
+		$gruplu = array();
+
+		foreach ( QRMS_Admin::get_menu_groups() as $grup ) {
+			foreach ( $grup['items'] as $slug ) {
+				$gruplu[] = $slug;
+			}
+		}
+
+		qrms_assert_same( array_unique( $gruplu ), $gruplu, 'aynı satır iki grupta olamaz' );
+		qrms_assert_same(
+			array(),
+			array_values( array_diff( QRMS_Admin::get_menu_row_slugs(), $gruplu ) ),
+			'gruplanmamış satır yok'
+		);
+		qrms_assert_same(
+			array(),
+			array_values( array_diff( $gruplu, QRMS_Admin::get_menu_row_slugs() ) ),
+			'gruplarda menüde olmayan satır yok'
+		);
+	}
+);
+
+qrms_test(
+	'gruplama admin_head\'de, gizlemeden SONRA çalışır',
+	function () {
+		QRMS_Admin::init();
+
+		$kancalar   = $GLOBALS['qrms_test']['actions']['admin_head'];
+		$oncelikler = $GLOBALS['qrms_test']['priorities']['admin_head'];
+
+		qrms_assert_same( 2, count( $kancalar ), 'gizleme + gruplama' );
+		qrms_assert_same( array( 'QRMS_Admin', 'hide_module_subpages' ), $kancalar[0], 'önce gizleme' );
+		qrms_assert_same( array( 'QRMS_Admin', 'group_menu_rows' ), $kancalar[1], 'sonra gruplama' );
+		qrms_assert_true( $oncelikler[0] < $oncelikler[1], 'gizleme daha erken önceliktedir' );
+	}
+);
+
+qrms_test(
+	'gruplama menü kurulmamışken sessizce çıkar',
+	function () {
+		unset( $GLOBALS['submenu'][ QRMS_Admin::MENU_SLUG ] );
+
+		QRMS_Admin::group_menu_rows();
+
+		qrms_assert_false( isset( $GLOBALS['submenu'][ QRMS_Admin::MENU_SLUG ] ), 'menü kurulmadı' );
+	}
+);
+
+qrms_test(
+	'grup renkleri CSS değişkenine iner, hex olmayan değer sızmaz',
+	function () {
+		$css = QRMS_Admin::build_menu_accent_css( QRMS_Admin::get_menu_groups() );
+
+		qrms_assert_contains( '#adminmenu .qrms-mg-genel{--qrms-menu-accent:', $css, 'genel grubu' );
+		qrms_assert_same( 5, substr_count( $css, '--qrms-menu-accent' ), 'beş grup' );
+
+		// Filtreden geçen bir değer stil dosyasına enjeksiyon yapamaz.
+		$kotu = QRMS_Admin::build_menu_accent_css(
+			array(
+				array(
+					'key'    => 'genel',
+					'title'  => 'Genel',
+					'accent' => 'red;} body{display:none',
+					'items'  => array( QRMS_Admin::MENU_SLUG ),
+				),
+			)
+		);
+
+		qrms_assert_same( '', $kotu, 'hex olmayan renk atlanır' );
+	}
+);
+
+qrms_test(
+	'grup paleti üst menünün mavi-mor gradyanıyla çakışmaz',
+	function () {
+		$renkler = array();
+
+		foreach ( QRMS_Admin::get_menu_groups() as $grup ) {
+			qrms_assert_true(
+				(bool) preg_match( '/^#[0-9a-f]{6}$/i', $grup['accent'] ),
+				$grup['key'] . ' rengi hex'
+			);
+
+			$renkler[] = strtolower( $grup['accent'] );
+		}
+
+		qrms_assert_same( array_unique( $renkler ), $renkler, 'her grubun rengi ayrı' );
+		qrms_assert_same( 5, count( $renkler ), 'beş kategori' );
 	}
 );
 
@@ -1853,8 +2117,8 @@ qrms_test(
 		qrms_assert_same( 'active', $kartlar['Restoran Menü']['state'], 'aktif modül' );
 		qrms_assert_contains( 'page=qrms-module-restoran-menu', $kartlar['Restoran Menü']['url'], 'aktif kartın adresi' );
 
-		qrms_assert_same( 'passive', $kartlar['QR Analiz']['state'], 'pasif modül' );
-		qrms_assert_same( '', $kartlar['QR Analiz']['url'], 'pasif kart adres taşımaz' );
+		qrms_assert_same( 'passive', $kartlar['İstatistikler']['state'], 'pasif modül' );
+		qrms_assert_same( '', $kartlar['İstatistikler']['url'], 'pasif kart adres taşımaz' );
 
 		// Çekirdek sayfalar lisansa bağlı değildir.
 		qrms_assert_same( 'core', $kartlar['Genel Ayarlar']['state'], 'genel ayarlar her zaman açık' );
@@ -2564,8 +2828,15 @@ qrms_test(
 		qrms_assert_same( 11, count( QRMS_Helpers::MODULE_SLUGS ), 'slug sayısı' );
 		qrms_assert_same( 11, count( $modules ), 'isim sayısı' );
 		qrms_assert_same( array_values( QRMS_Helpers::MODULE_SLUGS ), array_keys( $modules ), 'slug listesi' );
-		qrms_assert_same( 'QR Çalışma Saatleri', QRMS_Helpers::get_module_name( 'qr-calisma-saatleri' ), 'isim' );
+		qrms_assert_same( 'Çalışma Saatleri', QRMS_Helpers::get_module_name( 'qr-calisma-saatleri' ), 'isim' );
 		qrms_assert_same( 'Yorum & Feedback', QRMS_Helpers::get_module_name( 'yorum-feedback' ), 'isim' );
+
+		// Görünen adlar işi anlatır, eklentinin adını değil; slug'lar aynı kaldı.
+		qrms_assert_same( 'QR Kod Oluştur', QRMS_Helpers::get_module_name( 'qr-masa' ), 'qr kod adı' );
+		qrms_assert_same( 'İstatistikler', QRMS_Helpers::get_module_name( 'qr-analiz' ), 'istatistik adı' );
+		qrms_assert_same( 'Fotoğraf Galerisi', QRMS_Helpers::get_module_name( 'qr-galeri' ), 'galeri adı' );
+		qrms_assert_same( 'Dil / Çeviri Ayarları', QRMS_Helpers::get_module_name( 'qr-ceviri' ), 'çeviri adı' );
+		qrms_assert_same( 'Chatbot Asistan', QRMS_Helpers::get_module_name( 'qr-chatbot' ), 'chatbot adı' );
 
 		// Görünen ad sadeleşti ama slug (lisans sözleşmesinin anahtarı) aynı kaldı.
 		qrms_assert_same( 'Güvenlik Ayarı', QRMS_Helpers::get_module_name( 'qr-masa-oturum-guvenligi' ), 'güvenlik adı' );

@@ -4,8 +4,10 @@
  * Mobil öncelikli: tek sütun, büyük dokunma hedefleri (>= 44px), tablo yok.
  *
  * Tüm seçiciler `.qrms-` ile başlar. WordPress sol menüsüne
- * (`#adminmenu`, `.wp-submenu`, `.wp-has-submenu`) kural yazılmaz;
- * flyout aç/kapa çekirdeğe bırakılır.
+ * (`#adminmenu`, `.wp-submenu`, `.wp-has-submenu`) bu dosyada kural
+ * YAZILMAZ; menünün kategori renkleri ve grup başlıkları tek bir yerde,
+ * `assets/css/admin-menu.css` içindedir (flyout aç/kapa yine çekirdeğe
+ * bırakılır).
  */
 
 .qrms-wrap {

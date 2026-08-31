@@ -1,0 +1,147 @@
+/**
+ * QR Menu Suite — sol menü: kategori renkleri ve katlanabilir grup başlıkları.
+ *
+ * WordPress'in sol menüsüne kural yazan TEK dosya budur ve yalnızca KENDİ
+ * satırlarımızı hedefler: her seçicide `.qrms-` ile başlayan bir sınıf vardır.
+ * `.wp-submenu`, `.wp-has-submenu` ve `#adminmenu` yalnızca kapsam daraltmak
+ * için kullanılır — konumları, genişlikleri, `display` değerleri ve uçan menü
+ * (flyout) davranışları çekirdeğe aittir, burada hiç değiştirilmez.
+ *
+ * Renk yalnızca İKONDA ve satırın SOL KENAR ŞERİDİNDEdir; satır arka planı
+ * yönetim renk şemasının kendi rengi olarak kalır. Renklerin değerleri bu
+ * dosyada değil, QRMS_Admin::get_menu_groups() içindedir; oradan üretilen
+ * satır içi stil her gruba `--qrms-menu-accent` değişkenini verir.
+ */
+
+/* --- Satırlar: ikon + sol kenar şeridi ---------------------------------- */
+
+#adminmenu .wp-submenu a.qrms-menu-item {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	box-sizing: border-box;
+	padding-left: 9px;
+	border-left: 3px solid var( --qrms-menu-accent, transparent );
+}
+
+#adminmenu .wp-submenu .qrms-menu-icon {
+	flex: 0 0 16px;
+	width: 16px;
+	height: 16px;
+	font-size: 16px;
+	line-height: 1;
+	color: var( --qrms-menu-accent, currentColor );
+	opacity: 0.85;
+}
+
+#adminmenu .wp-submenu a.qrms-menu-item:hover .qrms-menu-icon,
+#adminmenu .wp-submenu a.qrms-menu-item:focus .qrms-menu-icon,
+#adminmenu .wp-submenu .current a.qrms-menu-item .qrms-menu-icon {
+	opacity: 1;
+}
+
+#adminmenu .wp-submenu .qrms-menu-label {
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+/* --- Grup başlıkları ----------------------------------------------------- */
+
+#adminmenu .wp-submenu li.qrms-menu-group {
+	margin: 9px 0 1px;
+}
+
+#adminmenu .wp-submenu li.qrms-menu-group.qrms-menu-group-first {
+	margin-top: 2px;
+}
+
+#adminmenu .wp-submenu .qrms-menu-group-toggle {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 6px;
+	width: 100%;
+	box-sizing: border-box;
+	margin: 0;
+	padding: 5px 10px 5px 9px;
+	border: 0;
+	border-left: 3px solid var( --qrms-menu-accent, transparent );
+	border-radius: 0;
+	background: none;
+	color: var( --qrms-menu-accent, currentColor );
+	font-size: 11px;
+	font-weight: 600;
+	letter-spacing: 0.07em;
+	line-height: 1.4;
+	text-align: left;
+	text-transform: uppercase;
+	cursor: pointer;
+	opacity: 0.85;
+}
+
+#adminmenu .wp-submenu .qrms-menu-group-toggle:hover,
+#adminmenu .wp-submenu .qrms-menu-group-toggle:focus {
+	opacity: 1;
+	box-shadow: none;
+}
+
+#adminmenu .wp-submenu .qrms-menu-group-toggle:focus-visible {
+	outline: 1px solid var( --qrms-menu-accent, currentColor );
+	outline-offset: -1px;
+}
+
+#adminmenu .wp-submenu .qrms-menu-group-arrow {
+	flex: 0 0 16px;
+	width: 16px;
+	height: 16px;
+	font-size: 16px;
+	line-height: 1;
+	transition: transform 0.15s ease;
+}
+
+#adminmenu .wp-submenu li.qrms-menu-group.is-collapsed .qrms-menu-group-arrow {
+	transform: rotate( -90deg );
+}
+
+/* Katlanan satırlar. Yalnızca gizlenir — sayfa, adres ve yetki değişmez. */
+
+#adminmenu .wp-submenu li.qrms-menu-item.is-hidden {
+	display: none;
+}
+
+/* --- Katlanmış menü ve dar ekran ---------------------------------------- */
+
+/**
+ * Menü katlandığında (`folded`) satırlar uçan menüde, dar ekranda
+ * (`auto-fold`) ise açılır listede görünür. Oralarda menüyü çekirdek yönetir
+ * ve tek seferlik bir gösterim söz konusudur: katlama devre dışı bırakılır,
+ * hiçbir satır gizli kalmaz, başlıklar tıklanamaz birer etiket olur.
+ */
+
+.folded #adminmenu .wp-submenu li.qrms-menu-item.is-hidden,
+.auto-fold #adminmenu .wp-submenu li.qrms-menu-item.is-hidden {
+	display: block;
+}
+
+.folded #adminmenu .wp-submenu .qrms-menu-group-arrow,
+.auto-fold #adminmenu .wp-submenu .qrms-menu-group-arrow {
+	display: none;
+}
+
+.folded #adminmenu .wp-submenu .qrms-menu-group-toggle,
+.auto-fold #adminmenu .wp-submenu .qrms-menu-group-toggle {
+	cursor: default;
+}
+
+/* Dokunmatik cihazlarda hedefler büyür (eklentinin genel yaklaşımı). */
+
+@media ( pointer: coarse ) {
+
+	#adminmenu .wp-submenu a.qrms-menu-item {
+		min-height: 40px;
+	}
+
+	#adminmenu .wp-submenu .qrms-menu-group-toggle {
+		min-height: 40px;
+	}
+}

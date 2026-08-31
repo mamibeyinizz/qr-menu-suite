@@ -58,7 +58,7 @@ function qrms_module_qr_galeri_init() {
 	);
 
 	if ( is_admin() ) {
-		// "QR Galeri" satırı, modülün üç ekranını kart olarak listeleyen hub
+		// "Fotoğraf Galerisi" satırı, modülün üç ekranını kart olarak listeleyen hub
 		// ekranını açar; ekranların kendisi register_admin_menu() içinde ayrı
 		// sayfa olarak kaydedilir.
 		QRMS_Admin::register_module_page(

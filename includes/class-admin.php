@@ -281,6 +281,313 @@ class QRMS_Admin {
 	}
 
 	/**
+	 * SOL MENÜNÜN GRUPLARI — sıra, başlık ve kategori rengi tek yerde.
+	 *
+	 * Menü tek seviyeli kalır (alt menü YOKTUR); satırlar yalnızca beş başlık
+	 * altında toplanır. Başlıklar sayfa değildir: `admin_head`'de satırlara
+	 * yazılan grup sınıfını okuyup ilgili başlığı (ve aç/kapa düğmesini) DOM'a
+	 * assets/js/admin-menu.js ekler. JavaScript çalışmasa bile menü doğru
+	 * sırada ve renk şeridiyle görünür — sadece başlıklar ve katlama olmaz.
+	 *
+	 * PALET. Renk yalnızca ikonda ve satırın sol kenar şeridindedir; satır
+	 * ARKA PLANI koyu temanın kendi rengi olarak kalır. Üst menüdeki "QR Menü"
+	 * rozeti mavi–mor gradyandır; onunla yarışmasın diye Menü Yönetimi mavisi
+	 * daha açık bir gök mavisine, Görünüm & Erişim ise mordan uzaklaşıp pembeye
+	 * çekildi.
+	 *
+	 * Kalemler sayfa slug'ıdır: çekirdek sayfalar kendi sabitleriyle, modüller
+	 * get_module_page_slug() ile. Listede olmayan (ör. yeni eklenmiş) bir satır
+	 * gruplanmaz; sırasını koruyarak en alta düşer.
+	 *
+	 * @return array<int,array{key:string,title:string,accent:string,items:string[]}>
+	 */
+	public static function get_menu_groups() {
+		return array(
+			array(
+				'key'    => 'genel',
+				'title'  => __( 'Genel', 'qrms' ),
+				'accent' => '#9ba7b4',
+				'items'  => array( self::MENU_SLUG, self::SETTINGS_SLUG ),
+			),
+			array(
+				'key'    => 'menu-yonetimi',
+				'title'  => __( 'Menü Yönetimi', 'qrms' ),
+				'accent' => '#5cb0f0',
+				'items'  => array(
+					self::get_module_page_slug( 'restoran-menu' ),
+					self::get_module_page_slug( 'yorum-feedback' ),
+				),
+			),
+			array(
+				'key'    => 'araclar',
+				'title'  => __( 'Araçlar', 'qrms' ),
+				'accent' => '#35d1b4',
+				'items'  => array(
+					self::get_module_page_slug( 'qr-masa' ),
+					self::get_module_page_slug( 'qr-analiz' ),
+					self::get_module_page_slug( 'qr-galeri' ),
+					self::get_module_page_slug( 'qr-ceviri' ),
+					self::get_module_page_slug( 'qr-chatbot' ),
+					self::get_module_page_slug( 'qr-calisma-saatleri' ),
+				),
+			),
+			array(
+				'key'    => 'gorunum',
+				'title'  => __( 'Görünüm & Erişim', 'qrms' ),
+				'accent' => '#f27cb8',
+				'items'  => array(
+					self::get_module_page_slug( 'qr-acilis-ekrani' ),
+					self::get_module_page_slug( 'header-footer-builder' ),
+				),
+			),
+			array(
+				'key'    => 'gelismis',
+				'title'  => __( 'Gelişmiş', 'qrms' ),
+				'accent' => '#f59547',
+				'items'  => array(
+					self::get_module_page_slug( 'qr-masa-oturum-guvenligi' ),
+					self::SHORTCODES_SLUG,
+				),
+			),
+		);
+	}
+
+	/**
+	 * Bir menü satırının dashicon'u.
+	 *
+	 * Modül satırlarında ikon zaten Genel Bakış kartlarıyla ortaktır
+	 * (QRMS_Helpers::get_module_meta); çekirdek sayfaların ikonu da oradaki
+	 * kartlarla aynı seçilmiştir ki iki ekran aynı şeyi aynı simgeyle anlatsın.
+	 *
+	 * @param string $slug Sayfa slug'ı.
+	 * @return string Bilinmeyen satırda boş metin (ikon basılmaz).
+	 */
+	public static function get_menu_row_icon( $slug ) {
+		$core = array(
+			self::MENU_SLUG       => 'dashicons-dashboard',
+			self::SETTINGS_SLUG   => 'dashicons-admin-settings',
+			self::SHORTCODES_SLUG => 'dashicons-editor-code',
+		);
+
+		if ( isset( $core[ $slug ] ) ) {
+			return $core[ $slug ];
+		}
+
+		$prefix = self::MODULE_PAGE_PREFIX;
+
+		if ( 0 === strpos( (string) $slug, $prefix ) ) {
+			$module = substr( (string) $slug, strlen( $prefix ) );
+
+			return QRMS_Helpers::is_valid_module( $module ) ? QRMS_Helpers::get_module_icon( $module ) : '';
+		}
+
+		return '';
+	}
+
+	/**
+	 * Menü satırlarını gruplara göre sıralar, ikon ve grup sınıfı ekler.
+	 *
+	 * Saf dizi fonksiyonu (WordPress'e bağımlılığı yok), bu yüzden doğrudan
+	 * test edilir. Üç şey yapar:
+	 *
+	 *   1. Satırları get_menu_groups() sırasına sokar; grupta olmayan satırlar
+	 *      birbirlerine göre sıralarını koruyarak sona düşer.
+	 *   2. Etiketin başına dashicon ekler (etiket HTML taşıyabilir; modülün
+	 *      rozeti bozulmadan içeride kalır).
+	 *   3. Satıra `qrms-menu-item qrms-mg-<grup>` sınıflarını yazar. WordPress
+	 *      alt menü dizisinin 4. dizinini `<li>` ve `<a>`'nın class'ına
+	 *      geçirir (bkz. wp-admin/menu-header.php); renk şeridi ile başlıkları
+	 *      kuran JavaScript bu sınıfı okur.
+	 *
+	 * @param array $rows   $submenu[MENU_SLUG] satırları.
+	 * @param array $groups get_menu_groups() çıktısı.
+	 * @return array Yeniden sıralanmış satırlar.
+	 */
+	public static function build_menu_rows( array $rows, array $groups ) {
+		$order   = array();
+		$classes = array();
+		$sira    = 0;
+
+		foreach ( $groups as $group ) {
+			if ( empty( $group['key'] ) || empty( $group['items'] ) ) {
+				continue;
+			}
+
+			foreach ( (array) $group['items'] as $slug ) {
+				$order[ $slug ]   = $sira++;
+				$classes[ $slug ] = 'qrms-menu-item qrms-mg-' . sanitize_key( $group['key'] );
+			}
+		}
+
+		$gruplu = array();
+		$kalan  = array();
+
+		foreach ( $rows as $row ) {
+			$slug = isset( $row[2] ) ? $row[2] : '';
+
+			if ( '' === $slug || ! isset( $order[ $slug ] ) ) {
+				$kalan[] = $row;
+				continue;
+			}
+
+			$row[0] = self::decorate_menu_title( isset( $row[0] ) ? $row[0] : '', $slug );
+			$row[4] = trim( ( isset( $row[4] ) ? $row[4] . ' ' : '' ) . $classes[ $slug ] );
+
+			// Aynı slug birden çok satırda geçerse ikisi de kalsın; sıralama
+			// anahtarı satırı EZMEMELİ.
+			$gruplu[ $order[ $slug ] ][] = $row;
+		}
+
+		ksort( $gruplu );
+
+		$sirali = array();
+
+		foreach ( $gruplu as $satirlar ) {
+			foreach ( $satirlar as $row ) {
+				$sirali[] = $row;
+			}
+		}
+
+		return array_merge( $sirali, $kalan );
+	}
+
+	/**
+	 * Menü etiketinin başına kategori renginde bir dashicon koyar.
+	 *
+	 * Etiket HTML taşıyabildiği için (qrms_module_menu_label rozeti) mevcut
+	 * değer olduğu gibi bir sarmalayıcının içine alınır.
+	 *
+	 * @param string $title Mevcut etiket.
+	 * @param string $slug  Sayfa slug'ı.
+	 * @return string
+	 */
+	private static function decorate_menu_title( $title, $slug ) {
+		$icon = self::get_menu_row_icon( $slug );
+
+		if ( '' === $icon || false !== strpos( (string) $title, 'qrms-menu-icon' ) ) {
+			return $title;
+		}
+
+		return '<span class="qrms-menu-icon dashicons ' . esc_attr( $icon ) . '" aria-hidden="true"></span>'
+			. '<span class="qrms-menu-label">' . $title . '</span>';
+	}
+
+	/**
+	 * Sol menü satırlarını gruplandırır.
+	 *
+	 * Zamanlaması hide_module_subpages() ile aynı gerekçeye dayanır (bkz. o
+	 * metodun başlığı): route ve başlık çözüldükten sonra, menü boyanmadan
+	 * önce. Gizleme 10, gruplama 11 önceliğindedir — önce menüden düşecek
+	 * satırlar düşer, sonra kalanlar sıraya girer.
+	 *
+	 * @return void
+	 */
+	public static function group_menu_rows() {
+		global $submenu;
+
+		if ( empty( $submenu[ self::MENU_SLUG ] ) || ! is_array( $submenu[ self::MENU_SLUG ] ) ) {
+			return;
+		}
+
+		/**
+		 * Sol menünün grupları (sıra, başlık, renk).
+		 *
+		 * @param array $groups Varsayılan gruplama.
+		 */
+		$groups = apply_filters( 'qrms_menu_groups', self::get_menu_groups() );
+
+		$submenu[ self::MENU_SLUG ] = self::build_menu_rows( $submenu[ self::MENU_SLUG ], (array) $groups );
+	}
+
+	/**
+	 * Grup renklerini CSS değişkenine çeviren satır içi stil.
+	 *
+	 * Renkler tek yerde (get_menu_groups) dursun diye stil dosyasına
+	 * yazılmaz; dosya yalnızca `var(--qrms-menu-accent)` kullanır.
+	 *
+	 * @param array $groups get_menu_groups() çıktısı.
+	 * @return string
+	 */
+	public static function build_menu_accent_css( array $groups ) {
+		$css = '';
+
+		foreach ( $groups as $group ) {
+			if ( empty( $group['key'] ) || empty( $group['accent'] ) ) {
+				continue;
+			}
+
+			// Filtreden geçen bir değer stil dosyasına sızmasın: yalnızca
+			// düz bir hex renk kabul edilir.
+			if ( ! preg_match( '/^#(?:[0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i', (string) $group['accent'] ) ) {
+				continue;
+			}
+
+			$css .= '#adminmenu .qrms-mg-' . sanitize_key( $group['key'] )
+				. '{--qrms-menu-accent:' . $group['accent'] . ';}';
+		}
+
+		return $css;
+	}
+
+	/**
+	 * Sol menünün stil ve betiği — HER admin ekranında.
+	 *
+	 * Menü her sayfada görünür; enqueue_assets() gibi yalnızca eklentinin
+	 * ekranlarında yüklenirse gruplar diğer sayfalarda dağılırdı. Dosyalar
+	 * bunun için küçük ve bağımsız tutulur (yönetim ekranlarının stili
+	 * assets/css/admin.css'te kalır).
+	 *
+	 * @return void
+	 */
+	public static function enqueue_menu_assets() {
+		if ( ! current_user_can( self::CAPABILITY ) ) {
+			return;
+		}
+
+		wp_enqueue_style(
+			'qrms-admin-menu',
+			QRMS_PLUGIN_URL . 'assets/css/admin-menu.css',
+			array(),
+			QRMS_Helpers::asset_version( 'assets/css/admin-menu.css' )
+		);
+
+		/** This filter is documented in includes/class-admin.php */
+		$groups = (array) apply_filters( 'qrms_menu_groups', self::get_menu_groups() );
+
+		wp_add_inline_style( 'qrms-admin-menu', self::build_menu_accent_css( $groups ) );
+
+		wp_enqueue_script(
+			'qrms-admin-menu',
+			QRMS_PLUGIN_URL . 'assets/js/admin-menu.js',
+			array(),
+			QRMS_Helpers::asset_version( 'assets/js/admin-menu.js' ),
+			true
+		);
+
+		$basliklar = array();
+
+		foreach ( $groups as $group ) {
+			if ( empty( $group['key'] ) ) {
+				continue;
+			}
+
+			$basliklar[] = array(
+				'key'   => sanitize_key( $group['key'] ),
+				'title' => isset( $group['title'] ) ? (string) $group['title'] : '',
+			);
+		}
+
+		wp_localize_script(
+			'qrms-admin-menu',
+			'qrmsMenu',
+			array(
+				'groups'   => $basliklar,
+				'collapse' => __( 'Bölümü aç/kapat', 'qrms' ),
+			)
+		);
+	}
+
+	/**
 	 * Modül alt sayfalarındayken üst menüyü "QR Menü" üzerinde tutar.
 	 *
 	 * Emniyet kemeri: route çözümü $parent_file'ı zaten MENU_SLUG yapar, ama
@@ -491,10 +798,13 @@ class QRMS_Admin {
 		add_action( 'admin_menu', array( __CLASS__, 'register_menu' ) );
 		add_action( 'admin_menu', array( __CLASS__, 'ensure_menu_registered' ), 999 );
 		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_assets' ) );
+		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_menu_assets' ) );
 
 		// Modül alt sayfaları menüden yalnızca boyanmadan hemen önce düşürülür;
-		// gerekçe için hide_module_subpages() başlığına bakın.
-		add_action( 'admin_head', array( __CLASS__, 'hide_module_subpages' ) );
+		// gerekçe için hide_module_subpages() başlığına bakın. Gruplama aynı
+		// kancada, gizlemeden SONRA çalışır.
+		add_action( 'admin_head', array( __CLASS__, 'hide_module_subpages' ), 10 );
+		add_action( 'admin_head', array( __CLASS__, 'group_menu_rows' ), 11 );
 		add_filter( 'parent_file', array( __CLASS__, 'filter_parent_file' ) );
 		add_filter( 'submenu_file', array( __CLASS__, 'filter_submenu_file' ) );
 	}

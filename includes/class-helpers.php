@@ -37,20 +37,23 @@ class QRMS_Helpers {
 	/**
 	 * Modül slug -> görünen (Türkçe) isim eşleşmesi.
 	 *
+	 * İsimler modülün NE YAPTIĞINI söyler, hangi eklentiden geldiğini değil:
+	 * kullanıcı sol menüde "QR Analiz" değil "İstatistikler" arar. Slug'lar
+	 * (lisans sözleşmesinin ve kayıtlı option'ların anahtarı) hiç değişmez;
+	 * yalnızca bu tablodaki görünen adlar sadeleşti.
+	 *
 	 * @return array<string,string> Slug => isim.
 	 */
 	public static function get_modules() {
 		return array(
 			'restoran-menu'            => __( 'Restoran Menü', 'qrms' ),
 			'yorum-feedback'           => __( 'Yorum & Feedback', 'qrms' ),
-			'qr-masa'                  => __( 'QR Masa', 'qrms' ),
-			'qr-analiz'                => __( 'QR Analiz', 'qrms' ),
-			'qr-galeri'                => __( 'QR Galeri', 'qrms' ),
-			'qr-ceviri'                => __( 'QR Çeviri', 'qrms' ),
-			'qr-chatbot'               => __( 'QR Chatbot', 'qrms' ),
-			'qr-calisma-saatleri'      => __( 'QR Çalışma Saatleri', 'qrms' ),
-			// Slug değişmedi (lisans sözleşmesi ve kayıtlı option'lar ona bağlı);
-			// yalnızca görünen ad sadeleşti.
+			'qr-masa'                  => __( 'QR Kod Oluştur', 'qrms' ),
+			'qr-analiz'                => __( 'İstatistikler', 'qrms' ),
+			'qr-galeri'                => __( 'Fotoğraf Galerisi', 'qrms' ),
+			'qr-ceviri'                => __( 'Dil / Çeviri Ayarları', 'qrms' ),
+			'qr-chatbot'               => __( 'Chatbot Asistan', 'qrms' ),
+			'qr-calisma-saatleri'      => __( 'Çalışma Saatleri', 'qrms' ),
 			'qr-masa-oturum-guvenligi' => __( 'Güvenlik Ayarı', 'qrms' ),
 			'qr-acilis-ekrani'         => __( 'Açılış Ekranı', 'qrms' ),
 			'header-footer-builder'  => __( 'Header Footer Builder', 'qrms' ),
