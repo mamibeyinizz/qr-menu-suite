@@ -191,6 +191,12 @@ class Restaurant_Menu_Automation {
         add_filter( 'qmo_siparis_onay_oncesi', [ 'RMA_Tukendi', 'siparis_filtresi' ], 10, 2 );
 
         /* -----------------------------------------------------------------
+           SEPET İLE SİPARİŞ — Diğer Ayarlar sayfasındaki aç/kapa anahtarı.
+           Option `qmo_sepet_aktif`; menü shortcode'u açıksa sepeti altına ekler.
+        ----------------------------------------------------------------- */
+        add_action( 'admin_post_qmo_sepet_ayar_kaydet', [ $this, 'handle_sepet_ayar_save' ] );
+
+        /* -----------------------------------------------------------------
            "ÜRÜNÜM YOK" — işaretleme formu, tekil geri alma ve CSV dışa/içe
            aktarma admin-post uçları. Sayfanın kendisi (qrms-rm-urunum-yok)
            get_subpages() üzerinden otomatik kaydolur.

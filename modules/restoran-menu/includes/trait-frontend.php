@@ -372,7 +372,16 @@ JSCODE;
     </div>
 </div>
         <?php
-        return ob_get_clean();
+        $cikti = ob_get_clean();
+
+        // "Sepet ile Sipariş" anahtarı açıksa menünün altına [qmo_sepet]
+        // çıktısını ekle. qr-chatbot yüklü değilse function_exists no-op;
+        // masa oturumu yoksa qmo_sepet_shortcode() zaten boş döner.
+        if ( function_exists( 'qmo_sepet_menuye_ekle' ) ) {
+            $cikti = qmo_sepet_menuye_ekle( $cikti );
+        }
+
+        return $cikti;
     }
 
     private function render_card( $id ) {

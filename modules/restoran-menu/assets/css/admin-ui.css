@@ -411,6 +411,57 @@
     width: 16px;
 }
 
+/* Ayar sayfasındaki aç/kapa anahtarı. Ürün listesindeki .rma-switch ile
+   aynı ölçü; renkler bu ekranın koyu paletinden gelir. Liste CSS'i
+   (rma-admin-list.css) burada yüklenmez. */
+.rma-admin .rma-switch {
+    display: inline-block;
+    flex: 0 0 auto;
+    height: 24px;
+    position: relative;
+    width: 44px;
+}
+
+.rma-admin .rma-switch input {
+    height: 0;
+    opacity: 0;
+    width: 0;
+}
+
+.rma-admin .rma-slider {
+    background: var(--rma-a-raised);
+    border: 1px solid var(--rma-a-border);
+    border-radius: 24px;
+    bottom: 0;
+    cursor: pointer;
+    left: 0;
+    position: absolute;
+    right: 0;
+    top: 0;
+    transition: .3s;
+}
+
+.rma-admin .rma-slider:before {
+    background: #fff;
+    border-radius: 50%;
+    bottom: 3px;
+    content: '';
+    height: 16px;
+    left: 4px;
+    position: absolute;
+    transition: .3s;
+    width: 16px;
+}
+
+.rma-admin .rma-switch input:checked + .rma-slider {
+    background: var(--rma-a-accent);
+    border-color: var(--rma-a-accent);
+}
+
+.rma-admin .rma-switch input:checked + .rma-slider:before {
+    transform: translateX(20px);
+}
+
 /* Hizalama seçici — "Renk seçin" düğmeleriyle aynı yüzey/kenarlık dili.
    Radio girdisi görünmez ama odaklanabilir kalır: klavye ve ekran
    okuyucu doğal çalışır, seçili düğme altın vurgu alır. */

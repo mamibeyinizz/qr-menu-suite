@@ -82,7 +82,7 @@ function qrms_module_qr_chatbot_init() {
 				'tag'   => 'qmo_sepet',
 				'title' => __( 'QMO Sepet — Menüden Direkt Sipariş', 'qrms' ),
 				'desc'  => __( 'Ürün detayından sepete ekleme, alt sepet çubuğu ve siparişi mutfağa gönderme.', 'qrms' ),
-				'note'  => __( 'Yalnızca müşteri masadaki QR kodu okuttuysa görünür; yöneticiler test için her zaman görür. Oturum yoksa hiçbir şey basılmaz.', 'qrms' ),
+				'note'  => __( 'Yalnızca müşteri masadaki QR kodu okuttuysa görünür; yöneticiler test için her zaman görür. Oturum yoksa hiçbir şey basılmaz. Menünün altına otomatik eklemek için Restoran Menü → Diğer Ayarlar içindeki "Sepet ile Sipariş" anahtarını açın; bu kısa kod ayrıca herhangi bir sayfaya elle de yazılabilir.', 'qrms' ),
 			),
 		)
 	);
