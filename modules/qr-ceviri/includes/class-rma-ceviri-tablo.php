@@ -83,7 +83,7 @@ if ( ! class_exists( 'RMA_Ceviri_Tablo' ) ) {
 		 * REPLACE INTO satırı silip yeniden eklediği için id'yi değiştirirdi.
 		 *
 		 * @param int    $item_id     Post/term ID; sabit metinlerde 0.
-		 * @param string $item_type   product|category|allergen|ui_string|elementor.
+		 * @param string $item_type   product|category|allergen|nav_menu|ui_string|elementor|modül tipi.
 		 * @param string $field       Alan anahtarı.
 		 * @param string $lang        Hedef dil kodu ('tr' kabul edilmez).
 		 * @param string $orijinal    Orijinal (TR) metin.

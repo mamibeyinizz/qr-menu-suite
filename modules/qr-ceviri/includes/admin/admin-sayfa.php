@@ -279,6 +279,10 @@ if ( ! function_exists( 'rma_ceviri_tip_etiketi' ) ) {
 			'elementor' => 'Sayfa içerikleri (Elementor)',
 		);
 
+		if ( function_exists( 'rma_ceviri_modul_tipleri' ) ) {
+			$etiketler = array_merge( $etiketler, rma_ceviri_modul_tipleri() );
+		}
+
 		return isset( $etiketler[ $tip ] ) ? $etiketler[ $tip ] : $tip;
 	}
 }

@@ -4,7 +4,7 @@
  *
  * Eşleştirme sırası (JSON import'undaki üç aşamalı mantığın CSV karşılığı):
  *   1. item_id dolu ve hedef (post/term) hâlâ duruyorsa → doğrudan yaz.
- *   2. item_id 0/boş ise → sabit UI metni, `field` anahtarına göre eşleş.
+ *   2. item_id 0/boş ise → sabit metin (ui_string veya modül tipi), `field` ile eşleş.
  *   3. Hiçbiri tutmuyorsa → satırı atla ve özete işle.
  *
  * Dolu dil hücreleri upsert edilir, BOŞ hücreler dokunulmadan geçilir
@@ -28,12 +28,10 @@ if ( ! defined( 'RMA_CEVIRI_RAPOR_ORNEK' ) ) {
 	define( 'RMA_CEVIRI_RAPOR_ORNEK', 25 );
 }
 
-/** Kabul edilen öğe tipleri. */
-if ( ! function_exists( 'rma_ceviri_gecerli_tipler' ) ) {
-	function rma_ceviri_gecerli_tipler() {
-		return array( 'product', 'category', 'allergen', 'nav_menu', 'ui_string', 'elementor' );
-	}
-}
+/*
+ * rma_ceviri_gecerli_tipler() tanımı ui-stringler.php'dedir — CSV sütunları
+ * değişmeden yeni modül tipleri (splash, hours, …) oraya eklenir.
+ */
 
 add_action( 'admin_post_rma_ceviri_import', 'rma_ceviri_csv_ice_aktar' );
 
@@ -270,10 +268,10 @@ if ( ! function_exists( 'rma_ceviri_satirlari_isle' ) ) {
 			}
 
 			/* --- Eşleştirme --- */
-			if ( 'ui_string' === $item_type ) {
-				// 2. aşama: ID yok, anahtar üzerinden eşleşme.
+			if ( function_exists( 'rma_ceviri_modul_sabit_mi' ) && rma_ceviri_modul_sabit_mi( $item_type ) ) {
+				// 2. aşama: ID yok, anahtar üzerinden eşleşme (ui_string + modül tipleri).
 				$item_id = 0;
-				$guncel  = rma_ceviri_guncel_orijinal( 0, 'ui_string', $field );
+				$guncel  = rma_ceviri_guncel_orijinal( 0, $item_type, $field );
 
 				if ( null === $guncel ) {
 					rma_ceviri_atla( $rapor, $satir_no, 'bilinmeyen sabit metin anahtarı: ' . $field );
@@ -289,7 +287,7 @@ if ( ! function_exists( 'rma_ceviri_satirlari_isle' ) ) {
 				}
 			} else {
 				// 3. aşama: hiçbiri tutmuyor.
-				rma_ceviri_atla( $rapor, $satir_no, 'item_id boş ve tip ui_string değil' );
+				rma_ceviri_atla( $rapor, $satir_no, 'item_id boş ve tip sabit metin değil' );
 				continue;
 			}
 

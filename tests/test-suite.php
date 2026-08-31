@@ -12853,6 +12853,99 @@ qrms_test(
 );
 
 
+/* ---------------------------------------------------------------------------
+ * QR Çeviri — P0 köprü: modül tipleri + galeri
+ * ------------------------------------------------------------------------ */
+
+echo "\nQR Çeviri (P0 köprü / galeri)\n";
+
+require_once QRMS_PLUGIN_DIR . 'modules/qr-ceviri/includes/ui-stringler.php';
+require_once QRMS_PLUGIN_DIR . 'modules/qr-ceviri/includes/kaynaklar.php';
+
+qrms_test(
+	'gecerli tipler eski seti korur ve modül tiplerini ekler',
+	function () {
+		$tipler = rma_ceviri_gecerli_tipler();
+
+		foreach ( array( 'product', 'category', 'allergen', 'nav_menu', 'ui_string', 'elementor' ) as $eski ) {
+			qrms_assert_true( in_array( $eski, $tipler, true ), $eski . ' duruyor' );
+		}
+		foreach ( array( 'splash', 'hours', 'chat', 'cart', 'review', 'gallery', 'lock' ) as $yeni ) {
+			qrms_assert_true( in_array( $yeni, $tipler, true ), $yeni . ' eklendi' );
+			qrms_assert_true( strlen( $yeni ) <= 20, $yeni . ' varchar(20) içinde' );
+		}
+	}
+);
+
+qrms_test(
+	'galeri kaynak metinleri katalogda ve anahtarları kararlı',
+	function () {
+		$metinler = rma_ceviri_modul_stringleri( 'gallery' );
+
+		qrms_assert_same( 'Tümü', $metinler[ rma_ceviri_ui_anahtari( 'Tümü' ) ], 'Tümü' );
+		qrms_assert_same(
+			'Galeri bulunamadı.',
+			$metinler[ rma_ceviri_ui_anahtari( 'Galeri bulunamadı.' ) ],
+			'Galeri bulunamadı'
+		);
+		qrms_assert_same(
+			'Tümü',
+			rma_ceviri_guncel_orijinal( 0, 'gallery', rma_ceviri_ui_anahtari( 'Tümü' ) ),
+			'guncel orijinal'
+		);
+	}
+);
+
+qrms_test(
+	'çeviri yoksa veya fonksiyon yoksa Türkçe döner, anahtar adı basılmaz',
+	function () {
+		qrms_assert_same( 'Tümü', rma_ceviri_modul( 'gallery', 'Tümü' ), 'tablo yokken Türkçe' );
+
+		if ( ! function_exists( 'rma_translate_field' ) ) {
+			/**
+			 * @param int    $item_id ID.
+			 * @param string $tip     Tip.
+			 * @param string $field   Alan.
+			 * @param string $orijinal Orijinal.
+			 * @return string
+			 */
+			function rma_translate_field( $item_id, $tip, $field, $orijinal ) {
+				$GLOBALS['qrms_test']['ceviri_cagri'] = array( $item_id, $tip, $field, $orijinal );
+				return '';
+			}
+		}
+
+		qrms_assert_same( 'Tümü', rma_ceviri_modul( 'gallery', 'Tümü' ), 'boş çeviri Türkçeye düşer' );
+	}
+);
+
+qrms_test(
+	'galeri ön yüzü rma_ceviri_modul köprüsünü kullanır ve önbellek dile bağlıdır',
+	function () {
+		$kaynak = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-galeri/includes/trait-frontend.php' );
+
+		qrms_assert_contains( "rma_ceviri_modul( 'gallery'", $kaynak, 'köprü çağrısı' );
+		qrms_assert_contains( "__( 'Galeri bulunamadı.', 'qrmenu-gallery-manager' )", $kaynak, 'textdomain duruyor' );
+		qrms_assert_contains( "rma_get_current_lang()", $kaynak, 'önbellek dile bağlı' );
+		qrms_assert_contains( 'rma_ceviri_onbellek_surumu', $kaynak, 'CSV sonrası önbellek kırılır' );
+		qrms_assert_false(
+			(bool) preg_match( '/>Tümü</', $kaynak ),
+			'Düz Tümü metni kalmadı'
+		);
+	}
+);
+
+qrms_test(
+	'Sistem Durumu etiketleri modül tiplerini içerir',
+	function () {
+		require_once QRMS_PLUGIN_DIR . 'modules/qr-ceviri/includes/admin/admin-sayfa.php';
+
+		qrms_assert_same( 'Galeri', rma_ceviri_tip_etiketi( 'gallery' ), 'galeri etiketi' );
+		qrms_assert_same( 'Menü ürünleri', rma_ceviri_tip_etiketi( 'product' ), 'eski etiket duruyor' );
+	}
+);
+
+
 if ( empty( $GLOBALS['qrms_failures'] ) ) {
 	echo "\033[32mTüm testler geçti\033[0m (" . $GLOBALS['qrms_assertions'] . " doğrulama)\n\n";
 	exit( 0 );

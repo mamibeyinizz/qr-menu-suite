@@ -182,9 +182,24 @@ if ( ! function_exists( 'rma_ceviri_ui_stringleri' ) ) {
 		 */
 		$metinler = apply_filters( 'rma_ceviri_ui_metinleri', $metinler );
 
+		return rma_ceviri_metinleri_anahtarli( $metinler );
+	}
+}
+
+/**
+ * Metin listesini field anahtarı => orijinal haritasına çevir.
+ *
+ * ui_string ve modül tipleri aynı anahtar kuralını paylaşır; ayrılırlarsa
+ * CSV'deki field eşleşmesi bozulur.
+ *
+ * @param string[] $metinler Metinler.
+ * @return array<string,string>
+ */
+if ( ! function_exists( 'rma_ceviri_metinleri_anahtarli' ) ) {
+	function rma_ceviri_metinleri_anahtarli( $metinler ) {
 		$sonuc = array();
 
-		foreach ( $metinler as $metin ) {
+		foreach ( (array) $metinler as $metin ) {
 			$metin = trim( (string) $metin );
 			if ( '' === $metin ) {
 				continue;
@@ -213,6 +228,132 @@ if ( ! function_exists( 'rma_ceviri_ui_stringleri' ) ) {
  */
 if ( ! function_exists( 'rma_ceviri_ui' ) ) {
 	function rma_ceviri_ui( $metin ) {
-		return rma_translate_field( 0, 'ui_string', rma_ceviri_ui_anahtari( $metin ), $metin );
+		return rma_ceviri_modul( 'ui_string', $metin );
+	}
+}
+
+/**
+ * Modül bazlı sabit metin tipleri (item_id = 0).
+ *
+ * CSV sütunları değişmez; yalnızca item_type hücresi. varchar(20) sınırına uyar.
+ *
+ * @return array<string,string> tip => Sistem Durumu etiketi.
+ */
+if ( ! function_exists( 'rma_ceviri_modul_tipleri' ) ) {
+	function rma_ceviri_modul_tipleri() {
+		return array(
+			'splash'  => 'Açılış ekranı',
+			'hours'   => 'Çalışma saatleri',
+			'chat'    => 'Chatbot ve çağrı',
+			'cart'    => 'Sepet',
+			'review'  => 'Yorum ve formlar',
+			'gallery' => 'Galeri',
+			'lock'    => 'Oturum kilidi',
+		);
+	}
+}
+
+/**
+ * Bu tip item_id=0 sabit metin mi? (ui_string + modül tipleri)
+ *
+ * @param string $tip item_type.
+ * @return bool
+ */
+if ( ! function_exists( 'rma_ceviri_modul_sabit_mi' ) ) {
+	function rma_ceviri_modul_sabit_mi( $tip ) {
+		return 'ui_string' === $tip || isset( rma_ceviri_modul_tipleri()[ $tip ] );
+	}
+}
+
+/**
+ * CSV ve Sistem Durumu'nda kabul edilen tüm item_type değerleri.
+ *
+ * Yeni tip eklemek CSV sütunlarını değiştirmez; eski dışa aktarımlar
+ * okunabilir kalır.
+ *
+ * @return string[]
+ */
+if ( ! function_exists( 'rma_ceviri_gecerli_tipler' ) ) {
+	function rma_ceviri_gecerli_tipler() {
+		return array_merge(
+			array( 'product', 'category', 'allergen', 'nav_menu', 'ui_string', 'elementor' ),
+			array_keys( rma_ceviri_modul_tipleri() )
+		);
+	}
+}
+
+/**
+ * Modül tipine göre kaynak Türkçe metinler.
+ *
+ * P0 sırasıyla doldurulur. Boş dizi = henüz kaynak yok; Sistem Durumu
+ * satırı yine görünür.
+ *
+ * @return array<string,string[]> tip => metin listesi.
+ */
+if ( ! function_exists( 'rma_ceviri_modul_kaynak_metinleri' ) ) {
+	function rma_ceviri_modul_kaynak_metinleri() {
+		$katalog = array(
+			'splash'  => array(),
+			'hours'   => array(),
+			'chat'    => array(),
+			'cart'    => array(),
+			'review'  => array(),
+			'gallery' => array(
+				'Tümü',
+				'Galeri bulunamadı.',
+			),
+			'lock'    => array(),
+		);
+
+		/**
+		 * Modül sabit metin katalogunu süz/genişlet.
+		 *
+		 * @param array<string,string[]> $katalog Tip => metinler.
+		 */
+		return apply_filters( 'rma_ceviri_modul_kaynak_metinleri', $katalog );
+	}
+}
+
+/**
+ * Bir modül tipinin anahtar => orijinal haritası.
+ *
+ * @param string $tip item_type.
+ * @return array<string,string>
+ */
+if ( ! function_exists( 'rma_ceviri_modul_stringleri' ) ) {
+	function rma_ceviri_modul_stringleri( $tip ) {
+		$katalog = rma_ceviri_modul_kaynak_metinleri();
+		$metinler = isset( $katalog[ $tip ] ) ? $katalog[ $tip ] : array();
+
+		return rma_ceviri_metinleri_anahtarli( $metinler );
+	}
+}
+
+/**
+ * Modül sabit metninin geçerli dildeki karşılığı.
+ *
+ * Fallback sırası çağıran taraftadır: tablo (bu fonksiyon) → textdomain
+ * (`__( $turkce, 'qrms' )` ile sarmalanmış girdi) → Türkçe kaynak.
+ * Çeviri yoksa veya boşsa Türkçe (girdi) döner; anahtar adı asla basılmaz.
+ *
+ * @param string $tip   splash|hours|chat|cart|review|gallery|lock|ui_string.
+ * @param string $metin Türkçe kaynak (veya textdomain çıktısı — site dili TR iken aynı).
+ * @return string
+ */
+if ( ! function_exists( 'rma_ceviri_modul' ) ) {
+	function rma_ceviri_modul( $tip, $metin ) {
+		$metin = (string) $metin;
+
+		if ( '' === $metin ) {
+			return $metin;
+		}
+
+		if ( ! function_exists( 'rma_translate_field' ) ) {
+			return $metin;
+		}
+
+		$ceviri = rma_translate_field( 0, $tip, rma_ceviri_ui_anahtari( $metin ), $metin );
+
+		return ( '' !== (string) $ceviri ) ? (string) $ceviri : $metin;
 	}
 }

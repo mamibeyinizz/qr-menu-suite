@@ -197,7 +197,7 @@ if ( ! function_exists( 'rma_ceviri_metin_sozlugu' ) ) {
  * Çeviri yoksa orijinal döner; hiçbir zaman boş göstermez.
  *
  * @param int         $item_id       Post/term ID; sabit metinlerde 0.
- * @param string      $item_type     product|category|allergen|ui_string|elementor.
+ * @param string      $item_type     product|category|allergen|nav_menu|ui_string|elementor|splash|hours|chat|cart|review|gallery|lock.
  * @param string      $field         Alan anahtarı.
  * @param string      $original_text Orijinal (TR) metin — fallback.
  * @param string|null $lang          Dil kodu; null ise geçerli dil.
