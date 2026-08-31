@@ -13689,6 +13689,68 @@ qrms_test(
 	}
 );
 
+echo "\nQR Çeviri (P0 köprü / header-footer-builder)\n";
+
+qrms_test(
+	'HFB chrome ui_string kataloğunda; yeni item_type yok',
+	function () {
+		$ui = rma_ceviri_varsayilan_ui_metinleri();
+		foreach ( array( 'Ana menü', 'Menüyü aç', 'Mobil menü', 'Menüyü kapat', 'Lütfen QR kodunu okutarak masanızdan erişin', 'Hızlı Menü', 'Çalışma Saatlerimiz', 'İletişim' ) as $metin ) {
+			qrms_assert_true( in_array( $metin, $ui, true ), $metin );
+		}
+		$tipler = rma_ceviri_modul_tipleri();
+		qrms_assert_false( isset( $tipler['hfb'] ), 'yeni hfb tipi yok' );
+		qrms_assert_false( isset( $tipler['header'] ), 'yeni header tipi yok' );
+	}
+);
+
+qrms_test(
+	'HFB aria ve uyarı ui_string köprüsünde; Garson chat kaldı',
+	function () {
+		$front = file_get_contents( QRMS_PLUGIN_DIR . 'modules/header-footer-builder/includes/trait-frontend.php' );
+		$js    = file_get_contents( QRMS_PLUGIN_DIR . 'modules/header-footer-builder/assets/js/frontend.js' );
+
+		qrms_assert_contains( "hfb_cevir_ui( __( 'Ana menü', 'qrms' ) )", $front, 'Ana menü' );
+		qrms_assert_contains( "hfb_cevir_ui( __( 'Menüyü aç', 'qrms' ) )", $front, 'Menüyü aç' );
+		qrms_assert_contains( "hfb_cevir_ui( __( 'Mobil menü', 'qrms' ) )", $front, 'Mobil menü' );
+		qrms_assert_contains( "hfb_cevir_ui( __( 'Menüyü kapat', 'qrms' ) )", $front, 'Menüyü kapat' );
+		qrms_assert_contains( "hfb_cevir_ui( __( 'Lütfen QR kodunu okutarak masanızdan erişin', 'qrms' ) )", $front, 'QR uyarı' );
+		qrms_assert_contains( 'function hfb_cevir_option_varsayilan', $front, 'option ayrımı' );
+		qrms_assert_contains( 'rma_ceviri_modul( \'ui_string\'', $front, 'ui_string' );
+		qrms_assert_contains( 'qmo_ceviri_chat( $garson_yedek )', $front, '5B Garson' );
+		qrms_assert_contains( 'qmo_ceviri_chat( $hesap_yedek )', $front, '5B Hesap' );
+		qrms_assert_false( (bool) preg_match( '/hfb_cevir_ui\( \$garson/', $front ), 'Garson tekrar sarılmadı' );
+		qrms_assert_contains( 'closeBtn.getAttribute(\'aria-label\')', $js, 'JS kapat PHP\'den' );
+		qrms_assert_false( (bool) preg_match( "/setAttribute\('data-label-close', 'Menüyü kapat'\)/", $js ), 'sabit kapat kalmadı' );
+	}
+);
+
+qrms_test(
+	'HFB option varsayılanı çevrilir, yönetici metni dokunulmaz',
+	function () {
+		$hfb  = qrms_hfb();
+		$opts = $hfb->get_footer_options();
+
+		$opts['links_title']   = 'Hızlı Menü';
+		$opts['hours_title']   = 'Çalışma Saatlerimiz';
+		$opts['contact_title'] = 'İletişim';
+		$varsayilan            = $hfb->render_footer( $opts );
+		qrms_assert_contains( 'Hızlı Menü', $varsayilan, 'kod sabiti görünür (tablo yok)' );
+		qrms_assert_contains( 'Çalışma Saatlerimiz', $varsayilan, 'saat sabiti' );
+
+		$opts['links_title'] = 'Benim Menüm';
+		$ozel                = $hfb->render_footer( $opts );
+		qrms_assert_contains( 'Benim Menüm', $ozel, 'yönetici metni durur' );
+		qrms_assert_false( false !== strpos( $ozel, '>Hızlı Menü<' ), 'varsayılan başlık basılmaz' );
+
+		qrms_assert_same(
+			'Lütfen QR kodunu okutarak masanızdan erişin',
+			rma_ceviri_modul( 'ui_string', 'Lütfen QR kodunu okutarak masanızdan erişin' ),
+			'tablo yokken Türkçe'
+		);
+	}
+);
+
 
 if ( empty( $GLOBALS['qrms_failures'] ) ) {
 	echo "\033[32mTüm testler geçti\033[0m (" . $GLOBALS['qrms_assertions'] . " doğrulama)\n\n";

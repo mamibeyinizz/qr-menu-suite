@@ -102,6 +102,16 @@ if ( ! function_exists( 'rma_ceviri_varsayilan_ui_metinleri' ) ) {
 
 			/* QR bilgilendirme kısa kodu — trait-frontend.php: shortcode_qr_notice() */
 			'Bu bilgilere karekod ile ulaşabilirsiniz. Karekod kullanamayan tüketiciler talep ederse bilgi kendilerine ayrıca sunulur.',
+
+			/* Header Footer Builder chrome — trait-frontend.php (aria + sütun varsayılanı) */
+			'Ana menü',
+			'Menüyü aç',
+			'Mobil menü',
+			'Menüyü kapat',
+			'Lütfen QR kodunu okutarak masanızdan erişin',
+			'Hızlı Menü',
+			'Çalışma Saatlerimiz',
+			'İletişim',
 		);
 	}
 }

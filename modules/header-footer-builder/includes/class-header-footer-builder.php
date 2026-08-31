@@ -245,6 +245,8 @@ class QRMS_Header_Footer_Builder {
 			'brand_font_weight'          => 400,
 			'brand_font_size_desktop'    => 16,
 			'brand_font_size_mobile'     => 14,
+			// P0: kod sabiti hfb_cevir_option_varsayilan ile çevrilir.
+			// Yönetici değiştirirse P1 — dokunulmaz.
 			'links_title'                => 'Hızlı Menü',
 			'links_align'                => 'left',
 			'links_title_font_family'    => 'Playfair Display',
