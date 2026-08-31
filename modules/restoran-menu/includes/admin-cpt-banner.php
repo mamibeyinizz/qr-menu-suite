@@ -97,17 +97,38 @@ class QMO_Banner_CPT {
 
         $image_id = (int) get_post_meta( $post->ID, self::META_IMAGE, true );
         $link     = (string) get_post_meta( $post->ID, self::META_LINK, true );
-        $img_url  = $image_id ? wp_get_attachment_image_url( $image_id, 'large' ) : '';
-        $oran_css = '16 / 9';
-        if ( class_exists( 'QMO_Banner_Slider_Settings' ) ) {
-            $oran_css = QMO_Banner_Slider_Settings::oran_css( QMO_Banner_Slider_Settings::get()['oran'] );
+        $oran     = class_exists( 'QMO_Banner_Slider_Settings' ) ? QMO_Banner_Slider_Settings::get()['oran'] : '16:9';
+        $oran_css = class_exists( 'QMO_Banner_Slider_Settings' ) ? QMO_Banner_Slider_Settings::oran_css( $oran ) : '16 / 9';
+
+        // Önizleme, ön yüzün BASACAĞI dosyayı gösterir: kırpılmış sürüm
+        // varsa o, yoksa orijinal. Yönetim ile ön yüzün ayrışmasının
+        // (aynı CSS, farklı kapsayıcı) kökü buydu.
+        $odak     = 'merkez';
+        $durum    = 'gorsel-yok';
+        $odak_css = 'center center';
+        $img_url  = '';
+
+        if ( class_exists( 'QMO_Banner_Kirpma' ) ) {
+            $odak     = QMO_Banner_Kirpma::banner_odagi( $post->ID );
+            $odak_css = QMO_Banner_Kirpma::odak_css( $odak );
+
+            if ( $image_id ) {
+                $durum  = QMO_Banner_Kirpma::durum( $image_id, $oran, $odak );
+                $gorsel = QMO_Banner_Kirpma::gorsel( $image_id, $oran, $odak );
+
+                if ( $gorsel ) {
+                    $img_url = $gorsel['url'];
+                }
+            }
+        } elseif ( $image_id ) {
+            $img_url = (string) wp_get_attachment_image_url( $image_id, 'large' );
         }
         ?>
         <div class="qmo-banner-media" data-qmo-banner-media>
             <input type="hidden" name="<?php echo esc_attr( self::META_IMAGE ); ?>" value="<?php echo esc_attr( (string) $image_id ); ?>" data-qmo-banner-input />
 
             <div class="qmo-banner-preview" data-qmo-banner-preview style="aspect-ratio:<?php echo esc_attr( $oran_css ); ?>;max-width:520px;background:#0d0d10;border:1px solid #ccd0d4;border-radius:6px;overflow:hidden;margin-bottom:10px;<?php echo $img_url ? '' : 'display:none;'; ?>">
-                <img src="<?php echo esc_url( $img_url ); ?>" alt="" style="display:block;width:100%;height:100%;object-fit:cover;object-position:center;" data-qmo-banner-img />
+                <img src="<?php echo esc_url( $img_url ); ?>" alt="" style="display:block;width:100%;height:100%;object-fit:cover;object-position:<?php echo esc_attr( $odak_css ); ?>;" data-qmo-banner-img />
             </div>
 
             <p>
@@ -115,6 +136,28 @@ class QMO_Banner_CPT {
                 <button type="button" class="button-link" data-qmo-banner-remove style="<?php echo $image_id ? '' : 'display:none;'; ?>margin-left:8px;color:#b32d2e;">Kaldır</button>
             </p>
             <p class="description"><?php echo esc_html( self::boyut_notu() ); ?></p>
+
+            <?php if ( class_exists( 'QMO_Banner_Kirpma' ) ) : ?>
+                <p style="margin-top:14px;">
+                    <label for="qmo_banner_odak"><strong>Kırpma odağı</strong></label><br />
+                    <select id="qmo_banner_odak" name="<?php echo esc_attr( QMO_Banner_Kirpma::META_ODAK ); ?>" data-qmo-banner-odak>
+                        <?php foreach ( QMO_Banner_Kirpma::odaklar() as $odak_anahtar => $odak_bilgi ) : ?>
+                            <option value="<?php echo esc_attr( $odak_anahtar ); ?>"
+                                    data-odak-css="<?php echo esc_attr( $odak_bilgi['css'] ); ?>"
+                                    <?php selected( $odak, $odak_anahtar ); ?>><?php echo esc_html( $odak_bilgi['etiket'] ); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </p>
+                <p class="description">Görsel kaydedilirken sunucu tarafında bu noktadan kırpılır. Kenarda kalan bir yüz/logo kesiliyorsa odağı o kenara alın; yukarıdaki önizleme sonucun aynısını gösterir.</p>
+
+                <?php if ( 'bekliyor' === $durum ) : ?>
+                    <p class="description" style="color:#996800;"><strong>Bu görsel <?php echo esc_html( $oran ); ?> oranına göre henüz kırpılmadı.</strong> Kaydettiğinizde otomatik kırpılır; toplu işlem için Kampanya Banner ekranındaki “Tüm görselleri yeniden kırp” düğmesini kullanabilirsiniz.</p>
+                <?php elseif ( 'hazir' === $durum ) : ?>
+                    <p class="description" style="color:#1a7f37;">Görsel <?php echo esc_html( $oran ); ?> oranına sunucuda kırpıldı; ön yüzde bu sürüm basılıyor.</p>
+                <?php elseif ( 'uygun' === $durum ) : ?>
+                    <p class="description" style="color:#1a7f37;">Görsel zaten <?php echo esc_html( $oran ); ?> oranında; kırpmaya gerek yok.</p>
+                <?php endif; ?>
+            <?php endif; ?>
         </div>
 
         <p style="margin-top:18px;">
@@ -160,9 +203,30 @@ class QMO_Banner_CPT {
             add_action( 'save_post_' . self::POST_TYPE, [ __CLASS__, 'save_meta' ] );
         }
 
+        // Kırpma odağı görselden ÖNCE yazılır: aşağıdaki kırpma çağrısı
+        // odağı kayıttan okur.
+        if ( class_exists( 'QMO_Banner_Kirpma' ) ) {
+            // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- odak() beyaz listeye çeker.
+            $odak = isset( $_POST[ QMO_Banner_Kirpma::META_ODAK ] )
+                ? QMO_Banner_Kirpma::odak( wp_unslash( $_POST[ QMO_Banner_Kirpma::META_ODAK ] ) )
+                : 'merkez';
+
+            update_post_meta( $post_id, QMO_Banner_Kirpma::META_ODAK, $odak );
+        }
+
         $image_id = isset( $_POST[ self::META_IMAGE ] ) ? absint( $_POST[ self::META_IMAGE ] ) : 0;
         if ( $image_id && self::is_valid_image( $image_id ) ) {
             update_post_meta( $post_id, self::META_IMAGE, $image_id );
+
+            // ASIL KIRPMA BURADA: görsel seçilen en-boy oranına SUNUCUDA
+            // kırpılır ve orijinalin yanına ek boyut olarak yazılır. CSS
+            // object-fit artık yalnızca güvenlik ağıdır (bkz.
+            // QMO_Banner_Kirpma sınıf başlığı). Hata olursa (GD/Imagick yok,
+            // dosya okunamıyor) kayıt yine de tamamlanır; yönetimde
+            // "kırpılmadı" uyarısı görünür ve ön yüz eski davranışa düşer.
+            if ( class_exists( 'QMO_Banner_Kirpma' ) ) {
+                QMO_Banner_Kirpma::banner_kirp( $post_id );
+            }
         } else {
             delete_post_meta( $post_id, self::META_IMAGE );
         }
@@ -259,6 +323,7 @@ class QMO_Banner_CPT {
     var img     = wrap.querySelector('[data-qmo-banner-img]');
     var select  = wrap.querySelector('[data-qmo-banner-select]');
     var remove  = wrap.querySelector('[data-qmo-banner-remove]');
+    var odak    = wrap.querySelector('[data-qmo-banner-odak]');
     var frame   = null;
 
     function apply(id, url) {
@@ -267,6 +332,15 @@ class QMO_Banner_CPT {
         preview.style.display = url ? '' : 'none';
         remove.style.display = url ? '' : 'none';
         select.textContent = url ? 'Görseli Değiştir' : 'Görsel Seç';
+    }
+
+    // Odak değişince önizleme hemen o kenardan kırpılmış görünür; kayıttan
+    // sonra sunucunun ürettiği dosya bunun birebir aynısıdır.
+    if (odak) {
+        odak.addEventListener('change', function () {
+            var secili = odak.options[odak.selectedIndex];
+            img.style.objectPosition = (secili && secili.getAttribute('data-odak-css')) || 'center center';
+        });
     }
 
     select.addEventListener('click', function () {
@@ -326,6 +400,13 @@ JS;
             '<img src="%s" alt="" style="width:80px;height:45px;object-fit:cover;border-radius:4px;" />',
             esc_url( $url )
         );
+
+        // Eski (henüz sunucuda kırpılmamış) görseller burada da işaretlenir:
+        // kullanıcı WordPress'in kendi liste ekranındayken de hangi kaydın
+        // yeniden kırpılması gerektiğini görür.
+        if ( class_exists( 'QMO_Banner_Kirpma' ) && 'bekliyor' === QMO_Banner_Kirpma::durum( $image_id, null, QMO_Banner_Kirpma::banner_odagi( $post_id ) ) ) {
+            echo '<br /><span style="color:#996800;font-size:11px;">Güncel orana kırpılmadı</span>';
+        }
     }
 
     /**
@@ -395,7 +476,7 @@ JS;
         }
 
         return sprintf(
-            'Önerilen boyut: %dx%dpx (%s), JPG/WEBP, maksimum 300KB. Farklı orandaki görseller banner alanına ortalanarak kırpılır.',
+            'Önerilen boyut: %dx%dpx (%s), JPG/WEBP, maksimum 300KB. Farklı orandaki görseller kaydedilirken SUNUCUDA bu orana kırpılır; orijinal dosyanız korunur.',
             (int) $px[0],
             (int) $px[1],
             $oran

@@ -150,6 +150,11 @@ class Restaurant_Menu_Automation {
         add_action( 'wp_ajax_qmo_banner_gorsel_olustur', [ $this, 'ajax_banner_gorsel_olustur' ] );
         add_action( 'wp_ajax_qmo_banner_sira_kaydet', [ 'QMO_Banner_CPT', 'ajax_save_order' ] );
 
+        // Sunucu tarafı kırpmanın geriye dönük ucu: eskiden yüklenmiş
+        // (yalnızca CSS ile kesilen) görselleri güncel orana göre yeniden
+        // kırpar. Bkz. QMO_Banner_Kirpma.
+        add_action( 'admin_post_qmo_banner_kirp', [ $this, 'handle_banner_kirp' ] );
+
         add_shortcode( 'restaurant_menu', [ $this, 'shortcode_menu' ] );
         add_shortcode( 'rma_qr_notice', [ $this, 'shortcode_qr_notice' ] );
         add_action( 'init', [ $this, 'register_default_allergen_terms' ], 20 );

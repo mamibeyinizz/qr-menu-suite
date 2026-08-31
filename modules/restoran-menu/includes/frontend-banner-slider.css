@@ -91,8 +91,18 @@ a.qmo-banner-slide:focus-visible {
 
 .qmo-banner-img {
     /* Akıştan çıkarılır: intrinsic en-boy oranı slaydın kutusunu
-       büyütmez. object-fit her slaytta aynı kırpmayı uygular
-       (:first-child yok — tüm .qmo-banner-img). */
+       büyütmez.
+
+       object-fit ARTIK ASIL KIRPMA DEĞİL, GÜVENLİK AĞIDIR: görseller
+       kaydedilirken sunucuda hedef orana kırpılıyor (bkz.
+       includes/class-banner-kirpma.php), yani buraya gelen dosya zaten
+       doğru orandadır ve cover hiçbir şeyi kesmez. Kural yine de durur,
+       çünkü (a) yuvarlama farkından kalan 1px'i yutar, (b) henüz yeniden
+       kırpılmamış eski kayıtlarda ve GD/Imagick'in çalışmadığı sunucularda
+       tek savunma odur. Eski kayıtlarda kadraj kaymasın diye kısa kod
+       object-position'ı satır içi olarak kaydın odağına göre basar
+       (kırpılmış görselde basmaz — orada kadraj dosyanın kendisinde).
+       :first-child yok — kural tüm .qmo-banner-img'lere uygulanır. */
     display: block;
     height: 100%;
     left: 0;

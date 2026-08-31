@@ -2412,3 +2412,51 @@ a.rma-vitrin-step-btn:focus {
 .rma-kb-uret-sonuc .notice {
     margin: 12px 0 0;
 }
+
+/* ---------------------------------------------------------------
+   KAMPANYA BANNER — SUNUCU TARAFI KIRPMA DURUMU
+
+   Kırpma artık CSS'in değil, kaydetme akışının işi (bkz.
+   QMO_Banner_Kirpma). Bu stiller yalnızca DURUMU gösterir: hangi
+   görsel güncel orana kırpıldı, hangisi eski kaldı.
+--------------------------------------------------------------- */
+.rma-kb-kirpma-uyari {
+    align-items: center;
+    background: var(--rma-a-surface-2);
+    border: 1px solid #dba617;
+    border-left-width: 4px;
+    border-radius: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    justify-content: space-between;
+    margin: 0 0 16px;
+    padding: 12px 16px;
+}
+
+.rma-kb-kirpma-uyari p {
+    margin: 0;
+    min-width: 220px;
+}
+
+.rma-kb-kirpma-ok {
+    color: #1a7f37;
+}
+
+.rma-kb-kirpma-rozet {
+    display: block;
+    font-size: 12px;
+    margin-top: 3px;
+}
+
+.rma-kb-kirpma-rozet.is-bekliyor {
+    color: #996800;
+}
+
+.rma-kb-kirpma-rozet.is-hazir {
+    color: #1a7f37;
+}
+
+.rma-kb-kirpma-rozet.is-bekliyor a {
+    margin-left: 6px;
+}
