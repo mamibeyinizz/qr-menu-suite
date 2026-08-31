@@ -39,6 +39,101 @@ if ( ! function_exists( 'qmo_ceviri_chat' ) ) {
 }
 
 /**
+ * Sepet sabit metnini QR Çeviri tablosundan geçirir (item_type=cart).
+ *
+ * PHP iskeleti (JS yüklenmeden görünen ilk HTML) için. Dil
+ * rma_get_current_lang() — cache'li menü sayfasında ilk boya yanlış
+ * dilde kalabilir; sepet.js ciz() qmoSepet.i18n + iç tablo ile üzerine
+ * yazar. Çeviri yoksa veya modül kapalıysa girdi (Türkçe) döner.
+ *
+ * @param string $metin Türkçe kaynak (genelde __( '…', 'qrms' ) çıktısı).
+ * @return string
+ */
+if ( ! function_exists( 'qmo_ceviri_cart' ) ) {
+	function qmo_ceviri_cart( $metin ) {
+		$metin = (string) $metin;
+		if ( function_exists( 'rma_ceviri_modul' ) ) {
+			return rma_ceviri_modul( 'cart', $metin );
+		}
+		return $metin;
+	}
+}
+
+/**
+ * sepet.js TXT anahtarı => Türkçe kaynak. İç tabloyla birebir; katalog
+ * ve localize aynı dizeleri kullanır.
+ *
+ * @return array<string,string>
+ */
+if ( ! function_exists( 'qmo_ceviri_cart_anahtarlari' ) ) {
+	function qmo_ceviri_cart_anahtarlari() {
+		return array(
+			'sepet'      => 'Sepet',
+			'sepetiniz'  => 'Sepetiniz',
+			'toplam'     => 'Toplam',
+			'gonder'     => 'Siparişi Gönder',
+			'bos'        => 'Sepetiniz boş',
+			'notPh'      => 'Ürün notu (isteğe bağlı)…',
+			'eklendi'    => 'Sepete eklendi',
+			'gonderildi' => 'Siparişiniz mutfağa iletildi ✓',
+			'hata'       => 'Gönderilemedi, tekrar deneyin',
+			'tl'         => 'Ödeme TL üzerinden alınır.',
+			'ac'         => 'Sepeti aç',
+			'sil'        => 'Sil',
+			'kapat'      => 'Kapat',
+		);
+	}
+}
+
+/**
+ * sepet.js için localize tablosu — tüm etkin diller.
+ *
+ * Sepet menü sayfasındadır ve tam sayfa cache'e girebilir. Tek dil
+ * (rma_get_current_lang) basmak splash data-sp-* sorununu tekrarlar:
+ * ilk ziyaretçinin dili HTML'e kilitlenir. Bu yüzden her dil ayrı
+ * basılır; istemci mevcut dil() ile seçer.
+ *
+ * Yalnızca tabloda kaynaktan farklı duran çeviriler eklenir. Boş veya
+ * modül kapalıysa [] — sepet.js 6 dilli iç tablosu yedek kalır,
+ * davranış bugünküyle aynıdır.
+ *
+ * @return array<string,array<string,string>> anahtar => dil => metin.
+ */
+if ( ! function_exists( 'qmo_ceviri_cart_js_metinleri' ) ) {
+	function qmo_ceviri_cart_js_metinleri() {
+		if ( ! function_exists( 'rma_ceviri_modul' )
+			|| ! function_exists( 'rma_translate_field' )
+			|| ! function_exists( 'rma_ceviri_ui_anahtari' ) ) {
+			return array();
+		}
+
+		$diller = function_exists( 'rma_ceviri_aktif_diller' )
+			? rma_ceviri_aktif_diller()
+			: array( 'en', 'ar', 'de', 'fr', 'ru' );
+
+		$out = array();
+		foreach ( qmo_ceviri_cart_anahtarlari() as $k => $tr ) {
+			$satir = array();
+			foreach ( $diller as $dil ) {
+				$dil = strtolower( (string) $dil );
+				if ( '' === $dil || 'tr' === $dil ) {
+					continue;
+				}
+				$ceviri = rma_translate_field( 0, 'cart', rma_ceviri_ui_anahtari( $tr ), $tr, $dil );
+				if ( '' !== (string) $ceviri && (string) $ceviri !== $tr ) {
+					$satir[ $dil ] = (string) $ceviri;
+				}
+			}
+			if ( $satir ) {
+				$out[ $k ] = $satir;
+			}
+		}
+
+		return $out;
+	}
+}
+
+/**
  * Hata günlüğü — yalnızca WP_DEBUG açıkken yazar.
  * Müşteriye gösterilmeyen ayrıntılar (API hataları vb.) buraya düşer.
  *

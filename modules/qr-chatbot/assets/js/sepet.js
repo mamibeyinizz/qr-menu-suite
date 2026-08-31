@@ -102,27 +102,56 @@
 	var TXT = {
 		tr: { sepet: 'Sepet', sepetiniz: 'Sepetiniz', toplam: 'Toplam', gonder: 'Siparişi Gönder', bos: 'Sepetiniz boş',
 			notPh: 'Ürün notu (isteğe bağlı)…', eklendi: 'Sepete eklendi', gonderildi: 'Siparişiniz mutfağa iletildi ✓',
-			hata: 'Gönderilemedi, tekrar deneyin', tl: 'Ödeme TL üzerinden alınır.' },
+			hata: 'Gönderilemedi, tekrar deneyin', tl: 'Ödeme TL üzerinden alınır.',
+			ac: 'Sepeti aç', sil: 'Sil', kapat: 'Kapat' },
 		en: { sepet: 'Cart', sepetiniz: 'Your Cart', toplam: 'Total', gonder: 'Send Order', bos: 'Your cart is empty',
 			notPh: 'Note for this item (optional)…', eklendi: 'Added to cart', gonderildi: 'Your order was sent ✓',
-			hata: 'Failed, please try again', tl: 'Payment is charged in Turkish Lira (TL).' },
+			hata: 'Failed, please try again', tl: 'Payment is charged in Turkish Lira (TL).',
+			ac: 'Open cart', sil: 'Delete', kapat: 'Close' },
 		ar: { sepet: 'السلة', sepetiniz: 'سلتك', toplam: 'المجموع', gonder: 'إرسال الطلب', bos: 'سلتك فارغة',
 			notPh: 'ملاحظة على هذا الطبق (اختياري)…', eklendi: 'أُضيف إلى السلة', gonderildi: 'تم إرسال طلبك ✓',
-			hata: 'فشل الإرسال، حاول مجدداً', tl: 'يتم الدفع بالليرة التركية.' },
+			hata: 'فشل الإرسال، حاول مجدداً', tl: 'يتم الدفع بالليرة التركية.',
+			ac: 'افتح السلة', sil: 'حذف', kapat: 'إغلاق' },
 		de: { sepet: 'Warenkorb', sepetiniz: 'Ihr Warenkorb', toplam: 'Summe', gonder: 'Bestellung senden', bos: 'Warenkorb ist leer',
 			notPh: 'Hinweis zu diesem Gericht (optional)…', eklendi: 'Hinzugefügt', gonderildi: 'Bestellung gesendet ✓',
-			hata: 'Fehlgeschlagen, erneut versuchen', tl: 'Die Zahlung erfolgt in TL.' },
+			hata: 'Fehlgeschlagen, erneut versuchen', tl: 'Die Zahlung erfolgt in TL.',
+			ac: 'Warenkorb öffnen', sil: 'Löschen', kapat: 'Schließen' },
 		fr: { sepet: 'Panier', sepetiniz: 'Votre panier', toplam: 'Total', gonder: 'Envoyer', bos: 'Panier vide',
 			notPh: 'Note pour ce plat (optionnel)…', eklendi: 'Ajouté au panier', gonderildi: 'Commande envoyée ✓',
-			hata: 'Échec, réessayez', tl: 'Le paiement se fait en TL.' },
+			hata: 'Échec, réessayez', tl: 'Le paiement se fait en TL.',
+			ac: 'Ouvrir le panier', sil: 'Supprimer', kapat: 'Fermer' },
 		ru: { sepet: 'Корзина', sepetiniz: 'Ваша корзина', toplam: 'Итого', gonder: 'Отправить заказ', bos: 'Корзина пуста',
 			notPh: 'Пометка к блюду (необязательно)…', eklendi: 'Добавлено', gonderildi: 'Заказ отправлен ✓',
-			hata: 'Ошибка, попробуйте снова', tl: 'Оплата производится в TL.' }
+			hata: 'Ошибка, попробуйте снова', tl: 'Оплата производится в TL.',
+			ac: 'Открыть корзину', sil: 'Удалить', kapat: 'Закрыть' }
 	};
 
-	function T( k ) {
+	// 1) qmoSepet.i18n (tablo, tüm diller — cache-güvenli)
+	// 2) TXT iç tablosu (mevcut 6 dil)
+	// 3) Türkçe / çağıranın yedeği
+	function metin( anahtar, yedek ) {
 		var d = dil();
-		return ( TXT[ d ] || TXT.tr )[ k ] || TXT.tr[ k ];
+		var loc;
+		if ( typeof qmoSepet !== 'undefined' && qmoSepet.i18n && qmoSepet.i18n[ anahtar ] ) {
+			loc = qmoSepet.i18n[ anahtar ];
+			if ( 'string' === typeof loc && '' !== loc ) {
+				return loc;
+			}
+			if ( loc && 'string' === typeof loc[ d ] && '' !== loc[ d ] ) {
+				return loc[ d ];
+			}
+		}
+		if ( TXT[ d ] && TXT[ d ][ anahtar ] ) {
+			return TXT[ d ][ anahtar ];
+		}
+		if ( TXT.tr && TXT.tr[ anahtar ] ) {
+			return TXT.tr[ anahtar ];
+		}
+		return yedek;
+	}
+
+	function T( k ) {
+		return metin( k, ( TXT.tr && TXT.tr[ k ] ) ? TXT.tr[ k ] : '' );
 	}
 
 	/* ---- sepet durumu ---- */
@@ -435,7 +464,7 @@
 		var sil = document.createElement( 'button' );
 		sil.type = 'button';
 		sil.className = 'qmo-del';
-		sil.setAttribute( 'aria-label', 'Sil' );
+		sil.setAttribute( 'aria-label', T( 'sil' ) );
 		sil.textContent = '🗑';
 		top.appendChild( sil );
 
@@ -511,6 +540,17 @@
 		document.getElementById( 'qmo-t-top' ).textContent = T( 'toplam' );
 		document.getElementById( 'qmo-tl-not' ).textContent = T( 'tl' );
 		send.textContent = T( 'gonder' );
+		if ( bar ) {
+			bar.setAttribute( 'aria-label', T( 'ac' ) );
+		}
+		var cekmece = document.getElementById( 'qmo-dr' );
+		if ( cekmece ) {
+			cekmece.setAttribute( 'aria-label', T( 'sepet' ) );
+		}
+		var kapatBtn = document.getElementById( 'qmo-x' );
+		if ( kapatBtn ) {
+			kapatBtn.setAttribute( 'aria-label', T( 'kapat' ) );
+		}
 
 		bar.classList.toggle( 'qmo-on', n > 0 );
 		if ( 0 === n ) {

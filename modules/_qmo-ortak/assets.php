@@ -195,7 +195,8 @@ if ( ! function_exists( 'qmo_js_verisi_ekle' ) ) {
 			'restNonce' => wp_create_nonce( 'wp_rest' ),
 		);
 
-		// Post-render JS metinleri. sepet.js (qmo-sepet) bu adımda dokunulmaz.
+		// Post-render JS metinleri. sepet.js kendi qmoSepet.i18n nesnesini
+		// shortcode-sepet.php'de localize eder; qmoData'ya karışmaz.
 		if ( in_array( $handle, array( 'qmo-chatbot', 'qmo-buttons' ), true )
 			&& function_exists( 'qmo_chat_js_metinleri' ) ) {
 			$i18n = qmo_chat_js_metinleri();

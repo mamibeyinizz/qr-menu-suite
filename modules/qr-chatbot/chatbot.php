@@ -92,7 +92,7 @@ if ( ! function_exists( 'qmo_chatbot_buton_varliklarini_kaydet' ) ) {
  * buttons.js / chatbot.js için localize metinleri.
  *
  * Anahtarlar JS yedeğiyle aynı Türkçe metne bağlanır; tablo boşsa Türkçe
- * döner. sepet.js bu listede yoktur (adım 6).
+ * döner. sepet.js qmoSepet.i18n kullanır (shortcode-sepet.php); burada yok.
  *
  * @return array<string,string>
  */

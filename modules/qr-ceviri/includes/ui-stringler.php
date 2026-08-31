@@ -10,10 +10,11 @@
  * değişikliği olmadan ekleyebilmek için yönetim ekranındaki "Ek sabit metinler"
  * kutusu var — oraya her satıra bir metin yazmak yeterli.
  *
- * Not: sepet çubuğunun metinleri (Sepet, Toplam, Siparişi Gönder…) QR Menu
- * Official eklentisinin sepet.js dosyasında kendi çeviri tablosuyla geliyor ve
- * sayfa çıktısından SONRA basılıyor. Bu yüzden buraya alınmadılar; alınsalardı
- * CSV'de hiçbir zaman eşleşmeyen satırlar oluştururlardı.
+ * Sepet metinleri (Sepet, Toplam, Siparişi Gönder, Sepeti aç, Sil…)
+ * item_type=cart olarak bu katalogdadır. PHP iskeleti rma_ceviri_modul
+ * ile sarıldı; sepet.js qmoSepet.i18n ile tabloyu okur, kendi 6 dilli
+ * iç tablosu yedek kalır. Menü sayfası cache'lenebildiği için localize
+ * tüm dilleri taşır — tek dil splash data-sp-* sorununu tekrarlar.
  *
  * @package QRMenu_Ceviri
  */
@@ -336,7 +337,21 @@ if ( ! function_exists( 'rma_ceviri_modul_kaynak_metinleri' ) ) {
 				'Çağrınız iletildi, lütfen bekleyin.',
 				'İletildi',
 			),
-			'cart'    => array(),
+			'cart'    => array(
+				'Sepet',
+				'Sepetiniz',
+				'Toplam',
+				'Siparişi Gönder',
+				'Sepetiniz boş',
+				'Ürün notu (isteğe bağlı)…',
+				'Sepete eklendi',
+				'Siparişiniz mutfağa iletildi ✓',
+				'Gönderilemedi, tekrar deneyin',
+				'Ödeme TL üzerinden alınır.',
+				'Sepeti aç',
+				'Sil',
+				'Kapat',
+			),
 			'review'  => array(),
 			'gallery' => array(
 				'Tümü',

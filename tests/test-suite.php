@@ -13422,14 +13422,14 @@ qrms_test(
 		qrms_assert_contains( "array( 'qmo-chatbot', 'qmo-buttons' )", $assets, 'yalnız chat/buton handle' );
 		qrms_assert_false(
 			(bool) preg_match( "/in_array\(\s*\\\$handle,\s*array\([^)]*qmo-sepet/", $assets ),
-			'sepet localize yok'
+			'sepet qmoData\'da yok'
 		);
 		qrms_assert_contains( "'baglantiHatasi'", $chat, 'tek PHP anahtarı' );
 		qrms_assert_contains( "metin( 'baglantiHatasi', 'Bağlantı hatası oluştu.' )", $btnjs, 'buttons yedek' );
 		qrms_assert_contains( "metin( 'baglantiHatasi', 'Bağlantı hatası oluştu.' )", $botjs, 'chatbot yedek' );
 		qrms_assert_contains( "metin( 'yaziyor', 'Yazıyor...' )", $botjs, 'Yazıyor yedek' );
 		qrms_assert_contains( "metin( 'siparisIletilemedi'", $botjs, 'sipariş yedek' );
-		qrms_assert_false( (bool) preg_match( '/qmoData\.i18n|baglantiHatasi/', $sepet ), 'sepet.js dokunulmadı' );
+		qrms_assert_false( (bool) preg_match( '/qmoData\.i18n|baglantiHatasi/', $sepet ), 'sepet.js qmoData kullanmaz' );
 	}
 );
 
@@ -13469,6 +13469,130 @@ qrms_test(
 		$botjs = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/assets/js/chatbot.js' );
 		qrms_assert_contains( "credentials: 'same-origin'", $btnjs, 'buttons cookie' );
 		qrms_assert_contains( "credentials: 'same-origin'", $botjs, 'chatbot cookie' );
+	}
+);
+
+echo "\nQR Çeviri (P0 köprü / sepet)\n";
+
+qrms_test(
+	'cart kaynak metinleri katalogda; eski sepet-CSV yasağı kalktı',
+	function () {
+		$ui      = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-ceviri/includes/ui-stringler.php' );
+		$metinler = rma_ceviri_modul_stringleri( 'cart' );
+		$beklenen = array(
+			'Sepet',
+			'Sepetiniz',
+			'Toplam',
+			'Siparişi Gönder',
+			'Sepetiniz boş',
+			'Ürün notu (isteğe bağlı)…',
+			'Sepete eklendi',
+			'Siparişiniz mutfağa iletildi ✓',
+			'Gönderilemedi, tekrar deneyin',
+			'Ödeme TL üzerinden alınır.',
+			'Sepeti aç',
+			'Sil',
+			'Kapat',
+		);
+
+		foreach ( $beklenen as $metin ) {
+			qrms_assert_same(
+				$metin,
+				$metinler[ rma_ceviri_ui_anahtari( $metin ) ],
+				$metin
+			);
+		}
+
+		qrms_assert_false(
+			(bool) preg_match( '/CSV\'de hiçbir zaman eşleşmeyen satırlar/', $ui ),
+			'eski sepet yasağı yorumu kalktı'
+		);
+		qrms_assert_contains( 'item_type=cart', $ui, 'yeni cart notu' );
+	}
+);
+
+qrms_test(
+	'sepet PHP iskeleti cart köprüsüyle sarılı; aria eksikleri de sarıldı',
+	function () {
+		$php = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/includes/shortcode-sepet.php' );
+
+		qrms_assert_contains( "qmo_ceviri_cart( __( 'Sepeti aç', 'qrms' ) )", $php, 'Sepeti aç aria' );
+		qrms_assert_contains( "qmo_ceviri_cart( __( 'Sepet', 'qrms' ) )", $php, 'Sepet' );
+		qrms_assert_contains( "qmo_ceviri_cart( __( 'Sepetiniz', 'qrms' ) )", $php, 'Sepetiniz' );
+		qrms_assert_contains( "qmo_ceviri_cart( __( 'Kapat', 'qrms' ) )", $php, 'Kapat aria' );
+		qrms_assert_contains( "qmo_ceviri_cart( __( 'Toplam', 'qrms' ) )", $php, 'Toplam' );
+		qrms_assert_contains( "qmo_ceviri_cart( __( 'Siparişi Gönder', 'qrms' ) )", $php, 'Siparişi Gönder' );
+		qrms_assert_false( (bool) preg_match( '/aria-label="Sepeti aç"/', $php ), 'sabit Sepeti aç kalmadı' );
+		qrms_assert_false( (bool) preg_match( '/aria-label="Sil"/', $php ), 'PHP\'de sabit Sil yok' );
+	}
+);
+
+qrms_test(
+	'sepet.js iç tablo yedek kalır; localize tüm dilleri taşır',
+	function () {
+		$js   = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/assets/js/sepet.js' );
+		$php  = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/includes/shortcode-sepet.php' );
+		$help = file_get_contents( QRMS_PLUGIN_DIR . 'modules/_qmo-ortak/helpers.php' );
+
+		qrms_assert_contains( "var TXT = {", $js, 'iç tablo durur' );
+		qrms_assert_contains( "sepet: 'Cart'", $js, 'EN yedek' );
+		qrms_assert_contains( "sepet: 'Warenkorb'", $js, 'DE yedek' );
+		qrms_assert_contains( "sepet: 'السلة'", $js, 'AR yedek' );
+		qrms_assert_contains( "function metin( anahtar, yedek )", $js, 'metin köprüsü' );
+		qrms_assert_contains( 'qmoSepet.i18n', $js, 'localize okur' );
+		qrms_assert_contains( "T( 'sil' )", $js, 'Sil aria T()' );
+		qrms_assert_contains( "T( 'ac' )", $js, 'Sepeti aç T()' );
+		qrms_assert_false( (bool) preg_match( "/aria-label',\s*'Sil'/", $js ), 'sabit Sil kalmadı' );
+		qrms_assert_contains( 'qmo_ceviri_cart_js_metinleri', $php, 'localize tüm diller' );
+		qrms_assert_contains( "'i18n'", $php, 'qmoSepet.i18n' );
+		qrms_assert_contains( 'tam sayfa cache', $php, 'cache gerekçesi' );
+		qrms_assert_contains( 'function qmo_ceviri_cart', $help, 'PHP köprü' );
+		qrms_assert_contains( 'function qmo_ceviri_cart_js_metinleri', $help, 'JS tablo' );
+		qrms_assert_contains( 'rma_translate_field', $help, 'yalnız tablo satırı' );
+	}
+);
+
+qrms_test(
+	'qmo_ceviri_cart çeviri yoksa Türkçe; boş tablo localize\'i boş bırakır',
+	function () {
+		qrms_assert_same( 'Sepet', qmo_ceviri_cart( 'Sepet' ), 'tablo yokken Türkçe' );
+		qrms_assert_same( 'Sepeti aç', qmo_ceviri_cart( 'Sepeti aç' ), 'aria Türkçe' );
+
+		$i18n = qmo_ceviri_cart_js_metinleri();
+		qrms_assert_true( is_array( $i18n ), 'i18n dizi' );
+		qrms_assert_same( array(), $i18n, 'tablo boşken iç tablo yedek' );
+
+		$anahtarlar = qmo_ceviri_cart_anahtarlari();
+		qrms_assert_same( 'Ödeme TL üzerinden alınır.', $anahtarlar['tl'], 'TL metni olduğu gibi' );
+		qrms_assert_same( 'Sepeti aç', $anahtarlar['ac'], 'denetim aria' );
+		qrms_assert_same( 'Sil', $anahtarlar['sil'], 'denetim Sil' );
+	}
+);
+
+qrms_test(
+	'sepet shortcode qmoSepet.i18n localize eder; iskelet Türkçe kalır',
+	function () {
+		$GLOBALS['qrms_test']['can']       = true;
+		$GLOBALS['qrms_test']['logged_in'] = true;
+
+		$html = qmo_sepet_shortcode();
+		qrms_assert_contains( 'id="qmo-sepet-root"', $html, 'kök' );
+		qrms_assert_contains( 'Sepet', $html, 'iskelet Türkçe (modül/tablo yok)' );
+		qrms_assert_contains( 'Siparişi Gönder', $html, 'gönder Türkçe' );
+
+		$sepet_loc = null;
+		foreach ( $GLOBALS['qrms_test']['localized'] as $item ) {
+			if ( 'qmo-sepet' === $item['handle'] && 'qmoSepet' === $item['name'] ) {
+				$sepet_loc = $item['data'];
+				break;
+			}
+		}
+
+		qrms_assert_true( is_array( $sepet_loc ), 'qmoSepet localize' );
+		qrms_assert_true( isset( $sepet_loc['i18n'] ), 'i18n anahtarı' );
+		qrms_assert_true( isset( $sepet_loc['endpoint'] ), 'endpoint durur' );
+		qrms_assert_true( isset( $sepet_loc['kur'] ), 'kur durur' );
+		qrms_assert_same( array(), $sepet_loc['i18n'], 'boş tablo — JS TXT yedek' );
 	}
 );
 
