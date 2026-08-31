@@ -10,11 +10,8 @@
  * değişikliği olmadan ekleyebilmek için yönetim ekranındaki "Ek sabit metinler"
  * kutusu var — oraya her satıra bir metin yazmak yeterli.
  *
- * Sepet metinleri (Sepet, Toplam, Siparişi Gönder, Sepeti aç, Sil…)
- * item_type=cart olarak bu katalogdadır. PHP iskeleti rma_ceviri_modul
- * ile sarıldı; sepet.js qmoSepet.i18n ile tabloyu okur, kendi 6 dilli
- * iç tablosu yedek kalır. Menü sayfası cache'lenebildiği için localize
- * tüm dilleri taşır — tek dil splash data-sp-* sorununu tekrarlar.
+ * Sepet metinleri item_type=cart; yorum/form sabitleri item_type=review.
+ * Yorum option/DB etiketleri (kriter adları, field_label) P1 / adım 7-2.
  *
  * @package QRMenu_Ceviri
  */
@@ -352,7 +349,61 @@ if ( ! function_exists( 'rma_ceviri_modul_kaynak_metinleri' ) ) {
 				'Sil',
 				'Kapat',
 			),
-			'review'  => array(),
+			'review'  => array(
+				'Devam Et →',
+				'← Geri',
+				'Gönder',
+				'Güvenlik sorusu:',
+				'0 (5__) ___ __ __',
+				'%d Değerlendirme',
+				'Henüz yayınlanmış bir değerlendirme yok. İlk yorumu siz bırakın!',
+				'Daha Fazla Göster',
+				'Anonim Misafir',
+				'Misafir',
+				'Kapat',
+				'Kod ayrıca e-posta adresinize gönderildi.',
+				'Tamam',
+				'Tekrar Dene',
+				'Lütfen geçerli bir e-posta adresi girin.',
+				'Seçiniz…',
+				'Gönderiliyor…',
+				'Gönderim tamamlanamadı, lütfen tekrar deneyin.',
+				'Bağlantı hatası, lütfen tekrar deneyin.',
+				'Bir şeyler ters gitti, lütfen tekrar deneyin.',
+				'Devam etmek için lütfen tüm kriterleri puanlayın.',
+				'Değerlendirmeniz için teşekkürler!',
+				'Yükleniyor…',
+				'Değerlendirmeniz alındı, teşekkürler.',
+				'Lütfen en az bir kriteri puanlayın.',
+				'Geçerli bir Türkiye cep numarası girin. Örn: 0 (5XX) XXX XX XX',
+				'Değerlendirmeniz kaydedilemedi, lütfen tekrar deneyin.',
+				'Değerlendirmeniz yayınlandı.',
+				'Değerlendirmeniz alındı, onay sonrası yayınlanacaktır.',
+				'Bu form şu anda gönderime kapalı.',
+				'Bu formda tanımlı alan yok.',
+				'Gönderiminiz kaydedilemedi, lütfen tekrar deneyin.',
+				'Çok fazla gönderim algılandı, lütfen birkaç dakika sonra tekrar deneyin.',
+				'Form çok hızlı gönderildi, lütfen birkaç saniye bekleyip tekrar deneyin.',
+				'Güvenlik sorusunun cevabı hatalı.',
+				'Çok sık gönderim yapıyorsunuz, lütfen %d dakika sonra tekrar deneyin.',
+				'Çok fazla deneme yapıldı, lütfen birkaç dakika sonra tekrar deneyin.',
+				'Ödül sistemi şu anda kapalı.',
+				'Bu ödül talebi doğrulanamadı. Lütfen değerlendirmenizi yeniden gönderin.',
+				'Değerlendirme bulunamadı.',
+				'Bu değerlendirme ödül koşulunu karşılamıyor.',
+				'Bu değerlendirme için zaten bir indirim kodu üretilmiş.',
+				'Geçerli bir e-posta adresi girin.',
+				'Bu e-posta adresi daha önce bir indirim kodu almış.',
+				'Kullanılabilir bir indirim şablonu bulunamadı. Ödül Sistemi sayfasından en az bir aktif şablon tanımlayın.',
+				'Kod kaydedilemedi, lütfen tekrar deneyin.',
+				'"%s" alanı zorunludur.',
+				'"%s" alanına geçerli bir e-posta adresi girin.',
+				'"%s" alanına geçerli bir telefon numarası girin.',
+				'"%s" alanına yalnızca sayı girin.',
+				'"%s" alanı için 1-5 arası bir puan seçin.',
+				'"%s" alanına geçerli bir tarih seçin.',
+				'"%s" alanı için geçersiz bir seçenek gönderildi.',
+			),
 			'gallery' => array(
 				'Tümü',
 				'Galeri bulunamadı.',

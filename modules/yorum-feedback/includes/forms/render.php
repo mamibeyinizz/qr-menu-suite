@@ -87,6 +87,7 @@ function qrm_cf_render_field($field, $args = []) {
     ?>
     <div class="qrm-input-group<?php echo $half; ?>">
         <?php if ($type !== 'checkbox' || count($options) > 0): ?>
+            <?php // P1 / adım 7-2: $label özel form alan etiketi (DB). ?>
             <label for="<?php echo esc_attr($id); ?>"><?php echo esc_html($label) . $req_mark; ?></label>
         <?php endif; ?>
 
@@ -102,7 +103,7 @@ function qrm_cf_render_field($field, $args = []) {
 
             case 'tel': ?>
                 <input type="tel" class="qrm-tel-input" id="<?php echo esc_attr($id); ?>" name="<?php echo esc_attr($key); ?>"
-                       inputmode="tel" autocomplete="tel" placeholder="0 (5__) ___ __ __" maxlength="20"<?php echo $req_attr; ?>>
+                       inputmode="tel" autocomplete="tel" placeholder="<?php echo esc_attr(qrm_ceviri_review(__('0 (5__) ___ __ __', 'qrms'))); ?>" maxlength="20"<?php echo $req_attr; ?>>
             <?php break;
 
             case 'number': ?>
@@ -115,7 +116,7 @@ function qrm_cf_render_field($field, $args = []) {
 
             case 'select': ?>
                 <select id="<?php echo esc_attr($id); ?>" name="<?php echo esc_attr($key); ?>"<?php echo $req_attr; ?>>
-                    <option value="">Seçiniz…</option>
+                    <option value=""><?php echo esc_html(qrm_ceviri_review(__('Seçiniz…', 'qrms'))); ?></option>
                     <?php foreach ($options as $opt): ?>
                         <option value="<?php echo esc_attr($opt); ?>"><?php echo esc_html($opt); ?></option>
                     <?php endforeach; ?>
@@ -176,6 +177,7 @@ function qrm_cf_render_form($form, $fields, $s = null) {
     <div class="qrm-cf-scope qrm-cf-scope-<?php echo $form_id; ?>">
         <div class="qrm-cf-form" id="<?php echo esc_attr($prefix); ?>-box">
             <?php if (!empty($s['show_title'])): ?>
+                <?php // P1 / adım 7-2: $form->title özel form DB başlığı. ?>
                 <h3><?php echo esc_html($form->title); ?></h3>
             <?php endif; ?>
             <?php if (trim((string) $form->description) !== ''): ?>
@@ -190,6 +192,7 @@ function qrm_cf_render_form($form, $fields, $s = null) {
                 <input type="hidden" name="qrm_ts" value="<?php echo esc_attr($ts); ?>">
 
                 <div class="qrm-honeypot" aria-hidden="true">
+                    <?php // Tuzak name=qrm_website. Etiket aria-hidden; çevirilmez. ?>
                     <label for="<?php echo esc_attr($prefix); ?>-website">Web sitesi</label>
                     <input type="text" id="<?php echo esc_attr($prefix); ?>-website" name="qrm_website" tabindex="-1" autocomplete="off">
                 </div>
@@ -200,6 +203,7 @@ function qrm_cf_render_form($form, $fields, $s = null) {
                     } ?>
                 </div>
 
+                <?php // P1 / adım 7-2: submit_text / success_message form ayarı (option/DB). ?>
                 <button type="submit" class="qrm-btn"><span class="qrm-btn-label"><?php echo esc_html($s['submit_text']); ?></span></button>
             </form>
         </div>
@@ -227,6 +231,17 @@ function qrm_cf_render_form_script($form, $s) {
         var msgBox  = document.getElementById(<?php echo wp_json_encode($prefix . '-message', $json_flags); ?>);
         var ajaxUrl = <?php echo wp_json_encode(admin_url('admin-ajax.php'), $json_flags); ?>;
         var successText = <?php echo wp_json_encode($s['success_message'], $json_flags); ?>;
+        var qrmCfI18n = <?php echo wp_json_encode([
+            'sending'      => qrm_ceviri_review(__('Gönderiliyor…', 'qrms')),
+            'submitFailed' => qrm_ceviri_review(__('Gönderim tamamlanamadı, lütfen tekrar deneyin.', 'qrms')),
+            'connError'    => qrm_ceviri_review(__('Bağlantı hatası, lütfen tekrar deneyin.', 'qrms')),
+        ], $json_flags); ?>;
+        function metin(anahtar, yedek) {
+            if (!qrmCfI18n || typeof qrmCfI18n[anahtar] !== 'string' || qrmCfI18n[anahtar] === '') {
+                return yedek;
+            }
+            return qrmCfI18n[anahtar];
+        }
 
         function showMessage(type, text) {
             msgBox.innerHTML = '<div class="qrm-alert qrm-' + type + '"></div>';
@@ -246,7 +261,7 @@ function qrm_cf_render_form_script($form, $s) {
             var label = btn ? btn.querySelector('.qrm-btn-label') : null;
             var original = label ? label.textContent : '';
             if (btn) { btn.disabled = true; }
-            if (label) { label.textContent = 'Gönderiliyor…'; }
+            if (label) { label.textContent = metin('sending', 'Gönderiliyor…'); }
 
             var data = new FormData(form);
             data.append('action', 'qrm_submit_custom_form');
@@ -261,12 +276,12 @@ function qrm_cf_render_form_script($form, $s) {
                         showMessage('success', res.message || successText);
                         return;
                     }
-                    showMessage('error', (res && res.message) ? res.message : 'Gönderim tamamlanamadı, lütfen tekrar deneyin.');
+                    showMessage('error', (res && res.message) ? res.message : metin('submitFailed', 'Gönderim tamamlanamadı, lütfen tekrar deneyin.'));
                 })
                 .catch(function(){
                     if (btn) { btn.disabled = false; }
                     if (label) { label.textContent = original; }
-                    showMessage('error', 'Bağlantı hatası, lütfen tekrar deneyin.');
+                    showMessage('error', metin('connError', 'Bağlantı hatası, lütfen tekrar deneyin.'));
                 });
         });
     })();

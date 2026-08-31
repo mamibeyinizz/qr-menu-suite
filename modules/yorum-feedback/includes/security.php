@@ -41,7 +41,7 @@ function qrm_pro_rate_limit_guard() {
     $key = 'qrm_rl_' . md5($ip);
     $cnt = (int) get_transient($key);
     if ($cnt >= 20) {
-        return 'Çok fazla gönderim algılandı, lütfen birkaç dakika sonra tekrar deneyin.';
+        return qrm_ceviri_review(__('Çok fazla gönderim algılandı, lütfen birkaç dakika sonra tekrar deneyin.', 'qrms'));
     }
     set_transient($key, $cnt + 1, 5 * MINUTE_IN_SECONDS);
     return true;
@@ -57,7 +57,7 @@ function qrm_pro_honeypot_tripped($field = 'qrm_website') {
 // kontrol edilir, çünkü "sessizce başarı döndürme" davranışı forma göre değişir.
 function qrm_pro_spam_guard_basic() {
     if (!qrm_pro_check_ts_token(isset($_POST['qrm_ts']) ? $_POST['qrm_ts'] : '')) {
-        return 'Form çok hızlı gönderildi, lütfen birkaç saniye bekleyip tekrar deneyin.';
+        return qrm_ceviri_review(__('Form çok hızlı gönderildi, lütfen birkaç saniye bekleyip tekrar deneyin.', 'qrms'));
     }
     return qrm_pro_rate_limit_guard();
 }
@@ -66,13 +66,13 @@ function qrm_pro_spam_guard_basic() {
 // Sorun yoksa true, varsa hata mesajı (string) döner.
 function qrm_pro_spam_guard() {
     if (!qrm_pro_check_ts_token(isset($_POST['qrm_ts']) ? $_POST['qrm_ts'] : '')) {
-        return 'Form çok hızlı gönderildi, lütfen birkaç saniye bekleyip tekrar deneyin.';
+        return qrm_ceviri_review(__('Form çok hızlı gönderildi, lütfen birkaç saniye bekleyip tekrar deneyin.', 'qrms'));
     }
     if (!qrm_pro_check_captcha(
         isset($_POST['qrm_captcha']) ? $_POST['qrm_captcha'] : '',
         isset($_POST['qrm_captcha_hash']) ? $_POST['qrm_captcha_hash'] : ''
     )) {
-        return 'Güvenlik sorusunun cevabı hatalı.';
+        return qrm_ceviri_review(__('Güvenlik sorusunun cevabı hatalı.', 'qrms'));
     }
     return qrm_pro_rate_limit_guard();
 }
@@ -146,7 +146,7 @@ function qrm_pro_cooldown_guard($identifiers = [], $settings = null) {
     if ($remaining < 1) $remaining = 1;
 
     return sprintf(
-        'Çok sık gönderim yapıyorsunuz, lütfen %d dakika sonra tekrar deneyin.',
+        qrm_ceviri_review(__('Çok sık gönderim yapıyorsunuz, lütfen %d dakika sonra tekrar deneyin.', 'qrms')),
         $remaining
     );
 }

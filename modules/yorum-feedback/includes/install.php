@@ -65,6 +65,10 @@ function qrm_pro_install() {
     dbDelta($sql_fields);
 
     // Varsayılan form alanları (Eğer boşsa)
+    //
+    // P1 / adım 7-2: field_label DB verisidir; yönetici Form Alanları
+    // ekranından değiştirir. CSV'ye field satırı olarak çıkmaları ayrı
+    // mekanizma ister — şimdi çevrilmez.
     $field_count = $wpdb->get_var("SELECT COUNT(*) FROM $table_fields");
     if ($field_count == 0) {
         $default_fields = [

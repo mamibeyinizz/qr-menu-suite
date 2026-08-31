@@ -78,12 +78,13 @@ function qrm_pro_shortcode() {
                         echo str_repeat('★', $int_star) . str_repeat('☆', 5 - $int_star);
                     ?>
                 </div>
-                <div class="total-count"><?php echo (int) $total_reviews; ?> Değerlendirme</div>
+                <div class="total-count"><?php echo esc_html(sprintf(qrm_ceviri_review(__('%d Değerlendirme', 'qrms')), (int) $total_reviews)); ?></div>
             </div>
             <div class="qrm-crit-bars">
                 <?php
                 for ($i = 1; $i <= 5; $i++) {
                     if ($settings['crit_'.$i.'_active']) {
+                        // P1 / adım 7-2: kriter adı option (crit_N_name).
                         $c_name = $settings['crit_'.$i.'_name'];
                         $c_avg  = isset($stats['crit'][$i]) ? (float) $stats['crit'][$i] : 0.0;
                         if ($c_avg > 0) {
@@ -107,13 +108,13 @@ function qrm_pro_shortcode() {
             <?php if ($approved_reviews): ?>
                 <?php echo qrm_pro_render_review_cards($approved_reviews); ?>
             <?php else: ?>
-                <div class="qrm-empty-state">Henüz yayınlanmış bir değerlendirme yok. İlk yorumu siz bırakın!</div>
+                <div class="qrm-empty-state"><?php echo esc_html(qrm_ceviri_review(__('Henüz yayınlanmış bir değerlendirme yok. İlk yorumu siz bırakın!', 'qrms'))); ?></div>
             <?php endif; ?>
         </div>
 
         <?php if ($has_more_reviews): ?>
         <div class="qrm-load-more-wrap">
-            <button id="qrm-load-more" class="qrm-load-more-btn">Daha Fazla Göster</button>
+            <button id="qrm-load-more" class="qrm-load-more-btn"><?php echo esc_html(qrm_ceviri_review(__('Daha Fazla Göster', 'qrms'))); ?></button>
         </div>
         <?php endif; ?>
 

@@ -13,7 +13,7 @@ function qrm_cf_ajax_submit() {
     $form    = $form_id > 0 ? qrm_cf_get_form($form_id) : null;
 
     if (!$form || $form->status !== 'active') {
-        wp_send_json(['success' => false, 'message' => 'Bu form şu anda gönderime kapalı.']);
+        wp_send_json(['success' => false, 'message' => qrm_ceviri_review(__('Bu form şu anda gönderime kapalı.', 'qrms'))]);
     }
 
     $settings = qrm_cf_get_form_settings($form);
@@ -32,7 +32,7 @@ function qrm_cf_ajax_submit() {
 
     $fields = qrm_cf_get_fields($form->id);
     if (!$fields) {
-        wp_send_json(['success' => false, 'message' => 'Bu formda tanımlı alan yok.']);
+        wp_send_json(['success' => false, 'message' => qrm_ceviri_review(__('Bu formda tanımlı alan yok.', 'qrms'))]);
     }
 
     // Sunucu tarafı doğrulama: tarayıcıdaki required/type özniteliklerine güvenilmez.
@@ -51,7 +51,7 @@ function qrm_cf_ajax_submit() {
 
     $submission_id = qrm_cf_insert_submission($form->id, $validated['data'], qrm_pro_client_ip());
     if (!$submission_id) {
-        wp_send_json(['success' => false, 'message' => 'Gönderiminiz kaydedilemedi, lütfen tekrar deneyin.']);
+        wp_send_json(['success' => false, 'message' => qrm_ceviri_review(__('Gönderiminiz kaydedilemedi, lütfen tekrar deneyin.', 'qrms'))]);
     }
 
     qrm_pro_cooldown_mark($identifiers);

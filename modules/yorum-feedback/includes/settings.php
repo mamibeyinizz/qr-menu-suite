@@ -1,9 +1,54 @@
 <?php
 if (!defined('ABSPATH')) exit;
 
+/**
+ * Yorum/form sabit metnini QR Çeviri tablosundan geçirir (item_type=review).
+ *
+ * Çeviri yoksa veya modül kapalıysa girdi (Türkçe) döner. AJAX uçlarında
+ * dil rma_get_current_lang() — $_REQUEST['lang'] sonra rma_lang cookie.
+ * admin-ajax cache dışı; fetch credentials: 'same-origin'.
+ *
+ * Bu modül _qmo-ortak yüklemez; köprü burada durur.
+ *
+ * @param string $metin Türkçe kaynak (genelde __( '…', 'qrms' ) çıktısı).
+ * @return string
+ */
+if (!function_exists('qrm_ceviri_review')) {
+    function qrm_ceviri_review($metin) {
+        $metin = (string) $metin;
+        if (function_exists('rma_ceviri_modul')) {
+            return rma_ceviri_modul('review', $metin);
+        }
+        return $metin;
+    }
+}
+
+/**
+ * form-script.php inline JS için localize yükü.
+ *
+ * Script wp_enqueue ile değil shortcode çıktısına gömülür; footer
+ * wp_localize_script yarışırdı. Aynı dizi burada JSON olarak basılır.
+ *
+ * @return array<string,string>
+ */
+if (!function_exists('qrm_ceviri_review_js_metinleri')) {
+    function qrm_ceviri_review_js_metinleri() {
+        return [
+            'genericError' => qrm_ceviri_review(__('Bir şeyler ters gitti, lütfen tekrar deneyin.', 'qrms')),
+            'rateRequired' => qrm_ceviri_review(__('Devam etmek için lütfen tüm kriterleri puanlayın.', 'qrms')),
+            'thanks'       => qrm_ceviri_review(__('Değerlendirmeniz için teşekkürler!', 'qrms')),
+            'loading'      => qrm_ceviri_review(__('Yükleniyor…', 'qrms')),
+        ];
+    }
+}
+
 // 0. VARSAYILAN AYARLAR VE GÜVENLİ GETTER
 // Not: get_option() doğrudan çağrılmaz. Böylece eklenti güncellendiğinde
 // (reaktivasyon olmadan) yeni ayar anahtarları eski kurulumlarda da eksiksiz gelir.
+//
+// P1 / adım 7-2: Aşağıdaki varsayılanlar yönetici option'ıdır (VERİ, sabit
+// kod değil): form_title, kriter adları, Google CTA, ödül popup metinleri.
+// CSV'ye option satırı olarak çıkmaları ayrı mekanizma ister — şimdi çevrilmez.
 function qrm_pro_default_settings() {
     return [
         'form_title' => 'Deneyiminizi Paylaşın',

@@ -13570,6 +13570,125 @@ qrms_test(
 	}
 );
 
+echo "\nQR Çeviri (P0 köprü / yorum-feedback 7-1)\n";
+
+qrms_test(
+	'review kaynak metinleri katalogda; biçim dizeleri korunur',
+	function () {
+		$metinler = rma_ceviri_modul_stringleri( 'review' );
+		$beklenen = array(
+			'Devam Et →',
+			'← Geri',
+			'Gönder',
+			'Güvenlik sorusu:',
+			'0 (5__) ___ __ __',
+			'%d Değerlendirme',
+			'Henüz yayınlanmış bir değerlendirme yok. İlk yorumu siz bırakın!',
+			'Daha Fazla Göster',
+			'Anonim Misafir',
+			'Misafir',
+			'Kapat',
+			'Kod ayrıca e-posta adresinize gönderildi.',
+			'Tamam',
+			'Tekrar Dene',
+			'Lütfen geçerli bir e-posta adresi girin.',
+			'Seçiniz…',
+			'Bir şeyler ters gitti, lütfen tekrar deneyin.',
+			'Devam etmek için lütfen tüm kriterleri puanlayın.',
+			'Değerlendirmeniz için teşekkürler!',
+			'Yükleniyor…',
+			'Çok sık gönderim yapıyorsunuz, lütfen %d dakika sonra tekrar deneyin.',
+			'"%s" alanı zorunludur.',
+		);
+
+		foreach ( $beklenen as $metin ) {
+			qrms_assert_same(
+				$metin,
+				$metinler[ rma_ceviri_ui_anahtari( $metin ) ],
+				$metin
+			);
+		}
+	}
+);
+
+qrms_test(
+	'yorum PHP iskeleti review köprüsüyle sarılı; honeypot çevrilmez',
+	function () {
+		$form = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/frontend/form-render.php' );
+		$liste = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/frontend/shortcode-reviews.php' );
+		$kart  = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/frontend/reviews-list.php' );
+		$popup = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/rewards/popup-render.php' );
+		$cf    = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/forms/render.php' );
+
+		qrms_assert_contains( "qrm_ceviri_review(__('Devam Et →', 'qrms'))", $form, 'Devam Et' );
+		qrms_assert_contains( "qrm_ceviri_review(__('← Geri', 'qrms'))", $form, 'Geri' );
+		qrms_assert_contains( "qrm_ceviri_review(__('Gönder', 'qrms'))", $form, 'Gönder' );
+		qrms_assert_contains( "qrm_ceviri_review(__('Güvenlik sorusu:', 'qrms'))", $form, 'captcha' );
+		qrms_assert_contains( "qrm_ceviri_review(__('0 (5__) ___ __ __', 'qrms'))", $form, 'telefon maskesi' );
+		qrms_assert_contains( '<label for="qrm_website">Web sitesi</label>', $form, 'honeypot TR kalır' );
+		qrms_assert_contains( 'name="qrm_website"', $form, 'honeypot name' );
+		qrms_assert_contains( 'çevirmek yemi değiştirir', $form, 'honeypot gerekçe' );
+
+		qrms_assert_contains( "qrm_ceviri_review(__('%d Değerlendirme', 'qrms'))", $liste, 'çoğul biçim' );
+		qrms_assert_contains( "qrm_ceviri_review(__('Daha Fazla Göster', 'qrms'))", $liste, 'load more' );
+		qrms_assert_contains( "qrm_ceviri_review(__('Anonim Misafir', 'qrms'))", $kart, 'anonim' );
+		qrms_assert_contains( "qrm_ceviri_review(__('Misafir', 'qrms'))", $kart, 'misafir' );
+		qrms_assert_contains( "qrm_ceviri_review(__('Kapat', 'qrms'))", $popup, 'popup kapat' );
+		qrms_assert_contains( "qrm_ceviri_review(__('Seçiniz…', 'qrms'))", $cf, 'select placeholder' );
+		qrms_assert_contains( '<label for="<?php echo esc_attr($prefix); ?>-website">Web sitesi</label>', $cf, 'cf honeypot TR' );
+	}
+);
+
+qrms_test(
+	'yorum JS metin() yedeği korur; AJAX rma_get_current_lang zincirinde',
+	function () {
+		$js    = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/frontend/form-script.php' );
+		$ajax  = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/ajax/submit-review.php' );
+		$cagri = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/ajax/rewards.php' );
+		$sec   = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/security.php' );
+		$set   = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/settings.php' );
+
+		qrms_assert_contains( 'qrm_ceviri_review_js_metinleri', $js, 'JS yükü' );
+		qrms_assert_contains( 'function metin(anahtar, yedek)', $js, 'metin köprüsü' );
+		qrms_assert_contains( "metin('genericError'", $js, 'generic yedek' );
+		qrms_assert_contains( "metin('rateRequired'", $js, 'kriter yedek' );
+		qrms_assert_contains( "metin('thanks'", $js, 'teşekkür yedek' );
+		qrms_assert_contains( "metin('loading'", $js, 'yükleniyor yedek' );
+		qrms_assert_contains( "credentials: 'same-origin'", $js, 'cookie gider' );
+		qrms_assert_contains( "qrm_ceviri_review(__('Değerlendirmeniz yayınlandı.', 'qrms'))", $ajax, 'teşekkür AJAX' );
+		qrms_assert_contains( "qrm_ceviri_review(__('Lütfen geçerli bir e-posta adresi girin.', 'qrms'))", $cagri, 'e-posta AJAX' );
+		qrms_assert_contains( "qrm_ceviri_review(__('Çok sık gönderim yapıyorsunuz, lütfen %d dakika sonra tekrar deneyin.', 'qrms'))", $sec, 'cooldown biçim' );
+		qrms_assert_contains( 'function qrm_ceviri_review', $set, 'köprü yardımcı' );
+		qrms_assert_contains( 'rma_get_current_lang', $set, 'AJAX dil notu' );
+	}
+);
+
+qrms_test(
+	'qrm_ceviri_review çeviri yoksa Türkçe; 7-2 option/DB işaretli, uygulanmadı',
+	function () {
+		qrms_assert_same( 'Devam Et →', qrm_ceviri_review( 'Devam Et →' ), 'tablo yokken Türkçe' );
+		qrms_assert_same(
+			'3 Değerlendirme',
+			sprintf( qrm_ceviri_review( '%d Değerlendirme' ), 3 ),
+			'çoğul sayı korunur'
+		);
+
+		$set  = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/settings.php' );
+		$inst = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/install.php' );
+		$form = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/frontend/form-render.php' );
+
+		qrms_assert_contains( 'P1 / adım 7-2', $set, 'settings işaret' );
+		qrms_assert_contains( "'form_title' => 'Deneyiminizi Paylaşın'", $set, 'option çevrilmedi' );
+		qrms_assert_contains( 'P1 / adım 7-2', $inst, 'install işaret' );
+		qrms_assert_contains( "'Adınız Soyadınız'", $inst, 'field_label çevrilmedi' );
+		qrms_assert_contains( 'P1 / adım 7-2: $f->field_label DB verisi', $form, 'render işaret' );
+		qrms_assert_false(
+			(bool) preg_match( "/qrm_ceviri_review\(__\('Deneyiminizi Paylaşın'/", $set ),
+			'option sarıldı'
+		);
+	}
+);
+
 
 if ( empty( $GLOBALS['qrms_failures'] ) ) {
 	echo "\033[32mTüm testler geçti\033[0m (" . $GLOBALS['qrms_assertions'] . " doğrulama)\n\n";

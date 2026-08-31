@@ -8,7 +8,7 @@ function qrm_pro_handle_review_submission($settings) {
 
     // Honeypot: botlar bu alanı doldurur, gerçek kullanıcı görmez (CSS ile gizli).
     if (!empty($_POST['qrm_website'])) {
-        return ['success' => true, 'status' => 0, 'avg' => 0, 'show_google' => false, 'google_url' => '', 'show_reward' => false, 'review_id' => 0, 'message' => 'Değerlendirmeniz alındı, teşekkürler.'];
+        return ['success' => true, 'status' => 0, 'avg' => 0, 'show_google' => false, 'google_url' => '', 'show_reward' => false, 'review_id' => 0, 'message' => qrm_ceviri_review(__('Değerlendirmeniz alındı, teşekkürler.', 'qrms'))];
     }
 
     // Spam doğrulaması (zaman tuzağı + matematik captcha + akış koruması)
@@ -41,7 +41,7 @@ function qrm_pro_handle_review_submission($settings) {
     $calc_avg = ($score_count > 0) ? ($total_score / $score_count) : 0;
 
     if ($calc_avg <= 0) {
-        return ['success' => false, 'message' => 'Lütfen en az bir kriteri puanlayın.'];
+        return ['success' => false, 'message' => qrm_ceviri_review(__('Lütfen en az bir kriteri puanlayın.', 'qrms'))];
     }
 
     // TR telefon doğrulama (girildiyse formatı kontrol et, normalize edilerek saklanır)
@@ -49,7 +49,7 @@ function qrm_pro_handle_review_submission($settings) {
     if (isset($_POST['customer_phone']) && trim($_POST['customer_phone']) !== '') {
         $phone_norm = qrm_pro_normalize_tr_phone($_POST['customer_phone']);
         if ($phone_norm === false) {
-            return ['success' => false, 'message' => 'Geçerli bir Türkiye cep numarası girin. Örn: 0 (5XX) XXX XX XX'];
+            return ['success' => false, 'message' => qrm_ceviri_review(__('Geçerli bir Türkiye cep numarası girin. Örn: 0 (5XX) XXX XX XX', 'qrms'))];
         }
     }
 
@@ -107,7 +107,7 @@ function qrm_pro_handle_review_submission($settings) {
     // ve kullanıcıya hiç kaydedilmemiş bir yorum için "alındı" denirdi.
     $inserted = $wpdb->insert($table_reviews, $insert_data, $insert_format);
     if ($inserted === false) {
-        return ['success' => false, 'message' => 'Değerlendirmeniz kaydedilemedi, lütfen tekrar deneyin.'];
+        return ['success' => false, 'message' => qrm_ceviri_review(__('Değerlendirmeniz kaydedilemedi, lütfen tekrar deneyin.', 'qrms'))];
     }
 
     $review_id = (int) $wpdb->insert_id;
@@ -149,7 +149,9 @@ function qrm_pro_handle_review_submission($settings) {
         'show_reward' => $show_reward,
         'review_id' => $show_reward ? $review_id : 0,
         'reward_claim' => $reward_claim,
-        'message' => $status == 1 ? 'Değerlendirmeniz yayınlandı.' : 'Değerlendirmeniz alındı, onay sonrası yayınlanacaktır.',
+        'message' => $status == 1
+            ? qrm_ceviri_review(__('Değerlendirmeniz yayınlandı.', 'qrms'))
+            : qrm_ceviri_review(__('Değerlendirmeniz alındı, onay sonrası yayınlanacaktır.', 'qrms')),
     ];
 }
 

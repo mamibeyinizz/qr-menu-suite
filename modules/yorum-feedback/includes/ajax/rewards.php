@@ -13,7 +13,7 @@ function qrm_reward_rate_limit($max = 8, $window = 600) {
     $key = 'qrm_rw_rl_' . md5(qrm_pro_client_ip());
     $cnt = (int) get_transient($key);
     if ($cnt >= $max) {
-        return 'Çok fazla deneme yapıldı, lütfen birkaç dakika sonra tekrar deneyin.';
+        return qrm_ceviri_review(__('Çok fazla deneme yapıldı, lütfen birkaç dakika sonra tekrar deneyin.', 'qrms'));
     }
     set_transient($key, $cnt + 1, $window);
     return true;
@@ -27,7 +27,7 @@ function qrm_reward_ajax_request_code() {
 
     $settings = qrm_pro_get_settings();
     if (!qrm_reward_is_active($settings)) {
-        wp_send_json(['success' => false, 'message' => 'Ödül sistemi şu anda kapalı.']);
+        wp_send_json(['success' => false, 'message' => qrm_ceviri_review(__('Ödül sistemi şu anda kapalı.', 'qrms'))]);
     }
 
     $guard = qrm_reward_rate_limit();
@@ -50,7 +50,7 @@ function qrm_reward_ajax_request_code() {
 
     $email = qrm_reward_normalize_email(isset($_POST['email']) ? wp_unslash($_POST['email']) : '');
     if ($email === '') {
-        wp_send_json(['success' => false, 'message' => 'Lütfen geçerli bir e-posta adresi girin.']);
+        wp_send_json(['success' => false, 'message' => qrm_ceviri_review(__('Lütfen geçerli bir e-posta adresi girin.', 'qrms'))]);
     }
 
     // 1 e-posta = 1 kod

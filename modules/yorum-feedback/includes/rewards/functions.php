@@ -396,12 +396,12 @@ function qrm_reward_verify_claim($review_id, $token, $settings = null) {
     $token     = is_string($token) ? trim($token) : '';
 
     if ($review_id <= 0 || $token === '') {
-        return new WP_Error('qrm_reward_claim', 'Bu ödül talebi doğrulanamadı. Lütfen değerlendirmenizi yeniden gönderin.');
+        return new WP_Error('qrm_reward_claim', qrm_ceviri_review(__('Bu ödül talebi doğrulanamadı. Lütfen değerlendirmenizi yeniden gönderin.', 'qrms')));
     }
 
     $saklanan = get_transient(qrm_reward_claim_key($review_id));
     if (!is_string($saklanan) || $saklanan === '' || !hash_equals($saklanan, wp_hash($token))) {
-        return new WP_Error('qrm_reward_claim', 'Bu ödül talebi doğrulanamadı. Lütfen değerlendirmenizi yeniden gönderin.');
+        return new WP_Error('qrm_reward_claim', qrm_ceviri_review(__('Bu ödül talebi doğrulanamadı. Lütfen değerlendirmenizi yeniden gönderin.', 'qrms')));
     }
 
     $table  = $wpdb->prefix . 'qrm_reviews';
@@ -411,18 +411,18 @@ function qrm_reward_verify_claim($review_id, $token, $settings = null) {
     ));
 
     if (!$review) {
-        return new WP_Error('qrm_reward_claim', 'Değerlendirme bulunamadı.');
+        return new WP_Error('qrm_reward_claim', qrm_ceviri_review(__('Değerlendirme bulunamadı.', 'qrms')));
     }
 
     // Eşik, popup'ın gösterilme koşuluyla AYNI olmalı; aksi halde sunucu
     // istemcinin gösterdiğinden farklı bir kural uygulardı.
     $threshold = (float) $settings['google_review_threshold'];
     if ((float) $review->rating < $threshold) {
-        return new WP_Error('qrm_reward_claim', 'Bu değerlendirme ödül koşulunu karşılamıyor.');
+        return new WP_Error('qrm_reward_claim', qrm_ceviri_review(__('Bu değerlendirme ödül koşulunu karşılamıyor.', 'qrms')));
     }
 
     if (qrm_reward_review_has_code($review_id)) {
-        return new WP_Error('qrm_reward_claim', 'Bu değerlendirme için zaten bir indirim kodu üretilmiş.');
+        return new WP_Error('qrm_reward_claim', qrm_ceviri_review(__('Bu değerlendirme için zaten bir indirim kodu üretilmiş.', 'qrms')));
     }
 
     return true;
@@ -460,20 +460,20 @@ function qrm_reward_create_code($args = []) {
 
     $email = qrm_reward_normalize_email($args['email']);
     if ($email === '' && !$args['is_manual']) {
-        return new WP_Error('qrm_reward_email', 'Geçerli bir e-posta adresi girin.');
+        return new WP_Error('qrm_reward_email', qrm_ceviri_review(__('Geçerli bir e-posta adresi girin.', 'qrms')));
     }
 
     // 1 e-posta = 1 kod (DB'deki UNIQUE KEY son savunma hattı, burada kullanıcıya mesaj döneriz)
     if ($email !== '') {
         $existing = qrm_reward_find_by_email($email);
         if ($existing) {
-            return new WP_Error('qrm_reward_exists', 'Bu e-posta adresi daha önce bir indirim kodu almış.', ['row' => $existing]);
+            return new WP_Error('qrm_reward_exists', qrm_ceviri_review(__('Bu e-posta adresi daha önce bir indirim kodu almış.', 'qrms')), ['row' => $existing]);
         }
     }
 
     $template = $args['template_id'] !== '' ? qrm_reward_get_template($args['template_id']) : qrm_reward_get_default_template();
     if (!$template) {
-        return new WP_Error('qrm_reward_template', 'Kullanılabilir bir indirim şablonu bulunamadı. Ödül Sistemi sayfasından en az bir aktif şablon tanımlayın.');
+        return new WP_Error('qrm_reward_template', qrm_ceviri_review(__('Kullanılabilir bir indirim şablonu bulunamadı. Ödül Sistemi sayfasından en az bir aktif şablon tanımlayın.', 'qrms')));
     }
 
     $code  = qrm_reward_generate_unique_code();
@@ -496,10 +496,10 @@ function qrm_reward_create_code($args = []) {
         if ($email !== '') {
             $existing = qrm_reward_find_by_email($email);
             if ($existing) {
-                return new WP_Error('qrm_reward_exists', 'Bu e-posta adresi daha önce bir indirim kodu almış.', ['row' => $existing]);
+                return new WP_Error('qrm_reward_exists', qrm_ceviri_review(__('Bu e-posta adresi daha önce bir indirim kodu almış.', 'qrms')), ['row' => $existing]);
             }
         }
-        return new WP_Error('qrm_reward_db', 'Kod kaydedilemedi, lütfen tekrar deneyin.');
+        return new WP_Error('qrm_reward_db', qrm_ceviri_review(__('Kod kaydedilemedi, lütfen tekrar deneyin.', 'qrms')));
     }
 
     // Analitik ikincil kayıttır: ödül tablosu kaynak kalır. Kod/e-posta yazılmaz.

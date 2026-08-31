@@ -178,11 +178,12 @@ function qrm_reward_render_popup($settings, $auto_open = false) {
     ?>
     <div class="qrm-rw-overlay" id="qrmRewardPopup" hidden>
         <div class="qrm-rw-modal" role="dialog" aria-modal="true" aria-labelledby="qrmRwTitle">
-            <button type="button" class="qrm-rw-close" id="qrmRwClose" aria-label="Kapat">&times;</button>
+            <button type="button" class="qrm-rw-close" id="qrmRwClose" aria-label="<?php echo esc_attr(qrm_ceviri_review(__('Kapat', 'qrms'))); ?>">&times;</button>
 
             <!-- STATE_INITIAL -->
             <div data-rw-step="initial">
                 <div class="qrm-rw-badge">🎁</div>
+                <?php // P1 / adım 7-2: ödül popup metinleri option. ?>
                 <h3 class="qrm-rw-title" id="qrmRwTitle"><?php echo esc_html($settings['qrm_reward_popup_title']); ?></h3>
                 <p class="qrm-rw-text"><?php echo esc_html($settings['qrm_reward_popup_text']); ?></p>
                 <button type="button" class="qrm-rw-btn" id="qrmRwGoBtn">
@@ -216,21 +217,21 @@ function qrm_reward_render_popup($settings, $auto_open = false) {
                 <button type="button" class="qrm-rw-btn" id="qrmRwCopyBtn">
                     <span class="qrm-rw-btn-label"><?php echo esc_html($settings['qrm_reward_popup_copy_text']); ?></span>
                 </button>
-                <p class="qrm-rw-note" id="qrmRwMailNote" hidden>Kod ayrıca e-posta adresinize gönderildi.</p>
+                <p class="qrm-rw-note" id="qrmRwMailNote" hidden><?php echo esc_html(qrm_ceviri_review(__('Kod ayrıca e-posta adresinize gönderildi.', 'qrms'))); ?></p>
             </div>
 
             <!-- STATE_RESULT_ALREADY_USED -->
             <div data-rw-step="used" hidden>
                 <div class="qrm-rw-badge">ℹ️</div>
                 <p class="qrm-rw-text"><?php echo esc_html($settings['qrm_reward_popup_already_used_text']); ?></p>
-                <button type="button" class="qrm-rw-btn" id="qrmRwUsedClose"><span class="qrm-rw-btn-label">Tamam</span></button>
+                <button type="button" class="qrm-rw-btn" id="qrmRwUsedClose"><span class="qrm-rw-btn-label"><?php echo esc_html(qrm_ceviri_review(__('Tamam', 'qrms'))); ?></span></button>
             </div>
 
             <!-- STATE_RESULT_ERROR -->
             <div data-rw-step="error" hidden>
                 <div class="qrm-rw-badge">⚠️</div>
                 <p class="qrm-rw-text" id="qrmRwErrorText"><?php echo esc_html($settings['qrm_reward_popup_error_text']); ?></p>
-                <button type="button" class="qrm-rw-btn" id="qrmRwErrorRetry"><span class="qrm-rw-btn-label">Tekrar Dene</span></button>
+                <button type="button" class="qrm-rw-btn" id="qrmRwErrorRetry"><span class="qrm-rw-btn-label"><?php echo esc_html(qrm_ceviri_review(__('Tekrar Dene', 'qrms'))); ?></span></button>
             </div>
         </div>
     </div>
@@ -252,6 +253,7 @@ function qrm_reward_render_popup($settings, $auto_open = false) {
             copyText:     <?php echo wp_json_encode($settings['qrm_reward_popup_copy_text']); ?>,
             copiedText:   <?php echo wp_json_encode($settings['qrm_reward_popup_copied_text']); ?>,
             errorText:    <?php echo wp_json_encode($settings['qrm_reward_popup_error_text']); ?>,
+            invalidEmail: <?php echo wp_json_encode(qrm_ceviri_review(__('Lütfen geçerli bir e-posta adresi girin.', 'qrms'))); ?>,
             autoOpen:     <?php echo $auto_open ? 'true' : 'false'; ?>,
             autoClaim:    <?php echo wp_json_encode($auto_claim); ?>
         };
@@ -396,7 +398,7 @@ function qrm_reward_render_popup($settings, $auto_open = false) {
             e.preventDefault();
             var value = (emailInput.value || '').trim();
             if (!value || value.indexOf('@') < 1 || value.indexOf('.') < 0) {
-                emailErr.textContent = 'Lütfen geçerli bir e-posta adresi girin.';
+                emailErr.textContent = cfg.invalidEmail || 'Lütfen geçerli bir e-posta adresi girin.';
                 emailErr.hidden = false;
                 return;
             }
