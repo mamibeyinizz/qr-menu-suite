@@ -2989,10 +2989,33 @@ qrms_test(
 		qrms_assert_contains( "'.rma-modal-body:not([data-qmo])'", $js, 'enjeksiyon hedefi hâlâ rma-modal-body' );
 		qrms_assert_contains( "'.rma-modal-title'", $js, 'başlık class\'ı durur' );
 		qrms_assert_contains( "'.rma-modal-price'", $js, 'fiyat class\'ı durur' );
+		qrms_assert_contains( "'.rma-price-new, .qmo-kombin-new-price'", $js, 'yalnızca güncel fiyat span\'i' );
+		qrms_assert_contains( 'fiyatMetni', $js, 'kampanyalı fiyatta eski+yeni birleşmez' );
 		qrms_assert_contains( "'.rma-card, .qrms-vitrin-card, .qmo-slider-product'", $js, 'vitrin/slider kartı da modal yakalar' );
 		qrms_assert_contains( 'qmoSepet.endpoint', $js, 'sipariş qmoSepet.endpoint üzerinden gider' );
 		$php = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/includes/shortcode-sepet.php' );
 		qrms_assert_contains( 'qrservis/v1/order', $php, 'REST adresi shortcode\'da üretilir' );
+	}
+);
+
+qrms_test(
+	'sepet kampanyalı/kombin fiyatta yalnızca güncel tutarı okur',
+	function () {
+		$js     = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/assets/js/sepet.js' );
+		$kamp   = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/class-kampanya.php' );
+		$ajax   = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-ajax.php' );
+		$kombin = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/admin-kombin-meta.php' );
+
+		qrms_assert_contains( 'class="rma-price-old"', $kamp, 'üstü çizili eski fiyat span\'i' );
+		qrms_assert_contains( "'rma-price-new '", $kamp, 'güncel kampanya fiyatı span\'i' );
+		qrms_assert_contains( 'class="rma-modal-price"', $ajax, 'modal fiyat kapsayıcısı' );
+		qrms_assert_contains( 'qmo-kombin-old-price', $kombin, 'kombin eski fiyat' );
+		qrms_assert_contains( 'qmo-kombin-new-price', $kombin, 'kombin yeni fiyat' );
+		qrms_assert_contains( 'fiyatMetni( fiyatEl )', $js, 'parse kapsayıcının güncel span\'inden' );
+		qrms_assert_false(
+			false !== strpos( $js, 'fiyatEl ? fiyatEl.textContent' ),
+			'kapsayıcının tüm metni (eski+yeni) parse edilmez'
+		);
 	}
 );
 

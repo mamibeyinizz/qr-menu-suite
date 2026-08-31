@@ -90,7 +90,23 @@
 		ciz();
 	}
 
-	/* ---- fiyat çözümleme: ".rma-card-price" → "450 ₺" ---- */
+	/* ---- fiyat çözümleme ----
+	   Modal fiyat kapsayıcısı (.rma-modal-price) kampanyalı/kombin üründe
+	   üstü çizili eski fiyat ile güncel fiyatı yan yana basar. textContent
+	   ikisini birleştirip "240276" üretir; önce güncel span'i oku. */
+
+	function fiyatMetni( kapsayici ) {
+		if ( ! kapsayici ) {
+			return '';
+		}
+		// Kampanya: .rma-price-new; kombin: .qmo-kombin-new-price.
+		// Üstü çizili eski fiyat (.rma-price-old / .qmo-kombin-old-price) hariç.
+		var guncel = kapsayici.querySelector( '.rma-price-new, .qmo-kombin-new-price' );
+		if ( guncel ) {
+			return guncel.textContent;
+		}
+		return kapsayici.textContent;
+	}
 
 	function fiyatSayi( t ) {
 		t = ( t || '' ).replace( /[^\d.,]/g, '' ).replace( /\.(?=\d{3}\b)/g, '' ).replace( ',', '.' );
@@ -210,7 +226,7 @@
 				}
 
 				var fiyatEl = body.querySelector( '.rma-modal-price' );
-				var fy      = fiyatSayi( fiyatEl ? fiyatEl.textContent : '' );
+				var fy      = fiyatSayi( fiyatMetni( fiyatEl ) );
 				// Dış kapsayıcı: vitrin/slider modalı .qrms-detail-box üretir;
 				// ana menü modalı hâlâ .rma-modal-box. Görsel class'ı
 				// (.rma-modal-img) AJAX içeriğinde değişmedi.
