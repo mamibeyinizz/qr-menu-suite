@@ -84,6 +84,21 @@ class QRMS_Analitik {
 	const MASA_GUN = 30;
 
 	/**
+	 * Yaklaşık sepet oturumunun saat cinsinden penceresi.
+	 *
+	 * Tabloda oturum sütunu yoktur; ip_hash + masa_no + bu pencere bir
+	 * oturum sayılır. SQL ve Sepet & Sipariş ekranı AYNI sabiti kullanır.
+	 */
+	const OTURUM_SAAT = 2;
+
+	/**
+	 * Sepet olay gruplarının istek içi önbelleği (aralık+masa anahtarlı).
+	 *
+	 * @var array<string,array<int,array<string,mixed>>>
+	 */
+	private static $sepet_grup_onbellegi = array();
+
+	/**
 	 * İzleme kaydı için doğrulanan nonce eylemi.
 	 *
 	 * Kancalandığı uçların (rma_load_items / rma_get_product_details) menü
@@ -209,6 +224,7 @@ class QRMS_Analitik {
 		add_action( 'wp_ajax_qrms_analitik_genel', array( __CLASS__, 'ajax_genel' ) );
 		add_action( 'wp_ajax_qrms_analitik_urunler', array( __CLASS__, 'ajax_urunler' ) );
 		add_action( 'wp_ajax_qrms_analitik_masalar', array( __CLASS__, 'ajax_masalar' ) );
+		add_action( 'wp_ajax_qrms_analitik_sepet', array( __CLASS__, 'ajax_sepet' ) );
 		add_action( 'wp_ajax_qrms_analitik_csv', array( __CLASS__, 'ajax_csv' ) );
 		add_action( 'wp_ajax_qrms_analitik_temizle', array( __CLASS__, 'ajax_temizle' ) );
 		add_action( 'admin_post_qrms_analitik_saklama', array( __CLASS__, 'saklama_formu' ) );
@@ -1306,6 +1322,16 @@ class QRMS_Analitik {
 	 */
 	public static function genel_bakis_onbellegini_temizle() {
 		self::$genel_bakis_onbellegi = array();
+		self::$sepet_grup_onbellegi  = array();
+	}
+
+	/**
+	 * Sepet olay gruplarının istek içi önbelleğini boşaltır.
+	 *
+	 * @return void
+	 */
+	public static function sepet_onbellegini_temizle() {
+		self::$sepet_grup_onbellegi = array();
 	}
 
 	/**
@@ -1924,6 +1950,79 @@ class QRMS_Analitik {
 		);
 	}
 
+	/**
+	 * Sepet/sipariş olaylarının oturum+tip+ürün grupları — TEK sorgu.
+	 *
+	 * WHERE event_type IN (...) AND created_at BETWEEN ... idx_td'yi
+	 * (masa filtresi varken idx_masa_td'yi) aralık taraması olarak kullanır.
+	 * Oturum kimliği SQL'de üretilir: ip_hash + masa_no + 2 saatlik pencere.
+	 * Eşleştirme (terk, dönüşüm) PHP tarafındadır; bu metot N+1 üretemez.
+	 *
+	 * @param string $bas  Aralık başlangıcı (MySQL biçimi).
+	 * @param string $bit  Aralık bitişi (MySQL biçimi).
+	 * @param string $masa Masa filtresi.
+	 * @return array<int,array<string,mixed>>
+	 */
+	public static function sepet_olay_gruplari( $bas, $bit, $masa = '' ) {
+		$anahtar = $bas . '|' . $bit . '|' . (string) $masa;
+
+		if ( isset( self::$sepet_grup_onbellegi[ $anahtar ] ) ) {
+			return self::$sepet_grup_onbellegi[ $anahtar ];
+		}
+
+		global $wpdb;
+
+		$tablo   = self::tablo();
+		$masa_ek = self::masa_sql( $masa );
+		$kosul   = $wpdb->prepare( 'created_at BETWEEN %s AND %s', $bas, $bit );
+		$saat    = max( 1, (int) self::OTURUM_SAAT );
+
+		$pencere = "CONCAT(DATE_FORMAT(created_at, '%Y-%m-%d '), LPAD(FLOOR(HOUR(created_at) / {$saat}) * {$saat}, 2, '0'))";
+
+		/*
+		 * Beş olay tipi idx_td'nin ilk sütununda eşitliktir; IN + BETWEEN
+		 * aralık taramasına izin verir. Yeni bir indeks gerekmedi.
+		 */
+		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$ham = $wpdb->get_results(
+			"SELECT ip_hash, masa_no,
+				{$pencere} AS pencere,
+				event_type,
+				item_id,
+				SUBSTRING(MAX(CONCAT(created_at, item_name)), 20) AS item_name,
+				SUBSTRING(MAX(CONCAT(created_at, category_name)), 20) AS category_name,
+				COUNT(*) AS adet,
+				MIN(created_at) AS ilk,
+				MAX(created_at) AS son
+			 FROM {$tablo}
+			 WHERE event_type IN ('cart_add','cart_remove','order_sent','order_failed','order_blocked')
+			   AND {$kosul}{$masa_ek}
+			 GROUP BY ip_hash, masa_no, {$pencere}, event_type, item_id",
+			ARRAY_A
+		);
+
+		$sonuc = array();
+
+		foreach ( (array) $ham as $r ) {
+			$sonuc[] = array(
+				'ip_hash'       => isset( $r['ip_hash'] ) ? (string) $r['ip_hash'] : '',
+				'masa_no'       => isset( $r['masa_no'] ) ? (string) $r['masa_no'] : '',
+				'pencere'       => isset( $r['pencere'] ) ? (string) $r['pencere'] : '',
+				'event_type'    => isset( $r['event_type'] ) ? (string) $r['event_type'] : '',
+				'item_id'       => isset( $r['item_id'] ) ? (int) $r['item_id'] : 0,
+				'item_name'     => isset( $r['item_name'] ) ? (string) $r['item_name'] : '',
+				'category_name' => isset( $r['category_name'] ) ? (string) $r['category_name'] : '',
+				'adet'          => isset( $r['adet'] ) ? (int) $r['adet'] : 0,
+				'ilk'           => isset( $r['ilk'] ) ? (string) $r['ilk'] : '',
+				'son'           => isset( $r['son'] ) ? (string) $r['son'] : '',
+			);
+		}
+
+		self::$sepet_grup_onbellegi[ $anahtar ] = $sonuc;
+
+		return $sonuc;
+	}
+
 	/* -----------------------------------------------------------------
 	   AJAX UÇLARI
 	----------------------------------------------------------------- */
@@ -2054,6 +2153,40 @@ class QRMS_Analitik {
 	}
 
 	/**
+	 * Sepet & Sipariş kategorisinin verisi.
+	 *
+	 * @return void
+	 */
+	public static function ajax_sepet() {
+		check_ajax_referer( self::NONCE, 'security' );
+
+		if ( ! current_user_can( QRMS_Admin::CAPABILITY ) ) {
+			wp_send_json_error( array( 'mesaj' => __( 'Yetkiniz yok.', 'qrms' ) ), 403 );
+		}
+
+		if ( function_exists( 'qrms_analitik_sepet_lisansli' ) && ! qrms_analitik_sepet_lisansli() ) {
+			wp_send_json_error( array( 'mesaj' => __( 'Chatbot Asistan bu lisansta kapalı.', 'qrms' ) ), 403 );
+		}
+
+		// phpcs:disable WordPress.Security.NonceVerification.Missing -- check_ajax_referer yukarıda.
+		$ham = (array) wp_unslash( $_POST );
+		// phpcs:enable
+
+		$baglam = QRMS_Analitik_Filtre::coz( $ham );
+		$aralik = QRMS_Analitik_Filtre::aralik( $ham );
+
+		wp_send_json_success(
+			array_merge(
+				array(
+					'donem' => $baglam['donem'],
+					'masa'  => $baglam['masa'],
+				),
+				qrms_analitik_sepet_verisi( $aralik, $baglam['masa'] )
+			)
+		);
+	}
+
+	/**
 	 * CSV dışa aktarma.
 	 *
 	 * "Masalara Göre" görünümünde masa özeti, diğer dönemlerde ürün listesi
@@ -2088,6 +2221,11 @@ class QRMS_Analitik {
 
 		if ( 'ham' === $kategori ) {
 			self::csv_ham( $ham );
+			return;
+		}
+
+		if ( 'sepet' === $kategori ) {
+			self::csv_sepet( $ham );
 			return;
 		}
 
@@ -2439,6 +2577,107 @@ class QRMS_Analitik {
 				),
 				';'
 			);
+		}
+
+		fclose( $cikti ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
+		exit;
+	}
+
+	/**
+	 * "Sepet & Sipariş" kategorisinin CSV'si.
+	 *
+	 * Ekrandaki tabloların birleşimi; Sistem sayfasındaki ham/ürün/masa
+	 * indirmelerinden ayrı bir kategori anahtarı kullanır (`sepet`).
+	 *
+	 * @param array $ham İsteğin ham query arg'ları.
+	 * @return void
+	 */
+	private static function csv_sepet( array $ham ) {
+		if ( function_exists( 'qrms_analitik_sepet_lisansli' ) && ! qrms_analitik_sepet_lisansli() ) {
+			wp_die( esc_html__( 'Chatbot Asistan bu lisansta kapalı.', 'qrms' ) );
+		}
+
+		$baglam = QRMS_Analitik_Filtre::coz( $ham );
+		$aralik = QRMS_Analitik_Filtre::aralik( $ham );
+		$veri   = qrms_analitik_sepet_verisi( $aralik, $baglam['masa'], 0 );
+
+		$dosya = 'qr-analitik-sepet-' . $baglam['donem']
+			. ( '' !== $baglam['masa'] ? '-' . $baglam['masa'] : '' )
+			. '-' . gmdate( 'Ymd-His', self::simdi() ) . '.csv';
+
+		nocache_headers();
+		header( 'Content-Type: text/csv; charset=utf-8' );
+		header( 'Content-Disposition: attachment; filename="' . $dosya . '"' );
+
+		$cikti = fopen( 'php://output', 'w' );
+
+		fwrite( $cikti, "\xEF\xBB\xBF" ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fwrite
+
+		fputcsv( $cikti, array( 'Aralık', substr( $aralik['bas'], 0, 10 ), substr( $aralik['bit'], 0, 10 ) ), ';' );
+		fputcsv( $cikti, array( 'Masa', '' !== $baglam['masa'] ? $baglam['masa'] : 'Tüm masalar' ), ';' );
+		fputcsv( $cikti, array(), ';' );
+
+		$ozet = $veri['ozet'];
+		fputcsv( $cikti, array( 'ÖZET' ), ';' );
+		fputcsv( $cikti, array( 'Sepete ekleme (olay)', $ozet['cart_add'] ), ';' );
+		fputcsv( $cikti, array( 'Sepete ekleme (tekil ürün)', $ozet['cart_add_urun'] ), ';' );
+		fputcsv( $cikti, array( 'Gönderilen sipariş (oturum)', $ozet['order_sent'] ), ';' );
+		fputcsv( $cikti, array( 'Terk edilen sepet (oturum)', $ozet['terk'] ), ';' );
+		fputcsv( $cikti, array( 'Terk oranı %', $ozet['terk_oran'] ), ';' );
+		fputcsv( $cikti, array( 'Engellenen sipariş', $ozet['blocked'] ), ';' );
+		fputcsv( $cikti, array( 'Başarısız sipariş (oturum)', $ozet['failed'] ), ';' );
+		fputcsv( $cikti, array(), ';' );
+
+		fputcsv( $cikti, array( 'SEPETE EKLENİP GÖNDERİLMEYEN ÜRÜNLER' ), ';' );
+		fputcsv( $cikti, array( 'Ürün ID', 'Ürün Adı', 'Kategori', 'Terk (oturum)', 'Ekleme (olay)' ), ';' );
+
+		foreach ( $veri['terk_urun'] as $satir ) {
+			fputcsv(
+				$cikti,
+				array( $satir['id'], $satir['ad'], $satir['kategori'], $satir['terk'], $satir['ekleme'] ),
+				';'
+			);
+		}
+
+		fputcsv( $cikti, array(), ';' );
+		fputcsv( $cikti, array( 'SEPETTEN ÇIKARILAN ÜRÜNLER' ), ';' );
+		fputcsv( $cikti, array( 'Ürün ID', 'Ürün Adı', 'Kategori', 'Çıkarma', 'Ekleme', 'Ekleme/Çıkarma' ), ';' );
+
+		foreach ( $veri['cikarilan'] as $satir ) {
+			fputcsv(
+				$cikti,
+				array(
+					$satir['id'],
+					$satir['ad'],
+					$satir['kategori'],
+					$satir['cikarma'],
+					$satir['ekleme'],
+					null === $satir['oran'] ? '' : $satir['oran'],
+				),
+				';'
+			);
+		}
+
+		fputcsv( $cikti, array(), ';' );
+		fputcsv( $cikti, array( 'ENGELLENEN SİPARİŞLER' ), ';' );
+		fputcsv( $cikti, array( 'Ürün ID', 'Ürün Adı', 'Kategori', 'Kaçırılan sipariş' ), ';' );
+
+		foreach ( $veri['engellenen'] as $satir ) {
+			fputcsv(
+				$cikti,
+				array( $satir['id'], $satir['ad'], $satir['kategori'], $satir['siparis'] ),
+				';'
+			);
+		}
+
+		if ( $ozet['failed'] > 0 ) {
+			fputcsv( $cikti, array(), ';' );
+			fputcsv( $cikti, array( 'SİPARİŞ HATALARI' ), ';' );
+			fputcsv( $cikti, array( 'Zaman', 'Sipariş (oturum)' ), ';' );
+
+			foreach ( $veri['hatalar'] as $satir ) {
+				fputcsv( $cikti, array( $satir['label'], $satir['sayi'] ), ';' );
+			}
 		}
 
 		fclose( $cikti ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose

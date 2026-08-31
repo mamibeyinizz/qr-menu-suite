@@ -66,6 +66,7 @@ function qrms_module_qr_analiz_init() {
 		require_once __DIR__ . '/genel-sayfasi.php';
 		require_once __DIR__ . '/urunler-sayfasi.php';
 		require_once __DIR__ . '/masalar-sayfasi.php';
+		require_once __DIR__ . '/sepet-sayfasi.php';
 		require_once __DIR__ . '/sistem-sayfasi.php';
 		require_once __DIR__ . '/hub-sayfasi.php';
 
@@ -131,9 +132,11 @@ function qrms_module_qr_analiz_admin_menu() {
 		return;
 	}
 
-	// Lisansta pasif modüle bağlı kategoriler HİÇ kaydedilmez: kartı
-	// basılmayan bir sayfanın adresi de olmamalı.
-	foreach ( qrms_module_qr_analiz_gecerli_sayfalar() as $slug => $sayfa ) {
+	// Kategori sayfaları her zaman kaydedilir: lisansta pasif bir modüle
+	// bağlı kategori hub'da KARTSIZ kalır ama doğrudan URL anlamlı bir
+	// mesaj göstermelidir (boş tablo / 404 değil). Kart süzmesi
+	// gecerli_sayfalar()'dadır.
+	foreach ( qrms_module_qr_analiz_sayfalar() as $slug => $sayfa ) {
 		add_submenu_page(
 			QRMS_Admin::MENU_SLUG,
 			$sayfa['title'],
@@ -198,6 +201,11 @@ function qrms_module_qr_analiz_admin_assets() {
 
 	if ( 'qrms-an-masalar' === $page ) {
 		qrms_module_qr_analiz_masalar_assets();
+		return;
+	}
+
+	if ( 'qrms-an-sepet' === $page ) {
+		qrms_module_qr_analiz_sepet_assets();
 		return;
 	}
 
@@ -415,6 +423,85 @@ function qrms_module_qr_analiz_masalar_assets() {
 				'loadError'    => __( 'Veri yüklenemedi. Sayfayı yenileyin.', 'qrms' ),
 				'noTables'     => __( 'Tanımlı masa yok ve bu aralıkta hareket kaydedilmemiş.', 'qrms' ),
 				'noGroups'     => __( 'Gruplandırılacak kayıtlı masa yok.', 'qrms' ),
+			),
+		)
+	);
+}
+
+/**
+ * "Sepet & Sipariş" kategorisinin varlıkları.
+ *
+ * Chatbot lisansta pasifse sayfa PHP'den bir mesaj basar; betik kuyruğa
+ * girmez — boş tabloyu AJAX'ın doldurmasını beklemeyiz.
+ *
+ * @return void
+ */
+function qrms_module_qr_analiz_sepet_assets() {
+	qrms_module_qr_analiz_panel_stili();
+
+	if ( ! qrms_analitik_sepet_lisansli() ) {
+		return;
+	}
+
+	qrms_module_qr_analiz_ortak_betik();
+
+	wp_enqueue_script(
+		'qrms-analitik-sepet',
+		QRMS_PLUGIN_URL . 'modules/qr-analiz/assets/js/analitik-sepet.js',
+		array( 'qrms-analitik-ortak' ),
+		QRMS_Helpers::asset_version( 'modules/qr-analiz/assets/js/analitik-sepet.js' ),
+		true
+	);
+
+	wp_localize_script(
+		'qrms-analitik-sepet',
+		'qrmsAnalitikSepet',
+		array(
+			'ajaxUrl'       => admin_url( 'admin-ajax.php' ),
+			'nonce'         => wp_create_nonce( QRMS_Analitik::NONCE ),
+			'donem'         => QRMS_Analitik_Filtre::donem(),
+			'masa'          => QRMS_Analitik_Filtre::masa(),
+			'bas'           => QRMS_Analitik_Filtre::bas(),
+			'bit'           => QRMS_Analitik_Filtre::bit(),
+			'aralikEtiketi' => QRMS_Analitik_Filtre::etiket(),
+			'urunumYokUrl'  => qrms_analitik_sepet_urunum_yok_url(),
+			'firebaseUrl'   => qrms_analitik_sepet_firebase_url(),
+			'i18n'          => array(
+				'cardAdd'           => __( 'Sepete eklenen', 'qrms' ),
+				'cardSent'          => __( 'Gönderilen sipariş', 'qrms' ),
+				'cardAbandon'       => __( 'Terk edilen sepet', 'qrms' ),
+				'cardBlocked'       => __( 'Engellenen sipariş', 'qrms' ),
+				'cardFailed'        => __( 'Başarısız sipariş', 'qrms' ),
+				'events'             => __( 'olay', 'qrms' ),
+				'uniqueItems'        => __( 'tekil ürün', 'qrms' ),
+				'approxSession'      => __( 'Yaklaşık oturum', 'qrms' ),
+				'abandonRate'        => __( 'Terk oranı', 'qrms' ),
+				'cartSessions'       => __( 'sepet oturumu', 'qrms' ),
+				'soldOutReason'      => __( 'Tükendi nedeniyle', 'qrms' ),
+				'orderFailed'        => __( 'order_failed', 'qrms' ),
+				'product'           => __( 'Ürün', 'qrms' ),
+				'category'          => __( 'Kategori', 'qrms' ),
+				'abandonSessions'   => __( 'Terk (oturum)', 'qrms' ),
+				'addEvents'         => __( 'Ekleme (olay)', 'qrms' ),
+				'removes'           => __( 'Çıkarma', 'qrms' ),
+				'adds'              => __( 'Ekleme', 'qrms' ),
+				'addRemoveRatio'    => __( 'Ekleme / çıkarma', 'qrms' ),
+				'missedOrders'      => __( 'Kaçırılan sipariş', 'qrms' ),
+				'action'            => __( 'İşlem', 'qrms' ),
+				'openSoldOut'       => __( 'Ürünüm Yok', 'qrms' ),
+				'when'              => __( 'Zaman', 'qrms' ),
+				'failedOrders'      => __( 'Başarısız sipariş', 'qrms' ),
+				'unknownItem'       => __( 'Bilinmeyen ürün', 'qrms' ),
+				'justStartedTitle'  => __( 'Toplanmaya yeni başlandı', 'qrms' ),
+				'justStarted'       => __( 'Sepet ve sipariş olayları toplanmaya yeni başladı. Bu bir hata değil; menüden verilen ilk siparişler burada görünecek.', 'qrms' ),
+				'noAbandon'         => __( 'Bu aralıkta sepete eklenip gönderilmeyen ürün yok.', 'qrms' ),
+				'noRemove'          => __( 'Bu aralıkta sepetten çıkarma yok.', 'qrms' ),
+				'noBlocked'         => __( 'Bu aralıkta tükendi nedeniyle engellenen sipariş yok.', 'qrms' ),
+				'firebaseTitle'     => __( 'Firebase yapılandırmasını kontrol edin', 'qrms' ),
+				'firebaseText'      => __( 'Başarısız siparişler genelde Firestore yazımının düşmesinden gelir. Service account ve şube ayarlarını gözden geçirin.', 'qrms' ),
+				'firebaseLink'      => __( 'Güvenlik Ayarı > Firebase & Şube Ayarları', 'qrms' ),
+				'loading'           => __( 'Yükleniyor', 'qrms' ),
+				'loadError'         => __( 'Veri yüklenemedi. Sayfayı yenileyin.', 'qrms' ),
 			),
 		)
 	);
