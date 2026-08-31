@@ -3738,33 +3738,257 @@ qrms_test(
 );
 
 /* ---------------------------------------------------------------------------
- * 9. QR Analiz — tek ekran + eski adresin yönlendirmesi
+ * 9. QR Analiz — hub + kategori alt sayfaları + eski adresin yönlendirmesi
  * ------------------------------------------------------------------------ */
 
-// module.php dosya kapsamında yalnızca fonksiyon ve sabit tanımlar; stub
+// Dosyalar dosya kapsamında yalnızca fonksiyon ve sabit tanımlar; stub
 // ortamında yan etkisiz yüklenir.
+require_once QRMS_PLUGIN_DIR . 'modules/qr-analiz/class-qrms-analitik-filtre.php';
 require_once QRMS_PLUGIN_DIR . 'modules/qr-analiz/module.php';
+require_once QRMS_PLUGIN_DIR . 'modules/qr-analiz/filtre-cubugu.php';
+require_once QRMS_PLUGIN_DIR . 'modules/qr-analiz/genel-sayfasi.php';
+require_once QRMS_PLUGIN_DIR . 'modules/qr-analiz/urunler-sayfasi.php';
+require_once QRMS_PLUGIN_DIR . 'modules/qr-analiz/masalar-sayfasi.php';
+require_once QRMS_PLUGIN_DIR . 'modules/qr-analiz/sistem-sayfasi.php';
+require_once QRMS_PLUGIN_DIR . 'modules/qr-analiz/hub-sayfasi.php';
 
 echo "\nQR Analiz sayfaları\n";
 
 qrms_test(
-	'modülün TEK ekranı vardır: hub yoktur',
+	'modül satırı hub ekranıdır; yedi kategori kart olur, klasik görünüm kalktı',
 	function () {
-		// Firebase ayarları güvenlik modülüne taşındıktan sonra dallanacak
-		// ikinci bir ekran kalmadı; modül satırı doğrudan paneli açar.
-		qrms_assert_false( function_exists( 'qrms_module_qr_analiz_hub' ), 'hub fonksiyonu yok' );
-		qrms_assert_false( function_exists( 'qrms_module_qr_analiz_sayfalar' ), 'sayfa listesi yok' );
-		qrms_assert_false( defined( 'QRMS_ANALIZ_AYAR_SAYFA' ), 'ayar slug sabiti taşındı' );
+		// Sayfa listesi TEK KAYNAK: kayıt da kartlar da buradan beslenir.
+		$sayfalar = qrms_module_qr_analiz_sayfalar();
+
+		qrms_assert_same(
+			array(
+				'qrms-an-genel',
+				'qrms-an-urunler',
+				'qrms-an-masalar',
+				'qrms-an-sepet',
+				'qrms-an-etkilesim',
+				'qrms-an-acilis',
+				'qrms-an-sistem',
+			),
+			array_keys( $sayfalar ),
+			'kategori slug\'ları'
+		);
+
+		foreach ( $sayfalar as $slug => $sayfa ) {
+			qrms_assert_true( is_callable( $sayfa['render'] ), $slug . ' render edilebilir' );
+			qrms_assert_true( '' !== $sayfa['desc'], $slug . ' açıklaması' );
+			// İkonlar dashicons setinden gelir — emoji değil.
+			qrms_assert_true( 0 === strpos( $sayfa['icon'], 'dashicons-' ), $slug . ' dashicon' );
+		}
+
+		// Eski tek-sayfa yapısı kapandı: dosyası yok, kartı yok.
+		qrms_assert_false(
+			file_exists( QRMS_PLUGIN_DIR . 'modules/qr-analiz/analitik-sayfasi.php' ),
+			'klasik panel dosyası silindi'
+		);
+
+		// Kart sayısı lisansa bağlıdır; bu test tümü aktifken bakar (süzme
+		// kendi testinde doğrulanır).
+		update_option( 'qrms_active_modules', array( 'qr-analiz', 'qr-chatbot', 'qr-acilis-ekrani' ) );
+
+		$kartlar = qrms_module_qr_analiz_hub_kartlari();
+		qrms_assert_same( 7, count( $kartlar ), 'yalnızca kategoriler' );
+
+		foreach ( $kartlar as $kart ) {
+			qrms_assert_false(
+				false !== strpos( $kart['url'], QRMS_ANALITIK_KLASIK_SAYFA ),
+				'klasik görünüm kartı kalktı'
+			);
+		}
+
+		// Henüz dolmamış kategoriler gizlenmez, ROZETLENİR: gizlemek "böyle
+		// bir şey yok" demek olurdu, rozetsiz göstermek boş ekranı hata gibi
+		// hissettirirdi.
+		$rozetli = array();
+
+		foreach ( $kartlar as $kart ) {
+			if ( '' !== $kart['badge'] ) {
+				$rozetli[] = $kart['title'];
+			}
+		}
+
+		qrms_assert_same( 3, count( $rozetli ), 'üç kategori "Yakında"' );
 
 		// Ayar ekranı dosyası artık güvenlik modülünün altındadır.
-		qrms_assert_false(
-			file_exists( QRMS_PLUGIN_DIR . 'modules/qr-analiz/ayarlar-sayfasi.php' ),
-			'eski konumda yok'
-		);
+		qrms_assert_false( defined( 'QRMS_ANALIZ_AYAR_SAYFA' ), 'ayar slug sabiti taşındı' );
 		qrms_assert_true(
 			file_exists( QRMS_PLUGIN_DIR . 'modules/qr-masa-oturum-guvenligi/firebase-ayarlari-sayfasi.php' ),
 			'yeni konumda var'
 		);
+	}
+);
+
+qrms_test(
+	'lisansta pasif modüle bağlı kategori hiç basılmaz',
+	function () {
+		// Sepet & Sipariş chatbot'a, Açılış Ekranı açılış modülüne bağlıdır:
+		// kullanıcıya satın almadığı bir şeyin boş ekranı gösterilmez.
+		update_option( 'qrms_active_modules', array( 'qr-analiz', 'restoran-menu' ) );
+
+		$gecerli = qrms_module_qr_analiz_gecerli_sayfalar();
+
+		qrms_assert_false( isset( $gecerli['qrms-an-sepet'] ), 'chatbot pasif: sepet yok' );
+		qrms_assert_false( isset( $gecerli['qrms-an-acilis'] ), 'açılış pasif: kategori yok' );
+		qrms_assert_true( isset( $gecerli['qrms-an-genel'] ), 'çekirdek kategoriler durur' );
+		qrms_assert_true( isset( $gecerli['qrms-an-masalar'] ), 'masalar modüle bağlı değil' );
+
+		// Chatbot açılınca kategori geri gelir.
+		update_option( 'qrms_active_modules', array( 'qr-analiz', 'qr-chatbot' ) );
+
+		$gecerli = qrms_module_qr_analiz_gecerli_sayfalar();
+
+		qrms_assert_true( isset( $gecerli['qrms-an-sepet'] ), 'chatbot aktif: sepet var' );
+
+		update_option( 'qrms_active_modules', array() );
+	}
+);
+
+qrms_test(
+	'kategori sayfaları menüye satır EKLEMEZ; alt sayfa olarak kaydolur',
+	function () {
+		QRMS_Analitik_Filtre::sifirla();
+
+		$GLOBALS['submenu'][ QRMS_Admin::MENU_SLUG ] = array(
+			qrms_submenu_satiri( 'İstatistikler', QRMS_Admin::get_module_page_slug( 'qr-analiz' ) ),
+		);
+
+		qrms_module_qr_analiz_admin_menu();
+
+		$sluglar = array_map(
+			function ( $item ) {
+				return $item['slug'];
+			},
+			$GLOBALS['qrms_test']['submenus']
+		);
+
+		foreach ( array_keys( qrms_module_qr_analiz_gecerli_sayfalar() ) as $slug ) {
+			qrms_assert_true( in_array( $slug, $sluglar, true ), $slug . ' kayıtlı' );
+			qrms_assert_true( QRMS_Admin::is_module_subpage( $slug ), $slug . ' alt sayfa defterinde' );
+		}
+
+		// Eski adresler yönlendirme olarak kayıtlı kalır (ekran değil).
+		qrms_assert_true( in_array( QRMS_ANALITIK_KLASIK_SAYFA, $sluglar, true ), 'klasik slug yönlendirir' );
+		qrms_assert_true( in_array( QRMS_ANALITIK_SAYFA, $sluglar, true ), 'eski panel slug\'ı yönlendirir' );
+
+		// Hepsi menüden düşer: beyaz listede yalnızca modül satırı vardır.
+		$gizlenen = QRMS_Admin::collect_hidden_rows(
+			$GLOBALS['submenu'][ QRMS_Admin::MENU_SLUG ],
+			QRMS_Admin::get_menu_row_slugs()
+		);
+
+		foreach ( array_keys( qrms_module_qr_analiz_gecerli_sayfalar() ) as $slug ) {
+			qrms_assert_true( in_array( $slug, $gizlenen, true ), $slug . ' menüden düşer' );
+		}
+	}
+);
+
+qrms_test(
+	'paylaşılan filtre her bağlantıya yapışır, varsayılanda adres temiz kalır',
+	function () {
+		// Dokunulmamış filtre: adreslerde gereksiz arg yok.
+		QRMS_Analitik_Filtre::ayarla( array() );
+		qrms_assert_same( 'bugun', QRMS_Analitik_Filtre::donem(), 'varsayılan dönem' );
+		qrms_assert_same( array(), QRMS_Analitik_Filtre::args(), 'temiz adres' );
+
+		// Seçim yapıldığında hub kartları da geri bağlantısı da taşır.
+		QRMS_Analitik_Filtre::ayarla(
+			array(
+				'donem' => 'hafta',
+				'masa'  => 'Masa 3',
+			)
+		);
+
+		qrms_assert_same(
+			array(
+				'donem' => 'hafta',
+				'masa'  => 'masa-3',
+			),
+			QRMS_Analitik_Filtre::args(),
+			'taşınan filtre'
+		);
+
+		$url = QRMS_Analitik_Filtre::url( 'qrms-an-sepet' );
+		qrms_assert_contains( 'page=qrms-an-sepet', $url, 'sayfa' );
+		qrms_assert_contains( 'donem=hafta', $url, 'dönem taşındı' );
+		qrms_assert_contains( 'masa=masa-3', $url, 'masa taşındı' );
+
+		foreach ( qrms_module_qr_analiz_hub_kartlari() as $kart ) {
+			qrms_assert_contains( 'donem=hafta', $kart['url'], 'kart dönemi taşır' );
+			qrms_assert_contains( 'masa=masa-3', $kart['url'], 'kart masayı taşır' );
+		}
+
+		// Geri bağlantısı hub'a döner ama seçimi kaybetmez.
+		$geri = qrms_module_qr_analiz_geri_url( QRMS_Admin::get_module_page_url( 'qr-analiz' ), 'qr-analiz' );
+		qrms_assert_contains( 'page=' . QRMS_Admin::get_module_page_slug( 'qr-analiz' ), $geri, 'hub adresi' );
+		qrms_assert_contains( 'donem=hafta', $geri, 'geri bağlantısı dönemi taşır' );
+
+		// Başka modülün alt sayfası etkilenmez.
+		qrms_assert_same(
+			QRMS_Admin::get_module_page_url( 'qr-galeri' ),
+			qrms_module_qr_analiz_geri_url( QRMS_Admin::get_module_page_url( 'qr-galeri' ), 'qr-galeri' ),
+			'yabancı modül dokunulmaz'
+		);
+
+		QRMS_Analitik_Filtre::sifirla();
+	}
+);
+
+qrms_test(
+	'filtre bağlamı bozuk değerleri güvenli varsayılana indirger',
+	function () {
+		// Tanınmayan dönem.
+		$b = QRMS_Analitik_Filtre::coz( array( 'donem' => 'yil' ) );
+		qrms_assert_same( 'bugun', $b['donem'], 'tanınmayan dönem' );
+
+		// "ozel" ama tarih eksik: yarım aralık tüm tabloyu taratırdı.
+		$b = QRMS_Analitik_Filtre::coz(
+			array(
+				'donem' => 'ozel',
+				'bas'   => '2026-01-01',
+			)
+		);
+		qrms_assert_same( 'bugun', $b['donem'], 'yarım aralık reddedilir' );
+
+		// Takvimde olmayan gün.
+		$b = QRMS_Analitik_Filtre::coz(
+			array(
+				'donem' => 'ozel',
+				'bas'   => '2026-02-31',
+				'bit'   => '2026-03-01',
+			)
+		);
+		qrms_assert_same( 'bugun', $b['donem'], 'geçersiz tarih' );
+
+		// Ters aralık takas edilir.
+		$b = QRMS_Analitik_Filtre::coz(
+			array(
+				'donem' => 'ozel',
+				'bas'   => '2026-03-10',
+				'bit'   => '2026-03-01',
+			)
+		);
+		qrms_assert_same( 'ozel', $b['donem'], 'özel aralık' );
+		qrms_assert_same( '2026-03-01', $b['bas'], 'başlangıç takas edildi' );
+		qrms_assert_same( '2026-03-10', $b['bit'], 'bitiş takas edildi' );
+
+		// Dönem özel değilse tarihler taşınmaz.
+		$b = QRMS_Analitik_Filtre::coz(
+			array(
+				'donem' => 'ay',
+				'bas'   => '2026-03-01',
+				'bit'   => '2026-03-10',
+			)
+		);
+		qrms_assert_same( '', $b['bas'], 'artık tarih taşınmaz' );
+
+		// Dizi gelirse (?masa[]=x) çökme değil, boş filtre.
+		$b = QRMS_Analitik_Filtre::coz( array( 'masa' => array( 'x' ) ) );
+		qrms_assert_same( '', $b['masa'], 'dizi değer yok sayılır' );
 	}
 );
 
@@ -3777,19 +4001,19 @@ qrms_test(
 
 		qrms_module_qr_analiz_admin_menu();
 
-		qrms_assert_same(
-			array( QRMS_ANALITIK_SAYFA ),
-			array_map(
+		$eski = array_values(
+			array_filter(
+				$GLOBALS['qrms_test']['submenus'],
 				function ( $item ) {
-					return $item['slug'];
-				},
-				$GLOBALS['qrms_test']['submenus']
-			),
-			'yalnızca eski adres'
+					return QRMS_ANALITIK_SAYFA === $item['slug'];
+				}
+			)
 		);
 
+		qrms_assert_same( 1, count( $eski ), 'eski adres bir kez kayıtlı' );
+
 		// Üst menü '' — satır sol menüde hiç görünmez, yalnızca adres çalışır.
-		qrms_assert_same( '', $GLOBALS['qrms_test']['submenus'][0]['parent'], 'gizli sayfa' );
+		qrms_assert_same( '', $eski[0]['parent'], 'gizli sayfa' );
 
 		try {
 			qrms_module_qr_analiz_eski_adresi_yonlendir();
@@ -3880,50 +4104,627 @@ qrms_test(
 echo "\nQR Analiz (kategoriler)\n";
 
 qrms_test(
-	'veriler altı kategori chip\'ine bölünür ve her chip bir bölüme bağlıdır',
+	'eski tek-sayfa yapısı kapandı; araçlar "Veri & Sistem"e taşındı',
 	function () {
-		$kaynak = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/analitik-sayfasi.php' );
+		$sistem = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/sistem-sayfasi.php' );
 
-		foreach ( array( 'hourly', 'daily', 'weekly', 'monthly', 'masalar', 'urunler' ) as $kategori ) {
-			qrms_assert_contains( 'data-cat="' . $kategori . '"', $kaynak, $kategori . ' chip\'i' );
-		}
+		// Taşınan araçların hepsi burada.
+		qrms_assert_contains( 'id="qrms-an-clear"', $sistem, 'verileri sil' );
+		qrms_assert_contains( 'id="qrms-an-refresh"', $sistem, 'yenile' );
+		qrms_assert_contains( 'id="qrms-an-confirm"', $sistem, 'onay modalı' );
+		qrms_assert_contains( 'qrms_analitik_teshis_listesi()', $sistem, 'teşhis' );
+		qrms_assert_contains( "'kategori' => 'ham'", $sistem, 'ham CSV' );
 
-		// Chip'lerin hepsi bir tabpanel'e işaret eder; ürün kesiti kendi
-		// bölümündedir ve kapalı başlar (açılışta saatlik kategori seçili).
-		qrms_assert_contains( 'aria-controls="qrms-an-cat-veri"', $kaynak, 'grafik/tablo bölümü' );
-		qrms_assert_contains( 'aria-controls="qrms-an-cat-urunler"', $kaynak, 'ürün bölümü' );
-		qrms_assert_contains( 'id="qrms-an-cat-urunler" role="tabpanel" hidden', $kaynak, 'ürün bölümü kapalı başlar' );
+		// Teşhis İKİ yerde ama TEK kaynaktan: hub kısa uyarı, sistem tam liste.
+		$hub = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/hub-sayfasi.php' );
 
-		// CSV kategori bölümlerinin DIŞINDADIR: indirilen dosya ekranda ne
-		// görünüyorsa odur, düğme tek bir kategoriye kapatılırsa masa özeti
-		// indirilemez olurdu.
-		qrms_assert_true(
-			strpos( $kaynak, 'id="qrms-an-csv"' ) < strpos( $kaynak, 'qrms-an-cats' ),
-			'CSV chip şeridinden önce (sayfa başlığında)'
+		qrms_assert_contains( 'QRMS_Analitik::teshis()', $hub, 'hub aynı kaynaktan' );
+		qrms_assert_contains( 'QRMS_Analitik::teshis()', $sistem, 'sistem aynı kaynaktan' );
+
+		// Silme akışı AYNEN taşındı: aynı uç, aynı nonce.
+		$js = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/assets/js/analitik-sistem.js' );
+
+		qrms_assert_contains( 'qrms_analitik_temizle', $js, 'silme ucu değişmedi' );
+		qrms_assert_contains( 'confirmTable', $js, 'masa kapsamlı silme metni' );
+
+		// Eski betik ORTADA kalmadı ama SİLİNMEDİ: Faz 9 temizlik turunda
+		// topluca ele alınacak, o yüzden dosya başında işaretli.
+		$eski = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/assets/js/analitik.js' );
+
+		qrms_assert_contains( 'KULLANILMIYOR', $eski, 'ölü betik işaretli' );
+
+		$modul = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/module.php' );
+
+		qrms_assert_false( false !== strpos( $modul, 'assets/js/analitik.js' ), 'artık kuyruğa girmiyor' );
+	}
+);
+
+echo "\nQR Analiz — Ürünler kategorisi\n";
+
+qrms_test(
+	'en az tıklananlar CPT\'den başlar: hiç tıklanmamış ürün de listelenir',
+	function () {
+		// İki kaynak birleşir: yayındaki ürünler + tıklama sayaçları.
+		// Sayacı olmayan ürün listeden DÜŞMEMELİ; aranan tam da odur.
+		$GLOBALS['qrms_test']['posts'] = array(
+			(object) array(
+				'ID'         => 11,
+				'post_title' => 'Mercimek Çorbası',
+			),
+			(object) array(
+				'ID'         => 12,
+				'post_title' => 'Ayran',
+			),
+			(object) array(
+				'ID'         => 13,
+				'post_title' => 'Künefe',
+			),
+		);
+		$GLOBALS['qrms_test']['post_meta'] = array( 13 => array( '_rma_tukendi' => '1' ) );
+		$GLOBALS['qrms_test']['terms']     = array( 11 => 'Çorbalar' );
+
+		qrms_analitik_onbellek_sifirla();
+
+		$sonuc = qrms_analitik_en_az_tiklananlar(
+			array(
+				11 => array(
+					'toplam' => 9,
+					'tekil'  => 4,
+					'son'    => '2026-03-10 12:00:00',
+				),
+			)
 		);
 
-		// Panel kimlikleri JS'in aradığı kimliklerle aynı olmalı: biri
-		// değişirse kategori geçişi sessizce çalışmaz olurdu.
-		$js = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/assets/js/analitik.js' );
+		qrms_assert_same( 3, $sonuc['toplam'], 'üç ürün de listede' );
+		qrms_assert_same( 2, $sonuc['hic'], 'iki ürün hiç tıklanmadı' );
+		qrms_assert_same( 1, $sonuc['tukendi'], 'bir ürün tükendi' );
 
-		qrms_assert_contains( "\$( 'qrms-an-cat-veri' )", $js, 'JS grafik bölümünü bulur' );
-		qrms_assert_contains( "\$( 'qrms-an-cat-urunler' )", $js, 'JS ürün bölümünü bulur' );
+		// Artan sıralama; eşitlikte ada göre (sayfalama kaymasın).
+		qrms_assert_same( 'Ayran', $sonuc['satirlar'][0]['ad'], 'en az tıklanan önce' );
+		qrms_assert_same( 'Künefe', $sonuc['satirlar'][1]['ad'], 'eşitlikte ada göre' );
+		qrms_assert_same( 'Mercimek Çorbası', $sonuc['satirlar'][2]['ad'], 'en çok tıklanan sonda' );
+
+		// Tükendi ürün "ölü ürün" sanılmasın diye işaretlenir.
+		qrms_assert_true( $sonuc['satirlar'][1]['tukendi'], 'tükendi bayrağı' );
+		qrms_assert_false( $sonuc['satirlar'][0]['tukendi'], 'stokta olan işaretsiz' );
+
+		// Sayaçlar ürüne doğru eşleşir.
+		qrms_assert_same( 9, $sonuc['satirlar'][2]['toplam'], 'tıklama sayısı' );
+		qrms_assert_same( 'Çorbalar', $sonuc['satirlar'][2]['kategori'], 'kategori adı' );
 	}
 );
 
 qrms_test(
-	'aynı pencerede kategori değiştirmek yeni istek doğurmaz',
+	'ürün listesi N+1 sorgu üretmez: tek get_posts, tek GROUP BY',
 	function () {
-		// Sunucu her yanıtta grafiği, masaları ve ürünleri BİRLİKTE döndürür;
-		// yanıt dönem+masa anahtarıyla saklanmazsa kategori geçişi aynı veriyi
-		// tekrar tekrar isterdi.
-		$js = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/assets/js/analitik.js' );
+		$GLOBALS['qrms_test']['posts'] = array();
 
-		qrms_assert_contains( 'state.onbellek[ anahtar ]', $js, 'önbellekten okur' );
-		qrms_assert_contains( 'function onbellekAnahtari( donem, masa )', $js, 'anahtar dönem + masa' );
+		for ( $i = 1; $i <= 40; $i++ ) {
+			$GLOBALS['qrms_test']['posts'][] = (object) array(
+				'ID'         => $i,
+				'post_title' => 'Ürün ' . $i,
+			);
+		}
 
-		// Yenile ve silme sonrası önbellek düşer: kullanıcı bayat veri görmez.
-		qrms_assert_same( 2, substr_count( $js, 'state.onbellek = {};' ), 'yenile + silme' );
+		$GLOBALS['qrms_test']['post_meta'] = array();
+		$GLOBALS['qrms_test']['terms']     = array();
+		$GLOBALS['qrms_test']['get_posts_calls'] = 0;
+
+		qrms_analitik_onbellek_sifirla();
+
+		$wpdb = qrms_sayan_wpdb();
+		$wpdb->results[] = array();  // urun_tiklama_sayaclari
+		$wpdb->results[] = array();  // kategori_dagilimi
+		$wpdb->vars[]    = 0;        // kategorisiz sayımı
+		$wpdb->results[] = array();  // urun_siralamasi
+
+		$veri = qrms_analitik_urun_verisi(
+			array(
+				'bas' => '2026-03-01 00:00:00',
+				'bit' => '2026-03-31 23:59:59',
+				'gun' => 31,
+			),
+			'',
+			1,
+			25
+		);
+
+		// Ürün sayısı 40 olmasına rağmen sorgu sayısı SABİT kalır: bir
+		// get_posts + dört analitik sorgusu (sayaçlar, dağılım, kategorisiz
+		// sayımı, en çok tıklananlar).
+		qrms_assert_same( 1, $GLOBALS['qrms_test']['get_posts_calls'], 'tek ürün sorgusu' );
+		qrms_assert_same( 4, count( $wpdb->queries ), 'sabit sayıda analitik sorgusu' );
+
+		// Sayfalama: 40 üründen ilk 25'i.
+		qrms_assert_same( 25, count( $veri['enaz'] ), 'sayfa boyu' );
+		qrms_assert_same( 2, $veri['enazOzet']['sayfalar'], 'iki sayfa' );
+		qrms_assert_same( 40, $veri['enazOzet']['toplam'], 'toplam ürün' );
+
+		// İkinci sayfa kalanı verir.
+		qrms_analitik_onbellek_sifirla();
+		$wpdb = qrms_sayan_wpdb();
+		$wpdb->results[] = array();
+		$wpdb->results[] = array();
+		$wpdb->vars[]    = 0;
+		$wpdb->results[] = array();
+
+		$veri = qrms_analitik_urun_verisi(
+			array(
+				'bas' => '2026-03-01 00:00:00',
+				'bit' => '2026-03-31 23:59:59',
+				'gun' => 31,
+			),
+			'',
+			2,
+			25
+		);
+
+		qrms_assert_same( 15, count( $veri['enaz'] ), 'ikinci sayfa' );
+	}
+);
+
+echo "\nQR Analiz — Veri & Sistem\n";
+
+qrms_test(
+	'saklama süresi kaydedilir; filtre en sonda kalır',
+	function () {
+		delete_option( QRMS_Analitik::SAKLAMA_OPT );
+
+		// Ayar yokken sabit varsayılan geçerlidir.
+		qrms_assert_same( 90, QRMS_Analitik::saklama_ayari(), 'varsayılan' );
+		qrms_assert_same( 90, QRMS_Analitik::saklama_gun(), 'geçerli süre' );
+		qrms_assert_false( QRMS_Analitik::saklama_kilitli_mi(), 'filtre yok' );
+
+		// Kaydedilen değer geçerli olur.
+		QRMS_Analitik::saklama_kaydet( 30 );
+		qrms_assert_same( 30, QRMS_Analitik::saklama_gun(), 'kaydedilen süre' );
+
+		// Alt sınır: 0 dışında 7 günün altına inilmez (panelin "son 30 gün"
+		// görünümleri boşalmasın).
+		QRMS_Analitik::saklama_kaydet( 3 );
+		qrms_assert_same( 7, QRMS_Analitik::saklama_gun(), 'alt sınır' );
+
+		// 0 temizliği kapatır.
+		QRMS_Analitik::saklama_kaydet( 0 );
+		qrms_assert_same( 0, QRMS_Analitik::saklama_gun(), 'sınırsız saklama' );
+		qrms_assert_same( 0, QRMS_Analitik::eski_kayitlari_sil(), 'temizlik çalışmaz' );
+
+		delete_option( QRMS_Analitik::SAKLAMA_OPT );
+	}
+);
+
+qrms_test(
+	'kodla sabitlenmiş saklama süresi ekranda görünür kılınır',
+	function () {
+		delete_option( QRMS_Analitik::SAKLAMA_OPT );
+		QRMS_Analitik::saklama_kaydet( 30 );
+
+		// Bir mu-plugin süreyi sabitlemişse ekrandan kaydedilen değer
+		// geçersizdir; kullanıcı bunu bilmeli.
+		add_filter(
+			'qrms_analitik_saklama_gun',
+			function () {
+				return 120;
+			}
+		);
+
+		qrms_assert_same( 30, QRMS_Analitik::saklama_ayari(), 'kayıtlı değer korunur' );
+		qrms_assert_same( 120, QRMS_Analitik::saklama_gun(), 'filtre kazanır' );
+		qrms_assert_true( QRMS_Analitik::saklama_kilitli_mi(), 'ekran uyarır' );
+
+		$GLOBALS['qrms_test']['actions']['qrms_analitik_saklama_gun'] = array();
+		delete_option( QRMS_Analitik::SAKLAMA_OPT );
+	}
+);
+
+qrms_test(
+	'tablo istatistikleri transient ile önbelleklenir',
+	function () {
+		delete_transient( 'qrms_analitik_tablo_istat' );
+
+		$wpdb = qrms_sayan_wpdb();
+		$wpdb->vars[]    = 'wp_rma_analytics'; // tablo_var_mi
+		$wpdb->rows[]    = array(
+			'satir' => 1200,
+			'ilk'   => '2026-01-05 10:00:00',
+		);
+		$wpdb->vars[]    = 3145728; // DATA_LENGTH + INDEX_LENGTH
+
+		$istat = QRMS_Analitik::tablo_istatistikleri();
+
+		qrms_assert_same( 1200, $istat['satir'], 'satır sayısı' );
+		qrms_assert_same( '2026-01-05 10:00:00', $istat['ilk'], 'en eski kayıt' );
+		qrms_assert_same( 3145728, $istat['boyut'], 'disk boyutu' );
+
+		$sorgu_sayisi = count( $wpdb->queries );
+
+		// İkinci çağrı hiç sorgu açmaz: COUNT(*) ve information_schema her
+		// sayfa açılışında çalıştırılacak şeyler değildir.
+		QRMS_Analitik::tablo_istatistikleri();
+		qrms_assert_same( $sorgu_sayisi, count( $wpdb->queries ), 'ikinci çağrı önbellekten' );
+
+		// Kayıt silindiğinde önbellek düşer, yoksa ekran bayat sayı gösterirdi.
+		QRMS_Analitik::istatistik_onbellegini_temizle();
+		qrms_assert_false( get_transient( 'qrms_analitik_tablo_istat' ), 'önbellek düştü' );
+
+		qrms_assert_contains( 'MB', qrms_analitik_boyut_metni( 3145728 ), 'okunabilir boyut' );
+		qrms_assert_same( '—', qrms_analitik_boyut_metni( 0 ), 'boş tablo' );
+	}
+);
+
+qrms_test(
+	'ham CSV akış hâlinde yazar: id ilerlemeli, tavanlı',
+	function () {
+		// Bellek: bütün tabloyu diziye almak yerine dilim dilim çekilir.
+		// Sayfalama OFFSET ile değil id > son_id ile yapılır (OFFSET büyüdükçe
+		// MySQL atlanan satırları da okur).
+		$sinif = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/class-qrms-analitik.php' );
+
+		qrms_assert_contains( 'id > %d', $sinif, 'id ilerlemeli sayfalama' );
+		// OFFSET yalnızca gerekçe yorumunda geçer, SORGUDA değil.
+		qrms_assert_false( false !== strpos( $sinif, 'LIMIT %d OFFSET' ), 'OFFSET ile sayfalama yok' );
+		qrms_assert_contains( 'const CSV_TAVAN', $sinif, 'satır tavanı' );
+		qrms_assert_contains( 'const CSV_PARCA', $sinif, 'dilim boyu' );
+
+		// Tavana dayanılırsa kullanıcı bunu dosyanın içinde görür; sessizce
+		// kesmek eksik veriyi tam sanmaktan kötüdür.
+		qrms_assert_contains( 'UYARI: Dosya', $sinif, 'kesme uyarısı' );
+	}
+);
+
+echo "\nQR Analiz — Masalar kategorisi\n";
+
+qrms_test(
+	'hiç okutulmamış masa listeden DÜŞMEZ, 0 ile görünür',
+	function () {
+		// Kayıt kaynağı qr-masa; sayaç kaynağı analitik tablosu. Sayacı
+		// olmayan masa listede kalmalı — asıl aranan satır odur.
+		$masalar = array(
+			array(
+				'slug' => 'bahce-1',
+				'ad'   => 'Bahçe 1',
+				'grup' => 'bahce',
+			),
+			array(
+				'slug' => 'bahce-2',
+				'ad'   => 'Bahçe 2',
+				'grup' => 'bahce',
+			),
+			array(
+				'slug' => 'salon-1',
+				'ad'   => 'Salon 1',
+				'grup' => 'salon',
+			),
+		);
+
+		$sayaclar = array(
+			'bahce-1' => array(
+				'mv'  => 40,
+				'pc'  => 10,
+				'uv'  => 22,
+				'son' => '2026-03-10 12:00:00',
+			),
+			'salon-1' => array(
+				'mv'  => 5,
+				'pc'  => 1,
+				'uv'  => 3,
+				'son' => '2026-03-09 20:00:00',
+			),
+		);
+
+		$karne = qrms_analitik_masa_karnesi( $masalar, $sayaclar );
+
+		qrms_assert_same( 3, count( $karne['satirlar'] ), 'üç masa da listede' );
+		qrms_assert_same( 3, $karne['ozet']['kayitli'], 'kayıtlı masa sayısı' );
+		qrms_assert_same( 1, $karne['ozet']['sessiz'], 'hiç okutulmayan bir masa' );
+
+		// Hareketi çok olan üstte, sessiz masa altta ama LİSTEDE.
+		qrms_assert_same( 'bahce-1', $karne['satirlar'][0]['masa'], 'en hareketli üstte' );
+		qrms_assert_same( 'bahce-2', $karne['satirlar'][2]['masa'], 'sessiz masa listede' );
+		qrms_assert_same( 0, $karne['satirlar'][2]['mv'], 'sıfır okutma' );
+	}
+);
+
+qrms_test(
+	'silinmiş masanın kaydı "kayıtlı değil" olarak durur, masasız erişim ayrıdır',
+	function () {
+		$masalar = array(
+			array(
+				'slug' => 'salon-1',
+				'ad'   => 'Salon 1',
+				'grup' => 'salon',
+			),
+		);
+
+		$sayaclar = array(
+			'salon-1' => array(
+				'mv'  => 10,
+				'pc'  => 2,
+				'uv'  => 6,
+				'son' => '2026-03-10 10:00:00',
+			),
+			// Artık qr-masa'da olmayan bir masa: geçmişi kaybolmamalı.
+			'eski-masa' => array(
+				'mv'  => 30,
+				'pc'  => 8,
+				'uv'  => 15,
+				'son' => '2026-02-01 10:00:00',
+			),
+			// QR okutmadan gelen hareketler.
+			'' => array(
+				'mv'  => 7,
+				'pc'  => 1,
+				'uv'  => 4,
+				'son' => '2026-03-11 09:00:00',
+			),
+		);
+
+		$karne   = qrms_analitik_masa_karnesi( $masalar, $sayaclar );
+		$durumlar = array();
+
+		foreach ( $karne['satirlar'] as $satir ) {
+			$durumlar[ $satir['masa'] ] = $satir['durum'];
+		}
+
+		qrms_assert_same( 'kayitli', $durumlar['salon-1'], 'kayıtlı masa' );
+		qrms_assert_same( 'kayitsiz', $durumlar['eski-masa'], 'silinmiş masa listede kalır' );
+		qrms_assert_same( 'masasiz', $durumlar[''], 'masasız erişim ayrı' );
+		qrms_assert_same( 1, $karne['ozet']['kayitsiz'], 'kayıtsız sayacı' );
+
+		// Masasız satır bir masa değildir: sıralamaya karışmaz, en sonda durur.
+		$son = $karne['satirlar'][ count( $karne['satirlar'] ) - 1 ];
+		qrms_assert_same( 'masasiz', $son['durum'], 'masasız en sonda' );
+
+		// Gruplar YALNIZCA kayıtlı masalardan üretilir.
+		qrms_assert_same( 1, count( $karne['gruplar'] ), 'tek grup' );
+		qrms_assert_same( 'salon', $karne['gruplar'][0]['grup'], 'grup adı' );
+		qrms_assert_same( 10, $karne['gruplar'][0]['mv'], 'grup toplamı' );
+	}
+);
+
+qrms_test(
+	'gruplar toplulaştırılır ve sessiz masaları ayrıca sayar',
+	function () {
+		$masalar = array();
+
+		for ( $i = 1; $i <= 3; $i++ ) {
+			$masalar[] = array(
+				'slug' => 'bahce-' . $i,
+				'ad'   => 'Bahçe ' . $i,
+				'grup' => 'bahce',
+			);
+		}
+
+		$masalar[] = array(
+			'slug' => 'salon-1',
+			'ad'   => 'Salon 1',
+			'grup' => 'salon',
+		);
+
+		$karne = qrms_analitik_masa_karnesi(
+			$masalar,
+			array(
+				'bahce-1' => array(
+					'mv'  => 60,
+					'pc'  => 20,
+					'uv'  => 30,
+					'son' => '',
+				),
+				'bahce-2' => array(
+					'mv'  => 60,
+					'pc'  => 20,
+					'uv'  => 30,
+					'son' => '',
+				),
+				'salon-1' => array(
+					'mv'  => 300,
+					'pc'  => 40,
+					'uv'  => 120,
+					'son' => '',
+				),
+			)
+		);
+
+		// Sıralama toplam harekete göre: salon (340) > bahçe (160).
+		qrms_assert_same( 'salon', $karne['gruplar'][0]['grup'], 'en hareketli grup' );
+		qrms_assert_same( 300, $karne['gruplar'][0]['mv'], 'salon okutma' );
+		qrms_assert_same( 120, $karne['gruplar'][1]['mv'], 'bahçe okutma toplamı' );
+		qrms_assert_same( 3, $karne['gruplar'][1]['masa'], 'bahçede üç masa' );
+		qrms_assert_same( 1, $karne['gruplar'][1]['sessiz'], 'biri hiç okutulmamış' );
+	}
+);
+
+qrms_test(
+	'uzun masa slug\'ı analitikteki kırpılmış anahtarla eşleşir',
+	function () {
+		// masa_no varchar(64); qrm_tables.table_slug varchar(100). Kırpma
+		// hesaba katılmazsa uzun adlı masa "hiç okutulmadı" görünürdü.
+		$uzun    = str_repeat( 'a', 70 );
+		$kirpik  = substr( $uzun, 0, QRMS_Analitik::MASA_UZUNLUK );
+
+		qrms_assert_same( 64, strlen( $kirpik ), 'anahtar 64 karaktere iner' );
+		qrms_assert_same( $kirpik, qrms_analitik_masa_anahtari( $uzun ), 'anahtar kırpılır' );
+
+		$karne = qrms_analitik_masa_karnesi(
+			array(
+				array(
+					'slug' => $uzun,
+					'ad'   => 'Uzun Masa',
+					'grup' => 'uzun',
+				),
+			),
+			array(
+				$kirpik => array(
+					'mv'  => 12,
+					'pc'  => 3,
+					'uv'  => 7,
+					'son' => '2026-03-10 12:00:00',
+				),
+			)
+		);
+
+		qrms_assert_same( 1, count( $karne['satirlar'] ), 'tek satır (kopya yok)' );
+		qrms_assert_same( 12, $karne['satirlar'][0]['mv'], 'sayaç eşleşti' );
+		qrms_assert_same( 0, $karne['ozet']['kayitsiz'], 'kayıtsız satır üretilmedi' );
+	}
+);
+
+qrms_test(
+	'masa sayaçları tek GROUP BY ile indeksli aralıktan gelir',
+	function () {
+		$wpdb            = qrms_sayan_wpdb();
+		$wpdb->results[] = array(
+			array(
+				'masa_no' => 'bahce-1',
+				'mv'      => 10,
+				'pc'      => 2,
+				'uv'      => 6,
+				'son'     => '2026-03-10 12:00:00',
+			),
+		);
+
+		$sayac = QRMS_Analitik::masa_sayaclari( '2026-03-01 00:00:00', '2026-03-31 23:59:59', 'bahce-1' );
+
+		qrms_assert_same( 1, count( $wpdb->queries ), 'tek sorgu' );
+		qrms_assert_same( 10, $sayac['bahce-1']['mv'], 'sayaç masa_no ile anahtarlanır' );
+
+		// Aralık iki uçtan sınırlı + masa filtresi: idx_masa_td kullanılabilir.
+		qrms_assert_contains( 'created_at BETWEEN', $wpdb->queries[0], 'kapalı aralık' );
+		qrms_assert_contains( "masa_no = 'bahce-1'", $wpdb->queries[0], 'masa filtresi' );
+		qrms_assert_contains( 'GROUP BY masa_no', $wpdb->queries[0], 'tek gruplama' );
+	}
+);
+
+qrms_test(
+	'garson çağırma / hesap isteme bölümü Faz 6\'ya kadar BASILMAZ',
+	function () {
+		$sayfa = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/masalar-sayfasi.php' );
+
+		// Boş bir tablo, veri yokluğunu hata gibi gösterirdi; bölüm hiç
+		// basılmaz ama yeri yorumla işaretlidir.
+		qrms_assert_contains( 'FAZ 6', $sayfa, 'yer işareti' );
+		qrms_assert_contains( 'waiter_call', $sayfa, 'olay adı yazılı' );
+		qrms_assert_contains( 'bill_request', $sayfa, 'olay adı yazılı' );
+
+		$js = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/assets/js/analitik-masalar.js' );
+
+		qrms_assert_false( false !== strpos( $js, 'waiter' ), 'ekranda bölüm yok' );
+		qrms_assert_false( false !== strpos( $js, 'bill' ), 'ekranda bölüm yok' );
+	}
+);
+
+qrms_test(
+	'kategori dağılımı boş adları listeye KARIŞTIRMAZ, ayrı sayar',
+	function () {
+		$wpdb            = qrms_sayan_wpdb();
+		$wpdb->results[] = array(
+			array(
+				'category_name' => 'Tatlılar',
+				'toplam'        => 12,
+				'urun_sayisi'   => 3,
+				'tekil'         => 8,
+			),
+		);
+		$wpdb->vars[] = 5;
+
+		$sonuc = QRMS_Analitik::kategori_dagilimi( '2026-03-01 00:00:00', '2026-03-31 23:59:59' );
+
+		qrms_assert_same( 1, count( $sonuc['satirlar'] ), 'yalnızca gerçek kategoriler' );
+		qrms_assert_same( 'Tatlılar', $sonuc['satirlar'][0]['kategori'], 'kategori adı' );
+		qrms_assert_same( 5, $sonuc['kategorisiz'], 'boş adlar ayrı sayılır' );
+
+		// category_name yalnızca product_click olayında dolar; sorgu da
+		// yalnızca ona bakar ve boş adları dışarıda bırakır.
+		qrms_assert_contains( "event_type='product_click'", $wpdb->queries[0], 'yalnızca tıklama olayı' );
+		qrms_assert_contains( "category_name <> ''", $wpdb->queries[0], 'boş adlar dışarıda' );
+
+		// Aralık iki uçtan sınırlı: idx_td aralık taraması olarak kullanılır.
+		qrms_assert_contains( 'created_at BETWEEN', $wpdb->queries[0], 'kapalı aralık' );
+	}
+);
+
+qrms_test(
+	'yeniden adlandırılmış kategori "eski ad" olarak işaretlenir',
+	function () {
+		$GLOBALS['qrms_test']['posts']      = array();
+		$GLOBALS['qrms_test']['post_meta']  = array();
+		$GLOBALS['qrms_test']['terms']      = array();
+		// Taksonomide yalnızca "Tatlılar" var; "Tatlı" eski addır.
+		$GLOBALS['qrms_test']['term_names'] = array( 'Tatlılar', 'Çorbalar' );
+
+		qrms_analitik_onbellek_sifirla();
+
+		$wpdb            = qrms_sayan_wpdb();
+		$wpdb->results[] = array(); // sayaçlar
+		$wpdb->results[] = array(
+			array(
+				'category_name' => 'Tatlılar',
+				'toplam'        => 12,
+				'urun_sayisi'   => 3,
+				'tekil'         => 8,
+			),
+			array(
+				'category_name' => 'Tatlı',
+				'toplam'        => 4,
+				'urun_sayisi'   => 1,
+				'tekil'         => 3,
+			),
+		);
+		$wpdb->vars[]    = 0;
+		$wpdb->results[] = array(); // en çok tıklananlar
+
+		$veri = qrms_analitik_urun_verisi(
+			array(
+				'bas' => '2026-03-01 00:00:00',
+				'bit' => '2026-03-31 23:59:59',
+				'gun' => 31,
+			)
+		);
+
+		qrms_assert_false( $veri['kategoriler'][0]['eski_ad'], 'mevcut ad işaretlenmez' );
+		qrms_assert_true( $veri['kategoriler'][1]['eski_ad'], 'artık olmayan ad işaretlenir' );
+
+		// Sayı DÜZELTİLMEZ: iki satır da olduğu gibi kalır, yalnızca
+		// etiketlenir (hangi eski adın hangi yeni ada karşılık geldiğini
+		// söyleyen bir kayıt yok).
+		qrms_assert_same( 2, count( $veri['kategoriler'] ), 'satırlar birleştirilmez' );
+		qrms_assert_same( 4, $veri['kategoriler'][1]['toplam'], 'eski adın sayısı korunur' );
+	}
+);
+
+qrms_test(
+	'ortak JS yardımcıları TEK dosyada durur, iki ekranda kopyalanmaz',
+	function () {
+		$ortak = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/assets/js/analitik-ortak.js' );
+		$eski  = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/assets/js/analitik.js' );
+		$genel = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/assets/js/analitik-genel.js' );
+
+		// Fetch sarmalayıcısı, tablo iskeleti, grafik çizimi ve filtre çubuğu:
+		// hepsi ortakta tanımlı, diğer iki dosyada YENİDEN tanımlı değil.
+		foreach ( array( 'function post(', 'function tabloIskelet(', 'function grafikHtml(', 'function filtreKur(' ) as $fn ) {
+			qrms_assert_contains( $fn, $ortak, $fn . ' ortakta' );
+			qrms_assert_false( false !== strpos( $genel, $fn ), $fn . ' Genel Bakış\'ta kopyalanmadı' );
+		}
+
+		foreach ( array( 'function tabloIskelet(', 'function grafikHtml(', 'function esc(' ) as $fn ) {
+			qrms_assert_false( false !== strpos( $eski, $fn ), $fn . ' klasik panelde kopyalanmadı' );
+		}
+
+		// İki ekran da ortağı kullanır ve yoksa sessizce durur.
+		qrms_assert_contains( 'window.qrmsAnOrtak', $ortak, 'ortak ad alanı' );
+		qrms_assert_contains( 'window.qrmsAnOrtak', $eski, 'klasik panel ortağı kullanır' );
+		qrms_assert_contains( 'window.qrmsAnOrtak', $genel, 'Genel Bakış ortağı kullanır' );
+	}
+);
+
+qrms_test(
+	'Genel Bakış aynı kırılımı iki kez istemez',
+	function () {
+		// Aralık ve masa sayfa ömrü boyunca sabittir (değişmeleri sayfayı
+		// yeniler); yalnızca kırılım değişir, o da önbelleğe alınır.
+		$js = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/assets/js/analitik-genel.js' );
+
+		qrms_assert_contains( 'state.onbellek[ state.kirilim ]', $js, 'kırılım önbelleği' );
 	}
 );
 
@@ -7886,6 +8687,155 @@ qrms_test(
 		foreach ( $genel as $anahtar => $deger ) {
 			qrms_assert_same( 0, $deger, $anahtar . ' sıfır' );
 		}
+	}
+);
+
+qrms_test(
+	'keyfi aralık özeti TEK indeksli sorguya iner',
+	function () {
+		$wpdb = qrms_sayan_wpdb();
+		$wpdb->rows[] = array(
+			'mv'          => 10,
+			'pc'          => 4,
+			'uv'          => 7,
+			'masa_sayisi' => 3,
+			'mv_onceki'   => 8,
+			'pc_onceki'   => 2,
+			'uv_onceki'   => 6,
+		);
+
+		$ozet = QRMS_Analitik::aralik_ozeti(
+			'2026-03-10 00:00:00',
+			'2026-03-16 23:59:59',
+			'2026-03-03 00:00:00'
+		);
+
+		qrms_assert_same( 1, count( $wpdb->queries ), 'tek sorgu' );
+		qrms_assert_same( 10, $ozet['mv'], 'görüntüleme' );
+		qrms_assert_same( 8, $ozet['mv_onceki'], 'önceki pencere' );
+
+		// Pencere İKİ UÇTAN sınırlı olmalı: aksi hâlde idx_date bir aralık
+		// taraması olarak kullanılamaz ve tablo baştan sona taranır.
+		qrms_assert_contains( 'WHERE created_at BETWEEN', $wpdb->queries[0], 'kapalı aralık' );
+		qrms_assert_contains( '2026-03-03 00:00:00', $wpdb->queries[0], 'alt sınır önceki pencereden' );
+		qrms_assert_contains( '2026-03-16 23:59:59', $wpdb->queries[0], 'üst sınır' );
+
+		// Şimdiki/önceki ayrımı WHERE'de değil SUM/CASE içinde yapılır.
+		qrms_assert_contains( "SUM(event_type='menu_view'     AND created_at >=", $wpdb->queries[0], 'kova koşulu' );
+	}
+);
+
+qrms_test(
+	'aralık özetinde kayıt yokken NULL toplamlar sıfıra iner',
+	function () {
+		$wpdb         = qrms_sayan_wpdb();
+		$wpdb->rows[] = array(
+			'mv'          => null,
+			'pc'          => null,
+			'uv'          => null,
+			'masa_sayisi' => null,
+			'mv_onceki'   => null,
+			'pc_onceki'   => null,
+			'uv_onceki'   => null,
+		);
+
+		foreach ( QRMS_Analitik::aralik_ozeti( 'a', 'b', 'c' ) as $anahtar => $deger ) {
+			qrms_assert_same( 0, $deger, $anahtar . ' sıfır' );
+		}
+	}
+);
+
+qrms_test(
+	'grafik keyfi aralıkta da sıfır doldurur ve indeksli kalır',
+	function () {
+		$wpdb = qrms_sayan_wpdb();
+		// Yalnızca bir günde veri var; kalan günler sıfırla dolmalı.
+		$wpdb->results[] = array(
+			array(
+				'k'  => '2026-03-11',
+				'mv' => 5,
+				'pc' => 2,
+				'uv' => 3,
+			),
+		);
+
+		$satirlar = QRMS_Analitik::grafik_araligi( 'daily', '2026-03-10 00:00:00', '2026-03-12 23:59:59' );
+
+		qrms_assert_same( 3, count( $satirlar ), 'üç günün üçü de var' );
+		qrms_assert_same( 0, $satirlar[0]['mv'], 'sessiz gün sıfırla dolar' );
+		qrms_assert_same( 5, $satirlar[1]['mv'], 'veri olan gün' );
+		qrms_assert_contains( 'created_at BETWEEN', $wpdb->queries[0], 'kapalı aralık' );
+	}
+);
+
+qrms_test(
+	'kırılım aralıkla uyumsuzsa en yakın anlamlıya düşer',
+	function () {
+		// Tek gün: yalnızca saatlik anlamlı (günlük tek çubuk olurdu).
+		qrms_assert_same( array( 'hourly' ), QRMS_Analitik_Filtre::kirilimlar( 1 ), 'tek gün' );
+
+		// Bir hafta: günlük; haftalık iki tam hafta istemeden anlamsız.
+		qrms_assert_same( array( 'daily' ), QRMS_Analitik_Filtre::kirilimlar( 7 ), 'yedi gün' );
+
+		// İki hafta ve üstü: haftalık da açılır.
+		qrms_assert_same( array( 'daily', 'weekly' ), QRMS_Analitik_Filtre::kirilimlar( 14 ), 'iki hafta' );
+
+		// İki ay ve üstü: aylık da açılır.
+		qrms_assert_same( array( 'daily', 'weekly', 'monthly' ), QRMS_Analitik_Filtre::kirilimlar( 60 ), 'iki ay' );
+
+		// Çok uzun aralıkta günlük düşer (yüzlerce çubuk okunmaz).
+		qrms_assert_same( array( 'weekly', 'monthly' ), QRMS_Analitik_Filtre::kirilimlar( 200 ), 'uzun aralık' );
+
+		// "Bugün" + aylık istenirse saatliğe düşülür, hata verilmez.
+		qrms_assert_same(
+			'hourly',
+			QRMS_Analitik_Filtre::kirilim(
+				array(
+					'donem'   => 'bugun',
+					'kirilim' => 'monthly',
+				)
+			),
+			'geçersiz kırılım düzeltilir'
+		);
+
+		// Geçerli olan aynen kalır.
+		qrms_assert_same(
+			'weekly',
+			QRMS_Analitik_Filtre::kirilim(
+				array(
+					'donem'   => 'ozel',
+					'bas'     => '2026-01-01',
+					'bit'     => '2026-03-01',
+					'kirilim' => 'weekly',
+				)
+			),
+			'geçerli kırılım korunur'
+		);
+	}
+);
+
+qrms_test(
+	'filtre aralığı ve karşılaştırma penceresi eşit uzunluktadır',
+	function () {
+		$bugun = QRMS_Analitik_Filtre::aralik( array( 'donem' => 'bugun' ) );
+		qrms_assert_same( 1, $bugun['gun'], 'bugün tek gün' );
+		qrms_assert_contains( '00:00:00', $bugun['bas'], 'günün başı' );
+		qrms_assert_contains( '23:59:59', $bugun['bit'], 'günün sonu' );
+
+		$hafta = QRMS_Analitik_Filtre::aralik( array( 'donem' => 'hafta' ) );
+		qrms_assert_same( 7, $hafta['gun'], 'son 7 gün' );
+
+		$ozel = array(
+			'donem' => 'ozel',
+			'bas'   => '2026-03-10',
+			'bit'   => '2026-03-12',
+		);
+
+		qrms_assert_same( 3, QRMS_Analitik_Filtre::aralik( $ozel )['gun'], 'özel aralık gün sayısı' );
+
+		// Karşılaştırma penceresi aralığın hemen öncesinde ve aynı uzunlukta:
+		// 10–12 Mart'ın öncesi 7–9 Mart'tır.
+		qrms_assert_same( '2026-03-07 00:00:00', QRMS_Analitik_Filtre::onceki_baslangic( $ozel ), 'önceki pencere' );
 	}
 );
 

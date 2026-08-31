@@ -692,6 +692,19 @@ class QRMS_Admin {
 		$module_name = QRMS_Helpers::get_module_name( $module_slug );
 		$current     = function_exists( 'get_admin_page_title' ) ? get_admin_page_title() : '';
 
+		/**
+		 * Alt sayfadaki "geri" bağlantısının hedefi.
+		 *
+		 * Varsayılan hedef modülün hub ekranıdır. Alt sayfaları arasında
+		 * DURUM taşıyan modüller (ör. İstatistikler'in ortak zaman aralığı ve
+		 * masa filtresi) adrese kendi query arg'larını ekleyebilsin diye
+		 * filtrelenir; aksi hâlde hub'a dönmek seçimi sıfırlardı.
+		 *
+		 * @param string $url         Modülün hub adresi.
+		 * @param string $module_slug Alt sayfanın sahibi modül.
+		 */
+		$url = (string) apply_filters( 'qrms_subpage_back_url', self::get_module_page_url( $module_slug ), $module_slug );
+
 		if ( '' === $current && isset( $GLOBALS['title'] ) ) {
 			$current = (string) $GLOBALS['title'];
 		}
@@ -701,7 +714,7 @@ class QRMS_Admin {
 		}
 		?>
 		<div class="qrms-subpage-nav">
-			<a class="qrms-back-link" href="<?php echo esc_url( self::get_module_page_url( $module_slug ) ); ?>">
+			<a class="qrms-back-link" href="<?php echo esc_url( $url ); ?>">
 				<span class="dashicons dashicons-arrow-left-alt2" aria-hidden="true"></span>
 				<?php echo esc_html( $module_name ); ?>
 			</a>
