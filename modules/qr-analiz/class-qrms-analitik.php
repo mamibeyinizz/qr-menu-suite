@@ -151,6 +151,7 @@ class QRMS_Analitik {
 
 		add_action( 'wp_ajax_qrms_analitik_veri', array( __CLASS__, 'ajax_veri' ) );
 		add_action( 'wp_ajax_qrms_analitik_genel', array( __CLASS__, 'ajax_genel' ) );
+		add_action( 'wp_ajax_qrms_analitik_urunler', array( __CLASS__, 'ajax_urunler' ) );
 		add_action( 'wp_ajax_qrms_analitik_csv', array( __CLASS__, 'ajax_csv' ) );
 		add_action( 'wp_ajax_qrms_analitik_temizle', array( __CLASS__, 'ajax_temizle' ) );
 
@@ -1350,13 +1351,29 @@ class QRMS_Analitik {
 	 * @return array<int,array<string,mixed>>
 	 */
 	public static function en_cok_tiklananlar( $donem, $masa = '', $limit = 30 ) {
+		$bit = current_time( 'Y-m-d' ) . ' 23:59:59';
+
+		return self::urun_siralamasi( self::donem_baslangici( $donem ), $bit, $masa, $limit );
+	}
+
+	/**
+	 * Ürün sıralaması — KEYFİ aralık.
+	 *
+	 * @param string $bas   Aralık başlangıcı (MySQL biçimi).
+	 * @param string $bit   Aralık bitişi (MySQL biçimi).
+	 * @param string $masa  Masa filtresi.
+	 * @param int    $limit Azami satır.
+	 * @return array<int,array<string,mixed>>
+	 */
+	public static function urun_siralamasi( $bas, $bit, $masa = '', $limit = 30 ) {
 		global $wpdb;
 
-		$tablo     = self::tablo();
-		$masa_ek   = self::masa_sql( $masa );
-		$baslangic = self::donem_baslangici( $donem );
+		$tablo   = self::tablo();
+		$masa_ek = self::masa_sql( $masa );
 
-		$kosul = $wpdb->prepare( 'created_at >= %s', $baslangic );
+		// Aralık iki uçtan sınırlı: idx_td (event_type, created_at) aralık
+		// taraması olarak kullanılabilir.
+		$kosul = $wpdb->prepare( 'created_at BETWEEN %s AND %s', $bas, $bit );
 		$sinir = $wpdb->prepare( 'LIMIT %d', max( 1, (int) $limit ) );
 
 		/*
@@ -1389,6 +1406,129 @@ class QRMS_Analitik {
 		);
 
 		return is_array( $satir ) ? $satir : array();
+	}
+
+	/**
+	 * Ürün başına ham tıklama sayaçları (item_id => satır).
+	 *
+	 * "En az tıklanan ürünler" listesi iki KAYNAĞI birleştirir: yayınlanmış
+	 * ürünler (CPT) ve tıklama sayıları (analitik tablosu). Ürün başına ayrı
+	 * sorgu N+1 demek olurdu; burada TEK bir GROUP BY ile bütün sayaçlar
+	 * çekilir, eşleştirme PHP tarafında yapılır (bkz. urunler-sayfasi.php).
+	 *
+	 * Sıralama ve limit YOKTUR: hiç tıklanmamış ürünler bu sonuçta zaten
+	 * bulunmaz, onları CPT tarafı getirir.
+	 *
+	 * @param string $bas  Aralık başlangıcı (MySQL biçimi).
+	 * @param string $bit  Aralık bitişi (MySQL biçimi).
+	 * @param string $masa Masa filtresi.
+	 * @return array<int,array{toplam:int,tekil:int,son:string}>
+	 */
+	public static function urun_tiklama_sayaclari( $bas, $bit, $masa = '' ) {
+		global $wpdb;
+
+		$tablo   = self::tablo();
+		$masa_ek = self::masa_sql( $masa );
+		$kosul   = $wpdb->prepare( 'created_at BETWEEN %s AND %s', $bas, $bit );
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$ham = $wpdb->get_results(
+			"SELECT item_id,
+				COUNT(*) AS toplam,
+				COUNT(DISTINCT ip_hash) AS tekil,
+				MAX(created_at) AS son
+			 FROM {$tablo}
+			 WHERE event_type='product_click' AND item_id > 0 AND {$kosul}{$masa_ek}
+			 GROUP BY item_id",
+			ARRAY_A
+		);
+
+		$sayac = array();
+
+		foreach ( (array) $ham as $r ) {
+			$sayac[ (int) $r['item_id'] ] = array(
+				'toplam' => (int) $r['toplam'],
+				'tekil'  => (int) $r['tekil'],
+				'son'    => (string) $r['son'],
+			);
+		}
+
+		return $sayac;
+	}
+
+	/**
+	 * Kategori dağılımı — seçili aralıkta hangi kategori kaç tıklama aldı.
+	 *
+	 * KATEGORİ ADI TAKSONOMİDEN DEĞİL, KAYITTAN gelir: tıklama anındaki ad
+	 * saklanır (bkz. izle_urun_tiklama). Kategori sonradan yeniden
+	 * adlandırıldıysa eski kayıtlar eski adla durur ve iki ayrı satır olarak
+	 * görünür. Bu bir veri gerçeğidir; sorguda "düzeltilmeye" çalışılmaz
+	 * (hangi eski adın hangi yeni ada karşılık geldiğini söyleyen bir kayıt
+	 * yok, tahmin etmek sayıları sessizce yanlışlardı). Arayüz bunun yerine
+	 * artık var olmayan adları işaretler — bkz. urunler-sayfasi.php.
+	 *
+	 * BOŞ ADLAR AYRIŞTIRILIR, TOPLANMAZ. category_name yalnızca product_click
+	 * olayında doldurulur; menu_view'da her zaman boştur, bu yüzden sorgu
+	 * zaten yalnızca product_click'e bakar. Buna rağmen boş kalan kayıtlar
+	 * vardır: ürünün tıklama anında hiç rma_category terimi yoktu ya da kayıt
+	 * eski bağımsız eklentiden kalmadır. Bunları "Kategorisiz" adlı bir
+	 * satırda toplamak, sıralamada gerçek kategorilerle yarışan HAYALİ bir
+	 * kategori üretirdi; bu yüzden listeden çıkarılır ama sayısı ayrıca
+	 * döndürülür — kullanıcı "toplam ile liste neden tutmuyor" diye
+	 * sormasın.
+	 *
+	 * @param string $bas   Aralık başlangıcı (MySQL biçimi).
+	 * @param string $bit   Aralık bitişi (MySQL biçimi).
+	 * @param string $masa  Masa filtresi.
+	 * @param int    $limit Azami satır.
+	 * @return array{satirlar:array<int,array<string,mixed>>,kategorisiz:int}
+	 */
+	public static function kategori_dagilimi( $bas, $bit, $masa = '', $limit = 50 ) {
+		global $wpdb;
+
+		$tablo   = self::tablo();
+		$masa_ek = self::masa_sql( $masa );
+		$kosul   = $wpdb->prepare( 'created_at BETWEEN %s AND %s', $bas, $bit );
+		$sinir   = $wpdb->prepare( 'LIMIT %d', max( 1, (int) $limit ) );
+
+		// İki sayaç da aynı aralık taramasından çıkar: kategorili satırlar
+		// gruplanırken kategorisizler ayrı bir sorguya gerek kalmadan
+		// sayılabilsin diye toplam ayrıca istenir.
+		// phpcs:disable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$satirlar = $wpdb->get_results(
+			"SELECT category_name,
+				COUNT(*) AS toplam,
+				COUNT(DISTINCT item_id) AS urun_sayisi,
+				COUNT(DISTINCT ip_hash) AS tekil
+			 FROM {$tablo}
+			 WHERE event_type='product_click' AND category_name <> '' AND {$kosul}{$masa_ek}
+			 GROUP BY category_name
+			 ORDER BY toplam DESC
+			 {$sinir}",
+			ARRAY_A
+		);
+
+		$kategorisiz = (int) $wpdb->get_var(
+			"SELECT COUNT(*) FROM {$tablo}
+			 WHERE event_type='product_click' AND category_name = '' AND {$kosul}{$masa_ek}"
+		);
+		// phpcs:enable
+
+		$sonuc = array();
+
+		foreach ( (array) $satirlar as $r ) {
+			$sonuc[] = array(
+				'kategori'    => (string) $r['category_name'],
+				'toplam'      => (int) $r['toplam'],
+				'urun_sayisi' => (int) $r['urun_sayisi'],
+				'tekil'       => (int) $r['tekil'],
+			);
+		}
+
+		return array(
+			'satirlar'    => $sonuc,
+			'kategorisiz' => $kategorisiz,
+		);
 	}
 
 	/* -----------------------------------------------------------------
@@ -1442,10 +1582,42 @@ class QRMS_Analitik {
 			array(
 				'donem'   => $donem,
 				'masa'    => $masa,
-				'genel'   => self::genel_bakis( $masa ),
 				'grafik'  => $grafik,
-				'urunler' => self::en_cok_tiklananlar( $donem, $masa, 30 ),
 				'masalar' => self::masa_secenekleri(),
+			)
+		);
+	}
+
+	/**
+	 * Ürünler kategorisinin verisi.
+	 *
+	 * Yalnızca BU kategorinin sorguları çalışır: özet kartları, zaman grafiği
+	 * ve masa kesiti burada hiç sorulmaz.
+	 *
+	 * @return void
+	 */
+	public static function ajax_urunler() {
+		check_ajax_referer( self::NONCE, 'security' );
+
+		if ( ! current_user_can( QRMS_Admin::CAPABILITY ) ) {
+			wp_send_json_error( array( 'mesaj' => __( 'Yetkiniz yok.', 'qrms' ) ), 403 );
+		}
+
+		// phpcs:disable WordPress.Security.NonceVerification.Missing -- check_ajax_referer yukarıda.
+		$ham = (array) wp_unslash( $_POST );
+		// phpcs:enable
+
+		$baglam = QRMS_Analitik_Filtre::coz( $ham );
+		$aralik = QRMS_Analitik_Filtre::aralik( $ham );
+		$sayfa  = isset( $ham['usayfa'] ) ? max( 1, (int) $ham['usayfa'] ) : 1;
+
+		wp_send_json_success(
+			array_merge(
+				array(
+					'donem' => $baglam['donem'],
+					'masa'  => $baglam['masa'],
+				),
+				qrms_analitik_urun_verisi( $aralik, $baglam['masa'], $sayfa )
 			)
 		);
 	}
@@ -1505,9 +1677,20 @@ class QRMS_Analitik {
 		}
 
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- check_ajax_referer yukarıda.
-		$donem = self::istek_donemi( $_GET );
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		$masa = self::istek_masasi( $_GET );
+		$ham = (array) wp_unslash( $_GET );
+
+		// KATEGORİ BAZLI İNDİRME. Her kategori sayfası kendi verisini indirir;
+		// parametre verilmezse eski (dönem bazlı) davranış aynen sürer —
+		// klasik panelin CSV düğmesi ve dış bağlantılar kırılmaz.
+		$kategori = isset( $ham['kategori'] ) ? sanitize_key( $ham['kategori'] ) : '';
+
+		if ( 'urunler' === $kategori ) {
+			self::csv_urunler( $ham );
+			return;
+		}
+
+		$donem = self::istek_donemi( $ham );
+		$masa  = self::istek_masasi( $ham );
 
 		$dosya = 'qr-analitik-' . $donem . ( '' !== $masa ? '-' . $masa : '' ) . '-' . gmdate( 'Ymd-His', self::simdi() ) . '.csv';
 
@@ -1549,6 +1732,107 @@ class QRMS_Analitik {
 					';'
 				);
 			}
+		}
+
+		fclose( $cikti ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
+		exit;
+	}
+
+	/**
+	 * "Ürünler" kategorisinin CSV'si.
+	 *
+	 * Ekrandaki üç bölümün üçü de tek dosyaya, başlıklarıyla ayrılmış hâlde
+	 * yazılır — kullanıcı üç ayrı indirme yapmak zorunda kalmasın. Veri,
+	 * ekranı besleyen fonksiyonun AYNISINDAN gelir (qrms_analitik_urun_verisi):
+	 * indirilen dosya ekranda görünenle birebir aynıdır.
+	 *
+	 * @param array $ham İsteğin ham query arg'ları.
+	 * @return void
+	 */
+	private static function csv_urunler( array $ham ) {
+		$baglam = QRMS_Analitik_Filtre::coz( $ham );
+		$aralik = QRMS_Analitik_Filtre::aralik( $ham );
+
+		// Limit 0: CSV sayfalanmaz, bütün ürünler iner.
+		$veri = qrms_analitik_urun_verisi( $aralik, $baglam['masa'], 1, 0 );
+
+		$dosya = 'qr-analitik-urunler-' . $baglam['donem']
+			. ( '' !== $baglam['masa'] ? '-' . $baglam['masa'] : '' )
+			. '-' . gmdate( 'Ymd-His', self::simdi() ) . '.csv';
+
+		nocache_headers();
+		header( 'Content-Type: text/csv; charset=utf-8' );
+		header( 'Content-Disposition: attachment; filename="' . $dosya . '"' );
+
+		$cikti = fopen( 'php://output', 'w' );
+
+		// Excel'in UTF-8'i tanıması için BOM.
+		fwrite( $cikti, "\xEF\xBB\xBF" ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fwrite
+
+		fputcsv( $cikti, array( 'Aralık', substr( $aralik['bas'], 0, 10 ), substr( $aralik['bit'], 0, 10 ) ), ';' );
+		fputcsv( $cikti, array( 'Masa', '' !== $baglam['masa'] ? $baglam['masa'] : 'Tüm masalar' ), ';' );
+		fputcsv( $cikti, array(), ';' );
+
+		fputcsv( $cikti, array( 'EN ÇOK TIKLANAN ÜRÜNLER' ), ';' );
+		fputcsv( $cikti, array( 'Sıra', 'Ürün ID', 'Ürün Adı', 'Kategori', 'Toplam Tıklama', 'Tekil Tıklama', 'Masa Sayısı', 'Son Tıklama' ), ';' );
+
+		foreach ( $veri['encok'] as $i => $satir ) {
+			fputcsv(
+				$cikti,
+				array(
+					$i + 1,
+					$satir['item_id'],
+					$satir['item_name'],
+					$satir['category_name'],
+					$satir['toplam'],
+					$satir['tekil'],
+					$satir['masa_sayisi'],
+					$satir['son'],
+				),
+				';'
+			);
+		}
+
+		fputcsv( $cikti, array(), ';' );
+		fputcsv( $cikti, array( 'EN AZ TIKLANAN ÜRÜNLER' ), ';' );
+		fputcsv( $cikti, array( 'Ürün ID', 'Ürün Adı', 'Kategori', 'Durum', 'Toplam Tıklama', 'Tekil Tıklama', 'Son Tıklama' ), ';' );
+
+		foreach ( $veri['enaz'] as $satir ) {
+			fputcsv(
+				$cikti,
+				array(
+					$satir['id'],
+					$satir['ad'],
+					$satir['kategori'],
+					$satir['tukendi'] ? 'Tükendi' : 'Stokta',
+					$satir['toplam'],
+					$satir['tekil'],
+					$satir['son'],
+				),
+				';'
+			);
+		}
+
+		fputcsv( $cikti, array(), ';' );
+		fputcsv( $cikti, array( 'KATEGORİ DAĞILIMI' ), ';' );
+		fputcsv( $cikti, array( 'Kategori', 'Durum', 'Toplam Tıklama', 'Tekil Tıklama', 'Ürün Sayısı' ), ';' );
+
+		foreach ( $veri['kategoriler'] as $satir ) {
+			fputcsv(
+				$cikti,
+				array(
+					$satir['kategori'],
+					! empty( $satir['eski_ad'] ) ? 'Eski ad' : '',
+					$satir['toplam'],
+					$satir['tekil'],
+					$satir['urun_sayisi'],
+				),
+				';'
+			);
+		}
+
+		if ( $veri['kategorisiz'] > 0 ) {
+			fputcsv( $cikti, array( 'Kategorisi kaydedilmemiş tıklama', '', $veri['kategorisiz'], '', '' ), ';' );
 		}
 
 		fclose( $cikti ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose

@@ -6,13 +6,12 @@
  * tek bir AJAX çağrısıyla doldurulur.
  *
  * KAPSAM DARALIYOR. Özet kartları ve zaman grafiği "Genel Bakış" kategorisine
- * taşındı (bkz. genel-sayfasi.php); burada masa kesiti ve ürün kesiti kaldı,
- * ikisi de kendi kategorilerine taşınana kadar. Sayfa taşıma bitince
- * kalkacak, slug'ı hub'a yönlenecek.
+ * (genel-sayfasi.php), ürün listesi "Ürünler" kategorisine (urunler-sayfasi.php)
+ * taşındı. Geriye masa kesiti ile veri/sistem düğmeleri kaldı; ikisi de kendi
+ * kategorilerine taşınınca bu sayfa kalkacak ve slug'ı hub'a yönlenecek.
  *
- * KATEGORİLER — kalan iki kesit tek bir chip şeridiyle bölünür (masalara
- * göre, en çok tıklanan ürünler) ve her seferinde YALNIZCA seçili kesitin
- * bölümü görünür.
+ * Tek kesit kaldığı için kategori chip şeridi de kalktı: tek seçenekli bir
+ * seçici kullanıcıya karar veriyormuş hissi verir, oysa yoktur.
  *
  * MASA FİLTRESİ sayfanın kendi kutusunda değil, bütün kategorilerle ORTAK
  * filtre çubuğundadır: seçim adreste taşınır (bkz. filtre-cubugu.php).
@@ -51,18 +50,17 @@ if ( ! function_exists( 'qrms_analitik_sayfasi' ) ) {
 				<div class="qrms-an-header-text">
 					<h1 class="qrms-an-title"><?php esc_html_e( 'Menü Analitiği', 'qrms' ); ?></h1>
 					<p class="qrms-an-subtitle">
-						<?php esc_html_e( 'Menüye kaç kişi baktı, hangi ürünler tıklandı, hangi masadan geldi.', 'qrms' ); ?>
+						<?php esc_html_e( 'Henüz kendi kategorisine taşınmamış bölümler: masa kesiti ve veri yönetimi.', 'qrms' ); ?>
 					</p>
 				</div>
 
 				<div class="qrms-an-header-actions">
 					<?php
 					/*
-					 * CSV, kategori bölümlerinin DIŞINDA durur: indirilen dosya
-					 * ekranda ne görünüyorsa odur (masalar kategorisinde masa
-					 * özeti, diğerlerinde ürün listesi), bu yüzden düğmenin
-					 * yalnızca tek bir kategoride görünmesi indirmenin bir
-					 * kısmını erişilemez kılardı.
+					 * Bu sayfanın CSV'si ekranda ne görünüyorsa onu verir:
+					 * masa özeti. Ürünlerin kendi indirmesi kendi
+					 * kategorisindedir (kategori=urunler), tümünü indiren
+					 * seçenek ise "Veri & Sistem" sayfasına gelecek.
 					 */
 					?>
 					<a id="qrms-an-csv" class="qrms-an-btn" href="<?php echo esc_url( $csv_url ); ?>">
@@ -109,52 +107,20 @@ if ( ! function_exists( 'qrms_analitik_sayfasi' ) ) {
 
 			<?php
 			/*
-			 * KATEGORİ ŞERİDİ — kalan iki kesit. Zaman kategorileri
-			 * (saatlik/günlük/haftalık/aylık) "Genel Bakış" sayfasına, orada
-			 * grafiğin KIRILIM seçicisi olarak taşındı; verinin penceresi
-			 * artık üstteki ortak filtre çubuğundan gelir. Şerit dar ekranda
-			 * yatay kayar; seçili chip görünür kalsın diye JS onu görüş
-			 * alanına alır.
+			 * Kalan tek kesit: masa özeti (son 30 gün). Kimliği JS'in
+			 * aradığıyla aynı kalır; sayfa "Masalar" kategorisine taşınınca
+			 * bu bölüm de oraya gidecek.
 			 */
 			?>
-			<div class="qrms-an-cats" role="tablist" aria-label="<?php esc_attr_e( 'Veri kategorisi', 'qrms' ); ?>">
-				<button type="button" class="qrms-an-tab is-active" role="tab" aria-selected="true" aria-controls="qrms-an-cat-veri" data-cat="masalar">
-					<span class="dashicons dashicons-editor-table" aria-hidden="true"></span> <?php esc_html_e( 'Masalara Göre', 'qrms' ); ?>
-				</button>
-				<button type="button" class="qrms-an-tab" role="tab" aria-selected="false" aria-controls="qrms-an-cat-urunler" data-cat="urunler">
-					<span class="dashicons dashicons-star-filled" aria-hidden="true"></span> <?php esc_html_e( 'En Çok Tıklananlar', 'qrms' ); ?>
-				</button>
-			</div>
-
-			<div class="qrms-an-panel qrms-an-cat-panel" id="qrms-an-cat-veri" role="tabpanel">
-				<div class="qrms-an-tablewrap" id="qrms-an-table"></div>
-			</div>
-
-			<div class="qrms-an-panel qrms-an-cat-panel" id="qrms-an-cat-urunler" role="tabpanel" hidden>
+			<div class="qrms-an-panel" id="qrms-an-cat-veri">
 				<div class="qrms-an-panel-header">
-					<h2 class="qrms-an-panel-title"><span class="dashicons dashicons-star-filled" aria-hidden="true"></span> <?php esc_html_e( 'En Çok Tıklanan Ürünler', 'qrms' ); ?></h2>
+					<h2 class="qrms-an-panel-title">
+						<span class="dashicons dashicons-editor-table" aria-hidden="true"></span>
+						<?php esc_html_e( 'Masalara Göre', 'qrms' ); ?>
+					</h2>
+				</div>
 
-					<div class="qrms-an-panel-actions">
-						<?php
-						/*
-						 * Ürün listesinin kendi penceresi. Bu kesit Faz 3'te
-						 * "Ürünler" kategorisine taşınacak ve o zaman pencere
-						 * de ortak filtre çubuğundan gelecek; şimdilik kendi
-						 * seçicisiyle çalışır.
-						 */
-						?>
-						<label class="qrms-an-filter-label" for="qrms-an-urun-donem"><?php esc_html_e( 'Dönem', 'qrms' ); ?></label>
-						<select id="qrms-an-urun-donem" class="qrms-an-select qrms-an-select-small">
-							<option value="hourly"><?php esc_html_e( 'Bugün', 'qrms' ); ?></option>
-							<option value="daily"><?php esc_html_e( 'Son 30 gün', 'qrms' ); ?></option>
-							<option value="weekly"><?php esc_html_e( 'Son 12 hafta', 'qrms' ); ?></option>
-							<option value="monthly"><?php esc_html_e( 'Son 12 ay', 'qrms' ); ?></option>
-						</select>
-					</div>
-				</div>
-				<div id="qrms-an-products">
-					<div class="qrms-an-loading"><?php esc_html_e( 'Yükleniyor', 'qrms' ); ?></div>
-				</div>
+				<div class="qrms-an-tablewrap" id="qrms-an-table"></div>
 			</div>
 
 			<div class="qrms-an-modal" id="qrms-an-confirm" hidden>

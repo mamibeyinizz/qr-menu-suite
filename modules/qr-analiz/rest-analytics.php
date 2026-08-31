@@ -270,6 +270,31 @@ if ( ! function_exists( 'qmo_rest_analytics' ) ) {
 			ARRAY_A
 		);
 
+		// Kategori dağılımı — yönetim ekranındaki "Kategori Dağılımı"
+		// bölümünün karşılığı. Ad, tıklama anında kaydedilen addır (bkz.
+		// QRMS_Analitik::kategori_dagilimi); boş adlar hayali bir
+		// "Kategorisiz" satırı üretmesin diye ayrı sayılır.
+		$kategoriler = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT category_name, COUNT(*) AS adet, COUNT(DISTINCT item_id) AS urun
+				 FROM {$t}
+				 WHERE event_type='product_click' AND category_name<>'' AND created_at BETWEEN %s AND %s{$masa_ek}
+				 GROUP BY category_name ORDER BY adet DESC",
+				$start,
+				$end
+			),
+			ARRAY_A
+		);
+
+		$kategorisiz = (int) $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT COUNT(*) FROM {$t}
+				 WHERE event_type='product_click' AND category_name='' AND created_at BETWEEN %s AND %s{$masa_ek}",
+				$start,
+				$end
+			)
+		);
+
 		$int_adet = function ( $rows ) {
 			foreach ( $rows as &$r ) {
 				$r['adet'] = (int) $r['adet'];
@@ -289,6 +314,8 @@ if ( ! function_exists( 'qmo_rest_analytics' ) ) {
 				'enCok'              => $int_adet( $top ? $top : array() ),
 				'enAz'               => $int_adet( $bottom ? $bottom : array() ),
 				'masalar'            => $int_adet( $tables ? $tables : array() ),
+				'kategoriler'        => $int_adet( $kategoriler ? $kategoriler : array() ),
+				'kategorisiz'        => $kategorisiz,
 			),
 			200
 		);

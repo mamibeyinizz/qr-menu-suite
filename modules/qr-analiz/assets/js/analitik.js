@@ -4,11 +4,10 @@
  * Sayfa iskeleti PHP'den gelir; masa kesiti ve ürün listesi burada tek bir
  * AJAX çağrısının sonucundan üretilir.
  *
- * KAPSAM DARALDI. Özet kartları ve zaman grafiği "Genel Bakış" kategorisine
- * taşındı (analitik-genel.js); burada masa kesiti ve ürün kesiti kaldı, ikisi
- * de kendi kategorilerine taşınana kadar. Biçimlendirme, AJAX sarmalayıcısı,
- * tablo iskeleti ve grafik çizimi ORTAK dosyadadır (analitik-ortak.js) —
- * kopyalanmaz.
+ * KAPSAM DARALDI. Özet kartları ve zaman grafiği "Genel Bakış" (analitik-genel.js),
+ * ürün listesi "Ürünler" (analitik-urunler.js) kategorisine taşındı; burada
+ * yalnızca masa kesiti kaldı. Biçimlendirme, AJAX sarmalayıcısı ve tablo
+ * iskeleti ORTAK dosyadadır (analitik-ortak.js) — kopyalanmaz.
  *
  * MASA FİLTRESİ ARTIK ADRESTEDİR. Sayfanın kendi masa seçici kutusu yerine
  * bütün kategorilerle ORTAK filtre çubuğu kullanılır; seçim query arg olarak
@@ -30,12 +29,8 @@
 	}
 
 	var state = {
-		// Seçili chip: 'masalar' ya da 'urunler'.
-		kategori: 'masalar',
-		// Sunucuya gönderilen dönem — kategoriden türetilir.
+		// Tek kesit kaldı: masa özeti (son 30 gün).
 		donem: 'masalar',
-		// Ürün kesitinin penceresi (kendi seçicisi vardır; ilk seçenek "Bugün").
-		urunDonem: 'hourly',
 		// Masa filtresi paylaşılan filtre çubuğundan, yani ADRESTEN gelir.
 		masa: CFG.masa || '',
 		masalar: [],
@@ -142,61 +137,6 @@
 	}
 
 	/* -----------------------------------------------------------------
-	   RENDER — EN ÇOK TIKLANAN ÜRÜNLER
-	----------------------------------------------------------------- */
-
-	function urunleriBas( urunler ) {
-		if ( ! urunler || ! urunler.length ) {
-			el.products.innerHTML = bosDurum(
-				'dashicons-chart-bar',
-				state.masa
-					? metin( 'noProductsTable', 'Bu masada henüz ürün tıklaması yok.' )
-					: metin( 'noProducts', 'Seçili dönemde henüz ürün tıklaması yok.' )
-			);
-			return;
-		}
-
-		var basliklar = [
-			'#',
-			metin( 'product', 'Ürün' ),
-			metin( 'category', 'Kategori' ),
-			metin( 'totalClicks', 'Toplam Tıklama' ),
-			metin( 'uniqueClicks', 'Tekil Tıklama' ),
-			state.masa ? metin( 'lastClick', 'Son Tıklama' ) : metin( 'tableCount', 'Masa Sayısı' ),
-			metin( 'popularity', 'Popülerlik' )
-		];
-
-		var enBuyuk = parseInt( urunler[ 0 ].toplam, 10 ) || 1;
-		var govde   = '';
-
-		urunler.forEach( function ( u, i ) {
-			var sira    = i + 1;
-			var sinif   = sira <= 3 ? 'qrms-an-rank-' + sira : 'qrms-an-rank-n';
-			var pay     = Math.max( Math.round( ( parseInt( u.toplam, 10 ) / enBuyuk ) * 100 ), 1 );
-			var altinci = state.masa
-				? '<span class="qrms-an-muted">' + esc( tarih( u.son ) ) + '</span>'
-				: '<span class="qrms-an-val-bold">' + sayi( u.masa_sayisi ) + '</span>';
-
-			govde += '<tr>' +
-				hucre( basliklar[ 0 ], '<span class="qrms-an-rank ' + sinif + '">' + sira + '</span>' ) +
-				hucre( basliklar[ 1 ], '<strong>' + esc( u.item_name || '—' ) + '</strong>' ) +
-				hucre( basliklar[ 2 ], '<span class="qrms-an-cat">' + esc( u.category_name || '—' ) + '</span>' ) +
-				hucre( basliklar[ 3 ], '<span class="qrms-an-val-gold">' + sayi( u.toplam ) + '</span>' ) +
-				hucre( basliklar[ 4 ], '<span class="qrms-an-val-bold">' + sayi( u.tekil ) + '</span>' ) +
-				hucre( basliklar[ 5 ], altinci ) +
-				hucre(
-					basliklar[ 6 ],
-					'<span class="qrms-an-progress"><span class="qrms-an-progress-bg">' +
-					'<span class="qrms-an-progress-fill" style="width:' + pay + '%"></span></span>' +
-					'<span class="qrms-an-progress-pct">%' + pay + '</span></span>'
-				) +
-				'</tr>';
-		} );
-
-		el.products.innerHTML = tabloIskelet( basliklar, govde, '' );
-	}
-
-	/* -----------------------------------------------------------------
 	   MASA FİLTRESİ
 	----------------------------------------------------------------- */
 
@@ -213,44 +153,6 @@
 	}
 
 	/* -----------------------------------------------------------------
-	   KATEGORİLER
-	----------------------------------------------------------------- */
-
-	/** Kategorinin sunucuya gönderilecek dönemi. */
-	function kategoriDonemi( kategori ) {
-		return 'urunler' === kategori ? state.urunDonem : kategori;
-	}
-
-	/** Seçili kategoriyi ekrana uygular — chip'ler ve görünen bölüm. */
-	function kategoriUygula() {
-		var chipler = el.wrap.querySelectorAll( '.qrms-an-tab' );
-		var urunMu  = 'urunler' === state.kategori;
-
-		Array.prototype.forEach.call( chipler, function ( chip ) {
-			var aktif = chip.getAttribute( 'data-cat' ) === state.kategori;
-
-			chip.classList.toggle( 'is-active', aktif );
-			chip.setAttribute( 'aria-selected', aktif ? 'true' : 'false' );
-
-			// Chip şeridi dar ekranda yatay kayar: seçilen chip görünür kalsın.
-			if ( aktif && chip.scrollIntoView ) {
-				try {
-					chip.scrollIntoView( { block: 'nearest', inline: 'nearest' } );
-				} catch ( e ) {
-					// Eski tarayıcı: seçenek nesnesini desteklemiyor, önemli değil.
-				}
-			}
-		} );
-
-		el.panelVeri.hidden    = urunMu;
-		el.panelUrunler.hidden = ! urunMu;
-
-		if ( el.urunDonem ) {
-			el.urunDonem.value = state.urunDonem;
-		}
-	}
-
-	/* -----------------------------------------------------------------
 	   VERİ YÜKLE
 	----------------------------------------------------------------- */
 
@@ -258,26 +160,21 @@
 		return donem + '|' + masa;
 	}
 
-	/** Sunucu yanıtının tamamını ekrana basar. */
+	/** Sunucu yanıtını ekrana basar. */
 	function veriyiBas( veri ) {
-		state.masa = veri.masa || '';
-
+		state.masa    = veri.masa || '';
 		state.masalar = veri.masalar || [];
 
 		masaTablosuBas( veri.grafik );
-		urunleriBas( veri.urunler );
-
 		csvAdresiGuncelle();
 	}
 
 	/**
-	 * Seçili kategorinin verisini gösterir.
+	 * Masa kesitinin verisini gösterir.
 	 *
 	 * @param {boolean} zorla true ise önbellek atlanır (Yenile düğmesi).
 	 */
 	function yukle( zorla ) {
-		state.donem = kategoriDonemi( state.kategori );
-
 		var anahtar = onbellekAnahtari( state.donem, state.masa );
 
 		// Aynı pencere zaten yüklüyse kategori değişimi istek doğurmaz.
@@ -288,8 +185,7 @@
 
 		state.yukleniyor = true;
 
-		el.table.innerHTML    = '<div class="qrms-an-loading">' + esc( metin( 'loading', 'Yükleniyor' ) ) + '</div>';
-		el.products.innerHTML = '<div class="qrms-an-loading">' + esc( metin( 'loading', 'Yükleniyor' ) ) + '</div>';
+		el.table.innerHTML = '<div class="qrms-an-loading">' + esc( metin( 'loading', 'Yükleniyor' ) ) + '</div>';
 
 		csvAdresiGuncelle();
 
@@ -313,8 +209,7 @@
 			},
 			function () {
 				state.yukleniyor = false;
-				el.table.innerHTML    = bosDurum( 'dashicons-warning', metin( 'loadError', 'Veri yüklenemedi. Sayfayı yenileyin.' ) );
-				el.products.innerHTML = '';
+				el.table.innerHTML = bosDurum( 'dashicons-warning', metin( 'loadError', 'Veri yüklenemedi. Sayfayı yenileyin.' ) );
 			}
 		);
 	}
@@ -322,19 +217,6 @@
 	/* -----------------------------------------------------------------
 	   OLAYLAR
 	----------------------------------------------------------------- */
-
-	function kategoriSec( chip ) {
-		var kategori = chip.getAttribute( 'data-cat' );
-
-		if ( ! kategori || kategori === state.kategori ) {
-			return;
-		}
-
-		state.kategori = kategori;
-
-		kategoriUygula();
-		yukle();
-	}
 
 	function modalAc() {
 		el.confirmText.textContent = state.masa
@@ -351,13 +233,6 @@
 
 	function baglantilariKur() {
 		el.wrap.addEventListener( 'click', function ( olay ) {
-			var chip = olay.target.closest( '.qrms-an-tab' );
-
-			if ( chip ) {
-				kategoriSec( chip );
-				return;
-			}
-
 			var masaDugme = olay.target.closest( '.qrms-an-masa-sec' );
 
 			if ( masaDugme ) {
@@ -368,13 +243,6 @@
 					.replace( '__MASA__', encodeURIComponent( masaDugme.getAttribute( 'data-masa' ) || '' ) );
 			}
 		} );
-
-		if ( el.urunDonem ) {
-			el.urunDonem.addEventListener( 'change', function () {
-				state.urunDonem = el.urunDonem.value || 'hourly';
-				yukle();
-			} );
-		}
 
 		el.refresh.addEventListener( 'click', function () {
 			// Yenile, önbelleği tümüyle düşürür: kullanıcı "şu an ne oluyor"u
@@ -436,10 +304,7 @@
 		}
 
 		el.panelVeri     = $( 'qrms-an-cat-veri' );
-		el.panelUrunler  = $( 'qrms-an-cat-urunler' );
 		el.table         = $( 'qrms-an-table' );
-		el.products      = $( 'qrms-an-products' );
-		el.urunDonem     = $( 'qrms-an-urun-donem' );
 		el.refresh       = $( 'qrms-an-refresh' );
 		el.clear         = $( 'qrms-an-clear' );
 		el.csv           = $( 'qrms-an-csv' );
@@ -452,7 +317,6 @@
 		ORTAK.filtreKur( el.wrap );
 
 		baglantilariKur();
-		kategoriUygula();
 		yukle();
 	} );
 }() );

@@ -587,6 +587,69 @@
 }
 
 /* =====================================================================
+   ÜRÜNLER KATEGORİSİ
+   Durum rozetleri, "hiç tıklanmamış" vurgusu, bölüm notları ve sayfalama.
+===================================================================== */
+
+.qrms-an-panel-note {
+	color: var(--qrms-an-soft);
+	font-size: 12px;
+	line-height: 1.6;
+	margin: 0 0 12px;
+}
+
+.qrms-an-warn {
+	color: #b45309;
+}
+
+.qrms-an-badge {
+	background: rgba( 100, 116, 139, .12 );
+	border-radius: 999px;
+	color: #475569;
+	font-size: 11px;
+	font-weight: 700;
+	padding: 2px 8px;
+	white-space: nowrap;
+}
+
+.qrms-an-badge-warn {
+	background: rgba( 245, 158, 11, .15 );
+	color: #b45309;
+}
+
+/* Hiç tıklanmamış ürün: listede kaybolmasın diye satır ve değer soluk
+   değil, AYIRT EDİCİ olur — aranan tam da bu satırlardır. */
+.qrms-an-zero {
+	background: rgba( 245, 158, 11, .05 );
+}
+
+.qrms-an-val-zero {
+	color: #b45309;
+	font-weight: 700;
+}
+
+.qrms-an-pager {
+	align-items: center;
+	display: flex;
+	gap: 10px;
+	justify-content: center;
+	margin-top: 14px;
+}
+
+.qrms-an-pager-info {
+	color: var(--qrms-an-soft);
+	font-size: 12px;
+	font-variant-numeric: tabular-nums;
+}
+
+.qrms-an-panel-title .dashicons {
+	font-size: 18px;
+	height: 18px;
+	vertical-align: text-bottom;
+	width: 18px;
+}
+
+/* =====================================================================
    MASA FİLTRESİ
    Kategori şeridinin altında, tüm kategoriler için ortak.
 ===================================================================== */

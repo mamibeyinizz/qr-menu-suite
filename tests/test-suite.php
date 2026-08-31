@@ -3470,6 +3470,7 @@ require_once QRMS_PLUGIN_DIR . 'modules/qr-analiz/class-qrms-analitik-filtre.php
 require_once QRMS_PLUGIN_DIR . 'modules/qr-analiz/module.php';
 require_once QRMS_PLUGIN_DIR . 'modules/qr-analiz/filtre-cubugu.php';
 require_once QRMS_PLUGIN_DIR . 'modules/qr-analiz/genel-sayfasi.php';
+require_once QRMS_PLUGIN_DIR . 'modules/qr-analiz/urunler-sayfasi.php';
 require_once QRMS_PLUGIN_DIR . 'modules/qr-analiz/hub-sayfasi.php';
 
 echo "\nQR Analiz sayfaları\n";
@@ -3774,55 +3775,252 @@ qrms_test(
 echo "\nQR Analiz (kategoriler)\n";
 
 qrms_test(
-	'klasik panelde iki kesit kalır; zaman kategorileri Genel Bakış\'a taşındı',
+	'klasik panelde yalnızca masa kesiti kalır',
 	function () {
 		$kaynak = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/analitik-sayfasi.php' );
 
-		foreach ( array( 'masalar', 'urunler' ) as $kategori ) {
-			qrms_assert_contains( 'data-cat="' . $kategori . '"', $kaynak, $kategori . ' chip\'i' );
-		}
-
-		// Zaman kategorileri artık Genel Bakış'taki grafiğin KIRILIM
-		// seçicisidir; pencereyi ortak filtre çubuğu belirler.
-		foreach ( array( 'hourly', 'daily', 'weekly', 'monthly' ) as $kategori ) {
+		// Zaman kategorileri Genel Bakış'taki grafiğin KIRILIM seçicisine,
+		// ürün listesi kendi kategorisine taşındı. Tek kesit kaldığı için
+		// chip şeridi de kalktı.
+		foreach ( array( 'hourly', 'daily', 'weekly', 'monthly', 'urunler', 'masalar' ) as $kategori ) {
 			qrms_assert_false(
 				false !== strpos( $kaynak, 'data-cat="' . $kategori . '"' ),
-				$kategori . ' chip\'i taşındı'
+				$kategori . ' chip\'i kalktı'
 			);
 		}
 
-		// Özet kartları ve grafik de taşındı: kapları burada kalmamalı,
-		// yoksa JS iki sayfada birden doldurmaya çalışırdı.
-		foreach ( array( 'id="qrms-an-cards"', 'id="qrms-an-chart"', 'id="qrms-an-chart-title"' ) as $kap ) {
+		// Taşınan bölümlerin kapları burada kalmamalı, yoksa JS iki sayfada
+		// birden doldurmaya çalışırdı.
+		foreach (
+			array(
+				'id="qrms-an-cards"',
+				'id="qrms-an-chart"',
+				'id="qrms-an-chart-title"',
+				'id="qrms-an-products"',
+				'id="qrms-an-cat-urunler"',
+				'id="qrms-an-urun-donem"',
+			) as $kap
+		) {
 			qrms_assert_false( false !== strpos( $kaynak, $kap ), $kap . ' taşındı' );
 		}
 
-		// Sayfanın kendi masa filtresi kutusu kalktı; yerine bütün
-		// kategorilerle ORTAK filtre çubuğu geldi.
+		// Kalanlar: masa kesiti + veri yönetimi düğmeleri + ortak filtre.
+		qrms_assert_contains( 'id="qrms-an-table"', $kaynak, 'masa tablosu kaldı' );
+		qrms_assert_contains( 'id="qrms-an-clear"', $kaynak, 'veri silme kaldı' );
 		qrms_assert_contains( 'qrms_analitik_filtre_cubugu(', $kaynak, 'ortak filtre çubuğu' );
 		qrms_assert_false( false !== strpos( $kaynak, 'id="qrms-an-masa-temizle"' ), 'bespoke filtre kalktı' );
-
-		qrms_assert_contains( 'aria-controls="qrms-an-cat-veri"', $kaynak, 'masa kesiti bölümü' );
-		qrms_assert_contains( 'aria-controls="qrms-an-cat-urunler"', $kaynak, 'ürün bölümü' );
-		qrms_assert_contains( 'id="qrms-an-cat-urunler" role="tabpanel" hidden', $kaynak, 'ürün bölümü kapalı başlar' );
 
 		// Emoji yok: bütün ikonlar dashicons.
 		qrms_assert_false( (bool) preg_match( '/[\x{1F300}-\x{1FAFF}\x{2600}-\x{27BF}]/u', $kaynak ), 'emoji kalmadı' );
 
-		// CSV kategori bölümlerinin DIŞINDADIR: indirilen dosya ekranda ne
-		// görünüyorsa odur, düğme tek bir kategoriye kapatılırsa masa özeti
-		// indirilemez olurdu.
-		qrms_assert_true(
-			strpos( $kaynak, 'id="qrms-an-csv"' ) < strpos( $kaynak, 'qrms-an-cats' ),
-			'CSV chip şeridinden önce (sayfa başlığında)'
-		);
-
-		// Panel kimlikleri JS'in aradığı kimliklerle aynı olmalı: biri
-		// değişirse kategori geçişi sessizce çalışmaz olurdu.
+		// Panel kimliği JS'in aradığıyla aynı olmalı.
 		$js = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/assets/js/analitik.js' );
 
 		qrms_assert_contains( "\$( 'qrms-an-cat-veri' )", $js, 'JS masa bölümünü bulur' );
-		qrms_assert_contains( "\$( 'qrms-an-cat-urunler' )", $js, 'JS ürün bölümünü bulur' );
+		qrms_assert_false( false !== strpos( $js, 'function urunleriBas(' ), 'ürün tablosu taşındı' );
+	}
+);
+
+echo "\nQR Analiz — Ürünler kategorisi\n";
+
+qrms_test(
+	'en az tıklananlar CPT\'den başlar: hiç tıklanmamış ürün de listelenir',
+	function () {
+		// İki kaynak birleşir: yayındaki ürünler + tıklama sayaçları.
+		// Sayacı olmayan ürün listeden DÜŞMEMELİ; aranan tam da odur.
+		$GLOBALS['qrms_test']['posts'] = array(
+			(object) array(
+				'ID'         => 11,
+				'post_title' => 'Mercimek Çorbası',
+			),
+			(object) array(
+				'ID'         => 12,
+				'post_title' => 'Ayran',
+			),
+			(object) array(
+				'ID'         => 13,
+				'post_title' => 'Künefe',
+			),
+		);
+		$GLOBALS['qrms_test']['post_meta'] = array( 13 => array( '_rma_tukendi' => '1' ) );
+		$GLOBALS['qrms_test']['terms']     = array( 11 => 'Çorbalar' );
+
+		qrms_analitik_onbellek_sifirla();
+
+		$sonuc = qrms_analitik_en_az_tiklananlar(
+			array(
+				11 => array(
+					'toplam' => 9,
+					'tekil'  => 4,
+					'son'    => '2026-03-10 12:00:00',
+				),
+			)
+		);
+
+		qrms_assert_same( 3, $sonuc['toplam'], 'üç ürün de listede' );
+		qrms_assert_same( 2, $sonuc['hic'], 'iki ürün hiç tıklanmadı' );
+		qrms_assert_same( 1, $sonuc['tukendi'], 'bir ürün tükendi' );
+
+		// Artan sıralama; eşitlikte ada göre (sayfalama kaymasın).
+		qrms_assert_same( 'Ayran', $sonuc['satirlar'][0]['ad'], 'en az tıklanan önce' );
+		qrms_assert_same( 'Künefe', $sonuc['satirlar'][1]['ad'], 'eşitlikte ada göre' );
+		qrms_assert_same( 'Mercimek Çorbası', $sonuc['satirlar'][2]['ad'], 'en çok tıklanan sonda' );
+
+		// Tükendi ürün "ölü ürün" sanılmasın diye işaretlenir.
+		qrms_assert_true( $sonuc['satirlar'][1]['tukendi'], 'tükendi bayrağı' );
+		qrms_assert_false( $sonuc['satirlar'][0]['tukendi'], 'stokta olan işaretsiz' );
+
+		// Sayaçlar ürüne doğru eşleşir.
+		qrms_assert_same( 9, $sonuc['satirlar'][2]['toplam'], 'tıklama sayısı' );
+		qrms_assert_same( 'Çorbalar', $sonuc['satirlar'][2]['kategori'], 'kategori adı' );
+	}
+);
+
+qrms_test(
+	'ürün listesi N+1 sorgu üretmez: tek get_posts, tek GROUP BY',
+	function () {
+		$GLOBALS['qrms_test']['posts'] = array();
+
+		for ( $i = 1; $i <= 40; $i++ ) {
+			$GLOBALS['qrms_test']['posts'][] = (object) array(
+				'ID'         => $i,
+				'post_title' => 'Ürün ' . $i,
+			);
+		}
+
+		$GLOBALS['qrms_test']['post_meta'] = array();
+		$GLOBALS['qrms_test']['terms']     = array();
+		$GLOBALS['qrms_test']['get_posts_calls'] = 0;
+
+		qrms_analitik_onbellek_sifirla();
+
+		$wpdb = qrms_sayan_wpdb();
+		$wpdb->results[] = array();  // urun_tiklama_sayaclari
+		$wpdb->results[] = array();  // kategori_dagilimi
+		$wpdb->vars[]    = 0;        // kategorisiz sayımı
+		$wpdb->results[] = array();  // urun_siralamasi
+
+		$veri = qrms_analitik_urun_verisi(
+			array(
+				'bas' => '2026-03-01 00:00:00',
+				'bit' => '2026-03-31 23:59:59',
+				'gun' => 31,
+			),
+			'',
+			1,
+			25
+		);
+
+		// Ürün sayısı 40 olmasına rağmen sorgu sayısı SABİT kalır: bir
+		// get_posts + dört analitik sorgusu (sayaçlar, dağılım, kategorisiz
+		// sayımı, en çok tıklananlar).
+		qrms_assert_same( 1, $GLOBALS['qrms_test']['get_posts_calls'], 'tek ürün sorgusu' );
+		qrms_assert_same( 4, count( $wpdb->queries ), 'sabit sayıda analitik sorgusu' );
+
+		// Sayfalama: 40 üründen ilk 25'i.
+		qrms_assert_same( 25, count( $veri['enaz'] ), 'sayfa boyu' );
+		qrms_assert_same( 2, $veri['enazOzet']['sayfalar'], 'iki sayfa' );
+		qrms_assert_same( 40, $veri['enazOzet']['toplam'], 'toplam ürün' );
+
+		// İkinci sayfa kalanı verir.
+		qrms_analitik_onbellek_sifirla();
+		$wpdb = qrms_sayan_wpdb();
+		$wpdb->results[] = array();
+		$wpdb->results[] = array();
+		$wpdb->vars[]    = 0;
+		$wpdb->results[] = array();
+
+		$veri = qrms_analitik_urun_verisi(
+			array(
+				'bas' => '2026-03-01 00:00:00',
+				'bit' => '2026-03-31 23:59:59',
+				'gun' => 31,
+			),
+			'',
+			2,
+			25
+		);
+
+		qrms_assert_same( 15, count( $veri['enaz'] ), 'ikinci sayfa' );
+	}
+);
+
+qrms_test(
+	'kategori dağılımı boş adları listeye KARIŞTIRMAZ, ayrı sayar',
+	function () {
+		$wpdb            = qrms_sayan_wpdb();
+		$wpdb->results[] = array(
+			array(
+				'category_name' => 'Tatlılar',
+				'toplam'        => 12,
+				'urun_sayisi'   => 3,
+				'tekil'         => 8,
+			),
+		);
+		$wpdb->vars[] = 5;
+
+		$sonuc = QRMS_Analitik::kategori_dagilimi( '2026-03-01 00:00:00', '2026-03-31 23:59:59' );
+
+		qrms_assert_same( 1, count( $sonuc['satirlar'] ), 'yalnızca gerçek kategoriler' );
+		qrms_assert_same( 'Tatlılar', $sonuc['satirlar'][0]['kategori'], 'kategori adı' );
+		qrms_assert_same( 5, $sonuc['kategorisiz'], 'boş adlar ayrı sayılır' );
+
+		// category_name yalnızca product_click olayında dolar; sorgu da
+		// yalnızca ona bakar ve boş adları dışarıda bırakır.
+		qrms_assert_contains( "event_type='product_click'", $wpdb->queries[0], 'yalnızca tıklama olayı' );
+		qrms_assert_contains( "category_name <> ''", $wpdb->queries[0], 'boş adlar dışarıda' );
+
+		// Aralık iki uçtan sınırlı: idx_td aralık taraması olarak kullanılır.
+		qrms_assert_contains( 'created_at BETWEEN', $wpdb->queries[0], 'kapalı aralık' );
+	}
+);
+
+qrms_test(
+	'yeniden adlandırılmış kategori "eski ad" olarak işaretlenir',
+	function () {
+		$GLOBALS['qrms_test']['posts']      = array();
+		$GLOBALS['qrms_test']['post_meta']  = array();
+		$GLOBALS['qrms_test']['terms']      = array();
+		// Taksonomide yalnızca "Tatlılar" var; "Tatlı" eski addır.
+		$GLOBALS['qrms_test']['term_names'] = array( 'Tatlılar', 'Çorbalar' );
+
+		qrms_analitik_onbellek_sifirla();
+
+		$wpdb            = qrms_sayan_wpdb();
+		$wpdb->results[] = array(); // sayaçlar
+		$wpdb->results[] = array(
+			array(
+				'category_name' => 'Tatlılar',
+				'toplam'        => 12,
+				'urun_sayisi'   => 3,
+				'tekil'         => 8,
+			),
+			array(
+				'category_name' => 'Tatlı',
+				'toplam'        => 4,
+				'urun_sayisi'   => 1,
+				'tekil'         => 3,
+			),
+		);
+		$wpdb->vars[]    = 0;
+		$wpdb->results[] = array(); // en çok tıklananlar
+
+		$veri = qrms_analitik_urun_verisi(
+			array(
+				'bas' => '2026-03-01 00:00:00',
+				'bit' => '2026-03-31 23:59:59',
+				'gun' => 31,
+			)
+		);
+
+		qrms_assert_false( $veri['kategoriler'][0]['eski_ad'], 'mevcut ad işaretlenmez' );
+		qrms_assert_true( $veri['kategoriler'][1]['eski_ad'], 'artık olmayan ad işaretlenir' );
+
+		// Sayı DÜZELTİLMEZ: iki satır da olduğu gibi kalır, yalnızca
+		// etiketlenir (hangi eski adın hangi yeni ada karşılık geldiğini
+		// söyleyen bir kayıt yok).
+		qrms_assert_same( 2, count( $veri['kategoriler'] ), 'satırlar birleştirilmez' );
+		qrms_assert_same( 4, $veri['kategoriler'][1]['toplam'], 'eski adın sayısı korunur' );
 	}
 );
 

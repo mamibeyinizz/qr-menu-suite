@@ -23,9 +23,9 @@
 defined( 'ABSPATH' ) || exit;
 
 /**
- * NOT: "Genel Bakış" kategorisi artık doludur ve kendi dosyasındadır
- * (genel-sayfasi.php); buradaki placeholder'lar yalnızca henüz taşınmamış
- * kategoriler içindir.
+ * NOT: "Genel Bakış" (genel-sayfasi.php) ve "Ürünler" (urunler-sayfasi.php)
+ * kategorileri artık doludur ve kendi dosyalarındadır; buradaki placeholder'lar
+ * yalnızca henüz taşınmamış kategoriler içindir.
  *
  * Klasik (tek sayfalık) analitik panelinin yeni slug'ı.
  *
@@ -126,7 +126,7 @@ if ( ! function_exists( 'qrms_module_qr_analiz_hub_kartlari' ) ) {
 		$kartlar[] = array(
 			'url'   => QRMS_Analitik_Filtre::url( QRMS_ANALITIK_KLASIK_SAYFA ),
 			'title' => __( 'Tüm Veriler (klasik görünüm)', 'qrms' ),
-			'desc'  => __( 'Eski tek sayfalık panel: grafik, masa kesiti ve ürün listesi bir arada.', 'qrms' ),
+			'desc'  => __( 'Henüz taşınmamış bölümler: masa kesiti ve veri yönetimi düğmeleri.', 'qrms' ),
 			'icon'  => 'dashicons-list-view',
 		);
 
@@ -298,20 +298,6 @@ if ( ! function_exists( 'qrms_analitik_hazirlaniyor' ) ) {
 			</div>
 		</div>
 		<?php
-	}
-}
-
-if ( ! function_exists( 'qrms_analitik_sayfa_urunler' ) ) {
-
-	/**
-	 * Ürünler kategorisi (Faz 3'te doldurulacak).
-	 *
-	 * @return void
-	 */
-	function qrms_analitik_sayfa_urunler() {
-		$sayfalar = qrms_module_qr_analiz_sayfalar();
-
-		qrms_analitik_hazirlaniyor( $sayfalar['qrms-an-urunler']['title'], $sayfalar['qrms-an-urunler']['desc'] );
 	}
 }
 

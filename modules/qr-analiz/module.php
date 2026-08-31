@@ -65,6 +65,7 @@ function qrms_module_qr_analiz_init() {
 		require_once __DIR__ . '/filtre-cubugu.php';
 		require_once __DIR__ . '/analitik-sayfasi.php';
 		require_once __DIR__ . '/genel-sayfasi.php';
+		require_once __DIR__ . '/urunler-sayfasi.php';
 		require_once __DIR__ . '/hub-sayfasi.php';
 
 		// "İstatistikler" satırı artık hub ekranıdır; klasik panel onun bir
@@ -195,6 +196,11 @@ function qrms_module_qr_analiz_admin_assets() {
 		return;
 	}
 
+	if ( 'qrms-an-urunler' === $page ) {
+		qrms_module_qr_analiz_urunler_assets();
+		return;
+	}
+
 	// Hub: teşhis kutusu panelin stilini kullanır (aynı bulgular, aynı
 	// görünüm). Betiğe gerek yok, yalnızca stil kuyruğa girer.
 	if ( QRMS_Admin::get_module_page_slug( 'qr-analiz' ) === $page ) {
@@ -289,6 +295,66 @@ function qrms_module_qr_analiz_genel_assets() {
 }
 
 /**
+ * "Ürünler" kategorisinin varlıkları.
+ *
+ * @return void
+ */
+function qrms_module_qr_analiz_urunler_assets() {
+	qrms_module_qr_analiz_panel_stili();
+	qrms_module_qr_analiz_ortak_betik();
+
+	wp_enqueue_script(
+		'qrms-analitik-urunler',
+		QRMS_PLUGIN_URL . 'modules/qr-analiz/assets/js/analitik-urunler.js',
+		array( 'qrms-analitik-ortak' ),
+		QRMS_Helpers::asset_version( 'modules/qr-analiz/assets/js/analitik-urunler.js' ),
+		true
+	);
+
+	wp_localize_script(
+		'qrms-analitik-urunler',
+		'qrmsAnalitikUrunler',
+		array(
+			'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+			'nonce'   => wp_create_nonce( QRMS_Analitik::NONCE ),
+			'donem'   => QRMS_Analitik_Filtre::donem(),
+			'masa'    => QRMS_Analitik_Filtre::masa(),
+			'bas'     => QRMS_Analitik_Filtre::bas(),
+			'bit'     => QRMS_Analitik_Filtre::bit(),
+			'i18n'    => array(
+				'product'         => __( 'Ürün', 'qrms' ),
+				'category'        => __( 'Kategori', 'qrms' ),
+				'status'          => __( 'Durum', 'qrms' ),
+				'totalClicks'     => __( 'Toplam Tıklama', 'qrms' ),
+				'uniqueClicks'    => __( 'Tekil Tıklama', 'qrms' ),
+				'tableCount'      => __( 'Masa Sayısı', 'qrms' ),
+				'lastClick'       => __( 'Son Tıklama', 'qrms' ),
+				'popularity'      => __( 'Popülerlik', 'qrms' ),
+				'itemCount'       => __( 'Ürün Sayısı', 'qrms' ),
+				'share'           => __( 'Pay', 'qrms' ),
+				'soldOut'         => __( 'Tükendi', 'qrms' ),
+				'inStock'         => __( 'Stokta', 'qrms' ),
+				'totalItems'      => __( 'Yayındaki ürün', 'qrms' ),
+				'neverClicked'    => __( 'Hiç tıklanmamış', 'qrms' ),
+				'soldOutCount'    => __( 'Tükendi işaretli', 'qrms' ),
+				'capped'          => __( 'Ürün sayısı çok yüksek; liste ilk kayıtlarla sınırlandı.', 'qrms' ),
+				'oldName'         => __( 'eski ad', 'qrms' ),
+				'oldNameHint'     => __( 'Bu adla bir kategori artık yok; kayıtlar tıklama anındaki adı taşır.', 'qrms' ),
+				'uncategorized'   => __( 'Kategorisi kaydedilmemiş tıklama', 'qrms' ),
+				'prev'            => __( 'Önceki', 'qrms' ),
+				'next'            => __( 'Sonraki', 'qrms' ),
+				'loading'         => __( 'Yükleniyor', 'qrms' ),
+				'loadError'       => __( 'Veri yüklenemedi. Sayfayı yenileyin.', 'qrms' ),
+				'noProducts'      => __( 'Seçili dönemde henüz ürün tıklaması yok.', 'qrms' ),
+				'noProductsTable' => __( 'Bu masada henüz ürün tıklaması yok.', 'qrms' ),
+				'noItems'         => __( 'Yayında ürün bulunamadı.', 'qrms' ),
+				'noCats'          => __( 'Seçili dönemde kategori verisi yok.', 'qrms' ),
+			),
+		)
+	);
+}
+
+/**
  * Masanın panelde görünen adı (filtre çubuğundaki listeyle aynı kaynak).
  *
  * @param string $slug Masa slug'ı.
@@ -354,51 +420,22 @@ function qrms_module_qr_analiz_panel_assets() {
 				QRMS_ANALITIK_KLASIK_SAYFA,
 				array( QRMS_Analitik_Filtre::ARG_MASA => '__MASA__' )
 			),
+			// Yalnızca sayfada KALAN masa kesitinin metinleri; taşınan
+			// bölümlerin dizeleri kendi ekranlarının varlıklarıyla gelir.
 			'i18n'     => array(
-				'hourly'          => __( 'Saatlik — Bugün', 'qrms' ),
-				'daily'           => __( 'Günlük — Son 30 gün', 'qrms' ),
-				'weekly'          => __( 'Haftalık — Son 12 hafta', 'qrms' ),
-				'monthly'         => __( 'Aylık — Son 12 ay', 'qrms' ),
-				'masalar'         => __( 'Masalara göre — Son 30 gün', 'qrms' ),
-				'colHourly'       => __( 'Saat', 'qrms' ),
-				'colDaily'        => __( 'Tarih', 'qrms' ),
-				'colWeekly'       => __( 'Hafta', 'qrms' ),
-				'colMonthly'      => __( 'Ay', 'qrms' ),
-				'colMasa'         => __( 'Masa', 'qrms' ),
-				'colPeriod'       => __( 'Dönem', 'qrms' ),
-				'cardViews'       => __( 'Menü Görüntüleme', 'qrms' ),
-				'cardClicks'      => __( 'Ürün Tıklama', 'qrms' ),
-				'cardUnique'      => __( 'Tekil Ziyaretçi', 'qrms' ),
-				'cardTables'      => __( 'Hareketli Masa', 'qrms' ),
-				'cardTablesSub'   => __( 'Toplam tıklama', 'qrms' ),
-				'today'           => __( 'BUGÜN', 'qrms' ),
-				'thisWeek'        => __( 'Bu hafta', 'qrms' ),
-				'thisMonth'       => __( 'Bu ay', 'qrms' ),
-				'ipNote'          => __( 'IP bazlı, gizlilik korumalı', 'qrms' ),
-				'conversion'      => __( 'Dönüşüm', 'qrms' ),
-				'periodTable'     => __( 'Dönem tablosu', 'qrms' ),
-				'rows'            => __( 'satır', 'qrms' ),
-				'total'           => __( 'TOPLAM', 'qrms' ),
-				'lastSeen'        => __( 'Son hareket', 'qrms' ),
-				'lastClick'       => __( 'Son Tıklama', 'qrms' ),
-				'tableCount'      => __( 'Masa Sayısı', 'qrms' ),
-				'action'          => __( 'İşlem', 'qrms' ),
-				'filterTable'     => __( 'Bu masayı incele', 'qrms' ),
-				'allTables'       => __( 'Tüm masalar', 'qrms' ),
-				'product'         => __( 'Ürün', 'qrms' ),
-				'category'        => __( 'Kategori', 'qrms' ),
-				'totalClicks'     => __( 'Toplam Tıklama', 'qrms' ),
-				'uniqueClicks'    => __( 'Tekil Tıklama', 'qrms' ),
-				'popularity'      => __( 'Popülerlik', 'qrms' ),
-				'loading'         => __( 'Yükleniyor', 'qrms' ),
-				'loadingChart'    => __( 'Grafik yükleniyor', 'qrms' ),
-				'loadError'       => __( 'Veri yüklenemedi. Sayfayı yenileyin.', 'qrms' ),
-				'noData'          => __( 'Bu dönemde henüz veri yok.', 'qrms' ),
-				'noProducts'      => __( 'Seçili dönemde henüz ürün tıklaması yok.', 'qrms' ),
-				'noProductsTable' => __( 'Bu masada henüz ürün tıklaması yok.', 'qrms' ),
-				'confirmAll'      => __( 'Tüm görüntüleme ve tıklama kayıtları kalıcı olarak silinecek. Bu işlem geri alınamaz.', 'qrms' ),
-				'confirmTable'    => __( 'Yalnızca bu masanın kayıtları silinecek:', 'qrms' ),
-				'deleting'        => __( 'Siliniyor…', 'qrms' ),
+				'colMasa'      => __( 'Masa', 'qrms' ),
+				'cardViews'    => __( 'Menü Görüntüleme', 'qrms' ),
+				'cardClicks'   => __( 'Ürün Tıklama', 'qrms' ),
+				'cardUnique'   => __( 'Tekil Ziyaretçi', 'qrms' ),
+				'lastSeen'     => __( 'Son hareket', 'qrms' ),
+				'action'       => __( 'İşlem', 'qrms' ),
+				'filterTable'  => __( 'Bu masayı incele', 'qrms' ),
+				'total'        => __( 'TOPLAM', 'qrms' ),
+				'loading'      => __( 'Yükleniyor', 'qrms' ),
+				'loadError'    => __( 'Veri yüklenemedi. Sayfayı yenileyin.', 'qrms' ),
+				'confirmAll'   => __( 'Tüm görüntüleme ve tıklama kayıtları kalıcı olarak silinecek. Bu işlem geri alınamaz.', 'qrms' ),
+				'confirmTable' => __( 'Yalnızca bu masanın kayıtları silinecek:', 'qrms' ),
+				'deleting'     => __( 'Siliniyor…', 'qrms' ),
 			),
 		)
 	);

@@ -1411,7 +1411,76 @@ function get_post() {
  * @return string
  */
 function get_post_meta( $post_id, $key = '', $single = false ) {
-	return '';
+	$meta = isset( $GLOBALS['qrms_test']['post_meta'][ $post_id ] )
+		? $GLOBALS['qrms_test']['post_meta'][ $post_id ]
+		: array();
+
+	return isset( $meta[ $key ] ) ? $meta[ $key ] : '';
+}
+
+/**
+ * Yazı listesi. (Testte $GLOBALS['qrms_test']['posts'] döner; çağrı sayılır ki
+ * ürün başına sorgu açılmadığı doğrulanabilsin.)
+ *
+ * @param array $args Sorgu argümanları.
+ * @return array
+ */
+function get_posts( $args = array() ) {
+	if ( ! isset( $GLOBALS['qrms_test']['get_posts_calls'] ) ) {
+		$GLOBALS['qrms_test']['get_posts_calls'] = 0;
+	}
+
+	++$GLOBALS['qrms_test']['get_posts_calls'];
+
+	$kayitlar = isset( $GLOBALS['qrms_test']['posts'] ) ? $GLOBALS['qrms_test']['posts'] : array();
+	$limit    = isset( $args['posts_per_page'] ) ? (int) $args['posts_per_page'] : -1;
+
+	return $limit > 0 ? array_slice( $kayitlar, 0, $limit ) : $kayitlar;
+}
+
+/**
+ * Yazının terimleri. (Testte $GLOBALS['qrms_test']['terms'] eşlemesi.)
+ *
+ * @param int    $post_id  Yazı kimliği.
+ * @param string $taxonomy Taksonomi.
+ * @return array|false
+ */
+function get_the_terms( $post_id, $taxonomy ) {
+	if ( empty( $GLOBALS['qrms_test']['terms'][ $post_id ] ) ) {
+		return false;
+	}
+
+	return array( (object) array( 'name' => $GLOBALS['qrms_test']['terms'][ $post_id ] ) );
+}
+
+/**
+ * Taksonomi terimleri. (Testte yalnızca 'names' alanı desteklenir.)
+ *
+ * @param array $args Argümanlar.
+ * @return array
+ */
+function get_terms( $args = array() ) {
+	return isset( $GLOBALS['qrms_test']['term_names'] ) ? $GLOBALS['qrms_test']['term_names'] : array();
+}
+
+/**
+ * İçerik türü kayıtlı mı? (Testte her zaman evet.)
+ *
+ * @param string $tur Tür adı.
+ * @return bool
+ */
+function post_type_exists( $tur ) {
+	return true;
+}
+
+/**
+ * Taksonomi kayıtlı mı? (Testte her zaman evet.)
+ *
+ * @param string $taksonomi Taksonomi adı.
+ * @return bool
+ */
+function taxonomy_exists( $taksonomi ) {
+	return true;
 }
 
 /**
