@@ -68,6 +68,7 @@ function qrms_module_qr_analiz_init() {
 		require_once __DIR__ . '/masalar-sayfasi.php';
 		require_once __DIR__ . '/sepet-sayfasi.php';
 		require_once __DIR__ . '/etkilesim-sayfasi.php';
+		require_once __DIR__ . '/acilis-sayfasi.php';
 		require_once __DIR__ . '/sistem-sayfasi.php';
 		require_once __DIR__ . '/hub-sayfasi.php';
 
@@ -212,6 +213,11 @@ function qrms_module_qr_analiz_admin_assets() {
 
 	if ( 'qrms-an-etkilesim' === $page ) {
 		qrms_module_qr_analiz_etkilesim_assets();
+		return;
+	}
+
+	if ( 'qrms-an-acilis' === $page ) {
+		qrms_module_qr_analiz_acilis_assets();
 		return;
 	}
 
@@ -573,6 +579,59 @@ function qrms_module_qr_analiz_etkilesim_assets() {
 				'noLang'            => __( 'Bu aralıkta dil değişimi yok.', 'qrms' ),
 				'loading'           => __( 'Yükleniyor', 'qrms' ),
 				'loadError'         => __( 'Veri yüklenemedi. Sayfayı yenileyin.', 'qrms' ),
+			),
+		)
+	);
+}
+
+/**
+ * "Açılış Ekranı" kategorisinin varlıkları.
+ *
+ * Modül lisansta pasifse sayfa PHP'den bir mesaj basar; betik kuyruğa girmez.
+ *
+ * @return void
+ */
+function qrms_module_qr_analiz_acilis_assets() {
+	qrms_module_qr_analiz_panel_stili();
+
+	if ( ! qrms_analitik_acilis_lisansli() ) {
+		return;
+	}
+
+	qrms_module_qr_analiz_ortak_betik();
+
+	wp_enqueue_script(
+		'qrms-analitik-acilis',
+		QRMS_PLUGIN_URL . 'modules/qr-analiz/assets/js/analitik-acilis.js',
+		array( 'qrms-analitik-ortak' ),
+		QRMS_Helpers::asset_version( 'modules/qr-analiz/assets/js/analitik-acilis.js' ),
+		true
+	);
+
+	wp_localize_script(
+		'qrms-analitik-acilis',
+		'qrmsAnalitikAcilis',
+		array(
+			'ajaxUrl'       => admin_url( 'admin-ajax.php' ),
+			'nonce'         => wp_create_nonce( QRMS_Analitik::NONCE ),
+			'donem'         => QRMS_Analitik_Filtre::donem(),
+			'masa'          => QRMS_Analitik_Filtre::masa(),
+			'bas'           => QRMS_Analitik_Filtre::bas(),
+			'bit'           => QRMS_Analitik_Filtre::bit(),
+			'aralikEtiketi' => QRMS_Analitik_Filtre::etiket(),
+			'i18n'          => array(
+				'cardView'         => __( 'Gösterim', 'qrms' ),
+				'cardMenu'         => __( 'Menüye geçiş oranı', 'qrms' ),
+				'cardSkip'         => __( 'Atlanma oranı', 'qrms' ),
+				'events'           => __( 'olay', 'qrms' ),
+				'button'           => __( 'Buton', 'qrms' ),
+				'clicks'           => __( 'Tıklama', 'qrms' ),
+				'share'            => __( 'Pay (gösterime)', 'qrms' ),
+				'justStartedTitle' => __( 'Toplanmaya yeni başlandı', 'qrms' ),
+				'justStarted'      => __( 'Açılış ekranı olayları toplanmaya yeni başladı. Bu bir hata değil; misafirler açılışı gördükçe sayılar burada görünecek.', 'qrms' ),
+				'noButtons'        => __( 'Bu aralıkta açılış butonu tıklaması yok.', 'qrms' ),
+				'loading'          => __( 'Yükleniyor', 'qrms' ),
+				'loadError'        => __( 'Veri yüklenemedi. Sayfayı yenileyin.', 'qrms' ),
 			),
 		)
 	);

@@ -3778,6 +3778,7 @@ require_once QRMS_PLUGIN_DIR . 'modules/qr-analiz/urunler-sayfasi.php';
 require_once QRMS_PLUGIN_DIR . 'modules/qr-analiz/masalar-sayfasi.php';
 require_once QRMS_PLUGIN_DIR . 'modules/qr-analiz/sepet-sayfasi.php';
 require_once QRMS_PLUGIN_DIR . 'modules/qr-analiz/etkilesim-sayfasi.php';
+require_once QRMS_PLUGIN_DIR . 'modules/qr-analiz/acilis-sayfasi.php';
 require_once QRMS_PLUGIN_DIR . 'modules/qr-analiz/sistem-sayfasi.php';
 require_once QRMS_PLUGIN_DIR . 'modules/qr-analiz/hub-sayfasi.php';
 
@@ -3830,10 +3831,7 @@ qrms_test(
 			);
 		}
 
-		// Henüz dolmamış kategoriler gizlenmez, ROZETLENİR: gizlemek "böyle
-		// bir şey yok" demek olurdu, rozetsiz göstermek boş ekranı hata gibi
-		// hissettirirdi. Sepet Faz 7'de, etkileşim Faz 8B'de doldu; kalan
-		// açılış Faz 8C'ye kalır.
+		// Bütün kategoriler doldu: rozet kalmaz.
 		$rozetli = array();
 
 		foreach ( $kartlar as $kart ) {
@@ -3842,7 +3840,7 @@ qrms_test(
 			}
 		}
 
-		qrms_assert_same( 1, count( $rozetli ), 'bir kategori "Yakında"' );
+		qrms_assert_same( 0, count( $rozetli ), 'Yakında rozeti kalmadı' );
 
 		// Ayar ekranı dosyası artık güvenlik modülünün altındadır.
 		qrms_assert_false( defined( 'QRMS_ANALIZ_AYAR_SAYFA' ), 'ayar slug sabiti taşındı' );
@@ -5164,6 +5162,142 @@ qrms_test(
 
 		qrms_assert_contains( 'Bu kategori bu lisansta kapalı', $html, 'anlamlı mesaj' );
 		qrms_assert_false( false !== strpos( $html, 'id="qrms-an-etk-chatbot-cards"' ), 'boş tablo yok' );
+
+		update_option( 'qrms_active_modules', array() );
+	}
+);
+
+qrms_test(
+	'açılış hesaplaması saf fonksiyondur: splash_view sıfırken oran 0',
+	function () {
+		$bos = qrms_analitik_acilis_hesapla( array() );
+
+		qrms_assert_true( $bos['bos'], 'boş girdi' );
+		qrms_assert_same( 0, $bos['ozet']['menu_oran'], 'gösterim yokken menü oranı 0' );
+		qrms_assert_same( 0, $bos['ozet']['atla_oran'], 'gösterim yokken atlanma 0' );
+
+		$sifir_payda = qrms_analitik_acilis_hesapla(
+			array(
+				array(
+					'event_type' => 'splash_action',
+					'item_name'  => 'menu',
+					'adet'       => 3,
+				),
+			)
+		);
+
+		qrms_assert_same( 0, $sifir_payda['ozet']['view'], 'gösterim yok' );
+		qrms_assert_same( 3, $sifir_payda['ozet']['menu'], 'eylem sayılır' );
+		qrms_assert_same( 0, $sifir_payda['ozet']['menu_oran'], 'payda sıfır: bölme yok' );
+
+		$sonuc = qrms_analitik_acilis_hesapla(
+			array(
+				array(
+					'event_type' => 'splash_view',
+					'item_name'  => '',
+					'adet'       => 10,
+				),
+				array(
+					'event_type' => 'splash_action',
+					'item_name'  => 'menu',
+					'adet'       => 4,
+				),
+				array(
+					'event_type' => 'splash_action',
+					'item_name'  => 'atla',
+					'adet'       => 2,
+				),
+				array(
+					'event_type' => 'splash_action',
+					'item_name'  => 'wifi',
+					'adet'       => 3,
+				),
+				array(
+					'event_type' => 'splash_action',
+					'item_name'  => 'sosyal',
+					'adet'       => 1,
+				),
+			)
+		);
+
+		qrms_assert_false( $sonuc['bos'], 'dolu girdi' );
+		qrms_assert_same( 10, $sonuc['ozet']['view'], 'gösterim' );
+		qrms_assert_same( 40, $sonuc['ozet']['menu_oran'], '4/10 menü' );
+		qrms_assert_same( 20, $sonuc['ozet']['atla_oran'], '2/10 atla' );
+		qrms_assert_same( 'wifi', $sonuc['butonlar'][0]['kod'], 'wifi ilk buton' );
+		qrms_assert_same( 3, $sonuc['butonlar'][0]['adet'], 'wifi adet' );
+		qrms_assert_same( 30, $sonuc['butonlar'][0]['pay'], 'wifi payı gösterime' );
+	}
+);
+
+qrms_test(
+	'açılış CSV\'si ayrı kategori anahtarı kullanır',
+	function () {
+		$sinif = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/class-qrms-analitik.php' );
+		$sayfa = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/acilis-sayfasi.php' );
+
+		qrms_assert_contains( "if ( 'acilis' === \$kategori )", $sinif, 'ayrı kategori anahtarı' );
+		qrms_assert_contains( 'csv_acilis', $sinif, 'açılış CSV üreticisi' );
+		qrms_assert_contains( "'kategori' => 'acilis'", $sayfa, 'sayfa kendi indirmesini ister' );
+		qrms_assert_contains( 'qr-analitik-acilis-', $sinif, 'dosya adı çakışmaz' );
+	}
+);
+
+qrms_test(
+	'açılış sayfası paylaşılan filtreyi kullanır ve sıfıra bölmez',
+	function () {
+		$sayfa = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/acilis-sayfasi.php' );
+		$js    = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/assets/js/analitik-acilis.js' );
+		$hub   = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/hub-sayfasi.php' );
+
+		qrms_assert_contains( "qrms_analitik_filtre_cubugu( 'qrms-an-acilis' )", $sayfa, 'paylaşılan filtre' );
+		qrms_assert_contains( 'qrms_analitik_acilis', $js, 'AJAX ucu' );
+		qrms_assert_contains( 'justStarted', $js, 'yeni başladı boş durumu' );
+		qrms_assert_contains( "'hazir'  => true", $hub, 'açılış kartı yakında değil' );
+		qrms_assert_false(
+			false !== strpos( $hub, 'function qrms_analitik_sayfa_acilis' ),
+			'placeholder fonksiyon hub\'dan kalktı'
+		);
+		qrms_assert_contains( '$ozet[\'view\'] > 0', $sayfa, 'payda sıfır koruması' );
+	}
+);
+
+qrms_test(
+	'açılış modülü pasifken sayfa yine kayıtlıdır ama hub kartı yoktur',
+	function () {
+		update_option( 'qrms_active_modules', array( 'qr-analiz' ) );
+		QRMS_Analitik_Filtre::sifirla();
+
+		$GLOBALS['submenu'][ QRMS_Admin::MENU_SLUG ] = array(
+			qrms_submenu_satiri( 'İstatistikler', QRMS_Admin::get_module_page_slug( 'qr-analiz' ) ),
+		);
+
+		qrms_module_qr_analiz_admin_menu();
+
+		$sluglar = array_map(
+			function ( $item ) {
+				return $item['slug'];
+			},
+			$GLOBALS['qrms_test']['submenus']
+		);
+
+		qrms_assert_true( in_array( 'qrms-an-acilis', $sluglar, true ), 'doğrudan URL çalışsın diye kayıtlı' );
+
+		$acilis_kart = false;
+		foreach ( qrms_module_qr_analiz_hub_kartlari() as $kart ) {
+			if ( false !== strpos( $kart['url'], 'page=qrms-an-acilis' ) ) {
+				$acilis_kart = true;
+			}
+		}
+
+		qrms_assert_false( $acilis_kart, 'hub kartı basılmaz' );
+
+		ob_start();
+		qrms_analitik_sayfa_acilis();
+		$html = ob_get_clean();
+
+		qrms_assert_contains( 'Bu kategori bu lisansta kapalı', $html, 'anlamlı mesaj' );
+		qrms_assert_false( false !== strpos( $html, 'id="qrms-an-acilis-cards"' ), 'boş tablo yok' );
 
 		update_option( 'qrms_active_modules', array() );
 	}

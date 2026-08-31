@@ -250,6 +250,7 @@ class QRMS_Analitik {
 		add_action( 'wp_ajax_qrms_analitik_masalar', array( __CLASS__, 'ajax_masalar' ) );
 		add_action( 'wp_ajax_qrms_analitik_sepet', array( __CLASS__, 'ajax_sepet' ) );
 		add_action( 'wp_ajax_qrms_analitik_etkilesim', array( __CLASS__, 'ajax_etkilesim' ) );
+		add_action( 'wp_ajax_qrms_analitik_acilis', array( __CLASS__, 'ajax_acilis' ) );
 		add_action( 'wp_ajax_qrms_analitik_csv', array( __CLASS__, 'ajax_csv' ) );
 		add_action( 'wp_ajax_qrms_analitik_temizle', array( __CLASS__, 'ajax_temizle' ) );
 		add_action( 'admin_post_qrms_analitik_saklama', array( __CLASS__, 'saklama_formu' ) );
@@ -2663,6 +2664,40 @@ class QRMS_Analitik {
 	}
 
 	/**
+	 * Açılış Ekranı kategorisinin verisi.
+	 *
+	 * @return void
+	 */
+	public static function ajax_acilis() {
+		check_ajax_referer( self::NONCE, 'security' );
+
+		if ( ! current_user_can( QRMS_Admin::CAPABILITY ) ) {
+			wp_send_json_error( array( 'mesaj' => __( 'Yetkiniz yok.', 'qrms' ) ), 403 );
+		}
+
+		if ( function_exists( 'qrms_analitik_acilis_lisansli' ) && ! qrms_analitik_acilis_lisansli() ) {
+			wp_send_json_error( array( 'mesaj' => __( 'Açılış Ekranı bu lisansta kapalı.', 'qrms' ) ), 403 );
+		}
+
+		// phpcs:disable WordPress.Security.NonceVerification.Missing -- check_ajax_referer yukarıda.
+		$ham = (array) wp_unslash( $_POST );
+		// phpcs:enable
+
+		$baglam = QRMS_Analitik_Filtre::coz( $ham );
+		$aralik = QRMS_Analitik_Filtre::aralik( $ham );
+
+		wp_send_json_success(
+			array_merge(
+				array(
+					'donem' => $baglam['donem'],
+					'masa'  => $baglam['masa'],
+				),
+				qrms_analitik_acilis_verisi( $aralik, $baglam['masa'] )
+			)
+		);
+	}
+
+	/**
 	 * CSV dışa aktarma.
 	 *
 	 * "Masalara Göre" görünümünde masa özeti, diğer dönemlerde ürün listesi
@@ -2707,6 +2742,11 @@ class QRMS_Analitik {
 
 		if ( 'etkilesim' === $kategori ) {
 			self::csv_etkilesim( $ham );
+			return;
+		}
+
+		if ( 'acilis' === $kategori ) {
+			self::csv_acilis( $ham );
 			return;
 		}
 
@@ -3222,6 +3262,57 @@ class QRMS_Analitik {
 
 		foreach ( $veri['diller'] as $satir ) {
 			fputcsv( $cikti, array( $satir['kod'], $satir['ad'], $satir['adet'], $satir['pay'] ), ';' );
+		}
+
+		fclose( $cikti ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
+		exit;
+	}
+
+	/**
+	 * "Açılış Ekranı" kategorisinin CSV'si.
+	 *
+	 * @param array $ham İsteğin ham query arg'ları.
+	 * @return void
+	 */
+	private static function csv_acilis( array $ham ) {
+		if ( function_exists( 'qrms_analitik_acilis_lisansli' ) && ! qrms_analitik_acilis_lisansli() ) {
+			wp_die( esc_html__( 'Açılış Ekranı bu lisansta kapalı.', 'qrms' ) );
+		}
+
+		$baglam = QRMS_Analitik_Filtre::coz( $ham );
+		$aralik = QRMS_Analitik_Filtre::aralik( $ham );
+		$veri   = qrms_analitik_acilis_verisi( $aralik, $baglam['masa'] );
+
+		$dosya = 'qr-analitik-acilis-' . $baglam['donem']
+			. ( '' !== $baglam['masa'] ? '-' . $baglam['masa'] : '' )
+			. '-' . gmdate( 'Ymd-His', self::simdi() ) . '.csv';
+
+		nocache_headers();
+		header( 'Content-Type: text/csv; charset=utf-8' );
+		header( 'Content-Disposition: attachment; filename="' . $dosya . '"' );
+
+		$cikti = fopen( 'php://output', 'w' );
+
+		fwrite( $cikti, "\xEF\xBB\xBF" ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fwrite
+
+		fputcsv( $cikti, array( 'Aralık', substr( $aralik['bas'], 0, 10 ), substr( $aralik['bit'], 0, 10 ) ), ';' );
+		fputcsv( $cikti, array( 'Masa', '' !== $baglam['masa'] ? $baglam['masa'] : 'Tüm masalar' ), ';' );
+		fputcsv( $cikti, array(), ';' );
+
+		$ozet = $veri['ozet'];
+		fputcsv( $cikti, array( 'ÖZET' ), ';' );
+		fputcsv( $cikti, array( 'Gösterim', $ozet['view'] ), ';' );
+		fputcsv( $cikti, array( 'Menüye geçiş', $ozet['menu'] ), ';' );
+		fputcsv( $cikti, array( 'Menüye geçiş %', $ozet['menu_oran'] ), ';' );
+		fputcsv( $cikti, array( 'Atlanma', $ozet['atla'] ), ';' );
+		fputcsv( $cikti, array( 'Atlanma %', $ozet['atla_oran'] ), ';' );
+		fputcsv( $cikti, array(), ';' );
+
+		fputcsv( $cikti, array( 'BUTON TIKLAMALARI' ), ';' );
+		fputcsv( $cikti, array( 'Buton', 'Kod', 'Tıklama', 'Pay %' ), ';' );
+
+		foreach ( $veri['butonlar'] as $satir ) {
+			fputcsv( $cikti, array( $satir['ad'], $satir['kod'], $satir['adet'], $satir['pay'] ), ';' );
 		}
 
 		fclose( $cikti ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose

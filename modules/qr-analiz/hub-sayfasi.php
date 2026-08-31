@@ -146,7 +146,7 @@ if ( ! function_exists( 'qrms_module_qr_analiz_sayfalar' ) ) {
 				'desc'   => __( 'Açılış ekranı gösterimi, menüye geçiş ve atlanma oranları.', 'qrms' ),
 				'icon'   => 'dashicons-visibility',
 				'modul'  => 'qr-acilis-ekrani',
-				'hazir'  => false,
+				'hazir'  => true,
 			),
 			'qrms-an-sistem'    => array(
 				'title'  => __( 'Veri & Sistem', 'qrms' ),
@@ -406,20 +406,6 @@ if ( ! function_exists( 'qrms_analitik_hazirlaniyor' ) ) {
 			</div>
 		</div>
 		<?php
-	}
-}
-
-if ( ! function_exists( 'qrms_analitik_sayfa_acilis' ) ) {
-
-	/**
-	 * Açılış Ekranı kategorisi (Faz 8'de doldurulacak).
-	 *
-	 * @return void
-	 */
-	function qrms_analitik_sayfa_acilis() {
-		$sayfalar = qrms_module_qr_analiz_sayfalar();
-
-		qrms_analitik_hazirlaniyor( $sayfalar['qrms-an-acilis']['title'], $sayfalar['qrms-an-acilis']['desc'] );
 	}
 }
 
