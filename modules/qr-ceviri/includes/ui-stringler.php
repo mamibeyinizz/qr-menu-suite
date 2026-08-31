@@ -10,8 +10,8 @@
  * değişikliği olmadan ekleyebilmek için yönetim ekranındaki "Ek sabit metinler"
  * kutusu var — oraya her satıra bir metin yazmak yeterli.
  *
- * Sepet metinleri item_type=cart; yorum/form sabitleri item_type=review.
- * Yorum option/DB etiketleri (kriter adları, field_label) P1 / adım 7-2.
+ * Sepet cart, yorum review. HFB chrome (aria, sütun varsayılanları)
+ * ui_string — yeni tip yok. Yönetici option metinleri P1.
  *
  * @package QRMenu_Ceviri
  */
