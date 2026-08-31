@@ -502,6 +502,11 @@ function qrm_reward_create_code($args = []) {
         return new WP_Error('qrm_reward_db', 'Kod kaydedilemedi, lütfen tekrar deneyin.');
     }
 
+    // Analitik ikincil kayıttır: ödül tablosu kaynak kalır. Kod/e-posta yazılmaz.
+    if (function_exists('qmo_analitik_yaz')) {
+        qmo_analitik_yaz(['event_type' => 'reward_issued']);
+    }
+
     return [
         'id'             => (int) $wpdb->insert_id,
         'code'           => $code,
@@ -523,7 +528,13 @@ function qrm_reward_set_status($id, $status) {
         $data['used_at'] = current_time('mysql');
         $format[] = '%s';
     }
-    return (false !== $wpdb->update($table, $data, ['id' => intval($id)], $format, ['%d']));
+    $ok = (false !== $wpdb->update($table, $data, ['id' => intval($id)], $format, ['%d']));
+
+    if ($ok && $status === 'used' && function_exists('qmo_analitik_yaz')) {
+        qmo_analitik_yaz(['event_type' => 'reward_redeemed']);
+    }
+
+    return $ok;
 }
 
 function qrm_reward_delete($id) {

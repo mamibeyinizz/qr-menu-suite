@@ -34,6 +34,25 @@
        EN'e bakınca kendi ziyaretçi tercihini değiştirmiş olmaz. */
 
     var LANG_COOKIE = 'qrms_splash_lang';
+    var splashMenuGecti = false;
+
+    function analitikYaz(tip, ad) {
+        try {
+            if (window.qrmsAnalitikOnyuz && typeof window.qrmsAnalitikOnyuz.yaz === 'function') {
+                window.qrmsAnalitikOnyuz.yaz(tip, ad ? { item_name: ad } : {});
+            }
+        } catch (e) {}
+    }
+
+    function splashEylem(ad) {
+        if (ad === 'menu') {
+            splashMenuGecti = true;
+        }
+        if (ad === 'atla' && splashMenuGecti) {
+            return;
+        }
+        analitikYaz('splash_action', ad);
+    }
 
     function readLangCookie() {
         var m = document.cookie.match(/(?:^|;\s*)qrms_splash_lang=(tr|en)/);
@@ -289,8 +308,14 @@
 
             var opt = event.target.closest('.splash-ceviri-opt');
             if (opt) {
-                persist(opt.getAttribute('data-lang'));
+                var secilen = opt.getAttribute('data-lang') || '';
+                persist(secilen);
                 closePanel();
+                try {
+                    if (window.qrmsAnalitikOnyuz && typeof window.qrmsAnalitikOnyuz.yaz === 'function' && secilen) {
+                        window.qrmsAnalitikOnyuz.yaz('lang_switch', { item_name: secilen });
+                    }
+                } catch (e) {}
                 return;
             }
 
@@ -378,6 +403,7 @@
         clearHeadFailsafe();
         document.body.style.overflow = 'hidden';
         var ceviri = noopCeviri();
+        analitikYaz('splash_view');
 
         var idleTimer = null;
         var listenersAttached = false;
@@ -451,8 +477,10 @@
             var targetPath = dest.split('#')[0].replace(/\/$/, '');
 
             if (targetPath && targetPath !== currentPath) {
+                splashEylem('menu');
                 window.location.href = dest;
             } else {
+                splashEylem('atla');
                 dismissSplash();
             }
         }
@@ -491,15 +519,34 @@
         // Sosyal medya rozetleri yeni sekmede açıldığı için dismiss etmez.
         overlay.querySelectorAll('[data-splash-dismiss]').forEach(function (el) {
             el.addEventListener('click', function () {
+                var eylem = el.getAttribute('data-splash-action') || '';
+                if (eylem) {
+                    splashEylem(eylem);
+                }
                 var href = el.tagName === 'A' ? el.getAttribute('href') : '';
                 dismissSplash(!!href);
+            });
+        });
+
+        overlay.querySelectorAll('[data-splash-action]').forEach(function (el) {
+            if (el.hasAttribute('data-splash-dismiss')) {
+                return;
+            }
+            el.addEventListener('click', function () {
+                var eylem = el.getAttribute('data-splash-action') || '';
+                if (eylem) {
+                    splashEylem(eylem);
+                }
             });
         });
 
         // Wifi: SADECE modal açar, splash'ı kapatmaz.
         var wifiBtn = document.getElementById('wifi-btn');
         if (wifiBtn) {
-            wifiBtn.addEventListener('click', function () { openModal('wifi-modal'); });
+            wifiBtn.addEventListener('click', function () {
+                splashEylem('wifi');
+                openModal('wifi-modal');
+            });
         }
 
         document.querySelectorAll('.splash-modal-close').forEach(function (btn) {

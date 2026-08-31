@@ -57,6 +57,14 @@ function qrm_cf_ajax_submit() {
     qrm_pro_cooldown_mark($identifiers);
     qrm_cf_notify_admin($form, $fields, $validated['data']);
 
+    // Analitik: form yanıtları yazılmaz; item_name form adıdır.
+    if (function_exists('qmo_analitik_yaz')) {
+        qmo_analitik_yaz([
+            'event_type' => 'form_submit',
+            'item_name'  => isset($form->title) ? (string) $form->title : '',
+        ]);
+    }
+
     wp_send_json([
         'success' => true,
         'message' => $settings['success_message'],

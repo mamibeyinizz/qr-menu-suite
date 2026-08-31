@@ -118,6 +118,11 @@ function qrm_pro_handle_review_submission($settings) {
     // Cooldown penceresi yalnızca gerçekten kayıt oluştuktan sonra başlatılır.
     qrm_pro_cooldown_mark(['phone' => $phone_norm], $settings);
 
+    // Analitik: yorum metni / ad / telefon yazılmaz — yalnızca olay.
+    if (function_exists('qmo_analitik_yaz')) {
+        qmo_analitik_yaz(['event_type' => 'review_submit']);
+    }
+
     $threshold = floatval($settings['google_review_threshold']);
     $eligible = !empty($settings['google_review_enabled']) && !empty($settings['google_review_url']) && $calc_avg >= $threshold;
 
