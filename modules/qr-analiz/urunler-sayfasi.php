@@ -2,11 +2,12 @@
 /**
  * KATEGORİ: Ürünler (qrms-an-urunler).
  *
- * Üç bölüm:
+ * Dört bölüm:
  *   1. En çok tıklanan ürünler — klasik panelden taşındı.
  *   2. En az tıklanan ürünler — YENİ. Menüde duran ama kimsenin bakmadığı
  *      ürünleri görünür kılar.
  *   3. Kategori dağılımı — YENİ. Hangi kategori ne kadar ilgi görüyor.
+ *   4. Detay modalı açılma oranı — Faz 8D. item_detail_open / product_click.
  *
  * İKİ KAYNAĞIN BİRLEŞTİĞİ TEK YER. "En az tıklanan" listesi yalnızca analitik
  * tablosundan üretilemez: hiç tıklanmamış bir ürünün orada SATIRI YOKTUR, oysa
@@ -16,19 +17,22 @@
  * PERFORMANS — ürün başına sorgu (N+1) YASAK. Ürün sayısı ne olursa olsun
  * sorgu sayısı SABİTTİR: bir WordPress sorgusu (get_posts; meta ve terim
  * önbellekleri de o çağrıda toplu doldurulur, yani get_post_meta ile
- * get_the_terms ürün başına yeni sorgu AÇMAZ) ve dört analitik sorgusu —
- * tıklama sayaçları, en çok tıklananlar, kategori dağılımı ve kategorisi
- * kaydedilmemiş tıklamaların sayımı. Sonuncusu ayrı durur çünkü dağılım
- * sorgusu LIMIT'lidir: boş adlı kova sıralamada limitin dışında kalabilir ve
- * sessizce kaybolurdu.
+ * get_the_terms ürün başına yeni sorgu AÇMAZ) ve beş analitik sorgusu —
+ * tıklama sayaçları, en çok tıklananlar, kategori dağılımı, kategorisi
+ * kaydedilmemiş tıklamaların sayımı ve detay modalı açılışı. Sonuncusu
+ * ayrı durur çünkü dağılım sorgusu LIMIT'lidir: boş adlı kova sıralamada
+ * limitin dışında kalabilir ve sessizce kaybolurdu. Detay açılışı da ayrı
+ * bir olay tipidir (item_detail_open); product_click ile karıştırılmaz.
  *
  * Eşleştirme ve sıralama PHP tarafındadır. Ürün listesi ayrıca ÜST SINIRLIDIR
  * (QRMS_ANALITIK_URUN_TAVANI) ve sayfalanır; on binlerce ürünlü bir kurulumda
  * ekran tek seferde her şeyi çekmeye çalışmaz.
  *
- * "Detay modalı açılma oranı" bilinçli olarak YOKTUR: modal açılışı şu an
- * ürün tıklamasıyla AYNI olaya yazılıyor (product_click), ikisi ayrıştırılamaz.
- * Ayrı bir olay tipi eklendikten sonra bu sayfaya eklenecek.
+ * "Detay modalı açılma oranı" item_detail_open ile product_click'i
+ * karşılaştırır. Modal açılışı ön yüz beacon'ından yazılır (önbellekten
+ * açılışlar dahil); product_click hâlâ AJAX detay isteğine bağlıdır ve
+ * prefetch sayılmaz. Önbellekten açılış tıklamayı atladığı için oran %100'ü
+ * geçebilir; payda sıfırken oran 0'dır.
  *
  * @package QR_Menu_Suite
  */
@@ -222,6 +226,49 @@ if ( ! function_exists( 'qrms_analitik_mevcut_kategoriler' ) ) {
 	}
 }
 
+if ( ! function_exists( 'qrms_analitik_urun_detay_hesapla' ) ) {
+
+	/**
+	 * Detay modalı açılışı / ürün tıklaması — saf fonksiyon.
+	 *
+	 * Payda (product_click) sıfırken oran 0'dır. Önbellekten açılan
+	 * modallar tıklama yazmadığı için oran %100'ü geçebilir.
+	 *
+	 * @param array $sayaclar QRMS_Analitik::olay_sayaclari() satırları.
+	 * @return array{click:int,open:int,oran:int,bos:bool}
+	 */
+	function qrms_analitik_urun_detay_hesapla( array $sayaclar ) {
+		$click = 0;
+		$open  = 0;
+
+		foreach ( $sayaclar as $r ) {
+			if ( ! is_array( $r ) ) {
+				continue;
+			}
+
+			$tip  = isset( $r['event_type'] ) ? (string) $r['event_type'] : '';
+			$adet = isset( $r['adet'] ) ? (int) $r['adet'] : 0;
+
+			if ( $adet <= 0 ) {
+				continue;
+			}
+
+			if ( 'product_click' === $tip ) {
+				$click += $adet;
+			} elseif ( 'item_detail_open' === $tip ) {
+				$open += $adet;
+			}
+		}
+
+		return array(
+			'click' => $click,
+			'open'  => $open,
+			'oran'  => $click > 0 ? (int) round( ( $open / $click ) * 100 ) : 0,
+			'bos'   => ( 0 === $open ),
+		);
+	}
+}
+
 if ( ! function_exists( 'qrms_analitik_kategori_anahtari' ) ) {
 
 	/**
@@ -243,7 +290,7 @@ if ( ! function_exists( 'qrms_analitik_kategori_anahtari' ) ) {
 if ( ! function_exists( 'qrms_analitik_urun_verisi' ) ) {
 
 	/**
-	 * Sayfanın üç bölümünün verisi — TEK yerde toplanır.
+	 * Sayfanın dört bölümünün verisi — TEK yerde toplanır.
 	 *
 	 * Hem ekran (AJAX ucu) hem CSV aynı fonksiyondan beslenir: indirilen dosya
 	 * ekranda görünenle birebir aynı olsun diye.
@@ -274,6 +321,15 @@ if ( ! function_exists( 'qrms_analitik_urun_verisi' ) ) {
 			$satirlar = array_slice( $satirlar, ( $sayfa - 1 ) * $limit, $limit );
 		}
 
+		$detay = qrms_analitik_urun_detay_hesapla(
+			QRMS_Analitik::olay_sayaclari(
+				array( 'product_click', 'item_detail_open' ),
+				$aralik['bas'],
+				$aralik['bit'],
+				$masa
+			)
+		);
+
 		return array(
 			'encok'      => QRMS_Analitik::urun_siralamasi( $aralik['bas'], $aralik['bit'], $masa, 30 ),
 			'enaz'       => $satirlar,
@@ -288,6 +344,7 @@ if ( ! function_exists( 'qrms_analitik_urun_verisi' ) ) {
 			),
 			'kategoriler' => $dagilim['satirlar'],
 			'kategorisiz' => $dagilim['kategorisiz'],
+			'detay'       => $detay,
 		);
 	}
 }
@@ -385,6 +442,24 @@ if ( ! function_exists( 'qrms_analitik_sayfa_urunler' ) ) {
 				</p>
 
 				<div id="qrms-an-cats-dist"></div>
+			</div>
+
+			<div class="qrms-an-panel">
+				<div class="qrms-an-panel-header">
+					<h2 class="qrms-an-panel-title">
+						<span class="dashicons dashicons-visibility" aria-hidden="true"></span>
+						<?php esc_html_e( 'Detay modalı açılma oranı', 'qrms' ); ?>
+					</h2>
+				</div>
+				<p class="qrms-an-panel-note">
+					<?php esc_html_e( 'Modalın gerçekten gösterildiği an sayılır (önbellekten açılışlar dahil). Ürün tıklaması hâlâ AJAX isteğine bağlıdır ve sessiz ön yükleme sayılmaz; bu yüzden oran %100\'ü geçebilir. Tıklama sıfırken oran 0\'dır.', 'qrms' ); ?>
+				</p>
+				<div id="qrms-an-detay-bos" hidden></div>
+				<div class="qrms-an-cards" id="qrms-an-detay-cards" aria-live="polite">
+					<div class="qrms-an-card qrms-an-skeleton"></div>
+					<div class="qrms-an-card qrms-an-skeleton"></div>
+					<div class="qrms-an-card qrms-an-skeleton"></div>
+				</div>
 			</div>
 		</div>
 		<?php

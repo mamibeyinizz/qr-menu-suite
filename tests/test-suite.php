@@ -4293,6 +4293,7 @@ qrms_test(
 		$wpdb->results[] = array();  // urun_tiklama_sayaclari
 		$wpdb->results[] = array();  // kategori_dagilimi
 		$wpdb->vars[]    = 0;        // kategorisiz sayımı
+		$wpdb->results[] = array();  // olay_sayaclari detay
 		$wpdb->results[] = array();  // urun_siralamasi
 
 		$veri = qrms_analitik_urun_verisi(
@@ -4307,10 +4308,10 @@ qrms_test(
 		);
 
 		// Ürün sayısı 40 olmasına rağmen sorgu sayısı SABİT kalır: bir
-		// get_posts + dört analitik sorgusu (sayaçlar, dağılım, kategorisiz
-		// sayımı, en çok tıklananlar).
+		// get_posts + beş analitik sorgusu (sayaçlar, dağılım, kategorisiz
+		// sayımı, detay açılışı, en çok tıklananlar).
 		qrms_assert_same( 1, $GLOBALS['qrms_test']['get_posts_calls'], 'tek ürün sorgusu' );
-		qrms_assert_same( 4, count( $wpdb->queries ), 'sabit sayıda analitik sorgusu' );
+		qrms_assert_same( 5, count( $wpdb->queries ), 'sabit sayıda analitik sorgusu' );
 
 		// Sayfalama: 40 üründen ilk 25'i.
 		qrms_assert_same( 25, count( $veri['enaz'] ), 'sayfa boyu' );
@@ -4323,6 +4324,7 @@ qrms_test(
 		$wpdb->results[] = array();
 		$wpdb->results[] = array();
 		$wpdb->vars[]    = 0;
+		$wpdb->results[] = array();
 		$wpdb->results[] = array();
 
 		$veri = qrms_analitik_urun_verisi(
@@ -5300,6 +5302,47 @@ qrms_test(
 		qrms_assert_false( false !== strpos( $html, 'id="qrms-an-acilis-cards"' ), 'boş tablo yok' );
 
 		update_option( 'qrms_active_modules', array() );
+	}
+);
+
+qrms_test(
+	'detay modalı açılışı ayrı olaydır ve tıklama sıfırken oran 0',
+	function () {
+		$frontend = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/js/rma-frontend.js' );
+		$modal    = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/js/rma-detail-modal.js' );
+		$urun     = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/urunler-sayfasi.php' );
+		$js       = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/assets/js/analitik-urunler.js' );
+
+		qrms_assert_contains( "yaz('item_detail_open'", $frontend, 'ana menü modalı' );
+		qrms_assert_contains( 'rmaAnalitikDetay(id)', $frontend, 'gösterimde yazılır' );
+		qrms_assert_contains( "yaz('item_detail_open'", $modal, 'vitrin/slider modalı' );
+		qrms_assert_false( false !== strpos( $urun, 'bilinçli olarak YOKTUR' ), 'Faz 3 yorumu kalktı' );
+		qrms_assert_contains( 'qrms-an-detay-cards', $urun, 'ürünler bölümü' );
+		qrms_assert_contains( 'justStartedDetail', $js, 'yeni başladı boş durumu' );
+
+		$bos = qrms_analitik_urun_detay_hesapla( array() );
+		qrms_assert_true( $bos['bos'], 'açılış yok' );
+		qrms_assert_same( 0, $bos['oran'], 'payda sıfır' );
+
+		$oran = qrms_analitik_urun_detay_hesapla(
+			array(
+				array(
+					'event_type' => 'product_click',
+					'item_name'  => 'A',
+					'adet'       => 4,
+				),
+				array(
+					'event_type' => 'item_detail_open',
+					'item_name'  => 'A',
+					'adet'       => 6,
+				),
+			)
+		);
+
+		qrms_assert_same( 4, $oran['click'], 'tıklama' );
+		qrms_assert_same( 6, $oran['open'], 'açılış' );
+		qrms_assert_same( 150, $oran['oran'], 'önbellek yüzünden %100 üzeri' );
+		qrms_assert_false( $oran['bos'], 'dolu' );
 	}
 );
 

@@ -1213,7 +1213,7 @@ class QRMS_Analitik {
 			'item_detail_open' => array(
 				'modul'   => '',
 				'item_id' => true,
-				'hiz'     => 1,
+				'hiz'     => 0,
 			),
 		);
 	}
@@ -2802,8 +2802,8 @@ class QRMS_Analitik {
 	/**
 	 * "Ürünler" kategorisinin CSV'si.
 	 *
-	 * Ekrandaki üç bölümün üçü de tek dosyaya, başlıklarıyla ayrılmış hâlde
-	 * yazılır — kullanıcı üç ayrı indirme yapmak zorunda kalmasın. Veri,
+	 * Ekrandaki bölümler tek dosyaya, başlıklarıyla ayrılmış hâlde
+	 * yazılır — kullanıcı ayrı indirme yapmak zorunda kalmasın. Veri,
 	 * ekranı besleyen fonksiyonun AYNISINDAN gelir (qrms_analitik_urun_verisi):
 	 * indirilen dosya ekranda görünenle birebir aynıdır.
 	 *
@@ -2895,6 +2895,13 @@ class QRMS_Analitik {
 		if ( $veri['kategorisiz'] > 0 ) {
 			fputcsv( $cikti, array( 'Kategorisi kaydedilmemiş tıklama', '', $veri['kategorisiz'], '', '' ), ';' );
 		}
+
+		$detay = isset( $veri['detay'] ) ? $veri['detay'] : array();
+		fputcsv( $cikti, array(), ';' );
+		fputcsv( $cikti, array( 'DETAY MODALI AÇILMA ORANI' ), ';' );
+		fputcsv( $cikti, array( 'Detay açılışı', isset( $detay['open'] ) ? $detay['open'] : 0 ), ';' );
+		fputcsv( $cikti, array( 'Ürün tıklaması', isset( $detay['click'] ) ? $detay['click'] : 0 ), ';' );
+		fputcsv( $cikti, array( 'Açılma oranı %', isset( $detay['oran'] ) ? $detay['oran'] : 0 ), ';' );
 
 		fclose( $cikti ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
 		exit;

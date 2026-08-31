@@ -369,6 +369,14 @@ function qrms_module_qr_analiz_urunler_assets() {
 				'noProductsTable' => __( 'Bu masada henüz ürün tıklaması yok.', 'qrms' ),
 				'noItems'         => __( 'Yayında ürün bulunamadı.', 'qrms' ),
 				'noCats'          => __( 'Seçili dönemde kategori verisi yok.', 'qrms' ),
+				'cardDetailOpen'  => __( 'Detay açılışı', 'qrms' ),
+				'cardClicks'      => __( 'Ürün tıklaması', 'qrms' ),
+				'cardDetailRate'  => __( 'Açılma oranı', 'qrms' ),
+				'events'          => __( 'olay', 'qrms' ),
+				'clickHint'       => __( 'AJAX isteği; ön yükleme hariç', 'qrms' ),
+				'detailRateHint'  => __( 'Açılış / tıklama. Önbellek yüzünden %100\'ü geçebilir.', 'qrms' ),
+				'justStartedTitle' => __( 'Toplanmaya yeni başlandı', 'qrms' ),
+				'justStartedDetail' => __( 'Detay modalı açılışları toplanmaya yeni başladı. Bu bir hata değil; misafirler ürün kartına dokundukça oran burada görünecek.', 'qrms' ),
 			),
 		)
 	);

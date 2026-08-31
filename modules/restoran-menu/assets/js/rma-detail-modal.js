@@ -88,6 +88,7 @@
             if (data && data.success && typeof data.data === 'string') {
                 cache[id] = data.data;
                 render(data.data);
+                analitikDetay(id);
             } else {
                 render('<p class="qrms-detail-error">Ürün yüklenemedi.</p>');
             }
@@ -104,6 +105,12 @@
         xhr.send(params);
     }
 
+    function analitikDetay(id) {
+        var an = global.qrmsAnalitikOnyuz;
+        if (!an || typeof an.yaz !== 'function' || !id) return;
+        an.yaz('item_detail_open', { item_id: String(id) });
+    }
+
     function open(id) {
         id = String(id || '');
         if (!id) return;
@@ -112,13 +119,17 @@
         currentId = id;
         lastFocused = document.activeElement;
 
-        render(cache[id] ? cache[id] : '<div class="qrms-detail-loading" aria-hidden="true"></div>');
+        if (cache[id]) {
+            render(cache[id]);
+            analitikDetay(id);
+        } else {
+            render('<div class="qrms-detail-loading" aria-hidden="true"></div>');
+            fetchDetails(id);
+        }
 
         overlay.classList.add('open');
         lock();
         if (closeBtn) closeBtn.focus();
-
-        if (!cache[id]) fetchDetails(id);
     }
 
     function close() {
