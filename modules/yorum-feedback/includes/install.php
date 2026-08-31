@@ -126,12 +126,33 @@ const QRM_PRO_STATS_TRANSIENT = 'qrm_pro_review_stats';
 const QRM_PRO_STATS_TTL = 5 * MINUTE_IN_SECONDS;
 
 /**
+ * Olumlu/olumsuz kırılımının boş hâli.
+ *
+ * @param float $threshold Olumlu/olumsuz eşiği.
+ * @return array{threshold:float,olumlu:array{total:int,approved:int,pending:int},olumsuz:array{total:int,approved:int,pending:int}}
+ */
+function qrm_pro_empty_sentiment_stats($threshold) {
+    $bos = ['total' => 0, 'approved' => 0, 'pending' => 0];
+
+    return [
+        'threshold' => (float) $threshold,
+        'olumlu'    => $bos,
+        'olumsuz'   => $bos,
+    ];
+}
+
+/**
  * Tablo yokken (ya da hiç yorum yokken) dönen boş istatistik.
  *
- * @param float $threshold Google eşiği — önbellek karşılaştırmasında kullanılır.
+ * @param float      $threshold Google eşiği — önbellek karşılaştırmasında kullanılır.
+ * @param float|null $sentiment Olumlu/olumsuz eşiği; null ise ayardan/filtreden okunur.
  * @return array
  */
-function qrm_pro_empty_review_stats($threshold = 0.0) {
+function qrm_pro_empty_review_stats($threshold = 0.0, $sentiment = null) {
+    if ($sentiment === null) {
+        $sentiment = qrm_pro_sentiment_threshold();
+    }
+
     return [
         'table_ok'        => false,
         'total'           => 0,
@@ -141,6 +162,7 @@ function qrm_pro_empty_review_stats($threshold = 0.0) {
         'google_eligible' => 0,
         'threshold'       => (float) $threshold,
         'crit'            => [1 => 0.0, 2 => 0.0, 3 => 0.0, 4 => 0.0, 5 => 0.0],
+        'sentiment'       => qrm_pro_empty_sentiment_stats($sentiment),
     ];
 }
 
@@ -160,15 +182,25 @@ function qrm_pro_empty_review_stats($threshold = 0.0) {
  * bölünmesini önler; hangi kriterin ekranda görüneceğine sunum katmanı karar
  * verir.
  *
+ * Yorum listesinin üç sekmesinin (tümü / olumlu / olumsuz) sayaçları da aynı
+ * taramadan gelir: yalnızca "olumlu" kovası sayılır, "olumsuz" ondan
+ * çıkarmayla türetilir — nötr kategori olmadığı için ikisi toplamı her zaman
+ * toplam kayıt sayısına eşittir.
+ *
  * Yalnızca tablonun VAR OLDUĞU bilindiğinde çağrılır. Sorgu okunamazsa null
  * döner — çağıran o durumu "tablo yok" ile karıştırmamalı ve sonucu
  * önbelleğe yazmamalıdır.
  *
- * @param float $threshold Google yönlendirme eşiği.
+ * @param float      $threshold Google yönlendirme eşiği.
+ * @param float|null $sentiment Olumlu/olumsuz eşiği; null ise filtreden okunur.
  * @return array|null
  */
-function qrm_pro_fetch_review_stats($threshold) {
+function qrm_pro_fetch_review_stats($threshold, $sentiment = null) {
     global $wpdb;
+
+    if ($sentiment === null) {
+        $sentiment = qrm_pro_sentiment_threshold();
+    }
 
     $table = $wpdb->prefix . 'qrm_reviews';
 
@@ -178,13 +210,17 @@ function qrm_pro_fetch_review_stats($threshold) {
             SUM(CASE WHEN status = 1 THEN 1 ELSE 0 END) AS approved,
             AVG(CASE WHEN status = 1 THEN rating END) AS avg_rating,
             SUM(CASE WHEN status = 1 AND rating >= %f THEN 1 ELSE 0 END) AS google_eligible,
+            SUM(CASE WHEN rating >= %f THEN 1 ELSE 0 END) AS positive_total,
+            SUM(CASE WHEN status = 1 AND rating >= %f THEN 1 ELSE 0 END) AS positive_approved,
             AVG(CASE WHEN status = 1 AND rating_1 > 0 THEN rating_1 END) AS crit_1,
             AVG(CASE WHEN status = 1 AND rating_2 > 0 THEN rating_2 END) AS crit_2,
             AVG(CASE WHEN status = 1 AND rating_3 > 0 THEN rating_3 END) AS crit_3,
             AVG(CASE WHEN status = 1 AND rating_4 > 0 THEN rating_4 END) AS crit_4,
             AVG(CASE WHEN status = 1 AND rating_5 > 0 THEN rating_5 END) AS crit_5
          FROM {$table}",
-        (float) $threshold
+        (float) $threshold,
+        (float) $sentiment,
+        (float) $sentiment
     ), ARRAY_A);
 
     if (!is_array($row)) {
@@ -200,6 +236,9 @@ function qrm_pro_fetch_review_stats($threshold) {
         $crit[$i] = (float) $row['crit_' . $i];
     }
 
+    $olumlu_total    = isset($row['positive_total']) ? (int) $row['positive_total'] : 0;
+    $olumlu_approved = isset($row['positive_approved']) ? (int) $row['positive_approved'] : 0;
+
     return [
         'table_ok'        => true,
         'total'           => $total,
@@ -209,23 +248,37 @@ function qrm_pro_fetch_review_stats($threshold) {
         'google_eligible' => (int) $row['google_eligible'],
         'threshold'       => (float) $threshold,
         'crit'            => $crit,
+        'sentiment'       => [
+            'threshold' => (float) $sentiment,
+            'olumlu'    => [
+                'total'    => $olumlu_total,
+                'approved' => $olumlu_approved,
+                'pending'  => $olumlu_total - $olumlu_approved,
+            ],
+            'olumsuz'   => [
+                'total'    => $total - $olumlu_total,
+                'approved' => $approved - $olumlu_approved,
+                'pending'  => ($total - $olumlu_total) - ($approved - $olumlu_approved),
+            ],
+        ],
     ];
 }
 
 /**
- * Yorum sayaçları — başlangıç ekranı, İçgörüler, yorum listesi ve ön yüzdeki
- * kısa kod hepsi buradan okur.
+ * Yorum sayaçları — başlangıç ekranı, yorum listesinin sekmeleri, sol menü
+ * rozeti ve ön yüzdeki kısa kod hepsi buradan okur.
  *
  * İki katmanlı önbellek: istek içinde statik memo (aynı sayfa birden çok kez
  * sorar), istekler arasında kısa ömürlü transient. Sayılar yorum eklendiğinde
  * ya da durumu değiştiğinde qrm_pro_flush_review_stats() ile geçersizlenir,
  * yani TTL yalnızca bir emniyet kemeridir.
  *
- * Google eşiği ayardan gelir; ayar değiştiğinde saklanan sonuç kendiliğinden
- * kabul edilmez (aşağıdaki eşik karşılaştırması) — ayrı bir kanca gerekmez.
+ * Google eşiği ayardan, olumlu/olumsuz eşiği qrm_pro_sentiment_threshold()'tan
+ * gelir; ikisinden biri değiştiğinde saklanan sonuç kendiliğinden kabul edilmez
+ * (aşağıdaki eşik karşılaştırmaları) — ayrı bir kanca gerekmez.
  *
  * @param bool $taze true ise önbellekler atlanır (test ve elle tazeleme için).
- * @return array{table_ok:bool,total:int,approved:int,pending:int,avg:float,google_eligible:int,threshold:float,crit:array<int,float>}
+ * @return array{table_ok:bool,total:int,approved:int,pending:int,avg:float,google_eligible:int,threshold:float,crit:array<int,float>,sentiment:array}
  */
 function qrm_pro_review_stats($taze = false) {
     // Memo bilinçli olarak $GLOBALS'ta durur, fonksiyon içi static'te değil:
@@ -239,29 +292,35 @@ function qrm_pro_review_stats($taze = false) {
 
     $settings  = qrm_pro_get_settings();
     $threshold = (float) $settings['google_review_threshold'];
+    $sentiment = qrm_pro_sentiment_threshold();
 
-    if (!qrm_pro_reviews_table_exists()) {
-        $GLOBALS['qrm_pro_stats_memo'] = qrm_pro_empty_review_stats($threshold);
-        return $GLOBALS['qrm_pro_stats_memo'];
-    }
-
+    // Önbellek, tablo denetiminden ÖNCE okunur: saklanan sonuç yalnızca tablo
+    // varken ve sorgu okunabildiğinde yazılır, yani isabet eden bir kayıt zaten
+    // "tablo var" demektir. Sıra tersi olsaydı sol menüdeki rozet sayacı her
+    // yönetim isteğine bir SHOW TABLES sorgusu eklerdi.
     if (!$taze) {
         $cached = get_transient(QRM_PRO_STATS_TRANSIENT);
 
-        if (is_array($cached) && isset($cached['threshold'], $cached['crit'])
-            && abs((float) $cached['threshold'] - $threshold) < 0.0001) {
+        if (is_array($cached) && isset($cached['threshold'], $cached['crit'], $cached['sentiment']['threshold'])
+            && abs((float) $cached['threshold'] - $threshold) < 0.0001
+            && abs((float) $cached['sentiment']['threshold'] - $sentiment) < 0.0001) {
             $GLOBALS['qrm_pro_stats_memo'] = $cached;
             return $cached;
         }
     }
 
-    $stats = qrm_pro_fetch_review_stats($threshold);
+    if (!qrm_pro_reviews_table_exists()) {
+        $GLOBALS['qrm_pro_stats_memo'] = qrm_pro_empty_review_stats($threshold, $sentiment);
+        return $GLOBALS['qrm_pro_stats_memo'];
+    }
+
+    $stats = qrm_pro_fetch_review_stats($threshold, $sentiment);
 
     // Sorgu okunamadı: tablo VAR olduğu için ekranlar "tablo bulunamadı"
     // uyarısını basmamalı — sayaçlar sıfır görünür. Böyle bir sonuç
     // önbelleğe de yazılmaz, sonraki istek yeniden dener.
     if (!is_array($stats)) {
-        $stats             = qrm_pro_empty_review_stats($threshold);
+        $stats             = qrm_pro_empty_review_stats($threshold, $sentiment);
         $stats['table_ok'] = true;
 
         $GLOBALS['qrm_pro_stats_memo'] = $stats;

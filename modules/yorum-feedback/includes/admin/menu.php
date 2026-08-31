@@ -4,7 +4,7 @@ if (!defined('ABSPATH')) exit;
 // 2. YÖNETİM SAYFALARI — KAYIT DEFTERİ, ADRESLER, ESKİ ADRES YÖNLENDİRMELERİ
 //
 // Suite'e taşınırken modülün kendi "QR Yorumlar" üst menüsü kaldırıldı: sol
-// menüde yalnızca "Yorum & Feedback" satırı var, yedi ekrana o satırın açtığı
+// menüde yalnızca "Yorum & Feedback" satırı var, altı ekrana o satırın açtığı
 // hub ekranındaki kartlardan gidiliyor. Sayfa kaydının kendisi module.php'de
 // yapılır (suite entegrasyonu orada durur); burada yalnızca sayfaların TANIMI,
 // adres üretimi ve eski adres haritası vardır.
@@ -26,63 +26,82 @@ if (!defined('ABSPATH')) exit;
 // QRMS_Admin::hide_module_subpages(). Modül burada hiçbir şey gizlemez.
 
 /**
+ * Hub ekranındaki kart grupları — başlık sırası burada belirlenir.
+ *
+ * Kartların hangi başlığın altına gireceği qrm_pro_admin_pages()'teki `group`
+ * anahtarından okunur; iki liste tek yerden eşleşsin diye grup anahtarları
+ * yalnızca burada tanımlıdır.
+ *
+ * @return array<string,string> Grup anahtarı => başlık.
+ */
+function qrm_pro_admin_page_groups() {
+    return [
+        'yorumlar' => __( 'Yorumlar', 'qrms' ),
+        'formlar'  => __( 'Formlar', 'qrms' ),
+        'ayarlar'  => __( 'Ayarlar', 'qrms' ),
+    ];
+}
+
+/**
  * Modülün yönetim sayfaları — tek kaynak.
  *
- * Sıra, hub ekranındaki kart sırasını belirler. `render` her sayfanın tek
- * callback'idir; `desc` ve `icon` hub kartlarında kullanılır.
+ * Sıra, hub ekranındaki kart sırasını belirler (grup içinde de aynı sıra).
+ * `render` her sayfanın tek callback'idir; `desc` ve `icon` hub kartlarında,
+ * `group` ise kartın hangi başlığın altına gireceğinde kullanılır.
  *
- * @return array<string,array{title:string,menu_title:string,render:string,desc:string,icon:string}>
+ * @return array<string,array{title:string,menu_title:string,render:string,desc:string,icon:string,group:string}>
  */
 function qrm_pro_admin_pages() {
     return [
         'qrms-yf-yorumlar' => [
-            'title'      => 'Tüm Yorumlar',
-            'menu_title' => 'Tüm Yorumlar',
+            'title'      => __( 'Tüm Yorumlar', 'qrms' ),
+            'menu_title' => __( 'Tüm Yorumlar', 'qrms' ),
             'render'     => 'qrm_pro_admin_dashboard',
-            'desc'       => 'Gelen değerlendirmeleri okuyun; yayınlayın, yayından kaldırın ya da silin.',
+            'desc'       => __( 'Gelen değerlendirmeleri okuyun; yayınlayın, yayından kaldırın ya da silin.', 'qrms' ),
             'icon'       => 'dashicons-testimonial',
-        ],
-        'qrms-yf-icgoruler' => [
-            'title'      => 'Detaylı İçgörüler',
-            'menu_title' => 'Detaylı İçgörüler',
-            'render'     => 'qrm_pro_admin_insights',
-            'desc'       => 'Genel ortalamanız ve her puanlama kriterinin ayrı performansı.',
-            'icon'       => 'dashicons-chart-bar',
+            'group'      => 'yorumlar',
         ],
         'qrms-yf-form-alanlari' => [
-            'title'      => 'Müşteri Bilgileri Formu',
-            'menu_title' => 'Müşteri Bilgileri Formu',
+            'title'      => __( 'Müşteri Bilgileri Formu', 'qrms' ),
+            'menu_title' => __( 'Müşteri Bilgileri Formu', 'qrms' ),
             'render'     => 'qrm_pro_admin_form_builder',
-            'desc'       => 'Yorum formunda müşteriden istenecek bilgi alanları ve sıraları.',
+            'desc'       => __( 'Yorum formunda müşteriden istenecek bilgi alanları ve sıraları.', 'qrms' ),
             'icon'       => 'dashicons-id-alt',
+            'group'      => 'formlar',
         ],
-        'qrms-yf-ayarlar' => [
-            'title'      => 'Ayarlar & Puanlama',
-            'menu_title' => 'Ayarlar & Puanlama',
-            'render'     => 'qrm_pro_admin_settings',
-            'desc'       => 'Puanlama kriterleri, form görünümü, otomatik onay ve spam koruması.',
-            'icon'       => 'dashicons-admin-settings',
-        ],
+        // "İletişim" ve "Formlar" adları panelde birbirine karışıyordu; ikisi de
+        // ne olduklarını söyleyen tam adlarıyla durur.
         'qrms-yf-iletisim' => [
-            'title'      => 'İletişim',
-            'menu_title' => 'İletişim',
+            'title'      => __( 'İletişim Formu', 'qrms' ),
+            'menu_title' => __( 'İletişim Formu', 'qrms' ),
             'render'     => 'qrm_pro_admin_contact',
-            'desc'       => 'İletişim sayfanıza koyacağınız form ve kısa kodu.',
+            'desc'       => __( 'İletişim sayfanıza koyacağınız hazır form ve kısa kodu.', 'qrms' ),
             'icon'       => 'dashicons-email-alt',
-        ],
-        'qrms-yf-odul' => [
-            'title'      => 'Google & Ödül Sistemi',
-            'menu_title' => 'Google & Ödül Sistemi',
-            'render'     => 'qrm_reward_admin_page',
-            'desc'       => 'Google yorum yönlendirmesi, indirim kodu popup\'ı ve kod yönetimi.',
-            'icon'       => 'dashicons-tickets-alt',
+            'group'      => 'formlar',
         ],
         'qrms-yf-formlar' => [
-            'title'      => 'Formlar',
-            'menu_title' => 'Formlar',
+            'title'      => __( 'Özel Formlar', 'qrms' ),
+            'menu_title' => __( 'Özel Formlar', 'qrms' ),
             'render'     => 'qrm_cf_admin_forms_page',
-            'desc'       => 'Şikayet, rezervasyon, anket… Kendi formlarınız ve gelen gönderiler.',
+            'desc'       => __( 'Şikayet, rezervasyon, anket… Kendi oluşturduğunuz formlar ve gelen gönderiler.', 'qrms' ),
             'icon'       => 'dashicons-feedback',
+            'group'      => 'formlar',
+        ],
+        'qrms-yf-ayarlar' => [
+            'title'      => __( 'Ayarlar & Puanlama', 'qrms' ),
+            'menu_title' => __( 'Ayarlar & Puanlama', 'qrms' ),
+            'render'     => 'qrm_pro_admin_settings',
+            'desc'       => __( 'Puanlama kriterleri, form görünümü, otomatik onay ve spam koruması.', 'qrms' ),
+            'icon'       => 'dashicons-admin-settings',
+            'group'      => 'ayarlar',
+        ],
+        'qrms-yf-odul' => [
+            'title'      => __( 'Google & Ödül Sistemi', 'qrms' ),
+            'menu_title' => __( 'Google & Ödül Sistemi', 'qrms' ),
+            'render'     => 'qrm_reward_admin_page',
+            'desc'       => __( 'Google yorum yönlendirmesi, indirim kodu popup\'ı ve kod yönetimi.', 'qrms' ),
+            'icon'       => 'dashicons-tickets-alt',
+            'group'      => 'ayarlar',
         ],
     ];
 }
@@ -151,7 +170,8 @@ function qrm_pro_redirect_legacy_pages() {
  *   - v4.1.x'in ayrı menü maddeleri (qrm-pro-form, qrm-pro-insights, …)
  *   - v4.2.x'in sekmeli tekil sayfaları (qrm-pro-main&tab=insights, …)
  * Sekme/görünüm parametreleri artık ayrı birer sayfa olduğu için, adreste
- * taşınan tab/sub değerleri hedef sayfayı belirlemekte kullanılır.
+ * taşınan tab/sub değerleri hedef sayfayı belirlemekte kullanılır. Kaldırılan
+ * "Detaylı İçgörüler" ekranının adresleri yorum listesine düşer.
  *
  * Saf fonksiyon: yönlendirme ve exit çağıranın işi, böylece test edilebilir.
  *
@@ -166,14 +186,12 @@ function qrm_pro_legacy_page_target($page, $args = []) {
     $form_id = isset($args['form_id']) ? intval($args['form_id']) : 0;
 
     switch ($page) {
-        // Tüm Yorumlar — "İçgörüler" sekmesi artık ayrı sayfa.
+        // "Detaylı İçgörüler" ekranı kaldırıldı; onun iki eski adresi de yorum
+        // listesine düşer — kriter ortalamaları oradaki puan kırılımında zaten
+        // görünür ve kullanıcı boş bir 403 yerine çalışan bir ekrana varır.
         case 'qrm-pro-main':
-            return $tab === 'insights'
-                ? qrm_pro_admin_url('qrms-yf-icgoruler')
-                : qrm_pro_admin_url('qrms-yf-yorumlar');
-
         case 'qrm-pro-insights':
-            return qrm_pro_admin_url('qrms-yf-icgoruler');
+            return qrm_pro_admin_url('qrms-yf-yorumlar');
 
         // Ayarlar — "Müşteri Bilgileri Formu" sekmesi artık ayrı sayfa.
         case 'qrm-pro-settings':
@@ -216,12 +234,13 @@ function qrm_pro_legacy_page_target($page, $args = []) {
 }
 
 /**
- * Menü rozetlerinin kaynağı — okunmamış form gönderimi ve eksik ödül kurulumu.
+ * Menü rozetlerinin kaynağı — onay bekleyen yorum, okunmamış form gönderimi ve
+ * eksik ödül kurulumu.
  *
  * Tek kaynak: hem sol menüdeki "Yorum & Feedback" satırı hem de hub
  * ekranındaki kartlar buradan beslenir.
  *
- * @return array{formlar:int,odul:bool}
+ * @return array{bekleyen:int,formlar:int,odul:bool}
  */
 function qrm_pro_menu_badge_state() {
     // Menü kaydı sırasında her satır için bir kez sorulur; sayaç sorgusu istek
@@ -231,11 +250,16 @@ function qrm_pro_menu_badge_state() {
 
     $settings = qrm_pro_get_settings();
 
+    // İkisi de önbellekli sayaçlardır (transient + istek içi memo), yani sol
+    // menü her admin sayfasında yeni bir sorgu açmaz.
+    $stats = qrm_pro_review_stats();
+
     $state = [
-        'formlar' => (int) qrm_cf_unread_total(),
+        'bekleyen' => (int) $stats['pending'],
+        'formlar'  => (int) qrm_cf_unread_total(),
         // Ödül modülü açık ama yapılandırması eksikse (Google linki boş ya da
         // yönlendirme kapalı) popup hiç gösterilmez. Sessizce fark edilmemesin.
-        'odul'    => !empty($settings['qrm_reward_enabled']) && !qrm_reward_is_active($settings),
+        'odul'     => !empty($settings['qrm_reward_enabled']) && !qrm_reward_is_active($settings),
     ];
 
     return $state;
@@ -245,22 +269,38 @@ function qrm_pro_menu_badge_state() {
  * Modülün sol menüdeki satırına eklenecek rozet HTML'i (yoksa boş string).
  *
  * Ekranların kendi menü satırları kaldırıldığı (sol menü tek seviyeye indi)
- * için rozet artık modülün TEK satırında toplanır: okunmamış form gönderimi
- * varsa sayısı, yoksa eksik ödül kurulumu için bir ünlem. Hangi ekranın
- * ilgilendiği hub kartlarındaki rozetlerden okunur.
+ * için rozet modülün TEK satırında toplanır: bekleyen işlerin (onay bekleyen
+ * yorum + okunmamış form gönderimi) toplamı, hiçbiri yoksa eksik ödül kurulumu
+ * için bir ünlem. Hangi ekranın ilgilendiği hub kartlarındaki rozetlerden
+ * okunur.
  *
  * @return string
  */
 function qrm_pro_menu_badge() {
     $state = qrm_pro_menu_badge_state();
+    $bekleyen = (int) $state['bekleyen'];
+    $formlar  = (int) $state['formlar'];
+    $toplam   = $bekleyen + $formlar;
 
-    if ($state['formlar'] > 0) {
-        return ' <span class="update-plugins count-' . intval($state['formlar']) . '" title="Okunmamış form gönderimi">'
-            . '<span class="update-count">' . intval($state['formlar']) . '</span></span>';
+    if ($toplam > 0) {
+        $parcalar = [];
+
+        if ($bekleyen > 0) {
+            /* translators: %d: onay bekleyen yorum sayısı. */
+            $parcalar[] = sprintf(_n('%d onay bekleyen yorum', '%d onay bekleyen yorum', $bekleyen, 'qrms'), $bekleyen);
+        }
+        if ($formlar > 0) {
+            /* translators: %d: okunmamış form gönderimi sayısı. */
+            $parcalar[] = sprintf(_n('%d okunmamış form gönderimi', '%d okunmamış form gönderimi', $formlar, 'qrms'), $formlar);
+        }
+
+        return ' <span class="update-plugins count-' . $toplam . '" title="' . esc_attr(implode(', ', $parcalar)) . '">'
+            . '<span class="update-count">' . $toplam . '</span></span>';
     }
 
     if ($state['odul']) {
-        return ' <span class="update-plugins count-1" title="Ödül popup modülü açık ama Google Yorum Linki/yönlendirme eksik">'
+        return ' <span class="update-plugins count-1" title="'
+            . esc_attr__('Ödül popup modülü açık ama Google Yorum Linki/yönlendirme eksik', 'qrms') . '">'
             . '<span class="update-count">!</span></span>';
     }
 
