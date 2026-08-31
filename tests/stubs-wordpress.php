@@ -336,6 +336,37 @@ function admin_url( $path = '' ) {
 }
 
 /**
+ * Adrese query arg ekler (yalnızca dizi biçimli çağrı desteklenir).
+ *
+ * @param array  $args Eklenecek argümanlar.
+ * @param string $url  Temel adres.
+ * @return string
+ */
+function add_query_arg( array $args, $url = '' ) {
+	$parcalar = explode( '?', (string) $url, 2 );
+	$mevcut   = array();
+
+	if ( isset( $parcalar[1] ) && '' !== $parcalar[1] ) {
+		parse_str( $parcalar[1], $mevcut );
+	}
+
+	$birlesik = array_merge( $mevcut, $args );
+
+	return empty( $birlesik ) ? $parcalar[0] : $parcalar[0] . '?' . http_build_query( $birlesik );
+}
+
+/**
+ * Sayıyı yerelleştirir (testte düz biçimlendirme yeter).
+ *
+ * @param float $sayi    Sayı.
+ * @param int   $ondalik Ondalık basamak.
+ * @return string
+ */
+function number_format_i18n( $sayi, $ondalik = 0 ) {
+	return number_format( (float) $sayi, (int) $ondalik );
+}
+
+/**
  * Tarih biçimlendirir.
  *
  * @param string $format    Format.
@@ -688,13 +719,13 @@ function add_menu_page( $page_title, $menu_title, $capability, $menu_slug, $call
  * @param mixed  $value Değer.
  * @return mixed
  */
-function apply_filters( $hook, $value ) {
+function apply_filters( $hook, $value, ...$ekstra ) {
 	if ( empty( $GLOBALS['qrms_test']['actions'][ $hook ] ) ) {
 		return $value;
 	}
 
 	foreach ( $GLOBALS['qrms_test']['actions'][ $hook ] as $callback ) {
-		$value = call_user_func( $callback, $value );
+		$value = call_user_func( $callback, $value, ...$ekstra );
 	}
 
 	return $value;

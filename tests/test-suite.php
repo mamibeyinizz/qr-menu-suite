@@ -3461,25 +3461,51 @@ qrms_test(
 );
 
 /* ---------------------------------------------------------------------------
- * 9. QR Analiz — tek ekran + eski adresin yönlendirmesi
+ * 9. QR Analiz — hub + kategori alt sayfaları + eski adresin yönlendirmesi
  * ------------------------------------------------------------------------ */
 
-// module.php dosya kapsamında yalnızca fonksiyon ve sabit tanımlar; stub
+// Dosyalar dosya kapsamında yalnızca fonksiyon ve sabit tanımlar; stub
 // ortamında yan etkisiz yüklenir.
+require_once QRMS_PLUGIN_DIR . 'modules/qr-analiz/class-qrms-analitik-filtre.php';
 require_once QRMS_PLUGIN_DIR . 'modules/qr-analiz/module.php';
+require_once QRMS_PLUGIN_DIR . 'modules/qr-analiz/hub-sayfasi.php';
 
 echo "\nQR Analiz sayfaları\n";
 
 qrms_test(
-	'modülün TEK ekranı vardır: hub yoktur',
+	'modül satırı hub ekranıdır; yedi kategori + klasik görünüm kart olur',
 	function () {
-		// Firebase ayarları güvenlik modülüne taşındıktan sonra dallanacak
-		// ikinci bir ekran kalmadı; modül satırı doğrudan paneli açar.
-		qrms_assert_false( function_exists( 'qrms_module_qr_analiz_hub' ), 'hub fonksiyonu yok' );
-		qrms_assert_false( function_exists( 'qrms_module_qr_analiz_sayfalar' ), 'sayfa listesi yok' );
-		qrms_assert_false( defined( 'QRMS_ANALIZ_AYAR_SAYFA' ), 'ayar slug sabiti taşındı' );
+		// Sayfa listesi TEK KAYNAK: kayıt da kartlar da buradan beslenir.
+		$sayfalar = qrms_module_qr_analiz_sayfalar();
+
+		qrms_assert_same(
+			array(
+				'qrms-an-genel',
+				'qrms-an-urunler',
+				'qrms-an-masalar',
+				'qrms-an-sepet',
+				'qrms-an-etkilesim',
+				'qrms-an-acilis',
+				'qrms-an-sistem',
+			),
+			array_keys( $sayfalar ),
+			'kategori slug\'ları'
+		);
+
+		foreach ( $sayfalar as $slug => $sayfa ) {
+			qrms_assert_true( is_callable( $sayfa['render'] ), $slug . ' render edilebilir' );
+			qrms_assert_true( '' !== $sayfa['desc'], $slug . ' açıklaması' );
+			// İkonlar dashicons setinden gelir — emoji değil.
+			qrms_assert_true( 0 === strpos( $sayfa['icon'], 'dashicons-' ), $slug . ' dashicon' );
+		}
+
+		// Kartlar: yedi kategori + klasik görünüm.
+		$kartlar = qrms_module_qr_analiz_hub_kartlari();
+		qrms_assert_same( 8, count( $kartlar ), 'kart sayısı' );
+		qrms_assert_contains( QRMS_ANALITIK_KLASIK_SAYFA, $kartlar[7]['url'], 'klasik görünüm kartı' );
 
 		// Ayar ekranı dosyası artık güvenlik modülünün altındadır.
+		qrms_assert_false( defined( 'QRMS_ANALIZ_AYAR_SAYFA' ), 'ayar slug sabiti taşındı' );
 		qrms_assert_false(
 			file_exists( QRMS_PLUGIN_DIR . 'modules/qr-analiz/ayarlar-sayfasi.php' ),
 			'eski konumda yok'
@@ -3492,6 +3518,149 @@ qrms_test(
 );
 
 qrms_test(
+	'kategori sayfaları menüye satır EKLEMEZ; alt sayfa olarak kaydolur',
+	function () {
+		QRMS_Analitik_Filtre::sifirla();
+
+		$GLOBALS['submenu'][ QRMS_Admin::MENU_SLUG ] = array(
+			qrms_submenu_satiri( 'İstatistikler', QRMS_Admin::get_module_page_slug( 'qr-analiz' ) ),
+		);
+
+		qrms_module_qr_analiz_admin_menu();
+
+		$sluglar = array_map(
+			function ( $item ) {
+				return $item['slug'];
+			},
+			$GLOBALS['qrms_test']['submenus']
+		);
+
+		foreach ( array_keys( qrms_module_qr_analiz_sayfalar() ) as $slug ) {
+			qrms_assert_true( in_array( $slug, $sluglar, true ), $slug . ' kayıtlı' );
+			qrms_assert_true( QRMS_Admin::is_module_subpage( $slug ), $slug . ' alt sayfa defterinde' );
+		}
+
+		qrms_assert_true( in_array( QRMS_ANALITIK_KLASIK_SAYFA, $sluglar, true ), 'klasik panel kayıtlı' );
+		qrms_assert_true( QRMS_Admin::is_module_subpage( QRMS_ANALITIK_KLASIK_SAYFA ), 'klasik panel alt sayfa' );
+
+		// Hepsi menüden düşer: beyaz listede yalnızca modül satırı vardır.
+		$gizlenen = QRMS_Admin::collect_hidden_rows(
+			$GLOBALS['submenu'][ QRMS_Admin::MENU_SLUG ],
+			QRMS_Admin::get_menu_row_slugs()
+		);
+
+		foreach ( array_keys( qrms_module_qr_analiz_sayfalar() ) as $slug ) {
+			qrms_assert_true( in_array( $slug, $gizlenen, true ), $slug . ' menüden düşer' );
+		}
+	}
+);
+
+qrms_test(
+	'paylaşılan filtre her bağlantıya yapışır, varsayılanda adres temiz kalır',
+	function () {
+		// Dokunulmamış filtre: adreslerde gereksiz arg yok.
+		QRMS_Analitik_Filtre::ayarla( array() );
+		qrms_assert_same( 'bugun', QRMS_Analitik_Filtre::donem(), 'varsayılan dönem' );
+		qrms_assert_same( array(), QRMS_Analitik_Filtre::args(), 'temiz adres' );
+
+		// Seçim yapıldığında hub kartları da geri bağlantısı da taşır.
+		QRMS_Analitik_Filtre::ayarla(
+			array(
+				'donem' => 'hafta',
+				'masa'  => 'Masa 3',
+			)
+		);
+
+		qrms_assert_same(
+			array(
+				'donem' => 'hafta',
+				'masa'  => 'masa-3',
+			),
+			QRMS_Analitik_Filtre::args(),
+			'taşınan filtre'
+		);
+
+		$url = QRMS_Analitik_Filtre::url( 'qrms-an-sepet' );
+		qrms_assert_contains( 'page=qrms-an-sepet', $url, 'sayfa' );
+		qrms_assert_contains( 'donem=hafta', $url, 'dönem taşındı' );
+		qrms_assert_contains( 'masa=masa-3', $url, 'masa taşındı' );
+
+		foreach ( qrms_module_qr_analiz_hub_kartlari() as $kart ) {
+			qrms_assert_contains( 'donem=hafta', $kart['url'], 'kart dönemi taşır' );
+			qrms_assert_contains( 'masa=masa-3', $kart['url'], 'kart masayı taşır' );
+		}
+
+		// Geri bağlantısı hub'a döner ama seçimi kaybetmez.
+		$geri = qrms_module_qr_analiz_geri_url( QRMS_Admin::get_module_page_url( 'qr-analiz' ), 'qr-analiz' );
+		qrms_assert_contains( 'page=' . QRMS_Admin::get_module_page_slug( 'qr-analiz' ), $geri, 'hub adresi' );
+		qrms_assert_contains( 'donem=hafta', $geri, 'geri bağlantısı dönemi taşır' );
+
+		// Başka modülün alt sayfası etkilenmez.
+		qrms_assert_same(
+			QRMS_Admin::get_module_page_url( 'qr-galeri' ),
+			qrms_module_qr_analiz_geri_url( QRMS_Admin::get_module_page_url( 'qr-galeri' ), 'qr-galeri' ),
+			'yabancı modül dokunulmaz'
+		);
+
+		QRMS_Analitik_Filtre::sifirla();
+	}
+);
+
+qrms_test(
+	'filtre bağlamı bozuk değerleri güvenli varsayılana indirger',
+	function () {
+		// Tanınmayan dönem.
+		$b = QRMS_Analitik_Filtre::coz( array( 'donem' => 'yil' ) );
+		qrms_assert_same( 'bugun', $b['donem'], 'tanınmayan dönem' );
+
+		// "ozel" ama tarih eksik: yarım aralık tüm tabloyu taratırdı.
+		$b = QRMS_Analitik_Filtre::coz(
+			array(
+				'donem' => 'ozel',
+				'bas'   => '2026-01-01',
+			)
+		);
+		qrms_assert_same( 'bugun', $b['donem'], 'yarım aralık reddedilir' );
+
+		// Takvimde olmayan gün.
+		$b = QRMS_Analitik_Filtre::coz(
+			array(
+				'donem' => 'ozel',
+				'bas'   => '2026-02-31',
+				'bit'   => '2026-03-01',
+			)
+		);
+		qrms_assert_same( 'bugun', $b['donem'], 'geçersiz tarih' );
+
+		// Ters aralık takas edilir.
+		$b = QRMS_Analitik_Filtre::coz(
+			array(
+				'donem' => 'ozel',
+				'bas'   => '2026-03-10',
+				'bit'   => '2026-03-01',
+			)
+		);
+		qrms_assert_same( 'ozel', $b['donem'], 'özel aralık' );
+		qrms_assert_same( '2026-03-01', $b['bas'], 'başlangıç takas edildi' );
+		qrms_assert_same( '2026-03-10', $b['bit'], 'bitiş takas edildi' );
+
+		// Dönem özel değilse tarihler taşınmaz.
+		$b = QRMS_Analitik_Filtre::coz(
+			array(
+				'donem' => 'ay',
+				'bas'   => '2026-03-01',
+				'bit'   => '2026-03-10',
+			)
+		);
+		qrms_assert_same( '', $b['bas'], 'artık tarih taşınmaz' );
+
+		// Dizi gelirse (?masa[]=x) çökme değil, boş filtre.
+		$b = QRMS_Analitik_Filtre::coz( array( 'masa' => array( 'x' ) ) );
+		qrms_assert_same( '', $b['masa'], 'dizi değer yok sayılır' );
+	}
+);
+
+qrms_test(
 	'panelin eski adresi kayıtlı kalır ve modül satırına yönlendirir',
 	function () {
 		$GLOBALS['submenu'][ QRMS_Admin::MENU_SLUG ] = array(
@@ -3500,19 +3669,19 @@ qrms_test(
 
 		qrms_module_qr_analiz_admin_menu();
 
-		qrms_assert_same(
-			array( QRMS_ANALITIK_SAYFA ),
-			array_map(
+		$eski = array_values(
+			array_filter(
+				$GLOBALS['qrms_test']['submenus'],
 				function ( $item ) {
-					return $item['slug'];
-				},
-				$GLOBALS['qrms_test']['submenus']
-			),
-			'yalnızca eski adres'
+					return QRMS_ANALITIK_SAYFA === $item['slug'];
+				}
+			)
 		);
 
+		qrms_assert_same( 1, count( $eski ), 'eski adres bir kez kayıtlı' );
+
 		// Üst menü '' — satır sol menüde hiç görünmez, yalnızca adres çalışır.
-		qrms_assert_same( '', $GLOBALS['qrms_test']['submenus'][0]['parent'], 'gizli sayfa' );
+		qrms_assert_same( '', $eski[0]['parent'], 'gizli sayfa' );
 
 		try {
 			qrms_module_qr_analiz_eski_adresi_yonlendir();
