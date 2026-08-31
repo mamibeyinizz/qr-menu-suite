@@ -3777,6 +3777,8 @@ require_once QRMS_PLUGIN_DIR . 'modules/qr-analiz/genel-sayfasi.php';
 require_once QRMS_PLUGIN_DIR . 'modules/qr-analiz/urunler-sayfasi.php';
 require_once QRMS_PLUGIN_DIR . 'modules/qr-analiz/masalar-sayfasi.php';
 require_once QRMS_PLUGIN_DIR . 'modules/qr-analiz/sepet-sayfasi.php';
+require_once QRMS_PLUGIN_DIR . 'modules/qr-analiz/etkilesim-sayfasi.php';
+require_once QRMS_PLUGIN_DIR . 'modules/qr-analiz/acilis-sayfasi.php';
 require_once QRMS_PLUGIN_DIR . 'modules/qr-analiz/sistem-sayfasi.php';
 require_once QRMS_PLUGIN_DIR . 'modules/qr-analiz/hub-sayfasi.php';
 
@@ -3829,10 +3831,7 @@ qrms_test(
 			);
 		}
 
-		// Henüz dolmamış kategoriler gizlenmez, ROZETLENİR: gizlemek "böyle
-		// bir şey yok" demek olurdu, rozetsiz göstermek boş ekranı hata gibi
-		// hissettirirdi. Sepet Faz 7'de doldu; kalan iki (etkileşim, açılış)
-		// Faz 8'e kalır.
+		// Bütün kategoriler doldu: rozet kalmaz.
 		$rozetli = array();
 
 		foreach ( $kartlar as $kart ) {
@@ -3841,7 +3840,7 @@ qrms_test(
 			}
 		}
 
-		qrms_assert_same( 2, count( $rozetli ), 'iki kategori "Yakında"' );
+		qrms_assert_same( 0, count( $rozetli ), 'Yakında rozeti kalmadı' );
 
 		// Ayar ekranı dosyası artık güvenlik modülünün altındadır.
 		qrms_assert_false( defined( 'QRMS_ANALIZ_AYAR_SAYFA' ), 'ayar slug sabiti taşındı' );
@@ -3863,15 +3862,17 @@ qrms_test(
 
 		qrms_assert_false( isset( $gecerli['qrms-an-sepet'] ), 'chatbot pasif: sepet yok' );
 		qrms_assert_false( isset( $gecerli['qrms-an-acilis'] ), 'açılış pasif: kategori yok' );
+		qrms_assert_false( isset( $gecerli['qrms-an-etkilesim'] ), 'etkileşim bağlı modüller pasif: kategori yok' );
 		qrms_assert_true( isset( $gecerli['qrms-an-genel'] ), 'çekirdek kategoriler durur' );
 		qrms_assert_true( isset( $gecerli['qrms-an-masalar'] ), 'masalar modüle bağlı değil' );
 
-		// Chatbot açılınca kategori geri gelir.
+		// Chatbot açılınca sepet ve (OR bağlı) etkileşim geri gelir.
 		update_option( 'qrms_active_modules', array( 'qr-analiz', 'qr-chatbot' ) );
 
 		$gecerli = qrms_module_qr_analiz_gecerli_sayfalar();
 
 		qrms_assert_true( isset( $gecerli['qrms-an-sepet'] ), 'chatbot aktif: sepet var' );
+		qrms_assert_true( isset( $gecerli['qrms-an-etkilesim'] ), 'chatbot aktif: etkileşim var' );
 
 		update_option( 'qrms_active_modules', array() );
 	}
@@ -4292,6 +4293,7 @@ qrms_test(
 		$wpdb->results[] = array();  // urun_tiklama_sayaclari
 		$wpdb->results[] = array();  // kategori_dagilimi
 		$wpdb->vars[]    = 0;        // kategorisiz sayımı
+		$wpdb->results[] = array();  // olay_sayaclari detay
 		$wpdb->results[] = array();  // urun_siralamasi
 
 		$veri = qrms_analitik_urun_verisi(
@@ -4306,10 +4308,10 @@ qrms_test(
 		);
 
 		// Ürün sayısı 40 olmasına rağmen sorgu sayısı SABİT kalır: bir
-		// get_posts + dört analitik sorgusu (sayaçlar, dağılım, kategorisiz
-		// sayımı, en çok tıklananlar).
+		// get_posts + beş analitik sorgusu (sayaçlar, dağılım, kategorisiz
+		// sayımı, detay açılışı, en çok tıklananlar).
 		qrms_assert_same( 1, $GLOBALS['qrms_test']['get_posts_calls'], 'tek ürün sorgusu' );
-		qrms_assert_same( 4, count( $wpdb->queries ), 'sabit sayıda analitik sorgusu' );
+		qrms_assert_same( 5, count( $wpdb->queries ), 'sabit sayıda analitik sorgusu' );
 
 		// Sayfalama: 40 üründen ilk 25'i.
 		qrms_assert_same( 25, count( $veri['enaz'] ), 'sayfa boyu' );
@@ -4322,6 +4324,7 @@ qrms_test(
 		$wpdb->results[] = array();
 		$wpdb->results[] = array();
 		$wpdb->vars[]    = 0;
+		$wpdb->results[] = array();
 		$wpdb->results[] = array();
 
 		$veri = qrms_analitik_urun_verisi(
@@ -5025,6 +5028,321 @@ qrms_test(
 			false !== strpos( $hub, 'function qrms_analitik_sayfa_sepet' ),
 			'placeholder fonksiyon hub\'dan kalktı'
 		);
+	}
+);
+
+qrms_test(
+	'etkileşim hesaplaması saf fonksiyondur: ödül dönüşümü sıfıra bölünmez',
+	function () {
+		$bos = qrms_analitik_etkilesim_hesapla( array() );
+
+		qrms_assert_true( $bos['bos'], 'boş girdi' );
+		qrms_assert_same( 0, $bos['ozet']['reward_oran'], 'üretilen yokken oran 0' );
+
+		$sonuc = qrms_analitik_etkilesim_hesapla(
+			array(
+				array(
+					'event_type' => 'chatbot_message',
+					'item_name'  => '',
+					'adet'       => 4,
+				),
+				array(
+					'event_type' => 'form_submit',
+					'item_name'  => 'Rezervasyon',
+					'adet'       => 3,
+				),
+				array(
+					'event_type' => 'form_submit',
+					'item_name'  => 'İletişim',
+					'adet'       => 1,
+				),
+				array(
+					'event_type' => 'reward_issued',
+					'item_name'  => '',
+					'adet'       => 10,
+				),
+				array(
+					'event_type' => 'reward_redeemed',
+					'item_name'  => '',
+					'adet'       => 4,
+				),
+				array(
+					'event_type' => 'lang_switch',
+					'item_name'  => 'en',
+					'adet'       => 6,
+				),
+				array(
+					'event_type' => 'lang_switch',
+					'item_name'  => 'ar',
+					'adet'       => 2,
+				),
+				array(
+					'event_type' => 'gallery_view',
+					'item_name'  => '',
+					'adet'       => 5,
+				),
+			)
+		);
+
+		qrms_assert_false( $sonuc['bos'], 'dolu girdi' );
+		qrms_assert_same( 4, $sonuc['ozet']['chatbot'], 'chatbot' );
+		qrms_assert_same( 4, $sonuc['ozet']['form'], 'form toplam' );
+		qrms_assert_same( 40, $sonuc['ozet']['reward_oran'], '4/10 dönüşüm' );
+		qrms_assert_same( 'Rezervasyon', $sonuc['formlar'][0]['ad'], 'form sırası adet' );
+		qrms_assert_same( 8, $sonuc['ozet']['lang'], 'dil toplam' );
+		qrms_assert_same( 'en', $sonuc['diller'][0]['kod'], 'en önde' );
+		qrms_assert_same( 75, $sonuc['diller'][0]['pay'], 'en payı' );
+		qrms_assert_same( 5, $sonuc['ozet']['gallery'], 'galeri' );
+	}
+);
+
+qrms_test(
+	'etkileşim CSV\'si ayrı kategori anahtarı kullanır',
+	function () {
+		$sinif = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/class-qrms-analitik.php' );
+		$sayfa = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/etkilesim-sayfasi.php' );
+
+		qrms_assert_contains( "if ( 'etkilesim' === \$kategori )", $sinif, 'ayrı kategori anahtarı' );
+		qrms_assert_contains( 'csv_etkilesim', $sinif, 'etkileşim CSV üreticisi' );
+		qrms_assert_contains( "'kategori' => 'etkilesim'", $sayfa, 'sayfa kendi indirmesini ister' );
+		qrms_assert_contains( 'qr-analitik-etkilesim-', $sinif, 'dosya adı çakışmaz' );
+	}
+);
+
+qrms_test(
+	'etkileşim sayfası paylaşılan filtreyi kullanır ve bağlı olmayan bölümü basmaz',
+	function () {
+		$sayfa = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/etkilesim-sayfasi.php' );
+		$js    = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/assets/js/analitik-etkilesim.js' );
+		$hub   = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/hub-sayfasi.php' );
+
+		qrms_assert_contains( "qrms_analitik_filtre_cubugu( 'qrms-an-etkilesim' )", $sayfa, 'paylaşılan filtre' );
+		qrms_assert_contains( 'qrms_analitik_etkilesim', $js, 'AJAX ucu' );
+		qrms_assert_contains( 'justStarted', $js, 'yeni başladı boş durumu' );
+		qrms_assert_contains( "'hazir'    => true", $hub, 'etkileşim kartı yakında değil' );
+		qrms_assert_false(
+			false !== strpos( $hub, 'function qrms_analitik_sayfa_etkilesim' ),
+			'placeholder fonksiyon hub\'dan kalktı'
+		);
+		qrms_assert_contains( 'moduller', $hub, 'OR lisans süzmesi' );
+	}
+);
+
+qrms_test(
+	'etkileşim bağlı modüller pasifken sayfa yine kayıtlıdır ama hub kartı yoktur',
+	function () {
+		update_option( 'qrms_active_modules', array( 'qr-analiz' ) );
+		QRMS_Analitik_Filtre::sifirla();
+
+		$GLOBALS['submenu'][ QRMS_Admin::MENU_SLUG ] = array(
+			qrms_submenu_satiri( 'İstatistikler', QRMS_Admin::get_module_page_slug( 'qr-analiz' ) ),
+		);
+
+		qrms_module_qr_analiz_admin_menu();
+
+		$sluglar = array_map(
+			function ( $item ) {
+				return $item['slug'];
+			},
+			$GLOBALS['qrms_test']['submenus']
+		);
+
+		qrms_assert_true( in_array( 'qrms-an-etkilesim', $sluglar, true ), 'doğrudan URL çalışsın diye kayıtlı' );
+
+		$etk_kart = false;
+		foreach ( qrms_module_qr_analiz_hub_kartlari() as $kart ) {
+			if ( false !== strpos( $kart['url'], 'page=qrms-an-etkilesim' ) ) {
+				$etk_kart = true;
+			}
+		}
+
+		qrms_assert_false( $etk_kart, 'hub kartı basılmaz' );
+
+		ob_start();
+		qrms_analitik_sayfa_etkilesim();
+		$html = ob_get_clean();
+
+		qrms_assert_contains( 'Bu kategori bu lisansta kapalı', $html, 'anlamlı mesaj' );
+		qrms_assert_false( false !== strpos( $html, 'id="qrms-an-etk-chatbot-cards"' ), 'boş tablo yok' );
+
+		update_option( 'qrms_active_modules', array() );
+	}
+);
+
+qrms_test(
+	'açılış hesaplaması saf fonksiyondur: splash_view sıfırken oran 0',
+	function () {
+		$bos = qrms_analitik_acilis_hesapla( array() );
+
+		qrms_assert_true( $bos['bos'], 'boş girdi' );
+		qrms_assert_same( 0, $bos['ozet']['menu_oran'], 'gösterim yokken menü oranı 0' );
+		qrms_assert_same( 0, $bos['ozet']['atla_oran'], 'gösterim yokken atlanma 0' );
+
+		$sifir_payda = qrms_analitik_acilis_hesapla(
+			array(
+				array(
+					'event_type' => 'splash_action',
+					'item_name'  => 'menu',
+					'adet'       => 3,
+				),
+			)
+		);
+
+		qrms_assert_same( 0, $sifir_payda['ozet']['view'], 'gösterim yok' );
+		qrms_assert_same( 3, $sifir_payda['ozet']['menu'], 'eylem sayılır' );
+		qrms_assert_same( 0, $sifir_payda['ozet']['menu_oran'], 'payda sıfır: bölme yok' );
+
+		$sonuc = qrms_analitik_acilis_hesapla(
+			array(
+				array(
+					'event_type' => 'splash_view',
+					'item_name'  => '',
+					'adet'       => 10,
+				),
+				array(
+					'event_type' => 'splash_action',
+					'item_name'  => 'menu',
+					'adet'       => 4,
+				),
+				array(
+					'event_type' => 'splash_action',
+					'item_name'  => 'atla',
+					'adet'       => 2,
+				),
+				array(
+					'event_type' => 'splash_action',
+					'item_name'  => 'wifi',
+					'adet'       => 3,
+				),
+				array(
+					'event_type' => 'splash_action',
+					'item_name'  => 'sosyal',
+					'adet'       => 1,
+				),
+			)
+		);
+
+		qrms_assert_false( $sonuc['bos'], 'dolu girdi' );
+		qrms_assert_same( 10, $sonuc['ozet']['view'], 'gösterim' );
+		qrms_assert_same( 40, $sonuc['ozet']['menu_oran'], '4/10 menü' );
+		qrms_assert_same( 20, $sonuc['ozet']['atla_oran'], '2/10 atla' );
+		qrms_assert_same( 'wifi', $sonuc['butonlar'][0]['kod'], 'wifi ilk buton' );
+		qrms_assert_same( 3, $sonuc['butonlar'][0]['adet'], 'wifi adet' );
+		qrms_assert_same( 30, $sonuc['butonlar'][0]['pay'], 'wifi payı gösterime' );
+	}
+);
+
+qrms_test(
+	'açılış CSV\'si ayrı kategori anahtarı kullanır',
+	function () {
+		$sinif = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/class-qrms-analitik.php' );
+		$sayfa = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/acilis-sayfasi.php' );
+
+		qrms_assert_contains( "if ( 'acilis' === \$kategori )", $sinif, 'ayrı kategori anahtarı' );
+		qrms_assert_contains( 'csv_acilis', $sinif, 'açılış CSV üreticisi' );
+		qrms_assert_contains( "'kategori' => 'acilis'", $sayfa, 'sayfa kendi indirmesini ister' );
+		qrms_assert_contains( 'qr-analitik-acilis-', $sinif, 'dosya adı çakışmaz' );
+	}
+);
+
+qrms_test(
+	'açılış sayfası paylaşılan filtreyi kullanır ve sıfıra bölmez',
+	function () {
+		$sayfa = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/acilis-sayfasi.php' );
+		$js    = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/assets/js/analitik-acilis.js' );
+		$hub   = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/hub-sayfasi.php' );
+
+		qrms_assert_contains( "qrms_analitik_filtre_cubugu( 'qrms-an-acilis' )", $sayfa, 'paylaşılan filtre' );
+		qrms_assert_contains( 'qrms_analitik_acilis', $js, 'AJAX ucu' );
+		qrms_assert_contains( 'justStarted', $js, 'yeni başladı boş durumu' );
+		qrms_assert_contains( "'hazir'  => true", $hub, 'açılış kartı yakında değil' );
+		qrms_assert_false(
+			false !== strpos( $hub, 'function qrms_analitik_sayfa_acilis' ),
+			'placeholder fonksiyon hub\'dan kalktı'
+		);
+		qrms_assert_contains( '$ozet[\'view\'] > 0', $sayfa, 'payda sıfır koruması' );
+	}
+);
+
+qrms_test(
+	'açılış modülü pasifken sayfa yine kayıtlıdır ama hub kartı yoktur',
+	function () {
+		update_option( 'qrms_active_modules', array( 'qr-analiz' ) );
+		QRMS_Analitik_Filtre::sifirla();
+
+		$GLOBALS['submenu'][ QRMS_Admin::MENU_SLUG ] = array(
+			qrms_submenu_satiri( 'İstatistikler', QRMS_Admin::get_module_page_slug( 'qr-analiz' ) ),
+		);
+
+		qrms_module_qr_analiz_admin_menu();
+
+		$sluglar = array_map(
+			function ( $item ) {
+				return $item['slug'];
+			},
+			$GLOBALS['qrms_test']['submenus']
+		);
+
+		qrms_assert_true( in_array( 'qrms-an-acilis', $sluglar, true ), 'doğrudan URL çalışsın diye kayıtlı' );
+
+		$acilis_kart = false;
+		foreach ( qrms_module_qr_analiz_hub_kartlari() as $kart ) {
+			if ( false !== strpos( $kart['url'], 'page=qrms-an-acilis' ) ) {
+				$acilis_kart = true;
+			}
+		}
+
+		qrms_assert_false( $acilis_kart, 'hub kartı basılmaz' );
+
+		ob_start();
+		qrms_analitik_sayfa_acilis();
+		$html = ob_get_clean();
+
+		qrms_assert_contains( 'Bu kategori bu lisansta kapalı', $html, 'anlamlı mesaj' );
+		qrms_assert_false( false !== strpos( $html, 'id="qrms-an-acilis-cards"' ), 'boş tablo yok' );
+
+		update_option( 'qrms_active_modules', array() );
+	}
+);
+
+qrms_test(
+	'detay modalı açılışı ayrı olaydır ve tıklama sıfırken oran 0',
+	function () {
+		$frontend = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/js/rma-frontend.js' );
+		$modal    = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/js/rma-detail-modal.js' );
+		$urun     = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/urunler-sayfasi.php' );
+		$js       = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/assets/js/analitik-urunler.js' );
+
+		qrms_assert_contains( "yaz('item_detail_open'", $frontend, 'ana menü modalı' );
+		qrms_assert_contains( 'rmaAnalitikDetay(id)', $frontend, 'gösterimde yazılır' );
+		qrms_assert_contains( "yaz('item_detail_open'", $modal, 'vitrin/slider modalı' );
+		qrms_assert_false( false !== strpos( $urun, 'bilinçli olarak YOKTUR' ), 'Faz 3 yorumu kalktı' );
+		qrms_assert_contains( 'qrms-an-detay-cards', $urun, 'ürünler bölümü' );
+		qrms_assert_contains( 'justStartedDetail', $js, 'yeni başladı boş durumu' );
+
+		$bos = qrms_analitik_urun_detay_hesapla( array() );
+		qrms_assert_true( $bos['bos'], 'açılış yok' );
+		qrms_assert_same( 0, $bos['oran'], 'payda sıfır' );
+
+		$oran = qrms_analitik_urun_detay_hesapla(
+			array(
+				array(
+					'event_type' => 'product_click',
+					'item_name'  => 'A',
+					'adet'       => 4,
+				),
+				array(
+					'event_type' => 'item_detail_open',
+					'item_name'  => 'A',
+					'adet'       => 6,
+				),
+			)
+		);
+
+		qrms_assert_same( 4, $oran['click'], 'tıklama' );
+		qrms_assert_same( 6, $oran['open'], 'açılış' );
+		qrms_assert_same( 150, $oran['oran'], 'önbellek yüzünden %100 üzeri' );
+		qrms_assert_false( $oran['bos'], 'dolu' );
 	}
 );
 
@@ -5751,6 +6069,21 @@ class QRMS_Yorum_Insert_Wpdb {
 	public function son_insert() {
 		return end( $this->inserts ) ?: array();
 	}
+
+	/**
+	 * Yorum satırının insert'i (analitik kaydı sonra gelebilir).
+	 *
+	 * @return array
+	 */
+	public function yorum_insert() {
+		foreach ( $this->inserts as $insert ) {
+			if ( isset( $insert['data']['rating_1'] ) ) {
+				return $insert;
+			}
+		}
+
+		return $this->son_insert();
+	}
 }
 
 /**
@@ -5833,7 +6166,7 @@ qrms_test(
 		qrms_gonderim_postu( array( 1 => 4, 2 => 99 ) );
 
 		$sonuc = qrm_pro_handle_review_submission( qrms_gonderim_ayarlari() );
-		$veri  = $db->son_insert();
+		$veri  = $db->yorum_insert();
 
 		qrms_assert_true( $sonuc['success'], 'gönderim kabul edilir' );
 		qrms_assert_same( 0, $veri['data']['rating_2'], 'aralık dışı puan sıfırlanır' );
@@ -5849,7 +6182,7 @@ qrms_test(
 		qrms_gonderim_postu( array( 1 => 5, 3 => -4 ) );
 
 		$sonuc = qrm_pro_handle_review_submission( qrms_gonderim_ayarlari() );
-		$veri  = $db->son_insert();
+		$veri  = $db->yorum_insert();
 
 		qrms_assert_same( 0, $veri['data']['rating_3'], 'negatif puan sıfırlanır' );
 		qrms_assert_same( 5.0, $sonuc['avg'], 'ortalama negatiften etkilenmez' );
@@ -5880,7 +6213,7 @@ qrms_test(
 		$sonuc = qrm_pro_handle_review_submission( qrms_gonderim_ayarlari() );
 
 		qrms_assert_true( $sonuc['success'], 'üst sınır kabul edilir' );
-		qrms_assert_same( 5, $db->son_insert()['data']['rating_1'], '5 korunur' );
+		qrms_assert_same( 5, $db->yorum_insert()['data']['rating_1'], '5 korunur' );
 	}
 );
 
@@ -5892,7 +6225,7 @@ qrms_test(
 
 		qrm_pro_handle_review_submission( qrms_gonderim_ayarlari() );
 
-		$veri = $db->son_insert();
+		$veri = $db->yorum_insert();
 
 		qrms_assert_true( is_array( $veri['format'] ), 'format dizisi verilir' );
 		qrms_assert_same(
@@ -6206,6 +6539,11 @@ qrms_test(
 
 		qrms_assert_same( 14, QRMS_Analitik::saklama_gun_tip( 'cart_add' ), 'sepet ekleme kısa' );
 		qrms_assert_same( 14, QRMS_Analitik::saklama_gun_tip( 'cart_remove' ), 'sepet çıkarma kısa' );
+		qrms_assert_same( 14, QRMS_Analitik::saklama_gun_tip( 'splash_view' ), 'açılış gösterimi kısa' );
+		qrms_assert_same( 30, QRMS_Analitik::saklama_gun_tip( 'chatbot_message' ), 'chatbot orta' );
+		qrms_assert_same( 30, QRMS_Analitik::saklama_gun_tip( 'splash_action' ), 'açılış eylemi orta' );
+		qrms_assert_same( 180, QRMS_Analitik::saklama_gun_tip( 'review_submit' ), 'yorum uzun' );
+		qrms_assert_same( 365, QRMS_Analitik::saklama_gun_tip( 'reward_issued' ), 'ödül uzun' );
 		qrms_assert_same( 365, QRMS_Analitik::saklama_gun_tip( 'order_sent' ), 'sipariş uzun' );
 		qrms_assert_same( 365, QRMS_Analitik::saklama_gun_tip( 'order_blocked' ), 'engel uzun' );
 		qrms_assert_same( 90, QRMS_Analitik::saklama_gun_tip( 'menu_view' ), 'tanımsız varsayılan' );
@@ -6264,6 +6602,145 @@ qrms_test(
 		qrms_assert_contains( 'function qmo_analitik_yaz', $yardimci, 'sessiz yazım köprüsü' );
 		qrms_assert_contains( "class_exists( 'QRMS_Analitik' )", $yardimci, 'lisans/modül yoksa no-op' );
 		qrms_assert_contains( 'QRMS_Analitik::kaydet', $yardimci, 'köprü kaydet kullanır' );
+	}
+);
+
+echo "\nQR Analiz — Faz 8 olay yazımı\n";
+
+qrms_test(
+	'Faz 8 olay tipleri varchar(30) altında ve saklama haritasında',
+	function () {
+		$beklenen = array(
+			'chatbot_message',
+			'lang_switch',
+			'splash_view',
+			'splash_action',
+			'gallery_view',
+			'reward_issued',
+			'reward_redeemed',
+			'review_submit',
+			'form_submit',
+			'item_detail_open',
+		);
+
+		foreach ( $beklenen as $tip ) {
+			qrms_assert_true( in_array( $tip, QRMS_Analitik::OLAY_TIPLERI, true ), $tip . ' listede' );
+			qrms_assert_true( strlen( $tip ) <= 30, $tip . ' uzunluğu' );
+		}
+
+		qrms_assert_same( 14, QRMS_Analitik::saklama_gun_tip( 'splash_view' ), 'splash_view en kısa yeni tip' );
+	}
+);
+
+qrms_test(
+	'chatbot_message hız sınırından sonra yazılır, mesaj içeriği gitmez',
+	function () {
+		$php = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/includes/ajax-chat.php' );
+
+		$zorla = strpos( $php, 'qmo_chat_zorla' );
+		$yaz   = strpos( $php, 'chatbot_message' );
+		$bos   = strpos( $php, "'' === \$message" );
+
+		qrms_assert_true( false !== $zorla && false !== $yaz && false !== $bos, 'noktalar var' );
+		qrms_assert_true( $zorla < $yaz, 'yazım oturum/limitten sonra' );
+		qrms_assert_true( $bos < $yaz, 'boş mesaj yazılmaz' );
+		qrms_assert_contains( "'masa_no'", $php, 'masa doldurulur' );
+		qrms_assert_false( false !== strpos( $php, "'item_name'     => \$message" ), 'mesaj içeriği yazılmaz' );
+		qrms_assert_false( false !== strpos( $php, "'item_name' => \$message" ), 'mesaj içeriği yazılmaz (kısa)' );
+	}
+);
+
+qrms_test(
+	'dil değiştirici ve splash/galeri beacon üzerinden yazar',
+	function () {
+		$ceviri = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-ceviri/assets/js/ceviri.js' );
+		$splash = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-acilis-ekrani/assets/js/splash.js' );
+		$galeri = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-galeri/includes/trait-assets.php' );
+		$beacon = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/assets/js/analitik-onyuz.js' );
+		$sinif  = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/class-qrms-analitik.php' );
+
+		qrms_assert_contains( "yaz( 'lang_switch'", $ceviri, 'dil seçici hedef dili yazar' );
+		qrms_assert_contains( "analitikYaz('splash_view')", $splash, 'gösterim yazılır' );
+		qrms_assert_contains( "splashEylem('menu')", $splash, 'menü eylemi' );
+		qrms_assert_contains( "splashEylem('atla')", $splash, 'atlanma eylemi' );
+		qrms_assert_contains( "splashEylem('wifi')", $splash, 'wifi eylemi' );
+		qrms_assert_contains( "yaz('gallery_view')", $galeri, 'galeri açılışı' );
+		qrms_assert_contains( 'qrms_analitik_onyuz', $beacon, 'beacon action' );
+		qrms_assert_contains( 'keepalive: true', $beacon, 'navigasyonu kesmez' );
+		qrms_assert_contains( 'function masa_onyuz', $sinif, 'masa POST\'tan okunmaz' );
+		qrms_assert_contains( 'NONCE_ONYUZ', $sinif, 'ön yüz nonce' );
+		qrms_assert_false( false !== strpos( $beacon, 'masa' ), 'istemci masa göndermez' );
+	}
+);
+
+qrms_test(
+	'ödül ve form olayları içerik yazmaz, honeypot sayılmaz',
+	function () {
+		$odul  = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/rewards/functions.php' );
+		$yorum = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/ajax/submit-review.php' );
+		$form  = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/ajax/submit-custom-form.php' );
+
+		qrms_assert_contains( "'event_type' => 'reward_issued'", $odul, 'kod üretimi' );
+		qrms_assert_contains( "'event_type' => 'reward_redeemed'", $odul, 'kod kullanımı' );
+		qrms_assert_contains( "qmo_analitik_yaz(['event_type' => 'review_submit'])", $yorum, 'yorum olayı' );
+		qrms_assert_contains( "'event_type' => 'form_submit'", $form, 'form olayı' );
+		qrms_assert_contains( "'item_name'  => isset(\$form->title)", $form, 'form adı' );
+
+		$yorum_yaz = strpos( $yorum, 'review_submit' );
+		$yorum_ins = strpos( $yorum, '$wpdb->insert' );
+		$honeypot  = strpos( $yorum, 'qrm_website' );
+
+		qrms_assert_true( false !== $yorum_yaz && false !== $yorum_ins && false !== $honeypot, 'yorum noktaları' );
+		qrms_assert_true( $honeypot < $yorum_ins, 'honeypot insertten önce çıkar' );
+		qrms_assert_true( $yorum_ins < $yorum_yaz, 'yazım kayıttan sonra' );
+		qrms_assert_false( false !== strpos( $yorum, '$comment' ) && false !== strpos( substr( $yorum, $yorum_yaz, 400 ), '$comment' ), 'yorum metni analitiğe gitmez' );
+		qrms_assert_false( false !== strpos( $form, "validated['data']" ) && false !== strpos( substr( $form, strpos( $form, 'form_submit' ), 350 ), "validated['data']" ), 'form yanıtı analitiğe gitmez' );
+	}
+);
+
+qrms_test(
+	'ön yüz olay kuralları izin listesi dışını reddeder',
+	function () {
+		$kurallar = QRMS_Analitik::onyuz_olay_kurallari();
+
+		qrms_assert_true( isset( $kurallar['lang_switch']['item_name'] ), 'dil listesi' );
+		qrms_assert_true( in_array( 'tr', $kurallar['lang_switch']['item_name'], true ), 'tr' );
+		qrms_assert_true( in_array( 'en', $kurallar['lang_switch']['item_name'], true ), 'en' );
+		qrms_assert_true( in_array( 'menu', $kurallar['splash_action']['item_name'], true ), 'menu' );
+		qrms_assert_true( in_array( 'atla', $kurallar['splash_action']['item_name'], true ), 'atla' );
+		qrms_assert_true( in_array( 'wifi', $kurallar['splash_action']['item_name'], true ), 'wifi' );
+		qrms_assert_same( 'qr-acilis-ekrani', $kurallar['splash_view']['modul'], 'splash modüle bağlı' );
+		qrms_assert_same( 'qr-galeri', $kurallar['gallery_view']['modul'], 'galeri modüle bağlı' );
+		qrms_assert_same( 'qr-ceviri', $kurallar['lang_switch']['modul'], 'dil modüle bağlı' );
+	}
+);
+
+qrms_test(
+	'olay_sayaclari idx_td aralık taraması kullanır, şemaya sütun eklemez',
+	function () {
+		$wpdb            = qrms_sayan_wpdb();
+		$wpdb->results[] = array(
+			array(
+				'event_type' => 'chatbot_message',
+				'item_name'  => '',
+				'adet'       => 4,
+			),
+		);
+
+		$sonuc = QRMS_Analitik::olay_sayaclari(
+			array( 'chatbot_message', 'review_submit' ),
+			'2026-03-01 00:00:00',
+			'2026-03-31 23:59:59'
+		);
+
+		qrms_assert_same( 1, count( $sonuc ), 'satır' );
+		qrms_assert_same( 4, $sonuc[0]['adet'], 'adet' );
+		qrms_assert_contains( 'event_type IN', $wpdb->queries[0], 'IN listesi' );
+		qrms_assert_contains( 'created_at BETWEEN', $wpdb->queries[0], 'idx_td aralığı' );
+		qrms_assert_contains( 'GROUP BY event_type, item_name', $wpdb->queries[0], 'kırılım' );
+
+		$sema = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/class-qrms-analitik.php' );
+		qrms_assert_contains( "const DB_SURUM = '1.1'", $sema, 'şema sütun eklemedi' );
 	}
 );
 

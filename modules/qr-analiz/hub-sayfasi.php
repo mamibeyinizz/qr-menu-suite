@@ -131,12 +131,14 @@ if ( ! function_exists( 'qrms_module_qr_analiz_sayfalar' ) ) {
 				'hazir'  => true,
 			),
 			'qrms-an-etkilesim' => array(
-				'title'  => __( 'Müşteri Etkileşimi', 'qrms' ),
-				'render' => 'qrms_analitik_sayfa_etkilesim',
-				'desc'   => __( 'Chatbot mesajları, yorum ve form gönderimleri, ödül kodları.', 'qrms' ),
-				'icon'   => 'dashicons-groups',
-				'modul'  => '',
-				'hazir'  => false,
+				'title'    => __( 'Müşteri Etkileşimi', 'qrms' ),
+				'render'   => 'qrms_analitik_sayfa_etkilesim',
+				'desc'     => __( 'Chatbot mesajları, yorum ve form gönderimleri, ödül kodları, dil seçimi ve galeri.', 'qrms' ),
+				'icon'     => 'dashicons-groups',
+				'modul'    => '',
+				// Kart, bu modüllerin HİÇBİRİ lisanslı değilse düşer (OR).
+				'moduller' => array( 'qr-chatbot', 'yorum-feedback', 'qr-ceviri', 'qr-galeri' ),
+				'hazir'    => true,
 			),
 			'qrms-an-acilis'    => array(
 				'title'  => __( 'Açılış Ekranı', 'qrms' ),
@@ -144,7 +146,7 @@ if ( ! function_exists( 'qrms_module_qr_analiz_sayfalar' ) ) {
 				'desc'   => __( 'Açılış ekranı gösterimi, menüye geçiş ve atlanma oranları.', 'qrms' ),
 				'icon'   => 'dashicons-visibility',
 				'modul'  => 'qr-acilis-ekrani',
-				'hazir'  => false,
+				'hazir'  => true,
 			),
 			'qrms-an-sistem'    => array(
 				'title'  => __( 'Veri & Sistem', 'qrms' ),
@@ -166,7 +168,9 @@ if ( ! function_exists( 'qrms_module_qr_analiz_gecerli_sayfalar' ) ) {
 	 * Bir kategori, beslendiği modül lisansta pasifse hub'da yoktur: kartı
 	 * basılmaz. Sayfa yine de kaydedilir ki doğrudan URL anlamlı bir mesaj
 	 * göstersin. Sepet & Sipariş chatbot'a, Açılış Ekranı açılış modülüne
-	 * bağlıdır. (Modül yükleyicisi yoksa — ör. testte — hepsi geçerli sayılır.)
+	 * bağlıdır. Müşteri Etkileşimi birkaç modüle OR ile bağlıdır: hiçbiri
+	 * aktif değilse kart düşer. (Modül yükleyicisi yoksa — ör. testte —
+	 * hepsi geçerli sayılır.)
 	 *
 	 * @return array<string,array<string,mixed>>
 	 */
@@ -178,6 +182,23 @@ if ( ! function_exists( 'qrms_module_qr_analiz_gecerli_sayfalar' ) ) {
 		}
 
 		foreach ( $sayfalar as $slug => $sayfa ) {
+			if ( ! empty( $sayfa['moduller'] ) && is_array( $sayfa['moduller'] ) ) {
+				$herhangi = false;
+
+				foreach ( $sayfa['moduller'] as $modul ) {
+					if ( QRMS_Module_Loader::is_module_active( $modul ) ) {
+						$herhangi = true;
+						break;
+					}
+				}
+
+				if ( ! $herhangi ) {
+					unset( $sayfalar[ $slug ] );
+				}
+
+				continue;
+			}
+
 			if ( '' === $sayfa['modul'] ) {
 				continue;
 			}
@@ -385,34 +406,6 @@ if ( ! function_exists( 'qrms_analitik_hazirlaniyor' ) ) {
 			</div>
 		</div>
 		<?php
-	}
-}
-
-if ( ! function_exists( 'qrms_analitik_sayfa_etkilesim' ) ) {
-
-	/**
-	 * Müşteri Etkileşimi kategorisi (Faz 8'de doldurulacak).
-	 *
-	 * @return void
-	 */
-	function qrms_analitik_sayfa_etkilesim() {
-		$sayfalar = qrms_module_qr_analiz_sayfalar();
-
-		qrms_analitik_hazirlaniyor( $sayfalar['qrms-an-etkilesim']['title'], $sayfalar['qrms-an-etkilesim']['desc'] );
-	}
-}
-
-if ( ! function_exists( 'qrms_analitik_sayfa_acilis' ) ) {
-
-	/**
-	 * Açılış Ekranı kategorisi (Faz 8'de doldurulacak).
-	 *
-	 * @return void
-	 */
-	function qrms_analitik_sayfa_acilis() {
-		$sayfalar = qrms_module_qr_analiz_sayfalar();
-
-		qrms_analitik_hazirlaniyor( $sayfalar['qrms-an-acilis']['title'], $sayfalar['qrms-an-acilis']['desc'] );
 	}
 }
 

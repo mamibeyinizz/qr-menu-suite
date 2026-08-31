@@ -326,8 +326,15 @@ trait QRMS_AE_Frontend {
             // ayrı bir ayar alanı yoktur.
             $label = isset($opts['button_texts'][$key]) ? $opts['button_texts'][$key] : '';
 
+            $actions = array(
+                'btn2' => '',
+                'btn3' => 'rezervasyon',
+                'btn4' => 'yorum',
+            );
+
             $items[] = '<div class="sp-action">'
                 . '<a href="' . esc_url($link) . '" class="splash-badge sp-action-circle" data-splash-dismiss="1"'
+                . ( isset( $actions[ $key ] ) && '' !== $actions[ $key ] ? ' data-splash-action="' . esc_attr( $actions[ $key ] ) . '"' : '' )
                 . ' aria-label="' . esc_attr($label) . '" title="' . esc_attr($label) . '"'
                 . $this->lang_data($opts, $key, $label, 'aria-label title') . '>'
                 . $this->icon_svg($icon, 22)
@@ -385,6 +392,7 @@ trait QRMS_AE_Frontend {
 
             $label = $map[$key]['label'];
             $items[] = '<a href="' . esc_url($link) . '" class="splash-badge splash-badge-sm" target="_blank" rel="noopener"'
+                . ' data-splash-action="sosyal"'
                 . ' aria-label="' . esc_attr($label) . '" title="' . esc_attr($label) . '">'
                 . $this->icon_svg($map[$key]['icon'], 20)
                 . '</a>';
@@ -610,7 +618,7 @@ trait QRMS_AE_Frontend {
                     <?php endif; ?>
 
                     <?php if ($cta_link): ?>
-                        <a href="<?php echo esc_url($cta_link); ?>" class="splash-cta" data-splash-dismiss="1"<?php echo $this->lang_data($opts, 'btn1', $cta_text); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>><?php echo esc_html($cta_text); ?></a>
+                        <a href="<?php echo esc_url($cta_link); ?>" class="splash-cta" data-splash-dismiss="1" data-splash-action="menu"<?php echo $this->lang_data($opts, 'btn1', $cta_text); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>><?php echo esc_html($cta_text); ?></a>
                     <?php else: ?>
                         <span class="splash-cta is-disabled"<?php echo $this->lang_data($opts, 'btn1', $cta_text); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>><?php echo esc_html($cta_text); ?></span>
                     <?php endif; ?>

@@ -745,6 +745,12 @@ function rmaPrepImage(idx) {
     img.addEventListener('error', done, { once: true });
 }
 
+function rmaAnalitikDetay(id) {
+    var an = window.qrmsAnalitikOnyuz;
+    if (!an || typeof an.yaz !== 'function' || !id) return;
+    an.yaz('item_detail_open', { item_id: String(id) });
+}
+
 // Açık kartın komşularını (önceki + sonraki) sessizce önceden yükle —
 // böylece kaydırınca AJAX beklemesi olmadan anında yumuşak geçiş olur.
 function rmaPrefetch(idx) {
@@ -768,6 +774,7 @@ function rmaShow(idx) {
         rmaIdx = idx;
         rmaPrepImage(idx);
         rmaPrefetch(idx);
+        rmaAnalitikDetay(id);
     });
 }
 
@@ -809,6 +816,7 @@ function rmaSwipe(step) {
             if (inner) inner.innerHTML = html;
             modalBox.scrollTop = 0;
             rmaPrepImage(ni);
+            rmaAnalitikDetay(id);
         }
         // 2) yeni kartı karşı tarafa ışınla (animasyonsuz)
         modalBox.style.transition = 'none';

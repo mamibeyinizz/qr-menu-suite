@@ -79,6 +79,12 @@
 			sessionStorage.setItem( 'rma_dil', langCode );
 		} catch ( e ) {}
 
+		try {
+			if ( window.qrmsAnalitikOnyuz && typeof window.qrmsAnalitikOnyuz.yaz === 'function' ) {
+				window.qrmsAnalitikOnyuz.yaz( 'lang_switch', { item_name: langCode } );
+			}
+		} catch ( e ) {}
+
 		// Butonu hemen güncelle — yeniden yükleme arasındaki anı boş bırakmasın.
 		document.querySelectorAll( '.qrmenu-lang-dropdown' ).forEach( function ( dropdown ) {
 			var flagEl = dropdown.querySelector( '.qrmenu-current-flag' );

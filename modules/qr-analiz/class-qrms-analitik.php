@@ -55,6 +55,11 @@ class QRMS_Analitik {
 	const NONCE = 'qrms_analitik';
 
 	/**
+	 * Ön yüz beacon'ının nonce eylemi (splash / dil / galeri / detay modalı).
+	 */
+	const NONCE_ONYUZ = 'qrms_analitik_onyuz';
+
+	/**
 	 * CSV dışa aktarma nonce eylemi.
 	 */
 	const NONCE_CSV = 'qrms_analitik_csv';
@@ -173,11 +178,20 @@ class QRMS_Analitik {
 	 * @var array<string,int>
 	 */
 	const SAKLAMA_GUN_TIP = array(
-		'cart_add'      => 14,
-		'cart_remove'   => 14,
-		'order_sent'    => 365,
-		'order_blocked' => 365,
-		'order_failed'  => 180,
+		'cart_add'        => 14,
+		'cart_remove'     => 14,
+		'splash_view'     => 14,
+		'splash_action'   => 30,
+		'chatbot_message' => 30,
+		'gallery_view'    => 30,
+		'lang_switch'     => 30,
+		'order_sent'      => 365,
+		'order_blocked'   => 365,
+		'order_failed'    => 180,
+		'review_submit'   => 180,
+		'form_submit'     => 180,
+		'reward_issued'   => 365,
+		'reward_redeemed' => 365,
 	);
 
 	/**
@@ -198,6 +212,16 @@ class QRMS_Analitik {
 		'order_blocked',
 		'waiter_call',
 		'bill_request',
+		'chatbot_message',
+		'lang_switch',
+		'splash_view',
+		'splash_action',
+		'gallery_view',
+		'reward_issued',
+		'reward_redeemed',
+		'review_submit',
+		'form_submit',
+		'item_detail_open',
 	);
 
 	/**
@@ -225,9 +249,19 @@ class QRMS_Analitik {
 		add_action( 'wp_ajax_qrms_analitik_urunler', array( __CLASS__, 'ajax_urunler' ) );
 		add_action( 'wp_ajax_qrms_analitik_masalar', array( __CLASS__, 'ajax_masalar' ) );
 		add_action( 'wp_ajax_qrms_analitik_sepet', array( __CLASS__, 'ajax_sepet' ) );
+		add_action( 'wp_ajax_qrms_analitik_etkilesim', array( __CLASS__, 'ajax_etkilesim' ) );
+		add_action( 'wp_ajax_qrms_analitik_acilis', array( __CLASS__, 'ajax_acilis' ) );
 		add_action( 'wp_ajax_qrms_analitik_csv', array( __CLASS__, 'ajax_csv' ) );
 		add_action( 'wp_ajax_qrms_analitik_temizle', array( __CLASS__, 'ajax_temizle' ) );
 		add_action( 'admin_post_qrms_analitik_saklama', array( __CLASS__, 'saklama_formu' ) );
+
+		// Ön yüz beacon'ı: splash / dil / galeri / detay modalı. qr-analiz
+		// yüklüyse (bu sınıfın varlığı) kuyruğa girer; pasifse bu init hiç
+		// çalışmaz.
+		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'onyuz_varlik' ) );
+		foreach ( array( '', 'nopriv_' ) as $on_ek ) {
+			add_action( "wp_ajax_{$on_ek}qrms_analitik_onyuz", array( __CLASS__, 'ajax_onyuz' ) );
+		}
 
 		// Saklama süresi dolan ham kayıtları silen günlük görev.
 		add_action( self::CRON_TEMIZLIK, array( __CLASS__, 'eski_kayitlari_sil' ) );
@@ -1133,6 +1167,213 @@ class QRMS_Analitik {
 	}
 
 	/* -----------------------------------------------------------------
+	   ÖN YÜZ BEACON (splash / dil / galeri / detay modalı)
+	----------------------------------------------------------------- */
+
+	/**
+	 * Beacon'ın kabul ettiği olaylar.
+	 *
+	 * `modul` doluysa o modül lisansta pasifken yazım atlanır (splash
+	 * JS'i zaten yüklenmez; bu ikinci kilit, elle POST'u da keser).
+	 * `item_name` bir dizi ise istemcinin gönderdiği ad o listede
+	 * olmak zorundadır — serbest metin kabul edilmez (PII / enjeksiyon).
+	 *
+	 * @return array<string,array<string,mixed>>
+	 */
+	public static function onyuz_olay_kurallari() {
+		$diller = array( 'tr', 'en', 'ar', 'de', 'fr', 'ru' );
+
+		if ( function_exists( 'qrmenu_get_langs' ) ) {
+			$katalog = qrmenu_get_langs();
+
+			if ( is_array( $katalog ) && ! empty( $katalog ) ) {
+				$diller = array_map( 'strval', array_keys( $katalog ) );
+			}
+		}
+
+		return array(
+			'lang_switch'      => array(
+				'modul'     => 'qr-ceviri',
+				'item_name' => $diller,
+				'hiz'       => 1,
+			),
+			'splash_view'      => array(
+				'modul' => 'qr-acilis-ekrani',
+				'hiz'   => 10,
+			),
+			'splash_action'    => array(
+				'modul'     => 'qr-acilis-ekrani',
+				'item_name' => array( 'menu', 'atla', 'wifi', 'sosyal', 'odeme', 'rezervasyon', 'yorum' ),
+				'hiz'       => 1,
+			),
+			'gallery_view'     => array(
+				'modul' => 'qr-galeri',
+				'hiz'   => 10,
+			),
+			'item_detail_open' => array(
+				'modul'   => '',
+				'item_id' => true,
+				'hiz'     => 0,
+			),
+		);
+	}
+
+	/**
+	 * Ön yüz beacon betiği.
+	 *
+	 * Küçük bir dosya; qr-analiz aktifken her ön yüz sayfasında durur ki
+	 * splash / dil seçici / galeri onu var diye baksın. Pasifse bu sınıf
+	 * yüklenmez, betik de kuyruğa girmez.
+	 *
+	 * @return void
+	 */
+	public static function onyuz_varlik() {
+		if ( is_admin() ) {
+			return;
+		}
+
+		$handle = 'qrms-analitik-onyuz';
+
+		wp_enqueue_script(
+			$handle,
+			QRMS_PLUGIN_URL . 'modules/qr-analiz/assets/js/analitik-onyuz.js',
+			array(),
+			QRMS_Helpers::asset_version( 'modules/qr-analiz/assets/js/analitik-onyuz.js' ),
+			true
+		);
+
+		wp_localize_script(
+			$handle,
+			'qrmsAnalitikOnyuzCfg',
+			array(
+				'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+				'nonce'   => wp_create_nonce( self::NONCE_ONYUZ ),
+			)
+		);
+	}
+
+	/**
+	 * Beacon AJAX ucu.
+	 *
+	 * Yanıt her zaman success'tir (akışı kesmemek için). Yazılamayan olay
+	 * atlanır; kullanıcıya hata basılmaz. Masa POST'tan okunmaz.
+	 *
+	 * @return void
+	 */
+	public static function ajax_onyuz() {
+		$nonce = isset( $_POST['nonce'] ) ? sanitize_text_field( wp_unslash( $_POST['nonce'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Missing
+
+		if ( '' === $nonce || ! wp_verify_nonce( $nonce, self::NONCE_ONYUZ ) ) {
+			wp_send_json_success();
+		}
+
+		$tip     = isset( $_POST['tip'] ) ? sanitize_key( wp_unslash( $_POST['tip'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		$kurallar = self::onyuz_olay_kurallari();
+
+		if ( '' === $tip || ! isset( $kurallar[ $tip ] ) ) {
+			wp_send_json_success();
+		}
+
+		$kural = $kurallar[ $tip ];
+
+		if ( ! empty( $kural['modul'] ) && class_exists( 'QRMS_Module_Loader' ) && ! QRMS_Module_Loader::is_module_active( $kural['modul'] ) ) {
+			wp_send_json_success();
+		}
+
+		$masa = self::masa_onyuz();
+
+		if ( function_exists( 'qmo_hiz_siniri' ) ) {
+			$saniye = isset( $kural['hiz'] ) ? (int) $kural['hiz'] : 2;
+
+			if ( $saniye > 0 && ! qmo_hiz_siniri( 'an_' . $tip, $masa, $saniye ) ) {
+				wp_send_json_success();
+			}
+		}
+
+		$satir = array(
+			'event_type' => $tip,
+			'masa_no'    => $masa,
+		);
+
+		if ( isset( $kural['item_name'] ) && is_array( $kural['item_name'] ) ) {
+			$ad = isset( $_POST['item_name'] ) ? sanitize_text_field( wp_unslash( $_POST['item_name'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Missing
+			$ad = strtolower( $ad );
+			$eslesen = '';
+
+			foreach ( $kural['item_name'] as $izinli ) {
+				if ( strtolower( (string) $izinli ) === $ad ) {
+					$eslesen = (string) $izinli;
+					break;
+				}
+			}
+
+			if ( '' === $eslesen ) {
+				wp_send_json_success();
+			}
+
+			$satir['item_name'] = $eslesen;
+		}
+
+		if ( ! empty( $kural['item_id'] ) ) {
+			$id   = isset( $_POST['item_id'] ) ? absint( wp_unslash( $_POST['item_id'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Missing
+			$alan = function_exists( 'qmo_analitik_urun_alani' ) ? qmo_analitik_urun_alani( $id ) : array();
+
+			if ( empty( $alan ) ) {
+				wp_send_json_success();
+			}
+
+			$satir['item_id']       = $alan['item_id'];
+			$satir['item_name']     = $alan['item_name'];
+			$satir['category_name'] = $alan['category_name'];
+		}
+
+		self::kaydet( $satir );
+		wp_send_json_success();
+	}
+
+	/**
+	 * Beacon için masa: oturum çerezi, yoksa referer. POST['masa'] yok sayılır.
+	 *
+	 * Sepet ucuyla aynı gerekçe: istemci başka masaya olay yazamasın.
+	 *
+	 * @return string
+	 */
+	private static function masa_onyuz() {
+		if ( function_exists( 'qmo_oturum' ) ) {
+			$oturum = qmo_oturum();
+
+			if ( is_array( $oturum ) && ! empty( $oturum['masa'] ) ) {
+				$masa = self::masa_temizle( $oturum['masa'] );
+
+				if ( self::masa_gecerli( $masa ) ) {
+					return $masa;
+				}
+			}
+		}
+
+		$referer = isset( $_SERVER['HTTP_REFERER'] ) ? esc_url_raw( wp_unslash( $_SERVER['HTTP_REFERER'] ) ) : '';
+
+		if ( '' !== $referer ) {
+			$sorgu = wp_parse_url( $referer, PHP_URL_QUERY );
+
+			if ( is_string( $sorgu ) && '' !== $sorgu ) {
+				$parcalar = array();
+				wp_parse_str( $sorgu, $parcalar );
+
+				if ( ! empty( $parcalar['masa'] ) ) {
+					$aday = self::masa_temizle( $parcalar['masa'] );
+
+					if ( self::masa_gecerli( $aday ) ) {
+						return $aday;
+					}
+				}
+			}
+		}
+
+		return '';
+	}
+
+	/* -----------------------------------------------------------------
 	   SORGU YARDIMCILARI
 	----------------------------------------------------------------- */
 
@@ -2023,6 +2264,206 @@ class QRMS_Analitik {
 		return $sonuc;
 	}
 
+	/**
+	 * Verilen olay tiplerinin (tip, item_name) sayaçları — TEK sorgu.
+	 *
+	 * WHERE event_type IN (...) AND created_at BETWEEN idx_td (masa
+	 * filtresi varken idx_masa_td) aralık taramasıdır. item_name kırılımı
+	 * (dil kodu, splash eylemi, form adı) aynı taramadan çıkar; ikinci
+	 * indeks gerekmez.
+	 *
+	 * @param string[] $tipler İzinli event_type listesi (çağıran sabitler).
+	 * @param string   $bas    Aralık başlangıcı.
+	 * @param string   $bit    Aralık bitişi.
+	 * @param string   $masa   Masa filtresi.
+	 * @return array<int,array{event_type:string,item_name:string,adet:int}>
+	 */
+	public static function olay_sayaclari( array $tipler, $bas, $bit, $masa = '' ) {
+		global $wpdb;
+
+		$temiz = array();
+
+		foreach ( $tipler as $tip ) {
+			$tip = sanitize_key( (string) $tip );
+
+			if ( '' !== $tip ) {
+				$temiz[] = $tip;
+			}
+		}
+
+		$temiz = array_values( array_unique( $temiz ) );
+
+		if ( empty( $temiz ) ) {
+			return array();
+		}
+
+		$tablo   = self::tablo();
+		$masa_ek = self::masa_sql( $masa );
+		$kosul   = $wpdb->prepare( 'created_at BETWEEN %s AND %s', $bas, $bit );
+		$in = "'" . implode( "','", $temiz ) . "'";
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$ham = $wpdb->get_results(
+			"SELECT event_type, item_name, COUNT(*) AS adet
+			 FROM {$tablo}
+			 WHERE event_type IN ({$in}) AND {$kosul}{$masa_ek}
+			 GROUP BY event_type, item_name",
+			ARRAY_A
+		);
+
+		$sonuc = array();
+
+		foreach ( (array) $ham as $r ) {
+			$sonuc[] = array(
+				'event_type' => isset( $r['event_type'] ) ? (string) $r['event_type'] : '',
+				'item_name'  => isset( $r['item_name'] ) ? (string) $r['item_name'] : '',
+				'adet'       => isset( $r['adet'] ) ? (int) $r['adet'] : 0,
+			);
+		}
+
+		return $sonuc;
+	}
+
+	/**
+	 * Tek bir olay tipinin zaman kırılımı (saatlik/günlük/haftalık/aylık).
+	 *
+	 * grafik_araligi() menü+tıklama kovalarını doldurur; chatbot zaman
+	 * dağılımı tek tipe bakar. Aynı idx_td aralık taraması, sıfır kovalar
+	 * PHP'de doldurulur.
+	 *
+	 * @param string $tip     event_type.
+	 * @param string $kirilim hourly|daily|weekly|monthly.
+	 * @param string $bas     Aralık başlangıcı.
+	 * @param string $bit     Aralık bitişi.
+	 * @param string $masa    Masa filtresi.
+	 * @return array<int,array{etiket:string,adet:int}>
+	 */
+	public static function olay_grafik( $tip, $kirilim, $bas, $bit, $masa = '' ) {
+		global $wpdb;
+
+		$tip = sanitize_key( (string) $tip );
+
+		if ( '' === $tip ) {
+			return array();
+		}
+
+		$tablo   = self::tablo();
+		$masa_ek = self::masa_sql( $masa );
+		$kosul   = $wpdb->prepare( 'event_type = %s AND created_at BETWEEN %s AND %s', $tip, $bas, $bit );
+
+		$bas_ts = (int) strtotime( $bas );
+		$bit_ts = (int) strtotime( $bit );
+
+		switch ( $kirilim ) {
+			case 'hourly':
+				// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+				$ham = $wpdb->get_results(
+					"SELECT HOUR(created_at) AS k, COUNT(*) AS adet FROM {$tablo}
+					 WHERE {$kosul}{$masa_ek}
+					 GROUP BY HOUR(created_at)",
+					ARRAY_A
+				);
+
+				$harita = array();
+
+				foreach ( (array) $ham as $r ) {
+					$harita[ (int) $r['k'] ] = (int) $r['adet'];
+				}
+
+				$satir = array();
+
+				for ( $s = 0; $s < 24; $s++ ) {
+					$satir[] = array(
+						'etiket' => sprintf( '%02d:00', $s ),
+						'adet'   => isset( $harita[ $s ] ) ? $harita[ $s ] : 0,
+					);
+				}
+
+				return $satir;
+
+			case 'weekly':
+				// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+				$ham = $wpdb->get_results(
+					"SELECT YEARWEEK(created_at,1) AS k, COUNT(*) AS adet FROM {$tablo}
+					 WHERE {$kosul}{$masa_ek}
+					 GROUP BY YEARWEEK(created_at,1)",
+					ARRAY_A
+				);
+
+				$harita = array();
+
+				foreach ( (array) $ham as $r ) {
+					$harita[ (string) $r['k'] ] = (int) $r['adet'];
+				}
+
+				$satir = array();
+
+				for ( $ts = self::hafta_basi( $bas_ts ); $ts <= $bit_ts; $ts = strtotime( '+1 week', $ts ) ) {
+					$anahtar = gmdate( 'oW', $ts );
+					$satir[] = array(
+						'etiket' => date_i18n( 'j M', $ts ) . '–' . date_i18n( 'j M', strtotime( '+6 days', $ts ) ),
+						'adet'   => isset( $harita[ $anahtar ] ) ? $harita[ $anahtar ] : 0,
+					);
+				}
+
+				return $satir;
+
+			case 'monthly':
+				// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+				$ham = $wpdb->get_results(
+					"SELECT DATE_FORMAT(created_at, '%Y-%m') AS k, COUNT(*) AS adet FROM {$tablo}
+					 WHERE {$kosul}{$masa_ek}
+					 GROUP BY DATE_FORMAT(created_at, '%Y-%m')",
+					ARRAY_A
+				);
+
+				$harita = array();
+
+				foreach ( (array) $ham as $r ) {
+					$harita[ (string) $r['k'] ] = (int) $r['adet'];
+				}
+
+				$satir = array();
+
+				for ( $ts = strtotime( gmdate( 'Y-m-01', $bas_ts ) ); $ts <= $bit_ts; $ts = strtotime( '+1 month', $ts ) ) {
+					$anahtar = gmdate( 'Y-m', $ts );
+					$satir[] = array(
+						'etiket' => date_i18n( 'M Y', $ts ),
+						'adet'   => isset( $harita[ $anahtar ] ) ? $harita[ $anahtar ] : 0,
+					);
+				}
+
+				return $satir;
+
+			default:
+				// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+				$ham = $wpdb->get_results(
+					"SELECT DATE(created_at) AS k, COUNT(*) AS adet FROM {$tablo}
+					 WHERE {$kosul}{$masa_ek}
+					 GROUP BY DATE(created_at)",
+					ARRAY_A
+				);
+
+				$harita = array();
+
+				foreach ( (array) $ham as $r ) {
+					$harita[ (string) $r['k'] ] = (int) $r['adet'];
+				}
+
+				$satir = array();
+
+				for ( $ts = strtotime( gmdate( 'Y-m-d', $bas_ts ) ); $ts <= $bit_ts; $ts = strtotime( '+1 day', $ts ) ) {
+					$anahtar = gmdate( 'Y-m-d', $ts );
+					$satir[] = array(
+						'etiket' => date_i18n( 'j M', $ts ),
+						'adet'   => isset( $harita[ $anahtar ] ) ? $harita[ $anahtar ] : 0,
+					);
+				}
+
+				return $satir;
+		}
+	}
+
 	/* -----------------------------------------------------------------
 	   AJAX UÇLARI
 	----------------------------------------------------------------- */
@@ -2187,6 +2628,76 @@ class QRMS_Analitik {
 	}
 
 	/**
+	 * Müşteri Etkileşimi kategorisinin verisi.
+	 *
+	 * @return void
+	 */
+	public static function ajax_etkilesim() {
+		check_ajax_referer( self::NONCE, 'security' );
+
+		if ( ! current_user_can( QRMS_Admin::CAPABILITY ) ) {
+			wp_send_json_error( array( 'mesaj' => __( 'Yetkiniz yok.', 'qrms' ) ), 403 );
+		}
+
+		if ( function_exists( 'qrms_analitik_etkilesim_lisansli' ) && ! qrms_analitik_etkilesim_lisansli() ) {
+			wp_send_json_error( array( 'mesaj' => __( 'Bu kategori bu lisansta kapalı.', 'qrms' ) ), 403 );
+		}
+
+		// phpcs:disable WordPress.Security.NonceVerification.Missing -- check_ajax_referer yukarıda.
+		$ham = (array) wp_unslash( $_POST );
+		// phpcs:enable
+
+		$baglam  = QRMS_Analitik_Filtre::coz( $ham );
+		$aralik  = QRMS_Analitik_Filtre::aralik( $ham );
+		$kirilim = QRMS_Analitik_Filtre::kirilim( $ham );
+
+		wp_send_json_success(
+			array_merge(
+				array(
+					'donem'   => $baglam['donem'],
+					'masa'    => $baglam['masa'],
+					'kirilim' => $kirilim,
+				),
+				qrms_analitik_etkilesim_verisi( $aralik, $baglam['masa'], $kirilim )
+			)
+		);
+	}
+
+	/**
+	 * Açılış Ekranı kategorisinin verisi.
+	 *
+	 * @return void
+	 */
+	public static function ajax_acilis() {
+		check_ajax_referer( self::NONCE, 'security' );
+
+		if ( ! current_user_can( QRMS_Admin::CAPABILITY ) ) {
+			wp_send_json_error( array( 'mesaj' => __( 'Yetkiniz yok.', 'qrms' ) ), 403 );
+		}
+
+		if ( function_exists( 'qrms_analitik_acilis_lisansli' ) && ! qrms_analitik_acilis_lisansli() ) {
+			wp_send_json_error( array( 'mesaj' => __( 'Açılış Ekranı bu lisansta kapalı.', 'qrms' ) ), 403 );
+		}
+
+		// phpcs:disable WordPress.Security.NonceVerification.Missing -- check_ajax_referer yukarıda.
+		$ham = (array) wp_unslash( $_POST );
+		// phpcs:enable
+
+		$baglam = QRMS_Analitik_Filtre::coz( $ham );
+		$aralik = QRMS_Analitik_Filtre::aralik( $ham );
+
+		wp_send_json_success(
+			array_merge(
+				array(
+					'donem' => $baglam['donem'],
+					'masa'  => $baglam['masa'],
+				),
+				qrms_analitik_acilis_verisi( $aralik, $baglam['masa'] )
+			)
+		);
+	}
+
+	/**
 	 * CSV dışa aktarma.
 	 *
 	 * "Masalara Göre" görünümünde masa özeti, diğer dönemlerde ürün listesi
@@ -2226,6 +2737,16 @@ class QRMS_Analitik {
 
 		if ( 'sepet' === $kategori ) {
 			self::csv_sepet( $ham );
+			return;
+		}
+
+		if ( 'etkilesim' === $kategori ) {
+			self::csv_etkilesim( $ham );
+			return;
+		}
+
+		if ( 'acilis' === $kategori ) {
+			self::csv_acilis( $ham );
 			return;
 		}
 
@@ -2281,8 +2802,8 @@ class QRMS_Analitik {
 	/**
 	 * "Ürünler" kategorisinin CSV'si.
 	 *
-	 * Ekrandaki üç bölümün üçü de tek dosyaya, başlıklarıyla ayrılmış hâlde
-	 * yazılır — kullanıcı üç ayrı indirme yapmak zorunda kalmasın. Veri,
+	 * Ekrandaki bölümler tek dosyaya, başlıklarıyla ayrılmış hâlde
+	 * yazılır — kullanıcı ayrı indirme yapmak zorunda kalmasın. Veri,
 	 * ekranı besleyen fonksiyonun AYNISINDAN gelir (qrms_analitik_urun_verisi):
 	 * indirilen dosya ekranda görünenle birebir aynıdır.
 	 *
@@ -2374,6 +2895,13 @@ class QRMS_Analitik {
 		if ( $veri['kategorisiz'] > 0 ) {
 			fputcsv( $cikti, array( 'Kategorisi kaydedilmemiş tıklama', '', $veri['kategorisiz'], '', '' ), ';' );
 		}
+
+		$detay = isset( $veri['detay'] ) ? $veri['detay'] : array();
+		fputcsv( $cikti, array(), ';' );
+		fputcsv( $cikti, array( 'DETAY MODALI AÇILMA ORANI' ), ';' );
+		fputcsv( $cikti, array( 'Detay açılışı', isset( $detay['open'] ) ? $detay['open'] : 0 ), ';' );
+		fputcsv( $cikti, array( 'Ürün tıklaması', isset( $detay['click'] ) ? $detay['click'] : 0 ), ';' );
+		fputcsv( $cikti, array( 'Açılma oranı %', isset( $detay['oran'] ) ? $detay['oran'] : 0 ), ';' );
 
 		fclose( $cikti ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
 		exit;
@@ -2678,6 +3206,120 @@ class QRMS_Analitik {
 			foreach ( $veri['hatalar'] as $satir ) {
 				fputcsv( $cikti, array( $satir['label'], $satir['sayi'] ), ';' );
 			}
+		}
+
+		fclose( $cikti ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
+		exit;
+	}
+
+	/**
+	 * "Müşteri Etkileşimi" kategorisinin CSV'si.
+	 *
+	 * @param array $ham İsteğin ham query arg'ları.
+	 * @return void
+	 */
+	private static function csv_etkilesim( array $ham ) {
+		if ( function_exists( 'qrms_analitik_etkilesim_lisansli' ) && ! qrms_analitik_etkilesim_lisansli() ) {
+			wp_die( esc_html__( 'Bu kategori bu lisansta kapalı.', 'qrms' ) );
+		}
+
+		$baglam  = QRMS_Analitik_Filtre::coz( $ham );
+		$aralik  = QRMS_Analitik_Filtre::aralik( $ham );
+		$kirilim = QRMS_Analitik_Filtre::kirilim( $ham );
+		$veri    = qrms_analitik_etkilesim_verisi( $aralik, $baglam['masa'], $kirilim );
+
+		$dosya = 'qr-analitik-etkilesim-' . $baglam['donem']
+			. ( '' !== $baglam['masa'] ? '-' . $baglam['masa'] : '' )
+			. '-' . gmdate( 'Ymd-His', self::simdi() ) . '.csv';
+
+		nocache_headers();
+		header( 'Content-Type: text/csv; charset=utf-8' );
+		header( 'Content-Disposition: attachment; filename="' . $dosya . '"' );
+
+		$cikti = fopen( 'php://output', 'w' );
+
+		fwrite( $cikti, "\xEF\xBB\xBF" ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fwrite
+
+		fputcsv( $cikti, array( 'Aralık', substr( $aralik['bas'], 0, 10 ), substr( $aralik['bit'], 0, 10 ) ), ';' );
+		fputcsv( $cikti, array( 'Masa', '' !== $baglam['masa'] ? $baglam['masa'] : 'Tüm masalar' ), ';' );
+		fputcsv( $cikti, array(), ';' );
+
+		$ozet = $veri['ozet'];
+		fputcsv( $cikti, array( 'ÖZET' ), ';' );
+		fputcsv( $cikti, array( 'Chatbot mesajı', $ozet['chatbot'] ), ';' );
+		fputcsv( $cikti, array( 'Yorum gönderimi', $ozet['review'] ), ';' );
+		fputcsv( $cikti, array( 'Form gönderimi', $ozet['form'] ), ';' );
+		fputcsv( $cikti, array( 'Üretilen ödül kodu', $ozet['reward_issued'] ), ';' );
+		fputcsv( $cikti, array( 'Kullanılan ödül kodu', $ozet['reward_redeemed'] ), ';' );
+		fputcsv( $cikti, array( 'Ödül dönüşüm %', $ozet['reward_oran'] ), ';' );
+		fputcsv( $cikti, array( 'Dil değişimi', $ozet['lang'] ), ';' );
+		fputcsv( $cikti, array( 'Galeri görüntüleme', $ozet['gallery'] ), ';' );
+		fputcsv( $cikti, array(), ';' );
+
+		fputcsv( $cikti, array( 'FORM GÖNDERİMİ' ), ';' );
+		fputcsv( $cikti, array( 'Form', 'Gönderim' ), ';' );
+
+		foreach ( $veri['formlar'] as $satir ) {
+			fputcsv( $cikti, array( $satir['ad'], $satir['adet'] ), ';' );
+		}
+
+		fputcsv( $cikti, array(), ';' );
+		fputcsv( $cikti, array( 'DİL DAĞILIMI' ), ';' );
+		fputcsv( $cikti, array( 'Dil kodu', 'Dil', 'Seçim', 'Pay %' ), ';' );
+
+		foreach ( $veri['diller'] as $satir ) {
+			fputcsv( $cikti, array( $satir['kod'], $satir['ad'], $satir['adet'], $satir['pay'] ), ';' );
+		}
+
+		fclose( $cikti ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
+		exit;
+	}
+
+	/**
+	 * "Açılış Ekranı" kategorisinin CSV'si.
+	 *
+	 * @param array $ham İsteğin ham query arg'ları.
+	 * @return void
+	 */
+	private static function csv_acilis( array $ham ) {
+		if ( function_exists( 'qrms_analitik_acilis_lisansli' ) && ! qrms_analitik_acilis_lisansli() ) {
+			wp_die( esc_html__( 'Açılış Ekranı bu lisansta kapalı.', 'qrms' ) );
+		}
+
+		$baglam = QRMS_Analitik_Filtre::coz( $ham );
+		$aralik = QRMS_Analitik_Filtre::aralik( $ham );
+		$veri   = qrms_analitik_acilis_verisi( $aralik, $baglam['masa'] );
+
+		$dosya = 'qr-analitik-acilis-' . $baglam['donem']
+			. ( '' !== $baglam['masa'] ? '-' . $baglam['masa'] : '' )
+			. '-' . gmdate( 'Ymd-His', self::simdi() ) . '.csv';
+
+		nocache_headers();
+		header( 'Content-Type: text/csv; charset=utf-8' );
+		header( 'Content-Disposition: attachment; filename="' . $dosya . '"' );
+
+		$cikti = fopen( 'php://output', 'w' );
+
+		fwrite( $cikti, "\xEF\xBB\xBF" ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fwrite
+
+		fputcsv( $cikti, array( 'Aralık', substr( $aralik['bas'], 0, 10 ), substr( $aralik['bit'], 0, 10 ) ), ';' );
+		fputcsv( $cikti, array( 'Masa', '' !== $baglam['masa'] ? $baglam['masa'] : 'Tüm masalar' ), ';' );
+		fputcsv( $cikti, array(), ';' );
+
+		$ozet = $veri['ozet'];
+		fputcsv( $cikti, array( 'ÖZET' ), ';' );
+		fputcsv( $cikti, array( 'Gösterim', $ozet['view'] ), ';' );
+		fputcsv( $cikti, array( 'Menüye geçiş', $ozet['menu'] ), ';' );
+		fputcsv( $cikti, array( 'Menüye geçiş %', $ozet['menu_oran'] ), ';' );
+		fputcsv( $cikti, array( 'Atlanma', $ozet['atla'] ), ';' );
+		fputcsv( $cikti, array( 'Atlanma %', $ozet['atla_oran'] ), ';' );
+		fputcsv( $cikti, array(), ';' );
+
+		fputcsv( $cikti, array( 'BUTON TIKLAMALARI' ), ';' );
+		fputcsv( $cikti, array( 'Buton', 'Kod', 'Tıklama', 'Pay %' ), ';' );
+
+		foreach ( $veri['butonlar'] as $satir ) {
+			fputcsv( $cikti, array( $satir['ad'], $satir['kod'], $satir['adet'], $satir['pay'] ), ';' );
 		}
 
 		fclose( $cikti ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose

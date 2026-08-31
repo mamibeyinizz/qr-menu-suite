@@ -24,8 +24,7 @@ add_action( 'wp_ajax_nopriv_gemini_chat_req', 'qmo_ajax_chat' );
  */
 if ( ! function_exists( 'qmo_ajax_chat' ) ) {
 	function qmo_ajax_chat() {
-		// Oturum + nonce + mesaj limiti. Başarısızsa burada sonlanır.
-		qmo_chat_zorla();
+		$sess = qmo_chat_zorla();
 
 		$api_key = get_option( 'gemini_api_key' );
 		if ( empty( $api_key ) ) {
@@ -36,6 +35,18 @@ if ( ! function_exists( 'qmo_ajax_chat' ) ) {
 		$message = mb_substr( $message, 0, 1000 );
 		if ( '' === $message ) {
 			wp_send_json_error( 'Hata: Mesaj boş geldi.' );
+		}
+
+		// Analitik: yalnızca geçerli (limit/nonce/oturum + dolu mesaj) istek.
+		// Hız sınırına takılanlar qmo_chat_zorla içinde biter, buraya gelmez.
+		// Mesaj İÇERİĞİ yazılmaz — kişisel veri; yalnızca olay sayılır.
+		if ( function_exists( 'qmo_analitik_yaz' ) ) {
+			qmo_analitik_yaz(
+				array(
+					'event_type' => 'chatbot_message',
+					'masa_no'    => isset( $sess['masa'] ) ? (string) $sess['masa'] : '',
+				)
+			);
 		}
 
 		$system_prompt = get_option( 'gemini_system_prompt', '' );

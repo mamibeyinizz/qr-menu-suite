@@ -244,6 +244,68 @@
 	}
 
 	/* -----------------------------------------------------------------
+	   DETAY MODALI AÇILMA ORANI
+	----------------------------------------------------------------- */
+
+	function detayBas( detay ) {
+		if ( ! el.detayCards ) {
+			return;
+		}
+
+		detay = detay || {};
+
+		if ( el.detayBos ) {
+			if ( detay.bos ) {
+				el.detayBos.hidden = false;
+				el.detayBos.innerHTML =
+					'<div class="qrms-an-teshis qrms-an-teshis-bilgi">' +
+					'<span class="qrms-an-teshis-icon dashicons dashicons-info-outline" aria-hidden="true"></span>' +
+					'<div class="qrms-an-teshis-body">' +
+					'<h2 class="qrms-an-teshis-title">' + ORTAK.esc( metin( 'justStartedTitle', 'Toplanmaya yeni başlandı' ) ) + '</h2>' +
+					'<p class="qrms-an-teshis-text">' + ORTAK.esc( metin( 'justStartedDetail', 'Detay modalı açılışları toplanmaya yeni başladı. Bu bir hata değil; misafirler ürün kartına dokundukça oran burada görünecek.' ) ) + '</p>' +
+					'</div></div>';
+			} else {
+				el.detayBos.hidden = true;
+				el.detayBos.innerHTML = '';
+			}
+		}
+
+		var kartlar = [
+			{
+				ikon: 'dashicons-visibility',
+				etiket: metin( 'cardDetailOpen', 'Detay açılışı' ),
+				deger: ORTAK.kisa( detay.open ),
+				alt: ORTAK.sayi( detay.open ) + ' ' + metin( 'events', 'olay' )
+			},
+			{
+				ikon: 'dashicons-pressthis',
+				etiket: metin( 'cardClicks', 'Ürün tıklaması' ),
+				deger: ORTAK.kisa( detay.click ),
+				alt: metin( 'clickHint', 'AJAX isteği; ön yükleme hariç' )
+			},
+			{
+				ikon: 'dashicons-chart-line',
+				etiket: metin( 'cardDetailRate', 'Açılma oranı' ),
+				deger: '%' + ORTAK.sayi( detay.oran ),
+				alt: metin( 'detailRateHint', 'Açılış / tıklama. Önbellek yüzünden %100\'ü geçebilir.' )
+			}
+		];
+
+		var html = '';
+
+		kartlar.forEach( function ( kart ) {
+			html += '<div class="qrms-an-card">' +
+				'<span class="qrms-an-card-icon dashicons ' + ORTAK.esc( kart.ikon ) + '" aria-hidden="true"></span>' +
+				'<div class="qrms-an-card-label">' + ORTAK.esc( kart.etiket ) + '</div>' +
+				'<div class="qrms-an-card-value">' + ORTAK.esc( kart.deger ) + '</div>' +
+				'<div class="qrms-an-card-sub">' + ORTAK.esc( kart.alt ) + '</div>' +
+				'</div>';
+		} );
+
+		el.detayCards.innerHTML = html;
+	}
+
+	/* -----------------------------------------------------------------
 	   VERİ
 	----------------------------------------------------------------- */
 
@@ -275,6 +337,7 @@
 				urunleriBas( veri.encok );
 				enAzBas( veri.enaz, veri.enazOzet || {} );
 				kategorileriBas( veri.kategoriler, veri.kategorisiz );
+				detayBas( veri.detay || {} );
 			},
 			function () {
 				state.yukleniyor = false;
@@ -284,6 +347,9 @@
 				el.products.innerHTML = hata;
 				el.least.innerHTML    = '';
 				el.cats.innerHTML     = '';
+				if ( el.detayCards ) {
+					el.detayCards.innerHTML = '';
+				}
 			}
 		);
 	}
@@ -298,6 +364,8 @@
 		el.products = $( 'qrms-an-products' );
 		el.least    = $( 'qrms-an-least' );
 		el.cats     = $( 'qrms-an-cats-dist' );
+		el.detayCards = $( 'qrms-an-detay-cards' );
+		el.detayBos   = $( 'qrms-an-detay-bos' );
 
 		el.wrap.addEventListener( 'click', function ( olay ) {
 			var onceki = olay.target.closest( '.qrms-an-pager-prev' );

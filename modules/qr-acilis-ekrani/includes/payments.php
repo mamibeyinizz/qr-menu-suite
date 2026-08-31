@@ -197,6 +197,7 @@ trait QRMS_AE_Payments {
             // Seamless loop: içerik birebir iki kez basılır, şerit -%50
             // ötelenir. İkinci kopya ekran okuyuculardan gizlenir.
             echo '<div class="splash-pay-row is-marquee' . ($with_icon ? '' : ' is-text-only') . '"'
+                . ' data-splash-action="odeme"'
                 . ' style="--sp-marquee-duration:' . esc_attr($duration) . 's">';
             echo '<div class="splash-pay-track">';
             echo '<div class="splash-pay-seq">' . $badges . '</div>';
@@ -206,7 +207,7 @@ trait QRMS_AE_Payments {
             return;
         }
 
-        echo '<div class="splash-pay-row' . ($with_icon ? '' : ' is-text-only') . '">';
+        echo '<div class="splash-pay-row' . ($with_icon ? '' : ' is-text-only') . '" data-splash-action="odeme">';
         echo $badges;
         echo '</div>';
     }

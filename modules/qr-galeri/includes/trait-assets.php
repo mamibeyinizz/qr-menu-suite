@@ -263,6 +263,10 @@ CSS;
 		var galleries = document.querySelectorAll('.qrmgm-gallery');
 		if (!galleries.length) return;
 
+		if (window.qrmsAnalitikOnyuz && typeof window.qrmsAnalitikOnyuz.yaz === 'function') {
+			window.qrmsAnalitikOnyuz.yaz('gallery_view');
+		}
+
 		galleries.forEach(function(gallery){
 			var items = Array.prototype.slice.call(gallery.querySelectorAll('.qrmgm-item'));
 
