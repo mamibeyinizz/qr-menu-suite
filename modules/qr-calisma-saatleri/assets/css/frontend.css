@@ -2,76 +2,265 @@
  * QR Çalışma Saatleri — kısa kod.
  *
  * Renkler ve yazı tipi CSS özel değişkeninden okunur; değerleri yönetim
- * ekranındaki görünüm ayarları kapsayıcıya satır içi olarak basar (bkz.
- * includes/renkler.php). Her var() BUGÜNKÜ sabit değeri geri düşüş olarak
- * taşır: hiçbir ayar seçilmemişken çıktı, ayarlar eklenmeden önceki çıktının
- * aynısıdır.
+ * ekranındaki görünüm ayarları kapsayıcıya (.qrms-cs-card) satır içi olarak
+ * basar (bkz. includes/renkler.php). Her var() bu tasarımın kendi değerini
+ * geri düşüş olarak taşır: hiçbir ayar seçilmemişken kart aşağıdaki koyu
+ * mor/altın görünümde çıkar, ayar seçildiğinde o parça devralınır.
  *
- * KUTU AYARLARI (zemin, çerçeve, iç boşluk) bu kuralın en hassas yeridir:
- * "1px solid transparent" bile satırları 2px kaydırırdı. Bu yüzden kalınlık
- * ve iç boşluk da değişkendir ve PHP onları YALNIZCA kullanıcı zemin ya da
- * çerçeve seçtiğinde basar; seçilmemişken kutu 0 kalınlık + 0 boşlukla
- * bugünkü çıplak listeye eşittir.
+ * Ayarların satır karşılıkları:
+ *   --qrms-cs-bg        kartın zemini
+ *   --qrms-cs-border     kartın çerçevesi
+ *   --qrms-cs-text       genel yazı
+ *   --qrms-cs-today      bugünün gün adı + saati + sol vurgu çubuğu
+ *   --qrms-cs-today-bg   bugünün satır zemini
+ *   --qrms-cs-day        gün adları
+ *   --qrms-cs-hours      saat aralıkları
+ *   --qrms-cs-closed     "Kapalı" metni
+ *   --qrms-cs-divider    noktalı dolgu + satır alt çizgisi
  */
 
-.qrms-cs-list {
-	background: var(--qrms-cs-bg, transparent);
-	border: var(--qrms-cs-border-width, 0) solid var(--qrms-cs-border, transparent);
-	border-radius: var(--qrms-cs-radius, 0);
-	color: var(--qrms-cs-text, inherit);
+.qrms-cs-card {
+	--qrms-cs-line: var(--qrms-cs-divider, rgba(255, 255, 255, 0.14));
+	background: var(--qrms-cs-bg, linear-gradient(150deg, #150d1d 0%, #241033 52%, #35122c 100%));
+	border: 1px solid var(--qrms-cs-border, #c9922f);
+	border-radius: 18px;
+	box-sizing: border-box;
+	color: var(--qrms-cs-text, #efe6f5);
 	font-family: var(--qrms-cs-font, inherit);
+	margin: 0;
+	padding: 24px;
+	width: 100%;
+}
+
+.qrms-cs-card *,
+.qrms-cs-card *::before,
+.qrms-cs-card *::after {
+	box-sizing: border-box;
+}
+
+/* ---------------------------------------------------------------------------
+   Başlık satırı (liste dışında)
+   ------------------------------------------------------------------------ */
+
+.qrms-cs-head {
+	align-items: center;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12px;
+	margin: 0 0 18px;
+}
+
+.qrms-cs-badge {
+	align-items: center;
+	border: 1px solid var(--qrms-cs-today, #c9a84c);
+	border-radius: 50%;
+	color: var(--qrms-cs-today, #c9a84c);
+	display: inline-flex;
+	flex: 0 0 auto;
+	height: 38px;
+	justify-content: center;
+	width: 38px;
+}
+
+.qrms-cs-title {
+	color: var(--qrms-cs-today, #c9a84c);
+	flex: 1 1 auto;
+	font-size: 15px;
+	font-weight: 700;
+	letter-spacing: 2px;
+	line-height: 1.2;
+	text-transform: uppercase;
+}
+
+/* Durum rozeti: pill form, ince kenarlık, önünde renkli nokta. */
+.qrms-cs-status {
+	align-items: center;
+	border: 1px solid var(--qrms-cs-line);
+	border-radius: 999px;
+	display: inline-flex;
+	flex: 0 0 auto;
+	font-size: 13px;
+	gap: 8px;
+	line-height: 1;
+	padding: 8px 14px;
+	white-space: nowrap;
+}
+
+.qrms-cs-status-dot {
+	border-radius: 50%;
+	display: inline-block;
+	height: 7px;
+	width: 7px;
+}
+
+.qrms-cs-status.is-open {
+	border-color: rgba(64, 192, 122, 0.55);
+	color: #56d18e;
+}
+
+.qrms-cs-status.is-open .qrms-cs-status-dot {
+	background: #56d18e;
+}
+
+.qrms-cs-status.is-shut {
+	border-color: rgba(224, 82, 82, 0.55);
+	color: #e86b6b;
+}
+
+.qrms-cs-status.is-shut .qrms-cs-status-dot {
+	background: #e86b6b;
+}
+
+/* ---------------------------------------------------------------------------
+   Gün satırları
+   ------------------------------------------------------------------------ */
+
+.qrms-cs-list {
 	list-style: none;
 	margin: 0;
-	padding: var(--qrms-cs-pad, 0);
-	max-width: 420px;
+	padding: 0;
 }
 
 .qrms-cs-item {
-	display: flex;
-	justify-content: space-between;
 	align-items: center;
+	border-bottom: 1px solid var(--qrms-cs-line);
+	display: flex;
 	gap: 12px;
-	padding: 10px 0;
-	border-bottom: 1px solid var(--qrms-cs-divider, rgba(0, 0, 0, 0.08));
-	font-size: 15px;
-	line-height: 1.4;
+	min-height: 56px;
+	padding: 8px 14px;
+	position: relative;
 }
 
 .qrms-cs-item:last-child {
 	border-bottom: 0;
 }
 
-/* Gün adı ve saat için ayrı renk seçilmemişse genel yazı rengine, o da
-   seçilmemişse temanın rengine düşer — iç içe var() tam olarak bu zinciri
-   kurar. */
 .qrms-cs-item-day {
-	font-weight: 600;
-	color: var(--qrms-cs-day, var(--qrms-cs-text, inherit));
+	align-items: center;
+	color: var(--qrms-cs-day, var(--qrms-cs-text, #efe6f5));
+	display: inline-flex;
+	flex: 0 0 auto;
+	font-size: 16px;
+	gap: 10px;
+}
+
+/* Noktalı dolgu: aradaki boşluğu kaplar, taşmayı emer. */
+.qrms-cs-fill {
+	border-bottom: 1px dotted var(--qrms-cs-line);
+	flex: 1 1 auto;
+	min-width: 12px;
+	transform: translateY(-3px);
 }
 
 .qrms-cs-item-hours {
-	color: var(--qrms-cs-hours, var(--qrms-cs-text, inherit));
+	color: var(--qrms-cs-hours, var(--qrms-cs-text, #efe6f5));
+	flex: 0 0 auto;
+	font-size: 16px;
+	letter-spacing: 0.6px;
+	text-align: right;
+	white-space: nowrap;
 }
 
-.qrms-cs-item.is-today .qrms-cs-item-day {
+/* ---------------------------------------------------------------------------
+   Bugünün satırı
+   ------------------------------------------------------------------------ */
+
+.qrms-cs-item.is-today {
+	background: var(--qrms-cs-today-bg, rgba(255, 255, 255, 0.06));
+	border-radius: 6px;
+}
+
+/* Sol kenardaki dikey vurgu çubuğu. */
+.qrms-cs-item.is-today::before {
+	background: var(--qrms-cs-today, #c9a84c);
+	border-radius: 3px;
+	bottom: 6px;
+	content: "";
+	left: 0;
+	position: absolute;
+	top: 6px;
+	width: 3px;
+}
+
+.qrms-cs-item.is-today .qrms-cs-item-day,
+.qrms-cs-item.is-today .qrms-cs-item-hours {
 	color: var(--qrms-cs-today, #c9a84c);
 }
 
-/* Zemin seçilmediğinde transparent kalır; satırın kendisi değişmez. */
-.qrms-cs-item.is-today {
-	background: var(--qrms-cs-today-bg, transparent);
+.qrms-cs-today-tag {
+	border: 1px solid var(--qrms-cs-today, #c9a84c);
+	border-radius: 999px;
+	color: var(--qrms-cs-today, #c9a84c);
+	font-size: 10px;
+	font-weight: 700;
+	letter-spacing: 1px;
+	line-height: 1;
+	padding: 4px 8px;
+	text-transform: uppercase;
+	white-space: nowrap;
 }
+
+/* ---------------------------------------------------------------------------
+   Kapalı günler
+   ------------------------------------------------------------------------ */
 
 .qrms-cs-item.is-closed .qrms-cs-item-hours {
-	opacity: 0.7;
-	color: var(--qrms-cs-closed, inherit);
+	color: var(--qrms-cs-closed, #e86b6b);
 }
 
-/* Dar ekran: gün adı ve saat alt alta iner, satır sıkışıp kırpılmaz. */
-@media screen and (max-width: 380px) {
+/* ---------------------------------------------------------------------------
+   Alt bilgi
+   ------------------------------------------------------------------------ */
+
+.qrms-cs-note {
+	align-items: center;
+	border-top: 1px solid var(--qrms-cs-line);
+	display: flex;
+	font-size: 12px;
+	gap: 8px;
+	margin: 14px 0 0;
+	opacity: 0.75;
+	padding: 12px 0 0;
+}
+
+.qrms-cs-note-dot {
+	background: #56d18e;
+	border-radius: 50%;
+	flex: 0 0 auto;
+	height: 6px;
+	width: 6px;
+}
+
+/* ---------------------------------------------------------------------------
+   Dar ekran — satırlar okunur kalır, taşma olmaz.
+   ------------------------------------------------------------------------ */
+
+@media screen and (max-width: 600px) {
+	.qrms-cs-card {
+		padding: 18px 16px;
+	}
+
+	.qrms-cs-title {
+		flex: 1 1 100%;
+		order: 2;
+	}
+
+	.qrms-cs-status {
+		margin-left: auto;
+	}
+
 	.qrms-cs-item {
-		flex-direction: column;
-		align-items: flex-start;
-		gap: 2px;
+		min-height: 48px;
+		padding: 8px 10px;
+	}
+
+	.qrms-cs-item-day,
+	.qrms-cs-item-hours {
+		font-size: 14px;
+	}
+
+	/* Gün adı uzunsa noktalı dolgu tamamen kaybolabilir; satır kırılmaz. */
+	.qrms-cs-fill {
+		min-width: 8px;
 	}
 }

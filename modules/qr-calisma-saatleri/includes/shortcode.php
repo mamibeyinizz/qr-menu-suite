@@ -64,9 +64,28 @@ function qrms_cs_shortcode( $atts ) {
 	$today  = qrms_cs_key_from_iso( (int) wp_date( 'N' ) );
 	$only   = ( '1' === (string) $atts['today'] || 'true' === (string) $atts['today'] );
 
+	$is_open = qrms_cs_is_open_at();
+
 	ob_start();
 	?>
-	<ul class="qrms-cs-list"<?php echo qrms_cs_inline_style_attr(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- esc_attr içeride. ?>>
+	<?php // Kart, başlık ve alt not liste DIŞINDA durur: renk değişkenleri de burada, kapsayıcıda toplanır. ?>
+	<div class="qrms-cs-card"<?php echo qrms_cs_inline_style_attr(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- esc_attr içeride. ?>>
+		<div class="qrms-cs-head">
+			<span class="qrms-cs-badge" aria-hidden="true">
+				<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" focusable="false">
+					<circle cx="12" cy="12" r="9"></circle>
+					<path d="M12 7v5l3 2"></path>
+				</svg>
+			</span>
+			<span class="qrms-cs-title"><?php esc_html_e( 'Çalışma Saatleri', 'qrms' ); ?></span>
+			<?php // Durum, açık/kapalı hesabının (qrms_cs_is_open_at) tek kaynağından gelir. ?>
+			<span class="qrms-cs-status <?php echo esc_attr( $is_open ? 'is-open' : 'is-shut' ); ?>">
+				<span class="qrms-cs-status-dot" aria-hidden="true"></span>
+				<?php echo esc_html( $is_open ? __( 'Şu an açığız', 'qrms' ) : __( 'Şu an kapalıyız', 'qrms' ) ); ?>
+			</span>
+		</div>
+
+	<ul class="qrms-cs-list">
 		<?php foreach ( qrms_cs_day_keys() as $key ) : ?>
 			<?php
 			if ( $only && $key !== $today ) {
@@ -87,11 +106,24 @@ function qrms_cs_shortcode( $atts ) {
 			?>
 			<?php // data-day: yönetimdeki canlı önizleme satırı gün kartıyla bu anahtardan eşleştirir. ?>
 			<li class="<?php echo esc_attr( implode( ' ', $classes ) ); ?>" data-day="<?php echo esc_attr( $key ); ?>">
-				<span class="qrms-cs-item-day"><?php echo esc_html( $labels[ $key ] ); ?></span>
+				<span class="qrms-cs-item-day">
+					<?php echo esc_html( $labels[ $key ] ); ?>
+					<?php if ( $is_today ) : ?>
+						<span class="qrms-cs-today-tag"><?php esc_html_e( 'Bugün', 'qrms' ); ?></span>
+					<?php endif; ?>
+				</span>
+				<?php // Noktalı dolgu: gün adı ile saat arasındaki boşluğu flex ile kapatır. ?>
+				<span class="qrms-cs-fill" aria-hidden="true"></span>
 				<span class="qrms-cs-item-hours"><?php echo esc_html( qrms_cs_format_day( $day ) ); ?></span>
 			</li>
 		<?php endforeach; ?>
 	</ul>
+
+		<p class="qrms-cs-note">
+			<span class="qrms-cs-note-dot" aria-hidden="true"></span>
+			<?php esc_html_e( 'Sipariş ve rezervasyon için bizi arayın', 'qrms' ); ?>
+		</p>
+	</div>
 	<?php
 	return (string) ob_get_clean();
 }

@@ -8515,8 +8515,8 @@ qrms_test(
 
 		$css = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-calisma-saatleri/assets/css/frontend.css' );
 
-		qrms_assert_contains( 'var(--qrms-cs-today, #c9a84c)', $css, 'eski vurgu rengi geri düşüş' );
-		qrms_assert_contains( 'var(--qrms-cs-divider, rgba(0, 0, 0, 0.08))', $css, 'eski ayraç rengi geri düşüş' );
+		qrms_assert_contains( 'var(--qrms-cs-today, #c9a84c)', $css, 'vurgu rengi geri düşüş' );
+		qrms_assert_contains( 'var(--qrms-cs-divider, rgba(255, 255, 255, 0.14))', $css, 'ayraç rengi geri düşüş' );
 	}
 );
 

@@ -103,16 +103,13 @@
 
 /* Kısa kodun gerçek çıktısı burada durur; kutu yalnızca onu müşteri
    sayfasındaki gibi beyaz bir zemine oturtur. */
+/* Kart kendi zeminini taşıdığı için kutu yalnızca onu müşteri sayfasındaki
+   gibi koyu bir zemine oturtur. */
 .qrms-cs-preview {
-	padding: 14px 16px;
+	padding: 14px;
 	border: 1px solid #dcdcde;
 	border-radius: 8px;
-	background: #fff;
-	color: #1c1c1e;
-}
-
-.qrms-cs-preview .qrms-cs-list {
-	max-width: 100%;
+	background: #0f0a14;
 }
 
 @media screen and ( min-width: 600px ) {
