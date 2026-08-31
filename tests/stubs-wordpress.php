@@ -108,11 +108,12 @@ function get_option( $name, $default = false ) {
 /**
  * Option yazar.
  *
- * @param string $name  Option adı.
- * @param mixed  $value Değer.
+ * @param string    $name     Option adı.
+ * @param mixed     $value    Değer.
+ * @param bool|null $autoload Autoload (WP 6.4+; stub yok sayar).
  * @return bool
  */
-function update_option( $name, $value ) {
+function update_option( $name, $value, $autoload = null ) {
 	$GLOBALS['qrms_test']['options'][ $name ] = $value;
 
 	return true;

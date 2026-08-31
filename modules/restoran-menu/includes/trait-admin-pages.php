@@ -264,6 +264,12 @@ trait RMA_Admin_Pages_Trait {
 
         $target = $map[ $slug ] ?? $map['rma_settings'];
 
+        // Faz 9: hangi eski slug'ın hâlâ trafik aldığını ölç. Yönlendirme
+        // zaten 302 üretecek; ekstra maliyet 1 okuma + 1 yazma.
+        if ( class_exists( 'QRMS_Helpers' ) && method_exists( 'QRMS_Helpers', 'legacy_slug_hit' ) ) {
+            QRMS_Helpers::legacy_slug_hit( $slug );
+        }
+
         wp_safe_redirect( $this->admin_page_url( $target[0], $target[2] ?? [], $target[1] ) );
         exit;
     }

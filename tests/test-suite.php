@@ -4116,6 +4116,48 @@ qrms_test(
 	}
 );
 
+echo "\nFaz 9 — eski slug sayacı\n";
+
+qrms_test(
+	'eski slug vuruşu option\'a yazılır; boş slug yok sayılır',
+	function () {
+		QRMS_Helpers::legacy_slug_hit( 'rma_settings' );
+		QRMS_Helpers::legacy_slug_hit( 'rma_settings' );
+		QRMS_Helpers::legacy_slug_hit( 'qrms-analiz-panel' );
+		QRMS_Helpers::legacy_slug_hit( '' );
+		QRMS_Helpers::legacy_slug_hit( 'Not A Key!!' );
+
+		$hits = QRMS_Helpers::legacy_slug_hits();
+
+		qrms_assert_same( 2, $hits['rma_settings']['count'], 'aynı slug artar' );
+		qrms_assert_same( 1, $hits['qrms-analiz-panel']['count'], 'ikinci slug ayrı' );
+		qrms_assert_false( isset( $hits[''] ), 'boş slug yazılmaz' );
+		qrms_assert_true( isset( $hits['notakey'] ), 'sanitize_key uygulanır' );
+		qrms_assert_true( isset( $hits['rma_settings']['first'] ), 'ilk vuruş damgası' );
+		qrms_assert_true( isset( $hits['rma_settings']['last'] ), 'son vuruş damgası' );
+		qrms_assert_same(
+			$hits['rma_settings']['first'],
+			$hits['rma_settings']['last'],
+			'aynı saniye içinde first=last'
+		);
+	}
+);
+
+qrms_test(
+	'analiz eski adresi yönlendirirken sayacı artırır',
+	function () {
+		$_GET['page'] = QRMS_ANALITIK_SAYFA;
+
+		try {
+			qrms_module_qr_analiz_eski_adresi_yonlendir();
+			qrms_assert_true( false, 'yönlendirme bekleniyordu' );
+		} catch ( QRMS_Test_Redirect $e ) {
+			$hits = QRMS_Helpers::legacy_slug_hits();
+			qrms_assert_same( 1, $hits[ QRMS_ANALITIK_SAYFA ]['count'], 'vuruş kaydı' );
+		}
+	}
+);
+
 echo "\nQR Analiz teşhisi\n";
 
 // Sınıf dosya kapsamında yalnızca tanım içerir (kancalar init() içinde

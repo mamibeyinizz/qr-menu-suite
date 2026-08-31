@@ -321,4 +321,66 @@ class QRMS_Helpers {
 			$timestamp
 		);
 	}
+
+	/* -----------------------------------------------------------------
+	   ESKİ SLUG SAYACI (Faz 9)
+	----------------------------------------------------------------- */
+
+	/**
+	 * Yönlendirme-only eski slug vuruşlarının option adı.
+	 *
+	 * Autoload=no: wp_load_alloptions'a girmez, normal admin isteğini
+	 * yavaşlatmaz. Yalnızca eski adrese gerçekten gelindiğinde okunur.
+	 */
+	const LEGACY_SLUG_HITS_OPT = 'qrms_legacy_slug_hits';
+
+	/**
+	 * Eski yönlendirme slug'ına gelen vuruşu kaydeder.
+	 *
+	 * Her admin isteğinde değil, yalnızca yönlendirme callback'inde çağrılır
+	 * (zaten 302 üretilecek bir yol). Maliyet: 1 get_option + 1 update_option.
+	 * Yarışta bir vuruş düşebilir; amaç trafik ölçümü, kesin muhasebe değil.
+	 *
+	 * @param string $slug Vurulan page slug'ı.
+	 * @return void
+	 */
+	public static function legacy_slug_hit( $slug ) {
+		$slug = sanitize_key( (string) $slug );
+
+		if ( '' === $slug ) {
+			return;
+		}
+
+		$hits = get_option( self::LEGACY_SLUG_HITS_OPT, array() );
+
+		if ( ! is_array( $hits ) ) {
+			$hits = array();
+		}
+
+		$now = gmdate( 'Y-m-d H:i:s' );
+
+		if ( ! isset( $hits[ $slug ] ) || ! is_array( $hits[ $slug ] ) ) {
+			$hits[ $slug ] = array(
+				'count' => 0,
+				'first' => $now,
+				'last'  => $now,
+			);
+		}
+
+		$hits[ $slug ]['count'] = (int) $hits[ $slug ]['count'] + 1;
+		$hits[ $slug ]['last']  = $now;
+
+		update_option( self::LEGACY_SLUG_HITS_OPT, $hits, false );
+	}
+
+	/**
+	 * Birikmiş vuruş haritası (okuma; yazmaz).
+	 *
+	 * @return array<string,array{count:int,first:string,last:string}>
+	 */
+	public static function legacy_slug_hits() {
+		$hits = get_option( self::LEGACY_SLUG_HITS_OPT, array() );
+
+		return is_array( $hits ) ? $hits : array();
+	}
 }

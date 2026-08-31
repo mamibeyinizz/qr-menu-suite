@@ -169,6 +169,13 @@ function qrms_module_qr_analiz_admin_menu() {
  * @return void
  */
 function qrms_module_qr_analiz_eski_adresi_yonlendir() {
+	// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Yönlendirme; durum değişmez.
+	$slug = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '';
+
+	if ( class_exists( 'QRMS_Helpers' ) && method_exists( 'QRMS_Helpers', 'legacy_slug_hit' ) ) {
+		QRMS_Helpers::legacy_slug_hit( $slug );
+	}
+
 	wp_safe_redirect( QRMS_Admin::get_module_page_url( 'qr-analiz' ) );
 	exit;
 }
