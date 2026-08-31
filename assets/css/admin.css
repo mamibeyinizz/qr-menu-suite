@@ -325,11 +325,24 @@
 
    Vurgu rengi `--qrms-hub-accent` ile modül bazında değiştirilebilir;
    verilmezse WordPress'in kendi mavisi kullanılır.
+
+   Kırılımlar WordPress admin ile aynıdır: 782px (katlanan menü),
+   1200px (üç sütun). Kartlar CSS Grid satır yüksekliğini paylaşır;
+   height:100% + content-box taşması bir sonraki kategori başlığının
+   üzerine binmesin diye box-sizing border-box ve height:auto kullanılır.
 ===================================================================== */
+
+.qrms-hub,
+.qrms-hub *,
+.qrms-hub *::before,
+.qrms-hub *::after {
+	box-sizing: border-box;
+}
 
 .qrms-hub {
 	--qrms-hub-accent: #2271b1;
 	max-width: 1100px;
+	min-width: 0;
 }
 
 .qrms-hub-heading {
@@ -355,6 +368,8 @@
 	gap: 12px;
 	grid-template-columns: repeat(4, minmax(0, 1fr));
 	margin: 0 0 22px;
+	max-width: 100%;
+	min-width: 0;
 }
 
 .qrms-hub-stat {
@@ -362,7 +377,23 @@
 	border: 1px solid #dcdcde;
 	border-left: 4px solid #c3c4c7;
 	border-radius: 8px;
+	color: inherit;
+	max-width: 100%;
+	min-width: 0;
 	padding: 12px 14px;
+	text-decoration: none;
+}
+
+a.qrms-hub-stat:hover,
+a.qrms-hub-stat:focus {
+	color: inherit;
+	text-decoration: none;
+	border-color: var(--qrms-hub-accent, #2271b1);
+}
+
+a.qrms-hub-stat:focus-visible {
+	outline: 2px solid var(--qrms-hub-accent, #2271b1);
+	outline-offset: 2px;
 }
 
 .qrms-hub-stat-label {
@@ -397,27 +428,94 @@
 	outline-offset: 2px;
 }
 
-/* Kart ızgarası: masaüstünde üç sütun */
+/* Genel Bakış analiz şeridi: kart değil, ince kutular, iki satır. */
+
+.qrms-hub-stats-stacked {
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+	grid-template-columns: none;
+	margin: 0 0 28px;
+	max-width: 100%;
+	min-width: 0;
+}
+
+.qrms-hub-stats-row {
+	min-width: 0;
+	max-width: 100%;
+}
+
+.qrms-hub-stats-row-title {
+	color: #646970;
+	font-size: 11px;
+	font-weight: 600;
+	letter-spacing: 0.07em;
+	line-height: 1.4;
+	margin: 0 0 8px;
+	text-transform: uppercase;
+}
+
+.qrms-hub-stats-row.is-attention .qrms-hub-stats-row-title {
+	color: #b32d2e;
+}
+
+.qrms-hub-stats-row-items {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	max-width: 100%;
+	min-width: 0;
+}
+
+.qrms-hub-stats-stacked .qrms-hub-stat {
+	flex: 1 1 140px;
+	max-width: 100%;
+	min-width: 0;
+	padding: 8px 12px;
+	border-radius: 4px;
+}
+
+.qrms-hub-stats-stacked .qrms-hub-stat-value {
+	font-size: 18px;
+	margin-top: 0;
+}
+
+/* Kart ızgarası: masaüstünde üç sütun. Satır yüksekliği grid'e aittir;
+   kartlar stretch ile eşitlenir, height:100% kullanılmaz (padding taşması
+   bir sonraki bölüm başlığını örterdi). */
 
 .qrms-hub-grid {
+	align-items: stretch;
 	display: grid;
 	gap: 16px;
 	grid-template-columns: repeat(3, minmax(0, 1fr));
+	margin: 0;
+	max-width: 100%;
+	min-width: 0;
+	padding: 0;
+	width: 100%;
 }
 
 .qrms-hub-card {
 	align-items: flex-start;
+	align-self: stretch;
 	background: #fff;
 	border: 1px solid #dcdcde;
 	border-radius: 10px;
 	box-shadow: 0 1px 2px rgba( 0, 0, 0, 0.04 );
 	color: #1d2327;
 	display: flex;
+	flex-direction: row;
 	gap: 14px;
+	height: auto;
+	max-width: 100%;
 	min-height: 76px;
+	min-width: 0;
 	padding: 18px;
+	position: relative;
 	text-decoration: none;
-	transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+	transition: border-color 0.15s ease, box-shadow 0.15s ease;
+	z-index: 0;
 }
 
 .qrms-hub-card:hover,
@@ -425,7 +523,7 @@
 	border-color: var(--qrms-hub-accent);
 	box-shadow: 0 4px 14px rgba( 0, 0, 0, 0.08 );
 	color: #1d2327;
-	transform: translateY( -1px );
+	z-index: 1;
 }
 
 .qrms-hub-card:focus-visible {
@@ -442,6 +540,7 @@
 }
 
 .qrms-hub-body {
+	flex: 1 1 auto;
 	min-width: 0;
 }
 
@@ -477,6 +576,108 @@
 	margin-left: 6px;
 	padding: 0 8px;
 	vertical-align: middle;
+}
+
+/* Alt listeli kart: sütun. Gövde esnemez — açıklama ile liste arasında
+   uçurum oluşmasın. Fazla yükseklik listenin ALTINDA kalır. */
+
+.qrms-hub-card-has-links {
+	align-items: stretch;
+	flex-direction: column;
+	gap: 0;
+	justify-content: flex-start;
+}
+
+.qrms-hub-card-main {
+	align-items: flex-start;
+	color: inherit;
+	display: flex;
+	flex: 0 0 auto;
+	gap: 14px;
+	min-width: 0;
+	text-decoration: none;
+	width: 100%;
+}
+
+a.qrms-hub-card-main:hover,
+a.qrms-hub-card-main:focus {
+	color: inherit;
+}
+
+.qrms-hub-links {
+	border-top: 1px solid #dcdcde;
+	list-style: none;
+	margin: 10px 0 0;
+	padding: 8px 0 0;
+	width: 100%;
+}
+
+.qrms-hub-links li {
+	margin: 0;
+	padding: 0;
+}
+
+.qrms-hub-links a {
+	align-items: center;
+	border-radius: 4px;
+	color: #2271b1;
+	display: flex;
+	font-size: 12px;
+	gap: 6px;
+	line-height: 1.4;
+	margin: 0 -6px;
+	padding: 4px 6px;
+	text-decoration: none;
+}
+
+.qrms-hub-links a::before {
+	-webkit-font-smoothing: antialiased;
+	color: #8c8f94;
+	content: "\f345";
+	display: inline-block;
+	flex: 0 0 14px;
+	font-family: dashicons;
+	font-size: 14px;
+	font-style: normal;
+	font-weight: 400;
+	height: 14px;
+	line-height: 1;
+	speak: never;
+	text-decoration: inherit;
+	width: 14px;
+}
+
+.qrms-hub-links a:hover,
+.qrms-hub-links a:focus {
+	background: #f0f6fc;
+	color: #135e96;
+	text-decoration: none;
+}
+
+.qrms-hub-links a:hover::before,
+.qrms-hub-links a:focus::before {
+	color: var(--qrms-hub-accent, #2271b1);
+}
+
+.qrms-hub-links a:focus-visible {
+	outline: 2px solid var(--qrms-hub-accent, #2271b1);
+	outline-offset: 2px;
+}
+
+.qrms-hub-links-more {
+	color: #646970;
+	font-weight: 600;
+	margin-top: 2px;
+}
+
+.qrms-hub-links-more::before {
+	content: "\f132";
+}
+
+a.qrms-hub-links-more:hover,
+a.qrms-hub-links-more:focus {
+	background: #f6f7f7;
+	color: #1d2327;
 }
 
 /* Alt sayfaların en üstündeki "← Modül Adı" bağlantısı.
@@ -526,18 +727,18 @@
 	line-height: 1.5;
 }
 
-/* Tablet: iki sütun */
+/* Tablet: iki sütun (WP admin 782px üstü, 1200px altı) */
 
-@media screen and (max-width: 960px) {
+@media screen and (max-width: 1200px) {
 	.qrms-hub-grid,
-	.qrms-hub-stats {
+	.qrms-hub-stats:not(.qrms-hub-stats-stacked) {
 		grid-template-columns: repeat(2, minmax(0, 1fr));
 	}
 }
 
-/* Telefon: tek sütun kart, özet kutuları ikili kalır */
+/* Mobil: tek sütun kart, özet kutuları ikili. WP admin kırılımı 782px. */
 
-@media screen and (max-width: 600px) {
+@media screen and (max-width: 782px) {
 	.qrms-hub-grid {
 		grid-template-columns: 1fr;
 	}
@@ -548,6 +749,34 @@
 
 	.qrms-hub-stat-value {
 		font-size: 19px;
+	}
+
+	.qrms-hub-stats:not(.qrms-hub-stats-stacked) {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+
+	.qrms-hub-stats-row-items {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+
+	.qrms-hub-stats-stacked .qrms-hub-stat {
+		flex: none;
+	}
+
+	.qrms-hub-card {
+		min-height: 0;
+		padding: 14px;
+	}
+
+	.qrms-hub-links {
+		margin-top: 8px;
+		padding-top: 6px;
+	}
+
+	.qrms-hub-links a {
+		line-height: 1.35;
+		padding: 3px 6px;
 	}
 }
 
@@ -572,6 +801,17 @@
 	}
 }
 
+@media screen and (max-width: 782px) and (pointer: coarse) {
+	.qrms-hub-card {
+		min-height: 0;
+		padding: 14px;
+	}
+
+	.qrms-hub-links a {
+		min-height: 36px;
+	}
+}
+
 /* =====================================================================
    GENEL BAKIŞ — kategorilere ayrılmış modül ızgarası
 
@@ -592,10 +832,17 @@
 	margin-top: 12px;
 }
 
-/* Kategori başlığı */
+/* Kategori bölümü: kendi BFC'si, float/sticky yok, grid bağımsız kapanır. */
 
 .qrms-overview-group {
-	margin: 0 0 28px;
+	clear: both;
+	display: flow-root;
+	float: none;
+	isolation: isolate;
+	margin: 0 0 36px;
+	overflow: visible;
+	padding: 0;
+	position: relative;
 }
 
 .qrms-overview-group:last-child {
@@ -605,18 +852,24 @@
 .qrms-overview-group-title {
 	align-items: center;
 	border-bottom: 1px solid #dcdcde;
+	border-left: 3px solid var(--qrms-overview-group-accent, #c3c4c7);
+	clear: both;
+	color: #1d2327;
 	display: flex;
+	float: none;
 	flex-wrap: wrap;
 	font-size: 15px;
 	font-weight: 600;
 	gap: 4px 8px;
+	letter-spacing: 0.02em;
 	line-height: 1.4;
-	margin: 0 0 14px;
-	padding: 0 0 8px;
+	margin: 0 0 16px;
+	padding: 0 0 8px 10px;
+	position: static;
 }
 
 .qrms-overview-group-icon {
-	color: #646970;
+	color: var(--qrms-overview-group-accent, #646970);
 	flex: 0 0 20px;
 	font-size: 20px;
 	height: 20px;
@@ -691,11 +944,16 @@
 	color: #8c8f94;
 }
 
-/* Telefon: başlık küçülür, sayaç satır sonuna sarkabilir */
+.qrms-overview-card-passive .qrms-hub-links a {
+	color: #8c8f94;
+	pointer-events: none;
+}
 
-@media screen and (max-width: 600px) {
+/* Mobil: başlık küçülür, bölümler yine ayrı kalır (WP 782px) */
+
+@media screen and (max-width: 782px) {
 	.qrms-overview-group {
-		margin-bottom: 22px;
+		margin-bottom: 28px;
 	}
 
 	.qrms-overview-group-title {

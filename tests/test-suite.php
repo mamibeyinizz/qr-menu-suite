@@ -37,6 +37,10 @@ function qrms_reset() {
 	// modülün init'ini çağıran test, sonraki testin menüsüne satır ekletirdi.
 	QRMS_Shortcodes::reset();
 
+	if ( class_exists( 'QRMS_Analitik' ) && method_exists( 'QRMS_Analitik', 'genel_bakis_onbellegini_temizle' ) ) {
+		QRMS_Analitik::genel_bakis_onbellegini_temizle();
+	}
+
 	// add_shortcode() taklidinin defteri de aynı nedenle sıfırlanır; aksi
 	// hâlde bir testte kaydedilen kısa kod sonraki testte "kurulu" görünür.
 	$GLOBALS['qrms_test']['shortcodes'] = array();
@@ -54,6 +58,7 @@ function qrms_reset() {
 	$GLOBALS['qrms_test']['styles']     = array();
 	$GLOBALS['qrms_test']['scripts']    = array();
 	$GLOBALS['qrms_test']['inline_styles'] = array();
+	$GLOBALS['qrms_test']['localized']     = array();
 	$GLOBALS['qrms_test']['settings']       = array();
 	$GLOBALS['qrms_test']['settings_fields'] = array();
 
@@ -1457,11 +1462,11 @@ qrms_test(
 
 		qrms_assert_same(
 			array(
-				QRMS_Admin::MENU_SLUG,
-				QRMS_Admin::SETTINGS_SLUG,
 				QRMS_Admin::get_module_page_slug( 'restoran-menu' ),
 				QRMS_Admin::get_module_page_slug( 'qr-analiz' ),
+				QRMS_Admin::MENU_SLUG,
 				QRMS_Admin::SHORTCODES_SLUG,
+				QRMS_Admin::SETTINGS_SLUG,
 				'qrms-yeni-satir',
 			),
 			qrms_submenu_sluglari( $sirali ),
@@ -1562,7 +1567,7 @@ qrms_test(
 		$css = QRMS_Admin::build_menu_accent_css( QRMS_Admin::get_menu_groups() );
 
 		qrms_assert_contains( '#adminmenu .qrms-mg-genel{--qrms-menu-accent:', $css, 'genel grubu' );
-		qrms_assert_same( 5, substr_count( $css, '--qrms-menu-accent' ), 'beş grup' );
+		qrms_assert_same( 4, substr_count( $css, '--qrms-menu-accent' ), 'dört grup' );
 
 		// Filtreden geçen bir değer stil dosyasına enjeksiyon yapamaz.
 		$kotu = QRMS_Admin::build_menu_accent_css(
@@ -1595,7 +1600,7 @@ qrms_test(
 		}
 
 		qrms_assert_same( array_unique( $renkler ), $renkler, 'her grubun rengi ayrı' );
-		qrms_assert_same( 5, count( $renkler ), 'beş kategori' );
+		qrms_assert_same( 4, count( $renkler ), 'dört kategori' );
 	}
 );
 
@@ -2057,8 +2062,8 @@ qrms_test(
 		qrms_assert_contains( 'grid-template-columns: repeat(3, minmax(0, 1fr))', $css, 'masaüstü üç sütun' );
 		qrms_assert_false( false !== strpos( $css, 'justify-content: center' ), 'eksik satır ortalanmaz' );
 		qrms_assert_false( false !== strpos( $css, 'display: flex !important' ), 'kart ızgarası flex değil' );
-		qrms_assert_contains( 'max-width: 960px', $css, 'tablet kırılımı' );
-		qrms_assert_contains( 'max-width: 600px', $css, 'telefon kırılımı' );
+		qrms_assert_contains( 'max-width: 1200px', $css, 'tablet kırılımı' );
+		qrms_assert_contains( 'max-width: 782px', $css, 'WP admin mobil kırılımı' );
 		qrms_assert_contains( 'pointer: coarse', $css, 'dokunmatik hedef büyütmesi' );
 	}
 );
@@ -2142,21 +2147,30 @@ qrms_test(
 	'kategori sayacı yalnızca modülleri sayar',
 	function () {
 		$gruplar = QRMS_Admin::build_overview_groups( array( 'qr-analiz' ), true );
-		$analiz  = null;
+		$araclar = null;
+		$genel   = null;
 
 		foreach ( $gruplar as $grup ) {
-			if ( 'Analiz & Ayarlar' === $grup['title'] ) {
-				$analiz = $grup;
+			if ( 'Araçlar' === $grup['title'] ) {
+				$araclar = $grup;
+			}
+			if ( 'Genel' === $grup['title'] ) {
+				$genel = $grup;
 			}
 		}
 
-		qrms_assert_true( null !== $analiz, 'kategori bulundu' );
+		qrms_assert_true( null !== $araclar, 'Araçlar kategorisi bulundu' );
+		qrms_assert_true( null !== $genel, 'Genel kategorisi bulundu' );
 
-		// Kategoride üç kart var (Analiz + Kısa Kodlar + Genel Ayarlar) ama
-		// yalnızca biri lisansa bağlı.
-		qrms_assert_same( 3, count( $analiz['cards'] ), 'kart sayısı' );
-		qrms_assert_same( 1, $analiz['total'], 'sayaçta yalnızca modüller' );
-		qrms_assert_same( 1, $analiz['active'], 'aktif modül sayısı' );
+		// Araçlar'da yedi modül var; yalnızca qr-analiz aktif.
+		qrms_assert_same( 7, count( $araclar['cards'] ), 'araç kart sayısı' );
+		qrms_assert_same( 7, $araclar['total'], 'sayaçta yalnızca modüller' );
+		qrms_assert_same( 1, $araclar['active'], 'aktif modül sayısı' );
+
+		// Genel'de iki çekirdek kart (Kısa Kodlar + Ayarlar); modül yok.
+		qrms_assert_same( 2, count( $genel['cards'] ), 'çekirdek kart sayısı' );
+		qrms_assert_same( 0, $genel['total'], 'çekirdek kalemler sayıma girmez' );
+		qrms_assert_same( 0, $genel['active'], 'aktif modül yok' );
 	}
 );
 
@@ -2171,14 +2185,13 @@ qrms_test(
 
 		qrms_assert_contains( 'qrms-hub-grid', $html, 'kart ızgarası' );
 		qrms_assert_contains( 'qrms-overview-group-title', $html, 'kategori başlığı' );
-		qrms_assert_contains( 'Menü &amp; Ürünler', $html, 'ilk kategori' );
-		qrms_assert_contains( 'Masa &amp; Servis', $html, 'üçüncü kategori' );
+		qrms_assert_contains( 'Menü Yönetimi', $html, 'ilk kategori' );
+		qrms_assert_contains( 'Araçlar', $html, 'ikinci kategori' );
+		qrms_assert_contains( 'Görünüm &amp; Erişim', $html, 'üçüncü kategori' );
 		qrms_assert_contains( 'dashicons dashicons-food', $html, 'modül ikonu' );
 		qrms_assert_contains( 'Ürünler, kategoriler', $html, 'kart açıklaması' );
 		qrms_assert_contains( 'page=qrms-module-restoran-menu', $html, 'aktif kartın adresi' );
-		// Sayaç kategorideki modül sayısına bağlıdır; Header Footer Builder
-		// eklendiğinden "Menü & Ürünler" dört modül taşır.
-		qrms_assert_contains( '1/4 aktif', $html, 'kategori sayacı' );
+		qrms_assert_contains( '1/2 aktif', $html, 'kategori sayacı' );
 
 		// Aktif kart bağlantı, pasif kart tıklanamaz kutu.
 		qrms_assert_contains( 'qrms-overview-card-active', $html, 'aktif kart' );
@@ -2203,7 +2216,7 @@ qrms_test(
 
 		qrms_assert_contains( 'Lisansı Doğrula', $html, 'lisans butonu' );
 		qrms_assert_contains( 'page=qrms-settings', $html, 'ayarlar adresi' );
-		qrms_assert_contains( '0/3 aktif', $html, 'sayaç sıfır' );
+		qrms_assert_contains( '0/2 aktif', $html, 'sayaç sıfır' );
 		qrms_assert_false( false !== strpos( $html, 'qrms-overview-card-active' ), 'aktif kart yok' );
 	}
 );
@@ -2221,6 +2234,270 @@ qrms_test(
 
 		// Izgara grid; telefonda kartlar tek sütuna düşer.
 		qrms_assert_contains( 'grid-template-columns: 1fr', $css, 'telefonda tek sütun' );
+		qrms_assert_contains( 'max-width: 782px', $css, 'WP admin mobil kırılımı' );
+	}
+);
+
+qrms_test(
+	'Genel Bakış kart ızgarası bölümleri taşırmadan ayırır, alt liste tıklanabilir durur',
+	function () {
+		$css = file_get_contents( QRMS_PLUGIN_DIR . 'assets/css/admin.css' );
+
+		// Taşma: height:100% + content-box padding bir sonraki başlığı örterdi.
+		qrms_assert_contains( 'box-sizing: border-box', $css, 'hub border-box' );
+		qrms_assert_false(
+			(bool) preg_match( '/\.qrms-hub-grid\s*>\s*\.qrms-hub-card\s*\{[^}]*height:\s*100%/s', $css ),
+			'kart height:100% yok'
+		);
+		qrms_assert_contains( 'display: flow-root', $css, 'kategori BFC' );
+		qrms_assert_contains( 'position: static', $css, 'başlık sticky değil' );
+		qrms_assert_false(
+			(bool) preg_match( '/\.qrms-overview-group-title\s*\{[^}]*position:\s*sticky/s', $css ),
+			'kategori başlığı sticky değil'
+		);
+
+		// Alt liste açıklamadan ince çizgiyle ayrılır, hover arka planı var.
+		qrms_assert_contains( '.qrms-hub-links', $css, 'alt liste kuralı' );
+		qrms_assert_true(
+			(bool) preg_match( '/\.qrms-hub-links\s*\{[^}]*border-top:/s', $css ),
+			'liste ayırıcı çizgi'
+		);
+		qrms_assert_contains( 'font-family: dashicons', $css, 'madde işaretçisi dashicon' );
+		qrms_assert_contains( 'background: #f0f6fc', $css, 'hover arka plan' );
+		qrms_assert_false(
+			(bool) preg_match( '/\.qrms-hub-card-has-links\s*\{[^}]*justify-content:\s*space-between/s', $css ),
+			'açıklama-liste uçurumu yok'
+		);
+	}
+);
+
+qrms_test(
+	'sol menü ve Genel Bakış aynı taksonomiden türer',
+	function () {
+		$nav   = QRMS_Admin::get_nav_groups();
+		$menu  = QRMS_Admin::get_menu_groups();
+		$over  = QRMS_Admin::get_overview_groups();
+
+		qrms_assert_same( count( $nav ), count( $menu ), 'menü grup sayısı' );
+		qrms_assert_same( count( $nav ), count( $over ), 'genel bakış grup sayısı' );
+
+		$anahtarlar = array();
+		foreach ( $nav as $i => $grup ) {
+			qrms_assert_same( $grup['key'], $menu[ $i ]['key'], $grup['key'] . ' menü anahtarı' );
+			qrms_assert_same( $grup['key'], $over[ $i ]['key'], $grup['key'] . ' bakış anahtarı' );
+			qrms_assert_same( $grup['title'], $menu[ $i ]['title'], $grup['key'] . ' menü başlığı' );
+			qrms_assert_same( $grup['title'], $over[ $i ]['title'], $grup['key'] . ' bakış başlığı' );
+			qrms_assert_same( $grup['accent'], $menu[ $i ]['accent'], $grup['key'] . ' rengi' );
+			$anahtarlar[] = $grup['key'];
+		}
+
+		qrms_assert_false( in_array( 'gelismis', $anahtarlar, true ), 'Gelişmiş grubu kalktı' );
+		qrms_assert_same(
+			array( 'menu-yonetimi', 'araclar', 'gorunum', 'genel' ),
+			$anahtarlar,
+			'grup sırası'
+		);
+	}
+);
+
+qrms_test(
+	'Güvenlik Ayarı Araçlar\'da QR Kod Oluştur\'un hemen altındadır; Kısa Kodlar Genel\'dedir',
+	function () {
+		$araclar = null;
+		$genel   = null;
+
+		foreach ( QRMS_Admin::get_nav_groups() as $grup ) {
+			if ( 'araclar' === $grup['key'] ) {
+				$araclar = $grup['items'];
+			}
+			if ( 'genel' === $grup['key'] ) {
+				$genel = $grup['items'];
+			}
+		}
+
+		qrms_assert_true( is_array( $araclar ), 'Araçlar var' );
+		$masa = array_search( 'qr-masa', $araclar, true );
+		$guv  = array_search( 'qr-masa-oturum-guvenligi', $araclar, true );
+		qrms_assert_true( false !== $masa && false !== $guv, 'her iki kalem Araçlar\'da' );
+		qrms_assert_same( $masa + 1, $guv, 'Güvenlik, QR Kod Oluştur\'un hemen altında' );
+
+		qrms_assert_true( in_array( QRMS_Admin::OVERVIEW_CORE_SHORTCODES, $genel, true ), 'Kısa Kodlar Genel\'de' );
+		qrms_assert_true( in_array( QRMS_Admin::SETTINGS_SLUG, QRMS_Admin::get_menu_groups()[3]['items'], true ), 'Ayarlar menüde Genel\'de' );
+		qrms_assert_true( in_array( QRMS_Admin::SHORTCODES_SLUG, QRMS_Admin::get_menu_groups()[3]['items'], true ), 'Kısa Kodlar menüde Genel\'de' );
+	}
+);
+
+qrms_test(
+	'analiz şeridi değeri 0 olan dikkat kutusunu basmaz, pasif modül kutusunu basmaz',
+	function () {
+		$bos = QRMS_Admin::get_overview_stats( array() );
+		qrms_assert_same( array(), $bos, 'aktif modül yokken şerit yok' );
+
+		$sadece_ceviri = QRMS_Admin::get_overview_stats( array( 'qr-ceviri' ) );
+		qrms_assert_same( array(), $sadece_ceviri, 'şeritte yeri olmayan modül kutu üretmez' );
+	}
+);
+
+qrms_test(
+	'hub satırlı özet kutuları iki başlık altında basılır, boş satır düşer',
+	function () {
+		ob_start();
+		QRMS_Admin::render_hub(
+			array(
+				'stats' => array(
+					array(
+						'title' => 'Dikkat gerektirenler',
+						'class' => 'is-attention',
+						'items' => array(
+							array( 'label' => 'Tükendi Ürün', 'value' => 3, 'url' => 'https://example.test/tukendi', 'accent' => '#d63638' ),
+						),
+					),
+					array(
+						'title' => 'Durum',
+						'items' => array(),
+					),
+				),
+				'cards' => array(),
+			)
+		);
+		$html = ob_get_clean();
+
+		qrms_assert_contains( 'qrms-hub-stats-stacked', $html, 'satırlı şerit' );
+		qrms_assert_contains( 'Dikkat gerektirenler', $html, 'dikkat başlığı' );
+		qrms_assert_contains( 'Tükendi Ürün', $html, 'dikkat kutusu' );
+		qrms_assert_contains( 'href="https://example.test/tukendi"', $html, 'kutu tıklanabilir' );
+		qrms_assert_false( false !== strpos( $html, 'Durum' ), 'boş durum satırı basılmaz' );
+	}
+);
+
+qrms_test(
+	'hub kartı 5\'ten uzun alt listeyi keser ve +N daha bağlar',
+	function () {
+		$kart = array(
+			'url'   => 'https://example.test/hub',
+			'title' => 'Restoran Menü',
+			'desc'  => 'Açıklama',
+			'icon'  => 'dashicons-food',
+			'state' => 'active',
+			'links' => array(
+				array( 'url' => 'https://example.test/a', 'title' => 'Ürünlerim' ),
+				array( 'url' => 'https://example.test/b', 'title' => 'Ürün Ekle' ),
+			),
+			'more'  => array( 'url' => 'https://example.test/hub', 'label' => '+7 daha' ),
+		);
+
+		ob_start();
+		QRMS_Admin::render_hub( array( 'cards' => array( $kart ) ) );
+		$html = ob_get_clean();
+
+		qrms_assert_contains( 'qrms-hub-card-has-links', $html, 'alt liste sarmalayıcısı' );
+		qrms_assert_contains( 'qrms-hub-links', $html, 'alt liste' );
+		qrms_assert_contains( 'Ürünlerim', $html, 'alt madde' );
+		qrms_assert_contains( '+7 daha', $html, 'daha bağlantısı' );
+		qrms_assert_contains( 'qrms-hub-links-more', $html, 'daha sınıfı' );
+		// İç içe <a> yok: kart div, gövde ayrı bağlantı.
+		qrms_assert_contains( '<div class="qrms-hub-card', $html, 'kart blok eleman' );
+		qrms_assert_contains( 'qrms-hub-card-main', $html, 'gövde bağlantısı' );
+	}
+);
+
+qrms_test(
+	'alt liste 5\'ten uzunsa kartta ilk 5 ve +N daha durur',
+	function () {
+		add_filter(
+			'qrms_module_overview_links',
+			function ( $links, $slug ) {
+				if ( 'restoran-menu' !== $slug ) {
+					return $links;
+				}
+				$out = array();
+				for ( $i = 1; $i <= 7; $i++ ) {
+					$out[] = array( 'url' => 'https://example.test/' . $i, 'title' => 'Ekran ' . $i );
+				}
+				return $out;
+			},
+			10,
+			2
+		);
+
+		$gruplar = QRMS_Admin::build_overview_groups( array( 'restoran-menu' ), false );
+		$kart    = null;
+		foreach ( $gruplar as $grup ) {
+			foreach ( $grup['cards'] as $aday ) {
+				if ( 'Restoran Menü' === $aday['title'] ) {
+					$kart = $aday;
+				}
+			}
+		}
+
+		qrms_assert_true( is_array( $kart ), 'kart bulundu' );
+		qrms_assert_same( 5, count( $kart['links'] ), 'ilk 5' );
+		qrms_assert_same( 'Ekran 1', $kart['links'][0]['title'], 'ilk madde' );
+		qrms_assert_same( '+2 daha', $kart['more']['label'], 'kalan sayısı' );
+		qrms_assert_contains( 'page=qrms-module-restoran-menu', $kart['more']['url'], 'daha hub\'a gider' );
+	}
+);
+
+qrms_test(
+	'üst menü Genel Bakış\'tayken gruplar açık gelsin diye openAll basılır',
+	function () {
+		$js = file_get_contents( QRMS_PLUGIN_DIR . 'assets/js/admin-menu.js' );
+		qrms_assert_contains( 'AYAR.openAll', $js, 'openAll okunur' );
+		qrms_assert_contains( '! AYAR.openAll && ! acikSayfa', $js, 'Genel Bakış\'ta hepsi açık' );
+		qrms_assert_contains( 'AYAR.overviewUrl', $js, 'üst menü Genel Bakış\'a gider' );
+		qrms_assert_contains( 'toplevel_page_qrms-overview', $js, 'üst menü seçicisi' );
+	}
+);
+
+qrms_test(
+	'üst menü varlığı Genel Bakış adresini ve openAll bayrağını taşır',
+	function () {
+		$_GET = array( 'page' => QRMS_Admin::MENU_SLUG );
+		QRMS_Admin::enqueue_menu_assets();
+
+		$lokal = null;
+		foreach ( $GLOBALS['qrms_test']['localized'] as $kayit ) {
+			if ( 'qrmsMenu' === $kayit['name'] ) {
+				$lokal = $kayit['data'];
+			}
+		}
+
+		qrms_assert_true( is_array( $lokal ), 'qrmsMenu lokalize' );
+		qrms_assert_true( ! empty( $lokal['openAll'] ), 'Genel Bakış\'ta openAll' );
+		qrms_assert_contains( 'page=' . QRMS_Admin::MENU_SLUG, $lokal['overviewUrl'], 'üst menü adresi' );
+
+		$GLOBALS['qrms_test']['localized'] = array();
+		$GLOBALS['qrms_test']['scripts']   = array();
+		$GLOBALS['qrms_test']['styles']    = array();
+		$_GET                              = array( 'page' => 'qrms-module-restoran-menu' );
+		QRMS_Admin::enqueue_menu_assets();
+
+		$lokal = null;
+		foreach ( $GLOBALS['qrms_test']['localized'] as $kayit ) {
+			if ( 'qrmsMenu' === $kayit['name'] ) {
+				$lokal = $kayit['data'];
+			}
+		}
+
+		qrms_assert_true( is_array( $lokal ), 'modül sayfasında da lokalize' );
+		qrms_assert_false( ! empty( $lokal['openAll'] ), 'modül sayfasında openAll kapalı' );
+	}
+);
+
+qrms_test(
+	'Genel grup başlığı diğerleriyle aynı ağırlıkta (gri metin değil, accent border)',
+	function () {
+		$css = file_get_contents( QRMS_PLUGIN_DIR . 'assets/css/admin-menu.css' );
+		qrms_assert_contains( 'border-left: 3px solid var( --qrms-menu-accent', $css, 'grup başlığında sol şerit' );
+		qrms_assert_contains( '.qrms-menu-group-title', $css, 'başlık sınıfı' );
+		qrms_assert_contains( 'letter-spacing: 0.07em', $css, 'letter-spacing' );
+		qrms_assert_contains( 'font-weight: 600', $css, 'font-weight' );
+		qrms_assert_contains( 'color: #c3c4c7', $css, 'başlık metni diğerleriyle aynı gri' );
+		// Başlık metni accent rengine bağlanmaz; Genel gri olduğu için kaybolmasın.
+		qrms_assert_false(
+			(bool) preg_match( '/\.qrms-menu-group-toggle\s*\{[^}]*color:\s*var\(\s*--qrms-menu-accent/s', $css ),
+			'başlık metni accent rengi değil'
+		);
 	}
 );
 

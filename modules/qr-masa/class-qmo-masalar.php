@@ -75,6 +75,28 @@ if ( ! class_exists( 'QMO_Masalar' ) ) {
 		}
 
 		/**
+		 * Kayıtlı masa sayısı.
+		 *
+		 * Genel Bakış analiz şeridi BURADAN beslenir; hepsi() bütün satırları
+		 * çekmesin diye ayrı COUNT + istek içi statik önbellek.
+		 *
+		 * @return int
+		 */
+		public static function sayisi() {
+			static $sayi = null;
+
+			if ( null !== $sayi ) {
+				return $sayi;
+			}
+
+			global $wpdb;
+			$tablo = self::tablo();
+			$sayi  = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$tablo}" );
+
+			return $sayi;
+		}
+
+		/**
 		 * Slug'a göre masa getir.
 		 *
 		 * @param string $slug Masa slug'ı.

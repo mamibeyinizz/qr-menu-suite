@@ -68,7 +68,7 @@
 	border-left: 3px solid var( --qrms-menu-accent, transparent );
 	border-radius: 0;
 	background: none;
-	color: var( --qrms-menu-accent, currentColor );
+	color: #c3c4c7;
 	font-size: 11px;
 	font-weight: 600;
 	letter-spacing: 0.07em;
@@ -76,7 +76,15 @@
 	text-align: left;
 	text-transform: uppercase;
 	cursor: pointer;
-	opacity: 0.85;
+	opacity: 1;
+}
+
+#adminmenu .wp-submenu .qrms-menu-group-title {
+	flex: 1 1 auto;
+	min-width: 0;
+	color: inherit;
+	font-weight: 600;
+	letter-spacing: inherit;
 }
 
 #adminmenu .wp-submenu .qrms-menu-group-toggle:hover,

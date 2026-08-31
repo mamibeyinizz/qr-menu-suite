@@ -72,6 +72,13 @@ class QRMS_Analitik {
 	const DONEMLER = array( 'hourly', 'daily', 'weekly', 'monthly', 'masalar' );
 
 	/**
+	 * genel_bakis() istek içi önbelleği (masa filtresine göre).
+	 *
+	 * @var array<string,array<string,int>>
+	 */
+	private static $genel_bakis_onbellegi = array();
+
+	/**
 	 * "Masalara Göre" görünümünün kapsadığı gün sayısı.
 	 */
 	const MASA_GUN = 30;
@@ -1032,6 +1039,11 @@ class QRMS_Analitik {
 	 * @return array<string,int>
 	 */
 	public static function genel_bakis( $masa = '' ) {
+		$cache_key = (string) $masa;
+		if ( isset( self::$genel_bakis_onbellegi[ $cache_key ] ) ) {
+			return self::$genel_bakis_onbellegi[ $cache_key ];
+		}
+
 		global $wpdb;
 
 		$tablo   = self::tablo();
@@ -1100,6 +1112,7 @@ class QRMS_Analitik {
 		);
 
 		if ( ! is_array( $satir ) ) {
+			self::$genel_bakis_onbellegi[ $cache_key ] = $sonuc;
 			return $sonuc;
 		}
 
@@ -1112,7 +1125,20 @@ class QRMS_Analitik {
 			$sonuc[ $anahtar ] = isset( $satir[ $anahtar ] ) ? (int) $satir[ $anahtar ] : 0;
 		}
 
+		self::$genel_bakis_onbellegi[ $cache_key ] = $sonuc;
 		return $sonuc;
+	}
+
+	/**
+	 * genel_bakis() istek içi önbelleğini boşaltır.
+	 *
+	 * Testler aynı süreçte farklı $wpdb cevapları besler; üretimde istek
+	 * bitince süreç de biter, bu metodun çağrılmasına gerek yoktur.
+	 *
+	 * @return void
+	 */
+	public static function genel_bakis_onbellegini_temizle() {
+		self::$genel_bakis_onbellegi = array();
 	}
 
 	/**

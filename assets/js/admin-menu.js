@@ -128,6 +128,15 @@
 			return;
 		}
 
+		// Üst "QR Menü" tıklanınca Genel Bakış açılsın (gruplar orada openAll ile açılır).
+		// WordPress aksi halde ilk alt satırın (gruplamadan sonra Restoran Menü) adresine gider.
+		if ( AYAR.overviewUrl ) {
+			var ust = document.querySelector( '#adminmenu li#toplevel_page_qrms-overview > a.menu-top' );
+			if ( ust ) {
+				ust.setAttribute( 'href', AYAR.overviewUrl );
+			}
+		}
+
 		var kapali = kapaliGruplar();
 		var ilk = true;
 
@@ -146,12 +155,13 @@
 			ilk = false;
 
 			// Açık sayfanın grubu her zaman açılır: kullanıcı nerede olduğunu
-			// menüde görebilmeli.
+			// menüde görebilmeli. Genel Bakış'ta (üst menü veya "Genel Bakış"
+			// satırı — ikisi aynı sayfa) bütün gruplar açık gelir.
 			var acikSayfa = satirlar.some( function ( satir ) {
 				return satir.classList.contains( 'current' );
 			} );
 
-			uygula( baslik, satirlar, ! acikSayfa && kapali.indexOf( grup.key ) !== -1 );
+			uygula( baslik, satirlar, ! AYAR.openAll && ! acikSayfa && kapali.indexOf( grup.key ) !== -1 );
 
 			baslik.querySelector( '.qrms-menu-group-toggle' ).addEventListener( 'click', function () {
 				var kapansin = ! baslik.classList.contains( 'is-collapsed' );

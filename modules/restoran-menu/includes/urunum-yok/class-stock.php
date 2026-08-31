@@ -214,6 +214,32 @@ if ( ! function_exists( 'qmo_tukendi_urun_sayisi' ) ) {
     }
 }
 
+if ( ! function_exists( 'qmo_yayinlanan_urun_sayisi' ) ) {
+    /**
+     * Yayındaki menü ürünü sayısı.
+     *
+     * Genel Bakış analiz şeridi ve başka sayaçlar BURADAN beslenir; istek içi
+     * statik önbellek ikinci bir wp_count_posts çağrısını önler.
+     *
+     * @return int
+     */
+    function qmo_yayinlanan_urun_sayisi() {
+        static $sayi = null;
+        if ( null !== $sayi ) {
+            return $sayi;
+        }
+
+        if ( ! post_type_exists( 'rma_menu_item' ) ) {
+            $sayi = 0;
+            return $sayi;
+        }
+
+        $counts = wp_count_posts( 'rma_menu_item' );
+        $sayi   = ( isset( $counts->publish ) ) ? (int) $counts->publish : 0;
+        return $sayi;
+    }
+}
+
 if ( ! function_exists( 'qmo_urunum_yok_eksik_ozet' ) ) {
     /**
      * "Eksik Ürün" kartının verisi: toplam tükendi sayısı + hangi malzemeden
