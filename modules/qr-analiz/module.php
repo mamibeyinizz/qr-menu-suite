@@ -61,7 +61,10 @@ function qrms_module_qr_analiz_init() {
 		// zaman aralığı ve masa seçimi (yalnızca yönetimde gerekir).
 		require_once __DIR__ . '/class-qrms-analitik-filtre.php';
 
+		// Paylaşılan filtre çubuğu bileşeni ve onu kullanan ekranlar.
+		require_once __DIR__ . '/filtre-cubugu.php';
 		require_once __DIR__ . '/analitik-sayfasi.php';
+		require_once __DIR__ . '/genel-sayfasi.php';
 		require_once __DIR__ . '/hub-sayfasi.php';
 
 		// "İstatistikler" satırı artık hub ekranıdır; klasik panel onun bir
@@ -187,11 +190,118 @@ function qrms_module_qr_analiz_admin_assets() {
 		return;
 	}
 
+	if ( 'qrms-an-genel' === $page ) {
+		qrms_module_qr_analiz_genel_assets();
+		return;
+	}
+
 	// Hub: teşhis kutusu panelin stilini kullanır (aynı bulgular, aynı
 	// görünüm). Betiğe gerek yok, yalnızca stil kuyruğa girer.
 	if ( QRMS_Admin::get_module_page_slug( 'qr-analiz' ) === $page ) {
 		qrms_module_qr_analiz_panel_stili();
 	}
+}
+
+/**
+ * Analitik ekranlarının ORTAK betiği.
+ *
+ * Biçimlendirme, AJAX sarmalayıcısı, tablo iskeleti, grafik çizimi ve filtre
+ * çubuğunun canlandırılması tek dosyadadır; her ekran onu bağımlılık olarak
+ * yükler (bkz. assets/js/analitik-ortak.js).
+ *
+ * @return void
+ */
+function qrms_module_qr_analiz_ortak_betik() {
+	wp_enqueue_script(
+		'qrms-analitik-ortak',
+		QRMS_PLUGIN_URL . 'modules/qr-analiz/assets/js/analitik-ortak.js',
+		array(),
+		QRMS_Helpers::asset_version( 'modules/qr-analiz/assets/js/analitik-ortak.js' ),
+		true
+	);
+}
+
+/**
+ * "Genel Bakış" kategorisinin varlıkları.
+ *
+ * Sayfaya geçilen bağlam ADRESTEN çözülmüş filtredir: betik onu değiştirmez,
+ * uca olduğu gibi geri gönderir. Böylece aralığın nasıl hesaplandığı tek
+ * yerde (QRMS_Analitik_Filtre) kalır.
+ *
+ * @return void
+ */
+function qrms_module_qr_analiz_genel_assets() {
+	qrms_module_qr_analiz_panel_stili();
+	qrms_module_qr_analiz_ortak_betik();
+
+	wp_enqueue_script(
+		'qrms-analitik-genel',
+		QRMS_PLUGIN_URL . 'modules/qr-analiz/assets/js/analitik-genel.js',
+		array( 'qrms-analitik-ortak' ),
+		QRMS_Helpers::asset_version( 'modules/qr-analiz/assets/js/analitik-genel.js' ),
+		true
+	);
+
+	$masa       = QRMS_Analitik_Filtre::masa();
+	$kirilimler = array();
+
+	foreach ( qrms_analitik_kirilim_etiketleri() as $anahtar => $etiket ) {
+		$kirilimler[ $anahtar ] = $etiket['label'];
+	}
+
+	wp_localize_script(
+		'qrms-analitik-genel',
+		'qrmsAnalitikGenel',
+		array(
+			'ajaxUrl'           => admin_url( 'admin-ajax.php' ),
+			'nonce'             => wp_create_nonce( QRMS_Analitik::NONCE ),
+			'donem'             => QRMS_Analitik_Filtre::donem(),
+			'masa'              => $masa,
+			'bas'               => QRMS_Analitik_Filtre::bas(),
+			'bit'               => QRMS_Analitik_Filtre::bit(),
+			'kirilim'           => QRMS_Analitik_Filtre::kirilim(),
+			'kirilimEtiketleri' => $kirilimler,
+			'aralikEtiketi'     => QRMS_Analitik_Filtre::etiket(),
+			'masaEtiketi'       => '' !== $masa ? qrms_analitik_masa_etiketi( $masa ) : '',
+			'i18n'              => array(
+				'cardViews'      => __( 'Menü Görüntüleme', 'qrms' ),
+				'cardClicks'     => __( 'Ürün Tıklama', 'qrms' ),
+				'cardUnique'     => __( 'Tekil Ziyaretçi', 'qrms' ),
+				'cardTables'     => __( 'Hareketli Masa', 'qrms' ),
+				'cardTablesSub2' => __( 'Seçili aralıkta hareket eden masa', 'qrms' ),
+				'vsPrev'         => __( 'Önceki döneme göre', 'qrms' ),
+				'conversion'     => __( 'Dönüşüm', 'qrms' ),
+				'ipNote'         => __( 'IP bazlı, gizlilik korumalı', 'qrms' ),
+				'colHourly'      => __( 'Saat', 'qrms' ),
+				'colDaily'       => __( 'Tarih', 'qrms' ),
+				'colWeekly'      => __( 'Hafta', 'qrms' ),
+				'colMonthly'     => __( 'Ay', 'qrms' ),
+				'colPeriod'      => __( 'Dönem', 'qrms' ),
+				'periodTable'    => __( 'Dönem tablosu', 'qrms' ),
+				'rows'           => __( 'satır', 'qrms' ),
+				'total'          => __( 'TOPLAM', 'qrms' ),
+				'loadingChart'   => __( 'Grafik yükleniyor', 'qrms' ),
+				'loadError'      => __( 'Veri yüklenemedi. Sayfayı yenileyin.', 'qrms' ),
+				'noData'         => __( 'Bu dönemde henüz veri yok.', 'qrms' ),
+			),
+		)
+	);
+}
+
+/**
+ * Masanın panelde görünen adı (filtre çubuğundaki listeyle aynı kaynak).
+ *
+ * @param string $slug Masa slug'ı.
+ * @return string
+ */
+function qrms_analitik_masa_etiketi( $slug ) {
+	foreach ( QRMS_Analitik::masa_secenekleri() as $secenek ) {
+		if ( $secenek['slug'] === $slug ) {
+			return $secenek['label'];
+		}
+	}
+
+	return $slug;
 }
 
 /**
@@ -220,11 +330,12 @@ function qrms_module_qr_analiz_panel_stili() {
  */
 function qrms_module_qr_analiz_panel_assets() {
 	qrms_module_qr_analiz_panel_stili();
+	qrms_module_qr_analiz_ortak_betik();
 
 	wp_enqueue_script(
 		'qrms-analitik',
 		QRMS_PLUGIN_URL . 'modules/qr-analiz/assets/js/analitik.js',
-		array(),
+		array( 'qrms-analitik-ortak' ),
 		QRMS_Helpers::asset_version( 'modules/qr-analiz/assets/js/analitik.js' ),
 		true
 	);
@@ -236,6 +347,13 @@ function qrms_module_qr_analiz_panel_assets() {
 			'ajaxUrl'  => admin_url( 'admin-ajax.php' ),
 			'nonce'    => wp_create_nonce( QRMS_Analitik::NONCE ),
 			'csvNonce' => wp_create_nonce( QRMS_Analitik::NONCE_CSV ),
+			// Masa filtresi ADRESTEN gelir; "Bu masayı incele" düğmesi de
+			// sayfayı bu şablonla yeniler (bkz. analitik.js).
+			'masa'     => QRMS_Analitik_Filtre::masa(),
+			'masaUrl'  => QRMS_Analitik_Filtre::url(
+				QRMS_ANALITIK_KLASIK_SAYFA,
+				array( QRMS_Analitik_Filtre::ARG_MASA => '__MASA__' )
+			),
 			'i18n'     => array(
 				'hourly'          => __( 'Saatlik — Bugün', 'qrms' ),
 				'daily'           => __( 'Günlük — Son 30 gün', 'qrms' ),

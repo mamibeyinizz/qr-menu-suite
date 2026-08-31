@@ -150,6 +150,7 @@ class QRMS_Analitik {
 		}
 
 		add_action( 'wp_ajax_qrms_analitik_veri', array( __CLASS__, 'ajax_veri' ) );
+		add_action( 'wp_ajax_qrms_analitik_genel', array( __CLASS__, 'ajax_genel' ) );
 		add_action( 'wp_ajax_qrms_analitik_csv', array( __CLASS__, 'ajax_csv' ) );
 		add_action( 'wp_ajax_qrms_analitik_temizle', array( __CLASS__, 'ajax_temizle' ) );
 
@@ -965,13 +966,91 @@ class QRMS_Analitik {
 	}
 
 	/**
-	 * Grafik/tablo satırları: saatlik, günlük, haftalık, aylık.
+	 * KEYFİ ARALIK ÖZETİ — Genel Bakış kategorisinin dört kartı.
 	 *
-	 * @param string $donem Dönem anahtarı.
-	 * @param string $masa  Masa filtresi.
+	 * genel_bakis() sabit kovalar (bugün/hafta/ay) döndürür ve hub'ın özet
+	 * şeridini besler; burada ise aralığın uçlarını çağıran belirler.
+	 *
+	 * TEK SORGU, TEK ARALIK TARAMASI. Yedi sayaç ayrı ayrı sorulsaydı yedi
+	 * tarama olurdu; oysa hepsi aynı [önceki_bas .. bit] penceresinden çıkar.
+	 * Koşullar bu yüzden WHERE'den SUM/CASE içine taşınır — genel_bakis()'teki
+	 * bölünmenin (bkz. o metodun uzun yorumu) aynı mantığı. Pencere kapalı ve
+	 * alt sınırlı olduğu için MySQL created_at üzerindeki idx_date'i (masa
+	 * filtresi varsa idx_masa_td'yi) aralık taraması olarak kullanabilir;
+	 * WHERE'siz bir sorgu tabloyu satır satır tarardı.
+	 *
+	 * Önceki pencere karşılaştırma içindir: "bugün 120 okutma" tek başına iyi
+	 * mi kötü mü söylemez, "düne göre %18 artış" söyler.
+	 *
+	 * @param string $bas         Aralık başlangıcı (MySQL biçimi).
+	 * @param string $bit         Aralık bitişi (MySQL biçimi).
+	 * @param string $onceki_bas  Karşılaştırma penceresinin başlangıcı.
+	 * @param string $masa        Masa filtresi (boş = tüm masalar).
+	 * @return array<string,int>
+	 */
+	public static function aralik_ozeti( $bas, $bit, $onceki_bas, $masa = '' ) {
+		global $wpdb;
+
+		$tablo   = self::tablo();
+		$masa_ek = self::masa_sql( $masa );
+
+		$pencere = $wpdb->prepare( 'created_at BETWEEN %s AND %s', $onceki_bas, $bit );
+		$simdiki = $wpdb->prepare( 'created_at >= %s', $bas );
+		$eski    = $wpdb->prepare( 'created_at < %s', $bas );
+
+		// phpcs:disable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$satir = $wpdb->get_row(
+			"SELECT
+				SUM(event_type='menu_view'     AND {$simdiki}) AS mv,
+				SUM(event_type='product_click' AND {$simdiki}) AS pc,
+				COUNT(DISTINCT CASE WHEN event_type='menu_view' AND {$simdiki} THEN ip_hash END) AS uv,
+				COUNT(DISTINCT CASE WHEN masa_no <> ''         AND {$simdiki} THEN masa_no END) AS masa_sayisi,
+				SUM(event_type='menu_view'     AND {$eski})    AS mv_onceki,
+				SUM(event_type='product_click' AND {$eski})    AS pc_onceki,
+				COUNT(DISTINCT CASE WHEN event_type='menu_view' AND {$eski} THEN ip_hash END) AS uv_onceki
+			 FROM {$tablo}
+			 WHERE {$pencere}{$masa_ek}",
+			ARRAY_A
+		);
+		// phpcs:enable
+
+		$sonuc = array(
+			'mv'          => 0,
+			'pc'          => 0,
+			'uv'          => 0,
+			'masa_sayisi' => 0,
+			'mv_onceki'   => 0,
+			'pc_onceki'   => 0,
+			'uv_onceki'   => 0,
+		);
+
+		if ( ! is_array( $satir ) ) {
+			return $sonuc;
+		}
+
+		// Pencerede hiç satır yoksa SUM() NULL döner; (int) hepsini sıfırlar.
+		foreach ( $sonuc as $anahtar => $varsayilan ) {
+			$sonuc[ $anahtar ] = isset( $satir[ $anahtar ] ) ? (int) $satir[ $anahtar ] : 0;
+		}
+
+		return $sonuc;
+	}
+
+	/**
+	 * Grafik/tablo satırları: saatlik, günlük, haftalık, aylık — KEYFİ aralık.
+	 *
+	 * Aralığın uçlarını çağıran verir, kırılım yalnızca GRUPLAMAYI belirler.
+	 * Her dalda tek bir gruplu sorgu çalışır ve sonuç sıfır doldurulur: yalnızca
+	 * veri olan kovalar döndürülürse sessiz geçen bir gün/hafta grafikten
+	 * tamamen kaybolur ve x ekseni kesintisizmiş gibi görünürdü.
+	 *
+	 * @param string $kirilim Gruplama: hourly | daily | weekly | monthly.
+	 * @param string $bas     Aralık başlangıcı (MySQL biçimi).
+	 * @param string $bit     Aralık bitişi (MySQL biçimi).
+	 * @param string $masa    Masa filtresi.
 	 * @return array<int,array<string,mixed>>
 	 */
-	public static function grafik_verisi( $donem, $masa = '' ) {
+	public static function grafik_araligi( $kirilim, $bas, $bit, $masa = '' ) {
 		global $wpdb;
 
 		$tablo   = self::tablo();
@@ -981,11 +1060,15 @@ class QRMS_Analitik {
 			SUM(event_type='product_click') AS pc,
 			COUNT(DISTINCT CASE WHEN event_type='menu_view' THEN ip_hash END) AS uv";
 
-		switch ( $donem ) {
-			case 'hourly':
-				$bugun = current_time( 'Y-m-d' );
-				$kosul = $wpdb->prepare( 'DATE(created_at) = %s', $bugun );
+		// Aralık KAPALI ve iki uçtan sınırlı: idx_date (masa filtresi varsa
+		// idx_masa_td) aralık taraması olarak kullanılabilir.
+		$kosul = $wpdb->prepare( 'created_at BETWEEN %s AND %s', $bas, $bit );
 
+		$bas_ts = (int) strtotime( $bas );
+		$bit_ts = (int) strtotime( $bit );
+
+		switch ( $kirilim ) {
+			case 'hourly':
 				// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 				$ham = $wpdb->get_results(
 					"SELECT HOUR(created_at) AS k, {$toplam} FROM {$tablo}
@@ -1004,9 +1087,6 @@ class QRMS_Analitik {
 				return $satir;
 
 			case 'weekly':
-				$baslangic = self::donem_baslangici( 'weekly' );
-				$kosul     = $wpdb->prepare( 'created_at >= %s', $baslangic );
-
 				// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 				$ham = $wpdb->get_results(
 					"SELECT YEARWEEK(created_at,1) AS k, {$toplam} FROM {$tablo}
@@ -1015,29 +1095,20 @@ class QRMS_Analitik {
 					ARRAY_A
 				);
 
-				// Sıfır doldurma şart: yalnızca veri olan haftalar döndürülürse
-				// sessiz geçen bir hafta grafikten tamamen kaybolur ve x ekseni
-				// kesintisizmiş gibi görünür. Saatlik/günlük/aylık dallar da
-				// aynı şekilde tüm kovaları üretir.
 				$harita = self::haritala( $ham );
 				$satir  = array();
 
-				for ( $i = 11; $i >= 0; $i-- ) {
-					$pazartesi = self::hafta_basi( strtotime( "-{$i} weeks", self::simdi() ) );
-
+				for ( $ts = self::hafta_basi( $bas_ts ); $ts <= $bit_ts; $ts = strtotime( '+1 week', $ts ) ) {
 					$satir[] = self::satir(
-						date_i18n( 'j M', $pazartesi ) . '–' . date_i18n( 'j M', strtotime( '+6 days', $pazartesi ) ),
+						date_i18n( 'j M', $ts ) . '–' . date_i18n( 'j M', strtotime( '+6 days', $ts ) ),
 						$harita,
-						gmdate( 'oW', $pazartesi )
+						gmdate( 'oW', $ts )
 					);
 				}
 
 				return $satir;
 
 			case 'monthly':
-				$baslangic = self::donem_baslangici( 'monthly' );
-				$kosul     = $wpdb->prepare( 'created_at >= %s', $baslangic );
-
 				// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 				$ham = $wpdb->get_results(
 					"SELECT DATE_FORMAT(created_at,'%Y-%m') AS k, {$toplam} FROM {$tablo}
@@ -1049,18 +1120,14 @@ class QRMS_Analitik {
 				$harita = self::haritala( $ham );
 				$satir  = array();
 
-				for ( $i = 11; $i >= 0; $i-- ) {
-					$ay      = gmdate( 'Y-m', strtotime( "-{$i} months", self::simdi() ) );
-					$satir[] = self::satir( date_i18n( 'M Y', strtotime( $ay . '-01' ) ), $harita, $ay );
+				for ( $ts = (int) strtotime( gmdate( 'Y-m-01', $bas_ts ) ); $ts <= $bit_ts; $ts = strtotime( '+1 month', $ts ) ) {
+					$satir[] = self::satir( date_i18n( 'M Y', $ts ), $harita, gmdate( 'Y-m', $ts ) );
 				}
 
 				return $satir;
 
 			case 'daily':
 			default:
-				$baslangic = self::donem_baslangici( 'daily' );
-				$kosul     = $wpdb->prepare( 'created_at >= %s', $baslangic );
-
 				// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 				$ham = $wpdb->get_results(
 					"SELECT DATE(created_at) AS k, {$toplam} FROM {$tablo}
@@ -1072,13 +1139,30 @@ class QRMS_Analitik {
 				$harita = self::haritala( $ham );
 				$satir  = array();
 
-				for ( $i = 29; $i >= 0; $i-- ) {
-					$gun     = gmdate( 'Y-m-d', strtotime( "-{$i} days", self::simdi() ) );
-					$satir[] = self::satir( date_i18n( 'j M', strtotime( $gun ) ), $harita, $gun );
+				for ( $ts = $bas_ts; $ts <= $bit_ts; $ts = strtotime( '+1 day', $ts ) ) {
+					$satir[] = self::satir( date_i18n( 'j M', $ts ), $harita, gmdate( 'Y-m-d', $ts ) );
 				}
 
 				return $satir;
 		}
+	}
+
+	/**
+	 * Grafik/tablo satırları — ESKİ, sabit pencereli imza.
+	 *
+	 * Dönem anahtarı kendi penceresini de taşır (saatlik=bugün, günlük=son 30
+	 * gün, haftalık=son 12 hafta, aylık=son 12 ay). Sorgular ve sıfır doldurma
+	 * grafik_araligi() içinde tek yerde durur; burada yalnızca pencere seçilir.
+	 *
+	 * @param string $donem Dönem anahtarı.
+	 * @param string $masa  Masa filtresi.
+	 * @return array<int,array<string,mixed>>
+	 */
+	public static function grafik_verisi( $donem, $masa = '' ) {
+		$kirilim = in_array( $donem, array( 'hourly', 'weekly', 'monthly' ), true ) ? $donem : 'daily';
+		$bit     = current_time( 'Y-m-d' ) . ' 23:59:59';
+
+		return self::grafik_araligi( $kirilim, self::donem_baslangici( $donem ), $bit, $masa );
 	}
 
 	/**
@@ -1224,11 +1308,19 @@ class QRMS_Analitik {
 	public static function masa_secenekleri() {
 		global $wpdb;
 
-		$tablo = self::tablo();
 		$adlar = self::masa_adlari();
 
-		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		$gorulen = $wpdb->get_col( "SELECT DISTINCT masa_no FROM {$tablo} WHERE masa_no <> ''" );
+		// Tablo hiç kurulamamış olabilir (CREATE yetkisi yoksa); o zaman
+		// yalnızca kayıtlı masalar listelenir, sorgu hiç çalıştırılmaz.
+		if ( ! self::tablo_var_mi() ) {
+			$gorulen = array();
+		} else {
+			$tablo = self::tablo();
+
+			// idx_masa üzerinden index-only tarama: satırlara inilmez.
+			// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+			$gorulen = $wpdb->get_col( "SELECT DISTINCT masa_no FROM {$tablo} WHERE masa_no <> ''" );
+		}
 
 		$sluglar = array_unique( array_merge( array_keys( $adlar ), array_map( 'strval', (array) $gorulen ) ) );
 		sort( $sluglar, SORT_NATURAL );
@@ -1354,6 +1446,45 @@ class QRMS_Analitik {
 				'grafik'  => $grafik,
 				'urunler' => self::en_cok_tiklananlar( $donem, $masa, 30 ),
 				'masalar' => self::masa_secenekleri(),
+			)
+		);
+	}
+
+	/**
+	 * Genel Bakış kategorisinin verisi: özet kartları + zaman grafiği.
+	 *
+	 * ajax_veri()'den ayrıdır ve YALNIZCA bu kategorinin sorgularını çalıştırır
+	 * (masa listesi ve ürün sıralaması burada hiç sorulmaz). Filtrenin
+	 * çözümlenmesi tek yerdedir: istekten gelen ham değerler
+	 * QRMS_Analitik_Filtre'ye verilir, aralık ve kırılım oradan döner.
+	 *
+	 * @return void
+	 */
+	public static function ajax_genel() {
+		check_ajax_referer( self::NONCE, 'security' );
+
+		if ( ! current_user_can( QRMS_Admin::CAPABILITY ) ) {
+			wp_send_json_error( array( 'mesaj' => __( 'Yetkiniz yok.', 'qrms' ) ), 403 );
+		}
+
+		// phpcs:disable WordPress.Security.NonceVerification.Missing -- check_ajax_referer yukarıda.
+		$ham = (array) wp_unslash( $_POST );
+		// phpcs:enable
+
+		$baglam  = QRMS_Analitik_Filtre::coz( $ham );
+		$aralik  = QRMS_Analitik_Filtre::aralik( $ham );
+		$kirilim = QRMS_Analitik_Filtre::kirilim( $ham );
+		$onceki  = QRMS_Analitik_Filtre::onceki_baslangic( $ham );
+
+		wp_send_json_success(
+			array(
+				'donem'      => $baglam['donem'],
+				'masa'       => $baglam['masa'],
+				'kirilim'    => $kirilim,
+				'kirilimlar' => QRMS_Analitik_Filtre::kirilimlar( $aralik['gun'] ),
+				'gun'        => $aralik['gun'],
+				'ozet'       => self::aralik_ozeti( $aralik['bas'], $aralik['bit'], $onceki, $baglam['masa'] ),
+				'grafik'     => self::grafik_araligi( $kirilim, $aralik['bas'], $aralik['bit'], $baglam['masa'] ),
 			)
 		);
 	}

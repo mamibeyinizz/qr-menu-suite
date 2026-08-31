@@ -3468,6 +3468,8 @@ qrms_test(
 // ortamında yan etkisiz yüklenir.
 require_once QRMS_PLUGIN_DIR . 'modules/qr-analiz/class-qrms-analitik-filtre.php';
 require_once QRMS_PLUGIN_DIR . 'modules/qr-analiz/module.php';
+require_once QRMS_PLUGIN_DIR . 'modules/qr-analiz/filtre-cubugu.php';
+require_once QRMS_PLUGIN_DIR . 'modules/qr-analiz/genel-sayfasi.php';
 require_once QRMS_PLUGIN_DIR . 'modules/qr-analiz/hub-sayfasi.php';
 
 echo "\nQR Analiz sayfaları\n";
@@ -3772,19 +3774,40 @@ qrms_test(
 echo "\nQR Analiz (kategoriler)\n";
 
 qrms_test(
-	'veriler altı kategori chip\'ine bölünür ve her chip bir bölüme bağlıdır',
+	'klasik panelde iki kesit kalır; zaman kategorileri Genel Bakış\'a taşındı',
 	function () {
 		$kaynak = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/analitik-sayfasi.php' );
 
-		foreach ( array( 'hourly', 'daily', 'weekly', 'monthly', 'masalar', 'urunler' ) as $kategori ) {
+		foreach ( array( 'masalar', 'urunler' ) as $kategori ) {
 			qrms_assert_contains( 'data-cat="' . $kategori . '"', $kaynak, $kategori . ' chip\'i' );
 		}
 
-		// Chip'lerin hepsi bir tabpanel'e işaret eder; ürün kesiti kendi
-		// bölümündedir ve kapalı başlar (açılışta saatlik kategori seçili).
-		qrms_assert_contains( 'aria-controls="qrms-an-cat-veri"', $kaynak, 'grafik/tablo bölümü' );
+		// Zaman kategorileri artık Genel Bakış'taki grafiğin KIRILIM
+		// seçicisidir; pencereyi ortak filtre çubuğu belirler.
+		foreach ( array( 'hourly', 'daily', 'weekly', 'monthly' ) as $kategori ) {
+			qrms_assert_false(
+				false !== strpos( $kaynak, 'data-cat="' . $kategori . '"' ),
+				$kategori . ' chip\'i taşındı'
+			);
+		}
+
+		// Özet kartları ve grafik de taşındı: kapları burada kalmamalı,
+		// yoksa JS iki sayfada birden doldurmaya çalışırdı.
+		foreach ( array( 'id="qrms-an-cards"', 'id="qrms-an-chart"', 'id="qrms-an-chart-title"' ) as $kap ) {
+			qrms_assert_false( false !== strpos( $kaynak, $kap ), $kap . ' taşındı' );
+		}
+
+		// Sayfanın kendi masa filtresi kutusu kalktı; yerine bütün
+		// kategorilerle ORTAK filtre çubuğu geldi.
+		qrms_assert_contains( 'qrms_analitik_filtre_cubugu(', $kaynak, 'ortak filtre çubuğu' );
+		qrms_assert_false( false !== strpos( $kaynak, 'id="qrms-an-masa-temizle"' ), 'bespoke filtre kalktı' );
+
+		qrms_assert_contains( 'aria-controls="qrms-an-cat-veri"', $kaynak, 'masa kesiti bölümü' );
 		qrms_assert_contains( 'aria-controls="qrms-an-cat-urunler"', $kaynak, 'ürün bölümü' );
 		qrms_assert_contains( 'id="qrms-an-cat-urunler" role="tabpanel" hidden', $kaynak, 'ürün bölümü kapalı başlar' );
+
+		// Emoji yok: bütün ikonlar dashicons.
+		qrms_assert_false( (bool) preg_match( '/[\x{1F300}-\x{1FAFF}\x{2600}-\x{27BF}]/u', $kaynak ), 'emoji kalmadı' );
 
 		// CSV kategori bölümlerinin DIŞINDADIR: indirilen dosya ekranda ne
 		// görünüyorsa odur, düğme tek bir kategoriye kapatılırsa masa özeti
@@ -3798,8 +3821,33 @@ qrms_test(
 		// değişirse kategori geçişi sessizce çalışmaz olurdu.
 		$js = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/assets/js/analitik.js' );
 
-		qrms_assert_contains( "\$( 'qrms-an-cat-veri' )", $js, 'JS grafik bölümünü bulur' );
+		qrms_assert_contains( "\$( 'qrms-an-cat-veri' )", $js, 'JS masa bölümünü bulur' );
 		qrms_assert_contains( "\$( 'qrms-an-cat-urunler' )", $js, 'JS ürün bölümünü bulur' );
+	}
+);
+
+qrms_test(
+	'ortak JS yardımcıları TEK dosyada durur, iki ekranda kopyalanmaz',
+	function () {
+		$ortak = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/assets/js/analitik-ortak.js' );
+		$eski  = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/assets/js/analitik.js' );
+		$genel = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/assets/js/analitik-genel.js' );
+
+		// Fetch sarmalayıcısı, tablo iskeleti, grafik çizimi ve filtre çubuğu:
+		// hepsi ortakta tanımlı, diğer iki dosyada YENİDEN tanımlı değil.
+		foreach ( array( 'function post(', 'function tabloIskelet(', 'function grafikHtml(', 'function filtreKur(' ) as $fn ) {
+			qrms_assert_contains( $fn, $ortak, $fn . ' ortakta' );
+			qrms_assert_false( false !== strpos( $genel, $fn ), $fn . ' Genel Bakış\'ta kopyalanmadı' );
+		}
+
+		foreach ( array( 'function tabloIskelet(', 'function grafikHtml(', 'function esc(' ) as $fn ) {
+			qrms_assert_false( false !== strpos( $eski, $fn ), $fn . ' klasik panelde kopyalanmadı' );
+		}
+
+		// İki ekran da ortağı kullanır ve yoksa sessizce durur.
+		qrms_assert_contains( 'window.qrmsAnOrtak', $ortak, 'ortak ad alanı' );
+		qrms_assert_contains( 'window.qrmsAnOrtak', $eski, 'klasik panel ortağı kullanır' );
+		qrms_assert_contains( 'window.qrmsAnOrtak', $genel, 'Genel Bakış ortağı kullanır' );
 	}
 );
 
@@ -7778,6 +7826,155 @@ qrms_test(
 		foreach ( $genel as $anahtar => $deger ) {
 			qrms_assert_same( 0, $deger, $anahtar . ' sıfır' );
 		}
+	}
+);
+
+qrms_test(
+	'keyfi aralık özeti TEK indeksli sorguya iner',
+	function () {
+		$wpdb = qrms_sayan_wpdb();
+		$wpdb->rows[] = array(
+			'mv'          => 10,
+			'pc'          => 4,
+			'uv'          => 7,
+			'masa_sayisi' => 3,
+			'mv_onceki'   => 8,
+			'pc_onceki'   => 2,
+			'uv_onceki'   => 6,
+		);
+
+		$ozet = QRMS_Analitik::aralik_ozeti(
+			'2026-03-10 00:00:00',
+			'2026-03-16 23:59:59',
+			'2026-03-03 00:00:00'
+		);
+
+		qrms_assert_same( 1, count( $wpdb->queries ), 'tek sorgu' );
+		qrms_assert_same( 10, $ozet['mv'], 'görüntüleme' );
+		qrms_assert_same( 8, $ozet['mv_onceki'], 'önceki pencere' );
+
+		// Pencere İKİ UÇTAN sınırlı olmalı: aksi hâlde idx_date bir aralık
+		// taraması olarak kullanılamaz ve tablo baştan sona taranır.
+		qrms_assert_contains( 'WHERE created_at BETWEEN', $wpdb->queries[0], 'kapalı aralık' );
+		qrms_assert_contains( '2026-03-03 00:00:00', $wpdb->queries[0], 'alt sınır önceki pencereden' );
+		qrms_assert_contains( '2026-03-16 23:59:59', $wpdb->queries[0], 'üst sınır' );
+
+		// Şimdiki/önceki ayrımı WHERE'de değil SUM/CASE içinde yapılır.
+		qrms_assert_contains( "SUM(event_type='menu_view'     AND created_at >=", $wpdb->queries[0], 'kova koşulu' );
+	}
+);
+
+qrms_test(
+	'aralık özetinde kayıt yokken NULL toplamlar sıfıra iner',
+	function () {
+		$wpdb         = qrms_sayan_wpdb();
+		$wpdb->rows[] = array(
+			'mv'          => null,
+			'pc'          => null,
+			'uv'          => null,
+			'masa_sayisi' => null,
+			'mv_onceki'   => null,
+			'pc_onceki'   => null,
+			'uv_onceki'   => null,
+		);
+
+		foreach ( QRMS_Analitik::aralik_ozeti( 'a', 'b', 'c' ) as $anahtar => $deger ) {
+			qrms_assert_same( 0, $deger, $anahtar . ' sıfır' );
+		}
+	}
+);
+
+qrms_test(
+	'grafik keyfi aralıkta da sıfır doldurur ve indeksli kalır',
+	function () {
+		$wpdb = qrms_sayan_wpdb();
+		// Yalnızca bir günde veri var; kalan günler sıfırla dolmalı.
+		$wpdb->results[] = array(
+			array(
+				'k'  => '2026-03-11',
+				'mv' => 5,
+				'pc' => 2,
+				'uv' => 3,
+			),
+		);
+
+		$satirlar = QRMS_Analitik::grafik_araligi( 'daily', '2026-03-10 00:00:00', '2026-03-12 23:59:59' );
+
+		qrms_assert_same( 3, count( $satirlar ), 'üç günün üçü de var' );
+		qrms_assert_same( 0, $satirlar[0]['mv'], 'sessiz gün sıfırla dolar' );
+		qrms_assert_same( 5, $satirlar[1]['mv'], 'veri olan gün' );
+		qrms_assert_contains( 'created_at BETWEEN', $wpdb->queries[0], 'kapalı aralık' );
+	}
+);
+
+qrms_test(
+	'kırılım aralıkla uyumsuzsa en yakın anlamlıya düşer',
+	function () {
+		// Tek gün: yalnızca saatlik anlamlı (günlük tek çubuk olurdu).
+		qrms_assert_same( array( 'hourly' ), QRMS_Analitik_Filtre::kirilimlar( 1 ), 'tek gün' );
+
+		// Bir hafta: günlük; haftalık iki tam hafta istemeden anlamsız.
+		qrms_assert_same( array( 'daily' ), QRMS_Analitik_Filtre::kirilimlar( 7 ), 'yedi gün' );
+
+		// İki hafta ve üstü: haftalık da açılır.
+		qrms_assert_same( array( 'daily', 'weekly' ), QRMS_Analitik_Filtre::kirilimlar( 14 ), 'iki hafta' );
+
+		// İki ay ve üstü: aylık da açılır.
+		qrms_assert_same( array( 'daily', 'weekly', 'monthly' ), QRMS_Analitik_Filtre::kirilimlar( 60 ), 'iki ay' );
+
+		// Çok uzun aralıkta günlük düşer (yüzlerce çubuk okunmaz).
+		qrms_assert_same( array( 'weekly', 'monthly' ), QRMS_Analitik_Filtre::kirilimlar( 200 ), 'uzun aralık' );
+
+		// "Bugün" + aylık istenirse saatliğe düşülür, hata verilmez.
+		qrms_assert_same(
+			'hourly',
+			QRMS_Analitik_Filtre::kirilim(
+				array(
+					'donem'   => 'bugun',
+					'kirilim' => 'monthly',
+				)
+			),
+			'geçersiz kırılım düzeltilir'
+		);
+
+		// Geçerli olan aynen kalır.
+		qrms_assert_same(
+			'weekly',
+			QRMS_Analitik_Filtre::kirilim(
+				array(
+					'donem'   => 'ozel',
+					'bas'     => '2026-01-01',
+					'bit'     => '2026-03-01',
+					'kirilim' => 'weekly',
+				)
+			),
+			'geçerli kırılım korunur'
+		);
+	}
+);
+
+qrms_test(
+	'filtre aralığı ve karşılaştırma penceresi eşit uzunluktadır',
+	function () {
+		$bugun = QRMS_Analitik_Filtre::aralik( array( 'donem' => 'bugun' ) );
+		qrms_assert_same( 1, $bugun['gun'], 'bugün tek gün' );
+		qrms_assert_contains( '00:00:00', $bugun['bas'], 'günün başı' );
+		qrms_assert_contains( '23:59:59', $bugun['bit'], 'günün sonu' );
+
+		$hafta = QRMS_Analitik_Filtre::aralik( array( 'donem' => 'hafta' ) );
+		qrms_assert_same( 7, $hafta['gun'], 'son 7 gün' );
+
+		$ozel = array(
+			'donem' => 'ozel',
+			'bas'   => '2026-03-10',
+			'bit'   => '2026-03-12',
+		);
+
+		qrms_assert_same( 3, QRMS_Analitik_Filtre::aralik( $ozel )['gun'], 'özel aralık gün sayısı' );
+
+		// Karşılaştırma penceresi aralığın hemen öncesinde ve aynı uzunlukta:
+		// 10–12 Mart'ın öncesi 7–9 Mart'tır.
+		qrms_assert_same( '2026-03-07 00:00:00', QRMS_Analitik_Filtre::onceki_baslangic( $ozel ), 'önceki pencere' );
 	}
 );
 

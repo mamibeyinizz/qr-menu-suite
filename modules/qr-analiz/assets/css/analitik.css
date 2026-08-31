@@ -286,10 +286,15 @@
 }
 
 .qrms-an-card-icon {
+	color: var(--qrms-an-soft);
 	display: block;
+	/* Dashicons kendi boyutunu font-size'dan alır; genişlik/yükseklik de
+	   birlikte büyümezse ikon kutusunun içinde kırpılır. */
 	font-size: 22px;
+	height: 22px;
 	line-height: 1;
 	margin-bottom: 8px;
+	width: 22px;
 }
 
 .qrms-an-card-label {
@@ -440,6 +445,145 @@
 .qrms-an-tab:focus-visible {
 	outline: 2px solid var(--qrms-an-gold);
 	outline-offset: 1px;
+}
+
+/* =====================================================================
+   PAYLAŞILAN FİLTRE ÇUBUĞU
+   Zaman aralığı + masa filtresi; bütün kategori ekranlarında aynıdır
+   (bkz. filtre-cubugu.php). Seçim adreste taşındığı için düğmeler
+   bağlantıdır — JavaScript kapalıyken de çalışır.
+===================================================================== */
+
+.qrms-an-filtre {
+	background: var(--qrms-an-bg);
+	border: 1px solid var(--qrms-an-line);
+	border-radius: 12px;
+	margin: 0 0 18px;
+	padding: 12px 16px;
+}
+
+.qrms-an-filtre-satir {
+	align-items: center;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
+.qrms-an-filtre-satir + .qrms-an-filtre-satir {
+	border-top: 1px solid var(--qrms-an-line);
+	margin-top: 12px;
+	padding-top: 12px;
+}
+
+.qrms-an-filtre-label {
+	align-items: center;
+	color: var(--qrms-an-muted);
+	display: inline-flex;
+	font-size: 12px;
+	font-weight: 700;
+	gap: 6px;
+	letter-spacing: .06em;
+	text-transform: uppercase;
+}
+
+.qrms-an-filtre-label .dashicons {
+	font-size: 16px;
+	height: 16px;
+	width: 16px;
+}
+
+.qrms-an-donemler {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+}
+
+.qrms-an-donem {
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-radius: 999px;
+	color: var(--qrms-an-muted);
+	cursor: pointer;
+	font-size: 13px;
+	font-weight: 600;
+	/* Dokunma hedefi: 40px'in altına inmesin. */
+	min-height: 40px;
+	padding: 8px 16px;
+	text-decoration: none;
+}
+
+.qrms-an-donem:hover,
+.qrms-an-donem:focus {
+	border-color: var(--qrms-an-gold);
+	color: var(--qrms-an-ink);
+}
+
+.qrms-an-donem.is-active {
+	background: var(--qrms-an-gold);
+	border-color: var(--qrms-an-gold);
+	color: #fff;
+}
+
+.qrms-an-filtre-ozet {
+	color: var(--qrms-an-soft);
+	font-size: 12px;
+	margin-left: auto;
+}
+
+.qrms-an-ozel-form,
+.qrms-an-masa-form {
+	align-items: center;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
+.qrms-an-ozel-form {
+	border-top: 1px solid var(--qrms-an-line);
+	margin-top: 12px;
+	padding-top: 12px;
+}
+
+.qrms-an-date {
+	border: 1px solid #dcdcde;
+	border-radius: 8px;
+	/* 16px: iOS Safari daha küçük yazıda alanı yakınlaştırır. */
+	font-size: 16px;
+	min-height: 40px;
+	padding: 7px 10px;
+}
+
+/* Önceki döneme göre değişim rozeti. */
+.qrms-an-delta {
+	border-radius: 999px;
+	font-size: 11px;
+	font-weight: 700;
+	margin-left: 6px;
+	padding: 2px 7px;
+	vertical-align: middle;
+}
+
+.qrms-an-delta-up {
+	background: rgba( 22, 163, 74, .12 );
+	color: #15803d;
+}
+
+.qrms-an-delta-down {
+	background: rgba( 220, 38, 38, .12 );
+	color: #b91c1c;
+}
+
+.qrms-an-delta-flat {
+	background: rgba( 100, 116, 139, .12 );
+	color: #475569;
+}
+
+/* Grafik kırılımı: kategori şeridiyle aynı chip görünümü, ikonlu. */
+.qrms-an-kirilimlar .qrms-an-tab .dashicons {
+	font-size: 16px;
+	height: 16px;
+	vertical-align: text-bottom;
+	width: 16px;
 }
 
 /* =====================================================================
@@ -829,8 +973,12 @@
 }
 
 .qrms-an-empty-icon {
+	color: var(--qrms-an-soft);
+	display: block;
 	font-size: 30px;
-	margin-bottom: 8px;
+	height: 30px;
+	margin: 0 auto 8px;
+	width: 30px;
 }
 
 .qrms-an-empty-text {
@@ -1049,6 +1197,10 @@
 	}
 
 	.qrms-an-filter {
+		flex-wrap: nowrap;
+	}
+
+	.qrms-an-filtre-satir {
 		flex-wrap: nowrap;
 	}
 

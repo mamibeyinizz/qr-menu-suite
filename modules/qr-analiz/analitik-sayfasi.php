@@ -2,14 +2,20 @@
 /**
  * Yönetim sayfası: QR Menü → QR Analiz (Menü Analitiği).
  *
- * Sayfa yalnızca iskeleti basar; kartlar, grafik ve tablolar
- * `assets/js/analitik.js` tarafından tek bir AJAX çağrısıyla doldurulur.
- * Böylece kategori chip'leri ve masa filtresi sayfa yenilemeden çalışır.
+ * Sayfa yalnızca iskeleti basar; tablolar `assets/js/analitik.js` tarafından
+ * tek bir AJAX çağrısıyla doldurulur.
  *
- * KATEGORİLER — veriler tek bir chip şeridiyle bölünür (saatlik, günlük,
- * haftalık, aylık, masalara göre, en çok tıklanan ürünler) ve her seferinde
- * YALNIZCA seçili kategorinin bölümü görünür. Böylece hem ekran bir tablo
- * yığınına dönüşmez hem de dar ekranda tek bir liste okunur kalır.
+ * KAPSAM DARALIYOR. Özet kartları ve zaman grafiği "Genel Bakış" kategorisine
+ * taşındı (bkz. genel-sayfasi.php); burada masa kesiti ve ürün kesiti kaldı,
+ * ikisi de kendi kategorilerine taşınana kadar. Sayfa taşıma bitince
+ * kalkacak, slug'ı hub'a yönlenecek.
+ *
+ * KATEGORİLER — kalan iki kesit tek bir chip şeridiyle bölünür (masalara
+ * göre, en çok tıklanan ürünler) ve her seferinde YALNIZCA seçili kesitin
+ * bölümü görünür.
+ *
+ * MASA FİLTRESİ sayfanın kendi kutusunda değil, bütün kategorilerle ORTAK
+ * filtre çubuğundadır: seçim adreste taşınır (bkz. filtre-cubugu.php).
  *
  * @package QR_Menu_Suite
  */
@@ -32,8 +38,8 @@ if ( ! function_exists( 'qrms_analitik_sayfasi' ) ) {
 		$csv_url   = add_query_arg(
 			array(
 				'action'   => 'qrms_analitik_csv',
-				'period'   => 'hourly',
-				'masa'     => '',
+				'period'   => 'masalar',
+				'masa'     => QRMS_Analitik_Filtre::masa(),
 				'security' => $csv_nonce,
 			),
 			admin_url( 'admin-ajax.php' )
@@ -60,13 +66,13 @@ if ( ! function_exists( 'qrms_analitik_sayfasi' ) ) {
 					 */
 					?>
 					<a id="qrms-an-csv" class="qrms-an-btn" href="<?php echo esc_url( $csv_url ); ?>">
-						<span aria-hidden="true">⬇</span> <?php esc_html_e( 'CSV indir', 'qrms' ); ?>
+						<span class="dashicons dashicons-download" aria-hidden="true"></span> <?php esc_html_e( 'CSV indir', 'qrms' ); ?>
 					</a>
 					<button type="button" id="qrms-an-refresh" class="qrms-an-btn">
-						<span aria-hidden="true">↻</span> <?php esc_html_e( 'Yenile', 'qrms' ); ?>
+						<span class="dashicons dashicons-update" aria-hidden="true"></span> <?php esc_html_e( 'Yenile', 'qrms' ); ?>
 					</button>
 					<button type="button" id="qrms-an-clear" class="qrms-an-btn qrms-an-btn-danger">
-						<span aria-hidden="true">🗑</span> <?php esc_html_e( 'Verileri Sil', 'qrms' ); ?>
+						<span class="dashicons dashicons-trash" aria-hidden="true"></span> <?php esc_html_e( 'Verileri Sil', 'qrms' ); ?>
 					</button>
 				</div>
 			</div>
@@ -99,70 +105,42 @@ if ( ! function_exists( 'qrms_analitik_sayfasi' ) ) {
 			endforeach;
 			?>
 
-			<div class="qrms-an-cards" id="qrms-an-cards" aria-live="polite">
-				<div class="qrms-an-card qrms-an-skeleton"></div>
-				<div class="qrms-an-card qrms-an-skeleton"></div>
-				<div class="qrms-an-card qrms-an-skeleton"></div>
-				<div class="qrms-an-card qrms-an-skeleton"></div>
-			</div>
+			<?php qrms_analitik_filtre_cubugu( QRMS_ANALITIK_KLASIK_SAYFA ); ?>
 
 			<?php
 			/*
-			 * KATEGORİ ŞERİDİ — chip'ler hem sekme hem kategori: zaman
-			 * kategorileri (saatlik/günlük/haftalık/aylık) verinin PENCERESİNİ,
-			 * "masalar" ve "ürünler" ise aynı pencerenin farklı KESİTİNİ
-			 * gösterir. Şerit dar ekranda yatay kayar; seçili chip görünür
-			 * kalsın diye JS onu görüş alanına alır.
+			 * KATEGORİ ŞERİDİ — kalan iki kesit. Zaman kategorileri
+			 * (saatlik/günlük/haftalık/aylık) "Genel Bakış" sayfasına, orada
+			 * grafiğin KIRILIM seçicisi olarak taşındı; verinin penceresi
+			 * artık üstteki ortak filtre çubuğundan gelir. Şerit dar ekranda
+			 * yatay kayar; seçili chip görünür kalsın diye JS onu görüş
+			 * alanına alır.
 			 */
 			?>
 			<div class="qrms-an-cats" role="tablist" aria-label="<?php esc_attr_e( 'Veri kategorisi', 'qrms' ); ?>">
-				<button type="button" class="qrms-an-tab is-active" role="tab" aria-selected="true" aria-controls="qrms-an-cat-veri" data-cat="hourly">⏰ <?php esc_html_e( 'Saatlik', 'qrms' ); ?></button>
-				<button type="button" class="qrms-an-tab" role="tab" aria-selected="false" aria-controls="qrms-an-cat-veri" data-cat="daily">📅 <?php esc_html_e( 'Günlük', 'qrms' ); ?></button>
-				<button type="button" class="qrms-an-tab" role="tab" aria-selected="false" aria-controls="qrms-an-cat-veri" data-cat="weekly">📆 <?php esc_html_e( 'Haftalık', 'qrms' ); ?></button>
-				<button type="button" class="qrms-an-tab" role="tab" aria-selected="false" aria-controls="qrms-an-cat-veri" data-cat="monthly">📊 <?php esc_html_e( 'Aylık', 'qrms' ); ?></button>
-				<button type="button" class="qrms-an-tab" role="tab" aria-selected="false" aria-controls="qrms-an-cat-veri" data-cat="masalar">🍽️ <?php esc_html_e( 'Masalara Göre', 'qrms' ); ?></button>
-				<button type="button" class="qrms-an-tab" role="tab" aria-selected="false" aria-controls="qrms-an-cat-urunler" data-cat="urunler">🔥 <?php esc_html_e( 'En Çok Tıklananlar', 'qrms' ); ?></button>
-			</div>
-
-			<div class="qrms-an-filter">
-				<label class="qrms-an-filter-label" for="qrms-an-masa"><?php esc_html_e( 'Masa filtresi', 'qrms' ); ?></label>
-				<select id="qrms-an-masa" class="qrms-an-select">
-					<option value=""><?php esc_html_e( 'Tüm masalar', 'qrms' ); ?></option>
-				</select>
-				<button type="button" id="qrms-an-masa-temizle" class="qrms-an-btn qrms-an-btn-small" hidden>
-					<?php esc_html_e( 'Filtreyi kaldır', 'qrms' ); ?>
+				<button type="button" class="qrms-an-tab is-active" role="tab" aria-selected="true" aria-controls="qrms-an-cat-veri" data-cat="masalar">
+					<span class="dashicons dashicons-editor-table" aria-hidden="true"></span> <?php esc_html_e( 'Masalara Göre', 'qrms' ); ?>
+				</button>
+				<button type="button" class="qrms-an-tab" role="tab" aria-selected="false" aria-controls="qrms-an-cat-urunler" data-cat="urunler">
+					<span class="dashicons dashicons-star-filled" aria-hidden="true"></span> <?php esc_html_e( 'En Çok Tıklananlar', 'qrms' ); ?>
 				</button>
 			</div>
 
-			<?php // Zaman kategorileri (saatlik/günlük/haftalık/aylık) ve masa kesiti aynı bölümü kullanır: grafik + tablo. ?>
 			<div class="qrms-an-panel qrms-an-cat-panel" id="qrms-an-cat-veri" role="tabpanel">
-				<div class="qrms-an-chart-header">
-					<div class="qrms-an-chart-title" id="qrms-an-chart-title"></div>
-					<div class="qrms-an-legend">
-						<span><span class="qrms-an-dot qrms-an-dot-gold"></span><?php esc_html_e( 'Menü Görüntüleme', 'qrms' ); ?></span>
-						<span><span class="qrms-an-dot qrms-an-dot-blue"></span><?php esc_html_e( 'Ürün Tıklama', 'qrms' ); ?></span>
-					</div>
-				</div>
-
-				<div class="qrms-an-chart-scroll" id="qrms-an-chart">
-					<div class="qrms-an-loading"><?php esc_html_e( 'Grafik yükleniyor', 'qrms' ); ?></div>
-				</div>
-
 				<div class="qrms-an-tablewrap" id="qrms-an-table"></div>
 			</div>
 
 			<div class="qrms-an-panel qrms-an-cat-panel" id="qrms-an-cat-urunler" role="tabpanel" hidden>
 				<div class="qrms-an-panel-header">
-					<h2 class="qrms-an-panel-title">🔥 <?php esc_html_e( 'En Çok Tıklanan Ürünler', 'qrms' ); ?></h2>
+					<h2 class="qrms-an-panel-title"><span class="dashicons dashicons-star-filled" aria-hidden="true"></span> <?php esc_html_e( 'En Çok Tıklanan Ürünler', 'qrms' ); ?></h2>
 
 					<div class="qrms-an-panel-actions">
 						<?php
 						/*
-						 * Ürün listesi de dönem bağımlıdır (aynı AJAX yanıtından
-						 * gelir). Kategori artık dönemi taşımadığı için pencere
-						 * burada seçilir; seçim zaman kategorileriyle ORTAKTIR,
-						 * yani kullanıcı saatlikten gelip ürünlere geçtiğinde
-						 * aynı pencerede kalır.
+						 * Ürün listesinin kendi penceresi. Bu kesit Faz 3'te
+						 * "Ürünler" kategorisine taşınacak ve o zaman pencere
+						 * de ortak filtre çubuğundan gelecek; şimdilik kendi
+						 * seçicisiyle çalışır.
 						 */
 						?>
 						<label class="qrms-an-filter-label" for="qrms-an-urun-donem"><?php esc_html_e( 'Dönem', 'qrms' ); ?></label>
@@ -181,7 +159,7 @@ if ( ! function_exists( 'qrms_analitik_sayfasi' ) ) {
 
 			<div class="qrms-an-modal" id="qrms-an-confirm" hidden>
 				<div class="qrms-an-modal-box" role="dialog" aria-modal="true" aria-labelledby="qrms-an-confirm-title">
-					<div class="qrms-an-modal-icon" aria-hidden="true">⚠️</div>
+					<span class="qrms-an-modal-icon dashicons dashicons-warning" aria-hidden="true"></span>
 					<h2 class="qrms-an-modal-title" id="qrms-an-confirm-title"><?php esc_html_e( 'Kayıtlar silinecek', 'qrms' ); ?></h2>
 					<p class="qrms-an-modal-text" id="qrms-an-confirm-text"></p>
 					<div class="qrms-an-modal-actions">

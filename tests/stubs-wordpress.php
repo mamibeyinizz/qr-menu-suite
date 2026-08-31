@@ -352,6 +352,13 @@ function add_query_arg( array $args, $url = '' ) {
 
 	$birlesik = array_merge( $mevcut, $args );
 
+	// WordPress ile aynı davranış: değeri false olan anahtar adresten DÜŞER.
+	foreach ( $birlesik as $anahtar => $deger ) {
+		if ( false === $deger ) {
+			unset( $birlesik[ $anahtar ] );
+		}
+	}
+
 	return empty( $birlesik ) ? $parcalar[0] : $parcalar[0] . '?' . http_build_query( $birlesik );
 }
 
@@ -364,6 +371,17 @@ function add_query_arg( array $args, $url = '' ) {
  */
 function number_format_i18n( $sayi, $ondalik = 0 ) {
 	return number_format( (float) $sayi, (int) $ondalik );
+}
+
+/**
+ * Yerelleştirilmiş tarih biçimi (testte düz gmdate yeter).
+ *
+ * @param string   $format Biçim.
+ * @param int|null $ts     Zaman damgası.
+ * @return string
+ */
+function date_i18n( $format, $ts = null ) {
+	return gmdate( $format, null === $ts ? time() : (int) $ts );
 }
 
 /**

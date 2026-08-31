@@ -136,16 +136,54 @@ if ( ! function_exists( 'qmo_rest_analytics' ) ) {
 		}
 
 		// 3) Tarih aralığı (ISO 'YYYY-MM-DD'); yoksa son 30 gün.
+		//
+		// Uygulama panelinin de yönetim ekranlarıyla aynı üç boyutu
+		// seçebilmesi için aralık KEYFİDİR: baslangic/bitis serbesttir ve
+		// 'donem' kısayolu (bugun|hafta|ay) verildiğinde uçlar sunucuda
+		// hesaplanır — istemcinin tarih aritmetiği yapması gerekmez.
 		$baslangic = sanitize_text_field( (string) $req->get_param( 'baslangic' ) );
 		$bitis     = sanitize_text_field( (string) $req->get_param( 'bitis' ) );
+		$donem     = sanitize_key( (string) $req->get_param( 'donem' ) );
+
+		if ( in_array( $donem, array( 'bugun', 'hafta', 'ay' ), true ) ) {
+			$bitis = gmdate( 'Y-m-d' );
+
+			if ( 'bugun' === $donem ) {
+				$baslangic = $bitis;
+			} elseif ( 'hafta' === $donem ) {
+				$baslangic = gmdate( 'Y-m-d', strtotime( '-6 days' ) );
+			} else {
+				$baslangic = gmdate( 'Y-m-01' );
+			}
+		}
+
 		if ( ! preg_match( '/^\d{4}-\d{2}-\d{2}$/', $baslangic ) ) {
 			$baslangic = gmdate( 'Y-m-d', strtotime( '-30 days' ) );
 		}
 		if ( ! preg_match( '/^\d{4}-\d{2}-\d{2}$/', $bitis ) ) {
 			$bitis = gmdate( 'Y-m-d' );
 		}
+
+		// Ters aralık sessizce boş sonuç döndürürdü; uçları takas et.
+		if ( $baslangic > $bitis ) {
+			$takas     = $baslangic;
+			$baslangic = $bitis;
+			$bitis     = $takas;
+		}
+
 		$start = $baslangic . ' 00:00:00';
 		$end   = $bitis . ' 23:59:59';
+
+		// 3b) Masa filtresi (opsiyonel). Yönetim ekranlarındaki filtrenin
+		// karşılığıdır: boş bırakılırsa bütün masalar sayılır. Parça
+		// $wpdb->prepare ile üretilip sorgulara olduğu gibi eklenir.
+		// Parça düz metin olarak kurulur, prepare() ile DEĞİL: sorgular zaten
+		// prepare()'den geçiyor ve hazır bir parçayı ikinci kez prepare'e
+		// sokmak yanlış olurdu. Değer sanitize_title'dan geçtiği için yalnızca
+		// [a-z0-9-] içerir (yüzde işareti dahil hiçbir kaçış karakteri kalmaz),
+		// esc_sql ise emniyet kemeridir.
+		$masa    = sanitize_title( (string) $req->get_param( 'masa' ) );
+		$masa_ek = '' !== $masa ? " AND masa_no = '" . esc_sql( $masa ) . "'" : '';
 
 		$t = $wpdb->prefix . 'rma_analytics';
 
@@ -163,21 +201,21 @@ if ( ! function_exists( 'qmo_rest_analytics' ) ) {
 		// 4) Metrikler.
 		$total_views = (int) $wpdb->get_var(
 			$wpdb->prepare(
-				"SELECT COUNT(*) FROM {$t} WHERE event_type='menu_view' AND created_at BETWEEN %s AND %s",
+				"SELECT COUNT(*) FROM {$t} WHERE event_type='menu_view' AND created_at BETWEEN %s AND %s{$masa_ek}",
 				$start,
 				$end
 			)
 		);
 		$unique_visitors = (int) $wpdb->get_var(
 			$wpdb->prepare(
-				"SELECT COUNT(DISTINCT ip_hash) FROM {$t} WHERE event_type='menu_view' AND created_at BETWEEN %s AND %s",
+				"SELECT COUNT(DISTINCT ip_hash) FROM {$t} WHERE event_type='menu_view' AND created_at BETWEEN %s AND %s{$masa_ek}",
 				$start,
 				$end
 			)
 		);
 		$total_clicks = (int) $wpdb->get_var(
 			$wpdb->prepare(
-				"SELECT COUNT(*) FROM {$t} WHERE event_type='product_click' AND created_at BETWEEN %s AND %s",
+				"SELECT COUNT(*) FROM {$t} WHERE event_type='product_click' AND created_at BETWEEN %s AND %s{$masa_ek}",
 				$start,
 				$end
 			)
@@ -188,7 +226,7 @@ if ( ! function_exists( 'qmo_rest_analytics' ) ) {
 			$wpdb->prepare(
 				"SELECT MAX(item_name) AS item_name, MAX(category_name) AS category_name, COUNT(*) AS adet
 				 FROM {$t}
-				 WHERE event_type='product_click' AND item_id>0 AND created_at BETWEEN %s AND %s
+				 WHERE event_type='product_click' AND item_id>0 AND created_at BETWEEN %s AND %s{$masa_ek}
 				 GROUP BY item_id
 				 HAVING MAX(item_name)<>''
 				 ORDER BY adet DESC LIMIT 10",
@@ -203,7 +241,7 @@ if ( ! function_exists( 'qmo_rest_analytics' ) ) {
 			$wpdb->prepare(
 				"SELECT MAX(item_name) AS item_name, MAX(category_name) AS category_name, COUNT(*) AS adet
 				 FROM {$t}
-				 WHERE event_type='product_click' AND item_id>0 AND created_at BETWEEN %s AND %s
+				 WHERE event_type='product_click' AND item_id>0 AND created_at BETWEEN %s AND %s{$masa_ek}
 				 GROUP BY item_id
 				 HAVING MAX(item_name)<>''
 				 ORDER BY adet ASC LIMIT 10",
@@ -214,12 +252,18 @@ if ( ! function_exists( 'qmo_rest_analytics' ) ) {
 		);
 
 		// Masa bazlı trafik (menü açılışı sayısı, masaya göre).
+		//
+		// Sütun adı `masa_no`'dur — `table_slug` şemada HİÇ olmadı (bkz.
+		// QRMS_Analitik::tablo_kur), o yüzden bu sorgu sessizce hata verip
+		// masa kırılımını her zaman boş döndürüyordu. Yanıttaki alan adı
+		// (`table_slug`) uygulamanın beklediği biçim olduğu için takma adla
+		// korunur.
 		$tables = $wpdb->get_results(
 			$wpdb->prepare(
-				"SELECT table_slug, COUNT(*) AS adet
+				"SELECT masa_no AS table_slug, COUNT(*) AS adet
 				 FROM {$t}
-				 WHERE event_type='menu_view' AND table_slug<>'' AND created_at BETWEEN %s AND %s
-				 GROUP BY table_slug ORDER BY adet DESC",
+				 WHERE event_type='menu_view' AND masa_no<>'' AND created_at BETWEEN %s AND %s{$masa_ek}
+				 GROUP BY masa_no ORDER BY adet DESC",
 				$start,
 				$end
 			),
@@ -238,6 +282,7 @@ if ( ! function_exists( 'qmo_rest_analytics' ) ) {
 				'success'            => true,
 				'baslangic'          => $baslangic,
 				'bitis'              => $bitis,
+				'masa'               => $masa,
 				'toplamGoruntulenme' => $total_views,
 				'tekilZiyaretci'     => $unique_visitors,
 				'toplamTiklama'      => $total_clicks,

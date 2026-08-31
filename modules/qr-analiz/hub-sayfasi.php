@@ -23,6 +23,10 @@
 defined( 'ABSPATH' ) || exit;
 
 /**
+ * NOT: "Genel Bakış" kategorisi artık doludur ve kendi dosyasındadır
+ * (genel-sayfasi.php); buradaki placeholder'lar yalnızca henüz taşınmamış
+ * kategoriler içindir.
+ *
  * Klasik (tek sayfalık) analitik panelinin yeni slug'ı.
  *
  * Kategori sayfaları doldurulana kadar mevcut panel olduğu gibi erişilebilir
@@ -294,20 +298,6 @@ if ( ! function_exists( 'qrms_analitik_hazirlaniyor' ) ) {
 			</div>
 		</div>
 		<?php
-	}
-}
-
-if ( ! function_exists( 'qrms_analitik_sayfa_genel' ) ) {
-
-	/**
-	 * Genel Bakış kategorisi (Faz 2'de doldurulacak).
-	 *
-	 * @return void
-	 */
-	function qrms_analitik_sayfa_genel() {
-		$sayfalar = qrms_module_qr_analiz_sayfalar();
-
-		qrms_analitik_hazirlaniyor( $sayfalar['qrms-an-genel']['title'], $sayfalar['qrms-an-genel']['desc'] );
 	}
 }
 

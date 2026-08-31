@@ -261,6 +261,177 @@ class QRMS_Analitik_Filtre {
 		}
 	}
 
+	/* -----------------------------------------------------------------
+	   ZAMAN ARALIĞI
+	----------------------------------------------------------------- */
+
+	/**
+	 * Sitenin yerel saatiyle "şimdi" (unix damgası).
+	 *
+	 * Kayıtlar current_time('mysql') ile yazıldığı için aralıklar da yerel
+	 * saatle hesaplanmalıdır (bkz. QRMS_Analitik::simdi).
+	 *
+	 * @return int
+	 */
+	private static function simdi() {
+		return (int) current_time( 'timestamp' ); // phpcs:ignore WordPress.DateTime.CurrentTimeTimestamp.Requested
+	}
+
+	/**
+	 * Seçili dönemin MySQL biçiminde [bas, bit] aralığı.
+	 *
+	 * Bitiş her zaman bugünün sonudur (gelecekte kayıt olamaz); "ozel"de ise
+	 * kullanıcının verdiği günün sonudur. Aralık KAPALIDIR (BETWEEN), böylece
+	 * sorgular created_at üzerindeki idx_date / idx_masa_td indekslerini
+	 * aralık taraması olarak kullanabilir.
+	 *
+	 * @param array|null $baglam Bağlam (boş bırakılırsa aktif bağlam).
+	 * @return array{bas:string,bit:string,gun:int}
+	 */
+	public static function aralik( $baglam = null ) {
+		$baglam = is_array( $baglam ) ? self::coz( $baglam ) : self::baglam();
+		$simdi  = self::simdi();
+		$bugun  = gmdate( 'Y-m-d', $simdi );
+
+		switch ( $baglam['donem'] ) {
+			case 'hafta':
+				$bas = gmdate( 'Y-m-d', strtotime( '-6 days', $simdi ) );
+				$bit = $bugun;
+				break;
+
+			case 'ay':
+				$bas = gmdate( 'Y-m-01', $simdi );
+				$bit = $bugun;
+				break;
+
+			case 'ozel':
+				$bas = $baglam['bas'];
+				$bit = $baglam['bit'];
+				break;
+
+			case 'bugun':
+			default:
+				$bas = $bugun;
+				$bit = $bugun;
+				break;
+		}
+
+		return array(
+			'bas' => $bas . ' 00:00:00',
+			'bit' => $bit . ' 23:59:59',
+			'gun' => self::gun_sayisi( $bas, $bit ),
+		);
+	}
+
+	/**
+	 * Karşılaştırma için bir ÖNCEKİ eşit uzunluktaki pencerenin başlangıcı.
+	 *
+	 * "Bugün" için dün, "son 7 gün" için ondan önceki 7 gün… Özet kartları
+	 * değişim yüzdesini bu pencereye göre gösterir.
+	 *
+	 * @param array|null $baglam Bağlam (boş bırakılırsa aktif bağlam).
+	 * @return string MySQL biçiminde zaman damgası.
+	 */
+	public static function onceki_baslangic( $baglam = null ) {
+		$aralik = self::aralik( $baglam );
+		$bas    = substr( $aralik['bas'], 0, 10 );
+
+		return gmdate( 'Y-m-d', strtotime( '-' . $aralik['gun'] . ' days', (int) strtotime( $bas ) ) ) . ' 00:00:00';
+	}
+
+	/**
+	 * İki tarih arasındaki gün sayısı (uçlar dahil, en az 1).
+	 *
+	 * @param string $bas YYYY-MM-DD.
+	 * @param string $bit YYYY-MM-DD.
+	 * @return int
+	 */
+	private static function gun_sayisi( $bas, $bit ) {
+		$fark = (int) floor( ( strtotime( $bit ) - strtotime( $bas ) ) / DAY_IN_SECONDS );
+
+		return max( 1, $fark + 1 );
+	}
+
+	/* -----------------------------------------------------------------
+	   GRAFİK KIRILIMI
+	----------------------------------------------------------------- */
+
+	/**
+	 * Grafik kırılımının query arg adı.
+	 *
+	 * Kırılım kategoriler arasında TAŞINMAZ: aralık ve masa "hangi veriye
+	 * bakıyorum" sorusunun cevabıdır ve her kategoride aynı anlama gelir,
+	 * kırılım ise yalnızca Genel Bakış'taki grafiğin nasıl gruplandığıdır.
+	 */
+	const ARG_KIRILIM = 'kirilim';
+
+	/**
+	 * Bir aralık için ANLAMLI kırılımlar (ilki varsayılandır).
+	 *
+	 * Geçersiz kombinasyonlar hiç gösterilmez: "Bugün" seçiliyken aylık
+	 * kırılım tek çubuk üretirdi, üç aylık bir aralıkta saatlik kırılım ise
+	 * bütün günlerin saatlerini üst üste toplayıp yanıltıcı olurdu (SQL
+	 * HOUR(created_at) ile grupladığı için gün bilgisi düşer).
+	 *
+	 * Saf fonksiyon, doğrudan test edilir.
+	 *
+	 * @param int $gun Aralığın gün sayısı.
+	 * @return string[]
+	 */
+	public static function kirilimlar( $gun ) {
+		$gun = max( 1, (int) $gun );
+
+		// Tek gün: yalnızca saatlik anlamlı (günlük tek çubuk olurdu).
+		if ( 1 === $gun ) {
+			return array( 'hourly' );
+		}
+
+		$liste = array();
+
+		// Günlük çubuk sayısı makul kaldığı sürece (≈3 ay) varsayılandır.
+		if ( $gun <= 92 ) {
+			$liste[] = 'daily';
+		}
+
+		// Haftalık en az iki tam haftada anlam kazanır.
+		if ( $gun >= 14 ) {
+			$liste[] = 'weekly';
+		}
+
+		// Aylık en az iki ayı kapsayan aralıklarda.
+		if ( $gun >= 60 ) {
+			$liste[] = 'monthly';
+		}
+
+		// 92 günden uzun ama 14 günden kısa bir aralık matematiksel olarak
+		// imkânsız; yine de liste boş kalmasın (emniyet kemeri).
+		return empty( $liste ) ? array( 'daily' ) : $liste;
+	}
+
+	/**
+	 * İstenen kırılım — aralıkla uyumsuzsa en yakın anlamlıya düşer.
+	 *
+	 * Kırılım taşınan alanlardan biri OLMADIĞI için ayrı okunur: kaynak
+	 * verilmezse isteğin kendi query arg'larına bakılır.
+	 *
+	 * @param array|null $kaynak Ham query arg'ları (boş bırakılırsa $_GET).
+	 * @return string
+	 */
+	public static function kirilim( $kaynak = null ) {
+		if ( ! is_array( $kaynak ) ) {
+			// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Yalnızca okuma.
+			$kaynak = (array) wp_unslash( $_GET );
+			$aralik = self::aralik();
+		} else {
+			$aralik = self::aralik( $kaynak );
+		}
+
+		$gecerli = self::kirilimlar( $aralik['gun'] );
+		$istenen = self::anahtar( $kaynak, self::ARG_KIRILIM );
+
+		return in_array( $istenen, $gecerli, true ) ? $istenen : $gecerli[0];
+	}
+
 	/**
 	 * URL'de taşınacak query arg'lar.
 	 *
