@@ -295,6 +295,74 @@ if ( ! function_exists( 'qmo_rest_analytics' ) ) {
 			)
 		);
 
+		// Kayıtlı masalar listeye 0 ile katılır ve gruplar toplulaştırılır:
+		// hiç okutulmamış bir masanın analitik tablosunda satırı yoktur, oysa
+		// uygulamanın görmesi gereken satır tam da odur. Masa modülü kurulu
+		// değilse liste yalnızca veriden gelir.
+		$okutma = array();
+
+		foreach ( (array) $tables as $satir ) {
+			$okutma[ (string) $satir['table_slug'] ] = (int) $satir['adet'];
+		}
+
+		$masa_gruplari = array();
+
+		if ( class_exists( 'QMO_Masalar' ) && QMO_Masalar::tablo_var_mi() ) {
+			$tam = array();
+
+			foreach ( (array) QMO_Masalar::hepsi() as $kayit ) {
+				$slug  = (string) $kayit->table_slug;
+				$adet  = isset( $okutma[ $slug ] ) ? $okutma[ $slug ] : 0;
+				$grup  = QMO_Masalar::grup_adi( $slug );
+
+				$tam[] = array(
+					'table_slug' => $slug,
+					'table_name' => (string) $kayit->table_name,
+					'adet'       => $adet,
+				);
+
+				unset( $okutma[ $slug ] );
+
+				if ( ! isset( $masa_gruplari[ $grup ] ) ) {
+					$masa_gruplari[ $grup ] = array(
+						'grup' => $grup,
+						'masa' => 0,
+						'adet' => 0,
+					);
+				}
+
+				++$masa_gruplari[ $grup ]['masa'];
+				$masa_gruplari[ $grup ]['adet'] += $adet;
+			}
+
+			// Kayıtlı masalarla eşleşmeyenler (silinmiş masalar) listeden
+			// düşürülmez; geçmişleri görünür kalır.
+			foreach ( $okutma as $slug => $adet ) {
+				$tam[] = array(
+					'table_slug' => (string) $slug,
+					'table_name' => '',
+					'adet'       => $adet,
+				);
+			}
+
+			usort(
+				$tam,
+				function ( $a, $b ) {
+					return $b['adet'] - $a['adet'];
+				}
+			);
+
+			$tables        = $tam;
+			$masa_gruplari = array_values( $masa_gruplari );
+
+			usort(
+				$masa_gruplari,
+				function ( $a, $b ) {
+					return $b['adet'] - $a['adet'];
+				}
+			);
+		}
+
 		$int_adet = function ( $rows ) {
 			foreach ( $rows as &$r ) {
 				$r['adet'] = (int) $r['adet'];
@@ -314,6 +382,7 @@ if ( ! function_exists( 'qmo_rest_analytics' ) ) {
 				'enCok'              => $int_adet( $top ? $top : array() ),
 				'enAz'               => $int_adet( $bottom ? $bottom : array() ),
 				'masalar'            => $int_adet( $tables ? $tables : array() ),
+				'masaGruplari'       => $masa_gruplari,
 				'kategoriler'        => $int_adet( $kategoriler ? $kategoriler : array() ),
 				'kategorisiz'        => $kategorisiz,
 			),

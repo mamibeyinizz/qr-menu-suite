@@ -2,19 +2,14 @@
 /**
  * Yönetim sayfası: QR Menü → QR Analiz (Menü Analitiği).
  *
- * Sayfa yalnızca iskeleti basar; tablolar `assets/js/analitik.js` tarafından
- * tek bir AJAX çağrısıyla doldurulur.
+ * SAYFADA ARTIK TABLO YOK. Özet kartları ve zaman grafiği "Genel Bakış"
+ * (genel-sayfasi.php), ürün listesi "Ürünler" (urunler-sayfasi.php), masa
+ * kesiti "Masalar" (masalar-sayfasi.php) kategorisine taşındı. Geriye yalnızca
+ * veri yönetimi düğmeleri (CSV / Yenile / Verileri Sil) ve teşhis kutusu
+ * kaldı; onlar da "Veri & Sistem" kategorisine taşınınca bu sayfa kalkacak ve
+ * slug'ı hub'a yönlenecek.
  *
- * KAPSAM DARALIYOR. Özet kartları ve zaman grafiği "Genel Bakış" kategorisine
- * (genel-sayfasi.php), ürün listesi "Ürünler" kategorisine (urunler-sayfasi.php)
- * taşındı. Geriye masa kesiti ile veri/sistem düğmeleri kaldı; ikisi de kendi
- * kategorilerine taşınınca bu sayfa kalkacak ve slug'ı hub'a yönlenecek.
- *
- * Tek kesit kaldığı için kategori chip şeridi de kalktı: tek seçenekli bir
- * seçici kullanıcıya karar veriyormuş hissi verir, oysa yoktur.
- *
- * MASA FİLTRESİ sayfanın kendi kutusunda değil, bütün kategorilerle ORTAK
- * filtre çubuğundadır: seçim adreste taşınır (bkz. filtre-cubugu.php).
+ * Bu yüzden sayfa artık veri ÇEKMEZ: tek AJAX çağrısı silme işlemidir.
  *
  * @package QR_Menu_Suite
  */
@@ -33,13 +28,12 @@ if ( ! function_exists( 'qrms_analitik_sayfasi' ) ) {
 			wp_die( esc_html__( 'Bu sayfayı görüntüleme yetkiniz yok.', 'qrms' ) );
 		}
 
-		$csv_nonce = wp_create_nonce( QRMS_Analitik::NONCE_CSV );
-		$csv_url   = add_query_arg(
+		$csv_url = add_query_arg(
 			array(
 				'action'   => 'qrms_analitik_csv',
 				'period'   => 'masalar',
-				'masa'     => QRMS_Analitik_Filtre::masa(),
-				'security' => $csv_nonce,
+				'masa'     => '',
+				'security' => wp_create_nonce( QRMS_Analitik::NONCE_CSV ),
 			),
 			admin_url( 'admin-ajax.php' )
 		);
@@ -57,10 +51,10 @@ if ( ! function_exists( 'qrms_analitik_sayfasi' ) ) {
 				<div class="qrms-an-header-actions">
 					<?php
 					/*
-					 * Bu sayfanın CSV'si ekranda ne görünüyorsa onu verir:
-					 * masa özeti. Ürünlerin kendi indirmesi kendi
-					 * kategorisindedir (kategori=urunler), tümünü indiren
-					 * seçenek ise "Veri & Sistem" sayfasına gelecek.
+					 * Kategori bazlı indirmeler kendi sayfalarındadır
+					 * (kategori=urunler / kategori=masalar); buradaki düğme
+					 * masa özetini indirir ve "Veri & Sistem" kategorisiyle
+					 * birlikte "tümünü indir" seçeneğine dönüşecek.
 					 */
 					?>
 					<a id="qrms-an-csv" class="qrms-an-btn" href="<?php echo esc_url( $csv_url ); ?>">
@@ -103,24 +97,25 @@ if ( ! function_exists( 'qrms_analitik_sayfasi' ) ) {
 			endforeach;
 			?>
 
-			<?php qrms_analitik_filtre_cubugu( QRMS_ANALITIK_KLASIK_SAYFA ); ?>
+			<div class="qrms-an-panel">
+				<p class="qrms-an-panel-note">
+					<?php esc_html_e( 'Bu ekrandaki tablolar kendi kategorilerine taşındı. Aşağıdaki düğmeler tüm veriyi kapsar; kategori bazlı indirmeler ilgili sayfalardadır.', 'qrms' ); ?>
+				</p>
 
-			<?php
-			/*
-			 * Kalan tek kesit: masa özeti (son 30 gün). Kimliği JS'in
-			 * aradığıyla aynı kalır; sayfa "Masalar" kategorisine taşınınca
-			 * bu bölüm de oraya gidecek.
-			 */
-			?>
-			<div class="qrms-an-panel" id="qrms-an-cat-veri">
-				<div class="qrms-an-panel-header">
-					<h2 class="qrms-an-panel-title">
+				<p>
+					<a class="qrms-an-btn" href="<?php echo esc_url( QRMS_Analitik_Filtre::url( 'qrms-an-genel' ) ); ?>">
+						<span class="dashicons dashicons-dashboard" aria-hidden="true"></span>
+						<?php esc_html_e( 'Genel Bakış', 'qrms' ); ?>
+					</a>
+					<a class="qrms-an-btn" href="<?php echo esc_url( QRMS_Analitik_Filtre::url( 'qrms-an-urunler' ) ); ?>">
+						<span class="dashicons dashicons-food" aria-hidden="true"></span>
+						<?php esc_html_e( 'Ürünler', 'qrms' ); ?>
+					</a>
+					<a class="qrms-an-btn" href="<?php echo esc_url( QRMS_Analitik_Filtre::url( 'qrms-an-masalar' ) ); ?>">
 						<span class="dashicons dashicons-editor-table" aria-hidden="true"></span>
-						<?php esc_html_e( 'Masalara Göre', 'qrms' ); ?>
-					</h2>
-				</div>
-
-				<div class="qrms-an-tablewrap" id="qrms-an-table"></div>
+						<?php esc_html_e( 'Masalar', 'qrms' ); ?>
+					</a>
+				</p>
 			</div>
 
 			<div class="qrms-an-modal" id="qrms-an-confirm" hidden>

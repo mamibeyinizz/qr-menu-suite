@@ -23,9 +23,10 @@
 defined( 'ABSPATH' ) || exit;
 
 /**
- * NOT: "Genel Bakış" (genel-sayfasi.php) ve "Ürünler" (urunler-sayfasi.php)
- * kategorileri artık doludur ve kendi dosyalarındadır; buradaki placeholder'lar
- * yalnızca henüz taşınmamış kategoriler içindir.
+ * NOT: "Genel Bakış" (genel-sayfasi.php), "Ürünler" (urunler-sayfasi.php) ve
+ * "Masalar" (masalar-sayfasi.php) kategorileri artık doludur ve kendi
+ * dosyalarındadır; buradaki placeholder'lar yalnızca henüz taşınmamış
+ * kategoriler içindir.
  *
  * Klasik (tek sayfalık) analitik panelinin yeni slug'ı.
  *
@@ -34,6 +35,38 @@ defined( 'ABSPATH' ) || exit;
  * kalkacak, slug'ı hub'a yönlenecektir.
  */
 const QRMS_ANALITIK_KLASIK_SAYFA = 'qrms-an-klasik';
+
+if ( ! function_exists( 'qrms_analitik_onbellek_kutusu' ) ) {
+
+	/**
+	 * İSTEK İÇİ ÖNBELLEK — kategori sayfalarının ürettiği listelerin kutusu.
+	 *
+	 * Ayrı ayrı `static` değişkenler yerine tek bir kutu kullanılır: aynı
+	 * istekte ekranı ve CSV'yi besleyen çağrılar aynı veriyi paylaşır (ürün
+	 * listesi, kategori adları, masa listesi), ve önbellek gerektiğinde TEK
+	 * yerden düşürülebilir.
+	 *
+	 * @return array Kutuya referans.
+	 */
+	function &qrms_analitik_onbellek_kutusu() {
+		static $kutu = array();
+
+		return $kutu;
+	}
+}
+
+if ( ! function_exists( 'qrms_analitik_onbellek_sifirla' ) ) {
+
+	/**
+	 * İstek içi önbelleği boşaltır.
+	 *
+	 * @return void
+	 */
+	function qrms_analitik_onbellek_sifirla() {
+		$kutu = &qrms_analitik_onbellek_kutusu();
+		$kutu = array();
+	}
+}
 
 if ( ! function_exists( 'qrms_module_qr_analiz_sayfalar' ) ) {
 
@@ -126,7 +159,7 @@ if ( ! function_exists( 'qrms_module_qr_analiz_hub_kartlari' ) ) {
 		$kartlar[] = array(
 			'url'   => QRMS_Analitik_Filtre::url( QRMS_ANALITIK_KLASIK_SAYFA ),
 			'title' => __( 'Tüm Veriler (klasik görünüm)', 'qrms' ),
-			'desc'  => __( 'Henüz taşınmamış bölümler: masa kesiti ve veri yönetimi düğmeleri.', 'qrms' ),
+			'desc'  => __( 'Henüz taşınmamış bölüm: veri yönetimi düğmeleri ve teşhis.', 'qrms' ),
 			'icon'  => 'dashicons-list-view',
 		);
 
@@ -298,20 +331,6 @@ if ( ! function_exists( 'qrms_analitik_hazirlaniyor' ) ) {
 			</div>
 		</div>
 		<?php
-	}
-}
-
-if ( ! function_exists( 'qrms_analitik_sayfa_masalar' ) ) {
-
-	/**
-	 * Masalar kategorisi (Faz 4'te doldurulacak).
-	 *
-	 * @return void
-	 */
-	function qrms_analitik_sayfa_masalar() {
-		$sayfalar = qrms_module_qr_analiz_sayfalar();
-
-		qrms_analitik_hazirlaniyor( $sayfalar['qrms-an-masalar']['title'], $sayfalar['qrms-an-masalar']['desc'] );
 	}
 }
 

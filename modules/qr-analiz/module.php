@@ -66,6 +66,7 @@ function qrms_module_qr_analiz_init() {
 		require_once __DIR__ . '/analitik-sayfasi.php';
 		require_once __DIR__ . '/genel-sayfasi.php';
 		require_once __DIR__ . '/urunler-sayfasi.php';
+		require_once __DIR__ . '/masalar-sayfasi.php';
 		require_once __DIR__ . '/hub-sayfasi.php';
 
 		// "İstatistikler" satırı artık hub ekranıdır; klasik panel onun bir
@@ -198,6 +199,11 @@ function qrms_module_qr_analiz_admin_assets() {
 
 	if ( 'qrms-an-urunler' === $page ) {
 		qrms_module_qr_analiz_urunler_assets();
+		return;
+	}
+
+	if ( 'qrms-an-masalar' === $page ) {
+		qrms_module_qr_analiz_masalar_assets();
 		return;
 	}
 
@@ -349,6 +355,72 @@ function qrms_module_qr_analiz_urunler_assets() {
 				'noProductsTable' => __( 'Bu masada henüz ürün tıklaması yok.', 'qrms' ),
 				'noItems'         => __( 'Yayında ürün bulunamadı.', 'qrms' ),
 				'noCats'          => __( 'Seçili dönemde kategori verisi yok.', 'qrms' ),
+			),
+		)
+	);
+}
+
+/**
+ * "Masalar" kategorisinin varlıkları.
+ *
+ * @return void
+ */
+function qrms_module_qr_analiz_masalar_assets() {
+	qrms_module_qr_analiz_panel_stili();
+	qrms_module_qr_analiz_ortak_betik();
+
+	wp_enqueue_script(
+		'qrms-analitik-masalar',
+		QRMS_PLUGIN_URL . 'modules/qr-analiz/assets/js/analitik-masalar.js',
+		array( 'qrms-analitik-ortak' ),
+		QRMS_Helpers::asset_version( 'modules/qr-analiz/assets/js/analitik-masalar.js' ),
+		true
+	);
+
+	wp_localize_script(
+		'qrms-analitik-masalar',
+		'qrmsAnalitikMasalar',
+		array(
+			'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+			'nonce'   => wp_create_nonce( QRMS_Analitik::NONCE ),
+			'donem'   => QRMS_Analitik_Filtre::donem(),
+			'masa'    => QRMS_Analitik_Filtre::masa(),
+			'bas'     => QRMS_Analitik_Filtre::bas(),
+			'bit'     => QRMS_Analitik_Filtre::bit(),
+			// "Bu masayı incele" bağlantısı: masa seçimi paylaşılan bağlamdır,
+			// sayfa içi durum değil.
+			'masaUrl' => QRMS_Analitik_Filtre::url(
+				'qrms-an-masalar',
+				array( QRMS_Analitik_Filtre::ARG_MASA => '__MASA__' )
+			),
+			'i18n'    => array(
+				'colMasa'      => __( 'Masa', 'qrms' ),
+				'group'        => __( 'Grup', 'qrms' ),
+				'cardViews'    => __( 'Menü Okutma', 'qrms' ),
+				'cardClicks'   => __( 'Ürün Tıklama', 'qrms' ),
+				'cardUnique'   => __( 'Tekil Ziyaretçi', 'qrms' ),
+				'lastSeen'     => __( 'Son hareket', 'qrms' ),
+				'action'       => __( 'İşlem', 'qrms' ),
+				'filterTable'  => __( 'Bu masayı incele', 'qrms' ),
+				'tableCount'   => __( 'Masa Sayısı', 'qrms' ),
+				'share'        => __( 'Pay', 'qrms' ),
+				'rank'         => __( 'Sıralama', 'qrms' ),
+				'total'        => __( 'TOPLAM', 'qrms' ),
+				'registered'   => __( 'Kayıtlı masa', 'qrms' ),
+				'silent'       => __( 'hiç okutulmadı', 'qrms' ),
+				'silentCount'  => __( 'Hiç okutulmayan', 'qrms' ),
+				'silentHint'   => __( 'Bu masanın QR kodu seçili aralıkta hiç okutulmadı. QR basılmamış, yapıştırılmamış ya da yıpranmış olabilir.', 'qrms' ),
+				'unknown'      => __( 'kayıtlı değil', 'qrms' ),
+				'unknownCount' => __( 'Kayıtlı olmayan masa', 'qrms' ),
+				'unknownHint'  => __( 'Bu masa QR Masa listesinde yok; silinmiş olabilir. Geçmiş kayıtları duruyor.', 'qrms' ),
+				'direct'       => __( 'QR\'sız', 'qrms' ),
+				'groupCompare' => __( 'Grubu', 'qrms' ),
+				'tables'       => __( 'masa', 'qrms' ),
+				'totalMoves'   => __( 'toplam hareket', 'qrms' ),
+				'loading'      => __( 'Yükleniyor', 'qrms' ),
+				'loadError'    => __( 'Veri yüklenemedi. Sayfayı yenileyin.', 'qrms' ),
+				'noTables'     => __( 'Tanımlı masa yok ve bu aralıkta hareket kaydedilmemiş.', 'qrms' ),
+				'noGroups'     => __( 'Gruplandırılacak kayıtlı masa yok.', 'qrms' ),
 			),
 		)
 	);

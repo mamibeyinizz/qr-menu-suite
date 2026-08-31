@@ -49,38 +49,6 @@ const QRMS_ANALITIK_URUN_TAVANI = 2000;
  */
 const QRMS_ANALITIK_URUN_SAYFA = 50;
 
-if ( ! function_exists( 'qrms_analitik_onbellek_kutusu' ) ) {
-
-	/**
-	 * İSTEK İÇİ ÖNBELLEK — bu sayfanın ürettiği sayaçların tutulduğu kutu.
-	 *
-	 * Ayrı ayrı `static` değişkenler yerine tek bir kutu kullanılır: aynı
-	 * istekte ekranı ve CSV'yi besleyen çağrılar aynı veriyi paylaşır, ve
-	 * önbellek gerektiğinde TEK yerden düşürülebilir (uzun süren bir istekte
-	 * veri değiştiyse ya da testte).
-	 *
-	 * @return array Kutuya referans.
-	 */
-	function &qrms_analitik_onbellek_kutusu() {
-		static $kutu = array();
-
-		return $kutu;
-	}
-}
-
-if ( ! function_exists( 'qrms_analitik_onbellek_sifirla' ) ) {
-
-	/**
-	 * İstek içi önbelleği boşaltır.
-	 *
-	 * @return void
-	 */
-	function qrms_analitik_onbellek_sifirla() {
-		$kutu = &qrms_analitik_onbellek_kutusu();
-		$kutu = array();
-	}
-}
-
 if ( ! function_exists( 'qrms_analitik_yayindaki_urunler' ) ) {
 
 	/**

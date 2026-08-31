@@ -3471,6 +3471,7 @@ require_once QRMS_PLUGIN_DIR . 'modules/qr-analiz/module.php';
 require_once QRMS_PLUGIN_DIR . 'modules/qr-analiz/filtre-cubugu.php';
 require_once QRMS_PLUGIN_DIR . 'modules/qr-analiz/genel-sayfasi.php';
 require_once QRMS_PLUGIN_DIR . 'modules/qr-analiz/urunler-sayfasi.php';
+require_once QRMS_PLUGIN_DIR . 'modules/qr-analiz/masalar-sayfasi.php';
 require_once QRMS_PLUGIN_DIR . 'modules/qr-analiz/hub-sayfasi.php';
 
 echo "\nQR Analiz sayfaları\n";
@@ -3775,19 +3776,9 @@ qrms_test(
 echo "\nQR Analiz (kategoriler)\n";
 
 qrms_test(
-	'klasik panelde yalnızca masa kesiti kalır',
+	'klasik panelde tablo kalmaz, yalnızca veri yönetimi düğmeleri durur',
 	function () {
 		$kaynak = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/analitik-sayfasi.php' );
-
-		// Zaman kategorileri Genel Bakış'taki grafiğin KIRILIM seçicisine,
-		// ürün listesi kendi kategorisine taşındı. Tek kesit kaldığı için
-		// chip şeridi de kalktı.
-		foreach ( array( 'hourly', 'daily', 'weekly', 'monthly', 'urunler', 'masalar' ) as $kategori ) {
-			qrms_assert_false(
-				false !== strpos( $kaynak, 'data-cat="' . $kategori . '"' ),
-				$kategori . ' chip\'i kalktı'
-			);
-		}
 
 		// Taşınan bölümlerin kapları burada kalmamalı, yoksa JS iki sayfada
 		// birden doldurmaya çalışırdı.
@@ -3797,27 +3788,35 @@ qrms_test(
 				'id="qrms-an-chart"',
 				'id="qrms-an-chart-title"',
 				'id="qrms-an-products"',
-				'id="qrms-an-cat-urunler"',
+				'id="qrms-an-table"',
+				'id="qrms-an-cat-veri"',
 				'id="qrms-an-urun-donem"',
+				'data-cat=',
 			) as $kap
 		) {
 			qrms_assert_false( false !== strpos( $kaynak, $kap ), $kap . ' taşındı' );
 		}
 
-		// Kalanlar: masa kesiti + veri yönetimi düğmeleri + ortak filtre.
-		qrms_assert_contains( 'id="qrms-an-table"', $kaynak, 'masa tablosu kaldı' );
+		// Kalanlar: veri yönetimi düğmeleri, onay modalı ve teşhis kutusu.
 		qrms_assert_contains( 'id="qrms-an-clear"', $kaynak, 'veri silme kaldı' );
-		qrms_assert_contains( 'qrms_analitik_filtre_cubugu(', $kaynak, 'ortak filtre çubuğu' );
-		qrms_assert_false( false !== strpos( $kaynak, 'id="qrms-an-masa-temizle"' ), 'bespoke filtre kalktı' );
+		qrms_assert_contains( 'id="qrms-an-csv"', $kaynak, 'CSV kaldı' );
+		qrms_assert_contains( 'QRMS_Analitik::teshis()', $kaynak, 'teşhis kutusu kaldı' );
 
 		// Emoji yok: bütün ikonlar dashicons.
 		qrms_assert_false( (bool) preg_match( '/[\x{1F300}-\x{1FAFF}\x{2600}-\x{27BF}]/u', $kaynak ), 'emoji kalmadı' );
 
-		// Panel kimliği JS'in aradığıyla aynı olmalı.
+		// Sayfa artık veri çekmez: tek AJAX çağrısı silme işlemidir.
 		$js = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/assets/js/analitik.js' );
 
-		qrms_assert_contains( "\$( 'qrms-an-cat-veri' )", $js, 'JS masa bölümünü bulur' );
+		qrms_assert_contains( 'qrms_analitik_temizle', $js, 'silme ucu' );
+		qrms_assert_false( false !== strpos( $js, 'qrms_analitik_veri' ), 'veri ucu çağrılmıyor' );
+		qrms_assert_false( false !== strpos( $js, 'function masaTablosuBas(' ), 'masa tablosu taşındı' );
 		qrms_assert_false( false !== strpos( $js, 'function urunleriBas(' ), 'ürün tablosu taşındı' );
+
+		// Uç da kaldırıldı: çağıranı kalmayan bir AJAX yüzeyi açık bırakılmaz.
+		$sinif = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/class-qrms-analitik.php' );
+
+		qrms_assert_false( false !== strpos( $sinif, 'wp_ajax_qrms_analitik_veri' ), 'veri ucu kaldırıldı' );
 	}
 );
 
@@ -3945,6 +3944,247 @@ qrms_test(
 	}
 );
 
+echo "\nQR Analiz — Masalar kategorisi\n";
+
+qrms_test(
+	'hiç okutulmamış masa listeden DÜŞMEZ, 0 ile görünür',
+	function () {
+		// Kayıt kaynağı qr-masa; sayaç kaynağı analitik tablosu. Sayacı
+		// olmayan masa listede kalmalı — asıl aranan satır odur.
+		$masalar = array(
+			array(
+				'slug' => 'bahce-1',
+				'ad'   => 'Bahçe 1',
+				'grup' => 'bahce',
+			),
+			array(
+				'slug' => 'bahce-2',
+				'ad'   => 'Bahçe 2',
+				'grup' => 'bahce',
+			),
+			array(
+				'slug' => 'salon-1',
+				'ad'   => 'Salon 1',
+				'grup' => 'salon',
+			),
+		);
+
+		$sayaclar = array(
+			'bahce-1' => array(
+				'mv'  => 40,
+				'pc'  => 10,
+				'uv'  => 22,
+				'son' => '2026-03-10 12:00:00',
+			),
+			'salon-1' => array(
+				'mv'  => 5,
+				'pc'  => 1,
+				'uv'  => 3,
+				'son' => '2026-03-09 20:00:00',
+			),
+		);
+
+		$karne = qrms_analitik_masa_karnesi( $masalar, $sayaclar );
+
+		qrms_assert_same( 3, count( $karne['satirlar'] ), 'üç masa da listede' );
+		qrms_assert_same( 3, $karne['ozet']['kayitli'], 'kayıtlı masa sayısı' );
+		qrms_assert_same( 1, $karne['ozet']['sessiz'], 'hiç okutulmayan bir masa' );
+
+		// Hareketi çok olan üstte, sessiz masa altta ama LİSTEDE.
+		qrms_assert_same( 'bahce-1', $karne['satirlar'][0]['masa'], 'en hareketli üstte' );
+		qrms_assert_same( 'bahce-2', $karne['satirlar'][2]['masa'], 'sessiz masa listede' );
+		qrms_assert_same( 0, $karne['satirlar'][2]['mv'], 'sıfır okutma' );
+	}
+);
+
+qrms_test(
+	'silinmiş masanın kaydı "kayıtlı değil" olarak durur, masasız erişim ayrıdır',
+	function () {
+		$masalar = array(
+			array(
+				'slug' => 'salon-1',
+				'ad'   => 'Salon 1',
+				'grup' => 'salon',
+			),
+		);
+
+		$sayaclar = array(
+			'salon-1' => array(
+				'mv'  => 10,
+				'pc'  => 2,
+				'uv'  => 6,
+				'son' => '2026-03-10 10:00:00',
+			),
+			// Artık qr-masa'da olmayan bir masa: geçmişi kaybolmamalı.
+			'eski-masa' => array(
+				'mv'  => 30,
+				'pc'  => 8,
+				'uv'  => 15,
+				'son' => '2026-02-01 10:00:00',
+			),
+			// QR okutmadan gelen hareketler.
+			'' => array(
+				'mv'  => 7,
+				'pc'  => 1,
+				'uv'  => 4,
+				'son' => '2026-03-11 09:00:00',
+			),
+		);
+
+		$karne   = qrms_analitik_masa_karnesi( $masalar, $sayaclar );
+		$durumlar = array();
+
+		foreach ( $karne['satirlar'] as $satir ) {
+			$durumlar[ $satir['masa'] ] = $satir['durum'];
+		}
+
+		qrms_assert_same( 'kayitli', $durumlar['salon-1'], 'kayıtlı masa' );
+		qrms_assert_same( 'kayitsiz', $durumlar['eski-masa'], 'silinmiş masa listede kalır' );
+		qrms_assert_same( 'masasiz', $durumlar[''], 'masasız erişim ayrı' );
+		qrms_assert_same( 1, $karne['ozet']['kayitsiz'], 'kayıtsız sayacı' );
+
+		// Masasız satır bir masa değildir: sıralamaya karışmaz, en sonda durur.
+		$son = $karne['satirlar'][ count( $karne['satirlar'] ) - 1 ];
+		qrms_assert_same( 'masasiz', $son['durum'], 'masasız en sonda' );
+
+		// Gruplar YALNIZCA kayıtlı masalardan üretilir.
+		qrms_assert_same( 1, count( $karne['gruplar'] ), 'tek grup' );
+		qrms_assert_same( 'salon', $karne['gruplar'][0]['grup'], 'grup adı' );
+		qrms_assert_same( 10, $karne['gruplar'][0]['mv'], 'grup toplamı' );
+	}
+);
+
+qrms_test(
+	'gruplar toplulaştırılır ve sessiz masaları ayrıca sayar',
+	function () {
+		$masalar = array();
+
+		for ( $i = 1; $i <= 3; $i++ ) {
+			$masalar[] = array(
+				'slug' => 'bahce-' . $i,
+				'ad'   => 'Bahçe ' . $i,
+				'grup' => 'bahce',
+			);
+		}
+
+		$masalar[] = array(
+			'slug' => 'salon-1',
+			'ad'   => 'Salon 1',
+			'grup' => 'salon',
+		);
+
+		$karne = qrms_analitik_masa_karnesi(
+			$masalar,
+			array(
+				'bahce-1' => array(
+					'mv'  => 60,
+					'pc'  => 20,
+					'uv'  => 30,
+					'son' => '',
+				),
+				'bahce-2' => array(
+					'mv'  => 60,
+					'pc'  => 20,
+					'uv'  => 30,
+					'son' => '',
+				),
+				'salon-1' => array(
+					'mv'  => 300,
+					'pc'  => 40,
+					'uv'  => 120,
+					'son' => '',
+				),
+			)
+		);
+
+		// Sıralama toplam harekete göre: salon (340) > bahçe (160).
+		qrms_assert_same( 'salon', $karne['gruplar'][0]['grup'], 'en hareketli grup' );
+		qrms_assert_same( 300, $karne['gruplar'][0]['mv'], 'salon okutma' );
+		qrms_assert_same( 120, $karne['gruplar'][1]['mv'], 'bahçe okutma toplamı' );
+		qrms_assert_same( 3, $karne['gruplar'][1]['masa'], 'bahçede üç masa' );
+		qrms_assert_same( 1, $karne['gruplar'][1]['sessiz'], 'biri hiç okutulmamış' );
+	}
+);
+
+qrms_test(
+	'uzun masa slug\'ı analitikteki kırpılmış anahtarla eşleşir',
+	function () {
+		// masa_no varchar(64); qrm_tables.table_slug varchar(100). Kırpma
+		// hesaba katılmazsa uzun adlı masa "hiç okutulmadı" görünürdü.
+		$uzun    = str_repeat( 'a', 70 );
+		$kirpik  = substr( $uzun, 0, QRMS_Analitik::MASA_UZUNLUK );
+
+		qrms_assert_same( 64, strlen( $kirpik ), 'anahtar 64 karaktere iner' );
+		qrms_assert_same( $kirpik, qrms_analitik_masa_anahtari( $uzun ), 'anahtar kırpılır' );
+
+		$karne = qrms_analitik_masa_karnesi(
+			array(
+				array(
+					'slug' => $uzun,
+					'ad'   => 'Uzun Masa',
+					'grup' => 'uzun',
+				),
+			),
+			array(
+				$kirpik => array(
+					'mv'  => 12,
+					'pc'  => 3,
+					'uv'  => 7,
+					'son' => '2026-03-10 12:00:00',
+				),
+			)
+		);
+
+		qrms_assert_same( 1, count( $karne['satirlar'] ), 'tek satır (kopya yok)' );
+		qrms_assert_same( 12, $karne['satirlar'][0]['mv'], 'sayaç eşleşti' );
+		qrms_assert_same( 0, $karne['ozet']['kayitsiz'], 'kayıtsız satır üretilmedi' );
+	}
+);
+
+qrms_test(
+	'masa sayaçları tek GROUP BY ile indeksli aralıktan gelir',
+	function () {
+		$wpdb            = qrms_sayan_wpdb();
+		$wpdb->results[] = array(
+			array(
+				'masa_no' => 'bahce-1',
+				'mv'      => 10,
+				'pc'      => 2,
+				'uv'      => 6,
+				'son'     => '2026-03-10 12:00:00',
+			),
+		);
+
+		$sayac = QRMS_Analitik::masa_sayaclari( '2026-03-01 00:00:00', '2026-03-31 23:59:59', 'bahce-1' );
+
+		qrms_assert_same( 1, count( $wpdb->queries ), 'tek sorgu' );
+		qrms_assert_same( 10, $sayac['bahce-1']['mv'], 'sayaç masa_no ile anahtarlanır' );
+
+		// Aralık iki uçtan sınırlı + masa filtresi: idx_masa_td kullanılabilir.
+		qrms_assert_contains( 'created_at BETWEEN', $wpdb->queries[0], 'kapalı aralık' );
+		qrms_assert_contains( "masa_no = 'bahce-1'", $wpdb->queries[0], 'masa filtresi' );
+		qrms_assert_contains( 'GROUP BY masa_no', $wpdb->queries[0], 'tek gruplama' );
+	}
+);
+
+qrms_test(
+	'garson çağırma / hesap isteme bölümü Faz 6\'ya kadar BASILMAZ',
+	function () {
+		$sayfa = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/masalar-sayfasi.php' );
+
+		// Boş bir tablo, veri yokluğunu hata gibi gösterirdi; bölüm hiç
+		// basılmaz ama yeri yorumla işaretlidir.
+		qrms_assert_contains( 'FAZ 6', $sayfa, 'yer işareti' );
+		qrms_assert_contains( 'waiter_call', $sayfa, 'olay adı yazılı' );
+		qrms_assert_contains( 'bill_request', $sayfa, 'olay adı yazılı' );
+
+		$js = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/assets/js/analitik-masalar.js' );
+
+		qrms_assert_false( false !== strpos( $js, 'waiter' ), 'ekranda bölüm yok' );
+		qrms_assert_false( false !== strpos( $js, 'bill' ), 'ekranda bölüm yok' );
+	}
+);
+
 qrms_test(
 	'kategori dağılımı boş adları listeye KARIŞTIRMAZ, ayrı sayar',
 	function () {
@@ -4050,18 +4290,13 @@ qrms_test(
 );
 
 qrms_test(
-	'aynı pencerede kategori değiştirmek yeni istek doğurmaz',
+	'Genel Bakış aynı kırılımı iki kez istemez',
 	function () {
-		// Sunucu her yanıtta grafiği, masaları ve ürünleri BİRLİKTE döndürür;
-		// yanıt dönem+masa anahtarıyla saklanmazsa kategori geçişi aynı veriyi
-		// tekrar tekrar isterdi.
-		$js = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/assets/js/analitik.js' );
+		// Aralık ve masa sayfa ömrü boyunca sabittir (değişmeleri sayfayı
+		// yeniler); yalnızca kırılım değişir, o da önbelleğe alınır.
+		$js = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/assets/js/analitik-genel.js' );
 
-		qrms_assert_contains( 'state.onbellek[ anahtar ]', $js, 'önbellekten okur' );
-		qrms_assert_contains( 'function onbellekAnahtari( donem, masa )', $js, 'anahtar dönem + masa' );
-
-		// Yenile ve silme sonrası önbellek düşer: kullanıcı bayat veri görmez.
-		qrms_assert_same( 2, substr_count( $js, 'state.onbellek = {};' ), 'yenile + silme' );
+		qrms_assert_contains( 'state.onbellek[ state.kirilim ]', $js, 'kırılım önbelleği' );
 	}
 );
 

@@ -649,6 +649,16 @@
 	width: 18px;
 }
 
+/* Odaklanılan masanın satırı: liste daralmadığı için satırın kendisi
+   işaretlenir, kullanıcı seçtiği masayı listede kaybetmesin. */
+.qrms-an-row-focus > td {
+	background: rgba( 201, 168, 76, .10 );
+}
+
+.qrms-an-odak .qrms-an-cards {
+	margin-bottom: 4px;
+}
+
 /* =====================================================================
    MASA FİLTRESİ
    Kategori şeridinin altında, tüm kategoriler için ortak.

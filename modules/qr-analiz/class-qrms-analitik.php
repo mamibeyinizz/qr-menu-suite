@@ -149,9 +149,9 @@ class QRMS_Analitik {
 			}
 		}
 
-		add_action( 'wp_ajax_qrms_analitik_veri', array( __CLASS__, 'ajax_veri' ) );
 		add_action( 'wp_ajax_qrms_analitik_genel', array( __CLASS__, 'ajax_genel' ) );
 		add_action( 'wp_ajax_qrms_analitik_urunler', array( __CLASS__, 'ajax_urunler' ) );
+		add_action( 'wp_ajax_qrms_analitik_masalar', array( __CLASS__, 'ajax_masalar' ) );
 		add_action( 'wp_ajax_qrms_analitik_csv', array( __CLASS__, 'ajax_csv' ) );
 		add_action( 'wp_ajax_qrms_analitik_temizle', array( __CLASS__, 'ajax_temizle' ) );
 
@@ -1208,12 +1208,52 @@ class QRMS_Analitik {
 	 * @return array<int,array<string,mixed>>
 	 */
 	public static function masa_verisi( $masa = '' ) {
+		$bit = current_time( 'Y-m-d' ) . ' 23:59:59';
+
+		$satir = array();
+
+		foreach ( self::masa_sayaclari( self::donem_baslangici( 'masalar' ), $bit, $masa ) as $slug => $r ) {
+			$satir[] = array(
+				'masa'  => $slug,
+				'label' => self::masa_etiketi( $slug, self::masa_adlari() ),
+				'mv'    => $r['mv'],
+				'pc'    => $r['pc'],
+				'uv'    => $r['uv'],
+				'son'   => $r['son'],
+			);
+		}
+
+		return $satir;
+	}
+
+	/**
+	 * Masa başına ham sayaçlar (masa_no => satır) — KEYFİ aralık.
+	 *
+	 * "Masalar" kategorisi iki kaynağı birleştirir: kayıtlı masalar (qr-masa
+	 * modülünün tablosu) ve bu sayaçlar. Masa başına ayrı sorgu N+1 demek
+	 * olurdu; burada TEK bir GROUP BY ile hepsi çekilir, eşleştirme PHP
+	 * tarafında yapılır (bkz. masalar-sayfasi.php).
+	 *
+	 * Anahtar masa_no'dur; boş anahtar ('') masasız — yani doğrudan, QR
+	 * okutmadan gelen — hareketleri temsil eder ve listeden DÜŞÜRÜLMEZ.
+	 *
+	 * Sıralama toplam harekete göre azalandır: çağıranın yeniden sıralaması
+	 * gerekmediği sürece liste anlamlı bir düzende gelir.
+	 *
+	 * @param string $bas  Aralık başlangıcı (MySQL biçimi).
+	 * @param string $bit  Aralık bitişi (MySQL biçimi).
+	 * @param string $masa Masa filtresi (boş = tüm masalar).
+	 * @return array<string,array{mv:int,pc:int,uv:int,son:string}>
+	 */
+	public static function masa_sayaclari( $bas, $bit, $masa = '' ) {
 		global $wpdb;
 
-		$tablo     = self::tablo();
-		$masa_ek   = self::masa_sql( $masa );
-		$baslangic = self::donem_baslangici( 'masalar' );
-		$kosul     = $wpdb->prepare( 'created_at >= %s', $baslangic );
+		$tablo   = self::tablo();
+		$masa_ek = self::masa_sql( $masa );
+
+		// Aralık iki uçtan sınırlı; masa filtresi varsa idx_masa_td
+		// (masa_no, event_type, created_at) doğrudan kullanılabilir.
+		$kosul = $wpdb->prepare( 'created_at BETWEEN %s AND %s', $bas, $bit );
 
 		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$ham = $wpdb->get_results(
@@ -1229,34 +1269,28 @@ class QRMS_Analitik {
 			ARRAY_A
 		);
 
-		$adlar = self::masa_adlari();
-		$satir = array();
+		$sayac = array();
 
 		foreach ( (array) $ham as $r ) {
-			$slug = (string) $r['masa_no'];
-
-			$satir[] = array(
-				'masa'  => $slug,
-				'label' => self::masa_etiketi( $slug, $adlar ),
-				'mv'    => (int) $r['mv'],
-				'pc'    => (int) $r['pc'],
-				'uv'    => (int) $r['uv'],
-				'son'   => (string) $r['son'],
+			$sayac[ (string) $r['masa_no'] ] = array(
+				'mv'  => (int) $r['mv'],
+				'pc'  => (int) $r['pc'],
+				'uv'  => (int) $r['uv'],
+				'son' => (string) $r['son'],
 			);
 		}
 
-		return $satir;
+		return $sayac;
 	}
 
 	/**
-	 * Masa slug'ı => görünen ad (qr-masa modülünün tablosundan).
+	 * Masa slug'ı => görünen ad (qr-masa modülünün kayıtlarından).
 	 *
 	 * @return array<string,string>
 	 */
-	private static function masa_adlari() {
+	public static function masa_adlari() {
 		global $wpdb;
 
-		$tablo = $wpdb->prefix . 'qrm_tables';
 		$adlar = wp_cache_get( 'qrms_analitik_masa_adlari', 'qrms' );
 
 		if ( is_array( $adlar ) ) {
@@ -1264,6 +1298,23 @@ class QRMS_Analitik {
 		}
 
 		$adlar = array();
+
+		// Kayıtlı masaların TEK KAYNAĞI qr-masa modülüdür; tabloyu burada
+		// ikinci kez tanımlamak, ileride şeması değiştiğinde iki yerin
+		// birbirinden habersiz kalması demek olurdu. Modül kurulu değilse
+		// (ya da tablosu yoksa) doğrudan sorguya düşülür: analitik ekranı,
+		// masa modülü olmayan bir kurulumda da çalışmalı.
+		if ( class_exists( 'QMO_Masalar' ) && QMO_Masalar::tablo_var_mi() ) {
+			foreach ( (array) QMO_Masalar::hepsi() as $masa ) {
+				$adlar[ (string) $masa->table_slug ] = (string) $masa->table_name;
+			}
+
+			wp_cache_set( 'qrms_analitik_masa_adlari', $adlar, 'qrms', 300 );
+
+			return $adlar;
+		}
+
+		$tablo = $wpdb->prefix . 'qrm_tables';
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$var = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $tablo ) );
@@ -1289,7 +1340,7 @@ class QRMS_Analitik {
 	 * @param array  $adlar masa_adlari() çıktısı.
 	 * @return string
 	 */
-	private static function masa_etiketi( $slug, array $adlar = array() ) {
+	public static function masa_etiketi( $slug, array $adlar = array() ) {
 		if ( '' === $slug ) {
 			return __( 'Masasız (doğrudan erişim)', 'qrms' );
 		}
@@ -1558,37 +1609,6 @@ class QRMS_Analitik {
 	}
 
 	/**
-	 * Panel verisi.
-	 *
-	 * @return void
-	 */
-	public static function ajax_veri() {
-		check_ajax_referer( self::NONCE, 'security' );
-
-		if ( ! current_user_can( QRMS_Admin::CAPABILITY ) ) {
-			wp_send_json_error( array( 'mesaj' => __( 'Yetkiniz yok.', 'qrms' ) ), 403 );
-		}
-
-		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- check_ajax_referer yukarıda.
-		$donem = self::istek_donemi( $_POST );
-		// phpcs:ignore WordPress.Security.NonceVerification.Missing
-		$masa = self::istek_masasi( $_POST );
-
-		$grafik = ( 'masalar' === $donem )
-			? self::masa_verisi( $masa )
-			: self::grafik_verisi( $donem, $masa );
-
-		wp_send_json_success(
-			array(
-				'donem'   => $donem,
-				'masa'    => $masa,
-				'grafik'  => $grafik,
-				'masalar' => self::masa_secenekleri(),
-			)
-		);
-	}
-
-	/**
 	 * Ürünler kategorisinin verisi.
 	 *
 	 * Yalnızca BU kategorinin sorguları çalışır: özet kartları, zaman grafiği
@@ -1662,6 +1682,36 @@ class QRMS_Analitik {
 	}
 
 	/**
+	 * Masalar kategorisinin verisi.
+	 *
+	 * @return void
+	 */
+	public static function ajax_masalar() {
+		check_ajax_referer( self::NONCE, 'security' );
+
+		if ( ! current_user_can( QRMS_Admin::CAPABILITY ) ) {
+			wp_send_json_error( array( 'mesaj' => __( 'Yetkiniz yok.', 'qrms' ) ), 403 );
+		}
+
+		// phpcs:disable WordPress.Security.NonceVerification.Missing -- check_ajax_referer yukarıda.
+		$ham = (array) wp_unslash( $_POST );
+		// phpcs:enable
+
+		$baglam = QRMS_Analitik_Filtre::coz( $ham );
+		$aralik = QRMS_Analitik_Filtre::aralik( $ham );
+
+		wp_send_json_success(
+			array_merge(
+				array(
+					'donem' => $baglam['donem'],
+					'masa'  => $baglam['masa'],
+				),
+				qrms_analitik_masa_verisi( $aralik, $baglam['masa'] )
+			)
+		);
+	}
+
+	/**
 	 * CSV dışa aktarma.
 	 *
 	 * "Masalara Göre" görünümünde masa özeti, diğer dönemlerde ürün listesi
@@ -1686,6 +1736,11 @@ class QRMS_Analitik {
 
 		if ( 'urunler' === $kategori ) {
 			self::csv_urunler( $ham );
+			return;
+		}
+
+		if ( 'masalar' === $kategori ) {
+			self::csv_masalar( $ham );
 			return;
 		}
 
@@ -1833,6 +1888,88 @@ class QRMS_Analitik {
 
 		if ( $veri['kategorisiz'] > 0 ) {
 			fputcsv( $cikti, array( 'Kategorisi kaydedilmemiş tıklama', '', $veri['kategorisiz'], '', '' ), ';' );
+		}
+
+		fclose( $cikti ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
+		exit;
+	}
+
+	/**
+	 * "Masalar" kategorisinin CSV'si: masa listesi + grup toplamları.
+	 *
+	 * Ekranı besleyen fonksiyonun AYNISINDAN gelir; indirilen dosya ekranda
+	 * görünenle birebir aynıdır. Hiç okutulmamış masalar da 0 ile inerler —
+	 * asıl aranan satırlar onlardır.
+	 *
+	 * @param array $ham İsteğin ham query arg'ları.
+	 * @return void
+	 */
+	private static function csv_masalar( array $ham ) {
+		$baglam = QRMS_Analitik_Filtre::coz( $ham );
+		$aralik = QRMS_Analitik_Filtre::aralik( $ham );
+		$veri   = qrms_analitik_masa_verisi( $aralik, $baglam['masa'] );
+
+		$dosya = 'qr-analitik-masalar-' . $baglam['donem'] . '-' . gmdate( 'Ymd-His', self::simdi() ) . '.csv';
+
+		nocache_headers();
+		header( 'Content-Type: text/csv; charset=utf-8' );
+		header( 'Content-Disposition: attachment; filename="' . $dosya . '"' );
+
+		$cikti = fopen( 'php://output', 'w' );
+
+		// Excel'in UTF-8'i tanıması için BOM.
+		fwrite( $cikti, "\xEF\xBB\xBF" ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fwrite
+
+		fputcsv( $cikti, array( 'Aralık', substr( $aralik['bas'], 0, 10 ), substr( $aralik['bit'], 0, 10 ) ), ';' );
+		fputcsv( $cikti, array(), ';' );
+
+		fputcsv( $cikti, array( 'MASALAR' ), ';' );
+		fputcsv( $cikti, array( 'Masa', 'Masa Kodu', 'Grup', 'Durum', 'Menü Okutma', 'Ürün Tıklama', 'Tekil Ziyaretçi', 'Son Hareket' ), ';' );
+
+		foreach ( $veri['satirlar'] as $satir ) {
+			$durum = __( 'Kayıtlı', 'qrms' );
+
+			if ( 'kayitsiz' === $satir['durum'] ) {
+				$durum = __( 'Kayıtlı olmayan masa', 'qrms' );
+			} elseif ( 'masasiz' === $satir['durum'] ) {
+				$durum = __( 'Masasız erişim', 'qrms' );
+			} elseif ( 0 === $satir['mv'] + $satir['pc'] ) {
+				$durum = __( 'Hiç okutulmadı', 'qrms' );
+			}
+
+			fputcsv(
+				$cikti,
+				array(
+					$satir['label'],
+					$satir['masa'],
+					$satir['grup'],
+					$durum,
+					$satir['mv'],
+					$satir['pc'],
+					$satir['uv'],
+					$satir['son'],
+				),
+				';'
+			);
+		}
+
+		fputcsv( $cikti, array(), ';' );
+		fputcsv( $cikti, array( 'MASA GRUPLARI' ), ';' );
+		fputcsv( $cikti, array( 'Grup', 'Masa Sayısı', 'Hiç Okutulmayan', 'Menü Okutma', 'Ürün Tıklama', 'Tekil Ziyaretçi' ), ';' );
+
+		foreach ( $veri['gruplar'] as $grup ) {
+			fputcsv(
+				$cikti,
+				array(
+					$grup['grup'],
+					$grup['masa'],
+					$grup['sessiz'],
+					$grup['mv'],
+					$grup['pc'],
+					$grup['uv'],
+				),
+				';'
+			);
 		}
 
 		fclose( $cikti ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
