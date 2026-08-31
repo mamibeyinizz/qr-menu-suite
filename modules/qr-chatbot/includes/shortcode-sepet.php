@@ -97,18 +97,83 @@ if ( ! function_exists( 'qmo_sepet_order_url' ) ) {
 }
 
 /**
+ * "Sepet ile Sipariş" anahtarı açık mı?
+ *
+ * Option yoksa (hiç kaydedilmemiş) kapalı kabul edilir — opt-in.
+ *
+ * @return bool
+ */
+if ( ! function_exists( 'qmo_sepet_aktif_mi' ) ) {
+	function qmo_sepet_aktif_mi() {
+		return (int) get_option( 'qmo_sepet_aktif', 0 ) === 1;
+	}
+}
+
+/**
+ * Menü HTML'inin sonuna sepeti ekler — yalnızca ayar açıksa.
+ *
+ * restoran-menu `shortcode_menu()` burayı function_exists ile çağırır;
+ * qr-chatbot yüklü değilse menü çıktısı değişmez.
+ *
+ * @param string $cikti Menü shortcode çıktısı.
+ * @return string
+ */
+if ( ! function_exists( 'qmo_sepet_menuye_ekle' ) ) {
+	function qmo_sepet_menuye_ekle( $cikti ) {
+		if ( ! qmo_sepet_aktif_mi() ) {
+			return (string) $cikti;
+		}
+
+		return (string) $cikti . qmo_sepet_shortcode();
+	}
+}
+
+/**
+ * Bu istekte sepet HTML'i basıldı mı?
+ *
+ * Aynı sayfada otomatik enjeksiyon + elle [qmo_sepet] çakışmasın diye
+ * shortcode bir kez çıktı verdikten sonra bayrak kalkar. $ata verilirse
+ * bayrağı yazar (testler false geçerek sıfırlar); null yalnızca okur.
+ *
+ * @param bool|null $ata true/false atar, null okur.
+ * @return bool
+ */
+if ( ! function_exists( 'qmo_sepet_istekte_basildi' ) ) {
+	function qmo_sepet_istekte_basildi( $ata = null ) {
+		static $basildi = false;
+		if ( null !== $ata ) {
+			$basildi = (bool) $ata;
+		}
+		return $basildi;
+	}
+}
+
+/**
  * Sepet çıktısı.
+ *
+ * Aynı istekte ikinci kez çağrılırsa boş döner: otomatik menü enjeksiyonu
+ * ile elle yazılmış [qmo_sepet] aynı sayfada id="qmo-sepet-root" çakışması
+ * üretmesin. Bayrak yalnızca HTML basıldığında kalkar; izin yokken boş
+ * dönüş sonraki denemeyi engellemez.
  *
  * @return string
  */
 if ( ! function_exists( 'qmo_sepet_shortcode' ) ) {
 	function qmo_sepet_shortcode() {
+		if ( qmo_sepet_istekte_basildi() ) {
+			return '';
+		}
+
 		// Sadece geçerli masa oturumu olan müşterilere (ve yöneticilere) göster.
 		if ( ! qmo_sepet_izinli_mi() ) {
 			return '';
 		}
 
-		qmo_asset_enqueue( 'qmo-sepet' );
+		qmo_sepet_istekte_basildi( true );
+
+		if ( function_exists( 'qmo_asset_enqueue' ) ) {
+			qmo_asset_enqueue( 'qmo-sepet' );
+		}
 
 		wp_localize_script(
 			'qmo-sepet',

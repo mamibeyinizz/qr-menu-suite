@@ -57,7 +57,7 @@ trait RMA_Admin_Pages_Trait {
                 'title'      => 'Diğer Ayarlar',
                 'menu_title' => 'Diğer Ayarlar',
                 'render'     => 'render_other_settings_page',
-                'desc'       => 'Kategori sırası, toplu ürün aktarımı ve yedekleme.',
+                'desc'       => 'Sepet ile sipariş, kategori sırası, toplu ürün aktarımı ve yedekleme.',
                 'icon'       => 'dashicons-admin-tools',
             ],
             'qrms-rm-urunum-yok' => [
@@ -816,6 +816,7 @@ trait RMA_Admin_Pages_Trait {
         );
         ?>
         <nav class="rma-anchor-nav" aria-label="Sayfa bölümleri">
+            <a href="#rma-sepet-siparis">Sepet ile Sipariş</a>
             <a href="#rma-kategori-sirasi">Kategori Sırası</a>
             <a href="#rma-ice-disa-aktar">Toplu Ürün Aktarımı</a>
             <a href="#rma-malzeme-aktar">Malzeme Aktarımı</a>
@@ -823,6 +824,7 @@ trait RMA_Admin_Pages_Trait {
         </nav>
         <?php
 
+        $this->render_sepet_siparis_section();
         $this->render_category_order_page();
         $this->render_csv_import_page();
         if ( method_exists( $this, 'render_ingredient_csv_section' ) ) {
@@ -831,6 +833,70 @@ trait RMA_Admin_Pages_Trait {
         $this->render_menu_backup_page();
 
         $this->page_footer();
+    }
+
+    /**
+     * `admin_post_qmo_sepet_ayar_kaydet` — sepet anahtarını kaydeder.
+     *
+     * @return void
+     */
+    public function handle_sepet_ayar_save() {
+        check_admin_referer( 'qmo_sepet_ayar_kaydet' );
+
+        $yetki = class_exists( 'QRMS_Admin' ) ? QRMS_Admin::CAPABILITY : 'manage_options';
+
+        if ( ! current_user_can( $yetki ) ) {
+            wp_die( esc_html__( 'Bu işlem için yetkiniz yok.', 'qrms' ), '', array( 'response' => 403 ) );
+        }
+
+        // Gizli 0 + checkbox 1: işaretliyse son değer 1, değilse 0 gelir.
+        $aktif = ( isset( $_POST['qmo_sepet_aktif'] ) && (int) $_POST['qmo_sepet_aktif'] === 1 ) ? 1 : 0;
+        update_option( 'qmo_sepet_aktif', $aktif );
+
+        wp_safe_redirect(
+            $this->admin_page_url( 'qrms-rm-diger', array( 'sepet_msg' => 'kaydedildi' ), 'rma-sepet-siparis' )
+        );
+        exit;
+    }
+
+    /**
+     * Sepet ile sipariş anahtarı — Diğer Ayarlar sayfasının ilk bölümü.
+     *
+     * @return void
+     */
+    private function render_sepet_siparis_section() {
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+        $durum = isset( $_GET['sepet_msg'] ) ? sanitize_key( wp_unslash( $_GET['sepet_msg'] ) ) : '';
+        $aktif = (int) get_option( 'qmo_sepet_aktif', 0 );
+
+        if ( 'kaydedildi' === $durum ) {
+            echo '<div class="notice notice-success is-dismissible"><p>Sepet ile sipariş ayarı kaydedildi.</p></div>';
+        }
+        ?>
+        <div class="rma-card" id="rma-sepet-siparis">
+            <h2 class="rma-card-title">Sepet ile Sipariş</h2>
+            <p class="rma-card-desc">Masadan QR ile giren müşterilerin menüden direkt sipariş verebilmesini sağlar. Kapalıyken sepet menünün altında hiç gösterilmez. Varsayılan: kapalı.</p>
+
+            <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+                <?php wp_nonce_field( 'qmo_sepet_ayar_kaydet' ); ?>
+                <input type="hidden" name="action" value="qmo_sepet_ayar_kaydet">
+                <input type="hidden" name="qmo_sepet_aktif" value="0">
+
+                <label class="rma-check-row" for="qmo-sepet-aktif">
+                    <span class="rma-switch">
+                        <input type="checkbox" name="qmo_sepet_aktif" id="qmo-sepet-aktif" value="1" <?php checked( 1, $aktif ); ?>>
+                        <span class="rma-slider"></span>
+                    </span>
+                    <span>Sepet ile siparişi etkinleştir</span>
+                </label>
+                <p class="description rma-desc">Açıkken <code>[restaurant_menu]</code> çıktısının altına sepet otomatik eklenir. Elle <code>[qmo_sepet]</code> kısa kodu hâlâ herhangi bir sayfaya yazılabilir; aynı sayfada iki kez basılmaz.</p>
+
+                <p class="rma-actions">
+                    <?php submit_button( 'Kaydet', 'primary', 'submit', false ); ?>
+                </p>
+            </form>
+        </div>
+        <?php
     }
 
     public function render_category_order_page() {

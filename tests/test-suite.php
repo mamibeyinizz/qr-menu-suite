@@ -60,6 +60,11 @@ function qrms_reset() {
 	$_POST                              = array();
 	$_GET                               = array();
 	$_COOKIE                            = array();
+
+	// [qmo_sepet] istek-içi tek basım bayrağı testler arasında taşınmasın.
+	if ( function_exists( 'qmo_sepet_istekte_basildi' ) ) {
+		qmo_sepet_istekte_basildi( false );
+	}
 }
 
 /**
@@ -3041,6 +3046,106 @@ qrms_test(
 		qrms_assert_true( qmo_sepet_izinli_mi(), 'oturum geçerli' );
 		qrms_assert_true( false !== qmo_oturum(), 'qmo_oturum HMAC çerezini okur' );
 		qrms_assert_same( 'masa-31', qmo_oturum()['masa'], 'masa slug\'ı korunur' );
+	}
+);
+
+qrms_test(
+	'sepet anahtarı varsayılan kapalıdır (opt-in)',
+	function () {
+		qrms_assert_false( qmo_sepet_aktif_mi(), 'option yokken kapalı' );
+		qrms_assert_same( '<menu/>', qmo_sepet_menuye_ekle( '<menu/>' ), 'kapalıyken menü çıktısı değişmez' );
+	}
+);
+
+qrms_test(
+	'anahtar açık + masa oturumu yokken menü altına sepet basılmaz',
+	function () {
+		$GLOBALS['qrms_test']['can']       = false;
+		$GLOBALS['qrms_test']['logged_in'] = false;
+		unset( $_COOKIE[ QMO_Oturum::COOKIE ] );
+		update_option( 'qmo_sepet_aktif', 1 );
+
+		qrms_assert_true( qmo_sepet_aktif_mi(), 'anahtar açık' );
+		qrms_assert_false( qmo_sepet_izinli_mi(), 'oturum yok' );
+		qrms_assert_same( '<menu/>', qmo_sepet_menuye_ekle( '<menu/>' ), 'izin yokken enjeksiyon boş ekler' );
+	}
+);
+
+qrms_test(
+	'anahtar açık + masa oturumu varken menü altına sepet eklenir',
+	function () {
+		$GLOBALS['qrms_test']['can']       = false;
+		$GLOBALS['qrms_test']['logged_in'] = false;
+		$GLOBALS['qrms_test']['options'][ QMO_Oturum::OPT_KEY ] = 'test-hmac-anahtari-sepet-icin-yeterince-uzun';
+		update_option( 'qmo_sepet_aktif', 1 );
+
+		$token = QMO_Oturum::token_uret( 'masa-12' );
+		$_COOKIE[ QMO_Oturum::COOKIE ] = $token;
+
+		$html = qmo_sepet_menuye_ekle( '<div class="rma-wrap"></div>' );
+
+		qrms_assert_contains( '<div class="rma-wrap"></div>', $html, 'menü durur' );
+		qrms_assert_contains( 'id="qmo-sepet-root"', $html, 'sepet menünün altında' );
+		qrms_assert_true(
+			strpos( $html, 'id="qmo-sepet-root"' ) > strpos( $html, 'rma-wrap' ),
+			'sepet menüden sonra gelir'
+		);
+	}
+);
+
+qrms_test(
+	'aynı istekte sepet HTML\'i yalnızca bir kez basılır',
+	function () {
+		$GLOBALS['qrms_test']['can']       = true;
+		$GLOBALS['qrms_test']['logged_in'] = true;
+
+		$ilk = qmo_sepet_shortcode();
+		$iki = qmo_sepet_shortcode();
+		$uc  = qmo_sepet_menuye_ekle( '[elle]' );
+
+		qrms_assert_contains( 'id="qmo-sepet-root"', $ilk, 'ilk çağrı basar' );
+		qrms_assert_same( 1, substr_count( $ilk, 'id="qmo-sepet-root"' ), 'kök tekildir' );
+		qrms_assert_same( '', $iki, 'ikinci kısa kod boş' );
+		qrms_assert_same( '[elle]', $uc, 'otomatik enjeksiyon ikinci kopyayı eklemez' );
+	}
+);
+
+qrms_test(
+	'anahtar kapalıyken elle [qmo_sepet] hâlâ render edilir',
+	function () {
+		$GLOBALS['qrms_test']['can']       = true;
+		$GLOBALS['qrms_test']['logged_in'] = true;
+		update_option( 'qmo_sepet_aktif', 0 );
+
+		qrms_assert_false( qmo_sepet_aktif_mi(), 'anahtar kapalı' );
+		qrms_assert_same( '<menu/>', qmo_sepet_menuye_ekle( '<menu/>' ), 'otomatik ekleme yok' );
+		qrms_assert_contains( 'id="qmo-sepet-root"', qmo_sepet_shortcode(), 'elle kısa kod çalışır' );
+	}
+);
+
+qrms_test(
+	'Diğer Ayarlar sayfasında sepet anahtarı ve kaydetme ucu vardır',
+	function () {
+		$sayfa = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-admin-pages.php' );
+		$boot  = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/qr-menu.php' );
+		$on    = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-frontend.php' );
+		$kisa  = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/includes/shortcode-sepet.php' );
+		$css   = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/css/admin-ui.css' );
+
+		qrms_assert_contains( 'Sepet ile Sipariş', $sayfa, 'bölüm başlığı' );
+		qrms_assert_contains( 'Sepet ile siparişi etkinleştir', $sayfa, 'anahtar etiketi' );
+		qrms_assert_contains( "id=\"rma-sepet-siparis\"", $sayfa, 'bölüm çapası' );
+		qrms_assert_contains( "href=\"#rma-sepet-siparis\"", $sayfa, 'nav bağlantısı' );
+		qrms_assert_contains( 'handle_sepet_ayar_save', $sayfa, 'kaydetme metodu' );
+		qrms_assert_contains( "check_admin_referer( 'qmo_sepet_ayar_kaydet' )", $sayfa, 'nonce' );
+		qrms_assert_contains( 'QRMS_Admin::CAPABILITY', $sayfa, 'yetki kontrolü' );
+		qrms_assert_contains( "update_option( 'qmo_sepet_aktif'", $sayfa, 'option kaydı' );
+		qrms_assert_contains( "admin_post_qmo_sepet_ayar_kaydet", $boot, 'admin-post ucu' );
+		qrms_assert_contains( "function_exists( 'qmo_sepet_menuye_ekle' )", $on, 'menü render enjeksiyonu' );
+		qrms_assert_contains( 'qmo_sepet_menuye_ekle', $on, 'enjeksiyon çağrısı' );
+		qrms_assert_contains( 'add_shortcode( \'qmo_sepet\'', $kisa, 'elle kısa kod durur' );
+		qrms_assert_contains( 'qmo_sepet_istekte_basildi', $kisa, 'çift-render bayrağı' );
+		qrms_assert_contains( '.rma-admin .rma-switch', $css, 'ayar sayfası anahtar stili' );
 	}
 );
 
