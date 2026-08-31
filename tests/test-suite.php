@@ -12945,6 +12945,88 @@ qrms_test(
 	}
 );
 
+echo "\nQR Çeviri (P0 köprü / çalışma saatleri)\n";
+
+qrms_test(
+	'saat kaynak metinleri katalogda ve anahtarları kararlı',
+	function () {
+		$metinler = rma_ceviri_modul_stringleri( 'hours' );
+		$beklenen = array(
+			'Pazartesi',
+			'Salı',
+			'Çarşamba',
+			'Perşembe',
+			'Cuma',
+			'Cumartesi',
+			'Pazar',
+			'Kapalı',
+			'24 saat açık',
+			'%1$s – %2$s',
+		);
+
+		foreach ( $beklenen as $metin ) {
+			qrms_assert_same(
+				$metin,
+				$metinler[ rma_ceviri_ui_anahtari( $metin ) ],
+				$metin
+			);
+		}
+
+		qrms_assert_same(
+			'Pazartesi',
+			rma_ceviri_guncel_orijinal( 0, 'hours', rma_ceviri_ui_anahtari( 'Pazartesi' ) ),
+			'guncel orijinal'
+		);
+	}
+);
+
+qrms_test(
+	'saat ön yüzü rma_ceviri_modul köprüsünü kullanır; çeviri yoksa Türkçe',
+	function () {
+		$kaynak = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-calisma-saatleri/includes/hours.php' );
+
+		qrms_assert_contains( "rma_ceviri_modul( 'hours'", $kaynak, 'köprü çağrısı' );
+		qrms_assert_contains( "__( 'Pazartesi', 'qrms' )", $kaynak, 'textdomain gün adı' );
+		qrms_assert_contains( "__( 'Kapalı', 'qrms' )", $kaynak, 'textdomain Kapalı' );
+		qrms_assert_contains( "__( '24 saat açık', 'qrms' )", $kaynak, 'textdomain 24 saat' );
+		qrms_assert_contains( "__( '%1\$s – %2\$s', 'qrms' )", $kaynak, 'textdomain biçim dizesi' );
+
+		$etiket = qrms_cs_day_labels();
+		qrms_assert_same( 'Pazartesi', $etiket['monday'], 'Pazartesi' );
+		qrms_assert_same( 'Pazar', $etiket['sunday'], 'Pazar' );
+		qrms_assert_same( 'Kapalı', qrms_cs_format_day( array( 'closed' => true ) ), 'Kapalı' );
+		qrms_assert_same(
+			'24 saat açık',
+			qrms_cs_format_day( array( 'closed' => false, 'open' => '00:00', 'close' => '00:00' ) ),
+			'24 saat'
+		);
+		qrms_assert_same(
+			'09:00 – 22:00',
+			qrms_cs_format_day( array( 'closed' => false, 'open' => '09:00', 'close' => '22:00' ) ),
+			'aralık biçimi'
+		);
+	}
+);
+
+qrms_test(
+	'footer saat sütunu aynı gün adı ve biçim fonksiyonlarını kullanır',
+	function () {
+		$kaynak = file_get_contents( QRMS_PLUGIN_DIR . 'modules/header-footer-builder/includes/trait-frontend.php' );
+
+		qrms_assert_contains( 'function render_hours_column', $kaynak, 'sütun fonksiyonu' );
+		qrms_assert_contains( 'qrms_cs_day_labels()', $kaynak, 'gün adları ortak' );
+		qrms_assert_contains( 'qrms_cs_format_day(', $kaynak, 'saat biçimi ortak' );
+		qrms_assert_false(
+			(bool) preg_match( "/__\(\s*'Pazartesi'/", $kaynak ),
+			'footer kendi gün adını basmaz'
+		);
+		qrms_assert_false(
+			(bool) preg_match( "/__\(\s*'Kapalı'/", $kaynak ),
+			'footer kendi Kapalı metnini basmaz'
+		);
+	}
+);
+
 
 if ( empty( $GLOBALS['qrms_failures'] ) ) {
 	echo "\033[32mTüm testler geçti\033[0m (" . $GLOBALS['qrms_assertions'] . " doğrulama)\n\n";

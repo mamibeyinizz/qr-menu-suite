@@ -294,7 +294,18 @@ if ( ! function_exists( 'rma_ceviri_modul_kaynak_metinleri' ) ) {
 	function rma_ceviri_modul_kaynak_metinleri() {
 		$katalog = array(
 			'splash'  => array(),
-			'hours'   => array(),
+			'hours'   => array(
+				'Pazartesi',
+				'Salı',
+				'Çarşamba',
+				'Perşembe',
+				'Cuma',
+				'Cumartesi',
+				'Pazar',
+				'Kapalı',
+				'24 saat açık',
+				'%1$s – %2$s',
+			),
 			'chat'    => array(),
 			'cart'    => array(),
 			'review'  => array(),
@@ -336,12 +347,15 @@ if ( ! function_exists( 'rma_ceviri_modul_stringleri' ) ) {
  * (`__( $turkce, 'qrms' )` ile sarmalanmış girdi) → Türkçe kaynak.
  * Çeviri yoksa veya boşsa Türkçe (girdi) döner; anahtar adı asla basılmaz.
  *
- * @param string $tip   splash|hours|chat|cart|review|gallery|lock|ui_string.
- * @param string $metin Türkçe kaynak (veya textdomain çıktısı — site dili TR iken aynı).
+ * @param string      $tip   splash|hours|chat|cart|review|gallery|lock|ui_string.
+ * @param string      $metin Türkçe kaynak (veya textdomain çıktısı — site dili TR iken aynı).
+ * @param string|null $lang  Dil kodu; null ise rma_get_current_lang(). Kilit
+ *                           ekranı Accept-Language'ı buradan geçirir — genel
+ *                           dil zincirine eklenmez.
  * @return string
  */
 if ( ! function_exists( 'rma_ceviri_modul' ) ) {
-	function rma_ceviri_modul( $tip, $metin ) {
+	function rma_ceviri_modul( $tip, $metin, $lang = null ) {
 		$metin = (string) $metin;
 
 		if ( '' === $metin ) {
@@ -352,7 +366,7 @@ if ( ! function_exists( 'rma_ceviri_modul' ) ) {
 			return $metin;
 		}
 
-		$ceviri = rma_translate_field( 0, $tip, rma_ceviri_ui_anahtari( $metin ), $metin );
+		$ceviri = rma_translate_field( 0, $tip, rma_ceviri_ui_anahtari( $metin ), $metin, $lang );
 
 		return ( '' !== (string) $ceviri ) ? (string) $ceviri : $metin;
 	}
