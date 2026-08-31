@@ -39,8 +39,10 @@
 		return document.querySelector('#qrms-cs-preview .qrms-cs-item[data-day="' + day + '"]');
 	}
 
+	// Renk değişkenleri kartta (kısa kodun kapsayıcısında) durur — ön yüzde
+	// qrms_cs_inline_style_attr() de onları oraya basar.
 	function previewList() {
-		return document.querySelector('#qrms-cs-preview .qrms-cs-list');
+		return document.querySelector('#qrms-cs-preview .qrms-cs-card');
 	}
 
 	/* ---------------- Gün kartları ---------------- */
