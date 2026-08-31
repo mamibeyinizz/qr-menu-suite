@@ -408,6 +408,119 @@ if ( ! function_exists( 'qmo_oturum_uyari_kutusu' ) ) {
 }
 
 /* -------------------------------------------------------------------------
+ * ANALİTİK YAZIM — qr-analiz lisansta yoksa no-op
+ *
+ * Chatbot sipariş/sepet/çağrı uçları buradan yazar. Sınıf yüklenmemişse
+ * (modül pasif) hiçbir şey olmaz; analitik bir bağımlılık değildir.
+ * ---------------------------------------------------------------------- */
+
+/**
+ * Bir analitik olayını sessizce kaydeder.
+ *
+ * Yazım QRMS_Analitik::kaydet() üzerinden gider; yeni INSERT yolu açılmaz.
+ * Başarısızlık yutulur — çağıranın akışı kesilmesin.
+ *
+ * @param array $satir event_type ve isteğe bağlı item_id / item_name / category_name / masa_no.
+ * @return void
+ */
+if ( ! function_exists( 'qmo_analitik_yaz' ) ) {
+	function qmo_analitik_yaz( array $satir ) {
+		if ( ! class_exists( 'QRMS_Analitik' ) ) {
+			return;
+		}
+
+		try {
+			QRMS_Analitik::kaydet( $satir );
+		} catch ( Exception $e ) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch
+			return;
+		}
+	}
+}
+
+/**
+ * Yayınlanmış bir menü ürününden analitik alanlarını çözer.
+ *
+ * Kimlik geçersizse (yok, yanlış tip, taslak) boş dizi döner; çağıran
+ * o olayı atlar. Ad ve kategori SUNUCUDA okunur, istemciye güvenilmez.
+ *
+ * @param int $item_id Ürün kimliği.
+ * @return array{item_id:int,item_name:string,category_name:string}|array{}
+ */
+if ( ! function_exists( 'qmo_analitik_urun_alani' ) ) {
+	function qmo_analitik_urun_alani( $item_id ) {
+		$item_id = absint( $item_id );
+
+		if ( $item_id < 1 ) {
+			return array();
+		}
+
+		$post = get_post( $item_id );
+
+		if ( ! $post || 'rma_menu_item' !== $post->post_type || 'publish' !== $post->post_status ) {
+			return array();
+		}
+
+		$terimler = wp_get_post_terms( $item_id, 'rma_category' );
+		$kategori = ( ! is_wp_error( $terimler ) && ! empty( $terimler ) ) ? (string) $terimler[0]->name : '';
+
+		return array(
+			'item_id'       => $item_id,
+			'item_name'     => (string) get_the_title( $item_id ),
+			'category_name' => $kategori,
+		);
+	}
+}
+
+/**
+ * Ürün adından yayınlanmış menü kaydını bulur (sipariş kalemleri kimlik taşımaz).
+ *
+ * Tam başlık eşleşmesi yoksa ad yine yazılır, item_id 0 kalır — sipariş
+ * akışı bunun için ek sorguya boğulmasın.
+ *
+ * @param string $ad Türkçe ürün adı.
+ * @return array{item_id:int,item_name:string,category_name:string}
+ */
+if ( ! function_exists( 'qmo_analitik_urun_ada_gore' ) ) {
+	function qmo_analitik_urun_ada_gore( $ad ) {
+		$ad = sanitize_text_field( (string) $ad );
+
+		if ( '' === $ad ) {
+			return array(
+				'item_id'       => 0,
+				'item_name'     => '',
+				'category_name' => '',
+			);
+		}
+
+		$posts = get_posts(
+			array(
+				'post_type'              => 'rma_menu_item',
+				'post_status'            => 'publish',
+				'title'                  => $ad,
+				'posts_per_page'         => 1,
+				'no_found_rows'          => true,
+				'ignore_sticky_posts'    => true,
+				'update_post_meta_cache' => false,
+			)
+		);
+
+		if ( ! empty( $posts ) && isset( $posts[0]->ID ) ) {
+			$alan = qmo_analitik_urun_alani( (int) $posts[0]->ID );
+
+			if ( ! empty( $alan ) ) {
+				return $alan;
+			}
+		}
+
+		return array(
+			'item_id'       => 0,
+			'item_name'     => $ad,
+			'category_name' => '',
+		);
+	}
+}
+
+/* -------------------------------------------------------------------------
  * Geriye dönük uyumluluk — eski snippet fonksiyon adları
  * ---------------------------------------------------------------------- */
 

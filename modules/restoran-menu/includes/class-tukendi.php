@@ -155,6 +155,18 @@ class RMA_Tukendi {
      * @return string|null Engel mesajı veya null.
      */
     public static function siparis_engeli( array $kalemler ) {
+        $detay = self::siparis_engeli_detay( $kalemler );
+
+        return null !== $detay ? $detay['mesaj'] : null;
+    }
+
+    /**
+     * Tükendi engelinin yapısal ayrıntısı — mesajdan ürün adı AYIKLANMAZ.
+     *
+     * @param array<int,array<string,mixed>> $kalemler urunAdi içeren dizi.
+     * @return array{mesaj:string,item_id:int,item_name:string}|null
+     */
+    public static function siparis_engeli_detay( array $kalemler ) {
         foreach ( $kalemler as $kalem ) {
             if ( ! is_array( $kalem ) ) {
                 continue;
@@ -165,8 +177,13 @@ class RMA_Tukendi {
                 continue;
             }
 
-            if ( self::ad_tukendi( $ad ) ) {
-                return self::mesaj();
+            $urun = self::ad_tukendi_urun( $ad );
+            if ( $urun ) {
+                return array(
+                    'mesaj'     => self::mesaj(),
+                    'item_id'   => (int) $urun['id'],
+                    'item_name' => (string) $urun['name'],
+                );
             }
         }
 
@@ -184,33 +201,43 @@ class RMA_Tukendi {
      * @return bool
      */
     public static function ad_tukendi( $urun_adi ) {
-        $hedef = self::ad_normalize( $urun_adi );
-        if ( '' === $hedef ) {
-            return false;
-        }
-
-        foreach ( self::tukendi_adlari() as $ad ) {
-            if ( $ad === $hedef ) {
-                return true;
-            }
-        }
-
-        return false;
+        return null !== self::ad_tukendi_urun( $urun_adi );
     }
 
     /**
-     * Tükendi işaretli yayın ürün adları (normalize, istek içi önbellek).
+     * Ada göre tükendi ürünü (id + görünen ad) veya null.
      *
-     * @return string[]
+     * @param string $urun_adi Chatbot'un gönderdiği Türkçe ad.
+     * @return array{id:int,name:string,ad:string}|null
      */
-    private static function tukendi_adlari() {
-        static $adlar = null;
-
-        if ( is_array( $adlar ) ) {
-            return $adlar;
+    public static function ad_tukendi_urun( $urun_adi ) {
+        $hedef = self::ad_normalize( $urun_adi );
+        if ( '' === $hedef ) {
+            return null;
         }
 
-        $adlar = array();
+        foreach ( self::tukendi_urunleri() as $urun ) {
+            if ( $urun['ad'] === $hedef ) {
+                return $urun;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Tükendi işaretli yayın ürünleri (istek içi önbellek).
+     *
+     * @return array<int,array{id:int,name:string,ad:string}>
+     */
+    private static function tukendi_urunleri() {
+        static $urunler = null;
+
+        if ( is_array( $urunler ) ) {
+            return $urunler;
+        }
+
+        $urunler = array();
 
         $posts = get_posts(
             array(
@@ -228,8 +255,27 @@ class RMA_Tukendi {
         foreach ( $posts as $post ) {
             $ad = self::ad_normalize( $post->post_title );
             if ( '' !== $ad ) {
-                $adlar[] = $ad;
+                $urunler[] = array(
+                    'id'   => (int) $post->ID,
+                    'name' => (string) $post->post_title,
+                    'ad'   => $ad,
+                );
             }
+        }
+
+        return $urunler;
+    }
+
+    /**
+     * Tükendi işaretli yayın ürün adları (normalize, istek içi önbellek).
+     *
+     * @return string[]
+     */
+    private static function tukendi_adlari() {
+        $adlar = array();
+
+        foreach ( self::tukendi_urunleri() as $urun ) {
+            $adlar[] = $urun['ad'];
         }
 
         return $adlar;
@@ -238,11 +284,20 @@ class RMA_Tukendi {
     /**
      * Chatbot sipariş filtresi — qmo_siparis_isle içinden çağrılır.
      *
-     * @param string|null $engel  Önceki filtrenin mesajı.
-     * @param array       $kalemler Temizlenmiş sipariş kalemleri.
-     * @return string|null
+     * String dönüşü (önceki bir filtrenin mesajı) olduğu gibi geçer. Bu
+     * filtrenin kendi engeli yapısal dizi döner: rest-order ürünü mesajdan
+     * ayıklamak zorunda kalmasın. Dizi tanımayan eski tüketiciler
+     * `is_string` ile eskisi gibi çalışır.
+     *
+     * @param string|array|null $engel  Önceki filtrenin mesajı veya ayrıntısı.
+     * @param array             $kalemler Temizlenmiş sipariş kalemleri.
+     * @return string|array|null
      */
     public static function siparis_filtresi( $engel, $kalemler ) {
+        if ( is_array( $engel ) && ! empty( $engel['mesaj'] ) ) {
+            return $engel;
+        }
+
         if ( is_string( $engel ) && '' !== $engel ) {
             return $engel;
         }
@@ -251,9 +306,9 @@ class RMA_Tukendi {
             return $engel;
         }
 
-        $mesaj = self::siparis_engeli( $kalemler );
+        $detay = self::siparis_engeli_detay( $kalemler );
 
-        return null !== $mesaj ? $mesaj : $engel;
+        return null !== $detay ? $detay : $engel;
     }
 
     /**

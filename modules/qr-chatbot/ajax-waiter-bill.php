@@ -83,6 +83,15 @@ if ( ! function_exists( 'qmo_cagri_gonder' ) ) {
 			wp_send_json_error( array( 'msg' => 'Çağrınız iletildi, lütfen bekleyin.' ), 429 );
 		}
 
+		// Analitik, Firestore'dan BAĞIMSIZ ve bağlantı bırakılmadan ÖNCE.
+		// Hız sınırına takılan çağrılar buraya gelmez — spam sayacı şişmez.
+		qmo_analitik_yaz(
+			array(
+				'event_type' => ( 'hesap' === $tip ) ? 'bill_request' : 'waiter_call',
+				'masa_no'    => $masa,
+			)
+		);
+
 		// Firestore yazımı 15 saniyeye kadar sürebilir; bağlantı o süre
 		// boyunca kullanılmayacağı için bırakılır.
 		$db_kapali = qmo_db_serbest_birak();

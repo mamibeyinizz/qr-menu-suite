@@ -182,6 +182,9 @@ if ( ! function_exists( 'qmo_sepet_shortcode' ) ) {
 				'endpoint'  => qmo_sepet_order_url(),
 				'restNonce' => wp_create_nonce( 'wp_rest' ),
 				'kur'       => qmo_sepet_kur(),
+				'ajaxUrl'   => admin_url( 'admin-ajax.php' ),
+				'nonce'     => wp_create_nonce( QMO_NONCE_ACTION ),
+				'analitik'  => class_exists( 'QRMS_Analitik' ),
 			)
 		);
 

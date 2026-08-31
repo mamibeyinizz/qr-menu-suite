@@ -3515,6 +3515,11 @@ qrms_test(
 		qrms_assert_contains( 'css/sepet.css', $kayit, 'CSS yolu' );
 		qrms_assert_contains( 'js/sepet.js', $kayit, 'JS yolu' );
 		qrms_assert_contains( "qmo_asset_enqueue( 'qmo-sepet' )", $kisa, 'kısa kod render\'da enqueue' );
+		qrms_assert_contains( 'ajax-sepet-analitik.php', $kayit, 'sepet analitik AJAX ucu yüklenir' );
+		qrms_assert_true(
+			file_exists( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/ajax-sepet-analitik.php' ),
+			'analitik AJAX dosyası durur'
+		);
 		qrms_assert_true(
 			file_exists( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/assets/js/sepet.js' ),
 			'sepet.js durur'
@@ -3523,6 +3528,21 @@ qrms_test(
 			file_exists( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/assets/css/sepet.css' ),
 			'sepet.css durur'
 		);
+	}
+);
+
+qrms_test(
+	'sepet analitik ucu nonce, oturum masası ve hız sınırı kullanır',
+	function () {
+		$php = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/ajax-sepet-analitik.php' );
+
+		qrms_assert_contains( 'qmo_nonce_dogrula()', $php, 'nonce' );
+		qrms_assert_contains( 'qmo_oturum()', $php, 'masa oturumdan' );
+		qrms_assert_contains( "qmo_hiz_siniri( 'sepet_olay'", $php, 'hız sınırı' );
+		qrms_assert_contains( "class_exists( 'QRMS_Analitik' )", $php, 'analitik yoksa no-op' );
+		qrms_assert_contains( 'qmo_analitik_urun_alani', $php, 'yayın ürünü doğrulanır' );
+		qrms_assert_contains( 'qmo_analitik_yaz', $php, 'kaydet köprüsü' );
+		qrms_assert_false( false !== strpos( $php, "\$_POST['masa" ), 'istemci masasına güvenilmez' );
 	}
 );
 
@@ -3541,8 +3561,14 @@ qrms_test(
 		qrms_assert_contains( 'fiyatMetni', $js, 'kampanyalı fiyatta eski+yeni birleşmez' );
 		qrms_assert_contains( "'.rma-card, .qrms-vitrin-card, .qmo-slider-product'", $js, 'vitrin/slider kartı da modal yakalar' );
 		qrms_assert_contains( 'qmoSepet.endpoint', $js, 'sipariş qmoSepet.endpoint üzerinden gider' );
+		qrms_assert_contains( 'qmo_sepet_olay', $js, 'sepet analitik ucu' );
+		qrms_assert_contains( 'analitikKuyrukla', $js, 'sepet olayları kuyruklanır' );
+		qrms_assert_contains( 'ANALITIK_PENCERE', $js, 'debounce penceresi' );
+		qrms_assert_contains( 'body.getAttribute( \'data-id\' )', $js, 'ürün kimliği modal data-id' );
 		$php = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/includes/shortcode-sepet.php' );
 		qrms_assert_contains( 'qrservis/v1/order', $php, 'REST adresi shortcode\'da üretilir' );
+		qrms_assert_contains( "'analitik'", $php, 'analitik bayrağı localize edilir' );
+		qrms_assert_contains( 'QMO_NONCE_ACTION', $php, 'sepet analitik nonce\'u sipariş/AJAX deseni' );
 	}
 );
 
@@ -3590,7 +3616,8 @@ qrms_test(
 		$php = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-ajax.php' );
 		$js  = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/js/rma-detail-modal.js' );
 
-		qrms_assert_contains( '<div class="rma-modal-body">', $php, 'iç HTML kökünde rma-modal-body' );
+		qrms_assert_contains( 'class="rma-modal-body"', $php, 'iç HTML kökünde rma-modal-body' );
+		qrms_assert_contains( 'data-id="%d"', $php, 'ürün kimliği modal gövdede' );
 		qrms_assert_contains( 'class="rma-modal-img"', $php, 'img class\'ı rma-modal-img' );
 		qrms_assert_contains( "inner.innerHTML = html", $js, 'içerik qrms-detail-inner\'a enjekte edilir' );
 		qrms_assert_contains( "overlay.className = 'qrms-detail-overlay'", $js, 'dış overlay yeni class' );
@@ -5781,6 +5808,74 @@ qrms_test(
 			false !== strpos( $kok, "wp_clear_scheduled_hook( '" . QRMS_Analitik::CRON_TEMIZLIK . "' )" ),
 			'deaktivasyon aynı kancayı temizliyor'
 		);
+	}
+);
+
+qrms_test(
+	'tip bazlı saklama sepeti kısaltır, siparişi uzatır, tanımsız varsayılanı kullanır',
+	function () {
+		delete_option( QRMS_Analitik::SAKLAMA_OPT );
+
+		qrms_assert_same( 14, QRMS_Analitik::saklama_gun_tip( 'cart_add' ), 'sepet ekleme kısa' );
+		qrms_assert_same( 14, QRMS_Analitik::saklama_gun_tip( 'cart_remove' ), 'sepet çıkarma kısa' );
+		qrms_assert_same( 365, QRMS_Analitik::saklama_gun_tip( 'order_sent' ), 'sipariş uzun' );
+		qrms_assert_same( 365, QRMS_Analitik::saklama_gun_tip( 'order_blocked' ), 'engel uzun' );
+		qrms_assert_same( 90, QRMS_Analitik::saklama_gun_tip( 'menu_view' ), 'tanımsız varsayılan' );
+		qrms_assert_same( 90, QRMS_Analitik::saklama_gun_tip( 'waiter_call' ), 'çağrı varsayılan' );
+
+		add_filter(
+			'qrms_analitik_saklama_gun_tip',
+			function ( $harita ) {
+				$harita['cart_add'] = 3;
+				return $harita;
+			}
+		);
+
+		qrms_assert_same( 3, QRMS_Analitik::saklama_gun_tip( 'cart_add' ), 'filtre tip istisnasını ezer' );
+		qrms_assert_same( 14, QRMS_Analitik::saklama_gun_tip( 'cart_remove' ), 'diğer istisna durur' );
+
+		$GLOBALS['qrms_test']['actions']['qrms_analitik_saklama_gun_tip'] = array();
+		delete_option( QRMS_Analitik::SAKLAMA_OPT );
+	}
+);
+
+qrms_test(
+	'global temizlik kapalıyken tip istisnası da silmez',
+	function () {
+		add_filter(
+			'qrms_analitik_saklama_gun',
+			function () {
+				return 0;
+			}
+		);
+
+		qrms_assert_same( 0, QRMS_Analitik::saklama_gun_tip( 'cart_add' ), 'sepet de saklanır' );
+		qrms_assert_same( 0, QRMS_Analitik::eski_kayitlari_sil(), 'hiçbir tip silinmez' );
+	}
+);
+
+qrms_test(
+	'sepet ve sipariş olay adları varchar(30) sınırının altında',
+	function () {
+		foreach ( QRMS_Analitik::OLAY_TIPLERI as $tip ) {
+			qrms_assert_true( strlen( $tip ) <= 30, $tip . ' uzunluğu' );
+		}
+	}
+);
+
+qrms_test(
+	'kaydet dışarıdan çağrılabilir ve tek yazım yoludur',
+	function () {
+		$yansima = new ReflectionMethod( 'QRMS_Analitik', 'kaydet' );
+		qrms_assert_true( $yansima->isPublic(), 'kaydet public' );
+
+		$kaynak = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/class-qrms-analitik.php' );
+		qrms_assert_same( 1, substr_count( $kaynak, '$wpdb->insert(' ), 'tek INSERT' );
+
+		$yardimci = file_get_contents( QRMS_PLUGIN_DIR . 'modules/_qmo-ortak/helpers.php' );
+		qrms_assert_contains( 'function qmo_analitik_yaz', $yardimci, 'sessiz yazım köprüsü' );
+		qrms_assert_contains( "class_exists( 'QRMS_Analitik' )", $yardimci, 'lisans/modül yoksa no-op' );
+		qrms_assert_contains( 'QRMS_Analitik::kaydet', $yardimci, 'köprü kaydet kullanır' );
 	}
 );
 
@@ -8169,6 +8264,20 @@ qrms_test(
 	function () {
 		$siparis = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/rest-order.php' );
 		qrms_assert_contains( 'qmo_siparis_onay_oncesi', $siparis, 'sipariş kancası' );
+		qrms_assert_contains( 'order_blocked', $siparis, 'engel analitiği' );
+		qrms_assert_contains( 'order_sent', $siparis, 'başarılı sipariş olayı' );
+		qrms_assert_contains( 'order_failed', $siparis, 'başarısız sipariş olayı' );
+		qrms_assert_contains( 'qmo_analitik_siparis_yaz', $siparis, 'sipariş analitik yazımı' );
+
+		$cagri = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/ajax-waiter-bill.php' );
+		$hiz   = strpos( $cagri, 'qmo_hiz_siniri' );
+		$yaz   = strpos( $cagri, 'qmo_analitik_yaz' );
+		$birak = strpos( $cagri, 'qmo_db_serbest_birak' );
+		qrms_assert_true( false !== $hiz && false !== $yaz && false !== $birak, 'çağrı analitik noktaları var' );
+		qrms_assert_true( $hiz < $yaz, 'analitik hız sınırından sonra' );
+		qrms_assert_true( $yaz < $birak, 'analitik bağlantı bırakılmadan önce' );
+		qrms_assert_contains( 'waiter_call', $cagri, 'garson olayı' );
+		qrms_assert_contains( 'bill_request', $cagri, 'hesap olayı' );
 
 		$menu = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/qr-menu.php' );
 		qrms_assert_contains( "add_filter( 'qmo_siparis_onay_oncesi'", $menu, 'menü bağlar' );
@@ -8178,6 +8287,8 @@ qrms_test(
 
 		qrms_assert_same( null, RMA_Tukendi::siparis_engeli( array() ), 'boş sipariş' );
 		qrms_assert_same( 'önceki', RMA_Tukendi::siparis_filtresi( 'önceki', array() ), 'önceki engel korunur' );
+		qrms_assert_true( method_exists( 'RMA_Tukendi', 'siparis_engeli_detay' ), 'yapısal engel ayrıntısı' );
+		qrms_assert_true( method_exists( 'RMA_Tukendi', 'ad_tukendi_urun' ), 'engelleyen ürün kimliği' );
 	}
 );
 
@@ -9187,10 +9298,11 @@ qrms_test(
 		// sınırsız büyür ve üzerindeki her sorgu yavaşlardı.
 		$kaynak = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/class-qrms-analitik.php' );
 
-		qrms_assert_contains( 'for ( $tur = 0; $tur < self::SAKLAMA_TUR', $kaynak, 'tur içinde döngü var' );
+		qrms_assert_contains( 'while ( $tur < self::SAKLAMA_TUR', $kaynak, 'tur içinde döngü var' );
 		qrms_assert_contains( 'qrms_analitik_temizlik_sure', $kaynak, 'süre bütçesi filtrelenebilir' );
 		qrms_assert_contains( 'if ( $silinen < self::SAKLAMA_PARCA )', $kaynak, 'silinecek kalmayınca durur' );
 		qrms_assert_contains( 'self::SAKLAMA_TUR', $kaynak, 'sonsuz döngüye karşı emniyet freni' );
+		qrms_assert_contains( 'WHERE event_type = %s AND created_at < %s', $kaynak, 'silme idx_td kullanır' );
 	}
 );
 

@@ -1460,6 +1460,32 @@ function get_the_terms( $post_id, $taxonomy ) {
 }
 
 /**
+ * Terim listesi — get_the_terms ile aynı kutu.
+ *
+ * @param int    $post_id  Yazı kimliği.
+ * @param string $taxonomy Taksonomi.
+ * @return array|WP_Error
+ */
+function wp_get_post_terms( $post_id, $taxonomy, $args = array() ) {
+	unset( $args );
+	$terimler = get_the_terms( $post_id, $taxonomy );
+
+	return is_array( $terimler ) ? $terimler : array();
+}
+
+/**
+ * Yazı başlığı.
+ *
+ * @param int $post_id Yazı kimliği.
+ * @return string
+ */
+function get_the_title( $post_id = 0 ) {
+	$post = get_post( $post_id );
+
+	return ( $post && isset( $post->post_title ) ) ? (string) $post->post_title : '';
+}
+
+/**
  * Taksonomi terimleri. (Testte yalnızca 'names' alanı desteklenir.)
  *
  * @param array $args Argümanlar.

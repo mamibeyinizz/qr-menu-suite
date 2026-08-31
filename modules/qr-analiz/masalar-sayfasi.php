@@ -286,14 +286,10 @@ if ( ! function_exists( 'qrms_analitik_masa_verisi' ) ) {
 		}
 
 		/*
-		 * FAZ 6 — GARSON ÇAĞIRMA / HESAP İSTEME BURAYA GELECEK.
-		 *
-		 * waiter_call ve bill_request olayları henüz yazılmıyor (bkz.
-		 * modules/qr-chatbot/ajax-waiter-bill.php içindeki qmo_cagri_gonder).
-		 * Olaylar tabloya düşmeye başladığında burada masa başına iki sayaç
-		 * daha üretilecek: aynı masa_sayaclari() sorgusuna iki SUM(...) eklemek
-		 * yetecek, yeni bir sorgu gerekmeyecek. Bölüm o zamana kadar HİÇ
-		 * basılmaz — boş bir tablo, veri yokluğunu hata gibi gösterir.
+		 * Garson çağırma / hesap isteme sayaçları: waiter_call ve
+		 * bill_request olayları qmo_cagri_gonder içinde yazılıyor. Masa
+		 * başına iki SUM(...) eklemek yeni sorgu gerektirmez; bölüm
+		 * rapor tarafında ayrı bir iş olarak bağlanır.
 		 */
 
 		return $karne;

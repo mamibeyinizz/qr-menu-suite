@@ -146,6 +146,46 @@ class QRMS_Analitik {
 	const SAKLAMA_TUR = 50;
 
 	/**
+	 * Tip bazlı saklama istisnaları (gün).
+	 *
+	 * Tanımsız tipler saklama_gun() değerini kullanır — varsayılan davranış
+	 * değişmez. Sepet olayları her tıklamada (debounce'lu da olsa) yazılır;
+	 * 90 gün boyunca tutmak tabloyu şişirir. Sipariş olayları seyrek ve
+	 * değerlidir, bu yüzden daha uzun kalır.
+	 *
+	 * 0 = o tip hiç silinmez.
+	 *
+	 * @var array<string,int>
+	 */
+	const SAKLAMA_GUN_TIP = array(
+		'cart_add'      => 14,
+		'cart_remove'   => 14,
+		'order_sent'    => 365,
+		'order_blocked' => 365,
+		'order_failed'  => 180,
+	);
+
+	/**
+	 * Temizliğin tek tek (idx_td ile) tarayacağı bilinen olay tipleri.
+	 *
+	 * Yeni bir tip yazıldığında buraya eklenmezse, o tip varsayılan süreyle
+	 * yine de silinir: döngü haritadaki anahtarları da birleştirir.
+	 *
+	 * @var string[]
+	 */
+	const OLAY_TIPLERI = array(
+		'menu_view',
+		'product_click',
+		'cart_add',
+		'cart_remove',
+		'order_sent',
+		'order_failed',
+		'order_blocked',
+		'waiter_call',
+		'bill_request',
+	);
+
+	/**
 	 * Hook kayıtları.
 	 *
 	 * @return void
@@ -216,6 +256,73 @@ class QRMS_Analitik {
 		}
 
 		return max( 7, $gun );
+	}
+
+	/**
+	 * Tip bazlı saklama istisnalarının (filtre uygulanmış) haritası.
+	 *
+	 * @return array<string,int>
+	 */
+	public static function saklama_gun_tip_haritasi() {
+		/**
+		 * Olay tipine göre saklama süresi (gün). Anahtarı olmayan tipler
+		 * saklama_gun() kullanır. 0 = o tip silinmez.
+		 *
+		 * @param array<string,int> $harita Varsayılan istisnalar.
+		 */
+		$harita = apply_filters( 'qrms_analitik_saklama_gun_tip', self::SAKLAMA_GUN_TIP );
+
+		if ( ! is_array( $harita ) ) {
+			return self::SAKLAMA_GUN_TIP;
+		}
+
+		$temiz = array();
+
+		foreach ( $harita as $tip => $gun ) {
+			$tip = sanitize_key( (string) $tip );
+
+			if ( '' === $tip ) {
+				continue;
+			}
+
+			$temiz[ $tip ] = (int) $gun;
+		}
+
+		return $temiz;
+	}
+
+	/**
+	 * Bir olay tipinin saklanacağı gün sayısı.
+	 *
+	 * İstisna yoksa saklama_gun() — mevcut davranış. Global temizlik kapalıysa
+	 * (0) tip istisnaları da uygulanmaz: "sınırsız saklama" her tipi kapsar.
+	 *
+	 * @param string $tip event_type.
+	 * @return int
+	 */
+	public static function saklama_gun_tip( $tip ) {
+		$varsayilan = self::saklama_gun();
+
+		if ( 0 === $varsayilan ) {
+			return 0;
+		}
+
+		$tip    = sanitize_key( (string) $tip );
+		$harita = self::saklama_gun_tip_haritasi();
+
+		if ( ! isset( $harita[ $tip ] ) ) {
+			return $varsayilan;
+		}
+
+		$gun = (int) $harita[ $tip ];
+
+		if ( $gun <= 0 ) {
+			return 0;
+		}
+
+		// Tip istisnası kasıtlı olarak varsayılanın alt sınırından (7) kısa
+		// olabilir: sepet olayları 14 günde yeterince eğilim verir.
+		return $gun;
 	}
 
 	/**
@@ -372,14 +479,19 @@ class QRMS_Analitik {
 	 * raporları olduğu gibi kalır. Tek turda en fazla SAKLAMA_PARCA satır
 	 * silinir; kalanı ertesi gün (ya da elle tetiklendiğinde) temizlenir.
 	 *
+	 * Tip bazlı istisnalar idx_td (event_type, created_at) üzerinden, tip
+	 * başına ayrı DELETE ile uygulanır. Böylece sepet olayları 14 günde
+	 * giderken sipariş satırları 365 güne kadar kalır; tek bir
+	 * `created_at < varsayılan` silmesi uzun ömürlü tipleri de götürmez.
+	 *
 	 * @return int Silinen satır sayısı.
 	 */
 	public static function eski_kayitlari_sil() {
 		global $wpdb;
 
-		$gun = self::saklama_gun();
+		$varsayilan = self::saklama_gun();
 
-		if ( 0 === $gun ) {
+		if ( 0 === $varsayilan ) {
 			return 0;
 		}
 
@@ -387,8 +499,8 @@ class QRMS_Analitik {
 			return 0;
 		}
 
-		$tablo = self::tablo();
-		$sinir = gmdate( 'Y-m-d H:i:s', strtotime( '-' . $gun . ' days', self::simdi() ) );
+		$tablo  = self::tablo();
+		$tipler = array_unique( array_merge( self::OLAY_TIPLERI, array_keys( self::saklama_gun_tip_haritasi() ) ) );
 
 		/**
 		 * Bir temizlik turunun süre bütçesi (saniye). 0 = tek parça sil.
@@ -399,26 +511,49 @@ class QRMS_Analitik {
 		$baslar = microtime( true );
 
 		$toplam = 0;
+		$tur    = 0;
 
-		for ( $tur = 0; $tur < self::SAKLAMA_TUR; $tur++ ) {
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-			$silinen = (int) $wpdb->query(
-				$wpdb->prepare(
-					// created_at üzerinde idx_date var; aralık taraması indekslidir.
-					"DELETE FROM {$tablo} WHERE created_at < %s LIMIT %d",
-					$sinir,
-					self::SAKLAMA_PARCA
-				)
-			);
+		foreach ( $tipler as $tip ) {
+			$tip = sanitize_key( (string) $tip );
 
-			$toplam += $silinen;
-
-			// Parça dolmadıysa silinecek bir şey kalmamıştır.
-			if ( $silinen < self::SAKLAMA_PARCA ) {
-				break;
+			if ( '' === $tip ) {
+				continue;
 			}
 
-			if ( $butce <= 0 || ( microtime( true ) - $baslar ) >= $butce ) {
+			$gun = self::saklama_gun_tip( $tip );
+
+			if ( 0 === $gun ) {
+				continue;
+			}
+
+			$sinir = gmdate( 'Y-m-d H:i:s', strtotime( '-' . $gun . ' days', self::simdi() ) );
+
+			while ( $tur < self::SAKLAMA_TUR ) {
+				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+				$silinen = (int) $wpdb->query(
+					$wpdb->prepare(
+						// idx_td (event_type, created_at): eşitlik + aralık.
+						"DELETE FROM {$tablo} WHERE event_type = %s AND created_at < %s LIMIT %d",
+						$tip,
+						$sinir,
+						self::SAKLAMA_PARCA
+					)
+				);
+
+				++$tur;
+				$toplam += $silinen;
+
+				// Parça dolmadıysa bu tipte silinecek bir şey kalmamıştır.
+				if ( $silinen < self::SAKLAMA_PARCA ) {
+					break;
+				}
+
+				if ( $butce <= 0 || ( microtime( true ) - $baslar ) >= $butce ) {
+					return $toplam;
+				}
+			}
+
+			if ( $tur >= self::SAKLAMA_TUR ) {
 				break;
 			}
 		}
@@ -845,30 +980,62 @@ class QRMS_Analitik {
 	/**
 	 * Bir olayı tabloya yazar.
 	 *
+	 * TEK yazım yolu: chatbot sipariş/sepet/çağrı uçları da burayı çağırır;
+	 * $wpdb->insert başka yerde açılmaz. Sınıf yalnızca qr-analiz lisansta
+	 * aktifken yüklendiği için çağıran `class_exists( 'QRMS_Analitik' )`
+	 * ile bakar — yoksa sessizce hiç gelinmez.
+	 *
+	 * Insert başarısız olursa yutulur: analitik, sipariş/sepet akışını
+	 * kesmesin ve kullanıcıya hata basılmasın.
+	 *
 	 * @param array $satir Sütun => değer.
 	 * @return void
 	 */
-	private static function kaydet( array $satir ) {
+	public static function kaydet( array $satir ) {
 		global $wpdb;
 
-		$varsayilan = array(
-			'event_type'    => '',
-			'item_id'       => 0,
-			'item_name'     => '',
-			'category_name' => '',
-			'masa_no'       => self::masa_belirle(),
-			'ip_hash'       => self::ip_hash(),
-			'created_at'    => current_time( 'mysql' ),
-		);
+		try {
+			$varsayilan = array(
+				'event_type'    => '',
+				'item_id'       => 0,
+				'item_name'     => '',
+				'category_name' => '',
+				'masa_no'       => self::masa_belirle(),
+				'ip_hash'       => self::ip_hash(),
+				'created_at'    => current_time( 'mysql' ),
+			);
 
-		$satir = array_merge( $varsayilan, $satir );
+			$satir = array_merge( $varsayilan, $satir );
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		$wpdb->insert(
-			self::tablo(),
-			$satir,
-			array( '%s', '%d', '%s', '%s', '%s', '%s', '%s' )
-		);
+			if ( isset( $satir['event_type'] ) ) {
+				$satir['event_type'] = substr( sanitize_key( (string) $satir['event_type'] ), 0, 30 );
+			}
+
+			if ( isset( $satir['item_id'] ) ) {
+				$satir['item_id'] = absint( $satir['item_id'] );
+			}
+
+			if ( isset( $satir['item_name'] ) ) {
+				$satir['item_name'] = substr( sanitize_text_field( (string) $satir['item_name'] ), 0, 255 );
+			}
+
+			if ( isset( $satir['category_name'] ) ) {
+				$satir['category_name'] = substr( sanitize_text_field( (string) $satir['category_name'] ), 0, 255 );
+			}
+
+			if ( isset( $satir['masa_no'] ) ) {
+				$satir['masa_no'] = self::masa_temizle( $satir['masa_no'] );
+			}
+
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+			$wpdb->insert(
+				self::tablo(),
+				$satir,
+				array( '%s', '%d', '%s', '%s', '%s', '%s', '%s' )
+			);
+		} catch ( Exception $e ) {
+			return;
+		}
 	}
 
 	/**

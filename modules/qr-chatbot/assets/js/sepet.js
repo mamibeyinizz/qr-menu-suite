@@ -23,6 +23,63 @@
 	var KUR = qmoSepet.kur; // { USD: x, EUR: y } — 1 TL karşılığı
 	var KEY = 'qmo_sepet';
 
+	/* ---- analitik: cart_add / cart_remove ----
+	   HACİM: her tıklamada AJAX, wp_rma_analytics'i şişirir. Bu yüzden
+	   (a) istemci debounce + toplu gönderim seçildi: 3 sn'lik pencerede
+	   biriken olaylar tek istekte gider. (b) — oturum boyu biriktirip
+	   sipariş/terk anında yazmak — terk edilen sepeti (en değerli huninin
+	   kırılma noktası) kaybettirirdi; pagehide/sendBeacon de mobilde
+	   güvenilmez. Debounce huniyi korur, +/- spam'ini tek pakette toplar. */
+
+	var ANALITIK_PENCERE = 3000;
+	var analitikKuyruk = [];
+	var analitikTimer = null;
+	var sonKartId = 0;
+
+	function analitikAcik() {
+		return !!( qmoSepet && qmoSepet.analitik && qmoSepet.ajaxUrl && qmoSepet.nonce );
+	}
+
+	function analitikKuyrukla( tip, pid ) {
+		pid = parseInt( pid, 10 ) || 0;
+		if ( ! pid || ! analitikAcik() ) {
+			return;
+		}
+		if ( 'cart_add' !== tip && 'cart_remove' !== tip ) {
+			return;
+		}
+		analitikKuyruk.push( { tip: tip, item_id: pid } );
+		if ( analitikTimer ) {
+			return;
+		}
+		analitikTimer = setTimeout( analitikGonder, ANALITIK_PENCERE );
+	}
+
+	function analitikGonder() {
+		if ( analitikTimer ) {
+			clearTimeout( analitikTimer );
+			analitikTimer = null;
+		}
+		if ( ! analitikKuyruk.length || ! analitikAcik() ) {
+			analitikKuyruk = [];
+			return;
+		}
+		var paket = analitikKuyruk.splice( 0, 40 );
+		var govde = new URLSearchParams();
+		govde.append( 'action', 'qmo_sepet_olay' );
+		govde.append( 'nonce', qmoSepet.nonce );
+		govde.append( 'olaylar', JSON.stringify( paket ) );
+		try {
+			fetch( qmoSepet.ajaxUrl, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+				credentials: 'same-origin',
+				keepalive: true,
+				body: govde.toString()
+			} ).catch( function () {} );
+		} catch ( e ) {}
+	}
+
 	/* ---- dil & para birimi ---- */
 
 	function dil() {
@@ -249,8 +306,12 @@
 				var im      = imgEl ? imgEl.src : '';
 
 				var adet = parseInt( adetEl.textContent, 10 ) || 1;
+				var pid  = parseInt( body.getAttribute( 'data-id' ), 10 ) || sonKartId || 0;
 				var s    = oku();
 				var m    = s.filter( function ( x ) {
+					if ( pid && x.pid ) {
+						return x.pid === pid;
+					}
 					return x.id === ad;
 				} )[ 0 ];
 
@@ -262,11 +323,15 @@
 					if ( im ) {
 						m.img = im;
 					}
+					if ( pid && ! m.pid ) {
+						m.pid = pid;
+					}
 				} else {
-					s.push( { id: ad, ad: ad, fiyat: fy, adet: adet, not: not.value || '', img: im } );
+					s.push( { id: ad, pid: pid, ad: ad, fiyat: fy, adet: adet, not: not.value || '', img: im } );
 				}
 
 				yaz( s );
+				analitikKuyrukla( 'cart_add', pid );
 
 				ekle.classList.add( 'qmo-added' );
 				ekle.textContent = '✓';
@@ -388,6 +453,7 @@
 			if ( ! v[ i ] ) {
 				return;
 			}
+			analitikKuyrukla( 'cart_remove', v[ i ].pid );
 			if ( v[ i ].adet > 1 ) {
 				v[ i ].adet--;
 			} else {
@@ -403,10 +469,14 @@
 			}
 			v[ i ].adet = Math.min( 20, v[ i ].adet + 1 );
 			yaz( v );
+			analitikKuyrukla( 'cart_add', v[ i ].pid );
 		} );
 
 		sil.addEventListener( 'click', function () {
 			var v = oku();
+			if ( v[ i ] ) {
+				analitikKuyrukla( 'cart_remove', v[ i ].pid );
+			}
 			v.splice( i, 1 );
 			yaz( v );
 		} );
@@ -472,6 +542,7 @@
 			return;
 		}
 
+		analitikGonder();
 		send.disabled = true;
 
 		fetch( qmoSepet.endpoint, {
@@ -484,7 +555,7 @@
 			body: JSON.stringify( {
 				dil: dil(),
 				items: s.map( function ( x ) {
-					return { urunAdi: x.ad, adet: x.adet, not: x.not || '' };
+					return { urunAdi: x.ad, adet: x.adet, not: x.not || '', itemId: x.pid || 0 };
 				} )
 			} )
 		} ).then( function ( r ) {
@@ -517,9 +588,17 @@
 		// Ana menü .rma-card; vitrin .qrms-vitrin-card; slider .qmo-slider-product.
 		var kart = e.target.closest ? e.target.closest( '.rma-card, .qrms-vitrin-card, .qmo-slider-product' ) : null;
 		if ( kart ) {
+			sonKartId = parseInt( kart.getAttribute( 'data-id' ), 10 ) || 0;
 			modaliYakala();
 		}
 	}, true );
+
+	window.addEventListener( 'pagehide', analitikGonder );
+	document.addEventListener( 'visibilitychange', function () {
+		if ( document.visibilityState === 'hidden' ) {
+			analitikGonder();
+		}
+	} );
 
 	// Modal kapandığında çubuğu geri getir (yalnızca gizliyken çalışır).
 	// Açıkken de yokla: vitrin AJAX'ı .qrms-detail-inner'a .rma-modal-body

@@ -522,7 +522,7 @@ trait RMA_Ajax_Trait {
                 %s
                 %s
             </div>
-            <div class="rma-modal-body">
+            <div class="rma-modal-body" data-id="%d">
                 <h2 class="rma-modal-title">%s</h2>
                 %s
                 <p class="rma-modal-price">%s</p>
@@ -534,6 +534,7 @@ trait RMA_Ajax_Trait {
             RMA_Tukendi::urun_tukendi( $id ) ? ' is-tukendi' : '',
             $img,
             RMA_Tukendi::rozet_html( $id ),
+            (int) $id,
             esc_html( $title ),
             $tukendi_banner,
             $price_html,
