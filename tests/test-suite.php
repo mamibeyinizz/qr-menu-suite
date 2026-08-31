@@ -2062,8 +2062,8 @@ qrms_test(
 		qrms_assert_contains( 'grid-template-columns: repeat(3, minmax(0, 1fr))', $css, 'masaüstü üç sütun' );
 		qrms_assert_false( false !== strpos( $css, 'justify-content: center' ), 'eksik satır ortalanmaz' );
 		qrms_assert_false( false !== strpos( $css, 'display: flex !important' ), 'kart ızgarası flex değil' );
-		qrms_assert_contains( 'max-width: 960px', $css, 'tablet kırılımı' );
-		qrms_assert_contains( 'max-width: 600px', $css, 'telefon kırılımı' );
+		qrms_assert_contains( 'max-width: 1200px', $css, 'tablet kırılımı' );
+		qrms_assert_contains( 'max-width: 782px', $css, 'WP admin mobil kırılımı' );
 		qrms_assert_contains( 'pointer: coarse', $css, 'dokunmatik hedef büyütmesi' );
 	}
 );
@@ -2234,6 +2234,40 @@ qrms_test(
 
 		// Izgara grid; telefonda kartlar tek sütuna düşer.
 		qrms_assert_contains( 'grid-template-columns: 1fr', $css, 'telefonda tek sütun' );
+		qrms_assert_contains( 'max-width: 782px', $css, 'WP admin mobil kırılımı' );
+	}
+);
+
+qrms_test(
+	'Genel Bakış kart ızgarası bölümleri taşırmadan ayırır, alt liste tıklanabilir durur',
+	function () {
+		$css = file_get_contents( QRMS_PLUGIN_DIR . 'assets/css/admin.css' );
+
+		// Taşma: height:100% + content-box padding bir sonraki başlığı örterdi.
+		qrms_assert_contains( 'box-sizing: border-box', $css, 'hub border-box' );
+		qrms_assert_false(
+			(bool) preg_match( '/\.qrms-hub-grid\s*>\s*\.qrms-hub-card\s*\{[^}]*height:\s*100%/s', $css ),
+			'kart height:100% yok'
+		);
+		qrms_assert_contains( 'display: flow-root', $css, 'kategori BFC' );
+		qrms_assert_contains( 'position: static', $css, 'başlık sticky değil' );
+		qrms_assert_false(
+			(bool) preg_match( '/\.qrms-overview-group-title\s*\{[^}]*position:\s*sticky/s', $css ),
+			'kategori başlığı sticky değil'
+		);
+
+		// Alt liste açıklamadan ince çizgiyle ayrılır, hover arka planı var.
+		qrms_assert_contains( '.qrms-hub-links', $css, 'alt liste kuralı' );
+		qrms_assert_true(
+			(bool) preg_match( '/\.qrms-hub-links\s*\{[^}]*border-top:/s', $css ),
+			'liste ayırıcı çizgi'
+		);
+		qrms_assert_contains( 'font-family: dashicons', $css, 'madde işaretçisi dashicon' );
+		qrms_assert_contains( 'background: #f0f6fc', $css, 'hover arka plan' );
+		qrms_assert_false(
+			(bool) preg_match( '/\.qrms-hub-card-has-links\s*\{[^}]*justify-content:\s*space-between/s', $css ),
+			'açıklama-liste uçurumu yok'
+		);
 	}
 );
 
