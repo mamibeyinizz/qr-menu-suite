@@ -178,7 +178,8 @@ function delete_transient( $name ) {
  * @return bool
  */
 function add_action( $hook, $callback, $priority = 10, $args = 1 ) {
-	$GLOBALS['qrms_test']['actions'][ $hook ][] = $callback;
+	$GLOBALS['qrms_test']['actions'][ $hook ][]    = $callback;
+	$GLOBALS['qrms_test']['priorities'][ $hook ][] = $priority;
 
 	return true;
 }
@@ -944,6 +945,26 @@ function wp_enqueue_script( $handle, $src = '', $deps = array(), $ver = false, $
  * @return void
  */
 function wp_register_style( $handle, $src = '', $deps = array(), $ver = false ) {}
+
+/**
+ * Satır içi stil.
+ *
+ * @param string $handle Handle.
+ * @param string $data   CSS.
+ * @return bool
+ */
+function wp_add_inline_style( $handle, $data ) {
+	if ( ! isset( $GLOBALS['qrms_test']['inline_styles'] ) ) {
+		$GLOBALS['qrms_test']['inline_styles'] = array();
+	}
+
+	$GLOBALS['qrms_test']['inline_styles'][] = array(
+		'handle' => $handle,
+		'data'   => $data,
+	);
+
+	return true;
+}
 
 /**
  * Yönetim ekranı mı?

@@ -2,7 +2,7 @@
 /**
  * Modül: QR Analiz (qr-analiz)
  *
- * Modülün TEK ekranı vardır: Menü Analitiği. Sol menüdeki "QR Analiz" satırı
+ * Modülün TEK ekranı vardır: Menü Analitiği. Sol menüdeki "İstatistikler" satırı
  * doğrudan o ekranı açar — hub yoktur, çünkü dallanacak ikinci bir ekran da
  * yoktur. (v1.0'da modülün altında "Firebase & Şube Ayarları" ekranı da vardı;
  * yapılandırdığı şey raporlama değil kimlik doğrulama olduğu için Güvenlik
@@ -55,7 +55,7 @@ function qrms_module_qr_analiz_init() {
 	if ( is_admin() ) {
 		require_once __DIR__ . '/analitik-sayfasi.php';
 
-		// "QR Analiz" satırı doğrudan analitik panelini açar.
+		// "İstatistikler" satırı doğrudan analitik panelini açar.
 		QRMS_Admin::register_module_page( 'qr-analiz', 'qrms_analitik_sayfasi' );
 
 		add_action( 'admin_menu', 'qrms_module_qr_analiz_admin_menu', 20 );

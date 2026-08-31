@@ -57,18 +57,22 @@ bir bilgilendirme notice'ı gösterilir.
 
 ## Modüller
 
+Görünen adlar modülün NE YAPTIĞINI söyler; slug'lar (lisans sözleşmesinin ve
+kayıtlı option'ların anahtarı) hiç değişmez.
+
 | Slug | İsim |
 | --- | --- |
 | `restoran-menu` | Restoran Menü |
 | `yorum-feedback` | Yorum & Feedback |
-| `qr-masa` | QR Masa |
-| `qr-analiz` | QR Analiz |
-| `qr-galeri` | QR Galeri |
-| `qr-ceviri` | QR Çeviri |
-| `qr-chatbot` | QR Chatbot |
-| `qr-calisma-saatleri` | QR Çalışma Saatleri |
+| `qr-masa` | QR Kod Oluştur |
+| `qr-analiz` | İstatistikler |
+| `qr-galeri` | Fotoğraf Galerisi |
+| `qr-ceviri` | Dil / Çeviri Ayarları |
+| `qr-chatbot` | Chatbot Asistan |
+| `qr-calisma-saatleri` | Çalışma Saatleri |
 | `qr-masa-oturum-guvenligi` | Güvenlik Ayarı |
 | `qr-acilis-ekrani` | Açılış Ekranı |
+| `header-footer-builder` | Header Footer Builder |
 
 Bir modül eklemek için `modules/<slug>/module.php` dosyası oluşturmak ve
 içinde `qrms_module_<slug_alt_çizgili>_init()` fonksiyonunu tanımlamak
@@ -76,31 +80,76 @@ yeterlidir (ör. `restoran-menu` → `qrms_module_restoran_menu_init()`).
 Loader, modül lisansta aktifse dosyayı `require` eder ve bu fonksiyonu
 çağırır; dosya yoksa sessizce atlar.
 
-### Sol menü tek seviyelidir
+### Sol menü tek seviyeli, satırlar beş kategoride
 
 `QR Menü` menüsünde **yalnızca** şunlar durur: `Genel Bakış`, lisansta aktif
-olan modüllerin adları ve `Genel Ayarlar`. Modüllerin alt ekranları menüye
-hiç yazılmaz; onlara modülün **hub ekranındaki kartlardan** gidilir.
+olan modüllerin adları, (varsa) `Kısa Kodlar` ve `Genel Ayarlar`. Modüllerin
+alt ekranları menüye hiç yazılmaz; onlara modülün **hub ekranındaki
+kartlardan** gidilir. Satırlar alt menü açmaz — yalnızca katlanabilir
+**kategori başlıkları** altında gruplanır.
 
 ```
 QR Menü
-├ Genel Bakış
-├ Restoran Menü                 → hub (9 kart)
-├ Yorum & Feedback              → hub (7 kart + özet sayaçlar)
-├ QR Masa                       → doğrudan Masalar ekranı
-├ QR Analiz                     → doğrudan Menü Analitiği
-├ QR Galeri                     → hub (3 kart)
-├ QR Çeviri                     → doğrudan Çeviri ekranı
-├ QR Chatbot                    → doğrudan Chatbot ayarları
-├ QR Çalışma Saatleri           → doğrudan Saat tablosu
-├ Güvenlik Ayarı                → hub (2 kart)
-├ Kısa Kodlar                   → modüllerin kısa kod rehberi
-└ Genel Ayarlar
+├ GENEL
+│ ├ Genel Bakış
+│ └ Genel Ayarlar
+├ MENÜ YÖNETİMİ
+│ ├ Restoran Menü               → hub (9 kart)
+│ └ Yorum & Feedback            → hub (7 kart + özet sayaçlar)
+├ ARAÇLAR
+│ ├ QR Kod Oluştur              → doğrudan Masalar ekranı
+│ ├ İstatistikler               → doğrudan Menü Analitiği
+│ ├ Fotoğraf Galerisi           → hub (3 kart)
+│ ├ Dil / Çeviri Ayarları       → doğrudan Çeviri ekranı
+│ ├ Chatbot Asistan             → doğrudan Chatbot ayarları
+│ └ Çalışma Saatleri            → doğrudan Saat tablosu
+├ GÖRÜNÜM & ERİŞİM
+│ ├ Açılış Ekranı               → hub (5 kart + özet sayaçlar)
+│ └ Header Footer Builder       → doğrudan HFB ekranı
+└ GELİŞMİŞ
+  ├ Güvenlik Ayarı              → hub (2 kart)
+  └ Kısa Kodlar                 → modüllerin kısa kod rehberi
 ```
 
 Hub, modülün **ikiden fazla ekranı olduğunda** vardır. Tek ekranlı modüllerde
 araya bir sayfa koymak fazladan tık demek olurdu; modül satırı doğrudan o
 ekranı açar.
+
+#### Gruplama, renkler ve katlama
+
+| Kategori | Renk | İçindekiler |
+| --- | --- | --- |
+| Genel | `#9ba7b4` (nötr gri) | Genel Bakış, Genel Ayarlar |
+| Menü Yönetimi | `#5cb0f0` (gök mavisi) | Restoran Menü, Yorum & Feedback |
+| Araçlar | `#35d1b4` (turkuaz) | QR Kod Oluştur, İstatistikler, Fotoğraf Galerisi, Dil / Çeviri Ayarları, Chatbot Asistan, Çalışma Saatleri |
+| Görünüm & Erişim | `#f27cb8` (pembe) | Açılış Ekranı, Header Footer Builder |
+| Gelişmiş | `#f59547` (turuncu) | Güvenlik Ayarı, Kısa Kodlar |
+
+Gruplama, sıra ve renkler **tek yerde**, `QRMS_Admin::get_menu_groups()`
+içindedir (siteye özgü değişiklik için `qrms_menu_groups` filtresi vardır).
+Renk yalnızca **ikonda** ve satırın **sol kenar şeridinde** görünür; satır
+arka planı yönetim renk şemasının kendi rengi olarak kalır. Palet üst
+menüdeki mavi–mor gradyanla yarışmasın diye mavi daha açık bir gök mavisine,
+mor ise pembeye çekilmiştir.
+
+İş bölümü şöyledir:
+
+| Katman | Sorumluluk |
+| --- | --- |
+| `QRMS_Admin::build_menu_rows()` (`admin_head`, öncelik 11) | Satırları grup sırasına sokar, etiketin başına dashicon koyar, satıra `qrms-menu-item qrms-mg-<grup>` sınıflarını yazar (WordPress alt menü dizisinin 4. dizinini `<li>` ve `<a>`'nın class'ına geçirir) |
+| `assets/css/admin-menu.css` | Kategori rengini `--qrms-menu-accent` üzerinden ikona ve sol kenar şeridine uygular; renklerin değerleri `get_menu_groups()`'tan satır içi stil olarak gelir |
+| `assets/js/admin-menu.js` | Grup başlığı satırlarını (aç/kapa düğmesi) DOM'a ekler, durumu `localStorage`'da saklar; açık sayfanın grubu her zaman açılır |
+
+JavaScript çalışmasa bile menü **doğru sırada ve renk şeridiyle** görünür;
+yalnızca başlıklar ve katlama olmaz. Hiçbir sayfanın erişimi bu betiğe bağlı
+değildir.
+
+Menü katlandığında (`folded`) ya da ekran darken (`auto-fold`) katlama devre
+dışıdır: uçan menüde (flyout) hiçbir satır gizli kalmaz. `admin-menu.css`
+sol menüye kural yazan **tek** dosyadır ve her seçicisinde `.qrms-` ile
+başlayan bir sınıf bulunur — `#adminmenu` ve `.wp-submenu` yalnızca kapsam
+daraltmak için kullanılır, konum/genişlik/`display` çekirdeğe bırakılır.
+Testler ikisini de kontrol eder.
 
 #### Alt sayfalar nasıl gizleniyor?
 
@@ -416,7 +465,7 @@ görünümüne döner; `pointer: coarse` altında çipler, alanlar ve butonlar e
 44px olur, alanların yazı boyutu 16px'e çıkar (iOS Safari'nin yakınlaştırmasını
 engeller).
 
-**Panel.** "QR Menü → QR Analiz" satırı **doğrudan** Menü Analitiği ekranını
+**Panel.** "QR Menü → İstatistikler" satırı **doğrudan** Menü Analitiği ekranını
 açar; modülün tek ekranı odur, hub yoktur. (v1.0'da satır iki kartlık bir hub
 açardı; ikinci kart olan **Firebase & Şube Ayarları** güvenlik modülüne
 taşındı — yapılandırdığı şey raporlama değil kimlik doğrulamadır. Ekranın
@@ -979,7 +1028,9 @@ modules/
   qr-galeri/                 Galeri CPT + yönetim ekranları
   qr-acilis-ekrani/          Ana sayfa açılış ekranı + hub ve dört ayar sayfası
 assets/css/admin.css         Mobil öncelikli admin stilleri (dokunma ≥44px)
+assets/css/admin-menu.css    Sol menü: kategori renkleri ve grup başlıkları
 assets/js/admin.js           Form gönderiminde buton kilidi (opsiyonel iyileştirme)
+assets/js/admin-menu.js      Sol menüde katlanabilir kategori başlıkları
 tests/                       WordPress'siz çalışan stub tabanlı testler
 ```
 
