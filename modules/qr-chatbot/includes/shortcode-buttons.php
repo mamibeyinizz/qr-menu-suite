@@ -62,7 +62,9 @@ if ( ! function_exists( 'qmo_ikili_buton_shortcode' ) ) {
 if ( ! function_exists( 'qmo_cagri_butonlari_html' ) ) {
 	function qmo_cagri_butonlari_html( $tip ) {
 		if ( ! qmo_oturum() ) {
-			return qmo_oturum_uyari_kutusu( 'Çağrı butonlarını kullanmak için masanızdaki QR kodu okutun.' );
+			return qmo_oturum_uyari_kutusu(
+				qmo_ceviri_chat( __( 'Çağrı butonlarını kullanmak için masanızdaki QR kodu okutun.', 'qrms' ) )
+			);
 		}
 
 		qmo_asset_enqueue( 'ikili' === $tip ? 'qmo-garson-hesap' : 'qmo-buttons' );
@@ -73,13 +75,13 @@ if ( ! function_exists( 'qmo_cagri_butonlari_html' ) ) {
 			<?php if ( 'hesap' !== $tip ) : ?>
 				<button type="button" class="qmo-cagri-btn qmo-cagri-btn--garson" data-qmo-cagri="garson">
 					<span class="qmo-cagri-ikon" aria-hidden="true">🛎️</span>
-					<span>Garson Çağır</span>
+					<span><?php echo esc_html( qmo_ceviri_chat( __( 'Garson Çağır', 'qrms' ) ) ); ?></span>
 				</button>
 			<?php endif; ?>
 			<?php if ( 'garson' !== $tip ) : ?>
 				<button type="button" class="qmo-cagri-btn qmo-cagri-btn--hesap" data-qmo-cagri="hesap">
 					<span class="qmo-cagri-ikon" aria-hidden="true">🧾</span>
-					<span>Hesap İste</span>
+					<span><?php echo esc_html( qmo_ceviri_chat( __( 'Hesap İste', 'qrms' ) ) ); ?></span>
 				</button>
 			<?php endif; ?>
 			<p class="qmo-cagri-durum" hidden></p>

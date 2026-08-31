@@ -38,6 +38,14 @@
 	// Gemini'ye gönderilen çok adımlı konuşma geçmişi.
 	var gecmis = [];
 
+	function metin( anahtar, yedek ) {
+		if ( typeof qmoData === 'undefined' || ! qmoData.i18n ) {
+			return yedek;
+		}
+		var v = qmoData.i18n[ anahtar ];
+		return ( 'string' === typeof v && '' !== v ) ? v : yedek;
+	}
+
 	/* ------------------------------------------------------------------ */
 
 	function ac() {
@@ -83,7 +91,7 @@
 	function yaziyorGoster() {
 		var el = document.createElement( 'div' );
 		el.className = 'gemini-typing';
-		el.textContent = 'Yazıyor...';
+		el.textContent = metin( 'yaziyor', 'Yazıyor...' );
 		log.appendChild( el );
 		log.scrollTop = log.scrollHeight;
 		return el;
@@ -149,8 +157,8 @@
 					balon( yanit.data.mesaj, 'bot', true );
 					return;
 				}
-				var hata = ( yanit && yanit.data ) ? yanit.data : 'Bir hata oluştu, lütfen tekrar deneyin.';
-				balon( 'string' === typeof hata ? hata : ( hata.mesaj || 'Bir hata oluştu.' ), 'bot', true );
+				var hata = ( yanit && yanit.data ) ? yanit.data : metin( 'birHata', 'Bir hata oluştu, lütfen tekrar deneyin.' );
+				balon( 'string' === typeof hata ? hata : ( hata.mesaj || metin( 'birHataKisa', 'Bir hata oluştu.' ) ), 'bot', true );
 				return;
 			}
 
@@ -181,7 +189,7 @@
 							items: JSON.stringify( urunler )
 						} ).then( function ( sy ) {
 							if ( ! sy || ! sy.success ) {
-								var msg = 'Siparişiniz iletilemedi, lütfen garsona bildirin.';
+								var msg = metin( 'siparisIletilemedi', 'Siparişiniz iletilemedi, lütfen garsona bildirin.' );
 								if ( sy && sy.data ) {
 									if ( 'string' === typeof sy.data ) {
 										msg = sy.data;
@@ -192,7 +200,7 @@
 								balon( msg, 'bot', true );
 							}
 						} ).catch( function () {
-							balon( 'Siparişiniz iletilemedi, lütfen garsona bildirin.', 'bot', true );
+							balon( metin( 'siparisIletilemedi', 'Siparişiniz iletilemedi, lütfen garsona bildirin.' ), 'bot', true );
 						} );
 					}
 				} catch ( e ) {
@@ -210,7 +218,7 @@
 			balon( cevap, 'bot' );
 		} ).catch( function () {
 			yaziyor.remove();
-			balon( 'Bağlantı hatası oluştu.', 'bot', true );
+			balon( metin( 'baglantiHatasi', 'Bağlantı hatası oluştu.' ), 'bot', true );
 		} );
 	}
 

@@ -13350,6 +13350,128 @@ qrms_test(
 	}
 );
 
+echo "\nQR Çeviri (P0 köprü / chatbot)\n";
+
+qrms_test(
+	'chat kaynak metinleri katalogda; Garson/Hesap tek satır',
+	function () {
+		$metinler = rma_ceviri_modul_stringleri( 'chat' );
+		$beklenen = array(
+			'Asistanı kullanmak için masanızdaki QR kodu okutun.',
+			'Çevrimiçi',
+			'Kapat',
+			'Gönder',
+			'Çağrı butonlarını kullanmak için masanızdaki QR kodu okutun.',
+			'Garson Çağır',
+			'Hesap İste',
+			'Garson çağrınız iletildi.',
+			'Hesap talebiniz iletildi.',
+			'İstek iletilemedi, lütfen tekrar deneyin.',
+			'Bağlantı hatası oluştu.',
+			'Yazıyor...',
+			'Siparişiniz iletilemedi, lütfen garsona bildirin.',
+			'Oturum süreniz doldu. Devam etmek için masadaki QR kodu tekrar okutun.',
+			'Bu oturum için mesaj limitine ulaştınız.',
+			'Güvenlik doğrulaması başarısız. Lütfen sayfayı yenileyin.',
+			'Geçersiz sipariş',
+			'Sipariş iletilemedi, lütfen garsona bildirin.',
+			'Çağrı sistemi şu anda kullanılamıyor.',
+			'Çağrınız iletildi, lütfen bekleyin.',
+			'İletildi',
+		);
+
+		foreach ( $beklenen as $metin ) {
+			qrms_assert_same(
+				$metin,
+				$metinler[ rma_ceviri_ui_anahtari( $metin ) ],
+				$metin
+			);
+		}
+	}
+);
+
+qrms_test(
+	'shortcode ve HFB yedekleri aynı chat anahtarını kullanır',
+	function () {
+		$bot = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/includes/shortcode-chatbot.php' );
+		$btn = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/includes/shortcode-buttons.php' );
+		$hfb = file_get_contents( QRMS_PLUGIN_DIR . 'modules/header-footer-builder/includes/trait-frontend.php' );
+
+		qrms_assert_contains( "qmo_ceviri_chat( __( 'Çevrimiçi', 'qrms' ) )", $bot, 'Çevrimiçi' );
+		qrms_assert_contains( "qmo_ceviri_chat( __( 'Kapat', 'qrms' ) )", $bot, 'Kapat' );
+		qrms_assert_contains( "qmo_ceviri_chat( __( 'Gönder', 'qrms' ) )", $bot, 'Gönder' );
+		qrms_assert_contains( 'P1: option metinleri', $bot, 'option P1 işareti' );
+		qrms_assert_contains( "qmo_ceviri_chat( __( 'Garson Çağır', 'qrms' ) )", $btn, 'shortcode Garson' );
+		qrms_assert_contains( "qmo_ceviri_chat( __( 'Hesap İste', 'qrms' ) )", $btn, 'shortcode Hesap' );
+		qrms_assert_contains( "qmo_ceviri_chat( \$garson_yedek )", $hfb, 'HFB aynı köprü' );
+		qrms_assert_contains( "__( 'Garson Çağır', 'qrms' )", $hfb, 'HFB aynı Türkçe' );
+		qrms_assert_contains( "__( 'Hesap İste', 'qrms' )", $hfb, 'HFB aynı Hesap' );
+	}
+);
+
+qrms_test(
+	'JS localize yedeği korur; Bağlantı hatası tek anahtar',
+	function () {
+		$assets = file_get_contents( QRMS_PLUGIN_DIR . 'modules/_qmo-ortak/assets.php' );
+		$chat   = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/chatbot.php' );
+		$btnjs  = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/assets/js/buttons.js' );
+		$botjs  = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/assets/js/chatbot.js' );
+		$sepet  = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/assets/js/sepet.js' );
+
+		qrms_assert_contains( 'qmo_chat_js_metinleri', $assets, 'localize köprüsü' );
+		qrms_assert_contains( "array( 'qmo-chatbot', 'qmo-buttons' )", $assets, 'yalnız chat/buton handle' );
+		qrms_assert_false(
+			(bool) preg_match( "/in_array\(\s*\\\$handle,\s*array\([^)]*qmo-sepet/", $assets ),
+			'sepet localize yok'
+		);
+		qrms_assert_contains( "'baglantiHatasi'", $chat, 'tek PHP anahtarı' );
+		qrms_assert_contains( "metin( 'baglantiHatasi', 'Bağlantı hatası oluştu.' )", $btnjs, 'buttons yedek' );
+		qrms_assert_contains( "metin( 'baglantiHatasi', 'Bağlantı hatası oluştu.' )", $botjs, 'chatbot yedek' );
+		qrms_assert_contains( "metin( 'yaziyor', 'Yazıyor...' )", $botjs, 'Yazıyor yedek' );
+		qrms_assert_contains( "metin( 'siparisIletilemedi'", $botjs, 'sipariş yedek' );
+		qrms_assert_false( (bool) preg_match( '/qmoData\.i18n|baglantiHatasi/', $sepet ), 'sepet.js dokunulmadı' );
+	}
+);
+
+qrms_test(
+	'AJAX/REST ziyaretçi mesajları chat köprüsünden geçer; oturum metni tek',
+	function () {
+		$help  = file_get_contents( QRMS_PLUGIN_DIR . 'modules/_qmo-ortak/helpers.php' );
+		$ajax  = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/includes/ajax-chat.php' );
+		$rest  = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/rest-order.php' );
+		$cagri = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/ajax-waiter-bill.php' );
+		$dil   = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-ceviri/includes/dil.php' );
+
+		qrms_assert_contains( 'function qmo_ceviri_chat', $help, 'köprü yardımcı' );
+		qrms_assert_contains( "qmo_ceviri_chat( __( 'Oturum süreniz doldu. Devam etmek için masadaki QR kodu tekrar okutun.', 'qrms' ) )", $help, 'helpers oturum' );
+		qrms_assert_contains( "qmo_ceviri_chat( __( 'Oturum süreniz doldu. Devam etmek için masadaki QR kodu tekrar okutun.', 'qrms' ) )", $rest, 'REST aynı oturum metni' );
+		qrms_assert_false( (bool) preg_match( '/Masadaki QR kodu tekrar okutun\./', $rest ), 'eski REST oturum metni kalmadı' );
+		qrms_assert_contains( "qmo_ceviri_chat( __( 'Asistan şu anda yanıt veremiyor, lütfen tekrar deneyin.', 'qrms' ) )", $ajax, 'asistan' );
+		qrms_assert_contains( "qmo_ceviri_chat( __( 'Geçersiz sipariş', 'qrms' ) )", $rest, 'geçersiz sipariş' );
+		qrms_assert_contains( "qmo_ceviri_chat( __( 'Çağrı sistemi şu anda kullanılamıyor.', 'qrms' ) )", $cagri, 'çağrı sistemi' );
+		qrms_assert_contains( "qmo_ceviri_chat( __( 'İletildi', 'qrms' ) )", $cagri, 'İletildi' );
+		qrms_assert_contains( "\$_REQUEST['lang']", $dil, 'AJAX lang parametresi' );
+		qrms_assert_contains( 'admin-ajax.php', $dil, 'cookie admin-ajax notu' );
+		qrms_assert_false( (bool) preg_match( '/HTTP_ACCEPT_LANGUAGE/', $dil ), 'AJAX Accept-Language yok' );
+	}
+);
+
+qrms_test(
+	'qmo_ceviri_chat çeviri yoksa Türkçe döner; fetch çerez gönderir',
+	function () {
+		qrms_assert_same(
+			'Çevrimiçi',
+			qmo_ceviri_chat( 'Çevrimiçi' ),
+			'tablo yokken Türkçe'
+		);
+
+		$btnjs = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/assets/js/buttons.js' );
+		$botjs = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/assets/js/chatbot.js' );
+		qrms_assert_contains( "credentials: 'same-origin'", $btnjs, 'buttons cookie' );
+		qrms_assert_contains( "credentials: 'same-origin'", $botjs, 'chatbot cookie' );
+	}
+);
+
 
 if ( empty( $GLOBALS['qrms_failures'] ) ) {
 	echo "\033[32mTüm testler geçti\033[0m (" . $GLOBALS['qrms_assertions'] . " doğrulama)\n\n";

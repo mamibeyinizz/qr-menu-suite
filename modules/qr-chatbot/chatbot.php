@@ -87,3 +87,26 @@ if ( ! function_exists( 'qmo_chatbot_buton_varliklarini_kaydet' ) ) {
 		wp_register_script( 'qmo-sepet', $url . 'js/sepet.js', array(), $sepet_js, true );
 	}
 }
+
+/**
+ * buttons.js / chatbot.js için localize metinleri.
+ *
+ * Anahtarlar JS yedeğiyle aynı Türkçe metne bağlanır; tablo boşsa Türkçe
+ * döner. sepet.js bu listede yoktur (adım 6).
+ *
+ * @return array<string,string>
+ */
+if ( ! function_exists( 'qmo_chat_js_metinleri' ) ) {
+	function qmo_chat_js_metinleri() {
+		return array(
+			'garsonIletildi'     => qmo_ceviri_chat( __( 'Garson çağrınız iletildi.', 'qrms' ) ),
+			'hesapIletildi'      => qmo_ceviri_chat( __( 'Hesap talebiniz iletildi.', 'qrms' ) ),
+			'istekIletilemedi'   => qmo_ceviri_chat( __( 'İstek iletilemedi, lütfen tekrar deneyin.', 'qrms' ) ),
+			'baglantiHatasi'     => qmo_ceviri_chat( __( 'Bağlantı hatası oluştu.', 'qrms' ) ),
+			'yaziyor'            => qmo_ceviri_chat( __( 'Yazıyor...', 'qrms' ) ),
+			'birHata'            => qmo_ceviri_chat( __( 'Bir hata oluştu, lütfen tekrar deneyin.', 'qrms' ) ),
+			'birHataKisa'        => qmo_ceviri_chat( __( 'Bir hata oluştu.', 'qrms' ) ),
+			'siparisIletilemedi' => qmo_ceviri_chat( __( 'Siparişiniz iletilemedi, lütfen garsona bildirin.', 'qrms' ) ),
+		);
+	}
+}

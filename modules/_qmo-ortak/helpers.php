@@ -18,6 +18,27 @@ if ( ! defined( 'QMO_NONCE_ACTION' ) ) {
 }
 
 /**
+ * Chatbot / çağrı sabit metnini QR Çeviri tablosundan geçirir.
+ *
+ * Çeviri yoksa veya modül kapalıysa girdi (Türkçe) döner. AJAX/REST
+ * uçlarında dil rma_get_current_lang() ile çözülür: $_REQUEST['lang']
+ * sonra rma_lang cookie — admin-ajax ve REST çerezi alır, tam sayfa
+ * cache bu uçlara uygulanmaz.
+ *
+ * @param string $metin Türkçe kaynak (genelde __( '…', 'qrms' ) çıktısı).
+ * @return string
+ */
+if ( ! function_exists( 'qmo_ceviri_chat' ) ) {
+	function qmo_ceviri_chat( $metin ) {
+		$metin = (string) $metin;
+		if ( function_exists( 'rma_ceviri_modul' ) ) {
+			return rma_ceviri_modul( 'chat', $metin );
+		}
+		return $metin;
+	}
+}
+
+/**
  * Hata günlüğü — yalnızca WP_DEBUG açıkken yazar.
  * Müşteriye gösterilmeyen ayrıntılar (API hataları vb.) buraya düşer.
  *
@@ -55,7 +76,7 @@ if ( ! function_exists( 'qmo_nonce_dogrula' ) ) {
 			wp_send_json_error(
 				array(
 					'kod'   => 'nonce',
-					'mesaj' => 'Güvenlik doğrulaması başarısız. Lütfen sayfayı yenileyin.',
+					'mesaj' => qmo_ceviri_chat( __( 'Güvenlik doğrulaması başarısız. Lütfen sayfayı yenileyin.', 'qrms' ) ),
 				),
 				403
 			);
@@ -78,7 +99,7 @@ if ( ! function_exists( 'qmo_oturum_zorla' ) ) {
 			wp_send_json_error(
 				array(
 					'kod'   => 'oturum_bitti',
-					'mesaj' => 'Oturum süreniz doldu. Devam etmek için masadaki QR kodu tekrar okutun.',
+					'mesaj' => qmo_ceviri_chat( __( 'Oturum süreniz doldu. Devam etmek için masadaki QR kodu tekrar okutun.', 'qrms' ) ),
 				),
 				403
 			);
@@ -107,7 +128,7 @@ if ( ! function_exists( 'qmo_chat_zorla' ) ) {
 			wp_send_json_error(
 				array(
 					'kod'   => 'limit',
-					'mesaj' => 'Bu oturum için mesaj limitine ulaştınız.',
+					'mesaj' => qmo_ceviri_chat( __( 'Bu oturum için mesaj limitine ulaştınız.', 'qrms' ) ),
 				),
 				429
 			);

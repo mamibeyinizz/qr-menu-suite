@@ -640,12 +640,19 @@ trait QRMS_HFB_Frontend {
 			qmo_asset_enqueue( 'qmo-buttons' );
 		}
 
+		$garson_yedek = __( 'Garson Çağır', 'qrms' );
+		$hesap_yedek  = __( 'Hesap İste', 'qrms' );
+		if ( function_exists( 'qmo_ceviri_chat' ) ) {
+			$garson_yedek = qmo_ceviri_chat( $garson_yedek );
+			$hesap_yedek  = qmo_ceviri_chat( $hesap_yedek );
+		}
+
 		$garson = isset( $opts['call_garson_label'] ) && '' !== trim( (string) $opts['call_garson_label'] )
 			? (string) $opts['call_garson_label']
-			: __( 'Garson Çağır', 'qrms' );
+			: $garson_yedek;
 		$hesap = isset( $opts['call_hesap_label'] ) && '' !== trim( (string) $opts['call_hesap_label'] )
 			? (string) $opts['call_hesap_label']
-			: __( 'Hesap İste', 'qrms' );
+			: $hesap_yedek;
 
 		$html  = '<div class="hfb-footer__call qmo-cagri-bar">';
 		$html .= '<button type="button" class="hfb-btn hfb-footer__call-btn"' . ( $live ? ' data-qmo-cagri="garson"' : '' ) . '>';

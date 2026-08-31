@@ -27,12 +27,16 @@ if ( ! function_exists( 'qmo_chatbot_shortcode' ) ) {
 		// Oturum yoksa asistan açılmaz — Gemini maliyeti ve sipariş akışı
 		// yalnızca masadaki müşteriye aittir.
 		if ( ! qmo_oturum() ) {
-			return qmo_oturum_uyari_kutusu( 'Asistanı kullanmak için masanızdaki QR kodu okutun.' );
+			return qmo_oturum_uyari_kutusu(
+				qmo_ceviri_chat( __( 'Asistanı kullanmak için masanızdaki QR kodu okutun.', 'qrms' ) )
+			);
 		}
 
 		// Renk değişkenleri qmo_asset_enqueue() içinde stille birlikte eklenir.
 		qmo_asset_enqueue( 'qmo-chatbot' );
 
+		// P1: option metinleri (bot adı, placeholder, karşılama) tablodan
+		// çevrilecek — bu adımda yalnız sabitler rma_ceviri_modul( 'chat' ).
 		$bot_adi   = get_option( 'gemini_bot_name', 'Asistan' );
 		$placeholder = get_option( 'gemini_placeholder_text', 'Bir şeyler sorun...' );
 		$karsilama = get_option( 'gemini_welcome_text', 'Merhaba! Size nasıl yardımcı olabilirim?' );
@@ -59,10 +63,10 @@ if ( ! function_exists( 'qmo_chatbot_shortcode' ) ) {
 						</div>
 						<div class="gemini-header-textblock">
 							<span><?php echo esc_html( $bot_adi ); ?></span>
-							<span class="gemini-header-status">Çevrimiçi</span>
+							<span class="gemini-header-status"><?php echo esc_html( qmo_ceviri_chat( __( 'Çevrimiçi', 'qrms' ) ) ); ?></span>
 						</div>
 					</div>
-					<button type="button" class="gemini-chat-close" aria-label="Kapat">&times;</button>
+					<button type="button" class="gemini-chat-close" aria-label="<?php echo esc_attr( qmo_ceviri_chat( __( 'Kapat', 'qrms' ) ) ); ?>">&times;</button>
 				</div>
 
 				<div class="gemini-chat-log">
@@ -73,7 +77,7 @@ if ( ! function_exists( 'qmo_chatbot_shortcode' ) ) {
 					<input type="text" class="gemini-chat-input" maxlength="1000"
 						placeholder="<?php echo esc_attr( $placeholder ); ?>"
 						aria-label="<?php echo esc_attr( $placeholder ); ?>" />
-					<button type="button" class="gemini-chat-send" aria-label="Gönder">
+					<button type="button" class="gemini-chat-send" aria-label="<?php echo esc_attr( qmo_ceviri_chat( __( 'Gönder', 'qrms' ) ) ); ?>">
 						<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
 					</button>
 				</div>

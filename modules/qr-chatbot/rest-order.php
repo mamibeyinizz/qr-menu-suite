@@ -137,7 +137,7 @@ if ( ! function_exists( 'qmo_rest_order' ) ) {
 				array(
 					'success' => false,
 					'kod'     => 'nonce',
-					'msg'     => 'Güvenlik doğrulaması başarısız. Lütfen sayfayı yenileyin.',
+					'msg'     => qmo_ceviri_chat( __( 'Güvenlik doğrulaması başarısız. Lütfen sayfayı yenileyin.', 'qrms' ) ),
 				),
 				403
 			);
@@ -150,7 +150,7 @@ if ( ! function_exists( 'qmo_rest_order' ) ) {
 				array(
 					'success' => false,
 					'kod'     => 'oturum_bitti',
-					'msg'     => 'Oturum süreniz doldu. Masadaki QR kodu tekrar okutun.',
+					'msg'     => qmo_ceviri_chat( __( 'Oturum süreniz doldu. Devam etmek için masadaki QR kodu tekrar okutun.', 'qrms' ) ),
 				),
 				403
 			);
@@ -216,7 +216,7 @@ if ( ! function_exists( 'qmo_siparis_isle' ) ) {
 		if ( ! is_array( $items ) || count( $items ) < 1 || count( $items ) > 20 ) {
 			return array(
 				'success' => false,
-				'msg'     => 'Geçersiz sipariş',
+				'msg'     => qmo_ceviri_chat( __( 'Geçersiz sipariş', 'qrms' ) ),
 				'http'    => 400,
 			);
 		}
@@ -243,7 +243,7 @@ if ( ! function_exists( 'qmo_siparis_isle' ) ) {
 		if ( empty( $temiz ) ) {
 			return array(
 				'success' => false,
-				'msg'     => 'Geçersiz sipariş',
+				'msg'     => qmo_ceviri_chat( __( 'Geçersiz sipariş', 'qrms' ) ),
 				'http'    => 400,
 			);
 		}
@@ -318,7 +318,7 @@ if ( ! function_exists( 'qmo_siparis_isle' ) ) {
 			qmo_log( 'Sipariş yazılamadı: ' . $res->get_error_message() );
 			return array(
 				'success' => false,
-				'msg'     => 'Sipariş iletilemedi, lütfen garsona bildirin.',
+				'msg'     => qmo_ceviri_chat( __( 'Sipariş iletilemedi, lütfen garsona bildirin.', 'qrms' ) ),
 				'http'    => 500,
 			);
 		}

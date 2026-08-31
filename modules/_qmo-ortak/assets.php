@@ -188,15 +188,22 @@ if ( ! function_exists( 'qmo_js_verisi_ekle' ) ) {
 		}
 		$eklendi[ $handle ] = true;
 
-		wp_localize_script(
-			$handle,
-			'qmoData',
-			array(
-				'ajaxUrl'   => admin_url( 'admin-ajax.php' ),
-				'nonce'     => wp_create_nonce( QMO_NONCE_ACTION ),
-				'restOrder' => esc_url_raw( rest_url( 'qrservis/v1/order' ) ),
-				'restNonce' => wp_create_nonce( 'wp_rest' ),
-			)
+		$veri = array(
+			'ajaxUrl'   => admin_url( 'admin-ajax.php' ),
+			'nonce'     => wp_create_nonce( QMO_NONCE_ACTION ),
+			'restOrder' => esc_url_raw( rest_url( 'qrservis/v1/order' ) ),
+			'restNonce' => wp_create_nonce( 'wp_rest' ),
 		);
+
+		// Post-render JS metinleri. sepet.js (qmo-sepet) bu adımda dokunulmaz.
+		if ( in_array( $handle, array( 'qmo-chatbot', 'qmo-buttons' ), true )
+			&& function_exists( 'qmo_chat_js_metinleri' ) ) {
+			$i18n = qmo_chat_js_metinleri();
+			if ( $i18n ) {
+				$veri['i18n'] = $i18n;
+			}
+		}
+
+		wp_localize_script( $handle, 'qmoData', $veri );
 	}
 }
