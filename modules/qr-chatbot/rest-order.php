@@ -226,16 +226,18 @@ if ( ! function_exists( 'qmo_siparis_isle' ) ) {
 			if ( ! is_array( $it ) ) {
 				continue;
 			}
-			$ad   = sanitize_text_field( (string) ( $it['urunAdi'] ?? '' ) );
-			$adet = max( 1, min( 20, (int) ( $it['adet'] ?? 1 ) ) );
-			$not  = mb_substr( sanitize_textarea_field( (string) ( $it['not'] ?? '' ) ), 0, 200 );
+			$ad      = sanitize_text_field( (string) ( $it['urunAdi'] ?? '' ) );
+			$adet    = max( 1, min( 20, (int) ( $it['adet'] ?? 1 ) ) );
+			$not     = mb_substr( sanitize_textarea_field( (string) ( $it['not'] ?? '' ) ), 0, 200 );
+			$item_id = isset( $it['itemId'] ) ? absint( $it['itemId'] ) : ( isset( $it['item_id'] ) ? absint( $it['item_id'] ) : 0 );
 			if ( '' === $ad ) {
 				continue;
 			}
 			$temiz[] = array(
-				'urunAdi' => $ad,
-				'adet'    => $adet,
-				'not'     => $not,
+				'urunAdi'  => $ad,
+				'adet'     => $adet,
+				'not'      => $not,
+				'item_id'  => $item_id,
 			);
 		}
 		if ( empty( $temiz ) ) {
@@ -248,10 +250,21 @@ if ( ! function_exists( 'qmo_siparis_isle' ) ) {
 
 		// Restoran menü "Tükendi" durumu siparişi burada keser (varsa).
 		$engel = apply_filters( 'qmo_siparis_onay_oncesi', null, $temiz );
-		if ( is_string( $engel ) && '' !== $engel ) {
+		$mesaj = '';
+		$engel_id = 0;
+		$engel_ad = '';
+		if ( is_array( $engel ) ) {
+			$mesaj    = isset( $engel['mesaj'] ) ? (string) $engel['mesaj'] : '';
+			$engel_id = isset( $engel['item_id'] ) ? absint( $engel['item_id'] ) : 0;
+			$engel_ad = isset( $engel['item_name'] ) ? sanitize_text_field( (string) $engel['item_name'] ) : '';
+		} elseif ( is_string( $engel ) && '' !== $engel ) {
+			$mesaj = $engel;
+		}
+		if ( '' !== $mesaj ) {
+			qmo_analitik_siparis_engeli_yaz( $masa, $engel_id, $engel_ad );
 			return array(
 				'success' => false,
-				'msg'     => $engel,
+				'msg'     => $mesaj,
 				'http'    => 409,
 			);
 		}
@@ -293,6 +306,14 @@ if ( ! function_exists( 'qmo_siparis_isle' ) ) {
 
 		qmo_db_geri_baglan( $db_kapali );
 
+		// Analitik, Firestore sonucuna göre order_sent / order_failed yazar.
+		// Insert, bağlantı geri açıldıktan SONRA yapılır: serbest pencerede
+		// $wpdb->insert sessizce false dönerdi. Ürün çözümlemesi de buradadır
+		// (get_post). Firestore beklenmeden analitik atlanmaz — her deneme
+		// bir tipe düşer.
+		$olay_tip = is_wp_error( $res ) ? 'order_failed' : 'order_sent';
+		qmo_analitik_siparis_yaz( $olay_tip, $masa, $temiz );
+
 		if ( is_wp_error( $res ) ) {
 			qmo_log( 'Sipariş yazılamadı: ' . $res->get_error_message() );
 			return array(
@@ -328,6 +349,90 @@ if ( ! function_exists( 'qmo_siparis_isle' ) ) {
 			'success' => true,
 			'msg'     => '',
 			'http'    => 200,
+		);
+	}
+}
+
+/**
+ * Sipariş kalemlerini analitik satırlarına yazar.
+ *
+ * Adet kadar satır YAZILMAZ: şemada adet sütunu yoktur ve satırı çoğaltmak
+ * "kaç siparişte bu ürün vardı" ile "kaç porsiyon gitti"yi karıştırır.
+ * cart_add da tıklama başına bir satırdır; huninin cart_add → order_sent
+ * dönüşümü aynı birimde kalır. Her kalem (satır) için bir olay.
+ *
+ * @param string $tip   order_sent | order_failed.
+ * @param string $masa  Masa slug'ı.
+ * @param array  $temiz Temizlenmiş kalemler.
+ * @return void
+ */
+if ( ! function_exists( 'qmo_analitik_siparis_yaz' ) ) {
+	function qmo_analitik_siparis_yaz( $tip, $masa, $temiz ) {
+		if ( ! class_exists( 'QRMS_Analitik' ) ) {
+			return;
+		}
+
+		$tip = sanitize_key( (string) $tip );
+
+		if ( ! in_array( $tip, array( 'order_sent', 'order_failed' ), true ) ) {
+			return;
+		}
+
+		foreach ( (array) $temiz as $it ) {
+			if ( ! is_array( $it ) ) {
+				continue;
+			}
+
+			$id  = isset( $it['item_id'] ) ? absint( $it['item_id'] ) : 0;
+			$ad  = isset( $it['urunAdi'] ) ? (string) $it['urunAdi'] : '';
+			$alan = $id ? qmo_analitik_urun_alani( $id ) : array();
+
+			if ( empty( $alan ) ) {
+				$alan = qmo_analitik_urun_ada_gore( $ad );
+			}
+
+			qmo_analitik_yaz(
+				array(
+					'event_type'    => $tip,
+					'item_id'       => isset( $alan['item_id'] ) ? (int) $alan['item_id'] : 0,
+					'item_name'     => isset( $alan['item_name'] ) && '' !== $alan['item_name'] ? $alan['item_name'] : $ad,
+					'category_name' => isset( $alan['category_name'] ) ? $alan['category_name'] : '',
+					'masa_no'       => $masa,
+				)
+			);
+		}
+	}
+}
+
+/**
+ * Tükendi filtresinin kestiği siparişi kaydeder.
+ *
+ * @param string $masa     Masa slug'ı.
+ * @param int    $item_id  Engelleyen ürün.
+ * @param string $item_ad  Engelleyen ürün adı.
+ * @return void
+ */
+if ( ! function_exists( 'qmo_analitik_siparis_engeli_yaz' ) ) {
+	function qmo_analitik_siparis_engeli_yaz( $masa, $item_id, $item_ad ) {
+		if ( ! class_exists( 'QRMS_Analitik' ) ) {
+			return;
+		}
+
+		$item_id = absint( $item_id );
+		$alan    = $item_id ? qmo_analitik_urun_alani( $item_id ) : array();
+
+		if ( empty( $alan ) && '' !== (string) $item_ad ) {
+			$alan = qmo_analitik_urun_ada_gore( $item_ad );
+		}
+
+		qmo_analitik_yaz(
+			array(
+				'event_type'    => 'order_blocked',
+				'item_id'       => isset( $alan['item_id'] ) ? (int) $alan['item_id'] : $item_id,
+				'item_name'     => isset( $alan['item_name'] ) && '' !== $alan['item_name'] ? $alan['item_name'] : sanitize_text_field( (string) $item_ad ),
+				'category_name' => isset( $alan['category_name'] ) ? $alan['category_name'] : '',
+				'masa_no'       => $masa,
+			)
 		);
 	}
 }
