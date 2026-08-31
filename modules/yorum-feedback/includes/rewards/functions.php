@@ -117,6 +117,37 @@ function qrm_reward_setup_status($settings = null) {
 }
 
 /**
+ * Aktif (geçerli) ödül kodu sayısı.
+ *
+ * Genel Bakış analiz şeridi BURADAN beslenir; istek içi statik önbellek
+ * ikinci bir COUNT sorgusunu önler.
+ *
+ * @return int
+ */
+function qrm_reward_active_code_count() {
+    static $sayi = null;
+    if ($sayi !== null) {
+        return $sayi;
+    }
+
+    if (!function_exists('qrm_reward_table')) {
+        $sayi = 0;
+        return $sayi;
+    }
+
+    global $wpdb;
+    $table = qrm_reward_table();
+    $suppress = $wpdb->suppress_errors(true);
+    $sayi = (int) $wpdb->get_var($wpdb->prepare(
+        "SELECT COUNT(*) FROM $table WHERE status = %s",
+        'active'
+    ));
+    $wpdb->suppress_errors($suppress);
+
+    return $sayi;
+}
+
+/**
  * Kuru çalışma: verilen ortalama puanla gerçek gönderim mantığını (eşik + modül
  * durumu) hiçbir kayıt oluşturmadan hesaplar. Admin'deki "Test Et" için.
  */

@@ -16,6 +16,37 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
+ * QR Masa ekranının bölümleri — TEK KAYNAK.
+ *
+ * Genel Bakış kartındaki alt liste buradan türer; adresler sayfa içi
+ * çapalardır (ayrı WordPress sayfası yoktur).
+ *
+ * @return array<string,array{title:string,url:string}>
+ */
+if ( ! function_exists( 'qrms_module_qr_masa_sayfalar' ) ) {
+	function qrms_module_qr_masa_sayfalar() {
+		$base = class_exists( 'QRMS_Admin' )
+			? QRMS_Admin::get_module_page_url( 'qr-masa' )
+			: admin_url( 'admin.php?page=qrms-module-qr-masa' );
+
+		return array(
+			'masalar' => array(
+				'title' => __( 'Masalar', 'qrms' ),
+				'url'   => $base . '#qmo-masa-liste',
+			),
+			'toplu'   => array(
+				'title' => __( 'Toplu Oluştur', 'qrms' ),
+				'url'   => $base . '#qmo-toplu',
+			),
+			'aktif'   => array(
+				'title' => __( 'Aktif Masa Bilgisi', 'qrms' ),
+				'url'   => $base . '#qmo-aktif-masa',
+			),
+		);
+	}
+}
+
+/**
  * Masalar sayfası.
  */
 if ( ! function_exists( 'qmo_masalar_sayfasi' ) ) {
@@ -60,7 +91,7 @@ if ( ! function_exists( 'qmo_masalar_sayfasi' ) ) {
 					</p>
 				</div>
 
-				<div class="qmo-add-box">
+				<div class="qmo-add-box" id="qmo-toplu">
 					<h3>Toplu Oluştur</h3>
 					<form method="post" action="" class="qmo-form qmo-toplu-form">
 						<?php wp_nonce_field( 'qmo_masa_toplu_ekle', 'qmo_toplu_nonce' ); ?>
@@ -111,7 +142,7 @@ if ( ! function_exists( 'qmo_masalar_sayfasi' ) ) {
 				</div>
 			<?php endif; ?>
 
-			<table class="wp-list-table widefat fixed striped qmo-masa-tablo">
+			<table class="wp-list-table widefat fixed striped qmo-masa-tablo" id="qmo-masa-liste">
 				<thead>
 					<tr>
 						<th style="width:50px;">ID</th>
@@ -159,6 +190,15 @@ if ( ! function_exists( 'qmo_masalar_sayfasi' ) ) {
 					<?php endif; ?>
 				</tbody>
 			</table>
+
+			<div class="qmo-add-box" id="qmo-aktif-masa" style="margin-top:16px;">
+				<h3><?php esc_html_e( 'Aktif Masa Bilgisi', 'qrms' ); ?></h3>
+				<p class="description">
+					<?php esc_html_e( 'Müşteriye hangi masada olduğunu göstermek için kısa kod:', 'qrms' ); ?>
+					<code>[qr_aktif_masa]</code>.
+					<?php esc_html_e( 'Masa bilgisi doğrulanmış oturumdan okunur, adresten değil. Yalnızca müşteri masadaki QR kodu okuttuysa görünür.', 'qrms' ); ?>
+				</p>
+			</div>
 		</div>
 		<?php
 	}

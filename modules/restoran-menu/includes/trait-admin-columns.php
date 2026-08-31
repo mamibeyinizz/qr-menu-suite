@@ -44,6 +44,55 @@ trait RMA_Admin_Columns_Trait {
         return $clauses;
     }
 
+    /**
+     * Ürün listesini "Tükendi" meta'sına göre daraltır.
+     *
+     * Genel Bakış analiz şeridindeki "Tükendi Ürün" kutusu `rma_tukendi=1`
+     * ile buraya gelir; ayrı bir sayfa değil, filtrelenmiş liste.
+     *
+     * @param WP_Query $query Ana sorgu.
+     * @return void
+     */
+    public function filter_tukendi_list( $query ) {
+        global $pagenow;
+
+        if ( ! is_admin() || $pagenow !== 'edit.php' || ! $query->is_main_query() ) {
+            return;
+        }
+        if ( $query->get( 'post_type' ) !== 'rma_menu_item' ) {
+            return;
+        }
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+        if ( empty( $_GET['rma_tukendi'] ) ) {
+            return;
+        }
+
+        $query->set( 'meta_key', class_exists( 'RMA_Tukendi' ) ? RMA_Tukendi::META : '_rma_tukendi' );
+        $query->set( 'meta_value', '1' );
+    }
+
+    /**
+     * Ürün listesinin üstüne "Tükendi" görünümü ekler.
+     *
+     * Sayaç qmo_tukendi_urun_sayisi() ile sol menü rozeti ve Genel Bakış
+     * şeridinin aynı kaynağıdır.
+     *
+     * @param array $views Mevcut görünüm bağlantıları.
+     * @return array
+     */
+    public function tukendi_views( $views ) {
+        $sayi = function_exists( 'qmo_tukendi_urun_sayisi' ) ? qmo_tukendi_urun_sayisi() : 0;
+        $url  = admin_url( 'edit.php?post_type=rma_menu_item&rma_tukendi=1' );
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+        $class = ! empty( $_GET['rma_tukendi'] ) ? 'current' : '';
+
+        $views['rma_tukendi'] = '<a href="' . esc_url( $url ) . '" class="' . esc_attr( $class ) . '">'
+            . esc_html__( 'Tükendi', 'qrms' )
+            . ' <span class="count">(' . (int) $sayi . ')</span></a>';
+
+        return $views;
+    }
+
     public function render_admin_columns( $column, $post_id ) {
         if ( $column === 'rma_status' ) {
             $status  = get_post_meta( $post_id, 'rma_active', true );
