@@ -132,8 +132,13 @@ add_action('admin_page_access_denied', 'qrm_pro_redirect_legacy_pages');
 function qrm_pro_redirect_legacy_pages() {
     if (empty($_GET['page'])) return;
 
-    $target = qrm_pro_legacy_page_target(sanitize_key($_GET['page']), wp_unslash($_GET));
+    $slug   = sanitize_key($_GET['page']);
+    $target = qrm_pro_legacy_page_target($slug, wp_unslash($_GET));
     if ($target === '') return;
+
+    if (class_exists('QRMS_Helpers') && method_exists('QRMS_Helpers', 'legacy_slug_hit')) {
+        QRMS_Helpers::legacy_slug_hit($slug);
+    }
 
     wp_safe_redirect($target);
     exit;

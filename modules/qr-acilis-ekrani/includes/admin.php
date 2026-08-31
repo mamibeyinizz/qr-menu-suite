@@ -868,6 +868,10 @@ trait QRMS_AE_Admin {
 			? $this->admin_url_for( $map[ $tab ] )
 			: QRMS_Admin::get_module_page_url( 'qr-acilis-ekrani' );
 
+		if ( class_exists( 'QRMS_Helpers' ) && method_exists( 'QRMS_Helpers', 'legacy_slug_hit' ) ) {
+			QRMS_Helpers::legacy_slug_hit( $page );
+		}
+
 		wp_safe_redirect( $target );
 		exit;
 	}
