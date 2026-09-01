@@ -127,6 +127,25 @@
 	text-align: left;
 }
 
+.qrc-wrap .qrc-stale {
+	display: inline-block;
+	margin-left: 6px;
+	padding: 1px 6px;
+	border-radius: 3px;
+	background: #fcf0f1;
+	color: #b32d2e;
+	font-size: 12px;
+	font-weight: 600;
+}
+
+.qrc-wrap .qrc-yetim-form {
+	margin: 8px 0 16px;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 10px;
+}
+
 /* Dar ekran: tablo kart yığınına döner.
 
    Sütun sayısı aktif hedef dile bağlıdır ve 30'a kadar çıkabilir; yatay

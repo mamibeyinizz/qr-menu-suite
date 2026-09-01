@@ -442,15 +442,18 @@ trait QRMS_HFB_Frontend {
 
 		$links_title   = $this->hfb_cevir_option_varsayilan(
 			isset( $opts['links_title'] ) ? $opts['links_title'] : '',
-			isset( $this->footer_defaults['links_title'] ) ? $this->footer_defaults['links_title'] : 'Hızlı Menü'
+			isset( $this->footer_defaults['links_title'] ) ? $this->footer_defaults['links_title'] : 'Hızlı Menü',
+			'hfb_footer.links_title'
 		);
 		$contact_title = $this->hfb_cevir_option_varsayilan(
 			isset( $opts['contact_title'] ) ? $opts['contact_title'] : '',
-			isset( $this->footer_defaults['contact_title'] ) ? $this->footer_defaults['contact_title'] : 'İletişim'
+			isset( $this->footer_defaults['contact_title'] ) ? $this->footer_defaults['contact_title'] : 'İletişim',
+			'hfb_footer.contact_title'
 		);
 		$hours_title   = $this->hfb_cevir_option_varsayilan(
 			isset( $opts['hours_title'] ) ? $opts['hours_title'] : '',
-			isset( $this->footer_defaults['hours_title'] ) ? $this->footer_defaults['hours_title'] : 'Çalışma Saatlerimiz'
+			isset( $this->footer_defaults['hours_title'] ) ? $this->footer_defaults['hours_title'] : 'Çalışma Saatlerimiz',
+			'hfb_footer.hours_title'
 		);
 
 		$show_links   = (bool) $nav || '' !== $links_title;
@@ -657,12 +660,22 @@ trait QRMS_HFB_Frontend {
 			$hesap_yedek  = qmo_ceviri_chat( $hesap_yedek );
 		}
 
-		$garson = isset( $opts['call_garson_label'] ) && '' !== trim( (string) $opts['call_garson_label'] )
-			? (string) $opts['call_garson_label']
-			: $garson_yedek;
-		$hesap = isset( $opts['call_hesap_label'] ) && '' !== trim( (string) $opts['call_hesap_label'] )
-			? (string) $opts['call_hesap_label']
-			: $hesap_yedek;
+		$garson_ham = isset( $opts['call_garson_label'] ) ? trim( (string) $opts['call_garson_label'] ) : '';
+		$hesap_ham  = isset( $opts['call_hesap_label'] ) ? trim( (string) $opts['call_hesap_label'] ) : '';
+		$garson_def = isset( $this->footer_defaults['call_garson_label'] ) ? (string) $this->footer_defaults['call_garson_label'] : 'Garson Çağır';
+		$hesap_def  = isset( $this->footer_defaults['call_hesap_label'] ) ? (string) $this->footer_defaults['call_hesap_label'] : 'Hesap İste';
+
+		// Boş veya kod varsayılanı: P0 chat satırı. Dolu özel metin: option (hash kapısı).
+		if ( '' !== $garson_ham && $garson_ham !== $garson_def && function_exists( 'rma_ceviri_option' ) ) {
+			$garson = rma_ceviri_option( 'hfb_footer.call_garson_label', $garson_ham );
+		} else {
+			$garson = '' !== $garson_ham && $garson_ham !== $garson_def ? $garson_ham : $garson_yedek;
+		}
+		if ( '' !== $hesap_ham && $hesap_ham !== $hesap_def && function_exists( 'rma_ceviri_option' ) ) {
+			$hesap = rma_ceviri_option( 'hfb_footer.call_hesap_label', $hesap_ham );
+		} else {
+			$hesap = '' !== $hesap_ham && $hesap_ham !== $hesap_def ? $hesap_ham : $hesap_yedek;
+		}
 
 		$html  = '<div class="hfb-footer__call qmo-cagri-bar">';
 		$html .= '<button type="button" class="hfb-btn hfb-footer__call-btn"' . ( $live ? ' data-qmo-cagri="garson"' : '' ) . '>';
@@ -1163,23 +1176,37 @@ trait QRMS_HFB_Frontend {
 	}
 
 	/**
-	 * Option sütun başlığı: kod sabitiyle birebirse çevir; yönetici metniyse dokunma (P1).
+	 * Option sütun başlığı.
+	 *
+	 * GEÇİCİ (P1): önce item_type=option (hash kapısı), yoksa ve değer kod
+	 * sabitiyle aynıysa P0 ui_string. İki tip bir arada durur.
+	 * Faz 9 temizlik: "HFB çeviri satırları iki tipte, tek tipe indirilsin mi?"
 	 *
 	 * Boş değer "başlık yok" demektir — varsayılana zorlanmaz (h3 basılmasın).
 	 *
 	 * @param string $deger      Option değeri.
 	 * @param string $varsayilan Kod sabiti (footer_defaults).
+	 * @param string $field      option field (hfb_footer.links_title …).
 	 * @return string
 	 */
-	private function hfb_cevir_option_varsayilan( $deger, $varsayilan ) {
+	private function hfb_cevir_option_varsayilan( $deger, $varsayilan, $field = '' ) {
 		$deger      = trim( (string) $deger );
 		$varsayilan = (string) $varsayilan;
 		if ( '' === $deger ) {
 			return '';
 		}
+
+		if ( '' !== $field && function_exists( 'rma_ceviri_option' ) ) {
+			$option = rma_ceviri_option( $field, $deger );
+			if ( $option !== $deger ) {
+				return $option;
+			}
+		}
+
 		if ( $deger === $varsayilan ) {
 			return $this->hfb_cevir_ui( $varsayilan );
 		}
+
 		return $deger;
 	}
 }

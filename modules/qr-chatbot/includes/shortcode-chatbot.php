@@ -35,11 +35,23 @@ if ( ! function_exists( 'qmo_chatbot_shortcode' ) ) {
 		// Renk değişkenleri qmo_asset_enqueue() içinde stille birlikte eklenir.
 		qmo_asset_enqueue( 'qmo-chatbot' );
 
-		// P1: option metinleri (bot adı, placeholder, karşılama) tablodan
-		// çevrilecek — bu adımda yalnız sabitler rma_ceviri_modul( 'chat' ).
-		$bot_adi   = get_option( 'gemini_bot_name', 'Asistan' );
+		$bot_adi     = get_option( 'gemini_bot_name', 'Asistan' );
 		$placeholder = get_option( 'gemini_placeholder_text', 'Bir şeyler sorun...' );
-		$karsilama = get_option( 'gemini_welcome_text', 'Merhaba! Size nasıl yardımcı olabilirim?' );
+		$karsilama   = get_option( 'gemini_welcome_text', 'Merhaba! Size nasıl yardımcı olabilirim?' );
+		if ( '' === trim( (string) $bot_adi ) ) {
+			$bot_adi = 'Asistan';
+		}
+		if ( '' === trim( (string) $placeholder ) ) {
+			$placeholder = 'Bir şeyler sorun...';
+		}
+		if ( '' === trim( (string) $karsilama ) ) {
+			$karsilama = 'Merhaba! Size nasıl yardımcı olabilirim?';
+		}
+		if ( function_exists( 'rma_ceviri_option' ) ) {
+			$bot_adi     = rma_ceviri_option( 'gemini_bot_name', $bot_adi );
+			$placeholder = rma_ceviri_option( 'gemini_placeholder_text', $placeholder );
+			$karsilama   = rma_ceviri_option( 'gemini_welcome_text', $karsilama );
+		}
 		$metin_goster = 'yes' === get_option( 'gemini_show_toggle_text', 'yes' );
 		$ikon_url  = get_option( 'gemini_bot_icon', '' );
 

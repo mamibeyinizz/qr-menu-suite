@@ -164,7 +164,7 @@ if ( ! class_exists( 'RMA_Ceviri_Tablo' ) ) {
 
 			return (array) $wpdb->get_results(
 				$wpdb->prepare(
-					"SELECT item_id, item_type, field, original_text, translated_text
+					"SELECT item_id, item_type, field, original_text, translated_text, original_hash
 					 FROM {$tablo}
 					 WHERE lang_code = %s",
 					$lang
@@ -254,6 +254,166 @@ if ( ! class_exists( 'RMA_Ceviri_Tablo' ) ) {
 			}
 
 			return $sonuc;
+		}
+
+		/**
+		 * Bir tipin çeviri tablosundaki distinct item_id listesi (0 hariç).
+		 *
+		 * @param string $tip item_type.
+		 * @return int[]
+		 */
+		public static function tip_item_idleri( $tip ) {
+			global $wpdb;
+
+			if ( ! self::tablo_var_mi() ) {
+				return array();
+			}
+
+			$tablo = self::tablo();
+
+			return array_map(
+				'intval',
+				(array) $wpdb->get_col(
+					$wpdb->prepare(
+						"SELECT DISTINCT item_id FROM {$tablo} WHERE item_type = %s AND item_id > 0",
+						$tip
+					)
+				)
+			);
+		}
+
+		/**
+		 * Tip + ID listesindeki satır sayısı.
+		 *
+		 * @param string $tip   item_type.
+		 * @param int[]  $idler item_id.
+		 * @return int
+		 */
+		public static function tip_id_satir_sayisi( $tip, $idler ) {
+			global $wpdb;
+
+			$idler = array_values( array_unique( array_map( 'intval', (array) $idler ) ) );
+			if ( empty( $idler ) || ! self::tablo_var_mi() ) {
+				return 0;
+			}
+
+			$tablo = self::tablo();
+			$in    = implode( ',', $idler );
+
+			return (int) $wpdb->get_var(
+				$wpdb->prepare(
+					"SELECT COUNT(*) FROM {$tablo} WHERE item_type = %s AND item_id IN ({$in})",
+					$tip
+				)
+			);
+		}
+
+		/**
+		 * Tip + ID listesini sil.
+		 *
+		 * @param string $tip   item_type.
+		 * @param int[]  $idler item_id.
+		 * @return int Silinen satır.
+		 */
+		public static function tip_idleri_sil( $tip, $idler ) {
+			global $wpdb;
+
+			$idler = array_values( array_unique( array_map( 'intval', (array) $idler ) ) );
+			if ( empty( $idler ) || ! self::tablo_var_mi() ) {
+				return 0;
+			}
+
+			$tablo = self::tablo();
+			$in    = implode( ',', $idler );
+
+			return (int) $wpdb->query(
+				$wpdb->prepare(
+					"DELETE FROM {$tablo} WHERE item_type = %s AND item_id IN ({$in})",
+					$tip
+				)
+			);
+		}
+
+		/**
+		 * Bir alanın kaç farklı dilde çevirisi var.
+		 *
+		 * @param string $tip     item_type.
+		 * @param int    $item_id ID.
+		 * @param string $field   Alan; boşsa o ID'nin tüm alanları.
+		 * @return int
+		 */
+		public static function alan_dil_sayisi( $tip, $item_id, $field = '' ) {
+			global $wpdb;
+
+			if ( ! self::tablo_var_mi() ) {
+				return 0;
+			}
+
+			$tablo = self::tablo();
+
+			if ( '' === $field ) {
+				return (int) $wpdb->get_var(
+					$wpdb->prepare(
+						"SELECT COUNT(DISTINCT lang_code) FROM {$tablo} WHERE item_type = %s AND item_id = %d",
+						$tip,
+						$item_id
+					)
+				);
+			}
+
+			return (int) $wpdb->get_var(
+				$wpdb->prepare(
+					"SELECT COUNT(DISTINCT lang_code) FROM {$tablo} WHERE item_type = %s AND item_id = %d AND field = %s",
+					$tip,
+					$item_id,
+					$field
+				)
+			);
+		}
+
+		/**
+		 * Birden çok option field için distinct dil sayısı.
+		 *
+		 * @param string[] $fieldler field listesi.
+		 * @return int
+		 */
+		public static function option_alan_dil_sayisi( $fieldler ) {
+			global $wpdb;
+
+			$fieldler = array_values( array_filter( array_map( 'strval', (array) $fieldler ) ) );
+			if ( empty( $fieldler ) || ! self::tablo_var_mi() ) {
+				return 0;
+			}
+
+			$tablo = self::tablo();
+			$yer   = implode( ',', array_fill( 0, count( $fieldler ), '%s' ) );
+			$sql   = "SELECT COUNT(DISTINCT lang_code) FROM {$tablo} WHERE item_type = %s AND item_id = 0 AND field IN ({$yer})";
+			$args  = array_merge( array( $sql, 'option' ), $fieldler );
+
+			return (int) $wpdb->get_var( call_user_func_array( array( $wpdb, 'prepare' ), $args ) );
+		}
+
+		/**
+		 * Hash kapısı için tip satırları (distinct item_id+field+hash).
+		 *
+		 * @param string $tip item_type.
+		 * @return array<int,object>
+		 */
+		public static function tip_hash_satirlari( $tip ) {
+			global $wpdb;
+
+			if ( ! self::tablo_var_mi() ) {
+				return array();
+			}
+
+			$tablo = self::tablo();
+
+			return (array) $wpdb->get_results(
+				$wpdb->prepare(
+					"SELECT item_id, field, original_hash FROM {$tablo} WHERE item_type = %s GROUP BY item_id, field, original_hash",
+					$tip
+				)
+			);
 		}
 	}
 }

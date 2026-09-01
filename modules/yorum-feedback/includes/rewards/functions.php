@@ -553,6 +553,8 @@ function qrm_reward_send_code_email($email, $code, $discount_label) {
     $site_name = wp_specialchars_decode(get_bloginfo('name'), ENT_QUOTES);
     $subject   = !empty($settings['qrm_reward_email_subject']) ? $settings['qrm_reward_email_subject'] : 'İndirim kodunuz hazır!';
     $intro     = !empty($settings['qrm_reward_email_intro']) ? $settings['qrm_reward_email_intro'] : '';
+    $subject   = qrm_ceviri_option('qrm_settings.qrm_reward_email_subject', $subject);
+    $intro     = qrm_ceviri_option('qrm_settings.qrm_reward_email_intro', $intro);
 
     $body  = '<div style="font-family:Arial,Helvetica,sans-serif;max-width:520px;margin:0 auto;padding:24px;color:#1e293b;">';
     $body .= '<h2 style="margin:0 0 6px;font-size:20px;">' . esc_html($site_name) . '</h2>';

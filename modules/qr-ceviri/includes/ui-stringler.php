@@ -11,8 +11,9 @@
  * kutusu var — oraya her satıra bir metin yazmak yeterli.
  *
  * Sepet metinleri item_type=cart; yorum/form sabitleri item_type=review.
- * HFB chrome (aria, sütun varsayılanları) ui_string — yeni tip yok.
- * Yönetici option metinleri P1.
+ * HFB chrome (aria) ui_string. Sütun başlıkları P1'de option öne bakar;
+ * P0 ui_string satırları durur (GEÇİCİ — Faz 9: tek tipe indirilsin mi).
+ * Yönetici option / form alanı metinleri P1 (item_type=option|form_field|cf_field|cf_form).
  *
  * @package QRMenu_Ceviri
  */
@@ -284,9 +285,14 @@ if ( ! function_exists( 'rma_ceviri_modul_sabit_mi' ) ) {
  */
 if ( ! function_exists( 'rma_ceviri_gecerli_tipler' ) ) {
 	function rma_ceviri_gecerli_tipler() {
+		$veri = function_exists( 'rma_ceviri_veri_tipleri' )
+			? array_keys( rma_ceviri_veri_tipleri() )
+			: array();
+
 		return array_merge(
 			array( 'product', 'category', 'allergen', 'nav_menu', 'ui_string', 'elementor' ),
-			array_keys( rma_ceviri_modul_tipleri() )
+			array_keys( rma_ceviri_modul_tipleri() ),
+			$veri
 		);
 	}
 }

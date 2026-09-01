@@ -84,8 +84,7 @@ function qrm_pro_shortcode() {
                 <?php
                 for ($i = 1; $i <= 5; $i++) {
                     if ($settings['crit_'.$i.'_active']) {
-                        // P1 / adım 7-2: kriter adı option (crit_N_name).
-                        $c_name = $settings['crit_'.$i.'_name'];
+                        $c_name = qrm_ceviri_option('qrm_settings.crit_'.$i.'_name', $settings['crit_'.$i.'_name']);
                         $c_avg  = isset($stats['crit'][$i]) ? (float) $stats['crit'][$i] : 0.0;
                         if ($c_avg > 0) {
                             $pct = ($c_avg / 5) * 100;

@@ -49,7 +49,7 @@ function qrm_cf_type_label($type) {
 // --- FORM AYARLARI (settings sütunundaki JSON) ---
 
 function qrm_cf_default_form_settings() {
-    // P1 / adım 7-2: submit_text / success_message form ayarı (VERİ).
+    // P1: submit_text / success_message form ayarı (item_type=cf_form).
     return [
         'submit_text'     => 'Gönder',
         'success_message' => 'Formunuz bize ulaştı, teşekkür ederiz.',

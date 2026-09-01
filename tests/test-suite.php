@@ -12896,6 +12896,8 @@ qrms_test(
 echo "\nQR Çeviri (P0 köprü / galeri)\n";
 
 require_once QRMS_PLUGIN_DIR . 'modules/qr-ceviri/includes/ui-stringler.php';
+require_once QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/settings.php';
+require_once QRMS_PLUGIN_DIR . 'modules/qr-ceviri/includes/veri-kaynaklar.php';
 require_once QRMS_PLUGIN_DIR . 'modules/qr-ceviri/includes/kaynaklar.php';
 
 qrms_test(
@@ -13400,7 +13402,9 @@ qrms_test(
 		qrms_assert_contains( "qmo_ceviri_chat( __( 'Çevrimiçi', 'qrms' ) )", $bot, 'Çevrimiçi' );
 		qrms_assert_contains( "qmo_ceviri_chat( __( 'Kapat', 'qrms' ) )", $bot, 'Kapat' );
 		qrms_assert_contains( "qmo_ceviri_chat( __( 'Gönder', 'qrms' ) )", $bot, 'Gönder' );
-		qrms_assert_contains( 'P1: option metinleri', $bot, 'option P1 işareti' );
+		qrms_assert_contains( "rma_ceviri_option( 'gemini_bot_name'", $bot, 'bot adı option' );
+		qrms_assert_contains( "rma_ceviri_option( 'gemini_placeholder_text'", $bot, 'placeholder option' );
+		qrms_assert_contains( "rma_ceviri_option( 'gemini_welcome_text'", $bot, 'karşılama option' );
 		qrms_assert_contains( "qmo_ceviri_chat( __( 'Garson Çağır', 'qrms' ) )", $btn, 'shortcode Garson' );
 		qrms_assert_contains( "qmo_ceviri_chat( __( 'Hesap İste', 'qrms' ) )", $btn, 'shortcode Hesap' );
 		qrms_assert_contains( "qmo_ceviri_chat( \$garson_yedek )", $hfb, 'HFB aynı köprü' );
@@ -13664,7 +13668,7 @@ qrms_test(
 );
 
 qrms_test(
-	'qrm_ceviri_review çeviri yoksa Türkçe; 7-2 option/DB işaretli, uygulanmadı',
+	'qrm_ceviri_review çeviri yoksa Türkçe; P1 option/DB sarıldı',
 	function () {
 		qrms_assert_same( 'Devam Et →', qrm_ceviri_review( 'Devam Et →' ), 'tablo yokken Türkçe' );
 		qrms_assert_same(
@@ -13677,14 +13681,16 @@ qrms_test(
 		$inst = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/install.php' );
 		$form = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/frontend/form-render.php' );
 
-		qrms_assert_contains( 'P1 / adım 7-2', $set, 'settings işaret' );
-		qrms_assert_contains( "'form_title' => 'Deneyiminizi Paylaşın'", $set, 'option çevrilmedi' );
-		qrms_assert_contains( 'P1 / adım 7-2', $inst, 'install işaret' );
-		qrms_assert_contains( "'Adınız Soyadınız'", $inst, 'field_label çevrilmedi' );
-		qrms_assert_contains( 'P1 / adım 7-2: $f->field_label DB verisi', $form, 'render işaret' );
+		qrms_assert_contains( 'function qrm_ceviri_option', $set, 'option köprü' );
+		qrms_assert_contains( 'function qrm_ceviri_form_alan', $set, 'form_field köprü' );
+		qrms_assert_contains( "'form_title' => 'Deneyiminizi Paylaşın'", $set, 'varsayılan duruyor' );
+		qrms_assert_contains( 'item_type=form_field', $inst, 'install P1 notu' );
+		qrms_assert_contains( "'Adınız Soyadınız'", $inst, 'field_label tohum' );
+		qrms_assert_contains( "qrm_ceviri_option('qrm_settings.form_title'", $form, 'form başlığı sarıldı' );
+		qrms_assert_contains( 'qrm_ceviri_form_alan($f->id, $f->field_label)', $form, 'alan etiketi sarıldı' );
 		qrms_assert_false(
 			(bool) preg_match( "/qrm_ceviri_review\(__\('Deneyiminizi Paylaşın'/", $set ),
-			'option sarıldı'
+			'option review köprüsüne düşmedi'
 		);
 	}
 );
@@ -13716,6 +13722,8 @@ qrms_test(
 		qrms_assert_contains( "hfb_cevir_ui( __( 'Menüyü kapat', 'qrms' ) )", $front, 'Menüyü kapat' );
 		qrms_assert_contains( "hfb_cevir_ui( __( 'Lütfen QR kodunu okutarak masanızdan erişin', 'qrms' ) )", $front, 'QR uyarı' );
 		qrms_assert_contains( 'function hfb_cevir_option_varsayilan', $front, 'option ayrımı' );
+		qrms_assert_contains( 'rma_ceviri_option( $field, $deger )', $front, 'option öne bakar' );
+		qrms_assert_contains( 'Faz 9 temizlik', $front, 'geçici iki tip notu' );
 		qrms_assert_contains( 'rma_ceviri_modul( \'ui_string\'', $front, 'ui_string' );
 		qrms_assert_contains( 'qmo_ceviri_chat( $garson_yedek )', $front, '5B Garson' );
 		qrms_assert_contains( 'qmo_ceviri_chat( $hesap_yedek )', $front, '5B Hesap' );
@@ -13748,6 +13756,139 @@ qrms_test(
 			rma_ceviri_modul( 'ui_string', 'Lütfen QR kodunu okutarak masanızdan erişin' ),
 			'tablo yokken Türkçe'
 		);
+	}
+);
+
+echo "\nQR Çeviri (P1 yönetici verisi)\n";
+
+qrms_test(
+	'P1 tipleri varchar(20) içinde; option modul_sabit değil',
+	function () {
+		$tipler = rma_ceviri_gecerli_tipler();
+		foreach ( array( 'option', 'form_field', 'cf_field', 'cf_form' ) as $tip ) {
+			qrms_assert_true( in_array( $tip, $tipler, true ), $tip . ' geçerli' );
+			qrms_assert_true( strlen( $tip ) <= 20, $tip . ' varchar(20)' );
+		}
+		qrms_assert_true( rma_ceviri_hash_kapisi_mi( 'option' ), 'option kapı' );
+		qrms_assert_true( rma_ceviri_hash_kapisi_mi( 'form_field' ), 'form_field kapı' );
+		qrms_assert_true( rma_ceviri_hash_kapisi_mi( 'cf_field' ), 'cf_field kapı' );
+		qrms_assert_true( rma_ceviri_hash_kapisi_mi( 'cf_form' ), 'cf_form kapı' );
+		qrms_assert_false( rma_ceviri_hash_kapisi_mi( 'product' ), 'ürün kapı yok' );
+		qrms_assert_false( rma_ceviri_modul_sabit_mi( 'option' ), 'option metin anahtarı değil' );
+		qrms_assert_false( isset( rma_ceviri_modul_tipleri()['option'] ), 'option modul listesinde yok' );
+		qrms_assert_same( 'Yönetici ayarları', rma_ceviri_veri_tipleri()['option'], 'option etiket' );
+		qrms_assert_same( 'Form alanları', rma_ceviri_veri_tipleri()['form_field'], 'form_field etiket' );
+	}
+);
+
+qrms_test(
+	'hash kapısı: uyuşmazsa çeviri basılmaz, ürün kapıya girmez',
+	function () {
+		qrms_assert_true( rma_ceviri_hash_guncel_mi( 'Deneyiminizi Paylaşın', md5( 'Deneyiminizi Paylaşın' ) ), 'aynı' );
+		qrms_assert_false( rma_ceviri_hash_guncel_mi( 'Görüşünüz Bizim İçin Değerli', md5( 'Deneyiminizi Paylaşın' ) ), 'eski' );
+		qrms_assert_false( rma_ceviri_hash_guncel_mi( 'metin', '' ), 'boş hash' );
+
+		$kapi = static function ( $ceviri, $orijinal, $hash ) {
+			return rma_ceviri_hash_guncel_mi( $orijinal, $hash ) ? $ceviri : $orijinal;
+		};
+
+		qrms_assert_same( 'Assistant', $kapi( 'Assistant', 'Asistan', md5( 'Asistan' ) ), 'taze' );
+		qrms_assert_same( 'Yeni Bot', $kapi( 'Assistant', 'Yeni Bot', md5( 'Asistan' ) ), 'eskimiş yönetici metni' );
+
+		$sozluk = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-ceviri/includes/sozluk.php' );
+		qrms_assert_contains( 'rma_ceviri_hash_kapisi_mi', $sozluk, 'ön yüz kapısı' );
+		qrms_assert_contains( 'rma_ceviri_hash_guncel_mi', $sozluk, 'hash karşılaştırma' );
+		qrms_assert_contains( 'Metin indeksine girmez', $sozluk, 'option tampona girmez' );
+	}
+);
+
+qrms_test(
+	'option defteri ve guncel_orijinal canlı değeri okur',
+	function () {
+		$defter = rma_ceviri_option_defteri();
+		qrms_assert_true( isset( $defter['gemini_bot_name'] ), 'bot adı' );
+		qrms_assert_true( isset( $defter['qrm_settings.form_title'] ), 'form başlığı' );
+		qrms_assert_true( isset( $defter['qrm_settings.crit_1_name'] ), 'kriter 1' );
+		qrms_assert_true( isset( $defter['hfb_footer.links_title'] ), 'HFB başlık' );
+		qrms_assert_true( ! empty( $defter['hfb_footer.call_garson_label']['yalniz_ozel'] ), 'çağrı yalnızca özel' );
+
+		update_option( 'gemini_bot_name', 'Masa Asistanı' );
+		qrms_assert_same( 'Masa Asistanı', rma_ceviri_option_guncel( 'gemini_bot_name' ), 'canlı option' );
+		qrms_assert_same(
+			'Masa Asistanı',
+			rma_ceviri_guncel_orijinal( 0, 'option', 'gemini_bot_name' ),
+			'guncel_orijinal option'
+		);
+
+		update_option( 'qrm_settings', array( 'form_title' => 'Görüşünüz Bizim İçin Değerli' ) );
+		qrms_assert_same(
+			'Görüşünüz Bizim İçin Değerli',
+			rma_ceviri_guncel_orijinal( 0, 'option', 'qrm_settings.form_title' ),
+			'qrm_settings iç anahtar'
+		);
+
+		$satirlar = iterator_to_array( rma_ceviri_option_satirlari() );
+		$fieldler = array();
+		foreach ( $satirlar as $satir ) {
+			qrms_assert_same( 'option', $satir['item_type'], 'tip option' );
+			qrms_assert_same( 0, $satir['item_id'], 'id 0' );
+			$fieldler[ $satir['field'] ] = $satir['original'];
+		}
+		qrms_assert_same( 'Masa Asistanı', $fieldler['gemini_bot_name'], 'CSV bot adı' );
+		qrms_assert_same( 'Görüşünüz Bizim İçin Değerli', $fieldler['qrm_settings.form_title'], 'CSV form başlığı' );
+		qrms_assert_false( isset( $fieldler['hfb_footer.call_garson_label'] ), 'varsayılan çağrı CSV dışı' );
+	}
+);
+
+qrms_test(
+	'yetim filtre, uyarı metni, Sistem Durumu etiketleri',
+	function () {
+		qrms_assert_same(
+			array( 9, 4 ),
+			rma_ceviri_yetim_idleri_filtrele( array( 1, 9, 4, 1 ), array( 1, 2 ) ),
+			'yetim ID'
+		);
+		qrms_assert_same( '', rma_ceviri_bayat_uyari_metni( 0 ), 'uyarı yok' );
+		qrms_assert_contains( '2 dilde', rma_ceviri_bayat_uyari_metni( 2 ), 'uyarı dil' );
+		qrms_assert_contains( 'ziyaretçiler Türkçe', rma_ceviri_bayat_uyari_metni( 1 ), 'Türkçe uyarısı' );
+		qrms_assert_false(
+			(bool) preg_match( '/wp_die|disabled|readonly/', rma_ceviri_bayat_uyari_html( rma_ceviri_bayat_uyari_metni( 1 ) ) ),
+			'uyarı kaydı engellemez'
+		);
+
+		require_once QRMS_PLUGIN_DIR . 'modules/qr-ceviri/includes/admin/admin-sayfa.php';
+		qrms_assert_same( 'Yönetici ayarları', rma_ceviri_tip_etiketi( 'option' ), 'option durum' );
+		qrms_assert_same( 'Form alanları', rma_ceviri_tip_etiketi( 'form_field' ), 'form_field durum' );
+		qrms_assert_same( 'Özel form alanları', rma_ceviri_tip_etiketi( 'cf_field' ), 'cf_field durum' );
+		qrms_assert_same( 'Özel form metinleri', rma_ceviri_tip_etiketi( 'cf_form' ), 'cf_form durum' );
+		qrms_assert_same( 'Menü ürünleri', rma_ceviri_tip_etiketi( 'product' ), 'eski etiket' );
+
+		$admin = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-ceviri/includes/admin/admin-sayfa.php' );
+		qrms_assert_contains( 'Yetim satır:', $admin, 'yetim gösterge' );
+		qrms_assert_contains( 'Yetim satırları temizle', $admin, 'temizle düğmesi' );
+		qrms_assert_contains( 'geri alınamaz', $admin, 'onay uyarısı' );
+		qrms_assert_contains( 'Eskimiş:', $admin, 'eskimiş rozet' );
+
+		$help = file_get_contents( QRMS_PLUGIN_DIR . 'includes/class-helpers.php' );
+		qrms_assert_contains( 'HFB çeviri satırları iki tipte', $help, 'Faz 9 maddesi' );
+	}
+);
+
+qrms_test(
+	'çeviri yoksa yönetici metni; boş option varsayılana düşer',
+	function () {
+		qrms_assert_same( 'Asistan', rma_ceviri_option( 'gemini_bot_name', 'Asistan' ), 'tablo yok option' );
+		qrms_assert_same( 'Adınız Soyadınız', qrm_ceviri_form_alan( 3, 'Adınız Soyadınız' ), 'tablo yok alan' );
+		qrms_assert_same( 'Şikayet', qrm_ceviri_cf_form( 1, 'title', 'Şikayet' ), 'tablo yok cf_form' );
+
+		$bot = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/includes/admin/admin-sayfa.php' );
+		qrms_assert_contains( 'rma_ceviri_bayat_uyari_metni', $bot, 'chatbot uyarı' );
+
+		$hfb = file_get_contents( QRMS_PLUGIN_DIR . 'modules/header-footer-builder/includes/trait-admin.php' );
+		qrms_assert_contains( 'hfb_ceviri_bayat_uyari', $hfb, 'HFB uyarı' );
+
+		$set = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/admin/settings-page.php' );
+		qrms_assert_contains( 'rma_ceviri_bayat_uyari_ekran_metni', $set, 'yorum ayar uyarı' );
 	}
 );
 

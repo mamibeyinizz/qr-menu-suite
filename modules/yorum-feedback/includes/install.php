@@ -66,9 +66,8 @@ function qrm_pro_install() {
 
     // Varsayılan form alanları (Eğer boşsa)
     //
-    // P1 / adım 7-2: field_label DB verisidir; yönetici Form Alanları
-    // ekranından değiştirir. CSV'ye field satırı olarak çıkmaları ayrı
-    // mekanizma ister — şimdi çevrilmez.
+    // P1: field_label DB verisidir; CSV'ye item_type=form_field,
+    // item_id=satır id, field=label olarak çıkar.
     $field_count = $wpdb->get_var("SELECT COUNT(*) FROM $table_fields");
     if ($field_count == 0) {
         $default_fields = [

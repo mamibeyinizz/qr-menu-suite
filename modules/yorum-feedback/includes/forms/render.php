@@ -87,8 +87,7 @@ function qrm_cf_render_field($field, $args = []) {
     ?>
     <div class="qrm-input-group<?php echo $half; ?>">
         <?php if ($type !== 'checkbox' || count($options) > 0): ?>
-            <?php // P1 / adım 7-2: $label özel form alan etiketi (DB). ?>
-            <label for="<?php echo esc_attr($id); ?>"><?php echo esc_html($label) . $req_mark; ?></label>
+            <label for="<?php echo esc_attr($id); ?>"><?php echo esc_html(qrm_ceviri_cf_alan($field->id, $label)) . $req_mark; ?></label>
         <?php endif; ?>
 
         <?php
@@ -177,8 +176,7 @@ function qrm_cf_render_form($form, $fields, $s = null) {
     <div class="qrm-cf-scope qrm-cf-scope-<?php echo $form_id; ?>">
         <div class="qrm-cf-form" id="<?php echo esc_attr($prefix); ?>-box">
             <?php if (!empty($s['show_title'])): ?>
-                <?php // P1 / adım 7-2: $form->title özel form DB başlığı. ?>
-                <h3><?php echo esc_html($form->title); ?></h3>
+                <h3><?php echo esc_html(qrm_ceviri_cf_form($form_id, 'title', $form->title)); ?></h3>
             <?php endif; ?>
             <?php if (trim((string) $form->description) !== ''): ?>
                 <p class="qrm-cf-desc"><?php echo nl2br(esc_html($form->description)); ?></p>
@@ -203,8 +201,7 @@ function qrm_cf_render_form($form, $fields, $s = null) {
                     } ?>
                 </div>
 
-                <?php // P1 / adım 7-2: submit_text / success_message form ayarı (option/DB). ?>
-                <button type="submit" class="qrm-btn"><span class="qrm-btn-label"><?php echo esc_html($s['submit_text']); ?></span></button>
+                <button type="submit" class="qrm-btn"><span class="qrm-btn-label"><?php echo esc_html(qrm_ceviri_cf_form($form_id, 'submit_text', $s['submit_text'])); ?></span></button>
             </form>
         </div>
     </div>
@@ -230,7 +227,7 @@ function qrm_cf_render_form_script($form, $s) {
         var box     = document.getElementById(<?php echo wp_json_encode($prefix . '-box', $json_flags); ?>);
         var msgBox  = document.getElementById(<?php echo wp_json_encode($prefix . '-message', $json_flags); ?>);
         var ajaxUrl = <?php echo wp_json_encode(admin_url('admin-ajax.php'), $json_flags); ?>;
-        var successText = <?php echo wp_json_encode($s['success_message'], $json_flags); ?>;
+        var successText = <?php echo wp_json_encode(qrm_ceviri_cf_form($form_id, 'success_message', $s['success_message']), $json_flags); ?>;
         var qrmCfI18n = <?php echo wp_json_encode([
             'sending'      => qrm_ceviri_review(__('Gönderiliyor…', 'qrms')),
             'submitFailed' => qrm_ceviri_review(__('Gönderim tamamlanamadı, lütfen tekrar deneyin.', 'qrms')),

@@ -25,13 +25,12 @@ function qrm_pro_render_form_script($settings, $js_limit = 0, $has_list = true) 
             }
             return qrmI18n[anahtar];
         }
-        // P1 / adım 7-2: headline/subtext/btnText/skipText option (Google CTA).
         var qrmCfg = {
             ajaxUrl: <?php echo wp_json_encode(admin_url('admin-ajax.php')); ?>,
-            headline: <?php echo wp_json_encode($settings['google_review_headline']); ?>,
-            subtext: <?php echo wp_json_encode($settings['google_review_subtext']); ?>,
-            btnText: <?php echo wp_json_encode($settings['google_review_btn_text']); ?>,
-            skipText: <?php echo wp_json_encode($settings['google_review_skip_text']); ?>,
+            headline: <?php echo wp_json_encode(qrm_ceviri_option('qrm_settings.google_review_headline', $settings['google_review_headline'])); ?>,
+            subtext: <?php echo wp_json_encode(qrm_ceviri_option('qrm_settings.google_review_subtext', $settings['google_review_subtext'])); ?>,
+            btnText: <?php echo wp_json_encode(qrm_ceviri_option('qrm_settings.google_review_btn_text', $settings['google_review_btn_text'])); ?>,
+            skipText: <?php echo wp_json_encode(qrm_ceviri_option('qrm_settings.google_review_skip_text', $settings['google_review_skip_text'])); ?>,
             loadNonce: <?php echo wp_json_encode(wp_create_nonce('qrm_load_reviews')); ?>,
             genericError: metin('genericError', 'Bir şeyler ters gitti, lütfen tekrar deneyin.')
         };

@@ -305,12 +305,22 @@ if ( ! function_exists( 'qmo_chatbot_ayar_sayfasi' ) ) {
 							<td>
 								<input type="text" id="gemini_bot_name" name="gemini_bot_name" class="regular-text"
 									value="<?php echo esc_attr( $bot_adi ); ?>">
+								<?php
+								if ( function_exists( 'rma_ceviri_bayat_uyari_html' ) ) {
+									echo rma_ceviri_bayat_uyari_html( rma_ceviri_bayat_uyari_metni( rma_ceviri_veri_dil_sayisi( 'option', 0, 'gemini_bot_name' ) ) );
+								}
+								?>
 							</td>
 						</tr>
 						<tr>
 							<th scope="row"><label for="gemini_welcome_text">Karşılama Mesajı</label></th>
 							<td>
 								<textarea id="gemini_welcome_text" name="gemini_welcome_text" rows="3" class="large-text"><?php echo esc_textarea( $karsilama ); ?></textarea>
+								<?php
+								if ( function_exists( 'rma_ceviri_bayat_uyari_html' ) ) {
+									echo rma_ceviri_bayat_uyari_html( rma_ceviri_bayat_uyari_metni( rma_ceviri_veri_dil_sayisi( 'option', 0, 'gemini_welcome_text' ) ) );
+								}
+								?>
 							</td>
 						</tr>
 						<tr>
@@ -318,6 +328,11 @@ if ( ! function_exists( 'qmo_chatbot_ayar_sayfasi' ) ) {
 							<td>
 								<input type="text" id="gemini_placeholder_text" name="gemini_placeholder_text" class="regular-text"
 									value="<?php echo esc_attr( $placeholder ); ?>">
+								<?php
+								if ( function_exists( 'rma_ceviri_bayat_uyari_html' ) ) {
+									echo rma_ceviri_bayat_uyari_html( rma_ceviri_bayat_uyari_metni( rma_ceviri_veri_dil_sayisi( 'option', 0, 'gemini_placeholder_text' ) ) );
+								}
+								?>
 							</td>
 						</tr>
 						<tr>

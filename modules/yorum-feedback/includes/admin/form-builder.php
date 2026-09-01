@@ -34,6 +34,18 @@ function qrm_pro_admin_form_builder() {
             Yorum ve iletişim formunda müşteriden istenecek bilgi alanları. Satırları sürükleyerek
             sıralayabilir, etiketlerini değiştirebilir, zorunlu/aktif durumlarını ayarlayabilirsiniz.
         </p>
+        <?php
+        if (function_exists('rma_ceviri_veri_dil_sayisi') && !empty($fields)) {
+            $diller = 0;
+            foreach ($fields as $f) {
+                $n = rma_ceviri_veri_dil_sayisi('form_field', (int) $f->id, 'label');
+                if ($n > $diller) {
+                    $diller = $n;
+                }
+            }
+            echo rma_ceviri_bayat_uyari_html(rma_ceviri_bayat_uyari_ekran_metni($diller));
+        }
+        ?>
 
         <?php if ($notice !== ''): ?>
             <div class="notice notice-success is-dismissible"><p><?php echo esc_html($notice); ?></p></div>

@@ -277,6 +277,14 @@ if ( ! function_exists( 'rma_ceviri_satirlari_isle' ) ) {
 					rma_ceviri_atla( $rapor, $satir_no, 'bilinmeyen sabit metin anahtarı: ' . $field );
 					continue;
 				}
+			} elseif ( 'option' === $item_type ) {
+				$item_id = 0;
+				$guncel  = rma_ceviri_guncel_orijinal( 0, 'option', $field );
+
+				if ( null === $guncel ) {
+					rma_ceviri_atla( $rapor, $satir_no, 'bilinmeyen yönetici ayarı: ' . $field );
+					continue;
+				}
 			} elseif ( $item_id > 0 ) {
 				// 1. aşama: ID ile doğrudan eşleşme (hedef hâlâ duruyor mu?).
 				$guncel = rma_ceviri_guncel_orijinal( $item_id, $item_type, $field );

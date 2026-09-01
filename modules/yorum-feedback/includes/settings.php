@@ -46,9 +46,79 @@ if (!function_exists('qrm_ceviri_review_js_metinleri')) {
 // Not: get_option() doğrudan çağrılmaz. Böylece eklenti güncellendiğinde
 // (reaktivasyon olmadan) yeni ayar anahtarları eski kurulumlarda da eksiksiz gelir.
 //
-// P1 / adım 7-2: Aşağıdaki varsayılanlar yönetici option'ıdır (VERİ, sabit
-// kod değil): form_title, kriter adları, Google CTA, ödül popup metinleri.
-// CSV'ye option satırı olarak çıkmaları ayrı mekanizma ister — şimdi çevrilmez.
+/**
+ * Yönetici option metnini QR Çeviri tablosundan geçirir (item_type=option).
+ *
+ * Hash uyuşmazsa veya çeviri yoksa girdi (yönetici metni) döner.
+ *
+ * @param string $field qrm_settings.* anahtarı.
+ * @param string $metin Canlı yönetici metni.
+ * @return string
+ */
+if (!function_exists('qrm_ceviri_option')) {
+    function qrm_ceviri_option($field, $metin) {
+        $metin = (string) $metin;
+        if (function_exists('rma_ceviri_option')) {
+            return rma_ceviri_option($field, $metin);
+        }
+        return $metin;
+    }
+}
+
+/**
+ * Yorum formu alan etiketi (item_type=form_field, field=label).
+ *
+ * @param int    $id     qrm_form_fields.id.
+ * @param string $etiket field_label.
+ * @return string
+ */
+if (!function_exists('qrm_ceviri_form_alan')) {
+    function qrm_ceviri_form_alan($id, $etiket) {
+        $etiket = (string) $etiket;
+        if (function_exists('rma_ceviri_veri')) {
+            return rma_ceviri_veri('form_field', (int) $id, 'label', $etiket);
+        }
+        return $etiket;
+    }
+}
+
+/**
+ * Özel form alan etiketi (item_type=cf_field, field=label).
+ *
+ * @param int    $id     qrm_custom_form_fields.id.
+ * @param string $etiket label.
+ * @return string
+ */
+if (!function_exists('qrm_ceviri_cf_alan')) {
+    function qrm_ceviri_cf_alan($id, $etiket) {
+        $etiket = (string) $etiket;
+        if (function_exists('rma_ceviri_veri')) {
+            return rma_ceviri_veri('cf_field', (int) $id, 'label', $etiket);
+        }
+        return $etiket;
+    }
+}
+
+/**
+ * Özel form başlık/gönder/başarı (item_type=cf_form).
+ *
+ * @param int    $id    qrm_custom_forms.id.
+ * @param string $field title|submit_text|success_message.
+ * @param string $metin Canlı metin.
+ * @return string
+ */
+if (!function_exists('qrm_ceviri_cf_form')) {
+    function qrm_ceviri_cf_form($id, $field, $metin) {
+        $metin = (string) $metin;
+        if (function_exists('rma_ceviri_veri')) {
+            return rma_ceviri_veri('cf_form', (int) $id, $field, $metin);
+        }
+        return $metin;
+    }
+}
+
+// P1: Aşağıdaki varsayılanlar yönetici option'ıdır (VERİ).
+// CSV'ye item_type=option, field=qrm_settings.* olarak çıkar.
 function qrm_pro_default_settings() {
     return [
         'form_title' => 'Deneyiminizi Paylaşın',
