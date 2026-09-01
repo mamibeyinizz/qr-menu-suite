@@ -40,6 +40,11 @@ function qrms_module_qr_calisma_saatleri_init() {
 						'default' => '0',
 						'desc'    => __( 'Tüm haftayı değil yalnızca bugünü göstermek için "1" yazın.', 'qrms' ),
 					),
+					array(
+						'name'    => 'fullwidth',
+						'default' => '1',
+						'desc'    => __( 'Kenardan kenara (100vw) basmak için "1". Dar bir sütunda kullanıyorsanız "0" yazın.', 'qrms' ),
+					),
 				),
 			),
 		)
