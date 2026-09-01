@@ -39,7 +39,7 @@ function qrm_cf_form_style_block($form_id, $s) {
     $r     = $v['radius'];
 
     $own = qrm_pro_css_rules([
-        ['', "width:100%; max-width:680px; margin:0 auto; font-family:inherit; color:{$v['text_color']}; box-sizing:border-box;"],
+        ['', "width:100%; max-width:none; margin:0; font-family:inherit; color:{$v['text_color']}; box-sizing:border-box;"],
         ['*, *:before, *:after', 'box-sizing:border-box;'],
         ['.qrm-cf-form', "background:{$v['bg_color']}; padding:30px; border-radius:" . ($r + 6) . "px; border:1px solid {$v['border_color']}; box-shadow:0 4px 24px rgba(0,0,0,0.04);"],
         ['.qrm-cf-form h3', 'margin:0 0 8px; font-size:22px; font-weight:700;'],
@@ -81,7 +81,7 @@ function qrm_cf_render_field($field, $args = []) {
     $id       = $args['id_prefix'] . '-' . $key;
     $req_attr = $required ? ' required' : '';
     $req_mark = $required ? ' <span class="qrm-cf-required">*</span>' : '';
-    $half     = in_array($type, ['text', 'email', 'tel', 'number', 'date'], true) ? ' half' : '';
+    $half     = qrm_pro_field_column_width($field, 'custom') === 'half' ? ' half' : '';
 
     ob_start();
     ?>
@@ -173,7 +173,7 @@ function qrm_cf_render_form($form, $fields, $s = null) {
 
     ob_start();
     ?>
-    <div class="qrm-cf-scope qrm-cf-scope-<?php echo $form_id; ?>">
+    <div class="qrm-cf-scope qrm-cf-scope-<?php echo $form_id; ?> qrm-form-fullbleed">
         <div class="qrm-cf-form" id="<?php echo esc_attr($prefix); ?>-box">
             <?php if (!empty($s['show_title'])): ?>
                 <h3><?php echo esc_html($form->title); ?></h3>

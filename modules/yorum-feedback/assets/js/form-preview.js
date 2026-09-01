@@ -19,8 +19,7 @@
 (function () {
     'use strict';
 
-    /** Yarım genişlikte gösterilen alanlar — frontend form-render.php ile aynı liste. */
-    var HALF_KEYS = ['customer_name', 'customer_phone', 'table_no'];
+    /** Yarım genişlik, satırdaki Sütun seçiminden okunur (frontend ile aynı). */
 
     function el(html) {
         var d = document.createElement('div');
@@ -38,8 +37,8 @@
      * Tek alanın önizleme HTML'i.
      * Sınıf adları ve yapı qrm_pro_form_preview_field() ile birebir aynıdır.
      */
-    function fieldHtml(key, type, label, required) {
-        var half = HALF_KEYS.indexOf(key) !== -1 ? ' half' : '';
+    function fieldHtml(key, type, label, required, columnWidth) {
+        var half = columnWidth === 'half' ? ' half' : '';
         var star = required ? ' <span class="qrm-fp-req">*</span>' : '';
 
         if (type === 'checkbox') {
@@ -89,11 +88,15 @@
                 var labelInput = row.querySelector('input[name*="[label]"]');
                 var label = labelInput ? labelInput.value : '';
 
+                var widthSelect = row.querySelector('select[name*="[column_width]"]');
+                var columnWidth = widthSelect ? widthSelect.value : 'full';
+
                 frag.appendChild(el(fieldHtml(
                     row.getAttribute('data-key'),
                     row.getAttribute('data-type'),
                     label,
-                    required
+                    required,
+                    columnWidth
                 )));
                 shown++;
             });

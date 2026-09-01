@@ -213,10 +213,17 @@
 	touch-action: none;
 }
 
-.qrm-field-key {
-	color: #4b5563;
-	font-size: 12px;
-	letter-spacing: 0.4px;
+.qrm-field-width {
+	align-items: center;
+	display: flex;
+	font-size: 13px;
+	gap: 6px;
+	margin-left: auto;
+}
+
+.qrm-field-width select {
+	font-size: 13px;
+	max-width: 180px;
 }
 
 /* Sürükle-bırakın erişilebilir karşılığı. */
@@ -321,6 +328,20 @@
 	.qrm-pro-wrap .form-table .regular-text,
 	.qrm-pro-wrap .form-table select {
 		max-width: 100%;
+		width: 100%;
+	}
+
+	.qrm-fp-group.half {
+		flex: 1 1 100%;
+	}
+
+	.qrm-field-width {
+		margin-left: 0;
+		width: 100%;
+	}
+
+	.qrm-field-width select {
+		max-width: none;
 		width: 100%;
 	}
 
@@ -536,7 +557,7 @@
 	min-width: 0;
 }
 
-/* Ad / telefon / masa no frontend'de olduğu gibi yan yana iki sütun. */
+/* Ad / telefon / masa no varsayılanı yarım; restoran sahibi Sütun seçimiyle değiştirir. */
 .qrm-fp-group.half {
 	flex: 1 1 calc( 50% - 6px );
 }

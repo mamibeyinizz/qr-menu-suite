@@ -45,6 +45,8 @@ function qrm_pro_admin_contact() {
             <input type="text" readonly onclick="this.select();" value="[qr_menu_contact]"
                    style="width:100%; font-size:16px; font-weight:600; padding:10px; background:#f3f4f6; border:1px solid #d1d5db; border-radius:6px;">
             <ul style="margin:16px 0 0; color:#646970; font-size:13px; line-height:1.7;">
+                <li>Kısa kodu Elementor'da bir Shortcode widget'ına yapıştırın. Form bölümü soldan/sağdan boşluksuz tam genişlikte açılır; Extra CSS veya plugin gerekmez.</li>
+                <li>Alanların tekli (tam) / ikili (yarım) genişliği <strong>Müşteri Bilgileri Formu</strong> ekranındaki <em>Sütun</em> seçiminden ayarlanır. Elementor Form widget'ındaki Column Width bu kısa koda uygulanmaz.</li>
                 <li>Eşiğin (<?php echo esc_html(number_format((float) $settings['google_review_threshold'], 1)); ?>) üzerinde puan veren müşteri Google'a yönlendirilir.</li>
                 <li>Eşiğin altındaki gönderimler yalnızca size ulaşır; <strong>Tüm Yorumlar</strong> listesinde <em>İletişim</em> etiketiyle görünür.</li>
             </ul>

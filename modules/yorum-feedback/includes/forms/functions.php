@@ -305,7 +305,7 @@ function qrm_cf_parse_options($raw) {
  * satır id'lerinin değişmesi kayıtları etkilemez.
  *
  * @param int   $form_id
- * @param array $fields  [['field_key'=>..,'label'=>..,'field_type'=>..,'options'=>[],'is_required'=>0|1], ...]
+ * @param array $fields  [['field_key'=>..,'label'=>..,'field_type'=>..,'options'=>[],'is_required'=>0|1,'column_width'=>'full'|'half'], ...]
  * @return int Kaydedilen alan sayısı
  */
 function qrm_cf_replace_fields($form_id, $fields) {
@@ -355,6 +355,7 @@ function qrm_cf_replace_fields($form_id, $fields) {
             $options ? wp_json_encode($options) : '',
             !empty($field['is_required']) ? 1 : 0,
             $order,
+            qrm_pro_sanitize_column_width(isset($field['column_width']) ? $field['column_width'] : 'full'),
         ];
 
         $order++;
@@ -369,12 +370,12 @@ function qrm_cf_replace_fields($form_id, $fields) {
             $params   = [];
 
             foreach ($parca as $satir) {
-                $degerler[] = '(%d, %s, %s, %s, %s, %d, %d)';
+                $degerler[] = '(%d, %s, %s, %s, %s, %d, %d, %s)';
                 foreach ($satir as $deger) $params[] = $deger;
             }
 
             $wpdb->query($wpdb->prepare(
-                "INSERT INTO $table (form_id, field_key, label, field_type, options, is_required, sort_order)
+                "INSERT INTO $table (form_id, field_key, label, field_type, options, is_required, sort_order, column_width)
                  VALUES " . implode(', ', $degerler),
                 $params
             ));

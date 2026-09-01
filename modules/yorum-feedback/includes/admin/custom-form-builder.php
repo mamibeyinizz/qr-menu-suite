@@ -53,8 +53,9 @@ function qrm_cf_admin_form_editor_view() {
             'key'      => $f->field_key,
             'label'    => $f->label,
             'type'     => $f->field_type,
-            'required' => (int) $f->is_required,
-            'options'  => qrm_cf_field_options($f),
+            'required'      => (int) $f->is_required,
+            'options'       => qrm_cf_field_options($f),
+            'column_width'  => qrm_pro_field_column_width($f, 'custom'),
         ];
     }
 
@@ -255,8 +256,9 @@ function qrm_cf_admin_handle_editor_save() {
             'field_key'   => isset($f['key']) ? $f['key'] : '',
             'label'       => isset($f['label']) ? $f['label'] : '',
             'field_type'  => isset($f['type']) ? $f['type'] : '',
-            'is_required' => !empty($f['required']) ? 1 : 0,
-            'options'     => isset($f['options']) ? $f['options'] : [],
+            'is_required'  => !empty($f['required']) ? 1 : 0,
+            'options'      => isset($f['options']) ? $f['options'] : [],
+            'column_width' => isset($f['column_width']) ? $f['column_width'] : 'full',
         ];
     }
 
@@ -332,7 +334,10 @@ function qrm_cf_admin_builder_styles() {
         .qrm-fb-preview-desc { margin:0 0 20px; font-size:14px; line-height:1.6; opacity:.75; }
         .qrm-fb-preview-desc:empty { display:none; }
 
-        .qrm-fb-item { position:relative; border:1px solid transparent; border-radius:10px; padding:8px 10px 2px; margin-bottom:6px; transition:border-color .15s ease, background .15s ease, opacity .15s ease; }
+        .qrm-fb-items-grid { display:flex; flex-wrap:wrap; gap:0 12px; }
+        #qrm-fb-items { display:flex; flex-wrap:wrap; gap:0 12px; }
+        .qrm-fb-item { position:relative; border:1px solid transparent; border-radius:10px; padding:8px 10px 2px; margin-bottom:6px; transition:border-color .15s ease, background .15s ease, opacity .15s ease; flex:1 1 100%; min-width:0; }
+        .qrm-fb-item.is-half { flex:1 1 calc(50% - 6px); }
         .qrm-fb-item:hover { border-color:#cbd5e1; background:rgba(148,163,184,.06); }
         .qrm-fb-item.dragging { opacity:.4; }
         .qrm-fb-item.drop-target { border-top:2px solid #2271b1; }
@@ -369,7 +374,7 @@ function qrm_cf_admin_builder_styles() {
         /* Alan düzenleme paneli */
         .qrm-fb-edit-panel { background:#f8fafc; border:1px solid #e2e8f0; border-radius:9px; padding:13px; margin:6px 0 10px; }
         .qrm-fb-edit-panel label { display:block; font-size:12px; font-weight:600; color:#475569; margin-bottom:4px; }
-        .qrm-fb-edit-panel input[type=text], .qrm-fb-edit-panel textarea { width:100%; margin-bottom:10px; }
+        .qrm-fb-edit-panel input[type=text], .qrm-fb-edit-panel textarea, .qrm-fb-edit-panel select { width:100%; margin-bottom:10px; }
         .qrm-fb-edit-panel .qrm-fb-check { font-weight:500; font-size:13px; color:#1e293b; }
         .qrm-fb-edit-row { display:flex; gap:12px; flex-wrap:wrap; }
         .qrm-fb-edit-row > div { flex:1 1 160px; }
@@ -403,6 +408,7 @@ function qrm_cf_admin_builder_styles() {
             .qrm-fb-topbar .button, .qrm-fb-topbar .qrm-cf-btn-primary { justify-content:center; width:100%; }
             .qrm-fb-palette-grid { grid-template-columns:1fr; }
             .qrm-fb-row { flex-direction:column; }
+            .qrm-fb-item.is-half { flex:1 1 100%; }
         }
 
         @media (pointer: coarse) {
@@ -518,6 +524,12 @@ function qrm_cf_admin_builder_script($state, $types) {
                 html += '<textarea rows="4" data-edit="options" data-index="' + index + '">' + esc(field.options.join('\n')) + '</textarea>';
             }
             html += '<label class="qrm-fb-check"><input type="checkbox" data-edit="required" data-index="' + index + '"' + (field.required ? ' checked' : '') + '> Bu alan zorunlu olsun</label>';
+            html += '<label>Sütun genişliği</label>';
+            html += '<select data-edit="column_width" data-index="' + index + '">';
+            html += '<option value="full"' + (field.column_width !== 'half' ? ' selected' : '') + '>Tekli (tam genişlik)</option>';
+            html += '<option value="half"' + (field.column_width === 'half' ? ' selected' : '') + '>İkili (yarım genişlik)</option>';
+            html += '</select>';
+            html += '<p class="qrm-fb-help">Masaüstünde yan yana iki alan için İkili seçin. Mobilde hepsi tam genişliğe düşer. Elementor Column Width bu forma uygulanmaz.</p>';
             html += '<button type="button" class="button button-small" data-act="done" data-index="' + index + '">Tamam</button>';
             html += '</div>';
             return html;
@@ -526,7 +538,7 @@ function qrm_cf_admin_builder_script($state, $types) {
         function render() {
             itemsBox.innerHTML = fields.map(function(field, index){
                 var typeLabel = TYPES[field.type] ? TYPES[field.type].label : field.type;
-                var html = '<div class="qrm-fb-item' + (editingIndex === index ? ' editing' : '') + '" draggable="true" data-index="' + index + '">';
+                var html = '<div class="qrm-fb-item' + (editingIndex === index ? ' editing' : '') + (field.column_width === 'half' ? ' is-half' : '') + '" draggable="true" data-index="' + index + '">';
                 html += '<div class="qrm-fb-item-bar">';
                 html += '<span class="dashicons dashicons-menu qrm-fb-drag" title="Sıralamak için sürükleyin"></span>';
                 html += '<span class="qrm-fb-item-type">' + esc(typeLabel) + '</span>';
@@ -561,7 +573,8 @@ function qrm_cf_admin_builder_script($state, $types) {
                     label: label,
                     type: type,
                     required: 0,
-                    options: meta.has_options ? defaultOptions() : []
+                    options: meta.has_options ? defaultOptions() : [],
+                    column_width: 'full'
                 });
                 editingIndex = fields.length - 1;
                 render();
@@ -633,6 +646,14 @@ function qrm_cf_admin_builder_script($state, $types) {
         });
 
         itemsBox.addEventListener('change', function(e){
+            var widthInput = e.target.closest('[data-edit="column_width"]');
+            if (widthInput) {
+                var wIndex = parseInt(widthInput.getAttribute('data-index'), 10);
+                if (!fields[wIndex]) return;
+                fields[wIndex].column_width = widthInput.value === 'half' ? 'half' : 'full';
+                render();
+                return;
+            }
             var input = e.target.closest('[data-edit="required"]');
             if (!input) return;
             var index = parseInt(input.getAttribute('data-index'), 10);
