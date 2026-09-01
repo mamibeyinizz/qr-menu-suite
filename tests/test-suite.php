@@ -13844,6 +13844,10 @@ qrms_test(
 			'Çağrı sistemi şu anda kullanılamıyor.',
 			'Çağrınız iletildi, lütfen bekleyin.',
 			'İletildi',
+			'Geçersiz istek',
+			'Çağrı iletilemedi, lütfen tekrar deneyin.',
+			'Talep alındı.',
+			'Çok hızlı soru gönderiyorsunuz. Lütfen biraz bekleyin.',
 		);
 
 		foreach ( $beklenen as $metin ) {
@@ -13865,6 +13869,7 @@ qrms_test(
 
 		qrms_assert_contains( "qmo_ceviri_chat( __( 'Çevrimiçi', 'qrms' ) )", $bot, 'Çevrimiçi' );
 		qrms_assert_contains( "qmo_ceviri_chat( __( 'Kapat', 'qrms' ) )", $bot, 'Kapat' );
+		qrms_assert_false( (bool) preg_match( "/esc_attr_e\(\s*'Kapat'/", $bot ), 'teaser Kapat esc_attr_e kalmadı' );
 		qrms_assert_contains( "qmo_ceviri_chat( __( 'Gönder', 'qrms' ) )", $bot, 'Gönder' );
 		qrms_assert_contains( "rma_ceviri_option( 'gemini_bot_name'", $bot, 'bot adı option' );
 		qrms_assert_contains( "rma_ceviri_option( 'gemini_placeholder_text'", $bot, 'placeholder option' );
@@ -13915,9 +13920,16 @@ qrms_test(
 		qrms_assert_contains( "qmo_ceviri_chat( __( 'Oturum süreniz doldu. Devam etmek için masadaki QR kodu tekrar okutun.', 'qrms' ) )", $rest, 'REST aynı oturum metni' );
 		qrms_assert_false( (bool) preg_match( '/Masadaki QR kodu tekrar okutun\./', $rest ), 'eski REST oturum metni kalmadı' );
 		qrms_assert_contains( "qmo_ceviri_chat( __( 'Asistan şu anda yanıt veremiyor, lütfen tekrar deneyin.', 'qrms' ) )", $ajax, 'asistan' );
+		qrms_assert_contains( "qmo_ceviri_chat( __( 'Bağlantı hatası oluştu.', 'qrms' ) )", $ajax, 'bağlantı ziyaretçi' );
+		qrms_assert_contains( "qmo_log( 'Gemini API anahtarı boş.' )", $ajax, 'API anahtarı log' );
+		qrms_assert_false( (bool) preg_match( '/Ayarlar sayfasından API anahtarını/', $ajax ), 'admin API metni ziyaretçiye gitmez' );
+		qrms_assert_false( (bool) preg_match( '/Yanıt alınamadı, sebep:/', $ajax ), 'finishReason ziyaretçiye gitmez' );
 		qrms_assert_contains( "qmo_ceviri_chat( __( 'Geçersiz sipariş', 'qrms' ) )", $rest, 'geçersiz sipariş' );
 		qrms_assert_contains( "qmo_ceviri_chat( __( 'Çağrı sistemi şu anda kullanılamıyor.', 'qrms' ) )", $cagri, 'çağrı sistemi' );
 		qrms_assert_contains( "qmo_ceviri_chat( __( 'İletildi', 'qrms' ) )", $cagri, 'İletildi' );
+		qrms_assert_contains( "qmo_ceviri_chat( __( 'Geçersiz istek', 'qrms' ) )", $cagri, 'geçersiz istek' );
+		qrms_assert_contains( "qmo_ceviri_chat( __( 'Çağrı iletilemedi, lütfen tekrar deneyin.', 'qrms' ) )", $cagri, 'çağrı iletilemedi' );
+		qrms_assert_contains( "qmo_ceviri_chat( __( 'Talep alındı.', 'qrms' ) )", $cagri, 'talep alındı' );
 		qrms_assert_contains( "\$_REQUEST['lang']", $dil, 'AJAX lang parametresi' );
 		qrms_assert_contains( 'admin-ajax.php', $dil, 'cookie admin-ajax notu' );
 		qrms_assert_false( (bool) preg_match( '/HTTP_ACCEPT_LANGUAGE/', $dil ), 'AJAX Accept-Language yok' );
@@ -14659,6 +14671,67 @@ qrms_test(
 	function () {
 		qrms_module_qr_ceviri_admin_menu();
 		qrms_assert_same( array(), $GLOBALS['qrms_test']['submenus'], 'kayıt yok' );
+	}
+);
+
+echo "\nQR Çeviri (P2 kalanlar)\n";
+
+qrms_test(
+	'alerjen fallback etiketleri ui_string listesinde; terim yolu durur',
+	function () {
+		$ui     = rma_ceviri_varsayilan_ui_metinleri();
+		$helper = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-helpers.php' );
+		$etiketler = array(
+			'Glüten',
+			'Süt / Laktoz',
+			'Yumurta',
+			'Fındık / Kuruyemiş',
+			'Yer Fıstığı',
+			'Soya',
+			'Balık',
+			'Kabuklu Deniz Ürünü',
+			'Susam',
+			'Kereviz',
+			'Hardal',
+			'Lüpin',
+			'Kükürt Dioksit/Sülfit',
+			'Yumuşakça',
+		);
+
+		foreach ( $etiketler as $etiket ) {
+			qrms_assert_true( in_array( $etiket, $ui, true ), $etiket );
+		}
+
+		qrms_assert_contains( '$this->t_term( $terim, \'allergen\' )', $helper, 'terim yolu durur' );
+		qrms_assert_contains( '$this->t( $label )', $helper, 'ui_string fallback durur' );
+	}
+);
+
+qrms_test(
+	'Dil seç aria ui_string köprüsünde; splash data-sp-attr kullanılmaz',
+	function () {
+		$php = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-ceviri/includes/shortcodes.php' );
+		$ui  = rma_ceviri_varsayilan_ui_metinleri();
+
+		qrms_assert_true( in_array( 'Dil seç', $ui, true ), 'katalog' );
+		qrms_assert_contains( "rma_ceviri_modul( 'ui_string', __( 'Dil seç', 'qrms' ) )", $php, 'köprü' );
+		qrms_assert_false( (bool) preg_match( '/aria-label="Dil seç"/', $php ), 'sabit Dil seç kalmadı' );
+		qrms_assert_false( (bool) preg_match( '/data-sp-attr/', $php ), 'splash modeli yok' );
+	}
+);
+
+qrms_test(
+	'çağrı JS sunucu msg gövdesini okur; hız sınırı chat köprüsünde',
+	function () {
+		$js    = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/assets/js/buttons.js' );
+		$ayar  = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/includes/class-ayarlar.php' );
+
+		qrms_assert_contains( 'yanit.data.msg', $js, 'msg alanı' );
+		qrms_assert_contains(
+			"qmo_ceviri_chat( __( 'Çok hızlı soru gönderiyorsunuz. Lütfen biraz bekleyin.', 'qrms' ) )",
+			$ayar,
+			'hız sınırı'
+		);
 	}
 );
 

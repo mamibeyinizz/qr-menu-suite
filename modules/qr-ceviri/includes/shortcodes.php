@@ -29,8 +29,12 @@ if ( ! function_exists( 'rma_ceviri_dropdown_html' ) ) {
 
 		$sinif = 'qrmenu-lang-dropdown' . ( $ek_sinif ? ' ' . $ek_sinif : '' );
 
+		$dil_sec = function_exists( 'rma_ceviri_modul' )
+			? rma_ceviri_modul( 'ui_string', __( 'Dil seç', 'qrms' ) )
+			: __( 'Dil seç', 'qrms' );
+
 		$html  = '<div class="' . esc_attr( $sinif ) . '" data-rma-lang="' . esc_attr( $simdi ) . '">';
-		$html .= '<button class="qrmenu-current-btn" type="button" aria-haspopup="listbox" aria-label="Dil seç">';
+		$html .= '<button class="qrmenu-current-btn" type="button" aria-haspopup="listbox" aria-label="' . esc_attr( $dil_sec ) . '">';
 		$html .= '<div class="qrmenu-current-left">';
 		$html .= '<span class="qrmenu-current-flag">' . $mevcut['flag'] . '</span>';
 		$html .= '<span class="qrmenu-current-text">' . esc_html( $mevcut['name'] ) . '</span>';

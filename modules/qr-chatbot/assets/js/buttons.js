@@ -73,6 +73,8 @@
 					mesaj = yanit.data;
 				} else if ( yanit.data.mesaj ) {
 					mesaj = yanit.data.mesaj;
+				} else if ( yanit.data.msg ) {
+					mesaj = yanit.data.msg;
 				}
 			}
 			yaz( bar, mesaj, true );

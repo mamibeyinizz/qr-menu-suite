@@ -82,7 +82,7 @@ if ( ! function_exists( 'qmo_chatbot_shortcode' ) ) {
 			data-welcome="<?php echo $ekran ? '1' : '0'; ?>">
 			<?php if ( $teaser ) : ?>
 				<div class="gemini-teaser" hidden>
-					<button type="button" class="gemini-teaser-kapat" aria-label="<?php esc_attr_e( 'Kapat', 'qrms' ); ?>">&times;</button>
+					<button type="button" class="gemini-teaser-kapat" aria-label="<?php echo esc_attr( qmo_ceviri_chat( __( 'Kapat', 'qrms' ) ) ); ?>">&times;</button>
 					<span><?php echo esc_html( qmo_chatbot_ayar( 'qmo_chatbot_teaser_text' ) ); ?></span>
 				</div>
 			<?php endif; ?>

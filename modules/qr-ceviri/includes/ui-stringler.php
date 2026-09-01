@@ -73,6 +73,19 @@ if ( ! function_exists( 'rma_ceviri_varsayilan_ui_metinleri' ) ) {
 			'Vegan',
 			'Vejetaryen',
 			'Glütensiz',
+			'Glüten',
+			'Süt / Laktoz',
+			'Yumurta',
+			'Fındık / Kuruyemiş',
+			'Yer Fıstığı',
+			'Soya',
+			'Kabuklu Deniz Ürünü',
+			'Susam',
+			'Kereviz',
+			'Hardal',
+			'Lüpin',
+			'Kükürt Dioksit/Sülfit',
+			'Yumuşakça',
 			'Acı',
 			'kcal',
 			'g',
@@ -114,6 +127,9 @@ if ( ! function_exists( 'rma_ceviri_varsayilan_ui_metinleri' ) ) {
 			'Hızlı Menü',
 			'Çalışma Saatlerimiz',
 			'İletişim',
+
+			/* Dil seçici aria — qr-ceviri/includes/shortcodes.php */
+			'Dil seç',
 		);
 	}
 }
@@ -350,6 +366,10 @@ if ( ! function_exists( 'rma_ceviri_modul_kaynak_metinleri' ) ) {
 				'Çağrı sistemi şu anda kullanılamıyor.',
 				'Çağrınız iletildi, lütfen bekleyin.',
 				'İletildi',
+				'Geçersiz istek',
+				'Çağrı iletilemedi, lütfen tekrar deneyin.',
+				'Talep alındı.',
+				'Çok hızlı soru gönderiyorsunuz. Lütfen biraz bekleyin.',
 			),
 			'cart'    => array(
 				'Sepet',

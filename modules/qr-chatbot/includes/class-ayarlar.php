@@ -569,7 +569,7 @@ function qmo_chatbot_sinir_kontrol( $sess ) {
 			wp_send_json_error(
 				array(
 					'kod'   => 'limit',
-					'mesaj' => __( 'Çok hızlı soru gönderiyorsunuz. Lütfen biraz bekleyin.', 'qrms' ),
+					'mesaj' => qmo_ceviri_chat( __( 'Çok hızlı soru gönderiyorsunuz. Lütfen biraz bekleyin.', 'qrms' ) ),
 				),
 				429
 			);
