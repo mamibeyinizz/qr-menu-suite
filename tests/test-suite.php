@@ -4419,15 +4419,15 @@ qrms_test(
 		qrms_assert_contains( 'qrms_analitik_temizle', $js, 'silme ucu değişmedi' );
 		qrms_assert_contains( 'confirmTable', $js, 'masa kapsamlı silme metni' );
 
-		// Eski betik ORTADA kalmadı ama SİLİNMEDİ: Faz 9 temizlik turunda
-		// topluca ele alınacak, o yüzden dosya başında işaretli.
-		$eski = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/assets/js/analitik.js' );
-
-		qrms_assert_contains( 'KULLANILMIYOR', $eski, 'ölü betik işaretli' );
+		// Klasik panel betiği silindi: kuyruğa da, diske de yok.
+		qrms_assert_false(
+			file_exists( QRMS_PLUGIN_DIR . 'modules/qr-analiz/assets/js/analitik.js' ),
+			'ölü betik silindi'
+		);
 
 		$modul = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/module.php' );
 
-		qrms_assert_false( false !== strpos( $modul, 'assets/js/analitik.js' ), 'artık kuyruğa girmiyor' );
+		qrms_assert_false( false !== strpos( $modul, 'assets/js/analitik.js' ), 'kuyruğa girmiyor' );
 	}
 );
 
@@ -5644,23 +5644,17 @@ qrms_test(
 	'ortak JS yardımcıları TEK dosyada durur, iki ekranda kopyalanmaz',
 	function () {
 		$ortak = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/assets/js/analitik-ortak.js' );
-		$eski  = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/assets/js/analitik.js' );
 		$genel = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/assets/js/analitik-genel.js' );
 
 		// Fetch sarmalayıcısı, tablo iskeleti, grafik çizimi ve filtre çubuğu:
-		// hepsi ortakta tanımlı, diğer iki dosyada YENİDEN tanımlı değil.
+		// hepsi ortakta tanımlı, Genel Bakış'ta YENİDEN tanımlı değil.
 		foreach ( array( 'function post(', 'function tabloIskelet(', 'function grafikHtml(', 'function filtreKur(' ) as $fn ) {
 			qrms_assert_contains( $fn, $ortak, $fn . ' ortakta' );
 			qrms_assert_false( false !== strpos( $genel, $fn ), $fn . ' Genel Bakış\'ta kopyalanmadı' );
 		}
 
-		foreach ( array( 'function tabloIskelet(', 'function grafikHtml(', 'function esc(' ) as $fn ) {
-			qrms_assert_false( false !== strpos( $eski, $fn ), $fn . ' klasik panelde kopyalanmadı' );
-		}
-
-		// İki ekran da ortağı kullanır ve yoksa sessizce durur.
+		// Ekran ortağı kullanır ve yoksa sessizce durur.
 		qrms_assert_contains( 'window.qrmsAnOrtak', $ortak, 'ortak ad alanı' );
-		qrms_assert_contains( 'window.qrmsAnOrtak', $eski, 'klasik panel ortağı kullanır' );
 		qrms_assert_contains( 'window.qrmsAnOrtak', $genel, 'Genel Bakış ortağı kullanır' );
 	}
 );

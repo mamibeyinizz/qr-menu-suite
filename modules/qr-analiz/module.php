@@ -671,8 +671,7 @@ function qrms_analitik_masa_etiketi( $slug ) {
 /**
  * Analitik panelinin stil dosyası.
  *
- * Hub ve kategori sayfaları aynı stil kaynağını kullanır. Klasik panel
- * dosyası yoktur; analitik.js kuyruğa girmez (FAZ 9: CSS'te ölü kurallar var).
+ * Hub ve kategori sayfaları aynı stil kaynağını kullanır.
  *
  * @return void
  */
