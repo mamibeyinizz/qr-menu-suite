@@ -48,19 +48,54 @@ if ( ! function_exists( 'rma_ceviri_hash_kapisi_mi' ) ) {
 }
 
 /**
+ * Hash hesabında kullanılacak metin (alan bazlı normalizasyon).
+ *
+ * hfb_footer.copyright: yıl dinamik olduğu için 4 haneli yıl → %s.
+ *
+ * @param string $orijinal Canlı yönetici metni.
+ * @param string $field    Defter alanı; boşsa ham metin.
+ * @return string
+ */
+if ( ! function_exists( 'rma_ceviri_hash_kaynagi' ) ) {
+	function rma_ceviri_hash_kaynagi( $orijinal, $field = '' ) {
+		$metin = (string) $orijinal;
+
+		if ( 'hfb_footer.copyright' === $field ) {
+			return (string) preg_replace( '/\b(19|20)\d{2}\b/', '%s', $metin, 1 );
+		}
+
+		return $metin;
+	}
+}
+
+/**
+ * Hash kapılı alanlar için original_hash üret.
+ *
+ * @param string $orijinal Canlı yönetici metni.
+ * @param string $field    Defter alanı.
+ * @return string
+ */
+if ( ! function_exists( 'rma_ceviri_hash_olustur' ) ) {
+	function rma_ceviri_hash_olustur( $orijinal, $field = '' ) {
+		return md5( rma_ceviri_hash_kaynagi( $orijinal, $field ) );
+	}
+}
+
+/**
  * Kayıtlı hash canlı metinle uyuşuyor mu?
  *
  * Boş hash = bilinmiyor → kapı kapatır (çeviri basılmaz).
  *
  * @param string $orijinal Canlı yönetici metni.
  * @param string $hash     Tablodaki original_hash.
+ * @param string $field    Defter alanı (telif yılı normalizasyonu için).
  * @return bool
  */
 if ( ! function_exists( 'rma_ceviri_hash_guncel_mi' ) ) {
-	function rma_ceviri_hash_guncel_mi( $orijinal, $hash ) {
+	function rma_ceviri_hash_guncel_mi( $orijinal, $hash, $field = '' ) {
 		$hash = (string) $hash;
 
-		return '' !== $hash && $hash === md5( (string) $orijinal );
+		return '' !== $hash && $hash === rma_ceviri_hash_olustur( $orijinal, $field );
 	}
 }
 
@@ -154,6 +189,44 @@ if ( ! function_exists( 'rma_ceviri_option_defteri' ) ) {
 				'varsayilan'  => 'Hesap İste',
 				'yalniz_ozel' => true,
 			),
+			'hfb_header.brand_line1'       => array(
+				'etiket'     => 'Header: marka üst satır',
+				'option'     => 'hfb_header_options',
+				'anahtar'    => 'brand_line1',
+				'varsayilan' => 'QR MENU',
+			),
+			'hfb_header.brand_line2'       => array(
+				'etiket'     => 'Header: marka alt satır',
+				'option'     => 'hfb_header_options',
+				'anahtar'    => 'brand_line2',
+				'varsayilan' => 'OFFİCİAL',
+			),
+			'hfb_footer.brand_line1'       => array(
+				'etiket'     => 'Footer: marka üst satır',
+				'option'     => 'hfb_footer_options',
+				'anahtar'    => 'brand_line1',
+				'varsayilan' => 'QR MENU',
+			),
+			'hfb_footer.brand_line2'       => array(
+				'etiket'     => 'Footer: marka alt satır',
+				'option'     => 'hfb_footer_options',
+				'anahtar'    => 'brand_line2',
+				'varsayilan' => 'OFFİCİAL',
+			),
+			'hfb_footer.description'       => array(
+				'etiket'      => 'Footer: kısa açıklama',
+				'option'      => 'hfb_footer_options',
+				'anahtar'     => 'description',
+				'varsayilan'  => '',
+				'yalniz_ozel' => true,
+			),
+			'hfb_footer.copyright'         => array(
+				'etiket'      => 'Footer: telif metni',
+				'option'      => 'hfb_footer_options',
+				'anahtar'     => 'copyright',
+				'varsayilan'  => '© ' . gmdate( 'Y' ) . ' ' . get_bloginfo( 'name' ),
+				'yalniz_ozel' => true,
+			),
 		);
 
 		$qrm_alanlar = array(
@@ -202,7 +275,7 @@ if ( ! function_exists( 'rma_ceviri_option_defteri' ) ) {
 		 * @param array<string,array<string,mixed>> $kayit Defter.
 		 */
 		foreach ( rma_ceviri_hamburger_bloklari() as $block ) {
-			if ( ! is_array( $block ) || 'button' !== ( isset( $block['type'] ) ? (string) $block['type'] : '' ) ) {
+			if ( ! is_array( $block ) ) {
 				continue;
 			}
 
@@ -211,16 +284,33 @@ if ( ! function_exists( 'rma_ceviri_option_defteri' ) ) {
 				continue;
 			}
 
-			$field = 'hfb_hamburger.block.' . $blok_id . '.label';
-			$kayit[ $field ] = array(
-				'etiket'      => 'Hamburger: buton metni (' . $blok_id . ')',
-				'option'      => 'hfb_hamburger_options',
-				'anahtar'     => null,
-				'blok_id'     => $blok_id,
-				'blok_alan'   => 'label',
-				'varsayilan'  => 'Buton',
-				'yalniz_ozel' => true,
-			);
+			$type = isset( $block['type'] ) ? (string) $block['type'] : '';
+
+			if ( 'button' === $type ) {
+				$field = 'hfb_hamburger.block.' . $blok_id . '.label';
+				$kayit[ $field ] = array(
+					'etiket'      => 'Hamburger: buton metni (' . $blok_id . ')',
+					'option'      => 'hfb_hamburger_options',
+					'anahtar'     => null,
+					'blok_id'     => $blok_id,
+					'blok_alan'   => 'label',
+					'varsayilan'  => 'Buton',
+					'yalniz_ozel' => true,
+				);
+			}
+
+			if ( 'logo' === $type ) {
+				$field = 'hfb_hamburger.block.' . $blok_id . '.description';
+				$kayit[ $field ] = array(
+					'etiket'      => 'Hamburger: logo açıklama (' . $blok_id . ')',
+					'option'      => 'hfb_hamburger_options',
+					'anahtar'     => null,
+					'blok_id'     => $blok_id,
+					'blok_alan'   => 'description',
+					'varsayilan'  => '',
+					'yalniz_ozel' => true,
+				);
+			}
 		}
 
 		if ( function_exists( 'qmo_chatbot_sorulari_oku' ) ) {
@@ -979,7 +1069,8 @@ if ( ! function_exists( 'rma_ceviri_eskimis_sayilari' ) ) {
 					continue;
 				}
 
-				if ( ! rma_ceviri_hash_guncel_mi( $guncel, $satir->original_hash ) ) {
+				$field = isset( $satir->field ) ? (string) $satir->field : '';
+				if ( ! rma_ceviri_hash_guncel_mi( $guncel, $satir->original_hash, $field ) ) {
 					++$adet;
 				}
 			}

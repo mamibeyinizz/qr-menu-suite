@@ -317,7 +317,7 @@ if ( ! function_exists( 'rma_ceviri_satirlari_isle' ) ) {
 			/* --- Bayatlık kontrolü (import'u durdurmaz) --- */
 			$csv_hash = '' !== trim( $orijinal_csv ) ? md5( $orijinal_csv ) : $hash_csv;
 
-			if ( '' !== $csv_hash && $csv_hash !== md5( $guncel ) && count( $rapor['bayat'] ) < RMA_CEVIRI_RAPOR_ORNEK ) {
+			if ( '' !== $csv_hash && $csv_hash !== rma_ceviri_hash_olustur( $guncel, $field ) && count( $rapor['bayat'] ) < RMA_CEVIRI_RAPOR_ORNEK ) {
 				$rapor['bayat'][] = array(
 					'satir'    => $satir_no,
 					'tip'      => $item_type,

@@ -218,6 +218,20 @@ qrms_test(
 );
 
 qrms_test(
+	'telif hash: yıl değişimi hash\'i bozmaz, site adı değişimi bozar',
+	function () {
+		$field = 'hfb_footer.copyright';
+		$hash  = rma_ceviri_hash_olustur( '© 2026 Test Restoran', $field );
+
+		qrms_assert_same( '© %s Test Restoran', rma_ceviri_hash_kaynagi( '© 2026 Test Restoran', $field ), 'yıl placeholder' );
+		qrms_assert_true( rma_ceviri_hash_guncel_mi( '© 2027 Test Restoran', $hash, $field ), 'yıl değişimi' );
+		qrms_assert_true( rma_ceviri_hash_guncel_mi( '© 2020 Test Restoran', $hash, $field ), 'eski yıl' );
+		qrms_assert_false( rma_ceviri_hash_guncel_mi( '© 2026 Başka Restoran', $hash, $field ), 'site adı değişimi' );
+		qrms_assert_false( rma_ceviri_hash_guncel_mi( '© 2026 Test Restoran', md5( '© 2026 Test Restoran' ), $field ), 'ham md5 geçersiz' );
+	}
+);
+
+qrms_test(
 	'option defteri ve guncel_orijinal canlı değeri okur',
 	function () {
 		$defter = rma_ceviri_option_defteri();
@@ -242,6 +256,8 @@ qrms_test(
 		);
 		$defter = rma_ceviri_option_defteri();
 		qrms_assert_true( isset( $defter['hfb_hamburger.block.blk_2.label'] ), 'hamburger buton defteri' );
+		qrms_assert_true( isset( $defter['hfb_footer.description'] ), 'footer açıklama defteri' );
+		qrms_assert_true( isset( $defter['hfb_header.brand_line1'] ), 'header marka defteri' );
 
 		update_option( 'gemini_bot_name', 'Masa Asistanı' );
 		qrms_assert_same( 'Masa Asistanı', rma_ceviri_option_guncel( 'gemini_bot_name' ), 'canlı option' );

@@ -115,7 +115,7 @@ if ( ! class_exists( 'RMA_Ceviri_Tablo' ) ) {
 					$lang,
 					$orijinal,
 					$ceviri,
-					md5( $orijinal ),
+					rma_ceviri_hash_olustur( $orijinal, $field ),
 					current_time( 'mysql' )
 				)
 			);

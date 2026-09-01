@@ -230,7 +230,7 @@ if ( ! function_exists( 'rma_translate_field' ) ) {
 				&& isset( $sozluk['hash'] )
 			) {
 				$hash = isset( $sozluk['hash'][ $anahtar ] ) ? $sozluk['hash'][ $anahtar ] : '';
-				if ( ! rma_ceviri_hash_guncel_mi( $original_text, $hash ) ) {
+				if ( ! rma_ceviri_hash_guncel_mi( $original_text, $hash, $field ) ) {
 					return $original_text;
 				}
 			}
