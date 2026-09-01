@@ -13309,8 +13309,6 @@ qrms_test(
 
 echo "\nİletişim formu — tam genişlik ve alan sütunu\n";
 
-require_once QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/forms/functions.php';
-
 qrms_test(
 	'alan sütun genişliği yalnızca full veya half kabul eder',
 	function () {

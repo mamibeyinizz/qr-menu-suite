@@ -46,43 +46,6 @@ function qrm_cf_type_label($type) {
     return isset($types[$type]) ? $types[$type]['label'] : $type;
 }
 
-/**
- * Alan sütun genişliği: yalnızca 'full' (tekli) veya 'half' (ikili).
- *
- * Elementor Form widget Column Width bu kısa kodlara uygulanmaz;
- * genişlik bu değerden CSS class `.half` ile üretilir.
- *
- * @param mixed $value
- * @return string 'full'|'half'
- */
-function qrm_pro_sanitize_column_width($value) {
-    return ($value === 'half') ? 'half' : 'full';
-}
-
-/**
- * Kaydedilmiş sütun genişliği. Sütun henüz yoksa (eski kurulum) önceki
- * otomatik davranışa düşer — migration çalışınca DB'deki değer geçerli olur.
- *
- * @param object|array $field
- * @param string       $context 'review' (yorum/iletişim) veya 'custom'
- * @return string 'full'|'half'
- */
-function qrm_pro_field_column_width($field, $context = 'custom') {
-    $row = is_object($field) ? get_object_vars($field) : (array) $field;
-
-    if (isset($row['column_width']) && $row['column_width'] !== '' && $row['column_width'] !== null) {
-        return qrm_pro_sanitize_column_width($row['column_width']);
-    }
-
-    if ($context === 'review') {
-        $key = isset($row['field_key']) ? $row['field_key'] : '';
-        return in_array($key, ['customer_name', 'customer_phone', 'table_no'], true) ? 'half' : 'full';
-    }
-
-    $type = isset($row['field_type']) ? $row['field_type'] : (isset($row['type']) ? $row['type'] : '');
-    return in_array($type, ['text', 'email', 'tel', 'number', 'date'], true) ? 'half' : 'full';
-}
-
 // --- FORM AYARLARI (settings sütunundaki JSON) ---
 
 function qrm_cf_default_form_settings() {
