@@ -101,9 +101,13 @@ if ( ! function_exists( 'qmo_icerikten_yukle' ) ) {
 		);
 
 		foreach ( $eslesme as $kisa_kod => $handle ) {
-			if ( has_shortcode( $post->post_content, $kisa_kod ) ) {
-				qmo_asset_enqueue( $handle );
+			if ( ! has_shortcode( $post->post_content, $kisa_kod ) ) {
+				continue;
 			}
+			if ( 'qmo-chatbot' === $handle && function_exists( 'qmo_chatbot_onyuz_yuklensin_mi' ) && ! qmo_chatbot_onyuz_yuklensin_mi() ) {
+				continue;
+			}
+			qmo_asset_enqueue( $handle );
 		}
 	}
 }
@@ -148,6 +152,10 @@ if ( ! function_exists( 'qmo_asset_enqueue' ) ) {
 		// engeller: buttons.js iki kez çalışırsa olay dinleyicileri iki kez
 		// bağlanır ve tek tıkta iki AJAX isteği gider.
 		$handle = qmo_asset_kanonik_handle( $handle );
+
+		if ( 'qmo-chatbot' === $handle && function_exists( 'qmo_chatbot_onyuz_yuklensin_mi' ) && ! qmo_chatbot_onyuz_yuklensin_mi() ) {
+			return;
+		}
 
 		if ( wp_style_is( $handle, 'registered' ) ) {
 			wp_enqueue_style( $handle );

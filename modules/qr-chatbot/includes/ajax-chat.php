@@ -24,7 +24,13 @@ add_action( 'wp_ajax_nopriv_gemini_chat_req', 'qmo_ajax_chat' );
  */
 if ( ! function_exists( 'qmo_ajax_chat' ) ) {
 	function qmo_ajax_chat() {
-		$sess = qmo_chat_zorla();
+		$oturum_gerekli = ! function_exists( 'qmo_chatbot_oturum_zorunlu_mu' ) || qmo_chatbot_oturum_zorunlu_mu();
+		if ( $oturum_gerekli || ( function_exists( 'qmo_oturum' ) && qmo_oturum() ) ) {
+			$sess = qmo_chat_zorla();
+		} else {
+			qmo_nonce_dogrula();
+			$sess = array( 'masa' => '' );
+		}
 
 		$api_key = get_option( 'gemini_api_key' );
 		if ( empty( $api_key ) ) {
@@ -35,6 +41,16 @@ if ( ! function_exists( 'qmo_ajax_chat' ) ) {
 		$message = mb_substr( $message, 0, 1000 );
 		if ( '' === $message ) {
 			wp_send_json_error( 'Hata: Mesaj boş geldi.' );
+		}
+
+		if ( function_exists( 'qmo_chatbot_sinir_kontrol' ) ) {
+			qmo_chatbot_sinir_kontrol( $sess );
+		}
+
+		if ( function_exists( 'qmo_chatbot_yasakli_mi' ) && qmo_chatbot_yasakli_mi( $message ) ) {
+			$uyari = function_exists( 'qmo_chatbot_ayar' ) ? qmo_chatbot_ayar( 'qmo_chatbot_banned_msg' ) : 'Bu konuda yardımcı olamam.';
+			qmo_chatbot_gecmis_yaz( $sess, $message, $uyari );
+			wp_send_json_success( $uyari );
 		}
 
 		// Analitik: yalnızca geçerli (limit/nonce/oturum + dolu mesaj) istek.
@@ -55,7 +71,8 @@ if ( ! function_exists( 'qmo_ajax_chat' ) ) {
 		$final_prompt = $system_prompt
 			. qmo_chat_garson_talimati()
 			. qmo_chat_siparis_talimati()
-			. qmo_chat_menu_talimati();
+			. qmo_chat_menu_talimati()
+			. qmo_chat_bilemedi_talimati();
 
 		// Çok adımlı sipariş onay akışının çalışabilmesi için önceki turlar
 		// 'contents' dizisinde geçmiş olarak gönderilir; aksi halde AI her
@@ -119,7 +136,9 @@ if ( ! function_exists( 'qmo_ajax_chat' ) ) {
 		$data = json_decode( wp_remote_retrieve_body( $response ), true );
 
 		if ( isset( $data['candidates'][0]['content']['parts'][0]['text'] ) ) {
-			wp_send_json_success( $data['candidates'][0]['content']['parts'][0]['text'] );
+			$cevap = $data['candidates'][0]['content']['parts'][0]['text'];
+			qmo_chatbot_gecmis_yaz( $sess, $message, $cevap );
+			wp_send_json_success( $cevap );
 		} elseif ( isset( $data['error']['message'] ) ) {
 			// API anahtarı gibi ayrıntılar müşteriye sızmasın; log'a yaz.
 			qmo_log( 'Gemini API hatası: ' . $data['error']['message'] );
@@ -130,6 +149,44 @@ if ( ! function_exists( 'qmo_ajax_chat' ) ) {
 			qmo_log( 'Beklenmeyen Gemini yanıtı. HTTP: ' . wp_remote_retrieve_response_code( $response ) );
 			wp_send_json_error( 'Asistan şu anda yanıt veremiyor, lütfen tekrar deneyin.' );
 		}
+	}
+}
+
+/**
+ * Sohbet geçmişine yazar; bilemediyse ayrı tabloya da işler.
+ *
+ * @param array  $sess   Oturum.
+ * @param string $soru   Ziyaretçi sorusu.
+ * @param string $cevap  Bot cevabı.
+ * @return void
+ */
+if ( ! function_exists( 'qmo_chatbot_gecmis_yaz' ) ) {
+	function qmo_chatbot_gecmis_yaz( $sess, $soru, $cevap ) {
+		if ( ! class_exists( 'QMO_Chatbot_DB' ) ) {
+			return;
+		}
+
+		$oturum = function_exists( 'qmo_chatbot_ziyaretci_anahtar' )
+			? qmo_chatbot_ziyaretci_anahtar( is_array( $sess ) ? $sess : array() )
+			: '';
+		$masa   = isset( $sess['masa'] ) ? (string) $sess['masa'] : '';
+
+		QMO_Chatbot_DB::mesaj_yaz( $oturum, $masa, $soru, $cevap );
+
+		if ( function_exists( 'qmo_chatbot_bilemedi_mi' ) && qmo_chatbot_bilemedi_mi( $cevap ) ) {
+			QMO_Chatbot_DB::bilinmeyen_yaz( $soru );
+		}
+	}
+}
+
+/**
+ * Bilemediğinde [BILEMEDI] etiketi üretme talimatı.
+ *
+ * @return string
+ */
+if ( ! function_exists( 'qmo_chat_bilemedi_talimati' ) ) {
+	function qmo_chat_bilemedi_talimati() {
+		return "\n\nBİLMEDİĞİN SORULAR: Menü verisinde, restoran bilgelerinde veya bu talimatlarda karşılığı olmayan bir soruyu uydurarak cevaplama. Böyle bir durumda cevabının EN BAŞINA tam olarak [BILEMEDI] yaz, ardından kibarca bilmediğini söyle.";
 	}
 }
 
