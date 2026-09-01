@@ -51,7 +51,12 @@ if ( ! function_exists( 'qmo_chatbot_shortcode' ) ) {
 		$hareket      = function_exists( 'qmo_chatbot_ayar' ) ? qmo_chatbot_ayar( 'qmo_chatbot_attention' ) : 'none';
 		$cihaz_sinif  = 'gm-device-' . sanitize_html_class( $cihaz );
 		$konum_sinif  = 'left' === $konum ? 'gm-pos-left' : 'gm-pos-right';
-		$attn_sinif   = 'pulse' === $hareket ? 'gm-attn-pulse' : ( 'shake' === $hareket ? 'gm-attn-shake' : '' );
+		$attn_map     = array(
+			'pulse' => 'gm-attn-pulse',
+			'shake' => 'gm-attn-shake',
+			'float' => 'gm-attn-float',
+		);
+		$attn_sinif   = isset( $attn_map[ $hareket ] ) ? $attn_map[ $hareket ] : '';
 		$siniflar     = array( 'gemini-shortcode-container', $cihaz_sinif, $konum_sinif );
 
 		ob_start();
@@ -71,12 +76,15 @@ if ( ! function_exists( 'qmo_chatbot_shortcode' ) ) {
 			<?php endif; ?>
 
 			<div class="gemini-chat-toggle-btn<?php echo $attn_sinif ? ' ' . esc_attr( $attn_sinif ) : ''; ?>" role="button" tabindex="0" aria-label="<?php echo esc_attr( $bot_adi ); ?>">
+				<span class="gm-attn-core">
+					<span class="gm-attn-ring" aria-hidden="true"></span>
+					<div class="gemini-icon-wrapper">
+						<?php qmo_chatbot_ikon( $ikon_url ); ?>
+					</div>
+				</span>
 				<?php if ( $rozet ) : ?>
 					<span class="gemini-unread-badge" hidden>1</span>
 				<?php endif; ?>
-				<div class="gemini-icon-wrapper">
-					<?php qmo_chatbot_ikon( $ikon_url ); ?>
-				</div>
 				<?php if ( $metin_goster ) : ?>
 					<span><?php echo esc_html( $bot_adi ); ?></span>
 				<?php endif; ?>
@@ -264,13 +272,28 @@ if ( ! function_exists( 'qmo_svg_kses' ) ) {
 				'stroke-linecap'    => true,
 				'stroke-linejoin'   => true,
 			),
-			'path' => array(
+			'path'   => array(
 				'd'                 => true,
 				'fill'              => true,
 				'stroke'            => true,
 				'stroke-width'      => true,
 				'stroke-linecap'    => true,
 				'stroke-linejoin'   => true,
+			),
+			'circle' => array(
+				'cx'           => true,
+				'cy'           => true,
+				'r'            => true,
+				'fill'         => true,
+				'stroke'       => true,
+				'stroke-width' => true,
+			),
+			'line'   => array(
+				'x1'    => true,
+				'y1'    => true,
+				'x2'    => true,
+				'y2'    => true,
+				'stroke' => true,
 			),
 		);
 	}
