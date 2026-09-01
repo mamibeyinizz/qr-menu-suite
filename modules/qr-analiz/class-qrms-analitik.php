@@ -761,7 +761,7 @@ class QRMS_Analitik {
 					__( '"%s" eklentisi hâlâ etkin', 'qrms' ),
 					self::eski_eklenti_adi()
 				),
-				'mesaj'   => __( 'Kayıtları o topluyor; çift sayım olmasın diye bu modül izlemeyi tamamen kapattı. Eski eklenti masa bilgisini yazmadığı için "Masalara Göre" sekmesi de boş kalır. Masa bazlı takibin çalışması için eski eklentiyi devre dışı bırakın.', 'qrms' ),
+				'mesaj'   => __( 'Kayıtları o topluyor; çift sayım olmasın diye bu modül izlemeyi tamamen kapattı. Eski eklenti masa bilgisini yazmadığı için Masalar kategorisi de boş kalır. Masa bazlı takibin çalışması için eski eklentiyi devre dışı bırakın.', 'qrms' ),
 				'url'     => self::eski_eklenti_kapat_url(),
 				'etiket'  => __( 'Eski eklentiyi devre dışı bırak', 'qrms' ),
 			);

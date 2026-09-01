@@ -382,7 +382,7 @@ basılır.
 ### Menü analitiği (masa bazlı takip)
 
 `qr-analiz` modülü REST uçlarının yanında **menü analitiğini** de barındırır
-(`class-qrms-analitik.php` + `analitik-sayfasi.php`). Eski bağımsız
+(`class-qrms-analitik.php` ve kategori alt sayfaları). Eski bağımsız
 "RMA Analytics" eklentisinin yerini alır; tablo adı bilinçli olarak
 korunmuştur (`{prefix}rma_analytics`), böylece birikmiş kayıtlar taşınırken
 kaybolmaz.
@@ -426,7 +426,7 @@ engel varken bir kutu basar ve her bulguyu bir **eyleme** bağlar:
 
 Son madde sessiz bir veri kaybını yakalar: `masa_belirle()` → `masa_gecerli()`
 adresteki `?masa=…` slug'ını `qrm_tables`'ta arar ve **kayıtlı değilse güvenlik
-gereği yok sayar**; olay masasız yazılır ve "Masalara Göre" sekmesinde yalnızca
+gereği yok sayar**; olay masasız yazılır ve Masalar kategorisinde yalnızca
 "Masasız (doğrudan erişim)" görünür.
 
 Devre dışı bırakma bağlantısı WordPress'in Eklentiler ekranındakinin aynısıdır
