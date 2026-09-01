@@ -409,47 +409,24 @@ trait RMA_Admin_Pages_Trait {
     /**
      * QR Analiz tablosundaki bugünkü menü görüntüleme sayısı.
      *
-     * genel_bakis() sekiz kovayı birden hesaplar; hub yalnızca bugünkü
-     * menu_view sayısını ister. Sonuç 5 dakikalık transient'te tutulur.
+     * İstatistikler Genel Bakış ile AYNI kova: genel_bakis()['mv_bugun'].
+     * Ayrı COUNT + transient ikinci bir sayı üretirdi; kullanıcı iki ekranda
+     * farklı rakam görürdü.
      *
      * @return int
      */
     private function hub_today_view_count() {
-        $gun = current_time( 'Y-m-d' );
-        $key = 'rma_hub_today_views_' . $gun;
-        $cached = get_transient( $key );
-        if ( false !== $cached ) {
-            return (int) $cached;
+        if ( ! class_exists( 'QRMS_Analitik' ) || ! method_exists( 'QRMS_Analitik', 'genel_bakis' ) ) {
+            return 0;
         }
 
-        $count = 0;
-
-        if ( class_exists( 'QRMS_Analitik' ) && method_exists( 'QRMS_Analitik', 'tablo_var_mi' ) && QRMS_Analitik::tablo_var_mi() ) {
-            global $wpdb;
-            if ( isset( $wpdb ) && is_object( $wpdb ) && method_exists( $wpdb, 'get_var' ) && method_exists( $wpdb, 'prepare' ) ) {
-                $tablo = QRMS_Analitik::tablo();
-                $bas   = $gun . ' 00:00:00';
-                $son   = $gun . ' 23:59:59';
-                if ( method_exists( $wpdb, 'suppress_errors' ) ) {
-                    $suppress = $wpdb->suppress_errors( true );
-                }
-                // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-                $count = (int) $wpdb->get_var(
-                    $wpdb->prepare(
-                        "SELECT COUNT(*) FROM {$tablo} WHERE event_type = %s AND created_at BETWEEN %s AND %s",
-                        'menu_view',
-                        $bas,
-                        $son
-                    )
-                );
-                if ( isset( $suppress ) ) {
-                    $wpdb->suppress_errors( $suppress );
-                }
-            }
+        if ( method_exists( 'QRMS_Analitik', 'tablo_var_mi' ) && ! QRMS_Analitik::tablo_var_mi() ) {
+            return 0;
         }
 
-        set_transient( $key, $count, 5 * MINUTE_IN_SECONDS );
-        return $count;
+        $bakis = QRMS_Analitik::genel_bakis();
+
+        return isset( $bakis['mv_bugun'] ) ? (int) $bakis['mv_bugun'] : 0;
     }
 
     public function register_settings() {

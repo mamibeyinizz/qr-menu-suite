@@ -1109,9 +1109,8 @@ qrms_test(
 		qrms_assert_contains( "qrms-yf-formlar", $php, 'yorum form listesi adresi' );
 		qrms_assert_contains( "tab' => 'submissions'", $php, 'gönderiler sekmesi' );
 		qrms_assert_contains( "get_module_page_url( 'qr-analiz' )", $php, 'QR Analiz adresi' );
-		qrms_assert_contains( 'rma_hub_today_views_', $php, 'görüntülenme transient anahtarı' );
-		qrms_assert_contains( "event_type = %s", $php, 'tek COUNT sorgusu' );
-		qrms_assert_contains( "'menu_view'", $php, 'menü görüntüleme olayı' );
+		qrms_assert_contains( 'QRMS_Analitik::genel_bakis()', $php, 'istatistiklerle aynı kaynak' );
+		qrms_assert_contains( "['mv_bugun']", $php, 'bugünkü menü görüntüleme kovası' );
 		qrms_assert_contains( 'echo \'<div class="rma-hub">\'', $php, 'kapsül sarmalayıcı' );
 		qrms_assert_contains( "'title' => 'Ürünlerim'", $php, 'Ürünlerim durur' );
 		qrms_assert_contains( "'title' => 'Ürün Ekle'", $php, 'Ürün Ekle durur' );
