@@ -42,6 +42,7 @@
 	var kapaliMsg = kok.dataset.closedMsg || 'Şu an kapalıyız, yakında görüşmek üzere.';
 	var teaserAcik = '1' === kok.dataset.teaser;
 	var teaserGecikme = Math.max( 1, parseInt( kok.dataset.teaserDelay || '4', 10 ) ) * 1000;
+	var kayitliY = 0;
 
 	function teaserAnahtar() {
 		return 'qmo_cb_teaser_kapat';
@@ -90,7 +91,18 @@
 
 	/* ------------------------------------------------------------------ */
 
+	function kilitle() {
+		if ( document.documentElement.classList.contains( 'gm-scroll-kilit' ) ) {
+			return;
+		}
+		kayitliY = window.scrollY;
+		document.documentElement.classList.add( 'gm-scroll-kilit' );
+		document.body.classList.add( 'gm-scroll-kilit' );
+		document.body.style.top = '-' + kayitliY + 'px';
+	}
+
 	function ac() {
+		kilitle();
 		if ( kapaliMi ) {
 			teaserGizle();
 			if ( log ) {
@@ -146,6 +158,10 @@
 	function kapat() {
 		overlay.classList.remove( 'gemini-acik' );
 		kok.classList.remove( 'gm-open' );
+		document.documentElement.classList.remove( 'gm-scroll-kilit' );
+		document.body.classList.remove( 'gm-scroll-kilit' );
+		document.body.style.top = '';
+		window.scrollTo( 0, kayitliY );
 	}
 
 	function balon( metin, tip, hataMi ) {
