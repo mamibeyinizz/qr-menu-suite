@@ -5682,9 +5682,6 @@ qrms_test(
 		// Tablolar 660px altında karta döner (sütun başlığı hücrenin etiketi).
 		qrms_assert_contains( 'max-width: 660px', $css, 'kart görünümü kırılımı' );
 		qrms_assert_contains( 'content: attr( data-label )', $css, 'kart etiketi' );
-
-		// Seçili olmayan kategorinin bölümü gerçekten gizlenir.
-		qrms_assert_contains( '.qrms-an-cat-panel[hidden]', $css, 'gizli bölüm kuralı' );
 	}
 );
 

@@ -66,11 +66,6 @@
 	width: 100%;
 }
 
-/* FAZ 9 ÖLÜ: markup'ta class yok (eski tek-sayfa bildirimi). */
-.qrms-an-notice {
-	margin: 0 0 16px;
-}
-
 /* =====================================================================
    TEŞHİS KUTUSU — "neden veri yok?"
 
@@ -372,20 +367,6 @@
 	padding: 0;
 }
 
-/* FAZ 9 ÖLÜ: dönem seçici filtre çubuğuna taşındı; bu class basılmıyor. */
-.qrms-an-panel-actions {
-	align-items: center;
-	display: flex;
-	flex-wrap: wrap;
-	gap: 8px;
-}
-
-/* FAZ 9 ÖLÜ: tek-sayfa kategori panelleri kalktı; markup'ta class yok.
-   Test hâlâ bu kuralın CSS'te durduğunu doğrular (silinmesin diye). */
-.qrms-an-cat-panel[hidden] {
-	display: none;
-}
-
 /* =====================================================================
    KATEGORİ CHİP'LERİ
    Verinin altı kesiti (saatlik/günlük/haftalık/aylık, masalar, ürünler)
@@ -680,29 +661,6 @@
 	margin-bottom: 4px;
 }
 
-/* FAZ 9 ÖLÜ: canlı çubuk .qrms-an-filtre (Türkçe). İngilizce class kalıntı. */
-.qrms-an-filter {
-	align-items: center;
-	background: var(--qrms-an-bg);
-	border: 1px solid var(--qrms-an-line);
-	border-radius: 12px;
-	display: flex;
-	flex-wrap: wrap;
-	gap: 8px;
-	margin: 0 0 18px;
-	padding: 12px 16px;
-}
-
-/* FAZ 9 ÖLÜ: canlı etiket .qrms-an-filtre-label. */
-.qrms-an-filter-label {
-	color: var(--qrms-an-muted);
-	font-size: 12px;
-	font-weight: 700;
-	letter-spacing: .06em;
-	text-transform: uppercase;
-	width: 100%;
-}
-
 .qrms-an-select {
 	border: 1px solid #dcdcde;
 	border-radius: 8px;
@@ -712,18 +670,6 @@
 	min-height: 40px;
 	padding: 7px 10px;
 	width: 100%;
-}
-
-/* FAZ 9 ÖLÜ: dönem seçici <a> çubuğuna taşındı. */
-.qrms-an-select-small {
-	max-width: 100%;
-	width: auto;
-}
-
-/* FAZ 9 ÖLÜ: .qrms-an-filtered markup'ta yok. */
-.qrms-an-filtered .qrms-an-filter {
-	background: rgba( 201, 168, 76, .07 );
-	border-color: var(--qrms-an-gold);
 }
 
 /* =====================================================================
@@ -1288,16 +1234,8 @@
 		width: auto;
 	}
 
-	.qrms-an-filter {
-		flex-wrap: nowrap;
-	}
-
 	.qrms-an-filtre-satir {
 		flex-wrap: nowrap;
-	}
-
-	.qrms-an-filter-label {
-		width: auto;
 	}
 
 	.qrms-an-select {
