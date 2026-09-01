@@ -1,0 +1,132 @@
+/**
+ * İletişim / özel formlar — tam genişlik (Elementor boxed layout ezer)
+ * ve alan bazında sütun kontrolü.
+ *
+ * Elementor Form widget'ının Column Width özelliği kısa kod formlarına
+ * uygulanmaz. Sütun: `.qrm-input-group.half` (ikili) veya class'sız (tekli).
+ *
+ * Native Elementor Form için section/container'a `qrms-contact-fullwidth`
+ * class'ı eklenir; alan genişliği widget'taki Column Width ile ayarlanır.
+ */
+
+/* 100vw, dikey scrollbar genişliğini de saydığı için taşmayı clip ile kes. */
+html:has(.qrm-form-fullbleed),
+html:has(.qrms-contact-fullwidth),
+body:has(.qrm-form-fullbleed),
+body:has(.qrms-contact-fullwidth) {
+	overflow-x: clip;
+}
+
+.qrm-form-fullbleed {
+	box-sizing: border-box;
+	width: 100vw;
+	max-width: 100vw;
+	position: relative;
+	left: 50%;
+	right: auto;
+	margin-left: -50vw;
+	margin-right: 0;
+	padding-left: 0;
+	padding-right: 0;
+}
+
+.qrm-wrap-full.qrm-form-fullbleed,
+.qrm-cf-scope.qrm-form-fullbleed {
+	width: 100vw !important;
+	max-width: 100vw !important;
+	margin-left: -50vw !important;
+	margin-right: 0 !important;
+	left: 50%;
+}
+
+.qrm-form-fullbleed *,
+.qrm-form-fullbleed *::before,
+.qrm-form-fullbleed *::after {
+	box-sizing: border-box;
+}
+
+/* Elementor section / container / widget max-width + yatay padding. */
+.elementor-section:has(.qrm-form-fullbleed) > .elementor-container,
+.elementor-column:has(.qrm-form-fullbleed),
+.elementor-widget:has(.qrm-form-fullbleed),
+.elementor-widget-container:has(.qrm-form-fullbleed),
+.elementor-shortcode:has(.qrm-form-fullbleed),
+.e-con:has(.qrm-form-fullbleed),
+.e-con-inner:has(.qrm-form-fullbleed),
+.qrms-contact-fullwidth,
+.qrms-contact-fullwidth > .elementor-container,
+.qrms-contact-fullwidth > .e-con-inner,
+.qrms-contact-fullwidth .elementor-widget-container {
+	max-width: 100% !important;
+	width: 100% !important;
+}
+
+.elementor-section:has(.qrm-form-fullbleed),
+.e-con:has(.qrm-form-fullbleed),
+.qrms-contact-fullwidth.elementor-section,
+.qrms-contact-fullwidth.e-con,
+.qrms-contact-fullwidth {
+	--padding-left: 0px;
+	--padding-right: 0px;
+	--content-width: 100%;
+	--container-max-width: 100%;
+	--container-widget-width: 100%;
+	padding-left: 0 !important;
+	padding-right: 0 !important;
+	margin-left: 0 !important;
+	margin-right: 0 !important;
+	max-width: 100% !important;
+	width: 100% !important;
+}
+
+/* Editör iframe'inde 100vw yatay kaydırma yaratır. */
+.elementor-editor-active .qrm-form-fullbleed,
+.elementor-edit-area .qrm-form-fullbleed {
+	width: 100% !important;
+	max-width: 100% !important;
+	left: auto;
+	margin-left: 0 !important;
+	margin-right: 0 !important;
+}
+
+/* Beyaz kart: radius / gölge / iç boşluk korunur, kapsayıcıyı doldurur. */
+.qrm-form-fullbleed .qrm-form-box,
+.qrm-form-fullbleed .qrm-cf-form {
+	width: 100%;
+	max-width: none;
+	margin-left: 0;
+	margin-right: 0;
+}
+
+/* Alan ızgarası: gap tutarlı, label+input hizası bozulmaz. */
+.qrm-form-fullbleed .qrm-input-row,
+.qrm-form-fullbleed .qrm-cf-fields {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 16px;
+	align-items: flex-start;
+}
+
+.qrm-form-fullbleed .qrm-input-group {
+	margin-bottom: 0;
+	min-width: 0;
+	flex: 1 1 100%;
+}
+
+.qrm-form-fullbleed .qrm-input-group.half {
+	flex: 1 1 calc(50% - 8px);
+}
+
+.qrm-form-fullbleed .qrm-input-group > label {
+	display: block;
+}
+
+@media (max-width: 767px) {
+	.qrm-form-fullbleed .qrm-input-group.half {
+		flex: 1 1 100%;
+	}
+
+	.qrms-contact-fullwidth .elementor-field-group {
+		width: 100% !important;
+	}
+}

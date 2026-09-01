@@ -53,6 +53,7 @@ function qrm_pro_install() {
         is_required tinyint(1) DEFAULT 0,
         is_active tinyint(1) DEFAULT 1,
         sort_order int(11) DEFAULT 0,
+        column_width varchar(10) DEFAULT 'full' NOT NULL,
         PRIMARY KEY  (id),
         UNIQUE KEY field_key (field_key),
         KEY idx_active_order (is_active, sort_order)
@@ -75,9 +76,15 @@ function qrm_pro_install() {
             ['is_anonymous', 'İsmimi gizle (Anonim kal)', 'checkbox', 0, 1, 5]
         ];
         foreach ($default_fields as $f) {
+            $half_keys = ['customer_name', 'customer_phone', 'table_no'];
             $wpdb->insert($table_fields, [
-                'field_key' => $f[0], 'field_label' => $f[1], 'field_type' => $f[2],
-                'is_required' => $f[3], 'is_active' => $f[4], 'sort_order' => $f[5]
+                'field_key'     => $f[0],
+                'field_label'   => $f[1],
+                'field_type'    => $f[2],
+                'is_required'   => $f[3],
+                'is_active'     => $f[4],
+                'sort_order'    => $f[5],
+                'column_width'  => in_array($f[0], $half_keys, true) ? 'half' : 'full',
             ]);
         }
     }
@@ -91,7 +98,61 @@ function qrm_pro_install() {
     // Özel form builder tabloları (v4.2.0)
     qrm_cf_install();
 
+    qrm_pro_migrate_column_widths();
+
     update_option('qrm_db_version', QRM_PRO_VERSION, false);
+}
+
+/**
+ * Mevcut alanlara sütun genişliği yazar (bir kez).
+ *
+ * Eski davranış otomatikti: yorum formunda ad/telefon/masa no, özel formlarda
+ * text/email/tel/number/date yarım genişlikti. Yeni alanlar tam genişlik
+ * başlar; restoran sahibi her alanı ayrı ayrı seçer.
+ *
+ * @return void
+ */
+function qrm_pro_migrate_column_widths() {
+    if (get_option('qrm_column_width_migrated') === '1') {
+        return;
+    }
+
+    global $wpdb;
+    $review_fields = $wpdb->prefix . 'qrm_form_fields';
+    $custom_fields = qrm_cf_fields_table();
+
+    if (!qrm_pro_table_has_column($review_fields, 'column_width')
+        || !qrm_pro_table_has_column($custom_fields, 'column_width')) {
+        return;
+    }
+
+    $wpdb->query(
+        "UPDATE {$review_fields} SET column_width = 'half'
+         WHERE field_key IN ('customer_name','customer_phone','table_no')
+           AND column_width IN ('', 'full')"
+    );
+    $wpdb->query(
+        "UPDATE {$custom_fields} SET column_width = 'half'
+         WHERE field_type IN ('text','email','tel','number','date')
+           AND column_width IN ('', 'full')"
+    );
+
+    update_option('qrm_column_width_migrated', '1', false);
+}
+
+/**
+ * Tabloda sütun var mı? dbDelta henüz ALTER edemediyse migration ertelenir.
+ *
+ * @param string $table
+ * @param string $column
+ * @return bool
+ */
+function qrm_pro_table_has_column($table, $column) {
+    global $wpdb;
+    $suppress = $wpdb->suppress_errors(true);
+    $found = $wpdb->get_var($wpdb->prepare('SHOW COLUMNS FROM `' . str_replace('`', '', $table) . '` LIKE %s', $column));
+    $wpdb->suppress_errors($suppress);
+    return !empty($found);
 }
 
 /**

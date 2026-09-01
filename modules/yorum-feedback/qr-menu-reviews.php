@@ -200,6 +200,10 @@ function qrm_pro_maybe_upgrade() {
  * için yukarıdaki qrm_pro_maybe_upgrade() bunu tek başına yakalamaz; ayrı bir
  * şema sürümü tutulur.
  *
+ * v3: form alanlarına column_width (tekli/ikili) sütunu. dbDelta mevcut
+ * satırlara DEFAULT 'full' ekler; qrm_pro_migrate_column_widths() eski
+ * otomatik yarım-genişlik davranışını bir kez yazar.
+ *
  * ZAMANLAMA — güncelleme bilinçli olarak SADECE yönetim isteklerinde çalışır.
  * ALTER TABLE, büyük bir yorum tablosunda birkaç saniye sürebilir ve o süre
  * boyunca tabloyu meşgul eder. plugins_loaded'a bağlansaydı bu iş, menüyü açan
@@ -208,7 +212,7 @@ function qrm_pro_maybe_upgrade() {
  * ---------------------------------------------------------------------- */
 
 /** Şema (indeks) sürümü. İndeks tanımları değiştiğinde artırılır. */
-define('QRM_PRO_SCHEMA_VERSION', '2');
+define('QRM_PRO_SCHEMA_VERSION', '3');
 
 /** Şema sürümünün saklandığı option. */
 define('QRM_PRO_SCHEMA_OPTION', 'qrm_pro_schema_version');

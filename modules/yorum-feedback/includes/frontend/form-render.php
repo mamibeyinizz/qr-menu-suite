@@ -374,7 +374,7 @@ function qrm_pro_render_review_form($settings, $active_fields, $message, $show_g
                     <div class="qrm-input-row">
                     <?php foreach ($active_fields as $f):
                         $req_attr = $f->is_required ? 'required' : '';
-                        $class_half = in_array($f->field_key, ['customer_name', 'customer_phone', 'table_no']) ? 'half' : '';
+                        $class_half = qrm_pro_field_column_width($f, 'review') === 'half' ? 'half' : '';
                         $ac_attr = qrm_pro_auto_color_style($settings, $ac_index);
                         $ac_class = $ac_attr ? ' qrm-ac' : '';
                     ?>

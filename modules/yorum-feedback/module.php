@@ -116,6 +116,8 @@ function qrms_module_yorum_feedback_init() {
 
 		add_filter( 'qrms_module_menu_label', 'qrms_module_yorum_feedback_menu_label', 10, 2 );
 	}
+
+	add_action( 'wp_enqueue_scripts', 'qrms_module_yorum_feedback_frontend_form_assets' );
 }
 
 /**
@@ -165,6 +167,25 @@ function qrms_module_yorum_feedback_admin_menu() {
  */
 function qrms_module_yorum_feedback_menu_label( $label, $slug ) {
 	return 'yorum-feedback' === $slug ? $label . qrm_pro_menu_badge() : $label;
+}
+
+/**
+ * İletişim / özel formların tam genişlik ve sütun CSS'i.
+ *
+ * Kısa kod stilleri satır içi basılır; bu dosya Elementor kapsayıcı
+ * max-width/padding'ini ezer ve native Elementor Form section class'ını
+ * (`qrms-contact-fullwidth`) destekler. Küçük bir dosya olduğu için
+ * ön yüzde her zaman yüklenir — form olmayan sayfalarda maliyeti yok denecek kadar az.
+ *
+ * @return void
+ */
+function qrms_module_yorum_feedback_frontend_form_assets() {
+	wp_enqueue_style(
+		'qrm-frontend-form',
+		QRMS_PLUGIN_URL . 'modules/yorum-feedback/assets/css/frontend-form.css',
+		array(),
+		QRMS_Helpers::asset_version( 'modules/yorum-feedback/assets/css/frontend-form.css' )
+	);
 }
 
 /**

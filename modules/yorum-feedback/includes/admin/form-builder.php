@@ -32,7 +32,9 @@ function qrm_pro_admin_form_builder() {
         <h1>Müşteri Bilgileri Formu</h1>
         <p class="qrm-lead">
             Yorum ve iletişim formunda müşteriden istenecek bilgi alanları. Satırları sürükleyerek
-            sıralayabilir, etiketlerini değiştirebilir, zorunlu/aktif durumlarını ayarlayabilirsiniz.
+            sıralayabilir, etiketlerini değiştirebilir, zorunlu/aktif durumlarını ve her alanın
+            sütun genişliğini (tekli / ikili) ayarlayabilirsiniz. Elementor Form widget'ındaki
+            Column Width bu kısa koda uygulanmaz — genişlik buradan seçilir.
         </p>
 
         <?php if ($notice !== ''): ?>
@@ -80,6 +82,13 @@ function qrm_pro_admin_form_builder() {
                                 <label><input type="checkbox" name="fields[<?php echo intval($f->id); ?>][required]" value="1" <?php checked($f->is_required, 1); ?>> Zorunlu</label>
                                 <label><input type="checkbox" name="fields[<?php echo intval($f->id); ?>][active]" value="1" <?php checked($f->is_active, 1); ?>> Aktif</label>
                             <?php endif; ?>
+                            <label class="qrm-field-width">
+                                Sütun
+                                <select name="fields[<?php echo intval($f->id); ?>][column_width]">
+                                    <option value="full" <?php selected(qrm_pro_field_column_width($f, 'review'), 'full'); ?>>Tekli (tam genişlik)</option>
+                                    <option value="half" <?php selected(qrm_pro_field_column_width($f, 'review'), 'half'); ?>>İkili (yarım genişlik)</option>
+                                </select>
+                            </label>
                         </div>
                         <?php endforeach; ?>
                     </div>
@@ -146,7 +155,13 @@ function qrm_pro_render_form_preview($fields, $settings) {
                         <p class="qrm-fp-empty">Aktif alan yok — müşteriye yalnızca güvenlik sorusu gösterilir.</p>
                     <?php else :
                         foreach ($active as $f) {
-                            echo qrm_pro_form_preview_field($f->field_key, $f->field_type, $f->field_label, (int) $f->is_required);
+                            echo qrm_pro_form_preview_field(
+                                $f->field_key,
+                                $f->field_type,
+                                $f->field_label,
+                                (int) $f->is_required,
+                                qrm_pro_field_column_width($f, 'review')
+                            );
                         }
                     endif; ?>
                 </div>
@@ -170,15 +185,15 @@ function qrm_pro_render_form_preview($fields, $settings) {
  * işaretleme burada tek bir yerde tanımlıdır ve JS bu fonksiyonun ürettiği
  * sınıf adlarını birebir kullanır.
  *
- * @param string $key      Alan anahtarı (customer_phone, table_no…).
- * @param string $type     text | textarea | checkbox.
- * @param string $label    Görünen etiket.
- * @param int    $required 1 ise yıldız basılır.
+ * @param string $key           Alan anahtarı (customer_phone, table_no…).
+ * @param string $type          text | textarea | checkbox.
+ * @param string $label         Görünen etiket.
+ * @param int    $required      1 ise yıldız basılır.
+ * @param string $column_width  full | half
  * @return string
  */
-function qrm_pro_form_preview_field($key, $type, $label, $required) {
-    // Yarım genişlikteki alanlar frontend ile aynı: ad, telefon, masa no.
-    $half  = in_array($key, ['customer_name', 'customer_phone', 'table_no'], true) ? ' half' : '';
+function qrm_pro_form_preview_field($key, $type, $label, $required, $column_width = 'full') {
+    $half  = qrm_pro_sanitize_column_width($column_width) === 'half' ? ' half' : '';
     $star  = $required ? ' <span class="qrm-fp-req">*</span>' : '';
     $label = esc_html($label);
 
@@ -202,7 +217,7 @@ function qrm_pro_form_preview_field($key, $type, $label, $required) {
  * Müşteri bilgileri form alanlarını kaydeder.
  * Satır sırası = sort_order; POST dizisi sürükle-bırak sonrası DOM sırasında gelir.
  *
- * @param array $rows $_POST['fields'] — [id => ['label'=>..,'required'=>..,'active'=>..]]
+ * @param array $rows $_POST['fields'] — [id => ['label'=>..,'required'=>..,'active'=>..,'column_width'=>full|half]]
  * @return int Güncellenen alan sayısı
  */
 function qrm_pro_save_review_form_fields($rows) {
@@ -233,9 +248,10 @@ function qrm_pro_save_review_form_fields($rows) {
                 'is_required' => $is_core ? 1 : (isset($data['required']) ? 1 : 0),
                 'is_active'   => $is_core ? 1 : (isset($data['active']) ? 1 : 0),
                 'sort_order'  => $order,
+                'column_width'=> qrm_pro_sanitize_column_width(isset($data['column_width']) ? $data['column_width'] : 'full'),
             ],
             ['id' => $id],
-            ['%s', '%d', '%d', '%d'],
+            ['%s', '%d', '%d', '%d', '%s'],
             ['%d']
         );
 

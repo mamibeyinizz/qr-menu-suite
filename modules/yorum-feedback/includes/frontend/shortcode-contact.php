@@ -44,7 +44,7 @@ function qrm_pro_shortcode_contact() {
     ob_start();
     echo qrm_pro_render_style_block($settings);
     ?>
-    <div class="qrm-wrap-full">
+    <div class="qrm-wrap-full qrm-form-fullbleed">
         <?php echo qrm_pro_render_review_form($settings, $active_fields, $message, $show_google_cta, $cta_avg, 'contact', $auto_open_reward); ?>
     </div>
     <?php
