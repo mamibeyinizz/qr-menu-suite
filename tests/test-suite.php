@@ -61,6 +61,10 @@ function qrms_reset() {
 	$GLOBALS['qrms_test']['localized']     = array();
 	$GLOBALS['qrms_test']['settings']       = array();
 	$GLOBALS['qrms_test']['settings_fields'] = array();
+	$GLOBALS['qrms_test']['post_status']     = array();
+	$GLOBALS['qrms_test']['post_counts']     = array();
+	$GLOBALS['qrms_test']['post_types']      = array();
+	$GLOBALS['qrms_test']['taxonomies']      = array();
 
 	$GLOBALS['menu']                    = array();
 	$GLOBALS['submenu']                 = array();
@@ -8472,6 +8476,11 @@ qrms_test(
 		$stil = qrms_ae_style( 'qrms-ceviri-admin' );
 
 		qrms_assert_true( null !== $stil, 'kendi ekranında yüklenir' );
+
+		$GLOBALS['qrms_test']['styles'] = array();
+		$_GET = array( 'page' => 'qrms-cv-diller' );
+		qrms_module_qr_ceviri_admin_assets();
+		qrms_assert_true( null !== qrms_ae_style( 'qrms-ceviri-admin' ), 'alt sayfada da yüklenir' );
 		qrms_assert_same(
 			QRMS_VERSION . '.' . filemtime( QRMS_PLUGIN_DIR . 'modules/qr-ceviri/assets/css/admin.css' ),
 			$stil['ver'],
@@ -13889,6 +13898,312 @@ qrms_test(
 
 		$set = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/admin/settings-page.php' );
 		qrms_assert_contains( 'rma_ceviri_bayat_uyari_ekran_metni', $set, 'yorum ayar uyarı' );
+	}
+);
+
+
+echo "\nQR Çeviri (Bölüm B hub + alt sayfa)\n";
+
+require_once QRMS_PLUGIN_DIR . 'modules/qr-ceviri/includes/admin/hub-sayfasi.php';
+require_once QRMS_PLUGIN_DIR . 'modules/qr-ceviri/includes/admin/diller-sayfasi.php';
+require_once QRMS_PLUGIN_DIR . 'modules/qr-ceviri/includes/admin/kapsam-sayfasi.php';
+require_once QRMS_PLUGIN_DIR . 'modules/qr-ceviri/includes/admin/metin-toplama-sayfasi.php';
+require_once QRMS_PLUGIN_DIR . 'modules/qr-ceviri/includes/admin/csv-disa-sayfasi.php';
+require_once QRMS_PLUGIN_DIR . 'modules/qr-ceviri/includes/admin/csv-ice-sayfasi.php';
+require_once QRMS_PLUGIN_DIR . 'modules/qr-ceviri/includes/admin/sistem-durumu-sayfasi.php';
+require_once QRMS_PLUGIN_DIR . 'modules/qr-ceviri/includes/admin/admin-sayfa.php';
+require_once QRMS_PLUGIN_DIR . 'modules/qr-ceviri/includes/csv-export.php';
+require_once QRMS_PLUGIN_DIR . 'modules/qr-ceviri/includes/elementor-tarama.php';
+require_once QRMS_PLUGIN_DIR . 'modules/qr-ceviri/module.php';
+
+if ( ! function_exists( 'rma_ceviri_hedef_diller' ) ) {
+	/**
+	 * @return string[]
+	 */
+	function rma_ceviri_hedef_diller() {
+		$aktif = function_exists( 'rma_ceviri_aktif_diller' )
+			? rma_ceviri_aktif_diller()
+			: (array) get_option( 'qrmenu_active_langs', array() );
+
+		return array_values( array_diff( $aktif, array( 'tr' ) ) );
+	}
+}
+
+qrms_test(
+	'modül satırı hub ekranıdır; altı adım kart olur, ikon dashicon\'dur',
+	function () {
+		$sayfalar = qrms_module_qr_ceviri_sayfalar();
+
+		qrms_assert_same(
+			array(
+				'qrms-cv-diller',
+				'qrms-cv-kapsam',
+				'qrms-cv-toplama',
+				'qrms-cv-disa',
+				'qrms-cv-ice',
+				'qrms-cv-durum',
+			),
+			array_keys( $sayfalar ),
+			'adım slug\'ları'
+		);
+
+		foreach ( $sayfalar as $slug => $sayfa ) {
+			qrms_assert_true( is_callable( $sayfa['render'] ), $slug . ' render edilebilir' );
+			qrms_assert_true( 0 === strpos( $sayfa['icon'], 'dashicons-' ), $slug . ' dashicon' );
+		}
+
+		$kartlar = qrms_module_qr_ceviri_hub_kartlari();
+		qrms_assert_same( 6, count( $kartlar ), 'altı kart' );
+
+		foreach ( $kartlar as $kart ) {
+			qrms_assert_false(
+				false !== strpos( $kart['url'], QRMS_CEVIRI_KLASIK_SAYFA ),
+				'klasik görünüm kartı yok'
+			);
+			qrms_assert_true( '' !== $kart['desc'], $kart['title'] . ' durum satırı' );
+		}
+	}
+);
+
+qrms_test(
+	'alt sayfalar menüye satır EKLEMEZ; eski slug hub\'a yönlendirir',
+	function () {
+		update_option( 'qrms_active_modules', array( 'qr-ceviri' ) );
+
+		$GLOBALS['submenu'][ QRMS_Admin::MENU_SLUG ] = array(
+			qrms_submenu_satiri( 'Dil / Çeviri Ayarları', QRMS_Admin::get_module_page_slug( 'qr-ceviri' ) ),
+		);
+
+		qrms_module_qr_ceviri_admin_menu();
+
+		$sluglar = array_map(
+			static function ( $item ) {
+				return $item['slug'];
+			},
+			$GLOBALS['qrms_test']['submenus']
+		);
+
+		foreach ( array_keys( qrms_module_qr_ceviri_sayfalar() ) as $slug ) {
+			qrms_assert_true( in_array( $slug, $sluglar, true ), $slug . ' kayıtlı' );
+			qrms_assert_true( QRMS_Admin::is_module_subpage( $slug ), $slug . ' alt sayfa defterinde' );
+		}
+
+		qrms_assert_true( in_array( QRMS_CEVIRI_KLASIK_SAYFA, $sluglar, true ), 'klasik slug kayıtlı' );
+		qrms_assert_true( in_array( QRMS_CEVIRI_ESKI_SAYFA, $sluglar, true ), 'eski slug kayıtlı' );
+
+		$gizlenen = QRMS_Admin::collect_hidden_rows(
+			$GLOBALS['submenu'][ QRMS_Admin::MENU_SLUG ],
+			QRMS_Admin::get_menu_row_slugs()
+		);
+
+		foreach ( array_keys( qrms_module_qr_ceviri_sayfalar() ) as $slug ) {
+			qrms_assert_true( in_array( $slug, $gizlenen, true ), $slug . ' menüden düşer' );
+		}
+
+		qrms_assert_true( in_array( QRMS_CEVIRI_KLASIK_SAYFA, $gizlenen, true ), 'klasik menüden düşer' );
+
+		try {
+			qrms_module_qr_ceviri_eski_adresi_yonlendir();
+			qrms_assert_true( false, 'yönlendirme bekleniyordu' );
+		} catch ( QRMS_Test_Redirect $e ) {
+			qrms_assert_same(
+				QRMS_Admin::get_module_page_url( 'qr-ceviri' ),
+				$e->getMessage(),
+				'hub\'a gider'
+			);
+		}
+	}
+);
+
+qrms_test(
+	'eski çeviri slug\'ı yönlendirirken sayacı artırır',
+	function () {
+		$_GET['page'] = QRMS_CEVIRI_ESKI_SAYFA;
+
+		try {
+			qrms_module_qr_ceviri_eski_adresi_yonlendir();
+			qrms_assert_true( false, 'yönlendirme bekleniyordu' );
+		} catch ( QRMS_Test_Redirect $e ) {
+			$hits = QRMS_Helpers::legacy_slug_hits();
+			qrms_assert_same( 1, $hits[ QRMS_CEVIRI_ESKI_SAYFA ]['count'], 'vuruş kaydı' );
+		}
+	}
+);
+
+qrms_test(
+	'adım şeridi kilitli değildir; diğer adımlara bağlantı vardır',
+	function () {
+		ob_start();
+		qrms_module_qr_ceviri_adim_seridi( 'qrms-cv-kapsam' );
+		$html = ob_get_clean();
+
+		qrms_assert_contains( 'Adım 2 / 6', $html, 'ilerleme' );
+		qrms_assert_contains( 'istediğiniz adıma geçebilirsiniz', $html, 'kilit yok' );
+		qrms_assert_contains( 'page=qrms-cv-diller', $html, 'Diller atlanabilir' );
+		qrms_assert_contains( 'page=qrms-cv-durum', $html, 'Durum atlanabilir' );
+		qrms_assert_contains( 'aria-current="page"', $html, 'aktif adım' );
+		qrms_assert_false( false !== strpos( $html, 'disabled' ), 'disabled yok' );
+	}
+);
+
+qrms_test(
+	'dikkat şeridi: dil yok, eskimiş ve yetim ayrı ayrı',
+	function () {
+		update_option( 'qrmenu_active_langs', array( 'tr' ) );
+
+		$maddeler = qrms_module_qr_ceviri_dikkatler();
+		$metinler = wp_list_pluck( $maddeler, 'metin' );
+		$birlesik = implode( ' ', $metinler );
+
+		qrms_assert_contains( 'hedef dil', $birlesik, 'dil yok uyarısı' );
+
+		$html = qrms_module_qr_ceviri_dikkat_html();
+		qrms_assert_contains( 'qrc-attention', $html, 'şerit' );
+		qrms_assert_contains( 'is-critical', $html, 'dil yok kritik' );
+		qrms_assert_contains( 'dashicons-warning', $html, 'dashicon' );
+	}
+);
+
+qrms_test(
+	'Sistem Durumu hücresi çeviri yok ile kaynak yoku ayırır',
+	function () {
+		qrms_assert_same( '12', rma_ceviri_hucre_durumu( 12, 4 )['metin'], 'sayı' );
+		qrms_assert_same( 'çeviri yok', rma_ceviri_hucre_durumu( 0, 3 )['metin'], 'kaynak var' );
+		qrms_assert_same( 'kaynak yok', rma_ceviri_hucre_durumu( 0, 0 )['metin'], 'kaynak yok' );
+		qrms_assert_same( 'çeviri yok', rma_ceviri_hucre_durumu( 0, -1 )['metin'], 'bilinmiyor' );
+		qrms_assert_contains( 'is-no-source', rma_ceviri_hucre_durumu( 0, 0 )['sinif'], 'kaynak sınıfı' );
+		qrms_assert_contains( 'is-no-trans', rma_ceviri_hucre_durumu( 0, 2 )['sinif'], 'çeviri sınıfı' );
+	}
+);
+
+qrms_test(
+	'Diller kaydı kapsama ve toplamaya dokunmaz',
+	function () {
+		update_option( 'rma_ceviri_urun_tipleri', array( 'rma_menu_item' ) );
+		update_option( 'rma_ceviri_ek_metinler', 'Eski sabit' );
+		update_option( 'rma_ceviri_toplama_acik', 1 );
+		update_option( 'qrmenu_active_langs', array( 'tr', 'en' ) );
+
+		$_POST = array(
+			'qrms_cv_diller_save' => '1',
+			'qrmenu_langs'        => array( 'tr', 'de' ),
+			'qrmenu_bg_color_text' => '#222222',
+			'qrmenu_bg_color_only' => '#333333',
+			'rma_url_yonlendir'   => '1',
+		);
+
+		ob_start();
+		rma_ceviri_dilleri_kaydet();
+		ob_get_clean();
+
+		qrms_assert_same( array( 'tr', 'de' ), get_option( 'qrmenu_active_langs' ), 'diller yazıldı' );
+		qrms_assert_same( array( 'rma_menu_item' ), get_option( 'rma_ceviri_urun_tipleri' ), 'kapsam duruyor' );
+		qrms_assert_same( 'Eski sabit', get_option( 'rma_ceviri_ek_metinler' ), 'sabit metin duruyor' );
+		qrms_assert_same( 1, (int) get_option( 'rma_ceviri_toplama_acik' ), 'toplama duruyor' );
+	}
+);
+
+qrms_test(
+	'Kapsam kaydı dillere dokunmaz; silinmiş sayfa yazılmaz',
+	function () {
+		update_option( 'qrmenu_active_langs', array( 'tr', 'en', 'fr' ) );
+		update_option( 'rma_ceviri_ek_metinler', 'Dokunma' );
+
+		$GLOBALS['qrms_test']['post_status'][10] = 'publish';
+		$GLOBALS['qrms_test']['post_status'][99] = false;
+
+		$_POST = array(
+			'qrms_cv_kapsam_save' => '1',
+			'rma_urun_tipleri'    => array(),
+			'elementor_sayfalar'  => array( 10, 99 ),
+		);
+
+		ob_start();
+		rma_ceviri_kapsami_kaydet();
+		ob_get_clean();
+
+		qrms_assert_same( array( 'tr', 'en', 'fr' ), get_option( 'qrmenu_active_langs' ), 'diller duruyor' );
+		qrms_assert_same( 'Dokunma', get_option( 'rma_ceviri_ek_metinler' ), 'sabit duruyor' );
+		qrms_assert_same( array( 10 ), get_option( 'rma_ceviri_elementor_sayfalar' ), 'silinmiş düştü' );
+	}
+);
+
+qrms_test(
+	'Elementor seçim süzgeci silinmiş ID\'yi düşürür, duranı tutar',
+	function () {
+		qrms_assert_same(
+			array( 5, 8 ),
+			rma_ceviri_elementor_secimini_ele( array( 5, 8, 9 ), array( 5, 8 ) ),
+			'liste kümesi'
+		);
+
+		$GLOBALS['qrms_test']['post_status'][3] = 'publish';
+		$GLOBALS['qrms_test']['post_status'][4] = 'trash';
+		$GLOBALS['qrms_test']['post_status'][0] = 'publish';
+
+		qrms_assert_same(
+			array( 3 ),
+			rma_ceviri_elementor_secimini_ele( array( 3, 4, 0 ) ),
+			'durum süzmesi'
+		);
+	}
+);
+
+qrms_test(
+	'bellek boyutu çözümü ve eşik; CSV zaman metni',
+	function () {
+		qrms_assert_same( 1048576, rma_ceviri_bayt_coz( '1M' ), '1M' );
+		qrms_assert_same( 2048, rma_ceviri_bayt_coz( '2k' ), '2k' );
+		qrms_assert_same( -1, rma_ceviri_bayt_coz( '-1' ), 'sınırsız' );
+		qrms_assert_same( 512, rma_ceviri_bayt_coz( '512' ), 'düz bayt' );
+		qrms_assert_true( is_bool( rma_ceviri_bellek_sinirda_mi() ), 'eşik bool' );
+		qrms_assert_same( 'henüz yok', qrms_module_qr_ceviri_zaman_metni( 0 ), 'boş zaman' );
+		qrms_assert_true( '' !== qrms_module_qr_ceviri_zaman_metni( 1700000000 ), 'dolu zaman' );
+	}
+);
+
+qrms_test(
+	'klasik sayfa durur; emoji ikon kalmadı; alt sayfa kendi kaydını söyler',
+	function () {
+		qrms_assert_true( function_exists( 'qrmenu_trans_page' ), 'klasik renderer' );
+
+		$dosyalar = array(
+			'modules/qr-ceviri/includes/admin/admin-sayfa.php',
+			'modules/qr-ceviri/includes/admin/hub-sayfasi.php',
+			'modules/qr-ceviri/includes/admin/diller-sayfasi.php',
+			'modules/qr-ceviri/includes/admin/kapsam-sayfasi.php',
+			'modules/qr-ceviri/includes/admin/metin-toplama-sayfasi.php',
+			'modules/qr-ceviri/includes/admin/csv-disa-sayfasi.php',
+			'modules/qr-ceviri/includes/admin/csv-ice-sayfasi.php',
+			'modules/qr-ceviri/includes/admin/sistem-durumu-sayfasi.php',
+		);
+
+		foreach ( $dosyalar as $yol ) {
+			$kaynak = file_get_contents( QRMS_PLUGIN_DIR . $yol );
+			qrms_assert_false( false !== strpos( $kaynak, '🔍' ), $yol . ' arama emojisi yok' );
+			qrms_assert_false( false !== strpos( $kaynak, '📤' ), $yol . ' dışa emojisi yok' );
+			qrms_assert_false( false !== strpos( $kaynak, '📥' ), $yol . ' içe emojisi yok' );
+			qrms_assert_false( false !== strpos( $kaynak, '⚙️' ), $yol . ' dişli emojisi yok' );
+		}
+
+		$diller = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-ceviri/includes/admin/diller-sayfasi.php' );
+		qrms_assert_contains( 'Yalnızca bu sayfadaki dil ve görünüm ayarları kaydedilir', $diller, 'izole kayıt' );
+		qrms_assert_false(
+			false !== strpos( $diller, 'yukarıdaki tüm ayarları' ),
+			'Diller tümünü kaydetmez'
+		);
+
+		$css = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-ceviri/assets/css/admin.css' );
+		qrms_assert_contains( 'table.widefat', $css, 'tüm widefat tablolar karta döner' );
+		qrms_assert_contains( '.qrc-cards', $css, 'kart sınıfı' );
+	}
+);
+
+qrms_test(
+	'modül lisansta aktif değilken çeviri alt sayfası da kaydedilmez',
+	function () {
+		qrms_module_qr_ceviri_admin_menu();
+		qrms_assert_same( array(), $GLOBALS['qrms_test']['submenus'], 'kayıt yok' );
 	}
 );
 

@@ -110,21 +110,121 @@
    Durum tablosu
    ------------------------------------------------------------------------ */
 
-.qrc-wrap .qrc-stats {
+.qrc-wrap .qrc-stats,
+.qrc-wrap .qrc-cards,
+.qrc-wrap table.widefat {
 	max-width: 900px;
 	margin-bottom: 8px;
 }
 
-.qrc-wrap .qrc-stats .qrc-stats-num {
+.qrc-wrap .qrc-stats .qrc-stats-num,
+.qrc-wrap .qrc-cards .qrc-stats-num {
 	text-align: center;
 }
 
-.qrc-wrap .qrc-stats .is-empty {
+.qrc-wrap .qrc-stats .is-empty,
+.qrc-wrap .qrc-cards .is-empty,
+.qrc-wrap table.widefat .is-empty {
 	color: #a00;
+}
+
+.qrc-wrap .is-no-source {
+	color: #646970;
 }
 
 .qrc-wrap .qrc-stats-row-head {
 	text-align: left;
+}
+
+.qrc-wrap .qrc-heading {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.qrc-wrap .qrc-heading .dashicons {
+	font-size: 22px;
+	width: 22px;
+	height: 22px;
+	line-height: 1;
+}
+
+.qrc-wrap .qrc-attention {
+	margin: 12px 0 20px;
+	padding: 12px 16px;
+	border-left: 4px solid #dba617;
+	background: #fcf9e8;
+}
+
+.qrc-wrap .qrc-attention.is-critical {
+	border-left-color: #d63638;
+	background: #fcf0f1;
+}
+
+.qrc-wrap .qrc-attention-title {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	margin: 0;
+	font-weight: 600;
+}
+
+.qrc-wrap .qrc-attention-list {
+	margin: 8px 0 0;
+	padding-left: 22px;
+}
+
+.qrc-wrap .qrc-steps {
+	margin: 0 0 20px;
+}
+
+.qrc-wrap .qrc-steps-meta {
+	margin: 0 0 8px;
+	color: #50575e;
+}
+
+.qrc-wrap .qrc-steps-list {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.qrc-wrap .qrc-steps-link {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	min-height: 36px;
+	padding: 4px 10px;
+	border: 1px solid #dcdcde;
+	border-radius: 999px;
+	background: #fff;
+	text-decoration: none;
+	color: #1d2327;
+}
+
+.qrc-wrap .qrc-steps-list .is-current .qrc-steps-link {
+	border-color: #2271b1;
+	background: #f0f6fc;
+	font-weight: 600;
+}
+
+.qrc-wrap .qrc-steps-num {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 20px;
+	height: 20px;
+	border-radius: 50%;
+	background: #dcdcde;
+	font-size: 12px;
+}
+
+.qrc-wrap .qrc-steps-list .is-current .qrc-steps-num {
+	background: #2271b1;
+	color: #fff;
 }
 
 .qrc-wrap .qrc-stale {
@@ -155,21 +255,35 @@
 @media screen and (max-width: 782px) {
 
 	.qrc-wrap .qrc-stats,
+	.qrc-wrap .qrc-cards,
+	.qrc-wrap table.widefat,
 	.qrc-wrap .qrc-stats tbody,
+	.qrc-wrap .qrc-cards tbody,
+	.qrc-wrap table.widefat tbody,
 	.qrc-wrap .qrc-stats tr,
+	.qrc-wrap .qrc-cards tr,
+	.qrc-wrap table.widefat tr,
 	.qrc-wrap .qrc-stats td,
-	.qrc-wrap .qrc-stats th {
+	.qrc-wrap .qrc-cards td,
+	.qrc-wrap table.widefat td,
+	.qrc-wrap .qrc-stats th,
+	.qrc-wrap .qrc-cards th,
+	.qrc-wrap table.widefat th {
 		display: block;
 		width: auto;
 	}
 
-	.qrc-wrap .qrc-stats thead {
+	.qrc-wrap .qrc-stats thead,
+	.qrc-wrap .qrc-cards thead,
+	.qrc-wrap table.widefat thead {
 		/* Ekran okuyucudan da gizlenir: aynı bilgi data-label ile her
 		   hücrenin yanında tekrar basılıyor, iki kez okunmamalı. */
 		display: none;
 	}
 
-	.qrc-wrap .qrc-stats tr {
+	.qrc-wrap .qrc-stats tr,
+	.qrc-wrap .qrc-cards tr,
+	.qrc-wrap table.widefat tr {
 		margin-bottom: 12px;
 		border: 1px solid #dcdcde;
 		border-radius: 6px;
@@ -178,7 +292,9 @@
 	}
 
 	/* striped sınıfının satır bazlı zebrası kart görünümünde anlamsız. */
-	.qrc-wrap .qrc-stats.striped > tbody > :nth-child(odd) {
+	.qrc-wrap .qrc-stats.striped > tbody > :nth-child(odd),
+	.qrc-wrap .qrc-cards.striped > tbody > :nth-child(odd),
+	.qrc-wrap table.widefat.striped > tbody > :nth-child(odd) {
 		background: #fff;
 	}
 
@@ -190,7 +306,9 @@
 		font-weight: 600;
 	}
 
-	.qrc-wrap .qrc-stats .qrc-stats-num {
+	.qrc-wrap .qrc-stats .qrc-stats-num,
+	.qrc-wrap .qrc-cards .qrc-stats-num,
+	.qrc-wrap table.widefat td[data-label] {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
@@ -201,11 +319,15 @@
 		border-bottom: 1px solid #f0f0f1;
 	}
 
-	.qrc-wrap .qrc-stats tr td:last-child {
+	.qrc-wrap .qrc-stats tr td:last-child,
+	.qrc-wrap .qrc-cards tr td:last-child,
+	.qrc-wrap table.widefat tr td:last-child {
 		border-bottom: 0;
 	}
 
-	.qrc-wrap .qrc-stats .qrc-stats-num::before {
+	.qrc-wrap .qrc-stats .qrc-stats-num::before,
+	.qrc-wrap .qrc-cards .qrc-stats-num::before,
+	.qrc-wrap table.widefat td[data-label]::before {
 		content: attr(data-label);
 		font-weight: 600;
 		color: #50575e;
@@ -220,7 +342,9 @@
 
 	.qrc-wrap .qrc-limit,
 	.qrc-wrap .qrc-scrollbox,
-	.qrc-wrap .qrc-stats {
+	.qrc-wrap .qrc-stats,
+	.qrc-wrap .qrc-cards,
+	.qrc-wrap table.widefat {
 		max-width: 100%;
 	}
 

@@ -266,6 +266,72 @@ if ( ! function_exists( 'rma_ceviri_elementor_sayfalari' ) ) {
  *
  * @return int[]
  */
+if ( ! function_exists( 'rma_ceviri_yazi_duruyor_mu' ) ) {
+
+	/**
+	 * Yazı hâlâ duruyor mu? (silinmiş / çöp / otomatik taslak değil)
+	 *
+	 * WordPress yoksa (düz birim test) true döner — süzme çağıranın
+	 * verdiği mevcut-ID listesine kalır.
+	 *
+	 * @param int $id Post ID.
+	 * @return bool
+	 */
+	function rma_ceviri_yazi_duruyor_mu( $id ) {
+		$id = (int) $id;
+
+		if ( $id <= 0 ) {
+			return false;
+		}
+
+		if ( ! function_exists( 'get_post_status' ) ) {
+			return true;
+		}
+
+		$durum = get_post_status( $id );
+
+		return is_string( $durum ) && ! in_array( $durum, array( 'trash', 'auto-draft' ), true );
+	}
+}
+
+if ( ! function_exists( 'rma_ceviri_elementor_secimini_ele' ) ) {
+
+	/**
+	 * Seçili sayfa ID'lerinden durmayanları düşürür.
+	 *
+	 * WordPress'e bağımsız — test edilebilir. $mevcut verilirse yalnızca
+	 * o kümede olanlar kalır (form kaydı: listedeki kutular). Verilmezse
+	 * her ID get_post_status ile yoklanır (okuma: silinmiş yer imi).
+	 *
+	 * @param int[]      $secili  Kayıtlı / gönderilen ID'ler.
+	 * @param int[]|null $mevcut  Varsa izinli ID kümesi.
+	 * @return int[]
+	 */
+	function rma_ceviri_elementor_secimini_ele( $secili, $mevcut = null ) {
+		$secili = array_values( array_unique( array_map( 'intval', (array) $secili ) ) );
+		$temiz  = array();
+
+		if ( is_array( $mevcut ) ) {
+			$izin = array_map( 'intval', $mevcut );
+			foreach ( $secili as $id ) {
+				if ( $id > 0 && in_array( $id, $izin, true ) ) {
+					$temiz[] = $id;
+				}
+			}
+
+			return $temiz;
+		}
+
+		foreach ( $secili as $id ) {
+			if ( rma_ceviri_yazi_duruyor_mu( $id ) ) {
+				$temiz[] = $id;
+			}
+		}
+
+		return $temiz;
+	}
+}
+
 if ( ! function_exists( 'rma_ceviri_secili_elementor_sayfalari' ) ) {
 	function rma_ceviri_secili_elementor_sayfalari() {
 		$secili = get_option( 'rma_ceviri_elementor_sayfalar', array() );
@@ -274,6 +340,48 @@ if ( ! function_exists( 'rma_ceviri_secili_elementor_sayfalari' ) ) {
 			return array();
 		}
 
-		return array_values( array_unique( array_map( 'intval', $secili ) ) );
+		$temiz = rma_ceviri_elementor_secimini_ele( $secili );
+
+		if ( $temiz !== array_values( array_unique( array_map( 'intval', $secili ) ) ) ) {
+			update_option( 'rma_ceviri_elementor_sayfalar', $temiz, false );
+		}
+
+		return $temiz;
+	}
+}
+
+if ( ! function_exists( 'rma_ceviri_elementor_liste_ve_secili' ) ) {
+
+	/**
+	 * Yönetim listesi + süzülmüş seçim + düşen adet.
+	 *
+	 * Seçili ama 300'lük sorgunun dışında kalan (hâlâ duran) sayfalar
+	 * listenin sonuna eklenir; silinmiş olanlar ne listede ne seçili kalır.
+	 *
+	 * @return array{0:array<int,string>,1:int[],2:int}
+	 */
+	function rma_ceviri_elementor_liste_ve_secili() {
+		$ham    = get_option( 'rma_ceviri_elementor_sayfalar', array() );
+		$ham    = is_array( $ham ) ? array_values( array_unique( array_map( 'intval', $ham ) ) ) : array();
+		$liste  = rma_ceviri_elementor_sayfalari();
+		$secili = rma_ceviri_secili_elementor_sayfalari();
+		$dustu  = 0;
+
+		foreach ( $ham as $id ) {
+			if ( $id <= 0 || in_array( $id, $secili, true ) ) {
+				continue;
+			}
+			++$dustu;
+		}
+
+		foreach ( $secili as $id ) {
+			if ( isset( $liste[ $id ] ) ) {
+				continue;
+			}
+			$baslik          = function_exists( 'get_the_title' ) ? get_the_title( $id ) : '';
+			$liste[ $id ] = '' !== $baslik ? $baslik : sprintf( '(başlıksız #%d)', $id );
+		}
+
+		return array( $liste, $secili, $dustu );
 	}
 }

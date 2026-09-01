@@ -63,6 +63,13 @@ if ( is_admin() ) {
 	require_once RMA_CEVIRI_DIR . 'includes/csv-export.php';
 	require_once RMA_CEVIRI_DIR . 'includes/csv-import.php';
 	require_once RMA_CEVIRI_DIR . 'includes/admin/admin-sayfa.php';
+	require_once RMA_CEVIRI_DIR . 'includes/admin/hub-sayfasi.php';
+	require_once RMA_CEVIRI_DIR . 'includes/admin/diller-sayfasi.php';
+	require_once RMA_CEVIRI_DIR . 'includes/admin/kapsam-sayfasi.php';
+	require_once RMA_CEVIRI_DIR . 'includes/admin/metin-toplama-sayfasi.php';
+	require_once RMA_CEVIRI_DIR . 'includes/admin/csv-disa-sayfasi.php';
+	require_once RMA_CEVIRI_DIR . 'includes/admin/csv-ice-sayfasi.php';
+	require_once RMA_CEVIRI_DIR . 'includes/admin/sistem-durumu-sayfasi.php';
 }
 
 /* =====================================================================

@@ -103,6 +103,7 @@ if ( ! function_exists( 'rma_ceviri_import_bildirimleri' ) ) {
 				'size'       => 'Dosya boyutu 20 MB sınırını aşıyor.',
 				'invalidcsv' => 'CSV okunamadı (başlık satırı bulunamadı).',
 				'sutun'      => 'Başlık satırında item_type/field sütunları ya da hiçbir dil sütunu bulunamadı.',
+				'memory'     => 'Dosya bu sunucunun belleğine sığmadı. Dosyayı bölerek yükleyin.',
 			);
 			$metin   = isset( $hatalar[ $kod ] ) ? $hatalar[ $kod ] : 'Bilinmeyen bir hata oluştu.';
 
@@ -154,6 +155,15 @@ if ( ! function_exists( 'rma_ceviri_import_bildirimleri' ) ) {
 			echo '</ul></div>';
 		}
 
+		if ( ! empty( $rapor['bellek_kesildi'] ) ) {
+			echo '<div class="notice notice-warning is-dismissible"><p>';
+			printf(
+				esc_html( 'İşlem bellek sınırına yaklaştığı için durdu. %d satır okundu. Kalanı ayrı bir dosyayla yükleyin.' ),
+				(int) $rapor['toplam']
+			);
+			echo '</p></div>';
+		}
+
 		if ( ! empty( $rapor['bayat'] ) ) {
 			echo '<div class="notice notice-warning"><p><strong>Orijinal metni değişmiş satırlar</strong> — çeviriler bayat olabilir, bu satırları yeniden çevirmeyi düşünün:</p><ul style="margin-left:18px;list-style:disc;">';
 			foreach ( $rapor['bayat'] as $satir ) {
@@ -190,8 +200,9 @@ if ( ! function_exists( 'rma_ceviri_durum_paneli' ) ) {
 		$eskimis  = function_exists( 'rma_ceviri_eskimis_sayilari' ) ? rma_ceviri_eskimis_sayilari() : array();
 		$yetim    = function_exists( 'rma_ceviri_yetim_haritasi' ) ? rma_ceviri_yetim_haritasi() : array();
 		$yetim_n  = function_exists( 'rma_ceviri_yetim_satir_sayisi' ) ? rma_ceviri_yetim_satir_sayisi( $yetim ) : 0;
+		$kaynaklar = function_exists( 'rma_ceviri_tip_kaynak_adetleri' ) ? rma_ceviri_tip_kaynak_adetleri() : array();
 		?>
-		<h2 class="title">🔍 Sistem Durumu</h2>
+		<h2 class="title qrc-heading"><span class="dashicons dashicons-chart-bar" aria-hidden="true"></span> Sistem Durumu</h2>
 
 		<?php if ( ! $rma_var ) : ?>
 			<div class="notice notice-warning inline"><p>
@@ -222,7 +233,7 @@ if ( ! function_exists( 'rma_ceviri_durum_paneli' ) ) {
 		 * kart görünümünde başlık yerine geçer — thead orada gizlenir.
 		 */
 		?>
-		<table class="widefat striped qrc-stats">
+		<table class="widefat striped qrc-stats qrc-cards">
 			<thead>
 				<tr>
 					<th scope="col">İçerik</th>
@@ -242,7 +253,9 @@ if ( ! function_exists( 'rma_ceviri_durum_paneli' ) ) {
 						</th>
 						<?php foreach ( $hedefler as $dil ) : ?>
 							<?php
-							$adet = isset( $sayilar[ $tip ][ $dil ] ) ? (int) $sayilar[ $tip ][ $dil ] : 0;
+							$adet   = isset( $sayilar[ $tip ][ $dil ] ) ? (int) $sayilar[ $tip ][ $dil ] : 0;
+							$kaynak = isset( $kaynaklar[ $tip ] ) ? (int) $kaynaklar[ $tip ] : -1;
+							$hucre  = rma_ceviri_hucre_durumu( $adet, $kaynak );
 							// Sütun başlığı dar kalsın diye kod; kart görünümündeki
 							// etiket ise bayrak + dil adı (orada yer var, "en" yerine
 							// "İngilizce" okunur).
@@ -250,8 +263,8 @@ if ( ! function_exists( 'rma_ceviri_durum_paneli' ) ) {
 								? $katalog[ $dil ]['flag'] . ' ' . $katalog[ $dil ]['name']
 								: $dil;
 							?>
-							<td class="qrc-stats-num<?php echo 0 === $adet ? ' is-empty' : ''; ?>" data-label="<?php echo esc_attr( $etiket ); ?>">
-								<?php echo 0 === $adet ? '—' : (int) $adet; ?>
+							<td class="qrc-stats-num<?php echo '' !== $hucre['sinif'] ? ' ' . esc_attr( $hucre['sinif'] ) : ''; ?>" data-label="<?php echo esc_attr( $etiket ); ?>">
+								<?php echo esc_html( $hucre['metin'] ); ?>
 							</td>
 						<?php endforeach; ?>
 					</tr>
@@ -263,10 +276,11 @@ if ( ! function_exists( 'rma_ceviri_durum_paneli' ) ) {
 			<summary style="cursor:pointer;color:#2271b1;">ⓘ Bu tablo ne anlatıyor?</summary>
 			<p class="description" style="margin-top:8px;">
 				Her hücre, o içeriğin o dilde kaç çevirisinin kayıtlı olduğunu gösterir.
-				<strong>—</strong> görüyorsanız o içerik o dile hiç çevrilmemiş: CSV'yi dışa
-				aktarıp ilgili dil sütununu doldurun ve geri yükleyin. Satırlar hâlâ boşsa
-				CSV'deki <code>item_id</code>, <code>item_type</code> ve <code>field</code>
-				sütunlarına dokunulmadığından emin olun — eşleştirme onlara dayanıyor.
+				<strong>çeviri yok</strong> = kaynak duruyor ama bu dile hiç yazılmamış
+				(CSV'yi dışa aktarıp ilgili sütunu doldurun). <strong>kaynak yok</strong> =
+				bu tipte çevrilecek metin bulunamadı (ürün seçilmemiş, form alanı yok…).
+				Satırlar hâlâ boşsa CSV'deki <code>item_id</code>, <code>item_type</code>
+				ve <code>field</code> sütunlarına dokunulmadığından emin olun.
 			</p>
 			<p class="description">
 				Kaynaklar — ürün: <code><?php echo esc_html( implode( ', ', rma_ceviri_urun_tipleri() ) ?: '—' ); ?></code> ·
@@ -302,6 +316,95 @@ if ( ! function_exists( 'rma_ceviri_durum_paneli' ) ) {
 			</form>
 		<?php endif; ?>
 		<?php
+	}
+}
+
+/**
+ * Sistem Durumu hücresi: sayı / "çeviri yok" / "kaynak yok".
+ *
+ * WordPress'e bağımsız — test edilebilir. $kaynak_adet < 0 = bilinmiyor;
+ * o durumda "çeviri yok" gösterilir (kaynak yok iddiası yanlış olur).
+ *
+ * @param int $ceviri_adet O tip+dil satır sayısı.
+ * @param int $kaynak_adet O tipte kaynak adedi.
+ * @return array{metin:string,sinif:string}
+ */
+if ( ! function_exists( 'rma_ceviri_hucre_durumu' ) ) {
+	function rma_ceviri_hucre_durumu( $ceviri_adet, $kaynak_adet ) {
+		$ceviri_adet = (int) $ceviri_adet;
+		$kaynak_adet = (int) $kaynak_adet;
+
+		if ( $ceviri_adet > 0 ) {
+			return array(
+				'metin' => (string) $ceviri_adet,
+				'sinif' => '',
+			);
+		}
+
+		if ( 0 === $kaynak_adet ) {
+			return array(
+				'metin' => 'kaynak yok',
+				'sinif' => 'is-empty is-no-source',
+			);
+		}
+
+		return array(
+			'metin' => 'çeviri yok',
+			'sinif' => 'is-empty is-no-trans',
+		);
+	}
+}
+
+/**
+ * Tip başına kaynak adedi (hücre ayrımı için).
+ *
+ * Katalog tipleri kesin sayılır. WordPress nesneleri sayılamazsa -1
+ * (bilinmiyor) döner; hücre "çeviri yok" gösterir.
+ *
+ * @return array<string,int>
+ */
+if ( ! function_exists( 'rma_ceviri_tip_kaynak_adetleri' ) ) {
+	function rma_ceviri_tip_kaynak_adetleri() {
+		$adet = array();
+
+		foreach ( rma_ceviri_gecerli_tipler() as $tip ) {
+			$adet[ $tip ] = -1;
+		}
+
+		if ( function_exists( 'rma_ceviri_modul_kaynak_metinleri' ) ) {
+			foreach ( rma_ceviri_modul_kaynak_metinleri() as $tip => $metinler ) {
+				$adet[ $tip ] = count( $metinler );
+			}
+		}
+
+		if ( function_exists( 'rma_ceviri_ui_stringleri' ) ) {
+			$adet['ui_string'] = count( rma_ceviri_ui_stringleri() );
+		}
+
+		$ek = get_option( 'rma_ceviri_ek_metinler', '' );
+		if ( is_string( $ek ) && '' !== trim( $ek ) ) {
+			$adet['ui_string'] = ( isset( $adet['ui_string'] ) ? max( 0, (int) $adet['ui_string'] ) : 0 )
+				+ count( array_filter( array_map( 'trim', explode( "\n", $ek ) ) ) );
+		}
+
+		if ( function_exists( 'rma_ceviri_secili_elementor_sayfalari' ) ) {
+			$adet['elementor'] = count( rma_ceviri_secili_elementor_sayfalari() );
+		}
+
+		if ( function_exists( 'wp_count_posts' ) && function_exists( 'rma_ceviri_urun_tipleri' ) ) {
+			$n = 0;
+			foreach ( rma_ceviri_urun_tipleri() as $pt ) {
+				$c = wp_count_posts( $pt );
+				$n += ( is_object( $c ) && isset( $c->publish ) ) ? (int) $c->publish : 0;
+			}
+			$adet['product'] = $n;
+		}
+
+		if ( function_exists( 'rma_ceviri_option_satirlari' ) ) {
+			$adet['option'] = iterator_count( rma_ceviri_option_satirlari() );
+		}
+
+		return $adet;
 	}
 }
 
@@ -377,30 +480,12 @@ if ( ! function_exists( 'qrmenu_trans_page' ) ) {
 		}
 
 		rma_ceviri_import_bildirimleri();
-
-		$all_langs     = qrmenu_get_langs();
-		$active_langs  = get_option( 'qrmenu_active_langs', rma_ceviri_varsayilan_diller() );
-		$bg_color_text = get_option( 'qrmenu_bg_color_text', '#111111' );
-		$bg_color_only = get_option( 'qrmenu_bg_color_only', '#111111' );
-
-		if ( ! is_array( $active_langs ) ) {
-			$active_langs = rma_ceviri_varsayilan_diller();
-		}
-
-		// Uygun tipler tek kaynaktan (kaynaklar.php): burada listelenmeyen bir
-		// slug seçili kalsa bile dışa aktarıma giremez.
-		$post_tipleri = rma_ceviri_uygun_urun_tipleri();
-		$taksonomiler = rma_ceviri_uygun_taksonomiler();
-
-		$elementor_sayfalari = rma_ceviri_elementor_sayfalari();
-		$elementor_secili    = rma_ceviri_secili_elementor_sayfalari();
-		$dil_sayilari        = RMA_Ceviri_Tablo::dil_sayilari();
 		?>
 		<div class="wrap qrc-wrap">
-			<h1>QR Çeviri</h1>
+			<h1 class="qrc-heading"><span class="dashicons dashicons-translation" aria-hidden="true"></span> QR Çeviri</h1>
 			<p class="description qrc-limit">
-				Çeviriler Excel/CSV ile toplu yönetilir: dosyayı indirin, çevirileri yazın,
-				geri yükleyin. Ziyaretçi dil seçtiğinde sayfa doğrudan o dilde açılır.
+				Klasik (tek sayfa) görünüm. Günlük iş için sol menüdeki kart ızgarasını
+				kullanın — her adım kendi ayarını kaydeder.
 			</p>
 
 			<?php if ( ! RMA_Ceviri_Tablo::tablo_var_mi() ) : ?>
@@ -414,302 +499,34 @@ if ( ! function_exists( 'qrmenu_trans_page' ) ) {
 			<form method="POST">
 				<?php wp_nonce_field( 'qrmenu_save_action', 'qrmenu_nonce' ); ?>
 
-				<h2 class="title">Diller</h2>
-				<table class="form-table">
-					<tr>
-						<th>Menüde gösterilecek diller</th>
-						<td>
-							<div class="qrc-check-grid qrc-lang-grid">
-								<?php foreach ( $all_langs as $code => $data ) : ?>
-									<label class="qrc-check">
-										<input type="checkbox" name="qrmenu_langs[]" value="<?php echo esc_attr( $code ); ?>" <?php checked( in_array( $code, $active_langs, true ) ); ?>>
-										<span class="qrc-flag"><?php echo $data['flag']; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></span>
-										<span class="qrc-lang-name"><?php echo esc_html( $data['name'] ); ?></span>
-										<?php if ( isset( $dil_sayilari[ $code ] ) ) : ?>
-											<small class="qrc-muted">(<?php echo (int) $dil_sayilari[ $code ]; ?> çeviri)</small>
-										<?php endif; ?>
-									</label>
-								<?php endforeach; ?>
-							</div>
-							<p class="description">Türkçe orijinal dildir; her zaman listede kalır.</p>
-						</td>
-					</tr>
-				</table>
+				<?php qrms_module_qr_ceviri_baslik( 'dashicons-translation', 'Diller' ); ?>
+				<?php rma_ceviri_diller_alanlari(); ?>
 
-				<h2 class="title">Çevrilmeyen metinler</h2>
-				<p class="description qrc-limit">
-					Sitede çevrilmeyen bir metin mi var? Türkçe hâlini aşağıdaki kutuya
-					ekleyip Kaydet'e basın — sonraki CSV dışa aktarımında otomatik çıkar.
-					Tek tek aramak istemiyorsanız <strong>Metin Toplama</strong>'yı açıp
-					siteyi bir kez gezin, eklenti çevrilmemiş metinleri kendisi bulsun.
-				</p>
+				<?php qrms_module_qr_ceviri_baslik( 'dashicons-editor-ul', 'Çevrilmeyen metinler' ); ?>
+				<?php rma_ceviri_toplama_alanlari(); ?>
 
-				<table class="form-table">
-					<tr>
-						<th>Metin Toplama</th>
-						<td>
-							<label>
-								<input type="checkbox" name="rma_toplama_acik" value="1" <?php checked( rma_ceviri_toplama_acik_mi() ); ?>>
-								Siteyi gezerken çevrilmemiş metinleri topla
-							</label>
-							<p class="description">
-								Açıkken siteyi Türkçe gezin (footer, formlar, iletişim sayfası…);
-								gördüğü metinler aşağıda listelenir. İşiniz bitince kapatın.
-							</p>
-							<details style="margin-top:6px;">
-								<summary style="cursor:pointer;color:#2271b1;">ⓘ Nasıl çalışır?</summary>
-								<p class="description" style="margin-top:6px;">
-									Yalnızca siz (giriş yapmış yönetici) siteyi Türkçe görüntülerken
-									çalışır; ziyaretçilere hiçbir ek yük binmez ve sayfa çıktısı
-									değiştirilmez. Metinler yalnızca okunur, en fazla
-									<?php echo (int) RMA_CEVIRI_TOPLAMA_LIMIT; ?> aday saklanır.
-								</p>
-							</details>
-						</td>
-					</tr>
-
-					<?php $bulunanlar = rma_ceviri_bulunan_metinler(); ?>
-					<?php if ( ! empty( $bulunanlar ) ) : ?>
-					<tr>
-						<th>Bulunan metinler (<?php echo count( $bulunanlar ); ?>)</th>
-						<td>
-							<div class="qrc-scrollbox">
-								<?php foreach ( array_keys( $bulunanlar ) as $metin ) : ?>
-									<label class="qrc-check qrc-check-block">
-										<input type="checkbox" name="rma_bulunan[]" value="<?php echo esc_attr( $metin ); ?>">
-										<span><?php echo esc_html( $metin ); ?></span>
-									</label>
-								<?php endforeach; ?>
-							</div>
-							<p class="description">
-								Çevrilmesini istediklerinizi işaretleyip Kaydet'e basın; aşağıdaki
-								listeye eklenir ve buradan kalkar.
-							</p>
-							<label>
-								<input type="checkbox" name="rma_bulunanlari_temizle" value="1">
-								Listeyi tamamen temizle
-							</label>
-						</td>
-					</tr>
-					<?php endif; ?>
-
-					<tr>
-						<th>Çevrilecek sabit metinler</th>
-						<td>
-							<textarea name="rma_ek_metinler" rows="8" class="large-text code" placeholder="Her satıra bir metin&#10;Bize Ulaşın&#10;Yemek Lezzeti"><?php echo esc_textarea( get_option( 'rma_ceviri_ek_metinler', '' ) ); ?></textarea>
-							<p class="description">
-								Her satır bir metin. Menünün kendi metinleri (Sepete Ekle, Filtrele…)
-								zaten dahildir, onları eklemenize gerek yok.
-							</p>
-						</td>
-					</tr>
-				</table>
-
-				<details style="margin:24px 0;">
-					<summary style="cursor:pointer;font-size:1.1em;font-weight:600;padding:8px 0;">
-						⚙️ Gelişmiş Ayarlar
+				<details class="qrc-details" style="margin:24px 0;">
+					<summary class="qrc-heading">
+						<span class="dashicons dashicons-admin-generic" aria-hidden="true"></span>
+						Gelişmiş Ayarlar
 					</summary>
-
-					<p class="description qrc-limit">
-						Bunlar genelde bir kez ayarlanır; emin değilseniz olduğu gibi bırakın.
-					</p>
-
-					<h3>Görünüm</h3>
-					<table class="form-table">
-						<tr>
-							<th>"Sadece Bayrak" butonu rengi</th>
-							<td><input type="color" name="qrmenu_bg_color_only" value="<?php echo esc_attr( $bg_color_only ); ?>"></td>
-						</tr>
-						<tr>
-							<th>"Bayrak + Metin" butonu rengi</th>
-							<td><input type="color" name="qrmenu_bg_color_text" value="<?php echo esc_attr( $bg_color_text ); ?>"></td>
-						</tr>
-					</table>
-
-					<h3>Davranış</h3>
-					<table class="form-table">
-						<tr>
-							<th>Dili adrese ekle</th>
-							<td>
-								<label>
-									<input type="checkbox" name="rma_url_yonlendir" value="1" <?php checked( (bool) get_option( 'rma_ceviri_url_yonlendir', 1 ) ); ?>>
-									Ziyaretçi dil seçtiyse adreste göster
-								</label>
-								<p class="description">Açık tutun — arama motorlarının çevrilmiş sayfaları görmesi buna bağlı.</p>
-								<details style="margin-top:6px;">
-									<summary style="cursor:pointer;color:#2271b1;">ⓘ Detay</summary>
-									<p class="description" style="margin-top:6px;">
-										Dil URL'de görünmezse sayfa önbelleği ve arama motorları çevrilmiş
-										sayfayı ayrı bir adres olarak göremez. Türkçe ziyaretçi hiçbir zaman
-										yönlendirilmez.
-									</p>
-								</details>
-							</td>
-						</tr>
-						<tr>
-							<th>Tema ve eklenti metinleri</th>
-							<td>
-								<label>
-									<input type="checkbox" name="rma_tampon_acik" value="1" <?php checked( (bool) get_option( 'rma_ceviri_tampon_acik', 1 ) ); ?>>
-									Temanın ve diğer eklentilerin bastığı sabit metinleri de çevir
-								</label>
-								<p class="description">Menü dışındaki metinler (footer, formlar, sayfa içerikleri) için gerekli.</p>
-								<details style="margin-top:6px;">
-									<summary style="cursor:pointer;color:#2271b1;">ⓘ Detay</summary>
-									<p class="description" style="margin-top:6px;">
-										Sayfa çıktısı tamamlandıktan sonra metinler çeviri tablosundan
-										geçirilir. QR Menü'nün kendi metinleri buna ihtiyaç duymaz —
-										onlar kaynağında çevriliyor. Yalnızca menüyü çeviriyorsanız
-										kapatabilirsiniz.
-									</p>
-								</details>
-							</td>
-						</tr>
-					</table>
-
-					<h3>Çeviri Kaynakları</h3>
-					<p class="description">
-						Hangi içeriklerin CSV'ye çıkacağını belirler. Varsayılanlar sitenizden
-						otomatik bulunur.
-					</p>
-					<table class="form-table">
-						<tr>
-							<th>Menü ürünleri</th>
-							<td>
-								<?php rma_ceviri_secim_kutulari( 'rma_urun_tipleri', $post_tipleri, rma_ceviri_urun_tipleri() ); ?>
-								<details style="margin-top:6px;">
-									<summary style="cursor:pointer;color:#2271b1;">ⓘ Sayfalar neden burada yok?</summary>
-									<p class="description" style="margin-top:6px;">
-										Yazı, sayfa ve Elementor şablonları menü ürünü değildir; onların
-										metinleri aşağıdaki "Ayrıca şu sayfaları dahil et" bölümünden,
-										sayfa başlıkları dahil çevrilir.
-									</p>
-								</details>
-							</td>
-						</tr>
-						<tr>
-							<th>Kategoriler</th>
-							<td><?php rma_ceviri_secim_kutulari( 'rma_kategori_taks', $taksonomiler, rma_ceviri_taksonomiler( 'category' ) ); ?></td>
-						</tr>
-						<tr>
-							<th>Alerjenler</th>
-							<td>
-								<?php rma_ceviri_secim_kutulari( 'rma_alerjen_taks', $taksonomiler, rma_ceviri_taksonomiler( 'allergen' ) ); ?>
-								<details style="margin-top:6px;">
-									<summary style="cursor:pointer;color:#2271b1;">ⓘ Detay</summary>
-									<p class="description" style="margin-top:6px;">
-										Aynı liste iki yerde işaretlenirse kaydederken tek yerde bırakılır;
-										aksi hâlde aynı isimler CSV'ye iki kez çıkardı.
-									</p>
-								</details>
-							</td>
-						</tr>
-					</table>
+					<?php rma_ceviri_gorunum_alanlari(); ?>
+					<?php rma_ceviri_kapsam_alanlari(); ?>
 				</details>
 
-				<p class="submit" style="border-top:1px solid #dcdcde;padding-top:16px;">
+				<p class="submit">
 					<input type="submit" name="qrmenu_trans_save" class="button button-primary button-large" value="Ayarları Kaydet">
-					<span class="description" style="margin-left:10px;">
-						Bu buton yukarıdaki tüm ayarları (Gelişmiş Ayarlar dahil) kaydeder.
-					</span>
+					<span class="description">Klasik görünüm: bu buton yukarıdaki dil, toplama ve kapsam ayarlarını birlikte kaydeder.</span>
 				</p>
 			</form>
 
 			<hr>
-
-			<h2 class="title">📤 Çeviri CSV'sini Dışa Aktar</h2>
-			<p class="description qrc-limit">
-				Menü ürünleri, kategoriler, menü linkleri, sabit metinler ve yönetici
-				ayarları (form başlığı, chatbot metinleri, form alan etiketleri…) her zaman
-				dahildir. Mevcut çeviriler dolu gelir — sıfırdan başlamanız gerekmez.
-				<strong>Sadece dil sütunlarını doldurun</strong>, ilk sütunlara dokunmayın.
-			</p>
-			<details class="qrc-limit qrc-details">
-				<summary style="cursor:pointer;color:#2271b1;">ⓘ Neden ilk sütunlara dokunmamalıyım?</summary>
-				<p class="description" style="margin-top:6px;">
-					<code>item_id</code>, <code>item_type</code> ve <code>field</code> sütunları
-					her satırın sitedeki hangi metne ait olduğunu tutar; değişirlerse satır
-					eşleşmez ve içe aktarımda atlanır. <code>original_hash</code> ise orijinal
-					metin sonradan değiştiyse sizi uyarmak için kullanılır.
-				</p>
-			</details>
-			<form method="POST" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
-				<input type="hidden" name="action" value="rma_ceviri_export">
-				<?php wp_nonce_field( 'rma_ceviri_export_action', 'rma_ceviri_export_nonce' ); ?>
-
-				<table class="form-table">
-					<tr>
-						<th>Sütun ayracı</th>
-						<td>
-							<label><input type="radio" name="ayrac" value=";" checked> Noktalı virgül <code>;</code> (Excel Türkçe)</label><br>
-							<label><input type="radio" name="ayrac" value=","> Virgül <code>,</code> (Google Sheets)</label>
-						</td>
-					</tr>
-					<tr>
-						<th>Ayrıca şu sayfaları dahil et</th>
-						<td>
-							<?php if ( empty( $elementor_sayfalari ) ) : ?>
-								<em>Elementor ile düzenlenmiş içerik bulunamadı.</em>
-							<?php else : ?>
-								<div class="qrc-scrollbox">
-									<?php foreach ( $elementor_sayfalari as $id => $baslik ) : ?>
-										<label class="qrc-check qrc-check-block">
-											<input type="checkbox" name="elementor_sayfalar[]" value="<?php echo (int) $id; ?>" <?php checked( in_array( (int) $id, $elementor_secili, true ) ); ?>>
-											<span><?php echo esc_html( $baslik ); ?> <small class="qrc-muted">#<?php echo (int) $id; ?></small></span>
-										</label>
-									<?php endforeach; ?>
-								</div>
-								<p class="description">
-									Sayfa başlıkları ve içindeki metinler CSV'ye eklenir. Çevirmek
-									istediklerinizi seçin.
-								</p>
-							<?php endif; ?>
-						</td>
-					</tr>
-				</table>
-
-				<button type="submit" class="button button-primary">Çeviri CSV'sini Dışa Aktar</button>
-			</form>
+			<?php qrms_module_qr_ceviri_baslik( 'dashicons-download', 'Çeviri CSV\'sini Dışa Aktar' ); ?>
+			<?php rma_ceviri_csv_disa_formu(); ?>
 
 			<hr>
-
-			<h2 class="title">📥 Çeviri CSV'sini İçe Aktar</h2>
-			<p class="description">
-				Dışa aktardığınız dosyanın aynı yapıda olması yeterlidir; ayraç
-				(<code>,</code> / <code>;</code>) otomatik algılanır.
-			</p>
-			<form method="POST" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" enctype="multipart/form-data">
-				<input type="hidden" name="action" value="rma_ceviri_import">
-				<?php wp_nonce_field( 'rma_ceviri_import_action', 'rma_ceviri_import_nonce' ); ?>
-
-				<table class="form-table">
-					<tr>
-						<th>CSV dosyası</th>
-						<td><input type="file" name="rma_ceviri_dosya" accept=".csv,text/csv" required></td>
-					</tr>
-					<tr>
-						<th>Boş hücreler</th>
-						<td>
-							<label>
-								<input type="checkbox" name="bos_hucreleri_temizle" value="1">
-								Boş hücreleri temizle (o dildeki mevcut çeviriyi sil)
-							</label>
-							<p class="description">
-								İşaretli değilse boş hücreler atlanır ve mevcut çeviri korunur —
-								kısmi güncelleme için güvenli olan budur.
-							</p>
-						</td>
-					</tr>
-				</table>
-
-				<button type="submit" class="button button-primary">Çeviri CSV'sini İçe Aktar</button>
-			</form>
-
-			<hr>
-
-			<h3>Kullanım Kısa Kodları</h3>
-			<p><b>Sadece Bayrak (Kare Dropdown):</b> <code>[qrmenu_flags_only]</code></p>
-			<p><b>Bayrak ve Dil İsmi (Dropdown):</b> <code>[qrmenu_flags_text]</code></p>
+			<?php qrms_module_qr_ceviri_baslik( 'dashicons-upload', 'Çeviri CSV\'sini İçe Aktar' ); ?>
+			<?php rma_ceviri_csv_ice_formu(); ?>
 		</div>
 		<?php
 	}
@@ -733,7 +550,7 @@ if ( ! function_exists( 'rma_ceviri_yetim_temizle_istek' ) ) {
 		}
 
 		$args = array(
-			'page'    => class_exists( 'QRMS_Admin' ) ? QRMS_Admin::get_module_page_slug( 'qr-ceviri' ) : 'qrmenu-translator',
+			'page'    => 'qrms-cv-durum',
 			'ice'     => 'yetim',
 			'silinen' => $silinen,
 		);

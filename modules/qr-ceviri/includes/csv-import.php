@@ -42,7 +42,10 @@ add_action( 'admin_post_rma_ceviri_import', 'rma_ceviri_csv_ice_aktar' );
  */
 if ( ! function_exists( 'rma_ceviri_import_yonlendir' ) ) {
 	function rma_ceviri_import_yonlendir( $args ) {
-		$args['page'] = class_exists( 'QRMS_Admin' ) ? QRMS_Admin::get_module_page_slug( 'qr-ceviri' ) : 'qrmenu-translator';
+		$args['page'] = 'qrms-cv-ice';
+		if ( ! class_exists( 'QRMS_Admin' ) ) {
+			$args['page'] = 'qrmenu-translator';
+		}
 		wp_safe_redirect( add_query_arg( $args, admin_url( 'admin.php' ) ) );
 		exit;
 	}
@@ -196,6 +199,10 @@ if ( ! function_exists( 'rma_ceviri_csv_ice_aktar' ) ) {
 			@set_time_limit( 300 ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 		}
 
+		if ( function_exists( 'rma_ceviri_bellek_pay_ayir' ) ) {
+			rma_ceviri_bellek_pay_ayir();
+		}
+
 		$rapor = rma_ceviri_satirlari_isle(
 			$dosya,
 			$ayrac,
@@ -206,6 +213,8 @@ if ( ! function_exists( 'rma_ceviri_csv_ice_aktar' ) ) {
 		fclose( $dosya );
 
 		$rapor['dosya'] = $isim;
+
+		update_option( 'rma_ceviri_son_ice', time(), false );
 
 		set_transient( 'rma_ceviri_rapor_' . get_current_user_id(), $rapor, 10 * MINUTE_IN_SECONDS );
 		rma_ceviri_onbellek_temizle();
@@ -235,14 +244,20 @@ if ( ! function_exists( 'rma_ceviri_satirlari_isle' ) ) {
 			'silindi'     => 0,
 			'atlandi'     => 0,
 			'atlanan'     => array(),
-			'bayat'       => array(),
-			'temizle'     => (bool) $temizle,
+			'bayat'          => array(),
+			'temizle'        => (bool) $temizle,
+			'bellek_kesildi' => false,
 		);
 
 		$satir_no = 1; // Başlık satırı okundu.
 
 		while ( false !== ( $satir = fgetcsv( $dosya, 0, $ayrac, '"', '\\' ) ) ) {
 			++$satir_no;
+
+			if ( 0 === ( $satir_no % 50 ) && function_exists( 'rma_ceviri_bellek_sinirda_mi' ) && rma_ceviri_bellek_sinirda_mi() ) {
+				$rapor['bellek_kesildi'] = true;
+				break;
+			}
 
 			// fgetcsv boş satırda [null] döndürür.
 			if ( null === $satir || ( 1 === count( $satir ) && ( null === $satir[0] || '' === trim( (string) $satir[0] ) ) ) ) {

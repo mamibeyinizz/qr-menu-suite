@@ -1487,6 +1487,37 @@ function get_the_title( $post_id = 0 ) {
 }
 
 /**
+ * Yazı durumu. Testte $GLOBALS['qrms_test']['post_status'][id] yoksa
+ * pozitif ID "publish" sayılır (silinmiş senaryo açıkça işaretlenir).
+ *
+ * @param int|object|null $post Yazı veya ID.
+ * @return string|false
+ */
+function get_post_status( $post = null ) {
+	$id = is_object( $post ) && isset( $post->ID ) ? (int) $post->ID : (int) $post;
+
+	if ( isset( $GLOBALS['qrms_test']['post_status'][ $id ] ) ) {
+		return $GLOBALS['qrms_test']['post_status'][ $id ];
+	}
+
+	return $id > 0 ? 'publish' : false;
+}
+
+/**
+ * Yazı sayısı. Testte $GLOBALS['qrms_test']['post_counts'][type].
+ *
+ * @param string $type Post type.
+ * @return object
+ */
+function wp_count_posts( $type = 'post' ) {
+	$n = isset( $GLOBALS['qrms_test']['post_counts'][ $type ] )
+		? (int) $GLOBALS['qrms_test']['post_counts'][ $type ]
+		: 0;
+
+	return (object) array( 'publish' => $n );
+}
+
+/**
  * Taksonomi terimleri. (Testte yalnızca 'names' alanı desteklenir.)
  *
  * @param array $args Argümanlar.
@@ -1504,6 +1535,56 @@ function get_terms( $args = array() ) {
  */
 function post_type_exists( $tur ) {
 	return true;
+}
+
+/**
+ * Kayıtlı post type'lar. Testte $GLOBALS['qrms_test']['post_types'] (slug => etiket).
+ *
+ * @param array  $args   Argümanlar (yok sayılır).
+ * @param string $output names|objects.
+ * @return array
+ */
+function get_post_types( $args = array(), $output = 'names' ) {
+	$types = isset( $GLOBALS['qrms_test']['post_types'] ) ? $GLOBALS['qrms_test']['post_types'] : array();
+
+	if ( 'objects' !== $output ) {
+		return array_keys( $types );
+	}
+
+	$out = array();
+	foreach ( $types as $slug => $label ) {
+		$nesne                     = new stdClass();
+		$nesne->labels             = new stdClass();
+		$nesne->labels->singular_name = (string) $label;
+		$out[ $slug ]              = $nesne;
+	}
+
+	return $out;
+}
+
+/**
+ * Kayıtlı taxonomy'ler. Testte $GLOBALS['qrms_test']['taxonomies'] (slug => etiket).
+ *
+ * @param array  $args   Argümanlar (yok sayılır).
+ * @param string $output names|objects.
+ * @return array
+ */
+function get_taxonomies( $args = array(), $output = 'names' ) {
+	$taks = isset( $GLOBALS['qrms_test']['taxonomies'] ) ? $GLOBALS['qrms_test']['taxonomies'] : array();
+
+	if ( 'objects' !== $output ) {
+		return array_keys( $taks );
+	}
+
+	$out = array();
+	foreach ( $taks as $slug => $label ) {
+		$nesne                     = new stdClass();
+		$nesne->labels             = new stdClass();
+		$nesne->labels->singular_name = (string) $label;
+		$out[ $slug ]              = $nesne;
+	}
+
+	return $out;
 }
 
 /**
