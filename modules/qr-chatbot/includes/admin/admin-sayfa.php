@@ -148,6 +148,7 @@ function qmo_chatbot_yeni_alanlari_kaydet() {
 		'qmo_chatbot_welcome_btn'      => 'sanitize_text_field',
 		'qmo_chatbot_teaser'           => 'sanitize_key',
 		'qmo_chatbot_teaser_text'      => 'sanitize_text_field',
+		'qmo_chatbot_auto_inject'    => 'sanitize_key',
 		'qmo_chatbot_audience'         => 'sanitize_key',
 		'qmo_chatbot_devices'          => 'sanitize_key',
 		'qmo_chatbot_hide_after_hours' => 'sanitize_key',

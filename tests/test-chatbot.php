@@ -554,6 +554,96 @@ qrms_test(
 );
 
 qrms_test(
+	'chatbot otomatik enjeksiyon varsayılan açık; oturum yokken footer sessiz',
+	function () {
+		$GLOBALS['qrms_test']['logged_in'] = true;
+		unset( $_COOKIE[ QMO_Oturum::COOKIE ] );
+
+		qrms_assert_true( qmo_chatbot_otomatik_goster_mi(), 'varsayılan açık' );
+		qrms_assert_true( qmo_chatbot_on_yuz_istegi_mi(), 'normal ön yüz isteği' );
+		qrms_assert_false( qmo_chatbot_otomatik_basilmali_mi(), 'oturum yokken otomatik basılmaz' );
+		qrms_assert_same( '', qmo_chatbot_html_uret( 'footer' ), 'footer modunda QR uyarısı yok' );
+	}
+);
+
+qrms_test(
+	'otomatik enjeksiyon kapalıyken yalnızca kısa kod çalışır',
+	function () {
+		update_option( 'qmo_chatbot_auto_inject', 'no' );
+		$GLOBALS['qrms_test']['logged_in'] = true;
+		$GLOBALS['qrms_test']['options'][ QMO_Oturum::OPT_KEY ] = 'test-hmac-anahtari-sepet-icin-yeterince-uzun';
+		$token = QMO_Oturum::token_uret( 'masa-55' );
+		$_COOKIE[ QMO_Oturum::COOKIE ] = $token;
+
+		qrms_assert_false( qmo_chatbot_otomatik_goster_mi(), 'anahtar kapalı' );
+		qrms_assert_false( qmo_chatbot_otomatik_basilmali_mi(), 'footer atlanır' );
+		qrms_assert_contains( 'gemini-shortcode-container', qmo_chatbot_shortcode(), 'elle kısa kod çalışır' );
+	}
+);
+
+qrms_test(
+	'aynı istekte chatbot HTML\'i yalnızca bir kez basılır',
+	function () {
+		$GLOBALS['qrms_test']['logged_in'] = true;
+		$GLOBALS['qrms_test']['options'][ QMO_Oturum::OPT_KEY ] = 'test-hmac-anahtari-sepet-icin-yeterince-uzun';
+		$token = QMO_Oturum::token_uret( 'masa-77' );
+		$_COOKIE[ QMO_Oturum::COOKIE ] = $token;
+
+		$ilk = qmo_chatbot_shortcode();
+		$iki = qmo_chatbot_shortcode();
+
+		qrms_assert_contains( 'gemini-shortcode-container', $ilk, 'ilk kısa kod basar' );
+		qrms_assert_same( '', $iki, 'ikinci kısa kod boş' );
+		qrms_assert_false( qmo_chatbot_otomatik_basilmali_mi(), 'footer bayrağı görüp atlar' );
+	}
+);
+
+qrms_test(
+	'admin, 404, login ve Elementor önizlemede otomatik enjeksiyon yok',
+	function () {
+		$GLOBALS['qrms_test']['logged_in'] = true;
+		$GLOBALS['qrms_test']['options'][ QMO_Oturum::OPT_KEY ] = 'test-hmac-anahtari-sepet-icin-yeterince-uzun';
+		$token = QMO_Oturum::token_uret( 'masa-99' );
+		$_COOKIE[ QMO_Oturum::COOKIE ] = $token;
+
+		qrms_assert_true( qmo_chatbot_otomatik_basilmali_mi(), 'normal istekte basılır' );
+
+		$GLOBALS['qrms_test']['is_admin'] = true;
+		qrms_assert_false( qmo_chatbot_on_yuz_istegi_mi(), 'admin' );
+		$GLOBALS['qrms_test']['is_admin'] = false;
+
+		$GLOBALS['qrms_test']['is_404'] = true;
+		qrms_assert_false( qmo_chatbot_on_yuz_istegi_mi(), '404' );
+		$GLOBALS['qrms_test']['is_404'] = false;
+
+		$GLOBALS['qrms_test']['is_login'] = true;
+		qrms_assert_false( qmo_chatbot_on_yuz_istegi_mi(), 'login' );
+		$GLOBALS['qrms_test']['is_login'] = false;
+
+		$_GET['elementor-preview'] = '1';
+		qrms_assert_false( qmo_chatbot_on_yuz_istegi_mi(), 'elementor önizleme' );
+		unset( $_GET['elementor-preview'] );
+	}
+);
+
+qrms_test(
+	'Görünürlük sayfasında otomatik gösterim anahtarı vardır',
+	function () {
+		ob_start();
+		qmo_chatbot_sayfa_gorunurluk();
+		$html = ob_get_clean();
+
+		qrms_assert_contains( 'name="qmo_chatbot_auto_inject"', $html, 'form alanı' );
+		qrms_assert_contains( 'tüm sayfalarda otomatik göster', $html, 'etiket' );
+		qrms_assert_contains( 'wp_footer', $html, 'açıklama' );
+
+		$boot = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/chatbot.php' );
+		qrms_assert_contains( "add_action( 'wp_footer', 'qmo_chatbot_footer_bas'", $boot, 'footer kancası' );
+		qrms_assert_contains( 'qmo_chatbot_istekte_basildi', file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/includes/shortcode-chatbot.php' ), 'çift basım bayrağı' );
+	}
+);
+
+qrms_test(
 	'Görünüm ve Bot Kimliği Türkçe etiket kullanır, eski name durur',
 	function () {
 		$kimlik  = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/includes/admin/admin-sayfa.php' );

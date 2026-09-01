@@ -36,6 +36,7 @@ require_once QMO_CHATBOT_DIR . 'ajax-waiter-bill.php';
 require_once QMO_CHATBOT_DIR . 'ajax-sepet-analitik.php';
 
 add_action( 'wp_enqueue_scripts', 'qmo_chatbot_buton_varliklarini_kaydet', 5 );
+add_action( 'wp_footer', 'qmo_chatbot_footer_bas', 20 );
 
 if ( is_admin() ) {
 	require_once QMO_CHATBOT_DIR . 'includes/admin/admin-sayfa.php';

@@ -52,7 +52,7 @@ function qrms_module_qr_chatbot_init() {
 				'tag'   => 'gemini_chatbot',
 				'title' => __( 'AI Asistan', 'qrms' ),
 				'desc'  => __( 'Müşterinin menü hakkında soru sorabildiği, sipariş verebildiği tam ekran yapay zekâ asistanı.', 'qrms' ),
-				'note'  => __( 'Yalnızca müşteri masadaki QR kodu okuttuysa açılır; oturum yoksa bilgi kutusu basılır.', 'qrms' ),
+				'note'  => __( 'Modül açık ve "Görünürlük" ayarında otomatik gösterim etkinse tüm sayfalarda wp_footer ile basılır; aksi hâlde [gemini_chatbot] kısa kodunu sayfaya eklemeniz gerekir. Yalnızca masa oturumu olanlara (varsayılan) veya tüm ziyaretçilere gösterilebilir.', 'qrms' ),
 			),
 			array(
 				'tag'   => 'garson_butonu',

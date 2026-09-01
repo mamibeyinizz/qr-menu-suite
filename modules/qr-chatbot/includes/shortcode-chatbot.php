@@ -3,7 +3,8 @@
  * Kısa kod: [gemini_chatbot] — tam ekran AI asistan.
  *
  * OTURUM KOŞULU: Chatbot yalnızca geçerli bir masa oturumu varken render
- * edilir. Oturum yoksa "masadaki QR'ı okutun" bilgi kutusu basılır.
+ * edilir. Oturum yoksa kısa kod "masadaki QR'ı okutun" bilgi kutusu basılır;
+ * wp_footer otomatik enjeksiyonu ise sessiz kalır (tanıtım sayfalarına uyarı basmaz).
  * Koşul SAYFA bazlı değil OTURUM bazlıdır — böylece menü hangi sayfada
  * olursa olsun aynı kural işler.
  *
@@ -17,18 +18,62 @@ if ( ! defined( 'ABSPATH' ) ) {
 add_shortcode( 'gemini_chatbot', 'qmo_chatbot_shortcode' );
 
 /**
+ * Bu istekte chatbot HTML'i basıldı mı?
+ *
+ * Kısa kod + wp_footer otomatik enjeksiyonu aynı sayfada çakışmasın diye
+ * shortcode bir kez çıktı verdikten sonra bayrak kalkar. $ata verilirse
+ * bayrağı yazar; null yalnızca okur.
+ *
+ * @param bool|null $ata true/false atar, null okur.
+ * @return bool
+ */
+if ( ! function_exists( 'qmo_chatbot_istekte_basildi' ) ) {
+	function qmo_chatbot_istekte_basildi( $ata = null ) {
+		static $basildi = false;
+		if ( null !== $ata ) {
+			$basildi = (bool) $ata;
+		}
+		return $basildi;
+	}
+}
+
+/**
  * Chatbot çıktısı.
  *
  * @return string
  */
 if ( ! function_exists( 'qmo_chatbot_shortcode' ) ) {
 	function qmo_chatbot_shortcode() {
+		if ( qmo_chatbot_istekte_basildi() ) {
+			return '';
+		}
+
+		$html = qmo_chatbot_html_uret( 'shortcode' );
+		if ( '' !== $html ) {
+			qmo_chatbot_istekte_basildi( true );
+		}
+		return $html;
+	}
+}
+
+/**
+ * Chatbot HTML'ini üretir.
+ *
+ * @param string $baglam 'shortcode' | 'footer' — otomatik enjeksiyonda oturum
+ *                       yokken QR uyarısı basılmaz (sessiz kalır).
+ * @return string
+ */
+if ( ! function_exists( 'qmo_chatbot_html_uret' ) ) {
+	function qmo_chatbot_html_uret( $baglam = 'shortcode' ) {
 		if ( function_exists( 'qmo_chatbot_onyuz_yuklensin_mi' ) && ! qmo_chatbot_onyuz_yuklensin_mi() ) {
 			return '';
 		}
 
 		$oturum_zorunlu = ! function_exists( 'qmo_chatbot_oturum_zorunlu_mu' ) || qmo_chatbot_oturum_zorunlu_mu();
 		if ( $oturum_zorunlu && ! qmo_oturum() ) {
+			if ( 'footer' === $baglam ) {
+				return '';
+			}
 			$uyari = __( 'Asistanı kullanmak için masanızdaki QR kodu okutun.', 'qrms' );
 			return qmo_oturum_uyari_kutusu(
 				function_exists( 'qmo_ceviri_chat' ) ? qmo_ceviri_chat( $uyari ) : $uyari
@@ -185,6 +230,28 @@ if ( ! function_exists( 'qmo_chatbot_shortcode' ) ) {
 		</div>
 		<?php
 		return ob_get_clean();
+	}
+}
+
+/**
+ * wp_footer: otomatik chatbot enjeksiyonu.
+ *
+ * @return void
+ */
+if ( ! function_exists( 'qmo_chatbot_footer_bas' ) ) {
+	function qmo_chatbot_footer_bas() {
+		if ( ! function_exists( 'qmo_chatbot_otomatik_basilmali_mi' ) || ! qmo_chatbot_otomatik_basilmali_mi() ) {
+			return;
+		}
+
+		$html = qmo_chatbot_html_uret( 'footer' );
+		if ( '' === $html ) {
+			return;
+		}
+
+		qmo_chatbot_istekte_basildi( true );
+		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- şablon esc_* ile basılır.
+		echo $html;
 	}
 }
 
