@@ -207,9 +207,28 @@ body.gm-scroll-kilit { position: fixed; width: 100%; }
 	color: var(--gm-header-text, #fff);
 	flex-shrink: 0;
 	position: relative;
+	overflow: hidden;
 	z-index: 1;
 	border-bottom: 1px solid rgba(255, 255, 255, 0.12);
 	box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+}
+.gemini-chat-header::after {
+	content: '';
+	position: absolute;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	height: 2px;
+	background: linear-gradient(
+		90deg,
+		transparent 0%,
+		var(--gm-header-text, #fff) 50%,
+		transparent 100%
+	);
+	opacity: 0.75;
+	transform: translateX(-100%);
+	animation: gm-header-sweep 3.2s ease-in-out infinite;
+	pointer-events: none;
 }
 .gemini-chat-header-left {
 	display: flex;
@@ -221,7 +240,8 @@ body.gm-scroll-kilit { position: fixed; width: 100%; }
 	width: 40px;
 	height: 40px;
 	border-radius: 50%;
-	overflow: hidden;
+	position: relative;
+	overflow: visible;
 	background: rgba(255, 255, 255, 0.15);
 	color: var(--gm-header-icon, currentColor);
 	display: flex;
@@ -229,11 +249,33 @@ body.gm-scroll-kilit { position: fixed; width: 100%; }
 	justify-content: center;
 	box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25);
 }
+.gemini-chat-header .gemini-icon-wrapper::before {
+	content: '';
+	position: absolute;
+	inset: -4px;
+	border-radius: 50%;
+	border: 2px solid transparent;
+	border-top-color: var(--gm-header-text, #fff);
+	border-right-color: rgba(255, 255, 255, 0.45);
+	border-right-color: color-mix(in srgb, var(--gm-header-text, #fff) 45%, transparent);
+	animation: gm-avatar-ring 2.8s linear infinite;
+}
+.gemini-chat-header .gemini-icon-wrapper::after {
+	content: '';
+	position: absolute;
+	inset: -4px;
+	border-radius: 50%;
+	box-shadow: 0 0 12px 0 var(--gm-header-text, #fff);
+	opacity: 0.18;
+	animation: gm-avatar-glow 2.8s ease-in-out infinite;
+	pointer-events: none;
+}
 .gemini-chat-header .gemini-icon-wrapper img,
 .gemini-chat-header .gemini-icon-wrapper svg {
 	width: 70%;
 	height: 70%;
 	object-fit: contain;
+	border-radius: 50%;
 }
 .gemini-header-textblock {
 	display: flex;
@@ -471,6 +513,18 @@ body.gm-scroll-kilit { position: fixed; width: 100%; }
 	0%, 100% { transform: scale(1); opacity: 1; }
 	50% { transform: scale(0.72); opacity: 0.55; }
 }
+@keyframes gm-avatar-ring {
+	to { transform: rotate(360deg); }
+}
+@keyframes gm-avatar-glow {
+	0%, 100% { opacity: 0.12; transform: scale(1); }
+	50% { opacity: 0.3; transform: scale(1.06); }
+}
+@keyframes gm-header-sweep {
+	0% { transform: translateX(-100%); }
+	55% { transform: translateX(100%); }
+	100% { transform: translateX(100%); }
+}
 
 @media (prefers-reduced-motion: reduce) {
 	.gemini-toggle-btn .gm-attn-core,
@@ -479,7 +533,10 @@ body.gm-scroll-kilit { position: fixed; width: 100%; }
 	.gemini-chat-toggle-btn:hover .gm-attn-core,
 	.gemini-teaser,
 	.gemini-chat-overlay.gemini-acik,
-	.gemini-header-status::before {
+	.gemini-header-status::before,
+	.gemini-chat-header::after,
+	.gemini-chat-header .gemini-icon-wrapper::before,
+	.gemini-chat-header .gemini-icon-wrapper::after {
 		animation: none !important;
 		transform: none !important;
 	}
