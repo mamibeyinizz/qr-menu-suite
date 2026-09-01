@@ -60,6 +60,9 @@ if ( ! function_exists( 'qmo_chatbot_shortcode' ) ) {
 		$mesai_disi   = function_exists( 'qmo_chatbot_mesai_disi_mi' ) && qmo_chatbot_mesai_disi_mi();
 		$kapali_dav   = function_exists( 'qmo_chatbot_ayar' ) ? qmo_chatbot_ayar( 'qmo_chatbot_closed_behavior' ) : 'hide';
 		$kapali_msg   = function_exists( 'qmo_chatbot_ayar' ) ? qmo_chatbot_ayar( 'qmo_chatbot_closed_message' ) : '';
+		if ( function_exists( 'rma_ceviri_option' ) && '' !== (string) $kapali_msg ) {
+			$kapali_msg = rma_ceviri_option( 'qmo_chatbot_closed_message', $kapali_msg );
+		}
 		$rozet        = function_exists( 'qmo_chatbot_ayar' ) && 'yes' === qmo_chatbot_ayar( 'qmo_chatbot_badge' );
 		$teaser       = function_exists( 'qmo_chatbot_ayar' ) && 'yes' === qmo_chatbot_ayar( 'qmo_chatbot_teaser' );
 		$ekran        = function_exists( 'qmo_chatbot_ayar' ) && 'yes' === qmo_chatbot_ayar( 'qmo_chatbot_welcome_screen' );
@@ -83,7 +86,13 @@ if ( ! function_exists( 'qmo_chatbot_shortcode' ) ) {
 			<?php if ( $teaser ) : ?>
 				<div class="gemini-teaser" hidden>
 					<button type="button" class="gemini-teaser-kapat" aria-label="<?php echo esc_attr( qmo_ceviri_chat( __( 'Kapat', 'qrms' ) ) ); ?>">&times;</button>
-					<span><?php echo esc_html( qmo_chatbot_ayar( 'qmo_chatbot_teaser_text' ) ); ?></span>
+					<span><?php
+						$teaser_metin = qmo_chatbot_ayar( 'qmo_chatbot_teaser_text' );
+						if ( function_exists( 'rma_ceviri_option' ) ) {
+							$teaser_metin = rma_ceviri_option( 'qmo_chatbot_teaser_text', $teaser_metin );
+						}
+						echo esc_html( $teaser_metin );
+					?></span>
 				</div>
 			<?php endif; ?>
 
@@ -117,8 +126,20 @@ if ( ! function_exists( 'qmo_chatbot_shortcode' ) ) {
 					<div class="gemini-welcome-screen">
 						<div class="gemini-icon-wrapper"><?php qmo_chatbot_ikon( $ikon_url ); ?></div>
 						<strong><?php echo esc_html( $bot_adi ); ?></strong>
-						<p><?php echo esc_html( qmo_chatbot_ayar( 'qmo_chatbot_welcome_intro' ) ); ?></p>
-						<button type="button" class="gemini-welcome-start"><?php echo esc_html( qmo_chatbot_ayar( 'qmo_chatbot_welcome_btn' ) ); ?></button>
+						<p><?php
+							$welcome_intro = qmo_chatbot_ayar( 'qmo_chatbot_welcome_intro' );
+							if ( function_exists( 'rma_ceviri_option' ) ) {
+								$welcome_intro = rma_ceviri_option( 'qmo_chatbot_welcome_intro', $welcome_intro );
+							}
+							echo esc_html( $welcome_intro );
+						?></p>
+						<button type="button" class="gemini-welcome-start"><?php
+							$welcome_btn = qmo_chatbot_ayar( 'qmo_chatbot_welcome_btn' );
+							if ( function_exists( 'rma_ceviri_option' ) ) {
+								$welcome_btn = rma_ceviri_option( 'qmo_chatbot_welcome_btn', $welcome_btn );
+							}
+							echo esc_html( $welcome_btn );
+						?></button>
 					</div>
 				<?php endif; ?>
 
@@ -129,8 +150,16 @@ if ( ! function_exists( 'qmo_chatbot_shortcode' ) ) {
 				<?php if ( $sorular ) : ?>
 					<div class="gemini-quick-replies">
 						<?php foreach ( $sorular as $soru ) : ?>
-							<button type="button" class="gemini-quick-reply" data-question="<?php echo esc_attr( $soru['question'] ); ?>">
-								<?php echo esc_html( $soru['label'] ); ?>
+							<?php
+							$soru_etiket = $soru['label'];
+							$soru_metin  = $soru['question'];
+							if ( function_exists( 'rma_ceviri_option' ) && ! empty( $soru['id'] ) ) {
+								$soru_etiket = rma_ceviri_option( 'qmo_chatbot_qr.' . $soru['id'] . '.label', $soru_etiket );
+								$soru_metin  = rma_ceviri_option( 'qmo_chatbot_qr.' . $soru['id'] . '.question', $soru_metin );
+							}
+							?>
+							<button type="button" class="gemini-quick-reply" data-question="<?php echo esc_attr( $soru_metin ); ?>">
+								<?php echo esc_html( $soru_etiket ); ?>
 							</button>
 						<?php endforeach; ?>
 					</div>

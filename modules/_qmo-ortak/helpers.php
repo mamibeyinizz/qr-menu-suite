@@ -49,6 +49,16 @@ if ( ! function_exists( 'qmo_ceviri_chat' ) ) {
  * @param string $metin Türkçe kaynak (genelde __( '…', 'qrms' ) çıktısı).
  * @return string
  */
+if ( ! function_exists( 'qmo_ceviri_ui' ) ) {
+	function qmo_ceviri_ui( $metin ) {
+		$metin = (string) $metin;
+		if ( function_exists( 'rma_ceviri_ui' ) ) {
+			return rma_ceviri_ui( $metin );
+		}
+		return $metin;
+	}
+}
+
 if ( ! function_exists( 'qmo_ceviri_cart' ) ) {
 	function qmo_ceviri_cart( $metin ) {
 		$metin = (string) $metin;

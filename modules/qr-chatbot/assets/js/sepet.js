@@ -195,23 +195,69 @@
 	}
 
 	function fiyatSayi( t ) {
-		t = ( t || '' ).replace( /[^\d.,]/g, '' ).replace( /\.(?=\d{3}\b)/g, '' ).replace( ',', '.' );
+		var a = fiyatAyraclar();
+		t = String( t || '' );
+		if ( a.binlik ) {
+			t = t.split( a.binlik ).join( '' );
+		}
+		if ( a.ondalik !== '.' ) {
+			t = t.split( a.ondalik ).join( '.' );
+		}
+		t = t.replace( /[^\d.-]/g, '' );
 		var f = parseFloat( t );
 		return isNaN( f ) ? 0 : f;
 	}
 
-	/* TL yazımı — RMA_Kampanya_DB::bicimle() ile aynı kural:
-	   kuruş varsa iki hane ve virgül (80,50), tam sayıda ,00 yok (368),
-	   binlik ayracı nokta (1.250,25). */
+	/* rma_ceviri_fiyat_ayraclar() ile aynı tablo — yerleşik Intl API kullanılmaz. */
+	function fiyatAyraclar( kod ) {
+		kod = String( kod || dil() || 'tr' ).toLowerCase().slice( 0, 2 );
+		if ( [ 'tr', 'de', 'es', 'it', 'pt', 'nl' ].indexOf( kod ) !== -1 ) {
+			return { binlik: '.', ondalik: ',' };
+		}
+		if ( 'fr' === kod ) {
+			return { binlik: ' ', ondalik: ',' };
+		}
+		return { binlik: ',', ondalik: '.' };
+	}
+
+	/* rma_ceviri_fiyat_sayi() ile aynı: kuruş varsa iki hane, tam sayıda yok. */
 	function fiyatYazi( n ) {
 		var f = parseFloat( n );
 		if ( isNaN( f ) ) {
 			f = 0;
 		}
+		var a     = fiyatAyraclar();
 		var parca = Math.abs( f ).toFixed( 2 ).split( '.' );
-		var tam   = parca[ 0 ].replace( /\B(?=(\d{3})+(?!\d))/g, '.' );
-		var metin = ( f < 0 ? '-' : '' ) + tam + ',' + parca[ 1 ];
-		return ( ',00' === metin.slice( -3 ) ) ? metin.slice( 0, -3 ) : metin;
+		var tam   = parca[ 0 ].replace( /\B(?=(\d{3})+(?!\d))/g, a.binlik );
+		var metin = ( f < 0 ? '-' : '' ) + tam + a.ondalik + parca[ 1 ];
+		var sifir = a.ondalik + '00';
+		return metin.slice( -3 ) === sifir ? metin.slice( 0, -3 ) : metin;
+	}
+
+	function fiyatKalip() {
+		var d = dil();
+		if ( typeof qmoSepet !== 'undefined' && qmoSepet.para && qmoSepet.para.fiyat ) {
+			var loc = qmoSepet.para.fiyat;
+			if ( 'string' === typeof loc && loc.indexOf( '{n}' ) !== -1 ) {
+				return loc;
+			}
+			if ( loc && 'string' === typeof loc[ d ] && loc[ d ].indexOf( '{n}' ) !== -1 ) {
+				return loc[ d ];
+			}
+			if ( loc && 'string' === typeof loc.tr && loc.tr.indexOf( '{n}' ) !== -1 ) {
+				return loc.tr;
+			}
+		}
+		return '{n} ₺';
+	}
+
+	/* rma_ceviri_fiyat() — yaklasik()/KUR dokunulmaz. */
+	function fiyatGoster( n ) {
+		var kalip = fiyatKalip();
+		if ( kalip.indexOf( '{n}' ) === -1 ) {
+			kalip = '{n} ₺';
+		}
+		return kalip.replace( '{n}', fiyatYazi( n ) );
 	}
 
 	/* ---- UI referansları ---- */
@@ -450,7 +496,7 @@
 
 		var fy = document.createElement( 'div' );
 		fy.className = 'qmo-it-fy';
-		fy.appendChild( document.createTextNode( '₺' + fiyatYazi( x.fiyat * x.adet ) ) );
+		fy.appendChild( document.createTextNode( fiyatGoster( x.fiyat * x.adet ) ) );
 		var y2 = yaklasik( x.fiyat * x.adet );
 		if ( y2 ) {
 			fy.appendChild( document.createElement( 'br' ) );
@@ -534,7 +580,7 @@
 		} );
 
 		badge.textContent = n;
-		barTot.textContent = '₺' + fiyatYazi( t );
+		barTot.textContent = fiyatGoster( t );
 		document.getElementById( 'qmo-bar-txt' ).textContent = T( 'sepet' );
 		document.getElementById( 'qmo-dr-title' ).textContent = T( 'sepetiniz' );
 		document.getElementById( 'qmo-t-top' ).textContent = T( 'toplam' );
@@ -557,7 +603,7 @@
 			kapat();
 		}
 
-		tot.textContent = '₺' + fiyatYazi( t );
+		tot.textContent = fiyatGoster( t );
 		yakEl.textContent = yaklasik( t );
 
 		list.textContent = '';

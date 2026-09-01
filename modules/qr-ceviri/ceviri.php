@@ -49,6 +49,7 @@ require_once RMA_CEVIRI_DIR . 'includes/dil.php';
 require_once RMA_CEVIRI_DIR . 'includes/degistirici.php';
 require_once RMA_CEVIRI_DIR . 'includes/sozluk.php';
 require_once RMA_CEVIRI_DIR . 'includes/ui-stringler.php';
+require_once RMA_CEVIRI_DIR . 'includes/fiyat.php';
 require_once RMA_CEVIRI_DIR . 'includes/veri-kaynaklar.php';
 require_once RMA_CEVIRI_DIR . 'includes/elementor-tarama.php';
 require_once RMA_CEVIRI_DIR . 'includes/kaynaklar.php';

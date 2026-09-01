@@ -98,6 +98,30 @@ if ( ! function_exists( 'rma_ceviri_option_defteri' ) ) {
 				'anahtar'    => null,
 				'varsayilan' => 'Merhaba! Size nasıl yardımcı olabilirim?',
 			),
+			'qmo_chatbot_teaser_text'  => array(
+				'etiket'     => 'Chatbot: teaser metni',
+				'option'     => 'qmo_chatbot_teaser_text',
+				'anahtar'    => null,
+				'varsayilan' => 'Bir şey sormak ister misiniz?',
+			),
+			'qmo_chatbot_welcome_intro' => array(
+				'etiket'     => 'Chatbot: karşılama tanıtımı',
+				'option'     => 'qmo_chatbot_welcome_intro',
+				'anahtar'    => null,
+				'varsayilan' => 'Menü, öneriler ve sipariş için buradayım.',
+			),
+			'qmo_chatbot_welcome_btn'  => array(
+				'etiket'     => 'Chatbot: karşılama butonu',
+				'option'     => 'qmo_chatbot_welcome_btn',
+				'anahtar'    => null,
+				'varsayilan' => 'Sohbete Başla',
+			),
+			'qmo_chatbot_closed_message' => array(
+				'etiket'     => 'Chatbot: kapalı mesajı',
+				'option'     => 'qmo_chatbot_closed_message',
+				'anahtar'    => null,
+				'varsayilan' => 'Şu an kapalıyız, yakında görüşmek üzere.',
+			),
 			'hfb_footer.links_title'   => array(
 				'etiket'     => 'Footer: hızlı menü başlığı',
 				'option'     => 'hfb_footer_options',
@@ -177,6 +201,31 @@ if ( ! function_exists( 'rma_ceviri_option_defteri' ) ) {
 		 *
 		 * @param array<string,array<string,mixed>> $kayit Defter.
 		 */
+		if ( function_exists( 'qmo_chatbot_sorulari_oku' ) ) {
+			foreach ( qmo_chatbot_sorulari_oku() as $satir ) {
+				$id = isset( $satir['id'] ) ? (string) $satir['id'] : '';
+				if ( '' === $id ) {
+					continue;
+				}
+				$kayit[ 'qmo_chatbot_qr.' . $id . '.label' ]    = array(
+					'etiket'      => 'Chatbot hazır soru etiketi',
+					'option'      => 'qmo_chatbot_quick_replies',
+					'anahtar'     => null,
+					'liste_id'    => $id,
+					'liste_alan'  => 'label',
+					'varsayilan'  => isset( $satir['label'] ) ? (string) $satir['label'] : '',
+				);
+				$kayit[ 'qmo_chatbot_qr.' . $id . '.question' ] = array(
+					'etiket'      => 'Chatbot hazır soru',
+					'option'      => 'qmo_chatbot_quick_replies',
+					'anahtar'     => null,
+					'liste_id'    => $id,
+					'liste_alan'  => 'question',
+					'varsayilan'  => isset( $satir['question'] ) ? (string) $satir['question'] : '',
+				);
+			}
+		}
+
 		return apply_filters( 'rma_ceviri_option_defteri', $kayit );
 	}
 }
@@ -192,7 +241,21 @@ if ( ! function_exists( 'rma_ceviri_option_degeri_oku' ) ) {
 	function rma_ceviri_option_degeri_oku( $kayit, $varsayilan_doldur = true ) {
 		$opt = get_option( $kayit['option'], null );
 
-		if ( null !== $kayit['anahtar'] ) {
+		if ( ! empty( $kayit['liste_id'] ) && ! empty( $kayit['liste_alan'] ) ) {
+			$liste = array();
+			if ( function_exists( 'qmo_chatbot_sorulari_oku' ) ) {
+				$liste = qmo_chatbot_sorulari_oku();
+			} elseif ( is_array( $opt ) ) {
+				$liste = $opt;
+			}
+			$deger = '';
+			foreach ( $liste as $satir ) {
+				if ( is_array( $satir ) && (string) ( $satir['id'] ?? '' ) === (string) $kayit['liste_id'] ) {
+					$deger = isset( $satir[ $kayit['liste_alan'] ] ) ? $satir[ $kayit['liste_alan'] ] : '';
+					break;
+				}
+			}
+		} elseif ( null !== $kayit['anahtar'] ) {
 			if ( ! is_array( $opt ) ) {
 				$opt = array();
 			}

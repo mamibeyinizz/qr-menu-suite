@@ -562,7 +562,7 @@ trait QRMS_AE_Frontend {
     private function render_lang_toggle($opts) {
         if (!$this->lang_toggle_active($opts)) return;
         ?>
-        <div class="splash-lang" role="group" aria-label="Dil / Language">
+        <div class="splash-lang" role="group" aria-label="Dil"<?php echo $this->lang_data( $opts, 'lang_group', 'Dil', 'aria-label' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped — Türkçe yedek; JS data-sp-attr ile günceller ?>>
             <button type="button" class="splash-lang-btn is-active" data-sp-lang="tr" aria-pressed="true" lang="tr">TR</button>
             <button type="button" class="splash-lang-btn" data-sp-lang="en" aria-pressed="false" lang="en">EN</button>
         </div>

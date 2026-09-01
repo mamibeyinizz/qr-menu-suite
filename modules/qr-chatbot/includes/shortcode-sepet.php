@@ -191,6 +191,11 @@ if ( ! function_exists( 'qmo_sepet_shortcode' ) ) {
 				'i18n'      => function_exists( 'qmo_ceviri_cart_js_metinleri' )
 					? qmo_ceviri_cart_js_metinleri()
 					: array(),
+				'para'      => function_exists( 'rma_ceviri_fiyat_js_kaliplari' )
+					? rma_ceviri_fiyat_js_kaliplari()
+					: array(
+						'fiyat' => array( 'tr' => '{n} ₺' ),
+					),
 			)
 		);
 
@@ -203,7 +208,7 @@ if ( ! function_exists( 'qmo_sepet_shortcode' ) ) {
 					<span class="qmo-bar-badge" id="qmo-badge">0</span>
 					<span id="qmo-bar-txt"><?php echo esc_html( qmo_ceviri_cart( __( 'Sepet', 'qrms' ) ) ); ?></span>
 				</div>
-				<div class="qmo-bar-r" id="qmo-bar-tot">₺0</div>
+				<div class="qmo-bar-r" id="qmo-bar-tot"><?php echo esc_html( function_exists( 'rma_ceviri_fiyat' ) ? rma_ceviri_fiyat( 0 ) : '0 ₺' ); ?></div>
 			</div>
 
 			<div class="qmo-ov" id="qmo-ov"></div>
@@ -219,7 +224,7 @@ if ( ! function_exists( 'qmo_sepet_shortcode' ) ) {
 				<div class="qmo-ft">
 					<div class="qmo-tot">
 						<b id="qmo-t-top"><?php echo esc_html( qmo_ceviri_cart( __( 'Toplam', 'qrms' ) ) ); ?></b>
-						<span id="qmo-tot">₺0</span>
+						<span id="qmo-tot"><?php echo esc_html( function_exists( 'rma_ceviri_fiyat' ) ? rma_ceviri_fiyat( 0 ) : '0 ₺' ); ?></span>
 					</div>
 					<div class="qmo-yak" id="qmo-yak"></div>
 					<div class="qmo-tl" id="qmo-tl-not"></div>

@@ -130,6 +130,24 @@ if ( ! function_exists( 'rma_ceviri_varsayilan_ui_metinleri' ) ) {
 
 			/* Dil seçici aria — qr-ceviri/includes/shortcodes.php */
 			'Dil seç',
+
+			/* Fiyat biçimi — includes/fiyat.php; {n} tutarın yer tutucusu */
+			'{n} ₺',
+			'-{n} ₺',
+			'%{n}',
+
+			/* Vitrin / slider / banner aria */
+			'Önceki',
+			'Sonraki',
+			'%d ürün — kaydırarak gezinin',
+			'Slide navigasyonu',
+			'Önceki slide',
+			'Sonraki slide',
+			'Kampanya banner\'ları',
+			'Önceki banner',
+			'Sonraki banner',
+			'Banner seçimi',
+			'%d. banner',
 		);
 	}
 }
@@ -142,6 +160,11 @@ if ( ! function_exists( 'rma_ceviri_varsayilan_ui_metinleri' ) ) {
  */
 if ( ! function_exists( 'rma_ceviri_ui_anahtari' ) ) {
 	function rma_ceviri_ui_anahtari( $metin ) {
+		// `{n}` kalıpları sanitize_title ile hepsi "n" olur; md5 ile ayrılır.
+		if ( false !== strpos( (string) $metin, '{n}' ) ) {
+			return 'ui_n_' . substr( md5( (string) $metin ), 0, 8 );
+		}
+
 		$slug = sanitize_title( $metin );
 		$slug = str_replace( '-', '_', $slug );
 		$slug = preg_replace( '/[^a-z0-9_]/', '', $slug );
@@ -327,6 +350,7 @@ if ( ! function_exists( 'rma_ceviri_modul_kaynak_metinleri' ) ) {
 			'splash'  => array(
 				'Nakit',
 				'Kart',
+				'Dil',
 			),
 			'hours'   => array(
 				'Pazartesi',
@@ -339,6 +363,9 @@ if ( ! function_exists( 'rma_ceviri_modul_kaynak_metinleri' ) ) {
 				'Kapalı',
 				'24 saat açık',
 				'%1$s – %2$s',
+				'Çalışma Saatleri',
+				'Şu an açığız',
+				'Şu an kapalıyız',
 			),
 			'chat'    => array(
 				'Asistanı kullanmak için masanızdaki QR kodu okutun.',
@@ -370,6 +397,8 @@ if ( ! function_exists( 'rma_ceviri_modul_kaynak_metinleri' ) ) {
 				'Çağrı iletilemedi, lütfen tekrar deneyin.',
 				'Talep alındı.',
 				'Çok hızlı soru gönderiyorsunuz. Lütfen biraz bekleyin.',
+				'Bu konuda yardımcı olamam.',
+				'Bu konuda yardımcı olamam. Menü veya sipariş hakkında sorabilirsiniz.',
 			),
 			'cart'    => array(
 				'Sepet',

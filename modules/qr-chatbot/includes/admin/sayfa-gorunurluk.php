@@ -88,6 +88,11 @@ function qmo_chatbot_sayfa_gorunurluk() {
 			<td>
 				<input type="text" id="qmo_chatbot_closed_message" name="qmo_chatbot_closed_message" class="large-text"
 					value="<?php echo esc_attr( qmo_chatbot_ayar( 'qmo_chatbot_closed_message' ) ); ?>">
+				<?php
+				if ( function_exists( 'rma_ceviri_bayat_uyari_html' ) ) {
+					echo rma_ceviri_bayat_uyari_html( rma_ceviri_bayat_uyari_metni( rma_ceviri_veri_dil_sayisi( 'option', 0, 'qmo_chatbot_closed_message' ) ) );
+				}
+				?>
 			</td>
 		</tr>
 	</table>

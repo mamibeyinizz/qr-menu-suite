@@ -33,10 +33,13 @@
         overlay.className = 'qrms-detail-overlay';
         overlay.setAttribute('role', 'dialog');
         overlay.setAttribute('aria-modal', 'true');
+        var kapat = (global.RMA_MODAL_CFG && global.RMA_MODAL_CFG.i18n && global.RMA_MODAL_CFG.i18n.kapat)
+            ? global.RMA_MODAL_CFG.i18n.kapat
+            : 'Kapat';
         overlay.setAttribute('aria-label', 'Ürün detayı');
         overlay.innerHTML =
             '<div class="qrms-detail-box">' +
-                '<button type="button" class="qrms-detail-close" aria-label="Kapat">&#x2715;</button>' +
+                '<button type="button" class="qrms-detail-close" aria-label="' + kapat.replace(/"/g, '&quot;') + '">&#x2715;</button>' +
                 '<div class="qrms-detail-inner"></div>' +
             '</div>';
         document.body.appendChild(overlay);
