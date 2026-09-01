@@ -214,13 +214,11 @@
 		closeAllPanels();
 	} );
 
-	window.addEventListener( 'resize', function () {
-		document.querySelectorAll( '.qrmenu-options-panel.open' ).forEach( function ( panel ) {
-			var dropdown = panel.closest( '.qrmenu-lang-dropdown' );
-			var trigger = dropdown ? dropdown.querySelector( '.qrmenu-current-btn' ) : null;
-			if ( trigger ) {
-				positionOpenPanel( trigger, panel );
-			}
-		} );
-	} );
+	window.addEventListener( 'resize', closeAllPanels );
+
+	window.addEventListener(
+		'scroll',
+		closeAllPanels,
+		true
+	);
 }() );
