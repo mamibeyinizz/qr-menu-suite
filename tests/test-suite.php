@@ -3912,6 +3912,27 @@ qrms_test(
 		qrms_assert_contains( 'Gelişmiş renk ayarları', $gorunum, 'gelişmiş' );
 		qrms_assert_contains( 'qmo_chatbot_welcome_btn', $gorunum, 'karşılama butonu alanı' );
 		qrms_assert_contains( "'qmo_chatbot_welcome_btn'", file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/includes/class-ayarlar.php' ), 'karşılama varsayılanı' );
+		qrms_assert_contains( 'Yukarı-aşağı süzülme', $gorunum, 'süzülme hareketi' );
+		qrms_assert_contains( 'gemini-chat-overlay', $gorunum, 'önizleme penceresi ön yüz sınıfları' );
+		qrms_assert_contains( 'gemini-chat-toggle-btn', $gorunum, 'önizleme ikonu ön yüz sınıfı' );
+		qrms_assert_contains( 'qmo_chatbot_ikon_svg', $gorunum, 'ortak ikon kaynağı' );
+
+		$ikonlar = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/includes/class-ayarlar.php' );
+		qrms_assert_contains( 'viewBox="0 0 24 24"', $ikonlar, '24 viewBox' );
+		qrms_assert_contains( 'stroke="currentColor"', $ikonlar, 'currentColor stroke' );
+		qrms_assert_contains( "function qmo_chatbot_ikon_svg", $ikonlar, 'ortak svg fonksiyonu' );
+
+		$css = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/assets/css/chatbot.css' );
+		qrms_assert_contains( 'gm-attn-float', $css, 'süzülme animasyonu' );
+		qrms_assert_contains( 'prefers-reduced-motion', $css, 'hareket azaltma' );
+		qrms_assert_contains( '.gm-attn-core', $css, 'rozet kaymasın diye çekirdek' );
+
+		$js = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/assets/js/admin-chatbot.js' );
+		qrms_assert_contains( 'function render()', $js, 'tek render' );
+		qrms_assert_contains( '--gm-header-bg', $js, 'ön yüz CSS değişkeni' );
+
+		$mod = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/module.php' );
+		qrms_assert_contains( 'qmo-chatbot-front', $mod, 'ön yüz CSS kuyruğu' );
 	}
 );
 

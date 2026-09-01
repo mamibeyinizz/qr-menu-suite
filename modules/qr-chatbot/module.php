@@ -197,7 +197,19 @@ function qrms_module_qr_chatbot_admin_assets() {
 		array(),
 		QRMS_Helpers::asset_version( 'modules/_qmo-ortak/assets/css/admin.css' )
 	);
-	wp_enqueue_style( $ortak_css[0], $ortak_css[1], array( 'qmo-admin' ), $ortak_css[2] );
+
+	$admin_deps = array( 'qmo-admin' );
+	if ( 'qrms-chatbot-appearance' === $page ) {
+		wp_enqueue_style(
+			'qmo-chatbot-front',
+			QRMS_PLUGIN_URL . 'modules/qr-chatbot/assets/css/chatbot.css',
+			array(),
+			QRMS_Helpers::asset_version( 'modules/qr-chatbot/assets/css/chatbot.css' )
+		);
+		$admin_deps[] = 'qmo-chatbot-front';
+	}
+
+	wp_enqueue_style( $ortak_css[0], $ortak_css[1], $admin_deps, $ortak_css[2] );
 
 	if ( 'qrms-chatbot-quick-replies' === $page ) {
 		wp_enqueue_script(

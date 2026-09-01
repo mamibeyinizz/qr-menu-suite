@@ -1,5 +1,8 @@
 /**
  * QR Chatbot — görünüm sihirbazı ve canlı önizleme.
+ *
+ * Tek bir state nesnesi tutulur; tüm alanlar onu günceller, tek render()
+ * önizlemeyi ön yüzdeki --gm-* değişkenleri ve sınıf adlarıyla çizer.
  */
 ( function () {
 	'use strict';
@@ -12,7 +15,16 @@
 	var toastEl = document.getElementById( 'qmo-toast' );
 	var activePresetInput = document.getElementById( 'gemini_active_preset' );
 	var overrideInput = document.getElementById( 'qmo_chatbot_color_overrides' );
+	var live = document.getElementById( 'qmo-cb-live' );
+	var root = document.getElementById( 'qmo-cb-preview-root' );
 	var overrides = [];
+
+	var state = {
+		device: 'phone',
+		mode: 'closed',
+		welcomeStarted: false,
+		teaserDismissed: false
+	};
 
 	try {
 		overrides = overrideInput && overrideInput.value ? JSON.parse( overrideInput.value ) : [];
@@ -168,39 +180,143 @@
 		return el ? el.value : '';
 	}
 
+	function acikMi( name ) {
+		var cb = document.querySelector( 'input[name="' + name + '"][type="checkbox"]' );
+		return !!( cb && cb.checked );
+	}
+
+	function deger( id, yedek ) {
+		var el = document.getElementById( id );
+		return el && el.value ? el.value : ( yedek || '' );
+	}
+
 	function ikonHtml() {
-		var preset = ( document.getElementById( 'qmo_chatbot_icon_preset' ) || {} ).value || 'bubble';
-		var url = ( document.getElementById( 'gemini_bot_icon' ) || {} ).value || initial.iconUrl || '';
+		var preset = deger( 'qmo_chatbot_icon_preset', 'bubble' );
+		var url = deger( 'gemini_bot_icon', initial.iconUrl || '' );
 		if ( 'custom' === preset && url ) {
-			return '<img src="' + url.replace( /"/g, '' ) + '" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover;" />';
+			return '<img src="' + url.replace( /"/g, '' ) + '" alt="" />';
 		}
 		return icons[ preset ] || cfg.defaultIcon || '';
 	}
 
-	function onizlemeGuncelle() {
-		var wrap = document.getElementById( 'qmo-preview-wrap' );
-		if ( ! wrap ) {
+	function renkHaritasi() {
+		return {
+			'--gm-main': renk( 'gemini_main_color' ),
+			'--gm-toggle-bg': deger( 'qmo_chatbot_icon_bg_color', renk( 'gemini_toggle_bg_color' ) ),
+			'--gm-toggle-text': deger( 'qmo_chatbot_icon_color', renk( 'gemini_toggle_text_color' ) ),
+			'--gm-header-bg': renk( 'gemini_header_bg_color' ),
+			'--gm-header-text': renk( 'gemini_header_text_color' ),
+			'--gm-header-icon': renk( 'gemini_header_icon_color' ),
+			'--gm-text': renk( 'gemini_text_color' ),
+			'--gm-border': renk( 'gemini_border_color' ),
+			'--gm-chat-bg': renk( 'gemini_chat_bg_color' ),
+			'--gm-user-bg': renk( 'gemini_user_msg_color' ),
+			'--gm-user-text': renk( 'gemini_user_msg_text_color' ),
+			'--gm-bot-bg': renk( 'gemini_bot_msg_color' ),
+			'--gm-bot-text': renk( 'gemini_bot_msg_text_color' ),
+			'--gm-input-bg': renk( 'gemini_input_bg_color' ),
+			'--gm-input-area-bg': renk( 'gemini_input_area_bg_color' ),
+			'--gm-send-bg': renk( 'gemini_send_btn_bg_color' ),
+			'--gm-send-icon': renk( 'gemini_send_btn_icon_color' )
+		};
+	}
+
+	function degiskenYaz( el, ad, degerVar ) {
+		if ( el ) {
+			el.style.setProperty( ad, degerVar );
+		}
+	}
+
+	function render() {
+		if ( ! live || ! root ) {
 			return;
 		}
 
 		anaRenkleriUygula();
 
-		var header = document.getElementById( 'qmo-preview-header' );
-		var log = document.getElementById( 'qmo-preview-log' );
-		var inputArea = document.getElementById( 'qmo-preview-input-area' );
-		var botBubble = document.getElementById( 'qmo-preview-bot-bubble' );
-		var userBubble = document.getElementById( 'qmo-preview-user-bubble' );
-		var input = document.getElementById( 'qmo-preview-input' );
-		var send = document.getElementById( 'qmo-preview-send' );
-		var title = document.getElementById( 'qmo-preview-title' );
-		var toggle = document.getElementById( 'qmo-preview-toggle' );
-		var live = document.getElementById( 'qmo-cb-live' );
-		var badge = document.getElementById( 'qmo-preview-badge' );
-		var teaser = document.getElementById( 'qmo-preview-teaser' );
-		var welcome = document.getElementById( 'qmo-preview-welcome' );
+		var overlay = root.querySelector( '.gemini-chat-overlay' );
+		var toggle = root.querySelector( '.gemini-chat-toggle-btn' );
+		var teaser = root.querySelector( '.gemini-teaser' );
+		var badge = root.querySelector( '.gemini-unread-badge' );
+		var welcome = root.querySelector( '.gemini-welcome-screen' );
+		var log = root.querySelector( '.gemini-chat-log' );
+		var chips = root.querySelector( '.gemini-quick-replies' );
+		var inputArea = root.querySelector( '.gemini-chat-input-area' );
+		var input = root.querySelector( '.gemini-chat-input' );
+		var botBubble = root.querySelector( '[data-preview-welcome]' );
+		var kose = secili( 'qmo_chatbot_radius_preset' ) || 'soft';
+		var radiusPx = ( cfg.radii && cfg.radii[ kose ] ) ? cfg.radii[ kose ] : 16;
+		var boyut = secili( 'qmo_chatbot_icon_size_preset' ) || 'medium';
+		var iconPx = ( cfg.sizes && cfg.sizes[ boyut ] ) ? cfg.sizes[ boyut ] : 48;
+		var off = secili( 'qmo_chatbot_offset' ) || 'mid';
+		var bottomPx = ( cfg.offsets && cfg.offsets[ off ] ) ? cfg.offsets[ off ] : 108;
+		var genis = secili( 'qmo_chatbot_window_width' ) || 'normal';
+		var windowPx = ( cfg.widths && cfg.widths[ genis ] ) ? cfg.widths[ genis ] : 380;
+		var konum = secili( 'qmo_chatbot_position' ) || 'right';
+		var hareket = secili( 'qmo_chatbot_attention' ) || 'none';
+		var attnMap = { pulse: 'gm-attn-pulse', shake: 'gm-attn-shake', float: 'gm-attn-float' };
+		var welcomeOn = acikMi( 'qmo_chatbot_welcome_screen' );
+		var teaserOn = acikMi( 'qmo_chatbot_teaser' );
+		var badgeOn = acikMi( 'qmo_chatbot_badge' );
+		var acik = 'open' === state.mode;
+		var girisGoster = acik && welcomeOn && ! state.welcomeStarted;
+		var html = ikonHtml();
+		var vars = renkHaritasi();
+		var sizeInput = document.getElementById( 'gemini_icon_size' );
+		var radiusInput = document.getElementById( 'gemini_border_radius' );
 
-		if ( title ) {
-			title.textContent = initial.botName || 'Asistan';
+		if ( sizeInput ) {
+			sizeInput.value = iconPx;
+		}
+		if ( radiusInput ) {
+			radiusInput.value = radiusPx;
+		}
+
+		if ( 'phone' === state.device ) {
+			windowPx = Math.min( windowPx, 324 );
+		}
+
+		[ root, overlay ].forEach( function ( el ) {
+			if ( ! el ) {
+				return;
+			}
+			Object.keys( vars ).forEach( function ( ad ) {
+				degiskenYaz( el, ad, vars[ ad ] );
+			} );
+			degiskenYaz( el, '--gm-radius', radiusPx + 'px' );
+			degiskenYaz( el, '--gm-icon-size', iconPx + 'px' );
+			degiskenYaz( el, '--gm-bottom', bottomPx + 'px' );
+			degiskenYaz( el, '--gm-side', '16px' );
+			degiskenYaz( el, '--gm-window', windowPx + 'px' );
+			degiskenYaz( el, '--gm-z', '2' );
+			degiskenYaz( el, '--gm-toggle-pad', '0' );
+			el.classList.toggle( 'gm-pos-left', 'left' === konum );
+			el.classList.toggle( 'gm-pos-right', 'left' !== konum );
+		} );
+
+		live.classList.toggle( 'is-phone', 'phone' === state.device );
+		live.classList.toggle( 'is-desktop', 'desktop' === state.device );
+		live.classList.toggle( 'is-open', acik );
+		live.classList.toggle( 'is-closed', ! acik );
+
+		root.querySelectorAll( '[data-preview-icon]' ).forEach( function ( el ) {
+			el.innerHTML = html;
+		} );
+		root.querySelectorAll( '[data-preview-bot-name]' ).forEach( function ( el ) {
+			el.textContent = initial.botName || 'Asistan';
+		} );
+
+		var teaserText = root.querySelector( '[data-preview-teaser-text]' );
+		if ( teaserText ) {
+			teaserText.textContent = deger( 'qmo_chatbot_teaser_text', '' );
+		}
+		var welcomeText = root.querySelector( '[data-preview-welcome-text]' );
+		if ( welcomeText ) {
+			welcomeText.textContent = deger( 'qmo_chatbot_welcome_intro', '' );
+		}
+		var welcomeBtn = root.querySelector( '[data-preview-welcome-btn]' );
+		if ( welcomeBtn ) {
+			welcomeBtn.textContent = deger( 'qmo_chatbot_welcome_btn', 'Sohbete Başla' );
 		}
 		if ( botBubble ) {
 			botBubble.textContent = initial.welcome || 'Merhaba!';
@@ -209,107 +325,32 @@
 			input.value = initial.placeholder || 'Bir şeyler sorun...';
 		}
 
-		var html = ikonHtml();
-		[ 'qmo-preview-icon', 'qmo-preview-header-icon', 'qmo-preview-welcome-icon' ].forEach( function ( id ) {
-			var el = document.getElementById( id );
-			if ( el ) {
-				el.innerHTML = html;
+		if ( toggle ) {
+			toggle.classList.remove( 'gm-attn-pulse', 'gm-attn-shake', 'gm-attn-float' );
+			if ( attnMap[ hareket ] ) {
+				toggle.classList.add( attnMap[ hareket ] );
 			}
-		} );
-
-		if ( header ) {
-			header.style.background = renk( 'gemini_header_bg_color' );
-			header.style.color = renk( 'gemini_header_text_color' );
+		}
+		if ( badge ) {
+			badge.hidden = ! badgeOn;
+		}
+		if ( teaser ) {
+			teaser.hidden = ! teaserOn || acik || state.teaserDismissed;
+		}
+		if ( overlay ) {
+			overlay.classList.toggle( 'gemini-acik', acik );
+		}
+		if ( welcome ) {
+			welcome.hidden = ! girisGoster;
 		}
 		if ( log ) {
-			log.style.background = renk( 'gemini_chat_bg_color' );
+			log.hidden = ! acik || girisGoster;
 		}
-		if ( botBubble ) {
-			botBubble.style.background = renk( 'gemini_bot_msg_color' );
-			botBubble.style.color = renk( 'gemini_bot_msg_text_color' );
-			botBubble.style.borderColor = renk( 'gemini_border_color' );
-		}
-		if ( userBubble ) {
-			userBubble.style.background = renk( 'gemini_user_msg_color' );
-			userBubble.style.color = renk( 'gemini_user_msg_text_color' );
-			userBubble.style.borderColor = renk( 'gemini_border_color' );
+		if ( chips ) {
+			chips.hidden = ! acik || girisGoster;
 		}
 		if ( inputArea ) {
-			inputArea.style.background = renk( 'gemini_input_area_bg_color' );
-			inputArea.style.borderColor = renk( 'gemini_border_color' );
-		}
-		if ( input ) {
-			input.style.background = renk( 'gemini_input_bg_color' );
-			input.style.color = renk( 'gemini_text_color' );
-			input.style.borderColor = renk( 'gemini_border_color' );
-		}
-		if ( send ) {
-			send.style.background = renk( 'gemini_send_btn_bg_color' );
-			send.style.color = renk( 'gemini_send_btn_icon_color' );
-		}
-
-		var kose = secili( 'qmo_chatbot_radius_preset' ) || 'soft';
-		var radiusPx = ( cfg.radii && cfg.radii[ kose ] ) ? cfg.radii[ kose ] : 16;
-		var sizeKey = document.getElementById( 'gemini_border_radius' );
-		if ( sizeKey ) {
-			sizeKey.value = radiusPx;
-		}
-		wrap.style.borderRadius = radiusPx + 'px';
-
-		var boyut = secili( 'qmo_chatbot_icon_size_preset' ) || 'medium';
-		var px = ( cfg.sizes && cfg.sizes[ boyut ] ) ? cfg.sizes[ boyut ] : 48;
-		var sizeInput = document.getElementById( 'gemini_icon_size' );
-		if ( sizeInput ) {
-			sizeInput.value = px;
-		}
-		if ( toggle ) {
-			toggle.style.width = px + 'px';
-			toggle.style.height = px + 'px';
-			toggle.style.background = ( document.getElementById( 'qmo_chatbot_icon_bg_color' ) || {} ).value || '#8a2be2';
-			toggle.style.color = ( document.getElementById( 'qmo_chatbot_icon_color' ) || {} ).value || '#ffffff';
-			toggle.style.left = 'left' === secili( 'qmo_chatbot_position' ) ? '16px' : 'auto';
-			toggle.style.right = 'left' === secili( 'qmo_chatbot_position' ) ? 'auto' : '16px';
-			var off = secili( 'qmo_chatbot_offset' ) || 'mid';
-			toggle.style.bottom = ( ( cfg.offsets && cfg.offsets[ off ] ) ? cfg.offsets[ off ] : 108 ) + 'px';
-		}
-
-		if ( badge ) {
-			badge.style.display = ( document.querySelector( 'input[name="qmo_chatbot_badge"]:checked' ) && 'yes' === document.querySelector( 'input[name="qmo_chatbot_badge"]:checked' ).value ) ||
-				( document.querySelector( 'input[name="qmo_chatbot_badge"][type="checkbox"]' ) && document.querySelector( 'input[name="qmo_chatbot_badge"][type="checkbox"]' ).checked )
-				? 'block' : 'none';
-		}
-
-		if ( teaser ) {
-			var teaserOn = document.querySelector( 'input[name="qmo_chatbot_teaser"][type="checkbox"]' );
-			teaser.style.display = teaserOn && teaserOn.checked ? 'block' : 'none';
-			var teaserText = document.getElementById( 'qmo_chatbot_teaser_text' );
-			if ( teaserText ) {
-				teaser.textContent = teaserText.value;
-			}
-		}
-
-		if ( welcome ) {
-			var wOn = document.querySelector( 'input[name="qmo_chatbot_welcome_screen"][type="checkbox"]' );
-			welcome.classList.toggle( 'is-on', !!( wOn && wOn.checked ) );
-			var wText = document.getElementById( 'qmo_chatbot_welcome_intro' );
-			var wBtn = document.getElementById( 'qmo_chatbot_welcome_btn' );
-			var wName = document.getElementById( 'qmo-preview-welcome-name' );
-			var wP = document.getElementById( 'qmo-preview-welcome-text' );
-			var wB = document.getElementById( 'qmo-preview-welcome-btn' );
-			if ( wName ) {
-				wName.textContent = initial.botName || 'Asistan';
-			}
-			if ( wP && wText ) {
-				wP.textContent = wText.value;
-			}
-			if ( wB && wBtn ) {
-				wB.textContent = wBtn.value;
-			}
-		}
-
-		if ( live ) {
-			var genis = secili( 'qmo_chatbot_window_width' ) || 'normal';
-			wrap.style.maxWidth = ( ( cfg.widths && cfg.widths[ genis ] ) ? cfg.widths[ genis ] : 380 ) + 'px';
+			inputArea.hidden = ! acik || girisGoster;
 		}
 	}
 
@@ -342,8 +383,27 @@
 				badge.remove();
 			}
 		} );
-		onizlemeGuncelle();
+		render();
 		toast( ( cfg.strings && cfg.strings.presetApplied ) || 'Şablon uygulandı.' );
+	}
+
+	function setMode( mode ) {
+		state.mode = mode;
+		if ( 'closed' === mode ) {
+			state.welcomeStarted = false;
+		}
+		document.querySelectorAll( '[data-preview-state]' ).forEach( function ( b ) {
+			b.classList.toggle( 'is-active', b.getAttribute( 'data-preview-state' ) === mode );
+		} );
+		render();
+	}
+
+	function setDevice( device ) {
+		state.device = device;
+		document.querySelectorAll( '[data-preview-device]' ).forEach( function ( b ) {
+			b.classList.toggle( 'is-active', b.getAttribute( 'data-preview-device' ) === device );
+		} );
+		render();
 	}
 
 	document.querySelectorAll( '.qmo-cb-step' ).forEach( function ( btn ) {
@@ -355,33 +415,52 @@
 			document.querySelectorAll( '.qmo-cb-panel' ).forEach( function ( p ) {
 				p.classList.toggle( 'is-active', p.getAttribute( 'data-step-panel' ) === step );
 			} );
+			render();
 		} );
 	} );
 
 	document.querySelectorAll( '[data-preview-device]' ).forEach( function ( btn ) {
 		btn.addEventListener( 'click', function () {
-			document.querySelectorAll( '[data-preview-device]' ).forEach( function ( b ) {
-				b.classList.toggle( 'is-active', b === btn );
-			} );
-			var live = document.getElementById( 'qmo-cb-live' );
-			if ( live ) {
-				live.classList.toggle( 'is-phone', 'phone' === btn.getAttribute( 'data-preview-device' ) );
-			}
+			setDevice( btn.getAttribute( 'data-preview-device' ) );
 		} );
 	} );
 
 	document.querySelectorAll( '[data-preview-state]' ).forEach( function ( btn ) {
 		btn.addEventListener( 'click', function () {
-			document.querySelectorAll( '[data-preview-state]' ).forEach( function ( b ) {
-				b.classList.toggle( 'is-active', b === btn );
-			} );
-			var live = document.getElementById( 'qmo-cb-live' );
-			if ( live ) {
-				live.classList.toggle( 'is-closed', 'closed' === btn.getAttribute( 'data-preview-state' ) );
-				live.classList.toggle( 'is-open', 'open' === btn.getAttribute( 'data-preview-state' ) );
-			}
+			setMode( btn.getAttribute( 'data-preview-state' ) );
 		} );
 	} );
+
+	if ( root ) {
+		var toggleBtn = root.querySelector( '.gemini-chat-toggle-btn' );
+		var closeBtn = root.querySelector( '.gemini-chat-close' );
+		var startBtn = root.querySelector( '.gemini-welcome-start' );
+		var teaserClose = root.querySelector( '.gemini-teaser-kapat' );
+
+		if ( toggleBtn ) {
+			toggleBtn.addEventListener( 'click', function () {
+				setMode( 'open' === state.mode ? 'closed' : 'open' );
+			} );
+		}
+		if ( closeBtn ) {
+			closeBtn.addEventListener( 'click', function () {
+				setMode( 'closed' );
+			} );
+		}
+		if ( startBtn ) {
+			startBtn.addEventListener( 'click', function () {
+				state.welcomeStarted = true;
+				state.mode = 'open';
+				render();
+			} );
+		}
+		if ( teaserClose ) {
+			teaserClose.addEventListener( 'click', function () {
+				state.teaserDismissed = true;
+				render();
+			} );
+		}
+	}
 
 	document.querySelectorAll( '.qmo-cb-icon-tile' ).forEach( function ( btn ) {
 		btn.addEventListener( 'click', function () {
@@ -398,7 +477,7 @@
 			if ( custom ) {
 				custom.classList.toggle( 'is-open', 'custom' === slug );
 			}
-			onizlemeGuncelle();
+			render();
 		} );
 	} );
 
@@ -413,7 +492,7 @@
 			if ( activePresetInput ) {
 				activePresetInput.value = '';
 			}
-			onizlemeGuncelle();
+			render();
 		} );
 	} );
 
@@ -433,7 +512,7 @@
 			if ( code ) {
 				code.textContent = input.value;
 			}
-			onizlemeGuncelle();
+			render();
 		} );
 	} );
 
@@ -462,7 +541,7 @@
 			if ( overrideInput ) {
 				overrideInput.value = '[]';
 			}
-			onizlemeGuncelle();
+			render();
 		} );
 	}
 
@@ -480,16 +559,24 @@
 				var attachment = frame.state().get( 'selection' ).first().toJSON();
 				iconInput.value = attachment.url || '';
 				initial.iconUrl = iconInput.value;
-				onizlemeGuncelle();
+				render();
 			} );
 			frame.open();
 		} );
 	}
 
 	document.querySelectorAll( '.qmo-cb-wizard input, .qmo-cb-wizard textarea' ).forEach( function ( el ) {
-		el.addEventListener( 'input', onizlemeGuncelle );
-		el.addEventListener( 'change', onizlemeGuncelle );
+		el.addEventListener( 'input', render );
+		el.addEventListener( 'change', function () {
+			if ( 'qmo_chatbot_teaser' === el.name ) {
+				state.teaserDismissed = false;
+			}
+			if ( 'qmo_chatbot_welcome_screen' === el.name ) {
+				state.welcomeStarted = false;
+			}
+			render();
+		} );
 	} );
 
-	onizlemeGuncelle();
+	render();
 }() );

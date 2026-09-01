@@ -74,7 +74,7 @@
 	align-items: flex-start;
 	display: grid;
 	gap: 24px;
-	grid-template-columns: minmax(0, 1fr) 360px;
+	grid-template-columns: minmax(0, 1fr) minmax(340px, 520px);
 }
 
 .qmo-cb-steps {
@@ -138,10 +138,19 @@
 }
 
 .qmo-cb-icon-tile-svg {
-	display: block;
+	color: #1d2327;
+	display: flex;
+	align-items: center;
+	justify-content: center;
 	height: 32px;
 	margin: 0 auto 8px;
 	width: 32px;
+}
+
+.qmo-cb-icon-tile-svg svg {
+	display: block;
+	height: 24px;
+	width: 24px;
 }
 
 .qmo-cb-custom-icon {
@@ -206,113 +215,80 @@
 }
 
 .qmo-cb-live {
-	background: #f0f0f1;
+	--gm-z: 2;
+	background: #e8eaed;
 	border: 1px solid #dcdcde;
 	border-radius: 18px;
-	min-height: 420px;
+	height: 520px;
 	overflow: hidden;
-	padding: 16px;
+	padding: 0;
 	position: relative;
+	transition: width 0.2s ease;
 }
 
 .qmo-cb-live.is-phone {
-	max-width: 320px;
+	width: 340px;
+	max-width: 100%;
+}
+
+.qmo-cb-live.is-desktop {
+	width: 520px;
+	max-width: 100%;
 }
 
 .qmo-cb-live-stage {
-	min-height: 380px;
+	height: 100%;
 	position: relative;
 }
 
-.qmo-cb-live-toggle {
-	align-items: center;
-	background: #8a2be2;
-	border-radius: 50%;
-	bottom: 16px;
-	color: #fff;
-	display: flex;
-	height: 52px;
-	justify-content: center;
-	position: absolute;
-	right: 16px;
-	width: 52px;
-	z-index: 3;
-}
-
-.qmo-cb-live-badge {
-	background: #d63638;
-	border-radius: 50%;
-	color: #fff;
-	font-size: 10px;
-	font-weight: 700;
-	height: 14px;
-	line-height: 14px;
-	position: absolute;
-	right: -2px;
-	text-align: center;
-	top: -2px;
-	width: 14px;
-}
-
-.qmo-cb-live-teaser {
-	background: #fff;
-	border: 1px solid #ddd;
-	border-radius: 12px;
-	bottom: 78px;
-	font-size: 12px;
-	max-width: 170px;
-	padding: 8px 10px;
-	position: absolute;
-	right: 16px;
-}
-
-.qmo-cb-live.is-open .qmo-cb-live-toggle,
-.qmo-cb-live.is-open .qmo-cb-live-teaser {
-	display: none;
-}
-
-.qmo-cb-live.is-closed #qmo-preview-wrap {
-	display: none;
-}
-
-#qmo-preview-wrap {
-	background: #fff;
-	border: 1px solid #ccc;
-	border-radius: 16px;
-	display: flex;
-	flex-direction: column;
-	max-height: 420px;
-	overflow: hidden;
-}
-
-.qmo-cb-live-welcome {
-	display: none;
-	padding: 20px 16px;
-	text-align: center;
-}
-
-.qmo-cb-live-welcome.is-on {
+.qmo-cb-live .gemini-shortcode-container,
+.qmo-cb-live .gemini-chat-overlay {
 	display: block;
+	font-size: 14px;
+	height: 100%;
+	z-index: 1;
 }
 
-.qmo-cb-live-welcome.is-on + #qmo-preview-log,
-.qmo-cb-live-welcome.is-on + #qmo-preview-log + #qmo-preview-chips {
+.qmo-cb-live .gemini-teaser,
+.qmo-cb-live .gemini-chat-toggle-btn,
+.qmo-cb-live .gemini-chat-overlay {
+	position: absolute;
+}
+
+.qmo-cb-live .gemini-chat-overlay {
 	display: none;
+	height: calc(100% - var(--gm-icon-size, 48px) - var(--gm-bottom, 108px) - 20px);
+	max-height: none;
+	width: min(var(--gm-window), calc(100% - 24px));
 }
 
-.qmo-cb-live-chips {
+.qmo-cb-live.is-phone .gemini-chat-overlay {
+	left: 8px;
+	right: 8px;
+	width: calc(100% - 16px);
+}
+
+.qmo-cb-live.is-phone .gemini-chat-overlay.gm-pos-left {
+	left: 8px;
+	right: 8px;
+}
+
+.qmo-cb-live.is-open .gemini-chat-overlay.gemini-acik {
 	display: flex;
-	flex-wrap: wrap;
-	gap: 6px;
-	padding: 0 12px 8px;
 }
 
-.qmo-cb-live-chips span {
-	background: #fff;
-	border: 1px solid #ddd;
-	border-radius: 999px;
-	font-size: 11px;
-	padding: 4px 8px;
+.qmo-cb-live.is-open .gemini-teaser {
+	display: none !important;
+}
+
+.qmo-cb-live .gemini-chat-input {
+	box-shadow: none;
+	min-height: 0;
+	width: auto;
+}
+
+.qmo-cb-live .gemini-quick-reply {
+	pointer-events: none;
 }
 
 .qmo-cb-drag-handle {
@@ -358,12 +334,6 @@
 	position: absolute;
 	right: 12px;
 	top: 8px;
-}
-
-#qmo-preview-header-icon,
-#qmo-preview-welcome-icon {
-	height: 28px;
-	width: 28px;
 }
 
 @media (max-width: 1100px) {

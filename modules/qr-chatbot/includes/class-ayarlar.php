@@ -139,40 +139,40 @@ function qmo_chatbot_genislik_haritasi() {
  * @return array<string,array{label:string,svg:string}>
  */
 function qmo_chatbot_hazir_ikonlar() {
-	$ortak = 'viewBox="0 0 24 24" width="100%" height="100%" fill="currentColor" aria-hidden="true"';
+	$ortak = 'viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"';
 
 	return array(
 		'bubble'   => array(
 			'label' => __( 'Sohbet balonu', 'qrms' ),
-			'svg'   => '<svg ' . $ortak . '><path d="M4 4h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H8l-4 4V6a2 2 0 0 1 2-2zm3 5h10v2H7V9zm0 4h7v2H7v-2z"/></svg>',
+			'svg'   => '<svg ' . $ortak . '><path d="M7.5 4.5h9A2.5 2.5 0 0 1 19 7v7a2.5 2.5 0 0 1-2.5 2.5H11l-4.5 3v-3H7.5A2.5 2.5 0 0 1 5 14V7A2.5 2.5 0 0 1 7.5 4.5z"/><path d="M8.5 9h7M8.5 12.5h4.5"/></svg>',
 		),
 		'waiter'   => array(
 			'label' => __( 'Garson', 'qrms' ),
-			'svg'   => '<svg ' . $ortak . '><path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4zm0 2c-3.3 0-8 1.7-8 5v1h16v-1c0-3.3-4.7-5-8-5zm7.5-7.2.9-1.6 1.7.9-.9 1.6A7 7 0 0 1 19 12h-2a5 5 0 0 0 2.5-5.2zM4.5 4.8 3.6 3.2 1.9 4.1l.9 1.6A7 7 0 0 0 5 12H7A5 5 0 0 1 4.5 6.8z"/></svg>',
+			'svg'   => '<svg ' . $ortak . '><circle cx="12" cy="5.5" r="2.2"/><path d="M8 20.5v-1.4c0-2.2 1.8-4 4-4s4 1.8 4 4v1.4"/><path d="M4.5 11h15"/><path d="M6 11v2.1A1.6 1.6 0 0 0 7.6 14.7h8.8A1.6 1.6 0 0 0 18 13.1V11"/></svg>',
 		),
 		'chef'     => array(
 			'label' => __( 'Şef şapkası', 'qrms' ),
-			'svg'   => '<svg ' . $ortak . '><path d="M8 10a4 4 0 0 1 8 0h1a3 3 0 0 1 0 6H7a3 3 0 0 1 0-6h1zm-1 8h10v3H7v-3z"/></svg>',
+			'svg'   => '<svg ' . $ortak . '><path d="M7.2 11c-1.3 0-2.4-1.1-2.4-2.5 0-1.3 1-2.4 2.3-2.5.5-1.6 2-2.7 3.7-2.7 1.4 0 2.6.7 3.3 1.8.5-.3 1.1-.5 1.8-.5 1.5 0 2.7 1.2 2.7 2.8 0 1.4-1 2.5-2.4 2.8"/><path d="M7 11h10v3.2H7z"/><path d="M8 14.2h8V19H8z"/></svg>',
 		),
 		'star'     => array(
 			'label' => __( 'Yıldız', 'qrms' ),
-			'svg'   => '<svg ' . $ortak . '><path d="M12 2.5 14.8 9l6.7.6-5.1 4.4 1.6 6.5L12 16.8 6 20.5l1.6-6.5L2.5 9.6 9.2 9z"/></svg>',
+			'svg'   => '<svg ' . $ortak . '><path d="M12 3.6 14.1 8l4.9.7-3.5 3.5.8 4.9L12 15.4 7.7 17.1l.8-4.9L5 8.7 9.9 8z"/></svg>',
 		),
 		'coffee'   => array(
 			'label' => __( 'Kahve fincanı', 'qrms' ),
-			'svg'   => '<svg ' . $ortak . '><path d="M4 5h12v7a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5V5zm12 2h2.5A2.5 2.5 0 0 1 21 9.5 2.5 2.5 0 0 1 18.5 12H16V7zM5 20h12v2H5v-2z"/></svg>',
+			'svg'   => '<svg ' . $ortak . '><path d="M5 8.5h11v5.2A3.8 3.8 0 0 1 12.2 17.5H8.8A3.8 3.8 0 0 1 5 13.7z"/><path d="M16 10h1.7A2.1 2.1 0 0 1 19.8 12.1 2.1 2.1 0 0 1 17.7 14.2H16"/><path d="M7.5 20h9"/><path d="M8.5 4.2c.3.5.3 1.1 0 1.6M11.5 3.8c.3.5.3 1.1 0 1.6M14.5 4.2c.3.5.3 1.1 0 1.6"/></svg>',
 		),
 		'fork'     => array(
 			'label' => __( 'Çatal-bıçak', 'qrms' ),
-			'svg'   => '<svg ' . $ortak . '><path d="M5 2h2v6H5V2zm3 0h2v6H8V2zm-3 7h5v2H9v11H7V11H5V9zm10-7c2 0 3 1.5 3 3.5V11h-2V4.5c0-.8-.4-1.5-1-1.5s-1 .7-1 1.5V22h-2V2.5C12 2.2 13.2 2 15 2z"/></svg>',
+			'svg'   => '<svg ' . $ortak . '><path d="M6 3.5v6M8.5 3.5v6M11 3.5v6M8.5 9.5v11.5M6 9.5h5"/><path d="M16 3.5c1.4 0 2.3 1.2 2.3 2.8V11H16V3.5z"/><path d="M16 11v10"/></svg>',
 		),
 		'question' => array(
 			'label' => __( 'Soru işareti', 'qrms' ),
-			'svg'   => '<svg ' . $ortak . '><path d="M12 2a8 8 0 0 1 8 8c0 3.2-2 5.2-4.2 6.4-.9.5-1.3 1-1.3 1.6v.5h-5v-.7c0-2 1.5-3.3 3.1-4.2C14.4 12.8 15 11.8 15 10a3 3 0 1 0-6 0H6a6 6 0 0 1 6-8zm-2 16h4v4h-4v-4z"/></svg>',
+			'svg'   => '<svg ' . $ortak . '><circle cx="12" cy="12" r="8.25"/><path d="M9.6 9.5a2.5 2.5 0 1 1 3.6 2.2c-.7.5-1.2 1-1.2 1.9V14.4"/><circle cx="12" cy="17.1" r="0.85" fill="currentColor" stroke="none"/></svg>',
 		),
 		'bell'     => array(
 			'label' => __( 'Zil', 'qrms' ),
-			'svg'   => '<svg ' . $ortak . '><path d="M12 2a6 6 0 0 1 6 6v5l2 3H4l2-3V8a6 6 0 0 1 6-6zm-2 16a2 2 0 0 0 4 0H10z"/></svg>',
+			'svg'   => '<svg ' . $ortak . '><path d="M6.5 17h11"/><path d="M8 17V10a4 4 0 1 1 8 0v7"/><path d="M10.4 17a1.6 1.6 0 0 0 3.2 0"/><path d="M12 4.2V6"/></svg>',
 		),
 	);
 }
