@@ -10,31 +10,82 @@ defined( 'ABSPATH' ) || exit;
 trait QRMGM_Frontend_Trait {
 
 	public function maybe_frontend_assets(): void {
-		global $post;
-		$has_shortcode = is_a( $post, 'WP_Post' ) && has_shortcode( $post->post_content, 'qrmenu_gallery' );
-		if ( ! $has_shortcode ) {
+		wp_register_style( 'qrmgm-front', false );
+		wp_register_script( 'qrmgm-front', false, [], QRMGM_VERSION, true );
+	}
+
+	/**
+	 * Kısa kod render edilirken CSS/JS'i bir kez enqueue eder.
+	 *
+	 * Elementor gibi oluşturucularda kısa kod post_content'te görünmez;
+	 * bu yüzden varlıklar has_shortcode ile değil, render sırasında basılır.
+	 */
+	private function ensure_frontend_assets(): void {
+		static $done = false;
+		if ( $done ) {
 			return;
 		}
+		$done = true;
 
 		$s = $this->get_settings();
 
 		wp_register_style( 'qrmgm-front', false );
+		wp_register_script( 'qrmgm-front', false, [], QRMGM_VERSION, true );
+
 		wp_enqueue_style( 'qrmgm-front' );
 		wp_add_inline_style( 'qrmgm-front', $this->frontend_css( $s ) );
 
-		wp_register_script( 'qrmgm-front', false, [], QRMGM_VERSION, true );
 		wp_enqueue_script( 'qrmgm-front' );
 		wp_add_inline_script( 'qrmgm-front', $this->frontend_js( $s ) );
 	}
 
 	public function render_shortcode( $atts ): string {
-		$atts = shortcode_atts( [ 'section' => '' ], $atts, 'qrmenu_gallery' );
-		$s    = $this->get_settings();
+		$this->ensure_frontend_assets();
 
-		$dil    = function_exists( 'rma_get_current_lang' ) ? rma_get_current_lang() : 'tr';
-		$surum  = function_exists( 'rma_ceviri_onbellek_surumu' ) ? rma_ceviri_onbellek_surumu() : 0;
-		$cache_key = 'qrmgm_gallery_' . md5( $atts['section'] . '|' . $dil . '|' . $surum );
-		$cached    = get_transient( $cache_key );
+		$atts = shortcode_atts(
+			[
+				'section' => '',
+				'columns' => '',
+				'ratio'   => '',
+				'limit'   => 0,
+				'filter'  => '',
+			],
+			$atts,
+			'qrmenu_gallery'
+		);
+
+		$columns = '';
+		if ( '' !== $atts['columns'] ) {
+			$columns = (string) min( 6, max( 1, absint( $atts['columns'] ) ) );
+		}
+
+		$ratio     = '';
+		$ratio_raw = sanitize_text_field( $atts['ratio'] );
+		if ( preg_match( '/^\d{1,2}\s*\/\s*\d{1,2}$/', $ratio_raw ) ) {
+			$ratio = preg_replace( '/\s+/', '', $ratio_raw );
+		}
+
+		$limit  = absint( $atts['limit'] );
+		$filter = sanitize_key( $atts['filter'] );
+		if ( 'yes' !== $filter && 'no' !== $filter ) {
+			$filter = '';
+		}
+
+		$s = $this->get_settings();
+
+		$dil       = function_exists( 'rma_get_current_lang' ) ? rma_get_current_lang() : 'tr';
+		$surum     = function_exists( 'rma_ceviri_onbellek_surumu' ) ? rma_ceviri_onbellek_surumu() : 0;
+		$cache_key = 'qrmgm_gallery_' . md5( implode( '|', [
+			'v2',
+			$atts['section'],
+			$columns,
+			$ratio,
+			(string) $limit,
+			$filter,
+			$dil,
+			(string) $surum,
+		] ) );
+		$cached = get_transient( $cache_key );
 		if ( false !== $cached ) {
 			return $cached;
 		}
@@ -59,10 +110,25 @@ trait QRMGM_Frontend_Trait {
 			return '<p>' . esc_html( $bos ) . '</p>';
 		}
 
+		$show_filter = (bool) $s['filter_bar'];
+		if ( 'no' === $filter ) {
+			$show_filter = false;
+		} elseif ( 'yes' === $filter ) {
+			$show_filter = true;
+		}
+
+		$css_vars = [];
+		if ( '' !== $columns ) {
+			$css_vars[] = '--qrmgm-cols-desktop:' . $columns;
+		}
+		if ( '' !== $ratio ) {
+			$css_vars[] = '--qrmgm-ratio:' . $ratio;
+		}
+
 		ob_start();
 		?>
-		<div class="qrmgm-gallery" data-lightbox="<?php echo esc_attr( $s['lightbox'] ); ?>">
-			<?php if ( $s['filter_bar'] && count( $sections ) > 1 ) : ?>
+		<div class="qrmgm-gallery" data-lightbox="<?php echo esc_attr( $s['lightbox'] ); ?>"<?php if ( $css_vars ) : ?> style="<?php echo esc_attr( implode( ';', $css_vars ) ); ?>"<?php endif; ?>>
+			<?php if ( $show_filter && count( $sections ) > 1 ) : ?>
 				<div class="qrmgm-filter-bar">
 					<button type="button" class="qrmgm-filter-btn is-active" data-filter="all"><?php
 						$tumu = function_exists( 'rma_ceviri_modul' ) ? rma_ceviri_modul( 'gallery', 'Tümü' ) : 'Tümü';
@@ -74,7 +140,7 @@ trait QRMGM_Frontend_Trait {
 				</div>
 			<?php endif; ?>
 
-			<div class="qrmgm-masonry-grid" style="column-count:var(--qrmgm-cols-desktop);">
+			<div class="qrmgm-grid">
 				<?php
 				$counter = 0;
 				foreach ( $sections as $sec ) :
@@ -87,6 +153,9 @@ trait QRMGM_Frontend_Trait {
 						'posts_per_page' => -1,
 					] );
 					foreach ( $images as $img ) :
+						if ( $limit > 0 && $counter >= $limit ) {
+							break;
+						}
 						$att_id = (int) get_post_meta( $img->ID, '_qrmgm_attachment_id', true );
 						if ( ! $att_id ) {
 							continue;
@@ -97,10 +166,10 @@ trait QRMGM_Frontend_Trait {
 						$alt        = get_post_meta( $img->ID, '_qrmgm_alt', true ) ?: $img->post_title;
 						$desc       = get_post_meta( $img->ID, '_qrmgm_desc', true );
 						$icon       = get_post_meta( $sec->ID, '_qrmgm_icon', true );
-						$counter++;
 						if ( ! $src ) {
 							continue;
 						}
+						$counter++;
 						[ $url, $width, $height ] = $src;
 						?>
 						<figure class="qrmgm-item" data-section="<?php echo esc_attr( $sec->post_name ); ?>" data-index="<?php echo esc_attr( $counter ); ?>">
@@ -124,6 +193,9 @@ trait QRMGM_Frontend_Trait {
 						</figure>
 						<?php
 					endforeach;
+					if ( $limit > 0 && $counter >= $limit ) {
+						break;
+					}
 				endforeach;
 				?>
 			</div>

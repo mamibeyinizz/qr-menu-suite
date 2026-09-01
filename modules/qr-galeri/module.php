@@ -45,12 +45,32 @@ function qrms_module_qr_galeri_init() {
 				'tag'   => 'qrmenu_gallery',
 				'title' => __( 'Galeri', 'qrms' ),
 				'desc'  => __( 'Görsellerinizi kayan bir ızgarada (masonry) gösterir; tıklanınca büyür. Bölüm verilmezse tüm bölümler filtreli olarak listelenir.', 'qrms' ),
-				'usage' => '[qrmenu_gallery section="ic-mekan"]',
+				'usage' => '[qrmenu_gallery section="ic-mekan" columns="3" ratio="4/3"]',
 				'attrs' => array(
 					array(
 						'name'    => 'section',
 						'default' => '',
 						'desc'    => __( 'Tek bir bölümü göstermek için bölümün slug\'ı. Boş bırakırsanız hepsi listelenir.', 'qrms' ),
+					),
+					array(
+						'name'    => 'columns',
+						'default' => '',
+						'desc'    => __( 'Masaüstü sütun sayısı (1–6). Verilirse galeri ayarındaki değeri ezer.', 'qrms' ),
+					),
+					array(
+						'name'    => 'ratio',
+						'default' => '',
+						'desc'    => __( 'Görsel oranı, örneğin 4/3, 1/1 veya 16/9. Boş bırakırsanız 4/3 kullanılır.', 'qrms' ),
+					),
+					array(
+						'name'    => 'limit',
+						'default' => '0',
+						'desc'    => __( 'Gösterilecek görsel sayısı. 0 = sınırsız.', 'qrms' ),
+					),
+					array(
+						'name'    => 'filter',
+						'default' => '',
+						'desc'    => __( 'Filtre çubuğunu göstermek için "yes", gizlemek için "no". Boş bırakırsanız galeri ayarı geçerlidir.', 'qrms' ),
 					),
 				),
 			),
