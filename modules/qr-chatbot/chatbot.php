@@ -36,7 +36,8 @@ require_once QMO_CHATBOT_DIR . 'ajax-waiter-bill.php';
 require_once QMO_CHATBOT_DIR . 'ajax-sepet-analitik.php';
 
 add_action( 'wp_enqueue_scripts', 'qmo_chatbot_buton_varliklarini_kaydet', 5 );
-add_action( 'wp_footer', 'qmo_chatbot_footer_bas', 20 );
+add_action( 'wp_enqueue_scripts', 'qmo_chatbot_otomatik_varliklarini_yukle', 10 );
+add_action( 'wp_footer', 'qmo_chatbot_footer_bas', 5 );
 
 if ( is_admin() ) {
 	require_once QMO_CHATBOT_DIR . 'includes/admin/admin-sayfa.php';
@@ -93,6 +94,30 @@ if ( ! function_exists( 'qmo_chatbot_buton_varliklarini_kaydet' ) ) {
 		$sepet_js  = QRMS_Helpers::asset_version( 'modules/qr-chatbot/assets/js/sepet.js' );
 		wp_register_style( 'qmo-sepet', $url . 'css/sepet.css', array(), $sepet_css );
 		wp_register_script( 'qmo-sepet', $url . 'js/sepet.js', array(), $sepet_js, true );
+	}
+}
+
+/**
+ * Otomatik wp_footer enjeksiyonu için chatbot varlıklarını kuyruğa alır.
+ *
+ * Varlıklar footer HTML'i basılırken değil, normal head/footer sırasında
+ * yüklenir; böylece wp_print_footer_scripts'ten önce CSS/JS çıkar.
+ *
+ * @return void
+ */
+if ( ! function_exists( 'qmo_chatbot_otomatik_varliklarini_yukle' ) ) {
+	function qmo_chatbot_otomatik_varliklarini_yukle() {
+		if ( ! function_exists( 'qmo_chatbot_otomatik_basilmali_mi' ) || ! qmo_chatbot_otomatik_basilmali_mi() ) {
+			return;
+		}
+		if ( ! function_exists( 'qmo_chatbot_onyuz_yuklensin_mi' ) || ! qmo_chatbot_onyuz_yuklensin_mi() ) {
+			return;
+		}
+		$oturum_zorunlu = ! function_exists( 'qmo_chatbot_oturum_zorunlu_mu' ) || qmo_chatbot_oturum_zorunlu_mu();
+		if ( $oturum_zorunlu && ( ! function_exists( 'qmo_oturum' ) || ! qmo_oturum() ) ) {
+			return;
+		}
+		qmo_asset_enqueue( 'qmo-chatbot' );
 	}
 }
 
