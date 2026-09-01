@@ -1788,4 +1788,30 @@ qrms_test(
 	}
 );
 
+qrms_test(
+	'offcanvas açıkken gövde kaydırma kilidi position:fixed ile korunur',
+	function () {
+		$js     = file_get_contents( QRMS_PLUGIN_DIR . 'modules/header-footer-builder/assets/js/frontend.js' );
+		$css    = file_get_contents( QRMS_PLUGIN_DIR . 'modules/header-footer-builder/assets/css/frontend.css' );
+		$ceviri = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-ceviri/assets/js/ceviri.js' );
+
+		qrms_assert_contains( 'function lockBodyScroll', $js, 'kilitleme fonksiyonu' );
+		qrms_assert_contains( 'function unlockBodyScroll', $js, 'kilit açma' );
+		qrms_assert_contains( 'hfb-scroll-locked', $js, 'gövde sınıfı' );
+		qrms_assert_contains( "body.style.position = 'fixed'", $js, 'fixed gövde' );
+		qrms_assert_contains( 'window.scrollTo', $js, 'kapanışta konum geri' );
+		qrms_assert_contains( 'paddingRight', $js, 'scrollbar telafisi' );
+		qrms_assert_contains( 'hfb-mobile-panel__nav a', $js, 'menü linki kapanış' );
+		qrms_assert_false(
+			(bool) preg_match( '/if\s*\(\s*!editor\s*\)\s*\{\s*document\.body\.style\.overflow\s*=\s*[\'"]hidden[\'"];\s*\}/', $js ),
+			'yalnızca overflow kilidi kalmadı'
+		);
+
+		qrms_assert_contains( 'body.hfb-scroll-locked', $css, 'kilit CSS' );
+
+		qrms_assert_contains( 'shouldIgnoreScrollForPanelClose', $ceviri, 'offcanvas içi scroll filtresi' );
+		qrms_assert_contains( '.hfb-mobile-panel', $ceviri, 'panel seçici' );
+	}
+);
+
 echo "\nQR Çeviri (P1 yönetici verisi)\n";

@@ -216,9 +216,28 @@
 
 	window.addEventListener( 'resize', closeAllPanels );
 
+	/**
+	 * Offcanvas menü açıkken panel içi kaydırma dil listesini kapatmamalı.
+	 *
+	 * @param {Event} e Kaydırma olayı.
+	 * @return {boolean} Panel kapatma atlanmalı mı.
+	 */
+	function shouldIgnoreScrollForPanelClose( e ) {
+		var target = e.target;
+		if ( ! target || ! target.closest ) {
+			return false;
+		}
+		return !! target.closest( '.hfb-mobile-panel' );
+	}
+
 	window.addEventListener(
 		'scroll',
-		closeAllPanels,
+		function ( e ) {
+			if ( shouldIgnoreScrollForPanelClose( e ) ) {
+				return;
+			}
+			closeAllPanels();
+		},
 		true
 	);
 }() );
