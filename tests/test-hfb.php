@@ -1667,7 +1667,11 @@ qrms_test(
 		$admin = file_get_contents( QRMS_PLUGIN_DIR . 'modules/header-footer-builder/includes/trait-admin.php' );
 
 		qrms_assert_contains( 'rma_ceviri_hamburger_blok_field', $front, 'field yolu' );
+		qrms_assert_contains( '$label === $varsayilan', $front, 'varsayılan Buton ayrımı' );
+		qrms_assert_contains( '$this->hfb_cevir_ui( $varsayilan )', $front, 'Buton ui_string' );
 		qrms_assert_contains( "rma_ceviri_option( rma_ceviri_hamburger_blok_field( \$block_id, 'label' )", $front, 'köprü çağrısı' );
+		$ui = rma_ceviri_varsayilan_ui_metinleri();
+		qrms_assert_true( in_array( 'Buton', $ui, true ), 'Buton ui_string katalogda' );
 		qrms_assert_contains( "rma_ceviri_hamburger_blok_field( \$id, 'label' )", $admin, 'bayat uyarı' );
 
 		update_option(

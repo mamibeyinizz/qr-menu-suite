@@ -852,8 +852,11 @@ trait QRMS_HFB_Frontend {
 			return '';
 		}
 
-		$block_id = isset( $block['id'] ) ? sanitize_key( (string) $block['id'] ) : '';
-		if ( '' !== $block_id && function_exists( 'rma_ceviri_hamburger_blok_field' ) && function_exists( 'rma_ceviri_option' ) ) {
+		$varsayilan = __( 'Buton', 'qrms' );
+		$block_id   = isset( $block['id'] ) ? sanitize_key( (string) $block['id'] ) : '';
+		if ( $label === $varsayilan ) {
+			$label = $this->hfb_cevir_ui( $varsayilan );
+		} elseif ( '' !== $block_id && function_exists( 'rma_ceviri_hamburger_blok_field' ) && function_exists( 'rma_ceviri_option' ) ) {
 			$label = rma_ceviri_option( rma_ceviri_hamburger_blok_field( $block_id, 'label' ), $label );
 		}
 
