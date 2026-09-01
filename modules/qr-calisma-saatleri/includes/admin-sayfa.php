@@ -211,6 +211,10 @@ function qrms_cs_admin_sayfasi() {
 				<?php esc_html_e( 'Saatleri menü sayfasında göstermek için:', 'qrms' ); ?>
 			</p>
 			<p><code>[qr_calisma_saatleri]</code></p>
+			<p class="qrms-muted">
+				<?php esc_html_e( 'Kısa kod Elementor içinde kenardan kenara (full width) basılır; gün listesi ortada kalır. Dar bir sütunda kullanıyorsanız:', 'qrms' ); ?>
+			</p>
+			<p><code>[qr_calisma_saatleri fullwidth="0"]</code></p>
 		</div>
 	</div>
 	<?php

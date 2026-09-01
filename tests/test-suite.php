@@ -3091,6 +3091,7 @@ qrms_test(
 		qrms_assert_contains( 'QR Çalışma Saatleri', $html, 'başlık' );
 		qrms_assert_contains( 'name="qrms_cs[monday][closed]"', $html, 'pazartesi kapalı' );
 		qrms_assert_contains( '[qr_calisma_saatleri]', $html, 'kısa kod' );
+		qrms_assert_contains( '[qr_calisma_saatleri fullwidth="0"]', $html, 'dar sütun kısa kodu' );
 		qrms_assert_false(
 			false !== strpos( $html, 'Bu modül yakında burada olacak.' ),
 			'placeholder basılmamalı'
@@ -9067,6 +9068,52 @@ qrms_test(
 		qrms_assert_contains( 'L.kapali', $js, 'JS metni PHP\'den alır' );
 		qrms_assert_contains( 'L.yirmiDort', $js, 'JS metni PHP\'den alır' );
 		qrms_assert_contains( 'L.aralik', $js, 'JS metni PHP\'den alır' );
+	}
+);
+
+qrms_test(
+	'ön yüzde kısa kod Elementor boxed kapsayıcıyı 100vw ile ezer',
+	function () {
+		$html = qrms_cs_shortcode( array() );
+
+		qrms_assert_contains( 'qrms-cs--full', $html, 'full width sınıfı' );
+		qrms_assert_contains( 'qrms-cs-inner', $html, 'içerik ortalanır' );
+		qrms_assert_contains( 'qrms-cs-card', $html, 'kart durur' );
+		qrms_assert_contains( 'qrms-cs-today-tag', $html, 'Bugün etiketi' );
+
+		$css = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-calisma-saatleri/assets/css/frontend.css' );
+
+		qrms_assert_contains( 'width: 100vw', $css, 'viewport genişliği' );
+		qrms_assert_contains( 'calc(50% - 50vw)', $css, 'kırılım hesabı' );
+		qrms_assert_contains( 'overflow-x: clip', $css, 'yatay kaydırma yok' );
+		qrms_assert_contains( '.elementor-widget:has(.qrms-cs--full)', $css, 'Elementor widget padding ezmesi' );
+		qrms_assert_contains( '.e-con:has(.qrms-cs--full)', $css, 'Elementor container overflow ezmesi' );
+		qrms_assert_contains( 'flex-wrap: nowrap', $css, 'gün ve saat tek satır' );
+		qrms_assert_contains( 'max-width: 1100px', $css, 'içerik ortada kaplanır' );
+	}
+);
+
+qrms_test(
+	'fullwidth=0 dar sütunda kırılımı kapatır, kart aynı kalır',
+	function () {
+		$html = qrms_cs_shortcode( array( 'fullwidth' => '0' ) );
+
+		qrms_assert_false( false !== strpos( $html, 'qrms-cs--full' ), 'sınıf yok' );
+		qrms_assert_contains( 'class="qrms-cs"', $html, 'sarmalayıcı durur' );
+		qrms_assert_contains( 'qrms-cs-card', $html, 'kart durur' );
+		qrms_assert_contains( 'qrms-cs-inner', $html, 'iç sarmalayıcı durur' );
+	}
+);
+
+qrms_test(
+	'yönetim önizlemesi full-bleed kırılımı almaz',
+	function () {
+		$GLOBALS['qrms_test']['is_admin'] = true;
+
+		$html = qrms_cs_shortcode( array() );
+
+		qrms_assert_false( false !== strpos( $html, 'qrms-cs--full' ), 'admin kırılmaz' );
+		qrms_assert_contains( 'qrms-cs-card', $html, 'önizleme kartı' );
 	}
 );
 

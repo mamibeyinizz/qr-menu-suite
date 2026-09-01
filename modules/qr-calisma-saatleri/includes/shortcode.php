@@ -50,7 +50,8 @@ function qrms_cs_enqueue_font() {
 function qrms_cs_shortcode( $atts ) {
 	$atts = shortcode_atts(
 		array(
-			'today' => '0',
+			'today'     => '0',
+			'fullwidth' => '1',
 		),
 		$atts,
 		'qr_calisma_saatleri'
@@ -64,12 +65,27 @@ function qrms_cs_shortcode( $atts ) {
 	$today  = qrms_cs_key_from_iso( (int) wp_date( 'N' ) );
 	$only   = ( '1' === (string) $atts['today'] || 'true' === (string) $atts['today'] );
 
+	/*
+	 * Tam genişlik (100vw) Elementor boxed container / padding / max-width
+	 * kısıtını ezer. Yönetim önizlemesi aynı kısa kodu dar bir kutuda
+	 * basar: orada kırılım uygulanmaz, kart kutuya sığar.
+	 */
+	$fullwidth = ( '1' === (string) $atts['fullwidth'] || 'true' === (string) $atts['fullwidth'] ) && ! is_admin();
+
+	$wrap_class = 'qrms-cs';
+	if ( $fullwidth ) {
+		$wrap_class .= ' qrms-cs--full';
+	}
+
 	$is_open = qrms_cs_is_open_at();
 
 	ob_start();
 	?>
+	<?php // Dış sarmalayıcı sayfa genişliğine yayılır; kart zemini onda, liste .qrms-cs-inner'da ortalanır. ?>
+	<div class="<?php echo esc_attr( $wrap_class ); ?>">
 	<?php // Kart, başlık ve alt not liste DIŞINDA durur: renk değişkenleri de burada, kapsayıcıda toplanır. ?>
 	<div class="qrms-cs-card"<?php echo qrms_cs_inline_style_attr(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- esc_attr içeride. ?>>
+		<div class="qrms-cs-inner">
 		<div class="qrms-cs-head">
 			<span class="qrms-cs-badge" aria-hidden="true">
 				<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" focusable="false">
@@ -123,6 +139,8 @@ function qrms_cs_shortcode( $atts ) {
 			<span class="qrms-cs-note-dot" aria-hidden="true"></span>
 			<?php esc_html_e( 'Sipariş ve rezervasyon için bizi arayın', 'qrms' ); ?>
 		</p>
+		</div>
+	</div>
 	</div>
 	<?php
 	return (string) ob_get_clean();
