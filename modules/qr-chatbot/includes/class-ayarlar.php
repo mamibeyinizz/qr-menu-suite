@@ -541,19 +541,26 @@ function qmo_chatbot_on_yuz_istegi_mi() {
 /**
  * wp_footer otomatik enjeksiyonu bu istekte çalışmalı mı?
  *
+ * Sıra performans içindir — her sayfa yüklemesinde wp_footer'da çalışır:
+ * 1) modül aktif, 2) otomatik ayar, 3) istek türü, 4) çift basım bayrağı,
+ * 5) mesai dışı gizle, 6) oturum (en pahalı).
+ *
  * @return bool
  */
 function qmo_chatbot_otomatik_basilmali_mi() {
+	if ( ! qmo_chatbot_aktif_mi() ) {
+		return false;
+	}
 	if ( ! qmo_chatbot_otomatik_goster_mi() ) {
 		return false;
 	}
 	if ( ! qmo_chatbot_on_yuz_istegi_mi() ) {
 		return false;
 	}
-	if ( ! qmo_chatbot_onyuz_yuklensin_mi() ) {
+	if ( function_exists( 'qmo_chatbot_istekte_basildi' ) && qmo_chatbot_istekte_basildi() ) {
 		return false;
 	}
-	if ( function_exists( 'qmo_chatbot_istekte_basildi' ) && qmo_chatbot_istekte_basildi() ) {
+	if ( qmo_chatbot_mesai_disi_mi() && 'hide' === qmo_chatbot_ayar( 'qmo_chatbot_closed_behavior' ) ) {
 		return false;
 	}
 	// Oturum zorunlu modda tanıtım sayfalarına QR uyarısı basma — sessiz kal.

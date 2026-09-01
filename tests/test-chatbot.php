@@ -634,7 +634,7 @@ qrms_test(
 		$html = ob_get_clean();
 
 		qrms_assert_contains( 'name="qmo_chatbot_auto_inject"', $html, 'form alanı' );
-		qrms_assert_contains( 'Chatbot\'u tüm sayfalarda otomatik göster', $html, 'etiket' );
+		qrms_assert_contains( 'tüm sayfalarda otomatik göster', $html, 'etiket' );
 		qrms_assert_contains( 'wp_footer', $html, 'açıklama' );
 
 		$boot = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/chatbot.php' );

@@ -407,6 +407,18 @@ function sanitize_key( $key ) {
 }
 
 /**
+ * HTML class özniteliği için güvenli sınıf adı.
+ *
+ * @param string $class    Sınıf.
+ * @param string $fallback Yedek.
+ * @return string
+ */
+function sanitize_html_class( $class, $fallback = '' ) {
+	$class = preg_replace( '/[^A-Za-z0-9_-]/', '', (string) $class );
+	return '' !== $class ? $class : $fallback;
+}
+
+/**
  * Dizideki her öğeden bir alan çeker (WP çekirdeğinin sade taklidi).
  *
  * @param array<int|string,array<string,mixed>|object> $input_list Liste.
@@ -816,6 +828,18 @@ function wp_create_nonce( $action = -1 ) {
 }
 
 /**
+ * REST API kök adresi.
+ *
+ * @param string $path   Yol.
+ * @param string $scheme Şema.
+ * @return string
+ */
+function rest_url( $path = '', $scheme = 'rest' ) {
+	$path = ltrim( (string) $path, '/' );
+	return 'https://example.test/wp-json/' . $path;
+}
+
+/**
  * Rastgele parola/anahtar üretimi.
  *
  * @param int  $length         Uzunluk.
@@ -937,6 +961,18 @@ function remove_submenu_page( $parent_slug, $menu_slug ) {
 }
 
 /**
+ * İzin verilen etiketlerle HTML süzme (testte metin aynen döner).
+ *
+ * @param string $string             HTML.
+ * @param array  $allowed_html       İzinli etiketler.
+ * @param array  $allowed_protocols  İzinli protokoller.
+ * @return string
+ */
+function wp_kses( $string, $allowed_html, $allowed_protocols = array() ) {
+	return $string;
+}
+
+/**
  * Yayın için güvenli HTML (testte metin aynen döner).
  *
  * @param string $html HTML.
@@ -994,7 +1030,66 @@ function wp_enqueue_script( $handle, $src = '', $deps = array(), $ver = false, $
  *
  * @return void
  */
-function wp_register_style( $handle, $src = '', $deps = array(), $ver = false ) {}
+function wp_register_style( $handle, $src = '', $deps = array(), $ver = false ) {
+	if ( ! isset( $GLOBALS['qrms_test']['registered_styles'] ) ) {
+		$GLOBALS['qrms_test']['registered_styles'] = array();
+	}
+	$GLOBALS['qrms_test']['registered_styles'][ $handle ] = true;
+}
+
+/**
+ * Script handle kaydı (no-op).
+ *
+ * @return void
+ */
+function wp_register_script( $handle, $src = '', $deps = array(), $ver = false, $in_footer = false ) {
+	if ( ! isset( $GLOBALS['qrms_test']['registered_scripts'] ) ) {
+		$GLOBALS['qrms_test']['registered_scripts'] = array();
+	}
+	$GLOBALS['qrms_test']['registered_scripts'][ $handle ] = true;
+}
+
+/**
+ * Stil handle durumu.
+ *
+ * @param string $handle Handle.
+ * @param string $status registered|enqueued.
+ * @return bool
+ */
+function wp_style_is( $handle, $status = 'enqueued' ) {
+	if ( 'registered' === $status ) {
+		return ! empty( $GLOBALS['qrms_test']['registered_styles'][ $handle ] );
+	}
+	if ( 'enqueued' === $status && ! empty( $GLOBALS['qrms_test']['styles'] ) ) {
+		foreach ( $GLOBALS['qrms_test']['styles'] as $style ) {
+			if ( $style['handle'] === $handle ) {
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+/**
+ * Script handle durumu.
+ *
+ * @param string $handle Handle.
+ * @param string $status registered|enqueued.
+ * @return bool
+ */
+function wp_script_is( $handle, $status = 'enqueued' ) {
+	if ( 'registered' === $status ) {
+		return ! empty( $GLOBALS['qrms_test']['registered_scripts'][ $handle ] );
+	}
+	if ( 'enqueued' === $status && ! empty( $GLOBALS['qrms_test']['scripts'] ) ) {
+		foreach ( $GLOBALS['qrms_test']['scripts'] as $script ) {
+			if ( $script['handle'] === $handle ) {
+				return true;
+			}
+		}
+	}
+	return false;
+}
 
 /**
  * Satır içi stil.
