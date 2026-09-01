@@ -366,6 +366,7 @@ if ( ! function_exists( 'rma_ceviri_modul_kaynak_metinleri' ) ) {
 				'Çalışma Saatleri',
 				'Şu an açığız',
 				'Şu an kapalıyız',
+				'Sipariş ve rezervasyon için bizi arayın',
 			),
 			'chat'    => array(
 				'Asistanı kullanmak için masanızdaki QR kodu okutun.',

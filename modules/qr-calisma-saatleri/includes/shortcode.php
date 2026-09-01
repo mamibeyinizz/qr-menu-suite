@@ -137,7 +137,7 @@ function qrms_cs_shortcode( $atts ) {
 
 		<p class="qrms-cs-note">
 			<span class="qrms-cs-note-dot" aria-hidden="true"></span>
-			<?php esc_html_e( 'Sipariş ve rezervasyon için bizi arayın', 'qrms' ); ?>
+			<?php echo esc_html( qrms_cs_cevir( __( 'Sipariş ve rezervasyon için bizi arayın', 'qrms' ) ) ); ?>
 		</p>
 		</div>
 	</div>

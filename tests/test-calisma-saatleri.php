@@ -356,6 +356,7 @@ qrms_test(
 			'Çalışma Saatleri',
 			'Şu an açığız',
 			'Şu an kapalıyız',
+			'Sipariş ve rezervasyon için bizi arayın',
 		);
 
 		foreach ( $beklenen as $metin ) {
@@ -388,6 +389,7 @@ qrms_test(
 		$sc = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-calisma-saatleri/includes/shortcode.php' );
 		qrms_assert_contains( "qrms_cs_cevir( __( 'Çalışma Saatleri', 'qrms' ) )", $sc, 'başlık hours' );
 		qrms_assert_contains( "qrms_cs_cevir( \$is_open ? __( 'Şu an açığız', 'qrms' )", $sc, 'durum hours' );
+		qrms_assert_contains( "qrms_cs_cevir( __( 'Sipariş ve rezervasyon için bizi arayın', 'qrms' ) )", $sc, 'not hours' );
 
 		$etiket = qrms_cs_day_labels();
 		qrms_assert_same( 'Pazartesi', $etiket['monday'], 'Pazartesi' );

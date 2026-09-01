@@ -1660,4 +1660,50 @@ qrms_test(
 	}
 );
 
+qrms_test(
+	'hamburger buton etiketi option köprüsünde; blk kimliği kararlı',
+	function () {
+		$front = file_get_contents( QRMS_PLUGIN_DIR . 'modules/header-footer-builder/includes/trait-frontend.php' );
+		$admin = file_get_contents( QRMS_PLUGIN_DIR . 'modules/header-footer-builder/includes/trait-admin.php' );
+
+		qrms_assert_contains( 'rma_ceviri_hamburger_blok_field', $front, 'field yolu' );
+		qrms_assert_contains( "rma_ceviri_option( rma_ceviri_hamburger_blok_field( \$block_id, 'label' )", $front, 'köprü çağrısı' );
+		qrms_assert_contains( "rma_ceviri_hamburger_blok_field( \$id, 'label' )", $admin, 'bayat uyarı' );
+
+		update_option(
+			'hfb_hamburger_options',
+			array(
+				'blocks' => array(
+					array(
+						'id'      => 'blk_9',
+						'type'    => 'button',
+						'enabled' => true,
+						'label'   => 'Rezervasyon Oluştur',
+					),
+				),
+			)
+		);
+
+		$defter = rma_ceviri_option_defteri();
+		qrms_assert_true( isset( $defter['hfb_hamburger.block.blk_9.label'] ), 'defter satırı' );
+		qrms_assert_same(
+			'blk_9',
+			$defter['hfb_hamburger.block.blk_9.label']['blok_id'],
+			'kararlı blok id'
+		);
+		qrms_assert_same(
+			'Rezervasyon Oluştur',
+			rma_ceviri_option_guncel( 'hfb_hamburger.block.blk_9.label' ),
+			'canlı etiket'
+		);
+
+		$satirlar = iterator_to_array( rma_ceviri_option_satirlari() );
+		$fieldler = array();
+		foreach ( $satirlar as $satir ) {
+			$fieldler[ $satir['field'] ] = $satir['original'];
+		}
+		qrms_assert_same( 'Rezervasyon Oluştur', $fieldler['hfb_hamburger.block.blk_9.label'], 'CSV satırı' );
+	}
+);
+
 echo "\nQR Çeviri (P1 yönetici verisi)\n";
