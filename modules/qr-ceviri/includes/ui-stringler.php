@@ -128,6 +128,9 @@ if ( ! function_exists( 'rma_ceviri_varsayilan_ui_metinleri' ) ) {
 			'Çalışma Saatlerimiz',
 			'İletişim',
 
+			/* Hamburger panel buton varsayılanı — trait-frontend.php: render_hamburger_button_block() */
+			'Buton',
+
 			/* Dil seçici aria — qr-ceviri/includes/shortcodes.php */
 			'Dil seç',
 
@@ -366,6 +369,8 @@ if ( ! function_exists( 'rma_ceviri_modul_kaynak_metinleri' ) ) {
 				'Çalışma Saatleri',
 				'Şu an açığız',
 				'Şu an kapalıyız',
+				'Sipariş ve rezervasyon için bizi arayın',
+				'Bugün',
 			),
 			'chat'    => array(
 				'Asistanı kullanmak için masanızdaki QR kodu okutun.',

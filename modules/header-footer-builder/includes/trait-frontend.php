@@ -854,6 +854,14 @@ trait QRMS_HFB_Frontend {
 			return '';
 		}
 
+		$varsayilan = __( 'Buton', 'qrms' );
+		$block_id   = isset( $block['id'] ) ? sanitize_key( (string) $block['id'] ) : '';
+		if ( $label === $varsayilan ) {
+			$label = $this->hfb_cevir_ui( $varsayilan );
+		} elseif ( '' !== $block_id && function_exists( 'rma_ceviri_hamburger_blok_field' ) && function_exists( 'rma_ceviri_option' ) ) {
+			$label = rma_ceviri_option( rma_ceviri_hamburger_blok_field( $block_id, 'label' ), $label );
+		}
+
 		$btn    = $this->hamburger_button_defaults( is_array( $hamburger ) ? $hamburger : null );
 		$url    = isset( $block['url'] ) ? esc_url( (string) $block['url'] ) : '';
 		$shape  = isset( $block['shape'] ) ? sanitize_key( (string) $block['shape'] ) : sanitize_key( (string) $btn['shape'] );

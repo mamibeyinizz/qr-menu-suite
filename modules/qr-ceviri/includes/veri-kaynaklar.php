@@ -201,6 +201,28 @@ if ( ! function_exists( 'rma_ceviri_option_defteri' ) ) {
 		 *
 		 * @param array<string,array<string,mixed>> $kayit Defter.
 		 */
+		foreach ( rma_ceviri_hamburger_bloklari() as $block ) {
+			if ( ! is_array( $block ) || 'button' !== ( isset( $block['type'] ) ? (string) $block['type'] : '' ) ) {
+				continue;
+			}
+
+			$blok_id = isset( $block['id'] ) ? sanitize_key( (string) $block['id'] ) : '';
+			if ( '' === $blok_id ) {
+				continue;
+			}
+
+			$field = 'hfb_hamburger.block.' . $blok_id . '.label';
+			$kayit[ $field ] = array(
+				'etiket'      => 'Hamburger: buton metni (' . $blok_id . ')',
+				'option'      => 'hfb_hamburger_options',
+				'anahtar'     => null,
+				'blok_id'     => $blok_id,
+				'blok_alan'   => 'label',
+				'varsayilan'  => 'Buton',
+				'yalniz_ozel' => true,
+			);
+		}
+
 		if ( function_exists( 'qmo_chatbot_sorulari_oku' ) ) {
 			foreach ( qmo_chatbot_sorulari_oku() as $satir ) {
 				$id = isset( $satir['id'] ) ? (string) $satir['id'] : '';
@@ -231,6 +253,43 @@ if ( ! function_exists( 'rma_ceviri_option_defteri' ) ) {
 }
 
 /**
+ * Hamburger panel blokları (hfb_hamburger_options.blocks).
+ *
+ * @return array<int,array<string,mixed>>
+ */
+if ( ! function_exists( 'rma_ceviri_hamburger_bloklari' ) ) {
+	function rma_ceviri_hamburger_bloklari() {
+		$opts = get_option( 'hfb_hamburger_options', array() );
+
+		if ( ! is_array( $opts ) || empty( $opts['blocks'] ) || ! is_array( $opts['blocks'] ) ) {
+			return array();
+		}
+
+		return $opts['blocks'];
+	}
+}
+
+/**
+ * Hamburger blok alanı (option defteri field yolu).
+ *
+ * @param string $blok_id Blok kimliği (örn. blk_3).
+ * @param string $alan    Blok alanı (label, description, content).
+ * @return string
+ */
+if ( ! function_exists( 'rma_ceviri_hamburger_blok_field' ) ) {
+	function rma_ceviri_hamburger_blok_field( $blok_id, $alan ) {
+		$blok_id = sanitize_key( (string) $blok_id );
+		$alan    = sanitize_key( (string) $alan );
+
+		if ( '' === $blok_id || '' === $alan ) {
+			return '';
+		}
+
+		return 'hfb_hamburger.block.' . $blok_id . '.' . $alan;
+	}
+}
+
+/**
  * Option kaydının canlı (veya varsayılan) metni.
  *
  * @param array<string,mixed> $kayit Defter satırı.
@@ -252,6 +311,26 @@ if ( ! function_exists( 'rma_ceviri_option_degeri_oku' ) ) {
 			foreach ( $liste as $satir ) {
 				if ( is_array( $satir ) && (string) ( $satir['id'] ?? '' ) === (string) $kayit['liste_id'] ) {
 					$deger = isset( $satir[ $kayit['liste_alan'] ] ) ? $satir[ $kayit['liste_alan'] ] : '';
+					break;
+				}
+			}
+		} elseif ( ! empty( $kayit['blok_id'] ) && ! empty( $kayit['blok_alan'] ) ) {
+			$deger   = '';
+			$hedef   = sanitize_key( (string) $kayit['blok_id'] );
+			$blok_alan = (string) $kayit['blok_alan'];
+
+			if ( is_array( $opt ) && ! empty( $opt['blocks'] ) && is_array( $opt['blocks'] ) ) {
+				foreach ( $opt['blocks'] as $block ) {
+					if ( ! is_array( $block ) ) {
+						continue;
+					}
+
+					$bid = isset( $block['id'] ) ? sanitize_key( (string) $block['id'] ) : '';
+					if ( $bid !== $hedef ) {
+						continue;
+					}
+
+					$deger = isset( $block[ $blok_alan ] ) ? (string) $block[ $blok_alan ] : '';
 					break;
 				}
 			}

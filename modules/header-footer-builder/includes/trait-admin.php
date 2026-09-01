@@ -1127,6 +1127,11 @@ trait QRMS_HFB_Admin {
 						<div class="qrms-field">
 							<label class="qrms-label" for="hfb_btn_label_<?php echo esc_attr( $id ); ?>"><?php esc_html_e( 'Buton metni', 'qrms' ); ?></label>
 							<input type="text" id="hfb_btn_label_<?php echo esc_attr( $id ); ?>" name="<?php echo esc_attr( $prefix ); ?>[label]" class="qrms-input hfb-preview-trigger" value="<?php echo esc_attr( isset( $block['label'] ) ? (string) $block['label'] : '' ); ?>" />
+							<?php
+							if ( ! $template && function_exists( 'rma_ceviri_hamburger_blok_field' ) ) {
+								$this->hfb_ceviri_bayat_uyari( rma_ceviri_hamburger_blok_field( $id, 'label' ) );
+							}
+							?>
 						</div>
 						<div class="qrms-field">
 							<label class="qrms-label" for="hfb_btn_url_<?php echo esc_attr( $id ); ?>"><?php esc_html_e( 'Bağlantı (URL)', 'qrms' ); ?></label>

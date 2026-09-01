@@ -227,6 +227,22 @@ qrms_test(
 		qrms_assert_true( isset( $defter['hfb_footer.links_title'] ), 'HFB başlık' );
 		qrms_assert_true( ! empty( $defter['hfb_footer.call_garson_label']['yalniz_ozel'] ), 'çağrı yalnızca özel' );
 
+		update_option(
+			'hfb_hamburger_options',
+			array(
+				'blocks' => array(
+					array(
+						'id'      => 'blk_2',
+						'type'    => 'button',
+						'enabled' => true,
+						'label'   => 'Menüye Git',
+					),
+				),
+			)
+		);
+		$defter = rma_ceviri_option_defteri();
+		qrms_assert_true( isset( $defter['hfb_hamburger.block.blk_2.label'] ), 'hamburger buton defteri' );
+
 		update_option( 'gemini_bot_name', 'Masa Asistanı' );
 		qrms_assert_same( 'Masa Asistanı', rma_ceviri_option_guncel( 'gemini_bot_name' ), 'canlı option' );
 		qrms_assert_same(

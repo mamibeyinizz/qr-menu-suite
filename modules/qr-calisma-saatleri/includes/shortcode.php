@@ -125,7 +125,7 @@ function qrms_cs_shortcode( $atts ) {
 				<span class="qrms-cs-item-day">
 					<?php echo esc_html( $labels[ $key ] ); ?>
 					<?php if ( $is_today ) : ?>
-						<span class="qrms-cs-today-tag"><?php esc_html_e( 'Bugün', 'qrms' ); ?></span>
+						<span class="qrms-cs-today-tag"><?php echo esc_html( qrms_cs_cevir( __( 'Bugün', 'qrms' ) ) ); ?></span>
 					<?php endif; ?>
 				</span>
 				<?php // Noktalı dolgu: gün adı ile saat arasındaki boşluğu flex ile kapatır. ?>
@@ -137,7 +137,7 @@ function qrms_cs_shortcode( $atts ) {
 
 		<p class="qrms-cs-note">
 			<span class="qrms-cs-note-dot" aria-hidden="true"></span>
-			<?php esc_html_e( 'Sipariş ve rezervasyon için bizi arayın', 'qrms' ); ?>
+			<?php echo esc_html( qrms_cs_cevir( __( 'Sipariş ve rezervasyon için bizi arayın', 'qrms' ) ) ); ?>
 		</p>
 		</div>
 	</div>
