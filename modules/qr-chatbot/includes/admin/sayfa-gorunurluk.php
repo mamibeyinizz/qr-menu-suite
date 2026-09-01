@@ -26,6 +26,13 @@ function qmo_chatbot_sayfa_gorunurluk() {
 	?>
 	<table class="form-table" role="presentation">
 		<tr>
+			<th scope="row"><?php esc_html_e( 'Otomatik gösterim', 'qrms' ); ?></th>
+			<td>
+				<?php qmo_chatbot_ac_kapa( 'qmo_chatbot_auto_inject', qmo_chatbot_ayar( 'qmo_chatbot_auto_inject' ), __( 'Chatbot\'u tüm sayfalarda otomatik göster', 'qrms' ) ); ?>
+				<p class="description"><?php esc_html_e( 'Açıkken [gemini_chatbot] kısa kodu olmadan wp_footer\'da basılır. Kapalıyken yalnızca elle eklenen kısa kod çalışır.', 'qrms' ); ?></p>
+			</td>
+		</tr>
+		<tr>
 			<th scope="row"><?php esc_html_e( 'Kimlere gösterilsin', 'qrms' ); ?></th>
 			<td>
 				<?php

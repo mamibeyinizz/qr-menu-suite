@@ -53,6 +53,7 @@ function qmo_chatbot_yeni_varsayilanlar() {
 		'qmo_chatbot_teaser_text'          => 'Bir şey sormak ister misiniz?',
 		'qmo_chatbot_teaser_delay'         => 4,
 		'qmo_chatbot_quick_max'            => 5,
+		'qmo_chatbot_auto_inject'          => 'yes',
 		'qmo_chatbot_audience'             => 'session',
 		'qmo_chatbot_devices'              => 'both',
 		'qmo_chatbot_hide_after_hours'     => 'no',
@@ -488,6 +489,75 @@ function qmo_chatbot_onyuz_yuklensin_mi() {
 		return false;
 	}
 	if ( qmo_chatbot_mesai_disi_mi() && 'hide' === qmo_chatbot_ayar( 'qmo_chatbot_closed_behavior' ) ) {
+		return false;
+	}
+	return true;
+}
+
+/**
+ * Chatbot wp_footer ile otomatik basılsın mı?
+ *
+ * Kapalıyken yalnızca [gemini_chatbot] kısa kodu çalışır — mevcut kurulumlar bozulmaz.
+ *
+ * @return bool
+ */
+function qmo_chatbot_otomatik_goster_mi() {
+	return 'yes' === qmo_chatbot_ayar( 'qmo_chatbot_auto_inject' );
+}
+
+/**
+ * Ön yüz HTML enjeksiyonu için uygun istek mi?
+ *
+ * Yönetim, AJAX, REST, feed, login, 404 ve Elementor önizlemesi dışarıda kalır.
+ *
+ * @return bool
+ */
+function qmo_chatbot_on_yuz_istegi_mi() {
+	if ( is_admin() || wp_doing_ajax() || is_feed() || is_robots() ) {
+		return false;
+	}
+	if ( defined( 'REST_REQUEST' ) && REST_REQUEST ) {
+		return false;
+	}
+	if ( defined( 'DOING_CRON' ) && DOING_CRON ) {
+		return false;
+	}
+	if ( function_exists( 'is_login' ) && is_login() ) {
+		return false;
+	}
+	if ( function_exists( 'is_404' ) && is_404() ) {
+		return false;
+	}
+	// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+	if ( isset( $_GET['elementor-preview'] ) ) {
+		return false;
+	}
+	if ( function_exists( 'is_customize_preview' ) && is_customize_preview() ) {
+		return false;
+	}
+	return true;
+}
+
+/**
+ * wp_footer otomatik enjeksiyonu bu istekte çalışmalı mı?
+ *
+ * @return bool
+ */
+function qmo_chatbot_otomatik_basilmali_mi() {
+	if ( ! qmo_chatbot_otomatik_goster_mi() ) {
+		return false;
+	}
+	if ( ! qmo_chatbot_on_yuz_istegi_mi() ) {
+		return false;
+	}
+	if ( ! qmo_chatbot_onyuz_yuklensin_mi() ) {
+		return false;
+	}
+	if ( function_exists( 'qmo_chatbot_istekte_basildi' ) && qmo_chatbot_istekte_basildi() ) {
+		return false;
+	}
+	// Oturum zorunlu modda tanıtım sayfalarına QR uyarısı basma — sessiz kal.
+	if ( qmo_chatbot_oturum_zorunlu_mu() && ( ! function_exists( 'qmo_oturum' ) || ! qmo_oturum() ) ) {
 		return false;
 	}
 	return true;

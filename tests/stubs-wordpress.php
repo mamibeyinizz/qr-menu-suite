@@ -1026,6 +1026,42 @@ function is_admin() {
 }
 
 /**
+ * Feed isteği mi?
+ *
+ * @return bool
+ */
+function is_feed() {
+	return ! empty( $GLOBALS['qrms_test']['is_feed'] );
+}
+
+/**
+ * robots.txt isteği mi?
+ *
+ * @return bool
+ */
+function is_robots() {
+	return ! empty( $GLOBALS['qrms_test']['is_robots'] );
+}
+
+/**
+ * 404 sayfası mı?
+ *
+ * @return bool
+ */
+function is_404() {
+	return ! empty( $GLOBALS['qrms_test']['is_404'] );
+}
+
+/**
+ * wp-login.php mi?
+ *
+ * @return bool
+ */
+function is_login() {
+	return ! empty( $GLOBALS['qrms_test']['is_login'] );
+}
+
+/**
  * Kısa kod kaydı.
  *
  * @param string   $tag      Etiket.
