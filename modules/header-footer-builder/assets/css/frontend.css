@@ -242,6 +242,56 @@
   flex-shrink: 0;
 }
 
+/* Mobil header dil bayrağı — yalnızca dar kırılımda görünür. */
+.hfb-header__lang-mobile {
+  display: none;
+  flex-shrink: 0;
+}
+
+.hfb-header-wrap .hfb-header__lang-mobile .qrmenu-current-btn {
+  align-items: center;
+  background-color: transparent;
+  border: 1px solid var(--hfb-icon-color, var(--hfb-gold)) !important;
+  border-radius: 6px;
+  color: var(--hfb-icon-color, var(--hfb-text));
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: 0;
+  height: 44px;
+  justify-content: center;
+  line-height: 1;
+  min-width: 44px;
+  overflow: hidden;
+  padding: 0;
+  width: 44px;
+}
+
+.hfb-header-wrap .hfb-header__lang-mobile .qrmenu-current-text,
+.hfb-header-wrap .hfb-header__lang-mobile .qrmenu-arrow {
+  display: none;
+}
+
+.hfb-header-wrap .hfb-header__lang-mobile .qrmenu-current-flag {
+  align-items: center;
+  display: inline-flex;
+  font-size: 22px;
+  height: 100%;
+  justify-content: center;
+  line-height: 1;
+  width: 100%;
+}
+
+.hfb-header-wrap .hfb-header__lang-mobile .qrmenu-current-btn img,
+.hfb-header-wrap .hfb-header__lang-mobile .qrmenu-current-btn svg,
+.hfb-header-wrap .hfb-header__lang-mobile .qrmenu-current-flag img,
+.hfb-header-wrap .hfb-header__lang-mobile .qrmenu-current-flag svg {
+  display: block;
+  height: 100%;
+  max-width: 100%;
+  object-fit: cover;
+  width: 100%;
+}
+
 /*
  * Çeviri modülünün butonu üç parça basar: bayrak + dil adı + ok
  * (.qrmenu-current-flag / .qrmenu-current-text / .qrmenu-arrow) ve kendi
@@ -319,9 +369,36 @@
   width: 24px;
 }
 
-.hfb-header-wrap .hfb-lang .qrmenu-options-panel {
+/* Masaüstü header sağ ucu: panel düğmenin sağına hizalı açılır. */
+.hfb-header-wrap .hfb-header__actions .hfb-lang .qrmenu-options-panel {
   left: auto;
   right: 0;
+}
+
+/*
+ * Offcanvas / mobil panel: header kuralı burada geçerli olmamalı; hizaya
+ * göre açılır ve tercihen yukarı doğru (alt kenarda yer yok). Kesin
+ * konum JS ile viewport içinde sabitlenir (.qrmenu-panel--fixed).
+ */
+.hfb-header-wrap .hfb-mobile-panel .hfb-lang .qrmenu-options-panel {
+  left: 0;
+  right: auto;
+}
+
+.hfb-header-wrap .hfb-mobile-panel .hfb-mobile-panel__block--align-right .qrmenu-options-panel {
+  left: auto;
+  right: 0;
+}
+
+.hfb-header-wrap .hfb-mobile-panel .hfb-mobile-panel__block--align-center .qrmenu-options-panel {
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+}
+
+.hfb-header-wrap .hfb-mobile-panel .qrmenu-options-panel.open:not(.qrmenu-panel--fixed) {
+  top: auto;
+  bottom: calc(100% + 6px);
 }
 
 /* Hamburger -------------------------------------------------------------- */
@@ -1278,6 +1355,33 @@ body:has(.hfb-footer__call-wrap .hfb-footer__call--warn):not(.wp-admin) {
     display: inline-flex;
   }
 
+  /* Mobil header: dil bayrağı + ortalı logo + hamburger. */
+  .hfb-header__inner:has(.hfb-header__lang-mobile) {
+    display: grid;
+    grid-template-columns: minmax(44px, auto) 1fr minmax(44px, auto);
+  }
+
+  .hfb-header__inner:has(.hfb-header__lang-mobile) .hfb-header__lang-mobile {
+    align-self: center;
+    display: inline-flex;
+    grid-column: 1;
+    grid-row: 1;
+    justify-self: start;
+  }
+
+  .hfb-header__inner:has(.hfb-header__lang-mobile) .hfb-header__brand {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: center;
+  }
+
+  .hfb-header__inner:has(.hfb-header__lang-mobile) .hfb-header__toggle {
+    grid-column: 3;
+    grid-row: 1;
+    justify-self: end;
+    margin-left: 0;
+  }
+
   /* Mobilde ayrı boşluk seti devreye girer; masaüstü değerleri ezilir. */
   .hfb-header__inner {
     justify-content: space-between;
@@ -1363,6 +1467,32 @@ body:has(.hfb-footer__call-wrap .hfb-footer__call--warn):not(.wp-admin) {
 
     .hfb-header__toggle {
       display: inline-flex;
+    }
+
+    .hfb-header__inner:has(.hfb-header__lang-mobile) {
+      display: grid;
+      grid-template-columns: minmax(44px, auto) 1fr minmax(44px, auto);
+    }
+
+    .hfb-header__inner:has(.hfb-header__lang-mobile) .hfb-header__lang-mobile {
+      align-self: center;
+      display: inline-flex;
+      grid-column: 1;
+      grid-row: 1;
+      justify-self: start;
+    }
+
+    .hfb-header__inner:has(.hfb-header__lang-mobile) .hfb-header__brand {
+      grid-column: 2;
+      grid-row: 1;
+      justify-self: center;
+    }
+
+    .hfb-header__inner:has(.hfb-header__lang-mobile) .hfb-header__toggle {
+      grid-column: 3;
+      grid-row: 1;
+      justify-self: end;
+      margin-left: 0;
     }
 
     .hfb-header__inner {

@@ -112,6 +112,24 @@
 	display: flex;
 }
 
+/*
+ * Açık panel viewport dışına taşmasın diye JS .qrmenu-panel--fixed ekler;
+ * top/left satır içi verilir. Offcanvas overflow:hidden ve dar kenarlar
+ * için absolute konum yeterli değil.
+ */
+.qrmenu-options-panel.qrmenu-panel--fixed {
+	position: fixed;
+	top: auto;
+	left: auto;
+	right: auto;
+	bottom: auto;
+	width: auto;
+	min-width: 160px;
+	max-width: calc(100vw - 16px);
+	max-height: min(360px, calc(100vh - 16px));
+	z-index: 999999;
+}
+
 /* Panel içi butonlar */
 .qrmenu-options-panel button {
 	background: transparent !important;

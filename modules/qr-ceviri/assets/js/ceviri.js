@@ -108,6 +108,87 @@
 	window.qrmenuTranslate = qrmenuTranslate;
 	window.rmaCeviriUpdateQueryParam = updateQueryParam;
 
+	/**
+	 * Açık panelin satır içi konumunu sıfırla.
+	 *
+	 * @param {HTMLElement} panel Seçenek paneli.
+	 */
+	function resetPanelPosition( panel ) {
+		panel.classList.remove( 'qrmenu-panel--fixed' );
+		panel.style.top = '';
+		panel.style.left = '';
+		panel.style.right = '';
+		panel.style.bottom = '';
+		panel.style.maxHeight = '';
+		panel.style.maxWidth = '';
+	}
+
+	/**
+	 * Açık paneli tetikleyici düğmeye göre viewport içinde sabitle.
+	 *
+	 * @param {HTMLElement} btn   Tetikleyici düğme.
+	 * @param {HTMLElement} panel Seçenek paneli.
+	 */
+	function positionOpenPanel( btn, panel ) {
+		if ( ! panel.classList.contains( 'open' ) ) {
+			resetPanelPosition( panel );
+			return;
+		}
+
+		var gap = 6;
+		var pad = 8;
+		var maxDefault = 360;
+
+		panel.classList.add( 'qrmenu-panel--fixed' );
+		panel.style.visibility = 'hidden';
+		panel.style.display = 'flex';
+		panel.style.top = '0';
+		panel.style.left = '0';
+		panel.style.maxHeight = maxDefault + 'px';
+		panel.style.maxWidth = '';
+
+		var btnRect = btn.getBoundingClientRect();
+		var panelRect = panel.getBoundingClientRect();
+		var panelW = panelRect.width || 160;
+		var panelH = panelRect.height || 200;
+
+		panel.style.visibility = '';
+
+		var spaceBelow = window.innerHeight - btnRect.bottom - gap;
+		var spaceAbove = btnRect.top - gap;
+		var openUp = spaceBelow < panelH && spaceAbove > spaceBelow;
+		var avail = openUp ? spaceAbove : spaceBelow;
+		var maxH = Math.max( 120, Math.min( maxDefault, avail - pad ) );
+
+		panel.style.maxHeight = maxH + 'px';
+
+		panelH = Math.min( panel.scrollHeight, maxH );
+
+		var top = openUp ? btnRect.top - gap - panelH : btnRect.bottom + gap;
+		top = Math.max( pad, Math.min( top, window.innerHeight - pad - panelH ) );
+
+		var left = btnRect.right - panelW;
+		left = Math.max( pad, Math.min( left, window.innerWidth - pad - panelW ) );
+
+		if ( panelW > window.innerWidth - pad * 2 ) {
+			left = pad;
+			panel.style.maxWidth = ( window.innerWidth - pad * 2 ) + 'px';
+		}
+
+		panel.style.top = top + 'px';
+		panel.style.left = left + 'px';
+	}
+
+	/**
+	 * Tüm panelleri kapat ve konumlarını sıfırla.
+	 */
+	function closeAllPanels() {
+		document.querySelectorAll( '.qrmenu-options-panel' ).forEach( function ( p ) {
+			p.classList.remove( 'open' );
+			resetPanelPosition( p );
+		} );
+	}
+
 	/* Dropdown aç/kapat — v1.7 davranışıyla aynı. */
 	document.addEventListener( 'click', function ( e ) {
 		var btn = e.target.closest( '.qrmenu-current-btn' );
@@ -121,18 +202,25 @@
 			}
 			var isOpen = panel.classList.contains( 'open' );
 
-			document.querySelectorAll( '.qrmenu-options-panel' ).forEach( function ( p ) {
-				p.classList.remove( 'open' );
-			} );
+			closeAllPanels();
 
 			if ( ! isOpen ) {
 				panel.classList.add( 'open' );
+				positionOpenPanel( btn, panel );
 			}
 			return;
 		}
 
-		document.querySelectorAll( '.qrmenu-options-panel' ).forEach( function ( p ) {
-			p.classList.remove( 'open' );
+		closeAllPanels();
+	} );
+
+	window.addEventListener( 'resize', function () {
+		document.querySelectorAll( '.qrmenu-options-panel.open' ).forEach( function ( panel ) {
+			var dropdown = panel.closest( '.qrmenu-lang-dropdown' );
+			var trigger = dropdown ? dropdown.querySelector( '.qrmenu-current-btn' ) : null;
+			if ( trigger ) {
+				positionOpenPanel( trigger, panel );
+			}
 		} );
 	} );
 }() );

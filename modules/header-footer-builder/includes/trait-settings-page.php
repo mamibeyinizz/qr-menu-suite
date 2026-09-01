@@ -923,7 +923,8 @@ trait QRMS_HFB_Settings_Page {
 
 		$opts['sticky']      = $this->sanitize_checkbox( $input, 'hfb_header_sticky' );
 		$opts['sticky_blur'] = $this->sanitize_checkbox( $input, 'hfb_header_sticky_blur' );
-		$opts['lang_show']   = $this->sanitize_checkbox( $input, 'hfb_lang_show' );
+		$opts['lang_show']        = $this->sanitize_checkbox( $input, 'hfb_lang_show' );
+		$opts['lang_mobile_show'] = $this->sanitize_checkbox( $input, 'hfb_lang_mobile_show' );
 
 		if ( isset( $input['hfb_header_logo_width_desktop'] ) ) {
 			$opts['logo_width_desktop'] = $this->sanitize_int_range(

@@ -185,6 +185,7 @@ qrms_test(
 		$opts = $hfb->get_header_options();
 
 		qrms_assert_same( 1, (int) $opts['lang_show'], 'toggle varsayılan açık' );
+		qrms_assert_same( 1, (int) $opts['lang_mobile_show'], 'mobil toggle varsayılan açık' );
 		qrms_assert_true( ! $hfb->lang_switcher_available(), 'kısa kod kayıtlı değil' );
 		qrms_assert_same( '', $hfb->render_lang_switcher( $opts ), 'çıktı boş' );
 		qrms_assert_true(
@@ -216,20 +217,38 @@ qrms_test(
 
 		$html = $hfb->render_header( $opts, $hamburger );
 
-		qrms_assert_same( 2, substr_count( $html, 'TR-BAYRAK' ), 'header sağ ucu + mobil panel' );
+		qrms_assert_same( 3, substr_count( $html, 'TR-BAYRAK' ), 'masaüstü sağ ucu + mobil header + mobil panel' );
 		qrms_assert_contains( 'hfb-header__actions', $html, 'sağ blok' );
+		qrms_assert_contains( 'hfb-header__lang-mobile', $html, 'mobil header bayrağı' );
 		qrms_assert_contains( 'hfb-mobile-panel__block--lang', $html, 'mobil paneldeki dil bloğu' );
 	}
 );
 
 qrms_test(
-	'dil toggle kapalıyken bayrak hiçbir yerde görünmez',
+	'mobil header bayrağı ayrı toggle ile kapatılabilir',
 	function () {
 		qrms_hfb_fake_lang_shortcode();
 
-		$hfb               = qrms_hfb();
-		$opts              = $hfb->get_header_options();
-		$opts['lang_show'] = 0;
+		$hfb                        = qrms_hfb();
+		$opts                       = $hfb->get_header_options();
+		$opts['lang_mobile_show']   = 0;
+
+		$html = $hfb->render_header( $opts );
+
+		qrms_assert_true( false === strpos( $html, 'hfb-header__lang-mobile' ), 'mobil header bayrağı yok' );
+		qrms_assert_same( 1, substr_count( $html, 'TR-BAYRAK' ), 'yalnızca masaüstü sağ ucu' );
+	}
+);
+
+qrms_test(
+	'dil toggle kapalıyken masaüstü header\'da bayrak görünmez',
+	function () {
+		qrms_hfb_fake_lang_shortcode();
+
+		$hfb                        = qrms_hfb();
+		$opts                       = $hfb->get_header_options();
+		$opts['lang_show']          = 0;
+		$opts['lang_mobile_show']   = 0;
 
 		$html = $hfb->render_header( $opts );
 
@@ -244,14 +263,19 @@ qrms_test(
 		$hfb = qrms_hfb();
 
 		$acik = $hfb->sanitize_header_input(
-			array( 'hfb_lang_show' => '1' ),
+			array(
+				'hfb_lang_show'        => '1',
+				'hfb_lang_mobile_show' => '1',
+			),
 			$hfb->get_header_options()
 		);
 		qrms_assert_same( 1, $acik['lang_show'], 'işaretliyken 1' );
+		qrms_assert_same( 1, $acik['lang_mobile_show'], 'mobil işaretliyken 1' );
 
 		// Onay kutusu işaretsizken tarayıcı alanı hiç göndermez.
 		$kapali = $hfb->sanitize_header_input( array(), $hfb->get_header_options() );
 		qrms_assert_same( 0, $kapali['lang_show'], 'işaretsizken 0' );
+		qrms_assert_same( 0, $kapali['lang_mobile_show'], 'mobil işaretsizken 0' );
 		qrms_assert_same( 0, $kapali['sticky'], 'sticky de aynı kuralla' );
 	}
 );
@@ -771,6 +795,8 @@ qrms_test(
 
 		// Dil bayrağı: daire içeriğiyle birlikte kurulur, taşma kırpılır.
 		qrms_assert_contains( '.hfb-header-wrap .hfb-lang .qrmenu-current-btn img', $css, 'bayrak görseli kuralı' );
+		qrms_assert_contains( '.hfb-header__lang-mobile', $css, 'mobil header bayrağı' );
+		qrms_assert_contains( '.hfb-mobile-panel .hfb-lang .qrmenu-options-panel', $css, 'offcanvas panel konumu' );
 		qrms_assert_contains( 'object-fit: cover', $css, 'bayrak oranı korunur' );
 
 		// Mobil panel zenginleştirmesi.

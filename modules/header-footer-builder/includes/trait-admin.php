@@ -713,10 +713,20 @@ trait QRMS_HFB_Admin {
 			<div class="qrms-field">
 				<label class="hfb-check-row">
 					<input type="checkbox" name="hfb_lang_show" value="1" class="hfb-preview-trigger" <?php checked( ! empty( $opts['lang_show'] ) ); ?> />
-					<span><?php esc_html_e( 'Dil Seçeneğini Header\'da Göster', 'qrms' ); ?></span>
+					<span><?php esc_html_e( 'Dil Seçeneğini Masaüstü Header\'da Göster', 'qrms' ); ?></span>
 				</label>
 				<p class="description">
-					<?php esc_html_e( 'Açıkken bayrak masaüstünde header\'ın en sağında, mobilde açılan menünün üstünde görünür. Kapalıyken hiçbir yerde görünmez.', 'qrms' ); ?>
+					<?php esc_html_e( 'Açıkken bayrak masaüstünde header\'ın en sağında görünür. Kapalıyken masaüstü header\'da görünmez.', 'qrms' ); ?>
+				</p>
+			</div>
+
+			<div class="qrms-field">
+				<label class="hfb-check-row">
+					<input type="checkbox" name="hfb_lang_mobile_show" value="1" class="hfb-preview-trigger" <?php checked( ! empty( $opts['lang_mobile_show'] ) ); ?><?php echo $available ? '' : ' disabled="disabled"'; ?> />
+					<span><?php esc_html_e( 'Dil Bayrağını Mobil Header\'da Göster', 'qrms' ); ?></span>
+				</label>
+				<p class="description">
+					<?php esc_html_e( 'Açıkken mobil header\'da solda kompakt bayrak, ortada logo ve sağda hamburger görünür. Offcanvas menüdeki dil seçici ayrıca kalır.', 'qrms' ); ?>
 				</p>
 			</div>
 

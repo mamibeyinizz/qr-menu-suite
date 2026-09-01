@@ -199,6 +199,7 @@ class QRMS_Header_Footer_Builder {
 			'sticky_blur'              => 0,
 			'cta_phone'                => '',
 			'lang_show'                => 1,
+			'lang_mobile_show'         => 1,
 			'social_media'             => array(),
 			'social_media_active'      => array( 'facebook', 'x', 'youtube' ),
 			'logo_width_desktop'       => 160,

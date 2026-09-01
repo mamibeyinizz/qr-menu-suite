@@ -238,6 +238,7 @@ trait QRMS_HFB_Frontend {
 		$panel_nav = $this->scope_nav_ids( $nav_raw, 'hfb-m-' );
 		$social    = $this->render_social_icons( $opts );
 		$lang      = $this->render_lang_switcher( $opts );
+		$mobile_lang = $this->render_mobile_lang_switcher( $opts );
 
 		$classes = 'hfb-header';
 		if ( ! empty( $opts['sticky'] ) ) {
@@ -257,6 +258,7 @@ trait QRMS_HFB_Frontend {
 		<div class="hfb-header-wrap" data-hfb="header"<?php echo $style ? ' style="' . esc_attr( $style ) . '"' : ''; ?>>
 			<header class="<?php echo esc_attr( $classes ); ?>" role="banner">
 				<div class="hfb-header__inner">
+					<?php echo $mobile_lang; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 					<div class="hfb-header__brand"><?php echo $brand; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></div>
 
 					<?php if ( $nav ) : ?>
@@ -918,6 +920,26 @@ trait QRMS_HFB_Frontend {
 	 */
 	public function lang_switcher_available() {
 		return function_exists( 'shortcode_exists' ) && shortcode_exists( self::LANG_SHORTCODE );
+	}
+
+	/**
+	 * Mobil header dil seçici (bayrak + hamburger arasında, yalnızca mobilde).
+	 *
+	 * @param array<string,mixed> $opts Header ayarları.
+	 * @return string
+	 */
+	public function render_mobile_lang_switcher( $opts ) {
+		if ( empty( $opts['lang_mobile_show'] ) || ! $this->lang_switcher_available() ) {
+			return '';
+		}
+
+		$html = do_shortcode( '[' . self::LANG_SHORTCODE . ']' );
+
+		if ( '' === trim( (string) $html ) ) {
+			return '';
+		}
+
+		return '<div class="hfb-header__lang-mobile"><div class="hfb-lang">' . $html . '</div></div>';
 	}
 
 	/**
