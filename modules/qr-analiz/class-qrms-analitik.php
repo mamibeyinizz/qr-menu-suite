@@ -2755,14 +2755,7 @@ class QRMS_Analitik {
 
 		$dosya = 'qr-analitik-' . $donem . ( '' !== $masa ? '-' . $masa : '' ) . '-' . gmdate( 'Ymd-His', self::simdi() ) . '.csv';
 
-		nocache_headers();
-		header( 'Content-Type: text/csv; charset=utf-8' );
-		header( 'Content-Disposition: attachment; filename="' . $dosya . '"' );
-
-		$cikti = fopen( 'php://output', 'w' );
-
-		// Excel'in UTF-8'i tanıması için BOM.
-		fwrite( $cikti, "\xEF\xBB\xBF" ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fwrite
+		$cikti = self::csv_ac( $dosya );
 
 		if ( 'masalar' === $donem ) {
 			fputcsv( $cikti, array( 'Masa', 'Masa Kodu', 'Menü Görüntüleme', 'Ürün Tıklama', 'Tekil Ziyaretçi', 'Son Hareket' ), ';' );
@@ -2795,6 +2788,57 @@ class QRMS_Analitik {
 			}
 		}
 
+		self::csv_bitir( $cikti );
+	}
+
+	/**
+	 * CSV indirmesinin ortak iskeleti: başlık, BOM, çıktı akışı.
+	 *
+	 * Kategori üreticileri yalnızca satırları yazar. Çeviri CSV'si ayrı
+	 * şemadır, bu yardımcılara girmez.
+	 *
+	 * @param string $dosya İndirme dosya adı (.csv dahil).
+	 * @return resource
+	 */
+	private static function csv_ac( $dosya ) {
+		nocache_headers();
+		header( 'Content-Type: text/csv; charset=utf-8' );
+		header( 'Content-Disposition: attachment; filename="' . $dosya . '"' );
+
+		$cikti = fopen( 'php://output', 'w' );
+
+		fwrite( $cikti, "\xEF\xBB\xBF" ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fwrite
+
+		return $cikti;
+	}
+
+	/**
+	 * Aralık ve (isteğe bağlı) masa satırları.
+	 *
+	 * @param resource             $cikti  csv_ac çıktısı.
+	 * @param array{bas:string,bit:string} $aralik Filtre aralığı.
+	 * @param array{masa?:string}  $baglam Filtre bağlamı.
+	 * @param bool                 $masa   Masa satırı yazılsın mı.
+	 * @return void
+	 */
+	private static function csv_ustbilgi( $cikti, array $aralik, array $baglam, $masa = true ) {
+		fputcsv( $cikti, array( 'Aralık', substr( $aralik['bas'], 0, 10 ), substr( $aralik['bit'], 0, 10 ) ), ';' );
+
+		if ( $masa ) {
+			$slug = isset( $baglam['masa'] ) ? (string) $baglam['masa'] : '';
+			fputcsv( $cikti, array( 'Masa', '' !== $slug ? $slug : 'Tüm masalar' ), ';' );
+		}
+
+		fputcsv( $cikti, array(), ';' );
+	}
+
+	/**
+	 * Akışı kapatır ve isteği bitirir.
+	 *
+	 * @param resource $cikti csv_ac çıktısı.
+	 * @return void
+	 */
+	private static function csv_bitir( $cikti ) {
 		fclose( $cikti ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
 		exit;
 	}
@@ -2821,18 +2865,9 @@ class QRMS_Analitik {
 			. ( '' !== $baglam['masa'] ? '-' . $baglam['masa'] : '' )
 			. '-' . gmdate( 'Ymd-His', self::simdi() ) . '.csv';
 
-		nocache_headers();
-		header( 'Content-Type: text/csv; charset=utf-8' );
-		header( 'Content-Disposition: attachment; filename="' . $dosya . '"' );
+		$cikti = self::csv_ac( $dosya );
 
-		$cikti = fopen( 'php://output', 'w' );
-
-		// Excel'in UTF-8'i tanıması için BOM.
-		fwrite( $cikti, "\xEF\xBB\xBF" ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fwrite
-
-		fputcsv( $cikti, array( 'Aralık', substr( $aralik['bas'], 0, 10 ), substr( $aralik['bit'], 0, 10 ) ), ';' );
-		fputcsv( $cikti, array( 'Masa', '' !== $baglam['masa'] ? $baglam['masa'] : 'Tüm masalar' ), ';' );
-		fputcsv( $cikti, array(), ';' );
+		self::csv_ustbilgi( $cikti, $aralik, $baglam );
 
 		fputcsv( $cikti, array( 'EN ÇOK TIKLANAN ÜRÜNLER' ), ';' );
 		fputcsv( $cikti, array( 'Sıra', 'Ürün ID', 'Ürün Adı', 'Kategori', 'Toplam Tıklama', 'Tekil Tıklama', 'Masa Sayısı', 'Son Tıklama' ), ';' );
@@ -2903,8 +2938,7 @@ class QRMS_Analitik {
 		fputcsv( $cikti, array( 'Ürün tıklaması', isset( $detay['click'] ) ? $detay['click'] : 0 ), ';' );
 		fputcsv( $cikti, array( 'Açılma oranı %', isset( $detay['oran'] ) ? $detay['oran'] : 0 ), ';' );
 
-		fclose( $cikti ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
-		exit;
+		self::csv_bitir( $cikti );
 	}
 
 	/**
@@ -2939,20 +2973,12 @@ class QRMS_Analitik {
 			. ( '' !== $masa ? '-' . $masa : '' )
 			. '-' . gmdate( 'Ymd-His', self::simdi() ) . '.csv';
 
-		nocache_headers();
-		header( 'Content-Type: text/csv; charset=utf-8' );
-		header( 'Content-Disposition: attachment; filename="' . $dosya . '"' );
-
-		$cikti = fopen( 'php://output', 'w' );
-
-		// Excel'in UTF-8'i tanıması için BOM.
-		fwrite( $cikti, "\xEF\xBB\xBF" ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fwrite
+		$cikti = self::csv_ac( $dosya );
 
 		fputcsv( $cikti, array( 'Olay', 'Ürün ID', 'Ürün Adı', 'Kategori', 'Masa', 'Tarih' ), ';' );
 
 		if ( ! self::tablo_var_mi() ) {
-			fclose( $cikti ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
-			exit;
+			self::csv_bitir( $cikti );
 		}
 
 		$tablo   = self::tablo();
@@ -3025,8 +3051,7 @@ class QRMS_Analitik {
 			);
 		}
 
-		fclose( $cikti ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
-		exit;
+		self::csv_bitir( $cikti );
 	}
 
 	/**
@@ -3046,17 +3071,9 @@ class QRMS_Analitik {
 
 		$dosya = 'qr-analitik-masalar-' . $baglam['donem'] . '-' . gmdate( 'Ymd-His', self::simdi() ) . '.csv';
 
-		nocache_headers();
-		header( 'Content-Type: text/csv; charset=utf-8' );
-		header( 'Content-Disposition: attachment; filename="' . $dosya . '"' );
+		$cikti = self::csv_ac( $dosya );
 
-		$cikti = fopen( 'php://output', 'w' );
-
-		// Excel'in UTF-8'i tanıması için BOM.
-		fwrite( $cikti, "\xEF\xBB\xBF" ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fwrite
-
-		fputcsv( $cikti, array( 'Aralık', substr( $aralik['bas'], 0, 10 ), substr( $aralik['bit'], 0, 10 ) ), ';' );
-		fputcsv( $cikti, array(), ';' );
+		self::csv_ustbilgi( $cikti, $aralik, $baglam, false );
 
 		fputcsv( $cikti, array( 'MASALAR' ), ';' );
 		fputcsv( $cikti, array( 'Masa', 'Masa Kodu', 'Grup', 'Durum', 'Menü Okutma', 'Ürün Tıklama', 'Tekil Ziyaretçi', 'Son Hareket' ), ';' );
@@ -3107,8 +3124,7 @@ class QRMS_Analitik {
 			);
 		}
 
-		fclose( $cikti ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
-		exit;
+		self::csv_bitir( $cikti );
 	}
 
 	/**
@@ -3133,17 +3149,9 @@ class QRMS_Analitik {
 			. ( '' !== $baglam['masa'] ? '-' . $baglam['masa'] : '' )
 			. '-' . gmdate( 'Ymd-His', self::simdi() ) . '.csv';
 
-		nocache_headers();
-		header( 'Content-Type: text/csv; charset=utf-8' );
-		header( 'Content-Disposition: attachment; filename="' . $dosya . '"' );
+		$cikti = self::csv_ac( $dosya );
 
-		$cikti = fopen( 'php://output', 'w' );
-
-		fwrite( $cikti, "\xEF\xBB\xBF" ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fwrite
-
-		fputcsv( $cikti, array( 'Aralık', substr( $aralik['bas'], 0, 10 ), substr( $aralik['bit'], 0, 10 ) ), ';' );
-		fputcsv( $cikti, array( 'Masa', '' !== $baglam['masa'] ? $baglam['masa'] : 'Tüm masalar' ), ';' );
-		fputcsv( $cikti, array(), ';' );
+		self::csv_ustbilgi( $cikti, $aralik, $baglam );
 
 		$ozet = $veri['ozet'];
 		fputcsv( $cikti, array( 'ÖZET' ), ';' );
@@ -3208,8 +3216,7 @@ class QRMS_Analitik {
 			}
 		}
 
-		fclose( $cikti ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
-		exit;
+		self::csv_bitir( $cikti );
 	}
 
 	/**
@@ -3232,17 +3239,9 @@ class QRMS_Analitik {
 			. ( '' !== $baglam['masa'] ? '-' . $baglam['masa'] : '' )
 			. '-' . gmdate( 'Ymd-His', self::simdi() ) . '.csv';
 
-		nocache_headers();
-		header( 'Content-Type: text/csv; charset=utf-8' );
-		header( 'Content-Disposition: attachment; filename="' . $dosya . '"' );
+		$cikti = self::csv_ac( $dosya );
 
-		$cikti = fopen( 'php://output', 'w' );
-
-		fwrite( $cikti, "\xEF\xBB\xBF" ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fwrite
-
-		fputcsv( $cikti, array( 'Aralık', substr( $aralik['bas'], 0, 10 ), substr( $aralik['bit'], 0, 10 ) ), ';' );
-		fputcsv( $cikti, array( 'Masa', '' !== $baglam['masa'] ? $baglam['masa'] : 'Tüm masalar' ), ';' );
-		fputcsv( $cikti, array(), ';' );
+		self::csv_ustbilgi( $cikti, $aralik, $baglam );
 
 		$ozet = $veri['ozet'];
 		fputcsv( $cikti, array( 'ÖZET' ), ';' );
@@ -3271,8 +3270,7 @@ class QRMS_Analitik {
 			fputcsv( $cikti, array( $satir['kod'], $satir['ad'], $satir['adet'], $satir['pay'] ), ';' );
 		}
 
-		fclose( $cikti ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
-		exit;
+		self::csv_bitir( $cikti );
 	}
 
 	/**
@@ -3294,17 +3292,9 @@ class QRMS_Analitik {
 			. ( '' !== $baglam['masa'] ? '-' . $baglam['masa'] : '' )
 			. '-' . gmdate( 'Ymd-His', self::simdi() ) . '.csv';
 
-		nocache_headers();
-		header( 'Content-Type: text/csv; charset=utf-8' );
-		header( 'Content-Disposition: attachment; filename="' . $dosya . '"' );
+		$cikti = self::csv_ac( $dosya );
 
-		$cikti = fopen( 'php://output', 'w' );
-
-		fwrite( $cikti, "\xEF\xBB\xBF" ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fwrite
-
-		fputcsv( $cikti, array( 'Aralık', substr( $aralik['bas'], 0, 10 ), substr( $aralik['bit'], 0, 10 ) ), ';' );
-		fputcsv( $cikti, array( 'Masa', '' !== $baglam['masa'] ? $baglam['masa'] : 'Tüm masalar' ), ';' );
-		fputcsv( $cikti, array(), ';' );
+		self::csv_ustbilgi( $cikti, $aralik, $baglam );
 
 		$ozet = $veri['ozet'];
 		fputcsv( $cikti, array( 'ÖZET' ), ';' );
@@ -3322,8 +3312,7 @@ class QRMS_Analitik {
 			fputcsv( $cikti, array( $satir['ad'], $satir['kod'], $satir['adet'], $satir['pay'] ), ';' );
 		}
 
-		fclose( $cikti ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
-		exit;
+		self::csv_bitir( $cikti );
 	}
 
 	/**
