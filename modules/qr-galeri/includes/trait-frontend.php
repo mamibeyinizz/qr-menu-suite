@@ -44,11 +44,12 @@ trait QRMGM_Frontend_Trait {
 
 		$atts = shortcode_atts(
 			[
-				'section' => '',
-				'columns' => '',
-				'ratio'   => '',
-				'limit'   => 0,
-				'filter'  => '',
+				'section'     => '',
+				'columns'     => '',
+				'ratio'       => '',
+				'limit'       => 0,
+				'filter'      => '',
+				'show_titles' => 'yes',
 			],
 			$atts,
 			'qrmenu_gallery'
@@ -71,17 +72,23 @@ trait QRMGM_Frontend_Trait {
 			$filter = '';
 		}
 
+		$show_titles = sanitize_key( $atts['show_titles'] );
+		if ( 'no' !== $show_titles ) {
+			$show_titles = 'yes';
+		}
+
 		$s = $this->get_settings();
 
 		$dil       = function_exists( 'rma_get_current_lang' ) ? rma_get_current_lang() : 'tr';
 		$surum     = function_exists( 'rma_ceviri_onbellek_surumu' ) ? rma_ceviri_onbellek_surumu() : 0;
 		$cache_key = 'qrmgm_gallery_' . md5( implode( '|', [
-			'v2',
+			'v3',
 			$atts['section'],
 			$columns,
 			$ratio,
 			(string) $limit,
 			$filter,
+			$show_titles,
 			$dil,
 			(string) $surum,
 		] ) );
@@ -140,65 +147,99 @@ trait QRMGM_Frontend_Trait {
 				</div>
 			<?php endif; ?>
 
-			<div class="qrmgm-grid">
-				<?php
-				$counter = 0;
-				foreach ( $sections as $sec ) :
-					$images = get_posts( [
-						'post_type'      => self::CPT_IMAGE,
-						'post_parent'    => $sec->ID,
-						'post_status'    => 'publish',
-						'orderby'        => 'menu_order',
-						'order'          => 'ASC',
-						'posts_per_page' => -1,
-					] );
-					foreach ( $images as $img ) :
-						if ( $limit > 0 && $counter >= $limit ) {
-							break;
-						}
-						$att_id = (int) get_post_meta( $img->ID, '_qrmgm_attachment_id', true );
-						if ( ! $att_id ) {
-							continue;
-						}
-						$src        = wp_get_attachment_image_src( $att_id, 'large' );
-						$full       = wp_get_attachment_image_src( $att_id, 'full' );
-						$webp_url   = get_post_meta( $att_id, '_qrmgm_webp_url', true );
-						$alt        = get_post_meta( $img->ID, '_qrmgm_alt', true ) ?: $img->post_title;
-						$desc       = get_post_meta( $img->ID, '_qrmgm_desc', true );
-						$icon       = get_post_meta( $sec->ID, '_qrmgm_icon', true );
-						if ( ! $src ) {
-							continue;
-						}
-						$counter++;
-						[ $url, $width, $height ] = $src;
-						?>
-						<figure class="qrmgm-item" data-section="<?php echo esc_attr( $sec->post_name ); ?>" data-index="<?php echo esc_attr( $counter ); ?>">
-							<a href="<?php echo esc_url( $full[0] ?? $url ); ?>"
-							   class="qrmgm-lightbox-trigger"
-							   data-caption="<?php echo esc_attr( $img->post_title . ( $desc ? ' — ' . $desc : '' ) ); ?>"
-							   data-download="<?php echo esc_url( $full[0] ?? $url ); ?>">
-								<?php if ( $webp_url ) : ?>
-									<picture>
-										<source srcset="<?php echo esc_url( $webp_url ); ?>" type="image/webp" />
-										<img src="<?php echo esc_url( $url ); ?>" alt="<?php echo esc_attr( $alt ); ?>" width="<?php echo esc_attr( $width ); ?>" height="<?php echo esc_attr( $height ); ?>" <?php echo $s['lazy_load'] ? 'loading="lazy"' : ''; ?> />
-									</picture>
-								<?php else : ?>
-									<img src="<?php echo esc_url( $url ); ?>" alt="<?php echo esc_attr( $alt ); ?>" width="<?php echo esc_attr( $width ); ?>" height="<?php echo esc_attr( $height ); ?>" <?php echo $s['lazy_load'] ? 'loading="lazy"' : ''; ?> />
-								<?php endif; ?>
-								<figcaption>
-									<?php if ( $icon ) : ?><span class="dashicons <?php echo esc_attr( $icon ); ?>"></span><?php endif; ?>
-									<span><?php echo esc_html( $img->post_title ); ?></span>
-								</figcaption>
-							</a>
-						</figure>
-						<?php
-					endforeach;
-					if ( $limit > 0 && $counter >= $limit ) {
-						break;
+			<?php
+			$counter = 0;
+			foreach ( $sections as $sec ) :
+				if ( $limit > 0 && $counter >= $limit ) {
+					break;
+				}
+				$images = get_posts( [
+					'post_type'      => self::CPT_IMAGE,
+					'post_parent'    => $sec->ID,
+					'post_status'    => 'publish',
+					'orderby'        => 'menu_order',
+					'order'          => 'ASC',
+					'posts_per_page' => -1,
+				] );
+				if ( empty( $images ) ) {
+					continue;
+				}
+
+				$sec_title = $sec->post_title;
+				$sec_desc  = (string) get_post_meta( $sec->ID, '_qrmgm_desc', true );
+				$sec_icon  = (string) get_post_meta( $sec->ID, '_qrmgm_icon', true );
+				if ( function_exists( 'rma_ceviri_modul' ) ) {
+					$sec_title = rma_ceviri_modul( 'gallery', $sec_title );
+					if ( '' !== $sec_desc ) {
+						$sec_desc = rma_ceviri_modul( 'gallery', $sec_desc );
 					}
-				endforeach;
+				}
 				?>
-			</div>
+				<section class="qrmgm-section" data-section="<?php echo esc_attr( $sec->post_name ); ?>">
+					<?php if ( 'yes' === $show_titles ) : ?>
+						<header class="qrmgm-section-head">
+							<h2 class="qrmgm-section-title">
+								<?php if ( $sec_icon ) : ?><span class="dashicons <?php echo esc_attr( $sec_icon ); ?>"></span><?php endif; ?>
+								<?php echo esc_html( $sec_title ); ?>
+							</h2>
+							<?php if ( '' !== trim( $sec_desc ) ) : ?>
+								<p class="qrmgm-section-desc"><?php echo esc_html( $sec_desc ); ?></p>
+							<?php endif; ?>
+						</header>
+					<?php endif; ?>
+
+					<div class="qrmgm-grid">
+						<?php
+						foreach ( $images as $img ) :
+							if ( $limit > 0 && $counter >= $limit ) {
+								break;
+							}
+							$att_id = (int) get_post_meta( $img->ID, '_qrmgm_attachment_id', true );
+							if ( ! $att_id ) {
+								continue;
+							}
+							$src      = wp_get_attachment_image_src( $att_id, 'large' );
+							$full     = wp_get_attachment_image_src( $att_id, 'full' );
+							$webp_url = get_post_meta( $att_id, '_qrmgm_webp_url', true );
+							$alt      = (string) get_post_meta( $img->ID, '_qrmgm_alt', true );
+							$desc     = (string) get_post_meta( $img->ID, '_qrmgm_desc', true );
+							if ( ! $src ) {
+								continue;
+							}
+							$caption = trim( $desc );
+							if ( '' === $caption ) {
+								$caption = trim( $alt );
+							}
+							$img_alt = '' !== trim( $alt ) ? $alt : $caption;
+							$counter++;
+							[ $url, $width, $height ] = $src;
+							?>
+							<figure class="qrmgm-item" data-section="<?php echo esc_attr( $sec->post_name ); ?>" data-index="<?php echo esc_attr( $counter ); ?>">
+								<a href="<?php echo esc_url( $full[0] ?? $url ); ?>"
+								   class="qrmgm-lightbox-trigger"
+								   <?php if ( '' !== $caption ) : ?>data-caption="<?php echo esc_attr( $caption ); ?>"<?php endif; ?>
+								   data-download="<?php echo esc_url( $full[0] ?? $url ); ?>">
+									<?php if ( $webp_url ) : ?>
+										<picture>
+											<source srcset="<?php echo esc_url( $webp_url ); ?>" type="image/webp" />
+											<img src="<?php echo esc_url( $url ); ?>" alt="<?php echo esc_attr( $img_alt ); ?>" width="<?php echo esc_attr( $width ); ?>" height="<?php echo esc_attr( $height ); ?>" <?php echo $s['lazy_load'] ? 'loading="lazy"' : ''; ?> />
+										</picture>
+									<?php else : ?>
+										<img src="<?php echo esc_url( $url ); ?>" alt="<?php echo esc_attr( $img_alt ); ?>" width="<?php echo esc_attr( $width ); ?>" height="<?php echo esc_attr( $height ); ?>" <?php echo $s['lazy_load'] ? 'loading="lazy"' : ''; ?> />
+									<?php endif; ?>
+									<?php if ( '' !== $caption ) : ?>
+										<figcaption><?php echo esc_html( $caption ); ?></figcaption>
+									<?php endif; ?>
+								</a>
+							</figure>
+							<?php
+						endforeach;
+						?>
+					</div>
+				</section>
+				<?php
+			endforeach;
+			?>
 		</div>
 		<?php
 		$html = ob_get_clean();
