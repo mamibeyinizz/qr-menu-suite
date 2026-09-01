@@ -170,7 +170,7 @@ if ( ! function_exists( 'rma_ceviri_csv_disa_aktar' ) ) {
 				$satir['item_type'],
 				$satir['field'],
 				$satir['original'],
-				md5( $satir['original'] ),
+				rma_ceviri_hash_olustur( $satir['original'], $satir['field'] ),
 			);
 
 			foreach ( $diller as $dil ) {

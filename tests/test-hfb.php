@@ -1719,6 +1719,8 @@ qrms_test(
 		qrms_assert_contains( 'function hfb_cevir_option_metin', $front, 'özel metin köprü' );
 		qrms_assert_contains( "hfb_cevir_option_metin( (string) \$opts['description'], 'hfb_footer.description' )", $front, 'footer açıklama' );
 		qrms_assert_contains( "hfb_cevir_option_metin( (string) \$opts['copyright'], 'hfb_footer.copyright' )", $front, 'footer telif' );
+		qrms_assert_contains( 'hfb_copyright_goruntule', $front, 'telif yıl yerleştirme' );
+		qrms_assert_contains( 'çeviri sistemine dahil değildir', $admin, 'HTML blok uyarısı' );
 		qrms_assert_contains( "rma_ceviri_hamburger_blok_field( \$block_id, 'description' )", $front, 'logo açıklama' );
 		qrms_assert_contains( "hfb_header.brand_line1", $admin, 'header marka uyarı' );
 		qrms_assert_contains( "hfb_footer.copyright", $admin, 'telif uyarı' );

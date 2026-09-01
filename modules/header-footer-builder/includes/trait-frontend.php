@@ -512,7 +512,7 @@ trait QRMS_HFB_Frontend {
 
 				<?php if ( ! empty( $opts['copyright'] ) ) : ?>
 					<div class="hfb-footer__bar">
-						<p class="hfb-footer__copyright"><?php echo esc_html( $this->hfb_cevir_option_metin( (string) $opts['copyright'], 'hfb_footer.copyright' ) ); ?></p>
+						<p class="hfb-footer__copyright"><?php echo esc_html( $this->hfb_copyright_goruntule( $this->hfb_cevir_option_metin( (string) $opts['copyright'], 'hfb_footer.copyright' ) ) ); ?></p>
 					</div>
 				<?php endif; ?>
 			</footer>
@@ -821,6 +821,8 @@ trait QRMS_HFB_Frontend {
 				break;
 
 			case 'text':
+				// Çeviri kapsamı dışı (HTML). Düz metin modu eklenirse: metin düğümü eşleme (C)
+				// veya doğrudan P1 option (hfb_hamburger.block.{id}.content) alınabilir.
 				$content = isset( $block['content'] ) ? trim( (string) $block['content'] ) : '';
 				if ( '' !== $content ) {
 					$inner = '<div class="hfb-mobile-panel__text">' . wp_kses_post( $content ) . '</div>';
@@ -1229,6 +1231,23 @@ trait QRMS_HFB_Frontend {
 		}
 
 		return $metin;
+	}
+
+	/**
+	 * Telif satırında yılı çalışma anında yerleştir (hash yılı hariç tutar).
+	 *
+	 * @param string $metin Kayıtlı veya çevrilmiş telif metni.
+	 * @return string
+	 */
+	private function hfb_copyright_goruntule( $metin ) {
+		$metin = (string) $metin;
+		if ( '' === $metin ) {
+			return '';
+		}
+
+		$yil = gmdate( 'Y' );
+
+		return (string) preg_replace( '/\b(19|20)\d{2}\b/', $yil, $metin, 1 );
 	}
 
 	/**

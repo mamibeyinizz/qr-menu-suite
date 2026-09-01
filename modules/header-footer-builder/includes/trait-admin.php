@@ -1108,6 +1108,7 @@ trait QRMS_HFB_Admin {
 						<label class="qrms-label" for="hfb_hamburger_text_<?php echo esc_attr( $id ); ?>"><?php esc_html_e( 'Serbest metin / HTML', 'qrms' ); ?></label>
 						<textarea id="hfb_hamburger_text_<?php echo esc_attr( $id ); ?>" name="<?php echo esc_attr( $prefix ); ?>[content]" class="qrms-input hfb-preview-trigger" rows="4"><?php echo esc_textarea( isset( $block['content'] ) ? (string) $block['content'] : '' ); ?></textarea>
 						<p class="description"><?php esc_html_e( 'İzin verilen HTML (paragraf, bağlantı, vurgu) kaydedilir; zararlı etiketler temizlenir.', 'qrms' ); ?></p>
+						<p class="description"><?php esc_html_e( 'Bu blok HTML içerdiği için çeviri sistemine dahil değildir; çok dilli kullanımda içerik tüm dillerde aynı görünür.', 'qrms' ); ?></p>
 					</div>
 				<?php elseif ( 'logo' === $type ) : ?>
 					<p class="description"><?php esc_html_e( 'Header sekmesinde yüklenen logo (veya marka yazısı) panel içinde bu sırada görünür.', 'qrms' ); ?></p>

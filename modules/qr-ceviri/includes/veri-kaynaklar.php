@@ -48,19 +48,54 @@ if ( ! function_exists( 'rma_ceviri_hash_kapisi_mi' ) ) {
 }
 
 /**
+ * Hash hesabında kullanılacak metin (alan bazlı normalizasyon).
+ *
+ * hfb_footer.copyright: yıl dinamik olduğu için 4 haneli yıl → %s.
+ *
+ * @param string $orijinal Canlı yönetici metni.
+ * @param string $field    Defter alanı; boşsa ham metin.
+ * @return string
+ */
+if ( ! function_exists( 'rma_ceviri_hash_kaynagi' ) ) {
+	function rma_ceviri_hash_kaynagi( $orijinal, $field = '' ) {
+		$metin = (string) $orijinal;
+
+		if ( 'hfb_footer.copyright' === $field ) {
+			return (string) preg_replace( '/\b(19|20)\d{2}\b/', '%s', $metin, 1 );
+		}
+
+		return $metin;
+	}
+}
+
+/**
+ * Hash kapılı alanlar için original_hash üret.
+ *
+ * @param string $orijinal Canlı yönetici metni.
+ * @param string $field    Defter alanı.
+ * @return string
+ */
+if ( ! function_exists( 'rma_ceviri_hash_olustur' ) ) {
+	function rma_ceviri_hash_olustur( $orijinal, $field = '' ) {
+		return md5( rma_ceviri_hash_kaynagi( $orijinal, $field ) );
+	}
+}
+
+/**
  * Kayıtlı hash canlı metinle uyuşuyor mu?
  *
  * Boş hash = bilinmiyor → kapı kapatır (çeviri basılmaz).
  *
  * @param string $orijinal Canlı yönetici metni.
  * @param string $hash     Tablodaki original_hash.
+ * @param string $field    Defter alanı (telif yılı normalizasyonu için).
  * @return bool
  */
 if ( ! function_exists( 'rma_ceviri_hash_guncel_mi' ) ) {
-	function rma_ceviri_hash_guncel_mi( $orijinal, $hash ) {
+	function rma_ceviri_hash_guncel_mi( $orijinal, $hash, $field = '' ) {
 		$hash = (string) $hash;
 
-		return '' !== $hash && $hash === md5( (string) $orijinal );
+		return '' !== $hash && $hash === rma_ceviri_hash_olustur( $orijinal, $field );
 	}
 }
 
@@ -1034,7 +1069,8 @@ if ( ! function_exists( 'rma_ceviri_eskimis_sayilari' ) ) {
 					continue;
 				}
 
-				if ( ! rma_ceviri_hash_guncel_mi( $guncel, $satir->original_hash ) ) {
+				$field = isset( $satir->field ) ? (string) $satir->field : '';
+				if ( ! rma_ceviri_hash_guncel_mi( $guncel, $satir->original_hash, $field ) ) {
 					++$adet;
 				}
 			}
