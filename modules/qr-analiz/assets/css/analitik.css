@@ -66,6 +66,7 @@
 	width: 100%;
 }
 
+/* FAZ 9 ÖLÜ: markup'ta class yok (eski tek-sayfa bildirimi). */
 .qrms-an-notice {
 	margin: 0 0 16px;
 }
@@ -371,8 +372,7 @@
 	padding: 0;
 }
 
-/* Bölüm başlığındaki eylem kümesi (dönem seçici + CSV) dar ekranda alta
-   iner, geniş ekranda başlığın karşısında kalır. */
+/* FAZ 9 ÖLÜ: dönem seçici filtre çubuğuna taşındı; bu class basılmıyor. */
 .qrms-an-panel-actions {
 	align-items: center;
 	display: flex;
@@ -380,10 +380,8 @@
 	gap: 8px;
 }
 
-/* Seçili olmayan kategorinin bölümü hidden gelir. .qrms-an-panel kendi
-   display'ini bildirmediği için tarayıcının [hidden] kuralı yeter; yine de
-   açıkça yazılır — ileride panele display verilirse kural sessizce
-   bozulmasın. */
+/* FAZ 9 ÖLÜ: tek-sayfa kategori panelleri kalktı; markup'ta class yok.
+   Test hâlâ bu kuralın CSS'te durduğunu doğrular (silinmesin diye). */
 .qrms-an-cat-panel[hidden] {
 	display: none;
 }
@@ -682,11 +680,7 @@
 	margin-bottom: 4px;
 }
 
-/* =====================================================================
-   MASA FİLTRESİ
-   Kategori şeridinin altında, tüm kategoriler için ortak.
-===================================================================== */
-
+/* FAZ 9 ÖLÜ: canlı çubuk .qrms-an-filtre (Türkçe). İngilizce class kalıntı. */
 .qrms-an-filter {
 	align-items: center;
 	background: var(--qrms-an-bg);
@@ -699,6 +693,7 @@
 	padding: 12px 16px;
 }
 
+/* FAZ 9 ÖLÜ: canlı etiket .qrms-an-filtre-label. */
 .qrms-an-filter-label {
 	color: var(--qrms-an-muted);
 	font-size: 12px;
@@ -719,12 +714,13 @@
 	width: 100%;
 }
 
-/* Bölüm başlığındaki dönem seçici: satır içinde durur, şeridi germez. */
+/* FAZ 9 ÖLÜ: dönem seçici <a> çubuğuna taşındı. */
 .qrms-an-select-small {
 	max-width: 100%;
 	width: auto;
 }
 
+/* FAZ 9 ÖLÜ: .qrms-an-filtered markup'ta yok. */
 .qrms-an-filtered .qrms-an-filter {
 	background: rgba( 201, 168, 76, .07 );
 	border-color: var(--qrms-an-gold);

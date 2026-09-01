@@ -14,9 +14,9 @@
  * onları boyanmadan hemen önce düşürür.
  *
  * DOLU KATEGORİLER kendi dosyalarındadır (genel-, urunler-, masalar-,
- * sepet-, sistem-sayfasi.php); buradaki placeholder yalnızca henüz
- * açılmamış kategoriler içindir (Müşteri Etkileşimi, Açılış Ekranı —
- * bkz. Faz 8).
+ * sepet-, etkilesim-, acilis-, sistem-sayfasi.php). Faz 8 bitti; tüm
+ * kategoriler hazir=true. qrms_analitik_hazirlaniyor() çağrılmıyor
+ * (FAZ 9: ölü placeholder, silinmedi).
  *
  * PAYLAŞILAN FİLTRE. Kategoriler aynı verinin farklı kesitleridir, bu yüzden
  * zaman aralığı ve masa seçimi sayfalar arasında TAŞINIR; her bağlantı
@@ -215,7 +215,7 @@ if ( ! function_exists( 'qrms_module_qr_analiz_gecerli_sayfalar' ) ) {
 if ( ! function_exists( 'qrms_module_qr_analiz_hub_kartlari' ) ) {
 
 	/**
-	 * Hub kartları: kategoriler + klasik görünüm.
+	 * Hub kartları: yalnızca gecerli_sayfalar() (klasik görünüm kartı yok).
 	 *
 	 * Kart adresleri aktif filtreyi taşır — kullanıcı "Son 7 gün + Masa 3"
 	 * seçtikten sonra hub'a dönüp başka bir kategoriye girdiğinde seçimi
@@ -377,11 +377,10 @@ if ( ! function_exists( 'qrms_module_qr_analiz_hub' ) ) {
 if ( ! function_exists( 'qrms_analitik_hazirlaniyor' ) ) {
 
 	/**
-	 * Henüz doldurulmamış kategori sayfasının içeriği.
+	 * FAZ 9 ÖLÜ — hiçbir çağıran yok (tüm kategoriler hazir).
 	 *
-	 * Kategoriler mevcut panelden kademe kademe taşınıyor; taşınmayan bölüm
-	 * BOŞ EKRAN bırakmaz, ne olacağını söyler ve verinin bugün nerede
-	 * durduğunu (klasik görünüm) gösterir.
+	 * Henüz doldurulmamış kategori sayfasının içeriğiydi; içindeki
+	 * "klasik görünüm" linki qrms-an-klasik'e gider (hub'a 302).
 	 *
 	 * @param string $baslik  Sayfa başlığı.
 	 * @param string $aciklama Kategorinin tek cümlelik tarifi.

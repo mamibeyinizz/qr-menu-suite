@@ -331,6 +331,23 @@ class QRMS_Helpers {
 	 *
 	 * Autoload=no: wp_load_alloptions'a girmez, normal admin isteğini
 	 * yavaşlatmaz. Yalnızca eski adrese gerçekten gelindiğinde okunur.
+	 *
+	 * Envanter (silme yok; sıfır vuruş birikince karar):
+	 *   add_submenu_page('', …) — her admin isteğinde kayıt, vuruşta sayaç:
+	 *     rma_settings, rma_color_settings, rma_nav_design,
+	 *     rma_suggestions_settings, rma_category_order, rma_csv_import,
+	 *     rma_menu_backup, qrms-rm-banner-ayar,
+	 *     qrms-analiz-panel, qrms-an-klasik
+	 *   Yönlendirme kancası (menü satırı yok) — vuruşta sayaç:
+	 *     qrm-pro-main, qrm-pro-insights, qrm-pro-settings, qrm-pro-form,
+	 *     qrm-pro-contact, qrm-pro-rewards, qrm-forms, qrm-form-edit,
+	 *     qrm-form-submissions,
+	 *     splash-screen, splash-screen-links, splash-links
+	 *   Sayaç yok (hub'ın kendisi / henüz main'de yönlendirme değil):
+	 *     qrms-module-qr-galeri — canlı hub slug'ı
+	 *     qrmenu-translator — P2 dalında yönlendirme + sayaç var; main'de
+	 *       hâlâ canlı tek sayfa
+	 *     qrms-cv-klasik — P2'de gizli canlı sayfa (hub kartı yok)
 	 */
 	const LEGACY_SLUG_HITS_OPT = 'qrms_legacy_slug_hits';
 

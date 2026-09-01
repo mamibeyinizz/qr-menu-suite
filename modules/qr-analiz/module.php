@@ -4,9 +4,9 @@
  *
  * Modül suite'in standart HUB desenini kullanır: sol menüdeki "İstatistikler"
  * satırı bir kart ızgarası açar, her konu kendi alt sayfasındadır (bkz.
- * hub-sayfasi.php). Kategoriler mevcut tek sayfalık panelden kademe kademe
- * taşınır; taşınana kadar panel "Tüm Veriler (klasik görünüm)" kartından
- * erişilebilir kalır.
+ * hub-sayfasi.php). Tek sayfalık panel (analitik-sayfasi.php) Faz 5'te
+ * kalktı; "Tüm Veriler (klasik görünüm)" hub kartı da yok. qrms-an-klasik
+ * yalnızca 302 yönlendirmedir (FAZ 9: kart/yorum kalıntısı, silinmedi).
  *
  * (v1.0'da modülün altında "Firebase & Şube Ayarları" ekranı da vardı;
  * yapılandırdığı şey raporlama değil kimlik doğrulama olduğu için Güvenlik
@@ -72,8 +72,8 @@ function qrms_module_qr_analiz_init() {
 		require_once __DIR__ . '/sistem-sayfasi.php';
 		require_once __DIR__ . '/hub-sayfasi.php';
 
-		// "İstatistikler" satırı artık hub ekranıdır; klasik panel onun bir
-		// kartı uzağındadır.
+		// "İstatistikler" satırı hub ekranıdır. Klasik panel slug'ı yalnızca
+		// yönlendirmedir (hub'da kartı yoktur).
 		QRMS_Admin::register_module_page( 'qr-analiz', 'qrms_module_qr_analiz_hub' );
 
 		add_action( 'admin_menu', 'qrms_module_qr_analiz_admin_menu', 20 );
@@ -671,7 +671,8 @@ function qrms_analitik_masa_etiketi( $slug ) {
 /**
  * Analitik panelinin stil dosyası.
  *
- * Hem hub hem klasik panel aynı stil kaynağını kullansın diye ayrıldı.
+ * Hub ve kategori sayfaları aynı stil kaynağını kullanır. Klasik panel
+ * dosyası yoktur; analitik.js kuyruğa girmez (FAZ 9: CSS'te ölü kurallar var).
  *
  * @return void
  */
