@@ -3898,13 +3898,20 @@ qrms_test(
 		qrms_assert_contains( 'Köşe yumuşaklığı', $gorunum, 'köşe' );
 		qrms_assert_contains( 'name="gemini_icon_size"', $gorunum, 'eski boyut alanı' );
 		qrms_assert_contains( 'name="gemini_border_radius"', $gorunum, 'eski köşe alanı' );
-		qrms_assert_contains( 'name="gemini_header_bg_color"', $gorunum, 'gelişmiş renk name' );
+		qrms_assert_contains( "'gemini_header_bg_color'", $gorunum, 'gelişmiş renk name' );
+		qrms_assert_contains( 'data-color-key', $gorunum, 'renk alan name döngüsü' );
 		qrms_assert_false( false !== strpos( $gorunum, 'Toggle' ), 'Toggle yok' );
 		qrms_assert_false( false !== strpos( $gorunum, 'border radius' ), 'border radius yok' );
 		qrms_assert_contains( 'Hazır Şablonlar', $gorunum, 'şablonlar' );
-		qrms_assert_contains( 'Royal Violet & Gold', $gorunum, 'royal' );
+		qrms_assert_contains( 'qmo_renk_sablonlari', $gorunum, 'mevcut şablon kaynağı' );
+		$sablon = file_get_contents( QRMS_PLUGIN_DIR . 'modules/_qmo-ortak/color-defaults.php' );
+		qrms_assert_contains( 'Royal Violet & Gold', $sablon, 'royal' );
+		qrms_assert_contains( 'Emerald Noir', $sablon, 'emerald' );
+		qrms_assert_contains( 'Rose Blush', $sablon, 'rose' );
+		qrms_assert_contains( 'Dark Mode', $sablon, 'dark' );
 		qrms_assert_contains( 'Gelişmiş renk ayarları', $gorunum, 'gelişmiş' );
-		qrms_assert_contains( 'Sohbete Başla', $gorunum, 'karşılama butonu varsayılanı' );
+		qrms_assert_contains( 'qmo_chatbot_welcome_btn', $gorunum, 'karşılama butonu alanı' );
+		qrms_assert_contains( "'qmo_chatbot_welcome_btn'", file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/includes/class-ayarlar.php' ), 'karşılama varsayılanı' );
 	}
 );
 
