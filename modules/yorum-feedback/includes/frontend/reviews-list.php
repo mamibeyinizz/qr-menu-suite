@@ -114,8 +114,8 @@ function qrm_pro_count_approved_reviews() {
  * @return string
  */
 function qrm_pro_render_review_card($review) {
-    $display_name = $review->is_anonymous ? 'Anonim Misafir' : esc_html($review->customer_name);
-    if (empty($display_name)) $display_name = 'Misafir';
+    $display_name = $review->is_anonymous ? esc_html(qrm_ceviri_review(__('Anonim Misafir', 'qrms'))) : esc_html($review->customer_name);
+    if (empty($display_name)) $display_name = esc_html(qrm_ceviri_review(__('Misafir', 'qrms')));
 
     $int_r = (int) round($review->rating);
     $int_r = max(0, min(5, $int_r));

@@ -74,13 +74,13 @@ if ( ! function_exists( 'qmo_cagri_gonder' ) ) {
 		$masa = $sess['masa'];
 
 		if ( ! QMO_Firestore::hazir_mi() ) {
-			wp_send_json_error( array( 'msg' => 'Çağrı sistemi şu anda kullanılamıyor.' ), 503 );
+			wp_send_json_error( array( 'msg' => qmo_ceviri_chat( __( 'Çağrı sistemi şu anda kullanılamıyor.', 'qrms' ) ) ), 503 );
 		}
 
 		// Hız sınırı: aynı masa + aynı IP, 60 saniyede bir çağrı.
 		$saniye = (int) apply_filters( 'qmo_cagri_bekleme', 60, $tip );
 		if ( ! qmo_hiz_siniri( 'cagri_' . $tip, $masa, $saniye ) ) {
-			wp_send_json_error( array( 'msg' => 'Çağrınız iletildi, lütfen bekleyin.' ), 429 );
+			wp_send_json_error( array( 'msg' => qmo_ceviri_chat( __( 'Çağrınız iletildi, lütfen bekleyin.', 'qrms' ) ) ), 429 );
 		}
 
 		// Analitik, Firestore'dan BAĞIMSIZ ve bağlantı bırakılmadan ÖNCE.
@@ -109,7 +109,7 @@ if ( ! function_exists( 'qmo_cagri_gonder' ) ) {
 
 		wp_send_json_success(
 			array(
-				'msg'   => 'İletildi',
+				'msg'   => qmo_ceviri_chat( __( 'İletildi', 'qrms' ) ),
 				'mesaj' => 'Talep alındı.',
 			)
 		);

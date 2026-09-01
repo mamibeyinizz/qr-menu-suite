@@ -31,7 +31,9 @@ trait QRMGM_Frontend_Trait {
 		$atts = shortcode_atts( [ 'section' => '' ], $atts, 'qrmenu_gallery' );
 		$s    = $this->get_settings();
 
-		$cache_key = 'qrmgm_gallery_' . md5( $atts['section'] );
+		$dil    = function_exists( 'rma_get_current_lang' ) ? rma_get_current_lang() : 'tr';
+		$surum  = function_exists( 'rma_ceviri_onbellek_surumu' ) ? rma_ceviri_onbellek_surumu() : 0;
+		$cache_key = 'qrmgm_gallery_' . md5( $atts['section'] . '|' . $dil . '|' . $surum );
 		$cached    = get_transient( $cache_key );
 		if ( false !== $cached ) {
 			return $cached;
@@ -50,7 +52,11 @@ trait QRMGM_Frontend_Trait {
 		$sections = get_posts( $section_query_args );
 
 		if ( empty( $sections ) ) {
-			return '<p>' . esc_html__( 'Galeri bulunamadı.', 'qrmenu-gallery-manager' ) . '</p>';
+			$bos = __( 'Galeri bulunamadı.', 'qrmenu-gallery-manager' );
+			if ( function_exists( 'rma_ceviri_modul' ) ) {
+				$bos = rma_ceviri_modul( 'gallery', $bos );
+			}
+			return '<p>' . esc_html( $bos ) . '</p>';
 		}
 
 		ob_start();
@@ -58,7 +64,10 @@ trait QRMGM_Frontend_Trait {
 		<div class="qrmgm-gallery" data-lightbox="<?php echo esc_attr( $s['lightbox'] ); ?>">
 			<?php if ( $s['filter_bar'] && count( $sections ) > 1 ) : ?>
 				<div class="qrmgm-filter-bar">
-					<button type="button" class="qrmgm-filter-btn is-active" data-filter="all">Tümü</button>
+					<button type="button" class="qrmgm-filter-btn is-active" data-filter="all"><?php
+						$tumu = function_exists( 'rma_ceviri_modul' ) ? rma_ceviri_modul( 'gallery', 'Tümü' ) : 'Tümü';
+						echo esc_html( $tumu );
+					?></button>
 					<?php foreach ( $sections as $sec ) : ?>
 						<button type="button" class="qrmgm-filter-btn" data-filter="<?php echo esc_attr( $sec->post_name ); ?>"><?php echo esc_html( $sec->post_title ); ?></button>
 					<?php endforeach; ?>

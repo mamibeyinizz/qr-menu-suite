@@ -29,6 +29,19 @@ function qrm_pro_admin_settings() {
     ?>
     <div class="wrap qrm-pro-wrap">
         <h1>Ayarlar &amp; Puanlama</h1>
+        <?php
+        if (function_exists('rma_ceviri_option_alan_dil_sayisi')) {
+            $ceviri_n = rma_ceviri_option_alan_dil_sayisi(array(
+                'qrm_settings.form_title',
+                'qrm_settings.crit_1_name',
+                'qrm_settings.crit_2_name',
+                'qrm_settings.crit_3_name',
+                'qrm_settings.crit_4_name',
+                'qrm_settings.crit_5_name',
+            ));
+            echo rma_ceviri_bayat_uyari_html(rma_ceviri_bayat_uyari_ekran_metni($ceviri_n));
+        }
+        ?>
 
         <?php if ($notice !== ''): ?>
             <div class="notice notice-success is-dismissible"><p><?php echo esc_html($notice); ?></p></div>

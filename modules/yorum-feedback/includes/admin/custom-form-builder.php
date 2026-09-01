@@ -66,6 +66,18 @@ function qrm_cf_admin_form_editor_view() {
         <?php foreach ($notices as $n): ?>
             <div class="notice notice-<?php echo esc_attr($n['type']); ?> is-dismissible"><p><?php echo wp_kses_post($n['text']); ?></p></div>
         <?php endforeach; ?>
+        <?php
+        if (!$is_new && function_exists('rma_ceviri_veri_dil_sayisi')) {
+            $diller = rma_ceviri_veri_dil_sayisi('cf_form', (int) $form->id, '');
+            foreach ($fields as $f) {
+                $n = rma_ceviri_veri_dil_sayisi('cf_field', (int) $f->id, 'label');
+                if ($n > $diller) {
+                    $diller = $n;
+                }
+            }
+            echo rma_ceviri_bayat_uyari_html(rma_ceviri_bayat_uyari_ekran_metni($diller));
+        }
+        ?>
 
         <form method="post" id="qrm-fb-form">
             <?php wp_nonce_field('qrm_cf_save_form'); ?>

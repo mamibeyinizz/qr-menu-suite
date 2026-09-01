@@ -179,6 +179,32 @@ trait QRMS_AE_I18n {
 				'pl' => 'Wybierz język (%s)',
 				'pt' => 'Selecionar idioma (%s)',
 			),
+			'pay_nakit' => array(
+				'tr' => 'Nakit',
+				'en' => 'Cash',
+				'de' => 'Bar',
+				'fr' => 'Espèces',
+				'es' => 'Efectivo',
+				'it' => 'Contanti',
+				'ru' => 'Наличные',
+				'ar' => 'نقداً',
+				'nl' => 'Contant',
+				'pl' => 'Gotówka',
+				'pt' => 'Dinheiro',
+			),
+			'pay_kart' => array(
+				'tr' => 'Kart',
+				'en' => 'Card',
+				'de' => 'Karte',
+				'fr' => 'Carte',
+				'es' => 'Tarjeta',
+				'it' => 'Carta',
+				'ru' => 'Карта',
+				'ar' => 'بطاقة',
+				'nl' => 'Kaart',
+				'pl' => 'Karta',
+				'pt' => 'Cartão',
+			),
 		);
 	}
 
@@ -230,6 +256,13 @@ trait QRMS_AE_I18n {
 			return $tr;
 		}
 
+		// 1) QR Çeviri tablosu (item_type=splash). Yoksa veya boşsa kataloğa düş.
+		$tablo = $this->splash_tablo_cevirisi( $tr, $lang );
+		if ( '' !== $tablo ) {
+			return $tablo;
+		}
+
+		// 2) Eski texts_en (yalnız TR/EN düğmesi + EN).
 		if ( 'en' === $lang && $this->lang_toggle_active( $opts ) ) {
 			$legacy = isset( $opts['texts_en'][ $key ] ) ? trim( (string) $opts['texts_en'][ $key ] ) : '';
 			if ( '' !== $legacy ) {
@@ -237,7 +270,37 @@ trait QRMS_AE_I18n {
 			}
 		}
 
+		// 3) i18n_catalog(), o da yoksa Türkçe.
 		return $this->i18n_translate( $key, $lang, $tr );
+	}
+
+	/**
+	 * QR Çeviri tablosundan splash metni.
+	 *
+	 * Tablo yoksa, dil TR ise veya satır boşsa '' döner — çağıran kataloga düşer.
+	 * rma_ceviri_modul() kaçırılan satırı Türkçe kaynakla doldurduğu için
+	 * burada sözlük indeksine bakılır (miss ≠ kaynak metin).
+	 *
+	 * @param string $tr   Türkçe kaynak.
+	 * @param string $lang Dil kodu.
+	 * @return string
+	 */
+	private function splash_tablo_cevirisi( $tr, $lang ) {
+		if ( 'tr' === $lang || '' === $tr ) {
+			return '';
+		}
+		if ( ! function_exists( 'rma_ceviri_sozluk' ) || ! function_exists( 'rma_ceviri_anahtar' ) || ! function_exists( 'rma_ceviri_ui_anahtari' ) ) {
+			return '';
+		}
+
+		$sozluk  = rma_ceviri_sozluk( $lang );
+		$anahtar = rma_ceviri_anahtar( 'splash', 0, rma_ceviri_ui_anahtari( $tr ) );
+
+		if ( isset( $sozluk['anahtar'][ $anahtar ] ) && '' !== (string) $sozluk['anahtar'][ $anahtar ] ) {
+			return (string) $sozluk['anahtar'][ $anahtar ];
+		}
+
+		return '';
 	}
 
 	/**

@@ -219,6 +219,33 @@ function qrm_reward_admin_settings_view($settings, $sub = 'kurulum') {
         <a href="#" class="nav-tab qrm-rw-subtab" data-sub="sablonlar">3. İndirim Şablonları</a>
     </h2>
 
+    <?php
+    if (function_exists('rma_ceviri_option_alan_dil_sayisi')) {
+        echo rma_ceviri_bayat_uyari_html(rma_ceviri_bayat_uyari_ekran_metni(rma_ceviri_option_alan_dil_sayisi(array(
+            'qrm_settings.google_review_headline',
+            'qrm_settings.google_review_subtext',
+            'qrm_settings.google_review_btn_text',
+            'qrm_settings.google_review_skip_text',
+            'qrm_settings.qrm_reward_popup_title',
+            'qrm_settings.qrm_reward_popup_text',
+            'qrm_settings.qrm_reward_popup_button_text',
+            'qrm_settings.qrm_reward_popup_claim_text',
+            'qrm_settings.qrm_reward_popup_waiting_text',
+            'qrm_settings.qrm_reward_popup_skip_text',
+            'qrm_settings.qrm_reward_popup_email_step_title',
+            'qrm_settings.qrm_reward_popup_email_step_text',
+            'qrm_settings.qrm_reward_popup_email_placeholder',
+            'qrm_settings.qrm_reward_popup_email_button_text',
+            'qrm_settings.qrm_reward_popup_success_text',
+            'qrm_settings.qrm_reward_popup_already_used_text',
+            'qrm_settings.qrm_reward_popup_error_text',
+            'qrm_settings.qrm_reward_popup_copy_text',
+            'qrm_settings.qrm_reward_popup_copied_text',
+            'qrm_settings.qrm_reward_email_subject',
+            'qrm_settings.qrm_reward_email_intro',
+        ))));
+    }
+    ?>
     <form method="POST" id="qrm-reward-settings-form">
         <?php wp_nonce_field('qrm_reward_save_all'); ?>
         <input type="hidden" name="qrm_reward_save_all" value="1">

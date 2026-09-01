@@ -245,6 +245,8 @@ class QRMS_Header_Footer_Builder {
 			'brand_font_weight'          => 400,
 			'brand_font_size_desktop'    => 16,
 			'brand_font_size_mobile'     => 14,
+			// P0: kod sabiti ui_string. P1: option öne bakar (hash kapısı).
+			// GEÇİCİ iki tip — Faz 9: tek tipe indirilsin mi?
 			'links_title'                => 'Hızlı Menü',
 			'links_align'                => 'left',
 			'links_title_font_family'    => 'Playfair Display',

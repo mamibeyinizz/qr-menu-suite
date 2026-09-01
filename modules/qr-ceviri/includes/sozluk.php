@@ -109,6 +109,7 @@ if ( ! function_exists( 'rma_ceviri_sozluk' ) ) {
 		$bos = array(
 			'anahtar' => array(),
 			'metin'   => array(),
+			'hash'    => array(),
 		);
 
 		if ( 'tr' === $lang ) {
@@ -120,6 +121,9 @@ if ( ! function_exists( 'rma_ceviri_sozluk' ) ) {
 		$onbellek  = get_transient( $transient );
 
 		if ( is_array( $onbellek ) && isset( $onbellek['anahtar'], $onbellek['metin'] ) ) {
+			if ( ! isset( $onbellek['hash'] ) ) {
+				$onbellek['hash'] = array();
+			}
 			$bellek[ $lang ] = $onbellek;
 			return $onbellek;
 		}
@@ -130,6 +134,12 @@ if ( ! function_exists( 'rma_ceviri_sozluk' ) ) {
 			$anahtar = rma_ceviri_anahtar( $satir->item_type, $satir->item_id, $satir->field );
 
 			$sozluk['anahtar'][ $anahtar ] = $satir->translated_text;
+
+			if ( function_exists( 'rma_ceviri_hash_kapisi_mi' ) && rma_ceviri_hash_kapisi_mi( $satir->item_type ) ) {
+				$sozluk['hash'][ $anahtar ] = isset( $satir->original_hash ) ? (string) $satir->original_hash : '';
+				// Metin indeksine girmez: eskimiş option tamponla yanlış yere basılmasın.
+				continue;
+			}
 
 			rma_ceviri_metin_indeksine_ekle(
 				$sozluk['metin'],
@@ -197,7 +207,7 @@ if ( ! function_exists( 'rma_ceviri_metin_sozlugu' ) ) {
  * Çeviri yoksa orijinal döner; hiçbir zaman boş göstermez.
  *
  * @param int         $item_id       Post/term ID; sabit metinlerde 0.
- * @param string      $item_type     product|category|allergen|ui_string|elementor.
+ * @param string      $item_type     product|…|option|form_field|cf_field|cf_form.
  * @param string      $field         Alan anahtarı.
  * @param string      $original_text Orijinal (TR) metin — fallback.
  * @param string|null $lang          Dil kodu; null ise geçerli dil.
@@ -215,6 +225,16 @@ if ( ! function_exists( 'rma_translate_field' ) ) {
 		$anahtar = rma_ceviri_anahtar( $item_type, $item_id, $field );
 
 		if ( isset( $sozluk['anahtar'][ $anahtar ] ) && '' !== $sozluk['anahtar'][ $anahtar ] ) {
+			if ( function_exists( 'rma_ceviri_hash_kapisi_mi' )
+				&& rma_ceviri_hash_kapisi_mi( $item_type )
+				&& isset( $sozluk['hash'] )
+			) {
+				$hash = isset( $sozluk['hash'][ $anahtar ] ) ? $sozluk['hash'][ $anahtar ] : '';
+				if ( ! rma_ceviri_hash_guncel_mi( $original_text, $hash ) ) {
+					return $original_text;
+				}
+			}
+
 			return $sozluk['anahtar'][ $anahtar ];
 		}
 

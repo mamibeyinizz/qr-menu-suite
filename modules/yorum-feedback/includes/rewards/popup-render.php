@@ -178,31 +178,31 @@ function qrm_reward_render_popup($settings, $auto_open = false) {
     ?>
     <div class="qrm-rw-overlay" id="qrmRewardPopup" hidden>
         <div class="qrm-rw-modal" role="dialog" aria-modal="true" aria-labelledby="qrmRwTitle">
-            <button type="button" class="qrm-rw-close" id="qrmRwClose" aria-label="Kapat">&times;</button>
+            <button type="button" class="qrm-rw-close" id="qrmRwClose" aria-label="<?php echo esc_attr(qrm_ceviri_review(__('Kapat', 'qrms'))); ?>">&times;</button>
 
             <!-- STATE_INITIAL -->
             <div data-rw-step="initial">
                 <div class="qrm-rw-badge">🎁</div>
-                <h3 class="qrm-rw-title" id="qrmRwTitle"><?php echo esc_html($settings['qrm_reward_popup_title']); ?></h3>
-                <p class="qrm-rw-text"><?php echo esc_html($settings['qrm_reward_popup_text']); ?></p>
+                <h3 class="qrm-rw-title" id="qrmRwTitle"><?php echo esc_html(qrm_ceviri_option('qrm_settings.qrm_reward_popup_title', $settings['qrm_reward_popup_title'])); ?></h3>
+                <p class="qrm-rw-text"><?php echo esc_html(qrm_ceviri_option('qrm_settings.qrm_reward_popup_text', $settings['qrm_reward_popup_text'])); ?></p>
                 <button type="button" class="qrm-rw-btn" id="qrmRwGoBtn">
                     <span class="qrm-rw-fill" id="qrmRwFill"></span>
-                    <span class="qrm-rw-btn-label" id="qrmRwGoLabel"><?php echo esc_html($settings['qrm_reward_popup_button_text']); ?></span>
+                    <span class="qrm-rw-btn-label" id="qrmRwGoLabel"><?php echo esc_html(qrm_ceviri_option('qrm_settings.qrm_reward_popup_button_text', $settings['qrm_reward_popup_button_text'])); ?></span>
                 </button>
-                <button type="button" class="qrm-rw-skip" id="qrmRwSkip"><?php echo esc_html($settings['qrm_reward_popup_skip_text']); ?></button>
+                <button type="button" class="qrm-rw-skip" id="qrmRwSkip"><?php echo esc_html(qrm_ceviri_option('qrm_settings.qrm_reward_popup_skip_text', $settings['qrm_reward_popup_skip_text'])); ?></button>
             </div>
 
             <!-- STATE_EMAIL -->
             <div data-rw-step="email" hidden>
                 <div class="qrm-rw-badge">✉️</div>
-                <h3 class="qrm-rw-title"><?php echo esc_html($settings['qrm_reward_popup_email_step_title']); ?></h3>
-                <p class="qrm-rw-text"><?php echo esc_html($settings['qrm_reward_popup_email_step_text']); ?></p>
+                <h3 class="qrm-rw-title"><?php echo esc_html(qrm_ceviri_option('qrm_settings.qrm_reward_popup_email_step_title', $settings['qrm_reward_popup_email_step_title'])); ?></h3>
+                <p class="qrm-rw-text"><?php echo esc_html(qrm_ceviri_option('qrm_settings.qrm_reward_popup_email_step_text', $settings['qrm_reward_popup_email_step_text'])); ?></p>
                 <form class="qrm-rw-form" id="qrmRwEmailForm" novalidate>
                     <div class="qrm-rw-err" id="qrmRwEmailErr" hidden></div>
                     <input type="email" class="qrm-rw-input" id="qrmRwEmail" autocomplete="email"
-                           placeholder="<?php echo esc_attr($settings['qrm_reward_popup_email_placeholder']); ?>" required>
+                           placeholder="<?php echo esc_attr(qrm_ceviri_option('qrm_settings.qrm_reward_popup_email_placeholder', $settings['qrm_reward_popup_email_placeholder'])); ?>" required>
                     <button type="submit" class="qrm-rw-btn" id="qrmRwEmailBtn">
-                        <span class="qrm-rw-btn-label"><?php echo esc_html($settings['qrm_reward_popup_email_button_text']); ?></span>
+                        <span class="qrm-rw-btn-label"><?php echo esc_html(qrm_ceviri_option('qrm_settings.qrm_reward_popup_email_button_text', $settings['qrm_reward_popup_email_button_text'])); ?></span>
                     </button>
                 </form>
             </div>
@@ -210,27 +210,27 @@ function qrm_reward_render_popup($settings, $auto_open = false) {
             <!-- STATE_RESULT_SUCCESS -->
             <div data-rw-step="success" hidden>
                 <div class="qrm-rw-badge">🎉</div>
-                <p class="qrm-rw-text" style="margin-bottom:14px;"><?php echo esc_html($settings['qrm_reward_popup_success_text']); ?></p>
+                <p class="qrm-rw-text" style="margin-bottom:14px;"><?php echo esc_html(qrm_ceviri_option('qrm_settings.qrm_reward_popup_success_text', $settings['qrm_reward_popup_success_text'])); ?></p>
                 <div class="qrm-rw-code" id="qrmRwCode"></div>
                 <div class="qrm-rw-label" id="qrmRwLabel"></div>
                 <button type="button" class="qrm-rw-btn" id="qrmRwCopyBtn">
-                    <span class="qrm-rw-btn-label"><?php echo esc_html($settings['qrm_reward_popup_copy_text']); ?></span>
+                    <span class="qrm-rw-btn-label"><?php echo esc_html(qrm_ceviri_option('qrm_settings.qrm_reward_popup_copy_text', $settings['qrm_reward_popup_copy_text'])); ?></span>
                 </button>
-                <p class="qrm-rw-note" id="qrmRwMailNote" hidden>Kod ayrıca e-posta adresinize gönderildi.</p>
+                <p class="qrm-rw-note" id="qrmRwMailNote" hidden><?php echo esc_html(qrm_ceviri_review(__('Kod ayrıca e-posta adresinize gönderildi.', 'qrms'))); ?></p>
             </div>
 
             <!-- STATE_RESULT_ALREADY_USED -->
             <div data-rw-step="used" hidden>
                 <div class="qrm-rw-badge">ℹ️</div>
-                <p class="qrm-rw-text"><?php echo esc_html($settings['qrm_reward_popup_already_used_text']); ?></p>
-                <button type="button" class="qrm-rw-btn" id="qrmRwUsedClose"><span class="qrm-rw-btn-label">Tamam</span></button>
+                <p class="qrm-rw-text"><?php echo esc_html(qrm_ceviri_option('qrm_settings.qrm_reward_popup_already_used_text', $settings['qrm_reward_popup_already_used_text'])); ?></p>
+                <button type="button" class="qrm-rw-btn" id="qrmRwUsedClose"><span class="qrm-rw-btn-label"><?php echo esc_html(qrm_ceviri_review(__('Tamam', 'qrms'))); ?></span></button>
             </div>
 
             <!-- STATE_RESULT_ERROR -->
             <div data-rw-step="error" hidden>
                 <div class="qrm-rw-badge">⚠️</div>
-                <p class="qrm-rw-text" id="qrmRwErrorText"><?php echo esc_html($settings['qrm_reward_popup_error_text']); ?></p>
-                <button type="button" class="qrm-rw-btn" id="qrmRwErrorRetry"><span class="qrm-rw-btn-label">Tekrar Dene</span></button>
+                <p class="qrm-rw-text" id="qrmRwErrorText"><?php echo esc_html(qrm_ceviri_option('qrm_settings.qrm_reward_popup_error_text', $settings['qrm_reward_popup_error_text'])); ?></p>
+                <button type="button" class="qrm-rw-btn" id="qrmRwErrorRetry"><span class="qrm-rw-btn-label"><?php echo esc_html(qrm_ceviri_review(__('Tekrar Dene', 'qrms'))); ?></span></button>
             </div>
         </div>
     </div>
@@ -247,11 +247,12 @@ function qrm_reward_render_popup($settings, $auto_open = false) {
             googleUrl:    <?php echo wp_json_encode(esc_url_raw($settings['google_review_url'])); ?>,
             waitSeconds:  <?php echo (int) $wait_seconds; ?>,
             autoSeconds:  <?php echo (int) $auto_seconds; ?>,
-            claimText:    <?php echo wp_json_encode($settings['qrm_reward_popup_claim_text']); ?>,
-            waitingText:  <?php echo wp_json_encode($settings['qrm_reward_popup_waiting_text']); ?>,
-            copyText:     <?php echo wp_json_encode($settings['qrm_reward_popup_copy_text']); ?>,
-            copiedText:   <?php echo wp_json_encode($settings['qrm_reward_popup_copied_text']); ?>,
-            errorText:    <?php echo wp_json_encode($settings['qrm_reward_popup_error_text']); ?>,
+            claimText:    <?php echo wp_json_encode(qrm_ceviri_option('qrm_settings.qrm_reward_popup_claim_text', $settings['qrm_reward_popup_claim_text'])); ?>,
+            waitingText:  <?php echo wp_json_encode(qrm_ceviri_option('qrm_settings.qrm_reward_popup_waiting_text', $settings['qrm_reward_popup_waiting_text'])); ?>,
+            copyText:     <?php echo wp_json_encode(qrm_ceviri_option('qrm_settings.qrm_reward_popup_copy_text', $settings['qrm_reward_popup_copy_text'])); ?>,
+            copiedText:   <?php echo wp_json_encode(qrm_ceviri_option('qrm_settings.qrm_reward_popup_copied_text', $settings['qrm_reward_popup_copied_text'])); ?>,
+            errorText:    <?php echo wp_json_encode(qrm_ceviri_option('qrm_settings.qrm_reward_popup_error_text', $settings['qrm_reward_popup_error_text'])); ?>,
+            invalidEmail: <?php echo wp_json_encode(qrm_ceviri_review(__('Lütfen geçerli bir e-posta adresi girin.', 'qrms'))); ?>,
             autoOpen:     <?php echo $auto_open ? 'true' : 'false'; ?>,
             autoClaim:    <?php echo wp_json_encode($auto_claim); ?>
         };
@@ -396,7 +397,7 @@ function qrm_reward_render_popup($settings, $auto_open = false) {
             e.preventDefault();
             var value = (emailInput.value || '').trim();
             if (!value || value.indexOf('@') < 1 || value.indexOf('.') < 0) {
-                emailErr.textContent = 'Lütfen geçerli bir e-posta adresi girin.';
+                emailErr.textContent = cfg.invalidEmail || 'Lütfen geçerli bir e-posta adresi girin.';
                 emailErr.hidden = false;
                 return;
             }

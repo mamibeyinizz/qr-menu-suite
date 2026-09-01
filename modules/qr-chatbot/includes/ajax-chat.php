@@ -40,7 +40,7 @@ if ( ! function_exists( 'qmo_ajax_chat' ) ) {
 		$message = sanitize_text_field( wp_unslash( $_POST['message'] ?? '' ) );
 		$message = mb_substr( $message, 0, 1000 );
 		if ( '' === $message ) {
-			wp_send_json_error( 'Hata: Mesaj boş geldi.' );
+			wp_send_json_error( qmo_ceviri_chat( __( 'Hata: Mesaj boş geldi.', 'qrms' ) ) );
 		}
 
 		if ( function_exists( 'qmo_chatbot_sinir_kontrol' ) ) {
@@ -142,12 +142,12 @@ if ( ! function_exists( 'qmo_ajax_chat' ) ) {
 		} elseif ( isset( $data['error']['message'] ) ) {
 			// API anahtarı gibi ayrıntılar müşteriye sızmasın; log'a yaz.
 			qmo_log( 'Gemini API hatası: ' . $data['error']['message'] );
-			wp_send_json_error( 'Asistan şu anda yanıt veremiyor, lütfen tekrar deneyin.' );
+			wp_send_json_error( qmo_ceviri_chat( __( 'Asistan şu anda yanıt veremiyor, lütfen tekrar deneyin.', 'qrms' ) ) );
 		} elseif ( isset( $data['candidates'][0]['finishReason'] ) ) {
 			wp_send_json_error( 'Yanıt alınamadı, sebep: ' . sanitize_text_field( $data['candidates'][0]['finishReason'] ) );
 		} else {
 			qmo_log( 'Beklenmeyen Gemini yanıtı. HTTP: ' . wp_remote_retrieve_response_code( $response ) );
-			wp_send_json_error( 'Asistan şu anda yanıt veremiyor, lütfen tekrar deneyin.' );
+			wp_send_json_error( qmo_ceviri_chat( __( 'Asistan şu anda yanıt veremiyor, lütfen tekrar deneyin.', 'qrms' ) ) );
 		}
 	}
 }

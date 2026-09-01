@@ -185,6 +185,12 @@ if ( ! function_exists( 'qmo_sepet_shortcode' ) ) {
 				'ajaxUrl'   => admin_url( 'admin-ajax.php' ),
 				'nonce'     => wp_create_nonce( QMO_NONCE_ACTION ),
 				'analitik'  => class_exists( 'QRMS_Analitik' ),
+				// Tüm diller: menü sayfası cache'lenebilir; tek dil ilk
+				// ziyaretçiyi kilitler (splash data-sp-* ile aynı gerekçe).
+				// Boşsa sepet.js iç tablosu yedek. Modül kapalıysa [].
+				'i18n'      => function_exists( 'qmo_ceviri_cart_js_metinleri' )
+					? qmo_ceviri_cart_js_metinleri()
+					: array(),
 			)
 		);
 
@@ -192,32 +198,32 @@ if ( ! function_exists( 'qmo_sepet_shortcode' ) ) {
 		?>
 		<div class="qmo-sepet-root" id="qmo-sepet-root">
 
-			<div class="qmo-bar" id="qmo-bar" role="button" tabindex="0" aria-label="Sepeti aç">
+			<div class="qmo-bar" id="qmo-bar" role="button" tabindex="0" aria-label="<?php echo esc_attr( qmo_ceviri_cart( __( 'Sepeti aç', 'qrms' ) ) ); ?>">
 				<div class="qmo-bar-l">
 					<span class="qmo-bar-badge" id="qmo-badge">0</span>
-					<span id="qmo-bar-txt">Sepet</span>
+					<span id="qmo-bar-txt"><?php echo esc_html( qmo_ceviri_cart( __( 'Sepet', 'qrms' ) ) ); ?></span>
 				</div>
 				<div class="qmo-bar-r" id="qmo-bar-tot">₺0</div>
 			</div>
 
 			<div class="qmo-ov" id="qmo-ov"></div>
 
-			<div class="qmo-dr" id="qmo-dr" role="dialog" aria-label="Sepet">
+			<div class="qmo-dr" id="qmo-dr" role="dialog" aria-label="<?php echo esc_attr( qmo_ceviri_cart( __( 'Sepet', 'qrms' ) ) ); ?>">
 				<div class="qmo-dr-h">
-					<h3 id="qmo-dr-title">Sepetiniz</h3>
-					<button type="button" class="qmo-x" id="qmo-x" aria-label="Kapat">×</button>
+					<h3 id="qmo-dr-title"><?php echo esc_html( qmo_ceviri_cart( __( 'Sepetiniz', 'qrms' ) ) ); ?></h3>
+					<button type="button" class="qmo-x" id="qmo-x" aria-label="<?php echo esc_attr( qmo_ceviri_cart( __( 'Kapat', 'qrms' ) ) ); ?>">×</button>
 				</div>
 
 				<div class="qmo-list" id="qmo-list"></div>
 
 				<div class="qmo-ft">
 					<div class="qmo-tot">
-						<b id="qmo-t-top">Toplam</b>
+						<b id="qmo-t-top"><?php echo esc_html( qmo_ceviri_cart( __( 'Toplam', 'qrms' ) ) ); ?></b>
 						<span id="qmo-tot">₺0</span>
 					</div>
 					<div class="qmo-yak" id="qmo-yak"></div>
 					<div class="qmo-tl" id="qmo-tl-not"></div>
-					<button type="button" class="qmo-send" id="qmo-send">Siparişi Gönder</button>
+					<button type="button" class="qmo-send" id="qmo-send"><?php echo esc_html( qmo_ceviri_cart( __( 'Siparişi Gönder', 'qrms' ) ) ); ?></button>
 				</div>
 			</div>
 

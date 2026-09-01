@@ -32,7 +32,14 @@ function qrm_pro_admin_contact() {
                 <table class="form-table">
                     <tr>
                         <th><label for="qrm_contact_form_title">Form Başlığı</label></th>
-                        <td><input type="text" id="qrm_contact_form_title" name="contact_form_title" class="regular-text" value="<?php echo esc_attr($settings['contact_form_title']); ?>"></td>
+                        <td>
+                            <input type="text" id="qrm_contact_form_title" name="contact_form_title" class="regular-text" value="<?php echo esc_attr($settings['contact_form_title']); ?>">
+                            <?php
+                            if (function_exists('rma_ceviri_bayat_uyari_html')) {
+                                echo rma_ceviri_bayat_uyari_html(rma_ceviri_bayat_uyari_metni(rma_ceviri_veri_dil_sayisi('option', 0, 'qrm_settings.contact_form_title')));
+                            }
+                            ?>
+                        </td>
                     </tr>
                 </table>
                 <p class="submit"><input type="submit" name="qrm_save_contact" class="button button-primary" value="Kaydet"></p>

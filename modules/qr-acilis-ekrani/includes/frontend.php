@@ -279,6 +279,9 @@ trait QRMS_AE_Frontend {
         // diye saklanıyor ve sınıf adına yazılıyor.
         $position = $this->opt_choice($opts, 'loader_position', array('top-right'));
 
+        // aria-label Türkçe yedek: sunucu dil seçmez (tam sayfa cache).
+        // i18n açıksa lang_data data-sp-* + data-sp-attr="aria-label" basar;
+        // splash.js applyLang() nitelikteki metni ziyaretçi diline yazar.
         echo '<div class="splash-loader sp-loader-' . esc_attr($position) . ' is-' . esc_attr($type) . '" role="status"'
             . $this->lang_data($opts, 'loading', 'Yükleniyor', 'aria-label')
             . ' aria-label="Yükleniyor">';
@@ -519,9 +522,12 @@ trait QRMS_AE_Frontend {
         $bayrak     = isset($tumu[$varsayilan]['flag']) ? $tumu[$varsayilan]['flag'] : '';
         $ad         = isset($tumu[$varsayilan]['name']) ? $tumu[$varsayilan]['name'] : $varsayilan;
         $lang_attrs = '';
+        // Şablon %s (seçili dil adı) ister. Standart lang_data + applyLang
+        // aria-label'ı ham şablonla ezerdi; bu yüzden nitelikler ebeveynde
+        // data-sp-lang-select-{kod} olarak durur, splash.js paint() %s'i doldurur.
         foreach ( $this->i18n_langs( $opts ) as $kod ) {
             $lang_attrs .= ' data-sp-lang-select-' . esc_attr( $kod ) . '="'
-                . esc_attr( $this->i18n_translate( 'lang_select', $kod, 'Dil seç (%s)' ) ) . '"';
+                . esc_attr( $this->text_for_lang( $opts, 'lang_select', 'Dil seç (%s)', $kod ) ) . '"';
         }
         ?>
         <div class="splash-ceviri" data-cookie="<?php echo esc_attr($cookie); ?>" data-default="<?php echo esc_attr($varsayilan); ?>"<?php echo $lang_attrs; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>
@@ -652,7 +658,7 @@ trait QRMS_AE_Frontend {
         ?>
         <div class="splash-modal" id="wifi-modal">
             <div class="splash-modal-content">
-                <button type="button" class="splash-modal-close" aria-label="Kapat"<?php echo $iki_dil ? $this->lang_data( $opts, 'close', 'Kapat', 'aria-label' ) : ''; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>&times;</button>
+                <button type="button" class="splash-modal-close" aria-label="Kapat"<?php echo $iki_dil ? $this->lang_data( $opts, 'close', 'Kapat', 'aria-label' ) : ''; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped — Türkçe yedek; JS data-sp-attr ile günceller ?>>&times;</button>
                 <h3<?php echo $iki_dil ? $this->lang_data( $opts, 'wifi_title', $wifi_baslik ) : ''; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>><?php echo esc_html( $wifi_baslik ); ?></h3>
                 <p style="font-size:26px; margin:18px 0; word-break:break-all;"
                     <?php echo ( $iki_dil && empty( $opts['wifi_password'] ) ) ? $this->lang_data( $opts, 'wifi_empty', $wifi_bos ) : ''; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>

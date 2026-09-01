@@ -473,6 +473,7 @@ trait QRMS_HFB_Admin {
 			<div class="qrms-field">
 				<label class="qrms-label" for="hfb_footer_links_title"><?php esc_html_e( 'Sütun başlığı', 'qrms' ); ?></label>
 				<input type="text" id="hfb_footer_links_title" name="hfb_footer_links_title" class="qrms-input hfb-preview-trigger" value="<?php echo esc_attr( $opts['links_title'] ); ?>" placeholder="<?php esc_attr_e( 'Hızlı Menü', 'qrms' ); ?>" />
+				<?php $this->hfb_ceviri_bayat_uyari( 'hfb_footer.links_title' ); ?>
 			</div>
 
 			<div class="qrms-field">
@@ -535,6 +536,7 @@ trait QRMS_HFB_Admin {
 					<div class="qrms-field">
 						<label class="qrms-label" for="hfb_footer_hours_title"><?php esc_html_e( 'Sütun başlığı', 'qrms' ); ?></label>
 						<input type="text" id="hfb_footer_hours_title" name="hfb_footer_hours_title" class="qrms-input hfb-preview-trigger" value="<?php echo esc_attr( $opts['hours_title'] ); ?>" placeholder="<?php esc_attr_e( 'Çalışma Saatlerimiz', 'qrms' ); ?>" />
+						<?php $this->hfb_ceviri_bayat_uyari( 'hfb_footer.hours_title' ); ?>
 					</div>
 					<?php
 					$this->hfb_align_row(
@@ -590,6 +592,7 @@ trait QRMS_HFB_Admin {
 				<div class="qrms-field">
 					<label class="qrms-label" for="hfb_footer_contact_title"><?php esc_html_e( 'Sütun başlığı', 'qrms' ); ?></label>
 					<input type="text" id="hfb_footer_contact_title" name="hfb_footer_contact_title" class="qrms-input hfb-preview-trigger" value="<?php echo esc_attr( $opts['contact_title'] ); ?>" placeholder="<?php esc_attr_e( 'İletişim', 'qrms' ); ?>" />
+					<?php $this->hfb_ceviri_bayat_uyari( 'hfb_footer.contact_title' ); ?>
 				</div>
 
 				<div class="qrms-field">
@@ -674,11 +677,13 @@ trait QRMS_HFB_Admin {
 			<div class="qrms-field">
 				<label class="qrms-label" for="hfb_footer_call_garson_label"><?php esc_html_e( 'Garson butonu metni', 'qrms' ); ?></label>
 				<input type="text" id="hfb_footer_call_garson_label" name="hfb_footer_call_garson_label" class="qrms-input hfb-preview-trigger" value="<?php echo esc_attr( $opts['call_garson_label'] ); ?>" />
+				<?php $this->hfb_ceviri_bayat_uyari( 'hfb_footer.call_garson_label' ); ?>
 			</div>
 
 			<div class="qrms-field">
 				<label class="qrms-label" for="hfb_footer_call_hesap_label"><?php esc_html_e( 'Hesap butonu metni', 'qrms' ); ?></label>
 				<input type="text" id="hfb_footer_call_hesap_label" name="hfb_footer_call_hesap_label" class="qrms-input hfb-preview-trigger" value="<?php echo esc_attr( $opts['call_hesap_label'] ); ?>" />
+				<?php $this->hfb_ceviri_bayat_uyari( 'hfb_footer.call_hesap_label' ); ?>
 			</div>
 
 			<?php $this->hfb_button_style_fields( 'hfb_footer_', $opts ); ?>
@@ -1690,6 +1695,21 @@ trait QRMS_HFB_Admin {
 			(int) $opts['btn_font_weight'],
 			__( 'Yazı kalınlığı', 'qrms' ),
 			__( 'Buton yazısının kalınlığı.', 'qrms' )
+		);
+	}
+
+	/**
+	 * Option metninin çevirisi varsa kaydı engellemeyen uyarı.
+	 *
+	 * @param string $field option field.
+	 * @return void
+	 */
+	private function hfb_ceviri_bayat_uyari( $field ) {
+		if ( ! function_exists( 'rma_ceviri_bayat_uyari_html' ) ) {
+			return;
+		}
+		echo rma_ceviri_bayat_uyari_html(
+			rma_ceviri_bayat_uyari_metni( rma_ceviri_veri_dil_sayisi( 'option', 0, $field ) )
 		);
 	}
 

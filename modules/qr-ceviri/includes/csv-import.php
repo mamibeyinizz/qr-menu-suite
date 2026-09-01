@@ -4,7 +4,7 @@
  *
  * Eşleştirme sırası (JSON import'undaki üç aşamalı mantığın CSV karşılığı):
  *   1. item_id dolu ve hedef (post/term) hâlâ duruyorsa → doğrudan yaz.
- *   2. item_id 0/boş ise → sabit UI metni, `field` anahtarına göre eşleş.
+ *   2. item_id 0/boş ise → sabit metin (ui_string veya modül tipi), `field` ile eşleş.
  *   3. Hiçbiri tutmuyorsa → satırı atla ve özete işle.
  *
  * Dolu dil hücreleri upsert edilir, BOŞ hücreler dokunulmadan geçilir
@@ -28,12 +28,10 @@ if ( ! defined( 'RMA_CEVIRI_RAPOR_ORNEK' ) ) {
 	define( 'RMA_CEVIRI_RAPOR_ORNEK', 25 );
 }
 
-/** Kabul edilen öğe tipleri. */
-if ( ! function_exists( 'rma_ceviri_gecerli_tipler' ) ) {
-	function rma_ceviri_gecerli_tipler() {
-		return array( 'product', 'category', 'allergen', 'nav_menu', 'ui_string', 'elementor' );
-	}
-}
+/*
+ * rma_ceviri_gecerli_tipler() tanımı ui-stringler.php'dedir — CSV sütunları
+ * değişmeden yeni modül tipleri (splash, hours, …) oraya eklenir.
+ */
 
 add_action( 'admin_post_rma_ceviri_import', 'rma_ceviri_csv_ice_aktar' );
 
@@ -44,7 +42,10 @@ add_action( 'admin_post_rma_ceviri_import', 'rma_ceviri_csv_ice_aktar' );
  */
 if ( ! function_exists( 'rma_ceviri_import_yonlendir' ) ) {
 	function rma_ceviri_import_yonlendir( $args ) {
-		$args['page'] = class_exists( 'QRMS_Admin' ) ? QRMS_Admin::get_module_page_slug( 'qr-ceviri' ) : 'qrmenu-translator';
+		$args['page'] = 'qrms-cv-ice';
+		if ( ! class_exists( 'QRMS_Admin' ) ) {
+			$args['page'] = 'qrmenu-translator';
+		}
 		wp_safe_redirect( add_query_arg( $args, admin_url( 'admin.php' ) ) );
 		exit;
 	}
@@ -198,6 +199,10 @@ if ( ! function_exists( 'rma_ceviri_csv_ice_aktar' ) ) {
 			@set_time_limit( 300 ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 		}
 
+		if ( function_exists( 'rma_ceviri_bellek_pay_ayir' ) ) {
+			rma_ceviri_bellek_pay_ayir();
+		}
+
 		$rapor = rma_ceviri_satirlari_isle(
 			$dosya,
 			$ayrac,
@@ -208,6 +213,8 @@ if ( ! function_exists( 'rma_ceviri_csv_ice_aktar' ) ) {
 		fclose( $dosya );
 
 		$rapor['dosya'] = $isim;
+
+		update_option( 'rma_ceviri_son_ice', time(), false );
 
 		set_transient( 'rma_ceviri_rapor_' . get_current_user_id(), $rapor, 10 * MINUTE_IN_SECONDS );
 		rma_ceviri_onbellek_temizle();
@@ -237,14 +244,20 @@ if ( ! function_exists( 'rma_ceviri_satirlari_isle' ) ) {
 			'silindi'     => 0,
 			'atlandi'     => 0,
 			'atlanan'     => array(),
-			'bayat'       => array(),
-			'temizle'     => (bool) $temizle,
+			'bayat'          => array(),
+			'temizle'        => (bool) $temizle,
+			'bellek_kesildi' => false,
 		);
 
 		$satir_no = 1; // Başlık satırı okundu.
 
 		while ( false !== ( $satir = fgetcsv( $dosya, 0, $ayrac, '"', '\\' ) ) ) {
 			++$satir_no;
+
+			if ( 0 === ( $satir_no % 50 ) && function_exists( 'rma_ceviri_bellek_sinirda_mi' ) && rma_ceviri_bellek_sinirda_mi() ) {
+				$rapor['bellek_kesildi'] = true;
+				break;
+			}
 
 			// fgetcsv boş satırda [null] döndürür.
 			if ( null === $satir || ( 1 === count( $satir ) && ( null === $satir[0] || '' === trim( (string) $satir[0] ) ) ) ) {
@@ -270,13 +283,21 @@ if ( ! function_exists( 'rma_ceviri_satirlari_isle' ) ) {
 			}
 
 			/* --- Eşleştirme --- */
-			if ( 'ui_string' === $item_type ) {
-				// 2. aşama: ID yok, anahtar üzerinden eşleşme.
+			if ( function_exists( 'rma_ceviri_modul_sabit_mi' ) && rma_ceviri_modul_sabit_mi( $item_type ) ) {
+				// 2. aşama: ID yok, anahtar üzerinden eşleşme (ui_string + modül tipleri).
 				$item_id = 0;
-				$guncel  = rma_ceviri_guncel_orijinal( 0, 'ui_string', $field );
+				$guncel  = rma_ceviri_guncel_orijinal( 0, $item_type, $field );
 
 				if ( null === $guncel ) {
 					rma_ceviri_atla( $rapor, $satir_no, 'bilinmeyen sabit metin anahtarı: ' . $field );
+					continue;
+				}
+			} elseif ( 'option' === $item_type ) {
+				$item_id = 0;
+				$guncel  = rma_ceviri_guncel_orijinal( 0, 'option', $field );
+
+				if ( null === $guncel ) {
+					rma_ceviri_atla( $rapor, $satir_no, 'bilinmeyen yönetici ayarı: ' . $field );
 					continue;
 				}
 			} elseif ( $item_id > 0 ) {
@@ -289,7 +310,7 @@ if ( ! function_exists( 'rma_ceviri_satirlari_isle' ) ) {
 				}
 			} else {
 				// 3. aşama: hiçbiri tutmuyor.
-				rma_ceviri_atla( $rapor, $satir_no, 'item_id boş ve tip ui_string değil' );
+				rma_ceviri_atla( $rapor, $satir_no, 'item_id boş ve tip sabit metin değil' );
 				continue;
 			}
 

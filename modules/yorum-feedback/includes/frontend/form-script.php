@@ -18,14 +18,21 @@ function qrm_pro_render_form_script($settings, $js_limit = 0, $has_list = true) 
     ?>
     <script>
     (function() {
+        var qrmI18n = <?php echo wp_json_encode(qrm_ceviri_review_js_metinleri(), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
+        function metin(anahtar, yedek) {
+            if (!qrmI18n || typeof qrmI18n[anahtar] !== 'string' || qrmI18n[anahtar] === '') {
+                return yedek;
+            }
+            return qrmI18n[anahtar];
+        }
         var qrmCfg = {
             ajaxUrl: <?php echo wp_json_encode(admin_url('admin-ajax.php')); ?>,
-            headline: <?php echo wp_json_encode($settings['google_review_headline']); ?>,
-            subtext: <?php echo wp_json_encode($settings['google_review_subtext']); ?>,
-            btnText: <?php echo wp_json_encode($settings['google_review_btn_text']); ?>,
-            skipText: <?php echo wp_json_encode($settings['google_review_skip_text']); ?>,
+            headline: <?php echo wp_json_encode(qrm_ceviri_option('qrm_settings.google_review_headline', $settings['google_review_headline'])); ?>,
+            subtext: <?php echo wp_json_encode(qrm_ceviri_option('qrm_settings.google_review_subtext', $settings['google_review_subtext'])); ?>,
+            btnText: <?php echo wp_json_encode(qrm_ceviri_option('qrm_settings.google_review_btn_text', $settings['google_review_btn_text'])); ?>,
+            skipText: <?php echo wp_json_encode(qrm_ceviri_option('qrm_settings.google_review_skip_text', $settings['google_review_skip_text'])); ?>,
             loadNonce: <?php echo wp_json_encode(wp_create_nonce('qrm_load_reviews')); ?>,
-            genericError: 'Bir şeyler ters gitti, lütfen tekrar deneyin.'
+            genericError: metin('genericError', 'Bir şeyler ters gitti, lütfen tekrar deneyin.')
         };
 
         function buildGoogleCta(avg, googleUrl) {
@@ -99,7 +106,7 @@ function qrm_pro_render_form_script($settings, $js_limit = 0, $has_list = true) 
             }
 
             next.addEventListener('click', function() {
-                if (!allRated()) { showErr('Devam etmek için lütfen tüm kriterleri puanlayın.'); return; }
+                if (!allRated()) { showErr(metin('rateRequired', 'Devam etmek için lütfen tüm kriterleri puanlayın.')); return; }
                 clearErr();
                 step1.hidden = true; step2.hidden = false; setDots(2);
                 var first = step2.querySelector('input, textarea');
@@ -151,11 +158,11 @@ function qrm_pro_render_form_script($settings, $js_limit = 0, $has_list = true) 
                             var skipBtn = document.getElementById('qrmGoogleSkipBtn');
                             if (skipBtn) {
                                 skipBtn.addEventListener('click', function() {
-                                    box.innerHTML = '<div class="qrm-alert qrm-success">' + (res.message || 'Değerlendirmeniz için teşekkürler!') + '</div>';
+                                    box.innerHTML = '<div class="qrm-alert qrm-success">' + (res.message || metin('thanks', 'Değerlendirmeniz için teşekkürler!')) + '</div>';
                                 });
                             }
                         } else {
-                            box.innerHTML = '<div class="qrm-alert qrm-success">' + (res.message || 'Değerlendirmeniz için teşekkürler!') + '</div>';
+                            box.innerHTML = '<div class="qrm-alert qrm-success">' + (res.message || metin('thanks', 'Değerlendirmeniz için teşekkürler!')) + '</div>';
                         }
                         box.parentElement.classList.remove('qrm-fade-in');
                         void box.offsetWidth;
@@ -179,7 +186,7 @@ function qrm_pro_render_form_script($settings, $js_limit = 0, $has_list = true) 
                                 var fbSkip = document.getElementById('qrmGoogleSkipBtn');
                                 if (fbSkip) {
                                     fbSkip.addEventListener('click', function() {
-                                        box.innerHTML = '<div class="qrm-alert qrm-success">' + (res.message || 'Değerlendirmeniz için teşekkürler!') + '</div>';
+                                        box.innerHTML = '<div class="qrm-alert qrm-success">' + (res.message || metin('thanks', 'Değerlendirmeniz için teşekkürler!')) + '</div>';
                                     });
                                 }
                             }
@@ -221,7 +228,7 @@ function qrm_pro_render_form_script($settings, $js_limit = 0, $has_list = true) 
 
                 loading = true;
                 btn.disabled = true;
-                btn.textContent = 'Yükleniyor…';
+                btn.textContent = metin('loading', 'Yükleniyor…');
 
                 var fd = new FormData();
                 fd.append('action', 'qrm_load_reviews');
