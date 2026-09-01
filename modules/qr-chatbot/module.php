@@ -154,12 +154,35 @@ function qrms_module_qr_chatbot_admin_assets() {
 	$hub_slug = QRMS_Admin::get_module_page_slug( 'qr-chatbot' );
 	$altlar   = function_exists( 'qmo_chatbot_sayfalar' ) ? array_keys( qmo_chatbot_sayfalar() ) : array();
 
+	$ortak_css = array(
+		'qmo-admin-chatbot',
+		QRMS_PLUGIN_URL . 'modules/qr-chatbot/assets/css/admin-chatbot.css',
+		QRMS_Helpers::asset_version( 'modules/qr-chatbot/assets/css/admin-chatbot.css' ),
+	);
+
 	if ( $hub_slug === $page ) {
 		wp_enqueue_style(
 			'rma-hub',
 			QRMS_PLUGIN_URL . 'modules/restoran-menu/assets/css/hub.css',
 			array( 'qrms-admin' ),
 			QRMS_Helpers::asset_version( 'modules/restoran-menu/assets/css/hub.css' )
+		);
+		wp_enqueue_style( $ortak_css[0], $ortak_css[1], array( 'rma-hub' ), $ortak_css[2] );
+		wp_enqueue_script(
+			'qmo-admin-hub',
+			QRMS_PLUGIN_URL . 'modules/qr-chatbot/assets/js/admin-hub.js',
+			array(),
+			QRMS_Helpers::asset_version( 'modules/qr-chatbot/assets/js/admin-hub.js' ),
+			true
+		);
+		wp_localize_script(
+			'qmo-admin-hub',
+			'qmoChatbotHub',
+			array(
+				'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+				'acik'    => __( 'Açık', 'qrms' ),
+				'kapali'  => __( 'Kapalı', 'qrms' ),
+			)
 		);
 		return;
 	}
@@ -174,6 +197,38 @@ function qrms_module_qr_chatbot_admin_assets() {
 		array(),
 		QRMS_Helpers::asset_version( 'modules/_qmo-ortak/assets/css/admin.css' )
 	);
+	wp_enqueue_style( $ortak_css[0], $ortak_css[1], array( 'qmo-admin' ), $ortak_css[2] );
+
+	if ( 'qrms-chatbot-quick-replies' === $page ) {
+		wp_enqueue_script(
+			'qmo-admin-sorular',
+			QRMS_PLUGIN_URL . 'modules/qr-chatbot/assets/js/admin-sorular.js',
+			array(),
+			QRMS_Helpers::asset_version( 'modules/qr-chatbot/assets/js/admin-sorular.js' ),
+			true
+		);
+		return;
+	}
+
+	if ( in_array( $page, array( 'qrms-chatbot-history', 'qrms-chatbot-unanswered' ), true ) ) {
+		wp_enqueue_script(
+			'qmo-admin-yonetim',
+			QRMS_PLUGIN_URL . 'modules/qr-chatbot/assets/js/admin-yonetim.js',
+			array(),
+			QRMS_Helpers::asset_version( 'modules/qr-chatbot/assets/js/admin-yonetim.js' ),
+			true
+		);
+		wp_localize_script(
+			'qmo-admin-yonetim',
+			'qmoChatbotYonetim',
+			array(
+				'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+				'nonceG'  => wp_create_nonce( 'qmo_chatbot_gecmis' ),
+				'nonceB'  => wp_create_nonce( 'qmo_chatbot_bilinmeyen' ),
+			)
+		);
+		return;
+	}
 
 	$js_sayfalari = array( 'qrms-chatbot-bot-identity', 'qrms-chatbot-appearance' );
 	if ( ! in_array( $page, $js_sayfalari, true ) ) {
@@ -190,14 +245,31 @@ function qrms_module_qr_chatbot_admin_assets() {
 		true
 	);
 
+	$ikonlar = array();
+	if ( function_exists( 'qmo_chatbot_hazir_ikonlar' ) ) {
+		foreach ( qmo_chatbot_hazir_ikonlar() as $slug => $ikon ) {
+			$ikonlar[ $slug ] = $ikon['svg'];
+		}
+	}
+
 	wp_localize_script(
 		'qmo-admin-chatbot',
 		'qmoChatbotAdmin',
 		array(
 			'presets'     => qmo_renk_sablonlari(),
 			'defaults'    => qmo_renk_varsayilanlari(),
-			'colors'      => qmo_chatbot_renkleri_oku(),
+			'colors'      => function_exists( 'qmo_chatbot_renkleri_coz' ) ? qmo_chatbot_renkleri_coz() : qmo_chatbot_renkleri_oku(),
+			'derivedFrom' => function_exists( 'qmo_chatbot_renkleri_turetilsin' ) ? qmo_chatbot_renkleri_turetilsin(
+				isset( qmo_chatbot_renkleri_oku()['gemini_main_color'] ) ? qmo_chatbot_renkleri_oku()['gemini_main_color'] : '#8a2be2',
+				isset( qmo_chatbot_renkleri_oku()['gemini_chat_bg_color'] ) ? qmo_chatbot_renkleri_oku()['gemini_chat_bg_color'] : '#f8fafc',
+				isset( qmo_chatbot_renkleri_oku()['gemini_text_color'] ) ? qmo_chatbot_renkleri_oku()['gemini_text_color'] : '#333333'
+			) : array(),
+			'icons'       => $ikonlar,
 			'defaultIcon' => qmo_varsayilan_ikon(),
+			'sizes'       => function_exists( 'qmo_chatbot_boyut_haritasi' ) ? qmo_chatbot_boyut_haritasi() : array(),
+			'radii'       => function_exists( 'qmo_chatbot_kose_haritasi' ) ? qmo_chatbot_kose_haritasi() : array(),
+			'offsets'     => function_exists( 'qmo_chatbot_yukseklik_haritasi' ) ? qmo_chatbot_yukseklik_haritasi() : array(),
+			'widths'      => function_exists( 'qmo_chatbot_genislik_haritasi' ) ? qmo_chatbot_genislik_haritasi() : array(),
 			'initial'     => array(
 				'botName'     => get_option( 'gemini_bot_name', 'Asistan' ),
 				'welcome'     => get_option( 'gemini_welcome_text', 'Merhaba! Size nasıl yardımcı olabilirim?' ),

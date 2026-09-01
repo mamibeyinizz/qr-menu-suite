@@ -3643,10 +3643,14 @@ qrms_test(
 			array(
 				'qrms-chatbot-bot-identity',
 				'qrms-chatbot-appearance',
+				'qrms-chatbot-quick-replies',
+				'qrms-chatbot-visibility',
 				'qrms-chatbot-gemini',
 				'qrms-chatbot-ai-behavior',
 				'qrms-chatbot-firebase',
 				'qrms-chatbot-ana-site',
+				'qrms-chatbot-history',
+				'qrms-chatbot-unanswered',
 			),
 			array_keys( $pages ),
 			'sayfa listesi'
@@ -3662,10 +3666,14 @@ qrms_test(
 
 		qrms_assert_same( 'Bot', $pages['qrms-chatbot-bot-identity']['group'], 'Bot grubu' );
 		qrms_assert_same( 'Bot', $pages['qrms-chatbot-appearance']['group'], 'Görünüm Bot grubunda' );
+		qrms_assert_same( 'Bot', $pages['qrms-chatbot-quick-replies']['group'], 'Hazır sorular Bot grubunda' );
+		qrms_assert_same( 'Bot', $pages['qrms-chatbot-visibility']['group'], 'Görünürlük Bot grubunda' );
 		qrms_assert_same( 'Yapay Zeka', $pages['qrms-chatbot-gemini']['group'], 'Gemini grubu' );
 		qrms_assert_same( 'Yapay Zeka', $pages['qrms-chatbot-ai-behavior']['group'], 'Davranış grubu' );
 		qrms_assert_same( 'Entegrasyon', $pages['qrms-chatbot-firebase']['group'], 'Firebase grubu' );
 		qrms_assert_same( 'Entegrasyon', $pages['qrms-chatbot-ana-site']['group'], 'Ana site grubu' );
+		qrms_assert_same( 'Yönetim', $pages['qrms-chatbot-history']['group'], 'Geçmiş Yönetim grubunda' );
+		qrms_assert_same( 'Yönetim', $pages['qrms-chatbot-unanswered']['group'], 'Cevaplanamayan Yönetim grubunda' );
 	}
 );
 
@@ -3686,10 +3694,17 @@ qrms_test(
 		qrms_assert_contains( 'Entegrasyon', $html, 'Entegrasyon bölümü' );
 		qrms_assert_contains( 'page=qrms-chatbot-bot-identity', $html, 'Bot Kimliği kartı' );
 		qrms_assert_contains( 'page=qrms-chatbot-appearance', $html, 'Görünüm kartı' );
+		qrms_assert_contains( 'page=qrms-chatbot-quick-replies', $html, 'Hazır Sorular kartı' );
+		qrms_assert_contains( 'page=qrms-chatbot-visibility', $html, 'Görünürlük kartı' );
 		qrms_assert_contains( 'page=qrms-chatbot-gemini', $html, 'Gemini kartı' );
 		qrms_assert_contains( 'page=qrms-chatbot-ai-behavior', $html, 'Davranış kartı' );
 		qrms_assert_contains( 'page=qrms-chatbot-firebase', $html, 'Firebase kartı' );
 		qrms_assert_contains( 'page=qrms-chatbot-ana-site', $html, 'Ana site kartı' );
+		qrms_assert_contains( 'page=qrms-chatbot-history', $html, 'Sohbet Geçmişi kartı' );
+		qrms_assert_contains( 'page=qrms-chatbot-unanswered', $html, 'Cevaplanamayan kartı' );
+		qrms_assert_contains( 'Sohbet Asistanı', $html, 'ana anahtar' );
+		qrms_assert_contains( 'qmo-cb-hub-switch', $html, 'AJAX anahtar' );
+		qrms_assert_contains( 'Yönetim', $html, 'Yönetim bölümü' );
 		qrms_assert_contains( '✗ Henüz yapılandırılmadı', $html, 'Firebase uyarı rozeti' );
 		qrms_assert_false( false !== strpos( $html, '<form' ), 'hub form basmaz' );
 		qrms_assert_false( false !== strpos( $html, 'nav-tab' ), 'eski sekmeler yok' );
@@ -3807,6 +3822,89 @@ qrms_test(
 		qrms_assert_contains( 'action="options.php"', $html, 'options.php' );
 		qrms_assert_true( in_array( 'qmo_firebase_grup', $GLOBALS['qrms_test']['settings_fields'], true ), 'settings_fields grubu' );
 		qrms_assert_false( false !== strpos( $html, 'Bu site ana site mi?' ), 'ana site kutusu bu sayfada değil' );
+	}
+);
+
+require_once QRMS_PLUGIN_DIR . 'modules/_qmo-ortak/color-defaults.php';
+require_once QRMS_PLUGIN_DIR . 'modules/qr-chatbot/includes/class-ayarlar.php';
+require_once QRMS_PLUGIN_DIR . 'modules/qr-chatbot/includes/class-db.php';
+require_once QRMS_PLUGIN_DIR . 'modules/qr-chatbot/includes/shortcode-chatbot.php';
+require_once QRMS_PLUGIN_DIR . 'modules/_qmo-ortak/assets.php';
+
+qrms_test(
+	'üç ana renkten diğerleri türetilir ve yazı zemin üzerinde okunur',
+	function () {
+		$renkler = qmo_chatbot_renkleri_turetilsin( '#8a2be2', '#f8fafc', '#333333' );
+
+		foreach ( array( 'gemini_header_bg_color', 'gemini_user_msg_color', 'gemini_bot_msg_color', 'gemini_send_btn_bg_color', 'gemini_border_color' ) as $alan ) {
+			qrms_assert_true( isset( $renkler[ $alan ] ), $alan . ' türetilir' );
+			qrms_assert_true( (bool) sanitize_hex_color( $renkler[ $alan ] ), $alan . ' geçerli renk' );
+		}
+
+		qrms_assert_same( '#8a2be2', $renkler['gemini_main_color'], 'ana renk korunur' );
+		qrms_assert_same( '#f8fafc', $renkler['gemini_chat_bg_color'], 'zemin korunur' );
+		$fark = abs( qmo_chatbot_parlaklik( $renkler['gemini_text_color'] ) - qmo_chatbot_parlaklik( $renkler['gemini_chat_bg_color'] ) );
+		qrms_assert_true( $fark >= 0.35, 'yazı zemin üzerinde okunur' );
+	}
+);
+
+qrms_test(
+	'hub anahtarı AJAX ucu yetki ve nonce ister',
+	function () {
+		$php = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/includes/ajax-admin.php' );
+		qrms_assert_contains( "wp_ajax_qmo_chatbot_toggle", $php, 'toggle eylemi' );
+		qrms_assert_contains( "check_ajax_referer( 'qmo_chatbot_toggle'", $php, 'toggle nonce' );
+		qrms_assert_contains( "current_user_can( 'manage_options' )", $php, 'yetki' );
+		qrms_assert_contains( 'QMO_CHATBOT_OPT_AKTIF', $php, 'aktif option' );
+	}
+);
+
+qrms_test(
+	'sohbet tabloları dbDelta ile indexli kurulur',
+	function () {
+		$php = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/includes/class-db.php' );
+		qrms_assert_contains( 'qmo_chatbot_mesajlar', $php, 'mesaj tablosu' );
+		qrms_assert_contains( 'qmo_chatbot_bilinmeyen', $php, 'bilinmeyen tablosu' );
+		qrms_assert_contains( 'dbDelta', $php, 'dbDelta' );
+		qrms_assert_contains( 'KEY idx_created', $php, 'tarih index' );
+		qrms_assert_contains( 'KEY idx_masa_created', $php, 'masa index' );
+		qrms_assert_contains( 'KEY idx_oturum', $php, 'oturum index' );
+		qrms_assert_contains( 'UNIQUE KEY idx_soru_norm', $php, 'soru norm unique' );
+		qrms_assert_contains( 'KEY idx_resolved_tekrar', $php, 'tekrar index' );
+	}
+);
+
+qrms_test(
+	'asistan kapalıysa ön yüz varlıkları yüklenmez',
+	function () {
+		update_option( 'qmo_chatbot_aktif', 'no' );
+		qrms_assert_false( qmo_chatbot_onyuz_yuklensin_mi(), 'yükleme kapalı' );
+		qrms_assert_same( '', qmo_chatbot_shortcode(), 'kısa kod boş' );
+
+		$varlik = file_get_contents( QRMS_PLUGIN_DIR . 'modules/_qmo-ortak/assets.php' );
+		qrms_assert_contains( 'qmo_chatbot_onyuz_yuklensin_mi', $varlik, 'içerik tarayıcı atlar' );
+		qrms_assert_contains( "'qmo-chatbot' === \$handle", $varlik, 'enqueue da atlar' );
+	}
+);
+
+qrms_test(
+	'Görünüm ve Bot Kimliği Türkçe etiket kullanır, eski name durur',
+	function () {
+		$kimlik  = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/includes/admin/admin-sayfa.php' );
+		$gorunum = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/includes/admin/sayfa-gorunum.php' );
+
+		qrms_assert_contains( 'Kutu içi ipucu metni', $kimlik, 'ipucu etiketi' );
+		qrms_assert_contains( 'Açma butonu yazısı', $kimlik, 'açma butonu' );
+		qrms_assert_contains( 'Köşe yumuşaklığı', $gorunum, 'köşe' );
+		qrms_assert_contains( 'name="gemini_icon_size"', $gorunum, 'eski boyut alanı' );
+		qrms_assert_contains( 'name="gemini_border_radius"', $gorunum, 'eski köşe alanı' );
+		qrms_assert_contains( 'name="gemini_header_bg_color"', $gorunum, 'gelişmiş renk name' );
+		qrms_assert_false( false !== strpos( $gorunum, 'Toggle' ), 'Toggle yok' );
+		qrms_assert_false( false !== strpos( $gorunum, 'border radius' ), 'border radius yok' );
+		qrms_assert_contains( 'Hazır Şablonlar', $gorunum, 'şablonlar' );
+		qrms_assert_contains( 'Royal Violet & Gold', $gorunum, 'royal' );
+		qrms_assert_contains( 'Gelişmiş renk ayarları', $gorunum, 'gelişmiş' );
+		qrms_assert_contains( 'Sohbete Başla', $gorunum, 'karşılama butonu varsayılanı' );
 	}
 );
 

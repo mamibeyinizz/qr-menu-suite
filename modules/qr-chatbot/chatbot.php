@@ -19,7 +19,10 @@ if ( ! defined( 'QMO_CHATBOT_URL' ) ) {
 	define( 'QMO_CHATBOT_URL', plugin_dir_url( __FILE__ ) );
 }
 
+require_once QMO_CHATBOT_DIR . 'includes/class-ayarlar.php';
+require_once QMO_CHATBOT_DIR . 'includes/class-db.php';
 require_once QMO_CHATBOT_DIR . 'includes/ajax-chat.php';
+require_once QMO_CHATBOT_DIR . 'includes/ajax-admin.php';
 require_once QMO_CHATBOT_DIR . 'includes/shortcode-chatbot.php';
 require_once QMO_CHATBOT_DIR . 'includes/shortcode-buttons.php';
 require_once QMO_CHATBOT_DIR . 'includes/shortcode-sepet.php';
@@ -36,6 +39,10 @@ add_action( 'wp_enqueue_scripts', 'qmo_chatbot_buton_varliklarini_kaydet', 5 );
 
 if ( is_admin() ) {
 	require_once QMO_CHATBOT_DIR . 'includes/admin/admin-sayfa.php';
+}
+
+if ( ! wp_next_scheduled( 'qmo_chatbot_gecmis_temizle' ) ) {
+	wp_schedule_event( time() + HOUR_IN_SECONDS, 'daily', 'qmo_chatbot_gecmis_temizle' );
 }
 
 /**

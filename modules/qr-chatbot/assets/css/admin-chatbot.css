@@ -1,0 +1,377 @@
+/**
+ * QR Chatbot yönetim — mevcut hub / qmo-admin dilini kullanır.
+ */
+
+/* Hub anahtarı */
+.qmo-cb-master {
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-radius: 8px;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+	margin: 16px 0 8px;
+	padding: 18px 22px;
+}
+
+.qmo-cb-switch {
+	align-items: center;
+	background: none;
+	border: 0;
+	cursor: pointer;
+	display: flex;
+	gap: 14px;
+	padding: 0;
+	text-align: left;
+}
+
+.qmo-cb-switch-track {
+	background: #c3c4c7;
+	border-radius: 999px;
+	display: inline-block;
+	height: 32px;
+	position: relative;
+	transition: background 0.2s ease;
+	width: 60px;
+}
+
+.qmo-cb-switch[aria-pressed="true"] .qmo-cb-switch-track {
+	background: #1d9e6f;
+}
+
+.qmo-cb-switch-thumb {
+	background: #fff;
+	border-radius: 50%;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+	height: 26px;
+	left: 3px;
+	position: absolute;
+	top: 3px;
+	transition: transform 0.2s ease;
+	width: 26px;
+}
+
+.qmo-cb-switch[aria-pressed="true"] .qmo-cb-switch-thumb {
+	transform: translateX(28px);
+}
+
+.qmo-cb-switch-label {
+	color: #1d2327;
+	font-size: 18px;
+	font-weight: 600;
+}
+
+.qmo-cb-master-note {
+	color: #646970;
+	margin: 10px 0 0;
+}
+
+.qmo-cb-hub-kapali .qrms-hub-grid,
+.qmo-cb-hub-kapali .qrms-hub-group-title {
+	opacity: 0.45;
+}
+
+/* Sihirbaz */
+.qmo-cb-wizard {
+	align-items: flex-start;
+	display: grid;
+	gap: 24px;
+	grid-template-columns: minmax(0, 1fr) 360px;
+}
+
+.qmo-cb-steps {
+	display: flex;
+	gap: 8px;
+	margin: 0 0 18px;
+}
+
+.qmo-cb-step {
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-radius: 999px;
+	cursor: pointer;
+	font-weight: 600;
+	padding: 8px 14px;
+}
+
+.qmo-cb-step span {
+	background: #f0f0f1;
+	border-radius: 50%;
+	display: inline-block;
+	height: 22px;
+	line-height: 22px;
+	margin-right: 4px;
+	text-align: center;
+	width: 22px;
+}
+
+.qmo-cb-step.is-active {
+	border-color: #c9a84c;
+	box-shadow: 0 0 0 2px rgba(201, 168, 76, 0.25);
+}
+
+.qmo-cb-panel {
+	display: none;
+}
+
+.qmo-cb-panel.is-active {
+	display: block;
+}
+
+.qmo-cb-icon-grid {
+	display: grid;
+	gap: 10px;
+	grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+	margin: 0 0 16px;
+}
+
+.qmo-cb-icon-tile {
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-radius: 10px;
+	cursor: pointer;
+	padding: 12px 8px;
+	text-align: center;
+}
+
+.qmo-cb-icon-tile.is-selected {
+	border-color: #c9a84c;
+	box-shadow: 0 0 0 2px rgba(201, 168, 76, 0.3);
+}
+
+.qmo-cb-icon-tile-svg {
+	display: block;
+	height: 32px;
+	margin: 0 auto 8px;
+	width: 32px;
+}
+
+.qmo-cb-custom-icon {
+	display: none;
+	margin: 0 0 16px;
+}
+
+.qmo-cb-custom-icon.is-open {
+	display: block;
+}
+
+.qmo-cb-inline {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
+.qmo-cb-seg {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+}
+
+.qmo-cb-seg button,
+.qmo-cb-seg-input label {
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-radius: 999px;
+	cursor: pointer;
+	padding: 6px 12px;
+}
+
+.qmo-cb-seg button.is-active,
+.qmo-cb-seg-input input:checked + label,
+.qmo-cb-seg-input label:has(input:checked) {
+	border-color: #c9a84c;
+	box-shadow: 0 0 0 2px rgba(201, 168, 76, 0.25);
+}
+
+.qmo-cb-seg-input input {
+	margin-right: 4px;
+}
+
+.qmo-cb-advanced {
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-radius: 8px;
+	margin: 16px 0;
+	padding: 10px 14px;
+}
+
+.qmo-cb-preview-col {
+	position: sticky;
+	top: 48px;
+}
+
+.qmo-cb-preview-toolbar {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	margin-bottom: 10px;
+}
+
+.qmo-cb-live {
+	background: #f0f0f1;
+	border: 1px solid #dcdcde;
+	border-radius: 18px;
+	min-height: 420px;
+	overflow: hidden;
+	padding: 16px;
+	position: relative;
+}
+
+.qmo-cb-live.is-phone {
+	max-width: 320px;
+}
+
+.qmo-cb-live-stage {
+	min-height: 380px;
+	position: relative;
+}
+
+.qmo-cb-live-toggle {
+	align-items: center;
+	background: #8a2be2;
+	border-radius: 50%;
+	bottom: 16px;
+	color: #fff;
+	display: flex;
+	height: 52px;
+	justify-content: center;
+	position: absolute;
+	right: 16px;
+	width: 52px;
+	z-index: 3;
+}
+
+.qmo-cb-live-badge {
+	background: #d63638;
+	border-radius: 50%;
+	color: #fff;
+	font-size: 10px;
+	font-weight: 700;
+	height: 14px;
+	line-height: 14px;
+	position: absolute;
+	right: -2px;
+	text-align: center;
+	top: -2px;
+	width: 14px;
+}
+
+.qmo-cb-live-teaser {
+	background: #fff;
+	border: 1px solid #ddd;
+	border-radius: 12px;
+	bottom: 78px;
+	font-size: 12px;
+	max-width: 170px;
+	padding: 8px 10px;
+	position: absolute;
+	right: 16px;
+}
+
+.qmo-cb-live.is-open .qmo-cb-live-toggle,
+.qmo-cb-live.is-open .qmo-cb-live-teaser {
+	display: none;
+}
+
+.qmo-cb-live.is-closed #qmo-preview-wrap {
+	display: none;
+}
+
+#qmo-preview-wrap {
+	background: #fff;
+	border: 1px solid #ccc;
+	border-radius: 16px;
+	display: flex;
+	flex-direction: column;
+	max-height: 420px;
+	overflow: hidden;
+}
+
+.qmo-cb-live-welcome {
+	display: none;
+	padding: 20px 16px;
+	text-align: center;
+}
+
+.qmo-cb-live-welcome.is-on {
+	display: block;
+}
+
+.qmo-cb-live-welcome.is-on + #qmo-preview-log,
+.qmo-cb-live-welcome.is-on + #qmo-preview-log + #qmo-preview-chips {
+	display: none;
+}
+
+.qmo-cb-live-chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	padding: 0 12px 8px;
+}
+
+.qmo-cb-live-chips span {
+	background: #fff;
+	border: 1px solid #ddd;
+	border-radius: 999px;
+	font-size: 11px;
+	padding: 4px 8px;
+}
+
+.qmo-cb-drag-handle {
+	cursor: grab;
+	width: 36px;
+}
+
+.qmo-cb-filtre {
+	align-items: end;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10px;
+	margin: 16px 0;
+}
+
+.qmo-cb-modal {
+	align-items: center;
+	background: rgba(0, 0, 0, 0.4);
+	display: flex;
+	inset: 0;
+	justify-content: center;
+	position: fixed;
+	z-index: 100000;
+}
+
+.qmo-cb-modal[hidden] {
+	display: none;
+}
+
+.qmo-cb-modal-box {
+	background: #fff;
+	border-radius: 8px;
+	max-height: 80vh;
+	max-width: 640px;
+	overflow: auto;
+	padding: 20px;
+	position: relative;
+	width: 92%;
+}
+
+.qmo-cb-modal-kapat {
+	font-size: 22px;
+	position: absolute;
+	right: 12px;
+	top: 8px;
+}
+
+#qmo-preview-header-icon,
+#qmo-preview-welcome-icon {
+	height: 28px;
+	width: 28px;
+}
+
+@media (max-width: 1100px) {
+	.qmo-cb-wizard {
+		grid-template-columns: 1fr;
+	}
+
+	.qmo-cb-preview-col {
+		position: static;
+	}
+}

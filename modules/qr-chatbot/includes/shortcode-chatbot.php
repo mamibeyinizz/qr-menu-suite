@@ -23,26 +23,57 @@ add_shortcode( 'gemini_chatbot', 'qmo_chatbot_shortcode' );
  */
 if ( ! function_exists( 'qmo_chatbot_shortcode' ) ) {
 	function qmo_chatbot_shortcode() {
+		if ( function_exists( 'qmo_chatbot_onyuz_yuklensin_mi' ) && ! qmo_chatbot_onyuz_yuklensin_mi() ) {
+			return '';
+		}
 
-		// Oturum yoksa asistan açılmaz — Gemini maliyeti ve sipariş akışı
-		// yalnızca masadaki müşteriye aittir.
-		if ( ! qmo_oturum() ) {
+		$oturum_zorunlu = ! function_exists( 'qmo_chatbot_oturum_zorunlu_mu' ) || qmo_chatbot_oturum_zorunlu_mu();
+		if ( $oturum_zorunlu && ! qmo_oturum() ) {
 			return qmo_oturum_uyari_kutusu( 'Asistanı kullanmak için masanızdaki QR kodu okutun.' );
 		}
 
-		// Renk değişkenleri qmo_asset_enqueue() içinde stille birlikte eklenir.
 		qmo_asset_enqueue( 'qmo-chatbot' );
 
-		$bot_adi   = get_option( 'gemini_bot_name', 'Asistan' );
-		$placeholder = get_option( 'gemini_placeholder_text', 'Bir şeyler sorun...' );
-		$karsilama = get_option( 'gemini_welcome_text', 'Merhaba! Size nasıl yardımcı olabilirim?' );
+		$bot_adi      = get_option( 'gemini_bot_name', 'Asistan' );
+		$placeholder  = get_option( 'gemini_placeholder_text', 'Bir şeyler sorun...' );
+		$karsilama    = get_option( 'gemini_welcome_text', 'Merhaba! Size nasıl yardımcı olabilirim?' );
 		$metin_goster = 'yes' === get_option( 'gemini_show_toggle_text', 'yes' );
-		$ikon_url  = get_option( 'gemini_bot_icon', '' );
+		$ikon_url     = get_option( 'gemini_bot_icon', '' );
+		$cihaz        = function_exists( 'qmo_chatbot_ayar' ) ? qmo_chatbot_ayar( 'qmo_chatbot_devices' ) : 'both';
+		$mesai_disi   = function_exists( 'qmo_chatbot_mesai_disi_mi' ) && qmo_chatbot_mesai_disi_mi();
+		$kapali_dav   = function_exists( 'qmo_chatbot_ayar' ) ? qmo_chatbot_ayar( 'qmo_chatbot_closed_behavior' ) : 'hide';
+		$kapali_msg   = function_exists( 'qmo_chatbot_ayar' ) ? qmo_chatbot_ayar( 'qmo_chatbot_closed_message' ) : '';
+		$rozet        = function_exists( 'qmo_chatbot_ayar' ) && 'yes' === qmo_chatbot_ayar( 'qmo_chatbot_badge' );
+		$teaser       = function_exists( 'qmo_chatbot_ayar' ) && 'yes' === qmo_chatbot_ayar( 'qmo_chatbot_teaser' );
+		$ekran        = function_exists( 'qmo_chatbot_ayar' ) && 'yes' === qmo_chatbot_ayar( 'qmo_chatbot_welcome_screen' );
+		$sorular      = function_exists( 'qmo_chatbot_sorulari_aktif' ) ? qmo_chatbot_sorulari_aktif() : array();
+		$konum        = function_exists( 'qmo_chatbot_ayar' ) ? qmo_chatbot_ayar( 'qmo_chatbot_position' ) : 'right';
+		$hareket      = function_exists( 'qmo_chatbot_ayar' ) ? qmo_chatbot_ayar( 'qmo_chatbot_attention' ) : 'none';
+		$cihaz_sinif  = 'gm-device-' . sanitize_html_class( $cihaz );
+		$konum_sinif  = 'left' === $konum ? 'gm-pos-left' : 'gm-pos-right';
+		$attn_sinif   = 'pulse' === $hareket ? 'gm-attn-pulse' : ( 'shake' === $hareket ? 'gm-attn-shake' : '' );
+		$siniflar     = array( 'gemini-shortcode-container', $cihaz_sinif, $konum_sinif );
 
 		ob_start();
 		?>
-		<div class="gemini-shortcode-container">
-			<div class="gemini-chat-toggle-btn" role="button" tabindex="0" aria-label="<?php echo esc_attr( $bot_adi ); ?>">
+		<div class="<?php echo esc_attr( implode( ' ', $siniflar ) ); ?>"
+			data-closed="<?php echo $mesai_disi && 'message' === $kapali_dav ? '1' : '0'; ?>"
+			data-closed-msg="<?php echo esc_attr( $kapali_msg ); ?>"
+			data-badge="<?php echo $rozet ? '1' : '0'; ?>"
+			data-teaser="<?php echo $teaser ? '1' : '0'; ?>"
+			data-teaser-delay="<?php echo esc_attr( function_exists( 'qmo_chatbot_ayar' ) ? (int) qmo_chatbot_ayar( 'qmo_chatbot_teaser_delay' ) : 4 ); ?>"
+			data-welcome="<?php echo $ekran ? '1' : '0'; ?>">
+			<?php if ( $teaser ) : ?>
+				<div class="gemini-teaser" hidden>
+					<button type="button" class="gemini-teaser-kapat" aria-label="<?php esc_attr_e( 'Kapat', 'qrms' ); ?>">&times;</button>
+					<span><?php echo esc_html( qmo_chatbot_ayar( 'qmo_chatbot_teaser_text' ) ); ?></span>
+				</div>
+			<?php endif; ?>
+
+			<div class="gemini-chat-toggle-btn<?php echo $attn_sinif ? ' ' . esc_attr( $attn_sinif ) : ''; ?>" role="button" tabindex="0" aria-label="<?php echo esc_attr( $bot_adi ); ?>">
+				<?php if ( $rozet ) : ?>
+					<span class="gemini-unread-badge" hidden>1</span>
+				<?php endif; ?>
 				<div class="gemini-icon-wrapper">
 					<?php qmo_chatbot_ikon( $ikon_url ); ?>
 				</div>
@@ -51,7 +82,7 @@ if ( ! function_exists( 'qmo_chatbot_shortcode' ) ) {
 				<?php endif; ?>
 			</div>
 
-			<div class="gemini-chat-overlay">
+			<div class="gemini-chat-overlay <?php echo esc_attr( $cihaz_sinif . ' ' . $konum_sinif ); ?>">
 				<div class="gemini-chat-header">
 					<div class="gemini-chat-header-left">
 						<div class="gemini-icon-wrapper">
@@ -65,9 +96,28 @@ if ( ! function_exists( 'qmo_chatbot_shortcode' ) ) {
 					<button type="button" class="gemini-chat-close" aria-label="Kapat">&times;</button>
 				</div>
 
+				<?php if ( $ekran ) : ?>
+					<div class="gemini-welcome-screen">
+						<div class="gemini-icon-wrapper"><?php qmo_chatbot_ikon( $ikon_url ); ?></div>
+						<strong><?php echo esc_html( $bot_adi ); ?></strong>
+						<p><?php echo esc_html( qmo_chatbot_ayar( 'qmo_chatbot_welcome_intro' ) ); ?></p>
+						<button type="button" class="gemini-welcome-start"><?php echo esc_html( qmo_chatbot_ayar( 'qmo_chatbot_welcome_btn' ) ); ?></button>
+					</div>
+				<?php endif; ?>
+
 				<div class="gemini-chat-log">
 					<div class="gemini-msg-bubble gemini-msg-bot"><?php echo esc_html( $karsilama ); ?></div>
 				</div>
+
+				<?php if ( $sorular ) : ?>
+					<div class="gemini-quick-replies">
+						<?php foreach ( $sorular as $soru ) : ?>
+							<button type="button" class="gemini-quick-reply" data-question="<?php echo esc_attr( $soru['question'] ); ?>">
+								<?php echo esc_html( $soru['label'] ); ?>
+							</button>
+						<?php endforeach; ?>
+					</div>
+				<?php endif; ?>
 
 				<div class="gemini-chat-input-area">
 					<input type="text" class="gemini-chat-input" maxlength="1000"
@@ -91,6 +141,19 @@ if ( ! function_exists( 'qmo_chatbot_shortcode' ) ) {
  */
 if ( ! function_exists( 'qmo_chatbot_ikon' ) ) {
 	function qmo_chatbot_ikon( $ikon_url ) {
+		$preset = function_exists( 'qmo_chatbot_ayar' ) ? qmo_chatbot_ayar( 'qmo_chatbot_icon_preset' ) : 'bubble';
+		if ( 'custom' === $preset && $ikon_url ) {
+			printf( '<img src="%s" alt="" />', esc_url( $ikon_url ) );
+			return;
+		}
+		if ( $ikon_url && ( ! $preset || 'custom' === $preset ) ) {
+			printf( '<img src="%s" alt="" />', esc_url( $ikon_url ) );
+			return;
+		}
+		if ( function_exists( 'qmo_chatbot_ikon_svg' ) && $preset && 'custom' !== $preset ) {
+			echo wp_kses( qmo_chatbot_ikon_svg( $preset ), qmo_svg_kses() );
+			return;
+		}
 		if ( $ikon_url ) {
 			printf( '<img src="%s" alt="" />', esc_url( $ikon_url ) );
 			return;
@@ -123,30 +186,51 @@ if ( ! function_exists( 'qmo_chatbot_degiskenleri' ) ) {
 			return $temiz ? $temiz : $d[ $key ];
 		};
 
+		$coz = function_exists( 'qmo_chatbot_renkleri_coz' ) ? qmo_chatbot_renkleri_coz() : array();
+		$renkler = function ( $key ) use ( $d, $renk, $coz ) {
+			if ( isset( $coz[ $key ] ) ) {
+				$temiz = sanitize_hex_color( $coz[ $key ] );
+				return $temiz ? $temiz : $renk( $key );
+			}
+			return $renk( $key );
+		};
+
 		$ikon_boyut = max( 30, (int) get_option( 'gemini_icon_size', 24 ) );
-		$radius     = max( 14, (int) get_option( 'gemini_border_radius', 16 ) );
+		$radius     = max( 4, (int) get_option( 'gemini_border_radius', 16 ) );
 		$toggle_pad = ( 'yes' === get_option( 'gemini_show_toggle_text', 'yes' ) ) ? '13px 26px 13px 14px' : '14px';
+		$konum      = function_exists( 'qmo_chatbot_ayar' ) ? qmo_chatbot_ayar( 'qmo_chatbot_position' ) : 'right';
+		$yuk        = function_exists( 'qmo_chatbot_ayar' ) ? qmo_chatbot_ayar( 'qmo_chatbot_offset' ) : 'mid';
+		$yuk_map    = function_exists( 'qmo_chatbot_yukseklik_haritasi' ) ? qmo_chatbot_yukseklik_haritasi() : array( 'mid' => 108 );
+		$gen        = function_exists( 'qmo_chatbot_ayar' ) ? qmo_chatbot_ayar( 'qmo_chatbot_window_width' ) : 'normal';
+		$gen_map    = function_exists( 'qmo_chatbot_genislik_haritasi' ) ? qmo_chatbot_genislik_haritasi() : array( 'normal' => 380 );
+		$ikon_r     = function_exists( 'qmo_chatbot_ayar' ) ? sanitize_hex_color( qmo_chatbot_ayar( 'qmo_chatbot_icon_color' ) ) : '#ffffff';
+		$ikon_bg    = function_exists( 'qmo_chatbot_ayar' ) ? sanitize_hex_color( qmo_chatbot_ayar( 'qmo_chatbot_icon_bg_color' ) ) : '';
 
 		$degiskenler = array(
-			'--gm-toggle-bg'     => $renk( 'gemini_toggle_bg_color' ),
-			'--gm-toggle-text'   => $renk( 'gemini_toggle_text_color' ),
-			'--gm-header-bg'     => $renk( 'gemini_header_bg_color' ),
-			'--gm-header-text'   => $renk( 'gemini_header_text_color' ),
-			'--gm-header-icon'   => $renk( 'gemini_header_icon_color' ),
-			'--gm-text'          => $renk( 'gemini_text_color' ),
-			'--gm-border'        => $renk( 'gemini_border_color' ),
-			'--gm-chat-bg'       => $renk( 'gemini_chat_bg_color' ),
-			'--gm-user-bg'       => $renk( 'gemini_user_msg_color' ),
-			'--gm-user-text'     => $renk( 'gemini_user_msg_text_color' ),
-			'--gm-bot-bg'        => $renk( 'gemini_bot_msg_color' ),
-			'--gm-bot-text'      => $renk( 'gemini_bot_msg_text_color' ),
-			'--gm-input-bg'      => $renk( 'gemini_input_bg_color' ),
-			'--gm-input-area-bg' => $renk( 'gemini_input_area_bg_color' ),
-			'--gm-send-bg'       => $renk( 'gemini_send_btn_bg_color' ),
-			'--gm-send-icon'     => $renk( 'gemini_send_btn_icon_color' ),
+			'--gm-main'          => $renkler( 'gemini_main_color' ),
+			'--gm-toggle-bg'     => $ikon_bg ? $ikon_bg : $renkler( 'gemini_toggle_bg_color' ),
+			'--gm-toggle-text'   => $ikon_r ? $ikon_r : $renkler( 'gemini_toggle_text_color' ),
+			'--gm-header-bg'     => $renkler( 'gemini_header_bg_color' ),
+			'--gm-header-text'   => $renkler( 'gemini_header_text_color' ),
+			'--gm-header-icon'   => $renkler( 'gemini_header_icon_color' ),
+			'--gm-text'          => $renkler( 'gemini_text_color' ),
+			'--gm-border'        => $renkler( 'gemini_border_color' ),
+			'--gm-chat-bg'       => $renkler( 'gemini_chat_bg_color' ),
+			'--gm-user-bg'       => $renkler( 'gemini_user_msg_color' ),
+			'--gm-user-text'     => $renkler( 'gemini_user_msg_text_color' ),
+			'--gm-bot-bg'        => $renkler( 'gemini_bot_msg_color' ),
+			'--gm-bot-text'      => $renkler( 'gemini_bot_msg_text_color' ),
+			'--gm-input-bg'      => $renkler( 'gemini_input_bg_color' ),
+			'--gm-input-area-bg' => $renkler( 'gemini_input_area_bg_color' ),
+			'--gm-send-bg'       => $renkler( 'gemini_send_btn_bg_color' ),
+			'--gm-send-icon'     => $renkler( 'gemini_send_btn_icon_color' ),
 			'--gm-radius'        => $radius . 'px',
 			'--gm-icon-size'     => $ikon_boyut . 'px',
 			'--gm-toggle-pad'    => $toggle_pad,
+			'--gm-bottom'        => ( isset( $yuk_map[ $yuk ] ) ? (int) $yuk_map[ $yuk ] : 108 ) . 'px',
+			'--gm-side'          => '20px',
+			'--gm-window'        => ( isset( $gen_map[ $gen ] ) ? (int) $gen_map[ $gen ] : 380 ) . 'px',
+			'--gm-z'             => '2147482800',
 		);
 
 		$satirlar = '';
@@ -154,8 +238,6 @@ if ( ! function_exists( 'qmo_chatbot_degiskenleri' ) ) {
 			$satirlar .= $ad . ':' . $deger . ';';
 		}
 
-		// Overlay JS ile body'ye taşındığı için değişkenler onun üzerinde de
-		// tanımlanmalı; aksi halde miras kopar ve arkaplanlar şeffaflaşır.
 		return '.gemini-shortcode-container,.gemini-chat-overlay{' . $satirlar . '}';
 	}
 }
