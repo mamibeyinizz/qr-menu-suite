@@ -15,8 +15,7 @@
  *
  * DOLU KATEGORİLER kendi dosyalarındadır (genel-, urunler-, masalar-,
  * sepet-, etkilesim-, acilis-, sistem-sayfasi.php). Faz 8 bitti; tüm
- * kategoriler hazir=true. qrms_analitik_hazirlaniyor() çağrılmıyor
- * (FAZ 9: ölü placeholder, silinmedi).
+ * kategoriler hazir=true.
  *
  * PAYLAŞILAN FİLTRE. Kategoriler aynı verinin farklı kesitleridir, bu yüzden
  * zaman aralığı ve masa seçimi sayfalar arasında TAŞINIR; her bağlantı
@@ -371,40 +370,6 @@ if ( ! function_exists( 'qrms_module_qr_analiz_hub' ) ) {
 				'cards'  => qrms_module_qr_analiz_hub_kartlari(),
 			)
 		);
-	}
-}
-
-if ( ! function_exists( 'qrms_analitik_hazirlaniyor' ) ) {
-
-	/**
-	 * FAZ 9 ÖLÜ — hiçbir çağıran yok (tüm kategoriler hazir).
-	 *
-	 * Henüz doldurulmamış kategori sayfasının içeriğiydi; içindeki
-	 * "klasik görünüm" linki qrms-an-klasik'e gider (hub'a 302).
-	 *
-	 * @param string $baslik  Sayfa başlığı.
-	 * @param string $aciklama Kategorinin tek cümlelik tarifi.
-	 * @return void
-	 */
-	function qrms_analitik_hazirlaniyor( $baslik, $aciklama ) {
-		if ( ! current_user_can( QRMS_Admin::CAPABILITY ) ) {
-			wp_die( esc_html__( 'Bu sayfayı görüntüleme yetkiniz yok.', 'qrms' ) );
-		}
-		?>
-		<div class="wrap qrms-wrap">
-			<h1 class="qrms-title"><?php echo esc_html( $baslik ); ?></h1>
-
-			<div class="qrms-card">
-				<p><?php echo esc_html( $aciklama ); ?></p>
-				<p class="qrms-muted"><?php esc_html_e( 'Bu bölüm hazırlanıyor. O zamana kadar tüm veriler klasik görünümde duruyor.', 'qrms' ); ?></p>
-				<p>
-					<a class="qrms-button qrms-button-primary" href="<?php echo esc_url( QRMS_Analitik_Filtre::url( QRMS_ANALITIK_KLASIK_SAYFA ) ); ?>">
-						<?php esc_html_e( 'Tüm Veriler (klasik görünüm)', 'qrms' ); ?>
-					</a>
-				</p>
-			</div>
-		</div>
-		<?php
 	}
 }
 
