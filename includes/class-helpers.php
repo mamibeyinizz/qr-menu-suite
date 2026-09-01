@@ -324,6 +324,9 @@ class QRMS_Helpers {
 
 	/* -----------------------------------------------------------------
 	   ESKİ SLUG SAYACI (Faz 9)
+	   Temizlik listesi (çeviri):
+	   — HFB çeviri satırları iki tipte (ui_string + option). Tek tipe
+	     indirilsin mi? P1 geçici; option öne bakar, P0 satırları durur.
 	----------------------------------------------------------------- */
 
 	/**

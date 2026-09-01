@@ -49,6 +49,7 @@ function qrm_cf_type_label($type) {
 // --- FORM AYARLARI (settings sütunundaki JSON) ---
 
 function qrm_cf_default_form_settings() {
+    // P1: submit_text / success_message form ayarı (item_type=cf_form).
     return [
         'submit_text'     => 'Gönder',
         'success_message' => 'Formunuz bize ulaştı, teşekkür ederiz.',
@@ -404,7 +405,7 @@ function qrm_cf_validate_value($field, $raw) {
         case 'email':
             $email = sanitize_email((string) $raw);
             if ($email !== '' && !is_email($email)) {
-                return ['ok' => false, 'value' => '', 'error' => sprintf('"%s" alanına geçerli bir e-posta adresi girin.', $label)];
+                return ['ok' => false, 'value' => '', 'error' => sprintf(qrm_ceviri_review(__('"%s" alanına geçerli bir e-posta adresi girin.', 'qrms')), $label)];
             }
             return ['ok' => true, 'value' => $email, 'error' => ''];
 
@@ -418,7 +419,7 @@ function qrm_cf_validate_value($field, $raw) {
                 return ['ok' => true, 'value' => $tr, 'error' => ''];
             }
             if (strlen($digits) < 7 || strlen($digits) > 15) {
-                return ['ok' => false, 'value' => '', 'error' => sprintf('"%s" alanına geçerli bir telefon numarası girin.', $label)];
+                return ['ok' => false, 'value' => '', 'error' => sprintf(qrm_ceviri_review(__('"%s" alanına geçerli bir telefon numarası girin.', 'qrms')), $label)];
             }
             return ['ok' => true, 'value' => $digits, 'error' => ''];
 
@@ -426,7 +427,7 @@ function qrm_cf_validate_value($field, $raw) {
             $val = trim((string) $raw);
             if ($val === '') return ['ok' => true, 'value' => '', 'error' => ''];
             if (!is_numeric(str_replace(',', '.', $val))) {
-                return ['ok' => false, 'value' => '', 'error' => sprintf('"%s" alanına yalnızca sayı girin.', $label)];
+                return ['ok' => false, 'value' => '', 'error' => sprintf(qrm_ceviri_review(__('"%s" alanına yalnızca sayı girin.', 'qrms')), $label)];
             }
             return ['ok' => true, 'value' => (string) (float) str_replace(',', '.', $val), 'error' => ''];
 
@@ -434,7 +435,7 @@ function qrm_cf_validate_value($field, $raw) {
             $val = intval($raw);
             if ($val === 0) return ['ok' => true, 'value' => '', 'error' => ''];
             if ($val < 1 || $val > 5) {
-                return ['ok' => false, 'value' => '', 'error' => sprintf('"%s" alanı için 1-5 arası bir puan seçin.', $label)];
+                return ['ok' => false, 'value' => '', 'error' => sprintf(qrm_ceviri_review(__('"%s" alanı için 1-5 arası bir puan seçin.', 'qrms')), $label)];
             }
             return ['ok' => true, 'value' => (string) $val, 'error' => ''];
 
@@ -443,7 +444,7 @@ function qrm_cf_validate_value($field, $raw) {
             if ($val === '') return ['ok' => true, 'value' => '', 'error' => ''];
             $parts = explode('-', $val);
             if (count($parts) !== 3 || !checkdate((int) $parts[1], (int) $parts[2], (int) $parts[0])) {
-                return ['ok' => false, 'value' => '', 'error' => sprintf('"%s" alanına geçerli bir tarih seçin.', $label)];
+                return ['ok' => false, 'value' => '', 'error' => sprintf(qrm_ceviri_review(__('"%s" alanına geçerli bir tarih seçin.', 'qrms')), $label)];
             }
             return ['ok' => true, 'value' => $val, 'error' => ''];
 
@@ -452,7 +453,7 @@ function qrm_cf_validate_value($field, $raw) {
             $val = sanitize_text_field((string) $raw);
             if ($val === '') return ['ok' => true, 'value' => '', 'error' => ''];
             if (!in_array($val, $options, true)) {
-                return ['ok' => false, 'value' => '', 'error' => sprintf('"%s" alanı için geçersiz bir seçenek gönderildi.', $label)];
+                return ['ok' => false, 'value' => '', 'error' => sprintf(qrm_ceviri_review(__('"%s" alanı için geçersiz bir seçenek gönderildi.', 'qrms')), $label)];
             }
             return ['ok' => true, 'value' => $val, 'error' => ''];
 
@@ -463,7 +464,7 @@ function qrm_cf_validate_value($field, $raw) {
                 $v = sanitize_text_field((string) $v);
                 if ($v === '') continue;
                 if (!in_array($v, $options, true)) {
-                    return ['ok' => false, 'value' => [], 'error' => sprintf('"%s" alanı için geçersiz bir seçenek gönderildi.', $label)];
+                    return ['ok' => false, 'value' => [], 'error' => sprintf(qrm_ceviri_review(__('"%s" alanı için geçersiz bir seçenek gönderildi.', 'qrms')), $label)];
                 }
                 $clean[] = $v;
             }
@@ -504,7 +505,7 @@ function qrm_cf_validate_submission($fields, $post) {
             continue;
         }
         if ($required && qrm_cf_value_is_empty($result['value'])) {
-            $errors[] = sprintf('"%s" alanı zorunludur.', $label);
+            $errors[] = sprintf(qrm_ceviri_review(__('"%s" alanı zorunludur.', 'qrms')), $label);
             continue;
         }
         $data[$key] = $result['value'];

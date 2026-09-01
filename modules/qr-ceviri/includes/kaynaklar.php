@@ -480,6 +480,26 @@ if ( ! function_exists( 'rma_ceviri_ui_satirlari' ) ) {
 }
 
 /**
+ * Modül bazlı sabit metin satırları (splash, hours, chat, …).
+ *
+ * @return Generator<array{item_id:int,item_type:string,field:string,original:string}>
+ */
+if ( ! function_exists( 'rma_ceviri_modul_satirlari' ) ) {
+	function rma_ceviri_modul_satirlari() {
+		foreach ( array_keys( rma_ceviri_modul_tipleri() ) as $tip ) {
+			foreach ( rma_ceviri_modul_stringleri( $tip ) as $anahtar => $metin ) {
+				yield array(
+					'item_id'   => 0,
+					'item_type' => $tip,
+					'field'     => $anahtar,
+					'original'  => $metin,
+				);
+			}
+		}
+	}
+}
+
+/**
  * Seçili Elementor sayfalarının satırları.
  *
  * @return Generator<array{item_id:int,item_type:string,field:string,original:string}>
@@ -576,7 +596,20 @@ if ( ! function_exists( 'rma_ceviri_ham_kaynak_satirlari' ) ) {
 		yield from rma_ceviri_terim_satirlari( 'allergen', 'allergen' );
 		yield from rma_ceviri_menu_satirlari();
 		yield from rma_ceviri_ui_satirlari();
+		yield from rma_ceviri_modul_satirlari();
 		yield from rma_ceviri_elementor_satirlari();
+		if ( function_exists( 'rma_ceviri_option_satirlari' ) ) {
+			yield from rma_ceviri_option_satirlari();
+		}
+		if ( function_exists( 'rma_ceviri_form_field_satirlari' ) ) {
+			yield from rma_ceviri_form_field_satirlari();
+		}
+		if ( function_exists( 'rma_ceviri_cf_field_satirlari' ) ) {
+			yield from rma_ceviri_cf_field_satirlari();
+		}
+		if ( function_exists( 'rma_ceviri_cf_form_satirlari' ) ) {
+			yield from rma_ceviri_cf_form_satirlari();
+		}
 	}
 }
 
@@ -653,6 +686,23 @@ if ( ! function_exists( 'rma_ceviri_guncel_orijinal' ) ) {
 					$elementor_onbellek[ $id ] = rma_ceviri_elementor_alan_haritasi( $id );
 				}
 				return isset( $elementor_onbellek[ $id ][ $field ] ) ? $elementor_onbellek[ $id ][ $field ] : null;
+
+			case 'option':
+				return function_exists( 'rma_ceviri_option_guncel' )
+					? rma_ceviri_option_guncel( $field )
+					: null;
+
+			case 'form_field':
+			case 'cf_field':
+			case 'cf_form':
+				return function_exists( 'rma_ceviri_veri_guncel' )
+					? rma_ceviri_veri_guncel( $item_id, $item_type, $field )
+					: null;
+		}
+
+		if ( function_exists( 'rma_ceviri_modul_sabit_mi' ) && rma_ceviri_modul_sabit_mi( $item_type ) ) {
+			$metinler = rma_ceviri_modul_stringleri( $item_type );
+			return isset( $metinler[ $field ] ) ? $metinler[ $field ] : null;
 		}
 
 		return null;

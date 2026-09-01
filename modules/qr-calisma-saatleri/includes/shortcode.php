@@ -93,11 +93,11 @@ function qrms_cs_shortcode( $atts ) {
 					<path d="M12 7v5l3 2"></path>
 				</svg>
 			</span>
-			<span class="qrms-cs-title"><?php esc_html_e( 'Çalışma Saatleri', 'qrms' ); ?></span>
+			<span class="qrms-cs-title"><?php echo esc_html( qrms_cs_cevir( __( 'Çalışma Saatleri', 'qrms' ) ) ); ?></span>
 			<?php // Durum, açık/kapalı hesabının (qrms_cs_is_open_at) tek kaynağından gelir. ?>
 			<span class="qrms-cs-status <?php echo esc_attr( $is_open ? 'is-open' : 'is-shut' ); ?>">
 				<span class="qrms-cs-status-dot" aria-hidden="true"></span>
-				<?php echo esc_html( $is_open ? __( 'Şu an açığız', 'qrms' ) : __( 'Şu an kapalıyız', 'qrms' ) ); ?>
+				<?php echo esc_html( qrms_cs_cevir( $is_open ? __( 'Şu an açığız', 'qrms' ) : __( 'Şu an kapalıyız', 'qrms' ) ) ); ?>
 			</span>
 		</div>
 

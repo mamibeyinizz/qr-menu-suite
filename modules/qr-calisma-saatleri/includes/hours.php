@@ -33,20 +33,37 @@ function qrms_cs_day_keys() {
 }
 
 /**
- * Gün anahtarı → görünen Türkçe ad.
+ * Gün anahtarı → görünen ad (tablo → textdomain → Türkçe).
  *
  * @return array<string,string>
  */
 function qrms_cs_day_labels() {
 	return array(
-		'monday'    => __( 'Pazartesi', 'qrms' ),
-		'tuesday'   => __( 'Salı', 'qrms' ),
-		'wednesday' => __( 'Çarşamba', 'qrms' ),
-		'thursday'  => __( 'Perşembe', 'qrms' ),
-		'friday'    => __( 'Cuma', 'qrms' ),
-		'saturday'  => __( 'Cumartesi', 'qrms' ),
-		'sunday'    => __( 'Pazar', 'qrms' ),
+		'monday'    => qrms_cs_cevir( __( 'Pazartesi', 'qrms' ) ),
+		'tuesday'   => qrms_cs_cevir( __( 'Salı', 'qrms' ) ),
+		'wednesday' => qrms_cs_cevir( __( 'Çarşamba', 'qrms' ) ),
+		'thursday'  => qrms_cs_cevir( __( 'Perşembe', 'qrms' ) ),
+		'friday'    => qrms_cs_cevir( __( 'Cuma', 'qrms' ) ),
+		'saturday'  => qrms_cs_cevir( __( 'Cumartesi', 'qrms' ) ),
+		'sunday'    => qrms_cs_cevir( __( 'Pazar', 'qrms' ) ),
 	);
+}
+
+/**
+ * Ön yüz saat metnini çeviri köprüsünden geçirir.
+ *
+ * Desen: rma_ceviri_modul( 'hours', __( '…', 'qrms' ) ). Çeviri kapalıysa
+ * textdomain/Türkçe girdi aynen döner.
+ *
+ * @param string $metin Textdomain çıktısı (site dili TR iken Türkçe kaynak).
+ * @return string
+ */
+function qrms_cs_cevir( $metin ) {
+	if ( function_exists( 'rma_ceviri_modul' ) ) {
+		return rma_ceviri_modul( 'hours', $metin );
+	}
+
+	return $metin;
 }
 
 /**
@@ -252,19 +269,21 @@ function qrms_cs_format_day( $day ) {
 	$day = is_array( $day ) ? $day : array();
 
 	if ( ! empty( $day['closed'] ) ) {
-		return __( 'Kapalı', 'qrms' );
+		return qrms_cs_cevir( __( 'Kapalı', 'qrms' ) );
 	}
 
 	$open  = isset( $day['open'] ) ? $day['open'] : '';
 	$close = isset( $day['close'] ) ? $day['close'] : '';
 
 	if ( $open === $close ) {
-		return __( '24 saat açık', 'qrms' );
+		return qrms_cs_cevir( __( '24 saat açık', 'qrms' ) );
 	}
 
+	// Biçim dizesinin kendisi çevrilebilir kalır: bazı dillerde ayraç ve
+	// sıra (%2$s … %1$s) farklıdır.
 	return sprintf(
 		/* translators: 1: opening time, 2: closing time */
-		__( '%1$s – %2$s', 'qrms' ),
+		qrms_cs_cevir( __( '%1$s – %2$s', 'qrms' ) ),
 		$open,
 		$close
 	);

@@ -260,7 +260,7 @@ trait QRMS_HFB_Frontend {
 					<div class="hfb-header__brand"><?php echo $brand; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></div>
 
 					<?php if ( $nav ) : ?>
-						<nav class="hfb-header__nav" aria-label="<?php esc_attr_e( 'Ana menü', 'qrms' ); ?>">
+						<nav class="hfb-header__nav" aria-label="<?php echo esc_attr( $this->hfb_cevir_ui( __( 'Ana menü', 'qrms' ) ) ); ?>">
 							<?php echo $nav; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 						</nav>
 					<?php endif; ?>
@@ -270,7 +270,7 @@ trait QRMS_HFB_Frontend {
 						<?php echo $lang; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 					</div>
 
-					<button type="button" class="hfb-header__toggle" aria-expanded="false" aria-controls="hfb-mobile-panel" aria-label="<?php esc_attr_e( 'Menüyü aç', 'qrms' ); ?>">
+					<button type="button" class="hfb-header__toggle" aria-expanded="false" aria-controls="hfb-mobile-panel" aria-label="<?php echo esc_attr( $this->hfb_cevir_ui( __( 'Menüyü aç', 'qrms' ) ) ); ?>">
 						<span class="hfb-header__toggle-bar"></span>
 						<span class="hfb-header__toggle-bar"></span>
 						<span class="hfb-header__toggle-bar"></span>
@@ -440,9 +440,21 @@ trait QRMS_HFB_Frontend {
 		$call    = $this->render_footer_call_buttons( $opts );
 		$style   = $this->footer_css_vars( $opts );
 
-		$links_title   = isset( $opts['links_title'] ) ? trim( (string) $opts['links_title'] ) : '';
-		$contact_title = isset( $opts['contact_title'] ) ? trim( (string) $opts['contact_title'] ) : '';
-		$hours_title   = isset( $opts['hours_title'] ) ? trim( (string) $opts['hours_title'] ) : '';
+		$links_title   = $this->hfb_cevir_option_varsayilan(
+			isset( $opts['links_title'] ) ? $opts['links_title'] : '',
+			isset( $this->footer_defaults['links_title'] ) ? $this->footer_defaults['links_title'] : 'Hızlı Menü',
+			'hfb_footer.links_title'
+		);
+		$contact_title = $this->hfb_cevir_option_varsayilan(
+			isset( $opts['contact_title'] ) ? $opts['contact_title'] : '',
+			isset( $this->footer_defaults['contact_title'] ) ? $this->footer_defaults['contact_title'] : 'İletişim',
+			'hfb_footer.contact_title'
+		);
+		$hours_title   = $this->hfb_cevir_option_varsayilan(
+			isset( $opts['hours_title'] ) ? $opts['hours_title'] : '',
+			isset( $this->footer_defaults['hours_title'] ) ? $this->footer_defaults['hours_title'] : 'Çalışma Saatlerimiz',
+			'hfb_footer.hours_title'
+		);
 
 		$show_links   = (bool) $nav || '' !== $links_title;
 		$show_contact = (bool) $contact || (bool) $social || '' !== $contact_title;
@@ -461,7 +473,7 @@ trait QRMS_HFB_Frontend {
 					</div>
 
 					<?php if ( $show_links ) : ?>
-						<nav class="hfb-footer__col hfb-footer__col--links" aria-label="<?php echo esc_attr( '' !== $links_title ? $links_title : __( 'Hızlı Menü', 'qrms' ) ); ?>">
+						<nav class="hfb-footer__col hfb-footer__col--links" aria-label="<?php echo esc_attr( '' !== $links_title ? $links_title : $this->hfb_cevir_ui( __( 'Hızlı Menü', 'qrms' ) ) ); ?>">
 							<?php if ( '' !== $links_title ) : ?>
 								<h3 class="hfb-footer__heading"><?php echo esc_html( $links_title ); ?></h3>
 							<?php endif; ?>
@@ -629,7 +641,7 @@ trait QRMS_HFB_Frontend {
 		$live    = $session && function_exists( 'qmo_asset_enqueue' );
 
 		if ( ! $preview && ! $session ) {
-			$msg = __( 'Lütfen QR kodunu okutarak masanızdan erişin', 'qrms' );
+			$msg = $this->hfb_cevir_ui( __( 'Lütfen QR kodunu okutarak masanızdan erişin', 'qrms' ) );
 			return '<div class="hfb-footer__call hfb-footer__call--warn"><p class="hfb-footer__call-msg">' . esc_html( $msg ) . '</p></div>';
 		}
 
@@ -640,12 +652,30 @@ trait QRMS_HFB_Frontend {
 			qmo_asset_enqueue( 'qmo-buttons' );
 		}
 
-		$garson = isset( $opts['call_garson_label'] ) && '' !== trim( (string) $opts['call_garson_label'] )
-			? (string) $opts['call_garson_label']
-			: __( 'Garson Çağır', 'qrms' );
-		$hesap = isset( $opts['call_hesap_label'] ) && '' !== trim( (string) $opts['call_hesap_label'] )
-			? (string) $opts['call_hesap_label']
-			: __( 'Hesap İste', 'qrms' );
+		// Adım 5B: aynı chat satırı; tekrar sarılmaz.
+		$garson_yedek = __( 'Garson Çağır', 'qrms' );
+		$hesap_yedek  = __( 'Hesap İste', 'qrms' );
+		if ( function_exists( 'qmo_ceviri_chat' ) ) {
+			$garson_yedek = qmo_ceviri_chat( $garson_yedek );
+			$hesap_yedek  = qmo_ceviri_chat( $hesap_yedek );
+		}
+
+		$garson_ham = isset( $opts['call_garson_label'] ) ? trim( (string) $opts['call_garson_label'] ) : '';
+		$hesap_ham  = isset( $opts['call_hesap_label'] ) ? trim( (string) $opts['call_hesap_label'] ) : '';
+		$garson_def = isset( $this->footer_defaults['call_garson_label'] ) ? (string) $this->footer_defaults['call_garson_label'] : 'Garson Çağır';
+		$hesap_def  = isset( $this->footer_defaults['call_hesap_label'] ) ? (string) $this->footer_defaults['call_hesap_label'] : 'Hesap İste';
+
+		// Boş veya kod varsayılanı: P0 chat satırı. Dolu özel metin: option (hash kapısı).
+		if ( '' !== $garson_ham && $garson_ham !== $garson_def && function_exists( 'rma_ceviri_option' ) ) {
+			$garson = rma_ceviri_option( 'hfb_footer.call_garson_label', $garson_ham );
+		} else {
+			$garson = '' !== $garson_ham && $garson_ham !== $garson_def ? $garson_ham : $garson_yedek;
+		}
+		if ( '' !== $hesap_ham && $hesap_ham !== $hesap_def && function_exists( 'rma_ceviri_option' ) ) {
+			$hesap = rma_ceviri_option( 'hfb_footer.call_hesap_label', $hesap_ham );
+		} else {
+			$hesap = '' !== $hesap_ham && $hesap_ham !== $hesap_def ? $hesap_ham : $hesap_yedek;
+		}
 
 		$html  = '<div class="hfb-footer__call qmo-cagri-bar">';
 		$html .= '<button type="button" class="hfb-btn hfb-footer__call-btn"' . ( $live ? ' data-qmo-cagri="garson"' : '' ) . '>';
@@ -706,14 +736,14 @@ trait QRMS_HFB_Frontend {
 		?>
 		<div id="hfb-mobile-panel" class="hfb-mobile-panel" aria-hidden="true">
 			<div class="hfb-mobile-panel__backdrop" tabindex="-1"></div>
-			<div class="hfb-mobile-panel__sheet" role="dialog" aria-modal="true" aria-label="<?php esc_attr_e( 'Mobil menü', 'qrms' ); ?>">
+			<div class="hfb-mobile-panel__sheet" role="dialog" aria-modal="true" aria-label="<?php echo esc_attr( $this->hfb_cevir_ui( __( 'Mobil menü', 'qrms' ) ) ); ?>">
 				<?php if ( $has_bg_image ) : ?>
 					<div class="hfb-mobile-panel__bg" aria-hidden="true"></div>
 				<?php endif; ?>
 
 				<div class="hfb-mobile-panel__topbar">
 					<span class="hfb-mobile-panel__topbar-spacer" aria-hidden="true"></span>
-					<button type="button" class="hfb-mobile-panel__close" aria-label="<?php esc_attr_e( 'Menüyü kapat', 'qrms' ); ?>">
+					<button type="button" class="hfb-mobile-panel__close" aria-label="<?php echo esc_attr( $this->hfb_cevir_ui( __( 'Menüyü kapat', 'qrms' ) ) ); ?>">
 						<svg class="hfb-icon hfb-icon--close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
 					</button>
 				</div>
@@ -773,7 +803,7 @@ trait QRMS_HFB_Frontend {
 
 			case 'menu':
 				if ( $nav ) {
-					$inner = '<nav class="hfb-mobile-panel__nav" aria-label="' . esc_attr( __( 'Mobil menü', 'qrms' ) ) . '">' . $nav . '</nav>';
+					$inner = '<nav class="hfb-mobile-panel__nav" aria-label="' . esc_attr( $this->hfb_cevir_ui( __( 'Mobil menü', 'qrms' ) ) ) . '">' . $nav . '</nav>';
 				}
 				break;
 
@@ -1124,5 +1154,59 @@ trait QRMS_HFB_Frontend {
 		$path = isset( $paths[ $icon ] ) ? $paths[ $icon ] : '<circle cx="12" cy="12" r="9"/>';
 
 		return '<svg class="hfb-icon hfb-icon--social" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">' . $path . '</svg>';
+	}
+
+	/**
+	 * HFB chrome metni (aria, uyarı). item_type=ui_string — yeni tip yok.
+	 *
+	 * Adım 4 aria: splash tampon nitelik görmez; data-sp-attr + tüm diller
+	 * splash.js ile yazılır. HFB'de o JS yok; splash'e bağlamak Elementor
+	 * çıktısını bozar. Sunucu rma_ceviri_modul ile basar (sepet/yorum);
+	 * frontend.js kapat etiketini PHP aria'sından okur.
+	 *
+	 * @param string $metin Türkçe kaynak (__( '…', 'qrms' )).
+	 * @return string
+	 */
+	private function hfb_cevir_ui( $metin ) {
+		$metin = (string) $metin;
+		if ( function_exists( 'rma_ceviri_modul' ) ) {
+			return rma_ceviri_modul( 'ui_string', $metin );
+		}
+		return $metin;
+	}
+
+	/**
+	 * Option sütun başlığı.
+	 *
+	 * GEÇİCİ (P1): önce item_type=option (hash kapısı), yoksa ve değer kod
+	 * sabitiyle aynıysa P0 ui_string. İki tip bir arada durur.
+	 * Faz 9 temizlik: "HFB çeviri satırları iki tipte, tek tipe indirilsin mi?"
+	 *
+	 * Boş değer "başlık yok" demektir — varsayılana zorlanmaz (h3 basılmasın).
+	 *
+	 * @param string $deger      Option değeri.
+	 * @param string $varsayilan Kod sabiti (footer_defaults).
+	 * @param string $field      option field (hfb_footer.links_title …).
+	 * @return string
+	 */
+	private function hfb_cevir_option_varsayilan( $deger, $varsayilan, $field = '' ) {
+		$deger      = trim( (string) $deger );
+		$varsayilan = (string) $varsayilan;
+		if ( '' === $deger ) {
+			return '';
+		}
+
+		if ( '' !== $field && function_exists( 'rma_ceviri_option' ) ) {
+			$option = rma_ceviri_option( $field, $deger );
+			if ( $option !== $deger ) {
+				return $option;
+			}
+		}
+
+		if ( $deger === $varsayilan ) {
+			return $this->hfb_cevir_ui( $varsayilan );
+		}
+
+		return $deger;
 	}
 }

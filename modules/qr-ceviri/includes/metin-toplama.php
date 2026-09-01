@@ -139,8 +139,15 @@ if ( ! function_exists( 'rma_ceviri_metin_topla' ) ) {
 			return $html;
 		}
 
-		// Zaten bilinen sabit metinler yeniden önerilmesin.
+		// Zaten bilinen sabit metinler yeniden önerilmesin (ui_string + modül tipleri).
 		$bilinen = array_flip( array_values( rma_ceviri_ui_stringleri() ) );
+		if ( function_exists( 'rma_ceviri_modul_kaynak_metinleri' ) ) {
+			foreach ( rma_ceviri_modul_kaynak_metinleri() as $modul_metinler ) {
+				foreach ( (array) $modul_metinler as $modul_metin ) {
+					$bilinen[ $modul_metin ] = true;
+				}
+			}
+		}
 		$eklendi = false;
 		$simdi   = time();
 

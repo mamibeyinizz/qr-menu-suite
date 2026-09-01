@@ -132,7 +132,7 @@ class QMO_Shortcode_Banner_Slider {
 
         ob_start();
         ?>
-<div class="<?php echo esc_attr( $kok_sinif ); ?>" data-qmo-banner-slider data-autoplay="<?php echo esc_attr( (string) $autoplay ); ?>" data-gecis="<?php echo esc_attr( $gecis ); ?>" role="region" aria-roledescription="karusel" aria-label="Kampanya banner'ları"<?php echo '' !== $stil ? ' style="' . esc_attr( $stil ) . '"' : ''; ?>>
+<div class="<?php echo esc_attr( $kok_sinif ); ?>" data-qmo-banner-slider data-autoplay="<?php echo esc_attr( (string) $autoplay ); ?>" data-gecis="<?php echo esc_attr( $gecis ); ?>" role="region" aria-roledescription="karusel" aria-label="<?php echo esc_attr( qmo_ceviri_ui( __( 'Kampanya banner\'ları', 'qrms' ) ) ); ?>"<?php echo '' !== $stil ? ' style="' . esc_attr( $stil ) . '"' : ''; ?>>
     <div class="qmo-banner-viewport">
         <div class="qmo-banner-track" data-qmo-banner-track>
             <?php foreach ( $banners as $index => $banner ) : ?>
@@ -164,19 +164,19 @@ class QMO_Shortcode_Banner_Slider {
 
     <?php if ( $show_nav ) : ?>
         <div class="qmo-banner-nav">
-            <button type="button" class="qmo-banner-nav-btn qmo-banner-nav-prev" data-qmo-banner-prev aria-label="Önceki banner">&#8249;</button>
-            <button type="button" class="qmo-banner-nav-btn qmo-banner-nav-next" data-qmo-banner-next aria-label="Sonraki banner">&#8250;</button>
+            <button type="button" class="qmo-banner-nav-btn qmo-banner-nav-prev" data-qmo-banner-prev aria-label="<?php echo esc_attr( qmo_ceviri_ui( __( 'Önceki banner', 'qrms' ) ) ); ?>">&#8249;</button>
+            <button type="button" class="qmo-banner-nav-btn qmo-banner-nav-next" data-qmo-banner-next aria-label="<?php echo esc_attr( qmo_ceviri_ui( __( 'Sonraki banner', 'qrms' ) ) ); ?>">&#8250;</button>
         </div>
     <?php endif; ?>
 
     <?php if ( $show_dots ) : ?>
-        <div class="qmo-banner-dots" role="tablist" aria-label="Banner seçimi">
+        <div class="qmo-banner-dots" role="tablist" aria-label="<?php echo esc_attr( qmo_ceviri_ui( __( 'Banner seçimi', 'qrms' ) ) ); ?>">
             <?php foreach ( $banners as $index => $banner ) : ?>
                 <button type="button"
                         class="qmo-banner-dot<?php echo 0 === $index ? ' is-active' : ''; ?>"
                         role="tab"
                         aria-selected="<?php echo 0 === $index ? 'true' : 'false'; ?>"
-                        aria-label="<?php echo esc_attr( sprintf( '%d. banner', $index + 1 ) ); ?>"
+                        aria-label="<?php echo esc_attr( sprintf( qmo_ceviri_ui( __( '%d. banner', 'qrms' ) ), $index + 1 ) ); ?>"
                         data-qmo-banner-dot="<?php echo esc_attr( (string) $index ); ?>"></button>
             <?php endforeach; ?>
         </div>

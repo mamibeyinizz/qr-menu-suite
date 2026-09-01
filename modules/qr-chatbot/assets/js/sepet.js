@@ -102,27 +102,56 @@
 	var TXT = {
 		tr: { sepet: 'Sepet', sepetiniz: 'Sepetiniz', toplam: 'Toplam', gonder: 'Siparişi Gönder', bos: 'Sepetiniz boş',
 			notPh: 'Ürün notu (isteğe bağlı)…', eklendi: 'Sepete eklendi', gonderildi: 'Siparişiniz mutfağa iletildi ✓',
-			hata: 'Gönderilemedi, tekrar deneyin', tl: 'Ödeme TL üzerinden alınır.' },
+			hata: 'Gönderilemedi, tekrar deneyin', tl: 'Ödeme TL üzerinden alınır.',
+			ac: 'Sepeti aç', sil: 'Sil', kapat: 'Kapat' },
 		en: { sepet: 'Cart', sepetiniz: 'Your Cart', toplam: 'Total', gonder: 'Send Order', bos: 'Your cart is empty',
 			notPh: 'Note for this item (optional)…', eklendi: 'Added to cart', gonderildi: 'Your order was sent ✓',
-			hata: 'Failed, please try again', tl: 'Payment is charged in Turkish Lira (TL).' },
+			hata: 'Failed, please try again', tl: 'Payment is charged in Turkish Lira (TL).',
+			ac: 'Open cart', sil: 'Delete', kapat: 'Close' },
 		ar: { sepet: 'السلة', sepetiniz: 'سلتك', toplam: 'المجموع', gonder: 'إرسال الطلب', bos: 'سلتك فارغة',
 			notPh: 'ملاحظة على هذا الطبق (اختياري)…', eklendi: 'أُضيف إلى السلة', gonderildi: 'تم إرسال طلبك ✓',
-			hata: 'فشل الإرسال، حاول مجدداً', tl: 'يتم الدفع بالليرة التركية.' },
+			hata: 'فشل الإرسال، حاول مجدداً', tl: 'يتم الدفع بالليرة التركية.',
+			ac: 'افتح السلة', sil: 'حذف', kapat: 'إغلاق' },
 		de: { sepet: 'Warenkorb', sepetiniz: 'Ihr Warenkorb', toplam: 'Summe', gonder: 'Bestellung senden', bos: 'Warenkorb ist leer',
 			notPh: 'Hinweis zu diesem Gericht (optional)…', eklendi: 'Hinzugefügt', gonderildi: 'Bestellung gesendet ✓',
-			hata: 'Fehlgeschlagen, erneut versuchen', tl: 'Die Zahlung erfolgt in TL.' },
+			hata: 'Fehlgeschlagen, erneut versuchen', tl: 'Die Zahlung erfolgt in TL.',
+			ac: 'Warenkorb öffnen', sil: 'Löschen', kapat: 'Schließen' },
 		fr: { sepet: 'Panier', sepetiniz: 'Votre panier', toplam: 'Total', gonder: 'Envoyer', bos: 'Panier vide',
 			notPh: 'Note pour ce plat (optionnel)…', eklendi: 'Ajouté au panier', gonderildi: 'Commande envoyée ✓',
-			hata: 'Échec, réessayez', tl: 'Le paiement se fait en TL.' },
+			hata: 'Échec, réessayez', tl: 'Le paiement se fait en TL.',
+			ac: 'Ouvrir le panier', sil: 'Supprimer', kapat: 'Fermer' },
 		ru: { sepet: 'Корзина', sepetiniz: 'Ваша корзина', toplam: 'Итого', gonder: 'Отправить заказ', bos: 'Корзина пуста',
 			notPh: 'Пометка к блюду (необязательно)…', eklendi: 'Добавлено', gonderildi: 'Заказ отправлен ✓',
-			hata: 'Ошибка, попробуйте снова', tl: 'Оплата производится в TL.' }
+			hata: 'Ошибка, попробуйте снова', tl: 'Оплата производится в TL.',
+			ac: 'Открыть корзину', sil: 'Удалить', kapat: 'Закрыть' }
 	};
 
-	function T( k ) {
+	// 1) qmoSepet.i18n (tablo, tüm diller — cache-güvenli)
+	// 2) TXT iç tablosu (mevcut 6 dil)
+	// 3) Türkçe / çağıranın yedeği
+	function metin( anahtar, yedek ) {
 		var d = dil();
-		return ( TXT[ d ] || TXT.tr )[ k ] || TXT.tr[ k ];
+		var loc;
+		if ( typeof qmoSepet !== 'undefined' && qmoSepet.i18n && qmoSepet.i18n[ anahtar ] ) {
+			loc = qmoSepet.i18n[ anahtar ];
+			if ( 'string' === typeof loc && '' !== loc ) {
+				return loc;
+			}
+			if ( loc && 'string' === typeof loc[ d ] && '' !== loc[ d ] ) {
+				return loc[ d ];
+			}
+		}
+		if ( TXT[ d ] && TXT[ d ][ anahtar ] ) {
+			return TXT[ d ][ anahtar ];
+		}
+		if ( TXT.tr && TXT.tr[ anahtar ] ) {
+			return TXT.tr[ anahtar ];
+		}
+		return yedek;
+	}
+
+	function T( k ) {
+		return metin( k, ( TXT.tr && TXT.tr[ k ] ) ? TXT.tr[ k ] : '' );
 	}
 
 	/* ---- sepet durumu ---- */
@@ -166,23 +195,69 @@
 	}
 
 	function fiyatSayi( t ) {
-		t = ( t || '' ).replace( /[^\d.,]/g, '' ).replace( /\.(?=\d{3}\b)/g, '' ).replace( ',', '.' );
+		var a = fiyatAyraclar();
+		t = String( t || '' );
+		if ( a.binlik ) {
+			t = t.split( a.binlik ).join( '' );
+		}
+		if ( a.ondalik !== '.' ) {
+			t = t.split( a.ondalik ).join( '.' );
+		}
+		t = t.replace( /[^\d.-]/g, '' );
 		var f = parseFloat( t );
 		return isNaN( f ) ? 0 : f;
 	}
 
-	/* TL yazımı — RMA_Kampanya_DB::bicimle() ile aynı kural:
-	   kuruş varsa iki hane ve virgül (80,50), tam sayıda ,00 yok (368),
-	   binlik ayracı nokta (1.250,25). */
+	/* rma_ceviri_fiyat_ayraclar() ile aynı tablo — yerleşik Intl API kullanılmaz. */
+	function fiyatAyraclar( kod ) {
+		kod = String( kod || dil() || 'tr' ).toLowerCase().slice( 0, 2 );
+		if ( [ 'tr', 'de', 'es', 'it', 'pt', 'nl' ].indexOf( kod ) !== -1 ) {
+			return { binlik: '.', ondalik: ',' };
+		}
+		if ( 'fr' === kod ) {
+			return { binlik: ' ', ondalik: ',' };
+		}
+		return { binlik: ',', ondalik: '.' };
+	}
+
+	/* rma_ceviri_fiyat_sayi() ile aynı: kuruş varsa iki hane, tam sayıda yok. */
 	function fiyatYazi( n ) {
 		var f = parseFloat( n );
 		if ( isNaN( f ) ) {
 			f = 0;
 		}
+		var a     = fiyatAyraclar();
 		var parca = Math.abs( f ).toFixed( 2 ).split( '.' );
-		var tam   = parca[ 0 ].replace( /\B(?=(\d{3})+(?!\d))/g, '.' );
-		var metin = ( f < 0 ? '-' : '' ) + tam + ',' + parca[ 1 ];
-		return ( ',00' === metin.slice( -3 ) ) ? metin.slice( 0, -3 ) : metin;
+		var tam   = parca[ 0 ].replace( /\B(?=(\d{3})+(?!\d))/g, a.binlik );
+		var metin = ( f < 0 ? '-' : '' ) + tam + a.ondalik + parca[ 1 ];
+		var sifir = a.ondalik + '00';
+		return metin.slice( -3 ) === sifir ? metin.slice( 0, -3 ) : metin;
+	}
+
+	function fiyatKalip() {
+		var d = dil();
+		if ( typeof qmoSepet !== 'undefined' && qmoSepet.para && qmoSepet.para.fiyat ) {
+			var loc = qmoSepet.para.fiyat;
+			if ( 'string' === typeof loc && loc.indexOf( '{n}' ) !== -1 ) {
+				return loc;
+			}
+			if ( loc && 'string' === typeof loc[ d ] && loc[ d ].indexOf( '{n}' ) !== -1 ) {
+				return loc[ d ];
+			}
+			if ( loc && 'string' === typeof loc.tr && loc.tr.indexOf( '{n}' ) !== -1 ) {
+				return loc.tr;
+			}
+		}
+		return '{n} ₺';
+	}
+
+	/* rma_ceviri_fiyat() — yaklasik()/KUR dokunulmaz. */
+	function fiyatGoster( n ) {
+		var kalip = fiyatKalip();
+		if ( kalip.indexOf( '{n}' ) === -1 ) {
+			kalip = '{n} ₺';
+		}
+		return kalip.replace( '{n}', fiyatYazi( n ) );
 	}
 
 	/* ---- UI referansları ---- */
@@ -421,7 +496,7 @@
 
 		var fy = document.createElement( 'div' );
 		fy.className = 'qmo-it-fy';
-		fy.appendChild( document.createTextNode( '₺' + fiyatYazi( x.fiyat * x.adet ) ) );
+		fy.appendChild( document.createTextNode( fiyatGoster( x.fiyat * x.adet ) ) );
 		var y2 = yaklasik( x.fiyat * x.adet );
 		if ( y2 ) {
 			fy.appendChild( document.createElement( 'br' ) );
@@ -435,7 +510,7 @@
 		var sil = document.createElement( 'button' );
 		sil.type = 'button';
 		sil.className = 'qmo-del';
-		sil.setAttribute( 'aria-label', 'Sil' );
+		sil.setAttribute( 'aria-label', T( 'sil' ) );
 		sil.textContent = '🗑';
 		top.appendChild( sil );
 
@@ -505,19 +580,30 @@
 		} );
 
 		badge.textContent = n;
-		barTot.textContent = '₺' + fiyatYazi( t );
+		barTot.textContent = fiyatGoster( t );
 		document.getElementById( 'qmo-bar-txt' ).textContent = T( 'sepet' );
 		document.getElementById( 'qmo-dr-title' ).textContent = T( 'sepetiniz' );
 		document.getElementById( 'qmo-t-top' ).textContent = T( 'toplam' );
 		document.getElementById( 'qmo-tl-not' ).textContent = T( 'tl' );
 		send.textContent = T( 'gonder' );
+		if ( bar ) {
+			bar.setAttribute( 'aria-label', T( 'ac' ) );
+		}
+		var cekmece = document.getElementById( 'qmo-dr' );
+		if ( cekmece ) {
+			cekmece.setAttribute( 'aria-label', T( 'sepet' ) );
+		}
+		var kapatBtn = document.getElementById( 'qmo-x' );
+		if ( kapatBtn ) {
+			kapatBtn.setAttribute( 'aria-label', T( 'kapat' ) );
+		}
 
 		bar.classList.toggle( 'qmo-on', n > 0 );
 		if ( 0 === n ) {
 			kapat();
 		}
 
-		tot.textContent = '₺' + fiyatYazi( t );
+		tot.textContent = fiyatGoster( t );
 		yakEl.textContent = yaklasik( t );
 
 		list.textContent = '';

@@ -23,7 +23,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 if ( ! defined( 'RMA_CEVIRI_VERSION' ) ) {
-	define( 'RMA_CEVIRI_VERSION', '2.0.0' );
+	define( 'RMA_CEVIRI_VERSION', '2.1.0' );
 }
 if ( ! defined( 'RMA_CEVIRI_FILE' ) ) {
 	define( 'RMA_CEVIRI_FILE', __FILE__ );
@@ -49,6 +49,8 @@ require_once RMA_CEVIRI_DIR . 'includes/dil.php';
 require_once RMA_CEVIRI_DIR . 'includes/degistirici.php';
 require_once RMA_CEVIRI_DIR . 'includes/sozluk.php';
 require_once RMA_CEVIRI_DIR . 'includes/ui-stringler.php';
+require_once RMA_CEVIRI_DIR . 'includes/fiyat.php';
+require_once RMA_CEVIRI_DIR . 'includes/veri-kaynaklar.php';
 require_once RMA_CEVIRI_DIR . 'includes/elementor-tarama.php';
 require_once RMA_CEVIRI_DIR . 'includes/kaynaklar.php';
 require_once RMA_CEVIRI_DIR . 'includes/metin-toplama.php';
@@ -62,6 +64,13 @@ if ( is_admin() ) {
 	require_once RMA_CEVIRI_DIR . 'includes/csv-export.php';
 	require_once RMA_CEVIRI_DIR . 'includes/csv-import.php';
 	require_once RMA_CEVIRI_DIR . 'includes/admin/admin-sayfa.php';
+	require_once RMA_CEVIRI_DIR . 'includes/admin/hub-sayfasi.php';
+	require_once RMA_CEVIRI_DIR . 'includes/admin/diller-sayfasi.php';
+	require_once RMA_CEVIRI_DIR . 'includes/admin/kapsam-sayfasi.php';
+	require_once RMA_CEVIRI_DIR . 'includes/admin/metin-toplama-sayfasi.php';
+	require_once RMA_CEVIRI_DIR . 'includes/admin/csv-disa-sayfasi.php';
+	require_once RMA_CEVIRI_DIR . 'includes/admin/csv-ice-sayfasi.php';
+	require_once RMA_CEVIRI_DIR . 'includes/admin/sistem-durumu-sayfasi.php';
 }
 
 /* =====================================================================

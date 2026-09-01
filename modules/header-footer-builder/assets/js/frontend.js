@@ -94,7 +94,10 @@
 
     if (!toggle.getAttribute('data-label-open')) {
       toggle.setAttribute('data-label-open', toggle.getAttribute('aria-label') || 'Menüyü aç');
-      toggle.setAttribute('data-label-close', 'Menüyü kapat');
+      // Kapat: PHP aria (hfb_cevir_ui). Sabit TR yazılmaz — adım 4 tampon
+      // aria'yı görmez; burada etiket zaten sunucuda basıldı.
+      var closeFromPhp = closeBtn ? closeBtn.getAttribute('aria-label') : '';
+      toggle.setAttribute('data-label-close', closeFromPhp || 'Menüyü kapat');
     }
 
     function openPanel() {

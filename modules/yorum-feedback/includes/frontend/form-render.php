@@ -19,10 +19,10 @@ function qrm_pro_render_google_cta($settings, $avg) {
     <div class="qrm-google-cta" id="qrmGoogleCta">
         <div class="qrm-google-cta-icon">✓</div>
         <div class="qrm-google-cta-stars"><?php echo $stars_html; ?></div>
-        <h3><?php echo esc_html($settings['google_review_headline']); ?></h3>
-        <p><?php echo esc_html($settings['google_review_subtext']); ?></p>
-        <a href="<?php echo esc_url($settings['google_review_url']); ?>" target="_blank" rel="noopener noreferrer" class="qrm-btn qrm-google-btn"><?php echo esc_html($settings['google_review_btn_text']); ?></a>
-        <button type="button" class="qrm-google-skip" onclick="document.getElementById('qrmGoogleCta').outerHTML='<div class=&quot;qrm-alert qrm-success&quot;>Değerlendirmeniz için teşekkürler!</div>';"><?php echo esc_html($settings['google_review_skip_text']); ?></button>
+        <h3><?php echo esc_html(qrm_ceviri_option('qrm_settings.google_review_headline', $settings['google_review_headline'])); ?></h3>
+        <p><?php echo esc_html(qrm_ceviri_option('qrm_settings.google_review_subtext', $settings['google_review_subtext'])); ?></p>
+        <a href="<?php echo esc_url($settings['google_review_url']); ?>" target="_blank" rel="noopener noreferrer" class="qrm-btn qrm-google-btn"><?php echo esc_html(qrm_ceviri_option('qrm_settings.google_review_btn_text', $settings['google_review_btn_text'])); ?></a>
+        <button type="button" class="qrm-google-skip" onclick="<?php echo esc_attr('document.getElementById(\'qrmGoogleCta\').outerHTML=' . wp_json_encode('<div class="qrm-alert qrm-success">' . esc_html(qrm_ceviri_review(__('Değerlendirmeniz için teşekkürler!', 'qrms'))) . '</div>') . ';'); ?>"><?php echo esc_html(qrm_ceviri_option('qrm_settings.google_review_skip_text', $settings['google_review_skip_text'])); ?></button>
     </div>
     <?php
     return ob_get_clean();
@@ -353,7 +353,9 @@ function qrm_pro_render_style_block($settings) {
 //   tek kullanımlık anahtar popup'a sunucudan gömülmek zorundadır.
 function qrm_pro_render_review_form($settings, $active_fields, $message, $show_google_cta, $cta_avg, $form_source = 'review', $auto_open_reward = false) {
     $ac_index = 0;
-    $form_title = ($form_source === 'contact') ? $settings['contact_form_title'] : $settings['form_title'];
+    $form_title = ($form_source === 'contact')
+        ? qrm_ceviri_option('qrm_settings.contact_form_title', $settings['contact_form_title'])
+        : qrm_ceviri_option('qrm_settings.form_title', $settings['form_title']);
     $cap = qrm_pro_make_captcha();
     $ts  = qrm_pro_make_ts_token();
     ob_start();
@@ -370,6 +372,7 @@ function qrm_pro_render_review_form($settings, $active_fields, $message, $show_g
                 <input type="hidden" name="qrm_form_source" value="<?php echo esc_attr($form_source); ?>">
                 <input type="hidden" name="qrm_ts" value="<?php echo esc_attr($ts); ?>">
                 <div class="qrm-honeypot" aria-hidden="true">
+                    <?php // Tuzak name/id=qrm_website. Etiket aria-hidden; çevirmek yemi değiştirir, ziyaretçiye faydası yok. ?>
                     <label for="qrm_website">Web sitesi</label>
                     <input type="text" id="qrm_website" name="qrm_website" tabindex="-1" autocomplete="off">
                 </div>
@@ -386,7 +389,7 @@ function qrm_pro_render_review_form($settings, $active_fields, $message, $show_g
                         <?php
                         for ($i = 1; $i <= 5; $i++) {
                             if ($settings['crit_'.$i.'_active']) {
-                                $c_name = $settings['crit_'.$i.'_name'];
+                                $c_name = qrm_ceviri_option('qrm_settings.crit_'.$i.'_name', $settings['crit_'.$i.'_name']);
                                 $ac_attr = qrm_pro_auto_color_style($settings, $ac_index);
                                 $ac_class = $ac_attr ? ' qrm-ac' : '';
                                 echo '<div class="qrm-rating-row'.$ac_class.'"'.$ac_attr.'>
@@ -403,7 +406,7 @@ function qrm_pro_render_review_form($settings, $active_fields, $message, $show_g
                         }
                         ?>
                     </div>
-                    <button type="button" class="qrm-btn" id="qrm-step-next"><span class="qrm-btn-label">Devam Et →</span></button>
+                    <button type="button" class="qrm-btn" id="qrm-step-next"><span class="qrm-btn-label"><?php echo esc_html(qrm_ceviri_review(__('Devam Et →', 'qrms'))); ?></span></button>
                 </div>
 
                 <!-- ADIM 2: BİLGİLER -->
@@ -417,7 +420,7 @@ function qrm_pro_render_review_form($settings, $active_fields, $message, $show_g
                     ?>
                         <div class="qrm-input-group <?php echo $class_half . $ac_class; ?>"<?php echo $ac_attr; ?>>
                             <?php if ($f->field_type != 'checkbox'): ?>
-                                <label><?php echo esc_html($f->field_label); ?> <?php echo $f->is_required ? '<span style="color:red">*</span>' : ''; ?></label>
+                                <label><?php echo esc_html(qrm_ceviri_form_alan($f->id, $f->field_label)); ?> <?php echo $f->is_required ? '<span style="color:red">*</span>' : ''; ?></label>
                             <?php endif; ?>
 
                             <?php if ($f->field_type == 'textarea'): ?>
@@ -425,11 +428,11 @@ function qrm_pro_render_review_form($settings, $active_fields, $message, $show_g
                             <?php elseif ($f->field_type == 'checkbox'): ?>
                                 <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight:normal;">
                                     <input type="checkbox" name="<?php echo esc_attr($f->field_key); ?>" value="1" <?php echo $req_attr; ?> style="width:auto;">
-                                    <?php echo esc_html($f->field_label); ?>
+                                    <?php echo esc_html(qrm_ceviri_form_alan($f->id, $f->field_label)); ?>
                                 </label>
                             <?php elseif ($f->field_key == 'customer_phone'): ?>
                                 <input type="tel" inputmode="numeric" autocomplete="tel" class="qrm-tel-input"
-                                       name="customer_phone" placeholder="0 (5__) ___ __ __" maxlength="17" <?php echo $req_attr; ?>>
+                                       name="customer_phone" placeholder="<?php echo esc_attr(qrm_ceviri_review(__('0 (5__) ___ __ __', 'qrms'))); ?>" maxlength="17" <?php echo $req_attr; ?>>
                             <?php elseif ($f->field_key == 'table_no'): ?>
                                 <input type="tel" inputmode="numeric" pattern="[0-9]*" name="table_no"
                                        oninput="this.value=this.value.replace(/[^0-9]/g,'')" <?php echo $req_attr; ?>>
@@ -441,15 +444,15 @@ function qrm_pro_render_review_form($settings, $active_fields, $message, $show_g
                     </div>
 
                     <div class="qrm-captcha">
-                        <label for="qrm_captcha">Güvenlik sorusu: <?php echo (int)$cap['a'] . ' + ' . (int)$cap['b']; ?> = ?</label>
+                        <label for="qrm_captcha"><?php echo esc_html(qrm_ceviri_review(__('Güvenlik sorusu:', 'qrms'))); ?> <?php echo (int)$cap['a'] . ' + ' . (int)$cap['b']; ?> = ?</label>
                         <input type="text" id="qrm_captcha" name="qrm_captcha" inputmode="numeric" autocomplete="off"
                                oninput="this.value=this.value.replace(/[^0-9]/g,'')" required>
                         <input type="hidden" name="qrm_captcha_hash" value="<?php echo esc_attr($cap['hash']); ?>">
                     </div>
 
                     <div class="qrm-nav-row">
-                        <button type="button" class="qrm-btn-secondary" id="qrm-step-back">← Geri</button>
-                        <button type="submit" name="qrm_review_submit" class="qrm-btn"><span class="qrm-btn-label">Gönder</span></button>
+                        <button type="button" class="qrm-btn-secondary" id="qrm-step-back"><?php echo esc_html(qrm_ceviri_review(__('← Geri', 'qrms'))); ?></button>
+                        <button type="submit" name="qrm_review_submit" class="qrm-btn"><span class="qrm-btn-label"><?php echo esc_html(qrm_ceviri_review(__('Gönder', 'qrms'))); ?></span></button>
                     </div>
                 </div>
             </form>

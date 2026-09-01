@@ -110,6 +110,9 @@ class RMA_Vitrin_Shortcode {
             'ajaxUrl' => admin_url( 'admin-ajax.php' ),
             'nonce'   => wp_create_nonce( 'rma_ajax_nonce' ),
             'lang'    => function_exists( 'rma_get_current_lang' ) ? rma_get_current_lang() : 'tr',
+            'i18n'    => array(
+                'kapat' => function_exists( 'qmo_ceviri_ui' ) ? qmo_ceviri_ui( __( 'Kapat', 'qrms' ) ) : __( 'Kapat', 'qrms' ),
+            ),
         );
 
         wp_add_inline_script(
@@ -268,7 +271,7 @@ class RMA_Vitrin_Shortcode {
      aria-label="<?php echo esc_attr( $vitrin->title ); ?>">
 
     <div class="qrms-vitrin-viewport" data-qrms-viewport tabindex="0"
-         aria-label="<?php echo esc_attr( count( $urunler ) . ' ürün — kaydırarak gezinin' ); ?>">
+         aria-label="<?php echo esc_attr( sprintf( qmo_ceviri_ui( __( '%d ürün — kaydırarak gezinin', 'qrms' ) ), count( $urunler ) ) ); ?>">
         <?php foreach ( $urunler as $urun ) : ?>
             <article class="qrms-vitrin-card<?php echo ! empty( $urun['tukendi'] ) ? ' is-tukendi' : ''; ?>"
                       data-id="<?php echo (int) $urun['id']; ?>"
@@ -307,8 +310,8 @@ class RMA_Vitrin_Shortcode {
      * değil, vitrin.js tarafından üretilir.
      */
     ?>
-    <button type="button" class="qrms-vitrin-nav qrms-vitrin-prev" data-qrms-prev aria-label="Önceki" hidden>&#8249;</button>
-    <button type="button" class="qrms-vitrin-nav qrms-vitrin-next" data-qrms-next aria-label="Sonraki" hidden>&#8250;</button>
+    <button type="button" class="qrms-vitrin-nav qrms-vitrin-prev" data-qrms-prev aria-label="<?php echo esc_attr( qmo_ceviri_ui( __( 'Önceki', 'qrms' ) ) ); ?>" hidden>&#8249;</button>
+    <button type="button" class="qrms-vitrin-nav qrms-vitrin-next" data-qrms-next aria-label="<?php echo esc_attr( qmo_ceviri_ui( __( 'Sonraki', 'qrms' ) ) ); ?>" hidden>&#8250;</button>
 
     <div class="qrms-vitrin-dots" data-qrms-dots hidden></div>
 </div>

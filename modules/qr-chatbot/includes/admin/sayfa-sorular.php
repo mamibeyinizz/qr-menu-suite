@@ -53,10 +53,20 @@ function qmo_chatbot_sayfa_sorular() {
 						<input type="hidden" name="qmo_chatbot_quick_replies[<?php echo (int) $i; ?>][id]" value="<?php echo esc_attr( $satir['id'] ); ?>">
 						<input type="text" name="qmo_chatbot_quick_replies[<?php echo (int) $i; ?>][label]" class="regular-text"
 							value="<?php echo esc_attr( $satir['label'] ); ?>">
+						<?php
+						if ( function_exists( 'rma_ceviri_bayat_uyari_html' ) && ! empty( $satir['id'] ) ) {
+							echo rma_ceviri_bayat_uyari_html( rma_ceviri_bayat_uyari_metni( rma_ceviri_veri_dil_sayisi( 'option', 0, 'qmo_chatbot_qr.' . $satir['id'] . '.label' ) ) );
+						}
+						?>
 					</td>
 					<td>
 						<input type="text" name="qmo_chatbot_quick_replies[<?php echo (int) $i; ?>][question]" class="regular-text"
 							value="<?php echo esc_attr( $satir['question'] ); ?>">
+						<?php
+						if ( function_exists( 'rma_ceviri_bayat_uyari_html' ) && ! empty( $satir['id'] ) ) {
+							echo rma_ceviri_bayat_uyari_html( rma_ceviri_bayat_uyari_metni( rma_ceviri_veri_dil_sayisi( 'option', 0, 'qmo_chatbot_qr.' . $satir['id'] . '.question' ) ) );
+						}
+						?>
 					</td>
 					<td>
 						<input type="hidden" name="qmo_chatbot_quick_replies[<?php echo (int) $i; ?>][enabled]" value="0">

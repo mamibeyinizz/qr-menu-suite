@@ -3,8 +3,9 @@
  * Modül: QR Çeviri (qr-ceviri)
  *
  * CSV ile toplu yönetilen, veritabanı tabanlı çoklu dil çeviri sistemi.
- * Dosyalar qr-ceviri deposundaki çeviri eklentisinden aynen taşındı; burada
- * yalnızca yükleme bağlantısı ve suite menüsündeki sayfa kaydı var.
+ * Sol menüdeki satır bir hub'dır; diller, kapsam, metin toplama, CSV ve
+ * sistem durumu kendi alt sayfalarındadır (qr-analiz deseni). Sol menü
+ * tek seviyeli kalır — hide_module_subpages() alt satırları düşürür.
  *
  * @package QR_Menu_Suite
  */
@@ -40,8 +41,9 @@ function qrms_module_qr_ceviri_init() {
 	);
 
 	if ( is_admin() ) {
-		QRMS_Admin::register_module_page( 'qr-ceviri', 'qrmenu_trans_page' );
+		QRMS_Admin::register_module_page( 'qr-ceviri', 'qrms_module_qr_ceviri_hub' );
 
+		add_action( 'admin_menu', 'qrms_module_qr_ceviri_admin_menu', 20 );
 		add_action( 'admin_enqueue_scripts', 'qrms_module_qr_ceviri_admin_assets' );
 	}
 }
@@ -60,7 +62,12 @@ function qrms_module_qr_ceviri_admin_assets() {
 	// phpcs:ignore WordPress.Security.NonceVerification.Recommended
 	$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '';
 
-	if ( QRMS_Admin::get_module_page_slug( 'qr-ceviri' ) !== $page ) {
+	$modul = QRMS_Admin::get_module_page_slug( 'qr-ceviri' );
+	$bizim = ( $modul === $page )
+		|| ( 0 === strpos( $page, 'qrms-cv-' ) )
+		|| ( 'qrmenu-translator' === $page );
+
+	if ( ! $bizim ) {
 		return;
 	}
 

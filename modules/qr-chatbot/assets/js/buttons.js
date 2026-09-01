@@ -30,6 +30,14 @@
 		} );
 	}
 
+	function metin( anahtar, yedek ) {
+		if ( typeof qmoData === 'undefined' || ! qmoData.i18n ) {
+			return yedek;
+		}
+		var v = qmoData.i18n[ anahtar ];
+		return ( 'string' === typeof v && '' !== v ) ? v : yedek;
+	}
+
 	function yaz( bar, metin, hataMi ) {
 		var el = bar.querySelector( '.qmo-cagri-durum' );
 		if ( ! el ) {
@@ -54,21 +62,25 @@
 		istek( { action: action } ).then( function ( yanit ) {
 			btn.disabled = false;
 			if ( yanit && yanit.success ) {
-				yaz( bar, 'hesap' === tip ? 'Hesap talebiniz iletildi.' : 'Garson çağrınız iletildi.', false );
+				yaz( bar, 'hesap' === tip
+					? metin( 'hesapIletildi', 'Hesap talebiniz iletildi.' )
+					: metin( 'garsonIletildi', 'Garson çağrınız iletildi.' ), false );
 				return;
 			}
-			var mesaj = 'İstek iletilemedi, lütfen tekrar deneyin.';
+			var mesaj = metin( 'istekIletilemedi', 'İstek iletilemedi, lütfen tekrar deneyin.' );
 			if ( yanit && yanit.data ) {
 				if ( typeof yanit.data === 'string' ) {
 					mesaj = yanit.data;
 				} else if ( yanit.data.mesaj ) {
 					mesaj = yanit.data.mesaj;
+				} else if ( yanit.data.msg ) {
+					mesaj = yanit.data.msg;
 				}
 			}
 			yaz( bar, mesaj, true );
 		} ).catch( function () {
 			btn.disabled = false;
-			yaz( bar, 'Bağlantı hatası oluştu.', true );
+			yaz( bar, metin( 'baglantiHatasi', 'Bağlantı hatası oluştu.' ), true );
 		} );
 	} );
 }() );

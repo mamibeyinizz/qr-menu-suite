@@ -54,7 +54,7 @@ if ( ! function_exists( 'qmo_ajax_cagri' ) ) {
 
 		$tip = isset( $_POST['tip'] ) ? sanitize_key( wp_unslash( $_POST['tip'] ) ) : '';
 		if ( ! in_array( $tip, array( 'garson', 'hesap' ), true ) ) {
-			wp_send_json_error( array( 'msg' => 'Geçersiz istek' ), 400 );
+			wp_send_json_error( array( 'msg' => qmo_ceviri_chat( __( 'Geçersiz istek', 'qrms' ) ) ), 400 );
 		}
 		qmo_cagri_gonder( $tip );
 	}
@@ -74,13 +74,13 @@ if ( ! function_exists( 'qmo_cagri_gonder' ) ) {
 		$masa = $sess['masa'];
 
 		if ( ! QMO_Firestore::hazir_mi() ) {
-			wp_send_json_error( array( 'msg' => 'Çağrı sistemi şu anda kullanılamıyor.' ), 503 );
+			wp_send_json_error( array( 'msg' => qmo_ceviri_chat( __( 'Çağrı sistemi şu anda kullanılamıyor.', 'qrms' ) ) ), 503 );
 		}
 
 		// Hız sınırı: aynı masa + aynı IP, 60 saniyede bir çağrı.
 		$saniye = (int) apply_filters( 'qmo_cagri_bekleme', 60, $tip );
 		if ( ! qmo_hiz_siniri( 'cagri_' . $tip, $masa, $saniye ) ) {
-			wp_send_json_error( array( 'msg' => 'Çağrınız iletildi, lütfen bekleyin.' ), 429 );
+			wp_send_json_error( array( 'msg' => qmo_ceviri_chat( __( 'Çağrınız iletildi, lütfen bekleyin.', 'qrms' ) ) ), 429 );
 		}
 
 		// Analitik, Firestore'dan BAĞIMSIZ ve bağlantı bırakılmadan ÖNCE.
@@ -104,13 +104,13 @@ if ( ! function_exists( 'qmo_cagri_gonder' ) ) {
 
 		if ( is_wp_error( $sonuc ) ) {
 			qmo_log( 'Çağrı yazılamadı: ' . $sonuc->get_error_message() );
-			wp_send_json_error( array( 'msg' => 'Çağrı iletilemedi, lütfen tekrar deneyin.' ), 500 );
+			wp_send_json_error( array( 'msg' => qmo_ceviri_chat( __( 'Çağrı iletilemedi, lütfen tekrar deneyin.', 'qrms' ) ) ), 500 );
 		}
 
 		wp_send_json_success(
 			array(
-				'msg'   => 'İletildi',
-				'mesaj' => 'Talep alındı.',
+				'msg'   => qmo_ceviri_chat( __( 'İletildi', 'qrms' ) ),
+				'mesaj' => qmo_ceviri_chat( __( 'Talep alındı.', 'qrms' ) ),
 			)
 		);
 	}

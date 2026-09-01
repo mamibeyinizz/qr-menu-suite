@@ -186,6 +186,11 @@ function qmo_chatbot_sayfa_gorunum() {
 						<td>
 							<input type="text" id="qmo_chatbot_teaser_text" name="qmo_chatbot_teaser_text" class="regular-text"
 								value="<?php echo esc_attr( $teaser_metin ); ?>">
+							<?php
+							if ( function_exists( 'rma_ceviri_bayat_uyari_html' ) ) {
+								echo rma_ceviri_bayat_uyari_html( rma_ceviri_bayat_uyari_metni( rma_ceviri_veri_dil_sayisi( 'option', 0, 'qmo_chatbot_teaser_text' ) ) );
+							}
+							?>
 						</td>
 					</tr>
 					<tr>
@@ -285,6 +290,11 @@ function qmo_chatbot_sayfa_gorunum() {
 						<th scope="row"><label for="qmo_chatbot_welcome_intro"><?php esc_html_e( 'Tanıtım metni', 'qrms' ); ?></label></th>
 						<td>
 							<textarea id="qmo_chatbot_welcome_intro" name="qmo_chatbot_welcome_intro" rows="3" class="large-text"><?php echo esc_textarea( $giris_metin ); ?></textarea>
+							<?php
+							if ( function_exists( 'rma_ceviri_bayat_uyari_html' ) ) {
+								echo rma_ceviri_bayat_uyari_html( rma_ceviri_bayat_uyari_metni( rma_ceviri_veri_dil_sayisi( 'option', 0, 'qmo_chatbot_welcome_intro' ) ) );
+							}
+							?>
 						</td>
 					</tr>
 					<tr>
@@ -292,6 +302,11 @@ function qmo_chatbot_sayfa_gorunum() {
 						<td>
 							<input type="text" id="qmo_chatbot_welcome_btn" name="qmo_chatbot_welcome_btn" class="regular-text"
 								value="<?php echo esc_attr( $basla_metin ); ?>">
+							<?php
+							if ( function_exists( 'rma_ceviri_bayat_uyari_html' ) ) {
+								echo rma_ceviri_bayat_uyari_html( rma_ceviri_bayat_uyari_metni( rma_ceviri_veri_dil_sayisi( 'option', 0, 'qmo_chatbot_welcome_btn' ) ) );
+							}
+							?>
 						</td>
 					</tr>
 				</table>

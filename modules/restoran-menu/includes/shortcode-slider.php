@@ -75,6 +75,9 @@ class QMO_Shortcode_Slider {
             'ajaxUrl' => admin_url( 'admin-ajax.php' ),
             'nonce'   => wp_create_nonce( 'rma_ajax_nonce' ),
             'lang'    => function_exists( 'rma_get_current_lang' ) ? rma_get_current_lang() : 'tr',
+            'i18n'    => array(
+                'kapat' => function_exists( 'qmo_ceviri_ui' ) ? qmo_ceviri_ui( __( 'Kapat', 'qrms' ) ) : __( 'Kapat', 'qrms' ),
+            ),
         ];
 
         wp_add_inline_script(
@@ -154,9 +157,9 @@ class QMO_Shortcode_Slider {
     </div>
 
     <?php if ( $show_nav ) : ?>
-        <div class="qmo-slider-nav" aria-label="Slide navigasyonu">
-            <button type="button" class="qmo-slider-nav-btn qmo-slider-nav-prev" aria-label="Önceki slide">&#8249;</button>
-            <button type="button" class="qmo-slider-nav-btn qmo-slider-nav-next" aria-label="Sonraki slide">&#8250;</button>
+        <div class="qmo-slider-nav" aria-label="<?php echo esc_attr( qmo_ceviri_ui( __( 'Slide navigasyonu', 'qrms' ) ) ); ?>">
+            <button type="button" class="qmo-slider-nav-btn qmo-slider-nav-prev" aria-label="<?php echo esc_attr( qmo_ceviri_ui( __( 'Önceki slide', 'qrms' ) ) ); ?>">&#8249;</button>
+            <button type="button" class="qmo-slider-nav-btn qmo-slider-nav-next" aria-label="<?php echo esc_attr( qmo_ceviri_ui( __( 'Sonraki slide', 'qrms' ) ) ); ?>">&#8250;</button>
         </div>
     <?php endif; ?>
 </div>

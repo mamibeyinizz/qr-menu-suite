@@ -68,29 +68,178 @@ if ( ! function_exists( 'qmo_korumali_sayfa_mi' ) ) {
 }
 
 /**
+ * Dil kodu sitede etkin mi?
+ *
+ * @param string $lang Dil kodu.
+ * @return bool
+ */
+if ( ! function_exists( 'qmo_kilit_dil_aktif_mi' ) ) {
+	function qmo_kilit_dil_aktif_mi( $lang ) {
+		if ( ! is_string( $lang ) || '' === $lang ) {
+			return false;
+		}
+		if ( function_exists( 'rma_ceviri_dil_gecerli_mi' ) ) {
+			return rma_ceviri_dil_gecerli_mi( $lang );
+		}
+		if ( function_exists( 'rma_ceviri_aktif_diller' ) ) {
+			return in_array( $lang, rma_ceviri_aktif_diller(), true );
+		}
+		return 'tr' === $lang;
+	}
+}
+
+/**
+ * Accept-Language'dan sitede etkin ilk dili seç.
+ *
+ * Yalnızca kilit ekranı için. rma_get_current_lang() zincirine eklenmez.
+ *
+ * @return string Etkin dil kodu veya boş (eşleşme yok).
+ */
+if ( ! function_exists( 'qmo_kilit_tarayici_dili' ) ) {
+	function qmo_kilit_tarayici_dili() {
+		if ( empty( $_SERVER['HTTP_ACCEPT_LANGUAGE'] ) ) {
+			return '';
+		}
+		if ( ! function_exists( 'rma_ceviri_aktif_diller' ) ) {
+			return '';
+		}
+
+		$aktif = rma_ceviri_aktif_diller();
+		if ( ! is_array( $aktif ) || array() === $aktif ) {
+			return '';
+		}
+
+		$ham     = sanitize_text_field( wp_unslash( $_SERVER['HTTP_ACCEPT_LANGUAGE'] ) );
+		$adaylar = array();
+
+		foreach ( explode( ',', $ham ) as $parca ) {
+			$parca = trim( $parca );
+			if ( '' === $parca || '*' === $parca[0] ) {
+				continue;
+			}
+			if ( ! preg_match( '/^([a-zA-Z]{1,8}(?:-[a-zA-Z0-9]{1,8})*)(?:\s*;\s*q\s*=\s*([0-9.]+))?/', $parca, $m ) ) {
+				continue;
+			}
+			$kod       = strtolower( $m[1] );
+			$q         = isset( $m[2] ) ? (float) $m[2] : 1.0;
+			$adaylar[] = array( $kod, $q );
+		}
+
+		usort(
+			$adaylar,
+			static function ( $a, $b ) {
+				if ( $a[1] === $b[1] ) {
+					return 0;
+				}
+				return ( $a[1] > $b[1] ) ? -1 : 1;
+			}
+		);
+
+		foreach ( $adaylar as $aday ) {
+			$tam  = $aday[0];
+			$kisa = substr( $tam, 0, 2 );
+			if ( in_array( $tam, $aktif, true ) ) {
+				return $tam;
+			}
+			if ( in_array( $kisa, $aktif, true ) ) {
+				return $kisa;
+			}
+		}
+
+		return '';
+	}
+}
+
+/**
+ * Kilit ekranı dili: ?lang= → cookie → Accept-Language (etkin) → tr.
+ *
+ * Masa QR adresleri ?lang= taşımaz (yalnız ?masa=); parametre yine de
+ * ilk kaynaktır — elle eklenmiş veya yönlendirilmiş istekler için.
+ * Accept-Language genel rma_get_current_lang() zincirine EKLENMEZ.
+ *
+ * @return string
+ */
+if ( ! function_exists( 'qmo_kilit_ekrani_dili' ) ) {
+	function qmo_kilit_ekrani_dili() {
+		if ( isset( $_GET['lang'] ) ) {
+			$aday = sanitize_text_field( wp_unslash( $_GET['lang'] ) );
+			if ( qmo_kilit_dil_aktif_mi( $aday ) ) {
+				return $aday;
+			}
+		}
+
+		$cookie_adi = defined( 'RMA_CEVIRI_COOKIE' ) ? RMA_CEVIRI_COOKIE : 'rma_lang';
+		if ( isset( $_COOKIE[ $cookie_adi ] ) ) {
+			$aday = sanitize_text_field( wp_unslash( $_COOKIE[ $cookie_adi ] ) );
+			if ( qmo_kilit_dil_aktif_mi( $aday ) ) {
+				return $aday;
+			}
+		}
+
+		$tarayici = qmo_kilit_tarayici_dili();
+		if ( '' !== $tarayici ) {
+			return $tarayici;
+		}
+
+		return 'tr';
+	}
+}
+
+/**
+ * Kilit ekranı başlık ve gövde metinleri (dil çözülmüş).
+ *
+ * @param string $mesaj Gösterilecek açıklama (Türkçe kaynak / textdomain).
+ * @return array{dil:string,baslik:string,mesaj:string,rtl:bool}
+ */
+if ( ! function_exists( 'qmo_kilit_ekrani_metinleri' ) ) {
+	function qmo_kilit_ekrani_metinleri( $mesaj ) {
+		$dil    = qmo_kilit_ekrani_dili();
+		$baslik = __( 'Oturum Gerekli', 'qrms' );
+		$mesaj  = (string) $mesaj;
+
+		if ( function_exists( 'rma_ceviri_modul' ) ) {
+			$baslik = rma_ceviri_modul( 'lock', $baslik, $dil );
+			$mesaj  = rma_ceviri_modul( 'lock', $mesaj, $dil );
+		}
+
+		$rtl = function_exists( 'rma_ceviri_rtl_diller' )
+			&& in_array( $dil, rma_ceviri_rtl_diller(), true );
+
+		return array(
+			'dil'    => $dil,
+			'baslik' => $baslik,
+			'mesaj'  => $mesaj,
+			'rtl'    => $rtl,
+		);
+	}
+}
+
+/**
  * Kilit ekranı — koyu + altın. İsteği sonlandırır.
  *
  * @param string $mesaj Gösterilecek açıklama.
  */
 if ( ! function_exists( 'qmo_kilit_ekrani' ) ) {
 	function qmo_kilit_ekrani( $mesaj ) {
+		$metin = qmo_kilit_ekrani_metinleri( $mesaj );
+
 		status_header( 403 );
 		nocache_headers();
 		?>
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="<?php echo esc_attr( $metin['dil'] ); ?>"<?php echo $metin['rtl'] ? ' dir="rtl"' : ''; ?>>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
-<title>Oturum Gerekli</title>
+<title><?php echo esc_html( $metin['baslik'] ); ?></title>
 <link rel="stylesheet" href="<?php echo esc_url( QRMS_PLUGIN_URL . 'modules/qr-masa-oturum-guvenligi/assets/css/kilit.css?ver=' . QRMS_Helpers::asset_version( 'modules/qr-masa-oturum-guvenligi/assets/css/kilit.css' ) ); ?>">
 </head>
 <body>
 	<div class="qmo-kilit-kart">
 		<div class="qmo-kilit-ikon">🔒</div>
-		<h1>Oturum Gerekli</h1>
-		<p><?php echo esc_html( $mesaj ); ?></p>
+		<h1><?php echo esc_html( $metin['baslik'] ); ?></h1>
+		<p><?php echo esc_html( $metin['mesaj'] ); ?></p>
 	</div>
 </body>
 </html>
@@ -123,7 +272,7 @@ if ( ! defined( 'QRSERVIS_KILIT_YUKLENDI' ) ) {
 		$gelen_masa = isset( $_GET['masa'] ) ? sanitize_title( wp_unslash( $_GET['masa'] ) ) : '';
 		if ( '' !== $gelen_masa ) {
 			if ( ! qmo_masa_gecerli_mi( $gelen_masa ) ) {
-				qmo_kilit_ekrani( 'Bu masa için geçerli bir QR kod bulunamadı. Lütfen masanızdaki QR kodu okutun.' );
+				qmo_kilit_ekrani( __( 'Bu masa için geçerli bir QR kod bulunamadı. Lütfen masanızdaki QR kodu okutun.', 'qrms' ) );
 			}
 			return; // Geçerli QR — oturum init aşamasında zaten açıldı.
 		}
@@ -134,7 +283,7 @@ if ( ! defined( 'QRSERVIS_KILIT_YUKLENDI' ) ) {
 		}
 
 		if ( ! qmo_oturum() ) {
-			qmo_kilit_ekrani( 'Oturumunuz sona erdi. Devam etmek için masadaki QR kodu tekrar okutun.' );
+			qmo_kilit_ekrani( __( 'Oturumunuz sona erdi. Devam etmek için masadaki QR kodu tekrar okutun.', 'qrms' ) );
 		}
 		// Not: idle sayacı qmo_oturum_init() içinde her sayfa gezinmesinde tazelenir.
 	}

@@ -247,7 +247,7 @@ class RMA_Kampanya {
                 return '';
             }
 
-            $duz = esc_html( $bilgi['ham'] ) . ' ₺';
+            $duz = esc_html( self::fiyat_yazi( $bilgi['ham'] ) );
 
             return '' !== $sinif ? '<span class="' . esc_attr( $sinif ) . '">' . $duz . '</span>' : $duz;
         }
@@ -258,12 +258,12 @@ class RMA_Kampanya {
         // kampanya öncesi paket fiyatı. Bileşen toplamı burada kasten devre dışı —
         // iki ayrı üstü çizili fiyat müşteriyi yanıltırdı.
         if ( ! empty( $bilgi['kampanya']['show_old_price'] ) ) {
-            $html .= '<span class="rma-price-old">' . esc_html( RMA_Kampanya_DB::bicimle( $bilgi['orijinal'] ) ) . ' ₺</span>';
+            $html .= '<span class="rma-price-old">' . esc_html( self::fiyat_yazi( $bilgi['orijinal'] ) ) . '</span>';
         }
 
         $yeni_sinif = trim( 'rma-price-new ' . $sinif );
 
-        $html .= '<span class="' . esc_attr( $yeni_sinif ) . '">' . esc_html( RMA_Kampanya_DB::bicimle( $bilgi['yeni'] ) ) . ' ₺</span>';
+        $html .= '<span class="' . esc_attr( $yeni_sinif ) . '">' . esc_html( self::fiyat_yazi( $bilgi['yeni'] ) ) . '</span>';
 
         return $html;
     }
@@ -288,10 +288,33 @@ class RMA_Kampanya {
         $tutar = RMA_Kampanya_DB::tutar_temizle( $k['amount'] ?? 0 );
 
         $etiket = ( 'fixed' === ( $k['calc_type'] ?? 'percent' ) )
-            ? '-' . RMA_Kampanya_DB::bicimle( $tutar ) . ' ₺'
-            : '%' . RMA_Kampanya_DB::bicimle( $tutar );
+            ? self::fiyat_yazi( $tutar, '-{n} ₺' )
+            : self::fiyat_yazi( $tutar, '%{n}' );
 
         return '<span class="rma-badge campaign">' . esc_html( $etiket ) . '</span>';
+    }
+
+    /**
+     * Ön yüz fiyat yazısı — çeviri yardımcısı varsa dile göre, yoksa TR bicimle.
+     *
+     * @param float|int|string $deger Tutar veya ham meta.
+     * @param string           $kalip ui_string kalıbı.
+     * @return string
+     */
+    public static function fiyat_yazi( $deger, $kalip = '{n} ₺' ) {
+        if ( function_exists( 'rma_ceviri_fiyat' ) && is_numeric( $deger ) ) {
+            return rma_ceviri_fiyat( $deger, $kalip );
+        }
+
+        $sayi = class_exists( 'RMA_Kampanya_DB' )
+            ? RMA_Kampanya_DB::bicimle( is_numeric( $deger ) ? $deger : 0 )
+            : (string) $deger;
+
+        if ( ! is_numeric( $deger ) ) {
+            $sayi = (string) $deger;
+        }
+
+        return str_replace( '{n}', $sayi, $kalip );
     }
 }
 
