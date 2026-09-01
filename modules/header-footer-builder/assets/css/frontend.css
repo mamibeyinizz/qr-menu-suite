@@ -427,6 +427,12 @@
   width: 22px;
 }
 
+/* Offcanvas açıkken arka plan kaydırması kilitlenir (JS: body.hfb-scroll-locked).
+   position:fixed ve top telafisi JS'te; overflow yedek katman. */
+body.hfb-scroll-locked {
+  overflow: hidden;
+}
+
 /* Mobil panel ------------------------------------------------------------ */
 
 .hfb-mobile-panel {

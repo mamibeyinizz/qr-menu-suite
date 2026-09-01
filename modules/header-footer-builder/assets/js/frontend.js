@@ -10,6 +10,9 @@
   'use strict';
 
   var READY_FLAG = 'hfbReady';
+  var SCROLL_LOCK_CLASS = 'hfb-scroll-locked';
+  var hfbScrollY = 0;
+  var hfbScrollLockCount = 0;
 
   function isEditor(wrap) {
     if (wrap.querySelector('.hfb-header--editor')) {
@@ -27,6 +30,69 @@
     } catch (e) {
       return false;
     }
+  }
+
+  function getScrollbarWidth() {
+    return Math.max(0, window.innerWidth - document.documentElement.clientWidth);
+  }
+
+  /**
+   * iOS Safari dahil: gövdeyi position:fixed yapıp kaydırma konumunu saklar.
+   * Zaten kilitliyken tekrar çağrılırsa scrollY okunmaz (0 döner).
+   */
+  function lockBodyScroll() {
+    if (hfbScrollLockCount > 0) {
+      hfbScrollLockCount++;
+      return;
+    }
+    hfbScrollLockCount = 1;
+
+    hfbScrollY = window.scrollY || window.pageYOffset || 0;
+
+    var body = document.body;
+    var pad = getScrollbarWidth();
+
+    body.classList.add(SCROLL_LOCK_CLASS);
+    if (pad > 0) {
+      body.style.paddingRight = pad + 'px';
+    }
+
+    body.style.position = 'fixed';
+    body.style.top = (-hfbScrollY) + 'px';
+    body.style.left = '0';
+    body.style.right = '0';
+    body.style.width = '100%';
+    body.style.overflow = 'hidden';
+  }
+
+  /**
+   * Kilidi açar ve kullanıcıyı kilit anındaki kaydırma konumuna döndürür.
+   */
+  function unlockBodyScroll() {
+    if (hfbScrollLockCount <= 0) {
+      return;
+    }
+    hfbScrollLockCount--;
+    if (hfbScrollLockCount > 0) {
+      return;
+    }
+
+    var y = hfbScrollY;
+    var body = document.body;
+    var s = body.style;
+
+    s.top = (-y) + 'px';
+    s.position = '';
+    s.top = '';
+    s.left = '';
+    s.right = '';
+    s.width = '';
+    s.overflow = '';
+    s.paddingRight = '';
+    body.classList.remove(SCROLL_LOCK_CLASS);
+
+    void document.documentElement.scrollHeight;
+    window.scrollTo(0, y);
   }
 
   function initSubmenus(panel) {
@@ -107,7 +173,7 @@
       toggle.setAttribute('aria-label', toggle.getAttribute('data-label-close'));
 
       if (!editor) {
-        document.body.style.overflow = 'hidden';
+        lockBodyScroll();
       }
     }
 
@@ -118,7 +184,7 @@
       toggle.setAttribute('aria-label', toggle.getAttribute('data-label-open'));
 
       if (!editor) {
-        document.body.style.overflow = '';
+        unlockBodyScroll();
       }
 
       Array.prototype.forEach.call(
@@ -153,6 +219,20 @@
       if ((e.key === 'Escape' || e.key === 'Esc') && panel.classList.contains('is-open')) {
         closePanel();
       }
+    });
+
+    panel.addEventListener('click', function (e) {
+      var link = e.target.closest('.hfb-mobile-panel__nav a');
+      if (!link || !panel.classList.contains('is-open')) {
+        return;
+      }
+
+      var li = link.parentElement;
+      if (li && li.classList.contains('menu-item-has-children') && li.firstElementChild === link) {
+        return;
+      }
+
+      closePanel();
     });
 
     if (header.classList.contains('hfb-header--sticky') && !editor) {
