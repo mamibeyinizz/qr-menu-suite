@@ -81,7 +81,6 @@
     var body = document.body;
     var s = body.style;
 
-    s.top = (-y) + 'px';
     s.position = '';
     s.top = '';
     s.left = '';
