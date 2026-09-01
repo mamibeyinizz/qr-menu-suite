@@ -72,6 +72,11 @@ function qrms_module_qr_galeri_init() {
 						'default' => '',
 						'desc'    => __( 'Filtre çubuğunu göstermek için "yes", gizlemek için "no". Boş bırakırsanız galeri ayarı geçerlidir.', 'qrms' ),
 					),
+					array(
+						'name'    => 'show_titles',
+						'default' => 'yes',
+						'desc'    => __( 'Bölüm başlıklarını ve açıklamalarını gizlemek için "no" yazın.', 'qrms' ),
+					),
 				),
 			),
 		)
