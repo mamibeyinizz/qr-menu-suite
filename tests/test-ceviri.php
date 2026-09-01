@@ -242,6 +242,8 @@ qrms_test(
 		);
 		$defter = rma_ceviri_option_defteri();
 		qrms_assert_true( isset( $defter['hfb_hamburger.block.blk_2.label'] ), 'hamburger buton defteri' );
+		qrms_assert_true( isset( $defter['hfb_footer.description'] ), 'footer açıklama defteri' );
+		qrms_assert_true( isset( $defter['hfb_header.brand_line1'] ), 'header marka defteri' );
 
 		update_option( 'gemini_bot_name', 'Masa Asistanı' );
 		qrms_assert_same( 'Masa Asistanı', rma_ceviri_option_guncel( 'gemini_bot_name' ), 'canlı option' );

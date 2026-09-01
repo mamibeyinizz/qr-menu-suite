@@ -468,7 +468,7 @@ trait QRMS_HFB_Frontend {
 					<div class="hfb-footer__col hfb-footer__col--brand">
 						<?php echo $brand; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 						<?php if ( ! empty( $opts['description'] ) ) : ?>
-							<p class="hfb-footer__desc"><?php echo esc_html( $opts['description'] ); ?></p>
+							<p class="hfb-footer__desc"><?php echo esc_html( $this->hfb_cevir_option_metin( (string) $opts['description'], 'hfb_footer.description' ) ); ?></p>
 						<?php endif; ?>
 					</div>
 
@@ -512,7 +512,7 @@ trait QRMS_HFB_Frontend {
 
 				<?php if ( ! empty( $opts['copyright'] ) ) : ?>
 					<div class="hfb-footer__bar">
-						<p class="hfb-footer__copyright"><?php echo esc_html( $opts['copyright'] ); ?></p>
+						<p class="hfb-footer__copyright"><?php echo esc_html( $this->hfb_cevir_option_metin( (string) $opts['copyright'], 'hfb_footer.copyright' ) ); ?></p>
 					</div>
 				<?php endif; ?>
 			</footer>
@@ -796,6 +796,13 @@ trait QRMS_HFB_Frontend {
 					$description = isset( $block['description'] ) ? trim( (string) $block['description'] ) : '';
 
 					if ( '' !== $description ) {
+						$block_id = isset( $block['id'] ) ? sanitize_key( (string) $block['id'] ) : '';
+						if ( '' !== $block_id && function_exists( 'rma_ceviri_hamburger_blok_field' ) ) {
+							$description = $this->hfb_cevir_option_metin(
+								$description,
+								rma_ceviri_hamburger_blok_field( $block_id, 'description' )
+							);
+						}
 						$inner .= '<p class="hfb-mobile-panel__desc">' . esc_html( $description ) . '</p>';
 					}
 				}
@@ -1041,8 +1048,29 @@ trait QRMS_HFB_Frontend {
 			}
 		}
 
-		$line1 = isset( $opts['brand_line1'] ) && '' !== $opts['brand_line1'] ? $opts['brand_line1'] : get_bloginfo( 'name' );
-		$line2 = isset( $opts['brand_line2'] ) ? $opts['brand_line2'] : '';
+		$defaults = 'header' === $context ? $this->header_defaults : $this->footer_defaults;
+		$prefix   = 'header' === $context ? 'hfb_header' : 'hfb_footer';
+
+		$line1_raw = isset( $opts['brand_line1'] ) ? trim( (string) $opts['brand_line1'] ) : '';
+		if ( '' === $line1_raw ) {
+			$line1 = get_bloginfo( 'name' );
+		} else {
+			$line1 = $this->hfb_cevir_option_varsayilan(
+				$line1_raw,
+				isset( $defaults['brand_line1'] ) ? (string) $defaults['brand_line1'] : 'QR MENU',
+				$prefix . '.brand_line1'
+			);
+		}
+
+		$line2 = '';
+		$line2_raw = isset( $opts['brand_line2'] ) ? trim( (string) $opts['brand_line2'] ) : '';
+		if ( '' !== $line2_raw ) {
+			$line2 = $this->hfb_cevir_option_varsayilan(
+				$line2_raw,
+				isset( $defaults['brand_line2'] ) ? (string) $defaults['brand_line2'] : 'OFFİCİAL',
+				$prefix . '.brand_line2'
+			);
+		}
 
 		$html  = '<a href="' . $home . '" class="hfb-brand hfb-brand--' . esc_attr( $context ) . '">';
 		$html .= $this->qr_mark_svg();
@@ -1180,6 +1208,26 @@ trait QRMS_HFB_Frontend {
 		if ( function_exists( 'rma_ceviri_modul' ) ) {
 			return rma_ceviri_modul( 'ui_string', $metin );
 		}
+		return $metin;
+	}
+
+	/**
+	 * Yalnızca yönetici metni (P1 option, hash kapısı). ui_string yedeği yok.
+	 *
+	 * @param string $metin Canlı Türkçe metin.
+	 * @param string $field Defter anahtarı (hfb_footer.description …).
+	 * @return string
+	 */
+	private function hfb_cevir_option_metin( $metin, $field ) {
+		$metin = trim( (string) $metin );
+		if ( '' === $metin ) {
+			return '';
+		}
+
+		if ( function_exists( 'rma_ceviri_option' ) ) {
+			return rma_ceviri_option( $field, $metin );
+		}
+
 		return $metin;
 	}
 

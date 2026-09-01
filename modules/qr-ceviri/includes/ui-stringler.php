@@ -128,6 +128,10 @@ if ( ! function_exists( 'rma_ceviri_varsayilan_ui_metinleri' ) ) {
 			'Çalışma Saatlerimiz',
 			'İletişim',
 
+			/* HFB marka varsayılanları — trait-frontend.php: render_brand() */
+			'QR MENU',
+			'OFFİCİAL',
+
 			/* Hamburger panel buton varsayılanı — trait-frontend.php: render_hamburger_button_block() */
 			'Buton',
 

@@ -145,11 +145,13 @@ trait QRMS_HFB_Admin {
 			<div class="qrms-field">
 				<label class="qrms-label" for="hfb_header_brand_line1"><?php esc_html_e( 'Marka — üst satır', 'qrms' ); ?></label>
 				<input type="text" id="hfb_header_brand_line1" name="hfb_header_brand_line1" class="qrms-input hfb-preview-trigger" value="<?php echo esc_attr( $opts['brand_line1'] ); ?>" placeholder="QR MENU" />
+				<?php $this->hfb_ceviri_bayat_uyari( 'hfb_header.brand_line1' ); ?>
 			</div>
 
 			<div class="qrms-field">
 				<label class="qrms-label" for="hfb_header_brand_line2"><?php esc_html_e( 'Marka — alt satır', 'qrms' ); ?></label>
 				<input type="text" id="hfb_header_brand_line2" name="hfb_header_brand_line2" class="qrms-input hfb-preview-trigger" value="<?php echo esc_attr( $opts['brand_line2'] ); ?>" placeholder="OFFİCİAL" />
+				<?php $this->hfb_ceviri_bayat_uyari( 'hfb_header.brand_line2' ); ?>
 			</div>
 
 			<div class="qrms-field">
@@ -388,16 +390,19 @@ trait QRMS_HFB_Admin {
 			<div class="qrms-field">
 				<label class="qrms-label" for="hfb_footer_brand_line1"><?php esc_html_e( 'Marka — üst satır', 'qrms' ); ?></label>
 				<input type="text" id="hfb_footer_brand_line1" name="hfb_footer_brand_line1" class="qrms-input hfb-preview-trigger" value="<?php echo esc_attr( $opts['brand_line1'] ); ?>" placeholder="QR MENU" />
+				<?php $this->hfb_ceviri_bayat_uyari( 'hfb_footer.brand_line1' ); ?>
 			</div>
 
 			<div class="qrms-field">
 				<label class="qrms-label" for="hfb_footer_brand_line2"><?php esc_html_e( 'Marka — alt satır', 'qrms' ); ?></label>
 				<input type="text" id="hfb_footer_brand_line2" name="hfb_footer_brand_line2" class="qrms-input hfb-preview-trigger" value="<?php echo esc_attr( $opts['brand_line2'] ); ?>" placeholder="OFFİCİAL" />
+				<?php $this->hfb_ceviri_bayat_uyari( 'hfb_footer.brand_line2' ); ?>
 			</div>
 
 			<div class="qrms-field">
 				<label class="qrms-label" for="hfb_footer_description"><?php esc_html_e( 'Kısa açıklama', 'qrms' ); ?></label>
 				<textarea id="hfb_footer_description" name="hfb_footer_description" class="qrms-input hfb-preview-trigger" rows="3"><?php echo esc_textarea( $opts['description'] ); ?></textarea>
+				<?php $this->hfb_ceviri_bayat_uyari( 'hfb_footer.description' ); ?>
 			</div>
 
 			<h3 class="hfb-section-title"><?php esc_html_e( 'Masaüstü', 'qrms' ); ?></h3>
@@ -613,6 +618,7 @@ trait QRMS_HFB_Admin {
 				<div class="qrms-field">
 					<label class="qrms-label" for="hfb_footer_copyright"><?php esc_html_e( 'Telif metni', 'qrms' ); ?></label>
 					<input type="text" id="hfb_footer_copyright" name="hfb_footer_copyright" class="qrms-input hfb-preview-trigger" value="<?php echo esc_attr( $opts['copyright'] ); ?>" />
+					<?php $this->hfb_ceviri_bayat_uyari( 'hfb_footer.copyright' ); ?>
 				</div>
 
 				<p class="description"><?php esc_html_e( '4. sütundaki sosyal ikonlar; en fazla 6 tanesi gösterilir.', 'qrms' ); ?></p>
@@ -1109,6 +1115,11 @@ trait QRMS_HFB_Admin {
 						<label class="qrms-label" for="hfb_logo_desc_<?php echo esc_attr( $id ); ?>"><?php esc_html_e( 'Logo altı açıklama', 'qrms' ); ?></label>
 						<textarea id="hfb_logo_desc_<?php echo esc_attr( $id ); ?>" name="<?php echo esc_attr( $prefix ); ?>[description]" class="qrms-input hfb-preview-trigger" rows="3"><?php echo esc_textarea( isset( $block['description'] ) ? (string) $block['description'] : '' ); ?></textarea>
 						<p class="description"><?php esc_html_e( 'Marka adının altında görünen kısa tanıtım cümlesi. Boş bırakılırsa basılmaz.', 'qrms' ); ?></p>
+						<?php
+						if ( ! $template && function_exists( 'rma_ceviri_hamburger_blok_field' ) ) {
+							$this->hfb_ceviri_bayat_uyari( rma_ceviri_hamburger_blok_field( $id, 'description' ) );
+						}
+						?>
 					</div>
 				<?php elseif ( 'lang' === $type ) : ?>
 					<p class="description"><?php esc_html_e( 'QR Çeviri modülünün dil seçici bayrağı. Panelde bu sırada görünür.', 'qrms' ); ?></p>

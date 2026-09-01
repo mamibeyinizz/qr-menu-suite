@@ -1710,4 +1710,54 @@ qrms_test(
 	}
 );
 
+qrms_test(
+	'HFB P1 option metinleri defterde; marka ui_string, özel metin option',
+	function () {
+		$front = file_get_contents( QRMS_PLUGIN_DIR . 'modules/header-footer-builder/includes/trait-frontend.php' );
+		$admin = file_get_contents( QRMS_PLUGIN_DIR . 'modules/header-footer-builder/includes/trait-admin.php' );
+
+		qrms_assert_contains( 'function hfb_cevir_option_metin', $front, 'özel metin köprü' );
+		qrms_assert_contains( "hfb_cevir_option_metin( (string) \$opts['description'], 'hfb_footer.description' )", $front, 'footer açıklama' );
+		qrms_assert_contains( "hfb_cevir_option_metin( (string) \$opts['copyright'], 'hfb_footer.copyright' )", $front, 'footer telif' );
+		qrms_assert_contains( "rma_ceviri_hamburger_blok_field( \$block_id, 'description' )", $front, 'logo açıklama' );
+		qrms_assert_contains( "hfb_header.brand_line1", $admin, 'header marka uyarı' );
+		qrms_assert_contains( "hfb_footer.copyright", $admin, 'telif uyarı' );
+
+		$ui = rma_ceviri_varsayilan_ui_metinleri();
+		qrms_assert_true( in_array( 'QR MENU', $ui, true ), 'QR MENU ui_string' );
+		qrms_assert_true( in_array( 'OFFİCİAL', $ui, true ), 'OFFİCİAL ui_string' );
+
+		update_option(
+			'hfb_footer_options',
+			array(
+				'description' => 'Lezzetin adresi',
+				'copyright'   => '© 2026 Test Restoran',
+				'brand_line1' => 'QR MENU',
+			)
+		);
+		update_option(
+			'hfb_hamburger_options',
+			array(
+				'blocks' => array(
+					array(
+						'id'          => 'blk_3',
+						'type'        => 'logo',
+						'enabled'     => true,
+						'description' => 'Panel tanıtımı',
+					),
+				),
+			)
+		);
+
+		$defter = rma_ceviri_option_defteri();
+		qrms_assert_true( isset( $defter['hfb_footer.description'] ), 'footer açıklama defteri' );
+		qrms_assert_true( isset( $defter['hfb_footer.copyright'] ), 'footer telif defteri' );
+		qrms_assert_true( isset( $defter['hfb_hamburger.block.blk_3.description'] ), 'logo açıklama defteri' );
+		qrms_assert_same( 'Lezzetin adresi', rma_ceviri_option_guncel( 'hfb_footer.description' ), 'canlı açıklama' );
+
+		qrms_assert_contains( 'hfb_cevir_option_varsayilan', $front, 'marka köprü' );
+		qrms_assert_contains( ".brand_line1'", $front, 'marka field birleşimi' );
+	}
+);
+
 echo "\nQR Çeviri (P1 yönetici verisi)\n";
