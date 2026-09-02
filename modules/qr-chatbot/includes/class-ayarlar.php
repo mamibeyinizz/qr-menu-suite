@@ -65,6 +65,8 @@ function qmo_chatbot_yeni_varsayilanlar() {
 		'qmo_chatbot_banned_words'         => '',
 		'qmo_chatbot_banned_msg'           => 'Bu konuda yardımcı olamam. Menü veya sipariş hakkında sorabilirsiniz.',
 		'qmo_chatbot_retention_days'       => 30,
+		'qmo_chatbot_eskalasyon'           => 'yes',
+		'qmo_chatbot_eskalasyon_msg'       => 'Bu konuda emin olamadım. Garson çağırmamı ister misiniz?',
 	);
 }
 
