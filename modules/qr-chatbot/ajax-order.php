@@ -37,6 +37,22 @@ if ( ! function_exists( 'qmo_ajax_bot_siparis' ) ) {
 		$sonuc = qmo_siparis_isle( $sess['masa'], $items, 'tr' );
 
 		if ( $sonuc['success'] ) {
+			if ( function_exists( 'qmo_chatbot_oneri_durum_sessiz' ) && function_exists( 'qmo_chatbot_siparis_urun_id' ) ) {
+				$oturum_id = function_exists( 'qmo_chatbot_ziyaretci_anahtar' )
+					? qmo_chatbot_ziyaretci_anahtar( $sess )
+					: '';
+				if ( '' !== $oturum_id ) {
+					$gorul = array();
+					foreach ( $items as $satir ) {
+						$uid = qmo_chatbot_siparis_urun_id( $satir );
+						if ( $uid < 1 || isset( $gorul[ $uid ] ) ) {
+							continue;
+						}
+						$gorul[ $uid ] = true;
+						qmo_chatbot_oneri_durum_sessiz( $oturum_id, $uid, 'siparis' );
+					}
+				}
+			}
 			wp_send_json_success( array( 'mesaj' => 'Siparişiniz iletildi.' ) );
 		}
 		wp_send_json_error( array( 'mesaj' => $sonuc['msg'] ), $sonuc['http'] );
