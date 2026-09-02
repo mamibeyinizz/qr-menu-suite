@@ -76,6 +76,17 @@ function qrm_pro_install() {
     dbDelta($sql_reviews);
     dbDelta($sql_fields);
 
+    $table_review_media = $wpdb->prefix . 'qrm_review_media';
+    $sql_review_media   = "CREATE TABLE $table_review_media (
+        id mediumint(9) NOT NULL AUTO_INCREMENT,
+        review_id mediumint(9) NOT NULL,
+        attachment_id bigint(20) unsigned NOT NULL,
+        created_at datetime DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY  (id),
+        KEY idx_review (review_id)
+    ) $charset_collate;";
+    dbDelta($sql_review_media);
+
     // Varsayılan form alanları (Eğer boşsa)
     //
     // P1: field_label DB verisidir; CSV'ye item_type=form_field,

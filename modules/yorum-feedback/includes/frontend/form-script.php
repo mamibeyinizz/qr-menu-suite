@@ -70,6 +70,74 @@ function qrm_pro_render_form_script($settings, $js_limit = 0, $has_list = true) 
             });
         }
 
+        function initMediaUpload(form) {
+            var wrap = form.querySelector('.qrm-media-upload');
+            var input = form.querySelector('#qrm_review_media');
+            if (!wrap || !input) return;
+
+            var maxFiles = parseInt(wrap.getAttribute('data-max-files'), 10) || 2;
+            var maxMb = parseFloat(wrap.getAttribute('data-max-mb')) || 3;
+            var maxBytes = maxMb * 1024 * 1024;
+            var previews = wrap.querySelector('.qrm-media-previews');
+            var selected = [];
+
+            function syncInput() {
+                if (typeof DataTransfer === 'undefined') return;
+                var dt = new DataTransfer();
+                selected.forEach(function(item) { dt.items.add(item.file); });
+                input.files = dt.files;
+            }
+
+            function renderPreviews() {
+                previews.innerHTML = '';
+                selected.forEach(function(item) {
+                    var box = document.createElement('div');
+                    box.className = 'qrm-media-preview';
+                    var img = document.createElement('img');
+                    img.src = item.url;
+                    img.alt = '';
+                    var btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'qrm-media-preview-remove';
+                    btn.setAttribute('aria-label', 'Kaldır');
+                    btn.textContent = '\u00d7';
+                    btn.addEventListener('click', function() {
+                        URL.revokeObjectURL(item.url);
+                        selected = selected.filter(function(s) { return s !== item; });
+                        syncInput();
+                        renderPreviews();
+                    });
+                    box.appendChild(img);
+                    box.appendChild(btn);
+                    previews.appendChild(box);
+                });
+            }
+
+            input.addEventListener('change', function() {
+                var files = Array.prototype.slice.call(input.files || []);
+                var err = form.querySelector('.qrm-media-error');
+                if (err) err.remove();
+
+                files.forEach(function(file) {
+                    if (selected.length >= maxFiles) return;
+                    if (file.size > maxBytes) return;
+                    if (!/^image\/(jpeg|png|webp)$/i.test(file.type)) return;
+                    selected.push({ file: file, url: URL.createObjectURL(file) });
+                });
+
+                if (files.length && selected.length === 0) {
+                    var msg = document.createElement('div');
+                    msg.className = 'qrm-alert qrm-error qrm-media-error';
+                    msg.textContent = metin('mediaError', 'Geçersiz görsel veya boyut sınırı aşıldı.');
+                    wrap.appendChild(msg);
+                }
+
+                syncInput();
+                renderPreviews();
+                input.value = '';
+            });
+        }
+
         // Aşamalı form (wizard)
         function initWizard(form) {
             var step1 = form.querySelector('[data-step="1"]');
@@ -123,6 +191,7 @@ function qrm_pro_render_form_script($settings, $js_limit = 0, $has_list = true) 
 
             initWizard(form);
             initPhoneMask(form);
+            initMediaUpload(form);
 
             form.addEventListener('submit', function(e) {
                 e.preventDefault();
