@@ -158,6 +158,8 @@ function qmo_chatbot_yeni_alanlari_kaydet() {
 		'qmo_chatbot_closed_message'   => 'sanitize_text_field',
 		'qmo_chatbot_daily_limit_msg'  => 'sanitize_text_field',
 		'qmo_chatbot_banned_msg'       => 'sanitize_text_field',
+		'qmo_chatbot_eskalasyon'       => 'sanitize_key',
+		'qmo_chatbot_eskalasyon_msg'   => 'sanitize_text_field',
 	);
 
 	foreach ( $metin as $anahtar => $temizleyici ) {
@@ -173,6 +175,9 @@ function qmo_chatbot_yeni_alanlari_kaydet() {
 	}
 	if ( isset( $_POST['qmo_chatbot_banned_words'] ) ) {
 		update_option( 'qmo_chatbot_banned_words', sanitize_textarea_field( wp_unslash( $_POST['qmo_chatbot_banned_words'] ) ) );
+	}
+	if ( isset( $_POST['qmo_chatbot_eskalasyon_msg'] ) ) {
+		update_option( 'qmo_chatbot_eskalasyon_msg', sanitize_text_field( wp_unslash( $_POST['qmo_chatbot_eskalasyon_msg'] ) ) );
 	}
 	if ( isset( $_POST['qmo_chatbot_icon_color'] ) ) {
 		$r = sanitize_hex_color( wp_unslash( $_POST['qmo_chatbot_icon_color'] ) );
@@ -865,6 +870,24 @@ if ( ! function_exists( 'qmo_chatbot_sayfa_davranis' ) ) {
 				<td>
 					<input type="text" id="qmo_chatbot_banned_msg" name="qmo_chatbot_banned_msg" class="large-text"
 						value="<?php echo esc_attr( qmo_chatbot_ayar( 'qmo_chatbot_banned_msg' ) ); ?>">
+				</td>
+			</tr>
+		</table>
+
+		<h2><?php esc_html_e( 'Cevapsız soru eskalasyonu', 'qrms' ); ?></h2>
+		<table class="form-table" role="presentation">
+			<tr>
+				<th scope="row"><?php esc_html_e( 'Cevapsız soruda garson öner', 'qrms' ); ?></th>
+				<td>
+					<?php qmo_chatbot_ac_kapa( 'qmo_chatbot_eskalasyon', qmo_chatbot_ayar( 'qmo_chatbot_eskalasyon' ), __( 'Asistan cevaplayamadığında garson çağırma butonu göstersin.', 'qrms' ) ); ?>
+				</td>
+			</tr>
+			<tr>
+				<th scope="row"><label for="qmo_chatbot_eskalasyon_msg"><?php esc_html_e( 'Eskalasyon mesajı', 'qrms' ); ?></label></th>
+				<td>
+					<input type="text" id="qmo_chatbot_eskalasyon_msg" name="qmo_chatbot_eskalasyon_msg" class="large-text"
+						value="<?php echo esc_attr( qmo_chatbot_ayar( 'qmo_chatbot_eskalasyon_msg' ) ); ?>">
+					<p class="description"><?php esc_html_e( 'Garson çağır butonunun üstünde gösterilir.', 'qrms' ); ?></p>
 				</td>
 			</tr>
 		</table>

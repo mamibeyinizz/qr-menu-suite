@@ -402,17 +402,28 @@ body.gm-scroll-kilit { position: fixed; width: 100%; }
 	align-self: flex-start;
 	display: flex;
 	flex-direction: column;
+	align-items: flex-start;
 	gap: 8px;
 	max-width: 88%;
+	margin-bottom: 10px;
 }
 
 .gemini-msg-grup .gemini-msg-bubble {
 	max-width: 100%;
+	margin-bottom: 0;
 }
 
 .gemini-urun-kartlari {
 	display: flex;
 	flex-direction: column;
+	gap: 8px;
+	width: 100%;
+}
+
+.gemini-eskalasyon {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
 	gap: 8px;
 	width: 100%;
 }
@@ -484,6 +495,36 @@ body.gm-scroll-kilit { position: fixed; width: 100%; }
 	cursor: default;
 	filter: none;
 	opacity: 0.92;
+}
+
+.gemini-eskalasyon-metin {
+	margin: 0;
+	font-size: 13px;
+	line-height: 1.45;
+	color: var(--gm-text, #333);
+	opacity: 0.9;
+}
+
+.gemini-eskalasyon-btn {
+	border: none;
+	border-radius: 999px;
+	padding: 9px 18px;
+	font-size: 13px;
+	font-weight: 700;
+	cursor: pointer;
+	background: var(--gm-header-bg, #8a2be2);
+	color: var(--gm-header-text, #fff);
+}
+
+.gemini-eskalasyon-btn:hover,
+.gemini-eskalasyon-btn:active {
+	filter: brightness(1.05);
+}
+
+.gemini-eskalasyon-btn:disabled {
+	opacity: 0.72;
+	cursor: default;
+	filter: none;
 }
 
 .gemini-quick-replies {
