@@ -2,10 +2,23 @@
 /*
 Plugin Name: QR Menü Gelişmiş Müşteri Yorumları & Değerlendirme
 Description: QR menü sistemleri için çoklu kriter (yemek, hizmet, temizlik vb.) puanlama sistemli, Google yorum yönlendirmeli (review gating), AJAX destekli, gelişmiş analitik barındıran premium müşteri yorum eklentisi.
-Version: 4.2.1
+Version: 4.2.2
 Author: QR MENÜ
 
 == Changelog ==
+
+4.2.2
+ - YENİ: Yorum iş akışı (workflow). Her yorum için bağımsız durum takibi:
+   Yeni / Okundu / İşleme alındı / Çözüldü — yayın durumundan (beklemede/yayında)
+   ayrıdır. Tüm Yorumlar ekranında satır başına durum seçici, sorumlu atama
+   (edit_posts yetkili kullanıcılar) ve genişletilebilir iç not alanı; değişiklikler
+   AJAX ile anında kaydedilir. Liste üstünde iş akışı filtreleri ve tek GROUP BY
+   sorgusuyla sayaçlar. Çözüldü seçildiğinde resolved_at yazılır, başka duruma
+   dönülünce sıfırlanır. Otomatik "okundu" işaretlemesi yoktur.
+ - PERFORMANS: workflow_status + created_at bileşik indeksi (idx_workflow);
+   filtreli liste sorguları tam tablo taraması yapmaz.
+ - GÜVENLİK: İş akışı AJAX ucu nonce + manage_options ile korunur; iç not ve
+   sorumlu bilgisi ön yüze asla basılmaz.
 
 4.2.1
  - DÜZELTME (kök neden): "Formlar > Yeni Form Oluştur" ekranı, yönetici olarak giriş
@@ -116,7 +129,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('QRM_PRO_VERSION', '4.2.1');
+define('QRM_PRO_VERSION', '4.2.2');
 define('QRM_PRO_FILE', __FILE__);
 define('QRM_PRO_PATH', plugin_dir_path(__FILE__));
 define('QRM_PRO_URL', plugin_dir_url(__FILE__));
@@ -166,6 +179,7 @@ require_once QRM_PRO_PATH . 'includes/ajax/submit-review.php';
 require_once QRM_PRO_PATH . 'includes/ajax/load-reviews.php';
 require_once QRM_PRO_PATH . 'includes/ajax/rewards.php';
 require_once QRM_PRO_PATH . 'includes/ajax/submit-custom-form.php';
+require_once QRM_PRO_PATH . 'includes/ajax/review-workflow.php';
 
 register_activation_hook(__FILE__, 'qrm_pro_install');
 
@@ -204,6 +218,9 @@ function qrm_pro_maybe_upgrade() {
  * satırlara DEFAULT 'full' ekler; qrm_pro_migrate_column_widths() eski
  * otomatik yarım-genişlik davranışını bir kez yazar.
  *
+ * v4: qrm_reviews tablosuna iş akışı sütunları (workflow_status,
+ * assigned_user_id, internal_note, resolved_at) ve idx_workflow indeksi.
+ *
  * ZAMANLAMA — güncelleme bilinçli olarak SADECE yönetim isteklerinde çalışır.
  * ALTER TABLE, büyük bir yorum tablosunda birkaç saniye sürebilir ve o süre
  * boyunca tabloyu meşgul eder. plugins_loaded'a bağlansaydı bu iş, menüyü açan
@@ -212,7 +229,7 @@ function qrm_pro_maybe_upgrade() {
  * ---------------------------------------------------------------------- */
 
 /** Şema (indeks) sürümü. İndeks tanımları değiştiğinde artırılır. */
-define('QRM_PRO_SCHEMA_VERSION', '3');
+define('QRM_PRO_SCHEMA_VERSION', '4');
 
 /** Şema sürümünün saklandığı option. */
 define('QRM_PRO_SCHEMA_OPTION', 'qrm_pro_schema_version');
@@ -272,7 +289,9 @@ function qrm_pro_schema_indexes_ok() {
     $rows     = $wpdb->get_col("SHOW INDEX FROM {$table}", 2); // Key_name sütunu
     $wpdb->suppress_errors($suppress);
 
-    return is_array($rows) && in_array('idx_status_created', $rows, true);
+    return is_array($rows)
+        && in_array('idx_status_created', $rows, true)
+        && in_array('idx_workflow', $rows, true);
 }
 
 add_action('admin_init', 'qrm_pro_schema_maybe_upgrade', 5);

@@ -187,6 +187,97 @@
 }
 
 /* --------------------------------------------------------------------------
+ * 3b. Yorum iş akışı (Tüm Yorumlar)
+ * ------------------------------------------------------------------------ */
+
+.qrm-wf-filters {
+	margin-top: 8px;
+}
+
+.qrm-wf-cell {
+	vertical-align: top;
+}
+
+.qrm-wf-controls {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	max-width: 190px;
+}
+
+.qrm-wf-controls select {
+	font-size: 12px;
+	max-width: 100%;
+	width: 100%;
+}
+
+.qrm-wf-note-toggle {
+	align-self: flex-start;
+	position: relative;
+}
+
+.qrm-wf-note-toggle.has-note,
+.qrm-wf-note-toggle.is-open {
+	border-color: #2271b1;
+	color: #2271b1;
+}
+
+.qrm-wf-note-dot {
+	background: #2271b1;
+	border-radius: 50%;
+	display: inline-block;
+	height: 6px;
+	margin-left: 4px;
+	vertical-align: middle;
+	width: 6px;
+}
+
+.qrm-wf-save-status {
+	color: #646970;
+	display: block;
+	font-size: 11px;
+	margin-top: 4px;
+	min-height: 14px;
+}
+
+.qrm-wf-save-saving {
+	color: #646970;
+}
+
+.qrm-wf-save-ok {
+	color: #166534;
+}
+
+.qrm-wf-save-error {
+	color: #b32d2e;
+}
+
+.qrm-wf-resolved-at {
+	color: #646970;
+	display: block;
+	font-size: 11px;
+	margin-top: 4px;
+}
+
+.qrm-wf-note-row td {
+	background: #f6f7f7;
+	border-top: none;
+	padding: 0 12px 12px;
+}
+
+.qrm-wf-note {
+	box-sizing: border-box;
+	font-size: 13px;
+	margin-top: 4px;
+	max-width: 100%;
+	width: 100%;
+}
+
+.qrm-review-row-block + .qrm-review-row-block .qrm-review-row td {
+	border-top: 1px solid #c3c4c7;
+}
+
+/* --------------------------------------------------------------------------
  * 4. Müşteri bilgileri form alanları (sürükle-bırak)
  * ------------------------------------------------------------------------ */
 
