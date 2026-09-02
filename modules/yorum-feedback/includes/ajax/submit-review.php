@@ -111,6 +111,14 @@ function qrm_pro_handle_review_submission($settings) {
         $insert_format[]         = '%d';
     }
 
+    $consent = qrm_pro_consent_from_request($settings);
+    $insert_data['consent_marketing'] = (int) $consent['consent_marketing'];
+    $insert_format[]                  = '%d';
+    $insert_data['consent_at']        = $consent['consent_at'];
+    $insert_format[]                  = '%s';
+    $insert_data['consent_text_hash'] = $consent['consent_text_hash'];
+    $insert_format[]                  = '%s';
+
     // Yazma başarısız olabilir (tablo yok, bağlantı düştü, sütun taşması).
     // Sonuç kontrol edilmezse cooldown başlatılır, önbellek boşuna geçersizlenir
     // ve kullanıcıya hiç kaydedilmemiş bir yorum için "alındı" denirdi.

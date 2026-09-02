@@ -166,6 +166,33 @@ function qrm_pro_admin_settings() {
             </div>
 
             <div class="qrm-card">
+                <h3><?php esc_html_e('KVKK / Pazarlama İzni', 'qrms'); ?></h3>
+                <p class="description">
+                    <?php esc_html_e('İsteğe bağlı onay kutusu tüm yorum, iletişim ve özel formlarda gösterilir. Metin boş bırakılırsa kutu hiç render edilmez; işaretlenmezse form normal gönderilir.', 'qrms'); ?>
+                </p>
+                <table class="form-table">
+                    <tr>
+                        <th><label for="qrm_consent_text"><?php esc_html_e('Onay metni', 'qrms'); ?></label></th>
+                        <td>
+                            <input type="text" id="qrm_consent_text" name="qrm_consent_text" class="large-text"
+                                   value="<?php echo esc_attr($settings['qrm_consent_text']); ?>"
+                                   placeholder="<?php esc_attr_e('Kampanya ve duyurulardan haberdar olmak istiyorum', 'qrms'); ?>">
+                            <p class="description"><?php esc_html_e('Checkbox yanında görünen metin. Boşsa özellik kapalıdır.', 'qrms'); ?></p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th><label for="qrm_consent_page_url"><?php esc_html_e('Aydınlatma Metni linki', 'qrms'); ?></label></th>
+                        <td>
+                            <input type="url" id="qrm_consent_page_url" name="qrm_consent_page_url" class="large-text"
+                                   value="<?php echo esc_attr($settings['qrm_consent_page_url']); ?>"
+                                   placeholder="https://">
+                            <p class="description"><?php esc_html_e('Onay metninin yanında "Aydınlatma Metni" bağlantısı olarak açılır.', 'qrms'); ?></p>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="qrm-card">
                 <h3><?php esc_html_e('Rapor Vardiyaları', 'qrms'); ?></h3>
                 <p class="description">
                     <?php esc_html_e('Tüm Yorumlar → Rapor ekranındaki vardiya kırılımı bu saatlere göre hesaplanır. Bitiş saati hariçtir; gece yarısını geçen aralıklar (ör. 23–06) desteklenir.', 'qrms'); ?>
@@ -274,6 +301,13 @@ function qrm_pro_admin_save_settings() {
             ? floatval(wp_unslash($_POST['qrm_trend_drop_threshold']))
             : 0.5,
     ]);
+
+    if (array_key_exists('qrm_consent_text', $_POST)) {
+        $settings['qrm_consent_text'] = sanitize_text_field(wp_unslash($_POST['qrm_consent_text']));
+    }
+    if (array_key_exists('qrm_consent_page_url', $_POST)) {
+        $settings['qrm_consent_page_url'] = esc_url_raw(trim(wp_unslash($_POST['qrm_consent_page_url'])));
+    }
 
     update_option('qrm_settings', $settings);
     qrm_pro_flush_trend_drop_cache();

@@ -491,6 +491,8 @@ function qrm_pro_admin_reports_page() {
                 </p>
             </div>
         </div>
+
+        <?php qrm_pro_admin_render_consent_block($range); ?>
     </div>
     <?php
 }

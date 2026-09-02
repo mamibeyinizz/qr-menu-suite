@@ -179,6 +179,9 @@ function qrm_export_csv_handler() {
         case 'reward_codes':
             qrm_export_csv_reward_codes($_POST);
             break;
+        case 'consent_marketing':
+            qrm_export_csv_consent_marketing($_POST);
+            break;
         default:
             wp_die(esc_html__('Geçersiz dışa aktarım türü.', 'qrms'));
     }
@@ -659,6 +662,63 @@ function qrm_export_csv_reward_codes(array $post) {
                 qrm_reward_status_label($r->status),
                 !empty($r->used_at) ? date_i18n('Y-m-d H:i', strtotime($r->used_at)) : '',
                 !empty($r->is_manual) ? __('Evet', 'qrms') : __('Hayır', 'qrms'),
+            ]);
+        }
+
+        if (count($rows) < $chunk) {
+            break;
+        }
+        $offset += $chunk;
+    }
+
+    fclose($out);
+    exit;
+}
+
+/**
+ * İzinli kişiler CSV dışa aktarımı.
+ *
+ * @param array $post $_POST.
+ * @return void
+ */
+function qrm_export_csv_consent_marketing(array $post) {
+    $bas_raw = (isset($post['rapor_bas']) && is_scalar($post['rapor_bas']))
+        ? sanitize_text_field(wp_unslash($post['rapor_bas'])) : '';
+    $bit_raw = (isset($post['rapor_bit']) && is_scalar($post['rapor_bit']))
+        ? sanitize_text_field(wp_unslash($post['rapor_bit'])) : '';
+    $range   = qrm_pro_report_date_range($bas_raw, $bit_raw);
+
+    $headers = [
+        __('Ad', 'qrms'),
+        __('Telefon', 'qrms'),
+        __('E-posta', 'qrms'),
+        __('Kaynak', 'qrms'),
+        __('Onay Tarihi', 'qrms'),
+    ];
+
+    $out = qrm_export_csv_begin(qrm_export_csv_filename('izinli-kisiler'), $headers);
+    if ($out === false) {
+        wp_die(esc_html__('CSV dosyası oluşturulamadı.', 'qrms'));
+    }
+
+    $offset = 0;
+    $chunk  = QRM_EXPORT_CSV_CHUNK;
+    $fields = [];
+
+    while (true) {
+        $rows = qrm_pro_fetch_consent_entries($range['bas_dt'], $range['bit_excl'], $chunk, $offset);
+        if (empty($rows)) {
+            break;
+        }
+
+        foreach ($rows as $row) {
+            $contact = qrm_pro_consent_contact_from_row($row, $fields);
+            qrm_export_csv_write_row($out, [
+                $contact['name'],
+                $contact['phone'],
+                $contact['email'],
+                (string) $row->source_label,
+                !empty($row->consent_at) ? date_i18n('Y-m-d H:i', strtotime($row->consent_at)) : '',
             ]);
         }
 
