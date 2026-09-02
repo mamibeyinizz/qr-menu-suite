@@ -8,7 +8,20 @@ if (!defined('ABSPATH')) exit;
 // diğer sayfanın ayarını eziyor" hata sınıfı yapısal olarak imkânsız hâle geliyor.
 
 function qrm_reward_admin_page() {
-    if (!current_user_can('manage_options')) return;
+    // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- görünüm seçimi.
+    $view_kasa = isset($_GET['view']) && sanitize_key(wp_unslash($_GET['view'])) === 'kasa';
+
+    if ($view_kasa) {
+        if (!current_user_can('edit_posts')) {
+            wp_die(esc_html__('Bu sayfayı görüntüleme yetkiniz yok.', 'qrms'));
+        }
+        qrm_reward_admin_cashier_view();
+        return;
+    }
+
+    if (!current_user_can('manage_options')) {
+        wp_die(esc_html__('Bu sayfayı görüntüleme yetkiniz yok.', 'qrms'));
+    }
 
     $view = (isset($_GET['tab']) && sanitize_key($_GET['tab']) === 'codes') ? 'codes' : 'settings';
     $notices = [];
@@ -36,6 +49,7 @@ function qrm_reward_admin_page() {
         <h2 class="nav-tab-wrapper">
             <a href="<?php echo esc_url(qrm_pro_admin_url('qrms-yf-odul')); ?>" class="nav-tab <?php echo $view === 'settings' ? 'nav-tab-active' : ''; ?>">Ayarlar</a>
             <a href="<?php echo esc_url(qrm_pro_admin_url('qrms-yf-odul', ['tab' => 'codes'])); ?>" class="nav-tab <?php echo $view === 'codes' ? 'nav-tab-active' : ''; ?>">Ödül Kodları</a>
+            <a href="<?php echo esc_url(qrm_pro_admin_url('qrms-yf-odul', ['view' => 'kasa'])); ?>" class="nav-tab" target="_blank" rel="noopener">Kasa Doğrulama ↗</a>
         </h2>
 
         <?php
@@ -122,6 +136,9 @@ function qrm_reward_admin_save_all() {
     }
     if (array_key_exists('qrm_reward_auto_trigger_seconds', $_POST)) {
         $settings['qrm_reward_auto_trigger_seconds'] = max(15, min(30, intval($_POST['qrm_reward_auto_trigger_seconds'])));
+    }
+    if (array_key_exists('qrm_reward_valid_days', $_POST)) {
+        $settings['qrm_reward_valid_days'] = max(0, min(3650, intval($_POST['qrm_reward_valid_days'])));
     }
 
     update_option('qrm_settings', $settings);
@@ -289,6 +306,13 @@ function qrm_reward_admin_settings_view($settings, $sub = 'kurulum') {
                                 <th><label>Ödül Popup Modülü</label></th>
                                 <td><label><input type="checkbox" name="qrm_reward_enabled" value="1" <?php checked($settings['qrm_reward_enabled'], 1); ?>> Ödül sistemini etkinleştir (indirim kodu popup'ı)</label>
                                     <p class="description">Açıkken eşiği geçen müşteriye popup gösterilir; kapalıyken eski satır içi Google CTA'sı çalışır.</p></td>
+                            </tr>
+                            <tr>
+                                <th><label>Kod Geçerlilik Süresi</label></th>
+                                <td>
+                                    <input type="number" name="qrm_reward_valid_days" min="0" max="3650" value="<?php echo esc_attr((int) ($settings['qrm_reward_valid_days'] ?? 30)); ?>" class="small-text"> gün
+                                    <p class="description">Yeni üretilen kodların son kullanma tarihi. <strong>0</strong> = süresiz. Mevcut kodlar etkilenmez.</p>
+                                </td>
                             </tr>
                             <tr>
                                 <th><label>Yönlendirme Eşiği</label></th>

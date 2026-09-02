@@ -2,10 +2,25 @@
 /*
 Plugin Name: QR Menü Gelişmiş Müşteri Yorumları & Değerlendirme
 Description: QR menü sistemleri için çoklu kriter (yemek, hizmet, temizlik vb.) puanlama sistemli, Google yorum yönlendirmeli (review gating), AJAX destekli, gelişmiş analitik barındıran premium müşteri yorum eklentisi.
-Version: 4.2.5
+Version: 4.2.6
 Author: QR MENÜ
 
 == Changelog ==
+
+4.2.6
+ - KONTROL: qrm_reward_codes tablosunda status/used_at/source_review_id, kod listesi,
+   durum filtresi, Kullanıldı/İptal/Geçerli Yap/Sil işlemleri ve Kod Sorgula kutusu
+   (wp_ajax_qrm_reward_admin_lookup) zaten vardı — dokunulmadı.
+ - YENİ: expires_at sütunu + ayar qrm_reward_valid_days (varsayılan 30, 0 = süresiz);
+   kod üretiminde otomatik doldurulur.
+ - YENİ: Süresi geçen kodları expired yapan günlük cron (tek kayıt, deaktivasyonda
+   temizlik) ve qrm_reward_find_by_code() içinde tembel süre dolumu.
+ - YENİ: Kod sorgulama kutusunda geçerli kod için "Kullanıldı olarak işaretle"
+   (wp_ajax_qrm_reward_cashier_mark_used, edit_posts + nonce).
+ - YENİ: Kasiyer görünümü ?view=kasa — yalnızca kod girişi, sonuç ve kullan butonu
+   (edit_posts; ayarlar ve liste görünmez).
+ - YENİ: Ödül Kodları sekmesinde özet sayaçlar: üretilen / kullanılan / süresi dolmuş /
+   iptal + kullanım oranı (%).
 
 4.2.5
  - YENİ: Tüm Yorumlar, Özel Form Gönderileri ve Ödül Kodları listelerinde
@@ -157,7 +172,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('QRM_PRO_VERSION', '4.2.5');
+define('QRM_PRO_VERSION', '4.2.6');
 define('QRM_PRO_FILE', __FILE__);
 define('QRM_PRO_PATH', plugin_dir_path(__FILE__));
 define('QRM_PRO_URL', plugin_dir_url(__FILE__));
@@ -190,6 +205,7 @@ require_once QRM_PRO_PATH . 'includes/admin/form-builder.php';
 require_once QRM_PRO_PATH . 'includes/admin/settings-page.php';
 require_once QRM_PRO_PATH . 'includes/admin/contact.php';
 require_once QRM_PRO_PATH . 'includes/admin/rewards.php';
+require_once QRM_PRO_PATH . 'includes/admin/reward-cashier.php';
 require_once QRM_PRO_PATH . 'includes/admin/reward-codes.php';
 require_once QRM_PRO_PATH . 'includes/admin/forms-list.php';
 require_once QRM_PRO_PATH . 'includes/admin/custom-form-builder.php';
@@ -214,6 +230,9 @@ require_once QRM_PRO_PATH . 'includes/ajax/submit-custom-form.php';
 require_once QRM_PRO_PATH . 'includes/ajax/review-workflow.php';
 
 register_activation_hook(__FILE__, 'qrm_pro_install');
+register_deactivation_hook(__FILE__, 'qrm_reward_unschedule_expire_cron');
+
+add_action('init', 'qrm_reward_schedule_expire_cron', 20);
 
 // Eklenti dosyaları güncellendiğinde (reaktivasyon olmadan) yeni tabloların da
 // oluşmasını sağlar. Sürüm aynıysa hiçbir sorgu çalışmaz.

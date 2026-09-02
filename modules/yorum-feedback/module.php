@@ -143,11 +143,12 @@ function qrms_module_yorum_feedback_admin_menu() {
 	}
 
 	foreach ( qrm_pro_admin_pages() as $slug => $page ) {
+		$capability = ( 'qrms-yf-odul' === $slug ) ? 'edit_posts' : QRMS_Admin::CAPABILITY;
 		add_submenu_page(
 			$parent,
 			$page['title'],
 			$page['menu_title'],
-			QRMS_Admin::CAPABILITY,
+			$capability,
 			$slug,
 			QRMS_Admin::register_module_subpage( 'yorum-feedback', $slug, $page['render'] )
 		);
