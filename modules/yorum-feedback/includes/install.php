@@ -416,4 +416,7 @@ function qrm_pro_review_stats($taze = false) {
 function qrm_pro_flush_review_stats() {
     unset($GLOBALS['qrm_pro_stats_memo']);
     delete_transient(QRM_PRO_STATS_TRANSIENT);
+    if (function_exists('qrm_pro_flush_trend_drop_cache')) {
+        qrm_pro_flush_trend_drop_cache();
+    }
 }
