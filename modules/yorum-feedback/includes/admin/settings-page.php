@@ -165,6 +165,43 @@ function qrm_pro_admin_settings() {
                 </table>
             </div>
 
+            <div class="qrm-card">
+                <h3><?php esc_html_e('Rapor Vardiyaları', 'qrms'); ?></h3>
+                <p class="description">
+                    <?php esc_html_e('Tüm Yorumlar → Rapor ekranındaki vardiya kırılımı bu saatlere göre hesaplanır. Bitiş saati hariçtir; gece yarısını geçen aralıklar (ör. 23–06) desteklenir.', 'qrms'); ?>
+                </p>
+                <table class="widefat striped qrm-shifts-table">
+                    <thead>
+                        <tr>
+                            <th><?php esc_html_e('Ad', 'qrms'); ?></th>
+                            <th><?php esc_html_e('Başlangıç (saat)', 'qrms'); ?></th>
+                            <th><?php esc_html_e('Bitiş (saat)', 'qrms'); ?></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php
+                        $shifts = qrm_pro_get_shifts($settings);
+                        foreach ($shifts as $idx => $shift):
+                        ?>
+                        <tr>
+                            <td>
+                                <input type="text" name="qrm_shifts[<?php echo (int) $idx; ?>][name]" class="regular-text"
+                                       value="<?php echo esc_attr($shift['name']); ?>">
+                            </td>
+                            <td>
+                                <input type="number" name="qrm_shifts[<?php echo (int) $idx; ?>][start]" min="0" max="23" step="1" class="small-text"
+                                       value="<?php echo esc_attr((string) (int) $shift['start']); ?>">
+                            </td>
+                            <td>
+                                <input type="number" name="qrm_shifts[<?php echo (int) $idx; ?>][end]" min="0" max="23" step="1" class="small-text"
+                                       value="<?php echo esc_attr((string) (int) $shift['end']); ?>">
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+
             <p class="submit">
                 <input type="submit" name="qrm_save_settings" class="button button-primary button-large" value="Kaydet">
                 <a href="<?php echo esc_url(qrm_pro_admin_url('qrms-yf-odul')); ?>" class="button" style="margin-left:8px;">Google &amp; Ödül Ayarları</a>
@@ -206,6 +243,12 @@ function qrm_pro_admin_save_settings() {
 
     // 0 = kapalı, üst sınır 1 gün.
     $settings['qrm_spam_cooldown_minutes'] = max(0, min(1440, intval($_POST['qrm_spam_cooldown_minutes'])));
+
+    if (function_exists('qrm_pro_sanitize_shifts_from_post')) {
+        $settings['qrm_shifts'] = qrm_pro_sanitize_shifts_from_post(
+            isset($_POST['qrm_shifts']) ? wp_unslash($_POST['qrm_shifts']) : []
+        );
+    }
 
     update_option('qrm_settings', $settings);
 }

@@ -15,6 +15,7 @@ function qrm_pro_install() {
         customer_name varchar(255) DEFAULT '',
         customer_phone varchar(50) DEFAULT '',
         table_no varchar(50) DEFAULT '',
+        table_id mediumint(9) DEFAULT NULL,
         is_anonymous tinyint(1) DEFAULT 0,
         rating float NOT NULL,
         rating_1 tinyint(1) DEFAULT 0,
@@ -34,7 +35,8 @@ function qrm_pro_install() {
         PRIMARY KEY  (id),
         KEY idx_status_created (status, created_at),
         KEY idx_created (created_at),
-        KEY idx_workflow (workflow_status, created_at)
+        KEY idx_workflow (workflow_status, created_at),
+        KEY idx_table_created (table_id, created_at)
     ) $charset_collate;";
     //
     // İNDEKSLER (v4.2.3) — tabloda uzun süre PRIMARY KEY dışında hiçbir indeks

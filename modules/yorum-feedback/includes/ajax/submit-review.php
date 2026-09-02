@@ -63,6 +63,10 @@ function qrm_pro_handle_review_submission($settings) {
 
     $comment = isset($_POST['comment']) ? sanitize_textarea_field($_POST['comment']) : '';
 
+    $masa_ctx = qrm_pro_resolve_masa_for_submission(
+        isset($_POST['table_no']) ? wp_unslash($_POST['table_no']) : ''
+    );
+
     $status = 0;
     if ($settings['auto_approve_rating'] > 0 && $calc_avg >= $settings['auto_approve_rating']) {
         $status = 1;
@@ -78,7 +82,7 @@ function qrm_pro_handle_review_submission($settings) {
         'comment' => $comment,
         'customer_name' => isset($_POST['customer_name']) ? sanitize_text_field($_POST['customer_name']) : '',
         'customer_phone' => $phone_norm,
-        'table_no' => isset($_POST['table_no']) ? preg_replace('/[^0-9]/', '', $_POST['table_no']) : '',
+        'table_no' => $masa_ctx['table_no'],
         'is_anonymous' => isset($_POST['is_anonymous']) ? 1 : 0,
         'status' => $status,
         'form_source' => (isset($_POST['qrm_form_source']) && $_POST['qrm_form_source'] === 'contact') ? 'contact' : 'review',
@@ -101,6 +105,11 @@ function qrm_pro_handle_review_submission($settings) {
         '%d', // status
         '%s', // form_source
     ];
+
+    if ($masa_ctx['table_id'] !== null && (int) $masa_ctx['table_id'] > 0) {
+        $insert_data['table_id'] = (int) $masa_ctx['table_id'];
+        $insert_format[]         = '%d';
+    }
 
     // Yazma başarısız olabilir (tablo yok, bağlantı düştü, sütun taşması).
     // Sonuç kontrol edilmezse cooldown başlatılır, önbellek boşuna geçersizlenir

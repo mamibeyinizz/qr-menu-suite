@@ -49,6 +49,16 @@ function qrm_cf_ajax_submit() {
         wp_send_json(['success' => false, 'message' => $cooldown]);
     }
 
+    $masa_ctx = qrm_pro_resolve_masa_for_submission('');
+    if ($masa_ctx['masa_slug'] !== '' || $masa_ctx['table_id'] !== null) {
+        if ($masa_ctx['masa_slug'] !== '') {
+            $validated['data']['_qrm_masa_slug'] = $masa_ctx['masa_slug'];
+        }
+        if ($masa_ctx['table_id'] !== null && (int) $masa_ctx['table_id'] > 0) {
+            $validated['data']['_qrm_table_id'] = (int) $masa_ctx['table_id'];
+        }
+    }
+
     $submission_id = qrm_cf_insert_submission($form->id, $validated['data'], qrm_pro_client_ip());
     if (!$submission_id) {
         wp_send_json(['success' => false, 'message' => qrm_ceviri_review(__('Gönderiminiz kaydedilemedi, lütfen tekrar deneyin.', 'qrms'))]);
