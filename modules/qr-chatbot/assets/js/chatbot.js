@@ -189,6 +189,190 @@
 		return el;
 	}
 
+	function urunEtiketleriTemizle( metin ) {
+		return String( metin || '' )
+			.replace( /\[URUN:\d+\]/g, '' )
+			.replace( /[ \t]{2,}/g, ' ' )
+			.replace( /\n{3,}/g, '\n\n' )
+			.trim();
+	}
+
+	function sepetOku() {
+		try {
+			var v = JSON.parse( sessionStorage.getItem( 'qmo_sepet' ) || '[]' );
+			return Array.isArray( v ) ? v : [];
+		} catch ( e ) {
+			return [];
+		}
+	}
+
+	function sepetKaydet( s ) {
+		try {
+			sessionStorage.setItem( 'qmo_sepet', JSON.stringify( s ) );
+		} catch ( e ) {}
+	}
+
+	function sepetAnalitik( pid ) {
+		pid = parseInt( pid, 10 ) || 0;
+		if ( ! pid || typeof qmoSepet === 'undefined' || ! qmoSepet.analitik || ! qmoSepet.ajaxUrl || ! qmoSepet.nonce ) {
+			return;
+		}
+		var govde = new URLSearchParams();
+		govde.append( 'action', 'qmo_sepet_olay' );
+		govde.append( 'nonce', qmoSepet.nonce );
+		govde.append( 'olaylar', JSON.stringify( [ { tip: 'cart_add', item_id: pid } ] ) );
+		fetch( qmoSepet.ajaxUrl, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+			credentials: 'same-origin',
+			body: govde.toString()
+		} ).catch( function () {} );
+	}
+
+	function sepetCubuguGuncelle() {
+		var bar = document.getElementById( 'qmo-bar' );
+		if ( ! bar ) {
+			return;
+		}
+		var s = sepetOku();
+		var adet = 0;
+		s.forEach( function ( x ) {
+			adet += x.adet || 0;
+		} );
+		var badge = document.getElementById( 'qmo-badge' );
+		if ( badge ) {
+			badge.textContent = adet;
+		}
+		bar.classList.toggle( 'qmo-on', adet > 0 );
+	}
+
+	function sepeteEkle( urun ) {
+		if ( ! urun || ! urun.id ) {
+			return false;
+		}
+		var pid = parseInt( urun.id, 10 );
+		var ad = String( urun.ad || '' );
+		var fy = parseFloat( urun.fiyatSayi );
+		if ( isNaN( fy ) ) {
+			fy = 0;
+		}
+		var s = sepetOku();
+		var mevcut = s.filter( function ( x ) {
+			return ( pid && x.pid === pid ) || ( ad && x.id === ad );
+		} )[ 0 ];
+
+		if ( mevcut ) {
+			mevcut.adet = Math.min( 20, ( mevcut.adet || 0 ) + 1 );
+			if ( urun.gorsel ) {
+				mevcut.img = urun.gorsel;
+			}
+			if ( pid && ! mevcut.pid ) {
+				mevcut.pid = pid;
+			}
+		} else {
+			s.push( {
+				id: ad,
+				pid: pid,
+				ad: ad,
+				fiyat: fy,
+				adet: 1,
+				not: '',
+				img: urun.gorsel || ''
+			} );
+		}
+
+		sepetKaydet( s );
+		sepetAnalitik( pid );
+		sepetCubuguGuncelle();
+		return true;
+	}
+
+	function urunKartiBas( urun ) {
+		var kart = document.createElement( 'div' );
+		kart.className = 'gemini-urun-kart';
+
+		if ( urun.gorsel ) {
+			var img = document.createElement( 'img' );
+			img.className = 'gemini-urun-gorsel';
+			img.src = urun.gorsel;
+			img.alt = '';
+			img.loading = 'lazy';
+			kart.appendChild( img );
+		}
+
+		var govde = document.createElement( 'div' );
+		govde.className = 'gemini-urun-govde';
+
+		var adEl = document.createElement( 'div' );
+		adEl.className = 'gemini-urun-ad';
+		adEl.textContent = urun.ad || '';
+
+		var fyEl = document.createElement( 'div' );
+		fyEl.className = 'gemini-urun-fiyat';
+		fyEl.textContent = urun.fiyat || '';
+
+		var btn = document.createElement( 'button' );
+		btn.type = 'button';
+		btn.className = 'gemini-urun-sepete';
+		btn.textContent = metin( 'sepeteEkle', 'Sepete Ekle' );
+
+		btn.addEventListener( 'click', function () {
+			if ( btn.disabled ) {
+				return;
+			}
+			if ( sepeteEkle( urun ) ) {
+				btn.disabled = true;
+				btn.classList.add( 'is-eklendi' );
+				btn.textContent = metin( 'sepette', 'Sepette ✓' );
+			}
+		} );
+
+		govde.appendChild( adEl );
+		govde.appendChild( fyEl );
+		govde.appendChild( btn );
+		kart.appendChild( govde );
+		return kart;
+	}
+
+	function botBalonu( metin, urunler, hataMi ) {
+		var grup = document.createElement( 'div' );
+		grup.className = 'gemini-msg-grup';
+
+		var el = document.createElement( 'div' );
+		el.className = 'gemini-msg-bubble gemini-msg-bot';
+		if ( hataMi ) {
+			el.classList.add( 'gemini-msg-hata' );
+		}
+
+		var parcalar = String( metin ).split( '\n' );
+		parcalar.forEach( function ( p, i ) {
+			if ( i > 0 ) {
+				el.appendChild( document.createElement( 'br' ) );
+			}
+			el.appendChild( document.createTextNode( p ) );
+		} );
+		grup.appendChild( el );
+
+		if ( urunler && urunler.length ) {
+			var liste = document.createElement( 'div' );
+			liste.className = 'gemini-urun-kartlari';
+			urunler.forEach( function ( u ) {
+				if ( u && u.id ) {
+					liste.appendChild( urunKartiBas( u ) );
+				}
+			} );
+			if ( liste.childNodes.length ) {
+				grup.appendChild( liste );
+			}
+		}
+
+		if ( log ) {
+			log.appendChild( grup );
+			log.scrollTop = log.scrollHeight;
+		}
+		return grup;
+	}
+
 	function yaziyorGoster() {
 		var el = document.createElement( 'div' );
 		el.className = 'gemini-typing';
@@ -258,8 +442,10 @@
 				return;
 			}
 
-			var cevap = yanit.data || '';
-			var ham   = cevap;
+			var payload = yanit.data;
+			var cevap   = 'string' === typeof payload ? payload : ( payload && payload.mesaj ? payload.mesaj : '' );
+			var urunler = payload && payload.urunler && Array.isArray( payload.urunler ) ? payload.urunler : [];
+			var ham     = cevap;
 
 			if ( cevap.indexOf( '[CALL_WAITER]' ) !== -1 ) {
 				cevap = cevap.replace( '[CALL_WAITER]', '' ).trim();
@@ -279,11 +465,11 @@
 			if ( eslesme ) {
 				cevap = cevap.replace( eslesme[ 0 ], '' ).trim();
 				try {
-					var urunler = JSON.parse( eslesme[ 1 ].trim() );
-					if ( Array.isArray( urunler ) && urunler.length ) {
+					var siparisUrunler = JSON.parse( eslesme[ 1 ].trim() );
+					if ( Array.isArray( siparisUrunler ) && siparisUrunler.length ) {
 						istek( {
 							action: 'gemini_bot_siparis',
-							items: JSON.stringify( urunler )
+							items: JSON.stringify( siparisUrunler )
 						} ).then( function ( sy ) {
 							if ( ! sy || ! sy.success ) {
 								var msg = metin( 'siparisIletilemedi', 'Siparişiniz iletilemedi, lütfen garsona bildirin.' );
@@ -305,13 +491,19 @@
 				}
 			}
 
+			cevap = urunEtiketleriTemizle( cevap );
+
 			gecmis.push( { role: 'user', parts: [ { text: mesaj } ] } );
 			gecmis.push( { role: 'model', parts: [ { text: ham } ] } );
 			if ( gecmis.length > 20 ) {
 				gecmis = gecmis.slice( -20 );
 			}
 
-			balon( cevap, 'bot' );
+			if ( urunler.length ) {
+				botBalonu( cevap, urunler );
+			} else {
+				balon( cevap, 'bot' );
+			}
 			if ( ! overlay.classList.contains( 'gemini-acik' ) ) {
 				rozetGoster();
 			}

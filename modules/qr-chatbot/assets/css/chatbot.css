@@ -398,6 +398,94 @@ body.gm-scroll-kilit { position: fixed; width: 100%; }
 }
 .gemini-msg-hata { outline: 1px solid #e11d48; }
 
+.gemini-msg-grup {
+	align-self: flex-start;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	max-width: 88%;
+}
+
+.gemini-msg-grup .gemini-msg-bubble {
+	max-width: 100%;
+}
+
+.gemini-urun-kartlari {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	width: 100%;
+}
+
+.gemini-urun-kart {
+	background: var(--gm-chat-bg, #fff);
+	border: 1px solid var(--gm-border, #e8e4f0);
+	border-radius: var(--gm-radius, 16px);
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+	display: flex;
+	gap: 10px;
+	overflow: hidden;
+	padding: 10px;
+}
+
+.gemini-urun-gorsel {
+	border-radius: calc(var(--gm-radius, 16px) - 4px);
+	flex-shrink: 0;
+	height: 56px;
+	object-fit: cover;
+	width: 56px;
+}
+
+.gemini-urun-govde {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	gap: 6px;
+	min-width: 0;
+}
+
+.gemini-urun-ad {
+	color: var(--gm-text, #1a1a1a);
+	font-size: 14px;
+	font-weight: 700;
+	line-height: 1.35;
+}
+
+.gemini-urun-fiyat {
+	color: var(--gm-text, #1a1a1a);
+	font-size: 13px;
+	font-weight: 600;
+	opacity: 0.85;
+}
+
+.gemini-urun-sepete {
+	background: var(--gm-send-bg, var(--gm-header-bg, #6b21a8));
+	border: 0;
+	border-radius: var(--gm-radius, 16px);
+	color: var(--gm-send-icon, #fff);
+	cursor: pointer;
+	font-size: 13px;
+	font-weight: 700;
+	height: 40px;
+	line-height: 40px;
+	padding: 0 12px;
+	width: 100%;
+}
+
+.gemini-urun-sepete:hover,
+.gemini-urun-sepete:active {
+	filter: brightness(0.96);
+}
+
+.gemini-urun-sepete.is-eklendi,
+.gemini-urun-sepete:disabled {
+	background: var(--gm-bot-bg, #f3f0f8);
+	color: var(--gm-bot-text, var(--gm-text));
+	cursor: default;
+	filter: none;
+	opacity: 0.92;
+}
+
 .gemini-quick-replies {
 	display: flex;
 	flex-wrap: nowrap;
