@@ -191,6 +191,7 @@ function qrm_pro_default_settings() {
         // Süreler
         'qrm_reward_wait_seconds' => 30,              // Google butonuna basınca beklenen süre
         'qrm_reward_auto_trigger_seconds' => 20,      // hiç tıklanmazsa otomatik e-posta adımı (15-30)
+        'qrm_reward_valid_days' => 30,                // kod geçerlilik süresi (gün); 0 = süresiz
         // E-posta
         'qrm_reward_email_subject' => 'İndirim kodunuz hazır!',
         'qrm_reward_email_intro' => 'Değerlendirmeniz için teşekkür ederiz. Aşağıdaki indirim kodunu bir sonraki ziyaretinizde kullanabilirsiniz.',
