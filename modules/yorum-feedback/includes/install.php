@@ -27,9 +27,14 @@ function qrm_pro_install() {
         sentiment varchar(20) DEFAULT 'neutral',
         is_manual tinyint(1) DEFAULT 0,
         form_source varchar(20) DEFAULT 'review' NOT NULL,
+        workflow_status varchar(20) DEFAULT 'new' NOT NULL,
+        assigned_user_id bigint(20) unsigned DEFAULT NULL,
+        internal_note text NULL,
+        resolved_at datetime DEFAULT NULL,
         PRIMARY KEY  (id),
         KEY idx_status_created (status, created_at),
-        KEY idx_created (created_at)
+        KEY idx_created (created_at),
+        KEY idx_workflow (workflow_status, created_at)
     ) $charset_collate;";
     //
     // İNDEKSLER (v4.2.3) — tabloda uzun süre PRIMARY KEY dışında hiçbir indeks

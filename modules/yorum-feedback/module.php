@@ -218,6 +218,30 @@ function qrms_module_yorum_feedback_admin_assets() {
 		QRMS_Helpers::asset_version( 'modules/yorum-feedback/assets/css/admin.css' )
 	);
 
+	if ( 'qrms-yf-yorumlar' === $page ) {
+		wp_enqueue_script(
+			'qrm-review-workflow',
+			QRMS_PLUGIN_URL . 'modules/yorum-feedback/assets/js/review-workflow.js',
+			array(),
+			QRMS_Helpers::asset_version( 'modules/yorum-feedback/assets/js/review-workflow.js' ),
+			true
+		);
+		wp_localize_script(
+			'qrm-review-workflow',
+			'qrmReviewWorkflow',
+			array(
+				'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+				'nonce'   => wp_create_nonce( 'qrm_review_workflow_save' ),
+				'i18n'    => array(
+					'saving'     => __( 'Kaydediliyor…', 'qrms' ),
+					'saved'      => __( 'Kaydedildi', 'qrms' ),
+					'error'      => __( 'Kayıt başarısız', 'qrms' ),
+					'resolvedAt' => __( 'Çözüldü:', 'qrms' ),
+				),
+			)
+		);
+	}
+
 	// Renk seçici ve sürükle-bırak yalnızca onlara ihtiyaç duyan ekranlarda.
 	if ( in_array( $page, array( 'qrms-yf-ayarlar', 'qrms-yf-odul' ), true ) ) {
 		wp_enqueue_style( 'wp-color-picker' );
