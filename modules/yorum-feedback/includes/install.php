@@ -32,11 +32,15 @@ function qrm_pro_install() {
         assigned_user_id bigint(20) unsigned DEFAULT NULL,
         internal_note text NULL,
         resolved_at datetime DEFAULT NULL,
+        consent_marketing tinyint(1) DEFAULT 0 NOT NULL,
+        consent_at datetime DEFAULT NULL,
+        consent_text_hash char(32) DEFAULT NULL,
         PRIMARY KEY  (id),
         KEY idx_status_created (status, created_at),
         KEY idx_created (created_at),
         KEY idx_workflow (workflow_status, created_at),
-        KEY idx_table_created (table_id, created_at)
+        KEY idx_table_created (table_id, created_at),
+        KEY idx_consent (consent_marketing, consent_at)
     ) $charset_collate;";
     //
     // İNDEKSLER (v4.2.3) — tabloda uzun süre PRIMARY KEY dışında hiçbir indeks

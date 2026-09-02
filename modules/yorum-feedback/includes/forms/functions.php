@@ -516,15 +516,27 @@ function qrm_cf_validate_submission($fields, $post) {
 
 // --- GÖNDERİM CRUD ---
 
-function qrm_cf_insert_submission($form_id, $data, $ip = '') {
+function qrm_cf_insert_submission($form_id, $data, $ip = '', array $consent = []) {
     global $wpdb;
+
+    if (empty($consent)) {
+        $consent = [
+            'consent_marketing' => 0,
+            'consent_at'        => null,
+            'consent_text_hash' => null,
+        ];
+    }
+
     $wpdb->insert(qrm_cf_submissions_table(), [
-        'form_id'    => intval($form_id),
-        'data'       => wp_json_encode($data),
-        'status'     => 'new',
-        'ip_address' => substr((string) $ip, 0, 100),
-        'created_at' => current_time('mysql'),
-    ], ['%d', '%s', '%s', '%s', '%s']);
+        'form_id'             => intval($form_id),
+        'data'                => wp_json_encode($data),
+        'status'              => 'new',
+        'ip_address'          => substr((string) $ip, 0, 100),
+        'created_at'          => current_time('mysql'),
+        'consent_marketing'   => (int) $consent['consent_marketing'],
+        'consent_at'          => $consent['consent_at'],
+        'consent_text_hash'   => $consent['consent_text_hash'],
+    ], ['%d', '%s', '%s', '%s', '%s', '%d', '%s', '%s']);
 
     qrm_cf_flush_unread_total();
 

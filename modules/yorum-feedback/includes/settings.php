@@ -162,6 +162,10 @@ function qrm_pro_default_settings() {
         // Kriter düşüş uyarısı eşiği (puan) — v4.2.4.
         'qrm_trend_drop_threshold' => 0.5,
 
+        // KVKK / pazarlama izni (v4.2.7) — metin boşsa checkbox render edilmez.
+        'qrm_consent_text' => '',
+        'qrm_consent_page_url' => '',
+
         // --- Google Review Ödül Sistemi (v4.1.0) ---
         // Not: google_review_url / google_review_threshold gibi mevcut ayarlar
         // tekrar üretilmez, ödül modülü doğrudan onları okur.

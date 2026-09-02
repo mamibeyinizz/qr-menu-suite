@@ -782,6 +782,28 @@
 	margin: 0;
 }
 
+.qrm-consent-block-head {
+	align-items: flex-start;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12px;
+	justify-content: space-between;
+	margin-bottom: 12px;
+}
+
+.qrm-consent-block-head h3 {
+	margin: 0;
+}
+
+.qrm-consent-link {
+	margin-left: 6px;
+	white-space: nowrap;
+}
+
+.qrm-consent-revoke-form {
+	margin: 0;
+}
+
 .qrm-report-heading {
 	font-size: 1.2em;
 	margin: 8px 0 6px;

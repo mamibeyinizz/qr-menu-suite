@@ -201,6 +201,8 @@ function qrm_cf_render_form($form, $fields, $s = null) {
                     } ?>
                 </div>
 
+                <?php echo qrm_pro_render_consent_checkbox(qrm_pro_get_settings()); ?>
+
                 <button type="submit" class="qrm-btn"><span class="qrm-btn-label"><?php echo esc_html(qrm_ceviri_cf_form($form_id, 'submit_text', $s['submit_text'])); ?></span></button>
             </form>
         </div>
