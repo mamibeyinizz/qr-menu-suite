@@ -39,6 +39,9 @@ if (!function_exists('qrm_ceviri_review_js_metinleri')) {
             'thanks'       => qrm_ceviri_review(__('Değerlendirmeniz için teşekkürler!', 'qrms')),
             'loading'      => qrm_ceviri_review(__('Yükleniyor…', 'qrms')),
             'mediaError'   => qrm_ceviri_review(__('Geçersiz görsel veya boyut sınırı aşıldı.', 'qrms')),
+            'loadMore'     => qrm_ceviri_review(__('Daha Fazla Göster', 'qrms')),
+            'filterEmpty'  => qrm_ceviri_review(__('Bu filtreye uygun yorum yok.', 'qrms')),
+            'clearFilters' => qrm_ceviri_review(__('Filtreyi temizle', 'qrms')),
         ];
     }
 }
@@ -128,6 +131,7 @@ function qrm_pro_default_settings() {
         'theme_style' => 'light',
         'auto_approve_rating' => 0,
         'reviews_per_page' => 3,
+        'qrm_reviews_pagination_mode' => 'loadmore',
         'show_overall_stats' => 1,
         'crit_1_name' => 'Yemek Lezzeti', 'crit_1_active' => 1,
         'crit_2_name' => 'Hizmet Hızı', 'crit_2_active' => 1,

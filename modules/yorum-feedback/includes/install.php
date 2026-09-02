@@ -37,6 +37,7 @@ function qrm_pro_install() {
         consent_text_hash char(32) DEFAULT NULL,
         PRIMARY KEY  (id),
         KEY idx_status_created (status, created_at),
+        KEY idx_status_rating (status, rating),
         KEY idx_created (created_at),
         KEY idx_workflow (workflow_status, created_at),
         KEY idx_table_created (table_id, created_at),
@@ -48,6 +49,8 @@ function qrm_pro_install() {
     //
     //   idx_status_created  ->  WHERE status = X ORDER BY created_at DESC LIMIT ...
     //                           (ön yüz yorum listesi: HER ziyaretçide çalışır),
+    //   idx_status_rating   ->  WHERE status = 1 ORDER BY rating DESC/ASC LIMIT ...
+    //                           (ön yüz puan sıralaması, v4.2.9),
     //                           WHERE status = 1 sayaçları ve yapay zekâ özetinin
     //                           "son N yayındaki yorum" sorgusu.
     //   idx_created         ->  filtresiz yönetim listesinin ORDER BY created_at'i.
