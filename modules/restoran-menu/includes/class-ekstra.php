@@ -67,6 +67,53 @@ class RMA_Ekstra {
 	}
 
 	/**
+	 * Her liste id'sinin kaç üründe kullanıldığını döndürür (tek sorgu).
+	 *
+	 * @return array<string,int>
+	 */
+	public static function kullanim_sayilari() {
+		static $memo = null;
+
+		if ( null !== $memo ) {
+			return $memo;
+		}
+
+		global $wpdb;
+
+		$memo = array();
+		$rows = $wpdb->get_col(
+			$wpdb->prepare(
+				"SELECT meta_value FROM {$wpdb->postmeta} WHERE meta_key = %s",
+				self::META_LISTE
+			)
+		);
+
+		foreach ( $rows as $ham ) {
+			$idler = maybe_unserialize( $ham );
+
+			if ( ! is_array( $idler ) ) {
+				continue;
+			}
+
+			foreach ( $idler as $id ) {
+				$id = sanitize_key( (string) $id );
+
+				if ( '' === $id ) {
+					continue;
+				}
+
+				if ( ! isset( $memo[ $id ] ) ) {
+					$memo[ $id ] = 0;
+				}
+
+				++$memo[ $id ];
+			}
+		}
+
+		return $memo;
+	}
+
+	/**
 	 * Listeleri kaydeder.
 	 *
 	 * @param mixed $ham POST edilen dizi.

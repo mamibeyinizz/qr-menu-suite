@@ -2738,6 +2738,28 @@ class QRMS_Test_Wpdb {
 		$GLOBALS['qrms_son_sql'] = $sql;
 		return array();
 	}
+
+	public function get_col( $sql ) {
+		$GLOBALS['qrms_son_sql'] = $sql;
+
+		if ( false === strpos( $sql, 'postmeta' ) || ! preg_match( "/meta_key = '([^']+)'/", $sql, $eslesme ) ) {
+			return array();
+		}
+
+		$anahtar = $eslesme[1];
+		$sonuc   = array();
+
+		foreach ( $GLOBALS['qrms_test']['post_meta'] ?? array() as $meta ) {
+			if ( ! isset( $meta[ $anahtar ] ) ) {
+				continue;
+			}
+
+			$deger = $meta[ $anahtar ];
+			$sonuc[] = is_array( $deger ) ? serialize( $deger ) : (string) $deger;
+		}
+
+		return $sonuc;
+	}
 }
 
 $GLOBALS['wpdb'] = new QRMS_Test_Wpdb();

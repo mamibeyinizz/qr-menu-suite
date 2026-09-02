@@ -129,6 +129,21 @@ qrms_test(
 );
 
 qrms_test(
+	'ekstra liste kullanım sayısı tek sorguda hesaplanır',
+	function () {
+		$GLOBALS['qrms_test']['post_meta'] = array(
+			200 => array( RMA_Ekstra::META_LISTE => array( 'soslar', 'icecek' ) ),
+			201 => array( RMA_Ekstra::META_LISTE => array( 'soslar' ) ),
+		);
+
+		$sayilar = RMA_Ekstra::kullanim_sayilari();
+
+		qrms_assert_same( 2, $sayilar['soslar'], 'soslar iki üründe' );
+		qrms_assert_same( 1, $sayilar['icecek'], 'icecek bir üründe' );
+	}
+);
+
+qrms_test(
 	'ekstrası olmayan üründe açılır blok basılmaz',
 	function () {
 		$GLOBALS['qrms_test']['options'][ RMA_Ekstra::OPTION ] = array();
@@ -253,6 +268,23 @@ qrms_test(
 );
 
 echo "\nÖzel rozet — tanım ve ürün seçimi\n";
+
+qrms_test(
+	'rozet kullanım sayısı tek sorguda hesaplanır',
+	function () {
+		$GLOBALS['qrms_test']['post_meta'] = array(
+			100 => array( RMA_Ozel_Rozet::META => array( 'aci', 'hizli' ) ),
+			101 => array( RMA_Ozel_Rozet::META => array( 'aci' ) ),
+			102 => array( RMA_Ozel_Rozet::META => 'gecersiz' ),
+		);
+
+		$sayilar = RMA_Ozel_Rozet::kullanim_sayilari();
+
+		qrms_assert_same( 2, $sayilar['aci'], 'aci iki üründe' );
+		qrms_assert_same( 1, $sayilar['hizli'], 'hizli bir üründe' );
+		qrms_assert_true( ! isset( $sayilar['yok'] ), 'kullanılmayan slug yok' );
+	}
+);
 
 qrms_test(
 	'rozet tanımı adsızsa atılır, slug çakışması numaralanır, renk doğrulanır',

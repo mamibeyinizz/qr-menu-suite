@@ -54,10 +54,11 @@ trait RMA_Admin_Pages_Trait {
                 'icon'       => 'dashicons-images-alt2',
             ],
             'qrms-rm-secenekler' => [
-                'title'      => 'Seçenek & Rozet',
-                'menu_title' => 'Seçenek & Rozet',
+                'title'      => 'Ekstralar ve Rozetler',
+                'menu_title' => 'Ekstralar ve Rozetler',
+                'hub_title'  => 'Ekstralar ve Rozetler',
                 'render'     => 'render_secenekler_page',
-                'desc'       => 'Ürünlerde kullanacağınız ekstra (yan ürün) listelerini ve kendi rozetlerinizi tanımlayın.',
+                'desc'       => 'Ürünlerde kullanacağınız ekstra gruplarını ve ürün rozetlerini tanımlayın.',
                 'icon'       => 'dashicons-editor-ul',
             ],
             'qrms-rm-diger' => [
