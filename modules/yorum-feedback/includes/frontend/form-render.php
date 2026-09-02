@@ -306,6 +306,23 @@ function qrm_pro_render_style_block($settings) {
         .qrm-review-stars { color: #f59e0b; font-size: 15px; margin-top: 2px; display:block;}
         .qrm-review-text { font-size: 15px; line-height: 1.6; margin: 12px 0 0 0; opacity: 0.9; }
 
+        .qrm-review-media { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+        .qrm-review-media-item { border: none; padding: 0; background: none; cursor: pointer; border-radius: 8px; overflow: hidden; line-height: 0; }
+        .qrm-review-media-item img { display: block; width: 72px; height: 72px; object-fit: cover; border-radius: 8px; border: 1px solid <?php echo $border_color; ?>; transition: transform .2s ease; }
+        .qrm-review-media-item:hover img { transform: scale(1.04); }
+
+        .qrm-media-lightbox { position: fixed; inset: 0; z-index: 99999; background: rgba(15,23,42,.88); display: flex; align-items: center; justify-content: center; padding: 24px; }
+        .qrm-media-lightbox[hidden] { display: none !important; }
+        .qrm-media-lightbox-img { max-width: min(96vw, 1200px); max-height: 90vh; border-radius: 10px; box-shadow: 0 20px 60px rgba(0,0,0,.45); }
+        .qrm-media-lightbox-close { position: absolute; top: 16px; right: 20px; border: none; background: transparent; color: #fff; font-size: 36px; line-height: 1; cursor: pointer; padding: 4px 10px; }
+
+        .qrm-media-upload input[type="file"] { width: 100%; font-size: 14px; }
+        .qrm-media-hint { margin: 6px 0 0; font-size: 12px; opacity: .75; }
+        .qrm-media-previews { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+        .qrm-media-preview { position: relative; width: 72px; height: 72px; }
+        .qrm-media-preview img { width: 72px; height: 72px; object-fit: cover; border-radius: 8px; border: 1px solid <?php echo $border_color; ?>; display: block; }
+        .qrm-media-preview-remove { position: absolute; top: -6px; right: -6px; width: 22px; height: 22px; border-radius: 50%; border: none; background: #ef4444; color: #fff; font-size: 14px; line-height: 1; cursor: pointer; padding: 0; }
+
         .qrm-load-more-wrap { text-align: center; margin-top: 30px; }
         .qrm-load-more-btn { background: transparent; border: 2px solid <?php echo $settings['btn_color']; ?>; color: <?php echo $settings['btn_color']; ?>; padding: 12px 30px; border-radius: 30px; font-weight: 600; cursor: pointer; transition: all 0.3s; }
         .qrm-load-more-btn:hover { background: <?php echo $settings['btn_color']; ?>; color: <?php echo $settings['btn_text_color']; ?>; }
@@ -358,6 +375,8 @@ function qrm_pro_render_review_form($settings, $active_fields, $message, $show_g
         : qrm_ceviri_option('qrm_settings.form_title', $settings['form_title']);
     $cap = qrm_pro_make_captcha();
     $ts  = qrm_pro_make_ts_token();
+    $media_on = ($form_source === 'review') && qrm_pro_media_is_enabled($settings);
+    $media_limits = $media_on ? qrm_pro_media_limits($settings) : null;
     ob_start();
     ?>
     <div class="qrm-form-box qrm-fade-in" id="qrm-form-box">
@@ -367,7 +386,7 @@ function qrm_pro_render_review_form($settings, $active_fields, $message, $show_g
         <?php else: ?>
             <?php echo $message; ?>
             <h3><?php echo esc_html($form_title); ?></h3>
-            <form method="POST" action="#qrm-form-box" id="qrm-review-form">
+            <form method="POST" action="#qrm-form-box" id="qrm-review-form"<?php echo $media_on ? ' enctype="multipart/form-data"' : ''; ?>>
                 <?php wp_nonce_field('qrm_submit_review', 'qrm_review_nonce'); ?>
                 <input type="hidden" name="qrm_form_source" value="<?php echo esc_attr($form_source); ?>">
                 <input type="hidden" name="qrm_ts" value="<?php echo esc_attr($ts); ?>">
@@ -442,6 +461,24 @@ function qrm_pro_render_review_form($settings, $active_fields, $message, $show_g
                         </div>
                     <?php endforeach; ?>
                     </div>
+
+                    <?php if ($media_on): ?>
+                    <div class="qrm-input-group qrm-media-upload" data-max-files="<?php echo esc_attr((string) $media_limits['max_files']); ?>" data-max-mb="<?php echo esc_attr((string) ($media_limits['max_bytes'] / (1024 * 1024))); ?>">
+                        <label for="qrm_review_media"><?php echo esc_html(qrm_ceviri_review(__('Fotoğraf ekle (isteğe bağlı)', 'qrms'))); ?></label>
+                        <input type="file" id="qrm_review_media" name="qrm_review_media[]" accept="image/jpeg,image/png,image/webp" multiple>
+                        <p class="qrm-media-hint description">
+                            <?php
+                            printf(
+                                /* translators: 1: max files, 2: max MB per file */
+                                esc_html(qrm_ceviri_review(__('En fazla %1$d görsel, dosya başına %2$d MB. JPEG, PNG veya WebP.', 'qrms'))),
+                                (int) $media_limits['max_files'],
+                                (int) ($media_limits['max_bytes'] / (1024 * 1024))
+                            );
+                            ?>
+                        </p>
+                        <div class="qrm-media-previews" aria-live="polite"></div>
+                    </div>
+                    <?php endif; ?>
 
                     <?php echo qrm_pro_render_consent_checkbox($settings); ?>
 

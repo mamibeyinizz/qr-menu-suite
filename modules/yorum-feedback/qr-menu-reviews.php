@@ -2,10 +2,24 @@
 /*
 Plugin Name: QR Menü Gelişmiş Müşteri Yorumları & Değerlendirme
 Description: QR menü sistemleri için çoklu kriter (yemek, hizmet, temizlik vb.) puanlama sistemli, Google yorum yönlendirmeli (review gating), AJAX destekli, gelişmiş analitik barındıran premium müşteri yorum eklentisi.
-Version: 4.2.7
+Version: 4.2.8
 Author: QR MENÜ
 
 == Changelog ==
+
+4.2.8
+ - YENİ: Yorum formuna görsel yükleme (isteğe bağlı). qrm_review_media tablosu;
+   ayarlar qrm_media_enabled (varsayılan kapalı), qrm_media_max_files (2, üst 5),
+   qrm_media_max_mb (3, üst 8).
+ - YENİ: Ön yüzde dosya seçici, URL.createObjectURL önizleme ve tek tek kaldırma;
+   seçim yoksa akış değişmez.
+ - GÜVENLİK: Yalnızca image/jpeg, image/png, image/webp — uzantı değil gerçek MIME
+   (wp_check_filetype_and_ext + finfo); boyut ve adet sunucuda doğrulanır.
+ - YENİ: wp_handle_upload + wp_insert_attachment; post_parent = 0; medya kütüphanesinde
+   "QR Yorum Görseli" etiketi; EXIF konum temizliği ve 1600px kenar sınırı.
+ - YENİ: Yorum silinince bağlı attachment'lar wp_delete_attachment(..., true) ile silinir.
+ - YENİ: Onaylı yorumlarda lazy thumbnail galeri + vanilla lightbox; yönetim listesinde
+   küçük önizleme ve tam boy bağlantı.
 
 4.2.7
  - YENİ: KVKK / pazarlama izni (isteğe bağlı). qrm_reviews ve
@@ -192,6 +206,7 @@ require_once QRM_PRO_PATH . 'includes/settings.php';
 require_once QRM_PRO_PATH . 'includes/security.php';
 require_once QRM_PRO_PATH . 'includes/masa.php';
 require_once QRM_PRO_PATH . 'includes/consent.php';
+require_once QRM_PRO_PATH . 'includes/review-media.php';
 
 // Ödül modülü (kurulum fonksiyonu install.php içinden çağrıldığı için önce yüklenir)
 require_once QRM_PRO_PATH . 'includes/rewards/db.php';

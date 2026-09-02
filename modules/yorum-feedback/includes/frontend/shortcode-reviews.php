@@ -119,6 +119,8 @@ function qrm_pro_shortcode() {
 
     </div>
 
+    <?php echo qrm_pro_render_review_media_lightbox(); ?>
+
     <?php
     echo qrm_pro_render_form_script($settings, $js_limit, true);
     return ob_get_clean();
