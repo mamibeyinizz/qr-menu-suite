@@ -64,22 +64,37 @@ function qrm_reward_admin_codes_tab($settings) {
 
     $status_filter = isset($_GET['status']) ? sanitize_key($_GET['status']) : '';
     $search        = isset($_GET['s']) ? sanitize_text_field(wp_unslash($_GET['s'])) : '';
+    $list_filters  = function_exists('qrm_pro_admin_review_list_filters')
+        ? qrm_pro_admin_review_list_filters($_GET)
+        : ['liste_bas' => '', 'liste_bit' => '', 'search' => '', 'table_id' => 0];
     $paged         = isset($_GET['paged']) ? max(1, intval($_GET['paged'])) : 1;
     $per_page      = 25;
     $offset        = ($paged - 1) * $per_page;
 
-    $where  = 'WHERE 1=1';
-    $params = [];
-
-    if (in_array($status_filter, ['active', 'used', 'expired', 'revoked'], true)) {
-        $where .= ' AND status = %s';
-        $params[] = $status_filter;
+    $filters = [
+        'status' => in_array($status_filter, ['active', 'used', 'expired', 'revoked'], true) ? $status_filter : '',
+        'search' => $search,
+    ];
+    if (!empty($list_filters['bas_dt'])) {
+        $filters['bas_dt']   = $list_filters['bas_dt'];
+        $filters['bit_excl'] = $list_filters['bit_excl'];
     }
-    if ($search !== '') {
-        $where .= ' AND (email LIKE %s OR code LIKE %s)';
-        $like = '%' . $wpdb->esc_like($search) . '%';
-        $params[] = $like;
-        $params[] = $like;
+
+    if (function_exists('qrm_reward_codes_where')) {
+        list($where, $params) = qrm_reward_codes_where($filters);
+    } else {
+        $where  = ' WHERE 1=1';
+        $params = [];
+        if ($filters['status'] !== '') {
+            $where .= ' AND status = %s';
+            $params[] = $filters['status'];
+        }
+        if ($filters['search'] !== '') {
+            $where .= ' AND (email LIKE %s OR code LIKE %s)';
+            $like = '%' . $wpdb->esc_like($filters['search']) . '%';
+            $params[] = $like;
+            $params[] = $like;
+        }
     }
 
     $count_sql = "SELECT COUNT(*) FROM $table $where";
@@ -147,20 +162,46 @@ function qrm_reward_admin_codes_tab($settings) {
 
     <div class="qrm-card">
         <h3>Ödül Kodları</h3>
-        <form method="GET" style="margin-bottom:14px;">
+        <form method="GET" class="qrm-list-toolbar" style="margin-bottom:14px;">
             <input type="hidden" name="page" value="qrms-yf-odul">
             <input type="hidden" name="tab" value="codes">
-            <select name="status">
-                <option value="">Tüm durumlar</option>
-                <?php foreach (['active', 'used', 'revoked', 'expired'] as $st): ?>
-                    <option value="<?php echo esc_attr($st); ?>" <?php selected($status_filter, $st); ?>><?php echo esc_html(qrm_reward_status_label($st)); ?></option>
-                <?php endforeach; ?>
-            </select>
-            <input type="search" name="s" value="<?php echo esc_attr($search); ?>" placeholder="E-posta veya kod ara">
-            <button type="submit" class="button">Filtrele</button>
-            <?php if ($status_filter !== '' || $search !== ''): ?>
-                <a href="<?php echo esc_url(qrm_pro_admin_url('qrms-yf-odul', ['tab' => 'codes'])); ?>" class="button">Temizle</a>
-            <?php endif; ?>
+            <div class="qrm-list-toolbar-row">
+                <label>
+                    <span class="qrm-list-toolbar-label"><?php esc_html_e('Durum', 'qrms'); ?></span>
+                    <select name="status">
+                        <option value=""><?php esc_html_e('Tüm durumlar', 'qrms'); ?></option>
+                        <?php foreach (['active', 'used', 'revoked', 'expired'] as $st): ?>
+                            <option value="<?php echo esc_attr($st); ?>" <?php selected($status_filter, $st); ?>><?php echo esc_html(qrm_reward_status_label($st)); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </label>
+                <label>
+                    <span class="qrm-list-toolbar-label"><?php esc_html_e('Başlangıç', 'qrms'); ?></span>
+                    <input type="date" name="liste_bas" value="<?php echo esc_attr($list_filters['liste_bas']); ?>">
+                </label>
+                <label>
+                    <span class="qrm-list-toolbar-label"><?php esc_html_e('Bitiş', 'qrms'); ?></span>
+                    <input type="date" name="liste_bit" value="<?php echo esc_attr($list_filters['liste_bit']); ?>">
+                </label>
+                <label class="qrm-list-toolbar-search">
+                    <span class="qrm-list-toolbar-label"><?php esc_html_e('Ara', 'qrms'); ?></span>
+                    <input type="search" name="s" value="<?php echo esc_attr($search); ?>" placeholder="<?php esc_attr_e('E-posta veya kod ara', 'qrms'); ?>">
+                </label>
+                <button type="submit" class="button"><?php esc_html_e('Filtrele', 'qrms'); ?></button>
+                <?php if ($status_filter !== '' || $search !== '' || $list_filters['liste_bas'] !== '' || $list_filters['liste_bit'] !== ''): ?>
+                    <a href="<?php echo esc_url(qrm_pro_admin_url('qrms-yf-odul', ['tab' => 'codes'])); ?>" class="button"><?php esc_html_e('Temizle', 'qrms'); ?></a>
+                <?php endif; ?>
+                <?php
+                if (function_exists('qrm_export_csv_button')) {
+                    echo qrm_export_csv_button('reward_codes', [
+                        'status'    => $status_filter,
+                        'liste_bas' => $list_filters['liste_bas'],
+                        'liste_bit' => $list_filters['liste_bit'],
+                        's'         => $search,
+                    ]);
+                }
+                ?>
+            </div>
         </form>
 
         <table class="wp-list-table widefat fixed striped qrm-table-cards">
