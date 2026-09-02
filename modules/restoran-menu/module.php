@@ -293,6 +293,17 @@ function qrms_module_restoran_menu_admin_assets() {
 
 	$modul = 'modules/restoran-menu/';
 
+	// Ekstra listeleri ve özel rozet tabloları kendi bağımsız betiğini
+	// kullanır (jQuery gerektirmez); ürün ekranındaki arayüzle aynı dosya.
+	if ( 'qrms-rm-secenekler' === $page ) {
+		$rma->enqueue_secenek_assets(
+			$url,
+			static function ( $goreli ) use ( $modul ) {
+				return QRMS_Helpers::asset_version( $modul . $goreli );
+			}
+		);
+	}
+
 	wp_enqueue_style( 'rma-admin-ui', $url . 'assets/css/admin-ui.css', array(), QRMS_Helpers::asset_version( $modul . 'assets/css/admin-ui.css' ) );
 	wp_enqueue_script( 'rma-admin-ui', $url . 'assets/js/admin-ui.js', $deps, QRMS_Helpers::asset_version( $modul . 'assets/js/admin-ui.js' ), true );
 

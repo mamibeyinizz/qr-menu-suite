@@ -411,11 +411,29 @@ JSCODE;
         if ( get_post_meta( $id, 'rma_badge_discount',    true ) === '1' ) $badges .= '<span class="rma-badge discount">%</span>';
         // Aktif fiyat kampanyası indirimse otomatik rozet ("%15", "-10 ₺").
         $badges .= RMA_Kampanya::rozet_html( $id );
+        // İşletmenin kendi tanımladığı rozetler ("Hızlı Servis", "Acı"…).
+        $badges .= RMA_Ozel_Rozet::rozet_html( $id );
 
         $tukendi     = RMA_Tukendi::urun_tukendi( $id );
+        $servis_disi = RMA_Servis_Saati::servis_disi_mi( $id );
+        // Servis saati dışındaki ürün de tükendi gibi görünür: menüde kalır,
+        // etiket alır, sepete eklenemez. İki durum aynı anda olabilir;
+        // etiket önceliği tükendidedir (stok bilgisi daha bağlayıcı).
         $tukendi_rozet = RMA_Tukendi::rozet_html( $id );
-        $kart_sinif  = 'rma-card' . ( $tukendi ? ' is-tukendi' : '' );
-        $aria_label  = $tukendi ? $title . ' (' . RMA_Tukendi::etiket() . ')' : $title;
+        if ( '' === $tukendi_rozet ) {
+            $tukendi_rozet = RMA_Servis_Saati::rozet_html( $id );
+        }
+
+        $kart_sinif = 'rma-card'
+            . ( $tukendi ? ' is-tukendi' : '' )
+            . ( $servis_disi ? ' is-servis-disi' : '' );
+
+        $aria_label = $title;
+        if ( $tukendi ) {
+            $aria_label .= ' (' . RMA_Tukendi::etiket() . ')';
+        } elseif ( $servis_disi ) {
+            $aria_label .= ' (' . RMA_Servis_Saati::etiket() . ')';
+        }
 
         $prep_time = get_post_meta( $id, 'rma_prep_time', true );
         $prep_html = '';
@@ -449,7 +467,7 @@ JSCODE;
             </div>',
             esc_attr( $kart_sinif ),
             $id,
-            $tukendi ? ' data-tukendi="1"' : '',
+            ( $tukendi ? ' data-tukendi="1"' : '' ) . ( $servis_disi ? ' data-servis-disi="1"' : '' ),
             esc_attr( $aria_label ),
             $badges,
             esc_url( $img ),

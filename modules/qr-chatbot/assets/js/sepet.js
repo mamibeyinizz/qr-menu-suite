@@ -103,27 +103,27 @@
 		tr: { sepet: 'Sepet', sepetiniz: 'Sepetiniz', toplam: 'Toplam', gonder: 'Siparişi Gönder', bos: 'Sepetiniz boş',
 			notPh: 'Ürün notu (isteğe bağlı)…', eklendi: 'Sepete eklendi', gonderildi: 'Siparişiniz mutfağa iletildi ✓',
 			hata: 'Gönderilemedi, tekrar deneyin', tl: 'Ödeme TL üzerinden alınır.',
-			ac: 'Sepeti aç', sil: 'Sil', kapat: 'Kapat' },
+			ac: 'Sepeti aç', sil: 'Sil', kapat: 'Kapat', ekstra: 'Ekstra' },
 		en: { sepet: 'Cart', sepetiniz: 'Your Cart', toplam: 'Total', gonder: 'Send Order', bos: 'Your cart is empty',
 			notPh: 'Note for this item (optional)…', eklendi: 'Added to cart', gonderildi: 'Your order was sent ✓',
 			hata: 'Failed, please try again', tl: 'Payment is charged in Turkish Lira (TL).',
-			ac: 'Open cart', sil: 'Delete', kapat: 'Close' },
+			ac: 'Open cart', sil: 'Delete', kapat: 'Close', ekstra: 'Extras' },
 		ar: { sepet: 'السلة', sepetiniz: 'سلتك', toplam: 'المجموع', gonder: 'إرسال الطلب', bos: 'سلتك فارغة',
 			notPh: 'ملاحظة على هذا الطبق (اختياري)…', eklendi: 'أُضيف إلى السلة', gonderildi: 'تم إرسال طلبك ✓',
 			hata: 'فشل الإرسال، حاول مجدداً', tl: 'يتم الدفع بالليرة التركية.',
-			ac: 'افتح السلة', sil: 'حذف', kapat: 'إغلاق' },
+			ac: 'افتح السلة', sil: 'حذف', kapat: 'إغلاق', ekstra: 'إضافات' },
 		de: { sepet: 'Warenkorb', sepetiniz: 'Ihr Warenkorb', toplam: 'Summe', gonder: 'Bestellung senden', bos: 'Warenkorb ist leer',
 			notPh: 'Hinweis zu diesem Gericht (optional)…', eklendi: 'Hinzugefügt', gonderildi: 'Bestellung gesendet ✓',
 			hata: 'Fehlgeschlagen, erneut versuchen', tl: 'Die Zahlung erfolgt in TL.',
-			ac: 'Warenkorb öffnen', sil: 'Löschen', kapat: 'Schließen' },
+			ac: 'Warenkorb öffnen', sil: 'Löschen', kapat: 'Schließen', ekstra: 'Extras' },
 		fr: { sepet: 'Panier', sepetiniz: 'Votre panier', toplam: 'Total', gonder: 'Envoyer', bos: 'Panier vide',
 			notPh: 'Note pour ce plat (optionnel)…', eklendi: 'Ajouté au panier', gonderildi: 'Commande envoyée ✓',
 			hata: 'Échec, réessayez', tl: 'Le paiement se fait en TL.',
-			ac: 'Ouvrir le panier', sil: 'Supprimer', kapat: 'Fermer' },
+			ac: 'Ouvrir le panier', sil: 'Supprimer', kapat: 'Fermer', ekstra: 'Suppléments' },
 		ru: { sepet: 'Корзина', sepetiniz: 'Ваша корзина', toplam: 'Итого', gonder: 'Отправить заказ', bos: 'Корзина пуста',
 			notPh: 'Пометка к блюду (необязательно)…', eklendi: 'Добавлено', gonderildi: 'Заказ отправлен ✓',
 			hata: 'Ошибка, попробуйте снова', tl: 'Оплата производится в TL.',
-			ac: 'Открыть корзину', sil: 'Удалить', kapat: 'Закрыть' }
+			ac: 'Открыть корзину', sil: 'Удалить', kapat: 'Закрыть', ekstra: 'Дополнения' }
 	};
 
 	// 1) qmoSepet.i18n (tablo, tüm diller — cache-güvenli)
@@ -306,11 +306,67 @@
 	   bozup görselleri bulanıklaştırıyordu. Kart tıklanınca modal açılır,
 	   ekleme orada yapılır. */
 
+	/* ---- porsiyon & ekstra ----
+	   Seçim arayüzü restoran-menu modülünde üretilir (RMA_Porsiyon::html /
+	   RMA_Ekstra::html). Fiyatlar metinden ayrıştırılmaz: porsiyon farkı
+	   data-fark, ekstra fiyatı data-fiyat niteliğinde SAYI olarak durur. */
+
+	function porsiyonSecimi( body ) {
+		var sec = body.querySelector( '[data-rma-porsiyon] input:checked' );
+		if ( ! sec ) {
+			return { ad: '', fark: 0 };
+		}
+		return {
+			ad: sec.value || '',
+			fark: parseFloat( sec.getAttribute( 'data-fark' ) ) || 0
+		};
+	}
+
+	function ekstraSecimi( body ) {
+		var secili = body.querySelectorAll( '[data-rma-ekstra] input:checked' );
+		var out = [];
+		Array.prototype.forEach.call( secili, function ( el ) {
+			if ( out.length >= 10 ) {
+				return;
+			}
+			out.push( {
+				ad: el.value || '',
+				fiyat: parseFloat( el.getAttribute( 'data-fiyat' ) ) || 0
+			} );
+		} );
+		return out;
+	}
+
+	/* Aynı ürünün farklı porsiyon/ekstra kombinasyonu AYRI sepet satırıdır:
+	   birleştirme anahtarı budur. */
+	function imzaUret( pid, ad, porsiyon, ekstralar ) {
+		var e = ekstralar.map( function ( x ) {
+			return x.ad;
+		} ).sort().join( '|' );
+		return ( pid || ad ) + '::' + ( porsiyon || '' ) + '::' + e;
+	}
+
+	function satirImzasi( x ) {
+		return imzaUret( x.pid, x.id, x.porsiyon || '', x.ekstralar || [] );
+	}
+
+	function ekstraToplami( ekstralar ) {
+		return ( ekstralar || [] ).reduce( function ( t, x ) {
+			return t + ( parseFloat( x.fiyat ) || 0 );
+		}, 0 );
+	}
+
 	function modalEkle() {
 		var eklendi = false;
 
 		document.querySelectorAll( '.rma-modal-body:not([data-qmo])' ).forEach( function ( body ) {
 			body.dataset.qmo = '1';
+
+			// Tükendi veya servis saati dışındaki ürüne sepet bloğu basılmaz;
+			// sunucu tarafı zaten keserdi, müşteriye hiç ekletmemek daha net.
+			if ( body.getAttribute( 'data-siparis-kapali' ) === '1' ) {
+				return;
+			}
 
 			var box = document.createElement( 'div' );
 			box.className = 'qmo-md';
@@ -371,8 +427,16 @@
 					return;
 				}
 
-				var fiyatEl = body.querySelector( '.rma-modal-price' );
-				var fy      = fiyatSayi( fiyatMetni( fiyatEl ) );
+				// Taban fiyat önce data-fiyat'tan okunur (kampanya uygulanmış
+				// SAYI); yoksa eski davranış: fiyat metnini ayrıştır.
+				var tabanAttr = parseFloat( body.getAttribute( 'data-fiyat' ) );
+				var fiyatEl   = body.querySelector( '.rma-modal-price' );
+				var taban     = isNaN( tabanAttr ) ? fiyatSayi( fiyatMetni( fiyatEl ) ) : tabanAttr;
+
+				var porsiyon  = porsiyonSecimi( body );
+				var ekstralar = ekstraSecimi( body );
+				var fy        = taban + porsiyon.fark + ekstraToplami( ekstralar );
+
 				// Dış kapsayıcı: vitrin/slider modalı .qrms-detail-box üretir;
 				// ana menü modalı hâlâ .rma-modal-box. Görsel class'ı
 				// (.rma-modal-img) AJAX içeriğinde değişmedi.
@@ -383,11 +447,9 @@
 				var adet = parseInt( adetEl.textContent, 10 ) || 1;
 				var pid  = parseInt( body.getAttribute( 'data-id' ), 10 ) || sonKartId || 0;
 				var s    = oku();
+				var imza = imzaUret( pid, ad, porsiyon.ad, ekstralar );
 				var m    = s.filter( function ( x ) {
-					if ( pid && x.pid ) {
-						return x.pid === pid;
-					}
-					return x.id === ad;
+					return satirImzasi( x ) === imza;
 				} )[ 0 ];
 
 				if ( m ) {
@@ -402,7 +464,17 @@
 						m.pid = pid;
 					}
 				} else {
-					s.push( { id: ad, pid: pid, ad: ad, fiyat: fy, adet: adet, not: not.value || '', img: im } );
+					s.push( {
+						id: ad,
+						pid: pid,
+						ad: ad,
+						fiyat: fy,
+						adet: adet,
+						not: not.value || '',
+						img: im,
+						porsiyon: porsiyon.ad,
+						ekstralar: ekstralar
+					} );
 				}
 
 				yaz( s );
@@ -458,6 +530,24 @@
 
 	/* ---- çekmece içeriğini çiz ---- */
 
+	/**
+	 * "Büyük · Ekstra: Sos, Ayran" — seçim yoksa boş string.
+	 */
+	function satirDetayi( x ) {
+		var parca = [];
+
+		if ( x.porsiyon ) {
+			parca.push( x.porsiyon );
+		}
+		if ( x.ekstralar && x.ekstralar.length ) {
+			parca.push( T( 'ekstra' ) + ': ' + x.ekstralar.map( function ( e ) {
+				return e.ad;
+			} ).join( ', ' ) );
+		}
+
+		return parca.join( ' · ' );
+	}
+
 	function satirCiz( x, i ) {
 		var el = document.createElement( 'div' );
 		el.className = 'qmo-it';
@@ -477,6 +567,18 @@
 		var ad = document.createElement( 'div' );
 		ad.className = 'qmo-it-ad';
 		ad.textContent = x.ad;
+
+		// Porsiyon ve ekstralar ürün adının altında ikinci satırda görünür;
+		// sepette hangi seçimle eklendiği kaybolmasın.
+		var detay = satirDetayi( x );
+		if ( detay ) {
+			var kucuk = document.createElement( 'small' );
+			kucuk.className = 'qmo-it-secim';
+			kucuk.textContent = detay;
+			ad.appendChild( document.createElement( 'br' ) );
+			ad.appendChild( kucuk );
+		}
+
 		top.appendChild( ad );
 
 		var st = document.createElement( 'div' );
@@ -640,8 +742,21 @@
 			credentials: 'same-origin',
 			body: JSON.stringify( {
 				dil: dil(),
+				// Porsiyon ürün adının parçası, ekstralar ise notun başında
+				// gider: sipariş ucu (rest-order.php) yalnızca urunAdi/adet/
+				// not/itemId alanlarını tanır, mutfak fişi bunları basar.
 				items: s.map( function ( x ) {
-					return { urunAdi: x.ad, adet: x.adet, not: x.not || '', itemId: x.pid || 0 };
+					var ad  = x.porsiyon ? x.ad + ' (' + x.porsiyon + ')' : x.ad;
+					var not = x.not || '';
+
+					if ( x.ekstralar && x.ekstralar.length ) {
+						var ek = T( 'ekstra' ) + ': ' + x.ekstralar.map( function ( e ) {
+							return e.ad;
+						} ).join( ', ' );
+						not = not ? ek + ' — ' + not : ek;
+					}
+
+					return { urunAdi: ad, adet: x.adet, not: not.slice( 0, 200 ), itemId: x.pid || 0 };
 				} )
 			} )
 		} ).then( function ( r ) {

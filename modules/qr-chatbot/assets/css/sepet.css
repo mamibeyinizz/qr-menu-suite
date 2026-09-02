@@ -224,6 +224,16 @@
 	min-width: 0;
 }
 
+/* Porsiyon ve ekstra seçimi — ürün adının altındaki ikinci satır. */
+.qmo-it-secim {
+	color: var(--qmo-muted, #999);
+	display: inline-block;
+	font-size: 11px;
+	font-weight: 500;
+	line-height: 1.4;
+	margin-top: 2px;
+}
+
 .qmo-it-fy {
 	color: var(--qmo-gold2);
 	font-weight: 700;
