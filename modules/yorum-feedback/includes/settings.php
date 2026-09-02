@@ -121,6 +121,52 @@ if (!function_exists('qrm_ceviri_cf_form')) {
     }
 }
 
+/**
+ * Özel form alan seçeneği (item_type=cf_field, field=option_N).
+ *
+ * @param int    $id    qrm_custom_form_fields.id.
+ * @param int    $index Seçenek sırası (0 tabanlı).
+ * @param string $metin Orijinal seçenek metni.
+ * @return string
+ */
+if (!function_exists('qrm_ceviri_cf_field_option')) {
+    function qrm_ceviri_cf_field_option($id, $index, $metin) {
+        $metin = (string) $metin;
+        if ($metin === '') {
+            return '';
+        }
+        if (function_exists('rma_ceviri_veri')) {
+            return rma_ceviri_veri('cf_field', (int) $id, 'option_' . (int) $index, $metin);
+        }
+        return $metin;
+    }
+}
+
+/**
+ * İstek dilini çözümler (qr-ceviri kapalıysa 'tr').
+ *
+ * @return string
+ */
+if (!function_exists('qrm_pro_current_lang')) {
+    function qrm_pro_current_lang() {
+        if (function_exists('rma_get_current_lang')) {
+            return rma_get_current_lang();
+        }
+        return 'tr';
+    }
+}
+
+/**
+ * AJAX uçlarında dil bağlamını başlatır.
+ *
+ * @return void
+ */
+if (!function_exists('qrm_pro_bootstrap_lang')) {
+    function qrm_pro_bootstrap_lang() {
+        qrm_pro_current_lang();
+    }
+}
+
 // P1: Aşağıdaki varsayılanlar yönetici option'ıdır (VERİ).
 // CSV'ye item_type=option, field=qrm_settings.* olarak çıkar.
 function qrm_pro_default_settings() {

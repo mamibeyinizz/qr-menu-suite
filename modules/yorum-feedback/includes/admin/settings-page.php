@@ -33,6 +33,8 @@ function qrm_pro_admin_settings() {
         if (function_exists('rma_ceviri_option_alan_dil_sayisi')) {
             $ceviri_n = rma_ceviri_option_alan_dil_sayisi(array(
                 'qrm_settings.form_title',
+                'qrm_settings.contact_form_title',
+                'qrm_settings.qrm_consent_text',
                 'qrm_settings.crit_1_name',
                 'qrm_settings.crit_2_name',
                 'qrm_settings.crit_3_name',

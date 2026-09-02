@@ -294,7 +294,7 @@ function qrm_pro_render_reviews_list_controls($settings, array $query) {
         <div class="qrm-reviews-toolbar-row">
             <label class="qrm-reviews-field">
                 <span class="qrm-reviews-field-label"><?php echo esc_html(qrm_ceviri_review(__('Sırala', 'qrms'))); ?></span>
-                <select id="qrm-reviews-sort" class="qrm-reviews-select" aria-label="<?php esc_attr_e('Sıralama', 'qrms'); ?>">
+                <select id="qrm-reviews-sort" class="qrm-reviews-select" aria-label="<?php echo esc_attr(qrm_ceviri_review(__('Sıralama', 'qrms'))); ?>">
                     <?php foreach (qrm_pro_reviews_sort_options() as $key => $label): ?>
                         <option value="<?php echo esc_attr($key); ?>" <?php selected($query['sort'], $key); ?>>
                             <?php echo esc_html(qrm_ceviri_review($label)); ?>
@@ -305,7 +305,7 @@ function qrm_pro_render_reviews_list_controls($settings, array $query) {
 
             <label class="qrm-reviews-field">
                 <span class="qrm-reviews-field-label"><?php echo esc_html(qrm_ceviri_review(__('Yıldız', 'qrms'))); ?></span>
-                <select id="qrm-reviews-star" class="qrm-reviews-select" aria-label="<?php esc_attr_e('Yıldız filtresi', 'qrms'); ?>">
+                <select id="qrm-reviews-star" class="qrm-reviews-select" aria-label="<?php echo esc_attr(qrm_ceviri_review(__('Yıldız filtresi', 'qrms'))); ?>">
                     <option value="0" <?php selected((int) $query['star'], 0); ?>><?php echo esc_html(qrm_ceviri_review(__('Tümü', 'qrms'))); ?></option>
                     <?php for ($i = 5; $i >= 1; $i--): ?>
                         <option value="<?php echo esc_attr((string) $i); ?>" <?php selected((int) $query['star'], $i); ?>>
@@ -355,9 +355,9 @@ function qrm_pro_render_reviews_pagination(array $query, $total, $page_size) {
 
     ob_start();
     ?>
-    <nav class="qrm-reviews-pages" id="qrm-reviews-pages" aria-label="<?php esc_attr_e('Yorum sayfaları', 'qrms'); ?>">
+    <nav class="qrm-reviews-pages" id="qrm-reviews-pages" aria-label="<?php echo esc_attr(qrm_ceviri_review(__('Yorum sayfaları', 'qrms'))); ?>">
         <?php if ($page > 1): ?>
-            <button type="button" class="qrm-reviews-page-btn" data-page="<?php echo esc_attr((string) ($page - 1)); ?>" aria-label="<?php esc_attr_e('Önceki sayfa', 'qrms'); ?>">&laquo;</button>
+            <button type="button" class="qrm-reviews-page-btn" data-page="<?php echo esc_attr((string) ($page - 1)); ?>" aria-label="<?php echo esc_attr(qrm_ceviri_review(__('Önceki sayfa', 'qrms'))); ?>">&laquo;</button>
         <?php endif; ?>
 
         <?php for ($p = 1; $p <= $total_pages; $p++): ?>
@@ -370,7 +370,7 @@ function qrm_pro_render_reviews_pagination(array $query, $total, $page_size) {
         <?php endfor; ?>
 
         <?php if ($page < $total_pages): ?>
-            <button type="button" class="qrm-reviews-page-btn" data-page="<?php echo esc_attr((string) ($page + 1)); ?>" aria-label="<?php esc_attr_e('Sonraki sayfa', 'qrms'); ?>">&raquo;</button>
+            <button type="button" class="qrm-reviews-page-btn" data-page="<?php echo esc_attr((string) ($page + 1)); ?>" aria-label="<?php echo esc_attr(qrm_ceviri_review(__('Sonraki sayfa', 'qrms'))); ?>">&raquo;</button>
         <?php endif; ?>
     </nav>
     <?php

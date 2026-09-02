@@ -24,6 +24,7 @@ add_action('wp_ajax_qrm_reward_request_code', 'qrm_reward_ajax_request_code');
 add_action('wp_ajax_nopriv_qrm_reward_request_code', 'qrm_reward_ajax_request_code');
 function qrm_reward_ajax_request_code() {
     check_ajax_referer('qrm_reward_request_code', 'nonce');
+    qrm_pro_bootstrap_lang();
 
     $settings = qrm_pro_get_settings();
     if (!qrm_reward_is_active($settings)) {
@@ -58,7 +59,7 @@ function qrm_reward_ajax_request_code() {
         wp_send_json([
             'success'      => false,
             'already_used' => true,
-            'message'      => $settings['qrm_reward_popup_already_used_text'],
+            'message'      => qrm_ceviri_option('qrm_settings.qrm_reward_popup_already_used_text', $settings['qrm_reward_popup_already_used_text']),
         ]);
     }
 
@@ -75,7 +76,7 @@ function qrm_reward_ajax_request_code() {
             wp_send_json([
                 'success'      => false,
                 'already_used' => true,
-                'message'      => $settings['qrm_reward_popup_already_used_text'],
+                'message'      => qrm_ceviri_option('qrm_settings.qrm_reward_popup_already_used_text', $settings['qrm_reward_popup_already_used_text']),
             ]);
         }
         wp_send_json(['success' => false, 'message' => $result->get_error_message()]);

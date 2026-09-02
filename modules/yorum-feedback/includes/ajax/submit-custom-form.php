@@ -8,6 +8,7 @@ add_action('wp_ajax_nopriv_qrm_submit_custom_form', 'qrm_cf_ajax_submit');
 
 function qrm_cf_ajax_submit() {
     check_ajax_referer('qrm_submit_custom_form', 'qrm_cf_nonce');
+    qrm_pro_bootstrap_lang();
 
     $form_id = isset($_POST['form_id']) ? intval($_POST['form_id']) : 0;
     $form    = $form_id > 0 ? qrm_cf_get_form($form_id) : null;
@@ -21,7 +22,10 @@ function qrm_cf_ajax_submit() {
     // Honeypot: bot doldurur, gerçek kullanıcı görmez. Bota başarı görünümü döndürülür
     // (yeniden denemesin diye) ama hiçbir kayıt oluşturulmaz.
     if (qrm_pro_honeypot_tripped()) {
-        wp_send_json(['success' => true, 'message' => $settings['success_message']]);
+        wp_send_json([
+            'success' => true,
+            'message' => qrm_ceviri_cf_form($form->id, 'success_message', $settings['success_message']),
+        ]);
     }
 
     // Spam koruması: zaman tuzağı + akış koruması (captcha bu formlarda kullanılmaz).
@@ -82,6 +86,6 @@ function qrm_cf_ajax_submit() {
 
     wp_send_json([
         'success' => true,
-        'message' => $settings['success_message'],
+        'message' => qrm_ceviri_cf_form($form->id, 'success_message', $settings['success_message']),
     ]);
 }
