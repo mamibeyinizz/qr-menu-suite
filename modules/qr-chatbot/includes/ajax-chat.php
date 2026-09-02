@@ -79,6 +79,7 @@ if ( ! function_exists( 'qmo_ajax_chat' ) ) {
 			. qmo_chat_garson_talimati()
 			. qmo_chat_siparis_talimati()
 			. qmo_chat_menu_talimati( $message, $decoded_history )
+			. qmo_chat_urun_etiketi_talimati()
 			. qmo_chat_bilemedi_talimati();
 
 		// Çok adımlı sipariş onay akışının çalışabilmesi için önceki turlar
@@ -143,7 +144,12 @@ if ( ! function_exists( 'qmo_ajax_chat' ) ) {
 		if ( isset( $data['candidates'][0]['content']['parts'][0]['text'] ) ) {
 			$cevap = $data['candidates'][0]['content']['parts'][0]['text'];
 			qmo_chatbot_gecmis_yaz( $sess, $message, $cevap );
-			wp_send_json_success( $cevap );
+			wp_send_json_success(
+				array(
+					'mesaj'   => $cevap,
+					'urunler' => qmo_chat_yanit_urunleri( $cevap ),
+				)
+			);
 		} elseif ( isset( $data['error']['message'] ) ) {
 			// API anahtarı gibi ayrıntılar müşteriye sızmasın; log'a yaz.
 			qmo_log( 'Gemini API hatası: ' . $data['error']['message'] );
@@ -322,11 +328,11 @@ if ( ! function_exists( 'qmo_chat_oneri_havuzu_hazirla' ) ) {
 		$sirali = array();
 		foreach ( $cross_ids as $cid ) {
 			if ( isset( $uygun[ $cid ] ) ) {
-				$sirali[] = qmo_chat_oneri_json_satir( $uygun[ $cid ] );
+				$sirali[] = qmo_chat_oneri_prompt_satir( $uygun[ $cid ] );
 			}
 		}
 		foreach ( $sonra as $urun ) {
-			$sirali[] = qmo_chat_oneri_json_satir( $urun );
+			$sirali[] = qmo_chat_oneri_prompt_satir( $urun );
 		}
 
 		return array(
@@ -561,6 +567,97 @@ if ( ! function_exists( 'qmo_chat_oneri_kaynak_urun_bul' ) ) {
 		);
 
 		return (int) $adaylar[0]['id'];
+	}
+}
+
+/**
+ * Prompt JSON satırı (model [URUN:{id}] için id görür; ağırlık yok).
+ *
+ * @param array<string,mixed> $urun Katalog satırı.
+ * @return array<string,mixed>
+ */
+if ( ! function_exists( 'qmo_chat_oneri_prompt_satir' ) ) {
+	function qmo_chat_oneri_prompt_satir( $urun ) {
+		$satir       = qmo_chat_oneri_json_satir( $urun );
+		$satir['id'] = isset( $urun['id'] ) ? (int) $urun['id'] : 0;
+		return $satir;
+	}
+}
+
+/**
+ * Ürün öneri etiketi talimatı ([URUN:{id}]).
+ *
+ * @return string
+ */
+if ( ! function_exists( 'qmo_chat_urun_etiketi_talimati' ) ) {
+	function qmo_chat_urun_etiketi_talimati() {
+		return "\n\nÜRÜN ÖNERİ ETİKETİ: Menüden müşteriye bir ürün önerdiğinde, önerdiğin ürün adının hemen ardına menü JSON'undaki id değerini kullanarak [URUN:{id}] etiketini ekle (örnek: Lahmacun[URUN:42]). Etiket yalnızca önerdiğin ürünler içindir; müşteri bu etiketi görmez.";
+	}
+}
+
+/**
+ * Yanıttaki [URUN:{id}] etiketlerinden ürün kartı verisi üretir.
+ *
+ * @param string $cevap Model yanıtı.
+ * @return array<int,array<string,mixed>>
+ */
+if ( ! function_exists( 'qmo_chat_yanit_urunleri' ) ) {
+	function qmo_chat_yanit_urunleri( $cevap ) {
+		if ( ! preg_match_all( '/\[URUN:(\d+)\]/', (string) $cevap, $eslesmeler ) ) {
+			return array();
+		}
+
+		$liste = array();
+		$gorul = array();
+		foreach ( $eslesmeler[1] as $ham_id ) {
+			$id = absint( $ham_id );
+			if ( $id < 1 || isset( $gorul[ $id ] ) ) {
+				continue;
+			}
+			$gorul[ $id ] = true;
+			$kart         = qmo_chat_urun_karti_bilgisi( $id );
+			if ( $kart ) {
+				$liste[] = $kart;
+			}
+		}
+
+		return $liste;
+	}
+}
+
+/**
+ * Sepet kartı için tek ürün bilgisi.
+ *
+ * @param int $post_id Ürün kimliği.
+ * @return array<string,mixed>|null
+ */
+if ( ! function_exists( 'qmo_chat_urun_karti_bilgisi' ) ) {
+	function qmo_chat_urun_karti_bilgisi( $post_id ) {
+		$post_id = absint( $post_id );
+		if ( $post_id < 1 || 'rma_menu_item' !== get_post_type( $post_id ) ) {
+			return null;
+		}
+		if ( qmo_chat_oneri_tukendi_mi( $post_id ) ) {
+			return null;
+		}
+
+		$ham = function_exists( 'rma_get_effective_price' )
+			? rma_get_effective_price( $post_id )
+			: get_post_meta( $post_id, 'rma_price', true );
+		$sayi = is_numeric( $ham ) ? (float) $ham : 0.0;
+
+		$gorsel = get_the_post_thumbnail_url( $post_id, 'thumbnail' );
+		if ( ! $gorsel ) {
+			$gorsel = '';
+		}
+
+		return array(
+			'id'        => $post_id,
+			'ad'        => get_the_title( $post_id ),
+			'fiyat'     => function_exists( 'rma_ceviri_fiyat' ) ? rma_ceviri_fiyat( $sayi ) : (string) $sayi,
+			'fiyatSayi' => $sayi,
+			'gorsel'    => esc_url_raw( $gorsel ),
+		);
 	}
 }
 
