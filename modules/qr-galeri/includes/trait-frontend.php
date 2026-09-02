@@ -82,7 +82,7 @@ trait QRMGM_Frontend_Trait {
 		$dil       = function_exists( 'rma_get_current_lang' ) ? rma_get_current_lang() : 'tr';
 		$surum     = function_exists( 'rma_ceviri_onbellek_surumu' ) ? rma_ceviri_onbellek_surumu() : 0;
 		$cache_key = 'qrmgm_gallery_' . md5( implode( '|', [
-			'v3',
+			'v4',
 			$atts['section'],
 			$columns,
 			$ratio,
@@ -132,9 +132,12 @@ trait QRMGM_Frontend_Trait {
 			$css_vars[] = '--qrmgm-ratio:' . $ratio;
 		}
 
+		$hover = in_array( $s['hover_effect'], [ 'none', 'zoom', 'glass', 'lift' ], true ) ? $s['hover_effect'] : 'glass';
+		$anim  = empty( $s['animations'] ) ? '0' : '1';
+
 		ob_start();
 		?>
-		<div class="qrmgm-gallery" data-lightbox="<?php echo esc_attr( $s['lightbox'] ); ?>"<?php if ( $css_vars ) : ?> style="<?php echo esc_attr( implode( ';', $css_vars ) ); ?>"<?php endif; ?>>
+		<div class="qrmgm-gallery" data-lightbox="<?php echo esc_attr( $s['lightbox'] ); ?>" data-hover="<?php echo esc_attr( $hover ); ?>" data-anim="<?php echo esc_attr( $anim ); ?>"<?php if ( $css_vars ) : ?> style="<?php echo esc_attr( implode( ';', $css_vars ) ); ?>"<?php endif; ?>>
 			<?php if ( $show_filter && count( $sections ) > 1 ) : ?>
 				<div class="qrmgm-filter-bar">
 					<button type="button" class="qrmgm-filter-btn is-active" data-filter="all"><?php
@@ -182,6 +185,9 @@ trait QRMGM_Frontend_Trait {
 								<?php if ( $sec_icon ) : ?><span class="dashicons <?php echo esc_attr( $sec_icon ); ?>"></span><?php endif; ?>
 								<?php echo esc_html( $sec_title ); ?>
 							</h2>
+							<?php if ( ! empty( $s['divider_show'] ) ) : ?>
+								<span class="qrmgm-section-divider" aria-hidden="true"></span>
+							<?php endif; ?>
 							<?php if ( '' !== trim( $sec_desc ) ) : ?>
 								<p class="qrmgm-section-desc"><?php echo esc_html( $sec_desc ); ?></p>
 							<?php endif; ?>
