@@ -258,6 +258,7 @@ if ( ! function_exists( 'rma_ceviri_option_defteri' ) ) {
 			'qrm_reward_popup_copied_text'     => 'Ödül kopyalandı',
 			'qrm_reward_email_subject'         => 'Ödül e-posta konu',
 			'qrm_reward_email_intro'           => 'Ödül e-posta giriş',
+			'qrm_consent_text'                 => 'KVKK onay metni',
 		);
 
 		foreach ( $qrm_alanlar as $anahtar => $etiket ) {
@@ -580,23 +581,33 @@ if ( ! function_exists( 'rma_ceviri_cf_field_satirlari' ) ) {
 			return;
 		}
 
-		$satirlar = $wpdb->get_results( "SELECT id, label FROM {$tablo}" );
+		$satirlar = $wpdb->get_results( "SELECT id, label, options FROM {$tablo}" );
 		if ( empty( $satirlar ) ) {
 			return;
 		}
 
 		foreach ( $satirlar as $satir ) {
 			$etiket = isset( $satir->label ) ? trim( (string) $satir->label ) : '';
-			if ( '' === $etiket ) {
-				continue;
+			if ( '' !== $etiket ) {
+				yield array(
+					'item_id'   => (int) $satir->id,
+					'item_type' => 'cf_field',
+					'field'     => 'label',
+					'original'  => $etiket,
+				);
 			}
 
-			yield array(
-				'item_id'   => (int) $satir->id,
-				'item_type' => 'cf_field',
-				'field'     => 'label',
-				'original'  => $etiket,
-			);
+			if ( function_exists( 'qrm_cf_field_options' ) ) {
+				$opts = qrm_cf_field_options( $satir );
+				foreach ( $opts as $idx => $opt ) {
+					yield array(
+						'item_id'   => (int) $satir->id,
+						'item_type' => 'cf_field',
+						'field'     => 'option_' . (int) $idx,
+						'original'  => (string) $opt,
+					);
+				}
+			}
 		}
 	}
 }
@@ -622,7 +633,7 @@ if ( ! function_exists( 'rma_ceviri_cf_form_satirlari' ) ) {
 			return;
 		}
 
-		$satirlar = $wpdb->get_results( "SELECT id, title, settings FROM {$tablo}" );
+		$satirlar = $wpdb->get_results( "SELECT id, title, description, settings FROM {$tablo}" );
 		if ( empty( $satirlar ) ) {
 			return;
 		}
@@ -635,6 +646,15 @@ if ( ! function_exists( 'rma_ceviri_cf_form_satirlari' ) ) {
 					'item_type' => 'cf_form',
 					'field'     => 'title',
 					'original'  => (string) $satir->title,
+				);
+			}
+
+			if ( '' !== trim( (string) $satir->description ) ) {
+				yield array(
+					'item_id'   => $id,
+					'item_type' => 'cf_form',
+					'field'     => 'description',
+					'original'  => (string) $satir->description,
 				);
 			}
 
@@ -690,18 +710,27 @@ if ( ! function_exists( 'rma_ceviri_veri_guncel' ) ) {
 		}
 
 		if ( 'cf_field' === $tip ) {
-			if ( 'label' !== $field ) {
-				return null;
-			}
 			$tablo = function_exists( 'qrm_cf_fields_table' )
 				? qrm_cf_fields_table()
 				: $wpdb->prefix . 'qrm_custom_form_fields';
 			if ( ! rma_ceviri_db_tablo_var_mi( $tablo ) ) {
 				return null;
 			}
-			$etiket = $wpdb->get_var( $wpdb->prepare( "SELECT label FROM {$tablo} WHERE id = %d", $item_id ) );
+			$satir = $wpdb->get_row( $wpdb->prepare( "SELECT label, options FROM {$tablo} WHERE id = %d", $item_id ) );
+			if ( ! $satir ) {
+				return null;
+			}
+			if ( 'label' === $field ) {
+				return (string) $satir->label;
+			}
+			if ( 0 === strpos( $field, 'option_' ) && function_exists( 'qrm_cf_field_options' ) ) {
+				$idx  = (int) substr( $field, 7 );
+				$opts = qrm_cf_field_options( $satir );
 
-			return ( null === $etiket ) ? null : (string) $etiket;
+				return isset( $opts[ $idx ] ) ? (string) $opts[ $idx ] : null;
+			}
+
+			return null;
 		}
 
 		if ( 'cf_form' === $tip ) {
@@ -711,12 +740,15 @@ if ( ! function_exists( 'rma_ceviri_veri_guncel' ) ) {
 			if ( ! rma_ceviri_db_tablo_var_mi( $tablo ) ) {
 				return null;
 			}
-			$satir = $wpdb->get_row( $wpdb->prepare( "SELECT title, settings FROM {$tablo} WHERE id = %d", $item_id ) );
+			$satir = $wpdb->get_row( $wpdb->prepare( "SELECT title, description, settings FROM {$tablo} WHERE id = %d", $item_id ) );
 			if ( ! $satir ) {
 				return null;
 			}
 			if ( 'title' === $field ) {
 				return (string) $satir->title;
+			}
+			if ( 'description' === $field ) {
+				return (string) $satir->description;
 			}
 			$ayar = function_exists( 'qrm_cf_get_form_settings' )
 				? qrm_cf_get_form_settings( $satir )

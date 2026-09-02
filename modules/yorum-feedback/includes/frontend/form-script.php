@@ -44,6 +44,7 @@ function qrm_pro_render_form_script($settings, $js_limit = 0, $has_list = true, 
             btnText: <?php echo wp_json_encode(qrm_ceviri_option('qrm_settings.google_review_btn_text', $settings['google_review_btn_text'])); ?>,
             skipText: <?php echo wp_json_encode(qrm_ceviri_option('qrm_settings.google_review_skip_text', $settings['google_review_skip_text'])); ?>,
             loadNonce: <?php echo wp_json_encode(wp_create_nonce('qrm_load_reviews')); ?>,
+            currentLang: <?php echo wp_json_encode(qrm_pro_current_lang()); ?>,
             genericError: metin('genericError', 'Bir şeyler ters gitti, lütfen tekrar deneyin.'),
             reviewsList: <?php echo wp_json_encode([
                 'paginationMode' => $pagination_mode,
@@ -57,6 +58,22 @@ function qrm_pro_render_form_script($settings, $js_limit = 0, $has_list = true, 
                 ],
             ], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>
         };
+
+        function appendLang(fd) {
+            var lang = qrmCfg.currentLang || '';
+            if (!lang) {
+                try {
+                    var params = new URLSearchParams(window.location.search);
+                    lang = params.get('lang') || '';
+                    if (!lang) {
+                        var m = document.cookie.match(/(?:^|;\s*)rma_lang=([^;]+)/);
+                        if (m) lang = decodeURIComponent(m[1]);
+                    }
+                } catch (e) {}
+            }
+            if (lang) fd.append('lang', lang);
+            return fd;
+        }
 
         function buildGoogleCta(avg, googleUrl) {
             var stars = Math.round(avg);
@@ -227,6 +244,7 @@ function qrm_pro_render_form_script($settings, $js_limit = 0, $has_list = true, 
 
                 var fd = new FormData(form);
                 fd.append('action', 'qrm_submit_review');
+                appendLang(fd);
 
                 fetch(qrmCfg.ajaxUrl, { method: 'POST', credentials: 'same-origin', body: fd })
                     .then(function(r) { return r.json(); })
@@ -407,6 +425,7 @@ function qrm_pro_render_form_script($settings, $js_limit = 0, $has_list = true, 
                 fd.append('qrm_sort', state.sort);
                 if (state.star > 0) fd.append('qrm_star', String(state.star));
                 if (state.photos) fd.append('qrm_photos', '1');
+                appendLang(fd);
                 if (mode === 'pages') {
                     fd.append('qrm_page', String(state.page));
                 } else {
