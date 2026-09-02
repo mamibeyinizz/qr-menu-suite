@@ -738,3 +738,95 @@
 		max-width: 460px;
 	}
 }
+
+/* --------------------------------------------------------------------------
+ * 8. Yorum raporu (?view=rapor)
+ * ------------------------------------------------------------------------ */
+
+.qrm-dashboard-views {
+	margin-bottom: 14px;
+}
+
+.qrm-report-heading {
+	font-size: 1.2em;
+	margin: 8px 0 6px;
+}
+
+.qrm-report-filters {
+	margin-bottom: 16px;
+}
+
+.qrm-report-filter-row {
+	align-items: flex-end;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12px 16px;
+}
+
+.qrm-report-filter-label {
+	color: #646970;
+	display: block;
+	font-size: 12px;
+	margin-bottom: 4px;
+}
+
+.qrm-empty-inline {
+	color: #646970;
+	margin: 0;
+}
+
+.qrm-hour-chart {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.qrm-hour-row {
+	align-items: center;
+	display: grid;
+	gap: 8px;
+	grid-template-columns: 44px 1fr auto;
+}
+
+.qrm-hour-label {
+	color: #50575e;
+	font-size: 11px;
+	font-variant-numeric: tabular-nums;
+}
+
+.qrm-hour-bar-wrap {
+	background: #f0f0f1;
+	border-radius: 4px;
+	height: 10px;
+	min-width: 0;
+	overflow: hidden;
+}
+
+.qrm-hour-bar {
+	background: linear-gradient(90deg, #2271b1, #3582c4);
+	border-radius: 4px;
+	height: 100%;
+	min-width: 2px;
+	transition: width 0.2s ease;
+}
+
+.qrm-hour-meta {
+	color: #50575e;
+	font-size: 11px;
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+}
+
+.qrm-shifts-table input.small-text {
+	width: 72px;
+}
+
+@media screen and ( max-width: 782px ) {
+	.qrm-hour-row {
+		grid-template-columns: 40px 1fr;
+	}
+
+	.qrm-hour-meta {
+		grid-column: 2;
+	}
+}

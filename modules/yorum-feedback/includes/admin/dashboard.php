@@ -323,6 +323,13 @@ function qrm_pro_admin_dashboard() {
         wp_die(esc_html__('Bu sayfayı görüntüleme yetkiniz yok.', 'qrms'));
     }
 
+    // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- görünüm seçimi.
+    $view = isset($_GET['view']) ? sanitize_key(wp_unslash($_GET['view'])) : '';
+    if ($view === 'rapor') {
+        qrm_pro_admin_reports_page();
+        return;
+    }
+
     $settings = qrm_pro_get_settings();
     $g_threshold = floatval($settings['google_review_threshold']);
     $self_url = qrm_pro_admin_url('qrms-yf-yorumlar');
@@ -366,6 +373,8 @@ function qrm_pro_admin_dashboard() {
     ?>
     <div class="wrap qrm-pro-wrap">
         <h1><?php esc_html_e('Tüm Yorumlar', 'qrms'); ?></h1>
+
+        <?php qrm_pro_admin_dashboard_view_tabs('liste'); ?>
 
         <?php if ($notice !== ''): ?>
             <div class="notice notice-success is-dismissible"><p><?php echo esc_html($notice); ?></p></div>
