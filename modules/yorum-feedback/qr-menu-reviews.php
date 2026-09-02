@@ -2,10 +2,20 @@
 /*
 Plugin Name: QR Menü Gelişmiş Müşteri Yorumları & Değerlendirme
 Description: QR menü sistemleri için çoklu kriter (yemek, hizmet, temizlik vb.) puanlama sistemli, Google yorum yönlendirmeli (review gating), AJAX destekli, gelişmiş analitik barındıran premium müşteri yorum eklentisi.
-Version: 4.3.0
+Version: 4.3.1
 Author: QR MENÜ
 
 == Changelog ==
+
+4.3.1
+ - YENİ: qrm_reward_events tablosu — popup_shown, google_clicked, returned,
+   email_submitted, code_issued, skipped, code_used olayları (IP wp_hash ile).
+ - YENİ: Ödül sayfasında dönüşüm hunisi raporu (gösterim → tıklama → dönüş →
+   e-posta → kod → kullanım); her adımda sayı ve önceki adıma göre yüzde.
+ - YENİ: Davranış tabanlı kod tetikleme (visibilityState / blur+focus); üç koşul
+   sağlanmazsa onay adımı. qrm_reward_require_return=0 iken eski davranış korunur.
+ - YENİ: Ayarlar qrm_reward_min_away_seconds, qrm_reward_confirm_text,
+   qrm_reward_events_retention_days; günlük cron ile eski olay silme.
 
 4.3.0
  - YENİ: Çok dilli form entegrasyonu tamamlandı — tüm ön yüz sabit metinleri
@@ -213,7 +223,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('QRM_PRO_VERSION', '4.2.7');
+define('QRM_PRO_VERSION', '4.3.1');
 define('QRM_PRO_FILE', __FILE__);
 define('QRM_PRO_PATH', plugin_dir_path(__FILE__));
 define('QRM_PRO_URL', plugin_dir_url(__FILE__));
@@ -228,6 +238,7 @@ require_once QRM_PRO_PATH . 'includes/review-media.php';
 // Ödül modülü (kurulum fonksiyonu install.php içinden çağrıldığı için önce yüklenir)
 require_once QRM_PRO_PATH . 'includes/rewards/db.php';
 require_once QRM_PRO_PATH . 'includes/rewards/functions.php';
+require_once QRM_PRO_PATH . 'includes/rewards/events.php';
 require_once QRM_PRO_PATH . 'includes/rewards/popup-render.php';
 
 // Özel form builder modülü (v4.2.0) — kurulum fonksiyonu install.php içinden
@@ -274,9 +285,20 @@ require_once QRM_PRO_PATH . 'includes/ajax/submit-custom-form.php';
 require_once QRM_PRO_PATH . 'includes/ajax/review-workflow.php';
 
 register_activation_hook(__FILE__, 'qrm_pro_install');
-register_deactivation_hook(__FILE__, 'qrm_reward_unschedule_expire_cron');
+register_deactivation_hook(__FILE__, 'qrm_reward_unschedule_all_crons');
 
 add_action('init', 'qrm_reward_schedule_expire_cron', 20);
+add_action('init', 'qrm_reward_schedule_events_cleanup_cron', 20);
+
+/**
+ * Deaktivasyonda tüm ödül cron işlerini kaldırır.
+ *
+ * @return void
+ */
+function qrm_reward_unschedule_all_crons() {
+    qrm_reward_unschedule_expire_cron();
+    qrm_reward_unschedule_events_cleanup_cron();
+}
 
 // Eklenti dosyaları güncellendiğinde (reaktivasyon olmadan) yeni tabloların da
 // oluşmasını sağlar. Sürüm aynıysa hiçbir sorgu çalışmaz.

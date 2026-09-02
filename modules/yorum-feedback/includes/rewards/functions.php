@@ -682,8 +682,13 @@ function qrm_reward_set_status($id, $status) {
     }
     $ok = (false !== $wpdb->update($table, $data, ['id' => intval($id)], $format, ['%d']));
 
-    if ($ok && $status === 'used' && function_exists('qmo_analitik_yaz')) {
-        qmo_analitik_yaz(['event_type' => 'reward_redeemed']);
+    if ($ok && $status === 'used') {
+        if (function_exists('qrm_reward_log_code_used_event')) {
+            qrm_reward_log_code_used_event((int) $id);
+        }
+        if (function_exists('qmo_analitik_yaz')) {
+            qmo_analitik_yaz(['event_type' => 'reward_redeemed']);
+        }
     }
 
     return $ok;

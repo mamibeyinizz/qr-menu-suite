@@ -66,6 +66,10 @@ function qrm_reward_install() {
     if (function_exists('qrm_reward_schedule_expire_cron')) {
         qrm_reward_schedule_expire_cron();
     }
+
+    if (function_exists('qrm_reward_events_install')) {
+        qrm_reward_events_install();
+    }
 }
 
 function qrm_reward_default_templates() {

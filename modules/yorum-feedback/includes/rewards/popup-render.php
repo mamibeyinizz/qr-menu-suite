@@ -38,6 +38,17 @@ function qrm_reward_auto_seconds($settings) {
     return max(15, min(30, $v ?: 20));
 }
 
+/** Davranış tabanlı dönüş zorunluluğu açık mı? */
+function qrm_reward_require_return($settings) {
+    return !empty($settings['qrm_reward_require_return']);
+}
+
+/** Sekmeden minimum ayrılma süresi (sn, 5-120). */
+function qrm_reward_min_away_seconds($settings) {
+    $v = intval($settings['qrm_reward_min_away_seconds']);
+    return max(5, min(120, $v ?: 20));
+}
+
 /**
  * Popup stil bloğu. qrm_pro_render_style_block() ile aynı desende,
  * tüm renkler admin ayarlarından gelir.
@@ -83,6 +94,9 @@ function qrm_reward_render_popup_style_block($settings) {
 
         .qrm-rw-code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 27px; font-weight: 700; letter-spacing: 3px; padding: 16px 10px; border: 2px dashed <?php echo $c['border']; ?>; border-radius: 12px; margin: 0 0 10px; word-break: break-all; }
         .qrm-rw-label { font-size: 14px; font-weight: 600; opacity: .8; margin: 0 0 16px; }
+
+        .qrm-rw-confirm-actions { display: flex; flex-direction: column; gap: 10px; }
+        .qrm-rw-btn-secondary { background: <?php echo $c['soft']; ?>; color: <?php echo $c['text']; ?>; border: 1px solid <?php echo $c['border']; ?>; }
 
         @media(max-width:420px){
             .qrm-rw-modal { padding: 26px 18px 20px; }
@@ -163,8 +177,13 @@ function qrm_reward_print_popup_footer() {
  * @param bool  $auto_open  JS kapalı klasik POST akışında sayfa açılır açılmaz göster
  */
 function qrm_reward_render_popup($settings, $auto_open = false) {
-    $wait_seconds = qrm_reward_wait_seconds($settings);
-    $auto_seconds = qrm_reward_auto_seconds($settings);
+    $wait_seconds  = qrm_reward_wait_seconds($settings);
+    $auto_seconds  = qrm_reward_auto_seconds($settings);
+    $require_return = qrm_reward_require_return($settings);
+    $min_away       = qrm_reward_min_away_seconds($settings);
+    $confirm_text   = !empty($settings['qrm_reward_confirm_text'])
+        ? $settings['qrm_reward_confirm_text']
+        : 'Google\'da değerlendirmeyi tamamladınız mı?';
 
     // JS kapalı akışta popup'ı açan tek şey sunucudur; kod talebini
     // yetkilendiren anahtar da o yüzden buraya gömülür.
@@ -190,6 +209,20 @@ function qrm_reward_render_popup($settings, $auto_open = false) {
                     <span class="qrm-rw-btn-label" id="qrmRwGoLabel"><?php echo esc_html(qrm_ceviri_option('qrm_settings.qrm_reward_popup_button_text', $settings['qrm_reward_popup_button_text'])); ?></span>
                 </button>
                 <button type="button" class="qrm-rw-skip" id="qrmRwSkip"><?php echo esc_html(qrm_ceviri_option('qrm_settings.qrm_reward_popup_skip_text', $settings['qrm_reward_popup_skip_text'])); ?></button>
+            </div>
+
+            <!-- STATE_CONFIRM -->
+            <div data-rw-step="confirm" hidden>
+                <div class="qrm-rw-badge">✅</div>
+                <p class="qrm-rw-text" id="qrmRwConfirmText"><?php echo esc_html(qrm_ceviri_option('qrm_settings.qrm_reward_confirm_text', $confirm_text)); ?></p>
+                <div class="qrm-rw-confirm-actions">
+                    <button type="button" class="qrm-rw-btn" id="qrmRwConfirmYes">
+                        <span class="qrm-rw-btn-label"><?php echo esc_html(qrm_ceviri_review(__('Evet, tamamladım', 'qrms'))); ?></span>
+                    </button>
+                    <button type="button" class="qrm-rw-btn qrm-rw-btn-secondary" id="qrmRwConfirmNo">
+                        <span class="qrm-rw-btn-label"><?php echo esc_html(qrm_ceviri_review(__('Henüz değil', 'qrms'))); ?></span>
+                    </button>
+                </div>
             </div>
 
             <!-- STATE_EMAIL -->
@@ -242,49 +275,150 @@ function qrm_reward_render_popup($settings, $auto_open = false) {
         root.setAttribute('data-rw-init', '1');
 
         var cfg = {
-            ajaxUrl:      <?php echo wp_json_encode(admin_url('admin-ajax.php')); ?>,
-            nonce:        <?php echo wp_json_encode(wp_create_nonce('qrm_reward_request_code')); ?>,
-            googleUrl:    <?php echo wp_json_encode(esc_url_raw($settings['google_review_url'])); ?>,
-            waitSeconds:  <?php echo (int) $wait_seconds; ?>,
-            autoSeconds:  <?php echo (int) $auto_seconds; ?>,
-            claimText:    <?php echo wp_json_encode(qrm_ceviri_option('qrm_settings.qrm_reward_popup_claim_text', $settings['qrm_reward_popup_claim_text'])); ?>,
-            waitingText:  <?php echo wp_json_encode(qrm_ceviri_option('qrm_settings.qrm_reward_popup_waiting_text', $settings['qrm_reward_popup_waiting_text'])); ?>,
-            copyText:     <?php echo wp_json_encode(qrm_ceviri_option('qrm_settings.qrm_reward_popup_copy_text', $settings['qrm_reward_popup_copy_text'])); ?>,
-            copiedText:   <?php echo wp_json_encode(qrm_ceviri_option('qrm_settings.qrm_reward_popup_copied_text', $settings['qrm_reward_popup_copied_text'])); ?>,
-            errorText:    <?php echo wp_json_encode(qrm_ceviri_option('qrm_settings.qrm_reward_popup_error_text', $settings['qrm_reward_popup_error_text'])); ?>,
-            invalidEmail: <?php echo wp_json_encode(qrm_ceviri_review(__('Lütfen geçerli bir e-posta adresi girin.', 'qrms'))); ?>,
-            currentLang: <?php echo wp_json_encode(qrm_pro_current_lang()); ?>,
-            autoOpen:     <?php echo $auto_open ? 'true' : 'false'; ?>,
-            autoClaim:    <?php echo wp_json_encode($auto_claim); ?>
+            ajaxUrl:       <?php echo wp_json_encode(admin_url('admin-ajax.php')); ?>,
+            nonce:         <?php echo wp_json_encode(wp_create_nonce('qrm_reward_request_code')); ?>,
+            googleUrl:     <?php echo wp_json_encode(esc_url_raw($settings['google_review_url'])); ?>,
+            waitSeconds:   <?php echo (int) $wait_seconds; ?>,
+            autoSeconds:   <?php echo (int) $auto_seconds; ?>,
+            requireReturn: <?php echo $require_return ? 'true' : 'false'; ?>,
+            minAwaySeconds:<?php echo (int) $min_away; ?>,
+            claimText:     <?php echo wp_json_encode(qrm_ceviri_option('qrm_settings.qrm_reward_popup_claim_text', $settings['qrm_reward_popup_claim_text'])); ?>,
+            waitingText:   <?php echo wp_json_encode(qrm_ceviri_option('qrm_settings.qrm_reward_popup_waiting_text', $settings['qrm_reward_popup_waiting_text'])); ?>,
+            copyText:      <?php echo wp_json_encode(qrm_ceviri_option('qrm_settings.qrm_reward_popup_copy_text', $settings['qrm_reward_popup_copy_text'])); ?>,
+            copiedText:    <?php echo wp_json_encode(qrm_ceviri_option('qrm_settings.qrm_reward_popup_copied_text', $settings['qrm_reward_popup_copied_text'])); ?>,
+            errorText:     <?php echo wp_json_encode(qrm_ceviri_option('qrm_settings.qrm_reward_popup_error_text', $settings['qrm_reward_popup_error_text'])); ?>,
+            invalidEmail:  <?php echo wp_json_encode(qrm_ceviri_review(__('Lütfen geçerli bir e-posta adresi girin.', 'qrms'))); ?>,
+            currentLang:   <?php echo wp_json_encode(qrm_pro_current_lang()); ?>,
+            autoOpen:      <?php echo $auto_open ? 'true' : 'false'; ?>,
+            autoClaim:     <?php echo wp_json_encode($auto_claim); ?>
         };
 
-        var steps      = root.querySelectorAll('[data-rw-step]');
-        var goBtn      = document.getElementById('qrmRwGoBtn');
-        var goLabel    = document.getElementById('qrmRwGoLabel');
-        var fill       = document.getElementById('qrmRwFill');
-        var skipBtn    = document.getElementById('qrmRwSkip');
-        var closeBtn   = document.getElementById('qrmRwClose');
-        var emailForm  = document.getElementById('qrmRwEmailForm');
-        var emailInput = document.getElementById('qrmRwEmail');
-        var emailBtn   = document.getElementById('qrmRwEmailBtn');
-        var emailErr   = document.getElementById('qrmRwEmailErr');
-        var codeEl     = document.getElementById('qrmRwCode');
-        var labelEl    = document.getElementById('qrmRwLabel');
-        var copyBtn    = document.getElementById('qrmRwCopyBtn');
-        var mailNote   = document.getElementById('qrmRwMailNote');
-        var errorText  = document.getElementById('qrmRwErrorText');
+        var steps       = root.querySelectorAll('[data-rw-step]');
+        var goBtn       = document.getElementById('qrmRwGoBtn');
+        var goLabel     = document.getElementById('qrmRwGoLabel');
+        var fill        = document.getElementById('qrmRwFill');
+        var skipBtn     = document.getElementById('qrmRwSkip');
+        var closeBtn    = document.getElementById('qrmRwClose');
+        var emailForm   = document.getElementById('qrmRwEmailForm');
+        var emailInput  = document.getElementById('qrmRwEmail');
+        var emailBtn    = document.getElementById('qrmRwEmailBtn');
+        var emailErr    = document.getElementById('qrmRwEmailErr');
+        var codeEl      = document.getElementById('qrmRwCode');
+        var labelEl     = document.getElementById('qrmRwLabel');
+        var copyBtn     = document.getElementById('qrmRwCopyBtn');
+        var mailNote    = document.getElementById('qrmRwMailNote');
+        var errorText   = document.getElementById('qrmRwErrorText');
+        var confirmYes  = document.getElementById('qrmRwConfirmYes');
+        var confirmNo   = document.getElementById('qrmRwConfirmNo');
 
-        var autoTimer = null, tickTimer = null, reviewId = 0, claim = '', waited = false;
+        var autoTimer = null, tickTimer = null;
+        var reviewId = 0, claim = '', waited = false, popupShown = false, codeReceived = false;
+        var googleClicked = false, hasReturned = false, maxAway = 0, leftAt = 0;
+        var useFallback = false, visibilityBound = false;
+        var visibilitySupported = (typeof document.hidden !== 'undefined');
 
-        // --- state makinesi: her state ayrı fonksiyon, iç içe if yok ---
         function setStep(name) {
             for (var i = 0; i < steps.length; i++) {
                 steps[i].hidden = (steps[i].getAttribute('data-rw-step') !== name);
             }
         }
+
         function clearTimers() {
             if (autoTimer) { clearTimeout(autoTimer); autoTimer = null; }
             if (tickTimer) { clearInterval(tickTimer); tickTimer = null; }
+        }
+
+        function logEvent(event) {
+            if (!reviewId) return;
+            var fd = new FormData();
+            fd.append('action', 'qrm_reward_log_event');
+            fd.append('nonce', cfg.nonce);
+            fd.append('review_id', reviewId);
+            fd.append('claim', claim);
+            fd.append('event', event);
+            if (cfg.currentLang) fd.append('lang', cfg.currentLang);
+            try {
+                fetch(cfg.ajaxUrl, { method: 'POST', credentials: 'same-origin', body: fd });
+            } catch (e) {}
+        }
+
+        function resetTracking() {
+            googleClicked = false;
+            hasReturned = false;
+            maxAway = 0;
+            leftAt = 0;
+            useFallback = false;
+            unbindVisibility();
+        }
+
+        function onLeave() {
+            if (!googleClicked || leftAt) return;
+            leftAt = Date.now();
+        }
+
+        function onReturn() {
+            if (!googleClicked || !leftAt) return;
+            var away = (Date.now() - leftAt) / 1000;
+            leftAt = 0;
+            if (away >= cfg.minAwaySeconds) {
+                hasReturned = true;
+                if (away > maxAway) maxAway = away;
+                logEvent('returned');
+                tryFinishWaiting();
+            }
+        }
+
+        function onVisibilityChange() {
+            if (document.visibilityState === 'hidden') onLeave();
+            else if (document.visibilityState === 'visible') onReturn();
+        }
+
+        function bindVisibility() {
+            if (visibilityBound) return;
+            visibilityBound = true;
+            if (visibilitySupported) {
+                document.addEventListener('visibilitychange', onVisibilityChange);
+            } else {
+                useFallback = true;
+                window.addEventListener('blur', onLeave);
+                window.addEventListener('focus', onReturn);
+            }
+        }
+
+        function unbindVisibility() {
+            if (!visibilityBound) return;
+            visibilityBound = false;
+            if (visibilitySupported) {
+                document.removeEventListener('visibilitychange', onVisibilityChange);
+            } else {
+                window.removeEventListener('blur', onLeave);
+                window.removeEventListener('focus', onReturn);
+            }
+        }
+
+        function behaviorMet() {
+            return googleClicked && hasReturned && maxAway >= cfg.minAwaySeconds;
+        }
+
+        function tryFinishWaiting() {
+            if (!waited || tickTimer === null) return;
+            if (!cfg.requireReturn || useFallback || !visibilitySupported) return;
+            if (!behaviorMet()) return;
+            clearInterval(tickTimer);
+            tickTimer = null;
+            stateReady();
+        }
+
+        function finishWaiting() {
+            if (!cfg.requireReturn || useFallback || !visibilitySupported) {
+                stateReady();
+                return;
+            }
+            if (behaviorMet()) {
+                stateReady();
+            } else {
+                stateConfirm();
+            }
         }
 
         function stateInitial() {
@@ -293,28 +427,35 @@ function qrm_reward_render_popup($settings, $auto_open = false) {
             fill.style.transition = 'none';
             fill.style.width = '0';
             clearTimers();
-            // (b) Kullanıcı hiçbir şey yapmazsa X sn sonra e-posta adımına geç
             autoTimer = setTimeout(function() { stateEmail(); }, cfg.autoSeconds * 1000);
+            if (!popupShown) {
+                popupShown = true;
+                logEvent('popup_shown');
+            }
         }
 
-        // (a) Kullanıcı "Google'da Değerlendir"e bastı -> Google açılır + bekleme sayacı
         function stateWaiting() {
             if (waited) return;
             waited = true;
-            clearTimers();                      // otomatik tetikleme iptal
-            if (cfg.googleUrl) { window.open(cfg.googleUrl, '_blank', 'noopener'); }
+            googleClicked = true;
+            clearTimers();
+            logEvent('google_clicked');
+            bindVisibility();
+
+            if (cfg.googleUrl) {
+                var opened = window.open(cfg.googleUrl, '_blank', 'noopener');
+                if (!opened) useFallback = true;
+            }
 
             goBtn.disabled = true;
             var remaining = cfg.waitSeconds;
-            goLabel.innerHTML = '<span class="qrm-rw-spin"></span>' +
-                '<span id="qrmRwCount"></span>';
+            goLabel.innerHTML = '<span class="qrm-rw-spin"></span><span id="qrmRwCount"></span>';
             var countEl = document.getElementById('qrmRwCount');
             function paint() {
-                countEl.textContent = cfg.waitingText + ' ' + remaining + ' sn';
+                if (countEl) countEl.textContent = cfg.waitingText + ' ' + remaining + ' sn';
             }
             paint();
 
-            // requestAnimationFrame ile bir kare bekleyip geçişi başlatıyoruz
             fill.style.transition = 'none';
             fill.style.width = '0';
             requestAnimationFrame(function() {
@@ -326,20 +467,26 @@ function qrm_reward_render_popup($settings, $auto_open = false) {
                 remaining--;
                 if (remaining <= 0) {
                     clearInterval(tickTimer); tickTimer = null;
-                    stateReady();
+                    finishWaiting();
                     return;
                 }
                 paint();
             }, 1000);
         }
 
-        // Bekleme bitti: buton "Kodunu Al" olarak aktifleşir
         function stateReady() {
+            clearTimers();
+            setStep('initial');
             goBtn.disabled = false;
             goLabel.textContent = cfg.claimText;
             fill.style.transition = 'none';
             fill.style.width = '0';
             goBtn.setAttribute('data-rw-ready', '1');
+        }
+
+        function stateConfirm() {
+            clearTimers();
+            setStep('confirm');
         }
 
         function stateEmail() {
@@ -350,6 +497,7 @@ function qrm_reward_render_popup($settings, $auto_open = false) {
         }
 
         function stateSuccess(res) {
+            codeReceived = true;
             setStep('success');
             codeEl.textContent = res.code || '';
             labelEl.textContent = res.discount_label || '';
@@ -369,16 +517,23 @@ function qrm_reward_render_popup($settings, $auto_open = false) {
             reviewId = (opts && opts.reviewId) ? parseInt(opts.reviewId, 10) : 0;
             claim    = (opts && opts.claim) ? String(opts.claim) : '';
             waited = false;
+            popupShown = false;
+            codeReceived = false;
+            resetTracking();
             goBtn.removeAttribute('data-rw-ready');
             root.hidden = false;
             stateInitial();
         }
+
         function close() {
+            if (!root.hidden && reviewId && !codeReceived) {
+                logEvent('skipped');
+            }
             clearTimers();
+            unbindVisibility();
             root.hidden = true;
         }
 
-        // --- olaylar ---
         goBtn.addEventListener('click', function() {
             if (goBtn.getAttribute('data-rw-ready') === '1') { stateEmail(); return; }
             stateWaiting();
@@ -389,6 +544,10 @@ function qrm_reward_render_popup($settings, $auto_open = false) {
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape' && !root.hidden) close();
         });
+
+        if (confirmYes) confirmYes.addEventListener('click', stateEmail);
+        if (confirmNo) confirmNo.addEventListener('click', stateInitial);
+
         var usedClose = document.getElementById('qrmRwUsedClose');
         if (usedClose) usedClose.addEventListener('click', close);
         var errRetry = document.getElementById('qrmRwErrorRetry');

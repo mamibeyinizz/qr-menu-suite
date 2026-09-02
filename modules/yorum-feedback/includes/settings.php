@@ -252,6 +252,11 @@ function qrm_pro_default_settings() {
         'qrm_reward_wait_seconds' => 30,              // Google butonuna basınca beklenen süre
         'qrm_reward_auto_trigger_seconds' => 20,      // hiç tıklanmazsa otomatik e-posta adımı (15-30)
         'qrm_reward_valid_days' => 30,                // kod geçerlilik süresi (gün); 0 = süresiz
+        // Davranış tabanlı dönüşüm ölçümü (v4.3.1)
+        'qrm_reward_require_return' => 1,             // 0 = eski süre tabanlı davranış
+        'qrm_reward_min_away_seconds' => 20,            // sekmeden ayrılma süresi eşiği (5-120)
+        'qrm_reward_confirm_text' => 'Google\'da değerlendirmeyi tamamladınız mı?',
+        'qrm_reward_events_retention_days' => 180,      // olay tablosu saklama süresi
         // E-posta
         'qrm_reward_email_subject' => 'İndirim kodunuz hazır!',
         'qrm_reward_email_intro' => 'Değerlendirmeniz için teşekkür ederiz. Aşağıdaki indirim kodunu bir sonraki ziyaretinizde kullanabilirsiniz.',
