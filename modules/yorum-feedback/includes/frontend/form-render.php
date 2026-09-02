@@ -328,6 +328,18 @@ function qrm_pro_render_style_block($settings) {
         .qrm-load-more-btn:hover { background: <?php echo $settings['btn_color']; ?>; color: <?php echo $settings['btn_text_color']; ?>; }
 
         .qrm-empty-state { text-align:center; padding: 30px 10px; opacity:.6; font-size:14px; }
+        .qrm-empty-filtered a { color: inherit; font-weight: 600; }
+
+        .qrm-reviews-toolbar { margin: 0 0 20px; padding: 16px 18px; background: <?php echo ($settings['theme_style'] == 'dark') ? '#374151' : '#f8fafc'; ?>; border: 1px solid <?php echo $border_color; ?>; border-radius: 12px; }
+        .qrm-reviews-toolbar-row { display: flex; flex-wrap: wrap; gap: 14px 18px; align-items: flex-end; }
+        .qrm-reviews-field { display: flex; flex-direction: column; gap: 6px; min-width: 140px; flex: 1 1 140px; }
+        .qrm-reviews-field-label { font-size: 12px; font-weight: 700; opacity: .75; text-transform: uppercase; letter-spacing: .04em; }
+        .qrm-reviews-select { width: 100%; padding: 10px 12px; border: 1px solid <?php echo $border_color; ?>; border-radius: 8px; background: <?php echo ($settings['theme_style'] == 'dark') ? '#1f2937' : '#fff'; ?>; color: inherit; font-size: 14px; }
+        .qrm-reviews-photos-field { flex-direction: row; align-items: center; gap: 8px; min-width: auto; font-size: 14px; font-weight: 500; }
+        .qrm-reviews-photos-field input { width: auto; margin: 0; accent-color: <?php echo $settings['btn_color']; ?>; }
+        .qrm-reviews-pages { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 24px; }
+        .qrm-reviews-page-btn { min-width: 38px; height: 38px; padding: 0 10px; border: 1px solid <?php echo $border_color; ?>; border-radius: 999px; background: transparent; color: inherit; font-weight: 600; cursor: pointer; transition: all .2s ease; }
+        .qrm-reviews-page-btn:hover, .qrm-reviews-page-btn.is-active { background: <?php echo $settings['btn_color']; ?>; color: <?php echo $settings['btn_text_color']; ?>; border-color: <?php echo $settings['btn_color']; ?>; }
 
         /* --- Aşamalı Form (Wizard) --- */
         .qrm-steps-head { display:none; align-items:center; justify-content:center; gap:8px; margin-bottom:24px; }

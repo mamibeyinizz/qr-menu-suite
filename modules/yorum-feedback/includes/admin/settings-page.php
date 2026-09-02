@@ -105,6 +105,16 @@ function qrm_pro_admin_settings() {
                             </td>
                         </tr>
                         <tr>
+                            <th><label for="qrm_reviews_pagination_mode"><?php esc_html_e('Yorum listesi sayfalama', 'qrms'); ?></label></th>
+                            <td>
+                                <select id="qrm_reviews_pagination_mode" name="qrm_reviews_pagination_mode">
+                                    <option value="loadmore" <?php selected($settings['qrm_reviews_pagination_mode'], 'loadmore'); ?>><?php esc_html_e('Daha Fazla Yükle (varsayılan)', 'qrms'); ?></option>
+                                    <option value="pages" <?php selected($settings['qrm_reviews_pagination_mode'], 'pages'); ?>><?php esc_html_e('Sayfa numaraları', 'qrms'); ?></option>
+                                </select>
+                                <p class="description"><?php esc_html_e('Ön yüzdeki yorum listesinin nasıl sayfalanacağını belirler.', 'qrms'); ?></p>
+                            </td>
+                        </tr>
+                        <tr>
                             <th><label>Puan Özeti</label></th>
                             <td>
                                 <label><input type="checkbox" name="show_overall_stats" value="1" <?php checked(isset($settings['show_overall_stats']) ? $settings['show_overall_stats'] : 1, 1); ?>> Sayfa başında genel puan durumunu göster</label>
@@ -309,6 +319,12 @@ function qrm_pro_admin_save_settings() {
     $settings['theme_style']         = sanitize_text_field($_POST['theme_style']);
     $settings['auto_approve_rating'] = intval($_POST['auto_approve_rating']);
     $settings['reviews_per_page']    = sanitize_text_field($_POST['reviews_per_page']);
+    $pagination_mode = isset($_POST['qrm_reviews_pagination_mode'])
+        ? sanitize_key(wp_unslash($_POST['qrm_reviews_pagination_mode']))
+        : 'loadmore';
+    $settings['qrm_reviews_pagination_mode'] = in_array($pagination_mode, ['loadmore', 'pages'], true)
+        ? $pagination_mode
+        : 'loadmore';
     $settings['show_overall_stats']  = isset($_POST['show_overall_stats']) ? 1 : 0;
 
     for ($i = 1; $i <= 5; $i++) {

@@ -2,10 +2,19 @@
 /*
 Plugin Name: QR Menü Gelişmiş Müşteri Yorumları & Değerlendirme
 Description: QR menü sistemleri için çoklu kriter (yemek, hizmet, temizlik vb.) puanlama sistemli, Google yorum yönlendirmeli (review gating), AJAX destekli, gelişmiş analitik barındıran premium müşteri yorum eklentisi.
-Version: 4.2.8
+Version: 4.2.9
 Author: QR MENÜ
 
 == Changelog ==
+
+4.2.9
+ - YENİ: Ön yüz yorum listesinde sıralama (en yeni / en eski / en yüksek / en düşük puan),
+   tekli yıldız filtresi ve (Aşama 7 açıksa) yalnızca fotoğraflı filtre.
+ - YENİ: Sayfalama modu qrm_reviews_pagination_mode — loadmore (varsayılan) veya pages.
+ - YENİ: Filtreler URL'e yazılır (history.replaceState); paylaşılan link aynı görünümü açar.
+ - GÜVENLİK: Tüm parametreler sunucuda beyaz listeyle doğrulanır; ORDER BY sabit eşlemeden gelir.
+ - PERFORMANS: idx_status_rating (status, rating) indeksi; tarih sıralaması idx_status_created kullanır.
+ - UX: Filtre sonucu boşsa "Bu filtreye uygun yorum yok" + filtreyi temizle bağlantısı.
 
 4.2.8
  - YENİ: Yorum formuna görsel yükleme (isteğe bağlı). qrm_review_media tablosu;
@@ -301,6 +310,8 @@ function qrm_pro_maybe_upgrade() {
  *
  * v5: table_id sütunu ve idx_table_created indeksi (masa raporları).
  *
+ * v6: idx_status_rating (status, rating) — ön yüz puan sıralaması.
+ *
  * ZAMANLAMA — güncelleme bilinçli olarak SADECE yönetim isteklerinde çalışır.
  * ALTER TABLE, büyük bir yorum tablosunda birkaç saniye sürebilir ve o süre
  * boyunca tabloyu meşgul eder. plugins_loaded'a bağlansaydı bu iş, menüyü açan
@@ -309,7 +320,7 @@ function qrm_pro_maybe_upgrade() {
  * ---------------------------------------------------------------------- */
 
 /** Şema (indeks) sürümü. İndeks tanımları değiştiğinde artırılır. */
-define('QRM_PRO_SCHEMA_VERSION', '5');
+define('QRM_PRO_SCHEMA_VERSION', '6');
 
 /** Şema sürümünün saklandığı option. */
 define('QRM_PRO_SCHEMA_OPTION', 'qrm_pro_schema_version');
@@ -371,6 +382,7 @@ function qrm_pro_schema_indexes_ok() {
 
     return is_array($rows)
         && in_array('idx_status_created', $rows, true)
+        && in_array('idx_status_rating', $rows, true)
         && in_array('idx_workflow', $rows, true)
         && in_array('idx_table_created', $rows, true);
 }
