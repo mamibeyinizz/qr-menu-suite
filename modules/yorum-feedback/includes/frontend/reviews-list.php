@@ -137,6 +137,7 @@ function qrm_pro_render_review_card($review) {
             <span class="qrm-review-date"><?php echo esc_html(date('d.m.Y', strtotime($review->created_at))); ?></span>
         </div>
         <p class="qrm-review-text"><?php echo nl2br(esc_html($review->comment)); ?></p>
+        <?php echo qrm_pro_render_review_media_gallery((int) $review->id, (int) $review->status); ?>
     </div>
     <?php
     return ob_get_clean();

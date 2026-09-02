@@ -129,6 +129,17 @@ function qrm_pro_handle_review_submission($settings) {
 
     $review_id = (int) $wpdb->insert_id;
 
+    if (qrm_pro_media_is_enabled($settings)) {
+        $media_result = qrm_pro_save_review_media($review_id, $settings);
+
+        if (is_wp_error($media_result)) {
+            $wpdb->delete($table_reviews, ['id' => $review_id], ['%d']);
+            qrm_pro_flush_review_stats();
+
+            return ['success' => false, 'message' => $media_result->get_error_message()];
+        }
+    }
+
     // Sayaçlar ve ortalamalar önbellekli; yeni yorum onları geçersizler.
     qrm_pro_flush_review_stats();
 

@@ -193,6 +193,40 @@ function qrm_pro_admin_settings() {
             </div>
 
             <div class="qrm-card">
+                <h3><?php esc_html_e('Yorum Görseli Yükleme', 'qrms'); ?></h3>
+                <p class="description">
+                    <?php esc_html_e('Müşteriler yorum formundan fotoğraf ekleyebilir. Kapalıyken form ve akış eskisiyle aynıdır.', 'qrms'); ?>
+                </p>
+                <table class="form-table">
+                    <tr>
+                        <th><?php esc_html_e('Görsel yükleme', 'qrms'); ?></th>
+                        <td>
+                            <label>
+                                <input type="checkbox" name="qrm_media_enabled" value="1" <?php checked(!empty($settings['qrm_media_enabled'])); ?>>
+                                <?php esc_html_e('Yorum formunda fotoğraf yüklemeye izin ver', 'qrms'); ?>
+                            </label>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th><label for="qrm_media_max_files"><?php esc_html_e('Azami dosya sayısı', 'qrms'); ?></label></th>
+                        <td>
+                            <input type="number" id="qrm_media_max_files" name="qrm_media_max_files" min="1" max="5" step="1"
+                                   class="small-text" value="<?php echo esc_attr((string) max(1, min(5, (int) $settings['qrm_media_max_files']))); ?>">
+                            <p class="description"><?php esc_html_e('Varsayılan 2, üst sınır 5.', 'qrms'); ?></p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th><label for="qrm_media_max_mb"><?php esc_html_e('Dosya başına azami boyut (MB)', 'qrms'); ?></label></th>
+                        <td>
+                            <input type="number" id="qrm_media_max_mb" name="qrm_media_max_mb" min="1" max="8" step="1"
+                                   class="small-text" value="<?php echo esc_attr((string) max(1, min(8, (int) $settings['qrm_media_max_mb']))); ?>">
+                            <p class="description"><?php esc_html_e('Varsayılan 3 MB, üst sınır 8 MB. Yalnızca JPEG, PNG ve WebP.', 'qrms'); ?></p>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="qrm-card">
                 <h3><?php esc_html_e('Rapor Vardiyaları', 'qrms'); ?></h3>
                 <p class="description">
                     <?php esc_html_e('Tüm Yorumlar → Rapor ekranındaki vardiya kırılımı bu saatlere göre hesaplanır. Bitiş saati hariçtir; gece yarısını geçen aralıklar (ör. 23–06) desteklenir.', 'qrms'); ?>
@@ -308,6 +342,10 @@ function qrm_pro_admin_save_settings() {
     if (array_key_exists('qrm_consent_page_url', $_POST)) {
         $settings['qrm_consent_page_url'] = esc_url_raw(trim(wp_unslash($_POST['qrm_consent_page_url'])));
     }
+
+    $settings['qrm_media_enabled']   = isset($_POST['qrm_media_enabled']) ? 1 : 0;
+    $settings['qrm_media_max_files'] = max(1, min(5, intval($_POST['qrm_media_max_files'] ?? 2)));
+    $settings['qrm_media_max_mb']    = max(1, min(8, intval($_POST['qrm_media_max_mb'] ?? 3)));
 
     update_option('qrm_settings', $settings);
     qrm_pro_flush_trend_drop_cache();

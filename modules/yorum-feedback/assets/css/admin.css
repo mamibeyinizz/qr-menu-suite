@@ -959,3 +959,31 @@
 	list-style: disc;
 	margin: 0 0 8px 20px;
 }
+
+/* Yorum listesi — eklenen görseller (v4.2.8) */
+.qrm-admin-review-media {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	margin-top: 8px;
+}
+
+.qrm-admin-media-thumb {
+	display: block;
+	line-height: 0;
+	border-radius: 6px;
+	overflow: hidden;
+	border: 1px solid #dcdcde;
+}
+
+.qrm-admin-media-thumb img {
+	display: block;
+	width: 48px;
+	height: 48px;
+	object-fit: cover;
+}
+
+.qrm-admin-media-thumb:hover {
+	border-color: #2271b1;
+	box-shadow: 0 0 0 1px #2271b1;
+}

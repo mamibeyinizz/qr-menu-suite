@@ -394,6 +394,13 @@ function qrm_pro_admin_dashboard() {
         $toplam = qrm_pro_admin_reviews_total($durum, $stats, $sekme, $wf, $wf_counts);
     }
 
+    $review_ids = array_map(function ($row) {
+        return (int) $row->id;
+    }, $reviews);
+    $review_media_map = function_exists('qrm_pro_get_review_media_bulk')
+        ? qrm_pro_get_review_media_bulk($review_ids)
+        : [];
+
     $sekme_url = $sekme === '' ? $self_url : add_query_arg(['sekme' => $sekme], $self_url);
     if ($durum !== '') {
         $sekme_url = add_query_arg(['durum' => $durum], $sekme_url);
@@ -662,7 +669,13 @@ function qrm_pro_admin_dashboard() {
                             <span class="qrm-breakdown"><?php echo esc_html($breakdown_str); ?></span>
                         <?php endif; ?>
                     </td>
-                    <td data-label="<?php esc_attr_e('Yorum', 'qrms'); ?>" class="qrm-cell-block"><?php echo esc_html($r->comment); ?></td>
+                    <td data-label="<?php esc_attr_e('Yorum', 'qrms'); ?>" class="qrm-cell-block">
+                        <?php echo esc_html($r->comment); ?>
+                        <?php
+                        $row_media = isset($review_media_map[(int) $r->id]) ? $review_media_map[(int) $r->id] : [];
+                        echo qrm_pro_render_admin_review_media($row_media);
+                        ?>
+                    </td>
                     <td data-label="<?php esc_attr_e('Durum', 'qrms'); ?>">
                         <?php if ($r->status): ?>
                             <span class="qrm-status-approved"><?php esc_html_e('Yayında', 'qrms'); ?></span>
@@ -823,6 +836,10 @@ function qrm_pro_admin_handle_review_actions() {
         $wpdb->update($table_reviews, ['status' => 0], ['id' => $id]);
         qrm_pro_flush_review_stats();
         return __('Yorum yayından kaldırıldı.', 'qrms');
+    }
+
+    if (function_exists('qrm_pro_delete_review_media')) {
+        qrm_pro_delete_review_media($id);
     }
 
     $wpdb->delete($table_reviews, ['id' => $id]);

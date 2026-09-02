@@ -38,6 +38,7 @@ if (!function_exists('qrm_ceviri_review_js_metinleri')) {
             'rateRequired' => qrm_ceviri_review(__('Devam etmek için lütfen tüm kriterleri puanlayın.', 'qrms')),
             'thanks'       => qrm_ceviri_review(__('Değerlendirmeniz için teşekkürler!', 'qrms')),
             'loading'      => qrm_ceviri_review(__('Yükleniyor…', 'qrms')),
+            'mediaError'   => qrm_ceviri_review(__('Geçersiz görsel veya boyut sınırı aşıldı.', 'qrms')),
         ];
     }
 }
@@ -165,6 +166,11 @@ function qrm_pro_default_settings() {
         // KVKK / pazarlama izni (v4.2.7) — metin boşsa checkbox render edilmez.
         'qrm_consent_text' => '',
         'qrm_consent_page_url' => '',
+
+        // Yorum formu görsel yükleme (v4.2.8) — varsayılan kapalı.
+        'qrm_media_enabled'   => 0,
+        'qrm_media_max_files' => 2,
+        'qrm_media_max_mb'    => 3,
 
         // --- Google Review Ödül Sistemi (v4.1.0) ---
         // Not: google_review_url / google_review_threshold gibi mevcut ayarlar
