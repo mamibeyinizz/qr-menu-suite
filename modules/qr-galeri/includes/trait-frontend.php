@@ -82,7 +82,7 @@ trait QRMGM_Frontend_Trait {
 		$dil       = function_exists( 'rma_get_current_lang' ) ? rma_get_current_lang() : 'tr';
 		$surum     = function_exists( 'rma_ceviri_onbellek_surumu' ) ? rma_ceviri_onbellek_surumu() : 0;
 		$cache_key = 'qrmgm_gallery_' . md5( implode( '|', [
-			'v4',
+			'v5',
 			$atts['section'],
 			$columns,
 			$ratio,
@@ -139,14 +139,16 @@ trait QRMGM_Frontend_Trait {
 		?>
 		<div class="qrmgm-gallery" data-lightbox="<?php echo esc_attr( $s['lightbox'] ); ?>" data-hover="<?php echo esc_attr( $hover ); ?>" data-anim="<?php echo esc_attr( $anim ); ?>"<?php if ( $css_vars ) : ?> style="<?php echo esc_attr( implode( ';', $css_vars ) ); ?>"<?php endif; ?>>
 			<?php if ( $show_filter && count( $sections ) > 1 ) : ?>
-				<div class="qrmgm-filter-bar">
-					<button type="button" class="qrmgm-filter-btn is-active" data-filter="all"><?php
-						$tumu = function_exists( 'rma_ceviri_modul' ) ? rma_ceviri_modul( 'gallery', 'Tümü' ) : 'Tümü';
-						echo esc_html( $tumu );
-					?></button>
-					<?php foreach ( $sections as $sec ) : ?>
-						<button type="button" class="qrmgm-filter-btn" data-filter="<?php echo esc_attr( $sec->post_name ); ?>"><?php echo esc_html( $sec->post_title ); ?></button>
-					<?php endforeach; ?>
+				<div class="qrmgm-filter-wrap">
+					<div class="qrmgm-filter-bar">
+						<button type="button" class="qrmgm-filter-btn is-active" data-filter="all"><?php
+							$tumu = function_exists( 'rma_ceviri_modul' ) ? rma_ceviri_modul( 'gallery', 'Tümü' ) : 'Tümü';
+							echo esc_html( $tumu );
+						?></button>
+						<?php foreach ( $sections as $sec ) : ?>
+							<button type="button" class="qrmgm-filter-btn" data-filter="<?php echo esc_attr( $sec->post_name ); ?>"><?php echo esc_html( $sec->post_title ); ?></button>
+						<?php endforeach; ?>
+					</div>
 				</div>
 			<?php endif; ?>
 
@@ -169,7 +171,10 @@ trait QRMGM_Frontend_Trait {
 				}
 
 				$sec_title = $sec->post_title;
-				$sec_desc  = (string) get_post_meta( $sec->ID, '_qrmgm_desc', true );
+				$sec_desc  = trim( (string) $sec->post_excerpt );
+				if ( '' === $sec_desc ) {
+					$sec_desc = trim( (string) get_post_meta( $sec->ID, '_qrmgm_desc', true ) );
+				}
 				$sec_icon  = (string) get_post_meta( $sec->ID, '_qrmgm_icon', true );
 				if ( function_exists( 'rma_ceviri_modul' ) ) {
 					$sec_title = rma_ceviri_modul( 'gallery', $sec_title );
