@@ -68,12 +68,23 @@ function qrm_cf_admin_submissions_pane() {
     $status_filter = isset($_GET['status']) ? sanitize_key($_GET['status']) : '';
     if (!in_array($status_filter, ['new', 'read', 'archived'], true)) $status_filter = '';
 
+    $list_filters = function_exists('qrm_pro_admin_review_list_filters')
+        ? qrm_pro_admin_review_list_filters($_GET)
+        : ['liste_bas' => '', 'liste_bit' => '', 'search' => '', 'table_id' => 0];
+    $has_list_filters = function_exists('qrm_pro_admin_review_has_list_filters')
+        && qrm_pro_admin_review_has_list_filters($list_filters);
+
     $paged    = isset($_GET['paged']) ? max(1, intval($_GET['paged'])) : 1;
     $per_page = 25;
 
     $fields      = qrm_cf_get_fields($current->id);
-    $submissions = qrm_cf_get_submissions($current->id, ['paged' => $paged, 'per_page' => $per_page, 'status' => $status_filter]);
-    $total       = qrm_cf_count_submissions($current->id, $status_filter);
+    if ($has_list_filters && function_exists('qrm_cf_export_submissions_chunk')) {
+        $total = qrm_cf_count_submissions_filtered($current->id, $status_filter, $list_filters);
+        $submissions = qrm_cf_export_submissions_chunk($current->id, $status_filter, $list_filters, $per_page, ($paged - 1) * $per_page);
+    } else {
+        $submissions = qrm_cf_get_submissions($current->id, ['paged' => $paged, 'per_page' => $per_page, 'status' => $status_filter]);
+        $total       = qrm_cf_count_submissions($current->id, $status_filter);
+    }
     $unread      = qrm_cf_count_submissions($current->id, 'new');
     $total_pages = max(1, (int) ceil($total / $per_page));
     ?>
@@ -123,6 +134,41 @@ function qrm_cf_admin_submissions_pane() {
                 <?php endif; ?>
             </div>
         </div>
+
+        <form method="get" class="qrm-list-toolbar qrm-sub-list-filters">
+            <input type="hidden" name="page" value="qrm-forms">
+            <input type="hidden" name="tab" value="submissions">
+            <input type="hidden" name="form_id" value="<?php echo intval($current->id); ?>">
+            <?php if ($status_filter !== ''): ?>
+                <input type="hidden" name="status" value="<?php echo esc_attr($status_filter); ?>">
+            <?php endif; ?>
+            <div class="qrm-list-toolbar-row">
+                <label>
+                    <span class="qrm-list-toolbar-label"><?php esc_html_e('Başlangıç', 'qrms'); ?></span>
+                    <input type="date" name="liste_bas" value="<?php echo esc_attr($list_filters['liste_bas']); ?>">
+                </label>
+                <label>
+                    <span class="qrm-list-toolbar-label"><?php esc_html_e('Bitiş', 'qrms'); ?></span>
+                    <input type="date" name="liste_bit" value="<?php echo esc_attr($list_filters['liste_bit']); ?>">
+                </label>
+                <label class="qrm-list-toolbar-search">
+                    <span class="qrm-list-toolbar-label"><?php esc_html_e('Ara', 'qrms'); ?></span>
+                    <input type="search" name="s" value="<?php echo esc_attr($list_filters['search']); ?>" placeholder="<?php esc_attr_e('Form verilerinde ara…', 'qrms'); ?>">
+                </label>
+                <button type="submit" class="button"><?php esc_html_e('Filtrele', 'qrms'); ?></button>
+                <?php
+                if (function_exists('qrm_export_csv_button')) {
+                    echo qrm_export_csv_button('submissions', [
+                        'form_id'   => (int) $current->id,
+                        'status'    => $status_filter,
+                        'liste_bas' => $list_filters['liste_bas'],
+                        'liste_bit' => $list_filters['liste_bit'],
+                        's'         => $list_filters['search'],
+                    ]);
+                }
+                ?>
+            </div>
+        </form>
 
         <?php if (empty($submissions)): ?>
             <div class="qrm-cf-empty" style="padding:44px 24px;">
@@ -191,6 +237,9 @@ function qrm_cf_admin_submissions_pane() {
                     <?php
                     $page_args = ['tab' => 'submissions', 'form_id' => intval($current->id)];
                     if ($status_filter !== '') $page_args['status'] = $status_filter;
+                    if ($list_filters['liste_bas'] !== '') $page_args['liste_bas'] = $list_filters['liste_bas'];
+                    if ($list_filters['liste_bit'] !== '') $page_args['liste_bit'] = $list_filters['liste_bit'];
+                    if ($list_filters['search'] !== '') $page_args['s'] = $list_filters['search'];
                     // %#%, paginate_links'in sayfa numarası yer tutucusu — http_build_query
                     // onu kodlayacağı için URL'ye sonradan eklenir.
                     echo paginate_links([
@@ -227,6 +276,13 @@ function qrm_cf_admin_submissions_styles() {
         .qrm-sub-filter { padding:5px 12px; border-radius:20px; text-decoration:none; font-size:12.5px; color:#50575e; transition:background .15s ease; }
         .qrm-sub-filter:hover { background:#f1f5f9; color:#1d2327; }
         .qrm-sub-filter.active { background:#2271b1; color:#fff; }
+
+        .qrm-sub-list-filters { background:#fff; border:1px solid #c3c4c7; border-top:none; padding:12px 16px; margin-bottom:16px; }
+        .qrm-list-toolbar-row { display:flex; flex-wrap:wrap; align-items:flex-end; gap:10px 14px; }
+        .qrm-list-toolbar label { display:flex; flex-direction:column; gap:4px; font-size:12px; }
+        .qrm-list-toolbar-label { font-weight:600; color:#50575e; }
+        .qrm-list-toolbar-search { flex:1 1 180px; min-width:140px; }
+        .qrm-export-csv-form { display:inline; margin:0; }
 
         .qrm-sub-table td { vertical-align:top; line-height:1.5; }
         .qrm-sub-row-new td { background:#f8fbff; }

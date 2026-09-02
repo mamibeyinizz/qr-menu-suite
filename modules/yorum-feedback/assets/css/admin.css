@@ -747,6 +747,41 @@
 	margin-bottom: 14px;
 }
 
+/* Liste araç çubuğu — tarih, arama, CSV dışa aktarım */
+.qrm-list-toolbar {
+	margin: 16px 0;
+	padding: 14px 16px;
+}
+
+.qrm-list-toolbar-row {
+	align-items: flex-end;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10px 14px;
+}
+
+.qrm-list-toolbar label {
+	display: flex;
+	flex-direction: column;
+	font-size: 12px;
+	gap: 4px;
+}
+
+.qrm-list-toolbar-label {
+	color: #50575e;
+	font-weight: 600;
+}
+
+.qrm-list-toolbar-search {
+	flex: 1 1 180px;
+	min-width: 140px;
+}
+
+.qrm-export-csv-form {
+	display: inline;
+	margin: 0;
+}
+
 .qrm-report-heading {
 	font-size: 1.2em;
 	margin: 8px 0 6px;
