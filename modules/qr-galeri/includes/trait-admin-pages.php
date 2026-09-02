@@ -104,27 +104,74 @@ trait QRMGM_Admin_Pages_Trait {
 		include __DIR__ . '/admin-page-settings.php';
 	}
 
+	/**
+	 * Ayar ekranındaki font seçenekleri — kaydetme ve form aynı listeden beslenir.
+	 *
+	 * @return string[]
+	 */
+	private function gallery_font_choices(): array {
+		return [ 'Poppins', 'Inter' ];
+	}
+
+	/**
+	 * İzin listesinden değer seçer; yoksa varsayılana döner.
+	 *
+	 * @param mixed $value   Gelen değer.
+	 * @param array $allowed İzin verilenler.
+	 * @param mixed $default Varsayılan.
+	 * @return mixed
+	 */
+	private function pick_setting( $value, array $allowed, $default ) {
+		return in_array( $value, $allowed, true ) ? $value : $default;
+	}
+
 	private function save_settings_from_request( array $data ): void {
 		$defaults = $this->default_settings();
-		$out      = [
-			'radius'          => absint( $data['radius'] ?? $defaults['radius'] ),
-			'shadow'          => sanitize_key( $data['shadow'] ?? $defaults['shadow'] ),
-			'gap'             => absint( $data['gap'] ?? $defaults['gap'] ),
-			'columns_desktop' => max( 1, min( 6, absint( $data['columns_desktop'] ?? 4 ) ) ),
-			'columns_tablet'  => max( 1, min( 6, absint( $data['columns_tablet'] ?? 3 ) ) ),
-			'columns_mobile'  => max( 1, min( 6, absint( $data['columns_mobile'] ?? 2 ) ) ),
-			'hover_effect'    => sanitize_key( $data['hover_effect'] ?? $defaults['hover_effect'] ),
-			'animations'      => empty( $data['animations'] ) ? 0 : 1,
-			'lightbox'        => empty( $data['lightbox'] ) ? 0 : 1,
-			'filter_bar'      => empty( $data['filter_bar'] ) ? 0 : 1,
-			'lazy_load'       => empty( $data['lazy_load'] ) ? 0 : 1,
-			'webp'            => empty( $data['webp'] ) ? 0 : 1,
-			'color_dark'      => sanitize_hex_color( $data['color_dark'] ?? $defaults['color_dark'] ) ?: $defaults['color_dark'],
-			'color_gold'      => sanitize_hex_color( $data['color_gold'] ?? $defaults['color_gold'] ) ?: $defaults['color_gold'],
-			'color_light'     => sanitize_hex_color( $data['color_light'] ?? $defaults['color_light'] ) ?: $defaults['color_light'],
-			'color_white'     => sanitize_hex_color( $data['color_white'] ?? $defaults['color_white'] ) ?: $defaults['color_white'],
-			'font'            => in_array( $data['font'] ?? '', [ 'Poppins', 'Inter' ], true ) ? $data['font'] : $defaults['font'],
-			'overlay_opacity' => max( 0, min( 100, absint( $data['overlay_opacity'] ?? $defaults['overlay_opacity'] ) ) ),
+		$fonts    = $this->gallery_font_choices();
+		$weights  = [ 400, 500, 600, 700, 800, 900 ];
+		$aligns   = [ 'left', 'center', 'right' ];
+		$hex      = static function ( $raw, $fallback ) {
+			$color = sanitize_hex_color( is_string( $raw ) ? $raw : '' );
+			return $color ? $color : $fallback;
+		};
+
+		$out = [
+			'radius'            => max( 0, min( 60, absint( $data['radius'] ?? $defaults['radius'] ) ) ),
+			'shadow'            => $this->pick_setting( sanitize_key( $data['shadow'] ?? '' ), [ 'none', 'soft', 'medium', 'strong' ], $defaults['shadow'] ),
+			'gap'               => max( 0, min( 60, absint( $data['gap'] ?? $defaults['gap'] ) ) ),
+			'columns_desktop'   => max( 1, min( 6, absint( $data['columns_desktop'] ?? 4 ) ) ),
+			'columns_tablet'    => max( 1, min( 6, absint( $data['columns_tablet'] ?? 3 ) ) ),
+			'columns_mobile'    => max( 1, min( 6, absint( $data['columns_mobile'] ?? 2 ) ) ),
+			'hover_effect'      => $this->pick_setting( sanitize_key( $data['hover_effect'] ?? '' ), [ 'none', 'zoom', 'glass', 'lift' ], $defaults['hover_effect'] ),
+			'animations'        => empty( $data['animations'] ) ? 0 : 1,
+			'lightbox'          => empty( $data['lightbox'] ) ? 0 : 1,
+			'filter_bar'        => empty( $data['filter_bar'] ) ? 0 : 1,
+			'lazy_load'         => empty( $data['lazy_load'] ) ? 0 : 1,
+			'webp'              => empty( $data['webp'] ) ? 0 : 1,
+			'color_dark'        => $hex( $data['color_dark'] ?? '', $defaults['color_dark'] ),
+			'color_gold'        => $hex( $data['color_gold'] ?? '', $defaults['color_gold'] ),
+			'color_light'       => $hex( $data['color_light'] ?? '', $defaults['color_light'] ),
+			'color_white'       => $hex( $data['color_white'] ?? '', $defaults['color_white'] ),
+			'font'              => $this->pick_setting( $data['font'] ?? '', $fonts, $defaults['font'] ),
+			'overlay_opacity'   => max( 0, min( 100, absint( $data['overlay_opacity'] ?? $defaults['overlay_opacity'] ) ) ),
+			'title_font'        => $this->pick_setting( $data['title_font'] ?? '', $fonts, $defaults['title_font'] ),
+			'title_size'        => max( 12, min( 72, absint( $data['title_size'] ?? $defaults['title_size'] ) ) ),
+			'title_color'       => $hex( $data['title_color'] ?? '', $defaults['title_color'] ),
+			'title_weight'      => (int) $this->pick_setting( absint( $data['title_weight'] ?? 0 ), $weights, $defaults['title_weight'] ),
+			'title_align'       => $this->pick_setting( sanitize_key( $data['title_align'] ?? '' ), $aligns, $defaults['title_align'] ),
+			'title_transform'   => $this->pick_setting( sanitize_key( $data['title_transform'] ?? '' ), [ 'none', 'uppercase', 'capitalize' ], $defaults['title_transform'] ),
+			'divider_show'      => empty( $data['divider_show'] ) ? 0 : 1,
+			'divider_align'     => $this->pick_setting( sanitize_key( $data['divider_align'] ?? '' ), $aligns, $defaults['divider_align'] ),
+			'divider_color'     => $hex( $data['divider_color'] ?? '', $defaults['divider_color'] ),
+			'divider_width'     => max( 0, min( 400, absint( $data['divider_width'] ?? $defaults['divider_width'] ) ) ),
+			'divider_thickness' => max( 1, min( 12, absint( $data['divider_thickness'] ?? $defaults['divider_thickness'] ) ) ),
+			'divider_radius'    => max( 0, min( 20, absint( $data['divider_radius'] ?? $defaults['divider_radius'] ) ) ),
+			'desc_font'         => $this->pick_setting( $data['desc_font'] ?? '', $fonts, $defaults['desc_font'] ),
+			'desc_size'         => max( 10, min( 36, absint( $data['desc_size'] ?? $defaults['desc_size'] ) ) ),
+			'desc_color'        => $hex( $data['desc_color'] ?? '', $defaults['desc_color'] ),
+			'desc_weight'       => (int) $this->pick_setting( absint( $data['desc_weight'] ?? 0 ), $weights, $defaults['desc_weight'] ),
+			'desc_align'        => $this->pick_setting( sanitize_key( $data['desc_align'] ?? '' ), $aligns, $defaults['desc_align'] ),
+			'desc_max_width'    => max( 0, min( 200, absint( $data['desc_max_width'] ?? $defaults['desc_max_width'] ) ) ),
 		];
 		update_option( self::OPTION_SETTINGS, $out );
 		$this->clear_cache();
