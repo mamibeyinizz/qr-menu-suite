@@ -202,6 +202,25 @@ function qrm_pro_admin_settings() {
                 </table>
             </div>
 
+            <div class="qrm-card">
+                <h3><?php esc_html_e('Trend & Düşüş Uyarısı', 'qrms'); ?></h3>
+                <p class="description">
+                    <?php esc_html_e('Rapor ekranındaki kriter trendleri ve son 7 günlük düşüş uyarısı bu eşiğe göre çalışır.', 'qrms'); ?>
+                </p>
+                <table class="form-table">
+                    <tr>
+                        <th><label for="qrm_trend_drop_threshold"><?php esc_html_e('Düşüş uyarı eşiği', 'qrms'); ?></label></th>
+                        <td>
+                            <input type="number" id="qrm_trend_drop_threshold" name="qrm_trend_drop_threshold"
+                                   min="0.1" max="5" step="0.1" class="small-text"
+                                   value="<?php echo esc_attr(number_format((float) $settings['qrm_trend_drop_threshold'], 1, '.', '')); ?>">
+                            <?php esc_html_e('puan', 'qrms'); ?>
+                            <p class="description"><?php esc_html_e('Bir kriterin son 7 günlük ortalaması, önceki 7 güne göre bu kadar veya daha fazla düşerse uyarı verilir (varsayılan 0,5).', 'qrms'); ?></p>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+
             <p class="submit">
                 <input type="submit" name="qrm_save_settings" class="button button-primary button-large" value="Kaydet">
                 <a href="<?php echo esc_url(qrm_pro_admin_url('qrms-yf-odul')); ?>" class="button" style="margin-left:8px;">Google &amp; Ödül Ayarları</a>
@@ -250,5 +269,12 @@ function qrm_pro_admin_save_settings() {
         );
     }
 
+    $settings['qrm_trend_drop_threshold'] = qrm_pro_trend_drop_threshold([
+        'qrm_trend_drop_threshold' => isset($_POST['qrm_trend_drop_threshold'])
+            ? floatval(wp_unslash($_POST['qrm_trend_drop_threshold']))
+            : 0.5,
+    ]);
+
     update_option('qrm_settings', $settings);
+    qrm_pro_flush_trend_drop_cache();
 }

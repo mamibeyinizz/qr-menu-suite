@@ -159,6 +159,8 @@ function qrm_pro_default_settings() {
             ['name' => 'Akşam', 'start' => 17, 'end' => 23],
             ['name' => 'Gece',  'start' => 23, 'end' => 6],
         ],
+        // Kriter düşüş uyarısı eşiği (puan) — v4.2.4.
+        'qrm_trend_drop_threshold' => 0.5,
 
         // --- Google Review Ödül Sistemi (v4.1.0) ---
         // Not: google_review_url / google_review_threshold gibi mevcut ayarlar

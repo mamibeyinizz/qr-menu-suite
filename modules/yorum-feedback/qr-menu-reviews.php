@@ -2,10 +2,18 @@
 /*
 Plugin Name: QR Menü Gelişmiş Müşteri Yorumları & Değerlendirme
 Description: QR menü sistemleri için çoklu kriter (yemek, hizmet, temizlik vb.) puanlama sistemli, Google yorum yönlendirmeli (review gating), AJAX destekli, gelişmiş analitik barındıran premium müşteri yorum eklentisi.
-Version: 4.2.3
+Version: 4.2.4
 Author: QR MENÜ
 
 == Changelog ==
+
+4.2.4
+ - YENİ: Rapor ekranında kriter trend grafikleri (haftalık ve aylık ortalama
+   seyri). Saf inline SVG, mobilde yatay kaydırma, noktalarda <title> tooltip.
+ - YENİ: Düşüş uyarısı — son 7 gün önceki 7 güne göre ayarlanabilir eşik
+   (qrm_trend_drop_threshold, varsayılan 0,5 puan) kadar düşen kriterler için
+   rapor üstü uyarı kutusu ve admin menü rozeti. Hesaplama 12 saatlik transient
+   ile önbelleklenir; en az 5 yorum yoksa uyarı üretilmez.
 
 4.2.3
  - YENİ: Masa / vardiya / saat bazlı raporlama. Tüm Yorumlar ekranında
@@ -141,7 +149,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('QRM_PRO_VERSION', '4.2.3');
+define('QRM_PRO_VERSION', '4.2.4');
 define('QRM_PRO_FILE', __FILE__);
 define('QRM_PRO_PATH', plugin_dir_path(__FILE__));
 define('QRM_PRO_URL', plugin_dir_url(__FILE__));
@@ -168,6 +176,7 @@ require_once QRM_PRO_PATH . 'includes/admin/menu.php';
 require_once QRM_PRO_PATH . 'includes/admin/hub.php';
 require_once QRM_PRO_PATH . 'includes/admin/dashboard.php';
 require_once QRM_PRO_PATH . 'includes/admin/reports.php';
+require_once QRM_PRO_PATH . 'includes/admin/trend.php';
 require_once QRM_PRO_PATH . 'includes/admin/form-builder.php';
 require_once QRM_PRO_PATH . 'includes/admin/settings-page.php';
 require_once QRM_PRO_PATH . 'includes/admin/contact.php';
