@@ -17,7 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 class QMO_Chatbot_DB {
 
-	const SURUM = '1.0';
+	const SURUM = '1.1';
 	const OPT   = 'qmo_chatbot_db_surum';
 
 	/**
@@ -54,6 +54,26 @@ class QMO_Chatbot_DB {
 	}
 
 	/**
+	 * Öneri kural tablosu.
+	 *
+	 * @return string
+	 */
+	public static function oneri_kural_tablosu() {
+		global $wpdb;
+		return $wpdb->prefix . 'qmo_chatbot_oneri_kural';
+	}
+
+	/**
+	 * Öneri log tablosu.
+	 *
+	 * @return string
+	 */
+	public static function oneri_log_tablosu() {
+		global $wpdb;
+		return $wpdb->prefix . 'qmo_chatbot_oneri_log';
+	}
+
+	/**
 	 * Tabloları dbDelta ile oluşturur.
 	 *
 	 * @return void
@@ -64,6 +84,8 @@ class QMO_Chatbot_DB {
 		$collate = $wpdb->get_charset_collate();
 		$mesaj   = self::mesaj_tablosu();
 		$bilin   = self::bilinmeyen_tablosu();
+		$kural   = self::oneri_kural_tablosu();
+		$log     = self::oneri_log_tablosu();
 
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 
@@ -94,6 +116,37 @@ class QMO_Chatbot_DB {
 				PRIMARY KEY  (id),
 				UNIQUE KEY idx_soru_norm (soru_norm),
 				KEY idx_resolved_tekrar (resolved, tekrar)
+			) {$collate};"
+		);
+
+		dbDelta(
+			"CREATE TABLE {$kural} (
+				id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+				kaynak_urun bigint(20) unsigned NOT NULL,
+				hedef_urun bigint(20) unsigned NOT NULL,
+				agirlik smallint(6) NOT NULL DEFAULT 50,
+				aktif tinyint(1) NOT NULL DEFAULT 1,
+				created_at datetime NOT NULL,
+				PRIMARY KEY  (id),
+				KEY kaynak (kaynak_urun),
+				KEY hedef (hedef_urun),
+				UNIQUE KEY cift (kaynak_urun, hedef_urun)
+			) {$collate};"
+		);
+
+		dbDelta(
+			"CREATE TABLE {$log} (
+				id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+				oturum_id varchar(64) NOT NULL DEFAULT '',
+				masa_no varchar(32) NOT NULL DEFAULT '',
+				urun_id bigint(20) unsigned NOT NULL,
+				kaynak varchar(20) NOT NULL DEFAULT 'ai',
+				durum varchar(20) NOT NULL DEFAULT 'gosterildi',
+				created_at datetime NOT NULL,
+				PRIMARY KEY  (id),
+				KEY oturum (oturum_id),
+				KEY urun (urun_id),
+				KEY durum_tarih (durum, created_at)
 			) {$collate};"
 		);
 	}
@@ -343,12 +396,17 @@ class QMO_Chatbot_DB {
 			return 0;
 		}
 
-		$tablo = self::mesaj_tablosu();
-		$esik  = gmdate( 'Y-m-d H:i:s', time() - ( $gun * DAY_IN_SECONDS ) );
-
-		return (int) $wpdb->query(
-			$wpdb->prepare( "DELETE FROM {$tablo} WHERE created_at < %s", $esik )
+		$tablo_mesaj = self::mesaj_tablosu();
+		$tablo_log   = self::oneri_log_tablosu();
+		$esik        = gmdate( 'Y-m-d H:i:s', time() - ( $gun * DAY_IN_SECONDS ) );
+		$silinen     = (int) $wpdb->query(
+			$wpdb->prepare( "DELETE FROM {$tablo_mesaj} WHERE created_at < %s", $esik )
 		);
+		$silinen    += (int) $wpdb->query(
+			$wpdb->prepare( "DELETE FROM {$tablo_log} WHERE created_at < %s", $esik )
+		);
+
+		return $silinen;
 	}
 
 	/**
@@ -422,5 +480,220 @@ class QMO_Chatbot_DB {
 		$tablo = self::mesaj_tablosu();
 		$liste = $wpdb->get_col( "SELECT DISTINCT masa_no FROM {$tablo} WHERE masa_no <> '' ORDER BY masa_no ASC" );
 		return is_array( $liste ) ? $liste : array();
+	}
+
+	/**
+	 * Öneri kuralı ekler veya günceller (kaynak-hedef çifti benzersiz).
+	 *
+	 * @param int $kaynak  Tetikleyen ürün kimliği.
+	 * @param int $hedef   Önerilecek ürün kimliği.
+	 * @param int $agirlik Ağırlık (0–100 arasına kısıtlanır).
+	 * @return bool
+	 */
+	public static function kural_ekle( $kaynak, $hedef, $agirlik ) {
+		global $wpdb;
+
+		self::sema_kontrol();
+
+		$agirlik = max( 0, min( 100, absint( $agirlik ) ) );
+		$tablo   = self::oneri_kural_tablosu();
+
+		$sonuc = $wpdb->query(
+			$wpdb->prepare(
+				"REPLACE INTO {$tablo} (kaynak_urun, hedef_urun, agirlik, aktif, created_at) VALUES (%d, %d, %d, 1, %s)",
+				absint( $kaynak ),
+				absint( $hedef ),
+				$agirlik,
+				current_time( 'mysql' )
+			)
+		);
+
+		return false !== $sonuc;
+	}
+
+	/**
+	 * Öneri kuralını kimliğe göre siler.
+	 *
+	 * @param int $id Kural kimliği.
+	 * @return bool
+	 */
+	public static function kural_sil( $id ) {
+		global $wpdb;
+
+		self::sema_kontrol();
+
+		return false !== $wpdb->delete(
+			self::oneri_kural_tablosu(),
+			array( 'id' => absint( $id ) ),
+			array( '%d' )
+		);
+	}
+
+	/**
+	 * Aktif öneri kurallarını döndürür.
+	 *
+	 * @param int $kaynak 0 ise tüm aktif kurallar; aksi halde kaynak ürüne göre.
+	 * @return array
+	 */
+	public static function kurallari_getir( $kaynak = 0 ) {
+		global $wpdb;
+
+		self::sema_kontrol();
+
+		$tablo = self::oneri_kural_tablosu();
+
+		if ( 0 === (int) $kaynak ) {
+			$satirlar = $wpdb->get_results(
+				$wpdb->prepare(
+					"SELECT * FROM {$tablo} WHERE aktif = %d ORDER BY agirlik DESC",
+					1
+				)
+			);
+		} else {
+			$satirlar = $wpdb->get_results(
+				$wpdb->prepare(
+					"SELECT * FROM {$tablo} WHERE kaynak_urun = %d AND aktif = %d ORDER BY agirlik DESC",
+					absint( $kaynak ),
+					1
+				)
+			);
+		}
+
+		return is_array( $satirlar ) ? $satirlar : array();
+	}
+
+	/**
+	 * Öneri gösterim / dönüşüm olayını loglar.
+	 *
+	 * @param string $oturum_id Oturum anahtarı.
+	 * @param string $masa_no   Masa numarası.
+	 * @param int    $urun_id   Ürün kimliği.
+	 * @param string $kaynak    ai|kural.
+	 * @param string $durum     gosterildi|sepete|siparis.
+	 * @return bool
+	 */
+	public static function oneri_logla( $oturum_id, $masa_no, $urun_id, $kaynak, $durum ) {
+		global $wpdb;
+
+		self::sema_kontrol();
+
+		$izinli_kaynak = array( 'ai', 'kural' );
+		$izinli_durum  = array( 'gosterildi', 'sepete', 'siparis' );
+
+		if ( ! in_array( $kaynak, $izinli_kaynak, true ) || ! in_array( $durum, $izinli_durum, true ) ) {
+			return false;
+		}
+
+		$sonuc = $wpdb->insert(
+			self::oneri_log_tablosu(),
+			array(
+				'oturum_id'  => substr( sanitize_text_field( $oturum_id ), 0, 64 ),
+				'masa_no'    => substr( sanitize_text_field( $masa_no ), 0, 32 ),
+				'urun_id'    => absint( $urun_id ),
+				'kaynak'     => $kaynak,
+				'durum'      => $durum,
+				'created_at' => current_time( 'mysql' ),
+			),
+			array( '%s', '%s', '%d', '%s', '%s', '%s' )
+		);
+
+		return false !== $sonuc;
+	}
+
+	/**
+	 * Aynı oturum ve ürün için en son gösterildi/sepete kaydının durumunu günceller.
+	 *
+	 * @param string $oturum_id  Oturum anahtarı.
+	 * @param int    $urun_id    Ürün kimliği.
+	 * @param string $yeni_durum gosterildi|sepete|siparis.
+	 * @return bool
+	 */
+	public static function oneri_durum_guncelle( $oturum_id, $urun_id, $yeni_durum ) {
+		global $wpdb;
+
+		self::sema_kontrol();
+
+		$izinli_durum = array( 'gosterildi', 'sepete', 'siparis' );
+		if ( ! in_array( $yeni_durum, $izinli_durum, true ) ) {
+			return false;
+		}
+
+		$oturum_id = sanitize_text_field( $oturum_id );
+		if ( '' === $oturum_id ) {
+			return false;
+		}
+
+		$tablo = self::oneri_log_tablosu();
+		$row   = $wpdb->get_row(
+			$wpdb->prepare(
+				"SELECT id FROM {$tablo} WHERE oturum_id = %s AND urun_id = %d AND durum IN ('gosterildi', 'sepete') ORDER BY created_at DESC, id DESC LIMIT 1",
+				$oturum_id,
+				absint( $urun_id )
+			)
+		);
+
+		if ( ! $row ) {
+			return false;
+		}
+
+		return false !== $wpdb->update(
+			$tablo,
+			array( 'durum' => $yeni_durum ),
+			array( 'id' => (int) $row->id ),
+			array( '%s' ),
+			array( '%d' )
+		);
+	}
+
+	/**
+	 * Tarih aralığında ürün bazlı öneri raporu (sayılar ve dönüşüm oranı).
+	 *
+	 * @param string $bas Başlangıç tarihi (Y-m-d).
+	 * @param string $bit Bitiş tarihi (Y-m-d).
+	 * @return array
+	 */
+	public static function oneri_rapor( $bas, $bit ) {
+		global $wpdb;
+
+		self::sema_kontrol();
+
+		$tablo = self::oneri_log_tablosu();
+		$bas   = sanitize_text_field( $bas ) . ' 00:00:00';
+		$bit   = sanitize_text_field( $bit ) . ' 23:59:59';
+
+		$satirlar = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT urun_id,
+					SUM(CASE WHEN durum = 'gosterildi' THEN 1 ELSE 0 END) AS gosterildi,
+					SUM(CASE WHEN durum = 'sepete' THEN 1 ELSE 0 END) AS sepete,
+					SUM(CASE WHEN durum = 'siparis' THEN 1 ELSE 0 END) AS siparis
+				FROM {$tablo}
+				WHERE created_at >= %s AND created_at <= %s
+				GROUP BY urun_id
+				ORDER BY urun_id ASC",
+				$bas,
+				$bit
+			)
+		);
+
+		if ( ! is_array( $satirlar ) ) {
+			return array();
+		}
+
+		$rapor = array();
+		foreach ( $satirlar as $satir ) {
+			$gosterildi = (int) $satir->gosterildi;
+			$sepete     = (int) $satir->sepete;
+			$siparis    = (int) $satir->siparis;
+			$rapor[]    = array(
+				'urun_id'        => (int) $satir->urun_id,
+				'gosterildi'     => $gosterildi,
+				'sepete'         => $sepete,
+				'siparis'        => $siparis,
+				'donusum_orani'  => $gosterildi > 0 ? round( $siparis / $gosterildi, 4 ) : 0.0,
+			);
+		}
+
+		return $rapor;
 	}
 }
