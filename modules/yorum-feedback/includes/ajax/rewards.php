@@ -133,13 +133,13 @@ function qrm_reward_ajax_admin_selftest() {
     ]);
 }
 
-// Admin: "Kod Sorgula" kutusu (kasada hızlı kontrol için)
+// Admin / kasiyer: "Kod Sorgula" kutusu
 add_action('wp_ajax_qrm_reward_admin_lookup', 'qrm_reward_ajax_admin_lookup');
 function qrm_reward_ajax_admin_lookup() {
-    if (!current_user_can('manage_options')) {
+    if (!current_user_can('edit_posts')) {
         wp_send_json(['success' => false, 'message' => 'Bu işlem için yetkiniz yok.']);
     }
-    check_ajax_referer('qrm_reward_admin', 'nonce');
+    check_ajax_referer('qrm_reward_cashier', 'nonce');
 
     $code = isset($_POST['code']) ? sanitize_text_field(wp_unslash($_POST['code'])) : '';
     if (trim($code) === '') {
@@ -151,6 +151,8 @@ function qrm_reward_ajax_admin_lookup() {
         wp_send_json(['success' => false, 'found' => false, 'message' => 'Böyle bir kod bulunamadı.']);
     }
 
+    $valid = qrm_reward_code_is_redeemable($row);
+
     wp_send_json([
         'success'        => true,
         'found'          => true,
@@ -159,9 +161,53 @@ function qrm_reward_ajax_admin_lookup() {
         'email'          => $row->email ? $row->email : '—',
         'status'         => $row->status,
         'status_label'   => qrm_reward_status_label($row->status),
-        'valid'          => ($row->status === 'active'),
+        'valid'          => $valid,
+        'can_mark_used'  => $valid,
         'discount_label' => $row->discount_label,
-        'created_at'     => date('d.m.Y H:i', strtotime($row->created_at)),
-        'used_at'        => $row->used_at ? date('d.m.Y H:i', strtotime($row->used_at)) : '',
+        'created_at'     => date_i18n('d.m.Y H:i', strtotime($row->created_at)),
+        'expires_at'     => !empty($row->expires_at) ? date_i18n('d.m.Y H:i', strtotime($row->expires_at)) : '',
+        'used_at'        => $row->used_at ? date_i18n('d.m.Y H:i', strtotime($row->used_at)) : '',
+    ]);
+}
+
+// Kasiyer: geçerli kodu tek tıkla kullanıldı işaretle
+add_action('wp_ajax_qrm_reward_cashier_mark_used', 'qrm_reward_ajax_cashier_mark_used');
+function qrm_reward_ajax_cashier_mark_used() {
+    if (!current_user_can('edit_posts')) {
+        wp_send_json(['success' => false, 'message' => 'Bu işlem için yetkiniz yok.']);
+    }
+    check_ajax_referer('qrm_reward_cashier', 'nonce');
+
+    $code = isset($_POST['code']) ? sanitize_text_field(wp_unslash($_POST['code'])) : '';
+    if (trim($code) === '') {
+        wp_send_json(['success' => false, 'message' => 'Lütfen bir kod girin.']);
+    }
+
+    $row = qrm_reward_find_by_code($code);
+    if (!$row) {
+        wp_send_json(['success' => false, 'message' => 'Böyle bir kod bulunamadı.']);
+    }
+
+    if (!qrm_reward_code_is_redeemable($row)) {
+        wp_send_json([
+            'success'      => false,
+            'message'      => 'Bu kod kullanılamaz (' . qrm_reward_status_label($row->status) . ').',
+            'status'       => $row->status,
+            'status_label' => qrm_reward_status_label($row->status),
+        ]);
+    }
+
+    if (!qrm_reward_set_status((int) $row->id, 'used')) {
+        wp_send_json(['success' => false, 'message' => 'Kod güncellenemedi, tekrar deneyin.']);
+    }
+
+    wp_send_json([
+        'success'        => true,
+        'message'        => 'Kod kullanıldı olarak işaretlendi.',
+        'code'           => $row->code,
+        'status'         => 'used',
+        'status_label'   => qrm_reward_status_label('used'),
+        'discount_label' => $row->discount_label,
+        'used_at'        => date_i18n('d.m.Y H:i', current_time('timestamp')),
     ]);
 }
