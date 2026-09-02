@@ -284,6 +284,19 @@ function qrm_cf_field_options($field) {
     return $out;
 }
 
+/**
+ * Özel form alan etiketi (çeviri köprüsü).
+ *
+ * @param object|array $field Alan satırı.
+ * @return string
+ */
+function qrm_cf_field_label($field) {
+    $id    = is_object($field) ? (int) $field->id : (int) $field['id'];
+    $label = is_object($field) ? (string) $field->label : (string) $field['label'];
+
+    return qrm_ceviri_cf_alan($id, $label);
+}
+
 /** Ham seçenek metnini (satır başına bir seçenek) diziye çevirir. */
 function qrm_cf_parse_options($raw) {
     if (is_array($raw)) {
@@ -395,7 +408,7 @@ function qrm_cf_replace_fields($form_id, $fields) {
  */
 function qrm_cf_validate_value($field, $raw) {
     $type    = is_object($field) ? $field->field_type : $field['field_type'];
-    $label   = is_object($field) ? $field->label : $field['label'];
+    $label   = qrm_cf_field_label($field);
     $options = qrm_cf_field_options($field);
 
     switch ($type) {
@@ -495,7 +508,7 @@ function qrm_cf_validate_submission($fields, $post) {
 
     foreach ((array) $fields as $field) {
         $key      = is_object($field) ? $field->field_key : $field['field_key'];
-        $label    = is_object($field) ? $field->label : $field['label'];
+        $label    = qrm_cf_field_label($field);
         $required = is_object($field) ? !empty($field->is_required) : !empty($field['is_required']);
         $raw      = array_key_exists($key, (array) $post) ? $post[$key] : '';
 

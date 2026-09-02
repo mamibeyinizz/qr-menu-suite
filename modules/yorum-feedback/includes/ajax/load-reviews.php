@@ -22,6 +22,7 @@ add_action('wp_ajax_nopriv_qrm_load_reviews', 'qrm_pro_ajax_load_reviews');
  */
 function qrm_pro_ajax_load_reviews() {
     check_ajax_referer('qrm_load_reviews', 'nonce');
+    qrm_pro_bootstrap_lang();
 
     $settings  = qrm_pro_get_settings();
     $page_size = qrm_pro_reviews_page_size($settings);

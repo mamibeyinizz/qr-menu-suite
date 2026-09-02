@@ -188,6 +188,7 @@ add_action('wp_ajax_qrm_submit_review', 'qrm_pro_ajax_submit_review');
 add_action('wp_ajax_nopriv_qrm_submit_review', 'qrm_pro_ajax_submit_review');
 function qrm_pro_ajax_submit_review() {
     check_ajax_referer('qrm_submit_review', 'qrm_review_nonce');
+    qrm_pro_bootstrap_lang();
     $settings = qrm_pro_get_settings();
     $result = qrm_pro_handle_review_submission($settings);
     wp_send_json($result);
