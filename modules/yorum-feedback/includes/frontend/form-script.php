@@ -11,9 +11,21 @@ if (!defined('ABSPATH')) exit;
  *                        yerlerini kırmamak için duruyor.
  * @param bool  $has_list Sayfada yorum listesi var mı (yalnızca yorum kısa
  *                        kodunda true; iletişim formunda liste yoktur).
+ * @param array $list_opts Liste yapılandırması (sorgu, sayfalama modu).
  * @return string
  */
-function qrm_pro_render_form_script($settings, $js_limit = 0, $has_list = true) {
+function qrm_pro_render_form_script($settings, $js_limit = 0, $has_list = true, array $list_opts = []) {
+    $list_query = isset($list_opts['list_query']) && is_array($list_opts['list_query'])
+        ? $list_opts['list_query']
+        : (function_exists('qrm_pro_sanitize_reviews_list_query') ? qrm_pro_sanitize_reviews_list_query([]) : []);
+    $pagination_mode = isset($list_opts['pagination_mode'])
+        ? sanitize_key((string) $list_opts['pagination_mode'])
+        : (function_exists('qrm_pro_reviews_pagination_mode') ? qrm_pro_reviews_pagination_mode($settings) : 'loadmore');
+    if (!in_array($pagination_mode, ['loadmore', 'pages'], true)) {
+        $pagination_mode = 'loadmore';
+    }
+    $media_enabled = !empty($list_opts['media_enabled']);
+
     ob_start();
     ?>
     <script>
@@ -32,8 +44,36 @@ function qrm_pro_render_form_script($settings, $js_limit = 0, $has_list = true) 
             btnText: <?php echo wp_json_encode(qrm_ceviri_option('qrm_settings.google_review_btn_text', $settings['google_review_btn_text'])); ?>,
             skipText: <?php echo wp_json_encode(qrm_ceviri_option('qrm_settings.google_review_skip_text', $settings['google_review_skip_text'])); ?>,
             loadNonce: <?php echo wp_json_encode(wp_create_nonce('qrm_load_reviews')); ?>,
-            genericError: metin('genericError', 'Bir şeyler ters gitti, lütfen tekrar deneyin.')
+            currentLang: <?php echo wp_json_encode(qrm_pro_current_lang()); ?>,
+            genericError: metin('genericError', 'Bir şeyler ters gitti, lütfen tekrar deneyin.'),
+            reviewsList: <?php echo wp_json_encode([
+                'paginationMode' => $pagination_mode,
+                'mediaEnabled'   => $media_enabled,
+                'pageSize'       => (int) $js_limit,
+                'query'          => [
+                    'sort'        => $list_query['sort'],
+                    'star'        => (int) $list_query['star'],
+                    'photos_only' => !empty($list_query['photos_only']),
+                    'page'        => (int) $list_query['page'],
+                ],
+            ], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>
         };
+
+        function appendLang(fd) {
+            var lang = qrmCfg.currentLang || '';
+            if (!lang) {
+                try {
+                    var params = new URLSearchParams(window.location.search);
+                    lang = params.get('lang') || '';
+                    if (!lang) {
+                        var m = document.cookie.match(/(?:^|;\s*)rma_lang=([^;]+)/);
+                        if (m) lang = decodeURIComponent(m[1]);
+                    }
+                } catch (e) {}
+            }
+            if (lang) fd.append('lang', lang);
+            return fd;
+        }
 
         function buildGoogleCta(avg, googleUrl) {
             var stars = Math.round(avg);
@@ -67,6 +107,74 @@ function qrm_pro_render_form_script($settings, $js_limit = 0, $has_list = true) 
             if (!tel) return;
             tel.addEventListener('input', function() {
                 this.value = formatTRPhone(this.value);
+            });
+        }
+
+        function initMediaUpload(form) {
+            var wrap = form.querySelector('.qrm-media-upload');
+            var input = form.querySelector('#qrm_review_media');
+            if (!wrap || !input) return;
+
+            var maxFiles = parseInt(wrap.getAttribute('data-max-files'), 10) || 2;
+            var maxMb = parseFloat(wrap.getAttribute('data-max-mb')) || 3;
+            var maxBytes = maxMb * 1024 * 1024;
+            var previews = wrap.querySelector('.qrm-media-previews');
+            var selected = [];
+
+            function syncInput() {
+                if (typeof DataTransfer === 'undefined') return;
+                var dt = new DataTransfer();
+                selected.forEach(function(item) { dt.items.add(item.file); });
+                input.files = dt.files;
+            }
+
+            function renderPreviews() {
+                previews.innerHTML = '';
+                selected.forEach(function(item) {
+                    var box = document.createElement('div');
+                    box.className = 'qrm-media-preview';
+                    var img = document.createElement('img');
+                    img.src = item.url;
+                    img.alt = '';
+                    var btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'qrm-media-preview-remove';
+                    btn.setAttribute('aria-label', 'Kaldır');
+                    btn.textContent = '\u00d7';
+                    btn.addEventListener('click', function() {
+                        URL.revokeObjectURL(item.url);
+                        selected = selected.filter(function(s) { return s !== item; });
+                        syncInput();
+                        renderPreviews();
+                    });
+                    box.appendChild(img);
+                    box.appendChild(btn);
+                    previews.appendChild(box);
+                });
+            }
+
+            input.addEventListener('change', function() {
+                var files = Array.prototype.slice.call(input.files || []);
+                var err = form.querySelector('.qrm-media-error');
+                if (err) err.remove();
+
+                files.forEach(function(file) {
+                    if (selected.length >= maxFiles) return;
+                    if (file.size > maxBytes) return;
+                    if (!/^image\/(jpeg|png|webp)$/i.test(file.type)) return;
+                    selected.push({ file: file, url: URL.createObjectURL(file) });
+                });
+
+                if (files.length && selected.length === 0) {
+                    var msg = document.createElement('div');
+                    msg.className = 'qrm-alert qrm-error qrm-media-error';
+                    msg.textContent = metin('mediaError', 'Geçersiz görsel veya boyut sınırı aşıldı.');
+                    wrap.appendChild(msg);
+                }
+
+                syncInput();
+                renderPreviews();
+                input.value = '';
             });
         }
 
@@ -123,6 +231,7 @@ function qrm_pro_render_form_script($settings, $js_limit = 0, $has_list = true) 
 
             initWizard(form);
             initPhoneMask(form);
+            initMediaUpload(form);
 
             form.addEventListener('submit', function(e) {
                 e.preventDefault();
@@ -135,6 +244,7 @@ function qrm_pro_render_form_script($settings, $js_limit = 0, $has_list = true) 
 
                 var fd = new FormData(form);
                 fd.append('action', 'qrm_submit_review');
+                appendLang(fd);
 
                 fetch(qrmCfg.ajaxUrl, { method: 'POST', credentials: 'same-origin', body: fd })
                     .then(function(r) { return r.json(); })
@@ -207,67 +317,178 @@ function qrm_pro_render_form_script($settings, $js_limit = 0, $has_list = true) 
         }
 
         <?php if ($has_list): ?>
-        // "Daha Fazla Göster" artık DOM'da gizlenmiş kartları açmıyor: her
-        // sayfa sunucudan ayrı isteniyor. Eskiden tüm onaylı yorumlar ilk
-        // yüklemede basılıp CSS ile gizleniyordu; yani sayfa ağırlığı yorum
-        // sayısıyla doğrusal büyüyordu.
-        function initLoadMore() {
-            var btn = document.getElementById('qrm-load-more');
-            if (!btn) return;
-
+        function initReviewsList() {
             var container = document.getElementById('qrm-reviews-container');
-            if (!container) return;
+            if (!container || !qrmCfg.reviewsList) return;
 
-            var offset  = container.querySelectorAll('.qrm-review-item').length;
+            var sortEl = document.getElementById('qrm-reviews-sort');
+            var starEl = document.getElementById('qrm-reviews-star');
+            var photosEl = document.getElementById('qrm-reviews-photos');
+            var loadMoreBtn = document.getElementById('qrm-load-more');
+            var loadMoreWrap = document.getElementById('qrm-load-more-wrap');
+            var pagesWrap = document.getElementById('qrm-reviews-pagination-wrap');
+            var mode = qrmCfg.reviewsList.paginationMode || 'loadmore';
             var loading = false;
-            var label   = btn.textContent;
+            var loadMoreLabel = loadMoreBtn ? loadMoreBtn.textContent : metin('loadMore', 'Daha Fazla Göster');
 
-            btn.addEventListener('click', function(e) {
-                e.preventDefault();
+            var state = {
+                sort: qrmCfg.reviewsList.query.sort || 'newest',
+                star: parseInt(qrmCfg.reviewsList.query.star, 10) || 0,
+                photos: !!qrmCfg.reviewsList.query.photos_only,
+                page: parseInt(qrmCfg.reviewsList.query.page, 10) || 1
+            };
+            var offset = container.querySelectorAll('.qrm-review-item').length;
+
+            function readControls() {
+                if (sortEl) state.sort = sortEl.value;
+                if (starEl) state.star = parseInt(starEl.value, 10) || 0;
+                if (photosEl) state.photos = photosEl.checked;
+            }
+
+            function writeControls() {
+                if (sortEl) sortEl.value = state.sort;
+                if (starEl) starEl.value = String(state.star || 0);
+                if (photosEl) photosEl.checked = !!state.photos;
+            }
+
+            function syncUrl() {
+                var params = new URLSearchParams(window.location.search);
+                if (state.sort && state.sort !== 'newest') params.set('qrm_sort', state.sort); else params.delete('qrm_sort');
+                if (state.star > 0) params.set('qrm_star', String(state.star)); else params.delete('qrm_star');
+                if (state.photos) params.set('qrm_photos', '1'); else params.delete('qrm_photos');
+                if (mode === 'pages' && state.page > 1) params.set('qrm_page', String(state.page)); else params.delete('qrm_page');
+                var qs = params.toString();
+                history.replaceState(null, '', window.location.pathname + (qs ? '?' + qs : '') + window.location.hash);
+            }
+
+            function bindClearFilters() {
+                container.querySelectorAll('.qrm-reviews-clear-filters').forEach(function(link) {
+                    if (link.dataset.qrmBound) return;
+                    link.dataset.qrmBound = '1';
+                    link.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        state.sort = 'newest';
+                        state.star = 0;
+                        state.photos = false;
+                        state.page = 1;
+                        writeControls();
+                        reloadList(false);
+                    });
+                });
+            }
+
+            function bindPageButtons() {
+                var nav = document.getElementById('qrm-reviews-pages');
+                if (!nav) return;
+                nav.querySelectorAll('.qrm-reviews-page-btn').forEach(function(btn) {
+                    if (btn.dataset.qrmBound) return;
+                    btn.dataset.qrmBound = '1';
+                    btn.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        var p = parseInt(btn.getAttribute('data-page'), 10);
+                        if (!p || p === state.page) return;
+                        state.page = p;
+                        reloadList(false);
+                        container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    });
+                });
+            }
+
+            function updatePagination(data) {
+                if (mode !== 'pages' || !pagesWrap) return;
+                pagesWrap.innerHTML = data.pagination_html || '';
+                bindPageButtons();
+            }
+
+            function updateLoadMore(data, append) {
+                if (mode !== 'loadmore' || !loadMoreWrap) return;
+                if (!append) offset = data.count || 0;
+                else offset += (data.count || 0);
+                if (data.has_more) {
+                    loadMoreWrap.style.display = '';
+                } else {
+                    loadMoreWrap.style.display = 'none';
+                }
+            }
+
+            function reloadList(append) {
                 if (loading) return;
-
                 loading = true;
-                btn.disabled = true;
-                btn.textContent = metin('loading', 'Yükleniyor…');
+                if (loadMoreBtn) {
+                    loadMoreBtn.disabled = true;
+                    if (!append) loadMoreBtn.textContent = metin('loading', 'Yükleniyor…');
+                }
 
                 var fd = new FormData();
                 fd.append('action', 'qrm_load_reviews');
                 fd.append('nonce', qrmCfg.loadNonce);
-                fd.append('offset', offset);
+                fd.append('qrm_sort', state.sort);
+                if (state.star > 0) fd.append('qrm_star', String(state.star));
+                if (state.photos) fd.append('qrm_photos', '1');
+                appendLang(fd);
+                if (mode === 'pages') {
+                    fd.append('qrm_page', String(state.page));
+                } else {
+                    fd.append('offset', append ? offset : 0);
+                }
 
                 fetch(qrmCfg.ajaxUrl, { method: 'POST', credentials: 'same-origin', body: fd })
                     .then(function(r) { return r.json(); })
                     .then(function(res) {
                         loading = false;
-                        btn.disabled = false;
-                        btn.textContent = label;
-
+                        if (loadMoreBtn) {
+                            loadMoreBtn.disabled = false;
+                            loadMoreBtn.textContent = loadMoreLabel;
+                        }
                         if (!res || !res.success || !res.data) {
-                            btn.textContent = qrmCfg.genericError;
+                            if (loadMoreBtn) loadMoreBtn.textContent = qrmCfg.genericError;
                             return;
                         }
-
-                        if (res.data.html) {
+                        if (append && res.data.html) {
                             container.insertAdjacentHTML('beforeend', res.data.html);
-                            offset += (res.data.count || 0);
+                        } else {
+                            container.innerHTML = res.data.html || '';
                         }
-
-                        if (!res.data.has_more) {
-                            btn.parentElement.removeChild(btn);
-                        }
+                        updatePagination(res.data);
+                        updateLoadMore(res.data, append);
+                        syncUrl();
+                        bindClearFilters();
                     })
                     .catch(function() {
                         loading = false;
-                        btn.disabled = false;
-                        btn.textContent = qrmCfg.genericError;
+                        if (loadMoreBtn) {
+                            loadMoreBtn.disabled = false;
+                            loadMoreBtn.textContent = qrmCfg.genericError;
+                        }
                     });
-            });
+            }
+
+            function onFilterChange() {
+                readControls();
+                state.page = 1;
+                offset = 0;
+                reloadList(false);
+            }
+
+            if (sortEl) sortEl.addEventListener('change', onFilterChange);
+            if (starEl) starEl.addEventListener('change', onFilterChange);
+            if (photosEl) photosEl.addEventListener('change', onFilterChange);
+            if (loadMoreBtn) {
+                loadMoreBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    reloadList(true);
+                });
+            }
+
+            bindPageButtons();
+            bindClearFilters();
+            writeControls();
         }
         <?php endif; ?>
 
         document.addEventListener('DOMContentLoaded', function() {
             initReviewForm();
-            <?php if ($has_list): ?>initLoadMore();<?php endif; ?>
+            <?php if ($has_list): ?>initReviewsList();<?php endif; ?>
         });
     })();
     </script>

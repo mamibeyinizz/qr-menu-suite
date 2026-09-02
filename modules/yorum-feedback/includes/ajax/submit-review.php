@@ -63,6 +63,10 @@ function qrm_pro_handle_review_submission($settings) {
 
     $comment = isset($_POST['comment']) ? sanitize_textarea_field($_POST['comment']) : '';
 
+    $masa_ctx = qrm_pro_resolve_masa_for_submission(
+        isset($_POST['table_no']) ? wp_unslash($_POST['table_no']) : ''
+    );
+
     $status = 0;
     if ($settings['auto_approve_rating'] > 0 && $calc_avg >= $settings['auto_approve_rating']) {
         $status = 1;
@@ -78,7 +82,7 @@ function qrm_pro_handle_review_submission($settings) {
         'comment' => $comment,
         'customer_name' => isset($_POST['customer_name']) ? sanitize_text_field($_POST['customer_name']) : '',
         'customer_phone' => $phone_norm,
-        'table_no' => isset($_POST['table_no']) ? preg_replace('/[^0-9]/', '', $_POST['table_no']) : '',
+        'table_no' => $masa_ctx['table_no'],
         'is_anonymous' => isset($_POST['is_anonymous']) ? 1 : 0,
         'status' => $status,
         'form_source' => (isset($_POST['qrm_form_source']) && $_POST['qrm_form_source'] === 'contact') ? 'contact' : 'review',
@@ -102,6 +106,19 @@ function qrm_pro_handle_review_submission($settings) {
         '%s', // form_source
     ];
 
+    if ($masa_ctx['table_id'] !== null && (int) $masa_ctx['table_id'] > 0) {
+        $insert_data['table_id'] = (int) $masa_ctx['table_id'];
+        $insert_format[]         = '%d';
+    }
+
+    $consent = qrm_pro_consent_from_request($settings);
+    $insert_data['consent_marketing'] = (int) $consent['consent_marketing'];
+    $insert_format[]                  = '%d';
+    $insert_data['consent_at']        = $consent['consent_at'];
+    $insert_format[]                  = '%s';
+    $insert_data['consent_text_hash'] = $consent['consent_text_hash'];
+    $insert_format[]                  = '%s';
+
     // Yazma başarısız olabilir (tablo yok, bağlantı düştü, sütun taşması).
     // Sonuç kontrol edilmezse cooldown başlatılır, önbellek boşuna geçersizlenir
     // ve kullanıcıya hiç kaydedilmemiş bir yorum için "alındı" denirdi.
@@ -111,6 +128,17 @@ function qrm_pro_handle_review_submission($settings) {
     }
 
     $review_id = (int) $wpdb->insert_id;
+
+    if (qrm_pro_media_is_enabled($settings)) {
+        $media_result = qrm_pro_save_review_media($review_id, $settings);
+
+        if (is_wp_error($media_result)) {
+            $wpdb->delete($table_reviews, ['id' => $review_id], ['%d']);
+            qrm_pro_flush_review_stats();
+
+            return ['success' => false, 'message' => $media_result->get_error_message()];
+        }
+    }
 
     // Sayaçlar ve ortalamalar önbellekli; yeni yorum onları geçersizler.
     qrm_pro_flush_review_stats();
@@ -160,6 +188,7 @@ add_action('wp_ajax_qrm_submit_review', 'qrm_pro_ajax_submit_review');
 add_action('wp_ajax_nopriv_qrm_submit_review', 'qrm_pro_ajax_submit_review');
 function qrm_pro_ajax_submit_review() {
     check_ajax_referer('qrm_submit_review', 'qrm_review_nonce');
+    qrm_pro_bootstrap_lang();
     $settings = qrm_pro_get_settings();
     $result = qrm_pro_handle_review_submission($settings);
     wp_send_json($result);

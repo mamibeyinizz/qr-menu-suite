@@ -301,7 +301,157 @@ function qrm_reward_find_by_code($code) {
     $table = qrm_reward_table();
     $code = strtoupper(sanitize_text_field(trim((string) $code)));
     if ($code === '') return null;
-    return $wpdb->get_row($wpdb->prepare("SELECT * FROM $table WHERE code = %s", $code));
+    $row = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table WHERE code = %s", $code));
+    if ($row) {
+        $row = qrm_reward_maybe_expire_row($row);
+    }
+    return $row;
+}
+
+/**
+ * Geçerlilik süresi (gün). 0 = süresiz.
+ *
+ * @param array|null $settings Ayarlar.
+ * @return int
+ */
+function qrm_reward_valid_days($settings = null) {
+    if ($settings === null) {
+        $settings = qrm_pro_get_settings();
+    }
+    $days = isset($settings['qrm_reward_valid_days']) ? (int) $settings['qrm_reward_valid_days'] : 30;
+    return max(0, $days);
+}
+
+/**
+ * Yeni kod için son kullanma tarihi hesaplar.
+ *
+ * @param array|null $settings Ayarlar.
+ * @return string|null MySQL datetime veya null (süresiz).
+ */
+function qrm_reward_compute_expires_at($settings = null) {
+    $days = qrm_reward_valid_days($settings);
+    if ($days <= 0) {
+        return null;
+    }
+    $ts = current_time('timestamp') + ($days * DAY_IN_SECONDS);
+    return wp_date('Y-m-d H:i:s', $ts);
+}
+
+/**
+ * Aktif kodun süresi dolmuşsa expired yapar (tembel kontrol).
+ *
+ * @param object $row qrm_reward_codes satırı.
+ * @return object Güncellenmiş satır.
+ */
+function qrm_reward_maybe_expire_row($row) {
+    if (!$row || $row->status !== 'active' || empty($row->expires_at)) {
+        return $row;
+    }
+
+    $expires_ts = strtotime((string) $row->expires_at);
+    if ($expires_ts === false || $expires_ts >= current_time('timestamp')) {
+        return $row;
+    }
+
+    if (qrm_reward_set_status((int) $row->id, 'expired')) {
+        $row->status = 'expired';
+    }
+
+    return $row;
+}
+
+/**
+ * Kod kasada kullanılabilir mi?
+ *
+ * @param object|null $row Kod satırı.
+ * @return bool
+ */
+function qrm_reward_code_is_redeemable($row) {
+    if (!$row || $row->status !== 'active') {
+        return false;
+    }
+    if (empty($row->expires_at)) {
+        return true;
+    }
+    $expires_ts = strtotime((string) $row->expires_at);
+    return $expires_ts !== false && $expires_ts >= current_time('timestamp');
+}
+
+/**
+ * Süresi geçmiş aktif kodları toplu expired yapar (günlük cron).
+ *
+ * @return int Güncellenen satır sayısı.
+ */
+function qrm_reward_cron_expire_codes() {
+    global $wpdb;
+
+    $table = qrm_reward_table();
+    $now   = current_time('mysql');
+
+    return (int) $wpdb->query($wpdb->prepare(
+        "UPDATE {$table} SET status = 'expired' WHERE status = 'active' AND expires_at IS NOT NULL AND expires_at < %s",
+        $now
+    ));
+}
+
+/** Günlük süre dolumu cron kancası. */
+const QRM_REWARD_EXPIRE_CRON_HOOK = 'qrm_reward_expire_codes_daily';
+
+/**
+ * Cron olayını tek sefer kaydeder.
+ *
+ * @return void
+ */
+function qrm_reward_schedule_expire_cron() {
+    if (!wp_next_scheduled(QRM_REWARD_EXPIRE_CRON_HOOK)) {
+        wp_schedule_event(time() + HOUR_IN_SECONDS, 'daily', QRM_REWARD_EXPIRE_CRON_HOOK);
+    }
+}
+
+/**
+ * Cron olayını kaldırır (deaktivasyon).
+ *
+ * @return void
+ */
+function qrm_reward_unschedule_expire_cron() {
+    wp_clear_scheduled_hook(QRM_REWARD_EXPIRE_CRON_HOOK);
+}
+
+add_action(QRM_REWARD_EXPIRE_CRON_HOOK, 'qrm_reward_cron_expire_codes');
+
+/**
+ * Ödül kodu özet sayaçları.
+ *
+ * @return array{produced:int,used:int,expired:int,revoked:int,active:int,usage_rate:float}
+ */
+function qrm_reward_stats_summary() {
+    global $wpdb;
+
+    $table  = qrm_reward_table();
+    $rows   = $wpdb->get_results("SELECT status, COUNT(*) AS c FROM {$table} GROUP BY status", ARRAY_A);
+    $counts = ['active' => 0, 'used' => 0, 'expired' => 0, 'revoked' => 0];
+
+    if (is_array($rows)) {
+        foreach ($rows as $row) {
+            $st = isset($row['status']) ? (string) $row['status'] : '';
+            if (array_key_exists($st, $counts)) {
+                $counts[$st] = (int) $row['c'];
+            }
+        }
+    }
+
+    $produced    = (int) array_sum($counts);
+    $used        = $counts['used'];
+    $usage_rate  = $produced > 0 ? round(($used / $produced) * 100, 1) : 0.0;
+
+    return [
+        'produced'    => $produced,
+        'used'        => $used,
+        'expired'     => $counts['expired'],
+        'revoked'     => $counts['revoked'],
+        'active'      => $counts['active'],
+        'usage_rate'  => $usage_rate,
+    ];
 }
 
 /* -------------------------------------------------------------------------
@@ -478,6 +628,7 @@ function qrm_reward_create_code($args = []) {
 
     $code  = qrm_reward_generate_unique_code();
     $label = qrm_reward_template_label($template);
+    $expires_at = qrm_reward_compute_expires_at();
 
     $inserted = $wpdb->insert($table, [
         'created_at'       => current_time('mysql'),
@@ -489,6 +640,7 @@ function qrm_reward_create_code($args = []) {
         'is_manual'        => $args['is_manual'] ? 1 : 0,
         'source_review_id' => $args['source_review_id'] ? intval($args['source_review_id']) : null,
         'ip_address'       => sanitize_text_field($args['ip_address']),
+        'expires_at'       => $expires_at,
     ]);
 
     if (!$inserted) {

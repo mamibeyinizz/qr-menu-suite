@@ -284,6 +284,19 @@ function qrm_cf_field_options($field) {
     return $out;
 }
 
+/**
+ * Özel form alan etiketi (çeviri köprüsü).
+ *
+ * @param object|array $field Alan satırı.
+ * @return string
+ */
+function qrm_cf_field_label($field) {
+    $id    = is_object($field) ? (int) $field->id : (int) $field['id'];
+    $label = is_object($field) ? (string) $field->label : (string) $field['label'];
+
+    return qrm_ceviri_cf_alan($id, $label);
+}
+
 /** Ham seçenek metnini (satır başına bir seçenek) diziye çevirir. */
 function qrm_cf_parse_options($raw) {
     if (is_array($raw)) {
@@ -395,7 +408,7 @@ function qrm_cf_replace_fields($form_id, $fields) {
  */
 function qrm_cf_validate_value($field, $raw) {
     $type    = is_object($field) ? $field->field_type : $field['field_type'];
-    $label   = is_object($field) ? $field->label : $field['label'];
+    $label   = qrm_cf_field_label($field);
     $options = qrm_cf_field_options($field);
 
     switch ($type) {
@@ -495,7 +508,7 @@ function qrm_cf_validate_submission($fields, $post) {
 
     foreach ((array) $fields as $field) {
         $key      = is_object($field) ? $field->field_key : $field['field_key'];
-        $label    = is_object($field) ? $field->label : $field['label'];
+        $label    = qrm_cf_field_label($field);
         $required = is_object($field) ? !empty($field->is_required) : !empty($field['is_required']);
         $raw      = array_key_exists($key, (array) $post) ? $post[$key] : '';
 
@@ -516,15 +529,27 @@ function qrm_cf_validate_submission($fields, $post) {
 
 // --- GÖNDERİM CRUD ---
 
-function qrm_cf_insert_submission($form_id, $data, $ip = '') {
+function qrm_cf_insert_submission($form_id, $data, $ip = '', array $consent = []) {
     global $wpdb;
+
+    if (empty($consent)) {
+        $consent = [
+            'consent_marketing' => 0,
+            'consent_at'        => null,
+            'consent_text_hash' => null,
+        ];
+    }
+
     $wpdb->insert(qrm_cf_submissions_table(), [
-        'form_id'    => intval($form_id),
-        'data'       => wp_json_encode($data),
-        'status'     => 'new',
-        'ip_address' => substr((string) $ip, 0, 100),
-        'created_at' => current_time('mysql'),
-    ], ['%d', '%s', '%s', '%s', '%s']);
+        'form_id'             => intval($form_id),
+        'data'                => wp_json_encode($data),
+        'status'              => 'new',
+        'ip_address'          => substr((string) $ip, 0, 100),
+        'created_at'          => current_time('mysql'),
+        'consent_marketing'   => (int) $consent['consent_marketing'],
+        'consent_at'          => $consent['consent_at'],
+        'consent_text_hash'   => $consent['consent_text_hash'],
+    ], ['%d', '%s', '%s', '%s', '%s', '%d', '%s', '%s']);
 
     qrm_cf_flush_unread_total();
 

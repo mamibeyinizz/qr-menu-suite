@@ -45,9 +45,12 @@ function qrm_pro_shortcode() {
     // butonu qrm_load_reviews ucundan ister. Eskiden tüm onaylı yorumlar
     // çekilip basılıyor, ayar yalnızca JS ile gizleme yapıyordu.
     $js_limit         = qrm_pro_reviews_page_size($settings);
-    $first_page       = qrm_pro_fetch_approved_reviews($js_limit, 0);
-    $approved_reviews = $first_page['rows'];
-    $has_more_reviews = $first_page['has_more'];
+    $list_query       = qrm_pro_sanitize_reviews_list_query($_GET);
+    $pagination_mode  = qrm_pro_reviews_pagination_mode($settings);
+    $initial_offset   = ($pagination_mode === 'pages') ? (max(1, (int) $list_query['page']) - 1) * $js_limit : 0;
+    $first_page       = qrm_pro_fetch_approved_reviews($js_limit, $initial_offset, $list_query);
+    $list_built       = qrm_pro_build_reviews_list_response($first_page, $list_query, $settings, $js_limit, $pagination_mode);
+    $has_more_reviews = $list_built['has_more'] && $pagination_mode === 'loadmore';
 
     // "N Değerlendirme" sayacı artık çekilen satır sayısından okunamaz.
     //
@@ -103,23 +106,33 @@ function qrm_pro_shortcode() {
 
         <?php echo qrm_pro_render_review_form($settings, $active_fields, $message, $show_google_cta, $cta_avg, 'review', $auto_open_reward); ?>
 
+        <?php echo qrm_pro_render_reviews_list_controls($settings, $list_query); ?>
+
         <div class="qrm-reviews-grid" id="qrm-reviews-container">
-            <?php if ($approved_reviews): ?>
-                <?php echo qrm_pro_render_review_cards($approved_reviews); ?>
-            <?php else: ?>
-                <div class="qrm-empty-state"><?php echo esc_html(qrm_ceviri_review(__('Henüz yayınlanmış bir değerlendirme yok. İlk yorumu siz bırakın!', 'qrms'))); ?></div>
-            <?php endif; ?>
+            <?php echo $list_built['html']; ?>
         </div>
 
-        <?php if ($has_more_reviews): ?>
-        <div class="qrm-load-more-wrap">
+        <?php if ($pagination_mode === 'loadmore' && $has_more_reviews): ?>
+        <div class="qrm-load-more-wrap" id="qrm-load-more-wrap">
             <button id="qrm-load-more" class="qrm-load-more-btn"><?php echo esc_html(qrm_ceviri_review(__('Daha Fazla Göster', 'qrms'))); ?></button>
+        </div>
+        <?php endif; ?>
+
+        <?php if ($pagination_mode === 'pages'): ?>
+        <div id="qrm-reviews-pagination-wrap">
+            <?php echo $list_built['pagination_html']; ?>
         </div>
         <?php endif; ?>
 
     </div>
 
+    <?php echo qrm_pro_render_review_media_lightbox(); ?>
+
     <?php
-    echo qrm_pro_render_form_script($settings, $js_limit, true);
+    echo qrm_pro_render_form_script($settings, $js_limit, true, [
+        'list_query'       => $list_query,
+        'pagination_mode'=> $pagination_mode,
+        'media_enabled'  => qrm_pro_media_is_enabled($settings),
+    ]);
     return ob_get_clean();
 }

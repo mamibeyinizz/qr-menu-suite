@@ -70,10 +70,24 @@ function qrm_cf_admin_form_editor_view() {
         <?php
         if (!$is_new && function_exists('rma_ceviri_veri_dil_sayisi')) {
             $diller = rma_ceviri_veri_dil_sayisi('cf_form', (int) $form->id, '');
+            foreach (array('title', 'description', 'submit_text', 'success_message') as $cf_field) {
+                $n = rma_ceviri_veri_dil_sayisi('cf_form', (int) $form->id, $cf_field);
+                if ($n > $diller) {
+                    $diller = $n;
+                }
+            }
             foreach ($fields as $f) {
                 $n = rma_ceviri_veri_dil_sayisi('cf_field', (int) $f->id, 'label');
                 if ($n > $diller) {
                     $diller = $n;
+                }
+                if (function_exists('qrm_cf_field_options')) {
+                    foreach (qrm_cf_field_options($f) as $idx => $opt) {
+                        $on = rma_ceviri_veri_dil_sayisi('cf_field', (int) $f->id, 'option_' . (int) $idx);
+                        if ($on > $diller) {
+                            $diller = $on;
+                        }
+                    }
                 }
             }
             echo rma_ceviri_bayat_uyari_html(rma_ceviri_bayat_uyari_ekran_metni($diller));

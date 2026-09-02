@@ -8,6 +8,7 @@ add_action('wp_ajax_nopriv_qrm_submit_custom_form', 'qrm_cf_ajax_submit');
 
 function qrm_cf_ajax_submit() {
     check_ajax_referer('qrm_submit_custom_form', 'qrm_cf_nonce');
+    qrm_pro_bootstrap_lang();
 
     $form_id = isset($_POST['form_id']) ? intval($_POST['form_id']) : 0;
     $form    = $form_id > 0 ? qrm_cf_get_form($form_id) : null;
@@ -21,7 +22,10 @@ function qrm_cf_ajax_submit() {
     // Honeypot: bot doldurur, gerçek kullanıcı görmez. Bota başarı görünümü döndürülür
     // (yeniden denemesin diye) ama hiçbir kayıt oluşturulmaz.
     if (qrm_pro_honeypot_tripped()) {
-        wp_send_json(['success' => true, 'message' => $settings['success_message']]);
+        wp_send_json([
+            'success' => true,
+            'message' => qrm_ceviri_cf_form($form->id, 'success_message', $settings['success_message']),
+        ]);
     }
 
     // Spam koruması: zaman tuzağı + akış koruması (captcha bu formlarda kullanılmaz).
@@ -49,7 +53,22 @@ function qrm_cf_ajax_submit() {
         wp_send_json(['success' => false, 'message' => $cooldown]);
     }
 
-    $submission_id = qrm_cf_insert_submission($form->id, $validated['data'], qrm_pro_client_ip());
+    $masa_ctx = qrm_pro_resolve_masa_for_submission('');
+    if ($masa_ctx['masa_slug'] !== '' || $masa_ctx['table_id'] !== null) {
+        if ($masa_ctx['masa_slug'] !== '') {
+            $validated['data']['_qrm_masa_slug'] = $masa_ctx['masa_slug'];
+        }
+        if ($masa_ctx['table_id'] !== null && (int) $masa_ctx['table_id'] > 0) {
+            $validated['data']['_qrm_table_id'] = (int) $masa_ctx['table_id'];
+        }
+    }
+
+    $submission_id = qrm_cf_insert_submission(
+        $form->id,
+        $validated['data'],
+        qrm_pro_client_ip(),
+        qrm_pro_consent_from_request()
+    );
     if (!$submission_id) {
         wp_send_json(['success' => false, 'message' => qrm_ceviri_review(__('Gönderiminiz kaydedilemedi, lütfen tekrar deneyin.', 'qrms'))]);
     }
@@ -67,6 +86,6 @@ function qrm_cf_ajax_submit() {
 
     wp_send_json([
         'success' => true,
-        'message' => $settings['success_message'],
+        'message' => qrm_ceviri_cf_form($form->id, 'success_message', $settings['success_message']),
     ]);
 }

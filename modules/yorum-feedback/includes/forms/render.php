@@ -97,7 +97,7 @@ function qrm_cf_render_field($field, $args = []) {
             <?php break;
 
             case 'email': ?>
-                <input type="email" id="<?php echo esc_attr($id); ?>" name="<?php echo esc_attr($key); ?>" autocomplete="email" placeholder="ornek@eposta.com"<?php echo $req_attr; ?>>
+                <input type="email" id="<?php echo esc_attr($id); ?>" name="<?php echo esc_attr($key); ?>" autocomplete="email" placeholder="<?php echo esc_attr(qrm_ceviri_review(__('ornek@eposta.com', 'qrms'))); ?>"<?php echo $req_attr; ?>>
             <?php break;
 
             case 'tel': ?>
@@ -116,18 +116,22 @@ function qrm_cf_render_field($field, $args = []) {
             case 'select': ?>
                 <select id="<?php echo esc_attr($id); ?>" name="<?php echo esc_attr($key); ?>"<?php echo $req_attr; ?>>
                     <option value=""><?php echo esc_html(qrm_ceviri_review(__('Seçiniz…', 'qrms'))); ?></option>
-                    <?php foreach ($options as $opt): ?>
-                        <option value="<?php echo esc_attr($opt); ?>"><?php echo esc_html($opt); ?></option>
+                    <?php foreach ($options as $i => $opt):
+                        $opt_label = qrm_ceviri_cf_field_option((int) $field->id, $i, $opt);
+                    ?>
+                        <option value="<?php echo esc_attr($opt); ?>"><?php echo esc_html($opt_label); ?></option>
                     <?php endforeach; ?>
                 </select>
             <?php break;
 
             case 'radio': ?>
                 <div class="qrm-choice-list">
-                    <?php foreach ($options as $i => $opt): ?>
+                    <?php foreach ($options as $i => $opt):
+                        $opt_label = qrm_ceviri_cf_field_option((int) $field->id, $i, $opt);
+                    ?>
                         <label class="qrm-choice">
                             <input type="radio" name="<?php echo esc_attr($key); ?>" value="<?php echo esc_attr($opt); ?>"<?php echo $required && $i === 0 ? ' required' : ''; ?>>
-                            <span><?php echo esc_html($opt); ?></span>
+                            <span><?php echo esc_html($opt_label); ?></span>
                         </label>
                     <?php endforeach; ?>
                 </div>
@@ -135,10 +139,12 @@ function qrm_cf_render_field($field, $args = []) {
 
             case 'checkbox': ?>
                 <div class="qrm-choice-list">
-                    <?php foreach ($options as $opt): ?>
+                    <?php foreach ($options as $i => $opt):
+                        $opt_label = qrm_ceviri_cf_field_option((int) $field->id, $i, $opt);
+                    ?>
                         <label class="qrm-choice">
                             <input type="checkbox" name="<?php echo esc_attr($key); ?>[]" value="<?php echo esc_attr($opt); ?>">
-                            <span><?php echo esc_html($opt); ?></span>
+                            <span><?php echo esc_html($opt_label); ?></span>
                         </label>
                     <?php endforeach; ?>
                 </div>
@@ -179,7 +185,7 @@ function qrm_cf_render_form($form, $fields, $s = null) {
                 <h3><?php echo esc_html(qrm_ceviri_cf_form($form_id, 'title', $form->title)); ?></h3>
             <?php endif; ?>
             <?php if (trim((string) $form->description) !== ''): ?>
-                <p class="qrm-cf-desc"><?php echo nl2br(esc_html($form->description)); ?></p>
+                <p class="qrm-cf-desc"><?php echo nl2br(esc_html(qrm_ceviri_cf_form($form_id, 'description', $form->description))); ?></p>
             <?php endif; ?>
 
             <div class="qrm-cf-message" id="<?php echo esc_attr($prefix); ?>-message"></div>
@@ -200,6 +206,8 @@ function qrm_cf_render_form($form, $fields, $s = null) {
                         echo qrm_cf_render_field($field, ['id_prefix' => $prefix]);
                     } ?>
                 </div>
+
+                <?php echo qrm_pro_render_consent_checkbox(qrm_pro_get_settings()); ?>
 
                 <button type="submit" class="qrm-btn"><span class="qrm-btn-label"><?php echo esc_html(qrm_ceviri_cf_form($form_id, 'submit_text', $s['submit_text'])); ?></span></button>
             </form>
@@ -227,6 +235,7 @@ function qrm_cf_render_form_script($form, $s) {
         var box     = document.getElementById(<?php echo wp_json_encode($prefix . '-box', $json_flags); ?>);
         var msgBox  = document.getElementById(<?php echo wp_json_encode($prefix . '-message', $json_flags); ?>);
         var ajaxUrl = <?php echo wp_json_encode(admin_url('admin-ajax.php'), $json_flags); ?>;
+        var currentLang = <?php echo wp_json_encode(qrm_pro_current_lang(), $json_flags); ?>;
         var successText = <?php echo wp_json_encode(qrm_ceviri_cf_form($form_id, 'success_message', $s['success_message']), $json_flags); ?>;
         var qrmCfI18n = <?php echo wp_json_encode([
             'sending'      => qrm_ceviri_review(__('Gönderiliyor…', 'qrms')),
@@ -262,6 +271,7 @@ function qrm_cf_render_form_script($form, $s) {
 
             var data = new FormData(form);
             data.append('action', 'qrm_submit_custom_form');
+            if (currentLang) data.append('lang', currentLang);
 
             fetch(ajaxUrl, { method: 'POST', body: data, credentials: 'same-origin' })
                 .then(function(r){ return r.json(); })

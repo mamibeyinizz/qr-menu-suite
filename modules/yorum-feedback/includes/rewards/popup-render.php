@@ -253,6 +253,7 @@ function qrm_reward_render_popup($settings, $auto_open = false) {
             copiedText:   <?php echo wp_json_encode(qrm_ceviri_option('qrm_settings.qrm_reward_popup_copied_text', $settings['qrm_reward_popup_copied_text'])); ?>,
             errorText:    <?php echo wp_json_encode(qrm_ceviri_option('qrm_settings.qrm_reward_popup_error_text', $settings['qrm_reward_popup_error_text'])); ?>,
             invalidEmail: <?php echo wp_json_encode(qrm_ceviri_review(__('Lütfen geçerli bir e-posta adresi girin.', 'qrms'))); ?>,
+            currentLang: <?php echo wp_json_encode(qrm_pro_current_lang()); ?>,
             autoOpen:     <?php echo $auto_open ? 'true' : 'false'; ?>,
             autoClaim:    <?php echo wp_json_encode($auto_claim); ?>
         };
@@ -413,6 +414,7 @@ function qrm_reward_render_popup($settings, $auto_open = false) {
             fd.append('email', value);
             fd.append('review_id', reviewId);
             fd.append('claim', claim);
+            if (cfg.currentLang) fd.append('lang', cfg.currentLang);
 
             fetch(cfg.ajaxUrl, { method: 'POST', credentials: 'same-origin', body: fd })
                 .then(function(r) { return r.json(); })

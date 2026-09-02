@@ -38,6 +38,10 @@ if (!function_exists('qrm_ceviri_review_js_metinleri')) {
             'rateRequired' => qrm_ceviri_review(__('Devam etmek için lütfen tüm kriterleri puanlayın.', 'qrms')),
             'thanks'       => qrm_ceviri_review(__('Değerlendirmeniz için teşekkürler!', 'qrms')),
             'loading'      => qrm_ceviri_review(__('Yükleniyor…', 'qrms')),
+            'mediaError'   => qrm_ceviri_review(__('Geçersiz görsel veya boyut sınırı aşıldı.', 'qrms')),
+            'loadMore'     => qrm_ceviri_review(__('Daha Fazla Göster', 'qrms')),
+            'filterEmpty'  => qrm_ceviri_review(__('Bu filtreye uygun yorum yok.', 'qrms')),
+            'clearFilters' => qrm_ceviri_review(__('Filtreyi temizle', 'qrms')),
         ];
     }
 }
@@ -117,6 +121,52 @@ if (!function_exists('qrm_ceviri_cf_form')) {
     }
 }
 
+/**
+ * Özel form alan seçeneği (item_type=cf_field, field=option_N).
+ *
+ * @param int    $id    qrm_custom_form_fields.id.
+ * @param int    $index Seçenek sırası (0 tabanlı).
+ * @param string $metin Orijinal seçenek metni.
+ * @return string
+ */
+if (!function_exists('qrm_ceviri_cf_field_option')) {
+    function qrm_ceviri_cf_field_option($id, $index, $metin) {
+        $metin = (string) $metin;
+        if ($metin === '') {
+            return '';
+        }
+        if (function_exists('rma_ceviri_veri')) {
+            return rma_ceviri_veri('cf_field', (int) $id, 'option_' . (int) $index, $metin);
+        }
+        return $metin;
+    }
+}
+
+/**
+ * İstek dilini çözümler (qr-ceviri kapalıysa 'tr').
+ *
+ * @return string
+ */
+if (!function_exists('qrm_pro_current_lang')) {
+    function qrm_pro_current_lang() {
+        if (function_exists('rma_get_current_lang')) {
+            return rma_get_current_lang();
+        }
+        return 'tr';
+    }
+}
+
+/**
+ * AJAX uçlarında dil bağlamını başlatır.
+ *
+ * @return void
+ */
+if (!function_exists('qrm_pro_bootstrap_lang')) {
+    function qrm_pro_bootstrap_lang() {
+        qrm_pro_current_lang();
+    }
+}
+
 // P1: Aşağıdaki varsayılanlar yönetici option'ıdır (VERİ).
 // CSV'ye item_type=option, field=qrm_settings.* olarak çıkar.
 function qrm_pro_default_settings() {
@@ -127,6 +177,7 @@ function qrm_pro_default_settings() {
         'theme_style' => 'light',
         'auto_approve_rating' => 0,
         'reviews_per_page' => 3,
+        'qrm_reviews_pagination_mode' => 'loadmore',
         'show_overall_stats' => 1,
         'crit_1_name' => 'Yemek Lezzeti', 'crit_1_active' => 1,
         'crit_2_name' => 'Hizmet Hızı', 'crit_2_active' => 1,
@@ -151,6 +202,25 @@ function qrm_pro_default_settings() {
         // Spam koruması: aynı kişi kaç dakikada bir form gönderebilir (0 = kapalı).
         // Tüm formlar için geçerlidir; yetkili kullanıcılar (edit_posts) muaftır.
         'qrm_spam_cooldown_minutes' => 10,
+
+        // Rapor vardiyaları (v4.2.3) — saatler 0-23, bitiş saati hariçtir.
+        'qrm_shifts' => [
+            ['name' => 'Sabah', 'start' => 6,  'end' => 12],
+            ['name' => 'Öğle',  'start' => 12, 'end' => 17],
+            ['name' => 'Akşam', 'start' => 17, 'end' => 23],
+            ['name' => 'Gece',  'start' => 23, 'end' => 6],
+        ],
+        // Kriter düşüş uyarısı eşiği (puan) — v4.2.4.
+        'qrm_trend_drop_threshold' => 0.5,
+
+        // KVKK / pazarlama izni (v4.2.7) — metin boşsa checkbox render edilmez.
+        'qrm_consent_text' => '',
+        'qrm_consent_page_url' => '',
+
+        // Yorum formu görsel yükleme (v4.2.8) — varsayılan kapalı.
+        'qrm_media_enabled'   => 0,
+        'qrm_media_max_files' => 2,
+        'qrm_media_max_mb'    => 3,
 
         // --- Google Review Ödül Sistemi (v4.1.0) ---
         // Not: google_review_url / google_review_threshold gibi mevcut ayarlar
@@ -181,6 +251,7 @@ function qrm_pro_default_settings() {
         // Süreler
         'qrm_reward_wait_seconds' => 30,              // Google butonuna basınca beklenen süre
         'qrm_reward_auto_trigger_seconds' => 20,      // hiç tıklanmazsa otomatik e-posta adımı (15-30)
+        'qrm_reward_valid_days' => 30,                // kod geçerlilik süresi (gün); 0 = süresiz
         // E-posta
         'qrm_reward_email_subject' => 'İndirim kodunuz hazır!',
         'qrm_reward_email_intro' => 'Değerlendirmeniz için teşekkür ederiz. Aşağıdaki indirim kodunu bir sonraki ziyaretinizde kullanabilirsiniz.',

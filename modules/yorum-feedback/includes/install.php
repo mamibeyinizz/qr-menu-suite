@@ -15,6 +15,7 @@ function qrm_pro_install() {
         customer_name varchar(255) DEFAULT '',
         customer_phone varchar(50) DEFAULT '',
         table_no varchar(50) DEFAULT '',
+        table_id mediumint(9) DEFAULT NULL,
         is_anonymous tinyint(1) DEFAULT 0,
         rating float NOT NULL,
         rating_1 tinyint(1) DEFAULT 0,
@@ -27,9 +28,20 @@ function qrm_pro_install() {
         sentiment varchar(20) DEFAULT 'neutral',
         is_manual tinyint(1) DEFAULT 0,
         form_source varchar(20) DEFAULT 'review' NOT NULL,
+        workflow_status varchar(20) DEFAULT 'new' NOT NULL,
+        assigned_user_id bigint(20) unsigned DEFAULT NULL,
+        internal_note text NULL,
+        resolved_at datetime DEFAULT NULL,
+        consent_marketing tinyint(1) DEFAULT 0 NOT NULL,
+        consent_at datetime DEFAULT NULL,
+        consent_text_hash char(32) DEFAULT NULL,
         PRIMARY KEY  (id),
         KEY idx_status_created (status, created_at),
-        KEY idx_created (created_at)
+        KEY idx_status_rating (status, rating),
+        KEY idx_created (created_at),
+        KEY idx_workflow (workflow_status, created_at),
+        KEY idx_table_created (table_id, created_at),
+        KEY idx_consent (consent_marketing, consent_at)
     ) $charset_collate;";
     //
     // İNDEKSLER (v4.2.3) — tabloda uzun süre PRIMARY KEY dışında hiçbir indeks
@@ -37,6 +49,8 @@ function qrm_pro_install() {
     //
     //   idx_status_created  ->  WHERE status = X ORDER BY created_at DESC LIMIT ...
     //                           (ön yüz yorum listesi: HER ziyaretçide çalışır),
+    //   idx_status_rating   ->  WHERE status = 1 ORDER BY rating DESC/ASC LIMIT ...
+    //                           (ön yüz puan sıralaması, v4.2.9),
     //                           WHERE status = 1 sayaçları ve yapay zekâ özetinin
     //                           "son N yayındaki yorum" sorgusu.
     //   idx_created         ->  filtresiz yönetim listesinin ORDER BY created_at'i.
@@ -64,6 +78,17 @@ function qrm_pro_install() {
     require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
     dbDelta($sql_reviews);
     dbDelta($sql_fields);
+
+    $table_review_media = $wpdb->prefix . 'qrm_review_media';
+    $sql_review_media   = "CREATE TABLE $table_review_media (
+        id mediumint(9) NOT NULL AUTO_INCREMENT,
+        review_id mediumint(9) NOT NULL,
+        attachment_id bigint(20) unsigned NOT NULL,
+        created_at datetime DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY  (id),
+        KEY idx_review (review_id)
+    ) $charset_collate;";
+    dbDelta($sql_review_media);
 
     // Varsayılan form alanları (Eğer boşsa)
     //
@@ -409,4 +434,7 @@ function qrm_pro_review_stats($taze = false) {
 function qrm_pro_flush_review_stats() {
     unset($GLOBALS['qrm_pro_stats_memo']);
     delete_transient(QRM_PRO_STATS_TRANSIENT);
+    if (function_exists('qrm_pro_flush_trend_drop_cache')) {
+        qrm_pro_flush_trend_drop_cache();
+    }
 }

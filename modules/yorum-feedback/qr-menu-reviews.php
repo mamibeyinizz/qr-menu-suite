@@ -2,10 +2,107 @@
 /*
 Plugin Name: QR Menü Gelişmiş Müşteri Yorumları & Değerlendirme
 Description: QR menü sistemleri için çoklu kriter (yemek, hizmet, temizlik vb.) puanlama sistemli, Google yorum yönlendirmeli (review gating), AJAX destekli, gelişmiş analitik barındıran premium müşteri yorum eklentisi.
-Version: 4.2.1
+Version: 4.3.0
 Author: QR MENÜ
 
 == Changelog ==
+
+4.3.0
+ - YENİ: Çok dilli form entegrasyonu tamamlandı — tüm ön yüz sabit metinleri
+   qrm_ceviri_review() / qrm_ceviri_option() / qrm_ceviri_form_alan() köprülerinden geçer.
+ - YENİ: Özel formlarda alan etiketleri, seçenekler (option_N) ve açıklama metni çevrilebilir.
+ - YENİ: qrm_consent_text option defterine eklendi; yönetici metin değişince hash ile bayat uyarısı.
+ - YENİ: AJAX uçlarında lang parametresi (sanitize) ve yanıt metinleri aktif dilde döner.
+ - DÜZELTME: Özel form ve ödül AJAX başarı/hata mesajları çeviri köprüsünden geçirildi.
+
+4.2.9
+ - YENİ: Ön yüz yorum listesinde sıralama (en yeni / en eski / en yüksek / en düşük puan),
+   tekli yıldız filtresi ve (Aşama 7 açıksa) yalnızca fotoğraflı filtre.
+ - YENİ: Sayfalama modu qrm_reviews_pagination_mode — loadmore (varsayılan) veya pages.
+ - YENİ: Filtreler URL'e yazılır (history.replaceState); paylaşılan link aynı görünümü açar.
+ - GÜVENLİK: Tüm parametreler sunucuda beyaz listeyle doğrulanır; ORDER BY sabit eşlemeden gelir.
+ - PERFORMANS: idx_status_rating (status, rating) indeksi; tarih sıralaması idx_status_created kullanır.
+ - UX: Filtre sonucu boşsa "Bu filtreye uygun yorum yok" + filtreyi temizle bağlantısı.
+
+4.2.8
+ - YENİ: Yorum formuna görsel yükleme (isteğe bağlı). qrm_review_media tablosu;
+   ayarlar qrm_media_enabled (varsayılan kapalı), qrm_media_max_files (2, üst 5),
+   qrm_media_max_mb (3, üst 8).
+ - YENİ: Ön yüzde dosya seçici, URL.createObjectURL önizleme ve tek tek kaldırma;
+   seçim yoksa akış değişmez.
+ - GÜVENLİK: Yalnızca image/jpeg, image/png, image/webp — uzantı değil gerçek MIME
+   (wp_check_filetype_and_ext + finfo); boyut ve adet sunucuda doğrulanır.
+ - YENİ: wp_handle_upload + wp_insert_attachment; post_parent = 0; medya kütüphanesinde
+   "QR Yorum Görseli" etiketi; EXIF konum temizliği ve 1600px kenar sınırı.
+ - YENİ: Yorum silinince bağlı attachment'lar wp_delete_attachment(..., true) ile silinir.
+ - YENİ: Onaylı yorumlarda lazy thumbnail galeri + vanilla lightbox; yönetim listesinde
+   küçük önizleme ve tam boy bağlantı.
+
+4.2.7
+ - YENİ: KVKK / pazarlama izni (isteğe bağlı). qrm_reviews ve
+   qrm_custom_form_submissions tablolarına consent_marketing, consent_at,
+   consent_text_hash sütunları. Zorunlu olmayan tek checkbox; metin boşsa
+   render edilmez, işaretlenmezse form normal gönderilir.
+ - YENİ: Ayarlardan qrm_consent_text ve qrm_consent_page_url (Aydınlatma Metni).
+ - YENİ: Rapor görünümünde İzinli Kişiler bloğu (ad / telefon / e-posta / onay
+   tarihi), izin geri alma ve CSV dışa aktarımı. Yalnızca consent_marketing = 1
+   kayıtlar listelenir.
+
+4.2.6
+ - KONTROL: qrm_reward_codes tablosunda status/used_at/source_review_id, kod listesi,
+   durum filtresi, Kullanıldı/İptal/Geçerli Yap/Sil işlemleri ve Kod Sorgula kutusu
+   (wp_ajax_qrm_reward_admin_lookup) zaten vardı — dokunulmadı.
+ - YENİ: expires_at sütunu + ayar qrm_reward_valid_days (varsayılan 30, 0 = süresiz);
+   kod üretiminde otomatik doldurulur.
+ - YENİ: Süresi geçen kodları expired yapan günlük cron (tek kayıt, deaktivasyonda
+   temizlik) ve qrm_reward_find_by_code() içinde tembel süre dolumu.
+ - YENİ: Kod sorgulama kutusunda geçerli kod için "Kullanıldı olarak işaretle"
+   (wp_ajax_qrm_reward_cashier_mark_used, edit_posts + nonce).
+ - YENİ: Kasiyer görünümü ?view=kasa — yalnızca kod girişi, sonuç ve kullan butonu
+   (edit_posts; ayarlar ve liste görünmez).
+ - YENİ: Ödül Kodları sekmesinde özet sayaçlar: üretilen / kullanılan / süresi dolmuş /
+   iptal + kullanım oranı (%).
+
+4.2.5
+ - YENİ: Tüm Yorumlar, Özel Form Gönderileri ve Ödül Kodları listelerinde
+   "Dışa Aktar (CSV)" butonu. Ekrandaki aktif filtreler (durum, iş akışı, masa,
+   tarih aralığı, arama) dışa aktarıma birebir uygulanır.
+ - YENİ: Liste ekranlarında tarih aralığı, arama ve (yorumlar için) masa
+   filtresi. admin_post_qrm_export_csv ucu; UTF-8 BOM, virgül ayraç, formül
+   enjeksiyonu koruması; LIMIT/OFFSET ile 1000'lik parçalarda akışlı yazım.
+
+4.2.4
+ - YENİ: Rapor ekranında kriter trend grafikleri (haftalık ve aylık ortalama
+   seyri). Saf inline SVG, mobilde yatay kaydırma, noktalarda <title> tooltip.
+ - YENİ: Düşüş uyarısı — son 7 gün önceki 7 güne göre ayarlanabilir eşik
+   (qrm_trend_drop_threshold, varsayılan 0,5 puan) kadar düşen kriterler için
+   rapor üstü uyarı kutusu ve admin menü rozeti. Hesaplama 12 saatlik transient
+   ile önbelleklenir; en az 5 yorum yoksa uyarı üretilmez.
+
+4.2.3
+ - YENİ: Masa / vardiya / saat bazlı raporlama. Tüm Yorumlar ekranında
+   ?view=rapor sekmesi: masa bazlı özet tablo (ad, sayı, ortalama, son yorum,
+   kriter ortalamaları), 0-23 saat dağılımı (yatay bar, saf CSS) ve ayarlardan
+   yönetilen vardiya kırılımı. Tarih aralığı filtresi (varsayılan son 30 gün).
+ - YENİ: qrm_reviews.table_id — gönderimde ?masa= veya qr_masa_token oturumundan
+   slug çözülür, QMO_Masalar ile eşlenir; eşleşmezse serbest table_no korunur.
+ - YENİ: qrm_settings.qrm_shifts vardiya tanımları (varsayılan: Sabah 06-12,
+   Öğle 12-17, Akşam 17-23, Gece 23-06); Ayarlar & Puanlama ekranından düzenlenir.
+ - PERFORMANS: idx_table_created (table_id, created_at); rapor sorguları toplu
+   GROUP BY ile çalışır, satır başına ek sorgu yoktur.
+
+4.2.2
+ - YENİ: Yorum iş akışı (workflow). Her yorum için bağımsız durum takibi:
+   Yeni / Okundu / İşleme alındı / Çözüldü — yayın durumundan (beklemede/yayında)
+   ayrıdır. Tüm Yorumlar ekranında satır başına durum seçici, sorumlu atama
+   (edit_posts yetkili kullanıcılar) ve genişletilebilir iç not alanı; değişiklikler
+   AJAX ile anında kaydedilir. Liste üstünde iş akışı filtreleri ve tek GROUP BY
+   sorgusuyla sayaçlar. Çözüldü seçildiğinde resolved_at yazılır, başka duruma
+   dönülünce sıfırlanır. Otomatik "okundu" işaretlemesi yoktur.
+ - PERFORMANS: workflow_status + created_at bileşik indeksi (idx_workflow);
+   filtreli liste sorguları tam tablo taraması yapmaz.
+ - GÜVENLİK: İş akışı AJAX ucu nonce + manage_options ile korunur; iç not ve
+   sorumlu bilgisi ön yüze asla basılmaz.
 
 4.2.1
  - DÜZELTME (kök neden): "Formlar > Yeni Form Oluştur" ekranı, yönetici olarak giriş
@@ -116,7 +213,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('QRM_PRO_VERSION', '4.2.1');
+define('QRM_PRO_VERSION', '4.2.7');
 define('QRM_PRO_FILE', __FILE__);
 define('QRM_PRO_PATH', plugin_dir_path(__FILE__));
 define('QRM_PRO_URL', plugin_dir_url(__FILE__));
@@ -124,6 +221,9 @@ define('QRM_PRO_URL', plugin_dir_url(__FILE__));
 // Bağımlılık sırası önemli: önce ayarlar/güvenlik, sonra kurulum, sonra geri kalanı.
 require_once QRM_PRO_PATH . 'includes/settings.php';
 require_once QRM_PRO_PATH . 'includes/security.php';
+require_once QRM_PRO_PATH . 'includes/masa.php';
+require_once QRM_PRO_PATH . 'includes/consent.php';
+require_once QRM_PRO_PATH . 'includes/review-media.php';
 
 // Ödül modülü (kurulum fonksiyonu install.php içinden çağrıldığı için önce yüklenir)
 require_once QRM_PRO_PATH . 'includes/rewards/db.php';
@@ -141,10 +241,15 @@ require_once QRM_PRO_PATH . 'includes/install.php';
 require_once QRM_PRO_PATH . 'includes/admin/menu.php';
 require_once QRM_PRO_PATH . 'includes/admin/hub.php';
 require_once QRM_PRO_PATH . 'includes/admin/dashboard.php';
+require_once QRM_PRO_PATH . 'includes/admin/reports.php';
+require_once QRM_PRO_PATH . 'includes/admin/trend.php';
+require_once QRM_PRO_PATH . 'includes/admin/export-csv.php';
+require_once QRM_PRO_PATH . 'includes/admin/consent-report.php';
 require_once QRM_PRO_PATH . 'includes/admin/form-builder.php';
 require_once QRM_PRO_PATH . 'includes/admin/settings-page.php';
 require_once QRM_PRO_PATH . 'includes/admin/contact.php';
 require_once QRM_PRO_PATH . 'includes/admin/rewards.php';
+require_once QRM_PRO_PATH . 'includes/admin/reward-cashier.php';
 require_once QRM_PRO_PATH . 'includes/admin/reward-codes.php';
 require_once QRM_PRO_PATH . 'includes/admin/forms-list.php';
 require_once QRM_PRO_PATH . 'includes/admin/custom-form-builder.php';
@@ -166,8 +271,12 @@ require_once QRM_PRO_PATH . 'includes/ajax/submit-review.php';
 require_once QRM_PRO_PATH . 'includes/ajax/load-reviews.php';
 require_once QRM_PRO_PATH . 'includes/ajax/rewards.php';
 require_once QRM_PRO_PATH . 'includes/ajax/submit-custom-form.php';
+require_once QRM_PRO_PATH . 'includes/ajax/review-workflow.php';
 
 register_activation_hook(__FILE__, 'qrm_pro_install');
+register_deactivation_hook(__FILE__, 'qrm_reward_unschedule_expire_cron');
+
+add_action('init', 'qrm_reward_schedule_expire_cron', 20);
 
 // Eklenti dosyaları güncellendiğinde (reaktivasyon olmadan) yeni tabloların da
 // oluşmasını sağlar. Sürüm aynıysa hiçbir sorgu çalışmaz.
@@ -204,6 +313,13 @@ function qrm_pro_maybe_upgrade() {
  * satırlara DEFAULT 'full' ekler; qrm_pro_migrate_column_widths() eski
  * otomatik yarım-genişlik davranışını bir kez yazar.
  *
+ * v4: qrm_reviews tablosuna iş akışı sütunları (workflow_status,
+ * assigned_user_id, internal_note, resolved_at) ve idx_workflow indeksi.
+ *
+ * v5: table_id sütunu ve idx_table_created indeksi (masa raporları).
+ *
+ * v6: idx_status_rating (status, rating) — ön yüz puan sıralaması.
+ *
  * ZAMANLAMA — güncelleme bilinçli olarak SADECE yönetim isteklerinde çalışır.
  * ALTER TABLE, büyük bir yorum tablosunda birkaç saniye sürebilir ve o süre
  * boyunca tabloyu meşgul eder. plugins_loaded'a bağlansaydı bu iş, menüyü açan
@@ -212,7 +328,7 @@ function qrm_pro_maybe_upgrade() {
  * ---------------------------------------------------------------------- */
 
 /** Şema (indeks) sürümü. İndeks tanımları değiştiğinde artırılır. */
-define('QRM_PRO_SCHEMA_VERSION', '3');
+define('QRM_PRO_SCHEMA_VERSION', '6');
 
 /** Şema sürümünün saklandığı option. */
 define('QRM_PRO_SCHEMA_OPTION', 'qrm_pro_schema_version');
@@ -272,7 +388,11 @@ function qrm_pro_schema_indexes_ok() {
     $rows     = $wpdb->get_col("SHOW INDEX FROM {$table}", 2); // Key_name sütunu
     $wpdb->suppress_errors($suppress);
 
-    return is_array($rows) && in_array('idx_status_created', $rows, true);
+    return is_array($rows)
+        && in_array('idx_status_created', $rows, true)
+        && in_array('idx_status_rating', $rows, true)
+        && in_array('idx_workflow', $rows, true)
+        && in_array('idx_table_created', $rows, true);
 }
 
 add_action('admin_init', 'qrm_pro_schema_maybe_upgrade', 5);

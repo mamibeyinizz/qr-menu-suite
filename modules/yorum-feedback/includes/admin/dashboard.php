@@ -103,12 +103,22 @@ function qrm_pro_admin_reviews_per_page() {
  * bu yüzden listeye ayrı bir COUNT eklemez — sekme ile durum filtresi bir arada
  * kullanıldığında da.
  *
- * @param string $durum '' | 'bekleyen' | 'onayli'.
- * @param array  $stats qrm_pro_review_stats() çıktısı.
- * @param string $sekme '' | 'olumlu' | 'olumsuz'.
+ * @param string $durum     '' | 'bekleyen' | 'onayli'.
+ * @param array  $stats     qrm_pro_review_stats() çıktısı.
+ * @param string $sekme     '' | 'olumlu' | 'olumsuz'.
+ * @param string $wf        '' | iş akışı durumu.
+ * @param array  $wf_counts qrm_pro_fetch_workflow_counts() çıktısı (isteğe bağlı).
  * @return int
  */
-function qrm_pro_admin_reviews_total($durum, array $stats, $sekme = '') {
+function qrm_pro_admin_reviews_total($durum, array $stats, $sekme = '', $wf = '', array $wf_counts = null) {
+    if ($wf !== '' && is_array($wf_counts) && array_key_exists($wf, $wf_counts)) {
+        return (int) $wf_counts[$wf];
+    }
+
+    if ($wf !== '' && is_array($wf_counts)) {
+        return 0;
+    }
+
     $sayaclar = qrm_pro_admin_review_tab_counts($sekme, $stats);
 
     if ($durum === 'bekleyen') return (int) $sayaclar['pending'];
@@ -127,9 +137,11 @@ function qrm_pro_admin_reviews_total($durum, array $stats, $sekme = '') {
  * @param string $durum     '' | 'bekleyen' | 'onayli'.
  * @param string $sekme     '' | 'olumlu' | 'olumsuz'.
  * @param float  $threshold Olumlu/olumsuz eşiği.
+ * @param string $wf        '' | 'new' | 'read' | 'in_progress' | 'resolved'.
+ * @param array  $extra     liste_bas, liste_bit, bas_dt, bit_excl, search, table_id.
  * @return array{0:string,1:array} [WHERE parçası, parametreler]
  */
-function qrm_pro_admin_reviews_where($durum, $sekme, $threshold) {
+function qrm_pro_admin_reviews_where($durum, $sekme, $threshold, $wf = '', array $extra = []) {
     $kosullar = [];
     $params   = [];
 
@@ -144,6 +156,35 @@ function qrm_pro_admin_reviews_where($durum, $sekme, $threshold) {
     if ($sekme === 'olumlu' || $sekme === 'olumsuz') {
         $kosullar[] = ($sekme === 'olumlu') ? 'rating >= %f' : 'rating < %f';
         $params[]   = (float) $threshold;
+    }
+
+    if ($wf !== '' && array_key_exists($wf, qrm_pro_review_workflow_statuses())) {
+        $kosullar[] = 'workflow_status = %s';
+        $params[]   = $wf;
+    }
+
+    if (!empty($extra['bas_dt']) && !empty($extra['bit_excl'])) {
+        $kosullar[] = 'created_at >= %s';
+        $params[]   = $extra['bas_dt'];
+        $kosullar[] = 'created_at < %s';
+        $params[]   = $extra['bit_excl'];
+    }
+
+    if (!empty($extra['table_id'])) {
+        $kosullar[] = 'table_id = %d';
+        $params[]   = (int) $extra['table_id'];
+    }
+
+    if (!empty($extra['search'])) {
+        global $wpdb;
+        $like       = '%' . $wpdb->esc_like($extra['search']) . '%';
+        $kosullar[] = '(customer_name LIKE %s OR customer_email LIKE %s OR customer_phone LIKE %s OR comment LIKE %s OR reward_code LIKE %s OR table_no LIKE %s)';
+        $params[]   = $like;
+        $params[]   = $like;
+        $params[]   = $like;
+        $params[]   = $like;
+        $params[]   = $like;
+        $params[]   = $like;
     }
 
     return [
@@ -187,9 +228,11 @@ function qrm_pro_admin_reviews_clamp_page($paged, $total, $per_page) {
  * @param int        $paged     Sayfa numarası (1 tabanlı, sınırlanmış).
  * @param string     $sekme     '' | 'olumlu' | 'olumsuz'.
  * @param float|null $threshold Olumlu/olumsuz eşiği; null ise filtreden okunur.
+ * @param string     $wf        '' | iş akışı durumu.
+ * @param array      $extra     Tarih, arama, masa filtreleri.
  * @return array
  */
-function qrm_pro_admin_fetch_reviews($durum, $per_page, $paged, $sekme = '', $threshold = null) {
+function qrm_pro_admin_fetch_reviews($durum, $per_page, $paged, $sekme = '', $threshold = null, $wf = '', array $extra = []) {
     global $wpdb;
 
     $table    = $wpdb->prefix . 'qrm_reviews';
@@ -200,7 +243,7 @@ function qrm_pro_admin_fetch_reviews($durum, $per_page, $paged, $sekme = '', $th
         $threshold = qrm_pro_sentiment_threshold();
     }
 
-    list($where, $params) = qrm_pro_admin_reviews_where($durum, $sekme, $threshold);
+    list($where, $params) = qrm_pro_admin_reviews_where($durum, $sekme, $threshold, $wf, $extra);
 
     $params[] = $per_page;
     $params[] = $offset;
@@ -213,10 +256,105 @@ function qrm_pro_admin_fetch_reviews($durum, $per_page, $paged, $sekme = '', $th
     return is_array($rows) ? $rows : [];
 }
 
+/**
+ * İş akışı durumları — anahtar => etiket.
+ *
+ * @return array<string,string>
+ */
+function qrm_pro_review_workflow_statuses() {
+    return [
+        'new'         => __( 'Yeni', 'qrms' ),
+        'read'        => __( 'Okundu', 'qrms' ),
+        'in_progress' => __( 'İşleme alındı', 'qrms' ),
+        'resolved'    => __( 'Çözüldü', 'qrms' ),
+    ];
+}
+
+/**
+ * İstekteki iş akışı filtresini geçerli bir anahtara indirger.
+ *
+ * @param string $wf Ham istek değeri.
+ * @return string '' | 'new' | 'read' | 'in_progress' | 'resolved'
+ */
+function qrm_pro_admin_review_workflow_filter($wf) {
+    if (!is_scalar($wf)) {
+        return '';
+    }
+
+    $wf = sanitize_key((string) $wf);
+
+    return array_key_exists($wf, qrm_pro_review_workflow_statuses()) ? $wf : '';
+}
+
+/**
+ * İş akışı durum sayaçları — tek GROUP BY sorgusu.
+ *
+ * Mevcut sekme ve yayın durumu filtresine göre kapsam daraltılır; iş akışı
+ * filtresi sayaçlara dahil edilmez (alt filtreler üst filtreye göre sayılır).
+ *
+ * @param string     $durum     '' | 'bekleyen' | 'onayli'.
+ * @param string     $sekme     '' | 'olumlu' | 'olumsuz'.
+ * @param float|null $threshold Olumlu/olumsuz eşiği.
+ * @param array      $extra     Tarih, arama, masa filtreleri.
+ * @return array<string,int> workflow_status => adet
+ */
+function qrm_pro_fetch_workflow_counts($durum = '', $sekme = '', $threshold = null, array $extra = []) {
+    global $wpdb;
+
+    if (!qrm_pro_reviews_table_exists()) {
+        return [];
+    }
+
+    if ($threshold === null) {
+        $threshold = qrm_pro_sentiment_threshold();
+    }
+
+    $table = $wpdb->prefix . 'qrm_reviews';
+    list($where, $params) = qrm_pro_admin_reviews_where($durum, $sekme, $threshold, '', $extra);
+
+    $sql = "SELECT workflow_status, COUNT(*) AS cnt FROM {$table}{$where} GROUP BY workflow_status";
+
+    if (!empty($params)) {
+        $rows = $wpdb->get_results($wpdb->prepare($sql, $params), ARRAY_A);
+    } else {
+        $rows = $wpdb->get_results($sql, ARRAY_A);
+    }
+
+    $counts = array_fill_keys(array_keys(qrm_pro_review_workflow_statuses()), 0);
+
+    if (is_array($rows)) {
+        foreach ($rows as $row) {
+            $key = isset($row['workflow_status']) ? sanitize_key($row['workflow_status']) : '';
+            if (array_key_exists($key, $counts)) {
+                $counts[$key] = (int) $row['cnt'];
+            }
+        }
+    }
+
+    return $counts;
+}
+
+/**
+ * İş akışı sayaçlarından toplam kayıt sayısı.
+ *
+ * @param array<string,int> $wf_counts qrm_pro_fetch_workflow_counts() çıktısı.
+ * @return int
+ */
+function qrm_pro_workflow_counts_total(array $wf_counts) {
+    return (int) array_sum($wf_counts);
+}
+
 /** Tüm Yorumlar ekranı — üç sekmeli tek sayfa. */
 function qrm_pro_admin_dashboard() {
     if (!current_user_can('manage_options')) {
         wp_die(esc_html__('Bu sayfayı görüntüleme yetkiniz yok.', 'qrms'));
+    }
+
+    // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- görünüm seçimi.
+    $view = isset($_GET['view']) ? sanitize_key(wp_unslash($_GET['view'])) : '';
+    if ($view === 'rapor') {
+        qrm_pro_admin_reports_page();
+        return;
     }
 
     $settings = qrm_pro_get_settings();
@@ -235,11 +373,59 @@ function qrm_pro_admin_dashboard() {
     $durum = (isset($_GET['durum']) && is_scalar($_GET['durum'])) ? sanitize_key(wp_unslash($_GET['durum'])) : '';
     if (!in_array($durum, ['bekleyen', 'onayli'], true)) $durum = '';
 
+    // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- yalnızca görünüm filtresi.
+    $wf = qrm_pro_admin_review_workflow_filter(isset($_GET['wf']) ? wp_unslash($_GET['wf']) : '');
+
+    // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- yalnızca görünüm filtresi.
+    $list_filters = function_exists('qrm_pro_admin_review_list_filters')
+        ? qrm_pro_admin_review_list_filters($_GET)
+        : ['liste_bas' => '', 'liste_bit' => '', 'search' => '', 'table_id' => 0];
+
     $stats     = qrm_pro_review_stats();
     $esik      = qrm_pro_sentiment_threshold();
     $per_page  = qrm_pro_admin_reviews_per_page();
-    $toplam    = qrm_pro_admin_reviews_total($durum, $stats, $sekme);
+    $has_list_filters = function_exists('qrm_pro_admin_review_has_list_filters')
+        && qrm_pro_admin_review_has_list_filters($list_filters);
+    $wf_counts = qrm_pro_fetch_workflow_counts($durum, $sekme, $esik, $has_list_filters ? $list_filters : []);
+
+    if ($has_list_filters && function_exists('qrm_export_reviews_count')) {
+        $toplam = qrm_export_reviews_count($durum, $sekme, $esik, $wf, $list_filters);
+    } else {
+        $toplam = qrm_pro_admin_reviews_total($durum, $stats, $sekme, $wf, $wf_counts);
+    }
+
+    $review_ids = array_map(function ($row) {
+        return (int) $row->id;
+    }, $reviews);
+    $review_media_map = function_exists('qrm_pro_get_review_media_bulk')
+        ? qrm_pro_get_review_media_bulk($review_ids)
+        : [];
+
     $sekme_url = $sekme === '' ? $self_url : add_query_arg(['sekme' => $sekme], $self_url);
+    if ($durum !== '') {
+        $sekme_url = add_query_arg(['durum' => $durum], $sekme_url);
+    }
+    if ($list_filters['liste_bas'] !== '') {
+        $sekme_url = add_query_arg(['liste_bas' => $list_filters['liste_bas']], $sekme_url);
+    }
+    if ($list_filters['liste_bit'] !== '') {
+        $sekme_url = add_query_arg(['liste_bit' => $list_filters['liste_bit']], $sekme_url);
+    }
+    if ($list_filters['search'] !== '') {
+        $sekme_url = add_query_arg(['s' => $list_filters['search']], $sekme_url);
+    }
+    if (!empty($list_filters['table_id'])) {
+        $sekme_url = add_query_arg(['table_id' => (int) $list_filters['table_id']], $sekme_url);
+    }
+
+    $masa_labels = [];
+    if (class_exists('QMO_Masalar') && method_exists('QMO_Masalar', 'hepsi')) {
+        foreach ((array) QMO_Masalar::hepsi() as $masa) {
+            if (!empty($masa->id)) {
+                $masa_labels[(int) $masa->id] = (string) $masa->table_name;
+            }
+        }
+    }
 
     // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- yalnızca sayfa numarası.
     $paged   = isset($_GET['paged']) ? (int) $_GET['paged'] : 1;
@@ -247,11 +433,16 @@ function qrm_pro_admin_dashboard() {
     $reviews = [];
 
     if ($stats['table_ok'] && $toplam > 0) {
-        $reviews = qrm_pro_admin_fetch_reviews($durum, $per_page, $paged, $sekme, $esik);
+        $reviews = qrm_pro_admin_fetch_reviews($durum, $per_page, $paged, $sekme, $esik, $wf, $has_list_filters ? $list_filters : []);
     }
+
+    $workflow_statuses = qrm_pro_review_workflow_statuses();
+    $wf_total          = qrm_pro_workflow_counts_total($wf_counts);
     ?>
     <div class="wrap qrm-pro-wrap">
         <h1><?php esc_html_e('Tüm Yorumlar', 'qrms'); ?></h1>
+
+        <?php qrm_pro_admin_dashboard_view_tabs('liste'); ?>
 
         <?php if ($notice !== ''): ?>
             <div class="notice notice-success is-dismissible"><p><?php echo esc_html($notice); ?></p></div>
@@ -309,7 +500,85 @@ function qrm_pro_admin_dashboard() {
             </ul>
         <?php endif; ?>
 
-        <table class="wp-list-table widefat fixed striped qrm-table-cards">
+        <?php if ($stats['table_ok'] && ($wf_total > 0 || $wf !== '')): ?>
+            <ul class="subsubsub qrm-wf-filters">
+                <li>
+                    <a href="<?php echo esc_url($sekme_url); ?>" <?php echo $wf === '' ? 'class="current"' : ''; ?>>
+                        <?php esc_html_e('Tümü', 'qrms'); ?>
+                        <span class="count">(<?php echo esc_html(number_format_i18n($wf_total)); ?>)</span>
+                    </a> |
+                </li>
+                <?php
+                $wf_i = 0;
+                $wf_keys = array_keys($workflow_statuses);
+                foreach ($workflow_statuses as $wf_key => $wf_label):
+                    $wf_i++;
+                    $wf_count = isset($wf_counts[$wf_key]) ? (int) $wf_counts[$wf_key] : 0;
+                    $wf_url   = add_query_arg(['wf' => $wf_key], $sekme_url);
+                ?>
+                <li>
+                    <a href="<?php echo esc_url($wf_url); ?>" <?php echo $wf === $wf_key ? 'class="current"' : ''; ?>>
+                        <?php echo esc_html($wf_label); ?>
+                        <span class="count">(<?php echo esc_html(number_format_i18n($wf_count)); ?>)</span>
+                    </a><?php echo $wf_i < count($wf_keys) ? ' |' : ''; ?>
+                </li>
+                <?php endforeach; ?>
+            </ul>
+        <?php endif; ?>
+
+        <form method="get" action="<?php echo esc_url(admin_url('admin.php')); ?>" class="qrm-list-toolbar qrm-card">
+            <input type="hidden" name="page" value="qrms-yf-yorumlar">
+            <?php if ($sekme !== ''): ?>
+                <input type="hidden" name="sekme" value="<?php echo esc_attr($sekme); ?>">
+            <?php endif; ?>
+            <?php if ($durum !== ''): ?>
+                <input type="hidden" name="durum" value="<?php echo esc_attr($durum); ?>">
+            <?php endif; ?>
+            <?php if ($wf !== ''): ?>
+                <input type="hidden" name="wf" value="<?php echo esc_attr($wf); ?>">
+            <?php endif; ?>
+            <div class="qrm-list-toolbar-row">
+                <label>
+                    <span class="qrm-list-toolbar-label"><?php esc_html_e('Başlangıç', 'qrms'); ?></span>
+                    <input type="date" name="liste_bas" value="<?php echo esc_attr($list_filters['liste_bas']); ?>">
+                </label>
+                <label>
+                    <span class="qrm-list-toolbar-label"><?php esc_html_e('Bitiş', 'qrms'); ?></span>
+                    <input type="date" name="liste_bit" value="<?php echo esc_attr($list_filters['liste_bit']); ?>">
+                </label>
+                <?php if (!empty($masa_labels)): ?>
+                <label>
+                    <span class="qrm-list-toolbar-label"><?php esc_html_e('Masa', 'qrms'); ?></span>
+                    <select name="table_id">
+                        <option value="0"><?php esc_html_e('Tümü', 'qrms'); ?></option>
+                        <?php foreach ($masa_labels as $tid => $mlabel): ?>
+                            <option value="<?php echo esc_attr((string) $tid); ?>" <?php selected((int) $list_filters['table_id'], (int) $tid); ?>><?php echo esc_html($mlabel); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </label>
+                <?php endif; ?>
+                <label class="qrm-list-toolbar-search">
+                    <span class="qrm-list-toolbar-label"><?php esc_html_e('Ara', 'qrms'); ?></span>
+                    <input type="search" name="s" value="<?php echo esc_attr($list_filters['search']); ?>" placeholder="<?php esc_attr_e('Ad, e-posta, yorum…', 'qrms'); ?>">
+                </label>
+                <button type="submit" class="button"><?php esc_html_e('Filtrele', 'qrms'); ?></button>
+                <?php
+                if (function_exists('qrm_export_csv_button')) {
+                    echo qrm_export_csv_button('reviews', [
+                        'sekme'     => $sekme,
+                        'durum'     => $durum,
+                        'wf'        => $wf,
+                        'liste_bas' => $list_filters['liste_bas'],
+                        'liste_bit' => $list_filters['liste_bit'],
+                        's'         => $list_filters['search'],
+                        'table_id'  => !empty($list_filters['table_id']) ? (int) $list_filters['table_id'] : '',
+                    ]);
+                }
+                ?>
+            </div>
+        </form>
+
+        <table class="wp-list-table widefat fixed striped qrm-table-cards qrm-review-workflow-table">
             <thead>
                 <tr>
                     <th style="width: 120px;"><?php esc_html_e('Tarih', 'qrms'); ?></th>
@@ -317,17 +586,18 @@ function qrm_pro_admin_dashboard() {
                     <th style="width: 200px;"><?php esc_html_e('Puan & Detay', 'qrms'); ?></th>
                     <th><?php esc_html_e('Yorum', 'qrms'); ?></th>
                     <th style="width: 90px;"><?php esc_html_e('Durum', 'qrms'); ?></th>
+                    <th style="width: 200px;"><?php esc_html_e('İş Akışı', 'qrms'); ?></th>
                     <th style="width: 150px;"><?php esc_html_e('İşlemler', 'qrms'); ?></th>
                 </tr>
             </thead>
             <tbody>
                 <?php if (empty($reviews)): ?>
                 <tr class="no-items">
-                    <td colspan="6" class="qrm-empty">
+                    <td colspan="7" class="qrm-empty">
                         <?php if (!$stats['table_ok']): ?>
                             <strong><?php esc_html_e('Liste yüklenemedi.', 'qrms'); ?></strong>
                             <p><?php esc_html_e('Yukarıdaki veritabanı uyarısını giderdikten sonra yorumlar burada görünecek.', 'qrms'); ?></p>
-                        <?php elseif ($durum !== '' || $sekme !== ''): ?>
+                        <?php elseif ($durum !== '' || $sekme !== '' || $wf !== '' || $has_list_filters): ?>
                             <strong><?php esc_html_e('Bu filtreye uyan yorum yok.', 'qrms'); ?></strong>
                             <p><a href="<?php echo esc_url($self_url); ?>"><?php esc_html_e('Tüm yorumları göster', 'qrms'); ?></a></p>
                         <?php else: ?>
@@ -345,6 +615,7 @@ function qrm_pro_admin_dashboard() {
                     </td>
                 </tr>
                 <?php endif; ?>
+            </tbody>
 
                 <?php foreach ($reviews as $r):
                     // Satır aksiyonu, kullanıcıyı bulunduğu sayfada bıraksın.
@@ -372,8 +643,18 @@ function qrm_pro_admin_dashboard() {
                         }
                     }
                     $breakdown_str = implode(', ', $breakdown);
+
+                    $wf_status = isset($r->workflow_status) ? sanitize_key($r->workflow_status) : 'new';
+                    if (!array_key_exists($wf_status, $workflow_statuses)) {
+                        $wf_status = 'new';
+                    }
+                    $assigned_id = isset($r->assigned_user_id) ? (int) $r->assigned_user_id : 0;
+                    $internal_note = isset($r->internal_note) ? (string) $r->internal_note : '';
+                    $has_note = $internal_note !== '';
+                    $resolved_at = !empty($r->resolved_at) ? $r->resolved_at : '';
                 ?>
-                <tr>
+                <tbody class="qrm-review-row-block">
+                <tr class="qrm-review-row" data-review-id="<?php echo esc_attr((string) intval($r->id)); ?>">
                     <td data-label="<?php esc_attr_e('Tarih', 'qrms'); ?>"><?php echo esc_html(date_i18n('d.m.Y H:i', strtotime($r->created_at))); ?></td>
                     <td data-label="<?php esc_attr_e('Müşteri', 'qrms'); ?>"><?php echo wp_kses_post($name_display); ?></td>
                     <td data-label="<?php esc_attr_e('Puan', 'qrms'); ?>">
@@ -388,12 +669,59 @@ function qrm_pro_admin_dashboard() {
                             <span class="qrm-breakdown"><?php echo esc_html($breakdown_str); ?></span>
                         <?php endif; ?>
                     </td>
-                    <td data-label="<?php esc_attr_e('Yorum', 'qrms'); ?>" class="qrm-cell-block"><?php echo esc_html($r->comment); ?></td>
+                    <td data-label="<?php esc_attr_e('Yorum', 'qrms'); ?>" class="qrm-cell-block">
+                        <?php echo esc_html($r->comment); ?>
+                        <?php
+                        $row_media = isset($review_media_map[(int) $r->id]) ? $review_media_map[(int) $r->id] : [];
+                        echo qrm_pro_render_admin_review_media($row_media);
+                        ?>
+                    </td>
                     <td data-label="<?php esc_attr_e('Durum', 'qrms'); ?>">
                         <?php if ($r->status): ?>
                             <span class="qrm-status-approved"><?php esc_html_e('Yayında', 'qrms'); ?></span>
                         <?php else: ?>
                             <span class="qrm-status-pending"><?php esc_html_e('Bekliyor', 'qrms'); ?></span>
+                        <?php endif; ?>
+                    </td>
+                    <td data-label="<?php esc_attr_e('İş Akışı', 'qrms'); ?>" class="qrm-wf-cell">
+                        <div class="qrm-wf-controls">
+                            <select class="qrm-wf-status" aria-label="<?php esc_attr_e('İş akışı durumu', 'qrms'); ?>">
+                                <?php foreach ($workflow_statuses as $wf_key => $wf_label): ?>
+                                    <option value="<?php echo esc_attr($wf_key); ?>" <?php selected($wf_status, $wf_key); ?>>
+                                        <?php echo esc_html($wf_label); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                            <?php
+                            $dropdown_args = [
+                                'name'             => 'assigned_user_id',
+                                'id'               => 'qrm-wf-assignee-' . intval($r->id),
+                                'selected'         => $assigned_id,
+                                'show_option_none' => __('— Atanmamış —', 'qrms'),
+                                'option_none_value'=> '0',
+                                'class'            => 'qrm-wf-assignee',
+                                'capability'       => 'edit_posts',
+                            ];
+                            wp_dropdown_users($dropdown_args);
+                            ?>
+                            <button type="button"
+                                    class="button button-small qrm-wf-note-toggle<?php echo $has_note ? ' has-note' : ''; ?>"
+                                    aria-expanded="false"
+                                    title="<?php esc_attr_e('İç not', 'qrms'); ?>">
+                                <?php esc_html_e('Not', 'qrms'); ?>
+                                <?php if ($has_note): ?><span class="qrm-wf-note-dot" aria-hidden="true"></span><?php endif; ?>
+                            </button>
+                        </div>
+                        <span class="qrm-wf-save-status" aria-live="polite"></span>
+                        <?php if ($resolved_at !== ''): ?>
+                            <span class="qrm-wf-resolved-at">
+                                <?php
+                                /* translators: %s: çözülme tarihi. */
+                                printf(esc_html__('Çözüldü: %s', 'qrms'), esc_html(date_i18n('d.m.Y H:i', strtotime($resolved_at))));
+                                ?>
+                            </span>
+                        <?php else: ?>
+                            <span class="qrm-wf-resolved-at" hidden></span>
                         <?php endif; ?>
                     </td>
                     <td data-label="" class="qrm-row-actions">
@@ -403,6 +731,11 @@ function qrm_pro_admin_dashboard() {
                         $row_args = ['id' => intval($r->id)] + $row_page;
                         if ($durum !== '') $row_args['durum'] = $durum;
                         if ($sekme !== '') $row_args['sekme'] = $sekme;
+                        if ($wf !== '') $row_args['wf'] = $wf;
+                        if ($list_filters['liste_bas'] !== '') $row_args['liste_bas'] = $list_filters['liste_bas'];
+                        if ($list_filters['liste_bit'] !== '') $row_args['liste_bit'] = $list_filters['liste_bit'];
+                        if ($list_filters['search'] !== '') $row_args['s'] = $list_filters['search'];
+                        if (!empty($list_filters['table_id'])) $row_args['table_id'] = (int) $list_filters['table_id'];
                         ?>
                         <?php if (!$r->status): ?>
                             <a href="<?php echo esc_url(wp_nonce_url(add_query_arg(['action' => 'approve'] + $row_args, $self_url), 'qrm_review_action_' . intval($r->id))); ?>" class="button button-small"><?php esc_html_e('Onayla', 'qrms'); ?></a>
@@ -414,8 +747,19 @@ function qrm_pro_admin_dashboard() {
                            onclick="return confirm('<?php echo esc_js(__('Bu yorum kalıcı olarak silinsin mi?', 'qrms')); ?>');"><?php esc_html_e('Sil', 'qrms'); ?></a>
                     </td>
                 </tr>
+                <tr class="qrm-wf-note-row" hidden>
+                    <td colspan="7">
+                        <label class="screen-reader-text" for="qrm-wf-note-<?php echo esc_attr((string) intval($r->id)); ?>">
+                            <?php esc_html_e('İç not', 'qrms'); ?>
+                        </label>
+                        <textarea id="qrm-wf-note-<?php echo esc_attr((string) intval($r->id)); ?>"
+                                  class="qrm-wf-note"
+                                  rows="3"
+                                  placeholder="<?php esc_attr_e('Yalnızca yöneticiler görür — müşteriye gösterilmez.', 'qrms'); ?>"><?php echo esc_textarea($internal_note); ?></textarea>
+                    </td>
+                </tr>
+                </tbody>
                 <?php endforeach; ?>
-            </tbody>
         </table>
 
         <?php
@@ -425,6 +769,11 @@ function qrm_pro_admin_dashboard() {
             $page_args = [];
             if ($durum !== '') $page_args['durum'] = $durum;
             if ($sekme !== '') $page_args['sekme'] = $sekme;
+            if ($wf !== '') $page_args['wf'] = $wf;
+            if ($list_filters['liste_bas'] !== '') $page_args['liste_bas'] = $list_filters['liste_bas'];
+            if ($list_filters['liste_bit'] !== '') $page_args['liste_bit'] = $list_filters['liste_bit'];
+            if ($list_filters['search'] !== '') $page_args['s'] = $list_filters['search'];
+            if (!empty($list_filters['table_id'])) $page_args['table_id'] = (int) $list_filters['table_id'];
         ?>
             <div class="tablenav bottom">
                 <div class="tablenav-pages">
@@ -487,6 +836,10 @@ function qrm_pro_admin_handle_review_actions() {
         $wpdb->update($table_reviews, ['status' => 0], ['id' => $id]);
         qrm_pro_flush_review_stats();
         return __('Yorum yayından kaldırıldı.', 'qrms');
+    }
+
+    if (function_exists('qrm_pro_delete_review_media')) {
+        qrm_pro_delete_review_media($id);
     }
 
     $wpdb->delete($table_reviews, ['id' => $id]);

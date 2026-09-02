@@ -64,22 +64,37 @@ function qrm_reward_admin_codes_tab($settings) {
 
     $status_filter = isset($_GET['status']) ? sanitize_key($_GET['status']) : '';
     $search        = isset($_GET['s']) ? sanitize_text_field(wp_unslash($_GET['s'])) : '';
+    $list_filters  = function_exists('qrm_pro_admin_review_list_filters')
+        ? qrm_pro_admin_review_list_filters($_GET)
+        : ['liste_bas' => '', 'liste_bit' => '', 'search' => '', 'table_id' => 0];
     $paged         = isset($_GET['paged']) ? max(1, intval($_GET['paged'])) : 1;
     $per_page      = 25;
     $offset        = ($paged - 1) * $per_page;
 
-    $where  = 'WHERE 1=1';
-    $params = [];
-
-    if (in_array($status_filter, ['active', 'used', 'expired', 'revoked'], true)) {
-        $where .= ' AND status = %s';
-        $params[] = $status_filter;
+    $filters = [
+        'status' => in_array($status_filter, ['active', 'used', 'expired', 'revoked'], true) ? $status_filter : '',
+        'search' => $search,
+    ];
+    if (!empty($list_filters['bas_dt'])) {
+        $filters['bas_dt']   = $list_filters['bas_dt'];
+        $filters['bit_excl'] = $list_filters['bit_excl'];
     }
-    if ($search !== '') {
-        $where .= ' AND (email LIKE %s OR code LIKE %s)';
-        $like = '%' . $wpdb->esc_like($search) . '%';
-        $params[] = $like;
-        $params[] = $like;
+
+    if (function_exists('qrm_reward_codes_where')) {
+        list($where, $params) = qrm_reward_codes_where($filters);
+    } else {
+        $where  = ' WHERE 1=1';
+        $params = [];
+        if ($filters['status'] !== '') {
+            $where .= ' AND status = %s';
+            $params[] = $filters['status'];
+        }
+        if ($filters['search'] !== '') {
+            $where .= ' AND (email LIKE %s OR code LIKE %s)';
+            $like = '%' . $wpdb->esc_like($filters['search']) . '%';
+            $params[] = $like;
+            $params[] = $like;
+        }
     }
 
     $count_sql = "SELECT COUNT(*) FROM $table $where";
@@ -89,20 +104,17 @@ function qrm_reward_admin_codes_tab($settings) {
     $list_params = array_merge($params, [$per_page, $offset]);
     $rows = $wpdb->get_results($wpdb->prepare($list_sql, $list_params));
 
-    $stats = $wpdb->get_results("SELECT status, COUNT(*) AS c FROM $table GROUP BY status");
-    $counts = ['active' => 0, 'used' => 0, 'revoked' => 0, 'expired' => 0];
-    foreach ($stats as $s) {
-        if (isset($counts[$s->status])) $counts[$s->status] = (int) $s->c;
-    }
+    $summary = qrm_reward_stats_summary();
 
     $templates = qrm_reward_get_templates();
     $total_pages = $total > 0 ? (int) ceil($total / $per_page) : 1;
     ?>
     <div class="qrm-insight-grid" style="margin-top:20px;">
-        <div class="qrm-stat-box" style="border-left-color:#10b981;"><h3>Geçerli Kod</h3><div class="value"><?php echo (int) $counts['active']; ?></div></div>
-        <div class="qrm-stat-box" style="border-left-color:#6b7280;"><h3>Kullanılmış</h3><div class="value"><?php echo (int) $counts['used']; ?></div></div>
-        <div class="qrm-stat-box" style="border-left-color:#ef4444;"><h3>İptal Edilmiş</h3><div class="value"><?php echo (int) $counts['revoked']; ?></div></div>
-        <div class="qrm-stat-box" style="border-left-color:#3b82f6;"><h3>Toplam</h3><div class="value"><?php echo (int) array_sum($counts); ?></div></div>
+        <div class="qrm-stat-box" style="border-left-color:#3b82f6;"><h3>Üretilen</h3><div class="value"><?php echo (int) $summary['produced']; ?></div></div>
+        <div class="qrm-stat-box" style="border-left-color:#6b7280;"><h3>Kullanılan</h3><div class="value"><?php echo (int) $summary['used']; ?></div></div>
+        <div class="qrm-stat-box" style="border-left-color:#f59e0b;"><h3>Süresi Dolmuş</h3><div class="value"><?php echo (int) $summary['expired']; ?></div></div>
+        <div class="qrm-stat-box" style="border-left-color:#ef4444;"><h3>İptal</h3><div class="value"><?php echo (int) $summary['revoked']; ?></div></div>
+        <div class="qrm-stat-box" style="border-left-color:#10b981;"><h3>Kullanım Oranı</h3><div class="value"><?php echo esc_html(number_format_i18n($summary['usage_rate'], 1)); ?>%</div></div>
     </div>
 
     <div style="display:flex; gap:20px; flex-wrap:wrap; align-items:flex-start;">
@@ -147,20 +159,46 @@ function qrm_reward_admin_codes_tab($settings) {
 
     <div class="qrm-card">
         <h3>Ödül Kodları</h3>
-        <form method="GET" style="margin-bottom:14px;">
+        <form method="GET" class="qrm-list-toolbar" style="margin-bottom:14px;">
             <input type="hidden" name="page" value="qrms-yf-odul">
             <input type="hidden" name="tab" value="codes">
-            <select name="status">
-                <option value="">Tüm durumlar</option>
-                <?php foreach (['active', 'used', 'revoked', 'expired'] as $st): ?>
-                    <option value="<?php echo esc_attr($st); ?>" <?php selected($status_filter, $st); ?>><?php echo esc_html(qrm_reward_status_label($st)); ?></option>
-                <?php endforeach; ?>
-            </select>
-            <input type="search" name="s" value="<?php echo esc_attr($search); ?>" placeholder="E-posta veya kod ara">
-            <button type="submit" class="button">Filtrele</button>
-            <?php if ($status_filter !== '' || $search !== ''): ?>
-                <a href="<?php echo esc_url(qrm_pro_admin_url('qrms-yf-odul', ['tab' => 'codes'])); ?>" class="button">Temizle</a>
-            <?php endif; ?>
+            <div class="qrm-list-toolbar-row">
+                <label>
+                    <span class="qrm-list-toolbar-label"><?php esc_html_e('Durum', 'qrms'); ?></span>
+                    <select name="status">
+                        <option value=""><?php esc_html_e('Tüm durumlar', 'qrms'); ?></option>
+                        <?php foreach (['active', 'used', 'revoked', 'expired'] as $st): ?>
+                            <option value="<?php echo esc_attr($st); ?>" <?php selected($status_filter, $st); ?>><?php echo esc_html(qrm_reward_status_label($st)); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </label>
+                <label>
+                    <span class="qrm-list-toolbar-label"><?php esc_html_e('Başlangıç', 'qrms'); ?></span>
+                    <input type="date" name="liste_bas" value="<?php echo esc_attr($list_filters['liste_bas']); ?>">
+                </label>
+                <label>
+                    <span class="qrm-list-toolbar-label"><?php esc_html_e('Bitiş', 'qrms'); ?></span>
+                    <input type="date" name="liste_bit" value="<?php echo esc_attr($list_filters['liste_bit']); ?>">
+                </label>
+                <label class="qrm-list-toolbar-search">
+                    <span class="qrm-list-toolbar-label"><?php esc_html_e('Ara', 'qrms'); ?></span>
+                    <input type="search" name="s" value="<?php echo esc_attr($search); ?>" placeholder="<?php esc_attr_e('E-posta veya kod ara', 'qrms'); ?>">
+                </label>
+                <button type="submit" class="button"><?php esc_html_e('Filtrele', 'qrms'); ?></button>
+                <?php if ($status_filter !== '' || $search !== '' || $list_filters['liste_bas'] !== '' || $list_filters['liste_bit'] !== ''): ?>
+                    <a href="<?php echo esc_url(qrm_pro_admin_url('qrms-yf-odul', ['tab' => 'codes'])); ?>" class="button"><?php esc_html_e('Temizle', 'qrms'); ?></a>
+                <?php endif; ?>
+                <?php
+                if (function_exists('qrm_export_csv_button')) {
+                    echo qrm_export_csv_button('reward_codes', [
+                        'status'    => $status_filter,
+                        'liste_bas' => $list_filters['liste_bas'],
+                        'liste_bit' => $list_filters['liste_bit'],
+                        's'         => $search,
+                    ]);
+                }
+                ?>
+            </div>
         </form>
 
         <table class="wp-list-table widefat fixed striped qrm-table-cards">
@@ -225,53 +263,6 @@ function qrm_reward_admin_codes_tab($settings) {
         <?php endif; ?>
     </div>
 
-    <script>
-    (function(){
-        var btn = document.getElementById('qrm-rw-lookup-btn');
-        if (!btn) return;
-        var input  = document.getElementById('qrm-rw-lookup-input');
-        var result = document.getElementById('qrm-rw-lookup-result');
-        var nonce  = <?php echo wp_json_encode(wp_create_nonce('qrm_reward_admin')); ?>;
-        var ajax   = <?php echo wp_json_encode(admin_url('admin-ajax.php')); ?>;
-
-        function paint(html, ok) {
-            result.style.display = '';
-            result.style.background = ok ? '#dcfce7' : '#fee2e2';
-            result.style.border = '1px solid ' + (ok ? '#bbf7d0' : '#fecaca');
-            result.style.color = ok ? '#166534' : '#991b1b';
-            result.innerHTML = html;
-        }
-
-        function lookup() {
-            var code = (input.value || '').trim();
-            if (!code) { paint('Lütfen bir kod girin.', false); return; }
-            btn.disabled = true;
-            var fd = new FormData();
-            fd.append('action', 'qrm_reward_admin_lookup');
-            fd.append('nonce', nonce);
-            fd.append('code', code);
-
-            fetch(ajax, { method: 'POST', credentials: 'same-origin', body: fd })
-                .then(function(r){ return r.json(); })
-                .then(function(res){
-                    btn.disabled = false;
-                    if (!res || !res.success) { paint((res && res.message) ? res.message : 'Kod bulunamadı.', false); return; }
-                    var lines = '<strong>' + res.code + '</strong> — ' + res.status_label +
-                        '<br>E-posta: ' + res.email +
-                        '<br>İndirim: ' + (res.discount_label || '—') +
-                        '<br>Oluşturulma: ' + res.created_at +
-                        (res.used_at ? '<br>Kullanım: ' + res.used_at : '');
-                    paint(lines, res.valid);
-                })
-                .catch(function(){
-                    btn.disabled = false;
-                    paint('Bağlantı hatası, tekrar deneyin.', false);
-                });
-        }
-
-        btn.addEventListener('click', lookup);
-        input.addEventListener('keydown', function(e){ if (e.key === 'Enter') { e.preventDefault(); lookup(); } });
-    })();
-    </script>
+    <?php qrm_reward_cashier_lookup_script(); ?>
     <?php
 }

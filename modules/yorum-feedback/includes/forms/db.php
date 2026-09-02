@@ -71,11 +71,15 @@ function qrm_cf_install() {
         status varchar(20) DEFAULT 'new' NOT NULL,
         ip_address varchar(100) DEFAULT '',
         created_at datetime DEFAULT CURRENT_TIMESTAMP NOT NULL,
+        consent_marketing tinyint(1) DEFAULT 0 NOT NULL,
+        consent_at datetime DEFAULT NULL,
+        consent_text_hash char(32) DEFAULT NULL,
         PRIMARY KEY  (id),
         KEY form_id (form_id),
         KEY status (status),
         KEY idx_form_status_created (form_id, status, created_at),
-        KEY idx_form_created (form_id, created_at)
+        KEY idx_form_created (form_id, created_at),
+        KEY idx_consent (consent_marketing, consent_at)
     ) $charset_collate;";
     //
     // İNDEKSLER (v4.2.3): tek sütunluk form_id / status indeksleri gönderim

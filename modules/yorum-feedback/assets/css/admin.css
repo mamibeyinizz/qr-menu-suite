@@ -187,6 +187,97 @@
 }
 
 /* --------------------------------------------------------------------------
+ * 3b. Yorum iş akışı (Tüm Yorumlar)
+ * ------------------------------------------------------------------------ */
+
+.qrm-wf-filters {
+	margin-top: 8px;
+}
+
+.qrm-wf-cell {
+	vertical-align: top;
+}
+
+.qrm-wf-controls {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	max-width: 190px;
+}
+
+.qrm-wf-controls select {
+	font-size: 12px;
+	max-width: 100%;
+	width: 100%;
+}
+
+.qrm-wf-note-toggle {
+	align-self: flex-start;
+	position: relative;
+}
+
+.qrm-wf-note-toggle.has-note,
+.qrm-wf-note-toggle.is-open {
+	border-color: #2271b1;
+	color: #2271b1;
+}
+
+.qrm-wf-note-dot {
+	background: #2271b1;
+	border-radius: 50%;
+	display: inline-block;
+	height: 6px;
+	margin-left: 4px;
+	vertical-align: middle;
+	width: 6px;
+}
+
+.qrm-wf-save-status {
+	color: #646970;
+	display: block;
+	font-size: 11px;
+	margin-top: 4px;
+	min-height: 14px;
+}
+
+.qrm-wf-save-saving {
+	color: #646970;
+}
+
+.qrm-wf-save-ok {
+	color: #166534;
+}
+
+.qrm-wf-save-error {
+	color: #b32d2e;
+}
+
+.qrm-wf-resolved-at {
+	color: #646970;
+	display: block;
+	font-size: 11px;
+	margin-top: 4px;
+}
+
+.qrm-wf-note-row td {
+	background: #f6f7f7;
+	border-top: none;
+	padding: 0 12px 12px;
+}
+
+.qrm-wf-note {
+	box-sizing: border-box;
+	font-size: 13px;
+	margin-top: 4px;
+	max-width: 100%;
+	width: 100%;
+}
+
+.qrm-review-row-block + .qrm-review-row-block .qrm-review-row td {
+	border-top: 1px solid #c3c4c7;
+}
+
+/* --------------------------------------------------------------------------
  * 4. Müşteri bilgileri form alanları (sürükle-bırak)
  * ------------------------------------------------------------------------ */
 
@@ -646,4 +737,253 @@
 	.qrm-fp-box {
 		max-width: 460px;
 	}
+}
+
+/* --------------------------------------------------------------------------
+ * 8. Yorum raporu (?view=rapor)
+ * ------------------------------------------------------------------------ */
+
+.qrm-dashboard-views {
+	margin-bottom: 14px;
+}
+
+/* Liste araç çubuğu — tarih, arama, CSV dışa aktarım */
+.qrm-list-toolbar {
+	margin: 16px 0;
+	padding: 14px 16px;
+}
+
+.qrm-list-toolbar-row {
+	align-items: flex-end;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10px 14px;
+}
+
+.qrm-list-toolbar label {
+	display: flex;
+	flex-direction: column;
+	font-size: 12px;
+	gap: 4px;
+}
+
+.qrm-list-toolbar-label {
+	color: #50575e;
+	font-weight: 600;
+}
+
+.qrm-list-toolbar-search {
+	flex: 1 1 180px;
+	min-width: 140px;
+}
+
+.qrm-export-csv-form {
+	display: inline;
+	margin: 0;
+}
+
+.qrm-consent-block-head {
+	align-items: flex-start;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12px;
+	justify-content: space-between;
+	margin-bottom: 12px;
+}
+
+.qrm-consent-block-head h3 {
+	margin: 0;
+}
+
+.qrm-consent-link {
+	margin-left: 6px;
+	white-space: nowrap;
+}
+
+.qrm-consent-revoke-form {
+	margin: 0;
+}
+
+.qrm-report-heading {
+	font-size: 1.2em;
+	margin: 8px 0 6px;
+}
+
+.qrm-report-filters {
+	margin-bottom: 16px;
+}
+
+.qrm-report-filter-row {
+	align-items: flex-end;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12px 16px;
+}
+
+.qrm-report-filter-label {
+	color: #646970;
+	display: block;
+	font-size: 12px;
+	margin-bottom: 4px;
+}
+
+.qrm-empty-inline {
+	color: #646970;
+	margin: 0;
+}
+
+.qrm-hour-chart {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.qrm-hour-row {
+	align-items: center;
+	display: grid;
+	gap: 8px;
+	grid-template-columns: 44px 1fr auto;
+}
+
+.qrm-hour-label {
+	color: #50575e;
+	font-size: 11px;
+	font-variant-numeric: tabular-nums;
+}
+
+.qrm-hour-bar-wrap {
+	background: #f0f0f1;
+	border-radius: 4px;
+	height: 10px;
+	min-width: 0;
+	overflow: hidden;
+}
+
+.qrm-hour-bar {
+	background: linear-gradient(90deg, #2271b1, #3582c4);
+	border-radius: 4px;
+	height: 100%;
+	min-width: 2px;
+	transition: width 0.2s ease;
+}
+
+.qrm-hour-meta {
+	color: #50575e;
+	font-size: 11px;
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+}
+
+.qrm-shifts-table input.small-text {
+	width: 72px;
+}
+
+@media screen and ( max-width: 782px ) {
+	.qrm-hour-row {
+		grid-template-columns: 40px 1fr;
+	}
+
+	.qrm-hour-meta {
+		grid-column: 2;
+	}
+}
+
+/* --------------------------------------------------------------------------
+ * 9. Kriter trend grafikleri (inline SVG)
+ * ------------------------------------------------------------------------ */
+
+.qrm-trend-block .qrm-trend-subheading {
+	font-size: 14px;
+	margin: 20px 0 10px;
+}
+
+.qrm-trend-block .qrm-trend-subheading:first-of-type {
+	margin-top: 8px;
+}
+
+.qrm-trend-grid {
+	display: grid;
+	gap: 16px;
+	grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.qrm-trend-chart-card {
+	background: #f6f7f7;
+	border: 1px solid #dcdcde;
+	border-radius: 8px;
+	padding: 12px 12px 8px;
+}
+
+.qrm-trend-chart-title {
+	font-size: 13px;
+	font-weight: 600;
+	margin-bottom: 8px;
+}
+
+.qrm-trend-scroll {
+	-webkit-overflow-scrolling: touch;
+	overflow-x: auto;
+	overflow-y: hidden;
+}
+
+.qrm-trend-svg {
+	display: block;
+	max-width: none;
+}
+
+.qrm-trend-svg line.qrm-trend-grid {
+	stroke: #e0e0e0;
+	stroke-width: 1;
+}
+
+.qrm-trend-line {
+	fill: none;
+	stroke-width: 2;
+}
+
+.qrm-trend-axis,
+.qrm-trend-label {
+	fill: #646970;
+	font-size: 10px;
+}
+
+.qrm-trend-dot {
+	cursor: default;
+}
+
+.qrm-trend-drop-notice {
+	margin: 12px 0 16px;
+}
+
+.qrm-trend-drop-list {
+	list-style: disc;
+	margin: 0 0 8px 20px;
+}
+
+/* Yorum listesi — eklenen görseller (v4.2.8) */
+.qrm-admin-review-media {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	margin-top: 8px;
+}
+
+.qrm-admin-media-thumb {
+	display: block;
+	line-height: 0;
+	border-radius: 6px;
+	overflow: hidden;
+	border: 1px solid #dcdcde;
+}
+
+.qrm-admin-media-thumb img {
+	display: block;
+	width: 48px;
+	height: 48px;
+	object-fit: cover;
+}
+
+.qrm-admin-media-thumb:hover {
+	border-color: #2271b1;
+	box-shadow: 0 0 0 1px #2271b1;
 }

@@ -31,6 +31,7 @@ function qrm_reward_install() {
         status varchar(20) DEFAULT 'active' NOT NULL,
         is_manual tinyint(1) DEFAULT 0,
         used_at datetime DEFAULT NULL,
+        expires_at datetime DEFAULT NULL,
         source_review_id mediumint(9) DEFAULT NULL,
         ip_address varchar(100) DEFAULT '',
         PRIMARY KEY  (id),
@@ -38,6 +39,7 @@ function qrm_reward_install() {
         UNIQUE KEY code (code),
         KEY idx_status_created (status, created_at),
         KEY idx_created (created_at),
+        KEY idx_expires (expires_at),
         KEY idx_source_review (source_review_id)
     ) $charset_collate;";
     //
@@ -47,6 +49,7 @@ function qrm_reward_install() {
     //   idx_created         ->  filtresiz listenin ORDER BY created_at'i,
     //   idx_source_review   ->  "bu yoruma daha önce kod verilmiş mi?" kontrolü
     //                           (qrm_reward_kod_var_mi; her ödül talebinde çalışır).
+    //   idx_expires         ->  günlük süre dolumu cron sorgusu.
 
     require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
     dbDelta($sql);
@@ -58,6 +61,10 @@ function qrm_reward_install() {
     $templates = get_option('qrm_reward_templates', null);
     if (!is_array($templates)) {
         update_option('qrm_reward_templates', qrm_reward_default_templates(), false);
+    }
+
+    if (function_exists('qrm_reward_schedule_expire_cron')) {
+        qrm_reward_schedule_expire_cron();
     }
 }
 
