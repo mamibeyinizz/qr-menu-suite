@@ -140,6 +140,16 @@ function qrm_reward_admin_save_all() {
     if (array_key_exists('qrm_reward_valid_days', $_POST)) {
         $settings['qrm_reward_valid_days'] = max(0, min(3650, intval($_POST['qrm_reward_valid_days'])));
     }
+    $settings['qrm_reward_require_return'] = isset($_POST['qrm_reward_require_return']) ? 1 : 0;
+    if (array_key_exists('qrm_reward_min_away_seconds', $_POST)) {
+        $settings['qrm_reward_min_away_seconds'] = max(5, min(120, intval($_POST['qrm_reward_min_away_seconds'])));
+    }
+    if (array_key_exists('qrm_reward_confirm_text', $_POST)) {
+        $settings['qrm_reward_confirm_text'] = sanitize_textarea_field(wp_unslash($_POST['qrm_reward_confirm_text']));
+    }
+    if (array_key_exists('qrm_reward_events_retention_days', $_POST)) {
+        $settings['qrm_reward_events_retention_days'] = max(30, min(730, intval($_POST['qrm_reward_events_retention_days'])));
+    }
 
     update_option('qrm_settings', $settings);
 
@@ -186,6 +196,7 @@ function qrm_reward_admin_save_templates_post() {
 
 function qrm_reward_admin_setup_banner($settings) {
     $status = qrm_reward_setup_status($settings);
+    $funnel = function_exists('qrm_reward_get_funnel_stats') ? qrm_reward_get_funnel_stats(30) : [];
     ?>
     <div class="qrm-card" style="margin-top:16px; border-left:4px solid <?php echo $status['all_ok'] ? '#10b981' : '#f59e0b'; ?>;">
         <h3 style="margin-top:0;">🚀 Hızlı Kurulum</h3>
@@ -221,6 +232,39 @@ function qrm_reward_admin_setup_banner($settings) {
         </p>
         <p class="description" style="margin-bottom:0;">"Test Et", 5 yıldızlık bir gönderimi <strong>kayıt oluşturmadan</strong> simüle eder ve popup'ın açılıp açılmayacağını söyler.</p>
     </div>
+
+    <?php if (!empty($funnel)): ?>
+    <div class="qrm-card" style="margin-top:16px;">
+        <h3 style="margin-top:0;">📊 Dönüşüm Hunisi <span style="font-weight:400; font-size:13px; opacity:.7;">(son 30 gün, benzersiz oturum)</span></h3>
+        <table class="widefat striped" style="max-width:720px;">
+            <thead>
+                <tr>
+                    <th>Adım</th>
+                    <th style="width:100px; text-align:right;">Sayı</th>
+                    <th style="width:120px; text-align:right;">Önceki adıma göre</th>
+                </tr>
+            </thead>
+            <tbody>
+            <?php foreach ($funnel as $step): ?>
+                <tr>
+                    <td><?php echo esc_html($step['label']); ?></td>
+                    <td style="text-align:right;"><strong><?php echo number_format_i18n($step['count']); ?></strong></td>
+                    <td style="text-align:right;">
+                        <?php
+                        if ($step['pct'] === null) {
+                            echo '—';
+                        } else {
+                            echo esc_html(number_format_i18n($step['pct'], 1)) . '%';
+                        }
+                        ?>
+                    </td>
+                </tr>
+            <?php endforeach; ?>
+            </tbody>
+        </table>
+        <p class="description" style="margin-bottom:0;">Ölçüm kendi olay tablosundan gelir; Google linkine UTM eklenmez. <code>qrm_reward_require_return</code> kapalıyken dönüş adımı düşük görünebilir.</p>
+    </div>
+    <?php endif; ?>
     <?php
 }
 
@@ -351,17 +395,36 @@ function qrm_reward_admin_settings_view($settings, $sub = 'kurulum') {
             <div style="display:flex; gap:20px; flex-wrap:wrap; align-items:flex-start;">
                 <div style="flex:1 1 560px; min-width:420px;">
                     <div class="qrm-card">
-                        <h3>⏱ Süreler</h3>
+                        <h3>⏱ Süreler ve Davranış</h3>
                         <table class="form-table">
                             <tr>
                                 <th><label>Bekleme Süresi</label></th>
                                 <td><input type="number" name="qrm_reward_wait_seconds" min="5" max="120" value="<?php echo esc_attr($settings['qrm_reward_wait_seconds']); ?>" class="small-text"> saniye
-                                    <p class="description">Müşteri "Google'da Değerlendir"e bastıktan sonra buton bu süre boyunca dolum göstergesiyle kilitli kalır (önerilen: 30).</p></td>
+                                    <p class="description">Müşteri "Google'da Değerlendir"e bastıktan sonra buton bu süre boyunca dolum göstergesiyle kilitli kalır (önerilen: 30). Visibility API desteklenmiyorsa yedek yol olarak kullanılır.</p></td>
                             </tr>
                             <tr>
                                 <th><label>Otomatik Geçiş</label></th>
                                 <td><input type="number" name="qrm_reward_auto_trigger_seconds" min="15" max="30" value="<?php echo esc_attr($settings['qrm_reward_auto_trigger_seconds']); ?>" class="small-text"> saniye
                                     <p class="description">Müşteri hiçbir şey yapmazsa popup bu süre sonunda kendiliğinden e-posta adımına geçer (15-30 sn).</p></td>
+                            </tr>
+                            <tr>
+                                <th><label>Dönüş Zorunluluğu</label></th>
+                                <td><label><input type="checkbox" name="qrm_reward_require_return" value="1" <?php checked(!empty($settings['qrm_reward_require_return']), true); ?>> Google'a gidip dönmeyi ölç (davranış tabanlı)</label>
+                                    <p class="description">Kapalıyken eski süre tabanlı davranış birebir korunur.</p></td>
+                            </tr>
+                            <tr>
+                                <th><label>Min. Ayrılma Süresi</label></th>
+                                <td><input type="number" name="qrm_reward_min_away_seconds" min="5" max="120" value="<?php echo esc_attr(isset($settings['qrm_reward_min_away_seconds']) ? $settings['qrm_reward_min_away_seconds'] : 20); ?>" class="small-text"> saniye
+                                    <p class="description">Kullanıcının Google sekmesinde geçirdiği minimum süre (5-120 sn). Üç koşul sağlanmazsa onay adımı gösterilir.</p></td>
+                            </tr>
+                            <tr>
+                                <th><label>Onay Metni</label></th>
+                                <td><textarea name="qrm_reward_confirm_text" class="large-text" rows="2"><?php echo esc_textarea(isset($settings['qrm_reward_confirm_text']) ? $settings['qrm_reward_confirm_text'] : 'Google\'da değerlendirmeyi tamamladınız mı?'); ?></textarea></td>
+                            </tr>
+                            <tr>
+                                <th><label>Olay Saklama</label></th>
+                                <td><input type="number" name="qrm_reward_events_retention_days" min="30" max="730" value="<?php echo esc_attr(isset($settings['qrm_reward_events_retention_days']) ? $settings['qrm_reward_events_retention_days'] : 180); ?>" class="small-text"> gün
+                                    <p class="description">Dönüşüm olayları bu süreden eski olanlar günlük cron ile silinir.</p></td>
                             </tr>
                         </table>
                     </div>

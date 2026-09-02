@@ -86,6 +86,9 @@ function qrm_reward_ajax_request_code() {
     // ikinci bir kod istenemez.
     qrm_reward_consume_claim($review_id);
 
+    qrm_reward_log_event($review_id, 'email_submitted');
+    qrm_reward_log_event($review_id, 'code_issued');
+
     $emailed = qrm_reward_send_code_email($email, $result['code'], $result['discount_label']);
 
     wp_send_json([
@@ -211,4 +214,34 @@ function qrm_reward_ajax_cashier_mark_used() {
         'discount_label' => $row->discount_label,
         'used_at'        => date_i18n('d.m.Y H:i', current_time('timestamp')),
     ]);
+}
+
+// Popup: dönüşüm hunisi olay kaydı (fire-and-forget)
+add_action('wp_ajax_qrm_reward_log_event', 'qrm_reward_ajax_log_event');
+add_action('wp_ajax_nopriv_qrm_reward_log_event', 'qrm_reward_ajax_log_event');
+function qrm_reward_ajax_log_event() {
+    check_ajax_referer('qrm_reward_request_code', 'nonce');
+    qrm_pro_bootstrap_lang();
+
+    $settings = qrm_pro_get_settings();
+    if (!qrm_reward_is_active($settings)) {
+        wp_send_json(['success' => false]);
+    }
+
+    $review_id = isset($_POST['review_id']) ? intval($_POST['review_id']) : 0;
+    $claim     = isset($_POST['claim']) ? sanitize_text_field(wp_unslash($_POST['claim'])) : '';
+    $event     = isset($_POST['event']) ? sanitize_key($_POST['event']) : '';
+
+    // İstemci olayları yalnızca geçerli talep anahtarıyla kabul edilir.
+    $client_events = ['popup_shown', 'google_clicked', 'returned', 'skipped'];
+    if (!in_array($event, $client_events, true)) {
+        wp_send_json(['success' => false]);
+    }
+
+    $gecerli = qrm_reward_verify_claim($review_id, $claim, $settings);
+    if (is_wp_error($gecerli)) {
+        wp_send_json(['success' => false]);
+    }
+
+    wp_send_json(['success' => (bool) qrm_reward_log_event($review_id, $event)]);
 }
