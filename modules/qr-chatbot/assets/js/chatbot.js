@@ -43,6 +43,33 @@
 	var teaserAcik = '1' === kok.dataset.teaser;
 	var teaserGecikme = Math.max( 1, parseInt( kok.dataset.teaserDelay || '4', 10 ) ) * 1000;
 	var kayitliY = 0;
+	var GARSON_COOLDOWN_MS = 90000;
+	var GARSON_STORAGE_KEY = 'qmo_cb_garson_cagri';
+
+	function garsonCooldownAktifMi() {
+		try {
+			var ts = parseInt( sessionStorage.getItem( GARSON_STORAGE_KEY ), 10 );
+			return ts > 0 && ( Date.now() - ts ) < GARSON_COOLDOWN_MS;
+		} catch ( e ) {
+			return false;
+		}
+	}
+
+	function garsonCooldownKaydet() {
+		try {
+			sessionStorage.setItem( GARSON_STORAGE_KEY, String( Date.now() ) );
+		} catch ( e ) {}
+	}
+
+	function metinParcala( el, metin ) {
+		var parcalar = String( metin ).split( '\n' );
+		parcalar.forEach( function ( p, i ) {
+			if ( i > 0 ) {
+				el.appendChild( document.createElement( 'br' ) );
+			}
+			el.appendChild( document.createTextNode( p ) );
+		} );
+	}
 
 	function teaserAnahtar() {
 		return 'qmo_cb_teaser_kapat';
@@ -174,19 +201,68 @@
 			el.classList.add( 'gemini-msg-sys' );
 		}
 
-		var parcalar = String( metin ).split( '\n' );
-		parcalar.forEach( function ( p, i ) {
-			if ( i > 0 ) {
-				el.appendChild( document.createElement( 'br' ) );
-			}
-			el.appendChild( document.createTextNode( p ) );
-		} );
+		metinParcala( el, metin );
 
 		if ( log ) {
 			log.appendChild( el );
 			log.scrollTop = log.scrollHeight;
 		}
 		return el;
+	}
+
+	function eskalasyonBalonu( metin ) {
+		var grup = document.createElement( 'div' );
+		grup.className = 'gemini-msg-grup';
+
+		if ( metin ) {
+			var el = document.createElement( 'div' );
+			el.className = 'gemini-msg-bubble gemini-msg-bot';
+			metinParcala( el, metin );
+			grup.appendChild( el );
+		}
+
+		var kutu = document.createElement( 'div' );
+		kutu.className = 'gemini-eskalasyon';
+
+		var mesajEl = document.createElement( 'p' );
+		mesajEl.className = 'gemini-eskalasyon-metin';
+		mesajEl.textContent = metin( 'eskalasyonMsg', 'Bu konuda emin olamadım. Garson çağırmamı ister misiniz?' );
+		kutu.appendChild( mesajEl );
+
+		var btn = document.createElement( 'button' );
+		btn.type = 'button';
+		btn.className = 'gemini-eskalasyon-btn';
+		var cagrildi = garsonCooldownAktifMi();
+		btn.textContent = cagrildi
+			? metin( 'garsonCagrildi', 'Garson çağrıldı ✓' )
+			: metin( 'garsonCagir', 'Garson Çağır' );
+		btn.disabled = cagrildi;
+
+		btn.addEventListener( 'click', function () {
+			if ( btn.disabled ) {
+				return;
+			}
+			btn.disabled = true;
+			istek( { action: 'garson_cagir' } ).then( function ( yanit ) {
+				if ( yanit && yanit.success ) {
+					garsonCooldownKaydet();
+					btn.textContent = metin( 'garsonCagrildi', 'Garson çağrıldı ✓' );
+					return;
+				}
+				btn.disabled = false;
+			} ).catch( function () {
+				btn.disabled = false;
+			} );
+		} );
+
+		kutu.appendChild( btn );
+		grup.appendChild( kutu );
+
+		if ( log ) {
+			log.appendChild( grup );
+			log.scrollTop = log.scrollHeight;
+		}
+		return grup;
 	}
 
 	function yaziyorGoster() {
@@ -275,6 +351,11 @@
 				cevap = cevap.replace( /\[BILEMEDI\]/g, '' ).trim();
 			}
 
+			var eskalasyon = cevap.indexOf( '[ESCALATE]' ) !== -1;
+			if ( eskalasyon ) {
+				cevap = cevap.replace( /\[ESCALATE\]/g, '' ).trim();
+			}
+
 			var eslesme = cevap.match( /\[SIPARIS\]([\s\S]*?)\[\/SIPARIS\]/i );
 			if ( eslesme ) {
 				cevap = cevap.replace( eslesme[ 0 ], '' ).trim();
@@ -311,7 +392,11 @@
 				gecmis = gecmis.slice( -20 );
 			}
 
-			balon( cevap, 'bot' );
+			if ( eskalasyon ) {
+				eskalasyonBalonu( cevap );
+			} else {
+				balon( cevap, 'bot' );
+			}
 			if ( ! overlay.classList.contains( 'gemini-acik' ) ) {
 				rozetGoster();
 			}

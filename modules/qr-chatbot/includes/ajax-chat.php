@@ -141,6 +141,7 @@ if ( ! function_exists( 'qmo_ajax_chat' ) ) {
 		if ( isset( $data['candidates'][0]['content']['parts'][0]['text'] ) ) {
 			$cevap = $data['candidates'][0]['content']['parts'][0]['text'];
 			qmo_chatbot_gecmis_yaz( $sess, $message, $cevap );
+			$cevap = qmo_chat_eskalasyon_uygula( $cevap );
 			wp_send_json_success( $cevap );
 		} elseif ( isset( $data['error']['message'] ) ) {
 			// API anahtarı gibi ayrıntılar müşteriye sızmasın; log'a yaz.
@@ -184,13 +185,54 @@ if ( ! function_exists( 'qmo_chatbot_gecmis_yaz' ) ) {
 }
 
 /**
+ * Garson eskalasyonu açık mı?
+ *
+ * @return bool
+ */
+if ( ! function_exists( 'qmo_chat_eskalasyon_aktif_mi' ) ) {
+	function qmo_chat_eskalasyon_aktif_mi() {
+		return function_exists( 'qmo_chatbot_ayar' ) && 'yes' === qmo_chatbot_ayar( 'qmo_chatbot_eskalasyon' );
+	}
+}
+
+/**
+ * Cevaplanamayan soruda [ESCALATE] etiketini uygular veya kaldırır.
+ *
+ * @param string $cevap Model yanıtı.
+ * @return string
+ */
+if ( ! function_exists( 'qmo_chat_eskalasyon_uygula' ) ) {
+	function qmo_chat_eskalasyon_uygula( $cevap ) {
+		$cevap = (string) $cevap;
+
+		if ( ! qmo_chat_eskalasyon_aktif_mi() ) {
+			return trim( preg_replace( '/\[ESCALATE\]/', '', $cevap ) );
+		}
+
+		if ( function_exists( 'qmo_chatbot_bilemedi_mi' ) && qmo_chatbot_bilemedi_mi( $cevap ) ) {
+			if ( false === strpos( $cevap, '[ESCALATE]' ) ) {
+				$cevap = rtrim( $cevap ) . "\n[ESCALATE]";
+			}
+		}
+
+		return $cevap;
+	}
+}
+
+/**
  * Bilemediğinde [BILEMEDI] etiketi üretme talimatı.
  *
  * @return string
  */
 if ( ! function_exists( 'qmo_chat_bilemedi_talimati' ) ) {
 	function qmo_chat_bilemedi_talimati() {
-		return "\n\nBİLMEDİĞİN SORULAR: Menü verisinde, restoran bilgelerinde veya bu talimatlarda karşılığı olmayan bir soruyu uydurarak cevaplama. Böyle bir durumda cevabının EN BAŞINA tam olarak [BILEMEDI] yaz, ardından kibarca bilmediğini söyle.";
+		$metin = "\n\nBİLMEDİĞİN SORULAR: Menü verisinde, restoran bilgelerinde veya bu talimatlarda karşılığı olmayan bir soruyu uydurarak cevaplama. Böyle bir durumda cevabının EN BAŞINA tam olarak [BILEMEDI] yaz, ardından kibarca bilmediğini söyle.";
+
+		if ( qmo_chat_eskalasyon_aktif_mi() ) {
+			$metin .= "\n\nESKALASYON: Cevabını bilmediğin sorularda, [BILEMEDI] ile başladıktan sonra cevabının SONUNA ayrıca tam olarak [ESCALATE] etiketini ekle. Bu etiket müşteriye görünmez; garson çağırma seçeneği sunar.";
+		}
+
+		return $metin;
 	}
 }
 
