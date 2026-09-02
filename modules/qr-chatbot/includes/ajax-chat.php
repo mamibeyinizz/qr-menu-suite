@@ -144,6 +144,7 @@ if ( ! function_exists( 'qmo_ajax_chat' ) ) {
 		if ( isset( $data['candidates'][0]['content']['parts'][0]['text'] ) ) {
 			$cevap = $data['candidates'][0]['content']['parts'][0]['text'];
 			qmo_chatbot_gecmis_yaz( $sess, $message, $cevap );
+			qmo_chat_oneri_gosterim_logla( $cevap, $sess, $message, $decoded_history );
 			wp_send_json_success(
 				array(
 					'mesaj'   => $cevap,
@@ -675,5 +676,155 @@ if ( ! function_exists( 'qmo_chat_oneri_metin_normalize' ) ) {
 
 		$metin = function_exists( 'mb_strtolower' ) ? mb_strtolower( trim( (string) $metin ), 'UTF-8' ) : strtolower( trim( (string) $metin ) );
 		return preg_replace( '/\s+/u', ' ', $metin );
+	}
+}
+
+/**
+ * Öneri dönüşüm logunu sessizce yazar (ana akışı bloklamaz).
+ *
+ * @param string $oturum_id Oturum anahtarı.
+ * @param string $masa_no   Masa.
+ * @param int    $urun_id   Ürün kimliği.
+ * @param string $kaynak    ai|kural.
+ * @param string $durum     gosterildi|sepete|siparis.
+ * @return void
+ */
+if ( ! function_exists( 'qmo_chatbot_oneri_logla_sessiz' ) ) {
+	function qmo_chatbot_oneri_logla_sessiz( $oturum_id, $masa_no, $urun_id, $kaynak, $durum ) {
+		if ( ! class_exists( 'QMO_Chatbot_DB' ) ) {
+			return;
+		}
+
+		$urun_id = absint( $urun_id );
+		if ( $urun_id < 1 || '' === (string) $oturum_id ) {
+			return;
+		}
+
+		QMO_Chatbot_DB::oneri_logla( $oturum_id, $masa_no, $urun_id, $kaynak, $durum );
+	}
+}
+
+/**
+ * Öneri dönüşüm durumunu sessizce günceller.
+ *
+ * @param string $oturum_id Oturum anahtarı.
+ * @param int    $urun_id   Ürün kimliği.
+ * @param string $durum     sepete|siparis.
+ * @return void
+ */
+if ( ! function_exists( 'qmo_chatbot_oneri_durum_sessiz' ) ) {
+	function qmo_chatbot_oneri_durum_sessiz( $oturum_id, $urun_id, $durum ) {
+		if ( ! class_exists( 'QMO_Chatbot_DB' ) ) {
+			return;
+		}
+
+		$urun_id = absint( $urun_id );
+		if ( $urun_id < 1 || '' === (string) $oturum_id ) {
+			return;
+		}
+
+		QMO_Chatbot_DB::oneri_durum_guncelle( $oturum_id, $urun_id, $durum );
+	}
+}
+
+/**
+ * Ürün önerisinin kaynağını döndürür (cross-sell kuralı veya AI).
+ *
+ * @param int    $urun_id Önerilen ürün kimliği.
+ * @param string $message Kullanıcı mesajı.
+ * @param array  $history Sohbet geçmişi.
+ * @return string ai|kural
+ */
+if ( ! function_exists( 'qmo_chat_oneri_urun_kaynagi' ) ) {
+	function qmo_chat_oneri_urun_kaynagi( $urun_id, $message, $history ) {
+		$urun_id = absint( $urun_id );
+		if ( $urun_id < 1 || ! class_exists( 'QMO_Chatbot_DB' ) ) {
+			return 'ai';
+		}
+
+		$katalog  = qmo_chat_oneri_urun_katalogu();
+		$kaynak_id = qmo_chat_oneri_kaynak_urun_bul( $message, $history, $katalog );
+		if ( $kaynak_id < 1 ) {
+			return 'ai';
+		}
+
+		$kurallar = QMO_Chatbot_DB::kurallari_getir( $kaynak_id );
+		foreach ( $kurallar as $kural ) {
+			if ( (int) $kural->hedef_urun === $urun_id ) {
+				return 'kural';
+			}
+		}
+
+		return 'ai';
+	}
+}
+
+/**
+ * Yanıttaki [URUN:{id}] etiketleri için gösterim logu yazar.
+ *
+ * @param string $cevap   Model yanıtı.
+ * @param array  $sess    Oturum.
+ * @param string $message Kullanıcı mesajı.
+ * @param array  $history Sohbet geçmişi.
+ * @return void
+ */
+if ( ! function_exists( 'qmo_chat_oneri_gosterim_logla' ) ) {
+	function qmo_chat_oneri_gosterim_logla( $cevap, $sess, $message, $history ) {
+		if ( ! preg_match_all( '/\[URUN:(\d+)\]/', (string) $cevap, $eslesmeler ) ) {
+			return;
+		}
+
+		$oturum_id = function_exists( 'qmo_chatbot_ziyaretci_anahtar' )
+			? qmo_chatbot_ziyaretci_anahtar( is_array( $sess ) ? $sess : array() )
+			: '';
+		if ( '' === $oturum_id ) {
+			return;
+		}
+
+		$masa  = isset( $sess['masa'] ) ? (string) $sess['masa'] : '';
+		$gorul = array();
+
+		foreach ( $eslesmeler[1] as $ham_id ) {
+			$id = absint( $ham_id );
+			if ( $id < 1 || isset( $gorul[ $id ] ) ) {
+				continue;
+			}
+			if ( ! qmo_chat_urun_karti_bilgisi( $id ) ) {
+				continue;
+			}
+			$gorul[ $id ] = true;
+			$kaynak       = qmo_chat_oneri_urun_kaynagi( $id, $message, $history );
+			qmo_chatbot_oneri_logla_sessiz( $oturum_id, $masa, $id, $kaynak, 'gosterildi' );
+		}
+	}
+}
+
+/**
+ * Sipariş satırından ürün kimliği çözer.
+ *
+ * @param array $satir Sipariş satırı.
+ * @return int
+ */
+if ( ! function_exists( 'qmo_chatbot_siparis_urun_id' ) ) {
+	function qmo_chatbot_siparis_urun_id( $satir ) {
+		if ( ! is_array( $satir ) ) {
+			return 0;
+		}
+
+		$id = isset( $satir['itemId'] ) ? absint( $satir['itemId'] ) : 0;
+		if ( $id < 1 && isset( $satir['item_id'] ) ) {
+			$id = absint( $satir['item_id'] );
+		}
+		if ( $id > 0 && 'rma_menu_item' === get_post_type( $id ) ) {
+			return $id;
+		}
+
+		$ad = isset( $satir['urunAdi'] ) ? sanitize_text_field( (string) $satir['urunAdi'] ) : '';
+		if ( '' === $ad || ! post_type_exists( 'rma_menu_item' ) ) {
+			return 0;
+		}
+
+		$post = get_page_by_title( $ad, OBJECT, 'rma_menu_item' );
+		return ( $post && isset( $post->ID ) ) ? (int) $post->ID : 0;
 	}
 }

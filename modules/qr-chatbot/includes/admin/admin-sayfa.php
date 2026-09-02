@@ -31,6 +31,7 @@ require_once __DIR__ . '/sayfa-gorunurluk.php';
 require_once __DIR__ . '/sayfa-gecmis.php';
 require_once __DIR__ . '/sayfa-cevaplanamayan.php';
 require_once __DIR__ . '/sayfa-oneri.php';
+require_once __DIR__ . '/sayfa-oneri-rapor.php';
 
 /**
  * Kayıtlı renk option'larını güvenli biçimde okur.
@@ -431,6 +432,13 @@ if ( ! function_exists( 'qmo_chatbot_sayfalar' ) ) {
 				'render' => 'qmo_chatbot_sayfa_oneri',
 				'desc'   => __( 'Önerilecek ürünler ve birlikte öneri kuralları.', 'qrms' ),
 				'icon'   => 'dashicons-megaphone',
+				'group'  => __( 'Yönetim', 'qrms' ),
+			),
+			'qrms-chatbot-oneri-rapor'  => array(
+				'title'  => __( 'Öneri Raporu', 'qrms' ),
+				'render' => 'qmo_chatbot_sayfa_oneri_rapor',
+				'desc'   => __( 'Öneri, sepet ve sipariş dönüşüm istatistikleri.', 'qrms' ),
+				'icon'   => 'dashicons-chart-bar',
 				'group'  => __( 'Yönetim', 'qrms' ),
 			),
 		);

@@ -441,3 +441,35 @@
 .qmo-cb-oneri-toggle input:checked + .qmo-cb-oneri-toggle-ui::after {
 	transform: translateX(18px);
 }
+
+/* Öneri Raporu */
+.qmo-cb-rapor-ozet {
+	display: grid;
+	gap: 12px;
+	grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+	margin: 16px 0 20px;
+}
+
+.qmo-cb-rapor-kart {
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-radius: 8px;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	padding: 14px 16px;
+}
+
+.qmo-cb-rapor-etiket {
+	color: #646970;
+	font-size: 12px;
+	font-weight: 600;
+	text-transform: uppercase;
+}
+
+.qmo-cb-rapor-deger {
+	color: #1d2327;
+	font-size: 22px;
+	line-height: 1.2;
+}

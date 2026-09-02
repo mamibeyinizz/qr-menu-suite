@@ -30,6 +30,34 @@ if ( ! function_exists( 'qmo_ajax_sepet_olay' ) ) {
 	function qmo_ajax_sepet_olay() {
 		qmo_nonce_dogrula();
 
+		$ham = isset( $_POST['olaylar'] ) ? wp_unslash( $_POST['olaylar'] ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Missing, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- nonce yukarıda; JSON aşağıda çözülür.
+
+		if ( is_string( $ham ) && '' !== $ham ) {
+			$olaylar = json_decode( $ham, true );
+		} else {
+			$olaylar = array();
+		}
+
+		if ( is_array( $olaylar ) && function_exists( 'qmo_chatbot_oneri_durum_sessiz' ) ) {
+			$oturum    = function_exists( 'qmo_oturum' ) ? qmo_oturum() : array();
+			$oturum_id = function_exists( 'qmo_chatbot_ziyaretci_anahtar' )
+				? qmo_chatbot_ziyaretci_anahtar( is_array( $oturum ) ? $oturum : array() )
+				: '';
+
+			if ( '' !== $oturum_id ) {
+				foreach ( array_slice( $olaylar, 0, 40 ) as $o ) {
+					if ( ! is_array( $o ) ) {
+						continue;
+					}
+					$tip = isset( $o['tip'] ) ? sanitize_key( (string) $o['tip'] ) : '';
+					$id  = isset( $o['item_id'] ) ? absint( $o['item_id'] ) : 0;
+					if ( 'cart_add' === $tip && $id > 0 ) {
+						qmo_chatbot_oneri_durum_sessiz( $oturum_id, $id, 'sepete' );
+					}
+				}
+			}
+		}
+
 		if ( ! class_exists( 'QRMS_Analitik' ) ) {
 			wp_send_json_success();
 		}
@@ -47,14 +75,6 @@ if ( ! function_exists( 'qmo_ajax_sepet_olay' ) ) {
 		// sepet kullanıcısı bir analitik reddini görmesin).
 		if ( ! qmo_hiz_siniri( 'sepet_olay', $masa, 2 ) ) {
 			wp_send_json_success();
-		}
-
-		$ham = isset( $_POST['olaylar'] ) ? wp_unslash( $_POST['olaylar'] ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Missing, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- nonce yukarıda; JSON aşağıda çözülür.
-
-		if ( is_string( $ham ) && '' !== $ham ) {
-			$olaylar = json_decode( $ham, true );
-		} else {
-			$olaylar = array();
 		}
 
 		if ( ! is_array( $olaylar ) ) {
@@ -75,7 +95,7 @@ if ( ! function_exists( 'qmo_ajax_sepet_olay' ) ) {
 				continue;
 			}
 
-			$id = isset( $o['item_id'] ) ? absint( $o['item_id'] ) : 0;
+			$id   = isset( $o['item_id'] ) ? absint( $o['item_id'] ) : 0;
 			$alan = qmo_analitik_urun_alani( $id );
 
 			if ( empty( $alan ) ) {
