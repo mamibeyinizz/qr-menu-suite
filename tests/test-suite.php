@@ -26,6 +26,7 @@ require_once __DIR__ . '/test-acilis.php';
 require_once __DIR__ . '/test-ceviri.php';
 require_once __DIR__ . '/test-calisma-saatleri.php';
 require_once __DIR__ . '/test-restoran-menu.php';
+require_once __DIR__ . '/test-restoran-secenek.php';
 require_once __DIR__ . '/test-yorum-istatistik.php';
 require_once __DIR__ . '/test-analiz-schema.php';
 require_once __DIR__ . '/test-hfb.php';

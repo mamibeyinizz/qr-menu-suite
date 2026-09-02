@@ -94,7 +94,7 @@ QR Menü
 │ ├ Genel Bakış
 │ └ Genel Ayarlar
 ├ MENÜ YÖNETİMİ
-│ ├ Restoran Menü               → hub (9 kart)
+│ ├ Restoran Menü               → hub (12 kart)
 │ └ Yorum & Feedback            → hub (7 kart + özet sayaçlar)
 ├ ARAÇLAR
 │ ├ QR Kod Oluştur              → doğrudan Masalar ekranı
@@ -509,6 +509,9 @@ ekranındaki kartlardan gidilir:
 | Görünüm | `qrms-rm-gorunum` |
 | Öne Çıkanlar | `qrms-rm-one-cikanlar` |
 | Ürün Vitrini | `qrms-rm-vitrin` |
+| Malzemeler | `edit-tags.php?taxonomy=rma_ingredient` |
+| Ürünüm Yok | `qrms-rm-urunum-yok` |
+| Seçenek & Rozet | `qrms-rm-secenekler` |
 | Fiyat Kampanyaları | `qrms-rm-kampanya` |
 | Kampanya Banner | `qrms-rm-kampanya-banner` |
 | Diğer Ayarlar | `qrms-rm-diger` |
@@ -528,6 +531,7 @@ Sayfaların hangi eski sekmeden geldiği:
 | Fiyat Kampanyaları | Toplu fiyat kampanyası ekranı — **yalnızca fiyat zam/indirimi**; banner görselleriyle ilgisi yoktur |
 | Kampanya Banner | Menüden erişilemeyen `qmo_banner_slide` ekranı + eski "Banner Görünümü" sayfası (`qrms-rm-banner-ayar`), üç adımlı tek bir sihirbazda |
 | Diğer Ayarlar | "Kategori Sıralaması", "İçe/Dışa Aktar" ve "Yedekleme" sekmeleri, üç bölüm hâlinde |
+| Seçenek & Rozet | Yeni sayfa: yeniden kullanılan ekstra (yan ürün) listeleri ve özel rozet tanımları |
 
 ### Kampanya Banner: kendi sayfasındaki üç adımlı sihirbaz
 
@@ -603,6 +607,62 @@ medya sorgusunda dokunma alanları en az 44px'e çıkar, dar ekranda `form-table
 satırları alt alta bloklara açılır, geniş tablolar kendi içinde yatay kayar
 (`.rma-table-scroll`) ve kart ızgaraları tek sütuna iner. WordPress admin'in
 kendi mobil davranışına müdahale edilmez.
+
+### Porsiyon, Ekstra, Servis Saati ve Özel Rozetler
+
+Dört özellik ürün ekranındaki tek bir meta kutusunda ("Porsiyon, Ekstra ve
+Servis Saati") toplanır; ortak kaynakları (ekstra listeleri, rozet tanımları)
+**Seçenek & Rozet** ekranındadır (`qrms-rm-secenekler`). Hiçbiri varsayılan
+olarak açık değildir: tanımlamadığınız sürece müşteri hiçbir ek arayüz görmez.
+
+| Özellik | Sınıf | Veri |
+| --- | --- | --- |
+| Porsiyon / varyasyon | `RMA_Porsiyon` | `_rma_porsiyonlar` (post meta) |
+| Yan ürün / ekstra | `RMA_Ekstra` | `rma_ekstra_listeleri` (option) + `_rma_ekstra_manuel`, `_rma_ekstra_listeler` (post meta) |
+| Servis saati | `RMA_Servis_Saati` | `rma_servis_*` (term meta) + `_rma_servis_*` (post meta) |
+| Özel rozet | `RMA_Ozel_Rozet` | `rma_ozel_rozetler` (option) + `_rma_ozel_rozetler` (post meta) |
+
+**Porsiyon fiyatı FARK olarak tutulur.** Ürünün tek bir taban fiyatı
+(`rma_price`) vardır; "Büyük" için `40`, "Küçük" için `-20` yazılır. İki
+sebebi var: (1) fiyat kampanyası taban fiyat üzerinden hesaplanır — porsiyon
+mutlak fiyat olsaydı kampanya porsiyonlu ürünleri atlardı; (2) toplu zam tek
+alanı güncellemekle biter. Farkı sıfır olan bir seçenek tanımlanmamışsa
+listenin başına otomatik "Standart" eklenir, müşteri her zaman taban fiyatı
+seçebilir.
+
+**Ekstralar iki kaynaktan gelir.** Yeniden kullanılan gruplar ("Soslar")
+option'da bir kez tanımlanır, ürün ekranından kutucukla işaretlenir; fiyatı
+tek yerden güncellenir. Yalnızca o ürüne ait satırlar ise ürün ekranındaki
+manuel tabloya yazılır. Modalda en altta `<details>` ile açılır kapanır bir
+blok olarak çıkar — JavaScript olmadan da çalışır, kapalıyken yer kaplamaz.
+
+**Servis saati kuralı kategoride tanımlanır**, ürün ekranından ezilebilir
+(`devral` / `kapalı` / `bu ürüne özel`). Gün numaraları ISO-8601'dir
+(1 = Pazartesi); başlangıç bitişten büyükse pencere gece yarısını aşar
+(22:00–02:00). Saat dışındaki ürün **menüden kaldırılmaz** — "Tükendi" ile
+aynı mantık: yerinde kalır, "Servis dışı" etiketi alır, sepete eklenemez ve
+sipariş ucunda sunucu tarafında kesilir (`qmo_siparis_onay_oncesi`, öncelik
+12).
+
+#### Sepetle bağlantısı
+
+Fiyat DOM metninden ayrıştırılmaz: modal gövdesi kampanya uygulanmış taban
+fiyatı `data-fiyat`, porsiyon farkını `data-fark`, ekstra fiyatını
+`data-fiyat` niteliğinde **sayı** olarak taşır. `sepet.js` toplamı bunlardan
+hesaplar. Aynı ürünün farklı porsiyon/ekstra kombinasyonu ayrı sepet
+satırıdır (`imzaUret`). Sipariş ucu yalnızca `urunAdi / adet / not / itemId`
+tanıdığı için porsiyon ürün adına ("Lahmacun (Büyük)"), ekstralar ise notun
+başına ("Ekstra: Sos, Ayran") yazılır — mutfak fişi ikisini de görür.
+
+Porsiyon eki ada eklendiği için **tükendi filtresi artık önce `item_id`'ye
+bakar**; ID yoksa parantezli ek kırpılarak ada göre eşleşme denenir.
+
+#### Önbellek
+
+Servis penceresi menü önbelleği anahtarına girer (`RMA_Servis_Saati::imza`,
+beş dakikalık kova): kahvaltı saati bitince önbellekteki "servis içi" menü en
+geç beş dakikada kendiliğinden düşer. Sitede hiç kural tanımlı değilse imza
+sabit `'0'` döner — kısıt kullanmayan işletmelerde önbellek ömrü değişmez.
 
 ### Toplu Fiyat Kampanyası (zam / indirim)
 
@@ -1058,7 +1118,7 @@ includes/
   class-shortcodes.php       Kısa kod kayıt defteri ve "Kısa Kodlar" rehber ekranı
 modules/
   _qmo-ortak/                Ortak zemin (oturum sınıfı, Firestore istemcisi, helpers, varlıklar)
-  restoran-menu/             Menü CPT'si, kısa kodlar, slider, fiyat kampanyası + hub ve dokuz yönetim ekranı
+  restoran-menu/             Menü CPT'si, kısa kodlar, slider, fiyat kampanyası, porsiyon/ekstra/servis saati + hub ve on yönetim ekranı
   yorum-feedback/            Yorumlar, ödül kodları, form oluşturucu + hub ve altı yönetim sayfası
   qr-masa/                   Masa kayıtları + Masalar yönetim ekranı
   qr-masa-oturum-guvenligi/  Masa doğrulama, kilit ekranı + hub (oturum limitleri, Firebase & şube ayarları)

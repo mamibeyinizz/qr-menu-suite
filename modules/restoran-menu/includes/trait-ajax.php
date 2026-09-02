@@ -455,6 +455,17 @@ trait RMA_Ajax_Trait {
             $tukendi_banner = '<p class="rma-modal-tukendi">' . esc_html( $this->t( RMA_Tukendi::MESAJ ) ) . '</p>';
         }
 
+        // Servis saati kısıtı: pencere dışındaysa uyarı, içindeyse yalnızca
+        // bilgi satırı ("Servis saatleri: 07:00–11:00 · Hafta içi").
+        $servis_disi  = RMA_Servis_Saati::servis_disi_mi( $id );
+        $servis_notu  = '';
+        $servis_metni = RMA_Servis_Saati::aciklama( $id );
+        if ( $servis_disi ) {
+            $servis_notu = '<p class="rma-modal-servis rma-modal-servis-disi">' . esc_html( RMA_Servis_Saati::mesaj( $id ) ) . '</p>';
+        } elseif ( '' !== $servis_metni ) {
+            $servis_notu = '<p class="rma-modal-servis">' . esc_html( $servis_metni ) . '</p>';
+        }
+
         // Çeviri, the_content filtresinden ÖNCE uygulanıyor: kısa kod ve oEmbed
         // işleme çevrilmiş metin üzerinde çalışsın.
         $desc = apply_filters( 'the_content', $this->t_field( $id, 'product', 'content', $post->post_content ) );
@@ -466,6 +477,10 @@ trait RMA_Ajax_Trait {
         if ( RMA_Tukendi::urun_tukendi( $id ) ) {
             $attrs .= '<span class="rma-attr rma-attr-tukendi">' . esc_html( $this->t( RMA_Tukendi::ETIKET ) ) . '</span>';
         }
+        if ( $servis_disi ) {
+            $attrs .= '<span class="rma-attr rma-attr-servis">' . esc_html( RMA_Servis_Saati::etiket() ) . '</span>';
+        }
+        $attrs .= RMA_Ozel_Rozet::etiket_html( $id );
         if ( get_post_meta( $id, 'rma_badge_recommended', true ) === '1' ) $attrs .= '<span class="rma-attr">⭐ ' . esc_html( $this->t( 'Önerilen' ) ) . '</span>';
         if ( get_post_meta( $id, 'rma_is_vegan',          true ) === '1' ) $attrs .= '<span class="rma-attr">🌿 ' . esc_html( $this->t( 'Vegan' ) ) . '</span>';
         if ( get_post_meta( $id, 'rma_is_vegetarian',     true ) === '1' ) $attrs .= '<span class="rma-attr">🥦 ' . esc_html( $this->t( 'Vejetaryen' ) ) . '</span>';
@@ -517,31 +532,51 @@ trait RMA_Ajax_Trait {
 
         $compliance_html = $compliance ? '<div class="rma-attrs rma-compliance-row">' . $compliance . '</div>' : '';
 
+        // Sepet betiği için sayısal taban fiyat: porsiyon farkı ve ekstralar
+        // bunun üzerine eklenir. Metni ayrıştırmak (binlik ayracı, üstü
+        // çizili eski fiyat, çeviri kalıbı) hataya açıktı.
+        $fiyat_bilgi = RMA_Kampanya::fiyat_bilgisi( $id );
+        $taban_fiyat = $fiyat_bilgi['aktif'] ? $fiyat_bilgi['yeni'] : $fiyat_bilgi['orijinal'];
+
+        $tukendi  = RMA_Tukendi::urun_tukendi( $id );
+        $rozet    = RMA_Tukendi::rozet_html( $id );
+        if ( '' === $rozet ) {
+            $rozet = RMA_Servis_Saati::rozet_html( $id );
+        }
+
         return sprintf(
             '<div class="rma-modal-img-wrap%s">
                 %s
                 %s
             </div>
-            <div class="rma-modal-body" data-id="%d">
+            <div class="rma-modal-body" data-id="%d"%s%s>
                 <h2 class="rma-modal-title">%s</h2>
                 %s
+                %s
                 <p class="rma-modal-price">%s</p>
+                %s
                 <div class="rma-modal-desc">%s</div>
                 %s
                 %s
                 %s
+                %s
             </div>',
-            RMA_Tukendi::urun_tukendi( $id ) ? ' is-tukendi' : '',
+            ( $tukendi || $servis_disi ) ? ' is-tukendi' : '',
             $img,
-            RMA_Tukendi::rozet_html( $id ),
+            $rozet,
             (int) $id,
+            null !== $taban_fiyat ? ' data-fiyat="' . esc_attr( number_format( (float) $taban_fiyat, 2, '.', '' ) ) . '"' : '',
+            ( $tukendi || $servis_disi ) ? ' data-siparis-kapali="1"' : '',
             esc_html( $title ),
             $tukendi_banner,
+            $servis_notu,
             $price_html,
+            RMA_Porsiyon::html( $id ),
             $desc,
             $attrs ? '<div class="rma-attrs">' . $attrs . '</div>' : '',
             $compliance_html,
-            $allergen_html
+            $allergen_html,
+            RMA_Ekstra::html( $id )
         );
     }
 

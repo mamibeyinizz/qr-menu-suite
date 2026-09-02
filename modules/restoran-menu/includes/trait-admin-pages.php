@@ -53,6 +53,13 @@ trait RMA_Admin_Pages_Trait {
                 'desc'       => 'Sayfanın en üstünde tam genişlikte dönen kampanya görselleri: görseller, görünüm ayarları ve hazır şablonla görsel üretme.',
                 'icon'       => 'dashicons-images-alt2',
             ],
+            'qrms-rm-secenekler' => [
+                'title'      => 'Seçenek & Rozet',
+                'menu_title' => 'Seçenek & Rozet',
+                'render'     => 'render_secenekler_page',
+                'desc'       => 'Ürünlerde kullanacağınız ekstra (yan ürün) listelerini ve kendi rozetlerinizi tanımlayın.',
+                'icon'       => 'dashicons-editor-ul',
+            ],
             'qrms-rm-diger' => [
                 'title'      => 'Diğer Ayarlar',
                 'menu_title' => 'Diğer Ayarlar',
@@ -109,6 +116,7 @@ trait RMA_Admin_Pages_Trait {
                         'icon'  => 'dashicons-plus-alt',
                     ],
                     $from_sub( $this, 'qrms-rm-urunum-yok' ),
+                    $from_sub( $this, 'qrms-rm-secenekler' ),
                     $from_sub( $this, 'qrms-rm-kampanya' ),
                     $from_sub( $this, 'qrms-rm-kampanya-banner' ),
                 ],
@@ -966,6 +974,13 @@ trait RMA_Admin_Pages_Trait {
         // Ürün ekleme/düzenleme ve taksonomi ekranlarında hiçbir işlevi yok,
         // oralarda artık yüklenmiyor.
         $is_list = ( 'edit' === $screen->base );
+
+        // Porsiyon/ekstra/servis saati arayüzü ürün DÜZENLEME ekranında ve
+        // kategori formunda da gerekir; oralarda admin-ui.js yüklenmez.
+        if ( in_array( $screen->base, [ 'post', 'edit-tags', 'term' ], true ) || 'qrms-rm-secenekler' === $page ) {
+            $this->enqueue_secenek_assets( RMA_PLUGIN_URL, [ $this, 'asset_version' ] );
+        }
+
         if ( ! $is_settings && ! $is_list ) return;
 
         $deps = [ 'jquery' ];

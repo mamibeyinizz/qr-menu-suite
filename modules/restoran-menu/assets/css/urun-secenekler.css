@@ -1,0 +1,91 @@
+/* Porsiyon / ekstra / servis saati / özel rozet yönetim arayüzü. */
+
+.rma-secenek-kutu .rma-secenek-h {
+    margin: 4px 0 6px;
+    font-size: 14px;
+}
+
+.rma-secenek-not {
+    margin: 0 0 10px;
+    color: #666;
+    font-size: 12px;
+    max-width: 720px;
+}
+
+.rma-tekrar {
+    margin-bottom: 8px;
+}
+
+.rma-tekrar td,
+.rma-tekrar th {
+    padding: 6px 8px;
+}
+
+.rma-tekrar-sil {
+    color: #b32d2e;
+    text-decoration: none;
+    font-size: 14px;
+}
+
+.rma-secenek-kutucuklar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 14px;
+    margin: 8px 0 14px;
+}
+
+.rma-secenek-kutucuklar label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid #dcdcdc;
+    border-radius: 4px;
+    padding: 5px 10px;
+    background: #fafafa;
+}
+
+.rma-secenek-sayi {
+    background: #e3e6e8;
+    border-radius: 10px;
+    padding: 0 7px;
+    font-size: 11px;
+    color: #555;
+}
+
+.rma-rozet-onizleme {
+    display: inline-block;
+    border-radius: 3px;
+    padding: 2px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #111;
+}
+
+.rma-servis-gunler {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 12px;
+    margin-bottom: 8px;
+}
+
+.rma-servis-saatler label {
+    margin-right: 16px;
+}
+
+.rma-servis-alan.rma-pasif {
+    opacity: .45;
+    pointer-events: none;
+}
+
+.rma-liste-kap {
+    border: 1px solid #dcdcdc;
+    border-radius: 4px;
+    padding: 12px 14px;
+    margin-bottom: 14px;
+    background: #fff;
+}
+
+.rma-liste-sil {
+    color: #b32d2e;
+    margin-left: 10px;
+}

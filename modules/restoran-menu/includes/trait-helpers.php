@@ -275,11 +275,16 @@ trait RMA_Helpers_Trait {
         // Markup revizyonu: içerik değişmese bile üretilen HTML değiştiğinde
         // (örn. modal görselinin srcset/fetchpriority nitelikleri) eski
         // transient'lerin TTL'i dolmadan geçersizleşmesi için elle artırılır.
-        $parts['__m']    = '2';
+        $parts['__m']    = '3';
         // Aktif fiyat kampanyası anahtara girer: kampanya açıldığında,
         // kapandığında ya da kuralı değiştiğinde önbelleğe alınmış menü
         // HTML'i kendiliğinden geçersizleşir (bkz. RMA_Kampanya::imza).
         $parts['__kmp']  = class_exists( 'RMA_Kampanya' ) ? RMA_Kampanya::imza() : '0';
+        // Servis saati penceresi de anahtara girer: kahvaltı saati bitince
+        // önbellekteki "servis içi" menü en geç 5 dakikada kendiliğinden
+        // düşer. Hiç kural tanımlı değilse sabit '0' — kısıt kullanmayan
+        // sitelerde önbellek ömrü eskisi gibi kalır (bkz. RMA_Servis_Saati::imza).
+        $parts['__srv']  = class_exists( 'RMA_Servis_Saati' ) ? RMA_Servis_Saati::imza() : '0';
         return 'rma_' . $group . '_' . md5( wp_json_encode( $parts ) );
     }
 

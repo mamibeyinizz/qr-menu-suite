@@ -37,6 +37,11 @@ require_once __DIR__ . '/includes/class-kampanya.php';
 require_once __DIR__ . '/includes/trait-kampanya-admin.php';
 require_once __DIR__ . '/includes/trait-kampanya-banner-admin.php';
 require_once __DIR__ . '/includes/class-tukendi.php';
+require_once __DIR__ . '/includes/class-porsiyon.php';
+require_once __DIR__ . '/includes/class-ekstra.php';
+require_once __DIR__ . '/includes/class-servis-saati.php';
+require_once __DIR__ . '/includes/class-ozel-rozet.php';
+require_once __DIR__ . '/includes/trait-secenek-admin.php';
 require_once __DIR__ . '/includes/shortcode-vitrin.php';
 require_once __DIR__ . '/qmo-one-cikan-slider.php';
 
@@ -72,6 +77,7 @@ class Restaurant_Menu_Automation {
     use RMA_Kampanya_Admin_Trait;
     use RMA_Kampanya_Banner_Admin_Trait;
     use RMA_Urunum_Yok_Admin_Trait;
+    use RMA_Secenek_Admin_Trait;
 
     private static $instance = null;
 
@@ -86,6 +92,25 @@ class Restaurant_Menu_Automation {
         add_action( 'init',                  [ $this, 'register_post_types' ] );
         add_action( 'add_meta_boxes',        [ $this, 'add_menu_item_meta_boxes' ] );
         add_action( 'save_post',             [ $this, 'save_menu_item_meta' ] );
+
+        /* -----------------------------------------------------------------
+           PORSİYON / EKSTRA / SERVİS SAATİ / ÖZEL ROZET
+           Ürün Detayları kutusundan AYRI bir meta kutusu ve AYRI nonce:
+           hızlı düzenleme bu alanları göndermediği için oradaki kayıt
+           seçenekleri sıfırlamaz. Yeniden kullanılan ekstra listeleri ve
+           rozet tanımları "Seçenek & Rozet" ekranında (admin-post) yönetilir.
+        ----------------------------------------------------------------- */
+        add_action( 'add_meta_boxes',        [ $this, 'add_secenek_meta_box' ] );
+        add_action( 'save_post_rma_menu_item', [ $this, 'save_secenek_meta' ] );
+        add_action( 'rma_category_edit_form_fields', [ $this, 'edit_category_servis_fields' ] );
+        add_action( 'created_rma_category',          [ $this, 'save_category_servis_fields' ] );
+        add_action( 'edited_rma_category',           [ $this, 'save_category_servis_fields' ] );
+        add_action( 'admin_post_rma_ekstra_listeleri_kaydet', [ $this, 'handle_ekstra_listeleri_save' ] );
+        add_action( 'admin_post_rma_ozel_rozet_kaydet',       [ $this, 'handle_ozel_rozet_save' ] );
+
+        // Servis saati dışındaki ürünler sipariş ucunda da kesilir; tükendi
+        // filtresiyle aynı kanca, aynı yapısal dönüş.
+        add_filter( 'qmo_siparis_onay_oncesi', [ 'RMA_Servis_Saati', 'siparis_filtresi' ], 12, 2 );
         add_action( 'wp_insert_post',        [ $this, 'set_default_active_status' ], 10, 3 );
         add_filter( 'manage_rma_menu_item_posts_columns',        [ $this, 'add_admin_columns' ] );
         add_action( 'manage_rma_menu_item_posts_custom_column',  [ $this, 'render_admin_columns' ], 10, 2 );

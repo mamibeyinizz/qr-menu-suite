@@ -794,3 +794,136 @@
     .rma-toolbar { padding: 18px 22px 16px; }
     .rma-section-title { margin: 36px 22px 16px; }
 }
+
+/* =====================================================================
+   PORSİYON · EKSTRA · SERVİS SAATİ · ÖZEL ROZET
+   Servis saati dışındaki ürün "Tükendi" ile aynı sönük görünümü alır
+   (.is-tukendi kuralları); burada yalnızca kendi rozeti ve mesaj
+   kutusu tanımlanır.
+===================================================================== */
+
+.rma-card.is-servis-disi { opacity: .72; }
+.rma-card.is-servis-disi:hover { transform: none; box-shadow: none; }
+.rma-card.is-servis-disi .rma-card-img { filter: grayscale(.45); opacity: .85; }
+.rma-card.is-servis-disi:hover .rma-card-img { transform: none; }
+
+.rma-servis-rozet {
+    background: #4a3c12;
+    bottom: 0;
+    color: #f3d98a;
+    font-family: var(--rma-font-body, system-ui, sans-serif);
+    font-size: .68rem;
+    font-weight: 800;
+    letter-spacing: .08em;
+    left: 0;
+    line-height: 1.2;
+    padding: 5px 4px;
+    position: absolute;
+    right: 0;
+    text-align: center;
+    text-transform: uppercase;
+    white-space: nowrap;
+    z-index: 3;
+}
+.rma-modal-img-wrap .rma-servis-rozet { font-size: .82rem; padding: 8px 10px; }
+
+.rma-modal-servis {
+    color: var(--rma-desc, #888);
+    font-size: .78rem;
+    margin: 0 0 8px;
+}
+.rma-modal-servis-disi {
+    background: rgba(201, 168, 76, .12);
+    border: 1px solid rgba(201, 168, 76, .38);
+    border-radius: 8px;
+    color: var(--rma-accent, #c9a84c);
+    font-weight: 700;
+    padding: 8px 12px;
+}
+.rma-attr-servis {
+    background: rgba(201, 168, 76, .14);
+    border-color: rgba(201, 168, 76, .4);
+}
+.rma-badge.rma-badge-ozel {
+    background: var(--rma-rozet-renk, #c9a84c);
+    color: #111;
+}
+.rma-attr.rma-attr-ozel {
+    background: color-mix(in srgb, var(--rma-rozet-renk, #c9a84c) 14%, transparent);
+    border-color: color-mix(in srgb, var(--rma-rozet-renk, #c9a84c) 40%, transparent);
+    color: var(--rma-rozet-renk, #c9a84c);
+}
+
+/* ---- Porsiyon seçimi ---- */
+.rma-secenek-baslik {
+    color: var(--rma-desc, #888);
+    font-size: .74rem;
+    font-weight: 700;
+    letter-spacing: .06em;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+}
+.rma-porsiyon { margin: 4px 0 14px; }
+.rma-porsiyon-liste { display: flex; flex-wrap: wrap; gap: 8px; }
+.rma-porsiyon-sec {
+    align-items: center;
+    background: rgba(255, 255, 255, .03);
+    border: 1px solid var(--rma-border, #2a2a2a);
+    border-radius: 10px;
+    cursor: pointer;
+    display: inline-flex;
+    gap: 6px;
+    padding: 8px 13px;
+}
+.rma-porsiyon-sec input { position: absolute; opacity: 0; pointer-events: none; }
+.rma-porsiyon-sec:has(input:checked) {
+    border-color: var(--rma-accent, #c9a84c);
+    box-shadow: inset 0 0 0 1px var(--rma-accent, #c9a84c);
+}
+/* :has() desteklemeyen tarayıcılar için yedek: seçili porsiyonun adı
+   yine de vurgu rengine döner, seçim görünmez kalmaz. */
+.rma-porsiyon-sec input:checked ~ .rma-porsiyon-ad { color: var(--rma-accent, #c9a84c); }
+.rma-porsiyon-ad { color: var(--rma-text, #f5f0e8); font-size: .84rem; font-weight: 600; }
+.rma-porsiyon-fark { color: var(--rma-accent, #c9a84c); font-size: .8rem; font-weight: 700; }
+
+/* ---- Ekstra (yan ürün) ---- */
+.rma-ekstra {
+    border: 1px solid var(--rma-border, #2a2a2a);
+    border-radius: 10px;
+    margin-top: 16px;
+    overflow: hidden;
+}
+.rma-ekstra-baslik {
+    align-items: center;
+    color: var(--rma-text, #f5f0e8);
+    cursor: pointer;
+    display: flex;
+    font-size: .88rem;
+    font-weight: 700;
+    justify-content: space-between;
+    list-style: none;
+    padding: 12px 14px;
+}
+.rma-ekstra-baslik::-webkit-details-marker { display: none; }
+.rma-ekstra-ok { color: var(--rma-accent, #c9a84c); font-size: 1.2rem; transition: transform .18s ease; }
+.rma-ekstra[open] .rma-ekstra-ok { transform: rotate(90deg); }
+.rma-ekstra-govde { border-top: 1px solid var(--rma-border, #2a2a2a); padding: 6px 14px 12px; }
+.rma-ekstra-grup-ad {
+    color: var(--rma-desc, #888);
+    font-size: .72rem;
+    font-weight: 700;
+    letter-spacing: .06em;
+    margin: 10px 0 4px;
+    text-transform: uppercase;
+}
+.rma-ekstra-sec {
+    align-items: center;
+    cursor: pointer;
+    display: flex;
+    gap: 10px;
+    padding: 8px 0;
+}
+.rma-ekstra-sec + .rma-ekstra-sec { border-top: 1px solid rgba(255, 255, 255, .05); }
+.rma-ekstra-sec input { accent-color: var(--rma-accent, #c9a84c); height: 18px; width: 18px; }
+.rma-ekstra-ad { color: var(--rma-text, #f5f0e8); flex: 1; font-size: .85rem; }
+.rma-ekstra-fiyat { color: var(--rma-accent, #c9a84c); font-size: .82rem; font-weight: 700; }

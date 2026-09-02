@@ -172,12 +172,36 @@ class RMA_Tukendi {
                 continue;
             }
 
+            // Porsiyon seçimi ürün adına "(Büyük)" olarak eklenir; ada göre
+            // eşleşme bu yüzden tek başına yeterli değildir. Kalem bir ürün
+            // ID'si taşıyorsa önce o sorulur.
+            $item_id = isset( $kalem['item_id'] ) ? (int) $kalem['item_id'] : 0;
+            if ( $item_id > 0 && 'rma_menu_item' === get_post_type( $item_id ) ) {
+                if ( self::urun_tukendi( $item_id ) ) {
+                    return array(
+                        'mesaj'     => self::mesaj(),
+                        'item_id'   => $item_id,
+                        'item_name' => (string) get_post_field( 'post_title', $item_id ),
+                    );
+                }
+
+                continue;
+            }
+
             $ad = isset( $kalem['urunAdi'] ) ? (string) $kalem['urunAdi'] : '';
             if ( '' === $ad ) {
                 continue;
             }
 
             $urun = self::ad_tukendi_urun( $ad );
+
+            // Porsiyon eki varsa ("Lahmacun (Büyük)") parantezsiz hâli denenir.
+            if ( ! $urun ) {
+                $sade = trim( preg_replace( '/\s*\([^()]*\)\s*$/u', '', $ad ) );
+                if ( '' !== $sade && $sade !== $ad ) {
+                    $urun = self::ad_tukendi_urun( $sade );
+                }
+            }
             if ( $urun ) {
                 return array(
                     'mesaj'     => self::mesaj(),
