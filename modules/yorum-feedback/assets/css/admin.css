@@ -830,3 +830,75 @@
 		grid-column: 2;
 	}
 }
+
+/* --------------------------------------------------------------------------
+ * 9. Kriter trend grafikleri (inline SVG)
+ * ------------------------------------------------------------------------ */
+
+.qrm-trend-block .qrm-trend-subheading {
+	font-size: 14px;
+	margin: 20px 0 10px;
+}
+
+.qrm-trend-block .qrm-trend-subheading:first-of-type {
+	margin-top: 8px;
+}
+
+.qrm-trend-grid {
+	display: grid;
+	gap: 16px;
+	grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.qrm-trend-chart-card {
+	background: #f6f7f7;
+	border: 1px solid #dcdcde;
+	border-radius: 8px;
+	padding: 12px 12px 8px;
+}
+
+.qrm-trend-chart-title {
+	font-size: 13px;
+	font-weight: 600;
+	margin-bottom: 8px;
+}
+
+.qrm-trend-scroll {
+	-webkit-overflow-scrolling: touch;
+	overflow-x: auto;
+	overflow-y: hidden;
+}
+
+.qrm-trend-svg {
+	display: block;
+	max-width: none;
+}
+
+.qrm-trend-svg line.qrm-trend-grid {
+	stroke: #e0e0e0;
+	stroke-width: 1;
+}
+
+.qrm-trend-line {
+	fill: none;
+	stroke-width: 2;
+}
+
+.qrm-trend-axis,
+.qrm-trend-label {
+	fill: #646970;
+	font-size: 10px;
+}
+
+.qrm-trend-dot {
+	cursor: default;
+}
+
+.qrm-trend-drop-notice {
+	margin: 12px 0 16px;
+}
+
+.qrm-trend-drop-list {
+	list-style: disc;
+	margin: 0 0 8px 20px;
+}

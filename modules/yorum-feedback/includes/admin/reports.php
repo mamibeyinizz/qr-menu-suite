@@ -347,12 +347,15 @@ function qrm_pro_admin_reports_page() {
         $max_hour_count = 1;
     }
 
+    $drop_state = qrm_pro_trend_drop_state();
     $report_url = add_query_arg(['view' => 'rapor'], $self_url);
     ?>
     <div class="wrap qrm-pro-wrap">
         <h1><?php esc_html_e('Tüm Yorumlar', 'qrms'); ?></h1>
 
         <?php qrm_pro_admin_dashboard_view_tabs('rapor'); ?>
+
+        <?php qrm_pro_admin_render_trend_drop_notice($drop_state); ?>
 
         <h2 class="qrm-report-heading"><?php esc_html_e('Masa / Vardiya / Saat Raporu', 'qrms'); ?></h2>
         <p class="qrm-lead">
@@ -381,6 +384,8 @@ function qrm_pro_admin_reports_page() {
                 <a class="button" href="<?php echo esc_url($report_url); ?>"><?php esc_html_e('Son 30 gün', 'qrms'); ?></a>
             </div>
         </form>
+
+        <?php qrm_pro_admin_render_trend_block($settings, $range); ?>
 
         <div class="qrm-card">
             <h3><?php esc_html_e('Masa Bazlı Özet', 'qrms'); ?></h3>

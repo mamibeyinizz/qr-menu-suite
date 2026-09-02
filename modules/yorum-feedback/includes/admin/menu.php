@@ -240,7 +240,7 @@ function qrm_pro_legacy_page_target($page, $args = []) {
  * Tek kaynak: hem sol menüdeki "Yorum & Feedback" satırı hem de hub
  * ekranındaki kartlar buradan beslenir.
  *
- * @return array{bekleyen:int,formlar:int,odul:bool}
+ * @return array{bekleyen:int,formlar:int,odul:bool,trend_drop:int}
  */
 function qrm_pro_menu_badge_state() {
     // Menü kaydı sırasında her satır için bir kez sorulur; sayaç sorgusu istek
@@ -253,13 +253,15 @@ function qrm_pro_menu_badge_state() {
     // İkisi de önbellekli sayaçlardır (transient + istek içi memo), yani sol
     // menü her admin sayfasında yeni bir sorgu açmaz.
     $stats = qrm_pro_review_stats();
+    $trend = qrm_pro_trend_drop_state();
 
     $state = [
-        'bekleyen' => (int) $stats['pending'],
-        'formlar'  => (int) qrm_cf_unread_total(),
+        'bekleyen'   => (int) $stats['pending'],
+        'formlar'    => (int) qrm_cf_unread_total(),
         // Ödül modülü açık ama yapılandırması eksikse (Google linki boş ya da
         // yönlendirme kapalı) popup hiç gösterilmez. Sessizce fark edilmemesin.
-        'odul'     => !empty($settings['qrm_reward_enabled']) && !qrm_reward_is_active($settings),
+        'odul'       => !empty($settings['qrm_reward_enabled']) && !qrm_reward_is_active($settings),
+        'trend_drop' => is_array($trend['alerts']) ? count($trend['alerts']) : 0,
     ];
 
     return $state;
@@ -302,6 +304,13 @@ function qrm_pro_menu_badge() {
         return ' <span class="update-plugins count-1" title="'
             . esc_attr__('Ödül popup modülü açık ama Google Yorum Linki/yönlendirme eksik', 'qrms') . '">'
             . '<span class="update-count">!</span></span>';
+    }
+
+    $trend_drop = isset($state['trend_drop']) ? (int) $state['trend_drop'] : 0;
+    if ($trend_drop > 0) {
+        return ' <span class="update-plugins count-' . $trend_drop . '" title="'
+            . esc_attr__('Kriter puanında düşüş uyarısı — Rapor sekmesine bakın', 'qrms') . '">'
+            . '<span class="update-count">' . esc_html(number_format_i18n($trend_drop)) . '</span></span>';
     }
 
     return '';
