@@ -2,10 +2,22 @@
 /*
 Plugin Name: QR Menü Gelişmiş Müşteri Yorumları & Değerlendirme
 Description: QR menü sistemleri için çoklu kriter (yemek, hizmet, temizlik vb.) puanlama sistemli, Google yorum yönlendirmeli (review gating), AJAX destekli, gelişmiş analitik barındıran premium müşteri yorum eklentisi.
-Version: 4.2.2
+Version: 4.2.3
 Author: QR MENÜ
 
 == Changelog ==
+
+4.2.3
+ - YENİ: Masa / vardiya / saat bazlı raporlama. Tüm Yorumlar ekranında
+   ?view=rapor sekmesi: masa bazlı özet tablo (ad, sayı, ortalama, son yorum,
+   kriter ortalamaları), 0-23 saat dağılımı (yatay bar, saf CSS) ve ayarlardan
+   yönetilen vardiya kırılımı. Tarih aralığı filtresi (varsayılan son 30 gün).
+ - YENİ: qrm_reviews.table_id — gönderimde ?masa= veya qr_masa_token oturumundan
+   slug çözülür, QMO_Masalar ile eşlenir; eşleşmezse serbest table_no korunur.
+ - YENİ: qrm_settings.qrm_shifts vardiya tanımları (varsayılan: Sabah 06-12,
+   Öğle 12-17, Akşam 17-23, Gece 23-06); Ayarlar & Puanlama ekranından düzenlenir.
+ - PERFORMANS: idx_table_created (table_id, created_at); rapor sorguları toplu
+   GROUP BY ile çalışır, satır başına ek sorgu yoktur.
 
 4.2.2
  - YENİ: Yorum iş akışı (workflow). Her yorum için bağımsız durum takibi:
@@ -129,7 +141,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('QRM_PRO_VERSION', '4.2.2');
+define('QRM_PRO_VERSION', '4.2.3');
 define('QRM_PRO_FILE', __FILE__);
 define('QRM_PRO_PATH', plugin_dir_path(__FILE__));
 define('QRM_PRO_URL', plugin_dir_url(__FILE__));
@@ -137,6 +149,7 @@ define('QRM_PRO_URL', plugin_dir_url(__FILE__));
 // Bağımlılık sırası önemli: önce ayarlar/güvenlik, sonra kurulum, sonra geri kalanı.
 require_once QRM_PRO_PATH . 'includes/settings.php';
 require_once QRM_PRO_PATH . 'includes/security.php';
+require_once QRM_PRO_PATH . 'includes/masa.php';
 
 // Ödül modülü (kurulum fonksiyonu install.php içinden çağrıldığı için önce yüklenir)
 require_once QRM_PRO_PATH . 'includes/rewards/db.php';
@@ -154,6 +167,7 @@ require_once QRM_PRO_PATH . 'includes/install.php';
 require_once QRM_PRO_PATH . 'includes/admin/menu.php';
 require_once QRM_PRO_PATH . 'includes/admin/hub.php';
 require_once QRM_PRO_PATH . 'includes/admin/dashboard.php';
+require_once QRM_PRO_PATH . 'includes/admin/reports.php';
 require_once QRM_PRO_PATH . 'includes/admin/form-builder.php';
 require_once QRM_PRO_PATH . 'includes/admin/settings-page.php';
 require_once QRM_PRO_PATH . 'includes/admin/contact.php';
@@ -221,6 +235,8 @@ function qrm_pro_maybe_upgrade() {
  * v4: qrm_reviews tablosuna iş akışı sütunları (workflow_status,
  * assigned_user_id, internal_note, resolved_at) ve idx_workflow indeksi.
  *
+ * v5: table_id sütunu ve idx_table_created indeksi (masa raporları).
+ *
  * ZAMANLAMA — güncelleme bilinçli olarak SADECE yönetim isteklerinde çalışır.
  * ALTER TABLE, büyük bir yorum tablosunda birkaç saniye sürebilir ve o süre
  * boyunca tabloyu meşgul eder. plugins_loaded'a bağlansaydı bu iş, menüyü açan
@@ -229,7 +245,7 @@ function qrm_pro_maybe_upgrade() {
  * ---------------------------------------------------------------------- */
 
 /** Şema (indeks) sürümü. İndeks tanımları değiştiğinde artırılır. */
-define('QRM_PRO_SCHEMA_VERSION', '4');
+define('QRM_PRO_SCHEMA_VERSION', '5');
 
 /** Şema sürümünün saklandığı option. */
 define('QRM_PRO_SCHEMA_OPTION', 'qrm_pro_schema_version');
@@ -291,7 +307,8 @@ function qrm_pro_schema_indexes_ok() {
 
     return is_array($rows)
         && in_array('idx_status_created', $rows, true)
-        && in_array('idx_workflow', $rows, true);
+        && in_array('idx_workflow', $rows, true)
+        && in_array('idx_table_created', $rows, true);
 }
 
 add_action('admin_init', 'qrm_pro_schema_maybe_upgrade', 5);

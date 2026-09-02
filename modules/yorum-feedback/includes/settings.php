@@ -152,6 +152,14 @@ function qrm_pro_default_settings() {
         // Tüm formlar için geçerlidir; yetkili kullanıcılar (edit_posts) muaftır.
         'qrm_spam_cooldown_minutes' => 10,
 
+        // Rapor vardiyaları (v4.2.3) — saatler 0-23, bitiş saati hariçtir.
+        'qrm_shifts' => [
+            ['name' => 'Sabah', 'start' => 6,  'end' => 12],
+            ['name' => 'Öğle',  'start' => 12, 'end' => 17],
+            ['name' => 'Akşam', 'start' => 17, 'end' => 23],
+            ['name' => 'Gece',  'start' => 23, 'end' => 6],
+        ],
+
         // --- Google Review Ödül Sistemi (v4.1.0) ---
         // Not: google_review_url / google_review_threshold gibi mevcut ayarlar
         // tekrar üretilmez, ödül modülü doğrudan onları okur.
