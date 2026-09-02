@@ -2,10 +2,20 @@
 /*
 Plugin Name: QR Menü Gelişmiş Müşteri Yorumları & Değerlendirme
 Description: QR menü sistemleri için çoklu kriter (yemek, hizmet, temizlik vb.) puanlama sistemli, Google yorum yönlendirmeli (review gating), AJAX destekli, gelişmiş analitik barındıran premium müşteri yorum eklentisi.
-Version: 4.2.6
+Version: 4.2.7
 Author: QR MENÜ
 
 == Changelog ==
+
+4.2.7
+ - YENİ: KVKK / pazarlama izni (isteğe bağlı). qrm_reviews ve
+   qrm_custom_form_submissions tablolarına consent_marketing, consent_at,
+   consent_text_hash sütunları. Zorunlu olmayan tek checkbox; metin boşsa
+   render edilmez, işaretlenmezse form normal gönderilir.
+ - YENİ: Ayarlardan qrm_consent_text ve qrm_consent_page_url (Aydınlatma Metni).
+ - YENİ: Rapor görünümünde İzinli Kişiler bloğu (ad / telefon / e-posta / onay
+   tarihi), izin geri alma ve CSV dışa aktarımı. Yalnızca consent_marketing = 1
+   kayıtlar listelenir.
 
 4.2.6
  - KONTROL: qrm_reward_codes tablosunda status/used_at/source_review_id, kod listesi,
@@ -172,7 +182,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('QRM_PRO_VERSION', '4.2.6');
+define('QRM_PRO_VERSION', '4.2.7');
 define('QRM_PRO_FILE', __FILE__);
 define('QRM_PRO_PATH', plugin_dir_path(__FILE__));
 define('QRM_PRO_URL', plugin_dir_url(__FILE__));
@@ -181,6 +191,7 @@ define('QRM_PRO_URL', plugin_dir_url(__FILE__));
 require_once QRM_PRO_PATH . 'includes/settings.php';
 require_once QRM_PRO_PATH . 'includes/security.php';
 require_once QRM_PRO_PATH . 'includes/masa.php';
+require_once QRM_PRO_PATH . 'includes/consent.php';
 
 // Ödül modülü (kurulum fonksiyonu install.php içinden çağrıldığı için önce yüklenir)
 require_once QRM_PRO_PATH . 'includes/rewards/db.php';
@@ -201,6 +212,7 @@ require_once QRM_PRO_PATH . 'includes/admin/dashboard.php';
 require_once QRM_PRO_PATH . 'includes/admin/reports.php';
 require_once QRM_PRO_PATH . 'includes/admin/trend.php';
 require_once QRM_PRO_PATH . 'includes/admin/export-csv.php';
+require_once QRM_PRO_PATH . 'includes/admin/consent-report.php';
 require_once QRM_PRO_PATH . 'includes/admin/form-builder.php';
 require_once QRM_PRO_PATH . 'includes/admin/settings-page.php';
 require_once QRM_PRO_PATH . 'includes/admin/contact.php';

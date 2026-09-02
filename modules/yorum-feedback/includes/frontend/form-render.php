@@ -443,6 +443,8 @@ function qrm_pro_render_review_form($settings, $active_fields, $message, $show_g
                     <?php endforeach; ?>
                     </div>
 
+                    <?php echo qrm_pro_render_consent_checkbox($settings); ?>
+
                     <div class="qrm-captcha">
                         <label for="qrm_captcha"><?php echo esc_html(qrm_ceviri_review(__('Güvenlik sorusu:', 'qrms'))); ?> <?php echo (int)$cap['a'] . ' + ' . (int)$cap['b']; ?> = ?</label>
                         <input type="text" id="qrm_captcha" name="qrm_captcha" inputmode="numeric" autocomplete="off"

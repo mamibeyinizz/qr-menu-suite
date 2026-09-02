@@ -59,7 +59,12 @@ function qrm_cf_ajax_submit() {
         }
     }
 
-    $submission_id = qrm_cf_insert_submission($form->id, $validated['data'], qrm_pro_client_ip());
+    $submission_id = qrm_cf_insert_submission(
+        $form->id,
+        $validated['data'],
+        qrm_pro_client_ip(),
+        qrm_pro_consent_from_request()
+    );
     if (!$submission_id) {
         wp_send_json(['success' => false, 'message' => qrm_ceviri_review(__('Gönderiminiz kaydedilemedi, lütfen tekrar deneyin.', 'qrms'))]);
     }
