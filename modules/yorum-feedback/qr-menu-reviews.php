@@ -2,10 +2,18 @@
 /*
 Plugin Name: QR Menü Gelişmiş Müşteri Yorumları & Değerlendirme
 Description: QR menü sistemleri için çoklu kriter (yemek, hizmet, temizlik vb.) puanlama sistemli, Google yorum yönlendirmeli (review gating), AJAX destekli, gelişmiş analitik barındıran premium müşteri yorum eklentisi.
-Version: 4.2.4
+Version: 4.2.5
 Author: QR MENÜ
 
 == Changelog ==
+
+4.2.5
+ - YENİ: Tüm Yorumlar, Özel Form Gönderileri ve Ödül Kodları listelerinde
+   "Dışa Aktar (CSV)" butonu. Ekrandaki aktif filtreler (durum, iş akışı, masa,
+   tarih aralığı, arama) dışa aktarıma birebir uygulanır.
+ - YENİ: Liste ekranlarında tarih aralığı, arama ve (yorumlar için) masa
+   filtresi. admin_post_qrm_export_csv ucu; UTF-8 BOM, virgül ayraç, formül
+   enjeksiyonu koruması; LIMIT/OFFSET ile 1000'lik parçalarda akışlı yazım.
 
 4.2.4
  - YENİ: Rapor ekranında kriter trend grafikleri (haftalık ve aylık ortalama
@@ -149,7 +157,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('QRM_PRO_VERSION', '4.2.4');
+define('QRM_PRO_VERSION', '4.2.5');
 define('QRM_PRO_FILE', __FILE__);
 define('QRM_PRO_PATH', plugin_dir_path(__FILE__));
 define('QRM_PRO_URL', plugin_dir_url(__FILE__));
@@ -177,6 +185,7 @@ require_once QRM_PRO_PATH . 'includes/admin/hub.php';
 require_once QRM_PRO_PATH . 'includes/admin/dashboard.php';
 require_once QRM_PRO_PATH . 'includes/admin/reports.php';
 require_once QRM_PRO_PATH . 'includes/admin/trend.php';
+require_once QRM_PRO_PATH . 'includes/admin/export-csv.php';
 require_once QRM_PRO_PATH . 'includes/admin/form-builder.php';
 require_once QRM_PRO_PATH . 'includes/admin/settings-page.php';
 require_once QRM_PRO_PATH . 'includes/admin/contact.php';
