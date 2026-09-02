@@ -70,35 +70,37 @@ if ( ! function_exists( 'qmo_ajax_chat' ) ) {
 		$system_prompt = get_option( 'gemini_system_prompt', '' );
 		$history_raw   = isset( $_POST['history'] ) ? wp_unslash( $_POST['history'] ) : '';
 
+		$decoded_history = json_decode( $history_raw, true );
+		if ( ! is_array( $decoded_history ) ) {
+			$decoded_history = array();
+		}
+
 		$final_prompt = $system_prompt
 			. qmo_chat_garson_talimati()
 			. qmo_chat_siparis_talimati()
-			. qmo_chat_menu_talimati()
+			. qmo_chat_menu_talimati( $message, $decoded_history )
 			. qmo_chat_bilemedi_talimati();
 
 		// Çok adımlı sipariş onay akışının çalışabilmesi için önceki turlar
 		// 'contents' dizisinde geçmiş olarak gönderilir; aksi halde AI her
 		// mesajda hafızasız başlar ve önceki adımları hatırlayamaz.
-		$contents        = array();
-		$decoded_history = json_decode( $history_raw, true );
-		if ( is_array( $decoded_history ) ) {
-			// Geçmişi sınırla — istemci sınırsız uzun geçmiş göndererek
-			// istek başına token maliyetini şişirebilir.
-			$decoded_history = array_slice( $decoded_history, -20 );
-			foreach ( $decoded_history as $turn ) {
-				if ( ! is_array( $turn ) ) {
-					continue;
-				}
-				$role = ( isset( $turn['role'] ) && 'model' === $turn['role'] ) ? 'model' : 'user';
-				$text = isset( $turn['parts'][0]['text'] ) ? sanitize_textarea_field( $turn['parts'][0]['text'] ) : '';
-				if ( '' === $text ) {
-					continue;
-				}
-				$contents[] = array(
-					'role'  => $role,
-					'parts' => array( array( 'text' => mb_substr( $text, 0, 4000 ) ) ),
-				);
+		$contents = array();
+		// Geçmişi sınırla — istemci sınırsız uzun geçmiş göndererek
+		// istek başına token maliyetini şişirebilir.
+		$decoded_history = array_slice( $decoded_history, -20 );
+		foreach ( $decoded_history as $turn ) {
+			if ( ! is_array( $turn ) ) {
+				continue;
 			}
+			$role = ( isset( $turn['role'] ) && 'model' === $turn['role'] ) ? 'model' : 'user';
+			$text = isset( $turn['parts'][0]['text'] ) ? sanitize_textarea_field( $turn['parts'][0]['text'] ) : '';
+			if ( '' === $text ) {
+				continue;
+			}
+			$contents[] = array(
+				'role'  => $role,
+				'parts' => array( array( 'text' => mb_substr( $text, 0, 4000 ) ) ),
+			);
 		}
 		$contents[] = array(
 			'role'  => 'user',
@@ -224,16 +226,357 @@ if ( ! function_exists( 'qmo_chat_siparis_talimati' ) ) {
 }
 
 /**
- * Menü verisi talimatı (Ayarlar → Menü Verisi'nden yüklenen JSON).
+ * Menü verisi talimatı — öneri havuzu filtrelenmiş ve sıralanmış ürün listesi.
  *
+ * @param string $message Kullanıcı mesajı.
+ * @param array  $history Sohbet geçmişi (ham dizi).
  * @return string
  */
 if ( ! function_exists( 'qmo_chat_menu_talimati' ) ) {
-	function qmo_chat_menu_talimati() {
-		$menu_json = get_option( 'gemini_menu_json_data', '' );
-		if ( empty( $menu_json ) ) {
+	function qmo_chat_menu_talimati( $message = '', $history = array() ) {
+		$havuz = qmo_chat_oneri_havuzu_hazirla( $message, $history );
+		if ( empty( $havuz['urunler'] ) ) {
 			return '';
 		}
-		return "\n\nAşağıda restoranın güncel menü verisi JSON formatında verilmiştir. Ürün, fiyat, kategori ve içerik ile ilgili sorularda öncelikli olarak bu veriyi kullan, bu veride olmayan bir ürün hakkında soru sorulursa net bir dille böyle bir ürün bulunmadığını belirt:\n" . $menu_json;
+
+		$menu_json = wp_json_encode( $havuz['urunler'], JSON_UNESCAPED_UNICODE );
+		if ( ! $menu_json ) {
+			return '';
+		}
+
+		$metin  = "\n\nAşağıda restoranın güncel menü verisi JSON formatında verilmiştir. Ürün, fiyat, kategori ve içerik ile ilgili sorularda öncelikli olarak bu veriyi kullan, bu veride olmayan bir ürün hakkında soru sorulursa net bir dille böyle bir ürün bulunmadığını belirt:";
+		$metin .= "\n\nÖNERİ KURALI: Yalnızca aşağıdaki listede yer alan ürünleri önerebilirsin; listede olmayan bir ürünü uydurarak önerme.";
+
+		if ( ! empty( $havuz['cross_sell'] ) ) {
+			$metin .= "\n\nBu ürünle iyi giden ürünler: " . implode( ', ', $havuz['cross_sell'] ) . '.';
+		}
+
+		return $metin . "\n" . $menu_json;
+	}
+}
+
+/**
+ * Öneri havuzunu filtreler, sıralar ve cross-sell bilgisini üretir.
+ *
+ * @param string $message Kullanıcı mesajı.
+ * @param array  $history Sohbet geçmişi.
+ * @return array{urunler:array<int,array<string,string>>,cross_sell:string[]}
+ */
+if ( ! function_exists( 'qmo_chat_oneri_havuzu_hazirla' ) ) {
+	function qmo_chat_oneri_havuzu_hazirla( $message, $history ) {
+		$katalog = qmo_chat_oneri_urun_katalogu();
+		if ( empty( $katalog ) ) {
+			return array(
+				'urunler'    => array(),
+				'cross_sell' => array(),
+			);
+		}
+
+		$uygun = array();
+		foreach ( $katalog as $id => $urun ) {
+			if ( ! qmo_chat_oneri_havuza_uygun_mu( $id, $urun ) ) {
+				continue;
+			}
+			$uygun[ $id ] = $urun;
+		}
+
+		$kaynak_id   = qmo_chat_oneri_kaynak_urun_bul( $message, $history, $katalog );
+		$cross_ids   = array();
+		$cross_isim  = array();
+
+		if ( $kaynak_id > 0 && class_exists( 'QMO_Chatbot_DB' ) ) {
+			$kurallar = QMO_Chatbot_DB::kurallari_getir( $kaynak_id );
+			foreach ( $kurallar as $kural ) {
+				$hedef = (int) $kural->hedef_urun;
+				if ( $hedef < 1 || ! isset( $uygun[ $hedef ] ) ) {
+					continue;
+				}
+				if ( in_array( $hedef, $cross_ids, true ) ) {
+					continue;
+				}
+				$cross_ids[]  = $hedef;
+				$cross_isim[] = $uygun[ $hedef ]['urunAdi'];
+			}
+		}
+
+		$sonra = array();
+		foreach ( $uygun as $id => $urun ) {
+			if ( in_array( (int) $id, $cross_ids, true ) ) {
+				continue;
+			}
+			$sonra[ $id ] = $urun;
+		}
+
+		uasort(
+			$sonra,
+			function ( $a, $b ) {
+				$fa = isset( $a['agirlik'] ) ? (int) $a['agirlik'] : 0;
+				$fb = isset( $b['agirlik'] ) ? (int) $b['agirlik'] : 0;
+				if ( $fa === $fb ) {
+					return strcmp( $a['urunAdi'], $b['urunAdi'] );
+				}
+				return ( $fa > $fb ) ? -1 : 1;
+			}
+		);
+
+		$sirali = array();
+		foreach ( $cross_ids as $cid ) {
+			if ( isset( $uygun[ $cid ] ) ) {
+				$sirali[] = qmo_chat_oneri_json_satir( $uygun[ $cid ] );
+			}
+		}
+		foreach ( $sonra as $urun ) {
+			$sirali[] = qmo_chat_oneri_json_satir( $urun );
+		}
+
+		return array(
+			'urunler'    => $sirali,
+			'cross_sell' => $cross_isim,
+		);
+	}
+}
+
+/**
+ * Menü ürün kataloğu (ID indeksli, dahili sıralama alanlarıyla).
+ *
+ * @return array<int,array<string,mixed>>
+ */
+if ( ! function_exists( 'qmo_chat_oneri_urun_katalogu' ) ) {
+	function qmo_chat_oneri_urun_katalogu() {
+		if ( post_type_exists( 'rma_menu_item' ) ) {
+			return qmo_chat_oneri_katalog_cpt();
+		}
+
+		return qmo_chat_oneri_katalog_json();
+	}
+}
+
+/**
+ * rma_menu_item CPT'sinden katalog oluşturur.
+ *
+ * @return array<int,array<string,mixed>>
+ */
+if ( ! function_exists( 'qmo_chat_oneri_katalog_cpt' ) ) {
+	function qmo_chat_oneri_katalog_cpt() {
+		$posts = get_posts(
+			array(
+				'post_type'              => 'rma_menu_item',
+				'post_status'            => 'publish',
+				'posts_per_page'         => 500,
+				'orderby'                => 'menu_order',
+				'order'                  => 'ASC',
+				'no_found_rows'          => true,
+				'update_post_meta_cache' => true,
+				'update_post_term_cache' => true,
+			)
+		);
+
+		$katalog = array();
+		foreach ( $posts as $post ) {
+			$fiyat = function_exists( 'rma_get_effective_price' )
+				? rma_get_effective_price( $post->ID )
+				: get_post_meta( $post->ID, 'rma_price', true );
+			$kat   = wp_get_post_terms( $post->ID, 'rma_category', array( 'fields' => 'names' ) );
+			$agir  = (int) get_post_meta( $post->ID, '_qmo_oneri_agirlik', true );
+			if ( $agir < 1 ) {
+				$agir = 50;
+			}
+
+			$katalog[ (int) $post->ID ] = array(
+				'id'       => (int) $post->ID,
+				'urunAdi'  => $post->post_title,
+				'kategori' => ( is_array( $kat ) && $kat ) ? $kat[0] : '',
+				'aciklama' => wp_strip_all_tags( $post->post_excerpt ? $post->post_excerpt : $post->post_content ),
+				'fiyat'    => is_numeric( $fiyat ) ? (string) $fiyat : (string) $fiyat,
+				'dahil'    => get_post_meta( $post->ID, '_qmo_oneri_dahil', true ),
+				'agirlik'  => max( 0, min( 100, $agir ) ),
+				'tukendi'  => qmo_chat_oneri_tukendi_mi( $post->ID ),
+			);
+		}
+
+		return $katalog;
+	}
+}
+
+/**
+ * Kayıtlı menü JSON'ından katalog oluşturur (CPT yoksa yedek).
+ *
+ * @return array<int,array<string,mixed>>
+ */
+if ( ! function_exists( 'qmo_chat_oneri_katalog_json' ) ) {
+	function qmo_chat_oneri_katalog_json() {
+		$menu_json = get_option( 'gemini_menu_json_data', '' );
+		if ( '' === $menu_json ) {
+			return array();
+		}
+
+		$ham = json_decode( $menu_json, true );
+		if ( ! is_array( $ham ) ) {
+			return array();
+		}
+
+		$katalog = array();
+		$sira    = 0;
+		foreach ( $ham as $satir ) {
+			if ( ! is_array( $satir ) || empty( $satir['urunAdi'] ) ) {
+				continue;
+			}
+			++$sira;
+			$ad    = (string) $satir['urunAdi'];
+			$post  = get_page_by_title( $ad, OBJECT, 'rma_menu_item' );
+			$pid   = ( $post && isset( $post->ID ) ) ? (int) $post->ID : ( 100000 + $sira );
+			$agir  = $post ? (int) get_post_meta( $post->ID, '_qmo_oneri_agirlik', true ) : 50;
+			$dahil = $post ? get_post_meta( $post->ID, '_qmo_oneri_dahil', true ) : '';
+
+			if ( $agir < 1 ) {
+				$agir = 50;
+			}
+
+			$katalog[ $pid ] = array(
+				'id'       => $pid,
+				'urunAdi'  => $ad,
+				'kategori' => isset( $satir['kategori'] ) ? (string) $satir['kategori'] : '',
+				'aciklama' => isset( $satir['aciklama'] ) ? (string) $satir['aciklama'] : '',
+				'fiyat'    => isset( $satir['fiyat'] ) ? (string) $satir['fiyat'] : '',
+				'dahil'    => $dahil,
+				'agirlik'  => max( 0, min( 100, $agir ) ),
+				'tukendi'  => ! empty( $satir['tukendi'] ) ? 1 : ( $post ? (int) qmo_chat_oneri_tukendi_mi( $post->ID ) : 0 ),
+			);
+		}
+
+		return $katalog;
+	}
+}
+
+/**
+ * Ürün öneri havuzuna dahil edilebilir mi?
+ *
+ * @param int                  $id   Ürün kimliği.
+ * @param array<string,mixed>  $urun Katalog satırı.
+ * @return bool
+ */
+if ( ! function_exists( 'qmo_chat_oneri_havuza_uygun_mu' ) ) {
+	function qmo_chat_oneri_havuza_uygun_mu( $id, $urun ) {
+		$dahil = isset( $urun['dahil'] ) ? (string) $urun['dahil'] : '';
+		if ( '0' === $dahil ) {
+			return false;
+		}
+
+		if ( ! empty( $urun['tukendi'] ) ) {
+			return false;
+		}
+
+		// Ürün bazlı servis saati meta'sı repoda yok. qrms_cs_is_open_at()
+		// yalnızca restoran düzeyinde çalışır; ürün kısıtı için kullanılmaz.
+
+		return true;
+	}
+}
+
+/**
+ * Ürün tükendi mi?
+ *
+ * @param int $post_id Ürün kimliği.
+ * @return bool
+ */
+if ( ! function_exists( 'qmo_chat_oneri_tukendi_mi' ) ) {
+	function qmo_chat_oneri_tukendi_mi( $post_id ) {
+		if ( function_exists( 'rma_urun_tukendi' ) ) {
+			return rma_urun_tukendi( $post_id );
+		}
+		if ( class_exists( 'RMA_Tukendi' ) ) {
+			return RMA_Tukendi::urun_tukendi( $post_id );
+		}
+
+		return '1' === (string) get_post_meta( $post_id, '_rma_tukendi', true );
+	}
+}
+
+/**
+ * Prompt JSON satırı (ağırlık ve dahili alanlar çıkarılır).
+ *
+ * @param array<string,mixed> $urun Katalog satırı.
+ * @return array<string,string>
+ */
+if ( ! function_exists( 'qmo_chat_oneri_json_satir' ) ) {
+	function qmo_chat_oneri_json_satir( $urun ) {
+		return array(
+			'kategori' => isset( $urun['kategori'] ) ? (string) $urun['kategori'] : '',
+			'urunAdi'  => isset( $urun['urunAdi'] ) ? (string) $urun['urunAdi'] : '',
+			'aciklama' => isset( $urun['aciklama'] ) ? (string) $urun['aciklama'] : '',
+			'fiyat'    => isset( $urun['fiyat'] ) ? (string) $urun['fiyat'] : '',
+		);
+	}
+}
+
+/**
+ * Sohbet metninde geçen kaynak ürün kimliğini bulur.
+ *
+ * @param string               $message Kullanıcı mesajı.
+ * @param array                $history Geçmiş.
+ * @param array<int,array>     $katalog Ürün kataloğu.
+ * @return int
+ */
+if ( ! function_exists( 'qmo_chat_oneri_kaynak_urun_bul' ) ) {
+	function qmo_chat_oneri_kaynak_urun_bul( $message, $history, $katalog ) {
+		$parcalar = array( (string) $message );
+		foreach ( (array) $history as $turn ) {
+			if ( ! is_array( $turn ) ) {
+				continue;
+			}
+			$metin = isset( $turn['parts'][0]['text'] ) ? (string) $turn['parts'][0]['text'] : '';
+			if ( '' !== $metin ) {
+				$parcalar[] = $metin;
+			}
+		}
+
+		$birlesik = qmo_chat_oneri_metin_normalize( implode( ' ', $parcalar ) );
+		if ( '' === $birlesik ) {
+			return 0;
+		}
+
+		$adaylar = array();
+		foreach ( $katalog as $id => $urun ) {
+			$ad = isset( $urun['urunAdi'] ) ? qmo_chat_oneri_metin_normalize( $urun['urunAdi'] ) : '';
+			if ( '' === $ad ) {
+				continue;
+			}
+			if ( false !== mb_strpos( $birlesik, $ad, 0, 'UTF-8' ) ) {
+				$adaylar[] = array(
+					'id'  => (int) $id,
+					'len' => mb_strlen( $ad, 'UTF-8' ),
+				);
+			}
+		}
+
+		if ( empty( $adaylar ) ) {
+			return 0;
+		}
+
+		usort(
+			$adaylar,
+			function ( $a, $b ) {
+				return $b['len'] - $a['len'];
+			}
+		);
+
+		return (int) $adaylar[0]['id'];
+	}
+}
+
+/**
+ * Ürün adı eşleştirmesi için metin sadeleştirme.
+ *
+ * @param string $metin Ham metin.
+ * @return string
+ */
+if ( ! function_exists( 'qmo_chat_oneri_metin_normalize' ) ) {
+	function qmo_chat_oneri_metin_normalize( $metin ) {
+		if ( class_exists( 'RMA_Tukendi' ) ) {
+			return RMA_Tukendi::ad_normalize( $metin );
+		}
+
+		$metin = function_exists( 'mb_strtolower' ) ? mb_strtolower( trim( (string) $metin ), 'UTF-8' ) : strtolower( trim( (string) $metin ) );
+		return preg_replace( '/\s+/u', ' ', $metin );
 	}
 }
