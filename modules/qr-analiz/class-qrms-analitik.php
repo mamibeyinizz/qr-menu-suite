@@ -42,7 +42,7 @@ class QRMS_Analitik {
 	/**
 	 * Şema sürümü. masa_no sütunu 1.1 ile geldi.
 	 */
-	const DB_SURUM = '1.1';
+	const DB_SURUM = '1.2';
 
 	/**
 	 * Şema sürümünün tutulduğu option.
@@ -904,6 +904,7 @@ class QRMS_Analitik {
 				category_name varchar(255) NOT NULL DEFAULT '',
 				masa_no varchar(64) NOT NULL DEFAULT '',
 				ip_hash varchar(32) NOT NULL DEFAULT '',
+				qty smallint(5) unsigned NOT NULL DEFAULT 1,
 				created_at datetime NOT NULL,
 				PRIMARY KEY  (id),
 				KEY idx_type (event_type),
@@ -1052,10 +1053,17 @@ class QRMS_Analitik {
 				'category_name' => '',
 				'masa_no'       => self::masa_belirle(),
 				'ip_hash'       => self::ip_hash(),
+				'qty'           => 1,
 				'created_at'    => current_time( 'mysql' ),
 			);
 
 			$satir = array_merge( $varsayilan, $satir );
+
+			if ( isset( $satir['qty'] ) ) {
+				$satir['qty'] = max( 1, min( 999, absint( $satir['qty'] ) ) );
+			} else {
+				$satir['qty'] = 1;
+			}
 
 			if ( isset( $satir['event_type'] ) ) {
 				$satir['event_type'] = substr( sanitize_key( (string) $satir['event_type'] ), 0, 30 );
@@ -1081,7 +1089,7 @@ class QRMS_Analitik {
 			$wpdb->insert(
 				self::tablo(),
 				$satir,
-				array( '%s', '%d', '%s', '%s', '%s', '%s', '%s' )
+				array( '%s', '%d', '%s', '%s', '%s', '%s', '%d', '%s' )
 			);
 		} catch ( Exception $e ) {
 			return;

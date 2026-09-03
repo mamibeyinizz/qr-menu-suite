@@ -391,6 +391,8 @@ if ( ! function_exists( 'qmo_analitik_siparis_yaz' ) ) {
 				$alan = qmo_analitik_urun_ada_gore( $ad );
 			}
 
+			$adet = isset( $it['adet'] ) ? max( 1, min( 999, absint( $it['adet'] ) ) ) : 1;
+
 			qmo_analitik_yaz(
 				array(
 					'event_type'    => $tip,
@@ -398,6 +400,7 @@ if ( ! function_exists( 'qmo_analitik_siparis_yaz' ) ) {
 					'item_name'     => isset( $alan['item_name'] ) && '' !== $alan['item_name'] ? $alan['item_name'] : $ad,
 					'category_name' => isset( $alan['category_name'] ) ? $alan['category_name'] : '',
 					'masa_no'       => $masa,
+					'qty'           => $adet,
 				)
 			);
 		}

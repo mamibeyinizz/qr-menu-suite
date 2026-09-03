@@ -318,9 +318,11 @@ class QRMS_Admin {
 				'accent' => '#35d1b4',
 				'icon'   => 'dashicons-admin-tools',
 				'items'  => array(
+					'qr-servis-paneli',
 					'qr-masa',
 					'qr-masa-oturum-guvenligi',
 					'qr-analiz',
+					'qr-menu-muhendisligi',
 					'qr-galeri',
 					'qr-ceviri',
 					'qr-chatbot',
@@ -1857,9 +1859,44 @@ class QRMS_Admin {
 		$status  = QRMS_License_Client::get_last_status();
 		$active  = QRMS_License_Client::get_active_modules();
 		$is_open = ( is_array( $result ) && 'active' !== $result['status'] );
+
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$tab = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : 'genel';
+		if ( ! in_array( $tab, array( 'genel', 'giris' ), true ) ) {
+			$tab = 'genel';
+		}
+
+		$base_url = admin_url( 'admin.php?page=' . self::SETTINGS_SLUG );
 		?>
 		<div class="wrap qrms-wrap">
 			<h1 class="qrms-title"><?php esc_html_e( 'Genel Ayarlar', 'qrms' ); ?></h1>
+
+			<nav class="nav-tab-wrapper">
+				<a href="<?php echo esc_url( $base_url ); ?>" class="nav-tab <?php echo 'genel' === $tab ? 'nav-tab-active' : ''; ?>"><?php esc_html_e( 'Genel', 'qrms' ); ?></a>
+				<a href="<?php echo esc_url( add_query_arg( 'tab', 'giris', $base_url ) ); ?>" class="nav-tab <?php echo 'giris' === $tab ? 'nav-tab-active' : ''; ?>"><?php esc_html_e( 'Giriş Ekranı', 'qrms' ); ?></a>
+			</nav>
+
+			<?php if ( 'giris' === $tab ) : ?>
+				<?php
+				wp_enqueue_style( 'wp-color-picker' );
+				wp_enqueue_script( 'wp-color-picker' );
+				wp_enqueue_media();
+				wp_enqueue_style(
+					'qrms-login',
+					QRMS_PLUGIN_URL . 'assets/css/login.css',
+					array(),
+					QRMS_Helpers::asset_version( 'assets/css/login.css' )
+				);
+				wp_enqueue_script(
+					'qrms-login-admin',
+					QRMS_PLUGIN_URL . 'assets/js/login-admin.js',
+					array( 'jquery', 'wp-color-picker' ),
+					QRMS_Helpers::asset_version( 'assets/js/login-admin.js' ),
+					true
+				);
+				QRMS_Login::render_tab();
+				?>
+			<?php else : ?>
 
 			<?php if ( is_array( $result ) && 'active' === $result['status'] ) : ?>
 				<div class="qrms-alert qrms-alert-success">
@@ -1919,6 +1956,7 @@ class QRMS_Admin {
 					<?php QRMS_Wizard::render_form( $result ); ?>
 				</div>
 			</details>
+			<?php endif; ?>
 		</div>
 		<?php
 	}
