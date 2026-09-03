@@ -987,3 +987,18 @@
 	border-color: #2271b1;
 	box-shadow: 0 0 0 1px #2271b1;
 }
+
+/* Hızlı kurulum — hedef alan vurgusu (Ödül Sistemi) */
+@keyframes qrm-highlight-pulse {
+	0%   { outline-color: #f59e0b; background-color: rgba(245, 158, 11, 0.18); }
+	70%  { outline-color: #f59e0b; background-color: rgba(245, 158, 11, 0.10); }
+	100% { outline-color: transparent; background-color: transparent; }
+}
+
+.qrm-highlight {
+	outline: 2px solid #f59e0b;
+	outline-offset: 2px;
+	background-color: rgba(245, 158, 11, 0.12);
+	animation: qrm-highlight-pulse 2s ease-out forwards;
+	border-radius: 4px;
+}

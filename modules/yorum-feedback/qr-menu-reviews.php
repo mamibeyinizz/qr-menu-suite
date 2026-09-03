@@ -2,10 +2,15 @@
 /*
 Plugin Name: QR Menü Gelişmiş Müşteri Yorumları & Değerlendirme
 Description: QR menü sistemleri için çoklu kriter (yemek, hizmet, temizlik vb.) puanlama sistemli, Google yorum yönlendirmeli (review gating), AJAX destekli, gelişmiş analitik barındıran premium müşteri yorum eklentisi.
-Version: 4.4.0
+Version: 4.4.1
 Author: QR MENÜ
 
 == Changelog ==
+
+4.4.1
+ - DÜZELTME (kök neden): Hızlı Kurulum checklist'inde "Bu ayara git" / "düzelt"
+   bağlantıları aynı alt sekmede görsel değişiklik yapmıyor ve sayfayı en üste
+   kaydırıyordu; artık ilgili alana kaydırıp vurguluyor (JS yoksa sekme+çapa).
 
 4.4.0
  - YENİ: Yorum formu 3 adımlı akış — Puanlama → Yorumunuz → Bilgileriniz (+ isteğe bağlı özet adımı).
@@ -231,7 +236,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('QRM_PRO_VERSION', '4.4.0');
+define('QRM_PRO_VERSION', '4.4.1');
 define('QRM_PRO_FILE', __FILE__);
 define('QRM_PRO_PATH', plugin_dir_path(__FILE__));
 define('QRM_PRO_URL', plugin_dir_url(__FILE__));
