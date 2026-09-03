@@ -2,10 +2,18 @@
 /*
 Plugin Name: QR Menü Gelişmiş Müşteri Yorumları & Değerlendirme
 Description: QR menü sistemleri için çoklu kriter (yemek, hizmet, temizlik vb.) puanlama sistemli, Google yorum yönlendirmeli (review gating), AJAX destekli, gelişmiş analitik barındıran premium müşteri yorum eklentisi.
-Version: 4.3.1
+Version: 4.4.0
 Author: QR MENÜ
 
 == Changelog ==
+
+4.4.0
+ - YENİ: Yorum formu 3 adımlı akış — Puanlama → Yorumunuz → Bilgileriniz (+ isteğe bağlı özet adımı).
+ - YENİ: Etiketli stepper (tamamlanan/aktif/gelecek durumları, çizgi dolumu, mobil optimizasyon).
+ - YENİ: qrm_pro_build_steps() / qrm_pro_steps_head() paylaşılan PHP yardımcıları; JS adım listesini sunucudan alır.
+ - YENİ: Özel formlarda çok adımlı yapı (step_no sütunu, builder'da adım seçici, canlı önizlemede gruplama).
+ - İYİLEŞTİRME: Adım bazlı zorunlu alan doğrulaması, tamamlanan adıma tıklayarak geri dönüş, erişilebilirlik (ARIA).
+ - İYİLEŞTİRME: JS kapalıyken tek sayfa form; mevcut sınıf/id'ler korunur.
 
 4.3.1
  - YENİ: qrm_reward_events tablosu — popup_shown, google_clicked, returned,
@@ -223,7 +231,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('QRM_PRO_VERSION', '4.3.1');
+define('QRM_PRO_VERSION', '4.4.0');
 define('QRM_PRO_FILE', __FILE__);
 define('QRM_PRO_PATH', plugin_dir_path(__FILE__));
 define('QRM_PRO_URL', plugin_dir_url(__FILE__));
@@ -267,6 +275,7 @@ require_once QRM_PRO_PATH . 'includes/admin/custom-form-builder.php';
 require_once QRM_PRO_PATH . 'includes/admin/form-submissions.php';
 
 // Ön yüz
+require_once QRM_PRO_PATH . 'includes/frontend/form-steps.php';
 require_once QRM_PRO_PATH . 'includes/frontend/form-render.php';
 require_once QRM_PRO_PATH . 'includes/frontend/form-script.php';
 // Yorum listesinin sayfalaması ve kart çıktısı; kısa kod da AJAX ucu da

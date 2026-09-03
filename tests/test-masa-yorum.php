@@ -104,6 +104,7 @@ qrms_test(
 // Yalnızca fonksiyon tanımları; hook kaydı yok.
 require_once QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/settings.php';
 require_once QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/frontend/reviews-list.php';
+require_once QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/frontend/form-steps.php';
 require_once QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/frontend/form-render.php';
 
 /**
@@ -888,6 +889,52 @@ qrms_test(
 );
 $GLOBALS['wpdb'] = $qrms_gonderim_onceki_wpdb;
 unset( $qrms_gonderim_onceki_wpdb );
+
+qrms_test(
+	'qrm_pro_build_steps dinamik adım sayısı ve stepper eşiği',
+	function () {
+		require_once QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/settings.php';
+		require_once QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/frontend/form-steps.php';
+
+		$settings = qrm_pro_default_settings();
+		$field    = function ( $key, $type ) {
+			return (object) array(
+				'id'          => 1,
+				'field_key'   => $key,
+				'field_label' => $key,
+				'field_type'  => $type,
+				'is_required' => 0,
+				'column_width'=> 'full',
+			);
+		};
+
+		$full = qrm_pro_build_steps(
+			$settings,
+			array(
+				$field( 'comment', 'textarea' ),
+				$field( 'customer_name', 'text' ),
+			),
+			array( 'form_source' => 'review' )
+		);
+		qrms_assert_true( $full['use_stepper'], 'kriter + yorum + bilgi = stepper' );
+		qrms_assert_same( 3, count( $full['steps'] ), '3 adım' );
+
+		$no_textarea = qrm_pro_build_steps(
+			$settings,
+			array( $field( 'customer_name', 'text' ) ),
+			array( 'form_source' => 'review' )
+		);
+		qrms_assert_same( 2, count( $no_textarea['steps'] ), 'textarea yoksa 2 adım' );
+
+		$settings['crit_1_active'] = 0;
+		$settings['crit_2_active'] = 0;
+		$settings['crit_3_active'] = 0;
+		$settings['crit_4_active'] = 0;
+		$settings['crit_5_active'] = 0;
+		$tek = qrm_pro_build_steps( $settings, array(), array( 'form_source' => 'review' ) );
+		qrms_assert_false( $tek['use_stepper'], 'kriter ve alan yoksa stepper yok' );
+	}
+);
 
 /* ---------------------------------------------------------------------------
  * 9a-0. QR Analiz — izleme nonce'u ve saklama politikası

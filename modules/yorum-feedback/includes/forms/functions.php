@@ -62,6 +62,7 @@ function qrm_cf_default_form_settings() {
         'btn_color'       => '#10b981',
         'btn_text_color'  => '#ffffff',
         'border_radius'   => 10,
+        'step_labels'     => [],
     ];
 }
 
@@ -103,6 +104,15 @@ function qrm_cf_sanitize_form_settings($raw) {
     }
     if (isset($raw['border_radius'])) {
         $out['border_radius'] = max(0, min(40, intval($raw['border_radius'])));
+    }
+    if (isset($raw['step_labels']) && is_array($raw['step_labels'])) {
+        $labels = [];
+        for ($i = 1; $i <= 4; $i++) {
+            if (isset($raw['step_labels'][$i])) {
+                $labels[$i] = sanitize_text_field($raw['step_labels'][$i]);
+            }
+        }
+        $out['step_labels'] = $labels;
     }
     if ($out['submit_text'] === '')     $out['submit_text']     = $defaults['submit_text'];
     if ($out['success_message'] === '') $out['success_message'] = $defaults['success_message'];
@@ -370,6 +380,7 @@ function qrm_cf_replace_fields($form_id, $fields) {
             !empty($field['is_required']) ? 1 : 0,
             $order,
             qrm_pro_sanitize_column_width(isset($field['column_width']) ? $field['column_width'] : 'full'),
+            qrm_pro_sanitize_step_no(isset($field['step_no']) ? $field['step_no'] : 1),
         ];
 
         $order++;
@@ -384,12 +395,12 @@ function qrm_cf_replace_fields($form_id, $fields) {
             $params   = [];
 
             foreach ($parca as $satir) {
-                $degerler[] = '(%d, %s, %s, %s, %s, %d, %d, %s)';
+                $degerler[] = '(%d, %s, %s, %s, %s, %d, %d, %s, %d)';
                 foreach ($satir as $deger) $params[] = $deger;
             }
 
             $wpdb->query($wpdb->prepare(
-                "INSERT INTO $table (form_id, field_key, label, field_type, options, is_required, sort_order, column_width)
+                "INSERT INTO $table (form_id, field_key, label, field_type, options, is_required, sort_order, column_width, step_no)
                  VALUES " . implode(', ', $degerler),
                 $params
             ));

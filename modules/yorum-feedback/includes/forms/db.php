@@ -58,6 +58,7 @@ function qrm_cf_install() {
         is_required tinyint(1) DEFAULT 0,
         sort_order int(11) DEFAULT 0,
         column_width varchar(10) DEFAULT 'full' NOT NULL,
+        step_no tinyint(1) DEFAULT 1 NOT NULL,
         PRIMARY KEY  (id),
         KEY form_id (form_id)
     ) $charset_collate;";
