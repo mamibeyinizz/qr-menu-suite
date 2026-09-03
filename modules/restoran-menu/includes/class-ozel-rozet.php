@@ -55,6 +55,53 @@ class RMA_Ozel_Rozet {
 	}
 
 	/**
+	 * Her rozet slug'ının kaç üründe kullanıldığını döndürür (tek sorgu).
+	 *
+	 * @return array<string,int>
+	 */
+	public static function kullanim_sayilari() {
+		static $memo = null;
+
+		if ( null !== $memo ) {
+			return $memo;
+		}
+
+		global $wpdb;
+
+		$memo = array();
+		$rows = $wpdb->get_col(
+			$wpdb->prepare(
+				"SELECT meta_value FROM {$wpdb->postmeta} WHERE meta_key = %s",
+				self::META
+			)
+		);
+
+		foreach ( $rows as $ham ) {
+			$sluglar = maybe_unserialize( $ham );
+
+			if ( ! is_array( $sluglar ) ) {
+				continue;
+			}
+
+			foreach ( $sluglar as $slug ) {
+				$slug = sanitize_key( (string) $slug );
+
+				if ( '' === $slug ) {
+					continue;
+				}
+
+				if ( ! isset( $memo[ $slug ] ) ) {
+					$memo[ $slug ] = 0;
+				}
+
+				++$memo[ $slug ];
+			}
+		}
+
+		return $memo;
+	}
+
+	/**
 	 * Tanımları kaydeder.
 	 *
 	 * @param mixed $ham POST edilen dizi.

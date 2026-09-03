@@ -78,14 +78,339 @@
 }
 
 .rma-liste-kap {
-    border: 1px solid #dcdcdc;
-    border-radius: 4px;
+    border: 1px solid var(--rma-a-border, #dcdcdc);
+    border-radius: 6px;
     padding: 12px 14px;
     margin-bottom: 14px;
-    background: #fff;
+    background: var(--rma-a-surface, #fff);
+    position: relative;
 }
 
 .rma-liste-sil {
     color: #b32d2e;
     margin-left: 10px;
+}
+
+/* ---- Ekstralar ve Rozetler sayfası ---- */
+
+.rma-secenek-sayfa h2,
+.rma-secenek-sayfa h3 {
+    color: var(--rma-a-text, #1d2327);
+}
+
+.rma-secenek-sekmeler {
+    display: flex;
+    gap: 0;
+    margin: 0 0 20px;
+    max-width: 900px;
+    border-bottom: 1px solid var(--rma-a-border, #3a3a3a);
+}
+
+.rma-secenek-sekme {
+    background: transparent;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    color: var(--rma-a-muted, #888);
+    cursor: pointer;
+    flex: 1 1 50%;
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: -1px;
+    padding: 10px 16px;
+    text-align: center;
+    text-decoration: none;
+    transition: color .15s, border-color .15s;
+}
+
+.rma-secenek-sekme:hover,
+.rma-secenek-sekme:focus {
+    color: var(--rma-a-text, #f5f0e8);
+    outline: none;
+}
+
+.rma-secenek-sekme.is-active {
+    border-bottom-color: var(--rma-a-accent, #c9a84c);
+    color: var(--rma-a-text, #f5f0e8);
+}
+
+.rma-secenek-panel[hidden] {
+    display: none !important;
+}
+
+.rma-liste-baslik {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    margin: 0 0 10px;
+    padding-left: 36px;
+}
+
+.rma-kullanim-sayaci {
+    color: var(--rma-a-muted, #888);
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.rma-sira-arac {
+    display: flex;
+    gap: 2px;
+    position: absolute;
+    left: 8px;
+    top: 12px;
+}
+
+.rma-liste-kap .rma-sira-arac {
+    position: absolute;
+    left: 8px;
+    top: 14px;
+}
+
+.rma-sira-tutamac,
+.rma-sira-yukari,
+.rma-sira-asagi {
+    align-items: center;
+    background: var(--rma-a-surface-2, #2a2a2a);
+    border: 1px solid var(--rma-a-border, #3a3a3a);
+    border-radius: 4px;
+    color: var(--rma-a-muted, #888);
+    cursor: pointer;
+    display: inline-flex;
+    font-size: 12px;
+    height: 32px;
+    justify-content: center;
+    min-width: 32px;
+    padding: 0 6px;
+}
+
+.rma-sira-tutamac {
+    cursor: grab;
+}
+
+.rma-sira-tutamac:active {
+    cursor: grabbing;
+}
+
+.rma-sira-sutun {
+    width: 90px;
+}
+
+.rma-rozet-tablo .rma-sira-arac {
+    position: static;
+}
+
+.rma-surukleniyor {
+    opacity: .55;
+}
+
+.rma-suruk-hedef {
+    outline: 2px dashed var(--rma-a-accent, #c9a84c);
+}
+
+.rma-ikon-secici {
+    position: relative;
+}
+
+.rma-ikon-tetik {
+    align-items: center;
+    background: var(--rma-a-surface-2, #2a2a2a);
+    border: 1px solid var(--rma-a-border, #3a3a3a);
+    border-radius: 4px;
+    color: var(--rma-a-text, #f5f0e8);
+    cursor: pointer;
+    display: inline-flex;
+    font-size: 18px;
+    height: 44px;
+    justify-content: center;
+    min-width: 44px;
+    padding: 0 8px;
+}
+
+.rma-ikon-panel {
+    background: var(--rma-a-surface, #1e1e1e);
+    border: 1px solid var(--rma-a-border, #3a3a3a);
+    border-radius: 6px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, .35);
+    max-width: 280px;
+    padding: 10px;
+    position: absolute;
+    z-index: 100100;
+}
+
+.rma-ikon-grup-baslik {
+    color: var(--rma-a-muted, #888);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .06em;
+    margin: 8px 0 4px;
+    text-transform: uppercase;
+}
+
+.rma-ikon-grup-baslik:first-child {
+    margin-top: 0;
+}
+
+.rma-ikon-sec {
+    background: var(--rma-a-surface-2, #2a2a2a);
+    border: 1px solid var(--rma-a-border, #3a3a3a);
+    border-radius: 4px;
+    cursor: pointer;
+    display: inline-block;
+    font-size: 20px;
+    height: 40px;
+    line-height: 38px;
+    margin: 2px;
+    text-align: center;
+    width: 40px;
+}
+
+.rma-ikon-sec.rma-ikon-bos {
+    display: block;
+    font-size: 12px;
+    height: auto;
+    line-height: 1.4;
+    margin: 0 0 8px;
+    padding: 8px;
+    width: auto;
+}
+
+.rma-ikon-ozel {
+    border-top: 1px solid var(--rma-a-border, #3a3a3a);
+    margin-top: 8px;
+    padding-top: 8px;
+}
+
+.rma-ikon-ozel label {
+    color: var(--rma-a-muted, #888);
+    font-size: 12px;
+}
+
+.rma-ikon-ozel-girdi {
+    margin-left: 4px;
+    width: 80px;
+}
+
+.rma-renk-alan {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.rma-renk-palet {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.rma-renk-ornek {
+    border: 2px solid transparent;
+    border-radius: 4px;
+    cursor: pointer;
+    height: 28px;
+    min-width: 28px;
+    padding: 0;
+    width: 28px;
+}
+
+.rma-renk-ornek:hover,
+.rma-renk-ornek:focus {
+    border-color: var(--rma-a-text, #f5f0e8);
+    outline: none;
+}
+
+.rma-badge.rma-badge-ozel.rma-rozet-onizleme-kutu {
+    background: var(--rma-rozet-renk, #c9a84c);
+    border-radius: 3px;
+    color: #111;
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 6px 10px;
+    white-space: nowrap;
+}
+
+.rma-bos-durum {
+    margin: 0 0 18px;
+    text-align: center;
+}
+
+.rma-secenek-aksiyonlar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 16px;
+}
+
+.rma-secenek-aksiyonlar .button {
+    min-height: 44px;
+}
+
+/* Mobil: tablo satırları karta dönüşür */
+@media (max-width: 782px) {
+    .rma-secenek-tablo thead {
+        display: none;
+    }
+
+    .rma-secenek-tablo tbody tr {
+        border: 1px solid var(--rma-a-border, #dcdcdc);
+        border-radius: 6px;
+        display: block;
+        margin-bottom: 10px;
+        padding: 8px 10px;
+    }
+
+    .rma-secenek-tablo tbody td {
+        border: 0;
+        display: block;
+        padding: 6px 0;
+    }
+
+    .rma-secenek-tablo tbody td::before {
+        color: var(--rma-a-muted, #888);
+        content: attr(data-label);
+        display: block;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: .04em;
+        margin-bottom: 4px;
+        text-transform: uppercase;
+    }
+
+    .rma-secenek-tablo tbody td:empty::before,
+    .rma-secenek-tablo .rma-sira-sutun::before {
+        display: none;
+    }
+
+    .rma-rozet-tablo .rma-sira-sutun {
+        border-bottom: 1px solid var(--rma-a-border, #3a3a3a);
+        margin-bottom: 8px;
+        padding-bottom: 8px;
+    }
+
+    .rma-liste-baslik {
+        flex-direction: column;
+        align-items: flex-start;
+        padding-left: 0;
+        padding-top: 40px;
+    }
+
+    .rma-liste-kap .rma-sira-arac {
+        left: 10px;
+        top: 10px;
+    }
+
+    .rma-ikon-tetik,
+    .rma-sira-tutamac,
+    .rma-sira-yukari,
+    .rma-sira-asagi,
+    .rma-tekrar-sil,
+    .rma-liste-sil {
+        min-height: 44px;
+        min-width: 44px;
+    }
+
+    .rma-secenek-sekme {
+        font-size: 13px;
+        padding: 12px 8px;
+    }
 }
