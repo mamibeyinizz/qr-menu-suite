@@ -394,13 +394,6 @@ function qrm_pro_admin_dashboard() {
         $toplam = qrm_pro_admin_reviews_total($durum, $stats, $sekme, $wf, $wf_counts);
     }
 
-    $review_ids = array_map(function ($row) {
-        return (int) $row->id;
-    }, $reviews);
-    $review_media_map = function_exists('qrm_pro_get_review_media_bulk')
-        ? qrm_pro_get_review_media_bulk($review_ids)
-        : [];
-
     $sekme_url = $sekme === '' ? $self_url : add_query_arg(['sekme' => $sekme], $self_url);
     if ($durum !== '') {
         $sekme_url = add_query_arg(['durum' => $durum], $sekme_url);
@@ -435,6 +428,13 @@ function qrm_pro_admin_dashboard() {
     if ($stats['table_ok'] && $toplam > 0) {
         $reviews = qrm_pro_admin_fetch_reviews($durum, $per_page, $paged, $sekme, $esik, $wf, $has_list_filters ? $list_filters : []);
     }
+
+    $review_ids = array_map(function ($row) {
+        return (int) $row->id;
+    }, $reviews);
+    $review_media_map = function_exists('qrm_pro_get_review_media_bulk')
+        ? qrm_pro_get_review_media_bulk($review_ids)
+        : [];
 
     $workflow_statuses = qrm_pro_review_workflow_statuses();
     $wf_total          = qrm_pro_workflow_counts_total($wf_counts);
