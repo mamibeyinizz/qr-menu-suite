@@ -2709,7 +2709,8 @@ if ( ! defined( 'ARRAY_A' ) ) {
  * Yorum tablosu taklidi — yalnızca tablo varlığı ve basit sayımlar.
  */
 class QRMS_Test_Wpdb {
-	public $prefix = 'wp_';
+	public $prefix   = 'wp_';
+	public $postmeta = 'wp_postmeta';
 
 	public function prepare( $sql, ...$args ) {
 		foreach ( $args as $a ) {

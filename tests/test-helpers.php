@@ -15,12 +15,14 @@
  * bölünürse testler düşer.
  */
 class QRMS_Sayan_Wpdb {
-	public $prefix  = 'wp_';
-	public $queries = array();
-	public $rows    = array();
-	public $vars    = array();
-	public $results = array();
-	public $dbh     = true;
+	public $prefix   = 'wp_';
+	public $postmeta = 'wp_postmeta';
+	public $queries  = array();
+	public $rows     = array();
+	public $vars     = array();
+	public $results  = array();
+	public $cols     = array();
+	public $dbh      = true;
 	public $kapandi = 0;
 	public $acildi  = 0;
 
@@ -73,6 +75,43 @@ class QRMS_Sayan_Wpdb {
 		$next = array_shift( $this->results );
 
 		return is_array( $next ) ? $next : array();
+	}
+
+	/**
+	 * Tek sütun döndüren sorgular. RMA_Ekstra::kullanim_sayilari() gibi
+	 * `SELECT meta_value FROM wp_postmeta WHERE meta_key = '...'` biçimindeki
+	 * sorguları $GLOBALS['qrms_test']['post_meta'] üzerinden yanıtlar —
+	 * QRMS_Test_Wpdb::get_col() ile aynı sözleşme (bkz. test-core.php).
+	 *
+	 * @param string $sql Sorgu.
+	 * @return array
+	 */
+	public function get_col( $sql ) {
+		$this->queries[] = $sql;
+
+		if ( ! empty( $this->cols ) ) {
+			$next = array_shift( $this->cols );
+
+			return is_array( $next ) ? $next : array();
+		}
+
+		if ( false === strpos( $sql, 'postmeta' ) || ! preg_match( "/meta_key = '([^']+)'/", $sql, $eslesme ) ) {
+			return array();
+		}
+
+		$anahtar = $eslesme[1];
+		$sonuc   = array();
+
+		foreach ( $GLOBALS['qrms_test']['post_meta'] ?? array() as $meta ) {
+			if ( ! isset( $meta[ $anahtar ] ) ) {
+				continue;
+			}
+
+			$deger   = $meta[ $anahtar ];
+			$sonuc[] = is_array( $deger ) ? serialize( $deger ) : (string) $deger; // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.serialize_serialize
+		}
+
+		return $sonuc;
 	}
 
 	public function close() {

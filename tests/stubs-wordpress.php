@@ -501,6 +501,28 @@ function wp_unslash( $value ) {
 }
 
 /**
+ * Serileştirilmiş değeri çözer; değilse aynen döner (WP çekirdeğiyle aynı sözleşme).
+ *
+ * @param mixed $ham Ham değer.
+ * @return mixed
+ */
+function maybe_unserialize( $ham ) {
+	if ( ! is_string( $ham ) ) {
+		return $ham;
+	}
+
+	if ( 'N;' === $ham ) {
+		return null;
+	}
+
+	// @ ile bastırma WP çekirdeğindekiyle aynı: serileştirilmemiş rastgele
+	// bir metin unserialize()'a verilirse PHP uyarı basar, WP bunu yutar.
+	$cozuldu = @unserialize( $ham ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.PHP.DiscouragedPHPFunctions.serialize_unserialize
+
+	return false !== $cozuldu ? $cozuldu : $ham;
+}
+
+/**
  * URL temizler.
  *
  * @param string $url URL.
