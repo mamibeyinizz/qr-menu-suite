@@ -2784,7 +2784,7 @@ qrms_test(
 	function () {
 		$modules = QRMS_Helpers::get_modules();
 
-		qrms_assert_same( 11, count( QRMS_Helpers::MODULE_SLUGS ), 'slug sayısı' );
+		qrms_assert_same( 13, count( QRMS_Helpers::MODULE_SLUGS ), 'slug sayısı' );
 		qrms_assert_same( 11, count( $modules ), 'isim sayısı' );
 		qrms_assert_same( array_values( QRMS_Helpers::MODULE_SLUGS ), array_keys( $modules ), 'slug listesi' );
 		qrms_assert_same( 'Çalışma Saatleri', QRMS_Helpers::get_module_name( 'qr-calisma-saatleri' ), 'isim' );

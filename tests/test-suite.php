@@ -33,6 +33,9 @@ require_once __DIR__ . '/test-hfb.php';
 require_once __DIR__ . '/test-banner.php';
 require_once __DIR__ . '/test-hfb-onbellek.php';
 require_once __DIR__ . '/test-iletisim.php';
+require_once __DIR__ . '/test-menu-muhendisligi.php';
+require_once __DIR__ . '/test-servis-paneli.php';
+require_once __DIR__ . '/test-login.php';
 
 if ( empty( $GLOBALS['qrms_failures'] ) ) {
 	echo "\033[32mTüm testler geçti\033[0m (" . $GLOBALS['qrms_assertions'] . " doğrulama)\n\n";

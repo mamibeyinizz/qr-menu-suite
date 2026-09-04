@@ -1,0 +1,86 @@
+/* QR Menü — özel giriş ekranı */
+
+body.login {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 100vh;
+	min-height: 100dvh;
+	margin: 0;
+	padding: env(safe-area-inset-top, 0) 16px env(safe-area-inset-bottom, 16px);
+	background: var(--qrms-login-bg, #1e1e2e);
+	background-size: cover;
+	background-attachment: scroll;
+	background-position: center;
+}
+
+body.login::before {
+	content: '';
+	position: fixed;
+	inset: 0;
+	background: rgba(0, 0, 0, var(--qrms-login-bg-overlay, 0));
+	pointer-events: none;
+	z-index: 0;
+}
+
+body.login #login {
+	width: min(100%, 400px);
+	margin: 0;
+	padding: 0;
+	position: relative;
+	z-index: 1;
+}
+
+body.login #login h1 a {
+	height: var(--qrms-login-logo-h, 60px);
+	width: 100%;
+	background-size: contain;
+	margin-bottom: 16px;
+}
+
+body.login #login form {
+	border-radius: var(--qrms-login-radius, 12px);
+	border: none;
+	padding: 24px;
+}
+
+body.login #login form .input,
+body.login #login input[type="text"],
+body.login #login input[type="password"] {
+	font-size: 16px;
+	min-height: 48px;
+	border-radius: calc(var(--qrms-login-radius, 12px) * 0.5);
+}
+
+body.login #login .button-primary {
+	width: 100%;
+	min-height: 48px;
+	font-size: 16px;
+	background: var(--qrms-login-vurgu, #7c5cff);
+	border-color: var(--qrms-login-vurgu, #7c5cff);
+	border-radius: calc(var(--qrms-login-radius, 12px) * 0.5);
+}
+
+body.login #login .button-primary:hover,
+body.login #login .button-primary:focus {
+	background: var(--qrms-login-vurgu, #7c5cff);
+	filter: brightness(1.1);
+	box-shadow: 0 0 0 2px var(--qrms-login-vurgu, #7c5cff);
+}
+
+body.login #login a {
+	color: var(--qrms-login-vurgu, #7c5cff);
+}
+
+body.login .qrms-login-alt {
+	text-align: center;
+	font-size: 12px;
+	color: #646970;
+	margin-top: 12px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	body.login #login .button-primary {
+		transition: none;
+	}
+}
