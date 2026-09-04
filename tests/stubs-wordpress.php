@@ -640,7 +640,44 @@ function wp_die( $message = '' ) {
  * @return bool
  */
 function wp_doing_ajax() {
-	return false;
+	return ! empty( $GLOBALS['qrms_test']['doing_ajax'] );
+}
+
+/**
+ * Cron isteği mi?
+ *
+ * @return bool
+ */
+function wp_doing_cron() {
+	return ! empty( $GLOBALS['qrms_test']['doing_cron'] );
+}
+
+/**
+ * HTTP durum başlığı.
+ *
+ * @param int $code Durum kodu.
+ * @return void
+ */
+function status_header( $code ) {
+	$GLOBALS['qrms_test']['status_header'] = (int) $code;
+}
+
+/**
+ * Önbellek önleyici başlıklar.
+ *
+ * @return void
+ */
+function nocache_headers() {
+	$GLOBALS['qrms_test']['nocache_headers'] = true;
+}
+
+/**
+ * Sağdan sola dil mi?
+ *
+ * @return bool
+ */
+function is_rtl() {
+	return ! empty( $GLOBALS['qrms_test']['is_rtl'] );
 }
 
 /**
@@ -1524,6 +1561,7 @@ function get_bloginfo( $show = 'name' ) {
 		'name'        => 'Test Restoran',
 		'description' => 'Test açıklaması',
 		'url'         => 'https://restoran.test',
+		'language'    => 'tr-TR',
 	);
 
 	return isset( $map[ $show ] ) ? $map[ $show ] : '';
@@ -1868,3 +1906,4 @@ require_once QRMS_PLUGIN_DIR . 'includes/class-shortcodes.php';
 require_once QRMS_PLUGIN_DIR . 'includes/class-admin.php';
 require_once QRMS_PLUGIN_DIR . 'includes/class-qrms-login.php';
 require_once QRMS_PLUGIN_DIR . 'includes/class-query-monitor.php';
+require_once QRMS_PLUGIN_DIR . 'includes/class-qrms-hata-sayfalari.php';

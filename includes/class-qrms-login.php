@@ -631,10 +631,9 @@ class QRMS_Login {
 			exit;
 		}
 
-		wp_die(
-			esc_html__( 'Sayfa bulunamadı.', 'qrms' ),
-			esc_html__( 'Bulunamadı', 'qrms' ),
-			array( 'response' => 404 )
+		QRMS_Hata_Sayfalari::render(
+			__( 'Bulunamadı', 'qrms' ),
+			__( 'Sayfa bulunamadı.', 'qrms' )
 		);
 	}
 
