@@ -1187,6 +1187,32 @@
             }
         }
 
+        var KMP_AMOUNT_UYARI = 'Lütfen bir indirim/zam değeri girin';
+
+        function amountSayisi() {
+            var ham = ($('#rma-kmp-amount').val() || '').replace(/\s/g, '').replace(',', '.');
+            var n = parseFloat(ham);
+            return isNaN(n) ? 0 : n;
+        }
+
+        function amountGecerli() {
+            return amountSayisi() > 0;
+        }
+
+        function amountUyarisi() {
+            var $amount = $('#rma-kmp-amount');
+
+            if (amountGecerli()) {
+                $amount.removeClass('is-error');
+                return true;
+            }
+
+            $amount.addClass('is-error').trigger('focus');
+            $onizleme.html('<p class="rma-kmp-bayat">' + KMP_AMOUNT_UYARI + '</p>');
+            $uygulaBtn.prop('disabled', true);
+            return false;
+        }
+
         $form.on('change', 'input[name="scope_type"]', function () {
             kapsamKutulari();
             secimiSenkronla();
@@ -1204,7 +1230,12 @@
             bayatla();
         });
 
-        $form.on('input', 'input[type="text"]', bayatla);
+        $form.on('input', 'input[type="text"]', function () {
+            if (this.id === 'rma-kmp-amount') {
+                $(this).removeClass('is-error');
+            }
+            bayatla();
+        });
 
         // Ürün arama — küçük harfe çevirme tarayıcıda yapılır ki arama kutusu
         // ile satır başlıkları aynı Unicode kurallarını kullansın (Türkçe İ/I).
@@ -1221,6 +1252,11 @@
             var $spinner = $('.rma-kmp-spinner');
 
             secimiSenkronla();
+
+            if (!amountUyarisi()) {
+                return;
+            }
+
             $spinner.addClass('is-active');
             $onizleme.html('');
 
@@ -1249,8 +1285,26 @@
         });
 
         // Hangi butona basıldıysa "uygula" bayrağı ona göre gider.
-        $('#rma-kmp-kaydet').on('click', function () { $('#rma-kmp-uygula').val('0'); });
-        $uygulaBtn.on('click', function () { $('#rma-kmp-uygula').val('1'); });
+        $('#rma-kmp-kaydet').on('click', function (e) {
+            if (!amountUyarisi()) {
+                e.preventDefault();
+                return;
+            }
+            $('#rma-kmp-uygula').val('0');
+        });
+        $uygulaBtn.on('click', function (e) {
+            if (!amountUyarisi()) {
+                e.preventDefault();
+                return;
+            }
+            $('#rma-kmp-uygula').val('1');
+        });
+
+        $form.on('submit', function (e) {
+            if (!amountUyarisi()) {
+                e.preventDefault();
+            }
+        });
 
         kapsamKutulari();
         secimVurgusu();

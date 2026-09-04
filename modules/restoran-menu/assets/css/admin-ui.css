@@ -2128,6 +2128,12 @@
     max-width: 140px;
 }
 
+.rma-admin .rma-kmp-amount-row input.is-error,
+.rma-admin .rma-kmp-amount-row input.is-error:focus {
+    border-color: var(--rma-a-danger);
+    box-shadow: 0 0 0 1px var(--rma-a-danger);
+}
+
 .rma-admin .rma-kmp-birim {
     color: var(--rma-a-accent);
     font-size: 18px;
