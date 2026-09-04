@@ -19,6 +19,7 @@ echo "\nQR Menu Suite — mantık testleri\n\n";
 // sabit geri alınamaz. Sabit yalnızca QRMS_Login'i etkiler, başka hiçbir dosya
 // bu sınıfa dokunmadığı için erken tanımlanması güvenlidir.
 require_once __DIR__ . '/test-login.php';
+require_once __DIR__ . '/test-hata-sayfalari.php';
 require_once __DIR__ . '/test-menu-muhendisligi.php';
 require_once __DIR__ . '/test-servis-paneli.php';
 

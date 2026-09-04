@@ -30,6 +30,7 @@ require_once QRMS_PLUGIN_DIR . 'includes/class-shortcodes.php';
 require_once QRMS_PLUGIN_DIR . 'includes/class-admin.php';
 require_once QRMS_PLUGIN_DIR . 'includes/class-qrms-login.php';
 require_once QRMS_PLUGIN_DIR . 'includes/class-query-monitor.php';
+require_once QRMS_PLUGIN_DIR . 'includes/class-qrms-hata-sayfalari.php';
 
 /**
  * Plugin bileşenlerinin hook'larını kaydeder.
@@ -50,6 +51,10 @@ function qrms_bootstrap() {
 	// Yavaş sorgu teşhisi. WP_DEBUG + SAVEQUERIES açık değilse kendisi
 	// hiçbir kanca kaydetmez; üretimde tamamen sessizdir.
 	QRMS_Query_Monitor::init();
+
+	// Tema ne olursa olsun markalı 404 belgesi. Admin / AJAX / REST / cron
+	// isteklerini kendi içinde atlar.
+	QRMS_Hata_Sayfalari::init();
 }
 qrms_bootstrap();
 

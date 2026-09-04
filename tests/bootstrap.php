@@ -47,6 +47,11 @@ function qrms_reset() {
 	$GLOBALS['qrms_test']['shortcodes'] = array();
 	$GLOBALS['qrms_test']['json']       = null;
 	$GLOBALS['qrms_test']['is_admin']   = false;
+	$GLOBALS['qrms_test']['is_404']     = false;
+	$GLOBALS['qrms_test']['is_rtl']     = false;
+	$GLOBALS['qrms_test']['doing_ajax'] = false;
+	$GLOBALS['qrms_test']['doing_cron'] = false;
+	unset( $GLOBALS['qrms_test']['status_header'], $GLOBALS['qrms_test']['nocache_headers'] );
 
 	$GLOBALS['qrms_test']['menus']      = array();
 	$GLOBALS['qrms_test']['submenus']   = array();
