@@ -1,0 +1,435 @@
+/**
+ * Servis Paneli.
+ *
+ * MOBİL ÖNCELİKLİ tasarlanmıştır: bu ekran işletmede çoğunlukla telefondan
+ * kullanılır. Dar ekranda dört sütun SEKMEYE dönüşür, tek sütun kart listesi
+ * kalır ve durum düğmeleri tam genişlikte olur. Masaüstü kanban düzeni
+ * 960px'ten sonra devreye girer.
+ */
+
+/* -------------------------------------------------------------------------
+ * Üst çubuk
+ * ---------------------------------------------------------------------- */
+
+.qrms-sp-ust {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	margin: 0 0 14px;
+}
+
+.qrms-sp-ust .qrms-title {
+	margin: 0;
+}
+
+.qrms-sp-arac {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
+.qrms-sp-arac .button {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	min-height: 40px;
+}
+
+.qrms-sp-arac .button .dashicons {
+	width: 17px;
+	height: 17px;
+	font-size: 17px;
+}
+
+.qrms-sp-arac .button.aktif {
+	background: #2271b1;
+	border-color: #2271b1;
+	color: #fff;
+}
+
+/* Bağlantı şeridi */
+
+.qrms-sp-serit {
+	margin: 0 0 14px;
+	padding: 11px 14px;
+	border-radius: 6px;
+	font-size: 13.5px;
+	font-weight: 600;
+}
+
+.qrms-sp-serit.hatali {
+	background: #fcf0f1;
+	border-left: 4px solid #d63638;
+	color: #8a1f22;
+}
+
+.qrms-sp-serit.basarili {
+	background: #f0f6f1;
+	border-left: 4px solid #00a32a;
+	color: #135e2b;
+}
+
+/* Filtreler */
+
+.qrms-sp-filtre {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12px;
+	margin: 0 0 14px;
+}
+
+.qrms-sp-filtre-alan {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	font-size: 12px;
+	font-weight: 600;
+	color: #50575e;
+}
+
+.qrms-sp-filtre-alan select,
+.qrms-sp-filtre-alan input {
+	/* 16px: mobilde odaklanınca sayfa yakınlaşmasın. */
+	font-size: 16px;
+	min-height: 42px;
+}
+
+/* -------------------------------------------------------------------------
+ * Sekmeler (varsayılan görünüm — dar ekran)
+ * ---------------------------------------------------------------------- */
+
+.qrms-sp-sekmeler {
+	position: sticky;
+	top: 46px;
+	z-index: 6;
+	display: flex;
+	gap: 4px;
+	margin: 0 0 14px;
+	padding: 4px;
+	background: #f0f0f1;
+	border-radius: 8px;
+	overflow-x: auto;
+}
+
+.qrms-sp-sekme {
+	flex: 1 0 auto;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 7px;
+	min-height: 44px;
+	padding: 0 12px;
+	background: none;
+	border: 0;
+	border-radius: 6px;
+	color: #50575e;
+	font-size: 13px;
+	font-weight: 600;
+	white-space: nowrap;
+	cursor: pointer;
+}
+
+.qrms-sp-sekme.aktif {
+	background: #fff;
+	color: #1d2327;
+	box-shadow: 0 1px 3px rgba( 0, 0, 0, 0.12 );
+}
+
+.qrms-sp-sekme-sayi {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 22px;
+	height: 22px;
+	padding: 0 6px;
+	background: #dcdcde;
+	border-radius: 999px;
+	font-size: 11.5px;
+	font-variant-numeric: tabular-nums;
+}
+
+.qrms-sp-sekme.aktif .qrms-sp-sekme-sayi {
+	background: #2271b1;
+	color: #fff;
+}
+
+/* -------------------------------------------------------------------------
+ * Kanban
+ * ---------------------------------------------------------------------- */
+
+.qrms-sp-kanban {
+	display: block;
+}
+
+/* Dar ekranda yalnızca seçili sekmenin sütunu görünür. */
+.qrms-sp-kanban[data-aktif="bekliyor"] .qrms-sp-sutun:not([data-durum="bekliyor"]),
+.qrms-sp-kanban[data-aktif="hazirlaniyor"] .qrms-sp-sutun:not([data-durum="hazirlaniyor"]),
+.qrms-sp-kanban[data-aktif="serviste"] .qrms-sp-sutun:not([data-durum="serviste"]),
+.qrms-sp-kanban[data-aktif="tamamlandi"] .qrms-sp-sutun:not([data-durum="tamamlandi"]) {
+	display: none;
+}
+
+.qrms-sp-sutun {
+	min-width: 0;
+}
+
+.qrms-sp-sutun-basi {
+	display: none;
+	align-items: center;
+	justify-content: space-between;
+	gap: 10px;
+	margin: 0 0 10px;
+}
+
+.qrms-sp-sutun-basi h2 {
+	margin: 0;
+	font-size: 14px;
+}
+
+.qrms-sp-sayac {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 24px;
+	height: 24px;
+	padding: 0 7px;
+	background: #dcdcde;
+	border-radius: 999px;
+	font-size: 12px;
+	font-variant-numeric: tabular-nums;
+}
+
+.qrms-sp-kartlar {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+
+.qrms-sp-bos {
+	margin: 0;
+	padding: 18px 14px;
+	color: #646970;
+	font-size: 13px;
+	text-align: center;
+	background: #f6f7f7;
+	border: 1px dashed #dcdcde;
+	border-radius: 8px;
+}
+
+/* -------------------------------------------------------------------------
+ * Kart
+ * ---------------------------------------------------------------------- */
+
+.qrms-sp-kart {
+	padding: 12px 14px;
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-left: 4px solid #c3c4c7;
+	border-radius: 8px;
+}
+
+.qrms-sp-acil-yesil {
+	border-left-color: #00a32a;
+}
+
+.qrms-sp-acil-sari {
+	border-left-color: #dba617;
+	background: #fffdf5;
+}
+
+.qrms-sp-acil-kirmizi {
+	border-left-color: #d63638;
+	background: #fdf6f6;
+}
+
+.qrms-sp-kart-basi {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px;
+	margin: 0 0 9px;
+}
+
+.qrms-sp-masa {
+	font-size: 15px;
+	font-weight: 700;
+}
+
+.qrms-sp-tip {
+	padding: 2px 9px;
+	border-radius: 999px;
+	font-size: 11.5px;
+	font-weight: 600;
+	color: #fff;
+	background: #646970;
+}
+
+.qrms-sp-tip-siparis {
+	background: #2271b1;
+}
+
+.qrms-sp-tip-garson {
+	background: #7c5cff;
+}
+
+.qrms-sp-tip-hesap {
+	background: #e08a1e;
+}
+
+.qrms-sp-sure {
+	margin-left: auto;
+	font-size: 13px;
+	font-weight: 700;
+	font-variant-numeric: tabular-nums;
+	color: #50575e;
+}
+
+.qrms-sp-acil-kirmizi .qrms-sp-sure {
+	color: #b32d2e;
+}
+
+.qrms-sp-kalemler {
+	margin: 0 0 10px;
+	padding: 0;
+	list-style: none;
+}
+
+.qrms-sp-kalemler li {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: 7px;
+	padding: 6px 0;
+	border-bottom: 1px solid #f0f0f1;
+	font-size: 13.5px;
+}
+
+.qrms-sp-kalemler li:last-child {
+	border-bottom: 0;
+}
+
+.qrms-sp-adet {
+	font-weight: 700;
+	font-variant-numeric: tabular-nums;
+	color: #2271b1;
+}
+
+.qrms-sp-kalem-ad {
+	flex: 1 1 auto;
+	min-width: 0;
+	overflow-wrap: anywhere;
+}
+
+.qrms-sp-not {
+	flex: 1 0 100%;
+	color: #8a5a00;
+	font-size: 12.5px;
+	line-height: 1.5;
+	overflow-wrap: anywhere;
+}
+
+.qrms-sp-not-asil {
+	color: #787c82;
+	font-style: italic;
+}
+
+.qrms-sp-personel {
+	margin: 0 0 9px;
+	color: #646970;
+	font-size: 12px;
+}
+
+.qrms-sp-dugmeler {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
+.qrms-sp-dugmeler .button {
+	flex: 1 1 auto;
+	min-height: 44px;
+	text-align: center;
+}
+
+.qrms-sp-iptal {
+	flex: 0 0 auto;
+	color: #b32d2e;
+}
+
+/* Ayar ekranı */
+
+.qrms-sp-durum-ok,
+.qrms-sp-durum-eksik {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin: 0 0 10px;
+	font-size: 14px;
+}
+
+.qrms-sp-durum-ok {
+	color: #135e2b;
+}
+
+.qrms-sp-durum-eksik {
+	color: #8a1f22;
+}
+
+.qrms-sp .qrms-field input[type="number"] {
+	width: 140px;
+	font-size: 16px;
+	min-height: 40px;
+}
+
+/* -------------------------------------------------------------------------
+ * Masaüstü — dört sütunlu kanban
+ * ---------------------------------------------------------------------- */
+
+@media screen and (min-width: 961px) {
+
+	.qrms-sp-sekmeler {
+		display: none;
+	}
+
+	.qrms-sp-kanban {
+		display: grid;
+		grid-template-columns: repeat( 4, minmax( 0, 1fr ) );
+		gap: 14px;
+		align-items: start;
+	}
+
+	/* Sekme seçimi masaüstünde sütun gizlemez. */
+	.qrms-sp-kanban[data-aktif] .qrms-sp-sutun {
+		display: block;
+	}
+
+	.qrms-sp-sutun {
+		padding: 12px;
+		background: #f6f7f7;
+		border-radius: 10px;
+	}
+
+	.qrms-sp-sutun-basi {
+		display: flex;
+	}
+
+	.qrms-sp-dugmeler .button {
+		min-height: 36px;
+		font-size: 12.5px;
+	}
+}
+
+@media (pointer: coarse) {
+
+	.qrms-sp-arac .button,
+	.qrms-sp-sekme {
+		min-height: 46px;
+	}
+
+	.qrms-sp-dugmeler .button {
+		min-height: 48px;
+		font-size: 14px;
+	}
+}

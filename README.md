@@ -73,6 +73,8 @@ kayıtlı option'ların anahtarı) hiç değişmez.
 | `qr-masa-oturum-guvenligi` | Güvenlik Ayarı |
 | `qr-acilis-ekrani` | Açılış Ekranı |
 | `header-footer-builder` | Header Footer Builder |
+| `qr-servis-paneli` | Servis Paneli |
+| `qr-menu-muhendisligi` | Menü Mühendisliği |
 
 Bir modül eklemek için `modules/<slug>/module.php` dosyası oluşturmak ve
 içinde `qrms_module_<slug_alt_çizgili>_init()` fonksiyonunu tanımlamak
@@ -97,8 +99,10 @@ QR Menü
 │ ├ Restoran Menü               → hub (12 kart)
 │ └ Yorum & Feedback            → hub (7 kart + özet sayaçlar)
 ├ ARAÇLAR
+│ ├ Servis Paneli               → doğrudan canlı sipariş/çağrı panosu
 │ ├ QR Kod Oluştur              → doğrudan Masalar ekranı
 │ ├ İstatistikler               → doğrudan Menü Analitiği
+│ ├ Menü Mühendisliği           → hub (4 kart + özet sayaçlar)
 │ ├ Fotoğraf Galerisi           → hub (3 kart)
 │ ├ Dil / Çeviri Ayarları       → doğrudan Çeviri ekranı
 │ ├ Chatbot Asistan             → doğrudan Chatbot ayarları
@@ -1080,6 +1084,169 @@ Taşınan kodun tamamı `class_exists()` / `function_exists()` / `defined()`
 guard'lıdır: eski `qr-menu-official` eklentisi aynı sitede hâlâ aktifse
 çift tanım hatası olmaz, ilk yükleyen kazanır.
 
+### Menü Mühendisliği (`qr-menu-muhendisligi`)
+
+İşletmeye "menünün hangi ürünü para kazandırıyor, hangisi kaybettiriyor ve ne
+yapmalısın" sorusunu somut cevaplayan modül. Veriyi kendisi toplamaz; iki
+mevcut modülün üstüne kurulur:
+
+| Girdi | Kaynak |
+| --- | --- |
+| Ürün, fiyat (`rma_price`), kategori, malzeme taksonomisi | `restoran-menu` |
+| Sipariş / sepete ekleme / görüntülenme | `qr-analiz` → `{prefix}rma_analytics` |
+| Maliyet | Bu modül (manuel ya da reçeteden) |
+
+#### Analitik tablosuna eklenen `qty` sütunu
+
+Sipariş kalemleri tabloya kalem başına TEK satır olarak yazılıyordu ve **adet
+kaydedilmiyordu**. Popülerlik adetsiz hesaplanırsa "3 adet lahmacun" ile "1
+adet çorba" aynı ağırlığı alır, matris yanlış çıkar. Şemaya
+`qty smallint unsigned NOT NULL DEFAULT 1` eklendi (dbDelta kolonu mevcut
+tabloya kendisi ekler), `QRMS_Analitik::kaydet()` alanı 1–999 aralığına
+sıkıştırıyor ve `qmo_analitik_siparis_yaz()` kalemin adedini geçiriyor. Eski
+satırlar `qty = 1` kalır; geriye dönük göç yazılmadı.
+
+#### Matris (Kasavana–Smith)
+
+Hesap `QRMS_MM_Hesap::hesapla()` içinde, **saf** bir fonksiyondadır: veritabanı
+ve option okumaz, yalnızca verilen satırları çevirir. Sorgu ve önbellek işi
+`QRMS_MM_Rapor`'dadır.
+
+1. **Veri kaynağı.** Aralıktaki toplam sipariş adedi 20'nin altındaysa gerçek
+   satış yerine vekil skora düşülür: `görüntülenme + (sepete ekleme × 3)`.
+   Sepete ekleme satın alma niyetine çok daha yakın olduğu için ağırlıklıdır.
+   Rapor bu durumu ekranın tepesinde sarı bir şeritle açıkça yazar.
+2. **Katkı payı** `fiyat − maliyet`. Fiyatı ya da maliyeti olmayan ürün
+   matrise **girmez**, "rapora giremeyen ürünler" listesine düşer ve tek tıkla
+   maliyet ekranına bağlanır.
+3. **Popülerlik eşiği** `(1 / ürün sayısı) × katsayı` (varsayılan 0,70).
+4. **Kârlılık eşiği** adetle **ağırlıklı** ortalama katkı payıdır. Düz ortalama
+   alınsaydı hiç satmayan pahalı bir ürün eşiği yukarı çeker, çok satan
+   ürünler haksız yere "Köpek" olurdu.
+5. Sınırda eşitlik **yüksek** tarafa yazılır; eşiği tam tutturan ürünü
+   cezalandırmak için sebep yok.
+
+| | Yüksek kâr | Düşük kâr |
+| --- | --- | --- |
+| **Çok satan** | Yıldız — koru, fiyatı ve porsiyonu değiştirme | İş Atı — maliyeti düşür ya da %5–10 zam dene |
+| **Az satan** | Bulmaca — vitrine al, önerilere ekle | Köpek — menüden çıkarmayı değerlendir |
+
+Ayrıca **kayıp fırsat** hesaplanır: ortalamanın altında katkı üreten her satış,
+aradaki fark kadar kaybettirir (`(ortalama − katkı) × adet`). Ekranda tek bir
+rakam olarak durur: "bu ürünler dönemde tahminen X ₺ katkı kaybettirdi."
+
+#### Maliyet ve reçete
+
+Maliyet iki yoldan girilir. **Manuel** modda işletmeci ürün başına tek rakam
+yazar (satır içinde, AJAX ile kaydedilir). **Reçete** modunda malzeme + miktar
+satırları girilir ve maliyet malzeme birim fiyatlarından hesaplanır.
+
+Reçete maliyeti raporun içinde değil, **kaydederken** hesaplanıp meta'ya
+yazılır: rapor yüzlerce ürünü tek sorguda çekiyor, her satırda reçete çözmek
+onu N+1 sorguya çevirirdi. Malzeme fiyatı değiştiğinde reçeteli bütün ürünler
+yeniden hesaplanır; 500 ürünü aşan kurulumlarda iş
+`wp_schedule_single_event` ile arka plana atılır.
+
+Birim çevrimi: kg fiyatı → reçetede **gram**, litre fiyatı → **ml**, adet
+fiyatı → **adet**. Fire yüzdesi hesabın sonuna eklenir. Kullanıcının yazdığı
+sayı `QRMS_MM_Maliyet::sayi()` ile okunur — Türkçe klavyede ondalık ayracı
+virgüldür, "12,50" yazan kullanıcının maliyeti 12 TL'ye yuvarlanmamalı.
+
+#### Ekranlar
+
+Hub (4 kart) + Rapor + Ürün Maliyetleri + Malzeme Fiyatları + Ayarlar.
+Rapor filtreleri adres satırına yazılır: bağlantı paylaşılabilir, geri tuşu
+çalışır. Matris **saf CSS ızgarasıdır**, grafik kütüphanesi yüklenmez; her
+kutu `<details>` olduğu için dar ekranda JavaScript olmadan katlanır. Geniş
+tablolar 782px altında **kart listesine** dönüşür — dokuz sütunlu bir tabloyu
+telefonda yana kaydırarak okumak işletmecinin yapacağı son şeydir.
+
+Rapor sonucu beş dakikalık transient'te saklanır; maliyet, malzeme fiyatı ya
+da ayar değiştiğinde önbellek boşaltılır. Transient adları bir option'da
+tutulur — `DELETE ... LIKE '_transient_%'` taraması büyük sitelerde pahalıdır
+ve nesne önbelleği kullanan kurulumlarda hiç çalışmaz.
+
+### Servis Paneli (`qr-servis-paneli`)
+
+Müşteri siparişleri ile garson/hesap çağrıları Firestore'daki `calls`
+koleksiyonuna yazılıyordu (`qr-chatbot` modülü) ama işletmenin bunları
+WordPress içinde göreceği bir ekran yoktu. Bu modül o ekranı ekler.
+
+#### Firestore tarafı
+
+`QMO_Firestore`'a üç metot eklendi: `call_listele()`, `call_guncelle()` ve
+belge çözücü `belge_coz()` / `deger_coz()`.
+
+Sorgu biçimi bilinçli olarak dardır: Firestore'da eşitlik (`branchId`) ile
+başka bir alana göre sıralama (`createdAt`) **birlikte** kullanıldığında
+bileşik indeks gerekir ve indeksi olmayan projede sorgu 400 döner. Restoran
+sahibinin Firebase konsolundan indeks oluşturması beklenemez; bu yüzden sorgu
+tek alanda kalır (`createdAt` üzerinde aralık + sıralama, otomatik tek alan
+indeksiyle çalışır) ve şube süzmesi PHP tarafında yapılır.
+
+`call_guncelle()` her zaman `updateMask` gönderir: maskesiz bir PATCH belgenin
+tamamını değiştirir ve sipariş kalemleri silinirdi.
+
+Service account anahtarı **tarayıcıya çıkmaz**: panel kendi sunucusundaki AJAX
+ucunu çağırır, Firestore'a yalnızca PHP tarafı gider.
+
+#### Durum akışı
+
+```
+bekliyor → hazirlaniyor → serviste → tamamlandi
+   └────────────┴────────────┴──────→ iptal
+```
+
+Geçerli olmayan sıçramalar (`bekliyor → tamamlandi`) reddedilir; iki panelden
+gelen eş zamanlı tıklamalar siparişi hazırlanmadan tamamlanmış gösteremesin.
+Durum değişince belgeye `durum`, `onaylayanUid`, `onaylayanAd` ve
+`guncellendi` yazılır.
+
+#### Yoklama ve uyarılar
+
+- Sekme önplandayken ayarlardaki aralık (varsayılan 5 sn), arka planda 30 sn;
+  öne gelince anında bir istek atılır (Page Visibility API).
+- Sunucu tarafında **3 saniyelik** transient: aynı anda beş ekran açıksa
+  Firestore kotası boşuna tükenmesin.
+- Arka arkaya ikinci hatadan itibaren kırmızı bağlantı şeridi gösterilir ve
+  aralık ikiye katlanarak 60 saniyeye kadar açılır; bağlantı dönünce iner.
+- Yeni kayıt geldiğinde WebAudio ile **kod içinde üretilen** bip çalar (harici
+  ses dosyası yok), sayfa başlığı yanıp söner ve izin verilmişse masaüstü
+  bildirimi gönderilir. Bildirim izni **yalnızca kullanıcı düğmeye basınca**
+  istenir, sayfa açılışında değil.
+- Her kartta canlı bekleme sayacı vardır; iki eşiğe göre kart kenarı yeşil →
+  sarı → kırmızı olur ve kırmızıya geçen kart listenin başına çıkar.
+
+#### Ekran düzeni
+
+Kart şablonunun **tek kaynağı** `assets/js/panel.js`'tir; PHP yalnızca iskeleti
+basar. Canlı bir panelde sunucuda bir kez üretilen kart ikinci saniyede zaten
+eskimiş olurdu, iki yerde şablon tutmak da drift demekti.
+
+Tasarım **mobil önceliklidir** — bu ekran işletmede çoğunlukla telefondan
+kullanılır. Varsayılan görünüm sekmeli tek sütundur (sekme başlığında bekleyen
+sayısı rozetle); dört sütunlu kanban 961px'ten sonra devreye girer. Durum
+düğmeleri dokunmatik cihazlarda 48px yüksekliğindedir.
+
+#### Personel erişimi
+
+Yeni yetenek `qrms_servis_panel` ve yeni rol `qrms_servis` ("Servis
+Personeli"). Rol her istekte değil, `qrms_sp_rol_surum` option'ı ile
+**sürümlenerek** bir kez kurulur. Bu rolle giren kullanıcı yönetim panelinde
+yalnızca Servis Panelini görür: diğer menü satırları düşürülür, araç çubuğu
+sadeleşir ve başka bir ekrana gitmeye çalışırsa panele geri yönlendirilir
+(profil ekranı serbesttir — personel kendi şifresini değiştirebilmeli).
+
+### Kullanılan option'lar (yeni modüller)
+
+| Option | İçerik |
+| --- | --- |
+| `qrms_mm_ayarlar` | Popülerlik eşiği, fire yüzdesi, varsayılan aralık |
+| `qrms_mm_malzeme_fiyat` | Malzeme birim fiyatları (`term_id => [birim, fiyat]`) |
+| `qrms_mm_onbellek` | Rapor transient adlarının defteri |
+| `qrms_sp_ayarlar` | Panel eşikleri, yenileme aralığı, gösterilecek tipler |
+| `qrms_sp_rol_surum` | Servis Personeli rolünün kurulu sürümü |
+
 ## Giriş adresi ve giriş ekranı (`QRMS_Login`)
 
 Çekirdeğin parçasıdır, modül değildir: lisans listesine bakılmaz, her kurulumda
@@ -1229,6 +1396,8 @@ modules/
   qr-ceviri/                 Çok dilli sözlük + çeviri yönetim ekranı
   qr-galeri/                 Galeri CPT + yönetim ekranları
   qr-acilis-ekrani/          Ana sayfa açılış ekranı + hub ve dört ayar sayfası
+  qr-servis-paneli/          Canlı sipariş/çağrı panosu, durum akışı, servis personeli rolü
+  qr-menu-muhendisligi/      Maliyet + reçete, Kasavana–Smith matrisi, CSV çıktısı
 assets/css/admin.css         Mobil öncelikli admin stilleri (dokunma ≥44px), ayar sekmeleri
 assets/css/admin-menu.css    Sol menü: kategori renkleri ve grup başlıkları
 assets/css/login.css         Giriş ekranı görünümü — gerçek ekran ve önizleme ortak

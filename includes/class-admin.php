@@ -318,9 +318,13 @@ class QRMS_Admin {
 				'accent' => '#35d1b4',
 				'icon'   => 'dashicons-admin-tools',
 				'items'  => array(
+					// Servis Paneli en başta: gün içinde en sık açılan ekran
+					// odur, listenin dibinde aranmasın.
+					'qr-servis-paneli',
 					'qr-masa',
 					'qr-masa-oturum-guvenligi',
 					'qr-analiz',
+					'qr-menu-muhendisligi',
 					'qr-galeri',
 					'qr-ceviri',
 					'qr-chatbot',

@@ -1581,6 +1581,33 @@ function get_post_meta( $post_id, $key = '', $single = false ) {
 }
 
 /**
+ * Yazı meta değerini yazar.
+ *
+ * @param int    $post_id Yazı kimliği.
+ * @param string $key     Anahtar.
+ * @param mixed  $value   Değer.
+ * @return bool
+ */
+function update_post_meta( $post_id, $key, $value ) {
+	$GLOBALS['qrms_test']['post_meta'][ $post_id ][ $key ] = $value;
+
+	return true;
+}
+
+/**
+ * Yazı meta değerini siler.
+ *
+ * @param int    $post_id Yazı kimliği.
+ * @param string $key     Anahtar.
+ * @return bool
+ */
+function delete_post_meta( $post_id, $key ) {
+	unset( $GLOBALS['qrms_test']['post_meta'][ $post_id ][ $key ] );
+
+	return true;
+}
+
+/**
  * Yazı listesi. (Testte $GLOBALS['qrms_test']['posts'] döner; çağrı sayılır ki
  * ürün başına sorgu açılmadığı doğrulanabilsin.)
  *

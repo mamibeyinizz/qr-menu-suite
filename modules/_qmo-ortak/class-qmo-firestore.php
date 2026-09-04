@@ -346,6 +346,249 @@ if ( ! class_exists( 'QMO_Firestore' ) ) {
 			}
 			return true;
 		}
+
+		/**
+		 * Çağrı ve siparişleri listeler.
+		 *
+		 * SORGU BİÇİMİ NEDEN BÖYLE: Firestore'da eşitlik (branchId) ile başka
+		 * bir alana göre sıralama (createdAt) BİRLİKTE kullanıldığında bileşik
+		 * indeks gerekir; indeksi olmayan projede sorgu 400 döner. Restoran
+		 * sahibinin Firebase konsolundan indeks oluşturması beklenemez, bu
+		 * yüzden sorgu tek alanda kalır (createdAt üzerinde aralık + sıralama,
+		 * otomatik tek alan indeksiyle çalışır) ve şube süzmesi PHP tarafında
+		 * yapılır.
+		 *
+		 * @param array $args {
+		 *     @type string $since Bu andan sonrası (RFC3339, UTC).
+		 *     @type int    $limit Azami kayıt (varsayılan 100, tavan 200).
+		 * }
+		 * @return array|WP_Error Normalize edilmiş kayıtlar.
+		 */
+		public static function call_listele( array $args = array() ) {
+			$token = self::access_token( self::SCOPE_DATASTORE );
+			if ( is_wp_error( $token ) ) {
+				return $token;
+			}
+
+			$project = self::project_id();
+			if ( '' === $project ) {
+				return new WP_Error( 'proje', 'Firebase proje kimliği bulunamadı.' );
+			}
+
+			$since = isset( $args['since'] ) && '' !== $args['since']
+				? (string) $args['since']
+				: gmdate( 'Y-m-d\TH:i:s\Z', time() - DAY_IN_SECONDS );
+
+			$limit = isset( $args['limit'] ) ? (int) $args['limit'] : 100;
+			$limit = max( 1, min( 200, $limit ) );
+
+			$sorgu = array(
+				'structuredQuery' => array(
+					'from'    => array( array( 'collectionId' => 'calls' ) ),
+					'where'   => array(
+						'fieldFilter' => array(
+							'field' => array( 'fieldPath' => 'createdAt' ),
+							'op'    => 'GREATER_THAN_OR_EQUAL',
+							'value' => array( 'timestampValue' => $since ),
+						),
+					),
+					'orderBy' => array(
+						array(
+							'field'     => array( 'fieldPath' => 'createdAt' ),
+							'direction' => 'DESCENDING',
+						),
+					),
+					'limit'   => $limit,
+				),
+			);
+
+			$url  = "https://firestore.googleapis.com/v1/projects/{$project}/databases/(default)/documents:runQuery";
+			$resp = wp_remote_post(
+				$url,
+				array(
+					'timeout' => 15,
+					'headers' => array(
+						'Authorization' => 'Bearer ' . $token,
+						'Content-Type'  => 'application/json',
+					),
+					'body'    => wp_json_encode( $sorgu ),
+				)
+			);
+
+			if ( is_wp_error( $resp ) ) {
+				return $resp;
+			}
+
+			$code = wp_remote_retrieve_response_code( $resp );
+			if ( $code < 200 || $code >= 300 ) {
+				return new WP_Error( 'firestore', 'Firestore hatası (' . $code . ')' );
+			}
+
+			$ham = json_decode( wp_remote_retrieve_body( $resp ), true );
+
+			if ( ! is_array( $ham ) ) {
+				return array();
+			}
+
+			$sube   = self::branch_id();
+			$kayit  = array();
+
+			foreach ( $ham as $satir ) {
+				// runQuery, eşleşme bulunmayan sayfalarda `document` alanı
+				// olmayan satırlar döner; bunlar atlanır.
+				if ( ! isset( $satir['document']['fields'] ) ) {
+					continue;
+				}
+
+				$doc = self::belge_coz( $satir['document'] );
+
+				if ( '' !== $sube && isset( $doc['branchId'] ) && $doc['branchId'] !== $sube ) {
+					continue;
+				}
+
+				$kayit[] = $doc;
+			}
+
+			return $kayit;
+		}
+
+		/**
+		 * Bir çağrı/sipariş belgesini günceller.
+		 *
+		 * @param string $doc_id Belge kimliği (yol değil, yalnızca son parça).
+		 * @param array  $fields Firestore biçiminde alanlar.
+		 * @return true|WP_Error
+		 */
+		public static function call_guncelle( $doc_id, array $fields ) {
+			$doc_id = preg_replace( '/[^A-Za-z0-9_-]/', '', (string) $doc_id );
+
+			if ( '' === $doc_id || empty( $fields ) ) {
+				return new WP_Error( 'girdi', 'Belge kimliği ya da alanlar boş.' );
+			}
+
+			$token = self::access_token( self::SCOPE_DATASTORE );
+			if ( is_wp_error( $token ) ) {
+				return $token;
+			}
+
+			$project = self::project_id();
+			if ( '' === $project ) {
+				return new WP_Error( 'proje', 'Firebase proje kimliği bulunamadı.' );
+			}
+
+			// updateMask olmadan PATCH belgenin TAMAMINI değiştirir; maskesiz
+			// gönderilse sipariş kalemleri silinirdi.
+			$maske = '';
+			foreach ( array_keys( $fields ) as $alan ) {
+				$maske .= '&updateMask.fieldPaths=' . rawurlencode( $alan );
+			}
+
+			$url = "https://firestore.googleapis.com/v1/projects/{$project}/databases/(default)/documents/calls/{$doc_id}?" . ltrim( $maske, '&' );
+
+			$resp = wp_remote_request(
+				$url,
+				array(
+					'method'  => 'PATCH',
+					'timeout' => 15,
+					'headers' => array(
+						'Authorization' => 'Bearer ' . $token,
+						'Content-Type'  => 'application/json',
+					),
+					'body'    => wp_json_encode( array( 'fields' => $fields ) ),
+				)
+			);
+
+			if ( is_wp_error( $resp ) ) {
+				return $resp;
+			}
+
+			$code = wp_remote_retrieve_response_code( $resp );
+			if ( $code < 200 || $code >= 300 ) {
+				return new WP_Error( 'firestore', 'Firestore hatası (' . $code . ')' );
+			}
+
+			return true;
+		}
+
+		/**
+		 * Firestore belgesini düz PHP dizisine çevirir.
+		 *
+		 * SAF fonksiyondur (ağa çıkmaz); testler doğrudan çağırır.
+		 *
+		 * @param array $belge Firestore belgesi (`name` + `fields`).
+		 * @return array
+		 */
+		public static function belge_coz( array $belge ) {
+			$cikti = array( 'id' => '' );
+
+			if ( ! empty( $belge['name'] ) ) {
+				$parca         = explode( '/', (string) $belge['name'] );
+				$cikti['id']   = (string) end( $parca );
+			}
+
+			$alanlar = isset( $belge['fields'] ) && is_array( $belge['fields'] ) ? $belge['fields'] : array();
+
+			foreach ( $alanlar as $ad => $deger ) {
+				$cikti[ $ad ] = self::deger_coz( $deger );
+			}
+
+			return $cikti;
+		}
+
+		/**
+		 * Tek bir Firestore değerini çözer.
+		 *
+		 * @param mixed $deger Sarmalanmış değer.
+		 * @return mixed
+		 */
+		public static function deger_coz( $deger ) {
+			if ( ! is_array( $deger ) ) {
+				return $deger;
+			}
+
+			if ( isset( $deger['stringValue'] ) ) {
+				return (string) $deger['stringValue'];
+			}
+			if ( isset( $deger['integerValue'] ) ) {
+				return (int) $deger['integerValue'];
+			}
+			if ( isset( $deger['doubleValue'] ) ) {
+				return (float) $deger['doubleValue'];
+			}
+			if ( isset( $deger['booleanValue'] ) ) {
+				return (bool) $deger['booleanValue'];
+			}
+			if ( isset( $deger['timestampValue'] ) ) {
+				return (string) $deger['timestampValue'];
+			}
+			if ( array_key_exists( 'nullValue', $deger ) ) {
+				return null;
+			}
+			if ( isset( $deger['arrayValue'] ) ) {
+				$liste = array();
+
+				if ( ! empty( $deger['arrayValue']['values'] ) && is_array( $deger['arrayValue']['values'] ) ) {
+					foreach ( $deger['arrayValue']['values'] as $oge ) {
+						$liste[] = self::deger_coz( $oge );
+					}
+				}
+
+				return $liste;
+			}
+			if ( isset( $deger['mapValue'] ) ) {
+				$harita = array();
+
+				if ( ! empty( $deger['mapValue']['fields'] ) && is_array( $deger['mapValue']['fields'] ) ) {
+					foreach ( $deger['mapValue']['fields'] as $ad => $oge ) {
+						$harita[ $ad ] = self::deger_coz( $oge );
+					}
+				}
+
+				return $harita;
+			}
+
+			return '';
+		}
 	}
 }
 

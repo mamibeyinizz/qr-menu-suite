@@ -397,6 +397,9 @@ if ( ! function_exists( 'qmo_analitik_siparis_yaz' ) ) {
 					'item_id'       => isset( $alan['item_id'] ) ? (int) $alan['item_id'] : 0,
 					'item_name'     => isset( $alan['item_name'] ) && '' !== $alan['item_name'] ? $alan['item_name'] : $ad,
 					'category_name' => isset( $alan['category_name'] ) ? $alan['category_name'] : '',
+					// Kalem başına TEK satır yazılır; adet ayrı sütunda durur.
+					// Menü mühendisliği raporu popülerliği bu sütundan sayar.
+					'qty'           => isset( $it['adet'] ) ? absint( $it['adet'] ) : 1,
 					'masa_no'       => $masa,
 				)
 			);
