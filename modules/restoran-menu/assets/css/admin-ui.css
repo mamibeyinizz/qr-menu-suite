@@ -583,6 +583,16 @@
     border-color: var(--rma-a-border);
 }
 
+.rma-admin .wp-picker-container .wp-color-result.button:hover,
+.rma-admin .wp-picker-container .wp-color-result.button:focus {
+    background: var(--rma-a-raised);
+    background-color: unset;
+    border-color: var(--rma-a-border);
+    box-shadow: none;
+    color: var(--rma-a-text-soft);
+    outline: none;
+}
+
 .rma-admin .wp-color-result-text {
     background: var(--rma-a-surface-2);
     border-left-color: var(--rma-a-border);
