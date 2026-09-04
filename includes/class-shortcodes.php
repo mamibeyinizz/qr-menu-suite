@@ -150,21 +150,6 @@ class QRMS_Shortcodes {
 	}
 
 	/**
-	 * Kayıtlı toplam kısa kod sayısı.
-	 *
-	 * @return int
-	 */
-	public static function count_all() {
-		$toplam = 0;
-
-		foreach ( self::all() as $kodlar ) {
-			$toplam += count( $kodlar );
-		}
-
-		return $toplam;
-	}
-
-	/**
 	 * "Kısa Kodlar" rehber ekranı.
 	 *
 	 * @return void
