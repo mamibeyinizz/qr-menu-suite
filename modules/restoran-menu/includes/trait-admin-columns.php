@@ -129,7 +129,7 @@ trait RMA_Admin_Columns_Trait {
         if ( ! isset( $_GET['post'], $_GET['nonce'] ) ) wp_die( 'Güvenlik hatası.' );
         $post_id = intval( $_GET['post'] );
         if ( ! wp_verify_nonce( $_GET['nonce'], 'rma_duplicate_post_' . $post_id ) ) wp_die( 'Güvenlik hatası.' );
-        if ( ! current_user_can( 'edit_posts' ) ) wp_die( 'Yetkiniz yok.' );
+        if ( ! current_user_can( 'edit_post', $post_id ) ) wp_die( 'Yetkiniz yok.' );
 
         $post = get_post( $post_id );
         if ( ! $post ) wp_die( 'Ürün bulunamadı.' );

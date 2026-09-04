@@ -1421,8 +1421,8 @@ trait QRMS_HFB_Settings_Page {
 
 				$block['font_size'] = $this->sanitize_int_range(
 					isset( $raw_block['font_size'] ) ? $raw_block['font_size'] : ( isset( $fallback['font_size'] ) ? $fallback['font_size'] : $btn['font_size'] ),
-					10,
-					32,
+					self::FONT_SIZE_MIN,
+					self::FONT_SIZE_MAX,
 					(int) $btn['font_size']
 				);
 

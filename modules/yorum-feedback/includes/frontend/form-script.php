@@ -75,6 +75,14 @@ function qrm_pro_render_form_script($settings, $js_limit = 0, $has_list = true, 
             return fd;
         }
 
+        function kacirHtml(s) {
+            return String(s == null ? '' : s)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
         function buildGoogleCta(avg, googleUrl) {
             var stars = Math.round(avg);
             var starsHtml = '★'.repeat(stars) + '☆'.repeat(5 - stars);
@@ -82,8 +90,8 @@ function qrm_pro_render_form_script($settings, $js_limit = 0, $has_list = true, 
                 '<div class="qrm-google-cta" id="qrmGoogleCta">' +
                     '<div class="qrm-google-cta-icon">✓</div>' +
                     '<div class="qrm-google-cta-stars">' + starsHtml + '</div>' +
-                    '<h3>' + qrmCfg.headline + '</h3>' +
-                    '<p>' + qrmCfg.subtext + '</p>' +
+                    '<h3>' + kacirHtml(qrmCfg.headline) + '</h3>' +
+                    '<p>' + kacirHtml(qrmCfg.subtext) + '</p>' +
                     '<a href="' + googleUrl + '" target="_blank" rel="noopener noreferrer" class="qrm-btn qrm-google-btn">' + qrmCfg.btnText + '</a>' +
                     '<button type="button" class="qrm-google-skip" id="qrmGoogleSkipBtn">' + qrmCfg.skipText + '</button>' +
                 '</div>';
