@@ -56,6 +56,7 @@ function qrm_cf_admin_form_editor_view() {
             'required'      => (int) $f->is_required,
             'options'       => qrm_cf_field_options($f),
             'column_width'  => qrm_pro_field_column_width($f, 'custom'),
+            'step_no'       => qrm_pro_sanitize_step_no(isset($f->step_no) ? $f->step_no : 1),
         ];
     }
 
@@ -246,6 +247,17 @@ function qrm_cf_admin_form_editor_view() {
                         <input type="range" id="qrm-fb-radius" name="qrm_cf_settings[border_radius]" min="0" max="40" value="<?php echo intval($s['border_radius']); ?>">
                     </div>
 
+                    <h3 class="qrm-fb-section">Adımlar</h3>
+                    <p class="qrm-fb-help" style="margin-top:0;">Alanları 1–4 arası adımlara atayın. Yalnızca tek adım kullanılırsa ziyaretçiye stepper gösterilmez.</p>
+                    <?php for ($si = 1; $si <= 4; $si++): ?>
+                    <div class="qrm-fb-field">
+                        <label for="qrm-fb-step-label-<?php echo $si; ?>"><?php echo (int) $si; ?>. Adım etiketi</label>
+                        <input type="text" id="qrm-fb-step-label-<?php echo $si; ?>" name="qrm_cf_settings[step_labels][<?php echo $si; ?>]"
+                               value="<?php echo esc_attr(isset($s['step_labels'][$si]) ? $s['step_labels'][$si] : ''); ?>"
+                               placeholder="<?php echo esc_attr(sprintf('%d. Adım', $si)); ?>">
+                    </div>
+                    <?php endfor; ?>
+
                     <h3 class="qrm-fb-section">Güvenlik</h3>
                     <p class="qrm-fb-help" style="margin-top:0;">
                         Bu formlarda <strong>honeypot</strong> (bot tuzağı) ve <strong>zaman tabanlı</strong> spam koruması
@@ -285,6 +297,7 @@ function qrm_cf_admin_handle_editor_save() {
             'is_required'  => !empty($f['required']) ? 1 : 0,
             'options'      => isset($f['options']) ? $f['options'] : [],
             'column_width' => isset($f['column_width']) ? $f['column_width'] : 'full',
+            'step_no'      => qrm_pro_sanitize_step_no(isset($f['step_no']) ? $f['step_no'] : 1),
         ];
     }
 
@@ -395,6 +408,8 @@ function qrm_cf_admin_builder_styles() {
         .qrm-fb-submit-preview { width:100%; margin-top:12px; padding:15px 30px; border:none; border-radius:var(--qrm-radius); background:var(--qrm-btn); color:var(--qrm-btn-text);
             font-size:15px; font-weight:600; text-transform:uppercase; letter-spacing:.5px; opacity:.95; cursor:default; }
 
+        .qrm-fb-step-group { width:100%; margin-bottom:18px; }
+        .qrm-fb-step-group-title { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.4px; color:#64748b; margin:0 0 10px; padding-bottom:6px; border-bottom:1px dashed #e2e8f0; }
         .qrm-fb-empty-fields { text-align:center; padding:34px 16px; color:#94a3b8; font-size:13.5px; border:2px dashed #e2e8f0; border-radius:12px; margin-bottom:14px; }
 
         /* Alan düzenleme paneli */
@@ -555,6 +570,12 @@ function qrm_cf_admin_builder_script($state, $types) {
             html += '<option value="full"' + (field.column_width !== 'half' ? ' selected' : '') + '>Tekli (tam genişlik)</option>';
             html += '<option value="half"' + (field.column_width === 'half' ? ' selected' : '') + '>İkili (yarım genişlik)</option>';
             html += '</select>';
+            html += '<label>Form adımı</label>';
+            html += '<select data-edit="step_no" data-index="' + index + '">';
+            for (var sn = 1; sn <= 4; sn++) {
+                html += '<option value="' + sn + '"' + ((field.step_no || 1) === sn ? ' selected' : '') + '>' + sn + '. Adım</option>';
+            }
+            html += '</select>';
             html += '<p class="qrm-fb-help">Masaüstünde yan yana iki alan için İkili seçin. Mobilde hepsi tam genişliğe düşer. Elementor Column Width bu forma uygulanmaz.</p>';
             html += '<button type="button" class="button button-small" data-act="done" data-index="' + index + '">Tamam</button>';
             html += '</div>';
@@ -562,16 +583,25 @@ function qrm_cf_admin_builder_script($state, $types) {
         }
 
         function render() {
-            itemsBox.innerHTML = fields.map(function(field, index){
+            var groups = {};
+            fields.forEach(function(field, index) {
+                var sn = field.step_no || 1;
+                if (!groups[sn]) groups[sn] = [];
+                groups[sn].push({ field: field, index: index });
+            });
+            var stepNums = Object.keys(groups).map(function(k) { return parseInt(k, 10); }).sort(function(a, b) { return a - b; });
+
+            itemsBox.innerHTML = stepNums.map(function(sn) {
+                var groupHtml = '<div class="qrm-fb-step-group"><div class="qrm-fb-step-group-title">' + sn + '. Adım</div>';
+                groupHtml += groups[sn].map(function(item) {
+                    var field = item.field;
+                    var index = item.index;
                 var typeLabel = TYPES[field.type] ? TYPES[field.type].label : field.type;
                 var html = '<div class="qrm-fb-item' + (editingIndex === index ? ' editing' : '') + (field.column_width === 'half' ? ' is-half' : '') + '" draggable="true" data-index="' + index + '">';
                 html += '<div class="qrm-fb-item-bar">';
                 html += '<span class="dashicons dashicons-menu qrm-fb-drag" title="Sıralamak için sürükleyin"></span>';
-                html += '<span class="qrm-fb-item-type">' + esc(typeLabel) + '</span>';
+                html += '<span class="qrm-fb-item-type">' + esc(typeLabel) + ' · Adım ' + (field.step_no || 1) + '</span>';
                 html += '<span class="spacer"></span>';
-                // Yukarı/aşağı butonları sürükle-bırakın erişilebilir karşılığıdır:
-                // HTML5 drag-and-drop dokunmatik ekranlarda hiç çalışmaz, klavyeyle
-                // de sürüklenemez. Sıralamanın telefondan da yapılabilmesini bunlar sağlar.
                 html += '<button type="button" class="qrm-fb-icon-btn" data-act="up" data-index="' + index + '" title="Yukarı taşı"' + (index === 0 ? ' disabled' : '') + '><span class="dashicons dashicons-arrow-up-alt2"></span></button>';
                 html += '<button type="button" class="qrm-fb-icon-btn" data-act="down" data-index="' + index + '" title="Aşağı taşı"' + (index === fields.length - 1 ? ' disabled' : '') + '><span class="dashicons dashicons-arrow-down-alt2"></span></button>';
                 html += '<button type="button" class="qrm-fb-icon-btn" data-act="edit" data-index="' + index + '" title="Düzenle"><span class="dashicons dashicons-edit"></span></button>';
@@ -581,6 +611,9 @@ function qrm_cf_admin_builder_script($state, $types) {
                 if (editingIndex === index) html += editPanelHtml(field, index);
                 html += '</div>';
                 return html;
+                }).join('');
+                groupHtml += '</div>';
+                return groupHtml;
             }).join('');
 
             emptyBox.style.display = fields.length ? 'none' : 'block';
@@ -600,7 +633,8 @@ function qrm_cf_admin_builder_script($state, $types) {
                     type: type,
                     required: 0,
                     options: meta.has_options ? defaultOptions() : [],
-                    column_width: 'full'
+                    column_width: 'full',
+                    step_no: 1
                 });
                 editingIndex = fields.length - 1;
                 render();
@@ -672,6 +706,15 @@ function qrm_cf_admin_builder_script($state, $types) {
         });
 
         itemsBox.addEventListener('change', function(e){
+            var stepInput = e.target.closest('[data-edit="step_no"]');
+            if (stepInput) {
+                var sIndex = parseInt(stepInput.getAttribute('data-index'), 10);
+                if (!fields[sIndex]) return;
+                var sn = parseInt(stepInput.value, 10) || 1;
+                fields[sIndex].step_no = Math.max(1, Math.min(4, sn));
+                render();
+                return;
+            }
             var widthInput = e.target.closest('[data-edit="column_width"]');
             if (widthInput) {
                 var wIndex = parseInt(widthInput.getAttribute('data-index'), 10);

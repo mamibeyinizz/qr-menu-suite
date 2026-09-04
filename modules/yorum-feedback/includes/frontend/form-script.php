@@ -179,50 +179,11 @@ function qrm_pro_render_form_script($settings, $js_limit = 0, $has_list = true, 
         }
 
         // Aşamalı form (wizard)
+        <?php echo qrm_pro_steps_wizard_js(); ?>
+
         function initWizard(form) {
-            var step1 = form.querySelector('[data-step="1"]');
-            var step2 = form.querySelector('[data-step="2"]');
-            var next  = form.querySelector('#qrm-step-next');
-            var back  = form.querySelector('#qrm-step-back');
-            var dots  = form.querySelectorAll('.qrm-step-dot');
-            if (!step1 || !step2 || !next) return;
-
-            form.classList.add('qrm-js');   // JS aktif -> wizard CSS'i devreye girer
-            step2.hidden = true;
-
-            function setDots(n) {
-                dots.forEach(function(d) {
-                    d.classList.toggle('active', parseInt(d.getAttribute('data-dot'), 10) <= n);
-                });
-            }
-            function allRated() {
-                var rows = step1.querySelectorAll('.qrm-rating-row');
-                if (!rows.length) return false;
-                for (var i = 0; i < rows.length; i++) {
-                    if (!rows[i].querySelector('input[type=radio]:checked')) return false;
-                }
-                return true;
-            }
-            function showErr(msg) {
-                var e = step1.querySelector('.qrm-step-error');
-                if (!e) { e = document.createElement('div'); e.className = 'qrm-step-error'; step1.prepend(e); }
-                e.textContent = msg;
-            }
-            function clearErr() {
-                var e = step1.querySelector('.qrm-step-error');
-                if (e) e.remove();
-            }
-
-            next.addEventListener('click', function() {
-                if (!allRated()) { showErr(metin('rateRequired', 'Devam etmek için lütfen tüm kriterleri puanlayın.')); return; }
-                clearErr();
-                step1.hidden = true; step2.hidden = false; setDots(2);
-                var first = step2.querySelector('input, textarea');
-                if (first) first.focus();
-            });
-            if (back) back.addEventListener('click', function() {
-                step2.hidden = true; step1.hidden = false; setDots(1);
-            });
+            if (!form || !form.getAttribute('data-qrm-steps')) return;
+            qrmInitSteps(form, { buildSummary: qrmBuildReviewSummary });
         }
 
         function initReviewForm() {

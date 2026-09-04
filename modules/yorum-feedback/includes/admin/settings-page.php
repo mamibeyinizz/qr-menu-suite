@@ -131,6 +131,26 @@ function qrm_pro_admin_settings() {
                                 </select>
                             </td>
                         </tr>
+                        <tr>
+                            <th>Çok Adımlı Form</th>
+                            <td>
+                                <label><input type="checkbox" name="qrm_steps_summary_enabled" value="1" <?php checked(!empty($settings['qrm_steps_summary_enabled'])); ?>> Gönderimden önce özet adımı göster (opsiyonel 4. adım)</label>
+                                <p class="description">Kapalıyken form en fazla 3 adımda tamamlanır (puanlama → yorum → bilgiler).</p>
+                            </td>
+                        </tr>
+                        <?php
+                        $step_label_keys = ['rating' => 'Puanlama', 'comment' => 'Yorumunuz', 'info' => 'Bilgileriniz', 'summary' => 'Gönder'];
+                        $saved_labels = isset($settings['qrm_step_labels']) && is_array($settings['qrm_step_labels']) ? $settings['qrm_step_labels'] : [];
+                        foreach ($step_label_keys as $lk => $default_lbl): ?>
+                        <tr>
+                            <th><label for="qrm_step_label_<?php echo esc_attr($lk); ?>">Adım: <?php echo esc_html($default_lbl); ?></label></th>
+                            <td>
+                                <input type="text" id="qrm_step_label_<?php echo esc_attr($lk); ?>" name="qrm_step_labels[<?php echo esc_attr($lk); ?>]" class="regular-text"
+                                       value="<?php echo esc_attr(isset($saved_labels[$lk]) ? $saved_labels[$lk] : ''); ?>"
+                                       placeholder="<?php echo esc_attr($default_lbl); ?>">
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
                     </table>
                 </div>
             </div>
@@ -364,6 +384,18 @@ function qrm_pro_admin_save_settings() {
     $settings['qrm_media_enabled']   = isset($_POST['qrm_media_enabled']) ? 1 : 0;
     $settings['qrm_media_max_files'] = max(1, min(5, intval($_POST['qrm_media_max_files'] ?? 2)));
     $settings['qrm_media_max_mb']    = max(1, min(8, intval($_POST['qrm_media_max_mb'] ?? 3)));
+
+    $settings['qrm_steps_summary_enabled'] = isset($_POST['qrm_steps_summary_enabled']) ? 1 : 0;
+    if (isset($_POST['qrm_step_labels']) && is_array($_POST['qrm_step_labels'])) {
+        $labels = [];
+        foreach ($_POST['qrm_step_labels'] as $key => $val) {
+            $key = sanitize_key($key);
+            if ($key !== '') {
+                $labels[$key] = sanitize_text_field(wp_unslash($val));
+            }
+        }
+        $settings['qrm_step_labels'] = $labels;
+    }
 
     update_option('qrm_settings', $settings);
     qrm_pro_flush_trend_drop_cache();

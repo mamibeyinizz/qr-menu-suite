@@ -83,6 +83,7 @@ function qrm_reward_setup_status($settings = null) {
             'ok'    => $url_ok,
             'hint'  => ($url === '') ? 'Link alanı boş — kurulumun tek zorunlu adımı budur.' : 'Girilen değer geçerli bir bağlantı gibi görünmüyor.',
             'sub'   => 'kurulum',
+            'field' => 'google_review_url',
         ],
         [
             'key'   => 'redirect',
@@ -90,6 +91,7 @@ function qrm_reward_setup_status($settings = null) {
             'ok'    => !empty($settings['google_review_enabled']),
             'hint'  => '"Google yönlendirmesini etkinleştir" kutusu işaretli değil.',
             'sub'   => 'kurulum',
+            'field' => 'google_review_enabled',
         ],
         [
             'key'   => 'reward',
@@ -97,6 +99,7 @@ function qrm_reward_setup_status($settings = null) {
             'ok'    => !empty($settings['qrm_reward_enabled']),
             'hint'  => '"Ödül sistemini etkinleştir" kutusu işaretli değil.',
             'sub'   => 'kurulum',
+            'field' => 'qrm_reward_enabled',
         ],
         [
             'key'   => 'template',
@@ -104,6 +107,7 @@ function qrm_reward_setup_status($settings = null) {
             'ok'    => $has_active_template,
             'hint'  => 'Aktif şablon yok; kod üretilemez.',
             'sub'   => 'sablonlar',
+            'field' => '#qrm-rw-templates',
         ],
     ];
 

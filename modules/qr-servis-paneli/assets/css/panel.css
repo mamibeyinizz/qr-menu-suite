@@ -1,0 +1,185 @@
+/* Servis Paneli */
+
+.qrms-sp-wrap {
+	max-width: 100%;
+	overflow-x: hidden;
+	padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+.qrms-sp-baslik {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: space-between;
+	align-items: center;
+	gap: 12px;
+	margin-bottom: 16px;
+}
+
+.qrms-sp-kontroller {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12px;
+	align-items: center;
+}
+
+.qrms-sp-kontroller input[type="range"],
+.qrms-sp-filtre input,
+.qrms-sp-filtre select {
+	font-size: 16px;
+	min-height: 44px;
+}
+
+.qrms-sp-hata {
+	background: #fce4e4;
+	color: #8a1f1f;
+	padding: 12px 16px;
+	margin-bottom: 16px;
+	border-left: 4px solid #c0392b;
+}
+
+.qrms-sp-filtre {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12px;
+	margin-bottom: 16px;
+	align-items: flex-end;
+}
+
+.qrms-sp-sekmeler {
+	display: none;
+	position: sticky;
+	top: 32px;
+	z-index: 10;
+	background: #f0f0f1;
+	gap: 4px;
+	padding: 8px 0;
+	margin-bottom: 12px;
+}
+
+.qrms-sp-sekme {
+	flex: 1;
+	min-height: 44px;
+	border: 1px solid #c3c4c7;
+	background: #fff;
+	cursor: pointer;
+	font-size: 14px;
+}
+
+.qrms-sp-sekme.is-active {
+	background: #2271b1;
+	color: #fff;
+	border-color: #2271b1;
+}
+
+.qrms-sp-rozet {
+	background: #c0392b;
+	color: #fff;
+	border-radius: 10px;
+	padding: 0 6px;
+	font-size: 11px;
+}
+
+.qrms-sp-kanban {
+	display: grid;
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+	gap: 12px;
+}
+
+.qrms-sp-sutun {
+	background: #f6f7f7;
+	border-radius: 6px;
+	padding: 8px;
+	min-width: 0;
+}
+
+.qrms-sp-sutun-baslik {
+	font-size: 14px;
+	margin: 0 0 8px;
+	padding: 8px;
+	text-transform: capitalize;
+}
+
+.qrms-sp-kart {
+	background: #fff;
+	border: 2px solid #c3c4c7;
+	border-radius: 6px;
+	padding: 12px;
+	margin-bottom: 8px;
+}
+
+.qrms-sp-kart.is-sari { border-color: #e08a1e; }
+.qrms-sp-kart.is-kirmizi { border-color: #c0392b; }
+
+.qrms-sp-kart-masa {
+	font-size: 18px;
+	font-weight: 700;
+	margin-bottom: 4px;
+}
+
+.qrms-sp-kart-tip {
+	display: inline-block;
+	font-size: 11px;
+	padding: 2px 8px;
+	border-radius: 3px;
+	background: #2271b1;
+	color: #fff;
+	margin-bottom: 8px;
+}
+
+.qrms-sp-kart-sure {
+	font-size: 13px;
+	color: #646970;
+	margin-bottom: 8px;
+}
+
+.qrms-sp-kart-kalemler {
+	font-size: 13px;
+	margin-bottom: 12px;
+}
+
+.qrms-sp-kart-butonlar {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+}
+
+.qrms-sp-kart-butonlar .button {
+	flex: 1;
+	min-height: 44px;
+	font-size: 14px;
+}
+
+@media (max-width: 782px) {
+	.qrms-sp-sekmeler {
+		display: flex;
+	}
+
+	.qrms-sp-kanban {
+		grid-template-columns: 1fr;
+	}
+
+	.qrms-sp-sutun {
+		display: none;
+	}
+
+	.qrms-sp-sutun.is-active {
+		display: block;
+	}
+
+	.qrms-sp-sutun-baslik {
+		display: none;
+	}
+}
+
+@media (pointer: coarse) {
+	.qrms-sp-kart-butonlar .button,
+	.qrms-sp-sekme {
+		min-height: 48px;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.qrms-sp-kart {
+		transition: none;
+	}
+}

@@ -73,6 +73,8 @@ kayıtlı option'ların anahtarı) hiç değişmez.
 | `qr-masa-oturum-guvenligi` | Güvenlik Ayarı |
 | `qr-acilis-ekrani` | Açılış Ekranı |
 | `header-footer-builder` | Header Footer Builder |
+| `qr-menu-muhendisligi` | Menü Mühendisliği |
+| `qr-servis-paneli` | Servis Paneli |
 
 Bir modül eklemek için `modules/<slug>/module.php` dosyası oluşturmak ve
 içinde `qrms_module_<slug_alt_çizgili>_init()` fonksiyonunu tanımlamak
@@ -97,8 +99,10 @@ QR Menü
 │ ├ Restoran Menü               → hub (12 kart)
 │ └ Yorum & Feedback            → hub (7 kart + özet sayaçlar)
 ├ ARAÇLAR
+│ ├ Servis Paneli               → doğrudan canlı sipariş paneli
 │ ├ QR Kod Oluştur              → doğrudan Masalar ekranı
 │ ├ İstatistikler               → doğrudan Menü Analitiği
+│ ├ Menü Mühendisliği           → hub (4 kart + özet sayaçlar)
 │ ├ Fotoğraf Galerisi           → hub (3 kart)
 │ ├ Dil / Çeviri Ayarları       → doğrudan Çeviri ekranı
 │ ├ Chatbot Asistan             → doğrudan Chatbot ayarları
@@ -121,7 +125,7 @@ ekranı açar.
 | --- | --- | --- |
 | Genel | `#9ba7b4` (nötr gri) | Genel Bakış, Genel Ayarlar |
 | Menü Yönetimi | `#5cb0f0` (gök mavisi) | Restoran Menü, Yorum & Feedback |
-| Araçlar | `#35d1b4` (turkuaz) | QR Kod Oluştur, İstatistikler, Fotoğraf Galerisi, Dil / Çeviri Ayarları, Chatbot Asistan, Çalışma Saatleri |
+| Araçlar | `#35d1b4` (turkuaz) | Servis Paneli, QR Kod Oluştur, İstatistikler, Menü Mühendisliği, Fotoğraf Galerisi, Dil / Çeviri Ayarları, Chatbot Asistan, Çalışma Saatleri |
 | Görünüm & Erişim | `#f27cb8` (pembe) | Açılış Ekranı, Header Footer Builder |
 | Gelişmiş | `#f59547` (turuncu) | Güvenlik Ayarı, Kısa Kodlar |
 
@@ -354,6 +358,8 @@ bir kısa kod rehbere eklenmezse düşer.
 | `qr-ceviri` | Çok dilli metin tarama, sözlük, CSV içe/dışa aktarma | ✔ Çeviri ekranı |
 | `qr-analiz` | Menü analitiği (masa bazlı görüntüleme/tıklama takibi, panel); `POST /wp-json/qrservis/v1/analytics` — şube analitiği özeti; `POST /wp-json/qrservis/v1/create-user` — garson/müdür hesabı açma (yalnızca ana sitede) | ✔ Menü Analitiği (tek ekran) |
 | `qr-chatbot` | `[gemini_chatbot]`, garson/hesap buton kısa kodları, `[qmo_sepet]`, Gemini AJAX ucu, sipariş ucu (`POST /wp-json/qrservis/v1/order`) | ✔ Chatbot ayarları + Firebase ayarları |
+| `qr-menu-muhendisligi` | Kasavana–Smith menü kârlılık matrisi, ürün maliyetleri, malzeme fiyatları, reçete tabanlı maliyet | ✔ Hub + dört alt ekran |
+| `qr-servis-paneli` | Firestore `calls` koleksiyonundan canlı sipariş/garson/hesap paneli, kanban, sesli uyarı | ✔ Panel + ayarlar alt sayfası |
 | `qr-acilis-ekrani` | Ana sayfada tam ekran açılış: logo şeridi, arkaplan görseli, CTA + rozetler, wifi penceresi, sosyal hesaplar, ödeme yöntemleri. Kısa kodu yoktur | ✔ Hub + dört ayrı sayfa |
 
 Kodları kaynak eklentilerinden **aynen** taşındı (`restoran-menu` 12-menu
@@ -1226,6 +1232,8 @@ modules/
   qr-masa-oturum-guvenligi/  Masa doğrulama, kilit ekranı + hub (oturum limitleri, Firebase & şube ayarları)
   qr-analiz/                 Menü analitiği (masa bazlı takip + panel), analitik/kullanıcı REST uçları
   qr-chatbot/                Gemini chatbot, garson/hesap butonları, sohbet/çağrı/sipariş uçları + ayar ekranı
+  qr-menu-muhendisligi/      Menü kârlılık matrisi, maliyet/reçete yönetimi + hub ve dört alt ekran
+  qr-servis-paneli/        Canlı sipariş paneli (Firestore calls) + ayarlar alt sayfası
   qr-ceviri/                 Çok dilli sözlük + çeviri yönetim ekranı
   qr-galeri/                 Galeri CPT + yönetim ekranları
   qr-acilis-ekrani/          Ana sayfa açılış ekranı + hub ve dört ayar sayfası
@@ -1239,6 +1247,23 @@ assets/js/login.js           Caps Lock uyarısı, gönderim durumu (opsiyonel iy
 assets/js/login-admin.js     Giriş Ekranı sekmesinin canlı önizlemesi
 tests/                       WordPress'siz çalışan stub tabanlı testler
 ```
+
+### Menü Mühendisliği (`qr-menu-muhendisligi`)
+
+Kasavana–Smith matrisi ile ürünleri Yıldız / İş Atı / Bulmaca / Köpek
+kutularına ayırır. Veri kaynakları: `rma_menu_item` fiyatları (`rma_price`),
+`{$prefix}rma_analytics` satış/sepet/tıklama olayları (siparişlerde `qty`
+adet bilgisi), malzeme taksonomisi (`rma_ingredient`). Rapor tek SQL ile
+hesaplanır, 5 dakikalık transient'te saklanır; maliyet veya ayar kaydında
+önbellek temizlenir.
+
+### Servis Paneli (`qr-servis-paneli`)
+
+Firestore `calls` koleksiyonundaki sipariş, garson ve hesap çağrılarını
+WordPress içinde kanban olarak gösterir. Durum akışı:
+`bekliyor → hazirlaniyor → serviste → tamamlandi` (her adımda `iptal`
+mümkün). Panel 5 saniyede bir yenilenir; sekme arka plandayken 30 saniyeye
+çıkar. `qrms_servis` rolü yalnızca paneli görür.
 
 ## Testler
 

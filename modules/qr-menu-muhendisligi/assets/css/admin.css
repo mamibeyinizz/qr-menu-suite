@@ -1,0 +1,238 @@
+/* Menü Mühendisliği — yönetim ekranları */
+
+.qrms-mm-wrap {
+	max-width: 100%;
+	overflow-x: hidden;
+	padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+.qrms-mm-filtre {
+	position: sticky;
+	top: 32px;
+	z-index: 10;
+	background: #f0f0f1;
+	padding: 12px;
+	margin: 0 0 16px;
+	border-radius: 4px;
+}
+
+.qrms-mm-filtre-row {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12px;
+	align-items: flex-end;
+}
+
+.qrms-mm-filtre input,
+.qrms-mm-filtre select {
+	font-size: 16px;
+	min-height: 44px;
+}
+
+.qrms-mm-uyari {
+	background: #fff3cd;
+	border-left: 4px solid #e08a1e;
+	padding: 12px 16px;
+	margin-bottom: 16px;
+}
+
+.qrms-mm-ozet {
+	display: grid;
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+	gap: 12px;
+	margin-bottom: 20px;
+}
+
+.qrms-mm-ozet-kutu {
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	padding: 12px;
+}
+
+.qrms-mm-ozet-kutu span {
+	display: block;
+	font-size: 12px;
+	color: #646970;
+}
+
+.qrms-mm-kayip strong {
+	color: #c0392b;
+}
+
+.qrms-mm-matris {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 12px;
+	margin-bottom: 24px;
+}
+
+.qrms-mm-kutu {
+	border: 2px solid var(--qrms-mm-kutu-renk, #c3c4c7);
+	border-radius: 6px;
+	background: #fff;
+	padding: 0;
+}
+
+.qrms-mm-kutu summary {
+	cursor: pointer;
+	padding: 12px 16px;
+	font-weight: 600;
+	list-style: none;
+	min-height: 44px;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.qrms-mm-kutu summary .dashicons {
+	color: var(--qrms-mm-kutu-renk);
+}
+
+.qrms-mm-kutu-aciklama {
+	padding: 0 16px 8px;
+	margin: 0;
+	color: #646970;
+	font-size: 13px;
+}
+
+.qrms-mm-kutu-liste {
+	list-style: none;
+	margin: 0;
+	padding: 0 16px 12px;
+}
+
+.qrms-mm-urun-link {
+	background: none;
+	border: none;
+	padding: 8px 0;
+	text-align: left;
+	cursor: pointer;
+	font-size: 14px;
+	min-height: 44px;
+	width: 100%;
+}
+
+.qrms-mm-tablo-wrap {
+	overflow-x: auto;
+	-webkit-overflow-scrolling: touch;
+	max-width: 100%;
+}
+
+.qrms-mm-tablo th {
+	cursor: pointer;
+}
+
+.qrms-mm-rozet {
+	display: inline-block;
+	color: #fff;
+	padding: 2px 8px;
+	border-radius: 3px;
+	font-size: 12px;
+}
+
+.qrms-mm-aksiyon {
+	max-width: 280px;
+	font-size: 13px;
+}
+
+.qrms-mm-maliyet-input {
+	font-size: 16px;
+	min-height: 44px;
+	width: 100px;
+}
+
+.qrms-mm-toplu {
+	margin-bottom: 16px;
+	display: flex;
+	gap: 12px;
+	align-items: center;
+	flex-wrap: wrap;
+}
+
+.qrms-mm-toplu input {
+	font-size: 16px;
+	min-height: 44px;
+}
+
+.qrms-mm-recete-panel {
+	padding: 12px;
+	background: #f6f7f7;
+	border-radius: 4px;
+}
+
+.qrms-mm-recete-satir {
+	display: flex;
+	gap: 8px;
+	margin-bottom: 8px;
+	flex-wrap: wrap;
+}
+
+.qrms-mm-recete-satir select,
+.qrms-mm-recete-satir input {
+	font-size: 16px;
+	min-height: 44px;
+}
+
+tr.qrms-mm-vurgu {
+	background: #f0f6fc !important;
+}
+
+@media (max-width: 782px) {
+	.qrms-mm-ozet {
+		grid-template-columns: 1fr 1fr;
+	}
+
+	.qrms-mm-matris {
+		grid-template-columns: 1fr;
+	}
+
+	.qrms-mm-maliyet-tablo thead {
+		display: none;
+	}
+
+	.qrms-mm-maliyet-tablo tr.qrms-mm-maliyet-satir {
+		display: block;
+		border: 1px solid #c3c4c7;
+		margin-bottom: 12px;
+		padding: 12px;
+		border-radius: 4px;
+	}
+
+	.qrms-mm-maliyet-tablo tr.qrms-mm-maliyet-satir td {
+		display: flex;
+		justify-content: space-between;
+		padding: 6px 0;
+		border: none;
+	}
+
+	.qrms-mm-maliyet-tablo tr.qrms-mm-maliyet-satir td::before {
+		content: attr(data-label);
+		font-weight: 600;
+		margin-right: 12px;
+	}
+
+	.qrms-mm-maliyet-tablo tr.qrms-mm-recete-satir {
+		display: block;
+		margin-bottom: 16px;
+	}
+}
+
+@media (max-width: 600px) {
+	.qrms-mm-ozet {
+		grid-template-columns: 1fr;
+	}
+
+	.qrms-mm-filtre {
+		top: 0;
+	}
+}
+
+@media (pointer: coarse) {
+	.qrms-mm-urun-link,
+	.button,
+	.qrms-mm-maliyet-input {
+		min-height: 44px;
+		min-width: 44px;
+	}
+}
