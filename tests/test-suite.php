@@ -15,6 +15,11 @@ require_once __DIR__ . '/bootstrap.php';
 
 echo "\nQR Menu Suite — mantık testleri\n\n";
 
+// Giriş testleri EN BAŞTA: son testi QRMS_LOGIN_DISABLE sabitini tanımlar ve
+// sabit geri alınamaz. Sabit yalnızca QRMS_Login'i etkiler, başka hiçbir dosya
+// bu sınıfa dokunmadığı için erken tanımlanması güvenlidir.
+require_once __DIR__ . '/test-login.php';
+
 require_once __DIR__ . '/test-core.php';
 require_once __DIR__ . '/test-chatbot.php';
 require_once __DIR__ . '/test-analiz.php';

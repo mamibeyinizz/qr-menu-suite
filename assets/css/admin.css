@@ -176,6 +176,69 @@
 	background: #fcf0f1;
 }
 
+.qrms-alert-warning {
+	border-left-color: #dba617;
+	background: #fcf9e8;
+}
+
+.qrms-alert-info {
+	border-left-color: #72aee6;
+	background: #f0f6fc;
+}
+
+/* Ayar sekmeleri */
+
+.qrms-tabs {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+	margin: 0 0 20px;
+	padding: 0;
+	border-bottom: 1px solid #dcdcde;
+}
+
+.qrms-tab {
+	display: inline-flex;
+	align-items: center;
+	gap: 7px;
+	padding: 10px 16px;
+	margin-bottom: -1px;
+	border: 1px solid transparent;
+	border-bottom: 0;
+	border-radius: 6px 6px 0 0;
+	color: #50575e;
+	font-size: 14px;
+	font-weight: 600;
+	text-decoration: none;
+}
+
+.qrms-tab:hover,
+.qrms-tab:focus {
+	background: #f6f7f7;
+	color: #1d2327;
+}
+
+.qrms-tab-aktif,
+.qrms-tab-aktif:hover,
+.qrms-tab-aktif:focus {
+	background: #fff;
+	border-color: #dcdcde;
+	color: #1d2327;
+	box-shadow: inset 0 3px 0 #2271b1;
+}
+
+.qrms-tab .dashicons {
+	width: 18px;
+	height: 18px;
+	font-size: 18px;
+}
+
+@media (pointer: coarse) {
+	.qrms-tab {
+		min-height: 44px;
+	}
+}
+
 /* Modül listesi */
 
 .qrms-module-list {

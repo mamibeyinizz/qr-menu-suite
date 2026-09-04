@@ -1842,7 +1842,41 @@ class QRMS_Admin {
 	}
 
 	/**
-	 * Genel Ayarlar ekranı: lisans durumu ve yeniden doğrulama.
+	 * Genel Ayarlar ekranının sekmeleri.
+	 *
+	 * Sol menüye yeni satır eklemek yerine sekme kullanılır: menü tek
+	 * seviyeli kalsın diye modüllerin alt ekranları da menüye yazılmıyor,
+	 * çekirdek ayarların bunu bozmaması gerekir.
+	 *
+	 * @return array<string,array{label:string,icon:string}>
+	 */
+	public static function get_settings_tabs() {
+		return array(
+			'genel' => array(
+				'label' => __( 'Genel', 'qrms' ),
+				'icon'  => 'dashicons-admin-settings',
+			),
+			'giris' => array(
+				'label' => __( 'Giriş Ekranı', 'qrms' ),
+				'icon'  => 'dashicons-lock',
+			),
+		);
+	}
+
+	/**
+	 * Adresteki sekme (bilinmeyen değer "genel"e düşer).
+	 *
+	 * @return string
+	 */
+	public static function get_current_settings_tab() {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$tab = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : '';
+
+		return isset( self::get_settings_tabs()[ $tab ] ) ? $tab : 'genel';
+	}
+
+	/**
+	 * Genel Ayarlar ekranı — sekme çubuğu ve seçili sekmenin gövdesi.
 	 *
 	 * @return void
 	 */
@@ -1851,6 +1885,41 @@ class QRMS_Admin {
 			wp_die( esc_html__( 'Bu sayfayı görüntüleme yetkiniz yok.', 'qrms' ) );
 		}
 
+		$aktif = self::get_current_settings_tab();
+		?>
+		<div class="wrap qrms-wrap">
+			<h1 class="qrms-title"><?php esc_html_e( 'Genel Ayarlar', 'qrms' ); ?></h1>
+
+			<nav class="qrms-tabs" aria-label="<?php esc_attr_e( 'Ayar sekmeleri', 'qrms' ); ?>">
+				<?php foreach ( self::get_settings_tabs() as $slug => $tab ) : ?>
+					<a
+						class="qrms-tab <?php echo $slug === $aktif ? 'qrms-tab-aktif' : ''; ?>"
+						href="<?php echo esc_url( add_query_arg( array( 'page' => self::SETTINGS_SLUG, 'tab' => $slug ), admin_url( 'admin.php' ) ) ); ?>"
+						<?php echo $slug === $aktif ? 'aria-current="page"' : ''; ?>
+					>
+						<span class="dashicons <?php echo esc_attr( $tab['icon'] ); ?>" aria-hidden="true"></span>
+						<?php echo esc_html( $tab['label'] ); ?>
+					</a>
+				<?php endforeach; ?>
+			</nav>
+
+			<?php
+			if ( 'giris' === $aktif ) {
+				QRMS_Login::render_settings_tab();
+			} else {
+				self::render_settings_genel();
+			}
+			?>
+		</div>
+		<?php
+	}
+
+	/**
+	 * "Genel" sekmesi: lisans durumu ve yeniden doğrulama.
+	 *
+	 * @return void
+	 */
+	private static function render_settings_genel() {
 		// Yeniden doğrulama formu gönderildiyse işle (otomatik redirect asla tetiklenmez).
 		$result = QRMS_Wizard::handle_submission();
 
@@ -1858,8 +1927,7 @@ class QRMS_Admin {
 		$active  = QRMS_License_Client::get_active_modules();
 		$is_open = ( is_array( $result ) && 'active' !== $result['status'] );
 		?>
-		<div class="wrap qrms-wrap">
-			<h1 class="qrms-title"><?php esc_html_e( 'Genel Ayarlar', 'qrms' ); ?></h1>
+		<div class="qrms-settings-genel">
 
 			<?php if ( is_array( $result ) && 'active' === $result['status'] ) : ?>
 				<div class="qrms-alert qrms-alert-success">

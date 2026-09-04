@@ -1080,6 +1080,106 @@ Taşınan kodun tamamı `class_exists()` / `function_exists()` / `defined()`
 guard'lıdır: eski `qr-menu-official` eklentisi aynı sitede hâlâ aktifse
 çift tanım hatası olmaz, ilk yükleyen kazanır.
 
+## Giriş adresi ve giriş ekranı (`QRMS_Login`)
+
+Çekirdeğin parçasıdır, modül değildir: lisans listesine bakılmaz, her kurulumda
+vardır. İki bağımsız işi bir sınıfta toplar ve ikisi ayrı ayrı açılıp
+kapatılabilir.
+
+### Yol — `site.com/qrm`
+
+`plugins_loaded` (öncelik 1) isteği sınıflandırır, `wp_loaded` sonucu uygular:
+
+| İstek | Sonuç |
+| --- | --- |
+| `/qrm` (veya `/?qrm`, kalıcı bağlantı kapalıysa) | `$pagenow = 'wp-login.php'`, `wp-login.php` require edilir |
+| `wp-login.php`, oturumsuz | 404 (tema 404 şablonu, yoksa `wp_die`) |
+| `wp-login.php?action=postpass` | **Geçer** — şifre korumalı yazıların formu buraya POST eder |
+| `wp-login.php`, oturum açık | Geçer — çıkış ve ara giriş penceresi bozulmasın |
+| `wp-admin/*`, oturumsuz | 404 (`wp_admin_koru` ayarı kapatılabilir) |
+| `admin-ajax.php`, `admin-post.php`, `/wp-json/*`, cron, WP-CLI | Hiç dokunulmaz |
+
+Rewrite kuralı **kullanılmaz** (`flush_rewrite_rules()` çağrılmaz); istek doğrudan
+yakalanır. WordPress'in ürettiği bütün `wp-login.php` adresleri
+`site_url`, `network_site_url`, `wp_redirect`, `login_url`, `logout_url`,
+`lostpassword_url`, `register_url` filtrelerinde yeni yola çevrilir — **sorgu
+parametreleri korunarak**. Şifre sıfırlama e-postasındaki `action=rp&key=…&login=…`
+bağlantısı bu yüzden çalışmaya devam eder.
+
+Slug `sanitize_title()` ile temizlenir; `wp-admin`, `wp-login`, `feed`, `wp-json`
+gibi rezerve değerler, iki karakterden kısa ve 64 karakterden uzun değerler ve
+**sitede aynı adrese sahip bir sayfa varsa** o değer reddedilir. Reddedilen
+değerde eski slug korunur — adres asla boşa düşmez.
+
+**Kilitlenmeye karşı üç koruma:**
+
+1. `wp-config.php` içine `define( 'QRMS_LOGIN_DISABLE', true );` yazmak özelliği
+   (görünüm dâhil) tamamen kapatır ve `wp-login.php`'yi geri getirir.
+2. Adres her değiştiğinde site yöneticisinin e-postasına yeni adres ve bu
+   kurtarma satırı gönderilir.
+3. Kaydettikten sonra yönetim ekranında adres kopyalanabilir bir kutuda durur.
+
+Varsayılan **kapalıdır**: eklenti güncellemesi hiç kimsenin giriş adresini
+habersiz değiştirmemeli. Çok siteli (multisite) kurulumda devreye girmez —
+ağ genelindeki giriş adresi tek bir siteye ait bir option'la yönetilemez.
+
+### Görünüm
+
+Giriş formu WordPress'in kendi formudur; **yeniden yazılmaz**. Nonce'lar,
+kimlik doğrulama akışı ve iki aşamalı doğrulama gibi eklentiler dokunulmadan
+kalsın diye yalnızca CSS ve küçük bir betikle giydirilir:
+
+- `login_enqueue_scripts` → `assets/css/login.css` + ayarlardan üretilen CSS
+  değişkenleri (`QRMS_Login::css_variables()`).
+- `login_body_class` → düzen, tema, arka plan tipi ve gizleme sınıfları
+  (`QRMS_Login::skin_classes()`).
+- `login_message` → marka bloğu, WordPress'in kendi mesajının **önüne** eklenir.
+- `login_headerurl` / `login_headertext` → logo bağlantısı WordPress.org yerine
+  sitenin kendisi.
+- `assets/js/login.js` → Caps Lock uyarısı, gönderim durumu, masaüstünde odak.
+  Üçü de opsiyonel iyileştirmedir; betik yüklenmezse ekran eksiksiz çalışır.
+
+Ayarlanabilenler: düzen (bölünmüş / ortalanmış), tema (koyu / açık / cihaza
+göre), vurgu ve ikinci vurgu rengi, arka plan (düz renk / gradyan / görsel +
+karartma + bulanıklık), logo ve yüksekliği, başlık, alt metin, alt bilgi, kart
+köşe yarıçapı, gölge, cam efekti ve dört bileşenin görünürlüğü.
+
+### Önizleme neden ayrı bir stylesheet kullanmaz
+
+`assets/css/login.css` içindeki her yapısal kural **iki seçiciyle** yazılır:
+
+```css
+.qrms-login #login,
+.qrms-login .qrms-lp-box { … }
+```
+
+Ortak `.qrms-login` sınıfı hem gerçek giriş gövdesinde (`login_body_class`) hem
+yönetimdeki önizleme kökünde bulunur. Önizleme için ayrı bir taklit stylesheet
+yazılsaydı iki dosya zamanla birbirinden ayrı düşer, ekranda gördüğünüzle
+kaydettiğiniz farklı olurdu. Bir test bu çift seçici düzeninin bozulmadığını
+korur.
+
+Yönetimdeki "Mobil" düğmesi önizleme köküne `qrms-lp-mobil` sınıfını ekler:
+tarayıcı penceresi geniş olduğu için `min-width: 1024px` medya sorgusu yine
+eşleşir; bölünmüş düzenin mobil önizlemede kapanmasının tek yolu bu sınıfın
+`:not()` ile dışlanmasıdır.
+
+### Ayar ekranı
+
+Sol menüye yeni satır **eklenmez** — menü tek seviyeli kalsın diye modüllerin
+alt ekranları da menüye yazılmıyor. Ayarlar `Genel Ayarlar` sayfasında bir
+sekmedir (`admin.php?page=qrms-settings&tab=giris`); sekmeler
+`QRMS_Admin::get_settings_tabs()` içinde tek yerde durur. Form `admin-post.php`
+üzerinden kaydedilir ve geri yönlendirilir (yenilemede tekrar gönderim olmaz);
+tüm alanlar `QRMS_Login::sanitize_settings()` içinde alan alan temizlenir,
+bilinmeyen anahtar düşer, aralık dışı sayı sıkıştırılır.
+
+### Kullanılan option'lar
+
+| Option | İçerik |
+| --- | --- |
+| `qrms_login_ayarlar` | Yol ve görünüm ayarlarının tamamı (tek dizi) |
+
 ## Admin menüsüyle ilgili iki tasarım notu
 
 **Sihirbaz gizli ama erişilebilir.** `admin.php?page=qrms-wizard` gerçek bir
@@ -1114,8 +1214,10 @@ includes/
   class-license-client.php   Doğrulama, option'lar, günlük cron, notice
   class-wizard.php           Tek ekranlı kurulum sihirbazı + lisans formu
   class-module-loader.php    modules/<slug>/module.php yükleyici
-  class-admin.php            Menü çatısı, tek seviyeli menü, ortak hub bileşeni, Genel Bakış, Genel Ayarlar
+  class-admin.php            Menü çatısı, tek seviyeli menü, ortak hub bileşeni, Genel Bakış, Genel Ayarlar (sekmeli)
   class-shortcodes.php       Kısa kod kayıt defteri ve "Kısa Kodlar" rehber ekranı
+  class-qrms-login.php       Özel giriş adresi (/qrm) + giriş ekranı görünümü
+  login-ayar-sayfasi.php     Genel Ayarlar → Giriş Ekranı sekmesi (canlı önizlemeli)
 modules/
   _qmo-ortak/                Ortak zemin (oturum sınıfı, Firestore istemcisi, helpers, varlıklar)
   restoran-menu/             Menü CPT'si, kısa kodlar, slider, fiyat kampanyası, porsiyon/ekstra/servis saati + hub ve on yönetim ekranı
@@ -1127,10 +1229,14 @@ modules/
   qr-ceviri/                 Çok dilli sözlük + çeviri yönetim ekranı
   qr-galeri/                 Galeri CPT + yönetim ekranları
   qr-acilis-ekrani/          Ana sayfa açılış ekranı + hub ve dört ayar sayfası
-assets/css/admin.css         Mobil öncelikli admin stilleri (dokunma ≥44px)
+assets/css/admin.css         Mobil öncelikli admin stilleri (dokunma ≥44px), ayar sekmeleri
 assets/css/admin-menu.css    Sol menü: kategori renkleri ve grup başlıkları
+assets/css/login.css         Giriş ekranı görünümü — gerçek ekran ve önizleme ortak
+assets/css/login-admin.css   Giriş Ekranı sekmesinin yerleşimi ve önizleme çerçevesi
 assets/js/admin.js           Form gönderiminde buton kilidi (opsiyonel iyileştirme)
 assets/js/admin-menu.js      Sol menüde katlanabilir kategori başlıkları
+assets/js/login.js           Caps Lock uyarısı, gönderim durumu (opsiyonel iyileştirme)
+assets/js/login-admin.js     Giriş Ekranı sekmesinin canlı önizlemesi
 tests/                       WordPress'siz çalışan stub tabanlı testler
 ```
 

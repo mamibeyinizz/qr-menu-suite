@@ -28,6 +28,7 @@ require_once QRMS_PLUGIN_DIR . 'includes/class-module-loader.php';
 require_once QRMS_PLUGIN_DIR . 'includes/class-wizard.php';
 require_once QRMS_PLUGIN_DIR . 'includes/class-shortcodes.php';
 require_once QRMS_PLUGIN_DIR . 'includes/class-admin.php';
+require_once QRMS_PLUGIN_DIR . 'includes/class-qrms-login.php';
 require_once QRMS_PLUGIN_DIR . 'includes/class-query-monitor.php';
 
 /**
@@ -40,6 +41,11 @@ function qrms_bootstrap() {
 	QRMS_Module_Loader::init();
 	QRMS_Wizard::init();
 	QRMS_Admin::init();
+
+	// Özel giriş adresi + giriş ekranı görünümü. İsteği plugins_loaded'da
+	// yakalaması gerektiği için erken kaydedilir; kendi içinde kapalıysa
+	// hiçbir kanca bağlamaz.
+	QRMS_Login::init();
 
 	// Yavaş sorgu teşhisi. WP_DEBUG + SAVEQUERIES açık değilse kendisi
 	// hiçbir kanca kaydetmez; üretimde tamamen sessizdir.

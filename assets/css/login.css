@@ -1,0 +1,708 @@
+/**
+ * QR Menu Suite — giriş ekranı görünümü.
+ *
+ * Her kural İKİ bağlamda birden çalışır:
+ *   1. Gerçek giriş ekranı — kök öge `body.login.qrms-login`, kart `#login`.
+ *   2. Yönetimdeki canlı önizleme — kök öge `.qrms-lp.qrms-login`, kart `.qrms-lp-box`.
+ *
+ * Ortak `.qrms-login` sınıfı iki kökte de bulunduğu için token ve arka plan
+ * kuralları tek seçiciyle yazılır; yalnızca yapısal seçiciler (kart, form,
+ * marka bloğu) çift yazılır. Böylece önizleme ile gerçek ekran zamanla
+ * birbirinden ayrı düşemez.
+ *
+ * Renk/ölçü değerleri PHP tarafından satır içi CSS değişkeni olarak basılır
+ * (bkz. QRMS_Login::css_variables()).
+ */
+
+/* -------------------------------------------------------------------------
+ * 1. TOKEN'LAR
+ * ---------------------------------------------------------------------- */
+
+.qrms-login {
+	--qrms-lg-vurgu: #c9a84c;
+	--qrms-lg-vurgu2: #e8c874;
+	--qrms-lg-bg1: #0f1115;
+	--qrms-lg-bg2: #1c222c;
+	--qrms-lg-karartma: 0.55;
+	--qrms-lg-bulanik: 0;
+	--qrms-lg-radius: 18px;
+	--qrms-lg-logo-h: 64px;
+
+	/* Tema token'ları — koyu varsayılan. */
+	--qrms-lg-kart: rgba(20, 24, 31, 0.82);
+	--qrms-lg-kart-cizgi: rgba(255, 255, 255, 0.1);
+	--qrms-lg-metin: #f4f6f8;
+	--qrms-lg-metin2: rgba(244, 246, 248, 0.62);
+	--qrms-lg-alan: rgba(255, 255, 255, 0.06);
+	--qrms-lg-alan-cizgi: rgba(255, 255, 255, 0.14);
+	--qrms-lg-alan-metin: #f4f6f8;
+	--qrms-lg-golge: 0 24px 70px rgba(0, 0, 0, 0.45);
+	--qrms-lg-buton-metin: #14181f;
+}
+
+.qrms-login-tema-acik {
+	--qrms-lg-kart: rgba(255, 255, 255, 0.9);
+	--qrms-lg-kart-cizgi: rgba(15, 17, 21, 0.08);
+	--qrms-lg-metin: #14181f;
+	--qrms-lg-metin2: rgba(20, 24, 31, 0.6);
+	--qrms-lg-alan: rgba(15, 17, 21, 0.04);
+	--qrms-lg-alan-cizgi: rgba(15, 17, 21, 0.14);
+	--qrms-lg-alan-metin: #14181f;
+	--qrms-lg-golge: 0 24px 60px rgba(15, 17, 21, 0.18);
+	--qrms-lg-buton-metin: #14181f;
+}
+
+@media (prefers-color-scheme: light) {
+	.qrms-login-tema-otomatik {
+		--qrms-lg-kart: rgba(255, 255, 255, 0.9);
+		--qrms-lg-kart-cizgi: rgba(15, 17, 21, 0.08);
+		--qrms-lg-metin: #14181f;
+		--qrms-lg-metin2: rgba(20, 24, 31, 0.6);
+		--qrms-lg-alan: rgba(15, 17, 21, 0.04);
+		--qrms-lg-alan-cizgi: rgba(15, 17, 21, 0.14);
+		--qrms-lg-alan-metin: #14181f;
+		--qrms-lg-golge: 0 24px 60px rgba(15, 17, 21, 0.18);
+	}
+}
+
+/* -------------------------------------------------------------------------
+ * 2. KÖK — arka plan katmanları
+ * ---------------------------------------------------------------------- */
+
+.qrms-login {
+	position: relative;
+	overflow-x: hidden;
+	margin: 0;
+	min-height: 100vh;
+	background: var(--qrms-lg-bg1);
+	color: var(--qrms-lg-metin);
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+	-webkit-font-smoothing: antialiased;
+}
+
+/* Arka plan görseli / gradyanı ayrı bir katmanda: bulanıklık yalnızca ona
+   uygulansın, kartın ve yazının netliği bozulmasın. */
+.qrms-login::before {
+	content: "";
+	position: absolute;
+	inset: calc(var(--qrms-lg-bulanik) * -2);
+	z-index: 0;
+	background:
+		linear-gradient(140deg, var(--qrms-lg-bg1) 0%, var(--qrms-lg-bg2) 100%);
+	background-size: cover;
+	background-position: center;
+	filter: blur(var(--qrms-lg-bulanik));
+}
+
+.qrms-login-bg-gorsel::before {
+	background-image: var(--qrms-lg-bg-image, none);
+	background-repeat: no-repeat;
+	background-size: cover;
+	background-position: center;
+	/* iOS'ta background-attachment: fixed bozuk çalışır; kullanılmaz. */
+	background-attachment: scroll;
+}
+
+/* Karartma + vurgu rengiyle yumuşak bir ışık. */
+.qrms-login::after {
+	content: "";
+	position: absolute;
+	inset: 0;
+	z-index: 0;
+	pointer-events: none;
+	/* color-mix() desteklemeyen tarayıcı ikinci bildirimi yok sayar ve
+	   karartma yine uygulanır; yalnızca vurgu ışıması olmaz. */
+	background: rgba(0, 0, 0, var(--qrms-lg-karartma));
+	background:
+		radial-gradient(60% 55% at 22% 18%, color-mix(in srgb, var(--qrms-lg-vurgu) 22%, transparent) 0%, transparent 70%),
+		rgba(0, 0, 0, var(--qrms-lg-karartma));
+}
+
+.qrms-login-tema-acik::after {
+	background: rgba(255, 255, 255, var(--qrms-lg-karartma));
+	background:
+		radial-gradient(60% 55% at 22% 18%, color-mix(in srgb, var(--qrms-lg-vurgu) 18%, transparent) 0%, transparent 70%),
+		rgba(255, 255, 255, var(--qrms-lg-karartma));
+}
+
+/* Yalnızca düz renk seçildiyse gradyanın ikinci rengi devre dışı kalır. */
+.qrms-login-bg-renk::before {
+	background: var(--qrms-lg-bg1);
+}
+
+/* -------------------------------------------------------------------------
+ * 3. KART
+ * ---------------------------------------------------------------------- */
+
+.qrms-login #login,
+.qrms-login .qrms-lp-box {
+	position: relative;
+	z-index: 2;
+	box-sizing: border-box;
+	width: min(100%, 420px);
+	margin: 0 auto;
+	padding: 40px 36px 32px;
+	background: var(--qrms-lg-kart);
+	border: 1px solid var(--qrms-lg-kart-cizgi);
+	border-radius: var(--qrms-lg-radius);
+	color: var(--qrms-lg-metin);
+}
+
+.qrms-login-golge #login,
+.qrms-login-golge .qrms-lp-box {
+	box-shadow: var(--qrms-lg-golge);
+}
+
+.qrms-login-cam #login,
+.qrms-login-cam .qrms-lp-box {
+	-webkit-backdrop-filter: blur(18px) saturate(1.2);
+	backdrop-filter: blur(18px) saturate(1.2);
+}
+
+/* Kartı dikeyde ortala (gerçek ekranda gövde, önizlemede kök kutu). */
+body.qrms-login,
+.qrms-lp.qrms-login {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	padding: 40px 16px calc(40px + env(safe-area-inset-bottom));
+}
+
+/* -------------------------------------------------------------------------
+ * 4. LOGO / BAŞLIK
+ * ---------------------------------------------------------------------- */
+
+.qrms-login #login h1,
+.qrms-login .qrms-lp-logo {
+	margin: 0 0 22px;
+	padding: 0;
+	text-align: center;
+}
+
+.qrms-login #login h1 a,
+.qrms-login #login .login-header a,
+.qrms-login #login .wp-login-logo,
+.qrms-login .qrms-lp-logo span {
+	display: block;
+	width: auto;
+	height: auto;
+	margin: 0;
+	padding: 0;
+	overflow: visible;
+	background: none;
+	color: var(--qrms-lg-metin);
+	font-size: 21px;
+	font-weight: 700;
+	line-height: 1.3;
+	letter-spacing: -0.01em;
+	text-indent: 0;
+	text-decoration: none;
+	outline: 0;
+	box-shadow: none;
+}
+
+/* Logo seçildiyse yazı yerine görsel basılır. */
+.qrms-login-logolu #login h1 a,
+.qrms-login-logolu #login .login-header a,
+.qrms-login-logolu #login .wp-login-logo,
+.qrms-login-logolu .qrms-lp-logo span {
+	height: var(--qrms-lg-logo-h);
+	background-image: var(--qrms-lg-logo, none);
+	background-repeat: no-repeat;
+	background-position: center;
+	background-size: contain;
+	text-indent: -9999em;
+	overflow: hidden;
+}
+
+/* -------------------------------------------------------------------------
+ * 5. MARKA BLOĞU
+ * ---------------------------------------------------------------------- */
+
+.qrms-login .qrms-login-brand,
+.qrms-login .qrms-lp-brand {
+	position: relative;
+	z-index: 2;
+	margin: 0 auto 24px;
+	width: min(100%, 420px);
+	text-align: center;
+}
+
+.qrms-login .qrms-login-brand-title,
+.qrms-login .qrms-lp-brand-title {
+	margin: 0 0 8px;
+	color: var(--qrms-lg-metin);
+	font-size: 26px;
+	font-weight: 700;
+	line-height: 1.25;
+	letter-spacing: -0.02em;
+}
+
+.qrms-login .qrms-login-brand-text,
+.qrms-login .qrms-lp-brand-text {
+	margin: 0;
+	color: var(--qrms-lg-metin2);
+	font-size: 14px;
+	line-height: 1.6;
+}
+
+.qrms-login .qrms-lp-brand-text:empty {
+	display: none;
+}
+
+/* -------------------------------------------------------------------------
+ * 6. FORM
+ * ---------------------------------------------------------------------- */
+
+.qrms-login #loginform p,
+.qrms-login #lostpasswordform p,
+.qrms-login #resetpassform p,
+.qrms-login #registerform p,
+.qrms-login .qrms-lp-form p {
+	margin: 0 0 16px;
+}
+
+.qrms-login #login label,
+.qrms-login .qrms-lp-form label {
+	display: block;
+	margin: 0 0 7px;
+	color: var(--qrms-lg-metin2);
+	font-size: 13px;
+	font-weight: 600;
+	letter-spacing: 0.01em;
+}
+
+.qrms-login #login input[type="text"],
+.qrms-login #login input[type="email"],
+.qrms-login #login input[type="password"],
+.qrms-login .qrms-lp-form input[type="text"],
+.qrms-login .qrms-lp-form input[type="password"] {
+	box-sizing: border-box;
+	display: block;
+	width: 100%;
+	height: 48px;
+	margin: 0;
+	padding: 0 14px;
+	background: var(--qrms-lg-alan);
+	border: 1px solid var(--qrms-lg-alan-cizgi);
+	border-radius: calc(var(--qrms-lg-radius) * 0.5);
+	color: var(--qrms-lg-alan-metin);
+	/* 16px: iOS odaklanınca sayfayı yakınlaştırmasın. */
+	font-size: 16px;
+	line-height: 46px;
+	box-shadow: none;
+	transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.qrms-login #login input[type="text"]:focus,
+.qrms-login #login input[type="email"]:focus,
+.qrms-login #login input[type="password"]:focus {
+	outline: 0;
+	border-color: var(--qrms-lg-vurgu);
+	/* Odak halkası erişilebilirlik gereği; color-mix() düşerse düz renkli
+	   ince halka devrede kalır. */
+	box-shadow: 0 0 0 2px var(--qrms-lg-vurgu);
+	box-shadow: 0 0 0 3px color-mix(in srgb, var(--qrms-lg-vurgu) 28%, transparent);
+}
+
+/* Şifre alanının göster/gizle düğmesi (WordPress'in kendi düğmesi). */
+.qrms-login #login .wp-pwd {
+	position: relative;
+}
+
+.qrms-login #login .wp-pwd input[type="text"],
+.qrms-login #login .wp-pwd input[type="password"] {
+	padding-right: 52px;
+}
+
+.qrms-login #login .wp-hide-pw {
+	position: absolute;
+	top: 0;
+	right: 0;
+	width: 48px;
+	height: 48px;
+	padding: 0;
+	background: none;
+	border: 0;
+	color: var(--qrms-lg-metin2);
+	box-shadow: none;
+}
+
+.qrms-login #login .wp-hide-pw:hover,
+.qrms-login #login .wp-hide-pw:focus {
+	color: var(--qrms-lg-vurgu);
+	background: none;
+	box-shadow: none;
+}
+
+.qrms-login #login .wp-hide-pw .dashicons {
+	width: 20px;
+	height: 20px;
+	font-size: 20px;
+}
+
+/* "Beni hatırla" */
+.qrms-login #login .forgetmenot,
+.qrms-login .qrms-lp-hatirla {
+	margin: 0 0 20px;
+	font-size: 13px;
+}
+
+.qrms-login #login .forgetmenot label,
+.qrms-login .qrms-lp-hatirla label {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	margin: 0;
+	color: var(--qrms-lg-metin2);
+	font-weight: 500;
+	cursor: pointer;
+}
+
+.qrms-login #login input[type="checkbox"],
+.qrms-login .qrms-lp-hatirla input[type="checkbox"] {
+	width: 18px;
+	height: 18px;
+	margin: 0;
+	background: var(--qrms-lg-alan);
+	border: 1px solid var(--qrms-lg-alan-cizgi);
+	border-radius: 5px;
+	box-shadow: none;
+}
+
+.qrms-login #login input[type="checkbox"]:checked,
+.qrms-login .qrms-lp-hatirla input[type="checkbox"]:checked {
+	background: var(--qrms-lg-vurgu);
+	border-color: var(--qrms-lg-vurgu);
+}
+
+.qrms-login #login input[type="checkbox"]:checked::before {
+	content: "";
+	display: block;
+	margin: 3px 0 0 5px;
+	width: 4px;
+	height: 8px;
+	border: solid var(--qrms-lg-buton-metin);
+	border-width: 0 2px 2px 0;
+	transform: rotate(45deg);
+	background: none;
+}
+
+.qrms-login-hatirla-gizli #login .forgetmenot,
+.qrms-login-hatirla-gizli .qrms-lp-hatirla {
+	display: none;
+}
+
+/* Gönder düğmesi */
+.qrms-login #login .submit,
+.qrms-login .qrms-lp-submit {
+	margin: 0;
+}
+
+.qrms-login #login #wp-submit,
+.qrms-login #login .button-primary,
+.qrms-login .qrms-lp-button {
+	display: block;
+	box-sizing: border-box;
+	width: 100%;
+	min-height: 48px;
+	padding: 0 18px;
+	background: linear-gradient(135deg, var(--qrms-lg-vurgu) 0%, var(--qrms-lg-vurgu2) 100%);
+	border: 0;
+	border-radius: calc(var(--qrms-lg-radius) * 0.5);
+	color: var(--qrms-lg-buton-metin);
+	font-size: 15px;
+	font-weight: 700;
+	line-height: 48px;
+	letter-spacing: 0.01em;
+	text-align: center;
+	text-shadow: none;
+	cursor: pointer;
+	box-shadow: 0 8px 24px color-mix(in srgb, var(--qrms-lg-vurgu) 32%, transparent);
+	transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+}
+
+.qrms-login #login #wp-submit:hover,
+.qrms-login #login .button-primary:hover {
+	transform: translateY(-1px);
+	filter: brightness(1.04);
+	box-shadow: 0 12px 30px color-mix(in srgb, var(--qrms-lg-vurgu) 38%, transparent);
+}
+
+.qrms-login #login #wp-submit:active {
+	transform: translateY(0);
+}
+
+.qrms-login #login #wp-submit[disabled] {
+	opacity: 0.7;
+	cursor: progress;
+}
+
+/* -------------------------------------------------------------------------
+ * 7. BAĞLANTILAR, MESAJLAR, DİL SEÇİCİ
+ * ---------------------------------------------------------------------- */
+
+.qrms-login #nav,
+.qrms-login .qrms-lp-nav {
+	margin: 18px 0 0;
+	padding: 0;
+	text-align: center;
+	font-size: 13px;
+}
+
+.qrms-login #nav a,
+.qrms-login .qrms-lp-nav span {
+	color: var(--qrms-lg-metin2);
+	text-decoration: none;
+	border-bottom: 1px solid transparent;
+	transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.qrms-login #nav a:hover,
+.qrms-login #nav a:focus {
+	color: var(--qrms-lg-vurgu);
+	border-bottom-color: color-mix(in srgb, var(--qrms-lg-vurgu) 50%, transparent);
+}
+
+.qrms-login #backtoblog,
+.qrms-login .qrms-lp-geri {
+	position: relative;
+	z-index: 2;
+	margin: 20px 0 0;
+	padding: 0;
+	text-align: center;
+	font-size: 13px;
+}
+
+.qrms-login #backtoblog a,
+.qrms-login .qrms-lp-geri span {
+	color: var(--qrms-lg-metin2);
+	text-decoration: none;
+}
+
+.qrms-login #backtoblog a:hover {
+	color: var(--qrms-lg-metin);
+}
+
+.qrms-login-nav-gizli #nav,
+.qrms-login-nav-gizli .qrms-lp-nav {
+	display: none;
+}
+
+.qrms-login-geri-gizli #backtoblog,
+.qrms-login-geri-gizli .qrms-lp-geri {
+	display: none;
+}
+
+.qrms-login .language-switcher {
+	position: relative;
+	z-index: 2;
+	margin-top: 14px;
+}
+
+.qrms-login .language-switcher select {
+	background: var(--qrms-lg-alan);
+	border: 1px solid var(--qrms-lg-alan-cizgi);
+	border-radius: 8px;
+	color: var(--qrms-lg-metin);
+	min-height: 36px;
+}
+
+.qrms-login #login_error,
+.qrms-login .login .message,
+.qrms-login #login .notice,
+.qrms-login #login .message {
+	position: relative;
+	z-index: 2;
+	box-sizing: border-box;
+	width: min(100%, 420px);
+	margin: 0 auto 16px;
+	padding: 13px 16px;
+	background: var(--qrms-lg-kart);
+	border: 1px solid var(--qrms-lg-kart-cizgi);
+	border-left: 3px solid var(--qrms-lg-vurgu);
+	border-radius: calc(var(--qrms-lg-radius) * 0.4);
+	color: var(--qrms-lg-metin);
+	font-size: 13.5px;
+	line-height: 1.55;
+	box-shadow: none;
+}
+
+.qrms-login #login_error {
+	border-left-color: #e05252;
+}
+
+.qrms-login #login_error a,
+.qrms-login #login .message a {
+	color: var(--qrms-lg-vurgu);
+}
+
+.qrms-login .qrms-login-footer {
+	position: relative;
+	z-index: 2;
+	margin: 22px auto 0;
+	width: min(100%, 420px);
+	color: var(--qrms-lg-metin2);
+	font-size: 12.5px;
+	line-height: 1.6;
+	text-align: center;
+}
+
+.qrms-login .qrms-login-footer a {
+	color: var(--qrms-lg-metin2);
+}
+
+/* -------------------------------------------------------------------------
+ * 8. BÖLÜNMÜŞ DÜZEN (≥ 1024px)
+ * ---------------------------------------------------------------------- */
+
+/*
+ * `:not(.qrms-lp-mobil)`: yönetimdeki önizlemenin "Mobil" düğmesi kök kutuya
+ * bu sınıfı ekler. Tarayıcı penceresi geniş olduğu için medya sorgusu yine
+ * eşleşir; bölünmüş düzenin mobil önizlemede kapanmasının tek yolu budur.
+ */
+@media (min-width: 1024px) {
+
+	.qrms-login-duzen-bolunmus.qrms-login:not(.qrms-lp-mobil) {
+		align-items: center;
+		justify-content: flex-end;
+		padding-right: 6vw;
+	}
+
+	.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) .qrms-login-brand,
+	.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) .qrms-lp-brand {
+		position: absolute;
+		left: 0;
+		top: 0;
+		bottom: 0;
+		width: 48%;
+		margin: 0;
+		padding: 0 5vw;
+		display: flex;
+		flex-direction: column;
+		justify-content: center;
+		text-align: left;
+	}
+
+	/* Marka panelini formdan ayıran yumuşak dikey çizgi. */
+	.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) .qrms-login-brand::after,
+	.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) .qrms-lp-brand::after {
+		content: "";
+		position: absolute;
+		top: 12%;
+		bottom: 12%;
+		right: 0;
+		width: 1px;
+		background: linear-gradient(
+			to bottom,
+			transparent,
+			var(--qrms-lg-kart-cizgi) 22%,
+			var(--qrms-lg-kart-cizgi) 78%,
+			transparent
+		);
+	}
+
+	.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) .qrms-login-brand-title,
+	.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) .qrms-lp-brand-title {
+		font-size: clamp(30px, 3vw, 44px);
+		margin-bottom: 14px;
+	}
+
+	.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) .qrms-login-brand-text,
+	.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) .qrms-lp-brand-text {
+		max-width: 40ch;
+		font-size: 15px;
+	}
+
+	/* Kart ve altındaki bağlantılar sağ yarıda kalır. */
+	.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) #login,
+	.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) .qrms-lp-box,
+	.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) #backtoblog,
+	.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) .qrms-lp-geri,
+	.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) .qrms-login-footer,
+	.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) #login_error,
+	.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) .language-switcher {
+		margin-left: 52%;
+		margin-right: 0;
+	}
+}
+
+/* -------------------------------------------------------------------------
+ * 9. MOBİL
+ * ---------------------------------------------------------------------- */
+
+@media (max-width: 600px) {
+
+	body.qrms-login {
+		padding: 24px 16px calc(28px + env(safe-area-inset-bottom));
+	}
+
+	.qrms-login #login,
+	.qrms-login .qrms-lp-box {
+		width: 100%;
+		padding: 28px 20px 24px;
+	}
+
+	.qrms-login .qrms-login-brand-title,
+	.qrms-login .qrms-lp-brand-title {
+		font-size: 22px;
+	}
+
+	.qrms-login #login h1,
+	.qrms-login .qrms-lp-logo {
+		margin-bottom: 18px;
+	}
+
+	/* Dokunma hedefleri: 48px zaten tanımlı, düğme aralıkları açılır. */
+	.qrms-login #nav,
+	.qrms-login #backtoblog {
+		margin-top: 16px;
+		line-height: 2;
+	}
+}
+
+/* -------------------------------------------------------------------------
+ * 10. GİRİŞ ANİMASYONU
+ * ---------------------------------------------------------------------- */
+
+.qrms-login #login,
+.qrms-login .qrms-login-brand {
+	animation: qrms-login-yukari 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.qrms-login #login {
+	animation-delay: 0.06s;
+}
+
+@keyframes qrms-login-yukari {
+	from {
+		opacity: 0;
+		transform: translateY(14px);
+	}
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+	.qrms-login #login,
+	.qrms-login .qrms-login-brand {
+		animation: none;
+	}
+
+	.qrms-login #login #wp-submit {
+		transition: none;
+	}
+}
+
+/* Caps Lock uyarısı (JS ekler). */
+.qrms-login .qrms-caps {
+	display: block;
+	margin: 7px 0 0;
+	color: var(--qrms-lg-vurgu);
+	font-size: 12.5px;
+	font-weight: 600;
+}
