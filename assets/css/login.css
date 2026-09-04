@@ -153,6 +153,25 @@
 	box-shadow: var(--qrms-lg-golge);
 }
 
+/*
+ * WordPress'in kendi wp-admin/css/login.css'i #loginform'a KENDİ beyaz
+ * arka planını, kenarlığını ve iç boşluğunu veriyor — bu form, benim kart
+ * arka planımı verdiğim #login'in içinde iç içe duruyor. Bu satırlar
+ * olmadan koyu temada "kart" göründüğü hâliyle aslında WordPress'in kendi
+ * beyaz kutusu oluyor; kullanıcı adı/parola etiketleri ve girilen metin,
+ * KOYU zemin için seçilmiş açık renkte kaldığından o beyaz kutunun
+ * üzerinde neredeyse hiç okunmuyordu. Form'un kendi görselliği tamamen
+ * sıfırlanıp asıl kart görünümü #login'e bırakılır.
+ */
+.qrms-login #loginform,
+.qrms-login #login form {
+	margin: 0;
+	padding: 0;
+	background: none;
+	border: 0;
+	box-shadow: none;
+}
+
 .qrms-login-cam #login,
 .qrms-login-cam .qrms-lp-box {
 	-webkit-backdrop-filter: blur(18px) saturate(1.2);
