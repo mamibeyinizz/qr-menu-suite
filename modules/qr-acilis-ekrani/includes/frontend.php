@@ -128,9 +128,45 @@ trait QRMS_AE_Frontend {
         ?>
         <style id="splash-critical-style">
             :root { <?php echo $this->css_vars_declarations($opts); ?> }
-            html.splash-loading:has(#custom-splash-overlay) { background: var(--sp-bg) !important; }
-            html.splash-loading:has(#custom-splash-overlay) body { overflow: hidden; visibility: hidden; }
-            html.splash-loading #custom-splash-overlay { display: block !important; visibility: visible; }
+            /*
+             * NEDEN :has() KULLANILMIYOR: overlay'in kendisi sayfanın en
+             * sonunda (wp_footer, öncelik 9999) basılıyor. Gizleme kuralları
+             * ":has(#custom-splash-overlay)" ile şarta bağlanmıştı; o seçici
+             * yalnızca overlay GERÇEKTEN DOM'a girdiğinde eşleşir. Sayfa
+             * ayrıştırılırken (parser henüz footer'a ulaşmadan) bu koşul hiç
+             * sağlanmadığı için asıl site içeriği bir anlığına GÖRÜNÜR kalıyor,
+             * overlay eklenince aniden üstüne kapanıyordu — kullanıcının
+             * bildirdiği "takılıp düzelme" hissi buradan geliyordu.
+             *
+             * Artık gizleme yalnızca html.splash-loading sınıfına bağlı:
+             * sınıf, overlay hiç var olmadan, en baştan (aşağıdaki script)
+             * eklendiği için body ilk boyamadan itibaren gizli kalır. JS hiç
+             * çalışmazsa ya da footer hiç basılmazsa aşağıdaki 5 sn'lik
+             * zaman aşımı sigortası yine devreye girip sayfayı açığa çıkarır.
+             */
+            html.splash-loading { background: var(--sp-bg) !important; }
+            html.splash-loading body { overflow: hidden; visibility: hidden; }
+            /*
+             * Overlay'in tam ekran konumu (position/boyut/z-index) normalde
+             * splash.css'te — geç yüklenen, DEFER edilmiş bir dosyada. Overlay
+             * DOM'a girdiği an bu ölçüler burada, kritik CSS'te hazır
+             * olmazsa; splash.css yetişene kadar küçük/yanlış yerde bir kutu
+             * gibi görünüp sonra "zıplayarak" tam ekrana oturuyordu. Yalnızca
+             * SIÇRAMAYI önlemek için gereken minimum kural burada tekrarlanır;
+             * renk şeması, animasyon ve bileşen stilleri splash.css'te kalır.
+             */
+            html.splash-loading #custom-splash-overlay {
+                display: block !important;
+                visibility: visible;
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                height: 100dvh;
+                z-index: 9999999;
+                background-color: var(--sp-bg, #f7f9fc);
+            }
             html.splash-loading .splash-modal { visibility: visible; }
         </style>
         <?php
