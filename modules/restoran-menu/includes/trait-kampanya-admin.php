@@ -636,7 +636,17 @@ trait RMA_Kampanya_Admin_Trait {
         }
 
         $ayarlar = RMA_Kampanya_DB::ayarlari_temizle( $this->kampanya_form_verisi() );
-        $sonuc   = $this->kampanya_etkilenenler( $ayarlar );
+
+        if ( $ayarlar['amount'] <= 0 ) {
+            wp_send_json_success(
+                array(
+                    'html'      => '<p class="rma-kmp-bayat">' . esc_html( 'Lütfen bir indirim/zam değeri girin' ) . '</p>',
+                    'etkilenen' => 0,
+                )
+            );
+        }
+
+        $sonuc = $this->kampanya_etkilenenler( $ayarlar );
 
         wp_send_json_success(
             array(
