@@ -68,11 +68,16 @@ if ( ! function_exists( 'qmo_chatbot_buton_varliklarini_kaydet' ) ) {
 
 		// Sürüm dosyanın son değişiklik zamanından gelir; sabit bir sürüm
 		// kullanmak dosya değiştiğinde eski kopyanın sunulmasına yol açardı.
-		$css = QRMS_Helpers::asset_version( 'modules/qr-chatbot/assets/css/buttons.css' );
-		$js  = QRMS_Helpers::asset_version( 'modules/qr-chatbot/assets/js/buttons.js' );
+		$css    = QRMS_Helpers::asset_version( 'modules/qr-chatbot/assets/css/buttons.css' );
+		$js     = QRMS_Helpers::asset_version( 'modules/qr-chatbot/assets/js/buttons.js' );
+		$shared = QRMS_Helpers::asset_version( 'modules/qr-chatbot/assets/js/qmo-chatbot-shared.js' );
+
+		if ( ! wp_script_is( 'qmo-chatbot-shared', 'registered' ) ) {
+			wp_register_script( 'qmo-chatbot-shared', $url . 'js/qmo-chatbot-shared.js', array(), $shared, true );
+		}
 
 		wp_register_style( 'qmo-buttons', $url . 'css/buttons.css', array(), $css );
-		wp_register_script( 'qmo-buttons', $url . 'js/buttons.js', array(), $js, true );
+		wp_register_script( 'qmo-buttons', $url . 'js/buttons.js', array( 'qmo-chatbot-shared' ), $js, true );
 
 		// [qr_garson_hesap] / [ikili_buton] aynı dosyaları kullanır; ayrı bir
 		// tema dosyası yok. Bu handle bir TAKMA ADDIR: kendi kaynağı yoktur,

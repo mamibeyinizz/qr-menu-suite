@@ -108,13 +108,8 @@
 		}
 	}
 
-	function metin( anahtar, yedek ) {
-		if ( typeof qmoData === 'undefined' || ! qmoData.i18n ) {
-			return yedek;
-		}
-		var v = qmoData.i18n[ anahtar ];
-		return ( 'string' === typeof v && '' !== v ) ? v : yedek;
-	}
+	var istek = window.qmoChatShared.istek;
+	var metin = window.qmoChatShared.metin;
 
 	/* ------------------------------------------------------------------ */
 
@@ -458,24 +453,6 @@
 			log.scrollTop = log.scrollHeight;
 		}
 		return el;
-	}
-
-	function istek( veri ) {
-		var govde = new URLSearchParams();
-		govde.append( 'nonce', qmoData.nonce );
-		Object.keys( veri ).forEach( function ( k ) {
-			govde.append( k, veri[ k ] );
-		} );
-
-		return fetch( qmoData.ajaxUrl, {
-			method: 'POST',
-			body: govde,
-			credentials: 'same-origin'
-		} ).then( function ( r ) {
-			return r.json().catch( function () {
-				return { success: false };
-			} );
-		} );
 	}
 
 	function oturumBittiMi( yanit ) {
