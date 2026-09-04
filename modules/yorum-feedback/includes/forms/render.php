@@ -54,6 +54,14 @@ function qrm_cf_form_style_block($form_id, $s) {
     <?php echo $own; ?>
     <?php echo qrm_pro_input_css($v, $scope); ?>
     <?php echo qrm_cf_extra_field_css($v, $scope); ?>
+    <?php
+    echo qrm_pro_steps_css([
+        'btn_color'      => $v['btn_color'],
+        'btn_text_color' => $v['btn_text_color'],
+        'border_color'   => $v['border_color'],
+        'theme_style'    => $s['theme_style'],
+    ]);
+    ?>
     <?php echo $scope; ?> .qrm-cf-form { animation: qrmFadeInUp .4s ease both; }
     @media(max-width:480px){ <?php echo $scope; ?> .qrm-cf-form { padding:20px; } }
     </style>
@@ -85,7 +93,7 @@ function qrm_cf_render_field($field, $args = []) {
 
     ob_start();
     ?>
-    <div class="qrm-input-group<?php echo $half; ?>">
+    <div class="qrm-input-group<?php echo $half; ?>" data-field-key="<?php echo esc_attr($key); ?>">
         <?php if ($type !== 'checkbox' || count($options) > 0): ?>
             <label for="<?php echo esc_attr($id); ?>"><?php echo esc_html(qrm_ceviri_cf_alan($field->id, $label)) . $req_mark; ?></label>
         <?php endif; ?>
@@ -177,6 +185,12 @@ function qrm_cf_render_form($form, $fields, $s = null) {
     $ts      = qrm_pro_make_ts_token();
     $prefix  = 'qrmcf' . $form_id;
 
+    $step_data   = qrm_cf_build_steps($fields, $s);
+    $steps       = $step_data['steps'];
+    $use_stepper = $step_data['use_stepper'];
+    $steps_json  = wp_json_encode(qrm_pro_steps_js_config($steps), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
+    $submit_label = qrm_ceviri_cf_form($form_id, 'submit_text', $s['submit_text']);
+
     ob_start();
     ?>
     <div class="qrm-cf-scope qrm-cf-scope-<?php echo $form_id; ?> qrm-form-fullbleed">
@@ -190,7 +204,7 @@ function qrm_cf_render_form($form, $fields, $s = null) {
 
             <div class="qrm-cf-message" id="<?php echo esc_attr($prefix); ?>-message"></div>
 
-            <form method="post" id="<?php echo esc_attr($prefix); ?>-form" class="qrm-cf-form-el" novalidate="novalidate">
+            <form method="post" id="<?php echo esc_attr($prefix); ?>-form" class="qrm-cf-form-el" novalidate="novalidate"<?php echo $use_stepper ? ' data-qrm-steps="' . esc_attr($steps_json) . '"' : ''; ?>>
                 <?php wp_nonce_field('qrm_submit_custom_form', 'qrm_cf_nonce'); ?>
                 <input type="hidden" name="form_id" value="<?php echo $form_id; ?>">
                 <input type="hidden" name="qrm_ts" value="<?php echo esc_attr($ts); ?>">
@@ -201,15 +215,41 @@ function qrm_cf_render_form($form, $fields, $s = null) {
                     <input type="text" id="<?php echo esc_attr($prefix); ?>-website" name="qrm_website" tabindex="-1" autocomplete="off">
                 </div>
 
-                <div class="qrm-cf-fields qrm-input-row">
-                    <?php foreach ($fields as $field) {
-                        echo qrm_cf_render_field($field, ['id_prefix' => $prefix]);
-                    } ?>
+                <?php if ($use_stepper): ?>
+                    <?php echo qrm_pro_steps_head($steps, 1); ?>
+                <?php endif; ?>
+
+                <div class="qrm-step-panels">
+                <?php if ($use_stepper): ?>
+                    <?php foreach ($steps as $step):
+                        $num = $step['step'];
+                        $hidden = ($num > 1) ? ' hidden' : '';
+                        $group = isset($step_data['groups'][$step['step_no']]) ? $step_data['groups'][$step['step_no']] : [];
+                    ?>
+                    <div class="qrm-step" data-step="<?php echo (int) $num; ?>" data-step-type="fields" id="<?php echo esc_attr($prefix); ?>-step-<?php echo (int) $num; ?>" aria-labelledby="qrm-step-lbl-<?php echo esc_attr($step['id']); ?>"<?php echo $hidden; ?>>
+                        <div class="qrm-cf-fields qrm-input-row">
+                            <?php foreach ($group as $field) {
+                                echo qrm_cf_render_field($field, ['id_prefix' => $prefix]);
+                            } ?>
+                        </div>
+                        <?php if (!empty($step['consent'])) {
+                            echo qrm_pro_render_consent_checkbox(qrm_pro_get_settings());
+                        } ?>
+                    </div>
+                    <?php endforeach; ?>
+                    <?php echo qrm_cf_steps_shared_nav($submit_label); ?>
+                <?php else: ?>
+                    <div class="qrm-cf-fields qrm-input-row">
+                        <?php foreach ($fields as $field) {
+                            echo qrm_cf_render_field($field, ['id_prefix' => $prefix]);
+                        } ?>
+                    </div>
+
+                    <?php echo qrm_pro_render_consent_checkbox(qrm_pro_get_settings()); ?>
+
+                    <button type="submit" class="qrm-btn"><span class="qrm-btn-label"><?php echo esc_html($submit_label); ?></span></button>
+                <?php endif; ?>
                 </div>
-
-                <?php echo qrm_pro_render_consent_checkbox(qrm_pro_get_settings()); ?>
-
-                <button type="submit" class="qrm-btn"><span class="qrm-btn-label"><?php echo esc_html(qrm_ceviri_cf_form($form_id, 'submit_text', $s['submit_text'])); ?></span></button>
             </form>
         </div>
     </div>
@@ -230,6 +270,7 @@ function qrm_cf_render_form_script($form, $s) {
     ?>
     <script>
     (function(){
+        <?php echo qrm_pro_steps_wizard_js(); ?>
         var form = document.getElementById(<?php echo wp_json_encode($prefix . '-form', $json_flags); ?>);
         if (!form) return;
         var box     = document.getElementById(<?php echo wp_json_encode($prefix . '-box', $json_flags); ?>);
@@ -249,6 +290,14 @@ function qrm_cf_render_form_script($form, $s) {
             return qrmCfI18n[anahtar];
         }
 
+        if (form && form.getAttribute('data-qrm-steps')) {
+            qrmInitSteps(form, {
+                nextSel: '.qrm-cf-step-next',
+                backSel: '.qrm-cf-step-back',
+                submitSel: '.qrm-cf-step-submit'
+            });
+        }
+
         function showMessage(type, text) {
             msgBox.innerHTML = '<div class="qrm-alert qrm-' + type + '"></div>';
             msgBox.firstChild.textContent = text;
@@ -257,6 +306,17 @@ function qrm_cf_render_form_script($form, $s) {
 
         form.addEventListener('submit', function(e){
             e.preventDefault();
+            if (form.getAttribute('data-qrm-steps') && form._qrmGoToStep) {
+                var panels = form.querySelectorAll('.qrm-step[data-step]');
+                var cur = 1;
+                panels.forEach(function(p) { if (!p.hidden) cur = parseInt(p.getAttribute('data-step'), 10) || 1; });
+                var total = panels.length;
+                if (cur < total) {
+                    var nextBtn = form.querySelector('.qrm-cf-step-next');
+                    if (nextBtn) nextBtn.click();
+                    return;
+                }
+            }
             // Tarayıcı doğrulaması: novalidate ile kapatıldı, elle tetikleniyor ki
             // hata mesajı formun kendi uyarı kutusuyla aynı yerde görünsün.
             if (typeof form.checkValidity === 'function' && !form.checkValidity()) {
