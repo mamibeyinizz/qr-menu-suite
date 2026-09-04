@@ -136,7 +136,11 @@ function qrm_cf_admin_submissions_pane() {
         </div>
 
         <form method="get" class="qrm-list-toolbar qrm-sub-list-filters">
-            <input type="hidden" name="page" value="qrm-forms">
+            <?php
+            parse_str((string) wp_parse_url(qrm_cf_admin_url(), PHP_URL_QUERY), $qrm_cf_page_args);
+            $qrm_cf_page = isset($qrm_cf_page_args['page']) ? $qrm_cf_page_args['page'] : '';
+            ?>
+            <input type="hidden" name="page" value="<?php echo esc_attr($qrm_cf_page); ?>">
             <input type="hidden" name="tab" value="submissions">
             <input type="hidden" name="form_id" value="<?php echo intval($current->id); ?>">
             <?php if ($status_filter !== ''): ?>

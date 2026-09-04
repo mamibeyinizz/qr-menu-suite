@@ -10,7 +10,11 @@ trait RMA_Import_Export_Trait {
         if ( ! current_user_can( 'edit_posts' ) ) return;
 
         if ( isset( $_FILES['rma_csv_file'] ) && $_FILES['rma_csv_file']['error'] === UPLOAD_ERR_OK ) {
-            $content   = file_get_contents( $_FILES['rma_csv_file']['tmp_name'] );
+            $content = file_get_contents( $_FILES['rma_csv_file']['tmp_name'] );
+            if ( false === $content ) {
+                wp_redirect( $this->admin_page_url( 'qrms-rm-diger', [ 'csv_error' => 2 ], 'rma-ice-disa-aktar' ) );
+                exit;
+            }
             $content   = preg_replace( "/^\xEF\xBB\xBF/", '', $content );
             $content   = str_replace( [ "\r\n", "\r" ], "\n", $content );
             $lines     = explode( "\n", $content );

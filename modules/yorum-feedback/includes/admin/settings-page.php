@@ -335,12 +335,12 @@ function qrm_pro_admin_settings() {
 function qrm_pro_admin_save_settings() {
     $settings = qrm_pro_get_settings();
 
-    $settings['form_title']          = sanitize_text_field($_POST['form_title']);
+    $settings['form_title']          = sanitize_text_field(wp_unslash($_POST['form_title']));
     $settings['btn_color']           = sanitize_hex_color($_POST['btn_color']) ?: $settings['btn_color'];
     $settings['btn_text_color']      = sanitize_hex_color($_POST['btn_text_color']) ?: $settings['btn_text_color'];
-    $settings['theme_style']         = sanitize_text_field($_POST['theme_style']);
+    $settings['theme_style']         = sanitize_text_field(wp_unslash($_POST['theme_style']));
     $settings['auto_approve_rating'] = intval($_POST['auto_approve_rating']);
-    $settings['reviews_per_page']    = sanitize_text_field($_POST['reviews_per_page']);
+    $settings['reviews_per_page']    = sanitize_text_field(wp_unslash($_POST['reviews_per_page']));
     $pagination_mode = isset($_POST['qrm_reviews_pagination_mode'])
         ? sanitize_key(wp_unslash($_POST['qrm_reviews_pagination_mode']))
         : 'loadmore';
@@ -350,7 +350,7 @@ function qrm_pro_admin_save_settings() {
     $settings['show_overall_stats']  = isset($_POST['show_overall_stats']) ? 1 : 0;
 
     for ($i = 1; $i <= 5; $i++) {
-        $settings['crit_'.$i.'_name']   = sanitize_text_field($_POST['crit_'.$i.'_name']);
+        $settings['crit_'.$i.'_name']   = sanitize_text_field(wp_unslash($_POST['crit_'.$i.'_name']));
         $settings['crit_'.$i.'_active'] = isset($_POST['crit_'.$i.'_active']) ? 1 : 0;
     }
 

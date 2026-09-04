@@ -67,20 +67,6 @@ trait QRMS_AE_Helpers {
         return in_array($value, $allowed, true) ? $value : $fallback;
     }
 
-    private function hex_to_rgba($hex, $alpha = 1) {
-        $hex = ltrim((string) $hex, '#');
-        if (strlen($hex) === 3) {
-            $hex = $hex[0] . $hex[0] . $hex[1] . $hex[1] . $hex[2] . $hex[2];
-        }
-        if (strlen($hex) !== 6 || !ctype_xdigit($hex)) {
-            return 'rgba(0,0,0,' . $alpha . ')';
-        }
-        $r = hexdec(substr($hex, 0, 2));
-        $g = hexdec(substr($hex, 2, 2));
-        $b = hexdec(substr($hex, 4, 2));
-        return sprintf('rgba(%d,%d,%d,%s)', $r, $g, $b, $alpha);
-    }
-
     /**
      * "#0073aa" → "0,115,170". CSS'te rgba(var(--sp-accent-rgb), var(--sp-btn-alpha))
      * şeklinde alfa ile birleştirmek için kullanılır.

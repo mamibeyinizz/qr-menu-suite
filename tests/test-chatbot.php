@@ -842,10 +842,8 @@ qrms_test(
 			'tablo yokken Türkçe'
 		);
 
-		$btnjs = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/assets/js/buttons.js' );
-		$botjs = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/assets/js/chatbot.js' );
-		qrms_assert_contains( "credentials: 'same-origin'", $btnjs, 'buttons cookie' );
-		qrms_assert_contains( "credentials: 'same-origin'", $botjs, 'chatbot cookie' );
+		$shared = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/assets/js/qmo-chatbot-shared.js' );
+		qrms_assert_contains( "credentials: 'same-origin'", $shared, 'ortak fetch cookie' );
 	}
 );
 

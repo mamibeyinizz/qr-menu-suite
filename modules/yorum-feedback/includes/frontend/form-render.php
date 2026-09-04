@@ -28,6 +28,61 @@ function qrm_pro_render_google_cta($settings, $avg) {
     return ob_get_clean();
 }
 
+/**
+ * JS kapalıyken klasik POST gönderimini işler.
+ *
+ * Yorum ve iletişim kısa kodları aynı gövdeyi kullanır; iletişim formu
+ * `form_source === 'contact'` kontrolünü parametre olarak alır.
+ *
+ * @param array  $settings    Eklenti ayarları.
+ * @param string $form_source 'review' veya 'contact'.
+ * @return array{message:string,show_google_cta:bool,cta_avg:float|int,auto_open_reward:false|array}
+ */
+function qrm_pro_process_classic_form_submission($settings, $form_source = 'review') {
+    $message          = '';
+    $show_google_cta  = false;
+    $cta_avg          = 0;
+    $auto_open_reward = false;
+
+    $gonderildi = $_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['qrm_review_submit']);
+    if ($form_source === 'contact') {
+        $gonderildi = $gonderildi && isset($_POST['qrm_form_source']) && $_POST['qrm_form_source'] === 'contact';
+    }
+
+    if ($gonderildi && wp_verify_nonce($_POST['qrm_review_nonce'], 'qrm_submit_review')) {
+        $result = qrm_pro_handle_review_submission($settings);
+        if ($result['success']) {
+            if (!empty($result['show_google'])) {
+                $show_google_cta = true;
+                $cta_avg = $result['avg'];
+            } else {
+                $message = '<div class="qrm-alert qrm-success">' . esc_html($result['message']) . '</div>';
+                // v4.1.0: Ödül modülü açıksa popup sayfa yüklenir yüklenmez gösterilir.
+                // Popup JS gerektirdiği için, JS tamamen kapalı ziyaretçilere eski
+                // satır içi Google CTA'sı <noscript> içinde yedek olarak sunulur.
+                if (!empty($result['show_reward'])) {
+                    // JS kapalı akışta popup'ı sunucu açar; kod talebini
+                    // yetkilendiren anahtar da bu yüzden popup'a gömülür.
+                    $auto_open_reward = [
+                        'review_id' => (int) $result['review_id'],
+                        'claim'     => (string) $result['reward_claim'],
+                    ];
+                    $message .= '<noscript>' . qrm_pro_render_google_cta($settings, $result['avg']) . '</noscript>';
+                }
+            }
+        } else {
+            $message = '<div class="qrm-alert qrm-error">' . esc_html($result['message']) . '</div>';
+        }
+    }
+
+    return [
+        'message'          => $message,
+        'show_google_cta'  => $show_google_cta,
+        'cta_avg'          => $cta_avg,
+        'auto_open_reward' => $auto_open_reward,
+    ];
+}
+
 // 8. FRONT-END: PAYLAŞILAN YARDIMCILAR (Tema renkleri, otomatik renklendirme, stil/script bloğu)
 
 function qrm_pro_hex_to_rgba($hex, $alpha = 1) {

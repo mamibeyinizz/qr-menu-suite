@@ -11,7 +11,7 @@ function qrm_pro_admin_contact() {
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['qrm_save_contact'])) {
         check_admin_referer('qrm_save_contact_settings');
         $settings = qrm_pro_get_settings();
-        $settings['contact_form_title'] = sanitize_text_field($_POST['contact_form_title']);
+        $settings['contact_form_title'] = sanitize_text_field(wp_unslash($_POST['contact_form_title']));
         update_option('qrm_settings', $settings);
         $notice = 'İletişim formu ayarları kaydedildi.';
     }

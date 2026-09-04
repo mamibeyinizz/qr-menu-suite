@@ -108,13 +108,8 @@
 		}
 	}
 
-	function metin( anahtar, yedek ) {
-		if ( typeof qmoData === 'undefined' || ! qmoData.i18n ) {
-			return yedek;
-		}
-		var v = qmoData.i18n[ anahtar ];
-		return ( 'string' === typeof v && '' !== v ) ? v : yedek;
-	}
+	var istek = window.qmoChatShared.istek;
+	var metin = window.qmoChatShared.metin;
 
 	/* ------------------------------------------------------------------ */
 
@@ -191,7 +186,7 @@
 		window.scrollTo( 0, kayitliY );
 	}
 
-	function balon( metin, tip, hataMi ) {
+	function balon( mesajMetni, tip, hataMi ) {
 		var el = document.createElement( 'div' );
 		el.className = 'gemini-msg-bubble ' + ( 'user' === tip ? 'gemini-msg-user' : 'gemini-msg-bot' );
 		if ( hataMi ) {
@@ -201,7 +196,7 @@
 			el.classList.add( 'gemini-msg-sys' );
 		}
 
-		metinParcala( el, metin );
+		metinParcala( el, mesajMetni );
 
 		if ( log ) {
 			log.appendChild( el );
@@ -355,7 +350,7 @@
 		return kart;
 	}
 
-	function botBalonu( metin, urunler, hataMi ) {
+	function botBalonu( mesajMetni, urunler, hataMi ) {
 		var grup = document.createElement( 'div' );
 		grup.className = 'gemini-msg-grup';
 
@@ -365,7 +360,7 @@
 			el.classList.add( 'gemini-msg-hata' );
 		}
 
-		var parcalar = String( metin ).split( '\n' );
+		var parcalar = String( mesajMetni ).split( '\n' );
 		parcalar.forEach( function ( p, i ) {
 			if ( i > 0 ) {
 				el.appendChild( document.createElement( 'br' ) );
@@ -394,14 +389,14 @@
 		return grup;
 	}
 
-	function eskalasyonBalonu( metin ) {
+	function eskalasyonBalonu( mesajMetni ) {
 		var grup = document.createElement( 'div' );
 		grup.className = 'gemini-msg-grup';
 
-		if ( metin ) {
+		if ( mesajMetni ) {
 			var el = document.createElement( 'div' );
 			el.className = 'gemini-msg-bubble gemini-msg-bot';
-			metinParcala( el, metin );
+			metinParcala( el, mesajMetni );
 			grup.appendChild( el );
 		}
 
@@ -458,24 +453,6 @@
 			log.scrollTop = log.scrollHeight;
 		}
 		return el;
-	}
-
-	function istek( veri ) {
-		var govde = new URLSearchParams();
-		govde.append( 'nonce', qmoData.nonce );
-		Object.keys( veri ).forEach( function ( k ) {
-			govde.append( k, veri[ k ] );
-		} );
-
-		return fetch( qmoData.ajaxUrl, {
-			method: 'POST',
-			body: govde,
-			credentials: 'same-origin'
-		} ).then( function ( r ) {
-			return r.json().catch( function () {
-				return { success: false };
-			} );
-		} );
 	}
 
 	function oturumBittiMi( yanit ) {

@@ -50,9 +50,16 @@ if ( ! function_exists( 'qmo_varliklari_kaydet' ) ) {
 		);
 
 		wp_register_script(
+			'qmo-chatbot-shared',
+			$chatbot . 'js/qmo-chatbot-shared.js',
+			array(),
+			QRMS_Helpers::asset_version( 'modules/qr-chatbot/assets/js/qmo-chatbot-shared.js' ),
+			true
+		);
+		wp_register_script(
 			'qmo-chatbot',
 			$chatbot . 'js/chatbot.js',
-			array(),
+			array( 'qmo-chatbot-shared' ),
 			QRMS_Helpers::asset_version( 'modules/qr-chatbot/assets/js/chatbot.js' ),
 			true
 		);

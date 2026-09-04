@@ -1774,24 +1774,6 @@ class QRMS_Analitik {
 	}
 
 	/**
-	 * Grafik/tablo satırları — ESKİ, sabit pencereli imza.
-	 *
-	 * Dönem anahtarı kendi penceresini de taşır (saatlik=bugün, günlük=son 30
-	 * gün, haftalık=son 12 hafta, aylık=son 12 ay). Sorgular ve sıfır doldurma
-	 * grafik_araligi() içinde tek yerde durur; burada yalnızca pencere seçilir.
-	 *
-	 * @param string $donem Dönem anahtarı.
-	 * @param string $masa  Masa filtresi.
-	 * @return array<int,array<string,mixed>>
-	 */
-	public static function grafik_verisi( $donem, $masa = '' ) {
-		$kirilim = in_array( $donem, array( 'hourly', 'weekly', 'monthly' ), true ) ? $donem : 'daily';
-		$bit     = current_time( 'Y-m-d' ) . ' 23:59:59';
-
-		return self::grafik_araligi( $kirilim, self::donem_baslangici( $donem ), $bit, $masa );
-	}
-
-	/**
 	 * Sorgu sonucunu "k" sütunu anahtar olacak biçimde diziye çevirir.
 	 *
 	 * @param mixed $ham Sorgu sonucu.

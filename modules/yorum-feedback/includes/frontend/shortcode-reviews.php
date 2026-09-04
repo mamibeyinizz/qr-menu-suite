@@ -7,37 +7,11 @@ function qrm_pro_shortcode() {
     global $wpdb;
     $table_fields = $wpdb->prefix . 'qrm_form_fields';
     $settings = qrm_pro_get_settings();
-    $message = '';
-    $show_google_cta = false;
-    $cta_avg = 0;
-    $auto_open_reward = false;
-
-    // FORM GÖNDERİMİ İŞLEME (JS kapalıysa devreye giren klasik yol)
-    if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['qrm_review_submit']) && wp_verify_nonce($_POST['qrm_review_nonce'], 'qrm_submit_review')) {
-        $result = qrm_pro_handle_review_submission($settings);
-        if ($result['success']) {
-            if (!empty($result['show_google'])) {
-                $show_google_cta = true;
-                $cta_avg = $result['avg'];
-            } else {
-                $message = '<div class="qrm-alert qrm-success">' . esc_html($result['message']) . '</div>';
-                // v4.1.0: Ödül modülü açıksa popup sayfa yüklenir yüklenmez gösterilir.
-                // Popup JS gerektirdiği için, JS tamamen kapalı ziyaretçilere eski
-                // satır içi Google CTA'sı <noscript> içinde yedek olarak sunulur.
-                if (!empty($result['show_reward'])) {
-                    // JS kapalı akışta popup'ı sunucu açar; kod talebini
-                    // yetkilendiren anahtar da bu yüzden popup'a gömülür.
-                    $auto_open_reward = [
-                        'review_id' => (int) $result['review_id'],
-                        'claim'     => (string) $result['reward_claim'],
-                    ];
-                    $message .= '<noscript>' . qrm_pro_render_google_cta($settings, $result['avg']) . '</noscript>';
-                }
-            }
-        } else {
-            $message = '<div class="qrm-alert qrm-error">' . esc_html($result['message']) . '</div>';
-        }
-    }
+    $gonderim = qrm_pro_process_classic_form_submission($settings, 'review');
+    $message = $gonderim['message'];
+    $show_google_cta = $gonderim['show_google_cta'];
+    $cta_avg = $gonderim['cta_avg'];
+    $auto_open_reward = $gonderim['auto_open_reward'];
 
     $active_fields = $wpdb->get_results("SELECT * FROM $table_fields WHERE is_active = 1 ORDER BY sort_order ASC");
 

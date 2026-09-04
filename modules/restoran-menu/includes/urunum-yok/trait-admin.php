@@ -501,6 +501,10 @@ trait RMA_Urunum_Yok_Admin_Trait {
         }
 
         $content = file_get_contents( $_FILES['qmo_uy_csv_file']['tmp_name'] );
+        if ( false === $content ) {
+            wp_redirect( $this->admin_page_url( 'qrms-rm-diger', [ 'qmo_uy_csv_hata' => 1 ], 'rma-malzeme-aktar' ) );
+            exit;
+        }
         $content = preg_replace( "/^\xEF\xBB\xBF/", '', $content );
         $content = str_replace( [ "\r\n", "\r" ], "\n", $content );
         $lines   = array_values( array_filter( explode( "\n", $content ), fn( $l ) => '' !== trim( $l ) ) );
