@@ -194,6 +194,18 @@ function qrm_reward_admin_save_templates_post() {
 
 // --- KURULUM SİHİRBAZI (checklist) ---
 
+/**
+ * Hızlı kurulum checklist bağlantısı: doğru alt sekme + hedef alan çapası.
+ *
+ * @param array $step qrm_reward_setup_status() adımı (sub + field gerekli).
+ * @return string
+ */
+function qrm_reward_admin_setup_goto_href($step) {
+    $field  = isset($step['field']) ? (string) $step['field'] : '';
+    $anchor = (strpos($field, '#') === 0) ? substr($field, 1) : 'qrm-rw-field-' . $field;
+    return qrm_pro_admin_url('qrms-yf-odul', ['sub' => $step['sub']]) . '#' . $anchor;
+}
+
 function qrm_reward_admin_setup_banner($settings) {
     $status = qrm_reward_setup_status($settings);
     $funnel = function_exists('qrm_reward_get_funnel_stats') ? qrm_reward_get_funnel_stats(30) : [];
@@ -208,7 +220,7 @@ function qrm_reward_admin_setup_banner($settings) {
         <?php else: $first = $status['missing'][0]; ?>
             <div style="background:#fef3c7; border:1px solid #fcd34d; color:#92400e; padding:16px 18px; border-radius:8px; font-size:15px; margin-bottom:14px;">
                 <strong>Popup henüz çalışmıyor.</strong> Eksik adım: <?php echo esc_html($first['label']); ?> — <?php echo esc_html($first['hint']); ?>
-                <a href="#" class="button button-primary qrm-rw-goto" data-sub="<?php echo esc_attr($first['sub']); ?>" style="margin-left:10px;">Bu ayara git</a>
+                <a href="<?php echo esc_url(qrm_reward_admin_setup_goto_href($first)); ?>" class="button button-primary qrm-rw-goto" data-sub="<?php echo esc_attr($first['sub']); ?>" data-field="<?php echo esc_attr($first['field']); ?>" style="margin-left:10px;">Bu ayara git</a>
             </div>
         <?php endif; ?>
 
@@ -219,7 +231,7 @@ function qrm_reward_admin_setup_banner($settings) {
                     <span style="<?php echo $step['ok'] ? '' : 'font-weight:600;'; ?>"><?php echo esc_html($step['label']); ?></span>
                     <?php if (!$step['ok']): ?>
                         <span style="opacity:.75;">— <?php echo esc_html($step['hint']); ?></span>
-                        <a href="#" class="qrm-rw-goto" data-sub="<?php echo esc_attr($step['sub']); ?>">düzelt</a>
+                        <a href="<?php echo esc_url(qrm_reward_admin_setup_goto_href($step)); ?>" class="qrm-rw-goto" data-sub="<?php echo esc_attr($step['sub']); ?>" data-field="<?php echo esc_attr($step['field']); ?>">düzelt</a>
                     <?php endif; ?>
                 </li>
             <?php endforeach; ?>
@@ -327,7 +339,7 @@ function qrm_reward_admin_settings_view($settings, $sub = 'kurulum') {
                             <tr>
                                 <th><label>İşletme Linki veya Place ID</label></th>
                                 <td>
-                                    <input type="text" name="google_review_url" class="large-text" style="font-family:monospace;"
+                                    <input type="text" name="google_review_url" id="qrm-rw-field-google_review_url" class="large-text" style="font-family:monospace;"
                                            placeholder="ChIJ... veya https://search.google.com/local/writereview?placeid=..."
                                            value="<?php echo esc_attr($settings['google_review_url']); ?>">
                                     <?php if (!empty($settings['google_review_url'])): ?>
@@ -343,12 +355,12 @@ function qrm_reward_admin_settings_view($settings, $sub = 'kurulum') {
                         <table class="form-table">
                             <tr>
                                 <th><label>Google Yönlendirme</label></th>
-                                <td><label><input type="checkbox" name="google_review_enabled" value="1" <?php checked($settings['google_review_enabled'], 1); ?>> Google yönlendirmesini etkinleştir</label>
+                                <td><label><input type="checkbox" name="google_review_enabled" id="qrm-rw-field-google_review_enabled" value="1" <?php checked($settings['google_review_enabled'], 1); ?>> Google yönlendirmesini etkinleştir</label>
                                     <p class="description">Kapalıyken ne satır içi CTA ne de ödül popup'ı gösterilir.</p></td>
                             </tr>
                             <tr>
                                 <th><label>Ödül Popup Modülü</label></th>
-                                <td><label><input type="checkbox" name="qrm_reward_enabled" value="1" <?php checked($settings['qrm_reward_enabled'], 1); ?>> Ödül sistemini etkinleştir (indirim kodu popup'ı)</label>
+                                <td><label><input type="checkbox" name="qrm_reward_enabled" id="qrm-rw-field-qrm_reward_enabled" value="1" <?php checked($settings['qrm_reward_enabled'], 1); ?>> Ödül sistemini etkinleştir (indirim kodu popup'ı)</label>
                                     <p class="description">Açıkken eşiği geçen müşteriye popup gösterilir; kapalıyken eski satır içi Google CTA'sı çalışır.</p></td>
                             </tr>
                             <tr>
@@ -518,7 +530,7 @@ function qrm_reward_admin_settings_view($settings, $sub = 'kurulum') {
 
         <!-- ================= SEKME 3: ŞABLONLAR ================= -->
         <div class="qrm-rw-pane" data-pane="sablonlar" style="display:none;">
-            <div class="qrm-card">
+            <div class="qrm-card" id="qrm-rw-templates">
                 <h3>İndirim Şablonları</h3>
                 <p class="description">"Otomatik" işaretli şablon, popup üzerinden e-posta girerek kod alan müşteriler için kullanılır. Manuel kod üretirken şablonu Ödül Kodları sekmesinde tek tek seçebilirsiniz.</p>
                 <table class="wp-list-table widefat striped">
@@ -588,12 +600,66 @@ function qrm_reward_admin_settings_view($settings, $sub = 'kurulum') {
             }
             paint();
         }
-        $('.qrm-rw-subtab, .qrm-rw-goto').on('click', function(e){
+        function resolveSetupField(field) {
+            if (!field) return $();
+            if (field.charAt(0) === '#' || field.charAt(0) === '.') {
+                return $(field).first();
+            }
+            var $el = form.find('[name="' + field + '"]').first();
+            if (!$el.length) {
+                $el = $('#qrm-rw-field-' + field);
+            }
+            return $el;
+        }
+
+        function highlightSetupField($input) {
+            if (!$input || !$input.length) return;
+
+            var $highlight = $input;
+            if ($input.is(':checkbox, :radio')) {
+                $highlight = $input.closest('tr');
+                if (!$highlight.length) $highlight = $input.closest('label');
+            } else if ($input.is('div, section, table')) {
+                $highlight = $input;
+            }
+
+            var adminBar = parseInt($('#wpadminbar').outerHeight(), 10) || 0;
+            var top = $highlight.offset().top - adminBar - 20;
+            $('html, body').animate({ scrollTop: Math.max(0, top) }, 200);
+
+            $highlight.addClass('qrm-highlight');
+            window.setTimeout(function() { $highlight.removeClass('qrm-highlight'); }, 2000);
+
+            if ($input.is(':checkbox, :radio, input, textarea, select, button')) {
+                $input.trigger('focus');
+            }
+        }
+
+        function gotoSetupField(sub, field) {
+            showSub(sub);
+            window.setTimeout(function() {
+                highlightSetupField(resolveSetupField(field));
+            }, 50);
+        }
+
+        $('.qrm-rw-subtab').on('click', function(e){
             e.preventDefault();
             showSub($(this).data('sub'));
-            $('html, body').animate({ scrollTop: 0 }, 150);
+        });
+        $(document).on('click', '.qrm-rw-goto', function(e){
+            e.preventDefault();
+            gotoSetupField($(this).data('sub'), $(this).data('field'));
         });
         showSub(startSub);
+
+        if (window.location.hash) {
+            var $hashTarget = $(window.location.hash);
+            if ($hashTarget.length) {
+                var paneFromHash = $hashTarget.closest('.qrm-rw-pane').data('pane');
+                if (paneFromHash) showSub(paneFromHash);
+                window.setTimeout(function() { highlightSetupField($hashTarget); }, 150);
+            }
+        }
 
         // --- Canlı önizleme ---
         function val(name) { return form.find('[name="' + name + '"]').val() || ''; }
