@@ -42,7 +42,7 @@ class QRMS_Analitik {
 	/**
 	 * Şema sürümü. masa_no sütunu 1.1 ile geldi.
 	 */
-	const DB_SURUM = '1.1';
+	const DB_SURUM = '1.2';
 
 	/**
 	 * Şema sürümünün tutulduğu option.

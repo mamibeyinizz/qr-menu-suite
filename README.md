@@ -125,7 +125,7 @@ ekranı açar.
 | --- | --- | --- |
 | Genel | `#9ba7b4` (nötr gri) | Genel Bakış, Genel Ayarlar |
 | Menü Yönetimi | `#5cb0f0` (gök mavisi) | Restoran Menü, Yorum & Feedback |
-| Araçlar | `#35d1b4` (turkuaz) | QR Kod Oluştur, İstatistikler, Fotoğraf Galerisi, Dil / Çeviri Ayarları, Chatbot Asistan, Çalışma Saatleri |
+| Araçlar | `#35d1b4` (turkuaz) | Servis Paneli, QR Kod Oluştur, İstatistikler, Menü Mühendisliği, Fotoğraf Galerisi, Dil / Çeviri Ayarları, Chatbot Asistan, Çalışma Saatleri |
 | Görünüm & Erişim | `#f27cb8` (pembe) | Açılış Ekranı, Header Footer Builder |
 | Gelişmiş | `#f59547` (turuncu) | Güvenlik Ayarı, Kısa Kodlar |
 
@@ -358,6 +358,8 @@ bir kısa kod rehbere eklenmezse düşer.
 | `qr-ceviri` | Çok dilli metin tarama, sözlük, CSV içe/dışa aktarma | ✔ Çeviri ekranı |
 | `qr-analiz` | Menü analitiği (masa bazlı görüntüleme/tıklama takibi, panel); `POST /wp-json/qrservis/v1/analytics` — şube analitiği özeti; `POST /wp-json/qrservis/v1/create-user` — garson/müdür hesabı açma (yalnızca ana sitede) | ✔ Menü Analitiği (tek ekran) |
 | `qr-chatbot` | `[gemini_chatbot]`, garson/hesap buton kısa kodları, `[qmo_sepet]`, Gemini AJAX ucu, sipariş ucu (`POST /wp-json/qrservis/v1/order`) | ✔ Chatbot ayarları + Firebase ayarları |
+| `qr-menu-muhendisligi` | Kasavana–Smith menü kârlılık matrisi, ürün maliyetleri, malzeme fiyatları, reçete tabanlı maliyet | ✔ Hub + dört alt ekran |
+| `qr-servis-paneli` | Firestore `calls` koleksiyonundan canlı sipariş/garson/hesap paneli, kanban, sesli uyarı | ✔ Panel + ayarlar alt sayfası |
 | `qr-acilis-ekrani` | Ana sayfada tam ekran açılış: logo şeridi, arkaplan görseli, CTA + rozetler, wifi penceresi, sosyal hesaplar, ödeme yöntemleri. Kısa kodu yoktur | ✔ Hub + dört ayrı sayfa |
 
 Kodları kaynak eklentilerinden **aynen** taşındı (`restoran-menu` 12-menu
