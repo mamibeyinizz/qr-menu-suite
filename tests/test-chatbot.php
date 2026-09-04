@@ -317,6 +317,8 @@ qrms_test(
 				'qrms-chatbot-ana-site',
 				'qrms-chatbot-history',
 				'qrms-chatbot-unanswered',
+				'qrms-chatbot-oneri',
+				'qrms-chatbot-oneri-rapor',
 			),
 			array_keys( $pages ),
 			'sayfa listesi'
@@ -340,6 +342,8 @@ qrms_test(
 		qrms_assert_same( 'Entegrasyon', $pages['qrms-chatbot-ana-site']['group'], 'Ana site grubu' );
 		qrms_assert_same( 'Yönetim', $pages['qrms-chatbot-history']['group'], 'Geçmiş Yönetim grubunda' );
 		qrms_assert_same( 'Yönetim', $pages['qrms-chatbot-unanswered']['group'], 'Cevaplanamayan Yönetim grubunda' );
+		qrms_assert_same( 'Yönetim', $pages['qrms-chatbot-oneri']['group'], 'Öneri Yönetimi Yönetim grubunda' );
+		qrms_assert_same( 'Yönetim', $pages['qrms-chatbot-oneri-rapor']['group'], 'Öneri Raporu Yönetim grubunda' );
 	}
 );
 

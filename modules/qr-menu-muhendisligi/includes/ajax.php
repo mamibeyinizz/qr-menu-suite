@@ -1,137 +1,114 @@
 <?php
 /**
- * Menü mühendisliği AJAX uçları.
+ * Menü Mühendisliği AJAX uçları.
+ *
+ * İkisi de yalnızca yönetim tarafındadır (`wp_ajax_` öneki; `nopriv`
+ * karşılığı bilerek YOKTUR) ve hem nonce hem yetenek doğrular.
  *
  * @package QR_Menu_Suite
  */
 
 defined( 'ABSPATH' ) || exit;
 
-if ( ! function_exists( 'qrms_mm_ajax_maliyet_kaydet' ) ) {
-	/**
-	 * Tek ürün maliyetini kaydeder.
-	 *
-	 * @return void
-	 */
-	function qrms_mm_ajax_maliyet_kaydet() {
-		check_ajax_referer( 'qrms_mm_admin', 'nonce' );
+add_action( 'wp_ajax_qrms_mm_maliyet', 'qrms_mm_ajax_maliyet' );
+add_action( 'wp_ajax_qrms_mm_recete', 'qrms_mm_ajax_recete' );
 
-		if ( ! current_user_can( QRMS_Admin::CAPABILITY ) ) {
-			wp_send_json_error( array( 'mesaj' => __( 'Yetkiniz yok.', 'qrms' ) ), 403 );
-		}
+/**
+ * İsteği doğrular ve ürün kimliğini döner.
+ *
+ * @return int Geçerli ürün kimliği (geçersizse çıkış yapılır).
+ */
+function qrms_mm_ajax_dogrula() {
+	check_ajax_referer( 'qrms_mm', 'nonce' );
 
-		$id      = isset( $_POST['post_id'] ) ? absint( $_POST['post_id'] ) : 0;
-		$maliyet = isset( $_POST['maliyet'] ) ? (float) wp_unslash( $_POST['maliyet'] ) : 0;
-		$kaynak  = isset( $_POST['kaynak'] ) ? sanitize_key( wp_unslash( $_POST['kaynak'] ) ) : 'manuel';
-		$recete  = isset( $_POST['recete'] ) ? json_decode( wp_unslash( $_POST['recete'] ), true ) : array();
+	if ( ! current_user_can( QRMS_Admin::CAPABILITY ) ) {
+		wp_send_json_error( array( 'msg' => __( 'Yetkiniz yok.', 'qrms' ) ), 403 );
+	}
 
-		if ( $id <= 0 || 'rma_menu_item' !== get_post_type( $id ) ) {
-			wp_send_json_error( array( 'mesaj' => __( 'Geçersiz ürün.', 'qrms' ) ) );
-		}
+	// phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce yukarıda.
+	$id = isset( $_POST['urun'] ) ? absint( $_POST['urun'] ) : 0;
 
-		if ( 'recete' === $kaynak && is_array( $recete ) ) {
-			$maliyet = QRMS_MM_Maliyet::receteden_hesapla( $recete );
-			QRMS_MM_Maliyet::maliyet_kaydet( $id, $maliyet, 'recete', $recete );
-		} else {
-			QRMS_MM_Maliyet::maliyet_kaydet( $id, $maliyet, 'manuel' );
-		}
+	if ( ! $id || QRMS_MM_Maliyet::CPT !== get_post_type( $id ) ) {
+		wp_send_json_error( array( 'msg' => __( 'Ürün bulunamadı.', 'qrms' ) ), 400 );
+	}
 
-		$fiyat = (float) get_post_meta( $id, 'rma_price', true );
-		$cm    = $fiyat - $maliyet;
-		$marj  = $fiyat > 0 ? ( $cm / $fiyat ) * 100 : 0;
+	return $id;
+}
 
-		wp_send_json_success(
-			array(
-				'maliyet' => $maliyet,
-				'cm'      => $cm,
-				'marj'    => round( $marj, 1 ),
-			)
+/**
+ * Ürünün güncel katkı payı ve marjını döner.
+ *
+ * @param int $id Ürün.
+ * @return array
+ */
+function qrms_mm_ajax_yanit( $id ) {
+	$fiyat   = QRMS_MM_Maliyet::fiyat( $id );
+	$maliyet = QRMS_MM_Maliyet::maliyet( $id );
+
+	if ( null === $fiyat || null === $maliyet ) {
+		return array(
+			'maliyet' => null === $maliyet ? '' : $maliyet,
+			'katki'   => '—',
+			'marj'    => '—',
 		);
 	}
-	add_action( 'wp_ajax_qrms_mm_maliyet_kaydet', 'qrms_mm_ajax_maliyet_kaydet' );
+
+	$katki = $fiyat - $maliyet;
+
+	return array(
+		'maliyet' => $maliyet,
+		'katki'   => qrms_mm_para( $katki ),
+		'marj'    => $fiyat > 0 ? qrms_mm_yuzde( ( $katki / $fiyat ) * 100 ) : '—',
+	);
 }
 
-if ( ! function_exists( 'qrms_mm_ajax_toplu_maliyet' ) ) {
-	/**
-	 * Seçili ürünlere yüzde maliyet uygular.
-	 *
-	 * @return void
-	 */
-	function qrms_mm_ajax_toplu_maliyet() {
-		check_ajax_referer( 'qrms_mm_admin', 'nonce' );
+/**
+ * Satır içi maliyet kaydı.
+ *
+ * @return void
+ */
+function qrms_mm_ajax_maliyet() {
+	$id = qrms_mm_ajax_dogrula();
 
-		if ( ! current_user_can( QRMS_Admin::CAPABILITY ) ) {
-			wp_send_json_error( array( 'mesaj' => __( 'Yetkiniz yok.', 'qrms' ) ), 403 );
-		}
-
-		$ids     = isset( $_POST['ids'] ) ? array_map( 'absint', (array) wp_unslash( $_POST['ids'] ) ) : array();
-		$yuzde   = isset( $_POST['yuzde'] ) ? (float) wp_unslash( $_POST['yuzde'] ) : 0;
-		$guncellenen = 0;
-
-		foreach ( $ids as $id ) {
-			if ( $id <= 0 || 'rma_menu_item' !== get_post_type( $id ) ) {
-				continue;
-			}
-			$fiyat = (float) get_post_meta( $id, 'rma_price', true );
-			if ( $fiyat <= 0 ) {
-				continue;
-			}
-			$maliyet = round( $fiyat * ( $yuzde / 100 ), 2 );
-			QRMS_MM_Maliyet::maliyet_kaydet( $id, $maliyet, 'manuel' );
-			$guncellenen++;
-		}
-
-		wp_send_json_success( array( 'guncellenen' => $guncellenen ) );
+	// Reçeteli üründe maliyet elle değiştirilemez: alan zaten salt okunur,
+	// istek doğrudan gönderilirse burada reddedilir.
+	if ( 'recete' === QRMS_MM_Maliyet::kaynak( $id ) ) {
+		wp_send_json_error( array( 'msg' => __( 'Bu ürünün maliyeti reçeteden hesaplanıyor.', 'qrms' ) ), 400 );
 	}
-	add_action( 'wp_ajax_qrms_mm_toplu_maliyet', 'qrms_mm_ajax_toplu_maliyet' );
+
+	// phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce dogrula() içinde.
+	$ham = isset( $_POST['maliyet'] ) ? sanitize_text_field( wp_unslash( $_POST['maliyet'] ) ) : '';
+
+	QRMS_MM_Maliyet::maliyet_yaz( $id, '' === trim( $ham ) ? '' : $ham );
+
+	wp_send_json_success( qrms_mm_ajax_yanit( $id ) );
 }
 
-if ( ! function_exists( 'qrms_mm_ajax_malzeme_kaydet' ) ) {
-	/**
-	 * Malzeme fiyatlarını kaydeder.
-	 *
-	 * @return void
-	 */
-	function qrms_mm_ajax_malzeme_kaydet() {
-		check_ajax_referer( 'qrms_mm_admin', 'nonce' );
+/**
+ * Reçete kaydı ve maliyet hesabı.
+ *
+ * @return void
+ */
+function qrms_mm_ajax_recete() {
+	$id = qrms_mm_ajax_dogrula();
 
-		if ( ! current_user_can( QRMS_Admin::CAPABILITY ) ) {
-			wp_send_json_error( array( 'mesaj' => __( 'Yetkiniz yok.', 'qrms' ) ), 403 );
-		}
+	// phpcs:ignore WordPress.Security.NonceVerification.Missing, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- JSON aşağıda çözülür, recete_temizle() alan alan temizler.
+	$ham = isset( $_POST['recete'] ) ? wp_unslash( $_POST['recete'] ) : '';
 
-		$raw = isset( $_POST['fiyatlar'] ) ? json_decode( wp_unslash( $_POST['fiyatlar'] ), true ) : array();
-		if ( ! is_array( $raw ) ) {
-			wp_send_json_error( array( 'mesaj' => __( 'Geçersiz veri.', 'qrms' ) ) );
-		}
+	$satirlar = is_string( $ham ) && '' !== $ham ? json_decode( $ham, true ) : array();
 
-		QRMS_MM_Maliyet::malzeme_fiyatlari_kaydet( $raw );
-		wp_send_json_success();
+	if ( ! is_array( $satirlar ) ) {
+		$satirlar = array();
 	}
-	add_action( 'wp_ajax_qrms_mm_malzeme_kaydet', 'qrms_mm_ajax_malzeme_kaydet' );
-}
 
-if ( ! function_exists( 'qrms_mm_ajax_ayarlar_kaydet' ) ) {
-	/**
-	 * Modül ayarlarını kaydeder.
-	 *
-	 * @return void
-	 */
-	function qrms_mm_ajax_ayarlar_kaydet() {
-		check_ajax_referer( 'qrms_mm_admin', 'nonce' );
+	// Bir üründe 60'tan fazla malzeme satırı gerçekçi değil; kötü niyetli
+	// istek meta'yı şişirmesin.
+	$satirlar = array_slice( $satirlar, 0, 60 );
 
-		if ( ! current_user_can( QRMS_Admin::CAPABILITY ) ) {
-			wp_send_json_error( array( 'mesaj' => __( 'Yetkiniz yok.', 'qrms' ) ), 403 );
-		}
+	QRMS_MM_Maliyet::recete_yaz( $id, $satirlar );
 
-		$ayarlar = array(
-			'populerlik_esigi'  => isset( $_POST['populerlik_esigi'] ) ? (float) wp_unslash( $_POST['populerlik_esigi'] ) : 0.70,
-			'fire_yuzdesi'      => isset( $_POST['fire_yuzdesi'] ) ? (float) wp_unslash( $_POST['fire_yuzdesi'] ) : 0,
-			'kdv_dahil'         => ! empty( $_POST['kdv_dahil'] ) ? 1 : 0,
-			'varsayilan_aralik' => isset( $_POST['varsayilan_aralik'] ) ? absint( $_POST['varsayilan_aralik'] ) : 30,
-		);
+	$yanit             = qrms_mm_ajax_yanit( $id );
+	$yanit['receteli'] = ( 'recete' === QRMS_MM_Maliyet::kaynak( $id ) );
 
-		QRMS_MM_Maliyet::ayarlari_kaydet( $ayarlar );
-		wp_send_json_success();
-	}
-	add_action( 'wp_ajax_qrms_mm_ayarlar_kaydet', 'qrms_mm_ajax_ayarlar_kaydet' );
+	wp_send_json_success( $yanit );
 }

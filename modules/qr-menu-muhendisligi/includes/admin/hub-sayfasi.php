@@ -1,74 +1,100 @@
 <?php
 /**
- * Menü mühendisliği hub sayfası.
+ * Menü Mühendisliği hub ekranı.
+ *
+ * Dört kart + üç özet kutusu. Özet kutuları raporun kendisini açmadan
+ * "işler yolunda mı" sorusunu cevaplar; en önemlisi maliyet kapsamıdır —
+ * maliyeti girilmemiş ürün matrise hiç giremez.
  *
  * @package QR_Menu_Suite
  */
 
 defined( 'ABSPATH' ) || exit;
 
-if ( ! function_exists( 'qrms_mm_hub_sayfasi' ) ) {
-	/**
-	 * Hub ekranını basar.
-	 *
-	 * @return void
-	 */
-	function qrms_mm_hub_sayfasi() {
-		if ( ! current_user_can( QRMS_Admin::CAPABILITY ) ) {
-			wp_die( esc_html__( 'Bu sayfayı görüntüleme yetkiniz yok.', 'qrms' ) );
-		}
+/**
+ * Hub'ı basar.
+ *
+ * @return void
+ */
+function qrms_mm_hub() {
+	$sayfalar = qrms_mm_sayfalar();
+	$kartlar  = array();
 
-		$istat = QRMS_MM_Maliyet::hub_istatistikleri();
-
-		QRMS_Admin::render_hub(
-			array(
-				'title'  => __( 'Menü Mühendisliği', 'qrms' ),
-				'intro'  => __( 'Menünüzün hangi ürünü para kazandırıyor, hangisi kaybettiriyor — somut aksiyonlarla.', 'qrms' ),
-				'accent' => '#7c5cff',
-				'stats'  => array(
-					array(
-						'label' => __( 'Maliyeti girilmiş ürün', 'qrms' ),
-						'value' => $istat['maliyetli'] . ' / ' . $istat['toplam'],
-						'url'   => admin_url( 'admin.php?page=qrms-mm-maliyet' ),
-					),
-					array(
-						'label' => __( 'Son dönem toplam katkı', 'qrms' ),
-						'value' => number_format_i18n( $istat['toplam_katki'], 0 ) . ' ₺',
-						'url'   => admin_url( 'admin.php?page=qrms-mm-rapor' ),
-					),
-					array(
-						'label' => __( 'En çok kaybettiren', 'qrms' ),
-						'value' => '' !== $istat['en_kayip'] ? $istat['en_kayip'] : '—',
-						'url'   => admin_url( 'admin.php?page=qrms-mm-rapor' ),
-					),
-				),
-				'cards'  => array(
-					array(
-						'url'   => admin_url( 'admin.php?page=qrms-mm-rapor' ),
-						'title' => __( 'Menü Mühendisliği Raporu', 'qrms' ),
-						'desc'  => __( 'Kasavana–Smith matrisi ve aksiyon önerileri.', 'qrms' ),
-						'icon'  => 'dashicons-chart-pie',
-					),
-					array(
-						'url'   => admin_url( 'admin.php?page=qrms-mm-maliyet' ),
-						'title' => __( 'Ürün Maliyetleri', 'qrms' ),
-						'desc'  => __( 'Ürün bazında maliyet ve reçete yönetimi.', 'qrms' ),
-						'icon'  => 'dashicons-money-alt',
-					),
-					array(
-						'url'   => admin_url( 'admin.php?page=qrms-mm-malzeme' ),
-						'title' => __( 'Malzeme Fiyatları', 'qrms' ),
-						'desc'  => __( 'Malzeme birim fiyatları ve toplu güncelleme.', 'qrms' ),
-						'icon'  => 'dashicons-carrot',
-					),
-					array(
-						'url'   => admin_url( 'admin.php?page=qrms-mm-ayarlar' ),
-						'title' => __( 'Ayarlar', 'qrms' ),
-						'desc'  => __( 'Popülerlik eşiği, fire ve varsayılan aralık.', 'qrms' ),
-						'icon'  => 'dashicons-admin-settings',
-					),
-				),
-			)
+	foreach ( $sayfalar as $slug => $sayfa ) {
+		$kartlar[] = array(
+			'url'   => add_query_arg( 'page', $slug, admin_url( 'admin.php' ) ),
+			'title' => $sayfa['title'],
+			'desc'  => $sayfa['desc'],
+			'icon'  => $sayfa['icon'],
 		);
 	}
+
+	QRMS_Admin::render_hub(
+		array(
+			'title'  => __( 'Menü Mühendisliği', 'qrms' ),
+			'intro'  => __( 'Menünüzün hangi ürünü para kazandırıyor, hangisi kaybettiriyor? Önce maliyetleri girin, sonra raporu açın.', 'qrms' ),
+			'accent' => '#7c5cff',
+			'stats'  => qrms_mm_hub_ozet(),
+			'cards'  => $kartlar,
+		)
+	);
+}
+
+/**
+ * Hub özet kutuları.
+ *
+ * @return array
+ */
+function qrms_mm_hub_ozet() {
+	$urunler = QRMS_MM_Rapor::urunler();
+	$toplam  = count( $urunler );
+	$dolu    = 0;
+
+	foreach ( $urunler as $urun ) {
+		if ( null !== $urun['maliyet'] && null !== $urun['fiyat'] ) {
+			++$dolu;
+		}
+	}
+
+	$maliyet_url = add_query_arg(
+		array(
+			'page'  => QRMS_MM_MALIYET_SAYFA,
+			'eksik' => 1,
+		),
+		admin_url( 'admin.php' )
+	);
+
+	$ozet = array(
+		array(
+			'label'  => __( 'Maliyeti girilmiş ürün', 'qrms' ),
+			'value'  => sprintf( '%d / %d', $dolu, $toplam ),
+			'url'    => $maliyet_url,
+			'accent' => $dolu === $toplam && $toplam > 0 ? '#1f9d55' : '#e08a1e',
+			'class'  => $dolu < $toplam ? 'qrms-hub-stat-alert' : '',
+		),
+	);
+
+	// Rapor yalnızca maliyet girilmişse anlamlı; hiç yoksa boşuna sorgu açma.
+	if ( 0 === $dolu ) {
+		return $ozet;
+	}
+
+	$rapor = QRMS_MM_Rapor::rapor( QRMS_MM_Rapor::parametreler( array() ) );
+
+	$ozet[] = array(
+		'label'  => __( 'Dönem katkı payı', 'qrms' ),
+		'value'  => qrms_mm_para( $rapor['ozet']['toplam_katki'] ),
+		'url'    => add_query_arg( 'page', QRMS_MM_RAPOR_SAYFA, admin_url( 'admin.php' ) ),
+		'accent' => '#1f9d55',
+	);
+
+	$ozet[] = array(
+		'label'  => __( 'Kayıp fırsat', 'qrms' ),
+		'value'  => qrms_mm_para( $rapor['ozet']['kayip_firsat'] ),
+		'url'    => add_query_arg( 'page', QRMS_MM_RAPOR_SAYFA, admin_url( 'admin.php' ) ),
+		'accent' => '#c0392b',
+		'class'  => $rapor['ozet']['kayip_firsat'] > 0 ? 'qrms-hub-stat-alert' : '',
+	);
+
+	return $ozet;
 }

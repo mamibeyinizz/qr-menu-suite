@@ -73,8 +73,8 @@ kayıtlı option'ların anahtarı) hiç değişmez.
 | `qr-masa-oturum-guvenligi` | Güvenlik Ayarı |
 | `qr-acilis-ekrani` | Açılış Ekranı |
 | `header-footer-builder` | Header Footer Builder |
-| `qr-menu-muhendisligi` | Menü Mühendisliği |
 | `qr-servis-paneli` | Servis Paneli |
+| `qr-menu-muhendisligi` | Menü Mühendisliği |
 
 Bir modül eklemek için `modules/<slug>/module.php` dosyası oluşturmak ve
 içinde `qrms_module_<slug_alt_çizgili>_init()` fonksiyonunu tanımlamak
@@ -99,7 +99,7 @@ QR Menü
 │ ├ Restoran Menü               → hub (12 kart)
 │ └ Yorum & Feedback            → hub (7 kart + özet sayaçlar)
 ├ ARAÇLAR
-│ ├ Servis Paneli               → doğrudan canlı sipariş paneli
+│ ├ Servis Paneli               → doğrudan canlı sipariş/çağrı panosu
 │ ├ QR Kod Oluştur              → doğrudan Masalar ekranı
 │ ├ İstatistikler               → doğrudan Menü Analitiği
 │ ├ Menü Mühendisliği           → hub (4 kart + özet sayaçlar)
@@ -1086,6 +1086,269 @@ Taşınan kodun tamamı `class_exists()` / `function_exists()` / `defined()`
 guard'lıdır: eski `qr-menu-official` eklentisi aynı sitede hâlâ aktifse
 çift tanım hatası olmaz, ilk yükleyen kazanır.
 
+### Menü Mühendisliği (`qr-menu-muhendisligi`)
+
+İşletmeye "menünün hangi ürünü para kazandırıyor, hangisi kaybettiriyor ve ne
+yapmalısın" sorusunu somut cevaplayan modül. Veriyi kendisi toplamaz; iki
+mevcut modülün üstüne kurulur:
+
+| Girdi | Kaynak |
+| --- | --- |
+| Ürün, fiyat (`rma_price`), kategori, malzeme taksonomisi | `restoran-menu` |
+| Sipariş / sepete ekleme / görüntülenme | `qr-analiz` → `{prefix}rma_analytics` |
+| Maliyet | Bu modül (manuel ya da reçeteden) |
+
+#### Analitik tablosuna eklenen `qty` sütunu
+
+Sipariş kalemleri tabloya kalem başına TEK satır olarak yazılıyordu ve **adet
+kaydedilmiyordu**. Popülerlik adetsiz hesaplanırsa "3 adet lahmacun" ile "1
+adet çorba" aynı ağırlığı alır, matris yanlış çıkar. Şemaya
+`qty smallint unsigned NOT NULL DEFAULT 1` eklendi (dbDelta kolonu mevcut
+tabloya kendisi ekler), `QRMS_Analitik::kaydet()` alanı 1–999 aralığına
+sıkıştırıyor ve `qmo_analitik_siparis_yaz()` kalemin adedini geçiriyor. Eski
+satırlar `qty = 1` kalır; geriye dönük göç yazılmadı.
+
+#### Matris (Kasavana–Smith)
+
+Hesap `QRMS_MM_Hesap::hesapla()` içinde, **saf** bir fonksiyondadır: veritabanı
+ve option okumaz, yalnızca verilen satırları çevirir. Sorgu ve önbellek işi
+`QRMS_MM_Rapor`'dadır.
+
+1. **Veri kaynağı.** Aralıktaki toplam sipariş adedi 20'nin altındaysa gerçek
+   satış yerine vekil skora düşülür: `görüntülenme + (sepete ekleme × 3)`.
+   Sepete ekleme satın alma niyetine çok daha yakın olduğu için ağırlıklıdır.
+   Rapor bu durumu ekranın tepesinde sarı bir şeritle açıkça yazar.
+2. **Katkı payı** `fiyat − maliyet`. Fiyatı ya da maliyeti olmayan ürün
+   matrise **girmez**, "rapora giremeyen ürünler" listesine düşer ve tek tıkla
+   maliyet ekranına bağlanır.
+3. **Popülerlik eşiği** `(1 / ürün sayısı) × katsayı` (varsayılan 0,70).
+4. **Kârlılık eşiği** adetle **ağırlıklı** ortalama katkı payıdır. Düz ortalama
+   alınsaydı hiç satmayan pahalı bir ürün eşiği yukarı çeker, çok satan
+   ürünler haksız yere "Köpek" olurdu.
+5. Sınırda eşitlik **yüksek** tarafa yazılır; eşiği tam tutturan ürünü
+   cezalandırmak için sebep yok.
+
+| | Yüksek kâr | Düşük kâr |
+| --- | --- | --- |
+| **Çok satan** | Yıldız — koru, fiyatı ve porsiyonu değiştirme | İş Atı — maliyeti düşür ya da %5–10 zam dene |
+| **Az satan** | Bulmaca — vitrine al, önerilere ekle | Köpek — menüden çıkarmayı değerlendir |
+
+Ayrıca **kayıp fırsat** hesaplanır: ortalamanın altında katkı üreten her satış,
+aradaki fark kadar kaybettirir (`(ortalama − katkı) × adet`). Ekranda tek bir
+rakam olarak durur: "bu ürünler dönemde tahminen X ₺ katkı kaybettirdi."
+
+#### Maliyet ve reçete
+
+Maliyet iki yoldan girilir. **Manuel** modda işletmeci ürün başına tek rakam
+yazar (satır içinde, AJAX ile kaydedilir). **Reçete** modunda malzeme + miktar
+satırları girilir ve maliyet malzeme birim fiyatlarından hesaplanır.
+
+Reçete maliyeti raporun içinde değil, **kaydederken** hesaplanıp meta'ya
+yazılır: rapor yüzlerce ürünü tek sorguda çekiyor, her satırda reçete çözmek
+onu N+1 sorguya çevirirdi. Malzeme fiyatı değiştiğinde reçeteli bütün ürünler
+yeniden hesaplanır; 500 ürünü aşan kurulumlarda iş
+`wp_schedule_single_event` ile arka plana atılır.
+
+Birim çevrimi: kg fiyatı → reçetede **gram**, litre fiyatı → **ml**, adet
+fiyatı → **adet**. Fire yüzdesi hesabın sonuna eklenir. Kullanıcının yazdığı
+sayı `QRMS_MM_Maliyet::sayi()` ile okunur — Türkçe klavyede ondalık ayracı
+virgüldür, "12,50" yazan kullanıcının maliyeti 12 TL'ye yuvarlanmamalı.
+
+#### Ekranlar
+
+Hub (4 kart) + Rapor + Ürün Maliyetleri + Malzeme Fiyatları + Ayarlar.
+Rapor filtreleri adres satırına yazılır: bağlantı paylaşılabilir, geri tuşu
+çalışır. Matris **saf CSS ızgarasıdır**, grafik kütüphanesi yüklenmez; her
+kutu `<details>` olduğu için dar ekranda JavaScript olmadan katlanır. Geniş
+tablolar 782px altında **kart listesine** dönüşür — dokuz sütunlu bir tabloyu
+telefonda yana kaydırarak okumak işletmecinin yapacağı son şeydir.
+
+Rapor sonucu beş dakikalık transient'te saklanır; maliyet, malzeme fiyatı ya
+da ayar değiştiğinde önbellek boşaltılır. Transient adları bir option'da
+tutulur — `DELETE ... LIKE '_transient_%'` taraması büyük sitelerde pahalıdır
+ve nesne önbelleği kullanan kurulumlarda hiç çalışmaz.
+
+### Servis Paneli (`qr-servis-paneli`)
+
+Müşteri siparişleri ile garson/hesap çağrıları Firestore'daki `calls`
+koleksiyonuna yazılıyordu (`qr-chatbot` modülü) ama işletmenin bunları
+WordPress içinde göreceği bir ekran yoktu. Bu modül o ekranı ekler.
+
+#### Firestore tarafı
+
+`QMO_Firestore`'a üç metot eklendi: `call_listele()`, `call_guncelle()` ve
+belge çözücü `belge_coz()` / `deger_coz()`.
+
+Sorgu biçimi bilinçli olarak dardır: Firestore'da eşitlik (`branchId`) ile
+başka bir alana göre sıralama (`createdAt`) **birlikte** kullanıldığında
+bileşik indeks gerekir ve indeksi olmayan projede sorgu 400 döner. Restoran
+sahibinin Firebase konsolundan indeks oluşturması beklenemez; bu yüzden sorgu
+tek alanda kalır (`createdAt` üzerinde aralık + sıralama, otomatik tek alan
+indeksiyle çalışır) ve şube süzmesi PHP tarafında yapılır.
+
+`call_guncelle()` her zaman `updateMask` gönderir: maskesiz bir PATCH belgenin
+tamamını değiştirir ve sipariş kalemleri silinirdi.
+
+Service account anahtarı **tarayıcıya çıkmaz**: panel kendi sunucusundaki AJAX
+ucunu çağırır, Firestore'a yalnızca PHP tarafı gider.
+
+#### Durum akışı
+
+```
+bekliyor → hazirlaniyor → serviste → tamamlandi
+   └────────────┴────────────┴──────→ iptal
+```
+
+Geçerli olmayan sıçramalar (`bekliyor → tamamlandi`) reddedilir; iki panelden
+gelen eş zamanlı tıklamalar siparişi hazırlanmadan tamamlanmış gösteremesin.
+Durum değişince belgeye `durum`, `onaylayanUid`, `onaylayanAd` ve
+`guncellendi` yazılır.
+
+#### Yoklama ve uyarılar
+
+- Sekme önplandayken ayarlardaki aralık (varsayılan 5 sn), arka planda 30 sn;
+  öne gelince anında bir istek atılır (Page Visibility API).
+- Sunucu tarafında **3 saniyelik** transient: aynı anda beş ekran açıksa
+  Firestore kotası boşuna tükenmesin.
+- Arka arkaya ikinci hatadan itibaren kırmızı bağlantı şeridi gösterilir ve
+  aralık ikiye katlanarak 60 saniyeye kadar açılır; bağlantı dönünce iner.
+- Yeni kayıt geldiğinde WebAudio ile **kod içinde üretilen** bip çalar (harici
+  ses dosyası yok), sayfa başlığı yanıp söner ve izin verilmişse masaüstü
+  bildirimi gönderilir. Bildirim izni **yalnızca kullanıcı düğmeye basınca**
+  istenir, sayfa açılışında değil.
+- Her kartta canlı bekleme sayacı vardır; iki eşiğe göre kart kenarı yeşil →
+  sarı → kırmızı olur ve kırmızıya geçen kart listenin başına çıkar.
+
+#### Ekran düzeni
+
+Kart şablonunun **tek kaynağı** `assets/js/panel.js`'tir; PHP yalnızca iskeleti
+basar. Canlı bir panelde sunucuda bir kez üretilen kart ikinci saniyede zaten
+eskimiş olurdu, iki yerde şablon tutmak da drift demekti.
+
+Tasarım **mobil önceliklidir** — bu ekran işletmede çoğunlukla telefondan
+kullanılır. Varsayılan görünüm sekmeli tek sütundur (sekme başlığında bekleyen
+sayısı rozetle); dört sütunlu kanban 961px'ten sonra devreye girer. Durum
+düğmeleri dokunmatik cihazlarda 48px yüksekliğindedir.
+
+#### Personel erişimi
+
+Yeni yetenek `qrms_servis_panel` ve yeni rol `qrms_servis` ("Servis
+Personeli"). Rol her istekte değil, `qrms_sp_rol_surum` option'ı ile
+**sürümlenerek** bir kez kurulur. Bu rolle giren kullanıcı yönetim panelinde
+yalnızca Servis Panelini görür: diğer menü satırları düşürülür, araç çubuğu
+sadeleşir ve başka bir ekrana gitmeye çalışırsa panele geri yönlendirilir
+(profil ekranı serbesttir — personel kendi şifresini değiştirebilmeli).
+
+### Kullanılan option'lar (yeni modüller)
+
+| Option | İçerik |
+| --- | --- |
+| `qrms_mm_ayarlar` | Popülerlik eşiği, fire yüzdesi, varsayılan aralık |
+| `qrms_mm_malzeme_fiyat` | Malzeme birim fiyatları (`term_id => [birim, fiyat]`) |
+| `qrms_mm_onbellek` | Rapor transient adlarının defteri |
+| `qrms_sp_ayarlar` | Panel eşikleri, yenileme aralığı, gösterilecek tipler |
+| `qrms_sp_rol_surum` | Servis Personeli rolünün kurulu sürümü |
+
+## Giriş adresi ve giriş ekranı (`QRMS_Login`)
+
+Çekirdeğin parçasıdır, modül değildir: lisans listesine bakılmaz, her kurulumda
+vardır. İki bağımsız işi bir sınıfta toplar ve ikisi ayrı ayrı açılıp
+kapatılabilir.
+
+### Yol — `site.com/qrm`
+
+`plugins_loaded` (öncelik 1) isteği sınıflandırır, `wp_loaded` sonucu uygular:
+
+| İstek | Sonuç |
+| --- | --- |
+| `/qrm` (veya `/?qrm`, kalıcı bağlantı kapalıysa) | `$pagenow = 'wp-login.php'`, `wp-login.php` require edilir |
+| `wp-login.php`, oturumsuz | 404 (tema 404 şablonu, yoksa `wp_die`) |
+| `wp-login.php?action=postpass` | **Geçer** — şifre korumalı yazıların formu buraya POST eder |
+| `wp-login.php`, oturum açık | Geçer — çıkış ve ara giriş penceresi bozulmasın |
+| `wp-admin/*`, oturumsuz | 404 (`wp_admin_koru` ayarı kapatılabilir) |
+| `admin-ajax.php`, `admin-post.php`, `/wp-json/*`, cron, WP-CLI | Hiç dokunulmaz |
+
+Rewrite kuralı **kullanılmaz** (`flush_rewrite_rules()` çağrılmaz); istek doğrudan
+yakalanır. WordPress'in ürettiği bütün `wp-login.php` adresleri
+`site_url`, `network_site_url`, `wp_redirect`, `login_url`, `logout_url`,
+`lostpassword_url`, `register_url` filtrelerinde yeni yola çevrilir — **sorgu
+parametreleri korunarak**. Şifre sıfırlama e-postasındaki `action=rp&key=…&login=…`
+bağlantısı bu yüzden çalışmaya devam eder.
+
+Slug `sanitize_title()` ile temizlenir; `wp-admin`, `wp-login`, `feed`, `wp-json`
+gibi rezerve değerler, iki karakterden kısa ve 64 karakterden uzun değerler ve
+**sitede aynı adrese sahip bir sayfa varsa** o değer reddedilir. Reddedilen
+değerde eski slug korunur — adres asla boşa düşmez.
+
+**Kilitlenmeye karşı üç koruma:**
+
+1. `wp-config.php` içine `define( 'QRMS_LOGIN_DISABLE', true );` yazmak özelliği
+   (görünüm dâhil) tamamen kapatır ve `wp-login.php`'yi geri getirir.
+2. Adres her değiştiğinde site yöneticisinin e-postasına yeni adres ve bu
+   kurtarma satırı gönderilir.
+3. Kaydettikten sonra yönetim ekranında adres kopyalanabilir bir kutuda durur.
+
+Varsayılan **kapalıdır**: eklenti güncellemesi hiç kimsenin giriş adresini
+habersiz değiştirmemeli. Çok siteli (multisite) kurulumda devreye girmez —
+ağ genelindeki giriş adresi tek bir siteye ait bir option'la yönetilemez.
+
+### Görünüm
+
+Giriş formu WordPress'in kendi formudur; **yeniden yazılmaz**. Nonce'lar,
+kimlik doğrulama akışı ve iki aşamalı doğrulama gibi eklentiler dokunulmadan
+kalsın diye yalnızca CSS ve küçük bir betikle giydirilir:
+
+- `login_enqueue_scripts` → `assets/css/login.css` + ayarlardan üretilen CSS
+  değişkenleri (`QRMS_Login::css_variables()`).
+- `login_body_class` → düzen, tema, arka plan tipi ve gizleme sınıfları
+  (`QRMS_Login::skin_classes()`).
+- `login_message` → marka bloğu, WordPress'in kendi mesajının **önüne** eklenir.
+- `login_headerurl` / `login_headertext` → logo bağlantısı WordPress.org yerine
+  sitenin kendisi.
+- `assets/js/login.js` → Caps Lock uyarısı, gönderim durumu, masaüstünde odak.
+  Üçü de opsiyonel iyileştirmedir; betik yüklenmezse ekran eksiksiz çalışır.
+
+Ayarlanabilenler: düzen (bölünmüş / ortalanmış), tema (koyu / açık / cihaza
+göre), vurgu ve ikinci vurgu rengi, arka plan (düz renk / gradyan / görsel +
+karartma + bulanıklık), logo ve yüksekliği, başlık, alt metin, alt bilgi, kart
+köşe yarıçapı, gölge, cam efekti ve dört bileşenin görünürlüğü.
+
+### Önizleme neden ayrı bir stylesheet kullanmaz
+
+`assets/css/login.css` içindeki her yapısal kural **iki seçiciyle** yazılır:
+
+```css
+.qrms-login #login,
+.qrms-login .qrms-lp-box { … }
+```
+
+Ortak `.qrms-login` sınıfı hem gerçek giriş gövdesinde (`login_body_class`) hem
+yönetimdeki önizleme kökünde bulunur. Önizleme için ayrı bir taklit stylesheet
+yazılsaydı iki dosya zamanla birbirinden ayrı düşer, ekranda gördüğünüzle
+kaydettiğiniz farklı olurdu. Bir test bu çift seçici düzeninin bozulmadığını
+korur.
+
+Yönetimdeki "Mobil" düğmesi önizleme köküne `qrms-lp-mobil` sınıfını ekler:
+tarayıcı penceresi geniş olduğu için `min-width: 1024px` medya sorgusu yine
+eşleşir; bölünmüş düzenin mobil önizlemede kapanmasının tek yolu bu sınıfın
+`:not()` ile dışlanmasıdır.
+
+### Ayar ekranı
+
+Sol menüye yeni satır **eklenmez** — menü tek seviyeli kalsın diye modüllerin
+alt ekranları da menüye yazılmıyor. Ayarlar `Genel Ayarlar` sayfasında bir
+sekmedir (`admin.php?page=qrms-settings&tab=giris`); sekmeler
+`QRMS_Admin::get_settings_tabs()` içinde tek yerde durur. Form `admin-post.php`
+üzerinden kaydedilir ve geri yönlendirilir (yenilemede tekrar gönderim olmaz);
+tüm alanlar `QRMS_Login::sanitize_settings()` içinde alan alan temizlenir,
+bilinmeyen anahtar düşer, aralık dışı sayı sıkıştırılır.
+
+### Kullanılan option'lar
+
+| Option | İçerik |
+| --- | --- |
+| `qrms_login_ayarlar` | Yol ve görünüm ayarlarının tamamı (tek dizi) |
+
 ## Admin menüsüyle ilgili iki tasarım notu
 
 **Sihirbaz gizli ama erişilebilir.** `admin.php?page=qrms-wizard` gerçek bir
@@ -1120,9 +1383,10 @@ includes/
   class-license-client.php   Doğrulama, option'lar, günlük cron, notice
   class-wizard.php           Tek ekranlı kurulum sihirbazı + lisans formu
   class-module-loader.php    modules/<slug>/module.php yükleyici
-  class-admin.php            Menü çatısı, tek seviyeli menü, ortak hub bileşeni, Genel Bakış, Genel Ayarlar
-  class-qrms-login.php       Özel giriş URL'si ve giriş ekranı özelleştirmesi
+  class-admin.php            Menü çatısı, tek seviyeli menü, ortak hub bileşeni, Genel Bakış, Genel Ayarlar (sekmeli)
   class-shortcodes.php       Kısa kod kayıt defteri ve "Kısa Kodlar" rehber ekranı
+  class-qrms-login.php       Özel giriş adresi (/qrm) + giriş ekranı görünümü
+  login-ayar-sayfasi.php     Genel Ayarlar → Giriş Ekranı sekmesi (canlı önizlemeli)
 modules/
   _qmo-ortak/                Ortak zemin (oturum sınıfı, Firestore istemcisi, helpers, varlıklar)
   restoran-menu/             Menü CPT'si, kısa kodlar, slider, fiyat kampanyası, porsiyon/ekstra/servis saati + hub ve on yönetim ekranı
@@ -1131,44 +1395,21 @@ modules/
   qr-masa-oturum-guvenligi/  Masa doğrulama, kilit ekranı + hub (oturum limitleri, Firebase & şube ayarları)
   qr-analiz/                 Menü analitiği (masa bazlı takip + panel), analitik/kullanıcı REST uçları
   qr-chatbot/                Gemini chatbot, garson/hesap butonları, sohbet/çağrı/sipariş uçları + ayar ekranı
-  qr-menu-muhendisligi/      Menü kârlılık matrisi, maliyet/reçete yönetimi + hub ve dört alt ekran
-  qr-servis-paneli/        Canlı sipariş paneli (Firestore calls) + ayarlar alt sayfası
   qr-ceviri/                 Çok dilli sözlük + çeviri yönetim ekranı
   qr-galeri/                 Galeri CPT + yönetim ekranları
   qr-acilis-ekrani/          Ana sayfa açılış ekranı + hub ve dört ayar sayfası
-assets/css/admin.css         Mobil öncelikli admin stilleri (dokunma ≥44px)
+  qr-servis-paneli/          Canlı sipariş/çağrı panosu, durum akışı, servis personeli rolü
+  qr-menu-muhendisligi/      Maliyet + reçete, Kasavana–Smith matrisi, CSV çıktısı
+assets/css/admin.css         Mobil öncelikli admin stilleri (dokunma ≥44px), ayar sekmeleri
 assets/css/admin-menu.css    Sol menü: kategori renkleri ve grup başlıkları
+assets/css/login.css         Giriş ekranı görünümü — gerçek ekran ve önizleme ortak
+assets/css/login-admin.css   Giriş Ekranı sekmesinin yerleşimi ve önizleme çerçevesi
 assets/js/admin.js           Form gönderiminde buton kilidi (opsiyonel iyileştirme)
 assets/js/admin-menu.js      Sol menüde katlanabilir kategori başlıkları
-assets/css/login.css           Özel giriş ekranı stilleri
-assets/js/login-admin.js       Giriş ekranı ayarları canlı önizleme
+assets/js/login.js           Caps Lock uyarısı, gönderim durumu (opsiyonel iyileştirme)
+assets/js/login-admin.js     Giriş Ekranı sekmesinin canlı önizlemesi
 tests/                       WordPress'siz çalışan stub tabanlı testler
 ```
-
-### Menü Mühendisliği (`qr-menu-muhendisligi`)
-
-Kasavana–Smith matrisi ile ürünleri Yıldız / İş Atı / Bulmaca / Köpek
-kutularına ayırır. Veri kaynakları: `rma_menu_item` fiyatları (`rma_price`),
-`{$prefix}rma_analytics` satış/sepet/tıklama olayları (siparişlerde `qty`
-adet bilgisi), malzeme taksonomisi (`rma_ingredient`). Rapor tek SQL ile
-hesaplanır, 5 dakikalık transient'te saklanır; maliyet veya ayar kaydında
-önbellek temizlenir.
-
-### Servis Paneli (`qr-servis-paneli`)
-
-Firestore `calls` koleksiyonundaki sipariş, garson ve hesap çağrılarını
-WordPress içinde kanban olarak gösterir. Durum akışı:
-`bekliyor → hazirlaniyor → serviste → tamamlandi` (her adımda `iptal`
-mümkün). Panel 5 saniyede bir yenilenir; sekme arka plandayken 30 saniyeye
-çıkar. `qrms_servis` rolü yalnızca paneli görür.
-
-### Giriş URL'si ve özel giriş ekranı
-
-Varsayılan giriş adresi `https://site.com/qrm` (option `qrms_login_slug`).
-Oturumsuz `wp-login.php` ve `wp-admin` istekleri gerçek 404 döner.
-`wp-config.php` içine `define( 'QRMS_LOGIN_DISABLE', true );` yazıldığında
-özellik tamamen devre dışı kalır. Görünüm ayarları Genel Ayarlar → Giriş
-Ekranı sekmesindedir; canlı önizleme `login-admin.js` ile güncellenir.
 
 ## Testler
 

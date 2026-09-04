@@ -1961,9 +1961,9 @@ qrms_test(
 		qrms_assert_true( null !== $araclar, 'Araçlar kategorisi bulundu' );
 		qrms_assert_true( null !== $genel, 'Genel kategorisi bulundu' );
 
-		// Araçlar'da yedi modül var; yalnızca qr-analiz aktif.
-		qrms_assert_same( 7, count( $araclar['cards'] ), 'araç kart sayısı' );
-		qrms_assert_same( 7, $araclar['total'], 'sayaçta yalnızca modüller' );
+		// Araçlar'da dokuz modül var; yalnızca qr-analiz aktif.
+		qrms_assert_same( 9, count( $araclar['cards'] ), 'araç kart sayısı' );
+		qrms_assert_same( 9, $araclar['total'], 'sayaçta yalnızca modüller' );
 		qrms_assert_same( 1, $araclar['active'], 'aktif modül sayısı' );
 
 		// Genel'de iki çekirdek kart (Kısa Kodlar + Ayarlar); modül yok.
@@ -2709,7 +2709,8 @@ if ( ! defined( 'ARRAY_A' ) ) {
  * Yorum tablosu taklidi — yalnızca tablo varlığı ve basit sayımlar.
  */
 class QRMS_Test_Wpdb {
-	public $prefix = 'wp_';
+	public $prefix   = 'wp_';
+	public $postmeta = 'wp_postmeta';
 
 	public function prepare( $sql, ...$args ) {
 		foreach ( $args as $a ) {
@@ -2780,12 +2781,14 @@ qrm_pro_reviews_table_exists();
 echo "\nYardımcılar\n";
 
 qrms_test(
-	'on bir modül slug\'ı ve Türkçe isimleri tanımlı',
+	'on üç modül slug\'ı ve Türkçe isimleri tanımlı',
 	function () {
 		$modules = QRMS_Helpers::get_modules();
 
 		qrms_assert_same( 13, count( QRMS_Helpers::MODULE_SLUGS ), 'slug sayısı' );
-		qrms_assert_same( 11, count( $modules ), 'isim sayısı' );
+		qrms_assert_same( 13, count( $modules ), 'isim sayısı' );
+		qrms_assert_same( 'Servis Paneli', QRMS_Helpers::get_module_name( 'qr-servis-paneli' ), 'servis paneli adı' );
+		qrms_assert_same( 'Menü Mühendisliği', QRMS_Helpers::get_module_name( 'qr-menu-muhendisligi' ), 'menü mühendisliği adı' );
 		qrms_assert_same( array_values( QRMS_Helpers::MODULE_SLUGS ), array_keys( $modules ), 'slug listesi' );
 		qrms_assert_same( 'Çalışma Saatleri', QRMS_Helpers::get_module_name( 'qr-calisma-saatleri' ), 'isim' );
 		qrms_assert_same( 'Yorum & Feedback', QRMS_Helpers::get_module_name( 'yorum-feedback' ), 'isim' );

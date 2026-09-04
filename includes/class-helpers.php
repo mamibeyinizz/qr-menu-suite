@@ -32,8 +32,8 @@ class QRMS_Helpers {
 		'qr-masa-oturum-guvenligi',
 		'qr-acilis-ekrani',
 		'header-footer-builder',
-		'qr-menu-muhendisligi',
 		'qr-servis-paneli',
+		'qr-menu-muhendisligi',
 	);
 
 	/**
@@ -59,8 +59,8 @@ class QRMS_Helpers {
 			'qr-masa-oturum-guvenligi' => __( 'Güvenlik Ayarı', 'qrms' ),
 			'qr-acilis-ekrani'         => __( 'Açılış Ekranı', 'qrms' ),
 			'header-footer-builder'  => __( 'Header Footer Builder', 'qrms' ),
-			'qr-menu-muhendisligi'   => __( 'Menü Mühendisliği', 'qrms' ),
-			'qr-servis-paneli'       => __( 'Servis Paneli', 'qrms' ),
+			'qr-servis-paneli'         => __( 'Servis Paneli', 'qrms' ),
+			'qr-menu-muhendisligi'     => __( 'Menü Mühendisliği', 'qrms' ),
 		);
 	}
 
@@ -121,13 +121,13 @@ class QRMS_Helpers {
 				'icon' => 'dashicons-layout',
 				'desc' => __( 'Elementor uyumlu header ve footer oluşturucu; kısa kodlarla sayfaya yerleştirin.', 'qrms' ),
 			),
-			'qr-menu-muhendisligi'   => array(
-				'icon' => 'dashicons-chart-pie',
-				'desc' => __( 'Menü kârlılık matrisi, ürün maliyetleri ve malzeme fiyatları.', 'qrms' ),
-			),
-			'qr-servis-paneli'       => array(
+			'qr-servis-paneli'         => array(
 				'icon' => 'dashicons-bell',
-				'desc' => __( 'Canlı sipariş, garson ve hesap çağrılarını tek panelde yönetin.', 'qrms' ),
+				'desc' => __( 'Gelen siparişler ile garson ve hesap çağrılarının canlı takip ekranı.', 'qrms' ),
+			),
+			'qr-menu-muhendisligi'     => array(
+				'icon' => 'dashicons-chart-pie',
+				'desc' => __( 'Hangi ürün kazandırıyor, hangisi kaybettiriyor — maliyet ve kâr analizi.', 'qrms' ),
 			),
 		);
 	}

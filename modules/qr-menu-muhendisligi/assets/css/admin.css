@@ -1,238 +1,590 @@
-/* Menü Mühendisliği — yönetim ekranları */
+/**
+ * Menü Mühendisliği — yönetim ekranları.
+ *
+ * Mobil öncelikli: geniş tablolar 782px altında KART LİSTESİNE dönüşür
+ * (yatay kaydırma yok), matris tek sütuna iner ve her kutu katlanır.
+ */
 
-.qrms-mm-wrap {
-	max-width: 100%;
-	overflow-x: hidden;
-	padding-bottom: env(safe-area-inset-bottom, 0);
-}
+/* -------------------------------------------------------------------------
+ * Filtre çubuğu
+ * ---------------------------------------------------------------------- */
 
 .qrms-mm-filtre {
 	position: sticky;
 	top: 32px;
-	z-index: 10;
-	background: #f0f0f1;
-	padding: 12px;
-	margin: 0 0 16px;
-	border-radius: 4px;
-}
-
-.qrms-mm-filtre-row {
+	z-index: 5;
 	display: flex;
 	flex-wrap: wrap;
-	gap: 12px;
 	align-items: flex-end;
+	gap: 12px;
+	margin: 0 0 20px;
+	padding: 14px 16px;
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-radius: 8px;
 }
 
-.qrms-mm-filtre input,
-.qrms-mm-filtre select {
+.qrms-mm-filtre-alan {
+	display: flex;
+	flex-direction: column;
+	gap: 5px;
+	font-size: 12px;
+	font-weight: 600;
+	color: #50575e;
+}
+
+.qrms-mm-filtre-alan select,
+.qrms-mm-filtre-alan input {
+	/* 16px: mobilde odaklanınca sayfa yakınlaşmasın. */
 	font-size: 16px;
-	min-height: 44px;
+	min-height: 40px;
+	max-width: 100%;
 }
 
-.qrms-mm-uyari {
-	background: #fff3cd;
-	border-left: 4px solid #e08a1e;
-	padding: 12px 16px;
-	margin-bottom: 16px;
+.qrms-mm-filtre-onay {
+	display: inline-flex;
+	align-items: center;
+	gap: 7px;
+	min-height: 40px;
+	font-size: 13px;
 }
+
+.qrms-mm-csv {
+	margin-left: auto;
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.qrms-mm-csv .dashicons {
+	width: 16px;
+	height: 16px;
+	font-size: 16px;
+}
+
+/* -------------------------------------------------------------------------
+ * Özet kutuları
+ * ---------------------------------------------------------------------- */
 
 .qrms-mm-ozet {
 	display: grid;
-	grid-template-columns: repeat(4, minmax(0, 1fr));
+	grid-template-columns: repeat( auto-fit, minmax( 170px, 1fr ) );
 	gap: 12px;
-	margin-bottom: 20px;
+	margin: 0 0 12px;
 }
 
 .qrms-mm-ozet-kutu {
+	padding: 14px 16px;
 	background: #fff;
-	border: 1px solid #c3c4c7;
-	border-radius: 4px;
-	padding: 12px;
+	border: 1px solid #dcdcde;
+	border-left: 4px solid #c3c4c7;
+	border-radius: 6px;
 }
 
-.qrms-mm-ozet-kutu span {
+.qrms-mm-ozet-etiket {
 	display: block;
-	font-size: 12px;
+	margin-bottom: 4px;
 	color: #646970;
+	font-size: 12px;
+	font-weight: 600;
 }
 
-.qrms-mm-kayip strong {
-	color: #c0392b;
+.qrms-mm-ozet-deger {
+	font-size: 20px;
+	line-height: 1.2;
+	font-variant-numeric: tabular-nums;
+}
+
+.qrms-mm-esik {
+	margin: 0 0 24px;
+	font-size: 12.5px;
+	line-height: 1.6;
+}
+
+/* -------------------------------------------------------------------------
+ * Matris
+ * ---------------------------------------------------------------------- */
+
+.qrms-mm-matris-sarmal {
+	position: relative;
+	margin: 0 0 28px;
+	padding-left: 26px;
+	padding-bottom: 22px;
 }
 
 .qrms-mm-matris {
 	display: grid;
 	grid-template-columns: 1fr 1fr;
-	gap: 12px;
-	margin-bottom: 24px;
+	gap: 14px;
+}
+
+.qrms-mm-eksen {
+	position: absolute;
+	color: #646970;
+	font-size: 11.5px;
+	font-weight: 600;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+}
+
+.qrms-mm-eksen-y {
+	left: 0;
+	top: 50%;
+	transform: rotate( -90deg ) translateX( 50% );
+	transform-origin: left center;
+	white-space: nowrap;
+}
+
+.qrms-mm-eksen-x {
+	left: 26px;
+	bottom: 0;
 }
 
 .qrms-mm-kutu {
-	border: 2px solid var(--qrms-mm-kutu-renk, #c3c4c7);
-	border-radius: 6px;
+	padding: 0 16px 14px;
 	background: #fff;
-	padding: 0;
+	border: 1px solid #dcdcde;
+	border-top: 3px solid var( --qrms-mm-renk, #c3c4c7 );
+	border-radius: 8px;
 }
 
-.qrms-mm-kutu summary {
-	cursor: pointer;
-	padding: 12px 16px;
-	font-weight: 600;
-	list-style: none;
-	min-height: 44px;
+.qrms-mm-kutu-basi {
 	display: flex;
 	align-items: center;
-	gap: 8px;
+	gap: 9px;
+	padding: 14px 0 10px;
+	font-size: 15px;
+	font-weight: 700;
+	cursor: pointer;
+	list-style: none;
 }
 
-.qrms-mm-kutu summary .dashicons {
-	color: var(--qrms-mm-kutu-renk);
+.qrms-mm-kutu-basi::-webkit-details-marker {
+	display: none;
 }
 
-.qrms-mm-kutu-aciklama {
-	padding: 0 16px 8px;
-	margin: 0;
+.qrms-mm-kutu-basi .dashicons {
+	color: var( --qrms-mm-renk, #646970 );
+	width: 20px;
+	height: 20px;
+	font-size: 20px;
+}
+
+.qrms-mm-kutu-sayi {
+	margin-left: auto;
+	padding: 2px 10px;
+	background: var( --qrms-mm-renk, #646970 );
+	border-radius: 999px;
+	color: #fff;
+	font-size: 12px;
+	font-variant-numeric: tabular-nums;
+}
+
+.qrms-mm-kutu-anlam {
+	margin: 0 0 10px;
 	color: #646970;
-	font-size: 13px;
+	font-size: 12.5px;
 }
 
 .qrms-mm-kutu-liste {
+	margin: 0 0 12px;
+	padding: 0;
 	list-style: none;
+	max-height: 260px;
+	overflow-y: auto;
+}
+
+.qrms-mm-kutu-liste li {
 	margin: 0;
-	padding: 0 16px 12px;
+	border-bottom: 1px solid #f0f0f1;
 }
 
-.qrms-mm-urun-link {
-	background: none;
-	border: none;
-	padding: 8px 0;
-	text-align: left;
-	cursor: pointer;
-	font-size: 14px;
-	min-height: 44px;
-	width: 100%;
+.qrms-mm-kutu-liste a {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 10px;
+	padding: 9px 2px;
+	min-height: 40px;
+	color: #1d2327;
+	text-decoration: none;
+	font-size: 13px;
 }
 
-.qrms-mm-tablo-wrap {
+.qrms-mm-kutu-liste a:hover {
+	background: #f6f7f7;
+}
+
+.qrms-mm-urun-sayi {
+	flex: 0 0 auto;
+	color: #646970;
+	font-size: 12px;
+	font-variant-numeric: tabular-nums;
+}
+
+.qrms-mm-kutu-aksiyon {
+	margin: 0;
+	padding: 10px 12px;
+	background: #f6f7f7;
+	border-left: 3px solid var( --qrms-mm-renk, #c3c4c7 );
+	border-radius: 4px;
+	font-size: 12.5px;
+	line-height: 1.55;
+}
+
+/* -------------------------------------------------------------------------
+ * Tablolar
+ * ---------------------------------------------------------------------- */
+
+.qrms-mm-baslik {
+	margin: 28px 0 12px;
+	font-size: 16px;
+}
+
+.qrms-mm-tablo-kap {
 	overflow-x: auto;
-	-webkit-overflow-scrolling: touch;
-	max-width: 100%;
+	margin: 0 0 16px;
+	border-radius: 6px;
 }
 
-.qrms-mm-tablo th {
+.qrms-mm-sirala {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	padding: 0;
+	background: none;
+	border: 0;
+	color: inherit;
+	font: inherit;
+	font-weight: 600;
 	cursor: pointer;
+}
+
+.qrms-mm-ok::after {
+	content: "\2195";
+	opacity: 0.35;
+	font-size: 11px;
+}
+
+.qrms-mm-sirala[data-yon="artan"] .qrms-mm-ok::after {
+	content: "\2191";
+	opacity: 1;
+}
+
+.qrms-mm-sirala[data-yon="azalan"] .qrms-mm-ok::after {
+	content: "\2193";
+	opacity: 1;
 }
 
 .qrms-mm-rozet {
 	display: inline-block;
+	padding: 2px 9px;
+	border-radius: 999px;
 	color: #fff;
-	padding: 2px 8px;
-	border-radius: 3px;
-	font-size: 12px;
+	font-size: 11.5px;
+	font-weight: 600;
+	white-space: nowrap;
 }
 
-.qrms-mm-aksiyon {
-	max-width: 280px;
+.qrms-mm-aksiyon-metin {
+	display: block;
+	margin-top: 3px;
+	color: #646970;
+	font-size: 11.5px;
+	line-height: 1.5;
+}
+
+.qrms-mm-uyari {
+	color: #b32d2e;
+	font-size: 12.5px;
+}
+
+/* Maliyet ekranı */
+
+.qrms-mm-maliyet-alan {
+	width: 100px;
+	font-size: 16px;
+	min-height: 36px;
+	font-variant-numeric: tabular-nums;
+}
+
+.qrms-mm-maliyet-alan[readonly] {
+	background: #f0f0f1;
+	color: #646970;
+}
+
+.qrms-mm-durum,
+.qrms-mm-recete-durum {
+	display: inline-block;
+	margin-left: 8px;
+	font-size: 12px;
+	font-weight: 600;
+}
+
+.qrms-mm-durum.basarili,
+.qrms-mm-recete-durum.basarili {
+	color: #1f9d55;
+}
+
+.qrms-mm-durum.hatali,
+.qrms-mm-recete-durum.hatali {
+	color: #b32d2e;
+}
+
+/* Reçete paneli */
+
+.qrms-mm-recete {
+	padding: 14px 4px;
+}
+
+.qrms-mm-recete-alan {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px;
+	margin: 0 0 8px;
+}
+
+.qrms-mm-recete-alan select {
+	flex: 1 1 220px;
+	min-width: 0;
+	font-size: 16px;
+	min-height: 38px;
+}
+
+.qrms-mm-recete-miktar {
+	flex: 0 0 110px;
+	font-size: 16px;
+	min-height: 38px;
+}
+
+.qrms-mm-recete-sil {
+	color: #b32d2e;
+	min-width: 32px;
+	min-height: 32px;
+}
+
+.qrms-mm-recete-alt {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 10px;
+	margin: 12px 0 8px;
+}
+
+/* Sayfalama */
+
+.qrms-mm-sayfalama {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	margin: 12px 0 0;
+}
+
+.qrms-mm-sayfalama-baglantilar {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+}
+
+.qrms-mm-sayfa {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 36px;
+	min-height: 36px;
+	padding: 0 8px;
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-radius: 4px;
+	color: #2271b1;
+	text-decoration: none;
 	font-size: 13px;
 }
 
-.qrms-mm-maliyet-input {
-	font-size: 16px;
-	min-height: 44px;
-	width: 100px;
+.qrms-mm-sayfa.aktif {
+	background: #2271b1;
+	border-color: #2271b1;
+	color: #fff;
+	font-weight: 600;
 }
 
-.qrms-mm-toplu {
-	margin-bottom: 16px;
-	display: flex;
-	gap: 12px;
-	align-items: center;
-	flex-wrap: wrap;
+/* Boş durum */
+
+.qrms-mm-bos {
+	text-align: center;
+	padding: 36px 20px;
 }
 
-.qrms-mm-toplu input {
-	font-size: 16px;
-	min-height: 44px;
+.qrms-mm-bos .dashicons {
+	width: 44px;
+	height: 44px;
+	font-size: 44px;
+	color: #c3c4c7;
 }
 
-.qrms-mm-recete-panel {
-	padding: 12px;
-	background: #f6f7f7;
-	border-radius: 4px;
+.qrms-mm-bos h2 {
+	margin: 12px 0 8px;
+	font-size: 17px;
 }
 
-.qrms-mm-recete-satir {
-	display: flex;
-	gap: 8px;
-	margin-bottom: 8px;
-	flex-wrap: wrap;
+.qrms-mm-bos p {
+	max-width: 46ch;
+	margin: 0 auto 12px;
+	color: #646970;
 }
 
-.qrms-mm-recete-satir select,
-.qrms-mm-recete-satir input {
-	font-size: 16px;
-	min-height: 44px;
+/* Ayar ekranı kaydırıcıları */
+
+.qrms-mm .qrms-field input[type="range"] {
+	width: 100%;
+	max-width: 420px;
+	height: 24px;
+	accent-color: #7c5cff;
 }
 
-tr.qrms-mm-vurgu {
-	background: #f0f6fc !important;
+.qrms-mm .qrms-deger {
+	margin-left: 8px;
+	color: #646970;
+	font-variant-numeric: tabular-nums;
 }
 
-@media (max-width: 782px) {
-	.qrms-mm-ozet {
-		grid-template-columns: 1fr 1fr;
-	}
+/* -------------------------------------------------------------------------
+ * Dar ekran
+ * ---------------------------------------------------------------------- */
+
+@media screen and (max-width: 960px) {
 
 	.qrms-mm-matris {
 		grid-template-columns: 1fr;
 	}
 
-	.qrms-mm-maliyet-tablo thead {
+	.qrms-mm-matris-sarmal {
+		padding-left: 0;
+		padding-bottom: 0;
+	}
+
+	.qrms-mm-eksen {
 		display: none;
-	}
-
-	.qrms-mm-maliyet-tablo tr.qrms-mm-maliyet-satir {
-		display: block;
-		border: 1px solid #c3c4c7;
-		margin-bottom: 12px;
-		padding: 12px;
-		border-radius: 4px;
-	}
-
-	.qrms-mm-maliyet-tablo tr.qrms-mm-maliyet-satir td {
-		display: flex;
-		justify-content: space-between;
-		padding: 6px 0;
-		border: none;
-	}
-
-	.qrms-mm-maliyet-tablo tr.qrms-mm-maliyet-satir td::before {
-		content: attr(data-label);
-		font-weight: 600;
-		margin-right: 12px;
-	}
-
-	.qrms-mm-maliyet-tablo tr.qrms-mm-recete-satir {
-		display: block;
-		margin-bottom: 16px;
 	}
 }
 
-@media (max-width: 600px) {
-	.qrms-mm-ozet {
-		grid-template-columns: 1fr;
-	}
+@media screen and (max-width: 782px) {
 
 	.qrms-mm-filtre {
-		top: 0;
+		position: static;
+		flex-direction: column;
+		align-items: stretch;
+	}
+
+	.qrms-mm-filtre-alan,
+	.qrms-mm-csv {
+		margin-left: 0;
+		width: 100%;
+	}
+
+	.qrms-mm-csv {
+		justify-content: center;
+		min-height: 44px;
+	}
+
+	/*
+	 * Tablolar kart listesine dönüşür. Yatay kaydırma bilerek KULLANILMAZ:
+	 * dokuz sütunlu bir tabloyu telefonda yana kaydırarak okumak, işletmecinin
+	 * mutfakta yapacağı son şeydir.
+	 */
+	.qrms-mm-tablo-kap {
+		overflow-x: visible;
+	}
+
+	.qrms-mm-tablo-kap table,
+	.qrms-mm-tablo-kap tbody,
+	.qrms-mm-tablo-kap tr,
+	.qrms-mm-tablo-kap td {
+		display: block;
+		width: auto;
+	}
+
+	.qrms-mm-tablo-kap thead {
+		display: none;
+	}
+
+	.qrms-mm-tablo-kap tr {
+		margin: 0 0 12px;
+		padding: 12px 14px;
+		background: #fff;
+		border: 1px solid #dcdcde;
+		border-radius: 8px;
+	}
+
+	.qrms-mm-tablo-kap td {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: 12px;
+		padding: 7px 0;
+		border: 0;
+		border-bottom: 1px solid #f0f0f1;
+	}
+
+	.qrms-mm-tablo-kap td:last-child {
+		border-bottom: 0;
+	}
+
+	.qrms-mm-tablo-kap td::before {
+		content: attr( data-etiket );
+		flex: 0 0 auto;
+		color: #646970;
+		font-size: 12px;
+		font-weight: 600;
+	}
+
+	/* Ürün adı kartın başlığıdır: etiketsiz ve tam genişlikte. */
+	.qrms-mm-tablo-kap td:first-child {
+		display: block;
+		font-size: 15px;
+		font-weight: 600;
+	}
+
+	.qrms-mm-tablo-kap td:first-child::before {
+		content: none;
+	}
+
+	/* Reçete paneli satırı kart düzeninde tam genişlik kalır. */
+	.qrms-mm-recete-satir td {
+		display: block;
+	}
+
+	.qrms-mm-recete-satir td::before {
+		content: none;
+	}
+
+	.qrms-mm-maliyet-alan {
+		width: 120px;
+		min-height: 40px;
+	}
+
+	.qrms-mm-recete-miktar {
+		flex: 1 1 100px;
+	}
+
+	.qrms-mm-sayfalama {
+		justify-content: center;
 	}
 }
 
 @media (pointer: coarse) {
-	.qrms-mm-urun-link,
-	.button,
-	.qrms-mm-maliyet-input {
+
+	.qrms-mm-kutu-basi,
+	.qrms-mm-kutu-liste a,
+	.qrms-mm-sayfa,
+	.qrms-mm-recete-sil {
 		min-height: 44px;
-		min-width: 44px;
+	}
+
+	.qrms-mm-sirala {
+		min-height: 44px;
 	}
 }

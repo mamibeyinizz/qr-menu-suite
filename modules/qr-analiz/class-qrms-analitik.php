@@ -902,9 +902,9 @@ class QRMS_Analitik {
 				item_id bigint(20) unsigned NOT NULL DEFAULT 0,
 				item_name varchar(255) NOT NULL DEFAULT '',
 				category_name varchar(255) NOT NULL DEFAULT '',
+				qty smallint(5) unsigned NOT NULL DEFAULT 1,
 				masa_no varchar(64) NOT NULL DEFAULT '',
 				ip_hash varchar(32) NOT NULL DEFAULT '',
-				qty smallint(5) unsigned NOT NULL DEFAULT 1,
 				created_at datetime NOT NULL,
 				PRIMARY KEY  (id),
 				KEY idx_type (event_type),
@@ -1051,19 +1051,16 @@ class QRMS_Analitik {
 				'item_id'       => 0,
 				'item_name'     => '',
 				'category_name' => '',
+				// Sipariş kalemlerinin ADEDİ. Diğer olaylarda 1 kalır;
+				// menü mühendisliği raporu satış adedini buradan okur
+				// (adetsiz hesaplanan popülerlik yanlış sonuç verir).
+				'qty'           => 1,
 				'masa_no'       => self::masa_belirle(),
 				'ip_hash'       => self::ip_hash(),
-				'qty'           => 1,
 				'created_at'    => current_time( 'mysql' ),
 			);
 
 			$satir = array_merge( $varsayilan, $satir );
-
-			if ( isset( $satir['qty'] ) ) {
-				$satir['qty'] = max( 1, min( 999, absint( $satir['qty'] ) ) );
-			} else {
-				$satir['qty'] = 1;
-			}
 
 			if ( isset( $satir['event_type'] ) ) {
 				$satir['event_type'] = substr( sanitize_key( (string) $satir['event_type'] ), 0, 30 );
@@ -1081,15 +1078,26 @@ class QRMS_Analitik {
 				$satir['category_name'] = substr( sanitize_text_field( (string) $satir['category_name'] ), 0, 255 );
 			}
 
+			if ( isset( $satir['qty'] ) ) {
+				// smallint unsigned: 1–999 aralığına sıkıştırılır. Sıfır ya da
+				// negatif adet raporda ürünü görünmez yapardı.
+				$satir['qty'] = max( 1, min( 999, absint( $satir['qty'] ) ) );
+			}
+
 			if ( isset( $satir['masa_no'] ) ) {
 				$satir['masa_no'] = self::masa_temizle( $satir['masa_no'] );
 			}
 
+			/*
+			 * Biçim dizisi $varsayilan'ın ANAHTAR SIRASINI izler
+			 * (array_merge sırayı korur): event_type, item_id, item_name,
+			 * category_name, qty, masa_no, ip_hash, created_at.
+			 */
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 			$wpdb->insert(
 				self::tablo(),
 				$satir,
-				array( '%s', '%d', '%s', '%s', '%s', '%s', '%d', '%s' )
+				array( '%s', '%d', '%s', '%s', '%d', '%s', '%s', '%s' )
 			);
 		} catch ( Exception $e ) {
 			return;

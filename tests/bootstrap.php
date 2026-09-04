@@ -43,6 +43,7 @@ function qrms_reset() {
 
 	// add_shortcode() taklidinin defteri de aynı nedenle sıfırlanır; aksi
 	// hâlde bir testte kaydedilen kısa kod sonraki testte "kurulu" görünür.
+	$GLOBALS['qrms_test']['post_meta']  = array();
 	$GLOBALS['qrms_test']['shortcodes'] = array();
 	$GLOBALS['qrms_test']['json']       = null;
 	$GLOBALS['qrms_test']['is_admin']   = false;

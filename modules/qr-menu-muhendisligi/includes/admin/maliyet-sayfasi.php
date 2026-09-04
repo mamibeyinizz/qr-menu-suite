@@ -1,163 +1,353 @@
 <?php
 /**
- * Ürün maliyetleri sayfası.
+ * Ürün Maliyetleri ekranı.
+ *
+ * Satır içinde düzenlenebilir maliyet alanı; kaydetme AJAX ile yapılır ve
+ * katkı payı / marj hücreleri sayfa yenilenmeden güncellenir. Reçete
+ * düğmesi satırın altında malzeme + miktar satırlarını açar.
+ *
+ * Dar ekranda tablo KART LİSTESİNE dönüşür (bkz. assets/css/admin.css);
+ * yatay kaydırma yoktur.
  *
  * @package QR_Menu_Suite
  */
 
 defined( 'ABSPATH' ) || exit;
 
-if ( ! function_exists( 'qrms_mm_maliyet_sayfasi' ) ) {
-	/**
-	 * Maliyet ekranını basar.
-	 *
-	 * @return void
-	 */
-	function qrms_mm_maliyet_sayfasi() {
-		if ( ! current_user_can( QRMS_Admin::CAPABILITY ) ) {
-			wp_die( esc_html__( 'Bu sayfayı görüntüleme yetkiniz yok.', 'qrms' ) );
-		}
+/**
+ * Sayfa başına ürün.
+ */
+const QRMS_MM_SAYFA_BOYUTU = 50;
 
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		$arama   = isset( $_GET['s'] ) ? sanitize_text_field( wp_unslash( $_GET['s'] ) ) : '';
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		$kat_f   = isset( $_GET['kategori'] ) ? sanitize_text_field( wp_unslash( $_GET['kategori'] ) ) : '';
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		$eksik   = ! empty( $_GET['eksik'] );
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		$sayfa   = isset( $_GET['paged'] ) ? max( 1, absint( $_GET['paged'] ) ) : 1;
-		$per     = 50;
+/**
+ * Ekranı basar.
+ *
+ * @return void
+ */
+function qrms_mm_maliyet_sayfasi() {
+	if ( ! current_user_can( QRMS_Admin::CAPABILITY ) ) {
+		wp_die( esc_html__( 'Bu sayfayı görüntüleme yetkiniz yok.', 'qrms' ) );
+	}
 
-		$urunler = QRMS_MM_Maliyet::urun_listesi();
-		$filtre  = array();
+	// phpcs:disable WordPress.Security.NonceVerification.Recommended -- yalnızca okuma/filtre.
+	$arama    = isset( $_GET['s'] ) ? sanitize_text_field( wp_unslash( $_GET['s'] ) ) : '';
+	$kategori = isset( $_GET['kategori'] ) ? absint( $_GET['kategori'] ) : 0;
+	$yalniz   = ! empty( $_GET['eksik'] );
+	$sayfa    = isset( $_GET['sayfa'] ) ? max( 1, absint( $_GET['sayfa'] ) ) : 1;
+	// phpcs:enable
 
-		foreach ( $urunler as $u ) {
-			if ( $eksik && (float) $u['maliyet'] > 0 ) {
-				continue;
-			}
-			if ( '' !== $arama && false === stripos( $u['ad'], $arama ) ) {
-				continue;
-			}
-			if ( '' !== $kat_f && $u['kategori'] !== $kat_f ) {
-				continue;
-			}
-			$filtre[] = $u;
-		}
+	$tumu = QRMS_MM_Rapor::urunler( $kategori );
 
-		$toplam_sayfa = max( 1, (int) ceil( count( $filtre ) / $per ) );
-		$offset       = ( $sayfa - 1 ) * $per;
-		$sayfa_urun   = array_slice( $filtre, $offset, $per );
-
-		$kategoriler = array_unique( array_filter( wp_list_pluck( $urunler, 'kategori' ) ) );
-		sort( $kategoriler );
-
-		$malzemeler = array();
-		if ( class_exists( 'RMA_Ingredient_Taxonomy' ) ) {
-			$terms = get_terms(
-				array(
-					'taxonomy'   => RMA_Ingredient_Taxonomy::TAXONOMY,
-					'hide_empty' => false,
-				)
-			);
-			if ( ! is_wp_error( $terms ) ) {
-				foreach ( $terms as $t ) {
-					$malzemeler[] = array( 'id' => $t->term_id, 'ad' => $t->name );
+	if ( '' !== $arama ) {
+		$tumu = array_values(
+			array_filter(
+				$tumu,
+				static function ( $urun ) use ( $arama ) {
+					return false !== mb_stripos( $urun['item_name'], $arama );
 				}
-			}
-		}
-		?>
-		<div class="wrap qrms-wrap qrms-mm-wrap">
-			<h1 class="qrms-title"><?php esc_html_e( 'Ürün Maliyetleri', 'qrms' ); ?></h1>
+			)
+		);
+	}
 
-			<form class="qrms-mm-filtre" method="get">
-				<input type="hidden" name="page" value="qrms-mm-maliyet" />
-				<input type="search" name="s" value="<?php echo esc_attr( $arama ); ?>" placeholder="<?php esc_attr_e( 'Ürün ara…', 'qrms' ); ?>" />
+	if ( $yalniz ) {
+		$tumu = array_values(
+			array_filter(
+				$tumu,
+				static function ( $urun ) {
+					return null === $urun['maliyet'] || null === $urun['fiyat'];
+				}
+			)
+		);
+	}
+
+	$toplam   = count( $tumu );
+	$sayfalar = max( 1, (int) ceil( $toplam / QRMS_MM_SAYFA_BOYUTU ) );
+	$sayfa    = min( $sayfa, $sayfalar );
+	$gorunen  = array_slice( $tumu, ( $sayfa - 1 ) * QRMS_MM_SAYFA_BOYUTU, QRMS_MM_SAYFA_BOYUTU );
+
+	$malzemeler = qrms_mm_malzeme_listesi();
+	?>
+	<div class="wrap qrms-wrap qrms-mm">
+		<h1 class="qrms-title"><?php esc_html_e( 'Ürün Maliyetleri', 'qrms' ); ?></h1>
+
+		<p class="qrms-muted">
+			<?php esc_html_e( 'Maliyet KDV hariç, tek porsiyon için girilir. Reçete kullanırsanız maliyet malzeme fiyatlarından hesaplanır ve alan salt okunur olur.', 'qrms' ); ?>
+		</p>
+
+		<form method="get" class="qrms-mm-filtre">
+			<input type="hidden" name="page" value="<?php echo esc_attr( QRMS_MM_MALIYET_SAYFA ); ?>">
+
+			<label class="qrms-mm-filtre-alan">
+				<span><?php esc_html_e( 'Ara', 'qrms' ); ?></span>
+				<input type="search" name="s" value="<?php echo esc_attr( $arama ); ?>" placeholder="<?php esc_attr_e( 'Ürün adı', 'qrms' ); ?>">
+			</label>
+
+			<label class="qrms-mm-filtre-alan">
+				<span><?php esc_html_e( 'Kategori', 'qrms' ); ?></span>
 				<select name="kategori">
-					<option value=""><?php esc_html_e( 'Tüm kategoriler', 'qrms' ); ?></option>
-					<?php foreach ( $kategoriler as $kat ) : ?>
-						<option value="<?php echo esc_attr( $kat ); ?>" <?php selected( $kat_f, $kat ); ?>><?php echo esc_html( $kat ); ?></option>
+					<option value="0"><?php esc_html_e( 'Tümü', 'qrms' ); ?></option>
+					<?php foreach ( QRMS_MM_Rapor::kategoriler() as $id => $ad ) : ?>
+						<option value="<?php echo esc_attr( $id ); ?>" <?php selected( $kategori, $id ); ?>><?php echo esc_html( $ad ); ?></option>
 					<?php endforeach; ?>
 				</select>
-				<label><input type="checkbox" name="eksik" value="1" <?php checked( $eksik ); ?> /> <?php esc_html_e( 'Yalnızca maliyeti eksik', 'qrms' ); ?></label>
-				<button type="submit" class="button"><?php esc_html_e( 'Filtrele', 'qrms' ); ?></button>
-			</form>
+			</label>
 
-			<div class="qrms-mm-toplu">
-				<label><?php esc_html_e( 'Seçililere maliyet %', 'qrms' ); ?> <input type="number" id="qrms-mm-toplu-yuzde" min="0" max="100" step="0.1" /></label>
-				<button type="button" class="button" id="qrms-mm-toplu-uygula"><?php esc_html_e( 'Uygula', 'qrms' ); ?></button>
+			<label class="qrms-mm-filtre-onay">
+				<input type="checkbox" name="eksik" value="1" <?php checked( $yalniz ); ?>>
+				<span><?php esc_html_e( 'Yalnızca eksikler', 'qrms' ); ?></span>
+			</label>
+
+			<button type="submit" class="button"><?php esc_html_e( 'Filtrele', 'qrms' ); ?></button>
+		</form>
+
+		<?php if ( empty( $gorunen ) ) : ?>
+			<div class="qrms-card">
+				<p class="qrms-muted"><?php esc_html_e( 'Bu filtreye uyan ürün yok.', 'qrms' ); ?></p>
 			</div>
+		<?php else : ?>
 
-			<div class="qrms-mm-tablo-wrap">
+			<div class="qrms-mm-tablo-kap">
 				<table class="widefat striped qrms-mm-maliyet-tablo">
 					<thead>
 						<tr>
-							<th><input type="checkbox" id="qrms-mm-tumunu-sec" /></th>
-							<th><?php esc_html_e( 'Ürün', 'qrms' ); ?></th>
-							<th><?php esc_html_e( 'Kategori', 'qrms' ); ?></th>
-							<th><?php esc_html_e( 'Fiyat', 'qrms' ); ?></th>
-							<th><?php esc_html_e( 'Maliyet', 'qrms' ); ?></th>
-							<th><?php esc_html_e( 'Katkı', 'qrms' ); ?></th>
-							<th><?php esc_html_e( 'Marj %', 'qrms' ); ?></th>
-							<th></th>
+							<th scope="col"><?php esc_html_e( 'Ürün', 'qrms' ); ?></th>
+							<th scope="col"><?php esc_html_e( 'Kategori', 'qrms' ); ?></th>
+							<th scope="col"><?php esc_html_e( 'Fiyat', 'qrms' ); ?></th>
+							<th scope="col"><?php esc_html_e( 'Maliyet (₺)', 'qrms' ); ?></th>
+							<th scope="col"><?php esc_html_e( 'Katkı payı', 'qrms' ); ?></th>
+							<th scope="col"><?php esc_html_e( 'Marj', 'qrms' ); ?></th>
+							<th scope="col"><?php esc_html_e( 'Reçete', 'qrms' ); ?></th>
 						</tr>
 					</thead>
 					<tbody>
-						<?php foreach ( $sayfa_urun as $u ) :
-							$cm   = $u['fiyat'] - $u['maliyet'];
-							$marj = $u['fiyat'] > 0 ? ( $cm / $u['fiyat'] ) * 100 : 0;
-							?>
-							<tr class="qrms-mm-maliyet-satir" data-id="<?php echo esc_attr( (string) $u['id'] ); ?>" data-fiyat="<?php echo esc_attr( (string) $u['fiyat'] ); ?>">
-								<td data-label=""><input type="checkbox" class="qrms-mm-sec" value="<?php echo esc_attr( (string) $u['id'] ); ?>" /></td>
-								<td data-label="<?php esc_attr_e( 'Ürün', 'qrms' ); ?>"><?php echo esc_html( $u['ad'] ); ?></td>
-								<td data-label="<?php esc_attr_e( 'Kategori', 'qrms' ); ?>"><?php echo esc_html( $u['kategori'] ); ?></td>
-								<td data-label="<?php esc_attr_e( 'Fiyat', 'qrms' ); ?>"><?php echo esc_html( number_format_i18n( $u['fiyat'], 2 ) ); ?> ₺</td>
-								<td data-label="<?php esc_attr_e( 'Maliyet', 'qrms' ); ?>">
-									<input type="number" class="qrms-mm-maliyet-input" step="0.01" min="0" value="<?php echo esc_attr( $u['maliyet'] > 0 ? (string) $u['maliyet'] : '' ); ?>" <?php echo 'recete' === $u['kaynak'] ? 'readonly' : ''; ?> />
-								</td>
-								<td class="qrms-mm-cm" data-label="<?php esc_attr_e( 'Katkı', 'qrms' ); ?>"><?php echo esc_html( number_format_i18n( $cm, 2 ) ); ?></td>
-								<td class="qrms-mm-marj" data-label="<?php esc_attr_e( 'Marj %', 'qrms' ); ?>"><?php echo esc_html( number_format_i18n( $marj, 1 ) ); ?></td>
-								<td data-label="">
-									<button type="button" class="button qrms-mm-recete-btn"><?php esc_html_e( 'Reçete', 'qrms' ); ?></button>
-								</td>
-							</tr>
-							<tr class="qrms-mm-recete-satir" hidden>
-								<td colspan="8">
-									<div class="qrms-mm-recete-panel" data-recete="<?php echo esc_attr( wp_json_encode( $u['recete'] ) ); ?>">
-										<?php if ( ! empty( $malzemeler ) ) : ?>
-											<div class="qrms-mm-recete-satirlari"></div>
-											<button type="button" class="button qrms-mm-recete-ekle"><?php esc_html_e( 'Malzeme ekle', 'qrms' ); ?></button>
-											<button type="button" class="button button-primary qrms-mm-recete-kaydet"><?php esc_html_e( 'Reçeteyi kaydet', 'qrms' ); ?></button>
-										<?php else : ?>
-											<p><?php esc_html_e( 'Malzeme taksonomisi bulunamadı. Restoran Menü modülünden malzeme ekleyin.', 'qrms' ); ?></p>
-										<?php endif; ?>
-									</div>
-								</td>
-							</tr>
+						<?php foreach ( $gorunen as $urun ) : ?>
+							<?php qrms_mm_maliyet_satiri( $urun, $malzemeler ); ?>
 						<?php endforeach; ?>
 					</tbody>
 				</table>
 			</div>
 
-			<?php if ( $toplam_sayfa > 1 ) : ?>
-				<div class="tablenav">
-					<div class="tablenav-pages">
-						<?php
-						echo wp_kses_post(
-							paginate_links(
-								array(
-									'base'    => add_query_arg( 'paged', '%#%' ),
-									'format'  => '',
-									'current' => $sayfa,
-									'total'   => $toplam_sayfa,
-								)
-							)
-						);
-						?>
-					</div>
-				</div>
+			<?php qrms_mm_sayfalama( $sayfa, $sayfalar, $toplam ); ?>
+		<?php endif; ?>
+	</div>
+	<?php
+}
+
+/**
+ * Tek ürün satırı + reçete paneli.
+ *
+ * @param array $urun       Ürün.
+ * @param array $malzemeler Malzeme listesi (term_id => ad).
+ * @return void
+ */
+function qrms_mm_maliyet_satiri( array $urun, array $malzemeler ) {
+	$id       = $urun['item_id'];
+	$fiyat    = $urun['fiyat'];
+	$maliyet  = $urun['maliyet'];
+	$kaynak   = QRMS_MM_Maliyet::kaynak( $id );
+	$recete   = QRMS_MM_Maliyet::recete( $id );
+	$katki    = ( null !== $fiyat && null !== $maliyet ) ? $fiyat - $maliyet : null;
+	$marj     = ( null !== $katki && $fiyat > 0 ) ? ( $katki / $fiyat ) * 100 : null;
+	$receteli = 'recete' === $kaynak;
+	?>
+	<tr class="qrms-mm-satir" data-urun="<?php echo esc_attr( $id ); ?>">
+		<td data-etiket="<?php esc_attr_e( 'Ürün', 'qrms' ); ?>">
+			<a href="<?php echo esc_url( get_edit_post_link( $id ) ); ?>"><?php echo esc_html( $urun['item_name'] ); ?></a>
+		</td>
+		<td data-etiket="<?php esc_attr_e( 'Kategori', 'qrms' ); ?>"><?php echo esc_html( $urun['category_name'] ); ?></td>
+		<td data-etiket="<?php esc_attr_e( 'Fiyat', 'qrms' ); ?>">
+			<?php if ( null === $fiyat ) : ?>
+				<span class="qrms-mm-uyari"><?php esc_html_e( 'Girilmemiş', 'qrms' ); ?></span>
+			<?php else : ?>
+				<?php echo esc_html( qrms_mm_para( $fiyat ) ); ?>
 			<?php endif; ?>
-		</div>
-		<script type="application/json" id="qrms-mm-malzemeler"><?php echo wp_json_encode( $malzemeler ); ?></script>
-		<?php
+		</td>
+		<td data-etiket="<?php esc_attr_e( 'Maliyet (₺)', 'qrms' ); ?>">
+			<input
+				type="text"
+				inputmode="decimal"
+				class="qrms-mm-maliyet-alan"
+				value="<?php echo esc_attr( null === $maliyet ? '' : $maliyet ); ?>"
+				<?php echo $receteli ? 'readonly' : ''; ?>
+				aria-label="<?php esc_attr_e( 'Maliyet', 'qrms' ); ?>">
+			<span class="qrms-mm-durum" aria-live="polite"></span>
+		</td>
+		<td data-etiket="<?php esc_attr_e( 'Katkı payı', 'qrms' ); ?>" class="qrms-mm-katki">
+			<?php echo esc_html( null === $katki ? '—' : qrms_mm_para( $katki ) ); ?>
+		</td>
+		<td data-etiket="<?php esc_attr_e( 'Marj', 'qrms' ); ?>" class="qrms-mm-marj">
+			<?php echo esc_html( null === $marj ? '—' : qrms_mm_yuzde( $marj ) ); ?>
+		</td>
+		<td data-etiket="<?php esc_attr_e( 'Reçete', 'qrms' ); ?>">
+			<button type="button" class="button button-small qrms-mm-recete-ac" aria-expanded="false">
+				<?php echo $receteli ? esc_html__( 'Reçeteli', 'qrms' ) : esc_html__( 'Reçete', 'qrms' ); ?>
+			</button>
+		</td>
+	</tr>
+
+	<tr class="qrms-mm-recete-satir" data-urun="<?php echo esc_attr( $id ); ?>" hidden>
+		<td colspan="7">
+			<div class="qrms-mm-recete">
+				<?php if ( empty( $malzemeler ) ) : ?>
+					<p class="qrms-muted">
+						<?php esc_html_e( 'Henüz malzeme tanımlı değil. Önce ürünlere malzeme etiketleyin, sonra Malzeme Fiyatları ekranından birim fiyatlarını girin.', 'qrms' ); ?>
+					</p>
+				<?php else : ?>
+					<div class="qrms-mm-recete-satirlar">
+						<?php if ( empty( $recete ) ) : ?>
+							<?php
+							/*
+							 * Reçetesi olmayan üründe de BİR boş satır basılır:
+							 * "+ Malzeme ekle" düğmesi yeni satırı ilk satırı
+							 * kopyalayarak üretir, hiç satır yoksa kopyalayacak
+							 * şablon bulamaz ve panel kullanılamaz olurdu.
+							 */
+							qrms_mm_recete_alan( $malzemeler );
+							?>
+						<?php else : ?>
+							<?php foreach ( $recete as $r ) : ?>
+								<?php qrms_mm_recete_alan( $malzemeler, $r['term_id'], $r['miktar'] ); ?>
+							<?php endforeach; ?>
+						<?php endif; ?>
+					</div>
+
+					<div class="qrms-mm-recete-alt">
+						<button type="button" class="button button-small qrms-mm-recete-ekle"><?php esc_html_e( '+ Malzeme ekle', 'qrms' ); ?></button>
+						<button type="button" class="button button-primary button-small qrms-mm-recete-kaydet"><?php esc_html_e( 'Reçeteyi kaydet ve maliyeti hesapla', 'qrms' ); ?></button>
+						<span class="qrms-mm-recete-durum" aria-live="polite"></span>
+					</div>
+
+					<p class="qrms-muted">
+						<?php esc_html_e( 'Miktarı malzemenin birimine göre yazın: kg fiyatı için gram, litre fiyatı için ml, adet fiyatı için adet.', 'qrms' ); ?>
+					</p>
+				<?php endif; ?>
+			</div>
+		</td>
+	</tr>
+	<?php
+}
+
+/**
+ * Tek reçete satırı (şablon olarak da kullanılır).
+ *
+ * @param array $malzemeler Malzemeler.
+ * @param int   $secili     Seçili terim.
+ * @param float $miktar     Miktar.
+ * @return void
+ */
+function qrms_mm_recete_alan( array $malzemeler, $secili = 0, $miktar = 0 ) {
+	$fiyatlar = QRMS_MM_Maliyet::malzeme_fiyatlari();
+	$birimler = QRMS_MM_Maliyet::birimler();
+	?>
+	<div class="qrms-mm-recete-alan">
+		<select class="qrms-mm-recete-malzeme" aria-label="<?php esc_attr_e( 'Malzeme', 'qrms' ); ?>">
+			<option value="0"><?php esc_html_e( 'Malzeme seçin', 'qrms' ); ?></option>
+			<?php foreach ( $malzemeler as $term_id => $ad ) : ?>
+				<?php
+				$birim   = isset( $fiyatlar[ $term_id ]['birim'] ) ? $fiyatlar[ $term_id ]['birim'] : '';
+				$etiket  = $ad;
+
+				if ( '' !== $birim && isset( $birimler[ $birim ] ) ) {
+					$etiket .= ' (' . $birimler[ $birim ]['miktar'] . ')';
+				} else {
+					$etiket .= ' — ' . __( 'fiyatı yok', 'qrms' );
+				}
+				?>
+				<option value="<?php echo esc_attr( $term_id ); ?>" <?php selected( $secili, $term_id ); ?>>
+					<?php echo esc_html( $etiket ); ?>
+				</option>
+			<?php endforeach; ?>
+		</select>
+
+		<input
+			type="text"
+			inputmode="decimal"
+			class="qrms-mm-recete-miktar"
+			value="<?php echo esc_attr( $miktar > 0 ? $miktar : '' ); ?>"
+			placeholder="<?php esc_attr_e( 'Miktar', 'qrms' ); ?>"
+			aria-label="<?php esc_attr_e( 'Miktar', 'qrms' ); ?>">
+
+		<button type="button" class="button-link qrms-mm-recete-sil" aria-label="<?php esc_attr_e( 'Satırı kaldır', 'qrms' ); ?>">
+			<span class="dashicons dashicons-no-alt" aria-hidden="true"></span>
+		</button>
+	</div>
+	<?php
+}
+
+/**
+ * Malzeme terimleri.
+ *
+ * @return array<int,string>
+ */
+function qrms_mm_malzeme_listesi() {
+	$terimler = get_terms(
+		array(
+			'taxonomy'   => QRMS_MM_Maliyet::malzeme_taksonomisi(),
+			'hide_empty' => false,
+		)
+	);
+
+	$cikti = array();
+
+	if ( is_array( $terimler ) ) {
+		foreach ( $terimler as $terim ) {
+			if ( is_object( $terim ) && isset( $terim->term_id ) ) {
+				$cikti[ (int) $terim->term_id ] = (string) $terim->name;
+			}
+		}
 	}
+
+	return $cikti;
+}
+
+/**
+ * Sayfalama bağlantıları.
+ *
+ * @param int $sayfa    Geçerli sayfa.
+ * @param int $sayfalar Toplam sayfa.
+ * @param int $toplam   Toplam ürün.
+ * @return void
+ */
+function qrms_mm_sayfalama( $sayfa, $sayfalar, $toplam ) {
+	if ( $sayfalar < 2 ) {
+		return;
+	}
+
+	// Adres yalnızca BİLİNEN filtrelerden kurulur; $_GET olduğu gibi
+	// taşınsaydı sayfalama bağlantıları rastgele parametreleri geri yansıtırdı.
+	// phpcs:disable WordPress.Security.NonceVerification.Recommended
+	$mevcut = array(
+		'page'     => QRMS_MM_MALIYET_SAYFA,
+		's'        => isset( $_GET['s'] ) ? sanitize_text_field( wp_unslash( $_GET['s'] ) ) : '',
+		'kategori' => isset( $_GET['kategori'] ) ? absint( $_GET['kategori'] ) : 0,
+		'eksik'    => empty( $_GET['eksik'] ) ? 0 : 1,
+	);
+	// phpcs:enable
+	?>
+	<nav class="qrms-mm-sayfalama" aria-label="<?php esc_attr_e( 'Sayfalar', 'qrms' ); ?>">
+		<span class="qrms-muted">
+			<?php
+			printf(
+				/* translators: 1: geçerli sayfa, 2: toplam sayfa, 3: toplam ürün. */
+				esc_html__( 'Sayfa %1$d / %2$d — toplam %3$d ürün', 'qrms' ),
+				(int) $sayfa,
+				(int) $sayfalar,
+				(int) $toplam
+			);
+			?>
+		</span>
+
+		<span class="qrms-mm-sayfalama-baglantilar">
+			<?php for ( $i = 1; $i <= $sayfalar; $i++ ) : ?>
+				<?php if ( $i === $sayfa ) : ?>
+					<span class="qrms-mm-sayfa aktif"><?php echo esc_html( $i ); ?></span>
+				<?php else : ?>
+					<a class="qrms-mm-sayfa" href="<?php echo esc_url( add_query_arg( array_merge( $mevcut, array( 'sayfa' => $i ) ), admin_url( 'admin.php' ) ) ); ?>">
+						<?php echo esc_html( $i ); ?>
+					</a>
+				<?php endif; ?>
+			<?php endfor; ?>
+		</span>
+	</nav>
+	<?php
 }

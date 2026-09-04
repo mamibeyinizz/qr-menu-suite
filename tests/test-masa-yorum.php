@@ -101,8 +101,14 @@ qrms_test(
  * 8z. Yorum & Feedback — yorum listesinin SAYFALAMASI
  * ------------------------------------------------------------------------ */
 
-// Yalnızca fonksiyon tanımları; hook kaydı yok.
+// Yalnızca fonksiyon tanımları; hook kaydı yok. Sıra qr-menu-reviews.php'deki
+// gerçek yükleme sırasıyla aynı: reviews-list.php içindeki
+// qrm_pro_sanitize_reviews_list_query() fotoğraf filtresini kapatabilmek için
+// qrm_pro_media_is_enabled()'ı (review-media.php) çağırır; masa.php ve
+// consent.php da submit-review.php'nin bağımlılığıdır (aşağıda ayrıca
+// require edilir, burada tekrar yüklenmesin diye atlanır).
 require_once QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/settings.php';
+require_once QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/review-media.php';
 require_once QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/frontend/reviews-list.php';
 require_once QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/frontend/form-steps.php';
 require_once QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/frontend/form-render.php';
@@ -555,6 +561,10 @@ qrms_test(
  * ------------------------------------------------------------------------ */
 
 require_once QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/security.php';
+// Gönderim, masayı qrm_pro_resolve_masa_for_submission() (masa.php) ile,
+// onay metnini qrm_pro_consent_from_request() (consent.php) ile çözer.
+require_once QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/masa.php';
+require_once QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/consent.php';
 require_once QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/ajax/submit-review.php';
 
 // Bu bölümün taklidi yalnızca insert() karşılar; sonraki bölümlere sızmaması

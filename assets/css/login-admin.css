@@ -1,0 +1,379 @@
+/**
+ * QR Menu Suite — Genel Ayarlar → Giriş Ekranı sekmesi.
+ *
+ * Solda ayar kartları, sağda yapışkan canlı önizleme. Önizlemenin İÇİ
+ * `assets/css/login.css` tarafından boyanır; bu dosya yalnızca çerçeveyi,
+ * form alanlarını ve yerleşimi kurar.
+ */
+
+.qrms-login-grid {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+	gap: 24px;
+	align-items: start;
+}
+
+.qrms-login-col {
+	min-width: 0;
+}
+
+/* -------------------------------------------------------------------------
+ * Form alanları
+ * ---------------------------------------------------------------------- */
+
+.qrms-login-ayar .qrms-field {
+	margin: 0 0 18px;
+}
+
+.qrms-login-ayar .qrms-field:last-child {
+	margin-bottom: 0;
+}
+
+.qrms-login-ayar .qrms-field label,
+.qrms-login-ayar .qrms-field-label {
+	display: block;
+	margin: 0 0 6px;
+	color: #1d2327;
+	font-size: 13px;
+	font-weight: 600;
+}
+
+.qrms-login-ayar .qrms-field input[type="text"],
+.qrms-login-ayar .qrms-field textarea {
+	width: 100%;
+	max-width: 100%;
+	/* 16px: mobilde odaklanınca sayfa yakınlaşmasın. */
+	font-size: 16px;
+	line-height: 1.5;
+	padding: 8px 11px;
+}
+
+.qrms-login-ayar .qrms-field input[type="range"] {
+	width: 100%;
+	margin: 4px 0 0;
+	accent-color: #2271b1;
+	height: 24px;
+}
+
+.qrms-login-ayar .qrms-deger {
+	float: right;
+	color: #646970;
+	font-weight: 500;
+	font-variant-numeric: tabular-nums;
+}
+
+.qrms-field-ikili {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 16px;
+}
+
+.qrms-ayrac {
+	border: 0;
+	border-top: 1px solid #f0f0f1;
+	margin: 16px 0;
+}
+
+/* Anahtar (checkbox) satırı */
+
+.qrms-switch {
+	display: flex;
+	align-items: flex-start;
+	gap: 10px;
+	margin: 0 0 12px;
+	padding: 9px 0;
+	color: #1d2327;
+	font-size: 14px;
+	line-height: 1.45;
+	cursor: pointer;
+}
+
+.qrms-switch input[type="checkbox"] {
+	flex: 0 0 auto;
+	margin: 1px 0 0;
+	width: 18px;
+	height: 18px;
+}
+
+/* Adres alanı */
+
+.qrms-url-input {
+	display: flex;
+	align-items: stretch;
+	border: 1px solid #8c8f94;
+	border-radius: 4px;
+	overflow: hidden;
+	background: #fff;
+}
+
+.qrms-url-prefix {
+	display: flex;
+	align-items: center;
+	padding: 0 10px;
+	background: #f6f7f7;
+	border-right: 1px solid #dcdcde;
+	color: #646970;
+	font-size: 13px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	max-width: 55%;
+}
+
+.qrms-login-ayar .qrms-url-input input[type="text"] {
+	flex: 1 1 auto;
+	min-width: 0;
+	border: 0;
+	border-radius: 0;
+	box-shadow: none;
+	font-family: Menlo, Consolas, monospace;
+}
+
+.qrms-login-url-kutu {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 10px;
+	margin: 0 0 18px;
+	padding: 12px 14px;
+	background: #f0f6fc;
+	border: 1px solid #c5d9ed;
+	border-radius: 6px;
+}
+
+.qrms-login-url-etiket {
+	flex: 1 0 100%;
+	color: #50575e;
+	font-size: 12px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+
+.qrms-login-url-kutu code {
+	flex: 1 1 auto;
+	min-width: 0;
+	overflow-wrap: anywhere;
+	background: #fff;
+	padding: 6px 9px;
+	border-radius: 4px;
+	font-size: 13px;
+}
+
+.qrms-login-kurtarma code {
+	display: inline-block;
+	margin: 6px 0;
+	padding: 5px 9px;
+	background: #fff;
+	border-radius: 4px;
+	font-size: 12.5px;
+	overflow-wrap: anywhere;
+}
+
+/* Seçim grubu (radio) */
+
+.qrms-secim {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
+.qrms-secim-secenek {
+	display: inline-flex;
+	align-items: center;
+	gap: 7px;
+	margin: 0;
+	padding: 9px 13px;
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-radius: 6px;
+	font-size: 13px;
+	font-weight: 500;
+	cursor: pointer;
+	min-height: 40px;
+}
+
+.qrms-secim-secenek:hover {
+	border-color: #8c8f94;
+}
+
+.qrms-secim-secenek:has( input:checked ) {
+	border-color: #2271b1;
+	background: #f0f6fc;
+	box-shadow: inset 0 0 0 1px #2271b1;
+}
+
+/* :has() desteklemeyen tarayıcıda seçenek yine okunur kalır; yalnızca
+   vurgusu olmaz. Radyo düğmesi her hâlükârda görünür. */
+
+/* Medya seçici */
+
+.qrms-medya-onizleme {
+	margin: 0 0 8px;
+	min-height: 0;
+}
+
+.qrms-medya-onizleme img {
+	max-width: 100%;
+	max-height: 120px;
+	border: 1px solid #dcdcde;
+	border-radius: 6px;
+	background: #f6f7f7;
+	display: block;
+}
+
+.qrms-medya-sil {
+	margin-left: 10px;
+	color: #b32d2e;
+}
+
+/* -------------------------------------------------------------------------
+ * Önizleme
+ * ---------------------------------------------------------------------- */
+
+.qrms-onizleme-sarmal {
+	position: sticky;
+	top: 46px;
+}
+
+.qrms-onizleme-baslik {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 10px;
+	margin: 0 0 10px;
+	color: #1d2327;
+	font-size: 13px;
+	font-weight: 600;
+}
+
+.qrms-onizleme-cihaz {
+	display: inline-flex;
+	border: 1px solid #dcdcde;
+	border-radius: 6px;
+	overflow: hidden;
+	background: #fff;
+}
+
+.qrms-cihaz {
+	padding: 7px 14px;
+	min-height: 36px;
+	background: none;
+	border: 0;
+	color: #50575e;
+	font-size: 12.5px;
+	font-weight: 600;
+	cursor: pointer;
+}
+
+.qrms-cihaz.aktif {
+	background: #2271b1;
+	color: #fff;
+}
+
+.qrms-onizleme-cerceve {
+	border: 1px solid #dcdcde;
+	border-radius: 10px;
+	overflow: hidden;
+	background: #1d2327;
+	height: 620px;
+	display: flex;
+	justify-content: center;
+}
+
+.qrms-onizleme-cerceve[data-cihaz="mobil"] {
+	padding: 16px 0;
+	background: #f0f0f1;
+}
+
+/* Önizleme kökü: login.css `min-height: 100vh` verir, çerçevede bu
+   taşmaya yol açardı. */
+.qrms-onizleme-cerceve .qrms-lp {
+	min-height: 0;
+	width: 100%;
+	height: 100%;
+	overflow: hidden;
+}
+
+.qrms-onizleme-cerceve[data-cihaz="mobil"] .qrms-lp {
+	width: 390px;
+	max-width: 100%;
+	border-radius: 22px;
+	box-shadow: 0 8px 30px rgba(0, 0, 0, 0.18);
+}
+
+/* Önizlemedeki alanlar tıklanamaz: burası bir gösterim, form değil. */
+.qrms-onizleme-cerceve .qrms-lp input,
+.qrms-onizleme-cerceve .qrms-lp .qrms-lp-button {
+	pointer-events: none;
+}
+
+.qrms-onizleme-cerceve .qrms-lp-button {
+	display: block;
+	cursor: default;
+}
+
+.qrms-onizleme-not {
+	margin-top: 10px;
+}
+
+.qrms-login-kaydet {
+	margin: 20px 0 0;
+}
+
+.qrms-login-kaydet .button-hero {
+	min-height: 46px;
+}
+
+/* -------------------------------------------------------------------------
+ * Dar ekran
+ * ---------------------------------------------------------------------- */
+
+@media screen and (max-width: 1280px) {
+
+	.qrms-login-grid {
+		grid-template-columns: 1fr;
+	}
+
+	.qrms-onizleme-sarmal {
+		position: static;
+	}
+
+	.qrms-onizleme-cerceve {
+		height: 520px;
+	}
+}
+
+@media screen and (max-width: 782px) {
+
+	.qrms-field-ikili {
+		grid-template-columns: 1fr;
+	}
+
+	.qrms-url-prefix {
+		max-width: 45%;
+		font-size: 12px;
+	}
+
+	.qrms-onizleme-cerceve {
+		height: 460px;
+	}
+
+	.qrms-login-kaydet .button-hero {
+		width: 100%;
+	}
+}
+
+@media (pointer: coarse) {
+
+	.qrms-cihaz,
+	.qrms-secim-secenek {
+		min-height: 44px;
+	}
+
+	.qrms-switch input[type="checkbox"] {
+		width: 22px;
+		height: 22px;
+	}
+}

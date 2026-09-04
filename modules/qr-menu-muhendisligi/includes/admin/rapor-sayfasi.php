@@ -1,193 +1,383 @@
 <?php
 /**
- * Menü mühendisliği rapor sayfası.
+ * Menü Mühendisliği raporu.
+ *
+ * Dört kutulu matris + sıralanabilir tam tablo. Matris saf CSS ızgarasıdır,
+ * grafik kütüphanesi yüklenmez; her kutu `<details>` olduğu için dar ekranda
+ * JavaScript olmadan katlanır.
  *
  * @package QR_Menu_Suite
  */
 
 defined( 'ABSPATH' ) || exit;
 
-if ( ! function_exists( 'qrms_mm_rapor_sayfasi' ) ) {
-	/**
-	 * Rapor ekranını basar.
-	 *
-	 * @return void
-	 */
-	function qrms_mm_rapor_sayfasi() {
-		if ( ! current_user_can( QRMS_Admin::CAPABILITY ) ) {
-			wp_die( esc_html__( 'Bu sayfayı görüntüleme yetkiniz yok.', 'qrms' ) );
+/**
+ * Rapor ekranını basar.
+ *
+ * @return void
+ */
+function qrms_mm_rapor_sayfasi() {
+	if ( ! current_user_can( QRMS_Admin::CAPABILITY ) ) {
+		wp_die( esc_html__( 'Bu sayfayı görüntüleme yetkiniz yok.', 'qrms' ) );
+	}
+
+	// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- yalnızca okuma; filtreler adresten gelir.
+	$args  = QRMS_MM_Rapor::parametreler( wp_unslash( $_GET ) );
+	$rapor = QRMS_MM_Rapor::rapor( $args );
+	$ozet  = $rapor['ozet'];
+	?>
+	<div class="wrap qrms-wrap qrms-mm">
+		<h1 class="qrms-title"><?php esc_html_e( 'Menü Mühendisliği Raporu', 'qrms' ); ?></h1>
+
+		<?php qrms_mm_filtre_cubugu( $args ); ?>
+
+		<?php
+		if ( empty( $rapor['urunler'] ) ) {
+			qrms_mm_bos_durum( $rapor );
+			qrms_mm_eksik_listesi( $rapor['eksik'] );
+			echo '</div>';
+
+			return;
 		}
+		?>
 
-		$ayarlar = QRMS_MM_Maliyet::ayarlar();
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		$aralik = isset( $_GET['aralik'] ) ? absint( $_GET['aralik'] ) : (int) $ayarlar['varsayilan_aralik'];
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		$ozel_bas = isset( $_GET['bas'] ) ? sanitize_text_field( wp_unslash( $_GET['bas'] ) ) : '';
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		$ozel_bit = isset( $_GET['bit'] ) ? sanitize_text_field( wp_unslash( $_GET['bit'] ) ) : '';
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		$kategori = isset( $_GET['kategori'] ) ? sanitize_text_field( wp_unslash( $_GET['kategori'] ) ) : '';
+		<?php if ( 'vekil' === $rapor['kaynak'] ) : ?>
+			<div class="qrms-alert qrms-alert-warning">
+				<p>
+					<strong><?php esc_html_e( 'Yeterli sipariş verisi yok.', 'qrms' ); ?></strong>
+					<?php
+					printf(
+						/* translators: %d: en az sipariş adedi. */
+						esc_html__( 'Seçili dönemde %d adetten az sipariş var; popülerlik ürün görüntülenmeleri ve sepete eklemelerden TAHMİN ediliyor. Sipariş biriktikçe rapor kendiliğinden gerçek satışa geçer.', 'qrms' ),
+						(int) QRMS_MM_Hesap::MIN_SATIS
+					);
+					?>
+				</p>
+			</div>
+		<?php endif; ?>
 
-		if ( $ozel_bas && $ozel_bit ) {
-			$bas = $ozel_bas . ' 00:00:00';
-			$bit = $ozel_bit . ' 23:59:59';
-		} else {
-			$bit = current_time( 'mysql' );
-			$bas = gmdate( 'Y-m-d H:i:s', strtotime( '-' . max( 1, $aralik ) . ' days', strtotime( $bit ) ) );
-		}
+		<?php qrms_mm_ozet_kutulari( $ozet, $rapor['kaynak'] ); ?>
+		<?php qrms_mm_matris( $rapor['urunler'], $ozet ); ?>
+		<?php qrms_mm_tablo( $rapor['urunler'] ); ?>
+		<?php qrms_mm_eksik_listesi( $rapor['eksik'] ); ?>
+	</div>
+	<?php
+}
 
-		$rapor = QRMS_MM_Maliyet::rapor_hesapla( $bas, $bit, $kategori );
-		$etiketler = QRMS_MM_Hesap::kutu_etiketleri();
-		$kutu_renk = array(
-			QRMS_MM_Hesap::KUTU_YILDIZ  => '#1f9d55',
-			QRMS_MM_Hesap::KUTU_IS_ATI  => '#2b7cd3',
-			QRMS_MM_Hesap::KUTU_BULMACA => '#e08a1e',
-			QRMS_MM_Hesap::KUTU_KOPEK   => '#c0392b',
-		);
-		$kutu_aciklama = array(
-			QRMS_MM_Hesap::KUTU_YILDIZ  => __( 'Yüksek satış, yüksek kâr — koruyun.', 'qrms' ),
-			QRMS_MM_Hesap::KUTU_IS_ATI  => __( 'Yüksek satış, düşük kâr — maliyet veya fiyat.', 'qrms' ),
-			QRMS_MM_Hesap::KUTU_BULMACA => __( 'Düşük satış, yüksek kâr — görünürlük artırın.', 'qrms' ),
-			QRMS_MM_Hesap::KUTU_KOPEK   => __( 'Düşük satış, düşük kâr — çıkarmayı değerlendirin.', 'qrms' ),
-		);
+/**
+ * Filtre çubuğu — aralık, kategori, CSV.
+ *
+ * Filtreler adres satırına yazılır: bağlantı paylaşılabilir ve tarayıcının
+ * geri tuşu beklendiği gibi çalışır.
+ *
+ * @param array $args Parametreler.
+ * @return void
+ */
+function qrms_mm_filtre_cubugu( array $args ) {
+	$kategoriler = QRMS_MM_Rapor::kategoriler();
+	?>
+	<form method="get" class="qrms-mm-filtre">
+		<input type="hidden" name="page" value="<?php echo esc_attr( QRMS_MM_RAPOR_SAYFA ); ?>">
 
-		$kategoriler = array();
-		foreach ( QRMS_MM_Maliyet::urun_listesi() as $u ) {
-			if ( '' !== $u['kategori'] ) {
-				$kategoriler[ $u['kategori'] ] = $u['kategori'];
-			}
-		}
-		sort( $kategoriler );
+		<label class="qrms-mm-filtre-alan">
+			<span><?php esc_html_e( 'Dönem', 'qrms' ); ?></span>
+			<select name="gun">
+				<?php foreach ( QRMS_MM_Rapor::araliklar() as $gun => $etiket ) : ?>
+					<option value="<?php echo esc_attr( $gun ); ?>" <?php selected( $args['gun'], $gun ); ?>>
+						<?php echo esc_html( $etiket ); ?>
+					</option>
+				<?php endforeach; ?>
+			</select>
+		</label>
 
-		$csv_url = wp_nonce_url(
-			add_query_arg(
-				array(
-					'action'   => 'qrms_mm_export_csv',
-					'bas'      => $bas,
-					'bit'      => $bit,
-					'kategori' => $kategori,
-				),
-				admin_url( 'admin-post.php' )
-			),
-			'qrms_mm_csv',
-			'nonce'
+		<label class="qrms-mm-filtre-alan">
+			<span><?php esc_html_e( 'Kategori', 'qrms' ); ?></span>
+			<select name="kategori">
+				<option value="0"><?php esc_html_e( 'Tüm menü', 'qrms' ); ?></option>
+				<?php foreach ( $kategoriler as $id => $ad ) : ?>
+					<option value="<?php echo esc_attr( $id ); ?>" <?php selected( $args['kategori'], $id ); ?>>
+						<?php echo esc_html( $ad ); ?>
+					</option>
+				<?php endforeach; ?>
+			</select>
+		</label>
+
+		<button type="submit" class="button"><?php esc_html_e( 'Uygula', 'qrms' ); ?></button>
+
+		<a class="button qrms-mm-csv" href="<?php echo esc_url( qrms_mm_csv_url( $args ) ); ?>">
+			<span class="dashicons dashicons-download" aria-hidden="true"></span>
+			<?php esc_html_e( 'CSV indir', 'qrms' ); ?>
+		</a>
+	</form>
+	<?php
+}
+
+/**
+ * Hiç ürün hesaplanamadığında ne yapılacağını anlatır.
+ *
+ * @param array $rapor Rapor.
+ * @return void
+ */
+function qrms_mm_bos_durum( array $rapor ) {
+	$eksik_var = ! empty( $rapor['eksik'] );
+	?>
+	<div class="qrms-card qrms-mm-bos">
+		<span class="dashicons dashicons-chart-pie" aria-hidden="true"></span>
+		<h2><?php esc_html_e( 'Rapor için henüz veri yok', 'qrms' ); ?></h2>
+
+		<?php if ( $eksik_var ) : ?>
+			<p><?php esc_html_e( 'Menünüzdeki ürünlerin fiyatı ya da maliyeti girilmemiş. Bir ürünün kâr katkısı hesaplanamıyorsa matrise giremez.', 'qrms' ); ?></p>
+			<p>
+				<a class="button button-primary" href="<?php echo esc_url( add_query_arg( array( 'page' => QRMS_MM_MALIYET_SAYFA, 'eksik' => 1 ), admin_url( 'admin.php' ) ) ); ?>">
+					<?php esc_html_e( 'Eksik maliyetleri gir', 'qrms' ); ?>
+				</a>
+			</p>
+		<?php else : ?>
+			<p><?php esc_html_e( 'Menüde yayınlanmış ürün bulunamadı. Önce Restoran Menü modülünden ürünlerinizi ekleyin.', 'qrms' ); ?></p>
+		<?php endif; ?>
+	</div>
+	<?php
+}
+
+/**
+ * Özet kutuları.
+ *
+ * @param array  $ozet   Özet.
+ * @param string $kaynak siparis|vekil.
+ * @return void
+ */
+function qrms_mm_ozet_kutulari( array $ozet, $kaynak ) {
+	$kutular = array(
+		array(
+			'label'  => 'siparis' === $kaynak ? __( 'Satış adedi', 'qrms' ) : __( 'Etkileşim skoru', 'qrms' ),
+			'value'  => number_format_i18n( $ozet['toplam_adet'] ),
+			'accent' => '#7c5cff',
+		),
+		array(
+			'label'  => __( 'Toplam ciro', 'qrms' ),
+			'value'  => qrms_mm_para( $ozet['toplam_ciro'] ),
+			'accent' => '#2b7cd3',
+		),
+		array(
+			'label'  => __( 'Toplam katkı payı', 'qrms' ),
+			'value'  => qrms_mm_para( $ozet['toplam_katki'] ),
+			'accent' => '#1f9d55',
+		),
+		array(
+			'label'  => __( 'Ortalama marj', 'qrms' ),
+			'value'  => qrms_mm_yuzde( $ozet['ort_marj'] ),
+			'accent' => '#e08a1e',
+		),
+		array(
+			'label'  => __( 'Kayıp fırsat', 'qrms' ),
+			'value'  => qrms_mm_para( $ozet['kayip_firsat'] ),
+			'accent' => '#c0392b',
+		),
+	);
+	?>
+	<div class="qrms-mm-ozet">
+		<?php foreach ( $kutular as $kutu ) : ?>
+			<div class="qrms-mm-ozet-kutu" style="border-left-color:<?php echo esc_attr( $kutu['accent'] ); ?>">
+				<span class="qrms-mm-ozet-etiket"><?php echo esc_html( $kutu['label'] ); ?></span>
+				<strong class="qrms-mm-ozet-deger"><?php echo esc_html( $kutu['value'] ); ?></strong>
+			</div>
+		<?php endforeach; ?>
+	</div>
+
+	<p class="qrms-muted qrms-mm-esik">
+		<?php
+		printf(
+			/* translators: 1: popülerlik eşiği yüzdesi, 2: ortalama katkı payı. */
+			esc_html__( 'Popülerlik eşiği: menü payı %1$s üzerindeki ürünler "çok satan" sayılır. Kârlılık eşiği: birim katkı payı %2$s üzerindekiler "kârlı" sayılır (adetle ağırlıklı ortalama).', 'qrms' ),
+			esc_html( qrms_mm_yuzde( $ozet['esik_pay'] ) ),
+			esc_html( qrms_mm_para( $ozet['esik_katki'] ) )
 		);
 		?>
-		<div class="wrap qrms-wrap qrms-mm-wrap">
-			<h1 class="qrms-title"><?php esc_html_e( 'Menü Mühendisliği Raporu', 'qrms' ); ?></h1>
+	</p>
+	<?php
+}
 
-			<?php if ( '' !== $rapor['uyari'] ) : ?>
-				<div class="qrms-mm-uyari"><?php echo esc_html( $rapor['uyari'] ); ?></div>
-			<?php endif; ?>
+/**
+ * Dört kutulu matris.
+ *
+ * @param array $urunler Ürünler.
+ * @param array $ozet    Özet.
+ * @return void
+ */
+function qrms_mm_matris( array $urunler, array $ozet ) {
+	$gruplar = array( 'yildiz' => array(), 'is_ati' => array(), 'bulmaca' => array(), 'kopek' => array() );
 
-			<form class="qrms-mm-filtre" method="get">
-				<input type="hidden" name="page" value="qrms-mm-rapor" />
-				<div class="qrms-mm-filtre-row">
-					<label>
-						<?php esc_html_e( 'Aralık', 'qrms' ); ?>
-						<select name="aralik">
-							<?php foreach ( array( 7, 30, 90 ) as $g ) : ?>
-								<option value="<?php echo esc_attr( (string) $g ); ?>" <?php selected( $aralik, $g ); ?>><?php echo esc_html( sprintf( __( '%d gün', 'qrms' ), $g ) ); ?></option>
-							<?php endforeach; ?>
-						</select>
-					</label>
-					<label><?php esc_html_e( 'Özel başlangıç', 'qrms' ); ?> <input type="date" name="bas" value="<?php echo esc_attr( $ozel_bas ); ?>" /></label>
-					<label><?php esc_html_e( 'Özel bitiş', 'qrms' ); ?> <input type="date" name="bit" value="<?php echo esc_attr( $ozel_bit ); ?>" /></label>
-					<label>
-						<?php esc_html_e( 'Kategori', 'qrms' ); ?>
-						<select name="kategori">
-							<option value=""><?php esc_html_e( 'Tümü', 'qrms' ); ?></option>
-							<?php foreach ( $kategoriler as $kat ) : ?>
-								<option value="<?php echo esc_attr( $kat ); ?>" <?php selected( $kategori, $kat ); ?>><?php echo esc_html( $kat ); ?></option>
-							<?php endforeach; ?>
-						</select>
-					</label>
-					<button type="submit" class="button button-primary"><?php esc_html_e( 'Filtrele', 'qrms' ); ?></button>
-					<a href="<?php echo esc_url( $csv_url ); ?>" class="button"><?php esc_html_e( 'CSV indir', 'qrms' ); ?></a>
-				</div>
-			</form>
+	foreach ( $urunler as $urun ) {
+		$gruplar[ $urun['kutu'] ][] = $urun;
+	}
 
-			<?php if ( empty( $rapor['urunler'] ) && empty( $rapor['eksik'] ) ) : ?>
-				<div class="qrms-card">
-					<p><?php esc_html_e( 'Bu dönemde rapor oluşturmak için yeterli veri yok. Önce ürün maliyetlerini girin ve menüden sipariş alınmaya başlayın.', 'qrms' ); ?></p>
-					<p><a href="<?php echo esc_url( admin_url( 'admin.php?page=qrms-mm-maliyet' ) ); ?>"><?php esc_html_e( 'Ürün maliyetlerine git →', 'qrms' ); ?></a></p>
-				</div>
-			<?php else : ?>
-				<div class="qrms-mm-ozet">
-					<div class="qrms-mm-ozet-kutu"><span><?php esc_html_e( 'Toplam ciro', 'qrms' ); ?></span><strong><?php echo esc_html( number_format_i18n( $rapor['ozet']['toplam_ciro'], 0 ) ); ?> ₺</strong></div>
-					<div class="qrms-mm-ozet-kutu"><span><?php esc_html_e( 'Toplam katkı', 'qrms' ); ?></span><strong><?php echo esc_html( number_format_i18n( $rapor['ozet']['toplam_katkı'], 0 ) ); ?> ₺</strong></div>
-					<div class="qrms-mm-ozet-kutu"><span><?php esc_html_e( 'Ort. marj', 'qrms' ); ?></span><strong><?php echo esc_html( number_format_i18n( $rapor['ozet']['ortalama_marj'], 1 ) ); ?>%</strong></div>
-					<div class="qrms-mm-ozet-kutu qrms-mm-kayip"><span><?php esc_html_e( 'Kayıp fırsat', 'qrms' ); ?></span><strong><?php echo esc_html( number_format_i18n( $rapor['ozet']['kayip_firsat'], 0 ) ); ?> ₺</strong></div>
-				</div>
+	// Ekrandaki yerleşim: üst satır çok satanlar, sol sütun kârlılar.
+	$sira = array( 'yildiz', 'is_ati', 'bulmaca', 'kopek' );
+	$adlar = QRMS_MM_Hesap::kutular();
+	?>
+	<div class="qrms-mm-matris-sarmal">
+		<div class="qrms-mm-eksen qrms-mm-eksen-y" aria-hidden="true">
+			<?php esc_html_e( 'Kârlılık →', 'qrms' ); ?>
+		</div>
 
-				<div class="qrms-mm-matris">
-					<div class="qrms-mm-matris-eksen">
-						<span class="qrms-mm-eksen-y"><?php esc_html_e( '↑ Kârlılık', 'qrms' ); ?></span>
-						<span class="qrms-mm-eksen-x"><?php esc_html_e( 'Popülerlik →', 'qrms' ); ?></span>
-					</div>
-					<?php foreach ( array( QRMS_MM_Hesap::KUTU_YILDIZ, QRMS_MM_Hesap::KUTU_IS_ATI, QRMS_MM_Hesap::KUTU_BULMACA, QRMS_MM_Hesap::KUTU_KOPEK ) as $kutu ) : ?>
-						<details class="qrms-mm-kutu" style="--qrms-mm-kutu-renk:<?php echo esc_attr( $kutu_renk[ $kutu ] ); ?>">
-							<summary>
-								<span class="dashicons dashicons-marker" aria-hidden="true"></span>
-								<?php echo esc_html( $etiketler[ $kutu ] ); ?>
-								<span class="qrms-mm-kutu-sayi">(<?php echo esc_html( (string) count( $rapor['kutular'][ $kutu ] ) ); ?>)</span>
-							</summary>
-							<p class="qrms-mm-kutu-aciklama"><?php echo esc_html( $kutu_aciklama[ $kutu ] ); ?></p>
-							<ul class="qrms-mm-kutu-liste">
-								<?php foreach ( $rapor['kutular'][ $kutu ] as $u ) : ?>
-									<li><button type="button" class="qrms-mm-urun-link" data-id="<?php echo esc_attr( (string) $u['id'] ); ?>"><?php echo esc_html( $u['ad'] ); ?> — <?php echo esc_html( (string) $u['satis'] ); ?> / <?php echo esc_html( number_format_i18n( $u['cm'], 0 ) ); ?> ₺ / <?php echo esc_html( number_format_i18n( $u['marj'], 0 ) ); ?>%</button></li>
-								<?php endforeach; ?>
-							</ul>
-						</details>
-					<?php endforeach; ?>
-				</div>
+		<div class="qrms-mm-matris">
+			<?php foreach ( $sira as $kutu ) : ?>
+				<details class="qrms-mm-kutu qrms-mm-kutu-<?php echo esc_attr( $kutu ); ?>" open
+					style="--qrms-mm-renk:<?php echo esc_attr( QRMS_MM_Hesap::kutu_rengi( $kutu ) ); ?>">
+					<summary class="qrms-mm-kutu-basi">
+						<span class="dashicons <?php echo esc_attr( QRMS_MM_Hesap::kutu_ikonu( $kutu ) ); ?>" aria-hidden="true"></span>
+						<span class="qrms-mm-kutu-ad"><?php echo esc_html( $adlar[ $kutu ] ); ?></span>
+						<span class="qrms-mm-kutu-sayi"><?php echo esc_html( number_format_i18n( $ozet['kutular'][ $kutu ] ) ); ?></span>
+					</summary>
 
-				<div class="qrms-mm-tablo-wrap">
-					<table class="widefat striped qrms-mm-tablo" id="qrms-mm-rapor-tablo">
-						<thead>
-							<tr>
-								<th data-sort="ad"><?php esc_html_e( 'Ürün', 'qrms' ); ?></th>
-								<th data-sort="kategori"><?php esc_html_e( 'Kategori', 'qrms' ); ?></th>
-								<th data-sort="satis"><?php esc_html_e( 'Satış', 'qrms' ); ?></th>
-								<th data-sort="ciro"><?php esc_html_e( 'Ciro', 'qrms' ); ?></th>
-								<th data-sort="cm"><?php esc_html_e( 'Katkı', 'qrms' ); ?></th>
-								<th data-sort="marj"><?php esc_html_e( 'Marj %', 'qrms' ); ?></th>
-								<th><?php esc_html_e( 'Kutu', 'qrms' ); ?></th>
-								<th><?php esc_html_e( 'Aksiyon', 'qrms' ); ?></th>
-							</tr>
-						</thead>
-						<tbody>
-							<?php foreach ( $rapor['urunler'] as $u ) : ?>
-								<tr data-id="<?php echo esc_attr( (string) $u['id'] ); ?>">
-									<td><?php echo esc_html( $u['ad'] ); ?></td>
-									<td><?php echo esc_html( $u['kategori'] ); ?></td>
-									<td data-val="<?php echo esc_attr( (string) $u['satis'] ); ?>"><?php echo esc_html( (string) $u['satis'] ); ?></td>
-									<td data-val="<?php echo esc_attr( (string) $u['ciro'] ); ?>"><?php echo esc_html( number_format_i18n( $u['ciro'], 0 ) ); ?></td>
-									<td data-val="<?php echo esc_attr( (string) $u['cm'] ); ?>"><?php echo esc_html( number_format_i18n( $u['cm'], 0 ) ); ?></td>
-									<td data-val="<?php echo esc_attr( (string) $u['marj'] ); ?>"><?php echo esc_html( number_format_i18n( $u['marj'], 0 ) ); ?>%</td>
-									<td><span class="qrms-mm-rozet" style="background:<?php echo esc_attr( $kutu_renk[ $u['kutu'] ] ); ?>"><?php echo esc_html( $etiketler[ $u['kutu'] ] ); ?></span></td>
-									<td class="qrms-mm-aksiyon"><?php echo esc_html( $u['aksiyon'] ); ?></td>
-								</tr>
-							<?php endforeach; ?>
-						</tbody>
-					</table>
-				</div>
+					<p class="qrms-mm-kutu-anlam"><?php echo esc_html( QRMS_MM_Hesap::kutu_anlami( $kutu ) ); ?></p>
 
-				<?php if ( ! empty( $rapor['eksik'] ) ) : ?>
-					<div class="qrms-card qrms-mm-eksik">
-						<h2><?php esc_html_e( 'Eksik veri', 'qrms' ); ?></h2>
-						<ul>
-							<?php foreach ( $rapor['eksik'] as $e ) : ?>
+					<?php if ( empty( $gruplar[ $kutu ] ) ) : ?>
+						<p class="qrms-muted"><?php esc_html_e( 'Bu kutuda ürün yok.', 'qrms' ); ?></p>
+					<?php else : ?>
+						<ul class="qrms-mm-kutu-liste">
+							<?php foreach ( $gruplar[ $kutu ] as $urun ) : ?>
 								<li>
-									<?php echo esc_html( $e['ad'] ); ?>
-									<a href="<?php echo esc_url( admin_url( 'admin.php?page=qrms-mm-maliyet&s=' . rawurlencode( $e['ad'] ) ) ); ?>"><?php esc_html_e( 'Maliyet gir', 'qrms' ); ?></a>
+									<a href="#qrms-mm-urun-<?php echo esc_attr( $urun['item_id'] ); ?>">
+										<span class="qrms-mm-urun-ad"><?php echo esc_html( $urun['item_name'] ); ?></span>
+										<span class="qrms-mm-urun-sayi">
+											<?php echo esc_html( number_format_i18n( $urun['adet'] ) ); ?> ·
+											<?php echo esc_html( qrms_mm_yuzde( $urun['marj'] ) ); ?>
+										</span>
+									</a>
 								</li>
 							<?php endforeach; ?>
 						</ul>
-					</div>
-				<?php endif; ?>
-			<?php endif; ?>
+					<?php endif; ?>
+
+					<p class="qrms-mm-kutu-aksiyon"><?php echo esc_html( QRMS_MM_Hesap::aksiyon( $kutu ) ); ?></p>
+				</details>
+			<?php endforeach; ?>
 		</div>
-		<?php
+
+		<div class="qrms-mm-eksen qrms-mm-eksen-x" aria-hidden="true">
+			<?php esc_html_e( 'Popülerlik →', 'qrms' ); ?>
+		</div>
+	</div>
+	<?php
+}
+
+/**
+ * Tam tablo (JS ile sıralanabilir).
+ *
+ * @param array $urunler Ürünler.
+ * @return void
+ */
+function qrms_mm_tablo( array $urunler ) {
+	$adlar = QRMS_MM_Hesap::kutular();
+
+	$sutunlar = array(
+		'ad'           => array( 'etiket' => __( 'Ürün', 'qrms' ), 'tip' => 'metin' ),
+		'kategori'     => array( 'etiket' => __( 'Kategori', 'qrms' ), 'tip' => 'metin' ),
+		'adet'         => array( 'etiket' => __( 'Adet', 'qrms' ), 'tip' => 'sayi' ),
+		'fiyat'        => array( 'etiket' => __( 'Fiyat', 'qrms' ), 'tip' => 'sayi' ),
+		'maliyet'      => array( 'etiket' => __( 'Maliyet', 'qrms' ), 'tip' => 'sayi' ),
+		'katki'        => array( 'etiket' => __( 'Katkı payı', 'qrms' ), 'tip' => 'sayi' ),
+		'marj'         => array( 'etiket' => __( 'Marj', 'qrms' ), 'tip' => 'sayi' ),
+		'toplam_katki' => array( 'etiket' => __( 'Toplam katkı', 'qrms' ), 'tip' => 'sayi' ),
+		'kutu'         => array( 'etiket' => __( 'Kutu', 'qrms' ), 'tip' => 'metin' ),
+	);
+	?>
+	<h2 class="qrms-mm-baslik"><?php esc_html_e( 'Ürün ayrıntısı', 'qrms' ); ?></h2>
+
+	<div class="qrms-mm-tablo-kap">
+		<table class="widefat striped qrms-mm-tablo" id="qrms-mm-tablo">
+			<thead>
+				<tr>
+					<?php foreach ( $sutunlar as $anahtar => $sutun ) : ?>
+						<th scope="col">
+							<button type="button" class="qrms-mm-sirala" data-sutun="<?php echo esc_attr( $anahtar ); ?>" data-tip="<?php echo esc_attr( $sutun['tip'] ); ?>">
+								<?php echo esc_html( $sutun['etiket'] ); ?>
+								<span class="qrms-mm-ok" aria-hidden="true"></span>
+							</button>
+						</th>
+					<?php endforeach; ?>
+				</tr>
+			</thead>
+			<tbody>
+				<?php foreach ( $urunler as $urun ) : ?>
+					<tr id="qrms-mm-urun-<?php echo esc_attr( $urun['item_id'] ); ?>">
+						<td data-etiket="<?php esc_attr_e( 'Ürün', 'qrms' ); ?>" data-deger="<?php echo esc_attr( $urun['item_name'] ); ?>">
+							<a href="<?php echo esc_url( get_edit_post_link( $urun['item_id'] ) ); ?>"><?php echo esc_html( $urun['item_name'] ); ?></a>
+							<span class="qrms-mm-aksiyon-metin"><?php echo esc_html( $urun['aksiyon'] ); ?></span>
+						</td>
+						<td data-etiket="<?php esc_attr_e( 'Kategori', 'qrms' ); ?>" data-deger="<?php echo esc_attr( $urun['category_name'] ); ?>"><?php echo esc_html( $urun['category_name'] ); ?></td>
+						<td data-etiket="<?php esc_attr_e( 'Adet', 'qrms' ); ?>" data-deger="<?php echo esc_attr( $urun['adet'] ); ?>"><?php echo esc_html( number_format_i18n( $urun['adet'] ) ); ?></td>
+						<td data-etiket="<?php esc_attr_e( 'Fiyat', 'qrms' ); ?>" data-deger="<?php echo esc_attr( $urun['fiyat'] ); ?>"><?php echo esc_html( qrms_mm_para( $urun['fiyat'] ) ); ?></td>
+						<td data-etiket="<?php esc_attr_e( 'Maliyet', 'qrms' ); ?>" data-deger="<?php echo esc_attr( $urun['maliyet'] ); ?>"><?php echo esc_html( qrms_mm_para( $urun['maliyet'] ) ); ?></td>
+						<td data-etiket="<?php esc_attr_e( 'Katkı payı', 'qrms' ); ?>" data-deger="<?php echo esc_attr( $urun['katki'] ); ?>"><?php echo esc_html( qrms_mm_para( $urun['katki'] ) ); ?></td>
+						<td data-etiket="<?php esc_attr_e( 'Marj', 'qrms' ); ?>" data-deger="<?php echo esc_attr( $urun['marj'] ); ?>"><?php echo esc_html( qrms_mm_yuzde( $urun['marj'] ) ); ?></td>
+						<td data-etiket="<?php esc_attr_e( 'Toplam katkı', 'qrms' ); ?>" data-deger="<?php echo esc_attr( $urun['toplam_katki'] ); ?>"><?php echo esc_html( qrms_mm_para( $urun['toplam_katki'] ) ); ?></td>
+						<td data-etiket="<?php esc_attr_e( 'Kutu', 'qrms' ); ?>" data-deger="<?php echo esc_attr( $urun['kutu'] ); ?>">
+							<span class="qrms-mm-rozet" style="background:<?php echo esc_attr( QRMS_MM_Hesap::kutu_rengi( $urun['kutu'] ) ); ?>">
+								<?php echo esc_html( $adlar[ $urun['kutu'] ] ); ?>
+							</span>
+						</td>
+					</tr>
+				<?php endforeach; ?>
+			</tbody>
+		</table>
+	</div>
+	<?php
+}
+
+/**
+ * Fiyatı ya da maliyeti eksik ürünler.
+ *
+ * @param array $eksik Eksik listesi.
+ * @return void
+ */
+function qrms_mm_eksik_listesi( array $eksik ) {
+	if ( empty( $eksik ) ) {
+		return;
 	}
+	?>
+	<details class="qrms-card qrms-mm-eksik">
+		<summary class="qrms-summary">
+			<?php
+			printf(
+				/* translators: %d: ürün sayısı. */
+				esc_html__( 'Rapora giremeyen %d ürün', 'qrms' ),
+				count( $eksik )
+			);
+			?>
+		</summary>
+
+		<div class="qrms-details-body">
+			<p class="qrms-muted"><?php esc_html_e( 'Fiyatı ya da maliyeti girilmemiş ürünlerin kâr katkısı hesaplanamaz; bu yüzden matrise alınmazlar.', 'qrms' ); ?></p>
+
+			<div class="qrms-mm-tablo-kap">
+				<table class="widefat striped">
+					<thead>
+						<tr>
+							<th scope="col"><?php esc_html_e( 'Ürün', 'qrms' ); ?></th>
+							<th scope="col"><?php esc_html_e( 'Kategori', 'qrms' ); ?></th>
+							<th scope="col"><?php esc_html_e( 'Eksik', 'qrms' ); ?></th>
+						</tr>
+					</thead>
+					<tbody>
+						<?php foreach ( $eksik as $urun ) : ?>
+							<tr>
+								<td data-etiket="<?php esc_attr_e( 'Ürün', 'qrms' ); ?>"><?php echo esc_html( $urun['item_name'] ); ?></td>
+								<td data-etiket="<?php esc_attr_e( 'Kategori', 'qrms' ); ?>"><?php echo esc_html( $urun['category_name'] ); ?></td>
+								<td data-etiket="<?php esc_attr_e( 'Eksik', 'qrms' ); ?>"><?php echo esc_html( $urun['sebep'] ); ?></td>
+							</tr>
+						<?php endforeach; ?>
+					</tbody>
+				</table>
+			</div>
+
+			<p>
+				<a class="button button-primary" href="<?php echo esc_url( add_query_arg( array( 'page' => QRMS_MM_MALIYET_SAYFA, 'eksik' => 1 ), admin_url( 'admin.php' ) ) ); ?>">
+					<?php esc_html_e( 'Eksikleri tamamla', 'qrms' ); ?>
+				</a>
+			</p>
+		</div>
+	</details>
+	<?php
 }

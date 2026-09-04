@@ -1,6 +1,29 @@
 <?php
 /**
- * Özel giriş URL'si ve giriş ekranı özelleştirmesi.
+ * Özel giriş adresi ve giriş ekranı görünümü.
+ *
+ * İki bağımsız iş yapar:
+ *
+ * 1. YOL — `wp-login.php` yerine site köküne göre serbest bir slug
+ *    (varsayılan `qrm`) üzerinden giriş. `wp-login.php` ve oturumsuz
+ *    `wp-admin` istekleri 404 döner; WordPress'in ürettiği bütün giriş
+ *    adresleri (çıkış, şifre sıfırlama e-postası, yeniden yetkilendirme)
+ *    filtrelerle yeni yola çevrilir.
+ *
+ * 2. GÖRÜNÜM — giriş ekranının WordPress varsayılan arayüzü yerine
+ *    ayarlardan yönetilen bir tasarım basılır. Form, nonce'lar ve kimlik
+ *    doğrulama akışı WordPress'in kendi kodudur; yalnızca sunum değişir
+ *    (iki aşamalı doğrulama gibi eklentiler bozulmasın diye form YENİDEN
+ *    YAZILMAZ, yalnızca CSS/az miktarda JS ile giydirilir).
+ *
+ * GÜVENLİK NOTU / KİLİTLENME: yol değiştirildiğinde slug unutulursa siteye
+ * girilemez. Üç koruma vardır: (a) `wp-config.php` içine
+ * `define( 'QRMS_LOGIN_DISABLE', true );` yazmak özelliği tamamen kapatır,
+ * (b) slug her değiştiğinde site yöneticisine yeni adres e-postayla gider,
+ * (c) yönetim ekranlarında adresi gösteren kalıcı bir bilgi kutusu durur.
+ *
+ * Özellik çok siteli (multisite) kurulumda devreye girmez: ağ genelinde
+ * giriş adresi tek bir siteye ait bir option'la yönetilemez.
  *
  * @package QR_Menu_Suite
  */
@@ -8,357 +31,849 @@
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Giriş slug'ı, yönlendirme ve görünüm ayarları.
+ * Giriş yolu + giriş ekranı görünümü.
  */
 class QRMS_Login {
 
-	const OPT_SLUG     = 'qrms_login_slug';
-	const OPT_GORUNUM  = 'qrms_login_gorunum';
+	/**
+	 * Ayarların tutulduğu option.
+	 */
+	const OPTION = 'qrms_login_ayarlar';
+
+	/**
+	 * Varsayılan giriş slug'ı.
+	 */
 	const DEFAULT_SLUG = 'qrm';
 
 	/**
-	 * Yasaklı slug listesi.
-	 *
-	 * @return string[]
+	 * Ayar formunun nonce eylemi.
 	 */
-	public static function yasakli_sluglar() {
-		return array(
-			'',
-			'wp-admin',
-			'admin',
-			'login',
-			'wp-login',
-			'wp-login.php',
-			'wp-content',
-			'wp-includes',
-			'feed',
-			'sitemap',
-		);
-	}
+	const NONCE = 'qrms_login_ayar_kaydet';
 
 	/**
-	 * Özellik devre dışı mı?
-	 *
-	 * @return bool
+	 * Ayarların kaydedildiği admin-post eylemi.
 	 */
-	public static function devre_disimi() {
-		return defined( 'QRMS_LOGIN_DISABLE' ) && QRMS_LOGIN_DISABLE;
-	}
+	const ACTION = 'qrms_login_kaydet';
 
 	/**
-	 * Çoklu site mi?
+	 * Slug olarak kullanılamayacak değerler.
 	 *
-	 * @return bool
+	 * WordPress'in kendi uçları ve tipik yeniden yazma çakışmaları. Buraya
+	 * yazılmayan bir çakışma (aynı adlı sayfa/yazı) ayrıca kontrol edilir.
+	 *
+	 * @var string[]
 	 */
-	public static function multisite_mi() {
-		return function_exists( 'is_multisite' ) && is_multisite();
-	}
+	const RESERVED = array(
+		'wp-admin',
+		'admin',
+		'login',
+		'wp-login',
+		'wp-login.php',
+		'wp-content',
+		'wp-includes',
+		'wp-json',
+		'wp-signup',
+		'wp-activate',
+		'wp-cron',
+		'xmlrpc',
+		'feed',
+		'rss',
+		'rss2',
+		'atom',
+		'embed',
+		'sitemap',
+		'robots',
+		'favicon',
+		'index',
+		'trackback',
+		'page',
+		'comments',
+		'author',
+		'category',
+		'tag',
+	);
 
 	/**
-	 * Aktif slug'ı döner.
+	 * İstek bu istekte 404'e düşürüldü mü?
 	 *
-	 * @return string
+	 * @var bool
 	 */
-	public static function slug() {
-		$slug = get_option( self::OPT_SLUG, self::DEFAULT_SLUG );
-		$slug = sanitize_title( (string) $slug );
-		if ( '' === $slug ) {
-			$slug = self::DEFAULT_SLUG;
-		}
-		return $slug;
-	}
+	private static $bloke = false;
+
+	/* -----------------------------------------------------------------
+	   AYARLAR
+	----------------------------------------------------------------- */
 
 	/**
-	 * Giriş URL'si.
+	 * Varsayılan ayarlar.
 	 *
-	 * @param string $action Opsiyonel action.
-	 * @return string
-	 */
-	public static function url( $action = '' ) {
-		$url = home_url( '/' . self::slug() . '/' );
-		if ( '' !== $action ) {
-			$url = add_query_arg( 'action', $action, $url );
-		}
-		return $url;
-	}
-
-	/**
-	 * Görünüm ayarlarını okur.
+	 * `yol_aktif` bilinçli olarak KAPALI gelir: eklenti güncellemesi hiç
+	 * kimsenin giriş adresini habersiz değiştirmemeli. Görünüm ise yalnızca
+	 * sunum olduğu için açık gelir.
 	 *
 	 * @return array
 	 */
-	public static function gorunum() {
-		$varsayilan = array(
-			'logo_url'        => '',
-			'logo_yukseklik'  => 60,
-			'arkaplan_tip'    => 'renk',
-			'arkaplan_renk'   => '#1e1e2e',
-			'arkaplan_gradyan'=> 'linear-gradient(135deg, #1e1e2e 0%, #2d2d44 100%)',
-			'arkaplan_gorsel' => '',
-			'arkaplan_karartma' => 40,
-			'vurgu_rengi'     => '#7c5cff',
-			'kart_radius'     => 12,
-			'kart_golge'      => 1,
-			'kart_cam'        => 0,
-			'baslik'          => __( 'QR Menü Yönetim Paneli', 'qrms' ),
-			'alt_metin'       => '',
-			'goster_hatirla'  => 1,
-			'goster_sifremi'  => 1,
-			'sabitle_dil'     => 0,
+	public static function defaults() {
+		return array(
+			// Yol.
+			'yol_aktif'         => 0,
+			'slug'              => self::DEFAULT_SLUG,
+			'wp_admin_koru'     => 1,
+
+			// Görünüm.
+			'gorunum_aktif'     => 1,
+			'duzen'             => 'bolunmus',
+			'tema'              => 'koyu',
+			'vurgu'             => '#c9a84c',
+			'vurgu2'            => '#e8c874',
+			'arkaplan_tip'      => 'gradyan',
+			'arkaplan_renk'     => '#0f1115',
+			'arkaplan_renk2'    => '#1c222c',
+			'arkaplan_gorsel'   => 0,
+			'arkaplan_karartma' => 55,
+			'arkaplan_bulanik'  => 0,
+			'logo'              => 0,
+			'logo_yukseklik'    => 64,
+			'baslik'            => '',
+			'alt_metin'         => '',
+			'footer_metin'      => '',
+			'kart_yaricap'      => 18,
+			'kart_golge'        => 1,
+			'kart_cam'          => 1,
+			'beni_hatirla'      => 1,
+			'sifremi_unuttum'   => 1,
+			'siteye_don'        => 1,
+			'dil_secici'        => 0,
 		);
-		$opt = get_option( self::OPT_GORUNUM, array() );
-		if ( ! is_array( $opt ) ) {
-			$opt = array();
+	}
+
+	/**
+	 * Kayıtlı ayarlar (varsayılanlarla tamamlanmış).
+	 *
+	 * @return array
+	 */
+	public static function get_settings() {
+		$kayitli = get_option( self::OPTION, array() );
+
+		if ( ! is_array( $kayitli ) ) {
+			$kayitli = array();
 		}
-		return array_merge( $varsayilan, $opt );
+
+		return array_merge( self::defaults(), $kayitli );
+	}
+
+	/**
+	 * Ham form verisini güvenli ayar dizisine çevirir.
+	 *
+	 * Bilinmeyen anahtar düşer, geçersiz değer varsayılana döner. Slug
+	 * geçersizse ESKİ slug korunur — kullanıcı yanlış bir değer yazdığında
+	 * adresin boşa düşüp kilitlenmeye yol açmaması için.
+	 *
+	 * @param array $raw   Ham veri ($_POST).
+	 * @param array $eski  Mevcut ayarlar (slug geri düşüşü için).
+	 * @return array
+	 */
+	public static function sanitize_settings( $raw, $eski = array() ) {
+		$v   = self::defaults();
+		$raw = is_array( $raw ) ? $raw : array();
+
+		if ( ! is_array( $eski ) || empty( $eski ) ) {
+			$eski = self::get_settings();
+		}
+
+		$bool = static function ( $anahtar ) use ( $raw ) {
+			return empty( $raw[ $anahtar ] ) ? 0 : 1;
+		};
+
+		$v['yol_aktif']     = $bool( 'yol_aktif' );
+		$v['wp_admin_koru'] = $bool( 'wp_admin_koru' );
+		$v['gorunum_aktif'] = $bool( 'gorunum_aktif' );
+		$v['kart_golge']    = $bool( 'kart_golge' );
+		$v['kart_cam']      = $bool( 'kart_cam' );
+		$v['beni_hatirla']  = $bool( 'beni_hatirla' );
+		$v['sifremi_unuttum'] = $bool( 'sifremi_unuttum' );
+		$v['siteye_don']      = $bool( 'siteye_don' );
+		$v['dil_secici']      = $bool( 'dil_secici' );
+
+		$slug = isset( $raw['slug'] ) ? self::normalize_slug( $raw['slug'] ) : '';
+		$v['slug'] = ( '' !== $slug && '' === self::validate_slug( $slug ) )
+			? $slug
+			: ( isset( $eski['slug'] ) ? $eski['slug'] : self::DEFAULT_SLUG );
+
+		$duzen       = isset( $raw['duzen'] ) ? sanitize_key( $raw['duzen'] ) : '';
+		$v['duzen']  = in_array( $duzen, array( 'merkez', 'bolunmus' ), true ) ? $duzen : 'bolunmus';
+
+		$tema        = isset( $raw['tema'] ) ? sanitize_key( $raw['tema'] ) : '';
+		$v['tema']   = in_array( $tema, array( 'acik', 'koyu', 'otomatik' ), true ) ? $tema : 'koyu';
+
+		$tip                 = isset( $raw['arkaplan_tip'] ) ? sanitize_key( $raw['arkaplan_tip'] ) : '';
+		$v['arkaplan_tip']   = in_array( $tip, array( 'renk', 'gradyan', 'gorsel' ), true ) ? $tip : 'gradyan';
+
+		foreach ( array( 'vurgu', 'vurgu2', 'arkaplan_renk', 'arkaplan_renk2' ) as $renk ) {
+			$temiz = isset( $raw[ $renk ] ) ? sanitize_hex_color( (string) $raw[ $renk ] ) : '';
+			if ( $temiz ) {
+				$v[ $renk ] = $temiz;
+			}
+		}
+
+		$v['arkaplan_gorsel']   = isset( $raw['arkaplan_gorsel'] ) ? absint( $raw['arkaplan_gorsel'] ) : 0;
+		$v['logo']              = isset( $raw['logo'] ) ? absint( $raw['logo'] ) : 0;
+		$v['arkaplan_karartma'] = self::clamp( isset( $raw['arkaplan_karartma'] ) ? $raw['arkaplan_karartma'] : 55, 0, 90 );
+		$v['arkaplan_bulanik']  = self::clamp( isset( $raw['arkaplan_bulanik'] ) ? $raw['arkaplan_bulanik'] : 0, 0, 20 );
+		$v['logo_yukseklik']    = self::clamp( isset( $raw['logo_yukseklik'] ) ? $raw['logo_yukseklik'] : 64, 24, 160 );
+		$v['kart_yaricap']      = self::clamp( isset( $raw['kart_yaricap'] ) ? $raw['kart_yaricap'] : 18, 0, 40 );
+
+		$v['baslik']    = isset( $raw['baslik'] ) ? sanitize_text_field( $raw['baslik'] ) : '';
+		$v['alt_metin'] = isset( $raw['alt_metin'] ) ? sanitize_textarea_field( $raw['alt_metin'] ) : '';
+
+		// Alt bilgi sınırlı HTML kabul eder (telefon/adres bağlantısı yazılabilsin).
+		$v['footer_metin'] = isset( $raw['footer_metin'] )
+			? wp_kses(
+				(string) $raw['footer_metin'],
+				array(
+					'a'      => array(
+						'href'   => array(),
+						'title'  => array(),
+						'target' => array(),
+						'rel'    => array(),
+					),
+					'strong' => array(),
+					'em'     => array(),
+					'br'     => array(),
+					'span'   => array(),
+				)
+			)
+			: '';
+
+		return $v;
+	}
+
+	/**
+	 * Sayıyı aralığa sıkıştırır.
+	 *
+	 * @param mixed $deger Değer.
+	 * @param int   $alt   Alt sınır.
+	 * @param int   $ust   Üst sınır.
+	 * @return int
+	 */
+	private static function clamp( $deger, $alt, $ust ) {
+		$sayi = (int) $deger;
+
+		return max( $alt, min( $ust, $sayi ) );
+	}
+
+	/* -----------------------------------------------------------------
+	   SLUG
+	----------------------------------------------------------------- */
+
+	/**
+	 * Slug'ı temizler.
+	 *
+	 * @param string $ham Ham değer.
+	 * @return string
+	 */
+	public static function normalize_slug( $ham ) {
+		$slug = sanitize_title( (string) $ham );
+
+		return trim( $slug, '/-' );
 	}
 
 	/**
 	 * Slug geçerli mi?
 	 *
-	 * @param string $slug Slug.
-	 * @return true|WP_Error
+	 * @param string $slug Temizlenmiş slug.
+	 * @return string Geçerliyse boş metin, değilse kullanıcıya gösterilecek sebep.
 	 */
-	public static function slug_dogrula( $slug ) {
-		$slug = sanitize_title( (string) $slug );
-		if ( in_array( $slug, self::yasakli_sluglar(), true ) ) {
-			return new WP_Error( 'yasak', __( 'Bu giriş adresi kullanılamaz.', 'qrms' ) );
+	public static function validate_slug( $slug ) {
+		$slug = (string) $slug;
+
+		if ( '' === $slug ) {
+			return __( 'Giriş adresi boş bırakılamaz.', 'qrms' );
 		}
-		$sayfa = get_page_by_path( $slug, OBJECT, array( 'page', 'post' ) );
-		if ( $sayfa ) {
-			return new WP_Error( 'cakisma', __( 'Bu adres sitede mevcut bir sayfa ile çakışıyor.', 'qrms' ) );
+
+		if ( strlen( $slug ) < 2 ) {
+			return __( 'Giriş adresi en az iki karakter olmalı.', 'qrms' );
 		}
-		return true;
+
+		if ( strlen( $slug ) > 64 ) {
+			return __( 'Giriş adresi en fazla 64 karakter olabilir.', 'qrms' );
+		}
+
+		if ( in_array( $slug, self::RESERVED, true ) ) {
+			return __( 'Bu adres WordPress tarafından kullanılıyor, başka bir ad seçin.', 'qrms' );
+		}
+
+		// Aynı adla bir sayfa/yazı varsa o içerik erişilemez hâle gelirdi.
+		if ( function_exists( 'get_page_by_path' ) ) {
+			$cakisan = get_page_by_path( $slug, OBJECT, array( 'page', 'post' ) );
+
+			if ( $cakisan ) {
+				return __( 'Sitenizde aynı adrese sahip bir sayfa var, başka bir ad seçin.', 'qrms' );
+			}
+		}
+
+		return '';
 	}
 
 	/**
-	 * Hook'ları kaydeder.
+	 * Yürürlükteki slug.
+	 *
+	 * @return string
+	 */
+	public static function get_slug() {
+		$ayar = self::get_settings();
+		$slug = self::normalize_slug( isset( $ayar['slug'] ) ? $ayar['slug'] : '' );
+
+		return '' !== $slug ? $slug : self::DEFAULT_SLUG;
+	}
+
+	/* -----------------------------------------------------------------
+	   DURUM
+	----------------------------------------------------------------- */
+
+	/**
+	 * wp-config.php'den kapatılmış mı?
+	 *
+	 * @return bool
+	 */
+	public static function is_disabled_by_constant() {
+		return defined( 'QRMS_LOGIN_DISABLE' ) && QRMS_LOGIN_DISABLE;
+	}
+
+	/**
+	 * Özel giriş YOLU devrede mi?
+	 *
+	 * @return bool
+	 */
+	public static function is_active() {
+		if ( self::is_disabled_by_constant() ) {
+			return false;
+		}
+
+		if ( function_exists( 'is_multisite' ) && is_multisite() ) {
+			return false;
+		}
+
+		$ayar = self::get_settings();
+
+		if ( empty( $ayar['yol_aktif'] ) ) {
+			return false;
+		}
+
+		return '' === self::validate_slug( self::get_slug() );
+	}
+
+	/**
+	 * Giriş ekranı GÖRÜNÜMÜ devrede mi?
+	 *
+	 * Yoldan bağımsızdır: adres değişmeden de tasarım uygulanabilir.
+	 *
+	 * @return bool
+	 */
+	public static function is_skin_active() {
+		if ( self::is_disabled_by_constant() ) {
+			return false;
+		}
+
+		$ayar = self::get_settings();
+
+		return ! empty( $ayar['gorunum_aktif'] );
+	}
+
+	/* -----------------------------------------------------------------
+	   KANCALAR
+	----------------------------------------------------------------- */
+
+	/**
+	 * Hook kayıtları.
 	 *
 	 * @return void
 	 */
 	public static function init() {
-		if ( self::devre_disimi() || self::multisite_mi() ) {
-			add_action( 'admin_init', array( __CLASS__, 'ayarlar_kaydet' ) );
+		// Yönetim tarafı her hâlükârda kayıtlı: ayar ekranı olmadan kullanıcı
+		// kapattığı özelliği geri açamaz.
+		add_action( 'admin_post_' . self::ACTION, array( __CLASS__, 'handle_settings_submit' ) );
+		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_admin_assets' ) );
+		add_action( 'admin_notices', array( __CLASS__, 'admin_notice' ) );
+
+		if ( self::is_skin_active() ) {
+			add_action( 'login_enqueue_scripts', array( __CLASS__, 'enqueue_login_assets' ) );
+			add_action( 'login_head', array( __CLASS__, 'login_head' ) );
+			add_filter( 'login_body_class', array( __CLASS__, 'body_class' ) );
+			add_filter( 'login_headerurl', array( __CLASS__, 'header_url' ) );
+			add_filter( 'login_headertext', array( __CLASS__, 'header_text' ) );
+			add_filter( 'login_message', array( __CLASS__, 'login_message' ) );
+			add_filter( 'login_display_language_dropdown', array( __CLASS__, 'language_dropdown' ) );
+			add_action( 'login_footer', array( __CLASS__, 'login_footer' ) );
+		}
+
+		if ( ! self::is_active() ) {
 			return;
 		}
 
-		add_action( 'plugins_loaded', array( __CLASS__, 'istegi_yakala' ), 1 );
-		add_action( 'template_redirect', array( __CLASS__, 'gizli_giris_engelle' ), 1 );
-		add_filter( 'site_url', array( __CLASS__, 'url_filtre' ), 10, 4 );
-		add_filter( 'network_site_url', array( __CLASS__, 'url_filtre' ), 10, 4 );
-		add_filter( 'wp_redirect', array( __CLASS__, 'redirect_filtre' ), 10, 2 );
-		add_filter( 'login_url', array( __CLASS__, 'login_url_filtre' ), 10, 3 );
-		add_filter( 'logout_url', array( __CLASS__, 'logout_url_filtre' ), 10, 2 );
-		add_filter( 'lostpassword_url', array( __CLASS__, 'lostpassword_url_filtre' ), 10, 2 );
-		add_filter( 'register_url', array( __CLASS__, 'register_url_filtre' ) );
-		add_filter( 'lostpassword_redirect', array( __CLASS__, 'lostpassword_redirect_filtre' ) );
-		add_action( 'login_enqueue_scripts', array( __CLASS__, 'login_stilleri' ) );
-		add_filter( 'login_headerurl', array( __CLASS__, 'header_url' ) );
-		add_filter( 'login_headertext', array( __CLASS__, 'header_text' ) );
-		add_action( 'login_head', array( __CLASS__, 'login_inline_css' ) );
-		add_action( 'admin_init', array( __CLASS__, 'ayarlar_kaydet' ) );
-		add_action( 'admin_notices', array( __CLASS__, 'slug_notice' ) );
+		// İsteği en erken noktada yakala: WordPress kendi giriş yönlendirmesini
+		// yapmadan önce $pagenow'u düzeltmiş olmamız gerekir.
+		add_action( 'plugins_loaded', array( __CLASS__, 'plugins_loaded' ), 1 );
+		add_action( 'wp_loaded', array( __CLASS__, 'wp_loaded' ) );
+
+		// WordPress'in ürettiği bütün wp-login.php adresleri yeni yola çevrilir.
+		add_filter( 'site_url', array( __CLASS__, 'filter_site_url' ), 10, 2 );
+		add_filter( 'network_site_url', array( __CLASS__, 'filter_site_url' ), 10, 2 );
+		add_filter( 'wp_redirect', array( __CLASS__, 'filter_redirect' ) );
+		add_filter( 'login_url', array( __CLASS__, 'filter_generic_url' ) );
+		add_filter( 'logout_url', array( __CLASS__, 'filter_generic_url' ) );
+		add_filter( 'lostpassword_url', array( __CLASS__, 'filter_generic_url' ) );
+		add_filter( 'register_url', array( __CLASS__, 'filter_generic_url' ) );
+	}
+
+	/* -----------------------------------------------------------------
+	   İSTEK YAKALAMA
+	----------------------------------------------------------------- */
+
+	/**
+	 * Ham istek yolu (sorgu dizesi olmadan, sondaki eğik çizgi atılmış).
+	 *
+	 * @return string
+	 */
+	public static function request_path() {
+		/*
+		 * DİKKAT: burada sanitize_text_field() KULLANILMAZ. O fonksiyon
+		 * yüzde kodlu oktetleri (%2F, %C5%9F…) adresten tamamen siler; Türkçe
+		 * karakter içeren bir slug ya da kodlanmış bir yol sessizce bozulur
+		 * ve giriş adresi hiç eşleşmez. Ham değer önce ayrıştırılır, sonra
+		 * YALNIZCA yol kısmı çözülür; sonuç hiçbir yere basılmaz, sadece
+		 * bilinen slug ile karşılaştırılır.
+		 */
+		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+		$uri = isset( $_SERVER['REQUEST_URI'] ) ? wp_unslash( $_SERVER['REQUEST_URI'] ) : '';
+
+		if ( ! is_string( $uri ) || '' === $uri ) {
+			return '';
+		}
+
+		$parca = wp_parse_url( $uri );
+		$yol   = isset( $parca['path'] ) ? rawurldecode( $parca['path'] ) : '';
+
+		return untrailingslashit( $yol );
 	}
 
 	/**
-	 * Özel slug isteğini wp-login.php'ye yönlendirir.
+	 * Sitenin kök yolu (alt dizin kurulumlarında `/blog` gibi).
+	 *
+	 * @return string
+	 */
+	public static function home_path() {
+		$parca = wp_parse_url( home_url() );
+
+		return isset( $parca['path'] ) ? untrailingslashit( $parca['path'] ) : '';
+	}
+
+	/**
+	 * Verilen yol giriş yolu mu?
+	 *
+	 * @param string $yol İstek yolu.
+	 * @return bool
+	 */
+	public static function is_login_path( $yol ) {
+		$hedef = self::home_path() . '/' . self::get_slug();
+
+		if ( untrailingslashit( (string) $yol ) === $hedef ) {
+			return true;
+		}
+
+		// Kalıcı bağlantı yapısı kapalı sitelerde /?qrm biçimi de çalışır.
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		return isset( $_GET[ self::get_slug() ] ) && ! get_option( 'permalink_structure' );
+	}
+
+	/**
+	 * İstek `wp-login.php`'ye mi gidiyor?
+	 *
+	 * @param string $yol İstek yolu.
+	 * @return bool
+	 */
+	public static function is_wp_login_path( $yol ) {
+		return false !== strpos( (string) $yol, 'wp-login.php' );
+	}
+
+	/**
+	 * `wp-login.php` isteği engellenmeli mi?
+	 *
+	 * Şifre korumalı yazıların form gönderimi (`action=postpass`) her zaman
+	 * geçer; oturumu açık kullanıcı da engellenmez (çıkış bağlantısı, ara
+	 * giriş penceresi). Geri kalan her şey 404'tür.
+	 *
+	 * @param string $eylem      `action` sorgu parametresi.
+	 * @param bool   $oturum_var Kullanıcının oturumu açık mı?
+	 * @return bool
+	 */
+	public static function should_block_wp_login( $eylem, $oturum_var ) {
+		if ( $oturum_var ) {
+			return false;
+		}
+
+		return 'postpass' !== (string) $eylem;
+	}
+
+	/**
+	 * `plugins_loaded` — isteği sınıflandırır.
 	 *
 	 * @return void
 	 */
-	public static function istegi_yakala() {
-		if ( is_admin() || ( defined( 'WP_CLI' ) && WP_CLI ) ) {
+	public static function plugins_loaded() {
+		global $pagenow;
+
+		if ( self::arka_plan_istegi() ) {
 			return;
 		}
 
-		$uri  = isset( $_SERVER['REQUEST_URI'] ) ? wp_unslash( $_SERVER['REQUEST_URI'] ) : '';
-		$path = trim( (string) wp_parse_url( $uri, PHP_URL_PATH ), '/' );
-		$slug = self::slug();
+		$yol = self::request_path();
 
-		if ( $path === $slug || 0 === strpos( $path, $slug . '/' ) ) {
-			global $pagenow;
-			$pagenow = 'wp-login.php';
+		if ( self::is_login_path( $yol ) ) {
+			// WordPress bu isteği giriş sayfası saysın.
+			$pagenow = 'wp-login.php'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited
+			return;
+		}
+
+		if ( self::is_wp_login_path( $yol ) ) {
+			// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			$eylem = isset( $_REQUEST['action'] ) ? sanitize_key( wp_unslash( $_REQUEST['action'] ) ) : '';
+
+			if ( self::should_block_wp_login( $eylem, is_user_logged_in() ) ) {
+				self::$bloke = true;
+				$pagenow     = 'index.php'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited
+			}
+		}
+	}
+
+	/**
+	 * `wp_loaded` — giriş sayfasını basar veya 404'e düşürür.
+	 *
+	 * @return void
+	 */
+	public static function wp_loaded() {
+		global $pagenow;
+
+		if ( self::arka_plan_istegi() ) {
+			return;
+		}
+
+		if ( self::$bloke ) {
+			self::render_404();
+			return;
+		}
+
+		if ( 'wp-login.php' === $pagenow && self::is_login_path( self::request_path() ) ) {
+			// wp-login.php kendi içinde bu global'leri bekler.
+			global $error, $interim_login, $action, $user_login; // phpcs:ignore Generic.CodeAnalysis.UnusedVariable.FoundInScopeBeforeUse
+
 			require_once ABSPATH . 'wp-login.php';
 			exit;
 		}
+
+		$ayar = self::get_settings();
+
+		if ( empty( $ayar['wp_admin_koru'] ) ) {
+			return;
+		}
+
+		// Oturumsuz kullanıcı yönetim paneline gidiyorsa 404. AJAX, admin-post
+		// ve cron dışarıda: bunlar oturumsuz da meşru şekilde çağrılır.
+		if ( is_admin() && ! is_user_logged_in() && 'admin-ajax.php' !== $pagenow && 'admin-post.php' !== $pagenow ) {
+			self::render_404();
+		}
 	}
 
 	/**
-	 * Oturumsuz wp-login.php ve wp-admin erişimini 404 yapar.
+	 * Bu istek arka plan işi mi (cron / REST / CLI / AJAX)?
+	 *
+	 * @return bool
+	 */
+	private static function arka_plan_istegi() {
+		if ( ( defined( 'DOING_CRON' ) && DOING_CRON ) || ( defined( 'WP_CLI' ) && WP_CLI ) ) {
+			return true;
+		}
+
+		if ( function_exists( 'wp_doing_ajax' ) && wp_doing_ajax() ) {
+			return true;
+		}
+
+		if ( defined( 'REST_REQUEST' ) && REST_REQUEST ) {
+			return true;
+		}
+
+		// REST_REQUEST sabiti yalnızca istek yönlendirildikten sonra tanımlanır;
+		// yol üzerinden erken kontrol REST isteğini korumaya alır.
+		$yol = self::request_path();
+
+		return false !== strpos( $yol, '/wp-json' );
+	}
+
+	/**
+	 * İsteği 404'e düşürür.
 	 *
 	 * @return void
 	 */
-	public static function gizli_giris_engelle() {
-		if ( is_user_logged_in() ) {
-			return;
+	private static function render_404() {
+		global $wp_query;
+
+		if ( isset( $wp_query ) && is_object( $wp_query ) && method_exists( $wp_query, 'set_404' ) ) {
+			$wp_query->set_404();
 		}
 
-		$uri  = isset( $_SERVER['REQUEST_URI'] ) ? wp_unslash( $_SERVER['REQUEST_URI'] ) : '';
-		$path = strtolower( (string) wp_parse_url( $uri, PHP_URL_PATH ) );
+		status_header( 404 );
+		nocache_headers();
 
-		// admin-ajax.php, wp-cron.php ve REST API etkilenmemeli.
-		if ( false !== strpos( $path, 'admin-ajax.php' )
-			|| false !== strpos( $path, 'wp-cron.php' )
-			|| false !== strpos( $path, 'wp-json/' ) ) {
-			return;
-		}
+		$sablon = function_exists( 'get_404_template' ) ? get_404_template() : '';
 
-		if ( false !== strpos( $path, 'wp-login.php' ) ) {
-			global $wp_query;
-			if ( isset( $wp_query ) ) {
-				$wp_query->set_404();
-			}
-			status_header( 404 );
-			nocache_headers();
-			include get_query_template( '404' );
+		if ( $sablon && file_exists( $sablon ) ) {
+			require $sablon;
 			exit;
 		}
 
-		if ( preg_match( '#/wp-admin(/|$)#', $path ) ) {
-			global $wp_query;
-			if ( isset( $wp_query ) ) {
-				$wp_query->set_404();
-			}
-			status_header( 404 );
-			nocache_headers();
-			include get_query_template( '404' );
-			exit;
-		}
+		wp_die(
+			esc_html__( 'Sayfa bulunamadı.', 'qrms' ),
+			esc_html__( 'Bulunamadı', 'qrms' ),
+			array( 'response' => 404 )
+		);
 	}
 
+	/* -----------------------------------------------------------------
+	   ADRES ÜRETİMİ VE FİLTRELER
+	----------------------------------------------------------------- */
+
 	/**
-	 * site_url / network_site_url filtresi.
+	 * Yeni giriş adresi.
 	 *
-	 * @param string $url     URL.
-	 * @param string $path    Yol.
-	 * @param string $scheme  Şema.
-	 * @param int    $blog_id Blog kimliği.
+	 * @param array $args Sorgu parametreleri.
 	 * @return string
 	 */
-	public static function url_filtre( $url, $path, $scheme, $blog_id = null ) {
-		if ( false !== strpos( (string) $path, 'wp-login.php' ) ) {
-			return self::login_url_cevir( $url );
+	public static function login_url( $args = array() ) {
+		if ( get_option( 'permalink_structure' ) ) {
+			$url = home_url( '/' . self::get_slug() . '/' );
+		} else {
+			$url = home_url( '/?' . self::get_slug() );
 		}
+
+		if ( ! empty( $args ) && is_array( $args ) ) {
+			$url = add_query_arg( $args, $url );
+		}
+
 		return $url;
 	}
 
 	/**
-	 * wp_redirect filtresi.
+	 * İçinde `wp-login.php` geçen bir adresi yeni yola çevirir.
 	 *
-	 * @param string $location Konum.
-	 * @param int    $status   Durum kodu.
+	 * Sorgu parametreleri (`action`, `redirect_to`, `key`, `login`…) korunur;
+	 * şifre sıfırlama e-postasındaki bağlantı bu sayede çalışmaya devam eder.
+	 *
+	 * @param string $url Adres.
 	 * @return string
 	 */
-	public static function redirect_filtre( $location, $status ) {
-		return self::login_url_cevir( $location );
-	}
-
-	/**
-	 * login_url filtresi.
-	 *
-	 * @param string $login_url    URL.
-	 * @param string $redirect     Yönlendirme.
-	 * @param bool   $force_reauth Yeniden kimlik doğrulama.
-	 * @return string
-	 */
-	public static function login_url_filtre( $login_url, $redirect, $force_reauth ) {
-		$url = self::url();
-		if ( ! empty( $redirect ) ) {
-			$url = add_query_arg( 'redirect_to', urlencode( $redirect ), $url );
-		}
-		if ( $force_reauth ) {
-			$url = add_query_arg( 'reauth', '1', $url );
-		}
-		return $url;
-	}
-
-	/**
-	 * logout_url filtresi.
-	 *
-	 * @param string $logout_url URL.
-	 * @param string $redirect   Yönlendirme.
-	 * @return string
-	 */
-	public static function logout_url_filtre( $logout_url, $redirect ) {
-		return self::login_url_cevir( $logout_url );
-	}
-
-	/**
-	 * lostpassword_url filtresi.
-	 *
-	 * @param string $url      URL.
-	 * @param string $redirect Yönlendirme.
-	 * @return string
-	 */
-	public static function lostpassword_url_filtre( $url, $redirect ) {
-		$lost = self::url( 'lostpassword' );
-		if ( $redirect ) {
-			$lost = add_query_arg( 'redirect_to', urlencode( $redirect ), $lost );
-		}
-		return $lost;
-	}
-
-	/**
-	 * register_url filtresi.
-	 *
-	 * @param string $url URL.
-	 * @return string
-	 */
-	public static function register_url_filtre( $url ) {
-		return self::url( 'register' );
-	}
-
-	/**
-	 * lostpassword_redirect filtresi.
-	 *
-	 * @param string $url URL.
-	 * @return string
-	 */
-	public static function lostpassword_redirect_filtre( $url ) {
-		return self::login_url_cevir( $url );
-	}
-
-	/**
-	 * wp-login.php içeren URL'leri özel slug'a çevirir.
-	 *
-	 * @param string $url URL.
-	 * @return string
-	 */
-	private static function login_url_cevir( $url ) {
-		if ( false === strpos( (string) $url, 'wp-login.php' ) ) {
+	private static function replace_login_url( $url ) {
+		if ( ! is_string( $url ) || false === strpos( $url, 'wp-login.php' ) ) {
 			return $url;
 		}
-		$parsed = wp_parse_url( $url );
-		$query  = array();
-		if ( ! empty( $parsed['query'] ) ) {
-			parse_str( $parsed['query'], $query );
+
+		$parca = wp_parse_url( $url );
+		$args  = array();
+
+		if ( ! empty( $parca['query'] ) ) {
+			parse_str( $parca['query'], $args );
 		}
-		$base = self::url();
-		if ( ! empty( $query['action'] ) ) {
-			$base = self::url( $query['action'] );
-			unset( $query['action'] );
+
+		$yeni = self::login_url( $args );
+
+		if ( ! empty( $parca['fragment'] ) ) {
+			$yeni .= '#' . $parca['fragment'];
 		}
-		foreach ( $query as $k => $v ) {
-			$base = add_query_arg( $k, $v, $base );
-		}
-		return $base;
+
+		return $yeni;
 	}
 
 	/**
-	 * Giriş CSS dosyasını kuyruğa alır.
+	 * `site_url` / `network_site_url` filtresi.
+	 *
+	 * @param string $url  Üretilen adres.
+	 * @param string $path İstenen yol.
+	 * @return string
+	 */
+	public static function filter_site_url( $url, $path = '' ) {
+		if ( is_string( $path ) && false === strpos( $path, 'wp-login.php' ) ) {
+			return $url;
+		}
+
+		return self::replace_login_url( $url );
+	}
+
+	/**
+	 * `wp_redirect` filtresi.
+	 *
+	 * @param string $location Hedef.
+	 * @return string
+	 */
+	public static function filter_redirect( $location ) {
+		return self::replace_login_url( $location );
+	}
+
+	/**
+	 * Tek argümanlı adres filtreleri (`login_url`, `logout_url`…).
+	 *
+	 * @param string $url Adres.
+	 * @return string
+	 */
+	public static function filter_generic_url( $url ) {
+		return self::replace_login_url( $url );
+	}
+
+	/* -----------------------------------------------------------------
+	   GİRİŞ EKRANI GÖRÜNÜMÜ
+	----------------------------------------------------------------- */
+
+	/**
+	 * Ayarlardan CSS değişkeni bloğu üretir.
+	 *
+	 * Saf fonksiyondur (WordPress durumu okumaz, yalnızca verilen ayarları
+	 * çevirir); testler bu yüzden doğrudan çağırabilir.
+	 *
+	 * @param array  $s          Ayarlar.
+	 * @param string $arkaplan_url Arka plan görselinin adresi (çözülmüş).
+	 * @param string $logo_url     Logonun adresi (çözülmüş).
+	 * @return string
+	 */
+	public static function css_variables( array $s, $arkaplan_url = '', $logo_url = '' ) {
+		$s = array_merge( self::defaults(), $s );
+
+		$satir = array(
+			'--qrms-lg-vurgu: ' . $s['vurgu'],
+			'--qrms-lg-vurgu2: ' . $s['vurgu2'],
+			'--qrms-lg-bg1: ' . $s['arkaplan_renk'],
+			'--qrms-lg-bg2: ' . ( 'gradyan' === $s['arkaplan_tip'] ? $s['arkaplan_renk2'] : $s['arkaplan_renk'] ),
+			'--qrms-lg-karartma: ' . ( (int) $s['arkaplan_karartma'] / 100 ),
+			'--qrms-lg-bulanik: ' . (int) $s['arkaplan_bulanik'] . 'px',
+			'--qrms-lg-radius: ' . (int) $s['kart_yaricap'] . 'px',
+			'--qrms-lg-logo-h: ' . (int) $s['logo_yukseklik'] . 'px',
+		);
+
+		if ( '' !== $arkaplan_url && 'gorsel' === $s['arkaplan_tip'] ) {
+			$satir[] = '--qrms-lg-bg-image: url(' . $arkaplan_url . ')';
+		}
+
+		if ( '' !== $logo_url ) {
+			$satir[] = '--qrms-lg-logo: url(' . $logo_url . ')';
+		}
+
+		return implode( '; ', $satir ) . ';';
+	}
+
+	/**
+	 * Ayarlardan gövde sınıflarını üretir.
+	 *
+	 * @param array $s Ayarlar.
+	 * @return string[]
+	 */
+	public static function skin_classes( array $s ) {
+		$s = array_merge( self::defaults(), $s );
+
+		$siniflar = array(
+			'qrms-login',
+			'qrms-login-duzen-' . $s['duzen'],
+			'qrms-login-tema-' . $s['tema'],
+			'qrms-login-bg-' . $s['arkaplan_tip'],
+		);
+
+		if ( ! empty( $s['kart_cam'] ) ) {
+			$siniflar[] = 'qrms-login-cam';
+		}
+
+		if ( ! empty( $s['kart_golge'] ) ) {
+			$siniflar[] = 'qrms-login-golge';
+		}
+
+		if ( empty( $s['beni_hatirla'] ) ) {
+			$siniflar[] = 'qrms-login-hatirla-gizli';
+		}
+
+		if ( empty( $s['sifremi_unuttum'] ) ) {
+			$siniflar[] = 'qrms-login-nav-gizli';
+		}
+
+		if ( empty( $s['siteye_don'] ) ) {
+			$siniflar[] = 'qrms-login-geri-gizli';
+		}
+
+		if ( ! empty( $s['logo'] ) ) {
+			$siniflar[] = 'qrms-login-logolu';
+		}
+
+		return $siniflar;
+	}
+
+	/**
+	 * Giriş ekranı varlıkları.
 	 *
 	 * @return void
 	 */
-	public static function login_stilleri() {
+	public static function enqueue_login_assets() {
+		$s = self::get_settings();
+
 		wp_enqueue_style(
 			'qrms-login',
 			QRMS_PLUGIN_URL . 'assets/css/login.css',
 			array(),
 			QRMS_Helpers::asset_version( 'assets/css/login.css' )
 		);
+
+		wp_add_inline_style( 'qrms-login', ':root, body.login { ' . self::css_variables( $s, self::attachment_url( $s['arkaplan_gorsel'] ), self::attachment_url( $s['logo'] ) ) . ' }' );
+
+		wp_enqueue_script(
+			'qrms-login',
+			QRMS_PLUGIN_URL . 'assets/js/login.js',
+			array(),
+			QRMS_Helpers::asset_version( 'assets/js/login.js' ),
+			true
+		);
+
+		wp_localize_script(
+			'qrms-login',
+			'QRMS_LOGIN',
+			array(
+				'capsLock' => __( 'Caps Lock açık', 'qrms' ),
+				'bekleyin' => __( 'Giriş yapılıyor…', 'qrms' ),
+				'goster'   => __( 'Şifreyi göster', 'qrms' ),
+			)
+		);
 	}
 
 	/**
-	 * Logo bağlantısı.
+	 * Ek `<head>` çıktısı — WordPress'in kendi giriş stillerini bastırmak için
+	 * gereken tek satırlık düzeltme ve renk şeması bildirimi.
+	 *
+	 * @return void
+	 */
+	public static function login_head() {
+		$s = self::get_settings();
+
+		$sema = 'koyu' === $s['tema'] ? 'dark' : ( 'acik' === $s['tema'] ? 'light' : 'light dark' );
+
+		echo '<meta name="color-scheme" content="' . esc_attr( $sema ) . '">' . "\n";
+	}
+
+	/**
+	 * Giriş gövdesine sınıfları ekler.
+	 *
+	 * @param array $classes Mevcut sınıflar.
+	 * @return array
+	 */
+	public static function body_class( $classes ) {
+		$classes = is_array( $classes ) ? $classes : array();
+
+		return array_merge( $classes, self::skin_classes( self::get_settings() ) );
+	}
+
+	/**
+	 * Logo bağlantısı — WordPress.org yerine sitenin kendisi.
 	 *
 	 * @return string
 	 */
@@ -372,247 +887,269 @@ class QRMS_Login {
 	 * @return string
 	 */
 	public static function header_text() {
-		return get_bloginfo( 'name' );
+		$s = self::get_settings();
+
+		return '' !== $s['baslik'] ? $s['baslik'] : get_bloginfo( 'name' );
 	}
 
 	/**
-	 * Inline CSS değişkenleri.
+	 * Formun üstündeki marka bloğu.
 	 *
-	 * @return void
+	 * WordPress'in kendi mesajı (şifre sıfırlama açıklaması, "kaydınız
+	 * tamamlandı" gibi) KORUNUR; marka bloğu onun önüne eklenir.
+	 *
+	 * @param string $message Mevcut mesaj.
+	 * @return string
 	 */
-	public static function login_inline_css() {
-		$g = self::gorunum();
-		$css = ':root{';
-		$css .= '--qrms-login-vurgu:' . esc_attr( $g['vurgu_rengi'] ) . ';';
-		$css .= '--qrms-login-radius:' . absint( $g['kart_radius'] ) . 'px;';
-		$css .= '--qrms-login-logo-h:' . absint( $g['logo_yukseklik'] ) . 'px;';
-		if ( 'gradyan' === $g['arkaplan_tip'] ) {
-			$css .= '--qrms-login-bg:' . esc_attr( $g['arkaplan_gradyan'] ) . ';';
-		} elseif ( 'gorsel' === $g['arkaplan_tip'] && $g['arkaplan_gorsel'] ) {
-			$css .= '--qrms-login-bg-img:url(' . esc_url( $g['arkaplan_gorsel'] ) . ');';
-			$css .= '--qrms-login-bg-overlay:' . ( absint( $g['arkaplan_karartma'] ) / 100 ) . ';';
-		} else {
-			$css .= '--qrms-login-bg:' . esc_attr( $g['arkaplan_renk'] ) . ';';
-		}
-		$css .= '}';
-		if ( empty( $g['goster_hatirla'] ) ) {
-			$css .= '.forgetmenot{display:none!important}';
-		}
-		if ( empty( $g['goster_sifremi'] ) ) {
-			$css .= '#nav{display:none!important}';
-		}
-		if ( ! empty( $g['kart_golge'] ) ) {
-			$css .= '#login form{box-shadow:0 8px 32px rgba(0,0,0,.15)}';
-		}
-		if ( ! empty( $g['kart_cam'] ) ) {
-			$css .= '#login form{background:rgba(255,255,255,.85);backdrop-filter:blur(12px)}';
-		}
-		echo '<style id="qrms-login-vars">' . $css . '</style>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+	public static function login_message( $message ) {
+		$s = self::get_settings();
 
-		if ( '' !== $g['baslik'] ) {
-			echo '<style>.qrms-login-baslik{display:block;text-align:center;font-size:18px;font-weight:600;margin-bottom:16px;color:#1e1e1e}</style>';
-			add_action(
-				'login_form',
-				function () use ( $g ) {
-					echo '<p class="qrms-login-baslik">' . esc_html( $g['baslik'] ) . '</p>';
-				},
-				1
-			);
+		$baslik = '' !== $s['baslik'] ? $s['baslik'] : get_bloginfo( 'name' );
+		$alt    = $s['alt_metin'];
+
+		$html  = '<div class="qrms-login-brand">';
+		$html .= '<h2 class="qrms-login-brand-title">' . esc_html( $baslik ) . '</h2>';
+
+		if ( '' !== $alt ) {
+			$html .= '<p class="qrms-login-brand-text">' . nl2br( esc_html( $alt ) ) . '</p>';
 		}
-		if ( '' !== $g['alt_metin'] ) {
-			add_action(
-				'login_footer',
-				function () use ( $g ) {
-					echo '<p class="qrms-login-alt">' . wp_kses_post( $g['alt_metin'] ) . '</p>';
-				}
-			);
-		}
-		if ( ! empty( $g['logo_url'] ) ) {
-			add_action(
-				'login_head',
-				function () use ( $g ) {
-					echo '<style>.login h1 a{background-image:url(' . esc_url( $g['logo_url'] ) . ')!important;background-size:contain;width:auto;height:var(--qrms-login-logo-h)}</style>';
-				}
-			);
-		}
+
+		$html .= '</div>';
+
+		return $html . $message;
 	}
 
 	/**
-	 * Ayarları kaydeder.
+	 * Dil seçici gösterilsin mi?
+	 *
+	 * @param bool $goster Mevcut karar.
+	 * @return bool
+	 */
+	public static function language_dropdown( $goster ) {
+		$s = self::get_settings();
+
+		return empty( $s['dil_secici'] ) ? false : $goster;
+	}
+
+	/**
+	 * Alt bilgi metni.
 	 *
 	 * @return void
 	 */
-	public static function ayarlar_kaydet() {
+	public static function login_footer() {
+		$s = self::get_settings();
+
+		if ( '' === $s['footer_metin'] ) {
+			return;
+		}
+
+		echo '<div class="qrms-login-footer">' . wp_kses_post( $s['footer_metin'] ) . '</div>';
+	}
+
+	/**
+	 * Ek dosyanın adresi (yoksa boş).
+	 *
+	 * @param int $id Ek ID'si.
+	 * @return string
+	 */
+	public static function attachment_url( $id ) {
+		$id = absint( $id );
+
+		if ( ! $id || ! function_exists( 'wp_get_attachment_image_url' ) ) {
+			return '';
+		}
+
+		$url = wp_get_attachment_image_url( $id, 'full' );
+
+		return $url ? $url : '';
+	}
+
+	/* -----------------------------------------------------------------
+	   YÖNETİM
+	----------------------------------------------------------------- */
+
+	/**
+	 * Ayar ekranının varlıkları.
+	 *
+	 * @param string $hook Ekran kancası.
+	 * @return void
+	 */
+	public static function enqueue_admin_assets( $hook = '' ) {
+		unset( $hook );
+
+		if ( ! self::is_settings_tab() ) {
+			return;
+		}
+
+		wp_enqueue_media();
+		wp_enqueue_style( 'wp-color-picker' );
+
+		// Önizleme, giriş ekranının GERÇEK stylesheet'ini kullanır: ayrı bir
+		// taklit yazılsaydı iki dosya zamanla birbirinden ayrı düşerdi.
+		wp_enqueue_style(
+			'qrms-login',
+			QRMS_PLUGIN_URL . 'assets/css/login.css',
+			array(),
+			QRMS_Helpers::asset_version( 'assets/css/login.css' )
+		);
+
+		wp_enqueue_style(
+			'qrms-login-admin',
+			QRMS_PLUGIN_URL . 'assets/css/login-admin.css',
+			array( 'qrms-admin', 'wp-color-picker', 'qrms-login' ),
+			QRMS_Helpers::asset_version( 'assets/css/login-admin.css' )
+		);
+
+		wp_enqueue_script(
+			'qrms-login-admin',
+			QRMS_PLUGIN_URL . 'assets/js/login-admin.js',
+			array( 'jquery', 'wp-color-picker' ),
+			QRMS_Helpers::asset_version( 'assets/js/login-admin.js' ),
+			true
+		);
+
+		wp_localize_script(
+			'qrms-login-admin',
+			'QRMS_LOGIN_ADMIN',
+			array(
+				'sec'      => __( 'Görsel Seç', 'qrms' ),
+				'kullan'   => __( 'Bu görseli kullan', 'qrms' ),
+				'kopyalandi' => __( 'Kopyalandı', 'qrms' ),
+			)
+		);
+	}
+
+	/**
+	 * Şu an Giriş Ekranı sekmesinde miyiz?
+	 *
+	 * @return bool
+	 */
+	public static function is_settings_tab() {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '';
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$tab = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : '';
+
+		return QRMS_Admin::SETTINGS_SLUG === $page && 'giris' === $tab;
+	}
+
+	/**
+	 * Ayar formunu işler.
+	 *
+	 * @return void
+	 */
+	public static function handle_settings_submit() {
 		if ( ! current_user_can( QRMS_Admin::CAPABILITY ) ) {
-			return;
-		}
-		if ( empty( $_POST['qrms_login_save'] ) ) {
-			return;
-		}
-		if ( ! isset( $_POST['qrms_login_nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['qrms_login_nonce'] ) ), 'qrms_login_save' ) ) {
-			return;
+			wp_die( esc_html__( 'Bu işlem için yetkiniz yok.', 'qrms' ) );
 		}
 
-		if ( isset( $_POST['qrms_login_slug'] ) && ! self::multisite_mi() && ! self::devre_disimi() ) {
-			$slug = sanitize_title( wp_unslash( $_POST['qrms_login_slug'] ) );
-			$dogrula = self::slug_dogrula( $slug );
-			if ( is_wp_error( $dogrula ) ) {
-				add_settings_error( 'qrms_login', 'slug', $dogrula->get_error_message(), 'error' );
-			} else {
-				$eski = self::slug();
-				update_option( self::OPT_SLUG, $slug, false );
-				if ( $eski !== $slug ) {
-					set_transient( 'qrms_login_slug_notice', home_url( '/' . $slug . '/' ), DAY_IN_SECONDS );
-				}
-			}
+		check_admin_referer( self::NONCE );
+
+		$eski = self::get_settings();
+
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce yukarıda doğrulandı.
+		$ham = isset( $_POST['qrms_login'] ) && is_array( $_POST['qrms_login'] )
+			? wp_unslash( $_POST['qrms_login'] ) // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- sanitize_settings() içinde alan alan temizlenir.
+			: array();
+
+		$istenen_slug = isset( $ham['slug'] ) ? self::normalize_slug( $ham['slug'] ) : '';
+		$slug_hatasi  = '' !== $istenen_slug ? self::validate_slug( $istenen_slug ) : '';
+
+		$yeni = self::sanitize_settings( $ham, $eski );
+
+		update_option( self::OPTION, $yeni );
+
+		$slug_degisti = ( $eski['slug'] !== $yeni['slug'] ) || ( (int) $eski['yol_aktif'] !== (int) $yeni['yol_aktif'] );
+
+		if ( $slug_degisti && ! empty( $yeni['yol_aktif'] ) ) {
+			self::notify_admin_email( $yeni['slug'] );
 		}
 
-		if ( isset( $_POST['qrms_login_gorunum'] ) && is_array( $_POST['qrms_login_gorunum'] ) ) {
-			$raw = wp_unslash( $_POST['qrms_login_gorunum'] );
-			$g   = self::gorunum();
-			$g['logo_url']         = esc_url_raw( $raw['logo_url'] ?? '' );
-			$g['logo_yukseklik']   = absint( $raw['logo_yukseklik'] ?? 60 );
-			$g['arkaplan_tip']     = in_array( $raw['arkaplan_tip'] ?? '', array( 'renk', 'gradyan', 'gorsel' ), true ) ? $raw['arkaplan_tip'] : 'renk';
-			$g['arkaplan_renk']    = sanitize_hex_color( $raw['arkaplan_renk'] ?? '#1e1e2e' ) ?: '#1e1e2e';
-			$g['arkaplan_gradyan'] = sanitize_text_field( $raw['arkaplan_gradyan'] ?? '' );
-			$g['arkaplan_gorsel']  = esc_url_raw( $raw['arkaplan_gorsel'] ?? '' );
-			$g['arkaplan_karartma']= absint( $raw['arkaplan_karartma'] ?? 40 );
-			$g['vurgu_rengi']      = sanitize_hex_color( $raw['vurgu_rengi'] ?? '#7c5cff' ) ?: '#7c5cff';
-			$g['kart_radius']      = absint( $raw['kart_radius'] ?? 12 );
-			$g['kart_golge']       = ! empty( $raw['kart_golge'] ) ? 1 : 0;
-			$g['kart_cam']         = ! empty( $raw['kart_cam'] ) ? 1 : 0;
-			$g['baslik']           = sanitize_text_field( $raw['baslik'] ?? '' );
-			$g['alt_metin']        = wp_kses_post( $raw['alt_metin'] ?? '' );
-			$g['goster_hatirla']   = ! empty( $raw['goster_hatirla'] ) ? 1 : 0;
-			$g['goster_sifremi']   = ! empty( $raw['goster_sifremi'] ) ? 1 : 0;
-			$g['sabitle_dil']      = ! empty( $raw['sabitle_dil'] ) ? 1 : 0;
-			update_option( self::OPT_GORUNUM, $g, false );
+		$args = array(
+			'page'        => QRMS_Admin::SETTINGS_SLUG,
+			'tab'         => 'giris',
+			'kaydedildi'  => 1,
+		);
+
+		if ( '' !== $slug_hatasi ) {
+			$args['slug_hata'] = rawurlencode( $slug_hatasi );
 		}
+
+		wp_safe_redirect( add_query_arg( $args, admin_url( 'admin.php' ) ) );
+		exit;
 	}
 
 	/**
-	 * Slug kaydı sonrası admin notice.
+	 * Yeni giriş adresini site yöneticisine e-postayla bildirir.
 	 *
+	 * Kilitlenmeye karşı en pratik koruma budur: adres yalnızca ekranda
+	 * gösterilseydi sekme kapandığında kaybolurdu.
+	 *
+	 * @param string $slug Yeni slug.
 	 * @return void
 	 */
-	public static function slug_notice() {
-		$url = get_transient( 'qrms_login_slug_notice' );
-		if ( ! $url ) {
+	private static function notify_admin_email( $slug ) {
+		if ( ! function_exists( 'wp_mail' ) ) {
 			return;
 		}
-		delete_transient( 'qrms_login_slug_notice' );
-		?>
-		<div class="notice notice-success is-dismissible">
-			<p>
-				<?php esc_html_e( 'Yeni giriş adresiniz:', 'qrms' ); ?>
-				<strong id="qrms-login-url"><?php echo esc_html( $url ); ?></strong>
-				<button type="button" class="button" onclick="navigator.clipboard.writeText(document.getElementById('qrms-login-url').textContent)"><?php esc_html_e( 'Kopyala', 'qrms' ); ?></button>
-			</p>
-		</div>
-		<?php
+
+		$alici = get_option( 'admin_email' );
+
+		if ( ! $alici ) {
+			return;
+		}
+
+		$konu = sprintf(
+			/* translators: %s: site adı. */
+			__( '[%s] Yönetim paneli giriş adresiniz değişti', 'qrms' ),
+			get_bloginfo( 'name' )
+		);
+
+		$mesaj = sprintf(
+			/* translators: 1: yeni giriş adresi, 2: slug. */
+			__( "Yönetim paneline artık şu adresten giriyorsunuz:\n\n%1\$s\n\nBu adresi kaydedin. wp-login.php ve wp-admin adresleri artık 404 döner.\n\nAdresi unutursanız sunucudaki wp-config.php dosyasına şu satırı ekleyerek özelliği kapatabilir ve eski giriş adresine dönebilirsiniz:\n\ndefine( 'QRMS_LOGIN_DISABLE', true );\n", 'qrms' ),
+			self::login_url(),
+			$slug
+		);
+
+		wp_mail( $alici, $konu, $mesaj );
 	}
 
 	/**
-	 * Giriş ekranı ayarlar sekmesini basar.
+	 * Yönetim ekranlarında giriş adresini hatırlatan bilgi kutusu.
 	 *
 	 * @return void
 	 */
-	public static function render_tab() {
-		$g      = self::gorunum();
-		$slug   = self::slug();
-		$devre  = self::devre_disimi();
-		$multi  = self::multisite_mi();
-		settings_errors( 'qrms_login' );
-		?>
-		<form method="post" class="qrms-card" id="qrms-login-ayarlar">
-			<?php wp_nonce_field( 'qrms_login_save', 'qrms_login_nonce' ); ?>
-			<input type="hidden" name="qrms_login_save" value="1" />
+	public static function admin_notice() {
+		if ( ! self::is_active() || ! current_user_can( QRMS_Admin::CAPABILITY ) ) {
+			return;
+		}
 
-			<?php if ( $devre ) : ?>
-				<div class="qrms-alert"><?php esc_html_e( 'Özel giriş devre dışı: wp-config.php içinde define( \'QRMS_LOGIN_DISABLE\', true ); tanımlı.', 'qrms' ); ?></div>
-			<?php elseif ( $multi ) : ?>
-				<div class="qrms-alert"><?php esc_html_e( 'Çoklu site kurulumlarında özel giriş adresi desteklenmez.', 'qrms' ); ?></div>
-			<?php else : ?>
-				<table class="form-table">
-					<tr>
-						<th><label for="qrms_login_slug"><?php esc_html_e( 'Giriş adresi', 'qrms' ); ?></label></th>
-						<td>
-							<code><?php echo esc_html( home_url( '/' ) ); ?></code>
-							<input type="text" id="qrms_login_slug" name="qrms_login_slug" value="<?php echo esc_attr( $slug ); ?>" class="regular-text" />
-						</td>
-					</tr>
-				</table>
-			<?php endif; ?>
+		if ( ! QRMS_Admin::is_plugin_screen() ) {
+			return;
+		}
 
-			<h2><?php esc_html_e( 'Görünüm', 'qrms' ); ?></h2>
-			<div class="qrms-login-onizleme-wrap" style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:16px">
-				<div class="qrms-login-onizleme" id="qrms-login-onizleme" style="min-height:320px;display:flex;align-items:center;justify-content:center;border-radius:8px;background:var(--qrms-login-bg,#1e1e2e)">
-					<div class="qrms-login-onizleme-kart" style="width:min(100%,280px);background:#fff;border-radius:var(--qrms-login-radius,12px);padding:24px">
-						<div class="qrms-login-onizleme-logo"></div>
-						<p class="qrms-login-onizleme-baslik"></p>
-						<div class="qrms-login-onizleme-input"></div>
-						<div class="qrms-login-onizleme-input"></div>
-						<div class="qrms-login-onizleme-btn"></div>
-					</div>
-				</div>
-				<div class="qrms-login-alanlar">
-					<table class="form-table">
-						<tr>
-							<th><label for="logo_url"><?php esc_html_e( 'Logo URL', 'qrms' ); ?></label></th>
-							<td>
-								<input type="url" id="logo_url" name="qrms_login_gorunum[logo_url]" value="<?php echo esc_attr( $g['logo_url'] ); ?>" class="regular-text qrms-login-field" data-var="--qrms-login-logo" />
-								<button type="button" class="button qrms-login-media"><?php esc_html_e( 'Medya seç', 'qrms' ); ?></button>
-							</td>
-						</tr>
-						<tr>
-							<th><label for="logo_yukseklik"><?php esc_html_e( 'Logo yüksekliği (px)', 'qrms' ); ?></label></th>
-							<td><input type="number" id="logo_yukseklik" name="qrms_login_gorunum[logo_yukseklik]" value="<?php echo esc_attr( (string) $g['logo_yukseklik'] ); ?>" class="qrms-login-field" data-var="--qrms-login-logo-h" data-suffix="px" /></td>
-						</tr>
-						<tr>
-							<th><label for="vurgu_rengi"><?php esc_html_e( 'Vurgu rengi', 'qrms' ); ?></label></th>
-							<td><input type="text" id="vurgu_rengi" name="qrms_login_gorunum[vurgu_rengi]" value="<?php echo esc_attr( $g['vurgu_rengi'] ); ?>" class="qrms-color-picker qrms-login-field" data-var="--qrms-login-vurgu" /></td>
-						</tr>
-						<tr>
-							<th><label for="arkaplan_tip"><?php esc_html_e( 'Arka plan', 'qrms' ); ?></label></th>
-							<td>
-								<select id="arkaplan_tip" name="qrms_login_gorunum[arkaplan_tip]" class="qrms-login-field" data-bg-tip>
-									<option value="renk" <?php selected( $g['arkaplan_tip'], 'renk' ); ?>><?php esc_html_e( 'Düz renk', 'qrms' ); ?></option>
-									<option value="gradyan" <?php selected( $g['arkaplan_tip'], 'gradyan' ); ?>><?php esc_html_e( 'Gradyan', 'qrms' ); ?></option>
-									<option value="gorsel" <?php selected( $g['arkaplan_tip'], 'gorsel' ); ?>><?php esc_html_e( 'Görsel', 'qrms' ); ?></option>
-								</select>
-							</td>
-						</tr>
-						<tr data-bg="renk">
-							<th><label for="arkaplan_renk"><?php esc_html_e( 'Arka plan rengi', 'qrms' ); ?></label></th>
-							<td><input type="text" id="arkaplan_renk" name="qrms_login_gorunum[arkaplan_renk]" value="<?php echo esc_attr( $g['arkaplan_renk'] ); ?>" class="qrms-color-picker qrms-login-field" data-var="--qrms-login-bg" /></td>
-						</tr>
-						<tr>
-							<th><label for="baslik"><?php esc_html_e( 'Başlık metni', 'qrms' ); ?></label></th>
-							<td><input type="text" id="baslik" name="qrms_login_gorunum[baslik]" value="<?php echo esc_attr( $g['baslik'] ); ?>" class="regular-text qrms-login-field" data-text=".qrms-login-onizleme-baslik" /></td>
-						</tr>
-						<tr>
-							<th><label for="kart_radius"><?php esc_html_e( 'Kart köşe yarıçapı', 'qrms' ); ?></label></th>
-							<td><input type="number" id="kart_radius" name="qrms_login_gorunum[kart_radius]" value="<?php echo esc_attr( (string) $g['kart_radius'] ); ?>" class="qrms-login-field" data-var="--qrms-login-radius" data-suffix="px" /></td>
-						</tr>
-						<tr>
-							<th><?php esc_html_e( 'Kart', 'qrms' ); ?></th>
-							<td>
-								<label><input type="checkbox" name="qrms_login_gorunum[kart_golge]" value="1" <?php checked( ! empty( $g['kart_golge'] ) ); ?> class="qrms-login-field" data-shadow /> <?php esc_html_e( 'Gölge', 'qrms' ); ?></label>
-								<label><input type="checkbox" name="qrms_login_gorunum[kart_cam]" value="1" <?php checked( ! empty( $g['kart_cam'] ) ); ?> class="qrms-login-field" data-glass /> <?php esc_html_e( 'Cam efekti', 'qrms' ); ?></label>
-							</td>
-						</tr>
-						<tr>
-							<th><?php esc_html_e( 'Form', 'qrms' ); ?></th>
-							<td>
-								<label><input type="checkbox" name="qrms_login_gorunum[goster_hatirla]" value="1" <?php checked( ! empty( $g['goster_hatirla'] ) ); ?> /> <?php esc_html_e( 'Beni hatırla', 'qrms' ); ?></label>
-								<label><input type="checkbox" name="qrms_login_gorunum[goster_sifremi]" value="1" <?php checked( ! empty( $g['goster_sifremi'] ) ); ?> /> <?php esc_html_e( 'Şifremi unuttum', 'qrms' ); ?></label>
-							</td>
-						</tr>
-					</table>
-				</div>
-			</div>
-			<p><button type="submit" class="button button-primary"><?php esc_html_e( 'Kaydet', 'qrms' ); ?></button></p>
-		</form>
-		<?php
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		if ( empty( $_GET['kaydedildi'] ) ) {
+			return;
+		}
+
+		printf(
+			'<div class="notice notice-success"><p><strong>%1$s</strong> %2$s <code>%3$s</code></p></div>',
+			esc_html__( 'Ayarlar kaydedildi.', 'qrms' ),
+			esc_html__( 'Yönetim paneli giriş adresiniz:', 'qrms' ),
+			esc_url( self::login_url() )
+		);
+	}
+
+	/**
+	 * Genel Ayarlar → Giriş Ekranı sekmesini basar.
+	 *
+	 * @return void
+	 */
+	public static function render_settings_tab() {
+		require_once QRMS_PLUGIN_DIR . 'includes/login-ayar-sayfasi.php';
+
+		qrms_login_ayar_sayfasi();
 	}
 }

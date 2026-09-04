@@ -1,70 +1,241 @@
-(function ($) {
+/**
+ * QR Menu Suite — Giriş Ekranı ayar sekmesi.
+ *
+ * Alanlar değiştikçe önizlemeyi günceller. Önizleme, giriş ekranının gerçek
+ * stylesheet'ini kullandığı için burada yapılan tek iş CSS değişkenlerini ve
+ * sınıfları taşımaktır; hiçbir görsel kural bu dosyada tekrarlanmaz.
+ *
+ * Betik çalışmasa da form eksiksiz çalışır: yalnızca önizleme kaydedilene
+ * kadar güncellenmez.
+ */
+( function ( $ ) {
 	'use strict';
 
-	var preview = document.getElementById('qrms-login-onizleme');
-	if (!preview) {
-		return;
-	}
+	var metin = window.QRMS_LOGIN_ADMIN || {};
 
-	var kart = preview.querySelector('.qrms-login-onizleme-kart');
+	$( function () {
 
-	function setVar(name, value) {
-		preview.style.setProperty(name, value);
-	}
+		var $onizleme = $( '#qrms-lp' );
+		var $cerceve  = $( '.qrms-onizleme-cerceve' );
 
-	function sync() {
-		$('.qrms-login-field').each(function () {
-			var $f = $(this);
-			var v = $f.val();
-			var cssVar = $f.data('var');
-			var suffix = $f.data('suffix') || '';
-			var textSel = $f.data('text');
-
-			if (cssVar) {
-				setVar(cssVar, v + suffix);
-			}
-			if (textSel && v) {
-				$(textSel).text(v);
-			}
-			if ($f.data('shadow')) {
-				kart.style.boxShadow = $f.prop('checked') ? '0 8px 32px rgba(0,0,0,.15)' : 'none';
-			}
-			if ($f.data('glass')) {
-				kart.style.background = $f.prop('checked') ? 'rgba(255,255,255,.85)' : '#fff';
-				kart.style.backdropFilter = $f.prop('checked') ? 'blur(12px)' : 'none';
-			}
-		});
-
-		var tip = $('[data-bg-tip]').val();
-		if (tip === 'gradyan') {
-			setVar('--qrms-login-bg', $('#arkaplan_gradyan').val() || 'linear-gradient(135deg,#1e1e2e,#2d2d44)');
-		} else if (tip === 'gorsel') {
-			var url = $('#arkaplan_gorsel').val();
-			if (url) {
-				preview.style.backgroundImage = 'url(' + url + ')';
-				preview.style.backgroundSize = 'cover';
-			}
-		}
-	}
-
-	$('.qrms-login-field').on('input change', sync);
-
-	if ($.fn.wpColorPicker) {
-		$('.qrms-color-picker').wpColorPicker({ change: sync });
-	}
-
-	$('.qrms-login-media').on('click', function (e) {
-		e.preventDefault();
-		if (!wp || !wp.media) {
+		if ( ! $onizleme.length ) {
 			return;
 		}
-		var frame = wp.media({ title: 'Logo seç', button: { text: 'Seç' }, multiple: false });
-		frame.on('select', function () {
-			var att = frame.state().get('selection').first().toJSON();
-			$('#logo_url').val(att.url).trigger('input');
-		});
-		frame.open();
-	});
 
-	sync();
-})(jQuery);
+		var kok = $onizleme[ 0 ];
+
+		/* ---------------------------------------------------------------
+		   Yardımcılar
+		--------------------------------------------------------------- */
+
+		function degiskenYaz( ad, deger ) {
+			kok.style.setProperty( ad, deger );
+		}
+
+		/**
+		 * Verilen ön ekle başlayan tüm sınıfları söküp yenisini takar.
+		 *
+		 * @param {string} onEk  Sınıf ön eki (ör. "qrms-login-tema-").
+		 * @param {string} deger Yeni değer.
+		 */
+		function sinifDegistir( onEk, deger ) {
+			var kalan = [];
+
+			kok.className.split( /\s+/ ).forEach( function ( sinif ) {
+				if ( sinif && 0 !== sinif.indexOf( onEk ) ) {
+					kalan.push( sinif );
+				}
+			} );
+
+			kalan.push( onEk + deger );
+			kok.className = kalan.join( ' ' );
+		}
+
+		/* ---------------------------------------------------------------
+		   Renk seçiciler
+		--------------------------------------------------------------- */
+
+		$( '.qrms-renk' ).each( function () {
+			var $alan = $( this );
+			var deg   = $alan.data( 'onizleme-var' );
+
+			$alan.wpColorPicker( {
+				change: function ( olay, ui ) {
+					if ( deg ) {
+						degiskenYaz( deg, ui.color.toString() );
+					}
+				},
+				clear: function () {
+					if ( deg ) {
+						degiskenYaz( deg, '' );
+					}
+				}
+			} );
+		} );
+
+		/* ---------------------------------------------------------------
+		   Kaydırıcılar (px / oran)
+		--------------------------------------------------------------- */
+
+		$( 'input[type="range"][data-onizleme-var]' ).on( 'input change', function () {
+			var $alan = $( this );
+			var deger = parseInt( $alan.val(), 10 );
+			var birim = $alan.data( 'birim' );
+			var deg   = $alan.data( 'onizleme-var' );
+
+			if ( 'oran' === birim ) {
+				degiskenYaz( deg, ( deger / 100 ).toString() );
+				$( '.qrms-deger[data-icin="' + $alan.attr( 'id' ) + '"]' ).text( deger + '%' );
+			} else {
+				degiskenYaz( deg, deger + 'px' );
+				$( '.qrms-deger[data-icin="' + $alan.attr( 'id' ) + '"]' ).text( deger + 'px' );
+			}
+		} );
+
+		/* ---------------------------------------------------------------
+		   Düzen / tema / arka plan tipi
+		--------------------------------------------------------------- */
+
+		$( 'input[type="radio"][data-onizleme]' ).on( 'change', function () {
+			var tur   = $( this ).data( 'onizleme' );
+			var deger = $( this ).val();
+
+			if ( 'duzen' === tur ) {
+				sinifDegistir( 'qrms-login-duzen-', deger );
+			} else if ( 'tema' === tur ) {
+				sinifDegistir( 'qrms-login-tema-', deger );
+			} else if ( 'arkaplan_tip' === tur ) {
+				sinifDegistir( 'qrms-login-bg-', deger );
+			}
+		} );
+
+		/* ---------------------------------------------------------------
+		   Sınıf açan/kapatan onay kutuları
+		--------------------------------------------------------------- */
+
+		$( 'input[type="checkbox"][data-onizleme-sinif]' ).on( 'change', function () {
+			var $kutu  = $( this );
+			var sinif  = $kutu.data( 'onizleme-sinif' );
+			var acik   = $kutu.is( ':checked' );
+
+			// data-ters: kutu İŞARETLİYKEN sınıf KALKAR (gizleme sınıfları).
+			if ( $kutu.data( 'ters' ) ) {
+				acik = ! acik;
+			}
+
+			$onizleme.toggleClass( sinif, acik );
+		} );
+
+		/* ---------------------------------------------------------------
+		   Metin alanları
+		--------------------------------------------------------------- */
+
+		$( '[data-onizleme-metin]' ).on( 'input', function () {
+			var $alan   = $( this );
+			var $hedef  = $onizleme.find( $alan.data( 'onizleme-metin' ) );
+			var deger   = $alan.val();
+			var yedek   = $alan.attr( 'placeholder' ) || '';
+
+			$hedef.text( '' !== deger ? deger : yedek );
+		} );
+
+		/* ---------------------------------------------------------------
+		   Medya seçici
+		--------------------------------------------------------------- */
+
+		$( '.qrms-medya' ).each( function () {
+			var $kap    = $( this );
+			var $gizli  = $kap.find( 'input[type="hidden"]' );
+			var $gorsel = $kap.find( '.qrms-medya-onizleme' );
+			var deg     = $gizli.data( 'onizleme-var' );
+			var tur     = $kap.data( 'medya' );
+			var kutu;
+
+			$kap.on( 'click', '.qrms-medya-sec', function ( olay ) {
+				olay.preventDefault();
+
+				if ( ! kutu ) {
+					kutu = wp.media( {
+						title: metin.sec || '',
+						button: { text: metin.kullan || '' },
+						library: { type: 'image' },
+						multiple: false
+					} );
+
+					kutu.on( 'select', function () {
+						var ek = kutu.state().get( 'selection' ).first().toJSON();
+
+						$gizli.val( ek.id );
+						$gorsel.html( '<img src="' + ek.url + '" alt="">' );
+						degiskenYaz( deg, 'url(' + ek.url + ')' );
+
+						if ( 'logo' === tur ) {
+							$onizleme.addClass( 'qrms-login-logolu' );
+						}
+					} );
+				}
+
+				kutu.open();
+			} );
+
+			$kap.on( 'click', '.qrms-medya-sil', function ( olay ) {
+				olay.preventDefault();
+
+				$gizli.val( 0 );
+				$gorsel.empty();
+				degiskenYaz( deg, 'none' );
+
+				if ( 'logo' === tur ) {
+					$onizleme.removeClass( 'qrms-login-logolu' );
+				}
+			} );
+		} );
+
+		/* ---------------------------------------------------------------
+		   Cihaz düğmeleri
+		--------------------------------------------------------------- */
+
+		$( '.qrms-cihaz' ).on( 'click', function () {
+			var cihaz = $( this ).data( 'cihaz' );
+
+			$( '.qrms-cihaz' ).removeClass( 'aktif' );
+			$( this ).addClass( 'aktif' );
+
+			$cerceve.attr( 'data-cihaz', cihaz );
+			$onizleme.toggleClass( 'qrms-lp-mobil', 'mobil' === cihaz );
+		} );
+
+		/* ---------------------------------------------------------------
+		   Adres kopyalama
+		--------------------------------------------------------------- */
+
+		$( '.qrms-kopyala' ).on( 'click', function () {
+			var $dugme = $( this );
+			var kaynak = document.getElementById( $dugme.data( 'hedef' ) );
+
+			if ( ! kaynak ) {
+				return;
+			}
+
+			var bitir = function () {
+				var eski = $dugme.text();
+				$dugme.text( metin.kopyalandi || eski );
+				window.setTimeout( function () {
+					$dugme.text( eski );
+				}, 1600 );
+			};
+
+			if ( navigator.clipboard && window.isSecureContext ) {
+				navigator.clipboard.writeText( kaynak.textContent ).then( bitir );
+				return;
+			}
+
+			// Güvenli olmayan bağlamda (http) panoya yazma engellidir; metni
+			// seçili bırakmak kullanıcıya elle kopyalama imkânı verir.
+			var aralik = document.createRange();
+			aralik.selectNodeContents( kaynak );
+			window.getSelection().removeAllRanges();
+			window.getSelection().addRange( aralik );
+		} );
+	} );
+}( jQuery ) );

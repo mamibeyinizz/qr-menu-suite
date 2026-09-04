@@ -501,6 +501,28 @@ function wp_unslash( $value ) {
 }
 
 /**
+ * Serileştirilmiş değeri çözer; değilse aynen döner (WP çekirdeğiyle aynı sözleşme).
+ *
+ * @param mixed $ham Ham değer.
+ * @return mixed
+ */
+function maybe_unserialize( $ham ) {
+	if ( ! is_string( $ham ) ) {
+		return $ham;
+	}
+
+	if ( 'N;' === $ham ) {
+		return null;
+	}
+
+	// @ ile bastırma WP çekirdeğindekiyle aynı: serileştirilmemiş rastgele
+	// bir metin unserialize()'a verilirse PHP uyarı basar, WP bunu yutar.
+	$cozuldu = @unserialize( $ham ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.PHP.DiscouragedPHPFunctions.serialize_unserialize
+
+	return false !== $cozuldu ? $cozuldu : $ham;
+}
+
+/**
  * URL temizler.
  *
  * @param string $url URL.
@@ -1581,6 +1603,33 @@ function get_post_meta( $post_id, $key = '', $single = false ) {
 }
 
 /**
+ * Yazı meta değerini yazar.
+ *
+ * @param int    $post_id Yazı kimliği.
+ * @param string $key     Anahtar.
+ * @param mixed  $value   Değer.
+ * @return bool
+ */
+function update_post_meta( $post_id, $key, $value ) {
+	$GLOBALS['qrms_test']['post_meta'][ $post_id ][ $key ] = $value;
+
+	return true;
+}
+
+/**
+ * Yazı meta değerini siler.
+ *
+ * @param int    $post_id Yazı kimliği.
+ * @param string $key     Anahtar.
+ * @return bool
+ */
+function delete_post_meta( $post_id, $key ) {
+	unset( $GLOBALS['qrms_test']['post_meta'][ $post_id ][ $key ] );
+
+	return true;
+}
+
+/**
  * Yazı listesi. (Testte $GLOBALS['qrms_test']['posts'] döner; çağrı sayılır ki
  * ürün başına sorgu açılmadığı doğrulanabilsin.)
  *
@@ -1817,4 +1866,5 @@ require_once QRMS_PLUGIN_DIR . 'includes/class-module-loader.php';
 require_once QRMS_PLUGIN_DIR . 'includes/class-wizard.php';
 require_once QRMS_PLUGIN_DIR . 'includes/class-shortcodes.php';
 require_once QRMS_PLUGIN_DIR . 'includes/class-admin.php';
+require_once QRMS_PLUGIN_DIR . 'includes/class-qrms-login.php';
 require_once QRMS_PLUGIN_DIR . 'includes/class-query-monitor.php';

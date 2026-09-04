@@ -1,278 +1,630 @@
-(function () {
+/**
+ * Servis Paneli — canlı kanban.
+ *
+ * Kart şablonunun TEK kaynağı bu dosyadır; PHP tarafı yalnızca iskeleti
+ * basar. Canlı bir panelde sunucuda bir kez üretilen kart ikinci saniyede
+ * zaten eskimiş olurdu.
+ *
+ * Yoklama davranışı:
+ *   - Sekme önplandayken ayarlardaki aralık (varsayılan 5 sn).
+ *   - Arka plandayken 30 sn; öne gelince ANINDA bir istek atılır.
+ *   - Arka arkaya hata geldikçe aralık ikiye katlanarak 60 sn'ye çıkar,
+ *     bağlantı dönünce eski aralığa iner.
+ */
+( function () {
 	'use strict';
 
-	var L = window.QRMS_SP || {};
-	var panel = document.getElementById('qrms-sp-panel');
-	if (!panel || !L.ajaxUrl) {
+	var C = window.QRMS_SP || {};
+	var M = C.metin || {};
+
+	var kanban   = document.getElementById( 'qrms-sp-kanban' );
+	var serit    = document.getElementById( 'qrms-sp-serit' );
+	var sekmeler = document.getElementById( 'qrms-sp-sekmeler' );
+
+	if ( ! kanban ) {
 		return;
 	}
 
-	var esikSari = parseInt(panel.getAttribute('data-esik-sari') || '3', 10);
-	var esikKirmizi = parseInt(panel.getAttribute('data-esik-kirmizi') || '7', 10);
-	var baseInterval = parseInt(panel.getAttribute('data-yenileme') || '5', 10) * 1000;
-	var interval = baseInterval;
-	var hataSayisi = 0;
-	var sonGorulen = '';
-	var kayitlar = {};
-	var timer = null;
-	var sesAcik = localStorage.getItem('qrms_sp_ses') !== '0';
-	var sesSeviye = parseFloat(localStorage.getItem('qrms_sp_ses_seviye') || '0.8');
-	var orijinalBaslik = document.title;
+	var durumlar = C.durumlar || {};
+	var tipler   = C.tipler || {};
+	var akis     = C.akis || {};
 
-	var sesInput = document.getElementById('qrms-sp-ses');
-	var sesSeviyeInput = document.getElementById('qrms-sp-ses-seviye');
-	var hataEl = document.getElementById('qrms-sp-hata');
-	var tipFiltre = document.getElementById('qrms-sp-tip-filtre');
-	var masaAra = document.getElementById('qrms-sp-masa-ara');
-	var aktifFiltre = document.getElementById('qrms-sp-aktif');
-	var bildirimBtn = document.getElementById('qrms-sp-bildirim');
+	var normalAralik = ( C.yenileme || 5 ) * 1000;
+	var aralik       = normalAralik;
+	var zamanlayici  = null;
+	var hataSayisi   = 0;
+	var bilinen      = {};       // id -> true (yeni kayıt tespiti için)
+	var ilkYukleme   = true;
+	var sonKayitlar  = [];
+	var sunucuFarki  = 0;        // sunucu saati - tarayıcı saati (saniye)
+	var aktifSekme   = 'bekliyor';
 
-	if (sesInput) {
-		sesInput.checked = sesAcik;
-		sesInput.addEventListener('change', function () {
-			sesAcik = sesInput.checked;
-			localStorage.setItem('qrms_sp_ses', sesAcik ? '1' : '0');
-		});
-	}
-	if (sesSeviyeInput) {
-		sesSeviyeInput.value = Math.round(sesSeviye * 100);
-		sesSeviyeInput.addEventListener('input', function () {
-			sesSeviye = parseInt(sesSeviyeInput.value, 10) / 100;
-			localStorage.setItem('qrms_sp_ses_seviye', String(sesSeviye));
-		});
-	}
+	/* ---------------------------------------------------------------
+	   Ses — harici dosya yok, ton kodda üretilir
+	--------------------------------------------------------------- */
 
-	if (bildirimBtn) {
-		bildirimBtn.addEventListener('click', function () {
-			if ('Notification' in window) {
-				Notification.requestPermission();
-			}
-		});
-	}
-
-	function bip() {
-		if (!sesAcik) { return; }
+	var sesAcik = ( function () {
 		try {
-			var ctx = new (window.AudioContext || window.webkitAudioContext)();
-			var osc = ctx.createOscillator();
-			var gain = ctx.createGain();
-			osc.connect(gain);
-			gain.connect(ctx.destination);
-			osc.frequency.value = 880;
-			gain.gain.value = sesSeviye * 0.3;
+			var kayitli = window.localStorage.getItem( 'qrms_sp_ses' );
+			return null === kayitli ? !! C.sesVarsayilan : '1' === kayitli;
+		} catch ( e ) {
+			return !! C.sesVarsayilan;
+		}
+	}() );
+
+	var sesBaglami = null;
+
+	function bipCal() {
+		if ( ! sesAcik ) {
+			return;
+		}
+
+		try {
+			var Ctx = window.AudioContext || window.webkitAudioContext;
+
+			if ( ! Ctx ) {
+				return;
+			}
+
+			if ( ! sesBaglami ) {
+				sesBaglami = new Ctx();
+			}
+
+			// Tarayıcı, kullanıcı etkileşimi olmadan sesi askıya alır;
+			// düğmeye basılmışsa bağlam zaten çözülmüştür.
+			if ( 'suspended' === sesBaglami.state ) {
+				sesBaglami.resume();
+			}
+
+			var osc = sesBaglami.createOscillator();
+			var kaz = sesBaglami.createGain();
+
+			osc.type = 'sine';
+			osc.frequency.setValueAtTime( 880, sesBaglami.currentTime );
+			kaz.gain.setValueAtTime( 0.0001, sesBaglami.currentTime );
+			kaz.gain.exponentialRampToValueAtTime( 0.25, sesBaglami.currentTime + 0.02 );
+			kaz.gain.exponentialRampToValueAtTime( 0.0001, sesBaglami.currentTime + 0.4 );
+
+			osc.connect( kaz ).connect( sesBaglami.destination );
 			osc.start();
-			osc.stop(ctx.currentTime + 0.15);
-		} catch (e) { /* sessiz */ }
-	}
-
-	function beklemeDk(createdAt) {
-		if (!createdAt) { return 0; }
-		var t = new Date(createdAt).getTime();
-		if (isNaN(t)) { t = Date.parse(createdAt.replace('Z', '+00:00')); }
-		return Math.floor((Date.now() - t) / 60000);
-	}
-
-	function sonrakiDurum(d) {
-		var map = { bekliyor: 'hazirlaniyor', hazirlaniyor: 'serviste', serviste: 'tamamlandi' };
-		return map[d] || '';
-	}
-	function oncekiDurum(d) {
-		var map = { hazirlaniyor: 'bekliyor', serviste: 'hazirlaniyor', tamamlandi: 'serviste' };
-		return map[d] || '';
-	}
-
-	function kartHtml(k) {
-		var dk = beklemeDk(k.createdAt);
-		var sinif = dk >= esikKirmizi ? 'is-kirmizi' : (dk >= esikSari ? 'is-sari' : '');
-		var tipEtiket = L.i18n[k.tip] || k.tip;
-		var kalemler = '';
-		if (k.items && k.items.length) {
-			kalemler = k.items.map(function (it) {
-				var ad = it.urunAdi || it.ad || '';
-				var adet = it.adet || 1;
-				var not = it.notTr || it.notOrijinal || '';
-				return '<div>' + ad + ' × ' + adet + (not ? ' <em>(' + not + ')</em>' : '') + '</div>';
-			}).join('');
+			osc.stop( sesBaglami.currentTime + 0.42 );
+		} catch ( e ) {
+			// Ses çalınamaması panelin çalışmasını engellemez.
 		}
-		var ileri = sonrakiDurum(k.durum);
-		var geri = oncekiDurum(k.durum);
-		return '<div class="qrms-sp-kart ' + sinif + '" data-id="' + k.id + '" data-durum="' + k.durum + '" data-created="' + k.createdAt + '">' +
-			'<div class="qrms-sp-kart-masa">' + (k.masaAdi || k.masaNo) + '</div>' +
-			'<span class="qrms-sp-kart-tip">' + tipEtiket + '</span>' +
-			'<div class="qrms-sp-kart-sure" data-sure="' + k.createdAt + '">' + dk + ' dk</div>' +
-			'<div class="qrms-sp-kart-kalemler">' + kalemler + '</div>' +
-			'<div class="qrms-sp-kart-butonlar">' +
-			(geri ? '<button type="button" class="button qrms-sp-geri" data-durum="' + geri + '">' + L.i18n.geri + '</button>' : '') +
-			(ileri ? '<button type="button" class="button button-primary qrms-sp-ileri" data-durum="' + ileri + '">' + L.i18n.ileri + '</button>' : '') +
-			(k.durum !== 'iptal' && k.durum !== 'tamamlandi' ? '<button type="button" class="button qrms-sp-iptal" data-durum="iptal">' + L.i18n.iptal + '</button>' : '') +
-			'</div></div>';
 	}
 
-	function filtreUygun(k) {
-		if (tipFiltre && tipFiltre.value && k.tip !== tipFiltre.value) { return false; }
-		if (masaAra && masaAra.value) {
-			var q = masaAra.value.toLowerCase();
-			var ad = (k.masaAdi || k.masaNo || '').toLowerCase();
-			if (ad.indexOf(q) === -1) { return false; }
+	function sesDugmesi() {
+		var dugme = document.querySelector( '.qrms-sp-ses' );
+
+		if ( ! dugme ) {
+			return;
 		}
-		if (aktifFiltre && aktifFiltre.checked && (k.durum === 'tamamlandi' || k.durum === 'iptal')) {
-			if (k.durum === 'tamamlandi') {
-				var dk = beklemeDk(k.guncellendi || k.createdAt);
-				if (dk > 120) { return false; }
-			} else {
+
+		var yansit = function () {
+			dugme.setAttribute( 'aria-pressed', sesAcik ? 'true' : 'false' );
+			dugme.classList.toggle( 'aktif', sesAcik );
+			dugme.querySelector( '.qrms-sp-ses-metin' ).textContent = sesAcik ? M.sesKapat : M.sesAc;
+		};
+
+		dugme.addEventListener( 'click', function () {
+			sesAcik = ! sesAcik;
+
+			try {
+				window.localStorage.setItem( 'qrms_sp_ses', sesAcik ? '1' : '0' );
+			} catch ( e ) {}
+
+			yansit();
+
+			if ( sesAcik ) {
+				bipCal();
+			}
+		} );
+
+		yansit();
+	}
+
+	/* ---------------------------------------------------------------
+	   Masaüstü bildirimi — izin YALNIZCA düğmeye basılınca istenir
+	--------------------------------------------------------------- */
+
+	function bildirimDugmesi() {
+		var dugme = document.querySelector( '.qrms-sp-bildirim' );
+
+		if ( ! dugme || ! ( 'Notification' in window ) ) {
+			if ( dugme ) {
+				dugme.hidden = true;
+			}
+			return;
+		}
+
+		var yansit = function () {
+			dugme.classList.toggle( 'aktif', 'granted' === Notification.permission );
+			dugme.disabled = 'denied' === Notification.permission;
+		};
+
+		dugme.addEventListener( 'click', function () {
+			Notification.requestPermission().then( yansit );
+		} );
+
+		yansit();
+	}
+
+	function bildirimGoster( sayi ) {
+		if ( ! ( 'Notification' in window ) || 'granted' !== Notification.permission ) {
+			return;
+		}
+
+		try {
+			new Notification( M.yeniSiparis, { body: sayi + '', tag: 'qrms-sp' } );
+		} catch ( e ) {}
+	}
+
+	/* ---------------------------------------------------------------
+	   Başlık yanıp sönmesi
+	--------------------------------------------------------------- */
+
+	var baslikAsil = document.title;
+	var baslikVuru = null;
+
+	function baslikUyar( sayi ) {
+		if ( baslikVuru ) {
+			window.clearInterval( baslikVuru );
+		}
+
+		var acik = false;
+
+		baslikVuru = window.setInterval( function () {
+			document.title = acik ? baslikAsil : '(' + sayi + ') ' + M.yeniSiparis;
+			acik = ! acik;
+		}, 1200 );
+
+		var durdur = function () {
+			window.clearInterval( baslikVuru );
+			baslikVuru = null;
+			document.title = baslikAsil;
+			document.removeEventListener( 'visibilitychange', durdur );
+			window.removeEventListener( 'focus', durdur );
+		};
+
+		document.addEventListener( 'visibilitychange', durdur );
+		window.addEventListener( 'focus', durdur );
+	}
+
+	/* ---------------------------------------------------------------
+	   Kart üretimi
+	--------------------------------------------------------------- */
+
+	function metinDugumu( etiket, sinif, icerik ) {
+		var el = document.createElement( etiket );
+
+		if ( sinif ) {
+			el.className = sinif;
+		}
+		if ( undefined !== icerik ) {
+			// textContent: kayıt içeriği müşteriden gelir, HTML olarak
+			// yorumlanmamalı.
+			el.textContent = icerik;
+		}
+
+		return el;
+	}
+
+	function gecenSaniye( kayit ) {
+		if ( ! kayit.olusmaTs ) {
+			return 0;
+		}
+
+		var simdi = Math.floor( Date.now() / 1000 ) + sunucuFarki;
+
+		return Math.max( 0, simdi - kayit.olusmaTs );
+	}
+
+	function sureMetni( saniye ) {
+		var dk = Math.floor( saniye / 60 );
+		var sn = saniye % 60;
+
+		return dk + ':' + ( sn < 10 ? '0' : '' ) + sn;
+	}
+
+	function aciliyet( saniye, durum ) {
+		if ( 'tamamlandi' === durum ) {
+			return '';
+		}
+		if ( saniye >= C.esikKirmizi ) {
+			return 'kirmizi';
+		}
+		if ( saniye >= C.esikSari ) {
+			return 'sari';
+		}
+
+		return 'yesil';
+	}
+
+	function kartYap( kayit ) {
+		var saniye = gecenSaniye( kayit );
+		var acil   = aciliyet( saniye, kayit.durum );
+
+		var kart = document.createElement( 'article' );
+		kart.className = 'qrms-sp-kart qrms-sp-acil-' + acil;
+		kart.dataset.id = kayit.id;
+		kart.dataset.durum = kayit.durum;
+
+		var bas = metinDugumu( 'header', 'qrms-sp-kart-basi' );
+		bas.appendChild( metinDugumu( 'span', 'qrms-sp-masa', kayit.masaAd || '—' ) );
+		bas.appendChild( metinDugumu( 'span', 'qrms-sp-tip qrms-sp-tip-' + kayit.tip, tipler[ kayit.tip ] || kayit.tip ) );
+		bas.appendChild( metinDugumu( 'span', 'qrms-sp-sure', sureMetni( saniye ) ) );
+		kart.appendChild( bas );
+
+		if ( kayit.kalemler && kayit.kalemler.length ) {
+			var liste = document.createElement( 'ul' );
+			liste.className = 'qrms-sp-kalemler';
+
+			kayit.kalemler.forEach( function ( kalem ) {
+				var li = document.createElement( 'li' );
+
+				li.appendChild( metinDugumu( 'span', 'qrms-sp-adet', kalem.adet + '×' ) );
+				li.appendChild( metinDugumu( 'span', 'qrms-sp-kalem-ad', kalem.ad ) );
+
+				// Çeviri varsa ve orijinalden farklıysa ikisi de gösterilir:
+				// mutfak Türkçesini okur, garson misafire kendi dilinde döner.
+				if ( kalem.notTr ) {
+					li.appendChild( metinDugumu( 'span', 'qrms-sp-not', M.not + ': ' + kalem.notTr ) );
+
+					if ( kalem.not && kalem.not !== kalem.notTr ) {
+						li.appendChild( metinDugumu( 'span', 'qrms-sp-not qrms-sp-not-asil', kalem.not ) );
+					}
+				} else if ( kalem.not ) {
+					li.appendChild( metinDugumu( 'span', 'qrms-sp-not', M.not + ': ' + kalem.not ) );
+				}
+
+				liste.appendChild( li );
+			} );
+
+			kart.appendChild( liste );
+		}
+
+		if ( kayit.personel ) {
+			kart.appendChild( metinDugumu( 'p', 'qrms-sp-personel', kayit.personel ) );
+		}
+
+		kart.appendChild( dugmeler( kayit ) );
+
+		return kart;
+	}
+
+	function dugmeler( kayit ) {
+		var kap = document.createElement( 'div' );
+		kap.className = 'qrms-sp-dugmeler';
+
+		var hedefler = akis[ kayit.durum ] || [];
+
+		hedefler.forEach( function ( hedef ) {
+			var dugme = document.createElement( 'button' );
+			dugme.type = 'button';
+			dugme.className = 'button qrms-sp-gecis' + ( 'iptal' === hedef ? ' qrms-sp-iptal' : '' );
+			dugme.dataset.hedef = hedef;
+
+			// İleri yönlü geçiş birincil düğmedir: personelin en sık bastığı o.
+			if ( hedef !== 'iptal' && hedefler.indexOf( hedef ) === 0 ) {
+				dugme.className += ' button-primary';
+			}
+
+			dugme.textContent = 'iptal' === hedef ? M.iptal : ( durumlar[ hedef ] || hedef );
+			kap.appendChild( dugme );
+		} );
+
+		return kap;
+	}
+
+	/* ---------------------------------------------------------------
+	   Çizim
+	--------------------------------------------------------------- */
+
+	function filtreler( kayitlar ) {
+		var tip  = ( document.getElementById( 'qrms-sp-tip' ) || {} ).value || '';
+		var masa = ( ( document.getElementById( 'qrms-sp-masa' ) || {} ).value || '' ).trim().toLocaleLowerCase( 'tr' );
+
+		return kayitlar.filter( function ( kayit ) {
+			if ( tip && kayit.tip !== tip ) {
 				return false;
 			}
-		}
-		return true;
-	}
-
-	function render() {
-		var durumlar = ['bekliyor', 'hazirlaniyor', 'serviste', 'tamamlandi'];
-		var sayilar = { bekliyor: 0, hazirlaniyor: 0, serviste: 0 };
-		var liste = Object.keys(kayitlar).map(function (id) { return kayitlar[id]; });
-
-		liste.sort(function (a, b) {
-			var da = beklemeDk(a.createdAt), db = beklemeDk(b.createdAt);
-			var ka = da >= esikKirmizi ? 1 : 0, kb = db >= esikKirmizi ? 1 : 0;
-			if (ka !== kb) { return kb - ka; }
-			return new Date(b.createdAt) - new Date(a.createdAt);
-		});
-
-		durumlar.forEach(function (d) {
-			var el = document.querySelector('.qrms-sp-kartlar[data-durum="' + d + '"]');
-			if (!el) { return; }
-			var html = '';
-			liste.forEach(function (k) {
-				if (k.durum === d && filtreUygun(k)) {
-					html += kartHtml(k);
-					if (sayilar[d] !== undefined) { sayilar[d]++; }
-				}
-			});
-			el.innerHTML = html;
-		});
-
-		document.querySelectorAll('.qrms-sp-rozet').forEach(function (r) {
-			var d = r.getAttribute('data-durum');
-			if (sayilar[d] !== undefined) { r.textContent = sayilar[d]; }
-		});
-
-		var yeni = liste.filter(function (k) { return k.durum === 'bekliyor'; }).length;
-		document.title = yeni > 0 ? '(' + yeni + ') ' + L.i18n.yeni + ' — ' + orijinalBaslik : orijinalBaslik;
-	}
-
-	function yukle() {
-		var body = new FormData();
-		body.append('action', 'qrms_sp_liste');
-		body.append('nonce', L.nonce);
-		body.append('son_gorulen', sonGorulen);
-		body.append('since', new Date(Date.now() - 86400000).toISOString());
-
-		fetch(L.ajaxUrl, { method: 'POST', body: body, credentials: 'same-origin' })
-			.then(function (r) { return r.json(); })
-			.then(function (res) {
-				if (!res.success) { throw new Error(res.data && res.data.mesaj || 'error'); }
-				hataSayisi = 0;
-				if (hataEl) { hataEl.hidden = true; }
-				interval = document.hidden ? 30000 : baseInterval;
-
-				var oncekiIds = Object.keys(kayitlar);
-				(res.data.kayitlar || []).forEach(function (k) {
-					var yeniKayit = !kayitlar[k.id];
-					kayitlar[k.id] = k;
-					if (k.createdAt > sonGorulen) { sonGorulen = k.createdAt; }
-					if (yeniKayit && k.durum === 'bekliyor') {
-						bip();
-						if ('Notification' in window && Notification.permission === 'granted') {
-							new Notification(L.i18n.yeni, { body: (k.masaAdi || k.masaNo) + ' — ' + (L.i18n[k.tip] || k.tip) });
-						}
-					}
-				});
-				render();
-			})
-			.catch(function () {
-				hataSayisi++;
-				if (hataEl) { hataEl.hidden = false; }
-				interval = Math.min(60000, baseInterval * Math.pow(2, hataSayisi));
-			});
-	}
-
-	function durumGuncelle(id, durum, mevcut) {
-		var body = new FormData();
-		body.append('action', 'qrms_sp_durum');
-		body.append('nonce', L.nonce);
-		body.append('id', id);
-		body.append('durum', durum);
-		body.append('mevcut', mevcut);
-		fetch(L.ajaxUrl, { method: 'POST', body: body, credentials: 'same-origin' })
-			.then(function (r) { return r.json(); })
-			.then(function (res) {
-				if (res.success && kayitlar[id]) {
-					kayitlar[id].durum = durum;
-					render();
-				}
-			});
-	}
-
-	document.addEventListener('click', function (e) {
-		var btn = e.target.closest('.qrms-sp-ileri, .qrms-sp-geri, .qrms-sp-iptal');
-		if (!btn) { return; }
-		var kart = btn.closest('.qrms-sp-kart');
-		if (!kart) { return; }
-		durumGuncelle(kart.getAttribute('data-id'), btn.getAttribute('data-durum'), kart.getAttribute('data-durum'));
-	});
-
-	document.querySelectorAll('.qrms-sp-sekme').forEach(function (tab) {
-		tab.addEventListener('click', function () {
-			document.querySelectorAll('.qrms-sp-sekme').forEach(function (t) { t.classList.remove('is-active'); });
-			tab.classList.add('is-active');
-			var d = tab.getAttribute('data-durum');
-			document.querySelectorAll('.qrms-sp-sutun').forEach(function (s) {
-				s.classList.toggle('is-active', s.getAttribute('data-durum') === d);
-			});
-		});
-	});
-
-	if (tipFiltre) { tipFiltre.addEventListener('change', render); }
-	if (masaAra) { masaAra.addEventListener('input', render); }
-	if (aktifFiltre) { aktifFiltre.addEventListener('change', render); }
-
-	document.addEventListener('visibilitychange', function () {
-		if (!document.hidden) {
-			yukle();
-			interval = baseInterval;
-		}
-	});
-
-	setInterval(function () {
-		document.querySelectorAll('[data-sure]').forEach(function (el) {
-			var dk = beklemeDk(el.getAttribute('data-sure'));
-			el.textContent = dk + ' dk';
-			var kart = el.closest('.qrms-sp-kart');
-			if (kart) {
-				kart.classList.remove('is-sari', 'is-kirmizi');
-				if (dk >= esikKirmizi) { kart.classList.add('is-kirmizi'); }
-				else if (dk >= esikSari) { kart.classList.add('is-sari'); }
+			if ( masa && -1 === ( kayit.masaAd || '' ).toLocaleLowerCase( 'tr' ).indexOf( masa ) ) {
+				return false;
 			}
-		});
-	}, 30000);
 
-	function dongu() {
-		yukle();
-		clearTimeout(timer);
-		timer = setTimeout(dongu, interval);
+			return true;
+		} );
 	}
-	dongu();
 
-	var ayarForm = document.getElementById('qrms-sp-ayarlar-form');
-	if (ayarForm) {
-		ayarForm.addEventListener('submit', function (e) {
-			e.preventDefault();
-			var fd = new FormData(ayarForm);
-			fd.append('action', 'qrms_sp_ayarlar_kaydet');
-			fd.append('nonce', L.ayarNonce);
-			fetch(L.ajaxUrl, { method: 'POST', body: fd, credentials: 'same-origin' })
-				.then(function (r) { return r.json(); })
-				.then(function (res) { if (res.success) { alert('Kaydedildi.'); } });
-		});
+	function ciz( kayitlar ) {
+		var gorunen = filtreler( kayitlar );
+
+		Object.keys( durumlar ).forEach( function ( durum ) {
+			var kap = kanban.querySelector( '[data-kartlar="' + durum + '"]' );
+
+			if ( ! kap ) {
+				return;
+			}
+
+			var altKume = gorunen.filter( function ( kayit ) {
+				return kayit.durum === durum;
+			} );
+
+			// Aciliyeti yüksek olan üstte: kırmızıya geçen kart gözden kaçmasın.
+			altKume.sort( function ( a, b ) {
+				return gecenSaniye( b ) - gecenSaniye( a );
+			} );
+
+			kap.textContent = '';
+
+			if ( ! altKume.length ) {
+				kap.appendChild( metinDugumu( 'p', 'qrms-sp-bos', M.bos ) );
+			} else {
+				altKume.forEach( function ( kayit ) {
+					kap.appendChild( kartYap( kayit ) );
+				} );
+			}
+
+			var sayac = document.querySelector( '[data-sayac="' + durum + '"]' );
+
+			if ( sayac ) {
+				sayac.textContent = altKume.length;
+			}
+
+			var sekme = sekmeler.querySelector( '[data-sekme="' + durum + '"] .qrms-sp-sekme-sayi' );
+
+			if ( sekme ) {
+				sekme.textContent = altKume.length;
+			}
+		} );
 	}
-})();
+
+	/* ---------------------------------------------------------------
+	   Sekmeler (dar ekran)
+	--------------------------------------------------------------- */
+
+	function sekmeKur() {
+		Object.keys( durumlar ).forEach( function ( durum ) {
+			var dugme = document.createElement( 'button' );
+			dugme.type = 'button';
+			dugme.className = 'qrms-sp-sekme' + ( durum === aktifSekme ? ' aktif' : '' );
+			dugme.dataset.sekme = durum;
+			dugme.setAttribute( 'role', 'tab' );
+			dugme.setAttribute( 'aria-selected', durum === aktifSekme ? 'true' : 'false' );
+
+			dugme.appendChild( metinDugumu( 'span', 'qrms-sp-sekme-ad', durumlar[ durum ] ) );
+			dugme.appendChild( metinDugumu( 'span', 'qrms-sp-sekme-sayi', '0' ) );
+
+			dugme.addEventListener( 'click', function () {
+				aktifSekme = durum;
+
+				sekmeler.querySelectorAll( '.qrms-sp-sekme' ).forEach( function ( d ) {
+					var secili = d.dataset.sekme === durum;
+					d.classList.toggle( 'aktif', secili );
+					d.setAttribute( 'aria-selected', secili ? 'true' : 'false' );
+				} );
+
+				kanban.dataset.aktif = durum;
+			} );
+
+			sekmeler.appendChild( dugme );
+		} );
+
+		kanban.dataset.aktif = aktifSekme;
+	}
+
+	/* ---------------------------------------------------------------
+	   Sunucu
+	--------------------------------------------------------------- */
+
+	function istek( eylem, veri ) {
+		var govde = new FormData();
+
+		govde.append( 'action', eylem );
+		govde.append( 'nonce', C.nonce );
+
+		Object.keys( veri || {} ).forEach( function ( anahtar ) {
+			govde.append( anahtar, veri[ anahtar ] );
+		} );
+
+		return fetch( C.ajaxUrl, { method: 'POST', body: govde, credentials: 'same-origin' } )
+			.then( function ( cevap ) {
+				return cevap.json();
+			} );
+	}
+
+	function seritGoster( metin, hata ) {
+		if ( ! serit ) {
+			return;
+		}
+
+		if ( ! metin ) {
+			serit.hidden = true;
+			return;
+		}
+
+		serit.hidden = false;
+		serit.textContent = metin;
+		serit.className = 'qrms-sp-serit' + ( hata ? ' hatali' : ' basarili' );
+	}
+
+	function yeniKayitlar( kayitlar ) {
+		var yeni = 0;
+
+		kayitlar.forEach( function ( kayit ) {
+			if ( ! bilinen[ kayit.id ] ) {
+				bilinen[ kayit.id ] = true;
+
+				if ( ! ilkYukleme && 'bekliyor' === kayit.durum ) {
+					yeni++;
+				}
+			}
+		} );
+
+		return yeni;
+	}
+
+	function yokla() {
+		istek( 'qrms_sp_liste', {} )
+			.then( function ( json ) {
+				if ( ! json || ! json.success ) {
+					throw new Error( json && json.data ? json.data.msg : '' );
+				}
+
+				hataSayisi = 0;
+				aralik = document.hidden ? 30000 : normalAralik;
+				seritGoster( '' );
+
+				sunucuFarki = ( json.data.sunucuSaat || 0 ) - Math.floor( Date.now() / 1000 );
+				sonKayitlar = json.data.kayitlar || [];
+
+				var yeni = yeniKayitlar( sonKayitlar );
+
+				ciz( sonKayitlar );
+
+				if ( yeni > 0 ) {
+					bipCal();
+					bildirimGoster( yeni );
+
+					if ( document.hidden ) {
+						baslikUyar( yeni );
+					}
+				}
+
+				ilkYukleme = false;
+			} )
+			.catch( function ( hata ) {
+				hataSayisi++;
+
+				// Tek bir hata ağ dalgalanması olabilir; ikinciden itibaren
+				// kullanıcıya söylenir ve aralık üstel olarak açılır.
+				if ( hataSayisi >= 2 ) {
+					seritGoster( ( hata && hata.message ) || M.baglantiYok, true );
+					aralik = Math.min( 60000, aralik * 2 );
+				}
+			} )
+			.then( planla );
+	}
+
+	function planla() {
+		if ( zamanlayici ) {
+			window.clearTimeout( zamanlayici );
+		}
+
+		zamanlayici = window.setTimeout( yokla, aralik );
+	}
+
+	/* ---------------------------------------------------------------
+	   Durum değişikliği
+	--------------------------------------------------------------- */
+
+	function geciselerKur() {
+		kanban.addEventListener( 'click', function ( olay ) {
+			var dugme = olay.target.closest( '.qrms-sp-gecis' );
+
+			if ( ! dugme ) {
+				return;
+			}
+
+			var kart = dugme.closest( '.qrms-sp-kart' );
+
+			if ( ! kart || dugme.disabled ) {
+				return;
+			}
+
+			// Çift tıklama iki istek göndermesin.
+			kart.querySelectorAll( '.qrms-sp-gecis' ).forEach( function ( d ) {
+				d.disabled = true;
+			} );
+
+			istek( 'qrms_sp_durum', {
+				id: kart.dataset.id,
+				eski: kart.dataset.durum,
+				yeni: dugme.dataset.hedef
+			} )
+				.then( function ( json ) {
+					if ( ! json || ! json.success ) {
+						throw new Error( json && json.data ? json.data.msg : M.hata );
+					}
+
+					// Yerel kopyayı hemen güncelle: bir sonraki yoklamayı
+					// beklemeden kart doğru sütuna geçsin.
+					sonKayitlar.forEach( function ( kayit ) {
+						if ( kayit.id === kart.dataset.id ) {
+							kayit.durum = json.data.durum;
+						}
+					} );
+
+					ciz( sonKayitlar );
+				} )
+				.catch( function ( hata ) {
+					seritGoster( ( hata && hata.message ) || M.hata, true );
+
+					kart.querySelectorAll( '.qrms-sp-gecis' ).forEach( function ( d ) {
+						d.disabled = false;
+					} );
+				} );
+		} );
+	}
+
+	/* ---------------------------------------------------------------
+	   Başlat
+	--------------------------------------------------------------- */
+
+	function baslat() {
+		sekmeKur();
+		sesDugmesi();
+		bildirimDugmesi();
+		geciselerKur();
+
+		[ 'qrms-sp-tip', 'qrms-sp-masa' ].forEach( function ( id ) {
+			var alan = document.getElementById( id );
+
+			if ( alan ) {
+				alan.addEventListener( 'input', function () {
+					ciz( sonKayitlar );
+				} );
+			}
+		} );
+
+		// Süre sayaçları her saniye tazelenir; sunucuya gidilmez.
+		window.setInterval( function () {
+			kanban.querySelectorAll( '.qrms-sp-kart' ).forEach( function ( kart ) {
+				var kayit = sonKayitlar.filter( function ( k ) {
+					return k.id === kart.dataset.id;
+				} )[ 0 ];
+
+				if ( ! kayit ) {
+					return;
+				}
+
+				var saniye = gecenSaniye( kayit );
+				var sure   = kart.querySelector( '.qrms-sp-sure' );
+
+				if ( sure ) {
+					sure.textContent = sureMetni( saniye );
+				}
+
+				kart.className = 'qrms-sp-kart qrms-sp-acil-' + aciliyet( saniye, kayit.durum );
+			} );
+		}, 1000 );
+
+		document.addEventListener( 'visibilitychange', function () {
+			if ( document.hidden ) {
+				aralik = 30000;
+				planla();
+			} else {
+				aralik = normalAralik;
+				yokla();
+			}
+		} );
+
+		yokla();
+	}
+
+	if ( 'loading' === document.readyState ) {
+		document.addEventListener( 'DOMContentLoaded', baslat );
+	} else {
+		baslat();
+	}
+}() );

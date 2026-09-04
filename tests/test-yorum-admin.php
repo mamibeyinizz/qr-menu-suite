@@ -7,6 +7,11 @@
  * @package QR_Menu_Suite
  */
 
+// menu.php'deki rozet hesabı qrm_pro_trend_drop_state() (trend.php) çağırır;
+// gerçek yüklemede (qr-menu-reviews.php) tüm admin dosyaları tek istekte
+// yüklendiği için sıra sorun değil, ama burada trend.php ayrıca require
+// edilmezse fonksiyon tanımsız kalır.
+require_once QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/admin/trend.php';
 require_once QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/admin/menu.php';
 require_once QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/admin/hub.php';
 require_once QRMS_PLUGIN_DIR . 'modules/yorum-feedback/module.php';

@@ -351,7 +351,7 @@ qrms_test(
 );
 
 qrms_test(
-	'olay_sayaclari idx_td aralık taraması kullanır, şemaya sütun eklemez',
+	'olay_sayaclari idx_td aralık taraması kullanır, şema sürümü kurulu sitelere yansıyacak şekilde artırılmış',
 	function () {
 		$wpdb            = qrms_sayan_wpdb();
 		$wpdb->results[] = array(
@@ -374,8 +374,14 @@ qrms_test(
 		qrms_assert_contains( 'created_at BETWEEN', $wpdb->queries[0], 'idx_td aralığı' );
 		qrms_assert_contains( 'GROUP BY event_type, item_name', $wpdb->queries[0], 'kırılım' );
 
+		// Menü Mühendisliği modülü satış adedini okuyabilsin diye tabloya
+		// qty sütunu eklendi (bkz. CREATE TABLE'daki qty smallint). Yeni
+		// sütun kurulu sitelere ANCAK dbDelta yeniden çalışırsa ulaşır;
+		// sema_kontrol() bunu DB_SURUM değişimine bakarak tetikler. Sürüm
+		// artmadan kalsaydı mevcut kurulumlar sütunu hiç görmezdi.
 		$sema = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/class-qrms-analitik.php' );
-		qrms_assert_contains( "const DB_SURUM = '1.1'", $sema, 'şema sütun eklemedi' );
+		qrms_assert_contains( "const DB_SURUM = '1.2'", $sema, 'şema sürümü qty eklemesiyle artırıldı' );
+		qrms_assert_contains( 'qty smallint', $sema, 'qty sütunu CREATE TABLE içinde' );
 	}
 );
 

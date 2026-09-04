@@ -15,6 +15,13 @@ require_once __DIR__ . '/bootstrap.php';
 
 echo "\nQR Menu Suite — mantık testleri\n\n";
 
+// Giriş testleri EN BAŞTA: son testi QRMS_LOGIN_DISABLE sabitini tanımlar ve
+// sabit geri alınamaz. Sabit yalnızca QRMS_Login'i etkiler, başka hiçbir dosya
+// bu sınıfa dokunmadığı için erken tanımlanması güvenlidir.
+require_once __DIR__ . '/test-login.php';
+require_once __DIR__ . '/test-menu-muhendisligi.php';
+require_once __DIR__ . '/test-servis-paneli.php';
+
 require_once __DIR__ . '/test-core.php';
 require_once __DIR__ . '/test-chatbot.php';
 require_once __DIR__ . '/test-analiz.php';
@@ -33,9 +40,6 @@ require_once __DIR__ . '/test-hfb.php';
 require_once __DIR__ . '/test-banner.php';
 require_once __DIR__ . '/test-hfb-onbellek.php';
 require_once __DIR__ . '/test-iletisim.php';
-require_once __DIR__ . '/test-menu-muhendisligi.php';
-require_once __DIR__ . '/test-servis-paneli.php';
-require_once __DIR__ . '/test-login.php';
 
 if ( empty( $GLOBALS['qrms_failures'] ) ) {
 	echo "\033[32mTüm testler geçti\033[0m (" . $GLOBALS['qrms_assertions'] . " doğrulama)\n\n";

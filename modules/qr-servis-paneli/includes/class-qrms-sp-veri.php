@@ -1,230 +1,374 @@
 <?php
 /**
- * Servis paneli veri katmanı — Firestore sarmalayıcı.
+ * Servis Paneli veri katmanı.
+ *
+ * Müşteri siparişleri ve garson/hesap çağrıları Firestore'daki `calls`
+ * koleksiyonuna yazılır (bkz. qr-chatbot modülü). Bu sınıf o kayıtları okur,
+ * panelin beklediği biçime çevirir ve durum değişikliklerini geri yazar.
+ *
+ * Firestore anahtarı TARAYICIYA ÇIKMAZ: panel kendi sunucusundaki AJAX ucunu
+ * çağırır, Firestore'a yalnızca PHP tarafı service account ile gider.
  *
  * @package QR_Menu_Suite
  */
 
 defined( 'ABSPATH' ) || exit;
 
-if ( ! class_exists( 'QRMS_SP_Veri' ) ) {
+/**
+ * Panel verisi.
+ */
+class QRMS_SP_Veri {
+
+	/** Ayarlar option'ı. */
+	const OPTION = 'qrms_sp_ayarlar';
+
+	/** Sunucu tarafı kısa önbellek (saniye). */
+	const ONBELLEK = 3;
+
+	/** Önbellek anahtarı. */
+	const ONBELLEK_ANAHTAR = 'qrms_sp_liste';
 
 	/**
-	 * Firestore çağrı okuma/yazma ve normalizasyon.
+	 * Durum akışı: hangi durumdan hangilerine geçilebilir?
+	 *
+	 * Geçerli olmayan sıçramalar (ör. "bekliyor" → "tamamlandi") reddedilir;
+	 * aksi hâlde eş zamanlı iki panelden gelen tıklamalar siparişi
+	 * hazırlanmadan tamamlanmış gösterebilirdi.
+	 *
+	 * @return array<string,string[]>
 	 */
-	class QRMS_SP_Veri {
+	public static function akis() {
+		return array(
+			'bekliyor'    => array( 'hazirlaniyor', 'iptal' ),
+			'hazirlaniyor' => array( 'serviste', 'bekliyor', 'iptal' ),
+			'serviste'    => array( 'tamamlandi', 'hazirlaniyor', 'iptal' ),
+			'tamamlandi'  => array(),
+			'iptal'       => array(),
+		);
+	}
 
-		const OPT_AYARLAR = 'qrms_sp_ayarlar';
-		const CACHE_KEY   = 'qrms_sp_liste_cache';
+	/**
+	 * Durumların görünen adları ve sütun sırası.
+	 *
+	 * @return array<string,string>
+	 */
+	public static function durumlar() {
+		return array(
+			'bekliyor'     => __( 'Bekliyor', 'qrms' ),
+			'hazirlaniyor' => __( 'Hazırlanıyor', 'qrms' ),
+			'serviste'     => __( 'Serviste', 'qrms' ),
+			'tamamlandi'   => __( 'Tamamlandı', 'qrms' ),
+		);
+	}
 
-		/**
-		 * Varsayılan ayarlar.
-		 *
-		 * @return array
-		 */
-		public static function varsayilan_ayarlar() {
-			return array(
-				'ses_acik'           => 1,
-				'esik_sari'          => 3,
-				'esik_kirmizi'       => 7,
-				'otomatik_tamam'     => 120,
-				'tipler'             => array( 'siparis', 'garson', 'hesap' ),
-				'yenileme_araligi'   => 5,
-			);
+	/**
+	 * Kayıt tipleri.
+	 *
+	 * @return array<string,string>
+	 */
+	public static function tipler() {
+		return array(
+			'siparis' => __( 'Sipariş', 'qrms' ),
+			'garson'  => __( 'Garson', 'qrms' ),
+			'hesap'   => __( 'Hesap', 'qrms' ),
+		);
+	}
+
+	/**
+	 * Geçiş geçerli mi?
+	 *
+	 * @param string $eski Mevcut durum.
+	 * @param string $yeni Hedef durum.
+	 * @return bool
+	 */
+	public static function gecis_gecerli( $eski, $yeni ) {
+		$akis = self::akis();
+
+		if ( ! isset( $akis[ $eski ] ) ) {
+			return false;
 		}
 
-		/**
-		 * Ayarları okur.
-		 *
-		 * @return array
-		 */
-		public static function ayarlar() {
-			$opt = get_option( self::OPT_AYARLAR, array() );
-			if ( ! is_array( $opt ) ) {
-				$opt = array();
+		return in_array( $yeni, $akis[ $eski ], true );
+	}
+
+	/* -----------------------------------------------------------------
+	   AYARLAR
+	----------------------------------------------------------------- */
+
+	/**
+	 * Varsayılan ayarlar.
+	 *
+	 * @return array
+	 */
+	public static function ayar_varsayilan() {
+		return array(
+			'ses'          => 1,
+			'esik_sari'    => 180,
+			'esik_kirmizi' => 420,
+			'yenileme'     => 5,
+			'tamam_penceresi' => 2,
+			'tipler'       => array( 'siparis', 'garson', 'hesap' ),
+		);
+	}
+
+	/**
+	 * Kayıtlı ayarlar.
+	 *
+	 * @return array
+	 */
+	public static function ayarlar() {
+		$kayitli = get_option( self::OPTION, array() );
+
+		if ( ! is_array( $kayitli ) ) {
+			$kayitli = array();
+		}
+
+		return array_merge( self::ayar_varsayilan(), $kayitli );
+	}
+
+	/**
+	 * Ayarları temizler.
+	 *
+	 * @param array $raw Ham veri.
+	 * @return array
+	 */
+	public static function ayar_temizle( $raw ) {
+		$v   = self::ayar_varsayilan();
+		$raw = is_array( $raw ) ? $raw : array();
+
+		$v['ses'] = empty( $raw['ses'] ) ? 0 : 1;
+
+		$v['esik_sari']    = max( 30, min( 3600, absint( isset( $raw['esik_sari'] ) ? $raw['esik_sari'] : 180 ) ) );
+		$v['esik_kirmizi'] = max( 60, min( 7200, absint( isset( $raw['esik_kirmizi'] ) ? $raw['esik_kirmizi'] : 420 ) ) );
+
+		// Kırmızı eşik sarıdan küçük olamaz; olursa kart doğrudan kırmızıya
+		// atlar ve sarı uyarı hiç görünmez.
+		if ( $v['esik_kirmizi'] <= $v['esik_sari'] ) {
+			$v['esik_kirmizi'] = $v['esik_sari'] + 60;
+		}
+
+		$yenileme       = absint( isset( $raw['yenileme'] ) ? $raw['yenileme'] : 5 );
+		$v['yenileme']  = max( 3, min( 60, $yenileme ) );
+
+		$v['tamam_penceresi'] = max( 1, min( 24, absint( isset( $raw['tamam_penceresi'] ) ? $raw['tamam_penceresi'] : 2 ) ) );
+
+		$tipler = array();
+
+		foreach ( (array) ( isset( $raw['tipler'] ) ? $raw['tipler'] : array() ) as $tip ) {
+			$tip = sanitize_key( $tip );
+
+			if ( isset( self::tipler()[ $tip ] ) ) {
+				$tipler[] = $tip;
 			}
-			return array_merge( self::varsayilan_ayarlar(), $opt );
 		}
 
-		/**
-		 * Ayarları kaydeder.
-		 *
-		 * @param array $ayarlar Ayar dizisi.
-		 * @return void
-		 */
-		public static function ayarlari_kaydet( array $ayarlar ) {
-			$mevcut = self::ayarlar();
-			$yeni   = array_merge( $mevcut, $ayarlar );
-			$yeni['esik_sari']        = max( 1, absint( $yeni['esik_sari'] ?? 3 ) );
-			$yeni['esik_kirmizi']     = max( $yeni['esik_sari'], absint( $yeni['esik_kirmizi'] ?? 7 ) );
-			$yeni['otomatik_tamam']   = max( 30, absint( $yeni['otomatik_tamam'] ?? 120 ) );
-			$yeni['yenileme_araligi'] = max( 3, min( 60, absint( $yeni['yenileme_araligi'] ?? 5 ) ) );
-			$yeni['ses_acik']         = ! empty( $yeni['ses_acik'] ) ? 1 : 0;
-			if ( isset( $ayarlar['tipler'] ) && is_array( $ayarlar['tipler'] ) ) {
-				$yeni['tipler'] = array_values( array_intersect( $ayarlar['tipler'], array( 'siparis', 'garson', 'hesap' ) ) );
+		// Hiç tip seçilmemişse panel boş kalırdı; hepsine dönülür.
+		$v['tipler'] = empty( $tipler ) ? array_keys( self::tipler() ) : $tipler;
+
+		return $v;
+	}
+
+	/* -----------------------------------------------------------------
+	   OKUMA
+	----------------------------------------------------------------- */
+
+	/**
+	 * Firestore yapılandırılmış mı?
+	 *
+	 * @return bool
+	 */
+	public static function hazir_mi() {
+		return class_exists( 'QMO_Firestore' ) && QMO_Firestore::hazir_mi();
+	}
+
+	/**
+	 * Panelin göstereceği kayıtlar.
+	 *
+	 * @return array|WP_Error
+	 */
+	public static function kayitlar() {
+		if ( ! self::hazir_mi() ) {
+			return new WP_Error( 'firebase', __( 'Firebase yapılandırılmamış.', 'qrms' ) );
+		}
+
+		$onbellek = get_transient( self::ONBELLEK_ANAHTAR );
+
+		if ( is_array( $onbellek ) ) {
+			return $onbellek;
+		}
+
+		$ayar = self::ayarlar();
+
+		// Aralık: tamamlanmışların görüneceği pencere kadar geriye bakılır.
+		$saat  = max( 2, (int) $ayar['tamam_penceresi'] );
+		$since = gmdate( 'Y-m-d\TH:i:s\Z', time() - ( $saat * HOUR_IN_SECONDS ) );
+
+		$ham = QMO_Firestore::call_listele(
+			array(
+				'since' => $since,
+				'limit' => 200,
+			)
+		);
+
+		if ( is_wp_error( $ham ) ) {
+			return $ham;
+		}
+
+		$masalar = self::masa_adlari();
+		$kayit   = array();
+
+		foreach ( $ham as $doc ) {
+			$normal = self::normalize( $doc, $masalar );
+
+			if ( null === $normal ) {
+				continue;
 			}
-			update_option( self::OPT_AYARLAR, $yeni, false );
+
+			if ( ! in_array( $normal['tip'], $ayar['tipler'], true ) ) {
+				continue;
+			}
+
+			$kayit[] = $normal;
 		}
 
-		/**
-		 * Firestore yanıtını normalize eder (test edilebilir).
-		 *
-		 * @param array $doc Ham Firestore belgesi.
-		 * @return array
-		 */
-		public static function normalize_doc( array $doc ) {
-			$name   = isset( $doc['name'] ) ? (string) $doc['name'] : '';
-			$parts  = explode( '/', $name );
-			$id     = end( $parts );
-			$fields = isset( $doc['fields'] ) && is_array( $doc['fields'] ) ? $doc['fields'] : array();
+		// Aynı anda birden çok panel açıkken Firestore kotası boşuna
+		// tükenmesin: üç saniyelik kısa önbellek beş ekranı tek isteğe indirir.
+		set_transient( self::ONBELLEK_ANAHTAR, $kayit, self::ONBELLEK );
 
-			$items = array();
-			if ( ! empty( $fields['items']['arrayValue']['values'] ) && is_array( $fields['items']['arrayValue']['values'] ) ) {
-				foreach ( $fields['items']['arrayValue']['values'] as $val ) {
-					if ( ! empty( $val['mapValue']['fields'] ) ) {
-						$item = array();
-						foreach ( $val['mapValue']['fields'] as $ik => $iv ) {
-							$item[ $ik ] = QMO_Firestore::deger_coz( $iv );
-						}
-						$items[] = $item;
-					}
+		return $kayit;
+	}
+
+	/**
+	 * Firestore belgesini panel kaydına çevirir.
+	 *
+	 * SAF fonksiyondur; testler doğrudan çağırır.
+	 *
+	 * @param array $doc     Çözülmüş Firestore belgesi.
+	 * @param array $masalar Masa slug => görünen ad.
+	 * @return array|null Geçersiz belgede null.
+	 */
+	public static function normalize( array $doc, array $masalar = array() ) {
+		if ( empty( $doc['id'] ) ) {
+			return null;
+		}
+
+		$tip = isset( $doc['tip'] ) ? sanitize_key( (string) $doc['tip'] ) : '';
+
+		if ( ! isset( self::tipler()[ $tip ] ) ) {
+			return null;
+		}
+
+		$durum = isset( $doc['durum'] ) ? sanitize_key( (string) $doc['durum'] ) : 'bekliyor';
+
+		if ( ! isset( self::akis()[ $durum ] ) ) {
+			$durum = 'bekliyor';
+		}
+
+		$masa_slug = isset( $doc['masaNo'] ) ? (string) $doc['masaNo'] : '';
+
+		$kalemler = array();
+
+		if ( isset( $doc['items'] ) && is_array( $doc['items'] ) ) {
+			foreach ( $doc['items'] as $kalem ) {
+				if ( ! is_array( $kalem ) ) {
+					continue;
 				}
-			}
 
-			return array(
-				'id'          => $id ?: '',
-				'masaNo'      => (string) QMO_Firestore::deger_coz( $fields['masaNo'] ?? array( 'stringValue' => '' ) ),
-				'tip'         => (string) QMO_Firestore::deger_coz( $fields['tip'] ?? array( 'stringValue' => 'siparis' ) ),
-				'durum'       => (string) QMO_Firestore::deger_coz( $fields['durum'] ?? array( 'stringValue' => 'bekliyor' ) ),
-				'items'       => $items,
-				'notDili'     => (string) QMO_Firestore::deger_coz( $fields['notDili'] ?? array( 'stringValue' => '' ) ),
-				'onaylayanAd' => (string) QMO_Firestore::deger_coz( $fields['onaylayanAd'] ?? array( 'stringValue' => '' ) ),
-				'createdAt'   => (string) QMO_Firestore::deger_coz( $fields['createdAt'] ?? array( 'stringValue' => '' ) ),
-				'guncellendi' => (string) QMO_Firestore::deger_coz( $fields['guncellendi'] ?? array( 'stringValue' => '' ) ),
-			);
+				$kalemler[] = array(
+					'ad'    => isset( $kalem['urunAdi'] ) ? (string) $kalem['urunAdi'] : '',
+					'adet'  => isset( $kalem['adet'] ) ? max( 1, (int) $kalem['adet'] ) : 1,
+					// Müşteri notu kendi dilinde yazılır; qr-chatbot modülü
+					// Türkçe çevirisini notTr alanına yazar. İkisi de gösterilir.
+					'not'   => isset( $kalem['notOrijinal'] ) ? (string) $kalem['notOrijinal'] : '',
+					'notTr' => isset( $kalem['notTr'] ) ? (string) $kalem['notTr'] : '',
+				);
+			}
 		}
 
-		/**
-		 * Masa slug'ından görünen adı çözer.
-		 *
-		 * @param string $slug Masa slug'ı.
-		 * @return string
-		 */
-		public static function masa_adi( $slug ) {
-			if ( class_exists( 'QMO_Masalar' ) ) {
-				$masa = QMO_Masalar::bul( $slug );
-				if ( $masa && ! empty( $masa->table_name ) ) {
-					return (string) $masa->table_name;
-				}
-			}
-			return (string) $slug;
+		$olusma = isset( $doc['createdAt'] ) ? (string) $doc['createdAt'] : '';
+		$zaman  = '' !== $olusma ? strtotime( $olusma ) : 0;
+
+		return array(
+			'id'         => (string) $doc['id'],
+			'tip'        => $tip,
+			'durum'      => $durum,
+			'masa'       => $masa_slug,
+			'masaAd'     => isset( $masalar[ $masa_slug ] ) ? $masalar[ $masa_slug ] : $masa_slug,
+			'kalemler'   => $kalemler,
+			'notDili'    => isset( $doc['notDili'] ) ? (string) $doc['notDili'] : '',
+			'personel'   => isset( $doc['onaylayanAd'] ) ? (string) $doc['onaylayanAd'] : '',
+			'olusma'     => $olusma,
+			'olusmaTs'   => $zaman ? $zaman : 0,
+		);
+	}
+
+	/**
+	 * Masa slug'ı => görünen ad.
+	 *
+	 * Masaların TEK KAYNAĞI qr-masa modülüdür; modül pasifse slug olduğu gibi
+	 * gösterilir (panel yine çalışır, yalnızca ad yerine slug görünür).
+	 *
+	 * @return array<string,string>
+	 */
+	public static function masa_adlari() {
+		if ( ! class_exists( 'QMO_Masalar' ) || ! QMO_Masalar::tablo_var_mi() ) {
+			return array();
 		}
 
-		/**
-		 * Kayıtları listeler (kısa önbellekli).
-		 *
-		 * @param string $since ISO timestamp.
-		 * @param int    $limit Limit.
-		 * @return array|WP_Error
-		 */
-		public static function liste( $since = '', $limit = 100 ) {
-			if ( ! class_exists( 'QMO_Firestore' ) || ! QMO_Firestore::hazir_mi() ) {
-				return new WP_Error( 'firebase', __( 'Firebase yapılandırılmamış.', 'qrms' ) );
+		$adlar = array();
+
+		foreach ( (array) QMO_Masalar::hepsi() as $masa ) {
+			if ( isset( $masa->table_slug ) ) {
+				$adlar[ (string) $masa->table_slug ] = (string) $masa->table_name;
 			}
-
-			if ( '' === $since ) {
-				$since = gmdate( 'Y-m-d\TH:i:s\Z', strtotime( '-24 hours' ) );
-			}
-
-			$cache_key = self::CACHE_KEY . '_' . md5( $since . '_' . $limit );
-			$cached    = get_transient( $cache_key );
-			if ( is_array( $cached ) ) {
-				return $cached;
-			}
-
-			$res = QMO_Firestore::call_listele(
-				array(
-					'since' => $since,
-					'limit' => $limit,
-				)
-			);
-
-			if ( is_wp_error( $res ) ) {
-				return $res;
-			}
-
-			foreach ( $res as &$row ) {
-				$row['masaAdi'] = self::masa_adi( $row['masaNo'] );
-			}
-			unset( $row );
-
-			set_transient( $cache_key, $res, 3 );
-			return $res;
 		}
 
-		/**
-		 * Geçerli durum geçişleri.
-		 *
-		 * @return array<string,string[]>
-		 */
-		public static function gecisler() {
-			return array(
-				'bekliyor'    => array( 'hazirlaniyor', 'iptal' ),
-				'hazirlaniyor' => array( 'serviste', 'bekliyor', 'iptal' ),
-				'serviste'    => array( 'tamamlandi', 'hazirlaniyor', 'iptal' ),
-				'tamamlandi'  => array(),
-				'iptal'       => array(),
-			);
+		return $adlar;
+	}
+
+	/* -----------------------------------------------------------------
+	   YAZMA
+	----------------------------------------------------------------- */
+
+	/**
+	 * Bir kaydın durumunu değiştirir.
+	 *
+	 * @param string $id    Belge kimliği.
+	 * @param string $eski  İstemcinin gördüğü durum.
+	 * @param string $yeni  Hedef durum.
+	 * @return true|WP_Error
+	 */
+	public static function durum_degistir( $id, $eski, $yeni ) {
+		$eski = sanitize_key( $eski );
+		$yeni = sanitize_key( $yeni );
+
+		if ( ! self::gecis_gecerli( $eski, $yeni ) ) {
+			return new WP_Error( 'gecis', __( 'Bu durum değişikliği yapılamaz.', 'qrms' ) );
 		}
 
-		/**
-		 * Durum geçişi geçerli mi?
-		 *
-		 * @param string $mevcut Mevcut durum.
-		 * @param string $yeni   Hedef durum.
-		 * @return bool
-		 */
-		public static function gecis_gecerli_mi( $mevcut, $yeni ) {
-			$mevcut = sanitize_key( (string) $mevcut );
-			$yeni   = sanitize_key( (string) $yeni );
-			$map    = self::gecisler();
-			return isset( $map[ $mevcut ] ) && in_array( $yeni, $map[ $mevcut ], true );
+		if ( ! self::hazir_mi() ) {
+			return new WP_Error( 'firebase', __( 'Firebase yapılandırılmamış.', 'qrms' ) );
 		}
 
-		/**
-		 * Durumu günceller.
-		 *
-		 * @param string $doc_id Belge kimliği.
-		 * @param string $durum  Yeni durum.
-		 * @param string $mevcut Mevcut durum (doğrulama için).
-		 * @return true|WP_Error
-		 */
-		public static function durum_guncelle( $doc_id, $durum, $mevcut = '' ) {
-			$durum = sanitize_key( (string) $durum );
-			if ( '' !== $mevcut && ! self::gecis_gecerli_mi( $mevcut, $durum ) ) {
-				return new WP_Error( 'gecis', __( 'Geçersiz durum geçişi.', 'qrms' ) );
-			}
+		$kullanici = wp_get_current_user();
 
-			$user = wp_get_current_user();
-			$fields = array(
-				'durum'        => array( 'stringValue' => $durum ),
-				'onaylayanUid' => array( 'stringValue' => (string) $user->ID ),
-				'onaylayanAd'  => array( 'stringValue' => $user->display_name ? $user->display_name : $user->user_login ),
+		$sonuc = QMO_Firestore::call_guncelle(
+			$id,
+			array(
+				'durum'        => array( 'stringValue' => $yeni ),
+				'onaylayanUid' => array( 'stringValue' => (string) get_current_user_id() ),
+				'onaylayanAd'  => array( 'stringValue' => $kullanici ? (string) $kullanici->display_name : '' ),
 				'guncellendi'  => array( 'timestampValue' => gmdate( 'Y-m-d\TH:i:s\Z' ) ),
-			);
+			)
+		);
 
-			$res = QMO_Firestore::call_guncelle(
-				$doc_id,
-				$fields,
-				array( 'durum', 'onaylayanUid', 'onaylayanAd', 'guncellendi' )
-			);
-
-			if ( is_wp_error( $res ) ) {
-				return $res;
-			}
-
-			delete_transient( self::CACHE_KEY . '_' . md5( '' ) );
-			return true;
+		if ( is_wp_error( $sonuc ) ) {
+			return $sonuc;
 		}
+
+		// Panel bir sonraki yoklamada yeni durumu görsün.
+		delete_transient( self::ONBELLEK_ANAHTAR );
+
+		return true;
 	}
 }
