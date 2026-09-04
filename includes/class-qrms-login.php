@@ -1106,7 +1106,7 @@ class QRMS_Login {
 
 		$mesaj = sprintf(
 			/* translators: 1: yeni giriş adresi, 2: slug. */
-			__( "Yönetim paneline artık şu adresten giriyorsunuz:\n\n%1\$s\n\nBu adresi kaydedin. wp-login.php ve wp-admin adresleri artık 404 döner.\n\nAdresi unutursanız sunucudaki wp-config.php dosyasına şu satırı ekleyerek özelliği kapatabilir ve eski giriş adresine dönebilirsiniz:\n\ndefine( 'QRMS_LOGIN_DISABLE', true );\n", 'qrms' ),
+			__( "Yönetim paneline artık şu adresten giriyorsunuz:\n\n%1\$s\n\nKısa ad (slug): %2\$s\n\nBu adresi kaydedin. wp-login.php ve wp-admin adresleri artık 404 döner.\n\nAdresi unutursanız sunucudaki wp-config.php dosyasına şu satırı ekleyerek özelliği kapatabilir ve eski giriş adresine dönebilirsiniz:\n\ndefine( 'QRMS_LOGIN_DISABLE', true );\n", 'qrms' ),
 			self::login_url(),
 			$slug
 		);

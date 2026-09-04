@@ -177,14 +177,16 @@ function qrm_pro_admin_reviews_where($durum, $sekme, $threshold, $wf = '', array
 
     if (!empty($extra['search'])) {
         global $wpdb;
-        $like       = '%' . $wpdb->esc_like($extra['search']) . '%';
-        $kosullar[] = '(customer_name LIKE %s OR customer_email LIKE %s OR customer_phone LIKE %s OR comment LIKE %s OR reward_code LIKE %s OR table_no LIKE %s)';
-        $params[]   = $like;
-        $params[]   = $like;
-        $params[]   = $like;
-        $params[]   = $like;
-        $params[]   = $like;
-        $params[]   = $like;
+        $like         = '%' . $wpdb->esc_like($extra['search']) . '%';
+        $reward_table = function_exists('qrm_reward_table') ? qrm_reward_table() : ($wpdb->prefix . 'qrm_reward_codes');
+        // email ve kod qrm_reviews'ta yok; ödül tablosunda (source_review_id) durur.
+        $kosullar[]   = '(customer_name LIKE %s OR customer_phone LIKE %s OR comment LIKE %s OR table_no LIKE %s OR id IN (SELECT source_review_id FROM ' . $reward_table . ' WHERE email LIKE %s OR code LIKE %s))';
+        $params[]     = $like;
+        $params[]     = $like;
+        $params[]     = $like;
+        $params[]     = $like;
+        $params[]     = $like;
+        $params[]     = $like;
     }
 
     return [
