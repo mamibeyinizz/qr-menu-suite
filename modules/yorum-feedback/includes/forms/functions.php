@@ -640,6 +640,92 @@ function qrm_cf_validate_rating_group_submission($post, $label) {
     return ['ok' => true, 'data' => $data];
 }
 
+/**
+ * google_reward widget'ı için gönderim sonrası yanıt alanları.
+ *
+ * Yorum formuyla (ajax/submit-review.php) AYNI eşik mantığını paylaşır:
+ * formda gerçek bir puanlama kaynağı (rating_group ya da tekli 'rating'
+ * alanı) yoksa hiçbir zaman tetiklenmez — google_reward'ın kendisi puan
+ * taşımaz, göstermek için birinden ödünç almak zorundadır.
+ *
+ * NOT: review_id burada gerçek bir wp_qrm_reviews satırına değil, BU
+ * gönderimin kendi kimliğine (submission_id, wp_qrm_custom_form_submissions)
+ * işaret eder. Ödül modülü bu değeri yalnızca talep anahtarının/olay
+ * kaydının ad alanı olarak kullanır (qrm_reward_issue_claim,
+ * qrm_reward_log_event) — wp_qrm_reviews'a hiç geri okuma yapmaz, bu yüzden
+ * güvenlidir. Tek bilinen yan etki: Tüm Yorumlar panelindeki arama kutusu
+ * reward tablosundaki source_review_id'yi wp_qrm_reviews.id sanıp eşleştirir;
+ * id'ler tesadüfen çakışırsa arama sonucu yanlış bir yoruma işaret edebilir
+ * — kozmetik, veri bütünlüğünü etkilemez.
+ *
+ * @param array $fields        qrm_cf_get_fields() çıktısı
+ * @param array $data          qrm_cf_validate_submission()'ın döndürdüğü $data
+ * @param int   $submission_id Az önce oluşturulan gönderim kaydının id'si
+ * @return array{show_reward:bool,review_id:int,reward_claim:string,show_google:bool,google_url:string}
+ */
+function qrm_cf_reward_response(array $fields, array $data, $submission_id) {
+    $out = [
+        'show_reward'  => false,
+        'review_id'    => 0,
+        'reward_claim' => '',
+        'show_google'  => false,
+        'google_url'   => '',
+    ];
+
+    $has_reward_widget = false;
+    $rating_field_key  = '';
+    foreach ($fields as $field) {
+        $type = is_object($field) ? $field->field_type : $field['field_type'];
+        if ($type === 'google_reward') {
+            $has_reward_widget = true;
+        }
+        if ($type === 'rating' && $rating_field_key === '') {
+            $rating_field_key = is_object($field) ? $field->field_key : $field['field_key'];
+        }
+    }
+    if (!$has_reward_widget) {
+        return $out;
+    }
+
+    // Canlı JS tarafındaki gating ile aynı öncelik: önce rating_group'un
+    // çoklu kriter ortalaması, yoksa tekli 'rating' alanı.
+    $avg = null;
+    $sum = 0;
+    $cnt = 0;
+    for ($i = 1; $i <= 5; $i++) {
+        if (isset($data['rating_' . $i])) {
+            $sum += (int) $data['rating_' . $i];
+            $cnt++;
+        }
+    }
+    if ($cnt > 0) {
+        $avg = $sum / $cnt;
+    } elseif ($rating_field_key !== '' && isset($data[$rating_field_key]) && $data[$rating_field_key] !== '') {
+        $avg = (float) $data[$rating_field_key];
+    }
+
+    if ($avg === null) {
+        return $out;
+    }
+
+    $settings  = qrm_pro_get_settings();
+    $threshold = floatval($settings['google_review_threshold']);
+    $eligible  = !empty($settings['google_review_enabled']) && !empty($settings['google_review_url']) && $avg >= $threshold;
+
+    $reward_on   = function_exists('qrm_reward_is_active') && qrm_reward_is_active($settings);
+    $show_reward = $eligible && $reward_on;
+
+    $out['show_google']  = $eligible && !$reward_on;
+    $out['google_url']   = $eligible ? esc_url_raw($settings['google_review_url']) : '';
+    $out['show_reward']  = $show_reward;
+    $out['review_id']    = $show_reward ? (int) $submission_id : 0;
+    $out['reward_claim'] = ($show_reward && function_exists('qrm_reward_issue_claim'))
+        ? qrm_reward_issue_claim((int) $submission_id)
+        : '';
+
+    return $out;
+}
+
 // --- GÖNDERİM CRUD ---
 
 function qrm_cf_insert_submission($form_id, $data, $ip = '', array $consent = []) {

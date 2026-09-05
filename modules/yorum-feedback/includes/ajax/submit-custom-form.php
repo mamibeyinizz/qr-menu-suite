@@ -84,8 +84,15 @@ function qrm_cf_ajax_submit() {
         ]);
     }
 
-    wp_send_json([
+    // google_reward widget'ı varsa (bkz. qrm_cf_reward_response) ve
+    // gönderimdeki puan eşiği karşılıyorsa, ön yüzün window.qrmRewardPopup'ı
+    // açması için gereken alanlar yanıta eklenir — yorum formuyla
+    // (ajax/submit-review.php) aynı sözleşme (show_reward/review_id/
+    // reward_claim/show_google/google_url).
+    $reward_fields = qrm_cf_reward_response($fields, $validated['data'], $submission_id);
+
+    wp_send_json(array_merge([
         'success' => true,
         'message' => qrm_ceviri_cf_form($form->id, 'success_message', $settings['success_message']),
-    ]);
+    ], $reward_fields));
 }
