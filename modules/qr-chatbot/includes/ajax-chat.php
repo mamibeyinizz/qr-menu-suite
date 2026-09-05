@@ -108,7 +108,14 @@ if ( ! function_exists( 'qmo_ajax_chat' ) ) {
 			'parts' => array( array( 'text' => $message ) ),
 		);
 
-		$url = 'https://generativelanguage.googleapis.com/v1beta/models/' . qmo_gemini_model() . ':generateContent?key=' . rawurlencode( $api_key );
+		$url = 'https://generativelanguage.googleapis.com/v1beta/models/' . qmo_gemini_model() . ':streamGenerateContent?alt=sse&key=' . rawurlencode( $api_key );
+
+		$istek_govdesi = wp_json_encode(
+			array(
+				'contents'          => $contents,
+				'systemInstruction' => array( 'parts' => array( array( 'text' => $final_prompt ) ) ),
+			)
+		);
 
 		// Buraya kadarki veritabanı işi (oturum doğrulama, mesaj limiti, ayar
 		// okuma) bitti; sıradaki adım 45 saniyeye kadar sürebilen bir Gemini
@@ -116,55 +123,238 @@ if ( ! function_exists( 'qmo_ajax_chat' ) ) {
 		// yoğun saatte eşzamanlı sohbetler havuzu böyle tüketmez.
 		$db_kapali = qmo_db_serbest_birak();
 
-		$response = wp_remote_post(
+		qmo_ajax_chat_sse_baslik();
+
+		$akim        = qmo_ajax_chat_gemini_akisi(
 			$url,
+			$istek_govdesi,
+			function ( $parca ) {
+				qmo_ajax_chat_sse_gonder( array( 'delta' => $parca ) );
+			}
+		);
+		$tam_metin   = $akim['metin'];
+		$akim_hatasi = $akim['hata'];
+
+		// Akış bitti; post-işlem ve wp_die öncesi veritabanına geri dön.
+		qmo_db_geri_baglan( $db_kapali );
+
+		if ( '' !== $akim_hatasi ) {
+			qmo_ajax_chat_sse_gonder( array( 'error' => $akim_hatasi ) );
+			exit;
+		}
+
+		if ( '' === $tam_metin ) {
+			qmo_log( 'Beklenmeyen Gemini akış yanıtı.' );
+			qmo_ajax_chat_sse_gonder(
+				array(
+					'error' => qmo_ceviri_chat( __( 'Asistan şu anda yanıt veremiyor, lütfen tekrar deneyin.', 'qrms' ) ),
+				)
+			);
+			exit;
+		}
+
+		$cevap = qmo_chat_dogrulanmamis_etiketleri_temizle( $tam_metin, $message );
+		qmo_chatbot_gecmis_yaz( $sess, $message, $cevap );
+		$cevap = qmo_chat_eskalasyon_uygula( $cevap );
+		qmo_chatbot_canli_takip_guncelle( $sess, $message, $cevap );
+		qmo_chat_oneri_gosterim_logla( $cevap, $sess, $message, $decoded_history );
+
+		qmo_ajax_chat_sse_gonder(
 			array(
-				'timeout' => 45,
-				'headers' => array( 'Content-Type' => 'application/json' ),
-				'body'    => wp_json_encode(
-					array(
-						'contents'          => $contents,
-						'systemInstruction' => array( 'parts' => array( array( 'text' => $final_prompt ) ) ),
-					)
-				),
+				'done'    => true,
+				'mesaj'   => $cevap,
+				'urunler' => qmo_chat_yanit_urunleri( $cevap ),
+			)
+		);
+		exit;
+	}
+}
+
+/**
+ * SSE yanıt başlıkları ve tampon temizliği.
+ *
+ * @return void
+ */
+if ( ! function_exists( 'qmo_ajax_chat_sse_baslik' ) ) {
+	function qmo_ajax_chat_sse_baslik() {
+		while ( ob_get_level() > 0 ) {
+			ob_end_clean();
+		}
+
+		header( 'Content-Type: text/event-stream; charset=' . get_option( 'blog_charset' ) );
+		header( 'Cache-Control: no-cache, no-store, must-revalidate' );
+		header( 'X-Accel-Buffering: no' );
+		nocache_headers();
+	}
+}
+
+/**
+ * İstemciye tek SSE olayı yazar ve hemen flush eder.
+ *
+ * @param array<string,mixed> $olay Olay verisi.
+ * @return void
+ */
+if ( ! function_exists( 'qmo_ajax_chat_sse_gonder' ) ) {
+	function qmo_ajax_chat_sse_gonder( array $olay ) {
+		echo 'data: ' . wp_json_encode( $olay ) . "\n\n";
+
+		if ( function_exists( 'ob_flush' ) ) {
+			@ob_flush();
+		}
+		flush();
+	}
+}
+
+/**
+ * Gemini streamGenerateContent (SSE) akışını cURL ile okur.
+ *
+ * @param string   $url           Gemini uç noktası.
+ * @param string   $istek_govdesi JSON gövde.
+ * @param callable $parca_cb      Her metin parçası için çağrılır.
+ * @return array{metin:string,hata:string}
+ */
+if ( ! function_exists( 'qmo_ajax_chat_gemini_akisi' ) ) {
+	function qmo_ajax_chat_gemini_akisi( $url, $istek_govdesi, $parca_cb ) {
+		if ( ! function_exists( 'curl_init' ) ) {
+			qmo_log( 'Gemini akışı: cURL eklentisi yok.' );
+			return array(
+				'metin' => '',
+				'hata'  => qmo_ceviri_chat( __( 'Bağlantı hatası oluştu.', 'qrms' ) ),
+			);
+		}
+
+		$tam_metin   = '';
+		$satir_tampon = '';
+		$akim_hatasi  = '';
+
+		$ch = curl_init( $url );
+		if ( false === $ch ) {
+			qmo_log( 'Gemini akışı: curl_init başarısız.' );
+			return array(
+				'metin' => '',
+				'hata'  => qmo_ceviri_chat( __( 'Bağlantı hatası oluştu.', 'qrms' ) ),
+			);
+		}
+
+		curl_setopt_array(
+			$ch,
+			array(
+				CURLOPT_POST           => true,
+				CURLOPT_POSTFIELDS     => $istek_govdesi,
+				CURLOPT_HTTPHEADER     => array( 'Content-Type: application/json' ),
+				CURLOPT_RETURNTRANSFER => false,
+				CURLOPT_TIMEOUT        => 45,
+				CURLOPT_WRITEFUNCTION  => function ( $handle, $chunk ) use ( &$satir_tampon, &$tam_metin, &$akim_hatasi, $parca_cb ) {
+					unset( $handle );
+
+					if ( '' !== $akim_hatasi ) {
+						return 0;
+					}
+
+					$satir_tampon .= $chunk;
+
+					while ( false !== ( $pos = strpos( $satir_tampon, "\n" ) ) ) {
+						$satir        = substr( $satir_tampon, 0, $pos );
+						$satir_tampon = substr( $satir_tampon, $pos + 1 );
+						$satir        = trim( $satir );
+
+						if ( '' === $satir || 0 === strpos( $satir, ':' ) ) {
+							continue;
+						}
+
+						if ( 0 !== strpos( $satir, 'data: ' ) ) {
+							continue;
+						}
+
+						$json_str = substr( $satir, 6 );
+						if ( '[DONE]' === $json_str ) {
+							continue;
+						}
+
+						$data = json_decode( $json_str, true );
+						if ( ! is_array( $data ) ) {
+							continue;
+						}
+
+						if ( isset( $data['error']['message'] ) ) {
+							qmo_log( 'Gemini API hatası: ' . $data['error']['message'] );
+							$akim_hatasi = qmo_ceviri_chat( __( 'Asistan şu anda yanıt veremiyor, lütfen tekrar deneyin.', 'qrms' ) );
+							return 0;
+						}
+
+						if ( isset( $data['candidates'][0]['content']['parts'][0]['text'] ) ) {
+							$parca = $data['candidates'][0]['content']['parts'][0]['text'];
+							$tam_metin .= $parca;
+							if ( is_callable( $parca_cb ) ) {
+								call_user_func( $parca_cb, $parca );
+							}
+						} elseif ( isset( $data['candidates'][0]['finishReason'] ) && '' === $tam_metin ) {
+							qmo_log( 'Gemini finishReason: ' . sanitize_text_field( $data['candidates'][0]['finishReason'] ) );
+							$akim_hatasi = qmo_ceviri_chat( __( 'Asistan şu anda yanıt veremiyor, lütfen tekrar deneyin.', 'qrms' ) );
+							return 0;
+						}
+					}
+
+					return strlen( $chunk );
+				},
 			)
 		);
 
-		// Yanıtı basmadan önce geri bağlan: wp_send_json_* → wp_die zinciri
-		// (ve shutdown kancaları) veritabanına dokunabilir.
-		qmo_db_geri_baglan( $db_kapali );
+		curl_exec( $ch );
+		$curl_errno = curl_errno( $ch );
+		$curl_error = curl_error( $ch );
+		$http_code  = (int) curl_getinfo( $ch, CURLINFO_HTTP_CODE );
+		curl_close( $ch );
 
-		if ( is_wp_error( $response ) ) {
-			qmo_log( 'Gemini bağlantı hatası: ' . $response->get_error_message() );
-			wp_send_json_error( qmo_ceviri_chat( __( 'Bağlantı hatası oluştu.', 'qrms' ) ) );
+		if ( '' !== $satir_tampon && '' === $akim_hatasi ) {
+			$satir = trim( $satir_tampon );
+			if ( '' !== $satir && 0 === strpos( $satir, 'data: ' ) ) {
+				$json_str = substr( $satir, 6 );
+				if ( '[DONE]' !== $json_str ) {
+					$data = json_decode( $json_str, true );
+					if ( is_array( $data ) ) {
+						if ( isset( $data['error']['message'] ) ) {
+							qmo_log( 'Gemini API hatası: ' . $data['error']['message'] );
+							$akim_hatasi = qmo_ceviri_chat( __( 'Asistan şu anda yanıt veremiyor, lütfen tekrar deneyin.', 'qrms' ) );
+						} elseif ( isset( $data['candidates'][0]['content']['parts'][0]['text'] ) ) {
+							$parca = $data['candidates'][0]['content']['parts'][0]['text'];
+							$tam_metin .= $parca;
+							if ( is_callable( $parca_cb ) ) {
+								call_user_func( $parca_cb, $parca );
+							}
+						}
+					}
+				}
+			}
 		}
 
-		$data = json_decode( wp_remote_retrieve_body( $response ), true );
-
-		if ( isset( $data['candidates'][0]['content']['parts'][0]['text'] ) ) {
-			$cevap = $data['candidates'][0]['content']['parts'][0]['text'];
-			$cevap = qmo_chat_dogrulanmamis_etiketleri_temizle( $cevap, $message );
-			qmo_chatbot_gecmis_yaz( $sess, $message, $cevap );
-			$cevap = qmo_chat_eskalasyon_uygula( $cevap );
-			qmo_chatbot_canli_takip_guncelle( $sess, $message, $cevap );
-			qmo_chat_oneri_gosterim_logla( $cevap, $sess, $message, $decoded_history );
-			wp_send_json_success(
-				array(
-					'mesaj'   => $cevap,
-					'urunler' => qmo_chat_yanit_urunleri( $cevap ),
-				)
+		if ( '' !== $akim_hatasi ) {
+			return array(
+				'metin' => $tam_metin,
+				'hata'  => $akim_hatasi,
 			);
-		} elseif ( isset( $data['error']['message'] ) ) {
-			// API anahtarı gibi ayrıntılar müşteriye sızmasın; log'a yaz.
-			qmo_log( 'Gemini API hatası: ' . $data['error']['message'] );
-			wp_send_json_error( qmo_ceviri_chat( __( 'Asistan şu anda yanıt veremiyor, lütfen tekrar deneyin.', 'qrms' ) ) );
-		} elseif ( isset( $data['candidates'][0]['finishReason'] ) ) {
-			qmo_log( 'Gemini finishReason: ' . sanitize_text_field( $data['candidates'][0]['finishReason'] ) );
-			wp_send_json_error( qmo_ceviri_chat( __( 'Asistan şu anda yanıt veremiyor, lütfen tekrar deneyin.', 'qrms' ) ) );
-		} else {
-			qmo_log( 'Beklenmeyen Gemini yanıtı. HTTP: ' . wp_remote_retrieve_response_code( $response ) );
-			wp_send_json_error( qmo_ceviri_chat( __( 'Asistan şu anda yanıt veremiyor, lütfen tekrar deneyin.', 'qrms' ) ) );
 		}
+
+		if ( 0 !== $curl_errno ) {
+			qmo_log( 'Gemini bağlantı hatası: ' . $curl_error );
+			return array(
+				'metin' => $tam_metin,
+				'hata'  => qmo_ceviri_chat( __( 'Bağlantı hatası oluştu.', 'qrms' ) ),
+			);
+		}
+
+		if ( 200 !== $http_code ) {
+			qmo_log( 'Beklenmeyen Gemini yanıtı. HTTP: ' . $http_code );
+			return array(
+				'metin' => $tam_metin,
+				'hata'  => qmo_ceviri_chat( __( 'Asistan şu anda yanıt veremiyor, lütfen tekrar deneyin.', 'qrms' ) ),
+			);
+		}
+
+		return array(
+			'metin' => $tam_metin,
+			'hata'  => '',
+		);
 	}
 }
 
