@@ -494,7 +494,7 @@ function qrm_pro_steps_css($v) {
         ['.qrm-steps-mobile-label', 'display:none; text-align:center; font-size:13px; font-weight:600; margin-top:10px; opacity:.8;'],
         ['.qrm-step-panels', 'position:relative;'],
         ['.qrm-step', 'animation:qrmFadeInUp .35s ease both; min-height:0; transition:min-height .2s ease;'],
-        ['.qrm-step[hidden]', 'display:none;'],
+        ['.qrm-step[hidden]', 'display:none !important;'],
         ['form.qrm-js .qrm-step-panels > .qrm-step:not([hidden])', 'min-height:var(--qrm-step-min,0);'],
         ['.qrm-step-summary', 'font-size:14px; line-height:1.6;'],
         ['.qrm-summary-block', 'margin-bottom:18px; padding:14px 16px; background:rgba(0,0,0,.03); border-radius:10px;'],
@@ -502,13 +502,21 @@ function qrm_pro_steps_css($v) {
         ['.qrm-summary-edit', 'background:none; border:none; color:' . $btn . '; font-size:13px; font-weight:600; cursor:pointer; text-decoration:underline; padding:0; margin-top:6px;'],
         ['.qrm-summary-edit:focus-visible', 'outline:2px solid ' . $btn . '; outline-offset:2px;'],
         ['.sr-only', 'position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;'],
-        ['.qrm-steps-nav', 'display:none;'],
-        ['.qrm-step-submit, .qrm-cf-step-submit', 'display:none;'],
-        ['form.qrm-js .qrm-steps-head', 'display:flex;'],
-        ['form.qrm-js .qrm-steps-nav', 'display:flex;'],
-        ['form.qrm-js #qrm-step-next, form.qrm-js .qrm-cf-step-next', 'display:flex;'],
-        ['form.qrm-js #qrm-step-back:not([hidden]), form.qrm-js .qrm-cf-step-back:not([hidden])', 'display:inline-flex;'],
-        ['form.qrm-js .qrm-step-submit:not([hidden]), form.qrm-js .qrm-cf-step-submit:not([hidden])', 'display:flex;'],
+        // !important: bazı temalar/Elementor global stilleri `button` öğelerine
+        // display değeri basıyor (ör. "tüm butonlar inline-flex görünsün");
+        // bu, aşağıdaki gizleme/gösterme kurallarını !important olmadan ezip
+        // "Geri" ve "Gönder" butonlarının aktif adımdan bağımsız her zaman
+        // görünmesine yol açıyordu (yalnızca "Devam Et" görünmeliydi).
+        ['.qrm-steps-nav', 'display:none !important;'],
+        ['.qrm-step-submit, .qrm-cf-step-submit', 'display:none !important;'],
+        ['form.qrm-js .qrm-steps-head', 'display:flex !important;'],
+        ['form.qrm-js .qrm-steps-nav', 'display:flex !important;'],
+        ['form.qrm-js #qrm-step-next, form.qrm-js .qrm-cf-step-next', 'display:flex !important;'],
+        ['form.qrm-js #qrm-step-next[hidden], form.qrm-js .qrm-cf-step-next[hidden]', 'display:none !important;'],
+        ['form.qrm-js #qrm-step-back:not([hidden]), form.qrm-js .qrm-cf-step-back:not([hidden])', 'display:inline-flex !important;'],
+        ['form.qrm-js #qrm-step-back[hidden], form.qrm-js .qrm-cf-step-back[hidden]', 'display:none !important;'],
+        ['form.qrm-js .qrm-step-submit:not([hidden]), form.qrm-js .qrm-cf-step-submit:not([hidden])', 'display:flex !important;'],
+        ['form.qrm-js .qrm-step-submit[hidden], form.qrm-js .qrm-cf-step-submit[hidden]', 'display:none !important;'],
         ['@media(max-width:600px)', '.qrm-step-dot{width:24px;height:24px;font-size:12px;} .qrm-step-label{font-size:11px;max-width:60px;} .qrm-step-item{min-width:44px;}'],
         ['@media(max-width:360px)', '.qrm-step-label{display:none;} .qrm-steps-mobile-label{display:block;} .qrm-step-item.is-active .qrm-step-label{display:block;max-width:none;}'],
         ['@media(prefers-reduced-motion:reduce)', '.qrm-step,.qrm-step-dot,.qrm-step-line{animation:none;transition:none;}'],

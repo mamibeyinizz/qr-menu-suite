@@ -222,6 +222,11 @@ function qrm_cf_admin_form_editor_view() {
                             <span class="dashicons dashicons-arrow-left-alt"></span>
                             Soldaki paletten alan ekleyerek formunuzu oluşturmaya başlayın.
                         </div>
+                        <div class="qrm-fb-preview-stepnav" id="qrm-fb-preview-stepnav" hidden>
+                            <button type="button" class="qrm-btn-secondary" id="qrm-fb-preview-prev">← Geri</button>
+                            <span class="qrm-fb-preview-stepnav-label" id="qrm-fb-preview-stepnav-label"></span>
+                            <button type="button" class="qrm-fb-submit-preview" id="qrm-fb-preview-next">Devam Et →</button>
+                        </div>
                         <button type="button" class="qrm-fb-submit-preview" id="qrm-fb-submit-preview" disabled><?php echo esc_html($s['submit_text']); ?></button>
                     </div>
                 </main>
@@ -570,6 +575,14 @@ function qrm_cf_admin_builder_styles() {
         .qrm-fb-submit-preview { width:100%; margin-top:12px; padding:15px 30px; border:none; border-radius:var(--qrm-radius); background:var(--qrm-btn); color:var(--qrm-btn-text);
             font-size:15px; font-weight:600; text-transform:uppercase; letter-spacing:.5px; opacity:.95; cursor:default; }
 
+        /* Çok adımlı formlarda önizleme, ziyaretçinin göreceği gibi TEK adımı
+           gösterir; bu çubuk adımlar arasında (yalnızca önizleme içinde) gezinir. */
+        .qrm-fb-preview-stepnav { display:flex; align-items:center; gap:12px; margin-top:12px; }
+        .qrm-fb-preview-stepnav[hidden] { display:none; }
+        .qrm-fb-preview-stepnav .qrm-btn-secondary { flex:0 0 auto; padding:12px 18px; border-radius:var(--qrm-radius); border:1px solid var(--qrm-border); background:transparent; color:var(--qrm-text); font-size:14px; font-weight:600; cursor:default; }
+        .qrm-fb-preview-stepnav .qrm-fb-submit-preview { flex:1 1 auto; margin-top:0; width:auto; }
+        .qrm-fb-preview-stepnav-label { flex:1 1 auto; text-align:center; font-size:12.5px; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:.4px; }
+
         .qrm-fb-step-group { width:100%; margin-bottom:18px; min-height:56px; padding:6px; border:1px dashed transparent; border-radius:10px; }
         .qrm-fb-step-group.is-drop { border-color:#2271b1; background:rgba(34,113,177,.04); }
         .qrm-fb-step-group-title { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.4px; color:#64748b; margin:0 0 10px; padding-bottom:6px; border-bottom:1px dashed #e2e8f0; }
@@ -657,6 +670,7 @@ function qrm_cf_admin_builder_script($state, $types, $ctx = []) {
         var maxSteps   = parseInt(CTX.max_steps, 10) || 12;
         var systemForm = CTX.system || '';
         var stepCount  = 1;
+        var previewStepIdx = 1;
 
         var wrap      = document.getElementById('qrm-fb-wrap');
         var form      = document.getElementById('qrm-fb-form');
@@ -664,6 +678,11 @@ function qrm_cf_admin_builder_script($state, $types, $ctx = []) {
         var emptyBox  = document.getElementById('qrm-fb-empty-fields');
         var jsonInput = document.getElementById('qrm-fb-fields-json');
         var previewBox = document.getElementById('qrm-fb-preview-box');
+        var previewStepNav   = document.getElementById('qrm-fb-preview-stepnav');
+        var previewStepLabel = document.getElementById('qrm-fb-preview-stepnav-label');
+        var previewPrevBtn   = document.getElementById('qrm-fb-preview-prev');
+        var previewNextBtn   = document.getElementById('qrm-fb-preview-next');
+        var previewSubmitBtn = document.getElementById('qrm-fb-submit-preview');
         if (!form || !itemsBox) return;
 
         var titleInput = document.getElementById('qrm-fb-title');
@@ -834,6 +853,46 @@ function qrm_cf_admin_builder_script($state, $types, $ctx = []) {
             return html;
         }
 
+        // Önizleme modu, çok adımlı bir formda TÜM adımların alanlarını alt
+        // alta göstermiyor — ziyaretçinin göreceği gibi tek seferde bir adım
+        // gösterip aralarında gezinmeyi sağlıyor. Adım grupları zaten
+        // render()'da .qrm-fb-step-group[data-step] olarak basılıyor; burada
+        // yalnızca hangisinin görünür olacağı ve gezinme çubuğunun durumu
+        // yönetilir.
+        function syncPreviewStepNav() {
+            if (!previewStepNav) return;
+            var previewing = wrap.classList.contains('qrm-fb-previewing');
+
+            if (!previewing || stepCount <= 1) {
+                previewStepNav.hidden = true;
+                if (previewSubmitBtn) previewSubmitBtn.hidden = false;
+                itemsBox.querySelectorAll('.qrm-fb-step-group').forEach(function(g) {
+                    g.hidden = false;
+                });
+                return;
+            }
+
+            if (previewStepIdx > stepCount) previewStepIdx = stepCount;
+            if (previewStepIdx < 1) previewStepIdx = 1;
+
+            itemsBox.querySelectorAll('.qrm-fb-step-group').forEach(function(g) {
+                var sn = parseInt(g.getAttribute('data-step'), 10) || 1;
+                g.hidden = (sn !== previewStepIdx);
+            });
+
+            var isFirst = previewStepIdx <= 1;
+            var isLast  = previewStepIdx >= stepCount;
+            previewStepNav.hidden = false;
+            if (previewPrevBtn) previewPrevBtn.hidden = isFirst;
+            if (previewNextBtn) previewNextBtn.hidden = isLast;
+            if (previewSubmitBtn) previewSubmitBtn.hidden = !isLast;
+            if (previewStepLabel) {
+                var labelInput = document.getElementById('qrm-fb-step-label-' + previewStepIdx);
+                var stepTitle = (labelInput && labelInput.value.trim()) || (previewStepIdx + '. Adım');
+                previewStepLabel.textContent = previewStepIdx + ' / ' + stepCount + ' — ' + stepTitle;
+            }
+        }
+
         function render() {
             stepCount = computeStepCount();
             syncStepLabelInputs();
@@ -882,6 +941,7 @@ function qrm_cf_admin_builder_script($state, $types, $ctx = []) {
 
             if (emptyBox) emptyBox.style.display = fields.length ? 'none' : 'block';
             jsonInput.value = JSON.stringify(fields);
+            syncPreviewStepNav();
         }
 
         // --- Palet: alan ekleme ---
@@ -1146,9 +1206,21 @@ function qrm_cf_admin_builder_script($state, $types, $ctx = []) {
             previewToggle.innerHTML = on
                 ? '<span class="dashicons dashicons-edit"></span> Düzenlemeye Dön'
                 : '<span class="dashicons dashicons-visibility"></span> Önizle';
-            if (on) editingIndex = -1;
+            if (on) {
+                editingIndex = -1;
+                previewStepIdx = 1;
+            }
             render();
             window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+
+        if (previewNextBtn) previewNextBtn.addEventListener('click', function(){
+            if (previewStepIdx < stepCount) previewStepIdx++;
+            syncPreviewStepNav();
+        });
+        if (previewPrevBtn) previewPrevBtn.addEventListener('click', function(){
+            if (previewStepIdx > 1) previewStepIdx--;
+            syncPreviewStepNav();
         });
 
         // --- Kaydetmeden önce alan listesini senkronla ---
