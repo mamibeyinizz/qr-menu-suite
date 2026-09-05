@@ -64,10 +64,18 @@ function qrm_reward_render_popup_style_block($settings) {
         @keyframes qrmRwUp { from { opacity: 0; transform: translateY(16px) scale(.97); } to { opacity: 1; transform: none; } }
 
         .qrm-rw-modal { position: relative; width: 100%; max-width: 400px; background: <?php echo $c['bg']; ?>; color: <?php echo $c['text']; ?>; border-radius: <?php echo $c['radius']; ?>px; padding: 30px 26px 24px; box-shadow: 0 24px 60px rgba(0,0,0,.28); text-align: center; font-family: inherit; animation: qrmRwUp .3s ease both; box-sizing: border-box; }
-        .qrm-rw-step-panel { text-align: center; padding: 8px 4px 16px; }
+        /* Adım paneli olarak kullanıldığında (google_reward widget'ı) modalın
+           dar/ortalanmış görünümü korunur: width:100% + max-width, geniş bir
+           form adımının İÇİNDE sola yaslı, dar bir kutu gibi kalmasın diye
+           (flex konteynerde flex-basis:auto varsayılanı içeriğe göre daralır). */
+        .qrm-rw-step-panel { width: 100%; max-width: 480px; margin: 0 auto; box-sizing: border-box; text-align: center; padding: 40px 24px 36px; }
         .qrm-rw-step-panel .qrm-rw-btn { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; box-sizing: border-box; }
         .qrm-rw-step-panel [hidden] { display: none !important; }
-        .qrm-rw-step-neutral { opacity: .75; font-size: 14px; }
+        .qrm-rw-step-neutral { opacity: .75; font-size: 14px; padding: 12px 0; }
+
+        @media(max-width:480px) {
+            .qrm-rw-step-panel { padding: 30px 16px 26px; }
+        }
         .qrm-rw-modal *, .qrm-rw-modal *:before, .qrm-rw-modal *:after { box-sizing: border-box; }
         .qrm-rw-modal [hidden] { display: none; }
 

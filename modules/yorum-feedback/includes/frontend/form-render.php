@@ -296,6 +296,62 @@ function qrm_pro_input_css($v, $scope = '') {
 }
 
 /**
+ * Puanlama Kriterleri widget'ı (.qrm-multi-rating/.qrm-rating-row) ve adım
+ * gezinme çubuğu (.qrm-nav-row/.qrm-btn-secondary) — hem yorum formunda hem
+ * özel formlarda (qrm_cf_form_style_block) kullanılır.
+ *
+ * Önceden bu kurallar yalnızca qrm_pro_render_style_block()'un gömülü
+ * <style> bloğunda, kapsamsız (scope'suz) tanımlıydı. Özel formlar (forms/
+ * render.php) kendi kopyasını hiç basmıyordu — aynı sayfada [qr_menu_reviews]
+ * kısa kodu da varsa ondan sızan stille tesadüfen görünüyordu, yoksa
+ * (rating_group / google_reward genelleştirildikten sonra herhangi bir özel
+ * formda) tamamen stilsiz kalıyordu. Artık paylaşılan tek fonksiyon.
+ *
+ * .qrm-multi-rating'e açık `width:100%` verilir: `.qrm-input-row`/
+ * `.qrm-cf-fields` flex konteynerinin İÇİNDE (özel formlarda widget'lar aynı
+ * satırda basılıyor) flex-basis:auto varsayılanı içeriğe göre daralıyor,
+ * satırın geri kalanı boş kalıyor ve puanlama kutusu sayfanın solunda dar bir
+ * blok gibi görünüyordu.
+ *
+ * @param array  $v     border_color, panel_bg, radius
+ * @param string $scope Boş değilse tüm seçiciler bu ön ekle sınırlandırılır.
+ */
+function qrm_pro_rating_group_css($v, $scope = '') {
+    $v = array_merge([
+        'border_color' => '#e2e8f0',
+        'panel_bg'     => '#f8fafc',
+        'radius'       => 10,
+    ], (array) $v);
+
+    $border = $v['border_color'];
+    $panel  = $v['panel_bg'];
+    $r      = intval($v['radius']) . 'px';
+
+    $rules = [
+        ['.qrm-multi-rating', "width:100%; box-sizing:border-box; display:flex; flex-direction:column; gap:16px; margin-bottom:8px; padding:22px 20px; background:$panel; border-radius:$r;"],
+        ['.qrm-rating-row', 'display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px 16px; border-radius:10px; transition:background .2s ease;'],
+        ['.qrm-rating-row > span', 'font-weight:600; font-size:15px; line-height:30px;'],
+        ['.qrm-rating-row.qrm-ac', 'padding:10px 12px; background:var(--qrm-ac-soft, transparent); border-left:4px solid var(--qrm-ac, transparent);'],
+
+        // Adım gezinmesi: son alanla buton arasına, önceki dar 6px yerine
+        // gerçek bir nefes payı.
+        ['.qrm-nav-row', 'display:flex; gap:12px; margin-top:32px;'],
+        ['.qrm-nav-row .qrm-btn', 'flex:1 1 auto;'],
+
+        // "Geri" butonu: temanın <button>'lara uyguladığı global stil (ör.
+        // kenarlık rengi) bunu ezmesin diye kritik özellikler !important —
+        // aynı sitede nav ileri/geri görünürlüğünü de aynı sorun etkilemişti.
+        ['.qrm-btn-secondary', "background:transparent !important; border:1.5px solid $border !important; color:inherit !important; padding:16px 24px !important; border-radius:$r !important; font-size:15px; font-weight:600; cursor:pointer; flex:0 0 auto; transition:background .2s ease, border-color .2s ease, transform .15s ease; display:flex; align-items:center; justify-content:center; gap:8px;"],
+        ['.qrm-btn-secondary:hover', "background:$panel !important; border-color:currentColor !important; transform:translateY(-1px);"],
+        ['.qrm-btn-secondary:active', 'transform:translateY(0);'],
+
+        ['@media(max-width:600px)', '.qrm-multi-rating{padding:18px 16px; gap:14px;} .qrm-rating-row{gap:6px 12px;}'],
+    ];
+
+    return qrm_pro_css_rules($rules, $scope);
+}
+
+/**
  * Ek alan tipleri (v4.2.0 form builder): e-posta, sayı, tarih, açılır liste,
  * tek/çoklu seçim. Yorum formu bu tipleri kullanmadığı için ayrı tutulur —
  * böylece mevcut formun çıktısı hiç değişmez.
@@ -374,15 +430,17 @@ function qrm_pro_render_style_block($settings) {
 
         /* Form Css */
         .qrm-form-box { background: <?php echo $bg_color; ?>; padding: 30px; border-radius: 16px; box-shadow: 0 4px 24px rgba(0,0,0,0.04); margin-bottom: 40px; border: 1px solid <?php echo $border_color; ?>; transition: box-shadow .3s ease; }
-        .qrm-form-box h3 { margin-top: 0; font-size: 22px; font-weight: 700; margin-bottom: 25px; text-align: center;}
+        .qrm-form-box h3 { margin-top: 0; font-size: 22px; font-weight: 700; margin-bottom: 34px; text-align: center;}
 
-        /* Çoklu Yıldız Sistemi */
-        .qrm-multi-rating { display: flex; flex-direction: column; gap: 15px; margin-bottom: 30px; padding: 20px; background: <?php echo ($settings['theme_style'] == 'dark') ? '#374151' : '#f8fafc'; ?>; border-radius: 12px;}
-        .qrm-rating-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; border-radius: 10px; transition: background .2s ease;}
-        .qrm-rating-row > span { font-weight: 600; font-size: 15px; }
+        /* Çoklu Yıldız Sistemi + adım gezinmesi: qrm_pro_rating_group_css() —
+           özel formlarla (forms/render.php) paylaşılan tek tanım. */
+        <?php echo qrm_pro_rating_group_css([
+            'border_color' => $border_color,
+            'panel_bg'     => ($settings['theme_style'] == 'dark') ? '#374151' : '#f8fafc',
+            'radius'       => 10,
+        ]); ?>
 
         /* Premium Otomatik Renklendirme (3 renk döngüsel, tüm form alanlarını kapsar) */
-        .qrm-rating-row.qrm-ac { padding: 10px 12px; background: var(--qrm-ac-soft, transparent); border-left: 4px solid var(--qrm-ac, transparent); }
         .qrm-input-group.qrm-ac input[type="text"],
         .qrm-input-group.qrm-ac input[type="tel"],
         .qrm-input-group.qrm-ac textarea { border-left: 4px solid var(--qrm-ac, <?php echo $border_color; ?>); }
@@ -471,16 +529,17 @@ function qrm_pro_render_style_block($settings) {
         ]); ?>
         .qrm-step-error { background:#fee2e2; color:#991b1b; border:1px solid #fecaca; padding:11px 14px; border-radius:8px; font-size:13px; margin-bottom:16px; text-align:center; }
 
-        .qrm-nav-row { display:flex; gap:12px; margin-top:6px; }
-        .qrm-nav-row .qrm-btn { flex:1 1 auto; }
-        .qrm-btn-secondary { background:transparent; border:1px solid <?php echo $border_color; ?>; color:inherit; padding:16px 24px; border-radius:10px; font-size:15px; font-weight:600; cursor:pointer; flex:0 0 auto; transition:background .2s ease; align-items:center; justify-content:center; }
-        .qrm-btn-secondary:hover { background:rgba(0,0,0,.05); }
-
         /* TR telefon input otomatik renklendirme çizgisi (taban stil paylaşılan blokta) */
         .qrm-input-group.qrm-ac input.qrm-tel-input { border-left:4px solid var(--qrm-ac, <?php echo $border_color; ?>); }
 
+        @media(max-width:768px){
+            .qrm-form-box { padding: 24px; }
+            .qrm-form-box h3 { font-size: 20px; margin-bottom: 26px; }
+        }
+
         @media(max-width:480px){
             .qrm-form-box, .qrm-stats-panel { padding: 20px; border-radius: 14px; }
+            .qrm-form-box h3 { margin-bottom: 22px; }
             .qrm-global-score .big-num { font-size: 38px; }
             .qrm-input-group.half { flex: 1 1 100%; }
         }

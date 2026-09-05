@@ -86,6 +86,12 @@ function qrm_cf_default_form_settings() {
         'success_message' => 'Formunuz bize ulaştı, teşekkür ederiz.',
         'show_title'      => 1,
         'title_align'     => 'left',   // left | center | right
+        // Kapalıyken form, bulunduğu Elementor sütununun/konteynerin genişliğini
+        // doldurur (normal kutulu düzen). Açıksa .qrm-form-fullbleed ile
+        // konteyneri delip 100vw'a (sayfa kenarına) yayılır — yalnızca gerçekten
+        // kenardan kenara istenen basit/tekil formlar için (varsayılan kapalı;
+        // çok adımlı, markalı bir form için kenara yayılmak yanlış görünürdü).
+        'full_width'      => 0,
         // Bildirim
         'notify_enabled'  => 0,
         'notify_email'    => '',
@@ -118,6 +124,7 @@ function qrm_cf_sanitize_form_settings($raw) {
     if (isset($raw['title_align']) && in_array($raw['title_align'], ['left', 'center', 'right'], true)) {
         $out['title_align'] = $raw['title_align'];
     }
+    $out['full_width']    = !empty($raw['full_width']) ? 1 : 0;
     $out['notify_enabled'] = !empty($raw['notify_enabled']) ? 1 : 0;
 
     if (isset($raw['notify_email'])) {
@@ -503,7 +510,12 @@ function qrm_cf_validate_value($field, $raw) {
 
         case 'rating_group':
         case 'google_reward':
-            // Widget'lar POST verisi taşımaz; doğrulama yorum gönderiminde kalır.
+            // Widget'lar KENDİ anahtarları altında POST verisi taşımaz (rating_group'un
+            // gerçek verisi rating_1..5'te durur); bu yüzden burada her zaman ok=true
+            // döner. Gerçek doğrulama qrm_cf_validate_submission()'da yapılır — orada
+            // tüm $post dizisine erişim var. Buradan "value" boş dönmesi, çağıranın
+            // varsayılan "zorunlu alan boş" kontrolünü YANLIŞLIKLA tetiklemesin diye
+            // qrm_cf_validate_submission() bu tipleri o kontrolden ayrıca muaf tutar.
             return ['ok' => true, 'value' => '', 'error' => ''];
 
         case 'date':
@@ -557,14 +569,35 @@ function qrm_cf_value_is_empty($value) {
  * @return array ['ok' => bool, 'errors' => [string], 'data' => [field_key => value]]
  */
 function qrm_cf_validate_submission($fields, $post) {
-    $data   = [];
-    $errors = [];
+    $data         = [];
+    $errors       = [];
+    $widget_types = qrm_cf_field_types(true);
 
     foreach ((array) $fields as $field) {
         $key      = is_object($field) ? $field->field_key : $field['field_key'];
         $label    = qrm_cf_field_label($field);
+        $type     = is_object($field) ? $field->field_type : $field['field_type'];
         $required = is_object($field) ? !empty($field->is_required) : !empty($field['is_required']);
-        $raw      = array_key_exists($key, (array) $post) ? $post[$key] : '';
+
+        // Widget'lar (rating_group, google_reward) kendi anahtarları altında hiç
+        // POST verisi taşımaz; genel "zorunlu alan boş" kontrolü bunlara
+        // uygulanırsa her koşulda hatalı biçimde tetiklenir — gönderim hiçbir
+        // zaman tamamlanamaz. rating_group zorunluysa gerçek doğrulama
+        // rating_1..5 üzerinden burada ayrıca yapılır; google_reward salt
+        // bilgi panelidir, hiçbir zaman doğrulama gerektirmez.
+        if (!empty($widget_types[$type]['is_widget'])) {
+            if ($type === 'rating_group' && $required) {
+                $rg = qrm_cf_validate_rating_group_submission($post, $label);
+                if (!$rg['ok']) {
+                    $errors[] = $rg['error'];
+                    continue;
+                }
+                $data = array_merge($data, $rg['data']);
+            }
+            continue;
+        }
+
+        $raw = array_key_exists($key, (array) $post) ? $post[$key] : '';
 
         $result = qrm_cf_validate_value($field, $raw);
         if (!$result['ok']) {
@@ -579,6 +612,32 @@ function qrm_cf_validate_submission($fields, $post) {
     }
 
     return ['ok' => count($errors) === 0, 'errors' => $errors, 'data' => $data];
+}
+
+/**
+ * Puanlama Kriterleri widget'ı zorunluysa gerçek puanları rating_1..5
+ * POST anahtarlarından doğrular (global crit_1..5_active ayarına göre).
+ *
+ * @param array  $post  Ham $_POST
+ * @param string $label Hata mesajında kullanılacak alan etiketi
+ * @return array{ok:bool,error?:string,data?:array}
+ */
+function qrm_cf_validate_rating_group_submission($post, $label) {
+    $settings = qrm_pro_get_settings();
+    $data     = [];
+
+    for ($i = 1; $i <= 5; $i++) {
+        if (empty($settings['crit_' . $i . '_active'])) {
+            continue;
+        }
+        $val = isset($post['rating_' . $i]) ? intval($post['rating_' . $i]) : 0;
+        if ($val < 1 || $val > 5) {
+            return ['ok' => false, 'error' => sprintf(qrm_ceviri_review(__('"%s" alanı zorunludur.', 'qrms')), $label)];
+        }
+        $data['rating_' . $i] = $val;
+    }
+
+    return ['ok' => true, 'data' => $data];
 }
 
 // --- GÖNDERİM CRUD ---

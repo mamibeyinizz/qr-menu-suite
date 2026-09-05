@@ -329,3 +329,101 @@ qrms_test(
 		qrms_assert_contains( 'qrm-fb-preview-stepnav', $src, 'önizleme gezinme çubuğu basılıyor' );
 	}
 );
+
+qrms_test(
+	'önizlemede adım geçişi ve gezinme butonları animasyonlu; adım başlığı etiketi taşır',
+	function () {
+		$src = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/admin/custom-form-builder.php' );
+		qrms_assert_contains( '@keyframes qrmFbStepIn', $src, 'adım içeriği animasyon keyframe\'i var' );
+		qrms_assert_contains( '@keyframes qrmFbBtnIn', $src, 'buton animasyon keyframe\'i var' );
+		qrms_assert_contains( ".qrm-fb-previewing .qrm-fb-step-group:not([hidden]) { animation: qrmFbStepIn", $src, 'adım içeriği görünürken animasyon oynuyor' );
+		qrms_assert_contains( 'qrm-fb-nav-animate', $src, 'buton animasyonu JS ile yeniden tetikleniyor' );
+		qrms_assert_contains( "var titleText  = sn + '. Adım' + (stepLabel ? ' › ' + esc(stepLabel) : '');", $src, 'adım başlığı etiketle birleşiyor' );
+
+		// Eski ayrı "N / toplam — etiket" göstergesi kaldırıldı; adım
+		// bilgisi artık yalnızca birleşik başlıkta ("N. Adım › Etiket") durur.
+		qrms_assert_false( false !== strpos( $src, 'qrm-fb-preview-stepnav-label' ), 'ayrı adım göstergesi kaldırıldı' );
+	}
+);
+
+qrms_test(
+	'kritik bug: zorunlu rating_group/google_reward widget\'ı artık gönderimi bloklamıyor',
+	function () {
+		// qrm_cf_validate_submission() burada ÇAĞRILMAZ (forms/functions.php
+		// bu dosyada require edilmiyor — yukarıdaki testlerde açıklanan
+		// "cannot redeclare qrm_cf_unread_total" çakışması). Kaynak metinden
+		// doğrulanır.
+		//
+		// KÖK NEDEN: builder'dan eklenen bir rating_group widget'ı
+		// is_required=1 ile kaydediliyor (bkz. custom-form-builder.php'deki
+		// "required: type === 'rating_group' ? 1 : 0"), ama
+		// qrm_cf_validate_value() bu tip için HER ZAMAN value='' döner
+		// (widget kendi anahtarı altında POST verisi taşımaz — gerçek puanlar
+		// rating_1..5'te durur). Eski qrm_cf_validate_submission() bu iki
+		// gerçeği birleştirip her gönderimde "'Puanlama Kriterleri' alanı
+		// zorunludur" hatası veriyordu — form KESİNLİKLE gönderilemiyordu.
+		$src = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/forms/functions.php' );
+
+		qrms_assert_contains(
+			"if (!empty(\$widget_types[\$type]['is_widget'])) {",
+			$src,
+			'widget alanları genel zorunlu-boş kontrolünden ayrı işlenir'
+		);
+		qrms_assert_contains(
+			'function qrm_cf_validate_rating_group_submission(',
+			$src,
+			'rating_group için ayrı, gerçek sunucu tarafı doğrulama var'
+		);
+		qrms_assert_contains(
+			"isset(\$post['rating_' . \$i]) ? intval(\$post['rating_' . \$i]) : 0",
+			$src,
+			'gerçek puanlar rating_1..5 POST anahtarlarından okunuyor'
+		);
+
+		// qrm_cf_validate_submission() içindeki widget dalı, genel
+		// "$required && qrm_cf_value_is_empty(...)" kontrolüne hiç
+		// düşürmeden `continue` etmeli — aksi hâlde bug geri gelir.
+		$fn_start = strpos( $src, 'function qrm_cf_validate_submission(' );
+        	qrms_assert_true( $fn_start !== false, 'qrm_cf_validate_submission bulunamadı' );
+		$fn_body  = substr( $src, $fn_start, 2000 );
+		$widget_if_pos   = strpos( $fn_body, "is_widget']))" );
+		$required_check_pos = strpos( $fn_body, '$required && qrm_cf_value_is_empty' );
+		qrms_assert_true(
+			$widget_if_pos !== false && $required_check_pos !== false && $widget_if_pos < $required_check_pos,
+			'widget kontrolü genel zorunlu kontrolünden ÖNCE çalışıyor (continue ile atlıyor)'
+		);
+	}
+);
+
+qrms_test(
+	'CSS: puanlama/google widget\'ları flex satırda daralmıyor, form dar tarafta değil',
+	function () {
+		// Kök neden: .qrm-input-row/.qrm-cf-fields flex konteynerinde normal
+		// alanlar (.qrm-input-group) flex:1 1 100% ile tam genişlik alırken,
+		// rating_group/google_reward'ın çıktısı (.qrm-multi-rating /
+		// .qrm-rw-step-panel) aynı satırda flex-basis:auto varsayılanıyla
+		// İÇERİĞİNE göre daralıyor, sayfanın solunda dar bir kutu gibi kalıp
+		// geri kalan genişlik boş görünüyordu.
+		$form_render = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/frontend/form-render.php' );
+		qrms_assert_contains( 'function qrm_pro_rating_group_css(', $form_render, 'paylaşılan fonksiyon var' );
+		qrms_assert_contains( "'.qrm-multi-rating', \"width:100%;", $form_render, 'multi-rating genişliği zorlanıyor' );
+
+		$cf_render = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/forms/render.php' );
+		qrms_assert_contains( 'qrm_pro_rating_group_css(', $cf_render, 'özel form da paylaşılan fonksiyonu çağırıyor' );
+
+		$reward = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/rewards/popup-render.php' );
+		qrms_assert_contains( '.qrm-rw-step-panel { width: 100%; max-width: 480px; margin: 0 auto;', $reward, 'google_reward paneli genişliği zorlanıp ortalanıyor' );
+	}
+);
+
+qrms_test(
+	'özel formlarda tam genişlik (fullbleed) artık varsayılan değil, opt-in ayar',
+	function () {
+		$fn = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/forms/functions.php' );
+		qrms_assert_contains( "'full_width'      => 0,", $fn, 'varsayılan kapalı (konteyner genişliği)' );
+		qrms_assert_contains( "\$out['full_width']    = !empty(\$raw['full_width']) ? 1 : 0;", $fn, 'sanitize ediliyor' );
+
+		$builder = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/admin/custom-form-builder.php' );
+		qrms_assert_contains( "name=\"qrm_cf_settings[full_width]\"", $builder, 'builder ekranında anahtar var' );
+	}
+);
