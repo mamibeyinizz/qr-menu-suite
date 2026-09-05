@@ -516,6 +516,68 @@ trait RMA_Admin_Pages_Trait {
     }
 
     /**
+     * Renk anahtarı → canlı önizleme CSS değişkeni.
+     *
+     * @return array<string,string>
+     */
+    private function color_preview_vars() {
+        return [
+            'accent'            => '--qrms-accent',
+            'bg'                => '--qrms-bg',
+            'card'              => '--qrms-card',
+            'text'              => '--qrms-text',
+            'section_title'     => '--qrms-section-title',
+            'desc'              => '--qrms-desc',
+            'border'            => '--qrms-border',
+            'toolbar_bg'        => '--qrms-toolbar-bg',
+            'filter_btn_border' => '--qrms-filter-btn-border',
+            'filter_btn_text'   => '--qrms-filter-btn-text',
+            'modal_bg'          => '--qrms-modal-bg',
+        ];
+    }
+
+    /**
+     * Renk formunun üstündeki minyatür menü önizlemesi.
+     *
+     * İlk boya kayıtlı renklerle yapılır; sonraki değişiklikler
+     * admin-ui.js içindeki syncColorPreview() ile aynı --qrms-*
+     * değişkenlerine yazılır.
+     *
+     * @return void
+     */
+    private function render_color_preview() {
+        $c     = $this->get_color_settings();
+        $style = '';
+        foreach ( $this->color_preview_vars() as $key => $prop ) {
+            if ( ! empty( $c[ $key ] ) ) {
+                $style .= $prop . ':' . $c[ $key ] . ';';
+            }
+        }
+        ?>
+        <div class="rma-color-preview" style="<?php echo esc_attr( $style ); ?>">
+            <p class="rma-color-preview-label"><?php esc_html_e( 'Canlı önizleme', 'qrms' ); ?></p>
+            <div class="rma-color-preview-stage" data-qrms-swatch="bg">
+                <div class="rma-color-preview-toolbar" data-qrms-swatch="toolbar_bg">
+                    <span class="rma-color-preview-search" data-qrms-swatch="border">
+                        <span class="rma-color-preview-search-ph"><?php esc_html_e( 'Ürün ara…', 'qrms' ); ?></span>
+                    </span>
+                    <span class="rma-color-preview-filter" data-qrms-swatch="filter_btn_border filter_btn_text">
+                        <?php esc_html_e( 'Filtrele', 'qrms' ); ?>
+                    </span>
+                </div>
+                <div class="rma-color-preview-heading" data-qrms-swatch="section_title"><?php esc_html_e( 'Çorbalar', 'qrms' ); ?></div>
+                <div class="rma-color-preview-card" data-qrms-swatch="card border">
+                    <div class="rma-color-preview-name" data-qrms-swatch="text"><?php esc_html_e( 'Mercimek Çorbası', 'qrms' ); ?></div>
+                    <div class="rma-color-preview-desc" data-qrms-swatch="desc"><?php esc_html_e( 'Limonla servis edilir', 'qrms' ); ?></div>
+                    <div class="rma-color-preview-price" data-qrms-swatch="accent">₺95</div>
+                </div>
+                <div class="rma-color-preview-modal" data-qrms-swatch="modal_bg"><?php esc_html_e( 'Ürün penceresi', 'qrms' ); ?></div>
+            </div>
+        </div>
+        <?php
+    }
+
+    /**
      * Tek bir renk seçici satırı.
      *
      * @param string $key   Ayar anahtarı (rma_color_settings[$key]).
@@ -644,6 +706,8 @@ trait RMA_Admin_Pages_Trait {
                     <?php endforeach; ?>
                 </div>
             </div>
+
+            <?php $this->render_color_preview(); ?>
 
             <div class="rma-card">
                 <h2 class="rma-card-title">2. Renkleri Özelleştir</h2>

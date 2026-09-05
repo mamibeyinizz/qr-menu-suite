@@ -73,20 +73,28 @@
     }
 
     /**
-     * Formdaki güncel değerleri önizlemeye uygular.
+     * Form değerlerini bir önizleme kökünün CSS değişkenlerine yazar.
      * overrides: renk seçici sürüklenirken input henüz güncellenmemiş
      * olabildiği için { anahtar: değer } biçiminde taze değer geçilebilir.
+     */
+    function applyCustomProps(el, vars, getVal, overrides) {
+        if (!el) return;
+        Object.keys(vars).forEach(function (key) {
+            var spec = vars[key];
+            var val  = (overrides && overrides[key] !== undefined) ? overrides[key] : getVal(key);
+            if (val === null || val === undefined || val === '') return;
+            el.style.setProperty(spec.prop, String(val) + (spec.unit || ''));
+        });
+    }
+
+    /**
+     * Formdaki güncel değerleri kayar başlık önizlemesine uygular.
      */
     function syncPreview(overrides) {
         var el = document.querySelector('.rma-nav-preview');
         if (!el) return;
 
-        Object.keys(NAV_VARS).forEach(function (key) {
-            var spec = NAV_VARS[key];
-            var val  = (overrides && overrides[key] !== undefined) ? overrides[key] : fieldValue(key);
-            if (val === null || val === undefined || val === '') return;
-            el.style.setProperty(spec.prop, String(val) + (spec.unit || ''));
-        });
+        applyCustomProps(el, NAV_VARS, fieldValue, overrides);
 
         var ind = (overrides && overrides.active_indicator) || fieldValue('active_indicator');
         if (ind) el.setAttribute('data-rma-ind', ind);
@@ -106,6 +114,81 @@
     }
 
     /* -----------------------------------------------------------------
+       MENÜ GÖRÜNÜMÜ — RENK CANLI ÖNİZLEME
+
+       Kayar başlık önizlemesiyle aynı desen: form değerleri --qrms-*
+       custom property'lerine yazılır. applyCustomProps / keyed ortak.
+    ----------------------------------------------------------------- */
+    var COLOR_VARS = {
+        accent:            { prop: '--qrms-accent' },
+        bg:                { prop: '--qrms-bg' },
+        card:              { prop: '--qrms-card' },
+        text:              { prop: '--qrms-text' },
+        section_title:     { prop: '--qrms-section-title' },
+        desc:              { prop: '--qrms-desc' },
+        border:            { prop: '--qrms-border' },
+        toolbar_bg:        { prop: '--qrms-toolbar-bg' },
+        filter_btn_border: { prop: '--qrms-filter-btn-border' },
+        filter_btn_text:   { prop: '--qrms-filter-btn-text' },
+        modal_bg:          { prop: '--qrms-modal-bg' }
+    };
+
+    function colorFieldValue(key) {
+        var $f = $('[name="rma_color_settings[' + key + ']"]');
+        return $f.length ? $f.val() : null;
+    }
+
+    function colorKeyOf(el) {
+        var name = el && el.getAttribute ? el.getAttribute('name') : null;
+        var m = name && name.match(/^rma_color_settings\[([a-z_]+)\]$/);
+        return m ? m[1] : null;
+    }
+
+    function syncColorPreview(overrides) {
+        applyCustomProps(
+            document.querySelector('.rma-color-preview'),
+            COLOR_VARS,
+            colorFieldValue,
+            overrides
+        );
+    }
+
+    function highlightColorSwatch(key, on) {
+        var root = document.querySelector('.rma-color-preview');
+        if (!root || !key) return;
+        var nodes = root.querySelectorAll('[data-qrms-swatch]');
+        for (var i = 0; i < nodes.length; i++) {
+            var keys = (nodes[i].getAttribute('data-qrms-swatch') || '').split(/\s+/);
+            if (keys.indexOf(key) === -1) continue;
+            nodes[i].classList.toggle('is-swatch-on', !!on);
+        }
+    }
+
+    function initColorPreview() {
+        if (!document.querySelector('.rma-color-preview')) return;
+
+        $(document).on(
+            'input change',
+            '[name^="rma_color_settings"]',
+            function () { syncColorPreview(); }
+        );
+
+        // Hex alanı, palet düğmesi ve dokunmatik :focus-visible
+        // hepsi .wp-picker-container içinde odaklanır.
+        $(document).on('focusin', '.rma-form-table .wp-picker-container', function () {
+            var key = colorKeyOf($(this).find('[name^="rma_color_settings"]')[0]);
+            highlightColorSwatch(key, true);
+        });
+        $(document).on('focusout', '.rma-form-table .wp-picker-container', function (e) {
+            if (e.relatedTarget && this.contains(e.relatedTarget)) return;
+            var key = colorKeyOf($(this).find('[name^="rma_color_settings"]')[0]);
+            highlightColorSwatch(key, false);
+        });
+
+        syncColorPreview();
+    }
+
+    /* -----------------------------------------------------------------
        RENK SEÇİCİ
     ----------------------------------------------------------------- */
     function initColorPickers() {
@@ -116,13 +199,14 @@
             // Iris sürükleme sırasında input.val() henüz güncellenmediği için
             // taze değeri ui.color'dan alıp önizlemeye doğrudan geçiriyoruz.
             change: function (event, ui) {
-                var key = navKeyOf(event.target);
-                if (!key) return;
-                syncPreview(keyed(key, ui.color.toString()));
+                var navKey = navKeyOf(event.target);
+                if (navKey) syncPreview(keyed(navKey, ui.color.toString()));
+                var colorKey = colorKeyOf(event.target);
+                if (colorKey) syncColorPreview(keyed(colorKey, ui.color.toString()));
             },
             clear: function (event) {
-                var key = navKeyOf(event.target);
-                if (key) syncPreview();
+                if (navKeyOf(event.target)) syncPreview();
+                if (colorKeyOf(event.target)) syncColorPreview();
             }
         });
     }
@@ -295,6 +379,7 @@
             $.each(p, function (key, val) {
                 setPickerValue($('#rma_c_' + key), val);
             });
+            syncColorPreview(p);
         });
     }
 
@@ -1446,6 +1531,7 @@
     $(function () {
         stripNoticeArgs();
         initColorPickers();
+        initColorPreview();
         initStatusToggle();
         initTukendiToggle();
         initCategorySorter();
