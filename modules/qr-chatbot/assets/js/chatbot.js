@@ -571,6 +571,269 @@
 		return grup;
 	}
 
+	function deltaEkle( el, parca, durum ) {
+		var metin = String( parca );
+		for ( var i = 0; i < metin.length; i++ ) {
+			var ch = metin.charAt( i );
+			if ( '\n' === ch ) {
+				el.appendChild( document.createElement( 'br' ) );
+				durum.satirBasinda = true;
+				durum.sonTextNode = null;
+			} else {
+				if ( durum.satirBasinda || ! durum.sonTextNode ) {
+					durum.sonTextNode = document.createTextNode( ch );
+					el.appendChild( durum.sonTextNode );
+					durum.satirBasinda = false;
+				} else {
+					durum.sonTextNode.nodeValue += ch;
+				}
+			}
+		}
+		if ( log ) {
+			log.scrollTop = log.scrollHeight;
+		}
+	}
+
+	function streamBotGrupBaslat() {
+		var grup = document.createElement( 'div' );
+		grup.className = 'gemini-msg-grup';
+
+		var el = document.createElement( 'div' );
+		el.className = 'gemini-msg-bubble gemini-msg-bot';
+		grup.appendChild( el );
+
+		if ( log ) {
+			log.appendChild( grup );
+			log.scrollTop = log.scrollHeight;
+		}
+
+		return {
+			grup: grup,
+			el: el,
+			durum: { satirBasinda: true, sonTextNode: null }
+		};
+	}
+
+	function sseSatirIsle( satir, akim, yaziyorEl ) {
+		satir = satir.trim();
+		if ( ! satir || 0 !== satir.indexOf( 'data: ' ) ) {
+			return null;
+		}
+
+		var olay;
+		try {
+			olay = JSON.parse( satir.slice( 6 ) );
+		} catch ( e ) {
+			return null;
+		}
+
+		if ( olay.error ) {
+			throw { tip: 'sse_hata', mesaj: olay.error };
+		}
+
+		if ( olay.delta ) {
+			if ( ! akim.bot ) {
+				yaziyorEl.remove();
+				akim.bot = streamBotGrupBaslat();
+			}
+			deltaEkle( akim.bot.el, olay.delta, akim.bot.durum );
+		}
+
+		if ( olay.done ) {
+			return olay;
+		}
+
+		return null;
+	}
+
+	function yanitIsle( mesaj, payload, streamBot ) {
+		var cevap   = payload.mesaj || '';
+		var urunler = payload.urunler && Array.isArray( payload.urunler ) ? payload.urunler : [];
+
+		if ( streamBot && streamBot.grup && streamBot.grup.parentNode ) {
+			streamBot.grup.remove();
+		}
+
+		if ( cevap.indexOf( '[CALL_WAITER]' ) !== -1 ) {
+			cevap = cevap.replace( '[CALL_WAITER]', '' ).trim();
+			istek( { action: 'garson_cagir' } );
+		}
+
+		if ( cevap.indexOf( '[CALL_BILL]' ) !== -1 ) {
+			cevap = cevap.replace( '[CALL_BILL]', '' ).trim();
+			istek( { action: 'hesap_iste' } );
+		}
+
+		if ( cevap.indexOf( '[BILEMEDI]' ) !== -1 ) {
+			cevap = cevap.replace( /\[BILEMEDI\]/g, '' ).trim();
+		}
+
+		var eskalasyon = cevap.indexOf( '[ESCALATE]' ) !== -1;
+		if ( eskalasyon ) {
+			cevap = cevap.replace( /\[ESCALATE\]/g, '' ).trim();
+		}
+
+		var eslesme = cevap.match( /\[SIPARIS\]([\s\S]*?)\[\/SIPARIS\]/i );
+		if ( eslesme ) {
+			cevap = cevap.replace( eslesme[ 0 ], '' ).trim();
+			try {
+				var siparisUrunler = JSON.parse( eslesme[ 1 ].trim() );
+				if ( Array.isArray( siparisUrunler ) && siparisUrunler.length ) {
+					istek( {
+						action: 'gemini_bot_siparis',
+						items: JSON.stringify( siparisUrunler )
+					} ).then( function ( sy ) {
+						if ( ! sy || ! sy.success ) {
+							var msg = metin( 'siparisIletilemedi', 'Siparişiniz iletilemedi, lütfen garsona bildirin.' );
+							if ( sy && sy.data ) {
+								if ( 'string' === typeof sy.data ) {
+									msg = sy.data;
+								} else if ( sy.data.mesaj ) {
+									msg = sy.data.mesaj;
+								}
+							}
+							balon( msg, 'bot', true );
+						}
+					} ).catch( function () {
+						balon( metin( 'siparisIletilemedi', 'Siparişiniz iletilemedi, lütfen garsona bildirin.' ), 'bot', true );
+					} );
+				}
+			} catch ( e ) {
+				// Bozuk JSON — sipariş gönderilmez.
+			}
+		}
+
+		cevap = urunEtiketleriTemizle( cevap );
+
+		gecmis.push( { role: 'user', parts: [ { text: mesaj } ] } );
+		gecmis.push( { role: 'model', parts: [ { text: cevap } ] } );
+		if ( gecmis.length > 20 ) {
+			gecmis = gecmis.slice( -20 );
+		}
+		ekranaKaydet( 'bot', cevap );
+		gecmisKaydet();
+
+		if ( eskalasyon ) {
+			eskalasyonBalonu( cevap );
+		} else if ( urunler.length ) {
+			botBalonu( cevap, urunler );
+		} else {
+			balon( cevap, 'bot' );
+		}
+		if ( ! overlay.classList.contains( 'gemini-acik' ) ) {
+			rozetGoster();
+		}
+	}
+
+	function jsonYanitIsle( mesaj, yanit, yaziyorEl ) {
+		yaziyorEl.remove();
+		kilitAc();
+
+		if ( ! yanit || ! yanit.success ) {
+			if ( oturumBittiMi( yanit ) ) {
+				balon( yanit.data.mesaj, 'bot', true );
+				return;
+			}
+			var hata = ( yanit && yanit.data ) ? yanit.data : metin( 'birHata', 'Bir hata oluştu, lütfen tekrar deneyin.' );
+			balon( 'string' === typeof hata ? hata : ( hata.mesaj || metin( 'birHataKisa', 'Bir hata oluştu.' ) ), 'bot', true );
+			return;
+		}
+
+		var payload = yanit.data;
+		if ( 'string' === typeof payload ) {
+			payload = { mesaj: payload, urunler: [] };
+		} else if ( ! payload || 'string' !== typeof payload.mesaj ) {
+			payload = { mesaj: '', urunler: [] };
+		}
+		yanitIsle( mesaj, payload, null );
+	}
+
+	function gonderIstekStream( mesaj, yaziyorEl ) {
+		if ( typeof qmoData === 'undefined' ) {
+			return Promise.reject();
+		}
+
+		var govde = new URLSearchParams();
+		govde.append( 'nonce', qmoData.nonce );
+		govde.append( 'action', 'gemini_chat_req' );
+		govde.append( 'message', mesaj );
+		govde.append( 'history', JSON.stringify( gecmis ) );
+
+		return fetch( qmoData.ajaxUrl, {
+			method: 'POST',
+			body: govde,
+			credentials: 'same-origin'
+		} ).then( function ( response ) {
+			var ct = response.headers.get( 'Content-Type' ) || '';
+			if ( ct.indexOf( 'text/event-stream' ) === -1 ) {
+				return response.json().catch( function () {
+					return { success: false };
+				} ).then( function ( yanit ) {
+					return { tur: 'json', yanit: yanit };
+				} );
+			}
+
+			if ( ! response.body || ! response.body.getReader ) {
+				return Promise.reject();
+			}
+
+			var reader = response.body.getReader();
+			var decoder = new TextDecoder();
+			var satirTampon = '';
+			var akim = { bot: null };
+
+			function oku() {
+				return reader.read().then( function ( result ) {
+					if ( result.done ) {
+						if ( satirTampon ) {
+							try {
+								var son = sseSatirIsle( satirTampon, akim, yaziyorEl );
+								if ( son ) {
+									return { tur: 'sse', olay: son, akim: akim };
+								}
+							} catch ( err ) {
+								return Promise.reject( err );
+							}
+						}
+						return null;
+					}
+
+					satirTampon += decoder.decode( result.value, { stream: true } );
+					var satirlar = satirTampon.split( '\n' );
+					satirTampon = satirlar.pop() || '';
+
+					var doneOlay = null;
+					for ( var i = 0; i < satirlar.length; i++ ) {
+						try {
+							var olay = sseSatirIsle( satirlar[ i ], akim, yaziyorEl );
+							if ( olay ) {
+								doneOlay = olay;
+							}
+						} catch ( err ) {
+							return Promise.reject( err );
+						}
+					}
+
+					if ( doneOlay ) {
+						return { tur: 'sse', olay: doneOlay, akim: akim };
+					}
+
+					return oku();
+				} );
+			}
+
+			return oku().then( function ( sonuc ) {
+				if ( sonuc && 'sse' === sonuc.tur ) {
+					return sonuc;
+				}
+				throw {
+					tip: 'sse_hata',
+					mesaj: metin( 'birHata', 'Bir hata oluştu, lütfen tekrar deneyin.' )
+				};
+			} );
+		} );
+	}
+
 	function gonderIstek( mesaj, otomatikTekrarDenensin ) {
 		if ( gonderKilitli ) {
 			return;
@@ -578,104 +841,35 @@
 		kilitKapa();
 		var yaziyor = yaziyorGoster();
 
-		istek( {
-			action: 'gemini_chat_req',
-			message: mesaj,
-			history: JSON.stringify( gecmis )
-		} ).then( function ( yanit ) {
-			yaziyor.remove();
-			kilitAc();
-
-			if ( ! yanit || ! yanit.success ) {
-				if ( oturumBittiMi( yanit ) ) {
-					balon( yanit.data.mesaj, 'bot', true );
-					return;
-				}
-				var hata = ( yanit && yanit.data ) ? yanit.data : metin( 'birHata', 'Bir hata oluştu, lütfen tekrar deneyin.' );
-				balon( 'string' === typeof hata ? hata : ( hata.mesaj || metin( 'birHataKisa', 'Bir hata oluştu.' ) ), 'bot', true );
+		gonderIstekStream( mesaj, yaziyor ).then( function ( sonuc ) {
+			if ( 'json' === sonuc.tur ) {
+				jsonYanitIsle( mesaj, sonuc.yanit, yaziyor );
 				return;
 			}
 
-			var payload = yanit.data;
-			var cevap   = 'string' === typeof payload ? payload : ( payload && payload.mesaj ? payload.mesaj : '' );
-			var urunler = payload && payload.urunler && Array.isArray( payload.urunler ) ? payload.urunler : [];
-
-			if ( cevap.indexOf( '[CALL_WAITER]' ) !== -1 ) {
-				cevap = cevap.replace( '[CALL_WAITER]', '' ).trim();
-				istek( { action: 'garson_cagir' } );
+			if ( yaziyor.parentNode ) {
+				yaziyor.remove();
 			}
-
-			if ( cevap.indexOf( '[CALL_BILL]' ) !== -1 ) {
-				cevap = cevap.replace( '[CALL_BILL]', '' ).trim();
-				istek( { action: 'hesap_iste' } );
-			}
-
-			if ( cevap.indexOf( '[BILEMEDI]' ) !== -1 ) {
-				cevap = cevap.replace( /\[BILEMEDI\]/g, '' ).trim();
-			}
-
-			var eskalasyon = cevap.indexOf( '[ESCALATE]' ) !== -1;
-			if ( eskalasyon ) {
-				cevap = cevap.replace( /\[ESCALATE\]/g, '' ).trim();
-			}
-
-			var eslesme = cevap.match( /\[SIPARIS\]([\s\S]*?)\[\/SIPARIS\]/i );
-			if ( eslesme ) {
-				cevap = cevap.replace( eslesme[ 0 ], '' ).trim();
-				try {
-					var siparisUrunler = JSON.parse( eslesme[ 1 ].trim() );
-					if ( Array.isArray( siparisUrunler ) && siparisUrunler.length ) {
-						istek( {
-							action: 'gemini_bot_siparis',
-							items: JSON.stringify( siparisUrunler )
-						} ).then( function ( sy ) {
-							if ( ! sy || ! sy.success ) {
-								var msg = metin( 'siparisIletilemedi', 'Siparişiniz iletilemedi, lütfen garsona bildirin.' );
-								if ( sy && sy.data ) {
-									if ( 'string' === typeof sy.data ) {
-										msg = sy.data;
-									} else if ( sy.data.mesaj ) {
-										msg = sy.data.mesaj;
-									}
-								}
-								balon( msg, 'bot', true );
-							}
-						} ).catch( function () {
-							balon( metin( 'siparisIletilemedi', 'Siparişiniz iletilemedi, lütfen garsona bildirin.' ), 'bot', true );
-						} );
-					}
-				} catch ( e ) {
-					// Bozuk JSON — sipariş gönderilmez.
-				}
-			}
-
-			cevap = urunEtiketleriTemizle( cevap );
-
-			// Geçmişe (AI bağlamı) yalnızca TEMİZLENMİŞ metin yazılır; ham
-			// (etiketli) metin yazılırsa model kendi kontrol etiketlerini
-			// ([SIPARIS] bloğu dahil) bir sonraki turda geçmiş olarak geri
-			// görür ve gereksiz yere kafası karışabilir.
-			gecmis.push( { role: 'user', parts: [ { text: mesaj } ] } );
-			gecmis.push( { role: 'model', parts: [ { text: cevap } ] } );
-			if ( gecmis.length > 20 ) {
-				gecmis = gecmis.slice( -20 );
-			}
-			ekranaKaydet( 'bot', cevap );
-			gecmisKaydet();
-
-			if ( eskalasyon ) {
-				eskalasyonBalonu( cevap );
-			} else if ( urunler.length ) {
-				botBalonu( cevap, urunler );
-			} else {
-				balon( cevap, 'bot' );
-			}
-			if ( ! overlay.classList.contains( 'gemini-acik' ) ) {
-				rozetGoster();
-			}
-		} ).catch( function () {
-			yaziyor.remove();
 			kilitAc();
+
+			yanitIsle(
+				mesaj,
+				{
+					mesaj: sonuc.olay.mesaj || '',
+					urunler: sonuc.olay.urunler || []
+				},
+				sonuc.akim.bot
+			);
+		} ).catch( function ( err ) {
+			if ( yaziyor.parentNode ) {
+				yaziyor.remove();
+			}
+			kilitAc();
+
+			if ( err && 'sse_hata' === err.tip ) {
+				balon( err.mesaj, 'bot', true );
+				return;
+			}
 
 			if ( otomatikTekrarDenensin ) {
 				window.setTimeout( function () {
