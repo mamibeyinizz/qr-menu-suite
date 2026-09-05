@@ -102,17 +102,14 @@ function qrms_yf_hub_html( $stats = array() ) {
 echo "\nYorum & Feedback sayfaları\n";
 
 qrms_test(
-	'altı ekranın hepsi kayıt defterinde ve her birinin callback\'i var',
+	'dört ekranın hepsi kayıt defterinde ve her birinin callback\'i var',
 	function () {
 		$pages = qrm_pro_admin_pages();
 
-		// "Detaylı İçgörüler" (qrms-yf-icgoruler) kaldırıldı; kalan altı ekran
-		// hub'daki grup sırasıyla durur.
+		// Ana Yorum / İletişim ayrı sayfa değil; Formlar listesinde sistem satırı.
 		qrms_assert_same(
 			array(
 				'qrms-yf-yorumlar',
-				'qrms-yf-form-alanlari',
-				'qrms-yf-iletisim',
 				'qrms-yf-formlar',
 				'qrms-yf-ayarlar',
 				'qrms-yf-odul',
@@ -162,9 +159,11 @@ qrms_test(
 			array( 'qrm-pro-main', array( 'tab' => 'insights' ), 'qrms-yf-yorumlar', '' ),
 			array( 'qrm-pro-insights', array(), 'qrms-yf-yorumlar', '' ),
 			array( 'qrm-pro-settings', array(), 'qrms-yf-ayarlar', '' ),
-			array( 'qrm-pro-settings', array( 'sub' => 'alanlar' ), 'qrms-yf-form-alanlari', '' ),
-			array( 'qrm-pro-form', array(), 'qrms-yf-form-alanlari', '' ),
-			array( 'qrm-pro-contact', array(), 'qrms-yf-iletisim', '' ),
+			array( 'qrm-pro-settings', array( 'sub' => 'alanlar' ), 'qrms-yf-formlar', 'system=review' ),
+			array( 'qrm-pro-form', array(), 'qrms-yf-formlar', 'system=review' ),
+			array( 'qrms-yf-form-alanlari', array(), 'qrms-yf-formlar', 'system=review' ),
+			array( 'qrm-pro-contact', array(), 'qrms-yf-formlar', 'system=contact' ),
+			array( 'qrms-yf-iletisim', array(), 'qrms-yf-formlar', 'system=contact' ),
 			array( 'qrm-pro-rewards', array(), 'qrms-yf-odul', '' ),
 			array( 'qrm-pro-rewards', array( 'tab' => 'codes' ), 'qrms-yf-odul', 'tab=codes' ),
 			array( 'qrm-forms', array(), 'qrms-yf-formlar', '' ),
@@ -214,7 +213,7 @@ qrms_test(
 echo "\nYorum & Feedback menü ve hub\n";
 
 qrms_test(
-	'yedi ekran da gizli sayfa olarak kaydedilir, menüde satırları olmaz',
+	'dört ekran da gizli sayfa olarak kaydedilir, menüde satırları olmaz',
 	function () {
 		$GLOBALS['submenu'][ QRMS_Admin::MENU_SLUG ] = array(
 			qrms_submenu_satiri( 'Genel Bakış', QRMS_Admin::MENU_SLUG ),
@@ -292,7 +291,7 @@ qrms_test(
 );
 
 qrms_test(
-	'hub altı ekranı da üç başlık altında basar',
+	'hub dört ekranı da üç başlık altında basar',
 	function () {
 		$html = qrms_yf_hub_html();
 
@@ -315,9 +314,10 @@ qrms_test(
 		sort( $sirali );
 		qrms_assert_same( $sirali, $sira, 'başlık sırası: Yorumlar, Formlar, Ayarlar' );
 
-		// Karışan iki ad netleştirildi.
-		qrms_assert_contains( 'İletişim Formu', $html, 'iletişim kartının tam adı' );
-		qrms_assert_contains( 'Özel Formlar', $html, 'özel formlar kartının tam adı' );
+		qrms_assert_contains( '>Formlar<', $html, 'Formlar kartı / başlığı' );
+		qrms_assert_false( false !== strpos( $html, 'page=qrms-yf-form-alanlari' ), 'eski form alanları kartı yok' );
+		qrms_assert_false( false !== strpos( $html, 'page=qrms-yf-iletisim' ), 'eski iletişim kartı yok' );
+		qrms_assert_false( false !== strpos( $html, 'Özel Formlar' ), 'eski özel formlar adı yok' );
 		qrms_assert_false( false !== strpos( $html, 'İçgörüler' ), 'kaldırılan kart yok' );
 	}
 );

@@ -7,6 +7,7 @@ if (!defined('ABSPATH')) exit;
 //   ?page=qrms-yf-formlar                    -> "Formlarım" sekmesi
 //   ?page=qrms-yf-formlar&tab=submissions    -> "Gönderiler" sekmesi
 //   ?page=qrms-yf-formlar&view=edit&form_id= -> Form düzenleyici görünümü
+//   ?page=qrms-yf-formlar&view=edit&system=  -> Sistem formu (review|contact)
 // Bağlantıların tamamı qrm_cf_admin_url() ile üretilir; slug hiçbir yere gömülmez.
 //
 // Düzenleyici bilerek ayrı bir (gizli) admin sayfası DEĞİL: v4.2.0'da gizli sayfa
@@ -41,8 +42,8 @@ function qrm_cf_admin_forms_page() {
     <div class="wrap qrm-cf-wrap">
         <div class="qrm-cf-head">
             <div>
-                <h1><?php esc_html_e('Özel Formlar', 'qrms'); ?></h1>
-                <p class="qrm-cf-sub"><?php esc_html_e('Şikayet, geri bildirim, rezervasyon, anket… Kendi formlarınızı oluşturun, kısa kodla sayfaya yerleştirin, gönderimleri buradan takip edin.', 'qrms'); ?></p>
+                <h1><?php esc_html_e('Formlar', 'qrms'); ?></h1>
+                <p class="qrm-cf-sub"><?php esc_html_e('Ana yorum formu, iletişim formu ve kendi oluşturduğunuz formlar. Kısa kodla sayfaya yerleştirin, gönderimleri buradan takip edin.', 'qrms'); ?></p>
             </div>
             <a class="qrm-cf-btn-primary" href="<?php echo esc_url(qrm_cf_admin_url(['view' => 'edit'])); ?>">
                 <span class="dashicons dashicons-plus-alt2" style="font-size:17px;width:17px;height:17px;"></span> Yeni Form Oluştur
@@ -135,6 +136,8 @@ function qrm_cf_admin_styles() {
         .qrm-cf-badge-draft { background:#fef3c7; color:#92400e; }
         .qrm-cf-badge-archived { background:#f1f5f9; color:#475569; }
         .qrm-cf-badge-new { background:#dbeafe; color:#1e40af; }
+        .qrm-cf-badge-system { background:#ede9fe; color:#5b21b6; }
+        .qrm-cf-card-system { border-color:#ddd6fe; background:#faf8ff; }
 
         .qrm-cf-metrics { display:flex; gap:18px; padding:12px 0; border-top:1px solid #f1f5f9; border-bottom:1px solid #f1f5f9; }
         .qrm-cf-metric .num { display:block; font-size:22px; font-weight:700; color:#111827; line-height:1.2; }
@@ -248,19 +251,8 @@ function qrm_cf_shortcode_box($form) {
 function qrm_cf_admin_forms_list_pane() {
     $forms = qrm_cf_get_forms();
     ?>
-        <?php if (empty($forms)): ?>
-            <div class="qrm-cf-empty">
-                <div class="qrm-cf-empty-art">📝</div>
-                <h2>Henüz hiç formunuz yok</h2>
-                <p>
-                    Buradan oluşturduğunuz her form kendi kısa kodunu alır ve gönderimleri
-                    yorumlardan tamamen ayrı bir listede toplanır. İlk formunuzu oluşturmak
-                    yaklaşık bir dakika sürer.
-                </p>
-                <a class="qrm-cf-btn-primary" href="<?php echo esc_url(qrm_cf_admin_url(['view' => 'edit'])); ?>">İlk formunu oluştur</a>
-            </div>
-        <?php else: ?>
             <div class="qrm-cf-grid-cards">
+                <?php qrm_cf_admin_system_form_cards(); ?>
                 <?php foreach ($forms as $form):
                     $total  = qrm_cf_count_submissions($form->id);
                     $unread = qrm_cf_count_submissions($form->id, 'new');
@@ -306,6 +298,69 @@ function qrm_cf_admin_forms_list_pane() {
                 </div>
                 <?php endforeach; ?>
             </div>
-        <?php endif; ?>
     <?php
+}
+
+/**
+ * Listenin en üstündeki iki sabit sistem formu satırı.
+ *
+ * wp_qrm_custom_forms kaydı değildir; tıklanınca düzenleyici system= parametresiyle açılır.
+ * Sil / kopyala / taslak aksiyonları yok.
+ */
+function qrm_cf_admin_system_form_cards() {
+    $fields   = function_exists('qrm_pro_get_review_form_fields') ? qrm_pro_get_review_form_fields() : [];
+    $active   = 0;
+    foreach ($fields as $f) {
+        if (!empty($f->is_active)) {
+            $active++;
+        }
+    }
+
+    $stats = function_exists('qrm_pro_review_stats') ? qrm_pro_review_stats() : ['total' => 0];
+
+    foreach (qrm_pro_system_forms() as $key => $meta) {
+        $edit_url = qrm_cf_admin_url(['view' => 'edit', 'system' => $key]);
+        $is_review = ($key === 'review');
+        ?>
+        <div class="qrm-cf-card qrm-cf-card-system">
+            <div class="qrm-cf-card-top">
+                <div>
+                    <h2><?php echo esc_html($meta['title']); ?></h2>
+                    <p class="qrm-cf-card-desc"><?php echo esc_html($meta['desc']); ?></p>
+                </div>
+                <span class="qrm-cf-badge qrm-cf-badge-system"><?php esc_html_e('Sistem Formu', 'qrms'); ?></span>
+            </div>
+
+            <div class="qrm-cf-metrics">
+                <?php if ($is_review): ?>
+                    <div class="qrm-cf-metric">
+                        <span class="num"><?php echo intval($stats['total']); ?></span>
+                        <span class="lbl">Yorum</span>
+                    </div>
+                    <div class="qrm-cf-metric">
+                        <span class="num"><?php echo intval($active); ?></span>
+                        <span class="lbl">Alan</span>
+                    </div>
+                <?php else: ?>
+                    <div class="qrm-cf-metric">
+                        <span class="num"><?php echo intval($active); ?></span>
+                        <span class="lbl">Paylaşılan alan</span>
+                    </div>
+                <?php endif; ?>
+            </div>
+
+            <div class="qrm-cf-shortcode">
+                <code><?php echo esc_html($meta['shortcode']); ?></code>
+                <button type="button" class="qrm-cf-copy" data-copy="<?php echo esc_attr($meta['shortcode']); ?>">Kopyala</button>
+            </div>
+
+            <div class="qrm-cf-card-actions">
+                <a class="button button-primary" href="<?php echo esc_url($edit_url); ?>">Düzenle</a>
+                <?php if ($is_review): ?>
+                    <a class="button" href="<?php echo esc_url(qrm_pro_admin_url('qrms-yf-yorumlar')); ?>">Yorumları Gör</a>
+                <?php endif; ?>
+            </div>
+        </div>
+        <?php
+    }
 }

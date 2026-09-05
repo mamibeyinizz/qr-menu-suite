@@ -106,14 +106,14 @@ qrms_test(
 	'form düzenleyici sütun genişliğini alan bazında kaydeder',
 	function () {
 		$builder = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/admin/custom-form-builder.php' );
-		$alanlar = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/admin/form-builder.php' );
+		$alanlar = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/forms/review-form.php' );
 		$js      = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/assets/js/form-preview.js' );
 		$sema    = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/forms/db.php' );
 		$install = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/install.php' );
 
 		qrms_assert_contains( "column_width: 'full'", $builder, 'yeni özel alan varsayılanı tekli' );
 		qrms_assert_contains( 'data-edit="column_width"', $builder, 'özel form düzenleme paneli' );
-		qrms_assert_contains( 'name="fields[<?php echo intval($f->id); ?>][column_width]"', $alanlar, 'yorum formu sütun seçimi' );
+		qrms_assert_contains( 'qrm_pro_sanitize_column_width', $alanlar, 'yorum formu sütun seçimi' );
 		qrms_assert_contains( 'select[name*="[column_width]"]', $js, 'önizleme seçimi okur' );
 		qrms_assert_false( false !== strpos( $js, 'HALF_KEYS' ), 'sabit half anahtar listesi kalktı' );
 		qrms_assert_contains( "column_width varchar(10) DEFAULT 'full' NOT NULL", $sema, 'özel form şeması' );

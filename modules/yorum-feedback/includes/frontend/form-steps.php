@@ -2,7 +2,16 @@
 if (!defined('ABSPATH')) exit;
 
 /**
- * Adım numarasını 1..4 aralığına kırpar.
+ * Bir formdaki azami adım sayısı. Alt sınır 1 kalır.
+ *
+ * @return int
+ */
+function qrm_pro_max_step_no() {
+    return 12;
+}
+
+/**
+ * Adım numarasını 1..qrm_pro_max_step_no() aralığına kırpar.
  *
  * @param mixed $step
  * @return int
@@ -10,7 +19,8 @@ if (!defined('ABSPATH')) exit;
 function qrm_pro_sanitize_step_no($step) {
     $step = (int) $step;
     if ($step < 1) return 1;
-    if ($step > 4) return 4;
+    $max = qrm_pro_max_step_no();
+    if ($step > $max) return $max;
     return $step;
 }
 
@@ -82,6 +92,15 @@ function qrm_pro_build_steps($settings, $active_fields, $opts = []) {
         }
     }
 
+    // Kayıtlı düzen varsa (düzenleyici en az bir kez kaydedilmişse) adımlar
+    // oradan üretilir. Boş düzen = canlı sitelerdeki sabit sıra.
+    if (function_exists('qrm_pro_review_form_layout_is_custom')) {
+        $layout = qrm_pro_get_review_form_layout($settings);
+        if (qrm_pro_review_form_layout_is_custom($layout)) {
+            return qrm_pro_build_steps_from_layout($settings, $active_fields, $opts, $layout);
+        }
+    }
+
     $steps = [];
 
     $has_rating = false;
@@ -138,6 +157,174 @@ function qrm_pro_build_steps($settings, $active_fields, $opts = []) {
         $step['step'] = $i + 1;
     }
     unset($step);
+
+    return [
+        'steps'          => $steps,
+        'use_stepper'    => count($steps) >= 2,
+        'comment_fields' => $comment_fields,
+        'info_fields'    => $info_fields,
+    ];
+}
+
+/**
+ * Kayıtlı qrm_review_form_layout'tan adım listesi üretir.
+ *
+ * Widget'lar (rating_group, google_reward) iletişim formunda basılmaz.
+ * Özet adımı ve captcha/consent konumu eski sabit yolla aynıdır.
+ *
+ * @param array $settings
+ * @param array $active_fields
+ * @param array $opts
+ * @param array $layout
+ * @return array{steps:array,use_stepper:bool,comment_fields:array,info_fields:array}
+ */
+function qrm_pro_build_steps_from_layout($settings, $active_fields, $opts, $layout) {
+    $media_on    = !empty($opts['media_on']);
+    $form_source = isset($opts['form_source']) ? $opts['form_source'] : 'review';
+
+    $by_key = [];
+    foreach ((array) $active_fields as $f) {
+        $by_key[$f->field_key] = $f;
+    }
+
+    $field_steps = isset($layout['field_steps']) && is_array($layout['field_steps']) ? $layout['field_steps'] : [];
+    $widgets     = isset($layout['widgets']) && is_array($layout['widgets']) ? $layout['widgets'] : [];
+    $labels      = isset($layout['step_labels']) && is_array($layout['step_labels']) ? $layout['step_labels'] : [];
+
+    $groups = [];
+    $ensure = static function ($sn) use (&$groups) {
+        $sn = qrm_pro_sanitize_step_no($sn);
+        if (!isset($groups[$sn])) {
+            $groups[$sn] = ['widgets' => [], 'fields' => []];
+        }
+        return $sn;
+    };
+
+    if ($form_source !== 'contact' && isset($widgets['rating_group'])) {
+        $has_active = false;
+        for ($i = 1; $i <= 5; $i++) {
+            if (!empty($settings['crit_' . $i . '_active'])) {
+                $has_active = true;
+                break;
+            }
+        }
+        if ($has_active) {
+            $sn = $ensure($widgets['rating_group']);
+            $groups[$sn]['widgets'][] = 'rating_group';
+        }
+    }
+
+    foreach ($by_key as $key => $f) {
+        if (isset($field_steps[$key])) {
+            $sn = $field_steps[$key];
+        } else {
+            $sn = ($f->field_type === 'textarea') ? 2 : 3;
+        }
+        $sn = $ensure($sn);
+        $groups[$sn]['fields'][] = $f;
+    }
+
+    if ($form_source !== 'contact' && isset($widgets['google_reward'])) {
+        $sn = $ensure($widgets['google_reward']);
+        $groups[$sn]['widgets'][] = 'google_reward';
+    }
+
+    ksort($groups);
+
+    $media_step = 0;
+    if ($media_on) {
+        foreach ($groups as $sn => $g) {
+            foreach ($g['fields'] as $f) {
+                if ($f->field_type === 'textarea') {
+                    $media_step = (int) $sn;
+                    break 2;
+                }
+            }
+        }
+        if (!$media_step && $groups) {
+            $keys = array_keys($groups);
+            $media_step = (int) end($keys);
+        }
+    }
+
+    $comment_fields = [];
+    $info_fields    = [];
+    foreach ($by_key as $f) {
+        if ($f->field_type === 'textarea') {
+            $comment_fields[] = $f;
+        } else {
+            $info_fields[] = $f;
+        }
+    }
+
+    $steps = [];
+    $n     = 0;
+    foreach ($groups as $sn => $g) {
+        $has_media = ($media_on && (int) $sn === (int) $media_step);
+        if (empty($g['widgets']) && empty($g['fields']) && !$has_media) {
+            continue;
+        }
+        $n++;
+        $has_rating = in_array('rating_group', $g['widgets'], true);
+        $has_gr     = in_array('google_reward', $g['widgets'], true);
+
+        $type = 'fields';
+        if ($has_rating && !$has_gr && empty($g['fields']) && !$has_media) {
+            $type = 'rating';
+        } elseif ($has_gr && !$has_rating && empty($g['fields']) && !$has_media) {
+            $type = 'google_reward';
+        } elseif (!$has_rating && !$has_gr && !empty($g['fields'])) {
+            $only_ta   = true;
+            $only_info = true;
+            foreach ($g['fields'] as $f) {
+                if ($f->field_type !== 'textarea') {
+                    $only_ta = false;
+                } else {
+                    $only_info = false;
+                }
+            }
+            if ($only_ta) {
+                $type = 'comment';
+            } elseif ($only_info) {
+                $type = 'info';
+            }
+        }
+
+        $label = '';
+        if (isset($labels[$sn]) && trim((string) $labels[$sn]) !== '') {
+            $label = qrm_ceviri_review(sanitize_text_field($labels[$sn]));
+        } elseif (in_array($type, ['rating', 'comment', 'info'], true)) {
+            $label = qrm_pro_step_label($type === 'rating' ? 'rating' : $type, $settings);
+        } else {
+            $label = qrm_cf_step_label((int) $sn, ['step_labels' => $labels]);
+        }
+
+        $steps[] = [
+            'id'                 => 's' . (int) $sn,
+            'type'               => $type,
+            'label'              => $label,
+            'fields'             => array_map(static function ($f) { return $f->field_key; }, $g['fields']),
+            'field_objects'      => $g['fields'],
+            'has_rating'         => $has_rating,
+            'has_google_reward'  => $has_gr,
+            'has_media'          => $has_media,
+            'step'               => $n,
+        ];
+    }
+
+    if (!empty($steps)) {
+        $steps[count($steps) - 1]['captcha'] = true;
+        $steps[count($steps) - 1]['consent'] = true;
+    }
+
+    if (!empty($settings['qrm_steps_summary_enabled']) && count($steps) >= 2) {
+        $steps[] = [
+            'id'    => 'summary',
+            'type'  => 'summary',
+            'label' => qrm_pro_step_label('summary', $settings),
+            'step'  => count($steps) + 1,
+        ];
+    }
 
     return [
         'steps'          => $steps,
@@ -519,8 +706,8 @@ function qrm_pro_steps_wizard_js() {
                 if (!p || !cfg) return true;
                 clearErr(p);
 
-                if (cfg.type === 'rating') {
-                    var rows = p.querySelectorAll('.qrm-rating-row');
+                var rows = p.querySelectorAll('.qrm-rating-row');
+                if (rows.length) {
                     for (var i = 0; i < rows.length; i++) {
                         if (!rows[i].querySelector('input[type=radio]:checked')) {
                             showErr(p, typeof metin === 'function' ? metin('rateRequired', 'Devam etmek için lütfen tüm kriterleri puanlayın.') : 'Devam etmek için lütfen tüm kriterleri puanlayın.');
@@ -529,10 +716,10 @@ function qrm_pro_steps_wizard_js() {
                             return false;
                         }
                     }
-                    return true;
+                    if (cfg.type === 'rating') return true;
                 }
 
-                if (cfg.type === 'summary') return true;
+                if (cfg.type === 'summary' || cfg.type === 'google_reward') return true;
 
                 var seenRadio = {};
                 var fields = p.querySelectorAll('input, textarea, select');

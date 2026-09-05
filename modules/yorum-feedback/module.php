@@ -11,7 +11,7 @@
  * Kaynakta modülün ekranları ayrı bir top-level menüde duruyordu ve suite
  * menüsündeki "Yorum & Feedback" satırı da bunlardan birini (Tüm Yorumlar)
  * ikinci kez basıyordu. Artık tek giriş noktası var: sol menüde yalnızca
- * "Yorum & Feedback" satırı durur ve altı ekranı kart olarak listeleyen hub
+ * "Yorum & Feedback" satırı durur ve dört ekranı kart olarak listeleyen hub
  * ekranını açar — restoran-menu modülündeki desenin aynısı. Ekranların
  * kendisi gizli ama gerçek sayfalar olarak kayıtlıdır; eski adreslerden
  * gelenler qrm_pro_legacy_page_target() ile yönlendirilir.
@@ -89,13 +89,13 @@ function qrms_module_yorum_feedback_init() {
 			array(
 				'tag'   => 'qr_menu_form',
 				'title' => __( 'Özel Form', 'qrms' ),
-				'desc'  => __( 'Özel Formlar ekranında oluşturduğunuz kendi formlarınızdan birini (şikayet, rezervasyon, anket…) sayfaya yerleştirir.', 'qrms' ),
+				'desc'  => __( 'Formlar ekranında oluşturduğunuz kendi formlarınızdan birini (şikayet, rezervasyon, anket…) sayfaya yerleştirir.', 'qrms' ),
 				'usage' => '[qr_menu_form key="rezervasyon"]',
 				'attrs' => array(
 					array(
 						'name'    => 'key',
 						'default' => '',
-						'desc'    => __( 'Formun anahtarı — Özel Formlar ekranından öğrenin. Zorunludur.', 'qrms' ),
+						'desc'    => __( 'Formun anahtarı — Formlar ekranından öğrenin. Zorunludur.', 'qrms' ),
 					),
 				),
 			),
@@ -103,7 +103,7 @@ function qrms_module_yorum_feedback_init() {
 	);
 
 	if ( is_admin() ) {
-		// Suite menüsündeki "Yorum & Feedback" satırı, modülün altı ekranını
+		// Suite menüsündeki "Yorum & Feedback" satırı, modülün dört ekranını
 		// listeleyen başlangıç ekranını açar; ekranların kendisi aşağıda ayrı
 		// ayrı sayfa olarak kaydedilir.
 		QRMS_Admin::register_module_page( 'yorum-feedback', 'qrm_pro_admin_hub' );
@@ -121,10 +121,10 @@ function qrms_module_yorum_feedback_init() {
 }
 
 /**
- * Modülün altı ekranını kaydeder — hepsi sol menüde GİZLİDİR.
+ * Modülün dört ekranını kaydeder — hepsi sol menüde GİZLİDİR.
  *
  * Sol admin menüsü tek seviyeye indirildi: orada yalnızca "Yorum & Feedback"
- * satırı durur, o satır da altı ekranı kart olarak listeleyen hub ekranını
+ * satırı durur, o satır da dört ekranı kart olarak listeleyen hub ekranını
  * (qrm_pro_admin_hub) açar. Ekranlar gerçek, ayrı WordPress sayfaları olarak
  * kaydolmaya devam eder — adresleri, hook adları ve yetkileri değişmez;
  * yalnızca menüde boyanmazlar (bkz. QRMS_Admin::hide_module_subpages).
@@ -250,69 +250,4 @@ function qrms_module_yorum_feedback_admin_assets() {
 		wp_add_inline_script( 'wp-color-picker', "jQuery(function($){ $('.qrm-color-picker').wpColorPicker(); });" );
 	}
 
-	if ( 'qrms-yf-form-alanlari' === $page ) {
-		wp_enqueue_script( 'jquery-ui-sortable' );
-
-		// Canlı önizleme. Sıralama koduna bağlanmaz (listeyi MutationObserver
-		// ile izler), bu yüzden bağımlılığı yalnızca kendi DOM'u.
-		wp_enqueue_script(
-			'qrm-form-preview',
-			QRMS_PLUGIN_URL . 'modules/yorum-feedback/assets/js/form-preview.js',
-			array(),
-			QRMS_Helpers::asset_version( 'modules/yorum-feedback/assets/js/form-preview.js' ),
-			true
-		);
-
-		// Sürükle-bırak masaüstü için; sıralama telefondan da yapılabilsin diye
-		// her satırdaki yukarı/aşağı butonları satırları DOM'da yer değiştirir.
-		// Kaydetme sırası DOM sırasından okunduğu için ikisi aynı sonucu verir.
-		wp_add_inline_script(
-			'jquery-ui-sortable',
-			"jQuery(function($){
-				var liste = $('#qrm-sortable-fields');
-				if (!liste.length) return;
-
-				function tazele(){
-					liste.find('.qrm-field-row').each(function(i, satir){
-						var ilk  = i === 0;
-						var son  = i === liste.find('.qrm-field-row').length - 1;
-						$(satir).find('.qrm-field-up').prop('disabled', ilk);
-						$(satir).find('.qrm-field-down').prop('disabled', son);
-					});
-				}
-
-				function degisti(){
-					$('#qrm-sort-hint').slideDown(120);
-					tazele();
-				}
-
-				liste.sortable({
-					handle: '.qrm-field-handle',
-					distance: 4,
-					tolerance: 'pointer',
-					update: degisti
-				});
-
-				liste.on('click', '.qrm-field-up', function(){
-					var satir = $(this).closest('.qrm-field-row');
-					var onceki = satir.prev('.qrm-field-row');
-					if (!onceki.length) return;
-					satir.insertBefore(onceki);
-					degisti();
-					$(this).trigger('focus');
-				});
-
-				liste.on('click', '.qrm-field-down', function(){
-					var satir = $(this).closest('.qrm-field-row');
-					var sonraki = satir.next('.qrm-field-row');
-					if (!sonraki.length) return;
-					satir.insertAfter(sonraki);
-					degisti();
-					$(this).trigger('focus');
-				});
-
-				tazele();
-			});"
-		);
-	}
 }

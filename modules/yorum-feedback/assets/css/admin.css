@@ -8,8 +8,8 @@
  * yönetilebiliyor.
  *
  * Kapsam: `.qrm-pro-wrap` sınıfını taşıyan ekranlar — Tüm Yorumlar,
- * Müşteri Bilgileri Formu, Ayarlar & Puanlama, İletişim Formu,
- * Google & Ödül Sistemi. Hub ekranı suite'in ortak `.qrms-hub-*` bileşenini
+ * Ayarlar & Puanlama, Google & Ödül Sistemi. Formlar ekranı kendi
+ * `qrm-cf-*` stillerini kullanır. Hub ekranı suite'in ortak `.qrms-hub-*` bileşenini
  * kullanır (assets/css/admin.css). "Formlar" ekranlarının kendi `qrm-cf-*` stilleri
  * kaynağındaki satır içi bloklarda durur; oradaki mobil kuralları da aynı
  * bloklarda, ezmek istedikleri kuralın yanında tutulur.

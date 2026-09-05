@@ -7,8 +7,9 @@ if (!defined('ABSPATH')) exit;
 // sayfasının bir görünümü (?page=qrms-yf-formlar&view=edit). Gizli admin sayfası deseni
 // WordPress'in hook adı çözümlemesini bozup 403'e yol açıyordu (bkz. menu.php).
 //
-// Not: includes/admin/form-builder.php (Müşteri Bilgileri Formu) mevcut yorum
-// formunun sabit alanlarını yönetir ve bu modülle ilgisi yoktur.
+// Sistem formları (Ana Yorum / İletişim) aynı düzenleyici görünümüdür:
+// ?page=qrms-yf-formlar&view=edit&system=review|contact
+// Veri wp_qrm_custom_forms'tan değil, wp_qrm_form_fields + qrm_settings'ten gelir.
 //
 // Alan listesi tek bir gizli JSON alanında (qrm_cf_fields_json) taşınır: sürükle-bırak
 // sıralamasından sonra input adlarını yeniden numaralandırmak gerekmez, sunucu tarafı
@@ -19,45 +20,76 @@ function qrm_cf_admin_form_editor_view() {
         wp_die('Bu sayfayı görüntüleme yetkiniz yok.');
     }
 
+    $system = isset($_GET['system']) ? sanitize_key(wp_unslash($_GET['system'])) : '';
+    if ($system !== '' && !qrm_pro_is_system_form($system)) {
+        $system = '';
+    }
+
     $form_id = isset($_GET['form_id']) ? intval($_GET['form_id']) : 0;
     $notices = [];
 
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['qrm_cf_save_form'])) {
         check_admin_referer('qrm_cf_save_form');
-        $result  = qrm_cf_admin_handle_editor_save();
-        $notices = $result['notices'];
-        if ($result['form_id'] > 0) $form_id = $result['form_id'];
+        if ($system !== '') {
+            $result  = qrm_cf_admin_handle_system_form_save($system);
+            $notices = $result['notices'];
+        } else {
+            $result  = qrm_cf_admin_handle_editor_save();
+            $notices = $result['notices'];
+            if ($result['form_id'] > 0) $form_id = $result['form_id'];
+        }
     }
 
-    $form = $form_id > 0 ? qrm_cf_get_form($form_id) : null;
-    $is_new = !$form;
+    $qrm_settings = qrm_pro_get_settings();
+    $is_system    = ($system !== '');
+    $is_new       = false;
 
-    if ($is_new) {
-        // Kaydedilmemiş yeni form için boş bir taslak nesnesi
+    if ($is_system) {
+        $sys_meta = qrm_pro_get_system_form($system);
         $form = (object) [
-            'id' => 0, 'form_key' => '', 'title' => '', 'description' => '',
-            'status' => 'active', 'settings' => '',
+            'id'          => 0,
+            'form_key'    => $system,
+            'title'       => ($system === 'contact')
+                ? $qrm_settings['contact_form_title']
+                : $qrm_settings['form_title'],
+            'description' => $sys_meta['desc'],
+            'status'      => 'active',
+            'settings'    => '',
         ];
-        $fields = [];
+        $fields = qrm_pro_get_review_form_fields();
+        $s      = qrm_cf_get_form_settings($form);
+        $s['step_labels'] = qrm_pro_get_review_form_layout($qrm_settings)['step_labels'];
+        $types  = qrm_cf_field_types($system === 'review');
+        $state  = qrm_pro_review_fields_to_builder_state($fields, $qrm_settings, $system);
     } else {
-        $fields = qrm_cf_get_fields($form->id);
-    }
+        $form = $form_id > 0 ? qrm_cf_get_form($form_id) : null;
+        $is_new = !$form;
 
-    $s     = qrm_cf_get_form_settings($form);
-    $types = qrm_cf_field_types();
+        if ($is_new) {
+            $form = (object) [
+                'id' => 0, 'form_key' => '', 'title' => '', 'description' => '',
+                'status' => 'active', 'settings' => '',
+            ];
+            $fields = [];
+        } else {
+            $fields = qrm_cf_get_fields($form->id);
+        }
 
-    // JS tarafına aktarılacak alan durumu
-    $state = [];
-    foreach ($fields as $f) {
-        $state[] = [
-            'key'      => $f->field_key,
-            'label'    => $f->label,
-            'type'     => $f->field_type,
-            'required'      => (int) $f->is_required,
-            'options'       => qrm_cf_field_options($f),
-            'column_width'  => qrm_pro_field_column_width($f, 'custom'),
-            'step_no'       => qrm_pro_sanitize_step_no(isset($f->step_no) ? $f->step_no : 1),
-        ];
+        $s     = qrm_cf_get_form_settings($form);
+        $types = qrm_cf_field_types(false);
+
+        $state = [];
+        foreach ($fields as $f) {
+            $state[] = [
+                'key'      => $f->field_key,
+                'label'    => $f->label,
+                'type'     => $f->field_type,
+                'required'      => (int) $f->is_required,
+                'options'       => qrm_cf_field_options($f),
+                'column_width'  => qrm_pro_field_column_width($f, 'custom'),
+                'step_no'       => qrm_pro_sanitize_step_no(isset($f->step_no) ? $f->step_no : 1),
+            ];
+        }
     }
 
     qrm_cf_admin_styles();
@@ -98,6 +130,9 @@ function qrm_cf_admin_form_editor_view() {
         <form method="post" id="qrm-fb-form">
             <?php wp_nonce_field('qrm_cf_save_form'); ?>
             <input type="hidden" name="qrm_cf_form_id" value="<?php echo intval($form->id); ?>">
+            <?php if ($is_system): ?>
+                <input type="hidden" name="qrm_cf_system" value="<?php echo esc_attr($system); ?>">
+            <?php endif; ?>
             <input type="hidden" name="qrm_cf_fields_json" id="qrm-fb-fields-json" value="">
 
             <!-- ÜST SABİT ÇUBUK -->
@@ -107,8 +142,20 @@ function qrm_cf_admin_form_editor_view() {
                         <span class="dashicons dashicons-arrow-left-alt2"></span>
                     </a>
                     <div>
-                        <strong id="qrm-fb-topbar-title"><?php echo $is_new ? 'Yeni Form' : esc_html($form->title); ?></strong>
-                        <?php if (!$is_new): ?>
+                        <strong id="qrm-fb-topbar-title"><?php
+                            if ($is_system) {
+                                echo esc_html(qrm_pro_get_system_form($system)['title']);
+                            } else {
+                                echo $is_new ? 'Yeni Form' : esc_html($form->title);
+                            }
+                        ?></strong>
+                        <?php if ($is_system): ?>
+                            <div class="qrm-fb-topbar-shortcode">
+                                <code id="qrm-fb-shortcode"><?php echo esc_html(qrm_pro_get_system_form($system)['shortcode']); ?></code>
+                                <button type="button" class="qrm-cf-copy" data-copy="<?php echo esc_attr(qrm_pro_get_system_form($system)['shortcode']); ?>">Kopyala</button>
+                                <span class="qrm-cf-badge qrm-cf-badge-system">Sistem Formu</span>
+                            </div>
+                        <?php elseif (!$is_new): ?>
                             <div class="qrm-fb-topbar-shortcode">
                                 <code id="qrm-fb-shortcode"><?php echo esc_html(qrm_cf_form_shortcode($form)); ?></code>
                                 <button type="button" class="qrm-cf-copy" data-copy="<?php echo esc_attr(qrm_cf_form_shortcode($form)); ?>">Kopyala</button>
@@ -134,10 +181,24 @@ function qrm_cf_admin_form_editor_view() {
             <div class="qrm-fb-grid">
                 <!-- SOL: ALAN PALETİ -->
                 <aside class="qrm-fb-panel qrm-fb-palette">
-                    <h2 class="qrm-fb-panel-title">Alan Ekle</h2>
-                    <p class="qrm-cf-sub" style="margin:0 0 14px;">Eklemek için bir alan tipine tıklayın.</p>
+                    <h2 class="qrm-fb-panel-title"><?php echo $is_system ? 'Widget / Alan' : 'Alan Ekle'; ?></h2>
+                    <p class="qrm-cf-sub" style="margin:0 0 14px;"><?php
+                        echo $is_system
+                            ? esc_html__('Sabit alanlar listede durur. Ana Yorum Formu\'nda puanlama ve Google/ödül widget\'larını ekleyebilirsiniz.', 'qrms')
+                            : esc_html__('Eklemek için bir alan tipine tıklayın.', 'qrms');
+                    ?></p>
                     <div class="qrm-fb-palette-grid">
-                        <?php foreach ($types as $type => $meta): ?>
+                        <?php foreach ($types as $type => $meta):
+                            if (!empty($meta['is_system_only']) && $system !== 'review') {
+                                continue;
+                            }
+                            if ($is_system && $system === 'contact' && !empty($meta['is_system_only'])) {
+                                continue;
+                            }
+                            if ($is_system && empty($meta['is_widget'])) {
+                                continue;
+                            }
+                        ?>
                             <button type="button" class="qrm-fb-type-card" data-type="<?php echo esc_attr($type); ?>">
                                 <span class="dashicons <?php echo esc_attr($meta['icon']); ?>"></span>
                                 <span class="qrm-fb-type-name"><?php echo esc_html($meta['label']); ?></span>
@@ -168,9 +229,10 @@ function qrm_cf_admin_form_editor_view() {
 
                     <div class="qrm-fb-field">
                         <label for="qrm-fb-title">Form Başlığı</label>
-                        <input type="text" id="qrm-fb-title" name="qrm_cf_title" value="<?php echo esc_attr($form->title); ?>" placeholder="Örn: Şikayet Formu" required>
+                        <input type="text" id="qrm-fb-title" name="qrm_cf_title" value="<?php echo esc_attr($form->title); ?>" placeholder="Örn: Şikayet Formu" <?php echo $is_system && $system === 'review' ? '' : 'required'; ?>>
                     </div>
 
+                    <?php if (!$is_system): ?>
                     <div class="qrm-fb-field">
                         <label for="qrm-fb-desc">Açıklama</label>
                         <textarea id="qrm-fb-desc" name="qrm_cf_description" rows="3" placeholder="Formun üstünde görünecek kısa açıklama (opsiyonel)"><?php echo esc_textarea($form->description); ?></textarea>
@@ -191,7 +253,13 @@ function qrm_cf_admin_form_editor_view() {
                         </select>
                         <p class="qrm-fb-help">Yalnızca <strong>Aktif</strong> formlar ziyaretçilere gösterilir.</p>
                     </div>
+                    <?php elseif ($system === 'contact'): ?>
+                    <p class="qrm-fb-help" style="margin-top:0;">
+                        Alanlar <strong>Ana Yorum Formu</strong> ile ortaktır. Burada yalnızca iletişim formu başlığı kaydedilir.
+                    </p>
+                    <?php endif; ?>
 
+                    <?php if (!$is_system): ?>
                     <h3 class="qrm-fb-section">Gönderim</h3>
 
                     <div class="qrm-fb-field">
@@ -246,31 +314,122 @@ function qrm_cf_admin_form_editor_view() {
                         <label for="qrm-fb-radius">Köşe Yuvarlaklığı: <span id="qrm-fb-radius-val"><?php echo intval($s['border_radius']); ?></span>px</label>
                         <input type="range" id="qrm-fb-radius" name="qrm_cf_settings[border_radius]" min="0" max="40" value="<?php echo intval($s['border_radius']); ?>">
                     </div>
+                    <?php endif; ?>
+
+                    <?php if ($is_system && $system === 'review'): ?>
+                    <p class="qrm-fb-help">
+                        Puanlama kriterlerinin adı ve aktifliği
+                        <a href="<?php echo esc_url(qrm_pro_admin_url('qrms-yf-ayarlar')); ?>">Ayarlar &amp; Puanlama</a>
+                        sayfasındadır. Google / ödül metinleri
+                        <a href="<?php echo esc_url(qrm_pro_admin_url('qrms-yf-odul')); ?>">Google &amp; Ödül Sistemi</a>
+                        sayfasındadır. Burada yalnızca konum ve sıra belirlenir.
+                    </p>
+                    <?php endif; ?>
 
                     <h3 class="qrm-fb-section">Adımlar</h3>
-                    <p class="qrm-fb-help" style="margin-top:0;">Alanları 1–4 arası adımlara atayın. Yalnızca tek adım kullanılırsa ziyaretçiye stepper gösterilmez.</p>
-                    <?php for ($si = 1; $si <= 4; $si++): ?>
-                    <div class="qrm-fb-field">
-                        <label for="qrm-fb-step-label-<?php echo $si; ?>"><?php echo (int) $si; ?>. Adım etiketi</label>
-                        <input type="text" id="qrm-fb-step-label-<?php echo $si; ?>" name="qrm_cf_settings[step_labels][<?php echo $si; ?>]"
-                               value="<?php echo esc_attr(isset($s['step_labels'][$si]) ? $s['step_labels'][$si] : ''); ?>"
-                               placeholder="<?php echo esc_attr(sprintf('%d. Adım', $si)); ?>">
+                    <p class="qrm-fb-help" style="margin-top:0;">İstediğiniz kadar adım ekleyin; alanları adımlar arasında sürükleyin. Tek adımda stepper gösterilmez.</p>
+                    <div id="qrm-fb-step-labels">
+                        <?php
+                        $saved_step_labels = isset($s['step_labels']) && is_array($s['step_labels']) ? $s['step_labels'] : [];
+                        $step_count = 1;
+                        foreach ($state as $st_item) {
+                            $sn = isset($st_item['step_no']) ? (int) $st_item['step_no'] : 1;
+                            if ($sn > $step_count) $step_count = $sn;
+                        }
+                        foreach ($saved_step_labels as $sn => $_lbl) {
+                            if ((int) $sn > $step_count) $step_count = (int) $sn;
+                        }
+                        $step_count = max(1, min(qrm_pro_max_step_no(), $step_count));
+                        for ($si = 1; $si <= $step_count; $si++):
+                        ?>
+                        <div class="qrm-fb-field qrm-fb-step-label-row" data-step="<?php echo (int) $si; ?>">
+                            <label for="qrm-fb-step-label-<?php echo $si; ?>"><?php echo (int) $si; ?>. Adım etiketi</label>
+                            <input type="text" id="qrm-fb-step-label-<?php echo $si; ?>" name="qrm_cf_settings[step_labels][<?php echo $si; ?>]"
+                                   value="<?php echo esc_attr(isset($saved_step_labels[$si]) ? $saved_step_labels[$si] : ''); ?>"
+                                   placeholder="<?php echo esc_attr(sprintf('%d. Adım', $si)); ?>">
+                        </div>
+                        <?php endfor; ?>
                     </div>
-                    <?php endfor; ?>
+                    <p>
+                        <button type="button" class="button" id="qrm-fb-add-step">Adım ekle</button>
+                        <button type="button" class="button" id="qrm-fb-remove-step">Son adımı sil</button>
+                    </p>
 
+                    <?php if (!$is_system): ?>
                     <h3 class="qrm-fb-section">Güvenlik</h3>
                     <p class="qrm-fb-help" style="margin-top:0;">
                         Bu formlarda <strong>honeypot</strong> (bot tuzağı) ve <strong>zaman tabanlı</strong> spam koruması
                         her zaman açıktır; ayrıca aynı IP'den kısa sürede gelen aşırı gönderimler sınırlanır.
                         Ziyaretçiye ek bir güvenlik sorusu sorulmaz.
                     </p>
+                    <?php endif; ?>
                 </aside>
             </div>
         </form>
     </div>
 
-    <?php qrm_cf_admin_builder_script($state, $types); ?>
     <?php
+    qrm_cf_admin_builder_script($state, $types, [
+        'system'    => $system,
+        'max_steps' => qrm_pro_max_step_no(),
+    ]);
+    ?>
+    <?php
+}
+
+/**
+ * Sistem formu (review|contact) düzenleyici POST'u.
+ *
+ * Alan kaydı qrm_pro_save_review_form_fields() / başlık kaydı
+ * qrm_pro_save_contact_form_title() ile yapılır — kopyalanmaz, çağrılır.
+ *
+ * @param string $system review|contact
+ * @return array{form_id:int,notices:array}
+ */
+function qrm_cf_admin_handle_system_form_save($system) {
+    $notices = [];
+
+    $raw_fields = isset($_POST['qrm_cf_fields_json']) ? wp_unslash($_POST['qrm_cf_fields_json']) : '';
+    $fields     = json_decode($raw_fields, true);
+    if (!is_array($fields)) {
+        $fields = [];
+    }
+
+    $parsed = qrm_pro_builder_state_to_review_save($fields);
+    $title  = isset($_POST['qrm_cf_title']) ? wp_unslash($_POST['qrm_cf_title']) : '';
+
+    $step_labels = [];
+    if (isset($_POST['qrm_cf_settings']['step_labels']) && is_array($_POST['qrm_cf_settings']['step_labels'])) {
+        foreach (wp_unslash($_POST['qrm_cf_settings']['step_labels']) as $n => $label) {
+            $n = (int) $n;
+            if ($n < 1) {
+                continue;
+            }
+            $step_labels[qrm_pro_sanitize_step_no($n)] = sanitize_text_field($label);
+        }
+    }
+    $parsed['layout']['step_labels'] = $step_labels;
+
+    if ($system === 'contact') {
+        qrm_pro_save_contact_form_title($title);
+        $notices[] = ['type' => 'success', 'text' => 'İletişim formu ayarları kaydedildi. Alanlar Ana Yorum Formu ile ortaktır.'];
+        return ['form_id' => 0, 'notices' => $notices];
+    }
+
+    $saved = qrm_pro_save_review_form_fields($parsed['rows']);
+    qrm_pro_save_review_form_layout($parsed['layout'], $step_labels);
+
+    if ($title !== '') {
+        $settings = qrm_pro_get_settings();
+        $settings['form_title'] = sanitize_text_field($title);
+        update_option('qrm_settings', $settings);
+    }
+
+    $notices[] = [
+        'type' => 'success',
+        'text' => sprintf('%d form alanı güncellendi. Kısa kod: <code>[qr_menu_reviews]</code>', (int) $saved),
+    ];
+    return ['form_id' => 0, 'notices' => $notices];
 }
 
 /**
@@ -408,8 +567,13 @@ function qrm_cf_admin_builder_styles() {
         .qrm-fb-submit-preview { width:100%; margin-top:12px; padding:15px 30px; border:none; border-radius:var(--qrm-radius); background:var(--qrm-btn); color:var(--qrm-btn-text);
             font-size:15px; font-weight:600; text-transform:uppercase; letter-spacing:.5px; opacity:.95; cursor:default; }
 
-        .qrm-fb-step-group { width:100%; margin-bottom:18px; }
+        .qrm-fb-step-group { width:100%; margin-bottom:18px; min-height:56px; padding:6px; border:1px dashed transparent; border-radius:10px; }
+        .qrm-fb-step-group.is-drop { border-color:#2271b1; background:rgba(34,113,177,.04); }
         .qrm-fb-step-group-title { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.4px; color:#64748b; margin:0 0 10px; padding-bottom:6px; border-bottom:1px dashed #e2e8f0; }
+        .qrm-fb-step-empty { font-size:12.5px; color:#94a3b8; padding:10px 4px; }
+        .qrm-fb-widget-preview { background:#fffbeb; border:1px dashed #f59e0b; border-radius:10px; padding:12px 14px; font-size:13px; color:#92400e; }
+        .qrm-fb-type-card[data-disabled="1"] { opacity:.4; pointer-events:none; }
+        .qrm-cf-badge-system { background:#dbeafe; color:#1e40af; }
         .qrm-fb-empty-fields { text-align:center; padding:34px 16px; color:#94a3b8; font-size:13.5px; border:2px dashed #e2e8f0; border-radius:12px; margin-bottom:14px; }
 
         /* Alan düzenleme paneli */
@@ -468,7 +632,7 @@ function qrm_cf_admin_builder_styles() {
 }
 
 /** Düzenleyici JS'i: alan ekleme, sürükle-bırak sıralama, düzenleme, canlı önizleme. */
-function qrm_cf_admin_builder_script($state, $types) {
+function qrm_cf_admin_builder_script($state, $types, $ctx = []) {
     ?>
     <?php
     // JSON_HEX_TAG: admin'in girdiği bir etiket metni script kapanış etiketi içerse
@@ -481,6 +645,15 @@ function qrm_cf_admin_builder_script($state, $types) {
     (function(){
         var TYPES  = <?php echo wp_json_encode($types, $qrm_json_flags); ?>;
         var fields = <?php echo wp_json_encode($state, $qrm_json_flags); ?>;
+        var CTX    = <?php echo wp_json_encode(wp_parse_args($ctx, [
+            'system'       => '',
+            'max_steps'    => function_exists('qrm_pro_max_step_no') ? qrm_pro_max_step_no() : 12,
+            'settings_url' => admin_url('admin.php?page=qrms-yf-ayarlar'),
+            'reward_url'   => admin_url('admin.php?page=qrms-yf-odul'),
+        ]), $qrm_json_flags); ?>;
+        var maxSteps   = parseInt(CTX.max_steps, 10) || 12;
+        var systemForm = CTX.system || '';
+        var stepCount  = 1;
 
         var wrap      = document.getElementById('qrm-fb-wrap');
         var form      = document.getElementById('qrm-fb-form');
@@ -494,7 +667,60 @@ function qrm_cf_admin_builder_script($state, $types) {
         var descInput  = document.getElementById('qrm-fb-desc');
         var keyInput   = document.getElementById('qrm-fb-key');
         var editingIndex = -1;
-        var keyTouched = keyInput.value !== '';
+        var keyTouched = !!(keyInput && keyInput.value !== '');
+
+        function isWidget(field) {
+            return !!(field && (field.widget || (TYPES[field.type] && TYPES[field.type].is_widget)));
+        }
+        function computeStepCount() {
+            var max = 1;
+            fields.forEach(function(f) {
+                var sn = parseInt(f.step_no, 10) || 1;
+                if (sn > max) max = sn;
+            });
+            var wrapLabels = document.getElementById('qrm-fb-step-labels');
+            if (wrapLabels) {
+                wrapLabels.querySelectorAll('[data-step]').forEach(function(el) {
+                    var n = parseInt(el.getAttribute('data-step'), 10);
+                    if (n > max) max = n;
+                });
+            }
+            if (max > maxSteps) max = maxSteps;
+            if (max < 1) max = 1;
+            return max;
+        }
+        function syncStepLabelInputs() {
+            var wrapLabels = document.getElementById('qrm-fb-step-labels');
+            if (!wrapLabels) return;
+            var existing = {};
+            wrapLabels.querySelectorAll('.qrm-fb-step-label-row input').forEach(function(inp) {
+                var n = parseInt(inp.id.replace('qrm-fb-step-label-', ''), 10);
+                if (n > 0) existing[n] = inp.value;
+            });
+            var html = '';
+            for (var i = 1; i <= stepCount; i++) {
+                html += '<div class="qrm-fb-field qrm-fb-step-label-row" data-step="' + i + '">';
+                html += '<label for="qrm-fb-step-label-' + i + '">' + i + '. Adım etiketi</label>';
+                html += '<input type="text" id="qrm-fb-step-label-' + i + '" name="qrm_cf_settings[step_labels][' + i + ']" value="' + esc(existing[i] || '') + '" placeholder="' + i + '. Adım">';
+                html += '</div>';
+            }
+            wrapLabels.innerHTML = html;
+            var addBtn = document.getElementById('qrm-fb-add-step');
+            var remBtn = document.getElementById('qrm-fb-remove-step');
+            if (addBtn) addBtn.disabled = stepCount >= maxSteps;
+            if (remBtn) remBtn.disabled = stepCount <= 1;
+        }
+        function updatePaletteAvailability() {
+            document.querySelectorAll('.qrm-fb-type-card').forEach(function(card) {
+                var type = card.getAttribute('data-type');
+                var meta = TYPES[type];
+                if (meta && meta.is_widget && fields.some(function(f) { return f.type === type; })) {
+                    card.setAttribute('data-disabled', '1');
+                } else {
+                    card.removeAttribute('data-disabled');
+                }
+            });
+        }
 
         function esc(str) {
             return String(str === null || str === undefined ? '' : str)
@@ -544,6 +770,12 @@ function qrm_cf_admin_builder_script($state, $types) {
                     }).join('') + '</div>';
                     break;
                 case 'rating':   control = '<div class="qrm-fb-stars">★★★★★</div>'; break;
+                case 'rating_group':
+                    control = '<div class="qrm-fb-widget-preview">⭐ Puanlama kriterleri bu adımda basılır. İsim/aktiflik <a href="' + esc(CTX.settings_url) + '">Ayarlar &amp; Puanlama</a> sayfasındadır.</div>';
+                    break;
+                case 'google_reward':
+                    control = '<div class="qrm-fb-widget-preview">🎁 Google &amp; ödül paneli bu adımda basılır. Metinler <a href="' + esc(CTX.reward_url) + '">Google &amp; Ödül Sistemi</a> sayfasındadır.</div>';
+                    break;
                 default:         control = '<input type="text" disabled>';
             }
             return '<div class="qrm-fb-input-group">' + label + control + '</div>';
@@ -556,15 +788,35 @@ function qrm_cf_admin_builder_script($state, $types) {
         function editPanelHtml(field, index) {
             var hasOptions = TYPES[field.type] && TYPES[field.type].has_options;
             var html = '<div class="qrm-fb-edit-panel">';
+            if (isWidget(field)) {
+                if (field.type === 'rating_group') {
+                    html += '<p class="qrm-fb-help">Puanlama kriterlerinin adı ve aktifliği <a href="' + esc(CTX.settings_url) + '">Ayarlar &amp; Puanlama</a> sayfasındadır. Burada yalnızca adım konumu belirlenir.</p>';
+                } else if (field.type === 'google_reward') {
+                    html += '<p class="qrm-fb-help">Google / ödül metinleri <a href="' + esc(CTX.reward_url) + '">Google &amp; Ödül Sistemi</a> sayfasındadır. Burada yalnızca adım konumu belirlenir.</p>';
+                }
+                html += '<label>Form adımı</label>';
+                html += '<select data-edit="step_no" data-index="' + index + '">';
+                for (var wsn = 1; wsn <= stepCount; wsn++) {
+                    html += '<option value="' + wsn + '"' + ((field.step_no || 1) === wsn ? ' selected' : '') + '>' + wsn + '. Adım</option>';
+                }
+                html += '</select>';
+                html += '<button type="button" class="button button-small" data-act="done" data-index="' + index + '">Tamam</button>';
+                html += '</div>';
+                return html;
+            }
             html += '<div class="qrm-fb-edit-row">';
-            html += '<div><label>Alan Etiketi</label><input type="text" data-edit="label" data-index="' + index + '" value="' + esc(field.label) + '"></div>';
-            html += '<div><label>Alan Anahtarı</label><input type="text" data-edit="key" data-index="' + index + '" value="' + esc(field.key) + '"></div>';
+            html += '<div><label>Alan Etiketi</label><input type="text" data-edit="label" data-index="' + index + '" value="' + esc(field.label) + '"' + (field.core ? ' readonly' : '') + '></div>';
+            if (!systemForm) {
+                html += '<div><label>Alan Anahtarı</label><input type="text" data-edit="key" data-index="' + index + '" value="' + esc(field.key) + '"></div>';
+            }
             html += '</div>';
             if (hasOptions) {
                 html += '<label>Seçenekler (her satıra bir seçenek)</label>';
                 html += '<textarea rows="4" data-edit="options" data-index="' + index + '">' + esc(field.options.join('\n')) + '</textarea>';
             }
-            html += '<label class="qrm-fb-check"><input type="checkbox" data-edit="required" data-index="' + index + '"' + (field.required ? ' checked' : '') + '> Bu alan zorunlu olsun</label>';
+            if (!field.core) {
+                html += '<label class="qrm-fb-check"><input type="checkbox" data-edit="required" data-index="' + index + '"' + (field.required ? ' checked' : '') + '> Bu alan zorunlu olsun</label>';
+            }
             html += '<label>Sütun genişliği</label>';
             html += '<select data-edit="column_width" data-index="' + index + '">';
             html += '<option value="full"' + (field.column_width !== 'half' ? ' selected' : '') + '>Tekli (tam genişlik)</option>';
@@ -572,7 +824,7 @@ function qrm_cf_admin_builder_script($state, $types) {
             html += '</select>';
             html += '<label>Form adımı</label>';
             html += '<select data-edit="step_no" data-index="' + index + '">';
-            for (var sn = 1; sn <= 4; sn++) {
+            for (var sn = 1; sn <= stepCount; sn++) {
                 html += '<option value="' + sn + '"' + ((field.step_no || 1) === sn ? ' selected' : '') + '>' + sn + '. Adım</option>';
             }
             html += '</select>';
@@ -583,21 +835,31 @@ function qrm_cf_admin_builder_script($state, $types) {
         }
 
         function render() {
+            stepCount = computeStepCount();
+            syncStepLabelInputs();
+            updatePaletteAvailability();
+
             var groups = {};
+            for (var gi = 1; gi <= stepCount; gi++) groups[gi] = [];
             fields.forEach(function(field, index) {
-                var sn = field.step_no || 1;
+                var sn = parseInt(field.step_no, 10) || 1;
+                if (sn < 1) sn = 1;
+                if (sn > maxSteps) sn = maxSteps;
                 if (!groups[sn]) groups[sn] = [];
                 groups[sn].push({ field: field, index: index });
             });
             var stepNums = Object.keys(groups).map(function(k) { return parseInt(k, 10); }).sort(function(a, b) { return a - b; });
 
             itemsBox.innerHTML = stepNums.map(function(sn) {
-                var groupHtml = '<div class="qrm-fb-step-group"><div class="qrm-fb-step-group-title">' + sn + '. Adım</div>';
+                var groupHtml = '<div class="qrm-fb-step-group" data-step="' + sn + '"><div class="qrm-fb-step-group-title">' + sn + '. Adım</div>';
+                if (!groups[sn].length) {
+                    groupHtml += '<div class="qrm-fb-step-empty">Bu adıma alan sürükleyin.</div>';
+                }
                 groupHtml += groups[sn].map(function(item) {
                     var field = item.field;
                     var index = item.index;
                 var typeLabel = TYPES[field.type] ? TYPES[field.type].label : field.type;
-                var html = '<div class="qrm-fb-item' + (editingIndex === index ? ' editing' : '') + (field.column_width === 'half' ? ' is-half' : '') + '" draggable="true" data-index="' + index + '">';
+                var html = '<div class="qrm-fb-item' + (editingIndex === index ? ' editing' : '') + (field.column_width === 'half' ? ' is-half' : '') + '" draggable="true" data-index="' + index + '" data-step="' + sn + '">';
                 html += '<div class="qrm-fb-item-bar">';
                 html += '<span class="dashicons dashicons-menu qrm-fb-drag" title="Sıralamak için sürükleyin"></span>';
                 html += '<span class="qrm-fb-item-type">' + esc(typeLabel) + ' · Adım ' + (field.step_no || 1) + '</span>';
@@ -605,7 +867,9 @@ function qrm_cf_admin_builder_script($state, $types) {
                 html += '<button type="button" class="qrm-fb-icon-btn" data-act="up" data-index="' + index + '" title="Yukarı taşı"' + (index === 0 ? ' disabled' : '') + '><span class="dashicons dashicons-arrow-up-alt2"></span></button>';
                 html += '<button type="button" class="qrm-fb-icon-btn" data-act="down" data-index="' + index + '" title="Aşağı taşı"' + (index === fields.length - 1 ? ' disabled' : '') + '><span class="dashicons dashicons-arrow-down-alt2"></span></button>';
                 html += '<button type="button" class="qrm-fb-icon-btn" data-act="edit" data-index="' + index + '" title="Düzenle"><span class="dashicons dashicons-edit"></span></button>';
-                html += '<button type="button" class="qrm-fb-icon-btn danger" data-act="delete" data-index="' + index + '" title="Sil"><span class="dashicons dashicons-trash"></span></button>';
+                if (!field.core) {
+                    html += '<button type="button" class="qrm-fb-icon-btn danger" data-act="delete" data-index="' + index + '" title="Sil"><span class="dashicons dashicons-trash"></span></button>';
+                }
                 html += '</div>';
                 html += fieldPreviewHtml(field);
                 if (editingIndex === index) html += editPanelHtml(field, index);
@@ -616,25 +880,28 @@ function qrm_cf_admin_builder_script($state, $types) {
                 return groupHtml;
             }).join('');
 
-            emptyBox.style.display = fields.length ? 'none' : 'block';
+            if (emptyBox) emptyBox.style.display = fields.length ? 'none' : 'block';
             jsonInput.value = JSON.stringify(fields);
         }
 
         // --- Palet: alan ekleme ---
         document.querySelectorAll('.qrm-fb-type-card').forEach(function(card){
             card.addEventListener('click', function(){
+                if (card.getAttribute('data-disabled')) return;
                 var type = card.getAttribute('data-type');
                 var meta = TYPES[type];
                 if (!meta) return;
+                if (meta.is_widget && fields.some(function(f){ return f.type === type; })) return;
                 var label = meta.label;
                 fields.push({
-                    key: uniqueKey(label, -1),
+                    key: meta.is_widget ? type : uniqueKey(label, -1),
                     label: label,
                     type: type,
-                    required: 0,
+                    required: type === 'rating_group' ? 1 : 0,
                     options: meta.has_options ? defaultOptions() : [],
                     column_width: 'full',
-                    step_no: 1
+                    step_no: 1,
+                    widget: meta.is_widget ? 1 : 0
                 });
                 editingIndex = fields.length - 1;
                 render();
@@ -651,6 +918,7 @@ function qrm_cf_admin_builder_script($state, $types) {
             var act = btn.getAttribute('data-act');
 
             if (act === 'delete') {
+                if (fields[index] && fields[index].core) return;
                 if (!confirm('"' + fields[index].label + '" alanı silinsin mi?')) return;
                 fields.splice(index, 1);
                 if (editingIndex === index) editingIndex = -1;
@@ -711,7 +979,8 @@ function qrm_cf_admin_builder_script($state, $types) {
                 var sIndex = parseInt(stepInput.getAttribute('data-index'), 10);
                 if (!fields[sIndex]) return;
                 var sn = parseInt(stepInput.value, 10) || 1;
-                fields[sIndex].step_no = Math.max(1, Math.min(4, sn));
+                fields[sIndex].step_no = Math.max(1, Math.min(maxSteps, sn));
+                if (fields[sIndex].step_no > stepCount) stepCount = fields[sIndex].step_no;
                 render();
                 return;
             }
@@ -745,21 +1014,44 @@ function qrm_cf_admin_builder_script($state, $types) {
             e.preventDefault();
             e.dataTransfer.dropEffect = 'move';
             var item = e.target.closest('.qrm-fb-item');
+            var group = e.target.closest('.qrm-fb-step-group');
             itemsBox.querySelectorAll('.qrm-fb-item').forEach(function(el){ el.classList.remove('drop-target'); });
+            itemsBox.querySelectorAll('.qrm-fb-step-group').forEach(function(el){ el.classList.remove('is-drop'); });
             if (item) item.classList.add('drop-target');
+            if (group) group.classList.add('is-drop');
         });
         itemsBox.addEventListener('dragleave', function(e){
             var item = e.target.closest('.qrm-fb-item');
+            var group = e.target.closest('.qrm-fb-step-group');
             if (item) item.classList.remove('drop-target');
+            if (group) group.classList.remove('is-drop');
         });
         itemsBox.addEventListener('drop', function(e){
             e.preventDefault();
+            if (dragIndex === null) return;
             var item = e.target.closest('.qrm-fb-item');
-            if (dragIndex === null || !item) return;
-            var target = parseInt(item.getAttribute('data-index'), 10);
-            if (target === dragIndex) { render(); return; }
+            var group = e.target.closest('.qrm-fb-step-group');
             var moved = fields.splice(dragIndex, 1)[0];
-            fields.splice(target, 0, moved);
+            if (item) {
+                var target = parseInt(item.getAttribute('data-index'), 10);
+                var targetStep = parseInt(item.getAttribute('data-step'), 10);
+                if (targetStep) moved.step_no = targetStep;
+                if (target > dragIndex) target -= 1;
+                fields.splice(target, 0, moved);
+            } else if (group) {
+                var gStep = parseInt(group.getAttribute('data-step'), 10) || 1;
+                moved.step_no = gStep;
+                var insertAt = fields.length;
+                for (var i = fields.length - 1; i >= 0; i--) {
+                    if ((parseInt(fields[i].step_no, 10) || 1) === gStep) {
+                        insertAt = i + 1;
+                        break;
+                    }
+                }
+                fields.splice(insertAt, 0, moved);
+            } else {
+                fields.splice(dragIndex, 0, moved);
+            }
             editingIndex = -1;
             dragIndex = null;
             render();
@@ -770,6 +1062,26 @@ function qrm_cf_admin_builder_script($state, $types) {
                 el.classList.remove('dragging');
                 el.classList.remove('drop-target');
             });
+            itemsBox.querySelectorAll('.qrm-fb-step-group').forEach(function(el){
+                el.classList.remove('is-drop');
+            });
+        });
+
+        var addStepBtn = document.getElementById('qrm-fb-add-step');
+        var remStepBtn = document.getElementById('qrm-fb-remove-step');
+        if (addStepBtn) addStepBtn.addEventListener('click', function(){
+            if (stepCount >= maxSteps) return;
+            stepCount += 1;
+            render();
+        });
+        if (remStepBtn) remStepBtn.addEventListener('click', function(){
+            if (stepCount <= 1) return;
+            var last = stepCount;
+            fields.forEach(function(f){
+                if ((parseInt(f.step_no, 10) || 1) === last) f.step_no = last - 1;
+            });
+            stepCount -= 1;
+            render();
         });
 
         // --- Sağ panel: canlı başlık/açıklama/tema güncellemesi ---
@@ -778,26 +1090,29 @@ function qrm_cf_admin_builder_script($state, $types) {
         var showTitle    = document.getElementById('qrm-fb-show-title');
 
         function syncTitle() {
+            if (!previewTitle || !titleInput) return;
             var visible = !showTitle || showTitle.checked;
             previewTitle.style.display = visible ? '' : 'none';
             previewTitle.textContent = titleInput.value || 'Form Başlığı';
             var topTitle = document.getElementById('qrm-fb-topbar-title');
-            if (topTitle) topTitle.textContent = titleInput.value || 'Yeni Form';
+            if (topTitle) topTitle.textContent = titleInput.value || (systemForm ? previewTitle.textContent : 'Yeni Form');
         }
 
-        titleInput.addEventListener('input', function(){
+        if (titleInput) titleInput.addEventListener('input', function(){
             syncTitle();
-            if (!keyTouched) keyInput.value = slugify(titleInput.value);
+            if (keyInput && !keyTouched) keyInput.value = slugify(titleInput.value);
         });
-        keyInput.addEventListener('input', function(){ keyTouched = true; });
-        descInput.addEventListener('input', function(){ previewDesc.textContent = descInput.value; });
+        if (keyInput) keyInput.addEventListener('input', function(){ keyTouched = true; });
+        if (descInput && previewDesc) descInput.addEventListener('input', function(){ previewDesc.textContent = descInput.value; });
         if (showTitle) showTitle.addEventListener('change', syncTitle);
 
         var submitText = document.getElementById('qrm-fb-submit-text');
         var submitPreview = document.getElementById('qrm-fb-submit-preview');
-        submitText.addEventListener('input', function(){
-            submitPreview.textContent = submitText.value || 'Gönder';
-        });
+        if (submitText && submitPreview) {
+            submitText.addEventListener('input', function(){
+                submitPreview.textContent = submitText.value || 'Gönder';
+            });
+        }
 
         var btnColor  = document.getElementById('qrm-fb-btn-color');
         var btnText   = document.getElementById('qrm-fb-btn-text-color');
@@ -806,6 +1121,7 @@ function qrm_cf_admin_builder_script($state, $types) {
         var theme     = document.getElementById('qrm-fb-theme');
 
         function syncTheme() {
+            if (!previewBox || !btnColor || !btnText || !radius || !theme) return;
             var dark = theme.value === 'dark';
             var transparent = theme.value === 'transparent';
             previewBox.style.setProperty('--qrm-btn', btnColor.value);
@@ -815,9 +1131,10 @@ function qrm_cf_admin_builder_script($state, $types) {
             previewBox.style.setProperty('--qrm-text', dark ? '#f9fafb' : '#1e293b');
             previewBox.style.setProperty('--qrm-border', dark ? '#374151' : '#e2e8f0');
             previewBox.style.setProperty('--qrm-input-bg', dark ? '#111827' : '#ffffff');
-            radiusVal.textContent = radius.value;
+            if (radiusVal) radiusVal.textContent = radius.value;
         }
         [btnColor, btnText, radius, theme].forEach(function(el){
+            if (!el) return;
             el.addEventListener('input', syncTheme);
             el.addEventListener('change', syncTheme);
         });

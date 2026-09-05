@@ -17,8 +17,8 @@ if (!defined('ABSPATH')) exit;
  * has_options: Seçenek listesi (select/radio/checkbox) gerektirir mi
  * hint       : Palette gösterilen kısa açıklama
  */
-function qrm_cf_field_types() {
-    return [
+function qrm_cf_field_types($include_system = false) {
+    $types = [
         'text'     => ['label' => 'Kısa Metin',      'icon' => 'dashicons-editor-textcolor', 'has_options' => false, 'hint' => 'Ad, konu, başlık'],
         'textarea' => ['label' => 'Uzun Metin',      'icon' => 'dashicons-editor-paragraph', 'has_options' => false, 'hint' => 'Açıklama, mesaj'],
         'email'    => ['label' => 'E-posta',         'icon' => 'dashicons-email-alt',        'has_options' => false, 'hint' => 'E-posta adresi'],
@@ -29,7 +29,34 @@ function qrm_cf_field_types() {
         'checkbox' => ['label' => 'Çoklu Seçim',     'icon' => 'dashicons-yes',              'has_options' => true,  'hint' => 'Birden fazla seçilebilir'],
         'rating'   => ['label' => 'Yıldız Puanlama', 'icon' => 'dashicons-star-filled',      'has_options' => false, 'hint' => '1-5 yıldız'],
         'date'     => ['label' => 'Tarih',           'icon' => 'dashicons-calendar-alt',     'has_options' => false, 'hint' => 'Gün seçimi'],
+        // Widget'lar veri alanı değildir; yalnızca Ana Yorum Formu paletinde durur.
+        'rating_group' => [
+            'label' => 'Puanlama Kriterleri',
+            'icon' => 'dashicons-star-filled',
+            'has_options' => false,
+            'hint' => 'crit_1..5 — konum/sıra',
+            'is_widget' => true,
+            'is_system_only' => true,
+        ],
+        'google_reward' => [
+            'label' => 'Google & Ödül Yönlendirme',
+            'icon' => 'dashicons-awards',
+            'has_options' => false,
+            'hint' => 'Bilgi / yönlendirme paneli',
+            'is_widget' => true,
+            'is_system_only' => true,
+        ],
     ];
+
+    if (!$include_system) {
+        foreach ($types as $key => $meta) {
+            if (!empty($meta['is_system_only'])) {
+                unset($types[$key]);
+            }
+        }
+    }
+
+    return $types;
 }
 
 function qrm_cf_is_valid_field_type($type) {
@@ -107,10 +134,13 @@ function qrm_cf_sanitize_form_settings($raw) {
     }
     if (isset($raw['step_labels']) && is_array($raw['step_labels'])) {
         $labels = [];
-        for ($i = 1; $i <= 4; $i++) {
-            if (isset($raw['step_labels'][$i])) {
-                $labels[$i] = sanitize_text_field($raw['step_labels'][$i]);
+        foreach ($raw['step_labels'] as $n => $label) {
+            $n = (int) $n;
+            if ($n < 1) {
+                continue;
             }
+            $n = qrm_pro_sanitize_step_no($n);
+            $labels[$n] = sanitize_text_field($label);
         }
         $out['step_labels'] = $labels;
     }
@@ -462,6 +492,11 @@ function qrm_cf_validate_value($field, $raw) {
                 return ['ok' => false, 'value' => '', 'error' => sprintf(qrm_ceviri_review(__('"%s" alanı için 1-5 arası bir puan seçin.', 'qrms')), $label)];
             }
             return ['ok' => true, 'value' => (string) $val, 'error' => ''];
+
+        case 'rating_group':
+        case 'google_reward':
+            // Widget'lar POST verisi taşımaz; doğrulama yorum gönderiminde kalır.
+            return ['ok' => true, 'value' => '', 'error' => ''];
 
         case 'date':
             $val = trim((string) $raw);
