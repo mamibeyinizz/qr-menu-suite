@@ -65,6 +65,30 @@
 				etiket: metin( 'cardFailed', 'Başarısız sipariş' ),
 				deger: ORTAK.kisa( ozet.failed ),
 				alt: metin( 'orderFailed', 'order_failed' )
+			},
+			{
+				ikon: 'dashicons-money-alt',
+				etiket: metin( 'cardRevenue', 'Ciro' ),
+				deger: ORTAK.para( ozet.ciro ),
+				alt: metin( 'revenueNote', 'Gönderilen siparişler, taban fiyat üzerinden' )
+			},
+			{
+				ikon: 'dashicons-chart-line',
+				etiket: metin( 'cardAov', 'Ortalama sepet tutarı' ),
+				deger: ORTAK.para( ozet.ort_sepet_tutari ),
+				alt: metin( 'aovNote', 'Ciro / gönderilen sipariş oturumu' )
+			},
+			{
+				ikon: 'dashicons-cart',
+				etiket: metin( 'cardPending', 'Sepette bekleyen tutar' ),
+				deger: ORTAK.para( ozet.sepet_potansiyeli ),
+				alt: metin( 'pendingNote', 'Sepete konan (henüz sipariş olmamış dahil)' )
+			},
+			{
+				ikon: 'dashicons-hidden',
+				etiket: metin( 'cardMissedRevenue', 'Kaçan ciro' ),
+				deger: ORTAK.para( ozet.kacan_ciro ),
+				alt: metin( 'missedRevenueNote', 'Tükendi nedeniyle engellenen siparişler' )
 			}
 		];
 
@@ -195,6 +219,7 @@
 			metin( 'product', 'Ürün' ),
 			metin( 'category', 'Kategori' ),
 			metin( 'missedOrders', 'Kaçırılan sipariş' ),
+			metin( 'missedRevenue', 'Kaçan ciro' ),
 			metin( 'action', 'İşlem' )
 		];
 		var govde = '';
@@ -210,11 +235,85 @@
 				ORTAK.hucre( basliklar[ 0 ], '<strong>' + ORTAK.esc( urunAdi( u ) ) + '</strong>' ) +
 				ORTAK.hucre( basliklar[ 1 ], '<span class="qrms-an-cat">' + ORTAK.esc( u.kategori || '—' ) + '</span>' ) +
 				ORTAK.hucre( basliklar[ 2 ], '<span class="qrms-an-val-gold">' + ORTAK.sayi( u.siparis ) + '</span>' ) +
-				ORTAK.hucre( basliklar[ 3 ], bag ) +
+				ORTAK.hucre( basliklar[ 3 ], '<span class="qrms-an-val-bold">' + ORTAK.para( u.ciro ) + '</span>' ) +
+				ORTAK.hucre( basliklar[ 4 ], bag ) +
 				'</tr>';
 		} );
 
 		el.engel.innerHTML = ORTAK.tabloIskelet( basliklar, govde, '' );
+	}
+
+	function ciroBas( satirlar, bos ) {
+		if ( ! satirlar || ! satirlar.length ) {
+			el.ciro.innerHTML = ORTAK.bosDurum(
+				'dashicons-money-alt',
+				bos ? yeniBasladi() : metin( 'noRevenue', 'Bu aralıkta gönderilmiş sipariş yok.' )
+			);
+			return;
+		}
+
+		var basliklar = [
+			metin( 'product', 'Ürün' ),
+			metin( 'category', 'Kategori' ),
+			metin( 'unitsSold', 'Satılan adet' ),
+			metin( 'revenue', 'Ciro' )
+		];
+		var govde = '';
+
+		satirlar.forEach( function ( u, i ) {
+			var sira = i + 1;
+			var sinif = sira <= 3 ? 'qrms-an-rank-' + sira : 'qrms-an-rank-n';
+
+			govde += '<tr>' +
+				ORTAK.hucre( basliklar[ 0 ],
+					'<span class="qrms-an-rank ' + sinif + '">' + sira + '</span> ' +
+					'<strong>' + ORTAK.esc( urunAdi( u ) ) + '</strong>'
+				) +
+				ORTAK.hucre( basliklar[ 1 ], '<span class="qrms-an-cat">' + ORTAK.esc( u.kategori || '—' ) + '</span>' ) +
+				ORTAK.hucre( basliklar[ 2 ], '<span class="qrms-an-val-bold">' + ORTAK.sayi( u.adet ) + '</span>' ) +
+				ORTAK.hucre( basliklar[ 3 ], '<span class="qrms-an-val-gold">' + ORTAK.para( u.ciro ) + '</span>' ) +
+				'</tr>';
+		} );
+
+		el.ciro.innerHTML = ORTAK.tabloIskelet( basliklar, govde, '' );
+	}
+
+	function huniBas( huni ) {
+		if ( ! el.huni ) {
+			return;
+		}
+
+		huni = huni || {};
+
+		var tepe = huni.view || 0;
+		var asamalar = [
+			{ ikon: 'dashicons-visibility', etiket: metin( 'funnelView', 'Menü görüntüleme' ), sayi: huni.view || 0 },
+			{ ikon: 'dashicons-admin-links', etiket: metin( 'funnelClick', 'Ürün tıklama' ), sayi: huni.click || 0 },
+			{ ikon: 'dashicons-cart', etiket: metin( 'funnelCart', 'Sepete ekleme' ), sayi: huni.cart || 0 },
+			{ ikon: 'dashicons-yes-alt', etiket: metin( 'funnelOrder', 'Sipariş' ), sayi: huni.orders || 0 }
+		];
+
+		if ( ! tepe ) {
+			el.huni.innerHTML = ORTAK.bosDurum( 'dashicons-filter', yeniBasladi() );
+			return;
+		}
+
+		var html = '<div class="qrms-an-huni">';
+
+		asamalar.forEach( function ( a ) {
+			var yuzde = ORTAK.oran( a.sayi, tepe );
+
+			html += '<div class="qrms-an-huni-asama">' +
+				'<div class="qrms-an-huni-bar-track">' +
+				'<div class="qrms-an-huni-bar ' + ORTAK.oranSinifi( yuzde ) + '" style="width:' + Math.max( yuzde, 2 ) + '%"></div>' +
+				'</div>' +
+				'<span class="dashicons ' + ORTAK.esc( a.ikon ) + '" aria-hidden="true"></span>' +
+				'<span class="qrms-an-huni-etiket">' + ORTAK.esc( a.etiket ) + '</span>' +
+				'<span class="qrms-an-huni-deger">' + ORTAK.sayi( a.sayi ) + ' <span class="qrms-an-muted">(%' + yuzde + ')</span></span>' +
+				'</div>';
+		} );
+
+		el.huni.innerHTML = html + '</div>';
 	}
 
 	function hataBas( ozet, satirlar ) {
@@ -270,6 +369,8 @@
 
 		bosKutuBas( bos );
 		kartlariBas( ozet );
+		huniBas( veri.huni );
+		ciroBas( veri.en_cok_ciro, bos );
 		terkBas( veri.terk_urun, bos );
 		cikarBas( veri.cikarilan, bos );
 		engelBas( veri.engellenen, bos );
@@ -280,7 +381,11 @@
 		var msg = metin( 'loadError', 'Veri yüklenemedi. Sayfayı yenileyin.' );
 
 		el.cards.innerHTML = '';
-		el.terk.innerHTML  = ORTAK.bosDurum( 'dashicons-warning', msg );
+		if ( el.huni ) {
+			el.huni.innerHTML = ORTAK.bosDurum( 'dashicons-warning', msg );
+		}
+		el.ciro.innerHTML  = '';
+		el.terk.innerHTML  = '';
 		el.cikar.innerHTML = '';
 		el.engel.innerHTML = '';
 	}
@@ -304,6 +409,8 @@
 	function hazir() {
 		el.cards     = $( 'qrms-an-cards' );
 		el.bos       = $( 'qrms-an-sepet-bos' );
+		el.huni      = $( 'qrms-an-sepet-huni' );
+		el.ciro      = $( 'qrms-an-sepet-ciro' );
 		el.terk      = $( 'qrms-an-sepet-terk' );
 		el.cikar     = $( 'qrms-an-sepet-cikar' );
 		el.engel     = $( 'qrms-an-sepet-engel' );

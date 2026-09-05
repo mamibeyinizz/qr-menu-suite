@@ -40,9 +40,9 @@ if ( class_exists( 'QRMS_Analitik' ) ) {
 class QRMS_Analitik {
 
 	/**
-	 * Şema sürümü. masa_no sütunu 1.1 ile geldi.
+	 * Şema sürümü. masa_no sütunu 1.1 ile geldi, price sütunu 1.3 ile.
 	 */
-	const DB_SURUM = '1.2';
+	const DB_SURUM = '1.3';
 
 	/**
 	 * Şema sürümünün tutulduğu option.
@@ -903,6 +903,7 @@ class QRMS_Analitik {
 				item_name varchar(255) NOT NULL DEFAULT '',
 				category_name varchar(255) NOT NULL DEFAULT '',
 				qty smallint(5) unsigned NOT NULL DEFAULT 1,
+				price decimal(10,2) NOT NULL DEFAULT 0,
 				masa_no varchar(64) NOT NULL DEFAULT '',
 				ip_hash varchar(32) NOT NULL DEFAULT '',
 				created_at datetime NOT NULL,
@@ -1055,6 +1056,10 @@ class QRMS_Analitik {
 				// menü mühendisliği raporu satış adedini buradan okur
 				// (adetsiz hesaplanan popülerlik yanlış sonuç verir).
 				'qty'           => 1,
+				// Kalemin yazım anındaki BİRİM fiyatı (rma_price). Kampanya/
+				// porsiyon farkları hesaba katılmaz — ciro bu yüzden yaklaşıktır,
+				// tıpkı oturumun yaklaşık olması gibi.
+				'price'         => 0.0,
 				'masa_no'       => self::masa_belirle(),
 				'ip_hash'       => self::ip_hash(),
 				'created_at'    => current_time( 'mysql' ),
@@ -1084,6 +1089,11 @@ class QRMS_Analitik {
 				$satir['qty'] = max( 1, min( 999, absint( $satir['qty'] ) ) );
 			}
 
+			if ( isset( $satir['price'] ) ) {
+				// decimal(10,2): negatif ya da sütunu taşıran değer sıkıştırılır.
+				$satir['price'] = max( 0.0, min( 99999999.99, (float) $satir['price'] ) );
+			}
+
 			if ( isset( $satir['masa_no'] ) ) {
 				$satir['masa_no'] = self::masa_temizle( $satir['masa_no'] );
 			}
@@ -1091,13 +1101,13 @@ class QRMS_Analitik {
 			/*
 			 * Biçim dizisi $varsayilan'ın ANAHTAR SIRASINI izler
 			 * (array_merge sırayı korur): event_type, item_id, item_name,
-			 * category_name, qty, masa_no, ip_hash, created_at.
+			 * category_name, qty, price, masa_no, ip_hash, created_at.
 			 */
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 			$wpdb->insert(
 				self::tablo(),
 				$satir,
-				array( '%s', '%d', '%s', '%s', '%d', '%s', '%s', '%s' )
+				array( '%s', '%d', '%s', '%s', '%d', '%f', '%s', '%s', '%s' )
 			);
 		} catch ( Exception $e ) {
 			return;
@@ -2231,6 +2241,8 @@ class QRMS_Analitik {
 				SUBSTRING(MAX(CONCAT(created_at, item_name)), 20) AS item_name,
 				SUBSTRING(MAX(CONCAT(created_at, category_name)), 20) AS category_name,
 				COUNT(*) AS adet,
+				SUM(qty) AS gercek_adet,
+				SUM(qty * price) AS ciro,
 				MIN(created_at) AS ilk,
 				MAX(created_at) AS son
 			 FROM {$tablo}
@@ -2252,12 +2264,69 @@ class QRMS_Analitik {
 				'item_name'     => isset( $r['item_name'] ) ? (string) $r['item_name'] : '',
 				'category_name' => isset( $r['category_name'] ) ? (string) $r['category_name'] : '',
 				'adet'          => isset( $r['adet'] ) ? (int) $r['adet'] : 0,
+				'gercek_adet'   => isset( $r['gercek_adet'] ) ? (int) $r['gercek_adet'] : 0,
+				'ciro'          => isset( $r['ciro'] ) ? (float) $r['ciro'] : 0.0,
 				'ilk'           => isset( $r['ilk'] ) ? (string) $r['ilk'] : '',
 				'son'           => isset( $r['son'] ) ? (string) $r['son'] : '',
 			);
 		}
 
 		self::$sepet_grup_onbellegi[ $anahtar ] = $sonuc;
+
+		return $sonuc;
+	}
+
+	/**
+	 * Dönüşüm hunisi: görüntüleme → tıklama → sepete ekleme → sipariş.
+	 *
+	 * Dört aşama da AYNI yaklaşık oturum tanımıyla (ip_hash + masa_no +
+	 * pencere) sayılır; ham olay sayısı değil oturum sayısı döner ki
+	 * "sepete eklendi" ile "sipariş verildi" aynı birimde karşılaştırılabilsin
+	 * (bkz. sepet_olay_gruplari başındaki OTURUM notu — aynı yaklaşıklık geçerli).
+	 *
+	 * @param string $bas  Aralık başlangıcı (MySQL biçimi).
+	 * @param string $bit  Aralık bitişi (MySQL biçimi).
+	 * @param string $masa Masa filtresi (boş = tüm masalar).
+	 * @return array{view:int,click:int,cart:int,orders:int}
+	 */
+	public static function huni_ozeti( $bas, $bit, $masa = '' ) {
+		global $wpdb;
+
+		$tablo   = self::tablo();
+		$masa_ek = self::masa_sql( $masa );
+		$kosul   = $wpdb->prepare( 'created_at BETWEEN %s AND %s', $bas, $bit );
+		$saat    = max( 1, (int) self::OTURUM_SAAT );
+
+		$pencere = "CONCAT(DATE_FORMAT(created_at, '%Y-%m-%d '), LPAD(FLOOR(HOUR(created_at) / {$saat}) * {$saat}, 2, '0'))";
+		$oturum  = "CONCAT(ip_hash,'|',masa_no,'|',{$pencere})";
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$satir = $wpdb->get_row(
+			"SELECT
+				COUNT(DISTINCT CASE WHEN event_type='menu_view'     THEN {$oturum} END) AS view,
+				COUNT(DISTINCT CASE WHEN event_type='product_click' THEN {$oturum} END) AS click,
+				COUNT(DISTINCT CASE WHEN event_type='cart_add'      THEN {$oturum} END) AS cart,
+				COUNT(DISTINCT CASE WHEN event_type='order_sent'    THEN {$oturum} END) AS orders
+			 FROM {$tablo}
+			 WHERE event_type IN ('menu_view','product_click','cart_add','order_sent')
+			   AND {$kosul}{$masa_ek}",
+			ARRAY_A
+		);
+
+		$sonuc = array(
+			'view'   => 0,
+			'click'  => 0,
+			'cart'   => 0,
+			'orders' => 0,
+		);
+
+		if ( ! is_array( $satir ) ) {
+			return $sonuc;
+		}
+
+		foreach ( $sonuc as $anahtar => $varsayilan ) {
+			$sonuc[ $anahtar ] = isset( $satir[ $anahtar ] ) ? (int) $satir[ $anahtar ] : 0;
+		}
 
 		return $sonuc;
 	}
@@ -3160,8 +3229,37 @@ class QRMS_Analitik {
 		fputcsv( $cikti, array( 'Terk oranı %', $ozet['terk_oran'] ), ';' );
 		fputcsv( $cikti, array( 'Engellenen sipariş', $ozet['blocked'] ), ';' );
 		fputcsv( $cikti, array( 'Başarısız sipariş (oturum)', $ozet['failed'] ), ';' );
+		fputcsv( $cikti, array( 'Ciro (gerçekleşen)', $ozet['ciro'] ), ';' );
+		fputcsv( $cikti, array( 'Sepette bekleyen tutar', $ozet['sepet_potansiyeli'] ), ';' );
+		fputcsv( $cikti, array( 'Ortalama sepet tutarı', $ozet['ort_sepet_tutari'] ), ';' );
+		fputcsv( $cikti, array( 'Kaçan ciro (engellenen)', $ozet['kacan_ciro'] ), ';' );
 		fputcsv( $cikti, array(), ';' );
 
+		$huni = isset( $veri['huni'] ) ? $veri['huni'] : array(
+			'view'   => 0,
+			'click'  => 0,
+			'cart'   => 0,
+			'orders' => 0,
+		);
+		fputcsv( $cikti, array( 'DÖNÜŞÜM HUNİSİ (yaklaşık oturum)' ), ';' );
+		fputcsv( $cikti, array( 'Menü görüntüleme', $huni['view'] ), ';' );
+		fputcsv( $cikti, array( 'Ürün tıklama', $huni['click'] ), ';' );
+		fputcsv( $cikti, array( 'Sepete ekleme', $huni['cart'] ), ';' );
+		fputcsv( $cikti, array( 'Sipariş', $huni['orders'] ), ';' );
+		fputcsv( $cikti, array(), ';' );
+
+		fputcsv( $cikti, array( 'EN ÇOK CİRO GETİREN ÜRÜNLER' ), ';' );
+		fputcsv( $cikti, array( 'Ürün ID', 'Ürün Adı', 'Kategori', 'Adet', 'Ciro' ), ';' );
+
+		foreach ( $veri['en_cok_ciro'] as $satir ) {
+			fputcsv(
+				$cikti,
+				array( $satir['id'], $satir['ad'], $satir['kategori'], $satir['adet'], $satir['ciro'] ),
+				';'
+			);
+		}
+
+		fputcsv( $cikti, array(), ';' );
 		fputcsv( $cikti, array( 'SEPETE EKLENİP GÖNDERİLMEYEN ÜRÜNLER' ), ';' );
 		fputcsv( $cikti, array( 'Ürün ID', 'Ürün Adı', 'Kategori', 'Terk (oturum)', 'Ekleme (olay)' ), ';' );
 
@@ -3194,12 +3292,12 @@ class QRMS_Analitik {
 
 		fputcsv( $cikti, array(), ';' );
 		fputcsv( $cikti, array( 'ENGELLENEN SİPARİŞLER' ), ';' );
-		fputcsv( $cikti, array( 'Ürün ID', 'Ürün Adı', 'Kategori', 'Kaçırılan sipariş' ), ';' );
+		fputcsv( $cikti, array( 'Ürün ID', 'Ürün Adı', 'Kategori', 'Kaçırılan sipariş', 'Kaçan ciro' ), ';' );
 
 		foreach ( $veri['engellenen'] as $satir ) {
 			fputcsv(
 				$cikti,
-				array( $satir['id'], $satir['ad'], $satir['kategori'], $satir['siparis'] ),
+				array( $satir['id'], $satir['ad'], $satir['kategori'], $satir['siparis'], $satir['ciro'] ),
 				';'
 			);
 		}

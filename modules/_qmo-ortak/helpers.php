@@ -551,7 +551,7 @@ if ( ! function_exists( 'qmo_oturum_uyari_kutusu' ) ) {
  * Yazım QRMS_Analitik::kaydet() üzerinden gider; yeni INSERT yolu açılmaz.
  * Başarısızlık yutulur — çağıranın akışı kesilmesin.
  *
- * @param array $satir event_type ve isteğe bağlı item_id / item_name / category_name / masa_no.
+ * @param array $satir event_type ve isteğe bağlı item_id / item_name / category_name / price / masa_no.
  * @return void
  */
 if ( ! function_exists( 'qmo_analitik_yaz' ) ) {
@@ -575,7 +575,7 @@ if ( ! function_exists( 'qmo_analitik_yaz' ) ) {
  * o olayı atlar. Ad ve kategori SUNUCUDA okunur, istemciye güvenilmez.
  *
  * @param int $item_id Ürün kimliği.
- * @return array{item_id:int,item_name:string,category_name:string}|array{}
+ * @return array{item_id:int,item_name:string,category_name:string,price:float}|array{}
  */
 if ( ! function_exists( 'qmo_analitik_urun_alani' ) ) {
 	function qmo_analitik_urun_alani( $item_id ) {
@@ -598,6 +598,9 @@ if ( ! function_exists( 'qmo_analitik_urun_alani' ) ) {
 			'item_id'       => $item_id,
 			'item_name'     => (string) get_the_title( $item_id ),
 			'category_name' => $kategori,
+			// Taban fiyat (rma_price). Porsiyon farkı ve kampanya indirimi
+			// hesaba katılmaz — ciro raporları bu yüzden yaklaşıktır.
+			'price'         => (float) get_post_meta( $item_id, 'rma_price', true ),
 		);
 	}
 }
@@ -609,7 +612,7 @@ if ( ! function_exists( 'qmo_analitik_urun_alani' ) ) {
  * akışı bunun için ek sorguya boğulmasın.
  *
  * @param string $ad Türkçe ürün adı.
- * @return array{item_id:int,item_name:string,category_name:string}
+ * @return array{item_id:int,item_name:string,category_name:string,price:float}
  */
 if ( ! function_exists( 'qmo_analitik_urun_ada_gore' ) ) {
 	function qmo_analitik_urun_ada_gore( $ad ) {
@@ -620,6 +623,7 @@ if ( ! function_exists( 'qmo_analitik_urun_ada_gore' ) ) {
 				'item_id'       => 0,
 				'item_name'     => '',
 				'category_name' => '',
+				'price'         => 0.0,
 			);
 		}
 
@@ -647,6 +651,7 @@ if ( ! function_exists( 'qmo_analitik_urun_ada_gore' ) ) {
 			'item_id'       => 0,
 			'item_name'     => $ad,
 			'category_name' => '',
+			'price'         => 0.0,
 		);
 	}
 }
