@@ -517,13 +517,25 @@
 
 	/* Performans: sürekli DOM dinlemek yerine, ürün kartına dokununca modal
 	   AJAX ile gelene kadar KISA süreli (max ~3 sn) yokla; gelince enjekte
-	   et ve dur. Menü geçişleri etkilenmez. */
+	   et ve dur. Menü geçişleri etkilenmez.
+
+	   Kullanıcı art arda farklı kartlara hızlıca tıklarsa önceki yoklama
+	   ASLA temizlenmeden yenisi başlardı; aynı anda birden fazla interval
+	   eşzamanlı çalışabiliyordu. Tek bir referans tutulup her çağrıda
+	   öncekini temizlemek bu birikmeyi önler. */
+	var modalYakalamaIv = null;
+
 	function modaliYakala() {
+		if ( modalYakalamaIv ) {
+			clearInterval( modalYakalamaIv );
+			modalYakalamaIv = null;
+		}
 		barGizle( true ); // Not yazarken sepet çubuğu rahatsız etmesin.
 		var kalan = 30;
-		var iv = setInterval( function () {
+		modalYakalamaIv = setInterval( function () {
 			if ( modalEkle() || --kalan <= 0 ) {
-				clearInterval( iv );
+				clearInterval( modalYakalamaIv );
+				modalYakalamaIv = null;
 			}
 		}, 100 );
 	}
@@ -804,7 +816,13 @@
 	// Modal kapandığında çubuğu geri getir (yalnızca gizliyken çalışır).
 	// Açıkken de yokla: vitrin AJAX'ı .qrms-detail-inner'a .rma-modal-body
 	// basınca modalEkle o elemanı bulsun.
+	// Sekme arka plandayken (visibilitychange 'hidden') yoklama atlanır —
+	// müşteri sekmeyi uzun süre açık bıraktığında gereksiz CPU/pil tüketimi
+	// olmasın; sekme öne gelince kaldığı yerden devam eder.
 	setInterval( function () {
+		if ( 'hidden' === document.visibilityState ) {
+			return;
+		}
 		if ( modalAcikMi() ) {
 			modalEkle();
 		}
