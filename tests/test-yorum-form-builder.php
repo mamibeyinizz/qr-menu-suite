@@ -460,3 +460,53 @@ qrms_test(
 		qrms_assert_contains( 'res.show_reward && window.qrmRewardPopup', $render, 'yalnızca eşiği geçen gönderimde açılıyor' );
 	}
 );
+
+qrms_test(
+	'gönderim tablosu başlıkları tablet\'te harf harf bölünmez (overflow + kart eşiği)',
+	function () {
+		// Kök neden: <table class="wp-list-table widefat fixed striped qrm-sub-table">
+		// table-layout:fixed. Tarih 140 + Durum 90 + İşlemler 210 sabit;
+		// form alanı sütunları ($fields, sayı değişir) genişlik almaz.
+		// Kart eşiği yalnızca 782px idi; 783–1100px (tablet / "masaüstü siteyi
+		// iste") aralığında sabit sütunlar alanı yer, başlık tek karaktere iner.
+		//
+		// Çözüm: overflow-x sarmalayıcı + alana göre min-width + 1100px kart.
+		// 782px bloğu (sekme/araç çubuğu) yerinde kalır.
+		$src = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/admin/form-submissions.php' );
+
+		qrms_assert_contains( 'qrm-sub-table-scroll', $src, 'yatay kaydırma sarmalayıcısı' );
+		qrms_assert_contains( 'overflow-x:auto', $src, 'taşma kaydırmaya döner' );
+		qrms_assert_contains( '.qrm-sub-table th { overflow-wrap:break-word; white-space:normal; word-break:normal; }', $src, 'th satır sarar, harf harf değil' );
+		qrms_assert_contains( 'min-width:8.5em', $src, 'alan sütunları 1 karaktere inmez' );
+		qrms_assert_contains( '440 + (count($fields) * 136)', $src, 'min-width alan sayısına göre' );
+		qrms_assert_contains( '@media screen and (max-width: 1100px)', $src, 'kart eşiği tablet\'e yükseltildi' );
+		qrms_assert_contains( '@media screen and (max-width: 782px)', $src, 'eski mobil kart bloğu duruyor' );
+		qrms_assert_contains( '.qrm-sub-toolbar { flex-direction:column; align-items:stretch; }', $src, '782px araç çubuğu kuralı duruyor' );
+
+		// 2 alanlı form 712px, 8 alanlı 1528px taban — ikisi de 720px
+		// varsayılanın üstünde ya da formülle ölçeklenir; sabit 1150px eşiği yok.
+		qrms_assert_same( 440 + ( 2 * 136 ), 712, '2 alanlı min-width' );
+		qrms_assert_same( 440 + ( 8 * 136 ), 1528, '8 alanlı min-width' );
+		qrms_assert_false( false !== strpos( $src, 'max-width: 1150px' ), 'alan sayısından bağımsız tek 1150 eşiği yok' );
+	}
+);
+
+qrms_test(
+	'FAZ 2: aynı sınıf widefat.fixed tablolar kaydırılır / kart eşiği yükselir',
+	function () {
+		$codes = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/admin/reward-codes.php' );
+		qrms_assert_contains( 'qrm-table-scroll', $codes, 'ödül kodları sarmalayıcı' );
+		qrms_assert_contains( 'qrm-reward-codes-table', $codes, 'ödül kodları tablo sınıfı' );
+
+		$css = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/assets/css/admin.css' );
+		qrms_assert_contains( '.qrm-table-scroll', $css, 'ortak kaydırma sarmalayıcısı' );
+		qrms_assert_contains( '.qrm-reward-codes-table', $css, 'ödül kodları 1150px kart' );
+		qrms_assert_contains( ".qrm-review-workflow-table .qrm-wf-controls {\n\t\tflex-wrap: wrap;\n\t\tmax-width: none;", $css, 'iş akışı kontrolleri kartta 190px ile sıkışmaz' );
+
+		$reports = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/admin/reports.php' );
+		qrms_assert_contains( 'qrm-table-scroll', $reports, 'masa özeti tablosu kaydırılır' );
+
+		$consent = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/admin/consent-report.php' );
+		qrms_assert_contains( 'qrm-table-scroll', $consent, 'KVKK tablosu kaydırılır' );
+	}
+);

@@ -604,6 +604,78 @@
 
 	.qrm-review-workflow-table .qrm-wf-controls {
 		flex-wrap: wrap;
+		max-width: none;
+	}
+}
+
+/*
+ * Ödül kodları listesi (.qrm-reward-codes-table) aynı deseni kullanıyor:
+ * .widefat.fixed + Oluşturulma 130 + Kod 140 + Durum 110 + Kullanım 130 +
+ * İşlemler 250 = 760px sabit sütun. 783–1150px arası E-posta/İndirim
+ * sütunları ezilir. Kart görünümü 782px'te zaten var; eşiği Tüm Yorumlar
+ * tablosuyla aynı 1150px'e çekilir. Masaüstünde .qrm-table-scroll kaydırır.
+ */
+@media screen and ( max-width: 1150px ) {
+
+	.qrm-reward-codes-table,
+	.qrm-reward-codes-table tbody,
+	.qrm-reward-codes-table tr,
+	.qrm-reward-codes-table td {
+		display: block;
+		width: auto;
+	}
+
+	.qrm-reward-codes-table thead {
+		display: none;
+	}
+
+	.qrm-reward-codes-table tr {
+		background: #fff;
+		border: 1px solid #dcdcde;
+		border-radius: 8px;
+		margin-bottom: 12px;
+		padding: 6px 4px;
+	}
+
+	.qrm-reward-codes-table.striped > tbody > tr:nth-child( odd ),
+	.qrm-reward-codes-table > tbody > tr:nth-child( odd ) {
+		background: #fff;
+	}
+
+	.qrm-reward-codes-table td {
+		border: 0;
+		display: flex;
+		flex-wrap: wrap;
+		gap: 4px 12px;
+		padding: 7px 12px;
+	}
+
+	.qrm-reward-codes-table td::before {
+		color: #646970;
+		content: attr( data-label );
+		flex: 0 0 34%;
+		font-size: 12px;
+		font-weight: 600;
+		text-transform: uppercase;
+	}
+
+	.qrm-reward-codes-table td[data-label=""]::before {
+		display: none;
+	}
+
+	.qrm-reward-codes-table td > * {
+		flex: 1 1 55%;
+	}
+
+	.qrm-reward-codes-table .qrm-row-actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 8px;
+	}
+
+	.qrm-reward-codes-table .qrm-row-actions .button {
+		flex: 1 1 auto;
+		text-align: center;
 	}
 }
 
@@ -925,6 +997,27 @@
 .qrm-empty-inline {
 	color: #646970;
 	margin: 0;
+}
+
+/* .widefat.fixed tabloları tablet'te sıkıştırmak yerine kaydır.
+ * Kart eşiği olan tablolar (yorum listesi, ödül kodları, gönderimler)
+ * dar ekranda zaten display:block'a iner; bu sarmalayıcı o durumda zararsızdır. */
+.qrm-table-scroll {
+	-webkit-overflow-scrolling: touch;
+	max-width: 100%;
+	overflow-x: auto;
+}
+
+.qrm-table-scroll .wp-list-table.fixed th {
+	overflow-wrap: break-word;
+	white-space: normal;
+	word-break: normal;
+}
+
+.qrm-report-table th,
+.qrm-consent-table th,
+.qrm-reward-codes-table th {
+	min-width: 6.5em;
 }
 
 .qrm-hour-chart {

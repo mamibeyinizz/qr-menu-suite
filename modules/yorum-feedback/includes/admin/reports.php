@@ -392,6 +392,7 @@ function qrm_pro_admin_reports_page() {
             <?php if (empty($table_rows)): ?>
                 <p class="qrm-empty-inline"><?php esc_html_e('Bu aralıkta yorum bulunamadı.', 'qrms'); ?></p>
             <?php else: ?>
+                <div class="qrm-table-scroll">
                 <table class="wp-list-table widefat fixed striped qrm-report-table">
                     <thead>
                         <tr>
@@ -436,6 +437,7 @@ function qrm_pro_admin_reports_page() {
                         <?php endforeach; ?>
                     </tbody>
                 </table>
+                </div>
             <?php endif; ?>
         </div>
 
