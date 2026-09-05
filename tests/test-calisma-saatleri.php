@@ -269,9 +269,24 @@ qrms_test(
 );
 
 qrms_test(
-	'ön yüzde kısa kod Elementor boxed kapsayıcıyı 100vw ile ezer',
+	'varsayılan (öznitelik verilmezse) tam genişlik DEĞİL — kart konteynerini doldurur',
 	function () {
+		// Önceden varsayılan '1' (kenardan kenara) idi; kullanıcı geri
+		// bildirimiyle '0'a çevrildi — bare [qr_calisma_saatleri] artık
+		// bulunduğu Elementor sütununun genişliğini doldurur, sayfaya
+		// taşmaz. Kenardan kenara isteyen artık fullwidth="1" yazmalı.
 		$html = qrms_cs_shortcode( array() );
+
+		qrms_assert_false( false !== strpos( $html, 'qrms-cs--full' ), 'varsayılanda sınıf yok' );
+		qrms_assert_contains( 'class="qrms-cs"', $html, 'sarmalayıcı durur' );
+		qrms_assert_contains( 'qrms-cs-card', $html, 'kart durur' );
+	}
+);
+
+qrms_test(
+	'fullwidth=1 opt-in ile Elementor boxed kapsayıcıyı 100vw ile ezer',
+	function () {
+		$html = qrms_cs_shortcode( array( 'fullwidth' => '1' ) );
 
 		qrms_assert_contains( 'qrms-cs--full', $html, 'full width sınıfı' );
 		qrms_assert_contains( 'qrms-cs-inner', $html, 'içerik ortalanır' );

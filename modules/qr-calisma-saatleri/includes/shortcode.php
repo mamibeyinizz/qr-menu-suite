@@ -51,7 +51,10 @@ function qrms_cs_shortcode( $atts ) {
 	$atts = shortcode_atts(
 		array(
 			'today'     => '0',
-			'fullwidth' => '1',
+			// Varsayılan kapalı: kart bulunduğu konteynerin/sütunun genişliğini
+			// doldurur. Kenardan kenara (100vw) basmak isteyen fullwidth="1"
+			// yazar (bkz. QRMS_Shortcodes registry ve admin-sayfa.php yardımı).
+			'fullwidth' => '0',
 		),
 		$atts,
 		'qr_calisma_saatleri'

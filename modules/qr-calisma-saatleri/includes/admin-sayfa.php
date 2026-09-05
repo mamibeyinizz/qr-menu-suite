@@ -212,9 +212,9 @@ function qrms_cs_admin_sayfasi() {
 			</p>
 			<p><code>[qr_calisma_saatleri]</code></p>
 			<p class="qrms-muted">
-				<?php esc_html_e( 'Kısa kod Elementor içinde kenardan kenara (full width) basılır; gün listesi ortada kalır. Dar bir sütunda kullanıyorsanız:', 'qrms' ); ?>
+				<?php esc_html_e( 'Kısa kod, bulunduğu Elementor sütununun/konteynerin genişliğini doldurur. Sayfanın kenarından kenarına (full width) basmak isterseniz:', 'qrms' ); ?>
 			</p>
-			<p><code>[qr_calisma_saatleri fullwidth="0"]</code></p>
+			<p><code>[qr_calisma_saatleri fullwidth="1"]</code></p>
 		</div>
 	</div>
 	<?php
