@@ -307,6 +307,14 @@ function qrm_cf_admin_form_editor_view() {
                     </div>
 
                     <div class="qrm-fb-field">
+                        <label class="qrm-fb-check">
+                            <input type="checkbox" name="qrm_cf_settings[full_width]" value="1" <?php checked($s['full_width'], 1); ?>>
+                            Tam Genişlik (konteynerin kenarlarını taşıp sayfaya yayılır)
+                        </label>
+                        <p class="qrm-fb-help" style="margin-top:4px;">Kapalıyken form, bulunduğu sütun/konteynerin genişliğini doldurur. Yalnızca kenardan kenara yayılmasını istediğiniz basit formlarda açın.</p>
+                    </div>
+
+                    <div class="qrm-fb-field">
                         <label for="qrm-fb-theme">Tema</label>
                         <select id="qrm-fb-theme" name="qrm_cf_settings[theme_style]">
                             <option value="light" <?php selected($s['theme_style'], 'light'); ?>>Açık</option>

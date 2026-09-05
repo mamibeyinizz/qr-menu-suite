@@ -45,7 +45,7 @@ function qrm_cf_form_style_block($form_id, $s) {
         ['', "width:100%; max-width:none; margin:0; font-family:inherit; color:{$v['text_color']}; box-sizing:border-box;"],
         ['*, *:before, *:after', 'box-sizing:border-box;'],
         ['.qrm-cf-form', "background:{$v['bg_color']}; padding:30px; border-radius:" . ($r + 6) . "px; border:1px solid {$v['border_color']}; box-shadow:0 4px 24px rgba(0,0,0,0.04);"],
-        ['.qrm-cf-form h3', "margin:0 0 8px; font-size:22px; font-weight:700; text-align:{$title_align};"],
+        ['.qrm-cf-form h3', "margin:0 0 30px; font-size:22px; font-weight:700; text-align:{$title_align};"],
         ['.qrm-cf-desc', "text-align:{$title_align};"],
         ['.qrm-cf-message:empty', 'display:none;'],
     ], $scope);
@@ -59,6 +59,18 @@ function qrm_cf_form_style_block($form_id, $s) {
     <?php echo qrm_pro_input_css($v, $scope); ?>
     <?php echo qrm_cf_extra_field_css($v, $scope); ?>
     <?php
+    // Puanlama Kriterleri widget'ı + adım gezinme çubuğu (Geri/Devam Et):
+    // yorum formuyla paylaşılan tek tanım (bkz. qrm_pro_rating_group_css).
+    // Önceden özel formlar bu kuralları HİÇ basmıyordu — aynı sayfada
+    // [qr_menu_reviews] da varsa ondan sızan (kapsamsız) stille tesadüfen
+    // görünüyordu, aksi hâlde rating_group/google_reward tamamen stilsizdi.
+    echo qrm_pro_rating_group_css([
+        'border_color' => $v['border_color'],
+        'panel_bg'     => $v['panel_bg'],
+        'radius'       => $r,
+    ], $scope);
+    ?>
+    <?php
     echo qrm_pro_steps_css([
         'btn_color'      => $v['btn_color'],
         'btn_text_color' => $v['btn_text_color'],
@@ -67,7 +79,8 @@ function qrm_cf_form_style_block($form_id, $s) {
     ]);
     ?>
     <?php echo $scope; ?> .qrm-cf-form { animation: qrmFadeInUp .4s ease both; }
-    @media(max-width:480px){ <?php echo $scope; ?> .qrm-cf-form { padding:20px; } }
+    @media(max-width:768px){ <?php echo $scope; ?> .qrm-cf-form { padding:24px; } <?php echo $scope; ?> .qrm-cf-form h3 { font-size:20px; margin-bottom:24px; } }
+    @media(max-width:480px){ <?php echo $scope; ?> .qrm-cf-form { padding:20px; } <?php echo $scope; ?> .qrm-cf-form h3 { margin-bottom:20px; } }
     </style>
     <?php
     return ob_get_clean();
@@ -203,9 +216,11 @@ function qrm_cf_render_form($form, $fields, $s = null) {
     $steps_json  = wp_json_encode(qrm_pro_steps_js_config($steps), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
     $submit_label = qrm_ceviri_cf_form($form_id, 'submit_text', $s['submit_text']);
 
+    $fullbleed_class = !empty($s['full_width']) ? ' qrm-form-fullbleed' : '';
+
     ob_start();
     ?>
-    <div class="qrm-cf-scope qrm-cf-scope-<?php echo $form_id; ?> qrm-form-fullbleed">
+    <div class="qrm-cf-scope qrm-cf-scope-<?php echo $form_id; ?><?php echo esc_attr($fullbleed_class); ?>">
         <div class="qrm-cf-form" id="<?php echo esc_attr($prefix); ?>-box">
             <?php if (!empty($s['show_title'])): ?>
                 <h3><?php echo esc_html(qrm_ceviri_cf_form($form_id, 'title', $form->title)); ?></h3>

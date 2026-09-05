@@ -57,14 +57,24 @@ qrms_test(
 );
 
 qrms_test(
-	'iletişim kısa kodu fullbleed, yorum listesi boxed kalır',
+	'iletişim kısa kodu her zaman fullbleed; özel formlarda opt-in; yorum listesi boxed kalır',
 	function () {
 		$iletisim = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/frontend/shortcode-contact.php' );
 		$yorum    = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/frontend/shortcode-reviews.php' );
 		$ozel     = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/forms/render.php' );
 
 		qrms_assert_contains( 'qrm-form-fullbleed', $iletisim, 'iletişim wrapper' );
-		qrms_assert_contains( 'qrm-form-fullbleed', $ozel, 'özel form wrapper' );
+
+		// Özel formlarda tam genişlik artık VARSAYILAN değil, `full_width`
+		// ayarıyla opt-in: çok adımlı, markalı bir form (Puanlama Kriterleri +
+		// Google/Ödül widget'ları) sayfanın kenarına dayanmak yerine kendi
+		// konteynerinin genişliğini doldurur.
+		qrms_assert_contains( "!empty(\$s['full_width']) ? ' qrm-form-fullbleed' : ''", $ozel, 'özel formda fullbleed opt-in' );
+		qrms_assert_false(
+			false !== strpos( $ozel, "qrm-cf-scope-<?php echo \$form_id; ?> qrm-form-fullbleed\"" ),
+			'artık koşulsuz basılmıyor'
+		);
+
 		qrms_assert_false(
 			false !== strpos( $yorum, 'qrm-form-fullbleed' ),
 			'yorum listesi max-width 800px kutusunu korur'
