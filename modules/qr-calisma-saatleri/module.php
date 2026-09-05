@@ -42,8 +42,8 @@ function qrms_module_qr_calisma_saatleri_init() {
 					),
 					array(
 						'name'    => 'fullwidth',
-						'default' => '1',
-						'desc'    => __( 'Kenardan kenara (100vw) basmak için "1". Dar bir sütunda kullanıyorsanız "0" yazın.', 'qrms' ),
+						'default' => '0',
+						'desc'    => __( 'Varsayılan kapalı: kart bulunduğu sütunun/konteynerin genişliğini doldurur. Kenardan kenara (100vw) basmak için "1" yazın.', 'qrms' ),
 					),
 				),
 			),

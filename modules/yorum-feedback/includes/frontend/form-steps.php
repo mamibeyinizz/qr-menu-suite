@@ -485,8 +485,15 @@ function qrm_pro_steps_css($v) {
         // Etiket artık tek satırda "..." ile kırpılmıyor — kısa/uzun etiket
         // farketmeksizin en fazla iki satıra sarılıyor (üçüncü satır kırpılır,
         // ki bu normalde tek kelimelik aşırı uzun etiketler dışında hiç
-        // görünmez).
-        ['.qrm-step-label', 'display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; font-size:11.5px; font-weight:600; line-height:1.25; text-align:center; max-width:84px; white-space:normal; overflow:hidden; opacity:.85;'],
+        // görünmez). min-height İKİ satırlık sabit bir alan ayırır: tek
+        // satırlık ("2. Adım") ve iki satırlık ("İletişim Bilgileriniz")
+        // etiketler aynı yüksekliği kaplar, bu yüzden her adım öğesinin
+        // TOPLAM yüksekliği eşitlenir — .qrm-steps-track'ın align-items:
+        // flex-end hizası artık noktaları/bağlantı çizgilerini olduğu gibi
+        // hizalarken, etiketler de üstten aynı çizgide başlar (aksi hâlde
+        // uzun etiketli adımlar diğerlerinden daha yukarıdan başlıyor,
+        // sıra "nizami" durmuyordu).
+        ['.qrm-step-label', 'display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; font-size:11.5px; font-weight:600; line-height:1.25; text-align:center; max-width:84px; min-height:28.75px; white-space:normal; overflow:hidden; opacity:.85;'],
         ['.qrm-step-dot', 'width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; border:2px solid transparent; background:' . $todo_bg . '; color:' . $todo_col . '; cursor:default; padding:0; font-family:inherit; transition:background .25s ease,color .25s ease,border-color .25s ease,transform .15s ease;'],
         ['.qrm-step-dot:focus-visible', 'outline:2px solid ' . $btn . '; outline-offset:2px;'],
         ['.qrm-step-item.is-active .qrm-step-dot', 'background:' . $btn . '; color:' . $btn_tx . '; border-color:' . $btn . ';'],

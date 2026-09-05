@@ -2915,7 +2915,9 @@ qrms_test(
 		qrms_assert_contains( 'QR Çalışma Saatleri', $html, 'başlık' );
 		qrms_assert_contains( 'name="qrms_cs[monday][closed]"', $html, 'pazartesi kapalı' );
 		qrms_assert_contains( '[qr_calisma_saatleri]', $html, 'kısa kod' );
-		qrms_assert_contains( '[qr_calisma_saatleri fullwidth="0"]', $html, 'dar sütun kısa kodu' );
+		// Varsayılan artık kutulu (konteyner genişliği); kenardan kenara
+		// istenirse fullwidth="1" ile opt-in edilir.
+		qrms_assert_contains( '[qr_calisma_saatleri fullwidth="1"]', $html, 'tam genişlik opt-in kısa kodu' );
 		qrms_assert_false(
 			false !== strpos( $html, 'Bu modül yakında burada olacak.' ),
 			'placeholder basılmamalı'
