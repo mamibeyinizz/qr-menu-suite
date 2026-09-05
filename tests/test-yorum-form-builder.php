@@ -63,16 +63,57 @@ qrms_test(
 );
 
 qrms_test(
-	'rating_group ve google_reward yalnızca sistem paletinde',
+	'rating_group ve google_reward artık tüm formlarda kullanılabilir widget',
 	function () {
+		// Başlangıçta ikisi de yalnızca Ana Yorum Formu'na özeldi; kullanıcı
+		// isteğiyle genelleştirildi — global ayarları (crit_1..5, Google/ödül
+		// metinleri) okuyup herhangi bir özel formda KONUMLANDIRILABİLİYORLAR,
+		// içerikleri hâlâ ilgili admin sayfasında yönetiliyor.
+		//
+		// qrm_cf_field_types() burada ÇAĞRILMAZ: bu dosyanın gerçek
+		// forms/functions.php'yi require etmemesi bilinçli (test-yorum-admin.php
+		// qrm_cf_unread_total()'ı kendi taklidiyle tanımlıyor; ikisi aynı süreçte
+		// yüklenirse "cannot redeclare" hatası verir). Bu yüzden kayıt defteri
+		// kaynak metninden doğrulanır.
 		$src = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/forms/functions.php' );
-		qrms_assert_contains( "'rating_group'", $src, 'registry rating_group' );
-		qrms_assert_contains( "'google_reward'", $src, 'registry google_reward' );
-		qrms_assert_contains( "'is_widget' => true", $src, 'widget bayrağı' );
-		qrms_assert_contains( "'is_system_only' => true", $src, 'sistem-only bayrağı' );
-		qrms_assert_contains( 'if (!$include_system)', $src, 'özel form paletinden süzülür' );
+		qrms_assert_contains( "'rating_group' =>", $src, 'registry rating_group' );
+		qrms_assert_contains( "'google_reward' =>", $src, 'registry google_reward' );
 		qrms_assert_contains( "case 'rating_group':", $src, 'validate rating_group' );
 		qrms_assert_contains( "case 'google_reward':", $src, 'validate google_reward' );
+
+		// İkisinin de artık is_system_only TAŞIMADIĞINI doğrula — bunu tek tek
+		// alan bloklarından anlamak için her widget'ın kendi satır aralığını al.
+		$rating_block = substr( $src, strpos( $src, "'rating_group' =>" ), 260 );
+		$reward_block = substr( $src, strpos( $src, "'google_reward' =>" ), 280 );
+		qrms_assert_false( false !== strpos( $rating_block, 'is_system_only' ), 'rating_group artık sistem-only değil' );
+		qrms_assert_false( false !== strpos( $reward_block, 'is_system_only' ), 'google_reward artık sistem-only değil' );
+		qrms_assert_contains( "'is_widget' => true", $rating_block, 'rating_group widget bayrağı' );
+		qrms_assert_contains( "'is_widget' => true", $reward_block, 'google_reward widget bayrağı' );
+
+		// İletişim düzenleyicisi hiçbir alan/widget kaydetmiyor
+		// (qrm_cf_admin_handle_system_form_save); palette'te widget göstermek
+		// yanıltıcı olur, orada özel olarak filtrelenmeli.
+		$builder = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/admin/custom-form-builder.php' );
+		qrms_assert_contains( "\$system === 'contact' && !empty(\$meta['is_widget'])", $builder, 'iletişim editöründe widget paletten çıkarılır' );
+	}
+);
+
+qrms_test(
+	'özel form başlık pozisyonu (title_align) kaydedilip önyüze basılır',
+	function () {
+		// qrm_cf_default_form_settings/qrm_cf_sanitize_form_settings burada
+		// çağrılmaz (forms/functions.php'nin bu dosyada require edilmeme
+		// nedeni yukarıda açıklandı); kaynak metinden doğrulanır.
+		$fn = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/forms/functions.php' );
+		qrms_assert_contains( "'title_align'     => 'left'", $fn, 'varsayılan sola yaslı' );
+		qrms_assert_contains( "in_array(\$raw['title_align'], ['left', 'center', 'right'], true)", $fn, 'yalnızca üç değer kabul edilir' );
+
+		$render = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/forms/render.php' );
+		qrms_assert_contains( 'title_align', $render, 'render önyüze pozisyonu basıyor' );
+		qrms_assert_contains( 'text-align:', $render, 'CSS text-align kuralı üretiliyor' );
+
+		$builder = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/admin/custom-form-builder.php' );
+		qrms_assert_contains( 'qrm-fb-title-align', $builder, 'builder ekranında pozisyon seçimi var' );
 	}
 );
 

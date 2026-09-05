@@ -38,11 +38,15 @@ function qrm_cf_form_style_block($form_id, $s) {
     $scope = '.qrm-cf-scope-' . intval($form_id);
     $r     = $v['radius'];
 
+    $title_align = isset($s['title_align']) && in_array($s['title_align'], ['left', 'center', 'right'], true)
+        ? $s['title_align'] : 'left';
+
     $own = qrm_pro_css_rules([
         ['', "width:100%; max-width:none; margin:0; font-family:inherit; color:{$v['text_color']}; box-sizing:border-box;"],
         ['*, *:before, *:after', 'box-sizing:border-box;'],
         ['.qrm-cf-form', "background:{$v['bg_color']}; padding:30px; border-radius:" . ($r + 6) . "px; border:1px solid {$v['border_color']}; box-shadow:0 4px 24px rgba(0,0,0,0.04);"],
-        ['.qrm-cf-form h3', 'margin:0 0 8px; font-size:22px; font-weight:700;'],
+        ['.qrm-cf-form h3', "margin:0 0 8px; font-size:22px; font-weight:700; text-align:{$title_align};"],
+        ['.qrm-cf-desc', "text-align:{$title_align};"],
         ['.qrm-cf-message:empty', 'display:none;'],
     ], $scope);
 
