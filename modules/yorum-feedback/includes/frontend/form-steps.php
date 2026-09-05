@@ -481,8 +481,12 @@ function qrm_pro_steps_css($v) {
         ['.qrm-steps-head', 'display:none; flex-direction:column; align-items:stretch; margin-bottom:24px;'],
         ['.qrm-steps-track', 'display:flex; align-items:flex-end; justify-content:center; gap:0; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; padding:4px 2px;'],
         ['.qrm-steps-track::-webkit-scrollbar', 'display:none;'],
-        ['.qrm-step-item', 'display:flex; flex-direction:column; align-items:center; gap:6px; flex:0 0 auto; min-width:52px;'],
-        ['.qrm-step-label', 'font-size:12px; font-weight:600; line-height:1.2; text-align:center; max-width:72px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; opacity:.85;'],
+        ['.qrm-step-item', 'display:flex; flex-direction:column; align-items:center; gap:6px; flex:0 0 auto; min-width:68px;'],
+        // Etiket artık tek satırda "..." ile kırpılmıyor — kısa/uzun etiket
+        // farketmeksizin en fazla iki satıra sarılıyor (üçüncü satır kırpılır,
+        // ki bu normalde tek kelimelik aşırı uzun etiketler dışında hiç
+        // görünmez).
+        ['.qrm-step-label', 'display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; font-size:11.5px; font-weight:600; line-height:1.25; text-align:center; max-width:84px; white-space:normal; overflow:hidden; opacity:.85;'],
         ['.qrm-step-dot', 'width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; border:2px solid transparent; background:' . $todo_bg . '; color:' . $todo_col . '; cursor:default; padding:0; font-family:inherit; transition:background .25s ease,color .25s ease,border-color .25s ease,transform .15s ease;'],
         ['.qrm-step-dot:focus-visible', 'outline:2px solid ' . $btn . '; outline-offset:2px;'],
         ['.qrm-step-item.is-active .qrm-step-dot', 'background:' . $btn . '; color:' . $btn_tx . '; border-color:' . $btn . ';'],

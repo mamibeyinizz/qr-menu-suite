@@ -427,3 +427,36 @@ qrms_test(
 		qrms_assert_contains( "name=\"qrm_cf_settings[full_width]\"", $builder, 'builder ekranında anahtar var' );
 	}
 );
+
+qrms_test(
+	'stepper etiketleri artık "..." ile kırpılmıyor, iki satıra sarılıyor',
+	function () {
+		$src = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/frontend/form-steps.php' );
+		qrms_assert_false( false !== strpos( $src, 'text-overflow:ellipsis' ), 'kırpma kuralı kaldırıldı' );
+		qrms_assert_contains( '-webkit-line-clamp:2', $src, 'en fazla iki satıra sarılıyor' );
+		qrms_assert_contains( 'white-space:normal', $src, 'satır sarma açık' );
+	}
+);
+
+qrms_test(
+	'kritik bug: özel formlarda google_reward artık gerçek ödül popup\'ını açıyor',
+	function () {
+		// Kök neden: qrm_reward_render_step_panel() gönderim ÖNCESİ bilgi
+		// paneliydi; asıl kupon/kod talebi akışını yöneten window.qrmRewardPopup
+		// (qrm_reward_queue_popup) hiçbir yerde çağrılmıyordu ve
+		// ajax/submit-custom-form.php'nin JSON yanıtı show_reward/review_id/
+		// reward_claim taşımıyordu — "GÖNDER"e basınca hiçbir şey açılmıyordu.
+		$fn = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/forms/functions.php' );
+		qrms_assert_contains( 'function qrm_cf_reward_response(', $fn, 'yorum formuyla aynı eşik mantığını paylaşan yardımcı var' );
+		qrms_assert_contains( "\$has_reward_widget = false;", $fn, 'widget yoksa hiç tetiklenmez' );
+
+		$submit = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/ajax/submit-custom-form.php' );
+		qrms_assert_contains( 'qrm_cf_reward_response(', $submit, 'AJAX yanıtı ödül alanlarını taşıyor' );
+		qrms_assert_contains( 'array_merge(', $submit, 'ödül alanları JSON yanıtına ekleniyor' );
+
+		$render = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/forms/render.php' );
+		qrms_assert_contains( 'qrm_reward_queue_popup(qrm_pro_get_settings())', $render, 'google_reward varsa popup DOM\'u kuyruğa alınıyor' );
+		qrms_assert_contains( 'window.qrmRewardPopup.open(', $render, 'başarılı gönderimde popup açılıyor' );
+		qrms_assert_contains( 'res.show_reward && window.qrmRewardPopup', $render, 'yalnızca eşiği geçen gönderimde açılıyor' );
+	}
+);

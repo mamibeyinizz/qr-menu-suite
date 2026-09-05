@@ -218,6 +218,22 @@ function qrm_cf_render_form($form, $fields, $s = null) {
 
     $fullbleed_class = !empty($s['full_width']) ? ' qrm-form-fullbleed' : '';
 
+    // google_reward widget'ı varsa ödül popup'ının DOM/script'i sayfaya
+    // kuyruğa alınır (wp_footer) — aksi hâlde gönderim sonrası
+    // window.qrmRewardPopup hiç tanımlanmaz ve kupon akışı hiç açılmaz.
+    // Popup'ın KENDİSİ (bkz. qrm_reward_queue_popup) sayfa başına yalnızca
+    // bir kez basılır; aynı sayfada [qr_menu_reviews] da varsa çakışmaz.
+    $qrm_cf_has_reward_widget = false;
+    foreach ((array) $fields as $qrm_cf_reward_check_field) {
+        $qrm_cf_reward_check_type = is_object($qrm_cf_reward_check_field)
+            ? $qrm_cf_reward_check_field->field_type
+            : $qrm_cf_reward_check_field['field_type'];
+        if ($qrm_cf_reward_check_type === 'google_reward') {
+            $qrm_cf_has_reward_widget = true;
+            break;
+        }
+    }
+
     ob_start();
     ?>
     <div class="qrm-cf-scope qrm-cf-scope-<?php echo $form_id; ?><?php echo esc_attr($fullbleed_class); ?>">
@@ -281,6 +297,9 @@ function qrm_cf_render_form($form, $fields, $s = null) {
         </div>
     </div>
     <?php
+    if ($qrm_cf_has_reward_widget) {
+        echo qrm_reward_queue_popup(qrm_pro_get_settings());
+    }
     return ob_get_clean();
 }
 
@@ -369,6 +388,17 @@ function qrm_cf_render_form_script($form, $s) {
                     if (res && res.success) {
                         form.style.display = 'none';
                         showMessage('success', res.message || successText);
+                        // google_reward widget'ı: eşiği geçen puan varsa ödül
+                        // popup'ı (window.qrmRewardPopup, bkz. qrm_reward_queue_popup)
+                        // açılır; ödül modülü kapalıysa yalnızca Google linki bilinir,
+                        // ayrı bir satır içi CTA basılmaz (bu form önceden zaten
+                        // adım panelinde göstermişti).
+                        if (res.show_reward && window.qrmRewardPopup) {
+                            window.qrmRewardPopup.open({
+                                reviewId: res.review_id || 0,
+                                claim: res.reward_claim || ''
+                            });
+                        }
                         return;
                     }
                     showMessage('error', (res && res.message) ? res.message : metin('submitFailed', 'Gönderim tamamlanamadı, lütfen tekrar deneyin.'));
