@@ -252,3 +252,39 @@ qrms_test(
 		qrms_assert_contains( 'qrmInitRewardGating', $steps_js, 'gating başlatıcı var' );
 	}
 );
+
+qrms_test(
+	'adım gezinme butonları temanın button !important stilini yenecek şekilde basılır',
+	function () {
+		// Bazı temalar/Elementor <button> öğelerine !important display basıyor;
+		// bu yüzden Geri/Gönder butonlarının gizli kalması gereken durumlarda da
+		// görünmeye devam ettiği bir canlı site hatası vardı. Kural setinin
+		// !important taşıdığını doğrula — aksi hâlde tema her zaman kazanır.
+		$css = qrm_pro_steps_css( array(
+			'btn_color'      => '#10b981',
+			'btn_text_color' => '#ffffff',
+			'border_color'   => '#e2e8f0',
+			'theme_style'    => 'light',
+		) );
+
+		qrms_assert_contains( '.qrm-steps-nav { display:none !important; }', $css, 'nav çubuğu gizleme !important' );
+		qrms_assert_contains( '.qrm-step-submit, .qrm-cf-step-submit { display:none !important; }', $css, 'gönder butonu gizleme !important' );
+		qrms_assert_contains( 'qrm-step-back[hidden]', $css, 'geri butonu için [hidden] durumuna özel kural var' );
+		qrms_assert_true(
+			false !== strpos( $css, 'qrm-step-back[hidden]' ) && false !== strpos( $css, 'display:none !important' ),
+			'geri butonu [hidden] iken de !important ile gizleniyor'
+		);
+		qrms_assert_contains( '.qrm-step[hidden] { display:none !important; }', $css, 'adım paneli gizleme de !important' );
+	}
+);
+
+qrms_test(
+	'builder önizlemesi çok adımlı formu tek seferde bir adım gösterecek şekilde gezinir',
+	function () {
+		$src = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/admin/custom-form-builder.php' );
+		qrms_assert_contains( 'function syncPreviewStepNav', $src, 'önizleme adım gezinme fonksiyonu var' );
+		qrms_assert_contains( 'previewStepIdx', $src, 'aktif önizleme adımı takip ediliyor' );
+		qrms_assert_contains( "g.hidden = (sn !== previewStepIdx);", $src, 'önizlemede yalnızca aktif adım görünür' );
+		qrms_assert_contains( 'qrm-fb-preview-stepnav', $src, 'önizleme gezinme çubuğu basılıyor' );
+	}
+);
