@@ -165,8 +165,67 @@
         });
     }
 
+    function applyColorPreviewItem(data) {
+        var root = document.querySelector('.rma-color-preview');
+        if (!root || !data) return;
+
+        var nameEl = root.querySelector('.rma-cp-name');
+        var descEl = root.querySelector('.rma-cp-desc');
+        var priceEl = root.querySelector('.rma-cp-price');
+        var headingEl = root.querySelector('.rma-cp-heading');
+        var modalEl = root.querySelector('.rma-cp-modal-title');
+        var itemEl = root.querySelector('.rma-cp-item');
+
+        if (nameEl) nameEl.textContent = data.name || '';
+        if (descEl) descEl.textContent = data.desc || '';
+        if (priceEl) priceEl.textContent = data.price || '';
+        if (headingEl) headingEl.textContent = data.category || '';
+        if (modalEl) modalEl.textContent = data.name || '';
+
+        if (!itemEl) return;
+
+        var thumb = itemEl.querySelector('.rma-cp-thumb');
+        if (data.thumb) {
+            if (!thumb) {
+                thumb = document.createElement('img');
+                thumb.className = 'rma-cp-thumb';
+                thumb.alt = '';
+                thumb.width = 40;
+                thumb.height = 40;
+                itemEl.insertBefore(thumb, itemEl.firstChild);
+            }
+            thumb.src = data.thumb;
+        } else if (thumb) {
+            thumb.parentNode.removeChild(thumb);
+        }
+    }
+
+    function initColorPreviewShuffle() {
+        $(document).on('click', '.rma-cp-shuffle', function (e) {
+            e.preventDefault();
+            var btn = this;
+            if (btn.disabled) return;
+            btn.disabled = true;
+            $.post(AJAX_URL, {
+                action: 'rma_color_preview_item',
+                security: NONCE,
+                exclude: btn.getAttribute('data-exclude-id') || '0'
+            }).done(function (r) {
+                if (!r || !r.success || !r.data) return;
+                applyColorPreviewItem(r.data);
+                if (r.data.id) {
+                    btn.setAttribute('data-exclude-id', String(r.data.id));
+                }
+            }).always(function () {
+                btn.disabled = false;
+            });
+        });
+    }
+
     function initColorPreview() {
         if (!document.querySelector('.rma-color-preview')) return;
+
+        initColorPreviewShuffle();
 
         $(document).on(
             'input change',
