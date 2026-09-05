@@ -196,7 +196,7 @@ if ( ! function_exists( 'qmo_chatbot_html_uret' ) ) {
 					</div>
 				<?php endif; ?>
 
-				<div class="gemini-chat-log">
+				<div class="gemini-chat-log" aria-live="polite" aria-relevant="additions">
 					<div class="gemini-msg-bubble gemini-msg-bot"><?php echo esc_html( $karsilama ); ?></div>
 				</div>
 
@@ -267,7 +267,9 @@ if ( ! function_exists( 'qmo_chatbot_ikon' ) ) {
 			printf( '<img src="%s" alt="" />', esc_url( $ikon_url ) );
 			return;
 		}
-		if ( $ikon_url && ( ! $preset || 'custom' === $preset ) ) {
+		// NOT: preset 'custom' ise ve $ikon_url doluysa yukarıdaki dal zaten
+		// return etmiştir; bu yüzden burada yalnızca "preset yok" durumu kalır.
+		if ( $ikon_url && ! $preset ) {
 			printf( '<img src="%s" alt="" />', esc_url( $ikon_url ) );
 			return;
 		}
