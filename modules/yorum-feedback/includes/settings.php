@@ -181,6 +181,10 @@ function qrm_pro_default_settings() {
         'reviews_per_page' => 3,
         'qrm_reviews_pagination_mode' => 'loadmore',
         'show_overall_stats' => 1,
+        // Önyüz istatistik widget'ı: kriter bar'ları (breakdown) veya yalnızca ortalama.
+        'rating_display_mode' => 'breakdown',
+        // Yorum formu adım/widget düzeni. Boş = önyüz eski sabit sırayı kullanır.
+        'qrm_review_form_layout' => [],
         'crit_1_name' => 'Yemek Lezzeti', 'crit_1_active' => 1,
         'crit_2_name' => 'Hizmet Hızı', 'crit_2_active' => 1,
         'crit_3_name' => 'Temizlik', 'crit_3_active' => 1,

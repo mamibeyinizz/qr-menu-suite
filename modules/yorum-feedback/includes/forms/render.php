@@ -91,6 +91,14 @@ function qrm_cf_render_field($field, $args = []) {
     $req_mark = $required ? ' <span class="qrm-cf-required">*</span>' : '';
     $half     = qrm_pro_field_column_width($field, 'custom') === 'half' ? ' half' : '';
 
+    if ($type === 'rating_group') {
+        $ac = 0;
+        return qrm_pro_render_rating_criteria(qrm_pro_get_settings(), $ac);
+    }
+    if ($type === 'google_reward') {
+        return qrm_reward_render_step_panel(qrm_pro_get_settings());
+    }
+
     ob_start();
     ?>
     <div class="qrm-input-group<?php echo $half; ?>" data-field-key="<?php echo esc_attr($key); ?>">

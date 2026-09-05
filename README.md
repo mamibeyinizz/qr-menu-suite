@@ -746,11 +746,9 @@ aynı ekran iki menüden açılıyor, diğerleri suite menüsünde hiç görünm
 
 | Ekran | Grup | Slug | İçerik |
 | --- | --- | --- | --- |
-| **Yorum & Feedback** (sol menüdeki tek satır) | — | `qrms-module-yorum-feedback` | Hub: dört tıklanabilir sayaç + üç başlık altında altı kart |
+| **Yorum & Feedback** (sol menüdeki tek satır) | — | `qrms-module-yorum-feedback` | Hub: dört tıklanabilir sayaç + üç başlık altında dört kart |
 | Tüm Yorumlar | Yorumlar | `qrms-yf-yorumlar` | Üç sekmeli yorum listesi, durum filtreleri, onay/sil |
-| Müşteri Bilgileri Formu | Formlar | `qrms-yf-form-alanlari` | Yorum formunun alanları, sıralama |
-| İletişim Formu | Formlar | `qrms-yf-iletisim` | İletişim formu başlığı + kısa kod |
-| Özel Formlar | Formlar | `qrms-yf-formlar` | Özel form oluşturucu + gönderiler |
+| Formlar | Formlar | `qrms-yf-formlar` | Ana yorum / iletişim (sistem) + özel form oluşturucu ve gönderiler |
 | Ayarlar & Puanlama | Ayarlar | `qrms-yf-ayarlar` | Kriterler, form görünümü, otomatik onay, spam |
 | Google & Ödül Sistemi | Ayarlar | `qrms-yf-odul` | Google yönlendirme, popup, indirim kodları |
 
@@ -802,9 +800,9 @@ okunmamış form gönderimi, eksik ödül kurulumu) sol menüde modülün **tek*
 satırında toplanır (`qrms_module_menu_label` filtresi); hangi ekranın
 ilgilendiği hub kartlarındaki rozetlerden okunur.
 
-"İletişim" ve "Formlar" adları panelde birbirine karışıyordu — ikisi de artık
-ne olduklarını söylüyor: **İletişim Formu** (hazır, tek kısa kodlu form) ve
-**Özel Formlar** (kendi oluşturduğunuz formlar).
+Ana yorum formu ve iletişim formu artık ayrı hub kartı değil; **Formlar**
+ekranının listesinde silinemez sistem satırları olarak durur. Özel formlar
+aynı listede onların altında oluşturulur.
 
 Kaynaktaki JS sekmeleri (Tüm Yorumlar > İçgörüler, Ayarlar > Müşteri Bilgileri
 Formu) gerçek sayfaya dönüştürüldü. Bu sekmelerin hem görünürlüğü hem aktif

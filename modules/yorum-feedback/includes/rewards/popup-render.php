@@ -64,6 +64,8 @@ function qrm_reward_render_popup_style_block($settings) {
         @keyframes qrmRwUp { from { opacity: 0; transform: translateY(16px) scale(.97); } to { opacity: 1; transform: none; } }
 
         .qrm-rw-modal { position: relative; width: 100%; max-width: 400px; background: <?php echo $c['bg']; ?>; color: <?php echo $c['text']; ?>; border-radius: <?php echo $c['radius']; ?>px; padding: 30px 26px 24px; box-shadow: 0 24px 60px rgba(0,0,0,.28); text-align: center; font-family: inherit; animation: qrmRwUp .3s ease both; box-sizing: border-box; }
+        .qrm-rw-step-panel { text-align: center; padding: 8px 4px 16px; }
+        .qrm-rw-step-panel .qrm-rw-btn { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; box-sizing: border-box; }
         .qrm-rw-modal *, .qrm-rw-modal *:before, .qrm-rw-modal *:after { box-sizing: border-box; }
         .qrm-rw-modal [hidden] { display: none; }
 
@@ -176,6 +178,39 @@ function qrm_reward_print_popup_footer() {
  * @param array $settings   Eklenti ayarları
  * @param bool  $auto_open  JS kapalı klasik POST akışında sayfa açılır açılmaz göster
  */
+/**
+ * Google & Ödül içeriğini form adımı olarak basar (modal / overlay yok).
+ *
+ * Gönderim sonrası popup ve kod talebi akışı değişmez; bu panel yalnızca
+ * yönlendirme metnini adım sırasına yerleştirir.
+ *
+ * @param array $settings
+ * @return string
+ */
+function qrm_reward_render_step_panel($settings) {
+    $title = qrm_ceviri_option('qrm_settings.qrm_reward_popup_title', $settings['qrm_reward_popup_title']);
+    $text  = qrm_ceviri_option('qrm_settings.qrm_reward_popup_text', $settings['qrm_reward_popup_text']);
+    $btn   = qrm_ceviri_option('qrm_settings.qrm_reward_popup_button_text', $settings['qrm_reward_popup_button_text']);
+    $url   = isset($settings['google_review_url']) ? $settings['google_review_url'] : '';
+
+    ob_start();
+    echo qrm_reward_render_popup_style_block($settings);
+    ?>
+    <div class="qrm-rw-step-panel">
+        <div class="qrm-rw-badge">🎁</div>
+        <h3 class="qrm-rw-title"><?php echo esc_html($title); ?></h3>
+        <p class="qrm-rw-text"><?php echo esc_html($text); ?></p>
+        <?php if ($url !== '') : ?>
+            <a class="qrm-rw-btn" href="<?php echo esc_url($url); ?>" target="_blank" rel="noopener noreferrer">
+                <span class="qrm-rw-btn-label"><?php echo esc_html($btn); ?></span>
+            </a>
+        <?php endif; ?>
+        <p class="qrm-rw-note"><?php echo esc_html(qrm_ceviri_review(__('Ödül kodu, formu gönderdikten sonra açılır.', 'qrms'))); ?></p>
+    </div>
+    <?php
+    return ob_get_clean();
+}
+
 function qrm_reward_render_popup($settings, $auto_open = false) {
     $wait_seconds  = qrm_reward_wait_seconds($settings);
     $auto_seconds  = qrm_reward_auto_seconds($settings);

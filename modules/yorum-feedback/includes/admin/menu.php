@@ -4,7 +4,7 @@ if (!defined('ABSPATH')) exit;
 // 2. YÖNETİM SAYFALARI — KAYIT DEFTERİ, ADRESLER, ESKİ ADRES YÖNLENDİRMELERİ
 //
 // Suite'e taşınırken modülün kendi "QR Yorumlar" üst menüsü kaldırıldı: sol
-// menüde yalnızca "Yorum & Feedback" satırı var, altı ekrana o satırın açtığı
+// menüde yalnızca "Yorum & Feedback" satırı var, dört ekrana o satırın açtığı
 // hub ekranındaki kartlardan gidiliyor. Sayfa kaydının kendisi module.php'de
 // yapılır (suite entegrasyonu orada durur); burada yalnızca sayfaların TANIMI,
 // adres üretimi ve eski adres haritası vardır.
@@ -61,29 +61,13 @@ function qrm_pro_admin_pages() {
             'icon'       => 'dashicons-testimonial',
             'group'      => 'yorumlar',
         ],
-        'qrms-yf-form-alanlari' => [
-            'title'      => __( 'Müşteri Bilgileri Formu', 'qrms' ),
-            'menu_title' => __( 'Müşteri Bilgileri Formu', 'qrms' ),
-            'render'     => 'qrm_pro_admin_form_builder',
-            'desc'       => __( 'Yorum formunda müşteriden istenecek bilgi alanları ve sıraları.', 'qrms' ),
-            'icon'       => 'dashicons-id-alt',
-            'group'      => 'formlar',
-        ],
-        // "İletişim" ve "Formlar" adları panelde birbirine karışıyordu; ikisi de
-        // ne olduklarını söyleyen tam adlarıyla durur.
-        'qrms-yf-iletisim' => [
-            'title'      => __( 'İletişim Formu', 'qrms' ),
-            'menu_title' => __( 'İletişim Formu', 'qrms' ),
-            'render'     => 'qrm_pro_admin_contact',
-            'desc'       => __( 'İletişim sayfanıza koyacağınız hazır form ve kısa kodu.', 'qrms' ),
-            'icon'       => 'dashicons-email-alt',
-            'group'      => 'formlar',
-        ],
+        // Ana Yorum Formu ve İletişim Formu artık ayrı sayfa değil; Formlar
+        // listesinde silinemez sistem satırları olarak durur (view=edit&system=).
         'qrms-yf-formlar' => [
-            'title'      => __( 'Özel Formlar', 'qrms' ),
-            'menu_title' => __( 'Özel Formlar', 'qrms' ),
+            'title'      => __( 'Formlar', 'qrms' ),
+            'menu_title' => __( 'Formlar', 'qrms' ),
             'render'     => 'qrm_cf_admin_forms_page',
-            'desc'       => __( 'Şikayet, rezervasyon, anket… Kendi oluşturduğunuz formlar ve gelen gönderiler.', 'qrms' ),
+            'desc'       => __( 'Ana yorum formu, iletişim formu ve kendi oluşturduğunuz formlar.', 'qrms' ),
             'icon'       => 'dashicons-feedback',
             'group'      => 'formlar',
         ],
@@ -193,17 +177,19 @@ function qrm_pro_legacy_page_target($page, $args = []) {
         case 'qrm-pro-insights':
             return qrm_pro_admin_url('qrms-yf-yorumlar');
 
-        // Ayarlar — "Müşteri Bilgileri Formu" sekmesi artık ayrı sayfa.
+        // Ayarlar — "Müşteri Bilgileri Formu" sekmesi Formlar düzenleyicisine taşındı.
         case 'qrm-pro-settings':
             return $sub === 'alanlar'
-                ? qrm_pro_admin_url('qrms-yf-form-alanlari')
+                ? qrm_pro_admin_url('qrms-yf-formlar', ['view' => 'edit', 'system' => 'review'])
                 : qrm_pro_admin_url('qrms-yf-ayarlar');
 
         case 'qrm-pro-form':
-            return qrm_pro_admin_url('qrms-yf-form-alanlari');
+        case 'qrms-yf-form-alanlari':
+            return qrm_pro_admin_url('qrms-yf-formlar', ['view' => 'edit', 'system' => 'review']);
 
         case 'qrm-pro-contact':
-            return qrm_pro_admin_url('qrms-yf-iletisim');
+        case 'qrms-yf-iletisim':
+            return qrm_pro_admin_url('qrms-yf-formlar', ['view' => 'edit', 'system' => 'contact']);
 
         case 'qrm-pro-rewards':
             $reward_args = [];

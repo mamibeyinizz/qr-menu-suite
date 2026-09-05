@@ -29,6 +29,72 @@ function qrm_pro_render_google_cta($settings, $avg) {
 }
 
 /**
+ * Puanlama kriterleri HTML'i (crit_1..5). Stepper ve tek sayfa aynı çıktıyı kullanır.
+ *
+ * @param array $settings
+ * @param int   $ac_index Otomatik renk indeksi (referans).
+ * @return string
+ */
+function qrm_pro_render_rating_criteria($settings, &$ac_index) {
+    ob_start();
+    ?>
+    <div class="qrm-multi-rating">
+        <?php
+        for ($i = 1; $i <= 5; $i++) {
+            if (empty($settings['crit_' . $i . '_active'])) {
+                continue;
+            }
+            $c_name   = qrm_ceviri_option('qrm_settings.crit_' . $i . '_name', $settings['crit_' . $i . '_name']);
+            $ac_attr  = qrm_pro_auto_color_style($settings, $ac_index);
+            $ac_class = $ac_attr ? ' qrm-ac' : '';
+            echo '<div class="qrm-rating-row' . $ac_class . '"' . $ac_attr . '>
+                    <span>' . esc_html($c_name) . '</span>
+                    <div class="qrm-rating-stars">
+                        <input type="radio" id="cr_' . $i . '_5" name="rating_' . $i . '" value="5"><label for="cr_' . $i . '_5"></label>
+                        <input type="radio" id="cr_' . $i . '_4" name="rating_' . $i . '" value="4"><label for="cr_' . $i . '_4"></label>
+                        <input type="radio" id="cr_' . $i . '_3" name="rating_' . $i . '" value="3"><label for="cr_' . $i . '_3"></label>
+                        <input type="radio" id="cr_' . $i . '_2" name="rating_' . $i . '" value="2"><label for="cr_' . $i . '_2"></label>
+                        <input type="radio" id="cr_' . $i . '_1" name="rating_' . $i . '" value="1"><label for="cr_' . $i . '_1"></label>
+                    </div>
+                  </div>';
+        }
+        ?>
+    </div>
+    <?php
+    return ob_get_clean();
+}
+
+/**
+ * Yorum formu görsel yükleme alanı.
+ *
+ * @param array $media_limits
+ * @return string
+ */
+function qrm_pro_render_review_media_upload($media_limits) {
+    if (!is_array($media_limits)) {
+        return '';
+    }
+    ob_start();
+    ?>
+    <div class="qrm-input-group qrm-media-upload" data-max-files="<?php echo esc_attr((string) $media_limits['max_files']); ?>" data-max-mb="<?php echo esc_attr((string) ($media_limits['max_bytes'] / (1024 * 1024))); ?>">
+        <label for="qrm_review_media"><?php echo esc_html(qrm_ceviri_review(__('Fotoğraf ekle (isteğe bağlı)', 'qrms'))); ?></label>
+        <input type="file" id="qrm_review_media" name="qrm_review_media[]" accept="image/jpeg,image/png,image/webp" multiple>
+        <p class="qrm-media-hint description">
+            <?php
+            printf(
+                esc_html(qrm_ceviri_review(__('En fazla %1$d görsel, dosya başına %2$d MB. JPEG, PNG veya WebP.', 'qrms'))),
+                (int) $media_limits['max_files'],
+                (int) ($media_limits['max_bytes'] / (1024 * 1024))
+            );
+            ?>
+        </p>
+        <div class="qrm-media-previews" aria-live="polite"></div>
+    </div>
+    <?php
+    return ob_get_clean();
+}
+
+/**
  * JS kapalıyken klasik POST gönderimini işler.
  *
  * Yorum ve iletişim kısa kodları aynı gövdeyi kullanır; iletişim formu
@@ -513,59 +579,34 @@ function qrm_pro_render_review_form($settings, $active_fields, $message, $show_g
                         $lid = 'qrm-step-panel-' . esc_attr($step['id']);
                     ?>
                     <div class="qrm-step" data-step="<?php echo (int) $num; ?>" data-step-type="<?php echo esc_attr($step['type']); ?>" id="<?php echo $lid; ?>" aria-labelledby="qrm-step-lbl-<?php echo esc_attr($step['id']); ?>"<?php echo $hidden; ?>>
-                        <?php if ($step['type'] === 'rating'): ?>
-                            <div class="qrm-multi-rating">
-                                <?php
-                                for ($i = 1; $i <= 5; $i++) {
-                                    if ($settings['crit_'.$i.'_active']) {
-                                        $c_name = qrm_ceviri_option('qrm_settings.crit_'.$i.'_name', $settings['crit_'.$i.'_name']);
-                                        $ac_attr = qrm_pro_auto_color_style($settings, $ac_index);
-                                        $ac_class = $ac_attr ? ' qrm-ac' : '';
-                                        echo '<div class="qrm-rating-row'.$ac_class.'"'.$ac_attr.'>
-                                                <span>'.esc_html($c_name).'</span>
-                                                <div class="qrm-rating-stars">
-                                                    <input type="radio" id="cr_'.$i.'_5" name="rating_'.$i.'" value="5"><label for="cr_'.$i.'_5"></label>
-                                                    <input type="radio" id="cr_'.$i.'_4" name="rating_'.$i.'" value="4"><label for="cr_'.$i.'_4"></label>
-                                                    <input type="radio" id="cr_'.$i.'_3" name="rating_'.$i.'" value="3"><label for="cr_'.$i.'_3"></label>
-                                                    <input type="radio" id="cr_'.$i.'_2" name="rating_'.$i.'" value="2"><label for="cr_'.$i.'_2"></label>
-                                                    <input type="radio" id="cr_'.$i.'_1" name="rating_'.$i.'" value="1"><label for="cr_'.$i.'_1"></label>
-                                                </div>
-                                              </div>';
-                                    }
-                                }
-                                ?>
-                            </div>
-                        <?php elseif ($step['type'] === 'comment'): ?>
-                            <div class="qrm-input-row">
-                                <?php foreach ($step_data['comment_fields'] as $f) {
-                                    echo qrm_pro_render_review_field($f, $settings, $ac_index);
-                                } ?>
-                            </div>
-                            <?php if ($media_on): ?>
-                            <div class="qrm-input-group qrm-media-upload" data-max-files="<?php echo esc_attr((string) $media_limits['max_files']); ?>" data-max-mb="<?php echo esc_attr((string) ($media_limits['max_bytes'] / (1024 * 1024))); ?>">
-                                <label for="qrm_review_media"><?php echo esc_html(qrm_ceviri_review(__('Fotoğraf ekle (isteğe bağlı)', 'qrms'))); ?></label>
-                                <input type="file" id="qrm_review_media" name="qrm_review_media[]" accept="image/jpeg,image/png,image/webp" multiple>
-                                <p class="qrm-media-hint description">
-                                    <?php
-                                    printf(
-                                        esc_html(qrm_ceviri_review(__('En fazla %1$d görsel, dosya başına %2$d MB. JPEG, PNG veya WebP.', 'qrms'))),
-                                        (int) $media_limits['max_files'],
-                                        (int) ($media_limits['max_bytes'] / (1024 * 1024))
-                                    );
-                                    ?>
-                                </p>
-                                <div class="qrm-media-previews" aria-live="polite"></div>
-                            </div>
-                            <?php endif; ?>
-                        <?php elseif ($step['type'] === 'info'): ?>
-                            <div class="qrm-input-row">
-                                <?php foreach ($step_data['info_fields'] as $f) {
-                                    echo qrm_pro_render_review_field($f, $settings, $ac_index);
-                                } ?>
-                            </div>
-                        <?php elseif ($step['type'] === 'summary'): ?>
+                        <?php
+                        $step_fields = [];
+                        if ($step['type'] === 'comment') {
+                            $step_fields = $step_data['comment_fields'];
+                        } elseif ($step['type'] === 'info') {
+                            $step_fields = $step_data['info_fields'];
+                        } elseif (!empty($step['field_objects'])) {
+                            $step_fields = $step['field_objects'];
+                        }
+
+                        if ($step['type'] === 'rating' || !empty($step['has_rating'])) {
+                            echo qrm_pro_render_rating_criteria($settings, $ac_index);
+                        }
+                        if ($step['type'] === 'google_reward' || !empty($step['has_google_reward'])) {
+                            echo qrm_reward_render_step_panel($settings);
+                        }
+                        if ($step['type'] === 'summary') : ?>
                             <div class="qrm-step-summary" id="qrm-step-summary-body" aria-live="polite"></div>
+                        <?php elseif (!empty($step_fields)) : ?>
+                            <div class="qrm-input-row">
+                                <?php foreach ($step_fields as $f) {
+                                    echo qrm_pro_render_review_field($f, $settings, $ac_index);
+                                } ?>
+                            </div>
                         <?php endif; ?>
+                        <?php if (!empty($step['has_media']) || ($step['type'] === 'comment' && $media_on)) {
+                            echo qrm_pro_render_review_media_upload($media_limits);
+                        } ?>
 
                         <?php if (!empty($step['consent'])) {
                             echo qrm_pro_render_consent_checkbox($settings);
@@ -590,51 +631,18 @@ function qrm_pro_render_review_form($settings, $active_fields, $message, $show_g
                             break;
                         }
                     }
-                    if ($has_rating): ?>
-                    <div class="qrm-multi-rating">
-                        <?php
-                        for ($i = 1; $i <= 5; $i++) {
-                            if ($settings['crit_'.$i.'_active']) {
-                                $c_name = qrm_ceviri_option('qrm_settings.crit_'.$i.'_name', $settings['crit_'.$i.'_name']);
-                                $ac_attr = qrm_pro_auto_color_style($settings, $ac_index);
-                                $ac_class = $ac_attr ? ' qrm-ac' : '';
-                                echo '<div class="qrm-rating-row'.$ac_class.'"'.$ac_attr.'>
-                                        <span>'.esc_html($c_name).'</span>
-                                        <div class="qrm-rating-stars">
-                                            <input type="radio" id="cr_'.$i.'_5" name="rating_'.$i.'" value="5"><label for="cr_'.$i.'_5"></label>
-                                            <input type="radio" id="cr_'.$i.'_4" name="rating_'.$i.'" value="4"><label for="cr_'.$i.'_4"></label>
-                                            <input type="radio" id="cr_'.$i.'_3" name="rating_'.$i.'" value="3"><label for="cr_'.$i.'_3"></label>
-                                            <input type="radio" id="cr_'.$i.'_2" name="rating_'.$i.'" value="2"><label for="cr_'.$i.'_2"></label>
-                                            <input type="radio" id="cr_'.$i.'_1" name="rating_'.$i.'" value="1"><label for="cr_'.$i.'_1"></label>
-                                        </div>
-                                      </div>';
-                            }
-                        }
-                        ?>
-                    </div>
-                    <?php endif; ?>
+                    if ($has_rating) {
+                        echo qrm_pro_render_rating_criteria($settings, $ac_index);
+                    } ?>
                     <div class="qrm-input-row">
                     <?php foreach ($active_fields as $f) {
                         echo qrm_pro_render_review_field($f, $settings, $ac_index);
                     } ?>
                     </div>
 
-                    <?php if ($media_on): ?>
-                    <div class="qrm-input-group qrm-media-upload" data-max-files="<?php echo esc_attr((string) $media_limits['max_files']); ?>" data-max-mb="<?php echo esc_attr((string) ($media_limits['max_bytes'] / (1024 * 1024))); ?>">
-                        <label for="qrm_review_media"><?php echo esc_html(qrm_ceviri_review(__('Fotoğraf ekle (isteğe bağlı)', 'qrms'))); ?></label>
-                        <input type="file" id="qrm_review_media" name="qrm_review_media[]" accept="image/jpeg,image/png,image/webp" multiple>
-                        <p class="qrm-media-hint description">
-                            <?php
-                            printf(
-                                esc_html(qrm_ceviri_review(__('En fazla %1$d görsel, dosya başına %2$d MB. JPEG, PNG veya WebP.', 'qrms'))),
-                                (int) $media_limits['max_files'],
-                                (int) ($media_limits['max_bytes'] / (1024 * 1024))
-                            );
-                            ?>
-                        </p>
-                        <div class="qrm-media-previews" aria-live="polite"></div>
-                    </div>
-                    <?php endif; ?>
+                    <?php if ($media_on) {
+                        echo qrm_pro_render_review_media_upload($media_limits);
+                    } ?>
 
                     <?php echo qrm_pro_render_consent_checkbox($settings); ?>
 

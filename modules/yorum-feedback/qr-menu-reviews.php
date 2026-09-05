@@ -204,10 +204,9 @@ Author: QR MENÜ
      includes/install.php             -> qrm_pro_install() + dbDelta tabloları
      includes/admin/menu.php          -> admin_menu, admin_enqueue_scripts
      includes/admin/dashboard.php     -> Tüm Yorumlar sayfası
-     includes/admin/form-builder.php  -> Form Alanları sayfası
      includes/admin/settings-page.php -> Ayarlar & Puanlama sayfası
      includes/admin/insights.php      -> İçgörüler sayfası
-     includes/admin/contact.php       -> İletişim Formu sayfası
+     includes/forms/review-form.php   -> Yorum/iletişim formu veri fonksiyonları
      includes/frontend/form-render.php    -> stil bloğu, tema yardımcıları, form render
      includes/frontend/form-script.php    -> ön yüz JS çıktısı
      includes/frontend/shortcode-reviews.php / shortcode-contact.php -> shortcode'lar
@@ -269,9 +268,7 @@ require_once QRM_PRO_PATH . 'includes/admin/reports.php';
 require_once QRM_PRO_PATH . 'includes/admin/trend.php';
 require_once QRM_PRO_PATH . 'includes/admin/export-csv.php';
 require_once QRM_PRO_PATH . 'includes/admin/consent-report.php';
-require_once QRM_PRO_PATH . 'includes/admin/form-builder.php';
 require_once QRM_PRO_PATH . 'includes/admin/settings-page.php';
-require_once QRM_PRO_PATH . 'includes/admin/contact.php';
 require_once QRM_PRO_PATH . 'includes/admin/rewards.php';
 require_once QRM_PRO_PATH . 'includes/admin/reward-cashier.php';
 require_once QRM_PRO_PATH . 'includes/admin/reward-codes.php';
@@ -282,6 +279,10 @@ require_once QRM_PRO_PATH . 'includes/admin/form-submissions.php';
 // Ön yüz
 require_once QRM_PRO_PATH . 'includes/frontend/form-steps.php';
 require_once QRM_PRO_PATH . 'includes/frontend/form-render.php';
+// Yorum/iletişim formu veri fonksiyonları (eski form-builder.php / contact.php).
+// form-steps + form-render'dan sonra yüklenir: sanitize_step_no ve sütun
+// genişliği yardımcılarına ihtiyaç duyar.
+require_once QRM_PRO_PATH . 'includes/forms/review-form.php';
 require_once QRM_PRO_PATH . 'includes/frontend/form-script.php';
 // Yorum listesinin sayfalaması ve kart çıktısı; kısa kod da AJAX ucu da
 // buradan geçer, bu yüzden ikisinden de önce yüklenir.

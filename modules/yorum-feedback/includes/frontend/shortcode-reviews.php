@@ -57,6 +57,7 @@ function qrm_pro_shortcode() {
                 </div>
                 <div class="total-count"><?php echo esc_html(sprintf(qrm_ceviri_review(__('%d Değerlendirme', 'qrms')), (int) $total_reviews)); ?></div>
             </div>
+            <?php if ((isset($settings['rating_display_mode']) ? $settings['rating_display_mode'] : 'breakdown') === 'breakdown') : ?>
             <div class="qrm-crit-bars">
                 <?php
                 for ($i = 1; $i <= 5; $i++) {
@@ -75,6 +76,7 @@ function qrm_pro_shortcode() {
                 }
                 ?>
             </div>
+            <?php endif; ?>
         </div>
         <?php endif; ?>
 

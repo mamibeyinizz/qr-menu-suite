@@ -4,8 +4,8 @@ if (!defined('ABSPATH')) exit;
 // 5. ADMİN: AYARLAR & PUANLAMA
 //
 // Suite'e taşınırken sadeleşti:
-//   - "Müşteri Bilgileri Formu" sekmesi kendi sayfasına ayrıldı (form-builder.php),
-//     bu sayfadaki JS sekme kabuğu tamamen kalktı.
+//   - "Müşteri Bilgileri Formu" sekmesi Formlar düzenleyicisine taşındı
+//     (qrms-yf-formlar&view=edit&system=review); bu sayfadaki JS sekme kabuğu kalktı.
 //   - Google/ödül durumunu tekrarlayan bilgi kartı kaldırıldı: aynı checklist zaten
 //     "Google & Ödül Sistemi" sayfasının başında duruyor. Geriye tek satırlık bir
 //     bağlantı kaldı.
@@ -120,6 +120,15 @@ function qrm_pro_admin_settings() {
                             <th><label>Puan Özeti</label></th>
                             <td>
                                 <label><input type="checkbox" name="show_overall_stats" value="1" <?php checked(isset($settings['show_overall_stats']) ? $settings['show_overall_stats'] : 1, 1); ?>> Sayfa başında genel puan durumunu göster</label>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th><?php esc_html_e('Puanlama görünümü', 'qrms'); ?></th>
+                            <td>
+                                <?php $rdm = isset($settings['rating_display_mode']) ? $settings['rating_display_mode'] : 'breakdown'; ?>
+                                <label><input type="radio" name="rating_display_mode" value="breakdown" <?php checked($rdm, 'breakdown'); ?>> <?php esc_html_e('Kriter kırılımını göster', 'qrms'); ?></label><br>
+                                <label><input type="radio" name="rating_display_mode" value="single" <?php checked($rdm, 'single'); ?>> <?php esc_html_e('Sadece genel ortalamayı göster', 'qrms'); ?></label>
+                                <p class="description"><?php esc_html_e('Yalnızca önyüzdeki puan özeti widget\'ını etkiler. Yönetici yorum listesindeki kırılım her zaman görünür.', 'qrms'); ?></p>
                             </td>
                         </tr>
                         <tr>
@@ -348,6 +357,8 @@ function qrm_pro_admin_save_settings() {
         ? $pagination_mode
         : 'loadmore';
     $settings['show_overall_stats']  = isset($_POST['show_overall_stats']) ? 1 : 0;
+    $rdm = isset($_POST['rating_display_mode']) ? sanitize_key(wp_unslash($_POST['rating_display_mode'])) : 'breakdown';
+    $settings['rating_display_mode'] = in_array($rdm, ['breakdown', 'single'], true) ? $rdm : 'breakdown';
 
     for ($i = 1; $i <= 5; $i++) {
         $settings['crit_'.$i.'_name']   = sanitize_text_field(wp_unslash($_POST['crit_'.$i.'_name']));

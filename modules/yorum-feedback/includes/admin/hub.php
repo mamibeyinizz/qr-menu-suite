@@ -3,7 +3,7 @@ if (!defined('ABSPATH')) exit;
 
 // 2b. ADMİN: HUB EKRANI ("QR Menü > Yorum & Feedback" satırı)
 //
-// Sol admin menüsü tek seviyeye indirildi; modül satırı, modülün altı ekranını
+// Sol admin menüsü tek seviyeye indirildi; modül satırı, modülün dört ekranını
 // kart olarak listeleyen bu hub ekranını açar. Kartlar qrm_pro_admin_pages()
 // listesinden üretilir, yani kayıtlı olan her sayfa burada da vardır; ikisi
 // birbirinden ayrışamaz.
