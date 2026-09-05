@@ -603,10 +603,17 @@
     color: var(--rma-a-accent);
 }
 
-.rma-admin .wp-picker-input-wrap .wp-color-picker[type="text"] {
+.rma-admin .wp-picker-input-wrap input[type="text"] {
     background: var(--rma-a-raised);
     border-color: var(--rma-a-border);
     color: var(--rma-a-text);
+}
+
+/* Kapalıyken hex alanı ve Iris paleti kesinlikle gizlensin.
+   Açıkken (.wp-picker-active) WordPress'in kendi display kuralları geçer. */
+.rma-admin .wp-picker-container:not(.wp-picker-active) .wp-picker-input-wrap,
+.rma-admin .wp-picker-container:not(.wp-picker-active) .wp-picker-holder {
+    display: none;
 }
 
 .rma-admin .wp-picker-holder {
