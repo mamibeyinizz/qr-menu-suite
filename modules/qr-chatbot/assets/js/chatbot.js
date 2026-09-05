@@ -571,24 +571,63 @@
 		return grup;
 	}
 
-	function deltaEkle( el, parca, durum ) {
-		var metin = String( parca );
-		for ( var i = 0; i < metin.length; i++ ) {
-			var ch = metin.charAt( i );
-			if ( '\n' === ch ) {
-				el.appendChild( document.createElement( 'br' ) );
-				durum.satirBasinda = true;
-				durum.sonTextNode = null;
-			} else {
-				if ( durum.satirBasinda || ! durum.sonTextNode ) {
-					durum.sonTextNode = document.createTextNode( ch );
-					el.appendChild( durum.sonTextNode );
-					durum.satirBasinda = false;
-				} else {
-					durum.sonTextNode.nodeValue += ch;
+	/* ---- streaming sırasında kontrol etiketlerini gizleme ----
+	   Model çıktısı ham hâliyle akar; [CALL_WAITER]/[CALL_BILL]/[BILEMEDI]/
+	   [ESCALATE]/[SIPARIS]...[/SIPARIS]/[URUN:id] gibi kontrol etiketleri
+	   müşteriye HİÇ görünmemeli — ne tam ne de parça parça oluşurken (ör.
+	   bir siparişin ham JSON gövdesi akarken görünmemeli). Bu yüzden her
+	   yeni parçada, o ana kadar birikmiş HAM metin baştan temizlenip
+	   balonun içeriği onunla değiştirilir; done olayında yanitIsle() zaten
+	   bu balonu silip nihai/temiz metni ayrı basar, burada yalnızca akış
+	   SIRASINDAKİ ön izleme temizlenir. */
+
+	var ETIKET_GIZLE_ONEKLERI = [ '[CALL_WAITER]', '[CALL_BILL]', '[BILEMEDI]', '[ESCALATE]', '[SIPARIS]' ];
+
+	function asiliOnekUzunlugu( metin ) {
+		var enUzun = 0;
+		ETIKET_GIZLE_ONEKLERI.forEach( function ( etiket ) {
+			var sinir = Math.min( etiket.length - 1, metin.length );
+			for ( var u = sinir; u > 0; u-- ) {
+				if ( metin.slice( metin.length - u ) === etiket.slice( 0, u ) ) {
+					enUzun = Math.max( enUzun, u );
+					break;
 				}
 			}
+		} );
+		var urunEslesme = metin.match( /\[URUN:\d*$/ );
+		if ( urunEslesme ) {
+			enUzun = Math.max( enUzun, urunEslesme[ 0 ].length );
 		}
+		return enUzun;
+	}
+
+	function gorunurMetinHazirla( ham ) {
+		var t = String( ham || '' );
+		t = t.split( '[CALL_WAITER]' ).join( '' );
+		t = t.split( '[CALL_BILL]' ).join( '' );
+		t = t.replace( /\[BILEMEDI\]/g, '' );
+		t = t.replace( /\[ESCALATE\]/g, '' );
+
+		var acilis = t.indexOf( '[SIPARIS]' );
+		if ( acilis !== -1 ) {
+			var kapanis = t.indexOf( '[/SIPARIS]', acilis );
+			t = ( kapanis !== -1 )
+				? t.slice( 0, acilis ) + t.slice( kapanis + '[/SIPARIS]'.length )
+				: t.slice( 0, acilis );
+		}
+
+		var asili = asiliOnekUzunlugu( t );
+		if ( asili > 0 ) {
+			t = t.slice( 0, t.length - asili );
+		}
+
+		return urunEtiketleriTemizle( t );
+	}
+
+	function deltaGoster( bot, parca ) {
+		bot.ham += String( parca );
+		bot.el.textContent = '';
+		metinParcala( bot.el, gorunurMetinHazirla( bot.ham ) );
 		if ( log ) {
 			log.scrollTop = log.scrollHeight;
 		}
@@ -607,11 +646,7 @@
 			log.scrollTop = log.scrollHeight;
 		}
 
-		return {
-			grup: grup,
-			el: el,
-			durum: { satirBasinda: true, sonTextNode: null }
-		};
+		return { grup: grup, el: el, ham: '' };
 	}
 
 	function sseSatirIsle( satir, akim, yaziyorEl ) {
@@ -636,7 +671,7 @@
 				yaziyorEl.remove();
 				akim.bot = streamBotGrupBaslat();
 			}
-			deltaEkle( akim.bot.el, olay.delta, akim.bot.durum );
+			deltaGoster( akim.bot, olay.delta );
 		}
 
 		if ( olay.done ) {
@@ -748,7 +783,7 @@
 		yanitIsle( mesaj, payload, null );
 	}
 
-	function gonderIstekStream( mesaj, yaziyorEl ) {
+	function gonderIstekStream( mesaj, yaziyorEl, akim ) {
 		if ( typeof qmoData === 'undefined' ) {
 			return Promise.reject();
 		}
@@ -780,7 +815,6 @@
 			var reader = response.body.getReader();
 			var decoder = new TextDecoder();
 			var satirTampon = '';
-			var akim = { bot: null };
 
 			function oku() {
 				return reader.read().then( function ( result ) {
@@ -840,8 +874,9 @@
 		}
 		kilitKapa();
 		var yaziyor = yaziyorGoster();
+		var akim = { bot: null };
 
-		gonderIstekStream( mesaj, yaziyor ).then( function ( sonuc ) {
+		gonderIstekStream( mesaj, yaziyor, akim ).then( function ( sonuc ) {
 			if ( 'json' === sonuc.tur ) {
 				jsonYanitIsle( mesaj, sonuc.yanit, yaziyor );
 				return;
@@ -861,6 +896,13 @@
 				sonuc.akim.bot
 			);
 		} ).catch( function ( err ) {
+			// Akış bir kısım metin gösterdikten SONRA koparsa (mobil ağ,
+			// sunucu kesintisi, [error] olayı vb.) yarım kalan balon DOM'da
+			// asılı kalmasın — otomatik/manuel tekrar deneme yeni, temiz bir
+			// balonla başlasın.
+			if ( akim.bot && akim.bot.grup && akim.bot.grup.parentNode ) {
+				akim.bot.grup.remove();
+			}
 			if ( yaziyor.parentNode ) {
 				yaziyor.remove();
 			}
