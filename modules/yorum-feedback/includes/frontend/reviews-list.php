@@ -181,10 +181,13 @@ function qrm_pro_reviews_pagination_mode($settings = null) {
 /**
  * Filtreli onaylı yorumların bir sayfasını çeker.
  *
+ * Toplam kayıt sayısı bu fonksiyonda hesaplanmaz; ihtiyaç halinde
+ * qrm_pro_count_filtered_approved_reviews() ayrıca çağrılmalıdır.
+ *
  * @param int        $limit  Sayfa boyutu.
  * @param int        $offset Atlanacak satır.
  * @param array|null $query  Doğrulanmış sorgu; null ise varsayılanlar.
- * @return array{rows:array,has_more:bool,total:int}
+ * @return array{rows:array,has_more:bool}
  */
 function qrm_pro_fetch_approved_reviews($limit, $offset = 0, $query = null) {
     global $wpdb;
@@ -212,12 +215,9 @@ function qrm_pro_fetch_approved_reviews($limit, $offset = 0, $query = null) {
         array_pop($rows);
     }
 
-    $total = qrm_pro_count_filtered_approved_reviews($query);
-
     return [
         'rows'     => $rows,
         'has_more' => $has_more,
-        'total'    => $total,
     ];
 }
 
@@ -439,16 +439,17 @@ function qrm_pro_render_review_cards($rows) {
  * @param array       $settings    Ayarlar.
  * @param int         $page_size   Sayfa boyutu.
  * @param string|null $mode        loadmore | pages; null ise ayardan okunur.
+ * @param int|null    $total       Filtreli toplam kayıt; null ise 0 (sayfalama HTML üretilmez).
  * @return array{html:string,pagination_html:string,has_more:bool,total:int,page:int,total_pages:int}
  */
-function qrm_pro_build_reviews_list_response(array $page_result, array $query, array $settings, $page_size, $mode = null) {
+function qrm_pro_build_reviews_list_response(array $page_result, array $query, array $settings, $page_size, $mode = null, $total = null) {
     if ($mode === null) {
         $mode = qrm_pro_reviews_pagination_mode($settings);
     }
 
     $rows        = isset($page_result['rows']) ? $page_result['rows'] : [];
     $has_more    = !empty($page_result['has_more']);
-    $total       = isset($page_result['total']) ? (int) $page_result['total'] : 0;
+    $total       = $total !== null ? (int) $total : 0;
     $page        = max(1, (int) $query['page']);
     $page_size   = max(1, (int) $page_size);
     $total_pages = (int) ceil(max(0, $total) / $page_size);
