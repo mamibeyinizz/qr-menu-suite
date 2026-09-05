@@ -603,7 +603,10 @@
     color: var(--rma-a-accent);
 }
 
-.rma-admin .wp-picker-input-wrap .wp-color-picker[type="text"] {
+/* Hex alanı class'ı `rma-color-picker` (wpColorPicker sarmaladıktan sonra
+   da öyle kalır); `.wp-color-picker` sınıfı bu input'ta yoktur. Class
+   şartsız `input[type="text"]` — bkz. qr-calisma-saatleri/admin.css. */
+.rma-admin .wp-picker-input-wrap input[type="text"] {
     background: var(--rma-a-raised);
     border-color: var(--rma-a-border);
     color: var(--rma-a-text);
@@ -614,6 +617,14 @@
     border: 1px solid var(--rma-a-border);
     border-radius: 6px;
     padding: 6px;
+}
+
+/* Kapalıyken hex satırı ve Iris paleti görünmesin. WP açıkken
+   `.wp-picker-active` ekler; o sınıfta bu kural uygulanmaz, böylece
+   paletin açılma davranışı değişmez. */
+.rma-admin .wp-picker-container:not(.wp-picker-active) .wp-picker-input-wrap,
+.rma-admin .wp-picker-container:not(.wp-picker-active) .wp-picker-holder {
+    display: none;
 }
 
 .rma-admin .iris-picker {
