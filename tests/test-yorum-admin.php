@@ -314,7 +314,7 @@ qrms_test(
 		sort( $sirali );
 		qrms_assert_same( $sirali, $sira, 'başlık sırası: Yorumlar, Formlar, Ayarlar' );
 
-		qrms_assert_contains( '>Formlar<', $html, 'Formlar kartı / başlığı' );
+		qrms_assert_contains( 'Ana yorum formu, iletişim formu', $html, 'Formlar kart açıklaması' );
 		qrms_assert_false( false !== strpos( $html, 'page=qrms-yf-form-alanlari' ), 'eski form alanları kartı yok' );
 		qrms_assert_false( false !== strpos( $html, 'page=qrms-yf-iletisim' ), 'eski iletişim kartı yok' );
 		qrms_assert_false( false !== strpos( $html, 'Özel Formlar' ), 'eski özel formlar adı yok' );
