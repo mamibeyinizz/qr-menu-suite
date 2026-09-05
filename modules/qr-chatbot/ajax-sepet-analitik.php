@@ -108,6 +108,7 @@ if ( ! function_exists( 'qmo_ajax_sepet_olay' ) ) {
 					'item_id'       => $alan['item_id'],
 					'item_name'     => $alan['item_name'],
 					'category_name' => $alan['category_name'],
+					'price'         => isset( $alan['price'] ) ? (float) $alan['price'] : 0.0,
 					'masa_no'       => $masa,
 				)
 			);

@@ -1267,7 +1267,10 @@ qrms_test(
 			'masa-1'
 		);
 		qrms_assert_same( 1, $veri['ozet']['cart_add'], 'hesaplama gruplardan' );
-		qrms_assert_same( 1, count( $wpdb->queries ), 'veri fonksiyonu yeni sorgu açmaz' );
+		// İki sorgu: sepet_olay_gruplari (GROUP BY) + huni_ozeti (dönüşüm
+		// hunisi için ayrı, tek satırlık bir aggregate). İkisi de indeksli
+		// aralık taramasıdır; N+1 değildir.
+		qrms_assert_same( 2, count( $wpdb->queries ), 'veri fonksiyonu huni için tek ek sorgu açar' );
 
 		qrms_assert_same( 1, count( $grup ), 'grup satırı' );
 	}

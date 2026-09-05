@@ -80,7 +80,12 @@ if ( ! function_exists( 'qrms_analitik_sepet_hesapla' ) ) {
 	 * Bu yüzden doğrudan test edilir ve N+1 üretemez.
 	 *
 	 * Girdi satırı: ip_hash, masa_no, pencere, event_type, item_id,
-	 * item_name, category_name, adet [, oturum].
+	 * item_name, category_name, adet, gercek_adet, ciro [, oturum].
+	 *
+	 * Dönüşte 'ozet' ciro/ort_sepet_tutari/sepet_potansiyeli/kacan_ciro,
+	 * ayrıca 'en_cok_ciro' (order_sent'ten ürün bazlı ciro sıralaması)
+	 * taşır. Dönüşüm hunisi (huni_ozeti) BU fonksiyonun kapsamında değildir
+	 * — ayrı bir sorgu gerektirir, qrms_analitik_sepet_verisi() ekler.
 	 *
 	 * @param array $gruplar QRMS_Analitik::sepet_olay_gruplari() satırları.
 	 * @param int   $gun     Aralığın gün sayısı (hata dağılımının kırılımı).
@@ -100,6 +105,13 @@ if ( ! function_exists( 'qrms_analitik_sepet_hesapla' ) ) {
 		$cart_add_urun = array();
 		$blocked_olay  = 0;
 		$failed_olay   = 0;
+
+		// CİRO. Fiyat, olayın yazıldığı andaki taban fiyattır (kampanya/porsiyon
+		// farkı hesaba katılmaz) — bkz. QRMS_Analitik::kaydet() yorumu.
+		$ciro_toplam      = 0.0;
+		$sepet_potansiyel = 0.0;
+		$kacan_ciro       = 0.0;
+		$ciro_urun        = array();
 
 		foreach ( $gruplar as $r ) {
 			if ( ! is_array( $r ) ) {
@@ -140,10 +152,13 @@ if ( ! function_exists( 'qrms_analitik_sepet_hesapla' ) ) {
 
 			$o = &$oturumlar[ $oturum ];
 
+			$ciro_satir = isset( $r['ciro'] ) ? (float) $r['ciro'] : 0.0;
+
 			if ( 'cart_add' === $tip ) {
 				$o['add']         = true;
 				$cart_add_olay   += $adet;
 				$cart_add_urun[ $id ] = true;
+				$sepet_potansiyel += $ciro_satir;
 				if ( ! isset( $add_global[ $id ] ) ) {
 					$add_global[ $id ] = 0;
 				}
@@ -174,6 +189,21 @@ if ( ! function_exists( 'qrms_analitik_sepet_hesapla' ) ) {
 			} elseif ( 'order_sent' === $tip ) {
 				$o['sent']            = true;
 				$o['urun_sent'][ $id ] = true;
+				$ciro_toplam          += $ciro_satir;
+				if ( ! isset( $ciro_urun[ $id ] ) ) {
+					$ciro_urun[ $id ] = array(
+						'id'       => $id,
+						'ad'       => $ad,
+						'kategori' => $kat,
+						'adet'     => 0,
+						'ciro'     => 0.0,
+					);
+				}
+				$ciro_urun[ $id ]['adet'] += isset( $r['gercek_adet'] ) ? (int) $r['gercek_adet'] : $adet;
+				$ciro_urun[ $id ]['ciro'] += $ciro_satir;
+				if ( '' !== $ad ) {
+					$ciro_urun[ $id ]['ad'] = $ad;
+				}
 			} elseif ( 'order_failed' === $tip ) {
 				$o['failed']    = true;
 				$failed_olay  += $adet;
@@ -187,14 +217,17 @@ if ( ! function_exists( 'qrms_analitik_sepet_hesapla' ) ) {
 				$hata_oturum[ $kova ][ $oturum ] = true;
 			} elseif ( 'order_blocked' === $tip ) {
 				$blocked_olay    += $adet;
+				$kacan_ciro      += $ciro_satir;
 				if ( ! isset( $o['urun_blk'][ $id ] ) ) {
 					$o['urun_blk'][ $id ] = array(
 						'adet'     => 0,
 						'ad'       => $ad,
 						'kategori' => $kat,
+						'ciro'     => 0.0,
 					);
 				}
 				$o['urun_blk'][ $id ]['adet'] += $adet;
+				$o['urun_blk'][ $id ]['ciro'] += $ciro_satir;
 				if ( '' !== $ad ) {
 					$o['urun_blk'][ $id ]['ad'] = $ad;
 				}
@@ -253,9 +286,11 @@ if ( ! function_exists( 'qrms_analitik_sepet_hesapla' ) ) {
 						'ad'       => $u['ad'],
 						'kategori' => $u['kategori'],
 						'siparis'  => 0,
+						'ciro'     => 0.0,
 					);
 				}
 				$engellenen[ $id ]['siparis'] += $u['adet'];
+				$engellenen[ $id ]['ciro']    += $u['ciro'];
 				if ( '' !== $u['ad'] ) {
 					$engellenen[ $id ]['ad'] = $u['ad'];
 				}
@@ -322,6 +357,26 @@ if ( ! function_exists( 'qrms_analitik_sepet_hesapla' ) ) {
 			}
 		);
 
+		foreach ( $engellenen as $i => $satir ) {
+			$engellenen[ $i ]['ciro'] = round( $satir['ciro'], 2 );
+		}
+
+		$en_cok_ciro = array_values( $ciro_urun );
+		usort(
+			$en_cok_ciro,
+			static function ( $a, $b ) {
+				if ( $a['ciro'] === $b['ciro'] ) {
+					return strcmp( $a['ad'], $b['ad'] );
+				}
+
+				return $a['ciro'] > $b['ciro'] ? -1 : 1;
+			}
+		);
+
+		foreach ( $en_cok_ciro as $i => $satir ) {
+			$en_cok_ciro[ $i ]['ciro'] = round( $satir['ciro'], 2 );
+		}
+
 		ksort( $hata_oturum );
 		$hatalar = array();
 		foreach ( $hata_oturum as $etiket => $oturum_kume ) {
@@ -339,19 +394,26 @@ if ( ! function_exists( 'qrms_analitik_sepet_hesapla' ) ) {
 
 		return array(
 			'ozet'       => array(
-				'cart_add'      => $cart_add_olay,
-				'cart_add_urun' => count( $cart_add_urun ),
-				'order_sent'    => $oturum_sent,
-				'terk'          => $oturum_terk,
-				'terk_oran'     => $terk_oran,
-				'oturum_add'    => $oturum_add,
-				'blocked'       => $blocked_olay,
-				'failed'        => $oturum_fail,
-				'failed_olay'   => $failed_olay,
+				'cart_add'         => $cart_add_olay,
+				'cart_add_urun'    => count( $cart_add_urun ),
+				'order_sent'       => $oturum_sent,
+				'terk'             => $oturum_terk,
+				'terk_oran'        => $terk_oran,
+				'oturum_add'       => $oturum_add,
+				'blocked'          => $blocked_olay,
+				'failed'           => $oturum_fail,
+				'failed_olay'      => $failed_olay,
+				// CİRO. sepet_potansiyeli sepete konan (henüz gönderilmemiş dahil)
+				// toplam tutar; ciro yalnızca order_sent'ten gerçekleşendir.
+				'ciro'             => round( $ciro_toplam, 2 ),
+				'sepet_potansiyeli' => round( $sepet_potansiyel, 2 ),
+				'ort_sepet_tutari' => $oturum_sent > 0 ? round( $ciro_toplam / $oturum_sent, 2 ) : 0.0,
+				'kacan_ciro'       => round( $kacan_ciro, 2 ),
 			),
-			'terk_urun'  => $kes( $terk_urun ),
-			'cikarilan'  => $kes( $cikarilan ),
-			'engellenen' => $kes( $engellenen ),
+			'terk_urun'   => $kes( $terk_urun ),
+			'cikarilan'   => $kes( $cikarilan ),
+			'engellenen'  => $kes( $engellenen ),
+			'en_cok_ciro' => $kes( $en_cok_ciro ),
 			'hatalar'    => $hatalar,
 			'bos'        => $bos,
 			'tavan'      => $limit,
@@ -383,7 +445,10 @@ if ( ! function_exists( 'qrms_analitik_sepet_verisi' ) ) {
 		$gruplar = QRMS_Analitik::sepet_olay_gruplari( $aralik['bas'], $aralik['bit'], $masa );
 		$gun     = isset( $aralik['gun'] ) ? (int) $aralik['gun'] : 1;
 
-		$kutu[ $anahtar ] = qrms_analitik_sepet_hesapla( $gruplar, $gun, $limit );
+		$veri         = qrms_analitik_sepet_hesapla( $gruplar, $gun, $limit );
+		$veri['huni'] = QRMS_Analitik::huni_ozeti( $aralik['bas'], $aralik['bit'], $masa );
+
+		$kutu[ $anahtar ] = $veri;
 
 		return $kutu[ $anahtar ];
 	}
@@ -507,6 +572,40 @@ if ( ! function_exists( 'qrms_analitik_sayfa_sepet' ) ) {
 				<div class="qrms-an-card qrms-an-skeleton"></div>
 				<div class="qrms-an-card qrms-an-skeleton"></div>
 				<div class="qrms-an-card qrms-an-skeleton"></div>
+				<div class="qrms-an-card qrms-an-skeleton"></div>
+				<div class="qrms-an-card qrms-an-skeleton"></div>
+				<div class="qrms-an-card qrms-an-skeleton"></div>
+				<div class="qrms-an-card qrms-an-skeleton"></div>
+			</div>
+
+			<div class="qrms-an-panel">
+				<div class="qrms-an-panel-header">
+					<h2 class="qrms-an-panel-title">
+						<span class="dashicons dashicons-filter" aria-hidden="true"></span>
+						<?php esc_html_e( 'Dönüşüm hunisi', 'qrms' ); ?>
+					</h2>
+				</div>
+				<p class="qrms-an-panel-note">
+					<?php esc_html_e( 'Menü görüntülemeden siparişe dört aşama; her aşama görüntüleme oturumuna göre yüzdedir. Aynı yaklaşık oturum tanımını kullanır, ham olay sayısını değil.', 'qrms' ); ?>
+				</p>
+				<div id="qrms-an-sepet-huni">
+					<div class="qrms-an-loading"><?php esc_html_e( 'Yükleniyor', 'qrms' ); ?></div>
+				</div>
+			</div>
+
+			<div class="qrms-an-panel">
+				<div class="qrms-an-panel-header">
+					<h2 class="qrms-an-panel-title">
+						<span class="dashicons dashicons-money-alt" aria-hidden="true"></span>
+						<?php esc_html_e( 'En çok ciro getiren ürünler', 'qrms' ); ?>
+					</h2>
+				</div>
+				<p class="qrms-an-panel-note">
+					<?php esc_html_e( 'Gönderilen siparişlerdeki taban fiyat üzerinden ciro. Kampanya indirimi ve porsiyon farkı hesaba katılmaz; yaklaşık bir sıralamadır.', 'qrms' ); ?>
+				</p>
+				<div id="qrms-an-sepet-ciro">
+					<div class="qrms-an-loading"><?php esc_html_e( 'Yükleniyor', 'qrms' ); ?></div>
+				</div>
 			</div>
 
 			<div class="qrms-an-panel">

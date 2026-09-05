@@ -49,6 +49,13 @@
 		return n.toLocaleString( 'tr-TR' );
 	}
 
+	/** Para gösterimi (₺1.234,56). Sunucudan gelen değer her zaman sayıdır. */
+	function para( deger ) {
+		var n = parseFloat( deger ) || 0;
+
+		return '₺' + n.toLocaleString( 'tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 } );
+	}
+
 	function oran( pay, payda ) {
 		return payda > 0 ? Math.round( ( pay / payda ) * 100 ) : 0;
 	}
@@ -258,6 +265,7 @@
 		esc: esc,
 		sayi: sayi,
 		kisa: kisa,
+		para: para,
 		oran: oran,
 		oranSinifi: oranSinifi,
 		tarih: tarih,

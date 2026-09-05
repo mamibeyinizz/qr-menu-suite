@@ -375,13 +375,15 @@ qrms_test(
 		qrms_assert_contains( 'GROUP BY event_type, item_name', $wpdb->queries[0], 'kırılım' );
 
 		// Menü Mühendisliği modülü satış adedini okuyabilsin diye tabloya
-		// qty sütunu eklendi (bkz. CREATE TABLE'daki qty smallint). Yeni
-		// sütun kurulu sitelere ANCAK dbDelta yeniden çalışırsa ulaşır;
-		// sema_kontrol() bunu DB_SURUM değişimine bakarak tetikler. Sürüm
-		// artmadan kalsaydı mevcut kurulumlar sütunu hiç görmezdi.
+		// qty sütunu eklendi (bkz. CREATE TABLE'daki qty smallint), ciro
+		// raporları için de price sütunu (1.3). Yeni sütun kurulu sitelere
+		// ANCAK dbDelta yeniden çalışırsa ulaşır; sema_kontrol() bunu
+		// DB_SURUM değişimine bakarak tetikler. Sürüm artmadan kalsaydı
+		// mevcut kurulumlar sütunu hiç görmezdi.
 		$sema = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/class-qrms-analitik.php' );
-		qrms_assert_contains( "const DB_SURUM = '1.2'", $sema, 'şema sürümü qty eklemesiyle artırıldı' );
+		qrms_assert_contains( "const DB_SURUM = '1.3'", $sema, 'şema sürümü price eklemesiyle artırıldı' );
 		qrms_assert_contains( 'qty smallint', $sema, 'qty sütunu CREATE TABLE içinde' );
+		qrms_assert_contains( 'price decimal', $sema, 'price sütunu CREATE TABLE içinde' );
 	}
 );
 
