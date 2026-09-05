@@ -37,6 +37,10 @@
 	var inputBar = overlay.querySelector( '.gemini-chat-input-area' );
 
 	var gecmis = [];
+	var ekranKaydi = [];
+	var gonderKilitli = false;
+	var OTURUM_ANAHTAR = ( typeof qmoData !== 'undefined' && qmoData.oturumAnahtari ) ? String( qmoData.oturumAnahtari ) : '';
+	var GECMIS_STORAGE_KEY = OTURUM_ANAHTAR ? ( 'qmo_cb_gecmis_' + OTURUM_ANAHTAR ) : '';
 	var rozetAcik = '1' === kok.dataset.badge;
 	var kapaliMi  = '1' === kok.dataset.closed;
 	var kapaliMsg = kok.dataset.closedMsg || 'Şu an kapalıyız, yakında görüşmek üzere.';
@@ -460,22 +464,118 @@
 			( 'oturum_bitti' === yanit.data.kod || 'nonce' === yanit.data.kod ) );
 	}
 
-	function mesajGonder( hazirMetin ) {
-		if ( kapaliMi ) {
+	/* ---- konuşma kalıcılığı (sayfa yenilemeye dayanıklı) ----
+	   gecmis (AI bağlamı) ve ekranKaydi (görünür balonlar) oturuma özel bir
+	   sessionStorage anahtarında saklanır. Anahtar sunucuda türetilen,
+	   hassas olmayan bir oturum kimliğini (qmoData.oturumAnahtari) içerir;
+	   masa oturumu değişirse (yeni QR okutma → yeni issued zamanı) anahtar
+	   da değişir ve eski kayıt asla okunmaz. */
+
+	function gecmisKaydet() {
+		if ( ! GECMIS_STORAGE_KEY ) {
 			return;
 		}
+		try {
+			sessionStorage.setItem( GECMIS_STORAGE_KEY, JSON.stringify( {
+				gecmis: gecmis,
+				ekran: ekranKaydi
+			} ) );
+		} catch ( e ) {}
+	}
 
-		var mesaj = ( hazirMetin || ( input ? input.value : '' ) ).trim();
-		if ( ! mesaj ) {
+	function gecmisYukle() {
+		if ( ! GECMIS_STORAGE_KEY ) {
 			return;
 		}
+		try {
+			var ham = sessionStorage.getItem( GECMIS_STORAGE_KEY );
+			if ( ! ham ) {
+				return;
+			}
+			var v = JSON.parse( ham );
+			if ( v && Array.isArray( v.gecmis ) ) {
+				gecmis = v.gecmis.slice( -20 );
+			}
+			if ( v && Array.isArray( v.ekran ) && v.ekran.length ) {
+				ekranKaydi = v.ekran.slice( -20 );
+				sohbetHazir();
+				ekranKaydi.forEach( function ( satir ) {
+					if ( satir && satir.metin ) {
+						balon( satir.metin, 'bot' === satir.rol ? 'bot' : 'user' );
+					}
+				} );
+			}
+		} catch ( e ) {}
+	}
 
-		sohbetHazir();
-		balon( mesaj, 'user' );
+	function ekranaKaydet( rol, metinDegeri ) {
+		ekranKaydi.push( { rol: rol, metin: metinDegeri } );
+		if ( ekranKaydi.length > 20 ) {
+			ekranKaydi = ekranKaydi.slice( -20 );
+		}
+	}
+
+	/* ---- gönderim kilidi ----
+	   İstek sürerken input/gönder butonu kilitlenmezse Enter'a basılı
+	   tutmak veya art arda tıklamak paralel Gemini istekleri tetikler;
+	   yanıtlar ağ gecikmesine göre sırasız dönebilir ve oturum mesaj
+	   limiti gereksiz yere tüketilir. */
+
+	function kilitKapa() {
+		gonderKilitli = true;
 		if ( input ) {
-			input.value = '';
+			input.disabled = true;
 		}
+		if ( gonder ) {
+			gonder.disabled = true;
+		}
+	}
 
+	function kilitAc() {
+		gonderKilitli = false;
+		if ( input ) {
+			input.disabled = false;
+		}
+		if ( gonder ) {
+			gonder.disabled = false;
+		}
+	}
+
+	function hataBalonuTekrarDeneli( mesajMetni, orijinalMesaj ) {
+		var grup = document.createElement( 'div' );
+		grup.className = 'gemini-msg-grup';
+
+		var el = document.createElement( 'div' );
+		el.className = 'gemini-msg-bubble gemini-msg-bot gemini-msg-hata';
+		metinParcala( el, mesajMetni );
+		grup.appendChild( el );
+
+		var btn = document.createElement( 'button' );
+		btn.type = 'button';
+		btn.className = 'gemini-retry-btn';
+		btn.textContent = metin( 'tekrarDene', 'Tekrar Dene' );
+		btn.addEventListener( 'click', function () {
+			if ( btn.disabled || gonderKilitli ) {
+				return;
+			}
+			btn.disabled = true;
+			grup.remove();
+			gonderIstek( orijinalMesaj, false );
+		} );
+		grup.appendChild( btn );
+
+		if ( log ) {
+			log.appendChild( grup );
+			log.scrollTop = log.scrollHeight;
+		}
+		return grup;
+	}
+
+	function gonderIstek( mesaj, otomatikTekrarDenensin ) {
+		if ( gonderKilitli ) {
+			return;
+		}
+		kilitKapa();
 		var yaziyor = yaziyorGoster();
 
 		istek( {
@@ -484,6 +584,7 @@
 			history: JSON.stringify( gecmis )
 		} ).then( function ( yanit ) {
 			yaziyor.remove();
+			kilitAc();
 
 			if ( ! yanit || ! yanit.success ) {
 				if ( oturumBittiMi( yanit ) ) {
@@ -498,7 +599,6 @@
 			var payload = yanit.data;
 			var cevap   = 'string' === typeof payload ? payload : ( payload && payload.mesaj ? payload.mesaj : '' );
 			var urunler = payload && payload.urunler && Array.isArray( payload.urunler ) ? payload.urunler : [];
-			var ham     = cevap;
 
 			if ( cevap.indexOf( '[CALL_WAITER]' ) !== -1 ) {
 				cevap = cevap.replace( '[CALL_WAITER]', '' ).trim();
@@ -551,11 +651,17 @@
 
 			cevap = urunEtiketleriTemizle( cevap );
 
+			// Geçmişe (AI bağlamı) yalnızca TEMİZLENMİŞ metin yazılır; ham
+			// (etiketli) metin yazılırsa model kendi kontrol etiketlerini
+			// ([SIPARIS] bloğu dahil) bir sonraki turda geçmiş olarak geri
+			// görür ve gereksiz yere kafası karışabilir.
 			gecmis.push( { role: 'user', parts: [ { text: mesaj } ] } );
-			gecmis.push( { role: 'model', parts: [ { text: ham } ] } );
+			gecmis.push( { role: 'model', parts: [ { text: cevap } ] } );
 			if ( gecmis.length > 20 ) {
 				gecmis = gecmis.slice( -20 );
 			}
+			ekranaKaydet( 'bot', cevap );
+			gecmisKaydet();
 
 			if ( eskalasyon ) {
 				eskalasyonBalonu( cevap );
@@ -569,8 +675,38 @@
 			}
 		} ).catch( function () {
 			yaziyor.remove();
-			balon( metin( 'baglantiHatasi', 'Bağlantı hatası oluştu.' ), 'bot', true );
+			kilitAc();
+
+			if ( otomatikTekrarDenensin ) {
+				window.setTimeout( function () {
+					gonderIstek( mesaj, false );
+				}, 800 );
+				return;
+			}
+
+			hataBalonuTekrarDeneli( metin( 'baglantiHatasi', 'Bağlantı hatası oluştu.' ), mesaj );
 		} );
+	}
+
+	function mesajGonder( hazirMetin ) {
+		if ( kapaliMi || gonderKilitli ) {
+			return;
+		}
+
+		var mesaj = ( hazirMetin || ( input ? input.value : '' ) ).trim();
+		if ( ! mesaj ) {
+			return;
+		}
+
+		sohbetHazir();
+		balon( mesaj, 'user' );
+		ekranaKaydet( 'user', mesaj );
+		gecmisKaydet();
+		if ( input ) {
+			input.value = '';
+		}
+
+		gonderIstek( mesaj, true );
 	}
 
 	acButon.addEventListener( 'click', ac );
@@ -653,4 +789,8 @@
 			inputBar.hidden = true;
 		}
 	}
+
+	// Karşılama ekranı gizleme kararından SONRA çalışır: restore edilecek
+	// bir geçmiş varsa sohbetHazir() burada log/input'u tekrar açar.
+	gecmisYukle();
 }() );

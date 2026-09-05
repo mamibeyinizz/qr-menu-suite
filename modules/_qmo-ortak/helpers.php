@@ -228,8 +228,8 @@ if ( ! function_exists( 'qmo_chat_zorla' ) ) {
 		$sess = qmo_oturum_zorla();
 
 		$k     = 'qr_chat_' . md5( $sess['masa'] . '_' . $sess['issued'] );
-		$sayac = (int) get_transient( $k );
-		if ( $sayac >= QMO_Oturum::chat_limit() ) {
+		$sayac = qmo_sayac_arttir( $k, QMO_Oturum::hard_cap() );
+		if ( $sayac > QMO_Oturum::chat_limit() ) {
 			wp_send_json_error(
 				array(
 					'kod'   => 'limit',
@@ -238,7 +238,6 @@ if ( ! function_exists( 'qmo_chat_zorla' ) ) {
 				429
 			);
 		}
-		set_transient( $k, $sayac + 1, QMO_Oturum::hard_cap() );
 
 		return $sess;
 	}
@@ -415,6 +414,90 @@ if ( ! function_exists( 'qmo_ip_hash' ) ) {
 }
 
 /**
+ * Kısa bir işi dosya kilidiyle (flock) serileştirir.
+ *
+ * get_transient()/set_transient() ikilisi atomik DEĞİLDİR: iki eşzamanlı
+ * istek aynı değeri okuyup ikisi de aynı "yeni" değeri yazabilir (TOCTOU
+ * yarış durumu). Kalıcı bir nesne önbelleği (Redis/Memcached) yoksa —
+ * paylaşımlı hosting'de tipik durum — bu, aynı sunucudaki PHP-FPM
+ * işçileri arasında pratik bir kilit sağlar.
+ *
+ * Sabit sayıda (32) kilit dosyası kullanılır ("lock striping"): anahtar
+ * başına ayrı dosya açmak, hız sınırı anahtarları (masa+IP+eylem gibi)
+ * sürekli değiştiği için zamanla sınırsız sayıda ufak dosya biriktirirdi.
+ * Kilit tutma süresi mikrosaniyeler mertebesinde olduğu için farklı
+ * anahtarların aynı şeride düşmesi zararsızdır.
+ *
+ * Kilit dosyası açılamazsa (salt-okunur dosya sistemi, çok sunuculu bir
+ * havuz vb.) kilitsiz devam edilir — istek asla bloklanmaz, yalnızca eski
+ * (yarış durumu mümkün) davranışa düşülür.
+ *
+ * @param string   $anahtar Kilit şeridini seçmek için kullanılan anahtar.
+ * @param callable $islem   Kilit altında çalışacak iş.
+ * @return mixed $islem() çağrısının dönüşü.
+ */
+if ( ! function_exists( 'qmo_kilitli_calistir' ) ) {
+	function qmo_kilitli_calistir( $anahtar, $islem ) {
+		$dizin = rtrim( function_exists( 'get_temp_dir' ) ? get_temp_dir() : sys_get_temp_dir(), '/\\' );
+		$serit = hexdec( substr( md5( (string) $anahtar ), 0, 4 ) ) % 32;
+		$dosya = $dizin . '/qmo-rl-' . $serit . '.lock';
+
+		$fp = @fopen( $dosya, 'c' );
+		if ( ! $fp ) {
+			return call_user_func( $islem );
+		}
+
+		$kilitli = flock( $fp, LOCK_EX );
+		try {
+			return call_user_func( $islem );
+		} finally {
+			if ( $kilitli ) {
+				flock( $fp, LOCK_UN );
+			}
+			fclose( $fp );
+		}
+	}
+}
+
+/**
+ * Bir sayacı atomik biçimde arttırır ve arttırmadan SONRAKİ değeri döner.
+ *
+ * Öncelik: 1) kalıcı nesne önbelleği varsa wp_cache_incr() (gerçek, tam
+ * atomiklik); 2) qmo_kilitli_calistir() ile serileştirilmiş transient
+ * oku/yaz (tek sunuculu PHP-FPM için pratik atomiklik). Kalıcı nesne
+ * önbelleği OLMAYAN çok sunuculu bir havuzda hâlâ küçük bir yarış payı
+ * kalır; böyle kurulumlarda bir Redis/Memcached object-cache eklentisi
+ * önerilir.
+ *
+ * @param string $key Transient anahtarı (önek dahil, benzersiz).
+ * @param int    $ttl Saniye.
+ * @return int Arttırmadan SONRAKİ değer (1 = pencerede ilk istek).
+ */
+if ( ! function_exists( 'qmo_sayac_arttir' ) ) {
+	function qmo_sayac_arttir( $key, $ttl ) {
+		$ttl = max( 1, (int) $ttl );
+
+		if ( function_exists( 'wp_using_ext_object_cache' ) && wp_using_ext_object_cache()
+			&& function_exists( 'wp_cache_add' ) && function_exists( 'wp_cache_incr' ) ) {
+			wp_cache_add( $key, 0, 'qmo_rl', $ttl );
+			$yeni = wp_cache_incr( $key, 1, 'qmo_rl' );
+			if ( false !== $yeni ) {
+				return (int) $yeni;
+			}
+		}
+
+		return (int) qmo_kilitli_calistir(
+			$key,
+			function () use ( $key, $ttl ) {
+				$n = (int) get_transient( $key ) + 1;
+				set_transient( $key, $n, $ttl );
+				return $n;
+			}
+		);
+	}
+}
+
+/**
  * IP + masa bazlı hız sınırı.
  *
  * @param string $anahtar Eylem adı (ör. 'garson').
@@ -425,11 +508,7 @@ if ( ! function_exists( 'qmo_ip_hash' ) ) {
 if ( ! function_exists( 'qmo_hiz_siniri' ) ) {
 	function qmo_hiz_siniri( $anahtar, $masa, $saniye = 60 ) {
 		$k = 'qmo_rl_' . md5( $anahtar . '|' . sanitize_title( $masa ) . '|' . qmo_ip_hash() );
-		if ( get_transient( $k ) ) {
-			return false;
-		}
-		set_transient( $k, 1, max( 1, (int) $saniye ) );
-		return true;
+		return 1 === qmo_sayac_arttir( $k, $saniye );
 	}
 }
 

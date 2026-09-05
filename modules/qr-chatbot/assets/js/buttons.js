@@ -8,6 +8,17 @@
 ( function () {
 	'use strict';
 
+	// chatbot.js ve sepet.js kendi kök elemanlarında aynı deseni kullanır;
+	// bu dosyanın tek bir kökü yok (sayfada birden fazla [data-qmo-cagri]
+	// çubuğu olabilir), bu yüzden bayrak <html> üzerinde tutulur. Script
+	// birden fazla kez enjekte edilirse (enqueue katmanındaki tekilleştirme
+	// atlanırsa) document click dinleyicisi iki kez bağlanıp tek tıkta iki
+	// AJAX isteği gitmesin diye.
+	if ( document.documentElement.dataset.qmoButtonsInit ) {
+		return;
+	}
+	document.documentElement.dataset.qmoButtonsInit = '1';
+
 	var istek = window.qmoChatShared.istek;
 	var metin = window.qmoChatShared.metin;
 

@@ -220,6 +220,15 @@ if ( ! function_exists( 'qmo_js_verisi_ekle' ) ) {
 			}
 		}
 
+		// Konuşma geçmişini sayfa yenilemesinde geri yükleyebilmek için
+		// chatbot.js'e HASSAS OLMAYAN bir oturum anahtarı verilir (zaten
+		// oneri/mesaj tablolarında oturum_id olarak saklanan aynı türetilmiş
+		// değer — ham oturum cookie'si httponly'dir, JS'e hiç gitmez).
+		if ( 'qmo-chatbot' === $handle && function_exists( 'qmo_chatbot_ziyaretci_anahtar' ) ) {
+			$sess                     = function_exists( 'qmo_oturum' ) ? qmo_oturum() : false;
+			$veri['oturumAnahtari']   = qmo_chatbot_ziyaretci_anahtar( $sess ? $sess : array() );
+		}
+
 		wp_localize_script( $handle, 'qmoData', $veri );
 	}
 }

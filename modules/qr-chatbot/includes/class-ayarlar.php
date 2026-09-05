@@ -643,8 +643,8 @@ function qmo_chatbot_sinir_kontrol( $sess ) {
 	$dakika = (int) qmo_chatbot_ayar( 'qmo_chatbot_rate_per_min' );
 	if ( $dakika > 0 ) {
 		$k = 'qmo_cb_rpm_' . qmo_chatbot_ziyaretci_anahtar( $sess );
-		$n = (int) get_transient( $k );
-		if ( $n >= $dakika ) {
+		$n = qmo_sayac_arttir( $k, MINUTE_IN_SECONDS );
+		if ( $n > $dakika ) {
 			wp_send_json_error(
 				array(
 					'kod'   => 'limit',
@@ -653,17 +653,15 @@ function qmo_chatbot_sinir_kontrol( $sess ) {
 				429
 			);
 		}
-		set_transient( $k, $n + 1, MINUTE_IN_SECONDS );
 	}
 
 	$gunluk = (int) qmo_chatbot_ayar( 'qmo_chatbot_daily_limit' );
 	if ( $gunluk > 0 ) {
 		$k = 'qmo_cb_day_' . gmdate( 'Ymd' );
-		$n = (int) get_transient( $k );
-		if ( $n >= $gunluk ) {
-			wp_send_json_error( qmo_chatbot_ayar( 'qmo_chatbot_daily_limit_msg' ) );
+		$n = qmo_sayac_arttir( $k, DAY_IN_SECONDS );
+		if ( $n > $gunluk ) {
+			wp_send_json_error( qmo_ceviri_chat( qmo_chatbot_ayar( 'qmo_chatbot_daily_limit_msg' ) ) );
 		}
-		set_transient( $k, $n + 1, DAY_IN_SECONDS );
 	}
 }
 
@@ -674,10 +672,12 @@ function qmo_chatbot_sinir_kontrol( $sess ) {
  * @return bool
  */
 function qmo_chatbot_bilemedi_mi( $cevap ) {
+	$cevap = (string) $cevap;
 	if ( false !== strpos( $cevap, '[BILEMEDI]' ) ) {
 		return true;
 	}
-	$cevap = function_exists( 'mb_strtolower' ) ? mb_strtolower( $cevap ) : strtolower( $cevap );
+
+	$kucuk = function_exists( 'mb_strtolower' ) ? mb_strtolower( $cevap, 'UTF-8' ) : strtolower( $cevap );
 	$ipucu = array(
 		'bilemiyorum',
 		'bilmiyorum',
@@ -690,10 +690,35 @@ function qmo_chatbot_bilemedi_mi( $cevap ) {
 		'bulamadım',
 		'bulamadim',
 	);
+
+	// Modelin bir "bilemedi" ifadesinden HEMEN SONRA bir alternatif/öneri
+	// sunduğu durumlar yanlış pozitiftir (ör. "bulamadım ama benzerini
+	// önerebilirim") — bu aslında müşteriye yardımcı olan normal bir
+	// yanıttır, "Cevaplanamayan Sorular" kuyruğuna düşmemeli. İfadeden
+	// sonraki kısa bir pencerede bağlaç/öneri kelimesi varsa bu ipucu
+	// "bilemedi" SAYILMAZ; diğer ipuçları yine ayrı ayrı kontrol edilir.
+	$kurtarma_penceresi = 60;
+	$kurtarma_kelimeler = array( 'ama ', 'ancak ', 'fakat ', 'yerine ', 'öner', 'oner', 'ister misiniz', 'ister misin' );
+
 	foreach ( $ipucu as $parca ) {
-		if ( false !== strpos( $cevap, $parca ) ) {
+		$konum = mb_strpos( $kucuk, $parca, 0, 'UTF-8' );
+		if ( false === $konum ) {
+			continue;
+		}
+
+		$sonrasi    = mb_substr( $kucuk, $konum + mb_strlen( $parca, 'UTF-8' ), $kurtarma_penceresi, 'UTF-8' );
+		$kurtarildi = false;
+		foreach ( $kurtarma_kelimeler as $kk ) {
+			if ( false !== mb_strpos( $sonrasi, $kk, 0, 'UTF-8' ) ) {
+				$kurtarildi = true;
+				break;
+			}
+		}
+
+		if ( ! $kurtarildi ) {
 			return true;
 		}
 	}
+
 	return false;
 }
