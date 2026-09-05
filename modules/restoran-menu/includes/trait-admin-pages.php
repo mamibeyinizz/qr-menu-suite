@@ -516,6 +516,46 @@ trait RMA_Admin_Pages_Trait {
     }
 
     /**
+     * Menü renklerinin minyatür canlı önizlemesi — kayıt gerektirmez.
+     * CSS değişkenleri `--qrms-*`; JS form değerlerini buraya yazar.
+     *
+     * @return void
+     */
+    private function render_color_preview() {
+        $c     = $this->get_color_settings();
+        $parts = [];
+        foreach ( $c as $key => $val ) {
+            $parts[] = '--qrms-' . str_replace( '_', '-', $key ) . ':' . $val;
+        }
+        $style = implode( ';', $parts );
+        ?>
+        <div class="rma-color-preview-dock">
+            <p class="rma-color-preview-kicker">Canlı önizleme</p>
+            <div class="rma-color-preview" style="<?php echo esc_attr( $style ); ?>" aria-hidden="true">
+                <div class="rma-color-preview-stage" data-rma-hl="bg">
+                    <div class="rma-cp-toolbar" data-rma-hl="toolbar_bg">
+                        <span class="rma-cp-search" data-rma-hl="border">Menüde ara…</span>
+                        <span class="rma-cp-filter" data-rma-hl="filter_btn_border,filter_btn_text">Filtrele</span>
+                    </div>
+                    <div class="rma-cp-heading" data-rma-hl="section_title">Çorbalar</div>
+                    <div class="rma-cp-item" data-rma-hl="card,border">
+                        <div class="rma-cp-item-main">
+                            <div class="rma-cp-name" data-rma-hl="text">Mercimek Çorbası</div>
+                            <div class="rma-cp-desc" data-rma-hl="desc">Tereyağında nane, taze limon.</div>
+                        </div>
+                        <div class="rma-cp-price" data-rma-hl="accent">₺120</div>
+                    </div>
+                    <div class="rma-cp-modal" data-rma-hl="modal_bg">
+                        <span class="rma-cp-modal-label">Ürün penceresi</span>
+                        <span class="rma-cp-modal-title">Mercimek Çorbası</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <?php
+    }
+
+    /**
      * Tek bir renk seçici satırı.
      *
      * @param string $key   Ayar anahtarı (rma_color_settings[$key]).
@@ -535,6 +575,7 @@ trait RMA_Admin_Pages_Trait {
                        name="rma_color_settings[<?php echo esc_attr( $key ); ?>]"
                        value="<?php echo esc_attr( $c[ $key ] ?? '#000000' ); ?>"
                        class="rma-color-picker"
+                       data-rma-color-key="<?php echo esc_attr( $key ); ?>"
                        data-default-color="<?php echo esc_attr( $def_c[ $key ] ?? '#000000' ); ?>">
                 <p class="description rma-desc"><?php echo esc_html( $desc ); ?></p>
             </td>
@@ -644,6 +685,8 @@ trait RMA_Admin_Pages_Trait {
                     <?php endforeach; ?>
                 </div>
             </div>
+
+            <?php $this->render_color_preview(); ?>
 
             <div class="rma-card">
                 <h2 class="rma-card-title">2. Renkleri Özelleştir</h2>
