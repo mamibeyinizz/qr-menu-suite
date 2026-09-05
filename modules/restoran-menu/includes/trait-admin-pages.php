@@ -516,62 +516,40 @@ trait RMA_Admin_Pages_Trait {
     }
 
     /**
-     * Renk anahtarı → canlı önizleme CSS değişkeni.
-     *
-     * @return array<string,string>
-     */
-    private function color_preview_vars() {
-        return [
-            'accent'            => '--qrms-accent',
-            'bg'                => '--qrms-bg',
-            'card'              => '--qrms-card',
-            'text'              => '--qrms-text',
-            'section_title'     => '--qrms-section-title',
-            'desc'              => '--qrms-desc',
-            'border'            => '--qrms-border',
-            'toolbar_bg'        => '--qrms-toolbar-bg',
-            'filter_btn_border' => '--qrms-filter-btn-border',
-            'filter_btn_text'   => '--qrms-filter-btn-text',
-            'modal_bg'          => '--qrms-modal-bg',
-        ];
-    }
-
-    /**
-     * Renk formunun üstündeki minyatür menü önizlemesi.
-     *
-     * İlk boya kayıtlı renklerle yapılır; sonraki değişiklikler
-     * admin-ui.js içindeki syncColorPreview() ile aynı --qrms-*
-     * değişkenlerine yazılır.
+     * Menü renklerinin minyatür canlı önizlemesi — kayıt gerektirmez.
+     * CSS değişkenleri `--qrms-*`; JS form değerlerini buraya yazar.
      *
      * @return void
      */
     private function render_color_preview() {
         $c     = $this->get_color_settings();
-        $style = '';
-        foreach ( $this->color_preview_vars() as $key => $prop ) {
-            if ( ! empty( $c[ $key ] ) ) {
-                $style .= $prop . ':' . $c[ $key ] . ';';
-            }
+        $parts = [];
+        foreach ( $c as $key => $val ) {
+            $parts[] = '--qrms-' . str_replace( '_', '-', $key ) . ':' . $val;
         }
+        $style = implode( ';', $parts );
         ?>
-        <div class="rma-color-preview" style="<?php echo esc_attr( $style ); ?>">
-            <p class="rma-color-preview-label"><?php esc_html_e( 'Canlı önizleme', 'qrms' ); ?></p>
-            <div class="rma-color-preview-stage" data-qrms-swatch="bg">
-                <div class="rma-color-preview-toolbar" data-qrms-swatch="toolbar_bg">
-                    <span class="rma-color-preview-search" data-qrms-swatch="border">
-                        <span class="rma-color-preview-search-ph"><?php esc_html_e( 'Ürün ara…', 'qrms' ); ?></span>
-                    </span>
-                    <span class="rma-color-preview-filter" data-qrms-swatch="filter_btn_border filter_btn_text">
-                        <?php esc_html_e( 'Filtrele', 'qrms' ); ?>
-                    </span>
+        <div class="rma-color-preview-dock">
+            <p class="rma-color-preview-kicker">Canlı önizleme</p>
+            <div class="rma-color-preview" style="<?php echo esc_attr( $style ); ?>" aria-hidden="true">
+                <div class="rma-color-preview-stage" data-rma-hl="bg">
+                    <div class="rma-cp-toolbar" data-rma-hl="toolbar_bg">
+                        <span class="rma-cp-search" data-rma-hl="border">Menüde ara…</span>
+                        <span class="rma-cp-filter" data-rma-hl="filter_btn_border,filter_btn_text">Filtrele</span>
+                    </div>
+                    <div class="rma-cp-heading" data-rma-hl="section_title">Çorbalar</div>
+                    <div class="rma-cp-item" data-rma-hl="card,border">
+                        <div class="rma-cp-item-main">
+                            <div class="rma-cp-name" data-rma-hl="text">Mercimek Çorbası</div>
+                            <div class="rma-cp-desc" data-rma-hl="desc">Tereyağında nane, taze limon.</div>
+                        </div>
+                        <div class="rma-cp-price" data-rma-hl="accent">₺120</div>
+                    </div>
+                    <div class="rma-cp-modal" data-rma-hl="modal_bg">
+                        <span class="rma-cp-modal-label">Ürün penceresi</span>
+                        <span class="rma-cp-modal-title">Mercimek Çorbası</span>
+                    </div>
                 </div>
-                <div class="rma-color-preview-heading" data-qrms-swatch="section_title"><?php esc_html_e( 'Çorbalar', 'qrms' ); ?></div>
-                <div class="rma-color-preview-card" data-qrms-swatch="card border">
-                    <div class="rma-color-preview-name" data-qrms-swatch="text"><?php esc_html_e( 'Mercimek Çorbası', 'qrms' ); ?></div>
-                    <div class="rma-color-preview-desc" data-qrms-swatch="desc"><?php esc_html_e( 'Limonla servis edilir', 'qrms' ); ?></div>
-                    <div class="rma-color-preview-price" data-qrms-swatch="accent">₺95</div>
-                </div>
-                <div class="rma-color-preview-modal" data-qrms-swatch="modal_bg"><?php esc_html_e( 'Ürün penceresi', 'qrms' ); ?></div>
             </div>
         </div>
         <?php
@@ -597,6 +575,7 @@ trait RMA_Admin_Pages_Trait {
                        name="rma_color_settings[<?php echo esc_attr( $key ); ?>]"
                        value="<?php echo esc_attr( $c[ $key ] ?? '#000000' ); ?>"
                        class="rma-color-picker"
+                       data-rma-color-key="<?php echo esc_attr( $key ); ?>"
                        data-default-color="<?php echo esc_attr( $def_c[ $key ] ?? '#000000' ); ?>">
                 <p class="description rma-desc"><?php echo esc_html( $desc ); ?></p>
             </td>

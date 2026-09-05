@@ -603,17 +603,13 @@
     color: var(--rma-a-accent);
 }
 
+/* Hex alanı class'ı `rma-color-picker` (wpColorPicker sarmaladıktan sonra
+   da öyle kalır); `.wp-color-picker` sınıfı bu input'ta yoktur. Class
+   şartsız `input[type="text"]` — bkz. qr-calisma-saatleri/admin.css. */
 .rma-admin .wp-picker-input-wrap input[type="text"] {
     background: var(--rma-a-raised);
     border-color: var(--rma-a-border);
     color: var(--rma-a-text);
-}
-
-/* Kapalıyken hex alanı ve Iris paleti kesinlikle gizlensin.
-   Açıkken (.wp-picker-active) WordPress'in kendi display kuralları geçer. */
-.rma-admin .wp-picker-container:not(.wp-picker-active) .wp-picker-input-wrap,
-.rma-admin .wp-picker-container:not(.wp-picker-active) .wp-picker-holder {
-    display: none;
 }
 
 .rma-admin .wp-picker-holder {
@@ -623,6 +619,14 @@
     padding: 6px;
 }
 
+/* Kapalıyken hex satırı ve Iris paleti görünmesin. WP açıkken
+   `.wp-picker-active` ekler; o sınıfta bu kural uygulanmaz, böylece
+   paletin açılma davranışı değişmez. */
+.rma-admin .wp-picker-container:not(.wp-picker-active) .wp-picker-input-wrap,
+.rma-admin .wp-picker-container:not(.wp-picker-active) .wp-picker-holder {
+    display: none;
+}
+
 .rma-admin .iris-picker {
     background: var(--rma-a-surface-2);
     border-color: var(--rma-a-border);
@@ -630,158 +634,6 @@
 
 .rma-admin .iris-picker .iris-square-inner {
     border-radius: 3px;
-}
-
-/* ---------------------------------------------------------------
-   MENÜ GÖRÜNÜMÜ — RENK CANLI ÖNİZLEME
-   Mini menü örneği --qrms-* değişkenleriyle boyanır. JS yalnızca
-   bu değişkenleri yazar (bkz. admin-ui.js syncColorPreview).
---------------------------------------------------------------- */
-.rma-color-preview {
-    background: var(--rma-a-surface);
-    border: 1px solid var(--rma-a-border);
-    border-radius: var(--rma-a-radius);
-    margin-bottom: 20px;
-    max-width: 900px;
-    padding: 14px 16px 16px;
-}
-
-.rma-color-preview-label {
-    color: var(--rma-a-muted);
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: .09em;
-    margin: 0 0 10px;
-    text-transform: uppercase;
-}
-
-.rma-color-preview-stage {
-    background: var(--qrms-bg, #0a0a0a);
-    border-radius: 10px;
-    overflow: hidden;
-    pointer-events: none;
-    user-select: none;
-}
-
-.rma-color-preview-toolbar {
-    align-items: center;
-    background: var(--qrms-toolbar-bg, #0a0a0a);
-    display: flex;
-    gap: 8px;
-    padding: 10px 12px;
-}
-
-.rma-color-preview-search {
-    background: var(--qrms-card, #111);
-    border: 1px solid var(--qrms-border, #2a2a2a);
-    border-radius: 8px;
-    color: var(--qrms-desc, #888);
-    flex: 1 1 auto;
-    font-size: 12px;
-    min-width: 0;
-    padding: 7px 10px;
-}
-
-.rma-color-preview-filter {
-    background: transparent;
-    border: 1.5px solid var(--qrms-filter-btn-border, #2a2a2a);
-    border-radius: 8px;
-    color: var(--qrms-filter-btn-text, #888);
-    flex-shrink: 0;
-    font-size: 12px;
-    font-weight: 600;
-    padding: 6px 10px;
-}
-
-.rma-color-preview-heading {
-    align-items: center;
-    color: var(--qrms-section-title, #f5f0e8);
-    display: flex;
-    font-size: 15px;
-    font-weight: 700;
-    gap: 10px;
-    letter-spacing: -.02em;
-    margin: 14px 12px 8px;
-}
-
-.rma-color-preview-heading::before {
-    background: linear-gradient(90deg, var(--qrms-accent, #c9a84c), transparent);
-    content: '';
-    display: block;
-    flex-shrink: 0;
-    height: 1px;
-    width: 18px;
-}
-
-.rma-color-preview-card {
-    background: var(--qrms-card, #111);
-    border: 1px solid var(--qrms-border, #2a2a2a);
-    border-radius: 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    margin: 0 10px 10px;
-    padding: 12px 14px;
-}
-
-.rma-color-preview-name {
-    color: var(--qrms-text, #f5f0e8);
-    font-size: 14px;
-    font-weight: 600;
-    line-height: 1.3;
-}
-
-.rma-color-preview-desc {
-    color: var(--qrms-desc, #888);
-    font-size: 12px;
-    line-height: 1.45;
-}
-
-.rma-color-preview-price {
-    color: var(--qrms-accent, #c9a84c);
-    font-size: 15px;
-    font-weight: 700;
-    letter-spacing: -.02em;
-    margin-top: 2px;
-}
-
-.rma-color-preview-modal {
-    background: var(--qrms-modal-bg, #0a0a0a);
-    border-top: 1px solid var(--qrms-border, #2a2a2a);
-    color: var(--qrms-text, #f5f0e8);
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: .04em;
-    padding: 10px 12px 12px;
-    text-align: center;
-}
-
-@keyframes rma-swatch-pulse {
-    0%   { box-shadow: 0 0 0 0 var(--qrms-accent, #c9a84c); }
-    35%  { box-shadow: 0 0 0 3px var(--qrms-accent, #c9a84c); }
-    100% { box-shadow: 0 0 0 0 transparent; }
-}
-
-.rma-color-preview .is-swatch-on {
-    animation: rma-swatch-pulse 1.2s ease-out;
-    outline: 2px solid var(--qrms-accent, #c9a84c);
-    outline-offset: 2px;
-}
-
-@media screen and (max-width: 782px) {
-    .rma-admin:has(.rma-color-preview) {
-        overflow: visible;
-    }
-
-    .rma-admin:has(.rma-color-preview)::before {
-        border-radius: 14px 14px 0 0;
-    }
-
-    .rma-color-preview {
-        position: sticky;
-        top: 46px;
-        z-index: 20;
-    }
 }
 
 /* ---------------------------------------------------------------
@@ -907,6 +759,197 @@
 /* Frontend'de nav yatay kaydırılabilir; önizlemede çubuk görünmesin */
 .rma-nav-preview .rma-nav {
     overflow-x: hidden;
+}
+
+/* ---------------------------------------------------------------
+   MENÜ RENKLERİ — CANLI ÖNİZLEME
+
+   "2. Renkleri Özelleştir" kartının üstünde minyatür menü sahnesi.
+   Görünüm --qrms-* değişkenlerinden sürülür (JS applyCssVars).
+   position:sticky, .rma-admin overflow:hidden ile kırılır; bu yüzden
+   bu sayfada overflow kapatılır (vitrin önizlemesindeki aynı gerekçe).
+--------------------------------------------------------------- */
+.rma-admin:has(.rma-color-preview-dock) {
+    overflow: visible;
+}
+
+.rma-admin:has(.rma-color-preview-dock)::before {
+    border-radius: 14px 14px 0 0;
+}
+
+.rma-color-preview-dock {
+    background: var(--rma-a-surface);
+    border: 1px solid var(--rma-a-border);
+    border-radius: var(--rma-a-radius);
+    box-shadow: 0 2px 16px rgba(0, 0, 0, .38);
+    margin: 0 0 18px;
+    max-width: 900px;
+    padding: 12px 14px 14px;
+    position: sticky;
+    top: 46px;
+    z-index: 20;
+}
+
+@media screen and (min-width: 783px) {
+    /* Masaüstünde sütunda sabit kalır (WP menüsünü örtmez). */
+    .rma-color-preview-dock {
+        position: sticky;
+        top: 32px;
+    }
+}
+
+.rma-color-preview-kicker {
+    color: var(--rma-a-muted);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .04em;
+    margin: 0 0 8px;
+    text-transform: uppercase;
+}
+
+.rma-color-preview {
+    --qrms-accent-dim: color-mix(in srgb, var(--qrms-accent) 40%, transparent);
+    pointer-events: none;
+    user-select: none;
+}
+
+.rma-color-preview-stage {
+    background: var(--qrms-bg);
+    border: 1px solid var(--qrms-border);
+    border-radius: 10px;
+    color: var(--qrms-text);
+    overflow: hidden;
+    padding-bottom: 10px;
+}
+
+.rma-cp-toolbar {
+    align-items: center;
+    background: var(--qrms-toolbar-bg);
+    display: flex;
+    gap: 8px;
+    padding: 10px;
+}
+
+.rma-cp-search {
+    background: var(--qrms-card);
+    border: 1px solid var(--qrms-border);
+    border-radius: 8px;
+    color: var(--qrms-desc);
+    flex: 1 1 auto;
+    font-size: 12px;
+    min-width: 0;
+    padding: 8px 10px;
+}
+
+.rma-cp-filter {
+    background: var(--qrms-card);
+    border: 1.5px solid var(--qrms-filter-btn-border);
+    border-radius: 8px;
+    color: var(--qrms-filter-btn-text);
+    flex: 0 0 auto;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 8px 10px;
+}
+
+.rma-cp-heading {
+    align-items: center;
+    color: var(--qrms-section-title);
+    display: flex;
+    font-size: 13px;
+    font-weight: 700;
+    gap: 8px;
+    margin: 12px 10px 8px;
+}
+
+.rma-cp-heading::before {
+    background: linear-gradient(90deg, var(--qrms-accent), transparent);
+    content: '';
+    display: block;
+    flex-shrink: 0;
+    height: 1px;
+    width: 18px;
+}
+
+.rma-cp-item {
+    align-items: center;
+    background: var(--qrms-card);
+    border: 1px solid var(--qrms-border);
+    border-radius: 10px;
+    display: flex;
+    gap: 10px;
+    justify-content: space-between;
+    margin: 0 10px 10px;
+    padding: 10px 12px;
+}
+
+.rma-cp-item-main {
+    min-width: 0;
+}
+
+.rma-cp-name {
+    color: var(--qrms-text);
+    font-size: 13px;
+    font-weight: 700;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.rma-cp-desc {
+    color: var(--qrms-desc);
+    font-size: 11px;
+    line-height: 1.4;
+    margin-top: 2px;
+}
+
+.rma-cp-price {
+    color: var(--qrms-accent);
+    flex-shrink: 0;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.rma-cp-modal {
+    background: var(--qrms-modal-bg);
+    border: 1px solid var(--qrms-border);
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 0 10px;
+    padding: 8px 10px;
+}
+
+.rma-cp-modal-label {
+    color: var(--qrms-desc);
+    font-size: 10px;
+    letter-spacing: .03em;
+    text-transform: uppercase;
+}
+
+.rma-cp-modal-title {
+    color: var(--qrms-text);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+@keyframes rma-preview-hl {
+    0% {
+        box-shadow: 0 0 0 0 transparent;
+    }
+    30% {
+        box-shadow: 0 0 0 3px var(--qrms-accent);
+    }
+    100% {
+        box-shadow: 0 0 0 0 transparent;
+    }
+}
+
+.rma-color-preview .is-preview-hl {
+    animation: rma-preview-hl 1.2s ease-out;
+    outline: 2px solid var(--qrms-accent);
+    outline-offset: 2px;
 }
 
 /* ---------------------------------------------------------------

@@ -65,6 +65,22 @@
         font_weight:    { prop: '--rma-nav-font-weight' }
     };
 
+    /* Menü renk önizlemesi — anahtarlar rma_color_settings ile birebir.
+       --qrms-* yalnızca bu minyatür sahneye yazılır; frontend --rma-* kullanır. */
+    var COLOR_VARS = {
+        accent:            { prop: '--qrms-accent' },
+        bg:                { prop: '--qrms-bg' },
+        card:              { prop: '--qrms-card' },
+        text:              { prop: '--qrms-text' },
+        section_title:     { prop: '--qrms-section-title' },
+        desc:              { prop: '--qrms-desc' },
+        border:            { prop: '--qrms-border' },
+        toolbar_bg:        { prop: '--qrms-toolbar-bg' },
+        filter_btn_border: { prop: '--qrms-filter-btn-border' },
+        filter_btn_text:   { prop: '--qrms-filter-btn-text' },
+        modal_bg:          { prop: '--qrms-modal-bg' }
+    };
+
     function fieldValue(key) {
         var $f = $('[name="rma_nav_design_settings[' + key + ']"]');
         if (!$f.length) return null;
@@ -72,32 +88,43 @@
         return $f.val();
     }
 
+    function colorFieldValue(key) {
+        var $f = $('[name="rma_color_settings[' + key + ']"]');
+        return $f.length ? $f.val() : null;
+    }
+
     /**
-     * Form değerlerini bir önizleme kökünün CSS değişkenlerine yazar.
+     * Form değerlerini bir önizleme kökünün custom property'lerine yazar.
      * overrides: renk seçici sürüklenirken input henüz güncellenmemiş
      * olabildiği için { anahtar: değer } biçiminde taze değer geçilebilir.
      */
-    function applyCustomProps(el, vars, getVal, overrides) {
+    function applyCssVars(el, varsMap, getVal, overrides) {
         if (!el) return;
-        Object.keys(vars).forEach(function (key) {
-            var spec = vars[key];
+        Object.keys(varsMap).forEach(function (key) {
+            var spec = varsMap[key];
             var val  = (overrides && overrides[key] !== undefined) ? overrides[key] : getVal(key);
             if (val === null || val === undefined || val === '') return;
             el.style.setProperty(spec.prop, String(val) + (spec.unit || ''));
         });
     }
 
-    /**
-     * Formdaki güncel değerleri kayar başlık önizlemesine uygular.
-     */
     function syncPreview(overrides) {
         var el = document.querySelector('.rma-nav-preview');
         if (!el) return;
 
-        applyCustomProps(el, NAV_VARS, fieldValue, overrides);
+        applyCssVars(el, NAV_VARS, fieldValue, overrides);
 
         var ind = (overrides && overrides.active_indicator) || fieldValue('active_indicator');
         if (ind) el.setAttribute('data-rma-ind', ind);
+    }
+
+    function syncColorPreview(overrides) {
+        applyCssVars(
+            document.querySelector('.rma-color-preview'),
+            COLOR_VARS,
+            colorFieldValue,
+            overrides
+        );
     }
 
     function initNavPreview() {
@@ -113,55 +140,29 @@
         syncPreview();
     }
 
-    /* -----------------------------------------------------------------
-       MENÜ GÖRÜNÜMÜ — RENK CANLI ÖNİZLEME
-
-       Kayar başlık önizlemesiyle aynı desen: form değerleri --qrms-*
-       custom property'lerine yazılır. applyCustomProps / keyed ortak.
-    ----------------------------------------------------------------- */
-    var COLOR_VARS = {
-        accent:            { prop: '--qrms-accent' },
-        bg:                { prop: '--qrms-bg' },
-        card:              { prop: '--qrms-card' },
-        text:              { prop: '--qrms-text' },
-        section_title:     { prop: '--qrms-section-title' },
-        desc:              { prop: '--qrms-desc' },
-        border:            { prop: '--qrms-border' },
-        toolbar_bg:        { prop: '--qrms-toolbar-bg' },
-        filter_btn_border: { prop: '--qrms-filter-btn-border' },
-        filter_btn_text:   { prop: '--qrms-filter-btn-text' },
-        modal_bg:          { prop: '--qrms-modal-bg' }
-    };
-
-    function colorFieldValue(key) {
-        var $f = $('[name="rma_color_settings[' + key + ']"]');
-        return $f.length ? $f.val() : null;
+    function colorTargets(root, key) {
+        if (!root || !key) return [];
+        var out = [];
+        root.querySelectorAll('[data-rma-hl]').forEach(function (node) {
+            var keys = String(node.getAttribute('data-rma-hl') || '').split(/[\s,]+/);
+            if (keys.indexOf(key) !== -1) out.push(node);
+        });
+        return out;
     }
 
-    function colorKeyOf(el) {
-        var name = el && el.getAttribute ? el.getAttribute('name') : null;
-        var m = name && name.match(/^rma_color_settings\[([a-z_]+)\]$/);
-        return m ? m[1] : null;
-    }
-
-    function syncColorPreview(overrides) {
-        applyCustomProps(
-            document.querySelector('.rma-color-preview'),
-            COLOR_VARS,
-            colorFieldValue,
-            overrides
-        );
-    }
-
-    function highlightColorSwatch(key, on) {
+    function setColorHighlight(key) {
         var root = document.querySelector('.rma-color-preview');
-        if (!root || !key) return;
-        var nodes = root.querySelectorAll('[data-qrms-swatch]');
-        for (var i = 0; i < nodes.length; i++) {
-            var keys = (nodes[i].getAttribute('data-qrms-swatch') || '').split(/\s+/);
-            if (keys.indexOf(key) === -1) continue;
-            nodes[i].classList.toggle('is-swatch-on', !!on);
-        }
+        if (!root) return;
+
+        root.querySelectorAll('.is-preview-hl').forEach(function (node) {
+            node.classList.remove('is-preview-hl');
+        });
+        if (!key) return;
+
+        colorTargets(root, key).forEach(function (node) {
+            void node.offsetWidth;
+            node.classList.add('is-preview-hl');
+        });
     }
 
     function initColorPreview() {
@@ -173,16 +174,25 @@
             function () { syncColorPreview(); }
         );
 
-        // Hex alanı, palet düğmesi ve dokunmatik :focus-visible
-        // hepsi .wp-picker-container içinde odaklanır.
-        $(document).on('focusin', '.rma-form-table .wp-picker-container', function () {
-            var key = colorKeyOf($(this).find('[name^="rma_color_settings"]')[0]);
-            highlightColorSwatch(key, true);
+        $(document).on('focus blur', '[name^="rma_color_settings"]', function (e) {
+            var wrap = this.closest && this.closest('.wp-picker-container');
+            if (e.type === 'blur' && wrap && wrap.classList.contains('wp-picker-active')) return;
+            setColorHighlight(e.type === 'focus' ? colorKeyOf(this) : null);
         });
-        $(document).on('focusout', '.rma-form-table .wp-picker-container', function (e) {
-            if (e.relatedTarget && this.contains(e.relatedTarget)) return;
-            var key = colorKeyOf($(this).find('[name^="rma_color_settings"]')[0]);
-            highlightColorSwatch(key, false);
+
+        /* Dokunmatik / palet düğmesi: :focus-visible veya tıklayınca hedefi göster. */
+        $(document).on('focusin click', '.rma-admin .wp-color-result', function (e) {
+            if (e.type === 'focusin' && e.target.matches && !e.target.matches(':focus-visible')) return;
+            var wrap = this.closest('.wp-picker-container');
+            var input = wrap && wrap.querySelector('[name^="rma_color_settings"]');
+            if (!input) return;
+            setColorHighlight(colorKeyOf(input));
+        });
+        $(document).on('focusout', '.rma-admin .wp-color-result', function (e) {
+            var wrap = this.closest('.wp-picker-container');
+            if (wrap && e.relatedTarget && wrap.contains(e.relatedTarget)) return;
+            if (wrap && wrap.classList.contains('wp-picker-active')) return;
+            setColorHighlight(null);
         });
 
         syncColorPreview();
@@ -199,10 +209,11 @@
             // Iris sürükleme sırasında input.val() henüz güncellenmediği için
             // taze değeri ui.color'dan alıp önizlemeye doğrudan geçiriyoruz.
             change: function (event, ui) {
+                var color = ui.color.toString();
                 var navKey = navKeyOf(event.target);
-                if (navKey) syncPreview(keyed(navKey, ui.color.toString()));
+                if (navKey) syncPreview(keyed(navKey, color));
                 var colorKey = colorKeyOf(event.target);
-                if (colorKey) syncColorPreview(keyed(colorKey, ui.color.toString()));
+                if (colorKey) syncColorPreview(keyed(colorKey, color));
             },
             clear: function (event) {
                 if (navKeyOf(event.target)) syncPreview();
@@ -212,10 +223,23 @@
     }
 
     // input[name="rma_nav_design_settings[bg]"] -> "bg"
-    function navKeyOf(el) {
+    function settingKeyOf(el, prefix) {
         var name = el && el.getAttribute ? el.getAttribute('name') : null;
-        var m = name && name.match(/^rma_nav_design_settings\[([a-z_]+)\]$/);
+        if (!name) return null;
+        var m = name.match(new RegExp('^' + prefix + '\\[([a-z_]+)\\]$'));
         return m ? m[1] : null;
+    }
+
+    function navKeyOf(el) {
+        return settingKeyOf(el, 'rma_nav_design_settings');
+    }
+
+    function colorKeyOf(el) {
+        if (!el) return null;
+        var fromName = settingKeyOf(el, 'rma_color_settings');
+        if (fromName) return fromName;
+        var attr = el.getAttribute && el.getAttribute('data-rma-color-key');
+        return attr || null;
     }
 
     function keyed(key, val) {
@@ -379,6 +403,7 @@
             $.each(p, function (key, val) {
                 setPickerValue($('#rma_c_' + key), val);
             });
+
             syncColorPreview(p);
         });
     }
@@ -1531,13 +1556,13 @@
     $(function () {
         stripNoticeArgs();
         initColorPickers();
-        initColorPreview();
         initStatusToggle();
         initTukendiToggle();
         initCategorySorter();
         initBannerOrder();
         initPalettes();
         initNavPreview();
+        initColorPreview();
         initNavDesignPresets();
         initSuggestions();
         initCsvSample();
