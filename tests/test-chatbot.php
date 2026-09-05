@@ -961,3 +961,99 @@ qrms_test(
 		);
 	}
 );
+
+/* -------------------------------------------------------------------------
+ * Davranışsal testler — statik string doğrulaması değil, gerçek çağrı.
+ * ---------------------------------------------------------------------- */
+
+echo "\nQR Chatbot — davranışsal testler (hız sınırı, bilemedi, etiket doğrulama)\n";
+
+require_once QRMS_PLUGIN_DIR . 'modules/qr-chatbot/includes/ajax-chat.php';
+
+qrms_test(
+	'qmo_sayac_arttir() sıralı ve doğru artar; qmo_hiz_siniri() ilk istekte true, pencerede sonrakinde false döner',
+	function () {
+		$k = 'qmo_test_sayac_' . uniqid();
+		qrms_assert_same( 1, qmo_sayac_arttir( $k, 60 ), 'ilk çağrı 1 döner' );
+		qrms_assert_same( 2, qmo_sayac_arttir( $k, 60 ), 'ikinci çağrı 2 döner' );
+		qrms_assert_same( 3, qmo_sayac_arttir( $k, 60 ), 'üçüncü çağrı 3 döner' );
+
+		qrms_assert_true( qmo_hiz_siniri( 'test_eylem', 'masa-1', 60 ), 'pencerede ilk istek izinli' );
+		qrms_assert_false( qmo_hiz_siniri( 'test_eylem', 'masa-1', 60 ), 'aynı pencerede ikinci istek reddedilir' );
+		qrms_assert_true( qmo_hiz_siniri( 'test_eylem', 'masa-2', 60 ), 'farklı masa ayrı anahtar kullanır' );
+	}
+);
+
+qrms_test(
+	'qmo_chatbot_sinir_kontrol() dakikalık limiti aştığında 429/limit döner, altındayken dönmez',
+	function () {
+		update_option( 'qmo_chatbot_rate_per_min', 2 );
+		update_option( 'qmo_chatbot_daily_limit', 0 );
+		$sess = array( 'masa' => 'masa-9', 'issued' => 1000 );
+
+		$GLOBALS['qrms_test']['json'] = null;
+		qmo_chatbot_sinir_kontrol( $sess );
+		qrms_assert_true( null === $GLOBALS['qrms_test']['json'], '1. istek limit altında, hata yok' );
+
+		$GLOBALS['qrms_test']['json'] = null;
+		qmo_chatbot_sinir_kontrol( $sess );
+		qrms_assert_true( null === $GLOBALS['qrms_test']['json'], '2. istek hâlâ limit altında (tam sınırda)' );
+
+		$GLOBALS['qrms_test']['json'] = null;
+		qmo_chatbot_sinir_kontrol( $sess );
+		qrms_assert_true( is_array( $GLOBALS['qrms_test']['json'] ), '3. istek limiti aşar' );
+		qrms_assert_same( 'limit', $GLOBALS['qrms_test']['json']['data']['kod'], 'hata kodu limit' );
+	}
+);
+
+qrms_test(
+	'qmo_chatbot_bilemedi_mi() [BILEMEDI] etiketini ve ipucu ifadelerini yakalar, kurtarma cümlesini yanlış pozitif saymaz',
+	function () {
+		qrms_assert_true( qmo_chatbot_bilemedi_mi( '[BILEMEDI] Bu konuda bilgim yok.' ), 'etiket doğrudan yakalanır' );
+		qrms_assert_true( qmo_chatbot_bilemedi_mi( 'Üzgünüm, bilmiyorum.' ), 'düz ipucu yakalanır' );
+		qrms_assert_true( qmo_chatbot_bilemedi_mi( 'Ne yazık ki bulamadım.' ), 'bulamadım tek başına bilemedi sayılır' );
+
+		qrms_assert_false(
+			qmo_chatbot_bilemedi_mi( 'Tam olarak onu bulamadım ama benzeri olan Lahmacun\'u önerebilirim.' ),
+			'bulamadım + ama + öneri → yanlış pozitif olmamalı'
+		);
+		qrms_assert_false( qmo_chatbot_bilemedi_mi( 'Elbette, size yardımcı olabilirim!' ), 'normal cevap bilemedi değildir' );
+	}
+);
+
+qrms_test(
+	'qmo_chat_dogrulanmamis_etiketleri_temizle() onay/istek sinyali olmayan turda kontrol etiketlerini kaldırır',
+	function () {
+		$siparis_bloku = '[SIPARIS][{"urunAdi":"Lahmacun","adet":1,"not":""}][/SIPARIS] Afiyet olsun!';
+
+		qrms_assert_true(
+			false === strpos( qmo_chat_dogrulanmamis_etiketleri_temizle( $siparis_bloku, 'menüde ne var?' ), '[SIPARIS]' ),
+			'onay sinyali yoksa [SIPARIS] bloğu kaldırılır'
+		);
+		qrms_assert_true(
+			false !== strpos( qmo_chat_dogrulanmamis_etiketleri_temizle( $siparis_bloku, 'evet onaylıyorum' ), '[SIPARIS]' ),
+			'onay sinyali varsa [SIPARIS] bloğu korunur'
+		);
+		qrms_assert_true(
+			false !== strpos( qmo_chat_dogrulanmamis_etiketleri_temizle( $siparis_bloku, 'yes please' ), '[SIPARIS]' ),
+			'İngilizce onay sinyali de kabul edilir'
+		);
+
+		qrms_assert_same(
+			' Hemen geliyorum.',
+			qmo_chat_dogrulanmamis_etiketleri_temizle( '[CALL_WAITER] Hemen geliyorum.', 'menü nedir' ),
+			'garson sinyali yoksa [CALL_WAITER] kaldırılır'
+		);
+		qrms_assert_contains(
+			'[CALL_WAITER]',
+			qmo_chat_dogrulanmamis_etiketleri_temizle( '[CALL_WAITER] Hemen geliyorum.', 'garson bakar mısınız' ),
+			'garson sinyali varsa [CALL_WAITER] korunur'
+		);
+
+		qrms_assert_same(
+			' Hemen getiriyorum.',
+			qmo_chat_dogrulanmamis_etiketleri_temizle( '[CALL_BILL] Hemen getiriyorum.', 'menü nedir' ),
+			'hesap sinyali yoksa [CALL_BILL] kaldırılır'
+		);
+	}
+);
