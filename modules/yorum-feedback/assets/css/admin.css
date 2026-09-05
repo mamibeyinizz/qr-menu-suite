@@ -512,6 +512,101 @@
 	}
 }
 
+/*
+ * Tüm Yorumlar tablosu (.qrm-review-workflow-table) beş sütuna sabit piksel
+ * genişliği veriyor (Tarih 120px, Puan & Detay 200px, Durum 90px, İş Akışı
+ * 200px, İşlemler 150px = 760px). `.fixed` sınıfı table-layout:fixed
+ * uyguladığı için 783px–1150px arası (tablet, ya da telefonda "masaüstü
+ * siteyi iste") genişliklerde geriye kalan "Müşteri / Masa" ve "Yorum"
+ * sütunlarına birkaç piksel kalıyor ve başlık harf harf alt satıra bölünüyor.
+ * Diğer .qrm-table-cards tablolarında bu kadar çok sabit sütun olmadığı için
+ * 782px eşiği onlara yetiyor; bu tabloya özel, daha geniş bir eşik gerekiyor.
+ */
+@media screen and ( max-width: 1150px ) {
+
+	.qrm-review-workflow-table,
+	.qrm-review-workflow-table tbody,
+	.qrm-review-workflow-table tr,
+	.qrm-review-workflow-table td {
+		display: block;
+		width: auto;
+	}
+
+	.qrm-review-workflow-table thead {
+		display: none;
+	}
+
+	.qrm-review-workflow-table tr {
+		background: #fff;
+		border: 1px solid #dcdcde;
+		border-radius: 8px;
+		margin-bottom: 12px;
+		padding: 6px 4px;
+	}
+
+	.qrm-review-workflow-table.striped > tbody > tr:nth-child( odd ),
+	.qrm-review-workflow-table > tbody > tr:nth-child( odd ) {
+		background: #fff;
+	}
+
+	.qrm-review-workflow-table td {
+		border: 0;
+		display: flex;
+		flex-wrap: wrap;
+		gap: 4px 12px;
+		padding: 7px 12px;
+	}
+
+	.qrm-review-workflow-table td::before {
+		color: #646970;
+		content: attr( data-label );
+		flex: 0 0 34%;
+		font-size: 12px;
+		font-weight: 600;
+		text-transform: uppercase;
+	}
+
+	.qrm-review-workflow-table td[data-label=""]::before {
+		display: none;
+	}
+
+	.qrm-review-workflow-table td > * {
+		flex: 1 1 55%;
+	}
+
+	.qrm-review-workflow-table .qrm-row-actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 8px;
+	}
+
+	.qrm-review-workflow-table .qrm-row-actions .button {
+		flex: 1 1 auto;
+		text-align: center;
+	}
+
+	.qrm-review-workflow-table td.qrm-cell-block {
+		display: block;
+	}
+
+	.qrm-review-workflow-table td.qrm-cell-block::before {
+		display: block;
+		flex: none;
+		margin-bottom: 4px;
+	}
+
+	/* İş akışı hücresi (durum seçimi, atanan kişi, iç not) kart görünümünde
+	 * satır olarak akar; masaüstündeki sabit genişlik burada gerekmiyor. */
+	.qrm-review-workflow-table .qrm-wf-cell {
+		display: block;
+		flex: 1 1 100%;
+	}
+
+	.qrm-review-workflow-table .qrm-wf-controls {
+		flex-wrap: wrap;
+	}
+}
+
 @media screen and ( max-width: 480px ) {
 
 	.qrm-pro-wrap {

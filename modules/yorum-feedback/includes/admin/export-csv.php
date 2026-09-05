@@ -470,7 +470,12 @@ function qrm_export_csv_submissions(array $post) {
     }
 
     $extra  = qrm_pro_admin_review_list_filters($post);
-    $fields = qrm_cf_get_fields($form->id);
+    // Widget'lar (rating_group, google_reward) POST verisi taşımaz; CSV'de
+    // hep boş bir sütun olarak görünmesinler.
+    $widget_types = qrm_cf_field_types(true);
+    $fields       = array_values(array_filter(qrm_cf_get_fields($form->id), static function ($f) use ($widget_types) {
+        return empty($widget_types[$f->field_type]['is_widget']);
+    }));
 
     $headers = [
         __('ID', 'qrms'),

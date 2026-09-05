@@ -29,7 +29,12 @@ function qrm_cf_field_types($include_system = false) {
         'checkbox' => ['label' => 'Çoklu Seçim',     'icon' => 'dashicons-yes',              'has_options' => true,  'hint' => 'Birden fazla seçilebilir'],
         'rating'   => ['label' => 'Yıldız Puanlama', 'icon' => 'dashicons-star-filled',      'has_options' => false, 'hint' => '1-5 yıldız'],
         'date'     => ['label' => 'Tarih',           'icon' => 'dashicons-calendar-alt',     'has_options' => false, 'hint' => 'Gün seçimi'],
-        // Widget'lar veri alanı değildir; yalnızca Ana Yorum Formu paletinde durur.
+        // Widget'lar veri alanı değildir. Puanlama Kriterleri grubu global
+        // crit_1..5 ayarına bağlı olduğundan yalnızca Ana Yorum Formu paletinde
+        // durur (is_system_only). Google & Ödül widget'ı ise herhangi bir
+        // özel formda da kullanılabilir — formda puanlama alanı (rating ya da
+        // rating_group) varsa canlı ortalamayla eşik kontrolü yapılır, yoksa
+        // panel her zaman nötr (CTA'sız) kalır (bkz. qrm_reward_render_step_panel).
         'rating_group' => [
             'label' => 'Puanlama Kriterleri',
             'icon' => 'dashicons-star-filled',
@@ -44,7 +49,6 @@ function qrm_cf_field_types($include_system = false) {
             'has_options' => false,
             'hint' => 'Bilgi / yönlendirme paneli',
             'is_widget' => true,
-            'is_system_only' => true,
         ],
     ];
 
@@ -792,7 +796,13 @@ function qrm_cf_notify_admin($form, $fields, $data) {
     $body .= '<p style="font-size:13px;opacity:.65;margin:0 0 18px;">' . esc_html(current_time('d.m.Y H:i')) . ' tarihinde yeni bir gönderim alındı.</p>';
     $body .= '<table style="width:100%;border-collapse:collapse;font-size:14px;">';
 
+    $widget_types = qrm_cf_field_types(true);
     foreach ((array) $fields as $field) {
+        // Widget'lar (rating_group, google_reward) POST verisi taşımaz;
+        // bildirimde boş bir satır olarak görünmesin.
+        if (!empty($widget_types[$field->field_type]['is_widget'])) {
+            continue;
+        }
         $key   = $field->field_key;
         $value = isset($data[$key]) ? qrm_cf_format_value($field, $data[$key]) : '';
         $body .= '<tr>';

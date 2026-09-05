@@ -201,6 +201,7 @@ function qrm_pro_render_form_script($settings, $js_limit = 0, $has_list = true, 
             initWizard(form);
             initPhoneMask(form);
             initMediaUpload(form);
+            qrmInitRewardGating(form);
 
             form.addEventListener('submit', function(e) {
                 e.preventDefault();

@@ -12,6 +12,7 @@ require_once QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/settings.php';
 require_once QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/frontend/form-steps.php';
 require_once QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/forms/review-form.php';
 require_once QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/admin/menu.php';
+require_once QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/rewards/popup-render.php';
 // functions.php qrm_cf_unread_total tanımlar; test-yorum-admin.php onu taklit
 // ettiği için burada require edilmez. Registry / sanitize iddiaları kaynak metninden okunur.
 
@@ -219,5 +220,35 @@ qrms_test(
 		$steps = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/frontend/form-steps.php' );
 		qrms_assert_contains( 'qrm-rating-row', $steps, 'wizard satır varlığına bakar' );
 		qrms_assert_contains( 'google_reward', $steps, 'ödül adımı atlanır' );
+	}
+);
+
+qrms_test(
+	'google_reward paneli varsayılan olarak nötr — CTA gizli, eşik data-attribute\'ta',
+	function () {
+		$settings = qrm_pro_default_settings();
+		$settings['google_review_threshold']    = 3.5;
+		$settings['qrm_reward_popup_title']      = 'Bizi Sevdiniz mi?';
+		$settings['qrm_reward_popup_text']       = 'Google\'da bırakır mısınız?';
+		$settings['qrm_reward_popup_button_text']= 'Değerlendir';
+		$settings['google_review_url']           = 'https://maps.google.com/örnek';
+
+		$html = qrm_reward_render_step_panel( $settings );
+
+		qrms_assert_contains( 'data-threshold="3.5"', $html, 'eşik data attribute\'ta' );
+		qrms_assert_contains( '<div class="qrm-rw-step-cta" hidden>', $html, 'CTA varsayılan gizli — sunucu tarafında asla açık basılmaz' );
+		qrms_assert_contains( '<p class="qrm-rw-step-neutral">', $html, 'nötr blok basılıyor' );
+		qrms_assert_false(
+			false !== strpos( $html, '<p class="qrm-rw-step-neutral" hidden>' ),
+			'nötr blok varsayılan görünür'
+		);
+
+		// JS'in canlı ortalamayı hangi seçicilerden okuduğu — hem çoklu kriter
+		// (rating_group) hem tekli 'rating' alan tipi kapsanmalı, aksi halde
+		// özel formlardaki tekli yıldız alanı eşiği hiç tetiklemez.
+		$steps_js = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/frontend/form-steps.php' );
+		qrms_assert_contains( 'qrmComputeLiveRatingAvg', $steps_js, 'canlı ortalama fonksiyonu var' );
+		qrms_assert_contains( '.qrm-rating-row input[type=radio]:checked, .qrm-rating-stars input[type=radio]:checked', $steps_js, 'hem grup hem tekli puanlama okunuyor' );
+		qrms_assert_contains( 'qrmInitRewardGating', $steps_js, 'gating başlatıcı var' );
 	}
 );

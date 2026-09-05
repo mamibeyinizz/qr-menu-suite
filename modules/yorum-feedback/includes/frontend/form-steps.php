@@ -833,5 +833,45 @@ function qrm_pro_steps_wizard_js() {
             });
             box.innerHTML = html;
         }
+
+        // Google & Ödül adım paneli (qrm_reward_render_step_panel): CTA'yı
+        // yalnızca formda bir puanlama alanı VARSA ve canlı ortalama eşiği
+        // karşılıyorsa gösterir. Puanlama alanı hiç yoksa (ya da henüz
+        // doldurulmamışsa) daima nötr metin kalır — google_review_threshold
+        // gönderim öncesi bu adımda by-pass edilmesin diye.
+        function qrmComputeLiveRatingAvg(form) {
+            var checked = form.querySelectorAll(
+                '.qrm-rating-row input[type=radio]:checked, .qrm-rating-stars input[type=radio]:checked'
+            );
+            if (!checked.length) return null;
+            var sum = 0;
+            checked.forEach(function(el) { sum += parseFloat(el.value) || 0; });
+            return sum / checked.length;
+        }
+
+        function qrmSyncRewardPanels(form) {
+            var panels = form.querySelectorAll('.qrm-rw-step-panel');
+            if (!panels.length) return;
+            var avg = qrmComputeLiveRatingAvg(form);
+            panels.forEach(function(panel) {
+                var threshold = parseFloat(panel.getAttribute('data-threshold')) || 0;
+                var show = (avg !== null && avg >= threshold);
+                var cta = panel.querySelector('.qrm-rw-step-cta');
+                var neutral = panel.querySelector('.qrm-rw-step-neutral');
+                if (cta) cta.hidden = !show;
+                if (neutral) neutral.hidden = show;
+            });
+        }
+
+        function qrmInitRewardGating(form) {
+            if (!form || !form.querySelector('.qrm-rw-step-panel')) return;
+            qrmSyncRewardPanels(form);
+            form.addEventListener('change', function(e) {
+                var t = e.target;
+                if (t && t.type === 'radio' && t.closest('.qrm-rating-row, .qrm-rating-stars')) {
+                    qrmSyncRewardPanels(form);
+                }
+            });
+        }
 JS;
 }
