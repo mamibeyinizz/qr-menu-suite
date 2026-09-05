@@ -448,6 +448,59 @@
 		return grup;
 	}
 
+	/* ---- personel devralma: eskalasyon sonrası mesaj yoklaması ----
+	   Bir sohbet eskalasyon aldığında (admin "Canlı Sohbetler" panelinde
+	   görünür) personel müşteriye doğrudan yazabilir. Bu, o yanıtları
+	   müşteri tarafında görünür kılan yoklama döngüsüdür. Yalnızca bu
+	   sekmede en az bir eskalasyon yaşandıktan SONRA başlar — her ziyaretçi
+	   sohbeti için sürekli AJAX yükü oluşturmamak için. */
+
+	var personelSonId = 0;
+	var personelYoklamaTimer = null;
+
+	function personelBalonu( mesajMetni ) {
+		var el = balon( mesajMetni, 'bot' );
+		if ( el ) {
+			el.classList.add( 'gemini-msg-personel' );
+		}
+		return el;
+	}
+
+	function personelYokla() {
+		if ( 'hidden' === document.visibilityState ) {
+			return;
+		}
+		istek( {
+			action: 'qmo_chatbot_personel_yokla',
+			sonrasi_id: personelSonId
+		} ).then( function ( yanit ) {
+			if ( ! yanit || ! yanit.success || ! yanit.data || ! Array.isArray( yanit.data.mesajlar ) ) {
+				return;
+			}
+			yanit.data.mesajlar.forEach( function ( m ) {
+				if ( ! m || ! m.mesaj ) {
+					return;
+				}
+				personelBalonu( m.mesaj );
+				ekranaKaydet( 'bot', m.mesaj );
+				personelSonId = Math.max( personelSonId, parseInt( m.id, 10 ) || 0 );
+			} );
+			if ( yanit.data.mesajlar.length ) {
+				gecmisKaydet();
+				if ( ! overlay.classList.contains( 'gemini-acik' ) ) {
+					rozetGoster();
+				}
+			}
+		} ).catch( function () {} );
+	}
+
+	function personelYoklamaBaslat() {
+		if ( personelYoklamaTimer ) {
+			return;
+		}
+		personelYoklamaTimer = window.setInterval( personelYokla, 5000 );
+	}
+
 	function yaziyorGoster() {
 		var el = document.createElement( 'div' );
 		el.className = 'gemini-typing';
@@ -478,7 +531,8 @@
 		try {
 			sessionStorage.setItem( GECMIS_STORAGE_KEY, JSON.stringify( {
 				gecmis: gecmis,
-				ekran: ekranKaydi
+				ekran: ekranKaydi,
+				eskalasyon: !! personelYoklamaTimer
 			} ) );
 		} catch ( e ) {}
 	}
@@ -504,6 +558,9 @@
 						balon( satir.metin, 'bot' === satir.rol ? 'bot' : 'user' );
 					}
 				} );
+			}
+			if ( v && v.eskalasyon ) {
+				personelYoklamaBaslat();
 			}
 		} catch ( e ) {}
 	}
@@ -665,6 +722,7 @@
 
 			if ( eskalasyon ) {
 				eskalasyonBalonu( cevap );
+				personelYoklamaBaslat();
 			} else if ( urunler.length ) {
 				botBalonu( cevap, urunler );
 			} else {

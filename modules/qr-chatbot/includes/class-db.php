@@ -17,7 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 class QMO_Chatbot_DB {
 
-	const SURUM = '1.1';
+	const SURUM = '1.2';
 	const OPT   = 'qmo_chatbot_db_surum';
 
 	/**
@@ -74,6 +74,26 @@ class QMO_Chatbot_DB {
 	}
 
 	/**
+	 * Canlı sohbet (eskalasyon) takip tablosu.
+	 *
+	 * @return string
+	 */
+	public static function canli_tablosu() {
+		global $wpdb;
+		return $wpdb->prefix . 'qmo_chatbot_canli';
+	}
+
+	/**
+	 * Personel → müşteri mesaj tablosu.
+	 *
+	 * @return string
+	 */
+	public static function personel_mesaj_tablosu() {
+		global $wpdb;
+		return $wpdb->prefix . 'qmo_chatbot_personel_mesaj';
+	}
+
+	/**
 	 * Tabloları dbDelta ile oluşturur.
 	 *
 	 * @return void
@@ -81,11 +101,13 @@ class QMO_Chatbot_DB {
 	public static function tablolari_kur() {
 		global $wpdb;
 
-		$collate = $wpdb->get_charset_collate();
-		$mesaj   = self::mesaj_tablosu();
-		$bilin   = self::bilinmeyen_tablosu();
-		$kural   = self::oneri_kural_tablosu();
-		$log     = self::oneri_log_tablosu();
+		$collate  = $wpdb->get_charset_collate();
+		$mesaj    = self::mesaj_tablosu();
+		$bilin    = self::bilinmeyen_tablosu();
+		$kural    = self::oneri_kural_tablosu();
+		$log      = self::oneri_log_tablosu();
+		$canli    = self::canli_tablosu();
+		$personel = self::personel_mesaj_tablosu();
 
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 
@@ -147,6 +169,33 @@ class QMO_Chatbot_DB {
 				KEY oturum (oturum_id),
 				KEY urun (urun_id),
 				KEY durum_tarih (durum, created_at)
+			) {$collate};"
+		);
+
+		dbDelta(
+			"CREATE TABLE {$canli} (
+				id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+				oturum_id varchar(64) NOT NULL DEFAULT '',
+				masa_no varchar(64) NOT NULL DEFAULT '',
+				son_musteri_mesaj text NOT NULL,
+				son_bot_cevap text NOT NULL,
+				durum varchar(20) NOT NULL DEFAULT 'bekliyor',
+				son_aktivite datetime NOT NULL,
+				created_at datetime NOT NULL,
+				PRIMARY KEY  (id),
+				UNIQUE KEY idx_oturum (oturum_id),
+				KEY idx_durum_aktivite (durum, son_aktivite)
+			) {$collate};"
+		);
+
+		dbDelta(
+			"CREATE TABLE {$personel} (
+				id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+				oturum_id varchar(64) NOT NULL DEFAULT '',
+				mesaj text NOT NULL,
+				created_at datetime NOT NULL,
+				PRIMARY KEY  (id),
+				KEY idx_oturum_id (oturum_id, id)
 			) {$collate};"
 		);
 	}
@@ -384,6 +433,10 @@ class QMO_Chatbot_DB {
 	/**
 	 * X günden eski kayıtları sil.
 	 *
+	 * Kapatılmış canlı sohbet kayıtları ve bunlara ait personel mesajları da
+	 * aynı saklama süresine tabidir; "bekliyor"/"devralindi" durumundaki AÇIK
+	 * kayıtlara — hâlâ personel ilgisi bekleyebilecekleri için — dokunulmaz.
+	 *
 	 * @param int $gun Gün.
 	 * @return int
 	 */
@@ -396,17 +449,209 @@ class QMO_Chatbot_DB {
 			return 0;
 		}
 
-		$tablo_mesaj = self::mesaj_tablosu();
-		$tablo_log   = self::oneri_log_tablosu();
-		$esik        = gmdate( 'Y-m-d H:i:s', time() - ( $gun * DAY_IN_SECONDS ) );
-		$silinen     = (int) $wpdb->query(
+		$tablo_mesaj    = self::mesaj_tablosu();
+		$tablo_log      = self::oneri_log_tablosu();
+		$tablo_canli    = self::canli_tablosu();
+		$tablo_personel = self::personel_mesaj_tablosu();
+		$esik           = gmdate( 'Y-m-d H:i:s', time() - ( $gun * DAY_IN_SECONDS ) );
+
+		$silinen  = (int) $wpdb->query(
 			$wpdb->prepare( "DELETE FROM {$tablo_mesaj} WHERE created_at < %s", $esik )
 		);
-		$silinen    += (int) $wpdb->query(
+		$silinen += (int) $wpdb->query(
 			$wpdb->prepare( "DELETE FROM {$tablo_log} WHERE created_at < %s", $esik )
 		);
 
+		$kapali_oturumlar = $wpdb->get_col(
+			$wpdb->prepare( "SELECT oturum_id FROM {$tablo_canli} WHERE durum = 'kapatildi' AND son_aktivite < %s", $esik )
+		);
+		if ( $kapali_oturumlar ) {
+			$yerler = implode( ',', array_fill( 0, count( $kapali_oturumlar ), '%s' ) );
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- yerler yalnızca %s.
+			$silinen += (int) $wpdb->query( $wpdb->prepare( "DELETE FROM {$tablo_personel} WHERE oturum_id IN ({$yerler})", $kapali_oturumlar ) );
+		}
+		$silinen += (int) $wpdb->query(
+			$wpdb->prepare( "DELETE FROM {$tablo_canli} WHERE durum = 'kapatildi' AND son_aktivite < %s", $esik )
+		);
+
 		return $silinen;
+	}
+
+	/**
+	 * Canlı sohbet takibini günceller.
+	 *
+	 * Eskalasyon bu turda tetiklendiyse yeni bir satır açar (veya var olanı
+	 * günceller); tetiklenmediyse yalnızca ZATEN takip edilen bir oturumu
+	 * günceller — aksi hâlde her sıradan sohbet "canlı" listesine düşerdi.
+	 * `durum` alanına burada dokunulmaz: personel devraldıysa/kapattıysa bu
+	 * güncelleme onu ezmez.
+	 *
+	 * @param string $oturum_id     Oturum anahtarı.
+	 * @param string $masa_no       Masa.
+	 * @param string $musteri_mesaj Ziyaretçi mesajı.
+	 * @param string $bot_cevap     Bot yanıtı.
+	 * @param bool   $eskalasyon_mi Bu turda eskalasyon tetiklendi mi.
+	 * @return void
+	 */
+	public static function canli_guncelle( $oturum_id, $masa_no, $musteri_mesaj, $bot_cevap, $eskalasyon_mi ) {
+		global $wpdb;
+
+		self::sema_kontrol();
+
+		$oturum_id = substr( sanitize_text_field( $oturum_id ), 0, 64 );
+		if ( '' === $oturum_id ) {
+			return;
+		}
+
+		$masa_no       = substr( sanitize_text_field( $masa_no ), 0, 64 );
+		$musteri_mesaj = sanitize_textarea_field( $musteri_mesaj );
+		$bot_cevap     = sanitize_textarea_field( $bot_cevap );
+		$simdi         = current_time( 'mysql' );
+		$tablo         = self::canli_tablosu();
+
+		if ( $eskalasyon_mi ) {
+			$wpdb->query(
+				$wpdb->prepare(
+					"INSERT INTO {$tablo} (oturum_id, masa_no, son_musteri_mesaj, son_bot_cevap, durum, son_aktivite, created_at)
+						VALUES (%s, %s, %s, %s, 'bekliyor', %s, %s)
+						ON DUPLICATE KEY UPDATE
+							masa_no = VALUES(masa_no),
+							son_musteri_mesaj = VALUES(son_musteri_mesaj),
+							son_bot_cevap = VALUES(son_bot_cevap),
+							son_aktivite = VALUES(son_aktivite)",
+					$oturum_id,
+					$masa_no,
+					$musteri_mesaj,
+					$bot_cevap,
+					$simdi,
+					$simdi
+				)
+			);
+			return;
+		}
+
+		$wpdb->update(
+			$tablo,
+			array(
+				'masa_no'           => $masa_no,
+				'son_musteri_mesaj' => $musteri_mesaj,
+				'son_bot_cevap'     => $bot_cevap,
+				'son_aktivite'      => $simdi,
+			),
+			array( 'oturum_id' => $oturum_id ),
+			array( '%s', '%s', '%s', '%s' ),
+			array( '%s' )
+		);
+	}
+
+	/**
+	 * Kapatılmamış canlı sohbetler (en son aktif olan önce).
+	 *
+	 * @return array
+	 */
+	public static function canli_liste() {
+		global $wpdb;
+		self::sema_kontrol();
+
+		$tablo    = self::canli_tablosu();
+		$satirlar = $wpdb->get_results( "SELECT * FROM {$tablo} WHERE durum <> 'kapatildi' ORDER BY son_aktivite DESC" );
+
+		return is_array( $satirlar ) ? $satirlar : array();
+	}
+
+	/**
+	 * Canlı sohbeti kapatır (devralma bitti).
+	 *
+	 * @param string $oturum_id Oturum anahtarı.
+	 * @return bool
+	 */
+	public static function canli_kapat( $oturum_id ) {
+		global $wpdb;
+		self::sema_kontrol();
+
+		$oturum_id = sanitize_text_field( $oturum_id );
+		if ( '' === $oturum_id ) {
+			return false;
+		}
+
+		return false !== $wpdb->update(
+			self::canli_tablosu(),
+			array( 'durum' => 'kapatildi' ),
+			array( 'oturum_id' => $oturum_id ),
+			array( '%s' ),
+			array( '%s' )
+		);
+	}
+
+	/**
+	 * Personel mesajı yazar; oturumu "devralindi" durumuna taşır.
+	 *
+	 * @param string $oturum_id Oturum anahtarı.
+	 * @param string $mesaj     Personel mesajı.
+	 * @return int Eklenen satır kimliği (yazılamadıysa 0).
+	 */
+	public static function personel_mesaj_yaz( $oturum_id, $mesaj ) {
+		global $wpdb;
+
+		self::sema_kontrol();
+
+		$oturum_id = substr( sanitize_text_field( $oturum_id ), 0, 64 );
+		$mesaj     = sanitize_textarea_field( $mesaj );
+		if ( '' === $oturum_id || '' === $mesaj ) {
+			return 0;
+		}
+
+		$wpdb->insert(
+			self::personel_mesaj_tablosu(),
+			array(
+				'oturum_id'  => $oturum_id,
+				'mesaj'      => $mesaj,
+				'created_at' => current_time( 'mysql' ),
+			),
+			array( '%s', '%s', '%s' )
+		);
+		$id = (int) $wpdb->insert_id;
+		if ( $id < 1 ) {
+			return 0;
+		}
+
+		$wpdb->update(
+			self::canli_tablosu(),
+			array( 'durum' => 'devralindi' ),
+			array( 'oturum_id' => $oturum_id ),
+			array( '%s' ),
+			array( '%s' )
+		);
+
+		return $id;
+	}
+
+	/**
+	 * Bir oturuma ait, verilen kimlikten SONRAKİ personel mesajları.
+	 *
+	 * @param string $oturum_id  Oturum anahtarı.
+	 * @param int    $sonrasi_id Bu kimlikten sonraki satırlar (0 = tümü).
+	 * @return array
+	 */
+	public static function personel_mesajlari_al( $oturum_id, $sonrasi_id = 0 ) {
+		global $wpdb;
+		self::sema_kontrol();
+
+		$oturum_id = sanitize_text_field( $oturum_id );
+		if ( '' === $oturum_id ) {
+			return array();
+		}
+
+		$tablo    = self::personel_mesaj_tablosu();
+		$satirlar = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT * FROM {$tablo} WHERE oturum_id = %s AND id > %d ORDER BY id ASC",
+				$oturum_id,
+				absint( $sonrasi_id )
+			)
+		);
+
+		return is_array( $satirlar ) ? $satirlar : array();
 	}
 
 	/**

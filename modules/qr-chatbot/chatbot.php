@@ -34,6 +34,7 @@ require_once QMO_CHATBOT_DIR . 'rest-order.php';
 require_once QMO_CHATBOT_DIR . 'ajax-order.php';
 require_once QMO_CHATBOT_DIR . 'ajax-waiter-bill.php';
 require_once QMO_CHATBOT_DIR . 'ajax-sepet-analitik.php';
+require_once QMO_CHATBOT_DIR . 'ajax-canli-sohbet.php';
 
 add_action( 'wp_enqueue_scripts', 'qmo_chatbot_buton_varliklarini_kaydet', 5 );
 add_action( 'wp_enqueue_scripts', 'qmo_chatbot_otomatik_varliklarini_yukle', 10 );

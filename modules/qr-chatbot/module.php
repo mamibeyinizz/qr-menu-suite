@@ -242,6 +242,17 @@ function qrms_module_qr_chatbot_admin_assets() {
 		return;
 	}
 
+	if ( 'qrms-chatbot-canli' === $page ) {
+		wp_enqueue_script(
+			'qmo-admin-canli-sohbet',
+			QRMS_PLUGIN_URL . 'modules/qr-chatbot/assets/js/admin-canli-sohbet.js',
+			array(),
+			QRMS_Helpers::asset_version( 'modules/qr-chatbot/assets/js/admin-canli-sohbet.js' ),
+			true
+		);
+		return;
+	}
+
 	$js_sayfalari = array( 'qrms-chatbot-bot-identity', 'qrms-chatbot-appearance' );
 	if ( ! in_array( $page, $js_sayfalari, true ) ) {
 		return;
