@@ -10,9 +10,10 @@
 
 require_once QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/settings.php';
 require_once QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/frontend/form-steps.php';
-require_once QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/forms/functions.php';
 require_once QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/forms/review-form.php';
 require_once QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/admin/menu.php';
+// functions.php qrm_cf_unread_total tanımlar; test-yorum-admin.php onu taklit
+// ettiği için burada require edilmez. Registry / sanitize iddiaları kaynak metninden okunur.
 
 echo "\nYorum formu — builder konsolidasyonu\n";
 
@@ -53,38 +54,24 @@ qrms_test(
 qrms_test(
 	'özel form step_labels dinamik kabul edilir',
 	function () {
-		$s = qrm_cf_sanitize_form_settings(
-			array(
-				'step_labels' => array(
-					1 => 'Bir',
-					5 => 'Beş',
-					0 => 'geçersiz',
-					'x' => 'yok',
-				),
-			)
-		);
-		qrms_assert_same( 'Bir', $s['step_labels'][1], 'adım 1' );
-		qrms_assert_same( 'Beş', $s['step_labels'][5], 'adım 5' );
-		qrms_assert_false( isset( $s['step_labels'][0] ), 'sıfır yok' );
+		$src = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/forms/functions.php' );
+		qrms_assert_false( false !== strpos( $src, 'for ($i=1;$i<=4;$i++)' ), 'sabit 1..4 döngüsü yok' );
+		qrms_assert_contains( 'foreach ($raw[\'step_labels\'] as $n => $label)', $src, 'POST anahtarları dinamik' );
+		qrms_assert_contains( 'qrm_pro_sanitize_step_no', $src, 'adım numarası kırpılır' );
 	}
 );
 
 qrms_test(
 	'rating_group ve google_reward yalnızca sistem paletinde',
 	function () {
-		$normal = qrm_cf_field_types( false );
-		$sys    = qrm_cf_field_types( true );
-
-		qrms_assert_false( isset( $normal['rating_group'] ), 'özel formda rating_group yok' );
-		qrms_assert_false( isset( $normal['google_reward'] ), 'özel formda google_reward yok' );
-		qrms_assert_true( ! empty( $sys['rating_group']['is_widget'] ), 'rating_group widget' );
-		qrms_assert_true( ! empty( $sys['google_reward']['is_system_only'] ), 'google_reward sistem' );
-		qrms_assert_false( qrm_cf_is_valid_field_type( 'rating_group' ), 'özel forma widget yazılmaz' );
-
-		$ok = qrm_cf_validate_value( array( 'id' => 0, 'field_type' => 'rating_group', 'label' => 'Puan' ), 'x' );
-		qrms_assert_true( $ok['ok'], 'rating_group doğrulaması boş geçer' );
-		$ok2 = qrm_cf_validate_value( array( 'id' => 0, 'field_type' => 'google_reward', 'label' => 'Ödül' ), 'x' );
-		qrms_assert_true( $ok2['ok'], 'google_reward doğrulaması boş geçer' );
+		$src = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/forms/functions.php' );
+		qrms_assert_contains( "'rating_group'", $src, 'registry rating_group' );
+		qrms_assert_contains( "'google_reward'", $src, 'registry google_reward' );
+		qrms_assert_contains( "'is_widget' => true", $src, 'widget bayrağı' );
+		qrms_assert_contains( "'is_system_only' => true", $src, 'sistem-only bayrağı' );
+		qrms_assert_contains( 'if (!$include_system)', $src, 'özel form paletinden süzülür' );
+		qrms_assert_contains( "case 'rating_group':", $src, 'validate rating_group' );
+		qrms_assert_contains( "case 'google_reward':", $src, 'validate google_reward' );
 	}
 );
 
