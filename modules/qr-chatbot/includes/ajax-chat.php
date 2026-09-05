@@ -143,6 +143,7 @@ if ( ! function_exists( 'qmo_ajax_chat' ) ) {
 
 		if ( isset( $data['candidates'][0]['content']['parts'][0]['text'] ) ) {
 			$cevap = $data['candidates'][0]['content']['parts'][0]['text'];
+			$cevap = qmo_chat_dogrulanmamis_etiketleri_temizle( $cevap, $message );
 			qmo_chatbot_gecmis_yaz( $sess, $message, $cevap );
 			$cevap = qmo_chat_eskalasyon_uygula( $cevap );
 			qmo_chat_oneri_gosterim_logla( $cevap, $sess, $message, $decoded_history );
@@ -190,6 +191,120 @@ if ( ! function_exists( 'qmo_chatbot_gecmis_yaz' ) ) {
 		if ( function_exists( 'qmo_chatbot_bilemedi_mi' ) && qmo_chatbot_bilemedi_mi( $cevap ) ) {
 			QMO_Chatbot_DB::bilinmeyen_yaz( $soru );
 		}
+	}
+}
+
+/**
+ * Çok dilli, kaba onay/istek kelime kontrolü.
+ *
+ * @param string $mesaj      Bu turdaki kullanıcı mesajı.
+ * @param array  $anahtarlar Aranacak kelime/öbek listesi.
+ * @return bool
+ */
+if ( ! function_exists( 'qmo_chat_mesajda_isaret_var_mi' ) ) {
+	function qmo_chat_mesajda_isaret_var_mi( $mesaj, array $anahtarlar ) {
+		$mesaj = function_exists( 'mb_strtolower' ) ? mb_strtolower( (string) $mesaj, 'UTF-8' ) : strtolower( (string) $mesaj );
+		foreach ( $anahtarlar as $kelime ) {
+			$kelime = function_exists( 'mb_strtolower' ) ? mb_strtolower( $kelime, 'UTF-8' ) : strtolower( $kelime );
+			if ( '' !== $kelime && false !== mb_strpos( $mesaj, $kelime, 0, 'UTF-8' ) ) {
+				return true;
+			}
+		}
+		return false;
+	}
+}
+
+/**
+ * Sipariş onayı için kaba, çok dilli sinyal listesi.
+ *
+ * İkinci bir emniyet katmanıdır (bkz. qmo_chat_dogrulanmamis_etiketleri_temizle);
+ * modelin kendi karar mekanizmasının yerine geçmez, yalnızca hiçbir onay
+ * sinyali taşımayan bir turda [SIPARIS] bloğunun sessizce yürürlüğe
+ * girmesini engeller. Bilinçli olarak GENİŞ tutulur: yanlış pozitif
+ * (gereksiz yere izin vermek) değil, yanlış negatif (gerçek bir onayı
+ * reddetmek) burada asıl kaçınılması gereken hatadır.
+ *
+ * @return string[]
+ */
+if ( ! function_exists( 'qmo_chat_siparis_onay_isaretleri' ) ) {
+	function qmo_chat_siparis_onay_isaretleri() {
+		return array(
+			'evet', 'onay', 'onaylıyorum', 'onayliyorum', 'tamam', 'olur', 'gönder', 'gonder',
+			'kesinlikle', 'iletebilirsin', 'siparişi ver', 'siparisi ver', 'siparis', 'sipariş',
+			'yes', 'confirm', 'okay', 'ok', 'sure', 'place the order', 'send it',
+			'ja', 'bestätige', 'bestellen', 'oui', 'confirmer', 'envoyer',
+			'да', 'подтверждаю', 'نعم', 'تمام', 'أكد',
+		);
+	}
+}
+
+/**
+ * Garson çağırma isteği için kaba, çok dilli sinyal listesi.
+ *
+ * @return string[]
+ */
+if ( ! function_exists( 'qmo_chat_garson_isaretleri' ) ) {
+	function qmo_chat_garson_isaretleri() {
+		return array(
+			'garson', 'personel', 'bakar mısın', 'bakar misin', 'çağır', 'cagir', 'gelir mi',
+			'waiter', 'staff', 'kellner', 'serveur', 'официант', 'نادل',
+		);
+	}
+}
+
+/**
+ * Hesap isteği için kaba, çok dilli sinyal listesi.
+ *
+ * @return string[]
+ */
+if ( ! function_exists( 'qmo_chat_hesap_isaretleri' ) ) {
+	function qmo_chat_hesap_isaretleri() {
+		return array(
+			'hesap', 'ödeme', 'odeme', 'öde', 'ode', 'bill', 'check', 'payment',
+			'rechnung', 'addition', 'счет', 'счёт', 'الحساب',
+		);
+	}
+}
+
+/**
+ * Gerçek dünya etkisi olan kontrol etiketlerini yalnızca BU TURDAKİ
+ * kullanıcı mesajı ilgili niyeti taşıyorsa bırakır.
+ *
+ * GÜVENLİK: [CALL_WAITER]/[CALL_BILL]/[SIPARIS] tetikleyicileri tamamen
+ * modelin prompt talimatına uymasına dayanır (bkz. qmo_chat_garson_talimati,
+ * qmo_chat_siparis_talimati) — sunucu tarafında bağımsız bir doğrulama
+ * olmazsa bir prompt injection veya halüsinasyon, kullanıcı onayı olmadan
+ * gerçek bir garson çağrısı/hesap talebi/sipariş tetikleyebilir. Bu
+ * fonksiyon o bağımsız doğrulamadır: ilgili sinyali taşımayan bir turda
+ * etiketi/bloğu sessizce kaldırır, istemci artık otomatik AJAX çağrısını
+ * tetiklemez. [BILEMEDI]/[ESCALATE]/[URUN:id] gibi bilgilendirici
+ * etiketlere dokunmaz.
+ *
+ * @param string $cevap Model yanıtı (ham).
+ * @param string $mesaj Bu turdaki kullanıcı mesajı.
+ * @return string
+ */
+if ( ! function_exists( 'qmo_chat_dogrulanmamis_etiketleri_temizle' ) ) {
+	function qmo_chat_dogrulanmamis_etiketleri_temizle( $cevap, $mesaj ) {
+		$cevap = (string) $cevap;
+
+		if ( false !== strpos( $cevap, '[CALL_WAITER]' ) && ! qmo_chat_mesajda_isaret_var_mi( $mesaj, qmo_chat_garson_isaretleri() ) ) {
+			qmo_log( 'CALL_WAITER etiketi son kullanıcı mesajında karşılığı olmadığı için kaldırıldı.' );
+			$cevap = str_replace( '[CALL_WAITER]', '', $cevap );
+		}
+
+		if ( false !== strpos( $cevap, '[CALL_BILL]' ) && ! qmo_chat_mesajda_isaret_var_mi( $mesaj, qmo_chat_hesap_isaretleri() ) ) {
+			qmo_log( 'CALL_BILL etiketi son kullanıcı mesajında karşılığı olmadığı için kaldırıldı.' );
+			$cevap = str_replace( '[CALL_BILL]', '', $cevap );
+		}
+
+		if ( preg_match( '/\[SIPARIS\][\s\S]*?\[\/SIPARIS\]/i', $cevap )
+			&& ! qmo_chat_mesajda_isaret_var_mi( $mesaj, qmo_chat_siparis_onay_isaretleri() ) ) {
+			qmo_log( '[SIPARIS] bloğu son kullanıcı mesajında onay ifadesi olmadığı için kaldırıldı.' );
+			$cevap = preg_replace( '/\[SIPARIS\][\s\S]*?\[\/SIPARIS\]/i', '', $cevap );
+		}
+
+		return $cevap;
 	}
 }
 
