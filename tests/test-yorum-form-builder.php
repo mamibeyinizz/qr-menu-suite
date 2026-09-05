@@ -329,3 +329,19 @@ qrms_test(
 		qrms_assert_contains( 'qrm-fb-preview-stepnav', $src, 'önizleme gezinme çubuğu basılıyor' );
 	}
 );
+
+qrms_test(
+	'önizlemede adım geçişi ve gezinme butonları animasyonlu; adım başlığı etiketi taşır',
+	function () {
+		$src = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/admin/custom-form-builder.php' );
+		qrms_assert_contains( '@keyframes qrmFbStepIn', $src, 'adım içeriği animasyon keyframe\'i var' );
+		qrms_assert_contains( '@keyframes qrmFbBtnIn', $src, 'buton animasyon keyframe\'i var' );
+		qrms_assert_contains( ".qrm-fb-previewing .qrm-fb-step-group:not([hidden]) { animation: qrmFbStepIn", $src, 'adım içeriği görünürken animasyon oynuyor' );
+		qrms_assert_contains( 'qrm-fb-nav-animate', $src, 'buton animasyonu JS ile yeniden tetikleniyor' );
+		qrms_assert_contains( "var titleText  = sn + '. Adım' + (stepLabel ? ' › ' + esc(stepLabel) : '');", $src, 'adım başlığı etiketle birleşiyor' );
+
+		// Eski ayrı "N / toplam — etiket" göstergesi kaldırıldı; adım
+		// bilgisi artık yalnızca birleşik başlıkta ("N. Adım › Etiket") durur.
+		qrms_assert_false( false !== strpos( $src, 'qrm-fb-preview-stepnav-label' ), 'ayrı adım göstergesi kaldırıldı' );
+	}
+);

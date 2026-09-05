@@ -224,7 +224,6 @@ function qrm_cf_admin_form_editor_view() {
                         </div>
                         <div class="qrm-fb-preview-stepnav" id="qrm-fb-preview-stepnav" hidden>
                             <button type="button" class="qrm-btn-secondary" id="qrm-fb-preview-prev">← Geri</button>
-                            <span class="qrm-fb-preview-stepnav-label" id="qrm-fb-preview-stepnav-label"></span>
                             <button type="button" class="qrm-fb-submit-preview" id="qrm-fb-preview-next">Devam Et →</button>
                         </div>
                         <button type="button" class="qrm-fb-submit-preview" id="qrm-fb-submit-preview" disabled><?php echo esc_html($s['submit_text']); ?></button>
@@ -590,7 +589,17 @@ function qrm_cf_admin_builder_styles() {
         .qrm-fb-preview-stepnav[hidden] { display:none; }
         .qrm-fb-preview-stepnav .qrm-btn-secondary { flex:0 0 auto; padding:12px 18px; border-radius:var(--qrm-radius); border:1px solid var(--qrm-border); background:transparent; color:var(--qrm-text); font-size:14px; font-weight:600; cursor:default; }
         .qrm-fb-preview-stepnav .qrm-fb-submit-preview { flex:1 1 auto; margin-top:0; width:auto; }
-        .qrm-fb-preview-stepnav-label { flex:1 1 auto; text-align:center; font-size:12.5px; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:.4px; }
+
+        @keyframes qrmFbStepIn { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:none; } }
+        @keyframes qrmFbBtnIn { from { opacity:0; transform:translateY(8px) scale(.97); } to { opacity:1; transform:none; } }
+
+        /* Önizlemede yalnızca aktif adım görünür kalır (bkz. syncPreviewStepNav);
+           display:none'dan çıkan öğede animasyon otomatik baştan oynar. Butonlar
+           hiç gizlenmediği için aynı tetiği almaz — JS, adım değişince sınıfı
+           kaldırıp reflow sonrası yeniden ekleyerek animasyonu zorla tetikler. */
+        .qrm-fb-previewing .qrm-fb-step-group:not([hidden]) { animation: qrmFbStepIn .35s ease both; }
+        .qrm-fb-preview-stepnav.qrm-fb-nav-animate .qrm-btn-secondary:not([hidden]),
+        .qrm-fb-preview-stepnav.qrm-fb-nav-animate .qrm-fb-submit-preview:not([hidden]) { animation: qrmFbBtnIn .3s ease both; }
 
         .qrm-fb-step-group { width:100%; margin-bottom:18px; min-height:56px; padding:6px; border:1px dashed transparent; border-radius:10px; }
         .qrm-fb-step-group.is-drop { border-color:#2271b1; background:rgba(34,113,177,.04); }
@@ -688,7 +697,6 @@ function qrm_cf_admin_builder_script($state, $types, $ctx = []) {
         var jsonInput = document.getElementById('qrm-fb-fields-json');
         var previewBox = document.getElementById('qrm-fb-preview-box');
         var previewStepNav   = document.getElementById('qrm-fb-preview-stepnav');
-        var previewStepLabel = document.getElementById('qrm-fb-preview-stepnav-label');
         var previewPrevBtn   = document.getElementById('qrm-fb-preview-prev');
         var previewNextBtn   = document.getElementById('qrm-fb-preview-next');
         var previewSubmitBtn = document.getElementById('qrm-fb-submit-preview');
@@ -895,11 +903,16 @@ function qrm_cf_admin_builder_script($state, $types, $ctx = []) {
             if (previewPrevBtn) previewPrevBtn.hidden = isFirst;
             if (previewNextBtn) previewNextBtn.hidden = isLast;
             if (previewSubmitBtn) previewSubmitBtn.hidden = !isLast;
-            if (previewStepLabel) {
-                var labelInput = document.getElementById('qrm-fb-step-label-' + previewStepIdx);
-                var stepTitle = (labelInput && labelInput.value.trim()) || (previewStepIdx + '. Adım');
-                previewStepLabel.textContent = previewStepIdx + ' / ' + stepCount + ' — ' + stepTitle;
-            }
+
+            // Adım değiştiğinde gezinme butonları da (adım içeriğiyle aynı
+            // anda) animasyonla belirsin. .qrm-fb-step-group[hidden] açılıp
+            // kapandıkça CSS animasyonu kendiliğinden yeniden oynuyor (display:
+            // none'dan çıkan öğe animasyonu baştan başlatır); butonlar hiç
+            // gizlenmediği için aynı etkiyi almaz — sınıfı kaldırıp reflow
+            // sonrası yeniden eklemek CSS animasyonunu zorla yeniden tetikler.
+            previewStepNav.classList.remove('qrm-fb-nav-animate');
+            void previewStepNav.offsetWidth;
+            previewStepNav.classList.add('qrm-fb-nav-animate');
         }
 
         function render() {
@@ -919,7 +932,10 @@ function qrm_cf_admin_builder_script($state, $types, $ctx = []) {
             var stepNums = Object.keys(groups).map(function(k) { return parseInt(k, 10); }).sort(function(a, b) { return a - b; });
 
             itemsBox.innerHTML = stepNums.map(function(sn) {
-                var groupHtml = '<div class="qrm-fb-step-group" data-step="' + sn + '"><div class="qrm-fb-step-group-title">' + sn + '. Adım</div>';
+                var labelInput = document.getElementById('qrm-fb-step-label-' + sn);
+                var stepLabel  = labelInput ? labelInput.value.trim() : '';
+                var titleText  = sn + '. Adım' + (stepLabel ? ' › ' + esc(stepLabel) : '');
+                var groupHtml = '<div class="qrm-fb-step-group" data-step="' + sn + '"><div class="qrm-fb-step-group-title">' + titleText + '</div>';
                 if (!groups[sn].length) {
                     groupHtml += '<div class="qrm-fb-step-empty">Bu adıma alan sürükleyin.</div>';
                 }
