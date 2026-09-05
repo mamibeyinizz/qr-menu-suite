@@ -305,6 +305,7 @@ function qrm_cf_render_form_script($form, $s) {
                 submitSel: '.qrm-cf-step-submit'
             });
         }
+        qrmInitRewardGating(form);
 
         function showMessage(type, text) {
             msgBox.innerHTML = '<div class="qrm-alert qrm-' + type + '"></div>';

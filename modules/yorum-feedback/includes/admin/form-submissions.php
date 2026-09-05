@@ -77,7 +77,12 @@ function qrm_cf_admin_submissions_pane() {
     $paged    = isset($_GET['paged']) ? max(1, intval($_GET['paged'])) : 1;
     $per_page = 25;
 
-    $fields      = qrm_cf_get_fields($current->id);
+    // Widget'lar (rating_group, google_reward) POST verisi taşımaz; gönderim
+    // tablosunda hep boş bir sütun olarak görünmesinler.
+    $widget_types = qrm_cf_field_types(true);
+    $fields       = array_values(array_filter(qrm_cf_get_fields($current->id), static function ($f) use ($widget_types) {
+        return empty($widget_types[$f->field_type]['is_widget']);
+    }));
     if ($has_list_filters && function_exists('qrm_cf_export_submissions_chunk')) {
         $total = qrm_cf_count_submissions_filtered($current->id, $status_filter, $list_filters);
         $submissions = qrm_cf_export_submissions_chunk($current->id, $status_filter, $list_filters, $per_page, ($paged - 1) * $per_page);

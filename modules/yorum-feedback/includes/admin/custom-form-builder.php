@@ -185,14 +185,17 @@ function qrm_cf_admin_form_editor_view() {
                     <p class="qrm-cf-sub" style="margin:0 0 14px;"><?php
                         echo $is_system
                             ? esc_html__('Sabit alanlar listede durur. Ana Yorum Formu\'nda puanlama ve Google/ödül widget\'larını ekleyebilirsiniz.', 'qrms')
-                            : esc_html__('Eklemek için bir alan tipine tıklayın.', 'qrms');
+                            : esc_html__('Eklemek için bir alan tipine tıklayın. Google & Ödül Yönlendirme widget\'ı, formda bir puanlama alanı varsa eşiğe göre; yoksa her zaman nötr görünür.', 'qrms');
                     ?></p>
                     <div class="qrm-fb-palette-grid">
                         <?php foreach ($types as $type => $meta):
                             if (!empty($meta['is_system_only']) && $system !== 'review') {
                                 continue;
                             }
-                            if ($is_system && $system === 'contact' && !empty($meta['is_system_only'])) {
+                            // İletişim düzenleyicisi yalnızca başlığı kaydeder
+                            // (qrm_cf_admin_handle_system_form_save), alan/widget
+                            // düzenini hiç işlemez — palette'te göstermenin anlamı yok.
+                            if ($is_system && $system === 'contact' && !empty($meta['is_widget'])) {
                                 continue;
                             }
                             if ($is_system && empty($meta['is_widget'])) {
@@ -673,18 +676,15 @@ function qrm_cf_admin_builder_script($state, $types, $ctx = []) {
             return !!(field && (field.widget || (TYPES[field.type] && TYPES[field.type].is_widget)));
         }
         function computeStepCount() {
-            var max = 1;
+            // "Adım ekle" boş bir adım oluşturur — hiçbir alan onu referans
+            // vermez, bu yüzden sayaç yalnızca fields[]'ten değil, mevcut
+            // (kullanıcının artırdığı) stepCount'tan başlayarak BÜYÜTÜLÜR;
+            // sıfırdan yeniden hesaplanırsa boş adım her render'da silinirdi.
+            var max = stepCount;
             fields.forEach(function(f) {
                 var sn = parseInt(f.step_no, 10) || 1;
                 if (sn > max) max = sn;
             });
-            var wrapLabels = document.getElementById('qrm-fb-step-labels');
-            if (wrapLabels) {
-                wrapLabels.querySelectorAll('[data-step]').forEach(function(el) {
-                    var n = parseInt(el.getAttribute('data-step'), 10);
-                    if (n > max) max = n;
-                });
-            }
             if (max > maxSteps) max = maxSteps;
             if (max < 1) max = 1;
             return max;

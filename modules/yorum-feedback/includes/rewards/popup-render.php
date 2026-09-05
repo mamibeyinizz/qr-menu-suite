@@ -66,6 +66,8 @@ function qrm_reward_render_popup_style_block($settings) {
         .qrm-rw-modal { position: relative; width: 100%; max-width: 400px; background: <?php echo $c['bg']; ?>; color: <?php echo $c['text']; ?>; border-radius: <?php echo $c['radius']; ?>px; padding: 30px 26px 24px; box-shadow: 0 24px 60px rgba(0,0,0,.28); text-align: center; font-family: inherit; animation: qrmRwUp .3s ease both; box-sizing: border-box; }
         .qrm-rw-step-panel { text-align: center; padding: 8px 4px 16px; }
         .qrm-rw-step-panel .qrm-rw-btn { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; box-sizing: border-box; }
+        .qrm-rw-step-panel [hidden] { display: none !important; }
+        .qrm-rw-step-neutral { opacity: .75; font-size: 14px; }
         .qrm-rw-modal *, .qrm-rw-modal *:before, .qrm-rw-modal *:after { box-sizing: border-box; }
         .qrm-rw-modal [hidden] { display: none; }
 
@@ -184,28 +186,43 @@ function qrm_reward_print_popup_footer() {
  * Gönderim sonrası popup ve kod talebi akışı değişmez; bu panel yalnızca
  * yönlendirme metnini adım sırasına yerleştirir.
  *
+ * ÖNEMLİ: panel iki bloklu basılır — `.qrm-rw-step-cta` (Google/ödül daveti,
+ * varsayılan gizli) ve `.qrm-rw-step-neutral` (nötr teşekkür mesajı,
+ * varsayılan görünür). Hangisinin görüneceğine PHP değil, JS karar verir
+ * (qrmInitRewardGating, form-steps.php): formda bir puanlama alanı
+ * (rating_group ya da 'rating' tipi) varsa CANLI ortalama `data-threshold`
+ * ile karşılaştırılır; hiç puanlama alanı yoksa CTA hiçbir zaman açılmaz.
+ * Bu olmadan, sistemin her yerinde (dashboard.php, form-render.php'deki
+ * gönderim-sonrası popup, rewards/functions.php) uygulanan
+ * google_review_threshold eşiği bu adımda by-pass edilir ve düşük puan
+ * verecek ziyaretçiye de Google daveti gösterilirdi.
+ *
  * @param array $settings
  * @return string
  */
 function qrm_reward_render_step_panel($settings) {
-    $title = qrm_ceviri_option('qrm_settings.qrm_reward_popup_title', $settings['qrm_reward_popup_title']);
-    $text  = qrm_ceviri_option('qrm_settings.qrm_reward_popup_text', $settings['qrm_reward_popup_text']);
-    $btn   = qrm_ceviri_option('qrm_settings.qrm_reward_popup_button_text', $settings['qrm_reward_popup_button_text']);
-    $url   = isset($settings['google_review_url']) ? $settings['google_review_url'] : '';
+    $title     = qrm_ceviri_option('qrm_settings.qrm_reward_popup_title', $settings['qrm_reward_popup_title']);
+    $text      = qrm_ceviri_option('qrm_settings.qrm_reward_popup_text', $settings['qrm_reward_popup_text']);
+    $btn       = qrm_ceviri_option('qrm_settings.qrm_reward_popup_button_text', $settings['qrm_reward_popup_button_text']);
+    $url       = isset($settings['google_review_url']) ? $settings['google_review_url'] : '';
+    $threshold = isset($settings['google_review_threshold']) ? (float) $settings['google_review_threshold'] : 0;
 
     ob_start();
     echo qrm_reward_render_popup_style_block($settings);
     ?>
-    <div class="qrm-rw-step-panel">
-        <div class="qrm-rw-badge">🎁</div>
-        <h3 class="qrm-rw-title"><?php echo esc_html($title); ?></h3>
-        <p class="qrm-rw-text"><?php echo esc_html($text); ?></p>
-        <?php if ($url !== '') : ?>
-            <a class="qrm-rw-btn" href="<?php echo esc_url($url); ?>" target="_blank" rel="noopener noreferrer">
-                <span class="qrm-rw-btn-label"><?php echo esc_html($btn); ?></span>
-            </a>
-        <?php endif; ?>
-        <p class="qrm-rw-note"><?php echo esc_html(qrm_ceviri_review(__('Ödül kodu, formu gönderdikten sonra açılır.', 'qrms'))); ?></p>
+    <div class="qrm-rw-step-panel" data-threshold="<?php echo esc_attr($threshold); ?>">
+        <div class="qrm-rw-step-cta" hidden>
+            <div class="qrm-rw-badge">🎁</div>
+            <h3 class="qrm-rw-title"><?php echo esc_html($title); ?></h3>
+            <p class="qrm-rw-text"><?php echo esc_html($text); ?></p>
+            <?php if ($url !== '') : ?>
+                <a class="qrm-rw-btn" href="<?php echo esc_url($url); ?>" target="_blank" rel="noopener noreferrer">
+                    <span class="qrm-rw-btn-label"><?php echo esc_html($btn); ?></span>
+                </a>
+            <?php endif; ?>
+            <p class="qrm-rw-note"><?php echo esc_html(qrm_ceviri_review(__('Ödül kodu, formu gönderdikten sonra açılır.', 'qrms'))); ?></p>
+        </div>
+        <p class="qrm-rw-step-neutral"><?php echo esc_html(qrm_ceviri_review(__('Değerlendirmeniz için teşekkür ederiz — formu gönderdiğinizde devam edebilirsiniz.', 'qrms'))); ?></p>
     </div>
     <?php
     return ob_get_clean();
