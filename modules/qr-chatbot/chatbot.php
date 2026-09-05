@@ -148,6 +148,7 @@ if ( ! function_exists( 'qmo_chat_js_metinleri' ) ) {
 			'eskalasyonMsg'      => qmo_ceviri_chat( qmo_chatbot_ayar( 'qmo_chatbot_eskalasyon_msg' ) ),
 			'garsonCagir'        => qmo_ceviri_chat( __( 'Garson Çağır', 'qrms' ) ),
 			'garsonCagrildi'     => qmo_ceviri_chat( __( 'Garson çağrıldı ✓', 'qrms' ) ),
+			'tekrarDene'         => qmo_ceviri_chat( __( 'Tekrar Dene', 'qrms' ) ),
 		);
 	}
 }
