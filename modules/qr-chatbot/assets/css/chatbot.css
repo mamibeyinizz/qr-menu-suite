@@ -398,6 +398,10 @@ body.gm-scroll-kilit { position: fixed; width: 100%; }
 }
 .gemini-msg-hata { outline: 1px solid #e11d48; }
 
+.gemini-msg-personel {
+	border-left: 3px solid var(--gm-main, #8a2be2);
+}
+
 .gemini-msg-grup {
 	align-self: flex-start;
 	display: flex;

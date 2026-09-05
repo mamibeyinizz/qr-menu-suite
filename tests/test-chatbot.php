@@ -316,6 +316,7 @@ qrms_test(
 				'qrms-chatbot-firebase',
 				'qrms-chatbot-ana-site',
 				'qrms-chatbot-history',
+				'qrms-chatbot-canli',
 				'qrms-chatbot-unanswered',
 				'qrms-chatbot-oneri',
 				'qrms-chatbot-oneri-rapor',
@@ -341,6 +342,7 @@ qrms_test(
 		qrms_assert_same( 'Entegrasyon', $pages['qrms-chatbot-firebase']['group'], 'Firebase grubu' );
 		qrms_assert_same( 'Entegrasyon', $pages['qrms-chatbot-ana-site']['group'], 'Ana site grubu' );
 		qrms_assert_same( 'Yönetim', $pages['qrms-chatbot-history']['group'], 'Geçmiş Yönetim grubunda' );
+		qrms_assert_same( 'Yönetim', $pages['qrms-chatbot-canli']['group'], 'Canlı Sohbetler Yönetim grubunda' );
 		qrms_assert_same( 'Yönetim', $pages['qrms-chatbot-unanswered']['group'], 'Cevaplanamayan Yönetim grubunda' );
 		qrms_assert_same( 'Yönetim', $pages['qrms-chatbot-oneri']['group'], 'Öneri Yönetimi Yönetim grubunda' );
 		qrms_assert_same( 'Yönetim', $pages['qrms-chatbot-oneri-rapor']['group'], 'Öneri Raporu Yönetim grubunda' );
@@ -1055,5 +1057,82 @@ qrms_test(
 			qmo_chat_dogrulanmamis_etiketleri_temizle( '[CALL_BILL] Hemen getiriyorum.', 'menü nedir' ),
 			'hesap sinyali yoksa [CALL_BILL] kaldırılır'
 		);
+	}
+);
+
+echo "\nQR Chatbot — Canlı Sohbetler (admin devralma)\n";
+
+qrms_test(
+	'canlı sohbet tabloları ve metodları class-db.php\'de tanımlı, şema sürümü bump edilmiş',
+	function () {
+		$php = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/includes/class-db.php' );
+
+		qrms_assert_contains( "const SURUM = '1.2'", $php, 'şema sürümü bump edildi' );
+		qrms_assert_contains( 'qmo_chatbot_canli', $php, 'canlı tablosu' );
+		qrms_assert_contains( 'qmo_chatbot_personel_mesaj', $php, 'personel mesaj tablosu' );
+		qrms_assert_contains( 'UNIQUE KEY idx_oturum', $php, 'oturum başına tek satır' );
+		qrms_assert_contains( 'function canli_guncelle', $php, 'canli_guncelle metodu' );
+		qrms_assert_contains( 'ON DUPLICATE KEY UPDATE', $php, 'atomik upsert' );
+		qrms_assert_contains( 'function canli_liste', $php, 'canli_liste metodu' );
+		qrms_assert_contains( 'function canli_kapat', $php, 'canli_kapat metodu' );
+		qrms_assert_contains( 'function personel_mesaj_yaz', $php, 'personel_mesaj_yaz metodu' );
+		qrms_assert_contains( 'function personel_mesajlari_al', $php, 'personel_mesajlari_al metodu' );
+		qrms_assert_contains( "durum = 'kapatildi'", $php, 'eski_sil kapatılmış oturumları da temizler' );
+	}
+);
+
+qrms_test(
+	'ajax-chat.php eskalasyon sonrası canlı takibi günceller',
+	function () {
+		$php = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/includes/ajax-chat.php' );
+
+		qrms_assert_contains( 'qmo_chatbot_canli_takip_guncelle( $sess, $message, $cevap )', $php, 'çağrı noktası' );
+		qrms_assert_true(
+			strpos( $php, 'qmo_chat_eskalasyon_uygula( $cevap )' ) < strpos( $php, 'qmo_chatbot_canli_takip_guncelle( $sess, $message, $cevap )' ),
+			'eskalasyon uygulandıktan SONRA takip güncellenir ([ESCALATE] etiketi hâlâ mevcut olmalı)'
+		);
+		qrms_assert_contains( "strpos( (string) \$cevap, '[ESCALATE]' )", $php, 'eskalasyon bayrağı etiketten türetilir' );
+	}
+);
+
+qrms_test(
+	'canlı sohbet AJAX uçları yetki + nonce ister; müşteri yoklama ucu oturum_id\'yi istemciden almaz',
+	function () {
+		$php = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/ajax-canli-sohbet.php' );
+
+		foreach ( array( 'qmo_chatbot_canli_liste', 'qmo_chatbot_canli_yazisma', 'qmo_chatbot_canli_mesaj_gonder', 'qmo_chatbot_canli_kapat' ) as $action ) {
+			qrms_assert_contains( "wp_ajax_{$action}", $php, $action . ' kayıtlı' );
+		}
+		qrms_assert_contains( "wp_ajax_nopriv_qmo_chatbot_personel_yokla", $php, 'müşteri ucu nopriv' );
+		qrms_assert_contains( "check_ajax_referer( 'qmo_chatbot_canli'", $php, 'yönetim nonce kontrolü' );
+		qrms_assert_contains( "current_user_can( 'manage_options' )", $php, 'yönetim yetki kontrolü' );
+		qrms_assert_contains( 'qmo_oturum_zorla()', $php, 'müşteri ucu oturum doğrular' );
+		qrms_assert_false(
+			(bool) preg_match( '/function qmo_ajax_personel_yokla.*?\$_POST\[.oturum_id.\]/s', $php ),
+			'müşteri ucu $_POST[oturum_id] okumaz — sunucuda türetilir'
+		);
+		qrms_assert_contains( 'qmo_chatbot_ziyaretci_anahtar( $sess )', $php, 'oturum_id sunucuda türetilir' );
+
+		qrms_assert_true(
+			file_exists( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/chatbot.php' ) &&
+			false !== strpos( file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/chatbot.php' ), "ajax-canli-sohbet.php" ),
+			'chatbot.php dosyayı require eder'
+		);
+	}
+);
+
+qrms_test(
+	'Canlı Sohbetler alt sayfası hub\'a kayıtlı, admin JS ilgili sayfada kuyruğa alınır',
+	function () {
+		$admin  = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/includes/admin/admin-sayfa.php' );
+		$modul  = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/module.php' );
+		$sayfa  = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/includes/admin/sayfa-canli-sohbet.php' );
+
+		qrms_assert_contains( "'qrms-chatbot-canli'", $admin, 'sayfa slug\'ı hub dizisinde' );
+		qrms_assert_contains( 'qmo_chatbot_sayfa_canli', $admin, 'render fonksiyonu eşleşir' );
+		qrms_assert_contains( "'qrms-chatbot-canli' === \$page", $modul, 'JS yalnızca bu sayfada kuyruğa alınır' );
+		qrms_assert_contains( 'admin-canli-sohbet.js', $modul, 'JS dosyası enqueue edilir' );
+		qrms_assert_contains( "current_user_can( 'manage_options' )", $sayfa, 'sayfa yetki kontrolü' );
+		qrms_assert_contains( "wp_create_nonce( 'qmo_chatbot_canli' )", $sayfa, 'nonce sayfada basılır' );
 	}
 );

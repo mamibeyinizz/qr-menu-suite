@@ -32,6 +32,7 @@ require_once __DIR__ . '/sayfa-gecmis.php';
 require_once __DIR__ . '/sayfa-cevaplanamayan.php';
 require_once __DIR__ . '/sayfa-oneri.php';
 require_once __DIR__ . '/sayfa-oneri-rapor.php';
+require_once __DIR__ . '/sayfa-canli-sohbet.php';
 
 /**
  * Kayıtlı renk option'larını güvenli biçimde okur.
@@ -423,6 +424,13 @@ if ( ! function_exists( 'qmo_chatbot_sayfalar' ) ) {
 				'render' => 'qmo_chatbot_sayfa_gecmis',
 				'desc'   => __( 'Tarih, masa, soru ve cevap kayıtları.', 'qrms' ),
 				'icon'   => 'dashicons-backup',
+				'group'  => __( 'Yönetim', 'qrms' ),
+			),
+			'qrms-chatbot-canli'        => array(
+				'title'  => __( 'Canlı Sohbetler', 'qrms' ),
+				'render' => 'qmo_chatbot_sayfa_canli',
+				'desc'   => __( 'Eskalasyon alan sohbetleri devral, müşteriye doğrudan yaz.', 'qrms' ),
+				'icon'   => 'dashicons-format-chat',
 				'group'  => __( 'Yönetim', 'qrms' ),
 			),
 			'qrms-chatbot-unanswered'   => array(

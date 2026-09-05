@@ -156,6 +156,7 @@ if ( ! function_exists( 'qmo_ajax_chat' ) ) {
 		$cevap = qmo_chat_dogrulanmamis_etiketleri_temizle( $tam_metin, $message );
 		qmo_chatbot_gecmis_yaz( $sess, $message, $cevap );
 		$cevap = qmo_chat_eskalasyon_uygula( $cevap );
+		qmo_chatbot_canli_takip_guncelle( $sess, $message, $cevap );
 		qmo_chat_oneri_gosterim_logla( $cevap, $sess, $message, $decoded_history );
 
 		qmo_ajax_chat_sse_gonder(
@@ -495,6 +496,38 @@ if ( ! function_exists( 'qmo_chat_dogrulanmamis_etiketleri_temizle' ) ) {
 		}
 
 		return $cevap;
+	}
+}
+
+/**
+ * Canlı sohbet (admin devralma) takibini günceller.
+ *
+ * Yalnızca bu tur eskalasyon tetiklediyse ([ESCALATE] etiketi) YENİ bir
+ * takip kaydı açar; aksi hâlde sadece ZATEN takip edilen (önceden
+ * eskalasyon görmüş) bir oturumu tazeler — bkz. QMO_Chatbot_DB::canli_guncelle().
+ *
+ * @param array  $sess  Oturum.
+ * @param string $soru  Ziyaretçi mesajı.
+ * @param string $cevap Bot yanıtı ([ESCALATE] etiketi henüz temizlenmemiş).
+ * @return void
+ */
+if ( ! function_exists( 'qmo_chatbot_canli_takip_guncelle' ) ) {
+	function qmo_chatbot_canli_takip_guncelle( $sess, $soru, $cevap ) {
+		if ( ! class_exists( 'QMO_Chatbot_DB' ) ) {
+			return;
+		}
+
+		$oturum_id = function_exists( 'qmo_chatbot_ziyaretci_anahtar' )
+			? qmo_chatbot_ziyaretci_anahtar( is_array( $sess ) ? $sess : array() )
+			: '';
+		if ( '' === $oturum_id ) {
+			return;
+		}
+
+		$masa          = isset( $sess['masa'] ) ? (string) $sess['masa'] : '';
+		$eskalasyon_mi = false !== strpos( (string) $cevap, '[ESCALATE]' );
+
+		QMO_Chatbot_DB::canli_guncelle( $oturum_id, $masa, $soru, $cevap, $eskalasyon_mi );
 	}
 }
 
