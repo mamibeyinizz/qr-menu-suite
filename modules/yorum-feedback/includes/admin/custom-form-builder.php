@@ -185,7 +185,7 @@ function qrm_cf_admin_form_editor_view() {
                     <p class="qrm-cf-sub" style="margin:0 0 14px;"><?php
                         echo $is_system
                             ? esc_html__('Sabit alanlar listede durur. Ana Yorum Formu\'nda puanlama ve Google/ödül widget\'larını ekleyebilirsiniz.', 'qrms')
-                            : esc_html__('Eklemek için bir alan tipine tıklayın. Google & Ödül Yönlendirme widget\'ı, formda bir puanlama alanı varsa eşiğe göre; yoksa her zaman nötr görünür.', 'qrms');
+                            : esc_html__('Eklemek için bir alan tipine tıklayın. Puanlama Kriterleri ve Google & Ödül Yönlendirme widget\'ları Ayarlar & Puanlama / Google & Ödül Sistemi sayfalarındaki içeriği kullanır — burada yalnızca konumlarını belirlersiniz.', 'qrms');
                     ?></p>
                     <div class="qrm-fb-palette-grid">
                         <?php foreach ($types as $type => $meta):
@@ -296,6 +296,15 @@ function qrm_cf_admin_form_editor_view() {
                             <input type="checkbox" id="qrm-fb-show-title" name="qrm_cf_settings[show_title]" value="1" <?php checked($s['show_title'], 1); ?>>
                             Form başlığını sayfada göster
                         </label>
+                    </div>
+
+                    <div class="qrm-fb-field">
+                        <label for="qrm-fb-title-align">Başlık Pozisyonu</label>
+                        <select id="qrm-fb-title-align" name="qrm_cf_settings[title_align]">
+                            <option value="left"   <?php selected($s['title_align'], 'left'); ?>>Sola yaslı</option>
+                            <option value="center" <?php selected($s['title_align'], 'center'); ?>>Ortala</option>
+                            <option value="right"  <?php selected($s['title_align'], 'right'); ?>>Sağa yaslı</option>
+                        </select>
                     </div>
 
                     <div class="qrm-fb-field">
@@ -1148,11 +1157,13 @@ function qrm_cf_admin_builder_script($state, $types, $ctx = []) {
         var previewTitle = document.getElementById('qrm-fb-preview-title');
         var previewDesc  = document.getElementById('qrm-fb-preview-desc');
         var showTitle    = document.getElementById('qrm-fb-show-title');
+        var titleAlign   = document.getElementById('qrm-fb-title-align');
 
         function syncTitle() {
             if (!previewTitle || !titleInput) return;
             var visible = !showTitle || showTitle.checked;
             previewTitle.style.display = visible ? '' : 'none';
+            previewTitle.style.textAlign = titleAlign ? titleAlign.value : 'left';
             previewTitle.textContent = titleInput.value || 'Form Başlığı';
             var topTitle = document.getElementById('qrm-fb-topbar-title');
             if (topTitle) topTitle.textContent = titleInput.value || (systemForm ? previewTitle.textContent : 'Yeni Form');
@@ -1162,6 +1173,7 @@ function qrm_cf_admin_builder_script($state, $types, $ctx = []) {
             syncTitle();
             if (keyInput && !keyTouched) keyInput.value = slugify(titleInput.value);
         });
+        if (titleAlign) titleAlign.addEventListener('change', syncTitle);
         if (keyInput) keyInput.addEventListener('input', function(){ keyTouched = true; });
         if (descInput && previewDesc) descInput.addEventListener('input', function(){ previewDesc.textContent = descInput.value; });
         if (showTitle) showTitle.addEventListener('change', syncTitle);

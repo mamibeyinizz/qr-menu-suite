@@ -29,19 +29,19 @@ function qrm_cf_field_types($include_system = false) {
         'checkbox' => ['label' => 'Çoklu Seçim',     'icon' => 'dashicons-yes',              'has_options' => true,  'hint' => 'Birden fazla seçilebilir'],
         'rating'   => ['label' => 'Yıldız Puanlama', 'icon' => 'dashicons-star-filled',      'has_options' => false, 'hint' => '1-5 yıldız'],
         'date'     => ['label' => 'Tarih',           'icon' => 'dashicons-calendar-alt',     'has_options' => false, 'hint' => 'Gün seçimi'],
-        // Widget'lar veri alanı değildir. Puanlama Kriterleri grubu global
-        // crit_1..5 ayarına bağlı olduğundan yalnızca Ana Yorum Formu paletinde
-        // durur (is_system_only). Google & Ödül widget'ı ise herhangi bir
-        // özel formda da kullanılabilir — formda puanlama alanı (rating ya da
-        // rating_group) varsa canlı ortalamayla eşik kontrolü yapılır, yoksa
-        // panel her zaman nötr (CTA'sız) kalır (bkz. qrm_reward_render_step_panel).
+        // Widget'lar veri alanı değildir; qrm_settings'teki GLOBAL ayarları
+        // (crit_1..5, Google/ödül metinleri) okur, her ikisi de herhangi bir
+        // özel formda kullanılabilir — yalnızca KONUM/SIRA burada belirlenir.
+        // İsim/aktiflik gibi içerik ayarları ilgili admin sayfasında kalır.
+        // google_reward: formda puanlama alanı (rating ya da rating_group)
+        // varsa canlı ortalamayla eşik kontrolü yapılır, yoksa panel her
+        // zaman nötr (CTA'sız) kalır (bkz. qrm_reward_render_step_panel).
         'rating_group' => [
             'label' => 'Puanlama Kriterleri',
             'icon' => 'dashicons-star-filled',
             'has_options' => false,
             'hint' => 'crit_1..5 — konum/sıra',
             'is_widget' => true,
-            'is_system_only' => true,
         ],
         'google_reward' => [
             'label' => 'Google & Ödül Yönlendirme',
@@ -85,6 +85,7 @@ function qrm_cf_default_form_settings() {
         'submit_text'     => 'Gönder',
         'success_message' => 'Formunuz bize ulaştı, teşekkür ederiz.',
         'show_title'      => 1,
+        'title_align'     => 'left',   // left | center | right
         // Bildirim
         'notify_enabled'  => 0,
         'notify_email'    => '',
@@ -114,6 +115,9 @@ function qrm_cf_sanitize_form_settings($raw) {
     if (isset($raw['submit_text']))     $out['submit_text']     = sanitize_text_field($raw['submit_text']);
     if (isset($raw['success_message'])) $out['success_message'] = sanitize_textarea_field($raw['success_message']);
     $out['show_title']     = !empty($raw['show_title']) ? 1 : 0;
+    if (isset($raw['title_align']) && in_array($raw['title_align'], ['left', 'center', 'right'], true)) {
+        $out['title_align'] = $raw['title_align'];
+    }
     $out['notify_enabled'] = !empty($raw['notify_enabled']) ? 1 : 0;
 
     if (isset($raw['notify_email'])) {
