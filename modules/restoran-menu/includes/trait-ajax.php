@@ -4,6 +4,22 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 trait RMA_Ajax_Trait {
 
+    /**
+     * Menü Görünümü canlı önizlemesi — rastgele başka bir ürün.
+     *
+     * Yalnızca ad / açıklama / fiyat / kategori / küçük görsel döner;
+     * renk değişkenlerine dokunulmaz.
+     */
+    public function ajax_color_preview_item() {
+        check_ajax_referer( 'rma_admin_nonce', 'security' );
+        if ( ! current_user_can( 'edit_posts' ) ) {
+            wp_send_json_error();
+        }
+
+        $exclude = isset( $_POST['exclude'] ) ? (int) $_POST['exclude'] : 0;
+        wp_send_json_success( $this->get_color_preview_item( $exclude ) );
+    }
+
     public function ajax_toggle_status() {
         check_ajax_referer( 'rma_admin_nonce', 'security' );
         if ( ! current_user_can( 'edit_posts' ) ) wp_send_json_error();

@@ -549,3 +549,30 @@ qrms_test(
 		qrms_assert_false( (bool) preg_match( '/Dil \/ Language/', $front ), 'sabit iki dil kalmadı' );
 	}
 );
+
+qrms_test(
+	'renk önizlemesi yayınlanmış menü ürününden beslenir, renk senkronuna dokunmaz',
+	function () {
+		$php   = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-admin-pages.php' );
+		$ajax  = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-ajax.php' );
+		$boot  = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/qr-menu.php' );
+		$js    = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/js/admin-ui.js' );
+
+		qrms_assert_contains( 'function get_color_preview_item', $php, 'ürün yardımcısı' );
+		qrms_assert_contains( "'post_type'        => 'rma_menu_item'", $php, 'CPT' );
+		qrms_assert_contains( "'taxonomy' => 'rma_category'", $php, 'kategori şartı' );
+		qrms_assert_contains( 'Mercimek Çorbası', $php, 'boş menü yedeği' );
+		qrms_assert_contains( 'RMA_Kampanya::fiyat_yazi', $php, 'modül fiyat biçimi' );
+		qrms_assert_false( false !== strpos( $php, 'wc_price' ), 'Woo fiyatı kullanılmaz' );
+		qrms_assert_contains( 'rma-cp-shuffle', $php, 'yenile düğmesi' );
+
+		qrms_assert_contains( 'function ajax_color_preview_item', $ajax, 'AJAX uç' );
+		qrms_assert_contains( "check_ajax_referer( 'rma_admin_nonce', 'security' )", $ajax, 'admin nonce' );
+		qrms_assert_contains( "wp_ajax_rma_color_preview_item", $boot, 'kayıt' );
+
+		qrms_assert_contains( "action: 'rma_color_preview_item'", $js, 'JS action' );
+		qrms_assert_contains( 'applyColorPreviewItem', $js, 'DOM güncellemesi' );
+		qrms_assert_contains( 'querySelector(\'.rma-cp-name\')', $js, 'ad alanı' );
+		qrms_assert_contains( 'var COLOR_VARS = {', $js, 'renk haritası duruyor' );
+	}
+);

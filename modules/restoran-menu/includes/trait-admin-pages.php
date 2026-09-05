@@ -516,6 +516,129 @@ trait RMA_Admin_Pages_Trait {
     }
 
     /**
+     * Canlı renk önizlemesi için tek bir yayınlanmış menü ürünü.
+     *
+     * Tercihen öne çıkan görseli olan ve en az bir `rma_category` terimine
+     * atanmış bir `rma_menu_item` döner. Menü boşsa sabit örnek metinler
+     * kullanılır — kurulumda önizleme kutusu boş kalmaz.
+     *
+     * @param int $exclude_id Rastgele yenilemede atlanacak ürün.
+     * @return array{id:int,name:string,desc:string,price:string,category:string,thumb:string}
+     */
+    private function get_color_preview_item( $exclude_id = 0 ) {
+        $fallback = [
+            'id'       => 0,
+            'name'     => 'Mercimek Çorbası',
+            'desc'     => 'Tereyağında nane, taze limon.',
+            'price'    => '₺120',
+            'category' => 'Çorbalar',
+            'thumb'    => '',
+        ];
+
+        $base = [
+            'post_type'        => 'rma_menu_item',
+            'post_status'      => 'publish',
+            'numberposts'      => 1,
+            'orderby'          => 'rand',
+            'suppress_filters' => true,
+            'no_found_rows'    => true,
+            'tax_query'        => [
+                [
+                    'taxonomy' => 'rma_category',
+                    'operator' => 'EXISTS',
+                ],
+            ],
+        ];
+
+        $exclude_id = (int) $exclude_id;
+        if ( $exclude_id > 0 ) {
+            $base['post__not_in'] = [ $exclude_id ];
+        }
+
+        $with_thumb               = $base;
+        $with_thumb['meta_query'] = [
+            [
+                'key'     => '_thumbnail_id',
+                'compare' => 'EXISTS',
+            ],
+            [
+                'key'     => '_thumbnail_id',
+                'value'   => '0',
+                'compare' => '!=',
+            ],
+        ];
+
+        $posts = get_posts( $with_thumb );
+        if ( empty( $posts ) ) {
+            $posts = get_posts( $base );
+        }
+
+        // Tek ürün varken exclude boş sonuç üretmesin — aynı ürüne düş.
+        if ( empty( $posts ) && $exclude_id > 0 ) {
+            unset( $with_thumb['post__not_in'], $base['post__not_in'] );
+            $posts = get_posts( $with_thumb );
+            if ( empty( $posts ) ) {
+                $posts = get_posts( $base );
+            }
+        }
+
+        if ( empty( $posts ) ) {
+            return $fallback;
+        }
+
+        $post = $posts[0];
+        $id   = (int) $post->ID;
+
+        $excerpt = trim( (string) $post->post_excerpt );
+        if ( '' === $excerpt ) {
+            $excerpt = wp_trim_words( strip_shortcodes( (string) $post->post_content ), 18, '…' );
+        } else {
+            $excerpt = wp_trim_words( $excerpt, 18, '…' );
+        }
+
+        $terms    = get_the_terms( $id, 'rma_category' );
+        $category = ( ! empty( $terms ) && ! is_wp_error( $terms ) ) ? $terms[0]->name : $fallback['category'];
+
+        $thumb = has_post_thumbnail( $id ) ? (string) get_the_post_thumbnail_url( $id, 'thumbnail' ) : '';
+
+        return [
+            'id'       => $id,
+            'name'     => (string) $post->post_title,
+            'desc'     => $excerpt,
+            'price'    => $this->format_color_preview_price( get_post_meta( $id, 'rma_price', true ) ),
+            'category' => (string) $category,
+            'thumb'    => $thumb,
+        ];
+    }
+
+    /**
+     * Önizleme fiyatı — ön yüzle aynı biçim (`52,50 ₺`), WooCommerce `wc_price` değil.
+     *
+     * @param mixed $raw `rma_price` meta.
+     * @return string
+     */
+    private function format_color_preview_price( $raw ) {
+        $raw = trim( (string) $raw );
+        if ( '' === $raw ) {
+            return '';
+        }
+
+        if ( class_exists( 'RMA_Kampanya' ) ) {
+            return RMA_Kampanya::fiyat_yazi( $raw );
+        }
+
+        if ( is_numeric( $raw ) ) {
+            $sayi = number_format( (float) $raw, 2, ',', '.' );
+            if ( ',00' === substr( $sayi, -3 ) ) {
+                $sayi = substr( $sayi, 0, -3 );
+            }
+            return $sayi . ' ₺';
+        }
+
+        return $raw . ' ₺';
+    }
+
+    /**
      * Menü renklerinin minyatür canlı önizlemesi — kayıt gerektirmez.
      * CSS değişkenleri `--qrms-*`; JS form değerlerini buraya yazar.
      *
@@ -528,26 +651,33 @@ trait RMA_Admin_Pages_Trait {
             $parts[] = '--qrms-' . str_replace( '_', '-', $key ) . ':' . $val;
         }
         $style = implode( ';', $parts );
+        $item  = $this->get_color_preview_item();
         ?>
         <div class="rma-color-preview-dock">
-            <p class="rma-color-preview-kicker">Canlı önizleme</p>
+            <div class="rma-color-preview-head">
+                <p class="rma-color-preview-kicker">Canlı önizleme</p>
+                <button type="button" class="rma-cp-shuffle" data-exclude-id="<?php echo esc_attr( (string) $item['id'] ); ?>">🔄 Başka ürün göster</button>
+            </div>
             <div class="rma-color-preview" style="<?php echo esc_attr( $style ); ?>" aria-hidden="true">
                 <div class="rma-color-preview-stage" data-rma-hl="bg">
                     <div class="rma-cp-toolbar" data-rma-hl="toolbar_bg">
                         <span class="rma-cp-search" data-rma-hl="border">Menüde ara…</span>
                         <span class="rma-cp-filter" data-rma-hl="filter_btn_border,filter_btn_text">Filtrele</span>
                     </div>
-                    <div class="rma-cp-heading" data-rma-hl="section_title">Çorbalar</div>
+                    <div class="rma-cp-heading" data-rma-hl="section_title"><?php echo esc_html( $item['category'] ); ?></div>
                     <div class="rma-cp-item" data-rma-hl="card,border">
+                        <?php if ( $item['thumb'] ) : ?>
+                            <img class="rma-cp-thumb" src="<?php echo esc_url( $item['thumb'] ); ?>" alt="" width="40" height="40">
+                        <?php endif; ?>
                         <div class="rma-cp-item-main">
-                            <div class="rma-cp-name" data-rma-hl="text">Mercimek Çorbası</div>
-                            <div class="rma-cp-desc" data-rma-hl="desc">Tereyağında nane, taze limon.</div>
+                            <div class="rma-cp-name" data-rma-hl="text"><?php echo esc_html( $item['name'] ); ?></div>
+                            <div class="rma-cp-desc" data-rma-hl="desc"><?php echo esc_html( $item['desc'] ); ?></div>
                         </div>
-                        <div class="rma-cp-price" data-rma-hl="accent">₺120</div>
+                        <div class="rma-cp-price" data-rma-hl="accent"><?php echo esc_html( $item['price'] ); ?></div>
                     </div>
                     <div class="rma-cp-modal" data-rma-hl="modal_bg">
                         <span class="rma-cp-modal-label">Ürün penceresi</span>
-                        <span class="rma-cp-modal-title">Mercimek Çorbası</span>
+                        <span class="rma-cp-modal-title"><?php echo esc_html( $item['name'] ); ?></span>
                     </div>
                 </div>
             </div>

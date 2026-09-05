@@ -124,6 +124,7 @@ class Restaurant_Menu_Automation {
         add_action( 'admin_action_rma_duplicate_post', [ $this, 'duplicate_post_action' ] );
         add_action( 'admin_enqueue_scripts', [ $this, 'admin_scripts' ] );
         add_action( 'wp_ajax_rma_toggle_status',       [ $this, 'ajax_toggle_status' ] );
+        add_action( 'wp_ajax_rma_color_preview_item',  [ $this, 'ajax_color_preview_item' ] );
         add_action( 'wp_ajax_rma_toggle_tukendi',      [ $this, 'ajax_toggle_tukendi' ] );
         add_action( 'wp_ajax_rma_save_category_order', [ $this, 'ajax_save_category_order' ] );
         add_action( 'admin_menu',  [ $this, 'add_admin_menus' ] );
