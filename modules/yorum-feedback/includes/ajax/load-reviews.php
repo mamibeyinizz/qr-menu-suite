@@ -66,7 +66,8 @@ function qrm_pro_ajax_load_reviews() {
     }
 
     $page_result = qrm_pro_fetch_approved_reviews($page_size, $offset, $query);
-    $built       = qrm_pro_build_reviews_list_response($page_result, $query, $settings, $page_size, $mode);
+    $total       = qrm_pro_count_filtered_approved_reviews($query);
+    $built       = qrm_pro_build_reviews_list_response($page_result, $query, $settings, $page_size, $mode, $total);
 
     wp_send_json_success([
         'html'            => $built['html'],
