@@ -177,8 +177,8 @@ trait QRMS_HFB_Frontend {
 			'brand_font_family',
 			'links_title_font_family',
 			'links_item_font_family',
-			'hours_title_font_family',
-			'hours_item_font_family',
+			'links2_title_font_family',
+			'links2_item_font_family',
 			'contact_title_font_family',
 			'contact_item_font_family',
 			'btn_font_family',
@@ -439,9 +439,8 @@ trait QRMS_HFB_Frontend {
 	/**
 	 * Footer HTML çıktısı.
 	 *
-	 * Dört sütun: marka, hızlı menü, çalışma saatleri, iletişim.
-	 * Saatler yalnızca qr-calisma-saatleri aktifken basılır. Garson/hesap
-	 * butonları telif çubuğunun üstünde durur.
+	 * Dört sütun: marka, hızlı menü 1, hızlı menü 2, iletişim.
+	 * Garson/hesap butonları telif çubuğunun üstünde durur.
 	 *
 	 * @param array<string,mixed> $opts Ayarlar.
 	 * @return string
@@ -449,9 +448,9 @@ trait QRMS_HFB_Frontend {
 	public function render_footer( $opts ) {
 		$brand   = $this->render_brand( $opts, 'footer' );
 		$nav     = $this->scope_nav_ids( $this->render_nav_menu( (int) $opts['menu_id'], 'hfb-footer__menu' ), 'hfb-f-' );
+		$nav2    = $this->scope_nav_ids( $this->render_nav_menu( (int) $opts['menu_id_2'], 'hfb-footer__menu' ), 'hfb-f2-' );
 		$social  = $this->render_social_icons( $opts );
 		$contact = $this->render_contact_lines( $opts );
-		$hours   = $this->render_hours_column( $opts );
 		$call    = $this->render_footer_call_buttons( $opts );
 		$style   = $this->footer_css_vars( $opts );
 
@@ -460,18 +459,19 @@ trait QRMS_HFB_Frontend {
 			isset( $this->footer_defaults['links_title'] ) ? $this->footer_defaults['links_title'] : 'Hızlı Menü',
 			'hfb_footer.links_title'
 		);
+		$links2_title  = $this->hfb_cevir_option_varsayilan(
+			isset( $opts['links2_title'] ) ? $opts['links2_title'] : '',
+			isset( $this->footer_defaults['links2_title'] ) ? $this->footer_defaults['links2_title'] : 'Hızlı Menü',
+			'hfb_footer.links2_title'
+		);
 		$contact_title = $this->hfb_cevir_option_varsayilan(
 			isset( $opts['contact_title'] ) ? $opts['contact_title'] : '',
 			isset( $this->footer_defaults['contact_title'] ) ? $this->footer_defaults['contact_title'] : 'İletişim',
 			'hfb_footer.contact_title'
 		);
-		$hours_title   = $this->hfb_cevir_option_varsayilan(
-			isset( $opts['hours_title'] ) ? $opts['hours_title'] : '',
-			isset( $this->footer_defaults['hours_title'] ) ? $this->footer_defaults['hours_title'] : 'Çalışma Saatlerimiz',
-			'hfb_footer.hours_title'
-		);
 
 		$show_links   = (bool) $nav || '' !== $links_title;
+		$show_links2  = (bool) $nav2 || '' !== $links2_title;
 		$show_contact = (bool) $contact || (bool) $social || '' !== $contact_title;
 
 		ob_start();
@@ -498,13 +498,15 @@ trait QRMS_HFB_Frontend {
 						</nav>
 					<?php endif; ?>
 
-					<?php if ( $hours ) : ?>
-						<div class="hfb-footer__col hfb-footer__col--hours">
-							<?php if ( '' !== $hours_title ) : ?>
-								<h3 class="hfb-footer__heading"><?php echo esc_html( $hours_title ); ?></h3>
+					<?php if ( $show_links2 ) : ?>
+						<nav class="hfb-footer__col hfb-footer__col--links2" aria-label="<?php echo esc_attr( '' !== $links2_title ? $links2_title : $this->hfb_cevir_ui( __( 'Hızlı Menü', 'qrms' ) ) ); ?>">
+							<?php if ( '' !== $links2_title ) : ?>
+								<h3 class="hfb-footer__heading"><?php echo esc_html( $links2_title ); ?></h3>
 							<?php endif; ?>
-							<?php echo $hours; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
-						</div>
+							<?php if ( $nav2 ) : ?>
+								<?php echo $nav2; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+							<?php endif; ?>
+						</nav>
 					<?php endif; ?>
 
 					<?php if ( $show_contact ) : ?>
@@ -571,18 +573,19 @@ trait QRMS_HFB_Frontend {
 			'--hfb-footer-links-item-size'       => (int) $opts['links_item_font_size_desktop'] . 'px',
 			'--hfb-footer-links-item-size-m'     => (int) $opts['links_item_font_size_mobile'] . 'px',
 			'--hfb-footer-links-item-hover'      => (string) $opts['links_item_hover_color'],
-			'--hfb-footer-hours-align'           => (string) $opts['hours_align'],
-			'--hfb-footer-hours-justify'         => $this->align_to_flex( (string) $opts['hours_align'] ),
-			'--hfb-footer-hours-title-font'      => $this->font_stack( (string) $opts['hours_title_font_family'] ),
-			'--hfb-footer-hours-title-color'     => (string) $opts['hours_title_font_color'],
-			'--hfb-footer-hours-title-weight'    => (string) (int) $opts['hours_title_font_weight'],
-			'--hfb-footer-hours-title-size'      => (int) $opts['hours_title_font_size_desktop'] . 'px',
-			'--hfb-footer-hours-title-size-m'    => (int) $opts['hours_title_font_size_mobile'] . 'px',
-			'--hfb-footer-hours-item-font'       => $this->font_stack( (string) $opts['hours_item_font_family'] ),
-			'--hfb-footer-hours-item-color'      => (string) $opts['hours_item_font_color'],
-			'--hfb-footer-hours-item-weight'     => (string) (int) $opts['hours_item_font_weight'],
-			'--hfb-footer-hours-item-size'       => (int) $opts['hours_item_font_size_desktop'] . 'px',
-			'--hfb-footer-hours-item-size-m'     => (int) $opts['hours_item_font_size_mobile'] . 'px',
+			'--hfb-footer-links2-align'          => (string) $opts['links2_align'],
+			'--hfb-footer-links2-justify'        => $this->align_to_flex( (string) $opts['links2_align'] ),
+			'--hfb-footer-links2-title-font'     => $this->font_stack( (string) $opts['links2_title_font_family'] ),
+			'--hfb-footer-links2-title-color'    => (string) $opts['links2_title_font_color'],
+			'--hfb-footer-links2-title-weight'   => (string) (int) $opts['links2_title_font_weight'],
+			'--hfb-footer-links2-title-size'     => (int) $opts['links2_title_font_size_desktop'] . 'px',
+			'--hfb-footer-links2-title-size-m'   => (int) $opts['links2_title_font_size_mobile'] . 'px',
+			'--hfb-footer-links2-item-font'      => $this->font_stack( (string) $opts['links2_item_font_family'] ),
+			'--hfb-footer-links2-item-color'     => (string) $opts['links2_item_font_color'],
+			'--hfb-footer-links2-item-weight'    => (string) (int) $opts['links2_item_font_weight'],
+			'--hfb-footer-links2-item-size'      => (int) $opts['links2_item_font_size_desktop'] . 'px',
+			'--hfb-footer-links2-item-size-m'    => (int) $opts['links2_item_font_size_mobile'] . 'px',
+			'--hfb-footer-links2-item-hover'     => (string) $opts['links2_item_hover_color'],
 			'--hfb-footer-contact-align'         => (string) $opts['contact_align'],
 			'--hfb-footer-contact-justify'       => $this->align_to_flex( (string) $opts['contact_align'] ),
 			'--hfb-footer-contact-title-font'    => $this->font_stack( (string) $opts['contact_title_font_family'] ),
@@ -600,39 +603,6 @@ trait QRMS_HFB_Frontend {
 		$vars = array_merge( $vars, $this->button_style_css_vars( $opts ) );
 
 		return $this->css_vars_string( $vars );
-	}
-
-	/**
-	 * Çalışma saatleri sütunu — veri tek kaynaktan (qrms_cs_get).
-	 *
-	 * @param array<string,mixed> $opts Footer ayarları.
-	 * @return string
-	 */
-	private function render_hours_column( $opts ) {
-		unset( $opts );
-
-		if ( ! $this->hours_module_available() ) {
-			return '';
-		}
-
-		$hours  = qrms_cs_get();
-		$labels = qrms_cs_day_labels();
-		$html   = '<ul class="hfb-footer__hours">';
-
-		foreach ( qrms_cs_day_keys() as $key ) {
-			$day   = isset( $hours[ $key ] ) ? $hours[ $key ] : array();
-			$label = isset( $labels[ $key ] ) ? $labels[ $key ] : $key;
-			$range = function_exists( 'qrms_cs_format_day' ) ? qrms_cs_format_day( $day ) : '';
-			$html .= '<li class="hfb-footer__hours-row">';
-			$html .= '<span class="hfb-footer__hours-day">' . esc_html( $label ) . '</span>';
-			$html .= '<span class="hfb-footer__hours-sep" aria-hidden="true"></span>';
-			$html .= '<span class="hfb-footer__hours-time">' . esc_html( $range ) . '</span>';
-			$html .= '</li>';
-		}
-
-		$html .= '</ul>';
-
-		return $html;
 	}
 
 	/**

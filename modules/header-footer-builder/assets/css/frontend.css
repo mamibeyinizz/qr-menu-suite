@@ -1019,6 +1019,17 @@ body.hfb-scroll-locked {
   font-weight: var(--hfb-footer-links-title-weight, 600);
 }
 
+.hfb-footer__col--links2 {
+  text-align: var(--hfb-footer-links2-align, left);
+}
+
+.hfb-footer__col--links2 .hfb-footer__heading {
+  color: var(--hfb-footer-links2-title-color, var(--hfb-gold));
+  font-family: var(--hfb-footer-links2-title-font, var(--hfb-font-display));
+  font-size: var(--hfb-footer-links2-title-size, 18px);
+  font-weight: var(--hfb-footer-links2-title-weight, 600);
+}
+
 .hfb-footer-wrap .hfb-footer__menu {
   display: flex;
   flex-direction: column;
@@ -1033,7 +1044,7 @@ body.hfb-scroll-locked {
   margin: 0;
 }
 
-.hfb-footer-wrap .hfb-footer__menu a {
+.hfb-footer-wrap .hfb-footer__col--links .hfb-footer__menu a {
   color: var(--hfb-footer-links-item-color, var(--hfb-text));
   display: inline-flex;
   font-family: var(--hfb-footer-links-item-font, inherit);
@@ -1043,7 +1054,7 @@ body.hfb-scroll-locked {
   transition: color 0.2s ease;
 }
 
-.hfb-footer-wrap .hfb-footer__menu a::before {
+.hfb-footer-wrap .hfb-footer__col--links .hfb-footer__menu a::before {
   color: var(--hfb-footer-links-item-hover, var(--hfb-gold));
   content: '›';
   display: inline-block;
@@ -1051,60 +1062,38 @@ body.hfb-scroll-locked {
   margin-right: 0.45em;
 }
 
-.hfb-footer-wrap .hfb-footer__menu a:hover,
-.hfb-footer-wrap .hfb-footer__menu a:focus-visible {
+.hfb-footer-wrap .hfb-footer__col--links .hfb-footer__menu a:hover,
+.hfb-footer-wrap .hfb-footer__col--links .hfb-footer__menu a:focus-visible {
   color: var(--hfb-footer-links-item-hover, var(--hfb-gold));
+}
+
+.hfb-footer-wrap .hfb-footer__col--links2 .hfb-footer__menu a {
+  color: var(--hfb-footer-links2-item-color, var(--hfb-text));
+  display: inline-flex;
+  font-family: var(--hfb-footer-links2-item-font, inherit);
+  font-size: var(--hfb-footer-links2-item-size, 15px);
+  font-weight: var(--hfb-footer-links2-item-weight, 400);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.hfb-footer-wrap .hfb-footer__col--links2 .hfb-footer__menu a::before {
+  color: var(--hfb-footer-links2-item-hover, var(--hfb-gold));
+  content: '›';
+  display: inline-block;
+  font-weight: 400;
+  margin-right: 0.45em;
+}
+
+.hfb-footer-wrap .hfb-footer__col--links2 .hfb-footer__menu a:hover,
+.hfb-footer-wrap .hfb-footer__col--links2 .hfb-footer__menu a:focus-visible {
+  color: var(--hfb-footer-links2-item-hover, var(--hfb-gold));
 }
 
 .hfb-footer-wrap .hfb-footer__menu .sub-menu {
   list-style: none;
   margin: 0.35rem 0 0;
   padding: 0 0 0 0.85rem;
-}
-
-.hfb-footer__col--hours {
-  text-align: var(--hfb-footer-hours-align, left);
-}
-
-.hfb-footer__col--hours .hfb-footer__heading {
-  color: var(--hfb-footer-hours-title-color, var(--hfb-gold));
-  font-family: var(--hfb-footer-hours-title-font, var(--hfb-font-display));
-  font-size: var(--hfb-footer-hours-title-size, 18px);
-  font-weight: var(--hfb-footer-hours-title-weight, 600);
-}
-
-.hfb-footer__hours {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.hfb-footer__hours-row {
-  align-items: baseline;
-  color: var(--hfb-footer-hours-item-color, var(--hfb-text));
-  display: flex;
-  font-family: var(--hfb-footer-hours-item-font, inherit);
-  font-size: var(--hfb-footer-hours-item-size, 14px);
-  font-weight: var(--hfb-footer-hours-item-weight, 400);
-  gap: 0.5rem;
-  margin: 0 0 0.55rem;
-}
-
-.hfb-footer__hours-day {
-  flex: 0 0 auto;
-}
-
-.hfb-footer__hours-sep {
-  border-bottom: 1px dotted color-mix(in srgb, currentColor 45%, transparent);
-  flex: 1 1 auto;
-  min-width: 0.75rem;
-  opacity: 0.7;
-  transform: translateY(-0.2em);
-}
-
-.hfb-footer__hours-time {
-  flex: 0 0 auto;
-  white-space: nowrap;
 }
 
 .hfb-footer__col--contact {
@@ -1440,16 +1429,16 @@ body:has(.hfb-footer__call-wrap .hfb-footer__call--warn):not(.wp-admin) {
     font-size: var(--hfb-footer-links-title-size-m, 16px);
   }
 
-  .hfb-footer-wrap .hfb-footer__menu a {
+  .hfb-footer-wrap .hfb-footer__col--links .hfb-footer__menu a {
     font-size: var(--hfb-footer-links-item-size-m, 14px);
   }
 
-  .hfb-footer__col--hours .hfb-footer__heading {
-    font-size: var(--hfb-footer-hours-title-size-m, 16px);
+  .hfb-footer__col--links2 .hfb-footer__heading {
+    font-size: var(--hfb-footer-links2-title-size-m, 16px);
   }
 
-  .hfb-footer__hours-row {
-    font-size: var(--hfb-footer-hours-item-size-m, 13px);
+  .hfb-footer-wrap .hfb-footer__col--links2 .hfb-footer__menu a {
+    font-size: var(--hfb-footer-links2-item-size-m, 14px);
   }
 
   .hfb-footer__col--contact .hfb-footer__heading {
