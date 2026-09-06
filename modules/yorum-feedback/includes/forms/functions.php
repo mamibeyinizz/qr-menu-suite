@@ -901,6 +901,104 @@ function qrm_cf_format_value($field, $value) {
 }
 
 /**
+ * rating_group widget'ının bir gönderimdeki puanlarını okur.
+ *
+ * google_reward'ın aksine bu widget POST verisi taşır, ama KENDİ alan
+ * anahtarı altında değil — rating_1..5 anahtarlarında durur (bkz.
+ * qrm_cf_validate_rating_group_submission). Bu yüzden tablo/CSV/e-posta
+ * gibi yerlerde $data[$field->field_key] okumak hep boş döner; gerçek
+ * değerler buradan çekilmelidir.
+ *
+ * @param array $data qrm_cf_submission_data() çıktısı
+ * @return array i => ['name' => kriter adı, 'value' => 1-5] yalnızca gönderimde bulunan kriterler
+ */
+function qrm_cf_rating_group_values(array $data) {
+    $settings = qrm_pro_get_settings();
+    $out = [];
+
+    for ($i = 1; $i <= 5; $i++) {
+        if (!isset($data['rating_' . $i])) continue;
+        $val = intval($data['rating_' . $i]);
+        if ($val < 1 || $val > 5) continue;
+        $out[$i] = [
+            'name'  => $settings['crit_' . $i . '_name'] !== '' ? $settings['crit_' . $i . '_name'] : sprintf(__('Kriter %d', 'qrms'), $i),
+            'value' => $val,
+        ];
+    }
+
+    return $out;
+}
+
+/** rating_group puanlarını tabloda/CSV'de/e-postada tek satırlık metne çevirir. */
+function qrm_cf_rating_group_text(array $data) {
+    $values = qrm_cf_rating_group_values($data);
+    if (!$values) return '';
+
+    $parts = [];
+    foreach ($values as $v) {
+        $parts[] = $v['name'] . ': ' . $v['value'] . '/5';
+    }
+    return implode(' · ', $parts);
+}
+
+/**
+ * Bir forma ait TÜM gönderimler üzerinden rating_group ortalamalarını
+ * hesaplar. Hub'daki "Genel Ortalama" kutusu yalnızca Ana Yorum Formu'nun
+ * tablosunu (wp_qrm_reviews) sayar; özel formdaki puanlama kriterleri tamamen
+ * ayrı bir veri kaynağıdır (data JSON'u içinde rating_1..5) ve o sayıya hiç
+ * karışmaz — dolayısıyla kendi özetini kendi taşımalıdır.
+ *
+ * @param int $form_id
+ * @return array{count:int, overall_avg:float, criteria:array} criteria: i => ['name'=>, 'avg'=>, 'count'=>]
+ */
+function qrm_cf_rating_group_stats($form_id) {
+    global $wpdb;
+    $table = qrm_cf_submissions_table();
+    $rows  = $wpdb->get_col($wpdb->prepare("SELECT data FROM $table WHERE form_id = %d", intval($form_id)));
+
+    $settings = qrm_pro_get_settings();
+    $sums     = [];
+    $counts   = [];
+    $with_rating = 0;
+
+    foreach ($rows as $raw) {
+        $decoded = json_decode((string) $raw, true);
+        if (!is_array($decoded)) continue;
+
+        $found = false;
+        for ($i = 1; $i <= 5; $i++) {
+            if (!isset($decoded['rating_' . $i])) continue;
+            $val = intval($decoded['rating_' . $i]);
+            if ($val < 1 || $val > 5) continue;
+            $sums[$i]   = (isset($sums[$i]) ? $sums[$i] : 0) + $val;
+            $counts[$i] = (isset($counts[$i]) ? $counts[$i] : 0) + 1;
+            $found = true;
+        }
+        if ($found) $with_rating++;
+    }
+
+    $criteria      = [];
+    $overall_sum   = 0;
+    $overall_count = 0;
+    for ($i = 1; $i <= 5; $i++) {
+        if (empty($settings['crit_' . $i . '_active']) || empty($counts[$i])) continue;
+        $criteria[$i] = [
+            'name'  => $settings['crit_' . $i . '_name'],
+            'avg'   => $sums[$i] / $counts[$i],
+            'count' => $counts[$i],
+        ];
+        $overall_sum   += $sums[$i];
+        $overall_count += $counts[$i];
+    }
+
+    return [
+        'count'       => $with_rating,
+        'overall_avg' => $overall_count > 0 ? $overall_sum / $overall_count : 0.0,
+        'criteria'    => $criteria,
+    ];
+}
+
+/**
  * Gönderimden cooldown kimlik bilgilerini (e-posta / telefon) çıkarır.
  * İlk e-posta ve ilk telefon alanı yeterlidir; yoksa yalnızca IP ile kimliklendirilir.
  *
@@ -947,8 +1045,22 @@ function qrm_cf_notify_admin($form, $fields, $data) {
 
     $widget_types = qrm_cf_field_types(true);
     foreach ((array) $fields as $field) {
-        // Widget'lar (rating_group, google_reward) POST verisi taşımaz;
-        // bildirimde boş bir satır olarak görünmesin.
+        // google_reward salt bilgi panelidir, hiç POST verisi taşımaz — bildirimde
+        // boş bir satır olarak görünmesin. rating_group ise ayrı ele alınır: kendi
+        // anahtarı boş olsa da gerçek puanları rating_1..5'te taşır (bkz.
+        // qrm_cf_rating_group_text).
+        if ($field->field_type === 'google_reward') {
+            continue;
+        }
+        if ($field->field_type === 'rating_group') {
+            $rg_text = qrm_cf_rating_group_text($data);
+            if ($rg_text === '') continue;
+            $body .= '<tr>';
+            $body .= '<td style="padding:9px 12px;border:1px solid #e2e8f0;background:#f8fafc;font-weight:600;width:36%;">' . esc_html($field->label) . '</td>';
+            $body .= '<td style="padding:9px 12px;border:1px solid #e2e8f0;">' . esc_html($rg_text) . '</td>';
+            $body .= '</tr>';
+            continue;
+        }
         if (!empty($widget_types[$field->field_type]['is_widget'])) {
             continue;
         }

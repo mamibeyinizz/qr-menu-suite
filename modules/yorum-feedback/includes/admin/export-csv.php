@@ -470,11 +470,11 @@ function qrm_export_csv_submissions(array $post) {
     }
 
     $extra  = qrm_pro_admin_review_list_filters($post);
-    // Widget'lar (rating_group, google_reward) POST verisi taşımaz; CSV'de
-    // hep boş bir sütun olarak görünmesinler.
-    $widget_types = qrm_cf_field_types(true);
-    $fields       = array_values(array_filter(qrm_cf_get_fields($form->id), static function ($f) use ($widget_types) {
-        return empty($widget_types[$f->field_type]['is_widget']);
+    // google_reward salt bilgi panelidir, hiç POST verisi taşımaz; CSV'de hep
+    // boş bir sütun olarak görünmesin. rating_group gerçek puanları taşır
+    // (rating_1..5 anahtarlarında, bkz. qrm_cf_rating_group_text) ve kalır.
+    $fields = array_values(array_filter(qrm_cf_get_fields($form->id), static function ($f) {
+        return $f->field_type !== 'google_reward';
     }));
 
     $headers = [
@@ -522,6 +522,10 @@ function qrm_export_csv_submissions(array $post) {
             ];
 
             foreach ($fields as $field) {
+                if ($field->field_type === 'rating_group') {
+                    $row[] = qrm_cf_rating_group_text($data);
+                    continue;
+                }
                 $key = (string) $field->field_key;
                 if (!isset($data[$key])) {
                     $row[] = '';
