@@ -783,6 +783,26 @@ function qrm_cf_get_submissions($form_id, $args = []) {
     ));
 }
 
+/**
+ * Bir formun TÜM gönderimlerini (sayfalamasız) döner.
+ *
+ * Tüm Yorumlar köprüsü (bkz. includes/admin/reviews-cf-bridge.php) puanlama
+ * ve sıralama için tüm veriye ihtiyaç duyar; restoran başına gönderim hacmi
+ * (onlarca/yüzlerce) düşünüldüğünde tek seferde çekmek makuldür.
+ *
+ * @param int $form_id
+ * @return array
+ */
+function qrm_cf_get_all_submissions($form_id) {
+    global $wpdb;
+    $table = qrm_cf_submissions_table();
+
+    return $wpdb->get_results($wpdb->prepare(
+        "SELECT * FROM $table WHERE form_id = %d ORDER BY created_at DESC, id DESC",
+        intval($form_id)
+    ));
+}
+
 function qrm_cf_count_submissions($form_id, $status = '') {
     global $wpdb;
     $table = qrm_cf_submissions_table();

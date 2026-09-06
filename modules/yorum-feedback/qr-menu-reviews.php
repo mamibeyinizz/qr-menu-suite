@@ -264,6 +264,7 @@ require_once QRM_PRO_PATH . 'includes/install.php';
 require_once QRM_PRO_PATH . 'includes/admin/menu.php';
 require_once QRM_PRO_PATH . 'includes/admin/hub.php';
 require_once QRM_PRO_PATH . 'includes/admin/dashboard.php';
+require_once QRM_PRO_PATH . 'includes/admin/reviews-cf-bridge.php';
 require_once QRM_PRO_PATH . 'includes/admin/reports.php';
 require_once QRM_PRO_PATH . 'includes/admin/trend.php';
 require_once QRM_PRO_PATH . 'includes/admin/export-csv.php';

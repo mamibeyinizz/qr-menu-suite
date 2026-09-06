@@ -43,7 +43,7 @@ function qrm_cf_admin_forms_page() {
         <div class="qrm-cf-head">
             <div>
                 <h1><?php esc_html_e('Formlar', 'qrms'); ?></h1>
-                <p class="qrm-cf-sub"><?php esc_html_e('Ana yorum formu, iletişim formu ve kendi oluşturduğunuz formlar. Kısa kodla sayfaya yerleştirin, gönderimleri buradan takip edin.', 'qrms'); ?></p>
+                <p class="qrm-cf-sub"><?php esc_html_e('Kendi oluşturduğunuz formlar. Kısa kodla sayfaya yerleştirin, gönderimleri buradan takip edin.', 'qrms'); ?></p>
             </div>
             <a class="qrm-cf-btn-primary" href="<?php echo esc_url(qrm_cf_admin_url(['view' => 'edit'])); ?>">
                 <span class="dashicons dashicons-plus-alt2" style="font-size:17px;width:17px;height:17px;"></span> Yeni Form Oluştur
@@ -252,7 +252,6 @@ function qrm_cf_admin_forms_list_pane() {
     $forms = qrm_cf_get_forms();
     ?>
             <div class="qrm-cf-grid-cards">
-                <?php qrm_cf_admin_system_form_cards(); ?>
                 <?php foreach ($forms as $form):
                     $total  = qrm_cf_count_submissions($form->id);
                     $unread = qrm_cf_count_submissions($form->id, 'new');
@@ -301,66 +300,11 @@ function qrm_cf_admin_forms_list_pane() {
     <?php
 }
 
-/**
- * Listenin en üstündeki iki sabit sistem formu satırı.
- *
- * wp_qrm_custom_forms kaydı değildir; tıklanınca düzenleyici system= parametresiyle açılır.
- * Sil / kopyala / taslak aksiyonları yok.
- */
-function qrm_cf_admin_system_form_cards() {
-    $fields   = function_exists('qrm_pro_get_review_form_fields') ? qrm_pro_get_review_form_fields() : [];
-    $active   = 0;
-    foreach ($fields as $f) {
-        if (!empty($f->is_active)) {
-            $active++;
-        }
-    }
-
-    $stats = function_exists('qrm_pro_review_stats') ? qrm_pro_review_stats() : ['total' => 0];
-
-    foreach (qrm_pro_system_forms() as $key => $meta) {
-        $edit_url = qrm_cf_admin_url(['view' => 'edit', 'system' => $key]);
-        $is_review = ($key === 'review');
-        ?>
-        <div class="qrm-cf-card qrm-cf-card-system">
-            <div class="qrm-cf-card-top">
-                <div>
-                    <h2><?php echo esc_html($meta['title']); ?></h2>
-                    <p class="qrm-cf-card-desc"><?php echo esc_html($meta['desc']); ?></p>
-                </div>
-                <span class="qrm-cf-badge qrm-cf-badge-system"><?php esc_html_e('Sistem Formu', 'qrms'); ?></span>
-            </div>
-
-            <div class="qrm-cf-metrics">
-                <?php if ($is_review): ?>
-                    <div class="qrm-cf-metric">
-                        <span class="num"><?php echo intval($stats['total']); ?></span>
-                        <span class="lbl">Yorum</span>
-                    </div>
-                    <div class="qrm-cf-metric">
-                        <span class="num"><?php echo intval($active); ?></span>
-                        <span class="lbl">Alan</span>
-                    </div>
-                <?php else: ?>
-                    <div class="qrm-cf-metric">
-                        <span class="num"><?php echo intval($active); ?></span>
-                        <span class="lbl">Paylaşılan alan</span>
-                    </div>
-                <?php endif; ?>
-            </div>
-
-            <div class="qrm-cf-shortcode">
-                <code><?php echo esc_html($meta['shortcode']); ?></code>
-                <button type="button" class="qrm-cf-copy" data-copy="<?php echo esc_attr($meta['shortcode']); ?>">Kopyala</button>
-            </div>
-
-            <div class="qrm-cf-card-actions">
-                <a class="button button-primary" href="<?php echo esc_url($edit_url); ?>">Düzenle</a>
-                <?php if ($is_review): ?>
-                    <a class="button" href="<?php echo esc_url(qrm_pro_admin_url('qrms-yf-yorumlar')); ?>">Yorumları Gör</a>
-                <?php endif; ?>
-            </div>
-        </div>
-        <?php
-    }
-}
+// "Ana Yorum Formu" ve "İletişim Formu" kartları BİLEREK burada listelenmez:
+// restoran artık kendi puanlama widget'lı özel formunu (ör. "Bizi
+// Değerlendirin") kullanıyor ve Tüm Yorumlar bu formların gönderimlerini de
+// gösteriyor (bkz. includes/admin/reviews-cf-bridge.php). Bu, sistem
+// formlarının ALTYAPISINI silmez — düzenleyicileri hâlâ ?view=edit&system=
+// ile açılır, önceden yerleştirilmiş [qr_menu_reviews]/[qr_menu_contact]
+// kısa kodları çalışmaya devam eder; yalnızca bu listede kart olarak
+// görünmezler.
