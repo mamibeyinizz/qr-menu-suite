@@ -61,6 +61,11 @@ if ( ! function_exists( 'qmo_ikili_buton_shortcode' ) ) {
  */
 if ( ! function_exists( 'qmo_cagri_butonlari_html' ) ) {
 	function qmo_cagri_butonlari_html( $tip ) {
+		// HFB footer'da call_enabled açıksa sabit çubuk oradan gelir; kısa kod sessiz kalır.
+		if ( function_exists( 'qrms_hfb_footer_call_claims_page' ) && qrms_hfb_footer_call_claims_page() ) {
+			return '';
+		}
+
 		if ( ! qmo_oturum() ) {
 			return qmo_oturum_uyari_kutusu(
 				qmo_ceviri_chat( __( 'Çağrı butonlarını kullanmak için masanızdaki QR kodu okutun.', 'qrms' ) )

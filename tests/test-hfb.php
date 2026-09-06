@@ -1558,8 +1558,9 @@ qrms_test(
 		qrms_assert_contains( "\n.hfb-footer__call-wrap:has(.qmo-cagri-bar),", $css, 'butonlu wrap her viewport\'ta sticky' );
 		qrms_assert_contains( "\n.hfb-footer__call-wrap:has(.hfb-footer__call--warn) {", $css, 'uyarı wrap her viewport\'ta sticky' );
 		qrms_assert_contains( 'position: fixed', $css, 'ekrana sabit' );
-		qrms_assert_contains( "\nbody:has(.hfb-footer__call-wrap .qmo-cagri-bar):not(.wp-admin),", $css, 'body boşluğu kırılımsız' );
-		qrms_assert_contains( 'padding-bottom: calc(66px + env(safe-area-inset-bottom, 0px))', $css, 'body boşluğu' );
+		qrms_assert_contains( "\nbody:not(.wp-admin) .hfb-footer-wrap:has(.hfb-footer__call-wrap .qmo-cagri-bar) .hfb-footer,", $css, 'footer scroll payı body yerine' );
+		qrms_assert_contains( 'padding-bottom: calc(66px + env(safe-area-inset-bottom, 0px))', $css, 'footer scroll payı' );
+		qrms_assert_contains( "\nbody:has(.hfb-footer__call-wrap .qmo-cagri-bar):not(.wp-admin),", $css, 'body ink rengi overscroll' );
 		qrms_assert_contains( "\n.wp-admin .hfb-footer__call-wrap:has(.qmo-cagri-bar),", $css, 'admin önizlemesi akışta kalır' );
 		qrms_assert_contains( 'border-radius: 12px', $css, 'köşeli-yuvarlak buton' );
 		qrms_assert_contains( 'flex: 1 1 0', $css, 'iki buton eşit genişlik' );
@@ -1585,7 +1586,18 @@ qrms_test(
 );
 
 qrms_test(
-	'AJAX önizleme footer saat ve başlık alanlarını döndürür',
+	'footer_call_claims_shortcode_output call_enabled kapalıyken false döner',
+	function () {
+		$hfb = qrms_hfb();
+		update_option( 'hfb_footer_options', array( 'call_enabled' => 0 ) );
+		qrms_assert_false( $hfb->footer_call_claims_shortcode_output(), 'çağrı kapalı' );
+
+		$shortcode = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/includes/shortcode-buttons.php' );
+		qrms_assert_contains( 'qrms_hfb_footer_call_claims_page', $shortcode, 'kısa kod HFB önceliğini kontrol eder' );
+	}
+);
+
+qrms_test(
 	function () {
 		$hfb = qrms_hfb();
 
