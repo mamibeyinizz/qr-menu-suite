@@ -129,6 +129,23 @@ class QRMS_Analitik {
 	const SAKLAMA_GUN = 90;
 
 	/**
+	 * Saklama süresi KAPALIYKEN (sınırsız), tabloyu "büyüdü" sayıp teşhis
+	 * kutusunda uyaran satır eşiği. İki eşikten (bkz. BUYUK_TABLO_BAYT)
+	 * herhangi biri geçilirse uyarı basılır — küçük satırlı ama az disk
+	 * kaplayan bir tablo da, az satırlı ama BLOB benzeri büyük alanlı bir
+	 * tablo da (bu şemada olmasa da ileride) yakalanabilsin diye ikisi de
+	 * ayrı ayrı kontrol edilir.
+	 */
+	const BUYUK_TABLO_SATIR = 500000;
+
+	/**
+	 * Saklama süresi kapalıyken tabloyu "büyüdü" sayan disk boyutu eşiği
+	 * (bayt). 300 MB, paylaşımlı hosting'te bile rahatça taşınan ama artık
+	 * "gözden geçirilmeli" diyecek kadar büyük bir tablo büyüklüğüdür.
+	 */
+	const BUYUK_TABLO_BAYT = 314572800;
+
+	/**
 	 * Ham CSV'nin tek seferde belleğe alacağı satır sayısı.
 	 */
 	const CSV_PARCA = 2000;
@@ -823,6 +840,34 @@ class QRMS_Analitik {
 				'url'    => QRMS_Admin::get_module_page_url( 'qr-masa' ),
 				'etiket' => __( 'QR Masa\'yı aç', 'qrms' ),
 			);
+		}
+
+		// 5) Saklama süresi KAPALIYKEN (sınırsız) tablo zaten büyükse: otomatik
+		//    temizlik hiç çalışmadığı için tablo sessizce büyümeye devam eder ve
+		//    üzerindeki her sorgu yavaşça yavaşlar. "kritik" değil "uyari": bu
+		//    bilinçli bir tercih olabilir (ör. tüm geçmişi tutmak isteyen bir
+		//    işletme), yalnızca fark ettirilir.
+		if ( 0 === self::saklama_gun() ) {
+			$istat = self::tablo_istatistikleri();
+
+			if ( $istat['satir'] >= self::BUYUK_TABLO_SATIR || $istat['boyut'] >= self::BUYUK_TABLO_BAYT ) {
+				$boyut_metni = function_exists( 'qrms_analitik_boyut_metni' )
+					? qrms_analitik_boyut_metni( $istat['boyut'] )
+					: size_format( $istat['boyut'] );
+
+				$bulgu[] = array(
+					'tip'    => 'uyari',
+					'baslik' => __( 'Saklama süresi kapalı ve tablo büyüdü', 'qrms' ),
+					'mesaj'  => sprintf(
+						/* translators: 1: satır sayısı, 2: disk boyutu (ör. "312.4 MB"). */
+						__( 'Ham kayıt hiç silinmiyor (saklama süresi "sınırsız" olarak ayarlı). Tabloda şu an %1$s satır, yaklaşık %2$s yer kaplıyor; büyümeye devam edecek ve sorguları giderek yavaşlatabilir. Veri & Sistem sayfasından bir saklama süresi belirlemeyi düşünün.', 'qrms' ),
+						number_format_i18n( $istat['satir'] ),
+						$boyut_metni
+					),
+					'url'    => QRMS_Analitik_Filtre::url( 'qrms-an-sistem' ),
+					'etiket' => __( 'Veri & Sistem\'i aç', 'qrms' ),
+				);
+			}
 		}
 
 		return $bulgu;
