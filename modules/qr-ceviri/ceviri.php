@@ -255,17 +255,16 @@ if ( ! function_exists( 'rma_ceviri_hedef_diller' ) ) {
 }
 
 /**
- * Aktivasyon: çeviri tablosunu oluştur.
- */
-function rma_ceviri_aktivasyon() {
-	RMA_Ceviri_Tablo::tablo_kur();
-	update_option( 'rma_ceviri_db_version', RMA_CEVIRI_VERSION, false );
-}
-register_activation_hook( __FILE__, 'rma_ceviri_aktivasyon' );
-
-/**
- * Eklenti güncellendiğinde şemayı sessizce tazele.
- * (Aktivasyon hook'u güncellemelerde çalışmaz — QMO'daki desenin aynısı.)
+ * Tablo kurulumu YALNIZCA aşağıdaki plugins_loaded kancasından geçer.
+ *
+ * Bu dosya bir eklenti kök dosyası değil, suite'in bir modül dosyasıdır;
+ * burada register_activation_hook( __FILE__, ... ) çağırmanın bir anlamı
+ * yoktur — WordPress etkinleştirmeyi her zaman gerçek eklenti dosyasına
+ * (qr-menu-suite.php) göre eşler, bu dosyaya değil, yani öyle bir kayıt hiç
+ * tetiklenmez (bkz. modules/yorum-feedback/module.php'deki aynı tespit).
+ * Böyle ölü bir kayıt daha önce burada duruyordu; kaldırıldı. Kurulum/yükseltme
+ * bu yüzden tamamen aşağıdaki plugins_loaded kancasına bırakılmıştır — o,
+ * modül ilk yüklendiğinde de sürüm değiştiğinde de aynı şekilde çalışır.
  */
 add_action( 'plugins_loaded', 'rma_ceviri_surum_kontrol', 25 );
 function rma_ceviri_surum_kontrol() {

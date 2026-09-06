@@ -981,6 +981,48 @@ if ( ! function_exists( 'rma_ceviri_yetimleri_sil' ) ) {
 }
 
 /**
+ * Aktif olmayan dillerin çeviri tablosundaki satır sayıları.
+ *
+ * Bir dil Diller ekranından kapatıldığında satırları silinmez — yeniden
+ * açılırsa çeviriler baştan gerekmesin diye. Ama uzun süre kapalı kalan
+ * bir dilin satırları tabloyu şişirir ve Sistem Durumu'nda hiç görünmez;
+ * bu fonksiyon o kör noktayı ortaya çıkarır.
+ *
+ * @return array<string,int> dil => satır sayısı.
+ */
+if ( ! function_exists( 'rma_ceviri_pasif_dil_sayilari' ) ) {
+	function rma_ceviri_pasif_dil_sayilari() {
+		if ( ! class_exists( 'RMA_Ceviri_Tablo' ) || ! RMA_Ceviri_Tablo::tablo_var_mi() ) {
+			return array();
+		}
+
+		$aktif = array_flip( rma_ceviri_hedef_diller() );
+
+		return array_diff_key( RMA_Ceviri_Tablo::dil_sayilari(), $aktif );
+	}
+}
+
+/**
+ * Pasif dillerin tüm çeviri satırlarını sil (geri alınamaz).
+ *
+ * @return int Silinen toplam satır.
+ */
+if ( ! function_exists( 'rma_ceviri_pasif_dilleri_sil' ) ) {
+	function rma_ceviri_pasif_dilleri_sil() {
+		$silinen = 0;
+		foreach ( array_keys( rma_ceviri_pasif_dil_sayilari() ) as $lang ) {
+			$silinen += RMA_Ceviri_Tablo::dil_sil( $lang );
+		}
+
+		if ( $silinen > 0 && function_exists( 'rma_ceviri_onbellek_temizle' ) ) {
+			rma_ceviri_onbellek_temizle();
+		}
+
+		return $silinen;
+	}
+}
+
+/**
  * Bir veri satırının kaç dilde çevirisi var?
  *
  * @param string $tip     item_type.
