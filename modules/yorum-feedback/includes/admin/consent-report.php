@@ -91,6 +91,7 @@ function qrm_pro_admin_render_consent_block(array $range) {
         <?php if ($total === 0): ?>
             <p class="qrm-empty-inline"><?php esc_html_e('Bu tarih aralığında pazarlama izni veren kayıt yok.', 'qrms'); ?></p>
         <?php else: ?>
+            <div class="qrm-table-scroll">
             <table class="wp-list-table widefat fixed striped qrm-consent-table">
                 <thead>
                     <tr>
@@ -129,6 +130,7 @@ function qrm_pro_admin_render_consent_block(array $range) {
                 <?php endforeach; ?>
                 </tbody>
             </table>
+            </div>
 
             <?php if ($pages > 1): ?>
                 <div class="tablenav bottom">

@@ -201,7 +201,8 @@ function qrm_reward_admin_codes_tab($settings) {
             </div>
         </form>
 
-        <table class="wp-list-table widefat fixed striped qrm-table-cards">
+        <div class="qrm-table-scroll">
+        <table class="wp-list-table widefat fixed striped qrm-table-cards qrm-reward-codes-table">
             <thead>
                 <tr>
                     <th style="width:130px;">Oluşturulma</th>
@@ -246,6 +247,7 @@ function qrm_reward_admin_codes_tab($settings) {
             <?php endforeach; endif; ?>
             </tbody>
         </table>
+        </div>
 
         <?php if ($total_pages > 1): ?>
         <div class="tablenav"><div class="tablenav-pages" style="margin:12px 0;">

@@ -189,6 +189,15 @@ function qrm_cf_admin_submissions_pane() {
                 </p>
             </div>
         <?php else: ?>
+            <?php
+            // Sabit sütunlar: Tarih 140 + Durum 90 + İşlemler 210 = 440px.
+            // Her form alanı en az ~136px ister; tablo bu tabandan daralırsa
+            // .widefat.fixed (table-layout:fixed) başlığı harf harf böler.
+            // min-width sarmalayıcıda yatay kaydırmayı tetikler; kart eşiği
+            // (aşağıdaki 1100px) dar/tablet görünümde kaydırmanın yerini alır.
+            $sub_table_min = 440 + (count($fields) * 136);
+            ?>
+            <div class="qrm-sub-table-scroll" style="--qrm-sub-table-min: <?php echo (int) $sub_table_min; ?>px;">
             <table class="wp-list-table widefat fixed striped qrm-sub-table">
                 <thead>
                     <tr>
@@ -240,6 +249,7 @@ function qrm_cf_admin_submissions_pane() {
                 <?php endforeach; ?>
                 </tbody>
             </table>
+            </div>
 
             <?php if ($total_pages > 1): ?>
                 <div class="tablenav"><div class="tablenav-pages">
@@ -302,6 +312,36 @@ function qrm_cf_admin_submissions_styles() {
         .qrm-sub-status-new { background:#dbeafe; color:#1e40af; }
         .qrm-sub-status-read { background:#f1f5f9; color:#475569; }
         .qrm-sub-status-archived { background:#f5f5f5; color:#787c82; }
+
+        /* Gönderim tablosu: sütun sayısı forma göre değişir. .widefat.fixed
+           table-layout:fixed uygular; Tarih/Durum/İşlemler sabit px alır,
+           aradaki alan sütunları sıfıra yakın paya düşer ve tarayıcı th
+           metnini harf harf böler. overflow-x sarmalayıcı + th min-width
+           bunu masaüstünde kaydırmaya çevirir; 1100px kart eşiği tablet
+           aralığında (782px WP eşiğinin yetmediği yerde) satırları karta
+           indirir. 2 alanlı form kayabilir, 8 alanlı karta düşebilir —
+           başlık hiçbir koşulda tek karaktere inmez. */
+        .qrm-sub-table-scroll { -webkit-overflow-scrolling:touch; overflow-x:auto; max-width:100%; }
+        .qrm-sub-table { min-width: var(--qrm-sub-table-min, 720px); }
+        .qrm-sub-table th { overflow-wrap:break-word; white-space:normal; word-break:normal; }
+        .qrm-sub-table th:not(:first-child):not(:nth-last-child(-n+2)) { min-width:8.5em; }
+
+        /* Tablet: kart görünümü WP'nin 782px eşiğinden önce. Aşağıdaki 782px
+           bloğu (sekme/araç çubuğu + aynı kart kuralları) bozulmadan durur. */
+        @media screen and (max-width: 1100px) {
+            .qrm-sub-table-scroll { overflow-x:visible; }
+            .qrm-sub-table { min-width:0; }
+            .qrm-sub-table, .qrm-sub-table tbody, .qrm-sub-table tr, .qrm-sub-table td { display:block; width:auto; }
+            .qrm-sub-table thead { display:none; }
+            .qrm-sub-table tr { background:#fff; border:1px solid #dcdcde; border-radius:8px; margin-bottom:12px; padding:6px 4px; }
+            .qrm-sub-table td { border:0; padding:7px 12px; }
+            .qrm-sub-table td::before { content:attr(data-label); display:block; font-size:12px; font-weight:600; color:#646970; text-transform:uppercase; margin-bottom:2px; }
+            .qrm-sub-table td[data-label=""]::before { display:none; }
+            .qrm-sub-row-new td { background:transparent; }
+            .qrm-sub-row-new { box-shadow:inset 3px 0 0 #2271b1; }
+            .qrm-sub-row-new td:first-child { box-shadow:none; }
+            .qrm-sub-actions .button { flex:1 1 auto; }
+        }
 
         /* Mobil: gönderim tablosunun sütun sayısı forma göre değişir, dar ekranda
            asla sığmaz. Her satır bir karta, her hücre "etiket + değer" satırına
