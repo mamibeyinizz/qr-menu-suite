@@ -5,52 +5,94 @@
 ( function () {
 	'use strict';
 
+	/**
+	 * QRious CDN betiği bazı sitelerde (performans eklentisinin script'leri
+	 * ertelemesi/async yapması, yavaş CDN, ağ hatası) DOMContentLoaded anında
+	 * henüz hazır olmayabilir. Eskiden bu durumda satır işleme fonksiyonu
+	 * sessizce çıkıyordu: QR önizlemesi hiç basılmıyor, PNG/PDF butonlarına
+	 * tıklama dinleyicisi HİÇ EKLENMİYORDU — kütüphane bir an sonra yüklense
+	 * bile o satır kalıcı olarak ölü kalıyordu (sayfa yenilenmeden düzelmezdi).
+	 * Şimdi kütüphane hazır olana kadar kısa aralıklarla yeniden denenir;
+	 * makul bir süre sonra hâlâ yoksa (CDN engellendi vb.) önizleme hücresinde
+	 * görünür bir uyarı gösterilir.
+	 *
+	 * @param {function(boolean):void} cb Hazır olunca true, zaman aşımında false.
+	 */
+	function qriousBekle( cb ) {
+		var deneme = 0;
+		var azami  = 40; // 150ms * 40 ≈ 6 saniye.
+
+		( function dene() {
+			if ( 'undefined' !== typeof window.QRious ) {
+				cb( true );
+				return;
+			}
+			deneme++;
+			if ( deneme >= azami ) {
+				cb( false );
+				return;
+			}
+			setTimeout( dene, 150 );
+		}() );
+	}
+
 	document.addEventListener( 'DOMContentLoaded', function () {
 		var satirlar = document.querySelectorAll( '.qmo-row' );
 
 		satirlar.forEach( function ( row ) {
-			var url = row.getAttribute( 'data-url' );
-			var ad  = row.getAttribute( 'data-name' ) || 'masa';
-
-			if ( 'undefined' === typeof window.QRious ) {
-				return;
-			}
-
-			var qr = new window.QRious( { value: url, size: 800, level: 'H' } );
-			var dataUri = qr.toDataURL( 'image/png' );
-
+			var url      = row.getAttribute( 'data-url' );
+			var ad       = row.getAttribute( 'data-name' ) || 'masa';
 			var onizleme = row.querySelector( '.qmo-qr-preview' );
-			if ( onizleme ) {
-				onizleme.src = dataUri;
-			}
 
-			var dosyaAdi = ad.replace( /\s+/g, '-' );
-
-			row.querySelector( '.qmo-dl-png' ).addEventListener( 'click', function () {
-				var a = document.createElement( 'a' );
-				a.download = dosyaAdi + '-QR.png';
-				a.href = dataUri;
-				document.body.appendChild( a );
-				a.click();
-				document.body.removeChild( a );
-			} );
-
-			row.querySelector( '.qmo-dl-pdf' ).addEventListener( 'click', function () {
-				if ( 'undefined' === typeof window.jspdf ) {
-					window.alert( 'PDF kütüphanesi yükleniyor, lütfen 1 saniye sonra tekrar deneyin.' );
+			qriousBekle( function ( hazir ) {
+				if ( ! hazir ) {
+					if ( onizleme ) {
+						onizleme.alt = 'QR kod üretilemedi — sayfayı yenileyin';
+					}
 					return;
 				}
 
-				var jsPDF = window.jspdf.jsPDF;
-				var doc = new jsPDF();
+				var qr = new window.QRious( { value: url, size: 800, level: 'H' } );
+				var dataUri = qr.toDataURL( 'image/png' );
 
-				doc.setFontSize( 40 );
-				doc.text( ad, 105, 40, { align: 'center' } );
-				doc.addImage( dataUri, 'PNG', 35, 60, 140, 140 );
-				doc.setFontSize( 14 );
-				doc.text( 'Lutfen kameraniza okutunuz', 105, 220, { align: 'center' } );
+				if ( onizleme ) {
+					onizleme.src = dataUri;
+				}
 
-				doc.save( dosyaAdi + '-QR.pdf' );
+				var dosyaAdi = ad.replace( /\s+/g, '-' );
+
+				var pngBtn = row.querySelector( '.qmo-dl-png' );
+				if ( pngBtn ) {
+					pngBtn.addEventListener( 'click', function () {
+						var a = document.createElement( 'a' );
+						a.download = dosyaAdi + '-QR.png';
+						a.href = dataUri;
+						document.body.appendChild( a );
+						a.click();
+						document.body.removeChild( a );
+					} );
+				}
+
+				var pdfBtn = row.querySelector( '.qmo-dl-pdf' );
+				if ( pdfBtn ) {
+					pdfBtn.addEventListener( 'click', function () {
+						if ( 'undefined' === typeof window.jspdf ) {
+							window.alert( 'PDF kütüphanesi yükleniyor, lütfen 1 saniye sonra tekrar deneyin.' );
+							return;
+						}
+
+						var jsPDF = window.jspdf.jsPDF;
+						var doc = new jsPDF();
+
+						doc.setFontSize( 40 );
+						doc.text( ad, 105, 40, { align: 'center' } );
+						doc.addImage( dataUri, 'PNG', 35, 60, 140, 140 );
+						doc.setFontSize( 14 );
+						doc.text( 'Lutfen kameraniza okutunuz', 105, 220, { align: 'center' } );
+
+						doc.save( dosyaAdi + '-QR.pdf' );
+					} );
+				}
 			} );
 		} );
 	} );
