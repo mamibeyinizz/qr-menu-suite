@@ -163,11 +163,11 @@ if ( ! function_exists( 'rma_ceviri_option_defteri' ) ) {
 				'anahtar'    => 'links_title',
 				'varsayilan' => 'Hızlı Menü',
 			),
-			'hfb_footer.hours_title'   => array(
-				'etiket'     => 'Footer: çalışma saatleri başlığı',
+			'hfb_footer.links2_title'  => array(
+				'etiket'     => 'Footer: ikinci hızlı menü başlığı',
 				'option'     => 'hfb_footer_options',
-				'anahtar'    => 'hours_title',
-				'varsayilan' => 'Çalışma Saatlerimiz',
+				'anahtar'    => 'links2_title',
+				'varsayilan' => 'Hızlı Menü',
 			),
 			'hfb_footer.contact_title' => array(
 				'etiket'     => 'Footer: iletişim başlığı',

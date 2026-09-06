@@ -318,17 +318,6 @@ trait QRMS_HFB_Settings_Page {
 	}
 
 	/**
-	 * Çalışma saatleri modülü bu istekte kullanılabilir mi?
-	 *
-	 * Gevşek bağ: modül kapalıysa sütun sessizce gizlenir.
-	 *
-	 * @return bool
-	 */
-	public function hours_module_available() {
-		return function_exists( 'qrms_cs_get' ) && function_exists( 'qrms_cs_day_labels' );
-	}
-
-	/**
 	 * Garson/hesap AJAX uçları kayıtlı mı?
 	 *
 	 * @return bool
@@ -1073,8 +1062,12 @@ trait QRMS_HFB_Settings_Page {
 			$opts['links_title'] = sanitize_text_field( (string) $input['hfb_footer_links_title'] );
 		}
 
-		if ( isset( $input['hfb_footer_hours_title'] ) ) {
-			$opts['hours_title'] = sanitize_text_field( (string) $input['hfb_footer_hours_title'] );
+		if ( isset( $input['hfb_footer_menu_id_2'] ) ) {
+			$opts['menu_id_2'] = absint( $input['hfb_footer_menu_id_2'] );
+		}
+
+		if ( isset( $input['hfb_footer_links2_title'] ) ) {
+			$opts['links2_title'] = sanitize_text_field( (string) $input['hfb_footer_links2_title'] );
 		}
 
 		if ( isset( $input['hfb_footer_contact_title'] ) ) {
@@ -1127,14 +1120,14 @@ trait QRMS_HFB_Settings_Page {
 		$opts['logo_height_auto_mobile'] = $mobile_h['auto'];
 		$opts['logo_height_mobile']      = $mobile_h['height'];
 
-		foreach ( array( 'brand', 'links', 'hours', 'contact' ) as $col ) {
+		foreach ( array( 'brand', 'links', 'links2', 'contact' ) as $col ) {
 			$align_field = 'hfb_footer_' . $col . '_align';
 			if ( isset( $input[ $align_field ] ) ) {
 				$opts[ $col . '_align' ] = $this->sanitize_align( $input[ $align_field ], $defaults[ $col . '_align' ] );
 			}
 		}
 
-		foreach ( array( 'brand', 'links_title', 'links_item', 'hours_title', 'hours_item', 'contact_title', 'contact_item' ) as $group ) {
+		foreach ( array( 'brand', 'links_title', 'links_item', 'links2_title', 'links2_item', 'contact_title', 'contact_item' ) as $group ) {
 			$opts = $this->sanitize_typo_group( $input, $opts, $defaults, 'hfb_footer_', $group );
 		}
 
@@ -1142,6 +1135,12 @@ trait QRMS_HFB_Settings_Page {
 			$input,
 			'hfb_footer_links_item_hover_color',
 			$opts['links_item_hover_color']
+		);
+
+		$opts['links2_item_hover_color'] = $this->sanitize_color_field(
+			$input,
+			'hfb_footer_links2_item_hover_color',
+			$opts['links2_item_hover_color']
 		);
 
 		$opts = $this->sanitize_button_style( $input, $opts, $defaults, 'hfb_footer_' );

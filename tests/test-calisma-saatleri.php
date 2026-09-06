@@ -425,23 +425,4 @@ qrms_test(
 	}
 );
 
-qrms_test(
-	'footer saat sütunu aynı gün adı ve biçim fonksiyonlarını kullanır',
-	function () {
-		$kaynak = file_get_contents( QRMS_PLUGIN_DIR . 'modules/header-footer-builder/includes/trait-frontend.php' );
-
-		qrms_assert_contains( 'function render_hours_column', $kaynak, 'sütun fonksiyonu' );
-		qrms_assert_contains( 'qrms_cs_day_labels()', $kaynak, 'gün adları ortak' );
-		qrms_assert_contains( 'qrms_cs_format_day(', $kaynak, 'saat biçimi ortak' );
-		qrms_assert_false(
-			(bool) preg_match( "/__\(\s*'Pazartesi'/", $kaynak ),
-			'footer kendi gün adını basmaz'
-		);
-		qrms_assert_false(
-			(bool) preg_match( "/__\(\s*'Kapalı'/", $kaynak ),
-			'footer kendi Kapalı metnini basmaz'
-		);
-	}
-);
-
 echo "\nQR Çeviri (P0 köprü / kilit ekranı)\n";

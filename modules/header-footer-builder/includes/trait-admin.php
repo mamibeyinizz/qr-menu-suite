@@ -372,8 +372,8 @@ trait QRMS_HFB_Admin {
 	private function render_footer_fields( $opts, $menus ) {
 		$adimlar = array(
 			1 => array( 'Logo', 'Logo ve Slogan' ),
-			2 => array( 'Menü', 'Hızlı Menü' ),
-			3 => array( 'Saatler', 'Çalışma Saatleri' ),
+			2 => array( 'Menü 1', 'Hızlı Menü 1' ),
+			3 => array( 'Menü 2', 'Hızlı Menü 2' ),
 			4 => array( 'İletişim', 'İletişim Bilgileri' ),
 			5 => array( 'Çağrı', 'Garson / Hesap Butonu' ),
 		);
@@ -471,8 +471,8 @@ trait QRMS_HFB_Admin {
 			?>
 		</div>
 
-		<div class="qrms-card hfb-step" data-step="2" data-step-title="<?php esc_attr_e( 'Hızlı Menü', 'qrms' ); ?>" style="display:none;">
-			<h2 class="qrms-card-title"><?php esc_html_e( '2. Hızlı Menü', 'qrms' ); ?></h2>
+		<div class="qrms-card hfb-step" data-step="2" data-step-title="<?php esc_attr_e( 'Hızlı Menü 1', 'qrms' ); ?>" style="display:none;">
+			<h2 class="qrms-card-title"><?php esc_html_e( '2. Hızlı Menü 1', 'qrms' ); ?></h2>
 			<p class="description"><?php esc_html_e( 'Footer\'ın 2. sütunundaki başlık ve hızlı menü listesi.', 'qrms' ); ?></p>
 
 			<div class="qrms-field">
@@ -530,61 +530,63 @@ trait QRMS_HFB_Admin {
 			?>
 		</div>
 
-		<div class="qrms-card hfb-step" data-step="3" data-step-title="<?php esc_attr_e( 'Çalışma Saatleri', 'qrms' ); ?>" style="display:none;">
-			<h2 class="qrms-card-title"><?php esc_html_e( '3. Çalışma Saatleri', 'qrms' ); ?></h2>
-			<p class="description"><?php esc_html_e( 'Footer\'ın 3. sütunundaki gün/saat listesi.', 'qrms' ); ?></p>
+		<div class="qrms-card hfb-step" data-step="3" data-step-title="<?php esc_attr_e( 'Hızlı Menü 2', 'qrms' ); ?>" style="display:none;">
+			<h2 class="qrms-card-title"><?php esc_html_e( '3. Hızlı Menü 2', 'qrms' ); ?></h2>
+			<p class="description"><?php esc_html_e( 'Footer\'ın 3. sütunundaki başlık ve hızlı menü listesi.', 'qrms' ); ?></p>
 
-			<div class="hfb-subpanel">
-				<h3 class="hfb-subpanel__title"><?php esc_html_e( 'Çalışma Saatleri', 'qrms' ); ?></h3>
-				<?php if ( $this->hours_module_available() ) : ?>
-					<p class="description"><?php esc_html_e( 'Gün/saat listesi modülden gelir; burada yalnızca görünüm ayarlanır.', 'qrms' ); ?></p>
-					<div class="qrms-field">
-						<label class="qrms-label" for="hfb_footer_hours_title"><?php esc_html_e( 'Sütun başlığı', 'qrms' ); ?></label>
-						<input type="text" id="hfb_footer_hours_title" name="hfb_footer_hours_title" class="qrms-input hfb-preview-trigger" value="<?php echo esc_attr( $opts['hours_title'] ); ?>" placeholder="<?php esc_attr_e( 'Çalışma Saatlerimiz', 'qrms' ); ?>" />
-						<?php $this->hfb_ceviri_bayat_uyari( 'hfb_footer.hours_title' ); ?>
-					</div>
-					<?php
-					$this->hfb_align_row(
-						'hfb_footer_hours_align',
-						'hfb_footer_hours_align',
-						(string) $opts['hours_align'],
-						__( 'Sütun hizalama', 'qrms' ),
-						__( 'Saat sütununun yaslanması.', 'qrms' )
-					);
-					$this->hfb_typo_block(
-						'hfb_footer_',
-						$opts,
-						'hours_title',
-						array(
-							'title'        => __( 'Başlık yazısı', 'qrms' ),
-							'desc'         => __( 'Saat sütununun başlık satırı', 'qrms' ),
-							'color_label'  => __( 'Başlık yazı rengi', 'qrms' ),
-							'size_label'   => __( 'Başlık yazı boyutu', 'qrms' ),
-							'family_label' => __( 'Başlık yazı tipi', 'qrms' ),
-							'weight_label' => __( 'Başlık yazı kalınlığı', 'qrms' ),
-						)
-					);
-					$this->hfb_typo_block(
-						'hfb_footer_',
-						$opts,
-						'hours_item',
-						array(
-							'title'        => __( 'Gün ve saat metinleri', 'qrms' ),
-							'desc'         => __( 'Gün adı ve saat aralığı satırları', 'qrms' ),
-							'color_label'  => __( 'Gün/saat yazı rengi', 'qrms' ),
-							'size_label'   => __( 'Gün/saat yazı boyutu', 'qrms' ),
-							'family_label' => __( 'Gün/saat yazı tipi', 'qrms' ),
-							'weight_label' => __( 'Gün/saat yazı kalınlığı', 'qrms' ),
-						)
-					);
-					?>
-				<?php else : ?>
-					<div class="qrms-alert">
-						<p><?php esc_html_e( 'QR Çalışma Saatleri modülü şu anda etkin değil. Bu sütun footer\'da görünmez — hata oluşmaz. Saatleri göstermek için modülü etkinleştirin.', 'qrms' ); ?></p>
-					</div>
-					<input type="hidden" name="hfb_footer_hours_title" value="<?php echo esc_attr( $opts['hours_title'] ); ?>" />
-				<?php endif; ?>
+			<div class="qrms-field">
+				<label class="qrms-label" for="hfb_footer_links2_title"><?php esc_html_e( 'Sütun başlığı', 'qrms' ); ?></label>
+				<input type="text" id="hfb_footer_links2_title" name="hfb_footer_links2_title" class="qrms-input hfb-preview-trigger" value="<?php echo esc_attr( $opts['links2_title'] ); ?>" placeholder="<?php esc_attr_e( 'Hızlı Menü', 'qrms' ); ?>" />
+				<?php $this->hfb_ceviri_bayat_uyari( 'hfb_footer.links2_title' ); ?>
 			</div>
+
+			<div class="qrms-field">
+				<label class="qrms-label" for="hfb_footer_menu_id_2"><?php esc_html_e( 'Hızlı linkler menüsü', 'qrms' ); ?></label>
+				<select id="hfb_footer_menu_id_2" name="hfb_footer_menu_id_2" class="qrms-input hfb-preview-trigger">
+					<?php foreach ( $menus as $id => $name ) : ?>
+						<option value="<?php echo esc_attr( (string) $id ); ?>" <?php selected( (int) $opts['menu_id_2'], (int) $id ); ?>><?php echo esc_html( $name ); ?></option>
+					<?php endforeach; ?>
+				</select>
+			</div>
+
+			<?php
+			$this->hfb_align_row(
+				'hfb_footer_links2_align',
+				'hfb_footer_links2_align',
+				(string) $opts['links2_align'],
+				__( 'Sütun hizalama', 'qrms' ),
+				__( 'Başlık ve menü bağlantılarının yaslanması.', 'qrms' )
+			);
+			$this->hfb_typo_block(
+				'hfb_footer_',
+				$opts,
+				'links2_title',
+				array(
+					'title'        => __( 'Başlık yazısı', 'qrms' ),
+					'desc'         => __( 'Hızlı Menü sütununun başlık satırı', 'qrms' ),
+					'color_label'  => __( 'Başlık yazı rengi', 'qrms' ),
+					'size_label'   => __( 'Başlık yazı boyutu', 'qrms' ),
+					'family_label' => __( 'Başlık yazı tipi', 'qrms' ),
+					'weight_label' => __( 'Başlık yazı kalınlığı', 'qrms' ),
+				)
+			);
+			$this->hfb_typo_block(
+				'hfb_footer_',
+				$opts,
+				'links2_item',
+				array(
+					'title'        => __( 'Menü bağlantıları', 'qrms' ),
+					'desc'         => __( 'Hızlı Menü listesindeki link satırları (başlık DEĞİL)', 'qrms' ),
+					'color_label'  => __( 'Link yazı rengi', 'qrms' ),
+					'size_label'   => __( 'Link yazı boyutu', 'qrms' ),
+					'family_label' => __( 'Link yazı tipi', 'qrms' ),
+					'weight_label' => __( 'Link yazı kalınlığı', 'qrms' ),
+					'hover_key'    => 'links2_item_hover_color',
+					'hover_label'  => __( 'Link hover rengi', 'qrms' ),
+					'hover_desc'   => __( 'Bağlantının üzerine gelince kullanılan renk.', 'qrms' ),
+				)
+			);
+			?>
 		</div>
 
 		<div class="qrms-card hfb-step" data-step="4" data-step-title="<?php esc_attr_e( 'İletişim Bilgileri', 'qrms' ); ?>" style="display:none;">
