@@ -223,60 +223,82 @@ class QRMS_Header_Footer_Builder {
 		);
 
 		$this->footer_defaults = array(
+			// Yerleşim: satır/sütun/blok ağacı. Boşken get_footer_options()
+			// eski (veya salt varsayılan) tekil alanlardan tek seferlik bir
+			// düzen üretir — bkz. build_default_footer_layout().
+			'layout'                     => array(),
+
+			// Logo elemanı — tüm Logo bloklarının tek, paylaşılan kaynağı.
 			'logo'                       => 0,
 			'brand_line1'                => 'QR MENU',
 			'brand_line2'                => 'OFFİCİAL',
 			'description'                => '',
-			'phone'                      => '',
-			'email'                      => '',
-			'address'                    => '',
-			'copyright'                  => '© ' . gmdate( 'Y' ) . ' ' . get_bloginfo( 'name' ),
-			'menu_id'                    => 0,
-			'social_media'               => array(),
-			'social_media_active'        => array( 'facebook', 'x', 'youtube' ),
 			'logo_width_desktop'         => 160,
 			'logo_height_desktop'        => 0,
 			'logo_height_auto_desktop'   => 1,
 			'logo_width_mobile'          => 120,
 			'logo_height_mobile'         => 0,
 			'logo_height_auto_mobile'    => 1,
-			'brand_align'                => 'left',
 			'brand_font_family'          => 'Playfair Display',
 			'brand_font_color'           => '#f5f0e8',
 			'brand_font_weight'          => 400,
 			'brand_font_size_desktop'    => 16,
 			'brand_font_size_mobile'     => 14,
-			// P0: kod sabiti ui_string. P1: option öne bakar (hash kapısı).
-			// GEÇİCİ iki tip — Faz 9: tek tipe indirilsin mi?
-			'links_title'                => 'Hızlı Menü',
-			'links_align'                => 'left',
-			'links_title_font_family'    => 'Playfair Display',
-			'links_title_font_color'     => '#c9a84c',
-			'links_title_font_weight'    => 600,
-			'links_title_font_size_desktop' => 18,
-			'links_title_font_size_mobile'  => 16,
-			'links_item_font_family'     => 'Playfair Display',
-			'links_item_font_color'      => '#f5f0e8',
-			'links_item_font_weight'     => 400,
-			'links_item_font_size_desktop' => 15,
-			'links_item_font_size_mobile'  => 14,
-			'links_item_hover_color'     => '#c9a84c',
-			'menu_id_2'                  => 0,
-			'links2_title'               => 'Hızlı Menü',
-			'links2_align'               => 'left',
-			'links2_title_font_family'   => 'Playfair Display',
-			'links2_title_font_color'    => '#c9a84c',
-			'links2_title_font_weight'   => 600,
-			'links2_title_font_size_desktop' => 18,
-			'links2_title_font_size_mobile'  => 16,
-			'links2_item_font_family'    => 'Playfair Display',
-			'links2_item_font_color'     => '#f5f0e8',
-			'links2_item_font_weight'    => 400,
-			'links2_item_font_size_desktop' => 15,
-			'links2_item_font_size_mobile'  => 14,
-			'links2_item_hover_color'    => '#c9a84c',
+
+			// Menü elemanı — her Menü bloğu (kaç tane olursa olsun) aynı
+			// tipografiyi kullanır; içerik (hangi menü, başlık) blok bazlıdır.
+			'menu_title_font_family'     => 'Playfair Display',
+			'menu_title_font_color'      => '#c9a84c',
+			'menu_title_font_weight'     => 600,
+			'menu_title_font_size_desktop' => 18,
+			'menu_title_font_size_mobile'  => 16,
+			'menu_item_font_family'      => 'Playfair Display',
+			'menu_item_font_color'       => '#f5f0e8',
+			'menu_item_font_weight'      => 400,
+			'menu_item_font_size_desktop' => 15,
+			'menu_item_font_size_mobile'  => 14,
+			'menu_item_hover_color'      => '#c9a84c',
+
+			// Metin elemanı — iki boyut ön ayarı (gövde / küçük); her Metin
+			// bloğu kendi içeriğini taşır, hangi ön ayarı kullanacağını seçer.
+			'text_body_font_family'      => 'Playfair Display',
+			'text_body_font_color'       => '#f5f0e8',
+			'text_body_font_weight'      => 400,
+			'text_body_font_size_desktop' => 15,
+			'text_body_font_size_mobile'  => 14,
+			'text_small_font_family'     => 'Playfair Display',
+			'text_small_font_color'      => '#f5f0e8',
+			'text_small_font_weight'     => 400,
+			'text_small_font_size_desktop' => 13,
+			'text_small_font_size_mobile'  => 12,
+
+			// Görsel elemanı.
+			'image_max_width_desktop'    => 200,
+			'image_max_width_mobile'     => 160,
+			'image_radius'               => 0,
+
+			// Çalışma Saatleri elemanı — veri qr-calisma-saatleri modülünden
+			// gelir; burada yalnızca başlık metni ve görünüm tutulur.
+			'hours_title'                => 'Çalışma Saatlerimiz',
+			'hours_title_font_family'    => 'Playfair Display',
+			'hours_title_font_color'     => '#c9a84c',
+			'hours_title_font_weight'    => 600,
+			'hours_title_font_size_desktop' => 18,
+			'hours_title_font_size_mobile'  => 16,
+			'hours_item_font_family'     => 'Playfair Display',
+			'hours_item_font_color'      => '#f5f0e8',
+			'hours_item_font_weight'     => 400,
+			'hours_item_font_size_desktop' => 14,
+			'hours_item_font_size_mobile'  => 13,
+
+			// İletişim elemanı — telefon/e-posta/adres/sosyal her zaman
+			// birlikte gelir; İletişim bloğu bunları olduğu gibi basar.
+			'phone'                      => '',
+			'email'                      => '',
+			'address'                    => '',
+			'social_media'               => array(),
+			'social_media_active'        => array( 'facebook', 'x', 'youtube' ),
 			'contact_title'              => 'İletişim',
-			'contact_align'              => 'left',
 			'contact_title_font_family'  => 'Playfair Display',
 			'contact_title_font_color'   => '#c9a84c',
 			'contact_title_font_weight'  => 600,
@@ -287,6 +309,16 @@ class QRMS_Header_Footer_Builder {
 			'contact_item_font_weight'   => 400,
 			'contact_item_font_size_desktop' => 14,
 			'contact_item_font_size_mobile'  => 13,
+
+			// Telif Hakkı elemanı.
+			'copyright'                  => '© ' . gmdate( 'Y' ) . ' ' . get_bloginfo( 'name' ),
+			'copyright_font_family'      => 'Playfair Display',
+			'copyright_font_color'       => '#f5f0e8',
+			'copyright_font_weight'      => 400,
+			'copyright_font_size_desktop' => 13,
+			'copyright_font_size_mobile'  => 12,
+
+			// Garson/hesap çağrı butonları — yerleşimden bağımsız, sabit.
 			'call_enabled'               => 0,
 			'call_garson_label'          => 'Garson Çağır',
 			'call_hesap_label'           => 'Hesap İste',

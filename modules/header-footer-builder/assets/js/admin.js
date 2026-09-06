@@ -448,9 +448,10 @@
         return;
       }
 
-      var targetId = $(this).data('target');
-      var $input = $('#' + targetId);
       var $field = $(this).closest('.hfb-media-field');
+      // Alan adı köşeli parantez taşıyabilir (footer yerleşim blokları);
+      // id tabanlı seçici yerine DOM'daki tek gizli girdi hedeflenir.
+      var $input = $field.find('.hfb-media-id').first();
 
       // Alan yalnızca logo için değil (panel arka plan görseli de bunu
       // kullanır); başlık alanın kendi etiketinden okunur.
@@ -474,9 +475,9 @@
 
     $(document).on('click', '.hfb-media-remove', function (e) {
       e.preventDefault();
-      var targetId = $(this).data('target');
-      $('#' + targetId).val('0');
-      $(this).closest('.hfb-media-field').find('.hfb-media-preview').empty();
+      var $field = $(this).closest('.hfb-media-field');
+      $field.find('.hfb-media-id').first().val('0');
+      $field.find('.hfb-media-preview').empty();
       debouncedPreview();
     });
   }
@@ -751,6 +752,357 @@
     writeBlockOrder();
   }
 
+  /* ------------------------------------------------- Footer yerleşimi */
+
+  /**
+   * Bir kapsayıcı içindeki `data-*-id` değerlerinden bir sonraki sıra
+   * numarasını üretir. Kimlikler yalnızca kendi kapsayıcıları içinde
+   * (satır listesi / bir satırın sütunları / bir sütunun blokları)
+   * biricik olmak zorundadır — tam form alanı adı zaten satır+sütun
+   * yolunu taşıdığı için çakışma olmaz.
+   *
+   * @param {string} attr   data özniteliği (data-row-id | data-col-id | data-block-id).
+   * @param {string} prefix row | col | blk.
+   * @param {jQuery} $items Aday öğeler.
+   * @return {string}
+   */
+  function nextFooterId(attr, prefix, $items) {
+    var max = 0;
+
+    $items.each(function () {
+      var v = String($(this).attr(attr) || '');
+      var m = v.match(new RegExp('^' + prefix + '_(\\d+)$'));
+      if (m) {
+        max = Math.max(max, parseInt(m[1], 10));
+      }
+    });
+
+    return prefix + '_' + (max + 1);
+  }
+
+  /**
+   * Şablondan klonlanan bir satır/sütun/blok içindeki `__ROW__` / `__COL__`
+   * / `__BLK__` yer tutucularını gerçek kimliklerle değiştirir — form alanı
+   * adları, id/for eşleşmeleri ve data-*-id öznitelikleri dahil.
+   *
+   * @param {jQuery} $root  Klonlanan kök öğe.
+   * @param {Object} tokens {'__ROW__': 'row_3', ...} eşlemesi.
+   * @return {void}
+   */
+  function replaceFooterTokens($root, tokens) {
+    function apply(str) {
+      Object.keys(tokens).forEach(function (token) {
+        str = str.split(token).join(tokens[token]);
+      });
+      return str;
+    }
+
+    ['data-row-id', 'data-col-id', 'data-block-id'].forEach(function (attr) {
+      if ($root.is('[' + attr + ']')) {
+        $root.attr(attr, apply($root.attr(attr)));
+      }
+      $root.find('[' + attr + ']').each(function () {
+        $(this).attr(attr, apply($(this).attr(attr)));
+      });
+    });
+
+    ['name', 'id', 'for', 'data-target'].forEach(function (attr) {
+      $root.find('[' + attr + ']').each(function () {
+        $(this).attr(attr, apply($(this).attr(attr)));
+      });
+    });
+  }
+
+  function initFooterRowSortable() {
+    var $list = $('#hfb-fl-rows');
+
+    if (!$list.length || typeof $.fn.sortable !== 'function') {
+      return;
+    }
+
+    $list.sortable({
+      handle: '.hfb-fl-row-drag',
+      placeholder: 'hfb-fl-row hfb-fl-row--placeholder',
+      axis: 'y',
+      update: function () {
+        debouncedPreview();
+      }
+    });
+  }
+
+  function initFooterColSortable($list) {
+    if (!$list || !$list.length || typeof $.fn.sortable !== 'function') {
+      return;
+    }
+
+    $list.sortable({
+      handle: '.hfb-fl-col-drag',
+      placeholder: 'hfb-fl-col hfb-fl-col--placeholder',
+      axis: 'x',
+      update: function () {
+        debouncedPreview();
+      }
+    });
+  }
+
+  function initFooterBlockSortable($list) {
+    if (!$list || !$list.length || typeof $.fn.sortable !== 'function') {
+      return;
+    }
+
+    $list.sortable({
+      handle: '.hfb-block-drag',
+      placeholder: 'hfb-fl-block hfb-fl-block--placeholder',
+      axis: 'y',
+      update: function () {
+        debouncedPreview();
+      }
+    });
+  }
+
+  function addFooterRow() {
+    var $tpl = $('#hfb-fl-tpl-row');
+    var $rows = $('#hfb-fl-rows');
+
+    if (!$tpl.length) {
+      return;
+    }
+
+    var rowId = nextFooterId('data-row-id', 'row', $rows.find('> .hfb-fl-row'));
+    var $row = $($tpl.html().trim());
+
+    replaceFooterTokens($row, { __ROW__: rowId, __COL__: 'col_1' });
+    $rows.append($row);
+    initFooterColSortable($row.find('> .hfb-fl-cols'));
+    debouncedPreview();
+  }
+
+  function addFooterCol(rowId) {
+    var $row = $('.hfb-fl-row[data-row-id="' + rowId + '"]');
+    var $cols = $row.find('> .hfb-fl-cols');
+    var $tpl = $('#hfb-fl-tpl-col');
+
+    if (!$tpl.length || $cols.find('> .hfb-fl-col').length >= 4) {
+      return;
+    }
+
+    var colId = nextFooterId('data-col-id', 'col', $cols.find('> .hfb-fl-col'));
+    var $col = $($tpl.html().trim());
+
+    replaceFooterTokens($col, { __ROW__: rowId, __COL__: colId });
+    $cols.append($col);
+    initFooterBlockSortable($col.find('> .hfb-fl-blocks'));
+    debouncedPreview();
+  }
+
+  function addFooterBlock(rowId, colId, type) {
+    var $tpl = $('#hfb-fl-tpl-block-' + type);
+
+    if (!$tpl.length) {
+      return;
+    }
+
+    var $col = $('.hfb-fl-col[data-row-id="' + rowId + '"][data-col-id="' + colId + '"]');
+    var $blocks = $col.find('> .hfb-fl-blocks');
+    var blockId = nextFooterId('data-block-id', 'blk', $blocks.find('> .hfb-fl-block'));
+    var $block = $($tpl.html().trim());
+
+    replaceFooterTokens($block, { __ROW__: rowId, __COL__: colId, __BLK__: blockId });
+    $blocks.append($block);
+    initBlockColorPickers($block);
+    debouncedPreview();
+  }
+
+  function footerConfirmIfHasBlocks($container, message) {
+    if ($container.find('.hfb-fl-block').length > 0) {
+      return window.confirm(message);
+    }
+    return true;
+  }
+
+  function initFooterLayoutBuilder() {
+    var $wrap = $('#hfb-footer-layout');
+
+    if (!$wrap.length) {
+      return;
+    }
+
+    initFooterRowSortable();
+    $wrap.find('.hfb-fl-cols').each(function () {
+      initFooterColSortable($(this));
+    });
+    $wrap.find('.hfb-fl-blocks').each(function () {
+      initFooterBlockSortable($(this));
+    });
+
+    $(document).on('click', '#hfb-fl-add-row', function (e) {
+      e.preventDefault();
+      addFooterRow();
+    });
+
+    $(document).on('click', '.hfb-fl-add-col', function (e) {
+      e.preventDefault();
+      addFooterCol(String($(this).data('row-id')));
+    });
+
+    $(document).on('click', '.hfb-fl-block-add-toggle', function (e) {
+      e.preventDefault();
+      var $menu = $(this).siblings('.hfb-fl-block-add__menu');
+      var willOpen = !!$menu.prop('hidden');
+
+      $('.hfb-fl-block-add__menu').prop('hidden', true);
+      $('.hfb-fl-block-add-toggle').attr('aria-expanded', 'false');
+
+      if (willOpen) {
+        $menu.prop('hidden', false);
+        $(this).attr('aria-expanded', 'true');
+      }
+    });
+
+    $(document).on('click', function (e) {
+      if (!$(e.target).closest('.hfb-fl-block-add').length) {
+        $('.hfb-fl-block-add__menu').prop('hidden', true);
+        $('.hfb-fl-block-add-toggle').attr('aria-expanded', 'false');
+      }
+    });
+
+    $(document).on('click', '.hfb-fl-block-add-type', function (e) {
+      e.preventDefault();
+      var $col = $(this).closest('.hfb-fl-col');
+      addFooterBlock(String($col.data('row-id')), String($col.data('col-id')), String($(this).data('block-type')));
+      $(this).closest('.hfb-fl-block-add__menu').prop('hidden', true);
+    });
+
+    $(document).on('click', '.hfb-fl-row-delete', function (e) {
+      e.preventDefault();
+      var $row = $(this).closest('.hfb-fl-row');
+      if (footerConfirmIfHasBlocks($row, 'Bu satırdaki tüm sütunlar ve bloklar silinecek. Emin misiniz?')) {
+        $row.remove();
+        debouncedPreview();
+      }
+    });
+
+    $(document).on('click', '.hfb-fl-col-delete', function (e) {
+      e.preventDefault();
+      var $col = $(this).closest('.hfb-fl-col');
+      var $siblingCols = $col.closest('.hfb-fl-cols').find('> .hfb-fl-col');
+
+      if ($siblingCols.length <= 1) {
+        window.alert('Bir satırda en az bir sütun olmalı. Bu satırı tamamen kaldırmak için satırın çöp kutusu düğmesini kullanın.');
+        return;
+      }
+
+      if (footerConfirmIfHasBlocks($col, 'Bu sütundaki bloklar silinecek. Emin misiniz?')) {
+        $col.remove();
+        debouncedPreview();
+      }
+    });
+
+    $(document).on('click', '.hfb-fl-block-delete', function (e) {
+      e.preventDefault();
+      $(this).closest('.hfb-fl-block').remove();
+      debouncedPreview();
+    });
+
+    $(document).on('click', '.hfb-fl-row-up', function (e) {
+      e.preventDefault();
+      var $row = $(this).closest('.hfb-fl-row');
+      var $prev = $row.prev('.hfb-fl-row');
+      if ($prev.length) {
+        $row.insertBefore($prev);
+        debouncedPreview();
+      }
+    });
+
+    $(document).on('click', '.hfb-fl-row-down', function (e) {
+      e.preventDefault();
+      var $row = $(this).closest('.hfb-fl-row');
+      var $next = $row.next('.hfb-fl-row');
+      if ($next.length) {
+        $row.insertAfter($next);
+        debouncedPreview();
+      }
+    });
+
+    $(document).on('click', '.hfb-fl-col-left', function (e) {
+      e.preventDefault();
+      var $col = $(this).closest('.hfb-fl-col');
+      var $prev = $col.prev('.hfb-fl-col');
+      if ($prev.length) {
+        $col.insertBefore($prev);
+        debouncedPreview();
+      }
+    });
+
+    $(document).on('click', '.hfb-fl-col-right', function (e) {
+      e.preventDefault();
+      var $col = $(this).closest('.hfb-fl-col');
+      var $next = $col.next('.hfb-fl-col');
+      if ($next.length) {
+        $col.insertAfter($next);
+        debouncedPreview();
+      }
+    });
+
+    $(document).on('click', '.hfb-fl-block-up', function (e) {
+      e.preventDefault();
+      var $block = $(this).closest('.hfb-fl-block');
+      var $prev = $block.prev('.hfb-fl-block');
+      if ($prev.length) {
+        $block.insertBefore($prev);
+        debouncedPreview();
+      }
+    });
+
+    $(document).on('click', '.hfb-fl-block-down', function (e) {
+      e.preventDefault();
+      var $block = $(this).closest('.hfb-fl-block');
+      var $next = $block.next('.hfb-fl-block');
+      if ($next.length) {
+        $block.insertAfter($next);
+        debouncedPreview();
+      }
+    });
+
+    // Sütunlar arası taşıma: blok, yeni sütun bağlamında biricik kalması
+    // için TAZE bir blok kimliği alır (eskisini korumak, hedef sütunda
+    // aynı kimlikli başka bir blok varsa POST'ta sessiz çakışmaya yol açar).
+    $(document).on('click', '.hfb-fl-block-left, .hfb-fl-block-right', function (e) {
+      e.preventDefault();
+
+      var $btn = $(this);
+      var $block = $btn.closest('.hfb-fl-block');
+      var $col = $block.closest('.hfb-fl-col');
+      var $targetCol = $btn.hasClass('hfb-fl-block-left') ? $col.prev('.hfb-fl-col') : $col.next('.hfb-fl-col');
+
+      if (!$targetCol.length) {
+        return;
+      }
+
+      var oldRow = String($col.data('row-id'));
+      var oldCol = String($col.data('col-id'));
+      var oldBlk = String($block.data('block-id'));
+      var newRow = String($targetCol.data('row-id'));
+      var newCol = String($targetCol.data('col-id'));
+      var $targetBlocks = $targetCol.find('> .hfb-fl-blocks');
+      var newBlk = nextFooterId('data-block-id', 'blk', $targetBlocks.find('> .hfb-fl-block'));
+
+      var oldBase = 'hfb_footer_layout[rows][' + oldRow + '][cols][' + oldCol + '][blocks][' + oldBlk + ']';
+      var newBase = 'hfb_footer_layout[rows][' + newRow + '][cols][' + newCol + '][blocks][' + newBlk + ']';
+
+      $block.find('[name]').each(function () {
+        var name = $(this).attr('name');
+        if (name && name.indexOf(oldBase) === 0) {
+          $(this).attr('name', newBase + name.slice(oldBase.length));
+        }
+      });
+
+      $block.attr('data-block-id', newBlk);
+      $targetBlocks.append($block);
+      debouncedPreview();
+    });
+  }
+
   /* ------------------------------------------------------------- Başlat */
 
   $(function () {
@@ -765,6 +1117,7 @@
     initLogoHeightAuto();
     initContentWidthToggle();
     initBlockSortable();
+    initFooterLayoutBuilder();
     bootPreviewHeader();
 
     /*

@@ -31,10 +31,26 @@ trait QRMS_HFB_Settings_Page {
 	/**
 	 * Footer ayarlarını döndürür.
 	 *
+	 * Yerleşim (`layout`) boşsa — hiç kaydedilmemiş ya da eski (satır/sütun
+	 * sisteminden önceki) bir kurulum — mevcut tekil alanlardan (varsa) ya
+	 * da salt varsayılanlardan tek seferlik bir düzen üretilir. Bu üretim
+	 * option'a hemen yazılmaz; kullanıcı Kaydet'e bastığında
+	 * sanitize_footer_input() üzerinden kalıcı hâle gelir.
+	 *
 	 * @return array<string,mixed>
 	 */
 	public function get_footer_options() {
-		return $this->merge_options( get_option( $this->footer_option, array() ), $this->footer_defaults );
+		$stored = get_option( $this->footer_option, array() );
+
+		if ( ! is_array( $stored ) ) {
+			$stored = array();
+		}
+
+		if ( empty( $stored['layout']['rows'] ) || ! is_array( $stored['layout']['rows'] ) ) {
+			$stored['layout'] = $this->build_default_footer_layout( $stored );
+		}
+
+		return $this->merge_options( $stored, $this->footer_defaults );
 	}
 
 	/**
@@ -318,6 +334,18 @@ trait QRMS_HFB_Settings_Page {
 	}
 
 	/**
+	 * Çalışma saatleri modülü bu istekte kullanılabilir mi?
+	 *
+	 * Gevşek bağ: modül kapalıysa Çalışma Saatleri bloğu footer'da
+	 * sessizce hiç basılmaz — hata oluşmaz.
+	 *
+	 * @return bool
+	 */
+	public function hours_module_available() {
+		return function_exists( 'qrms_cs_get' ) && function_exists( 'qrms_cs_day_labels' );
+	}
+
+	/**
 	 * Garson/hesap AJAX uçları kayıtlı mı?
 	 *
 	 * @return bool
@@ -329,7 +357,7 @@ trait QRMS_HFB_Settings_Page {
 	/**
 	 * Tipografi grubu anahtarları (font, renk, kalınlık, masaüstü/mobil punto).
 	 *
-	 * @param string $group Option anahtar öneki (ör. brand, links_title).
+	 * @param string $group Option anahtar öneki (ör. brand, menu_title).
 	 * @return array{family:string,color:string,weight:string,size_desktop:string,size_mobile:string}
 	 */
 	private function typo_keys( $group ) {
@@ -1054,24 +1082,32 @@ trait QRMS_HFB_Settings_Page {
 			$opts['copyright'] = sanitize_text_field( (string) $input['hfb_footer_copyright'] );
 		}
 
-		if ( isset( $input['hfb_footer_menu_id'] ) ) {
-			$opts['menu_id'] = absint( $input['hfb_footer_menu_id'] );
-		}
-
-		if ( isset( $input['hfb_footer_links_title'] ) ) {
-			$opts['links_title'] = sanitize_text_field( (string) $input['hfb_footer_links_title'] );
-		}
-
-		if ( isset( $input['hfb_footer_menu_id_2'] ) ) {
-			$opts['menu_id_2'] = absint( $input['hfb_footer_menu_id_2'] );
-		}
-
-		if ( isset( $input['hfb_footer_links2_title'] ) ) {
-			$opts['links2_title'] = sanitize_text_field( (string) $input['hfb_footer_links2_title'] );
+		if ( isset( $input['hfb_footer_hours_title'] ) ) {
+			$opts['hours_title'] = sanitize_text_field( (string) $input['hfb_footer_hours_title'] );
 		}
 
 		if ( isset( $input['hfb_footer_contact_title'] ) ) {
 			$opts['contact_title'] = sanitize_text_field( (string) $input['hfb_footer_contact_title'] );
+		}
+
+		$opts['image_radius'] = $this->sanitize_checkbox( $input, 'hfb_footer_image_radius' );
+
+		if ( isset( $input['hfb_footer_image_max_width_desktop'] ) ) {
+			$opts['image_max_width_desktop'] = $this->sanitize_int_range(
+				$input['hfb_footer_image_max_width_desktop'],
+				40,
+				600,
+				$defaults['image_max_width_desktop']
+			);
+		}
+
+		if ( isset( $input['hfb_footer_image_max_width_mobile'] ) ) {
+			$opts['image_max_width_mobile'] = $this->sanitize_int_range(
+				$input['hfb_footer_image_max_width_mobile'],
+				40,
+				600,
+				$defaults['image_max_width_mobile']
+			);
 		}
 
 		if ( isset( $input['hfb_footer_call_garson_label'] ) ) {
@@ -1120,34 +1156,286 @@ trait QRMS_HFB_Settings_Page {
 		$opts['logo_height_auto_mobile'] = $mobile_h['auto'];
 		$opts['logo_height_mobile']      = $mobile_h['height'];
 
-		foreach ( array( 'brand', 'links', 'links2', 'contact' ) as $col ) {
-			$align_field = 'hfb_footer_' . $col . '_align';
-			if ( isset( $input[ $align_field ] ) ) {
-				$opts[ $col . '_align' ] = $this->sanitize_align( $input[ $align_field ], $defaults[ $col . '_align' ] );
-			}
-		}
-
-		foreach ( array( 'brand', 'links_title', 'links_item', 'links2_title', 'links2_item', 'contact_title', 'contact_item' ) as $group ) {
+		foreach (
+			array(
+				'brand',
+				'menu_title',
+				'menu_item',
+				'text_body',
+				'text_small',
+				'hours_title',
+				'hours_item',
+				'contact_title',
+				'contact_item',
+				'copyright',
+			) as $group
+		) {
 			$opts = $this->sanitize_typo_group( $input, $opts, $defaults, 'hfb_footer_', $group );
 		}
 
-		$opts['links_item_hover_color'] = $this->sanitize_color_field(
+		$opts['menu_item_hover_color'] = $this->sanitize_color_field(
 			$input,
-			'hfb_footer_links_item_hover_color',
-			$opts['links_item_hover_color']
-		);
-
-		$opts['links2_item_hover_color'] = $this->sanitize_color_field(
-			$input,
-			'hfb_footer_links2_item_hover_color',
-			$opts['links2_item_hover_color']
+			'hfb_footer_menu_item_hover_color',
+			$opts['menu_item_hover_color']
 		);
 
 		$opts = $this->sanitize_button_style( $input, $opts, $defaults, 'hfb_footer_' );
 
 		$social = $this->sanitize_social_input( $input, $current, 'hfb_' );
 
+		$opts['layout'] = $this->sanitize_footer_layout( $input, isset( $current['layout'] ) ? $current['layout'] : array() );
+
 		return array_merge( $opts, $social );
+	}
+
+	/**
+	 * Footer yerleşimini (satır → sütun → blok) temizler.
+	 *
+	 * Form her zaman `hfb_footer_layout[rows]` alanını taşır (adım gizli
+	 * olsa da DOM'dan çıkmaz); alan gerçekten yoksa mevcut yerleşim
+	 * dokunulmadan korunur.
+	 *
+	 * @param array<string,mixed> $input   Ham girdi.
+	 * @param array<string,mixed> $current Mevcut yerleşim (rows anahtarlı).
+	 * @return array{rows:array<string,mixed>}
+	 */
+	private function sanitize_footer_layout( $input, $current ) {
+		$raw_rows = isset( $input['hfb_footer_layout']['rows'] ) && is_array( $input['hfb_footer_layout']['rows'] )
+			? $input['hfb_footer_layout']['rows']
+			: null;
+
+		if ( null === $raw_rows ) {
+			return is_array( $current ) && isset( $current['rows'] ) ? $current : array( 'rows' => array() );
+		}
+
+		$types = array_keys( $this->footer_block_types() );
+		$rows  = array();
+		$row_n = 0;
+
+		foreach ( $raw_rows as $row_id => $row ) {
+			if ( ! is_array( $row ) || $row_n >= 12 ) {
+				continue;
+			}
+			++$row_n;
+
+			$row_id   = $this->sanitize_layout_id( $row_id, 'row' );
+			$cols_raw = isset( $row['cols'] ) && is_array( $row['cols'] ) ? $row['cols'] : array();
+			$cols     = array();
+			$col_n    = 0;
+
+			foreach ( $cols_raw as $col_id => $col ) {
+				if ( ! is_array( $col ) || $col_n >= 4 ) {
+					continue;
+				}
+				++$col_n;
+
+				$col_id     = $this->sanitize_layout_id( $col_id, 'col' );
+				$align      = $this->sanitize_align( isset( $col['align'] ) ? $col['align'] : 'left', 'left' );
+				$blocks_raw = isset( $col['blocks'] ) && is_array( $col['blocks'] ) ? $col['blocks'] : array();
+				$blocks     = array();
+				$blk_n      = 0;
+
+				foreach ( $blocks_raw as $blk_id => $blk ) {
+					if ( ! is_array( $blk ) || $blk_n >= 8 ) {
+						continue;
+					}
+
+					$type = isset( $blk['type'] ) ? sanitize_key( (string) $blk['type'] ) : '';
+					if ( ! in_array( $type, $types, true ) ) {
+						continue;
+					}
+					++$blk_n;
+
+					$blk_id             = $this->sanitize_layout_id( $blk_id, 'blk' );
+					$blocks[ $blk_id ]  = $this->sanitize_footer_block( $type, $blk );
+				}
+
+				// Boş sütun (blok eklenmemiş) da korunur: eşit genişlikli
+				// ızgarada yer kaplamaya devam eder, kullanıcı doldurana dek.
+				$cols[ $col_id ] = array(
+					'align'  => $align,
+					'blocks' => $blocks,
+				);
+			}
+
+			if ( empty( $cols ) ) {
+				continue;
+			}
+
+			$rows[ $row_id ] = array( 'cols' => $cols );
+		}
+
+		return array( 'rows' => $rows );
+	}
+
+	/**
+	 * Satır/sütun/blok kimliğini doğrular; geçersizse yenisini üretir.
+	 *
+	 * @param mixed  $id     Ham kimlik (dizi anahtarı).
+	 * @param string $prefix row|col|blk.
+	 * @return string
+	 */
+	private function sanitize_layout_id( $id, $prefix ) {
+		$id = sanitize_key( (string) $id );
+
+		if ( '' !== $id && 0 === strpos( $id, $prefix . '_' ) ) {
+			return $id;
+		}
+
+		return $prefix . '_' . wp_generate_password( 8, false, false );
+	}
+
+	/**
+	 * Tek bir footer bloğunun tipe özel içerik alanlarını temizler.
+	 *
+	 * Logo/Saatler/İletişim/Telif bloklarının içeriği yoktur — hepsi
+	 * Elemanlar panelindeki tek, paylaşılan ayardan beslenir.
+	 *
+	 * @param string              $type Blok tipi.
+	 * @param array<string,mixed> $raw  Ham blok girdisi.
+	 * @return array<string,mixed>
+	 */
+	private function sanitize_footer_block( $type, $raw ) {
+		$block = array( 'type' => $type );
+
+		switch ( $type ) {
+			case 'menu':
+				$block['menu_id'] = isset( $raw['menu_id'] ) ? absint( $raw['menu_id'] ) : 0;
+				$block['title']   = isset( $raw['title'] ) ? sanitize_text_field( (string) $raw['title'] ) : '';
+				break;
+
+			case 'text':
+				$block['content'] = isset( $raw['content'] ) ? sanitize_textarea_field( (string) $raw['content'] ) : '';
+				$variant           = isset( $raw['variant'] ) ? sanitize_key( (string) $raw['variant'] ) : 'body';
+				$block['variant']  = in_array( $variant, array( 'body', 'small' ), true ) ? $variant : 'body';
+				break;
+
+			case 'image':
+				$block['image_id'] = isset( $raw['image_id'] ) ? absint( $raw['image_id'] ) : 0;
+				$block['link_url'] = isset( $raw['link_url'] ) ? esc_url_raw( (string) $raw['link_url'] ) : '';
+				$block['alt']      = isset( $raw['alt'] ) ? sanitize_text_field( (string) $raw['alt'] ) : '';
+				break;
+		}
+
+		return $block;
+	}
+
+	/**
+	 * Sürükle-bırak blok tipleri kataloğu (id => etiket).
+	 *
+	 * @return array<string,string>
+	 */
+	public function footer_block_types() {
+		return array(
+			'logo'      => __( 'Logo', 'qrms' ),
+			'text'      => __( 'Metin', 'qrms' ),
+			'image'     => __( 'Görsel', 'qrms' ),
+			'menu'      => __( 'Menü', 'qrms' ),
+			'hours'     => __( 'Çalışma Saatleri', 'qrms' ),
+			'contact'   => __( 'İletişim', 'qrms' ),
+			'copyright' => __( 'Telif Hakkı', 'qrms' ),
+		);
+	}
+
+	/**
+	 * Yeni eklenen bir bloğun varsayılan veri iskeleti (şablon önizlemesi).
+	 *
+	 * @param string $type Blok tipi.
+	 * @return array<string,mixed>
+	 */
+	private function default_footer_block( $type ) {
+		switch ( $type ) {
+			case 'menu':
+				return array(
+					'type'    => 'menu',
+					'menu_id' => 0,
+					'title'   => __( 'Hızlı Menü', 'qrms' ),
+				);
+
+			case 'text':
+				return array(
+					'type'    => 'text',
+					'content' => '',
+					'variant' => 'body',
+				);
+
+			case 'image':
+				return array(
+					'type'     => 'image',
+					'image_id' => 0,
+					'link_url' => '',
+					'alt'      => '',
+				);
+
+			default:
+				return array( 'type' => $type );
+		}
+	}
+
+	/**
+	 * Hiç kaydedilmemiş ya da eski (satır/sütun öncesi) bir kurulum için
+	 * tek seferlik varsayılan yerleşim üretir.
+	 *
+	 * Eski kurulumda `menu_id`, `menu_id_2`, `links_title`, `links2_title`
+	 * gibi tekil alanlar hâlâ option'da duruyorsa (silinmedi, sadece
+	 * varsayılanlardan çıkarıldı) bunlardan okuyup 1. satırın menü
+	 * bloklarını doldurur; hiçbiri yoksa salt varsayılan 4+1 düzeni kurulur.
+	 *
+	 * @param array<string,mixed> $raw Ham (birleştirilmemiş) option değeri.
+	 * @return array{rows:array<string,mixed>}
+	 */
+	private function build_default_footer_layout( $raw ) {
+		$raw = is_array( $raw ) ? $raw : array();
+
+		$menu_id      = isset( $raw['menu_id'] ) ? absint( $raw['menu_id'] ) : 0;
+		$menu_id_2    = isset( $raw['menu_id_2'] ) ? absint( $raw['menu_id_2'] ) : 0;
+		$links_title  = isset( $raw['links_title'] ) ? sanitize_text_field( (string) $raw['links_title'] ) : __( 'Hızlı Menü', 'qrms' );
+		$links2_title = isset( $raw['links2_title'] ) ? sanitize_text_field( (string) $raw['links2_title'] ) : __( 'Hızlı Menü', 'qrms' );
+
+		return array(
+			'rows' => array(
+				'row_1' => array(
+					'cols' => array(
+						'col_1' => array(
+							'align'  => 'left',
+							'blocks' => array( 'blk_1' => array( 'type' => 'logo' ) ),
+						),
+						'col_2' => array(
+							'align'  => 'left',
+							'blocks' => array(
+								'blk_2' => array(
+									'type'    => 'menu',
+									'menu_id' => $menu_id,
+									'title'   => $links_title,
+								),
+							),
+						),
+						'col_3' => array(
+							'align'  => 'left',
+							'blocks' => array(
+								'blk_3' => array(
+									'type'    => 'menu',
+									'menu_id' => $menu_id_2,
+									'title'   => $links2_title,
+								),
+							),
+						),
+						'col_4' => array(
+							'align'  => 'left',
+							'blocks' => array( 'blk_4' => array( 'type' => 'contact' ) ),
+						),
+					),
+				),
+				'row_2' => array(
+					'cols' => array(
+						'col_1' => array(
+							'align'  => 'center',
+							'blocks' => array( 'blk_5' => array( 'type' => 'copyright' ) ),
+						),
+					),
+				),
+			),
+		);
 	}
 
 	/**
