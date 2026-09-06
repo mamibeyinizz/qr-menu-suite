@@ -372,17 +372,16 @@ trait QRMS_HFB_Admin {
 	private function render_footer_fields( $opts, $menus ) {
 		$adimlar = array(
 			1 => array( 'Logo', 'Logo ve Slogan' ),
-			2 => array( 'Menü 1', 'Hızlı Menü 1' ),
-			3 => array( 'Menü 2', 'Hızlı Menü 2' ),
-			4 => array( 'İletişim', 'İletişim Bilgileri' ),
-			5 => array( 'Çağrı', 'Garson / Hesap Butonu' ),
+			2 => array( 'Yerleşim', 'Satır, Sütun ve Bloklar' ),
+			3 => array( 'Elemanlar', 'Blok İçeriği ve Görünümü' ),
+			4 => array( 'Çağrı', 'Garson / Hesap Butonu' ),
 		);
 
 		$this->render_stepper_bar( 'footer', $adimlar );
 		?>
 		<div class="qrms-card hfb-step" data-step="1" data-step-title="<?php esc_attr_e( 'Logo ve Slogan', 'qrms' ); ?>">
 			<h2 class="qrms-card-title"><?php esc_html_e( '1. Logo ve Slogan', 'qrms' ); ?></h2>
-			<p class="description"><?php esc_html_e( 'Footer\'ın 1. sütunu: logo, marka adı ve kısa açıklama.', 'qrms' ); ?></p>
+			<p class="description"><?php esc_html_e( 'Logo, marka adı ve kısa açıklama — bu, Yerleşim adımına eklediğiniz her Logo bloğunda aynı görünen tek, paylaşılan içeriktir. Bloğun sütundaki hizalaması Yerleşim adımından ayarlanır.', 'qrms' ); ?></p>
 
 			<h3 class="hfb-section-title"><?php esc_html_e( 'Genel', 'qrms' ); ?></h3>
 			<?php $this->render_media_field( 'hfb_footer_logo', __( 'Logo (isteğe bağlı)', 'qrms' ), (int) $opts['logo'] ); ?>
@@ -448,20 +447,13 @@ trait QRMS_HFB_Admin {
 			</div>
 
 			<?php
-			$this->hfb_align_row(
-				'hfb_footer_brand_align',
-				'hfb_footer_brand_align',
-				(string) $opts['brand_align'],
-				__( 'Sütun hizalama', 'qrms' ),
-				__( 'Logo, slogan ve açıklamanın bu sütundaki yaslanması.', 'qrms' )
-			);
 			$this->hfb_typo_block(
 				'hfb_footer_',
 				$opts,
 				'brand',
 				array(
 					'title'        => __( 'Slogan ve açıklama yazısı', 'qrms' ),
-					'desc'         => __( 'Sol sütundaki marka adı ve kısa açıklama', 'qrms' ),
+					'desc'         => __( 'Marka adı ve kısa açıklama', 'qrms' ),
 					'color_label'  => __( 'Slogan yazı rengi', 'qrms' ),
 					'size_label'   => __( 'Slogan yazı boyutu', 'qrms' ),
 					'family_label' => __( 'Slogan yazı tipi', 'qrms' ),
@@ -471,201 +463,20 @@ trait QRMS_HFB_Admin {
 			?>
 		</div>
 
-		<div class="qrms-card hfb-step" data-step="2" data-step-title="<?php esc_attr_e( 'Hızlı Menü 1', 'qrms' ); ?>" style="display:none;">
-			<h2 class="qrms-card-title"><?php esc_html_e( '2. Hızlı Menü 1', 'qrms' ); ?></h2>
-			<p class="description"><?php esc_html_e( 'Footer\'ın 2. sütunundaki başlık ve hızlı menü listesi.', 'qrms' ); ?></p>
-
-			<div class="qrms-field">
-				<label class="qrms-label" for="hfb_footer_links_title"><?php esc_html_e( 'Sütun başlığı', 'qrms' ); ?></label>
-				<input type="text" id="hfb_footer_links_title" name="hfb_footer_links_title" class="qrms-input hfb-preview-trigger" value="<?php echo esc_attr( $opts['links_title'] ); ?>" placeholder="<?php esc_attr_e( 'Hızlı Menü', 'qrms' ); ?>" />
-				<?php $this->hfb_ceviri_bayat_uyari( 'hfb_footer.links_title' ); ?>
-			</div>
-
-			<div class="qrms-field">
-				<label class="qrms-label" for="hfb_footer_menu_id"><?php esc_html_e( 'Hızlı linkler menüsü', 'qrms' ); ?></label>
-				<select id="hfb_footer_menu_id" name="hfb_footer_menu_id" class="qrms-input hfb-preview-trigger">
-					<?php foreach ( $menus as $id => $name ) : ?>
-						<option value="<?php echo esc_attr( (string) $id ); ?>" <?php selected( (int) $opts['menu_id'], (int) $id ); ?>><?php echo esc_html( $name ); ?></option>
-					<?php endforeach; ?>
-				</select>
-			</div>
-
-			<?php
-			$this->hfb_align_row(
-				'hfb_footer_links_align',
-				'hfb_footer_links_align',
-				(string) $opts['links_align'],
-				__( 'Sütun hizalama', 'qrms' ),
-				__( 'Başlık ve menü bağlantılarının yaslanması.', 'qrms' )
-			);
-			$this->hfb_typo_block(
-				'hfb_footer_',
-				$opts,
-				'links_title',
-				array(
-					'title'        => __( 'Başlık yazısı', 'qrms' ),
-					'desc'         => __( 'Hızlı Menü sütununun başlık satırı', 'qrms' ),
-					'color_label'  => __( 'Başlık yazı rengi', 'qrms' ),
-					'size_label'   => __( 'Başlık yazı boyutu', 'qrms' ),
-					'family_label' => __( 'Başlık yazı tipi', 'qrms' ),
-					'weight_label' => __( 'Başlık yazı kalınlığı', 'qrms' ),
-				)
-			);
-			$this->hfb_typo_block(
-				'hfb_footer_',
-				$opts,
-				'links_item',
-				array(
-					'title'        => __( 'Menü bağlantıları', 'qrms' ),
-					'desc'         => __( 'Hızlı Menü listesindeki link satırları (başlık DEĞİL)', 'qrms' ),
-					'color_label'  => __( 'Link yazı rengi', 'qrms' ),
-					'size_label'   => __( 'Link yazı boyutu', 'qrms' ),
-					'family_label' => __( 'Link yazı tipi', 'qrms' ),
-					'weight_label' => __( 'Link yazı kalınlığı', 'qrms' ),
-					'hover_key'    => 'links_item_hover_color',
-					'hover_label'  => __( 'Link hover rengi', 'qrms' ),
-					'hover_desc'   => __( 'Bağlantının üzerine gelince kullanılan renk.', 'qrms' ),
-				)
-			);
-			?>
+		<div class="qrms-card hfb-step" data-step="2" data-step-title="<?php esc_attr_e( 'Satır, Sütun ve Bloklar', 'qrms' ); ?>" style="display:none;">
+			<h2 class="qrms-card-title"><?php esc_html_e( '2. Yerleşim', 'qrms' ); ?></h2>
+			<p class="description"><?php esc_html_e( 'Footer\'ı satırlara, satırları sütunlara bölün; her sütuna istediğiniz elemanı sürükleyip bırakın. Sütunlar her zaman eşit genişliktedir; mobilde tek sütun olarak alt alta dizilir.', 'qrms' ); ?></p>
+			<?php $this->render_footer_layout_builder( $opts, $menus ); ?>
 		</div>
 
-		<div class="qrms-card hfb-step" data-step="3" data-step-title="<?php esc_attr_e( 'Hızlı Menü 2', 'qrms' ); ?>" style="display:none;">
-			<h2 class="qrms-card-title"><?php esc_html_e( '3. Hızlı Menü 2', 'qrms' ); ?></h2>
-			<p class="description"><?php esc_html_e( 'Footer\'ın 3. sütunundaki başlık ve hızlı menü listesi.', 'qrms' ); ?></p>
-
-			<div class="qrms-field">
-				<label class="qrms-label" for="hfb_footer_links2_title"><?php esc_html_e( 'Sütun başlığı', 'qrms' ); ?></label>
-				<input type="text" id="hfb_footer_links2_title" name="hfb_footer_links2_title" class="qrms-input hfb-preview-trigger" value="<?php echo esc_attr( $opts['links2_title'] ); ?>" placeholder="<?php esc_attr_e( 'Hızlı Menü', 'qrms' ); ?>" />
-				<?php $this->hfb_ceviri_bayat_uyari( 'hfb_footer.links2_title' ); ?>
-			</div>
-
-			<div class="qrms-field">
-				<label class="qrms-label" for="hfb_footer_menu_id_2"><?php esc_html_e( 'Hızlı linkler menüsü', 'qrms' ); ?></label>
-				<select id="hfb_footer_menu_id_2" name="hfb_footer_menu_id_2" class="qrms-input hfb-preview-trigger">
-					<?php foreach ( $menus as $id => $name ) : ?>
-						<option value="<?php echo esc_attr( (string) $id ); ?>" <?php selected( (int) $opts['menu_id_2'], (int) $id ); ?>><?php echo esc_html( $name ); ?></option>
-					<?php endforeach; ?>
-				</select>
-			</div>
-
-			<?php
-			$this->hfb_align_row(
-				'hfb_footer_links2_align',
-				'hfb_footer_links2_align',
-				(string) $opts['links2_align'],
-				__( 'Sütun hizalama', 'qrms' ),
-				__( 'Başlık ve menü bağlantılarının yaslanması.', 'qrms' )
-			);
-			$this->hfb_typo_block(
-				'hfb_footer_',
-				$opts,
-				'links2_title',
-				array(
-					'title'        => __( 'Başlık yazısı', 'qrms' ),
-					'desc'         => __( 'Hızlı Menü sütununun başlık satırı', 'qrms' ),
-					'color_label'  => __( 'Başlık yazı rengi', 'qrms' ),
-					'size_label'   => __( 'Başlık yazı boyutu', 'qrms' ),
-					'family_label' => __( 'Başlık yazı tipi', 'qrms' ),
-					'weight_label' => __( 'Başlık yazı kalınlığı', 'qrms' ),
-				)
-			);
-			$this->hfb_typo_block(
-				'hfb_footer_',
-				$opts,
-				'links2_item',
-				array(
-					'title'        => __( 'Menü bağlantıları', 'qrms' ),
-					'desc'         => __( 'Hızlı Menü listesindeki link satırları (başlık DEĞİL)', 'qrms' ),
-					'color_label'  => __( 'Link yazı rengi', 'qrms' ),
-					'size_label'   => __( 'Link yazı boyutu', 'qrms' ),
-					'family_label' => __( 'Link yazı tipi', 'qrms' ),
-					'weight_label' => __( 'Link yazı kalınlığı', 'qrms' ),
-					'hover_key'    => 'links2_item_hover_color',
-					'hover_label'  => __( 'Link hover rengi', 'qrms' ),
-					'hover_desc'   => __( 'Bağlantının üzerine gelince kullanılan renk.', 'qrms' ),
-				)
-			);
-			?>
+		<div class="qrms-card hfb-step" data-step="3" data-step-title="<?php esc_attr_e( 'Blok İçeriği ve Görünümü', 'qrms' ); ?>" style="display:none;">
+			<h2 class="qrms-card-title"><?php esc_html_e( '3. Elemanlar', 'qrms' ); ?></h2>
+			<p class="description"><?php esc_html_e( 'Her eleman tipinin tek, paylaşılan bir görünümü vardır: burada bir kere ayarlarsınız, Yerleşim adımında eklediğiniz her blok (kaç tane olursa olsun) aynı görünür.', 'qrms' ); ?></p>
+			<?php $this->render_footer_elements_panel( $opts ); ?>
 		</div>
 
-		<div class="qrms-card hfb-step" data-step="4" data-step-title="<?php esc_attr_e( 'İletişim Bilgileri', 'qrms' ); ?>" style="display:none;">
-			<h2 class="qrms-card-title"><?php esc_html_e( '4. İletişim Bilgileri', 'qrms' ); ?></h2>
-			<p class="description"><?php esc_html_e( 'Footer\'ın 4. sütunundaki adres, telefon ve sosyal ikonlar.', 'qrms' ); ?></p>
-
-			<div class="hfb-subpanel">
-				<h3 class="hfb-subpanel__title"><?php esc_html_e( 'İletişim', 'qrms' ); ?></h3>
-				<p class="description"><?php esc_html_e( 'Footer\'ın 4. sütunundaki adres/telefon/sosyal ikonlar.', 'qrms' ); ?></p>
-				<div class="qrms-field">
-					<label class="qrms-label" for="hfb_footer_contact_title"><?php esc_html_e( 'Sütun başlığı', 'qrms' ); ?></label>
-					<input type="text" id="hfb_footer_contact_title" name="hfb_footer_contact_title" class="qrms-input hfb-preview-trigger" value="<?php echo esc_attr( $opts['contact_title'] ); ?>" placeholder="<?php esc_attr_e( 'İletişim', 'qrms' ); ?>" />
-					<?php $this->hfb_ceviri_bayat_uyari( 'hfb_footer.contact_title' ); ?>
-				</div>
-
-				<div class="qrms-field">
-					<label class="qrms-label" for="hfb_footer_address"><?php esc_html_e( 'Adres', 'qrms' ); ?></label>
-					<textarea id="hfb_footer_address" name="hfb_footer_address" class="qrms-input hfb-preview-trigger" rows="2"><?php echo esc_textarea( $opts['address'] ); ?></textarea>
-				</div>
-
-				<div class="qrms-field">
-					<label class="qrms-label" for="hfb_footer_phone"><?php esc_html_e( 'Telefon', 'qrms' ); ?></label>
-					<input type="text" id="hfb_footer_phone" name="hfb_footer_phone" class="qrms-input hfb-preview-trigger" value="<?php echo esc_attr( $opts['phone'] ); ?>" />
-				</div>
-
-				<div class="qrms-field">
-					<label class="qrms-label" for="hfb_footer_email"><?php esc_html_e( 'E-posta', 'qrms' ); ?></label>
-					<input type="email" id="hfb_footer_email" name="hfb_footer_email" class="qrms-input hfb-preview-trigger" value="<?php echo esc_attr( $opts['email'] ); ?>" />
-				</div>
-
-				<div class="qrms-field">
-					<label class="qrms-label" for="hfb_footer_copyright"><?php esc_html_e( 'Telif metni', 'qrms' ); ?></label>
-					<input type="text" id="hfb_footer_copyright" name="hfb_footer_copyright" class="qrms-input hfb-preview-trigger" value="<?php echo esc_attr( $opts['copyright'] ); ?>" />
-					<?php $this->hfb_ceviri_bayat_uyari( 'hfb_footer.copyright' ); ?>
-				</div>
-
-				<p class="description"><?php esc_html_e( '4. sütundaki sosyal ikonlar; en fazla 6 tanesi gösterilir.', 'qrms' ); ?></p>
-				<?php $this->render_social_fields( $opts, 'hfb_' ); ?>
-
-				<?php
-				$this->hfb_align_row(
-					'hfb_footer_contact_align',
-					'hfb_footer_contact_align',
-					(string) $opts['contact_align'],
-					__( 'Sütun hizalama', 'qrms' ),
-					__( 'İletişim sütununun yaslanması.', 'qrms' )
-				);
-				$this->hfb_typo_block(
-					'hfb_footer_',
-					$opts,
-					'contact_title',
-					array(
-						'title'        => __( 'Başlık yazısı', 'qrms' ),
-						'desc'         => __( 'İletişim sütununun başlık satırı', 'qrms' ),
-						'color_label'  => __( 'Başlık yazı rengi', 'qrms' ),
-						'size_label'   => __( 'Başlık yazı boyutu', 'qrms' ),
-						'family_label' => __( 'Başlık yazı tipi', 'qrms' ),
-						'weight_label' => __( 'Başlık yazı kalınlığı', 'qrms' ),
-					)
-				);
-				$this->hfb_typo_block(
-					'hfb_footer_',
-					$opts,
-					'contact_item',
-					array(
-						'title'        => __( 'Adres, telefon ve e-posta satırları', 'qrms' ),
-						'desc'         => __( 'Adres, telefon, e-posta ve telif satırları', 'qrms' ),
-						'color_label'  => __( 'İletişim satır yazı rengi', 'qrms' ),
-						'size_label'   => __( 'İletişim satır yazı boyutu', 'qrms' ),
-						'family_label' => __( 'İletişim satır yazı tipi', 'qrms' ),
-						'weight_label' => __( 'İletişim satır yazı kalınlığı', 'qrms' ),
-					)
-				);
-				?>
-			</div>
-		</div>
-
-		<div class="qrms-card hfb-step" data-step="5" data-step-title="<?php esc_attr_e( 'Garson / Hesap Butonu', 'qrms' ); ?>" style="display:none;">
-			<h2 class="qrms-card-title"><?php esc_html_e( '5. Garson / Hesap Butonu', 'qrms' ); ?></h2>
+		<div class="qrms-card hfb-step" data-step="4" data-step-title="<?php esc_attr_e( 'Garson / Hesap Butonu', 'qrms' ); ?>" style="display:none;">
+			<h2 class="qrms-card-title"><?php esc_html_e( '4. Garson / Hesap Butonu', 'qrms' ); ?></h2>
 			<p class="description"><?php esc_html_e( 'Footer\'da görünen Garson Çağır ve Hesap İste kısayolları. Tıklama, mevcut masa oturumu + AJAX çağrı mekanizmasına gider; burada yeniden yazılmaz.', 'qrms' ); ?></p>
 
 			<?php if ( ! $this->call_buttons_available() ) : ?>
@@ -699,6 +510,532 @@ trait QRMS_HFB_Admin {
 
 		<?php
 		$this->render_step_nav( 'footer' );
+	}
+
+	/**
+	 * Yerleşim adımının tamamı: mevcut satırlar + "Satır Ekle" + JS şablonları.
+	 *
+	 * @param array<string,mixed> $opts  Footer ayarları (layout dahil).
+	 * @param array<int,string>   $menus Menü listesi.
+	 * @return void
+	 */
+	private function render_footer_layout_builder( $opts, $menus ) {
+		$rows = isset( $opts['layout']['rows'] ) && is_array( $opts['layout']['rows'] ) ? $opts['layout']['rows'] : array();
+		?>
+		<div class="hfb-fl" id="hfb-footer-layout">
+			<ul class="hfb-fl-rows" id="hfb-fl-rows">
+				<?php foreach ( $rows as $row_id => $row ) : ?>
+					<?php $this->render_footer_row( (string) $row_id, is_array( $row ) ? $row : array(), $menus ); ?>
+				<?php endforeach; ?>
+			</ul>
+
+			<button type="button" class="button button-secondary hfb-fl-add-row" id="hfb-fl-add-row">
+				<?php esc_html_e( '+ Satır Ekle', 'qrms' ); ?>
+			</button>
+
+			<?php $this->render_footer_layout_templates( $menus ); ?>
+		</div>
+		<?php
+	}
+
+	/**
+	 * Tek bir yerleşim satırı: başlık şeridi (sürükle/taşı/sil) + sütun listesi.
+	 *
+	 * @param string              $row_id Satır kimliği (row_1 ya da şablon için __ROW__).
+	 * @param array<string,mixed> $row    Satır verisi (cols).
+	 * @param array<int,string>   $menus  Menü listesi.
+	 * @return void
+	 */
+	private function render_footer_row( $row_id, $row, $menus ) {
+		$cols = isset( $row['cols'] ) && is_array( $row['cols'] ) ? $row['cols'] : array();
+		?>
+		<li class="hfb-fl-row" data-row-id="<?php echo esc_attr( $row_id ); ?>">
+			<div class="hfb-fl-row__head">
+				<span class="hfb-fl-drag hfb-fl-row-drag" aria-hidden="true">⠿</span>
+				<span class="hfb-fl-row__label"><?php esc_html_e( 'Satır', 'qrms' ); ?></span>
+				<span class="hfb-fl-spacer"></span>
+				<button type="button" class="button hfb-fl-row-up" aria-label="<?php esc_attr_e( 'Satırı yukarı taşı', 'qrms' ); ?>" title="<?php esc_attr_e( 'Yukarı taşı', 'qrms' ); ?>">&uarr;</button>
+				<button type="button" class="button hfb-fl-row-down" aria-label="<?php esc_attr_e( 'Satırı aşağı taşı', 'qrms' ); ?>" title="<?php esc_attr_e( 'Aşağı taşı', 'qrms' ); ?>">&darr;</button>
+				<button type="button" class="button hfb-fl-row-delete" aria-label="<?php esc_attr_e( 'Satırı sil', 'qrms' ); ?>" title="<?php esc_attr_e( 'Satırı sil', 'qrms' ); ?>">&times;</button>
+			</div>
+			<ul class="hfb-fl-cols" data-row-id="<?php echo esc_attr( $row_id ); ?>">
+				<?php foreach ( $cols as $col_id => $col ) : ?>
+					<?php $this->render_footer_col( $row_id, (string) $col_id, is_array( $col ) ? $col : array(), $menus ); ?>
+				<?php endforeach; ?>
+			</ul>
+			<div class="hfb-fl-row__actions">
+				<button type="button" class="button hfb-fl-add-col" data-row-id="<?php echo esc_attr( $row_id ); ?>">
+					<?php esc_html_e( '+ Sütun Ekle', 'qrms' ); ?>
+				</button>
+				<span class="description"><?php esc_html_e( 'En fazla 4 sütun; hepsi eşit genişliktedir.', 'qrms' ); ?></span>
+			</div>
+		</li>
+		<?php
+	}
+
+	/**
+	 * Tek bir sütun: hizalama + blok listesi + "Blok Ekle" açılır listesi.
+	 *
+	 * @param string              $row_id Üst satır kimliği.
+	 * @param string              $col_id Sütun kimliği (col_1 ya da şablon için __COL__).
+	 * @param array<string,mixed> $col    Sütun verisi (align, blocks).
+	 * @param array<int,string>   $menus  Menü listesi.
+	 * @return void
+	 */
+	private function render_footer_col( $row_id, $col_id, $col, $menus ) {
+		$align     = isset( $col['align'] ) ? (string) $col['align'] : 'left';
+		$blocks    = isset( $col['blocks'] ) && is_array( $col['blocks'] ) ? $col['blocks'] : array();
+		$name_base = 'hfb_footer_layout[rows][' . $row_id . '][cols][' . $col_id . ']';
+		$id_base   = 'hfb_footer_layout_' . $row_id . '_' . $col_id;
+		?>
+		<li class="hfb-fl-col" data-row-id="<?php echo esc_attr( $row_id ); ?>" data-col-id="<?php echo esc_attr( $col_id ); ?>">
+			<div class="hfb-fl-col__head">
+				<span class="hfb-fl-drag hfb-fl-col-drag" aria-hidden="true">⠿</span>
+				<span class="hfb-fl-col__label"><?php esc_html_e( 'Sütun', 'qrms' ); ?></span>
+				<?php
+				$this->hfb_align_row(
+					$id_base . '_align',
+					$name_base . '[align]',
+					$align,
+					__( 'Hizalama', 'qrms' ),
+					__( 'Bu sütundaki tüm içeriğin yaslanması.', 'qrms' )
+				);
+				?>
+				<div class="hfb-fl-col__moves">
+					<button type="button" class="button hfb-fl-col-left" aria-label="<?php esc_attr_e( 'Sütunu sola taşı', 'qrms' ); ?>" title="<?php esc_attr_e( 'Sola taşı', 'qrms' ); ?>">&larr;</button>
+					<button type="button" class="button hfb-fl-col-right" aria-label="<?php esc_attr_e( 'Sütunu sağa taşı', 'qrms' ); ?>" title="<?php esc_attr_e( 'Sağa taşı', 'qrms' ); ?>">&rarr;</button>
+					<button type="button" class="button hfb-fl-col-delete" aria-label="<?php esc_attr_e( 'Sütunu sil', 'qrms' ); ?>" title="<?php esc_attr_e( 'Sütunu sil', 'qrms' ); ?>">&times;</button>
+				</div>
+			</div>
+			<ul class="hfb-fl-blocks" data-row-id="<?php echo esc_attr( $row_id ); ?>" data-col-id="<?php echo esc_attr( $col_id ); ?>">
+				<?php foreach ( $blocks as $block_id => $block ) : ?>
+					<?php $this->render_footer_block_item( $row_id, $col_id, (string) $block_id, is_array( $block ) ? $block : array(), $menus ); ?>
+				<?php endforeach; ?>
+			</ul>
+			<div class="hfb-fl-block-add">
+				<div class="hfb-fl-block-add__menu" hidden>
+					<?php foreach ( $this->footer_block_types() as $type_key => $type_label ) : ?>
+						<button type="button" class="button hfb-fl-block-add-type" data-block-type="<?php echo esc_attr( $type_key ); ?>">
+							<?php echo esc_html( $type_label ); ?>
+						</button>
+					<?php endforeach; ?>
+				</div>
+				<button type="button" class="button button-small hfb-fl-block-add-toggle" aria-expanded="false">
+					<?php esc_html_e( '+ Blok Ekle', 'qrms' ); ?>
+				</button>
+			</div>
+		</li>
+		<?php
+	}
+
+	/**
+	 * Tek bir blok: sürükle/taşı/sütun-değiştir/sil şeridi + tipe özel alanlar.
+	 *
+	 * İçerik yalnızca menü/metin/görsel bloklarında vardır — logo, saatler,
+	 * iletişim ve telif hakkı bloklarının içeriği Elemanlar panelinden gelir.
+	 *
+	 * @param string              $row_id   Üst satır kimliği.
+	 * @param string              $col_id   Üst sütun kimliği.
+	 * @param string              $block_id Blok kimliği (blk_1 ya da şablon için __BLK__).
+	 * @param array<string,mixed> $block    Blok verisi.
+	 * @param array<int,string>   $menus    Menü listesi.
+	 * @return void
+	 */
+	private function render_footer_block_item( $row_id, $col_id, $block_id, $block, $menus ) {
+		$type  = isset( $block['type'] ) ? (string) $block['type'] : '';
+		$types = $this->footer_block_types();
+		$label = isset( $types[ $type ] ) ? $types[ $type ] : $type;
+		$base  = 'hfb_footer_layout[rows][' . $row_id . '][cols][' . $col_id . '][blocks][' . $block_id . ']';
+		?>
+		<li class="hfb-fl-block" data-block-id="<?php echo esc_attr( $block_id ); ?>" data-block-type="<?php echo esc_attr( $type ); ?>">
+			<input type="hidden" name="<?php echo esc_attr( $base ); ?>[type]" value="<?php echo esc_attr( $type ); ?>" />
+			<div class="hfb-fl-block__head">
+				<span class="hfb-block-drag hfb-fl-drag" aria-hidden="true">⠿</span>
+				<span class="hfb-fl-block__label"><?php echo esc_html( $label ); ?></span>
+				<span class="hfb-fl-spacer"></span>
+				<button type="button" class="button hfb-fl-block-up" aria-label="<?php esc_attr_e( 'Yukarı taşı', 'qrms' ); ?>" title="<?php esc_attr_e( 'Yukarı taşı', 'qrms' ); ?>">&uarr;</button>
+				<button type="button" class="button hfb-fl-block-down" aria-label="<?php esc_attr_e( 'Aşağı taşı', 'qrms' ); ?>" title="<?php esc_attr_e( 'Aşağı taşı', 'qrms' ); ?>">&darr;</button>
+				<button type="button" class="button hfb-fl-block-left" aria-label="<?php esc_attr_e( 'Önceki sütuna taşı', 'qrms' ); ?>" title="<?php esc_attr_e( 'Önceki sütuna taşı', 'qrms' ); ?>">&larr;<?php esc_html_e( 'Sütun', 'qrms' ); ?></button>
+				<button type="button" class="button hfb-fl-block-right" aria-label="<?php esc_attr_e( 'Sonraki sütuna taşı', 'qrms' ); ?>" title="<?php esc_attr_e( 'Sonraki sütuna taşı', 'qrms' ); ?>"><?php esc_html_e( 'Sütun', 'qrms' ); ?>&rarr;</button>
+				<button type="button" class="button hfb-block-delete hfb-fl-block-delete" aria-label="<?php esc_attr_e( 'Bloğu sil', 'qrms' ); ?>" title="<?php esc_attr_e( 'Bloğu sil', 'qrms' ); ?>">&times;</button>
+			</div>
+			<div class="hfb-fl-block__body">
+				<?php
+				switch ( $type ) {
+					case 'menu':
+						$menu_id = isset( $block['menu_id'] ) ? (int) $block['menu_id'] : 0;
+						$title   = isset( $block['title'] ) ? (string) $block['title'] : '';
+						?>
+						<div class="qrms-field">
+							<label class="qrms-label"><?php esc_html_e( 'Menü', 'qrms' ); ?></label>
+							<select name="<?php echo esc_attr( $base ); ?>[menu_id]" class="qrms-input hfb-preview-trigger">
+								<?php foreach ( $menus as $id => $name ) : ?>
+									<option value="<?php echo esc_attr( (string) $id ); ?>" <?php selected( $menu_id, (int) $id ); ?>><?php echo esc_html( $name ); ?></option>
+								<?php endforeach; ?>
+							</select>
+						</div>
+						<div class="qrms-field">
+							<label class="qrms-label"><?php esc_html_e( 'Başlık (opsiyonel)', 'qrms' ); ?></label>
+							<input type="text" name="<?php echo esc_attr( $base ); ?>[title]" class="qrms-input hfb-preview-trigger" value="<?php echo esc_attr( $title ); ?>" placeholder="<?php esc_attr_e( 'Hızlı Menü', 'qrms' ); ?>" />
+						</div>
+						<?php
+						break;
+
+					case 'text':
+						$content = isset( $block['content'] ) ? (string) $block['content'] : '';
+						$variant = isset( $block['variant'] ) && 'small' === $block['variant'] ? 'small' : 'body';
+						?>
+						<div class="qrms-field">
+							<label class="qrms-label"><?php esc_html_e( 'Metin', 'qrms' ); ?></label>
+							<textarea name="<?php echo esc_attr( $base ); ?>[content]" class="qrms-input hfb-preview-trigger" rows="3"><?php echo esc_textarea( $content ); ?></textarea>
+						</div>
+						<div class="qrms-field">
+							<label class="qrms-label"><?php esc_html_e( 'Boyut', 'qrms' ); ?></label>
+							<select name="<?php echo esc_attr( $base ); ?>[variant]" class="qrms-input hfb-preview-trigger">
+								<option value="body" <?php selected( $variant, 'body' ); ?>><?php esc_html_e( 'Gövde metni', 'qrms' ); ?></option>
+								<option value="small" <?php selected( $variant, 'small' ); ?>><?php esc_html_e( 'Küçük metin', 'qrms' ); ?></option>
+							</select>
+							<p class="description"><?php esc_html_e( 'Görünümü Elemanlar adımındaki Metin bölümünden ayarlanır.', 'qrms' ); ?></p>
+						</div>
+						<?php
+						break;
+
+					case 'image':
+						$image_id = isset( $block['image_id'] ) ? (int) $block['image_id'] : 0;
+						$link_url = isset( $block['link_url'] ) ? (string) $block['link_url'] : '';
+						$alt      = isset( $block['alt'] ) ? (string) $block['alt'] : '';
+						$this->render_media_field( $base . '[image_id]', __( 'Görsel', 'qrms' ), $image_id );
+						?>
+						<div class="qrms-field">
+							<label class="qrms-label"><?php esc_html_e( 'Bağlantı (opsiyonel)', 'qrms' ); ?></label>
+							<input type="url" name="<?php echo esc_attr( $base ); ?>[link_url]" class="qrms-input hfb-preview-trigger" value="<?php echo esc_attr( $link_url ); ?>" placeholder="https://" />
+						</div>
+						<div class="qrms-field">
+							<label class="qrms-label"><?php esc_html_e( 'Alt metin', 'qrms' ); ?></label>
+							<input type="text" name="<?php echo esc_attr( $base ); ?>[alt]" class="qrms-input hfb-preview-trigger" value="<?php echo esc_attr( $alt ); ?>" />
+						</div>
+						<?php
+						break;
+
+					case 'logo':
+						?>
+						<p class="description"><?php esc_html_e( 'Logo görseli, boyutu ve altındaki açıklama metni Elemanlar adımındaki Logo bölümünden ayarlanır.', 'qrms' ); ?></p>
+						<?php
+						break;
+
+					case 'hours':
+						?>
+						<p class="description"><?php esc_html_e( 'Gün/saat listesi Çalışma Saatleri modülünden gelir; başlık ve görünüm Elemanlar adımından ayarlanır.', 'qrms' ); ?></p>
+						<?php
+						break;
+
+					case 'contact':
+						?>
+						<p class="description"><?php esc_html_e( 'Telefon, e-posta, adres ve sosyal ikonlar Elemanlar adımındaki İletişim bölümünden ayarlanır.', 'qrms' ); ?></p>
+						<?php
+						break;
+
+					case 'copyright':
+						?>
+						<p class="description"><?php esc_html_e( 'Telif metni Elemanlar adımındaki Telif Hakkı bölümünden ayarlanır.', 'qrms' ); ?></p>
+						<?php
+						break;
+				}
+				?>
+			</div>
+		</li>
+		<?php
+	}
+
+	/**
+	 * JS'in yeni satır/sütun/blok eklerken kopyaladığı gizli şablonlar.
+	 *
+	 * Gerçek içerikle aynı render_footer_row()/_col()/_block_item()
+	 * fonksiyonlarını `__ROW__`/`__COL__`/`__BLK__` yer tutucularıyla
+	 * çağırır; admin.js klonlarken bu tutucuları gerçek kimliklerle değiştirir.
+	 *
+	 * @param array<int,string> $menus Menü listesi.
+	 * @return void
+	 */
+	private function render_footer_layout_templates( $menus ) {
+		?>
+		<div id="hfb-fl-templates" hidden aria-hidden="true">
+			<template id="hfb-fl-tpl-row">
+				<?php
+				$this->render_footer_row(
+					'__ROW__',
+					array( 'cols' => array( '__COL__' => array( 'align' => 'left', 'blocks' => array() ) ) ),
+					$menus
+				);
+				?>
+			</template>
+			<template id="hfb-fl-tpl-col">
+				<?php $this->render_footer_col( '__ROW__', '__COL__', array( 'align' => 'left', 'blocks' => array() ), $menus ); ?>
+			</template>
+			<?php foreach ( array_keys( $this->footer_block_types() ) as $type_key ) : ?>
+				<template id="hfb-fl-tpl-block-<?php echo esc_attr( $type_key ); ?>">
+					<?php $this->render_footer_block_item( '__ROW__', '__COL__', '__BLK__', $this->default_footer_block( $type_key ), $menus ); ?>
+				</template>
+			<?php endforeach; ?>
+		</div>
+		<?php
+	}
+
+	/**
+	 * Elemanlar adımı: her blok tipinin paylaşılan içerik/görünüm ayarları.
+	 *
+	 * Logo bu panelde YOKTUR — kendi adımı (1. Logo ve Slogan) zaten aynı
+	 * işi görür. Burada Menü, Metin, Görsel, Çalışma Saatleri, İletişim ve
+	 * Telif Hakkı elemanları vardır.
+	 *
+	 * @param array<string,mixed> $opts Footer ayarları.
+	 * @return void
+	 */
+	private function render_footer_elements_panel( $opts ) {
+		?>
+		<details class="hfb-el-group" open>
+			<summary class="hfb-el-group__summary"><?php esc_html_e( 'Menü', 'qrms' ); ?></summary>
+			<div class="hfb-el-group__body">
+				<p class="description"><?php esc_html_e( 'Hangi menünün gösterileceğini ve başlığını Yerleşim adımındaki ilgili blokta seçersiniz; buradaki görünüm TÜM Menü bloklarında aynıdır.', 'qrms' ); ?></p>
+				<?php
+				$this->hfb_typo_block(
+					'hfb_footer_',
+					$opts,
+					'menu_title',
+					array(
+						'title'        => __( 'Başlık yazısı', 'qrms' ),
+						'desc'         => __( 'Menü bloğunun başlık satırı (girildiyse)', 'qrms' ),
+						'color_label'  => __( 'Başlık yazı rengi', 'qrms' ),
+						'size_label'   => __( 'Başlık yazı boyutu', 'qrms' ),
+						'family_label' => __( 'Başlık yazı tipi', 'qrms' ),
+						'weight_label' => __( 'Başlık yazı kalınlığı', 'qrms' ),
+					)
+				);
+				$this->hfb_typo_block(
+					'hfb_footer_',
+					$opts,
+					'menu_item',
+					array(
+						'title'        => __( 'Menü bağlantıları', 'qrms' ),
+						'desc'         => __( 'Menü listesindeki link satırları (başlık DEĞİL)', 'qrms' ),
+						'color_label'  => __( 'Link yazı rengi', 'qrms' ),
+						'size_label'   => __( 'Link yazı boyutu', 'qrms' ),
+						'family_label' => __( 'Link yazı tipi', 'qrms' ),
+						'weight_label' => __( 'Link yazı kalınlığı', 'qrms' ),
+						'hover_key'    => 'menu_item_hover_color',
+						'hover_label'  => __( 'Link hover rengi', 'qrms' ),
+						'hover_desc'   => __( 'Bağlantının üzerine gelince kullanılan renk.', 'qrms' ),
+					)
+				);
+				?>
+			</div>
+		</details>
+
+		<details class="hfb-el-group">
+			<summary class="hfb-el-group__summary"><?php esc_html_e( 'Metin', 'qrms' ); ?></summary>
+			<div class="hfb-el-group__body">
+				<p class="description"><?php esc_html_e( 'İki hazır boyut vardır; her Metin bloğu Yerleşim adımında hangisini kullanacağını kendi içinde seçer.', 'qrms' ); ?></p>
+				<?php
+				$this->hfb_typo_block(
+					'hfb_footer_',
+					$opts,
+					'text_body',
+					array(
+						'title'        => __( 'Gövde metni', 'qrms' ),
+						'desc'         => __( 'Normal boyutlu Metin blokları', 'qrms' ),
+						'color_label'  => __( 'Yazı rengi', 'qrms' ),
+						'size_label'   => __( 'Yazı boyutu', 'qrms' ),
+						'family_label' => __( 'Yazı tipi', 'qrms' ),
+						'weight_label' => __( 'Yazı kalınlığı', 'qrms' ),
+					)
+				);
+				$this->hfb_typo_block(
+					'hfb_footer_',
+					$opts,
+					'text_small',
+					array(
+						'title'        => __( 'Küçük metin', 'qrms' ),
+						'desc'         => __( 'Küçük boyut seçilen Metin blokları', 'qrms' ),
+						'color_label'  => __( 'Yazı rengi', 'qrms' ),
+						'size_label'   => __( 'Yazı boyutu', 'qrms' ),
+						'family_label' => __( 'Yazı tipi', 'qrms' ),
+						'weight_label' => __( 'Yazı kalınlığı', 'qrms' ),
+					)
+				);
+				?>
+			</div>
+		</details>
+
+		<details class="hfb-el-group">
+			<summary class="hfb-el-group__summary"><?php esc_html_e( 'Görsel', 'qrms' ); ?></summary>
+			<div class="hfb-el-group__body">
+				<p class="description"><?php esc_html_e( 'Her Görsel bloğu kendi görselini ve bağlantısını taşır; azami genişlik ve köşe yuvarlama burada tüm Görsel bloklarında ortaktır.', 'qrms' ); ?></p>
+				<div class="qrms-field">
+					<label class="hfb-check-row">
+						<input type="checkbox" name="hfb_footer_image_radius" value="1" class="hfb-preview-trigger" <?php checked( ! empty( $opts['image_radius'] ) ); ?> />
+						<span><?php esc_html_e( 'Köşeleri yuvarlat', 'qrms' ); ?></span>
+					</label>
+				</div>
+				<h3 class="hfb-section-title"><?php esc_html_e( 'Masaüstü', 'qrms' ); ?></h3>
+				<?php
+				$this->hfb_size_row(
+					'hfb_footer_image_max_width_desktop',
+					'hfb_footer_image_max_width_desktop',
+					(int) $opts['image_max_width_desktop'],
+					40,
+					600,
+					__( 'Azami genişlik', 'qrms' ),
+					__( 'Geniş ekranda görselin en fazla ne kadar yer kaplayacağı.', 'qrms' )
+				);
+				?>
+				<h3 class="hfb-section-title"><?php esc_html_e( 'Mobil', 'qrms' ); ?></h3>
+				<?php
+				$this->hfb_size_row(
+					'hfb_footer_image_max_width_mobile',
+					'hfb_footer_image_max_width_mobile',
+					(int) $opts['image_max_width_mobile'],
+					40,
+					600,
+					__( 'Azami genişlik', 'qrms' ),
+					__( 'Telefonda görselin en fazla ne kadar yer kaplayacağı.', 'qrms' )
+				);
+				?>
+			</div>
+		</details>
+
+		<details class="hfb-el-group">
+			<summary class="hfb-el-group__summary"><?php esc_html_e( 'Çalışma Saatleri', 'qrms' ); ?></summary>
+			<div class="hfb-el-group__body">
+				<?php if ( $this->hours_module_available() ) : ?>
+					<p class="description"><?php esc_html_e( 'Gün/saat listesi modülden gelir; burada yalnızca başlık ve görünüm ayarlanır.', 'qrms' ); ?></p>
+					<div class="qrms-field">
+						<label class="qrms-label" for="hfb_footer_hours_title"><?php esc_html_e( 'Başlık', 'qrms' ); ?></label>
+						<input type="text" id="hfb_footer_hours_title" name="hfb_footer_hours_title" class="qrms-input hfb-preview-trigger" value="<?php echo esc_attr( $opts['hours_title'] ); ?>" placeholder="<?php esc_attr_e( 'Çalışma Saatlerimiz', 'qrms' ); ?>" />
+						<?php $this->hfb_ceviri_bayat_uyari( 'hfb_footer.hours_title' ); ?>
+					</div>
+					<?php
+					$this->hfb_typo_block(
+						'hfb_footer_',
+						$opts,
+						'hours_title',
+						array(
+							'title'        => __( 'Başlık yazısı', 'qrms' ),
+							'desc'         => __( 'Çalışma Saatleri bloğunun başlık satırı', 'qrms' ),
+							'color_label'  => __( 'Başlık yazı rengi', 'qrms' ),
+							'size_label'   => __( 'Başlık yazı boyutu', 'qrms' ),
+							'family_label' => __( 'Başlık yazı tipi', 'qrms' ),
+							'weight_label' => __( 'Başlık yazı kalınlığı', 'qrms' ),
+						)
+					);
+					$this->hfb_typo_block(
+						'hfb_footer_',
+						$opts,
+						'hours_item',
+						array(
+							'title'        => __( 'Gün ve saat metinleri', 'qrms' ),
+							'desc'         => __( 'Gün adı ve saat aralığı satırları', 'qrms' ),
+							'color_label'  => __( 'Gün/saat yazı rengi', 'qrms' ),
+							'size_label'   => __( 'Gün/saat yazı boyutu', 'qrms' ),
+							'family_label' => __( 'Gün/saat yazı tipi', 'qrms' ),
+							'weight_label' => __( 'Gün/saat yazı kalınlığı', 'qrms' ),
+						)
+					);
+					?>
+				<?php else : ?>
+					<div class="qrms-alert">
+						<p><?php esc_html_e( 'QR Çalışma Saatleri modülü şu anda etkin değil. Bu blok footer\'da görünmez — hata oluşmaz. Saatleri göstermek için modülü etkinleştirin.', 'qrms' ); ?></p>
+					</div>
+					<input type="hidden" name="hfb_footer_hours_title" value="<?php echo esc_attr( $opts['hours_title'] ); ?>" />
+				<?php endif; ?>
+			</div>
+		</details>
+
+		<details class="hfb-el-group">
+			<summary class="hfb-el-group__summary"><?php esc_html_e( 'İletişim', 'qrms' ); ?></summary>
+			<div class="hfb-el-group__body">
+				<p class="description"><?php esc_html_e( 'Telefon, e-posta, adres ve sosyal ikonlar tek kaynaktan gelir; İletişim bloğu bunları olduğu gibi basar.', 'qrms' ); ?></p>
+				<div class="qrms-field">
+					<label class="qrms-label" for="hfb_footer_contact_title"><?php esc_html_e( 'Başlık', 'qrms' ); ?></label>
+					<input type="text" id="hfb_footer_contact_title" name="hfb_footer_contact_title" class="qrms-input hfb-preview-trigger" value="<?php echo esc_attr( $opts['contact_title'] ); ?>" placeholder="<?php esc_attr_e( 'İletişim', 'qrms' ); ?>" />
+					<?php $this->hfb_ceviri_bayat_uyari( 'hfb_footer.contact_title' ); ?>
+				</div>
+
+				<div class="qrms-field">
+					<label class="qrms-label" for="hfb_footer_address"><?php esc_html_e( 'Adres', 'qrms' ); ?></label>
+					<textarea id="hfb_footer_address" name="hfb_footer_address" class="qrms-input hfb-preview-trigger" rows="2"><?php echo esc_textarea( $opts['address'] ); ?></textarea>
+				</div>
+
+				<div class="qrms-field">
+					<label class="qrms-label" for="hfb_footer_phone"><?php esc_html_e( 'Telefon', 'qrms' ); ?></label>
+					<input type="text" id="hfb_footer_phone" name="hfb_footer_phone" class="qrms-input hfb-preview-trigger" value="<?php echo esc_attr( $opts['phone'] ); ?>" />
+				</div>
+
+				<div class="qrms-field">
+					<label class="qrms-label" for="hfb_footer_email"><?php esc_html_e( 'E-posta', 'qrms' ); ?></label>
+					<input type="email" id="hfb_footer_email" name="hfb_footer_email" class="qrms-input hfb-preview-trigger" value="<?php echo esc_attr( $opts['email'] ); ?>" />
+				</div>
+
+				<p class="description"><?php esc_html_e( 'En fazla 6 sosyal ikon gösterilir.', 'qrms' ); ?></p>
+				<?php $this->render_social_fields( $opts, 'hfb_' ); ?>
+
+				<?php
+				$this->hfb_typo_block(
+					'hfb_footer_',
+					$opts,
+					'contact_title',
+					array(
+						'title'        => __( 'Başlık yazısı', 'qrms' ),
+						'desc'         => __( 'İletişim bloğunun başlık satırı', 'qrms' ),
+						'color_label'  => __( 'Başlık yazı rengi', 'qrms' ),
+						'size_label'   => __( 'Başlık yazı boyutu', 'qrms' ),
+						'family_label' => __( 'Başlık yazı tipi', 'qrms' ),
+						'weight_label' => __( 'Başlık yazı kalınlığı', 'qrms' ),
+					)
+				);
+				$this->hfb_typo_block(
+					'hfb_footer_',
+					$opts,
+					'contact_item',
+					array(
+						'title'        => __( 'Adres, telefon ve e-posta satırları', 'qrms' ),
+						'desc'         => __( 'Adres, telefon ve e-posta satırları', 'qrms' ),
+						'color_label'  => __( 'İletişim satır yazı rengi', 'qrms' ),
+						'size_label'   => __( 'İletişim satır yazı boyutu', 'qrms' ),
+						'family_label' => __( 'İletişim satır yazı tipi', 'qrms' ),
+						'weight_label' => __( 'İletişim satır yazı kalınlığı', 'qrms' ),
+					)
+				);
+				?>
+			</div>
+		</details>
+
+		<details class="hfb-el-group">
+			<summary class="hfb-el-group__summary"><?php esc_html_e( 'Telif Hakkı', 'qrms' ); ?></summary>
+			<div class="hfb-el-group__body">
+				<div class="qrms-field">
+					<label class="qrms-label" for="hfb_footer_copyright"><?php esc_html_e( 'Telif metni', 'qrms' ); ?></label>
+					<input type="text" id="hfb_footer_copyright" name="hfb_footer_copyright" class="qrms-input hfb-preview-trigger" value="<?php echo esc_attr( $opts['copyright'] ); ?>" />
+					<?php $this->hfb_ceviri_bayat_uyari( 'hfb_footer.copyright' ); ?>
+					<p class="description"><?php esc_html_e( 'Metindeki bir yıl (ör. 2026) her yüklemede otomatik güncel yıla döner.', 'qrms' ); ?></p>
+				</div>
+				<?php
+				$this->hfb_typo_block(
+					'hfb_footer_',
+					$opts,
+					'copyright',
+					array(
+						'title'        => __( 'Yazı görünümü', 'qrms' ),
+						'desc'         => __( 'Telif Hakkı bloğunun metni', 'qrms' ),
+						'color_label'  => __( 'Yazı rengi', 'qrms' ),
+						'size_label'   => __( 'Yazı boyutu', 'qrms' ),
+						'family_label' => __( 'Yazı tipi', 'qrms' ),
+						'weight_label' => __( 'Yazı kalınlığı', 'qrms' ),
+					)
+				);
+				?>
+			</div>
+		</details>
+		<?php
 	}
 
 	/**
@@ -1540,7 +1877,7 @@ trait QRMS_HFB_Admin {
 	 *
 	 * @param string              $form_prefix Form öneki (hfb_footer_).
 	 * @param array<string,mixed> $opts        Ayarlar.
-	 * @param string              $group       Option öneki (brand, links_title…).
+	 * @param string              $group       Option öneki (brand, menu_title…).
 	 * @param array<string,mixed> $args        title, desc, color_label, size_label, family_label, weight_label, hover_key, hover_label.
 	 * @return void
 	 */

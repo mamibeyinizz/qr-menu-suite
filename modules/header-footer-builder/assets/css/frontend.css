@@ -956,34 +956,40 @@ body.hfb-scroll-locked {
   width: 100%;
 }
 
-.hfb-footer__inner {
+/*
+ * Yerleşim: her satır kendi ızgarasıdır (--hfb-footer-row-cols satırdaki
+ * gerçek sütun sayısıdır, PHP tarafında render_footer() yazar). Sütunlar
+ * her zaman eşit genişliktedir; hizalama sütun başına inline text-align
+ * ile gelir (bkz. render_footer()).
+ */
+.hfb-footer__row {
   display: grid;
   gap: 2rem;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(var(--hfb-footer-row-cols, 1), minmax(0, 1fr));
   margin: 0 auto;
   max-width: 1200px;
-  padding: 2.5rem 1.25rem;
+  padding: 2rem 1.25rem 0;
   width: 100%;
 }
 
+.hfb-footer__row:last-of-type {
+  padding-bottom: 2rem;
+}
+
 .hfb-footer__col {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
   min-width: 0;
 }
 
 .hfb-footer__heading {
   letter-spacing: 0.04em;
-  margin: 0 0 1rem;
+  margin: 0 0 0.85rem;
 }
 
-.hfb-footer__col--brand {
-  text-align: var(--hfb-footer-brand-align, left);
-}
-
-.hfb-footer__col--brand .hfb-brand {
-  justify-content: var(--hfb-footer-brand-justify, flex-start);
-}
-
-.hfb-footer-wrap .hfb-footer__col--brand .hfb-brand__img {
+/* Logo bloğu */
+.hfb-footer-wrap .hfb-brand__img {
   height: var(--hfb-footer-logo-h-desktop, auto);
   width: var(--hfb-footer-logo-w-desktop, 160px);
 }
@@ -1008,26 +1014,12 @@ body.hfb-scroll-locked {
   opacity: 0.85;
 }
 
-.hfb-footer__col--links {
-  text-align: var(--hfb-footer-links-align, left);
-}
-
-.hfb-footer__col--links .hfb-footer__heading {
-  color: var(--hfb-footer-links-title-color, var(--hfb-gold));
-  font-family: var(--hfb-footer-links-title-font, var(--hfb-font-display));
-  font-size: var(--hfb-footer-links-title-size, 18px);
-  font-weight: var(--hfb-footer-links-title-weight, 600);
-}
-
-.hfb-footer__col--links2 {
-  text-align: var(--hfb-footer-links2-align, left);
-}
-
-.hfb-footer__col--links2 .hfb-footer__heading {
-  color: var(--hfb-footer-links2-title-color, var(--hfb-gold));
-  font-family: var(--hfb-footer-links2-title-font, var(--hfb-font-display));
-  font-size: var(--hfb-footer-links2-title-size, 18px);
-  font-weight: var(--hfb-footer-links2-title-weight, 600);
+/* Menü bloğu — TÜM Menü blokları bu tek görünümü paylaşır. */
+.hfb-fb--menu .hfb-footer__heading {
+  color: var(--hfb-footer-menu-title-color, var(--hfb-gold));
+  font-family: var(--hfb-footer-menu-title-font, var(--hfb-font-display));
+  font-size: var(--hfb-footer-menu-title-size, 18px);
+  font-weight: var(--hfb-footer-menu-title-weight, 600);
 }
 
 .hfb-footer-wrap .hfb-footer__menu {
@@ -1044,50 +1036,27 @@ body.hfb-scroll-locked {
   margin: 0;
 }
 
-.hfb-footer-wrap .hfb-footer__col--links .hfb-footer__menu a {
-  color: var(--hfb-footer-links-item-color, var(--hfb-text));
+.hfb-footer-wrap .hfb-footer__menu a {
+  color: var(--hfb-footer-menu-item-color, var(--hfb-text));
   display: inline-flex;
-  font-family: var(--hfb-footer-links-item-font, inherit);
-  font-size: var(--hfb-footer-links-item-size, 15px);
-  font-weight: var(--hfb-footer-links-item-weight, 400);
+  font-family: var(--hfb-footer-menu-item-font, inherit);
+  font-size: var(--hfb-footer-menu-item-size, 15px);
+  font-weight: var(--hfb-footer-menu-item-weight, 400);
   text-decoration: none;
   transition: color 0.2s ease;
 }
 
-.hfb-footer-wrap .hfb-footer__col--links .hfb-footer__menu a::before {
-  color: var(--hfb-footer-links-item-hover, var(--hfb-gold));
+.hfb-footer-wrap .hfb-footer__menu a::before {
+  color: var(--hfb-footer-menu-item-hover, var(--hfb-gold));
   content: '›';
   display: inline-block;
   font-weight: 400;
   margin-right: 0.45em;
 }
 
-.hfb-footer-wrap .hfb-footer__col--links .hfb-footer__menu a:hover,
-.hfb-footer-wrap .hfb-footer__col--links .hfb-footer__menu a:focus-visible {
-  color: var(--hfb-footer-links-item-hover, var(--hfb-gold));
-}
-
-.hfb-footer-wrap .hfb-footer__col--links2 .hfb-footer__menu a {
-  color: var(--hfb-footer-links2-item-color, var(--hfb-text));
-  display: inline-flex;
-  font-family: var(--hfb-footer-links2-item-font, inherit);
-  font-size: var(--hfb-footer-links2-item-size, 15px);
-  font-weight: var(--hfb-footer-links2-item-weight, 400);
-  text-decoration: none;
-  transition: color 0.2s ease;
-}
-
-.hfb-footer-wrap .hfb-footer__col--links2 .hfb-footer__menu a::before {
-  color: var(--hfb-footer-links2-item-hover, var(--hfb-gold));
-  content: '›';
-  display: inline-block;
-  font-weight: 400;
-  margin-right: 0.45em;
-}
-
-.hfb-footer-wrap .hfb-footer__col--links2 .hfb-footer__menu a:hover,
-.hfb-footer-wrap .hfb-footer__col--links2 .hfb-footer__menu a:focus-visible {
-  color: var(--hfb-footer-links2-item-hover, var(--hfb-gold));
+.hfb-footer-wrap .hfb-footer__menu a:hover,
+.hfb-footer-wrap .hfb-footer__menu a:focus-visible {
+  color: var(--hfb-footer-menu-item-hover, var(--hfb-gold));
 }
 
 .hfb-footer-wrap .hfb-footer__menu .sub-menu {
@@ -1096,11 +1065,72 @@ body.hfb-scroll-locked {
   padding: 0 0 0 0.85rem;
 }
 
-.hfb-footer__col--contact {
-  text-align: var(--hfb-footer-contact-align, left);
+/* Metin bloğu — iki boyut ön ayarı. */
+.hfb-fb--text-body {
+  color: var(--hfb-footer-text-body-color, var(--hfb-text));
+  font-family: var(--hfb-footer-text-body-font, inherit);
+  font-size: var(--hfb-footer-text-body-size, 15px);
+  font-weight: var(--hfb-footer-text-body-weight, 400);
 }
 
-.hfb-footer__col--contact .hfb-footer__heading {
+.hfb-fb--text-small {
+  color: var(--hfb-footer-text-small-color, var(--hfb-text));
+  font-family: var(--hfb-footer-text-small-font, inherit);
+  font-size: var(--hfb-footer-text-small-size, 13px);
+  font-weight: var(--hfb-footer-text-small-weight, 400);
+}
+
+/* Görsel bloğu */
+.hfb-fb__img {
+  border-radius: var(--hfb-footer-image-radius, 0);
+  height: auto;
+  max-width: var(--hfb-footer-image-max-w, 200px);
+}
+
+/* Çalışma Saatleri bloğu */
+.hfb-fb--hours .hfb-footer__heading {
+  color: var(--hfb-footer-hours-title-color, var(--hfb-gold));
+  font-family: var(--hfb-footer-hours-title-font, var(--hfb-font-display));
+  font-size: var(--hfb-footer-hours-title-size, 18px);
+  font-weight: var(--hfb-footer-hours-title-weight, 600);
+}
+
+.hfb-footer__hours {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.hfb-footer__hours-row {
+  align-items: baseline;
+  color: var(--hfb-footer-hours-item-color, var(--hfb-text));
+  display: flex;
+  font-family: var(--hfb-footer-hours-item-font, inherit);
+  font-size: var(--hfb-footer-hours-item-size, 14px);
+  font-weight: var(--hfb-footer-hours-item-weight, 400);
+  gap: 0.5rem;
+  margin: 0 0 0.55rem;
+}
+
+.hfb-footer__hours-day {
+  flex: 0 0 auto;
+}
+
+.hfb-footer__hours-sep {
+  border-bottom: 1px dotted color-mix(in srgb, currentColor 45%, transparent);
+  flex: 1 1 auto;
+  min-width: 0.75rem;
+  opacity: 0.7;
+  transform: translateY(-0.2em);
+}
+
+.hfb-footer__hours-time {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+/* İletişim bloğu */
+.hfb-fb--contact .hfb-footer__heading {
   color: var(--hfb-footer-contact-title-color, var(--hfb-gold));
   font-family: var(--hfb-footer-contact-title-font, var(--hfb-font-display));
   font-size: var(--hfb-footer-contact-title-size, 18px);
@@ -1131,9 +1161,17 @@ body.hfb-scroll-locked {
   width: 16px;
 }
 
-.hfb-footer__col--contact .hfb-social {
-  justify-content: var(--hfb-footer-contact-justify, flex-start);
-  margin-top: 1rem;
+.hfb-fb--contact .hfb-social {
+  margin-top: 0.25rem;
+}
+
+/* Telif Hakkı bloğu — kullanıcı istediği satır/sütuna yerleştirir. */
+.hfb-fb--copyright {
+  color: var(--hfb-footer-copyright-color, var(--hfb-muted));
+  font-family: var(--hfb-footer-copyright-font, inherit);
+  font-size: var(--hfb-footer-copyright-size, 13px);
+  font-weight: var(--hfb-footer-copyright-weight, 400);
+  margin: 0;
 }
 
 .hfb-footer__call-wrap {
@@ -1161,19 +1199,6 @@ body.hfb-scroll-locked {
   justify-content: center;
   text-align: center;
   width: 100%;
-}
-
-.hfb-footer__bar {
-  border-top: 1px solid var(--hfb-border);
-}
-
-.hfb-footer__copyright {
-  color: var(--hfb-muted);
-  font-size: 0.8125rem;
-  margin: 0 auto;
-  max-width: 1200px;
-  padding: 1rem 1.25rem;
-  text-align: center;
 }
 
 /*
@@ -1403,19 +1428,18 @@ body:has(.hfb-footer__call-wrap .hfb-footer__call--warn):not(.wp-admin) {
   }
 }
 
-@container hfb-footer (max-width: 900px) {
-  .hfb-footer__inner {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
+/*
+ * Mobilde satırdaki sütun sayısı ne olursa olsun (1-4) TEK sütuna
+ * düşer; bloklar alt alta dizilir. Masaüstü/tablet, adım 2'de seçilen
+ * sütun sayısını (--hfb-footer-row-cols) eşit genişlikte kullanır.
+ */
 @container hfb-footer (max-width: 768px) {
-  .hfb-footer__inner {
+  .hfb-footer__row {
     grid-template-columns: 1fr;
-    padding: 2rem 1.25rem;
+    padding: 2rem 1.25rem 0;
   }
 
-  .hfb-footer-wrap .hfb-footer__col--brand .hfb-brand__img {
+  .hfb-footer-wrap .hfb-brand__img {
     height: var(--hfb-footer-logo-h-mobile, auto);
     width: var(--hfb-footer-logo-w-mobile, 120px);
   }
@@ -1425,28 +1449,44 @@ body:has(.hfb-footer__call-wrap .hfb-footer__call--warn):not(.wp-admin) {
     font-size: var(--hfb-footer-brand-size-mobile, 14px);
   }
 
-  .hfb-footer__col--links .hfb-footer__heading {
-    font-size: var(--hfb-footer-links-title-size-m, 16px);
+  .hfb-fb--menu .hfb-footer__heading {
+    font-size: var(--hfb-footer-menu-title-size-m, 16px);
   }
 
-  .hfb-footer-wrap .hfb-footer__col--links .hfb-footer__menu a {
-    font-size: var(--hfb-footer-links-item-size-m, 14px);
+  .hfb-footer-wrap .hfb-footer__menu a {
+    font-size: var(--hfb-footer-menu-item-size-m, 14px);
   }
 
-  .hfb-footer__col--links2 .hfb-footer__heading {
-    font-size: var(--hfb-footer-links2-title-size-m, 16px);
+  .hfb-fb--text-body {
+    font-size: var(--hfb-footer-text-body-size-m, 14px);
   }
 
-  .hfb-footer-wrap .hfb-footer__col--links2 .hfb-footer__menu a {
-    font-size: var(--hfb-footer-links2-item-size-m, 14px);
+  .hfb-fb--text-small {
+    font-size: var(--hfb-footer-text-small-size-m, 12px);
   }
 
-  .hfb-footer__col--contact .hfb-footer__heading {
+  .hfb-fb__img {
+    max-width: var(--hfb-footer-image-max-w-m, 160px);
+  }
+
+  .hfb-fb--hours .hfb-footer__heading {
+    font-size: var(--hfb-footer-hours-title-size-m, 16px);
+  }
+
+  .hfb-footer__hours-row {
+    font-size: var(--hfb-footer-hours-item-size-m, 13px);
+  }
+
+  .hfb-fb--contact .hfb-footer__heading {
     font-size: var(--hfb-footer-contact-title-size-m, 16px);
   }
 
   .hfb-footer__contact {
     font-size: var(--hfb-footer-contact-item-size-m, 13px);
+  }
+
+  .hfb-fb--copyright {
+    font-size: var(--hfb-footer-copyright-size-m, 12px);
   }
 }
 
@@ -1459,10 +1499,6 @@ body:has(.hfb-footer__call-wrap .hfb-footer__call--warn):not(.wp-admin) {
 
     .hfb-header__inner {
       gap: 1rem;
-    }
-
-    .hfb-footer__inner {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
     }
   }
 
@@ -1509,9 +1545,9 @@ body:has(.hfb-footer__call-wrap .hfb-footer__call--warn):not(.wp-admin) {
         var(--hfb-header-padding-x-m, var(--hfb-header-padding-x, 1.25rem));
     }
 
-    .hfb-footer__inner {
+    .hfb-footer__row {
       grid-template-columns: 1fr;
-      padding: 2rem 1.25rem;
+      padding: 2rem 1.25rem 0;
     }
   }
 }

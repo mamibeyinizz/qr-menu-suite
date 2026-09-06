@@ -175,12 +175,15 @@ trait QRMS_HFB_Frontend {
 		$footer = $this->get_footer_options();
 		foreach ( array(
 			'brand_font_family',
-			'links_title_font_family',
-			'links_item_font_family',
-			'links2_title_font_family',
-			'links2_item_font_family',
+			'menu_title_font_family',
+			'menu_item_font_family',
+			'text_body_font_family',
+			'text_small_font_family',
+			'hours_title_font_family',
+			'hours_item_font_family',
 			'contact_title_font_family',
 			'contact_item_font_family',
+			'copyright_font_family',
 			'btn_font_family',
 		) as $field ) {
 			if ( ! empty( $footer[ $field ] ) ) {
@@ -439,86 +442,56 @@ trait QRMS_HFB_Frontend {
 	/**
 	 * Footer HTML çıktısı.
 	 *
-	 * Dört sütun: marka, hızlı menü 1, hızlı menü 2, iletişim.
-	 * Garson/hesap butonları telif çubuğunun üstünde durur.
+	 * Yerleşim (satır → sütun → blok) `layout` seçeneğinden okunur; her
+	 * satır kendi ızgarasıdır, sütun sayısı satırdaki sütun sayısı kadardır
+	 * ve eşit genişliktedir (bkz. frontend.css `--hfb-footer-row-cols`).
+	 * Garson/hesap butonları tüm satırların altında, sabit konumdadır.
 	 *
 	 * @param array<string,mixed> $opts Ayarlar.
 	 * @return string
 	 */
 	public function render_footer( $opts ) {
-		$brand   = $this->render_brand( $opts, 'footer' );
-		$nav     = $this->scope_nav_ids( $this->render_nav_menu( (int) $opts['menu_id'], 'hfb-footer__menu' ), 'hfb-f-' );
-		$nav2    = $this->scope_nav_ids( $this->render_nav_menu( (int) $opts['menu_id_2'], 'hfb-footer__menu' ), 'hfb-f2-' );
-		$social  = $this->render_social_icons( $opts );
-		$contact = $this->render_contact_lines( $opts );
-		$call    = $this->render_footer_call_buttons( $opts );
-		$style   = $this->footer_css_vars( $opts );
+		$rows = isset( $opts['layout']['rows'] ) && is_array( $opts['layout']['rows'] ) && ! empty( $opts['layout']['rows'] )
+			? $opts['layout']['rows']
+			: array();
 
-		$links_title   = $this->hfb_cevir_option_varsayilan(
-			isset( $opts['links_title'] ) ? $opts['links_title'] : '',
-			isset( $this->footer_defaults['links_title'] ) ? $this->footer_defaults['links_title'] : 'Hızlı Menü',
-			'hfb_footer.links_title'
-		);
-		$links2_title  = $this->hfb_cevir_option_varsayilan(
-			isset( $opts['links2_title'] ) ? $opts['links2_title'] : '',
-			isset( $this->footer_defaults['links2_title'] ) ? $this->footer_defaults['links2_title'] : 'Hızlı Menü',
-			'hfb_footer.links2_title'
-		);
-		$contact_title = $this->hfb_cevir_option_varsayilan(
-			isset( $opts['contact_title'] ) ? $opts['contact_title'] : '',
-			isset( $this->footer_defaults['contact_title'] ) ? $this->footer_defaults['contact_title'] : 'İletişim',
-			'hfb_footer.contact_title'
-		);
+		if ( empty( $rows ) ) {
+			$fallback = $this->build_default_footer_layout( $opts );
+			$rows     = $fallback['rows'];
+		}
 
-		$show_links   = (bool) $nav || '' !== $links_title;
-		$show_links2  = (bool) $nav2 || '' !== $links2_title;
-		$show_contact = (bool) $contact || (bool) $social || '' !== $contact_title;
+		$call  = $this->render_footer_call_buttons( $opts );
+		$style = $this->footer_css_vars( $opts );
 
 		ob_start();
 		?>
 		<div class="hfb-footer-wrap" data-hfb="footer"<?php echo $style ? ' style="' . esc_attr( $style ) . '"' : ''; ?>>
 			<footer class="hfb-footer" role="contentinfo">
 				<div class="hfb-footer__cq">
-					<div class="hfb-footer__inner">
-					<div class="hfb-footer__col hfb-footer__col--brand">
-						<?php echo $brand; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
-						<?php if ( ! empty( $opts['description'] ) ) : ?>
-							<p class="hfb-footer__desc"><?php echo esc_html( $this->hfb_cevir_option_metin( (string) $opts['description'], 'hfb_footer.description' ) ); ?></p>
-						<?php endif; ?>
-					</div>
-
-					<?php if ( $show_links ) : ?>
-						<nav class="hfb-footer__col hfb-footer__col--links" aria-label="<?php echo esc_attr( '' !== $links_title ? $links_title : $this->hfb_cevir_ui( __( 'Hızlı Menü', 'qrms' ) ) ); ?>">
-							<?php if ( '' !== $links_title ) : ?>
-								<h3 class="hfb-footer__heading"><?php echo esc_html( $links_title ); ?></h3>
-							<?php endif; ?>
-							<?php if ( $nav ) : ?>
-								<?php echo $nav; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
-							<?php endif; ?>
-						</nav>
-					<?php endif; ?>
-
-					<?php if ( $show_links2 ) : ?>
-						<nav class="hfb-footer__col hfb-footer__col--links2" aria-label="<?php echo esc_attr( '' !== $links2_title ? $links2_title : $this->hfb_cevir_ui( __( 'Hızlı Menü', 'qrms' ) ) ); ?>">
-							<?php if ( '' !== $links2_title ) : ?>
-								<h3 class="hfb-footer__heading"><?php echo esc_html( $links2_title ); ?></h3>
-							<?php endif; ?>
-							<?php if ( $nav2 ) : ?>
-								<?php echo $nav2; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
-							<?php endif; ?>
-						</nav>
-					<?php endif; ?>
-
-					<?php if ( $show_contact ) : ?>
-						<div class="hfb-footer__col hfb-footer__col--contact">
-							<?php if ( '' !== $contact_title ) : ?>
-								<h3 class="hfb-footer__heading"><?php echo esc_html( $contact_title ); ?></h3>
-							<?php endif; ?>
-							<?php echo $contact; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
-							<?php echo $social; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+					<?php foreach ( $rows as $row_id => $row ) : ?>
+						<?php
+						$cols = isset( $row['cols'] ) && is_array( $row['cols'] ) ? $row['cols'] : array();
+						if ( empty( $cols ) ) {
+							continue;
+						}
+						?>
+						<div class="hfb-footer__row" style="--hfb-footer-row-cols:<?php echo (int) count( $cols ); ?>">
+							<?php foreach ( $cols as $col_id => $col ) : ?>
+								<?php
+								$align  = isset( $col['align'] ) ? (string) $col['align'] : 'left';
+								$align  = in_array( $align, array( 'left', 'center', 'right' ), true ) ? $align : 'left';
+								$blocks = isset( $col['blocks'] ) && is_array( $col['blocks'] ) ? $col['blocks'] : array();
+								?>
+								<div class="hfb-footer__col" style="text-align:<?php echo esc_attr( $align ); ?>">
+									<?php
+									foreach ( $blocks as $block_id => $block ) {
+										echo $this->render_footer_block( $block, $opts, $row_id . '-' . $block_id ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+									}
+									?>
+								</div>
+							<?php endforeach; ?>
 						</div>
-					<?php endif; ?>
-					</div>
+					<?php endforeach; ?>
 				</div>
 
 				<?php if ( $call ) : ?>
@@ -526,16 +499,246 @@ trait QRMS_HFB_Frontend {
 						<?php echo $call; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 					</div>
 				<?php endif; ?>
-
-				<?php if ( ! empty( $opts['copyright'] ) ) : ?>
-					<div class="hfb-footer__bar">
-						<p class="hfb-footer__copyright"><?php echo esc_html( $this->hfb_copyright_goruntule( $this->hfb_cevir_option_metin( (string) $opts['copyright'], 'hfb_footer.copyright' ) ) ); ?></p>
-					</div>
-				<?php endif; ?>
 			</footer>
 		</div>
 		<?php
 		return (string) ob_get_clean();
+	}
+
+	/**
+	 * Tek bir footer bloğunu tipe göre render eder.
+	 *
+	 * @param array<string,mixed> $block Blok verisi (`type` zorunlu).
+	 * @param array<string,mixed> $opts  Footer ayarları.
+	 * @param string              $uid   Satır+blok kimliğinden üretilen benzersiz anahtar (menü id çakışmasını önler).
+	 * @return string
+	 */
+	private function render_footer_block( $block, $opts, $uid ) {
+		if ( ! is_array( $block ) || empty( $block['type'] ) ) {
+			return '';
+		}
+
+		switch ( (string) $block['type'] ) {
+			case 'logo':
+				return $this->render_footer_block_logo( $opts );
+			case 'text':
+				return $this->render_footer_block_text( $block );
+			case 'image':
+				return $this->render_footer_block_image( $block );
+			case 'menu':
+				return $this->render_footer_block_menu( $block, $uid );
+			case 'hours':
+				return $this->render_footer_block_hours( $opts );
+			case 'contact':
+				return $this->render_footer_block_contact( $opts );
+			case 'copyright':
+				return $this->render_footer_block_copyright( $opts );
+		}
+
+		return '';
+	}
+
+	/**
+	 * Logo bloğu — tüm Logo bloklarının paylaştığı tek marka kaynağı.
+	 *
+	 * @param array<string,mixed> $opts Footer ayarları.
+	 * @return string
+	 */
+	private function render_footer_block_logo( $opts ) {
+		$brand = $this->render_brand( $opts, 'footer' );
+
+		if ( '' === $brand ) {
+			return '';
+		}
+
+		$html = '<div class="hfb-fb hfb-fb--logo">' . $brand;
+
+		if ( ! empty( $opts['description'] ) ) {
+			$html .= '<p class="hfb-footer__desc">' . esc_html( $this->hfb_cevir_option_metin( (string) $opts['description'], 'hfb_footer.description' ) ) . '</p>';
+		}
+
+		$html .= '</div>';
+
+		return $html;
+	}
+
+	/**
+	 * Metin bloğu — içerik blok bazlı, tipografi Elemanlar panelinden
+	 * (gövde/küçük ön ayarı) gelir.
+	 *
+	 * @param array<string,mixed> $block Blok verisi.
+	 * @return string
+	 */
+	private function render_footer_block_text( $block ) {
+		$content = isset( $block['content'] ) ? trim( (string) $block['content'] ) : '';
+
+		if ( '' === $content ) {
+			return '';
+		}
+
+		$variant = isset( $block['variant'] ) && 'small' === $block['variant'] ? 'small' : 'body';
+
+		return '<div class="hfb-fb hfb-fb--text hfb-fb--text-' . esc_attr( $variant ) . '">' . nl2br( esc_html( $content ), false ) . '</div>';
+	}
+
+	/**
+	 * Görsel bloğu — her örnek kendi görselini ve isteğe bağlı bağlantısını taşır.
+	 *
+	 * @param array<string,mixed> $block Blok verisi.
+	 * @return string
+	 */
+	private function render_footer_block_image( $block ) {
+		$id = isset( $block['image_id'] ) ? (int) $block['image_id'] : 0;
+
+		if ( $id <= 0 ) {
+			return '';
+		}
+
+		$alt = isset( $block['alt'] ) ? (string) $block['alt'] : '';
+		$img = wp_get_attachment_image(
+			$id,
+			'medium',
+			false,
+			array(
+				'class'   => 'hfb-fb__img',
+				'loading' => 'lazy',
+				'alt'     => $alt,
+			)
+		);
+
+		if ( ! $img ) {
+			return '';
+		}
+
+		$url = isset( $block['link_url'] ) ? esc_url( (string) $block['link_url'] ) : '';
+		if ( '' !== $url ) {
+			$img = '<a href="' . $url . '">' . $img . '</a>';
+		}
+
+		return '<div class="hfb-fb hfb-fb--image">' . $img . '</div>';
+	}
+
+	/**
+	 * Menü bloğu — hangi WP menüsü ve başlık blok bazlı; tipografi/hover
+	 * tüm Menü bloklarının paylaştığı tek ayardan gelir.
+	 *
+	 * @param array<string,mixed> $block Blok verisi.
+	 * @param string              $uid   Menü id'lerini bu bloğa özel yapan anahtar.
+	 * @return string
+	 */
+	private function render_footer_block_menu( $block, $uid ) {
+		$menu_id = isset( $block['menu_id'] ) ? (int) $block['menu_id'] : 0;
+		$title   = isset( $block['title'] ) ? trim( (string) $block['title'] ) : '';
+		$nav     = $this->scope_nav_ids( $this->render_nav_menu( $menu_id, 'hfb-footer__menu' ), 'hfb-fm-' . sanitize_key( $uid ) . '-' );
+
+		if ( ! $nav && '' === $title ) {
+			return '';
+		}
+
+		$html  = '<nav class="hfb-fb hfb-fb--menu" aria-label="' . esc_attr( '' !== $title ? $title : $this->hfb_cevir_ui( __( 'Hızlı Menü', 'qrms' ) ) ) . '">';
+		if ( '' !== $title ) {
+			$html .= '<h3 class="hfb-footer__heading">' . esc_html( $title ) . '</h3>';
+		}
+		if ( $nav ) {
+			$html .= $nav;
+		}
+		$html .= '</nav>';
+
+		return $html;
+	}
+
+	/**
+	 * Çalışma Saatleri bloğu — veri tek kaynaktan (qrms_cs_get); modül
+	 * kapalıysa sessizce basılmaz.
+	 *
+	 * @param array<string,mixed> $opts Footer ayarları.
+	 * @return string
+	 */
+	private function render_footer_block_hours( $opts ) {
+		if ( ! function_exists( 'qrms_cs_get' ) || ! function_exists( 'qrms_cs_day_labels' ) || ! function_exists( 'qrms_cs_day_keys' ) ) {
+			return '';
+		}
+
+		$title = $this->hfb_cevir_option_varsayilan(
+			isset( $opts['hours_title'] ) ? $opts['hours_title'] : '',
+			isset( $this->footer_defaults['hours_title'] ) ? (string) $this->footer_defaults['hours_title'] : 'Çalışma Saatlerimiz',
+			'hfb_footer.hours_title'
+		);
+
+		$hours  = qrms_cs_get();
+		$labels = qrms_cs_day_labels();
+		$rows   = '';
+
+		foreach ( qrms_cs_day_keys() as $key ) {
+			$day   = isset( $hours[ $key ] ) ? $hours[ $key ] : array();
+			$label = isset( $labels[ $key ] ) ? $labels[ $key ] : $key;
+			$range = function_exists( 'qrms_cs_format_day' ) ? qrms_cs_format_day( $day ) : '';
+			$rows .= '<li class="hfb-footer__hours-row">';
+			$rows .= '<span class="hfb-footer__hours-day">' . esc_html( $label ) . '</span>';
+			$rows .= '<span class="hfb-footer__hours-sep" aria-hidden="true"></span>';
+			$rows .= '<span class="hfb-footer__hours-time">' . esc_html( $range ) . '</span>';
+			$rows .= '</li>';
+		}
+
+		$html = '<div class="hfb-fb hfb-fb--hours">';
+		if ( '' !== $title ) {
+			$html .= '<h3 class="hfb-footer__heading">' . esc_html( $title ) . '</h3>';
+		}
+		$html .= '<ul class="hfb-footer__hours">' . $rows . '</ul>';
+		$html .= '</div>';
+
+		return $html;
+	}
+
+	/**
+	 * İletişim bloğu — telefon/e-posta/adres/sosyal ikonlar tek ayardan;
+	 * içerik bloktan bloğa değişmez, yalnızca nereye konduğu değişir.
+	 *
+	 * @param array<string,mixed> $opts Footer ayarları.
+	 * @return string
+	 */
+	private function render_footer_block_contact( $opts ) {
+		$contact = $this->render_contact_lines( $opts );
+		$social  = $this->render_social_icons( $opts );
+		$title   = $this->hfb_cevir_option_varsayilan(
+			isset( $opts['contact_title'] ) ? $opts['contact_title'] : '',
+			isset( $this->footer_defaults['contact_title'] ) ? (string) $this->footer_defaults['contact_title'] : 'İletişim',
+			'hfb_footer.contact_title'
+		);
+
+		if ( ! $contact && ! $social && '' === $title ) {
+			return '';
+		}
+
+		$html = '<div class="hfb-fb hfb-fb--contact">';
+		if ( '' !== $title ) {
+			$html .= '<h3 class="hfb-footer__heading">' . esc_html( $title ) . '</h3>';
+		}
+		$html .= $contact . $social;
+		$html .= '</div>';
+
+		return $html;
+	}
+
+	/**
+	 * Telif Hakkı bloğu — kullanıcı bunu istediği satıra/sütuna koyar
+	 * (örn. tam genişlik ikinci satır).
+	 *
+	 * @param array<string,mixed> $opts Footer ayarları.
+	 * @return string
+	 */
+	private function render_footer_block_copyright( $opts ) {
+		if ( empty( $opts['copyright'] ) ) {
+			return '';
+		}
+
+		$text = $this->hfb_copyright_goruntule( $this->hfb_cevir_option_metin( (string) $opts['copyright'], 'hfb_footer.copyright' ) );
+
+		if ( '' === $text ) {
+			return '';
+		}
+
+		return '<p class="hfb-fb hfb-fb--copyright">' . esc_html( $text ) . '</p>';
 	}
 
 	/**
@@ -553,41 +756,45 @@ trait QRMS_HFB_Frontend {
 			'--hfb-footer-logo-h-desktop'        => $logo_h_desktop,
 			'--hfb-footer-logo-w-mobile'         => (int) $opts['logo_width_mobile'] . 'px',
 			'--hfb-footer-logo-h-mobile'         => $logo_h_mobile,
-			'--hfb-footer-brand-align'           => (string) $opts['brand_align'],
-			'--hfb-footer-brand-justify'         => $this->align_to_flex( (string) $opts['brand_align'] ),
 			'--hfb-footer-brand-font'            => $this->font_stack( (string) $opts['brand_font_family'] ),
 			'--hfb-footer-brand-color'           => (string) $opts['brand_font_color'],
 			'--hfb-footer-brand-weight'          => (string) (int) $opts['brand_font_weight'],
 			'--hfb-footer-brand-size'            => (int) $opts['brand_font_size_desktop'] . 'px',
 			'--hfb-footer-brand-size-mobile'     => (int) $opts['brand_font_size_mobile'] . 'px',
-			'--hfb-footer-links-align'           => (string) $opts['links_align'],
-			'--hfb-footer-links-justify'         => $this->align_to_flex( (string) $opts['links_align'] ),
-			'--hfb-footer-links-title-font'      => $this->font_stack( (string) $opts['links_title_font_family'] ),
-			'--hfb-footer-links-title-color'     => (string) $opts['links_title_font_color'],
-			'--hfb-footer-links-title-weight'    => (string) (int) $opts['links_title_font_weight'],
-			'--hfb-footer-links-title-size'      => (int) $opts['links_title_font_size_desktop'] . 'px',
-			'--hfb-footer-links-title-size-m'    => (int) $opts['links_title_font_size_mobile'] . 'px',
-			'--hfb-footer-links-item-font'       => $this->font_stack( (string) $opts['links_item_font_family'] ),
-			'--hfb-footer-links-item-color'      => (string) $opts['links_item_font_color'],
-			'--hfb-footer-links-item-weight'     => (string) (int) $opts['links_item_font_weight'],
-			'--hfb-footer-links-item-size'       => (int) $opts['links_item_font_size_desktop'] . 'px',
-			'--hfb-footer-links-item-size-m'     => (int) $opts['links_item_font_size_mobile'] . 'px',
-			'--hfb-footer-links-item-hover'      => (string) $opts['links_item_hover_color'],
-			'--hfb-footer-links2-align'          => (string) $opts['links2_align'],
-			'--hfb-footer-links2-justify'        => $this->align_to_flex( (string) $opts['links2_align'] ),
-			'--hfb-footer-links2-title-font'     => $this->font_stack( (string) $opts['links2_title_font_family'] ),
-			'--hfb-footer-links2-title-color'    => (string) $opts['links2_title_font_color'],
-			'--hfb-footer-links2-title-weight'   => (string) (int) $opts['links2_title_font_weight'],
-			'--hfb-footer-links2-title-size'     => (int) $opts['links2_title_font_size_desktop'] . 'px',
-			'--hfb-footer-links2-title-size-m'   => (int) $opts['links2_title_font_size_mobile'] . 'px',
-			'--hfb-footer-links2-item-font'      => $this->font_stack( (string) $opts['links2_item_font_family'] ),
-			'--hfb-footer-links2-item-color'     => (string) $opts['links2_item_font_color'],
-			'--hfb-footer-links2-item-weight'    => (string) (int) $opts['links2_item_font_weight'],
-			'--hfb-footer-links2-item-size'      => (int) $opts['links2_item_font_size_desktop'] . 'px',
-			'--hfb-footer-links2-item-size-m'    => (int) $opts['links2_item_font_size_mobile'] . 'px',
-			'--hfb-footer-links2-item-hover'     => (string) $opts['links2_item_hover_color'],
-			'--hfb-footer-contact-align'         => (string) $opts['contact_align'],
-			'--hfb-footer-contact-justify'       => $this->align_to_flex( (string) $opts['contact_align'] ),
+			'--hfb-footer-menu-title-font'       => $this->font_stack( (string) $opts['menu_title_font_family'] ),
+			'--hfb-footer-menu-title-color'      => (string) $opts['menu_title_font_color'],
+			'--hfb-footer-menu-title-weight'     => (string) (int) $opts['menu_title_font_weight'],
+			'--hfb-footer-menu-title-size'       => (int) $opts['menu_title_font_size_desktop'] . 'px',
+			'--hfb-footer-menu-title-size-m'     => (int) $opts['menu_title_font_size_mobile'] . 'px',
+			'--hfb-footer-menu-item-font'        => $this->font_stack( (string) $opts['menu_item_font_family'] ),
+			'--hfb-footer-menu-item-color'       => (string) $opts['menu_item_font_color'],
+			'--hfb-footer-menu-item-weight'      => (string) (int) $opts['menu_item_font_weight'],
+			'--hfb-footer-menu-item-size'        => (int) $opts['menu_item_font_size_desktop'] . 'px',
+			'--hfb-footer-menu-item-size-m'      => (int) $opts['menu_item_font_size_mobile'] . 'px',
+			'--hfb-footer-menu-item-hover'       => (string) $opts['menu_item_hover_color'],
+			'--hfb-footer-text-body-font'        => $this->font_stack( (string) $opts['text_body_font_family'] ),
+			'--hfb-footer-text-body-color'       => (string) $opts['text_body_font_color'],
+			'--hfb-footer-text-body-weight'      => (string) (int) $opts['text_body_font_weight'],
+			'--hfb-footer-text-body-size'        => (int) $opts['text_body_font_size_desktop'] . 'px',
+			'--hfb-footer-text-body-size-m'      => (int) $opts['text_body_font_size_mobile'] . 'px',
+			'--hfb-footer-text-small-font'       => $this->font_stack( (string) $opts['text_small_font_family'] ),
+			'--hfb-footer-text-small-color'      => (string) $opts['text_small_font_color'],
+			'--hfb-footer-text-small-weight'     => (string) (int) $opts['text_small_font_weight'],
+			'--hfb-footer-text-small-size'       => (int) $opts['text_small_font_size_desktop'] . 'px',
+			'--hfb-footer-text-small-size-m'     => (int) $opts['text_small_font_size_mobile'] . 'px',
+			'--hfb-footer-image-max-w'           => (int) $opts['image_max_width_desktop'] . 'px',
+			'--hfb-footer-image-max-w-m'         => (int) $opts['image_max_width_mobile'] . 'px',
+			'--hfb-footer-image-radius'          => ! empty( $opts['image_radius'] ) ? '12px' : '0',
+			'--hfb-footer-hours-title-font'      => $this->font_stack( (string) $opts['hours_title_font_family'] ),
+			'--hfb-footer-hours-title-color'     => (string) $opts['hours_title_font_color'],
+			'--hfb-footer-hours-title-weight'    => (string) (int) $opts['hours_title_font_weight'],
+			'--hfb-footer-hours-title-size'      => (int) $opts['hours_title_font_size_desktop'] . 'px',
+			'--hfb-footer-hours-title-size-m'    => (int) $opts['hours_title_font_size_mobile'] . 'px',
+			'--hfb-footer-hours-item-font'       => $this->font_stack( (string) $opts['hours_item_font_family'] ),
+			'--hfb-footer-hours-item-color'      => (string) $opts['hours_item_font_color'],
+			'--hfb-footer-hours-item-weight'     => (string) (int) $opts['hours_item_font_weight'],
+			'--hfb-footer-hours-item-size'       => (int) $opts['hours_item_font_size_desktop'] . 'px',
+			'--hfb-footer-hours-item-size-m'     => (int) $opts['hours_item_font_size_mobile'] . 'px',
 			'--hfb-footer-contact-title-font'    => $this->font_stack( (string) $opts['contact_title_font_family'] ),
 			'--hfb-footer-contact-title-color'   => (string) $opts['contact_title_font_color'],
 			'--hfb-footer-contact-title-weight'  => (string) (int) $opts['contact_title_font_weight'],
@@ -598,6 +805,11 @@ trait QRMS_HFB_Frontend {
 			'--hfb-footer-contact-item-weight'   => (string) (int) $opts['contact_item_font_weight'],
 			'--hfb-footer-contact-item-size'     => (int) $opts['contact_item_font_size_desktop'] . 'px',
 			'--hfb-footer-contact-item-size-m'   => (int) $opts['contact_item_font_size_mobile'] . 'px',
+			'--hfb-footer-copyright-font'        => $this->font_stack( (string) $opts['copyright_font_family'] ),
+			'--hfb-footer-copyright-color'       => (string) $opts['copyright_font_color'],
+			'--hfb-footer-copyright-weight'      => (string) (int) $opts['copyright_font_weight'],
+			'--hfb-footer-copyright-size'        => (int) $opts['copyright_font_size_desktop'] . 'px',
+			'--hfb-footer-copyright-size-m'      => (int) $opts['copyright_font_size_mobile'] . 'px',
 		);
 
 		$vars = array_merge( $vars, $this->button_style_css_vars( $opts ) );
@@ -1266,7 +1478,7 @@ trait QRMS_HFB_Frontend {
 	 *
 	 * @param string $deger      Option değeri.
 	 * @param string $varsayilan Kod sabiti (footer_defaults).
-	 * @param string $field      option field (hfb_footer.links_title …).
+	 * @param string $field      option field (hfb_footer.hours_title …).
 	 * @return string
 	 */
 	private function hfb_cevir_option_varsayilan( $deger, $varsayilan, $field = '' ) {

@@ -238,7 +238,7 @@ qrms_test(
 		qrms_assert_true( isset( $defter['gemini_bot_name'] ), 'bot adı' );
 		qrms_assert_true( isset( $defter['qrm_settings.form_title'] ), 'form başlığı' );
 		qrms_assert_true( isset( $defter['qrm_settings.crit_1_name'] ), 'kriter 1' );
-		qrms_assert_true( isset( $defter['hfb_footer.links_title'] ), 'HFB başlık' );
+		qrms_assert_true( isset( $defter['hfb_footer.hours_title'] ), 'HFB başlık' );
 		qrms_assert_true( ! empty( $defter['hfb_footer.call_garson_label']['yalniz_ozel'] ), 'çağrı yalnızca özel' );
 
 		update_option(

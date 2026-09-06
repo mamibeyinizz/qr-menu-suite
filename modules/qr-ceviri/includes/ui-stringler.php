@@ -125,6 +125,7 @@ if ( ! function_exists( 'rma_ceviri_varsayilan_ui_metinleri' ) ) {
 			'Menüyü kapat',
 			'Lütfen QR kodunu okutarak masanızdan erişin',
 			'Hızlı Menü',
+			'Çalışma Saatlerimiz',
 			'İletişim',
 
 			/* HFB marka varsayılanları — trait-frontend.php: render_brand() */
