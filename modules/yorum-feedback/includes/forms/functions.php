@@ -81,6 +81,14 @@ function qrm_cf_type_label($type) {
 
 function qrm_cf_default_form_settings() {
     // P1: submit_text / success_message form ayarı (item_type=cf_form).
+    //
+    // Tema/buton rengi, Ayarlar & Puanlama > Form Görünümü'nde seçilen marka
+    // rengiyle başlar: restoran zaten bir marka rengi seçmişse her yeni özel
+    // form o rengi tekrar tekrar elle girmek yerine hazır gelir. Bu yalnızca
+    // HENÜZ KAYDEDİLMEMİŞ bir formun ön dolgusudur — form bir kez kaydedilince
+    // kendi değerini taşır, global ayar sonradan değişse bile etkilenmez.
+    $marka = qrm_pro_get_settings();
+
     return [
         'submit_text'     => 'Gönder',
         'success_message' => 'Formunuz bize ulaştı, teşekkür ederiz.',
@@ -96,9 +104,9 @@ function qrm_cf_default_form_settings() {
         'notify_enabled'  => 0,
         'notify_email'    => '',
         // Görünüm (yorum formundaki stil değişkenleriyle aynı mantık)
-        'theme_style'     => 'light',   // light | dark | transparent
-        'btn_color'       => '#10b981',
-        'btn_text_color'  => '#ffffff',
+        'theme_style'     => !empty($marka['theme_style']) ? $marka['theme_style'] : 'light',
+        'btn_color'       => !empty($marka['btn_color']) ? $marka['btn_color'] : '#10b981',
+        'btn_text_color'  => !empty($marka['btn_text_color']) ? $marka['btn_text_color'] : '#ffffff',
         'border_radius'   => 10,
         'step_labels'     => [],
     ];
