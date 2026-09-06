@@ -1190,8 +1190,8 @@ body.hfb-scroll-locked {
 /*
  * Garson/hesap (veya oturumsuz uyarı) çubuğu HER viewport genişliğinde
  * ekranın altına sabitlenir: mobil, tablet ve masaüstü aynı davranır.
- * Referans: .qrs-bar / .qrs-btn (qrservis_buttons_shortcode) — [qr_garson_hesap]
- * kısa kodunun çıktısıyla birebir aynı görünüm hedeflenir.
+ * Referans: .qmo-cagri-bar / .qmo-cagri-btn — modules/qr-chatbot/includes/
+ * shortcode-buttons.php + assets/css/buttons.css ([qr_garson_hesap] / [ikili_buton]).
  * Yalnızca .hfb-footer__call-wrap sabitlenir; footer'ın diğer sütunları
  * (logo, hızlı menü, çalışma saatleri, iletişim) normal akışta kalır.
  * Yönetim önizlemesi (.wp-admin) viewport'u ele geçirmesin diye hariç.
@@ -1303,9 +1303,21 @@ body.hfb-scroll-locked {
   }
 }
 
+/*
+ * Sabit çubuk için scroll payı <body>'ye değil .hfb-footer'a yazılır;
+ * footer zaten koyu zemin taşıdığı için mobilde altta beyaz sızıntı olmaz.
+ * iOS rubber-band / overscroll için html+body rengi footer ink ile eşlenir.
+ */
+body:not(.wp-admin) .hfb-footer-wrap:has(.hfb-footer__call-wrap .qmo-cagri-bar) .hfb-footer,
+body:not(.wp-admin) .hfb-footer-wrap:has(.hfb-footer__call-wrap .hfb-footer__call--warn) .hfb-footer {
+  padding-bottom: calc(66px + env(safe-area-inset-bottom, 0px));
+}
+
+html:has(.hfb-footer__call-wrap .qmo-cagri-bar):not(.wp-admin),
+html:has(.hfb-footer__call-wrap .hfb-footer__call--warn):not(.wp-admin),
 body:has(.hfb-footer__call-wrap .qmo-cagri-bar):not(.wp-admin),
 body:has(.hfb-footer__call-wrap .hfb-footer__call--warn):not(.wp-admin) {
-  padding-bottom: calc(66px + env(safe-area-inset-bottom, 0px));
+  background-color: var(--hfb-ink, #0a0a0c);
 }
 
 .wp-admin .hfb-footer__call-wrap:has(.qmo-cagri-bar),

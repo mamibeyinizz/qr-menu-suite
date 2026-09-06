@@ -21,3 +21,21 @@ function qrms_module_header_footer_builder_init() {
 
 	QRMS_Header_Footer_Builder::init();
 }
+
+/**
+ * HFB footer garson/hesap çubuğu bu sayfada kısa kod çıktısını ezer mi?
+ *
+ * [hfb_footer] + call_enabled açıkken qr-chatbot'un [qr_garson_hesap] /
+ * [ikili_buton] kısa kodları boş döner; çift sabit çubuk oluşmaz.
+ *
+ * @return bool
+ */
+function qrms_hfb_footer_call_claims_page() {
+	$hfb = QRMS_Header_Footer_Builder::instance();
+
+	if ( ! $hfb ) {
+		return false;
+	}
+
+	return $hfb->footer_call_claims_shortcode_output();
+}

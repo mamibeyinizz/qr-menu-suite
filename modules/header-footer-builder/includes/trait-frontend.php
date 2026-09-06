@@ -75,6 +75,19 @@ trait QRMS_HFB_Frontend {
 	}
 
 	/**
+	 * Bu sayfada HFB footer çağrı çubuğu kısa kod yerine geçer mi?
+	 *
+	 * @return bool
+	 */
+	public function footer_call_claims_shortcode_output() {
+		if ( empty( $this->get_footer_options()['call_enabled'] ) ) {
+			return false;
+		}
+
+		return $this->page_has_hfb_shortcode( 'hfb_footer' );
+	}
+
+	/**
 	 * İçerik veya Elementor verisinde kısa kod arar.
 	 *
 	 * @param string $tag Kısa kod etiketi.
