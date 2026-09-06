@@ -46,10 +46,18 @@ if ( ! function_exists( 'qrms_analitik_boyut_metni' ) ) {
 			);
 		}
 
+		if ( $bayt < 1024 * 1024 * 1024 ) {
+			return sprintf(
+				/* translators: %s: megabayt cinsinden boyut. */
+				__( '%s MB', 'qrms' ),
+				number_format_i18n( $bayt / ( 1024 * 1024 ), 1 )
+			);
+		}
+
 		return sprintf(
-			/* translators: %s: megabayt cinsinden boyut. */
-			__( '%s MB', 'qrms' ),
-			number_format_i18n( $bayt / ( 1024 * 1024 ), 1 )
+			/* translators: %s: gigabayt cinsinden boyut. */
+			__( '%s GB', 'qrms' ),
+			number_format_i18n( $bayt / ( 1024 * 1024 * 1024 ), 2 )
 		);
 	}
 }

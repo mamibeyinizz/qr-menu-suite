@@ -142,6 +142,15 @@ if ( ! function_exists( 'qmo_masalar_sayfasi' ) ) {
 				</div>
 			<?php endif; ?>
 
+			<?php if ( $masalar ) : ?>
+				<div class="qmo-toplu-islem">
+					<button type="button" class="button button-secondary" id="qmo-tumunu-yazdir">
+						<span class="dashicons dashicons-media-document"></span> Tümünü Yazdır (PDF)
+					</button>
+					<p class="description">Listedeki her masa için ad + QR kod içeren, masa başına bir sayfa olacak tek bir PDF indirir.</p>
+				</div>
+			<?php endif; ?>
+
 			<table class="wp-list-table widefat fixed striped qmo-masa-tablo" id="qmo-masa-liste">
 				<thead>
 					<tr>
@@ -163,14 +172,27 @@ if ( ! function_exists( 'qmo_masalar_sayfasi' ) ) {
 							);
 							?>
 							<tr class="qmo-row"
+								data-id="<?php echo (int) $t->id; ?>"
 								data-name="<?php echo esc_attr( $t->table_name ); ?>"
 								data-grup="<?php echo esc_attr( QMO_Masalar::grup_adi( $t->table_slug ) ); ?>"
 								data-url="<?php echo esc_url( $hedef ); ?>">
 								<td data-label="ID"><?php echo (int) $t->id; ?></td>
-								<td data-label="Masa Adı"><strong><?php echo esc_html( $t->table_name ); ?></strong></td>
+								<td data-label="Masa Adı" class="qmo-name-cell">
+									<span class="qmo-name-display"><strong><?php echo esc_html( $t->table_name ); ?></strong></span>
+									<form method="post" class="qmo-edit-form" hidden>
+										<?php wp_nonce_field( 'qmo_masa_duzenle_' . (int) $t->id ); ?>
+										<input type="hidden" name="masa_id" value="<?php echo (int) $t->id; ?>">
+										<input type="text" name="table_name" value="<?php echo esc_attr( $t->table_name ); ?>" class="qmo-edit-input" required>
+										<button type="submit" name="qmo_masa_duzenle" value="1" class="button button-small button-primary">Kaydet</button>
+										<button type="button" class="button button-small qmo-edit-cancel">İptal</button>
+									</form>
+								</td>
 								<td data-label="URL Parametresi"><code><?php echo esc_html( $hedef ); ?></code></td>
 								<td data-label="QR Kod"><img class="qmo-qr-preview" src="" alt="QR"></td>
 								<td data-label="İşlemler">
+									<button type="button" class="button qmo-edit-toggle qmo-action-btn">
+										<span class="dashicons dashicons-edit"></span> Düzenle
+									</button>
 									<button type="button" class="button qmo-dl-png qmo-action-btn">
 										<span class="dashicons dashicons-format-image"></span> PNG
 									</button>
@@ -259,6 +281,30 @@ if ( ! function_exists( 'qmo_masalar_islem' ) ) {
 			return array(
 				'tip'   => $sonuc['eklenen'] > 0 ? 'success' : 'warning',
 				'mesaj' => qmo_toplu_sonuc_mesaji( $sonuc ),
+			);
+		}
+
+		// --- Masa adını düzenle ---
+		if ( isset( $_POST['qmo_masa_duzenle'], $_POST['masa_id'] ) ) {
+			$id = (int) $_POST['masa_id'];
+			check_admin_referer( 'qmo_masa_duzenle_' . $id );
+
+			if ( ! current_user_can( 'manage_options' ) ) {
+				wp_die( 'Yetkiniz yok.' );
+			}
+
+			$ad    = isset( $_POST['table_name'] ) ? sanitize_text_field( wp_unslash( $_POST['table_name'] ) ) : '';
+			$sonuc = QMO_Masalar::guncelle( $id, $ad );
+
+			if ( is_wp_error( $sonuc ) ) {
+				return array(
+					'tip'   => 'error',
+					'mesaj' => $sonuc->get_error_message(),
+				);
+			}
+			return array(
+				'tip'   => 'success',
+				'mesaj' => 'Masa adı güncellendi. QR kodun hedef adresi (URL parametresi) değişmedi.',
 			);
 		}
 
