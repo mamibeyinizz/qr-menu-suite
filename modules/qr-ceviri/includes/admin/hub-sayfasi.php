@@ -169,6 +169,7 @@ if ( ! function_exists( 'qrms_module_qr_ceviri_hub_durumlari' ) ) {
 		$toplam       = array_sum( $dil_sayilari );
 		$eskimis      = function_exists( 'rma_ceviri_eskimis_sayilari' ) ? array_sum( rma_ceviri_eskimis_sayilari() ) : 0;
 		$yetim        = function_exists( 'rma_ceviri_yetim_satir_sayisi' ) ? rma_ceviri_yetim_satir_sayisi() : 0;
+		$pasif        = function_exists( 'rma_ceviri_pasif_dil_sayilari' ) ? array_sum( rma_ceviri_pasif_dil_sayilari() ) : 0;
 
 		return array(
 			'qrms-cv-diller'  => sprintf( '%d dil etkin', $dil_n ),
@@ -184,10 +185,11 @@ if ( ! function_exists( 'qrms_module_qr_ceviri_hub_durumlari' ) ) {
 			'qrms-cv-disa'    => 'Son dışa aktarma: ' . $disa,
 			'qrms-cv-ice'     => 'Son içe aktarma: ' . $ice,
 			'qrms-cv-durum'   => sprintf(
-				'%d çeviri · %d eskimiş · %d yetim',
+				'%d çeviri · %d eskimiş · %d yetim · %d pasif',
 				$toplam,
 				$eskimis,
-				$yetim
+				$yetim,
+				$pasif
 			),
 		);
 	}
@@ -225,6 +227,15 @@ if ( ! function_exists( 'qrms_module_qr_ceviri_dikkatler' ) ) {
 		if ( $yetim > 0 ) {
 			$maddeler[] = array(
 				'metin'  => sprintf( '%d yetim satır var — silinmiş kaynağa ait çeviriler tabloda duruyor.', $yetim ),
+				'url'    => qrms_module_qr_ceviri_sayfa_url( 'qrms-cv-durum' ),
+				'kritik' => false,
+			);
+		}
+
+		$pasif = function_exists( 'rma_ceviri_pasif_dil_sayilari' ) ? array_sum( rma_ceviri_pasif_dil_sayilari() ) : 0;
+		if ( $pasif > 0 ) {
+			$maddeler[] = array(
+				'metin'  => sprintf( '%d pasif dil satırı var — devre dışı bırakılmış dillere ait çeviriler tabloda duruyor.', $pasif ),
 				'url'    => qrms_module_qr_ceviri_sayfa_url( 'qrms-cv-durum' ),
 				'kritik' => false,
 			);

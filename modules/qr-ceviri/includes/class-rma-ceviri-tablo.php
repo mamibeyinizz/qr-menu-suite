@@ -257,6 +257,27 @@ if ( ! class_exists( 'RMA_Ceviri_Tablo' ) ) {
 		}
 
 		/**
+		 * Bir dilin TÜM satırlarını sil.
+		 *
+		 * Dil devre dışı bırakıldığında (Diller ekranından) satırlar otomatik
+		 * silinmez — yeniden açılırsa çeviriler kaybolmasın diye. Bu, ayrı
+		 * bir onaylı temizlik adımı içindir (bkz. rma_ceviri_pasif_dilleri_sil).
+		 *
+		 * @param string $lang Dil kodu.
+		 * @return int Silinen satır sayısı.
+		 */
+		public static function dil_sil( $lang ) {
+			global $wpdb;
+
+			$lang = (string) $lang;
+			if ( '' === $lang || 'tr' === $lang || ! self::tablo_var_mi() ) {
+				return 0;
+			}
+
+			return (int) $wpdb->delete( self::tablo(), array( 'lang_code' => $lang ), array( '%s' ) );
+		}
+
+		/**
 		 * Bir tipin çeviri tablosundaki distinct item_id listesi (0 hariç).
 		 *
 		 * @param string $tip item_type.

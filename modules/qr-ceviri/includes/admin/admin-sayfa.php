@@ -119,6 +119,14 @@ if ( ! function_exists( 'rma_ceviri_import_bildirimleri' ) ) {
 			return;
 		}
 
+		if ( 'pasif' === $durum ) {
+			$silinen = isset( $_GET['silinen'] ) ? (int) $_GET['silinen'] : 0;
+			echo '<div class="notice notice-success is-dismissible"><p>';
+			printf( esc_html( '%d pasif dil satırı silindi.' ), $silinen );
+			echo '</p></div>';
+			return;
+		}
+
 		if ( 'ok' !== $durum ) {
 			return;
 		}
@@ -200,6 +208,8 @@ if ( ! function_exists( 'rma_ceviri_durum_paneli' ) ) {
 		$eskimis  = function_exists( 'rma_ceviri_eskimis_sayilari' ) ? rma_ceviri_eskimis_sayilari() : array();
 		$yetim    = function_exists( 'rma_ceviri_yetim_haritasi' ) ? rma_ceviri_yetim_haritasi() : array();
 		$yetim_n  = function_exists( 'rma_ceviri_yetim_satir_sayisi' ) ? rma_ceviri_yetim_satir_sayisi( $yetim ) : 0;
+		$pasif    = function_exists( 'rma_ceviri_pasif_dil_sayilari' ) ? rma_ceviri_pasif_dil_sayilari() : array();
+		$pasif_n  = array_sum( $pasif );
 		$kaynaklar = function_exists( 'rma_ceviri_tip_kaynak_adetleri' ) ? rma_ceviri_tip_kaynak_adetleri() : array();
 		?>
 		<h2 class="title qrc-heading"><span class="dashicons dashicons-chart-bar" aria-hidden="true"></span> Sistem Durumu</h2>
@@ -313,6 +323,27 @@ if ( ! function_exists( 'rma_ceviri_durum_paneli' ) ) {
 					Evet, yetim satırları silmek istiyorum (geri alınamaz)
 				</label>
 				<button type="submit" class="button">Yetim satırları temizle</button>
+			</form>
+		<?php endif; ?>
+
+		<p class="description">
+			<strong>Pasif dil satırı: <?php echo (int) $pasif_n; ?></strong>
+			<?php if ( $pasif_n > 0 ) : ?>
+				— Diller ekranından kapatılmış dillere ait çeviriler tabloda duruyor; sitede kullanılmaz.
+			<?php else : ?>
+				— kapalı dile ait çeviri yok.
+			<?php endif; ?>
+		</p>
+		<?php if ( $pasif_n > 0 ) : ?>
+			<form method="POST" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="qrc-yetim-form"
+				onsubmit="return confirm('Pasif dillere ait çeviri satırları kalıcı olarak silinecek. Dili yeniden açarsanız çeviriler baştan gerekir. Devam edilsin mi?');">
+				<input type="hidden" name="action" value="rma_ceviri_pasif_dil_temizle">
+				<?php wp_nonce_field( 'rma_ceviri_pasif_dil_temizle', 'rma_ceviri_pasif_dil_nonce' ); ?>
+				<label>
+					<input type="checkbox" name="rma_ceviri_pasif_dil_onay" value="1" required>
+					Evet, pasif dil satırlarını silmek istiyorum (geri alınamaz)
+				</label>
+				<button type="submit" class="button">Pasif dil satırlarını temizle</button>
 			</form>
 		<?php endif; ?>
 		<?php
@@ -552,6 +583,33 @@ if ( ! function_exists( 'rma_ceviri_yetim_temizle_istek' ) ) {
 		$args = array(
 			'page'    => 'qrms-cv-durum',
 			'ice'     => 'yetim',
+			'silinen' => $silinen,
+		);
+		wp_safe_redirect( add_query_arg( $args, admin_url( 'admin.php' ) ) );
+		exit;
+	}
+}
+
+add_action( 'admin_post_rma_ceviri_pasif_dil_temizle', 'rma_ceviri_pasif_dil_temizle_istek' );
+
+/**
+ * Pasif dillere ait çeviri satırlarını sil (onaylı, geri alınamaz).
+ */
+if ( ! function_exists( 'rma_ceviri_pasif_dil_temizle_istek' ) ) {
+	function rma_ceviri_pasif_dil_temizle_istek() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( 'Yetkiniz yok.' );
+		}
+		check_admin_referer( 'rma_ceviri_pasif_dil_temizle', 'rma_ceviri_pasif_dil_nonce' );
+
+		$silinen = 0;
+		if ( ! empty( $_POST['rma_ceviri_pasif_dil_onay'] ) && function_exists( 'rma_ceviri_pasif_dilleri_sil' ) ) {
+			$silinen = rma_ceviri_pasif_dilleri_sil();
+		}
+
+		$args = array(
+			'page'    => 'qrms-cv-durum',
+			'ice'     => 'pasif',
 			'silinen' => $silinen,
 		);
 		wp_safe_redirect( add_query_arg( $args, admin_url( 'admin.php' ) ) );
