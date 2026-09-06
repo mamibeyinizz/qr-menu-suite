@@ -25,8 +25,11 @@ function qrm_pro_admin_hub() {
         wp_die(esc_html__('Bu sayfayı görüntüleme yetkiniz yok.', 'qrms'));
     }
 
-    $stats  = qrm_pro_review_stats();
-    $unread = (int) qrm_cf_unread_total();
+    $stats     = qrm_pro_review_stats();
+    $unread    = (int) qrm_cf_unread_total();
+    // Tek sorguda hesaplanır, hem boş-durum ipucuna hem özet kutularına
+    // aktarılır — ikisi ayrı ayrı isteseydi aynı sorgu iki kez çalışırdı.
+    $cf_totals = qrm_cf_rating_group_totals();
 
     $notice = '';
     if (!$stats['table_ok']) {
@@ -35,14 +38,14 @@ function qrm_pro_admin_hub() {
             . esc_html__('Bu yüzden hiçbir yorum listelenemiyor. Genel Ayarlar sayfasından lisansı yeniden doğrulayın; sorun sürerse veritabanı kullanıcısının tablo oluşturma yetkisi olmayabilir.', 'qrms')
             . '</p></div>';
     } else {
-        $notice = qrm_pro_hub_empty_hint($stats);
+        $notice = qrm_pro_hub_empty_hint($stats, $cf_totals);
     }
 
     QRMS_Admin::render_hub([
         'title'       => __('Yorum & Feedback', 'qrms'),
         'intro'       => __('Müşteri yorumlarınız, puanlama ayarlarınız, Google ödül sisteminiz ve kendi formlarınız burada.', 'qrms'),
         'notice'      => $notice,
-        'stats'       => qrm_pro_hub_stats($stats, $unread),
+        'stats'       => qrm_pro_hub_stats($stats, $unread, $cf_totals),
         'card_groups' => qrm_pro_hub_card_groups(),
     ]);
 }
@@ -53,12 +56,32 @@ function qrm_pro_admin_hub() {
  * Dördü de tıklanabilir: her kutu, saydığı kayıtların filtrelenmiş listesine
  * gider — sayıyı görüp "peki bunlar nerede?" diye aramak gerekmesin.
  *
- * @param array $stats  qrm_pro_review_stats() çıktısı.
- * @param int   $unread Okunmamış özel form gönderimi sayısı.
+ * @param array $stats     qrm_pro_review_stats() çıktısı.
+ * @param int   $unread    Okunmamış özel form gönderimi sayısı.
+ * @param array $cf_totals qrm_cf_rating_group_totals() çıktısı.
  * @return array render_hub()'ın `stats` argümanı.
  */
-function qrm_pro_hub_stats(array $stats, $unread) {
+function qrm_pro_hub_stats(array $stats, $unread, array $cf_totals) {
     $bekleyen = (int) $stats['pending'];
+
+    // Özel formlardaki puanlama kriterleri (rating_group widget'ı) wp_qrm_reviews'e
+    // hiç yazılmaz, kendi tablosunda (JSON içinde rating_1..5) durur — bkz.
+    // qrm_cf_rating_group_totals(). Restoran Ana Yorum Formu yerine (ya da onun
+    // yanında) özel bir puanlama formu kullanıyorsa "Toplam Yorum" / "Genel
+    // Ortalama" bu veriyi görmezden gelirse hep "0" / "Henüz puan yok" gösterir;
+    // bu yüzden iki kutu da iki kaynağı toplar.
+    $toplam_yorum   = (int) $stats['total'] + (int) $cf_totals['count'];
+    $puanli_kayit   = (int) $stats['approved'] + (int) $cf_totals['count'];
+    $genel_ortalama = $puanli_kayit > 0
+        ? (($stats['avg'] * (int) $stats['approved']) + ($cf_totals['avg'] * (int) $cf_totals['count'])) / $puanli_kayit
+        : 0.0;
+
+    // Ana Yorum Formu hiç kullanılmıyorsa (tüm veri özel formdaysa) kutular
+    // gerçek verinin durduğu Gönderiler sekmesine yönlendirir; aksi hâlde
+    // sistemin kendi onay/moderasyon listesine gitmeye devam eder.
+    $only_cf      = (int) $stats['total'] === 0 && (int) $cf_totals['count'] > 0;
+    $yorum_url    = $only_cf ? qrm_pro_admin_url('qrms-yf-formlar', ['tab' => 'submissions']) : qrm_pro_admin_url('qrms-yf-yorumlar');
+    $ortalama_url = $only_cf ? qrm_pro_admin_url('qrms-yf-formlar', ['tab' => 'submissions']) : qrm_pro_admin_url('qrms-yf-yorumlar', ['durum' => 'onayli']);
 
     return [
         [
@@ -72,18 +95,18 @@ function qrm_pro_hub_stats(array $stats, $unread) {
         ],
         [
             'label'  => __('Toplam Yorum', 'qrms'),
-            'value'  => number_format_i18n((int) $stats['total']),
-            'url'    => qrm_pro_admin_url('qrms-yf-yorumlar'),
+            'value'  => number_format_i18n($toplam_yorum),
+            'url'    => $yorum_url,
             'accent' => '#8b5cf6',
         ],
         [
             'label' => __('Genel Ortalama', 'qrms'),
             // Hiç yayında yorum yokken "—" hiçbir şey anlatmıyordu: ortalamanın
             // bozuk olduğu mu, henüz puan verilmediği mi belli değildi.
-            'value' => $stats['approved'] > 0
-                ? number_format_i18n($stats['avg'], 1) . ' ★'
+            'value' => $puanli_kayit > 0
+                ? number_format_i18n($genel_ortalama, 1) . ' ★'
                 : __('Henüz puan yok', 'qrms'),
-            'url'    => qrm_pro_admin_url('qrms-yf-yorumlar', ['durum' => 'onayli']),
+            'url'    => $ortalama_url,
             'accent' => '#3b82f6',
         ],
         [
@@ -144,11 +167,12 @@ function qrm_pro_hub_card_groups() {
  * kod, suite'in ortak kopyalama betiğiyle (assets/js/admin.js, `data-qrms-copy`)
  * tek tıkla panoya alınır.
  *
- * @param array $stats qrm_pro_review_stats() çıktısı.
+ * @param array $stats     qrm_pro_review_stats() çıktısı.
+ * @param array $cf_totals qrm_cf_rating_group_totals() çıktısı.
  * @return string HTML (yorum varsa boş string).
  */
-function qrm_pro_hub_empty_hint(array $stats) {
-    if ((int) $stats['total'] > 0) {
+function qrm_pro_hub_empty_hint(array $stats, array $cf_totals) {
+    if ((int) $stats['total'] > 0 || (int) $cf_totals['count'] > 0) {
         return '';
     }
 
