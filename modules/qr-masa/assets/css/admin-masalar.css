@@ -133,6 +133,42 @@
 }
 
 /* ---------------------------------------------------------------
+   TÜMÜNÜ YAZDIR — toplu PDF butonu
+--------------------------------------------------------------- */
+
+.qmo-wrap .qmo-toplu-islem {
+	align-items: center;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10px;
+	margin: 0 0 14px;
+}
+
+.qmo-wrap .qmo-toplu-islem .description {
+	margin: 0;
+}
+
+/* ---------------------------------------------------------------
+   MASA ADI DÜZENLEME — satır içi ad değiştirme
+--------------------------------------------------------------- */
+
+.qmo-wrap .qmo-name-cell {
+	min-width: 0;
+}
+
+.qmo-wrap .qmo-edit-form {
+	align-items: center;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+}
+
+.qmo-wrap .qmo-edit-input {
+	max-width: 220px;
+	min-width: 0;
+}
+
+/* ---------------------------------------------------------------
    TABLO — dar ekranda kart görünümü
 --------------------------------------------------------------- */
 
@@ -181,6 +217,26 @@
 		flex: 0 0 34%;
 		font-size: 12px;
 		font-weight: 600;
+	}
+
+	/* Düzenleme formu açıkken ad hücresi tam genişliğe yayılır — girdi + iki
+	   buton dar bir "değer" sütununa sığmaz. */
+	.qmo-wrap .qmo-masa-tablo td.qmo-name-cell:has(.qmo-edit-form:not([hidden])) {
+		display: block;
+	}
+
+	.qmo-wrap .qmo-masa-tablo td.qmo-name-cell:has(.qmo-edit-form:not([hidden]))::before {
+		display: block;
+		margin-bottom: 6px;
+	}
+
+	.qmo-wrap .qmo-masa-tablo .qmo-edit-form {
+		width: 100%;
+	}
+
+	.qmo-wrap .qmo-masa-tablo .qmo-edit-input {
+		flex: 1 1 auto;
+		max-width: none;
 	}
 
 	.qmo-wrap .qmo-masa-tablo td[data-label="İşlemler"] {

@@ -159,6 +159,48 @@ if ( ! class_exists( 'QMO_Masalar' ) ) {
 		}
 
 		/**
+		 * Masa adını günceller.
+		 *
+		 * Slug'a (dolayısıyla QR kodun hedef adresine) BİLEREK dokunulmaz:
+		 * ad değişse de zaten basılıp masaya yapıştırılmış bir QR kod aynı
+		 * masayı hedeflemeye devam etmeli — aksi hâlde her ad düzeltmesi
+		 * eski QR kodları geçersiz kılardı.
+		 *
+		 * @param int    $id Masa ID'si.
+		 * @param string $ad Yeni masa adı.
+		 * @return true|WP_Error
+		 */
+		public static function guncelle( $id, $ad ) {
+			global $wpdb;
+
+			$id = (int) $id;
+			if ( $id <= 0 ) {
+				return new WP_Error( 'id', 'Geçersiz masa.' );
+			}
+
+			$ad = sanitize_text_field( $ad );
+			if ( '' === $ad ) {
+				return new WP_Error( 'bos', 'Masa adı boş olamaz.' );
+			}
+
+			$tablo  = self::tablo();
+			$mevcut = $wpdb->get_var( $wpdb->prepare( "SELECT id FROM {$tablo} WHERE id = %d", $id ) );
+			if ( null === $mevcut ) {
+				return new WP_Error( 'yok', 'Masa bulunamadı.' );
+			}
+
+			$wpdb->update(
+				$tablo,
+				array( 'table_name' => $ad ),
+				array( 'id' => $id ),
+				array( '%s' ),
+				array( '%d' )
+			);
+
+			return true;
+		}
+
+		/**
 		 * Toplu oluşturmada tek seferde açılabilecek azami masa sayısı.
 		 *
 		 * Her masa ayrı bir INSERT'tür; sınır, yanlışlıkla girilen büyük bir

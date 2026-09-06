@@ -36,8 +36,75 @@
 		}() );
 	}
 
+	/**
+	 * Bir masa QR'ının PDF sayfası: üstte ortalı masa adı, altta kod.
+	 * Hem tekli "PDF indir" butonu hem "Tümünü Yazdır" aynı yerleşimi kullanır
+	 * ki iki çıktı birbirinden farklı görünmesin.
+	 *
+	 * @param {jsPDF}  doc     Sayfanın çizileceği jsPDF belgesi (zaten bir sayfa açık olmalı).
+	 * @param {string} ad      Masa adı.
+	 * @param {string} dataUri QR kodunun PNG data URI'si.
+	 */
+	function masaPdfSayfasiCiz( doc, ad, dataUri ) {
+		doc.setFontSize( 40 );
+		doc.text( ad, 105, 40, { align: 'center' } );
+		doc.addImage( dataUri, 'PNG', 35, 60, 140, 140 );
+		doc.setFontSize( 14 );
+		doc.text( 'Lutfen kameraniza okutunuz', 105, 220, { align: 'center' } );
+	}
+
+	/**
+	 * QR kodunun üstüne, ortalı hizada masa adını basan bir PNG üretir.
+	 *
+	 * Ham QRious çıktısı yalnızca kodun kendisidir — masaya yapıştırılacak bir
+	 * görsel için ad da üstünde basılı olmalı, aksi hâlde tek başına bir
+	 * kare kod hangi masaya ait olduğunu söylemez. Uzun adlar canvas
+	 * genişliğini taşmasın diye yazı boyutu genişliğe göre küçültülür.
+	 *
+	 * @param {string}                  ad        Masa adı.
+	 * @param {string}                  qrDataUri Ham QR PNG data URI'si.
+	 * @param {function(string):void}   cb        Etiketli PNG data URI'siyle çağrılır.
+	 */
+	function etiketliPngUret( ad, qrDataUri, cb ) {
+		var img = new Image();
+		img.onload = function () {
+			var qrBoyut = img.naturalWidth || 800;
+			var kenar   = Math.round( qrBoyut * 0.05 );
+			var ustAlan = Math.round( qrBoyut * 0.16 );
+
+			var canvas = document.createElement( 'canvas' );
+			canvas.width  = qrBoyut + ( kenar * 2 );
+			canvas.height = qrBoyut + ustAlan + kenar;
+
+			var ctx = canvas.getContext( '2d' );
+			ctx.fillStyle = '#ffffff';
+			ctx.fillRect( 0, 0, canvas.width, canvas.height );
+
+			var maxGenislik = canvas.width - ( kenar * 2 );
+			var fontBoyut   = Math.round( qrBoyut * 0.09 );
+
+			ctx.textAlign    = 'center';
+			ctx.textBaseline = 'middle';
+			ctx.fillStyle    = '#1d2327';
+
+			do {
+				ctx.font = 'bold ' + fontBoyut + 'px Arial, sans-serif';
+				fontBoyut -= 2;
+			} while ( ctx.measureText( ad ).width > maxGenislik && fontBoyut > 16 );
+
+			ctx.fillText( ad, canvas.width / 2, ustAlan / 2 );
+			ctx.drawImage( img, kenar, ustAlan, qrBoyut, qrBoyut );
+
+			cb( canvas.toDataURL( 'image/png' ) );
+		};
+		img.src = qrDataUri;
+	}
+
 	document.addEventListener( 'DOMContentLoaded', function () {
-		var satirlar = document.querySelectorAll( '.qmo-row' );
+		var satirlar    = document.querySelectorAll( '.qmo-row' );
+		var toplamSatir = satirlar.length;
+		var hazirVeri   = []; // { ad, dataUri } — "Tümünü Yazdır" bunu kullanır.
+		var yazdirBtn   = document.getElementById( 'qmo-tumunu-yazdir' );
 
 		satirlar.forEach( function ( row ) {
 			var url      = row.getAttribute( 'data-url' );
@@ -59,17 +126,21 @@
 					onizleme.src = dataUri;
 				}
 
+				hazirVeri.push( { ad: ad, dataUri: dataUri } );
+
 				var dosyaAdi = ad.replace( /\s+/g, '-' );
 
 				var pngBtn = row.querySelector( '.qmo-dl-png' );
 				if ( pngBtn ) {
 					pngBtn.addEventListener( 'click', function () {
-						var a = document.createElement( 'a' );
-						a.download = dosyaAdi + '-QR.png';
-						a.href = dataUri;
-						document.body.appendChild( a );
-						a.click();
-						document.body.removeChild( a );
+						etiketliPngUret( ad, dataUri, function ( etiketliDataUri ) {
+							var a = document.createElement( 'a' );
+							a.download = dosyaAdi + '-QR.png';
+							a.href = etiketliDataUri;
+							document.body.appendChild( a );
+							a.click();
+							document.body.removeChild( a );
+						} );
 					} );
 				}
 
@@ -81,28 +152,49 @@
 							return;
 						}
 
-						var jsPDF = window.jspdf.jsPDF;
-						var doc = new jsPDF();
-
-						doc.setFontSize( 40 );
-						doc.text( ad, 105, 40, { align: 'center' } );
-						doc.addImage( dataUri, 'PNG', 35, 60, 140, 140 );
-						doc.setFontSize( 14 );
-						doc.text( 'Lutfen kameraniza okutunuz', 105, 220, { align: 'center' } );
-
+						var doc = new window.jspdf.jsPDF();
+						masaPdfSayfasiCiz( doc, ad, dataUri );
 						doc.save( dosyaAdi + '-QR.pdf' );
 					} );
 				}
 			} );
 		} );
+
+		if ( yazdirBtn ) {
+			yazdirBtn.addEventListener( 'click', function () {
+				if ( 'undefined' === typeof window.jspdf ) {
+					window.alert( 'PDF kütüphanesi yükleniyor, lütfen 1 saniye sonra tekrar deneyin.' );
+					return;
+				}
+				if ( ! toplamSatir ) {
+					return;
+				}
+				if ( hazirVeri.length < toplamSatir ) {
+					window.alert( 'QR kodları hâlâ hazırlanıyor, birkaç saniye sonra tekrar deneyin.' );
+					return;
+				}
+
+				var doc = new window.jspdf.jsPDF();
+
+				hazirVeri.forEach( function ( veri, index ) {
+					if ( index > 0 ) {
+						doc.addPage();
+					}
+					masaPdfSayfasiCiz( doc, veri.ad, veri.dataUri );
+				} );
+
+				doc.save( 'masalar-QR.pdf' );
+			} );
+		}
 	} );
 }() );
 
 /**
- * Toplu oluşturma önizlemesi ve grup filtresi.
+ * Toplu oluşturma önizlemesi, grup filtresi ve masa adı düzenleme.
  *
- * İkisi de tamamen sayfa içidir: filtreleme satırları göster/gizle yapar,
- * sunucuya istek gitmez.
+ * Üçü de tamamen sayfa içidir: filtreleme satırları göster/gizle yapar,
+ * düzenleme yalnızca hazır formu gösterip gizler — sunucuya istek yalnızca
+ * "Kaydet"e basılınca (normal form POST'uyla) gider.
  */
 ( function () {
 	'use strict';
@@ -190,8 +282,58 @@
 		} );
 	}
 
+	/**
+	 * Masa adı düzenleme: "Düzenle" tıklanınca ad yerine hazır (gizli) form
+	 * gösterilir; "İptal" eski görünüme döner. Kaydetme normal form POST'u
+	 * ile sunucuya gider (bkz. masalar-sayfasi.php: qmo_masa_duzenle).
+	 */
+	function duzenlekurulum() {
+		document.querySelectorAll( '.qmo-edit-toggle' ).forEach( function ( btn ) {
+			btn.addEventListener( 'click', function () {
+				var row   = btn.closest( '.qmo-row' );
+				var hucre = row ? row.querySelector( '.qmo-name-cell' ) : null;
+				if ( ! hucre ) {
+					return;
+				}
+
+				var goster = hucre.querySelector( '.qmo-name-display' );
+				var form   = hucre.querySelector( '.qmo-edit-form' );
+				if ( goster ) {
+					goster.hidden = true;
+				}
+				if ( form ) {
+					form.hidden = false;
+					var girdi = form.querySelector( '.qmo-edit-input' );
+					if ( girdi ) {
+						girdi.focus();
+						girdi.select();
+					}
+				}
+			} );
+		} );
+
+		document.querySelectorAll( '.qmo-edit-cancel' ).forEach( function ( btn ) {
+			btn.addEventListener( 'click', function () {
+				var hucre = btn.closest( '.qmo-name-cell' );
+				if ( ! hucre ) {
+					return;
+				}
+
+				var goster = hucre.querySelector( '.qmo-name-display' );
+				var form   = hucre.querySelector( '.qmo-edit-form' );
+				if ( form ) {
+					form.hidden = true;
+				}
+				if ( goster ) {
+					goster.hidden = false;
+				}
+			} );
+		} );
+	}
+
 	document.addEventListener( 'DOMContentLoaded', function () {
 		toplukurulum();
 		filtrekurulum();
+		duzenlekurulum();
 	} );
 }() );
