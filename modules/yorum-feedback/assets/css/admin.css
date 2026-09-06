@@ -205,6 +205,14 @@
 	max-width: 190px;
 }
 
+.qrm-cf-row-note {
+	display: block;
+	max-width: 190px;
+	font-size: 12px;
+	font-style: italic;
+	color: #787c82;
+}
+
 .qrm-wf-controls select {
 	font-size: 12px;
 	max-width: 100%;

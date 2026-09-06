@@ -81,6 +81,14 @@ function qrm_cf_type_label($type) {
 
 function qrm_cf_default_form_settings() {
     // P1: submit_text / success_message form ayarı (item_type=cf_form).
+    //
+    // Tema/buton rengi, Ayarlar & Puanlama > Form Görünümü'nde seçilen marka
+    // rengiyle başlar: restoran zaten bir marka rengi seçmişse her yeni özel
+    // form o rengi tekrar tekrar elle girmek yerine hazır gelir. Bu yalnızca
+    // HENÜZ KAYDEDİLMEMİŞ bir formun ön dolgusudur — form bir kez kaydedilince
+    // kendi değerini taşır, global ayar sonradan değişse bile etkilenmez.
+    $marka = qrm_pro_get_settings();
+
     return [
         'submit_text'     => 'Gönder',
         'success_message' => 'Formunuz bize ulaştı, teşekkür ederiz.',
@@ -96,9 +104,9 @@ function qrm_cf_default_form_settings() {
         'notify_enabled'  => 0,
         'notify_email'    => '',
         // Görünüm (yorum formundaki stil değişkenleriyle aynı mantık)
-        'theme_style'     => 'light',   // light | dark | transparent
-        'btn_color'       => '#10b981',
-        'btn_text_color'  => '#ffffff',
+        'theme_style'     => !empty($marka['theme_style']) ? $marka['theme_style'] : 'light',
+        'btn_color'       => !empty($marka['btn_color']) ? $marka['btn_color'] : '#10b981',
+        'btn_text_color'  => !empty($marka['btn_text_color']) ? $marka['btn_text_color'] : '#ffffff',
         'border_radius'   => 10,
         'step_labels'     => [],
     ];
@@ -775,6 +783,26 @@ function qrm_cf_get_submissions($form_id, $args = []) {
     ));
 }
 
+/**
+ * Bir formun TÜM gönderimlerini (sayfalamasız) döner.
+ *
+ * Tüm Yorumlar köprüsü (bkz. includes/admin/reviews-cf-bridge.php) puanlama
+ * ve sıralama için tüm veriye ihtiyaç duyar; restoran başına gönderim hacmi
+ * (onlarca/yüzlerce) düşünüldüğünde tek seferde çekmek makuldür.
+ *
+ * @param int $form_id
+ * @return array
+ */
+function qrm_cf_get_all_submissions($form_id) {
+    global $wpdb;
+    $table = qrm_cf_submissions_table();
+
+    return $wpdb->get_results($wpdb->prepare(
+        "SELECT * FROM $table WHERE form_id = %d ORDER BY created_at DESC, id DESC",
+        intval($form_id)
+    ));
+}
+
 function qrm_cf_count_submissions($form_id, $status = '') {
     global $wpdb;
     $table = qrm_cf_submissions_table();
@@ -942,26 +970,19 @@ function qrm_cf_rating_group_text(array $data) {
 }
 
 /**
- * Bir forma ait TÜM gönderimler üzerinden rating_group ortalamalarını
- * hesaplar. Hub'daki "Genel Ortalama" kutusu yalnızca Ana Yorum Formu'nun
- * tablosunu (wp_qrm_reviews) sayar; özel formdaki puanlama kriterleri tamamen
- * ayrı bir veri kaynağıdır (data JSON'u içinde rating_1..5) ve o sayıya hiç
- * karışmaz — dolayısıyla kendi özetini kendi taşımalıdır.
+ * Ham `data` JSON satırlarından rating_1..5 toplam/sayaçlarını çıkarır.
+ * qrm_cf_rating_group_stats() (tek form) ve qrm_cf_rating_group_totals()
+ * (tüm formlar) aynı biriktirme mantığını paylaşır.
  *
- * @param int $form_id
- * @return array{count:int, overall_avg:float, criteria:array} criteria: i => ['name'=>, 'avg'=>, 'count'=>]
+ * @param array $raw_rows submissions.data sütunundan gelen JSON string dizisi
+ * @return array{sums:array<int,int>, counts:array<int,int>, with_rating:int}
  */
-function qrm_cf_rating_group_stats($form_id) {
-    global $wpdb;
-    $table = qrm_cf_submissions_table();
-    $rows  = $wpdb->get_col($wpdb->prepare("SELECT data FROM $table WHERE form_id = %d", intval($form_id)));
-
-    $settings = qrm_pro_get_settings();
-    $sums     = [];
-    $counts   = [];
+function qrm_cf_rating_group_accumulate(array $raw_rows) {
+    $sums        = [];
+    $counts      = [];
     $with_rating = 0;
 
-    foreach ($rows as $raw) {
+    foreach ($raw_rows as $raw) {
         $decoded = json_decode((string) $raw, true);
         if (!is_array($decoded)) continue;
 
@@ -977,24 +998,77 @@ function qrm_cf_rating_group_stats($form_id) {
         if ($found) $with_rating++;
     }
 
+    return ['sums' => $sums, 'counts' => $counts, 'with_rating' => $with_rating];
+}
+
+/**
+ * Bir forma ait TÜM gönderimler üzerinden rating_group ortalamalarını
+ * hesaplar. Hub'daki "Genel Ortalama" kutusu yalnızca Ana Yorum Formu'nun
+ * tablosunu (wp_qrm_reviews) sayar; özel formdaki puanlama kriterleri tamamen
+ * ayrı bir veri kaynağıdır (data JSON'u içinde rating_1..5) ve o sayıya hiç
+ * karışmaz — dolayısıyla kendi özetini kendi taşımalıdır.
+ *
+ * @param int $form_id
+ * @return array{count:int, overall_avg:float, criteria:array} criteria: i => ['name'=>, 'avg'=>, 'count'=>]
+ */
+function qrm_cf_rating_group_stats($form_id) {
+    global $wpdb;
+    $table = qrm_cf_submissions_table();
+    $rows  = $wpdb->get_col($wpdb->prepare("SELECT data FROM $table WHERE form_id = %d", intval($form_id)));
+    $acc   = qrm_cf_rating_group_accumulate($rows);
+
+    $settings      = qrm_pro_get_settings();
     $criteria      = [];
     $overall_sum   = 0;
     $overall_count = 0;
     for ($i = 1; $i <= 5; $i++) {
-        if (empty($settings['crit_' . $i . '_active']) || empty($counts[$i])) continue;
+        if (empty($settings['crit_' . $i . '_active']) || empty($acc['counts'][$i])) continue;
         $criteria[$i] = [
             'name'  => $settings['crit_' . $i . '_name'],
-            'avg'   => $sums[$i] / $counts[$i],
-            'count' => $counts[$i],
+            'avg'   => $acc['sums'][$i] / $acc['counts'][$i],
+            'count' => $acc['counts'][$i],
         ];
-        $overall_sum   += $sums[$i];
-        $overall_count += $counts[$i];
+        $overall_sum   += $acc['sums'][$i];
+        $overall_count += $acc['counts'][$i];
     }
 
     return [
-        'count'       => $with_rating,
+        'count'       => $acc['with_rating'],
         'overall_avg' => $overall_count > 0 ? $overall_sum / $overall_count : 0.0,
         'criteria'    => $criteria,
+    ];
+}
+
+/**
+ * rating_group widget'ı içeren TÜM özel formlardaki puanlamaların genel
+ * toplamı — hub ekranındaki "Toplam Yorum" / "Genel Ortalama" kutuları,
+ * Ana Yorum Formu'nun (wp_qrm_reviews) yanına bunu da eklemek için kullanır.
+ * Kriter kırılımı vermez, yalnızca birleştirilmiş gönderim sayısı ve puan
+ * ortalamasıdır — form bazlı kırılım için qrm_cf_rating_group_stats() vardır.
+ *
+ * @return array{count:int, avg:float}
+ */
+function qrm_cf_rating_group_totals() {
+    global $wpdb;
+
+    $form_ids = $wpdb->get_col("SELECT DISTINCT form_id FROM " . qrm_cf_fields_table() . " WHERE field_type = 'rating_group'");
+    if (!$form_ids) {
+        return ['count' => 0, 'avg' => 0.0];
+    }
+
+    $placeholders = implode(',', array_fill(0, count($form_ids), '%d'));
+    $rows = $wpdb->get_col($wpdb->prepare(
+        "SELECT data FROM " . qrm_cf_submissions_table() . " WHERE form_id IN ($placeholders)",
+        $form_ids
+    ));
+    $acc = qrm_cf_rating_group_accumulate($rows);
+
+    $sum = array_sum($acc['sums']);
+    $n   = array_sum($acc['counts']);
+
+    return [
+        'count' => $acc['with_rating'],
+        'avg'   => $n > 0 ? $sum / $n : 0.0,
     ];
 }
 

@@ -364,6 +364,9 @@ function qrm_pro_admin_dashboard() {
     $self_url = qrm_pro_admin_url('qrms-yf-yorumlar');
 
     $notice = qrm_pro_admin_handle_review_actions();
+    if ($notice === '') {
+        $notice = qrm_pro_cf_handle_review_delete();
+    }
 
     // Aktif sekme adreste taşınır; yenilemede, sayfalamada ve satır aksiyonu
     // sonrasında korunur.
@@ -391,10 +394,24 @@ function qrm_pro_admin_dashboard() {
     $wf_counts = qrm_pro_fetch_workflow_counts($durum, $sekme, $esik, $has_list_filters ? $list_filters : []);
 
     if ($has_list_filters && function_exists('qrm_export_reviews_count')) {
-        $toplam = qrm_export_reviews_count($durum, $sekme, $esik, $wf, $list_filters);
+        $native_toplam = qrm_export_reviews_count($durum, $sekme, $esik, $wf, $list_filters);
     } else {
-        $toplam = qrm_pro_admin_reviews_total($durum, $stats, $sekme, $wf, $wf_counts);
+        $native_toplam = qrm_pro_admin_reviews_total($durum, $stats, $sekme, $wf, $wf_counts);
     }
+
+    // Puanlama Kriterleri (rating_group) widget'lı özel formların gönderimleri
+    // (bkz. includes/admin/reviews-cf-bridge.php) burada listeye katılır. İş
+    // akışı filtresi ve "Onay Bekleyen" bu satırlara hiç uygulanmaz — ikisi de
+    // özel formda karşılığı olmayan kavramlar, o yüzden o filtreler aktifken
+    // özel form satırları listeden tamamen çıkar (yanlış bir eşleşme uydurmak
+    // yerine).
+    $merge_cf = !empty(qrm_pro_cf_review_forms()) && $wf === '' && $durum !== 'bekleyen';
+    $cf_rows  = $merge_cf ? qrm_pro_cf_fetch_review_rows($sekme, $esik, $has_list_filters ? $list_filters : []) : [];
+    $cf_toplam = count($cf_rows);
+    $toplam    = $native_toplam + $cf_toplam;
+
+    $cf_sent      = $merge_cf ? qrm_pro_cf_review_sentiment_counts($esik, $has_list_filters ? $list_filters : []) : ['total' => 0, 'olumlu' => 0, 'olumsuz' => 0];
+    $display_stats = qrm_pro_cf_merge_stats_for_display($stats, $cf_sent);
 
     $sekme_url = $sekme === '' ? $self_url : add_query_arg(['sekme' => $sekme], $self_url);
     if ($durum !== '') {
@@ -428,12 +445,32 @@ function qrm_pro_admin_dashboard() {
     $reviews = [];
 
     if ($stats['table_ok'] && $toplam > 0) {
-        $reviews = qrm_pro_admin_fetch_reviews($durum, $per_page, $paged, $sekme, $esik, $wf, $has_list_filters ? $list_filters : []);
+        if ($merge_cf && $cf_toplam > 0) {
+            // İki farklı şemayı (sabit sütunlu tablo + JSON blob) TEK SQL'de
+            // sayfalamak mümkün değil; native satırların TAMAMI (sayfalamasız)
+            // çekilip özel form satırlarıyla PHP'de tarihe göre birleştirilir,
+            // sayfalama bu birleşik dizi üzerinde yapılır. qrm_pro_admin_fetch_reviews()
+            // burada per_page=$native_toplam ile "tek sayfada hepsi" olarak
+            // çağrılır — mevcut, test edilmiş sorgu mantığı değişmeden yeniden
+            // kullanılır.
+            $native_rows = $native_toplam > 0
+                ? qrm_pro_admin_fetch_reviews($durum, $native_toplam, 1, $sekme, $esik, $wf, $has_list_filters ? $list_filters : [])
+                : [];
+            $merged = array_merge($native_rows, $cf_rows);
+            usort($merged, function ($a, $b) {
+                return strcmp($b->created_at, $a->created_at);
+            });
+            $reviews = array_slice($merged, ($paged - 1) * $per_page, $per_page);
+        } else {
+            $reviews = qrm_pro_admin_fetch_reviews($durum, $per_page, $paged, $sekme, $esik, $wf, $has_list_filters ? $list_filters : []);
+        }
     }
 
-    $review_ids = array_map(function ($row) {
+    $review_ids = array_filter(array_map(function ($row) {
         return (int) $row->id;
-    }, $reviews);
+    }, $reviews), function ($id) {
+        return $id > 0; // özel form satırları negatif id taşır, medya eşlemesi yalnızca native satırlar içindir.
+    });
     $review_media_map = function_exists('qrm_pro_get_review_media_bulk')
         ? qrm_pro_get_review_media_bulk($review_ids)
         : [];
@@ -461,7 +498,7 @@ function qrm_pro_admin_dashboard() {
 
         <h2 class="nav-tab-wrapper qrm-review-tabs">
             <?php foreach (qrm_pro_admin_review_tabs() as $anahtar => $baslik):
-                $sayac = qrm_pro_admin_review_tab_counts($anahtar, $stats);
+                $sayac = qrm_pro_admin_review_tab_counts($anahtar, $display_stats);
 
                 // Sekme değişince durum filtresi ve sayfa numarası sıfırlanır:
                 // yeni sekmede aynı sayfa numarası var olmayabilir.
@@ -477,7 +514,7 @@ function qrm_pro_admin_dashboard() {
         </h2>
 
         <?php
-        $sekme_sayaclari = qrm_pro_admin_review_tab_counts($sekme, $stats);
+        $sekme_sayaclari = qrm_pro_admin_review_tab_counts($sekme, $display_stats);
         if ($sekme_sayaclari['total'] > 0):
         ?>
             <ul class="subsubsub">
@@ -622,6 +659,10 @@ function qrm_pro_admin_dashboard() {
                 <?php foreach ($reviews as $r):
                     // Satır aksiyonu, kullanıcıyı bulunduğu sayfada bıraksın.
                     $row_page = $paged > 1 ? ['paged' => $paged] : [];
+                    // Özel form (rating_group) kaynaklı satırlar NEGATİF id taşır
+                    // (bkz. reviews-cf-bridge.php) — onay/iş akışı/medya bu
+                    // satırlarda hiç uygulanmaz, aşağıdaki bloklar bu bayrağa göre dallanır.
+                    $is_cf_row = (int) $r->id < 0;
                     $name_display = $r->is_anonymous ? '<em>' . esc_html__('Anonim', 'qrms') . '</em>' : esc_html($r->customer_name);
                     if ($name_display === '') {
                         $name_display = '<em>' . esc_html__('İsimsiz', 'qrms') . '</em>';
@@ -632,6 +673,9 @@ function qrm_pro_admin_dashboard() {
                     }
                     if (!empty($r->form_source) && $r->form_source === 'contact') {
                         $name_display .= ' <span class="qrm-google-pill qrm-source-pill">' . esc_html__('İletişim', 'qrms') . '</span>';
+                    }
+                    if ($is_cf_row && !empty($r->_cf_form_title)) {
+                        $name_display .= ' <span class="qrm-google-pill qrm-source-pill">' . esc_html($r->_cf_form_title) . '</span>';
                     }
 
                     // Kriter Kırılımını Hazırla
@@ -656,7 +700,7 @@ function qrm_pro_admin_dashboard() {
                     $resolved_at = !empty($r->resolved_at) ? $r->resolved_at : '';
                 ?>
                 <tbody class="qrm-review-row-block">
-                <tr class="qrm-review-row" data-review-id="<?php echo esc_attr((string) intval($r->id)); ?>">
+                <tr class="qrm-review-row" <?php echo $is_cf_row ? '' : 'data-review-id="' . esc_attr((string) intval($r->id)) . '"'; ?>>
                     <td data-label="<?php esc_attr_e('Tarih', 'qrms'); ?>"><?php echo esc_html(date_i18n('d.m.Y H:i', strtotime($r->created_at))); ?></td>
                     <td data-label="<?php esc_attr_e('Müşteri', 'qrms'); ?>"><?php echo wp_kses_post($name_display); ?></td>
                     <td data-label="<?php esc_attr_e('Puan', 'qrms'); ?>">
@@ -672,11 +716,11 @@ function qrm_pro_admin_dashboard() {
                         <?php endif; ?>
                     </td>
                     <td data-label="<?php esc_attr_e('Yorum', 'qrms'); ?>" class="qrm-cell-block">
-                        <?php echo esc_html($r->comment); ?>
-                        <?php
+                        <?php echo nl2br(esc_html($r->comment)); ?>
+                        <?php if (!$is_cf_row):
                         $row_media = isset($review_media_map[(int) $r->id]) ? $review_media_map[(int) $r->id] : [];
                         echo qrm_pro_render_admin_review_media($row_media);
-                        ?>
+                        endif; ?>
                     </td>
                     <td data-label="<?php esc_attr_e('Durum', 'qrms'); ?>">
                         <?php if ($r->status): ?>
@@ -686,6 +730,11 @@ function qrm_pro_admin_dashboard() {
                         <?php endif; ?>
                     </td>
                     <td data-label="<?php esc_attr_e('İş Akışı', 'qrms'); ?>" class="qrm-wf-cell">
+                        <?php if ($is_cf_row): ?>
+                            <span class="qrm-cf-row-note">
+                                <?php esc_html_e('Özel formdan geliyor — iş akışı bu satıra uygulanmaz.', 'qrms'); ?>
+                            </span>
+                        <?php else: ?>
                         <div class="qrm-wf-controls">
                             <select class="qrm-wf-status" aria-label="<?php esc_attr_e('İş akışı durumu', 'qrms'); ?>">
                                 <?php foreach ($workflow_statuses as $wf_key => $wf_label): ?>
@@ -725,9 +774,26 @@ function qrm_pro_admin_dashboard() {
                         <?php else: ?>
                             <span class="qrm-wf-resolved-at" hidden></span>
                         <?php endif; ?>
+                        <?php endif; ?>
                     </td>
                     <td data-label="" class="qrm-row-actions">
-                        <?php
+                        <?php if ($is_cf_row):
+                            // Özel form satırlarında onay/yayından kaldır kavramı yok —
+                            // yalnızca silme, kendi tablosuna (qrm_custom_form_submissions)
+                            // ayrı bir parametre çiftiyle (cf_action/cf_id) yönlendirilir.
+                            $cf_submission_id = (int) $r->_cf_submission_id;
+                            $cf_row_args = ['cf_action' => 'delete', 'cf_id' => $cf_submission_id] + $row_page;
+                            if ($durum !== '') $cf_row_args['durum'] = $durum;
+                            if ($sekme !== '') $cf_row_args['sekme'] = $sekme;
+                            if ($list_filters['liste_bas'] !== '') $cf_row_args['liste_bas'] = $list_filters['liste_bas'];
+                            if ($list_filters['liste_bit'] !== '') $cf_row_args['liste_bit'] = $list_filters['liste_bit'];
+                            if ($list_filters['search'] !== '') $cf_row_args['s'] = $list_filters['search'];
+                            if (!empty($list_filters['table_id'])) $cf_row_args['table_id'] = (int) $list_filters['table_id'];
+                        ?>
+                            <a href="<?php echo esc_url(wp_nonce_url(add_query_arg($cf_row_args, $self_url), 'qrm_cf_review_action_' . $cf_submission_id)); ?>"
+                               class="button button-small" style="color:#b32d2e;border-color:#d5b0b0;"
+                               onclick="return confirm('<?php echo esc_js(__('Bu yorum kalıcı olarak silinsin mi?', 'qrms')); ?>');"><?php esc_html_e('Sil', 'qrms'); ?></a>
+                        <?php else:
                         // Aksiyon sonrası kullanıcı aynı sekmede, aynı filtrede ve
                         // aynı sayfada kalır.
                         $row_args = ['id' => intval($r->id)] + $row_page;
@@ -747,8 +813,10 @@ function qrm_pro_admin_dashboard() {
                         <a href="<?php echo esc_url(wp_nonce_url(add_query_arg(['action' => 'delete'] + $row_args, $self_url), 'qrm_review_action_' . intval($r->id))); ?>"
                            class="button button-small" style="color:#b32d2e;border-color:#d5b0b0;"
                            onclick="return confirm('<?php echo esc_js(__('Bu yorum kalıcı olarak silinsin mi?', 'qrms')); ?>');"><?php esc_html_e('Sil', 'qrms'); ?></a>
+                        <?php endif; ?>
                     </td>
                 </tr>
+                <?php if (!$is_cf_row): ?>
                 <tr class="qrm-wf-note-row" hidden>
                     <td colspan="7">
                         <label class="screen-reader-text" for="qrm-wf-note-<?php echo esc_attr((string) intval($r->id)); ?>">
@@ -760,6 +828,7 @@ function qrm_pro_admin_dashboard() {
                                   placeholder="<?php esc_attr_e('Yalnızca yöneticiler görür — müşteriye gösterilmez.', 'qrms'); ?>"><?php echo esc_textarea($internal_note); ?></textarea>
                     </td>
                 </tr>
+                <?php endif; ?>
                 </tbody>
                 <?php endforeach; ?>
         </table>

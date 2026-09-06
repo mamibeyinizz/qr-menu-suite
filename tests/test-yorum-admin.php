@@ -38,6 +38,14 @@ function qrm_cf_unread_total() {
 	return 2;
 }
 
+// qrm_cf_rating_group_totals() gerçek forms/functions.php'den gelir (özel form
+// puanlama widget'ının hub'daki "Toplam Yorum" / "Genel Ortalama" kutularına
+// katkısı); bu test dosyası o dosyayı yüklemez, nötr bir taklit yeterli —
+// aşağıdaki hub testleri sabit $stats sayaçlarıyla çalışır, cf katkısı 0 kalmalı.
+function qrm_cf_rating_group_totals() {
+	return array( 'count' => 0, 'avg' => 0.0 );
+}
+
 // qrm_pro_review_stats() de gerçek install.php'den gelir; sayaçları yukarıdaki
 // QRMS_Test_Wpdb besler (tablo var, sayımlar sabit).
 
@@ -314,7 +322,7 @@ qrms_test(
 		sort( $sirali );
 		qrms_assert_same( $sirali, $sira, 'başlık sırası: Yorumlar, Formlar, Ayarlar' );
 
-		qrms_assert_contains( 'Ana yorum formu, iletişim formu', $html, 'Formlar kart açıklaması' );
+		qrms_assert_contains( 'Kendi oluşturduğunuz formlar', $html, 'Formlar kart açıklaması' );
 		qrms_assert_false( false !== strpos( $html, 'page=qrms-yf-form-alanlari' ), 'eski form alanları kartı yok' );
 		qrms_assert_false( false !== strpos( $html, 'page=qrms-yf-iletisim' ), 'eski iletişim kartı yok' );
 		qrms_assert_false( false !== strpos( $html, 'Özel Formlar' ), 'eski özel formlar adı yok' );

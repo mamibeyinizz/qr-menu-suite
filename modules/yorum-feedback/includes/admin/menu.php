@@ -67,7 +67,7 @@ function qrm_pro_admin_pages() {
             'title'      => __( 'Formlar', 'qrms' ),
             'menu_title' => __( 'Formlar', 'qrms' ),
             'render'     => 'qrm_cf_admin_forms_page',
-            'desc'       => __( 'Ana yorum formu, iletişim formu ve kendi oluşturduğunuz formlar.', 'qrms' ),
+            'desc'       => __( 'Kendi oluşturduğunuz formlar.', 'qrms' ),
             'icon'       => 'dashicons-feedback',
             'group'      => 'formlar',
         ],
