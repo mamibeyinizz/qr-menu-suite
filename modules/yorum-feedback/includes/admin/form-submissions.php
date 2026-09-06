@@ -77,12 +77,14 @@ function qrm_cf_admin_submissions_pane() {
     $paged    = isset($_GET['paged']) ? max(1, intval($_GET['paged'])) : 1;
     $per_page = 25;
 
-    // Widget'lar (rating_group, google_reward) POST verisi taşımaz; gönderim
-    // tablosunda hep boş bir sütun olarak görünmesinler.
-    $widget_types = qrm_cf_field_types(true);
-    $fields       = array_values(array_filter(qrm_cf_get_fields($current->id), static function ($f) use ($widget_types) {
-        return empty($widget_types[$f->field_type]['is_widget']);
+    // google_reward salt bilgi panelidir, hiç POST verisi taşımaz; gönderim
+    // tablosunda hep boş bir sütun olarak görünmesin. rating_group ise gerçek
+    // puanları rating_1..5 anahtarlarında taşır (bkz. qrm_cf_rating_group_text)
+    // ve sütun olarak kalır.
+    $fields = array_values(array_filter(qrm_cf_get_fields($current->id), static function ($f) {
+        return $f->field_type !== 'google_reward';
     }));
+    $rating_stats = qrm_cf_rating_group_stats($current->id);
     if ($has_list_filters && function_exists('qrm_cf_export_submissions_chunk')) {
         $total = qrm_cf_count_submissions_filtered($current->id, $status_filter, $list_filters);
         $submissions = qrm_cf_export_submissions_chunk($current->id, $status_filter, $list_filters, $per_page, ($paged - 1) * $per_page);
@@ -139,6 +141,20 @@ function qrm_cf_admin_submissions_pane() {
                 <?php endif; ?>
             </div>
         </div>
+
+        <?php if (!empty($rating_stats['criteria'])): ?>
+            <div class="qrm-sub-rating-summary">
+                <div class="qrm-sub-rating-overall">
+                    <strong><?php echo esc_html(number_format_i18n($rating_stats['overall_avg'], 1)); ?> ★</strong>
+                    <span><?php echo esc_html(sprintf(_n('%d puanlamaya göre', '%d puanlamaya göre', $rating_stats['count'], 'qrms'), $rating_stats['count'])); ?></span>
+                </div>
+                <div class="qrm-sub-rating-criteria">
+                    <?php foreach ($rating_stats['criteria'] as $crit): ?>
+                        <span class="qrm-sub-rating-chip"><?php echo esc_html($crit['name']); ?>: <?php echo esc_html(number_format_i18n($crit['avg'], 1)); ?>/5</span>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+        <?php endif; ?>
 
         <form method="get" class="qrm-list-toolbar qrm-sub-list-filters">
             <?php
@@ -212,7 +228,9 @@ function qrm_cf_admin_submissions_pane() {
                             <?php endif; ?>
                         </td>
                         <?php foreach ($fields as $field):
-                            $value = isset($data[$field->field_key]) ? qrm_cf_format_value($field, $data[$field->field_key]) : '';
+                            $value = $field->field_type === 'rating_group'
+                                ? qrm_cf_rating_group_text($data)
+                                : (isset($data[$field->field_key]) ? qrm_cf_format_value($field, $data[$field->field_key]) : '');
                         ?>
                             <td data-label="<?php echo esc_attr($field->label); ?>"><?php echo $value === '' ? '<span class="qrm-sub-empty">—</span>' : nl2br(esc_html($value)); ?></td>
                         <?php endforeach; ?>
@@ -285,6 +303,14 @@ function qrm_cf_admin_submissions_styles() {
         .qrm-sub-filter { padding:5px 12px; border-radius:20px; text-decoration:none; font-size:12.5px; color:#50575e; transition:background .15s ease; }
         .qrm-sub-filter:hover { background:#f1f5f9; color:#1d2327; }
         .qrm-sub-filter.active { background:#2271b1; color:#fff; }
+
+        .qrm-sub-rating-summary { display:flex; flex-wrap:wrap; align-items:center; gap:14px; background:#fffbeb; border:1px solid #fde68a;
+            border-radius:8px; padding:12px 16px; margin-bottom:16px; }
+        .qrm-sub-rating-overall { display:flex; flex-direction:column; gap:2px; padding-right:14px; border-right:1px solid #fde68a; }
+        .qrm-sub-rating-overall strong { font-size:18px; color:#92400e; }
+        .qrm-sub-rating-overall span { font-size:11.5px; color:#a16207; }
+        .qrm-sub-rating-criteria { display:flex; flex-wrap:wrap; gap:8px; }
+        .qrm-sub-rating-chip { background:#fff; border:1px solid #fde68a; color:#92400e; font-size:12.5px; font-weight:600; padding:4px 11px; border-radius:20px; }
 
         .qrm-sub-list-filters { background:#fff; border:1px solid #c3c4c7; border-top:none; padding:12px 16px; margin-bottom:16px; }
         .qrm-list-toolbar-row { display:flex; flex-wrap:wrap; align-items:flex-end; gap:10px 14px; }
