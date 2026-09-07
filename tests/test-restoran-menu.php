@@ -454,6 +454,31 @@ qrms_test(
 );
 
 qrms_test(
+	'GÜVENLİK: toplu menü/fiyat yazan uçlar ekranla aynı yetkiyi ister',
+	function () {
+		$ie    = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-import-export.php' );
+		$uy    = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/urunum-yok/trait-admin.php' );
+
+		// Ekranlar manage_options ile kayıtlı; işleyicilerin edit_posts
+		// (Katkıda Bulunan seviyesi) kabul etmesi tüm menünün ve fiyat
+		// listesinin düşük yetkiyle ezilmesine izin veriyordu.
+		qrms_assert_false( false !== strpos( $ie, "current_user_can( 'edit_posts' )" ), 'içe/dışa aktarımda edit_posts kalmadı' );
+		qrms_assert_false( false !== strpos( $uy, "current_user_can( 'edit_posts' )" ), 'ürünüm yok uçlarında edit_posts kalmadı' );
+
+		// Modül tek başına da çalışabildiği için suite yoksa manage_options'a düşer.
+		qrms_assert_contains( "class_exists( 'QRMS_Admin' ) ? QRMS_Admin::CAPABILITY : 'manage_options'", $ie, 'içe/dışa aktarım yetkisi' );
+		qrms_assert_contains( "class_exists( 'QRMS_Admin' ) ? QRMS_Admin::CAPABILITY : 'manage_options'", $uy, 'ürünüm yok yetkisi' );
+
+		// Dosyadaki ID rastgele bir ürünü işaret edebilir: ürün bazlı kontrol.
+		qrms_assert_contains( "current_user_can( 'edit_post', \$pid )", $ie, 'JSON içe aktarımda ürün bazlı yetki' );
+		qrms_assert_contains( "current_user_can( 'edit_post', \$pid )", $uy, 'CSV/işaretlemede ürün bazlı yetki' );
+
+		// Önizleme token'ı onu oluşturan kullanıcıya bağlı olmalı.
+		qrms_assert_contains( '$sahip !== get_current_user_id()', $uy, 'önizleme sahibi doğrulanır' );
+	}
+);
+
+qrms_test(
 	'Ürünüm Yok sayfası elle kapatılanları malzeme listesinin üstünde basar',
 	function () {
 		$admin = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/urunum-yok/trait-admin.php' );
@@ -584,5 +609,57 @@ qrms_test(
 
 		qrms_assert_contains( "current_user_can( 'edit_post', \$post_id )", $kaynak, 'post özel yetki' );
 		qrms_assert_contains( "get_post_type( \$post_id ) !== 'rma_menu_item'", $kaynak, 'post tipi doğrulanır' );
+	}
+);
+
+qrms_test(
+	'GÜVENLİK: rma_views kimliksiz uçta IP+ürün başına hız sınırlı',
+	function () {
+		$kaynak = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-ajax.php' );
+
+		// Uç kimliksizdir (soft nonce); sayaç öncesinde hiçbir sınır yoktu,
+		// scriptle tekrarlanan istek her seferinde ayrı bir postmeta UPDATE'i
+		// üretiyordu.
+		qrms_assert_contains( "'rma_view_' . \$id . '_' . md5( \$ip )", $kaynak, 'IP+ürün başına kilit anahtarı' );
+		qrms_assert_contains( 'set_transient( $kilit, 1, MINUTE_IN_SECONDS )', $kaynak, 'dakikalık pencere' );
+	}
+);
+
+qrms_test(
+	'GÜVENLİK: JSON menü içe aktarımında görsel URL\'i http(s) ile sınırlı',
+	function () {
+		$kaynak = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-import-export.php' );
+
+		qrms_assert_contains( "0 !== stripos( \$image_url, 'http://' ) && 0 !== stripos( \$image_url, 'https://' )", $kaynak, 'şema http(s) ile sınırlı' );
+	}
+);
+
+qrms_test(
+	'GÜVENLİK: galeri AJAX uçları post tipini doğrular',
+	function () {
+		$kaynak = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-galeri/includes/trait-ajax.php' );
+
+		// ID doğrudan POST'tan geliyordu; tip kontrolü olmadan bu uçlar galeri
+		// dışındaki HERHANGİ bir post'u silebilir/durumunu değiştirebilirdi.
+		qrms_assert_contains( 'self::CPT_SECTION !== get_post_type( $id )', $kaynak, 'bölüm silme/durum/sıralama tip kontrolü' );
+		qrms_assert_contains( 'self::CPT_IMAGE !== get_post_type( $id )', $kaynak, 'görsel silme tip kontrolü' );
+
+		// En az 3 farklı uçta (sil, durum değiştir, sırala) kontrol geçmeli.
+		qrms_assert_true(
+			substr_count( $kaynak, 'self::CPT_SECTION !== get_post_type( $id )' ) >= 3,
+			'bölüm kontrolü birden çok uçta'
+		);
+	}
+);
+
+qrms_test(
+	'GÜVENLİK: Ürünüm Yok malzeme CSV dışa aktarımında formül enjeksiyonu kaçırılır',
+	function () {
+		$kaynak = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/urunum-yok/trait-admin.php' );
+
+		qrms_assert_contains( 'private function csv_hucre_kacir( $deger )', $kaynak, 'kaçırma metodu tanımlı' );
+		qrms_assert_contains( "\$this->csv_hucre_kacir( \$p->post_title )", $kaynak, 'ürün başlığı kaçırılır' );
+		qrms_assert_contains( "\$this->csv_hucre_kacir( is_wp_error( \$cats )", $kaynak, 'kategori listesi kaçırılır' );
+		qrms_assert_contains( "\$this->csv_hucre_kacir( is_wp_error( \$ings )", $kaynak, 'malzeme listesi kaçırılır' );
 	}
 );

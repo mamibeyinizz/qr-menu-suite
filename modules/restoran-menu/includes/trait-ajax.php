@@ -433,7 +433,19 @@ trait RMA_Ajax_Trait {
 
         $is_prefetch = ! empty( $_POST['prefetch'] );
         if ( ! $is_prefetch ) {
-            update_post_meta( $id, 'rma_views', (int) get_post_meta( $id, 'rma_views', true ) + 1 );
+            // GÜVENLİK: uç kimliksizdir (nonce yumuşak kontrol edilir); sayaç
+            // öncesinde hiçbir sınır yoktu, scriptle tekrarlanan istek her
+            // seferinde ayrı bir postmeta UPDATE'i üretiyordu. IP+ürün başına
+            // dakikada bir yazımla sınırlamak gerçek ziyaretçiyi etkilemez
+            // (aynı ürünü dakikada bir kereden fazla "açmaz") ama script'li
+            // tekrarların DB'ye yazma yükünü keser.
+            $ip     = isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) ) : '';
+            $kilit  = 'rma_view_' . $id . '_' . md5( $ip );
+
+            if ( false === get_transient( $kilit ) ) {
+                set_transient( $kilit, 1, MINUTE_IN_SECONDS );
+                update_post_meta( $id, 'rma_views', (int) get_post_meta( $id, 'rma_views', true ) + 1 );
+            }
         }
 
         $cache_key = $this->cache_key( 'item', [ 'id' => $id ] );

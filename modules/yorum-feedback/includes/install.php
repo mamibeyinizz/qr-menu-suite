@@ -127,8 +127,59 @@ function qrm_pro_install() {
     qrm_cf_install();
 
     qrm_pro_migrate_column_widths();
+    qrm_pro_migrate_media_visibility();
+
+    // Saklama süresi ayarlıysa günlük temizlik görevini kurar (0 = süresiz).
+    if ( function_exists( 'qrm_privacy_saklama_cron_kur' ) ) {
+        qrm_privacy_saklama_cron_kur();
+    }
 
     update_option('qrm_db_version', QRM_PRO_VERSION, false);
+}
+
+/**
+ * Onay bekleyen yorumların eklerini `private` yapar (bir kez).
+ *
+ * Eski sürümlerde ekler `post_status = inherit`, `post_parent = 0` açılıyordu;
+ * WordPress ebeveynsiz `inherit` eklerini `publish` sayar, yani moderasyondan
+ * geçmemiş görseller /?attachment_id=N üzerinden herkese açıktı. Yeni kayıtlar
+ * `private` açılıyor (bkz. review-media.php); bu göç mevcut kurulumlardaki
+ * onaysız ekleri de kapatır. Yayındaki yorumların ekleri olduğu gibi kalır.
+ *
+ * @return void
+ */
+function qrm_pro_migrate_media_visibility() {
+    global $wpdb;
+
+    if (get_option('qrm_media_visibility_migrated')) {
+        return;
+    }
+
+    $media_table  = $wpdb->prefix . 'qrm_review_media';
+    $review_table = $wpdb->prefix . 'qrm_reviews';
+
+    // Tablolar henüz yoksa (ilk kurulum) yapacak iş de yoktur.
+    if ($wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $media_table)) !== $media_table) {
+        add_option('qrm_media_visibility_migrated', 1, '', false);
+        return;
+    }
+
+    $ids = $wpdb->get_col(
+        "SELECT m.attachment_id
+           FROM {$media_table} m
+           INNER JOIN {$review_table} r ON r.id = m.review_id
+          WHERE r.status <> 1"
+    );
+
+    foreach ((array) $ids as $att_id) {
+        $att_id = (int) $att_id;
+
+        if ($att_id > 0 && get_post_status($att_id) === 'inherit') {
+            wp_update_post(['ID' => $att_id, 'post_status' => 'private']);
+        }
+    }
+
+    add_option('qrm_media_visibility_migrated', 1, '', false);
 }
 
 /**

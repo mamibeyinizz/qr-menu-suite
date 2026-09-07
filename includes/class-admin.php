@@ -1070,6 +1070,28 @@ class QRMS_Admin {
 	}
 
 	/**
+	 * Modülün ana sayfası için gerekli yetenek.
+	 *
+	 * Varsayılan her modülde self::CAPABILITY'dir (yönetici). Tek istisna
+	 * qr-servis-paneli: bu modülün kendi personel rolü (`qrms_servis`,
+	 * `QRMS_SP_Rol::YETENEK`) yalnızca canlı paneli görebilsin diye var
+	 * edilmiş, ama sayfanın WP menüsündeki kaydı da, render_module_page()'in
+	 * kendi kontrolü de her zaman self::CAPABILITY istiyordu — yani rol
+	 * WordPress menü katmanında hiç geçemiyor, panel tanım gereği ölü kod
+	 * kalıyordu. Başka HİÇBİR modülün yetkisi burada düşürülmez.
+	 *
+	 * @param string $slug Modül slug'ı.
+	 * @return string
+	 */
+	public static function get_module_page_capability( $slug ) {
+		if ( 'qr-servis-paneli' === $slug && class_exists( 'QRMS_SP_Rol' ) ) {
+			return QRMS_SP_Rol::YETENEK;
+		}
+
+		return self::CAPABILITY;
+	}
+
+	/**
 	 * Menü ikonu (inline SVG data URI).
 	 *
 	 * @return string
@@ -1136,7 +1158,7 @@ class QRMS_Admin {
 				self::MENU_SLUG,
 				$name,
 				$label,
-				self::CAPABILITY,
+				self::get_module_page_capability( $slug ),
 				self::get_module_page_slug( $slug ),
 				static function () use ( $slug ) {
 					QRMS_Admin::render_module_page( $slug );
@@ -1808,7 +1830,7 @@ class QRMS_Admin {
 			return;
 		}
 
-		if ( ! current_user_can( self::CAPABILITY ) ) {
+		if ( ! current_user_can( self::get_module_page_capability( $slug ) ) ) {
 			wp_die( esc_html__( 'Bu sayfayı görüntüleme yetkiniz yok.', 'qrms' ) );
 		}
 

@@ -668,11 +668,12 @@ function qrms_gonderim_ayarlari( $ek = array() ) {
  */
 function qrms_gonderim_postu( $puanlar, $ek = array() ) {
 	$damga = time() - 10;
+	$cap   = qrm_pro_make_captcha();
 
 	$_POST = array(
 		'qrm_ts'           => $damga . '.' . hash_hmac( 'sha256', $damga . '|qrm_ts', wp_salt( 'auth' ) ),
-		'qrm_captcha'      => 7,
-		'qrm_captcha_hash' => hash_hmac( 'sha256', '7', wp_salt( 'nonce' ) ),
+		'qrm_captcha'      => $cap['a'] + $cap['b'],
+		'qrm_captcha_hash' => $cap['hash'],
 	);
 
 	foreach ( $puanlar as $kriter => $puan ) {
@@ -951,3 +952,152 @@ qrms_test(
  * ------------------------------------------------------------------------ */
 
 // Sınıf dosya kapsamında yalnızca tanım yapar; init() elle çağrılır.
+
+qrms_test(
+	'GÜVENLİK: onay bekleyen yorum ekleri herkese açık değil',
+	function () {
+		$media  = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/review-media.php' );
+		$panel  = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/admin/dashboard.php' );
+		$submit = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/ajax/submit-review.php' );
+		$kur    = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/install.php' );
+
+		// Ebeveynsiz `inherit` ekini WordPress publish sayar: onay beklerken
+		// /?attachment_id=N taranarak moderasyondan geçmemiş görsel yayınlanırdı.
+		qrms_assert_contains( "'post_status'    => 'private'", $media, 'ekler private açılır' );
+		qrms_assert_false( false !== strpos( $media, "'post_status'    => 'inherit'" ), 'inherit ile açılmıyor' );
+
+		// Onay/yayından kaldırma ekleri de birlikte taşımalı.
+		qrms_assert_contains( 'function qrm_pro_media_sync_status', $media, 'durum eşitleyici' );
+		qrms_assert_contains( 'qrm_pro_media_sync_status($id, true)', $panel, 'onayda yayına açılır' );
+		qrms_assert_contains( 'qrm_pro_media_sync_status($id, false)', $panel, 'yayından kaldırınca kapanır' );
+		qrms_assert_contains( 'qrm_pro_media_sync_status($review_id, true)', $submit, 'otomatik onayda açılır' );
+
+		// Mevcut kurulumlardaki onaysız ekler de kapatılmalı.
+		qrms_assert_contains( 'function qrm_pro_migrate_media_visibility', $kur, 'göç fonksiyonu' );
+		qrms_assert_contains( 'qrm_pro_migrate_media_visibility();', $kur, 'kurulumdan çağrılır' );
+	}
+);
+
+qrms_test(
+	'KVKK: dışa aktarma/silme kancaları, saklama süresi ve opt-in uninstall',
+	function () {
+		$gizli = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/privacy.php' );
+		$boot  = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/qr-menu-reviews.php' );
+		$ayar  = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/admin/settings-page.php' );
+		$kald  = file_get_contents( QRMS_PLUGIN_DIR . 'uninstall.php' );
+
+		// WordPress gizlilik araçlarına bağlanmalı (KVKK 7. madde: silme hakkı).
+		qrms_assert_contains( "add_filter('wp_privacy_personal_data_exporters'", $gizli, 'dışa aktarıcı kayıtlı' );
+		qrms_assert_contains( "add_filter('wp_privacy_personal_data_erasers'", $gizli, 'silici kayıtlı' );
+		qrms_assert_contains( 'wp_add_privacy_policy_content', $gizli, 'politika metni' );
+		qrms_assert_contains( "require_once QRM_PRO_PATH . 'includes/privacy.php'", $boot, 'modül yükler' );
+
+		// E-posta sütunu yorum tablosunda yok; köprü ödül kaydıdır.
+		qrms_assert_contains( 'source_review_id', $gizli, 'yorum köprüsü' );
+
+		// Yorum metni ve puan korunur, kimlik alanları anonimleştirilir.
+		qrms_assert_contains( 'QRM_PRIVACY_ANON_AD', $gizli, 'anonimleştirme sabiti' );
+
+		// Saklama varsayılanı süresiz olmalı: arşivi habersiz silmek kabul edilemez.
+		qrms_assert_contains( "get_option('qrm_saklama_gun', 0)", $gizli, 'varsayılan süresiz' );
+		qrms_assert_contains( 'qrm_privacy_saklama_temizligi', $gizli, 'temizlik cronu' );
+		qrms_assert_contains( 'qrm_saklama_gun', $ayar, 'ayar ekranında süre alanı' );
+
+		// Kaldırmada veri silme opt-in olmalı.
+		qrms_assert_contains( "defined( 'WP_UNINSTALL_PLUGIN' ) || exit", $kald, 'doğrudan çağrı engeli' );
+		qrms_assert_contains( 'qrms_uninstall_veri_sil', $kald, 'opt-in bayrağı' );
+		qrms_assert_contains( 'if ( ! $qrms_veri_sil ) {', $kald, 'varsayılan koru' );
+		qrms_assert_contains( 'qrms_uninstall_veri_sil', $ayar, 'ayar ekranında kaldırma tercihi' );
+	}
+);
+
+qrms_test(
+	'GÜVENLİK: restoran-menu font ayarları beyaz listeye karşı doğrulanır',
+	function () {
+		$kaynak = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-helpers.php' );
+
+		// heading_font/body_font/price_font CSS'e tırnaklı gömülüyor
+		// (--rma-font-*: '<değer>',system-ui,sans-serif); genel sanitizer
+		// (sanitize_text_field) tırnak/parantez/noktalı virgülü süzmez —
+		// beyaz liste olmadan CSS bağlamından çıkılabilirdi.
+		qrms_assert_contains( '$font_beyaz_liste = $this->get_font_options();', $kaynak, 'beyaz liste okunur' );
+		qrms_assert_contains( "foreach ( array( 'heading_font', 'body_font', 'price_font' ) as \$font_alani )", $kaynak, 'üç font alanı da kontrol edilir' );
+		qrms_assert_contains( 'if ( ! in_array( $typo[ $font_alani ], $font_beyaz_liste, true ) )', $kaynak, 'whitelist dışı reddedilir' );
+	}
+);
+
+qrms_test(
+	'GÜVENLİK: ödül kasası ekranında sunucu yanıtı innerHTML\'e kaçırılmadan gitmiyor',
+	function () {
+		$kaynak = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/admin/reward-cashier.php' );
+
+		// discount_label admin ayarından, message ise yapılandırılabilir bir
+		// metinden gelebiliyor; "kasa" rolü bu değerleri yazan kişiyle aynı
+		// yetkiye sahip olmayabilir.
+		qrms_assert_true( substr_count( $kaynak, 'function esc(s) {' ) >= 2, 'her iki script bloğunda kaçırma yardımcısı var' );
+		qrms_assert_false( false !== strpos( $kaynak, "'<strong>' + res.code + '</strong>'" ), 'ham res.code kalmadı' );
+		qrms_assert_contains( "esc(res.discount_label || '—')", $kaynak, 'discount_label kaçırılıyor' );
+	}
+);
+
+qrms_test(
+	'GÜVENLİK: değerlendirme formu başarı mesajı innerHTML\'e kaçırılarak yazılır',
+	function () {
+		$kaynak = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/frontend/form-script.php' );
+
+		qrms_assert_true(
+			substr_count( $kaynak, "kacirHtml(res.message || metin('thanks'" ) === 3,
+			'üç başarı mesajı da kaçırılıyor'
+		);
+	}
+);
+
+qrms_test(
+	'GÜVENLİK: $_FILES iç içe dizi TypeError üretmeden atlanır',
+	function () {
+		$kaynak = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/review-media.php' );
+
+		// "qrm_review_media[0][x]" gibi iç içe bir alan adı $_FILES['name'][i]'yi
+		// string değil dizi yapar; is_uploaded_file() bir diziyle çağrılırsa
+		// PHP 8'de TypeError (500) fırlatır.
+		qrms_assert_contains( "!is_string(\$f['name'][\$i] ?? null) || !is_string(\$f['tmp_name'][\$i] ?? null)", $kaynak, 'string olmayan alan atlanır' );
+	}
+);
+
+qrms_test(
+	'GÜVENLİK: ödül kodu sorgulama/kullanma uçlarında hız sınırı var',
+	function () {
+		$kaynak = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/ajax/rewards.php' );
+
+		// Bu uçlar müşteri e-postasını döndürüyor ve kod durumunu kalıcı
+		// değiştiriyor; hiçbir hız sınırı yoktu — edit_posts taşıyan bir hesap
+		// kodu brute-force ederek e-posta toplayabilir/kuponları yakabilirdi.
+		qrms_assert_true(
+			substr_count( $kaynak, 'qrm_reward_rate_limit(20, 300)' ) === 2,
+			'lookup ve mark_used ikisinde de hız sınırı'
+		);
+	}
+);
+
+qrms_test(
+	'GÜVENLİK: matematik captcha tek kullanımlık, aynı jeton tekrar geçmez',
+	function () {
+		// Eskiden hash yalnızca hash_hmac(a+b) idi; toplam 1-18 arası (17
+		// olası değer) olduğundan bir kez görülen (toplam, hash) çifti
+		// süresiz ve sınırsız sayıda yeniden gönderilebiliyordu.
+		$cap = qrm_pro_make_captcha();
+
+		qrms_assert_true( qrm_pro_check_captcha( $cap['a'] + $cap['b'], $cap['hash'] ), 'ilk doğrulama geçer' );
+		qrms_assert_false( qrm_pro_check_captcha( $cap['a'] + $cap['b'], $cap['hash'] ), 'aynı jeton ikinci kez geçmez (replay)' );
+
+		// Yanlış cevapta da jeton tüketilmeli — aksi hâlde küçük uzayda (17
+		// olası toplam) sınırsız tahmin denenebilir.
+		$cap2 = qrm_pro_make_captcha();
+		qrms_assert_false( qrm_pro_check_captcha( $cap2['a'] + $cap2['b'] + 100, $cap2['hash'] ), 'yanlış cevap reddedilir' );
+		qrms_assert_false( qrm_pro_check_captcha( $cap2['a'] + $cap2['b'], $cap2['hash'] ), 'yanlış denemeden sonra doğru cevap da geçmez' );
+
+		// Bozuk/eksik hash reddedilir.
+		qrms_assert_false( qrm_pro_check_captcha( 5, '' ), 'boş hash reddedilir' );
+		qrms_assert_false( qrm_pro_check_captcha( 5, 'uydurma-id.uydurma-imza' ), 'sahte imza reddedilir' );
+	}
+);

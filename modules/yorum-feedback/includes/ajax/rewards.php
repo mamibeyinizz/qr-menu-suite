@@ -145,6 +145,15 @@ function qrm_reward_ajax_admin_lookup() {
     }
     check_ajax_referer('qrm_reward_cashier', 'nonce');
 
+    // GÜVENLİK: bu uç müşteri e-postasını döndürüyor ve hiçbir hız sınırı
+    // yoktu; edit_posts taşıyan bir hesap kodu brute-force ederek e-posta
+    // toplayabilirdi. Aynı IP sınırlayıcı (qrm_reward_rate_limit) diğer ödül
+    // uçlarında zaten kullanılıyor.
+    $limit = qrm_reward_rate_limit(20, 300);
+    if (true !== $limit) {
+        wp_send_json(['success' => false, 'message' => $limit]);
+    }
+
     $code = isset($_POST['code']) ? sanitize_text_field(wp_unslash($_POST['code'])) : '';
     if (trim($code) === '') {
         wp_send_json(['success' => false, 'message' => 'Lütfen bir kod girin.']);
@@ -181,6 +190,11 @@ function qrm_reward_ajax_cashier_mark_used() {
         wp_send_json(['success' => false, 'message' => 'Bu işlem için yetkiniz yok.']);
     }
     check_ajax_referer('qrm_reward_cashier', 'nonce');
+
+    $limit = qrm_reward_rate_limit(20, 300);
+    if (true !== $limit) {
+        wp_send_json(['success' => false, 'message' => $limit]);
+    }
 
     $code = isset($_POST['code']) ? sanitize_text_field(wp_unslash($_POST['code'])) : '';
     if (trim($code) === '') {

@@ -174,6 +174,109 @@ if ( ! function_exists( 'qmo_rest_order' ) ) {
 }
 
 /**
+ * Sipariş kalemini menüdeki gerçek ürüne çözer.
+ *
+ * GÜVENLİK: `urunAdi` istemciden gelir ve sipariş uçlarına doğrudan POST
+ * atılabilir (modelin akışta olması gerekmez). Ad doğrulanmadan mutfak
+ * fişine basılırsa menüde hiç bulunmayan, personeli yanıltacak serbest bir
+ * metin ("İKRAM — ödemesi alındı") sipariş olarak düşer. Bu yüzden her kalem
+ * YAYINLANMIŞ bir `rma_menu_item` kaydına çözülür ve fişe yazılacak ad
+ * istemciden değil `get_the_title()`'dan okunur.
+ *
+ * Porsiyon eki ürün adının parçasıdır ("Lahmacun (Büyük)"); ek, yalnızca o
+ * ürünün gerçek porsiyon listesinde varsa korunur, uydurulmuş ek düşürülür.
+ *
+ * @param array $kalem Ham kalem (itemId/item_id ve/veya urunAdi).
+ * @return array{id:int,ad:string}|null Çözülemezse null.
+ */
+if ( ! function_exists( 'qmo_siparis_kalem_coz' ) ) {
+	function qmo_siparis_kalem_coz( $kalem ) {
+		if ( ! is_array( $kalem ) || ! post_type_exists( 'rma_menu_item' ) ) {
+			return null;
+		}
+
+		$ad = isset( $kalem['urunAdi'] ) ? sanitize_text_field( (string) $kalem['urunAdi'] ) : '';
+
+		// Porsiyon ekini ayır: "Lahmacun (Büyük)" → taban + "Büyük".
+		$taban    = $ad;
+		$porsiyon = '';
+		if ( preg_match( '/^(.*?)\s*\(([^()]*)\)\s*$/u', $ad, $eslesme ) ) {
+			$taban    = trim( $eslesme[1] );
+			$porsiyon = trim( $eslesme[2] );
+		}
+
+		$id = isset( $kalem['itemId'] ) ? absint( $kalem['itemId'] ) : 0;
+		if ( $id < 1 && isset( $kalem['item_id'] ) ) {
+			$id = absint( $kalem['item_id'] );
+		}
+
+		if ( $id > 0 && ( 'rma_menu_item' !== get_post_type( $id ) || 'publish' !== get_post_status( $id ) ) ) {
+			$id = 0;
+		}
+
+		// ID yoksa/geçersizse ada göre çöz. Önce tam ad, sonra porsiyonsuz
+		// taban denenir; ikisi de yayınlanmış ürün değilse kalem reddedilir.
+		if ( $id < 1 ) {
+			foreach ( array_unique( array_filter( array( $ad, $taban ) ) ) as $aday ) {
+				$sorgu = new WP_Query(
+					array(
+						'post_type'              => 'rma_menu_item',
+						'post_status'            => 'publish',
+						'title'                  => $aday,
+						'posts_per_page'         => 1,
+						'fields'                 => 'ids',
+						'no_found_rows'          => true,
+						'ignore_sticky_posts'    => true,
+						'update_post_meta_cache' => false,
+						'update_post_term_cache' => false,
+					)
+				);
+
+				if ( ! empty( $sorgu->posts ) ) {
+					$id = (int) $sorgu->posts[0];
+					if ( $aday === $ad && $ad !== $taban ) {
+						// Ürünün kendi adı parantez içeriyormuş; ek porsiyon değil.
+						$porsiyon = '';
+					}
+					break;
+				}
+			}
+		}
+
+		if ( $id < 1 ) {
+			return null;
+		}
+
+		$baslik = (string) get_the_title( $id );
+
+		// Porsiyon ekini ürünün GERÇEK porsiyon listesine karşı doğrula.
+		if ( '' !== $porsiyon ) {
+			$gecerli = false;
+
+			if ( class_exists( 'RMA_Porsiyon' ) ) {
+				foreach ( (array) RMA_Porsiyon::gosterim_listesi( $id ) as $satir ) {
+					$satir_ad = isset( $satir['ad'] ) ? (string) $satir['ad'] : '';
+					if ( '' !== $satir_ad && 0 === strcasecmp( $satir_ad, $porsiyon ) ) {
+						$porsiyon = $satir_ad;
+						$gecerli  = true;
+						break;
+					}
+				}
+			}
+
+			if ( ! $gecerli ) {
+				$porsiyon = '';
+			}
+		}
+
+		return array(
+			'id' => $id,
+			'ad' => '' !== $porsiyon ? $baslik . ' (' . $porsiyon . ')' : $baslik,
+		);
+	}
+}
+
+/**
  * Siparişi doğrula ve Firestore'a yaz.
  *
  * Hem REST ucu hem chatbot AJAX ucu buraya düşer — böylece sipariş mantığı
@@ -221,7 +324,13 @@ if ( ! function_exists( 'qmo_siparis_isle' ) ) {
 			);
 		}
 
-		$temiz = array();
+		// Menü modülü etkinse her kalem sunucuda gerçek ürüne çözülür; ad
+		// istemciden DEĞİL menüden okunur. Modül kapalıysa çözülecek bir
+		// katalog yoktur, temizlenmiş ad korunur (eski davranış).
+		$menu_var = post_type_exists( 'rma_menu_item' );
+
+		$temiz     = array();
+		$cozulmedi = false;
 		foreach ( $items as $it ) {
 			if ( ! is_array( $it ) ) {
 				continue;
@@ -233,6 +342,21 @@ if ( ! function_exists( 'qmo_siparis_isle' ) ) {
 			if ( '' === $ad ) {
 				continue;
 			}
+
+			if ( $menu_var ) {
+				$urun = qmo_siparis_kalem_coz( $it );
+
+				if ( null === $urun ) {
+					// Menüde karşılığı olmayan kalem: siparişin tamamı reddedilir.
+					// Sessizce düşürmek müşteriye eksik sipariş verilmesine yol açar.
+					$cozulmedi = true;
+					break;
+				}
+
+				$ad      = $urun['ad'];
+				$item_id = $urun['id'];
+			}
+
 			$temiz[] = array(
 				'urunAdi'  => $ad,
 				'adet'     => $adet,
@@ -240,10 +364,31 @@ if ( ! function_exists( 'qmo_siparis_isle' ) ) {
 				'item_id'  => $item_id,
 			);
 		}
+		if ( $cozulmedi ) {
+			return array(
+				'success' => false,
+				'msg'     => qmo_ceviri_chat( __( 'Menüde bulunmayan bir ürün var; lütfen sepeti yenileyip tekrar deneyin.', 'qrms' ) ),
+				'http'    => 400,
+			);
+		}
 		if ( empty( $temiz ) ) {
 			return array(
 				'success' => false,
 				'msg'     => qmo_ceviri_chat( __( 'Geçersiz sipariş', 'qrms' ) ),
+				'http'    => 400,
+			);
+		}
+
+		// GÜVENLİK: kalem başına adet 20'ye kadar kelepçeleniyordu ama toplam
+		// hiç sınırlanmıyordu — 20 kalem × 20 adet = 400 birim, hız sınırının
+		// (masa+IP başına 10 sn'de 1 istek) izin verdiği her pencerede mutfak
+		// kuyruğuna ve Firestore yazımlarına düşebiliyordu. Gerçek bir masanın
+		// tek siparişte makul üst sınırı bu tavanın çok altındadır.
+		$toplam_adet = array_sum( wp_list_pluck( $temiz, 'adet' ) );
+		if ( $toplam_adet > 60 ) {
+			return array(
+				'success' => false,
+				'msg'     => qmo_ceviri_chat( __( 'Tek seferde bu kadar ürün sipariş edilemez; lütfen siparişi bölerek gönderin.', 'qrms' ) ),
 				'http'    => 400,
 			);
 		}

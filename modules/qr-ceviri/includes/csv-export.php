@@ -97,6 +97,34 @@ if ( ! function_exists( 'rma_ceviri_bellek_sinirda_mi' ) ) {
 add_action( 'admin_post_rma_ceviri_export', 'rma_ceviri_csv_disa_aktar' );
 
 /**
+ * CSV hücresini formül enjeksiyonuna karşı kaçırır.
+ *
+ * Excel/Sheets bir hücre `=`, `+`, `-`, `@` ile başlıyorsa onu formül sayar.
+ * Kaynak metin (ürün adı/açıklaması) ve çeviri hücreleri serbest metindir;
+ * çeviriyi düzenleyen kullanıcı yönetici olmayabilir. Dosyayı açan
+ * yöneticinin makinesinde kod çalışmasın diye başa tek tırnak eklenir
+ * (Excel bunu görünmez biçim işareti sayar, hücre metni değişmez).
+ *
+ * @param mixed $deger Ham değer.
+ * @return string
+ */
+if ( ! function_exists( 'rma_ceviri_csv_hucre_kacir' ) ) {
+	function rma_ceviri_csv_hucre_kacir( $deger ) {
+		$deger = is_scalar( $deger ) ? (string) $deger : '';
+
+		if ( '' === $deger ) {
+			return '';
+		}
+
+		if ( in_array( $deger[0], array( '=', '+', '-', '@', "\t", "\r" ), true ) ) {
+			return "'" . $deger;
+		}
+
+		return $deger;
+	}
+}
+
+/**
  * CSV'yi üret ve indirt.
  */
 if ( ! function_exists( 'rma_ceviri_csv_disa_aktar' ) ) {
@@ -169,12 +197,12 @@ if ( ! function_exists( 'rma_ceviri_csv_disa_aktar' ) ) {
 				$satir['item_id'],
 				$satir['item_type'],
 				$satir['field'],
-				$satir['original'],
+				rma_ceviri_csv_hucre_kacir( $satir['original'] ),
 				rma_ceviri_hash_olustur( $satir['original'], $satir['field'] ),
 			);
 
 			foreach ( $diller as $dil ) {
-				$hucreler[] = isset( $mevcut[ $anahtar ][ $dil ] ) ? $mevcut[ $anahtar ][ $dil ] : '';
+				$hucreler[] = rma_ceviri_csv_hucre_kacir( isset( $mevcut[ $anahtar ][ $dil ] ) ? $mevcut[ $anahtar ][ $dil ] : '' );
 			}
 
 			if ( 0 === ( $satir_no % 200 ) && function_exists( 'rma_ceviri_bellek_sinirda_mi' ) && rma_ceviri_bellek_sinirda_mi() ) {

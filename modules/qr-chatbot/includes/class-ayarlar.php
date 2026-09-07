@@ -59,7 +59,10 @@ function qmo_chatbot_yeni_varsayilanlar() {
 		'qmo_chatbot_hide_after_hours'     => 'no',
 		'qmo_chatbot_closed_behavior'      => 'hide',
 		'qmo_chatbot_closed_message'       => 'Şu an kapalıyız, yakında görüşmek üzere.',
-		'qmo_chatbot_daily_limit'          => 0,
+		// Sıfır "sınırsız" demektir; varsayılan olarak açık bırakmak Gemini
+		// faturasını tavansız bırakıyordu. 2000, elli masalık bir işletmenin
+		// günlük gerçek kullanımının çok üstünde ama kaçak tüketimi kesiyor.
+		'qmo_chatbot_daily_limit'          => 2000,
 		'qmo_chatbot_daily_limit_msg'      => 'Bugünkü soru hakkımız doldu. Lütfen biraz sonra tekrar deneyin.',
 		'qmo_chatbot_rate_per_min'         => 8,
 		'qmo_chatbot_banned_words'         => '',
@@ -649,6 +652,26 @@ function qmo_chatbot_sinir_kontrol( $sess ) {
 				array(
 					'kod'   => 'limit',
 					'mesaj' => qmo_ceviri_chat( __( 'Çok hızlı soru gönderiyorsunuz. Lütfen biraz bekleyin.', 'qrms' ) ),
+				),
+				429
+			);
+		}
+	}
+
+	// Yukarıdaki anahtar oturum varken masa+issued'a bağlıdır; yeni bir oturum
+	// çerezi almak (?masa=X ile) o sayacı sıfırlar. Bu yüzden `issued`'dan
+	// tamamen bağımsız, IP başına saatlik bir tavan da uygulanır: Gemini
+	// faturasını döngüye giren bir istemciye karşı asıl koruyan sınır budur.
+	// Restoran Wi-Fi'ı tek IP arkasında olabileceği için cömert tutulur.
+	$ip_saatlik = (int) apply_filters( 'qmo_chatbot_ip_saatlik_limit', 120 );
+	if ( $ip_saatlik > 0 && function_exists( 'qmo_ip_hash' ) ) {
+		$k = 'qmo_cb_iph_' . qmo_ip_hash();
+		$n = qmo_sayac_arttir( $k, HOUR_IN_SECONDS );
+		if ( $n > $ip_saatlik ) {
+			wp_send_json_error(
+				array(
+					'kod'   => 'limit',
+					'mesaj' => qmo_ceviri_chat( __( 'Çok fazla soru gönderildi. Lütfen biraz sonra tekrar deneyin.', 'qrms' ) ),
 				),
 				429
 			);

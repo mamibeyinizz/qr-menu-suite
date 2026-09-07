@@ -56,6 +56,21 @@ class QRMS_Login {
 	const ACTION = 'qrms_login_kaydet';
 
 	/**
+	 * Kilitlenmeden önce IP başına izin verilen başarısız giriş denemesi.
+	 *
+	 * Restoran Wi-Fi'ı çoğu zaman tek bir genel IP arkasındadır (NAT); eşik
+	 * bu yüzden birkaç personelin art arda parola denemesini engellemeyecek
+	 * kadar cömert, otomatik bir kaba kuvvet script'ini pratik olarak
+	 * durduracak kadar da düşük tutulur.
+	 */
+	const DENEME_SINIRI = 20;
+
+	/**
+	 * Deneme sayacının ve kilidin geçerli olduğu pencere (saniye).
+	 */
+	const DENEME_PENCERE = 900;
+
+	/**
 	 * Slug olarak kullanılamayacak değerler.
 	 *
 	 * WordPress'in kendi uçları ve tipik yeniden yazma çakışmaları. Buraya
@@ -396,6 +411,14 @@ class QRMS_Login {
 		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_admin_assets' ) );
 		add_action( 'admin_notices', array( __CLASS__, 'admin_notice' ) );
 
+		// GÜVENLİK: kaba kuvvet/kullanıcı adı sayımı korumaları özel giriş
+		// adresi kapalıyken de geçerlidir — standart wp-login.php akışını
+		// korurlar, yol gizlemeyle ilgisizdirler. Yalnızca ana kapatma
+		// sabitine (QRMS_LOGIN_DISABLE) bakılır.
+		if ( ! self::is_disabled_by_constant() ) {
+			self::register_brute_force_guards();
+		}
+
 		if ( self::is_skin_active() ) {
 			add_action( 'login_enqueue_scripts', array( __CLASS__, 'enqueue_login_assets' ) );
 			add_action( 'login_head', array( __CLASS__, 'login_head' ) );
@@ -424,6 +447,158 @@ class QRMS_Login {
 		add_filter( 'logout_url', array( __CLASS__, 'filter_generic_url' ) );
 		add_filter( 'lostpassword_url', array( __CLASS__, 'filter_generic_url' ) );
 		add_filter( 'register_url', array( __CLASS__, 'filter_generic_url' ) );
+	}
+
+	/* -----------------------------------------------------------------
+	   KABA KUVVET / KULLANICI ADI SAYIMI KORUMASI
+	----------------------------------------------------------------- */
+
+	/**
+	 * Kaba kuvvet ve kullanıcı adı sayımı korumalarını bağlar.
+	 *
+	 * Dört ayrı sızıntı/atlatma noktası kapatılır: (1) "kullanıcı adı
+	 * hatalı" / "parola hatalı" ayrımı yapan hata mesajları geçerli bir
+	 * kullanıcı adını doğrulardı; (2) `?author=N` yönlendirmesi kullanıcı
+	 * adını author yönlendirmesinden sızdırırdı; (3) `/wp-json/wp/v2/users`
+	 * oturumsuz herkese kullanıcı listesini açardı; (4) deneme sayısına hiç
+	 * sınır yoktu.
+	 *
+	 * @return void
+	 */
+	private static function register_brute_force_guards() {
+		add_filter( 'authenticate', array( __CLASS__, 'reddet_asilan_deneme' ), 0 );
+		add_filter( 'authenticate', array( __CLASS__, 'tekillestir_giris_hatasi' ), 30 );
+		add_action( 'wp_login_failed', array( __CLASS__, 'basarisiz_denemeyi_kaydet' ) );
+		add_action( 'wp_login', array( __CLASS__, 'basarili_giriste_sayaci_sil' ) );
+
+		add_action( 'template_redirect', array( __CLASS__, 'yazar_taramasini_engelle' ) );
+		add_filter( 'rest_endpoints', array( __CLASS__, 'kullanicilar_ucunu_kisitla' ) );
+	}
+
+	/**
+	 * IP başına deneme sayacının anahtarı.
+	 *
+	 * @return string
+	 */
+	private static function deneme_anahtari() {
+		$ip = isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) ) : '0.0.0.0';
+
+		return 'qrms_login_deneme_' . md5( $ip );
+	}
+
+	/**
+	 * Deneme sınırı aşılmışsa kimlik doğrulamayı en erken noktada reddeder.
+	 *
+	 * Öncelik 0: WordPress'in kendi `wp_authenticate_username_password` gibi
+	 * geri çağrıları (öncelik 20) hiç çalışmadan önce devreye girer — parola
+	 * karşılaştırması bile yapılmaz.
+	 *
+	 * @param mixed $user Zincirdeki mevcut değer.
+	 * @return mixed|WP_Error
+	 */
+	public static function reddet_asilan_deneme( $user ) {
+		if ( (int) get_transient( self::deneme_anahtari() ) >= self::DENEME_SINIRI ) {
+			return new WP_Error(
+				'qrms_login_kilitli',
+				__( '<strong>Hata:</strong> Çok fazla başarısız giriş denemesi. Lütfen birkaç dakika sonra tekrar deneyin.', 'qrms' )
+			);
+		}
+
+		return $user;
+	}
+
+	/**
+	 * Başarısız girişte IP sayacını bir artırır.
+	 *
+	 * @return void
+	 */
+	public static function basarisiz_denemeyi_kaydet() {
+		$anahtar = self::deneme_anahtari();
+		$n       = (int) get_transient( $anahtar );
+
+		set_transient( $anahtar, $n + 1, self::DENEME_PENCERE );
+	}
+
+	/**
+	 * Başarılı girişte IP sayacını temizler.
+	 *
+	 * Paylaşımlı bir IP'nin (restoran Wi-Fi'ı) bir kullanıcının başarılı
+	 * girişinden sonra gereksiz yere kilitli kalmaması içindir.
+	 *
+	 * @return void
+	 */
+	public static function basarili_giriste_sayaci_sil() {
+		delete_transient( self::deneme_anahtari() );
+	}
+
+	/**
+	 * "invalid_username" / "incorrect_password" hatalarını tek bir genel
+	 * mesaja indirger — aksi hâlde biri geçerli bir kullanıcı adını doğrular.
+	 *
+	 * Öncelik 30: WordPress'in kendi doğrulama geri çağrıları (öncelik 20)
+	 * çalışıp WP_Error kodunu ürettikten SONRA devreye girer; iki taraflı
+	 * kimlik doğrulama gibi eklentilerin başka kodlarla döndüğü hatalara
+	 * dokunulmaz.
+	 *
+	 * @param mixed $user Zincirdeki mevcut değer.
+	 * @return mixed
+	 */
+	public static function tekillestir_giris_hatasi( $user ) {
+		if ( ! is_wp_error( $user ) ) {
+			return $user;
+		}
+
+		if ( in_array( $user->get_error_code(), array( 'invalid_username', 'invalid_email', 'incorrect_password' ), true ) ) {
+			return new WP_Error(
+				'qrms_login_hatali',
+				__( '<strong>Hata:</strong> Kullanıcı adı veya parola hatalı.', 'qrms' )
+			);
+		}
+
+		return $user;
+	}
+
+	/**
+	 * `?author=N` sorgu dizesiyle gelen istekleri ana sayfaya yönlendirir.
+	 *
+	 * WordPress bu isteği `/author/kullanici-adi/`'ya yönlendirir; yönlendirme
+	 * hedefindeki slug geçerli bir kullanıcı adını doğrudan sızdırır. Güzel
+	 * bağlantı (`/author/ad/`) biçimindeki gerçek yazar sayfalarına
+	 * dokunulmaz — yalnızca sayısal sorgu dizesi biçimi engellenir.
+	 *
+	 * @return void
+	 */
+	public static function yazar_taramasini_engelle() {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		if ( ! isset( $_GET['author'] ) || ! is_author() ) {
+			return;
+		}
+
+		wp_safe_redirect( home_url( '/' ), 301 );
+		exit;
+	}
+
+	/**
+	 * Oturumsuz isteklerden `/wp/v2/users` uçlarını kaldırır.
+	 *
+	 * Bu uç varsayılan olarak herkese açık kullanıcı adı + görünen ad listesi
+	 * döner — en ucuz kullanıcı adı sayımı yoludur.
+	 *
+	 * @param array $endpoints Kayıtlı REST uçları.
+	 * @return array
+	 */
+	public static function kullanicilar_ucunu_kisitla( $endpoints ) {
+		if ( is_user_logged_in() ) {
+			return $endpoints;
+		}
+
+		foreach ( array_keys( $endpoints ) as $route ) {
+			if ( 0 === strpos( $route, '/wp/v2/users' ) ) {
+				unset( $endpoints[ $route ] );
+			}
+		}
+
+		return $endpoints;
 	}
 
 	/* -----------------------------------------------------------------
@@ -493,7 +668,10 @@ class QRMS_Login {
 	 * @return bool
 	 */
 	public static function is_wp_login_path( $yol ) {
-		return false !== strpos( (string) $yol, 'wp-login.php' );
+		// stripos: büyük/küçük harfe duyarsız dosya sistemlerinde (Windows,
+		// varsayılan macOS) `/wp-login.PHP` de aynı dosyaya çözülür; duyarlı
+		// karşılaştırma bu isteği korumasız bırakırdı.
+		return false !== stripos( (string) $yol, 'wp-login.php' );
 	}
 
 	/**
@@ -503,7 +681,14 @@ class QRMS_Login {
 	 * geçer; oturumu açık kullanıcı da engellenmez (çıkış bağlantısı, ara
 	 * giriş penceresi). Geri kalan her şey 404'tür.
 	 *
-	 * @param string $eylem      `action` sorgu parametresi.
+	 * $eylem HAM değer olarak gelmelidir. Çekirdek `wp-login.php` içinde
+	 * `action`'ı `in_array( $action, $default_actions, true )` ile BÜYÜK/KÜÇÜK
+	 * HARFE DUYARLI karşılaştırır ve listede bulamadığı her değeri `login`'e
+	 * düşürür. Burada `sanitize_key()` ile küçültülmüş bir değere bakmak
+	 * `?action=Postpass` isteğini muaf sayar, çekirdek ise aynı isteğe giriş
+	 * formunu basardı — adres gizleme tek harfle atlatılırdı.
+	 *
+	 * @param string $eylem      `action` parametresinin ham değeri.
 	 * @param bool   $oturum_var Kullanıcının oturumu açık mı?
 	 * @return bool
 	 */
@@ -536,8 +721,13 @@ class QRMS_Login {
 		}
 
 		if ( self::is_wp_login_path( $yol ) ) {
+			// Ham değer: çekirdeğin duyarlı karşılaştırmasıyla birebir aynı
+			// kararı vermek için (bkz. should_block_wp_login docblock'u).
+			// Dizi gelirse çekirdek de listede bulamayıp `login`'e düşer;
+			// boş string'e çevirmek burada da "engelle" demektir.
 			// phpcs:ignore WordPress.Security.NonceVerification.Recommended
-			$eylem = isset( $_REQUEST['action'] ) ? sanitize_key( wp_unslash( $_REQUEST['action'] ) ) : '';
+			$ham   = isset( $_REQUEST['action'] ) ? wp_unslash( $_REQUEST['action'] ) : '';
+			$eylem = is_string( $ham ) ? $ham : '';
 
 			if ( self::should_block_wp_login( $eylem, is_user_logged_in() ) ) {
 				self::$bloke = true;
@@ -603,10 +793,31 @@ class QRMS_Login {
 		}
 
 		// REST_REQUEST sabiti yalnızca istek yönlendirildikten sonra tanımlanır;
-		// yol üzerinden erken kontrol REST isteğini korumaya alır.
+		// yol üzerinden erken kontrol REST isteğini korumaya alır. Eşleşme yolun
+		// BAŞINA sabitlenir: "içinde /wp-json geçen her istek" muaf sayılırsa,
+		// PATH_INFO kabul eden sunucularda `/wp-login.php/wp-json` tüm giriş
+		// korumasını atlatırdı.
 		$yol = self::request_path();
+		$kok = self::home_path();
 
-		return false !== strpos( $yol, '/wp-json' );
+		$onekler = array( 'wp-json' );
+		if ( function_exists( 'rest_get_url_prefix' ) ) {
+			$onekler[] = trim( (string) rest_get_url_prefix(), '/' );
+		}
+
+		foreach ( array_unique( $onekler ) as $onek ) {
+			if ( '' === $onek ) {
+				continue;
+			}
+
+			$hedef = $kok . '/' . $onek;
+
+			if ( $yol === $hedef || 0 === strpos( $yol, $hedef . '/' ) ) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	/**

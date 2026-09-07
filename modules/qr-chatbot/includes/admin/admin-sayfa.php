@@ -77,7 +77,8 @@ if ( ! function_exists( 'qmo_chatbot_ayarlarini_kaydet' ) ) {
 		if ( isset( $_POST['gemini_api_key'] ) ) {
 			$api_key = sanitize_text_field( wp_unslash( $_POST['gemini_api_key'] ) );
 			if ( '' !== $api_key ) {
-				update_option( 'gemini_api_key', $api_key );
+				// autoload=false: anahtar her istekte alloptions'a yüklenmez.
+				update_option( 'gemini_api_key', $api_key, false );
 			}
 		}
 

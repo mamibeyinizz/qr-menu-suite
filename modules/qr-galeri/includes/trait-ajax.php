@@ -69,7 +69,10 @@ trait QRMGM_Ajax_Trait {
 	public function ajax_delete_section(): void {
 		$this->verify_ajax();
 		$id = absint( $_POST['id'] ?? 0 );
-		if ( ! $id ) {
+		// GÜVENLİK: ID doğrudan POST'tan geliyor; tip kontrolü olmadan bu uç
+		// galeri bölümü dışındaki HERHANGİ bir post'u (sayfa, ürün, vb.)
+		// kalıcı olarak silmek için kullanılabilirdi.
+		if ( ! $id || self::CPT_SECTION !== get_post_type( $id ) ) {
 			wp_send_json_error();
 		}
 		$images = get_posts( [ 'post_type' => self::CPT_IMAGE, 'post_parent' => $id, 'posts_per_page' => -1, 'post_status' => [ 'publish', 'draft' ], 'fields' => 'ids' ] );
@@ -89,6 +92,11 @@ trait QRMGM_Ajax_Trait {
 		$this->verify_ajax();
 		$id     = absint( $_POST['id'] ?? 0 );
 		$active = ! empty( $_POST['active'] );
+		// GÜVENLİK: tip kontrolü olmadan bu uç herhangi bir post'un durumunu
+		// (ör. yayınlanmış bir sayfayı taslağa) değiştirebilirdi.
+		if ( ! $id || self::CPT_SECTION !== get_post_type( $id ) ) {
+			wp_send_json_error();
+		}
 		wp_update_post( [ 'ID' => $id, 'post_status' => $active ? 'publish' : 'draft' ] );
 		$this->clear_cache();
 		wp_send_json_success();
@@ -98,6 +106,10 @@ trait QRMGM_Ajax_Trait {
 		$this->verify_ajax();
 		$order = isset( $_POST['order'] ) ? array_map( 'absint', (array) $_POST['order'] ) : [];
 		foreach ( $order as $index => $id ) {
+			// GÜVENLİK: yalnızca galeri bölümlerinin sırası değiştirilebilir.
+			if ( self::CPT_SECTION !== get_post_type( $id ) ) {
+				continue;
+			}
 			wp_update_post( [ 'ID' => $id, 'menu_order' => $index ] );
 		}
 		$this->clear_cache();
@@ -223,7 +235,7 @@ trait QRMGM_Ajax_Trait {
 	public function ajax_delete_image(): void {
 		$this->verify_ajax();
 		$id = absint( $_POST['id'] ?? 0 );
-		if ( ! $id ) {
+		if ( ! $id || self::CPT_IMAGE !== get_post_type( $id ) ) {
 			wp_send_json_error();
 		}
 		$att_id = (int) get_post_meta( $id, '_qrmgm_attachment_id', true );

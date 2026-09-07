@@ -18,20 +18,50 @@ function qrm_pro_check_ts_token($token, $min = 3, $max = 3600) {
     return ($elapsed >= $min && $elapsed <= $max);
 }
 
-// Matematik captcha: soru + imzalı doğru cevap
+// Matematik captcha: soru + tek kullanımlık jeton.
+//
+// GÜVENLİK: eskiden hash yalnızca hash_hmac(a+b) idi. a ve b 1-9 arası
+// olduğundan toplam yalnızca 17 farklı değer alabiliyordu; siteden bir kez
+// görülen (toplam, hash) çifti tuz değişmediği sürece SÜRESİZ ve SINIRSIZ
+// sayıda yeniden gönderilebiliyordu — bir bot formu bir kez açıp bu 17
+// çifti toplayınca captcha'yı bir daha hiç çözmek zorunda kalmazdı. Artık
+// her jeton rastgele bir kimlik taşır, doğru toplam bu kimliğe bağlı kısa
+// ömürlü bir transient'ta saklanır ve doğrulama anında TÜKETİLİR (doğru ya
+// da yanlış fark etmez) — aynı jetona karşı ikinci bir tahmin denenemez.
 function qrm_pro_make_captcha() {
-    $a = wp_rand(1, 9);
-    $b = wp_rand(1, 9);
+    $a  = wp_rand(1, 9);
+    $b  = wp_rand(1, 9);
+    $id = wp_generate_password(20, false);
+
+    // Zaman tuzağı (qrm_pro_check_ts_token) formun 1 saate kadar açık
+    // kalmasına izin veriyor; captcha ömrü o toleransla çelişmesin diye aynı
+    // süreye ayarlandı.
+    set_transient('qrm_captcha_' . $id, (int) ($a + $b), HOUR_IN_SECONDS);
+
     return [
         'a'    => $a,
         'b'    => $b,
-        'hash' => hash_hmac('sha256', (string) ($a + $b), wp_salt('nonce')),
+        'hash' => $id . '.' . hash_hmac('sha256', $id, wp_salt('nonce')),
     ];
 }
 function qrm_pro_check_captcha($answer, $hash) {
-    if ($hash === '') return false;
-    $expected = hash_hmac('sha256', (string) intval($answer), wp_salt('nonce'));
-    return hash_equals($expected, (string) $hash);
+    $hash = (string) $hash;
+    if ($hash === '' || strpos($hash, '.') === false) return false;
+
+    list($id, $sig) = explode('.', $hash, 2);
+    if ($id === '' || !hash_equals(hash_hmac('sha256', $id, wp_salt('nonce')), $sig)) {
+        return false;
+    }
+
+    $key          = 'qrm_captcha_' . $id;
+    $dogru_toplam = get_transient($key);
+    delete_transient($key);
+
+    if (false === $dogru_toplam) {
+        return false;
+    }
+
+    return (int) $answer === (int) $dogru_toplam;
 }
 
 // Akış koruması (aynı IP'den kısa sürede aşırı gönderim). Eşik restoran/NAT için cömert tutuldu.

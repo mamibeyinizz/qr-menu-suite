@@ -300,3 +300,46 @@ qrms_test(
 // menu.php sayfa tanımlarını ve adres yardımcılarını içerir; dosya kapsamında
 // yalnızca bir add_action kaydı yapar (stub ortamında yan etkisizdir).
 // module.php ise sıralama yardımcısını tanımlar — saf dizi dönüşümü.
+
+qrms_test(
+	'GÜVENLİK: masa slug taraması IP başına hız sınırlı',
+	function () {
+		$kaynak = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-masa-oturum-guvenligi/masa-dogrulama.php' );
+
+		// Geçerli/geçersiz slug için farklı yanıt (kilit ekranı vs normal sayfa)
+		// bir numaralandırma orakülüdür; hız sınırı olmadan saniyeler içinde
+		// binlerce slug denenip gerçek masa listesi çıkarılabilir.
+		qrms_assert_contains( "qmo_sayac_arttir( 'qmo_masa_deneme_' . qmo_ip_hash(), MINUTE_IN_SECONDS )", $kaynak, 'IP başına dakikalık sayaç' );
+		qrms_assert_contains( '$deneme > 20', $kaynak, 'eşik aşıldığında kilitlenir' );
+
+		// Sınır, gerçek geçerlilik kontrolünden ÖNCE uygulanmalı — aksi hâlde
+		// saldırgan yine "geçerli mi değil mi" farkını görebilir.
+		$sinir_pos = strpos( $kaynak, '$deneme > 20' );
+		$kontrol_pos = strpos( $kaynak, 'qmo_masa_gecerli_mi( $gelen_masa )' );
+		qrms_assert_true( false !== $sinir_pos && false !== $kontrol_pos && $sinir_pos < $kontrol_pos, 'hız sınırı geçerlilik kontrolünden önce çalışır' );
+	}
+);
+
+qrms_test(
+	'GÜVENLİK: oturum HMAC anahtarı yarış durumunda kazananın değerine düşer',
+	function () {
+		$kaynak = file_get_contents( QRMS_PLUGIN_DIR . 'modules/_qmo-ortak/class-qmo-oturum.php' );
+
+		// get_option()/add_option() atomik değildir; add_option() false
+		// dönerse (başka bir istek aynı anda ekledi) kaybeden dal DB'deki
+		// kazanan değeri tekrar okumalı — aksi hâlde kaybedenin imzaladığı
+		// token hiçbir zaman doğrulanamaz.
+		qrms_assert_contains( 'if ( add_option( self::OPT_KEY, $aday, \'\', \'no\' ) ) {', $kaynak, 'add_option sonucu kontrol edilir' );
+		qrms_assert_contains( '$k = get_option( self::OPT_KEY );', $kaynak, 'kaybeden kazananın değerini okur' );
+	}
+);
+
+qrms_test(
+	'GÜVENLİK: qmo_ip_hash HMAC kullanır, ham birleştirme değil',
+	function () {
+		$kaynak = file_get_contents( QRMS_PLUGIN_DIR . 'modules/_qmo-ortak/helpers.php' );
+
+		qrms_assert_contains( "hash_hmac( 'sha256', \$ip, wp_salt( 'auth' ) )", $kaynak, 'hash_hmac kullanılır' );
+		qrms_assert_false( false !== strpos( $kaynak, "md5( \$ip . '|' . wp_salt( 'auth' ) )" ), 'eski md5 birleştirme kalmadı' );
+	}
+);

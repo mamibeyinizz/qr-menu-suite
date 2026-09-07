@@ -239,3 +239,162 @@ qrms_test(
 		delete_option( 'qmo_firebase_sa' );
 	}
 );
+
+qrms_test(
+	'GÜVENLİK: servis personeli rolü panel sayfasına gerçekten girebilir',
+	function () {
+		require_once QRMS_PLUGIN_DIR . 'modules/qr-servis-paneli/includes/class-qrms-sp-rol.php';
+
+		// Panel sayfası genel modül sayfası mekanizmasıyla (get_module_page_slug)
+		// kaydediliyor; o mekanizma HER modül için sabit QRMS_Admin::CAPABILITY
+		// (manage_options) istiyordu. Modülün kendi personel rolü ('qrms_servis',
+		// yetenek: QRMS_SP_Rol::YETENEK) bu yüzden WordPress menü katmanında hiç
+		// geçemiyordu — panel sayfasının kendi içindeki current_user_can()
+		// kontrolüne asla ulaşamıyordu.
+		qrms_assert_same(
+			QRMS_SP_Rol::YETENEK,
+			QRMS_Admin::get_module_page_capability( 'qr-servis-paneli' ),
+			'servis paneli kendi yetkisini kullanır'
+		);
+
+		// Başka HİÇBİR modülün yetkisi düşürülmemeli.
+		qrms_assert_same(
+			QRMS_Admin::CAPABILITY,
+			QRMS_Admin::get_module_page_capability( 'restoran-menu' ),
+			'diğer modüller manage_options ile kalır'
+		);
+		qrms_assert_same(
+			QRMS_Admin::CAPABILITY,
+			QRMS_Admin::get_module_page_capability( 'qr-chatbot' ),
+			'diğer modüller manage_options ile kalır (2)'
+		);
+	}
+);
+
+qrms_test(
+	'GÜVENLİK: register_menu ve render_module_page sabit CAPABILITY yerine per-modül yetkiyi kullanır',
+	function () {
+		$kaynak = file_get_contents( QRMS_PLUGIN_DIR . 'includes/class-admin.php' );
+
+		qrms_assert_contains( 'self::get_module_page_capability( $slug )', $kaynak, 'register_menu per-modül yetki okur' );
+		qrms_assert_contains( 'current_user_can( self::get_module_page_capability( $slug ) )', $kaynak, 'render_module_page per-modül yetki okur' );
+	}
+);
+
+qrms_test(
+	'GÜVENLİK: "hesap" tipi kayıt tamamlandığında masa oturumu kapatılır',
+	function () {
+		require_once QRMS_PLUGIN_DIR . 'modules/_qmo-ortak/class-qmo-oturum.php';
+
+		update_option(
+			'qmo_firebase_sa',
+			wp_json_encode(
+				array(
+					'project_id'   => 'test-proj',
+					'client_email' => 'sa@test.iam.gserviceaccount.com',
+					'private_key'  => 'test-key',
+				)
+			)
+		);
+		set_transient(
+			'qmo_gcp_token_' . substr( md5( QMO_Firestore::SCOPE_DATASTORE ), 0, 12 ),
+			'test-token',
+			3500
+		);
+
+		// Eskiden epoch YALNIZCA masa silindiğinde artıyordu; hesap ödendiğinde
+		// masa silinmez, oturum çerezi elinde kalan müşteri hard_cap süresine
+		// kadar sipariş/çağrı atmaya devam edebilirdi.
+		$epoch_anahtari = 'qr_masa_epoch_' . md5( 'masa-5' );
+		delete_option( $epoch_anahtari );
+
+		$GLOBALS['qrms_test']['http'] = function ( $url ) {
+			if ( false !== strpos( $url, '/documents/calls/H1' ) ) {
+				return array(
+					'response' => array( 'code' => 200 ),
+					'body'     => wp_json_encode(
+						array(
+							'name'   => 'projects/test-proj/databases/(default)/documents/calls/H1',
+							'fields' => array(
+								'durum'  => array( 'stringValue' => 'serviste' ),
+								'tip'    => array( 'stringValue' => 'hesap' ),
+								'masaNo' => array( 'stringValue' => 'masa-5' ),
+							),
+						)
+					),
+				);
+			}
+
+			return array(
+				'response' => array( 'code' => 404 ),
+				'body'     => '',
+			);
+		};
+
+		$sonuc = QRMS_SP_Veri::durum_degistir( 'H1', 'serviste', 'tamamlandi' );
+
+		qrms_assert_true( true === $sonuc, 'durum değişikliği başarılı' );
+		qrms_assert_same( 1, (int) get_option( $epoch_anahtari ), 'masa oturumu kapatıldı (epoch arttı)' );
+
+		delete_option( $epoch_anahtari );
+		$GLOBALS['qrms_test']['http'] = null;
+		delete_option( 'qmo_firebase_sa' );
+	}
+);
+
+qrms_test(
+	'GÜVENLİK: "sipariş" tipi kayıt tamamlandığında masa oturumu KAPATILMAZ',
+	function () {
+		require_once QRMS_PLUGIN_DIR . 'modules/_qmo-ortak/class-qmo-oturum.php';
+
+		update_option(
+			'qmo_firebase_sa',
+			wp_json_encode(
+				array(
+					'project_id'   => 'test-proj',
+					'client_email' => 'sa@test.iam.gserviceaccount.com',
+					'private_key'  => 'test-key',
+				)
+			)
+		);
+		set_transient(
+			'qmo_gcp_token_' . substr( md5( QMO_Firestore::SCOPE_DATASTORE ), 0, 12 ),
+			'test-token',
+			3500
+		);
+
+		$epoch_anahtari = 'qr_masa_epoch_' . md5( 'masa-6' );
+		delete_option( $epoch_anahtari );
+
+		$GLOBALS['qrms_test']['http'] = function ( $url ) {
+			if ( false !== strpos( $url, '/documents/calls/S1' ) ) {
+				return array(
+					'response' => array( 'code' => 200 ),
+					'body'     => wp_json_encode(
+						array(
+							'name'   => 'projects/test-proj/databases/(default)/documents/calls/S1',
+							'fields' => array(
+								'durum'  => array( 'stringValue' => 'serviste' ),
+								'tip'    => array( 'stringValue' => 'siparis' ),
+								'masaNo' => array( 'stringValue' => 'masa-6' ),
+							),
+						)
+					),
+				);
+			}
+
+			return array(
+				'response' => array( 'code' => 404 ),
+				'body'     => '',
+			);
+		};
+
+		$sonuc = QRMS_SP_Veri::durum_degistir( 'S1', 'serviste', 'tamamlandi' );
+
+		qrms_assert_true( true === $sonuc, 'durum değişikliği başarılı' );
+		qrms_assert_false( (bool) get_option( $epoch_anahtari ), 'sipariş tamamlanması masa oturumunu kapatmaz' );
+
+		$GLOBALS['qrms_test']['http'] = null;
+		delete_option( 'qmo_firebase_sa' );
+	}
+);

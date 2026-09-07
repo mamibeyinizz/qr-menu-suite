@@ -836,6 +836,31 @@ qrms_test(
 );
 
 qrms_test(
+	'GÜVENLİK: sipariş kalemleri menüye karşı sunucuda doğrulanır',
+	function () {
+		$rest = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/rest-order.php' );
+
+		// urunAdi istemciden gelir ve uca doğrudan POST atılabilir; menüde
+		// karşılığı olmayan serbest metin mutfak fişine düşmemeli.
+		qrms_assert_contains( 'function qmo_siparis_kalem_coz', $rest, 'kalem çözümleyici var' );
+		qrms_assert_contains( "'post_status'            => 'publish'", $rest, 'yalnızca yayınlanmış ürün' );
+		qrms_assert_contains( '$urun = qmo_siparis_kalem_coz( $it )', $rest, 'sipariş akışı çözümleyiciyi çağırır' );
+
+		// Fişe yazılan ad sunucudan okunur, istemciden değil.
+		qrms_assert_contains( 'get_the_title( $id )', $rest, 'ad sunucudan okunur' );
+		qrms_assert_contains( '$ad      = $urun[\'ad\']', $rest, 'çözülen ad kaleme yazılır' );
+
+		// Çözülemeyen kalem siparişin tamamını reddetmeli — sessizce
+		// düşürmek müşteriye eksik sipariş verilmesine yol açar.
+		qrms_assert_contains( '$cozulmedi = true', $rest, 'çözülemeyen kalem işaretlenir' );
+		qrms_assert_contains( 'Menüde bulunmayan bir ürün var', $rest, 'sipariş reddedilir' );
+
+		// Porsiyon eki uydurulamamalı: ürünün gerçek listesine karşı doğrulanır.
+		qrms_assert_contains( 'RMA_Porsiyon::gosterim_listesi( $id )', $rest, 'porsiyon doğrulanır' );
+	}
+);
+
+qrms_test(
 	'qmo_ceviri_chat çeviri yoksa Türkçe döner; fetch çerez gönderir',
 	function () {
 		qrms_assert_same(
@@ -1134,5 +1159,116 @@ qrms_test(
 		qrms_assert_contains( 'admin-canli-sohbet.js', $modul, 'JS dosyası enqueue edilir' );
 		qrms_assert_contains( "current_user_can( 'manage_options' )", $sayfa, 'sayfa yetki kontrolü' );
 		qrms_assert_contains( "wp_create_nonce( 'qmo_chatbot_canli' )", $sayfa, 'nonce sayfada basılır' );
+	}
+);
+
+qrms_test(
+	'GÜVENLİK: Firebase ve Gemini sırları autoload dışında tutulur',
+	function () {
+		$help  = file_get_contents( QRMS_PLUGIN_DIR . 'modules/_qmo-ortak/helpers.php' );
+		$ortak = file_get_contents( QRMS_PLUGIN_DIR . 'modules/_qmo-ortak/ortak.php' );
+		$admin = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/includes/admin/admin-sayfa.php' );
+
+		// autoload='yes' ile yazılan sır, her istekte alloptions'a yüklenir:
+		// bir option dökümü ya da başka bir eklentideki açık anahtarı sızdırır.
+		qrms_assert_contains( 'function qmo_autoload_kapat', $help, 'autoload kapatıcı' );
+		qrms_assert_contains( "array( 'qmo_firebase_sa', 'gemini_api_key' )", $help, 'sır listesi' );
+		qrms_assert_contains( 'function qmo_sirlari_autoload_disina_al', $help, 'tek seferlik göç' );
+
+		// Hem kayıt anında hem mevcut kurulumlar için bağlanmalı.
+		qrms_assert_contains( "add_action( 'updated_option', 'qmo_sir_autoload_duzelt'", $ortak, 'kayıtta düzeltilir' );
+		qrms_assert_contains( "add_action( 'admin_init', 'qmo_sirlari_autoload_disina_al' )", $ortak, 'göç bağlı' );
+
+		// Yeni kayıtlar da autoload'suz yazılmalı.
+		qrms_assert_contains( "update_option( 'gemini_api_key', \$api_key, false )", $admin, 'anahtar autoload dışı yazılır' );
+
+		// WP 6.4 öncesi için yedek yol korunmalı (eklenti 6.0 destekliyor).
+		qrms_assert_contains( "function_exists( 'wp_set_option_autoload' )", $help, '6.4 API varsa kullanılır' );
+	}
+);
+
+qrms_test(
+	'GÜVENLİK: qmo_gemini_model whitelist dışı değeri reddeder',
+	function () {
+		update_option( 'qmo_gemini_model', 'gemini-2.5-flash' );
+		qrms_assert_same( 'gemini-2.5-flash', qmo_gemini_model(), 'geçerli değer korunur' );
+
+		update_option( 'qmo_gemini_model', "gemini?x=1\nHost: evil" );
+		qrms_assert_same( 'gemini-3-flash-preview', qmo_gemini_model(), 'geçersiz karakter varsayılana düşer' );
+
+		update_option( 'qmo_gemini_model', '' );
+		qrms_assert_same( 'gemini-3-flash-preview', qmo_gemini_model(), 'boş değer varsayılana düşer' );
+
+		delete_option( 'qmo_gemini_model' );
+	}
+);
+
+qrms_test(
+	'GÜVENLİK: deaktivasyonda qmo_chatbot_gecmis_temizle cron temizlenir',
+	function () {
+		$kok = file_get_contents( QRMS_PLUGIN_DIR . 'qr-menu-suite.php' );
+		qrms_assert_contains( "wp_clear_scheduled_hook( 'qmo_chatbot_gecmis_temizle' )", $kok, 'deaktivasyon chatbot cronunu temizler' );
+	}
+);
+
+qrms_test(
+	'GÜVENLİK: sipariş toplam adedi tavanlı — kalem×adet çarpımı sınırsız değil',
+	function () {
+		$kaynak = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/rest-order.php' );
+
+		// 20 kalem × kalem başına 20 adet = 400 birim; hız sınırının izin
+		// verdiği her pencerede mutfak kuyruğunu/Firestore yazımlarını
+		// boğabilirdi. Kalem sayısı VE kalem başına adet ayrı ayrı
+		// sınırlansa da toplam hiç sınırlanmıyordu.
+		qrms_assert_contains( "array_sum( wp_list_pluck( \$temiz, 'adet' ) )", $kaynak, 'toplam adet hesaplanır' );
+		qrms_assert_contains( '$toplam_adet > 60', $kaynak, 'toplam tavana çekilir' );
+
+		// Tavan, tükendi/kampanya filtrelerinden (qmo_siparis_onay_oncesi)
+		// ÖNCE kontrol edilmeli — gereksiz iş yapılmasın.
+		$tavan_pos  = strpos( $kaynak, '$toplam_adet > 60' );
+		$filtre_pos = strpos( $kaynak, "apply_filters( 'qmo_siparis_onay_oncesi'" );
+		qrms_assert_true( false !== $tavan_pos && false !== $filtre_pos && $tavan_pos < $filtre_pos, 'tavan filtreden önce kontrol edilir' );
+	}
+);
+
+qrms_test(
+	'GÜVENLİK: döviz kuru yanıtı makul aralık dışındaysa yedek kura düşer',
+	function () {
+		// Bozuk/manipüle bir yanıt (0, negatif, saçma büyük değer) doğrudan
+		// müşteriye gösterilen yaklaşık fiyata dönüşmemeli.
+		$GLOBALS['qrms_test']['http'] = function () {
+			return array(
+				'response' => array( 'code' => 200 ),
+				'body'     => wp_json_encode( array( 'rates' => array( 'USD' => 0, 'EUR' => -5 ) ) ),
+			);
+		};
+		delete_transient( 'qmo_sepet_kur' );
+		$kur = qmo_sepet_kur();
+		qrms_assert_same( 0.0207, $kur['USD'], 'sıfır USD yedeğe düşer' );
+		qrms_assert_same( 0.0179, $kur['EUR'], 'negatif EUR yedeğe düşer' );
+
+		$GLOBALS['qrms_test']['http'] = function () {
+			return array(
+				'response' => array( 'code' => 200 ),
+				'body'     => wp_json_encode( array( 'rates' => array( 'USD' => 999, 'EUR' => 999 ) ) ),
+			);
+		};
+		delete_transient( 'qmo_sepet_kur' );
+		$kur2 = qmo_sepet_kur();
+		qrms_assert_same( 0.0207, $kur2['USD'], 'aşırı büyük değer yedeğe düşer' );
+
+		// Makul bir değer kabul edilir.
+		$GLOBALS['qrms_test']['http'] = function () {
+			return array(
+				'response' => array( 'code' => 200 ),
+				'body'     => wp_json_encode( array( 'rates' => array( 'USD' => 0.025, 'EUR' => 0.021 ) ) ),
+			);
+		};
+		delete_transient( 'qmo_sepet_kur' );
+		$kur3 = qmo_sepet_kur();
+		qrms_assert_same( 0.025, $kur3['USD'], 'makul değer kabul edilir' );
+
+		$GLOBALS['qrms_test']['http'] = null;
+		delete_transient( 'qmo_sepet_kur' );
 	}
 );

@@ -9,6 +9,7 @@
 
 require_once QRMS_PLUGIN_DIR . 'modules/qr-menu-muhendisligi/includes/class-qrms-mm-hesap.php';
 require_once QRMS_PLUGIN_DIR . 'modules/qr-menu-muhendisligi/includes/class-qrms-mm-maliyet.php';
+require_once QRMS_PLUGIN_DIR . 'modules/qr-menu-muhendisligi/includes/export-csv.php';
 
 echo "\nMenü Mühendisliği\n";
 
@@ -414,5 +415,19 @@ qrms_test(
 
 		$GLOBALS['qrms_test']['actions']['qrms_mm_toplu_sinir'] = array();
 		unset( $GLOBALS['qrms_test']['doing_action'], $GLOBALS['qrms_test']['posts'] );
+	}
+);
+
+qrms_test(
+	'GÜVENLİK: menü mühendisliği CSV dışa aktarımında formül enjeksiyonu kaçırılır',
+	function () {
+		$kaynak = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-menu-muhendisligi/includes/export-csv.php' );
+
+		qrms_assert_contains( 'function qrms_mm_csv_hucre(', $kaynak, 'kaçırma fonksiyonu tanımlı' );
+		qrms_assert_contains( "qrms_mm_csv_hucre( \$urun['item_name'] )", $kaynak, 'ürün adı kaçırılır' );
+		qrms_assert_contains( "qrms_mm_csv_hucre( \$urun['category_name'] )", $kaynak, 'kategori adı kaçırılır' );
+
+		qrms_assert_same( "'=DDE(...)", qrms_mm_csv_hucre( '=DDE(...)' ), 'formül karakteri kaçırılır' );
+		qrms_assert_same( 'Mercimek Çorbası', qrms_mm_csv_hucre( 'Mercimek Çorbası' ), 'normal ad değişmez' );
 	}
 );

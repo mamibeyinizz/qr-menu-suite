@@ -409,7 +409,12 @@ if ( ! function_exists( 'qmo_tum_onbellek_temizle' ) ) {
 if ( ! function_exists( 'qmo_ip_hash' ) ) {
 	function qmo_ip_hash() {
 		$ip = isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) ) : '';
-		return substr( md5( $ip . '|' . wp_salt( 'auth' ) ), 0, 16 );
+
+		// hash_hmac ile doğru MAC yapısı kullanılır (ham birleştirme yerine);
+		// tuz bir şekilde sızarsa IPv4 uzayının (2^32) hızlı donanımla saniyeler
+		// içinde geri çözülmesi riski hâlâ küçük uzaydan kaynaklanır, ama en
+		// azından hash-flooding/uzatma sınıfı zayıflıklara açık kapı bırakılmaz.
+		return substr( hash_hmac( 'sha256', $ip, wp_salt( 'auth' ) ), 0, 16 );
 	}
 }
 
@@ -590,8 +595,19 @@ if ( ! function_exists( 'qmo_db_geri_baglan' ) ) {
  */
 if ( ! function_exists( 'qmo_gemini_model' ) ) {
 	function qmo_gemini_model() {
-		$m = trim( (string) get_option( 'qmo_gemini_model', '' ) );
-		return '' !== $m ? $m : 'gemini-3-flash-preview';
+		$varsayilan = 'gemini-3-flash-preview';
+		$m          = trim( (string) get_option( 'qmo_gemini_model', '' ) );
+
+		// Değer doğrudan Gemini istek URL'sinin YOL parçasına gömülür; boş
+		// kontrolü dışında hiç doğrulanmıyordu. Model adları küçük harf,
+		// rakam, nokta ve tire dışında karakter taşımaz — beklenmedik bir
+		// değer (yanlış yapıştırma, sorgu dizesi enjekte etme denemesi)
+		// isteğin yolunu/parametrelerini bozmasın diye reddedilir.
+		if ( '' === $m || ! preg_match( '/^[a-z0-9.\-]+$/', $m ) ) {
+			return $varsayilan;
+		}
+
+		return $m;
 	}
 }
 
@@ -767,5 +783,99 @@ if ( ! function_exists( 'qrservis_masa_gecerli_mi' ) ) {
 	 */
 	function qrservis_masa_gecerli_mi( $slug ) {
 		return qmo_masa_gecerli_mi( $slug );
+	}
+}
+
+/* -------------------------------------------------------------------------
+ * SIRLARIN AUTOLOAD DIŞINDA TUTULMASI
+ *
+ * `qmo_firebase_sa` (Firebase private key'ini içeren tam service-account
+ * JSON'u) ve `gemini_api_key` varsayılan olarak autoload='yes' ile yazılıyordu:
+ * her istekte `alloptions` içine yükleniyorlar demektir. Bir yedekleme
+ * eklentisinin option dökümü, bir hata ayıklama çıktısı ya da BAŞKA bir
+ * eklentideki SQL enjeksiyonu bu anahtarları tek hamlede sızdırır.
+ *
+ * Anahtarlar yalnızca kendi uçlarında okunduğu için autoload'a hiç ihtiyaçları
+ * yok. Aşağısı hem kayıt anında (updated/added_option) hem de mevcut
+ * kurulumlar için bir kez (qmo_sirlari_autoload_disina_al) bayrağı düşürür.
+ * ---------------------------------------------------------------------- */
+
+if ( ! function_exists( 'qmo_sir_option_adlari' ) ) {
+	/**
+	 * Autoload dışında tutulması gereken sır option'ları.
+	 *
+	 * @return string[]
+	 */
+	function qmo_sir_option_adlari() {
+		return array( 'qmo_firebase_sa', 'gemini_api_key' );
+	}
+}
+
+if ( ! function_exists( 'qmo_autoload_kapat' ) ) {
+	/**
+	 * Bir option'ın autoload bayrağını kapatır.
+	 *
+	 * WordPress 6.4 öncesinde autoload'u değiştiren bir API yok; eklenti 6.0'ı
+	 * desteklediği için varsa çekirdek fonksiyonu, yoksa doğrudan tablo
+	 * güncellemesi kullanılır (ardından alloptions önbelleği tazelenir).
+	 *
+	 * @param string $option Option adı.
+	 * @return void
+	 */
+	function qmo_autoload_kapat( $option ) {
+		if ( function_exists( 'wp_set_option_autoload' ) ) {
+			wp_set_option_autoload( $option, false );
+			return;
+		}
+
+		global $wpdb;
+
+		$degisti = $wpdb->update(
+			$wpdb->options,
+			array( 'autoload' => 'no' ),
+			array(
+				'option_name' => $option,
+				'autoload'    => 'yes',
+			),
+			array( '%s' ),
+			array( '%s', '%s' )
+		);
+
+		if ( $degisti ) {
+			wp_cache_delete( 'alloptions', 'options' );
+		}
+	}
+}
+
+if ( ! function_exists( 'qmo_sir_autoload_duzelt' ) ) {
+	/**
+	 * Sır option'ı her yazıldığında autoload bayrağını kapalı tutar.
+	 *
+	 * @param string $option Yazılan option adı.
+	 * @return void
+	 */
+	function qmo_sir_autoload_duzelt( $option ) {
+		if ( in_array( (string) $option, qmo_sir_option_adlari(), true ) ) {
+			qmo_autoload_kapat( (string) $option );
+		}
+	}
+}
+
+if ( ! function_exists( 'qmo_sirlari_autoload_disina_al' ) ) {
+	/**
+	 * Mevcut kurulumlar için tek seferlik göç.
+	 *
+	 * @return void
+	 */
+	function qmo_sirlari_autoload_disina_al() {
+		if ( get_option( 'qmo_sir_autoload_gocu' ) ) {
+			return;
+		}
+
+		foreach ( qmo_sir_option_adlari() as $option ) {
+			qmo_autoload_kapat( $option );
+		}
+
+		add_option( 'qmo_sir_autoload_gocu', 1, '', false );
 	}
 }

@@ -290,6 +290,19 @@ function wp_remote_post( $url, $args = array() ) {
 }
 
 /**
+ * wp_remote_post'un SSRF korumalı gerçek varyantının taklidi. Testte davranış
+ * aynıdır; gerçek WordPress'te bu varyant özel/yerel IP aralıklarına isteği
+ * reddeder.
+ *
+ * @param string $url  Adres.
+ * @param array  $args Argümanlar.
+ * @return array|WP_Error
+ */
+function wp_safe_remote_post( $url, $args = array() ) {
+	return wp_remote_post( $url, $args );
+}
+
+/**
  * HTTP GET taklidi.
  *
  * @param string $url  Adres.
@@ -697,6 +710,32 @@ function current_user_can( $capability, ...$args ) {
 	}
 
 	return (bool) $GLOBALS['qrms_test']['can'];
+}
+
+/**
+ * Geçerli kullanıcının ID'si. Testte $GLOBALS['qrms_test']['current_user_id']
+ * ile ayarlanabilir; varsayılan 1.
+ *
+ * @return int
+ */
+function get_current_user_id() {
+	return isset( $GLOBALS['qrms_test']['current_user_id'] ) ? (int) $GLOBALS['qrms_test']['current_user_id'] : 1;
+}
+
+/**
+ * Geçerli kullanıcı nesnesi taklidi (yalnızca testlerin ihtiyaç duyduğu
+ * ID ve display_name alanlarını taşır).
+ *
+ * @return object
+ */
+function wp_get_current_user() {
+	$kullanici               = new stdClass();
+	$kullanici->ID           = get_current_user_id();
+	$kullanici->display_name = isset( $GLOBALS['qrms_test']['current_user_display_name'] )
+		? $GLOBALS['qrms_test']['current_user_display_name']
+		: 'Test Kullanıcı';
+
+	return $kullanici;
 }
 
 /**
@@ -1252,6 +1291,15 @@ function wp_add_inline_style( $handle, $data ) {
  */
 function is_admin() {
 	return ! empty( $GLOBALS['qrms_test']['is_admin'] );
+}
+
+/**
+ * Yazar arşivi mi?
+ *
+ * @return bool
+ */
+function is_author() {
+	return ! empty( $GLOBALS['qrms_test']['is_author'] );
 }
 
 /**

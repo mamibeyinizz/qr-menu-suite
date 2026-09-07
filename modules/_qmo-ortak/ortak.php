@@ -43,3 +43,11 @@ require_once __DIR__ . '/class-qmo-firestore.php';
 require_once __DIR__ . '/helpers.php';
 require_once __DIR__ . '/color-defaults.php';
 require_once __DIR__ . '/assets.php';
+
+// Firebase service-account JSON'u ve Gemini anahtarı autoload dışında tutulur:
+// her istekte alloptions'a yüklenmeleri, bir option dökümünü ya da başka bir
+// eklentideki açığı doğrudan anahtar sızıntısına çevirir. Kayıt anında ve
+// mevcut kurulumlar için bir kez düzeltilir.
+add_action( 'added_option', 'qmo_sir_autoload_duzelt', 10, 1 );
+add_action( 'updated_option', 'qmo_sir_autoload_duzelt', 10, 1 );
+add_action( 'admin_init', 'qmo_sirlari_autoload_disina_al' );

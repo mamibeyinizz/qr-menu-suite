@@ -230,6 +230,30 @@ function qrm_pro_admin_settings() {
                             <p class="description"><?php esc_html_e('Onay metninin yanında "Aydınlatma Metni" bağlantısı olarak açılır.', 'qrms'); ?></p>
                         </td>
                     </tr>
+                    <tr>
+                        <th><label for="qrm_saklama_gun"><?php esc_html_e('Saklama süresi', 'qrms'); ?></label></th>
+                        <td>
+                            <input type="number" id="qrm_saklama_gun" name="qrm_saklama_gun" min="0" step="1" class="small-text"
+                                   value="<?php echo esc_attr((string) get_option('qrm_saklama_gun', 0)); ?>">
+                            <?php esc_html_e('gün', 'qrms'); ?>
+                            <p class="description">
+                                <?php esc_html_e('Bu süreden eski kayıtlarda ad, telefon ve dahili not günlük olarak anonimleştirilir; form gönderimleri silinir. Yorum metni ve puan istatistik için korunur. 0 = süresiz saklama (varsayılan).', 'qrms'); ?>
+                            </p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th><?php esc_html_e('Eklenti silinirken', 'qrms'); ?></th>
+                        <td>
+                            <label>
+                                <input type="checkbox" name="qrms_uninstall_veri_sil" value="1"
+                                    <?php checked((bool) get_option('qrms_uninstall_veri_sil'), true); ?>>
+                                <?php esc_html_e('Eklenti WordPress\'ten silindiğinde tüm tabloları ve ayarları da sil', 'qrms'); ?>
+                            </label>
+                            <p class="description">
+                                <?php esc_html_e('Varsayılan olarak kapalıdır: eklenti kaldırılsa bile yorumlar, ödüller ve analitik veritabanında kalır. İşaretlerseniz kaldırma işlemi bu verileri geri alınamaz biçimde siler.', 'qrms'); ?>
+                            </p>
+                        </td>
+                    </tr>
                 </table>
             </div>
 
@@ -391,6 +415,15 @@ function qrm_pro_admin_save_settings() {
     if (array_key_exists('qrm_consent_page_url', $_POST)) {
         $settings['qrm_consent_page_url'] = esc_url_raw(trim(wp_unslash($_POST['qrm_consent_page_url'])));
     }
+
+    // Saklama süresi ve kaldırma tercihi ayrı option'larda durur: ilkini cron,
+    // ikincisini uninstall.php okur — ikisi de qrm_settings dizisi yüklenmeden
+    // erişilebilir olmalı.
+    if (array_key_exists('qrm_saklama_gun', $_POST)) {
+        update_option('qrm_saklama_gun', max(0, intval(wp_unslash($_POST['qrm_saklama_gun']))), false);
+    }
+
+    update_option('qrms_uninstall_veri_sil', isset($_POST['qrms_uninstall_veri_sil']) ? 1 : 0, false);
 
     $settings['qrm_media_enabled']   = isset($_POST['qrm_media_enabled']) ? 1 : 0;
     $settings['qrm_media_max_files'] = max(1, min(5, intval($_POST['qrm_media_max_files'] ?? 2)));
