@@ -611,3 +611,43 @@ qrms_test(
 		qrms_assert_contains( "get_post_type( \$post_id ) !== 'rma_menu_item'", $kaynak, 'post tipi doğrulanır' );
 	}
 );
+
+qrms_test(
+	'GÜVENLİK: rma_views kimliksiz uçta IP+ürün başına hız sınırlı',
+	function () {
+		$kaynak = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-ajax.php' );
+
+		// Uç kimliksizdir (soft nonce); sayaç öncesinde hiçbir sınır yoktu,
+		// scriptle tekrarlanan istek her seferinde ayrı bir postmeta UPDATE'i
+		// üretiyordu.
+		qrms_assert_contains( "'rma_view_' . \$id . '_' . md5( \$ip )", $kaynak, 'IP+ürün başına kilit anahtarı' );
+		qrms_assert_contains( 'set_transient( $kilit, 1, MINUTE_IN_SECONDS )', $kaynak, 'dakikalık pencere' );
+	}
+);
+
+qrms_test(
+	'GÜVENLİK: JSON menü içe aktarımında görsel URL\'i http(s) ile sınırlı',
+	function () {
+		$kaynak = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-import-export.php' );
+
+		qrms_assert_contains( "0 !== stripos( \$image_url, 'http://' ) && 0 !== stripos( \$image_url, 'https://' )", $kaynak, 'şema http(s) ile sınırlı' );
+	}
+);
+
+qrms_test(
+	'GÜVENLİK: galeri AJAX uçları post tipini doğrular',
+	function () {
+		$kaynak = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-galeri/includes/trait-ajax.php' );
+
+		// ID doğrudan POST'tan geliyordu; tip kontrolü olmadan bu uçlar galeri
+		// dışındaki HERHANGİ bir post'u silebilir/durumunu değiştirebilirdi.
+		qrms_assert_contains( 'self::CPT_SECTION !== get_post_type( $id )', $kaynak, 'bölüm silme/durum/sıralama tip kontrolü' );
+		qrms_assert_contains( 'self::CPT_IMAGE !== get_post_type( $id )', $kaynak, 'görsel silme tip kontrolü' );
+
+		// En az 3 farklı uçta (sil, durum değiştir, sırala) kontrol geçmeli.
+		qrms_assert_true(
+			substr_count( $kaynak, 'self::CPT_SECTION !== get_post_type( $id )' ) >= 3,
+			'bölüm kontrolü birden çok uçta'
+		);
+	}
+);

@@ -541,6 +541,15 @@ trait RMA_Import_Export_Trait {
 
             // Öne çıkan görsel — aynı URL ise tekrar indirilmez, kütüphanede varsa yeniden yüklenmez
             $image_url = esc_url_raw( $item['image_url'] ?? '' );
+            // GÜVENLİK: media_sideload_image() sunucu tarafından dış bir isteği
+            // tetikler (SSRF çekirdeğin download_url()/wp_safe_remote_get()'i
+            // zaten özel/yerel IP'leri engelliyor, ama şema burada ayrıca
+            // http(s) ile sınırlanır — esc_url_raw ftp/tel gibi başka
+            // şemalara da izin verebilir, bu fonksiyonların hiçbiri onları
+            // anlamaz).
+            if ( $image_url && 0 !== stripos( $image_url, 'http://' ) && 0 !== stripos( $image_url, 'https://' ) ) {
+                $image_url = '';
+            }
             if ( $image_url ) {
                 $current_thumb_id = get_post_thumbnail_id( $pid );
                 $current_url      = $current_thumb_id ? wp_get_attachment_url( $current_thumb_id ) : '';
