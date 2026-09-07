@@ -7,7 +7,11 @@ trait RMA_Import_Export_Trait {
     public function handle_csv_import() {
         if ( ! isset( $_POST['rma_import_csv_nonce'] ) ) return;
         if ( ! wp_verify_nonce( $_POST['rma_import_csv_nonce'], 'rma_import_csv_action' ) ) return;
-        if ( ! current_user_can( 'edit_posts' ) ) return;
+        // Toplu içe aktarım tüm menüyü yazar ve doğrudan publish eder; ekranın
+        // kendisi de manage_options ile kayıtlı. edit_posts (Katkıda Bulunan
+        // seviyesi) buraya yetmemeli.
+        $yetki = class_exists( 'QRMS_Admin' ) ? QRMS_Admin::CAPABILITY : 'manage_options';
+        if ( ! current_user_can( $yetki ) ) return;
 
         if ( isset( $_FILES['rma_csv_file'] ) && $_FILES['rma_csv_file']['error'] === UPLOAD_ERR_OK ) {
             $content = file_get_contents( $_FILES['rma_csv_file']['tmp_name'] );
@@ -213,7 +217,10 @@ trait RMA_Import_Export_Trait {
         if ( ! isset( $_GET['_wpnonce'] ) || ! wp_verify_nonce( $_GET['_wpnonce'], 'rma_export_menu_action' ) ) {
             wp_die( 'Güvenlik doğrulaması başarısız.' );
         }
-        if ( ! current_user_can( 'edit_posts' ) ) wp_die( 'Yetkiniz yok.' );
+        // Dışa aktarım taslak/özel ürünleri ve maliyet/fiyat alanlarını da
+        // döker; ekranla aynı yetkiyi ister.
+        $yetki = class_exists( 'QRMS_Admin' ) ? QRMS_Admin::CAPABILITY : 'manage_options';
+        if ( ! current_user_can( $yetki ) ) wp_die( 'Yetkiniz yok.' );
 
         if ( function_exists( 'set_time_limit' ) ) @set_time_limit( 0 );
 
@@ -407,7 +414,10 @@ trait RMA_Import_Export_Trait {
     public function handle_menu_import() {
         if ( ! isset( $_POST['rma_import_menu_nonce'] ) ) return;
         if ( ! wp_verify_nonce( $_POST['rma_import_menu_nonce'], 'rma_import_menu_action' ) ) return;
-        if ( ! current_user_can( 'edit_posts' ) ) return;
+        // JSON içe aktarımı dosyadaki export_id/başlık eşleşmesiyle MEVCUT
+        // ürünleri ezer ve yayına alır; ekranla aynı yetkiyi ister.
+        $yetki = class_exists( 'QRMS_Admin' ) ? QRMS_Admin::CAPABILITY : 'manage_options';
+        if ( ! current_user_can( $yetki ) ) return;
 
         if ( empty( $_FILES['rma_menu_json_file'] ) || $_FILES['rma_menu_json_file']['error'] !== UPLOAD_ERR_OK ) {
             wp_redirect( $this->admin_page_url( 'qrms-rm-diger', [ 'rma_backup_error' => 1 ], 'rma-yedekleme' ) );
@@ -426,6 +436,7 @@ trait RMA_Import_Export_Trait {
         global $wpdb;
         $updated = 0;
         $created = 0;
+        $atlanan = 0;   // Üzerinde yetki olmayan ürünler (ezilmeden geçilir).
 
         if ( function_exists( 'set_time_limit' ) ) @set_time_limit( 0 );
 
@@ -479,6 +490,13 @@ trait RMA_Import_Export_Trait {
             ];
 
             if ( $pid ) {
+                // Dosyadaki export_id/başlık rastgele bir ürünü işaret edebilir;
+                // ezmeden önce o ürün üzerinde gerçekten yetki aranır.
+                if ( ! current_user_can( 'edit_post', $pid ) ) {
+                    $atlanan++;
+                    continue;
+                }
+
                 $postarr['ID'] = $pid;
                 wp_update_post( $postarr );
                 $updated++;
@@ -551,7 +569,7 @@ trait RMA_Import_Export_Trait {
         wp_redirect(
             $this->admin_page_url(
                 'qrms-rm-diger',
-                [ 'rma_updated' => $updated, 'rma_created' => $created ],
+                [ 'rma_updated' => $updated, 'rma_created' => $created, 'rma_atlanan' => $atlanan ],
                 'rma-yedekleme'
             )
         );
@@ -567,6 +585,14 @@ trait RMA_Import_Export_Trait {
                 intval( $_GET['rma_updated'] ?? 0 ),
                 intval( $_GET['rma_created'] ?? 0 )
             );
+
+            $atlanan = intval( $_GET['rma_atlanan'] ?? 0 );
+            if ( $atlanan > 0 ) {
+                printf(
+                    '<div class="notice notice-warning"><p><strong>%d</strong> ürün, üzerinde düzenleme yetkiniz olmadığı için atlandı.</p></div>',
+                    $atlanan
+                );
+            }
         }
         if ( isset( $_GET['rma_backup_error'] ) ) {
             echo '<div class="error"><p>Dosya okunamadı veya format geçersiz. Lütfen bu sayfadan dışa aktarılmış bir JSON dosyası yükleyin.</p></div>';

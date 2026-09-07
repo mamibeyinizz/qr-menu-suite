@@ -291,7 +291,8 @@ trait RMA_Urunum_Yok_Admin_Trait {
         if ( ! isset( $_POST['qmo_uy_mark_nonce'] ) || ! wp_verify_nonce( $_POST['qmo_uy_mark_nonce'], 'qmo_uy_mark_action' ) ) {
             wp_die( 'Güvenlik doğrulaması başarısız.' );
         }
-        if ( ! current_user_can( 'edit_posts' ) ) wp_die( 'Yetkiniz yok.' );
+        $yetki = class_exists( 'QRMS_Admin' ) ? QRMS_Admin::CAPABILITY : 'manage_options';
+        if ( ! current_user_can( $yetki ) ) wp_die( 'Yetkiniz yok.' );
 
         $ingredient_id = isset( $_POST['qmo_uy_malzeme_id'] ) ? (int) $_POST['qmo_uy_malzeme_id'] : 0;
         $raw_datetime  = isset( $_POST['qmo_uy_bitis'] ) ? sanitize_text_field( $_POST['qmo_uy_bitis'] ) : '';
@@ -317,6 +318,8 @@ trait RMA_Urunum_Yok_Admin_Trait {
         foreach ( $product_ids as $pid ) {
             $post = get_post( $pid );
             if ( ! $post || 'rma_menu_item' !== $post->post_type ) continue;
+            // ID'ler POST'tan geliyor; ürün bazında da yetki aranır.
+            if ( ! current_user_can( 'edit_post', $pid ) ) continue;
             if ( RMA_Urunum_Yok_Stock::isaretle( $pid, $ingredient_id, $timestamp ) ) $marked++;
         }
 
@@ -437,7 +440,8 @@ trait RMA_Urunum_Yok_Admin_Trait {
         if ( ! isset( $_GET['_wpnonce'] ) || ! wp_verify_nonce( $_GET['_wpnonce'], 'qmo_uy_csv_export' ) ) {
             wp_die( 'Güvenlik doğrulaması başarısız.' );
         }
-        if ( ! current_user_can( 'edit_posts' ) ) wp_die( 'Yetkiniz yok.' );
+        $yetki = class_exists( 'QRMS_Admin' ) ? QRMS_Admin::CAPABILITY : 'manage_options';
+        if ( ! current_user_can( $yetki ) ) wp_die( 'Yetkiniz yok.' );
         if ( function_exists( 'set_time_limit' ) ) @set_time_limit( 0 );
 
         nocache_headers();
@@ -493,7 +497,8 @@ trait RMA_Urunum_Yok_Admin_Trait {
         if ( ! isset( $_POST['qmo_uy_csv_nonce'] ) || ! wp_verify_nonce( $_POST['qmo_uy_csv_nonce'], 'qmo_uy_csv_import' ) ) {
             wp_die( 'Güvenlik doğrulaması başarısız.' );
         }
-        if ( ! current_user_can( 'edit_posts' ) ) wp_die( 'Yetkiniz yok.' );
+        $yetki = class_exists( 'QRMS_Admin' ) ? QRMS_Admin::CAPABILITY : 'manage_options';
+        if ( ! current_user_can( $yetki ) ) wp_die( 'Yetkiniz yok.' );
 
         if ( empty( $_FILES['qmo_uy_csv_file'] ) || $_FILES['qmo_uy_csv_file']['error'] !== UPLOAD_ERR_OK ) {
             wp_redirect( $this->admin_page_url( 'qrms-rm-diger', [ 'qmo_uy_csv_hata' => 1 ], 'rma-malzeme-aktar' ) );
@@ -602,12 +607,18 @@ trait RMA_Urunum_Yok_Admin_Trait {
         if ( ! isset( $_POST['qmo_uy_csv_confirm_nonce'] ) || ! wp_verify_nonce( $_POST['qmo_uy_csv_confirm_nonce'], 'qmo_uy_csv_confirm' ) ) {
             wp_die( 'Güvenlik doğrulaması başarısız.' );
         }
-        if ( ! current_user_can( 'edit_posts' ) ) wp_die( 'Yetkiniz yok.' );
+        $yetki = class_exists( 'QRMS_Admin' ) ? QRMS_Admin::CAPABILITY : 'manage_options';
+        if ( ! current_user_can( $yetki ) ) wp_die( 'Yetkiniz yok.' );
 
         $token   = isset( $_POST['qmo_uy_csv_token'] ) ? sanitize_text_field( $_POST['qmo_uy_csv_token'] ) : '';
         $preview = $token ? get_transient( 'qmo_uy_csv_' . $token ) : false;
 
-        if ( ! $preview || ! is_array( $preview ) ) {
+        // Önizleme, onu oluşturan kullanıcıya bağlıdır: token yalnızca formda
+        // taşındığı için (Referer sızıntısı, paylaşılan ekran) başkasının
+        // önizlemesinin uygulanmasını engeller.
+        $sahip = ( is_array( $preview ) && isset( $preview['user'] ) ) ? (int) $preview['user'] : 0;
+
+        if ( ! $preview || ! is_array( $preview ) || $sahip !== get_current_user_id() ) {
             wp_redirect( $this->admin_page_url( 'qrms-rm-diger', [ 'qmo_uy_csv_hata' => 1 ], 'rma-malzeme-aktar' ) );
             exit;
         }
@@ -624,6 +635,10 @@ trait RMA_Urunum_Yok_Admin_Trait {
         foreach ( $preview['rows'] as $row ) {
             $pid = (int) ( $row['pid'] ?? 0 );
             if ( ! $pid ) continue;
+            // Önizleme satırları CSV'den geldi; fiyat/kategori yazmadan önce
+            // ürünün tipi ve o ürün üzerindeki yetki doğrulanır.
+            if ( 'rma_menu_item' !== get_post_type( $pid ) ) continue;
+            if ( ! current_user_can( 'edit_post', $pid ) ) continue;
 
             if ( '' !== trim( (string) $row['price'] ) ) {
                 update_post_meta( $pid, 'rma_price', sanitize_text_field( $row['price'] ) );

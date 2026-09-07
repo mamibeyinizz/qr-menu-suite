@@ -454,6 +454,31 @@ qrms_test(
 );
 
 qrms_test(
+	'GÜVENLİK: toplu menü/fiyat yazan uçlar ekranla aynı yetkiyi ister',
+	function () {
+		$ie    = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-import-export.php' );
+		$uy    = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/urunum-yok/trait-admin.php' );
+
+		// Ekranlar manage_options ile kayıtlı; işleyicilerin edit_posts
+		// (Katkıda Bulunan seviyesi) kabul etmesi tüm menünün ve fiyat
+		// listesinin düşük yetkiyle ezilmesine izin veriyordu.
+		qrms_assert_false( false !== strpos( $ie, "current_user_can( 'edit_posts' )" ), 'içe/dışa aktarımda edit_posts kalmadı' );
+		qrms_assert_false( false !== strpos( $uy, "current_user_can( 'edit_posts' )" ), 'ürünüm yok uçlarında edit_posts kalmadı' );
+
+		// Modül tek başına da çalışabildiği için suite yoksa manage_options'a düşer.
+		qrms_assert_contains( "class_exists( 'QRMS_Admin' ) ? QRMS_Admin::CAPABILITY : 'manage_options'", $ie, 'içe/dışa aktarım yetkisi' );
+		qrms_assert_contains( "class_exists( 'QRMS_Admin' ) ? QRMS_Admin::CAPABILITY : 'manage_options'", $uy, 'ürünüm yok yetkisi' );
+
+		// Dosyadaki ID rastgele bir ürünü işaret edebilir: ürün bazlı kontrol.
+		qrms_assert_contains( "current_user_can( 'edit_post', \$pid )", $ie, 'JSON içe aktarımda ürün bazlı yetki' );
+		qrms_assert_contains( "current_user_can( 'edit_post', \$pid )", $uy, 'CSV/işaretlemede ürün bazlı yetki' );
+
+		// Önizleme token'ı onu oluşturan kullanıcıya bağlı olmalı.
+		qrms_assert_contains( '$sahip !== get_current_user_id()', $uy, 'önizleme sahibi doğrulanır' );
+	}
+);
+
+qrms_test(
 	'Ürünüm Yok sayfası elle kapatılanları malzeme listesinin üstünde basar',
 	function () {
 		$admin = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/urunum-yok/trait-admin.php' );
