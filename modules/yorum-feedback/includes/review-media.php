@@ -201,12 +201,17 @@ function qrm_pro_media_upload_one(array $file_array, $max_bytes) {
         return new WP_Error('qrm_media', $upload['error']);
     }
 
+    // GÜVENLİK: ebeveyni olmayan `inherit` ekleri WordPress `publish` sayar —
+    // yorum onay beklerken bile /?attachment_id=N sayfası herkese açık olur ve
+    // ek kimlikleri sırayla taranarak moderasyondan geçmemiş görsel restoranın
+    // alan adı üzerinden yayınlanabilirdi. `private` ile ek sayfası oturumsuz
+    // ziyaretçiye 404 döner; yorum onaylandığında `inherit`e çevrilir.
     $attachment_id = wp_insert_attachment(
         [
             'post_mime_type' => $upload['type'],
             'post_title'     => sanitize_file_name(pathinfo($name, PATHINFO_FILENAME)),
             'post_content'   => '',
-            'post_status'    => 'inherit',
+            'post_status'    => 'private',
             'post_parent'    => 0,
         ],
         $upload['file']
@@ -430,6 +435,46 @@ function qrm_pro_delete_review_media($review_id) {
     }
 
     $wpdb->delete(qrm_review_media_table(), ['review_id' => $review_id], ['%d']);
+}
+
+/**
+ * Yoruma bağlı eklerin yayın durumunu yorumun durumuyla eşitler.
+ *
+ * Ekler yüklenirken `private` açılır: onay beklerken ek sayfası oturumsuz
+ * ziyaretçiye 404 döner ve ek kimlikleri taranarak moderasyondan geçmemiş
+ * görsel yayınlanamaz. Yorum yayına alındığında `inherit`e çevrilir, yayından
+ * kaldırıldığında tekrar `private` olur.
+ *
+ * NOT: Bu, ek SAYFASINI ve numaralandırmayı kapatır; dosyanın kendisi
+ * uploads dizininde durduğu için tam URL'i bilen biri yine erişebilir.
+ * Dosyayı da kapatmak uploads dışında korumalı bir dizin + vekil uç gerektirir.
+ *
+ * @param int  $review_id Yorum kimliği.
+ * @param bool $onayli    Yorum yayında mı?
+ * @return void
+ */
+function qrm_pro_media_sync_status($review_id, $onayli) {
+    $review_id = (int) $review_id;
+    if ($review_id <= 0) {
+        return;
+    }
+
+    $hedef = $onayli ? 'inherit' : 'private';
+
+    foreach (qrm_pro_get_review_media($review_id) as $row) {
+        $att_id = (int) $row->attachment_id;
+
+        if ($att_id <= 0 || get_post_status($att_id) === $hedef) {
+            continue;
+        }
+
+        wp_update_post(
+            [
+                'ID'          => $att_id,
+                'post_status' => $hedef,
+            ]
+        );
+    }
 }
 
 /**

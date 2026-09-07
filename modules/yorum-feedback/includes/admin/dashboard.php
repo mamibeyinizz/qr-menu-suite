@@ -900,11 +900,18 @@ function qrm_pro_admin_handle_review_actions() {
 
     if ($action === 'approve') {
         $wpdb->update($table_reviews, ['status' => 1], ['id' => $id]);
+        // Ekler yorumla birlikte yayına açılır (yükleme sırasında private).
+        if (function_exists('qrm_pro_media_sync_status')) {
+            qrm_pro_media_sync_status($id, true);
+        }
         qrm_pro_flush_review_stats();
         return __('Yorum yayınlandı.', 'qrms');
     }
     if ($action === 'unapprove') {
         $wpdb->update($table_reviews, ['status' => 0], ['id' => $id]);
+        if (function_exists('qrm_pro_media_sync_status')) {
+            qrm_pro_media_sync_status($id, false);
+        }
         qrm_pro_flush_review_stats();
         return __('Yorum yayından kaldırıldı.', 'qrms');
     }

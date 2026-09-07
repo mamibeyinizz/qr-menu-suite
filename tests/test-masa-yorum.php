@@ -951,3 +951,28 @@ qrms_test(
  * ------------------------------------------------------------------------ */
 
 // Sınıf dosya kapsamında yalnızca tanım yapar; init() elle çağrılır.
+
+qrms_test(
+	'GÜVENLİK: onay bekleyen yorum ekleri herkese açık değil',
+	function () {
+		$media  = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/review-media.php' );
+		$panel  = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/admin/dashboard.php' );
+		$submit = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/ajax/submit-review.php' );
+		$kur    = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/install.php' );
+
+		// Ebeveynsiz `inherit` ekini WordPress publish sayar: onay beklerken
+		// /?attachment_id=N taranarak moderasyondan geçmemiş görsel yayınlanırdı.
+		qrms_assert_contains( "'post_status'    => 'private'", $media, 'ekler private açılır' );
+		qrms_assert_false( false !== strpos( $media, "'post_status'    => 'inherit'" ), 'inherit ile açılmıyor' );
+
+		// Onay/yayından kaldırma ekleri de birlikte taşımalı.
+		qrms_assert_contains( 'function qrm_pro_media_sync_status', $media, 'durum eşitleyici' );
+		qrms_assert_contains( 'qrm_pro_media_sync_status($id, true)', $panel, 'onayda yayına açılır' );
+		qrms_assert_contains( 'qrm_pro_media_sync_status($id, false)', $panel, 'yayından kaldırınca kapanır' );
+		qrms_assert_contains( 'qrm_pro_media_sync_status($review_id, true)', $submit, 'otomatik onayda açılır' );
+
+		// Mevcut kurulumlardaki onaysız ekler de kapatılmalı.
+		qrms_assert_contains( 'function qrm_pro_migrate_media_visibility', $kur, 'göç fonksiyonu' );
+		qrms_assert_contains( 'qrm_pro_migrate_media_visibility();', $kur, 'kurulumdan çağrılır' );
+	}
+);

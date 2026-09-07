@@ -138,6 +138,12 @@ function qrm_pro_handle_review_submission($settings) {
 
             return ['success' => false, 'message' => $media_result->get_error_message()];
         }
+
+        // Ekler `private` açılır; yorum otomatik onaya takılmadan yayına
+        // giriyorsa (auto_approve_rating) hemen görünür hale getirilir.
+        if ($status === 1 && function_exists('qrm_pro_media_sync_status')) {
+            qrm_pro_media_sync_status($review_id, true);
+        }
     }
 
     // Sayaçlar ve ortalamalar önbellekli; yeni yorum onları geçersizler.
