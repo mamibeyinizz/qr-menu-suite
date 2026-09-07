@@ -1161,3 +1161,28 @@ qrms_test(
 		qrms_assert_contains( "wp_create_nonce( 'qmo_chatbot_canli' )", $sayfa, 'nonce sayfada basılır' );
 	}
 );
+
+qrms_test(
+	'GÜVENLİK: Firebase ve Gemini sırları autoload dışında tutulur',
+	function () {
+		$help  = file_get_contents( QRMS_PLUGIN_DIR . 'modules/_qmo-ortak/helpers.php' );
+		$ortak = file_get_contents( QRMS_PLUGIN_DIR . 'modules/_qmo-ortak/ortak.php' );
+		$admin = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/includes/admin/admin-sayfa.php' );
+
+		// autoload='yes' ile yazılan sır, her istekte alloptions'a yüklenir:
+		// bir option dökümü ya da başka bir eklentideki açık anahtarı sızdırır.
+		qrms_assert_contains( 'function qmo_autoload_kapat', $help, 'autoload kapatıcı' );
+		qrms_assert_contains( "array( 'qmo_firebase_sa', 'gemini_api_key' )", $help, 'sır listesi' );
+		qrms_assert_contains( 'function qmo_sirlari_autoload_disina_al', $help, 'tek seferlik göç' );
+
+		// Hem kayıt anında hem mevcut kurulumlar için bağlanmalı.
+		qrms_assert_contains( "add_action( 'updated_option', 'qmo_sir_autoload_duzelt'", $ortak, 'kayıtta düzeltilir' );
+		qrms_assert_contains( "add_action( 'admin_init', 'qmo_sirlari_autoload_disina_al' )", $ortak, 'göç bağlı' );
+
+		// Yeni kayıtlar da autoload'suz yazılmalı.
+		qrms_assert_contains( "update_option( 'gemini_api_key', \$api_key, false )", $admin, 'anahtar autoload dışı yazılır' );
+
+		// WP 6.4 öncesi için yedek yol korunmalı (eklenti 6.0 destekliyor).
+		qrms_assert_contains( "function_exists( 'wp_set_option_autoload' )", $help, '6.4 API varsa kullanılır' );
+	}
+);
