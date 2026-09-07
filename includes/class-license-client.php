@@ -171,6 +171,7 @@ class QRMS_License_Client {
 					array(
 						'api_key' => $api_key,
 						'domain'  => $domain,
+						'version' => defined( 'QRMS_VERSION' ) ? QRMS_VERSION : '',
 					)
 				),
 			)
