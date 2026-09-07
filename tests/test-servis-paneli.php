@@ -239,3 +239,44 @@ qrms_test(
 		delete_option( 'qmo_firebase_sa' );
 	}
 );
+
+qrms_test(
+	'GÜVENLİK: servis personeli rolü panel sayfasına gerçekten girebilir',
+	function () {
+		require_once QRMS_PLUGIN_DIR . 'modules/qr-servis-paneli/includes/class-qrms-sp-rol.php';
+
+		// Panel sayfası genel modül sayfası mekanizmasıyla (get_module_page_slug)
+		// kaydediliyor; o mekanizma HER modül için sabit QRMS_Admin::CAPABILITY
+		// (manage_options) istiyordu. Modülün kendi personel rolü ('qrms_servis',
+		// yetenek: QRMS_SP_Rol::YETENEK) bu yüzden WordPress menü katmanında hiç
+		// geçemiyordu — panel sayfasının kendi içindeki current_user_can()
+		// kontrolüne asla ulaşamıyordu.
+		qrms_assert_same(
+			QRMS_SP_Rol::YETENEK,
+			QRMS_Admin::get_module_page_capability( 'qr-servis-paneli' ),
+			'servis paneli kendi yetkisini kullanır'
+		);
+
+		// Başka HİÇBİR modülün yetkisi düşürülmemeli.
+		qrms_assert_same(
+			QRMS_Admin::CAPABILITY,
+			QRMS_Admin::get_module_page_capability( 'restoran-menu' ),
+			'diğer modüller manage_options ile kalır'
+		);
+		qrms_assert_same(
+			QRMS_Admin::CAPABILITY,
+			QRMS_Admin::get_module_page_capability( 'qr-chatbot' ),
+			'diğer modüller manage_options ile kalır (2)'
+		);
+	}
+);
+
+qrms_test(
+	'GÜVENLİK: register_menu ve render_module_page sabit CAPABILITY yerine per-modül yetkiyi kullanır',
+	function () {
+		$kaynak = file_get_contents( QRMS_PLUGIN_DIR . 'includes/class-admin.php' );
+
+		qrms_assert_contains( 'self::get_module_page_capability( $slug )', $kaynak, 'register_menu per-modül yetki okur' );
+		qrms_assert_contains( 'current_user_can( self::get_module_page_capability( $slug ) )', $kaynak, 'render_module_page per-modül yetki okur' );
+	}
+);
