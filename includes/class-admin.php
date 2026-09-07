@@ -153,15 +153,6 @@ class QRMS_Admin {
 	}
 
 	/**
-	 * Kayıtlı alt sayfaların tamamı (slug => modül slug'ı).
-	 *
-	 * @return array<string,string>
-	 */
-	public static function get_module_subpages() {
-		return self::$module_subpages;
-	}
-
-	/**
 	 * Bir sayfa kayıtlı bir modül alt sayfası mı?
 	 *
 	 * @param string $page_slug Sayfa slug'ı.
