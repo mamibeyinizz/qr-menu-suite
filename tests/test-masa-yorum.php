@@ -1062,3 +1062,18 @@ qrms_test(
 		qrms_assert_contains( "!is_string(\$f['name'][\$i] ?? null) || !is_string(\$f['tmp_name'][\$i] ?? null)", $kaynak, 'string olmayan alan atlanır' );
 	}
 );
+
+qrms_test(
+	'GÜVENLİK: ödül kodu sorgulama/kullanma uçlarında hız sınırı var',
+	function () {
+		$kaynak = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/ajax/rewards.php' );
+
+		// Bu uçlar müşteri e-postasını döndürüyor ve kod durumunu kalıcı
+		// değiştiriyor; hiçbir hız sınırı yoktu — edit_posts taşıyan bir hesap
+		// kodu brute-force ederek e-posta toplayabilir/kuponları yakabilirdi.
+		qrms_assert_true(
+			substr_count( $kaynak, 'qrm_reward_rate_limit(20, 300)' ) === 2,
+			'lookup ve mark_used ikisinde de hız sınırı'
+		);
+	}
+);
