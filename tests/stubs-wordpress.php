@@ -713,6 +713,32 @@ function current_user_can( $capability, ...$args ) {
 }
 
 /**
+ * Geçerli kullanıcının ID'si. Testte $GLOBALS['qrms_test']['current_user_id']
+ * ile ayarlanabilir; varsayılan 1.
+ *
+ * @return int
+ */
+function get_current_user_id() {
+	return isset( $GLOBALS['qrms_test']['current_user_id'] ) ? (int) $GLOBALS['qrms_test']['current_user_id'] : 1;
+}
+
+/**
+ * Geçerli kullanıcı nesnesi taklidi (yalnızca testlerin ihtiyaç duyduğu
+ * ID ve display_name alanlarını taşır).
+ *
+ * @return object
+ */
+function wp_get_current_user() {
+	$kullanici               = new stdClass();
+	$kullanici->ID           = get_current_user_id();
+	$kullanici->display_name = isset( $GLOBALS['qrms_test']['current_user_display_name'] )
+		? $GLOBALS['qrms_test']['current_user_display_name']
+		: 'Test Kullanıcı';
+
+	return $kullanici;
+}
+
+/**
  * Ölümcül hata.
  *
  * @param string $message Mesaj.

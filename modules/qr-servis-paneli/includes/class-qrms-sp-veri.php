@@ -390,6 +390,20 @@ class QRMS_SP_Veri {
 			return $sonuc;
 		}
 
+		// GÜVENLİK: masa oturumunun epoch'u yalnızca masa SİLİNDİĞİNDE
+		// artıyordu (bkz. QMO_Masalar::sil() → QMO_Oturum::masayi_kapat()).
+		// Hesap istenip ödendiğinde masa silinmez — oturum çerezi elinde
+		// kalan bir müşteri, hesabı kapandıktan sonra da hard_cap süresine
+		// (varsayılan birkaç saat) kadar sipariş/çağrı atmaya devam edebilirdi.
+		// "Hesap" tipi bir çağrı "tamamlandi"ya taşındığında (kasiyer hesabı
+		// kapattığında) o masanın oturumu da geçersiz kılınır.
+		if ( 'tamamlandi' === $yeni && 'hesap' === ( isset( $mevcut['tip'] ) ? $mevcut['tip'] : '' ) && class_exists( 'QMO_Oturum' ) ) {
+			$masa = isset( $mevcut['masaNo'] ) ? (string) $mevcut['masaNo'] : '';
+			if ( '' !== $masa ) {
+				QMO_Oturum::masayi_kapat( $masa );
+			}
+		}
+
 		// Panel bir sonraki yoklamada yeni durumu görsün.
 		delete_transient( self::ONBELLEK_ANAHTAR );
 
