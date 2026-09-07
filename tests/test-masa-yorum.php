@@ -1009,3 +1009,56 @@ qrms_test(
 		qrms_assert_contains( 'qrms_uninstall_veri_sil', $ayar, 'ayar ekranında kaldırma tercihi' );
 	}
 );
+
+qrms_test(
+	'GÜVENLİK: restoran-menu font ayarları beyaz listeye karşı doğrulanır',
+	function () {
+		$kaynak = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-helpers.php' );
+
+		// heading_font/body_font/price_font CSS'e tırnaklı gömülüyor
+		// (--rma-font-*: '<değer>',system-ui,sans-serif); genel sanitizer
+		// (sanitize_text_field) tırnak/parantez/noktalı virgülü süzmez —
+		// beyaz liste olmadan CSS bağlamından çıkılabilirdi.
+		qrms_assert_contains( '$font_beyaz_liste = $this->get_font_options();', $kaynak, 'beyaz liste okunur' );
+		qrms_assert_contains( "foreach ( array( 'heading_font', 'body_font', 'price_font' ) as \$font_alani )", $kaynak, 'üç font alanı da kontrol edilir' );
+		qrms_assert_contains( 'if ( ! in_array( $typo[ $font_alani ], $font_beyaz_liste, true ) )', $kaynak, 'whitelist dışı reddedilir' );
+	}
+);
+
+qrms_test(
+	'GÜVENLİK: ödül kasası ekranında sunucu yanıtı innerHTML\'e kaçırılmadan gitmiyor',
+	function () {
+		$kaynak = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/admin/reward-cashier.php' );
+
+		// discount_label admin ayarından, message ise yapılandırılabilir bir
+		// metinden gelebiliyor; "kasa" rolü bu değerleri yazan kişiyle aynı
+		// yetkiye sahip olmayabilir.
+		qrms_assert_true( substr_count( $kaynak, 'function esc(s) {' ) >= 2, 'her iki script bloğunda kaçırma yardımcısı var' );
+		qrms_assert_false( false !== strpos( $kaynak, "'<strong>' + res.code + '</strong>'" ), 'ham res.code kalmadı' );
+		qrms_assert_contains( "esc(res.discount_label || '—')", $kaynak, 'discount_label kaçırılıyor' );
+	}
+);
+
+qrms_test(
+	'GÜVENLİK: değerlendirme formu başarı mesajı innerHTML\'e kaçırılarak yazılır',
+	function () {
+		$kaynak = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/frontend/form-script.php' );
+
+		qrms_assert_true(
+			substr_count( $kaynak, "kacirHtml(res.message || metin('thanks'" ) === 3,
+			'üç başarı mesajı da kaçırılıyor'
+		);
+	}
+);
+
+qrms_test(
+	'GÜVENLİK: $_FILES iç içe dizi TypeError üretmeden atlanır',
+	function () {
+		$kaynak = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/review-media.php' );
+
+		// "qrm_review_media[0][x]" gibi iç içe bir alan adı $_FILES['name'][i]'yi
+		// string değil dizi yapar; is_uploaded_file() bir diziyle çağrılırsa
+		// PHP 8'de TypeError (500) fırlatır.
+		qrms_assert_contains( "!is_string(\$f['name'][\$i] ?? null) || !is_string(\$f['tmp_name'][\$i] ?? null)", $kaynak, 'string olmayan alan atlanır' );
+	}
+);

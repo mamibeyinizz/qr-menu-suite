@@ -259,6 +259,15 @@ function qrm_pro_normalize_files_array($files_key) {
     $count = count($f['name']);
 
     for ($i = 0; $i < $count; $i++) {
+        // GÜVENLİK: form alanı "qrm_review_media[0][x]" gibi İÇ İÇE bir isimle
+        // gönderilirse PHP $_FILES['name'][0]'ı string değil DİZİ yapar.
+        // Aşağı akışta is_uploaded_file()/dosya fonksiyonları bir diziyle
+        // çağrılırsa PHP 8'de TypeError (500) fırlatır. Beklenen düz form
+        // yapısına uymayan girdi burada sessizce atlanır.
+        if (!is_string($f['name'][$i] ?? null) || !is_string($f['tmp_name'][$i] ?? null)) {
+            continue;
+        }
+
         if ($f['name'][$i] === '' && (int) $f['error'][$i] === UPLOAD_ERR_NO_FILE) {
             continue;
         }

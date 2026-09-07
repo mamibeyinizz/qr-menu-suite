@@ -457,7 +457,23 @@ trait RMA_Helpers_Trait {
             return $this->rma_memo['typo'];
         }
         $saved = get_option( 'rma_typo_settings', [] );
-        $this->rma_memo['typo'] = array_merge( $this->get_typo_defaults(), array_filter( (array) $saved ) );
+        $typo  = array_merge( $this->get_typo_defaults(), array_filter( (array) $saved ) );
+
+        // GÜVENLİK: *_font değerleri trait-frontend.php'de tırnaklı bir CSS
+        // özel değişkenine (--rma-font-*: '<değer>',system-ui,sans-serif;)
+        // doğrudan gömülür. Genel sanitize_settings_array() yalnızca
+        // sanitize_text_field uygular — tırnak/parantez/noktalı virgülü
+        // SÜZMEZ, yani kaydedilmiş değer CSS bağlamından çıkıp keyfi bildirim
+        // eklenmesine izin verebilirdi. Bilinen font listesi dışındaki her
+        // değer burada varsayılana düşürülür.
+        $font_beyaz_liste = $this->get_font_options();
+        foreach ( array( 'heading_font', 'body_font', 'price_font' ) as $font_alani ) {
+            if ( ! in_array( $typo[ $font_alani ], $font_beyaz_liste, true ) ) {
+                $typo[ $font_alani ] = $this->get_typo_defaults()[ $font_alani ];
+            }
+        }
+
+        $this->rma_memo['typo'] = $typo;
         return $this->rma_memo['typo'];
     }
 

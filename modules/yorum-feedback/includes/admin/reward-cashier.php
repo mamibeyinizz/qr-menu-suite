@@ -49,6 +49,19 @@ function qrm_reward_admin_cashier_view() {
         var ajax  = <?php echo wp_json_encode(admin_url('admin-ajax.php')); ?>;
         var lastCode = '';
 
+        // GÜVENLİK: res.message/discount_label gibi alanlar sunucudan geliyor
+        // ama admin ayarlarındaki serbest metinlerden (ör. ödül şablonu
+        // indirim etiketi) besleniyor — "kasa" rolündeki kullanıcı bu ayarı
+        // yazan kişiyle aynı yetkiye sahip olmayabilir. innerHTML'e gitmeden
+        // önce kaçırılır; statik, PHP tarafından zaten esc_html__ ile
+        // kaçırılmış metinler etkilenmez (entity'ler innerHTML'de doğru
+        // çözülür).
+        function esc(s) {
+            var d = document.createElement('div');
+            d.textContent = (s == null) ? '' : String(s);
+            return d.innerHTML;
+        }
+
         function paint(html, kind) {
             result.hidden = false;
             result.className = 'qrm-reward-kasa-result is-' + kind;
@@ -75,12 +88,12 @@ function qrm_reward_admin_cashier_view() {
                 .then(function(res){
                     btn.disabled = false;
                     if (!res || !res.success) {
-                        paint((res && res.message) ? res.message : <?php echo wp_json_encode(esc_html__('Kod bulunamadı.', 'qrms')); ?>, 'invalid');
+                        paint((res && res.message) ? esc(res.message) : <?php echo wp_json_encode(esc_html__('Kod bulunamadı.', 'qrms')); ?>, 'invalid');
                         return;
                     }
-                    var lines = '<strong>' + res.code + '</strong> — ' + res.status_label +
-                        '<br><?php echo esc_js(__('İndirim:', 'qrms')); ?> ' + (res.discount_label || '—') +
-                        (res.expires_at ? '<br><?php echo esc_js(__('Son kullanma:', 'qrms')); ?> ' + res.expires_at : '');
+                    var lines = '<strong>' + esc(res.code) + '</strong> — ' + esc(res.status_label) +
+                        '<br><?php echo esc_js(__('İndirim:', 'qrms')); ?> ' + esc(res.discount_label || '—') +
+                        (res.expires_at ? '<br><?php echo esc_js(__('Son kullanma:', 'qrms')); ?> ' + esc(res.expires_at) : '');
                     if (res.can_mark_used) {
                         lines += '<div class="qrm-reward-kasa-mark"><button type="button" class="button button-primary button-large" id="qrm-rw-kasa-mark"><?php echo esc_js(__('Kullanıldı olarak işaretle', 'qrms')); ?></button></div>';
                     }
@@ -108,12 +121,12 @@ function qrm_reward_admin_cashier_view() {
                 .then(function(r){ return r.json(); })
                 .then(function(res){
                     if (!res || !res.success) {
-                        paint((res && res.message) ? res.message : <?php echo wp_json_encode(esc_html__('İşlem başarısız.', 'qrms')); ?>, 'invalid');
+                        paint((res && res.message) ? esc(res.message) : <?php echo wp_json_encode(esc_html__('İşlem başarısız.', 'qrms')); ?>, 'invalid');
                         return;
                     }
-                    paint('<strong>' + res.code + '</strong> — ' + res.status_label +
-                        '<br><?php echo esc_js(__('İndirim:', 'qrms')); ?> ' + (res.discount_label || '—') +
-                        '<br><?php echo esc_js(__('Kullanım:', 'qrms')); ?> ' + res.used_at, 'valid');
+                    paint('<strong>' + esc(res.code) + '</strong> — ' + esc(res.status_label) +
+                        '<br><?php echo esc_js(__('İndirim:', 'qrms')); ?> ' + esc(res.discount_label || '—') +
+                        '<br><?php echo esc_js(__('Kullanım:', 'qrms')); ?> ' + esc(res.used_at), 'valid');
                     input.value = '';
                     lastCode = '';
                     input.focus();
@@ -151,6 +164,15 @@ function qrm_reward_cashier_lookup_script() {
             var ajax  = <?php echo wp_json_encode(admin_url('admin-ajax.php')); ?>;
             var lastCode = '';
 
+            // GÜVENLİK: bkz. üstteki qrm_reward_cashier_lookup_script() —
+            // res.message/discount_label/email gibi alanlar innerHTML'e
+            // gitmeden önce kaçırılır.
+            function esc(s) {
+                var d = document.createElement('div');
+                d.textContent = (s == null) ? '' : String(s);
+                return d.innerHTML;
+            }
+
             function paint(html, ok) {
                 result.style.display = '';
                 result.style.background = ok ? '#dcfce7' : '#fee2e2';
@@ -174,15 +196,15 @@ function qrm_reward_cashier_lookup_script() {
                     .then(function(res){
                         btn.disabled = false;
                         if (!res || !res.success) {
-                            paint((res && res.message) ? res.message : 'Kod bulunamadı.', false);
+                            paint((res && res.message) ? esc(res.message) : 'Kod bulunamadı.', false);
                             return;
                         }
-                        var lines = '<strong>' + res.code + '</strong> — ' + res.status_label +
-                            '<br>E-posta: ' + res.email +
-                            '<br>İndirim: ' + (res.discount_label || '—') +
-                            '<br>Oluşturulma: ' + res.created_at +
-                            (res.expires_at ? '<br>Son kullanma: ' + res.expires_at : '') +
-                            (res.used_at ? '<br>Kullanım: ' + res.used_at : '');
+                        var lines = '<strong>' + esc(res.code) + '</strong> — ' + esc(res.status_label) +
+                            '<br>E-posta: ' + esc(res.email) +
+                            '<br>İndirim: ' + esc(res.discount_label || '—') +
+                            '<br>Oluşturulma: ' + esc(res.created_at) +
+                            (res.expires_at ? '<br>Son kullanma: ' + esc(res.expires_at) : '') +
+                            (res.used_at ? '<br>Kullanım: ' + esc(res.used_at) : '');
                         if (res.can_mark_used) {
                             lines += '<p style="margin:12px 0 0;"><button type="button" class="button button-primary qrm-rw-mark-used-btn">Kullanıldı olarak işaretle</button></p>';
                         }
@@ -207,12 +229,12 @@ function qrm_reward_cashier_lookup_script() {
                     .then(function(r){ return r.json(); })
                     .then(function(res){
                         if (!res || !res.success) {
-                            paint((res && res.message) ? res.message : 'İşlem başarısız.', false);
+                            paint((res && res.message) ? esc(res.message) : 'İşlem başarısız.', false);
                             return;
                         }
-                        paint('<strong>' + res.code + '</strong> — ' + res.status_label +
-                            '<br>İndirim: ' + (res.discount_label || '—') +
-                            '<br>Kullanım: ' + res.used_at, true);
+                        paint('<strong>' + esc(res.code) + '</strong> — ' + esc(res.status_label) +
+                            '<br>İndirim: ' + esc(res.discount_label || '—') +
+                            '<br>Kullanım: ' + esc(res.used_at), true);
                         input.value = '';
                         lastCode = '';
                     })

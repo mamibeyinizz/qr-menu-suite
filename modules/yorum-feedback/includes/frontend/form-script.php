@@ -238,11 +238,11 @@ function qrm_pro_render_form_script($settings, $js_limit = 0, $has_list = true, 
                             var skipBtn = document.getElementById('qrmGoogleSkipBtn');
                             if (skipBtn) {
                                 skipBtn.addEventListener('click', function() {
-                                    box.innerHTML = '<div class="qrm-alert qrm-success">' + (res.message || metin('thanks', 'Değerlendirmeniz için teşekkürler!')) + '</div>';
+                                    box.innerHTML = '<div class="qrm-alert qrm-success">' + kacirHtml(res.message || metin('thanks', 'Değerlendirmeniz için teşekkürler!')) + '</div>';
                                 });
                             }
                         } else {
-                            box.innerHTML = '<div class="qrm-alert qrm-success">' + (res.message || metin('thanks', 'Değerlendirmeniz için teşekkürler!')) + '</div>';
+                            box.innerHTML = '<div class="qrm-alert qrm-success">' + kacirHtml(res.message || metin('thanks', 'Değerlendirmeniz için teşekkürler!')) + '</div>';
                         }
                         box.parentElement.classList.remove('qrm-fade-in');
                         void box.offsetWidth;
@@ -266,7 +266,7 @@ function qrm_pro_render_form_script($settings, $js_limit = 0, $has_list = true, 
                                 var fbSkip = document.getElementById('qrmGoogleSkipBtn');
                                 if (fbSkip) {
                                     fbSkip.addEventListener('click', function() {
-                                        box.innerHTML = '<div class="qrm-alert qrm-success">' + (res.message || metin('thanks', 'Değerlendirmeniz için teşekkürler!')) + '</div>';
+                                        box.innerHTML = '<div class="qrm-alert qrm-success">' + kacirHtml(res.message || metin('thanks', 'Değerlendirmeniz için teşekkürler!')) + '</div>';
                                     });
                                 }
                             }
