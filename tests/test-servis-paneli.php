@@ -169,7 +169,7 @@ qrms_test(
 	'durum ve tip listeleri panelin beklediği sırada',
 	function () {
 		qrms_assert_same(
-			array( 'bekliyor', 'hazirlaniyor', 'serviste', 'tamamlandi' ),
+			array( 'bekliyor', 'hazirlaniyor', 'serviste', 'tamamlandi', 'iptal' ),
 			array_keys( QRMS_SP_Veri::durumlar() ),
 			'sütun sırası'
 		);
@@ -185,5 +185,57 @@ qrms_test(
 		foreach ( array_keys( QRMS_SP_Veri::durumlar() ) as $durum ) {
 			qrms_assert_true( isset( QRMS_SP_Veri::akis()[ $durum ] ), $durum . ' akışta var' );
 		}
+	}
+);
+
+qrms_test(
+	'durum değişikliği Firestore ile uyuşmazlıkta reddedilir',
+	function () {
+		update_option(
+			'qmo_firebase_sa',
+			wp_json_encode(
+				array(
+					'project_id'   => 'test-proj',
+					'client_email' => 'sa@test.iam.gserviceaccount.com',
+					'private_key'  => 'test-key',
+				)
+			)
+		);
+
+		set_transient(
+			'qmo_gcp_token_' . substr( md5( QMO_Firestore::SCOPE_DATASTORE ), 0, 12 ),
+			'test-token',
+			3500
+		);
+
+		$GLOBALS['qrms_test']['http'] = function ( $url ) {
+			if ( false !== strpos( $url, '/documents/calls/K1' ) ) {
+				return array(
+					'response' => array( 'code' => 200 ),
+					'body'     => wp_json_encode(
+						array(
+							'name'   => 'projects/test-proj/databases/(default)/documents/calls/K1',
+							'fields' => array(
+								'durum' => array( 'stringValue' => 'hazirlaniyor' ),
+								'tip'   => array( 'stringValue' => 'siparis' ),
+							),
+						)
+					),
+				);
+			}
+
+			return array(
+				'response' => array( 'code' => 404 ),
+				'body'     => '',
+			);
+		};
+
+		$sonuc = QRMS_SP_Veri::durum_degistir( 'K1', 'bekliyor', 'hazirlaniyor' );
+
+		qrms_assert_true( is_wp_error( $sonuc ), 'çakışma hatası' );
+		qrms_assert_same( 'cakisma', $sonuc->get_error_code(), 'hata kodu' );
+
+		$GLOBALS['qrms_test']['http'] = null;
+		delete_option( 'qmo_firebase_sa' );
 	}
 );

@@ -95,5 +95,11 @@ function qrms_deactivate() {
 	// kapalıysa sınıf hiç yüklenmemiş olabilir, o yüzden kanca adı doğrudan
 	// temizlenir (sınıfı yalnızca bunun için yüklemeye değmez).
 	wp_clear_scheduled_hook( 'qrms_analitik_temizlik' );
+
+	require_once QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/urunum-yok/class-cron.php';
+
+	if ( class_exists( 'RMA_Urunum_Yok_Cron' ) ) {
+		RMA_Urunum_Yok_Cron::supurge_iptal();
+	}
 }
 register_deactivation_hook( __FILE__, 'qrms_deactivate' );

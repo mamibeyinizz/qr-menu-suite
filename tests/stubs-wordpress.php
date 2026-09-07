@@ -237,6 +237,37 @@ function wp_clear_scheduled_hook( $hook ) {
 }
 
 /**
+ * Tek seferlik cron zamanlar.
+ *
+ * @param int    $timestamp Zaman.
+ * @param string $hook      Hook adı.
+ * @param array  $args      Argümanlar.
+ * @return bool
+ */
+function wp_schedule_single_event( $timestamp, $hook, $args = array() ) {
+	unset( $args );
+	$GLOBALS['qrms_test']['cron'][ $hook ] = $timestamp;
+
+	return true;
+}
+
+/**
+ * Çalışan action kancası.
+ *
+ * @param string $hook Hook adı.
+ * @return bool
+ */
+function doing_action( $hook = '' ) {
+	$current = isset( $GLOBALS['qrms_test']['doing_action'] ) ? $GLOBALS['qrms_test']['doing_action'] : '';
+
+	if ( '' === $hook ) {
+		return '' !== $current;
+	}
+
+	return $hook === $current;
+}
+
+/**
  * HTTP POST taklidi.
  *
  * @param string $url  Adres.
@@ -256,6 +287,42 @@ function wp_remote_post( $url, $args = array() ) {
 	}
 
 	return $response;
+}
+
+/**
+ * HTTP GET taklidi.
+ *
+ * @param string $url  Adres.
+ * @param array  $args Argümanlar.
+ * @return array|WP_Error
+ */
+function wp_remote_get( $url, $args = array() ) {
+	return wp_remote_post( $url, $args );
+}
+
+/**
+ * HTTP isteği (PATCH vb.) taklidi.
+ *
+ * @param string $url  Adres.
+ * @param array  $args Argümanlar.
+ * @return array|WP_Error
+ */
+function wp_remote_request( $url, $args = array() ) {
+	return wp_remote_post( $url, $args );
+}
+
+/**
+ * HTTP cevap kodu.
+ *
+ * @param array|WP_Error $response Cevap.
+ * @return int
+ */
+function wp_remote_retrieve_response_code( $response ) {
+	if ( is_wp_error( $response ) ) {
+		return 0;
+	}
+
+	return isset( $response['response']['code'] ) ? (int) $response['response']['code'] : 0;
 }
 
 /**
@@ -620,7 +687,15 @@ function is_user_logged_in() {
  * @param string $capability Yetki.
  * @return bool
  */
-function current_user_can( $capability ) {
+function current_user_can( $capability, ...$args ) {
+	if ( 'edit_post' === $capability && isset( $args[0] ) ) {
+		$post_id = (int) $args[0];
+
+		if ( isset( $GLOBALS['qrms_test']['can_edit_post'][ $post_id ] ) ) {
+			return (bool) $GLOBALS['qrms_test']['can_edit_post'][ $post_id ];
+		}
+	}
+
 	return (bool) $GLOBALS['qrms_test']['can'];
 }
 
@@ -1683,8 +1758,13 @@ function get_posts( $args = array() ) {
 
 	$kayitlar = isset( $GLOBALS['qrms_test']['posts'] ) ? $GLOBALS['qrms_test']['posts'] : array();
 	$limit    = isset( $args['posts_per_page'] ) ? (int) $args['posts_per_page'] : -1;
+	$offset   = isset( $args['offset'] ) ? (int) $args['offset'] : 0;
 
-	return $limit > 0 ? array_slice( $kayitlar, 0, $limit ) : $kayitlar;
+	if ( $limit > 0 ) {
+		return array_slice( $kayitlar, $offset, $limit );
+	}
+
+	return $offset > 0 ? array_slice( $kayitlar, $offset ) : $kayitlar;
 }
 
 /**
@@ -1777,6 +1857,30 @@ function get_terms( $args = array() ) {
  */
 function post_type_exists( $tur ) {
 	return true;
+}
+
+/**
+ * Yazı tipi.
+ *
+ * @param int|object|null $post Yazı veya kimlik.
+ * @return string|false
+ */
+function get_post_type( $post = null ) {
+	if ( null === $post ) {
+		return 'post';
+	}
+
+	$id = is_object( $post ) && isset( $post->ID ) ? (int) $post->ID : (int) $post;
+
+	if ( $id < 1 ) {
+		return false;
+	}
+
+	if ( isset( $GLOBALS['qrms_test']['post_types'][ $id ] ) ) {
+		return $GLOBALS['qrms_test']['post_types'][ $id ];
+	}
+
+	return 'post';
 }
 
 /**

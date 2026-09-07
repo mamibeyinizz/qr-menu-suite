@@ -453,6 +453,59 @@ if ( ! class_exists( 'QMO_Firestore' ) ) {
 		}
 
 		/**
+		 * Bir çağrı/sipariş belgesini okur.
+		 *
+		 * @param string $doc_id Belge kimliği (yol değil, yalnızca son parça).
+		 * @return array|WP_Error Normalize edilmiş belge.
+		 */
+		public static function call_oku( $doc_id ) {
+			$doc_id = preg_replace( '/[^A-Za-z0-9_-]/', '', (string) $doc_id );
+
+			if ( '' === $doc_id ) {
+				return new WP_Error( 'girdi', 'Belge kimliği boş.' );
+			}
+
+			$token = self::access_token( self::SCOPE_DATASTORE );
+			if ( is_wp_error( $token ) ) {
+				return $token;
+			}
+
+			$project = self::project_id();
+			if ( '' === $project ) {
+				return new WP_Error( 'proje', 'Firebase proje kimliği bulunamadı.' );
+			}
+
+			$url  = "https://firestore.googleapis.com/v1/projects/{$project}/databases/(default)/documents/calls/{$doc_id}";
+			$resp = wp_remote_get(
+				$url,
+				array(
+					'timeout' => 15,
+					'headers' => array( 'Authorization' => 'Bearer ' . $token ),
+				)
+			);
+
+			if ( is_wp_error( $resp ) ) {
+				return $resp;
+			}
+
+			$code = wp_remote_retrieve_response_code( $resp );
+			if ( 404 === (int) $code ) {
+				return new WP_Error( 'bulunamadi', __( 'Kayıt bulunamadı.', 'qrms' ) );
+			}
+			if ( $code < 200 || $code >= 300 ) {
+				return new WP_Error( 'firestore', 'Firestore hatası (' . $code . ')' );
+			}
+
+			$belge = json_decode( wp_remote_retrieve_body( $resp ), true );
+
+			if ( empty( $belge['fields'] ) ) {
+				return new WP_Error( 'bulunamadi', __( 'Kayıt bulunamadı.', 'qrms' ) );
+			}
+
+			return self::belge_coz( $belge );
+		}
+
+		/**
 		 * Bir çağrı/sipariş belgesini günceller.
 		 *
 		 * @param string $doc_id Belge kimliği (yol değil, yalnızca son parça).

@@ -58,6 +58,7 @@ class QRMS_SP_Veri {
 			'hazirlaniyor' => __( 'Hazırlanıyor', 'qrms' ),
 			'serviste'     => __( 'Serviste', 'qrms' ),
 			'tamamlandi'   => __( 'Tamamlandı', 'qrms' ),
+			'iptal'        => __( 'İptal', 'qrms' ),
 		);
 	}
 
@@ -333,6 +334,10 @@ class QRMS_SP_Veri {
 	/**
 	 * Bir kaydın durumunu değiştirir.
 	 *
+	 * İstemcinin gördüğü durum ($eski) Firestore'daki güncel durumla
+	 * karşılaştırılır; uyuşmazlıkta güncelleme reddedilir (eş zamanlı
+	 * çakışmayı engeller).
+	 *
 	 * @param string $id    Belge kimliği.
 	 * @param string $eski  İstemcinin gördüğü durum.
 	 * @param string $yeni  Hedef durum.
@@ -348,6 +353,25 @@ class QRMS_SP_Veri {
 
 		if ( ! self::hazir_mi() ) {
 			return new WP_Error( 'firebase', __( 'Firebase yapılandırılmamış.', 'qrms' ) );
+		}
+
+		$mevcut = QMO_Firestore::call_oku( $id );
+
+		if ( is_wp_error( $mevcut ) ) {
+			return $mevcut;
+		}
+
+		$gercek = isset( $mevcut['durum'] ) ? sanitize_key( (string) $mevcut['durum'] ) : 'bekliyor';
+
+		if ( ! isset( self::akis()[ $gercek ] ) ) {
+			$gercek = 'bekliyor';
+		}
+
+		if ( $gercek !== $eski ) {
+			return new WP_Error(
+				'cakisma',
+				__( 'Bu kayıt başka biri tarafından güncellenmiş. Liste yenileniyor.', 'qrms' )
+			);
 		}
 
 		$kullanici = wp_get_current_user();
