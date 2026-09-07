@@ -484,10 +484,17 @@
 }
 
 .qrms-an-filtre-satir {
-	align-items: center;
+	/* Mobil ilk: dar ekranda satır dikey yığılır, her alan tam genişlik alır
+	   (bkz. 768px ve 1024px kırılımları — masaüstünde tek satıra döner). */
+	align-items: stretch;
 	display: flex;
+	flex-direction: column;
 	flex-wrap: wrap;
 	gap: 8px;
+}
+
+.qrms-an-filtre-satir > * {
+	width: 100%;
 }
 
 .qrms-an-filtre-satir + .qrms-an-filtre-satir {
@@ -553,10 +560,17 @@
 
 .qrms-an-ozel-form,
 .qrms-an-masa-form {
-	align-items: center;
+	align-items: stretch;
 	display: flex;
+	flex-direction: column;
 	flex-wrap: wrap;
 	gap: 8px;
+	width: 100%;
+}
+
+.qrms-an-ozel-form > *,
+.qrms-an-masa-form > * {
+	width: 100%;
 }
 
 .qrms-an-ozel-form {
@@ -1371,6 +1385,27 @@
 	}
 }
 
+/* Tablet: filtre satırı yatay akar ve gerektiğinde 2'li gruplanarak
+   sarar; alanlar artık tam genişlik değil, içerik kadardır (bkz. 768px'in
+   altı için yukarıdaki dikey yığın, 1024px üstü için aşağıdaki tek satır). */
+@media screen and ( min-width: 768px ) {
+	.qrms-an-filtre-satir,
+	.qrms-an-ozel-form,
+	.qrms-an-masa-form {
+		flex-direction: row;
+	}
+
+	.qrms-an-filtre-satir > *,
+	.qrms-an-ozel-form > *,
+	.qrms-an-masa-form > * {
+		width: auto;
+	}
+
+	.qrms-an-filtre-ozet {
+		margin-left: auto;
+	}
+}
+
 @media screen and ( min-width: 783px ) {
 	.qrms-an {
 		margin-right: 20px;
@@ -1388,10 +1423,6 @@
 
 	.qrms-an-header-actions .qrms-an-btn {
 		flex: 0 0 auto;
-	}
-
-	.qrms-an-filtre-satir {
-		flex-wrap: nowrap;
 	}
 
 	.qrms-an-select {
@@ -1428,6 +1459,13 @@
 
 	.qrms-an-empty-uzun {
 		display: inline;
+	}
+}
+
+@media screen and ( min-width: 1024px ) {
+	/* Masaüstü: filtre satırı artık sarmaz, tek satırda kalır. */
+	.qrms-an-filtre-satir {
+		flex-wrap: nowrap;
 	}
 }
 

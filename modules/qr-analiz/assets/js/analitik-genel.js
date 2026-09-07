@@ -88,10 +88,10 @@
 			},
 			{
 				ikon: 'dashicons-editor-table',
-				etiket: metin( 'cardTables', 'Hareketli Masa' ),
+				etiket: metin( 'cardTables', 'Aktif Masa Sayısı' ),
 				deger: ORTAK.kisa( ozet.masa_sayisi ),
 				delta: '',
-				alt: metin( 'cardTablesSub2', 'Seçili aralıkta hareket eden masa' )
+				alt: metin( 'cardTablesSub2', 'Seçili aralıkta en az bir hareket (görüntüleme/tıklama) olan masa sayısı' )
 			}
 		];
 
