@@ -82,8 +82,8 @@ function qrms_mm_csv_indir() {
 		fputcsv(
 			$cikti,
 			array(
-				$urun['item_name'],
-				$urun['category_name'],
+				qrms_mm_csv_hucre( $urun['item_name'] ),
+				qrms_mm_csv_hucre( $urun['category_name'] ),
 				qrms_mm_csv_sayi( $urun['fiyat'] ),
 				qrms_mm_csv_sayi( $urun['maliyet'] ),
 				qrms_mm_csv_sayi( $urun['katki'] ),
@@ -105,8 +105,8 @@ function qrms_mm_csv_indir() {
 		fputcsv(
 			$cikti,
 			array(
-				$urun['item_name'],
-				$urun['category_name'],
+				qrms_mm_csv_hucre( $urun['item_name'] ),
+				qrms_mm_csv_hucre( $urun['category_name'] ),
 				'', '', '', '', '', '', '', '',
 				__( 'Hesaplanamadı', 'qrms' ),
 				$urun['sebep'],
@@ -118,6 +118,32 @@ function qrms_mm_csv_indir() {
 	fclose( $cikti ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
 
 	exit;
+}
+
+/**
+ * CSV hücresini formül enjeksiyonuna karşı kaçırır.
+ *
+ * Excel/Sheets bir hücre `=`, `+`, `-`, `@` ile başlıyorsa onu formül sayar.
+ * Ürün/kategori adı ürün başlığından geldiği için (yalnızca manage_options
+ * tarafından değil, dosya içe/dışa aktarımıyla da yazılabilir) kullanıcı
+ * girdisi taşıyabilir; dosyayı açan yöneticinin makinesinde kod çalışmasın
+ * diye başa tek tırnak eklenir (Excel bunu görünmez biçim işareti sayar).
+ *
+ * @param mixed $deger Ham değer.
+ * @return string
+ */
+function qrms_mm_csv_hucre( $deger ) {
+	$deger = is_scalar( $deger ) ? (string) $deger : '';
+
+	if ( '' === $deger ) {
+		return '';
+	}
+
+	if ( in_array( $deger[0], array( '=', '+', '-', '@', "\t", "\r" ), true ) ) {
+		return "'" . $deger;
+	}
+
+	return $deger;
 }
 
 /**

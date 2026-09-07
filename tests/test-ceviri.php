@@ -761,3 +761,22 @@ qrms_test(
 		);
 	}
 );
+
+qrms_test(
+	'GÜVENLİK: çeviri CSV dışa aktarımında formül enjeksiyonu kaçırılır',
+	function () {
+		qrms_assert_same( "'=DDE(...)", rma_ceviri_csv_hucre_kacir( '=DDE(...)' ), '= ile başlayan kaçırılır' );
+		qrms_assert_same( "'+1+1", rma_ceviri_csv_hucre_kacir( '+1+1' ), '+ ile başlayan kaçırılır' );
+		qrms_assert_same( "'@SUM(1)", rma_ceviri_csv_hucre_kacir( '@SUM(1)' ), '@ ile başlayan kaçırılır' );
+		qrms_assert_same( 'Mercimek Çorbası', rma_ceviri_csv_hucre_kacir( 'Mercimek Çorbası' ), 'normal metin değişmez' );
+		qrms_assert_same( '', rma_ceviri_csv_hucre_kacir( '' ), 'boş değer boş kalır' );
+
+		$kaynak = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-ceviri/includes/csv-export.php' );
+		qrms_assert_contains( "rma_ceviri_csv_hucre_kacir( \$satir['original'] )", $kaynak, 'kaynak metin kaçırılır' );
+		qrms_assert_contains( 'rma_ceviri_csv_hucre_kacir( isset( $mevcut[ $anahtar ][ $dil ] )', $kaynak, 'çeviri hücreleri kaçırılır' );
+
+		// Hash HÂLÂ ham metinden hesaplanmalı — kaçırılmış metinden değil,
+		// aksi hâlde yeniden içe aktarımda hash eşleşmezdi.
+		qrms_assert_contains( "rma_ceviri_hash_olustur( \$satir['original'], \$satir['field'] )", $kaynak, 'hash ham metinden hesaplanır' );
+	}
+);

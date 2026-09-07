@@ -436,6 +436,31 @@ trait RMA_Urunum_Yok_Admin_Trait {
         echo '</div>';
     }
 
+    /**
+     * CSV hücresini formül enjeksiyonuna karşı kaçırır.
+     *
+     * Excel/Sheets bir hücre `=`, `+`, `-`, `@` ile başlıyorsa onu formül
+     * sayar. Ürün başlığı ve kategori/malzeme adları serbest metindir; dosyayı
+     * açan yöneticinin makinesinde kod çalışmasın diye başa tek tırnak eklenir
+     * (Excel bunu görünmez biçim işareti sayar, hücre metni değişmez).
+     *
+     * @param mixed $deger Ham değer.
+     * @return string
+     */
+    private function csv_hucre_kacir( $deger ) {
+        $deger = is_scalar( $deger ) ? (string) $deger : '';
+
+        if ( '' === $deger ) {
+            return '';
+        }
+
+        if ( in_array( $deger[0], [ '=', '+', '-', '@', "\t", "\r" ], true ) ) {
+            return "'" . $deger;
+        }
+
+        return $deger;
+    }
+
     public function handle_ingredient_csv_export() {
         if ( ! isset( $_GET['_wpnonce'] ) || ! wp_verify_nonce( $_GET['_wpnonce'], 'qmo_uy_csv_export' ) ) {
             wp_die( 'Güvenlik doğrulaması başarısız.' );
@@ -474,10 +499,10 @@ trait RMA_Urunum_Yok_Admin_Trait {
 
                 fputcsv( $out, [
                     $p->ID,
-                    $p->post_title,
-                    is_wp_error( $cats ) ? '' : implode( ', ', $cats ),
+                    $this->csv_hucre_kacir( $p->post_title ),
+                    $this->csv_hucre_kacir( is_wp_error( $cats ) ? '' : implode( ', ', $cats ) ),
                     get_post_meta( $p->ID, 'rma_price', true ),
-                    is_wp_error( $ings ) ? '' : implode( '|', $ings ),
+                    $this->csv_hucre_kacir( is_wp_error( $ings ) ? '' : implode( '|', $ings ) ),
                 ], ';' );
             }
 

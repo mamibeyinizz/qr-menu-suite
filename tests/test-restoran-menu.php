@@ -651,3 +651,15 @@ qrms_test(
 		);
 	}
 );
+
+qrms_test(
+	'GÜVENLİK: Ürünüm Yok malzeme CSV dışa aktarımında formül enjeksiyonu kaçırılır',
+	function () {
+		$kaynak = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/urunum-yok/trait-admin.php' );
+
+		qrms_assert_contains( 'private function csv_hucre_kacir( $deger )', $kaynak, 'kaçırma metodu tanımlı' );
+		qrms_assert_contains( "\$this->csv_hucre_kacir( \$p->post_title )", $kaynak, 'ürün başlığı kaçırılır' );
+		qrms_assert_contains( "\$this->csv_hucre_kacir( is_wp_error( \$cats )", $kaynak, 'kategori listesi kaçırılır' );
+		qrms_assert_contains( "\$this->csv_hucre_kacir( is_wp_error( \$ings )", $kaynak, 'malzeme listesi kaçırılır' );
+	}
+);
