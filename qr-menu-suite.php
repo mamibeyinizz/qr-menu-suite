@@ -93,8 +93,10 @@ function qrms_deactivate() {
 
 	// Analitik saklama görevi modül sınıfında tanımlıdır; modül lisansta
 	// kapalıysa sınıf hiç yüklenmemiş olabilir, o yüzden kanca adı doğrudan
-	// temizlenir (sınıfı yalnızca bunun için yüklemeye değmez).
+	// temizlenir (sınıfı yalnızca bunun için yüklemeye değmez). Chatbot geçmiş
+	// temizliği için de aynı gerekçe geçerli.
 	wp_clear_scheduled_hook( 'qrms_analitik_temizlik' );
+	wp_clear_scheduled_hook( 'qmo_chatbot_gecmis_temizle' );
 
 	require_once QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/urunum-yok/class-cron.php';
 

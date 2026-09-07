@@ -1186,3 +1186,27 @@ qrms_test(
 		qrms_assert_contains( "function_exists( 'wp_set_option_autoload' )", $help, '6.4 API varsa kullanılır' );
 	}
 );
+
+qrms_test(
+	'GÜVENLİK: qmo_gemini_model whitelist dışı değeri reddeder',
+	function () {
+		update_option( 'qmo_gemini_model', 'gemini-2.5-flash' );
+		qrms_assert_same( 'gemini-2.5-flash', qmo_gemini_model(), 'geçerli değer korunur' );
+
+		update_option( 'qmo_gemini_model', "gemini?x=1\nHost: evil" );
+		qrms_assert_same( 'gemini-3-flash-preview', qmo_gemini_model(), 'geçersiz karakter varsayılana düşer' );
+
+		update_option( 'qmo_gemini_model', '' );
+		qrms_assert_same( 'gemini-3-flash-preview', qmo_gemini_model(), 'boş değer varsayılana düşer' );
+
+		delete_option( 'qmo_gemini_model' );
+	}
+);
+
+qrms_test(
+	'GÜVENLİK: deaktivasyonda qmo_chatbot_gecmis_temizle cron temizlenir',
+	function () {
+		$kok = file_get_contents( QRMS_PLUGIN_DIR . 'qr-menu-suite.php' );
+		qrms_assert_contains( "wp_clear_scheduled_hook( 'qmo_chatbot_gecmis_temizle' )", $kok, 'deaktivasyon chatbot cronunu temizler' );
+	}
+);

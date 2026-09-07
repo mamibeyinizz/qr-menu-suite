@@ -70,8 +70,19 @@ if ( ! class_exists( 'QMO_Oturum' ) ) {
 		private static function anahtar() {
 			$k = get_option( self::OPT_KEY );
 			if ( ! $k ) {
-				$k = wp_generate_password( 64, true, true );
-				add_option( self::OPT_KEY, $k, '', 'no' );
+				$aday = wp_generate_password( 64, true, true );
+
+				// get_option()/add_option() ikilisi atomik değildir: iki eşzamanlı
+				// ilk istek farklı anahtar üretip ikisi de add_option çağırabilir.
+				// MySQL'deki UNIQUE(option_name) yalnızca birini kabul eder;
+				// add_option() false dönerse kaybeden bu dal, kazananın DB'ye
+				// yazdığı değeri okuyup onu kullanır — aksi hâlde kaybedenin
+				// imzaladığı token hiçbir zaman doğrulanamazdı.
+				if ( add_option( self::OPT_KEY, $aday, '', 'no' ) ) {
+					$k = $aday;
+				} else {
+					$k = get_option( self::OPT_KEY );
+				}
 			}
 			return $k;
 		}

@@ -271,6 +271,20 @@ if ( ! defined( 'QRSERVIS_KILIT_YUKLENDI' ) ) {
 		// 1) Adreste masa parametresi varsa slug gerçekten kayıtlı olmalı.
 		$gelen_masa = isset( $_GET['masa'] ) ? sanitize_title( wp_unslash( $_GET['masa'] ) ) : '';
 		if ( '' !== $gelen_masa ) {
+			// GÜVENLİK: geçerli/geçersiz slug için farklı yanıt (kilit ekranı vs
+			// normal sayfa) bir numaralandırma orakülüdür — saniyeler içinde
+			// binlerce slug denenip gerçek masa listesi çıkarılabilir. Gerçek
+			// bir müşteri QR'ı kamerayla tek seferde okutur; bu eşiğe asla
+			// yaklaşmaz. IP başına dakikada 20 denemeden fazlası kilitlenir —
+			// deneme geçerli bir slug olsa bile, çünkü amaç saldırganın
+			// "bu denemeden sonra ne oldu" farkını görmesini engellemektir.
+			if ( function_exists( 'qmo_ip_hash' ) && function_exists( 'qmo_sayac_arttir' ) ) {
+				$deneme = qmo_sayac_arttir( 'qmo_masa_deneme_' . qmo_ip_hash(), MINUTE_IN_SECONDS );
+				if ( $deneme > 20 ) {
+					qmo_kilit_ekrani( __( 'Çok fazla deneme yapıldı. Lütfen biraz sonra tekrar deneyin.', 'qrms' ) );
+				}
+			}
+
 			if ( ! qmo_masa_gecerli_mi( $gelen_masa ) ) {
 				qmo_kilit_ekrani( __( 'Bu masa için geçerli bir QR kod bulunamadı. Lütfen masanızdaki QR kodu okutun.', 'qrms' ) );
 			}
