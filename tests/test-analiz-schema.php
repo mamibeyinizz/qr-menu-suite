@@ -613,7 +613,7 @@ qrms_test(
 		$kaynak = file_get_contents( QRMS_PLUGIN_DIR . 'includes/class-license-client.php' );
 
 		$birak  = strpos( $kaynak, '$db_kapali = self::db_serbest_birak();' );
-		$istek  = strpos( $kaynak, '$response = wp_remote_post(' );
+		$istek  = strpos( $kaynak, '$response = wp_safe_remote_post(' );
 		$geri   = strpos( $kaynak, 'self::db_geri_baglan( $db_kapali );' );
 
 		qrms_assert_true( false !== $birak, 'bağlantı bırakılıyor' );
@@ -687,7 +687,45 @@ qrms_test(
 	}
 );
 
+qrms_test(
+	'GÜVENLİK: sorgu literal değerleri debug.log\'a yazılmadan önce maskelenir',
+	function () {
+		// $wpdb->queries ham, bağlanmış SQL tutar; telefon/ad gibi kişisel
+		// veri içeren bir WHERE koşulu debug.log'a olduğu gibi yazılıyordu.
+		// debug.log çoğu paylaşımlı hosting'de web'den okunabilir bir konumda
+		// durur — sorgu YAPISI kalmalı, değerler kaybolmalı.
+		$sorgu = "SELECT * FROM wp_qrm_reviews WHERE customer_phone LIKE '%05551234567%' AND customer_name = 'Ahmet Yılmaz'";
+
+		$sonuc = QRMS_Query_Monitor::sorguyu_kisalt( $sorgu );
+
+		qrms_assert_false( false !== strpos( $sonuc, '05551234567' ), 'telefon numarası kalmadı' );
+		qrms_assert_false( false !== strpos( $sonuc, 'Ahmet Yılmaz' ), 'ad kalmadı' );
+		qrms_assert_contains( 'customer_phone LIKE', $sonuc, 'sütun/koşul yapısı korunur' );
+		qrms_assert_contains( "'***'", $sonuc, 'maskeleme işareti' );
+
+		// Tanımlayıcılar (tablo/sütun adı, backtick) etkilenmemeli.
+		$backtick = QRMS_Query_Monitor::sorguyu_kisalt( "SELECT `id` FROM `wp_qrm_reviews` WHERE `status` = 1" );
+		qrms_assert_contains( '`id`', $backtick, 'backtick tanımlayıcı korunur' );
+	}
+);
+
 /* ---------------------------------------------------------------------------
  * 15. Header Footer Builder (header-footer-builder)
  * ------------------------------------------------------------------------ */
 
+
+qrms_test(
+	'GÜVENLİK: lisans doğrulaması SSRF korumalı varyant kullanır, şema https zorlanır',
+	function () {
+		$kaynak = file_get_contents( QRMS_PLUGIN_DIR . 'includes/class-license-client.php' );
+
+		// qrms_server_url yönetici tarafından değiştirilebilir bir option'dır;
+		// wp_safe_remote_post özel/yerel IP aralıklarına isteği reddederek bu
+		// ayarın SSRF'e dönüşmesini engeller.
+		qrms_assert_contains( '$response = wp_safe_remote_post(', $kaynak, 'safe varyant kullanılır' );
+		qrms_assert_false( false !== strpos( $kaynak, '$response = wp_remote_post(' ), 'eski çağrı kalmadı' );
+
+		// http:// kabul edilirse API anahtarı açık gider, yanıt yolda değişebilir.
+		qrms_assert_contains( "preg_replace( '#^http://#i', 'https://', \$server_url )", $kaynak, 'http https\'e zorlanır' );
+	}
+);

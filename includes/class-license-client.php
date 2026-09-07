@@ -156,7 +156,10 @@ class QRMS_License_Client {
 		// option'lara yazılana kadar veritabanına ihtiyaç yok, bağlantı bırakılır.
 		$db_kapali = self::db_serbest_birak();
 
-		$response = wp_remote_post(
+		// wp_safe_remote_post: hedef, yönetici tarafından değiştirilebilen bir
+		// option'dan (qrms_server_url) geliyor; güvenli varyant özel/yerel IP
+		// aralıklarına isteği reddederek bu ayarın SSRF'e dönüşmesini engeller.
+		$response = wp_safe_remote_post(
 			$server_url . self::ENDPOINT_PATH,
 			array(
 				'timeout' => self::REQUEST_TIMEOUT,
@@ -324,6 +327,11 @@ class QRMS_License_Client {
 		if ( ! preg_match( '#^https?://#i', $server_url ) ) {
 			$server_url = 'https://' . ltrim( $server_url, '/' );
 		}
+
+		// http:// düz metin kabul edilirse API anahtarı ağ üzerinde açık gider
+		// ve yanıt (aktif modül listesi) yolda değiştirilebilir; şema burada
+		// https'e zorlanır.
+		$server_url = preg_replace( '#^http://#i', 'https://', $server_url );
 
 		$server_url = esc_url_raw( $server_url );
 

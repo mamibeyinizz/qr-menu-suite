@@ -290,6 +290,19 @@ function wp_remote_post( $url, $args = array() ) {
 }
 
 /**
+ * wp_remote_post'un SSRF korumalı gerçek varyantının taklidi. Testte davranış
+ * aynıdır; gerçek WordPress'te bu varyant özel/yerel IP aralıklarına isteği
+ * reddeder.
+ *
+ * @param string $url  Adres.
+ * @param array  $args Argümanlar.
+ * @return array|WP_Error
+ */
+function wp_safe_remote_post( $url, $args = array() ) {
+	return wp_remote_post( $url, $args );
+}
+
+/**
  * HTTP GET taklidi.
  *
  * @param string $url  Adres.

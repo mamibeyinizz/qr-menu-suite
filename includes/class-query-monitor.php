@@ -163,6 +163,15 @@ class QRMS_Query_Monitor {
 	public static function sorguyu_kisalt( $sorgu ) {
 		$sorgu = trim( preg_replace( '/\s+/', ' ', $sorgu ) );
 
+		// GÜVENLİK: $wpdb->queries ham, bağlanmış SQL tutar — ör.
+		// "customer_phone LIKE '%05xxxxxxxx%'". WP_DEBUG_LOG açıkken bu satır
+		// telefon/ad gibi kişisel veriyle birlikte debug.log'a yazılıyordu ve
+		// debug.log çoğu paylaşımlı hosting'de web'den okunabilir bir konumda
+		// durur. Tek tırnaklı string literal'ler (tanımlayıcılar backtick
+		// kullanır, bu yüzden etkilenmez) burada maskelenir; teşhis için sorgu
+		// YAPISI (hangi tablo/sütun/koşul yavaş) korunur, değerler kaybolur.
+		$sorgu = preg_replace( "/'(?:[^'\\\\]|\\\\.)*'/", "'***'", $sorgu );
+
 		if ( strlen( $sorgu ) <= self::METIN_UZUNLUK ) {
 			return $sorgu;
 		}
