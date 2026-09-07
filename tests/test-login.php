@@ -195,6 +195,27 @@ qrms_test(
 
 		// Oturumu açık kullanıcı için çıkış ve ara giriş penceresi çalışmalı.
 		qrms_assert_false( QRMS_Login::should_block_wp_login( 'logout', true ), 'oturum açıkken engellenmez' );
+
+		// GÜVENLİK: çekirdek `action`'ı büyük/küçük harfe duyarlı karşılaştırır
+		// ve listede bulamadığını `login`'e düşürür. Küçültülmüş değere bakmak
+		// `?action=Postpass` isteğini muaf sayar, çekirdek ise giriş formunu
+		// basardı — adres gizleme tek harfle atlatılırdı.
+		qrms_assert_true( QRMS_Login::should_block_wp_login( 'Postpass', false ), 'büyük harfli Postpass engellenir' );
+		qrms_assert_true( QRMS_Login::should_block_wp_login( 'POSTPASS', false ), 'büyük harfli POSTPASS engellenir' );
+		qrms_assert_true( QRMS_Login::should_block_wp_login( 'postpass ', false ), 'boşluklu postpass engellenir' );
+	}
+);
+
+qrms_test(
+	'wp-login yolu büyük/küçük harften bağımsız tanınır',
+	function () {
+		update_option( QRMS_Login::OPTION, array( 'yol_aktif' => 1, 'slug' => 'qrm' ) );
+
+		// Büyük/küçük harfe duyarsız dosya sistemlerinde aynı dosyaya çözülür.
+		$_SERVER['REQUEST_URI'] = '/wp-login.PHP';
+		qrms_assert_true( QRMS_Login::is_wp_login_path( QRMS_Login::request_path() ), 'wp-login.PHP tanınır' );
+
+		unset( $_SERVER['REQUEST_URI'] );
 	}
 );
 

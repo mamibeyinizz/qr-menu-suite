@@ -493,7 +493,10 @@ class QRMS_Login {
 	 * @return bool
 	 */
 	public static function is_wp_login_path( $yol ) {
-		return false !== strpos( (string) $yol, 'wp-login.php' );
+		// stripos: büyük/küçük harfe duyarsız dosya sistemlerinde (Windows,
+		// varsayılan macOS) `/wp-login.PHP` de aynı dosyaya çözülür; duyarlı
+		// karşılaştırma bu isteği korumasız bırakırdı.
+		return false !== stripos( (string) $yol, 'wp-login.php' );
 	}
 
 	/**
@@ -503,7 +506,14 @@ class QRMS_Login {
 	 * geçer; oturumu açık kullanıcı da engellenmez (çıkış bağlantısı, ara
 	 * giriş penceresi). Geri kalan her şey 404'tür.
 	 *
-	 * @param string $eylem      `action` sorgu parametresi.
+	 * $eylem HAM değer olarak gelmelidir. Çekirdek `wp-login.php` içinde
+	 * `action`'ı `in_array( $action, $default_actions, true )` ile BÜYÜK/KÜÇÜK
+	 * HARFE DUYARLI karşılaştırır ve listede bulamadığı her değeri `login`'e
+	 * düşürür. Burada `sanitize_key()` ile küçültülmüş bir değere bakmak
+	 * `?action=Postpass` isteğini muaf sayar, çekirdek ise aynı isteğe giriş
+	 * formunu basardı — adres gizleme tek harfle atlatılırdı.
+	 *
+	 * @param string $eylem      `action` parametresinin ham değeri.
 	 * @param bool   $oturum_var Kullanıcının oturumu açık mı?
 	 * @return bool
 	 */
@@ -536,8 +546,13 @@ class QRMS_Login {
 		}
 
 		if ( self::is_wp_login_path( $yol ) ) {
+			// Ham değer: çekirdeğin duyarlı karşılaştırmasıyla birebir aynı
+			// kararı vermek için (bkz. should_block_wp_login docblock'u).
+			// Dizi gelirse çekirdek de listede bulamayıp `login`'e düşer;
+			// boş string'e çevirmek burada da "engelle" demektir.
 			// phpcs:ignore WordPress.Security.NonceVerification.Recommended
-			$eylem = isset( $_REQUEST['action'] ) ? sanitize_key( wp_unslash( $_REQUEST['action'] ) ) : '';
+			$ham   = isset( $_REQUEST['action'] ) ? wp_unslash( $_REQUEST['action'] ) : '';
+			$eylem = is_string( $ham ) ? $ham : '';
 
 			if ( self::should_block_wp_login( $eylem, is_user_logged_in() ) ) {
 				self::$bloke = true;
@@ -603,10 +618,31 @@ class QRMS_Login {
 		}
 
 		// REST_REQUEST sabiti yalnızca istek yönlendirildikten sonra tanımlanır;
-		// yol üzerinden erken kontrol REST isteğini korumaya alır.
+		// yol üzerinden erken kontrol REST isteğini korumaya alır. Eşleşme yolun
+		// BAŞINA sabitlenir: "içinde /wp-json geçen her istek" muaf sayılırsa,
+		// PATH_INFO kabul eden sunucularda `/wp-login.php/wp-json` tüm giriş
+		// korumasını atlatırdı.
 		$yol = self::request_path();
+		$kok = self::home_path();
 
-		return false !== strpos( $yol, '/wp-json' );
+		$onekler = array( 'wp-json' );
+		if ( function_exists( 'rest_get_url_prefix' ) ) {
+			$onekler[] = trim( (string) rest_get_url_prefix(), '/' );
+		}
+
+		foreach ( array_unique( $onekler ) as $onek ) {
+			if ( '' === $onek ) {
+				continue;
+			}
+
+			$hedef = $kok . '/' . $onek;
+
+			if ( $yol === $hedef || 0 === strpos( $yol, $hedef . '/' ) ) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	/**
