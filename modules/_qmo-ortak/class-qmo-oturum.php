@@ -76,11 +76,6 @@ if ( ! class_exists( 'QMO_Oturum' ) ) {
 			return $k;
 		}
 
-		/** Aktivasyonda anahtarı önceden üret. */
-		public static function anahtar_hazirla() {
-			self::anahtar();
-		}
-
 		/**
 		 * Masanın epoch değeri. Masa "kapatıldığında" artar ve o masaya ait
 		 * tüm eski token'lar tek seferde geçersizleşir.

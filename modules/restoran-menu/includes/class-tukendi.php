@@ -215,20 +215,6 @@ class RMA_Tukendi {
     }
 
     /**
-     * Yayınlanmış menü ürünleri arasında bu ada sahip ve tükendi işaretli
-     * bir kayıt var mı.
-     *
-     * Yalnızca `_rma_tukendi = 1` olanlar çekilir (tipik olarak az kayıt);
-     * karşılaştırma PHP'de Unicode küçük harfle yapılır.
-     *
-     * @param string $urun_adi Chatbot'un gönderdiği Türkçe ad.
-     * @return bool
-     */
-    public static function ad_tukendi( $urun_adi ) {
-        return null !== self::ad_tukendi_urun( $urun_adi );
-    }
-
-    /**
      * Ada göre tükendi ürünü (id + görünen ad) veya null.
      *
      * @param string $urun_adi Chatbot'un gönderdiği Türkçe ad.

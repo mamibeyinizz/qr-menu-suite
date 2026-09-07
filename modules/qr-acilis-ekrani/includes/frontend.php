@@ -471,20 +471,6 @@ trait QRMS_AE_Frontend {
     }
 
     /**
-     * Bir metnin İngilizce karşılığı; girilmemişse Türkçesi.
-     *
-     * @param array  $opts Ayarlar.
-     * @param string $key  Metin anahtarı (btn1..btn5, divider).
-     * @param string $tr   Türkçe metin.
-     * @return string
-     */
-    private function text_en($opts, $key, $tr) {
-        $en = isset($opts['texts_en'][$key]) ? trim((string) $opts['texts_en'][$key]) : '';
-
-        return '' !== $en ? $en : $tr;
-    }
-
-    /**
      * Bir metin düğümüne iki dili de taşıyan data nitelikleri.
      *
      * DİL SUNUCUDA SEÇİLMEZ. Ana sayfanın HTML'i her ziyaretçide birebir aynı

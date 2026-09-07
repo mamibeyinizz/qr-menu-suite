@@ -506,24 +506,3 @@ if ( ! function_exists( 'qrms_module_qr_ceviri_eski_adresi_yonlendir' ) ) {
 		exit;
 	}
 }
-
-if ( ! function_exists( 'qrms_module_qr_ceviri_ekran_mi' ) ) {
-
-	/**
-	 * Bu istek çeviri yönetim ekranlarından birinde mi?
-	 *
-	 * @param string $page page= slug'ı.
-	 * @return bool
-	 */
-	function qrms_module_qr_ceviri_ekran_mi( $page ) {
-		if ( class_exists( 'QRMS_Admin' ) && QRMS_Admin::get_module_page_slug( 'qr-ceviri' ) === $page ) {
-			return true;
-		}
-
-		if ( 0 === strpos( $page, 'qrms-cv-' ) ) {
-			return true;
-		}
-
-		return QRMS_CEVIRI_ESKI_SAYFA === $page;
-	}
-}

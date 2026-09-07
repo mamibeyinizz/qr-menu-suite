@@ -889,35 +889,6 @@ class RMA_Kampanya_DB {
         return $out;
     }
 
-    /**
-     * Kampanyanın fiyat fotoğrafı — ürün ID => orijinal fiyat.
-     *
-     * @param int $id Kampanya ID.
-     * @return array<int,float>
-     */
-    public static function anlik_getir( $id ) {
-        global $wpdb;
-
-        $id = (int) $id;
-
-        if ( $id <= 0 ) {
-            return array();
-        }
-
-        $tablo = self::anlik_tablo();
-
-        $satirlar = (array) $wpdb->get_results(
-            $wpdb->prepare( "SELECT product_id, original_price FROM {$tablo} WHERE campaign_id = %d", $id )
-        );
-
-        $harita = array();
-
-        foreach ( $satirlar as $satir ) {
-            $harita[ (int) $satir->product_id ] = (float) $satir->original_price;
-        }
-
-        return $harita;
-    }
 }
 
 endif;

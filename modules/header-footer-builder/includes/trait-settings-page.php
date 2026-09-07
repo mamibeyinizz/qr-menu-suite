@@ -318,22 +318,6 @@ trait QRMS_HFB_Settings_Page {
 	}
 
 	/**
-	 * Hizalamayı flex justify-content değerine çevirir.
-	 *
-	 * @param string $align left|center|right.
-	 * @return string
-	 */
-	public function align_to_flex( $align ) {
-		$map = array(
-			'left'   => 'flex-start',
-			'center' => 'center',
-			'right'  => 'flex-end',
-		);
-
-		return isset( $map[ $align ] ) ? $map[ $align ] : 'flex-start';
-	}
-
-	/**
 	 * Çalışma saatleri modülü bu istekte kullanılabilir mi?
 	 *
 	 * Gevşek bağ: modül kapalıysa Çalışma Saatleri bloğu footer'da
