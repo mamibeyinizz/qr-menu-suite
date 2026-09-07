@@ -110,12 +110,4 @@ class QRMS_Module_Loader {
 		return self::$loaded;
 	}
 
-	/**
-	 * Bu istekte yüklenmiş modüller.
-	 *
-	 * @return string[]
-	 */
-	public static function get_loaded_modules() {
-		return self::$loaded;
-	}
 }
