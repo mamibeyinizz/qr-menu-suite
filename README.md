@@ -12,7 +12,7 @@ etkinleştirin. Etkinleştirmeden sonra bir sonraki admin sayfasında kurulum
 sihirbazına yönlendirilirsiniz.
 
 Sihirbazda API anahtarınızı girip **Doğrula ve Kur** deyin. Sunucu adresi
-alanı varsayılan olarak `https://full.qrmenuofficial.com` gelir; farklı bir
+alanı varsayılan olarak `https://qrmenuofficial.com` gelir; farklı bir
 (staging/yansıma) sunucu kullanmıyorsanız dokunmanıza gerek yok.
 
 ## Lisans sözleşmesi

@@ -142,7 +142,7 @@ qrms_test(
 
 		qrms_validate_license( 'ANAHTAR', '' );
 
-		qrms_assert_same( 'https://full.qrmenuofficial.com', get_option( 'qrms_server_url' ), 'varsayılan sunucu' );
+		qrms_assert_same( 'https://qrmenuofficial.com', get_option( 'qrms_server_url' ), 'varsayılan sunucu' );
 	}
 );
 
@@ -381,7 +381,7 @@ qrms_test(
 		QRMS_Wizard::render_form();
 		$html = ob_get_clean();
 
-		qrms_assert_contains( 'value="https://full.qrmenuofficial.com"', $html, 'varsayılan sunucu' );
+		qrms_assert_contains( 'value="https://qrmenuofficial.com"', $html, 'varsayılan sunucu' );
 		qrms_assert_contains( 'Doğrula ve Kur', $html, 'buton etiketi' );
 	}
 );

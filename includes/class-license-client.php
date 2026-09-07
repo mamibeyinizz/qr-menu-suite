@@ -40,7 +40,7 @@ class QRMS_License_Client {
 	/**
 	 * Varsayılan lisans sunucusu adresi (wizard'da değiştirilebilir).
 	 */
-	const DEFAULT_SERVER_URL = 'https://full.qrmenuofficial.com';
+	const DEFAULT_SERVER_URL = 'https://qrmenuofficial.com';
 
 	/**
 	 * Doğrulama endpoint yolu.
