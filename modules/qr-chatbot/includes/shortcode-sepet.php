@@ -68,9 +68,17 @@ if ( ! function_exists( 'qmo_sepet_kur' ) ) {
 			$yanit = wp_remote_get( 'https://open.er-api.com/v6/latest/TRY', array( 'timeout' => 3 ) );
 			if ( ! is_wp_error( $yanit ) ) {
 				$data = json_decode( wp_remote_retrieve_body( $yanit ), true );
-				if ( ! empty( $data['rates']['USD'] ) && ! empty( $data['rates']['EUR'] ) ) {
-					$kur['USD'] = (float) $data['rates']['USD'];
-					$kur['EUR'] = (float) $data['rates']['EUR'];
+				$usd  = isset( $data['rates']['USD'] ) ? (float) $data['rates']['USD'] : 0.0;
+				$eur  = isset( $data['rates']['EUR'] ) ? (float) $data['rates']['EUR'] : 0.0;
+
+				// GÜVENLİK/SAĞLAMLIK: üçüncü taraf yanıtı doğrulanmadan doğrudan
+				// müşteriye gösterilen fiyata dönüşüyordu. Sağlayıcı bozuk/boş bir
+				// gövde (0, negatif, aşırı büyük bir değer) dönerse yanlış bir
+				// yaklaşık fiyat basılmasın diye makul bir aralıkla sınırlanır;
+				// aralık dışında kalırsa yukarıdaki sabit yedek kur korunur.
+				if ( $usd > 0.00001 && $usd < 2 && $eur > 0.00001 && $eur < 2 ) {
+					$kur['USD'] = $usd;
+					$kur['EUR'] = $eur;
 				}
 			}
 		}

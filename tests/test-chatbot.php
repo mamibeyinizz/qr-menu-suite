@@ -1230,3 +1230,45 @@ qrms_test(
 		qrms_assert_true( false !== $tavan_pos && false !== $filtre_pos && $tavan_pos < $filtre_pos, 'tavan filtreden önce kontrol edilir' );
 	}
 );
+
+qrms_test(
+	'GÜVENLİK: döviz kuru yanıtı makul aralık dışındaysa yedek kura düşer',
+	function () {
+		// Bozuk/manipüle bir yanıt (0, negatif, saçma büyük değer) doğrudan
+		// müşteriye gösterilen yaklaşık fiyata dönüşmemeli.
+		$GLOBALS['qrms_test']['http'] = function () {
+			return array(
+				'response' => array( 'code' => 200 ),
+				'body'     => wp_json_encode( array( 'rates' => array( 'USD' => 0, 'EUR' => -5 ) ) ),
+			);
+		};
+		delete_transient( 'qmo_sepet_kur' );
+		$kur = qmo_sepet_kur();
+		qrms_assert_same( 0.0207, $kur['USD'], 'sıfır USD yedeğe düşer' );
+		qrms_assert_same( 0.0179, $kur['EUR'], 'negatif EUR yedeğe düşer' );
+
+		$GLOBALS['qrms_test']['http'] = function () {
+			return array(
+				'response' => array( 'code' => 200 ),
+				'body'     => wp_json_encode( array( 'rates' => array( 'USD' => 999, 'EUR' => 999 ) ) ),
+			);
+		};
+		delete_transient( 'qmo_sepet_kur' );
+		$kur2 = qmo_sepet_kur();
+		qrms_assert_same( 0.0207, $kur2['USD'], 'aşırı büyük değer yedeğe düşer' );
+
+		// Makul bir değer kabul edilir.
+		$GLOBALS['qrms_test']['http'] = function () {
+			return array(
+				'response' => array( 'code' => 200 ),
+				'body'     => wp_json_encode( array( 'rates' => array( 'USD' => 0.025, 'EUR' => 0.021 ) ) ),
+			);
+		};
+		delete_transient( 'qmo_sepet_kur' );
+		$kur3 = qmo_sepet_kur();
+		qrms_assert_same( 0.025, $kur3['USD'], 'makul değer kabul edilir' );
+
+		$GLOBALS['qrms_test']['http'] = null;
+		delete_transient( 'qmo_sepet_kur' );
+	}
+);
