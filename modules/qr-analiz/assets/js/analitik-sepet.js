@@ -32,8 +32,29 @@
 		return metin( 'justStarted', 'Sepet ve sipariş olayları toplanmaya yeni başladı. Bu bir hata değil; menüden verilen ilk siparişler burada görünecek.' );
 	}
 
+	function kartHtml( kart ) {
+		return '<div class="qrms-an-card">' +
+			'<span class="qrms-an-card-tag">' + ORTAK.esc( CFG.aralikEtiketi || '' ) + '</span>' +
+			'<span class="qrms-an-card-icon dashicons ' + ORTAK.esc( kart.ikon ) + '" aria-hidden="true"></span>' +
+			'<div class="qrms-an-card-label">' + ORTAK.esc( kart.etiket ) + '</div>' +
+			'<div class="qrms-an-card-value">' + ORTAK.esc( kart.deger ) + '</div>' +
+			'<div class="qrms-an-card-sub">' + ORTAK.esc( kart.alt ) + '</div>' +
+			'</div>';
+	}
+
+	function grupHtml( baslik, kartlar ) {
+		var html = '<div class="qrms-an-card-group">' +
+			'<div class="qrms-an-card-group-title">' + ORTAK.esc( baslik ) + '</div>';
+
+		kartlar.forEach( function ( kart ) {
+			html += kartHtml( kart );
+		} );
+
+		return html + '</div>';
+	}
+
 	function kartlariBas( ozet ) {
-		var kartlar = [
+		var hacim = [
 			{
 				ikon: 'dashicons-cart',
 				etiket: metin( 'cardAdd', 'Sepete eklenen' ),
@@ -53,7 +74,9 @@
 				deger: ORTAK.kisa( ozet.terk ),
 				alt: metin( 'abandonRate', 'Terk oranı' ) + ': %' + ORTAK.sayi( ozet.terk_oran ) +
 					' (' + ORTAK.sayi( ozet.oturum_add ) + ' ' + metin( 'cartSessions', 'sepet oturumu' ) + ')'
-			},
+			}
+		];
+		var siparis = [
 			{
 				ikon: 'dashicons-hidden',
 				etiket: metin( 'cardBlocked', 'Engellenen sipariş' ),
@@ -65,7 +88,9 @@
 				etiket: metin( 'cardFailed', 'Başarısız sipariş' ),
 				deger: ORTAK.kisa( ozet.failed ),
 				alt: metin( 'orderFailed', 'order_failed' )
-			},
+			}
+		];
+		var para = [
 			{
 				ikon: 'dashicons-money-alt',
 				etiket: metin( 'cardRevenue', 'Ciro' ),
@@ -92,19 +117,10 @@
 			}
 		];
 
-		var html = '';
-
-		kartlar.forEach( function ( kart ) {
-			html += '<div class="qrms-an-card">' +
-				'<span class="qrms-an-card-tag">' + ORTAK.esc( CFG.aralikEtiketi || '' ) + '</span>' +
-				'<span class="qrms-an-card-icon dashicons ' + ORTAK.esc( kart.ikon ) + '" aria-hidden="true"></span>' +
-				'<div class="qrms-an-card-label">' + ORTAK.esc( kart.etiket ) + '</div>' +
-				'<div class="qrms-an-card-value">' + ORTAK.esc( kart.deger ) + '</div>' +
-				'<div class="qrms-an-card-sub">' + ORTAK.esc( kart.alt ) + '</div>' +
-				'</div>';
-		} );
-
-		el.cards.innerHTML = html;
+		el.cards.innerHTML =
+			grupHtml( metin( 'groupVolume', 'Hacim' ), hacim ) +
+			grupHtml( metin( 'groupOrders', 'Sipariş' ), siparis ) +
+			grupHtml( metin( 'groupMoney', 'Para' ), para );
 	}
 
 	function bosKutuBas( bos ) {
@@ -120,12 +136,59 @@
 
 		el.bos.hidden = false;
 		el.bos.innerHTML =
-			'<div class="qrms-an-teshis qrms-an-teshis-bilgi">' +
+			'<div class="qrms-an-teshis qrms-an-teshis-bilgi" id="qrms-an-sepet-teshis">' +
 			'<span class="qrms-an-teshis-icon dashicons dashicons-info-outline" aria-hidden="true"></span>' +
 			'<div class="qrms-an-teshis-body">' +
 			'<h2 class="qrms-an-teshis-title">' + ORTAK.esc( metin( 'justStartedTitle', 'Toplanmaya yeni başlandı' ) ) + '</h2>' +
 			'<p class="qrms-an-teshis-text">' + ORTAK.esc( yeniBasladi() ) + '</p>' +
 			'</div></div>';
+	}
+
+	function veriPanelleriniAyarla( bos ) {
+		var paneller = document.querySelectorAll( '.qrms-an-sepet-veri-paneli' );
+		var i;
+
+		for ( i = 0; i < paneller.length; i++ ) {
+			paneller[ i ].hidden = !! bos;
+		}
+	}
+
+	/**
+	 * İlk kurulumda uzun metin masaüstünde kalır; mobilde "Veri yok" + neden?
+	 */
+	function bosDurumSepet( ikon, baslangic, yedek ) {
+		if ( ! baslangic ) {
+			return ORTAK.bosDurum( ikon, yedek );
+		}
+
+		return '<div class="qrms-an-empty">' +
+			'<span class="qrms-an-empty-icon dashicons ' + ORTAK.esc( ikon ) + '" aria-hidden="true"></span>' +
+			'<p class="qrms-an-empty-text">' +
+			'<span class="qrms-an-empty-kisa">' + ORTAK.esc( metin( 'emptyNone', 'Veri yok' ) ) +
+			' <a class="qrms-an-empty-neden" href="#qrms-an-sepet-bos">' +
+			ORTAK.esc( metin( 'emptyWhy', 'neden?' ) ) + '</a></span>' +
+			'<span class="qrms-an-empty-uzun">' + ORTAK.esc( yeniBasladi() ) + '</span>' +
+			'</p></div>';
+	}
+
+	function teshiseKaydir( e ) {
+		var bag = e.target.closest ? e.target.closest( '.qrms-an-empty-neden' ) : null;
+		var hedef;
+		var azalt;
+
+		if ( ! bag ) {
+			return;
+		}
+
+		e.preventDefault();
+		hedef = el.bos || document.getElementById( 'qrms-an-sepet-bos' );
+
+		if ( ! hedef ) {
+			return;
+		}
+
+		azalt = window.matchMedia && window.matchMedia( '(prefers-reduced-motion: reduce)' ).matches;
+		hedef.scrollIntoView( { behavior: azalt ? 'auto' : 'smooth', block: 'start' } );
 	}
 
 	function urunAdi( u ) {
@@ -134,9 +197,10 @@
 
 	function terkBas( satirlar, bos ) {
 		if ( ! satirlar || ! satirlar.length ) {
-			el.terk.innerHTML = ORTAK.bosDurum(
+			el.terk.innerHTML = bosDurumSepet(
 				'dashicons-cart',
-				bos ? yeniBasladi() : metin( 'noAbandon', 'Bu aralıkta sepete eklenip gönderilmeyen ürün yok.' )
+				bos,
+				metin( 'noAbandon', 'Bu aralıkta sepete eklenip gönderilmeyen ürün yok.' )
 			);
 			return;
 		}
@@ -169,9 +233,10 @@
 
 	function cikarBas( satirlar, bos ) {
 		if ( ! satirlar || ! satirlar.length ) {
-			el.cikar.innerHTML = ORTAK.bosDurum(
+			el.cikar.innerHTML = bosDurumSepet(
 				'dashicons-undo',
-				bos ? yeniBasladi() : metin( 'noRemove', 'Bu aralıkta sepetten çıkarma yok.' )
+				bos,
+				metin( 'noRemove', 'Bu aralıkta sepetten çıkarma yok.' )
 			);
 			return;
 		}
@@ -208,9 +273,10 @@
 
 	function engelBas( satirlar, bos ) {
 		if ( ! satirlar || ! satirlar.length ) {
-			el.engel.innerHTML = ORTAK.bosDurum(
+			el.engel.innerHTML = bosDurumSepet(
 				'dashicons-hidden',
-				bos ? yeniBasladi() : metin( 'noBlocked', 'Bu aralıkta tükendi nedeniyle engellenen sipariş yok.' )
+				bos,
+				metin( 'noBlocked', 'Bu aralıkta tükendi nedeniyle engellenen sipariş yok.' )
 			);
 			return;
 		}
@@ -245,9 +311,10 @@
 
 	function ciroBas( satirlar, bos ) {
 		if ( ! satirlar || ! satirlar.length ) {
-			el.ciro.innerHTML = ORTAK.bosDurum(
+			el.ciro.innerHTML = bosDurumSepet(
 				'dashicons-money-alt',
-				bos ? yeniBasladi() : metin( 'noRevenue', 'Bu aralıkta gönderilmiş sipariş yok.' )
+				bos,
+				metin( 'noRevenue', 'Bu aralıkta gönderilmiş sipariş yok.' )
 			);
 			return;
 		}
@@ -278,7 +345,7 @@
 		el.ciro.innerHTML = ORTAK.tabloIskelet( basliklar, govde, '' );
 	}
 
-	function huniBas( huni ) {
+	function huniBas( huni, bos ) {
 		if ( ! el.huni ) {
 			return;
 		}
@@ -294,7 +361,7 @@
 		];
 
 		if ( ! tepe ) {
-			el.huni.innerHTML = ORTAK.bosDurum( 'dashicons-filter', yeniBasladi() );
+			el.huni.innerHTML = bosDurumSepet( 'dashicons-filter', !! bos, yeniBasladi() );
 			return;
 		}
 
@@ -369,17 +436,23 @@
 
 		bosKutuBas( bos );
 		kartlariBas( ozet );
-		huniBas( veri.huni );
-		ciroBas( veri.en_cok_ciro, bos );
-		terkBas( veri.terk_urun, bos );
-		cikarBas( veri.cikarilan, bos );
-		engelBas( veri.engellenen, bos );
+		huniBas( veri.huni, bos );
+		veriPanelleriniAyarla( bos );
+
+		if ( ! bos ) {
+			ciroBas( veri.en_cok_ciro, bos );
+			terkBas( veri.terk_urun, bos );
+			cikarBas( veri.cikarilan, bos );
+			engelBas( veri.engellenen, bos );
+		}
+
 		hataBas( ozet, veri.hatalar );
 	}
 
 	function hataGoster() {
 		var msg = metin( 'loadError', 'Veri yüklenemedi. Sayfayı yenileyin.' );
 
+		veriPanelleriniAyarla( false );
 		el.cards.innerHTML = '';
 		if ( el.huni ) {
 			el.huni.innerHTML = ORTAK.bosDurum( 'dashicons-warning', msg );
@@ -422,7 +495,14 @@
 			return;
 		}
 
-		ORTAK.filtreKur( document.querySelector( '.qrms-an-sepet' ) );
+		var kap = document.querySelector( '.qrms-an-sepet' );
+
+		ORTAK.filtreKur( kap );
+
+		if ( kap ) {
+			kap.addEventListener( 'click', teshiseKaydir );
+		}
+
 		yukle();
 	}
 

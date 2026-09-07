@@ -1305,6 +1305,9 @@ qrms_test(
 		qrms_assert_contains( 'qrms_analitik_sepet', $js, 'AJAX ucu' );
 		qrms_assert_contains( 'hataPanel.hidden', $js, 'sıfır hatada bölüm basılmaz' );
 		qrms_assert_contains( 'justStarted', $js, 'yeni başladı boş durumu' );
+		qrms_assert_contains( 'qrms-an-card-group', $sayfa, 'kart grup sarmalayıcı' );
+		qrms_assert_contains( 'qrms-an-sepet-veri-paneli', $sayfa, 'ilk kurulumda gizlenen tablolar' );
+		qrms_assert_contains( 'qrms-an-empty-neden', $js, 'boş durum teşhis bağlantısı' );
 		qrms_assert_contains( "'hazir'  => true", $hub, 'sepet kartı yakında değil' );
 		qrms_assert_false(
 			false !== strpos( $hub, 'function qrms_analitik_sayfa_sepet' ),
@@ -1749,6 +1752,8 @@ qrms_test(
 		// Tablolar 660px altında karta döner (sütun başlığı hücrenin etiketi).
 		qrms_assert_contains( 'max-width: 660px', $css, 'kart görünümü kırılımı' );
 		qrms_assert_contains( 'content: attr( data-label )', $css, 'kart etiketi' );
+		qrms_assert_contains( 'minmax( 160px, 1fr )', $css, 'sepet kartı 1300px sıkışmaz' );
+		qrms_assert_contains( 'grid-auto-rows: 1fr', $css, 'kart satır yüksekliği eşitlenir' );
 	}
 );
 
