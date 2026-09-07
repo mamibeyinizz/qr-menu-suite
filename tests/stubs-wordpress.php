@@ -1268,6 +1268,15 @@ function is_admin() {
 }
 
 /**
+ * Yazar arşivi mi?
+ *
+ * @return bool
+ */
+function is_author() {
+	return ! empty( $GLOBALS['qrms_test']['is_author'] );
+}
+
+/**
  * Feed isteği mi?
  *
  * @return bool

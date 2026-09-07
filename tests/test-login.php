@@ -397,6 +397,95 @@ qrms_test(
 );
 
 qrms_test(
+	'GÜVENLİK: kaba kuvvet — deneme sınırı aşılınca kimlik doğrulama en erken noktada reddedilir',
+	function () {
+		$_SERVER['REMOTE_ADDR'] = '203.0.113.10';
+		delete_transient( 'qrms_login_deneme_' . md5( '203.0.113.10' ) );
+
+		qrms_assert_same( 'devam', QRMS_Login::reddet_asilan_deneme( 'devam' ), 'sınır altında dokunulmaz' );
+
+		for ( $i = 0; $i < QRMS_Login::DENEME_SINIRI; $i++ ) {
+			QRMS_Login::basarisiz_denemeyi_kaydet();
+		}
+
+		$sonuc = QRMS_Login::reddet_asilan_deneme( null );
+		qrms_assert_true( is_wp_error( $sonuc ), 'sınır aşılınca WP_Error' );
+		qrms_assert_same( 'qrms_login_kilitli', $sonuc->get_error_code(), 'kilit kodu' );
+
+		// Başarılı giriş sayacı sıfırlar — paylaşımlı restoran IP'si gereksiz kilitli kalmaz.
+		QRMS_Login::basarili_giriste_sayaci_sil();
+		qrms_assert_same( 'devam', QRMS_Login::reddet_asilan_deneme( 'devam' ), 'başarılı giriş sonrası sayaç sıfır' );
+
+		unset( $_SERVER['REMOTE_ADDR'] );
+	}
+);
+
+qrms_test(
+	'GÜVENLİK: kaba kuvvet — kullanıcı adı/parola hatası tek mesaja iner, başka kodlara dokunulmaz',
+	function () {
+		$gecersiz_kul = new WP_Error( 'invalid_username', 'Böyle bir kullanıcı yok.' );
+		$sonuc        = QRMS_Login::tekillestir_giris_hatasi( $gecersiz_kul );
+		qrms_assert_true( is_wp_error( $sonuc ), 'hâlâ hata' );
+		qrms_assert_same( 'qrms_login_hatali', $sonuc->get_error_code(), 'invalid_username tekilleşir' );
+
+		$yanlis_parola = new WP_Error( 'incorrect_password', 'Parola yanlış.' );
+		qrms_assert_same(
+			'qrms_login_hatali',
+			QRMS_Login::tekillestir_giris_hatasi( $yanlis_parola )->get_error_code(),
+			'incorrect_password tekilleşir'
+		);
+
+		// İki taraflı doğrulama gibi eklentilerin ürettiği başka kodlara dokunulmaz.
+		$baska_hata = new WP_Error( 'iki_asamali_gerekli', 'Doğrulama kodu girin.' );
+		qrms_assert_same(
+			'iki_asamali_gerekli',
+			QRMS_Login::tekillestir_giris_hatasi( $baska_hata )->get_error_code(),
+			'ilgisiz kod dokunulmadan geçer'
+		);
+
+		// Hatasız bir kullanıcı nesnesi olduğu gibi döner.
+		qrms_assert_same( 'kullanici', QRMS_Login::tekillestir_giris_hatasi( 'kullanici' ), 'hata yoksa dokunulmaz' );
+	}
+);
+
+qrms_test(
+	'GÜVENLİK: kaba kuvvet — /wp/v2/users ucu oturumsuz kaldırılır, oturumlu korunur',
+	function () {
+		$endpoints = array(
+			'/wp/v2/users'             => array( 'x' ),
+			'/wp/v2/users/(?P<id>[\d]+)' => array( 'x' ),
+			'/wp/v2/posts'             => array( 'x' ),
+		);
+
+		$GLOBALS['qrms_test']['can'] = false;
+		$kalan = QRMS_Login::kullanicilar_ucunu_kisitla( $endpoints );
+		qrms_assert_false( isset( $kalan['/wp/v2/users'] ), 'users ucu kaldırılır' );
+		qrms_assert_false( isset( $kalan['/wp/v2/users/(?P<id>[\d]+)'] ), 'users/{id} ucu kaldırılır' );
+		qrms_assert_true( isset( $kalan['/wp/v2/posts'] ), 'ilgisiz uç korunur' );
+	}
+);
+
+qrms_test(
+	'GÜVENLİK: kaba kuvvet korumaları init() içinde bağlanır, ana sabitle kapatılabilir',
+	function () {
+		update_option( QRMS_Login::OPTION, array( 'yol_aktif' => 0, 'gorunum_aktif' => 0 ) );
+		$GLOBALS['qrms_test']['actions'] = array();
+
+		QRMS_Login::init();
+
+		$kancalar = $GLOBALS['qrms_test']['actions'];
+		qrms_assert_true( isset( $kancalar['authenticate'] ), 'authenticate bağlanır (yol kapalıyken bile)' );
+		qrms_assert_true( isset( $kancalar['wp_login_failed'] ), 'wp_login_failed bağlanır' );
+		qrms_assert_true( isset( $kancalar['rest_endpoints'] ), 'rest_endpoints bağlanır' );
+		qrms_assert_true( isset( $kancalar['template_redirect'] ), 'template_redirect bağlanır' );
+
+		// Kaynak, yazar taramasının yalnızca ?author= + is_author() ikilisinde
+		// tetiklendiğini garanti eder (exit çağırdığı için doğrudan çağrılmaz).
+		$kaynak = file_get_contents( QRMS_PLUGIN_DIR . 'includes/class-qrms-login.php' );
+		qrms_assert_contains( "isset( \$_GET['author'] ) || ! is_author()", $kaynak, 'yalnızca author sorgusunda tetiklenir' );
+	}
+);
+qrms_test(
 	'QRMS_LOGIN_DISABLE tanımlıyken hiçbir giriş kancası bağlanmaz',
 	function () {
 		// Bu sabit geri alınamaz; bu yüzden dosyanın SON testidir ve
@@ -416,5 +505,12 @@ qrms_test(
 		qrms_assert_false( isset( $kancalar['plugins_loaded'] ), 'istek yakalama yok' );
 		qrms_assert_false( isset( $kancalar['login_enqueue_scripts'] ), 'görünüm kancası yok' );
 		qrms_assert_false( isset( $kancalar['site_url'] ), 'adres filtresi yok' );
+
+		// Kaba kuvvet korumaları da tek kapatma sabitine bakar; yol/görünüm
+		// ayarlarından bağımsız olsalar bile bu sabitle tamamen susmalı.
+		qrms_assert_false( isset( $kancalar['authenticate'] ), 'kaba kuvvet koruması yok' );
+		qrms_assert_false( isset( $kancalar['wp_login_failed'] ), 'deneme sayacı yok' );
+		qrms_assert_false( isset( $kancalar['rest_endpoints'] ), 'users ucu kısıtlaması yok' );
 	}
 );
+
