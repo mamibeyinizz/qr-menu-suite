@@ -1754,6 +1754,7 @@ qrms_test(
 		qrms_assert_contains( 'content: attr( data-label )', $css, 'kart etiketi' );
 		qrms_assert_contains( 'minmax( 160px, 1fr )', $css, 'sepet kartı 1300px sıkışmaz' );
 		qrms_assert_contains( 'grid-auto-rows: 1fr', $css, 'kart satır yüksekliği eşitlenir' );
+		qrms_assert_contains( 'grid-template-areas: "icon label bar value"', $css, 'huni çubuğu 1fr sütunda' );
 	}
 );
 

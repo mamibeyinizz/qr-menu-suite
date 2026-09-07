@@ -975,12 +975,14 @@
 	align-items: center;
 	display: grid;
 	gap: 10px;
+	grid-template-areas: "icon label bar value";
 	grid-template-columns: 18px 150px 1fr 140px;
 }
 
 .qrms-an-huni-asama .dashicons {
 	color: var(--qrms-an-soft);
 	font-size: 18px;
+	grid-area: icon;
 	height: 18px;
 	width: 18px;
 }
@@ -989,11 +991,13 @@
 	color: var(--qrms-an-ink);
 	font-size: 13px;
 	font-weight: 700;
+	grid-area: label;
 }
 
 .qrms-an-huni-bar-track {
 	background: var(--qrms-an-line-soft);
 	border-radius: 20px;
+	grid-area: bar;
 	height: 14px;
 	overflow: hidden;
 }
@@ -1008,17 +1012,17 @@
 	color: var(--qrms-an-ink);
 	font-size: 13px;
 	font-weight: 700;
+	grid-area: value;
 	text-align: right;
 	white-space: nowrap;
 }
 
 @media ( max-width: 660px ) {
 	.qrms-an-huni-asama {
+		grid-template-areas:
+			"icon label value"
+			"bar bar bar";
 		grid-template-columns: 16px 1fr auto;
-	}
-
-	.qrms-an-huni-bar-track {
-		grid-column: 1 / -1;
 	}
 }
 
