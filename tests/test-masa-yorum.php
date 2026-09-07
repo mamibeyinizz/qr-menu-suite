@@ -668,11 +668,12 @@ function qrms_gonderim_ayarlari( $ek = array() ) {
  */
 function qrms_gonderim_postu( $puanlar, $ek = array() ) {
 	$damga = time() - 10;
+	$cap   = qrm_pro_make_captcha();
 
 	$_POST = array(
 		'qrm_ts'           => $damga . '.' . hash_hmac( 'sha256', $damga . '|qrm_ts', wp_salt( 'auth' ) ),
-		'qrm_captcha'      => 7,
-		'qrm_captcha_hash' => hash_hmac( 'sha256', '7', wp_salt( 'nonce' ) ),
+		'qrm_captcha'      => $cap['a'] + $cap['b'],
+		'qrm_captcha_hash' => $cap['hash'],
 	);
 
 	foreach ( $puanlar as $kriter => $puan ) {
@@ -1075,5 +1076,28 @@ qrms_test(
 			substr_count( $kaynak, 'qrm_reward_rate_limit(20, 300)' ) === 2,
 			'lookup ve mark_used ikisinde de hız sınırı'
 		);
+	}
+);
+
+qrms_test(
+	'GÜVENLİK: matematik captcha tek kullanımlık, aynı jeton tekrar geçmez',
+	function () {
+		// Eskiden hash yalnızca hash_hmac(a+b) idi; toplam 1-18 arası (17
+		// olası değer) olduğundan bir kez görülen (toplam, hash) çifti
+		// süresiz ve sınırsız sayıda yeniden gönderilebiliyordu.
+		$cap = qrm_pro_make_captcha();
+
+		qrms_assert_true( qrm_pro_check_captcha( $cap['a'] + $cap['b'], $cap['hash'] ), 'ilk doğrulama geçer' );
+		qrms_assert_false( qrm_pro_check_captcha( $cap['a'] + $cap['b'], $cap['hash'] ), 'aynı jeton ikinci kez geçmez (replay)' );
+
+		// Yanlış cevapta da jeton tüketilmeli — aksi hâlde küçük uzayda (17
+		// olası toplam) sınırsız tahmin denenebilir.
+		$cap2 = qrm_pro_make_captcha();
+		qrms_assert_false( qrm_pro_check_captcha( $cap2['a'] + $cap2['b'] + 100, $cap2['hash'] ), 'yanlış cevap reddedilir' );
+		qrms_assert_false( qrm_pro_check_captcha( $cap2['a'] + $cap2['b'], $cap2['hash'] ), 'yanlış denemeden sonra doğru cevap da geçmez' );
+
+		// Bozuk/eksik hash reddedilir.
+		qrms_assert_false( qrm_pro_check_captcha( 5, '' ), 'boş hash reddedilir' );
+		qrms_assert_false( qrm_pro_check_captcha( 5, 'uydurma-id.uydurma-imza' ), 'sahte imza reddedilir' );
 	}
 );
