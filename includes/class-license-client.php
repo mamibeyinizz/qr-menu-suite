@@ -138,8 +138,8 @@ class QRMS_License_Client {
 	 * Lisansı sunucuda doğrular ve sonucu option'lara yazar (senkron istek).
 	 *
 	 * Fail-safe: qrms_active_modules SADECE "active" cevabında güncellenir.
-	 * invalid / inactive / domain_mismatch / unreachable durumlarında mevcut
-	 * modül listesine dokunulmaz.
+	 * invalid / inactive / domain_mismatch / expired / unreachable
+	 * durumlarında mevcut modül listesine dokunulmaz.
 	 *
 	 * @param string $api_key    API anahtarı.
 	 * @param string $server_url Lisans sunucusu kök adresi.
@@ -188,7 +188,7 @@ class QRMS_License_Client {
 		$status = ( is_array( $body ) && isset( $body['status'] ) ) ? sanitize_key( (string) $body['status'] ) : '';
 
 		// Beklenmeyen/bozuk cevap da "ulaşılamadı" gibi ele alınır.
-		if ( ! in_array( $status, array( 'active', 'inactive', 'domain_mismatch', 'invalid' ), true ) ) {
+		if ( ! in_array( $status, array( 'active', 'inactive', 'domain_mismatch', 'invalid', 'expired' ), true ) ) {
 			return self::store_result( 'unreachable', null, $api_key, $server_url, false );
 		}
 
