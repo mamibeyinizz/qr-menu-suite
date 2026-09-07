@@ -836,6 +836,31 @@ qrms_test(
 );
 
 qrms_test(
+	'GÜVENLİK: sipariş kalemleri menüye karşı sunucuda doğrulanır',
+	function () {
+		$rest = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/rest-order.php' );
+
+		// urunAdi istemciden gelir ve uca doğrudan POST atılabilir; menüde
+		// karşılığı olmayan serbest metin mutfak fişine düşmemeli.
+		qrms_assert_contains( 'function qmo_siparis_kalem_coz', $rest, 'kalem çözümleyici var' );
+		qrms_assert_contains( "'post_status'            => 'publish'", $rest, 'yalnızca yayınlanmış ürün' );
+		qrms_assert_contains( '$urun = qmo_siparis_kalem_coz( $it )', $rest, 'sipariş akışı çözümleyiciyi çağırır' );
+
+		// Fişe yazılan ad sunucudan okunur, istemciden değil.
+		qrms_assert_contains( 'get_the_title( $id )', $rest, 'ad sunucudan okunur' );
+		qrms_assert_contains( '$ad      = $urun[\'ad\']', $rest, 'çözülen ad kaleme yazılır' );
+
+		// Çözülemeyen kalem siparişin tamamını reddetmeli — sessizce
+		// düşürmek müşteriye eksik sipariş verilmesine yol açar.
+		qrms_assert_contains( '$cozulmedi = true', $rest, 'çözülemeyen kalem işaretlenir' );
+		qrms_assert_contains( 'Menüde bulunmayan bir ürün var', $rest, 'sipariş reddedilir' );
+
+		// Porsiyon eki uydurulamamalı: ürünün gerçek listesine karşı doğrulanır.
+		qrms_assert_contains( 'RMA_Porsiyon::gosterim_listesi( $id )', $rest, 'porsiyon doğrulanır' );
+	}
+);
+
+qrms_test(
 	'qmo_ceviri_chat çeviri yoksa Türkçe döner; fetch çerez gönderir',
 	function () {
 		qrms_assert_same(
