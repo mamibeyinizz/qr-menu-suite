@@ -1758,3 +1758,32 @@ qrms_test(
 
 // module.php dosya kapsamında yalnızca fonksiyon ve sabit tanımlar; stub
 // ortamında yan etkisiz yüklenir.
+
+qrms_test(
+	'GÜVENLİK: create-user ucunda IP başına hız sınırı var',
+	function () {
+		$kaynak = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/rest-create-user.php' );
+
+		// Uç pahalıdır (ID token doğrulama + Identity Toolkit/Firestore çağrıları)
+		// ve permission_callback __return_true; iç doğrulamadan önce IP başına
+		// tavan olmadan deneme trafiğiyle kolayca yorulabilir.
+		qrms_assert_contains( "qmo_sayac_arttir( 'qmo_cu_' . qmo_ip_hash(), HOUR_IN_SECONDS )", $kaynak, 'saatlik IP sayacı' );
+		qrms_assert_contains( '$deneme > 30', $kaynak, 'eşik tanımlı' );
+
+		// Sınır, ID token doğrulamasından (ağ çağrısı) ÖNCE uygulanmalı.
+		$sinir_pos = strpos( $kaynak, '$deneme > 30' );
+		$dogrula_pos = strpos( $kaynak, 'id_token_dogrula' );
+		qrms_assert_true( false !== $sinir_pos && false !== $dogrula_pos && $sinir_pos < $dogrula_pos, 'hız sınırı token doğrulamadan önce çalışır' );
+	}
+);
+
+qrms_test(
+	'GÜVENLİK: boş branchId analitik erişiminde eşleşme sayılmaz',
+	function () {
+		$kaynak = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/rest-analytics.php' );
+
+		// branchId Firestore'da tanımsızsa '' döner (kullanici_doc); iki taraf
+		// da '' olduğunda eski karşılaştırma yanlışlıkla eşleşiyordu.
+		qrms_assert_contains( "'' === \$u['branchId'] || '' === QMO_Firestore::branch_id()", $kaynak, 'boş taraf reddedilir' );
+	}
+);

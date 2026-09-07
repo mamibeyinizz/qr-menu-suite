@@ -50,6 +50,23 @@ if ( ! function_exists( 'qmo_rest_create_user_kaydet' ) ) {
 if ( ! function_exists( 'qmo_rest_create_user' ) ) {
 	function qmo_rest_create_user( WP_REST_Request $req ) {
 
+		// GÜVENLİK: kullanıcı oluşturma pahalı bir işlemdir (ID token doğrulama,
+		// Identity Toolkit + Firestore çağrıları) ve hiçbir hız sınırı yoktu.
+		// IP başına saatlik tavan, geçersiz token'larla veya çalıntı ama süresi
+		// dolmuş token'larla yapılacak deneme trafiğini sınırlar.
+		if ( function_exists( 'qmo_ip_hash' ) && function_exists( 'qmo_sayac_arttir' ) ) {
+			$deneme = qmo_sayac_arttir( 'qmo_cu_' . qmo_ip_hash(), HOUR_IN_SECONDS );
+			if ( $deneme > 30 ) {
+				return new WP_REST_Response(
+					array(
+						'success' => false,
+						'msg'     => 'Çok fazla istek. Lütfen daha sonra tekrar deneyin.',
+					),
+					429
+				);
+			}
+		}
+
 		if ( ! QMO_Firestore::hazir_mi() ) {
 			return new WP_REST_Response(
 				array(

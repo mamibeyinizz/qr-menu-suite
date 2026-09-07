@@ -124,8 +124,11 @@ if ( ! function_exists( 'qmo_rest_analytics' ) ) {
 				403
 			);
 		}
-		// Müdür sadece kendi şubesinin sitesine erişebilir.
-		if ( 'mudur' === $u['rol'] && $u['branchId'] !== QMO_Firestore::branch_id() ) {
+		// Müdür sadece kendi şubesinin sitesine erişebilir. Şube ID'si boşsa
+		// (Firestore dokümanında hiç yoksa ya da bu site qmo_branch_id
+		// ayarlamamışsa) her iki taraf da '' olur ve karşılaştırma yanlışlıkla
+		// geçerdi — branchId'siz bir müdür, şubesi tanımsız her siteye girerdi.
+		if ( 'mudur' === $u['rol'] && ( '' === $u['branchId'] || '' === QMO_Firestore::branch_id() || $u['branchId'] !== QMO_Firestore::branch_id() ) ) {
 			return new WP_REST_Response(
 				array(
 					'success' => false,
