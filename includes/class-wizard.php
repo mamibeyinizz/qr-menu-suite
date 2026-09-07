@@ -314,7 +314,7 @@ class QRMS_Wizard {
 			<div class="qrms-field">
 				<label class="qrms-label" for="qrms_api_key"><?php esc_html_e( 'API Anahtarı', 'qrms' ); ?></label>
 				<input
-					type="text"
+					type="password"
 					id="qrms_api_key"
 					name="qrms_api_key"
 					class="qrms-input"

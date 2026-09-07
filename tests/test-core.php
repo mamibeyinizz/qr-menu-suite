@@ -3186,3 +3186,20 @@ qrms_test(
  * 8c. [qmo_sepet] — modal class uyumu ve masa oturumu kısıtı
  * ------------------------------------------------------------------------ */
 
+
+qrms_test(
+	'GÜVENLİK: sihirbazdaki lisans anahtarı alanı maskeli (type=password)',
+	function () {
+		$kaynak = file_get_contents( QRMS_PLUGIN_DIR . 'includes/class-wizard.php' );
+
+		// Ekranda düz metin (type=text) olarak duruyordu — omuz sörfü ve DOM
+		// okuyan tarayıcı eklentileri anahtarı görebilirdi.
+		qrms_assert_contains( "id=\"qrms_api_key\"", $kaynak, 'alan bulunur' );
+
+		$baslangic = strpos( $kaynak, 'id="qrms_api_key"' );
+		$blok      = substr( $kaynak, max( 0, $baslangic - 200 ), 400 );
+
+		qrms_assert_contains( 'type="password"', $blok, 'alan password tipinde' );
+		qrms_assert_false( false !== strpos( $blok, 'type="text"' ), 'düz metin tipi kalmadı' );
+	}
+);
