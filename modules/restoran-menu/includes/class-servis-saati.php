@@ -527,13 +527,3 @@ class RMA_Servis_Saati {
 }
 
 endif;
-
-/**
- * Ürün şu an servis dışı mı — modül dışından okunabilsin diye global köprü.
- *
- * @param int $post_id Ürün ID.
- * @return bool
- */
-function rma_urun_servis_disi( $post_id ) {
-	return class_exists( 'RMA_Servis_Saati' ) ? RMA_Servis_Saati::servis_disi_mi( $post_id ) : false;
-}
