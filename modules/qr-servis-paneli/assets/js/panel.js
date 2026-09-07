@@ -227,7 +227,7 @@
 	}
 
 	function aciliyet( saniye, durum ) {
-		if ( 'tamamlandi' === durum ) {
+		if ( 'tamamlandi' === durum || 'iptal' === durum ) {
 			return '';
 		}
 		if ( saniye >= C.esikKirmizi ) {

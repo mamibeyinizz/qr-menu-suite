@@ -169,7 +169,7 @@ qrms_test(
 	'durum ve tip listeleri panelin beklediği sırada',
 	function () {
 		qrms_assert_same(
-			array( 'bekliyor', 'hazirlaniyor', 'serviste', 'tamamlandi' ),
+			array( 'bekliyor', 'hazirlaniyor', 'serviste', 'tamamlandi', 'iptal' ),
 			array_keys( QRMS_SP_Veri::durumlar() ),
 			'sütun sırası'
 		);

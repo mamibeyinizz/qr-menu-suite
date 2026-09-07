@@ -58,6 +58,7 @@ class QRMS_SP_Veri {
 			'hazirlaniyor' => __( 'Hazırlanıyor', 'qrms' ),
 			'serviste'     => __( 'Serviste', 'qrms' ),
 			'tamamlandi'   => __( 'Tamamlandı', 'qrms' ),
+			'iptal'        => __( 'İptal', 'qrms' ),
 		);
 	}
 

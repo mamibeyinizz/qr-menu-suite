@@ -167,7 +167,8 @@
 .qrms-sp-kanban[data-aktif="bekliyor"] .qrms-sp-sutun:not([data-durum="bekliyor"]),
 .qrms-sp-kanban[data-aktif="hazirlaniyor"] .qrms-sp-sutun:not([data-durum="hazirlaniyor"]),
 .qrms-sp-kanban[data-aktif="serviste"] .qrms-sp-sutun:not([data-durum="serviste"]),
-.qrms-sp-kanban[data-aktif="tamamlandi"] .qrms-sp-sutun:not([data-durum="tamamlandi"]) {
+.qrms-sp-kanban[data-aktif="tamamlandi"] .qrms-sp-sutun:not([data-durum="tamamlandi"]),
+.qrms-sp-kanban[data-aktif="iptal"] .qrms-sp-sutun:not([data-durum="iptal"]) {
 	display: none;
 }
 
