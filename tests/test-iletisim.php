@@ -123,7 +123,6 @@ qrms_test(
 		qrms_assert_contains( "column_width: 'full'", $builder, 'yeni özel alan varsayılanı tekli' );
 		qrms_assert_contains( 'data-edit="column_width"', $builder, 'özel form düzenleme paneli' );
 		qrms_assert_contains( 'qrm_pro_sanitize_column_width', $alanlar, 'yorum formu sütun seçimi' );
-		qrms_assert_contains( 'data-edit="column_width"', $builder, 'form düzenleyici önizleme sütun seçimi' );
 		qrms_assert_contains( "column_width varchar(10) DEFAULT 'full' NOT NULL", $sema, 'özel form şeması' );
 		qrms_assert_contains( "column_width varchar(10) DEFAULT 'full' NOT NULL", $install, 'yorum formu şeması' );
 		qrms_assert_contains( 'qrm_pro_migrate_column_widths', $install, 'eski alanlar bir kez taşınır' );
