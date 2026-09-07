@@ -1787,3 +1787,24 @@ qrms_test(
 		qrms_assert_contains( "'' === \$u['branchId'] || '' === QMO_Firestore::branch_id()", $kaynak, 'boş taraf reddedilir' );
 	}
 );
+
+qrms_test(
+	'GÜVENLİK: masa filtresi esc_sql ile birleştirilmiyor, prepare() yer tutucusu kullanır',
+	function () {
+		$kaynak = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/rest-analytics.php' );
+
+		// Eskiden " AND masa_no = '" . esc_sql( $masa ) . "'" prepare() DIŞINDA
+		// kurulup sorgu metnine ekleniyordu — sanitize_title'a bağımlı bir
+		// istisna, "her değer prepare()'den geçer" garantisini bozuyordu.
+		qrms_assert_false( false !== strpos( $kaynak, 'esc_sql( $masa )' ), 'esc_sql ile birleştirme kalmadı' );
+		qrms_assert_contains( "\$masa_ek   = '' !== \$masa ? ' AND masa_no = %s' : '';", $kaynak, 'yer tutucu kullanılır' );
+		qrms_assert_contains( "\$masa_args = '' !== \$masa ? array( \$masa ) : array();", $kaynak, 'değer ayrı parametre olarak taşınır' );
+
+		// Her çağrı $masa_args'ı prepare()'e gerçekten veriyor mu?
+		qrms_assert_same(
+			8,
+			substr_count( $kaynak, 'array_merge( array( $start, $end ), $masa_args )' ),
+			'sekiz sorgunun hepsi masa_args kullanır'
+		);
+	}
+);

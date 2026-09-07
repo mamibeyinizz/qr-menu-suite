@@ -178,15 +178,17 @@ if ( ! function_exists( 'qmo_rest_analytics' ) ) {
 		$end   = $bitis . ' 23:59:59';
 
 		// 3b) Masa filtresi (opsiyonel). Yönetim ekranlarındaki filtrenin
-		// karşılığıdır: boş bırakılırsa bütün masalar sayılır. Parça
-		// $wpdb->prepare ile üretilip sorgulara olduğu gibi eklenir.
-		// Parça düz metin olarak kurulur, prepare() ile DEĞİL: sorgular zaten
-		// prepare()'den geçiyor ve hazır bir parçayı ikinci kez prepare'e
-		// sokmak yanlış olurdu. Değer sanitize_title'dan geçtiği için yalnızca
-		// [a-z0-9-] içerir (yüzde işareti dahil hiçbir kaçış karakteri kalmaz),
-		// esc_sql ise emniyet kemeridir.
+		// karşılığıdır: boş bırakılırsa bütün masalar sayılır.
 		$masa    = sanitize_title( (string) $req->get_param( 'masa' ) );
-		$masa_ek = '' !== $masa ? " AND masa_no = '" . esc_sql( $masa ) . "'" : '';
+		// GÜVENLİK: parça artık esc_sql ile birleştirilmiş bir SQL LİTERALİ
+		// değil, %s yer tutucusu taşıyan bir METİN; gerçek değer diğer
+		// parametrelerle birlikte prepare()'e verilir. sanitize_title zaten
+		// yalnızca [a-z0-9-] bırakıyordu (bu yüzden pratikte sömürülebilir
+		// değildi), ama tek bir yer tutucu deseni her yerde prepare()
+		// garantisine bağlı kalmak, ileride sanitize_title filtrelenirse ya
+		// da desen başka bir yere kopyalanırsa kırılmayı önler.
+		$masa_ek   = '' !== $masa ? ' AND masa_no = %s' : '';
+		$masa_args = '' !== $masa ? array( $masa ) : array();
 
 		$t = $wpdb->prefix . 'rma_analytics';
 
@@ -205,22 +207,19 @@ if ( ! function_exists( 'qmo_rest_analytics' ) ) {
 		$total_views = (int) $wpdb->get_var(
 			$wpdb->prepare(
 				"SELECT COUNT(*) FROM {$t} WHERE event_type='menu_view' AND created_at BETWEEN %s AND %s{$masa_ek}",
-				$start,
-				$end
+				array_merge( array( $start, $end ), $masa_args )
 			)
 		);
 		$unique_visitors = (int) $wpdb->get_var(
 			$wpdb->prepare(
 				"SELECT COUNT(DISTINCT ip_hash) FROM {$t} WHERE event_type='menu_view' AND created_at BETWEEN %s AND %s{$masa_ek}",
-				$start,
-				$end
+				array_merge( array( $start, $end ), $masa_args )
 			)
 		);
 		$total_clicks = (int) $wpdb->get_var(
 			$wpdb->prepare(
 				"SELECT COUNT(*) FROM {$t} WHERE event_type='product_click' AND created_at BETWEEN %s AND %s{$masa_ek}",
-				$start,
-				$end
+				array_merge( array( $start, $end ), $masa_args )
 			)
 		);
 
@@ -233,8 +232,7 @@ if ( ! function_exists( 'qmo_rest_analytics' ) ) {
 				 GROUP BY item_id
 				 HAVING MAX(item_name)<>''
 				 ORDER BY adet DESC LIMIT 10",
-				$start,
-				$end
+				array_merge( array( $start, $end ), $masa_args )
 			),
 			ARRAY_A
 		);
@@ -248,8 +246,7 @@ if ( ! function_exists( 'qmo_rest_analytics' ) ) {
 				 GROUP BY item_id
 				 HAVING MAX(item_name)<>''
 				 ORDER BY adet ASC LIMIT 10",
-				$start,
-				$end
+				array_merge( array( $start, $end ), $masa_args )
 			),
 			ARRAY_A
 		);
@@ -267,8 +264,7 @@ if ( ! function_exists( 'qmo_rest_analytics' ) ) {
 				 FROM {$t}
 				 WHERE event_type='menu_view' AND masa_no<>'' AND created_at BETWEEN %s AND %s{$masa_ek}
 				 GROUP BY masa_no ORDER BY adet DESC",
-				$start,
-				$end
+				array_merge( array( $start, $end ), $masa_args )
 			),
 			ARRAY_A
 		);
@@ -283,8 +279,7 @@ if ( ! function_exists( 'qmo_rest_analytics' ) ) {
 				 FROM {$t}
 				 WHERE event_type='product_click' AND category_name<>'' AND created_at BETWEEN %s AND %s{$masa_ek}
 				 GROUP BY category_name ORDER BY adet DESC",
-				$start,
-				$end
+				array_merge( array( $start, $end ), $masa_args )
 			),
 			ARRAY_A
 		);
@@ -293,8 +288,7 @@ if ( ! function_exists( 'qmo_rest_analytics' ) ) {
 			$wpdb->prepare(
 				"SELECT COUNT(*) FROM {$t}
 				 WHERE event_type='product_click' AND category_name='' AND created_at BETWEEN %s AND %s{$masa_ek}",
-				$start,
-				$end
+				array_merge( array( $start, $end ), $masa_args )
 			)
 		);
 
