@@ -567,15 +567,24 @@ if ( ! function_exists( 'qrms_analitik_sayfa_sepet' ) ) {
 			<div id="qrms-an-sepet-bos" hidden></div>
 
 			<div class="qrms-an-cards" id="qrms-an-cards" aria-live="polite">
-				<div class="qrms-an-card qrms-an-skeleton"></div>
-				<div class="qrms-an-card qrms-an-skeleton"></div>
-				<div class="qrms-an-card qrms-an-skeleton"></div>
-				<div class="qrms-an-card qrms-an-skeleton"></div>
-				<div class="qrms-an-card qrms-an-skeleton"></div>
-				<div class="qrms-an-card qrms-an-skeleton"></div>
-				<div class="qrms-an-card qrms-an-skeleton"></div>
-				<div class="qrms-an-card qrms-an-skeleton"></div>
-				<div class="qrms-an-card qrms-an-skeleton"></div>
+				<div class="qrms-an-card-group">
+					<div class="qrms-an-card-group-title"><?php esc_html_e( 'Hacim', 'qrms' ); ?></div>
+					<div class="qrms-an-card qrms-an-skeleton"></div>
+					<div class="qrms-an-card qrms-an-skeleton"></div>
+					<div class="qrms-an-card qrms-an-skeleton"></div>
+				</div>
+				<div class="qrms-an-card-group">
+					<div class="qrms-an-card-group-title"><?php esc_html_e( 'Sipariş', 'qrms' ); ?></div>
+					<div class="qrms-an-card qrms-an-skeleton"></div>
+					<div class="qrms-an-card qrms-an-skeleton"></div>
+				</div>
+				<div class="qrms-an-card-group">
+					<div class="qrms-an-card-group-title"><?php esc_html_e( 'Para', 'qrms' ); ?></div>
+					<div class="qrms-an-card qrms-an-skeleton"></div>
+					<div class="qrms-an-card qrms-an-skeleton"></div>
+					<div class="qrms-an-card qrms-an-skeleton"></div>
+					<div class="qrms-an-card qrms-an-skeleton"></div>
+				</div>
 			</div>
 
 			<div class="qrms-an-panel">
@@ -593,7 +602,7 @@ if ( ! function_exists( 'qrms_analitik_sayfa_sepet' ) ) {
 				</div>
 			</div>
 
-			<div class="qrms-an-panel">
+			<div class="qrms-an-panel qrms-an-sepet-veri-paneli">
 				<div class="qrms-an-panel-header">
 					<h2 class="qrms-an-panel-title">
 						<span class="dashicons dashicons-money-alt" aria-hidden="true"></span>
@@ -608,7 +617,7 @@ if ( ! function_exists( 'qrms_analitik_sayfa_sepet' ) ) {
 				</div>
 			</div>
 
-			<div class="qrms-an-panel">
+			<div class="qrms-an-panel qrms-an-sepet-veri-paneli">
 				<div class="qrms-an-panel-header">
 					<h2 class="qrms-an-panel-title">
 						<span class="dashicons dashicons-dismiss" aria-hidden="true"></span>
@@ -623,7 +632,7 @@ if ( ! function_exists( 'qrms_analitik_sayfa_sepet' ) ) {
 				</div>
 			</div>
 
-			<div class="qrms-an-panel">
+			<div class="qrms-an-panel qrms-an-sepet-veri-paneli">
 				<div class="qrms-an-panel-header">
 					<h2 class="qrms-an-panel-title">
 						<span class="dashicons dashicons-undo" aria-hidden="true"></span>
@@ -638,7 +647,7 @@ if ( ! function_exists( 'qrms_analitik_sayfa_sepet' ) ) {
 				</div>
 			</div>
 
-			<div class="qrms-an-panel">
+			<div class="qrms-an-panel qrms-an-sepet-veri-paneli">
 				<div class="qrms-an-panel-header">
 					<h2 class="qrms-an-panel-title">
 						<span class="dashicons dashicons-hidden" aria-hidden="true"></span>
