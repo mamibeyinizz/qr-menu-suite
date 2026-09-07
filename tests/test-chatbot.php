@@ -1210,3 +1210,23 @@ qrms_test(
 		qrms_assert_contains( "wp_clear_scheduled_hook( 'qmo_chatbot_gecmis_temizle' )", $kok, 'deaktivasyon chatbot cronunu temizler' );
 	}
 );
+
+qrms_test(
+	'GÜVENLİK: sipariş toplam adedi tavanlı — kalem×adet çarpımı sınırsız değil',
+	function () {
+		$kaynak = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/rest-order.php' );
+
+		// 20 kalem × kalem başına 20 adet = 400 birim; hız sınırının izin
+		// verdiği her pencerede mutfak kuyruğunu/Firestore yazımlarını
+		// boğabilirdi. Kalem sayısı VE kalem başına adet ayrı ayrı
+		// sınırlansa da toplam hiç sınırlanmıyordu.
+		qrms_assert_contains( "array_sum( wp_list_pluck( \$temiz, 'adet' ) )", $kaynak, 'toplam adet hesaplanır' );
+		qrms_assert_contains( '$toplam_adet > 60', $kaynak, 'toplam tavana çekilir' );
+
+		// Tavan, tükendi/kampanya filtrelerinden (qmo_siparis_onay_oncesi)
+		// ÖNCE kontrol edilmeli — gereksiz iş yapılmasın.
+		$tavan_pos  = strpos( $kaynak, '$toplam_adet > 60' );
+		$filtre_pos = strpos( $kaynak, "apply_filters( 'qmo_siparis_onay_oncesi'" );
+		qrms_assert_true( false !== $tavan_pos && false !== $filtre_pos && $tavan_pos < $filtre_pos, 'tavan filtreden önce kontrol edilir' );
+	}
+);

@@ -379,6 +379,20 @@ if ( ! function_exists( 'qmo_siparis_isle' ) ) {
 			);
 		}
 
+		// GÜVENLİK: kalem başına adet 20'ye kadar kelepçeleniyordu ama toplam
+		// hiç sınırlanmıyordu — 20 kalem × 20 adet = 400 birim, hız sınırının
+		// (masa+IP başına 10 sn'de 1 istek) izin verdiği her pencerede mutfak
+		// kuyruğuna ve Firestore yazımlarına düşebiliyordu. Gerçek bir masanın
+		// tek siparişte makul üst sınırı bu tavanın çok altındadır.
+		$toplam_adet = array_sum( wp_list_pluck( $temiz, 'adet' ) );
+		if ( $toplam_adet > 60 ) {
+			return array(
+				'success' => false,
+				'msg'     => qmo_ceviri_chat( __( 'Tek seferde bu kadar ürün sipariş edilemez; lütfen siparişi bölerek gönderin.', 'qrms' ) ),
+				'http'    => 400,
+			);
+		}
+
 		// Restoran menü "Tükendi" durumu siparişi burada keser (varsa).
 		$engel = apply_filters( 'qmo_siparis_onay_oncesi', null, $temiz );
 		$mesaj = '';
