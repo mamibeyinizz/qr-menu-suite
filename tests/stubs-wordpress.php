@@ -1563,6 +1563,20 @@ function current_time( $type, $gmt = 0 ) {
 }
 
 /**
+ * Sitenin saat dilimindeki "şimdi" (DateTimeImmutable).
+ *
+ * current_time() ile aynı test saatini paylaşır; test saati UTC kabul
+ * edildiği için ofset her zaman 0'dır.
+ *
+ * @return DateTimeImmutable
+ */
+function current_datetime() {
+	$now = isset( $GLOBALS['qrms_test']['now'] ) ? (int) $GLOBALS['qrms_test']['now'] : time();
+
+	return ( new DateTimeImmutable( '@' . $now ) )->setTimezone( new DateTimeZone( 'UTC' ) );
+}
+
+/**
  * Metin alanı temizleme (çok satırlı).
  *
  * @param string $value Değer.

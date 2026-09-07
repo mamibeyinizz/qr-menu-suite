@@ -266,15 +266,21 @@ class QRMS_Analitik_Filtre {
 	----------------------------------------------------------------- */
 
 	/**
-	 * Sitenin yerel saatiyle "şimdi" (unix damgası).
+	 * Sitenin yerel saatiyle "şimdi" (unix damgası + site ofseti).
 	 *
-	 * Kayıtlar current_time('mysql') ile yazıldığı için aralıklar da yerel
-	 * saatle hesaplanmalıdır (bkz. QRMS_Analitik::simdi).
+	 * Kayıtlar current_time('mysql') ile yazılır; o değer wp_timezone()
+	 * üzerinden (DST'yi de hesaba katarak) üretilir. current_time('timestamp')
+	 * ise sabit get_option('gmt_offset') ekler ve DST geçişlerinde bundan
+	 * sapar — yaz/kış saati değişiminde "bugün" sınırı bir saat kayabilir.
+	 * Burada da current_datetime() (wp_timezone()) kullanılarak yazma ve
+	 * okuma aynı ofseti paylaşır (bkz. QRMS_Analitik::simdi).
 	 *
 	 * @return int
 	 */
 	private static function simdi() {
-		return (int) current_time( 'timestamp' ); // phpcs:ignore WordPress.DateTime.CurrentTimeTimestamp.Requested
+		$simdi = current_datetime();
+
+		return $simdi->getTimestamp() + $simdi->getOffset();
 	}
 
 	/**
