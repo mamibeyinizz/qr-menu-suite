@@ -359,3 +359,60 @@ qrms_test(
 		qrms_assert_same( 'manuel', QRMS_MM_Maliyet::kaynak( 7 ), 'boş reçete manuele döner' );
 	}
 );
+
+qrms_test(
+	'reçete yenileme TOPLU_SINIR üstünde sayfalanır ve cron kendini durdurur',
+	function () {
+		add_filter(
+			'qrms_mm_toplu_sinir',
+			function () {
+				return 5;
+			}
+		);
+
+		$GLOBALS['qrms_test']['posts'] = range( 1, 12 );
+		update_option(
+			QRMS_MM_Maliyet::OPTION_MALZEME,
+			array( 1 => array( 'birim' => 'kg', 'fiyat' => 100.0 ) )
+		);
+		update_option( QRMS_MM_Maliyet::OPTION_AYAR, array( 'fire_yuzdesi' => 0 ) );
+
+		foreach ( range( 1, 12 ) as $id ) {
+			update_post_meta( $id, QRMS_MM_Maliyet::META_KAYNAK, 'recete' );
+			update_post_meta(
+				$id,
+				QRMS_MM_Maliyet::META_RECETE,
+				array( array( 'term_id' => 1, 'miktar' => 100 ) )
+			);
+		}
+
+		$GLOBALS['qrms_test']['cron'] = array();
+
+		$ilk = QRMS_MM_Maliyet::receteleri_yenile();
+
+		qrms_assert_same( -1, $ilk, 'ilk dilim arka plana atılır' );
+		qrms_assert_true( wp_next_scheduled( QRMS_MM_Maliyet::CRON_RECETE_YENILE ), 'cron planlandı' );
+		qrms_assert_same( 5, (int) get_option( QRMS_MM_Maliyet::OPTION_RECETE_YENILE_OFFSET ), 'imleç ilerledi' );
+		qrms_assert_same( 10.0, QRMS_MM_Maliyet::maliyet( 1 ), 'ilk ürün güncellendi' );
+		qrms_assert_same( null, QRMS_MM_Maliyet::maliyet( 6 ), 'henüz işlenmedi' );
+
+		$GLOBALS['qrms_test']['doing_action'] = QRMS_MM_Maliyet::CRON_RECETE_YENILE;
+
+		$ikinci = QRMS_MM_Maliyet::receteleri_yenile();
+
+		qrms_assert_same( -1, $ikinci, 'ikinci dilim de arka planda' );
+		qrms_assert_same( 10, (int) get_option( QRMS_MM_Maliyet::OPTION_RECETE_YENILE_OFFSET ), 'imleç ona çıktı' );
+
+		$GLOBALS['qrms_test']['doing_action'] = QRMS_MM_Maliyet::CRON_RECETE_YENILE;
+
+		$son = QRMS_MM_Maliyet::receteleri_yenile();
+
+		qrms_assert_same( 2, $son, 'son dilim tamamlandı' );
+		qrms_assert_false( wp_next_scheduled( QRMS_MM_Maliyet::CRON_RECETE_YENILE ), 'cron durdu' );
+		qrms_assert_false( get_option( QRMS_MM_Maliyet::OPTION_RECETE_YENILE_OFFSET, false ), 'imleç temizlendi' );
+		qrms_assert_same( 10.0, QRMS_MM_Maliyet::maliyet( 12 ), 'son ürün güncellendi' );
+
+		$GLOBALS['qrms_test']['actions']['qrms_mm_toplu_sinir'] = array();
+		unset( $GLOBALS['qrms_test']['doing_action'], $GLOBALS['qrms_test']['posts'] );
+	}
+);

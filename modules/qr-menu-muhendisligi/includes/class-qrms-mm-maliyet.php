@@ -57,6 +57,12 @@ class QRMS_MM_Maliyet {
 	 */
 	const TOPLU_SINIR = 500;
 
+	/** Arka plan reçete yenileme kancası. */
+	const CRON_RECETE_YENILE = 'qrms_mm_recete_yenile';
+
+	/** Sayfalama imleci (option). */
+	const OPTION_RECETE_YENILE_OFFSET = 'qrms_mm_recete_yenile_offset';
+
 	/**
 	 * Malzeme taksonomisinin adı.
 	 *
@@ -407,24 +413,36 @@ class QRMS_MM_Maliyet {
 	 *             şeylerdir, ekranda ayrı yazılırlar.)
 	 */
 	public static function receteleri_yenile() {
+		$cron = doing_action( self::CRON_RECETE_YENILE );
+
+		if ( ! $cron ) {
+			delete_option( self::OPTION_RECETE_YENILE_OFFSET );
+			wp_clear_scheduled_hook( self::CRON_RECETE_YENILE );
+		}
+
+		$offset = $cron ? (int) get_option( self::OPTION_RECETE_YENILE_OFFSET, 0 ) : 0;
+		$sinir  = max( 1, (int) apply_filters( 'qrms_mm_toplu_sinir', self::TOPLU_SINIR ) );
+
 		$idler = get_posts(
 			array(
 				'post_type'      => self::CPT,
 				'post_status'    => 'any',
 				'fields'         => 'ids',
-				'posts_per_page' => self::TOPLU_SINIR + 1,
+				'posts_per_page' => $sinir,
+				'offset'         => $offset,
+				'orderby'        => 'ID',
+				'order'          => 'ASC',
 				'meta_key'       => self::META_KAYNAK, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key
 				'meta_value'     => 'recete', // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_value
 				'no_found_rows'  => true,
 			)
 		);
 
-		if ( count( $idler ) > self::TOPLU_SINIR ) {
-			if ( function_exists( 'wp_schedule_single_event' ) ) {
-				wp_schedule_single_event( time() + 30, 'qrms_mm_recete_yenile' );
-			}
+		if ( empty( $idler ) ) {
+			delete_option( self::OPTION_RECETE_YENILE_OFFSET );
+			wp_clear_scheduled_hook( self::CRON_RECETE_YENILE );
 
-			return -1;
+			return 0;
 		}
 
 		$ayar     = self::ayarlar();
@@ -448,6 +466,36 @@ class QRMS_MM_Maliyet {
 		}
 
 		self::onbellek_temizle();
+
+		$yeni_offset = $offset + count( $idler );
+
+		$devam = get_posts(
+			array(
+				'post_type'      => self::CPT,
+				'post_status'    => 'any',
+				'fields'         => 'ids',
+				'posts_per_page' => 1,
+				'offset'         => $yeni_offset,
+				'orderby'        => 'ID',
+				'order'          => 'ASC',
+				'meta_key'       => self::META_KAYNAK, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key
+				'meta_value'     => 'recete', // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_value
+				'no_found_rows'  => true,
+			)
+		);
+
+		if ( ! empty( $devam ) ) {
+			update_option( self::OPTION_RECETE_YENILE_OFFSET, $yeni_offset );
+
+			if ( function_exists( 'wp_schedule_single_event' ) && ! wp_next_scheduled( self::CRON_RECETE_YENILE ) ) {
+				wp_schedule_single_event( time() + 30, self::CRON_RECETE_YENILE );
+			}
+
+			return -1;
+		}
+
+		delete_option( self::OPTION_RECETE_YENILE_OFFSET );
+		wp_clear_scheduled_hook( self::CRON_RECETE_YENILE );
 
 		return $sayi;
 	}

@@ -237,6 +237,37 @@ function wp_clear_scheduled_hook( $hook ) {
 }
 
 /**
+ * Tek seferlik cron zamanlar.
+ *
+ * @param int    $timestamp Zaman.
+ * @param string $hook      Hook adı.
+ * @param array  $args      Argümanlar.
+ * @return bool
+ */
+function wp_schedule_single_event( $timestamp, $hook, $args = array() ) {
+	unset( $args );
+	$GLOBALS['qrms_test']['cron'][ $hook ] = $timestamp;
+
+	return true;
+}
+
+/**
+ * Çalışan action kancası.
+ *
+ * @param string $hook Hook adı.
+ * @return bool
+ */
+function doing_action( $hook = '' ) {
+	$current = isset( $GLOBALS['qrms_test']['doing_action'] ) ? $GLOBALS['qrms_test']['doing_action'] : '';
+
+	if ( '' === $hook ) {
+		return '' !== $current;
+	}
+
+	return $hook === $current;
+}
+
+/**
  * HTTP POST taklidi.
  *
  * @param string $url  Adres.
@@ -1719,8 +1750,13 @@ function get_posts( $args = array() ) {
 
 	$kayitlar = isset( $GLOBALS['qrms_test']['posts'] ) ? $GLOBALS['qrms_test']['posts'] : array();
 	$limit    = isset( $args['posts_per_page'] ) ? (int) $args['posts_per_page'] : -1;
+	$offset   = isset( $args['offset'] ) ? (int) $args['offset'] : 0;
 
-	return $limit > 0 ? array_slice( $kayitlar, 0, $limit ) : $kayitlar;
+	if ( $limit > 0 ) {
+		return array_slice( $kayitlar, $offset, $limit );
+	}
+
+	return $offset > 0 ? array_slice( $kayitlar, $offset ) : $kayitlar;
 }
 
 /**
