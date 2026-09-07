@@ -976,3 +976,36 @@ qrms_test(
 		qrms_assert_contains( 'qrm_pro_migrate_media_visibility();', $kur, 'kurulumdan çağrılır' );
 	}
 );
+
+qrms_test(
+	'KVKK: dışa aktarma/silme kancaları, saklama süresi ve opt-in uninstall',
+	function () {
+		$gizli = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/privacy.php' );
+		$boot  = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/qr-menu-reviews.php' );
+		$ayar  = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/admin/settings-page.php' );
+		$kald  = file_get_contents( QRMS_PLUGIN_DIR . 'uninstall.php' );
+
+		// WordPress gizlilik araçlarına bağlanmalı (KVKK 7. madde: silme hakkı).
+		qrms_assert_contains( "add_filter('wp_privacy_personal_data_exporters'", $gizli, 'dışa aktarıcı kayıtlı' );
+		qrms_assert_contains( "add_filter('wp_privacy_personal_data_erasers'", $gizli, 'silici kayıtlı' );
+		qrms_assert_contains( 'wp_add_privacy_policy_content', $gizli, 'politika metni' );
+		qrms_assert_contains( "require_once QRM_PRO_PATH . 'includes/privacy.php'", $boot, 'modül yükler' );
+
+		// E-posta sütunu yorum tablosunda yok; köprü ödül kaydıdır.
+		qrms_assert_contains( 'source_review_id', $gizli, 'yorum köprüsü' );
+
+		// Yorum metni ve puan korunur, kimlik alanları anonimleştirilir.
+		qrms_assert_contains( 'QRM_PRIVACY_ANON_AD', $gizli, 'anonimleştirme sabiti' );
+
+		// Saklama varsayılanı süresiz olmalı: arşivi habersiz silmek kabul edilemez.
+		qrms_assert_contains( "get_option('qrm_saklama_gun', 0)", $gizli, 'varsayılan süresiz' );
+		qrms_assert_contains( 'qrm_privacy_saklama_temizligi', $gizli, 'temizlik cronu' );
+		qrms_assert_contains( 'qrm_saklama_gun', $ayar, 'ayar ekranında süre alanı' );
+
+		// Kaldırmada veri silme opt-in olmalı.
+		qrms_assert_contains( "defined( 'WP_UNINSTALL_PLUGIN' ) || exit", $kald, 'doğrudan çağrı engeli' );
+		qrms_assert_contains( 'qrms_uninstall_veri_sil', $kald, 'opt-in bayrağı' );
+		qrms_assert_contains( 'if ( ! $qrms_veri_sil ) {', $kald, 'varsayılan koru' );
+		qrms_assert_contains( 'qrms_uninstall_veri_sil', $ayar, 'ayar ekranında kaldırma tercihi' );
+	}
+);

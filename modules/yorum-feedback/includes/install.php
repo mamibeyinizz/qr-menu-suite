@@ -129,6 +129,11 @@ function qrm_pro_install() {
     qrm_pro_migrate_column_widths();
     qrm_pro_migrate_media_visibility();
 
+    // Saklama süresi ayarlıysa günlük temizlik görevini kurar (0 = süresiz).
+    if ( function_exists( 'qrm_privacy_saklama_cron_kur' ) ) {
+        qrm_privacy_saklama_cron_kur();
+    }
+
     update_option('qrm_db_version', QRM_PRO_VERSION, false);
 }
 

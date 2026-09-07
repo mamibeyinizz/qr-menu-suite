@@ -245,6 +245,7 @@ require_once QRM_PRO_PATH . 'includes/settings.php';
 require_once QRM_PRO_PATH . 'includes/security.php';
 require_once QRM_PRO_PATH . 'includes/masa.php';
 require_once QRM_PRO_PATH . 'includes/consent.php';
+require_once QRM_PRO_PATH . 'includes/privacy.php';
 require_once QRM_PRO_PATH . 'includes/review-media.php';
 
 // Ödül modülü (kurulum fonksiyonu install.php içinden çağrıldığı için önce yüklenir)
