@@ -22,14 +22,19 @@ trait RMA_Ajax_Trait {
 
     public function ajax_toggle_status() {
         check_ajax_referer( 'rma_admin_nonce', 'security' );
-        if ( ! current_user_can( 'edit_posts' ) ) wp_send_json_error();
-        if ( isset( $_POST['id'] ) ) {
-            // Whitelist: yalnızca '0' veya '1' kabul edilir
-            $status = ( $_POST['status'] ?? '' ) === '1' ? '1' : '0';
-            update_post_meta( intval( $_POST['id'] ), 'rma_active', $status );
-            wp_send_json_success();
+
+        $post_id = isset( $_POST['id'] ) ? (int) $_POST['id'] : 0;
+        if ( $post_id < 1 || get_post_type( $post_id ) !== 'rma_menu_item' ) {
+            wp_send_json_error();
         }
-        wp_send_json_error();
+        if ( ! current_user_can( 'edit_post', $post_id ) ) {
+            wp_send_json_error();
+        }
+
+        // Whitelist: yalnızca '0' veya '1' kabul edilir
+        $status = ( $_POST['status'] ?? '' ) === '1' ? '1' : '0';
+        update_post_meta( $post_id, 'rma_active', $status );
+        wp_send_json_success();
     }
 
     /**

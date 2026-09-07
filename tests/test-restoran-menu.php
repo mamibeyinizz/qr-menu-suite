@@ -576,3 +576,13 @@ qrms_test(
 		qrms_assert_contains( 'var COLOR_VARS = {', $js, 'renk haritası duruyor' );
 	}
 );
+
+qrms_test(
+	'ajax_toggle_status post özel edit_post yetkisi kullanır',
+	function () {
+		$kaynak = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-ajax.php' );
+
+		qrms_assert_contains( "current_user_can( 'edit_post', \$post_id )", $kaynak, 'post özel yetki' );
+		qrms_assert_contains( "get_post_type( \$post_id ) !== 'rma_menu_item'", $kaynak, 'post tipi doğrulanır' );
+	}
+);

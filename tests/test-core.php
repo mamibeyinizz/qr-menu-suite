@@ -186,6 +186,23 @@ qrms_test(
 	}
 );
 
+qrms_test(
+	'deaktivasyonda ürünüm yok süpürge cronu temizlenir',
+	function () {
+		require_once QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/urunum-yok/class-cron.php';
+
+		wp_schedule_event( time() + HOUR_IN_SECONDS, 'hourly', 'qmo_uy_supurge' );
+		qrms_assert_true( wp_next_scheduled( 'qmo_uy_supurge' ), 'cron kurulu' );
+
+		RMA_Urunum_Yok_Cron::supurge_iptal();
+
+		qrms_assert_false( wp_next_scheduled( 'qmo_uy_supurge' ), 'cron temizlenmeli' );
+
+		$kok = file_get_contents( QRMS_PLUGIN_DIR . 'qr-menu-suite.php' );
+		qrms_assert_contains( 'RMA_Urunum_Yok_Cron::supurge_iptal()', $kok, 'deaktivasyon çağırır' );
+	}
+);
+
 /* ---------------------------------------------------------------------------
  * 2. Bilgilendirme notice'ı (3 gün kuralı)
  * ------------------------------------------------------------------------ */

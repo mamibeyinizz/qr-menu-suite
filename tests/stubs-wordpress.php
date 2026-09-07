@@ -687,7 +687,15 @@ function is_user_logged_in() {
  * @param string $capability Yetki.
  * @return bool
  */
-function current_user_can( $capability ) {
+function current_user_can( $capability, ...$args ) {
+	if ( 'edit_post' === $capability && isset( $args[0] ) ) {
+		$post_id = (int) $args[0];
+
+		if ( isset( $GLOBALS['qrms_test']['can_edit_post'][ $post_id ] ) ) {
+			return (bool) $GLOBALS['qrms_test']['can_edit_post'][ $post_id ];
+		}
+	}
+
 	return (bool) $GLOBALS['qrms_test']['can'];
 }
 
@@ -1849,6 +1857,30 @@ function get_terms( $args = array() ) {
  */
 function post_type_exists( $tur ) {
 	return true;
+}
+
+/**
+ * Yazı tipi.
+ *
+ * @param int|object|null $post Yazı veya kimlik.
+ * @return string|false
+ */
+function get_post_type( $post = null ) {
+	if ( null === $post ) {
+		return 'post';
+	}
+
+	$id = is_object( $post ) && isset( $post->ID ) ? (int) $post->ID : (int) $post;
+
+	if ( $id < 1 ) {
+		return false;
+	}
+
+	if ( isset( $GLOBALS['qrms_test']['post_types'][ $id ] ) ) {
+		return $GLOBALS['qrms_test']['post_types'][ $id ];
+	}
+
+	return 'post';
 }
 
 /**
