@@ -259,6 +259,42 @@ function wp_remote_post( $url, $args = array() ) {
 }
 
 /**
+ * HTTP GET taklidi.
+ *
+ * @param string $url  Adres.
+ * @param array  $args Argümanlar.
+ * @return array|WP_Error
+ */
+function wp_remote_get( $url, $args = array() ) {
+	return wp_remote_post( $url, $args );
+}
+
+/**
+ * HTTP isteği (PATCH vb.) taklidi.
+ *
+ * @param string $url  Adres.
+ * @param array  $args Argümanlar.
+ * @return array|WP_Error
+ */
+function wp_remote_request( $url, $args = array() ) {
+	return wp_remote_post( $url, $args );
+}
+
+/**
+ * HTTP cevap kodu.
+ *
+ * @param array|WP_Error $response Cevap.
+ * @return int
+ */
+function wp_remote_retrieve_response_code( $response ) {
+	if ( is_wp_error( $response ) ) {
+		return 0;
+	}
+
+	return isset( $response['response']['code'] ) ? (int) $response['response']['code'] : 0;
+}
+
+/**
  * Cevap gövdesini döndürür.
  *
  * @param array|WP_Error $response Cevap.

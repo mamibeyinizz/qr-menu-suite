@@ -78,7 +78,15 @@ function qrms_sp_ajax_durum() {
 	$sonuc = QRMS_SP_Veri::durum_degistir( $id, $eski, $yeni );
 
 	if ( is_wp_error( $sonuc ) ) {
-		wp_send_json_error( array( 'msg' => $sonuc->get_error_message() ), 400 );
+		$kod    = $sonuc->get_error_code();
+		$durum  = 'cakisma' === $kod ? 409 : 400;
+		wp_send_json_error(
+			array(
+				'msg' => $sonuc->get_error_message(),
+				'kod' => $kod,
+			),
+			$durum
+		);
 	}
 
 	wp_send_json_success( array( 'durum' => $yeni ) );

@@ -544,6 +544,17 @@
 			} )
 				.then( function ( json ) {
 					if ( ! json || ! json.success ) {
+						if ( json && json.data && 'cakisma' === json.data.kod ) {
+							seritGoster( json.data.msg || M.cakisma, true );
+							yokla();
+
+							kart.querySelectorAll( '.qrms-sp-gecis' ).forEach( function ( d ) {
+								d.disabled = false;
+							} );
+
+							return;
+						}
+
 						throw new Error( json && json.data ? json.data.msg : M.hata );
 					}
 
