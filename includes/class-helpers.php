@@ -264,6 +264,7 @@ class QRMS_Helpers {
 			'inactive'        => __( 'Pasif', 'qrms' ),
 			'domain_mismatch' => __( 'Alan adı uyuşmuyor', 'qrms' ),
 			'invalid'         => __( 'Geçersiz anahtar', 'qrms' ),
+			'expired'         => __( 'Süresi doldu', 'qrms' ),
 			'unreachable'     => __( 'Sunucuya ulaşılamıyor', 'qrms' ),
 		);
 
@@ -293,6 +294,9 @@ class QRMS_Helpers {
 
 			case 'domain_mismatch':
 				return __( 'Bu API anahtarı başka bir alan adına kayıtlı. Lütfen doğru anahtarı kullandığınızdan emin olun.', 'qrms' );
+
+			case 'expired':
+				return __( 'Lisansınızın süresi doldu. Lütfen sağlayıcınızla iletişime geçin.', 'qrms' );
 
 			case 'unreachable':
 			default:
