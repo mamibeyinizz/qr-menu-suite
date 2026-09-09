@@ -187,6 +187,25 @@ trait QRMS_AE_Frontend {
         <script id="splash-critical-script">
             (function () {
                 try {
+                    // "Menüye Git" butonu ana sayfanın kendi adresine gider
+                    // (bkz. output_splash() — cta_link genelde site kökü).
+                    // Aynı URL'e dönen bu tık bazı tarayıcılarda (özellikle
+                    // Android Chrome) gerçek bir ağ isteği yerine geri/ileri
+                    // önbelleğinden (bfcache) askıdaki önceki sayfayı aynen
+                    // geri getiriyor — DOM'daki en son kaydırma konumuyla
+                    // birlikte. Sonuç: ziyaretçi sayfanın başına değil, önceki
+                    // ziyarette kaldığı menü bölümüne düşüyor. scrollRestoration
+                    // 'manual' yapılıp bfcache'ten dönüşte (pageshow persisted)
+                    // kaydırma sıfırlanarak önlenir.
+                    if ('scrollRestoration' in history) {
+                        history.scrollRestoration = 'manual';
+                    }
+                    window.addEventListener('pageshow', function (e) {
+                        if (e.persisted) {
+                            window.scrollTo(0, 0);
+                        }
+                    });
+
                     // 0 = her ziyarette göster: eski oturum çerezini sil ve
                     // splash_dismissed kontrolünü atla. Değer siteden gelir,
                     // ziyaretçi çerezinden değil (tam sayfa cache güvenli).
