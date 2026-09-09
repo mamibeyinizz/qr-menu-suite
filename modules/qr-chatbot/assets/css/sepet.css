@@ -76,7 +76,7 @@
 	left: 12px;
 	right: 12px;
 	bottom: calc(74px + env(safe-area-inset-bottom, 0px));
-	z-index: 2147482999;
+	z-index: 2147482700;
 	display: none;
 	align-items: center;
 	justify-content: space-between;
@@ -134,7 +134,7 @@
 .qmo-ov {
 	position: fixed;
 	inset: 0;
-	z-index: 2147483000;
+	z-index: 2147482701;
 	background: rgba(0, 0, 0, 0.6);
 	display: none;
 }
@@ -148,7 +148,7 @@
 	left: 0;
 	right: 0;
 	bottom: 0;
-	z-index: 2147483001;
+	z-index: 2147482702;
 	transform: translateY(105%);
 	transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
 	background: var(--qmo-bg);
@@ -387,7 +387,7 @@
 	left: 50%;
 	transform: translateX(-50%);
 	bottom: calc(140px + env(safe-area-inset-bottom, 0px));
-	z-index: 2147483002;
+	z-index: 2147482703;
 	background: #16161a;
 	border: 1px solid rgba(201, 168, 76, 0.5);
 	color: var(--qmo-txt);
