@@ -145,7 +145,27 @@ trait QRMS_AE_Frontend {
              * zaman aşımı sigortası yine devreye girip sayfayı açığa çıkarır.
              */
             html.splash-loading { background: var(--sp-bg) !important; }
-            html.splash-loading body { overflow: hidden; visibility: hidden; }
+            /*
+             * NEDEN yalnızca overflow:hidden YETMİYOR: overlay altındaki
+             * GERÇEK menü sayfası aynı DOM'da, splash'ın arkasında hazır
+             * duruyor. Mobil Safari/Chrome'da body{overflow:hidden} dokunmatik
+             * kaydırmayı (touch-drag) güvenilir biçimde durdurmaz — ziyaretçi
+             * splash'ı kapatmak için ekrana dokunurken arkadaki sayfa
+             * GÖRÜNMEDEN kayıyor, splash kapanınca kullanıcıyı sayfa başı
+             * yerine kaydığı kategori başlangıcında bırakıyordu. position:fixed
+             * + top:0 kilidi (header-footer-builder'daki lockBodyScroll ile
+             * aynı teknik) dokunmatik kaydırmayı da engeller. Sayfa bu an
+             * henüz boyanmadığı için scrollY her zaman 0'dır.
+             */
+            html.splash-loading body {
+                overflow: hidden;
+                visibility: hidden;
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                width: 100%;
+            }
             /*
              * Overlay'in tam ekran konumu (position/boyut/z-index) normalde
              * splash.css'te — geç yüklenen, DEFER edilmiş bir dosyada. Overlay
@@ -231,7 +251,15 @@ trait QRMS_AE_Frontend {
         </script>
         <noscript>
             <style>
-                html.splash-loading body { overflow: auto !important; visibility: visible !important; }
+                html.splash-loading body {
+                    overflow: auto !important;
+                    visibility: visible !important;
+                    position: static !important;
+                    top: auto !important;
+                    left: auto !important;
+                    right: auto !important;
+                    width: auto !important;
+                }
                 #custom-splash-overlay { display: none !important; }
             </style>
         </noscript>
