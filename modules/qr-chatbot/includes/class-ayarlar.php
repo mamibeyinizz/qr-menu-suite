@@ -114,14 +114,15 @@ function qmo_chatbot_kose_haritasi() {
 }
 
 /**
- * Yerden yükseklik → alt boşluk (Garson/Hesap çubuğunun biraz üstü).
+ * Yerden yükseklik → alt boşluk (Garson/Hesap çubuğu VE [qmo_sepet] alt
+ * çubuğunun üstü — sepet çubuğu 74px'den başlayıp ~48px yükseklikte).
  *
  * @return array<string,int>
  */
 function qmo_chatbot_yukseklik_haritasi() {
 	return array(
 		'low' => 24,
-		'mid' => 108,
+		'mid' => 140,
 		'high' => 168,
 	);
 }
