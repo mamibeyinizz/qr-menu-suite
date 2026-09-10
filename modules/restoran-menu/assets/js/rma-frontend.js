@@ -1036,9 +1036,49 @@ function rmaInitGestures() {
 }
 
 /* -----------------------------------------------------------------
+   SAYFA AÇILIŞI — KAYDIRMA KONUMU
+   Tarayıcı önceki ziyaretteki kaydırmayı (scroll restoration /
+   bfcache) geri yükleyebiliyor; kullanıcı banner yerine ilk kategori
+   bölümünde ("Ana Yemek" vb.) açılıyordu. Menü sayfasında açılışta
+   her zaman en üstten başlanır; kategori butonlarına tıklama etkilenmez.
+----------------------------------------------------------------- */
+var rmaPageScrollInited = false;
+
+function rmaEnsurePageTop() {
+    if (window.location.hash) {
+        try {
+            history.replaceState(null, '', window.location.pathname + window.location.search);
+        } catch (e) {}
+    }
+    scrollToInstant(0);
+}
+
+function rmaInitPageScroll() {
+    if (rmaPageScrollInited) return;
+    rmaPageScrollInited = true;
+
+    if ('scrollRestoration' in history) {
+        try { history.scrollRestoration = 'manual'; } catch (e) {}
+    }
+
+    rmaEnsurePageTop();
+
+    window.addEventListener('pageshow', function (e) {
+        if (e.persisted) rmaEnsurePageTop();
+    }, { passive: true });
+
+    // Bazı tarayıcılar scrollRestoration'ı load'ta yine uygular.
+    window.addEventListener('load', function () {
+        rmaEnsurePageTop();
+    }, { once: true, passive: true });
+}
+
+/* -----------------------------------------------------------------
    BAŞLAT
 ----------------------------------------------------------------- */
 function init() {
+    rmaInitPageScroll();
+
     wrap          = qs('.rma-wrap');
     filterTrigger = qs('#rma-filter-trigger');
     filterBadge   = qs('#rma-filter-badge');

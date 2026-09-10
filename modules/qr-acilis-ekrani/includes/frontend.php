@@ -220,6 +220,7 @@ trait QRMS_AE_Frontend {
                     if ('scrollRestoration' in history) {
                         history.scrollRestoration = 'manual';
                     }
+                    window.scrollTo(0, 0);
                     window.addEventListener('pageshow', function (e) {
                         if (e.persisted) {
                             window.scrollTo(0, 0);

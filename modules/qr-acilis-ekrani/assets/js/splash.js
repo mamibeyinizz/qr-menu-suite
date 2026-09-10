@@ -11,6 +11,36 @@
         document.documentElement.classList.remove('splash-loading');
     }
 
+    function normalizePath(url) {
+        return String(url || '').split('#')[0].replace(/\/$/, '');
+    }
+
+    function isSameDocumentPath(href) {
+        if (!href) return false;
+        if (/^(javascript:|tel:|mailto:|#)/i.test(href)) return false;
+        try {
+            var a = document.createElement('a');
+            a.href = href;
+            return normalizePath(a.href) === normalizePath(window.location.href);
+        } catch (e) {
+            return false;
+        }
+    }
+
+    function scrollPageTop() {
+        try {
+            if ('scrollRestoration' in history) {
+                history.scrollRestoration = 'manual';
+            }
+        } catch (e) {}
+        if (window.location.hash) {
+            try {
+                history.replaceState(null, '', window.location.pathname + window.location.search);
+            } catch (e2) {}
+        }
+        window.scrollTo(0, 0);
+    }
+
     function getOverlay() {
         return document.getElementById('custom-splash-overlay');
     }
@@ -395,6 +425,7 @@
             removeLoadingState();
             overlay.remove();
             document.body.style.overflow = '';
+            scrollPageTop();
             return;
         }
 
@@ -444,6 +475,8 @@
                 ceviri.navigate();
                 return;
             }
+
+            scrollPageTop();
 
             var overlayDom = getOverlay();
             if (overlayDom) {
@@ -518,12 +551,20 @@
         // Menü/İletişim/Rezervasyon/Yorum: tıklayınca splash kapanır (navigasyon devam eder).
         // Sosyal medya rozetleri yeni sekmede açıldığı için dismiss etmez.
         overlay.querySelectorAll('[data-splash-dismiss]').forEach(function (el) {
-            el.addEventListener('click', function () {
+            el.addEventListener('click', function (e) {
                 var eylem = el.getAttribute('data-splash-action') || '';
                 if (eylem) {
                     splashEylem(eylem);
                 }
                 var href = el.tagName === 'A' ? el.getAttribute('href') : '';
+                // Aynı sayfa adresine giden "Menüye Git" tıkları bazı
+                // tarayıcılarda bfcache ile önceki kaydırma konumunu geri
+                // getiriyordu; varsayılan navigasyonu durdurup üste alıyoruz.
+                if (href && isSameDocumentPath(href)) {
+                    e.preventDefault();
+                    dismissSplash(false);
+                    return;
+                }
                 dismissSplash(!!href);
             });
         });
