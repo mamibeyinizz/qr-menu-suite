@@ -344,6 +344,16 @@
 				btn.disabled = true;
 				btn.classList.add( 'is-eklendi' );
 				btn.textContent = metin( 'sepette', 'Sepette ✓' );
+
+				// AI'nin bağlamına (gecmis) düşer ki "siparişimi ilet" gibi bir
+				// takip mesajında hangi ürünün eklendiğini bilsin — sohbet
+				// ekranına (ekranKaydi) yazılmaz, kullanıcıya görünmez.
+				gecmis.push( { role: 'user', parts: [ { text: ( urun.ad || '' ) + ' ürününü sepete ekledim.' } ] } );
+				gecmis.push( { role: 'model', parts: [ { text: 'Tamam, sepetinize eklendi.' } ] } );
+				if ( gecmis.length > 20 ) {
+					gecmis = gecmis.slice( -20 );
+				}
+				gecmisKaydet();
 			}
 		} );
 
@@ -433,8 +443,11 @@
 					return;
 				}
 				btn.disabled = false;
+				var hata = ( yanit && yanit.data ) ? yanit.data : metin( 'istekIletilemedi', 'İstek iletilemedi, lütfen tekrar deneyin.' );
+				balon( 'string' === typeof hata ? hata : ( hata.mesaj || hata.msg || metin( 'istekIletilemedi', 'İstek iletilemedi, lütfen tekrar deneyin.' ) ), 'bot', true );
 			} ).catch( function () {
 				btn.disabled = false;
+				balon( metin( 'baglantiHatasi', 'Bağlantı hatası oluştu.' ), 'bot', true );
 			} );
 		} );
 
@@ -738,6 +751,22 @@
 		return null;
 	}
 
+	/* [CALL_WAITER]/[CALL_BILL] modelin metin yanıtıyla birlikte tetiklediği
+	   gerçek dünya çağrısıdır; istek sessizce başarısız olursa (Firestore
+	   kapalı, hız sınırı vb.) müşteri garson geldiğini sanıp bekler. Bu yüzden
+	   fire-and-forget değil, hata durumunda görünür bir balonla bildirilir. */
+	function cagriGonder( action ) {
+		istek( { action: action } ).then( function ( yanit ) {
+			if ( yanit && yanit.success ) {
+				return;
+			}
+			var hata = ( yanit && yanit.data ) ? yanit.data : metin( 'istekIletilemedi', 'İstek iletilemedi, lütfen tekrar deneyin.' );
+			balon( 'string' === typeof hata ? hata : ( hata.mesaj || hata.msg || metin( 'istekIletilemedi', 'İstek iletilemedi, lütfen tekrar deneyin.' ) ), 'bot', true );
+		} ).catch( function () {
+			balon( metin( 'baglantiHatasi', 'Bağlantı hatası oluştu.' ), 'bot', true );
+		} );
+	}
+
 	function yanitIsle( mesaj, payload, streamBot ) {
 		var cevap   = payload.mesaj || '';
 		var urunler = payload.urunler && Array.isArray( payload.urunler ) ? payload.urunler : [];
@@ -748,12 +777,12 @@
 
 		if ( cevap.indexOf( '[CALL_WAITER]' ) !== -1 ) {
 			cevap = cevap.replace( '[CALL_WAITER]', '' ).trim();
-			istek( { action: 'garson_cagir' } );
+			cagriGonder( 'garson_cagir' );
 		}
 
 		if ( cevap.indexOf( '[CALL_BILL]' ) !== -1 ) {
 			cevap = cevap.replace( '[CALL_BILL]', '' ).trim();
-			istek( { action: 'hesap_iste' } );
+			cagriGonder( 'hesap_iste' );
 		}
 
 		if ( cevap.indexOf( '[BILEMEDI]' ) !== -1 ) {
