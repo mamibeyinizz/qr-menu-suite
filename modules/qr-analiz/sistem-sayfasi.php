@@ -189,7 +189,7 @@ if ( ! function_exists( 'qrms_analitik_sayfa_sistem' ) ) {
 					<?php esc_html_e( 'Ham kayıt, seçili tarih aralığındaki bütün olayları satır satır verir. Özet tablolar (ürünler, masalar) kendi kategori sayfalarından da indirilebilir.', 'qrms' ); ?>
 				</p>
 
-				<p>
+				<p class="qrms-an-btn-group">
 					<a class="qrms-an-btn qrms-an-btn-primary"
 						href="<?php echo esc_url( add_query_arg( array_merge( $csv_args, array( 'kategori' => 'ham' ) ), admin_url( 'admin-ajax.php' ) ) ); ?>">
 						<span class="dashicons dashicons-media-spreadsheet" aria-hidden="true"></span>

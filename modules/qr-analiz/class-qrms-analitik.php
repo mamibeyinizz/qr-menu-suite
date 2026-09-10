@@ -242,6 +242,40 @@ class QRMS_Analitik {
 	);
 
 	/**
+	 * Ham CSV'de event_type ingilizce kod adı yerine okunur Türkçe etiket
+	 * gösterir. Haritada olmayan (ileride eklenen) bir tip ham kodla döner —
+	 * dosyada boş sütun yerine en azından kaynak kodu görünür.
+	 *
+	 * @param string $tip event_type sütunu.
+	 * @return string
+	 */
+	private static function olay_etiketi( $tip ) {
+		$etiketler = array(
+			'menu_view'        => __( 'Menü görüntüleme', 'qrms' ),
+			'product_click'    => __( 'Ürün tıklama', 'qrms' ),
+			'item_detail_open' => __( 'Ürün detayı açma', 'qrms' ),
+			'cart_add'         => __( 'Sepete ekleme', 'qrms' ),
+			'cart_remove'      => __( 'Sepetten çıkarma', 'qrms' ),
+			'order_sent'       => __( 'Sipariş gönderildi', 'qrms' ),
+			'order_failed'     => __( 'Sipariş başarısız', 'qrms' ),
+			'order_blocked'    => __( 'Sipariş engellendi', 'qrms' ),
+			'waiter_call'      => __( 'Garson çağrısı', 'qrms' ),
+			'bill_request'     => __( 'Hesap isteği', 'qrms' ),
+			'chatbot_message'  => __( 'Chatbot mesajı', 'qrms' ),
+			'lang_switch'      => __( 'Dil değişimi', 'qrms' ),
+			'splash_view'      => __( 'Açılış ekranı gösterimi', 'qrms' ),
+			'splash_action'    => __( 'Açılış ekranı eylemi', 'qrms' ),
+			'gallery_view'     => __( 'Galeri görüntüleme', 'qrms' ),
+			'reward_issued'    => __( 'Ödül verildi', 'qrms' ),
+			'reward_redeemed'  => __( 'Ödül kullanıldı', 'qrms' ),
+			'review_submit'    => __( 'Yorum gönderimi', 'qrms' ),
+			'form_submit'      => __( 'Form gönderimi', 'qrms' ),
+		);
+
+		return isset( $etiketler[ $tip ] ) ? $etiketler[ $tip ] : $tip;
+	}
+
+	/**
 	 * Hook kayıtları.
 	 *
 	 * @return void
@@ -2930,6 +2964,22 @@ class QRMS_Analitik {
 	 */
 	private static function csv_ac( $dosya ) {
 		nocache_headers();
+
+		// Bir önbellek/minify eklentisi ya da hosting'in mbstring çıktı
+		// filtresi hâlâ etkinse, aşağıdaki ham baytları (BOM dahil) kendi
+		// karakter kümesiyle yeniden kodlayıp Türkçe harfleri bozabilir
+		// (belirtisi: "Ürün" yerine "ÃrÃ¼n"). WordPress çekirdeği bunu
+		// mb_http_output('pass') ile zaten kapatır, ama açık kalan bir
+		// output buffer o korumayı by-pass edebildiği için indirmeden önce
+		// hepsi burada da temizlenir.
+		while ( ob_get_level() > 0 ) {
+			ob_end_clean();
+		}
+
+		if ( function_exists( 'mb_http_output' ) ) {
+			mb_http_output( 'pass' );
+		}
+
 		header( 'Content-Type: text/csv; charset=utf-8' );
 		header( 'Content-Disposition: attachment; filename="' . $dosya . '"' );
 
@@ -3103,6 +3153,12 @@ class QRMS_Analitik {
 
 		$cikti = self::csv_ac( $dosya );
 
+		// Diğer bütün kategori indirmeleri (ürünler, masalar, sepet…) hangi
+		// aralığın/masanın indirildiğini üstbilgide yazar; ham indirmede bu
+		// satırlar eksikti ve dosya tek başına açıldığında hangi döneme ait
+		// olduğu anlaşılmıyordu.
+		self::csv_ustbilgi( $cikti, $aralik, $baglam );
+
 		fputcsv( $cikti, array( 'Olay', 'Ürün ID', 'Ürün Adı', 'Kategori', 'Masa', 'Tarih' ), ';' );
 
 		if ( ! self::tablo_var_mi() ) {
@@ -3140,11 +3196,11 @@ class QRMS_Analitik {
 				fputcsv(
 					$cikti,
 					array(
-						$satir['event_type'],
-						$satir['item_id'],
+						self::olay_etiketi( $satir['event_type'] ),
+						$satir['item_id'] > 0 ? $satir['item_id'] : '',
 						$satir['item_name'],
 						$satir['category_name'],
-						$satir['masa_no'],
+						'' !== $satir['masa_no'] ? $satir['masa_no'] : '—',
 						$satir['created_at'],
 					),
 					';'
