@@ -186,6 +186,23 @@ if ( ! function_exists( 'rma_ceviri_import_bildirimleri' ) ) {
 			}
 			echo '</ul></div>';
 		}
+
+		if ( ! empty( $rapor['sirali_kopya'] ) ) {
+			echo '<div class="notice notice-warning"><p><strong>Sıralı kopya uyarısı</strong> — aynı satırda iki farklı dilin çevirisi birebir aynı (ilk ' . count( $rapor['sirali_kopya'] ) . '):</p><ul style="margin-left:18px;list-style:disc;">';
+			foreach ( $rapor['sirali_kopya'] as $satir ) {
+				printf(
+					'<li>Satır %1$d — %2$s #%3$d / %4$s · diller: %5$s · orijinal: “%6$s” · çeviri: “%7$s”</li>',
+					(int) $satir['satir'],
+					esc_html( $satir['tip'] ),
+					(int) $satir['id'],
+					esc_html( $satir['field'] ),
+					esc_html( $satir['diller'] ),
+					esc_html( $satir['orijinal'] ),
+					esc_html( $satir['ceviri'] )
+				);
+			}
+			echo '</ul><p class="description">Import tamamlandı; bu uyarılar yalnızca bilgi amaçlıdır. Yanlış dil kopyalarını kontrol edin.</p></div>';
+		}
 	}
 }
 

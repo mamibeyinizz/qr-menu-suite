@@ -245,6 +245,7 @@ if ( ! function_exists( 'rma_ceviri_satirlari_isle' ) ) {
 			'atlandi'     => 0,
 			'atlanan'     => array(),
 			'bayat'          => array(),
+			'sirali_kopya'   => array(),
 			'temizle'        => (bool) $temizle,
 			'bellek_kesildi' => false,
 		);
@@ -327,6 +328,9 @@ if ( ! function_exists( 'rma_ceviri_satirlari_isle' ) ) {
 				);
 			}
 
+			/* --- Sıralı kopya uyarısı (import'u durdurmaz) --- */
+			rma_ceviri_sirali_kopya_raporla( $rapor, $satir_no, $item_id, $item_type, $field, $guncel, $satir, $diller );
+
 			/* --- Yazma --- */
 			foreach ( $diller as $dil => $sutun ) {
 				$deger = isset( $satir[ $sutun ] ) ? trim( (string) $satir[ $sutun ] ) : '';
@@ -347,6 +351,68 @@ if ( ! function_exists( 'rma_ceviri_satirlari_isle' ) ) {
 		}
 
 		return $rapor;
+	}
+}
+
+/**
+ * CSV satırında iki farklı dilin çevirisi birebir aynıysa rapora işle.
+ *
+ * Import'u durdurmaz; yalnızca uyarı üretir.
+ *
+ * @param array  $rapor     Rapor (referans).
+ * @param int    $satir_no  Satır numarası.
+ * @param int    $item_id   Öğe ID.
+ * @param string $item_type Öğe tipi.
+ * @param string $field     Alan.
+ * @param string $guncel    Güncel orijinal metin.
+ * @param array  $satir     CSV satırı.
+ * @param array  $diller    Dil => sütun indeksi.
+ */
+if ( ! function_exists( 'rma_ceviri_sirali_kopya_raporla' ) ) {
+	function rma_ceviri_sirali_kopya_raporla( &$rapor, $satir_no, $item_id, $item_type, $field, $guncel, $satir, $diller ) {
+		if ( count( $rapor['sirali_kopya'] ) >= RMA_CEVIRI_RAPOR_ORNEK ) {
+			return;
+		}
+
+		$hucreler = array();
+		foreach ( $diller as $dil => $sutun ) {
+			$deger = isset( $satir[ $sutun ] ) ? trim( (string) $satir[ $sutun ] ) : '';
+			if ( '' !== $deger ) {
+				$hucreler[ $dil ] = $deger;
+			}
+		}
+
+		if ( count( $hucreler ) < 2 ) {
+			return;
+		}
+
+		$dil_kodlari = array_keys( $hucreler );
+		$cift_sayisi = count( $dil_kodlari );
+
+		for ( $i = 0; $i < $cift_sayisi; ++$i ) {
+			for ( $j = $i + 1; $j < $cift_sayisi; ++$j ) {
+				$dil1 = $dil_kodlari[ $i ];
+				$dil2 = $dil_kodlari[ $j ];
+
+				if ( $hucreler[ $dil1 ] !== $hucreler[ $dil2 ] ) {
+					continue;
+				}
+
+				$rapor['sirali_kopya'][] = array(
+					'satir'    => $satir_no,
+					'tip'      => $item_type,
+					'id'       => $item_id,
+					'field'    => $field,
+					'diller'   => $dil1 . '/' . $dil2,
+					'orijinal' => wp_trim_words( $guncel, 8, '…' ),
+					'ceviri'   => wp_trim_words( $hucreler[ $dil1 ], 8, '…' ),
+				);
+
+				if ( count( $rapor['sirali_kopya'] ) >= RMA_CEVIRI_RAPOR_ORNEK ) {
+					return;
+				}
+			}
+		}
 	}
 }
 
