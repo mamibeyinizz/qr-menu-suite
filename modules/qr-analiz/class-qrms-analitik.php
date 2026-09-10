@@ -1188,10 +1188,20 @@ class QRMS_Analitik {
 	/**
 	 * Menü listesi isteği: bir görüntüleme kaydı.
 	 *
+	 * `rma_load_items` yalnızca sayfa ilk açıldığında değil, filtre
+	 * uygulama ve canlı aramada da (rma-frontend.js) tetiklenir. `ilk_yukleme`
+	 * yalnızca gerçek sayfa açılışında gönderilir; yoksa bu aynı ziyaretin
+	 * içerik yenilemesidir ve "okutma" olarak tekrar sayılmamalıdır.
+	 *
 	 * @return void
 	 */
 	public static function izle_menu_goruntuleme() {
 		if ( ! self::izleme_gecerli_mi() ) {
+			return;
+		}
+
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing
+		if ( empty( $_POST['ilk_yukleme'] ) ) {
 			return;
 		}
 

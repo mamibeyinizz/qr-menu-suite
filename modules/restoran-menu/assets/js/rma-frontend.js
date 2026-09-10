@@ -443,7 +443,7 @@ function restoreSearchValue() {
 /* -----------------------------------------------------------------
    MENÜYÜ YÜKLE
 ----------------------------------------------------------------- */
-function loadAll() {
+function loadAll(ilkYukleme) {
     content.innerHTML = '';
     sectionTops = [];
     loader.style.display = 'block';
@@ -456,7 +456,8 @@ function loadAll() {
         search      : state.search,
         suggest_cfg : JSON.stringify(typeof SUGGEST_CFG !== 'undefined' ? SUGGEST_CFG : {}),
         lang        : rmaLang(),
-        masa        : rmaMasa()
+        masa        : rmaMasa(),
+        ilk_yukleme : ilkYukleme ? '1' : ''
     }, function (res, status) {
         loader.style.display = 'none';
 
@@ -1124,7 +1125,7 @@ function init() {
         document.fonts.ready.then(scheduleMeasure);
     }
 
-    loadAll();
+    loadAll(true);
 }
 
 if (document.readyState === 'loading') {
