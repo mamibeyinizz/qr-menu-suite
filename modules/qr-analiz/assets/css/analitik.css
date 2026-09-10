@@ -44,7 +44,7 @@
 
 .qrms-an-title {
 	color: var(--qrms-an-ink);
-	font-size: 22px;
+	font-size: 1.375rem;
 	font-weight: 700;
 	line-height: 1.25;
 	margin: 0 0 4px;
@@ -53,7 +53,7 @@
 
 .qrms-an-subtitle {
 	color: var(--qrms-an-muted);
-	font-size: 13px;
+	font-size: 0.8125rem;
 	line-height: 1.5;
 	margin: 0;
 	max-width: 60ch;
@@ -105,7 +105,7 @@
 
 .qrms-an-teshis-icon {
 	flex: 0 0 22px;
-	font-size: 22px;
+	font-size: 1.375rem;
 	height: 22px;
 	margin-top: 1px;
 	width: 22px;
@@ -129,7 +129,7 @@
 
 .qrms-an-teshis-title {
 	color: var(--qrms-an-ink);
-	font-size: 15px;
+	font-size: 0.9375rem;
 	font-weight: 600;
 	line-height: 1.4;
 	margin: 0;
@@ -138,7 +138,7 @@
 
 .qrms-an-teshis-text {
 	color: var(--qrms-an-muted);
-	font-size: 13.5px;
+	font-size: 0.8438rem;
 	line-height: 1.6;
 	margin: 6px 0 0;
 	max-width: 78ch;
@@ -164,6 +164,15 @@
    BUTONLAR
 ===================================================================== */
 
+/* Birden çok qrms-an-btn'nin yan yana yazıldığı satırlar (ör. dışa aktarma
+   düğmeleri): dar ekranda satır kırılınca düğmeler birbirine yapışmasın
+   diye düşey boşluk da eklenir. */
+.qrms-an-btn-group {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
 .qrms-an-btn {
 	align-items: center;
 	background: var(--qrms-an-bg);
@@ -172,7 +181,7 @@
 	color: #3c434a;
 	cursor: pointer;
 	display: inline-flex;
-	font-size: 14px;
+	font-size: 0.875rem;
 	font-weight: 600;
 	gap: 6px;
 	justify-content: center;
@@ -205,7 +214,7 @@
 }
 
 .qrms-an-btn-small {
-	font-size: 13px;
+	font-size: 0.8125rem;
 	min-height: 36px;
 	padding: 7px 12px;
 }
@@ -266,7 +275,7 @@
 
 .qrms-an-card-group-title {
 	color: var(--qrms-an-muted);
-	font-size: 12px;
+	font-size: 0.75rem;
 	font-weight: 700;
 	grid-column: 1 / -1;
 	letter-spacing: .08em;
@@ -313,7 +322,7 @@
 	background: rgba( 201, 168, 76, .12 );
 	border-radius: 20px;
 	color: #8a6f1f;
-	font-size: 10px;
+	font-size: 0.625rem;
 	font-weight: 700;
 	letter-spacing: .05em;
 	padding: 3px 9px;
@@ -327,7 +336,7 @@
 	display: block;
 	/* Dashicons kendi boyutunu font-size'dan alır; genişlik/yükseklik de
 	   birlikte büyümezse ikon kutusunun içinde kırpılır. */
-	font-size: 22px;
+	font-size: 1.375rem;
 	height: 22px;
 	line-height: 1;
 	margin-bottom: 8px;
@@ -336,7 +345,7 @@
 
 .qrms-an-card-label {
 	color: var(--qrms-an-soft);
-	font-size: 11px;
+	font-size: 0.6875rem;
 	font-weight: 700;
 	letter-spacing: .08em;
 	margin-bottom: 4px;
@@ -345,7 +354,7 @@
 
 .qrms-an-card-value {
 	color: var(--qrms-an-ink);
-	font-size: 28px;
+	font-size: 1.75rem;
 	font-weight: 800;
 	line-height: 1.1;
 	margin-bottom: 4px;
@@ -353,7 +362,7 @@
 
 .qrms-an-card-sub {
 	color: var(--qrms-an-soft);
-	font-size: 12px;
+	font-size: 0.75rem;
 	line-height: 1.5;
 	margin-top: auto;
 	word-break: break-word;
@@ -402,7 +411,7 @@
 
 .qrms-an-panel-title {
 	color: var(--qrms-an-ink);
-	font-size: 15px;
+	font-size: 0.9375rem;
 	font-weight: 700;
 	margin: 0;
 	padding: 0;
@@ -445,7 +454,7 @@
 	color: var(--qrms-an-soft);
 	cursor: pointer;
 	flex: 0 0 auto;
-	font-size: 14px;
+	font-size: 0.875rem;
 	font-weight: 600;
 	min-height: 40px;
 	padding: 9px 14px;
@@ -507,7 +516,7 @@
 	align-items: center;
 	color: var(--qrms-an-muted);
 	display: inline-flex;
-	font-size: 12px;
+	font-size: 0.75rem;
 	font-weight: 700;
 	gap: 6px;
 	letter-spacing: .06em;
@@ -515,7 +524,7 @@
 }
 
 .qrms-an-filtre-label .dashicons {
-	font-size: 16px;
+	font-size: 1rem;
 	height: 16px;
 	width: 16px;
 }
@@ -532,7 +541,7 @@
 	border-radius: 999px;
 	color: var(--qrms-an-muted);
 	cursor: pointer;
-	font-size: 13px;
+	font-size: 0.8125rem;
 	font-weight: 600;
 	/* Dokunma hedefi: 40px'in altına inmesin. */
 	min-height: 40px;
@@ -554,7 +563,7 @@
 
 .qrms-an-filtre-ozet {
 	color: var(--qrms-an-soft);
-	font-size: 12px;
+	font-size: 0.75rem;
 	margin-left: auto;
 }
 
@@ -582,8 +591,8 @@
 .qrms-an-date {
 	border: 1px solid #dcdcde;
 	border-radius: 8px;
-	/* 16px: iOS Safari daha küçük yazıda alanı yakınlaştırır. */
-	font-size: 16px;
+	/* 1rem (=16px): iOS Safari daha küçük yazıda alanı yakınlaştırır. */
+	font-size: 1rem;
 	min-height: 40px;
 	padding: 7px 10px;
 }
@@ -591,7 +600,7 @@
 /* Önceki döneme göre değişim rozeti. */
 .qrms-an-delta {
 	border-radius: 999px;
-	font-size: 11px;
+	font-size: 0.6875rem;
 	font-weight: 700;
 	margin-left: 6px;
 	padding: 2px 7px;
@@ -615,7 +624,7 @@
 
 /* Grafik kırılımı: kategori şeridiyle aynı chip görünümü, ikonlu. */
 .qrms-an-kirilimlar .qrms-an-tab .dashicons {
-	font-size: 16px;
+	font-size: 1rem;
 	height: 16px;
 	vertical-align: text-bottom;
 	width: 16px;
@@ -628,7 +637,7 @@
 
 .qrms-an-panel-note {
 	color: var(--qrms-an-soft);
-	font-size: 12px;
+	font-size: 0.75rem;
 	line-height: 1.6;
 	margin: 0 0 12px;
 }
@@ -641,7 +650,7 @@
 	background: rgba( 100, 116, 139, .12 );
 	border-radius: 999px;
 	color: #475569;
-	font-size: 11px;
+	font-size: 0.6875rem;
 	font-weight: 700;
 	padding: 2px 8px;
 	white-space: nowrap;
@@ -673,12 +682,12 @@
 
 .qrms-an-pager-info {
 	color: var(--qrms-an-soft);
-	font-size: 12px;
+	font-size: 0.75rem;
 	font-variant-numeric: tabular-nums;
 }
 
 .qrms-an-panel-title .dashicons {
-	font-size: 18px;
+	font-size: 1.125rem;
 	height: 18px;
 	vertical-align: text-bottom;
 	width: 18px;
@@ -728,8 +737,8 @@
 .qrms-an-select {
 	border: 1px solid #dcdcde;
 	border-radius: 8px;
-	/* 16px: iOS Safari daha küçük yazıda alanı yakınlaştırır. */
-	font-size: 16px;
+	/* 1rem (=16px): iOS Safari daha küçük yazıda alanı yakınlaştırır. */
+	font-size: 1rem;
 	max-width: 100%;
 	min-height: 40px;
 	padding: 7px 10px;
@@ -751,7 +760,7 @@
 
 .qrms-an-chart-title {
 	color: var(--qrms-an-muted);
-	font-size: 12px;
+	font-size: 0.75rem;
 	font-weight: 700;
 	letter-spacing: .06em;
 	text-transform: uppercase;
@@ -761,7 +770,7 @@
 	color: var(--qrms-an-muted);
 	display: flex;
 	flex-wrap: wrap;
-	font-size: 12px;
+	font-size: 0.75rem;
 	font-weight: 600;
 	gap: 12px;
 }
@@ -857,7 +866,7 @@
 
 .qrms-an-barlabel {
 	color: var(--qrms-an-soft);
-	font-size: 10px;
+	font-size: 0.625rem;
 	height: 44px;
 	line-height: 1.2;
 	overflow: hidden;
@@ -897,7 +906,7 @@
 .qrms-an-summary {
 	color: var(--qrms-an-muted);
 	cursor: pointer;
-	font-size: 13px;
+	font-size: 0.8125rem;
 	font-weight: 600;
 	list-style: none;
 	min-height: 44px;
@@ -928,7 +937,7 @@
 
 .qrms-an-table {
 	border-collapse: collapse;
-	font-size: 13px;
+	font-size: 0.8125rem;
 	width: 100%;
 }
 
@@ -936,7 +945,7 @@
 	background: #f9fafb;
 	border-bottom: 1px solid var(--qrms-an-line-soft);
 	color: var(--qrms-an-soft);
-	font-size: 11px;
+	font-size: 0.6875rem;
 	font-weight: 700;
 	letter-spacing: .06em;
 	padding: 10px 14px;
@@ -965,12 +974,12 @@
 .qrms-an-val-gold { color: #8a6f1f; font-weight: 700; }
 .qrms-an-val-blue { color: #1d4ed8; font-weight: 700; }
 .qrms-an-val-bold { color: var(--qrms-an-ink); font-weight: 700; }
-.qrms-an-muted    { color: var(--qrms-an-soft); font-size: 12px; }
+.qrms-an-muted    { color: var(--qrms-an-soft); font-size: 0.75rem; }
 
 .qrms-an-pill {
 	border-radius: 20px;
 	display: inline-block;
-	font-size: 12px;
+	font-size: 0.75rem;
 	font-weight: 700;
 	padding: 2px 9px;
 }
@@ -995,7 +1004,7 @@
 
 .qrms-an-huni-asama .dashicons {
 	color: var(--qrms-an-soft);
-	font-size: 18px;
+	font-size: 1.125rem;
 	grid-area: icon;
 	height: 18px;
 	width: 18px;
@@ -1003,7 +1012,7 @@
 
 .qrms-an-huni-etiket {
 	color: var(--qrms-an-ink);
-	font-size: 13px;
+	font-size: 0.8125rem;
 	font-weight: 700;
 	grid-area: label;
 }
@@ -1024,7 +1033,7 @@
 
 .qrms-an-huni-deger {
 	color: var(--qrms-an-ink);
-	font-size: 13px;
+	font-size: 0.8125rem;
 	font-weight: 700;
 	grid-area: value;
 	text-align: right;
@@ -1042,13 +1051,13 @@
 
 @media screen and ( min-width: 661px ) and ( max-width: 900px ) {
 	.qrms-an-huni-asama {
-		font-size: 12px;
+		font-size: 0.75rem;
 		grid-template-columns: 16px 110px 1fr 90px;
 	}
 
 	.qrms-an-huni-etiket,
 	.qrms-an-huni-deger {
-		font-size: 12px;
+		font-size: 0.75rem;
 	}
 }
 
@@ -1057,7 +1066,7 @@
 	border-radius: 20px;
 	color: var(--qrms-an-muted);
 	display: inline-block;
-	font-size: 12px;
+	font-size: 0.75rem;
 	padding: 2px 9px;
 }
 
@@ -1065,7 +1074,7 @@
 	align-items: center;
 	border-radius: 7px;
 	display: inline-flex;
-	font-size: 12px;
+	font-size: 0.75rem;
 	font-weight: 800;
 	height: 26px;
 	justify-content: center;
@@ -1103,7 +1112,7 @@
 
 .qrms-an-progress-pct {
 	color: var(--qrms-an-ink);
-	font-size: 12px;
+	font-size: 0.75rem;
 	font-weight: 700;
 	min-width: 36px;
 	text-align: right;
@@ -1115,7 +1124,7 @@
 
 .qrms-an-loading {
 	color: var(--qrms-an-soft);
-	font-size: 13px;
+	font-size: 0.8125rem;
 	padding: 36px 16px;
 	text-align: center;
 }
@@ -1150,7 +1159,7 @@
 .qrms-an-empty-icon {
 	color: var(--qrms-an-soft);
 	display: block;
-	font-size: 22px;
+	font-size: 1.375rem;
 	height: 22px;
 	margin: 0 auto 8px;
 	width: 22px;
@@ -1158,7 +1167,7 @@
 
 .qrms-an-empty-text {
 	color: var(--qrms-an-soft);
-	font-size: 13px;
+	font-size: 0.8125rem;
 	line-height: 1.6;
 	margin: 0;
 }
@@ -1208,20 +1217,20 @@
 }
 
 .qrms-an-modal-icon {
-	font-size: 30px;
+	font-size: 1.875rem;
 	margin-bottom: 6px;
 }
 
 .qrms-an-modal-title {
 	color: var(--qrms-an-ink);
-	font-size: 17px;
+	font-size: 1.0625rem;
 	margin: 0 0 8px;
 	padding: 0;
 }
 
 .qrms-an-modal-text {
 	color: var(--qrms-an-muted);
-	font-size: 14px;
+	font-size: 0.875rem;
 	line-height: 1.6;
 	margin: 0 0 20px;
 }
@@ -1307,7 +1316,7 @@
 		color: var(--qrms-an-soft);
 		content: attr( data-label );
 		flex: 0 1 auto;
-		font-size: 11px;
+		font-size: 0.6875rem;
 		font-weight: 700;
 		letter-spacing: .05em;
 		text-align: left;
@@ -1361,7 +1370,7 @@
 	}
 
 	.qrms-an-donem {
-		font-size: 12px;
+		font-size: 0.75rem;
 		padding: 8px 10px;
 		text-align: center;
 	}
@@ -1436,7 +1445,7 @@
 	}
 
 	.qrms-an-title {
-		font-size: 24px;
+		font-size: 1.5rem;
 	}
 
 	.qrms-an-sepet .qrms-an-card-group {
@@ -1448,7 +1457,7 @@
 	}
 
 	.qrms-an-empty-icon {
-		font-size: 30px;
+		font-size: 1.875rem;
 		height: 30px;
 		width: 30px;
 	}
