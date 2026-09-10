@@ -1380,4 +1380,18 @@ qrms_test(
 	}
 );
 
+qrms_test(
+	'splash: aynı sayfa Menü tıklaması ve açılışta kaydırma sıfırlanır',
+	function () {
+		$front = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-acilis-ekrani/includes/frontend.php' );
+		$js    = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-acilis-ekrani/assets/js/splash.js' );
+
+		qrms_assert_contains( "history.scrollRestoration = 'manual'", $front, 'kritik script scrollRestoration' );
+		qrms_assert_contains( 'window.scrollTo(0, 0);', $front, 'kritik script anında üste alır' );
+		qrms_assert_contains( 'function isSameDocumentPath(href)', $js, 'aynı sayfa tespiti' );
+		qrms_assert_contains( 'e.preventDefault()', $js, 'aynı sayfa Menü navigasyonu durdurulur' );
+		qrms_assert_contains( 'function scrollPageTop()', $js, 'splash kapanışında üste alma' );
+	}
+);
+
 echo "\nQR Çeviri (P0 köprü / chatbot)\n";
