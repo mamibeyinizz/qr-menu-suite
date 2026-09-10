@@ -185,6 +185,10 @@
 		return !!( cb && cb.checked );
 	}
 
+	function toggleMetinAcikMi() {
+		return acikMi( 'gemini_show_toggle_text' );
+	}
+
 	function deger( id, yedek ) {
 		var el = document.getElementById( id );
 		return el && el.value ? el.value : ( yedek || '' );
@@ -258,6 +262,7 @@
 		var welcomeOn = acikMi( 'qmo_chatbot_welcome_screen' );
 		var teaserOn = acikMi( 'qmo_chatbot_teaser' );
 		var badgeOn = acikMi( 'qmo_chatbot_badge' );
+		var toggleTextOn = toggleMetinAcikMi();
 		var acik = 'open' === state.mode;
 		var girisGoster = acik && welcomeOn && ! state.welcomeStarted;
 		var html = ikonHtml();
@@ -289,7 +294,7 @@
 			degiskenYaz( el, '--gm-side', '16px' );
 			degiskenYaz( el, '--gm-window', windowPx + 'px' );
 			degiskenYaz( el, '--gm-z', '2' );
-			degiskenYaz( el, '--gm-toggle-pad', '0' );
+			degiskenYaz( el, '--gm-toggle-pad', toggleTextOn ? '13px 26px 13px 14px' : '14px' );
 			el.classList.toggle( 'gm-pos-left', 'left' === konum );
 			el.classList.toggle( 'gm-pos-right', 'left' !== konum );
 		} );
@@ -333,6 +338,11 @@
 		}
 		if ( badge ) {
 			badge.hidden = ! badgeOn;
+		}
+		var toggleLabel = root.querySelector( '[data-preview-toggle-label]' );
+		if ( toggleLabel ) {
+			toggleLabel.hidden = ! toggleTextOn;
+			toggleLabel.textContent = initial.botName || 'Asistan';
 		}
 		if ( teaser ) {
 			teaser.hidden = ! teaserOn || acik || state.teaserDismissed;
