@@ -663,3 +663,20 @@ qrms_test(
 		qrms_assert_contains( "\$this->csv_hucre_kacir( is_wp_error( \$ings )", $kaynak, 'malzeme listesi kaçırılır' );
 	}
 );
+
+qrms_test(
+	'menü sayfası açılışında kaydırma konumu sıfırlanır',
+	function () {
+		$js = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/js/rma-frontend.js' );
+
+		qrms_assert_contains( 'function rmaInitPageScroll()', $js, 'sayfa kaydırma koruması' );
+		qrms_assert_contains( "history.scrollRestoration = 'manual'", $js, 'scrollRestoration manual' );
+		qrms_assert_contains( 'function rmaEnsurePageTop()', $js, 'üste alma yardımcısı' );
+		qrms_assert_contains( 'rmaInitPageScroll();', $js, 'init içinde çağrılır' );
+		qrms_assert_contains( 'if (e.persisted) rmaEnsurePageTop()', $js, 'bfcache dönüşü' );
+		qrms_assert_false(
+			false !== strpos( $js, 'scrollToSection' ) && false !== strpos( explode( 'function loadAll', $js )[1], 'scrollToSection' ),
+			'loadAll içinde otomatik kategori kaydırması yok'
+		);
+	}
+);
