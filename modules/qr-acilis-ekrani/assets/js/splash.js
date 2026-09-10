@@ -27,6 +27,28 @@
         }
     }
 
+    // Admin panelde girilen linkler (Menü/İletişim/Rezervasyon/Yorum) mevcut
+    // ?masa= (ve ?lang=) parametresini taşımaz; bu parametreler eksikse
+    // hedefe eklenir — aksi halde tıklama masa oturumunu (qr_masa_token)
+    // kaybettirip "QR okutulmamış" ekranına düşürür.
+    function withSessionParams(href) {
+        if (!href || /^(javascript:|tel:|mailto:|#)/i.test(href)) return href;
+        try {
+            var a = document.createElement('a');
+            a.href = href;
+            if (a.origin !== window.location.origin) return href;
+            var params = new URLSearchParams(a.search);
+            var cur = new URLSearchParams(window.location.search);
+            ['masa', 'lang'].forEach(function (k) {
+                if (!params.has(k) && cur.has(k)) params.set(k, cur.get(k));
+            });
+            var qs = params.toString();
+            return a.pathname + (qs ? '?' + qs : '') + a.hash;
+        } catch (e) {
+            return href;
+        }
+    }
+
     function scrollPageTop() {
         try {
             if ('scrollRestoration' in history) {
@@ -556,13 +578,20 @@
                 if (eylem) {
                     splashEylem(eylem);
                 }
-                var href = el.tagName === 'A' ? el.getAttribute('href') : '';
+                var rawHref = el.tagName === 'A' ? el.getAttribute('href') : '';
+                var href    = withSessionParams(rawHref);
                 // Aynı sayfa adresine giden "Menüye Git" tıkları bazı
                 // tarayıcılarda bfcache ile önceki kaydırma konumunu geri
                 // getiriyordu; varsayılan navigasyonu durdurup üste alıyoruz.
                 if (href && isSameDocumentPath(href)) {
                     e.preventDefault();
                     dismissSplash(false);
+                    return;
+                }
+                if (href && href !== rawHref) {
+                    e.preventDefault();
+                    dismissSplash(true);
+                    window.location.href = href;
                     return;
                 }
                 dismissSplash(!!href);
