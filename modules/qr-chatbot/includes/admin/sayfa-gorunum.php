@@ -53,6 +53,7 @@ function qmo_chatbot_sayfa_gorunum() {
 	$giris_metin  = (string) qmo_chatbot_ayar( 'qmo_chatbot_welcome_intro' );
 	$basla_metin  = (string) qmo_chatbot_ayar( 'qmo_chatbot_welcome_btn' );
 	$rozet_on     = 'yes' === $rozet;
+	$metin_goster = 'yes' === get_option( 'gemini_show_toggle_text', 'no' );
 	$konum_sinif  = 'left' === $konum ? 'gm-pos-left' : 'gm-pos-right';
 	$attn_map     = array(
 		'pulse' => 'gm-attn-pulse',
@@ -167,6 +168,12 @@ function qmo_chatbot_sayfa_gorunum() {
 						<th scope="row"><?php esc_html_e( 'Dikkat çekme hareketi', 'qrms' ); ?></th>
 						<td>
 							<?php qmo_chatbot_secenek_grup( 'qmo_chatbot_attention', $hareket, array( 'none' => __( 'Yok', 'qrms' ), 'pulse' => __( 'Hafif nabız', 'qrms' ), 'shake' => __( 'Sallanma', 'qrms' ), 'float' => __( 'Yukarı-aşağı süzülme', 'qrms' ) ) ); ?>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'İkon yanında metin', 'qrms' ); ?></th>
+						<td>
+							<?php qmo_chatbot_option_ac_kapa( 'gemini_show_toggle_text', __( 'Kapalı halde ikonun yanında bot adı görünsün.', 'qrms' ) ); ?>
 						</td>
 					</tr>
 					<tr>
@@ -355,6 +362,7 @@ function qmo_chatbot_sayfa_gorunum() {
 								<div class="gemini-icon-wrapper" data-preview-icon><?php echo $onizleme_ikon; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- SVG kses / esc_url. ?></div>
 							</span>
 							<span class="gemini-unread-badge" <?php echo $rozet_on ? '' : 'hidden'; ?>>1</span>
+							<span class="gemini-toggle-label" data-preview-toggle-label <?php echo $metin_goster ? '' : 'hidden'; ?>><?php echo esc_html( $bot_adi ); ?></span>
 						</div>
 
 						<div class="gemini-chat-overlay <?php echo esc_attr( $konum_sinif ); ?>">
@@ -444,6 +452,24 @@ function qmo_chatbot_ac_kapa( $name, $deger, $etiket ) {
 	echo '<label>';
 	echo '<input type="hidden" name="' . esc_attr( $name ) . '" value="no">';
 	echo '<input type="checkbox" name="' . esc_attr( $name ) . '" value="yes" ' . checked( 'yes', $deger, false ) . '> ';
+	echo esc_html( $etiket );
+	echo '</label>';
+}
+}
+
+/**
+ * WordPress option tabanlı aç/kapa kutusu (gemini_* vb.).
+ *
+ * @param string $option_name Option anahtarı.
+ * @param string $etiket      Checkbox açıklaması.
+ * @return void
+ */
+if ( ! function_exists( 'qmo_chatbot_option_ac_kapa' ) ) {
+function qmo_chatbot_option_ac_kapa( $option_name, $etiket ) {
+	$deger = get_option( $option_name, 'no' );
+	echo '<label>';
+	echo '<input type="hidden" name="' . esc_attr( $option_name ) . '" value="no">';
+	echo '<input type="checkbox" name="' . esc_attr( $option_name ) . '" value="yes" ' . checked( 'yes', $deger, false ) . '> ';
 	echo esc_html( $etiket );
 	echo '</label>';
 }

@@ -99,7 +99,7 @@ if ( ! function_exists( 'qmo_chatbot_html_uret' ) ) {
 			$placeholder = rma_ceviri_option( 'gemini_placeholder_text', $placeholder );
 			$karsilama   = rma_ceviri_option( 'gemini_welcome_text', $karsilama );
 		}
-		$metin_goster = 'yes' === get_option( 'gemini_show_toggle_text', 'yes' );
+		$metin_goster = 'yes' === get_option( 'gemini_show_toggle_text', 'no' );
 		$ikon_url     = get_option( 'gemini_bot_icon', '' );
 		$cihaz        = function_exists( 'qmo_chatbot_ayar' ) ? qmo_chatbot_ayar( 'qmo_chatbot_devices' ) : 'both';
 		$mesai_disi   = function_exists( 'qmo_chatbot_mesai_disi_mi' ) && qmo_chatbot_mesai_disi_mi();
@@ -320,7 +320,7 @@ if ( ! function_exists( 'qmo_chatbot_degiskenleri' ) ) {
 
 		$ikon_boyut = max( 30, (int) get_option( 'gemini_icon_size', 24 ) );
 		$radius     = max( 4, (int) get_option( 'gemini_border_radius', 16 ) );
-		$toggle_pad = ( 'yes' === get_option( 'gemini_show_toggle_text', 'yes' ) ) ? '13px 26px 13px 14px' : '14px';
+		$toggle_pad = ( 'yes' === get_option( 'gemini_show_toggle_text', 'no' ) ) ? '13px 26px 13px 14px' : '14px';
 		$konum      = function_exists( 'qmo_chatbot_ayar' ) ? qmo_chatbot_ayar( 'qmo_chatbot_position' ) : 'right';
 		$yuk        = function_exists( 'qmo_chatbot_ayar' ) ? qmo_chatbot_ayar( 'qmo_chatbot_offset' ) : 'mid';
 		$yuk_map    = function_exists( 'qmo_chatbot_yukseklik_haritasi' ) ? qmo_chatbot_yukseklik_haritasi() : array( 'mid' => 108 );

@@ -657,6 +657,9 @@ qrms_test(
 
 		qrms_assert_contains( 'Kutu içi ipucu metni', $kimlik, 'ipucu etiketi' );
 		qrms_assert_contains( 'Açma butonu yazısı', $kimlik, 'açma butonu' );
+		qrms_assert_contains( 'qmo_chatbot_option_ac_kapa', $kimlik, 'option aç/kapa yardımcısı' );
+		qrms_assert_contains( 'İkon yanında metin', $gorunum, 'ikon etiketi' );
+		qrms_assert_contains( 'name="gemini_show_toggle_text"', $gorunum, 'ikon etiketi alanı' );
 		qrms_assert_contains( 'Köşe yumuşaklığı', $gorunum, 'köşe' );
 		qrms_assert_contains( 'name="gemini_icon_size"', $gorunum, 'eski boyut alanı' );
 		qrms_assert_contains( 'name="gemini_border_radius"', $gorunum, 'eski köşe alanı' );

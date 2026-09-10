@@ -87,7 +87,13 @@ if ( ! function_exists( 'qmo_chatbot_ayarlarini_kaydet' ) ) {
 		}
 		if ( isset( $_POST['gemini_bot_name'] ) ) {
 			update_option( 'gemini_bot_name', sanitize_text_field( wp_unslash( $_POST['gemini_bot_name'] ) ) );
-			update_option( 'gemini_show_toggle_text', empty( $_POST['gemini_show_toggle_text'] ) ? 'no' : 'yes' );
+		}
+		if ( isset( $_POST['gemini_show_toggle_text'] ) ) {
+			$toggle_metin = wp_unslash( $_POST['gemini_show_toggle_text'] );
+			if ( is_array( $toggle_metin ) ) {
+				$toggle_metin = end( $toggle_metin );
+			}
+			update_option( 'gemini_show_toggle_text', 'yes' === sanitize_key( $toggle_metin ) ? 'yes' : 'no' );
 		}
 		if ( isset( $_POST['gemini_welcome_text'] ) ) {
 			update_option( 'gemini_welcome_text', sanitize_textarea_field( wp_unslash( $_POST['gemini_welcome_text'] ) ) );
@@ -730,11 +736,7 @@ if ( ! function_exists( 'qmo_chatbot_sayfa_bot_kimligi' ) ) {
 			<tr>
 				<th scope="row">Açma butonu yazısı</th>
 				<td>
-					<label>
-						<input type="checkbox" name="gemini_show_toggle_text" value="yes"
-							<?php checked( 'yes', get_option( 'gemini_show_toggle_text', 'yes' ) ); ?>>
-						Bot adını açma butonunda göster
-					</label>
+					<?php qmo_chatbot_option_ac_kapa( 'gemini_show_toggle_text', __( 'Bot adını açma butonunda göster', 'qrms' ) ); ?>
 				</td>
 			</tr>
 			<tr>
