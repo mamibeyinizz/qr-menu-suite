@@ -1394,4 +1394,15 @@ qrms_test(
 	}
 );
 
+qrms_test(
+	'splash: site-içi linkler masa/lang parametresini korur',
+	function () {
+		$js = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-acilis-ekrani/assets/js/splash.js' );
+
+		qrms_assert_contains( 'function withSessionParams(href)', $js, 'masa/lang taşıma yardımcı fonksiyonu' );
+		qrms_assert_contains( "params.set(k, cur.get(k))", $js, 'eksik masa/lang eklenir' );
+		qrms_assert_contains( 'window.location.href = href;', $js, 'masa taşınan hedefe gerçek navigasyon' );
+	}
+);
+
 echo "\nQR Çeviri (P0 köprü / chatbot)\n";
