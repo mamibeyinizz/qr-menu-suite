@@ -265,6 +265,49 @@ if ( ! function_exists( 'rma_ceviri_kaynakta_cevrilen_eylem_mi' ) ) {
 	}
 }
 
+/**
+ * Bu AJAX eylemi ÖN YÜZE (müşteriye) açık bir uç mu?
+ *
+ * admin-ajax.php hem müşteri hem yönetim isteklerini taşır. Çeviri tamponu
+ * yalnızca müşteri uçları için vardır (menü kartları, sepet, chatbot);
+ * WordPress'in kendi yönetim uçlarının (heartbeat, autosave, inline-save,
+ * query-attachments…) yanıtı tampondan GEÇMEMELİDİR:
+ *
+ *  - Yanıt json_decode + wp_json_encode turundan geçince şekil değişebilir
+ *    (boş nesne `{}` → `[]`); heartbeat/autosave JS'i bozulan yanıtta
+ *    çalışmaz ve yönetici "oturum süresi doldu" kutusuyla karşılaşır.
+ *  - Sözlük eşleşmesi yönetim arayüzü metinlerini ve HTML yanıtlarını
+ *    (inline-save satırı gibi) beklenmedik şekilde değiştirebilir.
+ *  - Toplama modunda çekirdeğin yönetim metinleri çeviri adayı olarak
+ *    tabloya yazılır; oysa amaç SİTE metinlerini toplamaktır.
+ *
+ * Ölçüt sağlam ve liste bakımı gerektirmez: müşteriye açık her uç
+ * `wp_ajax_nopriv_*` ile de kayıtlıdır, çekirdeğin yönetim eylemlerinin
+ * nopriv karşılığı yoktur.
+ *
+ * @return bool
+ */
+if ( ! function_exists( 'rma_ceviri_onyuz_ajax_eylemi_mi' ) ) {
+	function rma_ceviri_onyuz_ajax_eylemi_mi() {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$eylem = isset( $_REQUEST['action'] ) ? sanitize_key( wp_unslash( $_REQUEST['action'] ) ) : '';
+
+		if ( '' === $eylem ) {
+			return false;
+		}
+
+		$onyuz = has_action( 'wp_ajax_nopriv_' . $eylem );
+
+		/**
+		 * Ön yüz AJAX eylemi kararını değiştir.
+		 *
+		 * @param bool   $onyuz Müşteriye açık uç mu?
+		 * @param string $eylem AJAX eylem adı.
+		 */
+		return (bool) apply_filters( 'rma_ceviri_onyuz_ajax_eylemi', (bool) $onyuz, $eylem );
+	}
+}
+
 add_action( 'admin_init', 'rma_ceviri_ajax_tamponu_kur', 0 );
 /**
  * AJAX yanıtları için tampon kur.
@@ -280,6 +323,12 @@ add_action( 'admin_init', 'rma_ceviri_ajax_tamponu_kur', 0 );
 if ( ! function_exists( 'rma_ceviri_ajax_tamponu_kur' ) ) {
 	function rma_ceviri_ajax_tamponu_kur() {
 		if ( ! wp_doing_ajax() ) {
+			return;
+		}
+
+		// Yönetim uçları (heartbeat, autosave, inline-save…) tampona hiç
+		// girmez — yöneticinin panel isteği bozulmasın.
+		if ( ! rma_ceviri_onyuz_ajax_eylemi_mi() ) {
 			return;
 		}
 
@@ -305,6 +354,13 @@ if ( ! function_exists( 'rma_ceviri_ajax_tamponu_kur' ) ) {
 if ( ! function_exists( 'rma_ceviri_ajax_tamponu' ) ) {
 	function rma_ceviri_ajax_tamponu( $cikti ) {
 		if ( '' === trim( (string) $cikti ) ) {
+			return $cikti;
+		}
+
+		// İkinci kapı: geri çağrı shutdown'da çalışır, yani tüm eylemler
+		// kayıtlıdır. Tampon bir şekilde yönetim ucunda açık kaldıysa yanıt
+		// yine de OLDUĞU GİBİ döner.
+		if ( ! rma_ceviri_onyuz_ajax_eylemi_mi() ) {
 			return $cikti;
 		}
 

@@ -228,6 +228,15 @@ if ( ! defined( 'QR_MASA_OTURUM_INIT' ) ) {
 			return;
 		}
 
+		// REST istekleri de dışarıda: uçlar oturumu qmo_oturum_zorla() ile
+		// KENDİLERİ doğrular, burada çerez tazelemenin karşılığı yoktur.
+		// Guard'ın asıl değeri yönetim tarafındadır — yöneticinin REST
+		// isteklerinde (blok editörü, medya, site health) bu kod yolu artık
+		// hiç çalışmaz, dolayısıyla bir Set-Cookie başlığı da yazmaz.
+		if ( defined( 'REST_REQUEST' ) && REST_REQUEST ) {
+			return;
+		}
+
 		$mevcut = QMO_Oturum::dogrula( isset( $_COOKIE[ QMO_Oturum::COOKIE ] ) ? wp_unslash( $_COOKIE[ QMO_Oturum::COOKIE ] ) : '' );
 
 		// 1) QR okutulmuş: ?masa=... geldiyse o masa için oturum aç.

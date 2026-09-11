@@ -264,7 +264,12 @@ if ( ! defined( 'QRSERVIS_KILIT_YUKLENDI' ) ) {
 			return;
 		}
 		// Yöneticiler kilitlenmez (masaları yönetirken sitede gezerler).
-		if ( is_user_logged_in() && current_user_can( 'manage_options' ) ) {
+		//
+		// Muafiyet TEK KAYNAKTAN gelir (qmo_masa_guvenligi_muaf_mi): oturum +
+		// yetenek. Kilit yalnızca müşteri isteğine uygulanır; WordPress
+		// oturumuna bu kod yolunda hiç dokunulmaz — kilit ekranı yalnızca 403
+		// basıp exit eder, hiçbir kimlik çerezi silinmez.
+		if ( function_exists( 'qmo_masa_guvenligi_muaf_mi' ) && qmo_masa_guvenligi_muaf_mi() ) {
 			return;
 		}
 

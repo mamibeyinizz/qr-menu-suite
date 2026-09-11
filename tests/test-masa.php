@@ -343,3 +343,139 @@ qrms_test(
 		qrms_assert_false( false !== strpos( $kaynak, "md5( \$ip . '|' . wp_salt( 'auth' ) )" ), 'eski md5 birleştirme kalmadı' );
 	}
 );
+
+echo "\nMasa oturumu ↔ WordPress oturumu izolasyonu\n";
+
+qrms_test(
+	'GÜVENLİK: eklentinin hiçbir yeri WordPress kimlik oturumuna dokunmaz',
+	function () {
+		// Müşteri masa oturumu (qr_masa_token) ile WordPress kimlik oturumu
+		// (auth cookie) tamamen ayrı yaşamalı. Masa süresi dolduğunda YALNIZCA
+		// masa erişimi kapanır; yönetici WordPress oturumu etkilenmez. Bu test
+		// o sınırı tüm eklenti kaynağı üzerinde bekçiler.
+		$yasak = array(
+			'wp_logout(',
+			'wp_clear_auth_cookie(',
+			'wp_set_auth_cookie(',
+			'wp_destroy_current_session(',
+			'wp_destroy_all_sessions(',
+			'wp_destroy_other_sessions(',
+			'WP_Session_Tokens',
+			'session_start(',
+			'session_destroy(',
+			'session_regenerate_id(',
+		);
+
+		$yineleyici = new RecursiveIteratorIterator(
+			new RecursiveDirectoryIterator( QRMS_PLUGIN_DIR, RecursiveDirectoryIterator::SKIP_DOTS )
+		);
+
+		$bulunan = array();
+
+		foreach ( $yineleyici as $dosya ) {
+			$yol = $dosya->getPathname();
+
+			if ( 'php' !== strtolower( $dosya->getExtension() ) ) {
+				continue;
+			}
+			// Testlerin kendisi bu adları metin olarak taşır.
+			if ( false !== strpos( $yol, DIRECTORY_SEPARATOR . 'tests' . DIRECTORY_SEPARATOR ) ) {
+				continue;
+			}
+
+			// Yorumlar ayıklanır: bu sınırı ANLATAN docblock'lar (ve bu
+			// testin kendi listesi) bir ihlal değildir; aranan şey GERÇEK
+			// çağrıdır.
+			$kaynak = '';
+			foreach ( token_get_all( file_get_contents( $yol ) ) as $parca ) {
+				if ( is_array( $parca ) && in_array( $parca[0], array( T_COMMENT, T_DOC_COMMENT ), true ) ) {
+					continue;
+				}
+				$kaynak .= is_array( $parca ) ? $parca[1] : $parca;
+			}
+
+			foreach ( $yasak as $cagri ) {
+				if ( false !== strpos( $kaynak, $cagri ) ) {
+					$bulunan[] = basename( $yol ) . ' → ' . $cagri;
+				}
+			}
+		}
+
+		qrms_assert_same( array(), $bulunan, 'kimlik/oturum sonlandıran çağrı yok' );
+	}
+);
+
+qrms_test(
+	'masa güvenliği muafiyeti YETENEK tabanlıdır, is_admin() değil',
+	function () {
+		$kaynak = file_get_contents( QRMS_PLUGIN_DIR . 'modules/_qmo-ortak/helpers.php' );
+
+		qrms_assert_contains( 'function qmo_masa_guvenligi_muaf_mi()', $kaynak, 'tek kaynak yardımcı var' );
+		qrms_assert_contains( 'is_user_logged_in()', $kaynak, 'önce oturum sorulur' );
+		qrms_assert_contains( 'current_user_can( $yetenek )', $kaynak, 'sonra yetenek sorulur' );
+
+		$govde = substr( $kaynak, strpos( $kaynak, 'function qmo_masa_guvenligi_muaf_mi()' ) );
+		$govde = substr( $govde, 0, strpos( $govde, 'function qmo_nonce_dogrula' ) );
+
+		// is_admin() "kullanıcı yönetici" demek DEĞİLDİR; admin-ajax.php ön yüz
+		// isteklerinde de true döner. Muafiyet ölçütü olarak kullanılamaz.
+		qrms_assert_false( false !== strpos( $govde, 'is_admin()' ), 'is_admin() muafiyet ölçütü değil' );
+		qrms_assert_false( false !== strpos( $govde, '$_COOKIE' ), 'çerez varlığı muafiyet ölçütü değil' );
+		qrms_assert_false( false !== strpos( $govde, 'HTTP_REFERER' ), 'referer muafiyet ölçütü değil' );
+		qrms_assert_false( false !== strpos( $govde, 'user_login' ), 'kullanıcı adı muafiyet ölçütü değil' );
+	}
+);
+
+qrms_test(
+	'muafiyet oturumsuz ziyaretçiye ASLA açılmaz, yetkili kullanıcıya açılır',
+	function () {
+		require_once QRMS_PLUGIN_DIR . 'modules/_qmo-ortak/helpers.php';
+
+		$eski_oturum = isset( $GLOBALS['qrms_test']['logged_in'] ) ? $GLOBALS['qrms_test']['logged_in'] : null;
+		$eski_can    = isset( $GLOBALS['qrms_test']['can'] ) ? $GLOBALS['qrms_test']['can'] : null;
+
+		// Public ziyaretçi: yetenek stub'ı "evet" dese bile oturum yoksa muaf değil.
+		$GLOBALS['qrms_test']['logged_in'] = false;
+		$GLOBALS['qrms_test']['can']       = true;
+		qrms_assert_false( qmo_masa_guvenligi_muaf_mi(), 'oturumsuz ziyaretçi muaf değil' );
+
+		// Oturumu olan ama yetkisiz kullanıcı (ör. servis personeli).
+		$GLOBALS['qrms_test']['logged_in'] = true;
+		$GLOBALS['qrms_test']['can']       = false;
+		qrms_assert_false( qmo_masa_guvenligi_muaf_mi(), 'yetkisiz kullanıcı muaf değil' );
+
+		// Yetkili yönetici.
+		$GLOBALS['qrms_test']['can'] = true;
+		qrms_assert_true( qmo_masa_guvenligi_muaf_mi(), 'yetkili yönetici muaf' );
+
+		$GLOBALS['qrms_test']['logged_in'] = $eski_oturum;
+		$GLOBALS['qrms_test']['can']       = $eski_can;
+	}
+);
+
+qrms_test(
+	'masa doğrulama muafiyeti ortak yardımcıdan okur ve REST/AJAX/cron dışarıdadır',
+	function () {
+		$kaynak = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-masa-oturum-guvenligi/masa-dogrulama.php' );
+
+		qrms_assert_contains( 'qmo_masa_guvenligi_muaf_mi()', $kaynak, 'muafiyet tek kaynaktan' );
+		qrms_assert_contains( 'wp_doing_ajax() || wp_doing_cron()', $kaynak, 'AJAX/cron dışarıda' );
+		qrms_assert_contains( "defined( 'REST_REQUEST' ) && REST_REQUEST", $kaynak, 'REST dışarıda' );
+
+		// Kilit ekranı yalnızca 403 basar; hiçbir çerez silmez.
+		qrms_assert_contains( 'status_header( 403 )', $kaynak, 'kilit ekranı 403 döner' );
+		qrms_assert_false( false !== strpos( $kaynak, 'setcookie' ), 'kilit ekranı çerez yazmaz/silmez' );
+	}
+);
+
+qrms_test(
+	'masa oturumu init edilirken REST istekleri dışarıdadır',
+	function () {
+		$kaynak = file_get_contents( QRMS_PLUGIN_DIR . 'modules/_qmo-ortak/class-qmo-oturum.php' );
+
+		$govde = substr( $kaynak, strpos( $kaynak, 'function qmo_oturum_init()' ) );
+
+		qrms_assert_contains( 'is_admin() || wp_doing_ajax() || wp_doing_cron()', $govde, 'admin/AJAX/cron dışarıda' );
+		qrms_assert_contains( "defined( 'REST_REQUEST' ) && REST_REQUEST", $govde, 'REST dışarıda' );
+	}
+);

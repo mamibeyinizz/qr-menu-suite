@@ -780,3 +780,26 @@ qrms_test(
 		qrms_assert_contains( "rma_ceviri_hash_olustur( \$satir['original'], \$satir['field'] )", $kaynak, 'hash ham metinden hesaplanır' );
 	}
 );
+
+qrms_test(
+	'ADMIN PANELİ: çeviri tamponu yalnızca ön yüz AJAX uçlarında açılır',
+	function () {
+		$kaynak = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-ceviri/includes/frontend.php' );
+
+		// admin-ajax.php yönetim isteklerini de taşır. Heartbeat/autosave
+		// yanıtı json_decode + wp_json_encode turundan geçerse şekli
+		// değişebilir (boş nesne {} → []) ve yöneticinin paneli "oturum
+		// süresi doldu" kutusuyla karşılaşır. Tampon bu yüzden yalnızca
+		// nopriv karşılığı olan (müşteriye açık) uçlarda açılır.
+		qrms_assert_contains( 'function rma_ceviri_onyuz_ajax_eylemi_mi()', $kaynak, 'ön yüz uç kontrolü var' );
+		qrms_assert_contains( "has_action( 'wp_ajax_nopriv_' . \$eylem )", $kaynak, 'ölçüt nopriv kaydı' );
+
+		$kur = substr( $kaynak, strpos( $kaynak, 'function rma_ceviri_ajax_tamponu_kur()' ) );
+		$kur = substr( $kur, 0, strpos( $kur, 'ob_start(' ) );
+		qrms_assert_contains( '! rma_ceviri_onyuz_ajax_eylemi_mi()', $kur, 'tampon açılmadan önce kontrol edilir' );
+
+		$geri = substr( $kaynak, strpos( $kaynak, 'function rma_ceviri_ajax_tamponu( $cikti )' ) );
+		$geri = substr( $geri, 0, 900 );
+		qrms_assert_contains( '! rma_ceviri_onyuz_ajax_eylemi_mi()', $geri, 'geri çağrıda ikinci kapı var' );
+	}
+);

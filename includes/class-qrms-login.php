@@ -115,6 +115,16 @@ class QRMS_Login {
 	 */
 	private static $bloke = false;
 
+	/**
+	 * Bu istek `wp-login.php` dosyasına mı gidiyor?
+	 *
+	 * `plugins_loaded` aşamasında yalnızca YOL bakılarak doldurulur; kullanıcı
+	 * oturumu o aşamada SORULMAZ (bkz. wp_loaded()).
+	 *
+	 * @var bool
+	 */
+	private static $wp_login_yolu = false;
+
 	/* -----------------------------------------------------------------
 	   AYARLAR
 	----------------------------------------------------------------- */
@@ -701,7 +711,21 @@ class QRMS_Login {
 	}
 
 	/**
-	 * `plugins_loaded` — isteği sınıflandırır.
+	 * `plugins_loaded` — isteği YOLA göre sınıflandırır.
+	 *
+	 * BU AŞAMADA KULLANICI OTURUMU SORULMAZ. `is_user_logged_in()` çağırmak
+	 * geçerli kullanıcıyı `init`ten önce çözer ve sonucu kalıcı olarak
+	 * önbelleğe alır; `determine_current_user` filtresini `plugins_loaded`
+	 * (öncelik 10) veya `init` sırasında kaydeden eklentiler (iki aşamalı
+	 * doğrulama, SSO, uygulama parolaları) o noktada henüz bağlı değildir.
+	 * Sonuç: gerçekte oturumu AÇIK olan yönetici bu istek boyunca "oturumsuz"
+	 * sayılır, wp-login.php 404'e düşer ve kullanıcı sistemden atılmış gibi
+	 * olur. Aynı tuzak qr-servis-paneli/module.php içinde de not edilmiştir.
+	 *
+	 * Bu yüzden burada yalnızca yol işaretlenir; oturuma bağlı karar
+	 * `wp_loaded`'a (init'ten SONRA) ertelenir. Engelleme dalında `$pagenow`
+	 * ayarlamanın da bir işlevi kalmaz: engellenen istek zaten o noktada
+	 * 404 basıp exit eder.
 	 *
 	 * @return void
 	 */
@@ -720,20 +744,7 @@ class QRMS_Login {
 			return;
 		}
 
-		if ( self::is_wp_login_path( $yol ) ) {
-			// Ham değer: çekirdeğin duyarlı karşılaştırmasıyla birebir aynı
-			// kararı vermek için (bkz. should_block_wp_login docblock'u).
-			// Dizi gelirse çekirdek de listede bulamayıp `login`'e düşer;
-			// boş string'e çevirmek burada da "engelle" demektir.
-			// phpcs:ignore WordPress.Security.NonceVerification.Recommended
-			$ham   = isset( $_REQUEST['action'] ) ? wp_unslash( $_REQUEST['action'] ) : '';
-			$eylem = is_string( $ham ) ? $ham : '';
-
-			if ( self::should_block_wp_login( $eylem, is_user_logged_in() ) ) {
-				self::$bloke = true;
-				$pagenow     = 'index.php'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited
-			}
-		}
+		self::$wp_login_yolu = self::is_wp_login_path( $yol );
 	}
 
 	/**
@@ -746,6 +757,23 @@ class QRMS_Login {
 
 		if ( self::arka_plan_istegi() ) {
 			return;
+		}
+
+		if ( self::$wp_login_yolu ) {
+			// Ham değer: çekirdeğin duyarlı karşılaştırmasıyla birebir aynı
+			// kararı vermek için (bkz. should_block_wp_login docblock'u).
+			// Dizi gelirse çekirdek de listede bulamayıp `login`'e düşer;
+			// boş string'e çevirmek burada da "engelle" demektir.
+			// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			$ham   = isset( $_REQUEST['action'] ) ? wp_unslash( $_REQUEST['action'] ) : '';
+			$eylem = is_string( $ham ) ? $ham : '';
+
+			// `init` geçti: determine_current_user filtresini geç kaydeden
+			// eklentiler de artık bağlı, oturum güvenle sorulabilir.
+			if ( self::should_block_wp_login( $eylem, is_user_logged_in() ) ) {
+				self::$bloke = true;
+				$pagenow     = 'index.php'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited
+			}
 		}
 
 		if ( self::$bloke ) {
