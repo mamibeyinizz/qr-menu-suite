@@ -667,6 +667,117 @@
 @keyframes rmaSpin { to { transform:rotate(360deg); } }
 .rma-empty { text-align:center; padding:48px 20px; color:var(--rma-desc); font-size:.88rem; font-weight:500; background:var(--rma-bg); }
 
+/* -----------------------------------------------------------------
+   GELİŞMİŞ FİLTRELEME — aktif chip'ler, aralık alanları, boş durum
+
+   Bu bloktaki kurallar YALNIZCA mantıksal özellikler kullanır
+   (margin-inline, padding-inline, inset-inline-*). Eklentide ayrı bir
+   -rtl.css yok; qr-ceviri RTL bir dilde <html dir="rtl"> basıyor ve
+   fiziksel left/right kuralları o yönde ters akıyor. Yeni arayüz bu
+   sorunu devralmasın diye baştan yön-bağımsız yazıldı; mevcut fiziksel
+   kurallara dokunulmadı.
+----------------------------------------------------------------- */
+.rma-active-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    padding-block: 10px 2px;
+    padding-inline: 0;
+}
+.rma-active-chips[hidden] { display: none; }
+
+.rma-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 32px;
+    padding-block: 6px;
+    padding-inline: 12px;
+    border: 1px solid var(--rma-accent);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--rma-accent) 12%, var(--rma-card));
+    color: var(--rma-accent);
+    font-family: var(--rma-font-body);
+    font-size: 0.76rem;
+    font-weight: 600;
+    line-height: 1.2;
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+    transition: background .2s, border-color .2s, opacity .2s;
+}
+.rma-chip:hover { background: color-mix(in srgb, var(--rma-accent) 22%, var(--rma-card)); }
+.rma-chip:focus-visible { outline: 2px solid var(--rma-accent); outline-offset: 2px; }
+.rma-chip-x { font-size: 1rem; line-height: 1; opacity: .75; }
+.rma-chip-clear {
+    border-color: var(--rma-border);
+    background: transparent;
+    color: var(--rma-desc);
+    font-weight: 500;
+}
+.rma-chip-clear:hover { border-color: var(--rma-accent); color: var(--rma-accent); background: transparent; }
+
+/* Dokunma hedefi: dar ekranda chip'ler parmakla rahat seçilebilsin. */
+@media (max-width: 480px) {
+    .rma-chip { min-height: 36px; }
+}
+
+/* Panel içi sayısal aralık satırı (kalori / fiyat "özel aralık"). */
+.rma-range-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 10px;
+    margin-block-start: 12px;
+}
+.rma-range-field { display: flex; flex-direction: column; gap: 5px; flex: 1 1 0; min-width: 0; }
+.rma-range-label { font-size: 0.7rem; font-weight: 600; color: var(--rma-desc); letter-spacing: .02em; }
+.rma-range-sep { color: var(--rma-desc); padding-block-end: 12px; }
+.rma-range-input {
+    width: 100%;
+    min-width: 0;
+    height: 44px;
+    padding-block: 0;
+    padding-inline: 12px;
+    border: 1px solid var(--rma-border);
+    border-radius: 10px;
+    background: var(--rma-card);
+    color: var(--rma-text);
+    font-family: var(--rma-font-body);
+    font-size: 0.85rem;
+    font-weight: 600;
+    -webkit-appearance: none;
+    appearance: none;
+}
+.rma-range-input::placeholder { color: var(--rma-desc); opacity: 1; }
+.rma-range-input:focus { border-color: var(--rma-accent); box-shadow: var(--rma-gold-glow); outline: none; }
+.rma-range-input:focus-visible { outline: 2px solid var(--rma-accent); outline-offset: 1px; }
+
+/* Filtre kartı klavyeyle odaklandığında görünür olsun: checkbox gizli
+   olduğu için odak halkası kartın kendisinde gösterilir. */
+.rma-filter-card:focus-within { outline: 2px solid var(--rma-accent); outline-offset: 2px; }
+
+/* Filtre yüzünden boşalan menü: çıkışı olan bir boş durum. */
+.rma-empty-filtered p { margin: 0 0 16px; }
+.rma-empty-reset {
+    min-height: 44px;
+    padding-block: 11px;
+    padding-inline: 22px;
+    border: 1px solid var(--rma-accent);
+    border-radius: 12px;
+    background: transparent;
+    color: var(--rma-accent);
+    font-family: var(--rma-font-body);
+    font-size: 0.84rem;
+    font-weight: 700;
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+    transition: background .2s;
+}
+.rma-empty-reset:hover { background: color-mix(in srgb, var(--rma-accent) 12%, transparent); }
+.rma-empty-reset:focus-visible { outline: 2px solid var(--rma-accent); outline-offset: 2px; }
+
 .rma-modal-overlay {
     display: none;
     position: fixed;

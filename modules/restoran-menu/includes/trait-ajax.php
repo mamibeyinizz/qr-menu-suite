@@ -91,9 +91,24 @@ trait RMA_Ajax_Trait {
         // Soft nonce check — public menu data, don't die on stale nonce (caching fix)
         check_ajax_referer( 'rma_ajax_nonce', 'security', false );
 
-        $filters    = isset( $_POST['filters'] )  ? array_map( 'sanitize_text_field', (array) $_POST['filters'] ) : [];
+        // BEYAZ LİSTE: filtre anahtarları RMA_Filtre kayıt defterinden
+        // doğrulanır. Eskiden yalnızca sanitize_text_field uygulanıyordu;
+        // tanınmayan bir anahtar sorguda sessizce yok sayılsa da önbellek
+        // anahtarını kirletiyor ve her uydurma değer yeni bir transient
+        // açıyordu. Artık tanınmayan değer daha okunmadan düşer.
+        $filters    = RMA_Filtre::temizle_anahtarlar(
+            $_POST['filters'] ?? [],
+            $this->get_allergen_definitions()
+        );
         $sort_by    = sanitize_text_field( $_POST['sort_by']  ?? '' );
         $search     = sanitize_text_field( $_POST['search']   ?? '' );
+
+        // Özel aralıklar: negatif / metin / tavanı aşan girdiler kelepçelenir,
+        // ters verilen sınırlar takas edilir.
+        $ranges = [
+            'cal'   => RMA_Filtre::temizle_aralik( $_POST['cal_min'] ?? '',   $_POST['cal_max'] ?? '',   RMA_Filtre::KALORI_TAVAN ),
+            'price' => RMA_Filtre::temizle_aralik( $_POST['price_min'] ?? '', $_POST['price_max'] ?? '', RMA_Filtre::FIYAT_TAVAN ),
+        ];
 
         $suggest_cfg_raw = $_POST['suggest_cfg'] ?? [];
         if ( is_string( $suggest_cfg_raw ) ) {
@@ -106,7 +121,8 @@ trait RMA_Ajax_Trait {
         $suggest_manual_ids = array_map( 'intval', (array) ( $suggest_cfg['manual_ids'] ?? [] ) );
 
         // Anahtar kararlılığı: aynı filtre kümesi farklı sırada gelse bile
-        // tek bir önbellek girdisine düşsün.
+        // tek bir önbellek girdisine düşsün. temizle_anahtarlar() zaten
+        // sıralı döner; sort() geriye dönük güvenlik ağı olarak kalıyor.
         $filters_key = $filters;
         sort( $filters_key );
         $manual_key = $suggest_manual_ids;
@@ -119,6 +135,10 @@ trait RMA_Ajax_Trait {
             'sm' => $suggest_mode,
             'ss' => $suggest_slug,
             'si' => $manual_key,
+            // Aralıklar da çıktıyı belirler; anahtara girmezse "0-300 kcal"
+            // sonucu "0-700 kcal" isteyene servis edilirdi.
+            'cr' => $ranges['cal'],
+            'pr' => $ranges['price'],
         ] );
 
         $payload = $this->cache_get( $cache_key );
@@ -130,7 +150,8 @@ trait RMA_Ajax_Trait {
                 $search,
                 $suggest_mode,
                 $suggest_slug,
-                $suggest_manual_ids
+                $suggest_manual_ids,
+                $ranges
             );
 
             // Arama sonuçları daha kısa süre saklanır; çok uzun (bot kaynaklı
@@ -162,9 +183,18 @@ trait RMA_Ajax_Trait {
      * öne çıkan görsel cache'leri toplu doldurulur, gruplama PHP'de
      * yapılır. Sıralama sorgu düzeyinde korunur.
      *
+     * İKİ KATMANLI FİLTRELEME (bkz. class-filtre.php): "meta = 1" tipindeki
+     * filtreler ve alerjen hariç tutma sorguya girer; meta yokluğunun
+     * "geçer" anlamına geldiği ya da sayısal/kampanyalı fiyat karşılaştırması
+     * gereken filtreler sorgudan SONRA, primed meta cache üzerinde uygulanır
+     * (ek sorgu doğmaz).
+     *
+     * @param array $ranges ['cal' => [min,max], 'price' => [min,max]]. Yeni
+     *                      parametre sonda ve varsayılanlı: eski çağrı imzası
+     *                      bozulmaz.
      * @return array{html:string,categories:array,has_suggestions:bool}
      */
-    private function build_menu_payload( array $filters, $sort_by, $search, $suggest_mode, $suggest_slug, array $suggest_manual_ids ) {
+    private function build_menu_payload( array $filters, $sort_by, $search, $suggest_mode, $suggest_slug, array $suggest_manual_ids, array $ranges = [] ) {
 
         /**
          * Tek seferde çekilecek azami ürün sayısı. Eskiden -1 (sınırsız)
@@ -189,21 +219,19 @@ trait RMA_Ajax_Trait {
             ],
         ];
 
-        $filter_map = [
-            'vegan'       => 'rma_is_vegan',
-            'vegetarian'  => 'rma_is_vegetarian',
-            'gluten_free' => 'rma_is_gluten_free',
-        ];
+        /* ---- A katmanı: sorguya giren filtreler ---- */
         $allowed_allergen_slugs = array_keys( $this->get_allergen_definitions() );
-        $exclude_allergens      = [];
-        foreach ( $filters as $f ) {
-            if ( isset( $filter_map[ $f ] ) ) {
-                $base['meta_query'][] = [ 'key' => $filter_map[ $f ], 'value' => '1', 'compare' => '=' ];
-            } elseif ( strpos( $f, 'allergen_' ) === 0 ) {
-                $slug = substr( $f, strlen( 'allergen_' ) );
-                if ( in_array( $slug, $allowed_allergen_slugs, true ) ) $exclude_allergens[] = $slug;
-            }
+
+        foreach ( RMA_Filtre::meta_klozlari( $filters ) as $clause ) {
+            $base['meta_query'][] = $clause;
         }
+
+        // "Laktozsuz" ayrı bir meta değil, "süt" alerjenini taşımayan ürün
+        // demektir: mevcut NOT IN klozuna katılır, ikinci sorgu doğmaz.
+        $exclude_allergens = RMA_Filtre::haric_alerjenler( $filters, $allowed_allergen_slugs );
+
+        /* ---- B katmanı bağlamı (sorgudan sonra uygulanır) ---- */
+        $php_ctx = RMA_Filtre::php_baglami( $filters, $ranges );
 
         // Alerjen "hariç tut" tax_query klozu — indexli taxonomy sorgusu, meta_query'e göre çok daha performanslı.
         $allergen_clause = $exclude_allergens
@@ -261,6 +289,15 @@ trait RMA_Ajax_Trait {
         // Tüm öne çıkan görseller ve metaları burada TEK sorguda ısıtılır.
         if ( $all_posts && function_exists( 'update_post_thumbnail_cache' ) ) {
             update_post_thumbnail_cache( $main_q );
+        }
+
+        // B katmanı: helal / acılık / kalori / fiyat / stok. Meta cache yukarıda
+        // toplu ısıtıldığı için ürün başına ek sorgu YOKTUR. Bağlam boşsa
+        // (filtre kullanılmıyor) döngü hiç kurulmaz — maliyet sıfır.
+        if ( $php_ctx && $all_posts ) {
+            $all_posts = array_values( array_filter( $all_posts, function ( $p ) use ( $php_ctx ) {
+                return RMA_Filtre::satir_gecer( $this->build_filter_row( $p->ID, $php_ctx ), $php_ctx );
+            } ) );
         }
 
         // Ürünleri kategorilere dağıt (get_the_terms primed cache kullanır — ek sorgu yok)
@@ -377,8 +414,18 @@ trait RMA_Ajax_Trait {
         }
 
         if ( '' === $html ) {
+            // Filtre YOKKEN eski çıktı bire bir korunur (geriye dönük uyum:
+            // özel temalar .rma-empty içeriğine göre stil veriyor olabilir).
+            // Filtre varken kullanıcıya çıkış yolu gösterilir.
+            $empty = ( $filters || $php_ctx )
+                ? '<div class="rma-empty rma-empty-filtered">'
+                  . '<p>' . esc_html( $this->t( 'Bu filtrelerle eşleşen ürün bulunamadı.' ) ) . '</p>'
+                  . '<button type="button" class="rma-empty-reset">' . esc_html( $this->t( 'Filtreleri temizle' ) ) . '</button>'
+                  . '</div>'
+                : '<div class="rma-empty">' . esc_html( $this->t( 'Ürün bulunamadı.' ) ) . '</div>';
+
             return [
-                'html'            => '<div class="rma-empty">' . esc_html( $this->t( 'Ürün bulunamadı.' ) ) . '</div>',
+                'html'            => $empty,
                 'categories'      => [],
                 'has_suggestions' => false,
             ];
@@ -388,6 +435,41 @@ trait RMA_Ajax_Trait {
             'html'            => $html,
             'categories'      => $returned_cats,
             'has_suggestions' => $has_suggestions,
+        ];
+    }
+
+    /**
+     * B katmanı için tek ürünün karar satırı.
+     *
+     * Yalnızca primed meta cache'ten okur; ürün başına sorgu AÇMAZ.
+     * Fiyat, kampanya/porsiyon sonrası MÜŞTERİYE GÖSTERİLEN fiyattır —
+     * "50-100 ₺ arası" filtresi ekranda 80 ₺ yazan kampanyalı ürünü
+     * elemesin diye ham rma_price değil, rma_get_effective_price() kullanılır.
+     *
+     * @param int   $id  Ürün ID'si.
+     * @param array $ctx php_baglami() çıktısı — fiyat yalnızca gerçekten
+     *                   gerekiyorsa hesaplanır (kampanya kuralı ürün başına
+     *                   çalışır; fiyat filtresi yokken bedeli ödenmez).
+     * @return array<string,mixed>
+     */
+    private function build_filter_row( $id, array $ctx = [] ) {
+        $price = '';
+
+        // TEK FİYAT KAYNAĞI: ham rma_price meta'sı burada da okunmaz.
+        // rma_get_effective_price() kampanya yoksa zaten ham fiyata düşer;
+        // ikinci bir okuma noktası açmak, bir gün kampanyalı ürünün
+        // filtrede eski fiyatıyla değerlendirilmesi demek olurdu.
+        if ( isset( $ctx['price'] ) && function_exists( 'rma_get_effective_price' ) ) {
+            $price = rma_get_effective_price( $id );
+        }
+
+        return [
+            'spicy'    => get_post_meta( $id, RMA_Filtre::META_ACI, true ),
+            'calories' => get_post_meta( $id, 'rma_calories', true ),
+            'price'    => $price,
+            'alcohol'  => get_post_meta( $id, 'rma_contains_alcohol', true ),
+            'pork'     => get_post_meta( $id, 'rma_contains_pork', true ),
+            'tukendi'  => class_exists( 'RMA_Tukendi' ) ? RMA_Tukendi::urun_tukendi( $id ) : false,
         ];
     }
 
@@ -527,7 +609,14 @@ trait RMA_Ajax_Trait {
         $fat   = get_post_meta( $id, 'rma_fat',         true );
         $prep  = get_post_meta( $id, 'rma_prep_time',   true );
 
-        if ( $spicy ) $attrs .= '<span class="rma-attr">' . str_repeat( '🌶️', min( (int) $spicy, 3 ) ) . ' ' . esc_html( $this->t( 'Acı' ) ) . '</span>';
+        // Acılık 0-4'e genişledi; rozette kademe adı da yazar ki 4 biber ile
+        // 3 biber arasındaki fark okunabilir olsun.
+        $spicy_level  = RMA_Filtre::seviye( $spicy );
+        $spicy_labels = RMA_Filtre::aci_seviyeleri();
+        if ( $spicy_level > 0 ) {
+            $attrs .= '<span class="rma-attr">' . str_repeat( '🌶️', $spicy_level ) . ' '
+                    . esc_html( $this->t( $spicy_labels[ $spicy_level ] ) ) . '</span>';
+        }
         if ( $prep  ) $attrs .= '<span class="rma-attr">⏱️ ' . esc_html( (int) $prep ) . ' ' . esc_html( $this->t( 'dk' ) ) . '</span>';
         if ( $cal   ) $attrs .= '<span class="rma-attr">🔥 ' . esc_html( $cal )   . ' ' . esc_html( $this->t( 'kcal' ) ) . '</span>';
         if ( $grams ) $attrs .= '<span class="rma-attr">⚖️ ' . esc_html( $grams ) . ' ' . esc_html( $this->t( 'g' ) ) . '</span>';

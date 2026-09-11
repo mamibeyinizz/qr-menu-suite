@@ -384,6 +384,9 @@ function qrms_module_qr_analiz_urunler_assets() {
 				'detailRateHint'  => __( 'Açılış / tıklama. Önbellek yüzünden %100\'ü geçebilir.', 'qrms' ),
 				'justStartedTitle' => __( 'Toplanmaya yeni başlandı', 'qrms' ),
 				'justStartedDetail' => __( 'Detay modalı açılışları toplanmaya yeni başladı. Bu bir hata değil; misafirler ürün kartına dokundukça oran burada görünecek.', 'qrms' ),
+				'filterName'      => __( 'Filtre', 'qrms' ),
+				'useCount'        => __( 'Kullanım', 'qrms' ),
+				'noFilters'       => __( 'Seçili dönemde filtre kullanımı kaydedilmemiş.', 'qrms' ),
 			),
 		)
 	);

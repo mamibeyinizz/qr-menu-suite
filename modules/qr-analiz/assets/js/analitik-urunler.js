@@ -244,6 +244,62 @@
 	}
 
 	/* -----------------------------------------------------------------
+	   FİLTRE KULLANIMI
+
+	   Sunucu anahtarları okunur etikete çevirip sıralı gönderir; burada
+	   yalnızca mevcut tablo/ilerleme bileşenleri basılır.
+	----------------------------------------------------------------- */
+
+	function filtreleriBas( veri ) {
+		if ( ! el.filters ) {
+			return;
+		}
+
+		veri = veri || {};
+
+		var satirlar = veri.satirlar || [];
+
+		if ( ! satirlar.length ) {
+			el.filters.innerHTML = ORTAK.bosDurum(
+				'dashicons-filter',
+				metin( 'noFilters', 'Seçili dönemde filtre kullanımı kaydedilmemiş.' )
+			);
+			return;
+		}
+
+		var basliklar = [
+			metin( 'filterName', 'Filtre' ),
+			metin( 'useCount', 'Kullanım' ),
+			metin( 'share', 'Pay' )
+		];
+
+		var enBuyuk = 1;
+
+		satirlar.forEach( function ( f ) {
+			enBuyuk = Math.max( enBuyuk, parseInt( f.adet, 10 ) || 0 );
+		} );
+
+		var govde = '';
+
+		satirlar.forEach( function ( f ) {
+			var genislik = Math.max( Math.round( ( ( parseInt( f.adet, 10 ) || 0 ) / enBuyuk ) * 100 ), 1 );
+
+			govde += '<tr>' +
+				ORTAK.hucre( basliklar[ 0 ], '<strong>' + ORTAK.esc( f.ad ) + '</strong>' ) +
+				ORTAK.hucre( basliklar[ 1 ], '<span class="qrms-an-val-gold">' + ORTAK.sayi( f.adet ) + '</span>' ) +
+				ORTAK.hucre(
+					basliklar[ 2 ],
+					'<span class="qrms-an-progress"><span class="qrms-an-progress-bg">' +
+					'<span class="qrms-an-progress-fill" style="width:' + genislik + '%"></span></span>' +
+					'<span class="qrms-an-progress-pct">%' + ORTAK.sayi( f.pay ) + '</span></span>'
+				) +
+				'</tr>';
+		} );
+
+		el.filters.innerHTML = ORTAK.tabloIskelet( basliklar, govde, '' );
+	}
+
+	/* -----------------------------------------------------------------
 	   DETAY MODALI AÇILMA ORANI
 	----------------------------------------------------------------- */
 
@@ -319,6 +375,9 @@
 		el.products.innerHTML = '<div class="qrms-an-loading">' + ORTAK.esc( metin( 'loading', 'Yükleniyor' ) ) + '</div>';
 		el.least.innerHTML    = '<div class="qrms-an-loading">' + ORTAK.esc( metin( 'loading', 'Yükleniyor' ) ) + '</div>';
 		el.cats.innerHTML     = '<div class="qrms-an-loading">' + ORTAK.esc( metin( 'loading', 'Yükleniyor' ) ) + '</div>';
+		if ( el.filters ) {
+			el.filters.innerHTML = '<div class="qrms-an-loading">' + ORTAK.esc( metin( 'loading', 'Yükleniyor' ) ) + '</div>';
+		}
 
 		ORTAK.post(
 			CFG.ajaxUrl,
@@ -338,6 +397,7 @@
 				enAzBas( veri.enaz, veri.enazOzet || {} );
 				kategorileriBas( veri.kategoriler, veri.kategorisiz );
 				detayBas( veri.detay || {} );
+				filtreleriBas( veri.filtreler || {} );
 			},
 			function () {
 				state.yukleniyor = false;
@@ -349,6 +409,9 @@
 				el.cats.innerHTML     = '';
 				if ( el.detayCards ) {
 					el.detayCards.innerHTML = '';
+				}
+				if ( el.filters ) {
+					el.filters.innerHTML = '';
 				}
 			}
 		);
@@ -366,6 +429,7 @@
 		el.cats     = $( 'qrms-an-cats-dist' );
 		el.detayCards = $( 'qrms-an-detay-cards' );
 		el.detayBos   = $( 'qrms-an-detay-bos' );
+		el.filters    = $( 'qrms-an-filters' );
 
 		el.wrap.addEventListener( 'click', function ( olay ) {
 			var onceki = olay.target.closest( '.qrms-an-pager-prev' );

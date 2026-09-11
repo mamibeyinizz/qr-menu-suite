@@ -680,3 +680,298 @@ qrms_test(
 		);
 	}
 );
+
+/* =====================================================================
+   GELİŞMİŞ MENÜ FİLTRELEME
+   Karar mantığı RMA_Filtre'de saf fonksiyonlardadır; WordPress gerekmez.
+===================================================================== */
+
+require_once QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/class-filtre.php';
+
+echo "\nGelişmiş filtreleme — girdi doğrulama\n";
+
+/** Testlerde kullanılan alerjen tanımları (gerçek listeden bir alt küme). */
+function qrms_test_alerjenler() {
+	return array(
+		'gluten' => array( 'label' => 'Glüten', 'icon' => '🌾' ),
+		'sut'    => array( 'label' => 'Süt / Laktoz', 'icon' => '🥛' ),
+		'soya'   => array( 'label' => 'Soya', 'icon' => '🌱' ),
+	);
+}
+
+qrms_test(
+	'GÜVENLİK: tanınmayan filtre anahtarları beyaz listede elenir',
+	function () {
+		$alerjenler = qrms_test_alerjenler();
+
+		$temiz = RMA_Filtre::temizle_anahtarlar(
+			array(
+				'vegan',
+				'<script>alert(1)</script>',
+				"' OR 1=1--",
+				'allergen_gluten',
+				'allergen_../../wp-config',
+				'rma_price',
+				'badge_popular',
+				'uydurma_filtre',
+			),
+			$alerjenler
+		);
+
+		qrms_assert_same(
+			array( 'allergen_gluten', 'badge_popular', 'vegan' ),
+			$temiz,
+			'yalnızca tanınan anahtarlar kaldı ve sıralandı'
+		);
+	}
+);
+
+qrms_test(
+	'aynı filtre kümesi farklı sırada gelse de aynı önbellek anahtarını üretir',
+	function () {
+		$alerjenler = qrms_test_alerjenler();
+
+		$a = RMA_Filtre::temizle_anahtarlar( array( 'vegan', 'cal_300', 'allergen_sut' ), $alerjenler );
+		$b = RMA_Filtre::temizle_anahtarlar( array( 'allergen_sut', 'vegan', 'cal_300' ), $alerjenler );
+
+		qrms_assert_same( $a, $b, 'sıralama deterministik' );
+		// Tekrar eden anahtar iki kez sayılmaz.
+		qrms_assert_same(
+			$a,
+			RMA_Filtre::temizle_anahtarlar( array( 'vegan', 'vegan', 'cal_300', 'allergen_sut' ), $alerjenler ),
+			'yinelenen anahtar teke düşer'
+		);
+	}
+);
+
+qrms_test(
+	'GÜVENLİK: sayısal aralık girdileri kelepçelenir ve ters sınırlar takas edilir',
+	function () {
+		qrms_assert_same( array( 0, 0 ), RMA_Filtre::temizle_aralik( 'abc', '', 20000 ), 'metin girdi düşer' );
+		qrms_assert_same( array( 0, 0 ), RMA_Filtre::temizle_aralik( -50, -10, 20000 ), 'negatif sıfıra kelepçelenir' );
+		qrms_assert_same( array( 0, 20000 ), RMA_Filtre::temizle_aralik( '', 999999, 20000 ), 'tavan uygulanır' );
+		qrms_assert_same( array( 100, 500 ), RMA_Filtre::temizle_aralik( 500, 100, 20000 ), 'ters sınırlar takas edilir' );
+		qrms_assert_same( array( 0, 0 ), RMA_Filtre::temizle_aralik( array( 5 ), null, 20000 ), 'dizi/null düşer' );
+	}
+);
+
+echo "\nGelişmiş filtreleme — sorgu ve PHP katmanı\n";
+
+qrms_test(
+	'meta tabanlı filtreler sorgu klozuna, laktozsuz alerjen klozuna düşer',
+	function () {
+		$kloz = RMA_Filtre::meta_klozlari( array( 'vegan', 'sugar_free', 'badge_new', 'halal', 'cal_300' ) );
+
+		qrms_assert_same( 3, count( $kloz ), 'yalnızca meta filtreleri sorguya girer' );
+		qrms_assert_same( 'rma_is_vegan', $kloz[0]['key'], 'vegan meta anahtarı' );
+		qrms_assert_same( 'rma_is_sugar_free', $kloz[1]['key'], 'şekersiz meta anahtarı' );
+
+		// Laktozsuz AYRI bir meta değil: mevcut alerjen NOT IN klozuna katılır.
+		$haric = RMA_Filtre::haric_alerjenler(
+			array( 'lactose_free', 'allergen_gluten', 'allergen_yok' ),
+			array( 'gluten', 'sut', 'soya' )
+		);
+
+		qrms_assert_same( array( 'sut', 'gluten' ), $haric, 'laktozsuz süt alerjenine çevrildi, tanımsız slug elendi' );
+	}
+);
+
+qrms_test(
+	'helal filtresi: alkol/domuz alanı BOŞ olan ürün geçer, işaretli olan elenir',
+	function () {
+		$ctx = RMA_Filtre::php_baglami( array( 'halal' ) );
+
+		// Kurulumların çoğunda bu meta hiç yazılmamıştır; "yok = helal değil"
+		// saymak menüyü boşaltırdı.
+		qrms_assert_true( RMA_Filtre::satir_gecer( array(), $ctx ), 'meta hiç yoksa geçer' );
+		qrms_assert_true( RMA_Filtre::satir_gecer( array( 'alcohol' => '0', 'pork' => '0' ), $ctx ), 'işaretsiz geçer' );
+		qrms_assert_false( RMA_Filtre::satir_gecer( array( 'alcohol' => '1' ), $ctx ), 'alkol elenir' );
+		qrms_assert_false( RMA_Filtre::satir_gecer( array( 'pork' => '1' ), $ctx ), 'domuz türevi elenir' );
+	}
+);
+
+qrms_test(
+	'acılık filtresi 0-4 kademede çalışır, geçersiz meta acısız sayılır',
+	function () {
+		$acisiz = RMA_Filtre::php_baglami( array( 'no_spice' ) );
+
+		qrms_assert_true( RMA_Filtre::satir_gecer( array( 'spicy' => '' ), $acisiz ), 'boş alan acısız' );
+		qrms_assert_true( RMA_Filtre::satir_gecer( array( 'spicy' => 'orta acı' ), $acisiz ), 'serbest metin acısız sayılır' );
+		qrms_assert_false( RMA_Filtre::satir_gecer( array( 'spicy' => '2' ), $acisiz ), 'orta acı elenir' );
+
+		$cok_aci = RMA_Filtre::php_baglami( array( 'spicy_4' ) );
+		qrms_assert_true( RMA_Filtre::satir_gecer( array( 'spicy' => '4' ), $cok_aci ), 'yeni 4. kademe' );
+
+		// Birden çok kademe seçilince birleşim (OR) çalışır.
+		$coklu = RMA_Filtre::php_baglami( array( 'spicy_1', 'spicy_2' ) );
+		qrms_assert_true( RMA_Filtre::satir_gecer( array( 'spicy' => '1' ), $coklu ), 'az acı geçer' );
+		qrms_assert_false( RMA_Filtre::satir_gecer( array( 'spicy' => '3' ), $coklu ), 'acı geçmez' );
+
+		// no_spice ve spicy_0 aynı şeydir, iki ayrı kural üretmez.
+		qrms_assert_same(
+			RMA_Filtre::php_baglami( array( 'no_spice', 'spicy_0' ) ),
+			RMA_Filtre::php_baglami( array( 'spicy_0' ) ),
+			'no_spice = spicy_0'
+		);
+	}
+);
+
+qrms_test(
+	'kalori filtresi: değeri girilmemiş ürün listeye ALINMAZ, en dar eşik kazanır',
+	function () {
+		$ctx = RMA_Filtre::php_baglami( array( 'cal_500' ) );
+
+		qrms_assert_true( RMA_Filtre::satir_gecer( array( 'calories' => '420' ), $ctx ), '500 altı geçer' );
+		qrms_assert_false( RMA_Filtre::satir_gecer( array( 'calories' => '640' ), $ctx ), '500 üstü elenir' );
+
+		// Boş alan meta_query NUMERIC'te 0'a düşer ve her ürün "500 kcal altı"
+		// sayılırdı; PHP katmanı bu yanlış beyanı engeller.
+		qrms_assert_false( RMA_Filtre::satir_gecer( array( 'calories' => '' ), $ctx ), 'kalorisi girilmemiş ürün elenir' );
+		qrms_assert_false( RMA_Filtre::satir_gecer( array(), $ctx ), 'alanı hiç olmayan ürün elenir' );
+
+		// İki eşik birlikte seçilirse kesişim alınır (boş liste değil).
+		$dar = RMA_Filtre::php_baglami( array( 'cal_500', 'cal_300' ) );
+		qrms_assert_same( array( 0, 300 ), $dar['cal'], 'en dar eşik kazanır' );
+
+		// Özel aralık da aynı üst sınıra yarışır.
+		$ozel = RMA_Filtre::php_baglami( array( 'cal_700' ), array( 'cal' => array( 200, 400 ) ) );
+		qrms_assert_same( array( 200, 400 ), $ozel['cal'], 'özel aralık hazır eşikten darsa kalır' );
+	}
+);
+
+qrms_test(
+	'fiyat aralığı ve tükendi filtresi',
+	function () {
+		$ctx = RMA_Filtre::php_baglami( array(), array( 'price' => array( 50, 100 ) ) );
+
+		qrms_assert_true( RMA_Filtre::satir_gecer( array( 'price' => '75' ), $ctx ), 'aralık içi' );
+		qrms_assert_true( RMA_Filtre::satir_gecer( array( 'price' => '99,50' ), $ctx ), 'virgüllü fiyat okunur' );
+		qrms_assert_false( RMA_Filtre::satir_gecer( array( 'price' => '120' ), $ctx ), 'aralık dışı' );
+		qrms_assert_false( RMA_Filtre::satir_gecer( array( 'price' => '' ), $ctx ), 'fiyatsız ürün elenir' );
+
+		$stok = RMA_Filtre::php_baglami( array( 'in_stock' ) );
+		qrms_assert_false( RMA_Filtre::satir_gecer( array( 'tukendi' => true ), $stok ), 'tükendi gizlenir' );
+		qrms_assert_true( RMA_Filtre::satir_gecer( array( 'tukendi' => false ), $stok ), 'stoktaki kalır' );
+
+		// Filtre yokken hiçbir ürün elenmez (varsayılan davranış korunur).
+		qrms_assert_true( RMA_Filtre::satir_gecer( array( 'tukendi' => true ), array() ), 'bağlam boşsa herkes geçer' );
+	}
+);
+
+echo "\nGelişmiş filtreleme — entegrasyon noktaları\n";
+
+qrms_test(
+	'AJAX ucu beyaz listeden geçer, aralıklar önbellek anahtarına girer',
+	function () {
+		$kaynak = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-ajax.php' );
+
+		qrms_assert_contains( 'RMA_Filtre::temizle_anahtarlar(', $kaynak, 'filtreler whitelist ile temizlenir' );
+		qrms_assert_contains( 'RMA_Filtre::temizle_aralik(', $kaynak, 'aralıklar doğrulanır' );
+		qrms_assert_contains( "'cr' => \$ranges['cal']", $kaynak, 'kalori aralığı önbellek anahtarında' );
+		qrms_assert_contains( "'pr' => \$ranges['price']", $kaynak, 'fiyat aralığı önbellek anahtarında' );
+		qrms_assert_contains( 'RMA_Filtre::satir_gecer(', $kaynak, 'PHP katmanı uygulanır' );
+
+		// Boş durum: filtre varken çıkış yolu gösterilir, yokken eski metin kalır.
+		qrms_assert_contains( 'Bu filtrelerle eşleşen ürün bulunamadı.', $kaynak, 'filtreli boş durum metni' );
+		qrms_assert_contains( 'rma-empty-reset', $kaynak, 'filtreleri temizle butonu' );
+		qrms_assert_contains( "esc_html( \$this->t( 'Ürün bulunamadı.' ) )", $kaynak, 'filtresiz boş durum korundu' );
+	}
+);
+
+qrms_test(
+	'acı seviyesi admin tarafında beyaz listeyle kaydedilir',
+	function () {
+		$kaynak = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-post-types.php' );
+
+		// Alan artık serbest metin değil; genel $fields döngüsünden çıkarıldı.
+		qrms_assert_false(
+			false !== strpos( $kaynak, "'rma_price', 'rma_spicy_level'" ),
+			'acı seviyesi doğrulanmamış alan listesinde değil'
+		);
+		qrms_assert_contains( '$spicy_allowed', $kaynak, 'beyaz liste değişkeni' );
+		qrms_assert_contains( 'RMA_Filtre::aci_seviyeleri()', $kaynak, 'kademeler kayıt defterinden' );
+		qrms_assert_contains( "'rma_is_sugar_free'", $kaynak, 'şekersiz meta kaydedilir' );
+
+		// Restoran sahibi hangi alanın hangi filtreyi beslediğini görür.
+		qrms_assert_contains( 'Menüdeki “Filtrele” panelini besleyen alanlar', $kaynak, 'admin filtre rehberi' );
+	}
+);
+
+qrms_test(
+	'analitik menu_filter olayını yalnızca menü kayıt defterindeki anahtarlarla kabul eder',
+	function () {
+		$kaynak = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/class-qrms-analitik.php' );
+
+		qrms_assert_contains( "'menu_filter'      => array(", $kaynak, 'beacon kuralı tanımlı' );
+		qrms_assert_contains( "'item_name' => self::filtre_anahtarlari()", $kaynak, 'serbest metin kabul edilmez' );
+		qrms_assert_contains( 'RMA_Filtre::anahtarlar(', $kaynak, 'beyaz liste menü modülünden okunur' );
+		qrms_assert_contains( "'menu_filter',", $kaynak, 'olay tipi kayıtlı' );
+		qrms_assert_contains( "'menu_filter'     => 30,", $kaynak, 'saklama süresi tanımlı' );
+
+		// Menü görüntülemesi ZATEN rma_load_items'ta sayılıyor; beacon ikinci
+		// bir menu_view yazmamalı.
+		$js = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/js/rma-frontend.js' );
+		qrms_assert_contains( "yaz('menu_filter'", $js, 'filtre olayı gönderilir' );
+		qrms_assert_false( false !== strpos( $js, "yaz('menu_view'" ), 'görüntüleme çiftlenmez' );
+	}
+);
+
+qrms_test(
+	'CSV Şekersiz sütunu SONA eklendi — eski dosyalar bozulmaz',
+	function () {
+		$kaynak = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-import-export.php' );
+
+		// Sütun sayısı, import'un okuduğu en yüksek indeks + 1 olmalı.
+		preg_match_all( '/\$d\[(\d+)\]/', $kaynak, $m );
+		$en_yuksek = max( array_map( 'intval', $m[1] ) );
+
+		qrms_assert_same( 23, $en_yuksek, 'Şekersiz sütunu 23. indekste' );
+		qrms_assert_contains( "'rma_is_sugar_free'     => \$d[23] ?? '0'", $kaynak, 'sütun okunuyor' );
+		qrms_assert_contains( "[ 'Şekersiz',", $kaynak, 'sütun rehberde' );
+		qrms_assert_contains( '0-4 arası', $kaynak, 'acı sütunu güncellendi' );
+
+		// Alerjen sütunu (22) yerinde kaldı: yeni sütun araya girmedi.
+		qrms_assert_contains( "\$allergen_raw      = \$d[22] ?? ''", $kaynak, 'alerjen sütunu yerinde' );
+	}
+);
+
+qrms_test(
+	'filtre paneli ve chip çubuğu erişilebilir, RTL uyumlu yazıldı',
+	function () {
+		$php = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-frontend.php' );
+		$js  = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/js/rma-frontend.js' );
+		$css = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/css/rma-frontend.css' );
+
+		qrms_assert_contains( 'aria-expanded="false"', $php, 'tetikleyici durum bildirir' );
+		qrms_assert_contains( 'id="rma-active-chips"', $php, 'chip çubuğu var' );
+		qrms_assert_contains( 'aria-live="polite"', $php, 'chip değişimi okunur' );
+		qrms_assert_contains( "setAttribute('aria-expanded', 'true')", $js, 'açılışta güncellenir' );
+		qrms_assert_contains( 'function trapPanelFocus', $js, 'odak tuzağı' );
+		qrms_assert_contains( 'function clearAllFilters', $js, 'tek temizleme noktası' );
+
+		// Yeni kurallar yön-bağımsız: RTL dilde panel ters akmasın.
+		$yeni = substr( $css, strpos( $css, 'GELİŞMİŞ FİLTRELEME' ) );
+		qrms_assert_contains( 'padding-inline', $yeni, 'mantıksal iç boşluk' );
+		qrms_assert_false(
+			false !== strpos( $yeni, 'margin-left:' ) || false !== strpos( $yeni, 'padding-right:' ),
+			'yeni blokta fiziksel yön kuralı yok'
+		);
+	}
+);
+
+qrms_test(
+	'filtre kartı klavyeyle seçilebilir — tıklama işleyicisi tarayıcının geçişini geri almaz',
+	function () {
+		$js = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/js/rma-frontend.js' );
+
+		// Eski kod odaklı checkbox'a Space basıldığında kutuyu işaretleyip
+		// hemen geri alıyordu (fare ile çift geçiş birbirini götürdüğü için
+		// hata yalnızca klavyede görünüyordu).
+		qrms_assert_false(
+			false !== strpos( $js, 'cb.checked = isChk;' ),
+			'elle ters çevirme kaldırıldı'
+		);
+		qrms_assert_contains( "e.target.type !== 'checkbox'", $js, 'change dinleyicisi kurulu' );
+		qrms_assert_contains( "kart.classList.toggle('selected', e.target.checked)", $js, 'sınıf checked ile eşitlenir' );
+	}
+);
