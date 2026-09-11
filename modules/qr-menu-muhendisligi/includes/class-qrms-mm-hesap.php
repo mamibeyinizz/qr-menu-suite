@@ -17,8 +17,8 @@
  *                AĞIRLIKLI ortalama katkı payıdır — düz ortalama alınsaydı
  *                hiç satmayan pahalı bir ürün eşiği yukarı çekerdi.
  *
- * Dört kutu: Yıldız (çok satan + kârlı), İş Atı (çok satan + az kârlı),
- * Bulmaca (az satan + kârlı), Köpek (ikisi de düşük).
+ * Dört kutu: Yıldız (çok satan + kârlı), Çok Satan (çok satan + az kârlı),
+ * Gizli Fırsat (az satan + kârlı), Zayıf Performans (ikisi de düşük).
  *
  * @package QR_Menu_Suite
  */
@@ -56,9 +56,9 @@ class QRMS_MM_Hesap {
 	public static function kutular() {
 		return array(
 			'yildiz'  => __( 'Yıldız', 'qrms' ),
-			'is_ati'  => __( 'İş Atı', 'qrms' ),
-			'bulmaca' => __( 'Bulmaca', 'qrms' ),
-			'kopek'   => __( 'Köpek', 'qrms' ),
+			'is_ati'  => __( 'Çok Satan', 'qrms' ),
+			'bulmaca' => __( 'Gizli Fırsat', 'qrms' ),
+			'kopek'   => __( 'Zayıf Performans', 'qrms' ),
 		);
 	}
 
@@ -116,7 +116,7 @@ class QRMS_MM_Hesap {
 	/**
 	 * Ürün için somut aksiyon cümlesi.
 	 *
-	 * Raporun asıl değeri budur: işletmeciye "şu ürün köpek" demek değil,
+	 * Raporun asıl değeri budur: işletmeciye "şu ürün zayıf" demek değil,
 	 * ne yapacağını söylemek.
 	 *
 	 * @param string $kutu Kutu anahtarı.

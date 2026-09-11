@@ -36,7 +36,7 @@ function qrms_mm_ayarlar_sayfasi() {
 				<h2 class="qrms-card-title"><?php esc_html_e( 'Popülerlik eşiği', 'qrms' ); ?></h2>
 
 				<p class="qrms-muted">
-					<?php esc_html_e( 'Bir ürünün "çok satan" sayılması için gereken menü payı katsayısı. Klasik değer 0,70\'tir: eşit dağılımın %70\'i kadar satan ürün popüler kabul edilir. Yükseltirseniz Yıldız ve İş Atı sayısı azalır.', 'qrms' ); ?>
+					<?php esc_html_e( 'Bir ürünün "çok satan" sayılması için gereken menü payı katsayısı. Klasik değer 0,70\'tir: eşit dağılımın %70\'i kadar satan ürün popüler kabul edilir. Yükseltirseniz Yıldız ve Çok Satan sayısı azalır.', 'qrms' ); ?>
 				</p>
 
 				<div class="qrms-field">
