@@ -399,7 +399,7 @@ trait RMA_Secenek_Admin_Trait {
 
 		$this->page_header(
 			$sayfa['title'],
-			'Birden çok üründe kullanacağınız ekstra gruplarını ve ürün rozetlerinizi burada tanımlayın.'
+			'Ürünlerde kullanacağınız ekstra gruplarını ve özel rozetleri yönetin.'
 		);
 
 		$aktif_sekme = isset( $_GET['sekme'] ) ? sanitize_key( wp_unslash( $_GET['sekme'] ) ) : 'ekstra';

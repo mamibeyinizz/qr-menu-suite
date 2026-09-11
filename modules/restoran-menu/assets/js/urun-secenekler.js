@@ -629,6 +629,7 @@
 				btn.className = 'rma-renk-ornek';
 				btn.style.backgroundColor = renk;
 				btn.setAttribute( 'aria-label', renk );
+				btn.setAttribute( 'data-renk', renk.toLowerCase() );
 				btn.addEventListener( 'click', function () {
 					girdi.value = renk;
 					girdi.dispatchEvent( new Event( 'input', { bubbles: true } ) );
@@ -637,6 +638,15 @@
 				palet.appendChild( btn );
 			} );
 			alan.appendChild( palet );
+
+			var paletDurumGuncelle = function () {
+				var mevcut = ( girdi.value || '' ).trim().toLowerCase();
+				palet.querySelectorAll( '.rma-renk-ornek' ).forEach( function ( btn ) {
+					btn.classList.toggle( 'is-selected', btn.getAttribute( 'data-renk' ) === mevcut );
+				} );
+			};
+			girdi.addEventListener( 'input', paletDurumGuncelle );
+			paletDurumGuncelle();
 
 			wpRenkBaslat( girdi );
 		} );
@@ -697,6 +707,37 @@
 	}
 
 	/**
+	 * Rengin göreli parlaklığına göre okunabilir metin rengi seçer (WCAG
+	 * kontrast formülü). Sarı/açık renklerde koyu metin, mor/kırmızı/mavi
+	 * gibi koyu renklerde açık metin döner.
+	 *
+	 * @param {string} hex Rozet arka plan rengi.
+	 * @return {string} Metin rengi.
+	 */
+	function rozetMetinRengi( hex ) {
+		var deger = ( hex || '' ).trim().replace( '#', '' );
+
+		if ( 3 === deger.length ) {
+			deger = deger.replace( /(.)/g, '$1$1' );
+		}
+
+		if ( ! /^[0-9a-fA-F]{6}$/.test( deger ) ) {
+			return '#15120a';
+		}
+
+		var kanal = function ( parca ) {
+			var c = parseInt( parca, 16 ) / 255;
+			return c <= .03928 ? c / 12.92 : Math.pow( ( c + .055 ) / 1.055, 2.4 );
+		};
+
+		var parlaklik = .2126 * kanal( deger.substr( 0, 2 ) ) +
+			.7152 * kanal( deger.substr( 2, 2 ) ) +
+			.0722 * kanal( deger.substr( 4, 2 ) );
+
+		return parlaklik > .5 ? '#15120a' : '#fdfaf4';
+	}
+
+	/**
 	 * Tek rozet satırının önizlemesini günceller.
 	 *
 	 * @param {HTMLElement} satir Rozet satırı.
@@ -717,6 +758,7 @@
 		var renk = renkGirdi ? renkGirdi.value : '#c9a84c';
 
 		onizleme.style.setProperty( '--rma-rozet-renk', renk );
+		onizleme.style.setProperty( '--rma-rozet-metin', rozetMetinRengi( renk ) );
 		onizleme.textContent = ( ikon ? ikon + ' ' : '' ) + ( ad || 'Rozet' );
 	}
 
