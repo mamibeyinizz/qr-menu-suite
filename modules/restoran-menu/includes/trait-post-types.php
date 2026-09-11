@@ -79,7 +79,6 @@ trait RMA_Post_Types_Trait {
 
         $fields = [
             'rma_price'       => 'Fiyat (₺)',
-            'rma_spicy_level' => 'Acı Seviyesi (0-3)',
             'rma_calories'    => 'Kalori (kcal)',
             'rma_grams'       => 'Gramaj (g)',
             'rma_protein'     => 'Protein (g)',
@@ -92,6 +91,7 @@ trait RMA_Post_Types_Trait {
             'rma_is_vegan'          => 'Vegan',
             'rma_is_vegetarian'     => 'Vejetaryen',
             'rma_is_gluten_free'    => 'Glütensiz',
+            'rma_is_sugar_free'     => 'Şekersiz',
             'rma_badge_popular'     => 'Popüler Rozeti',
             'rma_badge_new'         => 'Yeni Rozeti',
             'rma_badge_recommended' => 'Önerilen Rozeti',
@@ -109,6 +109,21 @@ trait RMA_Post_Types_Trait {
                     <input type='{$type}'{$step} id='{$id}' name='{$id}' value='" . esc_attr( $val ) . "' style='width:100%;'/>
                   </div>";
         }
+
+        // Acı seviyesi artık serbest metin değil: menüdeki "Acılık" filtresi
+        // bu alandan beslenir ve "orta-acı" gibi bir yazım filtreyi sessizce
+        // kaçırırdı. 0-3 olan eski değerler anlamını korur, 4 (Çok Acı) eklendi.
+        $spicy_val = (string) get_post_meta( $post->ID, RMA_Filtre::META_ACI, true );
+        echo "<div style='flex:1 1 30%;'>
+                <label for='" . esc_attr( RMA_Filtre::META_ACI ) . "'><strong>Acı Seviyesi</strong></label><br>
+                <select id='" . esc_attr( RMA_Filtre::META_ACI ) . "' name='" . esc_attr( RMA_Filtre::META_ACI ) . "' style='width:100%;'>
+                  <option value=''" . selected( $spicy_val, '', false ) . ">Belirtilmemiş</option>";
+        foreach ( RMA_Filtre::aci_seviyeleri() as $seviye => $etiket ) {
+            echo "<option value='" . esc_attr( $seviye ) . "'" . selected( $spicy_val, (string) $seviye, false ) . '>'
+               . esc_html( $seviye . ' — ' . $etiket ) . '</option>';
+        }
+        echo '</select></div>';
+
         echo '</div><hr><div style="display:flex;flex-wrap:wrap;gap:20px;">';
         foreach ( $checkboxes as $id => $label ) {
             $checked = get_post_meta( $post->ID, $id, true ) === '1' ? 'checked' : '';
@@ -167,6 +182,23 @@ trait RMA_Post_Types_Trait {
         }
         echo '</div></div>';
         echo '<p style="color:#777;font-size:12px;margin-top:8px;">Bu bölümdeki bilgiler işletmenin resmi beyanı sayılır. Doğruluğu için uzman/diyetisyen onayı alınması önerilir.</p>';
+
+        /* ---- Filtre rehberi: hangi alan menüdeki hangi filtreyi besliyor ----
+           Ayrı bir ekran açılmaz; ürünü düzenleyen kişi kaydettiği verinin
+           müşteri tarafında ne yaptığını burada görür. Özellikle TÜRETİLEN
+           üç filtre (Helal / Laktozsuz / Acısız) için kritik: onların ayrı
+           bir kutusu yoktur, başka alanlardan hesaplanır. */
+        echo '<hr><div style="margin:10px 0 6px;"><strong>🔎 Menüdeki “Filtrele” panelini besleyen alanlar</strong></div>';
+        echo '<ul style="color:#555;font-size:12px;margin:0;padding-left:18px;line-height:1.7;">'
+           . '<li><strong>Vegan / Vejetaryen / Glütensiz / Şekersiz</strong> — yukarıdaki kutucuklar.</li>'
+           . '<li><strong>Laktozsuz</strong> — ayrı kutucuğu yoktur: <em>Süt / Laktoz</em> alerjeni <u>işaretli değilse</u> ürün laktozsuz sayılır.</li>'
+           . '<li><strong>Helal</strong> — ayrı kutucuğu yoktur: <em>Alkol İçerir</em> ve <em>Domuz Türevi İçerir</em> <u>işaretli değilse</u> ürün helal sayılır.</li>'
+           . '<li><strong>Acısız / Az Acı / Orta / Acı / Çok Acı</strong> — <em>Acı Seviyesi</em> alanı.</li>'
+           . '<li><strong>Alerjen hariç tut</strong> — yukarıdaki alerjen listesi.</li>'
+           . '<li><strong>Kalori aralığı</strong> — <em>Kalori (kcal)</em>. Boş bırakılan ürün kalori filtresine <u>girmez</u>.</li>'
+           . '<li><strong>Fiyat aralığı</strong> — <em>Fiyat</em> (kampanya varsa kampanyalı fiyat esas alınır).</li>'
+           . '<li><strong>Popüler / Yeni / Önerilen / İndirimli</strong> — rozet kutucukları. <strong>Tükendikleri Gizle</strong> — <em>Stok durumu</em>.</li>'
+           . '</ul>';
     }
 
     public function set_default_active_status( $post_id, $post, $update ) {
@@ -181,12 +213,24 @@ trait RMA_Post_Types_Trait {
         if ( wp_is_post_revision( $post_id ) ) return;
         if ( ! current_user_can( 'edit_post', $post_id ) ) return;
 
-        $fields     = [ 'rma_price', 'rma_spicy_level', 'rma_calories', 'rma_grams', 'rma_protein', 'rma_carbs', 'rma_fat', 'rma_prep_time' ];
-        $checkboxes = [ 'rma_is_vegan', 'rma_is_vegetarian', 'rma_is_gluten_free', 'rma_badge_popular', 'rma_badge_new', 'rma_badge_recommended', 'rma_badge_discount', 'rma_active', 'rma_contains_alcohol', 'rma_contains_pork' ];
+        $fields     = [ 'rma_price', 'rma_calories', 'rma_grams', 'rma_protein', 'rma_carbs', 'rma_fat', 'rma_prep_time' ];
+        $checkboxes = [ 'rma_is_vegan', 'rma_is_vegetarian', 'rma_is_gluten_free', 'rma_is_sugar_free', 'rma_badge_popular', 'rma_badge_new', 'rma_badge_recommended', 'rma_badge_discount', 'rma_active', 'rma_contains_alcohol', 'rma_contains_pork' ];
 
         foreach ( $fields as $field ) {
             if ( isset( $_POST[ $field ] ) ) {
                 update_post_meta( $post_id, $field, sanitize_text_field( $_POST[ $field ] ) );
+            }
+        }
+
+        // Acı seviyesi — beyaz liste. Alan eskiden hiç doğrulanmıyordu; artık
+        // tanınmayan bir değer YAZILMAZ, böylece elle/dış araçla girilmiş eski
+        // bir kayıt da form kaydında sessizce bozulmaz.
+        if ( isset( $_POST[ RMA_Filtre::META_ACI ] ) ) {
+            $spicy_posted = sanitize_text_field( $_POST[ RMA_Filtre::META_ACI ] );
+            $spicy_allowed = array_map( 'strval', array_keys( RMA_Filtre::aci_seviyeleri() ) );
+
+            if ( '' === $spicy_posted || in_array( $spicy_posted, $spicy_allowed, true ) ) {
+                update_post_meta( $post_id, RMA_Filtre::META_ACI, $spicy_posted );
             }
         }
         foreach ( $checkboxes as $cb ) {

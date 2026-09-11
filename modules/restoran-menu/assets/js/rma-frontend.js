@@ -25,12 +25,21 @@ var state = {
     sortBy        : '',
     search        : '',
     activeSection : '',
-    scrollLocked  : false
+    scrollLocked  : false,
+    // Özel aralıklar. 0 = "sınır yok"; sunucu da aynı kuralı uygular
+    // (RMA_Filtre::temizle_aralik).
+    calMin        : 0,
+    calMax        : 0,
+    priceMin      : 0,
+    priceMax      : 0
 };
 
-var wrap, filterTrigger, filterBadge,
+var wrap, filterTrigger, filterBadge, chipBar,
     panelOverlay, panelSheet,
     nav, navWrapper, content, loader, modal, modalBox;
+
+// Panel açılmadan önce odakta olan öğe: kapanışta odak oraya döner.
+var panelLastFocus = null;
 
 /* -----------------------------------------------------------------
    KÜÇÜK YARDIMCILAR
@@ -307,17 +316,207 @@ function scrollToSection(slug) {
    FİLTRE PANELİ
 ----------------------------------------------------------------- */
 function openPanel() {
+    panelLastFocus = document.activeElement;
     panelOverlay.classList.add('open');
     panelSheet.classList.add('open');
     document.body.style.overflow = 'hidden';
     filterTrigger.classList.add('active');
+    filterTrigger.setAttribute('aria-expanded', 'true');
+
+    // Odak panele taşınır: klavye kullanıcısı Tab'la sayfanın geri kalanında
+    // dolaşmak zorunda kalmasın.
+    var first = panelSheet.querySelector('.rma-panel-close');
+    if (first) first.focus();
 }
 
 function closePanel() {
+    // Odak kapanan panelin içindeyse önce dışarı alınır; aksi hâlde tarayıcı
+    // odağı <body>'ye düşürür ve klavye kullanıcısı yerini kaybeder.
+    var focusInside = panelSheet.contains(document.activeElement);
+
     panelOverlay.classList.remove('open');
     panelSheet.classList.remove('open');
     document.body.style.overflow = '';
     filterTrigger.classList.remove('active');
+    filterTrigger.setAttribute('aria-expanded', 'false');
+
+    if (focusInside) {
+        var hedef = (panelLastFocus && document.contains(panelLastFocus)) ? panelLastFocus : filterTrigger;
+        if (hedef && hedef.focus) hedef.focus();
+    }
+    panelLastFocus = null;
+}
+
+/* Panel açıkken Tab odağı panelin içinde döndürür (focus trap). */
+function trapPanelFocus(e) {
+    if (e.key !== 'Tab' || !panelSheet || !panelSheet.classList.contains('open')) return;
+
+    var odaklanabilir = qsa(
+        'button, [href], input:not([type="hidden"]), select, textarea, [tabindex]:not([tabindex="-1"])',
+        panelSheet
+    ).filter(function (el) { return el.offsetParent !== null || el === document.activeElement; });
+
+    if (!odaklanabilir.length) return;
+
+    var ilk = odaklanabilir[0];
+    var son = odaklanabilir[odaklanabilir.length - 1];
+
+    if (e.shiftKey && document.activeElement === ilk) {
+        e.preventDefault();
+        son.focus();
+    } else if (!e.shiftKey && document.activeElement === son) {
+        e.preventDefault();
+        ilk.focus();
+    }
+}
+
+/* -----------------------------------------------------------------
+   AKTİF FİLTRE CHIP'LERİ
+
+   Etiketler sunucudan gelir (RMA_FILTER_LABELS); JS ikinci bir etiket
+   listesi tutmaz, böylece panele eklenen bir filtre chip'te "bilinmeyen"
+   görünmez. Aralıklar kendi chip'lerini üretir.
+----------------------------------------------------------------- */
+function filterLabel(key) {
+    if (typeof RMA_FILTER_LABELS !== 'undefined' && RMA_FILTER_LABELS && RMA_FILTER_LABELS[key]) {
+        return RMA_FILTER_LABELS[key];
+    }
+    return key;
+}
+
+/** Aralık chip metni: "Kalori 100–500", "Fiyat en çok 250". */
+function rangeChipText(baslik, min, max) {
+    if (min > 0 && max > 0) return baslik + ' ' + min + '–' + max;
+    if (max > 0) return baslik + ' ' + rmaText('rangeUpTo', 'en çok') + ' ' + max;
+    return baslik + ' ' + rmaText('rangeFrom', 'en az') + ' ' + min;
+}
+
+/** Chip listesini state'ten üretir. */
+function activeChips() {
+    var chips = state.activeFilters.map(function (key) {
+        return { type: 'filter', key: key, text: filterLabel(key) };
+    });
+
+    if (state.calMin > 0 || state.calMax > 0) {
+        chips.push({
+            type: 'range', key: 'cal',
+            text: rangeChipText(rmaText('calRange', 'Kalori'), state.calMin, state.calMax)
+        });
+    }
+    if (state.priceMin > 0 || state.priceMax > 0) {
+        chips.push({
+            type: 'range', key: 'price',
+            text: rangeChipText(rmaText('priceRange', 'Fiyat'), state.priceMin, state.priceMax)
+        });
+    }
+
+    return chips;
+}
+
+function renderChips() {
+    if (!chipBar) return;
+
+    var chips = activeChips();
+    var total = chips.length + (state.sortBy ? 1 : 0);
+
+    if (filterBadge) {
+        filterBadge.textContent = String(total);
+        filterBadge.classList.toggle('visible', total > 0);
+    }
+    if (filterTrigger) filterTrigger.classList.toggle('has-selection', total > 0);
+
+    if (!chips.length) {
+        chipBar.innerHTML = '';
+        chipBar.hidden = true;
+        return;
+    }
+
+    var kaldir = rmaText('removeChip', 'Filtreyi kaldır');
+    var html = '';
+
+    chips.forEach(function (chip) {
+        html += '<button type="button" class="rma-chip" data-chip-type="' + chip.type + '" data-chip-key="' +
+                escapeAttr(chip.key) + '" aria-label="' + escapeAttr(kaldir + ': ' + chip.text) + '">' +
+                '<span class="rma-chip-text">' + escapeHtml(chip.text) + '</span>' +
+                '<span class="rma-chip-x" aria-hidden="true">×</span></button>';
+    });
+
+    html += '<button type="button" class="rma-chip rma-chip-clear" data-chip-type="all">' +
+            escapeHtml(rmaText('clearAll', 'Tümünü temizle')) + '</button>';
+
+    chipBar.innerHTML = html;
+    chipBar.hidden = false;
+}
+
+function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+}
+
+function escapeAttr(s) { return escapeHtml(s); }
+
+/** Panel kontrollerini state ile eşitler (chip kaldırma ve temizleme sonrası). */
+function syncPanelFromState() {
+    qsa('.rma-filter-card').forEach(function (card) {
+        var secili = state.activeFilters.indexOf(card.getAttribute('data-value')) !== -1;
+        card.classList.toggle('selected', secili);
+        var cb = card.querySelector('input[type="checkbox"]');
+        if (cb) cb.checked = secili;
+    });
+
+    setRangeInput('#rma-cal-min',   state.calMin);
+    setRangeInput('#rma-cal-max',   state.calMax);
+    setRangeInput('#rma-price-min', state.priceMin);
+    setRangeInput('#rma-price-max', state.priceMax);
+}
+
+function setRangeInput(sel, value) {
+    var el = qs(sel);
+    if (el) el.value = value > 0 ? String(value) : '';
+}
+
+function readRangeInput(sel) {
+    var el = qs(sel);
+    if (!el) return 0;
+    var n = parseInt(el.value, 10);
+    return (isNaN(n) || n < 0) ? 0 : n;
+}
+
+/** Bütün filtreleri düşürür (Sıfırla, chip "Tümünü temizle", boş durum butonu). */
+function clearAllFilters(keepSort) {
+    state.activeFilters = [];
+    state.calMin = state.calMax = state.priceMin = state.priceMax = 0;
+    if (!keepSort) state.sortBy = '';
+
+    syncPanelFromState();
+
+    if (!keepSort) {
+        qsa('.rma-sort-pill').forEach(function (pill) { pill.classList.remove('selected'); });
+        var def = qs('.rma-sort-pill[data-value=""]');
+        if (def) {
+            def.classList.add('selected');
+            var defRadio = def.querySelector('input[type="radio"]');
+            if (defRadio) defRadio.checked = true;
+        }
+    }
+
+    renderChips();
+}
+
+/**
+ * Filtre kullanımını analitiğe yazar.
+ *
+ * Mevcut beacon'ı kullanır (qr-analiz pasifse global tanımsızdır ve çağrı
+ * sessizce düşer). rma_load_items zaten menu_view yazıyor — burada ikinci
+ * bir görüntüleme kaydı ÜRETİLMEZ, yalnızca filtre anahtarları işlenir.
+ */
+function trackFilters(keys) {
+    if (!window.qrmsAnalitikOnyuz || typeof window.qrmsAnalitikOnyuz.yaz !== 'function') return;
+
+    keys.forEach(function (key) {
+        try { window.qrmsAnalitikOnyuz.yaz('menu_filter', { item_name: key }); } catch (e) {}
+    });
 }
 
 /* -----------------------------------------------------------------
@@ -335,13 +534,15 @@ document.addEventListener('click', function (e) {
 
     var el;
 
-    if ((el = e.target.closest('.rma-filter-card'))) {
-        var cb = el.querySelector('input[type="checkbox"]');
-        if (cb) {
-            var isChk = !cb.checked;
-            cb.checked = isChk;
-            el.classList.toggle('selected', isChk);
-        }
+    // Filtre kartı: durum değişimi TARAYICIYA bırakılır (label → checkbox) ve
+    // .selected sınıfı aşağıdaki 'change' dinleyicisinde eşitlenir.
+    //
+    // Eskiden burada cb.checked elle ters çevriliyordu; label tıklamasında
+    // tarayıcının kendi geçişiyle üst üste gelip birbirini götürdüğü için
+    // fare ile çalışıyordu ama KLAVYE ile çalışmıyordu: odaklı checkbox'a
+    // Space basıldığında tarayıcı kutuyu işaretliyor, hemen ardından bu
+    // satır onu geri alıyordu.
+    if (e.target.closest('.rma-filter-card')) {
         return;
     }
 
@@ -354,11 +555,17 @@ document.addEventListener('click', function (e) {
     }
 
     if (e.target.closest('#rma-panel-reset')) {
+        // Panel içindeki kontrolleri sıfırlar; henüz uygulanmaz (Uygula
+        // basılana kadar menü tazelenmez — mevcut davranış).
         qsa('.rma-filter-card').forEach(function (card) {
             card.classList.remove('selected');
             var cb2 = card.querySelector('input[type="checkbox"]');
             if (cb2) cb2.checked = false;
         });
+        setRangeInput('#rma-cal-min', 0);
+        setRangeInput('#rma-cal-max', 0);
+        setRangeInput('#rma-price-min', 0);
+        setRangeInput('#rma-price-max', 0);
         qsa('.rma-sort-pill').forEach(function (pill) { pill.classList.remove('selected'); });
         var def = qs('.rma-sort-pill[data-value=""]');
         if (def) {
@@ -373,14 +580,50 @@ document.addEventListener('click', function (e) {
         state.activeFilters = qsa('.rma-filter-card.selected input[type="checkbox"]').map(function (cb3) {
             return cb3.value;
         });
+        state.calMin   = readRangeInput('#rma-cal-min');
+        state.calMax   = readRangeInput('#rma-cal-max');
+        state.priceMin = readRangeInput('#rma-price-min');
+        state.priceMax = readRangeInput('#rma-price-max');
+
         var selectedPill = qs('.rma-sort-pill.selected');
         state.sortBy = (selectedPill && selectedPill.getAttribute('data-value')) || '';
 
-        var total = state.activeFilters.length + (state.sortBy ? 1 : 0);
-        filterBadge.textContent = String(total);
-        filterBadge.classList.toggle('visible', total > 0);
-        filterTrigger.classList.toggle('has-selection', total > 0);
+        renderChips();
+        trackFilters(state.activeFilters);
         closePanel();
+        loadAll();
+        return;
+    }
+
+    // Chip: tek filtreyi düşür / tümünü temizle.
+    if ((el = e.target.closest('.rma-chip'))) {
+        var tur = el.getAttribute('data-chip-type');
+
+        if (tur === 'all') {
+            // Sıralama bir filtre değildir; chip çubuğundan temizlenmez.
+            clearAllFilters(true);
+        } else if (tur === 'range') {
+            if (el.getAttribute('data-chip-key') === 'cal') {
+                state.calMin = state.calMax = 0;
+            } else {
+                state.priceMin = state.priceMax = 0;
+            }
+            syncPanelFromState();
+            renderChips();
+        } else {
+            var anahtar = el.getAttribute('data-chip-key');
+            state.activeFilters = state.activeFilters.filter(function (k) { return k !== anahtar; });
+            syncPanelFromState();
+            renderChips();
+        }
+
+        loadAll();
+        return;
+    }
+
+    // Boş durumdaki "Filtreleri temizle".
+    if (e.target.closest('.rma-empty-reset')) {
+        clearAllFilters(true);
         loadAll();
         return;
     }
@@ -399,6 +642,18 @@ document.addEventListener('click', function (e) {
 
     if ((el = e.target.closest('.rma-card'))) { openModal(el); return; }
 });
+
+// Filtre kartının checkbox'ı klavyeyle (Tab + Space) de değiştirilebilir;
+// o yolda tıklama dinleyicisi çalışmaz ve .selected sınıfı geride kalırdı.
+document.addEventListener('change', function (e) {
+    if (!e.target || e.target.type !== 'checkbox') return;
+    var kart = e.target.closest && e.target.closest('.rma-filter-card');
+    if (!kart) return;
+    kart.classList.toggle('selected', e.target.checked);
+});
+
+// Panel açıkken Tab odağı panelin içinde kalır.
+document.addEventListener('keydown', trapPanelFocus);
 
 // Kartlar role="button" + tabindex taşıyor: klavye ile de açılabilsin.
 document.addEventListener('keydown', function (e) {
@@ -454,6 +709,10 @@ function loadAll(ilkYukleme) {
         filters     : state.activeFilters,
         sort_by     : state.sortBy,
         search      : state.search,
+        cal_min     : state.calMin,
+        cal_max     : state.calMax,
+        price_min   : state.priceMin,
+        price_max   : state.priceMax,
         suggest_cfg : JSON.stringify(typeof SUGGEST_CFG !== 'undefined' ? SUGGEST_CFG : {}),
         lang        : rmaLang(),
         masa        : rmaMasa(),
@@ -1083,6 +1342,7 @@ function init() {
     wrap          = qs('.rma-wrap');
     filterTrigger = qs('#rma-filter-trigger');
     filterBadge   = qs('#rma-filter-badge');
+    chipBar       = qs('#rma-active-chips');
     panelOverlay  = qs('#rma-panel-overlay');
     panelSheet    = qs('#rma-panel-sheet');
     nav           = qs('#rma-nav');

@@ -202,6 +202,7 @@ class QRMS_Analitik {
 		'chatbot_message' => 30,
 		'gallery_view'    => 30,
 		'lang_switch'     => 30,
+		'menu_filter'     => 30,
 		'order_sent'      => 365,
 		'order_blocked'   => 365,
 		'order_failed'    => 180,
@@ -239,6 +240,7 @@ class QRMS_Analitik {
 		'review_submit',
 		'form_submit',
 		'item_detail_open',
+		'menu_filter',
 	);
 
 	/**
@@ -270,6 +272,7 @@ class QRMS_Analitik {
 			'reward_redeemed'  => __( 'Ödül kullanıldı', 'qrms' ),
 			'review_submit'    => __( 'Yorum gönderimi', 'qrms' ),
 			'form_submit'      => __( 'Form gönderimi', 'qrms' ),
+			'menu_filter'      => __( 'Menü filtresi kullanımı', 'qrms' ),
 		);
 
 		return isset( $etiketler[ $tip ] ) ? $etiketler[ $tip ] : $tip;
@@ -1330,7 +1333,45 @@ class QRMS_Analitik {
 				'item_id' => true,
 				'hiz'     => 0,
 			),
+			// Menüdeki "Filtrele" panelinde Uygula'ya basıldığında, seçili her
+			// filtre anahtarı için bir satır yazılır. item_name DİZİ olduğu
+			// için serbest metin kabul edilmez: yalnızca menü modülünün kendi
+			// kayıt defterindeki (RMA_Filtre) anahtarlar geçer. Menü zaten
+			// aynı istekte menu_view yazıyor; bu ayrı bir olay tipidir ve
+			// görüntülemeyi ÇİFTLEMEZ.
+			'menu_filter'      => array(
+				'modul'     => 'restoran-menu',
+				'item_name' => self::filtre_anahtarlari(),
+				'hiz'       => 0,
+			),
 		);
+	}
+
+	/**
+	 * Menü filtre anahtarlarının beyaz listesi.
+	 *
+	 * Tek kaynak restoran-menu modülündeki RMA_Filtre'dir; burada ikinci bir
+	 * liste tutulmaz. Modül pasifse (sınıf yüklü değil) boş döner ve kural
+	 * zaten `modul` kontrolünde elenir.
+	 *
+	 * @return string[]
+	 */
+	private static function filtre_anahtarlari() {
+		if ( ! class_exists( 'RMA_Filtre' ) ) {
+			return array();
+		}
+
+		$alerjenler = array();
+
+		if ( class_exists( 'Restaurant_Menu_Automation' ) ) {
+			$menu = Restaurant_Menu_Automation::get_instance();
+
+			if ( $menu && method_exists( $menu, 'get_allergen_definitions' ) ) {
+				$alerjenler = $menu->get_allergen_definitions();
+			}
+		}
+
+		return RMA_Filtre::anahtarlar( $alerjenler );
 	}
 
 	/**

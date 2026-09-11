@@ -203,7 +203,27 @@ trait RMA_Frontend_Trait {
             'loadError'   => $this->t( 'Yükleme hatası oluştu. Lütfen sayfayı yenileyin.' ),
             'reloading'   => $this->t( 'Sayfa yenileniyor…' ),
             'lang'        => $this->current_lang(),
+            // Aktif filtre chip'leri ve boş durum — yalnızca JS'te basılır.
+            'clearAll'    => $this->t( 'Tümünü temizle' ),
+            'removeChip'  => $this->t( 'Filtreyi kaldır' ),
+            'calRange'    => $this->t( 'Kalori' ),
+            'priceRange'  => $this->t( 'Fiyat' ),
+            'rangeUpTo'   => $this->t( 'en çok' ),
+            'rangeFrom'   => $this->t( 'en az' ),
         ] );
+
+        // Chip etiketleri: anahtar => çevrilmiş ad. Kayıt defteri (RMA_Filtre)
+        // ile panel ve chip'ler aynı kaynaktan beslenir; JS'te ikinci bir
+        // etiket listesi tutulmaz.
+        $filter_labels = [];
+        foreach ( RMA_Filtre::diyet_kartlari() as $key => $card )    $filter_labels[ $key ] = $this->t( $card['label'] );
+        foreach ( RMA_Filtre::aci_kartlari() as $key => $card )      $filter_labels[ $key ] = $this->t( $card['label'] );
+        foreach ( RMA_Filtre::kalori_kartlari() as $key => $card )   $filter_labels[ $key ] = $this->t( $card['label'] );
+        foreach ( RMA_Filtre::ozellik_kartlari() as $key => $card )  $filter_labels[ $key ] = $this->t( $card['label'] );
+        foreach ( $this->get_allergen_definitions() as $slug => $def ) {
+            $filter_labels[ 'allergen_' . $slug ] = $this->t_allergen_label( $slug, $def['label'] );
+        }
+        $filter_labels_json = wp_json_encode( $filter_labels );
 
         // Değişken adları geriye dönük uyumluluk için korunuyor: özel
         // temalar/parçacıklar bu global'lere dokunuyor olabilir.
@@ -213,6 +233,7 @@ var NONCE       = '{$nonce}';
 var SUGGEST_CFG = {$suggest_json};
 var STICKY_ON   = {$sticky_enabled};
 var RMA_I18N    = {$i18n_json};
+var RMA_FILTER_LABELS = {$filter_labels_json};
 JSCODE;
 
         wp_add_inline_script( 'rma-script', $js_dynamic, 'before' );
@@ -264,7 +285,7 @@ JSCODE;
             <input type="text" id="rma-search" class="rma-search-input" placeholder="<?php echo esc_attr( $this->t( 'Ürün ara…' ) ); ?>" autocomplete="off" aria-label="<?php echo esc_attr( $this->t( 'Menüde ara' ) ); ?>">
         </div>
         <?php endif; ?>
-        <button id="rma-filter-trigger" class="rma-filter-trigger" type="button" aria-haspopup="dialog" aria-label="<?php echo esc_attr( $this->t( 'Filtrele ve Sırala' ) ); ?>">
+        <button id="rma-filter-trigger" class="rma-filter-trigger" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="rma-panel-sheet" aria-label="<?php echo esc_attr( $this->t( 'Filtrele ve Sırala' ) ); ?>">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
             </svg>
@@ -272,6 +293,9 @@ JSCODE;
             <span id="rma-filter-badge" class="rma-filter-badge" aria-live="polite">0</span>
         </button>
     </div>
+
+    <?php // Aktif filtre chip'leri — istemcide basılır, boşken gizli kalır. ?>
+    <div id="rma-active-chips" class="rma-active-chips" role="status" aria-live="polite" hidden></div>
 
     <div class="rma-nav-wrapper">
         <nav class="rma-nav" id="rma-nav" aria-label="<?php echo esc_attr( $this->t( 'Menü kategorileri' ) ); ?>" role="tablist"></nav>
@@ -321,41 +345,106 @@ JSCODE;
             </div>
         </div>
 
+        <?php
+        /**
+         * Kart bölümleri tek bir yardımcıdan basılır: markup (.rma-filter-card)
+         * mevcut tasarımla birebir aynı kalsın ve yeni bir filtre eklendiğinde
+         * tek yere (RMA_Filtre) dokunmak yetsin.
+         *
+         * @param string $label Bölüm başlığı (çevrilmiş).
+         * @param array  $cards data-value => [icon, label] listesi.
+         */
+        $render_cards = function ( $label, array $cards ) {
+            if ( ! $cards ) return;
+            ?>
         <div class="rma-panel-section">
-            <div class="rma-panel-section-label"><?php echo esc_html( $this->t( 'Diyet & Alerjen' ) ); ?></div>
+            <div class="rma-panel-section-label"><?php echo esc_html( $label ); ?></div>
             <div class="rma-filter-cards">
-                <?php
-                $diet_cards = [
-                    'gluten_free' => [ '🌾', 'Glütensiz' ],
-                    'vegetarian'  => [ '🥦', 'Vejetaryen' ],
-                    'vegan'       => [ '🌿', 'Vegan' ],
-                ];
-                foreach ( $diet_cards as $value => $card ) :
-                    list( $icon, $name ) = $card;
-                ?>
+                <?php foreach ( $cards as $value => $card ) : ?>
                 <label class="rma-filter-card" data-value="<?php echo esc_attr( $value ); ?>">
                     <input type="checkbox" value="<?php echo esc_attr( $value ); ?>">
-                    <span class="rma-filter-card-tick">✓</span>
-                    <span class="rma-filter-card-icon"><?php echo $icon; ?></span>
-                    <span class="rma-filter-card-name"><?php echo esc_html( $this->t( $name ) ); ?></span>
+                    <span class="rma-filter-card-tick" aria-hidden="true">✓</span>
+                    <span class="rma-filter-card-icon" aria-hidden="true"><?php echo $card['icon']; ?></span>
+                    <span class="rma-filter-card-name"><?php echo esc_html( $card['label'] ); ?></span>
                 </label>
                 <?php endforeach; ?>
+            </div>
+        </div>
+            <?php
+        };
+
+        // Diyet kartları — etiketler çeviri köprüsünden geçer.
+        $diet_cards = [];
+        foreach ( RMA_Filtre::diyet_kartlari() as $value => $card ) {
+            $diet_cards[ $value ] = [ 'icon' => $card['icon'], 'label' => $this->t( $card['label'] ) ];
+        }
+        $render_cards( $this->t( 'Diyet & Yaşam Tarzı' ), $diet_cards );
+
+        // Alerjenler — etiket mevcut t_allergen_label() köprüsünü kullanır
+        // (terim tabanlı çeviri; düz t() ile aynı sonucu vermez).
+        $allergen_cards = [];
+        foreach ( $this->get_allergen_definitions() as $slug => $def ) {
+            $allergen_cards[ 'allergen_' . $slug ] = [
+                'icon'  => $def['icon'],
+                'label' => $this->t_allergen_label( $slug, $def['label'] ),
+            ];
+        }
+        $render_cards( $this->t( 'Alerjen Hariç Tut' ), $allergen_cards );
+
+        $spicy_cards = [];
+        foreach ( RMA_Filtre::aci_kartlari() as $value => $card ) {
+            $spicy_cards[ $value ] = [ 'icon' => $card['icon'], 'label' => $this->t( $card['label'] ) ];
+        }
+        $render_cards( $this->t( 'Acılık' ), $spicy_cards );
+        ?>
+
+        <div class="rma-panel-section">
+            <div class="rma-panel-section-label"><?php echo esc_html( $this->t( 'Kalori' ) ); ?></div>
+            <div class="rma-filter-cards">
+                <?php foreach ( RMA_Filtre::kalori_kartlari() as $value => $card ) : ?>
+                <label class="rma-filter-card" data-value="<?php echo esc_attr( $value ); ?>">
+                    <input type="checkbox" value="<?php echo esc_attr( $value ); ?>">
+                    <span class="rma-filter-card-tick" aria-hidden="true">✓</span>
+                    <span class="rma-filter-card-icon" aria-hidden="true"><?php echo $card['icon']; ?></span>
+                    <span class="rma-filter-card-name"><?php echo esc_html( $this->t( $card['label'] ) ); ?></span>
+                </label>
+                <?php endforeach; ?>
+            </div>
+            <div class="rma-range-row">
+                <label class="rma-range-field">
+                    <span class="rma-range-label"><?php echo esc_html( $this->t( 'En az (kcal)' ) ); ?></span>
+                    <input type="number" id="rma-cal-min" class="rma-range-input" inputmode="numeric" min="0" max="<?php echo esc_attr( RMA_Filtre::KALORI_TAVAN ); ?>" step="10" placeholder="0">
+                </label>
+                <span class="rma-range-sep" aria-hidden="true">–</span>
+                <label class="rma-range-field">
+                    <span class="rma-range-label"><?php echo esc_html( $this->t( 'En çok (kcal)' ) ); ?></span>
+                    <input type="number" id="rma-cal-max" class="rma-range-input" inputmode="numeric" min="0" max="<?php echo esc_attr( RMA_Filtre::KALORI_TAVAN ); ?>" step="10" placeholder="<?php echo esc_attr( $this->t( 'Sınırsız' ) ); ?>">
+                </label>
             </div>
         </div>
 
         <div class="rma-panel-section">
-            <div class="rma-panel-section-label"><?php echo esc_html( $this->t( 'Alerjen Hariç Tut' ) ); ?></div>
-            <div class="rma-filter-cards">
-                <?php foreach ( $this->get_allergen_definitions() as $slug => $def ) : ?>
-                <label class="rma-filter-card" data-value="allergen_<?php echo esc_attr( $slug ); ?>">
-                    <input type="checkbox" value="allergen_<?php echo esc_attr( $slug ); ?>">
-                    <span class="rma-filter-card-tick">✓</span>
-                    <span class="rma-filter-card-icon"><?php echo $def['icon']; ?></span>
-                    <span class="rma-filter-card-name"><?php echo esc_html( $this->t_allergen_label( $slug, $def['label'] ) ); ?></span>
+            <div class="rma-panel-section-label"><?php echo esc_html( $this->t( 'Fiyat Aralığı' ) ); ?></div>
+            <div class="rma-range-row">
+                <label class="rma-range-field">
+                    <span class="rma-range-label"><?php echo esc_html( $this->t( 'En az' ) ); ?></span>
+                    <input type="number" id="rma-price-min" class="rma-range-input" inputmode="numeric" min="0" max="<?php echo esc_attr( RMA_Filtre::FIYAT_TAVAN ); ?>" step="1" placeholder="0">
                 </label>
-                <?php endforeach; ?>
+                <span class="rma-range-sep" aria-hidden="true">–</span>
+                <label class="rma-range-field">
+                    <span class="rma-range-label"><?php echo esc_html( $this->t( 'En çok' ) ); ?></span>
+                    <input type="number" id="rma-price-max" class="rma-range-input" inputmode="numeric" min="0" max="<?php echo esc_attr( RMA_Filtre::FIYAT_TAVAN ); ?>" step="1" placeholder="<?php echo esc_attr( $this->t( 'Sınırsız' ) ); ?>">
+                </label>
             </div>
         </div>
+
+        <?php
+        $feature_cards = [];
+        foreach ( RMA_Filtre::ozellik_kartlari() as $value => $card ) {
+            $feature_cards[ $value ] = [ 'icon' => $card['icon'], 'label' => $this->t( $card['label'] ) ];
+        }
+        $render_cards( $this->t( 'Ürün Özellikleri' ), $feature_cards );
+        ?>
     </div>
 
     <div class="rma-panel-footer">
