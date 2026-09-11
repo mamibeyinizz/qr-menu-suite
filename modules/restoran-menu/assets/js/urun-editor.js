@@ -112,12 +112,21 @@
 		bos.textContent = t( 'sonucYok', 'Sonuç yok' );
 		bos.hidden = true;
 
+		// Panel, tetiklendiği kartın/kutunun `overflow:hidden` sınırının
+		// DIŞINA taşınır — aksi halde kategori/malzeme gibi kutuların içine
+		// gömülü olduğu kart/metabox açılan listeyi keser (mobilde asıl
+		// şikayet budur). Hedef <form>'un KENDİSİdir, document.body DEĞİL:
+		// aksi halde içindeki kutucuklar formun dışına düşer ve kayıt
+		// sırasında gönderilmez. Konumu her açılışta viewport'a göre
+		// `konumlandir()` hesaplar.
+		var gonderimKapsayici = kok.closest( 'form' ) || document.body;
+
 		kok.insertBefore( chipler, kaynak );
 		kok.insertBefore( tetik, kaynak );
-		kok.appendChild( panel );
 		panel.appendChild( arama );
 		panel.appendChild( kaynak );
 		panel.appendChild( bos );
+		gonderimKapsayici.appendChild( panel );
 		kok.classList.add( 'is-hazir' );
 
 		/**
@@ -204,6 +213,79 @@
 		}
 
 		/**
+		 * Panelin viewport içindeki konumunu ve azami yüksekliğini hesaplar.
+		 *
+		 * `position:fixed` kullanır; bu yüzden hiçbir üst kartın `overflow`
+		 * kuralından etkilenmez. Altta yeterli yer yoksa panel yukarı açılır.
+		 * Yükseklik bütçesi `visualViewport`'a göre hesaplanır — mobilde
+		 * klavye açıkken de panel, klavyenin kapladığı alanın dışına taşmaz.
+		 *
+		 * @return {void}
+		 */
+		function konumlandir() {
+			if ( panel.hidden ) {
+				return;
+			}
+
+			var rect = tetik.getBoundingClientRect();
+			var vv = window.visualViewport;
+			var ustSinir = vv ? vv.offsetTop : 0;
+			var solSinir = vv ? vv.offsetLeft : 0;
+			var genislikSinir = vv ? vv.width : window.innerWidth;
+			var yukseklikSinir = vv ? vv.height : window.innerHeight;
+			var altSinir = ustSinir + yukseklikSinir;
+
+			// Tetikleyici görünür alanın tamamen dışına kaydıysa (sayfa
+			// kaydırıldı) panel havada asılı kalmasın, kapansın.
+			if ( rect.bottom < ustSinir || rect.top > altSinir ) {
+				degistir( false );
+				return;
+			}
+
+			var marj = 8;
+			var asgariYukseklik = 120;
+			var azamiYukseklik = 320;
+			var altBosluk = altSinir - rect.bottom - marj;
+			var ustBosluk = rect.top - ustSinir - marj;
+			var yukariAc = altBosluk < asgariYukseklik && ustBosluk > altBosluk;
+			var butce = Math.max( asgariYukseklik, Math.min( azamiYukseklik, yukariAc ? ustBosluk : altBosluk ) );
+
+			var genislik = Math.min( rect.width, genislikSinir - marj * 2 );
+			var sol = Math.max( solSinir + marj, Math.min( rect.left, solSinir + genislikSinir - genislik - marj ) );
+
+			panel.style.maxHeight = butce + 'px';
+			panel.style.width = genislik + 'px';
+			panel.style.left = sol + 'px';
+
+			if ( yukariAc ) {
+				panel.style.top = 'auto';
+				panel.style.bottom = ( window.innerHeight - rect.top + 4 ) + 'px';
+			} else {
+				panel.style.bottom = 'auto';
+				panel.style.top = ( rect.bottom + 4 ) + 'px';
+			}
+		}
+
+		var konumKareTalebi = null;
+
+		/**
+		 * `konumlandir`'ı bir sonraki çizim karesine erteler; kaydırma ve
+		 * yeniden boyutlandırma sırasında gereksiz tekrar hesaplamayı önler.
+		 *
+		 * @return {void}
+		 */
+		function konumGuncelle() {
+			if ( konumKareTalebi || panel.hidden ) {
+				return;
+			}
+
+			konumKareTalebi = window.requestAnimationFrame( function () {
+				konumKareTalebi = null;
+				konumlandir();
+			} );
+		}
+
+		/**
 		 * Paneli açar/kapatır.
 		 *
 		 * @param {boolean} ac Açılsın mı?
@@ -216,6 +298,7 @@
 			if ( ac ) {
 				arama.value = '';
 				suz();
+				konumlandir();
 				arama.focus();
 			}
 		}
@@ -320,14 +403,25 @@
 			new window.MutationObserver( function () {
 				tazele();
 				suz();
+				konumGuncelle();
 			} ).observe( kaynak, { childList: true, subtree: true } );
 		}
 
 		document.addEventListener( 'mousedown', function ( e ) {
-			if ( ! panel.hidden && ! kok.contains( e.target ) ) {
+			if ( ! panel.hidden && ! kok.contains( e.target ) && ! panel.contains( e.target ) ) {
 				degistir( false );
 			}
 		} );
+
+		// Panel artık kok'un dışında (bkz. yukarıdaki taşıma); konumu sayfa
+		// kaydırıldığında, pencere/klavye boyutu değiştiğinde tazelenmeli.
+		window.addEventListener( 'resize', konumGuncelle );
+		window.addEventListener( 'scroll', konumGuncelle, true );
+
+		if ( window.visualViewport ) {
+			window.visualViewport.addEventListener( 'resize', konumGuncelle );
+			window.visualViewport.addEventListener( 'scroll', konumGuncelle );
+		}
 
 		tazele();
 	}

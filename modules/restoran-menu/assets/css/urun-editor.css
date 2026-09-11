@@ -742,19 +742,22 @@ body.qrms-product-editor .qrms-pe-secim-tetik-ok {
 	width: 7px;
 }
 
+/* `position:fixed`: panel artık JS tarafından <form>'a taşınır (bkz.
+   urun-editor.js) ve hiçbir kartın/kutunun `overflow:hidden` sınırından
+   etkilenmez. top / left / width / max-height, her açılışta ve
+   kaydırma/klavye durumunda viewport'a göre satır-içi stille hesaplanır. */
 body.qrms-product-editor .qrms-pe-secim-panel {
 	background: var(--pe-surface);
 	border: 1px solid var(--pe-border-hi);
 	border-radius: var(--pe-radius-sm);
 	box-shadow: 0 12px 32px rgba(27, 36, 48, .16);
-	left: 0;
-	margin-top: 4px;
-	max-width: 100%;
+	box-sizing: border-box;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
 	padding: 8px;
-	position: absolute;
-	right: 0;
-	top: 100%;
-	z-index: 9999;
+	position: fixed;
+	z-index: 100000;
 }
 
 body.qrms-product-editor .qrms-pe-secim-panel[hidden] {
@@ -762,12 +765,14 @@ body.qrms-product-editor .qrms-pe-secim-panel[hidden] {
 }
 
 body.qrms-product-editor .qrms-pe-secim-arama {
+	flex: 0 0 auto;
 	margin-bottom: 6px;
 }
 
 body.qrms-product-editor .qrms-pe-secim-kaynak {
 	display: block;
-	max-height: 260px;
+	flex: 1 1 auto;
+	min-height: 0;
 	overflow-y: auto;
 }
 
@@ -1195,6 +1200,17 @@ body.qrms-product-editor .qmo-uy-yeni .button {
 	body.qrms-product-editor #publishing-action .button-primary,
 	body.qrms-product-editor #publishing-action #publish {
 		width: 100%;
+	}
+
+	/* Dokunmatik hedefler: kategori/malzeme/rozet panellerindeki satırlar
+	   mobilde biraz daha yüksek olur. */
+	body.qrms-product-editor .qrms-pe-secenek,
+	body.qrms-product-editor .qrms-pe-secim-kaynak .categorychecklist li > label {
+		min-height: 44px;
+	}
+
+	body.qrms-product-editor .qrms-pe-secim-panel {
+		padding: 10px;
 	}
 }
 
