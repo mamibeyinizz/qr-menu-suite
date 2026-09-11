@@ -628,8 +628,8 @@ trait RMA_Secenek_Admin_Trait {
 									</td>
 									<td data-label="İkon">
 										<div class="rma-ikon-secici" data-rma-ikon-secici>
-											<button type="button" class="rma-ikon-tetik" aria-haspopup="listbox" aria-expanded="false">
-												<span class="rma-ikon-goster"><?php echo '' !== $rozet['ikon'] ? esc_html( $rozet['ikon'] ) : '—'; ?></span>
+											<button type="button" class="rma-ikon-tetik" aria-haspopup="listbox" aria-expanded="false" aria-label="Rozet ikonu seç">
+												<span class="rma-ikon-goster" aria-hidden="true"><?php echo '' !== $rozet['ikon'] ? esc_html( $rozet['ikon'] ) : '—'; ?></span>
 											</button>
 											<input type="hidden" class="rma-rozet-ikon" name="rma_ozel_rozetler[<?php echo (int) $i; ?>][ikon]" value="<?php echo esc_attr( $rozet['ikon'] ); ?>" maxlength="4">
 										</div>
@@ -698,8 +698,8 @@ trait RMA_Secenek_Admin_Trait {
 				</td>
 				<td data-label="İkon">
 					<div class="rma-ikon-secici" data-rma-ikon-secici>
-						<button type="button" class="rma-ikon-tetik" aria-haspopup="listbox" aria-expanded="false">
-							<span class="rma-ikon-goster">—</span>
+						<button type="button" class="rma-ikon-tetik" aria-haspopup="listbox" aria-expanded="false" aria-label="Rozet ikonu seç">
+							<span class="rma-ikon-goster" aria-hidden="true">—</span>
 						</button>
 						<input type="hidden" class="rma-rozet-ikon" name="rma_ozel_rozetler[__i__][ikon]" value="" maxlength="4">
 					</div>
