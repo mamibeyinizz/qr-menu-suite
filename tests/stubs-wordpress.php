@@ -966,6 +966,19 @@ function wp_cache_flush() {
 }
 
 /**
+ * Nesne önbelleğinden tek bir anahtarı siler (testte yalnızca not edilir).
+ *
+ * @param int|string $key   Anahtar.
+ * @param string     $group Grup.
+ * @return bool
+ */
+function wp_cache_delete( $key, $group = '' ) {
+	$GLOBALS['qrms_test']['cache_delete'][] = array( $key, $group );
+
+	return true;
+}
+
+/**
  * Nesne önbelleği arka ucunun yeteneği.
  *
  * Varsayılan WordPress kurulumu (kalıcı obje önbelleği yok) grup bazlı

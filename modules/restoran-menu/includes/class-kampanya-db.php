@@ -2,11 +2,14 @@
 /**
  * Toplu Fiyat Kampanyası — tablo şeması, saf hesap ve veri erişimi.
  *
- * Bu sınıf ÜRÜN FİYATINA HİÇ DOKUNMAZ: `rma_price` (ve kombin ürünlerde
- * `_qmo_kombin_fiyat`) sonsuza dek orijinal fiyattır. Kampanya yalnızca bir
- * KURAL kaydıdır; gösterilecek fiyat her render'da orijinal fiyat + kural
- * birleştirilerek hesaplanır (bkz. class-kampanya.php). Geri alma bu yüzden
- * bir hesaplama değil, tek bir durum değişikliğidir.
+ * İndirim (`direction = decrease`) ürün fiyatına dokunmaz: yalnızca KURAL
+ * kaydıdır; gösterilecek fiyat her render'da orijinal fiyat + kural
+ * birleştirilerek hesaplanır (bkz. class-kampanya.php). Geri alma tek satır
+ * durum değişikliğidir.
+ *
+ * Zam (`direction = increase`) tek seferlik yazma işlemidir: kapsamdaki
+ * ürünlerin `rma_price` (kombin ürünlerde `_qmo_kombin_fiyat`) alanına
+ * doğrudan yazılır; kayıt `status = applied` ile yalnızca tarihçe tutulur.
  *
  * Şema, modülün mevcut "ana tablo + alt tablo" desenini izler
  * (bkz. class-vitrin-db.php).
@@ -634,7 +637,10 @@ class RMA_Kampanya_DB {
         }
 
         $tablo = self::tablo();
-        $kayit = $wpdb->get_row( "SELECT * FROM {$tablo} WHERE status = 'active' ORDER BY id DESC LIMIT 1" );
+        // Yalnızca indirim kampanyaları canlı kural olarak çalışır; zam kayıtları
+        // `applied` durumunda tarihçe olarak tutulur (eski aktif zam kayıtları
+        // da bu filtreden dışlanır).
+        $kayit = $wpdb->get_row( "SELECT * FROM {$tablo} WHERE status = 'active' AND direction = 'decrease' ORDER BY id DESC LIMIT 1" );
 
         // "Aktif kampanya yok" da geçerli bir cevaptır ve saklanır; aksi hâlde
         // kampanyasız sitelerde (çoğunluk) önbellek hiç isabet etmezdi. Sarmalayıcı
@@ -729,7 +735,7 @@ class RMA_Kampanya_DB {
 
         $wpdb->query(
             $wpdb->prepare(
-                "UPDATE {$tablo} SET status = 'passive', ended_at = %s WHERE status = 'active' AND id <> %d",
+                "UPDATE {$tablo} SET status = 'passive', ended_at = %s WHERE status = 'active' AND direction = 'decrease' AND id <> %d",
                 $simdi,
                 $id
             )
@@ -887,6 +893,225 @@ class RMA_Kampanya_DB {
         }
 
         return $out;
+    }
+
+    /**
+     * Zam yazımı için ürün satırlarını normalize eder.
+     *
+     * Saf fonksiyon (WordPress'e bağımlılığı yok), bu yüzden doğrudan test
+     * edilir: toplu yazımda tip dönüşümünün satır satır yazımdakiyle birebir
+     * aynı kalması gerekir.
+     *
+     * @param array<int,array{product_id:int,fiyat:float,kombin:bool}> $satirlar Ham satırlar.
+     * @return array<int,array{product_id:int,fiyat:string,kombin:bool,meta_key:string}>
+     */
+    public static function zam_fiyat_satirlari( array $satirlar ) {
+        $out = array();
+
+        foreach ( $satirlar as $satir ) {
+            $pid = (int) ( $satir['product_id'] ?? 0 );
+
+            if ( $pid <= 0 || ! isset( $satir['fiyat'] ) || ! is_numeric( $satir['fiyat'] ) ) {
+                continue;
+            }
+
+            $kombin = ! empty( $satir['kombin'] );
+
+            $out[] = array(
+                'product_id' => $pid,
+                'fiyat'      => self::bicimle( (float) $satir['fiyat'] ),
+                'kombin'     => $kombin,
+                'meta_key'   => $kombin ? '_qmo_kombin_fiyat' : 'rma_price',
+            );
+        }
+
+        return $out;
+    }
+
+    /**
+     * Kapsamdaki ürün fiyatlarını toplu olarak günceller (zam uygulaması).
+     *
+     * Kombin ürünlerde `_qmo_kombin_fiyat`, diğerlerinde `rma_price` yazılır.
+     * 500'lük parçalarla DELETE + INSERT yapılır (bkz. anlik_yaz).
+     *
+     * @param array<int,array{product_id:int,fiyat:float,kombin:bool}> $satirlar Ürün satırları.
+     * @return void
+     */
+    public static function fiyatlari_toplu_yaz( array $satirlar ) {
+        $satirlar = self::zam_fiyat_satirlari( $satirlar );
+
+        if ( empty( $satirlar ) ) {
+            return;
+        }
+
+        $gruplar = array();
+
+        foreach ( $satirlar as $satir ) {
+            $gruplar[ $satir['meta_key'] ][ $satir['product_id'] ] = $satir['fiyat'];
+        }
+
+        foreach ( $gruplar as $anahtar => $eslesme ) {
+            self::meta_toplu_guncelle( (string) $anahtar, $eslesme );
+        }
+
+        foreach ( $satirlar as $satir ) {
+            wp_cache_delete( (int) $satir['product_id'], 'post_meta' );
+        }
+    }
+
+    /**
+     * Orijinal fiyat yedeğini write-once olarak toplu yazır.
+     *
+     * Meta zaten varsa dokunulmaz — tekrarlı zamlarda ilk orijinal korunur.
+     *
+     * @param array<int,float|int|string> $yedekler product_id => orijinal fiyat.
+     * @return void
+     */
+    public static function orijinal_yedekleri_toplu_yaz( array $yedekler ) {
+        if ( empty( $yedekler ) ) {
+            return;
+        }
+
+        global $wpdb;
+
+        $meta_tablo = $wpdb->postmeta;
+        $anahtar    = self::ORIJINAL_META;
+
+        foreach ( array_chunk( $yedekler, 500, true ) as $parca ) {
+            $idler   = array_map( 'intval', array_keys( $parca ) );
+            $id_list = implode( ',', $idler );
+
+            // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- ID listesi intval ile temizlendi.
+            $mevcut = $wpdb->get_col(
+                $wpdb->prepare(
+                    "SELECT post_id FROM {$meta_tablo} WHERE meta_key = %s AND post_id IN ({$id_list})",
+                    $anahtar
+                )
+            );
+
+            $mevcut = array_map( 'intval', (array) $mevcut );
+            $yaz    = array();
+
+            foreach ( $parca as $pid => $fiyat ) {
+                $pid = (int) $pid;
+
+                if ( $pid > 0 && ! in_array( $pid, $mevcut, true ) && is_numeric( $fiyat ) ) {
+                    $yaz[ $pid ] = (float) $fiyat;
+                }
+            }
+
+            if ( empty( $yaz ) ) {
+                continue;
+            }
+
+            $degerler = array();
+            $params   = array();
+
+            foreach ( $yaz as $pid => $fiyat ) {
+                $degerler[] = '(%d, %s, %s)';
+                $params[]   = $pid;
+                $params[]   = $anahtar;
+                $params[]   = (string) $fiyat;
+            }
+
+            $wpdb->query(
+                $wpdb->prepare(
+                    "INSERT INTO {$meta_tablo} (post_id, meta_key, meta_value) VALUES " . implode( ', ', $degerler ),
+                    $params
+                )
+            );
+
+            foreach ( array_keys( $yaz ) as $pid ) {
+                wp_cache_delete( (int) $pid, 'post_meta' );
+            }
+        }
+    }
+
+    /**
+     * Zam kaydını uygulandı olarak işaretler ve kapsamı dondurur.
+     *
+     * `status = applied` kayıtları yalnızca tarihçe amaçlıdır; aktif kural
+     * motoru bunları okumaz (bkz. aktif_kayit, aktif_mi).
+     *
+     * @param int   $id           Kampanya ID.
+     * @param int   $etkilenen    Etkilenen ürün sayısı.
+     * @param int[] $donmus_idler Uygulama anındaki ürün ID listesi.
+     * @return bool
+     */
+    public static function zam_uygulandi( $id, $etkilenen, array $donmus_idler ) {
+        global $wpdb;
+
+        $id = (int) $id;
+
+        if ( $id <= 0 || ! self::getir( $id ) ) {
+            return false;
+        }
+
+        $simdi = current_time( 'mysql' );
+
+        $ok = (bool) $wpdb->update(
+            self::tablo(),
+            array(
+                'status'         => 'applied',
+                'scope_type'     => 'manual',
+                'scope_ids'      => implode( ',', array_map( 'intval', $donmus_idler ) ),
+                'applied_at'     => $simdi,
+                'affected_count' => (int) $etkilenen,
+                'updated_at'     => $simdi,
+            ),
+            array( 'id' => $id ),
+            array( '%s', '%s', '%s', '%s', '%d', '%s' ),
+            array( '%d' )
+        );
+
+        return $ok;
+    }
+
+    /**
+     * Tek meta anahtarı için postmeta toplu güncelleme (DELETE + INSERT).
+     *
+     * @param string              $anahtar      Meta anahtarı.
+     * @param array<int,string>   $post_deger   post_id => meta_value.
+     * @return void
+     */
+    private static function meta_toplu_guncelle( $anahtar, array $post_deger ) {
+        if ( empty( $post_deger ) ) {
+            return;
+        }
+
+        global $wpdb;
+
+        $meta_tablo = $wpdb->postmeta;
+
+        foreach ( array_chunk( $post_deger, 500, true ) as $parca ) {
+            $idler   = array_map( 'intval', array_keys( $parca ) );
+            $id_list = implode( ',', $idler );
+
+            // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- ID listesi intval ile temizlendi.
+            $wpdb->query(
+                $wpdb->prepare(
+                    "DELETE FROM {$meta_tablo} WHERE meta_key = %s AND post_id IN ({$id_list})",
+                    $anahtar
+                )
+            );
+
+            $degerler = array();
+            $params   = array();
+
+            foreach ( $parca as $pid => $deger ) {
+                $degerler[] = '(%d, %s, %s)';
+                $params[]   = (int) $pid;
+                $params[]   = $anahtar;
+                $params[]   = (string) $deger;
+            }
+
+            $wpdb->query(
+                $wpdb->prepare(
+                    "INSERT INTO {$meta_tablo} (post_id, meta_key, meta_value) VALUES " . implode( ', ', $degerler ),
+                    $params
+                )
+            );
+        }
     }
 
 }
