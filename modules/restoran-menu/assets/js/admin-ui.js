@@ -1695,6 +1695,29 @@
             setActive(visibleCount ? 0 : -1);
         }
 
+        // Panel varsayılan olarak butonun altında açılır. Buton altında
+        // yeterli yer yoksa (mobil, ekranın alt kısmı, klavye açıkken)
+        // yukarı açılır ve yüksekliği kalan boşluğa göre sınırlanır —
+        // liste kendi içinde kaydırılır (bkz. .rma-uy-combo-list flex:1).
+        function positionPanel() {
+            panel.classList.remove('rma-uy-combo-panel-up');
+            panel.style.maxHeight = '';
+
+            var margin = 10;
+            var viewportH = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+            var btnRect = btn.getBoundingClientRect();
+            var spaceBelow = viewportH - btnRect.bottom - margin;
+            var spaceAbove = btnRect.top - margin;
+            var minUsable = 160;
+
+            if (spaceBelow < minUsable && spaceAbove > spaceBelow) {
+                panel.classList.add('rma-uy-combo-panel-up');
+                panel.style.maxHeight = Math.max(minUsable, Math.min(spaceAbove, 360)) + 'px';
+            } else {
+                panel.style.maxHeight = Math.max(minUsable, Math.min(spaceBelow, 360)) + 'px';
+            }
+        }
+
         function openPanel() {
             if (!panel.hidden) return;
             panel.hidden = false;
@@ -1702,6 +1725,7 @@
             search.setAttribute('aria-expanded', 'true');
             search.value = '';
             filterList('');
+            positionPanel();
             search.focus();
         }
 
@@ -1712,6 +1736,15 @@
             search.setAttribute('aria-expanded', 'false');
             activeIndex = -1;
             if (odaklanBtn) btn.focus();
+        }
+
+        function repositionIfOpen() {
+            if (!panel.hidden) positionPanel();
+        }
+
+        window.addEventListener('resize', repositionIfOpen);
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', repositionIfOpen);
         }
 
         function choose(option) {
@@ -1750,6 +1783,15 @@
                 e.preventDefault();
                 closePanel(true);
             }
+        });
+
+        // Seçeneğe basınca (mouse/touch) odak arama input'undan ayrılır;
+        // bu da "focusout" dinleyicisini click'ten ÖNCE tetikleyip paneli
+        // kapatıyor ve tıklama hiç <li>'ye ulaşamadan yutuluyordu (seçenek
+        // görünüyor ama seçilmiyordu). mousedown'ın varsayılan odak
+        // değiştirme davranışını engelleyerek input'ta odağı koru.
+        list.addEventListener('mousedown', function (e) {
+            e.preventDefault();
         });
 
         list.addEventListener('click', function (e) {
