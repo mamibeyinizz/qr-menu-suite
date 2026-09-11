@@ -339,6 +339,8 @@
     flex-shrink: 0;
 }
 .rma-sort-pill.selected .rma-sort-pill-icon { color: var(--rma-accent); }
+.rma-sort-pill-icon svg { opacity: .78; transition: opacity .2s, filter .2s; }
+.rma-sort-pill.selected .rma-sort-pill-icon svg { opacity: 1; filter: drop-shadow(0 0 3px color-mix(in srgb, currentColor 55%, transparent)); }
 .rma-sort-pill-name {
     font-size: 0.74rem;
     font-weight: 700;
@@ -404,6 +406,8 @@
     flex-shrink: 0;
 }
 .rma-filter-card.selected .rma-filter-card-icon { color: var(--rma-accent); }
+.rma-filter-card-icon svg { opacity: .78; transition: opacity .2s, filter .2s; }
+.rma-filter-card.selected .rma-filter-card-icon svg { opacity: 1; filter: drop-shadow(0 0 3px color-mix(in srgb, currentColor 55%, transparent)); }
 .rma-filter-card-name {
     font-size: 0.68rem;
     font-weight: 700;
