@@ -55,7 +55,7 @@ class RMA_Ingredient_Taxonomy {
     public static function add_meta_box() {
         add_meta_box(
             'qmo_uy_ingredients',
-            'Malzemeler ("Ürünüm Yok")',
+            __( 'Malzemeler', 'qrms' ),
             [ __CLASS__, 'render_meta_box' ],
             'rma_menu_item',
             'side',
@@ -72,27 +72,34 @@ class RMA_Ingredient_Taxonomy {
         $selected = wp_get_object_terms( $post->ID, self::TAXONOMY, [ 'fields' => 'ids' ] );
         if ( is_wp_error( $selected ) ) $selected = [];
 
-        echo '<p class="description">Bu üründe kullanılan malzemeleri işaretleyin. Bir malzeme tükendiğinde "Ürünüm Yok" ekranından bu listeye göre ürünler bulunur.</p>';
+        echo '<p class="description">' . esc_html__( 'Bu üründe kullanılan malzemeleri seçin. Bir malzeme tükendiğinde etkilenen ürünler bu listeye göre bulunur.', 'qrms' ) . '</p>';
 
-        echo '<div id="qmo-uy-liste" style="max-height:220px;overflow:auto;border:1px solid #dcdcde;padding:8px;border-radius:4px;background:#fff;">';
+        printf(
+            '<div class="qrms-pe-secim" data-qrms-secim="coklu" data-etiket="%1$s" data-ara="%2$s">',
+            esc_attr__( 'Malzeme seçin…', 'qrms' ),
+            esc_attr__( 'Malzeme ara…', 'qrms' )
+        );
+
+        echo '<div id="qmo-uy-liste" class="qrms-pe-secim-kaynak">';
         if ( empty( $terms ) ) {
-            echo '<p class="description" id="qmo-uy-bos-mesaj">Henüz malzeme eklenmemiş.</p>';
+            echo '<p class="description" id="qmo-uy-bos-mesaj">' . esc_html__( 'Henüz malzeme eklenmemiş.', 'qrms' ) . '</p>';
         }
         foreach ( $terms as $term ) {
             $checked = in_array( $term->term_id, $selected, true ) ? 'checked' : '';
             printf(
-                '<label style="display:block;margin-bottom:4px;"><input type="checkbox" name="qmo_uy_ingredients[]" value="%1$d" %2$s/> %3$s</label>',
+                '<label class="qrms-pe-secenek"><input type="checkbox" name="qmo_uy_ingredients[]" value="%1$d" %2$s/> <span>%3$s</span></label>',
                 (int) $term->term_id,
                 $checked,
                 esc_html( $term->name )
             );
         }
-        echo '</div>';
+        echo '</div></div>';
 
-        echo '<p style="margin-top:8px;display:flex;gap:6px;">
-                <input type="text" id="qmo-uy-yeni-malzeme" placeholder="Yeni malzeme adı…" style="flex:1;">
-                <button type="button" class="button" id="qmo-uy-yeni-malzeme-ekle">Ekle</button>
-              </p>';
+        printf(
+            '<p class="qmo-uy-yeni"><input type="text" id="qmo-uy-yeni-malzeme" class="qrms-pe-input" placeholder="%1$s"><button type="button" class="button" id="qmo-uy-yeni-malzeme-ekle">%2$s</button></p>',
+            esc_attr__( 'Yeni malzeme adı…', 'qrms' ),
+            esc_html__( 'Ekle', 'qrms' )
+        );
 
         // Serbest metinle eklenen isimler kaydedilirken yeni terim olarak
         // oluşturulur (bkz. save()); burada yalnızca listeye görsel checkbox
@@ -113,8 +120,7 @@ class RMA_Ingredient_Taxonomy {
                 if ( bosMesaj ) bosMesaj.remove();
 
                 var etiket = document.createElement( 'label' );
-                etiket.style.display = 'block';
-                etiket.style.marginBottom = '4px';
+                etiket.className = 'qrms-pe-secenek';
 
                 var kutu = document.createElement( 'input' );
                 kutu.type = 'checkbox';
@@ -128,10 +134,16 @@ class RMA_Ingredient_Taxonomy {
                     gizli.disabled = ! kutu.checked;
                 } );
 
+                var metin = document.createElement( 'span' );
+                metin.textContent = ad;
+
                 etiket.appendChild( kutu );
-                etiket.appendChild( document.createTextNode( ' ' + ad ) );
+                etiket.appendChild( metin );
                 etiket.appendChild( gizli );
                 liste.appendChild( etiket );
+
+                // Aranabilir seçim bileşeni açıksa yeni satır anında chip olur.
+                kutu.dispatchEvent( new Event( 'change', { bubbles: true } ) );
 
                 girdi.value = '';
                 girdi.focus();

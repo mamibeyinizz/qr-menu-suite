@@ -717,7 +717,39 @@
 		var renk = renkGirdi ? renkGirdi.value : '#c9a84c';
 
 		onizleme.style.setProperty( '--rma-rozet-renk', renk );
+		onizleme.style.color = metinRengi( renk );
 		onizleme.textContent = ( ikon ? ikon + ' ' : '' ) + ( ad || 'Rozet' );
+	}
+
+	/**
+	 * Rozet zemininde okunabilir metin rengi (WCAG göreli parlaklık).
+	 *
+	 * PHP tarafındaki RMA_Ozel_Rozet::metin_rengi() ile aynı eşiği kullanır;
+	 * mor/kırmızı gibi koyu zeminlerde önizleme metni açık renge döner.
+	 *
+	 * @param {string} renk Hex renk.
+	 * @return {string} '#111111' | '#ffffff'
+	 */
+	function metinRengi( renk ) {
+		var hex = String( renk || '' ).replace( '#', '' );
+
+		if ( 3 === hex.length ) {
+			hex = hex[ 0 ] + hex[ 0 ] + hex[ 1 ] + hex[ 1 ] + hex[ 2 ] + hex[ 2 ];
+		}
+
+		if ( ! /^[0-9a-fA-F]{6}$/.test( hex ) ) {
+			return '#111111';
+		}
+
+		var kanal = [ 0, 2, 4 ].map( function ( basla ) {
+			var c = parseInt( hex.substr( basla, 2 ), 16 ) / 255;
+
+			return c <= 0.03928 ? c / 12.92 : Math.pow( ( c + 0.055 ) / 1.055, 2.4 );
+		} );
+
+		var parlaklik = ( 0.2126 * kanal[ 0 ] ) + ( 0.7152 * kanal[ 1 ] ) + ( 0.0722 * kanal[ 2 ] );
+
+		return parlaklik > 0.1791 ? '#111111' : '#ffffff';
 	}
 
 	/**

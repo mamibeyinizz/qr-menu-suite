@@ -1018,8 +1018,14 @@ qrms_test(
 		qrms_assert_contains( 'RMA_Filtre::aci_seviyeleri()', $kaynak, 'kademeler kayıt defterinden' );
 		qrms_assert_contains( "'rma_is_sugar_free'", $kaynak, 'şekersiz meta kaydedilir' );
 
-		// Restoran sahibi hangi alanın hangi filtreyi beslediğini görür.
-		qrms_assert_contains( 'Menüdeki “Filtrele” panelini besleyen alanlar', $kaynak, 'admin filtre rehberi' );
+		// Filtre rehberi paneli ürün ekranından KALDIRILDI (dikey alan kaplıyordu);
+		// filtreleri besleyen alanların kendisi yerinde durur.
+		qrms_assert_false(
+			false !== strpos( $kaynak, 'panelini besleyen alanlar' ),
+			'filtre rehberi paneli ürün ekranında gösterilmez'
+		);
+		qrms_assert_contains( "name=\"rma_allergens[]\"", $kaynak, 'alerjen alanı korundu' );
+		qrms_assert_contains( "'rma_meat_origin'", $kaynak, 'et menşei alanı korundu' );
 	}
 );
 

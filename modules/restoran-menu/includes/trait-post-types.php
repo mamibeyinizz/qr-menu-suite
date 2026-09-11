@@ -77,128 +77,227 @@ trait RMA_Post_Types_Trait {
     public function render_item_details_meta_box( $post ) {
         wp_nonce_field( 'rma_save_meta', 'rma_meta_nonce' );
 
-        $fields = [
-            'rma_price'       => 'Fiyat (₺)',
-            'rma_calories'    => 'Kalori (kcal)',
-            'rma_grams'       => 'Gramaj (g)',
-            'rma_protein'     => 'Protein (g)',
-            'rma_carbs'       => 'Karbonhidrat (g)',
-            'rma_fat'         => 'Yağ (g)',
-            'rma_prep_time'   => 'Hazırlanış Süresi (dk)',
+        // Besin değerleri tek ızgarada toplanır; fiyat ayrı ele alınır çünkü
+        // ekranın en üstündeki "Temel Bilgiler" kartına taşınır.
+        $besin = [
+            'rma_calories'  => [ __( 'Kalori', 'qrms' ),           __( 'kcal', 'qrms' ) ],
+            'rma_grams'     => [ __( 'Gramaj', 'qrms' ),           __( 'g', 'qrms' ) ],
+            'rma_prep_time' => [ __( 'Hazırlanış Süresi', 'qrms' ), __( 'dk', 'qrms' ) ],
+            'rma_protein'   => [ __( 'Protein', 'qrms' ),          __( 'g', 'qrms' ) ],
+            'rma_carbs'     => [ __( 'Karbonhidrat', 'qrms' ),     __( 'g', 'qrms' ) ],
+            'rma_fat'       => [ __( 'Yağ', 'qrms' ),              __( 'g', 'qrms' ) ],
         ];
 
-        $checkboxes = [
-            'rma_is_vegan'          => 'Vegan',
-            'rma_is_vegetarian'     => 'Vejetaryen',
-            'rma_is_gluten_free'    => 'Glütensiz',
-            'rma_is_sugar_free'     => 'Şekersiz',
-            'rma_badge_popular'     => 'Popüler Rozeti',
-            'rma_badge_new'         => 'Yeni Rozeti',
-            'rma_badge_recommended' => 'Önerilen Rozeti',
-            'rma_badge_discount'    => 'İndirim Rozeti',
-            'rma_active'            => 'Aktif Durum (Göster)',
+        $ozellikler = [
+            'rma_is_vegan'       => __( 'Vegan', 'qrms' ),
+            'rma_is_vegetarian'  => __( 'Vejetaryen', 'qrms' ),
+            'rma_is_gluten_free' => __( 'Glütensiz', 'qrms' ),
+            'rma_is_sugar_free'  => __( 'Şekersiz', 'qrms' ),
         ];
 
-        echo '<div style="display:flex;flex-wrap:wrap;gap:20px;">';
-        foreach ( $fields as $id => $label ) {
-            $val  = get_post_meta( $post->ID, $id, true );
-            $type = ( $id === 'rma_prep_time' ) ? 'number' : 'text';
-            $step = ( $id === 'rma_prep_time' ) ? " step='1' min='0'" : '';
-            echo "<div style='flex:1 1 30%;'>
-                    <label for='{$id}'><strong>{$label}</strong></label><br>
-                    <input type='{$type}'{$step} id='{$id}' name='{$id}' value='" . esc_attr( $val ) . "' style='width:100%;'/>
-                  </div>";
-        }
+        $rozetler = [
+            'rma_badge_popular'     => [ '⭐',   __( 'Popüler', 'qrms' ) ],
+            'rma_badge_new'         => [ '🆕',   __( 'Yeni', 'qrms' ) ],
+            'rma_badge_recommended' => [ '👨‍🍳', __( 'Önerilen', 'qrms' ) ],
+            'rma_badge_discount'    => [ '🏷',   __( 'İndirim', 'qrms' ) ],
+        ];
 
-        // Acı seviyesi artık serbest metin değil: menüdeki "Acılık" filtresi
-        // bu alandan beslenir ve "orta-acı" gibi bir yazım filtreyi sessizce
-        // kaçırırdı. 0-3 olan eski değerler anlamını korur, 4 (Çok Acı) eklendi.
+        $price_val = get_post_meta( $post->ID, 'rma_price', true );
         $spicy_val = (string) get_post_meta( $post->ID, RMA_Filtre::META_ACI, true );
-        echo "<div style='flex:1 1 30%;'>
-                <label for='" . esc_attr( RMA_Filtre::META_ACI ) . "'><strong>Acı Seviyesi</strong></label><br>
-                <select id='" . esc_attr( RMA_Filtre::META_ACI ) . "' name='" . esc_attr( RMA_Filtre::META_ACI ) . "' style='width:100%;'>
-                  <option value=''" . selected( $spicy_val, '', false ) . ">Belirtilmemiş</option>";
-        foreach ( RMA_Filtre::aci_seviyeleri() as $seviye => $etiket ) {
-            echo "<option value='" . esc_attr( $seviye ) . "'" . selected( $spicy_val, (string) $seviye, false ) . '>'
-               . esc_html( $seviye . ' — ' . $etiket ) . '</option>';
-        }
-        echo '</select></div>';
+        ?>
+        <div class="qrms-pe-groups">
 
-        echo '</div><hr><div style="display:flex;flex-wrap:wrap;gap:20px;">';
-        foreach ( $checkboxes as $id => $label ) {
-            $checked = get_post_meta( $post->ID, $id, true ) === '1' ? 'checked' : '';
-            echo "<div style='flex:1 1 20%;'>
-                    <label><input type='checkbox' name='{$id}' value='1' {$checked}/> {$label}</label>
-                  </div>";
-        }
-        echo '</div>';
+            <?php /* Fiyat — ekranın en üstündeki Temel Bilgiler kartına taşınır. */ ?>
+            <div class="qrms-pe-field qrms-pe-field--price" data-qrms-pe-slot="fiyat">
+                <label class="qrms-pe-label" for="rma_price"><?php esc_html_e( 'Fiyat', 'qrms' ); ?></label>
+                <div class="qrms-pe-affix">
+                    <input type="text" id="rma_price" name="rma_price" class="qrms-pe-input" inputmode="decimal"
+                           value="<?php echo esc_attr( $price_val ); ?>" placeholder="0">
+                    <span class="qrms-pe-affix-son" aria-hidden="true">₺</span>
+                </div>
+            </div>
 
-        /* ---- Tükendi (stok) — Göster/Gizle'den ayrı, ürünü menüden silmez ---- */
-        $tukendi_checked = RMA_Tukendi::urun_tukendi( $post->ID ) ? 'checked' : '';
-        echo '<hr><div style="margin:10px 0 6px;"><strong>Stok durumu</strong></div>';
-        echo "<label style='display:block;'>
-                <input type='checkbox' name='rma_tukendi' value='1' {$tukendi_checked}/>
-                Tükendi — ürün menüde görünür kalır, sipariş alınmaz
-              </label>";
-        echo '<p style="color:#777;font-size:12px;margin:6px 0 0;">Göster/Gizle ürünü menüden tamamen kaldırır. Tükendi ise ürünü yerinde bırakır ve "Tükendi" etiketi basar.</p>';
+            <section class="qrms-pe-sec" data-qrms-pe-collapse data-open="1">
+                <h3 class="qrms-pe-sec-bas">
+                    <button type="button" class="qrms-pe-sec-tetik" aria-expanded="true">
+                        <span class="qrms-pe-sec-ikon" aria-hidden="true">🥗</span>
+                        <span class="qrms-pe-sec-metin"><?php esc_html_e( 'Özellikler', 'qrms' ); ?></span>
+                        <span class="qrms-pe-sec-ok" aria-hidden="true"></span>
+                    </button>
+                </h3>
+                <div class="qrms-pe-sec-govde">
+                    <div class="qrms-pe-pills">
+                        <?php foreach ( $ozellikler as $id => $label ) : ?>
+                        <label class="qrms-pe-pill">
+                            <input type="checkbox" name="<?php echo esc_attr( $id ); ?>" value="1"
+                                <?php checked( get_post_meta( $post->ID, $id, true ), '1' ); ?>>
+                            <span><?php echo esc_html( $label ); ?></span>
+                        </label>
+                        <?php endforeach; ?>
+                    </div>
 
-        /* ---- 1 Temmuz 2026 Şeffaf Menü Yönetmeliği Alanları ---- */
-        echo '<hr><div style="margin:10px 0 6px;"><strong style="color:#b8860b;">📋 Şeffaf Menü Bilgileri (1 Temmuz 2026 Yönetmeliği)</strong></div>';
-        echo '<div style="display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start;">';
+                    <div class="qrms-pe-field qrms-pe-field--yari">
+                        <label class="qrms-pe-label" for="<?php echo esc_attr( RMA_Filtre::META_ACI ); ?>"><?php esc_html_e( 'Acılık', 'qrms' ); ?></label>
+                        <select id="<?php echo esc_attr( RMA_Filtre::META_ACI ); ?>" name="<?php echo esc_attr( RMA_Filtre::META_ACI ); ?>" class="qrms-pe-input qrms-pe-select">
+                            <option value="" <?php selected( $spicy_val, '' ); ?>><?php esc_html_e( 'Belirtilmemiş', 'qrms' ); ?></option>
+                            <?php foreach ( RMA_Filtre::aci_seviyeleri() as $seviye => $etiket ) : ?>
+                            <option value="<?php echo esc_attr( $seviye ); ?>" <?php selected( $spicy_val, (string) $seviye ); ?>><?php echo esc_html( $etiket ); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
+            </section>
 
-        // Et menşei — tek seçim dropdown
-        $meat_val = get_post_meta( $post->ID, 'rma_meat_origin', true );
-        echo "<div style='flex:1 1 30%;'>
-                <label for='rma_meat_origin'><strong>Et Menşei</strong></label><br>
-                <select id='rma_meat_origin' name='rma_meat_origin' style='width:100%;'>";
-        foreach ( $this->get_meat_origin_options() as $val => $label ) {
-            $sel = selected( $meat_val, $val, false );
-            echo "<option value='" . esc_attr( $val ) . "' {$sel}>" . esc_html( $label ) . "</option>";
-        }
-        echo "</select></div>";
+            <section class="qrms-pe-sec" data-qrms-pe-collapse data-open="1">
+                <h3 class="qrms-pe-sec-bas">
+                    <button type="button" class="qrms-pe-sec-tetik" aria-expanded="true">
+                        <span class="qrms-pe-sec-ikon" aria-hidden="true">⭐</span>
+                        <span class="qrms-pe-sec-metin"><?php esc_html_e( 'Rozetler', 'qrms' ); ?></span>
+                        <span class="qrms-pe-sec-ok" aria-hidden="true"></span>
+                    </button>
+                </h3>
+                <div class="qrms-pe-sec-govde">
+                    <div class="qrms-pe-secim"
+                         data-qrms-secim="coklu"
+                         data-etiket="<?php esc_attr_e( 'Rozet seçin…', 'qrms' ); ?>"
+                         data-ara="<?php esc_attr_e( 'Rozet ara…', 'qrms' ); ?>">
+                        <div class="qrms-pe-secim-kaynak">
+                            <?php foreach ( $rozetler as $id => $rozet ) : ?>
+                            <label class="qrms-pe-secenek">
+                                <input type="checkbox" name="<?php echo esc_attr( $id ); ?>" value="1"
+                                    <?php checked( get_post_meta( $post->ID, $id, true ), '1' ); ?>>
+                                <span><span class="qrms-pe-secenek-ikon" aria-hidden="true"><?php echo esc_html( $rozet[0] ); ?></span><?php echo esc_html( $rozet[1] ); ?></span>
+                            </label>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                </div>
+            </section>
 
-        // Alkol / domuz türevi
-        $alcohol_checked = get_post_meta( $post->ID, 'rma_contains_alcohol', true ) === '1' ? 'checked' : '';
-        $pork_checked    = get_post_meta( $post->ID, 'rma_contains_pork',    true ) === '1' ? 'checked' : '';
-        echo "<div style='flex:1 1 30%;'>
-                <label><strong>Diğer</strong></label><br>
-                <label style='display:block;margin-top:6px;'><input type='checkbox' name='rma_contains_alcohol' value='1' {$alcohol_checked}/> Alkol İçerir</label>
-                <label style='display:block;margin-top:4px;'><input type='checkbox' name='rma_contains_pork' value='1' {$pork_checked}/> Domuz Türevi İçerir</label>
-              </div>";
+            <section class="qrms-pe-sec" data-qrms-pe-collapse data-open="1">
+                <h3 class="qrms-pe-sec-bas">
+                    <button type="button" class="qrms-pe-sec-tetik" aria-expanded="true">
+                        <span class="qrms-pe-sec-ikon" aria-hidden="true">⚠️</span>
+                        <span class="qrms-pe-sec-metin"><?php esc_html_e( 'Alerjenler', 'qrms' ); ?></span>
+                        <span class="qrms-pe-sec-ok" aria-hidden="true"></span>
+                    </button>
+                </h3>
+                <div class="qrms-pe-sec-govde">
+                    <?php
+                    $selected_allergens = wp_get_object_terms( $post->ID, 'rma_allergen', [ 'fields' => 'slugs' ] );
+                    if ( is_wp_error( $selected_allergens ) ) $selected_allergens = [];
+                    ?>
+                    <div class="qrms-pe-secim"
+                         data-qrms-secim="coklu"
+                         data-etiket="<?php esc_attr_e( 'Alerjen seçin…', 'qrms' ); ?>"
+                         data-ara="<?php esc_attr_e( 'Alerjen ara…', 'qrms' ); ?>">
+                        <div class="qrms-pe-secim-kaynak">
+                            <?php foreach ( $this->get_allergen_definitions() as $slug => $def ) : ?>
+                            <label class="qrms-pe-secenek">
+                                <input type="checkbox" name="rma_allergens[]" value="<?php echo esc_attr( $slug ); ?>"
+                                    <?php checked( in_array( $slug, $selected_allergens, true ) ); ?>>
+                                <span><span class="qrms-pe-secenek-ikon" aria-hidden="true"><?php echo esc_html( $def['icon'] ); ?></span><?php echo esc_html( $def['label'] ); ?></span>
+                            </label>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                </div>
+            </section>
 
-        echo '</div>';
+            <section class="qrms-pe-sec" data-qrms-pe-collapse data-open="0">
+                <h3 class="qrms-pe-sec-bas">
+                    <button type="button" class="qrms-pe-sec-tetik" aria-expanded="false">
+                        <span class="qrms-pe-sec-ikon" aria-hidden="true">📊</span>
+                        <span class="qrms-pe-sec-metin"><?php esc_html_e( 'Besin Bilgileri', 'qrms' ); ?></span>
+                        <span class="qrms-pe-sec-ok" aria-hidden="true"></span>
+                    </button>
+                </h3>
+                <div class="qrms-pe-sec-govde">
+                    <div class="qrms-pe-izgara">
+                        <?php foreach ( $besin as $id => $bilgi ) : ?>
+                        <div class="qrms-pe-field">
+                            <label class="qrms-pe-label" for="<?php echo esc_attr( $id ); ?>"><?php echo esc_html( $bilgi[0] ); ?></label>
+                            <div class="qrms-pe-affix">
+                                <input type="<?php echo 'rma_prep_time' === $id ? 'number' : 'text'; ?>"
+                                    <?php echo 'rma_prep_time' === $id ? ' step="1" min="0"' : ''; ?>
+                                    id="<?php echo esc_attr( $id ); ?>" name="<?php echo esc_attr( $id ); ?>"
+                                    class="qrms-pe-input" inputmode="decimal"
+                                    value="<?php echo esc_attr( get_post_meta( $post->ID, $id, true ) ); ?>" placeholder="—">
+                                <span class="qrms-pe-affix-son" aria-hidden="true"><?php echo esc_html( $bilgi[1] ); ?></span>
+                            </div>
+                        </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            </section>
 
-        // Alerjen çoklu seçim — taksonomi tabanlı checklist
-        $selected_allergens = wp_get_object_terms( $post->ID, 'rma_allergen', [ 'fields' => 'slugs' ] );
-        if ( is_wp_error( $selected_allergens ) ) $selected_allergens = [];
+            <section class="qrms-pe-sec" data-qrms-pe-collapse data-open="1">
+                <h3 class="qrms-pe-sec-bas">
+                    <button type="button" class="qrms-pe-sec-tetik" aria-expanded="true">
+                        <span class="qrms-pe-sec-ikon" aria-hidden="true">📦</span>
+                        <span class="qrms-pe-sec-metin"><?php esc_html_e( 'Ürün Durumu', 'qrms' ); ?></span>
+                        <span class="qrms-pe-sec-ok" aria-hidden="true"></span>
+                    </button>
+                </h3>
+                <div class="qrms-pe-sec-govde">
+                    <label class="qrms-pe-anahtar">
+                        <input type="checkbox" name="rma_active" value="1" <?php checked( get_post_meta( $post->ID, 'rma_active', true ), '1' ); ?>>
+                        <span class="qrms-pe-anahtar-metin">
+                            <strong><?php esc_html_e( 'Menüde göster', 'qrms' ); ?></strong>
+                            <em><?php esc_html_e( 'Kapatılırsa ürün menüden tamamen kalkar.', 'qrms' ); ?></em>
+                        </span>
+                    </label>
+                    <label class="qrms-pe-anahtar">
+                        <input type="checkbox" name="rma_tukendi" value="1" <?php checked( RMA_Tukendi::urun_tukendi( $post->ID ) ); ?>>
+                        <span class="qrms-pe-anahtar-metin">
+                            <strong><?php esc_html_e( 'Tükendi', 'qrms' ); ?></strong>
+                            <em><?php esc_html_e( 'Ürün menüde kalır, "Tükendi" etiketiyle görünür ve sipariş alınmaz.', 'qrms' ); ?></em>
+                        </span>
+                    </label>
+                </div>
+            </section>
 
-        echo '<div style="margin-top:16px;"><label><strong>Alerjenler</strong></label>
-              <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:8px;">';
-        foreach ( $this->get_allergen_definitions() as $slug => $def ) {
-            $chk = in_array( $slug, $selected_allergens, true ) ? 'checked' : '';
-            echo "<label style='flex:0 0 auto;border:1px solid #dcdcdc;border-radius:4px;padding:5px 10px;background:#fafafa;'>
-                    <input type='checkbox' name='rma_allergens[]' value='" . esc_attr( $slug ) . "' {$chk}/> {$def['icon']} " . esc_html( $def['label'] ) . "
-                  </label>";
-        }
-        echo '</div></div>';
-        echo '<p style="color:#777;font-size:12px;margin-top:8px;">Bu bölümdeki bilgiler işletmenin resmi beyanı sayılır. Doğruluğu için uzman/diyetisyen onayı alınması önerilir.</p>';
+            <section class="qrms-pe-sec" data-qrms-pe-collapse data-open="0">
+                <h3 class="qrms-pe-sec-bas">
+                    <button type="button" class="qrms-pe-sec-tetik" aria-expanded="false">
+                        <span class="qrms-pe-sec-ikon" aria-hidden="true">📋</span>
+                        <span class="qrms-pe-sec-metin"><?php esc_html_e( 'Şeffaf Menü Bilgileri', 'qrms' ); ?></span>
+                        <span class="qrms-pe-sec-ok" aria-hidden="true"></span>
+                    </button>
+                </h3>
+                <div class="qrms-pe-sec-govde">
+                    <div class="qrms-pe-izgara qrms-pe-izgara--iki">
+                        <div class="qrms-pe-field">
+                            <label class="qrms-pe-label" for="rma_meat_origin"><?php esc_html_e( 'Et Menşei', 'qrms' ); ?></label>
+                            <select id="rma_meat_origin" name="rma_meat_origin" class="qrms-pe-input qrms-pe-select">
+                                <?php
+                                $meat_val = get_post_meta( $post->ID, 'rma_meat_origin', true );
+                                foreach ( $this->get_meat_origin_options() as $val => $label ) :
+                                ?>
+                                <option value="<?php echo esc_attr( $val ); ?>" <?php selected( $meat_val, $val ); ?>><?php echo esc_html( $label ); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="qrms-pe-field">
+                            <span class="qrms-pe-label"><?php esc_html_e( 'Diğer', 'qrms' ); ?></span>
+                            <div class="qrms-pe-pills">
+                                <label class="qrms-pe-pill">
+                                    <input type="checkbox" name="rma_contains_alcohol" value="1" <?php checked( get_post_meta( $post->ID, 'rma_contains_alcohol', true ), '1' ); ?>>
+                                    <span><?php esc_html_e( 'Alkol içerir', 'qrms' ); ?></span>
+                                </label>
+                                <label class="qrms-pe-pill">
+                                    <input type="checkbox" name="rma_contains_pork" value="1" <?php checked( get_post_meta( $post->ID, 'rma_contains_pork', true ), '1' ); ?>>
+                                    <span><?php esc_html_e( 'Domuz türevi içerir', 'qrms' ); ?></span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <p class="qrms-pe-not"><?php esc_html_e( 'Bu bölümdeki bilgiler işletmenin resmi beyanı sayılır. Doğruluğu için uzman/diyetisyen onayı alınması önerilir. (1 Temmuz 2026 Şeffaf Menü Yönetmeliği)', 'qrms' ); ?></p>
+                </div>
+            </section>
 
-        /* ---- Filtre rehberi: hangi alan menüdeki hangi filtreyi besliyor ----
-           Ayrı bir ekran açılmaz; ürünü düzenleyen kişi kaydettiği verinin
-           müşteri tarafında ne yaptığını burada görür. Özellikle TÜRETİLEN
-           üç filtre (Helal / Laktozsuz / Acısız) için kritik: onların ayrı
-           bir kutusu yoktur, başka alanlardan hesaplanır. */
-        echo '<hr><div style="margin:10px 0 6px;"><strong>🔎 Menüdeki “Filtrele” panelini besleyen alanlar</strong></div>';
-        echo '<ul style="color:#555;font-size:12px;margin:0;padding-left:18px;line-height:1.7;">'
-           . '<li><strong>Vegan / Vejetaryen / Glütensiz / Şekersiz</strong> — yukarıdaki kutucuklar.</li>'
-           . '<li><strong>Laktozsuz</strong> — ayrı kutucuğu yoktur: <em>Süt / Laktoz</em> alerjeni <u>işaretli değilse</u> ürün laktozsuz sayılır.</li>'
-           . '<li><strong>Helal</strong> — ayrı kutucuğu yoktur: <em>Alkol İçerir</em> ve <em>Domuz Türevi İçerir</em> <u>işaretli değilse</u> ürün helal sayılır.</li>'
-           . '<li><strong>Acısız / Az Acı / Orta / Acı / Çok Acı</strong> — <em>Acı Seviyesi</em> alanı.</li>'
-           . '<li><strong>Alerjen hariç tut</strong> — yukarıdaki alerjen listesi.</li>'
-           . '<li><strong>Kalori aralığı</strong> — <em>Kalori (kcal)</em>. Boş bırakılan ürün kalori filtresine <u>girmez</u>.</li>'
-           . '<li><strong>Fiyat aralığı</strong> — <em>Fiyat</em> (kampanya varsa kampanyalı fiyat esas alınır).</li>'
-           . '<li><strong>Popüler / Yeni / Önerilen / İndirimli</strong> — rozet kutucukları. <strong>Tükendikleri Gizle</strong> — <em>Stok durumu</em>.</li>'
-           . '</ul>';
+        </div>
+        <?php
     }
 
     public function set_default_active_status( $post_id, $post, $update ) {

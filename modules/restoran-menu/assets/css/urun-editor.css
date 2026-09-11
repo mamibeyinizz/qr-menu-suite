@@ -1,0 +1,1250 @@
+/* =====================================================================
+   QR MENÜ — ÜRÜN EKLE / DÜZENLE EKRANI
+
+   KAPSAM: her kural `body.qrms-product-editor` ile başlar. Bu sınıf
+   yalnızca `rma_menu_item` düzenleme ekranına eklenir
+   (bkz. RMA_Urun_Editor::body_class). WordPress'in üst çubuğuna, sol
+   menüsüne ve diğer yönetim ekranlarına tek bir kural bile yazılmaz.
+
+   Tasarım dili: sıcak beyaz kartlar, çok açık bej zemin, koyu lacivert
+   metin, ölçülü altın vurgu. Altın yalnızca bölüm imzası, aktif seçim ve
+   ana eylem düğmesinde kullanılır.
+===================================================================== */
+
+body.qrms-product-editor {
+	--pe-accent:      #b8912f;
+	--pe-accent-soft: rgba(184, 145, 47, .12);
+	--pe-accent-hi:   #9c7a22;
+	--pe-page:        #f6f4ef;
+	--pe-surface:     #fffdfa;
+	--pe-surface-2:   #faf8f4;
+	--pe-border:      #e4e0d7;
+	--pe-border-hi:   #cfc9bb;
+	--pe-text:        #1b2430;
+	--pe-text-soft:   #4a5462;
+	--pe-muted:       #6d7480;
+	--pe-success:     #1a7f43;
+	--pe-danger:      #b3261e;
+	--pe-radius:      12px;
+	--pe-radius-sm:   8px;
+	--pe-shadow:      0 1px 2px rgba(27, 36, 48, .05), 0 6px 18px rgba(27, 36, 48, .05);
+
+	background: var(--pe-page);
+}
+
+body.qrms-product-editor [hidden] {
+	display: none !important;
+}
+
+body.qrms-product-editor #wpbody-content {
+	padding-bottom: 40px;
+}
+
+body.qrms-product-editor .wrap > h1.wp-heading-inline {
+	color: var(--pe-text);
+	font-size: 26px;
+	font-weight: 650;
+	letter-spacing: -.015em;
+}
+
+body.qrms-product-editor .qrms-pe-ust-not {
+	color: var(--pe-muted);
+	font-size: 13px;
+	margin: -4px 0 18px;
+}
+
+/* ---------------------------------------------------------------
+   KART: WordPress metabox'ının yerine geçen gövde
+--------------------------------------------------------------- */
+
+body.qrms-product-editor #poststuff .postbox,
+body.qrms-product-editor .qrms-pe-kart {
+	background: var(--pe-surface);
+	border: 1px solid var(--pe-border);
+	border-radius: var(--pe-radius);
+	box-shadow: var(--pe-shadow);
+	margin-bottom: 18px;
+	overflow: hidden;
+}
+
+body.qrms-product-editor #poststuff .postbox > .postbox-header {
+	background: transparent;
+	border-bottom: 1px solid var(--pe-border);
+}
+
+body.qrms-product-editor #poststuff .postbox > .postbox-header h2,
+body.qrms-product-editor #poststuff .postbox > .postbox-header h3 {
+	color: var(--pe-text);
+	font-size: 14px;
+	font-weight: 650;
+	letter-spacing: -.005em;
+	padding: 14px 18px;
+}
+
+/* Kutu başlığının solundaki ince altın imza. */
+body.qrms-product-editor #poststuff .postbox > .postbox-header h2::before {
+	background: var(--pe-accent);
+	border-radius: 2px;
+	content: "";
+	display: inline-block;
+	height: 14px;
+	margin-right: 10px;
+	vertical-align: -2px;
+	width: 3px;
+}
+
+body.qrms-product-editor #poststuff .postbox .handle-actions .handlediv,
+body.qrms-product-editor #poststuff .postbox .handle-actions .handle-order-higher,
+body.qrms-product-editor #poststuff .postbox .handle-actions .handle-order-lower {
+	color: var(--pe-muted);
+}
+
+body.qrms-product-editor #poststuff .postbox .inside {
+	color: var(--pe-text-soft);
+	padding: 16px 18px 18px;
+}
+
+body.qrms-product-editor .qrms-pe-kart-bas {
+	align-items: center;
+	border-bottom: 1px solid var(--pe-border);
+	display: flex;
+	gap: 8px;
+	padding: 14px 18px;
+}
+
+body.qrms-product-editor .qrms-pe-kart-baslik {
+	color: var(--pe-text);
+	font-size: 14px;
+	font-weight: 650;
+}
+
+body.qrms-product-editor .qrms-pe-sec-ikon {
+	font-size: 15px;
+	line-height: 1;
+}
+
+/* ---------------------------------------------------------------
+   ÜRÜN ADI + AÇIKLAMA
+--------------------------------------------------------------- */
+
+body.qrms-product-editor #titlediv {
+	background: var(--pe-surface);
+	border: 1px solid var(--pe-border);
+	border-radius: var(--pe-radius);
+	box-shadow: var(--pe-shadow);
+	margin-bottom: 18px;
+	padding: 16px 18px;
+}
+
+body.qrms-product-editor #titlediv::before {
+	color: var(--pe-text);
+	content: attr(data-qrms-etiket);
+	display: block;
+	font-size: 12px;
+	font-weight: 650;
+	letter-spacing: .02em;
+	margin-bottom: 8px;
+}
+
+body.qrms-product-editor #titlediv #title {
+	background: var(--pe-surface-2);
+	border: 1px solid var(--pe-border);
+	border-radius: var(--pe-radius-sm);
+	box-shadow: none;
+	color: var(--pe-text);
+	font-size: 20px;
+	font-weight: 600;
+	line-height: 1.3;
+	min-height: 52px;
+	padding: 12px 14px;
+}
+
+body.qrms-product-editor #titlediv #title:focus {
+	background: var(--pe-surface);
+	border-color: var(--pe-accent);
+	box-shadow: 0 0 0 3px var(--pe-accent-soft);
+	outline: none;
+}
+
+body.qrms-product-editor #titlediv #title::placeholder {
+	color: var(--pe-muted);
+	font-weight: 400;
+}
+
+body.qrms-product-editor #postdivrich.qrms-pe-kart {
+	padding: 0;
+}
+
+body.qrms-product-editor #postdivrich.qrms-pe-kart #wp-content-wrap {
+	padding: 14px 18px 18px;
+}
+
+body.qrms-product-editor .qrms-pe-editor-bas {
+	border-bottom: 1px solid var(--pe-border);
+	margin: 0;
+	padding: 14px 18px;
+}
+
+body.qrms-product-editor .qrms-pe-editor-bas strong {
+	color: var(--pe-text);
+	display: block;
+	font-size: 14px;
+	font-weight: 650;
+}
+
+body.qrms-product-editor .qrms-pe-editor-bas em {
+	color: var(--pe-muted);
+	display: block;
+	font-size: 12px;
+	font-style: normal;
+	margin-top: 2px;
+}
+
+body.qrms-product-editor #postdivrich .wp-editor-tools {
+	background: transparent;
+}
+
+body.qrms-product-editor #wp-content-editor-tools .wp-switch-editor {
+	background: var(--pe-surface-2);
+	border: 1px solid var(--pe-border);
+	border-bottom-color: var(--pe-border);
+	border-radius: 6px 6px 0 0;
+	color: var(--pe-text-soft);
+}
+
+body.qrms-product-editor #wp-content-editor-tools .wp-switch-editor.switch-tmce[aria-pressed="true"],
+body.qrms-product-editor #wp-content-editor-tools .wp-switch-editor.switch-html[aria-pressed="true"] {
+	background: var(--pe-surface);
+	color: var(--pe-text);
+}
+
+body.qrms-product-editor #wp-content-wrap .mce-toolbar-grp,
+body.qrms-product-editor #wp-content-wrap .mce-edit-area,
+body.qrms-product-editor #wp-content-wrap .mce-statusbar {
+	border-color: var(--pe-border) !important;
+}
+
+body.qrms-product-editor #wp-content-editor-container {
+	border-radius: var(--pe-radius-sm);
+	overflow: hidden;
+}
+
+/* ---------------------------------------------------------------
+   TEMEL BİLGİLER KARTI (fiyat + kategori + görsel taşınır)
+--------------------------------------------------------------- */
+
+body.qrms-product-editor .qrms-pe-temel-izgara {
+	display: grid;
+	gap: 16px;
+	grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr) minmax(0, 1fr);
+	padding: 16px 18px 18px;
+}
+
+body.qrms-product-editor .qrms-pe-yuva > .postbox {
+	background: transparent;
+	border: 0;
+	box-shadow: none;
+	margin: 0;
+}
+
+body.qrms-product-editor .qrms-pe-yuva > .postbox > .postbox-header {
+	border-bottom: 0;
+	padding: 0;
+}
+
+body.qrms-product-editor .qrms-pe-yuva > .postbox > .postbox-header h2 {
+	font-size: 12px;
+	letter-spacing: .02em;
+	padding: 0 0 8px;
+}
+
+body.qrms-product-editor .qrms-pe-yuva > .postbox > .postbox-header h2::before {
+	display: none;
+}
+
+body.qrms-product-editor .qrms-pe-yuva > .postbox .handle-actions {
+	display: none;
+}
+
+body.qrms-product-editor .qrms-pe-yuva > .postbox > .inside {
+	margin: 0;
+	padding: 0;
+}
+
+/* ---------------------------------------------------------------
+   ALAN, ETİKET, GİRDİ
+--------------------------------------------------------------- */
+
+body.qrms-product-editor .qrms-pe-field {
+	margin-bottom: 14px;
+	min-width: 0;
+}
+
+body.qrms-product-editor .qrms-pe-field:last-child {
+	margin-bottom: 0;
+}
+
+body.qrms-product-editor .qrms-pe-label {
+	color: var(--pe-text);
+	display: block;
+	font-size: 12px;
+	font-weight: 650;
+	letter-spacing: .02em;
+	margin-bottom: 6px;
+}
+
+body.qrms-product-editor .qrms-pe-input {
+	background: var(--pe-surface-2);
+	border: 1px solid var(--pe-border);
+	border-radius: var(--pe-radius-sm);
+	box-shadow: none;
+	color: var(--pe-text);
+	display: block;
+	font-size: 14px;
+	line-height: 1.4;
+	margin: 0;
+	max-width: 100%;
+	min-height: 44px;
+	padding: 10px 12px;
+	width: 100%;
+}
+
+body.qrms-product-editor .qrms-pe-input:hover {
+	border-color: var(--pe-border-hi);
+}
+
+body.qrms-product-editor .qrms-pe-input:focus {
+	background: var(--pe-surface);
+	border-color: var(--pe-accent);
+	box-shadow: 0 0 0 3px var(--pe-accent-soft);
+	outline: none;
+}
+
+body.qrms-product-editor .qrms-pe-input:disabled {
+	background: #f0eee9;
+	color: var(--pe-muted);
+	cursor: not-allowed;
+}
+
+body.qrms-product-editor .qrms-pe-input[aria-invalid="true"] {
+	border-color: var(--pe-danger);
+}
+
+body.qrms-product-editor .qrms-pe-select {
+	appearance: none;
+	-webkit-appearance: none;
+	background-image: linear-gradient(45deg, transparent 50%, var(--pe-muted) 50%), linear-gradient(135deg, var(--pe-muted) 50%, transparent 50%);
+	background-position: calc(100% - 18px) 50%, calc(100% - 13px) 50%;
+	background-repeat: no-repeat;
+	background-size: 5px 5px, 5px 5px;
+	padding-right: 34px;
+}
+
+body.qrms-product-editor .qrms-pe-affix {
+	position: relative;
+}
+
+body.qrms-product-editor .qrms-pe-affix .qrms-pe-input {
+	padding-right: 48px;
+}
+
+body.qrms-product-editor .qrms-pe-affix-son {
+	color: var(--pe-muted);
+	font-size: 13px;
+	font-weight: 600;
+	pointer-events: none;
+	position: absolute;
+	right: 12px;
+	top: 50%;
+	transform: translateY(-50%);
+}
+
+body.qrms-product-editor .qrms-pe-field--price .qrms-pe-input {
+	font-size: 18px;
+	font-weight: 650;
+	min-height: 52px;
+}
+
+body.qrms-product-editor .qrms-pe-not {
+	color: var(--pe-muted);
+	font-size: 12px;
+	line-height: 1.6;
+	margin: 10px 0 0;
+}
+
+body.qrms-product-editor .qrms-pe-izgara {
+	display: grid;
+	gap: 12px 14px;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+body.qrms-product-editor .qrms-pe-izgara--iki {
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+body.qrms-product-editor .qrms-pe-izgara .qrms-pe-field {
+	margin-bottom: 0;
+}
+
+body.qrms-product-editor .qrms-pe-field--yari {
+	max-width: 320px;
+}
+
+/* ---------------------------------------------------------------
+   BÖLÜM (katlanabilir)
+--------------------------------------------------------------- */
+
+body.qrms-product-editor .qrms-pe-groups {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+body.qrms-product-editor .qrms-pe-sec {
+	border-top: 1px solid var(--pe-border);
+	padding-top: 4px;
+}
+
+body.qrms-product-editor .qrms-pe-groups > .qrms-pe-field--price {
+	margin-bottom: 16px;
+	max-width: 260px;
+}
+
+body.qrms-product-editor .qrms-pe-sec-bas {
+	margin: 0;
+	padding: 0;
+}
+
+body.qrms-product-editor .qrms-pe-sec-tetik {
+	align-items: center;
+	background: none;
+	border: 0;
+	color: var(--pe-text);
+	cursor: pointer;
+	display: flex;
+	font-size: 13px;
+	font-weight: 650;
+	gap: 8px;
+	min-height: 44px;
+	padding: 10px 2px;
+	text-align: left;
+	width: 100%;
+}
+
+body.qrms-product-editor .qrms-pe-sec-tetik:focus-visible {
+	border-radius: 6px;
+	box-shadow: 0 0 0 3px var(--pe-accent-soft);
+	outline: 2px solid var(--pe-accent);
+}
+
+body.qrms-product-editor .qrms-pe-sec-metin {
+	flex: 1 1 auto;
+}
+
+body.qrms-product-editor .qrms-pe-sec-ok {
+	border-bottom: 2px solid var(--pe-muted);
+	border-right: 2px solid var(--pe-muted);
+	height: 8px;
+	transform: rotate(45deg);
+	transition: transform .15s ease;
+	width: 8px;
+}
+
+body.qrms-product-editor .qrms-pe-sec-tetik[aria-expanded="true"] .qrms-pe-sec-ok {
+	transform: rotate(-135deg);
+}
+
+body.qrms-product-editor .qrms-pe-sec-govde {
+	padding: 2px 2px 16px;
+}
+
+body.qrms-product-editor .qrms-pe-sec-govde[hidden] {
+	display: none;
+}
+
+/* Katlı bölümde dolu alan varsa kullanıcı "kayboldu" sanmasın. */
+body.qrms-product-editor .qrms-pe-sec-dolu .qrms-pe-sec-metin::after {
+	background: var(--pe-accent);
+	border-radius: 50%;
+	content: "";
+	display: inline-block;
+	height: 6px;
+	margin-left: 8px;
+	vertical-align: 2px;
+	width: 6px;
+}
+
+/* ---------------------------------------------------------------
+   PILL / ANAHTAR / RADYO KART
+--------------------------------------------------------------- */
+
+body.qrms-product-editor .qrms-pe-pills {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin-bottom: 14px;
+}
+
+body.qrms-product-editor .qrms-pe-pill {
+	align-items: center;
+	background: var(--pe-surface-2);
+	border: 1px solid var(--pe-border);
+	border-radius: 999px;
+	color: var(--pe-text-soft);
+	cursor: pointer;
+	display: inline-flex;
+	font-size: 13px;
+	gap: 8px;
+	line-height: 1.2;
+	min-height: 40px;
+	padding: 8px 14px;
+	transition: border-color .12s, background .12s, color .12s;
+}
+
+body.qrms-product-editor .qrms-pe-pill:hover {
+	border-color: var(--pe-border-hi);
+}
+
+body.qrms-product-editor .qrms-pe-pill:has( input:checked ) {
+	background: var(--pe-accent-soft);
+	border-color: var(--pe-accent);
+	color: var(--pe-text);
+	font-weight: 600;
+}
+
+body.qrms-product-editor .qrms-pe-pill:focus-within {
+	box-shadow: 0 0 0 3px var(--pe-accent-soft);
+}
+
+body.qrms-product-editor .qrms-pe-anahtar {
+	align-items: flex-start;
+	border: 1px solid var(--pe-border);
+	border-radius: var(--pe-radius-sm);
+	cursor: pointer;
+	display: flex;
+	gap: 10px;
+	margin-bottom: 8px;
+	padding: 12px 14px;
+}
+
+body.qrms-product-editor .qrms-pe-anahtar:focus-within {
+	border-color: var(--pe-accent);
+	box-shadow: 0 0 0 3px var(--pe-accent-soft);
+}
+
+body.qrms-product-editor .qrms-pe-anahtar-metin strong {
+	color: var(--pe-text);
+	display: block;
+	font-size: 13px;
+	font-weight: 650;
+}
+
+body.qrms-product-editor .qrms-pe-anahtar-metin em {
+	color: var(--pe-muted);
+	display: block;
+	font-size: 12px;
+	font-style: normal;
+	margin-top: 2px;
+}
+
+body.qrms-product-editor .qrms-pe-radyo-kartlar {
+	display: grid;
+	gap: 8px;
+	margin-bottom: 14px;
+}
+
+body.qrms-product-editor .qrms-pe-radyo-kart {
+	align-items: flex-start;
+	background: var(--pe-surface-2);
+	border: 1px solid var(--pe-border);
+	border-radius: var(--pe-radius-sm);
+	cursor: pointer;
+	display: flex;
+	gap: 10px;
+	padding: 12px 14px;
+}
+
+body.qrms-product-editor .qrms-pe-radyo-kart:has( input:checked ) {
+	background: var(--pe-accent-soft);
+	border-color: var(--pe-accent);
+}
+
+body.qrms-product-editor .qrms-pe-radyo-kart:focus-within {
+	box-shadow: 0 0 0 3px var(--pe-accent-soft);
+}
+
+body.qrms-product-editor .qrms-pe-radyo-metin strong {
+	color: var(--pe-text);
+	display: block;
+	font-size: 13px;
+	font-weight: 650;
+}
+
+body.qrms-product-editor .qrms-pe-radyo-metin em {
+	color: var(--pe-muted);
+	display: block;
+	font-size: 12px;
+	font-style: normal;
+	margin-top: 2px;
+}
+
+/* Kutucuk/radyo: yerel öğe KALIR (erişilebilirlik), yalnızca boyanır. */
+body.qrms-product-editor .qrms-pe-pill input[type="checkbox"],
+body.qrms-product-editor .qrms-pe-anahtar input[type="checkbox"],
+body.qrms-product-editor .qrms-pe-radyo-kart input[type="radio"],
+body.qrms-product-editor .qrms-pe-secenek input[type="checkbox"] {
+	border: 1px solid var(--pe-border-hi);
+	border-radius: 5px;
+	flex: 0 0 auto;
+	height: 20px;
+	margin: 0;
+	min-width: 20px;
+	width: 20px;
+}
+
+body.qrms-product-editor .qrms-pe-radyo-kart input[type="radio"] {
+	border-radius: 50%;
+	margin-top: 1px;
+}
+
+body.qrms-product-editor .qrms-pe-anahtar input[type="checkbox"] {
+	margin-top: 1px;
+}
+
+body.qrms-product-editor input[type="checkbox"]:checked,
+body.qrms-product-editor input[type="radio"]:checked {
+	background: var(--pe-accent);
+	border-color: var(--pe-accent);
+}
+
+body.qrms-product-editor input[type="checkbox"]:checked::before {
+	color: #fff;
+	filter: none;
+}
+
+body.qrms-product-editor input[type="checkbox"]:focus,
+body.qrms-product-editor input[type="radio"]:focus {
+	border-color: var(--pe-accent);
+	box-shadow: 0 0 0 3px var(--pe-accent-soft);
+	outline: 2px solid transparent;
+}
+
+/* ---------------------------------------------------------------
+   ARANABİLİR SEÇİM (alerjen / rozet / malzeme / liste / kategori)
+--------------------------------------------------------------- */
+
+body.qrms-product-editor .qrms-pe-secim {
+	position: relative;
+}
+
+body.qrms-product-editor .qrms-pe-secim-chipler {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	margin-bottom: 8px;
+}
+
+body.qrms-product-editor .qrms-pe-secim-chipler:empty {
+	display: none;
+}
+
+body.qrms-product-editor .qrms-pe-chip {
+	align-items: center;
+	background: var(--pe-accent-soft);
+	border: 1px solid var(--pe-accent);
+	border-radius: 999px;
+	color: var(--pe-text);
+	display: inline-flex;
+	font-size: 12px;
+	font-weight: 600;
+	gap: 6px;
+	line-height: 1.2;
+	max-width: 100%;
+	padding: 5px 6px 5px 11px;
+}
+
+body.qrms-product-editor .qrms-pe-chip-ad {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+body.qrms-product-editor .qrms-pe-chip-sil {
+	align-items: center;
+	background: transparent;
+	border: 0;
+	border-radius: 50%;
+	color: var(--pe-accent-hi);
+	cursor: pointer;
+	display: inline-flex;
+	font-size: 14px;
+	height: 24px;
+	justify-content: center;
+	line-height: 1;
+	padding: 0;
+	width: 24px;
+}
+
+body.qrms-product-editor .qrms-pe-chip-sil:hover {
+	background: rgba(184, 145, 47, .22);
+}
+
+body.qrms-product-editor .qrms-pe-chip-sil:focus-visible {
+	outline: 2px solid var(--pe-accent);
+	outline-offset: 1px;
+}
+
+body.qrms-product-editor .qrms-pe-secim-tetik {
+	align-items: center;
+	background: var(--pe-surface-2);
+	border: 1px solid var(--pe-border);
+	border-radius: var(--pe-radius-sm);
+	color: var(--pe-text);
+	cursor: pointer;
+	display: flex;
+	font-size: 14px;
+	gap: 8px;
+	min-height: 44px;
+	padding: 10px 12px;
+	text-align: left;
+	width: 100%;
+}
+
+body.qrms-product-editor .qrms-pe-secim-tetik:hover {
+	border-color: var(--pe-border-hi);
+}
+
+body.qrms-product-editor .qrms-pe-secim-tetik[aria-expanded="true"],
+body.qrms-product-editor .qrms-pe-secim-tetik:focus-visible {
+	background: var(--pe-surface);
+	border-color: var(--pe-accent);
+	box-shadow: 0 0 0 3px var(--pe-accent-soft);
+	outline: none;
+}
+
+body.qrms-product-editor .qrms-pe-secim-tetik-metin {
+	flex: 1 1 auto;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+body.qrms-product-editor .qrms-pe-secim-tetik.is-bos .qrms-pe-secim-tetik-metin {
+	color: var(--pe-muted);
+}
+
+body.qrms-product-editor .qrms-pe-secim-tetik-ok {
+	border-bottom: 2px solid var(--pe-muted);
+	border-right: 2px solid var(--pe-muted);
+	flex: 0 0 auto;
+	height: 7px;
+	transform: rotate(45deg) translate(-2px, -2px);
+	width: 7px;
+}
+
+body.qrms-product-editor .qrms-pe-secim-panel {
+	background: var(--pe-surface);
+	border: 1px solid var(--pe-border-hi);
+	border-radius: var(--pe-radius-sm);
+	box-shadow: 0 12px 32px rgba(27, 36, 48, .16);
+	left: 0;
+	margin-top: 4px;
+	max-width: 100%;
+	padding: 8px;
+	position: absolute;
+	right: 0;
+	top: 100%;
+	z-index: 9999;
+}
+
+body.qrms-product-editor .qrms-pe-secim-panel[hidden] {
+	display: none;
+}
+
+body.qrms-product-editor .qrms-pe-secim-arama {
+	margin-bottom: 6px;
+}
+
+body.qrms-product-editor .qrms-pe-secim-kaynak {
+	display: block;
+	max-height: 260px;
+	overflow-y: auto;
+}
+
+/* Kaynak listeler eski yatay kutucuk düzenini taşıyabilir; panelde her
+   seçenek tek satır olur. */
+body.qrms-product-editor .qrms-pe-secim-kaynak.rma-secenek-kutucuklar {
+	display: block;
+	gap: 0;
+	margin: 0;
+}
+
+body.qrms-product-editor .qrms-pe-secim-kaynak label,
+body.qrms-product-editor .qrms-pe-secenek {
+	background: transparent;
+	border: 0;
+	flex: 1 1 auto;
+	margin: 0;
+	width: 100%;
+}
+
+body.qrms-product-editor .qrms-pe-secenek {
+	align-items: center;
+	border-radius: 6px;
+	cursor: pointer;
+	display: flex;
+	font-size: 13px;
+	gap: 10px;
+	line-height: 1.3;
+	min-height: 40px;
+	padding: 8px 10px;
+}
+
+body.qrms-product-editor .qrms-pe-secenek:hover,
+body.qrms-product-editor .qrms-pe-secenek.is-imlec {
+	background: var(--pe-surface-2);
+}
+
+body.qrms-product-editor .qrms-pe-secenek:focus-within {
+	background: var(--pe-accent-soft);
+}
+
+body.qrms-product-editor .qrms-pe-secenek[hidden] {
+	display: none;
+}
+
+body.qrms-product-editor .qrms-pe-secenek-ikon {
+	margin-right: 6px;
+}
+
+body.qrms-product-editor .qrms-pe-secim-bos {
+	color: var(--pe-muted);
+	font-size: 13px;
+	padding: 12px 10px;
+	text-align: center;
+}
+
+/* Kategori: tek seçim — kutucuk yuvarlanır, WP listesi sadeleşir. */
+body.qrms-product-editor .qrms-pe-secim[data-qrms-secim="tek"] .qrms-pe-secenek input[type="checkbox"] {
+	border-radius: 50%;
+}
+
+body.qrms-product-editor .qrms-pe-secim-kaynak ul.categorychecklist,
+body.qrms-product-editor .qrms-pe-secim-kaynak ul.categorychecklist ul {
+	margin: 0;
+	padding: 0;
+}
+
+body.qrms-product-editor .qrms-pe-secim-kaynak ul.categorychecklist ul {
+	margin-left: 16px;
+}
+
+body.qrms-product-editor .qrms-pe-secim-kaynak .categorychecklist li {
+	margin: 0;
+}
+
+body.qrms-product-editor .qrms-pe-secim-kaynak .categorychecklist li > label {
+	align-items: center;
+	border-radius: 6px;
+	cursor: pointer;
+	display: flex;
+	gap: 10px;
+	min-height: 40px;
+	padding: 8px 10px;
+}
+
+body.qrms-product-editor .qrms-pe-secim-kaynak .categorychecklist li > label:hover {
+	background: var(--pe-surface-2);
+}
+
+body.qrms-product-editor .qrms-pe-secim-kaynak .categorychecklist li[hidden] {
+	display: none;
+}
+
+/* Kategori kutusunun sekmeleri ve "en çok kullanılan" listesi gizlenmez,
+   yalnızca sadeleştirilir: tek seçim akışında gürültü yaratıyordu. */
+body.qrms-product-editor .qrms-pe-yuva #rma_category-tabs {
+	display: none;
+}
+
+body.qrms-product-editor .qrms-pe-yuva .category-add-toggle,
+body.qrms-product-editor .qrms-pe-yuva #rma_category-adder {
+	margin-top: 8px;
+}
+
+body.qrms-product-editor .qrms-pe-yuva #rma_category-add-toggle {
+	color: var(--pe-accent-hi);
+	font-size: 12px;
+	font-weight: 600;
+	text-decoration: none;
+}
+
+/* ---------------------------------------------------------------
+   ÖNE ÇIKARILMIŞ GÖRSEL
+--------------------------------------------------------------- */
+
+body.qrms-product-editor .qrms-pe-yuva #postimagediv .inside {
+	background: var(--pe-surface-2);
+	border: 1px dashed var(--pe-border-hi);
+	border-radius: var(--pe-radius-sm);
+	min-height: 96px;
+	padding: 12px;
+	text-align: center;
+}
+
+body.qrms-product-editor #postimagediv .inside img {
+	border-radius: var(--pe-radius-sm);
+	height: auto;
+	max-width: 100%;
+}
+
+body.qrms-product-editor #postimagediv .inside a {
+	color: var(--pe-accent-hi);
+	font-weight: 600;
+	text-decoration: none;
+}
+
+body.qrms-product-editor #postimagediv .inside a:focus-visible {
+	outline: 2px solid var(--pe-accent);
+	outline-offset: 2px;
+}
+
+/* ---------------------------------------------------------------
+   SAĞ SÜTUN — YAYINLA
+--------------------------------------------------------------- */
+
+body.qrms-product-editor #submitdiv .inside {
+	padding: 0;
+}
+
+body.qrms-product-editor #submitdiv #minor-publishing,
+body.qrms-product-editor #submitdiv #misc-publishing-actions {
+	background: transparent;
+	border: 0;
+}
+
+body.qrms-product-editor #submitdiv .misc-pub-section {
+	border-bottom: 1px solid var(--pe-border);
+	color: var(--pe-text-soft);
+	padding: 10px 18px;
+}
+
+body.qrms-product-editor #submitdiv #minor-publishing-actions {
+	padding: 12px 18px;
+}
+
+body.qrms-product-editor #submitdiv #major-publishing-actions {
+	background: var(--pe-surface-2);
+	border-top: 1px solid var(--pe-border);
+	padding: 14px 18px;
+}
+
+body.qrms-product-editor #submitdiv .button,
+body.qrms-product-editor .qrms-pe-kart .button {
+	background: var(--pe-surface);
+	border: 1px solid var(--pe-border-hi);
+	border-radius: var(--pe-radius-sm);
+	box-shadow: none;
+	color: var(--pe-text);
+	font-weight: 600;
+	min-height: 40px;
+	padding: 0 14px;
+}
+
+body.qrms-product-editor #submitdiv .button:hover {
+	border-color: var(--pe-accent);
+	color: var(--pe-accent-hi);
+}
+
+body.qrms-product-editor #publishing-action .button-primary,
+body.qrms-product-editor #publishing-action #publish {
+	background: var(--pe-accent);
+	border: 1px solid var(--pe-accent-hi);
+	border-radius: var(--pe-radius-sm);
+	box-shadow: none;
+	color: #fff;
+	font-size: 14px;
+	font-weight: 650;
+	letter-spacing: .01em;
+	min-height: 44px;
+	padding: 0 22px;
+	text-shadow: none;
+}
+
+body.qrms-product-editor #publishing-action .button-primary:hover,
+body.qrms-product-editor #publishing-action #publish:hover {
+	background: var(--pe-accent-hi);
+	border-color: var(--pe-accent-hi);
+	color: #fff;
+}
+
+body.qrms-product-editor #publishing-action .button-primary:focus-visible {
+	box-shadow: 0 0 0 3px var(--pe-accent-soft);
+	outline: 2px solid var(--pe-accent-hi);
+	outline-offset: 1px;
+}
+
+body.qrms-product-editor #delete-action .submitdelete {
+	color: var(--pe-danger);
+}
+
+/* Üçüncü taraf kutuları (ör. önbellek eklentileri) ekranda kalır, yalnızca
+   görsel ağırlığı azaltılır: işlevine, alanlarına dokunulmaz. */
+body.qrms-product-editor #side-sortables .postbox[id*="litespeed"] {
+	opacity: .72;
+}
+
+body.qrms-product-editor #side-sortables .postbox[id*="litespeed"]:hover,
+body.qrms-product-editor #side-sortables .postbox[id*="litespeed"]:focus-within {
+	opacity: 1;
+}
+
+/* ---------------------------------------------------------------
+   SEÇENEKLER KUTUSU (porsiyon / ekstra / servis saati)
+--------------------------------------------------------------- */
+
+body.qrms-product-editor .rma-secenek-h {
+	align-items: center;
+	color: var(--pe-text);
+	display: flex;
+	font-size: 13px;
+	font-weight: 650;
+	gap: 8px;
+	margin: 18px 0 6px;
+}
+
+body.qrms-product-editor .rma-secenek-kutu > .rma-secenek-h:first-child {
+	margin-top: 0;
+}
+
+body.qrms-product-editor .rma-secenek-kutu hr {
+	background: var(--pe-border);
+	border: 0;
+	height: 1px;
+	margin: 18px 0;
+}
+
+body.qrms-product-editor .rma-secenek-not {
+	color: var(--pe-muted);
+	font-size: 12px;
+}
+
+body.qrms-product-editor .rma-tekrar {
+	background: transparent;
+	border: 1px solid var(--pe-border);
+	border-radius: var(--pe-radius-sm);
+	border-collapse: separate;
+	overflow: hidden;
+}
+
+body.qrms-product-editor .rma-tekrar th {
+	background: var(--pe-surface-2);
+	color: var(--pe-text);
+	font-size: 12px;
+	font-weight: 650;
+}
+
+body.qrms-product-editor .rma-tekrar td {
+	border-top: 1px solid var(--pe-border);
+}
+
+body.qrms-product-editor .rma-tekrar input[type="text"] {
+	background: var(--pe-surface-2);
+	border: 1px solid var(--pe-border);
+	border-radius: 6px;
+	box-shadow: none;
+	color: var(--pe-text);
+	min-height: 40px;
+}
+
+body.qrms-product-editor .rma-tekrar input[type="text"]:focus {
+	background: var(--pe-surface);
+	border-color: var(--pe-accent);
+	box-shadow: 0 0 0 3px var(--pe-accent-soft);
+	outline: none;
+}
+
+body.qrms-product-editor .rma-tekrar-sil {
+	align-items: center;
+	display: inline-flex;
+	justify-content: center;
+	min-height: 40px;
+	min-width: 40px;
+}
+
+body.qrms-product-editor .rma-servis-gunler label {
+	align-items: center;
+	background: var(--pe-surface-2);
+	border: 1px solid var(--pe-border);
+	border-radius: 999px;
+	display: inline-flex;
+	font-size: 13px;
+	gap: 8px;
+	min-height: 40px;
+	padding: 8px 14px;
+}
+
+body.qrms-product-editor .rma-servis-gunler label:has( input:checked ) {
+	background: var(--pe-accent-soft);
+	border-color: var(--pe-accent);
+	font-weight: 600;
+}
+
+body.qrms-product-editor .rma-servis-saatler input[type="time"] {
+	background: var(--pe-surface-2);
+	border: 1px solid var(--pe-border);
+	border-radius: 6px;
+	min-height: 40px;
+	padding: 6px 10px;
+}
+
+body.qrms-product-editor .rma-rozet-onizleme {
+	border-radius: 5px;
+	font-size: 12px;
+	font-weight: 650;
+	padding: 4px 10px;
+}
+
+body.qrms-product-editor .qmo-uy-yeni {
+	display: flex;
+	gap: 6px;
+	margin-top: 8px;
+}
+
+body.qrms-product-editor .qmo-uy-yeni .qrms-pe-input {
+	flex: 1 1 auto;
+}
+
+body.qrms-product-editor .qmo-uy-yeni .button {
+	min-height: 44px;
+}
+
+/* ---------------------------------------------------------------
+   RESPONSIVE
+--------------------------------------------------------------- */
+
+@media ( max-width: 1200px ) {
+	body.qrms-product-editor .qrms-pe-temel-izgara {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+
+	body.qrms-product-editor .qrms-pe-yuva[data-qrms-pe-yuva="gorsel"] {
+		grid-column: 1 / -1;
+	}
+}
+
+@media ( max-width: 782px ) {
+	body.qrms-product-editor .qrms-pe-temel-izgara {
+		grid-template-columns: minmax(0, 1fr);
+		padding: 14px;
+	}
+
+	body.qrms-product-editor .qrms-pe-yuva[data-qrms-pe-yuva="gorsel"] {
+		grid-column: auto;
+	}
+
+	body.qrms-product-editor .qrms-pe-izgara,
+	body.qrms-product-editor .qrms-pe-izgara--iki {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+
+	body.qrms-product-editor .qrms-pe-field--yari {
+		max-width: none;
+	}
+
+	body.qrms-product-editor #titlediv,
+	body.qrms-product-editor #poststuff .postbox .inside {
+		padding: 14px;
+	}
+
+	body.qrms-product-editor .qrms-pe-editor-bas {
+		padding: 12px 14px;
+	}
+
+	body.qrms-product-editor #postdivrich.qrms-pe-kart #wp-content-wrap {
+		padding: 12px 14px 14px;
+	}
+
+	body.qrms-product-editor .rma-tekrar thead {
+		display: none;
+	}
+
+	body.qrms-product-editor .rma-tekrar tbody tr {
+		border: 1px solid var(--pe-border);
+		border-radius: var(--pe-radius-sm);
+		display: block;
+		margin-bottom: 10px;
+		padding: 8px 10px;
+	}
+
+	body.qrms-product-editor .rma-tekrar tbody td {
+		border: 0;
+		display: block;
+		padding: 6px 0;
+	}
+
+	body.qrms-product-editor .rma-tekrar tbody td[data-label]::before {
+		color: var(--pe-muted);
+		content: attr(data-label);
+		display: block;
+		font-size: 11px;
+		font-weight: 650;
+		margin-bottom: 4px;
+	}
+
+	body.qrms-product-editor #publishing-action .button-primary,
+	body.qrms-product-editor #publishing-action #publish {
+		width: 100%;
+	}
+}
+
+@media ( max-width: 480px ) {
+	body.qrms-product-editor .qrms-pe-izgara,
+	body.qrms-product-editor .qrms-pe-izgara--iki {
+		grid-template-columns: minmax(0, 1fr);
+	}
+
+	body.qrms-product-editor .qrms-pe-chip {
+		max-width: 100%;
+	}
+}
+
+/* ---------------------------------------------------------------
+   RTL
+--------------------------------------------------------------- */
+
+body.rtl.qrms-product-editor .qrms-pe-affix-son {
+	left: 12px;
+	right: auto;
+}
+
+body.rtl.qrms-product-editor .qrms-pe-affix .qrms-pe-input {
+	padding-left: 48px;
+	padding-right: 12px;
+}
+
+body.rtl.qrms-product-editor .qrms-pe-select {
+	background-position: 18px 50%, 13px 50%;
+	padding-left: 34px;
+	padding-right: 12px;
+}
+
+body.rtl.qrms-product-editor #poststuff .postbox > .postbox-header h2::before {
+	margin-left: 10px;
+	margin-right: 0;
+}
+
+body.rtl.qrms-product-editor .qrms-pe-chip {
+	padding: 5px 11px 5px 6px;
+}
+
+body.rtl.qrms-product-editor .qrms-pe-secim-kaynak ul.categorychecklist ul {
+	margin-left: 0;
+	margin-right: 16px;
+}
+
+@media ( prefers-reduced-motion: reduce ) {
+	body.qrms-product-editor * {
+		transition: none !important;
+	}
+}

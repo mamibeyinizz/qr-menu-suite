@@ -56,7 +56,7 @@ trait RMA_Secenek_Admin_Trait {
 	public function add_secenek_meta_box() {
 		add_meta_box(
 			'rma_secenekler',
-			'Porsiyon, Ekstra ve Servis Saati',
+			__( 'Porsiyon, Ekstra ve Servis Saati', 'qrms' ),
 			array( $this, 'render_secenek_meta_box' ),
 			'rma_menu_item',
 			'normal',
@@ -88,26 +88,24 @@ trait RMA_Secenek_Admin_Trait {
 		?>
 		<div class="rma-secenek-kutu">
 
-			<h4 class="rma-secenek-h">Porsiyon / Varyasyon</h4>
+			<h4 class="rma-secenek-h"><span class="qrms-pe-sec-ikon" aria-hidden="true">🍽</span><?php esc_html_e( 'Porsiyon &amp; Varyasyon', 'qrms' ); ?></h4>
 			<p class="rma-secenek-not">
-				Fiyat, ürünün <strong>taban fiyatına eklenen fark</strong> olarak yazılır: "Büyük" için <code>40</code>,
-				"Küçük" için <code>-20</code>. Fark yazmazsanız o porsiyon taban fiyattan satılır.
-				Porsiyon eklemezseniz müşteri seçim ekranı görmez.
+				<?php esc_html_e( 'Fiyat, taban fiyata eklenen farktır: "Büyük" için 40, "Küçük" için -20. Porsiyon eklemezseniz müşteri seçim görmez.', 'qrms' ); ?>
 			</p>
 
 			<table class="widefat rma-tekrar" data-rma-tekrar="porsiyon" data-azami="<?php echo (int) RMA_Porsiyon::AZAMI; ?>">
 				<thead>
 					<tr>
-						<th style="width:60%;">Porsiyon adı</th>
-						<th style="width:30%;">Fiyat farkı (₺)</th>
+						<th style="width:60%;"><?php esc_html_e( 'Porsiyon adı', 'qrms' ); ?></th>
+						<th style="width:30%;"><?php esc_html_e( 'Fiyat farkı (₺)', 'qrms' ); ?></th>
 						<th style="width:10%;"></th>
 					</tr>
 				</thead>
 				<tbody>
 					<?php foreach ( $porsiyonlar as $i => $satir ) : ?>
 					<tr class="rma-tekrar-satir">
-						<td><input type="text" name="rma_porsiyon[<?php echo (int) $i; ?>][ad]" value="<?php echo esc_attr( $satir['ad'] ); ?>" placeholder="Büyük" class="widefat"></td>
-						<td><input type="text" name="rma_porsiyon[<?php echo (int) $i; ?>][fark]" value="<?php echo esc_attr( $satir['fark'] ); ?>" placeholder="0" class="widefat"></td>
+						<td data-label="<?php esc_attr_e( 'Porsiyon adı', 'qrms' ); ?>"><input type="text" name="rma_porsiyon[<?php echo (int) $i; ?>][ad]" value="<?php echo esc_attr( $satir['ad'] ); ?>" placeholder="Büyük" class="widefat"></td>
+						<td data-label="<?php esc_attr_e( 'Fiyat farkı (₺)', 'qrms' ); ?>"><input type="text" name="rma_porsiyon[<?php echo (int) $i; ?>][fark]" value="<?php echo esc_attr( $satir['fark'] ); ?>" placeholder="0" class="widefat"></td>
 						<td><button type="button" class="button-link rma-tekrar-sil" aria-label="Satırı sil">✕</button></td>
 					</tr>
 					<?php endforeach; ?>
@@ -122,48 +120,54 @@ trait RMA_Secenek_Admin_Trait {
 				);
 				?>
 			</table>
-			<p><button type="button" class="button rma-tekrar-ekle" data-hedef="porsiyon">+ Porsiyon ekle</button></p>
+			<p><button type="button" class="button rma-tekrar-ekle" data-hedef="porsiyon"><?php esc_html_e( '+ Porsiyon ekle', 'qrms' ); ?></button></p>
 
 			<hr>
 
-			<h4 class="rma-secenek-h">Yan Ürünler / Ekstralar</h4>
+			<h4 class="rma-secenek-h"><span class="qrms-pe-sec-ikon" aria-hidden="true">➕</span><?php esc_html_e( 'Ekstralar &amp; Yan Ürünler', 'qrms' ); ?></h4>
 			<p class="rma-secenek-not">
-				Müşteri ürün kartını açtığında en altta "Ekstra ekle" bölümü çıkar. Hiçbir şey seçmezseniz bu bölüm görünmez.
-				Hazır listeler <a href="<?php echo esc_url( $ayar_url ); ?>">Ekstralar ve Rozetler</a> ekranından yönetilir.
+				<?php esc_html_e( 'Seçtikleriniz ürün kartının altında "Ekstra ekle" bölümünde görünür.', 'qrms' ); ?>
+				<a href="<?php echo esc_url( $ayar_url ); ?>"><?php esc_html_e( 'Hazır listeleri yönet', 'qrms' ); ?></a>
 			</p>
 
 			<?php if ( ! empty( $listeler ) ) : ?>
 			<div class="rma-secenek-listeler">
-				<strong>Hazır listeler</strong>
-				<div class="rma-secenek-kutucuklar">
-					<?php foreach ( $listeler as $liste ) : ?>
-					<label>
-						<input type="checkbox" name="rma_ekstra_listeler[]" value="<?php echo esc_attr( $liste['id'] ); ?>"
-							<?php checked( in_array( $liste['id'], $secili, true ) ); ?>>
-						<?php echo esc_html( $liste['ad'] ); ?>
-						<span class="rma-secenek-sayi"><?php echo (int) count( $liste['urunler'] ); ?></span>
-					</label>
-					<?php endforeach; ?>
+				<span class="qrms-pe-label"><?php esc_html_e( 'Hazır listeler', 'qrms' ); ?></span>
+				<div class="qrms-pe-secim"
+					data-qrms-secim="coklu"
+					data-etiket="<?php esc_attr_e( 'Liste seçin…', 'qrms' ); ?>"
+					data-ara="<?php esc_attr_e( 'Liste ara…', 'qrms' ); ?>">
+					<div class="qrms-pe-secim-kaynak rma-secenek-kutucuklar">
+						<?php foreach ( $listeler as $liste ) : ?>
+						<label class="qrms-pe-secenek">
+							<input type="checkbox" name="rma_ekstra_listeler[]" value="<?php echo esc_attr( $liste['id'] ); ?>"
+								<?php checked( in_array( $liste['id'], $secili, true ) ); ?>>
+							<span><?php echo esc_html( $liste['ad'] ); ?>
+								<span class="rma-secenek-sayi"><?php echo (int) count( $liste['urunler'] ); ?></span>
+							</span>
+						</label>
+						<?php endforeach; ?>
+					</div>
 				</div>
 			</div>
 			<?php else : ?>
-			<p class="rma-secenek-not">Henüz hazır liste yok — <a href="<?php echo esc_url( $ayar_url ); ?>">Ekstralar ve Rozetler</a> ekranından oluşturabilirsiniz.</p>
+			<p class="rma-secenek-not"><?php esc_html_e( 'Henüz hazır liste yok.', 'qrms' ); ?> <a href="<?php echo esc_url( $ayar_url ); ?>"><?php esc_html_e( 'Liste oluştur', 'qrms' ); ?></a></p>
 			<?php endif; ?>
 
-			<p><strong>Yalnızca bu ürüne özel ekstralar</strong></p>
+			<p class="qrms-pe-label"><?php esc_html_e( 'Yalnızca bu ürüne özel ekstralar', 'qrms' ); ?></p>
 			<table class="widefat rma-tekrar" data-rma-tekrar="ekstra" data-azami="30">
 				<thead>
 					<tr>
-						<th style="width:60%;">Ekstra adı</th>
-						<th style="width:30%;">Fiyat (₺)</th>
+						<th style="width:60%;"><?php esc_html_e( 'Ekstra adı', 'qrms' ); ?></th>
+						<th style="width:30%;"><?php esc_html_e( 'Fiyat (₺)', 'qrms' ); ?></th>
 						<th style="width:10%;"></th>
 					</tr>
 				</thead>
 				<tbody>
 					<?php foreach ( $manuel as $i => $satir ) : ?>
 					<tr class="rma-tekrar-satir">
-						<td><input type="text" name="rma_ekstra_manuel[<?php echo (int) $i; ?>][ad]" value="<?php echo esc_attr( $satir['ad'] ); ?>" placeholder="Sos" class="widefat"></td>
-						<td><input type="text" name="rma_ekstra_manuel[<?php echo (int) $i; ?>][fiyat]" value="<?php echo esc_attr( $satir['fiyat'] ); ?>" placeholder="10" class="widefat"></td>
+						<td data-label="<?php esc_attr_e( 'Ekstra adı', 'qrms' ); ?>"><input type="text" name="rma_ekstra_manuel[<?php echo (int) $i; ?>][ad]" value="<?php echo esc_attr( $satir['ad'] ); ?>" placeholder="Sos" class="widefat"></td>
+						<td data-label="<?php esc_attr_e( 'Fiyat (₺)', 'qrms' ); ?>"><input type="text" name="rma_ekstra_manuel[<?php echo (int) $i; ?>][fiyat]" value="<?php echo esc_attr( $satir['fiyat'] ); ?>" placeholder="10" class="widefat"></td>
 						<td><button type="button" class="button-link rma-tekrar-sil" aria-label="Satırı sil">✕</button></td>
 					</tr>
 					<?php endforeach; ?>
@@ -178,21 +182,38 @@ trait RMA_Secenek_Admin_Trait {
 				);
 				?>
 			</table>
-			<p><button type="button" class="button rma-tekrar-ekle" data-hedef="ekstra">+ Ekstra ekle</button></p>
+			<p><button type="button" class="button rma-tekrar-ekle" data-hedef="ekstra"><?php esc_html_e( '+ Ekstra ekle', 'qrms' ); ?></button></p>
 
 			<hr>
 
-			<h4 class="rma-secenek-h">Servis Saati</h4>
+			<h4 class="rma-secenek-h"><span class="qrms-pe-sec-ikon" aria-hidden="true">🕒</span><?php esc_html_e( 'Servis Saati', 'qrms' ); ?></h4>
 			<p class="rma-secenek-not">
-				Saat dışında ürün menüde kalır, üzerine "Servis dışı" etiketi basılır ve sepete eklenemez.
-				Varsayılan olarak ürün, kategorisine tanımlanmış saati devralır (Kategoriler ekranından).
+				<?php esc_html_e( 'Saat dışında ürün menüde kalır, "Servis dışı" etiketiyle görünür ve sepete eklenemez.', 'qrms' ); ?>
 			</p>
 
-			<p>
-				<label><input type="radio" name="rma_servis_mod" value="devral" <?php checked( 'devral', $mod ); ?>> Kategoriden devral</label><br>
-				<label><input type="radio" name="rma_servis_mod" value="kapali" <?php checked( 'kapali', $mod ); ?>> Kısıt yok (her zaman servis edilir)</label><br>
-				<label><input type="radio" name="rma_servis_mod" value="ozel" <?php checked( 'ozel', $mod ); ?>> Bu ürüne özel saat</label>
-			</p>
+			<div class="qrms-pe-radyo-kartlar">
+				<label class="qrms-pe-radyo-kart">
+					<input type="radio" name="rma_servis_mod" value="devral" <?php checked( 'devral', $mod ); ?>>
+					<span class="qrms-pe-radyo-metin">
+						<strong><?php esc_html_e( 'Kategoriden devral', 'qrms' ); ?></strong>
+						<em><?php esc_html_e( 'Kategoriye tanımlı servis saatini kullanır.', 'qrms' ); ?></em>
+					</span>
+				</label>
+				<label class="qrms-pe-radyo-kart">
+					<input type="radio" name="rma_servis_mod" value="kapali" <?php checked( 'kapali', $mod ); ?>>
+					<span class="qrms-pe-radyo-metin">
+						<strong><?php esc_html_e( 'Kısıt yok', 'qrms' ); ?></strong>
+						<em><?php esc_html_e( 'Ürün her zaman servis edilir.', 'qrms' ); ?></em>
+					</span>
+				</label>
+				<label class="qrms-pe-radyo-kart">
+					<input type="radio" name="rma_servis_mod" value="ozel" <?php checked( 'ozel', $mod ); ?>>
+					<span class="qrms-pe-radyo-metin">
+						<strong><?php esc_html_e( 'Bu ürüne özel saat', 'qrms' ); ?></strong>
+						<em><?php esc_html_e( 'Gün ve saat aralığını aşağıdan belirleyin.', 'qrms' ); ?></em>
+					</span>
+				</label>
+			</div>
 
 			<div class="rma-servis-alan">
 				<?php $this->render_servis_saat_alanlari( 'rma_servis', $gunler, $bas, $bit ); ?>
@@ -200,17 +221,22 @@ trait RMA_Secenek_Admin_Trait {
 
 			<?php if ( ! empty( $rozetler ) ) : ?>
 			<hr>
-			<h4 class="rma-secenek-h">Özel Rozetler</h4>
-			<div class="rma-secenek-kutucuklar">
-				<?php foreach ( $rozetler as $rozet ) : ?>
-				<label>
-					<input type="checkbox" name="rma_ozel_rozetler[]" value="<?php echo esc_attr( $rozet['slug'] ); ?>"
-						<?php checked( in_array( $rozet['slug'], $secili_roz, true ) ); ?>>
-					<span class="rma-rozet-onizleme" style="background:<?php echo esc_attr( $rozet['renk'] ); ?>">
-						<?php echo esc_html( trim( $rozet['ikon'] . ' ' . $rozet['ad'] ) ); ?>
-					</span>
-				</label>
-				<?php endforeach; ?>
+			<h4 class="rma-secenek-h"><span class="qrms-pe-sec-ikon" aria-hidden="true">🏷</span><?php esc_html_e( 'Özel Rozetler', 'qrms' ); ?></h4>
+			<div class="qrms-pe-secim"
+				data-qrms-secim="coklu"
+				data-etiket="<?php esc_attr_e( 'Rozet seçin…', 'qrms' ); ?>"
+				data-ara="<?php esc_attr_e( 'Rozet ara…', 'qrms' ); ?>">
+				<div class="qrms-pe-secim-kaynak rma-secenek-kutucuklar">
+					<?php foreach ( $rozetler as $rozet ) : ?>
+					<label class="qrms-pe-secenek">
+						<input type="checkbox" name="rma_ozel_rozetler[]" value="<?php echo esc_attr( $rozet['slug'] ); ?>"
+							<?php checked( in_array( $rozet['slug'], $secili_roz, true ) ); ?>>
+						<span class="rma-rozet-onizleme" style="background:<?php echo esc_attr( $rozet['renk'] ); ?>;color:<?php echo esc_attr( RMA_Ozel_Rozet::metin_rengi( $rozet['renk'] ) ); ?>">
+							<?php echo esc_html( trim( $rozet['ikon'] . ' ' . $rozet['ad'] ) ); ?>
+						</span>
+					</label>
+					<?php endforeach; ?>
+				</div>
 			</div>
 			<?php endif; ?>
 		</div>
@@ -617,7 +643,7 @@ trait RMA_Secenek_Admin_Trait {
 									</td>
 									<td data-label="Önizleme">
 										<span class="rma-badge rma-badge-ozel rma-rozet-onizleme-kutu"
-											style="--rma-rozet-renk:<?php echo esc_attr( $rozet['renk'] ); ?>">
+											style="--rma-rozet-renk:<?php echo esc_attr( $rozet['renk'] ); ?>;color:<?php echo esc_attr( RMA_Ozel_Rozet::metin_rengi( $rozet['renk'] ) ); ?>">
 											<?php echo '' !== $rozet['ikon'] ? esc_html( $rozet['ikon'] ) . ' ' : ''; ?><?php echo esc_html( $rozet['ad'] ); ?>
 										</span>
 									</td>
@@ -686,7 +712,7 @@ trait RMA_Secenek_Admin_Trait {
 					</div>
 				</td>
 				<td data-label="Önizleme">
-					<span class="rma-badge rma-badge-ozel rma-rozet-onizleme-kutu" style="--rma-rozet-renk:<?php echo $renk; ?>">Hızlı Servis</span>
+					<span class="rma-badge rma-badge-ozel rma-rozet-onizleme-kutu" style="--rma-rozet-renk:<?php echo $renk; ?>;color:<?php echo esc_attr( RMA_Ozel_Rozet::metin_rengi( RMA_Ozel_Rozet::RENK ) ); ?>">Hızlı Servis</span>
 				</td>
 				<td><button type="button" class="button-link rma-tekrar-sil" aria-label="Satırı sil">✕</button></td>
 			</tr>
