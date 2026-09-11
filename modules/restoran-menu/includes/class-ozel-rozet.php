@@ -275,7 +275,7 @@ class RMA_Ozel_Rozet {
 	 * altındaki zeminlerde açık metin döndürülür.
 	 *
 	 * @param string $renk Hex renk (#rgb veya #rrggbb).
-	 * @return string Metin rengi (#111111 | #ffffff).
+	 * @return string Metin rengi (#15120a | #fdfaf4).
 	 */
 	public static function metin_rengi( $renk ) {
 		$hex = ltrim( (string) $renk, '#' );
@@ -285,7 +285,7 @@ class RMA_Ozel_Rozet {
 		}
 
 		if ( ! preg_match( '/^[0-9a-fA-F]{6}$/', $hex ) ) {
-			return '#111111';
+			return '#15120a';
 		}
 
 		$kanal = array();
@@ -300,7 +300,7 @@ class RMA_Ozel_Rozet {
 
 		// Beyaz metnin kontrastı (1.05 / (L+0.05)) koyu metninkini
 		// (L+0.05)/0.05 geçtiği nokta ~0.1791'dir.
-		return $parlaklik > 0.1791 ? '#111111' : '#ffffff';
+		return $parlaklik > 0.1791 ? '#15120a' : '#fdfaf4';
 	}
 
 	/**

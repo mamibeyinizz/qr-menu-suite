@@ -425,7 +425,7 @@ trait RMA_Secenek_Admin_Trait {
 
 		$this->page_header(
 			$sayfa['title'],
-			'Birden çok üründe kullanacağınız ekstra gruplarını ve ürün rozetlerinizi burada tanımlayın.'
+			'Ürünlerde kullanacağınız ekstra gruplarını ve özel rozetleri yönetin.'
 		);
 
 		$aktif_sekme = isset( $_GET['sekme'] ) ? sanitize_key( wp_unslash( $_GET['sekme'] ) ) : 'ekstra';
@@ -643,7 +643,7 @@ trait RMA_Secenek_Admin_Trait {
 									</td>
 									<td data-label="Önizleme">
 										<span class="rma-badge rma-badge-ozel rma-rozet-onizleme-kutu"
-											style="--rma-rozet-renk:<?php echo esc_attr( $rozet['renk'] ); ?>;color:<?php echo esc_attr( RMA_Ozel_Rozet::metin_rengi( $rozet['renk'] ) ); ?>">
+											style="--rma-rozet-renk:<?php echo esc_attr( $rozet['renk'] ); ?>;--rma-rozet-metin:<?php echo esc_attr( RMA_Ozel_Rozet::metin_rengi( $rozet['renk'] ) ); ?>">
 											<?php echo '' !== $rozet['ikon'] ? esc_html( $rozet['ikon'] ) . ' ' : ''; ?><?php echo esc_html( $rozet['ad'] ); ?>
 										</span>
 									</td>
@@ -712,7 +712,7 @@ trait RMA_Secenek_Admin_Trait {
 					</div>
 				</td>
 				<td data-label="Önizleme">
-					<span class="rma-badge rma-badge-ozel rma-rozet-onizleme-kutu" style="--rma-rozet-renk:<?php echo $renk; ?>;color:<?php echo esc_attr( RMA_Ozel_Rozet::metin_rengi( RMA_Ozel_Rozet::RENK ) ); ?>">Hızlı Servis</span>
+					<span class="rma-badge rma-badge-ozel rma-rozet-onizleme-kutu" style="--rma-rozet-renk:<?php echo $renk; ?>;--rma-rozet-metin:<?php echo esc_attr( RMA_Ozel_Rozet::metin_rengi( RMA_Ozel_Rozet::RENK ) ); ?>">Hızlı Servis</span>
 				</td>
 				<td><button type="button" class="button-link rma-tekrar-sil" aria-label="Satırı sil">✕</button></td>
 			</tr>

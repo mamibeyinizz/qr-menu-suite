@@ -286,6 +286,8 @@ trait RMA_Ajax_Trait {
             case 'price_desc': $base['meta_key'] = 'rma_price';    $base['orderby'] = 'meta_value_num'; $base['order'] = 'DESC'; break;
             case 'carbs':      $base['meta_key'] = 'rma_carbs';    $base['orderby'] = 'meta_value_num'; $base['order'] = 'DESC'; break;
             case 'protein':    $base['meta_key'] = 'rma_protein';  $base['orderby'] = 'meta_value_num'; $base['order'] = 'DESC'; break;
+            case 'spicy_desc': $base['meta_key'] = RMA_Filtre::META_ACI; $base['orderby'] = 'meta_value_num'; $base['order'] = 'DESC'; break;
+            case 'spicy_asc':  $base['meta_key'] = RMA_Filtre::META_ACI; $base['orderby'] = 'meta_value_num'; $base['order'] = 'ASC';  break;
             default:           $base['orderby'] = 'menu_order';    $base['order'] = 'ASC';
         }
 

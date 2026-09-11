@@ -368,12 +368,16 @@ qrms_test(
 	'özel rozet metin rengi WCAG kontrastına göre seçilir',
 	function () {
 		// Koyu zeminler (mor, kırmızı) açık metin ister; sarı/altın koyu metin.
-		qrms_assert_same( '#ffffff', RMA_Ozel_Rozet::metin_rengi( '#9b59b6' ), 'mor zemin → beyaz metin' );
-		qrms_assert_same( '#ffffff', RMA_Ozel_Rozet::metin_rengi( '#b3261e' ), 'kırmızı zemin → beyaz metin' );
-		qrms_assert_same( '#111111', RMA_Ozel_Rozet::metin_rengi( '#f1c40f' ), 'sarı zemin → koyu metin' );
-		qrms_assert_same( '#111111', RMA_Ozel_Rozet::metin_rengi( RMA_Ozel_Rozet::RENK ), 'altın zemin → koyu metin' );
-		qrms_assert_same( '#ffffff', RMA_Ozel_Rozet::metin_rengi( '#000' ), 'kısa hex desteklenir' );
-		qrms_assert_same( '#111111', RMA_Ozel_Rozet::metin_rengi( 'geçersiz' ), 'bozuk değerde koyu metne düşer' );
+		qrms_assert_same( '#fdfaf4', RMA_Ozel_Rozet::metin_rengi( '#9b59b6' ), 'mor zemin → açık metin' );
+		qrms_assert_same( '#fdfaf4', RMA_Ozel_Rozet::metin_rengi( '#b3261e' ), 'kırmızı zemin → açık metin' );
+		qrms_assert_same( '#15120a', RMA_Ozel_Rozet::metin_rengi( '#f1c40f' ), 'sarı zemin → koyu metin' );
+		qrms_assert_same( '#15120a', RMA_Ozel_Rozet::metin_rengi( RMA_Ozel_Rozet::RENK ), 'altın zemin → koyu metin' );
+		qrms_assert_same( '#fdfaf4', RMA_Ozel_Rozet::metin_rengi( '#000' ), 'kısa hex desteklenir' );
+		qrms_assert_same( '#15120a', RMA_Ozel_Rozet::metin_rengi( 'geçersiz' ), 'bozuk değerde koyu metne düşer' );
+
+		// PHP ve canlı önizleme JS'i aynı eşiği kullanmalı.
+		$js = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/js/urun-secenekler.js' );
+		qrms_assert_contains( "parlaklik > .1791 ? '#15120a' : '#fdfaf4'", $js, 'JS eşiği PHP ile aynı' );
 	}
 );
 

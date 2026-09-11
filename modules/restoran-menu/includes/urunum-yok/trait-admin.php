@@ -21,7 +21,7 @@ trait RMA_Urunum_Yok_Admin_Trait {
     public function render_urunum_yok_page() {
         $this->page_header(
             'Tükenen Ürünler',
-            'Bir malzeme tükendiğinde, o malzemeyi içeren ürünleri toplu olarak "Tükendi" işaretleyin. Belirlediğiniz saat gelince ürünler otomatik olarak tekrar aktif olur.'
+            'Bir malzeme tükendiğinde, o malzemeyi kullanan ürünleri tek seferde satıştan çıkarın. Belirlediğiniz saatte otomatik olarak yeniden açılır.'
         );
 
         if ( isset( $_GET['qmo_uy_isaretlendi'] ) ) {
@@ -37,10 +37,17 @@ trait RMA_Urunum_Yok_Admin_Trait {
         $terms = get_terms( [ 'taxonomy' => 'rma_ingredient', 'hide_empty' => false, 'orderby' => 'name' ] );
         if ( is_wp_error( $terms ) ) $terms = [];
 
-        $secili_id = isset( $_GET['malzeme_id'] ) ? (int) $_GET['malzeme_id'] : 0;
+        $secili_id   = isset( $_GET['malzeme_id'] ) ? (int) $_GET['malzeme_id'] : 0;
+        $secili_term = $secili_id ? get_term( $secili_id, 'rma_ingredient' ) : null;
+        if ( is_wp_error( $secili_term ) ) $secili_term = null;
+
+        // Bu sarmalayıcı, ekrana özel kompakt görünüm ve aranabilir malzeme
+        // seçimi kurallarının kapsamını sınırlar (bkz. admin-ui.css/js) —
+        // eklentinin diğer ekranlarındaki .rma-card görünümü değişmez.
+        echo '<div class="rma-uy-screen">';
 
         echo '<div class="rma-card">';
-        echo '<h2 class="rma-card-title">1. Malzeme Seç</h2>';
+        echo '<h2 class="rma-card-title">Malzeme</h2>';
 
         if ( empty( $terms ) ) {
             printf(
@@ -48,51 +55,73 @@ trait RMA_Urunum_Yok_Admin_Trait {
                 esc_url( admin_url( 'edit-tags.php?taxonomy=rma_ingredient&post_type=rma_menu_item' ) )
             );
         } else {
-            echo '<form method="get">';
+            echo '<form method="get" class="rma-uy-combo-form">';
             echo '<input type="hidden" name="page" value="' . esc_attr( sanitize_key( wp_unslash( $_GET['page'] ?? 'qrms-rm-urunum-yok' ) ) ) . '">';
-            echo '<p><input type="text" id="qmo-uy-arama" placeholder="Malzeme ara…" autocomplete="off" style="max-width:320px;"></p>';
-            echo '<select name="malzeme_id" id="qmo-uy-select" style="min-width:280px;" onchange="this.form.submit()">';
+
+            // Aranabilir seçim: JS bunu #qmo-uy-select native <select>'inin
+            // ÜZERİNE bindirir. #rma-uy-combo başlangıçta gizli basılır;
+            // JS çalışmazsa yalnızca standart <select> görünür ve seçim
+            // hâlâ tek adımda çalışır (onchange="this.form.submit()").
+            echo '<div class="rma-uy-combo-wrap" id="rma-uy-combo-wrap">';
+            echo '<div class="rma-uy-combo' . ( $secili_term ? ' has-value' : '' ) . '" id="rma-uy-combo" hidden>';
+
+            echo '<button type="button" class="rma-uy-combo-btn" id="rma-uy-combo-btn" aria-haspopup="listbox" aria-expanded="false" aria-controls="rma-uy-combo-panel">';
+            echo '<span class="dashicons dashicons-search" aria-hidden="true"></span>';
+            printf(
+                '<span class="rma-uy-combo-value%1$s" id="rma-uy-combo-value">%2$s</span>',
+                $secili_term ? '' : ' is-placeholder',
+                $secili_term ? esc_html( $secili_term->name ) : 'Malzeme seç veya ara...'
+            );
+            echo '<span class="rma-uy-combo-caret" aria-hidden="true">&#9662;</span>';
+            echo '</button>';
+            echo '<button type="button" class="rma-uy-combo-clear" id="rma-uy-combo-clear" aria-label="Seçimi temizle">&times;</button>';
+
+            echo '<div class="rma-uy-combo-panel" id="rma-uy-combo-panel" hidden>';
+            echo '<input type="text" class="rma-uy-combo-search" id="rma-uy-combo-search" placeholder="Malzeme ara..." autocomplete="off" aria-controls="rma-uy-combo-list" aria-expanded="false">';
+            echo '<ul class="rma-uy-combo-list" id="rma-uy-combo-list" role="listbox">';
+            foreach ( $terms as $t ) {
+                printf(
+                    '<li role="option" class="rma-uy-combo-option" id="rma-uy-combo-opt-%1$d" data-value="%1$d" data-search="%2$s" aria-selected="%3$s">%4$s <span class="rma-uy-combo-count">(%5$d ürün)</span></li>',
+                    (int) $t->term_id,
+                    esc_attr( mb_strtolower( $t->name, 'UTF-8' ) ),
+                    $secili_id === (int) $t->term_id ? 'true' : 'false',
+                    esc_html( $t->name ),
+                    (int) $t->count
+                );
+            }
+            echo '</ul>';
+            echo '<p class="rma-uy-combo-empty" id="rma-uy-combo-empty" hidden>Eşleşen malzeme bulunamadı.</p>';
+            echo '</div>'; // .rma-uy-combo-panel
+
+            echo '</div>'; // .rma-uy-combo
+
+            echo '<select name="malzeme_id" id="qmo-uy-select" onchange="this.form.submit()">';
             echo '<option value="">— Malzeme seçin —</option>';
             foreach ( $terms as $t ) {
                 printf(
-                    '<option value="%1$d" data-ad="%2$s" %3$s>%4$s (%5$d ürün)</option>',
+                    '<option value="%1$d" %2$s>%3$s (%4$d ürün)</option>',
                     (int) $t->term_id,
-                    esc_attr( mb_strtolower( $t->name, 'UTF-8' ) ),
                     selected( $secili_id, $t->term_id, false ),
                     esc_html( $t->name ),
                     (int) $t->count
                 );
             }
             echo '</select>';
-            echo '<noscript><button type="submit" class="button">Seç</button></noscript>';
+            echo '</div>'; // .rma-uy-combo-wrap
+
+            echo '<noscript><p><button type="submit" class="button">Seç</button></p></noscript>';
             echo '</form>';
-            ?>
-            <script>
-            (function () {
-                var arama = document.getElementById( 'qmo-uy-arama' );
-                var secim = document.getElementById( 'qmo-uy-select' );
-                if ( ! arama || ! secim ) return;
-                var secenekler = Array.prototype.slice.call( secim.options );
-                arama.addEventListener( 'input', function () {
-                    var q = arama.value.toLocaleLowerCase( 'tr' );
-                    secenekler.forEach( function ( o ) {
-                        if ( ! o.value ) return;
-                        o.hidden = '' !== q && -1 === o.getAttribute( 'data-ad' ).indexOf( q );
-                    } );
-                } );
-            })();
-            </script>
-            <?php
         }
         echo '</div>';
 
-        $secili_term = $secili_id ? get_term( $secili_id, 'rma_ingredient' ) : null;
-        if ( $secili_term && ! is_wp_error( $secili_term ) ) {
+        if ( $secili_term ) {
             $this->render_urunum_yok_urun_listesi( $secili_term );
         }
 
         $this->render_urunum_yok_elle_liste();
         $this->render_urunum_yok_aktif_liste();
+
+        echo '</div>'; // .rma-uy-screen
 
         $this->page_footer();
     }
@@ -119,7 +148,7 @@ trait RMA_Urunum_Yok_Admin_Trait {
         ] );
 
         echo '<div class="rma-card" id="rma-uy-urunler">';
-        printf( '<h2 class="rma-card-title">2. "%s" içeren ürünler (%d)</h2>', esc_html( $term->name ), count( $urunler ) );
+        echo '<h2 class="rma-card-title rma-uy-affected-term">' . esc_html( $term->name ) . '</h2>';
 
         if ( empty( $urunler ) ) {
             echo '<p class="rma-empty">Bu malzemeyi içeren ürün bulunamadı. Ürün düzenleme ekranındaki "Malzemeler" kutusundan atama yapabilirsiniz.</p>';
@@ -127,12 +156,14 @@ trait RMA_Urunum_Yok_Admin_Trait {
             return;
         }
 
+        printf( '<p class="rma-card-desc rma-uy-affected-count">%d ürün etkileniyor</p>', count( $urunler ) );
+
         echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
         wp_nonce_field( 'qmo_uy_mark_action', 'qmo_uy_mark_nonce' );
         echo '<input type="hidden" name="action" value="qmo_uy_isaretle">';
         echo '<input type="hidden" name="qmo_uy_malzeme_id" value="' . (int) $term->term_id . '">';
 
-        echo '<table class="widefat striped" style="margin-bottom:14px;"><thead><tr>
+        echo '<table class="widefat striped rma-uy-table-compact" style="margin-bottom:14px;"><thead><tr>
                 <th style="width:34px;"><input type="checkbox" id="qmo-uy-hepsi" checked></th>
                 <th>Ürün</th><th>Kategori</th><th>Durum</th></tr></thead><tbody>';
         foreach ( $urunler as $u ) {
@@ -156,10 +187,44 @@ trait RMA_Urunum_Yok_Admin_Trait {
         echo '<p><label for="qmo_uy_bitis"><strong>Bitiş Tarihi/Saati</strong> — bu saate kadar seçilen ürünler tükendi kalır, sonra otomatik aktif olur.</label><br>';
         echo '<input type="datetime-local" id="qmo_uy_bitis" name="qmo_uy_bitis" required style="margin-top:6px;"></p>';
 
-        submit_button( 'Seçilenleri Tükendi Olarak İşaretle', 'primary', 'qmo_uy_submit', false );
+        printf(
+            '<p class="rma-uy-confirm-line"><strong><span id="rma-uy-secili-sayisi">%1$d</span></strong> ürün satıştan çıkarılacak.</p>',
+            count( $urunler )
+        );
+
+        submit_button( 'Tükendi Olarak İşaretle', 'primary', 'qmo_uy_submit', false );
         echo '</form>';
 
-        echo '<script>(function(){var h=document.getElementById("qmo-uy-hepsi");if(!h)return;h.addEventListener("change",function(){document.querySelectorAll(".qmo-uy-urun-cb").forEach(function(cb){cb.checked=h.checked;});});})();</script>';
+        echo '<script>(function(){
+            var h = document.getElementById("qmo-uy-hepsi");
+            var sayacEl = document.getElementById("rma-uy-secili-sayisi");
+            var kutular = document.querySelectorAll(".qmo-uy-urun-cb");
+
+            function guncelle() {
+                if (!sayacEl) return;
+                var n = 0;
+                kutular.forEach(function (cb) { if (cb.checked) n++; });
+                sayacEl.textContent = n;
+            }
+
+            if (h) {
+                h.addEventListener("change", function () {
+                    kutular.forEach(function (cb) { cb.checked = h.checked; });
+                    guncelle();
+                });
+            }
+
+            kutular.forEach(function (cb) {
+                cb.addEventListener("change", function () {
+                    if (h) {
+                        var hepsiIsaretli = true;
+                        kutular.forEach(function (k) { if (!k.checked) hepsiIsaretli = false; });
+                        h.checked = hepsiIsaretli;
+                    }
+                    guncelle();
+                });
+            });
+        })();</script>';
 
         echo '</div>';
     }
@@ -183,16 +248,17 @@ trait RMA_Urunum_Yok_Admin_Trait {
         $limit = 50;
 
         echo '<div class="rma-card" id="rma-uy-elle">';
-        echo '<h2 class="rma-card-title">Elle Kapatılan Ürünler</h2>';
+        echo '<h2 class="rma-card-title">Manuel Tükenenler</h2>';
 
         if ( empty( $ids ) ) {
-            echo '<p class="rma-empty">Elle kapatılan ürün yok.</p></div>';
+            echo '<p class="rma-card-desc">Elle satıştan çıkarılan ürünler burada görünür.</p>';
+            echo '<p class="rma-empty">Manuel olarak satıştan çıkarılmış ürün bulunmuyor.</p></div>';
             return;
         }
 
         $goster = array_slice( $ids, 0, $limit );
 
-        echo '<table class="widefat striped"><thead><tr><th>Ürün</th><th>Kategori</th><th></th></tr></thead><tbody>';
+        echo '<table class="widefat striped rma-uy-table-compact"><thead><tr><th>Ürün</th><th>Kategori</th><th></th></tr></thead><tbody>';
         foreach ( $goster as $id ) {
             $id    = (int) $id;
             $cats  = wp_get_object_terms( $id, 'rma_category', [ 'fields' => 'names' ] );
@@ -203,7 +269,7 @@ trait RMA_Urunum_Yok_Admin_Trait {
             );
 
             printf(
-                '<tr><td><a href="%1$s">%2$s</a></td><td>%3$s</td><td><a class="button button-small" href="%4$s">Tekrar Aktif Et</a></td></tr>',
+                '<tr><td><a href="%1$s">%2$s</a></td><td>%3$s</td><td><a class="button button-small" href="%4$s">Yeniden Satışa Aç</a></td></tr>',
                 esc_url( (string) get_edit_post_link( $id ) ),
                 esc_html( get_the_title( $id ) ),
                 esc_html( implode( ', ', $cats ) ),
@@ -240,14 +306,14 @@ trait RMA_Urunum_Yok_Admin_Trait {
         ] );
 
         echo '<div class="rma-card" id="rma-uy-aktif">';
-        echo '<h2 class="rma-card-title">Malzeme Bazlı Tükendi Listesi</h2>';
+        echo '<h2 class="rma-card-title">Malzeme Nedeniyle Tükenenler</h2>';
 
         if ( empty( $ids ) ) {
-            echo '<p class="rma-empty">Şu anda malzeme yüzünden tükendi işaretlenmiş ürün yok.</p></div>';
+            echo '<p class="rma-empty">Malzeme eksikliği nedeniyle satıştan çıkarılmış ürün bulunmuyor.</p></div>';
             return;
         }
 
-        echo '<table class="widefat striped"><thead><tr><th>Ürün</th><th>Malzemeler</th><th>Aktif Olacağı Saat</th><th></th></tr></thead><tbody>';
+        echo '<table class="widefat striped rma-uy-table-compact"><thead><tr><th>Ürün</th><th>Neden Olan Malzeme</th><th>Aktif Olacağı Saat</th><th></th></tr></thead><tbody>';
         foreach ( $ids as $id ) {
             $kayitlar = RMA_Urunum_Yok_Stock::kayitlar( $id );
             $adlar    = [];
@@ -263,7 +329,7 @@ trait RMA_Urunum_Yok_Admin_Trait {
             );
 
             printf(
-                '<tr><td><a href="%1$s">%2$s</a></td><td>%3$s</td><td>%4$s</td><td><a class="button button-small" href="%5$s">Şimdi Aktif Et</a></td></tr>',
+                '<tr><td><a href="%1$s">%2$s</a></td><td>%3$s</td><td>%4$s</td><td><a class="button button-small" href="%5$s">Yeniden Satışa Aç</a></td></tr>',
                 esc_url( (string) get_edit_post_link( $id ) ),
                 esc_html( get_the_title( $id ) ),
                 esc_html( implode( ', ', $adlar ) ),

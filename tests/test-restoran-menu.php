@@ -610,9 +610,9 @@ qrms_test(
 		$admin = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/urunum-yok/trait-admin.php' );
 
 		qrms_assert_contains( 'render_urunum_yok_elle_liste', $admin, 'elle liste metodu' );
-		qrms_assert_contains( 'Elle Kapatılan Ürünler', $admin, 'bölüm başlığı' );
-		qrms_assert_contains( 'Elle kapatılan ürün yok.', $admin, 'boş durum mesajı' );
-		qrms_assert_contains( 'Tekrar Aktif Et', $admin, 'geri alma butonu' );
+		qrms_assert_contains( 'Manuel Tükenenler', $admin, 'bölüm başlığı' );
+		qrms_assert_contains( 'Manuel olarak satıştan çıkarılmış ürün bulunmuyor.', $admin, 'boş durum mesajı' );
+		qrms_assert_contains( 'Yeniden Satışa Aç', $admin, 'geri alma butonu' );
 		qrms_assert_contains( 'qmo_urunum_yok_eksik_ozet', $admin, 'aynı özet kaynağı' );
 		qrms_assert_contains( "\$ozet['elle_ids']", $admin, 'id listesi özettendir' );
 		qrms_assert_contains( 'qmo_uy_aktiflestir', $admin, 'mevcut aktifleştirme ucu' );
@@ -845,7 +845,7 @@ qrms_test(
 		);
 
 		qrms_assert_same(
-			array( 'allergen_gluten', 'badge_popular', 'vegan' ),
+			array( 'allergen_gluten', 'badge_popular' ),
 			$temiz,
 			'yalnızca tanınan anahtarlar kaldı ve sıralandı'
 		);
@@ -857,14 +857,14 @@ qrms_test(
 	function () {
 		$alerjenler = qrms_test_alerjenler();
 
-		$a = RMA_Filtre::temizle_anahtarlar( array( 'vegan', 'cal_300', 'allergen_sut' ), $alerjenler );
-		$b = RMA_Filtre::temizle_anahtarlar( array( 'allergen_sut', 'vegan', 'cal_300' ), $alerjenler );
+		$a = RMA_Filtre::temizle_anahtarlar( array( 'badge_new', 'allergen_sut' ), $alerjenler );
+		$b = RMA_Filtre::temizle_anahtarlar( array( 'allergen_sut', 'badge_new' ), $alerjenler );
 
 		qrms_assert_same( $a, $b, 'sıralama deterministik' );
 		// Tekrar eden anahtar iki kez sayılmaz.
 		qrms_assert_same(
 			$a,
-			RMA_Filtre::temizle_anahtarlar( array( 'vegan', 'vegan', 'cal_300', 'allergen_sut' ), $alerjenler ),
+			RMA_Filtre::temizle_anahtarlar( array( 'badge_new', 'badge_new', 'allergen_sut' ), $alerjenler ),
 			'yinelenen anahtar teke düşer'
 		);
 	}

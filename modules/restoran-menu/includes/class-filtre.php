@@ -103,78 +103,41 @@ class RMA_Filtre {
     }
 
     /**
-     * Diyet bölümünün kartları (panel sırası).
+     * Sıralama seçenekleri (panel sırası).
      *
      * @return array<string,array{icon:string,label:string}>
      */
-    public static function diyet_kartlari() {
+    public static function siralama_secenekleri() {
         return array(
-            'gluten_free'  => array( 'icon' => '🌾', 'label' => 'Glütensiz' ),
-            'vegetarian'   => array( 'icon' => '🥦', 'label' => 'Vejetaryen' ),
-            'vegan'        => array( 'icon' => '🌿', 'label' => 'Vegan' ),
-            'lactose_free' => array( 'icon' => '🥛', 'label' => 'Laktozsuz' ),
-            'sugar_free'   => array( 'icon' => '🍬', 'label' => 'Şekersiz' ),
-            'halal'        => array( 'icon' => '☪️', 'label' => 'Helal' ),
-            'no_spice'     => array( 'icon' => '🧊', 'label' => 'Acısız' ),
+            ''           => array( 'icon' => 'recommended', 'label' => 'Önerilen' ),
+            'az'         => array( 'icon' => 'az', 'label' => 'A → Z' ),
+            'price_asc'  => array( 'icon' => 'price-up', 'label' => 'Ucuzdan Pahalıya' ),
+            'price_desc' => array( 'icon' => 'price-down', 'label' => 'Pahalıdan Ucuya' ),
+            'protein'    => array( 'icon' => 'protein', 'label' => 'En Proteinli' ),
+            'carbs'      => array( 'icon' => 'carbs', 'label' => 'En Az Karbonhidratlı' ),
+            'spicy_desc' => array( 'icon' => 'spicy-hot', 'label' => 'En Acı' ),
+            'spicy_asc'  => array( 'icon' => 'spicy-mild', 'label' => 'En Az Acı' ),
         );
     }
 
     /**
-     * Ürün özelliği kartları (rozetler + stok).
+     * Ürün özelliği kartları (rozetler).
      *
      * @return array<string,array{icon:string,label:string}>
      */
     public static function ozellik_kartlari() {
         return array(
-            'badge_popular'     => array( 'icon' => '🔥', 'label' => 'Popüler' ),
-            'badge_new'         => array( 'icon' => '✨', 'label' => 'Yeni' ),
-            'badge_recommended' => array( 'icon' => '⭐', 'label' => 'Önerilen' ),
-            'badge_discount'    => array( 'icon' => '💸', 'label' => 'İndirimli' ),
-            'in_stock'          => array( 'icon' => '✅', 'label' => 'Tükendikleri Gizle' ),
+            'badge_popular'     => array( 'icon' => 'popular', 'label' => 'Popüler' ),
+            'badge_new'         => array( 'icon' => 'new', 'label' => 'Yeni' ),
+            'badge_recommended' => array( 'icon' => 'star', 'label' => 'Önerilen' ),
+            'badge_discount'    => array( 'icon' => 'discount', 'label' => 'İndirimli' ),
         );
-    }
-
-    /**
-     * Acılık kartları: spicy_0 … spicy_4.
-     *
-     * @return array<string,array{icon:string,label:string}>
-     */
-    public static function aci_kartlari() {
-        $kartlar = array();
-        $ikonlar = array( '🧊', '🌶️', '🌶️🌶️', '🌶️🌶️🌶️', '🔥🌶️' );
-
-        foreach ( self::aci_seviyeleri() as $seviye => $etiket ) {
-            $kartlar[ 'spicy_' . $seviye ] = array(
-                'icon'  => $ikonlar[ $seviye ],
-                'label' => $etiket,
-            );
-        }
-
-        return $kartlar;
-    }
-
-    /**
-     * Kalori kartları.
-     *
-     * @return array<string,array{icon:string,label:string}>
-     */
-    public static function kalori_kartlari() {
-        $kartlar = array();
-
-        foreach ( self::kalori_esikleri() as $anahtar => $esik ) {
-            $kartlar[ $anahtar ] = array(
-                'icon'  => '🔥',
-                'label' => $esik . ' kcal altı',
-            );
-        }
-
-        return $kartlar;
     }
 
     /**
      * Alerjen kartları — "hariç tut" anlamındadır.
      *
-     * @param array<string,array{label:string,icon:string}> $tanimlar get_allergen_definitions() çıktısı.
+     * @param array<string,array{label:string}> $tanimlar get_allergen_definitions() çıktısı.
      * @return array<string,array{icon:string,label:string}>
      */
     public static function alerjen_kartlari( array $tanimlar ) {
@@ -182,7 +145,7 @@ class RMA_Filtre {
 
         foreach ( $tanimlar as $slug => $def ) {
             $kartlar[ 'allergen_' . $slug ] = array(
-                'icon'  => isset( $def['icon'] ) ? (string) $def['icon'] : '⚠️',
+                'icon'  => class_exists( 'RMA_Filtre_Ikon' ) ? RMA_Filtre_Ikon::alerjen_anahtari( $slug ) : 'uyari',
                 'label' => isset( $def['label'] ) ? (string) $def['label'] : (string) $slug,
             );
         }
@@ -199,9 +162,6 @@ class RMA_Filtre {
     public static function anahtarlar( array $alerjen_tanimlari = array() ) {
         return array_values(
             array_merge(
-                array_keys( self::diyet_kartlari() ),
-                array_keys( self::aci_kartlari() ),
-                array_keys( self::kalori_kartlari() ),
                 array_keys( self::ozellik_kartlari() ),
                 array_keys( self::alerjen_kartlari( $alerjen_tanimlari ) )
             )

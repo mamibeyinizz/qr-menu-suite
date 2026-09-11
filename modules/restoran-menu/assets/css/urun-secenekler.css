@@ -77,111 +77,189 @@
     pointer-events: none;
 }
 
-.rma-liste-kap {
-    border: 1px solid var(--rma-a-border, #dcdcdc);
-    border-radius: 6px;
-    padding: 12px 14px;
-    margin-bottom: 14px;
-    background: var(--rma-a-surface, #fff);
-    position: relative;
+/* =====================================================================
+   "EKSTRALAR VE ROZETLER" SAYFASI
+
+   Aşağıdaki tüm kurallar .rma-secenek-sayfa (yalnızca bu ekranda basılan
+   kök eleman) altında kapsanır — ürün düzenleme ekranındaki "Seçenekler"
+   meta kutusuna (yukarıdaki .rma-secenek-kutu kuralları) dokunmaz.
+   Değişken değerleri .rma-admin sarmalayıcısından (assets/css/admin-ui.css)
+   gelir; bu sayfa her zaman o sarmalayıcı içinde basılır.
+===================================================================== */
+
+.rma-secenek-sayfa {
+    --rma-sira-btn: 26px;
 }
 
-.rma-liste-sil {
-    color: #b32d2e;
-    margin-left: 10px;
+/* Ana .rma-admin paneli bu sayfadayken biraz daha kompakt: gereksiz
+   boşluk azaltılır ama paylaşılan .rma-admin kuralı DEĞİŞTİRİLMEZ —
+   yalnızca bu sayfa içerdiğinde geçerli olur. */
+.rma-admin:has(.rma-secenek-sayfa) {
+    padding: 22px 24px 28px;
 }
-
-/* ---- Ekstralar ve Rozetler sayfası ---- */
 
 .rma-secenek-sayfa h2,
 .rma-secenek-sayfa h3 {
-    color: var(--rma-a-text, #1d2327);
+    color: var(--rma-a-text, #f5f0e8);
 }
 
+/* ---------------------------------------------------------------
+   SEKMELER — segmented control (WordPress nav-tab değil)
+--------------------------------------------------------------- */
 .rma-secenek-sekmeler {
     display: flex;
-    gap: 0;
-    margin: 0 0 20px;
-    max-width: 900px;
-    border-bottom: 1px solid var(--rma-a-border, #3a3a3a);
+    gap: 4px;
+    margin: 0 0 22px;
+    max-width: 440px;
+    padding: 4px;
+    background: var(--rma-a-surface-2, #1a1a1a);
+    border: 1px solid var(--rma-a-border, #2e2e2e);
+    border-radius: 10px;
 }
 
 .rma-secenek-sekme {
     background: transparent;
     border: 0;
-    border-bottom: 2px solid transparent;
-    color: var(--rma-a-muted, #888);
+    border-radius: 7px;
+    color: var(--rma-a-muted, #8f8a82);
     cursor: pointer;
     flex: 1 1 50%;
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 600;
-    margin-bottom: -1px;
-    padding: 10px 16px;
+    padding: 9px 14px;
     text-align: center;
     text-decoration: none;
-    transition: color .15s, border-color .15s;
+    transition: color .15s, background-color .15s;
 }
 
-.rma-secenek-sekme:hover,
-.rma-secenek-sekme:focus {
+.rma-secenek-sekme:hover {
+    background: rgba(255, 255, 255, .04);
     color: var(--rma-a-text, #f5f0e8);
-    outline: none;
 }
 
 .rma-secenek-sekme.is-active {
-    border-bottom-color: var(--rma-a-accent, #c9a84c);
-    color: var(--rma-a-text, #f5f0e8);
+    background: var(--rma-a-accent-soft, rgba(201, 168, 76, .14));
+    color: var(--rma-a-accent, #c9a84c);
+}
+
+/* Erişilebilir klavye odağı korunur; WordPress'in varsayılan mavi
+   outline'ı yerine markaya uygun altın halka kullanılır. */
+.rma-secenek-sekme:focus-visible {
+    outline: 2px solid var(--rma-a-accent, #c9a84c);
+    outline-offset: 2px;
 }
 
 .rma-secenek-panel[hidden] {
     display: none !important;
 }
 
+/* ---------------------------------------------------------------
+   EKSTRA GRUP KARTI ("Soslar", "İçecekler" …)
+--------------------------------------------------------------- */
+.rma-liste-kap {
+    background: var(--rma-a-surface-2, #1a1a1a);
+    border: 1px solid var(--rma-a-border, #2e2e2e);
+    border-radius: 10px;
+    padding: 14px 16px 16px;
+    margin-bottom: 12px;
+    position: relative;
+}
+
 .rma-liste-baslik {
     align-items: center;
     display: flex;
     flex-wrap: wrap;
-    gap: 8px 12px;
-    margin: 0 0 10px;
-    /* Tutamac + ↑ + ↓ (~3×32px + gap) ile çakışmayı önlemek için. */
-    padding-left: 116px;
+    gap: 4px 10px;
+    margin: 0 0 12px;
+    /* Sol boşluk, sıralama kontrolleri kümesinin genişliğini karşılar. */
+    padding-left: calc(3 * var(--rma-sira-btn) + 2 * 3px + 12px);
+}
+
+.rma-liste-baslik input[type="text"] {
+    flex: 1 1 100%;
+    font-size: 14px;
+    font-weight: 600;
+    max-width: 380px;
 }
 
 .rma-kullanim-sayaci {
-    color: var(--rma-a-muted, #888);
+    color: var(--rma-a-muted, #8f8a82);
     font-size: 12px;
     white-space: nowrap;
 }
 
-.rma-sira-arac {
-    display: flex;
-    gap: 2px;
-    position: absolute;
-    left: 8px;
-    top: 12px;
+.rma-liste-sil {
+    background: transparent;
+    border: 0;
+    border-radius: 6px;
+    color: var(--rma-a-danger, #e05252);
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    margin-left: auto;
+    opacity: .75;
+    padding: 4px 8px;
+    text-decoration: none;
+    transition: background-color .15s, opacity .15s;
 }
 
-.rma-liste-kap .rma-sira-arac {
+.rma-liste-sil:hover {
+    background: rgba(224, 82, 82, .12);
+    opacity: 1;
+}
+
+.rma-liste-sil:focus-visible {
+    box-shadow: 0 0 0 2px rgba(224, 82, 82, .4);
+    opacity: 1;
+    outline: none;
+}
+
+/* ---------------------------------------------------------------
+   SIRALAMA KONTROLLERİ — tutamaç + yukarı/aşağı
+--------------------------------------------------------------- */
+.rma-sira-arac {
+    display: flex;
+    gap: 3px;
     position: absolute;
     left: 8px;
     top: 14px;
+}
+
+.rma-secenek-sayfa .rma-rozet-tablo .rma-sira-arac {
+    position: static;
 }
 
 .rma-sira-tutamac,
 .rma-sira-yukari,
 .rma-sira-asagi {
     align-items: center;
-    background: var(--rma-a-surface-2, #2a2a2a);
-    border: 1px solid var(--rma-a-border, #3a3a3a);
-    border-radius: 4px;
-    color: var(--rma-a-muted, #888);
+    background: var(--rma-a-raised, #202020);
+    border: 1px solid var(--rma-a-border, #2e2e2e);
+    border-radius: 5px;
+    color: var(--rma-a-muted, #8f8a82);
     cursor: pointer;
     display: inline-flex;
-    font-size: 12px;
-    height: 32px;
+    font-size: 11px;
+    height: var(--rma-sira-btn);
     justify-content: center;
-    min-width: 32px;
-    padding: 0 6px;
+    min-width: var(--rma-sira-btn);
+    padding: 0;
+    transition: border-color .15s, color .15s, background-color .15s;
+}
+
+.rma-sira-tutamac:hover,
+.rma-sira-yukari:hover,
+.rma-sira-asagi:hover {
+    background: var(--rma-a-surface, #131313);
+    border-color: var(--rma-a-accent, #c9a84c);
+    color: var(--rma-a-accent, #c9a84c);
+}
+
+.rma-sira-tutamac:focus-visible,
+.rma-sira-yukari:focus-visible,
+.rma-sira-asagi:focus-visible {
+    outline: 2px solid var(--rma-a-accent, #c9a84c);
+    outline-offset: 1px;
 }
 
 .rma-sira-tutamac {
@@ -192,14 +270,6 @@
     cursor: grabbing;
 }
 
-.rma-sira-sutun {
-    width: 90px;
-}
-
-.rma-rozet-tablo .rma-sira-arac {
-    position: static;
-}
-
 .rma-surukleniyor {
     opacity: .55;
 }
@@ -208,30 +278,202 @@
     outline: 2px dashed var(--rma-a-accent, #c9a84c);
 }
 
+/* ---------------------------------------------------------------
+   TABLOLARI LİSTEYE DÖNÜŞTÜR — beyaz WordPress tablosu kaldırılır.
+   Satır/hücre sırası PHP tarafında sabit olduğundan (bkz.
+   render_tekrar_sablonu / render_rozet_sablonu), sütun genişlikleri
+   data-label yerine :nth-child ile verilir — bu, JS ile sonradan
+   eklenen satırlarda da (data-label taşımazlar) doğru çalışır.
+--------------------------------------------------------------- */
+.rma-secenek-sayfa .rma-secenek-tablo {
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+    display: block;
+    margin: 2px 0 10px;
+    width: 100%;
+}
+
+.rma-secenek-sayfa .rma-secenek-tablo thead {
+    display: none;
+}
+
+.rma-secenek-sayfa .rma-secenek-tablo tbody {
+    display: block;
+}
+
+.rma-secenek-sayfa .rma-secenek-tablo tr.rma-tekrar-satir {
+    align-items: center;
+    border-bottom: 1px solid var(--rma-a-border-soft, #242424);
+    display: flex;
+    gap: 8px;
+    padding: 7px 2px;
+}
+
+.rma-secenek-sayfa .rma-secenek-tablo:not(.rma-rozet-tablo) tbody tr.rma-tekrar-satir:last-child {
+    border-bottom: 0;
+}
+
+.rma-secenek-sayfa .rma-secenek-tablo td {
+    border: 0;
+    display: block;
+    padding: 0;
+}
+
+.rma-secenek-sayfa .rma-secenek-tablo td input[type="text"] {
+    width: 100%;
+}
+
+/* Ekstra ürün satırı: ad geniş, fiyat dar + ₺ öneki, sil küçük. */
+.rma-secenek-sayfa .rma-secenek-tablo:not(.rma-rozet-tablo) td:nth-child(1) {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.rma-secenek-sayfa .rma-secenek-tablo:not(.rma-rozet-tablo) td:nth-child(2) {
+    flex: 0 0 92px;
+    position: relative;
+}
+
+.rma-secenek-sayfa .rma-secenek-tablo:not(.rma-rozet-tablo) td:nth-child(2) input {
+    padding-left: 20px;
+    text-align: right;
+}
+
+.rma-secenek-sayfa .rma-secenek-tablo:not(.rma-rozet-tablo) td:nth-child(2)::before {
+    color: var(--rma-a-muted, #8f8a82);
+    content: '₺';
+    font-size: 12px;
+    left: 8px;
+    pointer-events: none;
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.rma-secenek-sayfa .rma-secenek-tablo:not(.rma-rozet-tablo) td:nth-child(3) {
+    flex: 0 0 auto;
+}
+
+/* Ekle / sil aksiyonları */
+.rma-secenek-sayfa .rma-secenek-tablo .rma-tekrar-sil {
+    align-items: center;
+    background: transparent;
+    border-radius: 6px;
+    color: var(--rma-a-muted, #8f8a82);
+    display: inline-flex;
+    font-size: 13px;
+    height: 28px;
+    justify-content: center;
+    text-decoration: none;
+    transition: background-color .15s, color .15s;
+    width: 28px;
+}
+
+.rma-secenek-sayfa .rma-secenek-tablo .rma-tekrar-sil:hover {
+    background: rgba(224, 82, 82, .12);
+    color: var(--rma-a-danger, #e05252);
+}
+
+.rma-secenek-sayfa .rma-secenek-tablo .rma-tekrar-sil:focus-visible {
+    box-shadow: 0 0 0 2px rgba(224, 82, 82, .4);
+    outline: none;
+}
+
+/* ---------------------------------------------------------------
+   ROZET SATIRLARI — her rozet kendi kartı
+--------------------------------------------------------------- */
+.rma-secenek-sayfa .rma-rozet-tablo tr.rma-rozet-satir {
+    align-items: flex-start;
+    background: var(--rma-a-surface-2, #1a1a1a);
+    border: 1px solid var(--rma-a-border, #2e2e2e);
+    border-bottom: 1px solid var(--rma-a-border, #2e2e2e);
+    border-radius: 9px;
+    flex-wrap: wrap;
+    gap: 10px 14px;
+    margin-bottom: 10px;
+    padding: 12px 14px;
+}
+
+.rma-secenek-sayfa .rma-rozet-tablo tbody tr.rma-rozet-satir:last-child {
+    margin-bottom: 0;
+}
+
+.rma-secenek-sayfa .rma-rozet-tablo td:nth-child(1) {
+    align-self: center;
+    flex: 0 0 auto;
+}
+
+.rma-secenek-sayfa .rma-rozet-tablo td:nth-child(2) {
+    flex: 1 1 200px;
+    min-width: 160px;
+}
+
+.rma-secenek-sayfa .rma-rozet-tablo td:nth-child(2) .rma-kullanim-sayaci {
+    display: block;
+    margin-top: 4px;
+}
+
+.rma-secenek-sayfa .rma-rozet-tablo td:nth-child(3) {
+    align-self: center;
+    flex: 0 0 auto;
+}
+
+.rma-secenek-sayfa .rma-rozet-tablo td:nth-child(4) {
+    flex: 1 1 170px;
+    min-width: 150px;
+}
+
+.rma-secenek-sayfa .rma-rozet-tablo td:nth-child(5) {
+    align-self: center;
+    flex: 0 1 auto;
+}
+
+.rma-secenek-sayfa .rma-rozet-tablo td:nth-child(6) {
+    align-self: center;
+    flex: 0 0 auto;
+}
+
+/* ---------------------------------------------------------------
+   İKON SEÇİCİ
+--------------------------------------------------------------- */
 .rma-ikon-secici {
     position: relative;
 }
 
 .rma-ikon-tetik {
     align-items: center;
-    background: var(--rma-a-surface-2, #2a2a2a);
-    border: 1px solid var(--rma-a-border, #3a3a3a);
-    border-radius: 4px;
+    background: var(--rma-a-raised, #202020);
+    border: 1px solid var(--rma-a-border, #2e2e2e);
+    border-radius: 7px;
     color: var(--rma-a-text, #f5f0e8);
     cursor: pointer;
     display: inline-flex;
-    font-size: 18px;
-    height: 44px;
+    font-size: 17px;
+    height: 38px;
     justify-content: center;
-    min-width: 44px;
-    padding: 0 8px;
+    min-width: 40px;
+    padding: 0 6px;
+    transition: border-color .15s, background-color .15s;
 }
 
+.rma-ikon-tetik:hover {
+    border-color: var(--rma-a-accent-dim, rgba(201, 168, 76, .32));
+}
+
+.rma-ikon-tetik:focus-visible {
+    outline: 2px solid var(--rma-a-accent, #c9a84c);
+    outline-offset: 1px;
+}
+
+/* İkon paneli açılınca document.body'e eklenir (bkz. urun-secenekler.js
+   ikonPanelAc) — .rma-secenek-sayfa altında değildir, o yüzden bu
+   kurallar kasıtlı olarak sayfa sarmalayıcısına bağlı değildir. */
 .rma-ikon-panel {
-    background: var(--rma-a-surface, #1e1e1e);
-    border: 1px solid var(--rma-a-border, #3a3a3a);
-    border-radius: 6px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, .35);
+    background: var(--rma-a-surface, #131313);
+    border: 1px solid var(--rma-a-border, #2e2e2e);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, .45);
     max-width: 280px;
     padding: 10px;
     position: absolute;
@@ -239,7 +481,7 @@
 }
 
 .rma-ikon-grup-baslik {
-    color: var(--rma-a-muted, #888);
+    color: var(--rma-a-muted, #8f8a82);
     font-size: 11px;
     font-weight: 700;
     letter-spacing: .06em;
@@ -252,17 +494,28 @@
 }
 
 .rma-ikon-sec {
-    background: var(--rma-a-surface-2, #2a2a2a);
-    border: 1px solid var(--rma-a-border, #3a3a3a);
-    border-radius: 4px;
+    background: var(--rma-a-raised, #202020);
+    border: 1px solid var(--rma-a-border, #2e2e2e);
+    border-radius: 6px;
     cursor: pointer;
     display: inline-block;
     font-size: 20px;
-    height: 40px;
-    line-height: 38px;
+    height: 38px;
+    line-height: 36px;
     margin: 2px;
     text-align: center;
-    width: 40px;
+    transition: border-color .15s, background-color .15s;
+    width: 38px;
+}
+
+.rma-ikon-sec:hover {
+    background: var(--rma-a-surface-2, #1a1a1a);
+    border-color: var(--rma-a-accent-dim, rgba(201, 168, 76, .32));
+}
+
+.rma-ikon-sec:focus-visible {
+    outline: 2px solid var(--rma-a-accent, #c9a84c);
+    outline-offset: 1px;
 }
 
 .rma-ikon-sec.rma-ikon-bos {
@@ -276,13 +529,13 @@
 }
 
 .rma-ikon-ozel {
-    border-top: 1px solid var(--rma-a-border, #3a3a3a);
+    border-top: 1px solid var(--rma-a-border, #2e2e2e);
     margin-top: 8px;
     padding-top: 8px;
 }
 
 .rma-ikon-ozel label {
-    color: var(--rma-a-muted, #888);
+    color: var(--rma-a-muted, #8f8a82);
     font-size: 12px;
 }
 
@@ -291,48 +544,68 @@
     width: 80px;
 }
 
-.rma-renk-alan {
+/* ---------------------------------------------------------------
+   RENK SEÇİCİ — profesyonel küçük palet
+--------------------------------------------------------------- */
+.rma-secenek-sayfa .rma-renk-alan {
     display: flex;
     flex-direction: column;
     gap: 6px;
 }
 
-.rma-renk-palet {
+.rma-secenek-sayfa .rma-renk-palet {
     display: flex;
     flex-wrap: wrap;
-    gap: 4px;
+    gap: 5px;
 }
 
-.rma-renk-ornek {
+.rma-secenek-sayfa .rma-renk-ornek {
     border: 2px solid transparent;
-    border-radius: 4px;
+    border-radius: 5px;
     cursor: pointer;
-    height: 28px;
-    min-width: 28px;
+    height: 26px;
+    min-width: 26px;
     padding: 0;
-    width: 28px;
+    transition: border-color .15s, box-shadow .15s, transform .1s;
+    width: 26px;
 }
 
-.rma-renk-ornek:hover,
-.rma-renk-ornek:focus {
-    border-color: var(--rma-a-text, #f5f0e8);
+.rma-secenek-sayfa .rma-renk-ornek:hover {
+    transform: translateY(-1px);
+}
+
+.rma-secenek-sayfa .rma-renk-ornek:focus-visible {
     outline: none;
 }
 
-.rma-badge.rma-badge-ozel.rma-rozet-onizleme-kutu {
+.rma-secenek-sayfa .rma-renk-ornek:focus-visible,
+.rma-secenek-sayfa .rma-renk-ornek.is-selected {
+    border-color: var(--rma-a-text, #f5f0e8);
+    box-shadow: 0 0 0 2px var(--rma-a-accent, #c9a84c);
+}
+
+/* ---------------------------------------------------------------
+   ROZET ÖNİZLEMESİ — okunabilir kontrast (bkz. rozetOnizlemeGuncelle,
+   metin rengi JS'te arka plan parlaklığına göre otomatik hesaplanır)
+--------------------------------------------------------------- */
+.rma-secenek-sayfa .rma-badge.rma-badge-ozel.rma-rozet-onizleme-kutu {
     background: var(--rma-rozet-renk, #c9a84c);
-    border-radius: 3px;
-    color: #111;
+    border-radius: 6px;
+    color: var(--rma-rozet-metin, #15120a);
     display: inline-block;
     font-size: 11px;
     font-weight: 700;
-    padding: 6px 10px;
+    letter-spacing: .01em;
+    padding: 7px 12px;
     position: static;
     right: auto;
     top: auto;
     white-space: nowrap;
 }
 
+/* ---------------------------------------------------------------
+   BOŞ DURUM / AKSİYONLAR
+--------------------------------------------------------------- */
 .rma-bos-durum {
     margin: 0 0 18px;
     text-align: center;
@@ -349,72 +622,43 @@
     min-height: 44px;
 }
 
-/* Mobil: tablo satırları karta dönüşür */
+/* ---------------------------------------------------------------
+   MOBİL (≤782px, WP standart kırılma noktası)
+--------------------------------------------------------------- */
 @media (max-width: 782px) {
-    .rma-secenek-tablo thead {
-        display: none;
-    }
-
-    .rma-secenek-tablo tbody tr {
-        border: 1px solid var(--rma-a-border, #dcdcdc);
-        border-radius: 6px;
-        display: block;
-        margin-bottom: 10px;
-        padding: 8px 10px;
-    }
-
-    .rma-secenek-tablo tbody td {
-        border: 0;
-        display: block;
-        padding: 6px 0;
-    }
-
-    .rma-secenek-tablo tbody td::before {
-        color: var(--rma-a-muted, #888);
-        content: attr(data-label);
-        display: block;
-        font-size: 11px;
-        font-weight: 700;
-        letter-spacing: .04em;
-        margin-bottom: 4px;
-        text-transform: uppercase;
-    }
-
-    .rma-secenek-tablo tbody td:empty::before,
-    .rma-secenek-tablo .rma-sira-sutun::before {
-        display: none;
-    }
-
-    .rma-rozet-tablo .rma-sira-sutun {
-        border-bottom: 1px solid var(--rma-a-border, #3a3a3a);
-        margin-bottom: 8px;
-        padding-bottom: 8px;
-    }
-
-    .rma-liste-baslik {
-        flex-direction: column;
-        align-items: flex-start;
+    .rma-secenek-sayfa .rma-liste-baslik {
         padding-left: 0;
-        padding-top: 40px;
+        padding-top: calc(var(--rma-sira-btn) + 8px);
     }
 
-    .rma-liste-kap .rma-sira-arac {
-        left: 10px;
-        top: 10px;
+    .rma-secenek-sayfa .rma-sira-arac {
+        left: 0;
+        top: 0;
     }
 
     .rma-ikon-tetik,
     .rma-sira-tutamac,
     .rma-sira-yukari,
     .rma-sira-asagi,
-    .rma-tekrar-sil,
+    .rma-secenek-sayfa .rma-secenek-tablo .rma-tekrar-sil,
     .rma-liste-sil {
-        min-height: 44px;
-        min-width: 44px;
+        min-height: 40px;
+        min-width: 40px;
     }
 
     .rma-secenek-sekme {
         font-size: 13px;
-        padding: 12px 8px;
+        padding: 10px 8px;
+    }
+}
+
+/* Çok dar ekranlar (320px gibi): fiyat sütununu biraz daha sıkıştır. */
+@media (max-width: 380px) {
+    .rma-secenek-sayfa .rma-secenek-tablo:not(.rma-rozet-tablo) td:nth-child(2) {
+        flex-basis: 76px;
+    }
+
+    .rma-secenek-sayfa .rma-liste-baslik input[type="text"] {
+        max-width: none;
     }
 }
