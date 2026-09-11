@@ -44,6 +44,7 @@ require_once __DIR__ . '/includes/class-ekstra.php';
 require_once __DIR__ . '/includes/class-servis-saati.php';
 require_once __DIR__ . '/includes/class-ozel-rozet.php';
 require_once __DIR__ . '/includes/trait-secenek-admin.php';
+require_once __DIR__ . '/includes/class-urun-editor.php';
 require_once __DIR__ . '/includes/shortcode-vitrin.php';
 require_once __DIR__ . '/qmo-one-cikan-slider.php';
 
@@ -125,6 +126,10 @@ class Restaurant_Menu_Automation {
         add_filter( 'post_row_actions',              [ $this, 'add_duplicate_post_link' ], 10, 2 );
         add_action( 'admin_action_rma_duplicate_post', [ $this, 'duplicate_post_action' ] );
         add_action( 'admin_enqueue_scripts', [ $this, 'admin_scripts' ] );
+
+        // Ürün ekle/düzenle ekranının arayüz katmanı — yalnızca stil, kapsam
+        // sınıfı ve "Temel Bilgiler" kartı; veri akışına dokunmaz.
+        RMA_Urun_Editor::init();
         add_action( 'wp_ajax_rma_toggle_status',       [ $this, 'ajax_toggle_status' ] );
         add_action( 'wp_ajax_rma_color_preview_item',  [ $this, 'ajax_color_preview_item' ] );
         add_action( 'wp_ajax_rma_toggle_tukendi',      [ $this, 'ajax_toggle_tukendi' ] );

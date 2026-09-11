@@ -267,6 +267,43 @@ class RMA_Ozel_Rozet {
 	}
 
 	/**
+	 * Rozet zemininde okunabilir metin rengi.
+	 *
+	 * Yönetim önizlemeleri ve rozet şeridi sabit koyu metin kullanıyordu;
+	 * mor/kırmızı gibi koyu zeminlerde kontrast WCAG AA'nın altına düşüyordu.
+	 * Göreli parlaklık (WCAG 2.x relative luminance) hesaplanır, eşiğin
+	 * altındaki zeminlerde açık metin döndürülür.
+	 *
+	 * @param string $renk Hex renk (#rgb veya #rrggbb).
+	 * @return string Metin rengi (#15120a | #fdfaf4).
+	 */
+	public static function metin_rengi( $renk ) {
+		$hex = ltrim( (string) $renk, '#' );
+
+		if ( 3 === strlen( $hex ) ) {
+			$hex = $hex[0] . $hex[0] . $hex[1] . $hex[1] . $hex[2] . $hex[2];
+		}
+
+		if ( ! preg_match( '/^[0-9a-fA-F]{6}$/', $hex ) ) {
+			return '#15120a';
+		}
+
+		$kanal = array();
+
+		foreach ( array( 0, 2, 4 ) as $basla ) {
+			$c = hexdec( substr( $hex, $basla, 2 ) ) / 255;
+
+			$kanal[] = $c <= 0.03928 ? $c / 12.92 : pow( ( $c + 0.055 ) / 1.055, 2.4 );
+		}
+
+		$parlaklik = ( 0.2126 * $kanal[0] ) + ( 0.7152 * $kanal[1] ) + ( 0.0722 * $kanal[2] );
+
+		// Beyaz metnin kontrastı (1.05 / (L+0.05)) koyu metninkini
+		// (L+0.05)/0.05 geçtiği nokta ~0.1791'dir.
+		return $parlaklik > 0.1791 ? '#15120a' : '#fdfaf4';
+	}
+
+	/**
 	 * Sabit arayüz metni çevirisi.
 	 *
 	 * @param string $metin Türkçe metin.

@@ -734,7 +734,10 @@
 			.7152 * kanal( deger.substr( 2, 2 ) ) +
 			.0722 * kanal( deger.substr( 4, 2 ) );
 
-		return parlaklik > .5 ? '#15120a' : '#fdfaf4';
+		// Açık metnin kontrastı (1.05 / (L + .05)) koyu metninkini
+		// ((L + .05) / .05) geçtiği nokta ~.1791'dir; .5 eşiği altın
+		// (#c9a84c) gibi orta parlaklıktaki zeminlerde AA'nın altına düşerdi.
+		return parlaklik > .1791 ? '#15120a' : '#fdfaf4';
 	}
 
 	/**

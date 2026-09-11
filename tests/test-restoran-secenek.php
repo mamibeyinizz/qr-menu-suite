@@ -361,3 +361,114 @@ qrms_test(
 		);
 	}
 );
+
+echo "\nÜrün editörü — arayüz katmanı\n";
+
+qrms_test(
+	'özel rozet metin rengi WCAG kontrastına göre seçilir',
+	function () {
+		// Koyu zeminler (mor, kırmızı) açık metin ister; sarı/altın koyu metin.
+		qrms_assert_same( '#fdfaf4', RMA_Ozel_Rozet::metin_rengi( '#9b59b6' ), 'mor zemin → açık metin' );
+		qrms_assert_same( '#fdfaf4', RMA_Ozel_Rozet::metin_rengi( '#b3261e' ), 'kırmızı zemin → açık metin' );
+		qrms_assert_same( '#15120a', RMA_Ozel_Rozet::metin_rengi( '#f1c40f' ), 'sarı zemin → koyu metin' );
+		qrms_assert_same( '#15120a', RMA_Ozel_Rozet::metin_rengi( RMA_Ozel_Rozet::RENK ), 'altın zemin → koyu metin' );
+		qrms_assert_same( '#fdfaf4', RMA_Ozel_Rozet::metin_rengi( '#000' ), 'kısa hex desteklenir' );
+		qrms_assert_same( '#15120a', RMA_Ozel_Rozet::metin_rengi( 'geçersiz' ), 'bozuk değerde koyu metne düşer' );
+
+		// PHP ve canlı önizleme JS'i aynı eşiği kullanmalı.
+		$js = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/js/urun-secenekler.js' );
+		qrms_assert_contains( "parlaklik > .1791 ? '#15120a' : '#fdfaf4'", $js, 'JS eşiği PHP ile aynı' );
+	}
+);
+
+qrms_test(
+	'ürün ekranı arayüzü yalnızca kendi kapsamında çalışır',
+	function () {
+		$php = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/class-urun-editor.php' );
+		$css = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/css/urun-editor.css' );
+		$js  = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/js/urun-editor.js' );
+
+		qrms_assert_contains( "'rma_menu_item' === \$screen->post_type", $php, 'varlıklar yalnızca ürün ekranında' );
+		qrms_assert_contains( "'post' === \$screen->base", $php, 'yalnızca ekle/düzenle ekranı' );
+
+		// CSS kapsamı: her kural gövde sınıfıyla başlamalı, global seçici olmamalı.
+		foreach ( explode( "\n", $css ) as $satir ) {
+			$satir = trim( $satir );
+
+			if ( '' === $satir || 0 === strpos( $satir, '/*' ) || 0 === strpos( $satir, '*' )
+				|| 0 === strpos( $satir, '@' ) || 0 === strpos( $satir, '}' ) || false === strpos( $satir, '{' ) ) {
+				continue;
+			}
+
+			qrms_assert_true(
+				0 === strpos( $satir, 'body.qrms-product-editor' ) || 0 === strpos( $satir, 'body.rtl.qrms-product-editor' ),
+				'kapsam dışı seçici yok: ' . $satir
+			);
+		}
+
+		qrms_assert_contains( "document.body.classList.contains( 'qrms-product-editor' )", $js, 'JS kapsam kontrolü' );
+		qrms_assert_false( false !== strpos( $js, 'fetch(' ), 'açılır liste için sunucuya istek atılmaz' );
+		qrms_assert_false( false !== strpos( $js, 'ajax' ), 'AJAX eklenmedi' );
+	}
+);
+
+qrms_test(
+	'aranabilir seçim tek bileşendir ve alan adlarını değiştirmez',
+	function () {
+		$detay   = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-post-types.php' );
+		$secenek = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-secenek-admin.php' );
+		$malzeme = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/urunum-yok/class-ingredient-taxonomy.php' );
+
+		// Aynı bileşen dört listede birden kullanılır.
+		qrms_assert_same( 2, substr_count( $detay, 'data-qrms-secim="coklu"' ), 'alerjen + rozet' );
+		qrms_assert_same( 2, substr_count( $secenek, 'data-qrms-secim="coklu"' ), 'hazır liste + özel rozet' );
+		qrms_assert_contains( 'data-qrms-secim="coklu"', $malzeme, 'malzemeler' );
+
+		// Alan adları ve değerleri aynen korunur.
+		qrms_assert_contains( 'name="rma_allergens[]"', $detay, 'alerjen alan adı' );
+		qrms_assert_contains( 'name="rma_ekstra_listeler[]"', $secenek, 'ekstra liste alan adı' );
+		qrms_assert_contains( 'name="rma_ozel_rozetler[]"', $secenek, 'özel rozet alan adı' );
+		qrms_assert_contains( "name=\"qmo_uy_ingredients[]\"", $malzeme, 'malzeme alan adı' );
+		qrms_assert_contains( 'name="rma_servis_mod"', $secenek, 'servis modu radyo adı' );
+		qrms_assert_contains( 'name="rma_tukendi"', $detay, 'tükendi alanı' );
+		qrms_assert_contains( 'name="rma_active"', $detay, 'göster/gizle alanı' );
+
+		// Rozet, besin ve diyet meta anahtarlarının hepsi ekranda durur
+		// (alan adları döngü dizilerinden basılır).
+		$meta_anahtarlari = array(
+			'rma_badge_popular', 'rma_badge_new', 'rma_badge_recommended', 'rma_badge_discount',
+			'rma_price', 'rma_calories', 'rma_grams', 'rma_protein', 'rma_carbs', 'rma_fat', 'rma_prep_time',
+			'rma_is_vegan', 'rma_is_vegetarian', 'rma_is_gluten_free', 'rma_is_sugar_free',
+			'rma_contains_alcohol', 'rma_contains_pork', 'rma_meat_origin',
+		);
+
+		foreach ( $meta_anahtarlari as $anahtar ) {
+			qrms_assert_contains( "'" . $anahtar . "'", $detay, $anahtar . ' korundu' );
+		}
+
+		// Nonce'lar değişmedi.
+		qrms_assert_contains( "wp_nonce_field( 'rma_save_meta', 'rma_meta_nonce' )", $detay, 'ürün detayları nonce' );
+		qrms_assert_contains( "wp_nonce_field( 'rma_save_secenek', 'rma_secenek_nonce' )", $secenek, 'seçenekler nonce' );
+		qrms_assert_contains( "'qmo_uy_ingredients_save', 'qmo_uy_ingredients_nonce'", $malzeme, 'malzeme nonce' );
+	}
+);
+
+qrms_test(
+	'temel bilgiler kartı WordPress kutularını bütün olarak taşır',
+	function () {
+		$js = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/js/urun-editor.js' );
+
+		// Kutuların İÇİ boşaltılmaz: çekirdeğin olay bağları öğenin kendisindedir.
+		qrms_assert_contains( "tasi( 'kategori', document.getElementById( 'rma_categorydiv' ) )", $js, 'kategori kutusu taşınır' );
+		qrms_assert_contains( "tasi( 'gorsel', document.getElementById( 'postimagediv' ) )", $js, 'görsel kutusu taşınır' );
+		qrms_assert_false( false !== strpos( $js, "postimagediv' ).innerHTML" ), 'görsel kutusunun içi yeniden yazılmaz' );
+
+		// TinyMCE yeniden yüklenmesin diye editör DOM'da oynatılmaz.
+		qrms_assert_contains( 'editor.insertBefore( bas, editor.firstChild )', $js, 'editöre yalnızca başlık eklenir' );
+
+		// Klavye desteği.
+		foreach ( array( "'Escape'", "'ArrowDown'", "'ArrowUp'", "'Enter'" ) as $tus ) {
+			qrms_assert_contains( $tus, $js, $tus . ' desteklenir' );
+		}
+	}
+);
