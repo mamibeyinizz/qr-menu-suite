@@ -1318,6 +1318,7 @@
         var $indirimEkstra = $('.rma-kmp-indirim-ekstra');
         var $onizlemeBaslik = $('#rma-kmp-onizleme-kart .rma-card-title');
         var $onizlemeAciklama = $('.rma-kmp-onizleme-aciklama');
+        var $onizlemeKart = $('#rma-kmp-onizleme-kart');
         var sonEtkilenen = 0;
 
         function zamModu() {
@@ -1332,18 +1333,11 @@
             $indirimEkstra.toggle(!zam);
 
             if ($onizlemeBaslik.length) {
-                $onizlemeBaslik.html(
-                    (zam ? '4. Önizleme' : '5. Önizleme') +
-                    ' <span class="rma-kmp-zorunlu">— uygulamadan önce zorunlu</span>'
-                );
+                $onizlemeBaslik.text(zam ? '4. Önizleme' : '5. Önizleme');
             }
 
             if ($onizlemeAciklama.length) {
-                $onizlemeAciklama.text(
-                    'Hangi üründe fiyatın kaç liraya çıkacağını burada görün. ' +
-                    (zam ? 'Uygula' : 'Kampanyayı başlatma') +
-                    ' butonu, önizlemeyi görene kadar kapalı kalır.'
-                );
+                $onizlemeAciklama.text('Uygulamadan önce fiyat değişikliklerini kontrol edin.');
             }
 
             $uygulaBtn.text(zam ? ($uygulaBtn.data('metin-zam') || 'Uygula') : ($uygulaBtn.data('metin-indirim') || 'Kampanyayı Başlat'));
@@ -1351,8 +1345,8 @@
             if (zam && $zamMetin.length) {
                 $zamMetin.text(
                     sonEtkilenen > 0
-                        ? 'Bu işlem geri alınamaz, ' + sonEtkilenen + ' ürünün fiyatı kalıcı olarak değişecek.'
-                        : 'Bu işlem geri alınamaz. Önizleme alındığında etkilenecek ürün sayısı burada görünecek.'
+                        ? sonEtkilenen + ' ürünün fiyatı kalıcı olarak değişecek. Uygulamadan önce önizlemeyi kontrol edin.'
+                        : 'Bu işlem ürün fiyatlarını kalıcı olarak değiştirebilir. Uygulamadan önce önizlemeyi kontrol edin.'
                 );
             }
         }
@@ -1396,6 +1390,7 @@
             $uygulaBtn.prop('disabled', true);
             sonEtkilenen = 0;
             moduGuncelle();
+            $onizlemeKart.removeClass('is-onizleme-hazir');
             if ($onizleme.children().length) {
                 $onizleme.html(
                     '<p class="rma-kmp-bayat">Ayarları değiştirdiniz. ' +
@@ -1501,6 +1496,7 @@
                 $onizleme.html(r.data.html);
                 sonEtkilenen = r.data.etkilenen || 0;
                 moduGuncelle();
+                $onizlemeKart.toggleClass('is-onizleme-hazir', sonEtkilenen >= 1);
                 $uygulaBtn.prop('disabled', sonEtkilenen < 1);
             });
         });

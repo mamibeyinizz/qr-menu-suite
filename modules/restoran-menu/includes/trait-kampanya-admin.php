@@ -336,14 +336,12 @@ trait RMA_Kampanya_Admin_Trait {
             $yeni
                 ? ( $zam_modu ? 'Toplu Zam Uygula' : 'Yeni Fiyat Kampanyası' )
                 : ( $zam_modu ? 'Zam Kaydını Düzenle' : 'Kampanyayı Düzenle' ),
-            $zam_modu
-                ? 'Kapsamı ve zam oranını belirleyin, önizlemede hangi ürünün kaç liraya çıkacağını görün, sonra uygulayın. Bu işlem geri alınamaz.'
-                : 'Kuralı ve kapsamı belirleyin, önizlemede hangi ürünün kaç liraya çıkacağını görün, sonra uygulayın.'
+            'Kapsamı ve fiyat değişikliğini belirleyin. Uygulamadan önce sonuçları önizleyin.'
         );
 
         $this->kampanya_notice();
         ?>
-        <p><a class="rma-back-link" href="<?php echo esc_url( $this->kampanya_url() ); ?>">&larr; Tüm kampanyalar</a></p>
+        <p class="rma-kmp-nav"><a class="rma-back-link rma-kmp-nav-back" href="<?php echo esc_url( $this->kampanya_url() ); ?>">&larr; Tüm kampanyalar</a></p>
 
         <?php if ( $aktif_mi ) : ?>
             <div class="notice notice-info inline rma-kmp-uyari">
@@ -357,6 +355,7 @@ trait RMA_Kampanya_Admin_Trait {
             </div>
         <?php endif; ?>
 
+        <div class="rma-kmp-form-wrap">
         <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" id="rma-kmp-form" data-zam-modu="<?php echo $zam_modu ? '1' : '0'; ?>">
             <?php wp_nonce_field( $this->kampanya_nonce_action ); ?>
             <input type="hidden" name="action" value="rma_kampanya_kaydet">
@@ -365,68 +364,74 @@ trait RMA_Kampanya_Admin_Trait {
                      "yalnızca kaydet"tir. Aktif kampanyada tek buton vardır. */ ?>
             <input type="hidden" name="uygula" id="rma-kmp-uygula" value="<?php echo $aktif_mi ? '1' : '0'; ?>">
 
-            <div class="rma-card">
-                <h2 class="rma-card-title"><?php echo $zam_modu ? '1. Zam Kaydı Adı' : '1. Kampanya Adı'; ?></h2>
-                <p class="rma-card-desc">Yalnızca yönetim panelinde görünür; kayıtları birbirinden ayırmanız için.</p>
-                <input type="text" name="title" class="regular-text" value="<?php echo esc_attr( $deger['title'] ); ?>" placeholder="<?php echo esc_attr( $zam_modu ? 'Örn. Ocak Zammı' : 'Örn. Ocak Zammı, Hafta Sonu İndirimi' ); ?>">
+            <div class="rma-card rma-kmp-adim">
+                <h2 class="rma-card-title">1. Kampanya Adı</h2>
+                <p class="rma-card-desc">Yönetimde kampanyayı ayırt etmek için kullanılır.</p>
+                <input type="text" name="title" class="regular-text rma-kmp-input-baslik" value="<?php echo esc_attr( $deger['title'] ); ?>" placeholder="Örn. Ocak Kampanyası">
             </div>
 
-            <div class="rma-card">
+            <div class="rma-card rma-kmp-adim">
                 <h2 class="rma-card-title">2. Ne Yapılsın?</h2>
-                <p class="rma-card-desc">Fiyatlar yüzde olarak mı yoksa sabit bir tutar olarak mı değişsin?</p>
 
-                <div class="rma-kmp-secim">
-                    <label class="rma-kmp-choice<?php echo 'increase' === $deger['direction'] ? ' is-selected' : ''; ?>">
-                        <input type="radio" name="direction" value="increase" <?php checked( 'increase', $deger['direction'] ); ?>>
-                        <span class="rma-kmp-choice-ic">📈 Zam</span>
-                    </label>
-                    <label class="rma-kmp-choice<?php echo 'decrease' === $deger['direction'] ? ' is-selected' : ''; ?>">
-                        <input type="radio" name="direction" value="decrease" <?php checked( 'decrease', $deger['direction'] ); ?>>
-                        <span class="rma-kmp-choice-ic">📉 İndirim</span>
-                    </label>
+                <div class="rma-kmp-soru">
+                    <span class="rma-kmp-soru-baslik">Ne yapılacak?</span>
+                    <div class="rma-kmp-secim rma-kmp-secim-yon">
+                        <label class="rma-kmp-choice<?php echo 'increase' === $deger['direction'] ? ' is-selected' : ''; ?>">
+                            <input type="radio" name="direction" value="increase" <?php checked( 'increase', $deger['direction'] ); ?>>
+                            <span class="rma-kmp-choice-indicator" aria-hidden="true"></span>
+                            <span class="rma-kmp-choice-ic"><span class="rma-kmp-choice-etiket">Zam</span></span>
+                        </label>
+                        <label class="rma-kmp-choice<?php echo 'decrease' === $deger['direction'] ? ' is-selected' : ''; ?>">
+                            <input type="radio" name="direction" value="decrease" <?php checked( 'decrease', $deger['direction'] ); ?>>
+                            <span class="rma-kmp-choice-indicator" aria-hidden="true"></span>
+                            <span class="rma-kmp-choice-ic"><span class="rma-kmp-choice-etiket">İndirim</span></span>
+                        </label>
+                    </div>
                 </div>
 
-                <div class="rma-kmp-secim">
-                    <label class="rma-kmp-choice<?php echo 'percent' === $deger['calc_type'] ? ' is-selected' : ''; ?>">
-                        <input type="radio" name="calc_type" value="percent" <?php checked( 'percent', $deger['calc_type'] ); ?>>
-                        <span class="rma-kmp-choice-ic">% Yüzde bazlı</span>
-                    </label>
-                    <label class="rma-kmp-choice<?php echo 'fixed' === $deger['calc_type'] ? ' is-selected' : ''; ?>">
-                        <input type="radio" name="calc_type" value="fixed" <?php checked( 'fixed', $deger['calc_type'] ); ?>>
-                        <span class="rma-kmp-choice-ic">₺ Sabit tutar</span>
-                    </label>
+                <div class="rma-kmp-soru rma-kmp-alt-secim">
+                    <span class="rma-kmp-soru-baslik">Nasıl uygulanacak?</span>
+                    <div class="rma-kmp-secim rma-kmp-secim-tur">
+                        <label class="rma-kmp-choice<?php echo 'percent' === $deger['calc_type'] ? ' is-selected' : ''; ?>">
+                            <input type="radio" name="calc_type" value="percent" <?php checked( 'percent', $deger['calc_type'] ); ?>>
+                            <span class="rma-kmp-choice-indicator" aria-hidden="true"></span>
+                            <span class="rma-kmp-choice-ic"><span class="rma-kmp-choice-etiket">% Yüzde</span></span>
+                        </label>
+                        <label class="rma-kmp-choice<?php echo 'fixed' === $deger['calc_type'] ? ' is-selected' : ''; ?>">
+                            <input type="radio" name="calc_type" value="fixed" <?php checked( 'fixed', $deger['calc_type'] ); ?>>
+                            <span class="rma-kmp-choice-indicator" aria-hidden="true"></span>
+                            <span class="rma-kmp-choice-ic"><span class="rma-kmp-choice-etiket">₺ Sabit Tutar</span></span>
+                        </label>
+                    </div>
                 </div>
 
-                <table class="form-table rma-form-table">
-                    <tr>
-                        <th><label for="rma-kmp-amount">Değer</label></th>
-                        <td>
-                            <div class="rma-kmp-amount-row">
-                                <input type="text" inputmode="decimal" name="amount" id="rma-kmp-amount"
-                                       value="<?php echo esc_attr( $deger['amount'] ); ?>" placeholder="10">
-                                <span class="rma-kmp-birim" id="rma-kmp-birim"><?php echo 'fixed' === $deger['calc_type'] ? '₺' : '%'; ?></span>
-                            </div>
-                            <p class="description rma-desc">Yüzde en fazla <?php echo (int) RMA_Kampanya_DB::MAX_YUZDE; ?> olabilir. Eksi değer yazmanıza gerek yok — yönü yukarıdan seçiyorsunuz.</p>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th><label for="rma-kmp-rounding">Yuvarlama</label></th>
-                        <td>
-                            <select name="rounding" id="rma-kmp-rounding" class="rma-select-wide">
-                                <?php foreach ( RMA_Kampanya_DB::yuvarlama_secenekleri() as $anahtar => $etiket ) : ?>
-                                    <option value="<?php echo esc_attr( $anahtar ); ?>" <?php selected( $deger['rounding'], $anahtar ); ?>><?php echo esc_html( $etiket ); ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                            <p class="description rma-desc">Hesap sonucu küsuratlı çıktığında menüde nasıl görünsün?</p>
-                        </td>
-                    </tr>
-                </table>
+                <div class="rma-kmp-alanlar">
+                    <div class="rma-kmp-field">
+                        <label for="rma-kmp-amount" class="rma-kmp-field-label">Değer</label>
+                        <div class="rma-kmp-deger-kutu">
+                            <input type="text" inputmode="decimal" name="amount" id="rma-kmp-amount"
+                                   value="<?php echo esc_attr( $deger['amount'] ); ?>" placeholder="10" aria-describedby="rma-kmp-amount-help">
+                            <span class="rma-kmp-birim-badge" id="rma-kmp-birim"><?php echo 'fixed' === $deger['calc_type'] ? '₺' : '%'; ?></span>
+                        </div>
+                        <p class="rma-kmp-field-help" id="rma-kmp-amount-help">Yüzde en fazla <?php echo (int) RMA_Kampanya_DB::MAX_YUZDE; ?> olabilir. Yönü yukarıdan seçin.</p>
+                    </div>
+
+                    <div class="rma-kmp-field">
+                        <label for="rma-kmp-rounding" class="rma-kmp-field-label">Yuvarlama</label>
+                        <select name="rounding" id="rma-kmp-rounding" class="rma-select-wide rma-kmp-select">
+                            <?php foreach ( RMA_Kampanya_DB::yuvarlama_secenekleri() as $anahtar => $etiket ) : ?>
+                                <option value="<?php echo esc_attr( $anahtar ); ?>" <?php selected( $deger['rounding'], $anahtar ); ?>><?php echo esc_html( $etiket ); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <p class="rma-kmp-field-help">Sonuç küsuratlı olduğunda menüde nasıl gösterilsin?</p>
+                    </div>
+                </div>
             </div>
 
-            <div class="rma-card">
+            <div class="rma-card rma-kmp-adim">
                 <h2 class="rma-card-title">3. Hangi Ürünler?</h2>
 
-                <div class="rma-kmp-secim rma-kmp-kapsam">
+                <div class="rma-kmp-secim rma-kmp-kapsam rma-kmp-kapsam-tek-satir">
                     <?php
                     $kapsamlar = array(
                         'all'      => array( '🍽️', 'Menüdeki tüm ürünler' ),
@@ -437,7 +442,8 @@ trait RMA_Kampanya_Admin_Trait {
                         ?>
                         <label class="rma-kmp-choice<?php echo $anahtar === $deger['scope_type'] ? ' is-selected' : ''; ?>">
                             <input type="radio" name="scope_type" value="<?php echo esc_attr( $anahtar ); ?>" <?php checked( $anahtar, $deger['scope_type'] ); ?>>
-                            <span class="rma-kmp-choice-ic"><?php echo esc_html( $bilgi[0] . ' ' . $bilgi[1] ); ?></span>
+                            <span class="rma-kmp-choice-indicator" aria-hidden="true"></span>
+                            <span class="rma-kmp-choice-ic"><span class="rma-kmp-choice-etiket"><?php echo esc_html( $bilgi[1] ); ?></span></span>
                         </label>
                     <?php endforeach; ?>
                 </div>
@@ -486,47 +492,54 @@ trait RMA_Kampanya_Admin_Trait {
                 <input type="hidden" name="scope_ids" id="rma-kmp-scope-ids" value="<?php echo esc_attr( implode( ',', $deger['scope_ids'] ) ); ?>">
             </div>
 
-            <div class="rma-card rma-kmp-indirim-ekstra"<?php echo $zam_modu ? ' style="display:none;"' : ''; ?>>
+            <div class="rma-card rma-kmp-adim rma-kmp-indirim-ekstra"<?php echo $zam_modu ? ' style="display:none;"' : ''; ?>>
                 <h2 class="rma-card-title">4. Müşteri Ne Görsün?</h2>
                 <label class="rma-check-row">
                     <input type="checkbox" name="show_old_price" value="1" <?php checked( 1, $deger['show_old_price'] ); ?>>
                     <span>Eski fiyat üstü çizili olarak görünsün</span>
                 </label>
-                <p class="description rma-desc">İndirim kampanyalarında ayrıca ürün kartına indirim rozeti eklenir.</p>
+                <p class="rma-kmp-field-help">İndirim kampanyalarında ayrıca ürün kartına indirim rozeti eklenir.</p>
             </div>
 
-            <div class="rma-card" id="rma-kmp-onizleme-kart">
-                <h2 class="rma-card-title"><?php echo $zam_modu ? '4. Önizleme' : '5. Önizleme'; ?> <span class="rma-kmp-zorunlu">— uygulamadan önce zorunlu</span></h2>
-                <p class="rma-card-desc rma-kmp-onizleme-aciklama">Hangi üründe fiyatın kaç liraya çıkacağını burada görün. <?php echo $zam_modu ? 'Uygula' : 'Kampanyayı başlatma'; ?> butonu, önizlemeyi görene kadar kapalı kalır.</p>
+            <div class="rma-card rma-kmp-adim rma-kmp-onizleme-vurgu" id="rma-kmp-onizleme-kart">
+                <div class="rma-kmp-onizleme-head">
+                    <div>
+                        <h2 class="rma-card-title"><?php echo $zam_modu ? '4. Önizleme' : '5. Önizleme'; ?></h2>
+                        <p class="rma-card-desc rma-kmp-onizleme-aciklama">Uygulamadan önce fiyat değişikliklerini kontrol edin.</p>
+                    </div>
+                    <span class="rma-kmp-zorunlu-rozet">Önizleme zorunlu</span>
+                </div>
 
-                <p>
-                    <button type="button" class="button button-secondary" id="rma-kmp-onizle">Önizlemeyi Göster</button>
+                <div class="rma-kmp-onizleme-aksiyon">
+                    <button type="button" class="button button-secondary rma-kmp-onizle-btn" id="rma-kmp-onizle">Önizlemeyi Göster</button>
                     <span class="spinner rma-kmp-spinner"></span>
-                </p>
+                </div>
 
                 <div id="rma-kmp-onizleme"></div>
             </div>
 
-            <div class="notice notice-warning inline rma-kmp-zam-uyari" id="rma-kmp-zam-uyari"<?php echo $zam_modu ? '' : ' style="display:none;"'; ?>>
-                <p id="rma-kmp-zam-metin">Bu işlem geri alınamaz. Önizleme alındığında etkilenecek ürün sayısı burada görünecek.</p>
+            <div class="rma-kmp-uyari-kutu rma-kmp-zam-uyari" id="rma-kmp-zam-uyari"<?php echo $zam_modu ? '' : ' style="display:none;"'; ?>>
+                <span class="rma-kmp-uyari-ikon" aria-hidden="true">!</span>
+                <p id="rma-kmp-zam-metin">Bu işlem ürün fiyatlarını kalıcı olarak değiştirebilir. Uygulamadan önce önizlemeyi kontrol edin.</p>
             </div>
 
-            <p class="submit rma-kmp-submit">
+            <div class="rma-kmp-submit">
                 <?php
                 // ÇALIŞAN kampanyada "yalnızca kaydet" YOKTUR: kayıt aynı anda
                 // canlı fiyatı da değiştireceği için her kaydetme önizlemeden
                 // geçmeli ve etkilenen ürün fotoğrafı tazelenmelidir.
                 if ( ! $aktif_mi ) :
                     ?>
-                    <button type="submit" class="button" id="rma-kmp-kaydet"><?php echo $zam_modu ? 'Taslak Kaydet' : 'Yalnızca Kaydet'; ?></button>
+                    <button type="submit" class="button rma-kmp-btn-secondary" id="rma-kmp-kaydet"><?php echo $zam_modu ? 'Taslak Kaydet' : 'Yalnızca Kaydet'; ?></button>
                 <?php endif; ?>
-                <button type="submit" class="button button-primary" id="rma-kmp-uygula-btn" disabled
+                <button type="submit" class="button button-primary rma-kmp-btn-primary" id="rma-kmp-uygula-btn" disabled
                         data-metin-zam="Uygula" data-metin-indirim="<?php echo esc_attr( $aktif_mi ? 'Kaydet ve Güncelle' : 'Kampanyayı Başlat' ); ?>">
                     <?php echo $zam_modu ? 'Uygula' : ( $aktif_mi ? 'Kaydet ve Güncelle' : 'Kampanyayı Başlat' ); ?>
                 </button>
-                <a class="button" href="<?php echo esc_url( $this->kampanya_url() ); ?>">Vazgeç</a>
-            </p>
+                <a class="button rma-kmp-btn-cancel" href="<?php echo esc_url( $this->kampanya_url() ); ?>">Vazgeç</a>
+            </div>
         </form>
+        </div>
         <?php
         $this->page_footer();
     }
@@ -703,6 +716,11 @@ trait RMA_Kampanya_Admin_Trait {
             'sifir'     => 'Fiyat 0 ₺ olur!',
         );
         ?>
+        <div class="rma-kmp-etki-rozet">
+            <span class="rma-kmp-etki-sayi"><?php echo (int) $sonuc['etkilenen']; ?></span>
+            <span class="rma-kmp-etki-metin">ürün etkilenecek</span>
+        </div>
+
         <div class="rma-kmp-ozet-kutu<?php echo $sonuc['uyari'] ? ' has-uyari' : ''; ?>">
             <strong><?php echo (int) $sonuc['toplam']; ?> üründen <?php echo (int) $sonuc['etkilenen']; ?> tanesi</strong>
             <?php echo esc_html( RMA_Kampanya_DB::kural_metni( $ayarlar ) ); ?> kuralından etkilenecek.
@@ -737,7 +755,15 @@ trait RMA_Kampanya_Admin_Trait {
                                     <?php echo null === $satir['orijinal'] ? '—' : esc_html( RMA_Kampanya_DB::bicimle( $satir['orijinal'] ) ) . ' ₺'; ?>
                                 </td>
                                 <td data-label="Yeni fiyat">
-                                    <strong><?php echo null === $satir['yeni'] ? '—' : esc_html( RMA_Kampanya_DB::bicimle( $satir['yeni'] ) ) . ' ₺'; ?></strong>
+                                    <?php if ( null !== $satir['orijinal'] && null !== $satir['yeni'] && 'ok' === $satir['durum'] ) : ?>
+                                        <span class="rma-kmp-fiyat-karsilastir">
+                                            <span class="rma-kmp-fiyat-eski"><?php echo esc_html( RMA_Kampanya_DB::bicimle( $satir['orijinal'] ) ); ?> ₺</span>
+                                            <span class="rma-kmp-fiyat-ok" aria-hidden="true">→</span>
+                                            <strong class="rma-kmp-fiyat-yeni"><?php echo esc_html( RMA_Kampanya_DB::bicimle( $satir['yeni'] ) ); ?> ₺</strong>
+                                        </span>
+                                    <?php else : ?>
+                                        <strong><?php echo null === $satir['yeni'] ? '—' : esc_html( RMA_Kampanya_DB::bicimle( $satir['yeni'] ) ) . ' ₺'; ?></strong>
+                                    <?php endif; ?>
                                 </td>
                                 <td data-label="Fark">
                                     <?php

@@ -2520,6 +2520,460 @@
 }
 
 /* =====================================================================
+   KAMPANYA OLUŞTURMA FORMU — kompakt premium düzen
+   Yalnızca .rma-kmp-form-wrap altında; liste ekranına dokunulmaz.
+===================================================================== */
+
+.rma-admin .rma-kmp-form-wrap {
+    max-width: 900px;
+}
+
+.rma-admin .rma-kmp-nav {
+    margin: -8px 0 14px;
+}
+
+.rma-admin .rma-kmp-nav-back {
+    align-items: center;
+    background: var(--rma-a-surface);
+    border: 1px solid var(--rma-a-border-soft);
+    border-radius: 999px;
+    color: var(--rma-a-muted);
+    display: inline-flex;
+    font-size: 12px;
+    font-weight: 500;
+    gap: 4px;
+    margin-bottom: 0;
+    min-height: 32px;
+    padding: 5px 12px;
+    text-decoration: none;
+    transition: border-color .18s, color .18s, background-color .18s;
+}
+
+.rma-admin .rma-kmp-nav-back:hover,
+.rma-admin .rma-kmp-nav-back:focus {
+    background: var(--rma-a-surface-2);
+    border-color: var(--rma-a-accent-dim);
+    color: var(--rma-a-accent);
+}
+
+.rma-admin .rma-kmp-form-wrap .rma-card.rma-kmp-adim {
+    padding: 18px 20px;
+}
+
+.rma-admin .rma-kmp-form-wrap .rma-card + .rma-card {
+    margin-top: 12px;
+}
+
+.rma-admin .rma-kmp-form-wrap .rma-card-title {
+    font-size: 14px;
+    letter-spacing: -.01em;
+    margin-bottom: 4px;
+}
+
+.rma-admin .rma-kmp-form-wrap .rma-card-desc {
+    font-size: 12px;
+    line-height: 1.5;
+    margin-bottom: 14px;
+}
+
+.rma-admin .rma-kmp-input-baslik {
+    max-width: 420px;
+    width: 100%;
+}
+
+.rma-admin .rma-kmp-soru {
+    margin-bottom: 12px;
+}
+
+.rma-admin .rma-kmp-soru-baslik {
+    color: var(--rma-a-muted);
+    display: block;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .06em;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+}
+
+.rma-admin .rma-kmp-alt-secim {
+    background: var(--rma-a-surface-2);
+    border: 1px solid var(--rma-a-border-soft);
+    border-left: 2px solid var(--rma-a-accent-dim);
+    border-radius: var(--rma-a-radius);
+    margin-top: 4px;
+    padding: 12px 14px 10px;
+}
+
+.rma-admin .rma-kmp-form-wrap .rma-kmp-secim {
+    gap: 8px;
+    margin: 0;
+}
+
+.rma-admin .rma-kmp-form-wrap .rma-kmp-choice {
+    align-items: center;
+    display: flex;
+    flex: 1 1 140px;
+    gap: 10px;
+    min-height: 44px;
+    padding: 10px 12px;
+    position: relative;
+    transition: border-color .2s, background-color .2s, box-shadow .2s;
+}
+
+.rma-admin .rma-kmp-form-wrap .rma-kmp-choice input[type="radio"] {
+    clip: rect(0, 0, 0, 0);
+    height: 1px;
+    margin: 0;
+    overflow: hidden;
+    position: absolute;
+    white-space: nowrap;
+    width: 1px;
+}
+
+.rma-admin .rma-kmp-choice-indicator {
+    border: 2px solid var(--rma-a-border);
+    border-radius: 50%;
+    flex-shrink: 0;
+    height: 16px;
+    transition: border-color .2s, background-color .2s, box-shadow .2s;
+    width: 16px;
+}
+
+.rma-admin .rma-kmp-form-wrap .rma-kmp-choice.is-selected {
+    background: var(--rma-a-accent-soft);
+    border-color: var(--rma-a-accent);
+    box-shadow: inset 0 0 0 1px rgba(201, 168, 76, .12);
+}
+
+.rma-admin .rma-kmp-form-wrap .rma-kmp-choice.is-selected .rma-kmp-choice-indicator {
+    background: var(--rma-a-accent);
+    border-color: var(--rma-a-accent);
+    box-shadow: 0 0 0 3px rgba(201, 168, 76, .18);
+}
+
+.rma-admin .rma-kmp-form-wrap .rma-kmp-choice:hover {
+    border-color: var(--rma-a-accent-dim);
+}
+
+.rma-admin .rma-kmp-form-wrap .rma-kmp-choice:focus-within {
+    border-color: var(--rma-a-accent);
+    box-shadow: 0 0 0 1px var(--rma-a-accent);
+    outline: none;
+}
+
+.rma-admin .rma-kmp-choice-etiket {
+    color: var(--rma-a-text);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.rma-admin .rma-kmp-kapsam-tek-satir .rma-kmp-choice {
+    flex: 1 1 0;
+    min-width: 0;
+}
+
+.rma-admin .rma-kmp-kapsam-tek-satir .rma-kmp-choice-etiket {
+    font-size: 12px;
+    line-height: 1.35;
+}
+
+.rma-admin .rma-kmp-alanlar {
+    display: grid;
+    gap: 14px;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--rma-a-border-soft);
+}
+
+.rma-admin .rma-kmp-field-label {
+    color: var(--rma-a-text);
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+
+.rma-admin .rma-kmp-field-help {
+    color: var(--rma-a-muted);
+    font-size: 11px;
+    line-height: 1.45;
+    margin: 6px 0 0;
+}
+
+.rma-admin .rma-kmp-deger-kutu {
+    align-items: stretch;
+    display: inline-flex;
+    max-width: 180px;
+    width: 100%;
+}
+
+.rma-admin .rma-kmp-deger-kutu input {
+    border-bottom-right-radius: 0;
+    border-right: 0;
+    border-top-right-radius: 0;
+    flex: 1 1 auto;
+    max-width: none;
+    min-width: 0;
+    width: auto;
+}
+
+.rma-admin .rma-kmp-birim-badge {
+    align-items: center;
+    background: var(--rma-a-raised);
+    border: 1px solid var(--rma-a-border);
+    border-bottom-right-radius: 6px;
+    border-left: 0;
+    border-top-right-radius: 6px;
+    color: var(--rma-a-accent-hi);
+    display: inline-flex;
+    flex-shrink: 0;
+    font-size: 14px;
+    font-weight: 700;
+    justify-content: center;
+    min-width: 42px;
+    padding: 0 10px;
+}
+
+.rma-admin .rma-kmp-deger-kutu input.is-error {
+    border-color: var(--rma-a-danger);
+}
+
+.rma-admin .rma-kmp-deger-kutu input.is-error + .rma-kmp-birim-badge {
+    border-color: var(--rma-a-danger);
+}
+
+.rma-admin .rma-kmp-select {
+    max-width: 100%;
+    width: 100%;
+}
+
+.rma-admin .rma-kmp-form-wrap .rma-kmp-kapsam-kutu {
+    margin-top: 10px;
+    padding: 12px;
+}
+
+.rma-admin .rma-kmp-onizleme-vurgu {
+    border-color: var(--rma-a-accent-dim);
+    box-shadow: 0 0 0 1px rgba(201, 168, 76, .08), 0 4px 20px rgba(0, 0, 0, .28);
+}
+
+.rma-admin .rma-kmp-onizleme-vurgu.is-onizleme-hazir {
+    border-color: var(--rma-a-accent);
+    box-shadow: inset 3px 0 0 var(--rma-a-accent), 0 4px 24px rgba(0, 0, 0, .32);
+}
+
+.rma-admin .rma-kmp-onizleme-head {
+    align-items: flex-start;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.rma-admin .rma-kmp-zorunlu-rozet {
+    background: rgba(224, 82, 82, .12);
+    border: 1px solid rgba(224, 82, 82, .35);
+    border-radius: 999px;
+    color: #f0a0a0;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .04em;
+    padding: 4px 10px;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.rma-admin .rma-kmp-onizleme-aksiyon {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.rma-admin .rma-kmp-onizle-btn {
+    min-height: 36px;
+}
+
+.rma-admin .rma-kmp-etki-rozet {
+    align-items: center;
+    background: var(--rma-a-accent-soft);
+    border: 1px solid var(--rma-a-accent-dim);
+    border-radius: var(--rma-a-radius);
+    display: inline-flex;
+    gap: 8px;
+    margin-bottom: 12px;
+    padding: 10px 14px;
+}
+
+.rma-admin .rma-kmp-etki-sayi {
+    color: var(--rma-a-accent-hi);
+    font-size: 22px;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.rma-admin .rma-kmp-etki-metin {
+    color: var(--rma-a-text-soft);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.rma-admin .rma-kmp-fiyat-karsilastir {
+    align-items: baseline;
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.rma-admin .rma-kmp-fiyat-eski {
+    color: var(--rma-a-muted);
+    font-size: 12px;
+    text-decoration: line-through;
+}
+
+.rma-admin .rma-kmp-fiyat-ok {
+    color: var(--rma-a-accent);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.rma-admin .rma-kmp-fiyat-yeni {
+    color: var(--rma-a-accent-hi);
+}
+
+.rma-admin .rma-kmp-uyari-kutu {
+    align-items: flex-start;
+    background: rgba(224, 82, 82, .08);
+    border: 1px solid rgba(224, 82, 82, .28);
+    border-radius: var(--rma-a-radius);
+    display: flex;
+    gap: 10px;
+    margin-top: 12px;
+    padding: 12px 14px;
+}
+
+.rma-admin .rma-kmp-uyari-ikon {
+    align-items: center;
+    background: rgba(224, 82, 82, .18);
+    border-radius: 50%;
+    color: #f0a0a0;
+    display: inline-flex;
+    flex-shrink: 0;
+    font-size: 12px;
+    font-weight: 700;
+    height: 22px;
+    justify-content: center;
+    width: 22px;
+}
+
+.rma-admin .rma-kmp-uyari-kutu p {
+    color: #f0c0c0;
+    font-size: 12px;
+    line-height: 1.5;
+    margin: 0;
+}
+
+.rma-admin .rma-kmp-form-wrap .rma-kmp-submit {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: flex-start;
+    margin: 16px 0 0;
+    padding: 0;
+}
+
+.rma-admin .rma-kmp-btn-primary {
+    min-height: 44px;
+    min-width: 120px;
+    order: 2;
+}
+
+.rma-admin .rma-kmp-btn-primary:disabled,
+.rma-admin .rma-kmp-btn-primary[disabled] {
+    background: var(--rma-a-raised);
+    border-color: var(--rma-a-border);
+    box-shadow: none;
+    color: var(--rma-a-muted);
+    cursor: not-allowed;
+    opacity: .72;
+}
+
+.rma-admin .rma-kmp-btn-primary:disabled:hover,
+.rma-admin .rma-kmp-btn-primary[disabled]:hover {
+    background: var(--rma-a-raised);
+    border-color: var(--rma-a-border);
+    box-shadow: none;
+    color: var(--rma-a-muted);
+}
+
+.rma-admin .rma-kmp-btn-secondary {
+    min-height: 44px;
+    order: 1;
+}
+
+.rma-admin .rma-kmp-btn-cancel {
+    background: transparent;
+    border-color: var(--rma-a-border-soft);
+    color: var(--rma-a-muted);
+    min-height: 44px;
+    order: 3;
+}
+
+.rma-admin .rma-kmp-btn-cancel:hover,
+.rma-admin .rma-kmp-btn-cancel:focus {
+    background: rgba(224, 82, 82, .08);
+    border-color: rgba(224, 82, 82, .35);
+    color: #f0a0a0;
+}
+
+@media screen and (max-width: 782px) {
+    .rma-admin .rma-kmp-kapsam-tek-satir .rma-kmp-choice {
+        flex: 1 1 calc(50% - 4px);
+    }
+
+    .rma-admin .rma-kmp-kapsam-tek-satir .rma-kmp-choice:last-child {
+        flex: 1 1 100%;
+    }
+
+    .rma-admin .rma-kmp-alanlar {
+        grid-template-columns: 1fr;
+    }
+
+    .rma-admin .rma-kmp-deger-kutu {
+        max-width: none;
+    }
+
+    .rma-admin .rma-kmp-form-wrap .rma-kmp-submit .button {
+        flex: 1 1 100%;
+        text-align: center;
+    }
+
+    .rma-admin .rma-kmp-btn-primary {
+        order: 1;
+    }
+
+    .rma-admin .rma-kmp-btn-secondary {
+        order: 2;
+    }
+
+    .rma-admin .rma-kmp-btn-cancel {
+        order: 3;
+    }
+}
+
+@media screen and (max-width: 420px) {
+    .rma-admin .rma-kmp-kapsam-tek-satir .rma-kmp-choice {
+        flex: 1 1 100%;
+    }
+}
+
+/* Kampanya formu mobil kuralları yukarıdaki .rma-kmp-form-wrap bloğunda. */
+
+/* =====================================================================
    KAMPANYA BANNER SİHİRBAZI (kendi sayfası: qrms-rm-kampanya-banner)
 
    Adım şeridi Ürün Vitrini'nin .rma-vitrin-step* stilini yeniden kullanır;
