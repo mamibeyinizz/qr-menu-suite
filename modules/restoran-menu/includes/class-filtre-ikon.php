@@ -1,6 +1,6 @@
 <?php
 /**
- * Filtre paneli ikonları — tek çizgi kalınlığı, currentColor stroke.
+ * Filtre paneli ikonları — anlamına göre renklendirilmiş SVG çizgi ikonlar.
  *
  * @package QR_Menu_Suite
  */
@@ -27,12 +27,14 @@ class RMA_Filtre_Ikon {
     public static function svg( $anahtar ) {
         $anahtar = (string) $anahtar;
         $harita  = self::harita();
+        $renkler = self::renkler();
+        $renk    = isset( $renkler[ $anahtar ] ) ? $renkler[ $anahtar ] : $renkler['uyari'];
 
         if ( ! isset( $harita[ $anahtar ] ) ) {
-            return self::sar( self::uyari() );
+            return self::sar( self::uyari(), $renkler['uyari'] );
         }
 
-        return self::sar( $harita[ $anahtar ] );
+        return self::sar( $harita[ $anahtar ], $renk );
     }
 
     /**
@@ -64,10 +66,56 @@ class RMA_Filtre_Ikon {
 
     /**
      * @param string $paths SVG path/grup içeriği.
+     * @param string $renk  İkona özgü hex renk (currentColor için).
      * @return string
      */
-    private static function sar( $paths ) {
-        return '<svg class="rma-fi" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' . $paths . '</svg>';
+    private static function sar( $paths, $renk = '' ) {
+        $stil = $renk ? ' style="color:' . esc_attr( $renk ) . '"' : '';
+
+        return '<svg class="rma-fi"' . $stil . ' viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' . $paths . '</svg>';
+    }
+
+    /**
+     * İkon anahtarına göre anlam-renk eşlemesi (premium, kontrollü tonlar).
+     *
+     * @return array<string,string>
+     */
+    private static function renkler() {
+        return array(
+            // Sıralama
+            'recommended'  => '#C9A227', // premium altın
+            'az'           => '#3B82F6', // mavi
+            'price-up'     => '#16A34A', // yeşil
+            'price-down'   => '#EA580C', // turuncu
+            'protein'      => '#E64A33', // kırmızı/turuncu
+            'carbs'        => '#059669', // yeşil
+            'spicy-hot'    => '#DC2626', // kırmızı
+            'spicy-mild'   => '#0D9488', // yeşil/mavi
+
+            // Ürün özellikleri
+            'popular'      => '#F59E0B', // turuncu/altın
+            'new'          => '#22C55E', // yeşil
+            'star'         => '#8B5CF6', // mor
+            'discount'     => '#F0653A', // kırmızı/turuncu
+
+            // Alerjenler
+            'alerjen-gluten'    => '#4C9A5B', // yeşil
+            'alerjen-sut'       => '#5AB4E5', // açık mavi
+            'alerjen-yumurta'   => '#E5C158', // krem/sarı
+            'alerjen-findik'    => '#8A5A34', // kahverengi
+            'alerjen-fistik'    => '#B5651D', // kahverengi/turuncu
+            'alerjen-soya'      => '#7CB342', // yeşil
+            'alerjen-balik'     => '#2E86C1', // mavi
+            'alerjen-deniz'     => '#D8483A', // kırmızı
+            'alerjen-susam'     => '#B8A78C', // açık gri/bej
+            'alerjen-kereviz'   => '#5B8C3A', // yeşil
+            'alerjen-hardal'    => '#C9971E', // sarı
+            'alerjen-lupin'     => '#E08A3C', // turuncu
+            'alerjen-sulfit'    => '#9B4F79', // mor/kırmızı
+            'alerjen-yumusakca' => '#4A6FA5', // mavi
+
+            'uyari'        => '#D97706', // varsayılan / uyarı
+        );
     }
 
     /**
