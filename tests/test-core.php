@@ -915,13 +915,13 @@ qrms_test(
 		$php = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-admin-pages.php' );
 
 		qrms_assert_contains( "'hub_title'  => 'Menü Görünümü'", $php, 'Görünüm netleşir' );
-		qrms_assert_contains( "'hub_title'  => 'Stok Durumu'", $php, 'Ürünüm Yok → Stok Durumu' );
+		qrms_assert_contains( "__( 'Ürün Durumu', 'qrms' )", $php, 'Ürünüm Yok hub → Ürün Durumu' );
 		qrms_assert_contains( "isset( \$page['hub_title'] ) ? \$page['hub_title'] : \$page['menu_title']", $php, 'hub başlığı alt sayfa adını bozmaz' );
-		qrms_assert_contains( "'label'  => 'Eksik Ürün (Tükendi)'", $php, 'mevcut özet kartı durur' );
-		qrms_assert_contains( "'label'  => 'Okunmayan Yorum'", $php, 'yorum özeti' );
-		qrms_assert_contains( "'label'  => 'Bugün Görüntülenme'", $php, 'analiz özeti' );
-		qrms_assert_contains( '%d okunmayan yorum', $php, 'yorum değeri biçimi' );
-		qrms_assert_contains( '%d görüntülenme (bugün)', $php, 'görüntülenme değeri biçimi' );
+		qrms_assert_contains( "__( 'Tükenen Ürünler', 'qrms' )", $php, 'tükenen ürün özet kartı' );
+		qrms_assert_contains( "__( 'Okunmamış Yorumlar', 'qrms' )", $php, 'yorum özeti' );
+		qrms_assert_contains( "__( 'Bugün Görüntülenme', 'qrms' )", $php, 'analiz özeti' );
+		qrms_assert_contains( "__( '%d okunmamış yorum', 'qrms' )", $php, 'yorum değeri biçimi' );
+		qrms_assert_contains( "'value'  => \$views", $php, 'görüntülenme değeri yalnızca sayı' );
 		qrms_assert_contains( 'qrm_cf_unread_total', $php, 'okunmamış yorum sayacı' );
 		qrms_assert_contains( "qrms-yf-formlar", $php, 'yorum form listesi adresi' );
 		qrms_assert_contains( "tab' => 'submissions'", $php, 'gönderiler sekmesi' );
@@ -929,18 +929,22 @@ qrms_test(
 		qrms_assert_contains( 'QRMS_Analitik::genel_bakis()', $php, 'istatistiklerle aynı kaynak' );
 		qrms_assert_contains( "['mv_bugun']", $php, 'bugünkü menü görüntüleme kovası' );
 		qrms_assert_contains( 'echo \'<div class="rma-hub">\'', $php, 'kapsül sarmalayıcı' );
-		qrms_assert_contains( "'title' => 'Ürünlerim'", $php, 'Ürünlerim durur' );
-		qrms_assert_contains( "'title' => 'Ürün Ekle'", $php, 'Ürün Ekle durur' );
+		qrms_assert_contains( "__( 'Ürünler', 'qrms' )", $php, 'hub kartı Ürünler' );
+		qrms_assert_contains( "'overview_title' => __( 'Ürünlerim', 'qrms' )", $php, 'Genel Bakış bağlantısı Ürünlerim kalır' );
+		qrms_assert_contains( "__( 'Ürün Ekle', 'qrms' )", $php, 'Ürün Ekle durur' );
 
 		$hub_fn = substr( $php, strpos( $php, 'function get_hub_cards' ), strpos( $php, 'function get_legacy_page_map' ) - strpos( $php, 'function get_hub_cards' ) );
 		$sira   = array(
-			"'title' => 'Ürünlerim'",
-			"'title' => 'Ürün Ekle'",
+			"__( 'Menü Yönetimi', 'qrms' )",
+			"__( 'Ürünler', 'qrms' )",
+			"__( 'Ürün Ekle', 'qrms' )",
 			'qrms-rm-urunum-yok',
 			'qrms-rm-kampanya',
-			"'title' => 'Kategoriler'",
-			"'title' => 'Alerjenler'",
-			"'title' => 'Malzemeler'",
+			"__( 'Menü İçeriği', 'qrms' )",
+			"__( 'Kategoriler', 'qrms' )",
+			"__( 'Alerjenler', 'qrms' )",
+			"__( 'Malzemeler', 'qrms' )",
+			"__( 'Görünüm', 'qrms' )",
 			'qrms-rm-gorunum',
 			'qrms-rm-one-cikanlar',
 			'qrms-rm-vitrin',
@@ -1834,16 +1838,16 @@ qrms_test(
 
 		$hub_fn = substr( $php, strpos( $php, 'function get_hub_cards' ), strpos( $php, 'function get_legacy_page_map' ) - strpos( $php, 'function get_hub_cards' ) );
 		$sira   = array(
-			"'title' => 'Ürünler'",
-			"'title' => 'Ürünlerim'",
-			"'title' => 'Ürün Ekle'",
+			"__( 'Menü Yönetimi', 'qrms' )",
+			"__( 'Ürünler', 'qrms' )",
+			"__( 'Ürün Ekle', 'qrms' )",
 			'qrms-rm-urunum-yok',
 			'qrms-rm-kampanya',
-			"'title' => 'Ürün Materyalleri'",
-			"'title' => 'Kategoriler'",
-			"'title' => 'Alerjenler'",
-			"'title' => 'Malzemeler'",
-			"'title' => 'Görünüm'",
+			"__( 'Menü İçeriği', 'qrms' )",
+			"__( 'Kategoriler', 'qrms' )",
+			"__( 'Alerjenler', 'qrms' )",
+			"__( 'Malzemeler', 'qrms' )",
+			"__( 'Görünüm', 'qrms' )",
 			'qrms-rm-gorunum',
 			'qrms-rm-one-cikanlar',
 			'qrms-rm-vitrin',

@@ -50,8 +50,8 @@
 	border-top: 0.5px solid rgba(201, 168, 76, 0.35);
 	grid-column: 1 / -1;
 	grid-row: 2;
-	margin-top: 10px;
-	padding-top: 10px;
+	margin-top: 8px;
+	padding-top: 8px;
 }
 
 /* Üst özet: üç kart eşit sütun; dar ekranda alt alta. */
@@ -105,7 +105,7 @@
 }
 
 /*
- * Grup başlıkları: kart ızgarasını "Ürünler / Ürün Materyalleri / Görünüm"
+ * Grup başlıkları: kart ızgarasını "Menü Yönetimi / Menü İçeriği / Görünüm"
  * bölümlerine ayırır (bkz. get_hub_cards()). Serif marka fontu, projede
  * zaten Ürün Vitrini'nin başlık fontu olarak sabit tanımlı (bkz.
  * frontend-slider.css --qmo-font-display); rengi kart başlığıyla
@@ -116,18 +116,18 @@
 .rma-hub .qrms-hub-group-title {
 	color: #1d2327;
 	font-family: 'Playfair Display', Georgia, serif;
-	font-size: 23px;
+	font-size: 21px;
 	font-weight: 600;
-	margin: 3rem 0 0;
+	margin: 2.5rem 0 0;
 	text-align: center;
 }
 
 .rma-hub .qrms-hub-group-title:first-of-type {
-	margin-top: 1.5rem;
+	margin-top: 1.25rem;
 }
 
 .rma-hub .qrms-hub-group-title + .qrms-hub-grid {
-	margin-top: 1.5rem;
+	margin-top: 1.25rem;
 }
 
 .rma-hub .qrms-hub-group-divider {
@@ -157,12 +157,12 @@
 
 @media screen and (max-width: 600px) {
 	.rma-hub .qrms-hub-group-title {
-		font-size: 19px;
-		margin-top: 2rem;
+		font-size: 18px;
+		margin-top: 1.75rem;
 	}
 
 	.rma-hub .qrms-hub-group-title:first-of-type {
-		margin-top: 1rem;
+		margin-top: 0.875rem;
 	}
 }
 

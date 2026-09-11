@@ -21,59 +21,60 @@ trait RMA_Admin_Pages_Trait {
                 'menu_title' => 'Görünüm',
                 'hub_title'  => 'Menü Görünümü',
                 'render'     => 'render_appearance_page',
-                'desc'       => 'Menünüzün renkleri, yazı tipleri ve kategori çubuğu.',
+                'desc'       => __( 'Menünüzün renklerini, yazı tiplerini ve kategori görünümünü özelleştirin.', 'qrms' ),
                 'icon'       => 'dashicons-art',
             ],
             'qrms-rm-one-cikanlar' => [
                 'title'      => 'Öne Çıkanlar',
                 'menu_title' => 'Öne Çıkanlar',
                 'render'     => 'render_featured_page',
-                'desc'       => 'Menünün üstünde öne çıkarılacak ürünler ve slider.',
+                'desc'       => __( 'Menünüzün üst kısmında öne çıkaracağınız ürünleri ve slider alanını yönetin.', 'qrms' ),
                 'icon'       => 'dashicons-star-filled',
             ],
             'qrms-rm-vitrin' => [
                 'title'      => 'Ürün Vitrini',
                 'menu_title' => 'Ürün Vitrini',
                 'render'     => 'render_showcase_page',
-                'desc'       => 'Seçtiğiniz ürünleri kayan bir vitrinde gösterin; kendi kısa kodu vardır.',
+                'desc'       => __( 'Seçtiğiniz ürünleri dikkat çekici bir vitrinde gösterin.', 'qrms' ),
                 'icon'       => 'dashicons-slides',
             ],
             'qrms-rm-kampanya' => [
                 'title'      => 'Fiyat Kampanyaları',
                 'menu_title' => 'Fiyat Kampanyaları',
                 'render'     => 'render_campaign_page',
-                'desc'       => 'Menüdeki fiyatları toplu zam/indirimle geçici olarak değiştirin; tek tıkla geri alın.',
+                'desc'       => __( 'Ürün fiyatlarına geçici indirim veya zam uygulayın; kampanya bitince eski fiyatlara dönün.', 'qrms' ),
                 'icon'       => 'dashicons-tag',
             ],
             'qrms-rm-kampanya-banner' => [
                 'title'      => 'Kampanya Banner',
                 'menu_title' => 'Kampanya Banner',
-                'hub_title'  => 'Kampanya Banner',
+                'hub_title'  => __( 'Kampanya Görselleri', 'qrms' ),
                 'render'     => 'render_kampanya_banner_page',
-                'desc'       => 'Sayfanın en üstünde tam genişlikte dönen kampanya görselleri: görseller, görünüm ayarları ve hazır şablonla görsel üretme.',
+                'desc'       => __( 'Menünüzün üst kısmında kampanyalarınızı ve özel fırsatlarınızı öne çıkarın.', 'qrms' ),
                 'icon'       => 'dashicons-images-alt2',
             ],
             'qrms-rm-secenekler' => [
                 'title'      => 'Ekstralar ve Rozetler',
                 'menu_title' => 'Ekstralar ve Rozetler',
-                'hub_title'  => 'Ekstralar ve Rozetler',
+                'hub_title'  => __( 'Ekstralar & Etiketler', 'qrms' ),
                 'render'     => 'render_secenekler_page',
-                'desc'       => 'Ürünlerde kullanacağınız ekstra gruplarını ve ürün rozetlerini tanımlayın.',
+                'desc'       => __( 'Ürün seçeneklerini ve menüde göstereceğiniz etiketleri yönetin.', 'qrms' ),
                 'icon'       => 'dashicons-editor-ul',
             ],
             'qrms-rm-diger' => [
                 'title'      => 'Diğer Ayarlar',
                 'menu_title' => 'Diğer Ayarlar',
+                'hub_title'  => __( 'Menü Araçları', 'qrms' ),
                 'render'     => 'render_other_settings_page',
-                'desc'       => 'Sepet ile sipariş, kategori sırası, toplu ürün aktarımı ve yedekleme.',
+                'desc'       => __( 'Sepet, kategori sıralaması, toplu ürün ve malzeme aktarımı ile menü yedekleme araçlarını yönetin.', 'qrms' ),
                 'icon'       => 'dashicons-admin-tools',
             ],
             'qrms-rm-urunum-yok' => [
                 'title'      => 'Ürünüm Yok',
                 'menu_title' => 'Ürünüm Yok',
-                'hub_title'  => 'Stok Durumu',
+                'hub_title'  => __( 'Ürün Durumu', 'qrms' ),
                 'render'     => 'render_urunum_yok_page',
-                'desc'       => 'Tükenen malzemeye göre ürünleri toplu "Tükendi" işaretleyin; belirlediğiniz saatte otomatik tekrar aktif olur.',
+                'desc'       => __( 'Tükenen ürünleri yönetin ve belirlediğiniz saatte otomatik olarak yeniden satışa açın.', 'qrms' ),
                 'icon'       => 'dashicons-clock',
             ],
         ];
@@ -102,18 +103,19 @@ trait RMA_Admin_Pages_Trait {
 
         return [
             [
-                'title' => 'Ürünler',
+                'title' => __( 'Menü Yönetimi', 'qrms' ),
                 'cards' => [
                     [
-                        'url'   => admin_url( 'edit.php?post_type=rma_menu_item' ),
-                        'title' => 'Ürünlerim',
-                        'desc'  => 'Menüdeki tüm ürünleri görün, düzenleyin, gösterip gizleyin veya tükendi işaretleyin.',
-                        'icon'  => 'dashicons-list-view',
+                        'url'            => admin_url( 'edit.php?post_type=rma_menu_item' ),
+                        'title'          => __( 'Ürünler', 'qrms' ),
+                        'overview_title' => __( 'Ürünlerim', 'qrms' ),
+                        'desc'           => __( 'Menüdeki ürünlerinizi görüntüleyin, düzenleyin, gizleyin veya tükendi olarak işaretleyin.', 'qrms' ),
+                        'icon'           => 'dashicons-list-view',
                     ],
                     [
                         'url'   => admin_url( 'post-new.php?post_type=rma_menu_item' ),
-                        'title' => 'Ürün Ekle',
-                        'desc'  => 'Menünüze yeni bir ürün ekleyin.',
+                        'title' => __( 'Ürün Ekle', 'qrms' ),
+                        'desc'  => __( 'Menünüze yeni bir ürün ekleyin.', 'qrms' ),
                         'icon'  => 'dashicons-plus-alt',
                     ],
                     $from_sub( $this, 'qrms-rm-urunum-yok' ),
@@ -123,30 +125,30 @@ trait RMA_Admin_Pages_Trait {
                 ],
             ],
             [
-                'title' => 'Ürün Materyalleri',
+                'title' => __( 'Menü İçeriği', 'qrms' ),
                 'cards' => [
                     [
                         'url'   => admin_url( 'edit-tags.php?taxonomy=rma_category&post_type=rma_menu_item' ),
-                        'title' => 'Kategoriler',
-                        'desc'  => 'Çorbalar, ana yemekler, içecekler… Menü bölümlerinizi yönetin.',
+                        'title' => __( 'Kategoriler', 'qrms' ),
+                        'desc'  => __( 'Çorbalar, ana yemekler, içecekler gibi menü bölümlerinizi yönetin.', 'qrms' ),
                         'icon'  => 'dashicons-category',
                     ],
                     [
                         'url'   => admin_url( 'edit-tags.php?taxonomy=rma_allergen&post_type=rma_menu_item' ),
-                        'title' => 'Alerjenler',
-                        'desc'  => 'Ürünlerde işaretlenebilecek alerjen listesini yönetin.',
+                        'title' => __( 'Alerjenler', 'qrms' ),
+                        'desc'  => __( 'Menünüzde kullanılacak alerjenleri tanımlayın ve ürünlerinize atayın.', 'qrms' ),
                         'icon'  => 'dashicons-warning',
                     ],
                     [
                         'url'   => admin_url( 'edit-tags.php?taxonomy=rma_ingredient&post_type=rma_menu_item' ),
-                        'title' => 'Malzemeler',
-                        'desc'  => 'Ürünlerde kullanılan malzemeleri yönetin; "Ürünüm Yok" ekranı bu listeden beslenir.',
+                        'title' => __( 'Malzemeler', 'qrms' ),
+                        'desc'  => __( 'Ürünlerde kullanılan malzemeleri yönetin ve menü bilgilerinizin güncel kalmasını sağlayın.', 'qrms' ),
                         'icon'  => 'dashicons-food',
                     ],
                 ],
             ],
             [
-                'title' => 'Görünüm',
+                'title' => __( 'Görünüm', 'qrms' ),
                 'cards' => [
                     $from_sub( $this, 'qrms-rm-gorunum' ),
                     $from_sub( $this, 'qrms-rm-one-cikanlar' ),
@@ -172,7 +174,7 @@ trait RMA_Admin_Pages_Trait {
 
         foreach ( $this->get_hub_cards() as $group ) {
             foreach ( $group['cards'] as $card ) {
-                $title = $card['title'];
+                $title = isset( $card['overview_title'] ) ? $card['overview_title'] : $card['title'];
 
                 foreach ( $sub as $slug => $page ) {
                     if ( ! preg_match( '/[?&]page=' . preg_quote( $slug, '/' ) . '(?:&|$|#)/', $card['url'] ) ) {
@@ -349,8 +351,8 @@ trait RMA_Admin_Pages_Trait {
 
         echo '<div class="rma-hub">';
         QRMS_Admin::render_hub( [
-            'title'       => 'Restoran Menü',
-            'intro'       => 'Menünüzle ilgili her iş burada. Ne yapmak istiyorsanız kartına dokunun.',
+            'title'       => __( 'Menü Yönetimi', 'qrms' ),
+            'intro'       => __( 'Ürünlerinizi, kategorilerinizi, fiyatlarınızı ve menü içeriğinizi buradan yönetin.', 'qrms' ),
             // Modülün marka vurgusu (frontend menü temasıyla aynı altın).
             'accent'      => '#c9a84c',
             'stats'       => $this->get_hub_stats( $uy_ozet ),
@@ -380,20 +382,24 @@ trait RMA_Admin_Pages_Trait {
 
         return [
             [
-                'label'  => 'Eksik Ürün (Tükendi)',
+                'label'  => __( 'Tükenen Ürünler', 'qrms' ),
                 'value'  => $uy_ozet['toplam'],
                 'url'    => $uy_ozet['toplam'] > 0 ? $this->admin_page_url( 'qrms-rm-urunum-yok' ) : '',
                 'accent' => $uy_ozet['toplam'] > 0 ? '#e11d48' : '#10b981',
             ],
             [
-                'label'  => 'Okunmayan Yorum',
-                'value'  => sprintf( '%d okunmayan yorum', $unread ),
+                'label'  => __( 'Okunmamış Yorumlar', 'qrms' ),
+                'value'  => sprintf(
+                    /* translators: %d: okunmamış yorum sayısı. */
+                    __( '%d okunmamış yorum', 'qrms' ),
+                    $unread
+                ),
                 'url'    => $unread_url,
                 'accent' => $unread > 0 ? '#f59e0b' : '#10b981',
             ],
             [
-                'label'  => 'Bugün Görüntülenme',
-                'value'  => sprintf( '%d görüntülenme (bugün)', $views ),
+                'label'  => __( 'Bugün Görüntülenme', 'qrms' ),
+                'value'  => $views,
                 'url'    => $analiz_url,
                 'accent' => '#c9a84c',
             ],
