@@ -13,15 +13,105 @@
 	--qrms-an-gold: #c9a84c;
 	--qrms-an-blue: #3b82f6;
 	--qrms-an-ink: #111827;
-	--qrms-an-muted: #6b7280;
-	--qrms-an-soft: #9ca3af;
+	/*
+	 * İKİ SOLUK METİN TONU — ikisi de modülün KULLANDIĞI bütün zeminlerde
+	 * (beyaz, #f9fafb tablo başlığı, #f3f4f6 rozet, WordPress admin'in
+	 * #f0f0f1 sayfa zemini, satır vurgularının sarı/turuncu tonları)
+	 * 4.5:1 WCAG AA eşiğini geçecek şekilde seçildi. Tarayıcıda ölçüldü.
+	 */
+	--qrms-an-muted: #656c7a;
+	--qrms-an-soft: #656e78;
 	--qrms-an-line: #e5e7eb;
 	--qrms-an-line-soft: #f3f4f6;
+	/* Form/düğme kenarı: WordPress admin'in kendi kenar tonu. */
+	--qrms-an-line-strong: #dcdcde;
 	--qrms-an-bg: #fff;
+	--qrms-an-bg-alt: #f9fafb;
+	--qrms-an-body: #374151;
+	--qrms-an-btn-ink: #3c434a;
+
+	/*
+	 * SEMANTİK RENKLER — anlam her sayfada AYNI renkle ifade edilir.
+	 * "-ink" son ekli olanlar metin tonudur (beyaz/açık zeminde AA'yı
+	 * geçer); son eki olmayanlar dolgu/vurgu tonudur.
+	 */
+	--qrms-an-primary: var(--qrms-an-gold);
+	--qrms-an-primary-ink: #84691d;
+	/*
+	 * DOLU (beyaz yazılı) altın yüzeyler bu tonu kullanır: #c9a84c üstünde
+	 * beyaz metin 2.29:1 ile AA'nın çok altındaydı; bu ton 4.80:1 verir.
+	 * --qrms-an-gold kenarlık, çubuk, nokta ve açık tonlarda AYNEN kalır.
+	 */
+	--qrms-an-primary-solid: #8a6f1f;
+	--qrms-an-success: #10b981;
+	--qrms-an-success-deep: #059669;
+	--qrms-an-success-ink: #147d3b;
+	--qrms-an-danger: #ef4444;
+	--qrms-an-danger-ink: #b91c1c;
+	--qrms-an-danger-solid: #b32d2e;
+	--qrms-an-critical: #dc2626;
+	--qrms-an-warning: #f59e0b;
+	--qrms-an-warning-ink: #b45309;
+	--qrms-an-info: var(--qrms-an-blue);
+	--qrms-an-info-ink: #1d4ed8;
+	--qrms-an-secondary: #8b5cf6;
+	--qrms-an-teal: #0891b2;
+	--qrms-an-neutral-ink: #475569;
+
+	/*
+	 * TİPOGRAFİ BASAMAKLARI — beş adım, bütün modülde aynı anlamda.
+	 * micro: rozet/sütun başlığı · meta: yardımcı metin · body: gövde
+	 * panel: panel başlığı · title: sayfa başlığı
+	 */
+	--qrms-an-fs-micro: 0.6875rem;
+	--qrms-an-fs-control: 0.875rem;
+	--qrms-an-fs-meta: 0.75rem;
+	--qrms-an-fs-body: 0.8125rem;
+	--qrms-an-fs-panel: 0.9375rem;
+	--qrms-an-fs-title: 1.375rem;
+	--qrms-an-fs-value: clamp( 1.375rem, 1.05rem + 1.4vw, 1.75rem );
+
+	/* KPI kartlarının ortak taban yüksekliği: iskelet ile gerçek kart
+	   arasında zıplama olmaz, farklı kart varyantları aynı tabanı kullanır. */
+	--qrms-an-card-min: 108px;
+	--qrms-an-radius: 12px;
+
+	/*
+	 * BOŞLUK SİSTEMİ — modülün TEK ölçü kaynağı.
+	 *
+	 * Yatay hiza tek değişkenden gelir: --qrms-an-gutter. Panel içindeki
+	 * her içerik tipi (başlık, not, kart, tablo hücresi, grafik, boş durum,
+	 * huni, sayfalama, düğme grubu) aynı çizgiye oturur. Dikey ritim
+	 * xs..xl adımlarıyla kurulur; tek tek px yazılmaz.
+	 */
+	--qrms-an-space-xs: 4px;
+	--qrms-an-space-sm: 8px;
+	--qrms-an-space-md: 12px;
+	--qrms-an-space-lg: 18px;
+	--qrms-an-space-xl: 24px;
+	--qrms-an-gutter: 16px;
 
 	box-sizing: border-box;
 	margin-right: 12px;
 	max-width: 1400px;
+}
+
+/*
+ * SAYFA KAPSAYICISI
+ *
+ * Bütün analiz ekranlarının kökü `.wrap.qrms-an`'dir; sol/sağ yerleşimi
+ * WordPress'in .wrap'inden, iç hizayı --qrms-an-gutter'dan alır. Hiçbir
+ * sayfa kendi left/right padding'ini tanımlamaz.
+ *
+ * Sayfa düzeyindeki bloklar (başlık, filtre çubuğu, KPI ızgarası, panel,
+ * teşhis kutusu) TEK bir düşey ritmi paylaşır: --qrms-an-space-lg.
+ */
+.qrms-an > .qrms-an-teshis,
+.qrms-an > .qrms-an-filtre,
+.qrms-an > .qrms-an-cards,
+.qrms-an > .qrms-an-panel,
+.qrms-an > .qrms-an-panel-note {
+	margin-bottom: var(--qrms-an-space-lg);
 }
 
 .qrms-an *,
@@ -38,13 +128,13 @@
 	align-items: flex-start;
 	display: flex;
 	flex-direction: column;
-	gap: 12px;
-	margin: 16px 0 18px;
+	gap: var(--qrms-an-space-md);
+	margin: var(--qrms-an-gutter) 0 var(--qrms-an-space-lg);
 }
 
 .qrms-an-title {
 	color: var(--qrms-an-ink);
-	font-size: 1.375rem;
+	font-size: var(--qrms-an-fs-title);
 	font-weight: 700;
 	line-height: 1.25;
 	margin: 0 0 4px;
@@ -53,8 +143,8 @@
 
 .qrms-an-subtitle {
 	color: var(--qrms-an-muted);
-	font-size: 0.8125rem;
-	line-height: 1.5;
+	font-size: var(--qrms-an-fs-body);
+	line-height: 1.55;
 	margin: 0;
 	max-width: 60ch;
 }
@@ -62,7 +152,7 @@
 .qrms-an-header-actions {
 	display: flex;
 	flex-wrap: wrap;
-	gap: 8px;
+	gap: var(--qrms-an-space-sm);
 	width: 100%;
 }
 
@@ -80,27 +170,27 @@
 	border-left: 4px solid var(--qrms-an-soft);
 	border-radius: 10px;
 	display: flex;
-	gap: 14px;
-	margin: 0 0 16px;
-	padding: 16px 18px;
+	gap: var(--qrms-an-space-md);
+	margin: 0 0 var(--qrms-an-space-lg);
+	padding: var(--qrms-an-gutter);
 }
 
 .qrms-an-teshis-kritik {
 	background: #fef2f2;
 	border-color: #fecaca;
-	border-left-color: #dc2626;
+	border-left-color: var(--qrms-an-critical);
 }
 
 .qrms-an-teshis-uyari {
 	background: #fffbeb;
 	border-color: #fde68a;
-	border-left-color: #f59e0b;
+	border-left-color: var(--qrms-an-warning);
 }
 
 .qrms-an-teshis-bilgi {
 	background: #eff6ff;
 	border-color: #bfdbfe;
-	border-left-color: var(--qrms-an-blue);
+	border-left-color: var(--qrms-an-info);
 }
 
 .qrms-an-teshis-icon {
@@ -112,15 +202,15 @@
 }
 
 .qrms-an-teshis-kritik .qrms-an-teshis-icon {
-	color: #dc2626;
+	color: var(--qrms-an-critical);
 }
 
 .qrms-an-teshis-uyari .qrms-an-teshis-icon {
-	color: #b45309;
+	color: var(--qrms-an-warning-ink);
 }
 
 .qrms-an-teshis-bilgi .qrms-an-teshis-icon {
-	color: var(--qrms-an-blue);
+	color: var(--qrms-an-info);
 }
 
 .qrms-an-teshis-body {
@@ -129,7 +219,7 @@
 
 .qrms-an-teshis-title {
 	color: var(--qrms-an-ink);
-	font-size: 0.9375rem;
+	font-size: var(--qrms-an-fs-panel);
 	font-weight: 600;
 	line-height: 1.4;
 	margin: 0;
@@ -138,7 +228,7 @@
 
 .qrms-an-teshis-text {
 	color: var(--qrms-an-muted);
-	font-size: 0.8438rem;
+	font-size: var(--qrms-an-fs-body);
 	line-height: 1.6;
 	margin: 6px 0 0;
 	max-width: 78ch;
@@ -170,32 +260,40 @@
 .qrms-an-btn-group {
 	display: flex;
 	flex-wrap: wrap;
-	gap: 8px;
+	gap: var(--qrms-an-space-sm);
+	/* <p> olarak da yazılabiliyor: admin'in 1em üst/alt boşluğu düşey
+	   ritmi bozmasın. */
+	margin: 0 0 var(--qrms-an-space-md);
 }
 
 .qrms-an-btn {
 	align-items: center;
 	background: var(--qrms-an-bg);
-	border: 1.5px solid #dcdcde;
+	border: 1.5px solid var(--qrms-an-line-strong);
 	border-radius: 8px;
-	color: #3c434a;
+	color: var(--qrms-an-btn-ink);
 	cursor: pointer;
 	display: inline-flex;
-	font-size: 0.875rem;
+	font-size: var(--qrms-an-fs-control);
 	font-weight: 600;
 	gap: 6px;
 	justify-content: center;
 	line-height: 1.4;
 	min-height: 40px;
+	/* Etiket kelime kelime KIRILMAZ. Masalar tablosundaki "Bu masayı
+	   incele" dar sütunda üç satıra bölünüyordu; düğme artık kendi
+	   min-content genişliğini korur (esnek satırlarda da min-width:auto
+	   sayesinde altına inmez), sütun gerekirse tablo şeridiyle yatay kayar. */
 	padding: 9px 16px;
 	text-decoration: none;
 	transition: border-color .15s, color .15s, background-color .15s;
+	white-space: nowrap;
 }
 
 .qrms-an-btn:hover,
 .qrms-an-btn:focus {
 	border-color: var(--qrms-an-gold);
-	color: #8a6f1f;
+	color: var(--qrms-an-primary-ink);
 }
 
 .qrms-an-btn:focus-visible {
@@ -208,32 +306,37 @@
 	opacity: .6;
 }
 
-/* display: inline-flex, hidden özniteliğini ezerdi. */
+/*
+ * `hidden` özniteliği HER ZAMAN kazanır: modül içinde display verilen
+ * (inline-flex, flex, grid) elemanlar özniteliği ezerdi. Tek kural —
+ * ayrıca .qrms-an-modal[hidden] / #qrms-an-sepet-bos[hidden] gibi
+ * kopyalara gerek yok (modal da .qrms-an kökünün içindedir).
+ */
 .qrms-an [hidden] {
 	display: none;
 }
 
 .qrms-an-btn-small {
-	font-size: 0.8125rem;
+	font-size: var(--qrms-an-fs-body);
 	min-height: 36px;
 	padding: 7px 12px;
 }
 
 .qrms-an-btn-danger {
 	border-color: #f0c3c0;
-	color: #b32d2e;
+	color: var(--qrms-an-danger-solid);
 }
 
 .qrms-an-btn-danger:hover,
 .qrms-an-btn-danger:focus {
-	background: #b32d2e;
-	border-color: #b32d2e;
+	background: var(--qrms-an-danger-solid);
+	border-color: var(--qrms-an-danger-solid);
 	color: #fff;
 }
 
 .qrms-an-btn-danger-solid {
-	background: #b32d2e;
-	border-color: #b32d2e;
+	background: var(--qrms-an-danger-solid);
+	border-color: var(--qrms-an-danger-solid);
 	color: #fff;
 }
 
@@ -258,16 +361,21 @@
 .qrms-an-cards {
 	align-items: stretch;
 	display: grid;
-	gap: 12px;
+	gap: var(--qrms-an-space-md);
 	grid-auto-rows: 1fr;
 	grid-template-columns: 1fr;
-	margin: 0 0 18px;
+	margin: 0 0 var(--qrms-an-space-lg);
+}
+
+/* Panel içindeki KPI ızgarası başlıkla aynı hizadan başlar. */
+.qrms-an-panel .qrms-an-cards {
+	margin-bottom: var(--qrms-an-space-md);
 }
 
 .qrms-an-card-group {
 	align-items: stretch;
 	display: grid;
-	gap: 12px;
+	gap: var(--qrms-an-space-md);
 	grid-auto-rows: 1fr;
 	grid-template-columns: 1fr;
 	grid-template-rows: auto;
@@ -275,7 +383,7 @@
 
 .qrms-an-card-group-title {
 	color: var(--qrms-an-muted);
-	font-size: 0.75rem;
+	font-size: var(--qrms-an-fs-meta);
 	font-weight: 700;
 	grid-column: 1 / -1;
 	letter-spacing: .08em;
@@ -288,52 +396,63 @@
 	background: var(--qrms-an-bg);
 	border: 1px solid var(--qrms-an-line);
 	border-bottom-width: 3px;
-	border-radius: 12px;
+	border-radius: var(--qrms-an-radius);
 	display: flex;
 	flex-direction: column;
 	height: 100%;
+	/* Bütün kart varyantları (ikonlu/ikonsuz, alt yazılı/yazısız) aynı
+	   tabanı paylaşır; iskeletten gerçek karta geçerken zıplama olmaz. */
+	min-height: var(--qrms-an-card-min);
+	min-width: 0;
 	overflow: hidden;
-	padding: 16px 18px 14px;
+	padding: var(--qrms-an-space-lg) var(--qrms-an-gutter) var(--qrms-an-space-md);
 	position: relative;
 }
 
+/* İkon yoksa (ör. masa karnesi kartları) başlık, ikonlu kartlarla aynı
+   düşey ritmi korusun. */
+.qrms-an-card-icon + .qrms-an-card-label {
+	margin-top: 0;
+}
+
 .qrms-an-card:nth-child(1) { border-bottom-color: var(--qrms-an-gold); }
-.qrms-an-card:nth-child(2) { border-bottom-color: #10b981; }
+.qrms-an-card:nth-child(2) { border-bottom-color: var(--qrms-an-success); }
 .qrms-an-card:nth-child(3) { border-bottom-color: var(--qrms-an-blue); }
-.qrms-an-card:nth-child(4) { border-bottom-color: #8b5cf6; }
-.qrms-an-card:nth-child(5) { border-bottom-color: #ef4444; }
-.qrms-an-card:nth-child(6) { border-bottom-color: #059669; }
-.qrms-an-card:nth-child(7) { border-bottom-color: #0891b2; }
+.qrms-an-card:nth-child(4) { border-bottom-color: var(--qrms-an-secondary); }
+.qrms-an-card:nth-child(5) { border-bottom-color: var(--qrms-an-danger); }
+.qrms-an-card:nth-child(6) { border-bottom-color: var(--qrms-an-success-deep); }
+.qrms-an-card:nth-child(7) { border-bottom-color: var(--qrms-an-teal); }
 .qrms-an-card:nth-child(8) { border-bottom-color: var(--qrms-an-gold); }
-.qrms-an-card:nth-child(9) { border-bottom-color: #ef4444; }
+.qrms-an-card:nth-child(9) { border-bottom-color: var(--qrms-an-danger); }
 
 /* Grup sarmalayıcısında başlık 1. çocuk olduğu için kart renkleri kayar. */
 .qrms-an-sepet .qrms-an-card-group:nth-child(1) .qrms-an-card:nth-child(2) { border-bottom-color: var(--qrms-an-gold); }
-.qrms-an-sepet .qrms-an-card-group:nth-child(1) .qrms-an-card:nth-child(3) { border-bottom-color: #10b981; }
+.qrms-an-sepet .qrms-an-card-group:nth-child(1) .qrms-an-card:nth-child(3) { border-bottom-color: var(--qrms-an-success); }
 .qrms-an-sepet .qrms-an-card-group:nth-child(1) .qrms-an-card:nth-child(4) { border-bottom-color: var(--qrms-an-blue); }
-.qrms-an-sepet .qrms-an-card-group:nth-child(2) .qrms-an-card:nth-child(2) { border-bottom-color: #8b5cf6; }
-.qrms-an-sepet .qrms-an-card-group:nth-child(2) .qrms-an-card:nth-child(3) { border-bottom-color: #ef4444; }
-.qrms-an-sepet .qrms-an-card-group:nth-child(3) .qrms-an-card:nth-child(2) { border-bottom-color: #059669; }
-.qrms-an-sepet .qrms-an-card-group:nth-child(3) .qrms-an-card:nth-child(3) { border-bottom-color: #0891b2; }
+.qrms-an-sepet .qrms-an-card-group:nth-child(2) .qrms-an-card:nth-child(2) { border-bottom-color: var(--qrms-an-secondary); }
+.qrms-an-sepet .qrms-an-card-group:nth-child(2) .qrms-an-card:nth-child(3) { border-bottom-color: var(--qrms-an-danger); }
+.qrms-an-sepet .qrms-an-card-group:nth-child(3) .qrms-an-card:nth-child(2) { border-bottom-color: var(--qrms-an-success-deep); }
+.qrms-an-sepet .qrms-an-card-group:nth-child(3) .qrms-an-card:nth-child(3) { border-bottom-color: var(--qrms-an-teal); }
 .qrms-an-sepet .qrms-an-card-group:nth-child(3) .qrms-an-card:nth-child(4) { border-bottom-color: var(--qrms-an-gold); }
-.qrms-an-sepet .qrms-an-card-group:nth-child(3) .qrms-an-card:nth-child(5) { border-bottom-color: #ef4444; }
+.qrms-an-sepet .qrms-an-card-group:nth-child(3) .qrms-an-card:nth-child(5) { border-bottom-color: var(--qrms-an-danger); }
 
 .qrms-an-card-tag {
 	background: rgba( 201, 168, 76, .12 );
 	border-radius: 20px;
-	color: #8a6f1f;
+	color: var(--qrms-an-primary-ink);
 	font-size: 0.625rem;
 	font-weight: 700;
 	letter-spacing: .05em;
 	padding: 3px 9px;
 	position: absolute;
-	right: 14px;
-	top: 14px;
+	right: var(--qrms-an-gutter);
+	top: var(--qrms-an-space-md);
 }
 
 .qrms-an-card-icon {
 	color: var(--qrms-an-soft);
 	display: block;
+	flex: 0 0 auto;
 	/* Dashicons kendi boyutunu font-size'dan alır; genişlik/yükseklik de
 	   birlikte büyümezse ikon kutusunun içinde kırpılır. */
 	font-size: 1.375rem;
@@ -344,28 +463,34 @@
 }
 
 .qrms-an-card-label {
-	color: var(--qrms-an-soft);
-	font-size: 0.6875rem;
+	color: var(--qrms-an-muted);
+	font-size: var(--qrms-an-fs-micro);
 	font-weight: 700;
 	letter-spacing: .08em;
-	margin-bottom: 4px;
+	line-height: 1.4;
+	margin-bottom: var(--qrms-an-space-xs);
+	/* Uzun etiket kartı genişletmesin, sarsın. */
+	overflow-wrap: anywhere;
 	text-transform: uppercase;
 }
 
 .qrms-an-card-value {
 	color: var(--qrms-an-ink);
-	font-size: 1.75rem;
+	/* Uzun sayı dar kartta taşmasın: gövde genişliğine göre küçülür. */
+	font-size: var(--qrms-an-fs-value);
+	font-variant-numeric: tabular-nums;
 	font-weight: 800;
-	line-height: 1.1;
-	margin-bottom: 4px;
+	line-height: 1.15;
+	margin-bottom: var(--qrms-an-space-xs);
+	overflow-wrap: anywhere;
 }
 
 .qrms-an-card-sub {
 	color: var(--qrms-an-soft);
-	font-size: 0.75rem;
+	font-size: var(--qrms-an-fs-meta);
 	line-height: 1.5;
 	margin-top: auto;
-	word-break: break-word;
+	overflow-wrap: anywhere;
 }
 
 .qrms-an-skeleton {
@@ -373,7 +498,6 @@
 	background: linear-gradient( 90deg, #f0f0f0 25%, #e8e8e8 50%, #f0f0f0 75% );
 	background-size: 200% 100%;
 	border-bottom-color: var(--qrms-an-line);
-	min-height: 108px;
 }
 
 @keyframes qrms-an-shimmer {
@@ -394,8 +518,8 @@
 .qrms-an-panel {
 	background: var(--qrms-an-bg);
 	border: 1px solid var(--qrms-an-line);
-	border-radius: 12px;
-	margin: 0 0 18px;
+	border-radius: var(--qrms-an-radius);
+	margin: 0 0 var(--qrms-an-space-lg);
 	overflow: hidden;
 }
 
@@ -404,17 +528,83 @@
 	border-bottom: 1px solid var(--qrms-an-line-soft);
 	display: flex;
 	flex-wrap: wrap;
-	gap: 10px;
+	gap: var(--qrms-an-space-sm) var(--qrms-an-space-md);
 	justify-content: space-between;
-	padding: 14px 16px;
+	padding: var(--qrms-an-space-md) var(--qrms-an-gutter);
 }
 
 .qrms-an-panel-title {
 	color: var(--qrms-an-ink);
-	font-size: 0.9375rem;
+	font-size: var(--qrms-an-fs-panel);
 	font-weight: 700;
 	margin: 0;
+	min-width: 0;
 	padding: 0;
+}
+
+/* =====================================================================
+   PANEL YATAY HİZA (GUTTER) SİSTEMİ
+
+   KÖK SORUN: panel içeriğinin yatay boşluğu tek bir yerde değil, her
+   yaprak elemanın kendi padding'indeydi (başlık 16px, tablo hücresi 14px,
+   grafik 16px, boş durum 16px...). Kendi padding'i olmayan her eleman —
+   açıklama notu, KPI ızgarası, huni, sayfalama, düğme grubu, teşhis
+   kutusu, ayar formu — panelin kenarına YAPIŞIYORDU; padding'i olanlar da
+   birbirinden farklı hizadaydı.
+
+   ÇÖZÜM: tek değişken (--qrms-an-gutter) ve panelin içindeki bütün içerik
+   tiplerinin listelendiği TEK blok. Yeni bir içerik tipi eklenirse adı
+   buraya yazılır; elemana ayrıca margin/padding yaması yapılmaz.
+   Tam genişlikte kalması gereken bloklar (tablo sarmalayıcı, grafik
+   şeridi, açılır bölüm) kendi iç boşluğunu AYNI değişkenden alır, böylece
+   tablo ilk sütunu da başlıkla aynı çizgiye oturur.
+===================================================================== */
+
+/* Alt seçici (>) DEĞİL: bu blokların bir kısmı JavaScript tarafından bir
+   sarmalayıcı div'in içine basılır (ör. masa listesinin özet notu). */
+.qrms-an-panel .qrms-an-panel-note,
+.qrms-an-panel .qrms-an-cards,
+.qrms-an-panel .qrms-an-teshis,
+.qrms-an-panel .qrms-detail-list,
+.qrms-an-panel > form,
+.qrms-an-panel .qrms-an-huni,
+.qrms-an-panel .qrms-an-pager,
+.qrms-an-panel .qrms-an-btn-group {
+	padding-left: var(--qrms-an-gutter);
+	padding-right: var(--qrms-an-gutter);
+}
+
+/* Panelin son bloğu alt kenara yapışmasın. */
+.qrms-an-panel > :last-child {
+	margin-bottom: var(--qrms-an-space-md);
+}
+
+.qrms-an-panel > .qrms-an-panel-header:last-child {
+	border-bottom: none;
+	margin-bottom: 0;
+}
+
+/* Panel içindeki kategori şeridi kutu içinde kutu gibi durmasın. */
+.qrms-an-panel > .qrms-an-cats {
+	border: none;
+	border-bottom: 1px solid var(--qrms-an-line-soft);
+	border-radius: 0;
+	margin: 0;
+	padding: var(--qrms-an-space-sm) var(--qrms-an-gutter);
+}
+
+/* Panel içi ayar formu (Veri & Sistem): alanlar dar ekranda yığılır,
+   geniş ekranda tek satırda hizalanır. */
+.qrms-an-panel > form {
+	align-items: flex-end;
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--qrms-an-space-sm);
+	margin: 0 0 var(--qrms-an-space-md);
+}
+
+.qrms-an-panel > form .qrms-an-filtre-label {
+	flex: 0 0 100%;
 }
 
 /* =====================================================================
@@ -454,7 +644,7 @@
 	color: var(--qrms-an-soft);
 	cursor: pointer;
 	flex: 0 0 auto;
-	font-size: 0.875rem;
+	font-size: var(--qrms-an-fs-control);
 	font-weight: 600;
 	min-height: 40px;
 	padding: 9px 14px;
@@ -463,13 +653,13 @@
 
 .qrms-an-tab:hover {
 	background: rgba( 201, 168, 76, .1 );
-	color: #8a6f1f;
+	color: var(--qrms-an-primary-ink);
 }
 
 .qrms-an-tab.is-active {
 	background: rgba( 201, 168, 76, .16 );
 	border-color: var(--qrms-an-gold);
-	color: #8a6f1f;
+	color: var(--qrms-an-primary-ink);
 }
 
 .qrms-an-tab:focus-visible {
@@ -488,8 +678,8 @@
 	background: var(--qrms-an-bg);
 	border: 1px solid var(--qrms-an-line);
 	border-radius: 12px;
-	margin: 0 0 18px;
-	padding: 12px 16px;
+	margin: 0 0 var(--qrms-an-space-lg);
+	padding: var(--qrms-an-space-md) var(--qrms-an-gutter);
 }
 
 .qrms-an-filtre-satir {
@@ -499,24 +689,25 @@
 	display: flex;
 	flex-direction: column;
 	flex-wrap: wrap;
-	gap: 8px;
+	gap: var(--qrms-an-space-sm);
 }
 
 .qrms-an-filtre-satir > * {
+	min-width: 0;
 	width: 100%;
 }
 
 .qrms-an-filtre-satir + .qrms-an-filtre-satir {
 	border-top: 1px solid var(--qrms-an-line);
-	margin-top: 12px;
-	padding-top: 12px;
+	margin-top: var(--qrms-an-space-md);
+	padding-top: var(--qrms-an-space-md);
 }
 
 .qrms-an-filtre-label {
 	align-items: center;
 	color: var(--qrms-an-muted);
 	display: inline-flex;
-	font-size: 0.75rem;
+	font-size: var(--qrms-an-fs-meta);
 	font-weight: 700;
 	gap: 6px;
 	letter-spacing: .06em;
@@ -536,17 +727,21 @@
 }
 
 .qrms-an-donem {
-	background: #fff;
-	border: 1px solid #dcdcde;
+	align-items: center;
+	background: var(--qrms-an-bg);
+	border: 1px solid var(--qrms-an-line-strong);
 	border-radius: 999px;
 	color: var(--qrms-an-muted);
 	cursor: pointer;
-	font-size: 0.8125rem;
+	display: inline-flex;
+	font-size: var(--qrms-an-fs-body);
+	justify-content: center;
 	font-weight: 600;
 	/* Dokunma hedefi: 40px'in altına inmesin. */
 	min-height: 40px;
 	padding: 8px 16px;
 	text-decoration: none;
+	white-space: nowrap;
 }
 
 .qrms-an-donem:hover,
@@ -555,41 +750,89 @@
 	color: var(--qrms-an-ink);
 }
 
+/* Klavye odağı bütün filtre kontrollerinde GÖRÜNÜR olur (renk değişimi
+   tek başına yeterli bir odak göstergesi değildir). */
+.qrms-an-donem:focus-visible,
+.qrms-an-date:focus-visible,
+.qrms-an-select:focus-visible,
+.qrms-an-summary:focus-visible {
+	outline: 2px solid var(--qrms-an-gold);
+	outline-offset: 1px;
+}
+
+.qrms-an-summary:focus-visible {
+	outline-offset: -2px;
+}
+
 .qrms-an-donem.is-active {
-	background: var(--qrms-an-gold);
-	border-color: var(--qrms-an-gold);
+	background: var(--qrms-an-primary-solid);
+	border-color: var(--qrms-an-primary-solid);
 	color: #fff;
 }
 
 .qrms-an-filtre-ozet {
 	color: var(--qrms-an-soft);
-	font-size: 0.75rem;
+	font-size: var(--qrms-an-fs-meta);
 	margin-left: auto;
 }
 
+/*
+ * ÖZEL ARALIK + MASA FORMU
+ *
+ * Mobil: alanlar kontrollü şekilde 1/2 kolon dizilir (iki tarih yan yana),
+ * düğme kendi satırını alır. Rastgele flex sarması yok — her alan bir
+ * `.qrms-an-alan` kutusudur ve taban genişliği bellidir.
+ * Tablet/masaüstü: aşağıdaki 768px sorgusunda tek satıra döner.
+ */
 .qrms-an-ozel-form,
 .qrms-an-masa-form {
-	align-items: stretch;
+	align-items: flex-end;
 	display: flex;
-	flex-direction: column;
 	flex-wrap: wrap;
-	gap: 8px;
+	gap: var(--qrms-an-space-sm);
 	width: 100%;
 }
 
-.qrms-an-ozel-form > *,
-.qrms-an-masa-form > * {
+/* Etiket + alan tek kutu: etiket her zaman kendi alanının üstünde. */
+.qrms-an-alan {
+	display: flex;
+	flex: 1 1 130px;
+	flex-direction: column;
+	gap: var(--qrms-an-space-xs);
+	min-width: 0;
+}
+
+.qrms-an-alan > .qrms-an-date,
+.qrms-an-alan > .qrms-an-select {
 	width: 100%;
+}
+
+.qrms-an-masa-form > .qrms-an-select {
+	flex: 1 1 160px;
+	min-width: 0;
+}
+
+.qrms-an-ozel-form > .qrms-an-btn,
+.qrms-an-masa-form > .qrms-an-btn {
+	flex: 0 0 auto;
+}
+
+/* 320px'te iki tarih + düğme tek satıra sığmaz: düğme alta iner. */
+@media screen and ( max-width: 419px ) {
+	.qrms-an-ozel-form > .qrms-an-btn,
+	.qrms-an-masa-form > .qrms-an-btn {
+		flex: 1 1 100%;
+	}
 }
 
 .qrms-an-ozel-form {
 	border-top: 1px solid var(--qrms-an-line);
-	margin-top: 12px;
-	padding-top: 12px;
+	margin-top: var(--qrms-an-space-md);
+	padding-top: var(--qrms-an-space-md);
 }
 
 .qrms-an-date {
-	border: 1px solid #dcdcde;
+	border: 1px solid var(--qrms-an-line-strong);
 	border-radius: 8px;
 	/* 1rem (=16px): iOS Safari daha küçük yazıda alanı yakınlaştırır. */
 	font-size: 1rem;
@@ -600,7 +843,7 @@
 /* Önceki döneme göre değişim rozeti. */
 .qrms-an-delta {
 	border-radius: 999px;
-	font-size: 0.6875rem;
+	font-size: var(--qrms-an-fs-micro);
 	font-weight: 700;
 	margin-left: 6px;
 	padding: 2px 7px;
@@ -609,17 +852,17 @@
 
 .qrms-an-delta-up {
 	background: rgba( 22, 163, 74, .12 );
-	color: #15803d;
+	color: var(--qrms-an-success-ink);
 }
 
 .qrms-an-delta-down {
 	background: rgba( 220, 38, 38, .12 );
-	color: #b91c1c;
+	color: var(--qrms-an-danger-ink);
 }
 
 .qrms-an-delta-flat {
 	background: rgba( 100, 116, 139, .12 );
-	color: #475569;
+	color: var(--qrms-an-neutral-ink);
 }
 
 /* Grafik kırılımı: kategori şeridiyle aynı chip görünümü, ikonlu. */
@@ -635,22 +878,29 @@
    Durum rozetleri, "hiç tıklanmamış" vurgusu, bölüm notları ve sayfalama.
 ===================================================================== */
 
+/* Açıklama notu: panel başlığıyla AYNI yatay çizgide durur (gutter
+   bloğundan gelir) ve okunabilir ton/boyut kullanır. */
 .qrms-an-panel-note {
-	color: var(--qrms-an-soft);
-	font-size: 0.75rem;
+	color: var(--qrms-an-muted);
+	font-size: var(--qrms-an-fs-body);
 	line-height: 1.6;
-	margin: 0 0 12px;
+	margin: 0 0 var(--qrms-an-space-md);
+	max-width: 92ch;
+}
+
+.qrms-an-panel .qrms-an-panel-note {
+	margin-top: var(--qrms-an-space-md);
 }
 
 .qrms-an-warn {
-	color: #b45309;
+	color: var(--qrms-an-warning-ink);
 }
 
 .qrms-an-badge {
 	background: rgba( 100, 116, 139, .12 );
 	border-radius: 999px;
-	color: #475569;
-	font-size: 0.6875rem;
+	color: var(--qrms-an-neutral-ink);
+	font-size: var(--qrms-an-fs-micro);
 	font-weight: 700;
 	padding: 2px 8px;
 	white-space: nowrap;
@@ -658,7 +908,7 @@
 
 .qrms-an-badge-warn {
 	background: rgba( 245, 158, 11, .15 );
-	color: #b45309;
+	color: var(--qrms-an-warning-ink);
 }
 
 /* Hiç tıklanmamış ürün: listede kaybolmasın diye satır ve değer soluk
@@ -668,21 +918,22 @@
 }
 
 .qrms-an-val-zero {
-	color: #b45309;
+	color: var(--qrms-an-warning-ink);
 	font-weight: 700;
 }
 
 .qrms-an-pager {
 	align-items: center;
 	display: flex;
-	gap: 10px;
+	flex-wrap: wrap;
+	gap: var(--qrms-an-space-sm) var(--qrms-an-space-md);
 	justify-content: center;
-	margin-top: 14px;
+	margin: var(--qrms-an-space-md) 0;
 }
 
 .qrms-an-pager-info {
 	color: var(--qrms-an-soft);
-	font-size: 0.75rem;
+	font-size: var(--qrms-an-fs-meta);
 	font-variant-numeric: tabular-nums;
 }
 
@@ -691,11 +942,6 @@
 	height: 18px;
 	vertical-align: text-bottom;
 	width: 18px;
-}
-
-/* Sepet & Sipariş: teşhis kutusunun kartlardan önce nefes alması. */
-#qrms-an-sepet-bos {
-	margin-bottom: 18px;
 }
 
 /* Grup sarmalayıcıları dış grid'in hücresi olmasın; her grup kendi ızgarasını kurar. */
@@ -707,14 +953,10 @@
 	grid-template-columns: none;
 }
 
-#qrms-an-sepet-bos[hidden] {
-	display: none;
-}
-
 /* Sayfanın asıl eylemi: diğer düğmelerden ayrılsın. */
 .qrms-an-btn-primary {
-	background: var(--qrms-an-gold);
-	border-color: var(--qrms-an-gold);
+	background: var(--qrms-an-primary-solid);
+	border-color: var(--qrms-an-primary-solid);
 	color: #fff;
 }
 
@@ -735,7 +977,7 @@
 }
 
 .qrms-an-select {
-	border: 1px solid #dcdcde;
+	border: 1px solid var(--qrms-an-line-strong);
 	border-radius: 8px;
 	/* 1rem (=16px): iOS Safari daha küçük yazıda alanı yakınlaştırır. */
 	font-size: 1rem;
@@ -753,14 +995,14 @@
 	align-items: baseline;
 	display: flex;
 	flex-wrap: wrap;
-	gap: 6px 14px;
+	gap: var(--qrms-an-space-xs) var(--qrms-an-space-md);
 	justify-content: space-between;
-	padding: 14px 16px 2px;
+	padding: var(--qrms-an-space-md) var(--qrms-an-gutter) 2px;
 }
 
 .qrms-an-chart-title {
 	color: var(--qrms-an-muted);
-	font-size: 0.75rem;
+	font-size: var(--qrms-an-fs-meta);
 	font-weight: 700;
 	letter-spacing: .06em;
 	text-transform: uppercase;
@@ -770,7 +1012,7 @@
 	color: var(--qrms-an-muted);
 	display: flex;
 	flex-wrap: wrap;
-	font-size: 0.75rem;
+	font-size: var(--qrms-an-fs-meta);
 	font-weight: 600;
 	gap: 12px;
 }
@@ -787,21 +1029,43 @@
 .qrms-an-dot-gold { background: var(--qrms-an-gold); }
 .qrms-an-dot-blue { background: var(--qrms-an-blue); }
 
-.qrms-an-chart-scroll {
+/*
+ * GRAFİK ŞERİDİ — TEK kapsayıcı tanımı.
+ *
+ * İki sınıf adı kullanılıyor: `.qrms-an-chart-scroll` (Genel Bakış'ta
+ * PHP'den) ve `.qrms-an-chart` (analitik-etkilesim.js'in ürettiği
+ * sarmalayıcı). İkisi de AYNI davranışı alır; ayrı kural kopyaları
+ * tutulmaz — birbirinden ayrışmaları böyle engellenir.
+ */
+.qrms-an-chart-scroll,
+.qrms-an-chart {
 	-webkit-overflow-scrolling: touch;
 	overflow-x: auto;
 	overscroll-behavior-x: contain;
-	padding: 10px 16px 8px;
+	padding: var(--qrms-an-space-sm) var(--qrms-an-gutter) var(--qrms-an-space-md);
 	scrollbar-width: thin;
 }
 
-.qrms-an-chart-scroll::-webkit-scrollbar {
+.qrms-an-chart-scroll::-webkit-scrollbar,
+.qrms-an-chart::-webkit-scrollbar {
 	height: 5px;
 }
 
-.qrms-an-chart-scroll::-webkit-scrollbar-thumb {
+.qrms-an-chart-scroll::-webkit-scrollbar-thumb,
+.qrms-an-chart::-webkit-scrollbar-thumb {
 	background: var(--qrms-an-line);
 	border-radius: 3px;
+}
+
+/* Veri YOKKEN grafik yüksekliğinde beyaz kutu açılmaz: boş durum ve
+   yükleniyor kutusu kendi kompakt yüksekliğini kullanır, yatay boşluğu
+   şeritten aldığı için iki kez padding almaz. */
+.qrms-an-chart-scroll > .qrms-an-empty,
+.qrms-an-chart-scroll > .qrms-an-loading,
+.qrms-an-chart > .qrms-an-empty,
+.qrms-an-chart > .qrms-an-loading {
+	padding-left: 0;
+	padding-right: 0;
 }
 
 .qrms-an-chart-inner {
@@ -809,9 +1073,18 @@
 	display: flex;
 	gap: 4px;
 	/* Yükseklik dar ekranda kısalır (aşağıdaki sorgu); çubuklar yüzde
-	   yükseklikle çizildiği için oran korunur. */
-	height: 200px;
-	min-width: max-content;
+	   yükseklikle çizildiği için oran korunur. Ölçü okunabilirliği
+	   bozmadan kısaltıldı: az veriyle ekranın yarısı boş kalıyordu. */
+	height: 170px;
+	/*
+	 * Şerit HER ZAMAN kapsayıcıyı doldurur; sütunlar boşluğu paylaşır.
+	 * Eskiden `min-width: max-content` idi: üç veri noktası olan bir
+	 * grafik solda ~90px'lik bir kümeye sıkışıp sağda ekran genişliğinde
+	 * boşluk bırakıyordu. Çok veri olduğunda sütunlar 30px tabanının
+	 * altına inmez (flex-shrink: 0), toplam genişlik taşar ve şerit
+	 * kontrollü şekilde yatay kayar.
+	 */
+	min-width: 100%;
 	position: relative;
 }
 
@@ -836,7 +1109,8 @@
 
 .qrms-an-bargroup {
 	display: flex;
-	flex: 0 0 auto;
+	/* Büyür (az veri: boşluğu paylaşır), küçülmez (çok veri: kayar). */
+	flex: 1 0 30px;
 	flex-direction: column;
 	/* Kesin yükseklik: çubuklar yüzde yükseklikle çizilir, yüzdenin
 	   çözülebilmesi için üst öğenin yüksekliği belirli olmalı. */
@@ -857,12 +1131,19 @@
 
 .qrms-an-bar {
 	border-radius: 3px 3px 0 0;
+	/*
+	 * Çubuk kalınlığı ALANA göre uyarlanır: birkaç veri noktası olan bir
+	 * grafikte 11px'lik iğneler yerine okunur çubuklar çıkar, yoğun bir
+	 * grafikte de sütun başına düşen pay küçüldükçe incelir.
+	 */
+	max-width: 22%;
 	min-height: 2px;
-	width: 11px;
+	min-width: 8px;
+	width: 26px;
 }
 
-.qrms-an-bar-gold { background: linear-gradient( 180deg, #c9a84c 0%, #f0d084 100% ); }
-.qrms-an-bar-blue { background: linear-gradient( 180deg, #3b82f6 0%, #93c5fd 100% ); }
+.qrms-an-bar-gold { background: linear-gradient( 180deg, var(--qrms-an-gold) 0%, #f0d084 100% ); }
+.qrms-an-bar-blue { background: linear-gradient( 180deg, var(--qrms-an-blue) 0%, #93c5fd 100% ); }
 
 .qrms-an-barlabel {
 	color: var(--qrms-an-soft);
@@ -906,11 +1187,11 @@
 .qrms-an-summary {
 	color: var(--qrms-an-muted);
 	cursor: pointer;
-	font-size: 0.8125rem;
+	font-size: var(--qrms-an-fs-body);
 	font-weight: 600;
 	list-style: none;
 	min-height: 44px;
-	padding: 13px 16px;
+	padding: var(--qrms-an-space-md) var(--qrms-an-gutter);
 	user-select: none;
 }
 
@@ -932,33 +1213,88 @@
 }
 
 .qrms-an-summary:hover {
-	color: #8a6f1f;
+	color: var(--qrms-an-primary-ink);
 }
 
 .qrms-an-table {
 	border-collapse: collapse;
-	font-size: 0.8125rem;
+	font-size: var(--qrms-an-fs-body);
 	width: 100%;
 }
 
 .qrms-an-table th {
-	background: #f9fafb;
+	background: var(--qrms-an-bg-alt);
 	border-bottom: 1px solid var(--qrms-an-line-soft);
-	color: var(--qrms-an-soft);
-	font-size: 0.6875rem;
+	color: var(--qrms-an-muted);
+	font-size: var(--qrms-an-fs-micro);
 	font-weight: 700;
 	letter-spacing: .06em;
-	padding: 10px 14px;
+	padding: 10px var(--qrms-an-space-md);
 	text-align: left;
 	text-transform: uppercase;
 	white-space: nowrap;
 }
 
 .qrms-an-table td {
-	border-bottom: 1px solid #f9fafb;
-	color: #374151;
-	padding: 10px 14px;
+	border-bottom: 1px solid var(--qrms-an-bg-alt);
+	color: var(--qrms-an-body);
+	/* Uzun ürün/masa/kategori adı tabloyu genişletmesin, hücrede sarsın. */
+	overflow-wrap: anywhere;
+	padding: 10px var(--qrms-an-space-md);
 	vertical-align: middle;
+}
+
+/* Dış sütunlar panel başlığıyla AYNI çizgiye oturur. */
+.qrms-an-table th:first-child,
+.qrms-an-table td:first-child {
+	padding-left: var(--qrms-an-gutter);
+}
+
+.qrms-an-table th:last-child,
+.qrms-an-table td:last-child {
+	padding-right: var(--qrms-an-gutter);
+}
+
+/*
+ * KOLON DENGESİ (yalnızca tablo görünümünde — dar ekranda kart görünümü
+ * devrede ve bu kurallar geçersiz kılınır).
+ *
+ * Bütün analiz tablolarında İLK sütun bir AD sütunudur (Ürün, Masa, Grup,
+ * Dil, Buton, Form, Dönem, Zaman); geri kalanlar sayı, rozet, oran ya da
+ * eylem düğmesidir. Esneyen sütun ad sütunudur: sayı ve eylem sütunları
+ * içerikleri kadar yer kaplar. Böylece uzun bir ürün/masa adı tabloyu
+ * yatay kaydırmaya zorlamaz, kısa bir ad da sayı sütunlarını ekrana
+ * yaymaz — "Bu masayı incele" düğmesi de sırf nowrap olduğu için tabloyu
+ * taşırmaz, sütun kendi genişliğini alır.
+ */
+@media screen and ( min-width: 661px ) {
+	.qrms-an-table th:first-child,
+	.qrms-an-table td:first-child {
+		min-width: 160px;
+		width: 34%;
+	}
+
+	.qrms-an-table th:last-child,
+	.qrms-an-table td:last-child {
+		width: 1%;
+	}
+}
+
+/* Sayı, rozet ve tarih hücreleri satır içinde kırılmaz. */
+.qrms-an-table td .qrms-an-val-gold,
+.qrms-an-table td .qrms-an-val-blue,
+.qrms-an-table td .qrms-an-val-bold,
+.qrms-an-table td .qrms-an-val-zero,
+.qrms-an-table td .qrms-an-pill,
+.qrms-an-table td .qrms-an-muted,
+.qrms-an-table td .qrms-an-btn {
+	white-space: nowrap;
+}
+
+/* Odaklanılan masa satırı: yalnızca zemin tonu değil, satır başında
+   belirgin bir işaret de taşır (bilgi sadece renkle verilmesin). */
+.qrms-an-row-focus > td:first-child {
+	box-shadow: inset 3px 0 0 0 var(--qrms-an-primary);
 }
 
 .qrms-an-table tbody tr:last-child td {
@@ -966,20 +1302,20 @@
 }
 
 .qrms-an-table tr.qrms-an-total td {
-	background: #f9fafb;
+	background: var(--qrms-an-bg-alt);
 	border-top: 2px solid var(--qrms-an-line);
 	font-weight: 700;
 }
 
-.qrms-an-val-gold { color: #8a6f1f; font-weight: 700; }
-.qrms-an-val-blue { color: #1d4ed8; font-weight: 700; }
+.qrms-an-val-gold { color: var(--qrms-an-primary-ink); font-weight: 700; }
+.qrms-an-val-blue { color: var(--qrms-an-info-ink); font-weight: 700; }
 .qrms-an-val-bold { color: var(--qrms-an-ink); font-weight: 700; }
-.qrms-an-muted    { color: var(--qrms-an-soft); font-size: 0.75rem; }
+.qrms-an-muted    { color: var(--qrms-an-soft); font-size: var(--qrms-an-fs-meta); }
 
 .qrms-an-pill {
 	border-radius: 20px;
 	display: inline-block;
-	font-size: 0.75rem;
+	font-size: var(--qrms-an-fs-meta);
 	font-weight: 700;
 	padding: 2px 9px;
 }
@@ -991,7 +1327,8 @@
 .qrms-an-huni {
 	display: flex;
 	flex-direction: column;
-	gap: 12px;
+	gap: var(--qrms-an-space-md);
+	padding-bottom: var(--qrms-an-space-md);
 }
 
 .qrms-an-huni-asama {
@@ -1012,9 +1349,11 @@
 
 .qrms-an-huni-etiket {
 	color: var(--qrms-an-ink);
-	font-size: 0.8125rem;
+	font-size: var(--qrms-an-fs-body);
 	font-weight: 700;
 	grid-area: label;
+	min-width: 0;
+	overflow-wrap: anywhere;
 }
 
 .qrms-an-huni-bar-track {
@@ -1033,7 +1372,7 @@
 
 .qrms-an-huni-deger {
 	color: var(--qrms-an-ink);
-	font-size: 0.8125rem;
+	font-size: var(--qrms-an-fs-body);
 	font-weight: 700;
 	grid-area: value;
 	text-align: right;
@@ -1066,7 +1405,9 @@
 	border-radius: 20px;
 	color: var(--qrms-an-muted);
 	display: inline-block;
-	font-size: 0.75rem;
+	font-size: var(--qrms-an-fs-meta);
+	/* Uzun kategori/grup adı rozetin içinde sarar, tabloyu germez. */
+	overflow-wrap: anywhere;
 	padding: 2px 9px;
 }
 
@@ -1074,15 +1415,15 @@
 	align-items: center;
 	border-radius: 7px;
 	display: inline-flex;
-	font-size: 0.75rem;
+	font-size: var(--qrms-an-fs-meta);
 	font-weight: 800;
 	height: 26px;
 	justify-content: center;
 	width: 26px;
 }
 
-.qrms-an-rank-1 { background: linear-gradient( 135deg, #fbbf24, #f59e0b ); color: #fff; }
-.qrms-an-rank-2 { background: linear-gradient( 135deg, #9ca3af, #6b7280 ); color: #fff; }
+.qrms-an-rank-1 { background: linear-gradient( 135deg, #fbbf24, var(--qrms-an-warning) ); color: #fff; }
+.qrms-an-rank-2 { background: linear-gradient( 135deg, #9ca3af, var(--qrms-an-muted) ); color: #fff; }
 .qrms-an-rank-3 { background: linear-gradient( 135deg, #c9913e, #a37227 ); color: #fff; }
 .qrms-an-rank-n { background: var(--qrms-an-line-soft); color: var(--qrms-an-soft); }
 
@@ -1104,7 +1445,7 @@
 }
 
 .qrms-an-progress-fill {
-	background: linear-gradient( 90deg, #c9a84c, #f0d084 );
+	background: linear-gradient( 90deg, var(--qrms-an-gold), #f0d084 );
 	border-radius: 4px;
 	display: block;
 	height: 100%;
@@ -1112,7 +1453,7 @@
 
 .qrms-an-progress-pct {
 	color: var(--qrms-an-ink);
-	font-size: 0.75rem;
+	font-size: var(--qrms-an-fs-meta);
 	font-weight: 700;
 	min-width: 36px;
 	text-align: right;
@@ -1124,8 +1465,8 @@
 
 .qrms-an-loading {
 	color: var(--qrms-an-soft);
-	font-size: 0.8125rem;
-	padding: 36px 16px;
+	font-size: var(--qrms-an-fs-body);
+	padding: var(--qrms-an-space-xl) var(--qrms-an-gutter);
 	text-align: center;
 }
 
@@ -1137,7 +1478,7 @@
 	content: '';
 	display: block;
 	height: 26px;
-	margin: 12px auto 0;
+	margin: var(--qrms-an-space-sm) auto 0;
 	width: 26px;
 }
 
@@ -1151,8 +1492,10 @@
 	}
 }
 
+/* Boş durum KOMPAKTTIR: "bu aralıkta veri yok" cümlesi için yarım ekran
+   beyaz panel açılmaz. İkon + mesaj tek blok halinde ortalanır. */
 .qrms-an-empty {
-	padding: 24px 16px;
+	padding: var(--qrms-an-space-lg) var(--qrms-an-gutter);
 	text-align: center;
 }
 
@@ -1161,15 +1504,16 @@
 	display: block;
 	font-size: 1.375rem;
 	height: 22px;
-	margin: 0 auto 8px;
+	margin: 0 auto var(--qrms-an-space-xs);
 	width: 22px;
 }
 
 .qrms-an-empty-text {
-	color: var(--qrms-an-soft);
-	font-size: 0.8125rem;
+	color: var(--qrms-an-muted);
+	font-size: var(--qrms-an-fs-body);
 	line-height: 1.6;
-	margin: 0;
+	margin: 0 auto;
+	max-width: 52ch;
 }
 
 .qrms-an-empty-uzun {
@@ -1184,7 +1528,7 @@
 
 .qrms-an-empty-neden:hover,
 .qrms-an-empty-neden:focus {
-	color: #8a6f1f;
+	color: var(--qrms-an-primary-ink);
 }
 
 /* =====================================================================
@@ -1200,10 +1544,6 @@
 	padding: 16px;
 	position: fixed;
 	z-index: 100000;
-}
-
-.qrms-an-modal[hidden] {
-	display: none;
 }
 
 .qrms-an-modal-box {
@@ -1230,7 +1570,7 @@
 
 .qrms-an-modal-text {
 	color: var(--qrms-an-muted);
-	font-size: 0.875rem;
+	font-size: var(--qrms-an-fs-control);
 	line-height: 1.6;
 	margin: 0 0 20px;
 }
@@ -1279,12 +1619,12 @@
 	.qrms-an-table tr {
 		border: 1px solid var(--qrms-an-line);
 		border-radius: 10px;
-		margin: 10px 12px;
-		padding: 4px 12px;
+		margin: var(--qrms-an-space-sm) var(--qrms-an-gutter);
+		padding: var(--qrms-an-space-xs) var(--qrms-an-space-md);
 	}
 
 	.qrms-an-table tr.qrms-an-total {
-		background: #f9fafb;
+		background: var(--qrms-an-bg-alt);
 		border-color: var(--qrms-an-gold);
 	}
 
@@ -1293,14 +1633,24 @@
 		border-top: none;
 	}
 
+	/* Kart görünümünde yatay boşluk satır kartından gelir; hücrenin
+	   masaüstü gutter'ı kartın içinde ikinci bir girinti yaratmasın. */
 	.qrms-an-table td {
 		align-items: center;
 		border-bottom: 1px solid var(--qrms-an-line-soft);
 		display: flex;
-		gap: 12px;
+		gap: var(--qrms-an-space-md);
 		justify-content: space-between;
 		padding: 9px 0;
 		text-align: right;
+	}
+
+	.qrms-an-table th:first-child,
+	.qrms-an-table td:first-child,
+	.qrms-an-table th:last-child,
+	.qrms-an-table td:last-child {
+		padding-left: 0;
+		padding-right: 0;
 	}
 
 	.qrms-an-table tr td:last-child {
@@ -1316,9 +1666,11 @@
 		color: var(--qrms-an-soft);
 		content: attr( data-label );
 		flex: 0 1 auto;
-		font-size: 0.6875rem;
+		font-size: var(--qrms-an-fs-micro);
 		font-weight: 700;
 		letter-spacing: .05em;
+		/* Etiket değeri ezmesin: kartın en çok yarısını alır. */
+		max-width: 45%;
 		text-align: left;
 		text-transform: uppercase;
 	}
@@ -1330,22 +1682,25 @@
 
 	.qrms-an-tablewrap {
 		border-top: 1px solid var(--qrms-an-line-soft);
-		padding-bottom: 6px;
+		padding-bottom: var(--qrms-an-space-xs);
 	}
 
 	/* Grafik dar ekranda biraz kısalır, çubuklar incelir ve etiketler
 	   eğik yazılır: aynı ekrana çok daha fazla sütun sığar, geri kalanı
 	   yatay kaydırmayla gelir. */
 	.qrms-an-chart-inner {
-		height: 190px;
+		height: 160px;
 	}
 
 	.qrms-an-bargroup {
+		flex-basis: 22px;
 		min-width: 22px;
 	}
 
 	.qrms-an-bar {
-		width: 8px;
+		max-width: 26%;
+		min-width: 6px;
+		width: 18px;
 	}
 
 	.qrms-an-barlabel {
@@ -1363,6 +1718,13 @@
 ===================================================================== */
 
 @media screen and ( max-width: 479px ) {
+	/* Çok dar ekranda gutter bir adım daralır — tek değişken değişir,
+	   bütün panel içeriği (başlık, not, tablo, grafik, boş durum) birlikte
+	   hizasını korur. */
+	.qrms-an {
+		--qrms-an-gutter: 14px;
+	}
+
 	.qrms-an-donemler {
 		display: grid;
 		grid-template-columns: 1fr 1fr;
@@ -1373,6 +1735,11 @@
 		font-size: 0.75rem;
 		padding: 8px 10px;
 		text-align: center;
+	}
+
+	/* Başlık düğmeleri tam genişlik: 320px'te iki düğme yan yana sıkışmaz. */
+	.qrms-an-header-actions .qrms-an-btn {
+		flex: 1 1 100%;
 	}
 }
 
@@ -1398,16 +1765,22 @@
    sarar; alanlar artık tam genişlik değil, içerik kadardır (bkz. 768px'in
    altı için yukarıdaki dikey yığın, 1024px üstü için aşağıdaki tek satır). */
 @media screen and ( min-width: 768px ) {
-	.qrms-an-filtre-satir,
-	.qrms-an-ozel-form,
-	.qrms-an-masa-form {
+	.qrms-an-filtre-satir {
+		align-items: center;
 		flex-direction: row;
 	}
 
-	.qrms-an-filtre-satir > *,
-	.qrms-an-ozel-form > *,
-	.qrms-an-masa-form > * {
+	.qrms-an-filtre-satir > * {
 		width: auto;
+	}
+
+	/* Masaüstünde alanlar içerik genişliğinde durur, satırı germez. */
+	.qrms-an-alan {
+		flex: 0 1 170px;
+	}
+
+	.qrms-an-masa-form > .qrms-an-select {
+		flex: 0 1 auto;
 	}
 
 	.qrms-an-filtre-ozet {
@@ -1417,6 +1790,9 @@
 
 @media screen and ( min-width: 783px ) {
 	.qrms-an {
+		--qrms-an-fs-title: 1.5rem;
+		--qrms-an-gutter: 20px;
+
 		margin-right: 20px;
 	}
 
@@ -1440,12 +1816,14 @@
 		width: auto;
 	}
 
-	.qrms-an-chart-inner {
-		height: 230px;
+	/* Ayar formu tek satıra döner; etiket alanın üstünde kalır. */
+	.qrms-an-panel > form .qrms-an-filtre-label {
+		flex: 0 0 auto;
+		margin-bottom: var(--qrms-an-space-sm);
 	}
 
-	.qrms-an-title {
-		font-size: 1.5rem;
+	.qrms-an-chart-inner {
+		height: 200px;
 	}
 
 	.qrms-an-sepet .qrms-an-card-group {
@@ -1453,13 +1831,13 @@
 	}
 
 	.qrms-an-empty {
-		padding: 40px 16px;
+		padding: var(--qrms-an-space-xl) var(--qrms-an-gutter);
 	}
 
 	.qrms-an-empty-icon {
-		font-size: 1.875rem;
-		height: 30px;
-		width: 30px;
+		font-size: 1.5rem;
+		height: 24px;
+		width: 24px;
 	}
 
 	.qrms-an-empty-kisa {
@@ -1468,6 +1846,15 @@
 
 	.qrms-an-empty-uzun {
 		display: inline;
+	}
+}
+
+/* Tablet/küçük masaüstü: 2 sütun kartları gereksiz genişletiyordu,
+   4 sütun ise sıkıştırıyordu. Ara adım 3 sütundur. */
+@media screen and ( min-width: 900px ) {
+	.qrms-an-cards,
+	.qrms-an-card-group {
+		grid-template-columns: repeat( 3, minmax( 0, 1fr ) );
 	}
 }
 
@@ -1514,5 +1901,14 @@
 	.qrms-an-tab {
 		min-height: 44px;
 		padding: 11px 16px;
+	}
+
+	/* Filtre kontrolleri de 44px dokunma hedefine çıkar. */
+	.qrms-an-donem {
+		min-height: 44px;
+	}
+
+	.qrms-an-date {
+		min-height: 44px;
 	}
 }
