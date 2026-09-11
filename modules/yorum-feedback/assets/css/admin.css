@@ -90,43 +90,8 @@
 }
 
 /* --------------------------------------------------------------------------
- * 2b. Yorum listesinin sekmeleri (Tümü / Olumlu / Olumsuz)
- *
- * Çekirdeğin `.nav-tab` bileşeni kullanılır; buradaki tek ek, sekme başlığının
- * yanındaki kayıt sayacıdır.
- * ------------------------------------------------------------------------ */
-
-.qrm-review-tabs {
-	margin-bottom: 12px;
-}
-
-.qrm-tab-count {
-	background: #f0f0f1;
-	border-radius: 10px;
-	color: #50575e;
-	display: inline-block;
-	font-size: 11px;
-	font-weight: 600;
-	line-height: 1.6;
-	margin-left: 6px;
-	padding: 0 7px;
-}
-
-.nav-tab-active .qrm-tab-count {
-	background: #dcdcde;
-	color: #1d2327;
-}
-
-/* --------------------------------------------------------------------------
  * 3. Rozetler ve durum etiketleri
  * ------------------------------------------------------------------------ */
-
-.qrm-breakdown {
-	color: #6b7280;
-	display: block;
-	font-size: 11px;
-	margin-top: 4px;
-}
 
 .qrm-google-pill {
 	background: #e8f0fe;
@@ -189,10 +154,6 @@
 /* --------------------------------------------------------------------------
  * 3b. Yorum iş akışı (Tüm Yorumlar)
  * ------------------------------------------------------------------------ */
-
-.qrm-wf-filters {
-	margin-top: 8px;
-}
 
 .qrm-wf-cell {
 	vertical-align: top;
@@ -517,102 +478,6 @@
 		display: block;
 		flex: none;
 		margin-bottom: 4px;
-	}
-}
-
-/*
- * Tüm Yorumlar tablosu (.qrm-review-workflow-table) beş sütuna sabit piksel
- * genişliği veriyor (Tarih 120px, Puan & Detay 200px, Durum 90px, İş Akışı
- * 200px, İşlemler 150px = 760px). `.fixed` sınıfı table-layout:fixed
- * uyguladığı için 783px–1150px arası (tablet, ya da telefonda "masaüstü
- * siteyi iste") genişliklerde geriye kalan "Müşteri / Masa" ve "Yorum"
- * sütunlarına birkaç piksel kalıyor ve başlık harf harf alt satıra bölünüyor.
- * Diğer .qrm-table-cards tablolarında bu kadar çok sabit sütun olmadığı için
- * 782px eşiği onlara yetiyor; bu tabloya özel, daha geniş bir eşik gerekiyor.
- */
-@media screen and ( max-width: 1150px ) {
-
-	.qrm-review-workflow-table,
-	.qrm-review-workflow-table tbody,
-	.qrm-review-workflow-table tr,
-	.qrm-review-workflow-table td {
-		display: block;
-		width: auto;
-	}
-
-	.qrm-review-workflow-table thead {
-		display: none;
-	}
-
-	.qrm-review-workflow-table tr {
-		background: #fff;
-		border: 1px solid #dcdcde;
-		border-radius: 8px;
-		margin-bottom: 12px;
-		padding: 6px 4px;
-	}
-
-	.qrm-review-workflow-table.striped > tbody > tr:nth-child( odd ),
-	.qrm-review-workflow-table > tbody > tr:nth-child( odd ) {
-		background: #fff;
-	}
-
-	.qrm-review-workflow-table td {
-		border: 0;
-		display: flex;
-		flex-wrap: wrap;
-		gap: 4px 12px;
-		padding: 7px 12px;
-	}
-
-	.qrm-review-workflow-table td::before {
-		color: #646970;
-		content: attr( data-label );
-		flex: 0 0 34%;
-		font-size: 12px;
-		font-weight: 600;
-		text-transform: uppercase;
-	}
-
-	.qrm-review-workflow-table td[data-label=""]::before {
-		display: none;
-	}
-
-	.qrm-review-workflow-table td > * {
-		flex: 1 1 55%;
-	}
-
-	.qrm-review-workflow-table .qrm-row-actions {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 8px;
-	}
-
-	.qrm-review-workflow-table .qrm-row-actions .button {
-		flex: 1 1 auto;
-		text-align: center;
-	}
-
-	.qrm-review-workflow-table td.qrm-cell-block {
-		display: block;
-	}
-
-	.qrm-review-workflow-table td.qrm-cell-block::before {
-		display: block;
-		flex: none;
-		margin-bottom: 4px;
-	}
-
-	/* İş akışı hücresi (durum seçimi, atanan kişi, iç not) kart görünümünde
-	 * satır olarak akar; masaüstündeki sabit genişlik burada gerekmiyor. */
-	.qrm-review-workflow-table .qrm-wf-cell {
-		display: block;
-		flex: 1 1 100%;
-	}
-
-	.qrm-review-workflow-table .qrm-wf-controls {
-		flex-wrap: wrap;
-		max-width: none;
 	}
 }
 
@@ -1197,4 +1062,782 @@
 	background-color: rgba(245, 158, 11, 0.12);
 	animation: qrm-highlight-pulse 2s ease-out forwards;
 	border-radius: 4px;
+}
+
+/* --------------------------------------------------------------------------
+ * 10. Tüm Yorumlar — premium liste arayüzü
+ *
+ * Ekranın tamamı `.qrm-reviews-screen` altında kapsanır; WordPress'in
+ * `.widefat` tablo görünümü burada bir kart listesine çevrilir. Tablo
+ * etiketleri (table/tbody/tr/td) korunur — iş akışı JS'i satır bloklarını
+ * onların üzerinden bulur — yalnızca görüntüleme modeli değişir.
+ *
+ * Renk, boşluk ve tipografi değerleri tek bir jeton kümesinden gelir; hiçbir
+ * kural `.qrm-pro-wrap` kapsamının dışına çıkmaz, yani diğer QRMS ekranları
+ * ve WordPress'in kendi ekranları etkilenmez.
+ * ------------------------------------------------------------------------ */
+
+.qrm-pro-wrap {
+	--qrm-space-1: 4px;
+	--qrm-space-2: 8px;
+	--qrm-space-3: 12px;
+	--qrm-space-4: 16px;
+	--qrm-space-5: 24px;
+	--qrm-space-6: 32px;
+	--qrm-radius: 10px;
+	--qrm-radius-sm: 6px;
+	--qrm-border: #dfe1e5;
+	--qrm-border-soft: #eceef0;
+	--qrm-surface: #fff;
+	--qrm-surface-muted: #f6f7f8;
+	--qrm-text: #1d2327;
+	--qrm-text-soft: #50575e;
+	--qrm-text-faint: #787c82;
+	--qrm-primary: #2271b1;
+	--qrm-success: #0f7b46;
+	--qrm-success-bg: #e7f5ed;
+	--qrm-warning: #8a5a00;
+	--qrm-warning-bg: #fdf3e0;
+	--qrm-danger: #b32d2e;
+	--qrm-danger-bg: #fdeceb;
+	--qrm-shadow: 0 1px 2px rgba( 16, 24, 40, 0.05 );
+}
+
+/* Sayfa başlığı ------------------------------------------------------------ */
+
+.qrm-reviews-screen .qrm-page-head {
+	margin: 0 0 var(--qrm-space-4);
+}
+
+.qrm-reviews-screen .qrm-page-title {
+	font-size: 22px;
+	font-weight: 600;
+	line-height: 1.3;
+	margin: 0;
+	padding: 0;
+}
+
+.qrm-reviews-screen .qrm-page-sub {
+	color: var(--qrm-text-soft);
+	font-size: 13px;
+	margin: var(--qrm-space-1) 0 0;
+}
+
+/* Ana navigasyon (Liste / Rapor) ------------------------------------------- */
+
+.qrm-pro-wrap .qrm-dashboard-views {
+	border-bottom: 1px solid var(--qrm-border);
+	display: flex;
+	gap: var(--qrm-space-5);
+	margin: 0 0 var(--qrm-space-4);
+	overflow-x: auto;
+	padding: 0;
+	-webkit-overflow-scrolling: touch;
+}
+
+.qrm-pro-wrap .qrm-dashboard-views .nav-tab {
+	background: none;
+	border: 0;
+	border-bottom: 2px solid transparent;
+	border-radius: 0;
+	color: var(--qrm-text-soft);
+	font-size: 14px;
+	font-weight: 500;
+	margin: 0;
+	padding: var(--qrm-space-2) 0 10px;
+	white-space: nowrap;
+}
+
+.qrm-pro-wrap .qrm-dashboard-views .nav-tab:hover {
+	color: var(--qrm-text);
+}
+
+.qrm-pro-wrap .qrm-dashboard-views .nav-tab-active,
+.qrm-pro-wrap .qrm-dashboard-views .nav-tab-active:hover {
+	border-bottom-color: var(--qrm-primary);
+	color: var(--qrm-text);
+	font-weight: 600;
+}
+
+.qrm-pro-wrap .qrm-dashboard-views .nav-tab:focus-visible {
+	box-shadow: none;
+	outline: 2px solid var(--qrm-primary);
+	outline-offset: 2px;
+}
+
+/* Filtre seviyesi: segment kontrolü + durum çipleri ------------------------ */
+
+.qrm-reviews-screen .qrm-filterbar {
+	display: flex;
+	flex-direction: column;
+	gap: var(--qrm-space-3);
+	margin-bottom: var(--qrm-space-4);
+}
+
+.qrm-reviews-screen .qrm-seg {
+	background: var(--qrm-surface-muted);
+	width: fit-content;
+	border: 1px solid var(--qrm-border);
+	border-radius: var(--qrm-radius);
+	display: flex;
+	gap: var(--qrm-space-1);
+	max-width: 100%;
+	padding: var(--qrm-space-1);
+}
+
+.qrm-reviews-screen .qrm-seg-item {
+	align-items: center;
+	min-width: 130px;
+	border-radius: var(--qrm-radius-sm);
+	color: var(--qrm-text-soft);
+	display: flex;
+	flex: 0 1 auto;
+	gap: var(--qrm-space-2);
+	font-size: 13px;
+	font-weight: 500;
+	justify-content: center;
+	min-height: 36px;
+	padding: 6px 10px;
+	text-align: center;
+	text-decoration: none;
+}
+
+.qrm-reviews-screen .qrm-seg-item:hover {
+	background: rgba( 255, 255, 255, 0.7 );
+	color: var(--qrm-text);
+}
+
+.qrm-reviews-screen .qrm-seg-item.is-active {
+	background: var(--qrm-surface);
+	box-shadow: var(--qrm-shadow);
+	color: var(--qrm-text);
+	font-weight: 600;
+}
+
+.qrm-reviews-screen .qrm-seg-item:focus-visible,
+.qrm-reviews-screen .qrm-chip:focus-visible {
+	outline: 2px solid var(--qrm-primary);
+	outline-offset: 1px;
+}
+
+.qrm-reviews-screen .qrm-seg-count {
+	background: #e6e8ea;
+	border-radius: 20px;
+	color: var(--qrm-text-soft);
+	font-size: 11px;
+	font-weight: 600;
+	line-height: 18px;
+	min-width: 18px;
+	padding: 0 6px;
+}
+
+.qrm-reviews-screen .qrm-seg-item.is-active .qrm-seg-count {
+	background: #e0e4e8;
+	color: var(--qrm-text);
+}
+
+.qrm-reviews-screen .qrm-seg-item--olumlu.is-active .qrm-seg-count {
+	background: var(--qrm-success-bg);
+	color: var(--qrm-success);
+}
+
+.qrm-reviews-screen .qrm-seg-item--olumsuz.is-active .qrm-seg-count {
+	background: var(--qrm-danger-bg);
+	color: var(--qrm-danger);
+}
+
+.qrm-reviews-screen .qrm-chiprow {
+	align-items: center;
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--qrm-space-2) var(--qrm-space-3);
+}
+
+.qrm-reviews-screen .qrm-chiprow-label {
+	color: var(--qrm-text-faint);
+	flex: 0 0 auto;
+	font-size: 12px;
+	font-weight: 600;
+}
+
+.qrm-reviews-screen .qrm-chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--qrm-space-2);
+}
+
+.qrm-reviews-screen .qrm-chip {
+	align-items: center;
+	background: var(--qrm-surface);
+	border: 1px solid var(--qrm-border);
+	border-radius: 20px;
+	color: var(--qrm-text-soft);
+	display: inline-flex;
+	font-size: 12px;
+	gap: 6px;
+	line-height: 1.4;
+	min-height: 30px;
+	padding: 4px 12px;
+	text-decoration: none;
+}
+
+.qrm-reviews-screen .qrm-chip:hover {
+	border-color: #c3c4c7;
+	color: var(--qrm-text);
+}
+
+.qrm-reviews-screen .qrm-chip.is-active {
+	background: #f0f6fb;
+	border-color: var(--qrm-primary);
+	color: #14527f;
+	font-weight: 600;
+}
+
+.qrm-reviews-screen .qrm-chip--warning.is-active {
+	background: var(--qrm-warning-bg);
+	border-color: #d9a441;
+	color: var(--qrm-warning);
+}
+
+.qrm-reviews-screen .qrm-chip--success.is-active {
+	background: var(--qrm-success-bg);
+	border-color: #5aa981;
+	color: var(--qrm-success);
+}
+
+.qrm-reviews-screen .qrm-chip-count {
+	color: inherit;
+	font-size: 11px;
+	font-weight: 600;
+	opacity: 0.75;
+}
+
+/* Filtre araç çubuğu -------------------------------------------------------- */
+
+.qrm-reviews-screen .qrm-list-toolbar {
+	background: var(--qrm-surface);
+	border: 1px solid var(--qrm-border);
+	border-radius: var(--qrm-radius);
+	box-shadow: var(--qrm-shadow);
+	margin: 0 0 var(--qrm-space-4);
+	padding: var(--qrm-space-3) var(--qrm-space-4);
+}
+
+.qrm-reviews-screen .qrm-list-toolbar-row {
+	align-items: end;
+	display: grid;
+	gap: var(--qrm-space-3);
+	grid-template-columns: minmax( 220px, 2fr ) repeat( 2, minmax( 130px, 1fr ) ) minmax( 130px, 1fr ) auto;
+}
+
+.qrm-reviews-screen .qrm-field {
+	display: flex;
+	flex-direction: column;
+	gap: var(--qrm-space-1);
+	min-width: 0;
+}
+
+.qrm-reviews-screen .qrm-field-label {
+	color: var(--qrm-text-soft);
+	font-size: 12px;
+	font-weight: 600;
+}
+
+.qrm-reviews-screen .qrm-field input,
+.qrm-reviews-screen .qrm-field select {
+	box-sizing: border-box;
+	max-width: 100%;
+	min-height: 34px;
+	width: 100%;
+}
+
+.qrm-reviews-screen .qrm-toolbar-actions {
+	align-items: center;
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--qrm-space-2);
+}
+
+.qrm-reviews-screen .qrm-toolbar-actions .button {
+	margin: 0;
+}
+
+.qrm-reviews-screen .qrm-toolbar-reset {
+	color: var(--qrm-text-faint);
+	font-size: 12px;
+	text-decoration: none;
+	white-space: nowrap;
+}
+
+.qrm-reviews-screen .qrm-toolbar-reset:hover {
+	color: var(--qrm-primary);
+	text-decoration: underline;
+}
+
+/* Yorum kartları ------------------------------------------------------------ */
+
+.qrm-reviews-screen .qrm-review-workflow-table,
+.qrm-reviews-screen .qrm-review-workflow-table > tbody,
+.qrm-reviews-screen .qrm-review-workflow-table td {
+	display: block;
+	width: auto;
+}
+
+.qrm-reviews-screen .qrm-review-workflow-table {
+	background: none;
+	border: 0;
+	box-shadow: none;
+}
+
+.qrm-reviews-screen .qrm-review-workflow-table thead {
+	display: none;
+}
+
+.qrm-reviews-screen .qrm-review-row-block {
+	background: var(--qrm-surface);
+	border: 1px solid var(--qrm-border);
+	border-radius: var(--qrm-radius);
+	box-shadow: var(--qrm-shadow);
+	margin-bottom: var(--qrm-space-3);
+}
+
+.qrm-reviews-screen .qrm-review-row-block:hover {
+	border-color: #cdd0d4;
+}
+
+/* Şeritli arka plan kart görünümünde satırları okunmaz kılıyor. */
+.qrm-reviews-screen .qrm-review-workflow-table.striped > tbody > tr,
+.qrm-reviews-screen .qrm-review-workflow-table > tbody > tr {
+	background: none;
+}
+
+.qrm-reviews-screen .qrm-review-row-block + .qrm-review-row-block .qrm-review-row td {
+	border-top: 0;
+}
+
+.qrm-reviews-screen .qrm-review-row {
+	display: grid;
+	gap: var(--qrm-space-3) var(--qrm-space-4);
+	grid-template-columns: 84px minmax( 0, 1fr ) 108px 200px 140px;
+	padding: var(--qrm-space-4);
+}
+
+.qrm-reviews-screen .qrm-review-row > td {
+	border: 0;
+	min-width: 0;
+	padding: 0;
+}
+
+/* Puan ---------------------------------------------------------------------- */
+
+.qrm-reviews-screen .qrm-review-row > .qrm-cell-score {
+	align-items: flex-start;
+	display: flex;
+	flex-direction: column;
+	gap: var(--qrm-space-2);
+}
+
+.qrm-reviews-screen .qrm-score {
+	align-items: baseline;
+	background: var(--qrm-surface-muted);
+	border: 1px solid var(--qrm-border-soft);
+	border-radius: var(--qrm-radius-sm);
+	display: inline-flex;
+	gap: 3px;
+	padding: 6px 10px;
+}
+
+.qrm-reviews-screen .qrm-score-value {
+	color: var(--qrm-text);
+	font-size: 20px;
+	font-weight: 700;
+	font-variant-numeric: tabular-nums;
+	line-height: 1.1;
+}
+
+.qrm-reviews-screen .qrm-score-star {
+	font-size: 13px;
+	line-height: 1;
+}
+
+.qrm-reviews-screen .qrm-score--pos {
+	background: var(--qrm-success-bg);
+	border-color: #cbe7d8;
+}
+
+.qrm-reviews-screen .qrm-score--pos .qrm-score-value,
+.qrm-reviews-screen .qrm-score--pos .qrm-score-star {
+	color: var(--qrm-success);
+}
+
+.qrm-reviews-screen .qrm-score--neg {
+	background: var(--qrm-danger-bg);
+	border-color: #f2cfcd;
+}
+
+.qrm-reviews-screen .qrm-score--neg .qrm-score-value,
+.qrm-reviews-screen .qrm-score--neg .qrm-score-star {
+	color: var(--qrm-danger);
+}
+
+.qrm-reviews-screen .qrm-pill {
+	border-radius: 20px;
+	display: inline-block;
+	font-size: 10px;
+	font-weight: 700;
+	letter-spacing: 0.2px;
+	padding: 2px 7px;
+	vertical-align: middle;
+}
+
+.qrm-reviews-screen .qrm-pill--google {
+	background: #e8f0fe;
+	color: #13458f;
+}
+
+.qrm-reviews-screen .qrm-pill--source {
+	background: #f2ecfb;
+	color: #5b21b6;
+	margin-left: var(--qrm-space-2);
+}
+
+/* Yorum gövdesi ------------------------------------------------------------- */
+
+.qrm-reviews-screen .qrm-rv-customer {
+	color: var(--qrm-text);
+	font-size: 14px;
+	font-weight: 600;
+	line-height: 1.3;
+	overflow-wrap: anywhere;
+}
+
+.qrm-reviews-screen .qrm-rv-meta {
+	color: var(--qrm-text-faint);
+	display: flex;
+	flex-wrap: wrap;
+	font-size: 12px;
+	gap: 4px;
+	margin-top: 2px;
+}
+
+.qrm-reviews-screen .qrm-rv-text {
+	color: var(--qrm-text);
+	font-size: 13px;
+	line-height: 1.55;
+	margin: var(--qrm-space-2) 0 0;
+	overflow-wrap: anywhere;
+}
+
+.qrm-reviews-screen .qrm-rv-criteria {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--qrm-space-1) var(--qrm-space-2);
+	list-style: none;
+	margin: var(--qrm-space-2) 0 0;
+	padding: 0;
+}
+
+.qrm-reviews-screen .qrm-rv-criteria li {
+	background: var(--qrm-surface-muted);
+	border-radius: var(--qrm-radius-sm);
+	color: var(--qrm-text-soft);
+	font-size: 11px;
+	line-height: 1.6;
+	margin: 0;
+	padding: 2px 8px;
+	white-space: nowrap;
+}
+
+.qrm-reviews-screen .qrm-rv-criteria-value {
+	color: var(--qrm-text);
+	font-variant-numeric: tabular-nums;
+	font-weight: 700;
+}
+
+/* Durum --------------------------------------------------------------------- */
+
+.qrm-reviews-screen .qrm-status {
+	align-items: center;
+	border-radius: 20px;
+	display: inline-flex;
+	font-size: 12px;
+	font-weight: 600;
+	gap: 6px;
+	padding: 3px 10px;
+	white-space: nowrap;
+}
+
+.qrm-reviews-screen .qrm-status-dot {
+	border-radius: 50%;
+	flex: 0 0 auto;
+	height: 6px;
+	width: 6px;
+}
+
+.qrm-reviews-screen .qrm-status-approved {
+	background: var(--qrm-success-bg);
+	color: var(--qrm-success);
+}
+
+.qrm-reviews-screen .qrm-status-approved .qrm-status-dot {
+	background: var(--qrm-success);
+}
+
+.qrm-reviews-screen .qrm-status-pending {
+	background: var(--qrm-warning-bg);
+	color: var(--qrm-warning);
+}
+
+.qrm-reviews-screen .qrm-status-pending .qrm-status-dot {
+	background: #c07c12;
+}
+
+/* İş akışı ------------------------------------------------------------------ */
+
+.qrm-reviews-screen .qrm-wf-controls {
+	gap: var(--qrm-space-2);
+	max-width: none;
+}
+
+.qrm-reviews-screen .qrm-wf-controls select {
+	min-height: 32px;
+}
+
+.qrm-reviews-screen .qrm-cf-row-note {
+	color: var(--qrm-text-faint);
+	font-size: 11px;
+	font-style: normal;
+	max-width: none;
+}
+
+.qrm-reviews-screen .qrm-wf-note-row td {
+	background: var(--qrm-surface-muted);
+	border-radius: 0 0 var(--qrm-radius) var(--qrm-radius);
+	border-top: 1px solid var(--qrm-border-soft);
+	padding: var(--qrm-space-3) var(--qrm-space-4);
+}
+
+/* İşlemler ------------------------------------------------------------------ */
+
+.qrm-reviews-screen .qrm-review-row > .qrm-row-actions {
+	align-content: start;
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--qrm-space-2);
+	justify-content: flex-end;
+}
+
+.qrm-reviews-screen .qrm-row-actions .button {
+	margin: 0;
+}
+
+.qrm-reviews-screen .qrm-btn-danger {
+	background: transparent;
+	border-color: #e0c3c2;
+	color: var(--qrm-danger);
+}
+
+.qrm-reviews-screen .qrm-btn-danger:hover,
+.qrm-reviews-screen .qrm-btn-danger:focus {
+	background: var(--qrm-danger-bg);
+	border-color: var(--qrm-danger);
+	color: #8a1f20;
+}
+
+/* Boş durum ve sayfalama ---------------------------------------------------- */
+
+.qrm-reviews-screen .qrm-review-workflow-table .qrm-empty {
+	background: var(--qrm-surface);
+	border: 1px dashed var(--qrm-border);
+	border-radius: var(--qrm-radius);
+	padding: var(--qrm-space-6) var(--qrm-space-4);
+}
+
+.qrm-reviews-screen .qrm-tablenav {
+	margin-top: var(--qrm-space-4);
+}
+
+.qrm-reviews-screen .qrm-tablenav .tablenav-pages {
+	float: none;
+	margin: 0;
+	text-align: right;
+}
+
+/* Küçük masaüstü / tablet: aksiyon ve durum alanı ikinci satıra iner -------- */
+
+@media screen and ( max-width: 1100px ) {
+
+	.qrm-reviews-screen .qrm-review-row {
+		grid-template-columns: 84px minmax( 0, 1fr ) auto;
+		grid-template-areas:
+			"score main status"
+			"wf wf actions";
+	}
+
+	.qrm-reviews-screen .qrm-cell-score { grid-area: score; }
+	.qrm-reviews-screen .qrm-cell-main { grid-area: main; }
+	.qrm-reviews-screen .qrm-review-row > .qrm-cell-status { grid-area: status; text-align: right; }
+	.qrm-reviews-screen .qrm-wf-cell { grid-area: wf; }
+	.qrm-reviews-screen .qrm-review-row > .qrm-row-actions { grid-area: actions; align-items: center; }
+
+	.qrm-reviews-screen .qrm-wf-controls {
+		align-items: center;
+		flex-direction: row;
+		flex-wrap: wrap;
+	}
+
+	.qrm-reviews-screen .qrm-wf-controls select {
+		flex: 0 1 200px;
+		width: auto;
+	}
+
+	.qrm-reviews-screen .qrm-wf-save-status,
+	.qrm-reviews-screen .qrm-wf-resolved-at {
+		display: inline-block;
+		margin-right: var(--qrm-space-2);
+	}
+
+	.qrm-reviews-screen .qrm-list-toolbar-row {
+		grid-template-columns: repeat( 2, minmax( 0, 1fr ) );
+	}
+
+	.qrm-reviews-screen .qrm-field--search {
+		grid-column: 1 / -1;
+	}
+
+	.qrm-reviews-screen .qrm-toolbar-actions {
+		grid-column: 1 / -1;
+		justify-content: flex-end;
+	}
+}
+
+/* Telefon ------------------------------------------------------------------- */
+
+@media screen and ( max-width: 782px ) {
+
+	.qrm-pro-wrap {
+		margin-right: 12px;
+		overflow-x: hidden;
+	}
+
+	.qrm-reviews-screen .qrm-page-title {
+		font-size: 20px;
+	}
+
+	.qrm-reviews-screen .qrm-seg {
+		flex-wrap: wrap;
+	}
+
+	.qrm-reviews-screen .qrm-seg-item {
+		flex: 1 1 100px;
+	}
+
+	.qrm-reviews-screen .qrm-list-toolbar {
+		padding: var(--qrm-space-3);
+	}
+
+	.qrm-reviews-screen .qrm-review-row {
+		gap: var(--qrm-space-3);
+		grid-template-columns: auto minmax( 0, 1fr );
+		grid-template-areas:
+			"score status"
+			"main main"
+			"wf wf"
+			"actions actions";
+		padding: var(--qrm-space-3);
+	}
+
+	.qrm-reviews-screen .qrm-review-row > .qrm-cell-status {
+		align-self: center;
+	}
+
+	/* Silme, yanlış dokunmayı azaltmak için ana aksiyonun karşı ucunda durur. */
+	.qrm-reviews-screen .qrm-review-row > .qrm-row-actions {
+		border-top: 1px solid var(--qrm-border-soft);
+		justify-content: space-between;
+		padding-top: var(--qrm-space-3);
+	}
+
+	.qrm-reviews-screen .qrm-row-actions .button {
+		flex: 0 1 auto;
+		text-align: center;
+	}
+
+	.qrm-reviews-screen .qrm-wf-cell::before {
+		color: var(--qrm-text-faint);
+		content: attr( data-label );
+		display: block;
+		font-size: 11px;
+		font-weight: 600;
+		margin-bottom: var(--qrm-space-1);
+	}
+
+	.qrm-reviews-screen .qrm-tablenav .tablenav-pages {
+		text-align: left;
+	}
+}
+
+@media screen and ( max-width: 600px ) {
+
+	.qrm-reviews-screen .qrm-list-toolbar-row {
+		grid-template-columns: repeat( 2, minmax( 0, 1fr ) );
+	}
+
+	.qrm-reviews-screen .qrm-field--table {
+		grid-column: 1 / -1;
+	}
+
+	/* Native tarih kontrolü daraldığında taşmasın. */
+	.qrm-reviews-screen .qrm-field--date input {
+		min-width: 0;
+	}
+
+	.qrm-reviews-screen .qrm-toolbar-actions {
+		justify-content: stretch;
+	}
+
+	.qrm-reviews-screen .qrm-toolbar-actions .button {
+		flex: 1 1 140px;
+	}
+
+	.qrm-reviews-screen .qrm-export-csv-form {
+		display: flex;
+		flex: 1 1 140px;
+	}
+
+	.qrm-reviews-screen .qrm-export-csv-form .button {
+		width: 100%;
+	}
+
+	.qrm-reviews-screen .qrm-wf-controls select {
+		flex: 1 1 100%;
+		width: 100%;
+	}
+}
+
+@media screen and ( max-width: 400px ) {
+
+	.qrm-pro-wrap {
+		margin-right: 8px;
+	}
+
+	.qrm-reviews-screen .qrm-seg-item {
+		flex: 1 1 100%;
+		justify-content: space-between;
+	}
+}
+
+@media ( prefers-reduced-motion: no-preference ) {
+
+	.qrm-reviews-screen .qrm-seg-item,
+	.qrm-reviews-screen .qrm-chip,
+	.qrm-reviews-screen .qrm-review-row-block {
+		transition: background-color 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+	}
+}
+
+/* Kart görünümünde satır kapsayıcıları da blok akar. */
+.qrm-reviews-screen .qrm-review-workflow-table > tbody > tr.no-items,
+.qrm-reviews-screen .qrm-wf-note-row {
+	display: block;
 }

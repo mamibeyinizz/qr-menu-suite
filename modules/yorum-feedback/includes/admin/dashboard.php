@@ -478,8 +478,20 @@ function qrm_pro_admin_dashboard() {
     $workflow_statuses = qrm_pro_review_workflow_statuses();
     $wf_total          = qrm_pro_workflow_counts_total($wf_counts);
     ?>
-    <div class="wrap qrm-pro-wrap">
-        <h1><?php esc_html_e('Tüm Yorumlar', 'qrms'); ?></h1>
+    <div class="wrap qrm-pro-wrap qrm-reviews-screen">
+        <div class="qrm-page-head">
+            <h1 class="qrm-page-title"><?php esc_html_e('Tüm Yorumlar', 'qrms'); ?></h1>
+            <p class="qrm-page-sub">
+                <?php
+                printf(
+                    /* translators: 1: toplam yorum, 2: onay bekleyen yorum sayısı. */
+                    esc_html__('%1$s yorum · %2$s onay bekliyor', 'qrms'),
+                    esc_html(number_format_i18n((int) $stats['total'])),
+                    esc_html(number_format_i18n((int) $stats['pending']))
+                );
+                ?>
+            </p>
+        </div>
 
         <?php qrm_pro_admin_dashboard_view_tabs('liste'); ?>
 
@@ -496,76 +508,86 @@ function qrm_pro_admin_dashboard() {
             </div>
         <?php endif; ?>
 
-        <h2 class="nav-tab-wrapper qrm-review-tabs">
-            <?php foreach (qrm_pro_admin_review_tabs() as $anahtar => $baslik):
-                $sayac = qrm_pro_admin_review_tab_counts($anahtar, $display_stats);
-
-                // Sekme değişince durum filtresi ve sayfa numarası sıfırlanır:
-                // yeni sekmede aynı sayfa numarası var olmayabilir.
-                $url = $anahtar === '' ? $self_url : add_query_arg(['sekme' => $anahtar], $self_url);
-            ?>
-                <a class="nav-tab<?php echo $sekme === $anahtar ? ' nav-tab-active' : ''; ?>"
-                   href="<?php echo esc_url($url); ?>"
-                   <?php echo $sekme === $anahtar ? 'aria-current="page"' : ''; ?>>
-                    <?php echo esc_html($baslik); ?>
-                    <span class="qrm-tab-count"><?php echo esc_html(number_format_i18n($sayac['total'])); ?></span>
-                </a>
-            <?php endforeach; ?>
-        </h2>
-
         <?php
         $sekme_sayaclari = qrm_pro_admin_review_tab_counts($sekme, $display_stats);
-        if ($sekme_sayaclari['total'] > 0):
         ?>
-            <ul class="subsubsub">
-                <li>
-                    <a href="<?php echo esc_url($sekme_url); ?>" <?php echo $durum === '' ? 'class="current"' : ''; ?>>
-                        <?php esc_html_e('Tümü', 'qrms'); ?>
-                        <span class="count">(<?php echo esc_html(number_format_i18n($sekme_sayaclari['total'])); ?>)</span>
-                    </a> |
-                </li>
-                <li>
-                    <a href="<?php echo esc_url(add_query_arg(['durum' => 'bekleyen'], $sekme_url)); ?>" <?php echo $durum === 'bekleyen' ? 'class="current"' : ''; ?>>
-                        <?php esc_html_e('Onay Bekleyen', 'qrms'); ?>
-                        <span class="count">(<?php echo esc_html(number_format_i18n($sekme_sayaclari['pending'])); ?>)</span>
-                    </a> |
-                </li>
-                <li>
-                    <a href="<?php echo esc_url(add_query_arg(['durum' => 'onayli'], $sekme_url)); ?>" <?php echo $durum === 'onayli' ? 'class="current"' : ''; ?>>
-                        <?php esc_html_e('Yayında', 'qrms'); ?>
-                        <span class="count">(<?php echo esc_html(number_format_i18n($sekme_sayaclari['approved'])); ?>)</span>
-                    </a>
-                </li>
-            </ul>
-        <?php endif; ?>
 
-        <?php if ($stats['table_ok'] && ($wf_total > 0 || $wf !== '')): ?>
-            <ul class="subsubsub qrm-wf-filters">
-                <li>
-                    <a href="<?php echo esc_url($sekme_url); ?>" <?php echo $wf === '' ? 'class="current"' : ''; ?>>
-                        <?php esc_html_e('Tümü', 'qrms'); ?>
-                        <span class="count">(<?php echo esc_html(number_format_i18n($wf_total)); ?>)</span>
-                    </a> |
-                </li>
-                <?php
-                $wf_i = 0;
-                $wf_keys = array_keys($workflow_statuses);
-                foreach ($workflow_statuses as $wf_key => $wf_label):
-                    $wf_i++;
-                    $wf_count = isset($wf_counts[$wf_key]) ? (int) $wf_counts[$wf_key] : 0;
-                    $wf_url   = add_query_arg(['wf' => $wf_key], $sekme_url);
+        <div class="qrm-filterbar" role="group" aria-label="<?php esc_attr_e('Yorum filtreleri', 'qrms'); ?>">
+            <div class="qrm-seg" role="group" aria-label="<?php esc_attr_e('Yorum türü', 'qrms'); ?>">
+                <?php foreach (qrm_pro_admin_review_tabs() as $anahtar => $baslik):
+                    $sayac = qrm_pro_admin_review_tab_counts($anahtar, $display_stats);
+
+                    // Sekme değişince durum filtresi ve sayfa numarası sıfırlanır:
+                    // yeni sekmede aynı sayfa numarası var olmayabilir.
+                    $url    = $anahtar === '' ? $self_url : add_query_arg(['sekme' => $anahtar], $self_url);
+                    $aktif  = $sekme === $anahtar;
+                    $s_mod  = $anahtar !== '' ? ' qrm-seg-item--' . $anahtar : '';
                 ?>
-                <li>
-                    <a href="<?php echo esc_url($wf_url); ?>" <?php echo $wf === $wf_key ? 'class="current"' : ''; ?>>
-                        <?php echo esc_html($wf_label); ?>
-                        <span class="count">(<?php echo esc_html(number_format_i18n($wf_count)); ?>)</span>
-                    </a><?php echo $wf_i < count($wf_keys) ? ' |' : ''; ?>
-                </li>
+                    <a class="qrm-seg-item<?php echo esc_attr($s_mod); ?><?php echo $aktif ? ' is-active' : ''; ?>"
+                       href="<?php echo esc_url($url); ?>"
+                       <?php echo $aktif ? 'aria-current="page"' : ''; ?>>
+                        <span class="qrm-seg-label"><?php echo esc_html($baslik); ?></span>
+                        <span class="qrm-seg-count"><?php echo esc_html(number_format_i18n($sayac['total'])); ?></span>
+                    </a>
                 <?php endforeach; ?>
-            </ul>
-        <?php endif; ?>
+            </div>
 
-        <form method="get" action="<?php echo esc_url(admin_url('admin.php')); ?>" class="qrm-list-toolbar qrm-card">
+            <?php if ($sekme_sayaclari['total'] > 0): ?>
+            <div class="qrm-chiprow">
+                <span class="qrm-chiprow-label" id="qrm-chiprow-durum"><?php esc_html_e('Durum', 'qrms'); ?></span>
+                <div class="qrm-chips" role="group" aria-labelledby="qrm-chiprow-durum">
+                    <?php
+                    $durum_filtreleri = [
+                        ''         => [__('Tümü', 'qrms'), $sekme_sayaclari['total'], ''],
+                        'bekleyen' => [__('Onay bekleyen', 'qrms'), $sekme_sayaclari['pending'], 'warning'],
+                        'onayli'   => [__('Yayında', 'qrms'), $sekme_sayaclari['approved'], 'success'],
+                    ];
+                    foreach ($durum_filtreleri as $d_key => $d_data):
+                        // "Tümü" durum filtresini KALDIRIR: $sekme_url aktif
+                        // durumu taşır, add_query_arg ile ezmek yerine silinir.
+                        $d_url   = $d_key === ''
+                            ? remove_query_arg('durum', $sekme_url)
+                            : add_query_arg(['durum' => $d_key], $sekme_url);
+                        $d_aktif = $durum === $d_key;
+                    ?>
+                        <a class="qrm-chip<?php echo $d_data[2] !== '' ? ' qrm-chip--' . esc_attr($d_data[2]) : ''; ?><?php echo $d_aktif ? ' is-active' : ''; ?>"
+                           href="<?php echo esc_url($d_url); ?>"
+                           <?php echo $d_aktif ? 'aria-current="page"' : ''; ?>>
+                            <?php echo esc_html($d_data[0]); ?>
+                            <span class="qrm-chip-count"><?php echo esc_html(number_format_i18n((int) $d_data[1])); ?></span>
+                        </a>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+            <?php endif; ?>
+
+            <?php if ($stats['table_ok'] && ($wf_total > 0 || $wf !== '')): ?>
+            <div class="qrm-chiprow">
+                <span class="qrm-chiprow-label" id="qrm-chiprow-wf"><?php esc_html_e('İş akışı', 'qrms'); ?></span>
+                <div class="qrm-chips" role="group" aria-labelledby="qrm-chiprow-wf">
+                    <a class="qrm-chip<?php echo $wf === '' ? ' is-active' : ''; ?>"
+                       href="<?php echo esc_url($sekme_url); ?>"
+                       <?php echo $wf === '' ? 'aria-current="page"' : ''; ?>>
+                        <?php esc_html_e('Tümü', 'qrms'); ?>
+                        <span class="qrm-chip-count"><?php echo esc_html(number_format_i18n($wf_total)); ?></span>
+                    </a>
+                    <?php foreach ($workflow_statuses as $wf_key => $wf_label):
+                        $wf_count = isset($wf_counts[$wf_key]) ? (int) $wf_counts[$wf_key] : 0;
+                        $wf_url   = add_query_arg(['wf' => $wf_key], $sekme_url);
+                    ?>
+                        <a class="qrm-chip qrm-chip--wf-<?php echo esc_attr($wf_key); ?><?php echo $wf === $wf_key ? ' is-active' : ''; ?>"
+                           href="<?php echo esc_url($wf_url); ?>"
+                           <?php echo $wf === $wf_key ? 'aria-current="page"' : ''; ?>>
+                            <?php echo esc_html($wf_label); ?>
+                            <span class="qrm-chip-count"><?php echo esc_html(number_format_i18n($wf_count)); ?></span>
+                        </a>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+            <?php endif; ?>
+        </div>
+
+        <form method="get" action="<?php echo esc_url(admin_url('admin.php')); ?>" class="qrm-list-toolbar">
             <input type="hidden" name="page" value="qrms-yf-yorumlar">
             <?php if ($sekme !== ''): ?>
                 <input type="hidden" name="sekme" value="<?php echo esc_attr($sekme); ?>">
@@ -577,17 +599,21 @@ function qrm_pro_admin_dashboard() {
                 <input type="hidden" name="wf" value="<?php echo esc_attr($wf); ?>">
             <?php endif; ?>
             <div class="qrm-list-toolbar-row">
-                <label>
-                    <span class="qrm-list-toolbar-label"><?php esc_html_e('Başlangıç', 'qrms'); ?></span>
+                <label class="qrm-field qrm-field--search">
+                    <span class="qrm-field-label"><?php esc_html_e('Ara', 'qrms'); ?></span>
+                    <input type="search" name="s" value="<?php echo esc_attr($list_filters['search']); ?>" placeholder="<?php esc_attr_e('Ad, e-posta, yorum…', 'qrms'); ?>">
+                </label>
+                <label class="qrm-field qrm-field--date">
+                    <span class="qrm-field-label"><?php esc_html_e('Başlangıç', 'qrms'); ?></span>
                     <input type="date" name="liste_bas" value="<?php echo esc_attr($list_filters['liste_bas']); ?>">
                 </label>
-                <label>
-                    <span class="qrm-list-toolbar-label"><?php esc_html_e('Bitiş', 'qrms'); ?></span>
+                <label class="qrm-field qrm-field--date">
+                    <span class="qrm-field-label"><?php esc_html_e('Bitiş', 'qrms'); ?></span>
                     <input type="date" name="liste_bit" value="<?php echo esc_attr($list_filters['liste_bit']); ?>">
                 </label>
                 <?php if (!empty($masa_labels)): ?>
-                <label>
-                    <span class="qrm-list-toolbar-label"><?php esc_html_e('Masa', 'qrms'); ?></span>
+                <label class="qrm-field qrm-field--table">
+                    <span class="qrm-field-label"><?php esc_html_e('Masa', 'qrms'); ?></span>
                     <select name="table_id">
                         <option value="0"><?php esc_html_e('Tümü', 'qrms'); ?></option>
                         <?php foreach ($masa_labels as $tid => $mlabel): ?>
@@ -596,49 +622,49 @@ function qrm_pro_admin_dashboard() {
                     </select>
                 </label>
                 <?php endif; ?>
-                <label class="qrm-list-toolbar-search">
-                    <span class="qrm-list-toolbar-label"><?php esc_html_e('Ara', 'qrms'); ?></span>
-                    <input type="search" name="s" value="<?php echo esc_attr($list_filters['search']); ?>" placeholder="<?php esc_attr_e('Ad, e-posta, yorum…', 'qrms'); ?>">
-                </label>
-                <button type="submit" class="button"><?php esc_html_e('Filtrele', 'qrms'); ?></button>
-                <?php
-                if (function_exists('qrm_export_csv_button')) {
-                    echo qrm_export_csv_button('reviews', [
-                        'sekme'     => $sekme,
-                        'durum'     => $durum,
-                        'wf'        => $wf,
-                        'liste_bas' => $list_filters['liste_bas'],
-                        'liste_bit' => $list_filters['liste_bit'],
-                        's'         => $list_filters['search'],
-                        'table_id'  => !empty($list_filters['table_id']) ? (int) $list_filters['table_id'] : '',
-                    ]);
-                }
-                ?>
+                <div class="qrm-toolbar-actions">
+                    <button type="submit" class="button button-primary"><?php esc_html_e('Filtrele', 'qrms'); ?></button>
+                    <?php
+                    if (function_exists('qrm_export_csv_button')) {
+                        echo qrm_export_csv_button('reviews', [
+                            'sekme'     => $sekme,
+                            'durum'     => $durum,
+                            'wf'        => $wf,
+                            'liste_bas' => $list_filters['liste_bas'],
+                            'liste_bit' => $list_filters['liste_bit'],
+                            's'         => $list_filters['search'],
+                            'table_id'  => !empty($list_filters['table_id']) ? (int) $list_filters['table_id'] : '',
+                        ]);
+                    }
+                    ?>
+                    <?php if ($has_list_filters || $durum !== '' || $sekme !== '' || $wf !== ''): ?>
+                        <a class="qrm-toolbar-reset" href="<?php echo esc_url($self_url); ?>"><?php esc_html_e('Filtreleri temizle', 'qrms'); ?></a>
+                    <?php endif; ?>
+                </div>
             </div>
         </form>
 
-        <table class="wp-list-table widefat fixed striped qrm-table-cards qrm-review-workflow-table">
+        <table class="wp-list-table widefat striped qrm-review-workflow-table">
             <thead>
                 <tr>
-                    <th style="width: 120px;"><?php esc_html_e('Tarih', 'qrms'); ?></th>
-                    <th><?php esc_html_e('Müşteri / Masa', 'qrms'); ?></th>
-                    <th style="width: 200px;"><?php esc_html_e('Puan & Detay', 'qrms'); ?></th>
-                    <th><?php esc_html_e('Yorum', 'qrms'); ?></th>
-                    <th style="width: 90px;"><?php esc_html_e('Durum', 'qrms'); ?></th>
-                    <th style="width: 200px;"><?php esc_html_e('İş Akışı', 'qrms'); ?></th>
-                    <th style="width: 150px;"><?php esc_html_e('İşlemler', 'qrms'); ?></th>
+                    <th scope="col" class="qrm-col-score"><?php esc_html_e('Puan', 'qrms'); ?></th>
+                    <th scope="col" class="qrm-col-main"><?php esc_html_e('Yorum', 'qrms'); ?></th>
+                    <th scope="col" class="qrm-col-status"><?php esc_html_e('Durum', 'qrms'); ?></th>
+                    <th scope="col" class="qrm-col-wf"><?php esc_html_e('İş Akışı', 'qrms'); ?></th>
+                    <th scope="col" class="qrm-col-actions"><?php esc_html_e('İşlemler', 'qrms'); ?></th>
                 </tr>
             </thead>
             <tbody>
                 <?php if (empty($reviews)): ?>
                 <tr class="no-items">
-                    <td colspan="7" class="qrm-empty">
+                    <td colspan="5" class="qrm-empty">
                         <?php if (!$stats['table_ok']): ?>
                             <strong><?php esc_html_e('Liste yüklenemedi.', 'qrms'); ?></strong>
                             <p><?php esc_html_e('Yukarıdaki veritabanı uyarısını giderdikten sonra yorumlar burada görünecek.', 'qrms'); ?></p>
                         <?php elseif ($durum !== '' || $sekme !== '' || $wf !== '' || $has_list_filters): ?>
                             <strong><?php esc_html_e('Bu filtreye uyan yorum yok.', 'qrms'); ?></strong>
-                            <p><a href="<?php echo esc_url($self_url); ?>"><?php esc_html_e('Tüm yorumları göster', 'qrms'); ?></a></p>
+                            <p><?php esc_html_e('Tarih aralığını genişletebilir ya da arama teriminizi sadeleştirebilirsiniz.', 'qrms'); ?></p>
+                            <p><a class="button" href="<?php echo esc_url($self_url); ?>"><?php esc_html_e('Tüm yorumları göster', 'qrms'); ?></a></p>
                         <?php else: ?>
                             <strong><?php esc_html_e('Henüz hiç yorum gelmemiş.', 'qrms'); ?></strong>
                             <p>
@@ -667,15 +693,15 @@ function qrm_pro_admin_dashboard() {
                     if ($name_display === '') {
                         $name_display = '<em>' . esc_html__('İsimsiz', 'qrms') . '</em>';
                     }
-                    if ($r->table_no) {
-                        /* translators: %s: masa numarası. */
-                        $name_display .= ' ' . sprintf(esc_html__('(Masa: %s)', 'qrms'), esc_html($r->table_no));
-                    }
+
+                    // Kaynak rozetleri ad satırının yanında, masa bilgisi ise
+                    // tarihle birlikte ikincil meta satırında durur.
+                    $source_pills = '';
                     if (!empty($r->form_source) && $r->form_source === 'contact') {
-                        $name_display .= ' <span class="qrm-google-pill qrm-source-pill">' . esc_html__('İletişim', 'qrms') . '</span>';
+                        $source_pills .= ' <span class="qrm-pill qrm-pill--source">' . esc_html__('İletişim', 'qrms') . '</span>';
                     }
                     if ($is_cf_row && !empty($r->_cf_form_title)) {
-                        $name_display .= ' <span class="qrm-google-pill qrm-source-pill">' . esc_html($r->_cf_form_title) . '</span>';
+                        $source_pills .= ' <span class="qrm-pill qrm-pill--source">' . esc_html($r->_cf_form_title) . '</span>';
                     }
 
                     // Kriter Kırılımını Hazırla
@@ -685,10 +711,9 @@ function qrm_pro_admin_dashboard() {
                         $c_name = $settings['crit_'.$i.'_name'];
                         $c_val = $r->{'rating_'.$i};
                         if($c_act && $c_val > 0) {
-                            $breakdown[] = "{$c_name}: {$c_val}";
+                            $breakdown[] = ['name' => $c_name, 'value' => $c_val];
                         }
                     }
-                    $breakdown_str = implode(', ', $breakdown);
 
                     $wf_status = isset($r->workflow_status) ? sanitize_key($r->workflow_status) : 'new';
                     if (!array_key_exists($wf_status, $workflow_statuses)) {
@@ -698,41 +723,62 @@ function qrm_pro_admin_dashboard() {
                     $internal_note = isset($r->internal_note) ? (string) $r->internal_note : '';
                     $has_note = $internal_note !== '';
                     $resolved_at = !empty($r->resolved_at) ? $r->resolved_at : '';
+                    $rating_val  = (float) $r->rating;
+                    $rating_tone = $rating_val >= $esik ? 'pos' : 'neg';
                 ?>
                 <tbody class="qrm-review-row-block">
                 <tr class="qrm-review-row" <?php echo $is_cf_row ? '' : 'data-review-id="' . esc_attr((string) intval($r->id)) . '"'; ?>>
-                    <td data-label="<?php esc_attr_e('Tarih', 'qrms'); ?>"><?php echo esc_html(date_i18n('d.m.Y H:i', strtotime($r->created_at))); ?></td>
-                    <td data-label="<?php esc_attr_e('Müşteri', 'qrms'); ?>"><?php echo wp_kses_post($name_display); ?></td>
-                    <td data-label="<?php esc_attr_e('Puan', 'qrms'); ?>">
-                        <strong><?php
-                            /* translators: %s: yorumun ortalama puanı. */
-                            printf(esc_html__('Ort: %s/5', 'qrms'), esc_html(number_format_i18n((float) $r->rating, 1)));
-                        ?></strong>
+                    <td data-label="<?php esc_attr_e('Puan', 'qrms'); ?>" class="qrm-cell-score">
+                        <span class="qrm-score qrm-score--<?php echo esc_attr($rating_tone); ?>">
+                            <span class="qrm-score-value"><?php echo esc_html(number_format_i18n($rating_val, 1)); ?></span>
+                            <span class="qrm-score-star" aria-hidden="true">&#9733;</span>
+                            <span class="screen-reader-text"><?php
+                                /* translators: %s: yorumun ortalama puanı. */
+                                printf(esc_html__('5 üzerinden %s puan', 'qrms'), esc_html(number_format_i18n($rating_val, 1)));
+                            ?></span>
+                        </span>
                         <?php if ($r->rating >= $g_threshold && !empty($settings['google_review_enabled'])): ?>
-                            <span class="qrm-google-pill" title="<?php esc_attr_e('Bu puan Google\'a yönlendirme eşiğinin üzerinde', 'qrms'); ?>"><?php esc_html_e('G Adayı', 'qrms'); ?></span>
-                        <?php endif; ?>
-                        <?php if ($breakdown_str !== ''): ?>
-                            <span class="qrm-breakdown"><?php echo esc_html($breakdown_str); ?></span>
+                            <span class="qrm-pill qrm-pill--google" title="<?php esc_attr_e('Bu puan Google\'a yönlendirme eşiğinin üzerinde', 'qrms'); ?>"><?php esc_html_e('G Adayı', 'qrms'); ?></span>
                         <?php endif; ?>
                     </td>
-                    <td data-label="<?php esc_attr_e('Yorum', 'qrms'); ?>" class="qrm-cell-block">
-                        <?php echo nl2br(esc_html($r->comment)); ?>
+                    <td data-label="<?php esc_attr_e('Yorum', 'qrms'); ?>" class="qrm-cell-main">
+                        <div class="qrm-rv-customer"><?php echo wp_kses_post($name_display . $source_pills); ?></div>
+                        <div class="qrm-rv-meta">
+                            <span><?php echo esc_html(date_i18n('d.m.Y H:i', strtotime($r->created_at))); ?></span>
+                            <?php if ($r->table_no): ?>
+                                <span class="qrm-rv-meta-sep" aria-hidden="true">·</span>
+                                <span><?php
+                                    /* translators: %s: masa numarası. */
+                                    printf(esc_html__('Masa %s', 'qrms'), esc_html($r->table_no));
+                                ?></span>
+                            <?php endif; ?>
+                        </div>
+                        <?php if (trim((string) $r->comment) !== ''): ?>
+                            <p class="qrm-rv-text"><?php echo nl2br(esc_html($r->comment)); ?></p>
+                        <?php endif; ?>
+                        <?php if (!empty($breakdown)): ?>
+                            <ul class="qrm-rv-criteria">
+                                <?php foreach ($breakdown as $crit): ?>
+                                    <li><span class="qrm-rv-criteria-name"><?php echo esc_html($crit['name']); ?></span> <span class="qrm-rv-criteria-value"><?php echo esc_html(number_format_i18n((float) $crit['value'], 0)); ?></span></li>
+                                <?php endforeach; ?>
+                            </ul>
+                        <?php endif; ?>
                         <?php if (!$is_cf_row):
                         $row_media = isset($review_media_map[(int) $r->id]) ? $review_media_map[(int) $r->id] : [];
                         echo qrm_pro_render_admin_review_media($row_media);
                         endif; ?>
                     </td>
-                    <td data-label="<?php esc_attr_e('Durum', 'qrms'); ?>">
+                    <td data-label="<?php esc_attr_e('Durum', 'qrms'); ?>" class="qrm-cell-status">
                         <?php if ($r->status): ?>
-                            <span class="qrm-status-approved"><?php esc_html_e('Yayında', 'qrms'); ?></span>
+                            <span class="qrm-status qrm-status-approved"><span class="qrm-status-dot" aria-hidden="true"></span><?php esc_html_e('Yayında', 'qrms'); ?></span>
                         <?php else: ?>
-                            <span class="qrm-status-pending"><?php esc_html_e('Bekliyor', 'qrms'); ?></span>
+                            <span class="qrm-status qrm-status-pending"><span class="qrm-status-dot" aria-hidden="true"></span><?php esc_html_e('Bekliyor', 'qrms'); ?></span>
                         <?php endif; ?>
                     </td>
                     <td data-label="<?php esc_attr_e('İş Akışı', 'qrms'); ?>" class="qrm-wf-cell">
                         <?php if ($is_cf_row): ?>
                             <span class="qrm-cf-row-note">
-                                <?php esc_html_e('Özel formdan geliyor — iş akışı bu satıra uygulanmaz.', 'qrms'); ?>
+                                <?php esc_html_e('Özel form kaydı', 'qrms'); ?>
                             </span>
                         <?php else: ?>
                         <div class="qrm-wf-controls">
@@ -791,7 +837,7 @@ function qrm_pro_admin_dashboard() {
                             if (!empty($list_filters['table_id'])) $cf_row_args['table_id'] = (int) $list_filters['table_id'];
                         ?>
                             <a href="<?php echo esc_url(wp_nonce_url(add_query_arg($cf_row_args, $self_url), 'qrm_cf_review_action_' . $cf_submission_id)); ?>"
-                               class="button button-small" style="color:#b32d2e;border-color:#d5b0b0;"
+                               class="button button-small qrm-btn-danger"
                                onclick="return confirm('<?php echo esc_js(__('Bu yorum kalıcı olarak silinsin mi?', 'qrms')); ?>');"><?php esc_html_e('Sil', 'qrms'); ?></a>
                         <?php else:
                         // Aksiyon sonrası kullanıcı aynı sekmede, aynı filtrede ve
@@ -806,19 +852,19 @@ function qrm_pro_admin_dashboard() {
                         if (!empty($list_filters['table_id'])) $row_args['table_id'] = (int) $list_filters['table_id'];
                         ?>
                         <?php if (!$r->status): ?>
-                            <a href="<?php echo esc_url(wp_nonce_url(add_query_arg(['action' => 'approve'] + $row_args, $self_url), 'qrm_review_action_' . intval($r->id))); ?>" class="button button-small"><?php esc_html_e('Onayla', 'qrms'); ?></a>
+                            <a href="<?php echo esc_url(wp_nonce_url(add_query_arg(['action' => 'approve'] + $row_args, $self_url), 'qrm_review_action_' . intval($r->id))); ?>" class="button button-small qrm-btn-approve"><?php esc_html_e('Onayla', 'qrms'); ?></a>
                         <?php else: ?>
                             <a href="<?php echo esc_url(wp_nonce_url(add_query_arg(['action' => 'unapprove'] + $row_args, $self_url), 'qrm_review_action_' . intval($r->id))); ?>" class="button button-small"><?php esc_html_e('Yayından Kaldır', 'qrms'); ?></a>
                         <?php endif; ?>
                         <a href="<?php echo esc_url(wp_nonce_url(add_query_arg(['action' => 'delete'] + $row_args, $self_url), 'qrm_review_action_' . intval($r->id))); ?>"
-                           class="button button-small" style="color:#b32d2e;border-color:#d5b0b0;"
+                           class="button button-small qrm-btn-danger"
                            onclick="return confirm('<?php echo esc_js(__('Bu yorum kalıcı olarak silinsin mi?', 'qrms')); ?>');"><?php esc_html_e('Sil', 'qrms'); ?></a>
                         <?php endif; ?>
                     </td>
                 </tr>
                 <?php if (!$is_cf_row): ?>
                 <tr class="qrm-wf-note-row" hidden>
-                    <td colspan="7">
+                    <td colspan="5">
                         <label class="screen-reader-text" for="qrm-wf-note-<?php echo esc_attr((string) intval($r->id)); ?>">
                             <?php esc_html_e('İç not', 'qrms'); ?>
                         </label>
@@ -846,7 +892,7 @@ function qrm_pro_admin_dashboard() {
             if ($list_filters['search'] !== '') $page_args['s'] = $list_filters['search'];
             if (!empty($list_filters['table_id'])) $page_args['table_id'] = (int) $list_filters['table_id'];
         ?>
-            <div class="tablenav bottom">
+            <div class="tablenav bottom qrm-tablenav">
                 <div class="tablenav-pages">
                     <span class="displaying-num">
                         <?php
