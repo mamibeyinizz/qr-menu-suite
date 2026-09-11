@@ -1635,6 +1635,144 @@
     }
 
     /* -----------------------------------------------------------------
+       TÜKENEN ÜRÜNLER — ARANABİLİR MALZEME SEÇİMİ
+       Native <select id="qmo-uy-select"> tek doğruluk kaynağı ve tek form
+       gönderim yoludur (onchange="this.form.submit()", trait-admin.php'de
+       tanımlı); bu fonksiyon yalnızca üstüne aranabilir bir görünüm
+       bindirir. Yeni sorgu/AJAX yok — seçenekler zaten basılmış <option>
+       ve <li> öğelerinden okunur.
+    ----------------------------------------------------------------- */
+    function initUrunumYokIngredientCombo() {
+        var wrap = document.getElementById('rma-uy-combo-wrap');
+        if (!wrap) return;
+
+        var select  = document.getElementById('qmo-uy-select');
+        var combo   = document.getElementById('rma-uy-combo');
+        var btn     = document.getElementById('rma-uy-combo-btn');
+        var clearBtn = document.getElementById('rma-uy-combo-clear');
+        var panel   = document.getElementById('rma-uy-combo-panel');
+        var search  = document.getElementById('rma-uy-combo-search');
+        var list    = document.getElementById('rma-uy-combo-list');
+        var emptyEl = document.getElementById('rma-uy-combo-empty');
+        var valueEl = document.getElementById('rma-uy-combo-value');
+
+        if (!select || !combo || !btn || !clearBtn || !panel || !search || !list || !emptyEl || !valueEl) {
+            return;
+        }
+
+        var options = Array.prototype.slice.call(list.querySelectorAll('.rma-uy-combo-option'));
+        var activeIndex = -1;
+
+        // JS burada devreye girebiliyorsa gelişmiş görünümü göster ve
+        // native <select>'i (form gönderimi hâlâ ondan geçer) görsel
+        // olarak gizle.
+        combo.hidden = false;
+        select.classList.add('rma-uy-combo-native');
+
+        function visibleOptions() {
+            return options.filter(function (o) { return !o.hidden; });
+        }
+
+        function setActive(index) {
+            options.forEach(function (o) { o.classList.remove('is-active'); });
+            var visible = visibleOptions();
+            activeIndex = index;
+            var el = visible[index];
+            if (el) {
+                el.classList.add('is-active');
+                search.setAttribute('aria-activedescendant', el.id);
+                if (el.scrollIntoView) el.scrollIntoView({ block: 'nearest' });
+            } else {
+                search.removeAttribute('aria-activedescendant');
+            }
+        }
+
+        function filterList(q) {
+            q = q.toLocaleLowerCase('tr');
+            var visibleCount = 0;
+            options.forEach(function (o) {
+                var eslesir = '' === q || -1 !== o.getAttribute('data-search').indexOf(q);
+                o.hidden = !eslesir;
+                if (eslesir) visibleCount++;
+            });
+            emptyEl.hidden = visibleCount > 0;
+            setActive(visibleCount ? 0 : -1);
+        }
+
+        function openPanel() {
+            if (!panel.hidden) return;
+            panel.hidden = false;
+            btn.setAttribute('aria-expanded', 'true');
+            search.setAttribute('aria-expanded', 'true');
+            search.value = '';
+            filterList('');
+            search.focus();
+        }
+
+        function closePanel(odaklanBtn) {
+            if (panel.hidden) return;
+            panel.hidden = true;
+            btn.setAttribute('aria-expanded', 'false');
+            search.setAttribute('aria-expanded', 'false');
+            activeIndex = -1;
+            if (odaklanBtn) btn.focus();
+        }
+
+        function choose(option) {
+            if (!option) return;
+            select.value = option.getAttribute('data-value');
+            select.dispatchEvent(new Event('change'));
+        }
+
+        btn.addEventListener('click', function () {
+            if (panel.hidden) openPanel(); else closePanel(false);
+        });
+
+        clearBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            select.value = '';
+            select.dispatchEvent(new Event('change'));
+        });
+
+        search.addEventListener('input', function () {
+            filterList(search.value);
+        });
+
+        search.addEventListener('keydown', function (e) {
+            var visible = visibleOptions();
+            if ('ArrowDown' === e.key) {
+                e.preventDefault();
+                setActive(Math.min(activeIndex + 1, visible.length - 1));
+            } else if ('ArrowUp' === e.key) {
+                e.preventDefault();
+                setActive(Math.max(activeIndex - 1, 0));
+            } else if ('Enter' === e.key) {
+                e.preventDefault();
+                choose(visible[activeIndex]);
+                closePanel(true);
+            } else if ('Escape' === e.key) {
+                e.preventDefault();
+                closePanel(true);
+            }
+        });
+
+        list.addEventListener('click', function (e) {
+            var opt = e.target && e.target.closest ? e.target.closest('.rma-uy-combo-option') : null;
+            if (!opt) return;
+            choose(opt);
+            closePanel(true);
+        });
+
+        document.addEventListener('click', function (e) {
+            if (!combo.contains(e.target)) closePanel(false);
+        });
+
+        combo.addEventListener('focusout', function (e) {
+            if (!combo.contains(e.relatedTarget)) closePanel(false);
+        });
+    }
+
+    /* -----------------------------------------------------------------
        BAŞLAT
     ----------------------------------------------------------------- */
     /* -----------------------------------------------------------------
@@ -1686,6 +1824,7 @@
         initShortcodeCopy();
         initKampanya();
         initQuickEdit();
+        initUrunumYokIngredientCombo();
         openTargetDetails();
         $(window).on('hashchange', openTargetDetails);
     });
