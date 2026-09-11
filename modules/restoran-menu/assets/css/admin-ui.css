@@ -3222,3 +3222,234 @@ a.rma-vitrin-step-btn:focus {
 .rma-kb-kirpma-rozet.is-bekliyor a {
     margin-left: 6px;
 }
+
+/* =====================================================================
+   TÜKENEN ÜRÜNLER — kompakt, aksiyon odaklı ekran
+   Yalnızca bu ekranın .rma-uy-screen sarmalayıcısı altında çalışır;
+   eklentinin diğer ekranlarındaki .rma-card görünümüne dokunmaz.
+===================================================================== */
+.rma-uy-screen .rma-card {
+    max-width: 760px;
+    padding: 20px 22px;
+}
+
+.rma-uy-screen .rma-card-desc {
+    margin-bottom: 14px;
+}
+
+.rma-uy-screen .rma-empty {
+    margin-bottom: 0;
+    padding: 14px;
+}
+
+.rma-uy-affected-term {
+    color: var(--rma-a-accent);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+}
+
+.rma-uy-affected-count {
+    color: var(--rma-a-text-soft);
+    font-size: 13px;
+}
+
+.rma-uy-table-compact th,
+.rma-uy-table-compact td {
+    padding: 8px 10px;
+}
+
+.rma-uy-confirm-line {
+    color: var(--rma-a-text-soft);
+    font-size: 13px;
+    margin: 0 0 14px;
+}
+
+.rma-uy-confirm-line strong {
+    color: var(--rma-a-accent-hi);
+}
+
+.rma-uy-screen .button.button-primary {
+    min-height: 44px;
+    padding: 0 24px;
+}
+
+/* -----------------------------------------------------------------
+   ARANABİLİR MALZEME SEÇİMİ ("combobox")
+   Native <select id="qmo-uy-select"> tek doğruluk kaynağı olarak kalır;
+   bu widget yalnızca üstüne aranabilir bir görünüm bindirir (bkz.
+   admin-ui.js initUrunumYokIngredientCombo). JS'siz durumda .rma-uy-combo
+   gizli kalır, standart <select> görünür ve seçim yine tek adımda çalışır.
+----------------------------------------------------------------- */
+.rma-uy-combo-wrap {
+    max-width: 420px;
+    position: relative;
+}
+
+.rma-uy-combo {
+    position: relative;
+}
+
+.rma-uy-combo-btn {
+    align-items: center;
+    background: var(--rma-a-surface-2);
+    border: 1px solid var(--rma-a-border);
+    border-radius: 8px;
+    color: var(--rma-a-text);
+    cursor: pointer;
+    display: flex;
+    font-size: 13px;
+    gap: 8px;
+    min-height: 44px;
+    padding: 0 40px 0 14px;
+    text-align: left;
+    width: 100%;
+}
+
+.rma-uy-combo-btn:hover,
+.rma-uy-combo-btn:focus-visible {
+    border-color: var(--rma-a-accent);
+    outline: none;
+}
+
+.rma-uy-combo-btn .dashicons {
+    color: var(--rma-a-muted);
+    flex: none;
+    font-size: 16px;
+    height: 16px;
+    width: 16px;
+}
+
+.rma-uy-combo-value {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.rma-uy-combo-value.is-placeholder {
+    color: var(--rma-a-muted);
+}
+
+.rma-uy-combo-caret {
+    color: var(--rma-a-muted);
+    flex: none;
+    font-size: 11px;
+}
+
+.rma-uy-combo-clear {
+    background: none;
+    border: none;
+    border-radius: 50%;
+    color: var(--rma-a-muted);
+    cursor: pointer;
+    display: none;
+    font-size: 16px;
+    height: 26px;
+    line-height: 1;
+    padding: 0;
+    position: absolute;
+    right: 8px;
+    top: 9px;
+    width: 26px;
+}
+
+.rma-uy-combo.has-value .rma-uy-combo-clear {
+    display: block;
+}
+
+.rma-uy-combo-clear:hover,
+.rma-uy-combo-clear:focus-visible {
+    color: var(--rma-a-accent);
+    outline: none;
+}
+
+.rma-uy-combo-panel {
+    background: var(--rma-a-raised);
+    border: 1px solid var(--rma-a-border);
+    border-radius: 8px;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, .45);
+    left: 0;
+    margin-top: 4px;
+    position: absolute;
+    right: 0;
+    top: 100%;
+    z-index: 20;
+}
+
+.rma-uy-combo-search {
+    background: var(--rma-a-surface);
+    border: 0;
+    border-bottom: 1px solid var(--rma-a-border);
+    border-radius: 8px 8px 0 0;
+    box-sizing: border-box;
+    color: var(--rma-a-text);
+    font-size: 13px;
+    padding: 10px 14px;
+    width: 100%;
+}
+
+.rma-uy-combo-search:focus-visible {
+    outline: none;
+}
+
+.rma-uy-combo-list {
+    list-style: none;
+    margin: 0;
+    max-height: 240px;
+    overflow-y: auto;
+    padding: 6px;
+}
+
+.rma-uy-combo-option {
+    border-radius: 6px;
+    color: var(--rma-a-text-soft);
+    cursor: pointer;
+    font-size: 13px;
+    padding: 9px 10px;
+}
+
+.rma-uy-combo-option .rma-uy-combo-count {
+    color: var(--rma-a-muted);
+    font-size: 11px;
+}
+
+.rma-uy-combo-option.is-active,
+.rma-uy-combo-option:hover {
+    background: var(--rma-a-accent-soft);
+    color: var(--rma-a-text);
+}
+
+.rma-uy-combo-option[aria-selected="true"] {
+    color: var(--rma-a-accent-hi);
+    font-weight: 600;
+}
+
+.rma-uy-combo-empty {
+    color: var(--rma-a-muted);
+    font-size: 12px;
+    margin: 0;
+    padding: 12px 14px;
+    text-align: center;
+}
+
+/* JS ile eklenir (initUrunumYokIngredientCombo) — JS çalışmazsa bu sınıf
+   hiç eklenmez ve native <select> normal biçimde görünür/çalışır kalır. */
+.rma-uy-combo-native {
+    height: 1px;
+    left: -9999px;
+    opacity: 0;
+    position: absolute;
+    width: 1px;
+}
+
+@media (max-width: 600px) {
+    .rma-uy-combo-wrap {
+        max-width: 100%;
+    }
+
+    .rma-uy-screen .rma-card {
+        padding: 16px;
+    }
+}

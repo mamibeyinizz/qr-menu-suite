@@ -610,9 +610,9 @@ qrms_test(
 		$admin = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/urunum-yok/trait-admin.php' );
 
 		qrms_assert_contains( 'render_urunum_yok_elle_liste', $admin, 'elle liste metodu' );
-		qrms_assert_contains( 'Elle Kapatılan Ürünler', $admin, 'bölüm başlığı' );
-		qrms_assert_contains( 'Elle kapatılan ürün yok.', $admin, 'boş durum mesajı' );
-		qrms_assert_contains( 'Tekrar Aktif Et', $admin, 'geri alma butonu' );
+		qrms_assert_contains( 'Manuel Tükenenler', $admin, 'bölüm başlığı' );
+		qrms_assert_contains( 'Manuel olarak satıştan çıkarılmış ürün bulunmuyor.', $admin, 'boş durum mesajı' );
+		qrms_assert_contains( 'Yeniden Satışa Aç', $admin, 'geri alma butonu' );
 		qrms_assert_contains( 'qmo_urunum_yok_eksik_ozet', $admin, 'aynı özet kaynağı' );
 		qrms_assert_contains( "\$ozet['elle_ids']", $admin, 'id listesi özettendir' );
 		qrms_assert_contains( 'qmo_uy_aktiflestir', $admin, 'mevcut aktifleştirme ucu' );
