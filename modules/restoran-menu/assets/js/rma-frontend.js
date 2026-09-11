@@ -316,6 +316,7 @@ function scrollToSection(slug) {
    FİLTRE PANELİ
 ----------------------------------------------------------------- */
 function openPanel() {
+    syncPanelFromState();
     panelLastFocus = document.activeElement;
     panelOverlay.classList.add('open');
     panelSheet.classList.add('open');
@@ -469,6 +470,14 @@ function syncPanelFromState() {
     setRangeInput('#rma-cal-max',   state.calMax);
     setRangeInput('#rma-price-min', state.priceMin);
     setRangeInput('#rma-price-max', state.priceMax);
+
+    qsa('.rma-sort-pill').forEach(function (pill) {
+        var val = pill.getAttribute('data-value') || '';
+        var secili = (state.sortBy || '') === val;
+        pill.classList.toggle('selected', secili);
+        var radio = pill.querySelector('input[type="radio"]');
+        if (radio) radio.checked = secili;
+    });
 }
 
 function setRangeInput(sel, value) {

@@ -216,10 +216,9 @@ trait RMA_Frontend_Trait {
         // ile panel ve chip'ler aynı kaynaktan beslenir; JS'te ikinci bir
         // etiket listesi tutulmaz.
         $filter_labels = [];
-        foreach ( RMA_Filtre::diyet_kartlari() as $key => $card )    $filter_labels[ $key ] = $this->t( $card['label'] );
-        foreach ( RMA_Filtre::aci_kartlari() as $key => $card )      $filter_labels[ $key ] = $this->t( $card['label'] );
-        foreach ( RMA_Filtre::kalori_kartlari() as $key => $card )   $filter_labels[ $key ] = $this->t( $card['label'] );
-        foreach ( RMA_Filtre::ozellik_kartlari() as $key => $card )  $filter_labels[ $key ] = $this->t( $card['label'] );
+        foreach ( RMA_Filtre::ozellik_kartlari() as $key => $card ) {
+            $filter_labels[ $key ] = $this->t( $card['label'] );
+        }
         foreach ( $this->get_allergen_definitions() as $slug => $def ) {
             $filter_labels[ 'allergen_' . $slug ] = $this->t_allergen_label( $slug, $def['label'] );
         }
@@ -319,27 +318,14 @@ JSCODE;
 
     <div class="rma-panel-body">
         <div class="rma-panel-section">
-            <div class="rma-panel-section-label"><?php echo esc_html( $this->t( 'Sıralama' ) ); ?></div>
+            <div class="rma-panel-section-label"><?php echo esc_html( $this->t( 'Sırala' ) ); ?></div>
             <div class="rma-sort-pills">
-                <?php
-                // Sıralama seçenekleri tek dizide: metinler çeviriden tek noktadan geçsin.
-                $sort_pills = [
-                    ''           => [ '✦',  'Varsayılan',       'Önerilen sıra' ],
-                    'az'         => [ '🔤', 'A → Z',            'Alfabetik' ],
-                    'price_asc'  => [ '↑',  'Ucuzdan Pahalıya', 'Fiyat artan' ],
-                    'price_desc' => [ '↓',  'Pahalıdan Ucuya',  'Fiyat azalan' ],
-                    'protein'    => [ '💪', 'En Proteinli',     'Protein yüksek' ],
-                    'carbs'      => [ '🌾', 'En Az Karb',       'Karbonhidrat azalan' ],
-                ];
-                foreach ( $sort_pills as $value => $pill ) :
-                    list( $icon, $name, $sub ) = $pill;
-                ?>
+                <?php foreach ( RMA_Filtre::siralama_secenekleri() as $value => $pill ) : ?>
                 <label class="rma-sort-pill<?php echo '' === $value ? ' selected' : ''; ?>" data-value="<?php echo esc_attr( $value ); ?>">
                     <input type="radio" name="rma_sort_panel" value="<?php echo esc_attr( $value ); ?>"<?php echo '' === $value ? ' checked' : ''; ?>>
-                    <span class="rma-sort-pill-check">✓</span>
-                    <span class="rma-sort-pill-icon"><?php echo $icon; ?></span>
-                    <span class="rma-sort-pill-name"><?php echo esc_html( $this->t( $name ) ); ?></span>
-                    <span class="rma-sort-pill-sub"><?php echo esc_html( $this->t( $sub ) ); ?></span>
+                    <span class="rma-sort-pill-check" aria-hidden="true">✓</span>
+                    <span class="rma-sort-pill-icon"><?php echo RMA_Filtre_Ikon::svg( $pill['icon'] ); ?></span>
+                    <span class="rma-sort-pill-name"><?php echo esc_html( $this->t( $pill['label'] ) ); ?></span>
                 </label>
                 <?php endforeach; ?>
             </div>
@@ -347,15 +333,15 @@ JSCODE;
 
         <?php
         /**
-         * Kart bölümleri tek bir yardımcıdan basılır: markup (.rma-filter-card)
-         * mevcut tasarımla birebir aynı kalsın ve yeni bir filtre eklendiğinde
-         * tek yere (RMA_Filtre) dokunmak yetsin.
+         * Kart bölümleri tek bir yardımcıdan basılır.
          *
          * @param string $label Bölüm başlığı (çevrilmiş).
          * @param array  $cards data-value => [icon, label] listesi.
          */
         $render_cards = function ( $label, array $cards ) {
-            if ( ! $cards ) return;
+            if ( ! $cards ) {
+                return;
+            }
             ?>
         <div class="rma-panel-section">
             <div class="rma-panel-section-label"><?php echo esc_html( $label ); ?></div>
@@ -364,7 +350,7 @@ JSCODE;
                 <label class="rma-filter-card" data-value="<?php echo esc_attr( $value ); ?>">
                     <input type="checkbox" value="<?php echo esc_attr( $value ); ?>">
                     <span class="rma-filter-card-tick" aria-hidden="true">✓</span>
-                    <span class="rma-filter-card-icon" aria-hidden="true"><?php echo $card['icon']; ?></span>
+                    <span class="rma-filter-card-icon" aria-hidden="true"><?php echo RMA_Filtre_Ikon::svg( $card['icon'] ); ?></span>
                     <span class="rma-filter-card-name"><?php echo esc_html( $card['label'] ); ?></span>
                 </label>
                 <?php endforeach; ?>
@@ -373,43 +359,19 @@ JSCODE;
             <?php
         };
 
-        // Diyet kartları — etiketler çeviri köprüsünden geçer.
-        $diet_cards = [];
-        foreach ( RMA_Filtre::diyet_kartlari() as $value => $card ) {
-            $diet_cards[ $value ] = [ 'icon' => $card['icon'], 'label' => $this->t( $card['label'] ) ];
-        }
-        $render_cards( $this->t( 'Diyet & Yaşam Tarzı' ), $diet_cards );
-
-        // Alerjenler — etiket mevcut t_allergen_label() köprüsünü kullanır
-        // (terim tabanlı çeviri; düz t() ile aynı sonucu vermez).
         $allergen_cards = [];
-        foreach ( $this->get_allergen_definitions() as $slug => $def ) {
-            $allergen_cards[ 'allergen_' . $slug ] = [
-                'icon'  => $def['icon'],
-                'label' => $this->t_allergen_label( $slug, $def['label'] ),
+        foreach ( RMA_Filtre::alerjen_kartlari( $this->get_allergen_definitions() ) as $value => $card ) {
+            $slug = substr( $value, strlen( 'allergen_' ) );
+            $allergen_cards[ $value ] = [
+                'icon'  => $card['icon'],
+                'label' => $this->t_allergen_label( $slug, $card['label'] ),
             ];
         }
-        $render_cards( $this->t( 'Alerjen Hariç Tut' ), $allergen_cards );
-
-        $spicy_cards = [];
-        foreach ( RMA_Filtre::aci_kartlari() as $value => $card ) {
-            $spicy_cards[ $value ] = [ 'icon' => $card['icon'], 'label' => $this->t( $card['label'] ) ];
-        }
-        $render_cards( $this->t( 'Acılık' ), $spicy_cards );
+        $render_cards( $this->t( 'Alerjenleri Hariç Tut' ), $allergen_cards );
         ?>
 
         <div class="rma-panel-section">
             <div class="rma-panel-section-label"><?php echo esc_html( $this->t( 'Kalori' ) ); ?></div>
-            <div class="rma-filter-cards">
-                <?php foreach ( RMA_Filtre::kalori_kartlari() as $value => $card ) : ?>
-                <label class="rma-filter-card" data-value="<?php echo esc_attr( $value ); ?>">
-                    <input type="checkbox" value="<?php echo esc_attr( $value ); ?>">
-                    <span class="rma-filter-card-tick" aria-hidden="true">✓</span>
-                    <span class="rma-filter-card-icon" aria-hidden="true"><?php echo $card['icon']; ?></span>
-                    <span class="rma-filter-card-name"><?php echo esc_html( $this->t( $card['label'] ) ); ?></span>
-                </label>
-                <?php endforeach; ?>
-            </div>
             <div class="rma-range-row">
                 <label class="rma-range-field">
                     <span class="rma-range-label"><?php echo esc_html( $this->t( 'En az (kcal)' ) ); ?></span>
@@ -424,7 +386,7 @@ JSCODE;
         </div>
 
         <div class="rma-panel-section">
-            <div class="rma-panel-section-label"><?php echo esc_html( $this->t( 'Fiyat Aralığı' ) ); ?></div>
+            <div class="rma-panel-section-label"><?php echo esc_html( $this->t( 'Fiyat' ) ); ?></div>
             <div class="rma-range-row">
                 <label class="rma-range-field">
                     <span class="rma-range-label"><?php echo esc_html( $this->t( 'En az' ) ); ?></span>
@@ -441,7 +403,10 @@ JSCODE;
         <?php
         $feature_cards = [];
         foreach ( RMA_Filtre::ozellik_kartlari() as $value => $card ) {
-            $feature_cards[ $value ] = [ 'icon' => $card['icon'], 'label' => $this->t( $card['label'] ) ];
+            $feature_cards[ $value ] = [
+                'icon'  => $card['icon'],
+                'label' => $this->t( $card['label'] ),
+            ];
         }
         $render_cards( $this->t( 'Ürün Özellikleri' ), $feature_cards );
         ?>
