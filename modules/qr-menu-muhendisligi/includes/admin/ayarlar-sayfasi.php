@@ -21,7 +21,7 @@ function qrms_mm_ayarlar_sayfasi() {
 	$ayar       = QRMS_MM_Maliyet::ayarlar();
 	?>
 	<div class="wrap qrms-wrap qrms-mm">
-		<h1 class="qrms-title"><?php esc_html_e( 'Menü Mühendisliği Ayarları', 'qrms' ); ?></h1>
+		<h1 class="qrms-title"><?php esc_html_e( 'Menü Performansı Ayarları', 'qrms' ); ?></h1>
 
 		<?php if ( $kaydedildi ) : ?>
 			<div class="qrms-alert qrms-alert-success">

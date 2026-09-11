@@ -154,12 +154,13 @@ qrms_test(
 );
 
 qrms_test(
-	'yalnızca durumu aktif olan kampanya geçerlidir',
+	'yalnızca durumu active olan kampanya geçerlidir; applied tarihçe kaydı değildir',
 	function () {
 		$zaman = strtotime( '2026-01-05 14:30:00 UTC' );
 
 		qrms_assert_true( RMA_Kampanya_DB::aktif_mi( array( 'status' => 'active' ), $zaman ), 'aktif' );
 		qrms_assert_false( RMA_Kampanya_DB::aktif_mi( array( 'status' => 'passive' ), $zaman ), 'pasif' );
+		qrms_assert_false( RMA_Kampanya_DB::aktif_mi( array( 'status' => 'applied' ), $zaman ), 'uygulanmış zam' );
 		qrms_assert_false( RMA_Kampanya_DB::aktif_mi( array(), $zaman ), 'kayıt yok' );
 	}
 );
@@ -306,24 +307,149 @@ qrms_test(
 );
 
 qrms_test(
-	'ürün fiyatı hiçbir kod yolunda üzerine yazılmıyor',
+	'indirim akışı fiyat alanına yazmaz; zam akışı toplu yazım kullanır',
 	function () {
-		// Özelliğin can damarı: kampanya rma_price/_qmo_kombin_fiyat alanlarına
-		// ASLA yazmaz. Yedek meta (_qrms_orijinal_fiyat) ayrı bir alandır.
-		$dosyalar = array( 'includes/class-kampanya.php', 'includes/class-kampanya-db.php', 'includes/trait-kampanya-admin.php' );
+		$kampanya = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/class-kampanya.php' );
+		$admin    = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-kampanya-admin.php' );
+		$db       = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/class-kampanya-db.php' );
 
-		foreach ( $dosyalar as $dosya ) {
-			$kaynak = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/' . $dosya );
+		qrms_assert_false(
+			(bool) preg_match( "/update_post_meta\([^;]*'(rma_price|_qmo_kombin_fiyat)'/", $kampanya ),
+			'ön yüz sınıfı fiyat alanına yazmaz'
+		);
+		qrms_assert_false(
+			(bool) preg_match( "/update_post_meta\([^;]*'(rma_price|_qmo_kombin_fiyat)'/", $admin ),
+			'indirim yönetimi tek tek fiyat yazmaz'
+		);
+		qrms_assert_contains( 'kampanya_zam_uygula', $admin, 'zam uygulama yolu' );
+		qrms_assert_contains( 'kampanya_indirim_uygula', $admin, 'indirim uygulama yolu ayrı' );
+		qrms_assert_contains( 'fiyatlari_toplu_yaz', $db, 'zam toplu fiyat yazımı' );
+		qrms_assert_contains( 'zam_uygulandi', $db, 'applied durumu' );
+		qrms_assert_contains( 'orijinal_yedekleri_toplu_yaz', $db, 'write-once yedek' );
+	}
+);
 
-			// Fiyat alanlarına YAZAN tek bir çağrı bile olmamalı; okuma serbest.
-			qrms_assert_false(
-				(bool) preg_match( "/update_post_meta\([^;]*'(rma_price|_qmo_kombin_fiyat)'/", $kaynak ),
-				$dosya . ': fiyat alanlarına yazılmıyor'
-			);
-		}
+echo "\nFiyat Kampanyası — kalıcı zam\n";
 
-		$admin = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-kampanya-admin.php' );
-		qrms_assert_contains( 'RMA_Kampanya_DB::ORIJINAL_META', $admin, 'yedek ayrı alana yazılır' );
+qrms_test(
+	'zam fiyat satırları doğru meta anahtarı ve biçimle üretilir',
+	function () {
+		$satirlar = RMA_Kampanya_DB::zam_fiyat_satirlari(
+			array(
+				array( 'product_id' => 10, 'fiyat' => 52.5, 'kombin' => false ),
+				array( 'product_id' => 11, 'fiyat' => 99, 'kombin' => true ),
+			)
+		);
+
+		qrms_assert_same( 2, count( $satirlar ), 'iki satır' );
+		qrms_assert_same( 10, $satirlar[0]['product_id'], 'ürün ID' );
+		qrms_assert_same( '52,50', $satirlar[0]['fiyat'], 'biçimli fiyat' );
+		qrms_assert_same( 'rma_price', $satirlar[0]['meta_key'], 'normal ürün' );
+		qrms_assert_same( '_qmo_kombin_fiyat', $satirlar[1]['meta_key'], 'kombin ürün' );
+	}
+);
+
+qrms_test(
+	'orijinal yedek write-once davranır',
+	function () {
+		$GLOBALS['qrms_test']['post_meta'] = array(
+			101 => array( RMA_Kampanya_DB::ORIJINAL_META => 40 ),
+			102 => array(),
+		);
+
+		$wpdb = new class() extends QRMS_Sayan_Wpdb {
+			public function query( $sql ) {
+				$this->queries[] = $sql;
+
+				if ( false !== stripos( $sql, 'INSERT INTO' ) && preg_match_all( "/\((\d+), '_qrms_orijinal_fiyat', '([^']+)'\)/", $sql, $m, PREG_SET_ORDER ) ) {
+					foreach ( $m as $satir ) {
+						$pid = (int) $satir[1];
+						if ( ! isset( $GLOBALS['qrms_test']['post_meta'][ $pid ][ RMA_Kampanya_DB::ORIJINAL_META ] ) ) {
+							$GLOBALS['qrms_test']['post_meta'][ $pid ][ RMA_Kampanya_DB::ORIJINAL_META ] = (float) $satir[2];
+						}
+					}
+				}
+
+				return 1;
+			}
+
+			public function get_col( $sql ) {
+				$this->queries[] = $sql;
+
+				if ( false !== strpos( $sql, RMA_Kampanya_DB::ORIJINAL_META ) && preg_match( '/post_id IN \(([^)]+)\)/', $sql, $m ) ) {
+					$mevcut = array();
+					foreach ( explode( ',', $m[1] ) as $pid ) {
+						$pid = (int) trim( $pid );
+						if ( isset( $GLOBALS['qrms_test']['post_meta'][ $pid ][ RMA_Kampanya_DB::ORIJINAL_META ] ) ) {
+							$mevcut[] = (string) $pid;
+						}
+					}
+					return $mevcut;
+				}
+
+				return parent::get_col( $sql );
+			}
+		};
+
+		$GLOBALS['wpdb'] = $wpdb;
+
+		RMA_Kampanya_DB::orijinal_yedekleri_toplu_yaz(
+			array(
+				101 => 40,
+				102 => 55,
+				103 => 60,
+			)
+		);
+
+		qrms_assert_same( 40.0, (float) $GLOBALS['qrms_test']['post_meta'][101][ RMA_Kampanya_DB::ORIJINAL_META ], 'mevcut yedek korunur' );
+		qrms_assert_same( 55.0, (float) $GLOBALS['qrms_test']['post_meta'][102][ RMA_Kampanya_DB::ORIJINAL_META ], 'yeni yedek yazılır' );
+		qrms_assert_same( 60.0, (float) $GLOBALS['qrms_test']['post_meta'][103][ RMA_Kampanya_DB::ORIJINAL_META ], 'üçüncü ürün yedek' );
+	}
+);
+
+qrms_test(
+	'zam toplu yazım fiyatı günceller ve kapsam dışı ürüne dokunmaz',
+	function () {
+		$GLOBALS['qrms_test']['post_meta'] = array(
+			201 => array( 'rma_price' => '50' ),
+			202 => array( 'rma_price' => '30' ),
+			203 => array( '_qmo_kombin_fiyat' => '80' ),
+		);
+
+		$wpdb = new class() extends QRMS_Sayan_Wpdb {
+			public function query( $sql ) {
+				$this->queries[] = $sql;
+
+				if ( false !== stripos( $sql, 'DELETE FROM' ) && preg_match( "/meta_key = '(rma_price|_qmo_kombin_fiyat)' AND post_id IN \(([^)]+)\)/", $sql, $m ) ) {
+					$anahtar = $m[1];
+					foreach ( explode( ',', $m[2] ) as $pid ) {
+						unset( $GLOBALS['qrms_test']['post_meta'][ (int) trim( $pid ) ][ $anahtar ] );
+					}
+				}
+
+				if ( false !== stripos( $sql, 'INSERT INTO' ) && preg_match_all( "/\((\d+), '(rma_price|_qmo_kombin_fiyat)', '([^']+)'\)/", $sql, $m, PREG_SET_ORDER ) ) {
+					foreach ( $m as $satir ) {
+						$GLOBALS['qrms_test']['post_meta'][ (int) $satir[1] ][ $satir[2] ] = $satir[3];
+					}
+				}
+
+				return 1;
+			}
+		};
+
+		$GLOBALS['wpdb'] = $wpdb;
+
+		RMA_Kampanya_DB::fiyatlari_toplu_yaz(
+			array(
+				array( 'product_id' => 201, 'fiyat' => 55, 'kombin' => false ),
+				array( 'product_id' => 203, 'fiyat' => 88, 'kombin' => true ),
+			)
+		);
+
+		qrms_assert_same( '55', $GLOBALS['qrms_test']['post_meta'][201]['rma_price'], 'kapsamdaki ürün güncellendi' );
+		qrms_assert_same( '30', $GLOBALS['qrms_test']['post_meta'][202]['rma_price'], 'kapsam dışı değişmedi' );
+		qrms_assert_same( '88', $GLOBALS['qrms_test']['post_meta'][203]['_qmo_kombin_fiyat'], 'kombin fiyatı güncellendi' );
+		qrms_assert_true( $wpdb->kac_kez( 'INSERT INTO' ) >= 1, 'toplu INSERT çalıştı' );
 	}
 );
 

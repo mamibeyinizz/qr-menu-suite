@@ -77,6 +77,23 @@ function qrm_pro_rate_limit_guard() {
     return true;
 }
 
+// GÜVENLİK: qrm_load_reviews kimliksizdir (nopriv) ve yazma uçlarının aksine
+// (qrm_pro_rate_limit_guard) hiçbir hız sınırı taşımıyordu — filtre/sayfa
+// parametreleriyle döngüye giren bir istemci her seferinde gerçek bir sorgu
+// tetikleyebilirdi. Okuma amaçlı olduğu için form gönderim eşiğinden (20/5dk)
+// daha cömert tutulur; normal sayfalama/filtre gezinmesi bu sınıra yaklaşmaz.
+// Sorun yoksa true, varsa hata mesajı (string) döner.
+function qrm_pro_reviews_rate_limit_guard() {
+    $ip  = qrm_pro_client_ip();
+    $key = 'qrm_rl_reviews_' . md5($ip);
+    $cnt = (int) get_transient($key);
+    if ($cnt >= 60) {
+        return qrm_ceviri_review(__('Çok fazla istek gönderildi, lütfen birkaç dakika sonra tekrar deneyin.', 'qrms'));
+    }
+    set_transient($key, $cnt + 1, MINUTE_IN_SECONDS);
+    return true;
+}
+
 // Honeypot: botlar gizli alanı doldurur, gerçek kullanıcı görmez. Doluysa true döner.
 function qrm_pro_honeypot_tripped($field = 'qrm_website') {
     return !empty($_POST[$field]);

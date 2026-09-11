@@ -74,7 +74,7 @@ function qrms_module_qr_menu_muhendisligi_init() {
 function qrms_mm_sayfalar() {
 	return array(
 		QRMS_MM_RAPOR_SAYFA   => array(
-			'title'  => __( 'Menü Mühendisliği Raporu', 'qrms' ),
+			'title'  => __( 'Menü Performansı Raporu', 'qrms' ),
 			'render' => 'qrms_mm_rapor_sayfasi',
 			'desc'   => __( 'Hangi ürün para kazandırıyor, hangisi kaybettiriyor — ve ne yapmalısınız.', 'qrms' ),
 			'icon'   => 'dashicons-chart-pie',

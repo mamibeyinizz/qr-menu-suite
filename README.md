@@ -92,28 +92,31 @@ kartlardan** gidilir. Satırlar alt menü açmaz — yalnızca katlanabilir
 
 ```
 QR Menü
-├ GENEL
-│ ├ Genel Bakış
-│ └ Genel Ayarlar
-├ MENÜ YÖNETİMİ
-│ ├ Restoran Menü               → hub (12 kart)
-│ └ Yorum & Feedback            → hub (7 kart + özet sayaçlar)
-├ ARAÇLAR
-│ ├ Servis Paneli               → doğrudan canlı sipariş/çağrı panosu
-│ ├ QR Kod Oluştur              → doğrudan Masalar ekranı
-│ ├ İstatistikler               → doğrudan Menü Analitiği
-│ ├ Menü Mühendisliği           → hub (4 kart + özet sayaçlar)
+├ MENÜ
+│ ├ Menü Yönetimi               → hub (12 kart)
+│ ├ QR Kodlar                   → doğrudan Masalar ekranı
+│ └ Servis Paneli               → doğrudan canlı sipariş/çağrı panosu
+├ ANALİZ
+│ ├ Menü Analizleri             → doğrudan Menü Analitiği
+│ ├ Menü Performansı            → hub (4 kart + özet sayaçlar)
+│ └ Yorumlar & Geri Bildirim    → hub (7 kart + özet sayaçlar)
+├ MÜŞTERİ DENEYİMİ
+│ ├ Diller & Çeviriler          → doğrudan Çeviri ekranı
+│ ├ AI Menü Asistanı            → doğrudan Chatbot ayarları
 │ ├ Fotoğraf Galerisi           → hub (3 kart)
-│ ├ Dil / Çeviri Ayarları       → doğrudan Çeviri ekranı
-│ ├ Chatbot Asistan             → doğrudan Chatbot ayarları
+│ ├ Karşılama Ekranı            → hub (5 kart + özet sayaçlar)
 │ └ Çalışma Saatleri            → doğrudan Saat tablosu
-├ GÖRÜNÜM & ERİŞİM
-│ ├ Açılış Ekranı               → hub (5 kart + özet sayaçlar)
-│ └ Header Footer Builder       → doğrudan HFB ekranı
-└ GELİŞMİŞ
-  ├ Güvenlik Ayarı              → hub (2 kart)
-  └ Kısa Kodlar                 → modüllerin kısa kod rehberi
+├ GÖRÜNÜM
+│ └ Header & Footer             → doğrudan HFB ekranı
+└ SİSTEM
+  ├ Genel Bakış
+  ├ Masa Oturumu Güvenliği      → hub (2 kart)
+  ├ Entegrasyonlar & Kısa Kodlar → modüllerin kısa kod rehberi
+  └ Sistem Ayarları
 ```
+
+Görünen adlar restoran sahibinin dilindedir; modül **slug'ları** (lisans
+sözleşmesinin ve kayıtlı option'ların anahtarı) değişmez.
 
 Hub, modülün **ikiden fazla ekranı olduğunda** vardır. Tek ekranlı modüllerde
 araya bir sayfa koymak fazladan tık demek olurdu; modül satırı doğrudan o
@@ -123,11 +126,11 @@ ekranı açar.
 
 | Kategori | Renk | İçindekiler |
 | --- | --- | --- |
-| Genel | `#9ba7b4` (nötr gri) | Genel Bakış, Genel Ayarlar |
-| Menü Yönetimi | `#5cb0f0` (gök mavisi) | Restoran Menü, Yorum & Feedback |
-| Araçlar | `#35d1b4` (turkuaz) | Servis Paneli, QR Kod Oluştur, İstatistikler, Menü Mühendisliği, Fotoğraf Galerisi, Dil / Çeviri Ayarları, Chatbot Asistan, Çalışma Saatleri |
-| Görünüm & Erişim | `#f27cb8` (pembe) | Açılış Ekranı, Header Footer Builder |
-| Gelişmiş | `#f59547` (turuncu) | Güvenlik Ayarı, Kısa Kodlar |
+| Menü | `#5cb0f0` (gök mavisi) | Menü Yönetimi, QR Kodlar, Servis Paneli |
+| Analiz | `#35d1b4` (turkuaz) | Menü Analizleri, Menü Performansı, Yorumlar & Geri Bildirim |
+| Müşteri Deneyimi | `#f27cb8` (pembe) | Diller & Çeviriler, AI Menü Asistanı, Fotoğraf Galerisi, Karşılama Ekranı, Çalışma Saatleri |
+| Görünüm | `#dba617` (amber) | Header & Footer |
+| Sistem | `#9ba7b4` (nötr gri) | Genel Bakış, Masa Oturumu Güvenliği, Entegrasyonlar & Kısa Kodlar, Sistem Ayarları |
 
 Gruplama, sıra ve renkler **tek yerde**, `QRMS_Admin::get_menu_groups()`
 içindedir (siteye özgü değişiklik için `qrms_menu_groups` filtresi vardır).
@@ -239,14 +242,16 @@ içindedir.
 ### Genel Bakış — kategorili kart ızgarası
 
 `Genel Bakış` (`admin.php?page=qrms-overview`) modülleri düz bir liste yerine
-**dört kategoride** kart ızgarası olarak gösterir:
+**sol menüyle aynı beş kategoride** kart ızgarası olarak gösterir
+(taksonomi tektir: `QRMS_Admin::get_nav_groups()`):
 
 | Kategori | İçindekiler |
 | --- | --- |
-| Menü & Ürünler | Restoran Menü, QR Galeri, Açılış Ekranı |
-| Müşteri Etkileşimi | Yorum & Feedback, QR Chatbot, QR Çeviri |
-| Masa & Servis | QR Masa, Güvenlik Ayarı, QR Çalışma Saatleri |
-| Analiz & Ayarlar | QR Analiz, Kısa Kodlar, Genel Ayarlar |
+| Menü | Menü Yönetimi, QR Kodlar, Servis Paneli |
+| Analiz | Menü Analizleri, Menü Performansı, Yorumlar & Geri Bildirim |
+| Müşteri Deneyimi | Diller & Çeviriler, AI Menü Asistanı, Fotoğraf Galerisi, Karşılama Ekranı, Çalışma Saatleri |
+| Görünüm | Header & Footer |
+| Sistem | Masa Oturumu Güvenliği, Entegrasyonlar & Kısa Kodlar, Sistem Ayarları |
 
 Gruplama `QRMS_Admin::get_overview_groups()` içinde **tek yerde** durur;
 kartların ikon ve açıklamaları modül isimleriyle aynı dosyadadır

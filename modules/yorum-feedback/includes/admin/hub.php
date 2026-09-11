@@ -42,7 +42,7 @@ function qrm_pro_admin_hub() {
     }
 
     QRMS_Admin::render_hub([
-        'title'       => __('Yorum & Feedback', 'qrms'),
+        'title'       => __('Yorumlar & Geri Bildirim', 'qrms'),
         'intro'       => __('Müşteri yorumlarınız, puanlama ayarlarınız, Google ödül sisteminiz ve kendi formlarınız burada.', 'qrms'),
         'notice'      => $notice,
         'stats'       => qrm_pro_hub_stats($stats, $unread, $cf_totals),

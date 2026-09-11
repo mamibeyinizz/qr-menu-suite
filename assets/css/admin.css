@@ -608,9 +608,9 @@ a.qrms-hub-stat-alert:focus {
 	gap: 14px;
 	height: auto;
 	max-width: 100%;
-	min-height: 76px;
+	min-height: 64px;
 	min-width: 0;
-	padding: 18px;
+	padding: 16px;
 	position: relative;
 	text-decoration: none;
 	transition: border-color 0.15s ease, box-shadow 0.15s ease;
@@ -648,6 +648,7 @@ a.qrms-hub-stat-alert:focus {
 .qrms-hub-card-title {
 	color: inherit;
 	display: block;
+	overflow-wrap: anywhere;
 	font-size: 15px;
 	font-weight: 600;
 	line-height: 1.4;
@@ -658,6 +659,7 @@ a.qrms-hub-stat-alert:focus {
 .qrms-hub-desc {
 	color: #646970;
 	display: block;
+	overflow-wrap: anywhere;
 	font-size: 13px;
 	line-height: 1.5;
 	margin: 5px 0 0;
@@ -725,6 +727,8 @@ a.qrms-hub-card-main:focus {
 	gap: 6px;
 	line-height: 1.4;
 	margin: 0 -6px;
+	min-width: 0;
+	overflow-wrap: anywhere;
 	padding: 4px 6px;
 	text-decoration: none;
 }
@@ -879,13 +883,22 @@ a.qrms-hub-links-more:focus {
 	}
 }
 
+/* Çok dar telefon (≈320px): özet kutuları ikili kalırsa etiketler sıkışıyordu. */
+
+@media screen and (max-width: 480px) {
+	.qrms-hub-stats:not(.qrms-hub-stats-stacked),
+	.qrms-hub-stats-row-items {
+		grid-template-columns: 1fr;
+	}
+}
+
 /* Dokunmatik: kart yüksekliği ve iç boşluk büyür, hedef >= 48px */
 
 @media (pointer: coarse) {
 	.qrms-hub-card {
 		gap: 16px;
-		min-height: 88px;
-		padding: 20px 18px;
+		min-height: 72px;
+		padding: 18px 16px;
 	}
 
 	.qrms-hub-icon {
