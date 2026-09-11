@@ -514,3 +514,42 @@ qrms_test(
 	}
 );
 
+
+qrms_test(
+	'ADMIN OTURUMU: geçerli kullanıcı plugins_loaded\'da çözülmez, karar wp_loaded\'a ertelenir',
+	function () {
+		$kaynak = file_get_contents( QRMS_PLUGIN_DIR . 'includes/class-qrms-login.php' );
+
+		$pl = substr( $kaynak, strpos( $kaynak, 'public static function plugins_loaded()' ) );
+		$pl = substr( $pl, 0, strpos( $pl, 'public static function wp_loaded()' ) );
+
+		// is_user_logged_in() plugins_loaded'da çağrılırsa geçerli kullanıcı
+		// init'ten ÖNCE çözülüp kalıcı önbelleğe alınır; determine_current_user
+		// filtresini sonra kaydeden eklentiler (2FA, SSO, uygulama parolaları)
+		// devre dışı kalır ve gerçekte oturumu AÇIK olan yönetici o istek
+		// boyunca "oturumsuz" sayılarak 404'e düşer.
+		qrms_assert_false( false !== strpos( $pl, 'is_user_logged_in()' ), 'plugins_loaded oturumu sormaz' );
+		qrms_assert_false( false !== strpos( $pl, 'current_user_can(' ), 'plugins_loaded yetenek sormaz' );
+		qrms_assert_contains( 'self::$wp_login_yolu = self::is_wp_login_path( $yol );', $pl, 'yalnızca yol işaretlenir' );
+
+		$wl = substr( $kaynak, strpos( $kaynak, 'public static function wp_loaded()' ) );
+		$wl = substr( $wl, 0, 2000 );
+
+		qrms_assert_contains( 'self::should_block_wp_login( $eylem, is_user_logged_in() )', $wl, 'karar wp_loaded\'da verilir' );
+	}
+);
+
+qrms_test(
+	'ADMIN OTURUMU: giriş modülü kimlik çerezine veya oturum token\'ına dokunmaz',
+	function () {
+		$kaynak = file_get_contents( QRMS_PLUGIN_DIR . 'includes/class-qrms-login.php' );
+
+		foreach ( array( 'wp_logout(', 'wp_clear_auth_cookie(', 'wp_set_auth_cookie(', 'wp_destroy_current_session(', 'setcookie(' ) as $cagri ) {
+			qrms_assert_false( false !== strpos( $kaynak, $cagri ), $cagri . ' kullanılmıyor' );
+		}
+
+		// Kaba kuvvet koruması yalnızca authenticate zincirinde WP_Error döner;
+		// mevcut bir oturumu sonlandırmaz.
+		qrms_assert_contains( "add_filter( 'authenticate', array( __CLASS__, 'reddet_asilan_deneme' ), 0 )", $kaynak, 'deneme sınırı authenticate filtresinde' );
+	}
+);

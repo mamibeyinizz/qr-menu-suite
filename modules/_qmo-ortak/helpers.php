@@ -170,6 +170,49 @@ if ( ! function_exists( 'qmo_oturum' ) ) {
 }
 
 /**
+ * Bu istek MASA güvenliğinden muaf mı?
+ *
+ * MASA OTURUMU ≠ WORDPRESS OTURUMU. Masa oturumu (qr_masa_token) müşteriyi
+ * bir masaya bağlar; WordPress oturumu (auth cookie) bir kullanıcıyı siteye
+ * bağlar. İkisi ayrı yaşar: bu eklentide masa oturumu hiçbir koşulda
+ * wp_logout() / wp_clear_auth_cookie() / WP_Session_Tokens çağırmaz, hiçbir
+ * WordPress kimlik çerezine dokunmaz. Bu fonksiyon yalnızca "masa kilidi bu
+ * isteğe UYGULANMASIN" der; WordPress yetkilendirmesinin yerine GEÇMEZ.
+ *
+ * Ölçüt YETENEKTİR. Bilinçli olarak kullanılmayan ölçütler:
+ *  - is_admin(): isteğin yönetim alanında olup olmadığını söyler, kullanıcının
+ *    yönetici olduğunu DEĞİL (admin-ajax.php ön yüz isteklerinde de true'dur).
+ *  - kullanıcı adı / kullanıcı ID / e-posta / referer / user agent / çerez
+ *    varlığı: hiçbiri kimlik kanıtı değildir, taklit edilebilir.
+ *
+ * Oturumu olmayan (public) ziyaretçi bu daldan ASLA geçemez: önce
+ * is_user_logged_in(), sonra yetenek kontrolü vardır.
+ *
+ * @return bool
+ */
+if ( ! function_exists( 'qmo_masa_guvenligi_muaf_mi' ) ) {
+	function qmo_masa_guvenligi_muaf_mi() {
+		if ( ! function_exists( 'is_user_logged_in' ) || ! is_user_logged_in() ) {
+			return false;
+		}
+
+		$yetenek = class_exists( 'QRMS_Admin' ) ? QRMS_Admin::CAPABILITY : 'manage_options';
+		$muaf    = current_user_can( $yetenek );
+
+		/**
+		 * Masa güvenliği muafiyetini değiştir.
+		 *
+		 * Filtre YALNIZCA daraltmak için düşünülmüştür; genişletirken
+		 * oturum + yetenek kontrolünü atlamayın.
+		 *
+		 * @param bool   $muaf    Muaf mı?
+		 * @param string $yetenek Kontrol edilen yetenek.
+		 */
+		return (bool) apply_filters( 'qmo_masa_guvenligi_muaf', $muaf, $yetenek );
+	}
+}
+
+/**
  * AJAX nonce'unu doğrula. Geçersizse isteği sonlandırır.
  *
  * Nonce, wp_localize_script ile ön yüze iletilir (qmoData.nonce).

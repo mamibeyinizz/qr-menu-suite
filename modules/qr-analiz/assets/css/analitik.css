@@ -190,6 +190,13 @@
 	padding: 9px 16px;
 	text-decoration: none;
 	transition: border-color .15s, color .15s, background-color .15s;
+	/* Eylem etiketi kelime kelime alt alta düşmesin ("Bu / masayı / incele").
+	   Tek başına nowrap tabloyu taşırırdı; burada güvenlidir çünkü 660px
+	   altında tablo zaten karta dönüşüp düğmeye tam satır verir (bkz. DAR
+	   EKRAN bloğu), üstünde ise sarmalayıcı .qrms-an-scroll kontrollü yatay
+	   kaydırma sağlar. Düğme GRUPLARI yine sarar: kırılma düğmeler ARASINDA
+	   olur (.qrms-an-btn-group flex-wrap), düğme metninin içinde değil. */
+	white-space: nowrap;
 }
 
 .qrms-an-btn:hover,
