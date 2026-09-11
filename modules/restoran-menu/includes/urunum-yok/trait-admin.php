@@ -20,7 +20,7 @@ trait RMA_Urunum_Yok_Admin_Trait {
 
     public function render_urunum_yok_page() {
         $this->page_header(
-            'Ürünüm Yok',
+            'Tükenen Ürünler',
             'Bir malzeme tükendiğinde, o malzemeyi içeren ürünleri toplu olarak "Tükendi" işaretleyin. Belirlediğiniz saat gelince ürünler otomatik olarak tekrar aktif olur.'
         );
 

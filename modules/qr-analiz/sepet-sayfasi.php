@@ -510,9 +510,9 @@ if ( ! function_exists( 'qrms_analitik_sayfa_sepet' ) ) {
 				<div class="qrms-an-teshis qrms-an-teshis-uyari">
 					<span class="qrms-an-teshis-icon dashicons dashicons-lock" aria-hidden="true"></span>
 					<div class="qrms-an-teshis-body">
-						<h2 class="qrms-an-teshis-title"><?php esc_html_e( 'Chatbot Asistan bu lisansta kapalı', 'qrms' ); ?></h2>
+						<h2 class="qrms-an-teshis-title"><?php esc_html_e( 'AI Menü Asistanı bu lisansta kapalı', 'qrms' ); ?></h2>
 						<p class="qrms-an-teshis-text">
-							<?php esc_html_e( 'Sepet ve sipariş sayıları Chatbot Asistan modülünden gelir. Bu kategori lisansınızda aktif olmadığı için burada tablo yok — boş bir ekran, veri yokmuş gibi görünmesin diye bilinçli olarak basılmıyor.', 'qrms' ); ?>
+							<?php esc_html_e( 'Sepet ve sipariş sayıları AI Menü Asistanı özelliğinden gelir. Bu özellik lisansınızda aktif olmadığı için burada tablo yok — boş bir ekran, veri yokmuş gibi görünmesin diye bilinçli olarak basılmıyor.', 'qrms' ); ?>
 						</p>
 					</div>
 				</div>
@@ -655,11 +655,11 @@ if ( ! function_exists( 'qrms_analitik_sayfa_sepet' ) ) {
 					</h2>
 					<a class="qrms-an-btn qrms-an-btn-small" href="<?php echo esc_url( qrms_analitik_sepet_urunum_yok_url() ); ?>">
 						<span class="dashicons dashicons-external" aria-hidden="true"></span>
-						<?php esc_html_e( 'Ürünüm Yok', 'qrms' ); ?>
+						<?php esc_html_e( 'Tükenen Ürünler', 'qrms' ); ?>
 					</a>
 				</div>
 				<p class="qrms-an-panel-note">
-					<?php esc_html_e( 'Tükendi işaretli olduğu için siparişi kesilen ürünler. Bu tablo Ürünüm Yok ekranının değerini doğrudan gösterir.', 'qrms' ); ?>
+					<?php esc_html_e( 'Tükendi işaretli olduğu için siparişi kesilen ürünler. Bu tablo Tükenen Ürünler ekranının değerini doğrudan gösterir.', 'qrms' ); ?>
 				</p>
 				<div id="qrms-an-sepet-engel">
 					<div class="qrms-an-loading"><?php esc_html_e( 'Yükleniyor', 'qrms' ); ?></div>

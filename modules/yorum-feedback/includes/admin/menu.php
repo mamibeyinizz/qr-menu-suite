@@ -64,24 +64,24 @@ function qrm_pro_admin_pages() {
         // Ana Yorum Formu ve İletişim Formu artık ayrı sayfa değil; Formlar
         // listesinde silinemez sistem satırları olarak durur (view=edit&system=).
         'qrms-yf-formlar' => [
-            'title'      => __( 'Formlar', 'qrms' ),
-            'menu_title' => __( 'Formlar', 'qrms' ),
+            'title'      => __( 'Geri Bildirim Formları', 'qrms' ),
+            'menu_title' => __( 'Geri Bildirim Formları', 'qrms' ),
             'render'     => 'qrm_cf_admin_forms_page',
             'desc'       => __( 'Kendi oluşturduğunuz formlar.', 'qrms' ),
             'icon'       => 'dashicons-feedback',
             'group'      => 'formlar',
         ],
         'qrms-yf-ayarlar' => [
-            'title'      => __( 'Ayarlar & Puanlama', 'qrms' ),
-            'menu_title' => __( 'Ayarlar & Puanlama', 'qrms' ),
+            'title'      => __( 'Puanlama & Ayarlar', 'qrms' ),
+            'menu_title' => __( 'Puanlama & Ayarlar', 'qrms' ),
             'render'     => 'qrm_pro_admin_settings',
             'desc'       => __( 'Puanlama kriterleri, form görünümü, otomatik onay ve spam koruması.', 'qrms' ),
             'icon'       => 'dashicons-admin-settings',
             'group'      => 'ayarlar',
         ],
         'qrms-yf-odul' => [
-            'title'      => __( 'Google & Ödül Sistemi', 'qrms' ),
-            'menu_title' => __( 'Google & Ödül Sistemi', 'qrms' ),
+            'title'      => __( 'Google & Ödüller', 'qrms' ),
+            'menu_title' => __( 'Google & Ödüller', 'qrms' ),
             'render'     => 'qrm_reward_admin_page',
             'desc'       => __( 'Google yorum yönlendirmesi, indirim kodu popup\'ı ve kod yönetimi.', 'qrms' ),
             'icon'       => 'dashicons-tickets-alt',

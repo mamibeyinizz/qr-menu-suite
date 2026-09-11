@@ -1313,6 +1313,49 @@
         var $uygulaBtn = $('#rma-kmp-uygula-btn');
         var $onizleme = $('#rma-kmp-onizleme');
         var $gizliIdler = $('#rma-kmp-scope-ids');
+        var $zamUyari = $('#rma-kmp-zam-uyari');
+        var $zamMetin = $('#rma-kmp-zam-metin');
+        var $indirimEkstra = $('.rma-kmp-indirim-ekstra');
+        var $onizlemeBaslik = $('#rma-kmp-onizleme-kart .rma-card-title');
+        var $onizlemeAciklama = $('.rma-kmp-onizleme-aciklama');
+        var sonEtkilenen = 0;
+
+        function zamModu() {
+            return ($form.find('input[name="direction"]:checked').val() || 'increase') === 'increase';
+        }
+
+        function moduGuncelle() {
+            var zam = zamModu();
+
+            $form.attr('data-zam-modu', zam ? '1' : '0');
+            $zamUyari.toggle(zam);
+            $indirimEkstra.toggle(!zam);
+
+            if ($onizlemeBaslik.length) {
+                $onizlemeBaslik.html(
+                    (zam ? '4. Önizleme' : '5. Önizleme') +
+                    ' <span class="rma-kmp-zorunlu">— uygulamadan önce zorunlu</span>'
+                );
+            }
+
+            if ($onizlemeAciklama.length) {
+                $onizlemeAciklama.text(
+                    'Hangi üründe fiyatın kaç liraya çıkacağını burada görün. ' +
+                    (zam ? 'Uygula' : 'Kampanyayı başlatma') +
+                    ' butonu, önizlemeyi görene kadar kapalı kalır.'
+                );
+            }
+
+            $uygulaBtn.text(zam ? ($uygulaBtn.data('metin-zam') || 'Uygula') : ($uygulaBtn.data('metin-indirim') || 'Kampanyayı Başlat'));
+
+            if (zam && $zamMetin.length) {
+                $zamMetin.text(
+                    sonEtkilenen > 0
+                        ? 'Bu işlem geri alınamaz, ' + sonEtkilenen + ' ürünün fiyatı kalıcı olarak değişecek.'
+                        : 'Bu işlem geri alınamaz. Önizleme alındığında etkilenecek ürün sayısı burada görünecek.'
+                );
+            }
+        }
 
         function kapsam() {
             return $form.find('input[name="scope_type"]:checked').val() || 'all';
@@ -1351,8 +1394,14 @@
 
         function bayatla() {
             $uygulaBtn.prop('disabled', true);
+            sonEtkilenen = 0;
+            moduGuncelle();
             if ($onizleme.children().length) {
-                $onizleme.html('<p class="rma-kmp-bayat">Ayarları değiştirdiniz. Kampanyayı başlatmadan önce önizlemeyi tekrar alın.</p>');
+                $onizleme.html(
+                    '<p class="rma-kmp-bayat">Ayarları değiştirdiniz. ' +
+                    (zamModu() ? 'Uygulamadan' : 'Kampanyayı başlatmadan') +
+                    ' önce önizlemeyi tekrar alın.</p>'
+                );
             }
         }
 
@@ -1396,6 +1445,7 @@
             secimVurgusu();
             birim();
             secimiSenkronla();
+            moduGuncelle();
             bayatla();
         });
 
@@ -1449,7 +1499,9 @@
                 }
 
                 $onizleme.html(r.data.html);
-                $uygulaBtn.prop('disabled', r.data.etkilenen < 1);
+                sonEtkilenen = r.data.etkilenen || 0;
+                moduGuncelle();
+                $uygulaBtn.prop('disabled', sonEtkilenen < 1);
             });
         });
 
@@ -1479,6 +1531,7 @@
         secimVurgusu();
         birim();
         secimiSenkronla();
+        moduGuncelle();
     }
 
     /* -----------------------------------------------------------------

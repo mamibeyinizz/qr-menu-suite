@@ -70,6 +70,9 @@ trait RMA_Import_Export_Trait {
                         'rma_prep_time'         => $d[18] ?? '',
                         'rma_contains_alcohol'  => $d[20] ?? '0',
                         'rma_contains_pork'     => $d[21] ?? '0',
+                        // Şekersiz (sütun 23) SONA eklendi: sütunu olmayan eski
+                        // CSV'ler aynen çalışır, alan 0 kalır.
+                        'rma_is_sugar_free'     => $d[23] ?? '0',
                     ];
                     foreach ( $meta_map as $key => $val ) update_post_meta( $pid, $key, sanitize_text_field( $val ) );
                     update_post_meta( $pid, 'rma_active', '1' );
@@ -126,7 +129,7 @@ trait RMA_Import_Export_Trait {
             [ 'Özet',                   'Kartta görünen kısa açıklama',                'Limonla servis edilir' ],
             [ 'Fiyat',                  'Sadece sayı',                                 '95' ],
             [ 'Kategori',               'Birden fazlaysa virgülle ayırın',             'Çorbalar' ],
-            [ 'Acı',                    '0-3 arası',                                   '0' ],
+            [ 'Acı',                    '0-4 arası (0 Acısız … 4 Çok Acı)',            '0' ],
             [ 'Kalori',                 'kcal',                                        '180' ],
             [ 'Gramaj',                 'g',                                           '300' ],
             [ 'Vegan',                  '0 veya 1',                                    '1' ],
@@ -144,6 +147,7 @@ trait RMA_Import_Export_Trait {
             [ 'Alkol İçerir',           '0 veya 1',                                    '0' ],
             [ 'Domuz Türevi İçerir',    '0 veya 1',                                    '0' ],
             [ 'Alerjenler',             'Slug\'ları | ile ayırın',                     'gluten' ],
+            [ 'Şekersiz',               '0 veya 1',                                    '0' ],
         ];
     }
 

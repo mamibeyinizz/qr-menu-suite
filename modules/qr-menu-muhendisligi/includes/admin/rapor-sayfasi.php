@@ -27,7 +27,7 @@ function qrms_mm_rapor_sayfasi() {
 	$ozet  = $rapor['ozet'];
 	?>
 	<div class="wrap qrms-wrap qrms-mm">
-		<h1 class="qrms-title"><?php esc_html_e( 'Menü Mühendisliği Raporu', 'qrms' ); ?></h1>
+		<h1 class="qrms-title"><?php esc_html_e( 'Menü Performansı Raporu', 'qrms' ); ?></h1>
 
 		<?php qrms_mm_filtre_cubugu( $args ); ?>
 

@@ -24,6 +24,11 @@ function qrm_pro_ajax_load_reviews() {
     check_ajax_referer('qrm_load_reviews', 'nonce');
     qrm_pro_bootstrap_lang();
 
+    $guard = qrm_pro_reviews_rate_limit_guard();
+    if ($guard !== true) {
+        wp_send_json_error(['message' => $guard], 429);
+    }
+
     $settings  = qrm_pro_get_settings();
     $page_size = qrm_pro_reviews_page_size($settings);
     $mode      = qrm_pro_reviews_pagination_mode($settings);

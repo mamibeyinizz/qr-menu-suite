@@ -287,6 +287,103 @@ if ( ! function_exists( 'qrms_analitik_kategori_anahtari' ) ) {
 	}
 }
 
+if ( ! function_exists( 'qrms_analitik_filtre_kullanimi' ) ) {
+
+	/**
+	 * Menü filtresi kullanım dağılımı.
+	 *
+	 * Kaynak, menü modülünün ön yüz beacon'ıyla yazdığı `menu_filter`
+	 * olaylarıdır (item_name = filtre anahtarı). Sorgu TEK'tir: olay_sayaclari()
+	 * zaten event_type + item_name kırılımında GROUP BY yapar, burada yalnızca
+	 * anahtarlar okunur etikete çevrilip sıralanır.
+	 *
+	 * Okunur etiket menü modülünün kayıt defterinden (RMA_Filtre) gelir; modül
+	 * pasifse ya da anahtar sonradan kaldırılmışsa ham anahtar gösterilir —
+	 * satır kaybolmaz.
+	 *
+	 * @param array  $sayaclar QRMS_Analitik::olay_sayaclari() çıktısı.
+	 * @return array{satirlar:array<int,array{anahtar:string,ad:string,adet:int,pay:int}>,toplam:int}
+	 */
+	function qrms_analitik_filtre_kullanimi( array $sayaclar ) {
+		$etiketler = qrms_analitik_filtre_etiketleri();
+		$sayim     = array();
+		$toplam    = 0;
+
+		foreach ( $sayaclar as $r ) {
+			if ( ! is_array( $r ) || 'menu_filter' !== ( $r['event_type'] ?? '' ) ) {
+				continue;
+			}
+
+			$ad   = (string) ( $r['item_name'] ?? '' );
+			$adet = (int) ( $r['adet'] ?? 0 );
+
+			if ( '' === $ad || $adet <= 0 ) {
+				continue;
+			}
+
+			if ( ! isset( $sayim[ $ad ] ) ) {
+				$sayim[ $ad ] = 0;
+			}
+
+			$sayim[ $ad ] += $adet;
+			$toplam       += $adet;
+		}
+
+		arsort( $sayim );
+
+		$satirlar = array();
+
+		foreach ( $sayim as $anahtar => $adet ) {
+			$satirlar[] = array(
+				'anahtar' => (string) $anahtar,
+				'ad'      => isset( $etiketler[ $anahtar ] ) ? $etiketler[ $anahtar ] : (string) $anahtar,
+				'adet'    => (int) $adet,
+				'pay'     => $toplam > 0 ? (int) round( ( $adet / $toplam ) * 100 ) : 0,
+			);
+		}
+
+		return array(
+			'satirlar' => $satirlar,
+			'toplam'   => $toplam,
+		);
+	}
+}
+
+if ( ! function_exists( 'qrms_analitik_filtre_etiketleri' ) ) {
+
+	/**
+	 * Filtre anahtarı => okunur ad.
+	 *
+	 * @return array<string,string>
+	 */
+	function qrms_analitik_filtre_etiketleri() {
+		if ( ! class_exists( 'RMA_Filtre' ) ) {
+			return array();
+		}
+
+		$etiketler = array();
+
+		foreach ( array( 'diyet_kartlari', 'aci_kartlari', 'kalori_kartlari', 'ozellik_kartlari' ) as $grup ) {
+			foreach ( RMA_Filtre::$grup() as $anahtar => $kart ) {
+				$etiketler[ $anahtar ] = (string) $kart['label'];
+			}
+		}
+
+		if ( class_exists( 'Restaurant_Menu_Automation' ) ) {
+			$menu = Restaurant_Menu_Automation::get_instance();
+
+			if ( $menu && method_exists( $menu, 'get_allergen_definitions' ) ) {
+				foreach ( RMA_Filtre::alerjen_kartlari( $menu->get_allergen_definitions() ) as $anahtar => $kart ) {
+					/* translators: %s: alerjen adı. */
+					$etiketler[ $anahtar ] = sprintf( __( '%s hariç', 'qrms' ), $kart['label'] );
+				}
+			}
+		}
+
+		return $etiketler;
+	}
+}
+
 if ( ! function_exists( 'qrms_analitik_urun_verisi' ) ) {
 
 	/**
@@ -321,14 +418,16 @@ if ( ! function_exists( 'qrms_analitik_urun_verisi' ) ) {
 			$satirlar = array_slice( $satirlar, ( $sayfa - 1 ) * $limit, $limit );
 		}
 
-		$detay = qrms_analitik_urun_detay_hesapla(
-			QRMS_Analitik::olay_sayaclari(
-				array( 'product_click', 'item_detail_open' ),
-				$aralik['bas'],
-				$aralik['bit'],
-				$masa
-			)
+		// Detay oranı ve filtre kullanımı AYNI sorgudan okunur: olay_sayaclari()
+		// tek GROUP BY yapar, üçüncü bir tip eklemek ek sorgu doğurmaz.
+		$olaylar = QRMS_Analitik::olay_sayaclari(
+			array( 'product_click', 'item_detail_open', 'menu_filter' ),
+			$aralik['bas'],
+			$aralik['bit'],
+			$masa
 		);
+
+		$detay = qrms_analitik_urun_detay_hesapla( $olaylar );
 
 		return array(
 			'encok'      => QRMS_Analitik::urun_siralamasi( $aralik['bas'], $aralik['bit'], $masa, 30 ),
@@ -345,6 +444,7 @@ if ( ! function_exists( 'qrms_analitik_urun_verisi' ) ) {
 			'kategoriler' => $dagilim['satirlar'],
 			'kategorisiz' => $dagilim['kategorisiz'],
 			'detay'       => $detay,
+			'filtreler'   => qrms_analitik_filtre_kullanimi( $olaylar ),
 		);
 	}
 }
@@ -460,6 +560,19 @@ if ( ! function_exists( 'qrms_analitik_sayfa_urunler' ) ) {
 					<div class="qrms-an-card qrms-an-skeleton"></div>
 					<div class="qrms-an-card qrms-an-skeleton"></div>
 				</div>
+			</div>
+
+			<div class="qrms-an-panel">
+				<div class="qrms-an-panel-header">
+					<h2 class="qrms-an-panel-title">
+						<span class="dashicons dashicons-filter" aria-hidden="true"></span>
+						<?php esc_html_e( 'Filtre Kullanımı', 'qrms' ); ?>
+					</h2>
+				</div>
+				<p class="qrms-an-panel-note">
+					<?php esc_html_e( 'Menüdeki "Filtrele" panelinde Uygula\'ya basıldığında seçili her filtre bir kez sayılır. Müşterilerin en çok hangi diyet, alerjen ve fiyat ihtiyacıyla geldiğini gösterir.', 'qrms' ); ?>
+				</p>
+				<div id="qrms-an-filters"></div>
 			</div>
 		</div>
 		<?php

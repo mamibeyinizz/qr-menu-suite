@@ -56,7 +56,7 @@ trait QRMS_HFB_Admin {
 		}
 		?>
 		<div class="wrap qrms-wrap hfb-wrap">
-			<h1 class="qrms-title"><?php esc_html_e( 'Header Footer Builder', 'qrms' ); ?></h1>
+			<h1 class="qrms-title"><?php esc_html_e( 'Header & Footer', 'qrms' ); ?></h1>
 
 			<p class="qrms-muted">
 				<?php esc_html_e( 'Header, footer ve hamburger menüsünün içeriğini ve tasarımını yapılandırın. Elementor Shortcode widget\'ına [hfb_header] ve [hfb_footer] kısa kodlarını ekleyin.', 'qrms' ); ?>

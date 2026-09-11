@@ -56,7 +56,7 @@ qrms_test(
 		qrms_assert_contains( 'qrms-hub-grid', $html, 'ortak kart ızgarası' );
 		qrms_assert_contains( 'page=' . QRMS_GUVENLIK_OTURUM_SAYFA, $html, 'oturum kartı' );
 		qrms_assert_contains( 'page=' . QRMS_GUVENLIK_FIREBASE_SAYFA, $html, 'Firebase kartı' );
-		qrms_assert_contains( 'Güvenlik Ayarı', $html, 'hub başlığı' );
+		qrms_assert_contains( 'Masa Oturumu Güvenliği', $html, 'hub başlığı' );
 	}
 );
 

@@ -20,6 +20,7 @@ if ( ! defined( 'RMA_PLUGIN_URL' ) ) {
     define( 'RMA_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 }
 
+require_once __DIR__ . '/includes/class-filtre.php';
 require_once __DIR__ . '/includes/trait-helpers.php';
 require_once __DIR__ . '/includes/trait-post-types.php';
 require_once __DIR__ . '/includes/trait-admin-columns.php';

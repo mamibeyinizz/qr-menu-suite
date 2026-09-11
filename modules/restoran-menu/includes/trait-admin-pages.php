@@ -39,8 +39,9 @@ trait RMA_Admin_Pages_Trait {
                 'icon'       => 'dashicons-slides',
             ],
             'qrms-rm-kampanya' => [
-                'title'      => 'Fiyat Kampanyaları',
-                'menu_title' => 'Fiyat Kampanyaları',
+                'title'      => 'Kampanyalar',
+                'menu_title' => 'Kampanyalar',
+                'hub_title'  => 'Kampanyalar',
                 'render'     => 'render_campaign_page',
                 'desc'       => __( 'Ürün fiyatlarına geçici indirim veya zam uygulayın; kampanya bitince eski fiyatlara dönün.', 'qrms' ),
                 'icon'       => 'dashicons-tag',
@@ -54,8 +55,8 @@ trait RMA_Admin_Pages_Trait {
                 'icon'       => 'dashicons-images-alt2',
             ],
             'qrms-rm-secenekler' => [
-                'title'      => 'Ekstralar ve Rozetler',
-                'menu_title' => 'Ekstralar ve Rozetler',
+                'title'      => 'Ekstralar & Ürün Rozetleri',
+                'menu_title' => 'Ekstralar & Ürün Rozetleri',
                 'hub_title'  => __( 'Ekstralar & Etiketler', 'qrms' ),
                 'render'     => 'render_secenekler_page',
                 'desc'       => __( 'Ürün seçeneklerini ve menüde göstereceğiniz etiketleri yönetin.', 'qrms' ),
@@ -70,8 +71,8 @@ trait RMA_Admin_Pages_Trait {
                 'icon'       => 'dashicons-admin-tools',
             ],
             'qrms-rm-urunum-yok' => [
-                'title'      => 'Ürünüm Yok',
-                'menu_title' => 'Ürünüm Yok',
+                'title'      => 'Tükenen Ürünler',
+                'menu_title' => 'Tükenen Ürünler',
                 'hub_title'  => __( 'Ürün Durumu', 'qrms' ),
                 'render'     => 'render_urunum_yok_page',
                 'desc'       => __( 'Tükenen ürünleri yönetin ve belirlediğiniz saatte otomatik olarak yeniden satışa açın.', 'qrms' ),

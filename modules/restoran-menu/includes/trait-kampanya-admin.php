@@ -7,8 +7,10 @@
  * yapılır (modüldeki vitrin ekranının deseninin aynısı). Yalnızca CANLI
  * ÖNİZLEME AJAX'tır: kaydedilmemiş form değerleriyle çalışması gerekir.
  *
- * Fiyat verisine dokunulmaz. Ekranın yaptığı tek yazma işi kampanya kaydı,
- * aktivasyon anındaki fiyat fotoğrafı ve `_qrms_orijinal_fiyat` yedeğidir.
+ * İndirim akışında fiyat verisine dokunulmaz; yalnızca kural kaydı ve
+ * aktivasyon anındaki fiyat fotoğrafı yazılır. Zam akışında fiyatlar
+ * kalıcı olarak `rma_price` / `_qmo_kombin_fiyat` alanına yazılır ve kayıt
+ * `status = applied` ile tarihçe olarak saklanır.
  *
  * İSİMLENDİRME: bu dosya YALNIZCA "Fiyat Kampanyaları"dır (toplu zam/indirim).
  * Banner GÖRSELLERİ artık "Kampanya" adıyla ayrı bir ekranda yönetilir ve bu
@@ -75,11 +77,12 @@ trait RMA_Kampanya_Admin_Trait {
         $durum = isset( $_GET['kmp_msg'] ) ? sanitize_key( wp_unslash( $_GET['kmp_msg'] ) ) : '';
 
         $mesajlar = array(
-            'kaydedildi' => array( 'success', 'Kampanya kaydedildi. Uygulamak için "Kampanyayı Başlat" deyin.' ),
-            'uygulandi'  => array( 'success', 'Kampanya uygulandı. Menüdeki fiyatlar bu andan itibaren yeni kurala göre görünüyor.' ),
-            'geri'       => array( 'success', 'Kampanya geri alındı. Tüm ürünler orijinal fiyatlarına döndü.' ),
-            'silindi'    => array( 'success', 'Kampanya silindi.' ),
-            'hata'       => array( 'error', 'Kampanya kaydedilemedi. Lütfen tekrar deneyin.' ),
+            'kaydedildi'    => array( 'success', 'Kampanya kaydedildi. Uygulamak için "Kampanyayı Başlat" deyin.' ),
+            'uygulandi'     => array( 'success', 'Kampanya uygulandı. Menüdeki fiyatlar bu andan itibaren yeni kurala göre görünüyor.' ),
+            'zam_uygulandi' => array( 'success', 'Zam uygulandı. Seçilen ürünlerin fiyatları kalıcı olarak güncellendi.' ),
+            'geri'          => array( 'success', 'Kampanya geri alındı. Tüm ürünler orijinal fiyatlarına döndü.' ),
+            'silindi'       => array( 'success', 'Kampanya silindi.' ),
+            'hata'          => array( 'error', 'Kampanya kaydedilemedi. Lütfen tekrar deneyin.' ),
         );
 
         if ( ! isset( $mesajlar[ $durum ] ) ) {
@@ -105,7 +108,7 @@ trait RMA_Kampanya_Admin_Trait {
     private function render_kampanya_list() {
         $this->page_header(
             'Fiyat Kampanyaları',
-            'Menüdeki fiyatları toplu olarak zamlayın ya da indirin. Ürünlerinizin orijinal fiyatı hiçbir zaman değişmez — kampanyayı kaldırdığınız anda eski fiyatlara dönülür.'
+            'Menüdeki fiyatları toplu olarak zamlayın ya da indirin. Zam kalıcıdır; indirim kampanyaları geri alınabilir kural olarak çalışır.'
         );
 
         $this->kampanya_notice();
@@ -115,7 +118,8 @@ trait RMA_Kampanya_Admin_Trait {
         $gecmis = array();
 
         foreach ( $hepsi as $k ) {
-            if ( 'active' === $k->status && null === $aktif ) {
+            // Yalnızca indirim kampanyaları "aktif kural" olarak gösterilir.
+            if ( 'active' === $k->status && 'decrease' === ( $k->direction ?? '' ) && null === $aktif ) {
                 $aktif = $k;
                 continue;
             }
@@ -180,9 +184,18 @@ trait RMA_Kampanya_Admin_Trait {
                         </tr>
                     </thead>
                     <tbody>
-                        <?php foreach ( $gecmis as $k ) : ?>
-                            <tr>
-                                <td data-label="Kampanya"><strong><?php echo esc_html( $k->title ); ?></strong></td>
+                        <?php foreach ( $gecmis as $k ) :
+                            $zam_kaydi = 'applied' === $k->status && 'increase' === ( $k->direction ?? '' );
+                            ?>
+                            <tr<?php echo $zam_kaydi ? ' class="rma-kmp-zam-kayit"' : ''; ?>>
+                                <td data-label="Kampanya">
+                                    <strong><?php echo esc_html( $k->title ); ?></strong>
+                                    <?php if ( $zam_kaydi ) : ?>
+                                        <span class="rma-kmp-rozet rma-kmp-rozet-kalici">🔺 Zam (kalıcı, <?php echo esc_html( $this->kampanya_tarih( $k->applied_at ) ); ?>)</span>
+                                    <?php elseif ( 'applied' === $k->status ) : ?>
+                                        <span class="rma-kmp-rozet rma-kmp-rozet-kalici">Uygulandı — kalıcı</span>
+                                    <?php endif; ?>
+                                </td>
                                 <td data-label="Kural"><?php echo esc_html( RMA_Kampanya_DB::kural_metni( $k ) ); ?></td>
                                 <td data-label="Kapsam"><?php echo esc_html( $this->kampanya_kapsam_metni( $k ) ); ?></td>
                                 <td data-label="Son çalıştığı zaman">
@@ -193,9 +206,11 @@ trait RMA_Kampanya_Admin_Trait {
                                     ?>
                                 </td>
                                 <td data-label="İşlemler" class="rma-kmp-islem">
-                                    <a class="button" href="<?php echo esc_url( $this->kampanya_url( array( 'kampanya' => (int) $k->id ) ) ); ?>">Düzenle</a>
+                                    <?php if ( ! $zam_kaydi && 'applied' !== $k->status ) : ?>
+                                        <a class="button" href="<?php echo esc_url( $this->kampanya_url( array( 'kampanya' => (int) $k->id ) ) ); ?>">Düzenle</a>
+                                    <?php endif; ?>
                                     <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>"
-                                          onsubmit="return confirm('Bu kampanya kaydı silinsin mi? Ürün fiyatlarınız etkilenmez.');">
+                                          onsubmit="return confirm('<?php echo esc_js( $zam_kaydi ? 'Bu zam kaydı silinsin mi? Ürün fiyatları değişmez.' : 'Bu kampanya kaydı silinsin mi? Ürün fiyatlarınız etkilenmez.' ); ?>');">
                                         <?php wp_nonce_field( $this->kampanya_nonce_action ); ?>
                                         <input type="hidden" name="action" value="rma_kampanya_sil">
                                         <input type="hidden" name="kampanya_id" value="<?php echo (int) $k->id; ?>">
@@ -290,6 +305,11 @@ trait RMA_Kampanya_Admin_Trait {
         $id   = $yeni ? 0 : (int) $kayit->id;
         $v    = RMA_Kampanya_DB::varsayilanlar();
 
+        if ( ! $yeni && 'applied' === $kayit->status ) {
+            wp_safe_redirect( $this->kampanya_url() );
+            exit;
+        }
+
         $deger = array(
             'title'          => $yeni ? '' : $kayit->title,
             'calc_type'      => $yeni ? $v['calc_type'] : $kayit->calc_type,
@@ -301,8 +321,9 @@ trait RMA_Kampanya_Admin_Trait {
             'show_old_price' => $yeni ? 1 : (int) $kayit->show_old_price,
         );
 
-        $aktif_mi   = ! $yeni && 'active' === $kayit->status;
-        $baska      = RMA_Kampanya_DB::aktif_kayit();
+        $zam_modu = 'increase' === $deger['direction'];
+        $aktif_mi = ! $yeni && 'active' === $kayit->status;
+        $baska    = RMA_Kampanya_DB::aktif_kayit();
         $kategoriler = get_terms( array( 'taxonomy' => 'rma_category', 'hide_empty' => false ) );
 
         if ( is_wp_error( $kategoriler ) ) {
@@ -312,8 +333,12 @@ trait RMA_Kampanya_Admin_Trait {
         $urunler = $this->kampanya_urun_listesi();
 
         $this->page_header(
-            $yeni ? 'Yeni Fiyat Kampanyası' : 'Kampanyayı Düzenle',
-            'Kuralı ve kapsamı belirleyin, önizlemede hangi ürünün kaç liraya çıkacağını görün, sonra uygulayın.'
+            $yeni
+                ? ( $zam_modu ? 'Toplu Zam Uygula' : 'Yeni Fiyat Kampanyası' )
+                : ( $zam_modu ? 'Zam Kaydını Düzenle' : 'Kampanyayı Düzenle' ),
+            $zam_modu
+                ? 'Kapsamı ve zam oranını belirleyin, önizlemede hangi ürünün kaç liraya çıkacağını görün, sonra uygulayın. Bu işlem geri alınamaz.'
+                : 'Kuralı ve kapsamı belirleyin, önizlemede hangi ürünün kaç liraya çıkacağını görün, sonra uygulayın.'
         );
 
         $this->kampanya_notice();
@@ -326,13 +351,13 @@ trait RMA_Kampanya_Admin_Trait {
             </div>
         <?php endif; ?>
 
-        <?php if ( $baska && (int) $baska->id !== $id ) : ?>
+        <?php if ( ! $zam_modu && $baska && (int) $baska->id !== $id ) : ?>
             <div class="notice notice-warning inline rma-kmp-uyari">
                 <p><strong>"<?php echo esc_html( $baska->title ); ?>"</strong> kampanyası şu an aktif. Bu kampanyayı başlatırsanız o kendiliğinden kapanır — aynı anda yalnızca bir kampanya çalışır, böylece indirimler üst üste binmez.</p>
             </div>
         <?php endif; ?>
 
-        <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" id="rma-kmp-form">
+        <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" id="rma-kmp-form" data-zam-modu="<?php echo $zam_modu ? '1' : '0'; ?>">
             <?php wp_nonce_field( $this->kampanya_nonce_action ); ?>
             <input type="hidden" name="action" value="rma_kampanya_kaydet">
             <input type="hidden" name="kampanya_id" value="<?php echo (int) $id; ?>">
@@ -341,9 +366,9 @@ trait RMA_Kampanya_Admin_Trait {
             <input type="hidden" name="uygula" id="rma-kmp-uygula" value="<?php echo $aktif_mi ? '1' : '0'; ?>">
 
             <div class="rma-card">
-                <h2 class="rma-card-title">1. Kampanya Adı</h2>
-                <p class="rma-card-desc">Yalnızca yönetim panelinde görünür; kampanyaları birbirinden ayırmanız için.</p>
-                <input type="text" name="title" class="regular-text" value="<?php echo esc_attr( $deger['title'] ); ?>" placeholder="Örn. Ocak Zammı, Hafta Sonu İndirimi">
+                <h2 class="rma-card-title"><?php echo $zam_modu ? '1. Zam Kaydı Adı' : '1. Kampanya Adı'; ?></h2>
+                <p class="rma-card-desc">Yalnızca yönetim panelinde görünür; kayıtları birbirinden ayırmanız için.</p>
+                <input type="text" name="title" class="regular-text" value="<?php echo esc_attr( $deger['title'] ); ?>" placeholder="<?php echo esc_attr( $zam_modu ? 'Örn. Ocak Zammı' : 'Örn. Ocak Zammı, Hafta Sonu İndirimi' ); ?>">
             </div>
 
             <div class="rma-card">
@@ -461,7 +486,7 @@ trait RMA_Kampanya_Admin_Trait {
                 <input type="hidden" name="scope_ids" id="rma-kmp-scope-ids" value="<?php echo esc_attr( implode( ',', $deger['scope_ids'] ) ); ?>">
             </div>
 
-            <div class="rma-card">
+            <div class="rma-card rma-kmp-indirim-ekstra"<?php echo $zam_modu ? ' style="display:none;"' : ''; ?>>
                 <h2 class="rma-card-title">4. Müşteri Ne Görsün?</h2>
                 <label class="rma-check-row">
                     <input type="checkbox" name="show_old_price" value="1" <?php checked( 1, $deger['show_old_price'] ); ?>>
@@ -471,8 +496,8 @@ trait RMA_Kampanya_Admin_Trait {
             </div>
 
             <div class="rma-card" id="rma-kmp-onizleme-kart">
-                <h2 class="rma-card-title">5. Önizleme <span class="rma-kmp-zorunlu">— uygulamadan önce zorunlu</span></h2>
-                <p class="rma-card-desc">Hangi üründe fiyatın kaç liraya çıkacağını burada görün. Kampanyayı başlatma butonu, önizlemeyi görene kadar kapalı kalır.</p>
+                <h2 class="rma-card-title"><?php echo $zam_modu ? '4. Önizleme' : '5. Önizleme'; ?> <span class="rma-kmp-zorunlu">— uygulamadan önce zorunlu</span></h2>
+                <p class="rma-card-desc rma-kmp-onizleme-aciklama">Hangi üründe fiyatın kaç liraya çıkacağını burada görün. <?php echo $zam_modu ? 'Uygula' : 'Kampanyayı başlatma'; ?> butonu, önizlemeyi görene kadar kapalı kalır.</p>
 
                 <p>
                     <button type="button" class="button button-secondary" id="rma-kmp-onizle">Önizlemeyi Göster</button>
@@ -482,6 +507,10 @@ trait RMA_Kampanya_Admin_Trait {
                 <div id="rma-kmp-onizleme"></div>
             </div>
 
+            <div class="notice notice-warning inline rma-kmp-zam-uyari" id="rma-kmp-zam-uyari"<?php echo $zam_modu ? '' : ' style="display:none;"'; ?>>
+                <p id="rma-kmp-zam-metin">Bu işlem geri alınamaz. Önizleme alındığında etkilenecek ürün sayısı burada görünecek.</p>
+            </div>
+
             <p class="submit rma-kmp-submit">
                 <?php
                 // ÇALIŞAN kampanyada "yalnızca kaydet" YOKTUR: kayıt aynı anda
@@ -489,10 +518,11 @@ trait RMA_Kampanya_Admin_Trait {
                 // geçmeli ve etkilenen ürün fotoğrafı tazelenmelidir.
                 if ( ! $aktif_mi ) :
                     ?>
-                    <button type="submit" class="button" id="rma-kmp-kaydet">Yalnızca Kaydet</button>
+                    <button type="submit" class="button" id="rma-kmp-kaydet"><?php echo $zam_modu ? 'Taslak Kaydet' : 'Yalnızca Kaydet'; ?></button>
                 <?php endif; ?>
-                <button type="submit" class="button button-primary" id="rma-kmp-uygula-btn" disabled>
-                    <?php echo $aktif_mi ? 'Kaydet ve Güncelle' : 'Kampanyayı Başlat'; ?>
+                <button type="submit" class="button button-primary" id="rma-kmp-uygula-btn" disabled
+                        data-metin-zam="Uygula" data-metin-indirim="<?php echo esc_attr( $aktif_mi ? 'Kaydet ve Güncelle' : 'Kampanyayı Başlat' ); ?>">
+                    <?php echo $zam_modu ? 'Uygula' : ( $aktif_mi ? 'Kaydet ve Güncelle' : 'Kampanyayı Başlat' ); ?>
                 </button>
                 <a class="button" href="<?php echo esc_url( $this->kampanya_url() ); ?>">Vazgeç</a>
             </p>
@@ -771,31 +801,71 @@ trait RMA_Kampanya_Admin_Trait {
         }
 
         if ( $uygula ) {
-            $this->kampanya_uygula( $kayit_id, $ayarlar );
+            if ( 'increase' === $ayarlar['direction'] ) {
+                $this->kampanya_zam_uygula( $kayit_id, $ayarlar );
+                $mesaj = 'zam_uygulandi';
+            } else {
+                $this->kampanya_indirim_uygula( $kayit_id, $ayarlar );
+                $mesaj = 'uygulandi';
+            }
+        } else {
+            $mesaj = 'kaydedildi';
         }
 
         $this->kampanya_sonrasi_temizlik();
 
-        wp_safe_redirect(
-            $this->kampanya_url( array( 'kmp_msg' => $uygula ? 'uygulandi' : 'kaydedildi' ) )
-        );
+        wp_safe_redirect( $this->kampanya_url( array( 'kmp_msg' => $mesaj ) ) );
         exit;
     }
 
     /**
-     * Kampanyayı aktifleştirir ve aktivasyon anının fiyat fotoğrafını çeker.
+     * Zam uygular: fiyatları kalıcı yazır, kaydı tarihçe olarak işaretler.
      *
-     * Fotoğraf ve `_qrms_orijinal_fiyat` yedeği fiyatı DEĞİŞTİRMEZ; ikisi de
-     * denetim/kurtarma amaçlıdır. Menüde görünen fiyat her zaman orijinal +
+     * Kapsam uygulama anında dondurulur; sonradan eklenen ürünler etkilenmez.
+     *
+     * @param int   $kayit_id Kampanya ID.
+     * @param array $ayarlar  Temizlenmiş ayarlar.
+     * @return void
+     */
+    private function kampanya_zam_uygula( $kayit_id, array $ayarlar ) {
+        $sonuc       = $this->kampanya_etkilenenler( $ayarlar );
+        $anlik       = array();
+        $fiyatlar    = array();
+        $donmus_idler = array();
+
+        foreach ( $sonuc['satirlar'] as $satir ) {
+            if ( 'ok' !== $satir['durum'] || null === $satir['orijinal'] || null === $satir['yeni'] ) {
+                continue;
+            }
+
+            $anlik[ $satir['id'] ]        = $satir['orijinal'];
+            $donmus_idler[]               = (int) $satir['id'];
+            $fiyatlar[]                   = array(
+                'product_id' => (int) $satir['id'],
+                'fiyat'      => (float) $satir['yeni'],
+                'kombin'     => (bool) $satir['kombin'],
+            );
+        }
+
+        RMA_Kampanya_DB::orijinal_yedekleri_toplu_yaz( $anlik );
+        RMA_Kampanya_DB::fiyatlari_toplu_yaz( $fiyatlar );
+        RMA_Kampanya_DB::anlik_yaz( $kayit_id, $anlik );
+        RMA_Kampanya_DB::zam_uygulandi( $kayit_id, count( $donmus_idler ), $donmus_idler );
+    }
+
+    /**
+     * İndirim kampanyasını aktifleştirir ve aktivasyon anının fiyat fotoğrafını çeker.
+     *
+     * Fiyat verisine dokunulmaz; menüde görünen fiyat her render'da orijinal +
      * kural hesabından gelir.
      *
      * @param int   $kayit_id Kampanya ID.
      * @param array $ayarlar  Temizlenmiş ayarlar.
      * @return void
      */
-    private function kampanya_uygula( $kayit_id, array $ayarlar ) {
-        $sonuc  = $this->kampanya_etkilenenler( $ayarlar );
-        $anlik  = array();
+    private function kampanya_indirim_uygula( $kayit_id, array $ayarlar ) {
+        $sonuc = $this->kampanya_etkilenenler( $ayarlar );
+        $anlik = array();
 
         foreach ( $sonuc['satirlar'] as $satir ) {
             if ( null === $satir['orijinal'] ) {
@@ -803,12 +873,6 @@ trait RMA_Kampanya_Admin_Trait {
             }
 
             $anlik[ $satir['id'] ] = $satir['orijinal'];
-
-            // Write-once: orijinal fiyat yedeği bir kez yazılır, ASLA
-            // üzerine yazılmaz. Fiyat verisiyle oynayan ikinci güvence katmanı.
-            if ( '' === (string) get_post_meta( $satir['id'], RMA_Kampanya_DB::ORIJINAL_META, true ) ) {
-                update_post_meta( $satir['id'], RMA_Kampanya_DB::ORIJINAL_META, $satir['orijinal'] );
-            }
         }
 
         RMA_Kampanya_DB::anlik_yaz( $kayit_id, $anlik );

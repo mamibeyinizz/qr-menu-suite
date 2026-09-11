@@ -40,27 +40,29 @@ class QRMS_Helpers {
 	 * Modül slug -> görünen (Türkçe) isim eşleşmesi.
 	 *
 	 * İsimler modülün NE YAPTIĞINI söyler, hangi eklentiden geldiğini değil:
-	 * kullanıcı sol menüde "QR Analiz" değil "İstatistikler" arar. Slug'lar
-	 * (lisans sözleşmesinin ve kayıtlı option'ların anahtarı) hiç değişmez;
-	 * yalnızca bu tablodaki görünen adlar sadeleşti.
+	 * kullanıcı sol menüde "QR Analiz" değil "Menü Analizleri" arar. Dil
+	 * restoran sahibinindir — "modül", "builder", "feedback" gibi teknik
+	 * sözcükler kullanılmaz. Slug'lar (lisans sözleşmesinin ve kayıtlı
+	 * option'ların anahtarı) hiç değişmez; yalnızca bu tablodaki görünen
+	 * adlar sadeleşti.
 	 *
 	 * @return array<string,string> Slug => isim.
 	 */
 	public static function get_modules() {
 		return array(
-			'restoran-menu'            => __( 'Restoran Menü', 'qrms' ),
-			'yorum-feedback'           => __( 'Yorum & Feedback', 'qrms' ),
-			'qr-masa'                  => __( 'QR Kod Oluştur', 'qrms' ),
-			'qr-analiz'                => __( 'İstatistikler', 'qrms' ),
+			'restoran-menu'            => __( 'Menü Yönetimi', 'qrms' ),
+			'yorum-feedback'           => __( 'Yorumlar & Geri Bildirim', 'qrms' ),
+			'qr-masa'                  => __( 'QR Kodlar', 'qrms' ),
+			'qr-analiz'                => __( 'Menü Analizleri', 'qrms' ),
 			'qr-galeri'                => __( 'Fotoğraf Galerisi', 'qrms' ),
-			'qr-ceviri'                => __( 'Dil / Çeviri Ayarları', 'qrms' ),
-			'qr-chatbot'               => __( 'Chatbot Asistan', 'qrms' ),
+			'qr-ceviri'                => __( 'Diller & Çeviriler', 'qrms' ),
+			'qr-chatbot'               => __( 'AI Menü Asistanı', 'qrms' ),
 			'qr-calisma-saatleri'      => __( 'Çalışma Saatleri', 'qrms' ),
-			'qr-masa-oturum-guvenligi' => __( 'Güvenlik Ayarı', 'qrms' ),
-			'qr-acilis-ekrani'         => __( 'Açılış Ekranı', 'qrms' ),
-			'header-footer-builder'  => __( 'Header Footer Builder', 'qrms' ),
+			'qr-masa-oturum-guvenligi' => __( 'Masa Oturumu Güvenliği', 'qrms' ),
+			'qr-acilis-ekrani'         => __( 'Karşılama Ekranı', 'qrms' ),
+			'header-footer-builder'  => __( 'Header & Footer', 'qrms' ),
 			'qr-servis-paneli'         => __( 'Servis Paneli', 'qrms' ),
-			'qr-menu-muhendisligi'     => __( 'Menü Mühendisliği', 'qrms' ),
+			'qr-menu-muhendisligi'     => __( 'Menü Performansı', 'qrms' ),
 		);
 	}
 
@@ -79,55 +81,55 @@ class QRMS_Helpers {
 		return array(
 			'restoran-menu'            => array(
 				'icon' => 'dashicons-food',
-				'desc' => __( 'Ürünler, kategoriler, fiyatlar ve menünün görünümü.', 'qrms' ),
+				'desc' => __( 'Ürünlerinizi, kategorilerinizi, fiyatlarınızı ve menü görünümünüzü yönetin.', 'qrms' ),
 			),
 			'yorum-feedback'           => array(
 				'icon' => 'dashicons-testimonial',
-				'desc' => __( 'Misafir yorumları, puanlar ve geri bildirim formları.', 'qrms' ),
+				'desc' => __( 'Misafir yorumlarını, puanlarını ve geri bildirimlerini yönetin.', 'qrms' ),
 			),
 			'qr-masa'                  => array(
 				'icon' => 'dashicons-editor-table',
-				'desc' => __( 'Masa QR kodları, oturumlar ve masaya özel bağlantılar.', 'qrms' ),
+				'desc' => __( 'Masalarınız için QR kod oluşturun, yönetin ve yazdırın.', 'qrms' ),
 			),
 			'qr-analiz'                => array(
 				'icon' => 'dashicons-chart-bar',
-				'desc' => __( 'Menü okutmaları, en çok bakılan ürünler ve raporlar.', 'qrms' ),
+				'desc' => __( 'Menü görüntülemelerini, ürün ilgisini ve müşteri davranışlarını analiz edin.', 'qrms' ),
 			),
 			'qr-galeri'                => array(
 				'icon' => 'dashicons-format-gallery',
-				'desc' => __( 'Restoranınızın fotoğraf galerisi ve albümleri.', 'qrms' ),
+				'desc' => __( 'Restoranınızın fotoğraflarını ve galeri bölümlerini yönetin.', 'qrms' ),
 			),
 			'qr-ceviri'                => array(
 				'icon' => 'dashicons-translation',
-				'desc' => __( 'Menünün yabancı dillerdeki karşılıkları.', 'qrms' ),
+				'desc' => __( 'Menünüzü farklı dillerde yayınlayın ve çevirilerinizi yönetin.', 'qrms' ),
 			),
 			'qr-chatbot'               => array(
 				'icon' => 'dashicons-format-chat',
-				'desc' => __( 'Misafirin sorularını yanıtlayan sohbet asistanı.', 'qrms' ),
+				'desc' => __( 'Misafirlerinizin menünüz hakkındaki sorularını yanıtlayan akıllı asistan.', 'qrms' ),
 			),
 			'qr-calisma-saatleri'      => array(
 				'icon' => 'dashicons-clock',
-				'desc' => __( 'Açılış–kapanış saatleri ve tatil günleri.', 'qrms' ),
+				'desc' => __( 'Restoranınızın açılış, kapanış ve tatil günlerini yönetin.', 'qrms' ),
 			),
 			'qr-masa-oturum-guvenligi' => array(
 				'icon' => 'dashicons-lock',
-				'desc' => __( 'Masa oturumunun güvenlik limitleri ve kimlik ayarları.', 'qrms' ),
+				'desc' => __( 'Masa oturumlarını ve müşteri erişimini güvenli şekilde yönetin.', 'qrms' ),
 			),
 			'qr-acilis-ekrani'         => array(
 				'icon' => 'dashicons-visibility',
-				'desc' => __( 'Menü açılmadan önce görünen karşılama ekranı.', 'qrms' ),
+				'desc' => __( 'Menü açılmadan önce misafirlerinize gösterilen karşılama ekranını özelleştirin.', 'qrms' ),
 			),
 			'header-footer-builder'  => array(
 				'icon' => 'dashicons-layout',
-				'desc' => __( 'Elementor uyumlu header ve footer oluşturucu; kısa kodlarla sayfaya yerleştirin.', 'qrms' ),
+				'desc' => __( 'Elementor ile menünüz için özel üst ve alt alanlar oluşturun.', 'qrms' ),
 			),
 			'qr-servis-paneli'         => array(
 				'icon' => 'dashicons-bell',
-				'desc' => __( 'Gelen siparişler ile garson ve hesap çağrılarının canlı takip ekranı.', 'qrms' ),
+				'desc' => __( 'Sipariş, garson ve hesap çağrılarını canlı olarak yönetin.', 'qrms' ),
 			),
 			'qr-menu-muhendisligi'     => array(
 				'icon' => 'dashicons-chart-pie',
-				'desc' => __( 'Hangi ürün kazandırıyor, hangisi kaybettiriyor — maliyet ve kâr analizi.', 'qrms' ),
+				'desc' => __( 'Hangi ürünlerin daha çok ilgi ve kazanç sağladığını görün.', 'qrms' ),
 			),
 		);
 	}

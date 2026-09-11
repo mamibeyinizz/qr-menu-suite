@@ -2,10 +2,12 @@
 /**
  * Toplu Fiyat Kampanyası — fiyat çözümleme ve ön yüz gösterimi.
  *
- * Menüde görünen fiyat, ürünün meta verisinden DEĞİL, her render'da
- * "orijinal fiyat + aktif kampanya kuralı" birleştirilerek üretilir. Ürünün
- * `rma_price` (kombin ürünlerde `_qmo_kombin_fiyat`) alanına hiçbir zaman
- * yazılmaz; kampanya kaldırıldığında fiyatlar aynı saniyede orijinaline döner.
+ * İndirim kampanyasında menüde görünen fiyat, her render'da "orijinal fiyat +
+ * aktif indirim kuralı" birleştirilerek üretilir; `rma_price` alanına yazılmaz
+ * ve kampanya kaldırıldığında fiyatlar anında orijinaline döner.
+ *
+ * Zam işlemleri bu sınıftan geçmez: fiyatlar doğrudan `rma_price` (kombin
+ * ürünlerde `_qmo_kombin_fiyat`) alanına kalıcı yazılır (bkz. trait-kampanya-admin).
  *
  * Modülün DÖRT fiyat gösterim noktası (menü kartı, ürün modalı, ürün vitrini,
  * öne çıkan slider) bu sınıfın tek girişini kullanır: fiyat_html().

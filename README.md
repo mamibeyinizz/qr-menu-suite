@@ -92,28 +92,31 @@ kartlardan** gidilir. Satırlar alt menü açmaz — yalnızca katlanabilir
 
 ```
 QR Menü
-├ GENEL
-│ ├ Genel Bakış
-│ └ Genel Ayarlar
-├ MENÜ YÖNETİMİ
-│ ├ Restoran Menü               → hub (12 kart)
-│ └ Yorum & Feedback            → hub (7 kart + özet sayaçlar)
-├ ARAÇLAR
-│ ├ Servis Paneli               → doğrudan canlı sipariş/çağrı panosu
-│ ├ QR Kod Oluştur              → doğrudan Masalar ekranı
-│ ├ İstatistikler               → doğrudan Menü Analitiği
-│ ├ Menü Mühendisliği           → hub (4 kart + özet sayaçlar)
+├ MENÜ
+│ ├ Menü Yönetimi               → hub (12 kart)
+│ ├ QR Kodlar                   → doğrudan Masalar ekranı
+│ └ Servis Paneli               → doğrudan canlı sipariş/çağrı panosu
+├ ANALİZ
+│ ├ Menü Analizleri             → doğrudan Menü Analitiği
+│ ├ Menü Performansı            → hub (4 kart + özet sayaçlar)
+│ └ Yorumlar & Geri Bildirim    → hub (7 kart + özet sayaçlar)
+├ MÜŞTERİ DENEYİMİ
+│ ├ Diller & Çeviriler          → doğrudan Çeviri ekranı
+│ ├ AI Menü Asistanı            → doğrudan Chatbot ayarları
 │ ├ Fotoğraf Galerisi           → hub (3 kart)
-│ ├ Dil / Çeviri Ayarları       → doğrudan Çeviri ekranı
-│ ├ Chatbot Asistan             → doğrudan Chatbot ayarları
+│ ├ Karşılama Ekranı            → hub (5 kart + özet sayaçlar)
 │ └ Çalışma Saatleri            → doğrudan Saat tablosu
-├ GÖRÜNÜM & ERİŞİM
-│ ├ Açılış Ekranı               → hub (5 kart + özet sayaçlar)
-│ └ Header Footer Builder       → doğrudan HFB ekranı
-└ GELİŞMİŞ
-  ├ Güvenlik Ayarı              → hub (2 kart)
-  └ Kısa Kodlar                 → modüllerin kısa kod rehberi
+├ GÖRÜNÜM
+│ └ Header & Footer             → doğrudan HFB ekranı
+└ SİSTEM
+  ├ Genel Bakış
+  ├ Masa Oturumu Güvenliği      → hub (2 kart)
+  ├ Entegrasyonlar & Kısa Kodlar → modüllerin kısa kod rehberi
+  └ Sistem Ayarları
 ```
+
+Görünen adlar restoran sahibinin dilindedir; modül **slug'ları** (lisans
+sözleşmesinin ve kayıtlı option'ların anahtarı) değişmez.
 
 Hub, modülün **ikiden fazla ekranı olduğunda** vardır. Tek ekranlı modüllerde
 araya bir sayfa koymak fazladan tık demek olurdu; modül satırı doğrudan o
@@ -123,11 +126,11 @@ ekranı açar.
 
 | Kategori | Renk | İçindekiler |
 | --- | --- | --- |
-| Genel | `#9ba7b4` (nötr gri) | Genel Bakış, Genel Ayarlar |
-| Menü Yönetimi | `#5cb0f0` (gök mavisi) | Restoran Menü, Yorum & Feedback |
-| Araçlar | `#35d1b4` (turkuaz) | Servis Paneli, QR Kod Oluştur, İstatistikler, Menü Mühendisliği, Fotoğraf Galerisi, Dil / Çeviri Ayarları, Chatbot Asistan, Çalışma Saatleri |
-| Görünüm & Erişim | `#f27cb8` (pembe) | Açılış Ekranı, Header Footer Builder |
-| Gelişmiş | `#f59547` (turuncu) | Güvenlik Ayarı, Kısa Kodlar |
+| Menü | `#5cb0f0` (gök mavisi) | Menü Yönetimi, QR Kodlar, Servis Paneli |
+| Analiz | `#35d1b4` (turkuaz) | Menü Analizleri, Menü Performansı, Yorumlar & Geri Bildirim |
+| Müşteri Deneyimi | `#f27cb8` (pembe) | Diller & Çeviriler, AI Menü Asistanı, Fotoğraf Galerisi, Karşılama Ekranı, Çalışma Saatleri |
+| Görünüm | `#dba617` (amber) | Header & Footer |
+| Sistem | `#9ba7b4` (nötr gri) | Genel Bakış, Masa Oturumu Güvenliği, Entegrasyonlar & Kısa Kodlar, Sistem Ayarları |
 
 Gruplama, sıra ve renkler **tek yerde**, `QRMS_Admin::get_menu_groups()`
 içindedir (siteye özgü değişiklik için `qrms_menu_groups` filtresi vardır).
@@ -239,14 +242,16 @@ içindedir.
 ### Genel Bakış — kategorili kart ızgarası
 
 `Genel Bakış` (`admin.php?page=qrms-overview`) modülleri düz bir liste yerine
-**dört kategoride** kart ızgarası olarak gösterir:
+**sol menüyle aynı beş kategoride** kart ızgarası olarak gösterir
+(taksonomi tektir: `QRMS_Admin::get_nav_groups()`):
 
 | Kategori | İçindekiler |
 | --- | --- |
-| Menü & Ürünler | Restoran Menü, QR Galeri, Açılış Ekranı |
-| Müşteri Etkileşimi | Yorum & Feedback, QR Chatbot, QR Çeviri |
-| Masa & Servis | QR Masa, Güvenlik Ayarı, QR Çalışma Saatleri |
-| Analiz & Ayarlar | QR Analiz, Kısa Kodlar, Genel Ayarlar |
+| Menü | Menü Yönetimi, QR Kodlar, Servis Paneli |
+| Analiz | Menü Analizleri, Menü Performansı, Yorumlar & Geri Bildirim |
+| Müşteri Deneyimi | Diller & Çeviriler, AI Menü Asistanı, Fotoğraf Galerisi, Karşılama Ekranı, Çalışma Saatleri |
+| Görünüm | Header & Footer |
+| Sistem | Masa Oturumu Güvenliği, Entegrasyonlar & Kısa Kodlar, Sistem Ayarları |
 
 Gruplama `QRMS_Admin::get_overview_groups()` içinde **tek yerde** durur;
 kartların ikon ve açıklamaları modül isimleriyle aynı dosyadadır
@@ -350,7 +355,7 @@ bir kısa kod rehbere eklenmezse düşer.
 
 | Slug | İçerik | Yönetim sayfası |
 | --- | --- | --- |
-| `restoran-menu` | `rma_menu_item` CPT, `[restaurant_menu]`, `[qmo_one_cikan_slider]`, `[qmo_banner_slider]` (`qmo_banner_slide` CPT + Kampanya Banner sihirbazı), toplu fiyat kampanyası, Elementor widget'ı | ✔ Hub + on ekran |
+| `restoran-menu` | `rma_menu_item` CPT, `[restaurant_menu]` (gelişmiş filtreleme paneli), `[qmo_one_cikan_slider]`, `[qmo_banner_slider]` (`qmo_banner_slide` CPT + Kampanya Banner sihirbazı), toplu fiyat kampanyası, Elementor widget'ı | ✔ Hub + on ekran |
 | `yorum-feedback` | Çoklu kriter yorumlar, Google yönlendirme + ödül kodları, dinamik form oluşturucu, `[qr_menu_reviews]`, `[qr_menu_contact]`, `[qr_menu_form]` | ✔ Hub + altı ayrı sayfa |
 | `qr-masa` | Masa kayıtları (CRUD + toplu oluşturma), masa QR adresleri, `[qr_aktif_masa]` | ✔ Masalar ekranı |
 | `qr-masa-oturum-guvenligi` | Sahte QR reddi, kilit ekranı, sayfa kilidi; uygulamanın REST uçlarının Firebase/şube yapılandırması | ✔ Hub + Oturum Limitleri / Firebase & Şube Ayarları |
@@ -613,6 +618,99 @@ medya sorgusunda dokunma alanları en az 44px'e çıkar, dar ekranda `form-table
 satırları alt alta bloklara açılır, geniş tablolar kendi içinde yatay kayar
 (`.rma-table-scroll`) ve kart ızgaraları tek sütuna iner. WordPress admin'in
 kendi mobil davranışına müdahale edilmez.
+
+### Gelişmiş menü filtreleme
+
+Menüdeki **Filtrele** paneli (bottom sheet) baştan vardı; sıralama hapları, üç
+diyet kartı ve alerjen "hariç tut" listesi taşıyordu. Şimdi filtre seti
+tamamlandı: **diyet & yaşam tarzı** (yedi kart), **alerjen hariç tut**,
+**acılık** (beş kademe), **kalori** (hazır eşik + özel aralık), **fiyat
+aralığı** ve **ürün özellikleri** (dört rozet + "Tükendikleri Gizle"). Yeni bir
+uç, yeni bir tablo, yeni bir UI kütüphanesi eklenmedi — mevcut `rma_load_items`
+ucu, mevcut önbellek ve mevcut `.rma-filter-card` markup'ı genişletildi.
+
+**Tek kayıt defteri.** Anahtar listesi `RMA_Filtre`'de (`includes/class-filtre.php`)
+durur ve dört yerden okunur: filtre paneli, sorgu kurucu, chip etiketleri ve
+analitik beyaz listesi. Liste tek yerde olmasaydı, panele eklenen bir filtre
+sorguda sessizce yok sayılır ya da analitikte reddedilirdi. Sınıf WordPress'e
+hiç dokunmaz (`RMA_Tukendi` deseni), bu yüzden karar mantığı doğrudan test
+edilir.
+
+**Türetilen filtreler — yeni veri alanı açılmadı.** Üç filtrenin kendi kutusu
+yoktur:
+
+| Filtre | Kaynak |
+| --- | --- |
+| Laktozsuz | `sut` alerjeni **işaretli değilse** (mevcut `rma_allergen` NOT IN klozuna katılır) |
+| Helal | `rma_contains_alcohol` ve `rma_contains_pork` **işaretli değilse** |
+| Acısız | `rma_spicy_level` = 0 (ya da boş) |
+
+Tek yeni meta `rma_is_sugar_free`'dir: şeker bilgisi ürün modelinde hiç yoktu ve
+alerjen/alkol verisinden türetilemiyor. CSV'de **sona** eklendi (sütun 23), eski
+dosyalar sütunsuz da çalışır.
+
+**İki katmanlı uygulama.** "Meta değeri tam olarak `1`" tipindeki filtreler
+(vegan, vejetaryen, glütensiz, şekersiz, dört rozet) `WP_Query` meta_query'sine,
+alerjen hariç tutma `rma_allergen` taksonomisine (indexli `NOT IN`) girer.
+Helal, acılık, kalori, fiyat ve stok ise sorgudan **sonra**, `update_post_meta_cache`
+ile zaten ısıtılmış veri üzerinde uygulanır — ürün başına ek sorgu doğmaz.
+
+Bu ayrım bilinçlidir. Bu filtrelerde **meta'nın hiç olmaması "geçer" demektir**
+(alkol/domuz meta'sı kurulumların çoğunda yazılmamıştır; "yok = helal değil"
+saymak menüyü boşaltırdı) ve `rma_calories` / `rma_price` serbest metin
+alanlarıdır: boş string `meta_query` NUMERIC karşılaştırmasında sessizce `0`'a
+düşer, kalorisi hiç girilmemiş her ürün "300 kcal altı" listesine takılırdı.
+Kalori alanı boş olan ürün artık kalori filtresine **girmez**.
+
+Fiyat aralığı **kampanyalı gerçek fiyata** bakar (`rma_get_effective_price()`);
+menüde 80 ₺ yazan kampanyalı ürün "50-100 ₺" aramasından düşmez. Fiyat
+*sıralaması* eskisi gibi ham `rma_price` üzerinden çalışmaya devam eder —
+mevcut davranışı değiştirmemek için bilinçli olarak dokunulmadı.
+
+**Önbellek.** Filtre anahtarları `RMA_Filtre::temizle_anahtarlar()` ile beyaz
+listeden geçip **sıralanır**: aynı küme farklı sırada gelse de tek transient'e
+düşer ve uydurma bir anahtar artık yeni bir önbellek girdisi açamaz. Özel
+aralıklar da anahtara girer (`cr` / `pr`) — aksi hâlde "0-300 kcal" sonucu
+"0-700 kcal" isteyene servis edilirdi. Geçersizleştirme değişmedi: içerik
+değişince `bump_cache_version()` bütün kombinasyonları aynı anda düşürür.
+
+**Aktif filtre chip'leri.** Toolbar'ın altında `#rma-active-chips` çubuğu
+seçili her filtreyi `Vegan ×` biçiminde gösterir; chip'e basmak yalnızca o
+filtreyi düşürür, sondaki **Tümünü temizle** hepsini. Etiketler sunucudan
+(`RMA_FILTER_LABELS`) gelir, JS ikinci bir etiket listesi tutmaz. Filtre
+sayacı mevcut `#rma-filter-badge` rozetidir; ikinci bir gösterge üretilmedi.
+
+**Boş durum.** Filtre yüzünden sonuç kalmadığında "Bu filtrelerle eşleşen ürün
+bulunamadı." + **Filtreleri temizle** butonu basılır. Filtre yokken eski
+`.rma-empty` çıktısı bire bir korunur: özel temalar o içeriğe göre stil
+veriyor olabilir.
+
+**Erişilebilirlik.** Tetikleyici `aria-expanded` taşır, panel açılınca odak
+içeri alınır ve Tab panelin içinde döner (focus trap), kapanışta odak
+tetikleyiciye döner. Filtre kartı klavyeyle de seçilebilir: eski kod odaklı
+checkbox'a Space basıldığında kutuyu işaretleyip hemen geri alıyordu (fare ile
+çift geçiş birbirini götürdüğü için hata yalnızca klavyede görünüyordu); durum
+değişimi artık tarayıcıya bırakılır, `.selected` sınıfı `change` olayında
+eşitlenir. Yeni CSS kuralları **yalnızca mantıksal özellikler** kullanır
+(`padding-inline`, `margin-block`) — eklentide ayrı bir `-rtl.css` yok ve
+`qr-ceviri` RTL dilde `<html dir="rtl">` basıyor; yeni arayüz o yönde doğru
+akar, mevcut fiziksel kurallara dokunulmadı.
+
+**Acılık 0-4.** Alan "0-3" etiketli serbest metindi ve hiç doğrulanmıyordu.
+Artık `<select>` (0 Acısız … 4 Çok Acı) ve kayıtta beyaz liste var; tanınmayan
+bir değer **yazılmaz**, yani dış araçla girilmiş eski bir kayıt form kaydında
+sessizce bozulmaz. Eski 0-3 değerleri anlamını korur, veri taşıması gerekmez.
+
+**Admin.** Ayrı bir ekran açılmadı. Ürün düzenleme ekranındaki "Ürün Detayları"
+kutusunun sonunda, hangi alanın hangi filtreyi beslediğini — özellikle
+türetilen üçünü — yazan bir liste durur.
+
+**Analitik.** Mevcut ön yüz beacon'ı kullanılır: Uygula'ya basıldığında seçili
+her anahtar için bir `menu_filter` olayı yazılır. `item_name` beyaz listesi
+`RMA_Filtre`'den okunur (serbest metin kabul edilmez), menü modülü pasifse kural
+zaten elenir. Menü görüntülemesi **çiftlenmez** — onu `rma_load_items` hâlâ
+tek başına sayar. Sonuçlar *Menü Analitiği → Ürünler* ekranında **Filtre
+Kullanımı** bölümünde görünür; veri, detay oranıyla aynı sorgudan gelir.
 
 ### Porsiyon, Ekstra, Servis Saati ve Özel Rozetler
 

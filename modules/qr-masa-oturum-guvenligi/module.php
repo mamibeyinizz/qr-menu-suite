@@ -150,8 +150,8 @@ function qrms_module_qr_masa_oturum_guvenligi_hub() {
 
 	QRMS_Admin::render_hub(
 		array(
-			'title' => __( 'Güvenlik Ayarı', 'qrms' ),
-			'intro' => __( 'Masa oturumunun güvenlik limitleri ve uygulamanın bağlandığı uçların kimlik ayarları.', 'qrms' ),
+			'title' => __( 'Masa Oturumu Güvenliği', 'qrms' ),
+			'intro' => __( 'Masa oturumlarını ve müşteri erişimini güvenli şekilde yönetin.', 'qrms' ),
 			'cards' => $cards,
 		)
 	);

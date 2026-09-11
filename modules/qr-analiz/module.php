@@ -384,6 +384,9 @@ function qrms_module_qr_analiz_urunler_assets() {
 				'detailRateHint'  => __( 'Açılış / tıklama. Önbellek yüzünden %100\'ü geçebilir.', 'qrms' ),
 				'justStartedTitle' => __( 'Toplanmaya yeni başlandı', 'qrms' ),
 				'justStartedDetail' => __( 'Detay modalı açılışları toplanmaya yeni başladı. Bu bir hata değil; misafirler ürün kartına dokundukça oran burada görünecek.', 'qrms' ),
+				'filterName'      => __( 'Filtre', 'qrms' ),
+				'useCount'        => __( 'Kullanım', 'qrms' ),
+				'noFilters'       => __( 'Seçili dönemde filtre kullanımı kaydedilmemiş.', 'qrms' ),
 			),
 		)
 	);
@@ -531,7 +534,7 @@ function qrms_module_qr_analiz_sepet_assets() {
 				'addRemoveRatio'    => __( 'Ekleme / çıkarma', 'qrms' ),
 				'missedOrders'      => __( 'Kaçırılan sipariş', 'qrms' ),
 				'action'            => __( 'İşlem', 'qrms' ),
-				'openSoldOut'       => __( 'Ürünüm Yok', 'qrms' ),
+				'openSoldOut'       => __( 'Tükenen Ürünler', 'qrms' ),
 				'when'              => __( 'Zaman', 'qrms' ),
 				'failedOrders'      => __( 'Başarısız sipariş', 'qrms' ),
 				'unknownItem'       => __( 'Bilinmeyen ürün', 'qrms' ),
@@ -547,7 +550,7 @@ function qrms_module_qr_analiz_sepet_assets() {
 				'noBlocked'         => __( 'Bu aralıkta tükendi nedeniyle engellenen sipariş yok.', 'qrms' ),
 				'firebaseTitle'     => __( 'Firebase yapılandırmasını kontrol edin', 'qrms' ),
 				'firebaseText'      => __( 'Başarısız siparişler genelde Firestore yazımının düşmesinden gelir. Service account ve şube ayarlarını gözden geçirin.', 'qrms' ),
-				'firebaseLink'      => __( 'Güvenlik Ayarı > Firebase & Şube Ayarları', 'qrms' ),
+				'firebaseLink'      => __( 'Masa Oturumu Güvenliği > Firebase & Şube Ayarları', 'qrms' ),
 				'loading'           => __( 'Yükleniyor', 'qrms' ),
 				'loadError'         => __( 'Veri yüklenemedi. Sayfayı yenileyin.', 'qrms' ),
 			),
