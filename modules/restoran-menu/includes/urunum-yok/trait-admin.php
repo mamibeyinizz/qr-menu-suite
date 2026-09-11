@@ -164,7 +164,7 @@ trait RMA_Urunum_Yok_Admin_Trait {
         echo '<input type="hidden" name="qmo_uy_malzeme_id" value="' . (int) $term->term_id . '">';
 
         echo '<table class="widefat striped rma-uy-table-compact" style="margin-bottom:14px;"><thead><tr>
-                <th style="width:34px;"><input type="checkbox" id="qmo-uy-hepsi" checked></th>
+                <th class="rma-uy-th-check"><label class="rma-uy-select-all"><input type="checkbox" id="qmo-uy-hepsi" checked> <span>Tümünü seç</span></label></th>
                 <th>Ürün</th><th>Kategori</th><th>Durum</th></tr></thead><tbody>';
         foreach ( $urunler as $u ) {
             $cats  = wp_get_object_terms( $u->ID, 'rma_category', [ 'fields' => 'names' ] );
@@ -174,7 +174,7 @@ trait RMA_Urunum_Yok_Admin_Trait {
                 : '<span style="color:#2e7d32;">Stokta</span>';
 
             printf(
-                '<tr><td><input type="checkbox" class="qmo-uy-urun-cb" name="qmo_uy_urunler[]" value="%1$d" checked></td><td><a href="%2$s">%3$s</a></td><td>%4$s</td><td>%5$s</td></tr>',
+                '<tr><td class="rma-uy-td-check" data-label="Seç"><input type="checkbox" class="qmo-uy-urun-cb" name="qmo_uy_urunler[]" value="%1$d" checked></td><td data-label="Ürün"><a href="%2$s">%3$s</a></td><td data-label="Kategori">%4$s</td><td data-label="Durum">%5$s</td></tr>',
                 (int) $u->ID,
                 esc_url( (string) get_edit_post_link( $u->ID ) ),
                 esc_html( $u->post_title ),
@@ -269,7 +269,7 @@ trait RMA_Urunum_Yok_Admin_Trait {
             );
 
             printf(
-                '<tr><td><a href="%1$s">%2$s</a></td><td>%3$s</td><td><a class="button button-small" href="%4$s">Yeniden Satışa Aç</a></td></tr>',
+                '<tr><td data-label="Ürün"><a href="%1$s">%2$s</a></td><td data-label="Kategori">%3$s</td><td class="rma-uy-td-action" data-label=""><a class="button button-small" href="%4$s">Yeniden Satışa Aç</a></td></tr>',
                 esc_url( (string) get_edit_post_link( $id ) ),
                 esc_html( get_the_title( $id ) ),
                 esc_html( implode( ', ', $cats ) ),
@@ -329,7 +329,7 @@ trait RMA_Urunum_Yok_Admin_Trait {
             );
 
             printf(
-                '<tr><td><a href="%1$s">%2$s</a></td><td>%3$s</td><td>%4$s</td><td><a class="button button-small" href="%5$s">Yeniden Satışa Aç</a></td></tr>',
+                '<tr><td data-label="Ürün"><a href="%1$s">%2$s</a></td><td data-label="Neden Olan Malzeme">%3$s</td><td data-label="Aktif Olacağı Saat">%4$s</td><td class="rma-uy-td-action" data-label=""><a class="button button-small" href="%5$s">Yeniden Satışa Aç</a></td></tr>',
                 esc_url( (string) get_edit_post_link( $id ) ),
                 esc_html( get_the_title( $id ) ),
                 esc_html( implode( ', ', $adlar ) ),
