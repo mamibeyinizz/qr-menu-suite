@@ -62,26 +62,26 @@ qrms_test(
 		// Ağırlıklı ortalama katkı payı:
 		//   (60*20 + 30*5 + 5*40 + 5*3) / 100 = (1200+150+200+15)/100 = 15,65
 		$satirlar = array(
-			qrms_mm_satir( 1, 'Yıldız Ürün', 50, 30, 60 ),   // pay %60  katkı 20  -> yıldız
-			qrms_mm_satir( 2, 'İş Atı Ürün', 25, 20, 30 ),   // pay %30  katkı  5  -> iş atı
-			qrms_mm_satir( 3, 'Bulmaca Ürün', 90, 50, 5 ),   // pay  %5  katkı 40  -> bulmaca
-			qrms_mm_satir( 4, 'Köpek Ürün', 15, 12, 5 ),     // pay  %5  katkı  3  -> köpek
+			qrms_mm_satir( 1, 'Yıldız Ürün', 50, 30, 60 ),        // pay %60  katkı 20  -> yildiz
+			qrms_mm_satir( 2, 'Çok Satan Ürün', 25, 20, 30 ),     // pay %30  katkı  5  -> is_ati
+			qrms_mm_satir( 3, 'Gizli Fırsat Ürün', 90, 50, 5 ),   // pay  %5  katkı 40  -> bulmaca
+			qrms_mm_satir( 4, 'Zayıf Ürün', 15, 12, 5 ),          // pay  %5  katkı  3  -> kopek
 		);
 
 		$sonuc = QRMS_MM_Hesap::hesapla( $satirlar, array( 'populerlik_esigi' => 0.70 ) );
 
 		qrms_assert_same( 'siparis', $sonuc['kaynak'], 'gerçek satış verisi' );
 		qrms_assert_same( 'yildiz', qrms_mm_bul( $sonuc, 'Yıldız Ürün' )['kutu'], 'yıldız' );
-		qrms_assert_same( 'is_ati', qrms_mm_bul( $sonuc, 'İş Atı Ürün' )['kutu'], 'iş atı' );
-		qrms_assert_same( 'bulmaca', qrms_mm_bul( $sonuc, 'Bulmaca Ürün' )['kutu'], 'bulmaca' );
-		qrms_assert_same( 'kopek', qrms_mm_bul( $sonuc, 'Köpek Ürün' )['kutu'], 'köpek' );
+		qrms_assert_same( 'is_ati', qrms_mm_bul( $sonuc, 'Çok Satan Ürün' )['kutu'], 'çok satan' );
+		qrms_assert_same( 'bulmaca', qrms_mm_bul( $sonuc, 'Gizli Fırsat Ürün' )['kutu'], 'gizli fırsat' );
+		qrms_assert_same( 'kopek', qrms_mm_bul( $sonuc, 'Zayıf Ürün' )['kutu'], 'zayıf performans' );
 
 		qrms_assert_same( 1, $sonuc['ozet']['kutular']['yildiz'], 'yıldız sayacı' );
 		qrms_assert_same( 100, $sonuc['ozet']['toplam_adet'], 'toplam adet' );
 
 		// Ortalama katkı payı adetle AĞIRLIKLIDIR: düz ortalama alınsaydı
 		// (20+5+40+3)/4 = 17 çıkar, hiç satmayan pahalı ürün eşiği yukarı
-		// çeker ve İş Atı yanlışlıkla Köpek olurdu.
+		// çeker ve Çok Satan yanlışlıkla Zayıf Performans olurdu.
 		qrms_assert_same( 15.65, round( $sonuc['ozet']['esik_katki'], 2 ), 'ağırlıklı ortalama' );
 	}
 );

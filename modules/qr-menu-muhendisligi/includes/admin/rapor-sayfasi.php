@@ -48,7 +48,7 @@ function qrms_mm_rapor_sayfasi() {
 					<?php
 					printf(
 						/* translators: %d: en az sipariş adedi. */
-						esc_html__( 'Seçili dönemde %d adetten az sipariş var; popülerlik ürün görüntülenmeleri ve sepete eklemelerden TAHMİN ediliyor. Sipariş biriktikçe rapor kendiliğinden gerçek satışa geçer.', 'qrms' ),
+						esc_html__( 'Seçili dönemde %d adetten az sipariş var; popülerlik ürün görüntülenmeleri ve sepete eklemelerden tahmin ediliyor. Sipariş biriktikçe rapor kendiliğinden gerçek satışa geçer.', 'qrms' ),
 						(int) QRMS_MM_Hesap::MIN_SATIS
 					);
 					?>

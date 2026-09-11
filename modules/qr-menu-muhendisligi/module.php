@@ -4,8 +4,8 @@
  *
  * Ürün başına maliyet (manuel ya da reçeteden) girilir; satış ve etkileşim
  * verisiyle birleştirilip Kasavana–Smith matrisi üretilir: her ürün Yıldız,
- * İş Atı, Bulmaca ya da Köpek kutusuna düşer ve somut bir aksiyon cümlesi
- * alır.
+ * Çok Satan, Gizli Fırsat ya da Zayıf Performans kutusuna düşer ve somut bir
+ * aksiyon cümlesi alır.
  *
  * Veri kaynakları:
  *   - Ürün, fiyat, kategori, malzeme : restoran-menu modülü (CPT + meta + taksonomi)
@@ -170,11 +170,11 @@ function qrms_mm_admin_assets() {
 		'qrms-mm-admin',
 		'QRMS_MM',
 		array(
-			'ajaxUrl'   => admin_url( 'admin-ajax.php' ),
-			'nonce'     => wp_create_nonce( 'qrms_mm' ),
+			'ajaxUrl'    => admin_url( 'admin-ajax.php' ),
+			'nonce'      => wp_create_nonce( 'qrms_mm' ),
 			'kaydedildi' => __( 'Kaydedildi', 'qrms' ),
-			'hata'      => __( 'Kaydedilemedi', 'qrms' ),
-			'siliniyor' => __( 'Satırı kaldır', 'qrms' ),
+			'hata'       => __( 'Kaydedilemedi', 'qrms' ),
+			'siliniyor'  => __( 'Satırı kaldır', 'qrms' ),
 			'malzemeSec' => __( 'Malzeme seçin', 'qrms' ),
 		)
 	);
