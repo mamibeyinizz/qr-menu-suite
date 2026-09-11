@@ -380,19 +380,39 @@
     outline: none;
 }
 
+.rma-secenek-sayfa .rma-secenek-tablo .rma-tekrar-sil:active {
+    background: rgba(224, 82, 82, .22);
+    color: var(--rma-a-danger, #e05252);
+}
+
 /* ---------------------------------------------------------------
    ROZET SATIRLARI — her rozet kendi kartı
+
+   Grid alanları nth-child ile eşlenir; PHP çıktısında ve JS
+   şablonunda (render_rozet_sablonu / tekrarEkle) sütun sırası her
+   zaman sabittir: sira, ad, ikon, renk, onizleme, sil. Üç kademe
+   aynı altı alanı farklı dizilimde yerleştirir — DOM sırası hiçbir
+   kademede değişmez, yalnızca görsel yerleşim (grid-template-areas)
+   değişir. Kırılımlar mobil/tablet/masaüstü grubu spesifikasyonla
+   uyumlu seçildi (600 ve 1200), 768/820/1024 tablet grubunda,
+   1280+ masaüstü grubunda kalır.
 --------------------------------------------------------------- */
 .rma-secenek-sayfa .rma-rozet-tablo tr.rma-rozet-satir {
-    align-items: flex-start;
+    align-items: start;
     background: var(--rma-a-surface-2, #1a1a1a);
     border: 1px solid var(--rma-a-border, #2e2e2e);
-    border-bottom: 1px solid var(--rma-a-border, #2e2e2e);
     border-radius: 9px;
-    flex-wrap: wrap;
-    gap: 10px 14px;
+    column-gap: 12px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+        "sira     sil"
+        "ad       ikon"
+        "renk     renk"
+        "onizleme onizleme";
     margin-bottom: 10px;
     padding: 12px 14px;
+    row-gap: 12px;
 }
 
 .rma-secenek-sayfa .rma-rozet-tablo tbody tr.rma-rozet-satir:last-child {
@@ -401,37 +421,81 @@
 
 .rma-secenek-sayfa .rma-rozet-tablo td:nth-child(1) {
     align-self: center;
-    flex: 0 0 auto;
+    grid-area: sira;
 }
 
 .rma-secenek-sayfa .rma-rozet-tablo td:nth-child(2) {
-    flex: 1 1 200px;
-    min-width: 160px;
+    grid-area: ad;
+    min-width: 0;
 }
 
 .rma-secenek-sayfa .rma-rozet-tablo td:nth-child(2) .rma-kullanim-sayaci {
     display: block;
     margin-top: 4px;
+    white-space: normal;
 }
 
 .rma-secenek-sayfa .rma-rozet-tablo td:nth-child(3) {
-    align-self: center;
-    flex: 0 0 auto;
+    align-self: start;
+    grid-area: ikon;
 }
 
 .rma-secenek-sayfa .rma-rozet-tablo td:nth-child(4) {
-    flex: 1 1 170px;
-    min-width: 150px;
+    grid-area: renk;
+    min-width: 0;
 }
 
 .rma-secenek-sayfa .rma-rozet-tablo td:nth-child(5) {
-    align-self: center;
-    flex: 0 1 auto;
+    border-top: 1px dashed var(--rma-a-border-soft, #242424);
+    grid-area: onizleme;
+    min-width: 0;
+    padding-top: 10px;
 }
 
 .rma-secenek-sayfa .rma-rozet-tablo td:nth-child(6) {
     align-self: center;
-    flex: 0 0 auto;
+    grid-area: sil;
+    justify-self: end;
+}
+
+/* Tablet (768/820/1024): ad + ikon masaüstündeki gibi tek satırda
+   kalır, ama bu genişlikte hâlâ sıkışacak renk paleti ve önizleme
+   kendi tam genişlikteki satırlarına iner — masaüstünün küçültülmüş
+   hali değil, ara kademenin kendi akışı. */
+@media (min-width: 600px) {
+    .rma-secenek-sayfa .rma-rozet-tablo tr.rma-rozet-satir {
+        grid-template-columns: auto 1fr auto auto;
+        grid-template-areas:
+            "sira ad   ikon sil"
+            "renk renk renk renk"
+            "onizleme onizleme onizleme onizleme";
+    }
+}
+
+/* Masaüstü (1280+): orijinal tek satır dizilimi. */
+@media (min-width: 1200px) {
+    .rma-secenek-sayfa .rma-rozet-tablo tr.rma-rozet-satir {
+        grid-template-columns: auto 1fr auto auto auto auto;
+        grid-template-areas: "sira ad ikon renk onizleme sil";
+    }
+
+    .rma-secenek-sayfa .rma-rozet-tablo td:nth-child(2) {
+        min-width: 160px;
+    }
+
+    .rma-secenek-sayfa .rma-rozet-tablo td:nth-child(3) {
+        align-self: center;
+    }
+
+    .rma-secenek-sayfa .rma-rozet-tablo td:nth-child(4) {
+        min-width: 150px;
+    }
+
+    .rma-secenek-sayfa .rma-rozet-tablo td:nth-child(5) {
+        align-self: center;
+        border-top: 0;
+        padding-top: 0;
+    }
 }
 
 /* ---------------------------------------------------------------
@@ -449,6 +513,7 @@
     color: var(--rma-a-text, #f5f0e8);
     cursor: pointer;
     display: inline-flex;
+    flex-shrink: 0;
     font-size: 17px;
     height: 38px;
     justify-content: center;
@@ -466,6 +531,10 @@
     outline-offset: 1px;
 }
 
+.rma-ikon-tetik:active {
+    background: var(--rma-a-surface, #131313);
+}
+
 /* İkon paneli açılınca document.body'e eklenir (bkz. urun-secenekler.js
    ikonPanelAc) — .rma-secenek-sayfa altında değildir, o yüzden bu
    kurallar kasıtlı olarak sayfa sarmalayıcısına bağlı değildir. */
@@ -474,7 +543,7 @@
     border: 1px solid var(--rma-a-border, #2e2e2e);
     border-radius: 8px;
     box-shadow: 0 8px 24px rgba(0, 0, 0, .45);
-    max-width: 280px;
+    max-width: min(280px, calc(100vw - 24px));
     padding: 10px;
     position: absolute;
     z-index: 100100;
@@ -546,11 +615,75 @@
 
 /* ---------------------------------------------------------------
    RENK SEÇİCİ — profesyonel küçük palet
+
+   wp-color-picker (WP çekirdeği) burada kompakt görünmeli: geniş
+   "Renk seç" düğmesi yerine küçük bir renk karesi, hazır palet ile
+   aynı satırda hizalı. .rma-admin'in genel mobil kuralı
+   (.wp-picker-container{width:100%}, admin-ui.css) bu üç kuralla
+   kasıtlı olarak ezilir — o kural bu sayfaya özel değildir ve geniş
+   tam-satır renk alanları için tasarlanmıştır, bu kompakt palette
+   uymaz. Metin etiketi ekrandan gizlenmez (screen-reader-only) ki
+   düğmenin erişilebilir adı kaybolmasın.
 --------------------------------------------------------------- */
 .rma-secenek-sayfa .rma-renk-alan {
+    align-items: center;
     display: flex;
-    flex-direction: column;
+    flex-wrap: wrap;
+    gap: 8px;
+    min-width: 0;
+}
+
+.rma-secenek-sayfa .rma-renk-alan .wp-picker-container {
+    align-items: center;
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    max-width: 100%;
+    width: auto;
+}
+
+.rma-secenek-sayfa .rma-renk-alan .wp-color-result.button {
+    border-radius: 6px;
+    height: 30px;
+    margin: 0;
+    min-height: 30px;
+    padding: 0;
+    width: 30px;
+}
+
+.rma-secenek-sayfa .rma-renk-alan .wp-color-result-text {
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    height: 1px;
+    overflow: hidden;
+    position: absolute;
+    white-space: nowrap;
+    width: 1px;
+}
+
+.rma-secenek-sayfa .rma-renk-alan .wp-picker-holder {
+    max-width: min(280px, calc(100vw - 24px));
+    position: absolute;
+    z-index: 100100;
+}
+
+.rma-secenek-sayfa .rma-renk-alan .iris-picker {
+    box-sizing: border-box;
+    max-width: 100%;
+}
+
+.rma-secenek-sayfa .rma-renk-alan .wp-picker-input-wrap {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
     gap: 6px;
+    margin-top: 4px;
+    max-width: 100%;
+    width: auto;
+}
+
+.rma-secenek-sayfa .rma-renk-alan .wp-picker-input-wrap input[type="text"] {
+    width: 90px;
 }
 
 .rma-secenek-sayfa .rma-renk-palet {
@@ -563,6 +696,7 @@
     border: 2px solid transparent;
     border-radius: 5px;
     cursor: pointer;
+    flex: 0 0 auto;
     height: 26px;
     min-width: 26px;
     padding: 0;
@@ -596,11 +730,13 @@
     font-size: 11px;
     font-weight: 700;
     letter-spacing: .01em;
+    max-width: 100%;
+    overflow-wrap: anywhere;
     padding: 7px 12px;
     position: static;
     right: auto;
     top: auto;
-    white-space: nowrap;
+    white-space: normal;
 }
 
 /* ---------------------------------------------------------------
@@ -620,6 +756,15 @@
 
 .rma-secenek-aksiyonlar .button {
     min-height: 44px;
+}
+
+/* Dar ekranlarda iki buton yan yana sığmıyorsa dengeli şekilde
+   tam genişlik alıp alt alta geçer; "Rozetleri Kaydet" birincil
+   aksiyon olduğu için sırada her zaman ikinci (altta) kalır. */
+@media (max-width: 480px) {
+    .rma-secenek-aksiyonlar .button {
+        flex: 1 1 100%;
+    }
 }
 
 /* ---------------------------------------------------------------
