@@ -35,11 +35,11 @@ if ( ! function_exists( 'qrms_module_qr_masa_sayfalar' ) ) {
 				'url'   => $base . '#qmo-masa-liste',
 			),
 			'toplu'   => array(
-				'title' => __( 'Toplu Oluştur', 'qrms' ),
+				'title' => __( 'Toplu QR Oluştur', 'qrms' ),
 				'url'   => $base . '#qmo-toplu',
 			),
 			'aktif'   => array(
-				'title' => __( 'Aktif Masa Bilgisi', 'qrms' ),
+				'title' => __( 'Aktif Masa Durumu', 'qrms' ),
 				'url'   => $base . '#qmo-aktif-masa',
 			),
 		);
@@ -64,7 +64,7 @@ if ( ! function_exists( 'qmo_masalar_sayfasi' ) ) {
 		$masalar = QMO_Masalar::hepsi();
 		?>
 		<div class="wrap qmo-wrap">
-			<h1 class="wp-heading-inline">QR Masa Yönetimi</h1>
+			<h1 class="wp-heading-inline">QR Kodlar</h1>
 			<hr class="wp-header-end">
 
 			<?php if ( $bildirim ) : ?>

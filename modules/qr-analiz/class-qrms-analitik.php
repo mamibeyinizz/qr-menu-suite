@@ -2768,7 +2768,7 @@ class QRMS_Analitik {
 		}
 
 		if ( function_exists( 'qrms_analitik_sepet_lisansli' ) && ! qrms_analitik_sepet_lisansli() ) {
-			wp_send_json_error( array( 'mesaj' => __( 'Chatbot Asistan bu lisansta kapalı.', 'qrms' ) ), 403 );
+			wp_send_json_error( array( 'mesaj' => __( 'AI Menü Asistanı bu lisansta kapalı.', 'qrms' ) ), 403 );
 		}
 
 		// phpcs:disable WordPress.Security.NonceVerification.Missing -- check_ajax_referer yukarıda.
@@ -3322,7 +3322,7 @@ class QRMS_Analitik {
 	 */
 	private static function csv_sepet( array $ham ) {
 		if ( function_exists( 'qrms_analitik_sepet_lisansli' ) && ! qrms_analitik_sepet_lisansli() ) {
-			wp_die( esc_html__( 'Chatbot Asistan bu lisansta kapalı.', 'qrms' ) );
+			wp_die( esc_html__( 'AI Menü Asistanı bu lisansta kapalı.', 'qrms' ) );
 		}
 
 		$baglam = QRMS_Analitik_Filtre::coz( $ham );

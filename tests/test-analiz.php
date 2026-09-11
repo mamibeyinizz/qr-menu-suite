@@ -154,7 +154,7 @@ qrms_test(
 		qrms_analitik_sayfa_sepet();
 		$html = ob_get_clean();
 
-		qrms_assert_contains( 'Chatbot Asistan bu lisansta kapalı', $html, 'anlamlı mesaj' );
+		qrms_assert_contains( 'AI Menü Asistanı bu lisansta kapalı', $html, 'anlamlı mesaj' );
 		qrms_assert_false( false !== strpos( $html, 'id="qrms-an-cards"' ), 'boş tablo yok' );
 		qrms_assert_false( false !== strpos( $html, 'qrms-an-table' ), 'tablo iskeleti yok' );
 
