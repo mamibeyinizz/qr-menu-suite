@@ -363,7 +363,7 @@ if ( ! function_exists( 'qrms_analitik_filtre_etiketleri' ) ) {
 
 		$etiketler = array();
 
-		foreach ( array( 'diyet_kartlari', 'aci_kartlari', 'kalori_kartlari', 'ozellik_kartlari' ) as $grup ) {
+		foreach ( array( 'ozellik_kartlari' ) as $grup ) {
 			foreach ( RMA_Filtre::$grup() as $anahtar => $kart ) {
 				$etiketler[ $anahtar ] = (string) $kart['label'];
 			}

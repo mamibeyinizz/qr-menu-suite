@@ -21,6 +21,7 @@ if ( ! defined( 'RMA_PLUGIN_URL' ) ) {
 }
 
 require_once __DIR__ . '/includes/class-filtre.php';
+require_once __DIR__ . '/includes/class-filtre-ikon.php';
 require_once __DIR__ . '/includes/trait-helpers.php';
 require_once __DIR__ . '/includes/trait-post-types.php';
 require_once __DIR__ . '/includes/trait-admin-columns.php';

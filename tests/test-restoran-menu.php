@@ -845,7 +845,7 @@ qrms_test(
 		);
 
 		qrms_assert_same(
-			array( 'allergen_gluten', 'badge_popular', 'vegan' ),
+			array( 'allergen_gluten', 'badge_popular' ),
 			$temiz,
 			'yalnızca tanınan anahtarlar kaldı ve sıralandı'
 		);
@@ -857,14 +857,14 @@ qrms_test(
 	function () {
 		$alerjenler = qrms_test_alerjenler();
 
-		$a = RMA_Filtre::temizle_anahtarlar( array( 'vegan', 'cal_300', 'allergen_sut' ), $alerjenler );
-		$b = RMA_Filtre::temizle_anahtarlar( array( 'allergen_sut', 'vegan', 'cal_300' ), $alerjenler );
+		$a = RMA_Filtre::temizle_anahtarlar( array( 'badge_new', 'allergen_sut' ), $alerjenler );
+		$b = RMA_Filtre::temizle_anahtarlar( array( 'allergen_sut', 'badge_new' ), $alerjenler );
 
 		qrms_assert_same( $a, $b, 'sıralama deterministik' );
 		// Tekrar eden anahtar iki kez sayılmaz.
 		qrms_assert_same(
 			$a,
-			RMA_Filtre::temizle_anahtarlar( array( 'vegan', 'vegan', 'cal_300', 'allergen_sut' ), $alerjenler ),
+			RMA_Filtre::temizle_anahtarlar( array( 'badge_new', 'badge_new', 'allergen_sut' ), $alerjenler ),
 			'yinelenen anahtar teke düşer'
 		);
 	}
