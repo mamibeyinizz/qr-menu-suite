@@ -163,8 +163,8 @@ trait RMA_Admin_Pages_Trait {
      * Genel Bakış kartındaki alt bağlantılar — hub kartlarıyla AYNI kaynak.
      *
      * get_hub_cards() sırası korunur; alt sayfa başlığı title'dır (hub
-     * "Stok Durumu" / menü "Görünüm" derken Genel Bakış "Ürünüm Yok" /
-     * "Menü Görünümü" der).
+     * "Ürün Durumu" / menü "Görünüm" derken Genel Bakış "Ürünüm Yok" /
+     * "Menü Görünümü" der). overview_title varsa doğrudan kartlarda kullanılır.
      *
      * @return array<int,array{url:string,title:string}>
      */
