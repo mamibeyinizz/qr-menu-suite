@@ -123,17 +123,26 @@ if ( ! function_exists( 'qrms_analitik_filtre_cubugu' ) ) {
 				<input type="hidden" name="<?php echo esc_attr( QRMS_Analitik_Filtre::ARG_DONEM ); ?>" value="ozel">
 				<input type="hidden" name="<?php echo esc_attr( QRMS_Analitik_Filtre::ARG_MASA ); ?>" value="<?php echo esc_attr( $masa ); ?>">
 
-				<label class="qrms-an-filtre-label" for="qrms-an-bas"><?php esc_html_e( 'Başlangıç', 'qrms' ); ?></label>
-				<input type="date" id="qrms-an-bas" class="qrms-an-date"
-					name="<?php echo esc_attr( QRMS_Analitik_Filtre::ARG_BAS ); ?>"
-					value="<?php echo esc_attr( '' !== QRMS_Analitik_Filtre::bas() ? QRMS_Analitik_Filtre::bas() : substr( $aralik['bas'], 0, 10 ) ); ?>"
-					required>
+				<?php
+				// Etiket + alan TEK bir alan kutusunda durur: dar ekranda iki
+				// tarih yan yana dizilir, etiket kendi alanının üstünde kalır.
+				// Alan kimlikleri, adları ve GET davranışı değişmedi.
+				?>
+				<div class="qrms-an-alan">
+					<label class="qrms-an-filtre-label" for="qrms-an-bas"><?php esc_html_e( 'Başlangıç', 'qrms' ); ?></label>
+					<input type="date" id="qrms-an-bas" class="qrms-an-date"
+						name="<?php echo esc_attr( QRMS_Analitik_Filtre::ARG_BAS ); ?>"
+						value="<?php echo esc_attr( '' !== QRMS_Analitik_Filtre::bas() ? QRMS_Analitik_Filtre::bas() : substr( $aralik['bas'], 0, 10 ) ); ?>"
+						required>
+				</div>
 
-				<label class="qrms-an-filtre-label" for="qrms-an-bit"><?php esc_html_e( 'Bitiş', 'qrms' ); ?></label>
-				<input type="date" id="qrms-an-bit" class="qrms-an-date"
-					name="<?php echo esc_attr( QRMS_Analitik_Filtre::ARG_BIT ); ?>"
-					value="<?php echo esc_attr( '' !== QRMS_Analitik_Filtre::bit() ? QRMS_Analitik_Filtre::bit() : substr( $aralik['bit'], 0, 10 ) ); ?>"
-					required>
+				<div class="qrms-an-alan">
+					<label class="qrms-an-filtre-label" for="qrms-an-bit"><?php esc_html_e( 'Bitiş', 'qrms' ); ?></label>
+					<input type="date" id="qrms-an-bit" class="qrms-an-date"
+						name="<?php echo esc_attr( QRMS_Analitik_Filtre::ARG_BIT ); ?>"
+						value="<?php echo esc_attr( '' !== QRMS_Analitik_Filtre::bit() ? QRMS_Analitik_Filtre::bit() : substr( $aralik['bit'], 0, 10 ) ); ?>"
+						required>
+				</div>
 
 				<button type="submit" class="qrms-an-btn qrms-an-btn-small"><?php esc_html_e( 'Uygula', 'qrms' ); ?></button>
 			</form>
