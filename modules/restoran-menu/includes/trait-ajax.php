@@ -91,9 +91,21 @@ trait RMA_Ajax_Trait {
         // Soft nonce check — public menu data, don't die on stale nonce (caching fix)
         check_ajax_referer( 'rma_ajax_nonce', 'security', false );
 
+        // GÜVENLİK: uç kimliksizdir. Özellikle serbest metin 'search' alanı
+        // cache anahtarını her seferinde değiştirebildiği için (bkz. aşağıdaki
+        // 80 baytlık önbellek sınırı), rastgele/uzun arama dizileriyle önbellek
+        // sürekli bypass edilip her istekte tam WP_Query çalıştırılabilir. IP
+        // başına dakikalık tavan bu döngüyü keser; gerçek bir ziyaretçi filtre/
+        // arama değiştirirken bu sınıra yaklaşmaz.
+        $this->rma_ip_rate_limit( 'load', 'rma_load_items_ip_rate_limit', 60 );
+
         $filters    = isset( $_POST['filters'] )  ? array_map( 'sanitize_text_field', (array) $_POST['filters'] ) : [];
         $sort_by    = sanitize_text_field( $_POST['sort_by']  ?? '' );
-        $search     = sanitize_text_field( $_POST['search']   ?? '' );
+        // Arama karakter sınırı: sunucuya işlenmek üzere gönderilen sorgu
+        // uzunluğu baştan kısıtlanır (bkz. build_menu_payload — LIKE sorgusu
+        // ne kadar uzun bir dizeyle çalışırsa çalışsın maliyeti aynıdır, ama
+        // kısıt yine de anlamsız/bot kaynaklı dev payload'ları eler).
+        $search     = mb_substr( sanitize_text_field( $_POST['search'] ?? '' ), 0, 60 );
 
         $suggest_cfg_raw = $_POST['suggest_cfg'] ?? [];
         if ( is_string( $suggest_cfg_raw ) ) {
@@ -392,6 +404,42 @@ trait RMA_Ajax_Trait {
     }
 
     /**
+     * Genel kimliksiz menü uçları için IP başına dakikalık istek tavanı.
+     *
+     * Bu modül bilinçli olarak `_qmo-ortak`'a bağımlı değildir (bkz.
+     * module.php başlığı), bu yüzden sayaç kendi transient'ıyla tutulur —
+     * mevcut görüntülenme-sayacı kilidiyle aynı IP-hash deseni (aşağıdaki
+     * ajax_get_product_details). Object cache varsa wp_cache_incr atomik
+     * artışı, yoksa transient tabanlı artış kullanılır. Aşılırsa 429 ile
+     * JSON hata döner ve die() eder.
+     *
+     * @param string $anahtar      Uç bazlı ayırt edici (ör. 'load', 'item').
+     * @param string $filter_adi   Site sahibinin sınırı değiştirebileceği filtre.
+     * @param int    $varsayilan   Filtre yoksa uygulanacak dakikalık tavan.
+     */
+    private function rma_ip_rate_limit( $anahtar, $filter_adi, $varsayilan ) {
+        $limit = (int) apply_filters( $filter_adi, $varsayilan );
+        if ( $limit < 1 ) return;
+
+        $ip  = isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) ) : '';
+        $key = 'rma_rl_' . $anahtar . '_' . md5( $ip );
+
+        if ( wp_using_ext_object_cache() ) {
+            wp_cache_add( $key, 0, 'rma_rl', MINUTE_IN_SECONDS );
+            $n = wp_cache_incr( $key, 1, 'rma_rl' );
+        } else {
+            $n = (int) get_transient( $key ) + 1;
+            set_transient( $key, $n, MINUTE_IN_SECONDS );
+        }
+
+        if ( $n > $limit ) {
+            $this->flush_stray_output();
+            wp_send_json_error( [ 'kod' => 'limit' ], 429 );
+            die();
+        }
+    }
+
+    /**
      * JSON göndermeden hemen önce, olası stray çıktıyı (PHP notice, tema/eklenti
      * whitespace'i) temizler. "Unexpected token < in JSON" / parsererror'un
      * klasik çözümü. Aktif bir output buffer varsa yalnızca onu boşaltır.
@@ -415,6 +463,12 @@ trait RMA_Ajax_Trait {
         @ini_set( 'display_errors', '0' );
         // Soft nonce check — public product data, don't die on stale nonce
         check_ajax_referer( 'rma_ajax_nonce', 'security', false );
+
+        // GÜVENLİK: modal her açılışta 1 gerçek istek + komşu kartlar için
+        // sessiz prefetch üretir; normal gezinme bu sınırın çok altında
+        // kalır, ama IP başına dakikada yüzlerce istek atan bir script artık
+        // 429 ile durur.
+        $this->rma_ip_rate_limit( 'item', 'rma_product_details_ip_rate_limit', 120 );
 
         $id = intval( $_POST['id'] ?? 0 );
         if ( ! $id ) { wp_send_json_error(); die(); }
