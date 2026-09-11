@@ -2,9 +2,9 @@
 /**
  * Yönetim sayfası: QR Menü → QR Chatbot
  *
- * Hub ekranı Restoran Menü ile AYNI kart bileşenini kullanır
- * (QRMS_Admin::render_hub + .rma-hub). Form alanları kendi alt
- * sayfalarındadır; option key'leri ve name attribute'ları değişmez.
+ * Hub ekranı modülün kendi kart bileşenini kullanır (qmo-cb-* ad alanı).
+ * Form alanları kendi alt sayfalarındadır; option key'leri ve name
+ * attribute'ları değişmez.
  *
  * @package QR_Menu_Suite
  */
@@ -371,95 +371,95 @@ if ( ! function_exists( 'qmo_chatbot_sayfalar' ) ) {
 	function qmo_chatbot_sayfalar() {
 		return array(
 			'qrms-chatbot-bot-identity' => array(
-				'title'  => __( 'Bot Kimliği', 'qrms' ),
+				'title'  => __( 'Asistan Profili', 'qrms' ),
 				'render' => 'qmo_chatbot_sayfa_bot_kimligi',
-				'desc'   => __( 'Bot adı, karşılama mesajı, kutu içi ipucu ve açma butonu yazısı.', 'qrms' ),
+				'desc'   => __( 'Asistanın adını, karşılama mesajını ve müşterilere nasıl hitap edeceğini belirleyin.', 'qrms' ),
 				'icon'   => 'dashicons-id',
-				'group'  => __( 'Bot', 'qrms' ),
+				'group'  => __( 'Asistan Deneyimi', 'qrms' ),
 			),
 			'qrms-chatbot-appearance'   => array(
-				'title'  => __( 'Görünüm', 'qrms' ),
+				'title'  => __( 'Görünüm ve Karşılama', 'qrms' ),
 				'render' => 'qmo_chatbot_sayfa_gorunum',
-				'desc'   => __( 'İkon, renk, şekil ve karşılama ekranı.', 'qrms' ),
+				'desc'   => __( 'Asistanın simgesini, renklerini ve müşteriye gösterilecek karşılama deneyimini özelleştirin.', 'qrms' ),
 				'icon'   => 'dashicons-art',
-				'group'  => __( 'Bot', 'qrms' ),
+				'group'  => __( 'Asistan Deneyimi', 'qrms' ),
 			),
 			'qrms-chatbot-quick-replies' => array(
 				'title'  => __( 'Hazır Sorular', 'qrms' ),
 				'render' => 'qmo_chatbot_sayfa_sorular',
-				'desc'   => __( 'Sohbet açılınca çıkan tıklanabilir soru butonları.', 'qrms' ),
+				'desc'   => __( 'Müşterilerin tek dokunuşla sorabileceği popüler soruları belirleyin.', 'qrms' ),
 				'icon'   => 'dashicons-format-chat',
-				'group'  => __( 'Bot', 'qrms' ),
+				'group'  => __( 'Asistan Deneyimi', 'qrms' ),
 			),
 			'qrms-chatbot-visibility'   => array(
-				'title'  => __( 'Görünürlük', 'qrms' ),
+				'title'  => __( 'Ne Zaman ve Kimlere Gösterilsin?', 'qrms' ),
 				'render' => 'qmo_chatbot_sayfa_gorunurluk',
-				'desc'   => __( 'Kimlere, hangi cihazda ve çalışma saatleri dışında nasıl görünsün.', 'qrms' ),
+				'desc'   => __( 'Asistanın hangi müşterilere, hangi cihazlarda ve hangi saatlerde gösterileceğini belirleyin.', 'qrms' ),
 				'icon'   => 'dashicons-visibility',
-				'group'  => __( 'Bot', 'qrms' ),
+				'group'  => __( 'Asistan Deneyimi', 'qrms' ),
 			),
 			'qrms-chatbot-gemini'       => array(
-				'title'  => __( 'Gemini Bağlantısı', 'qrms' ),
+				'title'  => __( 'AI Motoru', 'qrms' ),
 				'render' => 'qmo_chatbot_sayfa_gemini',
-				'desc'   => __( 'API anahtarı ve model seçimi', 'qrms' ),
+				'desc'   => __( 'Yapay zekâ sağlayıcınızı, bağlantınızı ve kullanılacak modeli yönetin.', 'qrms' ),
 				'icon'   => 'dashicons-admin-network',
-				'group'  => __( 'Yapay Zeka', 'qrms' ),
+				'group'  => __( 'Asistanın Zekâsı', 'qrms' ),
 			),
 			QMO_CHATBOT_AI_SAYFA        => array(
-				'title'  => __( 'Yapay Zeka', 'qrms' ),
+				'title'  => __( 'Asistan Davranışı', 'qrms' ),
 				'render' => 'qmo_chatbot_sayfa_davranis',
-				'desc'   => __( 'Sistem talimatı, menü verisi, kullanım sınırı ve güvenlik.', 'qrms' ),
+				'desc'   => __( 'Asistanın nasıl cevap vereceğini, hangi menü bilgilerini kullanacağını ve cevap sınırlarını belirleyin.', 'qrms' ),
 				'icon'   => 'dashicons-format-status',
-				'group'  => __( 'Yapay Zeka', 'qrms' ),
+				'group'  => __( 'Asistanın Zekâsı', 'qrms' ),
 			),
 			'qrms-chatbot-firebase'     => array(
-				'title'  => __( 'Firebase / Şube Bağlantısı', 'qrms' ),
+				'title'  => __( 'Restoran Verisi', 'qrms' ),
 				'render' => 'qmo_chatbot_sayfa_firebase',
-				'desc'   => __( 'Şube kimliği ve servis hesabı.', 'qrms' ),
-				'icon'   => 'dashicons-cloud',
+				'desc'   => __( 'Sipariş, garson çağrısı ve hesap isteklerinin restoranınıza ulaşması için gereken bağlantı.', 'qrms' ),
+				'icon'   => 'dashicons-store',
 				'group'  => __( 'Entegrasyon', 'qrms' ),
 			),
 			'qrms-chatbot-ana-site'     => array(
-				'title'  => __( 'Ana Site Ayarı', 'qrms' ),
+				'title'  => __( 'Site Entegrasyonu', 'qrms' ),
 				'render' => 'qmo_chatbot_sayfa_ana_site',
-				'desc'   => __( 'Kullanıcı oluşturma ucunun bu sitede açılıp kapatılması.', 'qrms' ),
+				'desc'   => __( 'Asistanın sitenizde nasıl yayınlanacağı ve merkez site ayarı.', 'qrms' ),
 				'icon'   => 'dashicons-admin-site-alt3',
 				'group'  => __( 'Entegrasyon', 'qrms' ),
 			),
 			'qrms-chatbot-history'      => array(
 				'title'  => __( 'Sohbet Geçmişi', 'qrms' ),
 				'render' => 'qmo_chatbot_sayfa_gecmis',
-				'desc'   => __( 'Tarih, masa, soru ve cevap kayıtları.', 'qrms' ),
+				'desc'   => __( 'Müşterilerin asistanla yaptığı görüşmeleri inceleyin.', 'qrms' ),
 				'icon'   => 'dashicons-backup',
-				'group'  => __( 'Yönetim', 'qrms' ),
+				'group'  => __( 'Müşteri İçgörüleri', 'qrms' ),
 			),
 			'qrms-chatbot-canli'        => array(
 				'title'  => __( 'Canlı Sohbetler', 'qrms' ),
 				'render' => 'qmo_chatbot_sayfa_canli',
-				'desc'   => __( 'Eskalasyon alan sohbetleri devral, müşteriye doğrudan yaz.', 'qrms' ),
+				'desc'   => __( 'İnsan desteği gereken görüşmeleri yönetin ve müşterilerle doğrudan iletişim kurun.', 'qrms' ),
 				'icon'   => 'dashicons-format-chat',
-				'group'  => __( 'Yönetim', 'qrms' ),
+				'group'  => __( 'Müşteri İçgörüleri', 'qrms' ),
 			),
 			'qrms-chatbot-unanswered'   => array(
 				'title'  => __( 'Cevaplanamayan Sorular', 'qrms' ),
 				'render' => 'qmo_chatbot_sayfa_cevaplanamayan',
-				'desc'   => __( 'Asistanın bilemediği sorular, tekrar sayısıyla.', 'qrms' ),
+				'desc'   => __( 'Asistanın yanıtlayamadığı soruları keşfedin ve bilgi eksiklerini giderin.', 'qrms' ),
 				'icon'   => 'dashicons-flag',
-				'group'  => __( 'Yönetim', 'qrms' ),
+				'group'  => __( 'Müşteri İçgörüleri', 'qrms' ),
 			),
 			'qrms-chatbot-oneri'        => array(
-				'title'  => __( 'Öneri Yönetimi', 'qrms' ),
+				'title'  => __( 'Ürün Önerileri', 'qrms' ),
 				'render' => 'qmo_chatbot_sayfa_oneri',
-				'desc'   => __( 'Önerilecek ürünler ve birlikte öneri kuralları.', 'qrms' ),
+				'desc'   => __( 'Müşterilere önerilecek ürünleri ve öneri kurallarını yönetin.', 'qrms' ),
 				'icon'   => 'dashicons-megaphone',
-				'group'  => __( 'Yönetim', 'qrms' ),
+				'group'  => __( 'Müşteri İçgörüleri', 'qrms' ),
 			),
 			'qrms-chatbot-oneri-rapor'  => array(
 				'title'  => __( 'Öneri Raporu', 'qrms' ),
 				'render' => 'qmo_chatbot_sayfa_oneri_rapor',
-				'desc'   => __( 'Öneri, sepet ve sipariş dönüşüm istatistikleri.', 'qrms' ),
+				'desc'   => __( 'Ürün önerilerinin sepete ve siparişe dönüşüm performansını inceleyin.', 'qrms' ),
 				'icon'   => 'dashicons-chart-bar',
-				'group'  => __( 'Yönetim', 'qrms' ),
+				'group'  => __( 'Müşteri İçgörüleri', 'qrms' ),
 			),
 		);
 	}
@@ -485,11 +485,107 @@ if ( ! function_exists( 'qmo_chatbot_admin_pages' ) ) {
 	}
 }
 
+if ( ! function_exists( 'qmo_chatbot_bolum_aciklamasi' ) ) {
+	/**
+	 * Hub bölüm başlıklarının altındaki tek cümlelik açıklama.
+	 *
+	 * @param string $grup Bölüm adı (qmo_chatbot_sayfalar() içindeki `group`).
+	 * @return string
+	 */
+	function qmo_chatbot_bolum_aciklamasi( $grup ) {
+		$harita = array(
+			__( 'Asistan Deneyimi', 'qrms' )   => __( 'Müşterilerin gördüğü ve kullandığı deneyimi yönetin.', 'qrms' ),
+			__( 'Asistanın Zekâsı', 'qrms' )   => __( 'Asistanın neye göre cevap verdiğini ve hangi sınırlar içinde konuştuğunu belirleyin.', 'qrms' ),
+			__( 'Entegrasyon', 'qrms' )        => __( 'Asistanın restoran verinizle ve sitenizle bağlantısını yönetin.', 'qrms' ),
+			__( 'Müşteri İçgörüleri', 'qrms' ) => __( 'Müşterilerin asistana ne sorduğunu görün, eksikleri kapatın.', 'qrms' ),
+		);
+
+		return isset( $harita[ $grup ] ) ? $harita[ $grup ] : '';
+	}
+}
+
+if ( ! function_exists( 'qmo_chatbot_ai_hazir_mi' ) ) {
+	/**
+	 * Yapay zekâ bağlantısı için anahtar girilmiş mi?
+	 *
+	 * @return bool
+	 */
+	function qmo_chatbot_ai_hazir_mi() {
+		if ( defined( 'GEMINI_API_KEY' ) && GEMINI_API_KEY ) {
+			return true;
+		}
+
+		return '' !== trim( (string) get_option( 'gemini_api_key', '' ) );
+	}
+}
+
+if ( ! function_exists( 'qmo_chatbot_restoran_verisi_hazir_mi' ) ) {
+	/**
+	 * Sipariş/çağrı yazımı için şube bağlantısı hazır mı?
+	 *
+	 * @return bool
+	 */
+	function qmo_chatbot_restoran_verisi_hazir_mi() {
+		return class_exists( 'QMO_Firestore' ) && QMO_Firestore::hazir_mi();
+	}
+}
+
+if ( ! function_exists( 'qmo_chatbot_kurulum_adimlari' ) ) {
+	/**
+	 * Kurulum durumu listesi — YALNIZCA kayıtlı ayarlardan türetilir.
+	 *
+	 * Her adım: etiket, tamam mı, ilgili sayfa adresi.
+	 *
+	 * @return array<int,array{label:string,done:bool,url:string}>
+	 */
+	function qmo_chatbot_kurulum_adimlari() {
+		$sorular = function_exists( 'qmo_chatbot_sorulari_oku' ) ? qmo_chatbot_sorulari_oku() : array();
+		$aktif   = 0;
+		foreach ( $sorular as $soru ) {
+			if ( ! empty( $soru['enabled'] ) ) {
+				++$aktif;
+			}
+		}
+
+		return array(
+			array(
+				'label' => __( 'Asistan profili', 'qrms' ),
+				'done'  => '' !== trim( (string) get_option( 'gemini_bot_name', '' ) )
+					&& '' !== trim( (string) get_option( 'gemini_welcome_text', '' ) ),
+				'url'   => admin_url( 'admin.php?page=qrms-chatbot-bot-identity' ),
+			),
+			array(
+				'label' => __( 'Görünüm ve karşılama', 'qrms' ),
+				'done'  => null !== get_option( 'qmo_chatbot_icon_preset', null )
+					|| null !== get_option( 'gemini_main_color', null ),
+				'url'   => admin_url( 'admin.php?page=qrms-chatbot-appearance' ),
+			),
+			array(
+				'label' => __( 'Hazır sorular', 'qrms' ),
+				'done'  => $aktif > 0,
+				'url'   => admin_url( 'admin.php?page=qrms-chatbot-quick-replies' ),
+			),
+			array(
+				'label' => __( 'Menü bilgisi', 'qrms' ),
+				'done'  => '' !== trim( (string) get_option( 'gemini_menu_json_data', '' ) ),
+				'url'   => admin_url( 'admin.php?page=' . QMO_CHATBOT_AI_SAYFA ),
+			),
+			array(
+				'label' => __( 'AI bağlantısı', 'qrms' ),
+				'done'  => qmo_chatbot_ai_hazir_mi(),
+				'url'   => admin_url( 'admin.php?page=qrms-chatbot-gemini' ),
+			),
+		);
+	}
+}
+
 if ( ! function_exists( 'qmo_chatbot_hub_kartlari' ) ) {
 	/**
-	 * Hub ekranındaki kart grupları — Restoran Menü get_hub_cards() deseni.
+	 * Hub ekranındaki kart grupları — tek kaynak qmo_chatbot_sayfalar().
 	 *
-	 * @return array<int,array{title:string,cards:array<int,array<string,string>>}>
+	 * Rozetler yalnızca gerçekten okunabilen durumlardan üretilir.
+	 *
+	 * @return array<int,array{title:string,desc:string,cards:array<int,array<string,string>>}>
 	 */
 	function qmo_chatbot_hub_kartlari() {
 		$gruplar = array();
@@ -500,6 +596,7 @@ if ( ! function_exists( 'qmo_chatbot_hub_kartlari' ) ) {
 			if ( ! isset( $gruplar[ $grup ] ) ) {
 				$gruplar[ $grup ] = array(
 					'title' => $grup,
+					'desc'  => qmo_chatbot_bolum_aciklamasi( $grup ),
 					'cards' => array(),
 				);
 			}
@@ -512,18 +609,50 @@ if ( ! function_exists( 'qmo_chatbot_hub_kartlari' ) ) {
 			);
 
 			if ( 'qrms-chatbot-firebase' === $slug ) {
-				$hazir = class_exists( 'QMO_Firestore' ) && QMO_Firestore::hazir_mi();
-				if ( $hazir ) {
-					$kart['badge'] = '✓ Yapılandırılmış';
-				} else {
-					$kart['badge'] = '✗ Henüz yapılandırılmadı';
-				}
+				$hazir          = qmo_chatbot_restoran_verisi_hazir_mi();
+				$kart['badge']  = $hazir ? __( 'Bağlı', 'qrms' ) : __( 'Kurulum gerekiyor', 'qrms' );
+				$kart['durum']  = $hazir ? 'ok' : 'uyari';
+			}
+
+			if ( 'qrms-chatbot-gemini' === $slug ) {
+				$hazir         = qmo_chatbot_ai_hazir_mi();
+				$kart['badge'] = $hazir ? __( 'Bağlı', 'qrms' ) : __( 'Kurulum gerekiyor', 'qrms' );
+				$kart['durum'] = $hazir ? 'ok' : 'uyari';
 			}
 
 			$gruplar[ $grup ]['cards'][] = $kart;
 		}
 
 		return array_values( $gruplar );
+	}
+}
+
+if ( ! function_exists( 'qmo_chatbot_hub_kart_bas' ) ) {
+	/**
+	 * Tek hub kartı — kartın tamamı gerçek bir bağlantıdır.
+	 *
+	 * @param array $kart Kart verisi.
+	 * @return void
+	 */
+	function qmo_chatbot_hub_kart_bas( array $kart ) {
+		$durum = isset( $kart['durum'] ) ? $kart['durum'] : '';
+
+		echo '<a class="qmo-cb-card" href="' . esc_url( $kart['url'] ) . '">';
+		echo '<span class="qmo-cb-card-icon dashicons ' . esc_attr( $kart['icon'] ) . '" aria-hidden="true"></span>';
+		echo '<span class="qmo-cb-card-body">';
+		echo '<span class="qmo-cb-card-title">' . esc_html( $kart['title'] ) . '</span>';
+		if ( ! empty( $kart['desc'] ) ) {
+			echo '<span class="qmo-cb-card-desc">' . esc_html( $kart['desc'] ) . '</span>';
+		}
+		if ( ! empty( $kart['badge'] ) ) {
+			echo '<span class="qmo-cb-badge qmo-cb-badge-' . esc_attr( $durum ? $durum : 'notr' ) . '">';
+			echo '<span class="qmo-cb-badge-mark" aria-hidden="true">' . ( 'ok' === $durum ? '&#10003;' : '!' ) . '</span>';
+			echo esc_html( $kart['badge'] );
+			echo '</span>';
+		}
+		echo '</span>';
+		echo '<span class="qmo-cb-card-chevron dashicons dashicons-arrow-right-alt2" aria-hidden="true"></span>';
+		echo '</a>';
 	}
 }
 
@@ -576,11 +705,61 @@ if ( ! function_exists( 'qmo_chatbot_ayar_sayfasi' ) ) {
 			exit;
 		}
 
-		$acik = qmo_chatbot_aktif_mi();
-		$wrap = $acik ? 'rma-hub' : 'rma-hub qmo-cb-hub-kapali';
+		$acik      = qmo_chatbot_aktif_mi();
+		$ai_hazir  = qmo_chatbot_ai_hazir_mi();
+		$adimlar   = qmo_chatbot_kurulum_adimlari();
+		$tamam     = 0;
+		foreach ( $adimlar as $adim ) {
+			if ( $adim['done'] ) {
+				++$tamam;
+			}
+		}
 
-		echo '<div class="' . esc_attr( $wrap ) . '">';
-		echo '<div class="qmo-cb-master">';
+		if ( ! $acik ) {
+			$durum_sinif = 'kapali';
+			$durum_metin = __( 'Kapalı', 'qrms' );
+			$durum_not   = __( 'Asistan şu an kapalı, sitede görünmüyor.', 'qrms' );
+		} elseif ( ! $ai_hazir ) {
+			$durum_sinif = 'uyari';
+			$durum_metin = __( 'Yapılandırma gerekiyor', 'qrms' );
+			$durum_not   = __( 'Asistanın cevap verebilmesi için AI bağlantısını tamamlayın.', 'qrms' );
+		} else {
+			$durum_sinif = 'ok';
+			$durum_metin = __( 'Aktif', 'qrms' );
+			$durum_not   = __( 'Misafirleriniz menünüz hakkında soru sorabilir.', 'qrms' );
+		}
+
+		$wrap = 'qmo-cb-hub';
+		if ( ! $acik ) {
+			$wrap .= ' qmo-cb-hub-kapali';
+		}
+
+		echo '<div class="wrap ' . esc_attr( $wrap ) . '">';
+
+		/* Hero: kimlik + durum + ana aksiyonlar. */
+		echo '<section class="qmo-cb-hero">';
+		echo '<div class="qmo-cb-hero-main">';
+		echo '<h1 class="qmo-cb-hero-title">' . esc_html__( 'AI Menü Asistanı', 'qrms' ) . '</h1>';
+		echo '<p class="qmo-cb-hero-desc">' . esc_html__( 'Misafirlerinizin menünüz hakkında sorularını yapay zekâ ile yanıtlayın, ürünleri keşfetmelerini ve siparişe daha hızlı ulaşmalarını sağlayın.', 'qrms' ) . '</p>';
+		$acik_sinif = $ai_hazir ? 'ok' : 'uyari';
+		$acik_metin = $ai_hazir ? __( 'Aktif', 'qrms' ) : __( 'Yapılandırma gerekiyor', 'qrms' );
+		$acik_not   = $ai_hazir
+			? __( 'Misafirleriniz menünüz hakkında soru sorabilir.', 'qrms' )
+			: __( 'Asistanın cevap verebilmesi için AI bağlantısını tamamlayın.', 'qrms' );
+
+		echo '<p class="qmo-cb-status qmo-cb-status-' . esc_attr( $durum_sinif ) . '"';
+		echo ' data-acik-sinif="' . esc_attr( $acik_sinif ) . '"';
+		echo ' data-acik-metin="' . esc_attr( $acik_metin ) . '"';
+		echo ' data-acik-not="' . esc_attr( $acik_not ) . '"';
+		echo ' data-kapali-metin="' . esc_attr__( 'Kapalı', 'qrms' ) . '"';
+		echo ' data-kapali-not="' . esc_attr__( 'Asistan şu an kapalı, sitede görünmüyor.', 'qrms' ) . '">';
+		echo '<span class="qmo-cb-status-dot" aria-hidden="true"></span>';
+		echo '<span class="qmo-cb-status-text">' . esc_html( $durum_metin ) . '</span>';
+		echo '<span class="qmo-cb-status-note">' . esc_html( $durum_not ) . '</span>';
+		echo '</p>';
+		echo '</div>';
+
+		echo '<div class="qmo-cb-hero-side">';
 		echo '<button type="button" class="qmo-cb-switch" id="qmo-cb-hub-switch"';
 		echo ' aria-pressed="' . ( $acik ? 'true' : 'false' ) . '"';
 		echo ' data-nonce="' . esc_attr( wp_create_nonce( 'qmo_chatbot_toggle' ) ) . '">';
@@ -588,18 +767,62 @@ if ( ! function_exists( 'qmo_chatbot_ayar_sayfasi' ) ) {
 		echo '<span class="qmo-cb-switch-label">' . esc_html__( 'Sohbet Asistanı', 'qrms' ) . ' — ';
 		echo '<strong class="qmo-cb-switch-state">' . ( $acik ? esc_html__( 'Açık', 'qrms' ) : esc_html__( 'Kapalı', 'qrms' ) ) . '</strong>';
 		echo '</span></button>';
+		echo '<div class="qmo-cb-hero-actions">';
+		echo '<a class="qmo-cb-btn qmo-cb-btn-primary" href="' . esc_url( admin_url( 'admin.php?page=qrms-chatbot-appearance' ) ) . '">';
+		echo esc_html__( 'Asistanı Test Et', 'qrms' ) . '</a>';
+		echo '<a class="qmo-cb-btn" href="' . esc_url( admin_url( 'admin.php?page=qrms-chatbot-bot-identity' ) ) . '">';
+		echo esc_html__( 'Ayarları Düzenle', 'qrms' ) . '</a>';
+		echo '</div>';
 		echo '<p class="qmo-cb-master-note"' . ( $acik ? ' hidden' : '' ) . '>';
 		echo esc_html__( 'Asistan şu an kapalı, sitede görünmüyor.', 'qrms' );
-		echo '</p></div>';
+		echo '</p>';
+		echo '</div>';
+		echo '</section>';
 
-		QRMS_Admin::render_hub(
-			array(
-				'title'       => 'QR Chatbot',
-				'intro'       => 'Gemini destekli masa asistanı. Kısa kod: [gemini_chatbot]',
-				'accent'      => '#c9a84c',
-				'card_groups' => qmo_chatbot_hub_kartlari(),
-			)
+		/* Kurulum durumu — yalnızca kayıtlı ayarlardan okunur. */
+		echo '<section class="qmo-cb-setup">';
+		echo '<div class="qmo-cb-setup-head">';
+		echo '<h2 class="qmo-cb-setup-title">' . esc_html__( 'Kurulum Durumu', 'qrms' ) . '</h2>';
+		echo '<p class="qmo-cb-setup-count">';
+		printf(
+			/* translators: 1: tamamlanan adım sayısı, 2: toplam adım sayısı. */
+			esc_html__( '%1$d / %2$d tamamlandı', 'qrms' ),
+			(int) $tamam,
+			count( $adimlar )
 		);
+		echo '</p>';
+		echo '</div>';
+		echo '<ul class="qmo-cb-setup-list">';
+		foreach ( $adimlar as $adim ) {
+			$sinif = $adim['done'] ? 'ok' : 'uyari';
+			echo '<li class="qmo-cb-setup-item qmo-cb-setup-item-' . esc_attr( $sinif ) . '">';
+			echo '<a href="' . esc_url( $adim['url'] ) . '">';
+			echo '<span class="qmo-cb-setup-mark" aria-hidden="true">' . ( $adim['done'] ? '&#10003;' : '!' ) . '</span>';
+			echo '<span class="qmo-cb-setup-label">' . esc_html( $adim['label'] ) . '</span>';
+			echo '<span class="screen-reader-text">';
+			echo $adim['done'] ? esc_html__( 'tamamlandı', 'qrms' ) : esc_html__( 'eksik', 'qrms' );
+			echo '</span>';
+			echo '</a></li>';
+		}
+		echo '</ul>';
+		echo '</section>';
+
+		foreach ( qmo_chatbot_hub_kartlari() as $grup ) {
+			echo '<section class="qmo-cb-section">';
+			echo '<div class="qmo-cb-section-head">';
+			echo '<h2 class="qmo-cb-section-title">' . esc_html( $grup['title'] ) . '</h2>';
+			if ( ! empty( $grup['desc'] ) ) {
+				echo '<p class="qmo-cb-section-desc">' . esc_html( $grup['desc'] ) . '</p>';
+			}
+			echo '</div>';
+			echo '<div class="qmo-cb-grid">';
+			foreach ( $grup['cards'] as $kart ) {
+				qmo_chatbot_hub_kart_bas( $kart );
+			}
+			echo '</div>';
+			echo '</section>';
+		}
+
 		echo '</div>';
 	}
 }
@@ -627,7 +850,7 @@ if ( ! function_exists( 'qmo_chatbot_sayfa_basligi' ) ) {
 		echo '<div class="qrms-subpage-nav">';
 		echo '<a class="qrms-back-link" href="' . esc_url( qmo_chatbot_hub_url() ) . '">';
 		echo '<span class="dashicons dashicons-arrow-left-alt2" aria-hidden="true"></span>';
-		echo 'QR Chatbot';
+		echo esc_html__( 'AI Menü Asistanı', 'qrms' );
 		echo '</a></div>';
 		echo '<div class="wrap qmo-wrap">';
 		echo '<h1 class="qmo-baslik">' . esc_html( $title ) . '</h1>';
@@ -686,8 +909,8 @@ if ( ! function_exists( 'qmo_chatbot_form_kapat' ) ) {
 if ( ! function_exists( 'qmo_chatbot_sayfa_bot_kimligi' ) ) {
 	function qmo_chatbot_sayfa_bot_kimligi() {
 		qmo_chatbot_sayfa_basligi(
-			__( 'Bot Kimliği', 'qrms' ),
-			__( 'Bot adı, karşılama mesajı, kutu içi ipucu, açma butonu yazısı ve ikon.', 'qrms' )
+			__( 'Asistan Profili', 'qrms' ),
+			__( 'Asistanın adını, karşılama mesajını ve müşterilere nasıl hitap edeceğini belirleyin.', 'qrms' )
 		);
 
 		$bot_adi     = get_option( 'gemini_bot_name', 'Asistan' );
@@ -699,7 +922,7 @@ if ( ! function_exists( 'qmo_chatbot_sayfa_bot_kimligi' ) ) {
 		?>
 		<table class="form-table" role="presentation">
 			<tr>
-				<th scope="row"><label for="gemini_bot_name">Bot Adı</label></th>
+				<th scope="row"><label for="gemini_bot_name">Asistan Adı</label></th>
 				<td>
 					<input type="text" id="gemini_bot_name" name="gemini_bot_name" class="regular-text"
 						value="<?php echo esc_attr( $bot_adi ); ?>">
@@ -736,11 +959,11 @@ if ( ! function_exists( 'qmo_chatbot_sayfa_bot_kimligi' ) ) {
 			<tr>
 				<th scope="row">Açma butonu yazısı</th>
 				<td>
-					<?php qmo_chatbot_option_ac_kapa( 'gemini_show_toggle_text', __( 'Bot adını açma butonunda göster', 'qrms' ) ); ?>
+					<?php qmo_chatbot_option_ac_kapa( 'gemini_show_toggle_text', __( 'Asistan adını açma butonunda göster', 'qrms' ) ); ?>
 				</td>
 			</tr>
 			<tr>
-				<th scope="row"><label for="gemini_bot_icon">Bot İkonu</label></th>
+				<th scope="row"><label for="gemini_bot_icon">Asistan Simgesi</label></th>
 				<td>
 					<input type="url" id="gemini_bot_icon" name="gemini_bot_icon" class="regular-text"
 						value="<?php echo esc_url( $ikon_url ); ?>" placeholder="https://...">
@@ -767,15 +990,22 @@ if ( ! function_exists( 'qmo_chatbot_sayfa_bot_kimligi' ) ) {
 if ( ! function_exists( 'qmo_chatbot_sayfa_gemini' ) ) {
 	function qmo_chatbot_sayfa_gemini() {
 		qmo_chatbot_sayfa_basligi(
-			__( 'Gemini Bağlantısı', 'qrms' ),
-			__( 'API anahtarı ve model seçimi.', 'qrms' )
+			__( 'AI Motoru', 'qrms' ),
+			__( 'Yapay zekâ sağlayıcınızı, bağlantınızı ve kullanılacak modeli yönetin.', 'qrms' )
 		);
+
+		$ai_hazir = qmo_chatbot_ai_hazir_mi();
+		echo '<div class="qmo-cb-panel-status qmo-cb-panel-status-' . ( $ai_hazir ? 'ok' : 'uyari' ) . '">';
+		echo '<span class="qmo-cb-panel-status-mark" aria-hidden="true">' . ( $ai_hazir ? '&#10003;' : '!' ) . '</span>';
+		echo '<span class="qmo-cb-panel-status-body"><strong>' . esc_html__( 'Google Gemini', 'qrms' ) . '</strong> ';
+		echo esc_html( $ai_hazir ? __( '— Bağlı', 'qrms' ) : __( '— Kurulum gerekiyor', 'qrms' ) );
+		echo '</span></div>';
 
 		qmo_chatbot_form_ac();
 		?>
 		<table class="form-table" role="presentation">
 			<tr>
-				<th scope="row"><label for="gemini_api_key">Gemini API Anahtarı</label></th>
+				<th scope="row"><label for="gemini_api_key">Bağlantı anahtarı</label></th>
 				<td>
 					<input type="password" id="gemini_api_key" name="gemini_api_key" class="regular-text"
 						placeholder="<?php echo get_option( 'gemini_api_key' ) ? '•••••••• (değiştirmek için yazın)' : 'API anahtarınızı girin'; ?>"
@@ -787,7 +1017,7 @@ if ( ! function_exists( 'qmo_chatbot_sayfa_gemini' ) ) {
 				</td>
 			</tr>
 			<tr>
-				<th scope="row"><label for="qmo_gemini_model">Gemini Modeli</label></th>
+				<th scope="row"><label for="qmo_gemini_model">Kullanılacak model</label></th>
 				<td>
 					<input type="text" id="qmo_gemini_model" name="qmo_gemini_model" class="regular-text"
 						value="<?php echo esc_attr( get_option( 'qmo_gemini_model', '' ) ); ?>"
@@ -809,15 +1039,15 @@ if ( ! function_exists( 'qmo_chatbot_sayfa_gemini' ) ) {
 if ( ! function_exists( 'qmo_chatbot_sayfa_davranis' ) ) {
 	function qmo_chatbot_sayfa_davranis() {
 		qmo_chatbot_sayfa_basligi(
-			__( 'Yapay Zeka', 'qrms' ),
-			__( 'Sistem talimatı, menü verisi, kullanım sınırı ve güvenlik.', 'qrms' )
+			__( 'Asistan Davranışı', 'qrms' ),
+			__( 'Asistanın nasıl cevap vereceğini, hangi menü bilgilerini kullanacağını ve cevap sınırlarını belirleyin.', 'qrms' )
 		);
 
 		qmo_chatbot_form_ac();
 		?>
 		<table class="form-table" role="presentation">
 			<tr>
-				<th scope="row"><label for="gemini_system_prompt">Sistem Talimatı</label></th>
+				<th scope="row"><label for="gemini_system_prompt">Asistanın konuşma kuralları</label></th>
 				<td>
 					<textarea id="gemini_system_prompt" name="gemini_system_prompt" rows="10" class="large-text code"><?php echo esc_textarea( get_option( 'gemini_system_prompt', '' ) ); ?></textarea>
 					<p class="description">
@@ -827,7 +1057,7 @@ if ( ! function_exists( 'qmo_chatbot_sayfa_davranis' ) ) {
 				</td>
 			</tr>
 			<tr>
-				<th scope="row"><label for="gemini_menu_json_data">Menü Verisi (JSON)</label></th>
+				<th scope="row"><label for="gemini_menu_json_data">Asistanın kullandığı menü bilgisi</label></th>
 				<td>
 					<textarea id="gemini_menu_json_data" name="gemini_menu_json_data" rows="12" class="large-text code"><?php echo esc_textarea( get_option( 'gemini_menu_json_data', '' ) ); ?></textarea>
 					<p class="description">
@@ -918,8 +1148,8 @@ if ( ! function_exists( 'qmo_chatbot_sayfa_davranis' ) ) {
 if ( ! function_exists( 'qmo_chatbot_sayfa_firebase' ) ) {
 	function qmo_chatbot_sayfa_firebase() {
 		qmo_chatbot_sayfa_basligi(
-			__( 'Firebase / Şube Bağlantısı', 'qrms' ),
-			__( 'Şube kimliği ve Service Account JSON — garson/hesap çağrısı ile sipariş yazımı buna bağlıdır.', 'qrms' )
+			__( 'Restoran Verisi', 'qrms' ),
+			__( 'Sipariş, garson çağrısı ve hesap isteklerinin restoranınıza ulaşabilmesi için gereken bağlantı.', 'qrms' )
 		);
 
 		settings_errors();
@@ -935,7 +1165,7 @@ if ( ! function_exists( 'qmo_chatbot_sayfa_firebase' ) ) {
 
 			<table class="form-table" role="presentation">
 				<tr>
-					<th scope="row"><label for="qmo_branch_id">Şube Kimliği (branchId)</label></th>
+					<th scope="row"><label for="qmo_branch_id">Şube kimliği</label></th>
 					<td>
 						<input type="text" id="qmo_branch_id" name="qmo_branch_id"
 							value="<?php echo esc_attr( get_option( 'qmo_branch_id', '' ) ); ?>" class="regular-text" />
@@ -943,7 +1173,7 @@ if ( ! function_exists( 'qmo_chatbot_sayfa_firebase' ) ) {
 					</td>
 				</tr>
 				<tr>
-					<th scope="row"><label for="qmo_firebase_sa">Service Account JSON</label></th>
+					<th scope="row"><label for="qmo_firebase_sa">Bağlantı anahtarı</label></th>
 					<td>
 						<?php if ( class_exists( 'QMO_Firestore' ) && QMO_Firestore::hazir_mi() ) : ?>
 							<p class="qmo-durum qmo-durum-ok">
@@ -986,9 +1216,17 @@ if ( ! function_exists( 'qmo_chatbot_sayfa_firebase' ) ) {
 if ( ! function_exists( 'qmo_chatbot_sayfa_ana_site' ) ) {
 	function qmo_chatbot_sayfa_ana_site() {
 		qmo_chatbot_sayfa_basligi(
-			__( 'Ana Site Ayarı', 'qrms' ),
-			__( 'Kullanıcı oluşturma REST ucunun bu sitede açılıp açılmayacağı.', 'qrms' )
+			__( 'Site Entegrasyonu', 'qrms' ),
+			__( 'Asistanın sitenizde nasıl yayınlanacağı ve bu sitenin merkez site olup olmadığı.', 'qrms' )
 		);
+
+		echo '<div class="qmo-cb-kod-kutu">';
+		echo '<h2 class="qmo-cb-kod-baslik">' . esc_html__( 'Asistanı sayfaya elle ekleme', 'qrms' ) . '</h2>';
+		echo '<p class="qmo-cb-kod-not">' . esc_html__( 'Asistan varsayılan olarak tüm sayfalarda otomatik gösterilir. Yalnızca belirli bir sayfada göstermek isterseniz aşağıdaki kısa kodu o sayfaya ekleyin.', 'qrms' ) . '</p>';
+		echo '<div class="qmo-cb-kod-satir">';
+		echo '<input type="text" class="qmo-cb-kod-input" id="qmo-cb-kisa-kod" readonly value="[gemini_chatbot]">';
+		echo '<button type="button" class="qmo-cb-btn qmo-cb-kopyala" data-kopyala="#qmo-cb-kisa-kod">' . esc_html__( 'Kopyala', 'qrms' ) . '</button>';
+		echo '</div></div>';
 
 		settings_errors();
 
@@ -1001,7 +1239,7 @@ if ( ! function_exists( 'qmo_chatbot_sayfa_ana_site' ) ) {
 
 			<table class="form-table" role="presentation">
 				<tr>
-					<th scope="row">Bu site ana site mi?</th>
+					<th scope="row">Bu site merkez site mi?</th>
 					<td>
 						<label>
 							<input type="checkbox" name="qmo_ana_site" value="1"

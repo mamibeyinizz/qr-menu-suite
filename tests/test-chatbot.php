@@ -333,19 +333,19 @@ qrms_test(
 			qrms_assert_true( is_callable( $page['render'] ), $slug . ' callback çağrılabilir' );
 		}
 
-		qrms_assert_same( 'Bot', $pages['qrms-chatbot-bot-identity']['group'], 'Bot grubu' );
-		qrms_assert_same( 'Bot', $pages['qrms-chatbot-appearance']['group'], 'Görünüm Bot grubunda' );
-		qrms_assert_same( 'Bot', $pages['qrms-chatbot-quick-replies']['group'], 'Hazır sorular Bot grubunda' );
-		qrms_assert_same( 'Bot', $pages['qrms-chatbot-visibility']['group'], 'Görünürlük Bot grubunda' );
-		qrms_assert_same( 'Yapay Zeka', $pages['qrms-chatbot-gemini']['group'], 'Gemini grubu' );
-		qrms_assert_same( 'Yapay Zeka', $pages['qrms-chatbot-ai-behavior']['group'], 'Davranış grubu' );
-		qrms_assert_same( 'Entegrasyon', $pages['qrms-chatbot-firebase']['group'], 'Firebase grubu' );
-		qrms_assert_same( 'Entegrasyon', $pages['qrms-chatbot-ana-site']['group'], 'Ana site grubu' );
-		qrms_assert_same( 'Yönetim', $pages['qrms-chatbot-history']['group'], 'Geçmiş Yönetim grubunda' );
-		qrms_assert_same( 'Yönetim', $pages['qrms-chatbot-canli']['group'], 'Canlı Sohbetler Yönetim grubunda' );
-		qrms_assert_same( 'Yönetim', $pages['qrms-chatbot-unanswered']['group'], 'Cevaplanamayan Yönetim grubunda' );
-		qrms_assert_same( 'Yönetim', $pages['qrms-chatbot-oneri']['group'], 'Öneri Yönetimi Yönetim grubunda' );
-		qrms_assert_same( 'Yönetim', $pages['qrms-chatbot-oneri-rapor']['group'], 'Öneri Raporu Yönetim grubunda' );
+		qrms_assert_same( 'Asistan Deneyimi', $pages['qrms-chatbot-bot-identity']['group'], 'Asistan Profili grubu' );
+		qrms_assert_same( 'Asistan Deneyimi', $pages['qrms-chatbot-appearance']['group'], 'Görünüm deneyim grubunda' );
+		qrms_assert_same( 'Asistan Deneyimi', $pages['qrms-chatbot-quick-replies']['group'], 'Hazır sorular deneyim grubunda' );
+		qrms_assert_same( 'Asistan Deneyimi', $pages['qrms-chatbot-visibility']['group'], 'Görünürlük deneyim grubunda' );
+		qrms_assert_same( 'Asistanın Zekâsı', $pages['qrms-chatbot-gemini']['group'], 'AI Motoru grubu' );
+		qrms_assert_same( 'Asistanın Zekâsı', $pages['qrms-chatbot-ai-behavior']['group'], 'Davranış grubu' );
+		qrms_assert_same( 'Entegrasyon', $pages['qrms-chatbot-firebase']['group'], 'Restoran Verisi grubu' );
+		qrms_assert_same( 'Entegrasyon', $pages['qrms-chatbot-ana-site']['group'], 'Site Entegrasyonu grubu' );
+		qrms_assert_same( 'Müşteri İçgörüleri', $pages['qrms-chatbot-history']['group'], 'Geçmiş içgörü grubunda' );
+		qrms_assert_same( 'Müşteri İçgörüleri', $pages['qrms-chatbot-canli']['group'], 'Canlı Sohbetler içgörü grubunda' );
+		qrms_assert_same( 'Müşteri İçgörüleri', $pages['qrms-chatbot-unanswered']['group'], 'Cevaplanamayan içgörü grubunda' );
+		qrms_assert_same( 'Müşteri İçgörüleri', $pages['qrms-chatbot-oneri']['group'], 'Ürün Önerileri içgörü grubunda' );
+		qrms_assert_same( 'Müşteri İçgörüleri', $pages['qrms-chatbot-oneri-rapor']['group'], 'Öneri Raporu içgörü grubunda' );
 	}
 );
 
@@ -356,13 +356,14 @@ qrms_test(
 		qmo_chatbot_ayar_sayfasi();
 		$html = ob_get_clean();
 
-		qrms_assert_contains( 'class="rma-hub"', $html, 'Restoran Menü kapsülü' );
-		qrms_assert_contains( 'QR Chatbot', $html, 'hub başlığı' );
-		qrms_assert_contains( 'Gemini destekli masa asistanı', $html, 'açıklama' );
-		qrms_assert_contains( '[gemini_chatbot]', $html, 'kısa kod' );
-		qrms_assert_contains( 'qrms-hub-group-title', $html, 'bölüm başlığı' );
-		qrms_assert_contains( 'qrms-hub-group-title">Bot', $html, 'Bot bölümü' );
-		qrms_assert_contains( 'Yapay Zeka', $html, 'Yapay Zeka bölümü' );
+		qrms_assert_contains( 'qmo-cb-hub', $html, 'chatbot hub kapsülü' );
+		qrms_assert_contains( 'AI Menü Asistanı', $html, 'hub başlığı' );
+		qrms_assert_contains( 'Misafirlerinizin menünüz hakkında', $html, 'açıklama' );
+		qrms_assert_contains( 'Kurulum Durumu', $html, 'kurulum durumu' );
+		qrms_assert_contains( 'Asistanı Test Et', $html, 'birincil aksiyon' );
+		qrms_assert_contains( 'qmo-cb-section-title', $html, 'bölüm başlığı' );
+		qrms_assert_contains( 'qmo-cb-section-title">Asistan Deneyimi', $html, 'Asistan Deneyimi bölümü' );
+		qrms_assert_contains( 'Asistanın Zekâsı', $html, 'Zekâ bölümü' );
 		qrms_assert_contains( 'Entegrasyon', $html, 'Entegrasyon bölümü' );
 		qrms_assert_contains( 'page=qrms-chatbot-bot-identity', $html, 'Bot Kimliği kartı' );
 		qrms_assert_contains( 'page=qrms-chatbot-appearance', $html, 'Görünüm kartı' );
@@ -376,8 +377,8 @@ qrms_test(
 		qrms_assert_contains( 'page=qrms-chatbot-unanswered', $html, 'Cevaplanamayan kartı' );
 		qrms_assert_contains( 'Sohbet Asistanı', $html, 'ana anahtar' );
 		qrms_assert_contains( 'qmo-cb-hub-switch', $html, 'AJAX anahtar' );
-		qrms_assert_contains( 'Yönetim', $html, 'Yönetim bölümü' );
-		qrms_assert_contains( '✗ Henüz yapılandırılmadı', $html, 'Firebase uyarı rozeti' );
+		qrms_assert_contains( 'Müşteri İçgörüleri', $html, 'İçgörü bölümü' );
+		qrms_assert_contains( 'Kurulum gerekiyor', $html, 'Restoran Verisi uyarı rozeti' );
 		qrms_assert_false( false !== strpos( $html, '<form' ), 'hub form basmaz' );
 		qrms_assert_false( false !== strpos( $html, 'nav-tab' ), 'eski sekmeler yok' );
 	}
@@ -446,7 +447,7 @@ qrms_test(
 		}
 
 		$modul = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/module.php' );
-		qrms_assert_contains( 'modules/restoran-menu/assets/css/hub.css', $modul, 'hub.css kuyruğa alınır' );
+		qrms_assert_false( false !== strpos( $modul, 'modules/restoran-menu/assets/css/hub.css' ), 'yabancı modülün hub.css\'i yüklenmez' );
 		qrms_assert_contains( "array( 'qrms-admin' )", $modul, 'ortak admin.css sonrası yüklenir' );
 	}
 );
@@ -467,7 +468,7 @@ qrms_test(
 		$html = ob_get_clean();
 
 		qrms_assert_contains( 'qrms-back-link', $html, 'geri bağlantısı' );
-		qrms_assert_contains( 'QR Chatbot', $html, 'geri metni' );
+		qrms_assert_contains( 'AI Menü Asistanı', $html, 'geri metni' );
 		qrms_assert_contains( 'name="gemini_bot_name"', $html, 'bot adı alanı' );
 		qrms_assert_contains( 'name="gemini_welcome_text"', $html, 'karşılama' );
 		qrms_assert_contains( 'name="gemini_placeholder_text"', $html, 'placeholder' );

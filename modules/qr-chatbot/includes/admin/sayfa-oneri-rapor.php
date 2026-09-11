@@ -106,7 +106,7 @@ function qmo_chatbot_sayfa_oneri_rapor() {
 
 	qmo_chatbot_sayfa_basligi(
 		__( 'Öneri Raporu', 'qrms' ),
-		__( 'Chatbot önerilerinin sepete ve siparişe dönüşüm performansı.', 'qrms' )
+		__( 'Ürün önerilerinin sepete ve siparişe dönüşüm performansı.', 'qrms' )
 	);
 	?>
 	<form method="get" action="<?php echo esc_url( admin_url( 'admin.php' ) ); ?>" class="qmo-cb-filtre">

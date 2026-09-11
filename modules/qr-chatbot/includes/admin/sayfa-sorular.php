@@ -17,7 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 function qmo_chatbot_sayfa_sorular() {
 	qmo_chatbot_sayfa_basligi(
 		__( 'Hazır Sorular', 'qrms' ),
-		__( 'Sohbet açılınca altta çıkan tıklanabilir sorular. Sırayı sürükleyerek değiştirin.', 'qrms' )
+		__( 'Müşterilerin tek dokunuşla sorabileceği popüler sorular. Sırayı sürükleyerek değiştirin.', 'qrms' )
 	);
 
 	$sorular = qmo_chatbot_sorulari_oku();

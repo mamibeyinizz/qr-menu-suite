@@ -49,7 +49,7 @@ function qmo_chatbot_sayfa_gecmis() {
 
 	qmo_chatbot_sayfa_basligi(
 		__( 'Sohbet Geçmişi', 'qrms' ),
-		__( 'Ziyaretçilerin soruları ve asistanın cevapları. Satıra tıklayınca o oturumun tam yazışması açılır.', 'qrms' )
+		__( 'Müşterilerin asistanla yaptığı görüşmeler. Satıra tıklayınca o oturumun tam yazışması açılır.', 'qrms' )
 	);
 
 	qmo_chatbot_form_ac();

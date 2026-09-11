@@ -141,9 +141,8 @@ function qrms_module_qr_chatbot_admin_menu() {
 /**
  * Chatbot hub ve alt sayfalarının yönetim varlıkları.
  *
- * Hub, Restoran Menü hub'ının CSS'ini kopyalamadan kuyruğa alır
- * (modules/restoran-menu/assets/css/hub.css). Form ekranları mevcut
- * qmo-admin + admin-chatbot.js varlıklarını kullanır.
+ * Hub, modülün kendi admin-chatbot.css dosyasını kullanır. Form ekranları
+ * mevcut qmo-admin + admin-chatbot.js varlıklarını kullanır.
  *
  * @return void
  */
@@ -161,13 +160,9 @@ function qrms_module_qr_chatbot_admin_assets() {
 	);
 
 	if ( $hub_slug === $page ) {
-		wp_enqueue_style(
-			'rma-hub',
-			QRMS_PLUGIN_URL . 'modules/restoran-menu/assets/css/hub.css',
-			array( 'qrms-admin' ),
-			QRMS_Helpers::asset_version( 'modules/restoran-menu/assets/css/hub.css' )
-		);
-		wp_enqueue_style( $ortak_css[0], $ortak_css[1], array( 'rma-hub' ), $ortak_css[2] );
+		// Hub kendi bileşenini (qmo-cb-*) kullanır; Restoran Menü hub.css'i
+		// bu ekranda artık gereksizdir, yüklenmez.
+		wp_enqueue_style( $ortak_css[0], $ortak_css[1], array( 'qrms-admin' ), $ortak_css[2] );
 		wp_enqueue_script(
 			'qmo-admin-hub',
 			QRMS_PLUGIN_URL . 'modules/qr-chatbot/assets/js/admin-hub.js',
@@ -179,9 +174,10 @@ function qrms_module_qr_chatbot_admin_assets() {
 			'qmo-admin-hub',
 			'qmoChatbotHub',
 			array(
-				'ajaxUrl' => admin_url( 'admin-ajax.php' ),
-				'acik'    => __( 'Açık', 'qrms' ),
-				'kapali'  => __( 'Kapalı', 'qrms' ),
+				'ajaxUrl'     => admin_url( 'admin-ajax.php' ),
+				'acik'        => __( 'Açık', 'qrms' ),
+				'kapali'      => __( 'Kapalı', 'qrms' ),
+				'kopyalandi'  => __( 'Kopyalandı', 'qrms' ),
 			)
 		);
 		return;
@@ -210,6 +206,26 @@ function qrms_module_qr_chatbot_admin_assets() {
 	}
 
 	wp_enqueue_style( $ortak_css[0], $ortak_css[1], $admin_deps, $ortak_css[2] );
+
+	if ( 'qrms-chatbot-ana-site' === $page ) {
+		// Kısa kod kutusundaki "Kopyala" düğmesi hub betiğindeki ortak
+		// yardımcıyı kullanır; anahtar yoksa betik erken çıkar.
+		wp_enqueue_script(
+			'qmo-admin-hub',
+			QRMS_PLUGIN_URL . 'modules/qr-chatbot/assets/js/admin-hub.js',
+			array(),
+			QRMS_Helpers::asset_version( 'modules/qr-chatbot/assets/js/admin-hub.js' ),
+			true
+		);
+		wp_localize_script(
+			'qmo-admin-hub',
+			'qmoChatbotHub',
+			array(
+				'ajaxUrl'    => admin_url( 'admin-ajax.php' ),
+				'kopyalandi' => __( 'Kopyalandı', 'qrms' ),
+			)
+		);
+	}
 
 	if ( 'qrms-chatbot-quick-replies' === $page ) {
 		wp_enqueue_script(

@@ -135,8 +135,8 @@ function qmo_chatbot_sayfa_oneri() {
 	}
 
 	qmo_chatbot_sayfa_basligi(
-		__( 'Öneri Yönetimi', 'qrms' ),
-		__( 'Chatbot öneri motoru için ürün havuzu ve birlikte öneri kurallarını yönetin.', 'qrms' )
+		__( 'Ürün Önerileri', 'qrms' ),
+		__( 'Müşterilere önerilecek ürünleri ve birlikte öneri kurallarını yönetin.', 'qrms' )
 	);
 	?>
 	<div id="qmo-cb-oneri-bildirim" class="qmo-cb-oneri-bildirim" hidden></div>

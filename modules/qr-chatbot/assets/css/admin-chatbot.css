@@ -2,23 +2,174 @@
  * QR Chatbot yönetim — mevcut hub / qmo-admin dilini kullanır.
  */
 
-/* Hub anahtarı */
-.qmo-cb-master {
-	background: #fff;
-	border: 1px solid #dcdcde;
-	border-radius: 8px;
-	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
-	margin: 16px 0 8px;
-	padding: 18px 22px;
+/* -----------------------------------------------------------------
+   HUB — AI Menü Asistanı kontrol merkezi
+   Tüm seçiciler qmo-cb- ad alanı altındadır; WordPress'in kendi
+   .button / .form-table / .nav-tab sınıfları ezilmez.
+----------------------------------------------------------------- */
+.qmo-cb-hub {
+	--cb-metin: #1d2327;
+	--cb-ikincil: #646970;
+	--cb-cizgi: #e2e4e7;
+	--cb-zemin: #fff;
+	--cb-vurgu: #9a7d2e;
+	--cb-ok: #1d7a53;
+	--cb-ok-zemin: #eaf5ef;
+	--cb-uyari: #8a6116;
+	--cb-uyari-zemin: #fdf5e6;
+	color: var(--cb-metin);
+	margin-right: 20px;
+	max-width: 1180px;
 }
 
+.qmo-cb-hub *,
+.qmo-cb-hub *::before,
+.qmo-cb-hub *::after {
+	box-sizing: border-box;
+}
+
+/* Hero */
+.qmo-cb-hero {
+	align-items: flex-start;
+	background: var(--cb-zemin);
+	border: 1px solid var(--cb-cizgi);
+	border-radius: 14px;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 24px;
+	justify-content: space-between;
+	margin: 16px 0 24px;
+	padding: 26px 28px;
+}
+
+.qmo-cb-hero-main {
+	flex: 1 1 380px;
+	min-width: 0;
+}
+
+.qmo-cb-hero-title {
+	font-size: 24px;
+	font-weight: 600;
+	line-height: 1.25;
+	margin: 0 0 8px;
+	padding: 0;
+}
+
+.qmo-cb-hero-desc {
+	color: var(--cb-ikincil);
+	font-size: 14px;
+	line-height: 1.6;
+	margin: 0;
+	max-width: 62ch;
+}
+
+.qmo-cb-status {
+	align-items: center;
+	display: flex;
+	flex-wrap: wrap;
+	font-size: 13px;
+	gap: 8px;
+	margin: 16px 0 0;
+}
+
+.qmo-cb-status-dot {
+	background: currentColor;
+	border-radius: 50%;
+	flex: none;
+	height: 8px;
+	width: 8px;
+}
+
+.qmo-cb-status-text {
+	font-weight: 600;
+}
+
+.qmo-cb-status-note {
+	color: var(--cb-ikincil);
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+.qmo-cb-status-ok {
+	color: var(--cb-ok);
+}
+
+.qmo-cb-status-uyari {
+	color: var(--cb-uyari);
+}
+
+.qmo-cb-status-kapali {
+	color: var(--cb-ikincil);
+}
+
+.qmo-cb-hero-side {
+	display: flex;
+	flex: 0 1 320px;
+	flex-direction: column;
+	gap: 14px;
+	min-width: 0;
+}
+
+.qmo-cb-hero-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
+/* Butonlar (yalnızca bu ad alanında) */
+.qmo-cb-btn {
+	background: #fff;
+	border: 1px solid #c9ccd1;
+	border-radius: 8px;
+	color: var(--cb-metin);
+	cursor: pointer;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 13px;
+	font-weight: 600;
+	line-height: 1.3;
+	min-height: 40px;
+	padding: 9px 16px;
+	text-decoration: none;
+	transition: background 180ms ease, border-color 180ms ease;
+}
+
+.qmo-cb-btn:hover,
+.qmo-cb-btn:focus {
+	background: #f6f7f7;
+	border-color: #a7aaad;
+	color: var(--cb-metin);
+}
+
+.qmo-cb-btn-primary {
+	background: #1d2327;
+	border-color: #1d2327;
+	color: #fff;
+}
+
+.qmo-cb-btn-primary:hover,
+.qmo-cb-btn-primary:focus {
+	background: #2c3338;
+	border-color: #2c3338;
+	color: #fff;
+}
+
+.qmo-cb-hub a:focus-visible,
+.qmo-cb-hub button:focus-visible {
+	box-shadow: none;
+	outline: 2px solid #2271b1;
+	outline-offset: 2px;
+}
+
+/* Ana anahtar */
 .qmo-cb-switch {
 	align-items: center;
 	background: none;
 	border: 0;
 	cursor: pointer;
 	display: flex;
-	gap: 14px;
+	gap: 12px;
 	padding: 0;
 	text-align: left;
 }
@@ -27,46 +178,414 @@
 	background: #c3c4c7;
 	border-radius: 999px;
 	display: inline-block;
-	height: 32px;
+	flex: none;
+	height: 26px;
 	position: relative;
-	transition: background 0.2s ease;
-	width: 60px;
+	transition: background 180ms ease;
+	width: 48px;
 }
 
 .qmo-cb-switch[aria-pressed="true"] .qmo-cb-switch-track {
-	background: #1d9e6f;
+	background: #1d7a53;
 }
 
 .qmo-cb-switch-thumb {
 	background: #fff;
 	border-radius: 50%;
-	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-	height: 26px;
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+	height: 20px;
 	left: 3px;
 	position: absolute;
 	top: 3px;
-	transition: transform 0.2s ease;
-	width: 26px;
+	transition: transform 180ms ease;
+	width: 20px;
 }
 
 .qmo-cb-switch[aria-pressed="true"] .qmo-cb-switch-thumb {
-	transform: translateX(28px);
+	transform: translateX(22px);
 }
 
 .qmo-cb-switch-label {
-	color: #1d2327;
-	font-size: 18px;
-	font-weight: 600;
+	color: var(--cb-metin);
+	font-size: 14px;
+	font-weight: 500;
+	min-width: 0;
 }
 
 .qmo-cb-master-note {
-	color: #646970;
-	margin: 10px 0 0;
+	color: var(--cb-ikincil);
+	font-size: 13px;
+	margin: 0;
 }
 
-.qmo-cb-hub-kapali .qrms-hub-grid,
-.qmo-cb-hub-kapali .qrms-hub-group-title {
-	opacity: 0.45;
+/* Kurulum durumu */
+.qmo-cb-setup {
+	background: var(--cb-zemin);
+	border: 1px solid var(--cb-cizgi);
+	border-radius: 14px;
+	margin: 0 0 32px;
+	padding: 20px 24px;
+}
+
+.qmo-cb-setup-head {
+	align-items: baseline;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px 12px;
+	justify-content: space-between;
+	margin-bottom: 14px;
+}
+
+.qmo-cb-setup-title {
+	font-size: 15px;
+	font-weight: 600;
+	margin: 0;
+	padding: 0;
+}
+
+.qmo-cb-setup-count {
+	color: var(--cb-ikincil);
+	font-size: 13px;
+	margin: 0;
+}
+
+.qmo-cb-setup-list {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+
+.qmo-cb-setup-item a {
+	align-items: center;
+	border: 1px solid var(--cb-cizgi);
+	border-radius: 999px;
+	color: var(--cb-metin);
+	display: flex;
+	font-size: 13px;
+	gap: 8px;
+	min-height: 36px;
+	padding: 6px 14px 6px 10px;
+	text-decoration: none;
+	transition: border-color 180ms ease, background 180ms ease;
+}
+
+.qmo-cb-setup-item a:hover,
+.qmo-cb-setup-item a:focus {
+	background: #f6f7f7;
+	border-color: #c9ccd1;
+}
+
+.qmo-cb-setup-mark {
+	align-items: center;
+	border-radius: 50%;
+	display: inline-flex;
+	flex: none;
+	font-size: 12px;
+	font-weight: 700;
+	height: 20px;
+	justify-content: center;
+	width: 20px;
+}
+
+.qmo-cb-setup-item-ok .qmo-cb-setup-mark {
+	background: var(--cb-ok-zemin);
+	color: var(--cb-ok);
+}
+
+.qmo-cb-setup-item-uyari .qmo-cb-setup-mark {
+	background: var(--cb-uyari-zemin);
+	color: var(--cb-uyari);
+}
+
+.qmo-cb-setup-item-uyari a {
+	border-color: #ead9b4;
+}
+
+/* Bölümler */
+.qmo-cb-section {
+	margin: 0 0 32px;
+}
+
+.qmo-cb-section-head {
+	margin: 0 0 14px;
+}
+
+.qmo-cb-section-title {
+	font-size: 17px;
+	font-weight: 600;
+	margin: 0;
+	padding: 0;
+}
+
+.qmo-cb-section-desc {
+	color: var(--cb-ikincil);
+	font-size: 13px;
+	line-height: 1.5;
+	margin: 4px 0 0;
+	max-width: 70ch;
+}
+
+/* Kartlar */
+.qmo-cb-grid {
+	display: grid;
+	gap: 14px;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.qmo-cb-card {
+	align-items: flex-start;
+	background: var(--cb-zemin);
+	border: 1px solid var(--cb-cizgi);
+	border-radius: 12px;
+	color: var(--cb-metin);
+	display: flex;
+	gap: 14px;
+	min-height: 44px;
+	padding: 18px 18px 18px 20px;
+	text-decoration: none;
+	transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+}
+
+.qmo-cb-card:hover,
+.qmo-cb-card:focus {
+	border-color: #c9ccd1;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+	color: var(--cb-metin);
+	transform: translateY(-1px);
+}
+
+.qmo-cb-card-icon {
+	align-items: center;
+	background: #f2f3f4;
+	border-radius: 10px;
+	color: #50575e;
+	display: inline-flex;
+	flex: none;
+	height: 38px;
+	justify-content: center;
+	width: 38px;
+}
+
+.qmo-cb-card-icon::before {
+	font-size: 19px;
+	line-height: 1;
+}
+
+.qmo-cb-card-body {
+	display: block;
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+.qmo-cb-card-title {
+	display: block;
+	font-size: 14px;
+	font-weight: 600;
+	line-height: 1.35;
+	overflow-wrap: anywhere;
+}
+
+.qmo-cb-card-desc {
+	color: var(--cb-ikincil);
+	display: block;
+	font-size: 13px;
+	line-height: 1.55;
+	margin-top: 4px;
+	overflow-wrap: anywhere;
+}
+
+.qmo-cb-card-chevron {
+	color: #a7aaad;
+	flex: none;
+	transition: transform 180ms ease;
+}
+
+.qmo-cb-card:hover .qmo-cb-card-chevron,
+.qmo-cb-card:focus .qmo-cb-card-chevron {
+	color: #50575e;
+	transform: translateX(2px);
+}
+
+/* Rozetler */
+.qmo-cb-badge {
+	align-items: center;
+	border-radius: 999px;
+	display: inline-flex;
+	font-size: 12px;
+	font-weight: 600;
+	gap: 5px;
+	line-height: 1.4;
+	margin-top: 10px;
+	padding: 3px 10px 3px 8px;
+}
+
+.qmo-cb-badge-mark {
+	font-weight: 700;
+}
+
+.qmo-cb-badge-ok {
+	background: var(--cb-ok-zemin);
+	color: var(--cb-ok);
+}
+
+.qmo-cb-badge-uyari {
+	background: var(--cb-uyari-zemin);
+	color: var(--cb-uyari);
+}
+
+.qmo-cb-badge-notr {
+	background: #f2f3f4;
+	color: var(--cb-ikincil);
+}
+
+/* Asistan kapalıyken kartlar geri planda kalır */
+.qmo-cb-hub-kapali .qmo-cb-section {
+	opacity: 0.55;
+}
+
+/* Alt sayfa durum şeridi (AI Motoru) */
+.qmo-cb-panel-status {
+	align-items: center;
+	background: #fff;
+	border: 1px solid var(--cb-cizgi, #e2e4e7);
+	border-radius: 10px;
+	display: flex;
+	font-size: 13px;
+	gap: 10px;
+	margin: 12px 0 18px;
+	max-width: 560px;
+	padding: 12px 16px;
+}
+
+.qmo-cb-panel-status-mark {
+	align-items: center;
+	border-radius: 50%;
+	display: inline-flex;
+	flex: none;
+	font-weight: 700;
+	height: 22px;
+	justify-content: center;
+	width: 22px;
+}
+
+.qmo-cb-panel-status-ok .qmo-cb-panel-status-mark {
+	background: #eaf5ef;
+	color: #1d7a53;
+}
+
+.qmo-cb-panel-status-uyari .qmo-cb-panel-status-mark {
+	background: #fdf5e6;
+	color: #8a6116;
+}
+
+/* Kısa kod kutusu */
+.qmo-cb-kod-kutu {
+	background: #fff;
+	border: 1px solid #e2e4e7;
+	border-radius: 12px;
+	margin: 12px 0 20px;
+	max-width: 560px;
+	padding: 18px 20px;
+}
+
+.qmo-cb-kod-baslik {
+	font-size: 14px;
+	font-weight: 600;
+	margin: 0 0 6px;
+	padding: 0;
+}
+
+.qmo-cb-kod-not {
+	color: #646970;
+	font-size: 13px;
+	line-height: 1.55;
+	margin: 0 0 12px;
+}
+
+.qmo-cb-kod-satir {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
+.qmo-cb-kod-input {
+	flex: 1 1 220px;
+	font-family: Consolas, Monaco, monospace;
+	min-width: 0;
+}
+
+@media (max-width: 1024px) {
+	.qmo-cb-hub {
+		margin-right: 12px;
+	}
+
+	.qmo-cb-hero-side {
+		flex-basis: 100%;
+	}
+}
+
+@media (max-width: 782px) {
+	.qmo-cb-hub {
+		margin-right: 10px;
+	}
+
+	.qmo-cb-grid {
+		grid-template-columns: minmax(0, 1fr);
+	}
+
+	.qmo-cb-hero {
+		padding: 20px;
+	}
+
+	.qmo-cb-hero-title {
+		font-size: 21px;
+	}
+
+	.qmo-cb-setup {
+		padding: 18px 20px;
+	}
+
+	.qmo-cb-hero-actions .qmo-cb-btn {
+		flex: 1 1 auto;
+	}
+}
+
+@media (max-width: 480px) {
+	.qmo-cb-hub {
+		margin-right: 8px;
+	}
+
+	.qmo-cb-hero,
+	.qmo-cb-setup {
+		border-radius: 12px;
+		padding: 16px;
+	}
+
+	.qmo-cb-card {
+		padding: 16px;
+	}
+
+	.qmo-cb-setup-list {
+		flex-direction: column;
+	}
+
+	.qmo-cb-setup-item a {
+		width: 100%;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.qmo-cb-hub * {
+		transition: none !important;
+	}
+
+	.qmo-cb-card:hover,
+	.qmo-cb-card:focus {
+		transform: none;
+	}
 }
 
 /* Sihirbaz */

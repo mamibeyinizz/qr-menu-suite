@@ -20,8 +20,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 if ( ! function_exists( 'qmo_chatbot_sayfa_gorunum' ) ) {
 function qmo_chatbot_sayfa_gorunum() {
 	qmo_chatbot_sayfa_basligi(
-		__( 'Görünüm', 'qrms' ),
-		__( 'İkon, renk ve şekli soldan ayarlayın; sağda anında görün.', 'qrms' )
+		__( 'Görünüm ve Karşılama', 'qrms' ),
+		__( 'Simgeyi, renkleri ve karşılama deneyimini soldan ayarlayın; sağdaki önizlemede müşterinin gördüğü hâli anında görün.', 'qrms' )
 	);
 
 	$renkler     = qmo_chatbot_renkleri_coz();

@@ -16,8 +16,8 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 function qmo_chatbot_sayfa_gorunurluk() {
 	qmo_chatbot_sayfa_basligi(
-		__( 'Görünürlük', 'qrms' ),
-		__( 'Asistanın kimlere ve ne zaman görüneceğini buradan seçin.', 'qrms' )
+		__( 'Ne Zaman ve Kimlere Gösterilsin?', 'qrms' ),
+		__( 'Asistanın hangi müşterilere, hangi cihazlarda ve hangi saatlerde gösterileceğini belirleyin.', 'qrms' )
 	);
 
 	$saatler_var = function_exists( 'qrms_cs_is_open_at' );
