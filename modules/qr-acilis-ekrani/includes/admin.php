@@ -127,8 +127,8 @@ trait QRMS_AE_Admin {
 
 		QRMS_Admin::render_hub(
 			array(
-				'title'  => __( 'Açılış Ekranı', 'qrms' ),
-				'intro'  => __( 'Ana sayfaya gelen ziyaretçiyi karşılayan tam ekran karşılama. Ne yapmak istiyorsanız kartına dokunun.', 'qrms' ),
+				'title'  => __( 'Karşılama Ekranı', 'qrms' ),
+				'intro'  => __( 'Menü açılmadan önce misafirlerinize gösterilen karşılama ekranını özelleştirin.', 'qrms' ),
 				'accent' => '#0073aa',
 				'stats'  => array(
 					array(
@@ -890,7 +890,7 @@ trait QRMS_AE_Admin {
 		$wp_admin_bar->add_node(
 			array(
 				'id'    => 'qrms-acilis-ekrani',
-				'title' => __( 'Açılış Ekranı', 'qrms' ),
+				'title' => __( 'Karşılama Ekranı', 'qrms' ),
 				'href'  => QRMS_Admin::get_module_page_url( 'qr-acilis-ekrani' ),
 			)
 		);

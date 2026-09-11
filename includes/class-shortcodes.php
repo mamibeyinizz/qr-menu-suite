@@ -162,7 +162,7 @@ class QRMS_Shortcodes {
 		$gruplar = self::all();
 		?>
 		<div class="wrap qrms-hub qrms-sc">
-			<h1 class="qrms-hub-heading"><?php esc_html_e( 'Kısa Kodlar', 'qrms' ); ?></h1>
+			<h1 class="qrms-hub-heading"><?php esc_html_e( 'Entegrasyonlar & Kısa Kodlar', 'qrms' ); ?></h1>
 			<p class="qrms-hub-intro">
 				<?php esc_html_e( 'Aktif modüllerinizin sayfalarınıza ekleyebileceğiniz kısa kodları. Kodu kopyalayın, sayfa içeriğine ya da Elementor\'daki "Kısa Kod" widget\'ına yapıştırın.', 'qrms' ); ?>
 			</p>

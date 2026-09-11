@@ -31,7 +31,7 @@ function qrms_mm_hub() {
 
 	QRMS_Admin::render_hub(
 		array(
-			'title'  => __( 'Menü Mühendisliği', 'qrms' ),
+			'title'  => __( 'Menü Performansı', 'qrms' ),
 			'intro'  => __( 'Menünüzün hangi ürünü para kazandırıyor, hangisi kaybettiriyor? Önce maliyetleri girin, sonra raporu açın.', 'qrms' ),
 			'accent' => '#7c5cff',
 			'stats'  => qrms_mm_hub_ozet(),
