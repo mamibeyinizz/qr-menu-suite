@@ -41,6 +41,13 @@ html.splash-loading #custom-splash-overlay { display: block !important; visibili
     overscroll-behavior: contain;
     overflow: hidden;
     animation: splashOverlayFadeIn 0.4s ease forwards;
+    /* Aşağıdaki iç ölçüler vw/vh yerine cqw/cqh de kullanır: gerçek sitede
+       bu kutu zaten ekranın tamamı olduğu için davranış aynı kalır, ama
+       admin canlı önizlemede overlay küçük telefon çerçevesine
+       (.qrms-ae-preview-frame) sığdırıldığında ölçüler de o çerçeveye göre
+       hesaplanır - vw/vh tüm tarayıcı penceresini baz aldığı için önizlemede
+       taşmaya sebep oluyordu. */
+    container-type: size;
 }
 
 #custom-splash-overlay *,
@@ -164,6 +171,7 @@ html.splash-loading #custom-splash-overlay { display: block !important; visibili
     z-index: 6;
     min-width: 168px;
     max-height: min(360px, 50vh);
+    max-height: min(360px, 50cqh);
     overflow-y: auto;
     padding: 4px;
     flex-direction: column;
@@ -312,6 +320,7 @@ html.splash-loading #custom-splash-overlay { display: block !important; visibili
     min-width: 0;
     height: 100%;
     max-width: 74vw;
+    max-width: 74cqw;
     z-index: 0;
     line-height: 0;
 }
@@ -321,6 +330,7 @@ html.splash-loading #custom-splash-overlay { display: block !important; visibili
     /* Şerit büyüdükçe logo da büyür; şeridin içinde her zaman nefes payı kalır. */
     max-height: calc(var(--sp-logo-bar-h, 96px) - 24px);
     max-width: min(280px, 74vw);
+    max-width: min(280px, 74cqw);
     width: auto;
     height: auto;
     object-fit: contain;
@@ -338,6 +348,7 @@ html.splash-loading #custom-splash-overlay { display: block !important; visibili
     bottom: 0;
     z-index: 2;
     padding: 0 20px calc(20px + 2.4vh + env(safe-area-inset-bottom, 0px));
+    padding: 0 20px calc(20px + 2.4cqh + env(safe-area-inset-bottom, 0px));
 }
 
 #custom-splash-overlay .splash-stack {
@@ -361,8 +372,10 @@ html.splash-loading #custom-splash-overlay { display: block !important; visibili
    kalır, uzun ekranlarda kayma belirginleşir. */
 #custom-splash-overlay .splash-cta { margin-top: 14px; }
 #custom-splash-overlay .splash-divider { margin-top: clamp(26px, 4.4vh, 46px); }
+#custom-splash-overlay .splash-divider { margin-top: clamp(26px, 4.4cqh, 46px); }
 #custom-splash-overlay .splash-social { margin-top: 14px; }
 #custom-splash-overlay .splash-pay-row { margin-top: clamp(24px, 3.6vh, 40px); }
+#custom-splash-overlay .splash-pay-row { margin-top: clamp(24px, 3.6cqh, 40px); }
 #custom-splash-overlay .splash-stack > :first-child { margin-top: 0; }
 
 /* ---------------- Giriş animasyonu ---------------- */
@@ -626,6 +639,8 @@ html.splash-loading #custom-splash-overlay { display: block !important; visibili
        overflow:hidden olduğu için 100vw yatay kaydırma yaratmaz. */
     width: 100vw;
     max-width: 100vw;
+    width: 100cqw;
+    max-width: 100cqw;
     padding: 10px 0;
     /* Kenardan kenara uzanan bir şeritte yan kenarlık ve köşe yarıçapı
        ekranın dışında kalır; sadece üst/alt çizgi anlamlıdır. */
