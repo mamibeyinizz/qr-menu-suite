@@ -25,7 +25,7 @@ function qmo_chatbot_sayfa_cevaplanamayan() {
 
 	qmo_chatbot_sayfa_basligi(
 		__( 'Cevaplanamayan Sorular', 'qrms' ),
-		__( 'Asistanın bilemediği sorular, tekrar sayısına göre çoktan aza sıralıdır.', 'qrms' )
+		__( 'Asistanın yanıtlayamadığı sorular, tekrar sayısına göre çoktan aza sıralıdır.', 'qrms' )
 	);
 	?>
 	<table class="widefat striped" id="qmo-cb-bilinmeyen-tablo">

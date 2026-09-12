@@ -1,5 +1,5 @@
 /**
- * QR Chatbot hub — asistan aç/kapa (AJAX).
+ * QR Chatbot yönetim — asistan aç/kapa (AJAX) ve hero durum şeridi.
  */
 ( function () {
 	'use strict';
@@ -11,8 +11,26 @@
 
 	var cfg = window.qmoChatbotHub || {};
 	var note = document.querySelector( '.qmo-cb-master-note' );
-	var wrap = document.querySelector( '.rma-hub' );
+	var wrap = document.querySelector( '.qmo-cb-hub' );
 	var stateEl = btn.querySelector( '.qmo-cb-switch-state' );
+	var durum = document.querySelector( '.qmo-cb-status' );
+	var durumMetin = durum ? durum.querySelector( '.qmo-cb-status-text' ) : null;
+	var durumNot = durum ? durum.querySelector( '.qmo-cb-status-note' ) : null;
+
+	function durumuTazele( acik ) {
+		if ( ! durum ) {
+			return;
+		}
+		var sinif = acik ? ( durum.getAttribute( 'data-acik-sinif' ) || 'ok' ) : 'kapali';
+		durum.classList.remove( 'qmo-cb-status-ok', 'qmo-cb-status-uyari', 'qmo-cb-status-kapali' );
+		durum.classList.add( 'qmo-cb-status-' + sinif );
+		if ( durumMetin ) {
+			durumMetin.textContent = durum.getAttribute( acik ? 'data-acik-metin' : 'data-kapali-metin' ) || '';
+		}
+		if ( durumNot ) {
+			durumNot.textContent = durum.getAttribute( acik ? 'data-acik-not' : 'data-kapali-not' ) || '';
+		}
+	}
 
 	btn.addEventListener( 'click', function () {
 		var acik = 'true' !== btn.getAttribute( 'aria-pressed' );
@@ -41,6 +59,7 @@
 			if ( wrap ) {
 				wrap.classList.toggle( 'qmo-cb-hub-kapali', ! acik );
 			}
+			durumuTazele( acik );
 		} );
 	} );
 }() );

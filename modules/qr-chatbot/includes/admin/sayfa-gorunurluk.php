@@ -16,7 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 function qmo_chatbot_sayfa_gorunurluk() {
 	qmo_chatbot_sayfa_basligi(
-		__( 'Asistanın Görünürlüğü', 'qrms' ),
+		__( 'Ne Zaman ve Kimlere Gösterilsin?', 'qrms' ),
 		__( 'AI Menü Asistanınızın nerede, ne zaman ve kimlere gösterileceğini belirleyin.', 'qrms' )
 	);
 

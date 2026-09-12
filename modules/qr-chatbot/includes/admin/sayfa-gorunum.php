@@ -20,7 +20,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 if ( ! function_exists( 'qmo_chatbot_sayfa_gorunum' ) ) {
 function qmo_chatbot_sayfa_gorunum() {
 	qmo_chatbot_sayfa_basligi(
-		__( 'Asistan Görünümü', 'qrms' ),
+		__( 'Görünüm ve Karşılama', 'qrms' ),
 		__( 'Asistanınızın müşterilerinizin karşısında nasıl görüneceğini özelleştirin.', 'qrms' )
 	);
 
