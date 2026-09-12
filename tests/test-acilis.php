@@ -1405,4 +1405,193 @@ qrms_test(
 	}
 );
 
+echo "\nKarşılama Ekranı (premium revizyon)\n";
+
+qrms_test(
+	'premium palet YALNIZCA yeni kurulumda uygulanır, mevcut kayıt ezilmez',
+	function () {
+		$GLOBALS['qrms_test']['is_front_page'] = true;
+
+		// 1) Option satırı hiç yok: premium palet.
+		ob_start();
+		qrms_ae()->print_critical_head();
+		$yeni = ob_get_clean();
+
+		qrms_assert_contains( '--sp-bg: #141210', $yeni, 'yeni kurulum koyu premium zemin' );
+		qrms_assert_contains( '--sp-accent: #c9a84c', $yeni, 'yeni kurulum şampanya altın vurgu' );
+
+		// 2) Eksik anahtarlı ESKİ kayıt: eski varsayılanlar korunur, yeni
+		// palet devreye girmez (mevcut müşterinin görünümü değişmez).
+		update_option( 'splash_screen_options', array( 'bg_color' => '#123456' ) );
+
+		ob_start();
+		qrms_ae()->print_critical_head();
+		$mevcut = ob_get_clean();
+
+		qrms_assert_contains( '--sp-bg: #123456', $mevcut, 'kayıtlı zemin rengi korunur' );
+		qrms_assert_contains( '--sp-accent: #0073aa', $mevcut, 'eksik anahtar ESKİ varsayılana düşer' );
+		qrms_assert_false( strpos( $mevcut, '#c9a84c' ), 'premium palet mevcut kuruluma sızmaz' );
+
+		// 3) Boş dizi de "kurulu" sayılır.
+		update_option( 'splash_screen_options', array() );
+
+		ob_start();
+		qrms_ae()->print_critical_head();
+		$bos = ob_get_clean();
+
+		qrms_assert_contains( '--sp-bg: #f7f9fc', $bos, 'boş kayıt eski varsayılanı sürdürür' );
+	}
+);
+
+qrms_test(
+	'buton yazı boyutu ve rengi CTA\'ya iner; açık şemada beyaz okunur tona düşer',
+	function () {
+		$GLOBALS['qrms_test']['is_front_page'] = true;
+
+		update_option(
+			'splash_screen_options',
+			array(
+				'bg_scheme'         => 'dark',
+				'button_text_color' => '#ffffff',
+				'button_font_size'  => '20px',
+			)
+		);
+
+		ob_start();
+		qrms_ae()->print_critical_head();
+		$koyu = ob_get_clean();
+
+		qrms_assert_contains( '--sp-cta-font: 20px', $koyu, 'yazı boyutu CSS değişkenine iner' );
+		qrms_assert_contains( '--sp-cta-text: #ffffff', $koyu, 'koyu şemada seçilen renk korunur' );
+
+		// Açık şemada beyaz yazı okunmazdı; kontrast güvencesi devreye girer.
+		update_option(
+			'splash_screen_options',
+			array(
+				'bg_scheme'         => 'light',
+				'button_text_color' => '#ffffff',
+				'button_font_size'  => '9px',
+			)
+		);
+
+		ob_start();
+		qrms_ae()->print_critical_head();
+		$acik = ob_get_clean();
+
+		qrms_assert_contains( '--sp-cta-text: #1c1c1e', $acik, 'açık şemada beyaz koyuya düşer' );
+		qrms_assert_contains( '--sp-cta-font: 12px', $acik, 'sınır altı ölçü alt sınıra kırpılır' );
+
+		$css = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-acilis-ekrani/assets/css/splash.css' );
+
+		qrms_assert_contains( 'font-size: var(--sp-cta-font', $css, 'CTA ölçüyü gerçekten kullanır' );
+		qrms_assert_contains( 'color: var(--sp-cta-text', $css, 'CTA rengi gerçekten kullanır' );
+	}
+);
+
+qrms_test(
+	'geniş görsel varken preload media koşulu taşır: iki görsel birden inmez',
+	function () {
+		$GLOBALS['qrms_test']['is_front_page'] = true;
+
+		update_option( 'splash_screen_options', array( 'bg_image' => 11 ) );
+
+		ob_start();
+		qrms_ae()->print_critical_head();
+		$tek = ob_get_clean();
+
+		qrms_assert_contains( 'rel="preload"', $tek, 'dikey görsel preload edilir' );
+		qrms_assert_false( strpos( $tek, 'media="(max-aspect-ratio' ), 'geniş görsel yokken koşul yazılmaz' );
+
+		update_option( 'splash_screen_options', array( 'bg_image' => 11, 'bg_image_wide' => 22 ) );
+
+		ob_start();
+		qrms_ae()->print_critical_head();
+		$cift = ob_get_clean();
+
+		qrms_assert_contains( 'media="(max-aspect-ratio: 999/1000)"', $cift, 'dikey preload yalnızca dar ekranda' );
+		qrms_assert_contains( 'media="(min-aspect-ratio: 1/1)"', $cift, 'geniş preload <source> ile aynı koşulu taşır' );
+	}
+);
+
+qrms_test(
+	'yönetim: koşullu alanlar gizlenir, ASLA disable edilmez',
+	function () {
+		// Disable edilen alan POST\'a girmez; sahibi sayfa kaydedilince
+		// kayıtlı değer sessizce silinirdi. Koşul motoru bu yüzden yalnızca
+		// sınıf ekler.
+		$js = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-acilis-ekrani/assets/js/admin.js' );
+
+		qrms_assert_contains( "classList.toggle('is-hidden'", $js, 'gizleme sınıfla yapılır' );
+		qrms_assert_false( strpos( $js, "prop('disabled', true)" ), 'koşullu alan disable edilmez' );
+
+		$html = qrms_ae_submit( 'qrms-ae-odeme', array( 'payment_display_mode' => 'marquee' ) );
+
+		qrms_assert_contains( 'data-when-field="payment_display_mode"', $html, 'şerit ayarları koşullu' );
+		qrms_assert_contains( 'name="payment_marquee_speed"', $html, 'koşullu alan yine POST edilir' );
+		qrms_assert_false( strpos( $html, 'name="payment_marquee_speed" disabled' ), 'hız alanı disable değil' );
+
+		$gorunum = qrms_ae_submit( 'qrms-ae-gorunum', array( 'loader_type' => 'none' ) );
+
+		qrms_assert_contains( 'data-when-field="loader_type"', $gorunum, 'gösterge alanları koşullu' );
+		qrms_assert_contains( 'name="loader_color"', $gorunum, 'gösterge rengi formda kalır' );
+	}
+);
+
+qrms_test(
+	'yönetim: sayfa gezinmesi, kart düzeni ve adres doğrulaması kurulu',
+	function () {
+		$html = qrms_ae_submit( 'qrms-ae-butonlar', array() );
+
+		qrms_assert_contains( 'qrae-tabs', $html, 'beş ekran arası gezinme' );
+		qrms_assert_contains( 'aria-current="page"', $html, 'bulunulan ekran işaretli' );
+		qrms_assert_contains( 'qrae-card', $html, 'ayarlar kartlara ayrılmış' );
+		qrms_assert_contains( 'data-qrae-url="1"', $html, 'adres alanları doğrulanır' );
+		qrms_assert_contains( 'id="qrae-dirty"', $html, 'kaydedilmemiş değişiklik uyarısı' );
+
+		// Wi-Fi butonu adres almaz: o kartta adres alanı hiç basılmaz.
+		qrms_assert_false( strpos( $html, 'name="link_btn5"' ), 'wifi butonunda adres alanı yok' );
+
+		// Ödeme ve sosyal sayaçları.
+		$odeme = qrms_ae_submit( 'qrms-ae-odeme', array( 'payment_methods' => array( 'nakit', 'kart' ) ) );
+		qrms_assert_contains( 'id="qrae-pay-count"', $odeme, 'ödeme seçim sayacı' );
+
+		$sosyal = qrms_ae_submit( 'qrms-ae-sosyal', array( 'social_media_active' => array( 'instagram' ) ) );
+		qrms_assert_contains( 'id="qrae-social-count"', $sosyal, 'sosyal hesap sayacı' );
+	}
+);
+
+qrms_test(
+	'ön yüz: rozet etiketi ekran okuyucuda iki kez okunmaz, pencere gerçek dialog',
+	function () {
+		$GLOBALS['qrms_test']['is_front_page'] = true;
+
+		update_option(
+			'splash_screen_options',
+			array(
+				'button_links'        => array( 'btn2' => 'tel:+905551112233' ),
+				'social_media_active' => array( 'instagram' ),
+				'social_media'        => array( 'instagram' => 'https://instagram.com/x' ),
+				'payment_methods'     => array( 'nakit' ),
+				'divider_text'        => 'Bizi takip edin',
+			)
+		);
+
+		ob_start();
+		qrms_ae()->handle_frontend();
+		$html = ob_get_clean();
+
+		qrms_assert_contains( 'class="sp-action-label" aria-hidden="true"', $html, 'görünür etiket okuyucudan gizli' );
+		qrms_assert_contains( 'aria-haspopup="dialog"', $html, 'wifi rozeti pencere açtığını bildirir' );
+		qrms_assert_contains( 'role="dialog"', $html, 'pencere dialog rolü taşır' );
+		qrms_assert_contains( 'aria-labelledby="wifi-modal-title"', $html, 'pencere başlığına bağlı' );
+		qrms_assert_contains( 'class="splash-social" role="group"', $html, 'sosyal rozetler gruplanır' );
+		qrms_assert_contains( 'aria-label="Ödeme yöntemleri"', $html, 'ödeme satırı adlandırılır' );
+
+		$js = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-acilis-ekrani/assets/js/splash.js' );
+
+		qrms_assert_contains( 'function modalFocusables', $js, 'odak tuzağı kurulur' );
+		qrms_assert_contains( "modalTrigger.focus()", $js, 'kapanışta odak rozete döner' );
+	}
+);
+
 echo "\nQR Çeviri (P0 köprü / chatbot)\n";

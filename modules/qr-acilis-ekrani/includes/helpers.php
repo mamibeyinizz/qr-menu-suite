@@ -19,16 +19,74 @@ trait QRMS_AE_Helpers {
      * @return array
      */
     private function get_options() {
-        $saved = get_option($this->option_name, array());
-        $opts  = array_merge($this->defaults, is_array($saved) ? $saved : array());
+        $saved = get_option($this->option_name, null);
 
-        foreach ($this->defaults as $key => $default) {
+        // YENİ KURULUM ile MEVCUT KURULUM ayrımı. Premium palet yalnızca
+        // option satırı HİÇ yokken devreye girer; kayıtlı bir kurulumda
+        // (eksik anahtarlı eski kayıtlar dahil) eski varsayılanlar
+        // kullanılmaya devam eder, böylece kimsenin rengi kendiliğinden
+        // değişmez.
+        $defaults = is_array($saved)
+            ? $this->defaults
+            : array_merge($this->defaults, $this->install_defaults());
+
+        $opts = array_merge($defaults, is_array($saved) ? $saved : array());
+
+        foreach ($defaults as $key => $default) {
             if (is_array($default) && isset($opts[$key]) && is_array($opts[$key])) {
                 $opts[$key] += $default;
             }
         }
 
         return $opts;
+    }
+
+    /**
+     * Yeni kurulumda uygulanan premium başlangıç paleti.
+     *
+     * Kullanıcı ilk açılışta boş/soluk renk kutularıyla karşılaşmasın diye
+     * koyu zemin + şampanya altın vurgu ile gelir. Yalnızca
+     * `splash_screen_options` satırı hiç yokken kullanılır (bkz.
+     * get_options); kayıtlı kurulumların değerleri asla ezilmez.
+     *
+     * Aynı palet yönetimdeki "Premium (varsayılan)" hızlı temasıdır.
+     *
+     * @return array<string,mixed>
+     */
+    private function install_defaults() {
+        return array(
+            'bg_color'            => '#141210',
+            'bg_scheme'           => 'dark',
+            'button_bg_color'     => '#c9a84c',
+            'button_text_color'   => '#ffffff',
+            'button_opacity'      => 22,
+            'btn_surface_color'   => '#ffffff',
+            'btn_surface_opacity' => 12,
+            'logo_bar_color'      => '#0d0b0a',
+            'logo_bar_opacity'    => 38,
+            'loader_color'        => '#c9a84c',
+        );
+    }
+
+    /**
+     * CTA yazı rengi — açık şemada okunabilirlik güvencesiyle.
+     *
+     * "Buton Metin Rengi" ayarı v3.6'dan beri CTA'yı etkilemiyordu (yalnızca
+     * dil düğmesine iniyordu); ayar artık CTA'ya da bağlı. Tek risk, açık
+     * şemayı seçmiş ama rengi varsayılan beyazda bırakmış kurulumlardı:
+     * beyaz zeminde beyaz yazı okunmaz. Renk neredeyse beyazken açık şemada
+     * şemanın kendi koyu metin rengine düşülür.
+     *
+     * @param string $scheme Çözülmüş şema: light|dark.
+     * @param string $color  Yönetimde seçilen renk.
+     * @return string
+     */
+    private function cta_text_color($scheme, $color) {
+        if ('light' === $scheme && $this->hex_luminance($color) > 200) {
+            return '#1c1c1e';
+        }
+
+        return $color;
     }
 
     /**

@@ -548,15 +548,74 @@
             }
         }
 
-        function openModal(id) {
+        /* ---------------- Pencere (modal) ----------------
+
+           Pencere gerçek bir iletişim kutusu gibi davranır: açılınca odak
+           içine alınır, Tab tuşu pencerenin içinde döner, kapanınca odak
+           onu açan rozete geri döner. Klavye ve ekran okuyucu kullanan
+           ziyaretçi pencerenin arkasındaki ekranda kaybolmaz. */
+
+        var modalTrigger = null;
+
+        function modalFocusables(el) {
+            return el.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+        }
+
+        function openModal(id, trigger) {
             var el = document.getElementById(id);
-            if (el) el.style.display = 'flex';
+            if (!el) return;
+
+            modalTrigger = trigger || null;
+            el.style.display = 'flex';
+            el.setAttribute('aria-hidden', 'false');
+            if (modalTrigger) modalTrigger.setAttribute('aria-expanded', 'true');
+
+            var focusable = modalFocusables(el);
+            if (focusable.length) focusable[0].focus();
         }
 
         function closeModal(id) {
             var el = document.getElementById(id);
-            if (el) el.style.display = 'none';
+            if (!el || el.style.display !== 'flex') return;
+
+            el.style.display = 'none';
+            el.setAttribute('aria-hidden', 'true');
+
+            if (modalTrigger) {
+                modalTrigger.setAttribute('aria-expanded', 'false');
+                modalTrigger.focus();
+                modalTrigger = null;
+            }
         }
+
+        function closeOpenModals() {
+            document.querySelectorAll('.splash-modal').forEach(function (modal) {
+                if (modal.style.display === 'flex') closeModal(modal.id);
+            });
+        }
+
+        // Odak tuzağı: pencere açıkken Tab, pencerenin ilk/son öğesi
+        // arasında döner; arkadaki ekrana geçmez.
+        document.addEventListener('keydown', function (event) {
+            if (event.key !== 'Tab') return;
+
+            var modal = document.querySelector('.splash-modal');
+            if (!modal || modal.style.display !== 'flex') return;
+
+            var focusable = modalFocusables(modal);
+            if (!focusable.length) return;
+
+            var first = focusable[0];
+            var last = focusable[focusable.length - 1];
+
+            if (event.shiftKey && document.activeElement === first) {
+                event.preventDefault();
+                last.focus();
+            } else if (!event.shiftKey && document.activeElement === last) {
+                event.preventDefault();
+                first.focus();
+            }
+        });
 
         // Giriş animasyonu tek seferliktir: bitince sınıf kaldırılır, böylece
         // geride sürekli compositing yapan bir katman kalmaz. Eleman temel
@@ -615,7 +674,7 @@
         if (wifiBtn) {
             wifiBtn.addEventListener('click', function () {
                 splashEylem('wifi');
-                openModal('wifi-modal');
+                openModal('wifi-modal', wifiBtn);
             });
         }
 
@@ -628,15 +687,13 @@
 
         window.addEventListener('click', function (event) {
             if (event.target.classList && event.target.classList.contains('splash-modal')) {
-                event.target.style.display = 'none';
+                closeModal(event.target.id);
             }
         });
 
         document.addEventListener('keydown', function (event) {
             if (event.key !== 'Escape') return;
-            document.querySelectorAll('.splash-modal').forEach(function (modal) {
-                if (modal.style.display === 'flex') modal.style.display = 'none';
-            });
+            closeOpenModals();
             var openSel = overlay.querySelector('.splash-ceviri.is-open');
             if (openSel) {
                 openSel.classList.remove('is-open');

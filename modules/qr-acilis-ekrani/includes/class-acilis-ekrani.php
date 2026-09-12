@@ -39,6 +39,16 @@ class QRMS_Acilis_Ekrani {
 	const MODULE = 'qr-acilis-ekrani';
 
 	/**
+	 * Modülün yönetim arayüzü vurgu rengi.
+	 *
+	 * Hub kartları ve ayar ekranlarının tek vurgu tonu; suite'in şampanya
+	 * altını ile aynıdır (bkz. qr-chatbot admin --qmo-gold).
+	 *
+	 * @var string
+	 */
+	const ACCENT = '#c9a84c';
+
+	/**
 	 * Ayarların saklandığı option.
 	 *
 	 * Bağımsız eklentiyle AYNI ad: mevcut kurulumların ayarları taşınma
