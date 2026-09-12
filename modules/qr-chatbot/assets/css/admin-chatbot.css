@@ -1,6 +1,492 @@
 /**
  * QR Chatbot yönetim — mevcut hub / qmo-admin dilini kullanır.
+ *
+ * Bu dosya yalnızca modules/qr-chatbot altındaki admin sayfalarında yüklenir
+ * (bkz. module.php qrms_module_qr_chatbot_admin_assets()) — buradaki
+ * .qmo-wrap değişkenleri başka hiçbir modülü etkilemez.
  */
+
+/* Tasarım sistemi — spacing/radius/renk/geçiş token'ları. */
+.qmo-wrap {
+	--qmo-gold: #c9a84c;
+	--qmo-gold-soft: rgba(201, 168, 76, 0.28);
+	--qmo-green: #1d9e6f;
+	--qmo-ink: #1d2327;
+	--qmo-ink-soft: #50575e;
+	--qmo-border: #e2e4e7;
+	--qmo-surface: #fff;
+	--qmo-bg-soft: #f6f7f7;
+	--qmo-radius-sm: 8px;
+	--qmo-radius-md: 12px;
+	--qmo-radius-lg: 20px;
+	--qmo-space-1: 4px;
+	--qmo-space-2: 8px;
+	--qmo-space-3: 12px;
+	--qmo-space-4: 16px;
+	--qmo-space-5: 24px;
+	--qmo-space-6: 32px;
+	--qmo-transition: 160ms ease;
+	--qmo-shadow-sm: 0 1px 2px rgba(16, 24, 32, 0.06);
+	--qmo-shadow-md: 0 6px 20px rgba(16, 24, 32, 0.08);
+	--qmo-focus-ring: 0 0 0 3px rgba(201, 168, 76, 0.35);
+}
+
+/* Premium kart — ayar formu bloklarının ortak kabuğu. */
+.qmo-cb-card {
+	background: var(--qmo-surface);
+	border: 1px solid var(--qmo-border);
+	border-radius: var(--qmo-radius-lg);
+	box-shadow: var(--qmo-shadow-sm);
+	box-sizing: border-box;
+	margin: 0 0 var(--qmo-space-5);
+	padding: var(--qmo-space-5);
+}
+
+.qmo-cb-card-compact {
+	padding: var(--qmo-space-4);
+}
+
+.qmo-cb-card-title {
+	border-bottom: 1px solid var(--qmo-border);
+	color: var(--qmo-ink);
+	font-size: 16px;
+	font-weight: 700;
+	margin: 0 0 var(--qmo-space-4);
+	padding-bottom: var(--qmo-space-3);
+}
+
+.qmo-cb-card h3 {
+	font-size: 14px;
+	margin: var(--qmo-space-5) 0 var(--qmo-space-3);
+}
+
+.qmo-cb-card h3:first-child {
+	margin-top: 0;
+}
+
+.qmo-cb-field {
+	margin: 0 0 var(--qmo-space-4);
+}
+
+.qmo-cb-field:last-child {
+	margin-bottom: 0;
+}
+
+.qmo-cb-field > label,
+.qmo-cb-field-label-static {
+	color: var(--qmo-ink);
+	display: block;
+	font-weight: 600;
+	margin-bottom: 2px;
+}
+
+.qmo-cb-field-desc {
+	color: var(--qmo-ink-soft);
+	font-size: 13px;
+	margin: 2px 0 var(--qmo-space-2);
+}
+
+.qmo-cb-field input[type="text"],
+.qmo-cb-field input[type="url"],
+.qmo-cb-field textarea {
+	box-sizing: border-box;
+	max-width: 520px;
+	width: 100%;
+}
+
+.qmo-cb-preview-title {
+	color: var(--qmo-ink);
+	font-weight: 700;
+	margin: 0 0 var(--qmo-space-2);
+}
+
+/* Kompakt çeviri durumu rozeti — büyük sarı notice yerine. */
+.qmo-cb-i18n-badge {
+	margin: var(--qmo-space-1) 0 0;
+}
+
+.qmo-cb-i18n-fresh,
+.qmo-cb-i18n-stale {
+	font-size: 12px;
+}
+
+.qmo-cb-i18n-fresh {
+	color: #2271b1;
+}
+
+.qmo-cb-i18n-stale {
+	color: #a35b00;
+	display: none;
+}
+
+.qmo-cb-i18n-wrap.is-dirty .qmo-cb-i18n-fresh {
+	display: none;
+}
+
+.qmo-cb-i18n-wrap.is-dirty .qmo-cb-i18n-stale {
+	display: inline;
+}
+
+/* Kaydetme aksiyonu */
+.qmo-cb-save-bar {
+	align-items: center;
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--qmo-space-3);
+	margin-top: var(--qmo-space-5);
+}
+
+.qmo-cb-save-state {
+	color: var(--qmo-ink-soft);
+	font-size: 13px;
+}
+
+/* Asistan İkonu seçici (Asistan Profili) */
+.qmo-cb-icon-picker {
+	align-items: center;
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--qmo-space-4);
+	margin-bottom: var(--qmo-space-3);
+}
+
+.qmo-cb-icon-picker-preview {
+	align-items: center;
+	background: var(--qmo-bg-soft);
+	border: 1px solid var(--qmo-border);
+	border-radius: 50%;
+	display: flex;
+	flex-shrink: 0;
+	height: 64px;
+	justify-content: center;
+	overflow: hidden;
+	width: 64px;
+}
+
+.qmo-cb-icon-picker-preview img {
+	height: 100%;
+	object-fit: cover;
+	width: 100%;
+}
+
+.qmo-cb-icon-picker-preview svg {
+	color: var(--qmo-ink);
+	height: 30px;
+	width: 30px;
+}
+
+.qmo-cb-icon-picker-actions {
+	flex: 1 1 220px;
+	min-width: 0;
+}
+
+/* Genel aç/kapa anahtarı — Hazır Sorular ve Görünürlük sayfalarında. */
+.qmo-cb-toggle,
+.qmo-cb-switch-row {
+	align-items: center;
+	cursor: pointer;
+	display: inline-flex;
+	gap: var(--qmo-space-2);
+	padding: 6px 0;
+	position: relative;
+}
+
+.qmo-cb-toggle input,
+.qmo-cb-switch-row input[type="checkbox"] {
+	height: 1px;
+	opacity: 0;
+	position: absolute;
+	width: 1px;
+}
+
+.qmo-cb-toggle-ui,
+.qmo-cb-switch-ui {
+	background: #c3c4c7;
+	border-radius: 999px;
+	display: inline-block;
+	flex-shrink: 0;
+	height: 22px;
+	position: relative;
+	transition: background var(--qmo-transition);
+	width: 40px;
+}
+
+.qmo-cb-toggle-ui::after,
+.qmo-cb-switch-ui::after {
+	background: #fff;
+	border-radius: 50%;
+	content: "";
+	height: 16px;
+	left: 3px;
+	position: absolute;
+	top: 3px;
+	transition: transform var(--qmo-transition);
+	width: 16px;
+}
+
+.qmo-cb-toggle input:checked + .qmo-cb-toggle-ui,
+.qmo-cb-switch-row input:checked + .qmo-cb-switch-ui {
+	background: var(--qmo-green);
+}
+
+.qmo-cb-toggle input:checked + .qmo-cb-toggle-ui::after,
+.qmo-cb-switch-row input:checked + .qmo-cb-switch-ui::after {
+	transform: translateX(18px);
+}
+
+.qmo-cb-toggle input:focus-visible + .qmo-cb-toggle-ui,
+.qmo-cb-switch-row input:focus-visible + .qmo-cb-switch-ui {
+	box-shadow: var(--qmo-focus-ring);
+}
+
+.qmo-cb-toggle-text {
+	color: var(--qmo-ink-soft);
+	font-size: 13px;
+	font-weight: 600;
+}
+
+.qmo-cb-switch-text {
+	font-weight: 600;
+}
+
+.qmo-cb-inline-check {
+	align-items: center;
+	display: flex;
+	font-weight: 600;
+	gap: 6px;
+}
+
+/* Kısa kod notu (Görünürlük) — otomatik gösterim kapalıyken önemlidir.
+   :has() desteklemeyen tarayıcılarda not her zaman görünür kalır; bu
+   yalnızca kozmetik bir geri dönüştür, işlevi etkilemez. */
+.qmo-cb-shortcode-note {
+	border-top: 1px dashed var(--qmo-border);
+	margin-top: var(--qmo-space-4);
+	padding-top: var(--qmo-space-4);
+}
+
+#qmo-cb-auto-card:has(#qmo-cb-auto-inject:checked) .qmo-cb-shortcode-note {
+	display: none;
+}
+
+.qmo-cb-shortcode-row {
+	align-items: center;
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--qmo-space-2);
+}
+
+.qmo-cb-shortcode-row code {
+	background: var(--qmo-bg-soft);
+	border: 1px solid var(--qmo-border);
+	border-radius: var(--qmo-radius-sm);
+	padding: 6px 10px;
+}
+
+/* Seçim kartları (Görünürlük: Müşteri Erişimi / Restoran Kapalıyken) */
+.qmo-cb-choice-cards {
+	display: grid;
+	gap: var(--qmo-space-3);
+	grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+	margin-top: var(--qmo-space-2);
+}
+
+.qmo-cb-choice-card {
+	background: var(--qmo-surface);
+	border: 1px solid var(--qmo-border);
+	border-radius: var(--qmo-radius-md);
+	box-sizing: border-box;
+	cursor: pointer;
+	display: block;
+	padding: var(--qmo-space-3) var(--qmo-space-4);
+	position: relative;
+	transition: border-color var(--qmo-transition), box-shadow var(--qmo-transition);
+}
+
+.qmo-cb-choice-card input {
+	height: 1px;
+	opacity: 0;
+	position: absolute;
+	width: 1px;
+}
+
+.qmo-cb-choice-card.is-selected,
+.qmo-cb-choice-card:has(input:checked) {
+	border-color: var(--qmo-gold);
+	box-shadow: 0 0 0 2px var(--qmo-gold-soft);
+}
+
+.qmo-cb-choice-card:has(input:focus-visible) {
+	box-shadow: var(--qmo-focus-ring);
+}
+
+.qmo-cb-choice-title {
+	color: var(--qmo-ink);
+	display: block;
+	font-weight: 700;
+	margin-bottom: 2px;
+}
+
+.qmo-cb-choice-desc {
+	color: var(--qmo-ink-soft);
+	display: block;
+	font-size: 12.5px;
+	line-height: 1.4;
+}
+
+/* Görünürlük Özeti */
+.qmo-cb-summary-card {
+	background: var(--qmo-surface);
+	border: 1px solid var(--qmo-border);
+	border-radius: var(--qmo-radius-lg);
+	box-shadow: var(--qmo-shadow-sm);
+	box-sizing: border-box;
+	padding: var(--qmo-space-4);
+}
+
+.qmo-cb-summary-list {
+	display: flex;
+	flex-direction: column;
+	gap: var(--qmo-space-2);
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+
+.qmo-cb-summary-list li {
+	color: var(--qmo-ink-soft);
+	display: flex;
+	font-size: 13px;
+	gap: 6px;
+}
+
+/* Hazır Sorular — kart listesi (tablo yerine, mobilde de yatay taşma yok) */
+.qmo-cb-question-list {
+	display: flex;
+	flex-direction: column;
+	gap: var(--qmo-space-3);
+	margin-bottom: var(--qmo-space-4);
+}
+
+.qmo-cb-question-card {
+	background: var(--qmo-surface);
+	border: 1px solid var(--qmo-border);
+	border-radius: var(--qmo-radius-md);
+	box-shadow: var(--qmo-shadow-sm);
+	box-sizing: border-box;
+	padding: var(--qmo-space-3);
+	transition: box-shadow var(--qmo-transition), opacity var(--qmo-transition);
+}
+
+.qmo-cb-question-card.is-dragging {
+	box-shadow: var(--qmo-shadow-md);
+	opacity: 0.5;
+}
+
+.qmo-cb-question-head {
+	align-items: center;
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--qmo-space-3);
+}
+
+.qmo-cb-drag-handle {
+	background: none;
+	border: 0;
+	color: var(--qmo-ink-soft);
+	cursor: grab;
+	flex-shrink: 0;
+	font-size: 18px;
+	line-height: 1;
+	min-height: 44px;
+	min-width: 44px;
+	padding: 10px;
+}
+
+.qmo-cb-drag-handle:active {
+	cursor: grabbing;
+}
+
+.qmo-cb-question-index {
+	color: var(--qmo-ink-soft);
+	flex-shrink: 0;
+	font-variant-numeric: tabular-nums;
+	font-weight: 700;
+}
+
+.qmo-cb-question-main {
+	flex: 1 1 220px;
+	min-width: 0;
+}
+
+.qmo-cb-question-label {
+	box-sizing: border-box;
+	width: 100%;
+}
+
+.qmo-cb-question-edit {
+	white-space: nowrap;
+}
+
+.qmo-cb-question-delete {
+	background: none;
+	border: 0;
+	color: #b32d2e;
+	cursor: pointer;
+	flex-shrink: 0;
+	font-size: 20px;
+	line-height: 1;
+	min-height: 44px;
+	min-width: 40px;
+}
+
+.qmo-cb-question-advanced {
+	border-top: 1px dashed var(--qmo-border);
+	margin-top: var(--qmo-space-3);
+	padding-top: var(--qmo-space-3);
+}
+
+.qmo-cb-question-ai {
+	margin-top: var(--qmo-space-2);
+}
+
+.qmo-cb-question-ai label {
+	display: block;
+	font-weight: 600;
+	margin-bottom: 2px;
+}
+
+.qmo-cb-question-question {
+	box-sizing: border-box;
+	max-width: 520px;
+	width: 100%;
+}
+
+/* Erişilebilirlik — odak halkası ve azaltılmış hareket. */
+.qmo-cb-icon-tile:focus-visible,
+.qmo-cb-step:focus-visible,
+.qmo-cb-drag-handle:focus-visible,
+.qmo-cb-question-edit:focus-visible,
+.qmo-cb-question-delete:focus-visible,
+.qmo-apply-preset:focus-visible,
+#qmo-cb-shortcode-copy:focus-visible {
+	outline: 2px solid var(--qmo-gold);
+	outline-offset: 2px;
+}
+
+.qmo-preset-card:focus-within {
+	box-shadow: var(--qmo-focus-ring);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.qmo-cb-question-card,
+	.qmo-cb-toggle-ui,
+	.qmo-cb-switch-ui,
+	.qmo-cb-choice-card,
+	.qmo-cb-live {
+		transition: none !important;
+	}
+}
 
 /* Hub anahtarı */
 .qmo-cb-master {
@@ -378,6 +864,69 @@
 
 	.qmo-cb-preview-col {
 		position: static;
+	}
+
+	.qmo-cb-live,
+	.qmo-cb-live.is-phone,
+	.qmo-cb-live.is-desktop {
+		margin: 0 auto;
+	}
+}
+
+/* WordPress'in kendi mobil eşiği (782px) — dar admin ekranlarında tek
+   kolon, geniş dokunma alanları ve yatay taşma olmayan seçim kartları. */
+@media (max-width: 782px) {
+	.qmo-cb-card {
+		padding: var( --qmo-space-4 );
+	}
+
+	.qmo-cb-choice-cards {
+		grid-template-columns: 1fr;
+	}
+
+	.qmo-cb-question-head {
+		align-items: flex-start;
+	}
+
+	.qmo-cb-question-main {
+		flex-basis: 100%;
+		order: 1;
+	}
+
+	.qmo-cb-toggle {
+		order: 2;
+	}
+
+	.qmo-cb-question-edit {
+		order: 3;
+	}
+
+	.qmo-cb-question-delete {
+		order: 4;
+		margin-left: auto;
+	}
+
+	.qmo-cb-icon-grid {
+		grid-template-columns: repeat( auto-fill, minmax( 100px, 1fr ) );
+	}
+
+	.qmo-preset-grid {
+		gap: 12px;
+	}
+
+	.qmo-preset-card {
+		width: 100%;
+	}
+}
+
+@media (max-width: 480px) {
+	.qmo-cb-live.is-desktop {
+		width: 100%;
+	}
+
+	.qmo-cb-shortcode-row {
+		align-items: stretch;
+		flex-direction: column;
 	}
 }
 

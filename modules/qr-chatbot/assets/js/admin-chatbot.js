@@ -3,6 +3,11 @@
  *
  * Tek bir state nesnesi tutulur; tüm alanlar onu günceller, tek render()
  * önizlemeyi ön yüzdeki --gm-* değişkenleri ve sınıf adlarıyla çizer.
+ *
+ * Bu dosya Asistan Profili, Asistan Görünümü ve Hazır Sorular sayfalarında
+ * ortak yüklenir (bkz. module.php); her sayfada yalnızca o sayfada var olan
+ * alanlar okunur, eksik alanlar render()'ın `initial` sunucu verisine
+ * düşmesiyle yine doğru önizleme üretir.
  */
 ( function () {
 	'use strict';
@@ -175,18 +180,36 @@
 		}
 	}
 
-	function secili( name ) {
+	/**
+	 * Radyo grubunun seçili değeri. Bu sayfada o alan yoksa (ör. Asistan
+	 * Profili sayfasında ikon boyutu radyoları yok) sunucudan gelen gerçek
+	 * kayıtlı değere (initial[fallbackKey]) düşer — önizleme yanlış
+	 * varsayılan göstermez.
+	 */
+	function secili( name, fallbackKey ) {
 		var el = document.querySelector( 'input[name="' + name + '"]:checked' );
-		return el ? el.value : '';
+		if ( el ) {
+			return el.value;
+		}
+		if ( fallbackKey && initial[ fallbackKey ] ) {
+			return initial[ fallbackKey ];
+		}
+		return '';
 	}
 
-	function acikMi( name ) {
+	function acikMi( name, fallbackKey ) {
 		var cb = document.querySelector( 'input[name="' + name + '"][type="checkbox"]' );
-		return !!( cb && cb.checked );
+		if ( cb ) {
+			return !!cb.checked;
+		}
+		if ( fallbackKey ) {
+			return 'yes' === initial[ fallbackKey ];
+		}
+		return false;
 	}
 
 	function toggleMetinAcikMi() {
-		return acikMi( 'gemini_show_toggle_text' );
+		return acikMi( 'gemini_show_toggle_text', 'toggleText' );
 	}
 
 	function deger( id, yedek ) {
@@ -195,7 +218,7 @@
 	}
 
 	function ikonHtml() {
-		var preset = deger( 'qmo_chatbot_icon_preset', 'bubble' );
+		var preset = deger( 'qmo_chatbot_icon_preset', initial.iconPreset || 'bubble' );
 		var url = deger( 'gemini_bot_icon', initial.iconUrl || '' );
 		if ( 'custom' === preset && url ) {
 			return '<img src="' + url.replace( /"/g, '' ) + '" alt="" />';
@@ -206,8 +229,8 @@
 	function renkHaritasi() {
 		return {
 			'--gm-main': renk( 'gemini_main_color' ),
-			'--gm-toggle-bg': deger( 'qmo_chatbot_icon_bg_color', renk( 'gemini_toggle_bg_color' ) ),
-			'--gm-toggle-text': deger( 'qmo_chatbot_icon_color', renk( 'gemini_toggle_text_color' ) ),
+			'--gm-toggle-bg': deger( 'qmo_chatbot_icon_bg_color', initial.iconBgColor || renk( 'gemini_toggle_bg_color' ) ),
+			'--gm-toggle-text': deger( 'qmo_chatbot_icon_color', initial.iconColor || renk( 'gemini_toggle_text_color' ) ),
 			'--gm-header-bg': renk( 'gemini_header_bg_color' ),
 			'--gm-header-text': renk( 'gemini_header_text_color' ),
 			'--gm-header-icon': renk( 'gemini_header_icon_color' ),
@@ -231,6 +254,40 @@
 		}
 	}
 
+	/**
+	 * Hazır Sorular sayfasında (#qmo-cb-soru-listesi mevcutken) önizlemedeki
+	 * soru butonlarını gerçek, canlı sıra/etiket/aktiflik durumuna göre
+	 * yeniden kurar. Bu liste yoksa (Asistan Profili / Görünüm sayfaları)
+	 * sunucunun bastığı gerçek aktif sorular olduğu gibi kalır.
+	 */
+	function onizlemeSorulariGuncelle() {
+		var chips = document.getElementById( 'qmo-cb-preview-quick-replies' );
+		var kaynakListe = document.getElementById( 'qmo-cb-soru-listesi' );
+		if ( ! chips || ! kaynakListe ) {
+			return;
+		}
+		var maxInput = document.getElementById( 'qmo_chatbot_quick_max' );
+		var azami = maxInput ? ( parseInt( maxInput.value, 10 ) || 5 ) : 5;
+		chips.innerHTML = '';
+		var adet = 0;
+		kaynakListe.querySelectorAll( '.qmo-cb-question-card' ).forEach( function ( kart ) {
+			if ( adet >= azami ) {
+				return;
+			}
+			var enabledCb = kart.querySelector( 'input[type="checkbox"][name$="[enabled]"]' );
+			var labelInput = kart.querySelector( '.qmo-cb-question-label' );
+			if ( ! enabledCb || ! enabledCb.checked || ! labelInput || ! labelInput.value ) {
+				return;
+			}
+			var btn = document.createElement( 'button' );
+			btn.type = 'button';
+			btn.className = 'gemini-quick-reply';
+			btn.textContent = labelInput.value;
+			chips.appendChild( btn );
+			adet++;
+		} );
+	}
+
 	function render() {
 		if ( ! live || ! root ) {
 			return;
@@ -248,20 +305,20 @@
 		var inputArea = root.querySelector( '.gemini-chat-input-area' );
 		var input = root.querySelector( '.gemini-chat-input' );
 		var botBubble = root.querySelector( '[data-preview-welcome]' );
-		var kose = secili( 'qmo_chatbot_radius_preset' ) || 'soft';
+		var kose = secili( 'qmo_chatbot_radius_preset', 'radiusPreset' ) || 'soft';
 		var radiusPx = ( cfg.radii && cfg.radii[ kose ] ) ? cfg.radii[ kose ] : 16;
-		var boyut = secili( 'qmo_chatbot_icon_size_preset' ) || 'medium';
+		var boyut = secili( 'qmo_chatbot_icon_size_preset', 'iconSizePreset' ) || 'medium';
 		var iconPx = ( cfg.sizes && cfg.sizes[ boyut ] ) ? cfg.sizes[ boyut ] : 48;
-		var off = secili( 'qmo_chatbot_offset' ) || 'mid';
+		var off = secili( 'qmo_chatbot_offset', 'offset' ) || 'mid';
 		var bottomPx = ( cfg.offsets && cfg.offsets[ off ] ) ? cfg.offsets[ off ] : 108;
-		var genis = secili( 'qmo_chatbot_window_width' ) || 'normal';
+		var genis = secili( 'qmo_chatbot_window_width', 'windowWidth' ) || 'normal';
 		var windowPx = ( cfg.widths && cfg.widths[ genis ] ) ? cfg.widths[ genis ] : 380;
-		var konum = secili( 'qmo_chatbot_position' ) || 'right';
-		var hareket = secili( 'qmo_chatbot_attention' ) || 'none';
+		var konum = secili( 'qmo_chatbot_position', 'position' ) || 'right';
+		var hareket = secili( 'qmo_chatbot_attention', 'attention' ) || 'none';
 		var attnMap = { pulse: 'gm-attn-pulse', shake: 'gm-attn-shake', float: 'gm-attn-float' };
-		var welcomeOn = acikMi( 'qmo_chatbot_welcome_screen' );
-		var teaserOn = acikMi( 'qmo_chatbot_teaser' );
-		var badgeOn = acikMi( 'qmo_chatbot_badge' );
+		var welcomeOn = acikMi( 'qmo_chatbot_welcome_screen', 'welcomeScreen' );
+		var teaserOn = acikMi( 'qmo_chatbot_teaser', 'teaser' );
+		var badgeOn = acikMi( 'qmo_chatbot_badge', 'badge' );
 		var toggleTextOn = toggleMetinAcikMi();
 		var acik = 'open' === state.mode;
 		var girisGoster = acik && welcomeOn && ! state.welcomeStarted;
@@ -307,27 +364,31 @@
 		root.querySelectorAll( '[data-preview-icon]' ).forEach( function ( el ) {
 			el.innerHTML = html;
 		} );
+		var thumb = document.querySelector( '[data-preview-icon-thumb]' );
+		if ( thumb ) {
+			thumb.innerHTML = html;
+		}
 		root.querySelectorAll( '[data-preview-bot-name]' ).forEach( function ( el ) {
-			el.textContent = initial.botName || 'Asistan';
+			el.textContent = deger( 'gemini_bot_name', initial.botName || 'Asistan' );
 		} );
 
 		var teaserText = root.querySelector( '[data-preview-teaser-text]' );
 		if ( teaserText ) {
-			teaserText.textContent = deger( 'qmo_chatbot_teaser_text', '' );
+			teaserText.textContent = deger( 'qmo_chatbot_teaser_text', initial.teaserText || '' );
 		}
 		var welcomeText = root.querySelector( '[data-preview-welcome-text]' );
 		if ( welcomeText ) {
-			welcomeText.textContent = deger( 'qmo_chatbot_welcome_intro', '' );
+			welcomeText.textContent = deger( 'qmo_chatbot_welcome_intro', initial.welcomeIntro || '' );
 		}
 		var welcomeBtn = root.querySelector( '[data-preview-welcome-btn]' );
 		if ( welcomeBtn ) {
-			welcomeBtn.textContent = deger( 'qmo_chatbot_welcome_btn', 'Sohbete Başla' );
+			welcomeBtn.textContent = deger( 'qmo_chatbot_welcome_btn', initial.welcomeBtn || 'Sohbete Başla' );
 		}
 		if ( botBubble ) {
-			botBubble.textContent = initial.welcome || 'Merhaba!';
+			botBubble.textContent = deger( 'gemini_welcome_text', initial.welcome || 'Merhaba!' );
 		}
 		if ( input ) {
-			input.value = initial.placeholder || 'Bir şeyler sorun...';
+			input.value = deger( 'gemini_placeholder_text', initial.placeholder || 'Bir şeyler sorun...' );
 		}
 
 		if ( toggle ) {
@@ -342,7 +403,7 @@
 		var toggleLabel = root.querySelector( '[data-preview-toggle-label]' );
 		if ( toggleLabel ) {
 			toggleLabel.hidden = ! toggleTextOn;
-			toggleLabel.textContent = initial.botName || 'Asistan';
+			toggleLabel.textContent = deger( 'gemini_bot_name', initial.botName || 'Asistan' );
 		}
 		if ( teaser ) {
 			teaser.hidden = ! teaserOn || acik || state.teaserDismissed;
@@ -356,6 +417,7 @@
 		if ( log ) {
 			log.hidden = ! acik || girisGoster;
 		}
+		onizlemeSorulariGuncelle();
 		if ( chips ) {
 			chips.hidden = ! acik || girisGoster;
 		}
@@ -403,7 +465,9 @@
 			state.welcomeStarted = false;
 		}
 		document.querySelectorAll( '[data-preview-state]' ).forEach( function ( b ) {
-			b.classList.toggle( 'is-active', b.getAttribute( 'data-preview-state' ) === mode );
+			var aktif = b.getAttribute( 'data-preview-state' ) === mode;
+			b.classList.toggle( 'is-active', aktif );
+			b.setAttribute( 'aria-pressed', aktif ? 'true' : 'false' );
 		} );
 		render();
 	}
@@ -411,7 +475,9 @@
 	function setDevice( device ) {
 		state.device = device;
 		document.querySelectorAll( '[data-preview-device]' ).forEach( function ( b ) {
-			b.classList.toggle( 'is-active', b.getAttribute( 'data-preview-device' ) === device );
+			var aktif = b.getAttribute( 'data-preview-device' ) === device;
+			b.classList.toggle( 'is-active', aktif );
+			b.setAttribute( 'aria-pressed', aktif ? 'true' : 'false' );
 		} );
 		render();
 	}
@@ -420,7 +486,9 @@
 		btn.addEventListener( 'click', function () {
 			var step = btn.getAttribute( 'data-step' );
 			document.querySelectorAll( '.qmo-cb-step' ).forEach( function ( b ) {
-				b.classList.toggle( 'is-active', b === btn );
+				var aktif = b === btn;
+				b.classList.toggle( 'is-active', aktif );
+				b.setAttribute( 'aria-pressed', aktif ? 'true' : 'false' );
 			} );
 			document.querySelectorAll( '.qmo-cb-panel' ).forEach( function ( p ) {
 				p.classList.toggle( 'is-active', p.getAttribute( 'data-step-panel' ) === step );
@@ -561,7 +629,7 @@
 		uploadBtn.addEventListener( 'click', function ( e ) {
 			e.preventDefault();
 			var frame = wp.media( {
-				title: ( cfg.strings && cfg.strings.selectIcon ) || 'Bot ikonu seç',
+				title: ( cfg.strings && cfg.strings.selectIcon ) || 'Asistan ikonu seç',
 				button: { text: ( cfg.strings && cfg.strings.useIcon ) || 'Kullan' },
 				multiple: false
 			} );
@@ -569,24 +637,61 @@
 				var attachment = frame.state().get( 'selection' ).first().toJSON();
 				iconInput.value = attachment.url || '';
 				initial.iconUrl = iconInput.value;
+
+				// Bir görsel seçmek, "özel görsel" ikon modunu da seçili hale
+				// getirir — aksi hâlde bir hazır ikon preset'i etkin kaldığı
+				// sürece yüklenen görsel ön yüzde hiç görünmez (bkz. shortcode-
+				// chatbot.php qmo_chatbot_ikon(): preset 'custom' değilse URL
+				// yok sayılır).
+				var presetHidden = document.getElementById( 'qmo_chatbot_icon_preset' );
+				if ( presetHidden ) {
+					presetHidden.value = 'custom';
+				}
+				document.querySelectorAll( '.qmo-cb-icon-tile' ).forEach( function ( t ) {
+					var ozel = 'custom' === t.getAttribute( 'data-icon' );
+					t.classList.toggle( 'is-selected', ozel );
+					t.setAttribute( 'aria-pressed', ozel ? 'true' : 'false' );
+				} );
+				var customBlock = document.getElementById( 'qmo-cb-custom-icon' );
+				if ( customBlock ) {
+					customBlock.classList.add( 'is-open' );
+				}
+
 				render();
 			} );
 			frame.open();
 		} );
 	}
 
-	document.querySelectorAll( '.qmo-cb-wizard input, .qmo-cb-wizard textarea' ).forEach( function ( el ) {
-		el.addEventListener( 'input', render );
-		el.addEventListener( 'change', function () {
-			if ( 'qmo_chatbot_teaser' === el.name ) {
-				state.teaserDismissed = false;
-			}
-			if ( 'qmo_chatbot_welcome_screen' === el.name ) {
-				state.welcomeStarted = false;
-			}
+	// Yeni Hazır Sorular kartları (admin-sorular.js ile) dinamik eklendiği
+	// için tekil querySelectorAll+addEventListener yerine olay delegasyonu
+	// kullanılır — böylece sonradan eklenen alanlar da render() tetikler.
+	document.addEventListener( 'input', function ( e ) {
+		if ( e.target.closest( '.qmo-cb-wizard' ) ) {
 			render();
-		} );
+		}
 	} );
+	document.addEventListener( 'change', function ( e ) {
+		if ( ! e.target.closest( '.qmo-cb-wizard' ) ) {
+			return;
+		}
+		if ( 'qmo_chatbot_teaser' === e.target.name ) {
+			state.teaserDismissed = false;
+		}
+		if ( 'qmo_chatbot_welcome_screen' === e.target.name ) {
+			state.welcomeStarted = false;
+		}
+		render();
+	} );
+
+	// Kompakt çeviri rozeti dinleyicisi qmo_chatbot_kaydet_ux_script()
+	// içinde, TÜM alt sayfalarda ortak basılır (bu dosya yalnızca canlı
+	// önizlemesi olan 3 sayfada yüklenir; Görünürlük sayfasında da rozet
+	// var ama bu script orada yok).
+
+	// Görünürlük özeti bu render motoruna bağlı değildir (o sayfada canlı
+	// chatbot preview'i yok); dolayısıyla live/root yoksa güvenle çıkılır.
+	window.qmoChatbotRenderPreview = render;
 
 	render();
 }() );
