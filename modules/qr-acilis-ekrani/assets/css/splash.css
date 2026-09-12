@@ -371,12 +371,18 @@ html.splash-loading #custom-splash-overlay { display: block !important; visibili
    yüksekliğiyle oranlı clamp(): küçük telefonlarda eski aralığa yakın
    kalır, uzun ekranlarda kayma belirginleşir. */
 #custom-splash-overlay .splash-cta { margin-top: 14px; }
-#custom-splash-overlay .splash-divider { margin-top: clamp(26px, 4.4vh, 46px); }
-#custom-splash-overlay .splash-divider { margin-top: clamp(26px, 4.4cqh, 46px); }
 #custom-splash-overlay .splash-social { margin-top: 14px; }
-#custom-splash-overlay .splash-pay-row { margin-top: clamp(24px, 3.6vh, 40px); }
-#custom-splash-overlay .splash-pay-row { margin-top: clamp(24px, 3.6cqh, 40px); }
 #custom-splash-overlay .splash-stack > :first-child { margin-top: 0; }
+
+#custom-splash-overlay .splash-divider {
+    margin-top: clamp(26px, 4.4vh, 46px);
+    margin-top: clamp(26px, 4.4cqh, 46px);
+}
+
+#custom-splash-overlay .splash-pay-row {
+    margin-top: clamp(24px, 3.6vh, 40px);
+    margin-top: clamp(24px, 3.6cqh, 40px);
+}
 
 /* ---------------- Giriş animasyonu ---------------- */
 /* Animasyon blur'suz sarmalayıcıda (.splash-stack) çalışır; içindeki cam
@@ -957,4 +963,138 @@ html.splash-loading #custom-splash-overlay { display: block !important; visibili
         row-gap: 8px;
     }
     #custom-splash-overlay .splash-pay-seq + .splash-pay-seq { display: none; }
+}
+
+/* ---------------- Dar konteyner: compact bileşen ölçüleri ---------------- */
+/* Overlay bir size container'ı (yukarıda container-type: size). Gerçek
+   ziyaretçi cihazında bu kutu = ekran, yani en dar telefonda bile 320px+
+   olur ve aşağıdaki kurallar HİÇ devreye girmez. Devreye girdiği tek yer
+   admin canlı önizlemesidir: .qrms-ae-preview-frame 960px altında 240px'e
+   iner ve gerçek frontend markup'ı o kutuya girer.
+
+   Sorun viewport birimleri değil, bileşenlerin sabit px tabanıydı:
+   4x56px rozet + 3x14px boşluk = 266px, 240px çerçevenin 20px yan
+   padding'inden sonra kalan 200px'e sığmıyor, .splash-actions'taki
+   contain:layout paint de taşanı kırpıyordu. Burada bileşenler konteyner
+   genişliğiyle ölçeklenir; scale/transform YOK, gerçek layout ölçüleri.
+
+   clamp() üst sınırları 300px konteynerde masaüstü değerlerine varır,
+   böylece eşikte sıçrama olmaz. */
+
+@container (max-width: 300px) {
+    /* Yan padding 20 -> 10: 4 rozetin ihtiyaç duyduğu genişlik burada
+       kazanılıyor. Safe-area mantığı korunur. */
+    #custom-splash-overlay .splash-content {
+        padding-left: max(10px, env(safe-area-inset-left, 0px));
+        padding-right: max(10px, env(safe-area-inset-right, 0px));
+        padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    }
+
+    /* Dikey ritim: clamp() tabanları (26px/24px) 520px'lik önizleme
+       yüksekliğinde fazla geniş kalıyordu. */
+    #custom-splash-overlay .splash-cta { margin-top: 10px; }
+    #custom-splash-overlay .splash-divider { margin-top: 12px; }
+    #custom-splash-overlay .splash-social { margin-top: 10px; }
+    #custom-splash-overlay .splash-pay-row { margin-top: 12px; }
+
+    /* 4 rozet TEK SATIRDA kalır: 4 sütun esit paylaşılır, rozet sütunun
+       içinde ortalanır, etiket sütun genişliğini aşmaz. */
+    #custom-splash-overlay .splash-actions { gap: 7px; }
+    #custom-splash-overlay .sp-action {
+        flex: 1 1 0;
+        max-width: none;
+    }
+    #custom-splash-overlay .splash-badge {
+        width: clamp(40px, 18.5cqw, 56px);
+        height: clamp(40px, 18.5cqw, 56px);
+    }
+    #custom-splash-overlay .splash-badge .splash-icon {
+        width: clamp(17px, 7.5cqw, 22px);
+        height: clamp(17px, 7.5cqw, 22px);
+    }
+    /* Etiket sütuna sığacak kadar küçülür ama 8px'in altına inmez;
+       "Rezervasyon" gibi bölünemeyen en uzun kelime tek satıra sığar,
+       "Yorum Yap" / "Wifi Şifresi" iki satıra düşer. Kelime ortasından
+       kesme ya da ellipsis yok; min-height em tabanlı olduğu için 1 ve 2
+       satırlık etiketlerin alt hizası eşit kalır. */
+    #custom-splash-overlay .sp-action-label {
+        font-size: clamp(8px, 3.3cqw, 10px);
+        letter-spacing: 0;
+        line-height: 1.3;
+        margin-top: 4px;
+        max-width: 100%;
+        min-height: 2.6em;
+    }
+
+    /* CTA: yükseklik konteynerle ölçeklenir, genişlik %100 kalır.
+       Yazı boyutu yöneticinin seçtiği değerden türetilir (sabitlenmez). */
+    #custom-splash-overlay .splash-cta {
+        height: clamp(44px, 19.5cqw, 56px);
+        padding: 0 14px;
+        border-radius: 999px;
+        font-size: max(15px, calc(var(--sp-cta-font, 17px) - 2px));
+    }
+
+    #custom-splash-overlay .splash-divider { gap: 8px; }
+    #custom-splash-overlay .splash-divider-label { font-size: 11px; }
+
+    /* Sosyal rozetler aksiyon rozetlerinden küçük kalmaya devam eder
+       (hiyerarşi); satır sığmadığında flex-wrap zaten dengeli sarar. */
+    #custom-splash-overlay .splash-social {
+        gap: clamp(7px, 3.5cqw, 14px);
+        row-gap: 8px;
+    }
+    #custom-splash-overlay .splash-badge-sm {
+        width: clamp(34px, 15.5cqw, 44px);
+        height: clamp(34px, 15.5cqw, 44px);
+    }
+    #custom-splash-overlay .splash-badge-sm .splash-icon {
+        width: clamp(15px, 6.8cqw, 20px);
+        height: clamp(15px, 6.8cqw, 20px);
+    }
+
+    /* Ödeme şeridi: kayan şerit 100cqw ile telefonun tam genişliğine
+       oturur, overlay'in overflow:hidden'ı dışarı taşmayı keser. */
+    #custom-splash-overlay .splash-pay-row {
+        gap: 5px 10px;
+        padding: 7px 10px;
+        border-radius: 14px;
+    }
+    #custom-splash-overlay .splash-pay-row.is-marquee { padding: 7px 0; }
+    #custom-splash-overlay .splash-pay-row.is-marquee .splash-pay { padding: 0 10px; }
+    #custom-splash-overlay .splash-pay-icon {
+        width: clamp(14px, 6.3cqw, 18px);
+        height: clamp(14px, 6.3cqw, 18px);
+    }
+    #custom-splash-overlay .splash-pay-label { font-size: clamp(9.5px, 4.2cqw, 11.5px); }
+
+    /* Logo şeridi: 3 sütunlu yapı (dil / logo / loader) korunur, sadece
+       yükseklik ve yan kontroller konteynerle küçülür. */
+    #custom-splash-overlay .splash-logo {
+        --sp-logo-bar-h: clamp(64px, 30cqw, 96px);
+        gap: 6px;
+        padding-left: calc(10px + env(safe-area-inset-left, 0px));
+        padding-right: calc(10px + env(safe-area-inset-right, 0px));
+    }
+    #custom-splash-overlay .splash-loader { --sp-loader-size: clamp(20px, 9.2cqw, 28px); }
+    #custom-splash-overlay .splash-lang-btn {
+        min-width: 34px;
+        min-height: 34px;
+        padding: 0 7px;
+        font-size: 11px;
+    }
+    #custom-splash-overlay .splash-ceviri-panel { min-width: 128px; }
+}
+
+/* Çok dar konteyner: tek satırda 4 rozet artık okunabilir durmaz,
+   2 + 2 düzenine geçilir. */
+@container (max-width: 220px) {
+    #custom-splash-overlay .splash-actions {
+        flex-wrap: wrap;
+        row-gap: 8px;
+    }
+    #custom-splash-overlay .sp-action {
+        flex: 1 1 calc(50% - 7px);
+        max-width: calc(50% - 7px);
+    }
 }
