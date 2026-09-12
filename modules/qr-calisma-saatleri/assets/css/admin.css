@@ -1,58 +1,303 @@
 /**
  * QR Çalışma Saatleri — yönetim ekranı.
+ *
+ * Kapsam yalnızca bu modülün sayfasıdır: her seçici `.qrms-cs-` ile başlar
+ * ya da `.qrms-cs-wrap` altındadır. WordPress'in genel admin görünümüne
+ * (ve suite'in ortak `.qrms-*` bileşenlerine) burada kural yazılmaz.
+ *
+ * Mobil öncelikli. Kırılımlar: 600px (renk ızgarası), 783px (WordPress'in
+ * katlanan menüsü — tablet düzeni), 1200px (ayarlar | önizleme iki sütun).
+ * Gün kartları ve saat alanları kırılım yerine kapsayıcıya göre sarar
+ * (auto-fit + min()), çünkü aynı kart iki farklı sütun genişliğinde çıkar.
  */
 
 .qrms-cs-wrap {
 	max-width: 720px;
 }
 
-.qrms-cs-day-head {
+.qrms-cs-lead {
+	margin: 0 0 20px;
+}
+
+/* minmax(0, 1fr): ızgara sütununun asgari genişliği min-content OLMASIN.
+   Önizleme satırlarındaki saatler nowrap; varsayılan `auto` sütun onların
+   min-content genişliğine kadar şişer ve 320px'te sayfa yatay kayardı. */
+.qrms-cs-layout {
+	display: grid;
+	gap: 16px;
+	grid-template-columns: minmax(0, 1fr);
+}
+
+.qrms-cs-main,
+.qrms-cs-side {
+	min-width: 0;
+}
+
+.qrms-cs-main > .qrms-card:last-child,
+.qrms-cs-side .qrms-card {
+	margin-bottom: 0;
+}
+
+/* ---------------------------------------------------------------------------
+   Hızlı işlemler
+   ------------------------------------------------------------------------ */
+
+.qrms-cs-quick-help {
+	margin: -4px 0 14px;
+}
+
+.qrms-cs-quick-source {
+	margin: 0 0 14px;
+	max-width: 320px;
+}
+
+.qrms-cs-quick-actions {
 	display: flex;
-	align-items: center;
-	justify-content: space-between;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
+.qrms-cs-chip {
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	border-radius: 999px;
+	color: #1d2327;
+	cursor: pointer;
+	font-size: 13px;
+	font-weight: 600;
+	line-height: 1.2;
+	min-height: 40px;
+	padding: 8px 14px;
+}
+
+.qrms-cs-chip:hover,
+.qrms-cs-chip:focus {
+	border-color: #2271b1;
+	color: #2271b1;
+}
+
+.qrms-cs-chip:focus {
+	box-shadow: 0 0 0 1px #2271b1;
+	outline: 2px solid transparent;
+}
+
+.qrms-cs-chip-warn:hover,
+.qrms-cs-chip-warn:focus {
+	border-color: #d63638;
+	color: #d63638;
+}
+
+.qrms-cs-chip-warn:focus {
+	box-shadow: 0 0 0 1px #d63638;
+}
+
+.qrms-cs-chip-undo {
+	background: #f6f7f7;
+}
+
+/* Toplu işlem bildirimi — kaydetmeden önce ne olduğunu söyler. */
+.qrms-cs-toast {
+	background: #f0f6f1;
+	border-left: 3px solid #00a32a;
+	border-radius: 4px;
+	color: #1d2327;
+	font-size: 13px;
+	line-height: 1.5;
+	margin: 14px 0 0;
+	padding: 10px 12px;
+}
+
+/* ---------------------------------------------------------------------------
+   Gün kartları — 7 gün, tam sırasıyla; kapsayıcı darsa tek sütun.
+   ------------------------------------------------------------------------ */
+
+.qrms-cs-days-help {
+	margin: -4px 0 16px;
+}
+
+.qrms-cs-day-list {
+	display: grid;
 	gap: 12px;
-	margin-bottom: 12px;
+	grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+}
+
+.qrms-cs-day {
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-radius: 10px;
+	box-sizing: border-box;
+	min-width: 0;
+	padding: 14px 16px 16px;
+}
+
+.qrms-cs-day.is-closed {
+	background: #f6f7f7;
+}
+
+.qrms-cs-day-head {
+	align-items: center;
+	border-bottom: 1px solid #f0f0f1;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px 12px;
+	justify-content: space-between;
+	margin: 0 0 12px;
+	padding: 0 0 10px;
+}
+
+.qrms-cs-day-name {
+	align-items: center;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	min-width: 0;
 }
 
 .qrms-cs-day-title {
-	margin: 0;
+	color: #1d2327;
+	font-size: 16px;
+	font-weight: 700;
+	line-height: 1.3;
 }
 
-.qrms-cs-closed-label {
-	display: inline-flex;
+/* Durum etiketi: küçük pill + nokta. */
+.qrms-cs-state {
 	align-items: center;
+	border-radius: 999px;
+	display: inline-flex;
+	font-size: 11px;
+	font-weight: 600;
+	gap: 6px;
+	line-height: 1;
+	padding: 4px 9px;
+	white-space: nowrap;
+}
+
+.qrms-cs-state-dot {
+	border-radius: 50%;
+	flex: 0 0 auto;
+	height: 6px;
+	width: 6px;
+}
+
+.qrms-cs-state.is-open {
+	background: #f0f6f1;
+	color: #00652a;
+}
+
+.qrms-cs-state.is-open .qrms-cs-state-dot {
+	background: #00a32a;
+}
+
+.qrms-cs-state.is-shut {
+	background: #fcf0f1;
+	color: #b32d2e;
+}
+
+.qrms-cs-state.is-shut .qrms-cs-state-dot {
+	background: #d63638;
+}
+
+/* ---------------------------------------------------------------------------
+   "Kapalı" anahtarı — onay kutusunun kendisi görünmez ama odaklanabilir.
+   ------------------------------------------------------------------------ */
+
+.qrms-cs-switch {
+	align-items: center;
+	cursor: pointer;
+	display: inline-flex;
+	flex: 0 0 auto;
 	gap: 8px;
 	min-height: 44px;
-	font-size: 15px;
-	font-weight: 600;
-	cursor: pointer;
+	position: relative;
 	user-select: none;
 }
 
-.qrms-cs-closed-label input {
-	width: 20px;
-	height: 20px;
+.qrms-cs-switch input {
+	height: 1px;
 	margin: 0;
+	opacity: 0;
+	position: absolute;
+	width: 1px;
 }
+
+.qrms-cs-switch-track {
+	background: #c3c4c7;
+	border-radius: 999px;
+	flex: 0 0 auto;
+	height: 24px;
+	position: relative;
+	transition: background 0.15s ease-in-out;
+	width: 44px;
+}
+
+.qrms-cs-switch-track::before {
+	background: #fff;
+	border-radius: 50%;
+	box-shadow: 0 1px 2px rgba( 0, 0, 0, 0.25 );
+	content: "";
+	height: 18px;
+	left: 3px;
+	position: absolute;
+	top: 3px;
+	transition: transform 0.15s ease-in-out;
+	width: 18px;
+}
+
+.qrms-cs-switch input:checked + .qrms-cs-switch-track {
+	background: #d63638;
+}
+
+.qrms-cs-switch input:checked + .qrms-cs-switch-track::before {
+	transform: translateX(20px);
+}
+
+.qrms-cs-switch input:focus-visible + .qrms-cs-switch-track {
+	box-shadow: 0 0 0 2px #fff, 0 0 0 4px #2271b1;
+}
+
+.qrms-cs-switch-text {
+	color: #50575e;
+	font-size: 14px;
+	font-weight: 600;
+}
+
+.qrms-cs-day.is-closed .qrms-cs-switch-text {
+	color: #b32d2e;
+}
+
+/* ---------------------------------------------------------------------------
+   Saat alanları — kapalı günde soluklaşır, KİLİTLENMEZ (bkz. admin.js).
+   ------------------------------------------------------------------------ */
 
 .qrms-cs-times {
 	display: grid;
-	grid-template-columns: 1fr;
 	gap: 12px;
+	grid-template-columns: repeat(auto-fit, minmax(min(140px, 100%), 1fr));
 }
 
 .qrms-cs-time-field {
 	margin: 0;
+	min-width: 0;
+}
+
+.qrms-cs-time-field .qrms-label {
+	font-size: 13px;
+	font-weight: 600;
+	margin: 0 0 6px;
+}
+
+.qrms-cs-times .qrms-input {
+	min-height: 44px;
 }
 
 .qrms-cs-day.is-closed .qrms-cs-times {
-	opacity: 0.45;
+	opacity: 0.5;
 }
 
-@media screen and ( min-width: 600px ) {
-	.qrms-cs-times {
-		grid-template-columns: 1fr 1fr;
-	}
+/* Kapalı günün saatini düzenlemeye başlayınca alan yeniden okunur olur. */
+.qrms-cs-day.is-closed .qrms-cs-times:focus-within {
+	opacity: 1;
 }
 
 /* ---------------------------------------------------------------------------
@@ -62,7 +307,7 @@
 /* Font seçici renk ızgarasının ÜSTÜNDE, tam genişlikte durur: yazı tipi
    listenin tamamını etkiler, tek bir öğenin rengi gibi değildir. */
 .qrms-cs-font-field {
-	margin: 0 0 16px;
+	margin: 16px 0;
 }
 
 .qrms-cs-font-picker {
@@ -75,12 +320,13 @@
 
 .qrms-cs-color-grid {
 	display: grid;
-	grid-template-columns: 1fr;
 	gap: 16px;
+	grid-template-columns: 1fr;
 }
 
 .qrms-cs-color-field {
 	margin: 0;
+	min-width: 0;
 }
 
 /* wpColorPicker düğmesi mobilde parmakla açılabilmeli. */
@@ -93,27 +339,107 @@
 	min-height: 40px;
 }
 
+/* Seçici paleti dar ekranda kartın dışına taşmasın. */
+.qrms-cs-color-field .wp-picker-container,
+.qrms-cs-color-field .wp-picker-holder {
+	max-width: 100%;
+}
+
 .qrms-cs-colors .qrms-help {
 	margin-top: 4px;
 }
 
 /* ---------------------------------------------------------------------------
    Canlı önizleme
+
+   Kart kendi zeminini taşır; kutu yalnızca onu müşteri sayfasındaki gibi
+   koyu bir zemine oturtur. Kartın tasarımına burada dokunulmaz.
    ------------------------------------------------------------------------ */
 
-/* Kısa kodun gerçek çıktısı burada durur; kutu yalnızca onu müşteri
-   sayfasındaki gibi beyaz bir zemine oturtur. */
-/* Kart kendi zeminini taşıdığı için kutu yalnızca onu müşteri sayfasındaki
-   gibi koyu bir zemine oturtur. */
 .qrms-cs-preview {
-	padding: 14px;
+	background: #0f0a14;
 	border: 1px solid #dcdcde;
 	border-radius: 8px;
-	background: #0f0a14;
+	margin-top: 12px;
+	padding: 14px;
 }
 
+/* ---------------------------------------------------------------------------
+   Kaydetme
+   ------------------------------------------------------------------------ */
+
+.qrms-cs-save {
+	align-items: center;
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	margin: 16px 0 0;
+}
+
+.qrms-cs-dirty {
+	background: #fcf9e8;
+	border-left: 3px solid #dba617;
+	border-radius: 4px;
+	color: #1d2327;
+	font-size: 13px;
+	line-height: 1.5;
+	margin: 0;
+	padding: 8px 12px;
+}
+
+/* ---------------------------------------------------------------------------
+   Kırılımlar
+   ------------------------------------------------------------------------ */
+
 @media screen and ( min-width: 600px ) {
+
 	.qrms-cs-color-grid {
 		grid-template-columns: 1fr 1fr;
+	}
+
+	.qrms-cs-save {
+		flex-direction: row;
+		flex-wrap: wrap;
+	}
+
+	.qrms-cs-save-button {
+		min-width: 220px;
+		width: auto;
+	}
+}
+
+/* Tablet: sayfa nefes alır, gün kartları yan yana gelebilir — ama düzen
+   küçültülmüş masaüstü değildir, önizleme hâlâ tam genişlikte altta durur. */
+@media screen and ( min-width: 783px ) {
+
+	.qrms-cs-wrap {
+		max-width: 1000px;
+	}
+
+	.qrms-cs-day {
+		padding: 16px 18px 18px;
+	}
+}
+
+/* Masaüstü: ayarlar solda, önizleme sağda ve kaydırmada takip eder. */
+@media screen and ( min-width: 1200px ) {
+
+	.qrms-cs-wrap {
+		max-width: 1240px;
+	}
+
+	/* 420px: önizleme sütunu, kartın KENDİ tasarımının sıkışmadığı en dar
+	   ölçüdür — daha darında "Bugün" etiketi saatin üstüne biner. Önizleme
+	   müşteri sayfasındaki gibi görünmeli, yoksa yalan söyler. */
+	.qrms-cs-layout {
+		align-items: start;
+		gap: 20px;
+		grid-template-columns: minmax(0, 1fr) 420px;
+	}
+
+	.qrms-cs-side {
+		position: sticky;
+		/* Yapışkan yönetim çubuğu (32px) + nefes payı. */
+		top: 46px;
 	}
 }

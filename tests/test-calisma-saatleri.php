@@ -329,6 +329,139 @@ qrms_test(
 	}
 );
 
+qrms_test(
+	'kartın altındaki arama notu ÖN YÜZDEN de kaldırıldı, boşluk bırakmaz',
+	function () {
+		// Not, kısa kodun (yani canlı önizlemenin de) parçasıydı. Önizleme
+		// kısa kodun kendisi olduğu için tek kaldırma yeri burasıydı; ayrı
+		// bir şablon açmak önizlemeyle ön yüzü ayrıştırırdı.
+		$html = qrms_cs_shortcode( array() );
+
+		qrms_assert_false( false !== strpos( $html, 'qrms-cs-note' ), 'not bloğu yok' );
+		qrms_assert_false( false !== strpos( $html, 'rezervasyon' ), 'not metni yok' );
+
+		// Listeden sonra doğrudan kapanış geliyor: altta boş bir kutu kalmaz.
+		qrms_assert_contains( "</ul>\n\t\t</div>", $html, 'listeden sonra boşluk yok' );
+
+		$css = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-calisma-saatleri/assets/css/frontend.css' );
+
+		qrms_assert_false( false !== strpos( $css, '.qrms-cs-note' ), 'ölü CSS kalmadı' );
+
+		// Liste ve kart tasarımının geri kalanı DEĞİŞMEDİ.
+		qrms_assert_contains( 'qrms-cs-head', $html, 'başlık satırı durur' );
+		qrms_assert_contains( 'qrms-cs-status', $html, 'açık/kapalı rozeti durur' );
+		qrms_assert_contains( 'qrms-cs-today-tag', $html, 'bugün etiketi durur' );
+		qrms_assert_same( 7, substr_count( $html, '<li class="qrms-cs-item' ), 'yedi gün de basılır' );
+	}
+);
+
+qrms_test(
+	'yönetim ekranı: yedi gün kartı, hızlı işlemler ve yeni metinler',
+	function () {
+		$_POST = array();
+
+		ob_start();
+		qrms_cs_admin_sayfasi();
+		$html = ob_get_clean();
+
+		// Gün kartları tek bir tabloya indirgenmedi: yedisi de kendi kartında.
+		foreach ( qrms_cs_day_keys() as $key ) {
+			qrms_assert_contains( 'name="qrms_cs[' . $key . '][open]"', $html, $key . ' açılış' );
+			qrms_assert_contains( 'name="qrms_cs[' . $key . '][close]"', $html, $key . ' kapanış' );
+		}
+
+		qrms_assert_same( 7, substr_count( $html, 'class="qrms-cs-day"' ) + substr_count( $html, 'class="qrms-cs-day is-closed"' ), 'yedi gün kartı' );
+
+		// Hızlı işlemler — beşi de duruyor, geri alma ile birlikte.
+		foreach ( array( 'weekdays', 'weekend', 'all', 'open-all', 'close-all', 'undo' ) as $action ) {
+			qrms_assert_contains( 'data-qrms-cs-action="' . $action . '"', $html, $action . ' düğmesi' );
+		}
+
+		qrms_assert_contains( 'id="qrms-cs-quick-day"', $html, 'kaynak gün seçici' );
+		qrms_assert_contains( 'Hızlı işlemler', $html, 'hızlı işlemler başlığı' );
+
+		// Yeni metinler.
+		qrms_assert_contains( 'Açılış saati', $html, 'açılış etiketi' );
+		qrms_assert_contains( 'Kapanış saati', $html, 'kapanış etiketi' );
+		qrms_assert_contains( 'Liste görünümü', $html, 'görünüm başlığı' );
+		qrms_assert_contains( 'Değişiklikleri kaydet', $html, 'kaydet düğmesi' );
+		qrms_assert_contains( 'Açılış ve kapanış saatleri aynıysa restoran 24 saat açık kabul edilir.', $html, '24 saat notu' );
+		qrms_assert_contains( 'Kapanış saati açılıştan önceyse çalışma süresi ertesi güne taşar.', $html, 'gece yarısı notu' );
+		qrms_assert_contains( 'Kaydedilmemiş değişiklikleriniz var.', $html, 'kayıt uyarısı' );
+
+		// Kısa kod BİLGİ ALANI kaldırıldı — kısa kodun kendisi duruyor.
+		qrms_assert_false( false !== strpos( $html, '<code>[qr_calisma_saatleri]</code>' ), 'kısa kod kutusu yok' );
+		qrms_assert_true( function_exists( 'qrms_cs_shortcode' ), 'kısa kod işlevi duruyor' );
+	}
+);
+
+qrms_test(
+	'kapalı günün saat alanları KİLİTLENMEZ — saatler kayıtta varsayılana düşmezdi',
+	function () {
+		// Eski davranış: kapalı günde alanlar disabled basılıyordu. Disabled
+		// alan gönderilmez, qrms_cs_sanitize() de boş değeri varsayılanla
+		// (09:00–22:00) doldurur — yani gün yeniden açıldığında restoranın
+		// kendi saatleri kaybolmuş oluyordu.
+		$_POST = array();
+
+		update_option(
+			QRMS_CS_OPTION,
+			qrms_cs_sanitize( array( 'monday' => array( 'closed' => '1', 'open' => '11:00', 'close' => '23:30' ) ) )
+		);
+
+		ob_start();
+		qrms_cs_admin_sayfasi();
+		$html = ob_get_clean();
+
+		qrms_assert_false( false !== strpos( $html, 'disabled' ), 'alan kilitlenmiyor' );
+		qrms_assert_contains( 'class="qrms-cs-day is-closed"', $html, 'kart görsel olarak kapalı' );
+		qrms_assert_contains( 'value="11:00"', $html, 'kapalı günün saati duruyor' );
+
+		// Kapalı gün gönderilince saatler aynen korunur.
+		$_POST = array(
+			'qrms_cs_kaydet' => '1',
+			'qrms_cs'        => array( 'monday' => array( 'closed' => '1', 'open' => '11:00', 'close' => '23:30' ) ),
+		);
+
+		ob_start();
+		qrms_cs_admin_sayfasi();
+		ob_end_clean();
+
+		$monday = qrms_cs_get()['monday'];
+
+		qrms_assert_true( $monday['closed'], 'gün kapalı' );
+		qrms_assert_same( '11:00', $monday['open'], 'açılış korundu' );
+		qrms_assert_same( '23:30', $monday['close'], 'kapanış korundu' );
+
+		$_POST = array();
+	}
+);
+
+qrms_test(
+	'gün kartındaki durum etiketi PHP ve JS tarafında aynı üç dala sahiptir',
+	function () {
+		qrms_assert_same( array( 'is-shut', 'Kapalı' ), qrms_cs_admin_durum( array( 'closed' => true ) ), 'kapalı' );
+		qrms_assert_same(
+			array( 'is-open', '24 saat açık' ),
+			qrms_cs_admin_durum( array( 'closed' => false, 'open' => '00:00', 'close' => '00:00' ) ),
+			'24 saat'
+		);
+		qrms_assert_same(
+			array( 'is-open', 'Açık' ),
+			qrms_cs_admin_durum( array( 'closed' => false, 'open' => '09:00', 'close' => '22:00' ) ),
+			'açık'
+		);
+
+		$js = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-calisma-saatleri/assets/js/admin.js' );
+
+		qrms_assert_contains( 'function stateLabel(closed, open, close)', $js, 'JS etiket fonksiyonu' );
+		qrms_assert_contains( 'L.acik', $js, 'JS metni PHP\'den alır' );
+		qrms_assert_contains( "getElementById('qrms-cs-quick-day')", $js, 'JS kaynak günü okur' );
+		qrms_assert_contains( 'function restore(state)', $js, 'JS geri alma' );
+		qrms_assert_contains( "addEventListener('beforeunload'", $js, 'kaydedilmemiş değişiklik uyarısı' );
+	}
+);
+
 
 /* ---------------------------------------------------------------------------
  * 12. Toplu Fiyat Kampanyası
@@ -371,7 +504,6 @@ qrms_test(
 			'Çalışma Saatleri',
 			'Şu an açığız',
 			'Şu an kapalıyız',
-			'Sipariş ve rezervasyon için bizi arayın',
 			'Bugün',
 		);
 
@@ -405,7 +537,6 @@ qrms_test(
 		$sc = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-calisma-saatleri/includes/shortcode.php' );
 		qrms_assert_contains( "qrms_cs_cevir( __( 'Çalışma Saatleri', 'qrms' ) )", $sc, 'başlık hours' );
 		qrms_assert_contains( "qrms_cs_cevir( \$is_open ? __( 'Şu an açığız', 'qrms' )", $sc, 'durum hours' );
-		qrms_assert_contains( "qrms_cs_cevir( __( 'Sipariş ve rezervasyon için bizi arayın', 'qrms' ) )", $sc, 'not hours' );
 		qrms_assert_contains( "qrms_cs_cevir( __( 'Bugün', 'qrms' ) )", $sc, 'bugün hours' );
 
 		$etiket = qrms_cs_day_labels();

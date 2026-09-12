@@ -105,14 +105,26 @@ function qrms_module_qr_calisma_saatleri_admin_assets() {
 	 * PHP tarafında kalır (çeviri tek yerde durur). Biçimlendirmenin
 	 * dallanması qrms_cs_format_day() ile birebir aynıdır ve testle
 	 * korunur — bkz. tests/test-suite.php.
+	 *
+	 * Gün grupları da buradan iner: "hafta içi" beş günün hangileri
+	 * olduğu JS'te sabitlenmiş olsaydı gün anahtarları tek kaynaktan
+	 * (qrms_cs_day_keys) gelmekten çıkardı.
 	 */
+	$gunler = qrms_cs_day_keys();
+
 	wp_localize_script(
 		'qrms-cs-admin',
 		'QRMS_CS',
 		array(
-			'kapali'  => __( 'Kapalı', 'qrms' ),
-			'yirmiDort' => __( '24 saat açık', 'qrms' ),
-			'aralik'  => __( '%1$s – %2$s', 'qrms' ),
+			'kapali'      => __( 'Kapalı', 'qrms' ),
+			'yirmiDort'   => __( '24 saat açık', 'qrms' ),
+			'aralik'      => __( '%1$s – %2$s', 'qrms' ),
+			'acik'        => __( 'Açık', 'qrms' ),
+			'gunler'      => $gunler,
+			'haftaIci'    => array_slice( $gunler, 0, 5 ),
+			'haftaSonu'   => array_slice( $gunler, 5 ),
+			'uygulandi'   => __( 'Çalışma saatleri güncellendi. Değişiklikleri kaydetmeyi unutmayın.', 'qrms' ),
+			'geriAlindi'  => __( 'Son toplu işlem geri alındı.', 'qrms' ),
 		)
 	);
 }
