@@ -119,6 +119,157 @@ final class QRMenu_Gallery_Manager {
 			'desc_weight'      => 400,
 			'desc_align'       => 'left',
 			'desc_max_width'   => 70,
+		] + $this->nav_preset_values( 'champagne' ) + [
+			'nav_preset'          => 'champagne',
+			'nav_sticky'          => 1,
+			'nav_sticky_offset'   => 0,
+		];
+	}
+
+	/**
+	 * Kategori navigasyonu hazır renk temaları.
+	 *
+	 * Her tema, ayar anahtarlarının tam setini verir; kullanıcı tema seçtiğinde
+	 * bu değerler renk alanlarına yazılır ve oradan tek tek override edilebilir.
+	 *
+	 * @return array<string,array{label:string,colors:array<string,mixed>}>
+	 */
+	public function nav_presets(): array {
+		return [
+			'champagne' => [
+				'label'  => 'Champagne Gold',
+				'colors' => [
+					'nav_bg'                   => '#0C0B09',
+					'nav_bg_opacity'           => 55,
+					'nav_border'               => '#D4AF37',
+					'nav_border_opacity'       => 22,
+					'nav_hover_border'         => '#D4AF37',
+					'nav_hover_border_opacity' => 65,
+					'nav_active_bg'            => '#D4AF37',
+					'nav_active_text'          => '#14110A',
+					'nav_text'                 => '#D9D2C5',
+					'nav_hover_text'           => '#EBCE86',
+					'nav_indicator'            => '#D4AF37',
+				],
+			],
+			'emerald' => [
+				'label'  => 'Emerald Noir',
+				'colors' => [
+					'nav_bg'                   => '#06120E',
+					'nav_bg_opacity'           => 58,
+					'nav_border'               => '#C9A227',
+					'nav_border_opacity'       => 20,
+					'nav_hover_border'         => '#C9A227',
+					'nav_hover_border_opacity' => 60,
+					'nav_active_bg'            => '#0E5C43',
+					'nav_active_text'          => '#F3EAD0',
+					'nav_text'                 => '#CFE0D6',
+					'nav_hover_text'           => '#E8D9A5',
+					'nav_indicator'            => '#C9A227',
+				],
+			],
+			'burgundy' => [
+				'label'  => 'Burgundy Luxe',
+				'colors' => [
+					'nav_bg'                   => '#170A0E',
+					'nav_bg_opacity'           => 58,
+					'nav_border'               => '#C08457',
+					'nav_border_opacity'       => 22,
+					'nav_hover_border'         => '#C08457',
+					'nav_hover_border_opacity' => 62,
+					'nav_active_bg'            => '#6E1B2E',
+					'nav_active_text'          => '#F7E9DD',
+					'nav_text'                 => '#E3CFCF',
+					'nav_hover_text'           => '#E0A96D',
+					'nav_indicator'            => '#C08457',
+				],
+			],
+			'ivory' => [
+				'label'  => 'Ivory & Gold',
+				'colors' => [
+					'nav_bg'                   => '#FBF8F1',
+					'nav_bg_opacity'           => 88,
+					'nav_border'               => '#B08D3F',
+					'nav_border_opacity'       => 26,
+					'nav_hover_border'         => '#B08D3F',
+					'nav_hover_border_opacity' => 70,
+					'nav_active_bg'            => '#1C1917',
+					'nav_active_text'          => '#F5E9CE',
+					'nav_text'                 => '#5A5147',
+					'nav_hover_text'           => '#8A6B24',
+					'nav_indicator'            => '#B08D3F',
+				],
+			],
+			'midnight' => [
+				'label'  => 'Midnight Gold',
+				'colors' => [
+					'nav_bg'                   => '#070A12',
+					'nav_bg_opacity'           => 60,
+					'nav_border'               => '#C5A14E',
+					'nav_border_opacity'       => 20,
+					'nav_hover_border'         => '#C5A14E',
+					'nav_hover_border_opacity' => 60,
+					'nav_active_bg'            => '#C5A14E',
+					'nav_active_text'          => '#0A0F1A',
+					'nav_text'                 => '#C8CEDA',
+					'nav_hover_text'           => '#E3C77D',
+					'nav_indicator'            => '#C5A14E',
+				],
+			],
+		];
+	}
+
+	/**
+	 * Bir hazır temanın renk değerleri.
+	 *
+	 * @param string $key Tema anahtarı.
+	 * @return array<string,mixed>
+	 */
+	public function nav_preset_values( string $key ): array {
+		$presets = $this->nav_presets();
+		$preset  = $presets[ $key ] ?? $presets['champagne'];
+		return $preset['colors'];
+	}
+
+	/**
+	 * Hex + opaklık -> rgba(); CSS değişkenleri tek yerden üretilsin.
+	 */
+	public function nav_rgba( string $hex, int $opacity ): string {
+		$hex = ltrim( (string) sanitize_hex_color( $hex ), '#' );
+		if ( 3 === strlen( $hex ) ) {
+			$hex = $hex[0] . $hex[0] . $hex[1] . $hex[1] . $hex[2] . $hex[2];
+		}
+		if ( 6 !== strlen( $hex ) ) {
+			$hex = '000000';
+		}
+		$alpha = max( 0, min( 100, $opacity ) ) / 100;
+		return sprintf(
+			'rgba(%d,%d,%d,%s)',
+			hexdec( substr( $hex, 0, 2 ) ),
+			hexdec( substr( $hex, 2, 2 ) ),
+			hexdec( substr( $hex, 4, 2 ) ),
+			rtrim( rtrim( number_format( $alpha, 2, '.', '' ), '0' ), '.' ) ?: '0'
+		);
+	}
+
+	/**
+	 * Kategori navigasyonunun CSS değişkenleri — ön yüz ve admin önizlemesi
+	 * AYNI kaynaktan beslenir.
+	 *
+	 * @param array $s Ayarlar.
+	 * @return array<string,string>
+	 */
+	public function nav_css_vars( array $s ): array {
+		return [
+			'--qrmgm-nav-bg'           => $this->nav_rgba( (string) $s['nav_bg'], (int) $s['nav_bg_opacity'] ),
+			'--qrmgm-nav-border'       => $this->nav_rgba( (string) $s['nav_border'], (int) $s['nav_border_opacity'] ),
+			'--qrmgm-nav-hover-border' => $this->nav_rgba( (string) $s['nav_hover_border'], (int) $s['nav_hover_border_opacity'] ),
+			'--qrmgm-nav-active-bg'    => (string) $s['nav_active_bg'],
+			'--qrmgm-nav-active-text'  => (string) $s['nav_active_text'],
+			'--qrmgm-nav-text'         => (string) $s['nav_text'],
+			'--qrmgm-nav-hover-text'   => (string) $s['nav_hover_text'],
+			'--qrmgm-nav-indicator'    => (string) $s['nav_indicator'],
+			'--qrmgm-nav-offset'       => max( 0, min( 240, (int) $s['nav_sticky_offset'] ) ) . 'px',
 		];
 	}
 
