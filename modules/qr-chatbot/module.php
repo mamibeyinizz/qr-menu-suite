@@ -122,10 +122,19 @@ function qrms_module_qr_chatbot_admin_menu() {
 	}
 
 	foreach ( qmo_chatbot_sayfalar() as $slug => $page ) {
-		// Eşleştirmeyi kaydet (sol menü vurgusu, is_module_subpage).
-		// Sarmalanmış callback kullanılmaz: geri bağlantısı sayfanın kendi
-		// iskeletinde "← QR Chatbot" olarak basılır (hub başlığıyla aynı).
-		QRMS_Admin::register_module_subpage( 'qr-chatbot', $slug, $page['render'] );
+		// Eşleştirmeyi kaydet (sol menü vurgusu, is_module_subpage) ve sayfayı
+		// ortak bölüm şeridine yaz. Sarmalanmış callback kullanılmaz: geri
+		// bağlantısı ve şerit sayfanın kendi iskeletinde basılır
+		// (qmo_chatbot_sayfa_basligi).
+		QRMS_Admin::register_module_subpage(
+			'qr-chatbot',
+			$slug,
+			$page['render'],
+			array(
+				'title' => isset( $page['nav_title'] ) ? $page['nav_title'] : $page['title'],
+				'icon'  => $page['icon'],
+			)
+		);
 
 		add_submenu_page(
 			$parent,

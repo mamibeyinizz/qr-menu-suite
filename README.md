@@ -199,14 +199,50 @@ Alt ekranları olan modüller her ekranı şöyle kaydeder:
 ```php
 add_submenu_page(
     QRMS_Admin::MENU_SLUG, $baslik, $baslik, QRMS_Admin::CAPABILITY, $slug,
-    QRMS_Admin::register_module_subpage( 'restoran-menu', $slug, $callback )
+    QRMS_Admin::register_module_subpage(
+        'restoran-menu',
+        $slug,
+        $callback,
+        [ 'title' => 'Görünüm', 'icon' => 'dashicons-art' ] // bölüm şeridindeki sekme
+    )
 );
 ```
 
-`register_module_subpage()` iki iş yapar: sayfayı modülüne bağlayan kayıt
-defterine yazar (menü vurgusu ve beyaz liste bunu kullanır) ve callback'i
-sayfanın en üstüne **`← Modül Adı` geri bağlantısı** basacak şekilde
+`register_module_subpage()` üç iş yapar: sayfayı modülüne bağlayan kayıt
+defterine yazar (menü vurgusu ve beyaz liste bunu kullanır), dördüncü
+argümanı verilmişse sayfayı **ortak bölüm şeridine** yazar ve callback'i
+sayfanın en üstüne **`← Modül Adı` geri bağlantısı** + şerit basacak şekilde
 sarmalar — sol menüde alt satır kalmadığı için modüle dönüşün yolu budur.
+Dördüncü argüman boş bırakılırsa sayfa şeritte görünmez (ör. yalnızca
+yönlendiren eski adresler).
+
+### Ortak bölüm şeridi (modül içi gezinme)
+
+`QRMS_Admin::render_module_nav()` bir modülün alt sayfaları arasındaki yatay
+sekme şeridini basar. Tasarım dili Karşılama Ekranı'nda denenen desendir: hap
+biçimli sekmeler, aktif sekmede şampanya altını vurgu + alt çizgi. Şerit
+**hiçbir genişlikte satır sarmaz**; sığmadığında tek satır hâlinde yatay
+kaydırılır (kaydırma çubuğu görsel olarak gizlidir, kaydırma çalışır) ve
+`assets/js/admin.js` aktif sekmeyi açılışta görünür alana getirir. Dokunmatik
+hedefler mobilde 44px'e çıkar; 320px–1920px arasında sayfa yatay kaymaz.
+
+Modül **yalnızca kendi sekmelerini** bildirir; HTML/CSS kopyası hiçbir modülde
+yoktur. Sekmeler modülden modüle farklıdır — zorunlu ortak sekme kümesi yoktur.
+Tek sekmeli modülde şerit hiç basılmaz.
+
+Sarmalanmış callback kullanmayan ekranlar (ör. AI Menü Asistanı'nın kendi
+iskeleti, Servis Paneli'nin modül satırı) şeridi elle basar:
+
+```php
+QRMS_Admin::render_module_nav( 'qr-chatbot' ); // açık sayfa: ?page=
+```
+
+İki filtre vardır: `qrms_module_nav_items` şeridin kalemlerini süzer (ör.
+İstatistikler lisansta pasif bir modüle bağlı kategoriyi göstermez),
+`qrms_module_nav_url` sekme adreslerini zenginleştirir (ör. İstatistikler'in
+sayfalar arasında taşınan zaman aralığı ve masa filtresi). Stiller
+`assets/css/admin.css` içindeki `.qrms-modnav-*` kurallarındadır; vurgu rengi
+`--qrms-modnav-accent` ile modül tarafında değiştirilebilir.
 
 ### Ortak hub bileşeni
 

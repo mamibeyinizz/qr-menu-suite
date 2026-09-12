@@ -381,11 +381,14 @@ if ( ! function_exists( 'qmo_chatbot_sayfalar' ) ) {
 				'group'  => __( 'Asistan Deneyimi', 'qrms' ),
 			),
 			'qrms-chatbot-appearance'   => array(
-				'title'  => __( 'Görünüm ve Karşılama', 'qrms' ),
-				'render' => 'qmo_chatbot_sayfa_gorunum',
-				'desc'   => __( 'Asistanın simgesini, renklerini ve müşteriye gösterilecek karşılama deneyimini özelleştirin.', 'qrms' ),
-				'icon'   => 'dashicons-art',
-				'group'  => __( 'Asistan Deneyimi', 'qrms' ),
+				'title'     => __( 'Görünüm ve Karşılama', 'qrms' ),
+				// nav_title: bölüm şeridindeki kısa karşılık — uzun sayfa
+				// başlığı sekmeyi gereksiz genişletir.
+				'nav_title' => __( 'Görünüm', 'qrms' ),
+				'render'    => 'qmo_chatbot_sayfa_gorunum',
+				'desc'      => __( 'Asistanın simgesini, renklerini ve müşteriye gösterilecek karşılama deneyimini özelleştirin.', 'qrms' ),
+				'icon'      => 'dashicons-art',
+				'group'     => __( 'Asistan Deneyimi', 'qrms' ),
 			),
 			'qrms-chatbot-quick-replies' => array(
 				'title'  => __( 'Hazır Sorular', 'qrms' ),
@@ -395,11 +398,12 @@ if ( ! function_exists( 'qmo_chatbot_sayfalar' ) ) {
 				'group'  => __( 'Asistan Deneyimi', 'qrms' ),
 			),
 			'qrms-chatbot-visibility'   => array(
-				'title'  => __( 'Ne Zaman ve Kimlere Gösterilsin?', 'qrms' ),
-				'render' => 'qmo_chatbot_sayfa_gorunurluk',
-				'desc'   => __( 'Asistanın hangi müşterilere, hangi cihazlarda ve hangi saatlerde gösterileceğini belirleyin.', 'qrms' ),
-				'icon'   => 'dashicons-visibility',
-				'group'  => __( 'Asistan Deneyimi', 'qrms' ),
+				'title'     => __( 'Ne Zaman ve Kimlere Gösterilsin?', 'qrms' ),
+				'nav_title' => __( 'Görünürlük', 'qrms' ),
+				'render'    => 'qmo_chatbot_sayfa_gorunurluk',
+				'desc'      => __( 'Asistanın hangi müşterilere, hangi cihazlarda ve hangi saatlerde gösterileceğini belirleyin.', 'qrms' ),
+				'icon'      => 'dashicons-visibility',
+				'group'     => __( 'Asistan Deneyimi', 'qrms' ),
 			),
 			'qrms-chatbot-gemini'       => array(
 				'title'  => __( 'AI Motoru', 'qrms' ),
@@ -855,6 +859,14 @@ if ( ! function_exists( 'qmo_chatbot_sayfa_basligi' ) ) {
 		echo '<span class="dashicons dashicons-arrow-left-alt2" aria-hidden="true"></span>';
 		echo esc_html__( 'AI Menü Asistanı', 'qrms' );
 		echo '</a></div>';
+
+		// Modülün bölümleri arasındaki ORTAK yatay şerit. Sayfa kaydı
+		// sarmalanmadığı için (bkz. module.php) burada elle basılır; şeridin
+		// kalemleri register_module_subpage() ile kaydedilir.
+		if ( class_exists( 'QRMS_Admin' ) ) {
+			QRMS_Admin::render_module_nav( 'qr-chatbot' );
+		}
+
 		echo '<div class="wrap qmo-wrap">';
 		echo '<h1 class="qmo-baslik">' . esc_html( $title ) . '</h1>';
 		if ( '' !== $intro ) {

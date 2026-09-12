@@ -24,6 +24,10 @@ function qrms_sp_panel_sayfasi() {
 
 	$durumlar = QRMS_SP_Veri::durumlar();
 	$tipler   = QRMS_SP_Veri::tipler();
+
+	// Panel ile Ayarlar arasındaki ORTAK bölüm şeridi. Panel modül satırının
+	// kendisi olduğu için (alt sayfa değil) şerit burada elle basılır.
+	QRMS_Admin::render_module_nav( 'qr-servis-paneli', QRMS_Admin::get_module_page_slug( 'qr-servis-paneli' ) );
 	?>
 	<div class="wrap qrms-wrap qrms-sp">
 		<div class="qrms-sp-ust">

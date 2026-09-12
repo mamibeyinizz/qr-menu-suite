@@ -150,7 +150,15 @@ function qrms_module_yorum_feedback_admin_menu() {
 			$page['menu_title'],
 			$capability,
 			$slug,
-			QRMS_Admin::register_module_subpage( 'yorum-feedback', $slug, $page['render'] )
+			QRMS_Admin::register_module_subpage(
+				'yorum-feedback',
+				$slug,
+				$page['render'],
+				array(
+					'title' => $page['menu_title'],
+					'icon'  => $page['icon'],
+				)
+			)
 		);
 	}
 }

@@ -60,13 +60,42 @@ function qrms_sp_admin_menu() {
 		return;
 	}
 
+	// Modülün iki ekranı vardır ve panelin kendisi modül satırıdır; ortak
+	// bölüm şeridinde ilk sekme bu yüzden panelin kendisidir.
+	//
+	// Şerit YALNIZCA yöneticide basılır: servis personeli rolü paneli görür
+	// ama ayar ekranını açamaz; açamayacağı bir sekme gösterilmez. Yetkisi
+	// olmayan kullanıcıda tek kalem kalır ve şerit hiç basılmaz.
+	$serit = current_user_can( QRMS_Admin::CAPABILITY );
+
+	if ( $serit ) {
+		QRMS_Admin::register_module_nav_item(
+			'qr-servis-paneli',
+			QRMS_Admin::get_module_page_slug( 'qr-servis-paneli' ),
+			array(
+				'title' => __( 'Panel', 'qrms' ),
+				'icon'  => 'dashicons-bell',
+			)
+		);
+	}
+
 	add_submenu_page(
 		QRMS_Admin::MENU_SLUG,
 		__( 'Servis Paneli Ayarları', 'qrms' ),
 		__( 'Servis Paneli Ayarları', 'qrms' ),
 		QRMS_Admin::CAPABILITY,
 		QRMS_SP_AYAR_SAYFA,
-		QRMS_Admin::register_module_subpage( 'qr-servis-paneli', QRMS_SP_AYAR_SAYFA, 'qrms_sp_ayarlar_sayfasi' )
+		QRMS_Admin::register_module_subpage(
+			'qr-servis-paneli',
+			QRMS_SP_AYAR_SAYFA,
+			'qrms_sp_ayarlar_sayfasi',
+			$serit
+				? array(
+					'title' => __( 'Ayarlar', 'qrms' ),
+					'icon'  => 'dashicons-admin-settings',
+				)
+				: ''
+		)
 	);
 }
 

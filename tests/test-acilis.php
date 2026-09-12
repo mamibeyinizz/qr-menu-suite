@@ -1542,8 +1542,33 @@ qrms_test(
 	function () {
 		$html = qrms_ae_submit( 'qrms-ae-butonlar', array() );
 
-		qrms_assert_contains( 'qrae-tabs', $html, 'beş ekran arası gezinme' );
-		qrms_assert_contains( 'aria-current="page"', $html, 'bulunulan ekran işaretli' );
+		// Ekranlar arası gezinme suite'in ORTAK şeridindedir; modül kendi
+		// kopyasını basmaz (bkz. QRMS_Admin::render_module_nav).
+		qrms_assert_false( strpos( $html, 'qrae-tabs' ), 'modülde şerit kopyası kalmadı' );
+
+		foreach ( qrms_ae()->admin_pages() as $tab_slug => $tab ) {
+			QRMS_Admin::register_module_nav_item(
+				'qr-acilis-ekrani',
+				$tab_slug,
+				array(
+					'title' => $tab['title'],
+					'icon'  => $tab['icon'],
+				)
+			);
+		}
+
+		$_GET['page'] = 'qrms-ae-butonlar';
+
+		ob_start();
+		QRMS_Admin::render_module_nav( 'qr-acilis-ekrani' );
+		$serit = ob_get_clean();
+
+		unset( $_GET['page'] );
+
+		qrms_assert_contains( 'qrms-modnav', $serit, 'beş ekran arası gezinme' );
+		qrms_assert_contains( 'page=qrms-ae-sosyal', $serit, 'diğer ekranlar şeritte' );
+		qrms_assert_contains( 'aria-current="page"', $serit, 'bulunulan ekran işaretli' );
+
 		qrms_assert_contains( 'qrae-card', $html, 'ayarlar kartlara ayrılmış' );
 		qrms_assert_contains( 'data-qrae-url="1"', $html, 'adres alanları doğrulanır' );
 		qrms_assert_contains( 'id="qrae-dirty"', $html, 'kaydedilmemiş değişiklik uyarısı' );

@@ -368,7 +368,15 @@ final class QRMenu_Gallery_Manager {
 				$page['title'],
 				self::CAP,
 				$slug,
-				QRMS_Admin::register_module_subpage( 'qr-galeri', $slug, [ $this, $page['render'] ] )
+				QRMS_Admin::register_module_subpage(
+					'qr-galeri',
+					$slug,
+					[ $this, $page['render'] ],
+					[
+						'title' => $page['title'],
+						'icon'  => $page['icon'],
+					]
+				)
 			);
 		}
 	}
