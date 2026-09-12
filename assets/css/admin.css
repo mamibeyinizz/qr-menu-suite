@@ -1031,17 +1031,39 @@ a.qrms-hub-links-more:focus {
 }
 
 /* =====================================================================
-   GENEL BAKIŞ — kategorilere ayrılmış modül ızgarası
+   GENEL BAKIŞ (KONTROL MERKEZİ) — kategorilere ayrılmış modül ızgarası
 
    Kartın KENDİSİ hub bileşeninden gelir (.qrms-hub-card): aynı ikon +
-   başlık + açıklama dizilimi, aynı 3/2/1 sütun kırılımları, aynı
-   dokunmatik büyütmesi. Burada yalnızca Genel Bakış'a özgü iki şey var:
-   kategori başlığı ve kartın lisans durumu.
+   başlık + açıklama dizilimi, aynı dokunmatik büyütmesi. Buradaki
+   kurallar yalnızca Genel Bakış'a özgüdür: ya `.qrms-overview-*` adını
+   taşır (bu ekrandan başka yerde basılmaz) ya da `.qrms-overview`
+   sarmalayıcısıyla kapsüllenir. WordPress admin'in kendi ekranlarına
+   veya modül hub'larına hiçbir kural sızmaz.
+
+   DÜZEN. Masaüstünde iki sütun: kart başına düşen genişlik arttığı için
+   açıklama ve alt bağlantı listesi kırılmadan okunur; 782px altında tek
+   sütuna düşer. Özet kutuları ızgarayı `auto-fit` ile paylaşır, yani
+   320px'te tek, geniş ekranda beşe kadar yan yana dizilir — hiçbir
+   genişlikte yatay kaydırma oluşmaz.
 
    Durum kartın SONUNDA durur (margin-left: auto ile sağa itilir), çünkü
    ikon-başlık dizilimi hub kartlarıyla birebir aynı kalmalı; dar ekranda
    da başlığın altına kaymaz, sağ üstte kalır.
 ===================================================================== */
+
+.qrms-overview {
+	max-width: 1240px;
+}
+
+.qrms-overview .qrms-hub-heading {
+	font-size: 24px;
+	letter-spacing: -0.01em;
+}
+
+.qrms-overview .qrms-hub-intro {
+	margin-bottom: 24px;
+	max-width: 76ch;
+}
 
 .qrms-overview-alert .qrms-button {
 	display: inline-block;
@@ -1050,14 +1072,60 @@ a.qrms-hub-links-more:focus {
 	margin-top: 12px;
 }
 
-/* Kategori bölümü: kendi BFC'si, float/sticky yok, grid bağımsız kapanır. */
+/* BUGÜNÜN ÖZETİ ŞERİDİ
+   Sayı belirgin, açıklama küçük; kutular ızgarayı auto-fit ile paylaşır
+   (ortak `.qrms-hub-stats-row-items` kuralından daha özgül olduğu için
+   mobil kırılımlardaki sabit sütun sayılarını da devralmaz). */
+
+.qrms-overview .qrms-hub-stats-stacked {
+	gap: 18px;
+	margin-bottom: 30px;
+}
+
+.qrms-overview .qrms-hub-stats-row-items {
+	display: grid;
+	gap: 10px;
+	/* min() olmadan konteyner 190px'in altına indiğinde (320px telefonda
+	   dar sütun) parça sabit 190px'e kilitlenir ve sayfa yatay kayardı. */
+	grid-template-columns: repeat(auto-fit, minmax(min(190px, 100%), 1fr));
+}
+
+.qrms-overview .qrms-hub-stats-stacked .qrms-hub-stat {
+	border-radius: 10px;
+	flex: none;
+	padding: 12px 14px;
+}
+
+.qrms-overview .qrms-hub-stat-label {
+	color: #50575e;
+	font-size: 12px;
+	font-weight: 600;
+	overflow-wrap: anywhere;
+}
+
+.qrms-overview .qrms-hub-stats-stacked .qrms-hub-stat-value {
+	font-size: 24px;
+	letter-spacing: -0.02em;
+	margin-top: 2px;
+}
+
+.qrms-overview .qrms-hub-stat-desc {
+	color: #787c82;
+	font-size: 11px;
+	line-height: 1.45;
+	margin-top: 3px;
+	overflow-wrap: anywhere;
+}
+
+/* KATEGORİ BÖLÜMÜ
+   Kendi BFC'si: float/sticky yok, ızgara bağımsız kapanır. */
 
 .qrms-overview-group {
 	clear: both;
 	display: flow-root;
 	float: none;
 	isolation: isolate;
-	margin: 0 0 36px;
+	margin: 0 0 34px;
 	overflow: visible;
 	padding: 0;
 	position: relative;
@@ -1067,10 +1135,27 @@ a.qrms-hub-links-more:focus {
 	margin-bottom: 0;
 }
 
+.qrms-overview-group-head {
+	border-bottom: 1px solid #e4e5e7;
+	margin: 0 0 16px;
+	padding: 0 0 10px 12px;
+	position: relative;
+}
+
+/* Kategori rengi başlığın solundaki ince şerittir; kart zeminine taşmaz. */
+.qrms-overview-group-head::before {
+	background: var(--qrms-overview-group-accent, #c3c4c7);
+	border-radius: 2px;
+	bottom: 10px;
+	content: "";
+	left: 0;
+	position: absolute;
+	top: 2px;
+	width: 3px;
+}
+
 .qrms-overview-group-title {
 	align-items: center;
-	border-bottom: 1px solid #dcdcde;
-	border-left: 3px solid var(--qrms-overview-group-accent, #c3c4c7);
 	clear: both;
 	color: #1d2327;
 	display: flex;
@@ -1079,10 +1164,10 @@ a.qrms-hub-links-more:focus {
 	font-size: 15px;
 	font-weight: 600;
 	gap: 4px 8px;
-	letter-spacing: 0.02em;
+	letter-spacing: 0.01em;
 	line-height: 1.4;
-	margin: 0 0 16px;
-	padding: 0 0 8px 10px;
+	margin: 0;
+	padding: 0;
 	position: static;
 }
 
@@ -1100,40 +1185,99 @@ a.qrms-hub-links-more:focus {
 
 .qrms-overview-group-count {
 	background: #f0f0f1;
-	border-radius: 9px;
+	border-radius: 999px;
 	color: #646970;
-	font-size: 12px;
-	font-weight: 400;
+	font-size: 11px;
+	font-weight: 600;
 	line-height: 1.8;
-	padding: 0 9px;
+	padding: 0 10px;
 	white-space: nowrap;
 }
 
-/* Kartın lisans durumu */
+.qrms-overview-group-desc {
+	color: #646970;
+	font-size: 13px;
+	line-height: 1.5;
+	margin: 4px 0 0;
+	max-width: 76ch;
+	overflow-wrap: anywhere;
+}
+
+/* KART IZGARASI — masaüstünde iki sütun, telefonda tek sütun. */
+
+.qrms-overview .qrms-hub-grid {
+	gap: 14px;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+/* Kart yüksekliği içeriğine göredir: ortak ızgara kuralı satırdaki en
+   uzun karta hizalar (stretch) — Genel Bakış'ta alt bağlantı listesi olan
+   bir kartın yanındaki kısa kart o yüzden yarısı boş dururdu. */
+.qrms-overview .qrms-hub-card {
+	align-self: start;
+	border-radius: 12px;
+	padding: 16px 18px;
+}
+
+/* İkon kategorinin rengini alır; odak halkası WordPress mavisinde kalır
+   (pastel vurgular odak göstergesi için yeterli kontrastı vermez). */
+.qrms-overview-group .qrms-hub-icon {
+	color: var(--qrms-overview-group-accent, #2271b1);
+}
+
+.qrms-overview .qrms-hub-card-title {
+	font-size: 15px;
+	letter-spacing: -0.01em;
+}
+
+.qrms-overview .qrms-hub-desc {
+	margin-top: 4px;
+}
+
+/* Gövde bağlantısının odak halkası: alt listeli kartta kartın tamamı
+   <a> olamaz (iç içe bağlantı geçersiz), o yüzden gövde ayrıca alınır. */
+.qrms-overview .qrms-hub-card-main:focus-visible {
+	border-radius: 8px;
+	outline: 2px solid #2271b1;
+	outline-offset: 2px;
+}
+
+.qrms-overview .qrms-hub-links {
+	margin-top: 12px;
+	padding-top: 8px;
+}
+
+/* KARTIN LİSANS DURUMU
+   Yeşil onay işareti yerine okunur bir etiket: renk tek başına sinyal
+   değildir, metin her temada ve ekran okuyucuda aynı şeyi söyler. */
 
 .qrms-overview-card .qrms-hub-body {
 	flex: 1 1 auto;
 }
 
 .qrms-overview-state {
+	align-self: flex-start;
+	border-radius: 999px;
 	flex: 0 0 auto;
+	font-size: 11px;
+	font-weight: 600;
+	letter-spacing: 0.02em;
+	line-height: 1.7;
 	margin-left: auto;
-	padding-left: 8px;
+	padding: 0 9px;
+	white-space: nowrap;
 }
 
-.qrms-overview-state-active .qrms-check {
-	font-size: 16px;
-	line-height: 1.4;
+.qrms-overview-state-active {
+	background: #edf7ee;
+	box-shadow: inset 0 0 0 1px #cde6d3;
+	color: #2c7a43;
 }
 
 .qrms-overview-state-passive {
 	background: #f0f0f1;
-	border-radius: 9px;
+	box-shadow: inset 0 0 0 1px #e0e0e2;
 	color: #646970;
-	font-size: 11px;
-	font-weight: 600;
-	line-height: 1.8;
-	padding: 0 8px;
 }
 
 /* Pasif kart: bağlantı değil, bilgi kutusu. Fare imleci ve gölge
@@ -1167,15 +1311,50 @@ a.qrms-hub-links-more:focus {
 	pointer-events: none;
 }
 
-/* Mobil: başlık küçülür, bölümler yine ayrı kalır (WP 782px) */
+/* Tablet: iki sütun korunur, kart içi boşluk biraz kısılır (WP 1200px). */
+
+@media screen and (max-width: 1200px) {
+	.qrms-overview .qrms-hub-card {
+		padding: 15px 16px;
+	}
+}
+
+/* Mobil: tek sütun, dokunma hedefleri büyür (WP admin kırılımı 782px). */
 
 @media screen and (max-width: 782px) {
+	.qrms-overview .qrms-hub-grid {
+		grid-template-columns: 1fr;
+	}
+
+	.qrms-overview .qrms-hub-heading {
+		font-size: 21px;
+	}
+
+	.qrms-overview .qrms-hub-card {
+		min-height: 0;
+		padding: 14px;
+	}
+
 	.qrms-overview-group {
-		margin-bottom: 28px;
+		margin-bottom: 26px;
 	}
 
 	.qrms-overview-group-title {
 		font-size: 14px;
+	}
+
+	.qrms-overview-group-desc {
+		font-size: 12.5px;
+	}
+
+	.qrms-overview .qrms-hub-stats-stacked .qrms-hub-stat-value {
+		font-size: 22px;
+	}
+
+	.qrms-overview .qrms-hub-links a {
+		align-items: center;
+		min-height: 36px;
+		padding: 6px;
 	}
 
 	.qrms-overview-alert .qrms-button {

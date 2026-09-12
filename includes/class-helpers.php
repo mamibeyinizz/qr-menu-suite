@@ -81,55 +81,55 @@ class QRMS_Helpers {
 		return array(
 			'restoran-menu'            => array(
 				'icon' => 'dashicons-food',
-				'desc' => __( 'Ürünlerinizi, kategorilerinizi, fiyatlarınızı ve menü görünümünüzü yönetin.', 'qrms' ),
+				'desc' => __( 'Ürün, kategori, fiyat, kampanya ve menü düzeninizi yönetin.', 'qrms' ),
 			),
 			'yorum-feedback'           => array(
 				'icon' => 'dashicons-testimonial',
-				'desc' => __( 'Misafir yorumlarını, puanlarını ve geri bildirimlerini yönetin.', 'qrms' ),
+				'desc' => __( 'Müşteri yorumlarını ve puanlarını inceleyin, geri bildirimlerle hizmetinizi geliştirin.', 'qrms' ),
 			),
 			'qr-masa'                  => array(
 				'icon' => 'dashicons-editor-table',
-				'desc' => __( 'Masalarınız için QR kod oluşturun, yönetin ve yazdırın.', 'qrms' ),
+				'desc' => __( 'Masalarınız için QR kodlar oluşturun, yazdırın ve kullanım durumlarını takip edin.', 'qrms' ),
 			),
 			'qr-analiz'                => array(
 				'icon' => 'dashicons-chart-bar',
-				'desc' => __( 'Menü görüntülemelerini, ürün ilgisini ve müşteri davranışlarını analiz edin.', 'qrms' ),
+				'desc' => __( 'Menünüzün ne kadar görüntülendiğini ve hangi ürünlerin ilgi gördüğünü keşfedin.', 'qrms' ),
 			),
 			'qr-galeri'                => array(
 				'icon' => 'dashicons-format-gallery',
-				'desc' => __( 'Restoranınızın fotoğraflarını ve galeri bölümlerini yönetin.', 'qrms' ),
+				'desc' => __( 'Restoranınızın iç, dış, masa ve diğer alan fotoğraflarını sergileyin.', 'qrms' ),
 			),
 			'qr-ceviri'                => array(
 				'icon' => 'dashicons-translation',
-				'desc' => __( 'Menünüzü farklı dillerde yayınlayın ve çevirilerinizi yönetin.', 'qrms' ),
+				'desc' => __( 'Menünüzü farklı dillerde yayınlayın ve çevirilerinizi tek yerden yönetin.', 'qrms' ),
 			),
 			'qr-chatbot'               => array(
 				'icon' => 'dashicons-format-chat',
-				'desc' => __( 'Misafirlerinizin menünüz hakkındaki sorularını yanıtlayan akıllı asistan.', 'qrms' ),
+				'desc' => __( 'Müşterilerinizin menü, ürün ve restoran hakkındaki sorularını yanıtlayan akıllı asistanı yönetin.', 'qrms' ),
 			),
 			'qr-calisma-saatleri'      => array(
 				'icon' => 'dashicons-clock',
-				'desc' => __( 'Restoranınızın açılış, kapanış ve tatil günlerini yönetin.', 'qrms' ),
+				'desc' => __( 'Restoranınızın haftalık çalışma saatlerini ve kapalı günlerini belirleyin.', 'qrms' ),
 			),
 			'qr-masa-oturum-guvenligi' => array(
 				'icon' => 'dashicons-lock',
-				'desc' => __( 'Masa oturumlarını ve müşteri erişimini güvenli şekilde yönetin.', 'qrms' ),
+				'desc' => __( 'Masa oturumlarını, erişim sürelerini ve müşteri güvenliğini yönetin.', 'qrms' ),
 			),
 			'qr-acilis-ekrani'         => array(
 				'icon' => 'dashicons-visibility',
-				'desc' => __( 'Menü açılmadan önce misafirlerinize gösterilen karşılama ekranını özelleştirin.', 'qrms' ),
+				'desc' => __( 'Müşterilerinizin menüye ulaşmadan önce göreceği karşılama ekranını tasarlayın.', 'qrms' ),
 			),
 			'header-footer-builder'  => array(
 				'icon' => 'dashicons-layout',
-				'desc' => __( 'Elementor ile menünüz için özel üst ve alt alanlar oluşturun.', 'qrms' ),
+				'desc' => __( 'Menünüz için özel üst ve alt alanlar oluşturun ve sayfa görünümünü özelleştirin.', 'qrms' ),
 			),
 			'qr-servis-paneli'         => array(
 				'icon' => 'dashicons-bell',
-				'desc' => __( 'Sipariş, garson ve hesap çağrılarını canlı olarak yönetin.', 'qrms' ),
+				'desc' => __( 'Müşterilerden gelen sipariş, garson ve hesap çağrılarını anında yönetin.', 'qrms' ),
 			),
 			'qr-menu-muhendisligi'     => array(
 				'icon' => 'dashicons-chart-pie',
-				'desc' => __( 'Hangi ürünlerin daha çok ilgi ve kazanç sağladığını görün.', 'qrms' ),
+				'desc' => __( 'En çok görüntülenen, tercih edilen ve gelir sağlayan ürünleri karşılaştırın.', 'qrms' ),
 			),
 		);
 	}
