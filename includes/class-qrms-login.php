@@ -483,6 +483,8 @@ class QRMS_Login {
 
 		add_action( 'template_redirect', array( __CLASS__, 'yazar_taramasini_engelle' ) );
 		add_filter( 'rest_endpoints', array( __CLASS__, 'kullanicilar_ucunu_kisitla' ) );
+		add_filter( 'wp_sitemaps_add_provider', array( __CLASS__, 'kullanici_site_haritasini_kaldir' ), 10, 2 );
+		add_action( 'lostpassword_post', array( __CLASS__, 'sifirlama_sizintisini_kapat' ), 10, 2 );
 	}
 
 	/**
@@ -525,6 +527,19 @@ class QRMS_Login {
 	public static function basarisiz_denemeyi_kaydet() {
 		$anahtar = self::deneme_anahtari();
 		$n       = (int) get_transient( $anahtar );
+
+		/*
+		 * KİLİT UZAMAZ. `reddet_asilan_deneme()` sınır aşıldığında WP_Error
+		 * döner; çekirdek bu hatayı da BAŞARISIZ GİRİŞ sayıp `wp_login_failed`
+		 * tetikler. Sayaç burada koşulsuz yeniden yazılsaydı, kilitliyken
+		 * gelen her bot isteği transient'in ömrünü 900 saniye daha ileri
+		 * atar ve saldırı sürdüğü sürece MEŞRU yönetici de asla giremezdi.
+		 * Sınıra ulaşıldıktan sonra sayaca dokunulmaz: kilit, sınırı aşan
+		 * denemeden itibaren kendi penceresi dolunca kalkar.
+		 */
+		if ( $n >= self::DENEME_SINIRI ) {
+			return;
+		}
 
 		set_transient( $anahtar, $n + 1, self::DENEME_PENCERE );
 	}
@@ -609,6 +624,65 @@ class QRMS_Login {
 		}
 
 		return $endpoints;
+	}
+
+	/**
+	 * Çekirdeğin kullanıcı site haritasını (`wp-sitemap-users-*.xml`) kaldırır.
+	 *
+	 * Bu harita, yazısı olan her kullanıcının yazar slug'ını oturumsuz herkese
+	 * listeler; `?author=N` ve `/wp/v2/users` kapatıldıktan sonra geriye kalan
+	 * en kolay kullanıcı adı sayımı yoludur. Diğer haritalara (yazı, sayfa,
+	 * taksonomi) dokunulmaz, SEO etkilenmez.
+	 *
+	 * @param mixed  $saglayici Sağlayıcı nesnesi.
+	 * @param string $ad        Sağlayıcı adı.
+	 * @return mixed False ise sağlayıcı kaydedilmez.
+	 */
+	public static function kullanici_site_haritasini_kaldir( $saglayici, $ad = '' ) {
+		return 'users' === $ad ? false : $saglayici;
+	}
+
+	/**
+	 * Şifre sıfırlama formundaki kullanıcı adı sızıntısını kapatır.
+	 *
+	 * Çekirdek, kayıtlı OLMAYAN bir kullanıcı adı/e-posta için "böyle bir hesap
+	 * yok" hatası, kayıtlı olan için "e-postanızı kontrol edin" ekranı basar.
+	 * İki farklı yanıt, giriş formundaki tek tip hata mesajıyla kapatılan
+	 * sızıntının aynısını arka kapıdan geri açar: form bir kullanıcı adı
+	 * doğrulayıcısına dönüşür.
+	 *
+	 * Bulunamayan kullanıcıda BAŞARI akışının birebir aynısına yönlendirilir
+	 * (çekirdeğin `retrieve_password()` sonrası yaptığı yönlendirmenin aynısı),
+	 * böylece iki durum dışarıdan ayırt edilemez. Boş alan gibi diğer hatalar
+	 * olduğu gibi kalır.
+	 *
+	 * DAVRANIŞ NOTU: adresini yanlış yazan kullanıcı da "e-postanızı kontrol
+	 * edin" ekranını görür; posta gelmezse adresi yeniden denemelidir.
+	 *
+	 * @param WP_Error $hatalar   Çekirdeğin hata nesnesi.
+	 * @param mixed    $kullanici Bulunan kullanıcı (yoksa false).
+	 * @return void
+	 */
+	public static function sifirlama_sizintisini_kapat( $hatalar, $kullanici = null ) {
+		unset( $kullanici );
+
+		if ( ! is_wp_error( $hatalar ) || ! in_array( 'invalidcombo', $hatalar->get_error_codes(), true ) ) {
+			return;
+		}
+
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- çekirdek nonce'u retrieve_password() öncesinde doğrular.
+		$ham = isset( $_REQUEST['redirect_to'] ) ? wp_unslash( $_REQUEST['redirect_to'] ) : '';
+
+		$hedef = ( is_string( $ham ) && '' !== $ham )
+			? $ham
+			: site_url( 'wp-login.php?checkemail=confirm', 'login' );
+
+		/** This filter is documented in wp-login.php */
+		$hedef = apply_filters( 'lostpassword_redirect', $hedef );
+
+		// wp_safe_redirect(): dış alan adına yönlendirme kabul edilmez.
+		wp_safe_redirect( $hedef );
+		exit;
 	}
 
 	/* -----------------------------------------------------------------
@@ -981,13 +1055,38 @@ class QRMS_Login {
 	 * @return string
 	 */
 	public static function css_variables( array $s, $arkaplan_url = '', $logo_url = '' ) {
-		$s = array_merge( self::defaults(), $s );
+		$v = self::defaults();
+		$s = array_merge( $v, $s );
+
+		/*
+		 * GÜVENLİK: bu blok `wp_add_inline_style()` ile <style> içine HAM
+		 * basılır. Değerler kaydedilirken temizleniyor olsa da, option'a başka
+		 * bir yoldan (başka eklenti, geri yükleme, doğrudan veritabanı) girmiş
+		 * bir değer burada `</style><script>` ile bloktan çıkabilirdi. Renkler
+		 * basım anında yeniden doğrulanır, geçersizse varsayılana düşer.
+		 */
+		$renk = static function ( $anahtar ) use ( $s, $v ) {
+			$temiz = function_exists( 'sanitize_hex_color' ) ? sanitize_hex_color( (string) $s[ $anahtar ] ) : '';
+
+			return $temiz ? $temiz : $v[ $anahtar ];
+		};
+
+		// Adresler de aynı sebeple: CSS `url()` bildirimini kapatabilecek
+		// karakterler atılır (ek adresleri zaten yüzde kodludur).
+		$adres = static function ( $url ) {
+			$url = function_exists( 'esc_url_raw' ) ? esc_url_raw( (string) $url ) : (string) $url;
+
+			return str_replace( array( '(', ')', '"', "'", ';', '<', '>', '{', '}', '\\', ' ', "\t", "\r", "\n" ), '', $url );
+		};
+
+		$arkaplan_url = $adres( $arkaplan_url );
+		$logo_url     = $adres( $logo_url );
 
 		$satir = array(
-			'--qrms-lg-vurgu: ' . $s['vurgu'],
-			'--qrms-lg-vurgu2: ' . $s['vurgu2'],
-			'--qrms-lg-bg1: ' . $s['arkaplan_renk'],
-			'--qrms-lg-bg2: ' . ( 'gradyan' === $s['arkaplan_tip'] ? $s['arkaplan_renk2'] : $s['arkaplan_renk'] ),
+			'--qrms-lg-vurgu: ' . $renk( 'vurgu' ),
+			'--qrms-lg-vurgu2: ' . $renk( 'vurgu2' ),
+			'--qrms-lg-bg1: ' . $renk( 'arkaplan_renk' ),
+			'--qrms-lg-bg2: ' . ( 'gradyan' === $s['arkaplan_tip'] ? $renk( 'arkaplan_renk2' ) : $renk( 'arkaplan_renk' ) ),
 			'--qrms-lg-karartma: ' . ( (int) $s['arkaplan_karartma'] / 100 ),
 			'--qrms-lg-bulanik: ' . (int) $s['arkaplan_bulanik'] . 'px',
 			'--qrms-lg-radius: ' . (int) $s['kart_yaricap'] . 'px',
