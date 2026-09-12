@@ -82,7 +82,7 @@ trait QRMGM_Frontend_Trait {
 		$dil       = function_exists( 'rma_get_current_lang' ) ? rma_get_current_lang() : 'tr';
 		$surum     = function_exists( 'rma_ceviri_onbellek_surumu' ) ? rma_ceviri_onbellek_surumu() : 0;
 		$cache_key = 'qrmgm_gallery_' . md5( implode( '|', [
-			'v6',
+			'v7',
 			$atts['section'],
 			$columns,
 			$ratio,
@@ -156,7 +156,7 @@ trait QRMGM_Frontend_Trait {
 
 		ob_start();
 		?>
-		<div class="qrmgm-gallery" data-lightbox="<?php echo esc_attr( $s['lightbox'] ); ?>" data-hover="<?php echo esc_attr( $hover ); ?>" data-anim="<?php echo esc_attr( $anim ); ?>"<?php if ( $css_vars ) : ?> style="<?php echo esc_attr( implode( ';', $css_vars ) ); ?>"<?php endif; ?>>
+		<div class="qrmgm-gallery" data-lightbox="<?php echo esc_attr( $s['lightbox'] ); ?>" data-hover="<?php echo esc_attr( $hover ); ?>" data-anim="<?php echo esc_attr( $anim ); ?>" data-nav-sticky="<?php echo empty( $s['nav_sticky'] ) ? '0' : '1'; ?>"<?php if ( $css_vars ) : ?> style="<?php echo esc_attr( implode( ';', $css_vars ) ); ?>"<?php endif; ?>>
 			<?php if ( $show_filter && count( $sections ) > 1 ) : ?>
 				<div class="qrmgm-filter-wrap">
 					<div class="qrmgm-filter-bar" role="group" aria-label="<?php echo esc_attr( function_exists( 'rma_ceviri_modul' ) ? rma_ceviri_modul( 'gallery', 'Galeri filtresi' ) : 'Galeri filtresi' ); ?>">

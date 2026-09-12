@@ -9,7 +9,115 @@ defined( 'ABSPATH' ) || exit;
 
 trait QRMGM_Assets_Trait {
 
+	/**
+	 * Kategori navigasyonu (filtre) CSS'i — ön yüz ve admin önizlemesi TEK
+	 * kaynaktan beslenir, aralarında renk/ölçü farkı oluşmaz.
+	 *
+	 * Tüm kurallar .qrmgm-gallery altında kapsanır; tema/Elementor'ün global
+	 * button ve a kuralları sıfırlanır, hiçbir global seçici yazılmaz.
+	 */
+	private function nav_css(): string {
+		return <<<'CSS'
+.qrmgm-gallery .qrmgm-filter-wrap{display:flex;justify-content:center;max-width:100%;margin:0 0 32px}
+.qrmgm-gallery[data-nav-sticky="1"] .qrmgm-filter-wrap{position:sticky;top:var(--qrmgm-nav-offset,0px);z-index:20;padding-top:10px;padding-bottom:10px;margin-bottom:22px}
+.qrmgm-gallery .qrmgm-filter-bar{
+	display:flex;
+	flex-wrap:nowrap;
+	align-items:center;
+	gap:4px;
+	max-width:100%;
+	padding:5px;
+	border:1px solid var(--qrmgm-nav-border);
+	border-radius:999px;
+	background:var(--qrmgm-nav-bg);
+	box-shadow:0 10px 30px -18px rgba(0,0,0,.55);
+	overflow-x:auto;
+	overscroll-behavior-x:contain;
+	-webkit-overflow-scrolling:touch;
+	scroll-snap-type:x proximity;
+	scrollbar-width:none;
+	-ms-overflow-style:none;
+	box-sizing:border-box;
+	transition:background-color .25s ease,box-shadow .25s ease,border-color .25s ease;
+}
+@supports ((-webkit-backdrop-filter:blur(1px)) or (backdrop-filter:blur(1px))){
+	.qrmgm-gallery .qrmgm-filter-bar{-webkit-backdrop-filter:blur(14px) saturate(1.15);backdrop-filter:blur(14px) saturate(1.15)}
+}
+.qrmgm-gallery .qrmgm-filter-bar::-webkit-scrollbar{display:none}
+.qrmgm-gallery[data-nav-sticky="1"] .qrmgm-filter-bar.is-stuck{box-shadow:0 14px 34px -20px rgba(0,0,0,.7)}
+.qrmgm-gallery .qrmgm-filter-btn{
+	flex:0 0 auto;
+	display:inline-flex;
+	align-items:center;
+	justify-content:center;
+	/* !important yalnızca temaların global button kurallarını (çoğu tema bu
+	   özellikleri !important ile basar) etkisizleştirmek için, sadece bu
+	   bileşende kullanılır. */
+	width:auto!important;
+	min-width:0!important;
+	max-width:none!important;
+	min-height:44px;
+	margin:0!important;
+	padding:0 18px!important;
+	border:1px solid transparent;
+	border-radius:999px!important;
+	background:transparent;
+	background-image:none!important;
+	color:var(--qrmgm-nav-text);
+	font-family:var(--qrmgm-font),sans-serif;
+	font-size:13.5px!important;
+	font-weight:600;
+	line-height:1.2!important;
+	letter-spacing:.012em!important;
+	text-align:center;
+	text-decoration:none!important;
+	text-transform:none!important;
+	text-shadow:none;
+	white-space:nowrap;
+	float:none;
+	scroll-snap-align:center;
+	cursor:pointer;
+	box-shadow:none;
+	box-sizing:border-box;
+	-webkit-appearance:none;
+	appearance:none;
+	transition:color .2s ease,background-color .2s ease,border-color .2s ease,box-shadow .2s ease;
+}
+.qrmgm-gallery .qrmgm-filter-btn:hover,
+.qrmgm-gallery .qrmgm-filter-btn:focus{
+	color:var(--qrmgm-nav-hover-text);
+	border-color:var(--qrmgm-nav-hover-border);
+	background:transparent;
+	text-decoration:none;
+}
+.qrmgm-gallery .qrmgm-filter-btn.is-active,
+.qrmgm-gallery .qrmgm-filter-btn.is-active:hover,
+.qrmgm-gallery .qrmgm-filter-btn.is-active:focus{
+	color:var(--qrmgm-nav-active-text);
+	background:var(--qrmgm-nav-active-bg);
+	border-color:transparent;
+	box-shadow:0 0 0 1px var(--qrmgm-nav-indicator),0 8px 18px -10px var(--qrmgm-nav-indicator);
+}
+.qrmgm-gallery .qrmgm-filter-btn:focus-visible{outline:2px solid var(--qrmgm-nav-indicator);outline-offset:2px}
+@media(max-width:640px){
+	.qrmgm-gallery .qrmgm-filter-wrap{justify-content:flex-start;margin-bottom:24px}
+	.qrmgm-gallery .qrmgm-filter-bar{border-radius:26px}
+	.qrmgm-gallery .qrmgm-filter-btn{padding:0 15px!important;font-size:13px!important}
+}
+@keyframes qrmgm-filter-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.qrmgm-gallery .qrmgm-section.qrmgm-filter-in{animation:qrmgm-filter-in .28s cubic-bezier(.2,.8,.2,1) both}
+.qrmgm-gallery[data-anim="0"] .qrmgm-section.qrmgm-filter-in{animation:none}
+@media(prefers-reduced-motion:reduce){
+	.qrmgm-gallery .qrmgm-filter-bar,
+	.qrmgm-gallery .qrmgm-filter-btn{transition:none}
+	.qrmgm-gallery .qrmgm-section.qrmgm-filter-in{animation:none}
+}
+CSS;
+	}
+
 	private function admin_css(): string {
+		$nav_css = $this->nav_css();
+
 		return <<<CSS
 .qrmgm-wrap .qrmgm-title{display:flex;align-items:center;gap:16px}
 .qrmgm-table td,.qrmgm-table th{vertical-align:middle}
@@ -66,6 +174,16 @@ trait QRMGM_Assets_Trait {
 	.qrmgm-settings-main{order:1}
 	.qrmgm-settings-preview-sticky{position:static}
 }
+.qrmgm-nav-preview-shell .qrmgm-filter-wrap,
+.qrmgm-nav-preview-shell[data-view] .qrmgm-gallery[data-nav-sticky="1"] .qrmgm-filter-wrap{position:static;padding:0;margin:0}
+.qrmgm-nav-preview-shell{border-radius:12px;padding:18px 14px;margin:0 0 16px;background:linear-gradient(135deg,#111827 0%,#1f2937 100%)}
+.qrmgm-nav-preview-shell[data-view="mobile"]{max-width:360px;margin-inline:auto}
+.qrmgm-nav-preview-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 10px}
+.qrmgm-nav-preview-head h3{margin:0;font-size:13px;font-weight:600;color:#0f172a}
+.qrmgm-nav-view-toggle{display:inline-flex;gap:4px}
+.qrmgm-nav-view-toggle button{font-size:11px;line-height:1;padding:5px 9px;border:1px solid #cbd5e1;background:#fff;border-radius:6px;cursor:pointer;color:#475569}
+.qrmgm-nav-view-toggle button.is-active{background:#0f172a;border-color:#0f172a;color:#fff}
+{$nav_css}
 CSS;
 	}
 
@@ -85,7 +203,23 @@ CSS;
 
 		function initSettingsPage(){
 			var $form = $('#qrmgm-settings-form');
-			var $preview = $('#qrmgm-live-preview');
+			// Ana önizleme ve kategori navigasyonu önizlemesi AYNI CSS
+			// değişkenlerinden beslenir; ön yüzle aralarında renk farkı olmaz.
+			var $preview = $('#qrmgm-live-preview, #qrmgm-nav-preview');
+			var navPresets = {};
+			try { navPresets = JSON.parse($form.attr('data-qrmgm-nav-presets') || '{}'); } catch(e) { navPresets = {}; }
+
+			function setVar(name, value){
+				$preview.each(function(){ this.style.setProperty(name, value); });
+			}
+
+			function hexToRgba(hex, alpha){
+				hex = String(hex || '').replace('#', '');
+				if (hex.length === 3) { hex = hex[0]+hex[0]+hex[1]+hex[1]+hex[2]+hex[2]; }
+				if (!/^[0-9a-fA-F]{6}$/.test(hex)) { hex = '000000'; }
+				var a = Math.max(0, Math.min(100, parseInt(alpha, 10) || 0)) / 100;
+				return 'rgba(' + parseInt(hex.substr(0,2),16) + ',' + parseInt(hex.substr(2,2),16) + ',' + parseInt(hex.substr(4,2),16) + ',' + a + ')';
+			}
 			var tabKey = 'qrmgm_settings_tab';
 			var shadowMap = {
 				none: 'none',
@@ -128,35 +262,42 @@ CSS;
 					var suffix = $el.data('qrmgm-suffix') || '';
 					var cssVar = $el.data('qrmgm-var');
 					if (cssVar && val !== undefined && val !== null && val !== '') {
-						$preview[0].style.setProperty(cssVar, val + suffix);
+						setVar(cssVar, val + suffix);
 					}
 					var altVar = $el.data('qrmgm-var-alt');
 					if (altVar && val) {
-						$preview[0].style.setProperty(altVar, val);
+						setVar(altVar, val);
 					}
+				});
+
+				$form.find('[data-qrmgm-rgba]').each(function(){
+					var $el = $(this);
+					var alphaName = $el.data('qrmgm-rgba-alpha');
+					var $alpha = alphaName ? $form.find('[name="' + alphaName + '"]') : $();
+					setVar($el.data('qrmgm-rgba'), hexToRgba($el.val(), $alpha.length ? $alpha.val() : 100));
 				});
 
 				var $shadow = $form.find('[data-qrmgm-shadow]');
 				if ($shadow.length) {
 					var sk = $shadow.val();
-					$preview[0].style.setProperty('--qrmgm-shadow', shadowMap[sk] || shadowMap.medium);
+					setVar('--qrmgm-shadow', shadowMap[sk] || shadowMap.medium);
 				}
 
 				var $overlay = $form.find('[data-qrmgm-overlay]');
 				if ($overlay.length) {
 					var ov = Math.max(0, Math.min(100, parseInt($overlay.val(), 10) || 0)) / 100;
-					$preview[0].style.setProperty('--qrmgm-overlay', ov);
+					setVar('--qrmgm-overlay', ov);
 				}
 
 				var $descMax = $form.find('[data-qrmgm-desc-maxw]');
 				if ($descMax.length) {
 					var mw = parseInt($descMax.val(), 10) || 0;
-					$preview[0].style.setProperty('--qrmgm-desc-maxw', mw === 0 ? 'none' : mw + 'ch');
+					setVar('--qrmgm-desc-maxw', mw === 0 ? 'none' : mw + 'ch');
 				}
 
 				var $divAlign = $form.find('[data-qrmgm-divider-margin]');
 				if ($divAlign.length) {
-					$preview[0].style.setProperty('--qrmgm-divider-margin', dividerMarginMap[$divAlign.val()] || '0 auto');
+					setVar('--qrmgm-divider-margin', dividerMarginMap[$divAlign.val()] || '0 auto');
 				}
 
 				$form.find('[data-qrmgm-attr]').each(function(){
@@ -179,6 +320,31 @@ CSS;
 					$preview.find(sel).toggle($el.is(':checked'));
 				});
 			}
+
+			// Hazır tema seçimi renk alanlarını doldurur; kullanıcı sonrasında
+			// istediği rengi tek tek değiştirip override edebilir.
+			$form.on('change', '[data-qrmgm-nav-preset]', function(){
+				var colors = navPresets[$(this).val()];
+				if (!colors) return;
+				Object.keys(colors).forEach(function(name){
+					var $field = $form.find('[name="' + name + '"]');
+					if (!$field.length) return;
+					if ($field.hasClass('qrmgm-color')) {
+						$field.val(colors[name]).wpColorPicker('color', colors[name]);
+					} else {
+						$field.val(colors[name]);
+					}
+				});
+				updateSettingsPreview();
+			});
+
+			$form.on('click', '[data-qrmgm-nav-view]', function(e){
+				e.preventDefault();
+				var view = $(this).data('qrmgm-nav-view');
+				$form.find('[data-qrmgm-nav-view]').removeClass('is-active');
+				$(this).addClass('is-active');
+				$('#qrmgm-nav-preview-shell').attr('data-view', view);
+			});
 
 			$form.on('input change', 'input, select', updateSettingsPreview);
 			updateSettingsPreview();
@@ -384,6 +550,12 @@ JS;
 		$radius            = (int) $s['radius'];
 		$gap               = (int) $s['gap'];
 
+		$nav_vars = '';
+		foreach ( $this->nav_css_vars( $s ) as $var => $val ) {
+			$nav_vars .= "\t{$var}:{$val};\n";
+		}
+		$nav_css = $this->nav_css();
+
 		return <<<CSS
 .qrmgm-gallery{
 	--qrmgm-radius:{$radius}px;
@@ -416,45 +588,9 @@ JS;
 	--qrmgm-desc-weight:{$desc_weight};
 	--qrmgm-desc-align:{$s['desc_align']};
 	--qrmgm-desc-maxw:{$desc_maxw};
-	font-family:var(--qrmgm-font),sans-serif;
+{$nav_vars}	font-family:var(--qrmgm-font),sans-serif;
 }
-.qrmgm-filter-wrap{
-	-webkit-mask-image:linear-gradient(90deg,transparent 0,#000 16px,#000 calc(100% - 16px),transparent 100%);
-	mask-image:linear-gradient(90deg,transparent 0,#000 16px,#000 calc(100% - 16px),transparent 100%);
-	margin-bottom:28px;
-}
-.qrmgm-filter-bar{
-	position:sticky;
-	top:0;
-	z-index:20;
-	display:flex;
-	flex-wrap:nowrap;
-	overflow-x:auto;
-	gap:10px;
-	padding:12px 4px;
-	scroll-snap-type:x proximity;
-	scrollbar-width:none;
-	background:var(--qrmgm-light);
-	backdrop-filter:blur(10px);
-	-ms-overflow-style:none;
-}
-.qrmgm-filter-bar::-webkit-scrollbar{display:none}
-.qrmgm-filter-btn{
-	flex-shrink:0;
-	white-space:nowrap;
-	scroll-snap-align:start;
-	border:1px solid currentColor;
-	border-radius:999px;
-	padding:9px 18px;
-	font-size:13.5px;
-	font-weight:600;
-	background:transparent;
-	cursor:pointer;
-	opacity:.6;
-	transition:.25s ease;
-}
-.qrmgm-filter-btn:hover{opacity:1}
-.qrmgm-filter-btn.is-active{opacity:1;color:var(--qrmgm-white,#fff);background:var(--qrmgm-accent,#0f172a);border-color:var(--qrmgm-accent,#0f172a)}
+{$nav_css}
 .qrmgm-section{scroll-margin-top:72px}
 .qrmgm-section + .qrmgm-section{margin-top:56px}
 .qrmgm-section.qrmgm-hidden-filter{display:none}
@@ -523,8 +659,7 @@ JS;
 .qrmgm-lightbox-next{right:20px}
 .qrmgm-lightbox-counter{position:absolute;top:24px;left:24px;color:#fff;font-size:13px;opacity:.8}
 .qrmgm-lightbox-controls button:focus-visible,
-.qrmgm-lightbox-nav:focus-visible,
-.qrmgm-filter-btn:focus-visible{outline:2px solid var(--qrmgm-accent,#D4AF37);outline-offset:3px}
+.qrmgm-lightbox-nav:focus-visible{outline:2px solid var(--qrmgm-accent,#D4AF37);outline-offset:3px}
 @media(min-width:641px){
 	.qrmgm-item--featured{grid-column:span 2;grid-row:span 2}
 }
@@ -573,6 +708,21 @@ CSS;
 			var filterBtns = gallery.querySelectorAll('.qrmgm-filter-btn');
 			var reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 			var scrollBehavior = reducedMotion ? 'auto' : 'smooth';
+			var filterBar = gallery.querySelector('.qrmgm-filter-bar');
+			var filterWrap = gallery.querySelector('.qrmgm-filter-wrap');
+
+			// Sticky durumunda gölgeyi bir tık artırmak için üstte 1px'lik
+			// sentinel; scroll dinleyicisi yok, yalnızca IntersectionObserver.
+			if (filterWrap && filterBar && gallery.getAttribute('data-nav-sticky') === '1' && 'IntersectionObserver' in window) {
+				var sentinel = document.createElement('span');
+				sentinel.setAttribute('aria-hidden', 'true');
+				sentinel.style.cssText = 'display:block;height:1px;margin:0;padding:0';
+				filterWrap.parentNode.insertBefore(sentinel, filterWrap);
+				new IntersectionObserver(function(entries){
+					filterBar.classList.toggle('is-stuck', !entries[0].isIntersecting);
+				}, { threshold: 0 }).observe(sentinel);
+			}
+
 			filterBtns.forEach(function(btn){
 				btn.addEventListener('click', function(){
 					filterBtns.forEach(function(b){ b.classList.remove('is-active'); b.setAttribute('aria-pressed', 'false'); });
@@ -582,6 +732,12 @@ CSS;
 					sections.forEach(function(section){
 						var match = (filter === 'all' || section.getAttribute('data-section') === filter);
 						section.classList.toggle('qrmgm-hidden-filter', !match);
+						section.classList.remove('qrmgm-filter-in');
+						if (match && !reducedMotion) {
+							// reflow: aynı bölüm tekrar seçilse de animasyon yeniden başlasın
+							void section.offsetWidth;
+							section.classList.add('qrmgm-filter-in');
+						}
 					});
 					btn.scrollIntoView({ behavior: scrollBehavior, inline: 'center', block: 'nearest' });
 					if (filter !== 'all') {

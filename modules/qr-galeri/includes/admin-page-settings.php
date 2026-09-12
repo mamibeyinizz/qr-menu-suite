@@ -70,12 +70,24 @@ $preview_vars = sprintf(
 	esc_attr( $desc_maxw )
 );
 
+foreach ( $this->nav_css_vars( $s ) as $nav_var => $nav_val ) {
+	$preview_vars .= ';' . $nav_var . ':' . esc_attr( $nav_val );
+}
+
+$nav_presets     = $this->nav_presets();
+$nav_preset_json = wp_json_encode( array_map(
+	static function ( $preset ) {
+		return $preset['colors'];
+	},
+	$nav_presets
+) );
+
 $preview_anim = empty( $s['animations'] ) ? '0' : '1';
 ?>
 <div class="wrap qrmgm-wrap qrmgm-settings-wrap">
 	<h1 class="qrmgm-title">Galeri Ayarları</h1>
 
-	<form method="post" id="qrmgm-settings-form" class="qrmgm-settings-form">
+	<form method="post" id="qrmgm-settings-form" class="qrmgm-settings-form" data-qrmgm-nav-presets="<?php echo esc_attr( $nav_preset_json ); ?>">
 		<?php wp_nonce_field( 'qrmgm_save_settings_action', 'qrmgm_settings_nonce' ); ?>
 
 		<div class="qrmgm-settings-layout">
@@ -86,6 +98,7 @@ $preview_anim = empty( $s['animations'] ) ? '0' : '1';
 					<a href="#" class="nav-tab" data-tab="title">Başlık</a>
 					<a href="#" class="nav-tab" data-tab="divider">Ayırıcı</a>
 					<a href="#" class="nav-tab" data-tab="desc">Açıklama</a>
+					<a href="#" class="nav-tab" data-tab="nav">Kategori Navigasyonu</a>
 					<a href="#" class="nav-tab" data-tab="advanced">Gelişmiş</a>
 				</h2>
 
@@ -367,6 +380,109 @@ $preview_anim = empty( $s['animations'] ) ? '0' : '1';
 					</table>
 				</div>
 
+				<div class="qrmgm-tab-panel" data-tab-panel="nav">
+					<p class="description" style="margin:0 0 12px;max-width:60em;">
+						Kategoriler arasında geçiş yapmak için kullanılan menünün görünümünü özelleştirin.
+						Hazır bir tema seçip hemen kullanabilir ya da aşağıdaki renkleri tek tek değiştirebilirsiniz.
+					</p>
+					<table class="form-table">
+						<tr>
+							<th scope="row">Kategori menüsü</th>
+							<td>
+								<label><input type="checkbox" name="filter_bar" value="1" <?php checked( $s['filter_bar'], 1 ); ?> /> Açık</label>
+								<p class="description">Birden fazla bölüm varken galerinin üstünde kategori menüsünü gösterir.</p>
+							</td>
+						</tr>
+						<tr>
+							<th scope="row"><label for="qrmgm-nav-preset">Hazır Tema</label></th>
+							<td>
+								<select id="qrmgm-nav-preset" name="nav_preset" data-qrmgm-nav-preset>
+									<?php foreach ( $nav_presets as $key => $preset ) : ?>
+										<option value="<?php echo esc_attr( $key ); ?>" <?php selected( $s['nav_preset'], $key ); ?>><?php echo esc_html( $preset['label'] ); ?></option>
+									<?php endforeach; ?>
+								</select>
+								<p class="description">Bir tema seçtiğinizde aşağıdaki tüm renkler o temanın renkleriyle doldurulur. Sonrasında istediğiniz rengi tek tek değiştirebilirsiniz.</p>
+							</td>
+						</tr>
+						<tr>
+							<th scope="row"><label for="qrmgm-nav-bg">Menü zemini</label></th>
+							<td>
+								<input type="text" id="qrmgm-nav-bg" name="nav_bg" class="qrmgm-color qrmgm-nav-field" value="<?php echo esc_attr( $s['nav_bg'] ); ?>" data-qrmgm-rgba="--qrmgm-nav-bg" data-qrmgm-rgba-alpha="nav_bg_opacity" />
+								<label for="qrmgm-nav-bg-opacity" style="margin-left:12px;">Saydamlık (%)</label>
+								<input type="number" id="qrmgm-nav-bg-opacity" name="nav_bg_opacity" class="qrmgm-nav-field" value="<?php echo esc_attr( $s['nav_bg_opacity'] ); ?>" min="0" max="100" style="width:80px;" />
+								<p class="description">Menünün arkasındaki yüzeyin rengi ve ne kadar saydam görüneceği. Düşük değerler görselin üzerinde cam gibi durur.</p>
+							</td>
+						</tr>
+						<tr>
+							<th scope="row"><label for="qrmgm-nav-border">Menü çerçevesi</label></th>
+							<td>
+								<input type="text" id="qrmgm-nav-border" name="nav_border" class="qrmgm-color qrmgm-nav-field" value="<?php echo esc_attr( $s['nav_border'] ); ?>" data-qrmgm-rgba="--qrmgm-nav-border" data-qrmgm-rgba-alpha="nav_border_opacity" />
+								<label for="qrmgm-nav-border-opacity" style="margin-left:12px;">Saydamlık (%)</label>
+								<input type="number" id="qrmgm-nav-border-opacity" name="nav_border_opacity" class="qrmgm-nav-field" value="<?php echo esc_attr( $s['nav_border_opacity'] ); ?>" min="0" max="100" style="width:80px;" />
+								<p class="description">Menüyü çevreleyen ince çizgi.</p>
+							</td>
+						</tr>
+						<tr>
+							<th scope="row"><label for="qrmgm-nav-active-bg">Seçili kategori zemini</label></th>
+							<td>
+								<input type="text" id="qrmgm-nav-active-bg" name="nav_active_bg" class="qrmgm-color qrmgm-nav-field" value="<?php echo esc_attr( $s['nav_active_bg'] ); ?>" data-qrmgm-var="--qrmgm-nav-active-bg" />
+								<p class="description">O an açık olan kategorinin arka plan rengi.</p>
+							</td>
+						</tr>
+						<tr>
+							<th scope="row"><label for="qrmgm-nav-active-text">Seçili kategori yazısı</label></th>
+							<td>
+								<input type="text" id="qrmgm-nav-active-text" name="nav_active_text" class="qrmgm-color qrmgm-nav-field" value="<?php echo esc_attr( $s['nav_active_text'] ); ?>" data-qrmgm-var="--qrmgm-nav-active-text" />
+								<p class="description">Seçili kategorinin yazı rengi. Zemin rengiyle arasında yeterli kontrast olmasına dikkat edin.</p>
+							</td>
+						</tr>
+						<tr>
+							<th scope="row"><label for="qrmgm-nav-text">Diğer kategorilerin yazısı</label></th>
+							<td>
+								<input type="text" id="qrmgm-nav-text" name="nav_text" class="qrmgm-color qrmgm-nav-field" value="<?php echo esc_attr( $s['nav_text'] ); ?>" data-qrmgm-var="--qrmgm-nav-text" />
+								<p class="description">Seçili olmayan kategorilerin yazı rengi.</p>
+							</td>
+						</tr>
+						<tr>
+							<th scope="row"><label for="qrmgm-nav-hover-text">Üzerine gelince yazı</label></th>
+							<td>
+								<input type="text" id="qrmgm-nav-hover-text" name="nav_hover_text" class="qrmgm-color qrmgm-nav-field" value="<?php echo esc_attr( $s['nav_hover_text'] ); ?>" data-qrmgm-var="--qrmgm-nav-hover-text" />
+								<p class="description">Fareyle üzerine gelindiğinde kategori yazısının aldığı renk.</p>
+							</td>
+						</tr>
+						<tr>
+							<th scope="row"><label for="qrmgm-nav-hover-border">Üzerine gelince çerçeve</label></th>
+							<td>
+								<input type="text" id="qrmgm-nav-hover-border" name="nav_hover_border" class="qrmgm-color qrmgm-nav-field" value="<?php echo esc_attr( $s['nav_hover_border'] ); ?>" data-qrmgm-rgba="--qrmgm-nav-hover-border" data-qrmgm-rgba-alpha="nav_hover_border_opacity" />
+								<label for="qrmgm-nav-hover-border-opacity" style="margin-left:12px;">Saydamlık (%)</label>
+								<input type="number" id="qrmgm-nav-hover-border-opacity" name="nav_hover_border_opacity" class="qrmgm-nav-field" value="<?php echo esc_attr( $s['nav_hover_border_opacity'] ); ?>" min="0" max="100" style="width:80px;" />
+								<p class="description">Fareyle üzerine gelindiğinde kategorinin çevresinde beliren ince çizgi.</p>
+							</td>
+						</tr>
+						<tr>
+							<th scope="row"><label for="qrmgm-nav-indicator">Seçili kategori vurgusu</label></th>
+							<td>
+								<input type="text" id="qrmgm-nav-indicator" name="nav_indicator" class="qrmgm-color qrmgm-nav-field" value="<?php echo esc_attr( $s['nav_indicator'] ); ?>" data-qrmgm-var="--qrmgm-nav-indicator" />
+								<p class="description">Seçili kategorinin çevresindeki ince halka ve altındaki yumuşak ışıma.</p>
+							</td>
+						</tr>
+						<tr>
+							<th scope="row">Kaydırırken üstte kalsın</th>
+							<td>
+								<label><input type="checkbox" name="nav_sticky" value="1" <?php checked( $s['nav_sticky'], 1 ); ?> data-qrmgm-attr="data-nav-sticky" data-qrmgm-attr-on="1" data-qrmgm-attr-off="0" /> Açık</label>
+								<p class="description">Sayfa aşağı kaydırıldığında kategori menüsü ekranın üstünde kalır.</p>
+							</td>
+						</tr>
+						<tr>
+							<th scope="row"><label for="qrmgm-nav-sticky-offset">Üstten boşluk (px)</label></th>
+							<td>
+								<input type="number" id="qrmgm-nav-sticky-offset" name="nav_sticky_offset" value="<?php echo esc_attr( $s['nav_sticky_offset'] ); ?>" min="0" max="240" data-qrmgm-var="--qrmgm-nav-offset" data-qrmgm-suffix="px" />
+								<p class="description">Siteniz sabit bir üst menü kullanıyorsa, menünün yüksekliği kadar boşluk bırakın; kategori menüsü onun altında kalır.</p>
+							</td>
+						</tr>
+					</table>
+				</div>
+
 				<div class="qrmgm-tab-panel" data-tab-panel="advanced">
 					<table class="form-table">
 						<tr>
@@ -374,13 +490,6 @@ $preview_anim = empty( $s['animations'] ) ? '0' : '1';
 							<td>
 								<label><input type="checkbox" name="lightbox" value="1" <?php checked( $s['lightbox'], 1 ); ?> /> Açık</label>
 								<p class="description">Görsellere tıklandığında tam ekran lightbox açar.</p>
-							</td>
-						</tr>
-						<tr>
-							<th scope="row">Filtre Barı</th>
-							<td>
-								<label><input type="checkbox" name="filter_bar" value="1" <?php checked( $s['filter_bar'], 1 ); ?> /> Açık</label>
-								<p class="description">Birden fazla bölüm varken üstte filtre menüsü gösterir.</p>
 							</td>
 						</tr>
 						<tr>
@@ -406,6 +515,32 @@ $preview_anim = empty( $s['animations'] ) ? '0' : '1';
 			<aside class="qrmgm-settings-preview-col">
 				<div class="qrmgm-settings-preview-sticky">
 					<h2>Canlı Önizleme</h2>
+					<div class="qrmgm-nav-preview-head">
+						<h3>Kategori Navigasyonu</h3>
+						<span class="qrmgm-nav-view-toggle">
+							<button type="button" class="is-active" data-qrmgm-nav-view="desktop">Masaüstü</button>
+							<button type="button" data-qrmgm-nav-view="mobile">Mobil</button>
+						</span>
+					</div>
+					<div class="qrmgm-nav-preview-shell" id="qrmgm-nav-preview-shell" data-view="desktop">
+						<div
+							id="qrmgm-nav-preview"
+							class="qrmgm-gallery"
+							data-nav-sticky="<?php echo empty( $s['nav_sticky'] ) ? '0' : '1'; ?>"
+							style="<?php echo esc_attr( $preview_vars ); ?>"
+						>
+							<div class="qrmgm-filter-wrap">
+								<div class="qrmgm-filter-bar" role="group" aria-label="Kategori navigasyonu önizlemesi">
+									<button type="button" class="qrmgm-filter-btn is-active" data-filter="all" aria-pressed="true">Tümü</button>
+									<button type="button" class="qrmgm-filter-btn" data-filter="ic" aria-pressed="false">İç Mekan</button>
+									<button type="button" class="qrmgm-filter-btn" data-filter="dis" aria-pressed="false">Dış Mekan</button>
+									<button type="button" class="qrmgm-filter-btn" data-filter="teras" aria-pressed="false">Teras</button>
+									<button type="button" class="qrmgm-filter-btn" data-filter="cocuk" aria-pressed="false">Çocuk Oyun Alanı</button>
+								</div>
+							</div>
+						</div>
+					</div>
+
 					<div
 						id="qrmgm-live-preview"
 						class="qrmgm-gallery qrmgm-settings-preview-gallery"

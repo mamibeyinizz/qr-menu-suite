@@ -173,6 +173,25 @@ trait QRMGM_Admin_Pages_Trait {
 			'desc_align'        => $this->pick_setting( sanitize_key( $data['desc_align'] ?? '' ), $aligns, $defaults['desc_align'] ),
 			'desc_max_width'    => max( 0, min( 200, absint( $data['desc_max_width'] ?? $defaults['desc_max_width'] ) ) ),
 		];
+
+		// Kategori navigasyonu. Hazır tema yalnızca UI durumudur; kaydedilen
+		// gerçek değerler renk alanlarıdır (tema seçilince JS o alanları
+		// doldurur), böylece kullanıcı tek tek override edebilir.
+		$out['nav_preset'] = $this->pick_setting(
+			sanitize_key( $data['nav_preset'] ?? '' ),
+			array_keys( $this->nav_presets() ),
+			$defaults['nav_preset']
+		);
+
+		foreach ( [ 'nav_bg', 'nav_border', 'nav_hover_border', 'nav_active_bg', 'nav_active_text', 'nav_text', 'nav_hover_text', 'nav_indicator' ] as $key ) {
+			$out[ $key ] = $hex( $data[ $key ] ?? '', $defaults[ $key ] );
+		}
+		foreach ( [ 'nav_bg_opacity', 'nav_border_opacity', 'nav_hover_border_opacity' ] as $key ) {
+			$out[ $key ] = max( 0, min( 100, absint( $data[ $key ] ?? $defaults[ $key ] ) ) );
+		}
+
+		$out['nav_sticky']        = empty( $data['nav_sticky'] ) ? 0 : 1;
+		$out['nav_sticky_offset'] = max( 0, min( 240, absint( $data['nav_sticky_offset'] ?? $defaults['nav_sticky_offset'] ) ) );
 		update_option( self::OPTION_SETTINGS, $out );
 		$this->clear_cache();
 	}
