@@ -463,7 +463,15 @@ if ( ! function_exists( 'qrms_module_qr_ceviri_admin_menu' ) ) {
 				$sayfa['title'],
 				QRMS_Admin::CAPABILITY,
 				$slug,
-				QRMS_Admin::register_module_subpage( 'qr-ceviri', $slug, $sayfa['render'] )
+				QRMS_Admin::register_module_subpage(
+					'qr-ceviri',
+					$slug,
+					$sayfa['render'],
+					array(
+						'title' => $sayfa['title'],
+						'icon'  => $sayfa['icon'],
+					)
+				)
 			);
 		}
 

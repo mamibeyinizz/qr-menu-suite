@@ -93,57 +93,10 @@
 	line-height: 1.6;
 }
 
-/* Beş ekran arasındaki gezinme. Dar ekranda yatay kaydırılır; satır
-   sarmaz, böylece başlık bloğu telefonlarda dört satıra çıkmaz. */
-.qrms-ae-wrap .qrae-tabs {
-	display: flex;
-	gap: var(--qrae-space-2);
-	margin: 0 0 var(--qrae-space-4);
-	padding-bottom: 2px;
-	overflow-x: auto;
-	scrollbar-width: thin;
-	-webkit-overflow-scrolling: touch;
-}
-
-.qrms-ae-wrap .qrae-tab {
-	display: inline-flex;
-	align-items: center;
-	gap: 6px;
-	flex: none;
-	min-height: 38px;
-	padding: 0 var(--qrae-space-3);
-	border: 1px solid var(--qrae-border);
-	border-radius: 999px;
-	background: var(--qrae-surface);
-	color: var(--qrae-text-muted);
-	font-size: 13px;
-	font-weight: 600;
-	text-decoration: none;
-	white-space: nowrap;
-	transition: border-color var(--qrae-transition), color var(--qrae-transition);
-}
-
-.qrms-ae-wrap .qrae-tab .dashicons {
-	font-size: 16px;
-	width: 16px;
-	height: 16px;
-}
-
-.qrms-ae-wrap .qrae-tab:hover {
-	border-color: var(--qrae-primary-dim);
-	color: var(--qrae-text);
-}
-
-.qrms-ae-wrap .qrae-tab.is-current {
-	border-color: var(--qrae-primary);
-	background: var(--qrae-primary-soft);
-	color: var(--qrae-text);
-}
-
-.qrms-ae-wrap .qrae-tab:focus-visible {
-	outline: 2px solid var(--qrae-accent);
-	outline-offset: 1px;
-}
+/* Beş ekran arasındaki gezinme artık suite'in ORTAK şeridindedir
+   (.qrms-modnav, assets/css/admin.css): bu ekranda beğenilen hap biçimli,
+   tek satır yatay kaydırılan desen tüm modüllere oradan dağıtılır. Vurgu
+   rengi zaten aynı şampanya altınıdır; burada kopyası tutulmaz. */
 
 /* ---------------- Kart ---------------- */
 

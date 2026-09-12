@@ -116,6 +116,19 @@ class QRMS_Admin {
 	private static $module_subpages = array();
 
 	/**
+	 * Modül slug'ı -> alt sayfa slug'ı -> sekme tanımı {title, icon}.
+	 *
+	 * ORTAK BÖLÜM GEZİNMESİ. Modüller alt sayfalarını zaten tek bir listeden
+	 * kaydeder; register_module_subpage()'e verilen dördüncü argüman o listeyi
+	 * aynı zamanda sekme şeridine çevirir. Böylece her modül kendi şerit
+	 * HTML/CSS'ini kopyalamaz: sunum tek yerde (render_module_nav) durur,
+	 * modül yalnızca kendi sekmelerini bildirir.
+	 *
+	 * @var array<string,array<string,array{title:string,icon:string}>>
+	 */
+	private static $module_navs = array();
+
+	/**
 	 * Bir modülün alt sayfasını kaydeder ve "geri" bağlantısını ekleyen
 	 * sarmalanmış callback'i döndürür.
 	 *
@@ -130,26 +143,164 @@ class QRMS_Admin {
 	 * MENU_SLUG); menüde görünmemesi hide_module_subpages() ile, route
 	 * çözüldükten SONRA sağlanır. Bkz. o metodun başlığındaki not.
 	 *
-	 * @param string   $module_slug Modül slug'ı.
-	 * @param string   $page_slug   Alt sayfanın slug'ı.
-	 * @param callable $callback    Sayfayı basan çağrılabilir.
+	 * @param string          $module_slug Modül slug'ı.
+	 * @param string          $page_slug   Alt sayfanın slug'ı.
+	 * @param callable        $callback    Sayfayı basan çağrılabilir.
+	 * @param string|string[] $nav         Sekme şeridindeki kaydı: başlık metni
+	 *                                     ya da {title, icon} dizisi. Boş
+	 *                                     bırakılırsa sayfa şeritte yer almaz
+	 *                                     (ör. yalnızca yönlendirme olan eski
+	 *                                     adresler).
 	 * @return callable Sarmalanmış callback (geçersiz kayıtta orijinali döner).
 	 */
-	public static function register_module_subpage( $module_slug, $page_slug, $callback ) {
+	public static function register_module_subpage( $module_slug, $page_slug, $callback, $nav = '' ) {
 		if ( ! QRMS_Helpers::is_valid_module( $module_slug ) || '' === (string) $page_slug ) {
 			return $callback;
 		}
 
 		self::$module_subpages[ $page_slug ] = $module_slug;
 
+		self::register_module_nav_item( $module_slug, $page_slug, $nav );
+
 		if ( ! is_callable( $callback ) ) {
 			return $callback;
 		}
 
-		return static function () use ( $module_slug, $callback ) {
+		return static function () use ( $module_slug, $page_slug, $callback ) {
 			QRMS_Admin::render_subpage_back_link( $module_slug );
+			QRMS_Admin::render_module_nav( $module_slug, $page_slug );
 			call_user_func( $callback );
 		};
+	}
+
+	/**
+	 * Bir alt sayfayı modülün sekme şeridine yazar.
+	 *
+	 * Sıra kayıt sırasıdır: modülün sayfa listesindeki sıra, şeritteki sıradır.
+	 *
+	 * @param string          $module_slug Modül slug'ı.
+	 * @param string          $page_slug   Alt sayfanın slug'ı.
+	 * @param string|string[] $nav         Başlık ya da {title, icon}.
+	 * @return void
+	 */
+	public static function register_module_nav_item( $module_slug, $page_slug, $nav ) {
+		if ( is_string( $nav ) ) {
+			$nav = array( 'title' => $nav );
+		}
+
+		if ( ! is_array( $nav ) || '' === (string) ( isset( $nav['title'] ) ? $nav['title'] : '' ) ) {
+			return;
+		}
+
+		self::$module_navs[ $module_slug ][ $page_slug ] = array(
+			'title' => (string) $nav['title'],
+			'icon'  => isset( $nav['icon'] ) ? (string) $nav['icon'] : '',
+		);
+	}
+
+	/**
+	 * Bir modülün sekme şeridindeki kalemler.
+	 *
+	 * Modüller `qrms_module_nav_items` ile listeyi süzebilir (ör. İstatistikler
+	 * lisansta pasif bir modüle bağlı kategoriyi göstermez); adresler
+	 * `qrms_module_nav_url` ile zenginleştirilebilir (ör. sayfalar arasında
+	 * taşınan zaman aralığı / masa filtresi).
+	 *
+	 * @param string $module_slug  Modül slug'ı.
+	 * @param string $current_slug Açık olan alt sayfanın slug'ı.
+	 * @return array<string,array{title:string,icon:string,url:string,current:bool}>
+	 */
+	public static function get_module_nav_items( $module_slug, $current_slug = '' ) {
+		$items = isset( self::$module_navs[ $module_slug ] ) ? self::$module_navs[ $module_slug ] : array();
+
+		/**
+		 * Modülün sekme şeridi kalemleri.
+		 *
+		 * @param array  $items        Slug => {title, icon, url}.
+		 * @param string $module_slug  Modül slug'ı.
+		 * @param string $current_slug Açık alt sayfa.
+		 */
+		$items = (array) apply_filters( 'qrms_module_nav_items', $items, $module_slug, $current_slug );
+
+		$list = array();
+
+		foreach ( $items as $slug => $item ) {
+			if ( is_string( $item ) ) {
+				$item = array( 'title' => $item );
+			}
+
+			$title = isset( $item['title'] ) ? (string) $item['title'] : '';
+
+			if ( '' === $title ) {
+				continue;
+			}
+
+			$url = isset( $item['url'] ) && '' !== $item['url']
+				? (string) $item['url']
+				: admin_url( 'admin.php?page=' . rawurlencode( $slug ) );
+
+			/**
+			 * Bir sekmenin adresi.
+			 *
+			 * @param string $url         Varsayılan adres.
+			 * @param string $slug        Alt sayfa slug'ı.
+			 * @param string $module_slug Modül slug'ı.
+			 */
+			$list[ $slug ] = array(
+				'title'   => $title,
+				'icon'    => isset( $item['icon'] ) ? (string) $item['icon'] : '',
+				'url'     => (string) apply_filters( 'qrms_module_nav_url', $url, $slug, $module_slug ),
+				'current' => ( (string) $slug === (string) $current_slug ),
+			);
+		}
+
+		return $list;
+	}
+
+	/**
+	 * ORTAK BÖLÜM ŞERİDİ — modülün alt sayfaları arasındaki yatay gezinme.
+	 *
+	 * Karşılama Ekranı'nda denenen desenin tek kopyası: dar ekranda tek satır
+	 * yatay kaydırılır (satır sarmaz, ikinci satıra düşmez), geniş ekranda
+	 * normal yatay yerleşim olur. Aktif sekme görünür alana `assets/js/admin.js`
+	 * tarafından kaydırılır.
+	 *
+	 * Tek sekmeli modülde şerit basılmaz: gezinecek yer yoktur.
+	 *
+	 * @param string $module_slug  Modül slug'ı.
+	 * @param string $current_slug Açık alt sayfa (boşsa istekteki `page`).
+	 * @return void
+	 */
+	public static function render_module_nav( $module_slug, $current_slug = '' ) {
+		if ( '' === (string) $current_slug ) {
+			$current_slug = self::get_current_page();
+		}
+
+		$items = self::get_module_nav_items( $module_slug, $current_slug );
+
+		if ( count( $items ) < 2 ) {
+			return;
+		}
+
+		$label = sprintf(
+			/* translators: %s: modül adı. */
+			__( '%s bölümleri', 'qrms' ),
+			QRMS_Helpers::get_module_name( $module_slug )
+		);
+		?>
+		<nav class="qrms-modnav" aria-label="<?php echo esc_attr( $label ); ?>">
+			<?php foreach ( $items as $item ) : ?>
+				<a class="qrms-modnav-tab<?php echo $item['current'] ? ' is-current' : ''; ?>"
+					href="<?php echo esc_url( $item['url'] ); ?>"
+					<?php echo $item['current'] ? 'aria-current="page"' : ''; ?>>
+					<?php if ( '' !== $item['icon'] ) : ?>
+						<span class="dashicons <?php echo esc_attr( $item['icon'] ); ?>" aria-hidden="true"></span>
+					<?php endif; ?>
+					<span class="qrms-modnav-text"><?php echo esc_html( $item['title'] ); ?></span>
+				</a>
+			<?php endforeach; ?>
+		</nav>
+		<?php
 	}
 
 	/**

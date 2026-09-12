@@ -82,6 +82,12 @@ function qrms_module_qr_analiz_init() {
 		// hâlde kullanıcı hub'a döndüğünde seçimi sıfırlanırdı.
 		add_filter( 'qrms_subpage_back_url', 'qrms_module_qr_analiz_geri_url', 10, 2 );
 
+		// Ortak bölüm şeridi: kategoriler arası geçişte de zaman aralığı ve
+		// masa seçimi taşınır; lisansta pasif modüle bağlı kategori şeritte
+		// hiç görünmez (hub kartlarıyla AYNI kural).
+		add_filter( 'qrms_module_nav_url', 'qrms_module_qr_analiz_serit_url', 10, 3 );
+		add_filter( 'qrms_module_nav_items', 'qrms_module_qr_analiz_serit_kalemleri', 10, 2 );
+
 		add_action( 'admin_enqueue_scripts', 'qrms_module_qr_analiz_admin_assets' );
 	}
 }
@@ -99,6 +105,37 @@ function qrms_module_qr_analiz_geri_url( $url, $module_slug ) {
 	}
 
 	return QRMS_Analitik_Filtre::url( QRMS_Admin::get_module_page_slug( 'qr-analiz' ) );
+}
+
+/**
+ * Bölüm şeridindeki sekmelerin adresine aktif filtreyi ekler.
+ *
+ * @param string $url         Çekirdeğin ürettiği sayfa adresi.
+ * @param string $page_slug   Sekmenin alt sayfa slug'ı.
+ * @param string $module_slug Sekmenin sahibi modül.
+ * @return string
+ */
+function qrms_module_qr_analiz_serit_url( $url, $page_slug, $module_slug ) {
+	if ( 'qr-analiz' !== $module_slug ) {
+		return $url;
+	}
+
+	return QRMS_Analitik_Filtre::url( $page_slug );
+}
+
+/**
+ * Şeritten, bu kurulumda geçerli olmayan kategorileri düşürür.
+ *
+ * @param array  $kalemler    Slug => sekme tanımı.
+ * @param string $module_slug Sekmelerin sahibi modül.
+ * @return array
+ */
+function qrms_module_qr_analiz_serit_kalemleri( $kalemler, $module_slug ) {
+	if ( 'qr-analiz' !== $module_slug ) {
+		return $kalemler;
+	}
+
+	return array_intersect_key( $kalemler, qrms_module_qr_analiz_gecerli_sayfalar() );
 }
 
 /**
@@ -145,7 +182,15 @@ function qrms_module_qr_analiz_admin_menu() {
 			$sayfa['title'],
 			QRMS_Admin::CAPABILITY,
 			$slug,
-			QRMS_Admin::register_module_subpage( 'qr-analiz', $slug, $sayfa['render'] )
+			QRMS_Admin::register_module_subpage(
+				'qr-analiz',
+				$slug,
+				$sayfa['render'],
+				array(
+					'title' => $sayfa['title'],
+					'icon'  => $sayfa['icon'],
+				)
+			)
 		);
 	}
 

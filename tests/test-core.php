@@ -1476,6 +1476,57 @@ qrms_test(
 );
 
 qrms_test(
+	'ortak bölüm şeridi: modül kendi sekmelerini bildirir, sunum tek yerdedir',
+	function () {
+		$callback = QRMS_Admin::register_module_subpage(
+			'qr-menu-muhendisligi',
+			'qrms-mm-rapor',
+			function () {
+				echo '<div class="wrap">içerik</div>';
+			},
+			array(
+				'title' => 'Rapor',
+				'icon'  => 'dashicons-chart-pie',
+			)
+		);
+
+		// Tek sekme gezinilecek bir yer değildir: şerit basılmaz.
+		ob_start();
+		QRMS_Admin::render_module_nav( 'qr-menu-muhendisligi', 'qrms-mm-rapor' );
+		qrms_assert_same( '', ob_get_clean(), 'tek sekmede şerit yok' );
+
+		QRMS_Admin::register_module_subpage( 'qr-menu-muhendisligi', 'qrms-mm-ayar', 'strlen', 'Ayarlar' );
+		// Sekmesiz kayıt (ör. yalnızca yönlendiren eski adres) şeritte yer almaz.
+		QRMS_Admin::register_module_subpage( 'qr-menu-muhendisligi', 'qrms-mm-eski', 'strlen' );
+
+		ob_start();
+		QRMS_Admin::render_module_nav( 'qr-menu-muhendisligi', 'qrms-mm-ayar' );
+		$serit = ob_get_clean();
+
+		qrms_assert_contains( 'qrms-modnav', $serit, 'ortak şerit sınıfı' );
+		qrms_assert_contains( 'dashicons-chart-pie', $serit, 'sekme ikonu' );
+		qrms_assert_contains( 'page=qrms-mm-rapor', $serit, 'kayıt sırası korunur' );
+		qrms_assert_contains( 'aria-current="page"', $serit, 'açık sayfa işaretli' );
+		qrms_assert_false( strpos( $serit, 'qrms-mm-eski' ), 'sekmesiz kayıt şeritte yok' );
+
+		// Aktif sekme is-current alır; diğerleri almaz.
+		$kalemler = QRMS_Admin::get_module_nav_items( 'qr-menu-muhendisligi', 'qrms-mm-ayar' );
+		qrms_assert_true( $kalemler['qrms-mm-ayar']['current'], 'açık sayfa aktif' );
+		qrms_assert_false( $kalemler['qrms-mm-rapor']['current'], 'diğer sayfa pasif' );
+
+		// Alt sayfa callback'i şeridi geri bağlantısından hemen sonra basar.
+		ob_start();
+		call_user_func( $callback );
+		$html = ob_get_clean();
+
+		qrms_assert_true(
+			strpos( $html, 'qrms-back-link' ) < strpos( $html, 'qrms-modnav' ),
+			'şerit geri bağlantısından sonra gelir'
+		);
+	}
+);
+
+qrms_test(
 	'bilinmeyen modülün alt sayfası kaydedilmez, callback aynen döner',
 	function () {
 		$callback = 'strlen';

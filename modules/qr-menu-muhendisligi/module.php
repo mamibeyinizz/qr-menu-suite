@@ -120,7 +120,17 @@ function qrms_mm_admin_menu() {
 			$sayfa['title'],
 			QRMS_Admin::CAPABILITY,
 			$slug,
-			QRMS_Admin::register_module_subpage( 'qr-menu-muhendisligi', $slug, $sayfa['render'] )
+			QRMS_Admin::register_module_subpage(
+				'qr-menu-muhendisligi',
+				$slug,
+				$sayfa['render'],
+				// nav_title verilmişse şeritte o kullanılır: uzun sayfa başlığı
+				// sekmeyi gereksiz genişletmesin.
+				array(
+					'title' => isset( $sayfa['nav_title'] ) ? $sayfa['nav_title'] : $sayfa['title'],
+					'icon'  => $sayfa['icon'],
+				)
+			)
 		);
 	}
 }

@@ -126,7 +126,15 @@ function qrms_module_qr_masa_oturum_guvenligi_admin_menu() {
 			$page['title'],
 			QRMS_Admin::CAPABILITY,
 			$slug,
-			QRMS_Admin::register_module_subpage( 'qr-masa-oturum-guvenligi', $slug, $page['render'] )
+			QRMS_Admin::register_module_subpage(
+				'qr-masa-oturum-guvenligi',
+				$slug,
+				$page['render'],
+				array(
+					'title' => isset( $page['nav_title'] ) ? $page['nav_title'] : $page['title'],
+					'icon'  => $page['icon'],
+				)
+			)
 		);
 	}
 }

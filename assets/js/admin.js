@@ -109,3 +109,41 @@
 		} );
 	} );
 }() );
+
+/**
+ * Ortak bölüm şeridi (.qrms-modnav): aktif sekmeyi görünür alana kaydırır.
+ *
+ * Şerit dar ekranda taştığında aktif sekme sağda kalıp hiç görünmeyebilir.
+ * Burada yalnızca şeridin KENDİ yatay kaydırması değiştirilir (scrollIntoView
+ * kullanılmaz; o, sayfayı dikey olarak da zıplatırdı). Gezinmenin hiçbir
+ * işlevi bu dosyaya bağlı değildir: JS çalışmazsa şerit elle kaydırılır.
+ */
+( function () {
+	'use strict';
+
+	function aktifiGoster( serit ) {
+		var aktif = serit.querySelector( '.is-current' );
+
+		if ( ! aktif ) {
+			return;
+		}
+
+		var tasma = serit.scrollWidth - serit.clientWidth;
+
+		if ( tasma <= 0 ) {
+			return;
+		}
+
+		// Sekme ortalanır; şeridin sınırları dışına çıkılmaz.
+		var hedef = aktif.offsetLeft - ( serit.clientWidth - aktif.offsetWidth ) / 2;
+
+		serit.scrollLeft = Math.max( 0, Math.min( hedef, tasma ) );
+	}
+
+	document.addEventListener( 'DOMContentLoaded', function () {
+		Array.prototype.forEach.call(
+			document.querySelectorAll( '.qrms-modnav' ),
+			aktifiGoster
+		);
+	} );
+}() );

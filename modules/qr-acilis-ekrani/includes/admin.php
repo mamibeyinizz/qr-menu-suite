@@ -99,7 +99,11 @@ trait QRMS_AE_Admin {
 				QRMS_Admin::register_module_subpage(
 					'qr-acilis-ekrani',
 					$slug,
-					array( $this, 'render_' . str_replace( '-', '_', $slug ) )
+					array( $this, 'render_' . str_replace( '-', '_', $slug ) ),
+					array(
+						'title' => $page['title'],
+						'icon'  => $page['icon'],
+					)
 				)
 			);
 		}
@@ -214,18 +218,11 @@ trait QRMS_AE_Admin {
 				</div>
 			</div>
 
-			<?php // Beş ekran arasında gezinme: sayfa yapısı değişmedi, sadece görünür oldu. ?>
-			<nav class="qrae-tabs" aria-label="<?php esc_attr_e( 'Karşılama ekranı ayarları', 'qrms' ); ?>">
-				<?php foreach ( $pages as $tab_slug => $tab ) : ?>
-					<a class="qrae-tab<?php echo $tab_slug === $slug ? ' is-current' : ''; ?>"
-						href="<?php echo esc_url( $this->admin_url_for( $tab_slug ) ); ?>"
-						<?php echo $tab_slug === $slug ? 'aria-current="page"' : ''; ?>>
-						<span class="dashicons <?php echo esc_attr( $tab['icon'] ); ?>" aria-hidden="true"></span>
-						<?php echo esc_html( $tab['title'] ); ?>
-					</a>
-				<?php endforeach; ?>
-			</nav>
-
+			<?php
+			// Beş ekran arasındaki gezinme artık suite'in ORTAK şeridindedir
+			// (QRMS_Admin::render_module_nav); başlığın üstünde, her modülde
+			// aynı yerde ve aynı davranışla basılır. Buradaki kopya kaldırıldı.
+			?>
 			<?php if ( $saved ) : ?>
 				<div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'Ayarlar kaydedildi.', 'qrms' ); ?></p></div>
 			<?php endif; ?>

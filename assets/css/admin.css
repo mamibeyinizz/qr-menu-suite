@@ -830,6 +830,100 @@ a.qrms-hub-links-more:focus {
 	line-height: 1.5;
 }
 
+/* ORTAK BÖLÜM ŞERİDİ (.qrms-modnav)
+   ---------------------------------
+   Modülün alt sayfaları arasındaki yatay gezinme. Karşılama Ekranı'nda
+   denenen premium dilin tek kopyası: şampanya altını vurgu, hap biçimli
+   sekme, aktifte vurgu kenarı + alt çizgi.
+
+   TEK SATIR KALIR. Şerit hiçbir genişlikte sarmaz; sığmadığında yatay
+   kaydırılır (kaydırma çubuğu görsel olarak gizlidir, kaydırma çalışır) ve
+   aktif sekmeyi görünür alana assets/js/admin.js getirir. Şeridin kendisi
+   `max-width: 100%` ile sınırlıdır: sayfa gövdesi yatay kaymaz.
+
+   İşaretlemeyi QRMS_Admin::render_module_nav() basar; modüllerde kopyası
+   yoktur. Vurgu rengi modül tarafında --qrms-modnav-accent ile değişebilir. */
+
+.qrms-modnav {
+	--qrms-modnav-accent: #c9a84c;
+	--qrms-modnav-accent-soft: rgba(201, 168, 76, 0.16);
+	display: flex;
+	flex-wrap: nowrap;
+	gap: 8px;
+	margin: 10px 20px 0 2px;
+	max-width: 100%;
+	overflow-x: auto;
+	overflow-y: hidden;
+	overscroll-behavior-x: contain;
+	padding: 2px 2px 6px;
+	/* Aktif sekmenin offsetLeft'i şeride göre okunsun diye konumlandırılır. */
+	position: relative;
+	scrollbar-width: none;
+	-ms-overflow-style: none;
+	-webkit-overflow-scrolling: touch;
+}
+
+.qrms-modnav::-webkit-scrollbar {
+	height: 0;
+	width: 0;
+	display: none;
+}
+
+.qrms-modnav-tab {
+	align-items: center;
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-radius: 999px;
+	color: #50575e;
+	display: inline-flex;
+	flex: 0 0 auto;
+	font-size: 13px;
+	font-weight: 600;
+	gap: 6px;
+	line-height: 1.2;
+	min-height: 40px;
+	padding: 0 14px;
+	position: relative;
+	text-decoration: none;
+	transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease;
+	white-space: nowrap;
+}
+
+.qrms-modnav-tab .dashicons {
+	font-size: 16px;
+	height: 16px;
+	width: 16px;
+}
+
+.qrms-modnav-tab:hover,
+.qrms-modnav-tab:focus {
+	border-color: var(--qrms-modnav-accent);
+	color: #1d2327;
+}
+
+.qrms-modnav-tab:focus-visible {
+	outline: 2px solid #2271b1;
+	outline-offset: 1px;
+}
+
+.qrms-modnav-tab.is-current {
+	background: var(--qrms-modnav-accent-soft);
+	border-color: var(--qrms-modnav-accent);
+	color: #1d2327;
+}
+
+/* Aktif sekmenin alt çizgisi — hap biçiminin içinde durur. */
+.qrms-modnav-tab.is-current::after {
+	background: var(--qrms-modnav-accent);
+	border-radius: 2px;
+	bottom: 6px;
+	content: "";
+	height: 2px;
+	left: 14px;
+	position: absolute;
+	right: 14px;
+}
+
 /* Tablet: iki sütun (WP admin 782px üstü, 1200px altı) */
 
 @media screen and (max-width: 1200px) {
@@ -880,6 +974,18 @@ a.qrms-hub-links-more:focus {
 	.qrms-hub-links a {
 		line-height: 1.35;
 		padding: 3px 6px;
+	}
+
+	/* Dokunmatikte hedef büyür; sağdaki boşluk küçülür ki 320px'te bile
+	   şeritte "daha var" hissi kalsın ve sayfa yatay kaymasın. */
+	.qrms-modnav {
+		margin-right: 10px;
+	}
+
+	.qrms-modnav-tab {
+		font-size: 14px;
+		min-height: 44px;
+		padding: 0 16px;
 	}
 }
 

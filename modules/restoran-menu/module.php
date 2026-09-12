@@ -178,7 +178,17 @@ function qrms_module_restoran_menu_admin_menu() {
 			$page['menu_title'],
 			QRMS_Admin::CAPABILITY,
 			$slug,
-			QRMS_Admin::register_module_subpage( 'restoran-menu', $slug, array( $rma, $page['render'] ) )
+			QRMS_Admin::register_module_subpage(
+				'restoran-menu',
+				$slug,
+				array( $rma, $page['render'] ),
+				// Şeritte kısa olan menü başlığı kullanılır ("Görünüm"),
+				// sayfanın uzun başlığı ("Menü Görünümü") değil.
+				array(
+					'title' => $page['menu_title'],
+					'icon'  => $page['icon'],
+				)
+			)
 		);
 	}
 }
