@@ -25,6 +25,10 @@ trait QRMGM_Assets_Trait {
 .qrmgm-modal-actions{display:flex;gap:8px}
 .qrmgm-dropzone{border:2px dashed #94a3b8;border-radius:12px;padding:32px;text-align:center;margin:16px 0;background:#f8fafc}
 .qrmgm-dropzone.is-dragover{border-color:#D4AF37;background:#fffbea}
+.qrmgm-dropzone-icon{font-size:36px;width:36px;height:36px;color:#94a3b8;display:block;margin:0 auto 8px}
+.qrmgm-dropzone-title{font-size:15px;font-weight:600;color:#0F172A;margin:0 0 4px}
+.qrmgm-dropzone-desc{font-size:13px;color:#64748b;margin:0 0 14px}
+#qrmgm-upload-progress.is-error{color:#b91c1c;font-weight:600}
 .qrmgm-images-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px}
 .qrmgm-image-card{background:#fff;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;position:relative}
 .qrmgm-image-card img{width:100%;height:140px;object-fit:cover;display:block}
@@ -260,8 +264,9 @@ CSS;
 
 		function handleFiles(files){
 			var sectionId = $('#qrmgm-images-grid').data('section');
-			var total = files.length, done = 0;
-			$('#qrmgm-upload-progress').text('Yükleniyor: 0/' + total);
+			var total = files.length, done = 0, ok = 0, failedNames = [];
+			var $progress = $('#qrmgm-upload-progress');
+			$progress.removeClass('is-error').text('Yükleniyor: 0/' + total);
 			Array.prototype.forEach.call(files, function(file){
 				var fd = new FormData();
 				fd.append('action', 'qrmgm_upload_image');
@@ -270,10 +275,24 @@ CSS;
 				fd.append('file', file);
 				$.ajax({
 					url: QRMGM.ajaxUrl, type: 'POST', data: fd, processData: false, contentType: false
+				}).done(function(res){
+					if (res && res.success) { ok++; } else { failedNames.push(file.name); }
+				}).fail(function(){
+					failedNames.push(file.name);
 				}).always(function(){
 					done++;
-					$('#qrmgm-upload-progress').text('Yükleniyor: ' + done + '/' + total);
-					if (done === total) { refreshGrid(sectionId); }
+					$progress.text('Yükleniyor: ' + done + '/' + total);
+					if (done === total) {
+						var fail = failedNames.length;
+						var msg = ok + '/' + total + ' görsel yüklendi.';
+						if (fail > 0) {
+							msg += ' ' + fail + ' dosya başarısız: ' + failedNames.join(', ');
+							$progress.addClass('is-error');
+						}
+						$progress.text(msg);
+						refreshGrid(sectionId);
+						setTimeout(function(){ $progress.text(''); $progress.removeClass('is-error'); }, fail > 0 ? 8000 : 3000);
+					}
 				});
 			});
 		}
@@ -503,6 +522,18 @@ JS;
 .qrmgm-lightbox-prev{left:20px}
 .qrmgm-lightbox-next{right:20px}
 .qrmgm-lightbox-counter{position:absolute;top:24px;left:24px;color:#fff;font-size:13px;opacity:.8}
+.qrmgm-lightbox-controls button:focus-visible,
+.qrmgm-lightbox-nav:focus-visible,
+.qrmgm-filter-btn:focus-visible{outline:2px solid var(--qrmgm-accent,#D4AF37);outline-offset:3px}
+@media(min-width:641px){
+	.qrmgm-item--featured{grid-column:span 2;grid-row:span 2}
+}
+.qrmgm-gallery.qrmgm-js .qrmgm-item{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
+.qrmgm-gallery.qrmgm-js .qrmgm-item.qrmgm-visible{opacity:1;transform:none}
+.qrmgm-gallery[data-anim="0"].qrmgm-js .qrmgm-item{opacity:1;transform:none;transition:none}
+@media(prefers-reduced-motion:reduce){
+	.qrmgm-gallery.qrmgm-js .qrmgm-item{opacity:1;transform:none;transition:none}
+}
 CSS;
 	}
 
@@ -520,6 +551,10 @@ CSS;
 		galleries.forEach(function(gallery){
 			var items = Array.prototype.slice.call(gallery.querySelectorAll('.qrmgm-item'));
 			var sections = Array.prototype.slice.call(gallery.querySelectorAll('.qrmgm-section'));
+
+			if (gallery.getAttribute('data-anim') === '1') {
+				gallery.classList.add('qrmgm-js');
+			}
 
 			if ('IntersectionObserver' in window) {
 				var io = new IntersectionObserver(function(entries){
@@ -540,8 +575,9 @@ CSS;
 			var scrollBehavior = reducedMotion ? 'auto' : 'smooth';
 			filterBtns.forEach(function(btn){
 				btn.addEventListener('click', function(){
-					filterBtns.forEach(function(b){ b.classList.remove('is-active'); });
+					filterBtns.forEach(function(b){ b.classList.remove('is-active'); b.setAttribute('aria-pressed', 'false'); });
 					btn.classList.add('is-active');
+					btn.setAttribute('aria-pressed', 'true');
 					var filter = btn.getAttribute('data-filter');
 					sections.forEach(function(section){
 						var match = (filter === 'all' || section.getAttribute('data-section') === filter);
@@ -564,15 +600,18 @@ CSS;
 
 			var lb = document.createElement('div');
 			lb.className = 'qrmgm-lightbox';
+			lb.setAttribute('role', 'dialog');
+			lb.setAttribute('aria-modal', 'true');
+			lb.setAttribute('aria-label', 'Galeri görüntüleyici');
 			lb.innerHTML = '<div class="qrmgm-lightbox-counter"></div>' +
 				'<div class="qrmgm-lightbox-controls">' +
-					'<button type="button" class="qrmgm-lb-download" title="İndir">&#8681;</button>' +
-					'<button type="button" class="qrmgm-lb-fullscreen" title="Tam Ekran">&#9974;</button>' +
-					'<button type="button" class="qrmgm-lb-close" title="Kapat">&times;</button>' +
+					'<button type="button" class="qrmgm-lb-download" title="İndir" aria-label="İndir">&#8681;</button>' +
+					'<button type="button" class="qrmgm-lb-fullscreen" title="Tam Ekran" aria-label="Tam ekran">&#9974;</button>' +
+					'<button type="button" class="qrmgm-lb-close" title="Kapat" aria-label="Kapat">&times;</button>' +
 				'</div>' +
-				'<button type="button" class="qrmgm-lightbox-nav qrmgm-lightbox-prev">&#10094;</button>' +
+				'<button type="button" class="qrmgm-lightbox-nav qrmgm-lightbox-prev" aria-label="Önceki görsel">&#10094;</button>' +
 				'<img src="" alt="" />' +
-				'<button type="button" class="qrmgm-lightbox-nav qrmgm-lightbox-next">&#10095;</button>' +
+				'<button type="button" class="qrmgm-lightbox-nav qrmgm-lightbox-next" aria-label="Sonraki görsel">&#10095;</button>' +
 				'<div class="qrmgm-lightbox-caption"></div>';
 			document.body.appendChild(lb);
 
@@ -580,6 +619,7 @@ CSS;
 			var caption = lb.querySelector('.qrmgm-lightbox-caption');
 			var counter = lb.querySelector('.qrmgm-lightbox-counter');
 			var current = 0;
+			var lastFocused = null;
 			var visibleTriggers = function(){
 				return triggers.filter(function(t){ return t.closest('.qrmgm-item').offsetParent !== null; });
 			};
@@ -599,6 +639,8 @@ CSS;
 			function close(){
 				lb.classList.remove('is-open');
 				document.body.style.overflow = '';
+				if (lastFocused && typeof lastFocused.focus === 'function') { lastFocused.focus(); }
+				lastFocused = null;
 			}
 			function nav(dir){
 				var list = visibleTriggers();
@@ -609,7 +651,10 @@ CSS;
 			triggers.forEach(function(t, i){
 				t.addEventListener('click', function(e){
 					e.preventDefault();
+					lastFocused = t;
 					open(visibleTriggers().indexOf(t));
+					var closeBtn = lb.querySelector('.qrmgm-lb-close');
+					if (closeBtn) { closeBtn.focus(); }
 				});
 			});
 
@@ -631,6 +676,16 @@ CSS;
 				if (e.key === 'Escape') close();
 				if (e.key === 'ArrowLeft') nav(-1);
 				if (e.key === 'ArrowRight') nav(1);
+				if (e.key === 'Tab') {
+					var focusable = Array.prototype.slice.call(lb.querySelectorAll('button'));
+					if (!focusable.length) return;
+					var first = focusable[0], last = focusable[focusable.length - 1];
+					if (e.shiftKey && document.activeElement === first) {
+						e.preventDefault(); last.focus();
+					} else if (!e.shiftKey && document.activeElement === last) {
+						e.preventDefault(); first.focus();
+					}
+				}
 			});
 
 			lb.addEventListener('wheel', function(e){
