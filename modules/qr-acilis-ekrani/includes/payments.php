@@ -207,13 +207,20 @@ trait QRMS_AE_Payments {
             $badges .= $this->payment_badge_markup($key, $with_icon, $opts);
         }
 
+        // Satır, ekran okuyucuda tek bir bölüm olarak duyurulur: içindeki
+        // rozetler tıklanabilir değildir, tek tek gezilecek öğeler değil bir
+        // bilgi grubudur.
+        $group_label = $this->i18n_translate('pay_group', 'tr', 'Ödeme yöntemleri');
+        $group       = ' role="group" aria-label="' . esc_attr($group_label) . '"'
+            . $this->lang_data($opts, 'pay_group', $group_label, 'aria-label');
+
         if ($mode === 'marquee') {
             $duration = $this->payment_marquee_duration($opts, count($active));
 
             // Seamless loop: içerik birebir iki kez basılır, şerit -%50
             // ötelenir. İkinci kopya ekran okuyuculardan gizlenir.
             echo '<div class="splash-pay-row is-marquee' . ($with_icon ? '' : ' is-text-only') . '"'
-                . ' data-splash-action="odeme"'
+                . ' data-splash-action="odeme"' . $group
                 . ' style="--sp-marquee-duration:' . esc_attr($duration) . 's">';
             echo '<div class="splash-pay-track">';
             echo '<div class="splash-pay-seq">' . $badges . '</div>';
@@ -223,14 +230,20 @@ trait QRMS_AE_Payments {
             return;
         }
 
-        echo '<div class="splash-pay-row' . ($with_icon ? '' : ' is-text-only') . '" data-splash-action="odeme">';
+        echo '<div class="splash-pay-row' . ($with_icon ? '' : ' is-text-only') . '" data-splash-action="odeme"' . $group . '>';
         echo $badges;
         echo '</div>';
     }
 
     /**
-     * Admin "Ödeme" sekmesi: 6 checkbox + her birinin yanında gerçek SVG önizlemesi.
-     * Önizleme frontend ile aynı sprite'tan beslenir; ikon değişince otomatik güncellenir.
+     * Yönetimdeki ödeme yöntemi seçimi.
+     *
+     * Onay kutusu sözleşmesi aynıdır (name="payment_methods[]"); değişen
+     * yalnızca sunum: her yöntem, ön yüzdeki rozetin birebir kendisini
+     * gösteren tıklanabilir bir kart olur. Seçim sayacı JS ile güncellenir.
+     *
+     * @param array $opts Mevcut ayarlar.
+     * @return void
      */
     private function render_payment_admin_field($opts) {
         $map    = $this->payment_methods_map();
@@ -238,12 +251,16 @@ trait QRMS_AE_Payments {
 
         echo $this->payment_sprite_markup(array_keys($map));
 
-        echo '<div class="splash-pay-admin-grid">';
+        echo '<p class="qrae-counter"><strong id="qrae-pay-count">' . count($active) . '</strong> / ' . count($map)
+            . ' <span>' . esc_html__('yöntem seçili', 'qrms') . '</span></p>';
+
+        echo '<div class="splash-pay-admin-grid qrae-chip-grid">';
         foreach ($map as $key => $method) {
             $id = 'splash_pay_' . $key;
-            echo '<label class="splash-pay-admin-item" for="' . esc_attr($id) . '">';
-            echo '<input type="checkbox" id="' . esc_attr($id) . '" name="payment_methods[]" value="' . esc_attr($key) . '" ' . checked(in_array($key, $active, true), true, false) . ' />';
-            echo $this->payment_badge_markup($key, true, $opts);
+            echo '<label class="splash-pay-admin-item qrae-chip" for="' . esc_attr($id) . '">';
+            echo '<input type="checkbox" class="qrae-chip-input" id="' . esc_attr($id) . '" name="payment_methods[]" value="' . esc_attr($key) . '" ' . checked(in_array($key, $active, true), true, false) . ' />';
+            echo '<span class="qrae-chip-body">' . $this->payment_badge_markup($key, true, $opts) . '</span>';
+            echo '<span class="qrae-chip-mark" aria-hidden="true"></span>';
             echo '</label>';
         }
         echo '</div>';

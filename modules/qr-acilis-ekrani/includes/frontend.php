@@ -83,11 +83,22 @@ trait QRMS_AE_Frontend {
         // --- Dil bayrağı (logo şeridi, 3:2 kutu) ---
         $flag_size = $this->opt_int($opts, 'ceviri_flag_size', 20, 48);
 
+        // --- CTA tipografisi ---
+        // "Buton Yazı Boyutu" ve "Buton Metin Rengi" v3.6'dan beri yalnızca
+        // kaydediliyor, CTA'ya inmiyordu: yönetimdeki iki kontrol de hiçbir
+        // şey yapmıyordu. Değerler artık CTA'ya bağlanıyor; ölçü aynı
+        // 12-24px aralığında kırpılır, renk açık şemada okunabilirlik
+        // güvencesinden geçer (bkz. cta_text_color).
+        $cta_font = $this->parse_font_size($opts['button_font_size']);
+        $cta_text = $this->cta_text_color($this->resolve_scheme($opts), $button_text_color);
+
         return array(
             '--sp-bg'              => $bg_color,
             '--sp-accent'          => $button_bg_color,
             '--sp-accent-rgb'      => $accent_rgb,
             '--sp-btn-text'        => $button_text_color,
+            '--sp-cta-text'        => $cta_text,
+            '--sp-cta-font'        => $cta_font . 'px',
             '--sp-btn-alpha'       => (string) $btn_alpha,
             '--sp-overlay'         => (string) $overlay,
             '--sp-seconds'         => absint($opts['redirect_seconds']) . 's',
@@ -117,6 +128,34 @@ trait QRMS_AE_Frontend {
             $out .= $name . ': ' . esc_attr($value) . '; ';
         }
         return trim($out);
+    }
+
+    /**
+     * Tek bir arkaplan görseli için preload etiketi.
+     *
+     * $media verilirse etiket yalnızca o koşulda indirilir; böylece
+     * dikey/geniş görsel çiftinde ekrana gelmeyecek dosya hiç istenmez.
+     *
+     * @param int    $id    Ek dosya kimliği.
+     * @param string $media Media sorgusu (boş: koşulsuz).
+     * @return void
+     */
+    private function preload_image($id, $media = '') {
+        $id = absint($id);
+        if (!$id) return;
+
+        $media_attr = '' !== $media ? ' media="' . esc_attr($media) . '"' : '';
+        $srcset     = wp_get_attachment_image_srcset($id, 'full');
+
+        if ($srcset) {
+            echo '<link rel="preload" as="image" imagesrcset="' . esc_attr($srcset) . '" imagesizes="100vw" fetchpriority="high"' . $media_attr . ' />' . "\n";
+            return;
+        }
+
+        $src = wp_get_attachment_image_url($id, 'full');
+        if ($src) {
+            echo '<link rel="preload" as="image" href="' . esc_url($src) . '" fetchpriority="high"' . $media_attr . ' />' . "\n";
+        }
     }
 
     public function print_critical_head() {
@@ -192,15 +231,23 @@ trait QRMS_AE_Frontend {
         <?php
         // LCP elemanı arkaplan görselidir; preload olmadan açılış gözle görülür
         // şekilde gecikir. Çıktı cache güvenliği için cookie'den bağımsızdır.
+        //
+        // GENİŞ EKRAN GÖRSELİ. Geniş görsel varken <picture>, kare ve daha
+        // geniş ekranlarda onu seçer. Preload bunu bilmezse telefon görseli
+        // masaüstünde de indirilir ve ekranda hiç kullanılmaz — iki tam
+        // görsellik boşa trafik. Preload'lar bu yüzden <source> ile AYNI
+        // media koşulunu taşır; tarayıcı yalnızca gerçekten boyanacak olanı
+        // indirir.
         if ($bg_id) {
-            $srcset = wp_get_attachment_image_srcset($bg_id, 'full');
-            if ($srcset) {
-                echo '<link rel="preload" as="image" imagesrcset="' . esc_attr($srcset) . '" imagesizes="100vw" fetchpriority="high" />' . "\n";
-            } else {
-                $src = wp_get_attachment_image_url($bg_id, 'full');
-                if ($src) {
-                    echo '<link rel="preload" as="image" href="' . esc_url($src) . '" fetchpriority="high" />' . "\n";
-                }
+            $wide_id = absint($opts['bg_image_wide']);
+
+            // 999/1000: tam kare ekranda <picture> GENİŞ görseli seçer;
+            // sınır tam 1/1 verilseydi o tek durumda iki görsel birden
+            // indirilirdi.
+            $this->preload_image($bg_id, $wide_id ? '(max-aspect-ratio: 999/1000)' : '');
+
+            if ($wide_id) {
+                $this->preload_image($wide_id, '(min-aspect-ratio: 1/1)');
             }
         }
         ?>
@@ -426,7 +473,9 @@ trait QRMS_AE_Frontend {
                 . $this->lang_data($opts, $key, $label, 'aria-label title') . '>'
                 . $this->icon_svg($icon, 22)
                 . '</a>'
-                . '<span class="sp-action-label"' . $this->lang_data($opts, $key, $label) . '>' . esc_html($label) . '</span>'
+                // Rozetin kendisi aria-label taşıyor; görünür etiket ekran
+                // okuyucuda aynı metni ikinci kez okutmasın diye gizlenir.
+                . '<span class="sp-action-label" aria-hidden="true"' . $this->lang_data($opts, $key, $label) . '>' . esc_html($label) . '</span>'
                 . '</div>';
         }
 
@@ -434,11 +483,12 @@ trait QRMS_AE_Frontend {
         $wifi_label = isset($opts['button_texts']['btn5']) ? $opts['button_texts']['btn5'] : 'Wifi';
         $items[] = '<div class="sp-action">'
             . '<button type="button" class="splash-badge sp-action-circle" id="wifi-btn"'
+            . ' aria-haspopup="dialog" aria-expanded="false" aria-controls="wifi-modal"'
             . ' aria-label="' . esc_attr($wifi_label) . '" title="' . esc_attr($wifi_label) . '"'
             . $this->lang_data($opts, 'btn5', $wifi_label, 'aria-label title') . '>'
             . $this->icon_svg('wifi', 22)
             . '</button>'
-            . '<span class="sp-action-label"' . $this->lang_data($opts, 'btn5', $wifi_label) . '>' . esc_html($wifi_label) . '</span>'
+            . '<span class="sp-action-label" aria-hidden="true"' . $this->lang_data($opts, 'btn5', $wifi_label) . '>' . esc_html($wifi_label) . '</span>'
             . '</div>';
 
         return $items;
@@ -652,6 +702,12 @@ trait QRMS_AE_Frontend {
         $cta_link = isset($opts['button_links']['btn1']) ? trim($opts['button_links']['btn1']) : '';
 
         $divider_text = isset($opts['divider_text']) ? trim($opts['divider_text']) : '';
+        // Sosyal grubun erişilebilirlik adı: yönetici bir ayraç yazısı
+        // girdiyse o, girmediyse katalogdaki genel karşılık kullanılır.
+        $social_label = '' !== $divider_text ? $divider_text : $this->i18n_translate('social_group', 'tr', 'Sosyal medya');
+        // Ayraç yazısı varsa grup adı onunla AYNI anahtarı kullanır; böylece
+        // görünen etiket ile ekran okuyucuya giden metin aynı çeviriden gelir.
+        $social_key = '' !== $divider_text ? 'divider' : 'social_group';
 
         $action_badges = $this->build_action_badges($opts);
         $social_badges = $this->build_social_badges($opts);
@@ -708,7 +764,10 @@ trait QRMS_AE_Frontend {
                     <?php endif; ?>
 
                     <?php if (!empty($social_badges)): ?>
-                        <div class="splash-social"><?php echo implode('', $social_badges); ?></div>
+                        <?php // Rozetler ayrı ayrı adlandırılmış; grup, ekran okuyucuda tek bir bölüm olarak duyurulur. ?>
+                        <div class="splash-social" role="group"
+                            aria-label="<?php echo esc_attr($social_label); ?>"
+                            <?php echo $this->lang_data($opts, $social_key, $social_label, 'aria-label'); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>><?php echo implode('', $social_badges); ?></div>
                     <?php endif; ?>
 
                     <?php $this->render_payment_row($opts); ?>
@@ -726,11 +785,12 @@ trait QRMS_AE_Frontend {
         $wifi_bos    = 'Henüz bir şifre girilmedi.';
         $iki_dil     = $this->i18n_active( $opts );
         ?>
-        <div class="splash-modal" id="wifi-modal">
+        <?php // Pencere gerçek bir iletişim kutusudur: rol/başlık bağı burada, odak yönetimi splash.js'te. ?>
+        <div class="splash-modal" id="wifi-modal" role="dialog" aria-modal="true" aria-labelledby="wifi-modal-title" aria-hidden="true">
             <div class="splash-modal-content">
-                <button type="button" class="splash-modal-close" aria-label="Kapat"<?php echo $iki_dil ? $this->lang_data( $opts, 'close', 'Kapat', 'aria-label' ) : ''; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped — Türkçe yedek; JS data-sp-attr ile günceller ?>>&times;</button>
-                <h3<?php echo $iki_dil ? $this->lang_data( $opts, 'wifi_title', $wifi_baslik ) : ''; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>><?php echo esc_html( $wifi_baslik ); ?></h3>
-                <p style="font-size:26px; margin:18px 0; word-break:break-all;"
+                <button type="button" class="splash-modal-close" aria-label="Kapat"<?php echo $iki_dil ? $this->lang_data( $opts, 'close', 'Kapat', 'aria-label' ) : ''; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped — Türkçe yedek; JS data-sp-attr ile günceller ?>><span aria-hidden="true">&times;</span></button>
+                <h3 id="wifi-modal-title"<?php echo $iki_dil ? $this->lang_data( $opts, 'wifi_title', $wifi_baslik ) : ''; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>><?php echo esc_html( $wifi_baslik ); ?></h3>
+                <p class="splash-modal-value"
                     <?php echo ( $iki_dil && empty( $opts['wifi_password'] ) ) ? $this->lang_data( $opts, 'wifi_empty', $wifi_bos ) : ''; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>
                     <?php echo esc_html( $opts['wifi_password'] ?: $wifi_bos ); ?>
                 </p>
@@ -761,8 +821,9 @@ trait QRMS_AE_Frontend {
                 <?php $this->output_splash($opts, true); ?>
             </div>
             <p class="qrms-ae-preview-note">
-                Bu kutu ana sayfadaki ekranın birebir kendisidir; yalnızca ölçeği
-                küçültülmüştür. Önizlemede çerez yazılmaz ve yönlendirme çalışmaz.
+                Ana sayfadaki ekranın küçültülmüş hâli. Renk ve ölçü ayarları anında,
+                görsel/rozet gibi yapı değişiklikleri kaydettikten sonra yansır.
+                Önizlemede çerez yazılmaz, yönlendirme çalışmaz.
                 <button type="button" class="button button-small qrms-ae-preview-replay">Animasyonu tekrar oynat</button>
             </p>
         </div>

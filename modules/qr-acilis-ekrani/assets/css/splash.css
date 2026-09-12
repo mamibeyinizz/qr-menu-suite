@@ -1,7 +1,8 @@
 /* Açılış Ekranı - frontend statik stilleri.
    Site başına değişen değerler (--sp-bg, --sp-accent, --sp-accent-rgb,
    --sp-btn-alpha, --sp-overlay, --sp-seconds, --splash-btn-bg,
-   --splash-btn-opacity, --sp-cta-bg, --sp-logo-bar-*, --sp-loader-*, --sp-flag-size)
+   --splash-btn-opacity, --sp-cta-bg, --sp-cta-text, --sp-cta-font,
+   --sp-logo-bar-*, --sp-loader-*, --sp-flag-size)
    wp_head'e ufak bir :root bloğu olarak basılır; buradaki tüm selector'lar
    statiktir ve cache'lenir.
 
@@ -414,20 +415,36 @@ html.splash-loading #custom-splash-overlay { display: block !important; visibili
     border: 1.5px solid var(--sp-accent, #0073aa);
     -webkit-backdrop-filter: var(--sp-glass-blur);
     backdrop-filter: var(--sp-glass-blur);
-    box-shadow: var(--sp-glass-shadow);
-    color: var(--sp-text);
+    /* Birincil aksiyonun rozetlerden ayrıştığı yer: rozetlerde yalnızca ince
+       bir inset highlight varken CTA vurgu renginden beslenen yumuşak bir
+       yükseklik taşır. Parlama değil, yükseklik — neon yok. */
+    box-shadow: var(--sp-glass-shadow), 0 8px 22px -14px rgba(var(--sp-accent-rgb, 0, 115, 170), 0.45);
+    /* Yazı rengi yönetimden gelir; açık şemada beyaz kalmışsa PHP tarafı
+       okunabilir koyu tona düşürür (bkz. cta_text_color). */
+    color: var(--sp-cta-text, var(--sp-text));
     text-shadow: var(--sp-text-shadow);
-    font-size: 17px;
+    font-size: var(--sp-cta-font, 17px);
     font-weight: 700;
     letter-spacing: 0.3px;
+    line-height: 1.2;
     text-decoration: none;
     text-align: center;
     cursor: pointer;
-    transition: transform 120ms ease;
+    transition: transform 120ms ease, box-shadow 160ms ease;
 }
 
-/* Hover mobilde anlamsız; sadece :active ve :focus-visible tanımlı. */
 #custom-splash-overlay .splash-cta:active { transform: scale(0.98); }
+
+/* Dokunmatikte hover diye bir durum yoktur; kural yalnızca gerçekten
+   imleç olan cihazlarda uygulanır (mobilde "yapışkan hover" olmaz). */
+@media (hover: hover) and (pointer: fine) {
+    #custom-splash-overlay .splash-cta:hover {
+        box-shadow: var(--sp-glass-shadow), 0 10px 26px -12px rgba(var(--sp-accent-rgb, 0, 115, 170), 0.55);
+    }
+}
+
+/* Adres girilmemiş CTA: soluk, tıklanamaz ve klavyeyle de odaklanamaz
+   (span olduğu için zaten odak sırasına girmez). */
 #custom-splash-overlay .splash-cta.is-disabled { opacity: 0.55; pointer-events: none; }
 
 /* ---------------- Ayraç ---------------- */
@@ -493,7 +510,9 @@ html.splash-loading #custom-splash-overlay { display: block !important; visibili
 }
 
 #custom-splash-overlay .sp-action-label {
-    font-size: 9px;
+    /* 9px pratikte okunmuyordu; rozet genişliğini büyütmeden okunabilir
+       en küçük ölçüye çekildi. İki satır sınırı ve alt hiza korunur. */
+    font-size: 10px;
     font-weight: 600;
     letter-spacing: 0.15px;
     color: var(--sp-text);
@@ -510,7 +529,7 @@ html.splash-loading #custom-splash-overlay { display: block !important; visibili
     -webkit-box-orient: vertical;
     overflow: hidden;
     max-width: 74px;
-    min-height: 23px;
+    min-height: 25px;
 }
 
 #custom-splash-overlay .splash-badge {
@@ -528,7 +547,15 @@ html.splash-loading #custom-splash-overlay { display: block !important; visibili
     color: var(--sp-text);
     text-decoration: none;
     cursor: pointer;
-    transition: transform 120ms ease;
+    transition: transform 120ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    #custom-splash-overlay .splash-badge:hover {
+        border-color: rgba(var(--sp-accent-rgb, 0, 115, 170), 0.65);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18),
+                    0 6px 18px -10px rgba(var(--sp-accent-rgb, 0, 115, 170), 0.75);
+    }
 }
 
 /* Sosyal rozetler kasıtlı olarak küçük - hiyerarşi kurar. */
@@ -639,11 +666,16 @@ html.splash-loading #custom-splash-overlay { display: block !important; visibili
 /* ---------------- Odak görünürlüğü ---------------- */
 
 #custom-splash-overlay .splash-cta:focus-visible,
-#custom-splash-overlay .splash-badge:focus-visible,
-.splash-modal-close:focus-visible,
-.splash-modal-link:focus-visible {
+#custom-splash-overlay .splash-badge:focus-visible {
     outline: 2px solid var(--sp-accent, #0073aa);
     outline-offset: 3px;
+}
+
+/* Pencere overlay dışında olduğu için vurgu rengini miras alamaz; kendi
+   odak halkasını nötr bir tonla çizer. */
+.splash-modal-close:focus-visible {
+    outline: 2px solid #2271b1;
+    outline-offset: 2px;
 }
 
 /* ---------------- Yüklenme göstergesi (logo şeridinin sağı) ---------------- */
@@ -757,6 +789,14 @@ html.splash-loading #custom-splash-overlay { display: block !important; visibili
 
 /* ---------------- Modal ---------------- */
 
+/* Pencere overlay'in DIŞINDA, body'nin sonunda durur; bu yüzden
+   #custom-splash-overlay altına alınamaz. Kendi ölçülerini kendi kapsamında
+   kurar ve tek bir genel eleman seçicisi (body/p/h3/button) kullanmaz. */
+.splash-modal,
+.splash-modal *,
+.splash-modal *::before,
+.splash-modal *::after { box-sizing: border-box; }
+
 .splash-modal {
     display: none;
     position: fixed;
@@ -764,6 +804,8 @@ html.splash-loading #custom-splash-overlay { display: block !important; visibili
     left: 0;
     width: 100%;
     height: 100%;
+    height: 100dvh;
+    padding: 16px;
     background: rgba(0, 0, 0, 0.65);
     align-items: center;
     justify-content: center;
@@ -775,9 +817,11 @@ html.splash-loading #custom-splash-overlay { display: block !important; visibili
     border-radius: 16px;
     text-align: center;
     max-width: 320px;
-    width: 90%;
+    width: 100%;
     position: relative;
-    color: #000;
+    color: #111;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
     animation: modalPop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 @keyframes modalPop {
@@ -785,18 +829,37 @@ html.splash-loading #custom-splash-overlay { display: block !important; visibili
     to { transform: scale(1); opacity: 1; }
 }
 
+/* Wifi şifresi. Uzun şifre dar ekranda pencereyi taşırmasın diye kırılır;
+   ölçü satır içi style yerine burada durur. */
+.splash-modal-value {
+    margin: 18px 0 0;
+    font-size: 24px;
+    font-weight: 600;
+    letter-spacing: 0.4px;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
 .splash-modal-close {
     position: absolute;
-    top: 8px;
-    right: 14px;
+    top: 4px;
+    right: 6px;
+    /* Köşedeki kapat düğmesi parmakla ıskalanmasın: 44px dokunma hedefi. */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
     font-size: 28px;
+    color: #50575e;
     cursor: pointer;
     background: none;
     border: none;
+    border-radius: 50%;
     line-height: 1;
 }
-.splash-modal-link { display: block; margin: 12px 0; font-size: 17px; color: #0073aa; text-decoration: none; font-weight: 500; }
-.splash-modal-link:hover { text-decoration: underline; }
 
 /* Çentikli cihazlarda yatay kullanımda içerik kameranın altına girmesin. */
 @supports (padding: env(safe-area-inset-left)) {

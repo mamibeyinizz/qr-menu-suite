@@ -1,314 +1,1135 @@
-/* Açılış Ekranı - yönetim ekranı stilleri.
+/* Açılış Ekranı — yönetim ekranı stilleri.
 
-   Sekme kuralları suite'e taşınırken kaldırıldı (dört sekme = dört sayfa);
-   yerine iki sütunlu düzen ve canlı önizleme çerçevesi geldi. Form alanlarının
-   stilleri bağımsız eklentiden birebir taşındı. */
+   KAPSAM. Tüm kurallar `.qrms-ae-wrap` altındadır; dosya yalnızca bu modülün
+   ekranlarında kuyruğa alınır (bkz. admin_enqueue_assets). WordPress'in kendi
+   ekranlarına, sol menüye veya başka bir modüle tek bir kural yazılmaz.
 
-.qrms-ae-wrap .qrms-ae-page-intro {
-    margin: 16px 0 4px;
-    color: #50575e;
-    font-size: 13px;
-    max-width: 760px;
-}
+   TASARIM SİSTEMİ. Renk/ölçü/geçiş değerleri --qrae-* değişkenlerinde
+   toplanır; suite'in şampanya altını (qr-chatbot yönetimiyle aynı ton)
+   tek vurgu rengidir. Kartlar, alan başlıkları ve kontroller bu
+   değişkenlerden beslenir — dosyada dağınık renk kodu bırakılmaz.
 
-.qrms-ae-wrap .theme-preset { margin: 0 8px 6px 0; }
+   Ön yüz (splash.css) kendi --sp-* değişken kümesini kullanır ve buradan
+   etkilenmez; önizleme çerçevesi o dosyanın GERÇEK kurallarını yükler. */
 
-/* --- Medya alanları --- */
-.splash-media-field { max-width: 520px; }
-.splash-media-actions { margin: 0 0 8px; display: flex; align-items: center; gap: 12px; }
-.splash-media-actions .splash-remove-image { color: #b32d2e; text-decoration: none; }
-.splash-media-actions .splash-remove-image.hidden { display: none; }
-
-.splash-media-field .image-preview img {
-    display: block;
-    border: 1px solid #dcdcde;
-    border-radius: 6px;
-    background: #f6f7f7;
-}
-.splash-media-field .image-preview.is-portrait img { max-width: 120px; height: auto; }
-.splash-media-field .image-preview.is-wide img { max-width: 220px; height: auto; }
-.splash-media-field .image-preview.is-logo img { max-width: 150px; height: auto; }
-.splash-media-field .image-preview img { max-width: 150px; height: auto; }
-
-.splash-media-warnings:empty { display: none; }
-.splash-media-warnings {
-    margin-top: 10px;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-}
-.splash-media-warning {
-    background: #fcf9e8;
-    border-left: 4px solid #dba617;
-    padding: 8px 12px;
-    font-size: 13px;
-    color: #3c434a;
+.qrms-ae-wrap,
+.qrms-ae-wrap *,
+.qrms-ae-wrap *::before,
+.qrms-ae-wrap *::after {
+	box-sizing: border-box;
 }
 
-/* --- Yardım metni --- */
-.splash-help {
-    margin-top: 12px;
-    max-width: 620px;
-    background: #f6f7f7;
-    border: 1px solid #dcdcde;
-    border-radius: 6px;
-    padding: 12px 16px;
-    font-size: 13px;
-    color: #3c434a;
-}
-.splash-help p { margin: 0 0 8px; }
-.splash-help ul { margin: 0; padding-left: 18px; list-style: disc; }
-.splash-help li { margin: 0 0 4px; }
-
-/* --- Aralık (range) alanları --- */
-.splash-range { vertical-align: middle; width: 240px; max-width: 100%; }
-.splash-range-value {
-    display: inline-block;
-    min-width: 48px;
-    margin-left: 10px;
-    font-weight: 600;
-    vertical-align: middle;
-}
-
-.splash-inline-field {
-    display: inline-flex;
-    flex-direction: column;
-    gap: 4px;
-    margin-right: 20px;
-}
-.splash-inline-field span { font-size: 12px; color: #50575e; }
-.splash-inline-field input { width: 110px; }
-
-/* --- Butonlar sekmesi --- */
-.splash-button-row {
-    background: #fff;
-    border: 1px solid #dcdcde;
-    border-radius: 6px;
-    padding: 14px 16px;
-    margin: 0 0 12px;
-    max-width: 900px;
-}
-.splash-button-row-head {
-    display: flex;
-    align-items: baseline;
-    gap: 10px;
-    flex-wrap: wrap;
-    margin-bottom: 10px;
-}
-.splash-button-index { font-weight: 600; }
-.splash-button-desc { color: #50575e; font-size: 12px; }
-
-.splash-button-row-fields { display: flex; gap: 16px; flex-wrap: wrap; }
-.splash-button-row-fields label {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    flex: 1 1 280px;
-}
-.splash-button-row-fields label span { font-size: 12px; color: #50575e; }
-.splash-button-row-fields input { width: 100%; }
-.splash-button-row-fields label.is-disabled input { background: #f0f0f1; color: #8c8f94; }
-
-/* --- Ödeme sekmesi --- */
-.splash-pay-admin-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    gap: 10px;
-    max-width: 760px;
-    margin: 16px 0;
-}
-.splash-pay-admin-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    background: #fff;
-    border: 1px solid #dcdcde;
-    border-radius: 6px;
-    padding: 10px 12px;
-    cursor: pointer;
-}
-.splash-pay-admin-item:hover { border-color: #2271b1; }
-.splash-pay-admin-item .splash-pay {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    color: var(--sp-pay-color, #1d2327);
-}
-.splash-pay-admin-item .splash-pay-icon { flex: none; }
-.splash-pay-admin-item .splash-pay-label {
-    color: #1d2327;
-    font-size: 13px;
-    font-weight: 500;
-}
-
-/* --- Sosyal medya sekmesi (checkbox + URL, en fazla 6) --- */
-.splash-social-grid {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    max-width: 620px;
-    margin: 12px 0 6px;
-}
-.splash-social-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-.splash-social-check-label {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex: 0 0 150px;
-    font-weight: 500;
-    cursor: pointer;
-}
-.splash-social-check-label:has(:disabled) { opacity: .55; cursor: default; }
-.splash-social-row input[type="url"] { flex: 1 1 auto; }
-.splash-social-limit-note {
-    display: none;
-    margin: 6px 0 0;
-    color: #b32d2e;
-    font-size: 12px;
-}
-.splash-social-limit-note.is-visible { display: block; }
-
-/* --- Dil seçici (Görünüm sayfası) --- */
-.splash-ceviri-langs {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-    gap: 6px 16px;
-    max-width: 640px;
-    margin: 8px 0 0;
-    padding: 0;
-    border: 0;
-}
-.splash-ceviri-langs label {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    min-height: 32px;
-    font-weight: 500;
-    cursor: pointer;
-}
-.splash-ceviri-langs.is-disabled {
-    opacity: 0.55;
-}
-
-@media (max-width: 782px) {
-    .splash-social-row { flex-wrap: wrap; }
-    .splash-social-check-label { flex-basis: 100%; }
-}
-
-/* --- Radyo kartları (ör. ödeme görünüm modu) --- */
-.splash-radio-group {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-    gap: 10px;
-    max-width: 760px;
-    margin: 12px 0 4px;
-}
-.splash-radio-card {
-    display: grid;
-    grid-template-columns: auto 1fr;
-    grid-template-areas:
-        "radio title"
-        ".     desc";
-    align-items: center;
-    column-gap: 8px;
-    row-gap: 4px;
-    background: #fff;
-    border: 1px solid #dcdcde;
-    border-radius: 6px;
-    padding: 12px 14px;
-    cursor: pointer;
-}
-.splash-radio-card:hover { border-color: #2271b1; }
-.splash-radio-card input[type="radio"] { grid-area: radio; margin: 0; }
-.splash-radio-card:has(input:checked) {
-    border-color: #2271b1;
-    box-shadow: 0 0 0 1px #2271b1;
-}
-.splash-radio-title { grid-area: title; font-weight: 600; }
-.splash-radio-desc { grid-area: desc; color: #50575e; font-size: 12px; line-height: 1.5; }
-
-/* --- Yapışkan kaydet çubuğu --- */
-.splash-save-bar {
-    position: sticky;
-    bottom: 0;
-    z-index: 10;
-    display: flex;
-    align-items: center;
-    gap: 20px;
-    margin-top: 24px;
-    padding: 12px 16px;
-    background: #fff;
-    border-top: 1px solid #dcdcde;
-    box-shadow: 0 -2px 6px rgba(0, 0, 0, 0.06);
-}
-.splash-preview-link { text-decoration: none; }
-
-@media (max-width: 782px) {
-    .splash-save-bar { flex-wrap: wrap; gap: 12px; }
-    .splash-range { width: 100%; }
-}
-
-/* Dikkat çekmesi gereken açıklama satırı (ör. logo şeffaflık uyarısı) */
-.splash-settings-wrap .splash-warn {
-    max-width: 620px;
-    margin-top: 8px;
-    padding: 8px 12px;
-    background: #fcf9e8;
-    border-left: 4px solid #dba617;
-    color: #3c434a;
-}
-
-/* --- Sayfa düzeni: form + canlı önizleme --- */
-
-/* Suite'in .qrms-wrap kabuğu 640px'e kilitlidir; iki sütunlu bu ekranda form
-   sütunu okunmaz hâle gelirdi. Diğer modüller de (yorum-feedback, restoran-menu)
-   kendi genişliklerini kendi kabuk sınıflarında tanımlar. */
 .qrms-ae-wrap {
-	max-width: 1180px;
+	--qrae-primary: #c9a84c;
+	--qrae-primary-soft: rgba(201, 168, 76, 0.16);
+	--qrae-primary-dim: rgba(201, 168, 76, 0.38);
+	--qrae-accent: #2271b1;
+	--qrae-surface: #fff;
+	--qrae-surface-2: #fbfbfb;
+	--qrae-text: #1d2327;
+	--qrae-text-muted: #646970;
+	--qrae-border: #e2e4e7;
+	--qrae-border-strong: #c9cdd2;
+	--qrae-success: #1d9e6f;
+	--qrae-danger: #b32d2e;
+	--qrae-warning: #dba617;
+	--qrae-radius-sm: 8px;
+	--qrae-radius-md: 12px;
+	--qrae-radius-lg: 18px;
+	--qrae-space-2: 8px;
+	--qrae-space-3: 12px;
+	--qrae-space-4: 16px;
+	--qrae-space-5: 24px;
+	--qrae-shadow-sm: 0 1px 2px rgba(16, 24, 32, 0.06);
+	--qrae-shadow-md: 0 8px 24px rgba(16, 24, 32, 0.08);
+	--qrae-focus: 0 0 0 3px rgba(201, 168, 76, 0.35);
+	--qrae-transition: 160ms ease;
+
+	/* Suite'in .qrms-wrap kabuğu 640px'e kilitlidir; iki sütunlu bu ekranda
+	   form sütunu okunmaz hâle gelirdi. İçerik sonsuza kadar yayılmaz:
+	   premium his, whitespace'in kontrollü olmasından gelir. */
+	max-width: 1240px;
+	margin-right: 20px;
+	color: var(--qrae-text);
 }
 
-.qrms-ae-layout {
+/* ---------------- Sayfa başlığı ve gezinme ---------------- */
+
+.qrms-ae-wrap .qrae-head {
+	margin: 12px 0 var(--qrae-space-4);
+}
+
+.qrms-ae-wrap .qrae-eyebrow {
+	margin: 0 0 2px;
+	font-size: 12px;
+	font-weight: 600;
+	letter-spacing: 0.4px;
+	text-transform: uppercase;
+}
+
+.qrms-ae-wrap .qrae-eyebrow a {
+	color: var(--qrae-text-muted);
+	text-decoration: none;
+}
+
+.qrms-ae-wrap .qrae-eyebrow a:hover,
+.qrms-ae-wrap .qrae-eyebrow a:focus {
+	color: var(--qrae-text);
+}
+
+.qrms-ae-wrap .qrae-title {
+	margin: 0;
+	padding: 0;
+	font-size: 23px;
+	font-weight: 700;
+	line-height: 1.25;
+}
+
+.qrms-ae-wrap .qrae-lead {
+	margin: 6px 0 0;
+	max-width: 720px;
+	color: var(--qrae-text-muted);
+	font-size: 13px;
+	line-height: 1.6;
+}
+
+/* Beş ekran arasındaki gezinme. Dar ekranda yatay kaydırılır; satır
+   sarmaz, böylece başlık bloğu telefonlarda dört satıra çıkmaz. */
+.qrms-ae-wrap .qrae-tabs {
+	display: flex;
+	gap: var(--qrae-space-2);
+	margin: 0 0 var(--qrae-space-4);
+	padding-bottom: 2px;
+	overflow-x: auto;
+	scrollbar-width: thin;
+	-webkit-overflow-scrolling: touch;
+}
+
+.qrms-ae-wrap .qrae-tab {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	flex: none;
+	min-height: 38px;
+	padding: 0 var(--qrae-space-3);
+	border: 1px solid var(--qrae-border);
+	border-radius: 999px;
+	background: var(--qrae-surface);
+	color: var(--qrae-text-muted);
+	font-size: 13px;
+	font-weight: 600;
+	text-decoration: none;
+	white-space: nowrap;
+	transition: border-color var(--qrae-transition), color var(--qrae-transition);
+}
+
+.qrms-ae-wrap .qrae-tab .dashicons {
+	font-size: 16px;
+	width: 16px;
+	height: 16px;
+}
+
+.qrms-ae-wrap .qrae-tab:hover {
+	border-color: var(--qrae-primary-dim);
+	color: var(--qrae-text);
+}
+
+.qrms-ae-wrap .qrae-tab.is-current {
+	border-color: var(--qrae-primary);
+	background: var(--qrae-primary-soft);
+	color: var(--qrae-text);
+}
+
+.qrms-ae-wrap .qrae-tab:focus-visible {
+	outline: 2px solid var(--qrae-accent);
+	outline-offset: 1px;
+}
+
+/* ---------------- Kart ---------------- */
+
+.qrms-ae-wrap .qrae-card {
+	margin: 0 0 var(--qrae-space-4);
+	padding: var(--qrae-space-5);
+	border: 1px solid var(--qrae-border);
+	border-radius: var(--qrae-radius-lg);
+	background: var(--qrae-surface);
+	box-shadow: var(--qrae-shadow-sm);
+}
+
+.qrms-ae-wrap .qrae-card-head {
+	margin: 0 0 var(--qrae-space-4);
+	padding-bottom: var(--qrae-space-3);
+	border-bottom: 1px solid var(--qrae-border);
+}
+
+.qrms-ae-wrap .qrae-card-title {
+	margin: 0;
+	padding: 0;
+	font-size: 15px;
+	font-weight: 700;
+	line-height: 1.3;
+}
+
+.qrms-ae-wrap .qrae-card-desc {
+	margin: 4px 0 0;
+	color: var(--qrae-text-muted);
+	font-size: 13px;
+	line-height: 1.55;
+}
+
+/* "Gelişmiş" bloğu: kapalı gelir, ileri seviye ayarları saklar. */
+.qrms-ae-wrap .qrae-advanced > summary {
+	cursor: pointer;
+	list-style: none;
+	padding: 0;
+	border: 0;
+}
+
+.qrms-ae-wrap .qrae-advanced > summary::-webkit-details-marker {
+	display: none;
+}
+
+.qrms-ae-wrap .qrae-advanced > summary::after {
+	content: "▾";
+	margin-left: 6px;
+	color: var(--qrae-text-muted);
+	font-size: 12px;
+}
+
+.qrms-ae-wrap .qrae-advanced[open] > summary::after {
+	content: "▴";
+}
+
+.qrms-ae-wrap .qrae-advanced > summary:focus-visible {
+	outline: 2px solid var(--qrae-accent);
+	outline-offset: 2px;
+}
+
+.qrms-ae-wrap .qrae-advanced .qrae-card-body {
+	margin-top: var(--qrae-space-4);
+	padding-top: var(--qrae-space-4);
+	border-top: 1px solid var(--qrae-border);
+}
+
+/* ---------------- Alan: etiket → açıklama → kontrol ---------------- */
+
+.qrms-ae-wrap .qrae-field {
+	margin: 0 0 var(--qrae-space-4);
+	padding-bottom: var(--qrae-space-4);
+	border-bottom: 1px solid var(--qrae-surface-2);
+}
+
+.qrms-ae-wrap .qrae-field:last-child {
+	margin-bottom: 0;
+	padding-bottom: 0;
+	border-bottom: 0;
+}
+
+.qrms-ae-wrap .qrae-label {
+	display: block;
+	margin: 0 0 2px;
+	font-size: 13.5px;
+	font-weight: 600;
+	line-height: 1.4;
+}
+
+.qrms-ae-wrap .qrae-hint {
+	margin: 0 0 var(--qrae-space-2);
+	max-width: 640px;
+	color: var(--qrae-text-muted);
+	font-size: 12.5px;
+	line-height: 1.55;
+}
+
+.qrms-ae-wrap .qrae-hint-block {
+	margin-top: var(--qrae-space-2);
+}
+
+.qrms-ae-wrap .qrae-control {
+	max-width: 640px;
+}
+
+/* Koşullu alanlar. "Gizle" tamamen kaldırır, "soluklaştır" ise alanın o an
+   etkisiz olduğunu gösterir ama erişilebilir bırakır. Hiçbir durumda
+   disabled kullanılmaz: POST'tan düşen alan kayıtlı değeri silerdi. */
+.qrms-ae-wrap .qrae-field.is-hidden,
+.qrms-ae-wrap .qrae-card.is-hidden {
+	display: none;
+}
+
+.qrms-ae-wrap .qrae-field.is-muted {
+	opacity: 0.5;
+}
+
+.qrms-ae-wrap .qrae-notice {
+	margin: var(--qrae-space-2) 0 0;
+	padding: 8px 12px;
+	border-left: 4px solid var(--qrae-warning);
+	border-radius: 0 var(--qrae-radius-sm) var(--qrae-radius-sm) 0;
+	background: #fcf9e8;
+	font-size: 12.5px;
+}
+
+/* ---------------- Girdiler ---------------- */
+
+.qrms-ae-wrap .qrae-input {
+	width: 100%;
+	max-width: 480px;
+	min-height: 40px;
+	padding: 8px 12px;
+	border: 1px solid var(--qrae-border-strong);
+	border-radius: var(--qrae-radius-sm);
+	background: var(--qrae-surface);
+	/* 16px: iOS Safari daha küçük yazıda alana odaklanınca sayfayı
+	   kendiliğinden yakınlaştırır. */
+	font-size: 16px;
+	line-height: 1.5;
+}
+
+.qrms-ae-wrap .qrae-input:focus {
+	border-color: var(--qrae-primary);
+	box-shadow: var(--qrae-focus);
+	outline: 2px solid transparent;
+}
+
+.qrms-ae-wrap .qrae-input[aria-invalid="true"] {
+	border-color: var(--qrae-danger);
+}
+
+.qrms-ae-wrap .qrae-input-number {
+	width: 110px;
+	max-width: 110px;
+}
+
+.qrms-ae-wrap .qrae-select {
+	width: 100%;
+	max-width: 340px;
+	min-height: 40px;
+	border-radius: var(--qrae-radius-sm);
+}
+
+.qrms-ae-wrap .qrae-error {
+	margin: 6px 0 0;
+	color: var(--qrae-danger);
+	font-size: 12.5px;
+	font-weight: 500;
+}
+
+.qrms-ae-wrap .qrae-inline {
+	display: flex;
+	align-items: center;
+	gap: var(--qrae-space-2);
+	flex-wrap: wrap;
+}
+
+.qrms-ae-wrap .qrae-inline-label {
+	color: var(--qrae-text-muted);
+	font-size: 12.5px;
+}
+
+.qrms-ae-wrap .qrae-unit {
+	color: var(--qrae-text-muted);
+	font-size: 13px;
+}
+
+.qrms-ae-wrap .qrae-list {
+	margin: var(--qrae-space-2) 0 0;
+	padding-left: 18px;
+	list-style: disc;
+	color: var(--qrae-text-muted);
+	font-size: 12.5px;
+	line-height: 1.6;
+}
+
+.qrms-ae-wrap .qrae-details {
+	margin-top: var(--qrae-space-3);
+}
+
+.qrms-ae-wrap .qrae-details > summary {
+	cursor: pointer;
+	color: var(--qrae-text-muted);
+	font-size: 12.5px;
+	font-weight: 600;
+}
+
+.qrms-ae-wrap .qrae-details > summary:focus-visible {
+	outline: 2px solid var(--qrae-accent);
+	outline-offset: 2px;
+}
+
+/* ---------------- Kaydırıcı ---------------- */
+
+.qrms-ae-wrap .qrae-range {
+	display: flex;
+	align-items: center;
+	gap: var(--qrae-space-3);
+}
+
+.qrms-ae-wrap .splash-range {
+	flex: 1 1 auto;
+	width: 100%;
+	max-width: 340px;
+	min-width: 0;
+	margin: 0;
+	vertical-align: middle;
+	accent-color: var(--qrae-primary);
+}
+
+.qrms-ae-wrap .splash-range-value {
+	flex: none;
+	min-width: 56px;
+	padding: 3px 8px;
+	border: 1px solid var(--qrae-border);
+	border-radius: 999px;
+	background: var(--qrae-surface-2);
+	font-size: 12.5px;
+	font-weight: 700;
+	text-align: center;
+	font-variant-numeric: tabular-nums;
+}
+
+.qrms-ae-wrap .qrae-range-scale {
+	display: flex;
+	justify-content: space-between;
+	max-width: 340px;
+	margin: 2px 0 0;
+	color: var(--qrae-text-muted);
+	font-size: 11px;
+}
+
+/* Hazır değerler: sayıyı ezberlemeden makul bir seçim. */
+.qrms-ae-wrap .qrae-presets {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	margin-top: var(--qrae-space-2);
+}
+
+.qrms-ae-wrap .qrae-presets-block {
+	margin-bottom: var(--qrae-space-3);
+}
+
+.qrms-ae-wrap .qrae-preset {
+	min-height: 32px;
+	padding: 0 12px;
+	border: 1px solid var(--qrae-border);
+	border-radius: 999px;
+	background: var(--qrae-surface);
+	color: var(--qrae-text-muted);
+	font-size: 12.5px;
+	font-weight: 600;
+	cursor: pointer;
+	transition: border-color var(--qrae-transition), color var(--qrae-transition), background var(--qrae-transition);
+}
+
+.qrms-ae-wrap .qrae-preset:hover {
+	border-color: var(--qrae-primary-dim);
+	color: var(--qrae-text);
+}
+
+.qrms-ae-wrap .qrae-preset.is-active {
+	border-color: var(--qrae-primary);
+	background: var(--qrae-primary-soft);
+	color: var(--qrae-text);
+}
+
+.qrms-ae-wrap .qrae-preset:focus-visible {
+	outline: 2px solid var(--qrae-accent);
+	outline-offset: 1px;
+}
+
+/* ---------------- Açık/kapalı anahtarı ---------------- */
+/* Görsel olarak switch, teknik olarak checkbox: POST sözleşmesi aynı kalır. */
+
+.qrms-ae-wrap .qrae-switch {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--qrae-space-2);
+	min-height: 36px;
+	cursor: pointer;
+}
+
+.qrms-ae-wrap .qrae-switch input[type="checkbox"],
+.qrms-ae-wrap .splash-social-check {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	margin: -1px;
+	padding: 0;
+	overflow: hidden;
+	clip: rect(0 0 0 0);
+	clip-path: inset(50%);
+	white-space: nowrap;
+	border: 0;
+}
+
+.qrms-ae-wrap .qrae-switch-track {
+	position: relative;
+	flex: none;
+	width: 40px;
+	height: 22px;
+	border: 1px solid var(--qrae-border-strong);
+	border-radius: 999px;
+	background: #f0f0f1;
+	transition: background var(--qrae-transition), border-color var(--qrae-transition);
+}
+
+.qrms-ae-wrap .qrae-switch-thumb {
+	position: absolute;
+	top: 2px;
+	left: 2px;
+	width: 16px;
+	height: 16px;
+	border-radius: 50%;
+	background: #fff;
+	box-shadow: var(--qrae-shadow-sm);
+	transition: transform var(--qrae-transition);
+}
+
+.qrms-ae-wrap input:checked + .qrae-switch-track {
+	border-color: var(--qrae-primary);
+	background: var(--qrae-primary);
+}
+
+.qrms-ae-wrap input:checked + .qrae-switch-track .qrae-switch-thumb {
+	transform: translateX(18px);
+}
+
+.qrms-ae-wrap input:focus-visible + .qrae-switch-track {
+	outline: 2px solid var(--qrae-accent);
+	outline-offset: 2px;
+}
+
+.qrms-ae-wrap input:disabled + .qrae-switch-track {
+	opacity: 0.45;
+}
+
+.qrms-ae-wrap .qrae-switch-text {
+	font-size: 13px;
+}
+
+/* ---------------- Onay kutusu ızgarası (diller) ---------------- */
+
+.qrms-ae-wrap .qrae-check-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+	gap: 4px var(--qrae-space-3);
+	margin: 0;
+	padding: 0;
+	border: 0;
+}
+
+.qrms-ae-wrap .qrae-check {
+	display: flex;
+	align-items: center;
+	gap: var(--qrae-space-2);
+	min-height: 34px;
+	font-size: 13px;
+	cursor: pointer;
+}
+
+.qrms-ae-wrap .splash-ceviri-langs.is-disabled {
+	opacity: 0.5;
+}
+
+/* ---------------- Seçim kartları (görünüm modu) ---------------- */
+
+.qrms-ae-wrap .qrae-choice-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+	gap: var(--qrae-space-2);
+	margin: 0 0 var(--qrae-space-4);
+}
+
+.qrms-ae-wrap .qrae-choice {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--qrae-space-2);
+	padding: var(--qrae-space-3);
+	border: 1px solid var(--qrae-border);
+	border-radius: var(--qrae-radius-md);
+	background: var(--qrae-surface);
+	cursor: pointer;
+	transition: border-color var(--qrae-transition), box-shadow var(--qrae-transition);
+}
+
+.qrms-ae-wrap .qrae-choice:hover {
+	border-color: var(--qrae-primary-dim);
+}
+
+.qrms-ae-wrap .qrae-choice input[type="radio"] {
+	flex: none;
+	margin: 2px 0 0;
+}
+
+.qrms-ae-wrap .qrae-choice:has(input:checked) {
+	border-color: var(--qrae-primary);
+	box-shadow: 0 0 0 1px var(--qrae-primary);
+}
+
+.qrms-ae-wrap .qrae-choice:has(input:focus-visible) {
+	outline: 2px solid var(--qrae-accent);
+	outline-offset: 2px;
+}
+
+.qrms-ae-wrap .qrae-choice-body {
+	display: block;
+	min-width: 0;
+}
+
+.qrms-ae-wrap .qrae-choice-title {
+	display: block;
+	font-size: 13px;
+	font-weight: 600;
+}
+
+.qrms-ae-wrap .qrae-choice-desc {
+	display: block;
+	margin-top: 2px;
+	color: var(--qrae-text-muted);
+	font-size: 12px;
+	line-height: 1.5;
+}
+
+/* ---------------- Hızlı tema ---------------- */
+
+.qrms-ae-wrap .qrae-theme-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+	gap: var(--qrae-space-2);
+}
+
+.qrms-ae-wrap .qrae-theme {
+	display: flex;
+	align-items: center;
+	gap: var(--qrae-space-2);
+	min-height: 52px;
+	padding: var(--qrae-space-2) var(--qrae-space-3);
+	border: 1px solid var(--qrae-border);
+	border-radius: var(--qrae-radius-md);
+	background: var(--qrae-surface);
+	color: var(--qrae-text);
+	font-size: 12.5px;
+	font-weight: 600;
+	text-align: left;
+	cursor: pointer;
+	transition: border-color var(--qrae-transition), box-shadow var(--qrae-transition);
+}
+
+.qrms-ae-wrap .qrae-theme:hover {
+	border-color: var(--qrae-primary-dim);
+	box-shadow: var(--qrae-shadow-sm);
+}
+
+.qrms-ae-wrap .qrae-theme:focus-visible {
+	outline: 2px solid var(--qrae-accent);
+	outline-offset: 1px;
+}
+
+/* Zemin + vurgu: paletin ne olduğunu ada bakmadan gösterir. */
+.qrms-ae-wrap .qrae-theme-swatch {
+	display: flex;
+	align-items: flex-end;
+	justify-content: center;
+	flex: none;
+	width: 34px;
+	height: 34px;
+	padding-bottom: 5px;
+	border: 1px solid rgba(0, 0, 0, 0.12);
+	border-radius: var(--qrae-radius-sm);
+}
+
+.qrms-ae-wrap .qrae-theme-swatch span {
+	display: block;
+	width: 18px;
+	height: 6px;
+	border-radius: 999px;
+}
+
+.qrms-ae-wrap .qrae-theme-name {
+	min-width: 0;
+	line-height: 1.35;
+}
+
+/* ---------------- Ödeme yöntemi kartları ---------------- */
+
+.qrms-ae-wrap .qrae-counter {
+	margin: 0 0 var(--qrae-space-3);
+	color: var(--qrae-text-muted);
+	font-size: 12.5px;
+}
+
+.qrms-ae-wrap .qrae-counter strong {
+	font-size: 15px;
+	color: var(--qrae-text);
+}
+
+.qrms-ae-wrap .qrae-chip-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+	gap: var(--qrae-space-2);
+	margin: 0;
+}
+
+.qrms-ae-wrap .qrae-chip {
+	position: relative;
+	display: flex;
+	align-items: center;
+	gap: var(--qrae-space-2);
+	min-height: 52px;
+	padding: var(--qrae-space-2) 38px var(--qrae-space-2) var(--qrae-space-3);
+	border: 1px solid var(--qrae-border);
+	border-radius: var(--qrae-radius-md);
+	background: var(--qrae-surface);
+	cursor: pointer;
+	transition: border-color var(--qrae-transition), background var(--qrae-transition);
+}
+
+.qrms-ae-wrap .qrae-chip-input {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	margin: -1px;
+	padding: 0;
+	overflow: hidden;
+	clip: rect(0 0 0 0);
+	clip-path: inset(50%);
+	white-space: nowrap;
+	border: 0;
+}
+
+.qrms-ae-wrap .qrae-chip-body {
+	display: flex;
+	align-items: center;
+	min-width: 0;
+}
+
+/* Ön yüz rozeti yönetimde birebir aynı markup'tan gelir; ölçüsü burada
+   liste satırına uyacak şekilde sadeleşir. */
+.qrms-ae-wrap .qrae-chip .splash-pay {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--qrae-space-2);
+	color: var(--sp-pay-color, var(--qrae-text));
+}
+
+.qrms-ae-wrap .qrae-chip .splash-pay-icon {
+	flex: none;
+	width: 22px;
+	height: 22px;
+}
+
+.qrms-ae-wrap .qrae-chip .splash-pay-label {
+	color: var(--qrae-text);
+	font-size: 13px;
+	font-weight: 600;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.qrms-ae-wrap .qrae-chip-mark {
+	position: absolute;
+	top: 50%;
+	right: 12px;
+	width: 20px;
+	height: 20px;
+	margin-top: -10px;
+	border: 1px solid var(--qrae-border-strong);
+	border-radius: 50%;
+	background: var(--qrae-surface);
+	transition: background var(--qrae-transition), border-color var(--qrae-transition);
+}
+
+.qrms-ae-wrap .qrae-chip-mark::after {
+	content: "";
+	position: absolute;
+	top: 4px;
+	left: 6px;
+	width: 5px;
+	height: 9px;
+	border: solid #fff;
+	border-width: 0 2px 2px 0;
+	opacity: 0;
+	transform: rotate(45deg);
+}
+
+.qrms-ae-wrap .qrae-chip:has(input:checked) {
+	border-color: var(--qrae-primary);
+	background: var(--qrae-primary-soft);
+}
+
+.qrms-ae-wrap .qrae-chip:has(input:checked) .qrae-chip-mark {
+	border-color: var(--qrae-primary);
+	background: var(--qrae-primary);
+}
+
+.qrms-ae-wrap .qrae-chip:has(input:checked) .qrae-chip-mark::after {
+	opacity: 1;
+}
+
+.qrms-ae-wrap .qrae-chip:has(input:focus-visible) {
+	outline: 2px solid var(--qrae-accent);
+	outline-offset: 2px;
+}
+
+/* :has() desteklemeyen tarayıcıda klavye odağı görünmez kalmasın: kutunun
+   kendisi görsel olarak gizli, o yüzden işaret dairesi odak halkasını taşır. */
+.qrms-ae-wrap .qrae-chip-input:focus-visible ~ .qrae-chip-mark {
+	outline: 2px solid var(--qrae-accent);
+	outline-offset: 2px;
+}
+
+/* :has() desteklemeyen tarayıcıda kart yine tıklanır; seçili durumu JS'in
+   eklediği sınıf gösterir. */
+.qrms-ae-wrap .qrae-chip.is-on {
+	border-color: var(--qrae-primary);
+	background: var(--qrae-primary-soft);
+}
+
+/* ---------------- Buton kartları ---------------- */
+
+.qrms-ae-wrap .qrae-state {
+	margin: 0 0 var(--qrae-space-3);
+}
+
+.qrms-ae-wrap .qrae-badge {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 3px 10px;
+	border: 1px solid var(--qrae-border);
+	border-radius: 999px;
+	background: var(--qrae-surface-2);
+	color: var(--qrae-text-muted);
+	font-size: 12px;
+	font-weight: 600;
+}
+
+.qrms-ae-wrap .qrae-badge::before {
+	content: "";
+	width: 7px;
+	height: 7px;
+	border-radius: 50%;
+	background: var(--qrae-border-strong);
+}
+
+.qrms-ae-wrap .qrae-badge.is-on {
+	border-color: rgba(29, 158, 111, 0.35);
+	background: rgba(29, 158, 111, 0.10);
+	color: #14664a;
+}
+
+.qrms-ae-wrap .qrae-badge.is-on::before {
+	background: var(--qrae-success);
+}
+
+/* ---------------- Sosyal hesaplar ---------------- */
+
+.qrms-ae-wrap .qrae-social-grid {
+	display: flex;
+	flex-direction: column;
+	gap: var(--qrae-space-2);
+	margin: 0;
+}
+
+.qrms-ae-wrap .qrae-social-row {
+	display: grid;
+	grid-template-columns: 210px minmax(0, 1fr);
+	align-items: start;
+	gap: var(--qrae-space-3);
+	padding: var(--qrae-space-3);
+	border: 1px solid var(--qrae-border);
+	border-radius: var(--qrae-radius-md);
+	background: var(--qrae-surface);
+	transition: border-color var(--qrae-transition), background var(--qrae-transition);
+}
+
+.qrms-ae-wrap .qrae-social-row.is-on {
+	border-color: var(--qrae-primary-dim);
+	background: var(--qrae-surface-2);
+}
+
+.qrms-ae-wrap .qrae-social-head {
+	display: flex;
+	align-items: center;
+	gap: var(--qrae-space-2);
+	min-height: 40px;
+	font-size: 13px;
+	font-weight: 600;
+	cursor: pointer;
+}
+
+.qrms-ae-wrap .qrae-social-icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	flex: none;
+	width: 28px;
+	height: 28px;
+	border: 1px solid var(--qrae-border);
+	border-radius: var(--qrae-radius-sm);
+	color: var(--qrae-text-muted);
+}
+
+.qrms-ae-wrap .qrae-social-row.is-on .qrae-social-icon {
+	border-color: var(--qrae-primary-dim);
+	color: var(--qrae-text);
+}
+
+.qrms-ae-wrap .qrae-social-name {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+/* Kapalı hesapta adres alanı hiç gösterilmez: gereksiz kutu yok.
+   Sınıfı JS yönetir; JS çalışmasa bile :has() destekleyen tarayıcıda alan
+   kutu işaretlenir işaretlenmez görünür (ilerlemeli iyileştirme). */
+.qrms-ae-wrap .qrae-social-row:not(.is-on) .qrae-social-url {
+	display: none;
+}
+
+.qrms-ae-wrap .qrae-social-row:has(.splash-social-check:checked) .qrae-social-url {
+	display: block;
+}
+
+.qrms-ae-wrap .qrae-social-url .qrae-input {
+	max-width: none;
+}
+
+.qrms-ae-wrap .qrae-social-head input:disabled ~ .qrae-social-name,
+.qrms-ae-wrap .qrae-social-head input:disabled ~ .qrae-social-icon {
+	opacity: 0.5;
+}
+
+.qrms-ae-wrap .qrae-limit-note {
+	display: none;
+	margin: 0 0 var(--qrae-space-3);
+	padding: 8px 12px;
+	border-left: 4px solid var(--qrae-warning);
+	border-radius: 0 var(--qrae-radius-sm) var(--qrae-radius-sm) 0;
+	background: #fcf9e8;
+	color: #3c434a;
+	font-size: 12.5px;
+}
+
+.qrms-ae-wrap .qrae-limit-note.is-visible {
+	display: block;
+}
+
+/* ---------------- Medya alanı ---------------- */
+
+.qrms-ae-wrap .qrae-media {
+	max-width: 520px;
+}
+
+.qrms-ae-wrap .qrae-media-thumb {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 100%;
+	max-width: 160px;
+	min-height: 96px;
+	margin: 0 0 var(--qrae-space-2);
+	padding: 6px;
+	border: 1px dashed var(--qrae-border-strong);
+	border-radius: var(--qrae-radius-md);
+	background: var(--qrae-surface-2);
+	overflow: hidden;
+}
+
+.qrms-ae-wrap .qrae-media-thumb img {
+	display: block;
+	max-width: 100%;
+	max-height: 180px;
+	height: auto;
+	border-radius: var(--qrae-radius-sm);
+}
+
+.qrms-ae-wrap .qrae-media-thumb.is-portrait img {
+	max-height: 200px;
+}
+
+.qrms-ae-wrap .qrae-media-thumb.is-wide {
+	max-width: 240px;
+	min-height: 84px;
+}
+
+.qrms-ae-wrap .qrae-media-empty {
+	color: var(--qrae-text-muted);
+	font-size: 12px;
+}
+
+.qrms-ae-wrap .qrae-media-actions {
+	display: flex;
+	align-items: center;
+	gap: var(--qrae-space-3);
+	flex-wrap: wrap;
+	margin: 0;
+}
+
+.qrms-ae-wrap .splash-remove-image {
+	color: var(--qrae-danger);
+	text-decoration: none;
+}
+
+.qrms-ae-wrap .splash-remove-image.hidden {
+	display: none;
+}
+
+.qrms-ae-wrap .splash-media-warnings:empty {
+	display: none;
+}
+
+.qrms-ae-wrap .splash-media-warnings {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	margin-top: var(--qrae-space-2);
+}
+
+.qrms-ae-wrap .splash-media-warning {
+	padding: 8px 12px;
+	border-left: 4px solid var(--qrae-warning);
+	border-radius: 0 var(--qrae-radius-sm) var(--qrae-radius-sm) 0;
+	background: #fcf9e8;
+	color: #3c434a;
+	font-size: 12.5px;
+	line-height: 1.5;
+}
+
+/* ---------------- Kaydet çubuğu ---------------- */
+
+.qrms-ae-wrap .qrms-ae-save-bar {
+	position: sticky;
+	bottom: 0;
+	z-index: 10;
+	display: flex;
+	align-items: center;
+	gap: var(--qrae-space-3);
+	flex-wrap: wrap;
+	margin-top: var(--qrae-space-4);
+	padding: var(--qrae-space-3) var(--qrae-space-4);
+	border: 1px solid var(--qrae-border);
+	border-radius: var(--qrae-radius-md);
+	background: var(--qrae-surface);
+	box-shadow: var(--qrae-shadow-md);
+}
+
+/* `hidden` niteliği her zaman kazanmalı: aşağıdaki display kuralları
+   tarayıcının [hidden] varsayılanını ezerdi ve JS ile gizlenen uyarılar
+   ekranda kalırdı. */
+.qrms-ae-wrap [hidden] {
+	display: none !important;
+}
+
+.qrms-ae-wrap .qrae-dirty {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	color: #8a6d00;
+	font-size: 12.5px;
+	font-weight: 600;
+}
+
+.qrms-ae-wrap .qrae-dirty::before {
+	content: "";
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background: var(--qrae-warning);
+}
+
+.qrms-ae-wrap .qrae-link-external {
+	margin-left: auto;
+	font-size: 12.5px;
+	text-decoration: none;
+}
+
+/* ---------------- Düzen: form + canlı önizleme ---------------- */
+
+.qrms-ae-wrap .qrms-ae-layout {
 	display: grid;
 	grid-template-columns: minmax(0, 1fr) 340px;
-	gap: 28px;
+	gap: var(--qrae-space-5);
 	align-items: start;
 }
 
-.qrms-ae-form { min-width: 0; }
-
-.qrms-ae-preview-col {
-	position: sticky;
-	top: 46px;
+.qrms-ae-wrap .qrms-ae-form {
+	min-width: 0;
 }
 
-.qrms-ae-preview-col h2 {
-	font-size: 14px;
-	margin: 0 0 8px;
+.qrms-ae-wrap .qrms-ae-preview-col {
+	position: sticky;
+	/* Yönetici çubuğunun altına yapışır; ayarlar kaydırılırken telefon
+	   görünür kalır. */
+	top: 46px;
+	min-width: 0;
+}
+
+.qrms-ae-wrap .qrae-preview-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--qrae-space-2);
+	margin: 0 0 var(--qrae-space-2);
+}
+
+.qrms-ae-wrap .qrms-ae-preview-col h2 {
+	margin: 0;
+	padding: 0;
+	font-size: 13px;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.4px;
+	color: var(--qrae-text-muted);
+}
+
+.qrms-ae-wrap .qrae-preview-collapse {
+	min-height: 30px;
+	padding: 0 10px;
+	border: 1px solid var(--qrae-border);
+	border-radius: 999px;
+	background: var(--qrae-surface);
+	color: var(--qrae-text-muted);
+	font-size: 12px;
+	font-weight: 600;
+	cursor: pointer;
+}
+
+.qrms-ae-wrap .qrae-preview-collapse:focus-visible {
+	outline: 2px solid var(--qrae-accent);
+	outline-offset: 1px;
+}
+
+/* Geniş ekranda önizleme her zaman açıktır; katlama düğmesi yalnızca dar
+   ekranda anlamlıdır. */
+@media (min-width: 961px) {
+	.qrms-ae-wrap .qrae-preview-collapse {
+		display: none;
+	}
 }
 
 /* Önizleme çerçevesi: telefon oranında (9:19.5) sabit bir pencere. İçindeki
-   overlay frontend'de position:fixed'dir; burada çerçeveye hapsedilir. */
-.qrms-ae-preview-frame {
+   overlay ön yüzde position:fixed'dir; burada çerçeveye hapsedilir. */
+.qrms-ae-wrap .qrms-ae-preview-frame {
 	position: relative;
 	width: 100%;
 	max-width: 320px;
 	aspect-ratio: 9 / 19.5;
 	overflow: hidden;
-	border: 1px solid #c3c4c7;
+	border: 1px solid var(--qrae-border-strong);
 	border-radius: 22px;
 	background: var(--sp-bg, #f7f9fc);
-	box-shadow: 0 6px 20px rgba(0, 0, 0, .12);
+	box-shadow: var(--qrae-shadow-md);
 	contain: layout paint;
 }
 
 /* Ön yüzde overlay position:fixed ve height:100dvh'dir; burada çerçeveye
    hapsedilir. Yükseklik AÇIKÇA ezilmeli: yalnızca inset vermek 100dvh'yi
    geçersiz kılmaz, splash çerçevenin altından taşar. */
-.qrms-ae-preview-frame #custom-splash-overlay.is-preview {
+.qrms-ae-wrap .qrms-ae-preview-frame #custom-splash-overlay.is-preview {
 	position: absolute;
 	inset: 0;
 	width: 100%;
@@ -318,54 +1139,126 @@
 	animation: none;
 }
 
-/* Önizlemedeki modal frontend'de tam ekrandır; çerçeve içinde kalsın. */
-.qrms-ae-preview-frame .splash-modal { position: absolute; }
+/* Önizlemedeki pencere ön yüzde tam ekrandır; çerçeve içinde kalsın. */
+.qrms-ae-wrap .qrms-ae-preview-frame .splash-modal {
+	position: absolute;
+}
 
-.qrms-ae-preview-note {
-	margin: 10px 0 0;
-	color: #50575e;
+.qrms-ae-wrap .qrms-ae-preview-note {
+	margin: var(--qrae-space-2) 0 0;
+	color: var(--qrae-text-muted);
 	font-size: 12px;
 	line-height: 1.6;
 }
 
-.qrms-ae-preview-note .button { margin-top: 6px; display: block; }
+.qrms-ae-wrap .qrms-ae-preview-note .button {
+	margin-top: 6px;
+	display: block;
+}
 
 /* Yapıyı değiştiren ayarlar yeni markup ister; o zaman önizleme "bayat" olur. */
-.qrms-ae-preview.is-stale .qrms-ae-preview-frame { opacity: .55; }
+.qrms-ae-wrap .qrms-ae-preview.is-stale .qrms-ae-preview-frame {
+	opacity: 0.55;
+}
 
-.qrms-ae-preview.is-stale::before {
+.qrms-ae-wrap .qrms-ae-preview.is-stale::before {
 	content: "Kaydedilince güncellenecek";
 	display: block;
-	margin-bottom: 8px;
+	margin-bottom: var(--qrae-space-2);
 	padding: 6px 10px;
-	border-radius: 4px;
+	border-left: 4px solid var(--qrae-warning);
+	border-radius: 0 var(--qrae-radius-sm) var(--qrae-radius-sm) 0;
 	background: #fcf9e8;
-	border-left: 4px solid #dba617;
-	font-size: 12px;
 	color: #50575e;
+	font-size: 12px;
 }
 
-.qrms-ae-save-bar {
-	display: flex;
-	align-items: center;
-	gap: 16px;
-	flex-wrap: wrap;
-	margin-top: 24px;
-	padding-top: 16px;
-	border-top: 1px solid #dcdcde;
-}
+/* ---------------- Duyarlı davranış ---------------- */
 
-/* Dar ekran: önizleme formun ALTINA iner ve yapışkanlığı kalkar; dokunmatikte
-   sabit bir sütun ekranın yarısını yemesin. */
+/* Tablet/dar masaüstü: önizleme formun ALTINA iner ve yapışkanlığı kalkar;
+   sabit bir sütun dokunmatikte ekranın yarısını yemesin. */
 @media (max-width: 960px) {
-	.qrms-ae-layout { grid-template-columns: minmax(0, 1fr); }
-	.qrms-ae-preview-col { position: static; }
-	.qrms-ae-preview-frame { max-width: 260px; }
+	.qrms-ae-wrap {
+		margin-right: 10px;
+	}
+
+	.qrms-ae-wrap .qrms-ae-layout {
+		grid-template-columns: minmax(0, 1fr);
+	}
+
+	/* Önizleme formdan ÖNCE gelir: dar ekranda kullanıcı önce ne
+	   değiştirdiğini görür, sonra ayarlara iner. */
+	.qrms-ae-wrap .qrms-ae-preview-col {
+		position: static;
+		order: -1;
+		padding: var(--qrae-space-3);
+		border: 1px solid var(--qrae-border);
+		border-radius: var(--qrae-radius-md);
+		background: var(--qrae-surface);
+	}
+
+	.qrms-ae-wrap .qrms-ae-preview-frame {
+		max-width: 240px;
+		margin: 0 auto;
+	}
+
+	/* Katlanmış önizleme: form gereksiz yere uzamaz. */
+	.qrms-ae-wrap .qrms-ae-preview-col.is-collapsed #qrae-preview-body {
+		display: none;
+	}
 }
 
 @media (max-width: 782px) {
-	.qrms-ae-preview-frame { max-width: 100%; }
-	.qrms-ae-save-bar .button { width: 100%; text-align: center; }
-	.splash-range { width: 100%; }
+	.qrms-ae-wrap {
+		margin-right: 0;
+	}
+
+	.qrms-ae-wrap .qrae-card {
+		padding: var(--qrae-space-4);
+	}
+
+	.qrms-ae-wrap .qrae-social-row {
+		grid-template-columns: minmax(0, 1fr);
+		gap: var(--qrae-space-2);
+	}
+
+	.qrms-ae-wrap .qrae-range {
+		flex-wrap: wrap;
+	}
+
+	.qrms-ae-wrap .splash-range,
+	.qrms-ae-wrap .qrae-range-scale,
+	.qrms-ae-wrap .qrae-select,
+	.qrms-ae-wrap .qrae-input {
+		max-width: none;
+	}
+
+	.qrms-ae-wrap .qrms-ae-save-bar {
+		/* Telefonda kaydet düğmesi tam genişlik; parmakla ıskalanmaz. */
+		padding: var(--qrae-space-3);
+	}
+
+	.qrms-ae-wrap .qrms-ae-save-bar .button {
+		width: 100%;
+		text-align: center;
+	}
+
+	.qrms-ae-wrap .qrae-link-external {
+		margin-left: 0;
+	}
+
+	.qrms-ae-wrap .qrae-chip-grid,
+	.qrms-ae-wrap .qrae-theme-grid,
+	.qrms-ae-wrap .qrae-choice-grid {
+		grid-template-columns: minmax(0, 1fr);
+	}
 }
 
+/* ---------------- Hareket azaltma ---------------- */
+
+@media (prefers-reduced-motion: reduce) {
+	.qrms-ae-wrap * {
+		transition: none !important;
+		animation: none !important;
+	}
+}
