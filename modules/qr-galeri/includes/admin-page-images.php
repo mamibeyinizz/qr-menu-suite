@@ -31,9 +31,12 @@ $sections_page = 'qrmgm-sections';
 	<?php endif; ?>
 
 	<div id="qrmgm-dropzone" class="qrmgm-dropzone" data-section="<?php echo esc_attr( $current_id ); ?>">
-		<p>Görselleri buraya sürükleyin veya <button type="button" class="button" id="qrmgm-browse-btn">Bilgisayardan Seç</button></p>
+		<span class="dashicons dashicons-cloud-upload qrmgm-dropzone-icon" aria-hidden="true"></span>
+		<p class="qrmgm-dropzone-title">Fotoğraflarınızı ekleyin</p>
+		<p class="qrmgm-dropzone-desc">Birden fazla fotoğrafı sürükleyip bırakın veya cihazınızdan seçin.</p>
+		<button type="button" class="button button-primary" id="qrmgm-browse-btn">Bilgisayardan Seç</button>
 		<input type="file" id="qrmgm-file-input" accept="image/jpeg,image/jpg,image/png,image/webp" multiple style="display:none;" />
-		<div id="qrmgm-upload-progress"></div>
+		<div id="qrmgm-upload-progress" role="status" aria-live="polite"></div>
 	</div>
 
 	<div id="qrmgm-images-grid" class="qrmgm-images-grid" data-section="<?php echo esc_attr( $current_id ); ?>">

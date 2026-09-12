@@ -16,15 +16,114 @@ trait QRMGM_Ajax_Trait {
 		}
 	}
 
+	/**
+	 * Bir ID'nin gerçekten beklenen CPT'ye ait olduğunu doğrular.
+	 *
+	 * GÜVENLİK: AJAX uçlarına gelen ID'ler doğrudan istemciden gelir; bu
+	 * kontrol olmadan bir uç, galeri dışındaki herhangi bir post'u (sayfa,
+	 * ürün, vb.) değiştirebilir veya silebilir.
+	 */
+	private function is_post_type( int $id, string $type ): bool {
+		return $id > 0 && $type === get_post_type( $id );
+	}
+
+	/**
+	 * Önbellek sürüm sayacı. Anahtar bu sürümü içerdiği için sürümü artırmak
+	 * yeni bir önbellek anahtarı üretir ve eskisini fiilen geçersiz kılar —
+	 * kalıcı nesne önbelleğinde (Redis/Memcached) transient'lar wp_options
+	 * tablosuna hiç yazılmadığı için bu, DELETE sorgusunun işe yaramadığı
+	 * durumlarda da güvenilir şekilde çalışır.
+	 */
+	public function cache_version(): int {
+		return (int) get_option( 'qrmgm_cache_version', 1 );
+	}
+
+	private function bump_cache_version(): void {
+		update_option( 'qrmgm_cache_version', $this->cache_version() + 1, false );
+	}
+
 	private function clear_cache(): void {
 		global $wpdb;
+		$this->bump_cache_version();
+		// Standart dosya tabanlı önbellekte eski satırları hemen temizler;
+		// nesne önbelleğinde no-op'tur ama zararsızdır (sürüm artışı asıl
+		// geçersiz kılma mekanizmasıdır).
 		$wpdb->query( "DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_qrmgm_gallery_%' OR option_name LIKE '_transient_timeout_qrmgm_gallery_%'" );
+	}
+
+	/**
+	 * Bir attachment'ın, silinmekte olan galeri görselleri HARİÇ başka bir
+	 * qrmgm_image tarafından hâlâ kullanılıp kullanılmadığını kontrol eder.
+	 *
+	 * BUG: Çoğaltılmış (duplicate) görseller aynı attachment'ı paylaşır; bu
+	 * kontrol olmadan biri silindiğinde attachment diskten kalıcı olarak
+	 * silinir ve paylaşan kardeş kayıt kırık görsele düşer.
+	 *
+	 * @param int   $attachment_id Kontrol edilecek attachment ID.
+	 * @param int[] $exclude_ids   Bu silme işleminde silinmekte olan qrmgm_image ID'leri.
+	 */
+	private function attachment_referenced_elsewhere( int $attachment_id, array $exclude_ids ): bool {
+		if ( ! $attachment_id ) {
+			return false;
+		}
+		$others = get_posts( [
+			'post_type'      => self::CPT_IMAGE,
+			'post_status'    => [ 'publish', 'draft' ],
+			'posts_per_page' => 1,
+			'fields'         => 'ids',
+			'post__not_in'   => array_map( 'absint', $exclude_ids ),
+			'meta_key'       => '_qrmgm_attachment_id',
+			'meta_value'     => $attachment_id,
+		] );
+		return ! empty( $others );
+	}
+
+	/**
+	 * Attachment'ı yalnızca başka hiçbir galeri görseli tarafından
+	 * paylaşılmıyorsa siler; paylaşılıyorsa kardeş kaydı korumak için
+	 * attachment'a dokunmaz (bkz. attachment_referenced_elsewhere).
+	 */
+	private function delete_image_attachment_if_unshared( int $attachment_id, array $exclude_ids ): void {
+		if ( $attachment_id && ! $this->attachment_referenced_elsewhere( $attachment_id, $exclude_ids ) ) {
+			wp_delete_attachment( $attachment_id, true );
+		}
+	}
+
+	/**
+	 * Modülün ürettiği WebP dosyasını, attachment (medya kitaplığından
+	 * doğrudan da olsa) silindiğinde temizler. `delete_attachment` çekirdek
+	 * kancasına bağlanır; böylece galerinin kendi silme uçlarından bağımsız
+	 * olarak da orphan .webp dosyası kalmaz.
+	 */
+	public function cleanup_webp_for_attachment( int $attachment_id ): void {
+		$webp_path = get_post_meta( $attachment_id, '_qrmgm_webp_path', true );
+		if ( ! $webp_path || ! is_string( $webp_path ) ) {
+			return;
+		}
+		$normalized = wp_normalize_path( $webp_path );
+		// GÜVENLİK: yalnızca uploads dizini içindeki .webp uzantılı dosya
+		// silinir; meta manipüle edilmiş olsa da dizin dışına çıkılamaz.
+		if ( 'webp' !== strtolower( pathinfo( $normalized, PATHINFO_EXTENSION ) ) ) {
+			return;
+		}
+		$uploads = wp_upload_dir();
+		if ( empty( $uploads['basedir'] ) || 0 !== strpos( $normalized, wp_normalize_path( $uploads['basedir'] ) ) ) {
+			return;
+		}
+		if ( file_exists( $normalized ) ) {
+			@unlink( $normalized );
+		}
 	}
 
 	public function ajax_save_section(): void {
 		$this->verify_ajax();
 
-		$id    = absint( $_POST['id'] ?? 0 );
+		$id = absint( $_POST['id'] ?? 0 );
+		// GÜVENLİK: ID>0 ise bu bir düzenlemedir; tip kontrolü olmadan bu uç
+		// başka bir post'un başlığını/slug'ını/durumunu ezebilirdi.
+		if ( $id && ! $this->is_post_type( $id, self::CPT_SECTION ) ) {
+			wp_send_json_error( [ 'message' => 'Geçersiz bölüm.' ] );
+		}
 		$title = sanitize_text_field( wp_unslash( $_POST['title'] ?? '' ) );
 		if ( '' === $title ) {
 			wp_send_json_error( [ 'message' => 'Başlık zorunludur.' ] );
@@ -72,15 +171,15 @@ trait QRMGM_Ajax_Trait {
 		// GÜVENLİK: ID doğrudan POST'tan geliyor; tip kontrolü olmadan bu uç
 		// galeri bölümü dışındaki HERHANGİ bir post'u (sayfa, ürün, vb.)
 		// kalıcı olarak silmek için kullanılabilirdi.
-		if ( ! $id || self::CPT_SECTION !== get_post_type( $id ) ) {
+		if ( ! $this->is_post_type( $id, self::CPT_SECTION ) ) {
 			wp_send_json_error();
 		}
 		$images = get_posts( [ 'post_type' => self::CPT_IMAGE, 'post_parent' => $id, 'posts_per_page' => -1, 'post_status' => [ 'publish', 'draft' ], 'fields' => 'ids' ] );
 		foreach ( $images as $img_id ) {
 			$att_id = (int) get_post_meta( $img_id, '_qrmgm_attachment_id', true );
-			if ( $att_id ) {
-				wp_delete_attachment( $att_id, true );
-			}
+			// $images (bu bölümün tüm görselleri) dışlanarak kontrol edilir;
+			// böylece aynı bölümdeki bir çift (duplicate) da doğru ele alınır.
+			$this->delete_image_attachment_if_unshared( $att_id, $images );
 			wp_delete_post( $img_id, true );
 		}
 		wp_delete_post( $id, true );
@@ -94,7 +193,7 @@ trait QRMGM_Ajax_Trait {
 		$active = ! empty( $_POST['active'] );
 		// GÜVENLİK: tip kontrolü olmadan bu uç herhangi bir post'un durumunu
 		// (ör. yayınlanmış bir sayfayı taslağa) değiştirebilirdi.
-		if ( ! $id || self::CPT_SECTION !== get_post_type( $id ) ) {
+		if ( ! $this->is_post_type( $id, self::CPT_SECTION ) ) {
 			wp_send_json_error();
 		}
 		wp_update_post( [ 'ID' => $id, 'post_status' => $active ? 'publish' : 'draft' ] );
@@ -107,7 +206,7 @@ trait QRMGM_Ajax_Trait {
 		$order = isset( $_POST['order'] ) ? array_map( 'absint', (array) $_POST['order'] ) : [];
 		foreach ( $order as $index => $id ) {
 			// GÜVENLİK: yalnızca galeri bölümlerinin sırası değiştirilebilir.
-			if ( self::CPT_SECTION !== get_post_type( $id ) ) {
+			if ( ! $this->is_post_type( $id, self::CPT_SECTION ) ) {
 				continue;
 			}
 			wp_update_post( [ 'ID' => $id, 'menu_order' => $index ] );
@@ -119,6 +218,11 @@ trait QRMGM_Ajax_Trait {
 	public function ajax_get_section_images(): void {
 		$this->verify_ajax();
 		$section_id = absint( $_POST['section_id'] ?? 0 );
+		// GÜVENLİK: geçersiz/başka türden bir ID ile keyfi post'un
+		// alt kayıtlarının sızdırılmasını önler.
+		if ( ! $this->is_post_type( $section_id, self::CPT_SECTION ) ) {
+			wp_send_json_error();
+		}
 		ob_start();
 		$this->render_admin_image_cards( $section_id );
 		$html = ob_get_clean();
@@ -129,7 +233,7 @@ trait QRMGM_Ajax_Trait {
 		$this->verify_ajax();
 
 		$section_id = absint( $_POST['section_id'] ?? 0 );
-		if ( ! $section_id || 'qrmgm_section' !== get_post_type( $section_id ) ) {
+		if ( ! $this->is_post_type( $section_id, self::CPT_SECTION ) ) {
 			wp_send_json_error( [ 'message' => 'Geçersiz bölüm.' ] );
 		}
 
@@ -137,15 +241,18 @@ trait QRMGM_Ajax_Trait {
 			wp_send_json_error( [ 'message' => 'Dosya bulunamadı.' ] );
 		}
 
-		$allowed = [ 'image/jpeg', 'image/png', 'image/webp' ];
-		$type    = mime_content_type( $_FILES['file']['tmp_name'] );
-		if ( ! in_array( $type, $allowed, true ) ) {
-			wp_send_json_error( [ 'message' => 'Desteklenmeyen dosya türü.' ] );
-		}
-
 		require_once ABSPATH . 'wp-admin/includes/file.php';
 		require_once ABSPATH . 'wp-admin/includes/media.php';
 		require_once ABSPATH . 'wp-admin/includes/image.php';
+
+		// WordPress'in kendi dosya-türü doğrulaması: gerçek dosya içeriğini
+		// uzantıyla karşılaştırır (mime_content_type()'a göre daha güvenli —
+		// ext-fileinfo'ya sabit bağımlılık da yaratmaz).
+		$allowed  = [ 'image/jpeg', 'image/png', 'image/webp' ];
+		$filetype = wp_check_filetype_and_ext( $_FILES['file']['tmp_name'], $_FILES['file']['name'] ?? '' );
+		if ( empty( $filetype['type'] ) || ! in_array( $filetype['type'], $allowed, true ) ) {
+			wp_send_json_error( [ 'message' => 'Desteklenmeyen dosya türü.' ] );
+		}
 
 		$att_id = media_handle_upload( 'file', 0 );
 		if ( is_wp_error( $att_id ) ) {
@@ -235,13 +342,13 @@ trait QRMGM_Ajax_Trait {
 	public function ajax_delete_image(): void {
 		$this->verify_ajax();
 		$id = absint( $_POST['id'] ?? 0 );
-		if ( ! $id || self::CPT_IMAGE !== get_post_type( $id ) ) {
+		if ( ! $this->is_post_type( $id, self::CPT_IMAGE ) ) {
 			wp_send_json_error();
 		}
 		$att_id = (int) get_post_meta( $id, '_qrmgm_attachment_id', true );
-		if ( $att_id ) {
-			wp_delete_attachment( $att_id, true );
-		}
+		// Bir çift (duplicate) tarafından hâlâ kullanılıyorsa attachment'a
+		// dokunulmaz (bkz. attachment_referenced_elsewhere).
+		$this->delete_image_attachment_if_unshared( $att_id, [ $id ] );
 		wp_delete_post( $id, true );
 		$this->clear_cache();
 		wp_send_json_success();
@@ -251,6 +358,11 @@ trait QRMGM_Ajax_Trait {
 		$this->verify_ajax();
 		$id     = absint( $_POST['id'] ?? 0 );
 		$active = ! empty( $_POST['active'] );
+		// GÜVENLİK: tip kontrolü olmadan bu uç herhangi bir post'un durumunu
+		// değiştirebilirdi.
+		if ( ! $this->is_post_type( $id, self::CPT_IMAGE ) ) {
+			wp_send_json_error();
+		}
 		wp_update_post( [ 'ID' => $id, 'post_status' => $active ? 'publish' : 'draft' ] );
 		$this->clear_cache();
 		wp_send_json_success();
@@ -260,6 +372,11 @@ trait QRMGM_Ajax_Trait {
 		$this->verify_ajax();
 		$id       = absint( $_POST['id'] ?? 0 );
 		$featured = ! empty( $_POST['featured'] );
+		// GÜVENLİK: tip kontrolü olmadan bu uç herhangi bir post'a meta
+		// yazabilirdi.
+		if ( ! $this->is_post_type( $id, self::CPT_IMAGE ) ) {
+			wp_send_json_error();
+		}
 		update_post_meta( $id, '_qrmgm_featured', $featured ? 1 : 0 );
 		$this->clear_cache();
 		wp_send_json_success();
@@ -293,6 +410,11 @@ trait QRMGM_Ajax_Trait {
 		$this->verify_ajax();
 		$order = isset( $_POST['order'] ) ? array_map( 'absint', (array) $_POST['order'] ) : [];
 		foreach ( $order as $index => $id ) {
+			// GÜVENLİK: yalnızca galeri görsellerinin sırası değiştirilebilir
+			// (ör. bir sayfanın menu_order'ını bozmasın).
+			if ( ! $this->is_post_type( $id, self::CPT_IMAGE ) ) {
+				continue;
+			}
 			wp_update_post( [ 'ID' => $id, 'menu_order' => $index ] );
 		}
 		$this->clear_cache();

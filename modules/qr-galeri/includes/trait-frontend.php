@@ -82,7 +82,7 @@ trait QRMGM_Frontend_Trait {
 		$dil       = function_exists( 'rma_get_current_lang' ) ? rma_get_current_lang() : 'tr';
 		$surum     = function_exists( 'rma_ceviri_onbellek_surumu' ) ? rma_ceviri_onbellek_surumu() : 0;
 		$cache_key = 'qrmgm_gallery_' . md5( implode( '|', [
-			'v5',
+			'v6',
 			$atts['section'],
 			$columns,
 			$ratio,
@@ -91,6 +91,7 @@ trait QRMGM_Frontend_Trait {
 			$show_titles,
 			$dil,
 			(string) $surum,
+			(string) $this->cache_version(),
 		] ) );
 		$cached = get_transient( $cache_key );
 		if ( false !== $cached ) {
@@ -135,37 +136,49 @@ trait QRMGM_Frontend_Trait {
 		$hover = in_array( $s['hover_effect'], [ 'none', 'zoom', 'glass', 'lift' ], true ) ? $s['hover_effect'] : 'glass';
 		$anim  = empty( $s['animations'] ) ? '0' : '1';
 
+		// PERFORMANS: bölüm başına ayrı get_posts() yerine tüm görseller tek
+		// sorguda çekilip post_parent'a göre gruplanır (N+1 sorgu yerine 2).
+		$section_ids       = wp_list_pluck( $sections, 'ID' );
+		$images_by_section = [];
+		if ( ! empty( $section_ids ) ) {
+			$all_images = get_posts( [
+				'post_type'       => self::CPT_IMAGE,
+				'post_parent__in' => $section_ids,
+				'post_status'     => 'publish',
+				'orderby'         => 'menu_order',
+				'order'           => 'ASC',
+				'posts_per_page'  => -1,
+			] );
+			foreach ( $all_images as $img ) {
+				$images_by_section[ $img->post_parent ][] = $img;
+			}
+		}
+
 		ob_start();
 		?>
 		<div class="qrmgm-gallery" data-lightbox="<?php echo esc_attr( $s['lightbox'] ); ?>" data-hover="<?php echo esc_attr( $hover ); ?>" data-anim="<?php echo esc_attr( $anim ); ?>"<?php if ( $css_vars ) : ?> style="<?php echo esc_attr( implode( ';', $css_vars ) ); ?>"<?php endif; ?>>
 			<?php if ( $show_filter && count( $sections ) > 1 ) : ?>
 				<div class="qrmgm-filter-wrap">
-					<div class="qrmgm-filter-bar">
-						<button type="button" class="qrmgm-filter-btn is-active" data-filter="all"><?php
+					<div class="qrmgm-filter-bar" role="group" aria-label="<?php echo esc_attr( function_exists( 'rma_ceviri_modul' ) ? rma_ceviri_modul( 'gallery', 'Galeri filtresi' ) : 'Galeri filtresi' ); ?>">
+						<button type="button" class="qrmgm-filter-btn is-active" data-filter="all" aria-pressed="true"><?php
 							$tumu = function_exists( 'rma_ceviri_modul' ) ? rma_ceviri_modul( 'gallery', 'Tümü' ) : 'Tümü';
 							echo esc_html( $tumu );
 						?></button>
 						<?php foreach ( $sections as $sec ) : ?>
-							<button type="button" class="qrmgm-filter-btn" data-filter="<?php echo esc_attr( $sec->post_name ); ?>"><?php echo esc_html( $sec->post_title ); ?></button>
+							<button type="button" class="qrmgm-filter-btn" data-filter="<?php echo esc_attr( $sec->post_name ); ?>" aria-pressed="false"><?php echo esc_html( $sec->post_title ); ?></button>
 						<?php endforeach; ?>
 					</div>
 				</div>
 			<?php endif; ?>
 
 			<?php
-			$counter = 0;
+			$counter        = 0;
+			$is_first_image = true;
 			foreach ( $sections as $sec ) :
 				if ( $limit > 0 && $counter >= $limit ) {
 					break;
 				}
-				$images = get_posts( [
-					'post_type'      => self::CPT_IMAGE,
-					'post_parent'    => $sec->ID,
-					'post_status'    => 'publish',
-					'orderby'        => 'menu_order',
-					'order'          => 'ASC',
-					'posts_per_page' => -1,
-				] );
+				$images = $images_by_section[ $sec->ID ] ?? [];
 				if ( empty( $images ) ) {
 					continue;
 				}
@@ -182,12 +195,13 @@ trait QRMGM_Frontend_Trait {
 						$sec_desc = rma_ceviri_modul( 'gallery', $sec_desc );
 					}
 				}
+				$heading_id = 'qrmgm-sec-title-' . $sec->ID;
 				?>
-				<section class="qrmgm-section" data-section="<?php echo esc_attr( $sec->post_name ); ?>">
+				<section class="qrmgm-section" data-section="<?php echo esc_attr( $sec->post_name ); ?>"<?php if ( 'yes' === $show_titles ) : ?> aria-labelledby="<?php echo esc_attr( $heading_id ); ?>"<?php endif; ?>>
 					<?php if ( 'yes' === $show_titles ) : ?>
 						<header class="qrmgm-section-head">
-							<h2 class="qrmgm-section-title">
-								<?php if ( $sec_icon ) : ?><span class="dashicons <?php echo esc_attr( $sec_icon ); ?>"></span><?php endif; ?>
+							<h2 class="qrmgm-section-title" id="<?php echo esc_attr( $heading_id ); ?>">
+								<?php if ( $sec_icon ) : ?><span class="dashicons <?php echo esc_attr( $sec_icon ); ?>" aria-hidden="true"></span><?php endif; ?>
 								<?php echo esc_html( $sec_title ); ?>
 							</h2>
 							<?php if ( ! empty( $s['divider_show'] ) ) : ?>
@@ -214,6 +228,7 @@ trait QRMGM_Frontend_Trait {
 							$webp_url = get_post_meta( $att_id, '_qrmgm_webp_url', true );
 							$alt      = (string) get_post_meta( $img->ID, '_qrmgm_alt', true );
 							$desc     = (string) get_post_meta( $img->ID, '_qrmgm_desc', true );
+							$featured = (bool) get_post_meta( $img->ID, '_qrmgm_featured', true );
 							if ( ! $src ) {
 								continue;
 							}
@@ -221,22 +236,45 @@ trait QRMGM_Frontend_Trait {
 							if ( '' === $caption ) {
 								$caption = trim( $alt );
 							}
-							$img_alt = '' !== trim( $alt ) ? $alt : $caption;
+							// ERİŞİLEBİLİRLİK: anlamlı bir alt her zaman üretilir —
+							// özel alt yoksa medya kitaplığı alt'ına, o da yoksa
+							// açıklama/altyazıya, o da yoksa bölüm başlığına düşer.
+							$img_alt = trim( $alt );
+							if ( '' === $img_alt ) {
+								$img_alt = (string) get_post_meta( $att_id, '_wp_attachment_image_alt', true );
+							}
+							if ( '' === trim( $img_alt ) ) {
+								$img_alt = '' !== $caption ? $caption : $sec_title;
+							}
 							$counter++;
 							[ $url, $width, $height ] = $src;
+							$srcset = wp_get_attachment_image_srcset( $att_id, 'large' );
+							$sizes  = $srcset ? wp_get_attachment_image_sizes( $att_id, 'large' ) : '';
+
+							// PERFORMANS: yalnızca ilk kart LCP adayıdır ve hemen
+							// yüklenir; sonraki tüm görseller (ayar açıksa) lazy-load.
+							if ( $is_first_image ) {
+								$loading_attr = 'fetchpriority="high"';
+								$is_first_image = false;
+							} elseif ( $s['lazy_load'] ) {
+								$loading_attr = 'loading="lazy"';
+							} else {
+								$loading_attr = '';
+							}
 							?>
-							<figure class="qrmgm-item" data-section="<?php echo esc_attr( $sec->post_name ); ?>" data-index="<?php echo esc_attr( $counter ); ?>">
+							<figure class="qrmgm-item<?php echo $featured ? ' qrmgm-item--featured' : ''; ?>" data-section="<?php echo esc_attr( $sec->post_name ); ?>" data-index="<?php echo esc_attr( $counter ); ?>">
 								<a href="<?php echo esc_url( $full[0] ?? $url ); ?>"
 								   class="qrmgm-lightbox-trigger"
 								   <?php if ( '' !== $caption ) : ?>data-caption="<?php echo esc_attr( $caption ); ?>"<?php endif; ?>
-								   data-download="<?php echo esc_url( $full[0] ?? $url ); ?>">
+								   data-download="<?php echo esc_url( $full[0] ?? $url ); ?>"
+								   aria-label="<?php echo esc_attr( '' !== $caption ? $caption : $img_alt ); ?>">
 									<?php if ( $webp_url ) : ?>
 										<picture>
 											<source srcset="<?php echo esc_url( $webp_url ); ?>" type="image/webp" />
-											<img src="<?php echo esc_url( $url ); ?>" alt="<?php echo esc_attr( $img_alt ); ?>" width="<?php echo esc_attr( $width ); ?>" height="<?php echo esc_attr( $height ); ?>" <?php echo $s['lazy_load'] ? 'loading="lazy"' : ''; ?> />
+											<img src="<?php echo esc_url( $url ); ?>" <?php if ( $srcset ) : ?>srcset="<?php echo esc_attr( $srcset ); ?>" sizes="<?php echo esc_attr( $sizes ); ?>"<?php endif; ?> alt="<?php echo esc_attr( $img_alt ); ?>" width="<?php echo esc_attr( $width ); ?>" height="<?php echo esc_attr( $height ); ?>" <?php echo $loading_attr; ?> />
 										</picture>
 									<?php else : ?>
-										<img src="<?php echo esc_url( $url ); ?>" alt="<?php echo esc_attr( $img_alt ); ?>" width="<?php echo esc_attr( $width ); ?>" height="<?php echo esc_attr( $height ); ?>" <?php echo $s['lazy_load'] ? 'loading="lazy"' : ''; ?> />
+										<img src="<?php echo esc_url( $url ); ?>" <?php if ( $srcset ) : ?>srcset="<?php echo esc_attr( $srcset ); ?>" sizes="<?php echo esc_attr( $sizes ); ?>"<?php endif; ?> alt="<?php echo esc_attr( $img_alt ); ?>" width="<?php echo esc_attr( $width ); ?>" height="<?php echo esc_attr( $height ); ?>" <?php echo $loading_attr; ?> />
 									<?php endif; ?>
 									<?php if ( '' !== $caption ) : ?>
 										<figcaption><?php echo esc_html( $caption ); ?></figcaption>
@@ -253,6 +291,7 @@ trait QRMGM_Frontend_Trait {
 			?>
 		</div>
 		<?php
+
 		$html = ob_get_clean();
 		set_transient( $cache_key, $html, HOUR_IN_SECONDS );
 		return $html;

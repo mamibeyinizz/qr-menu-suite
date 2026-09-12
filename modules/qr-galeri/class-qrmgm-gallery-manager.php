@@ -48,6 +48,9 @@ final class QRMenu_Gallery_Manager {
 		add_action( 'wp_enqueue_scripts', [ $this, 'maybe_frontend_assets' ] );
 		add_shortcode( 'qrmenu_gallery', [ $this, 'render_shortcode' ] );
 		add_filter( 'plugin_action_links_' . plugin_basename( QRMGM_FILE ), [ $this, 'settings_link' ] );
+		// Attachment medya kitaplığından doğrudan silinse bile (galerinin
+		// kendi uçları dışında) modülün ürettiği .webp dosyası orphan kalmasın.
+		add_action( 'delete_attachment', [ $this, 'cleanup_webp_for_attachment' ] );
 
 		$ajax = [
 			'save_section', 'delete_section', 'reorder_sections', 'toggle_section_status',
@@ -83,9 +86,9 @@ final class QRMenu_Gallery_Manager {
 			'radius'           => 16,
 			'shadow'           => 'medium',
 			'gap'              => 18,
-			'columns_desktop'  => 4,
-			'columns_tablet'   => 3,
-			'columns_mobile'   => 2,
+			'columns_desktop'  => 3,
+			'columns_tablet'   => 2,
+			'columns_mobile'   => 1,
 			'hover_effect'     => 'glass',
 			'animations'       => 1,
 			'lightbox'         => 1,
