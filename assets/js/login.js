@@ -15,29 +15,179 @@
 
 	var metin = window.QRMS_LOGIN || {};
 
+	/**
+	 * Olay gerçek bir FİZİKSEL tuşa mı ait?
+	 *
+	 * Sanal klavyeler Caps Lock durumunu güvenilir bildirmez: Android IME'leri
+	 * tuş olaylarını `keyCode 229` / `key "Unidentified"` ile gönderir, iOS ve
+	 * bazı Android klavyeleri otomatik büyük harf (auto-capitalize) durumunu
+	 * Shift/CapsLock gibi raporlar. Bu olaylara bakmak, kilit KAPALIYKEN uyarı
+	 * gösterilmesinin başlıca sebebidir; bu yüzden hepsi elenir.
+	 *
+	 * Ayırt edici alan `code`: fiziksel tuşta her zaman doludur ("KeyA",
+	 * "CapsLock"), sanal klavyelerde boş string gelir.
+	 *
+	 * @param {KeyboardEvent} olay Olay.
+	 * @return {boolean} Fiziksel tuş ise true.
+	 */
+	function fizikselTus( olay ) {
+		if ( ! olay || false === olay.isTrusted ) {
+			return false;
+		}
+
+		if ( olay.isComposing || 229 === olay.keyCode ) {
+			return false;
+		}
+
+		if ( ! olay.code || ! olay.key || 'Unidentified' === olay.key ) {
+			return false;
+		}
+
+		return 'function' === typeof olay.getModifierState;
+	}
+
+	/**
+	 * Olaydan Caps Lock durumunu çıkarır.
+	 *
+	 * Önce kesin kanıta bakılır: basılan tuş bir HARF ise, üretilen karakterin
+	 * büyük/küçük olması ile Shift durumunun çelişmesi kilidin açık olduğunu
+	 * tek başına kanıtlar (tarayıcıdan bağımsız). Kanıt yoksa
+	 * `getModifierState` kullanılır.
+	 *
+	 * @param {KeyboardEvent} olay Olay.
+	 * @return {boolean|null} Durum; belirlenemiyorsa null.
+	 */
+	function capsDurumu( olay ) {
+		var tus = olay.key;
+
+		if ( tus && 1 === tus.length ) {
+			var kucuk = tus.toLowerCase();
+			var buyuk = tus.toUpperCase();
+
+			// Harf olmayan karakterler (rakam, noktalama) hiçbir şey söylemez.
+			if ( kucuk !== buyuk ) {
+				return ( tus === buyuk ) !== !! olay.shiftKey;
+			}
+		}
+
+		try {
+			return ! ! olay.getModifierState( 'CapsLock' );
+		} catch ( hata ) {
+			return null;
+		}
+	}
+
+	/**
+	 * Şifre alanına Caps Lock uyarısı bağlar.
+	 *
+	 * @param {HTMLInputElement|null} alan Şifre alanı.
+	 * @return {void}
+	 */
 	function capsUyarisi( alan ) {
-		if ( ! alan ) {
+		if ( ! alan || 'function' !== typeof alan.closest ) {
 			return;
 		}
 
-		var uyari = document.createElement( 'span' );
-		uyari.className = 'qrms-caps';
-		uyari.textContent = metin.capsLock || 'Caps Lock';
-		uyari.hidden = true;
-
 		var kap = alan.closest( '.wp-pwd' ) || alan.parentNode;
-		kap.parentNode.insertBefore( uyari, kap.nextSibling );
 
-		alan.addEventListener( 'keyup', function ( olay ) {
-			if ( typeof olay.getModifierState !== 'function' ) {
+		if ( ! kap || ! kap.parentNode ) {
+			return;
+		}
+
+		// Betik iki kez çalışsa (başka bir eklenti, canlı önizleme) bile tek
+		// uyarı elemanı kalsın.
+		var uyari = document.getElementById( 'qrms-caps-uyari' );
+
+		if ( ! uyari ) {
+			uyari = document.createElement( 'span' );
+			uyari.id        = 'qrms-caps-uyari';
+			uyari.className = 'qrms-caps';
+			uyari.textContent = metin.capsLock || 'Caps Lock açık';
+			uyari.setAttribute( 'role', 'status' );
+			uyari.setAttribute( 'aria-live', 'polite' );
+
+			// Uyarı, şifre kutusunun (ve "şifreyi göster" düğmesinin) DIŞINA,
+			// hemen altına eklenir: düğmenin konumu ve alanın genişliği
+			// etkilenmez, gönderim hiçbir şekilde engellenmez.
+			kap.parentNode.insertBefore( uyari, kap.nextSibling );
+		}
+
+		var gorunur = null;
+
+		/**
+		 * Uyarıyı gösterir/gizler.
+		 *
+		 * Görünürlük SINIFLA yönetilir: `[hidden]` özniteliğinin `display:none`
+		 * kuralı, stylesheet'teki `.qrms-login .qrms-caps` seçicisi tarafından
+		 * eziliyor ve uyarı kilit kapalıyken de ekranda kalıyordu. Öznitelik
+		 * yine de erişilebilirlik için birlikte güncellenir.
+		 *
+		 * @param {boolean} acik Görünsün mü?
+		 * @return {void}
+		 */
+		function ciz( acik ) {
+			acik = ! ! acik;
+
+			if ( acik === gorunur ) {
 				return;
 			}
 
-			uyari.hidden = ! olay.getModifierState( 'CapsLock' );
+			gorunur = acik;
+			uyari.hidden = ! acik;
+
+			if ( acik ) {
+				uyari.classList.add( 'qrms-caps-acik' );
+			} else {
+				uyari.classList.remove( 'qrms-caps-acik' );
+			}
+		}
+
+		ciz( false );
+
+		/**
+		 * Tuş olayını değerlendirir.
+		 *
+		 * @param {KeyboardEvent} olay Olay.
+		 * @return {void}
+		 */
+		function tus( olay ) {
+			if ( ! fizikselTus( olay ) ) {
+				// Sanal klavye: durum bilinemez, YANLIŞ uyarı gösterme.
+				ciz( false );
+				return;
+			}
+
+			// Caps Lock tuşunun KENDİSİ: keydown anında bildirilen durum
+			// tarayıcıya göre kilitten önceki değer olabiliyor; karar keyup'a
+			// bırakılır.
+			if ( 'CapsLock' === olay.key && 'keydown' === olay.type ) {
+				return;
+			}
+
+			var durum = capsDurumu( olay );
+
+			if ( null === durum ) {
+				return;
+			}
+
+			ciz( durum );
+		}
+
+		alan.addEventListener( 'keydown', tus );
+		alan.addEventListener( 'keyup', tus );
+
+		// Odak yokken kilidin durumu değişmiş olabilir; ölçemediğimiz her
+		// durumda uyarı kapalıdır.
+		alan.addEventListener( 'blur', function () {
+			ciz( false );
 		} );
 
-		alan.addEventListener( 'blur', function () {
-			uyari.hidden = true;
+		alan.addEventListener( 'focus', function () {
+			ciz( false );
+		} );
+
+		window.addEventListener( 'blur', function () {
+			ciz( false );
 		} );
 	}
 
@@ -80,9 +230,18 @@
 	}
 
 	function baslat() {
-		capsUyarisi( document.getElementById( 'user_pass' ) );
-		gonderimDurumu( document.getElementById( 'loginform' ) );
-		odakla();
+		// Bir iyileştirmedeki hata diğerlerini ve GİRİŞİ durdurmasın.
+		try {
+			capsUyarisi( document.getElementById( 'user_pass' ) );
+		} catch ( hata ) {}
+
+		try {
+			gonderimDurumu( document.getElementById( 'loginform' ) );
+		} catch ( hata ) {}
+
+		try {
+			odakla();
+		} catch ( hata ) {}
 	}
 
 	if ( 'loading' === document.readyState ) {
