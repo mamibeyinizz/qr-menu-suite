@@ -174,10 +174,9 @@ function qrms_module_qr_chatbot_admin_assets() {
 			'qmo-admin-hub',
 			'qmoChatbotHub',
 			array(
-				'ajaxUrl'     => admin_url( 'admin-ajax.php' ),
-				'acik'        => __( 'Açık', 'qrms' ),
-				'kapali'      => __( 'Kapalı', 'qrms' ),
-				'kopyalandi'  => __( 'Kopyalandı', 'qrms' ),
+				'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+				'acik'    => __( 'Açık', 'qrms' ),
+				'kapali'  => __( 'Kapalı', 'qrms' ),
 			)
 		);
 		return;
@@ -194,8 +193,13 @@ function qrms_module_qr_chatbot_admin_assets() {
 		QRMS_Helpers::asset_version( 'modules/_qmo-ortak/assets/css/admin.css' )
 	);
 
+	// Bot Kimliği, Görünüm ve Hazır Sorular sayfaları artık ortak canlı
+	// önizleme partial'ını kullanır (qmo_chatbot_onizleme_blogu()); üçü de
+	// ön yüzün gemini-* sınıflarını render ettiği için chatbot.css gerekir.
+	$onizlemeli_sayfalar = array( 'qrms-chatbot-bot-identity', 'qrms-chatbot-appearance', 'qrms-chatbot-quick-replies' );
+
 	$admin_deps = array( 'qmo-admin' );
-	if ( 'qrms-chatbot-appearance' === $page ) {
+	if ( in_array( $page, $onizlemeli_sayfalar, true ) ) {
 		wp_enqueue_style(
 			'qmo-chatbot-front',
 			QRMS_PLUGIN_URL . 'modules/qr-chatbot/assets/css/chatbot.css',
@@ -206,37 +210,6 @@ function qrms_module_qr_chatbot_admin_assets() {
 	}
 
 	wp_enqueue_style( $ortak_css[0], $ortak_css[1], $admin_deps, $ortak_css[2] );
-
-	if ( 'qrms-chatbot-ana-site' === $page ) {
-		// Kısa kod kutusundaki "Kopyala" düğmesi hub betiğindeki ortak
-		// yardımcıyı kullanır; anahtar yoksa betik erken çıkar.
-		wp_enqueue_script(
-			'qmo-admin-hub',
-			QRMS_PLUGIN_URL . 'modules/qr-chatbot/assets/js/admin-hub.js',
-			array(),
-			QRMS_Helpers::asset_version( 'modules/qr-chatbot/assets/js/admin-hub.js' ),
-			true
-		);
-		wp_localize_script(
-			'qmo-admin-hub',
-			'qmoChatbotHub',
-			array(
-				'ajaxUrl'    => admin_url( 'admin-ajax.php' ),
-				'kopyalandi' => __( 'Kopyalandı', 'qrms' ),
-			)
-		);
-	}
-
-	if ( 'qrms-chatbot-quick-replies' === $page ) {
-		wp_enqueue_script(
-			'qmo-admin-sorular',
-			QRMS_PLUGIN_URL . 'modules/qr-chatbot/assets/js/admin-sorular.js',
-			array(),
-			QRMS_Helpers::asset_version( 'modules/qr-chatbot/assets/js/admin-sorular.js' ),
-			true
-		);
-		return;
-	}
 
 	if ( in_array( $page, array( 'qrms-chatbot-history', 'qrms-chatbot-unanswered' ), true ) ) {
 		wp_enqueue_script(
@@ -269,12 +242,15 @@ function qrms_module_qr_chatbot_admin_assets() {
 		return;
 	}
 
-	$js_sayfalari = array( 'qrms-chatbot-bot-identity', 'qrms-chatbot-appearance' );
-	if ( ! in_array( $page, $js_sayfalari, true ) ) {
+	if ( ! in_array( $page, $onizlemeli_sayfalar, true ) ) {
 		return;
 	}
 
-	wp_enqueue_media();
+	// Medya kütüphanesi yalnızca ikon yükleme alanı olan sayfalarda gerekir;
+	// Hazır Sorular sayfasında ikon seçimi yoktur.
+	if ( in_array( $page, array( 'qrms-chatbot-bot-identity', 'qrms-chatbot-appearance' ), true ) ) {
+		wp_enqueue_media();
+	}
 
 	wp_enqueue_script(
 		'qmo-admin-chatbot',
@@ -283,6 +259,19 @@ function qrms_module_qr_chatbot_admin_assets() {
 		QRMS_Helpers::asset_version( 'modules/qr-chatbot/assets/js/admin-chatbot.js' ),
 		true
 	);
+
+	if ( 'qrms-chatbot-quick-replies' === $page ) {
+		// admin-sorular.js sürükle-bırak sonrası önizlemeyi admin-chatbot.js'in
+		// global window.qmoChatbotRenderPreview() ile tetikler — bu yüzden ondan
+		// SONRA yüklenmelidir.
+		wp_enqueue_script(
+			'qmo-admin-sorular',
+			QRMS_PLUGIN_URL . 'modules/qr-chatbot/assets/js/admin-sorular.js',
+			array( 'qmo-admin-chatbot' ),
+			QRMS_Helpers::asset_version( 'modules/qr-chatbot/assets/js/admin-sorular.js' ),
+			true
+		);
+	}
 
 	$ikonlar = array();
 	if ( function_exists( 'qmo_chatbot_hazir_ikonlar' ) ) {
@@ -310,14 +299,30 @@ function qrms_module_qr_chatbot_admin_assets() {
 			'offsets'     => function_exists( 'qmo_chatbot_yukseklik_haritasi' ) ? qmo_chatbot_yukseklik_haritasi() : array(),
 			'widths'      => function_exists( 'qmo_chatbot_genislik_haritasi' ) ? qmo_chatbot_genislik_haritasi() : array(),
 			'initial'     => array(
-				'botName'     => get_option( 'gemini_bot_name', 'Asistan' ),
-				'welcome'     => get_option( 'gemini_welcome_text', 'Merhaba! Size nasıl yardımcı olabilirim?' ),
-				'placeholder' => get_option( 'gemini_placeholder_text', 'Bir şeyler sorun...' ),
-				'iconUrl'     => get_option( 'gemini_bot_icon', '' ),
+				'botName'       => get_option( 'gemini_bot_name', 'Asistan' ),
+				'welcome'       => get_option( 'gemini_welcome_text', 'Merhaba! Size nasıl yardımcı olabilirim?' ),
+				'placeholder'   => get_option( 'gemini_placeholder_text', 'Bir şeyler sorun...' ),
+				'iconUrl'       => get_option( 'gemini_bot_icon', '' ),
+				'iconPreset'    => (string) qmo_chatbot_ayar( 'qmo_chatbot_icon_preset' ),
+				'iconColor'     => (string) qmo_chatbot_ayar( 'qmo_chatbot_icon_color' ),
+				'iconBgColor'   => (string) qmo_chatbot_ayar( 'qmo_chatbot_icon_bg_color' ),
+				'iconSizePreset' => (string) qmo_chatbot_ayar( 'qmo_chatbot_icon_size_preset' ),
+				'position'      => (string) qmo_chatbot_ayar( 'qmo_chatbot_position' ),
+				'offset'        => (string) qmo_chatbot_ayar( 'qmo_chatbot_offset' ),
+				'attention'     => (string) qmo_chatbot_ayar( 'qmo_chatbot_attention' ),
+				'badge'         => (string) qmo_chatbot_ayar( 'qmo_chatbot_badge' ),
+				'radiusPreset'  => (string) qmo_chatbot_ayar( 'qmo_chatbot_radius_preset' ),
+				'windowWidth'   => (string) qmo_chatbot_ayar( 'qmo_chatbot_window_width' ),
+				'welcomeScreen' => (string) qmo_chatbot_ayar( 'qmo_chatbot_welcome_screen' ),
+				'welcomeIntro'  => (string) qmo_chatbot_ayar( 'qmo_chatbot_welcome_intro' ),
+				'welcomeBtn'    => (string) qmo_chatbot_ayar( 'qmo_chatbot_welcome_btn' ),
+				'teaser'        => (string) qmo_chatbot_ayar( 'qmo_chatbot_teaser' ),
+				'teaserText'    => (string) qmo_chatbot_ayar( 'qmo_chatbot_teaser_text' ),
+				'toggleText'    => (string) get_option( 'gemini_show_toggle_text', 'no' ),
 			),
 			'strings'     => array(
 				'presetApplied' => 'Renk şablonu uygulandı. Değişiklikleri kaydetmeyi unutmayın.',
-				'selectIcon'    => 'Bot ikonu seç',
+				'selectIcon'    => 'Asistan ikonu seç',
 				'useIcon'       => 'Bu görseli kullan',
 			),
 		)

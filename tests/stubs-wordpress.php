@@ -653,6 +653,16 @@ function esc_attr( $text ) {
 }
 
 /**
+ * JS dizesi kaçış stub'ı.
+ *
+ * @param string $text Metin.
+ * @return string
+ */
+function esc_js( $text ) {
+	return addslashes( (string) $text );
+}
+
+/**
  * Çeviri stub'ı.
  *
  * @param string $text   Metin.

@@ -15,6 +15,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 require_once dirname( __DIR__ ) . '/class-ayarlar.php';
 require_once dirname( __DIR__ ) . '/class-db.php';
+// İkon önizlemeleri qmo_svg_kses() ile temizlenir; tanımı kısa kod
+// dosyasındadır ve yükleme sırası admin'de garanti değildir.
+require_once dirname( __DIR__ ) . '/shortcode-chatbot.php';
 
 if ( ! defined( 'QMO_CHATBOT_ADMIN_INIT' ) ) {
 	define( 'QMO_CHATBOT_ADMIN_INIT', true );
@@ -134,7 +137,7 @@ if ( ! function_exists( 'qmo_chatbot_ayarlarini_kaydet' ) ) {
 
 		qmo_chatbot_yeni_alanlari_kaydet();
 
-		add_settings_error( 'qmo_chatbot', 'kaydedildi', 'Ayarlar kaydedildi.', 'updated' );
+		add_settings_error( 'qmo_chatbot', 'kaydedildi', __( '✓ Değişiklikler kaydedildi.', 'qrms' ), 'updated' );
 	}
 }
 
@@ -637,12 +640,12 @@ if ( ! function_exists( 'qmo_chatbot_hub_kart_bas' ) ) {
 	function qmo_chatbot_hub_kart_bas( array $kart ) {
 		$durum = isset( $kart['durum'] ) ? $kart['durum'] : '';
 
-		echo '<a class="qmo-cb-card" href="' . esc_url( $kart['url'] ) . '">';
-		echo '<span class="qmo-cb-card-icon dashicons ' . esc_attr( $kart['icon'] ) . '" aria-hidden="true"></span>';
-		echo '<span class="qmo-cb-card-body">';
-		echo '<span class="qmo-cb-card-title">' . esc_html( $kart['title'] ) . '</span>';
+		echo '<a class="qmo-cb-hub-card" href="' . esc_url( $kart['url'] ) . '">';
+		echo '<span class="qmo-cb-hub-card-icon dashicons ' . esc_attr( $kart['icon'] ) . '" aria-hidden="true"></span>';
+		echo '<span class="qmo-cb-hub-card-body">';
+		echo '<span class="qmo-cb-hub-card-title">' . esc_html( $kart['title'] ) . '</span>';
 		if ( ! empty( $kart['desc'] ) ) {
-			echo '<span class="qmo-cb-card-desc">' . esc_html( $kart['desc'] ) . '</span>';
+			echo '<span class="qmo-cb-hub-card-desc">' . esc_html( $kart['desc'] ) . '</span>';
 		}
 		if ( ! empty( $kart['badge'] ) ) {
 			echo '<span class="qmo-cb-badge qmo-cb-badge-' . esc_attr( $durum ? $durum : 'notr' ) . '">';
@@ -651,7 +654,7 @@ if ( ! function_exists( 'qmo_chatbot_hub_kart_bas' ) ) {
 			echo '</span>';
 		}
 		echo '</span>';
-		echo '<span class="qmo-cb-card-chevron dashicons dashicons-arrow-right-alt2" aria-hidden="true"></span>';
+		echo '<span class="qmo-cb-hub-card-chevron dashicons dashicons-arrow-right-alt2" aria-hidden="true"></span>';
 		echo '</a>';
 	}
 }
@@ -729,7 +732,7 @@ if ( ! function_exists( 'qmo_chatbot_ayar_sayfasi' ) ) {
 			$durum_not   = __( 'Misafirleriniz menünüz hakkında soru sorabilir.', 'qrms' );
 		}
 
-		$wrap = 'qmo-cb-hub';
+		$wrap = 'qmo-wrap qmo-cb-hub';
 		if ( ! $acik ) {
 			$wrap .= ' qmo-cb-hub-kapali';
 		}
@@ -815,7 +818,7 @@ if ( ! function_exists( 'qmo_chatbot_ayar_sayfasi' ) ) {
 				echo '<p class="qmo-cb-section-desc">' . esc_html( $grup['desc'] ) . '</p>';
 			}
 			echo '</div>';
-			echo '<div class="qmo-cb-grid">';
+			echo '<div class="qmo-cb-hub-grid">';
 			foreach ( $grup['cards'] as $kart ) {
 				qmo_chatbot_hub_kart_bas( $kart );
 			}
@@ -897,85 +900,349 @@ if ( ! function_exists( 'qmo_chatbot_form_ac' ) ) {
  */
 if ( ! function_exists( 'qmo_chatbot_form_kapat' ) ) {
 	function qmo_chatbot_form_kapat() {
-		submit_button( 'Kaydet', 'primary', 'qmo_chatbot_kaydet' );
+		echo '<div class="qmo-cb-save-bar">';
+		submit_button( __( 'Değişiklikleri Kaydet', 'qrms' ), 'primary qmo-cb-save-btn', 'qmo_chatbot_kaydet', false );
+		echo '<span class="qmo-cb-save-state" aria-live="polite"></span>';
+		echo '</div>';
 		echo '</form>';
+		qmo_chatbot_kaydet_ux_script();
+	}
+}
+
+/**
+ * "Kaydediliyor…" geçiş durumu — form gönderilirken düğmeyi kilitler.
+ * Tam sayfa POST olduğu için yalnızca geçiş anını kaplar; sonuç mesajı
+ * zaten mevcut settings_errors() akışından gelir.
+ *
+ * @return void
+ */
+if ( ! function_exists( 'qmo_chatbot_kaydet_ux_script' ) ) {
+	function qmo_chatbot_kaydet_ux_script() {
+		static $basildi = false;
+		if ( $basildi ) {
+			return;
+		}
+		$basildi = true;
+		?>
+		<script>
+		( function () {
+			document.querySelectorAll( '.qmo-cb-save-bar' ).forEach( function ( bar ) {
+				var form  = bar.closest( 'form' );
+				var btn   = bar.querySelector( '.qmo-cb-save-btn' );
+				var state = bar.querySelector( '.qmo-cb-save-state' );
+				if ( ! form || ! btn || ! state ) {
+					return;
+				}
+				form.addEventListener( 'submit', function () {
+					btn.setAttribute( 'disabled', 'disabled' );
+					state.textContent = '<?php echo esc_js( __( 'Kaydediliyor…', 'qrms' ) ); ?>';
+				} );
+			} );
+
+			// Kompakt çeviri rozeti: alan orijinal değerinden farklılaştığında
+			// "mevcut" rozetini "değişti" uyarısına çevirir (bkz.
+			// qmo_chatbot_i18n_wrap_*()). Bu betik her alt sayfada ortak
+			// basıldığı için sonradan eklenen alanlar da (ör. yeni hazır soru
+			// kartları) olay delegasyonuyla kapsanır.
+			document.addEventListener( 'input', function ( e ) {
+				var wrap = e.target.closest( '.qmo-cb-i18n-wrap' );
+				if ( ! wrap ) {
+					return;
+				}
+				var orijinal = wrap.getAttribute( 'data-i18n-original' ) || '';
+				wrap.classList.toggle( 'is-dirty', e.target.value !== orijinal );
+			} );
+		}() );
+		</script>
+		<?php
 	}
 }
 
 /* -----------------------------------------------------------------
-   1) BOT KİMLİĞİ
+   KOMPAKT ÇEVİRİ DURUMU — büyük sarı notice yerine (fonksiyonalite aynı,
+   yalnızca ekran görünümü). Alttaki .rma-ceviri-* çeviri altyapısına
+   dokunmaz; yalnızca rma_ceviri_veri_dil_sayisi() ile SAYIYI okur.
+----------------------------------------------------------------- */
+
+/**
+ * Kompakt çeviri rozeti HTML'i — dil sayısı 0 ise boş döner.
+ *
+ * @param string $field rma_ceviri_veri_dil_sayisi() alan anahtarı.
+ * @return string
+ */
+if ( ! function_exists( 'qmo_chatbot_ceviri_rozet' ) ) {
+	function qmo_chatbot_ceviri_rozet( $field ) {
+		if ( ! function_exists( 'rma_ceviri_veri_dil_sayisi' ) ) {
+			return '';
+		}
+		$adet = (int) rma_ceviri_veri_dil_sayisi( 'option', 0, $field );
+		if ( $adet < 1 ) {
+			return '';
+		}
+
+		$fresh = sprintf(
+			/* translators: %d: çevirili dil sayısı. */
+			__( '🌐 Çeviri mevcut (%d dil)', 'qrms' ),
+			$adet
+		);
+		$stale = __( '⚠ Bu metin değiştirildi. Mevcut çevirilerin güncellenmesi gerekebilir.', 'qrms' );
+
+		return '<p class="qmo-cb-i18n-badge">'
+			. '<span class="qmo-cb-i18n-fresh">' . esc_html( $fresh ) . '</span>'
+			. '<span class="qmo-cb-i18n-stale">' . esc_html( $stale ) . '</span>'
+			. '</p>';
+	}
+}
+
+/**
+ * Çeviri rozetli alan sarmalayıcısını açar. JS bu wrapper'daki
+ * data-i18n-original ile alanın güncel değerini karşılaştırıp
+ * "mevcut" / "değişti" rozetleri arasında geçiş yapar.
+ *
+ * @param string $orijinal_deger Alanın kayıtlı (sayfa yüklenirkenki) değeri.
+ * @return void
+ */
+if ( ! function_exists( 'qmo_chatbot_i18n_wrap_ac' ) ) {
+	function qmo_chatbot_i18n_wrap_ac( $orijinal_deger ) {
+		echo '<div class="qmo-cb-i18n-wrap" data-i18n-original="' . esc_attr( $orijinal_deger ) . '">';
+	}
+}
+
+/**
+ * Çeviri rozetli alan sarmalayıcısını rozetle birlikte kapatır.
+ *
+ * @param string $field rma_ceviri_veri_dil_sayisi() alan anahtarı.
+ * @return void
+ */
+if ( ! function_exists( 'qmo_chatbot_i18n_wrap_kapat' ) ) {
+	function qmo_chatbot_i18n_wrap_kapat( $field ) {
+		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- qmo_chatbot_ceviri_rozet() zaten esc_html ile üretir.
+		echo qmo_chatbot_ceviri_rozet( $field );
+		echo '</div>';
+	}
+}
+
+/* -----------------------------------------------------------------
+   PAYLAŞILAN CANLI ÖNİZLEME — Asistan Profili, Görünüm ve Hazır Sorular
+   sayfaları aynı işaretlemeyi kullanır (assets/js/admin-chatbot.js bu
+   DOM'u okuyup --gm-* değişkenlerini yazar). chatbot.css'teki gemini-*
+   sınıflarına bağımlıdır; sınıf adları ön yüzle birebir aynı kalmalı.
+----------------------------------------------------------------- */
+
+/**
+ * Canlı önizleme aracı çubuğu + sahte chatbot penceresi.
+ *
+ * @return void
+ */
+if ( ! function_exists( 'qmo_chatbot_onizleme_blogu' ) ) {
+	function qmo_chatbot_onizleme_blogu() {
+		$bot_adi      = get_option( 'gemini_bot_name', 'Asistan' );
+		$karsilama    = get_option( 'gemini_welcome_text', 'Merhaba! Size nasıl yardımcı olabilirim?' );
+		$ipucu        = get_option( 'gemini_placeholder_text', 'Bir şeyler sorun...' );
+		$ikon_url     = get_option( 'gemini_bot_icon', '' );
+		$preset       = (string) qmo_chatbot_ayar( 'qmo_chatbot_icon_preset' );
+		$konum        = (string) qmo_chatbot_ayar( 'qmo_chatbot_position' );
+		$hareket      = (string) qmo_chatbot_ayar( 'qmo_chatbot_attention' );
+		$rozet_on     = 'yes' === qmo_chatbot_ayar( 'qmo_chatbot_badge' );
+		$teaser_on    = 'yes' === qmo_chatbot_ayar( 'qmo_chatbot_teaser' );
+		$teaser_metin = (string) qmo_chatbot_ayar( 'qmo_chatbot_teaser_text' );
+		$ekran_on     = 'yes' === qmo_chatbot_ayar( 'qmo_chatbot_welcome_screen' );
+		$giris_metin  = (string) qmo_chatbot_ayar( 'qmo_chatbot_welcome_intro' );
+		$basla_metin  = (string) qmo_chatbot_ayar( 'qmo_chatbot_welcome_btn' );
+		$metin_goster = 'yes' === get_option( 'gemini_show_toggle_text', 'no' );
+		$konum_sinif  = 'left' === $konum ? 'gm-pos-left' : 'gm-pos-right';
+		$attn_map     = array(
+			'pulse' => 'gm-attn-pulse',
+			'shake' => 'gm-attn-shake',
+			'float' => 'gm-attn-float',
+		);
+		$attn_sinif   = isset( $attn_map[ $hareket ] ) ? $attn_map[ $hareket ] : '';
+		$sorular      = function_exists( 'qmo_chatbot_sorulari_aktif' ) ? qmo_chatbot_sorulari_aktif() : array();
+
+		if ( 'custom' === $preset && $ikon_url ) {
+			$onizleme_ikon = '<img src="' . esc_url( $ikon_url ) . '" alt="" />';
+		} else {
+			$onizleme_ikon = wp_kses( qmo_chatbot_ikon_svg( $preset ), qmo_svg_kses() );
+		}
+		?>
+		<aside class="qmo-cb-preview-col" aria-label="<?php esc_attr_e( 'Canlı önizleme', 'qrms' ); ?>">
+			<p class="qmo-cb-preview-title"><?php esc_html_e( 'Canlı Önizleme', 'qrms' ); ?></p>
+			<div class="qmo-cb-preview-toolbar">
+				<div class="qmo-cb-seg" role="tablist" aria-label="<?php esc_attr_e( 'Cihaz', 'qrms' ); ?>">
+					<button type="button" class="is-active" data-preview-device="phone" aria-pressed="true"><?php esc_html_e( 'Telefon', 'qrms' ); ?></button>
+					<button type="button" data-preview-device="desktop" aria-pressed="false"><?php esc_html_e( 'Masaüstü', 'qrms' ); ?></button>
+				</div>
+				<div class="qmo-cb-seg" role="tablist" aria-label="<?php esc_attr_e( 'Durum', 'qrms' ); ?>">
+					<button type="button" class="is-active" data-preview-state="closed" aria-pressed="true"><?php esc_html_e( 'Kapalı', 'qrms' ); ?></button>
+					<button type="button" data-preview-state="open" aria-pressed="false"><?php esc_html_e( 'Açık', 'qrms' ); ?></button>
+				</div>
+			</div>
+			<div id="qmo-cb-live" class="qmo-cb-live is-phone is-closed">
+				<div class="qmo-cb-live-stage">
+					<div id="qmo-cb-preview-root" class="gemini-shortcode-container <?php echo esc_attr( $konum_sinif ); ?>">
+						<div class="gemini-teaser" <?php echo $teaser_on ? '' : 'hidden'; ?>>
+							<button type="button" class="gemini-teaser-kapat" aria-label="<?php esc_attr_e( 'Kapat', 'qrms' ); ?>">&times;</button>
+							<span data-preview-teaser-text><?php echo esc_html( $teaser_metin ); ?></span>
+						</div>
+
+						<div class="gemini-chat-toggle-btn<?php echo $attn_sinif ? ' ' . esc_attr( $attn_sinif ) : ''; ?>" role="button" tabindex="0" aria-label="<?php echo esc_attr( $bot_adi ); ?>">
+							<span class="gm-attn-core">
+								<span class="gm-attn-ring" aria-hidden="true"></span>
+								<div class="gemini-icon-wrapper" data-preview-icon><?php echo $onizleme_ikon; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- SVG kses / esc_url. ?></div>
+							</span>
+							<span class="gemini-unread-badge" <?php echo $rozet_on ? '' : 'hidden'; ?>>1</span>
+							<span class="gemini-toggle-label" data-preview-toggle-label <?php echo $metin_goster ? '' : 'hidden'; ?>><?php echo esc_html( $bot_adi ); ?></span>
+						</div>
+
+						<div class="gemini-chat-overlay <?php echo esc_attr( $konum_sinif ); ?>">
+							<div class="gemini-chat-header">
+								<div class="gemini-chat-header-left">
+									<div class="gemini-icon-wrapper" data-preview-icon><?php echo $onizleme_ikon; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- SVG kses / esc_url. ?></div>
+									<div class="gemini-header-textblock">
+										<span data-preview-bot-name><?php echo esc_html( $bot_adi ); ?></span>
+										<span class="gemini-header-status"><?php esc_html_e( 'Çevrimiçi', 'qrms' ); ?></span>
+									</div>
+								</div>
+								<button type="button" class="gemini-chat-close" aria-label="<?php esc_attr_e( 'Kapat', 'qrms' ); ?>">&times;</button>
+							</div>
+
+							<div class="gemini-welcome-screen" <?php echo $ekran_on ? '' : 'hidden'; ?>>
+								<div class="gemini-icon-wrapper" data-preview-icon><?php echo $onizleme_ikon; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- SVG kses / esc_url. ?></div>
+								<strong data-preview-bot-name><?php echo esc_html( $bot_adi ); ?></strong>
+								<p data-preview-welcome-text><?php echo esc_html( $giris_metin ); ?></p>
+								<button type="button" class="gemini-welcome-start" data-preview-welcome-btn><?php echo esc_html( $basla_metin ); ?></button>
+							</div>
+
+							<div class="gemini-chat-log" <?php echo $ekran_on ? 'hidden' : ''; ?>>
+								<div class="gemini-msg-bubble gemini-msg-bot" data-preview-welcome><?php echo esc_html( $karsilama ); ?></div>
+								<div class="gemini-msg-bubble gemini-msg-user"><?php esc_html_e( 'Örnek kullanıcı mesajı', 'qrms' ); ?></div>
+							</div>
+
+							<div class="gemini-quick-replies" id="qmo-cb-preview-quick-replies" <?php echo $ekran_on ? 'hidden' : ''; ?>>
+								<?php foreach ( $sorular as $soru ) : ?>
+									<button type="button" class="gemini-quick-reply"><?php echo esc_html( $soru['label'] ); ?></button>
+								<?php endforeach; ?>
+							</div>
+
+							<div class="gemini-chat-input-area" <?php echo $ekran_on ? 'hidden' : ''; ?>>
+								<input type="text" class="gemini-chat-input" readonly value="<?php echo esc_attr( $ipucu ); ?>" data-preview-placeholder>
+								<button type="button" class="gemini-chat-send" aria-label="<?php esc_attr_e( 'Gönder', 'qrms' ); ?>">
+									<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+								</button>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</aside>
+		<?php
+	}
+}
+
+/* -----------------------------------------------------------------
+   1) BOT KİMLİĞİ → ASİSTAN PROFİLİ
 ----------------------------------------------------------------- */
 
 if ( ! function_exists( 'qmo_chatbot_sayfa_bot_kimligi' ) ) {
 	function qmo_chatbot_sayfa_bot_kimligi() {
 		qmo_chatbot_sayfa_basligi(
 			__( 'Asistan Profili', 'qrms' ),
-			__( 'Asistanın adını, karşılama mesajını ve müşterilere nasıl hitap edeceğini belirleyin.', 'qrms' )
+			__( 'Müşterilerinizin karşısında görünecek asistanın adını ve iletişim dilini belirleyin.', 'qrms' )
 		);
 
 		$bot_adi     = get_option( 'gemini_bot_name', 'Asistan' );
 		$karsilama   = get_option( 'gemini_welcome_text', 'Merhaba! Size nasıl yardımcı olabilirim?' );
 		$placeholder = get_option( 'gemini_placeholder_text', 'Bir şeyler sorun...' );
 		$ikon_url    = get_option( 'gemini_bot_icon', '' );
+		$preset      = (string) qmo_chatbot_ayar( 'qmo_chatbot_icon_preset' );
+		$ikon_ozel   = 'custom' === $preset;
 
 		qmo_chatbot_form_ac();
 		?>
-		<table class="form-table" role="presentation">
-			<tr>
-				<th scope="row"><label for="gemini_bot_name">Asistan Adı</label></th>
-				<td>
-					<input type="text" id="gemini_bot_name" name="gemini_bot_name" class="regular-text"
-						value="<?php echo esc_attr( $bot_adi ); ?>">
-					<?php
-					if ( function_exists( 'rma_ceviri_bayat_uyari_html' ) ) {
-						echo rma_ceviri_bayat_uyari_html( rma_ceviri_bayat_uyari_metni( rma_ceviri_veri_dil_sayisi( 'option', 0, 'gemini_bot_name' ) ) );
-					}
-					?>
-				</td>
-			</tr>
-			<tr>
-				<th scope="row"><label for="gemini_welcome_text">Karşılama Mesajı</label></th>
-				<td>
-					<textarea id="gemini_welcome_text" name="gemini_welcome_text" rows="3" class="large-text"><?php echo esc_textarea( $karsilama ); ?></textarea>
-					<?php
-					if ( function_exists( 'rma_ceviri_bayat_uyari_html' ) ) {
-						echo rma_ceviri_bayat_uyari_html( rma_ceviri_bayat_uyari_metni( rma_ceviri_veri_dil_sayisi( 'option', 0, 'gemini_welcome_text' ) ) );
-					}
-					?>
-				</td>
-			</tr>
-			<tr>
-				<th scope="row"><label for="gemini_placeholder_text">Kutu içi ipucu metni</label></th>
-				<td>
-					<input type="text" id="gemini_placeholder_text" name="gemini_placeholder_text" class="regular-text"
-						value="<?php echo esc_attr( $placeholder ); ?>">
-					<?php
-					if ( function_exists( 'rma_ceviri_bayat_uyari_html' ) ) {
-						echo rma_ceviri_bayat_uyari_html( rma_ceviri_bayat_uyari_metni( rma_ceviri_veri_dil_sayisi( 'option', 0, 'gemini_placeholder_text' ) ) );
-					}
-					?>
-				</td>
-			</tr>
-			<tr>
-				<th scope="row">Açma butonu yazısı</th>
-				<td>
-					<?php qmo_chatbot_option_ac_kapa( 'gemini_show_toggle_text', __( 'Asistan adını açma butonunda göster', 'qrms' ) ); ?>
-				</td>
-			</tr>
-			<tr>
-				<th scope="row"><label for="gemini_bot_icon">Asistan Simgesi</label></th>
-				<td>
-					<input type="url" id="gemini_bot_icon" name="gemini_bot_icon" class="regular-text"
-						value="<?php echo esc_url( $ikon_url ); ?>" placeholder="https://...">
-					<button type="button" class="button" id="qmo-icon-upload">Medya Kütüphanesinden Seç</button>
-					<?php if ( $ikon_url ) : ?>
-						<p><img src="<?php echo esc_url( $ikon_url ); ?>" alt="" style="max-width:48px;border-radius:50%;margin-top:8px;"></p>
-					<?php endif; ?>
-				</td>
-			</tr>
-		</table>
+		<input type="hidden" name="qmo_chatbot_icon_preset" id="qmo_chatbot_icon_preset" value="<?php echo esc_attr( $preset ); ?>">
+
+		<div class="qmo-cb-wizard">
+			<div class="qmo-cb-wizard-main">
+				<section class="qmo-cb-card">
+					<h2 class="qmo-cb-card-title"><?php esc_html_e( 'Asistan Kimliği', 'qrms' ); ?></h2>
+
+					<div class="qmo-cb-field">
+						<label for="gemini_bot_name"><?php esc_html_e( 'Asistan Adı', 'qrms' ); ?></label>
+						<p class="qmo-cb-field-desc"><?php esc_html_e( 'Müşterileriniz sohbet ekranında bu adı görecek.', 'qrms' ); ?></p>
+						<?php qmo_chatbot_i18n_wrap_ac( $bot_adi ); ?>
+						<input type="text" id="gemini_bot_name" name="gemini_bot_name" class="regular-text"
+							placeholder="<?php esc_attr_e( 'Örn. Mekanım Asistanı', 'qrms' ); ?>"
+							value="<?php echo esc_attr( $bot_adi ); ?>">
+						<?php qmo_chatbot_i18n_wrap_kapat( 'gemini_bot_name' ); ?>
+					</div>
+
+					<div class="qmo-cb-field">
+						<label for="gemini_welcome_text"><?php esc_html_e( 'Karşılama Mesajı', 'qrms' ); ?></label>
+						<p class="qmo-cb-field-desc"><?php esc_html_e( 'Müşteriler sohbeti açtığında göreceği ilk mesajı yazın.', 'qrms' ); ?></p>
+						<?php qmo_chatbot_i18n_wrap_ac( $karsilama ); ?>
+						<textarea id="gemini_welcome_text" name="gemini_welcome_text" rows="3" class="large-text"
+							placeholder="<?php esc_attr_e( 'Merhaba! 👋 Menümüz hakkında size nasıl yardımcı olabilirim?', 'qrms' ); ?>"><?php echo esc_textarea( $karsilama ); ?></textarea>
+						<?php qmo_chatbot_i18n_wrap_kapat( 'gemini_welcome_text' ); ?>
+					</div>
+
+					<div class="qmo-cb-field">
+						<label for="gemini_placeholder_text"><?php esc_html_e( 'Mesaj Kutusu İpucu', 'qrms' ); ?></label>
+						<p class="qmo-cb-field-desc"><?php esc_html_e( 'Müşteri henüz mesaj yazmadığında giriş alanında gösterilecek kısa metin.', 'qrms' ); ?></p>
+						<?php qmo_chatbot_i18n_wrap_ac( $placeholder ); ?>
+						<input type="text" id="gemini_placeholder_text" name="gemini_placeholder_text" class="regular-text"
+							placeholder="<?php esc_attr_e( 'Menü hakkında bir şey sorun...', 'qrms' ); ?>"
+							value="<?php echo esc_attr( $placeholder ); ?>">
+						<?php qmo_chatbot_i18n_wrap_kapat( 'gemini_placeholder_text' ); ?>
+					</div>
+
+					<div class="qmo-cb-field">
+						<span class="qmo-cb-field-label-static"><?php esc_html_e( 'Açma Butonu', 'qrms' ); ?></span>
+						<?php qmo_chatbot_option_ac_kapa( 'gemini_show_toggle_text', __( 'Asistan adını butonda göster', 'qrms' ) ); ?>
+					</div>
+				</section>
+
+				<section class="qmo-cb-card">
+					<h2 class="qmo-cb-card-title"><?php esc_html_e( 'Asistan İkonu', 'qrms' ); ?></h2>
+					<p class="qmo-cb-field-desc"><?php esc_html_e( 'Müşterilerinize göstermek istediğiniz görseli seçin.', 'qrms' ); ?></p>
+
+					<div class="qmo-cb-icon-picker">
+						<div class="qmo-cb-icon-picker-preview" data-preview-icon-thumb>
+							<?php if ( $ikon_ozel && $ikon_url ) : ?>
+								<img src="<?php echo esc_url( $ikon_url ); ?>" alt="">
+							<?php else : ?>
+								<?php echo wp_kses( qmo_chatbot_ikon_svg( $preset ), qmo_svg_kses() ); ?>
+							<?php endif; ?>
+						</div>
+						<div class="qmo-cb-icon-picker-actions">
+							<button type="button" class="button button-primary" id="qmo-icon-upload"><?php esc_html_e( 'Medya Kütüphanesinden Seç', 'qrms' ); ?></button>
+							<p class="qmo-cb-field-desc">
+								<?php
+								printf(
+									/* translators: %s: Asistan Görünümü sayfası linki. */
+									esc_html__( 'Hazır ikon galerisinden seçmek isterseniz %s sayfasını kullanın.', 'qrms' ),
+									'<a href="' . esc_url( admin_url( 'admin.php?page=qrms-chatbot-appearance' ) ) . '">' . esc_html__( 'Asistan Görünümü', 'qrms' ) . '</a>'
+								);
+								?>
+							</p>
+						</div>
+					</div>
+
+					<details class="qmo-cb-advanced">
+						<summary><?php esc_html_e( 'Gelişmiş: görsel adresini elle girin', 'qrms' ); ?></summary>
+						<div class="qmo-cb-field">
+							<label for="gemini_bot_icon"><?php esc_html_e( 'Görsel adresi', 'qrms' ); ?></label>
+							<input type="url" id="gemini_bot_icon" name="gemini_bot_icon" class="regular-text"
+								value="<?php echo esc_url( $ikon_url ); ?>" placeholder="https://...">
+						</div>
+					</details>
+				</section>
+			</div>
+
+			<?php qmo_chatbot_onizleme_blogu(); ?>
+		</div>
 		<?php
 		qmo_chatbot_form_kapat();
+		echo '<div id="qmo-toast" aria-live="polite"></div>';
 		qmo_chatbot_sayfa_bitir();
 	}
 }
@@ -1220,13 +1487,13 @@ if ( ! function_exists( 'qmo_chatbot_sayfa_ana_site' ) ) {
 			__( 'Asistanın sitenizde nasıl yayınlanacağı ve bu sitenin merkez site olup olmadığı.', 'qrms' )
 		);
 
-		echo '<div class="qmo-cb-kod-kutu">';
-		echo '<h2 class="qmo-cb-kod-baslik">' . esc_html__( 'Asistanı sayfaya elle ekleme', 'qrms' ) . '</h2>';
-		echo '<p class="qmo-cb-kod-not">' . esc_html__( 'Asistan varsayılan olarak tüm sayfalarda otomatik gösterilir. Yalnızca belirli bir sayfada göstermek isterseniz aşağıdaki kısa kodu o sayfaya ekleyin.', 'qrms' ) . '</p>';
-		echo '<div class="qmo-cb-kod-satir">';
-		echo '<input type="text" class="qmo-cb-kod-input" id="qmo-cb-kisa-kod" readonly value="[gemini_chatbot]">';
-		echo '<button type="button" class="qmo-cb-btn qmo-cb-kopyala" data-kopyala="#qmo-cb-kisa-kod">' . esc_html__( 'Kopyala', 'qrms' ) . '</button>';
-		echo '</div></div>';
+		echo '<p class="description">';
+		printf(
+			/* translators: %s: Görünürlük sayfasının bağlantısı. */
+			esc_html__( 'Asistanın sitenizde otomatik gösterilmesi ve kısa kodla elle eklenmesi %s sayfasından yönetilir.', 'qrms' ),
+			'<a href="' . esc_url( admin_url( 'admin.php?page=qrms-chatbot-visibility' ) ) . '">' . esc_html__( 'Ne Zaman ve Kimlere Gösterilsin?', 'qrms' ) . '</a>'
+		);
+		echo '</p>';
 
 		settings_errors();
 
