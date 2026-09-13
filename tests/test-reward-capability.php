@@ -183,3 +183,124 @@ qrms_test(
 		qrms_assert_true( ! isset( $json['email'] ), 'veri sızmaz' );
 	}
 );
+
+/*
+ * "Kasiyer bulunamadı" admin bildirimi (qrm_reward_cap_kasiyer_notice).
+ *
+ * qrm_reward_cap_upgrade()/qrm_reward_cap_kasiyer_rolleri() bu stub ortamında
+ * çalıştırılamaz (wp_roles()/get_role() burada taklit edilmemiştir; rol
+ * atama/migration davranışı izole Docker/WordPress ortamında ayrıca dinamik
+ * olarak doğrulanmıştır). Aşağıdaki testler yalnızca bildirimin GÖSTERİM
+ * mantığını (yetki, ekran, tekrarlanmama) doğrular; `qrm_reward_cap_kasiyer_bulunamadi`
+ * option'ı doğrudan set/delete edilerek "bulunamadı" durumu taklit edilir.
+ */
+
+qrms_test(
+	'kasiyer bildirimi: option yokken hiçbir şey basılmaz',
+	function () {
+		delete_option( 'qrm_reward_cap_kasiyer_bulunamadi' );
+		$GLOBALS['qrms_test']['is_admin']   = true;
+		$GLOBALS['qrms_test']['logged_in']  = true;
+		$GLOBALS['qrms_test']['can_map']['manage_options'] = true;
+		$_GET['page'] = 'qrms-yf-odul';
+
+		ob_start();
+		qrm_reward_cap_kasiyer_notice();
+		$out = ob_get_clean();
+
+		qrms_assert_same( '', $out, 'option aktif değilken bildirim üretilmez' );
+	}
+);
+
+qrms_test(
+	'kasiyer bildirimi: option aktifken manage_options kullanıcısına (Administrator) gösterilir',
+	function () {
+		update_option( 'qrm_reward_cap_kasiyer_bulunamadi', 1, false );
+		$GLOBALS['qrms_test']['is_admin']   = true;
+		$GLOBALS['qrms_test']['logged_in']  = true;
+		$GLOBALS['qrms_test']['can_map']['manage_options'] = true;
+		$_GET['page'] = 'qrms-yf-odul';
+
+		ob_start();
+		qrm_reward_cap_kasiyer_notice();
+		$out = ob_get_clean();
+
+		qrms_assert_contains( 'notice-warning', $out, 'uyarı stiliyle basılır' );
+		qrms_assert_contains( 'qrm_manage_rewards', $out, 'hangi capability atanacağı açıkça belirtilir' );
+		qrms_assert_contains( 'Kasiyer', $out, 'Türkçe, anlaşılır metin' );
+	}
+);
+
+qrms_test(
+	'kasiyer bildirimi: manage_options yetkisi olmayan kullanıcıya (ör. Contributor/Author) gösterilmez',
+	function () {
+		update_option( 'qrm_reward_cap_kasiyer_bulunamadi', 1, false );
+		$GLOBALS['qrms_test']['is_admin']   = true;
+		$GLOBALS['qrms_test']['logged_in']  = true;
+		$GLOBALS['qrms_test']['can_map']['manage_options']     = false;
+		$GLOBALS['qrms_test']['can_map']['qrm_manage_rewards'] = true;
+		$_GET['page'] = 'qrms-yf-odul';
+
+		ob_start();
+		qrm_reward_cap_kasiyer_notice();
+		$out = ob_get_clean();
+
+		qrms_assert_same( '', $out, 'yetkisiz kullanıcıya hiçbir bilgi sızmaz' );
+	}
+);
+
+qrms_test(
+	'kasiyer bildirimi: frontend\'de (is_admin=false) asla gösterilmez',
+	function () {
+		update_option( 'qrm_reward_cap_kasiyer_bulunamadi', 1, false );
+		$GLOBALS['qrms_test']['is_admin']   = false;
+		$GLOBALS['qrms_test']['logged_in']  = true;
+		$GLOBALS['qrms_test']['can_map']['manage_options'] = true;
+		$_GET['page'] = 'qrms-yf-odul';
+
+		ob_start();
+		qrm_reward_cap_kasiyer_notice();
+		$out = ob_get_clean();
+
+		qrms_assert_same( '', $out, 'frontend isteğinde bildirim üretilmez' );
+	}
+);
+
+qrms_test(
+	'kasiyer bildirimi: ödül yönetimi ekranı dışında (başka bir admin sayfasında) gösterilmez',
+	function () {
+		update_option( 'qrm_reward_cap_kasiyer_bulunamadi', 1, false );
+		$GLOBALS['qrms_test']['is_admin']   = true;
+		$GLOBALS['qrms_test']['logged_in']  = true;
+		$GLOBALS['qrms_test']['can_map']['manage_options'] = true;
+		$_GET['page'] = 'qrms-yf-baska-ekran';
+
+		ob_start();
+		qrm_reward_cap_kasiyer_notice();
+		$out = ob_get_clean();
+
+		qrms_assert_same( '', $out, 'yalnızca ilgili ödül yönetimi ekranında gösterilir' );
+	}
+);
+
+qrms_test(
+	'kasiyer bildirimi: aynı istekte birden fazla basılmaz',
+	function () {
+		update_option( 'qrm_reward_cap_kasiyer_bulunamadi', 1, false );
+		$GLOBALS['qrms_test']['is_admin']   = true;
+		$GLOBALS['qrms_test']['logged_in']  = true;
+		$GLOBALS['qrms_test']['can_map']['manage_options'] = true;
+		$_GET['page'] = 'qrms-yf-odul';
+
+		ob_start();
+		qrm_reward_cap_kasiyer_notice();
+		$ilk = ob_get_clean();
+
+		ob_start();
+		qrm_reward_cap_kasiyer_notice();
+		$ikinci = ob_get_clean();
+
+		qrms_assert_true( '' !== $ilk, 'ilk çağrıda basılır' );
+		qrms_assert_same( '', $ikinci, 'aynı istekte ikinci çağrıda tekrar basılmaz' );
+	}
+);

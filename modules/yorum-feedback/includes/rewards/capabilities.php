@@ -135,3 +135,60 @@ function qrm_reward_cap_maybe_upgrade() {
 
     qrm_reward_cap_upgrade();
 }
+
+/**
+ * Bu istekte "kasiyer bulunamadı" admin bildirimi zaten basıldı mı?
+ *
+ * qmo_sepet_istekte_basildi() / qmo_chatbot_istekte_basildi() ile aynı desen
+ * (bkz. shortcode-sepet.php, shortcode-chatbot.php): tek istekte tek basım
+ * garantisi, testler qrms_reset() ile sıfırlayabilir.
+ *
+ * @param bool|null $ata Yeni değer (yalnızca testler için).
+ * @return bool
+ */
+function qrm_reward_cap_notice_basildi($ata = null) {
+    static $basildi = false;
+    if (null !== $ata) {
+        $basildi = (bool) $ata;
+    }
+    return $basildi;
+}
+
+add_action('admin_notices', 'qrm_reward_cap_kasiyer_notice');
+/**
+ * Otomatik kasiyer rolü tespiti başarısız olduğunda yöneticiyi bilgilendirir.
+ *
+ * GÜVENLİK: salt bilgilendirme amaçlıdır — hiçbir capability'yi otomatik
+ * atamaz/değiştirmez, yalnızca `manage_options` yetkisine sahip, oturum açmış
+ * kullanıcılara ve yalnızca ödül yönetimi ekranında (`qrms-yf-odul`) gösterilir.
+ * Hassas veri (e-posta, kod, token vb.) içermez. Frontend'de asla çalışmaz
+ * (admin_notices zaten yalnızca wp-admin'de tetiklenir; is_admin() ek bir
+ * güvence katmanıdır).
+ *
+ * @return void
+ */
+function qrm_reward_cap_kasiyer_notice() {
+    if (qrm_reward_cap_notice_basildi() || !is_admin()) {
+        return;
+    }
+
+    if (!is_user_logged_in() || !current_user_can('manage_options')) {
+        return;
+    }
+
+    $sayfa = isset($_GET['page']) ? sanitize_key(wp_unslash($_GET['page'])) : '';
+    if ('qrms-yf-odul' !== $sayfa) {
+        return;
+    }
+
+    if (!get_option('qrm_reward_cap_kasiyer_bulunamadi')) {
+        return;
+    }
+
+    qrm_reward_cap_notice_basildi(true);
+
+    printf(
+        '<div class="notice notice-warning is-dismissible"><p>%s</p></div>',
+        esc_html__('QR Menü Suite: Kasiyer rolü otomatik olarak tespit edilemedi. Kasiyer kullanıcılarının ödül yönetimini kullanabilmesi için "qrm_manage_rewards" yetkisini uygun özel role manuel olarak atayın.', 'qrms')
+    );
+}

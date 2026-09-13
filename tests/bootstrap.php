@@ -82,6 +82,9 @@ function qrms_reset() {
 	if ( function_exists( 'qmo_chatbot_istekte_basildi' ) ) {
 		qmo_chatbot_istekte_basildi( false );
 	}
+	if ( function_exists( 'qrm_reward_cap_notice_basildi' ) ) {
+		qrm_reward_cap_notice_basildi( false );
+	}
 }
 
 /**
