@@ -889,7 +889,7 @@ qrms_test(
 );
 
 qrms_test(
-	'restoran menü hub ızgarası sabit 3 sütun, ikon hizalı ve başlık ayırıcılı',
+	'restoran menü hub ızgarası sabit 3 sütun; özet şeridi 5 kart ve telefonda kaydırılır',
 	function () {
 		$css = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/css/hub.css' );
 
@@ -900,17 +900,29 @@ qrms_test(
 		qrms_assert_contains( 'align-self: center', $css, 'ikon dikey orta' );
 		qrms_assert_contains( 'border-top: 0.5px solid', $css, 'başlık altı ayırıcı' );
 		qrms_assert_contains( 'rgba(201, 168, 76, 0.35)', $css, 'gold palet ayırıcı rengi' );
-		qrms_assert_contains( 'repeat(3, minmax(0, 1fr))', $css, 'üç özet kartı' );
-		qrms_assert_contains( 'grid-template-columns: 1fr', $css, 'dar ekranda özet alt alta' );
+		qrms_assert_contains( 'repeat(5, minmax(0, 1fr))', $css, 'masaüstünde beş özet kartı' );
+		qrms_assert_contains( 'repeat(3, minmax(0, 1fr))', $css, 'tablette 3 + 2 düzeni' );
+		qrms_assert_contains( 'repeat(2, minmax(0, 1fr))', $css, 'dar tablette iki sütun' );
 		qrms_assert_contains( '@media screen and (max-width: 600px)', $css, 'telefon kırılımı' );
+		qrms_assert_contains( 'overflow-x: auto', $css, 'telefonda yalnızca şerit kayar' );
+		qrms_assert_contains( 'scroll-snap-type: x proximity', $css, 'kart hizalı kaydırma' );
+		qrms_assert_contains( 'scrollbar-width: none', $css, 'kaydırma çubuğu gizli' );
+		qrms_assert_contains( '.rma-hub .qrms-hub-stats::-webkit-scrollbar', $css, 'webkit çubuğu gizli' );
+		qrms_assert_contains( 'flex: 0 0 clamp(158px, 64%, 212px)', $css, 'sonraki kart kenardan görünür' );
+		qrms_assert_contains( '.rma-hub .qrms-hub-stat-hint', $css, 'yardımcı metin stili' );
+		qrms_assert_contains( '.rma-hub .rma-hub-stat-attention', $css, 'tükenen vurgusu modüle özel' );
 		qrms_assert_contains( '.rma-hub .qrms-stat-value', $css, 'ortak değer class' );
-		qrms_assert_contains( 'font-size: 18px', $css, 'özet değer boyutu' );
-		qrms_assert_contains( 'font-weight: 300', $css, 'özet değer ağırlığı' );
+		qrms_assert_contains( 'font-size: 26px', $css, 'özet değer boyutu' );
+		// Şeridi kapsülleyen her kural .rma-hub ile başlar; ortak hub'lar etkilenmez.
+		preg_match_all( '/^\s*(\.[a-z][^,{]*)/mi', $css, $secici );
+		foreach ( $secici[1] as $sec ) {
+			qrms_assert_true( 0 === strpos( trim( $sec ), '.rma-hub' ), trim( $sec ) . ' modüle kapsüllü' );
+		}
 	}
 );
 
 qrms_test(
-	'restoran menü hub kart başlıkları ve üç özet kutusu tanımlı',
+	'restoran menü hub kart başlıkları ve beş menü özeti tanımlı',
 	function () {
 		$php = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-admin-pages.php' );
 
@@ -919,16 +931,23 @@ qrms_test(
 		qrms_assert_contains( "'title'      => 'Tükenen Ürünler'", $php, 'alt sayfa → Tükenen Ürünler' );
 		qrms_assert_contains( "isset( \$page['hub_title'] ) ? \$page['hub_title'] : \$page['menu_title']", $php, 'hub başlığı alt sayfa adını bozmaz' );
 		qrms_assert_contains( "__( 'Tükenen Ürünler', 'qrms' )", $php, 'tükenen ürün özet kartı' );
-		qrms_assert_contains( "__( 'Okunmamış Yorumlar', 'qrms' )", $php, 'yorum özeti' );
-		qrms_assert_contains( "__( 'Bugün Görüntülenme', 'qrms' )", $php, 'analiz özeti' );
-		qrms_assert_contains( "__( '%d okunmamış yorum', 'qrms' )", $php, 'yorum değeri biçimi' );
-		qrms_assert_contains( "'value'  => \$views", $php, 'görüntülenme değeri yalnızca sayı' );
-		qrms_assert_contains( 'qrm_cf_unread_total', $php, 'okunmamış yorum sayacı' );
-		qrms_assert_contains( "qrms-yf-formlar", $php, 'yorum form listesi adresi' );
-		qrms_assert_contains( "tab' => 'submissions'", $php, 'gönderiler sekmesi' );
-		qrms_assert_contains( "get_module_page_url( 'qr-analiz' )", $php, 'QR Analiz adresi' );
-		qrms_assert_contains( 'QRMS_Analitik::genel_bakis()', $php, 'istatistiklerle aynı kaynak' );
-		qrms_assert_contains( "['mv_bugun']", $php, 'bugünkü menü görüntüleme kovası' );
+
+		// Menü Yönetimi ile ilgisi olmayan iki kart bu ekrandan kaldırıldı;
+		// veriyi üreten modüller (Yorum & Feedback, QR Analiz) yerinde durur.
+		qrms_assert_true( false === strpos( $php, 'Okunmamış Yorumlar' ), 'yorum özeti kaldırıldı' );
+		qrms_assert_true( false === strpos( $php, 'Bugün Görüntülenme' ), 'görüntülenme özeti kaldırıldı' );
+		qrms_assert_true( false === strpos( $php, 'qrm_cf_unread_total' ), 'yorum sayacı çağrılmaz' );
+		qrms_assert_true( false === strpos( $php, 'QRMS_Analitik' ), 'analiz sayacı çağrılmaz' );
+
+		// Beş kartın her biri modülün KENDİ mevcut kaynağından beslenir.
+		qrms_assert_contains( 'qmo_yayinlanan_urun_sayisi()', $php, 'ürün sayacı ortak kaynak' );
+		qrms_assert_contains( "\$uy_ozet['toplam']", $php, 'tükenen sayacı ortak kaynak' );
+		qrms_assert_contains( "'taxonomy'   => 'rma_category'", $php, 'kategori sayacı taksonomiden' );
+		qrms_assert_contains( "'hide_empty' => false", $php, 'boş kategori de sayılır' );
+		qrms_assert_contains( 'RMA_Kampanya::aktif()', $php, 'kampanya durumu motorun kendi mantığı' );
+		qrms_assert_contains( 'QMO_Slide_CPT::get_published_slides()', $php, 'öne çıkan ürünler slider grubundan' );
+		qrms_assert_contains( "'_qmo_slide_urun_'", $php, 'slider ürün metası' );
+		qrms_assert_contains( "'manual' === ( \$oneri['mode'] ?? 'system' )", $php, 'yalnızca elle seçim sayılır' );
 		qrms_assert_contains( 'echo \'<div class="rma-hub">\'', $php, 'kapsül sarmalayıcı' );
 		qrms_assert_contains( "__( 'Ürünler', 'qrms' )", $php, 'hub kartı Ürünler' );
 		qrms_assert_contains( "'overview_title' => __( 'Ürünlerim', 'qrms' )", $php, 'Genel Bakış bağlantısı Ürünlerim kalır' );

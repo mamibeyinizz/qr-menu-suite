@@ -1026,7 +1026,12 @@ class QRMS_Admin {
 	 * `class` isteğe bağlıdır: bekleyen iş bildiren kutular kendilerini
 	 * vurgulamak için ek bir sınıf geçer (ör. `qrms-hub-stat-alert`).
 	 *
-	 * @param array $stat { @type string $label, $value, $url, $accent, $class }
+	 * `icon` (dashicons sınıfı) ve `hint` (etiketi açan tek satır) de
+	 * isteğe bağlıdır ve YALNIZCA verildiklerinde basılır: geçmeyen
+	 * modüllerin çıktısı birebir aynı kalır, sunum farkı modülün kendi
+	 * CSS'inde durur.
+	 *
+	 * @param array $stat { @type string $label, $value, $url, $accent, $class, $icon, $hint }
 	 * @return void
 	 */
 	private static function render_hub_stat( array $stat ) {
@@ -1041,10 +1046,13 @@ class QRMS_Admin {
 		}
 		?>
 		<<?php echo $tag; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?> class="<?php echo esc_attr( $classes ); ?>"<?php echo $href; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?> style="border-left-color:<?php echo esc_attr( $accent ); ?>">
-			<div class="qrms-hub-stat-label"><?php echo esc_html( $stat['label'] ); ?></div>
+			<div class="qrms-hub-stat-label"><?php if ( ! empty( $stat['icon'] ) ) : ?><span class="qrms-hub-stat-icon dashicons <?php echo esc_attr( $stat['icon'] ); ?>" aria-hidden="true"></span><?php endif; ?><?php echo esc_html( $stat['label'] ); ?></div>
 			<div class="qrms-hub-stat-value">
 				<span class="qrms-stat-value"><?php echo esc_html( $stat['value'] ); ?></span>
 			</div>
+			<?php if ( ! empty( $stat['hint'] ) ) : ?>
+				<div class="qrms-hub-stat-hint"><?php echo esc_html( $stat['hint'] ); ?></div>
+			<?php endif; ?>
 		</<?php echo $tag; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>
 		<?php
 	}
