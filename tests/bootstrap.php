@@ -60,6 +60,7 @@ function qrms_reset() {
 	$GLOBALS['qrms_test']['http']       = null;
 	$GLOBALS['qrms_test']['http_calls'] = array();
 	$GLOBALS['qrms_test']['can']        = true;
+	$GLOBALS['qrms_test']['can_map']    = array();
 	$GLOBALS['qrms_test']['logged_in']  = false;
 	$GLOBALS['qrms_test']['styles']     = array();
 	$GLOBALS['qrms_test']['scripts']    = array();

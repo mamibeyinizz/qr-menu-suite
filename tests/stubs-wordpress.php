@@ -719,6 +719,15 @@ function current_user_can( $capability, ...$args ) {
 		}
 	}
 
+	// Belirli bir capability için ayrı bir değer tanımlanmışsa (bkz.
+	// qrms_test['can_map']) o kullanılır; tanımlanmamışsa genel 'can'
+	// bayrağına düşülür. Testlerin çoğunluğu tek bir genel bayrakla
+	// çalışmaya devam eder; bu ek yalnızca "edit_posts var ama özel bir
+	// capability yok" gibi ayrık senaryoları test etmek için eklendi.
+	if ( isset( $GLOBALS['qrms_test']['can_map'][ $capability ] ) ) {
+		return (bool) $GLOBALS['qrms_test']['can_map'][ $capability ];
+	}
+
 	return (bool) $GLOBALS['qrms_test']['can'];
 }
 
@@ -1680,6 +1689,19 @@ function _n( $single, $plural, $number, $domain = 'default' ) {
  */
 function check_ajax_referer( $action = -1, $query = false ) {
 	return true;
+}
+
+/**
+ * Ham JSON yanıtı (success/data sarmalaması olmadan) — testlerde çıktı
+ * yerine global'e yazılır. Gerçek WordPress'te bu fonksiyon wp_die() ile
+ * isteği sonlandırır; stub bunu yapmaz, çağıran kodun kendi return'üne
+ * güvenilir.
+ *
+ * @param mixed $response Yanıt.
+ * @return void
+ */
+function wp_send_json( $response ) {
+	$GLOBALS['qrms_test']['json'] = $response;
 }
 
 /**

@@ -14,6 +14,10 @@
 require_once QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/admin/trend.php';
 require_once QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/admin/menu.php';
 require_once QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/admin/hub.php';
+// module.php'nin admin menü kaydı QRM_REWARD_CAP sabitine bakıyor (bkz.
+// BULGU-001 düzeltmesi); gerçek yüklemede qr-menu-reviews.php bunu module.php'den
+// önce tanımlar, burada tek tek dosya yüklendiği için ayrıca gerekir.
+require_once QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/rewards/capabilities.php';
 require_once QRMS_PLUGIN_DIR . 'modules/yorum-feedback/module.php';
 
 /*
