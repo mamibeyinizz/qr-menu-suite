@@ -1,0 +1,50 @@
+Nonce / HMAC / Token dinamik test kanıtları
+=============================================
+
+A) AJAX nonce testleri (action: qrm_reward_admin_lookup)
+---------------------------------------------------------
+Nonce yok               -> gövde "-1", HTTP 403
+Nonce geçersiz (rastgele)-> gövde "-1", HTTP 403
+Nonce sonuna rastgele ek -> gövde "-1", HTTP 403
+Başka kullanıcının nonce'u (admin'inki) contributor cookie'siyle
+                         -> gövde "-1", HTTP 403
+=> WordPress nonce'ları kullanıcı+oturum+action üçlüsüne bağlı; taşınamıyor.
+
+B) REST /qrservis/v1/order nonce testi
+---------------------------------------------------------
+Nonce yok, oturum yok:
+  {"success":false,"kod":"nonce","msg":"Güvenlik doğrulaması başarısız..."}  HTTP 403
+
+Sahte X-WP-Nonce header (deadbeef00):
+  {"code":"rest_cookie_invalid_nonce","message":"Cookie check failed","data":{"status":403}}  HTTP 403
+  (WordPress çekirdeğinin kendi REST cookie kimlik doğrulaması, eklentinin
+   kendi kontrolüne varmadan devreye giriyor — savunma derinliği.)
+
+C) Masa oturumu (HMAC) testleri
+---------------------------------------------------------
+Kayıtlı masa (?masa=sentetik-masa-1):
+  Set-Cookie: qr_masa_token=sentetik-masa-1|<issued>|<last>|0|<hmac-imza>;
+              HttpOnly; SameSite=Lax; (Secure YOK — HTTP ortamı, bkz. BULGU-03)
+
+Kayıtsız/sahte masa (?masa=baska-restoranin-masasi-999):
+  -> Set-Cookie YOK. Oturum açılmadı. (qmo_masa_gecerli_mi() doğru çalışıyor.)
+
+Token tahrifi (masa adı 'sentetik-masa-1' -> 'sentetik-masa-2' olarak değiştirildi,
+imza aynı bırakıldı) ile tekrar istek:
+  -> Sunucu tahrif edilmiş token'ı reddetti (imza uyuşmadı), QMO_Oturum::dogrula()
+     false döndü, sistem ?masa=sentetik-masa-1 için YENİ ve DOĞRU bir token bastı.
+  -> Saldırgan, imzayı bilmeden başka bir masanın oturumunu taklit edemedi.
+
+Tahrif edilmiş token ile garson_cagir çağrısı:
+  -> nonce kontrolüne takıldı (403) — HMAC katmanına varmadan önce nonce
+     katmanı zaten reddetti (iki katmanlı savunma).
+
+D) Ödül "claim" token (tek kullanımlık) — statik kod incelemesiyle doğrulandı
+---------------------------------------------------------------------------
+qrm_reward_issue_claim(): wp_generate_password(32,true,true) ile üretilir,
+DB'ye HAM DEĞİL wp_hash(token) olarak yazılır (transient), doğrulama hash_equals()
+ile sabit-zamanlı yapılır, qrm_reward_consume_claim() ile tek kullanımdan sonra
+transient silinir. Dinamik olarak gerçek bir "claim" akışını uçtan uca tetiklemek
+(qrm_reward_request_code) captcha+timestamp spam guard'ına takıldığı ve tekrar
+denemek "brute-force" sayılacağı için (görev kuralı gereği) yapılmadı; mekanizma
+kod incelemesiyle doğrulandı (bkz. DYNAMIC-SECURITY-REPORT.md §Doğrulanmamış/statik).

