@@ -1,0 +1,72 @@
+name: qrms-test
+
+services:
+  db:
+    image: mirror.gcr.io/library/mariadb:10.11
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root_test_pw}
+      MARIADB_DATABASE: ${WORDPRESS_DB_NAME:-qrms_test}
+      MARIADB_USER: ${WORDPRESS_DB_USER:-qrms_test}
+      MARIADB_PASSWORD: ${WORDPRESS_DB_PASSWORD:-qrms_test_pw}
+    volumes:
+      - qrms_db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks: [qrms_test]
+
+  wordpress:
+    image: mirror.gcr.io/library/wordpress:php8.1-apache
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "${WORDPRESS_PORT:-8080}:80"
+    environment:
+      WORDPRESS_DB_HOST: db
+      WORDPRESS_DB_NAME: ${WORDPRESS_DB_NAME:-qrms_test}
+      WORDPRESS_DB_USER: ${WORDPRESS_DB_USER:-qrms_test}
+      WORDPRESS_DB_PASSWORD: ${WORDPRESS_DB_PASSWORD:-qrms_test_pw}
+      WORDPRESS_DEBUG: 1
+      WORDPRESS_CONFIG_EXTRA: |
+        define('WP_DEBUG_LOG', true);
+        define('WP_DEBUG_DISPLAY', false);
+    volumes:
+      - qrms_wp_data:/var/www/html
+      # Eklenti kaynak kodu repo kökünden doğrudan bağlanır (kopya değil):
+      # repo değişikliği anında container'a yansır.
+      - ../../:/var/www/html/wp-content/plugins/qr-menu-suite
+    networks: [qrms_test]
+
+  wpcli:
+    image: mirror.gcr.io/library/wordpress:cli-php8.1
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      WORDPRESS_DB_HOST: db
+      WORDPRESS_DB_NAME: ${WORDPRESS_DB_NAME:-qrms_test}
+      WORDPRESS_DB_USER: ${WORDPRESS_DB_USER:-qrms_test}
+      WORDPRESS_DB_PASSWORD: ${WORDPRESS_DB_PASSWORD:-qrms_test_pw}
+      WP_SITE_URL: ${WP_SITE_URL:-http://localhost:8080}
+      WP_SITE_TITLE: ${WP_SITE_TITLE:-QR Menu Suite Test}
+      WP_ADMIN_USER: ${WP_ADMIN_USER:-admin}
+      WP_ADMIN_PASSWORD: ${WP_ADMIN_PASSWORD:-admin_test_pw}
+      WP_ADMIN_EMAIL: ${WP_ADMIN_EMAIL:-admin@example.test}
+    volumes:
+      - qrms_wp_data:/var/www/html
+      - ../../:/var/www/html/wp-content/plugins/qr-menu-suite
+      - ./wp-cli-init.sh:/wp-cli-init.sh:ro
+    entrypoint: ["bash", "/wp-cli-init.sh"]
+    networks: [qrms_test]
+
+volumes:
+  qrms_db_data:
+  qrms_wp_data:
+
+networks:
+  qrms_test:
