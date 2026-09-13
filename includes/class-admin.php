@@ -446,16 +446,23 @@ class QRMS_Admin {
 	 * anahtarı (MENU_SLUG / OVERVIEW_CORE_*). Listede olmayan bir satır
 	 * gruplanmaz; sırasını koruyarak en alta düşer.
 	 *
-	 * @return array<int,array{key:string,title:string,accent:string,icon:string,items:string[]}>
+	 * BAŞLIK İKİ TANEDİR. `title` sol menünün dar sütununa sığan kısa addır
+	 * ("Menü"); `overview_title` Genel Bakış'ın kategori başlığıdır ve orada
+	 * yer bol olduğu için ne yapıldığını tam söyler ("Menü Yönetimi").
+	 * `overview_desc` yalnızca Genel Bakış'ta, başlığın altında basılır.
+	 *
+	 * @return array<int,array{key:string,title:string,overview_title:string,overview_desc:string,accent:string,icon:string,items:string[]}>
 	 */
 	public static function get_nav_groups() {
 		return array(
 			array(
-				'key'    => 'menu-yonetimi',
-				'title'  => __( 'Menü', 'qrms' ),
-				'accent' => '#5cb0f0',
-				'icon'   => 'dashicons-food',
-				'items'  => array(
+				'key'             => 'menu-yonetimi',
+				'title'           => __( 'Menü', 'qrms' ),
+				'overview_title'  => __( 'Menü Yönetimi', 'qrms' ),
+				'overview_desc'   => __( 'Ürünlerinizi, kategorilerinizi, fiyatlarınızı, kampanyalarınızı ve menü düzeninizi yönetin.', 'qrms' ),
+				'accent'          => '#5cb0f0',
+				'icon'            => 'dashicons-food',
+				'items'           => array(
 					'restoran-menu',
 					'qr-masa',
 					// Servis Paneli gün içinde en sık açılan ekrandır; menünün
@@ -464,18 +471,22 @@ class QRMS_Admin {
 				),
 			),
 			array(
-				'key'    => 'analiz',
-				'title'  => __( 'Analiz', 'qrms' ),
-				'accent' => '#35d1b4',
-				'icon'   => 'dashicons-chart-bar',
-				'items'  => array( 'qr-analiz', 'qr-menu-muhendisligi', 'yorum-feedback' ),
+				'key'             => 'analiz',
+				'title'           => __( 'Analiz', 'qrms' ),
+				'overview_title'  => __( 'Raporlar ve Analiz', 'qrms' ),
+				'overview_desc'   => __( 'Menü görüntülemelerini, ürün performansını ve müşteri geri bildirimlerini inceleyin.', 'qrms' ),
+				'accent'          => '#35d1b4',
+				'icon'            => 'dashicons-chart-bar',
+				'items'           => array( 'qr-analiz', 'qr-menu-muhendisligi', 'yorum-feedback' ),
 			),
 			array(
-				'key'    => 'musteri-deneyimi',
-				'title'  => __( 'Müşteri Deneyimi', 'qrms' ),
-				'accent' => '#f27cb8',
-				'icon'   => 'dashicons-groups',
-				'items'  => array(
+				'key'             => 'musteri-deneyimi',
+				'title'           => __( 'Müşteri Deneyimi', 'qrms' ),
+				'overview_title'  => __( 'Müşteri Deneyimi', 'qrms' ),
+				'overview_desc'   => __( 'Müşterilerinizin menü deneyimini, iletişim kanallarını ve yardımcı özellikleri yönetin.', 'qrms' ),
+				'accent'          => '#f27cb8',
+				'icon'            => 'dashicons-groups',
+				'items'           => array(
 					'qr-ceviri',
 					'qr-chatbot',
 					'qr-galeri',
@@ -484,18 +495,22 @@ class QRMS_Admin {
 				),
 			),
 			array(
-				'key'    => 'gorunum',
-				'title'  => __( 'Görünüm', 'qrms' ),
-				'accent' => '#dba617',
-				'icon'   => 'dashicons-visibility',
-				'items'  => array( 'header-footer-builder' ),
+				'key'             => 'gorunum',
+				'title'           => __( 'Görünüm', 'qrms' ),
+				'overview_title'  => __( 'Site Görünümü', 'qrms' ),
+				'overview_desc'   => __( 'Menünüzün üst ve alt alanlarını, sayfa düzenini ve görsel yapısını özelleştirin.', 'qrms' ),
+				'accent'          => '#dba617',
+				'icon'            => 'dashicons-visibility',
+				'items'           => array( 'header-footer-builder' ),
 			),
 			array(
-				'key'    => 'genel',
-				'title'  => __( 'Sistem', 'qrms' ),
-				'accent' => '#9ba7b4',
-				'icon'   => 'dashicons-dashboard',
-				'items'  => array(
+				'key'             => 'genel',
+				'title'           => __( 'Sistem', 'qrms' ),
+				'overview_title'  => __( 'Sistem ve Entegrasyonlar', 'qrms' ),
+				'overview_desc'   => __( 'Güvenlik, bağlantılar, lisans ve gelişmiş sistem ayarlarını yönetin.', 'qrms' ),
+				'accent'          => '#9ba7b4',
+				'icon'            => 'dashicons-dashboard',
+				'items'           => array(
 					self::MENU_SLUG,
 					'qr-masa-oturum-guvenligi',
 					self::OVERVIEW_CORE_SHORTCODES,
@@ -1031,7 +1046,7 @@ class QRMS_Admin {
 	 * modüllerin çıktısı birebir aynı kalır, sunum farkı modülün kendi
 	 * CSS'inde durur.
 	 *
-	 * @param array $stat { @type string $label, $value, $url, $accent, $class, $icon, $hint }
+	 * @param array $stat { @type string $label, $value, $desc, $url, $accent, $class, $icon, $hint }
 	 * @return void
 	 */
 	private static function render_hub_stat( array $stat ) {
@@ -1050,6 +1065,9 @@ class QRMS_Admin {
 			<div class="qrms-hub-stat-value">
 				<span class="qrms-stat-value"><?php echo esc_html( $stat['value'] ); ?></span>
 			</div>
+			<?php if ( ! empty( $stat['desc'] ) ) : ?>
+				<div class="qrms-hub-stat-desc"><?php echo esc_html( $stat['desc'] ); ?></div>
+			<?php endif; ?>
 			<?php if ( ! empty( $stat['hint'] ) ) : ?>
 				<div class="qrms-hub-stat-hint"><?php echo esc_html( $stat['hint'] ); ?></div>
 			<?php endif; ?>
@@ -1071,22 +1089,20 @@ class QRMS_Admin {
 
 		if ( $is_overview ) {
 			echo '<section class="qrms-overview-group"' . $style . '>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+			echo '<div class="qrms-overview-group-head">';
 			echo '<h2 class="qrms-overview-group-title">';
 			if ( ! empty( $group['icon'] ) ) {
 				echo '<span class="qrms-overview-group-icon dashicons ' . esc_attr( $group['icon'] ) . '" aria-hidden="true"></span>';
 			}
 			echo '<span class="qrms-overview-group-name">' . esc_html( $group['title'] ) . '</span>';
 			if ( ! empty( $group['total'] ) ) {
-				echo '<span class="qrms-overview-group-count">';
-				printf(
-					/* translators: 1: aktif modül sayısı, 2: kategorideki toplam modül sayısı. */
-					esc_html__( '%1$d/%2$d aktif', 'qrms' ),
-					(int) $group['active'],
-					(int) $group['total']
-				);
-				echo '</span>';
+				echo '<span class="qrms-overview-group-count">' . esc_html( self::get_group_activity_label( (int) $group['active'], (int) $group['total'] ) ) . '</span>';
 			}
 			echo '</h2>';
+			if ( ! empty( $group['desc'] ) ) {
+				echo '<p class="qrms-overview-group-desc">' . esc_html( $group['desc'] ) . '</p>';
+			}
+			echo '</div>';
 		} else {
 			echo '<h2 class="qrms-hub-group-title">';
 			echo esc_html( $group['title'] );
@@ -1103,6 +1119,35 @@ class QRMS_Admin {
 		if ( $is_overview ) {
 			echo '</section>';
 		}
+	}
+
+	/**
+	 * Kategori başlığındaki aktiflik etiketi.
+	 *
+	 * Lisansta açık olan özellik sayısını teknik bir orana ("3/5 aktif")
+	 * indirgemeden anlatır; hepsi açıkken sayı bile gereksizdir.
+	 *
+	 * @param int $active Lisansta açık özellik sayısı.
+	 * @param int $total  Kategorideki toplam özellik sayısı.
+	 * @return string
+	 */
+	public static function get_group_activity_label( $active, $total ) {
+		$active = max( 0, (int) $active );
+		$total  = max( 0, (int) $total );
+
+		if ( $total > 0 && $active >= $total ) {
+			return __( 'Tüm özellikler hazır', 'qrms' );
+		}
+
+		if ( $active < 1 ) {
+			return __( 'Aktif özellik yok', 'qrms' );
+		}
+
+		return sprintf(
+			/* translators: %d: lisansta açık olan özellik sayısı. */
+			__( '%d özellik aktif', 'qrms' ),
+			$active
+		);
 	}
 
 	/**
@@ -1191,10 +1236,7 @@ class QRMS_Admin {
 				<?php endif; ?>
 			</div>
 			<?php if ( 'active' === $state ) : ?>
-				<span class="qrms-overview-state qrms-overview-state-active">
-					<span class="qrms-check" aria-hidden="true">&#10003;</span>
-					<span class="screen-reader-text"><?php esc_html_e( 'Aktif', 'qrms' ); ?></span>
-				</span>
+				<span class="qrms-overview-state qrms-overview-state-active"><?php esc_html_e( 'Aktif', 'qrms' ); ?></span>
 			<?php elseif ( $is_passive ) : ?>
 				<span class="qrms-overview-state qrms-overview-state-passive"><?php esc_html_e( 'Pasif', 'qrms' ); ?></span>
 			<?php endif; ?>
@@ -1476,7 +1518,7 @@ class QRMS_Admin {
 	 * ekrandan DÜŞMEZ: build_overview_groups() onu sondaki "Diğer Modüller"
 	 * kategorisine alır.
 	 *
-	 * @return array<int,array{key:string,title:string,icon:string,accent:string,items:string[]}>
+	 * @return array<int,array{key:string,title:string,desc:string,icon:string,accent:string,items:string[]}>
 	 */
 	public static function get_overview_groups() {
 		$groups = array();
@@ -1484,7 +1526,8 @@ class QRMS_Admin {
 		foreach ( self::get_nav_groups() as $group ) {
 			$groups[] = array(
 				'key'    => $group['key'],
-				'title'  => $group['title'],
+				'title'  => isset( $group['overview_title'] ) ? $group['overview_title'] : $group['title'],
+				'desc'   => isset( $group['overview_desc'] ) ? $group['overview_desc'] : '',
 				'icon'   => $group['icon'],
 				'accent' => $group['accent'],
 				'items'  => $group['items'],
@@ -1511,7 +1554,7 @@ class QRMS_Admin {
 			return array(
 				'url'   => admin_url( 'admin.php?page=' . self::SHORTCODES_SLUG ),
 				'title' => __( 'Entegrasyonlar & Kısa Kodlar', 'qrms' ),
-				'desc'  => __( 'Menü ve özellikleri sitenize eklemek için gereken entegrasyon araçlarını yönetin.', 'qrms' ),
+				'desc'  => __( 'Menünüzü web sitenize bağlayın ve gelişmiş entegrasyon araçlarını yönetin.', 'qrms' ),
 				'icon'  => 'dashicons-editor-code',
 				'state' => 'core',
 			);
@@ -1521,7 +1564,7 @@ class QRMS_Admin {
 			return array(
 				'url'   => admin_url( 'admin.php?page=' . self::SETTINGS_SLUG ),
 				'title' => __( 'Sistem Ayarları', 'qrms' ),
-				'desc'  => __( 'Lisans, bağlantı anahtarı ve sunucu bağlantısı gibi sistem ayarlarını yönetin.', 'qrms' ),
+				'desc'  => __( 'Lisans, bağlantı ve gelişmiş sistem ayarlarınızı yönetin.', 'qrms' ),
 				'icon'  => 'dashicons-admin-settings',
 				'state' => 'core',
 			);
@@ -1542,7 +1585,7 @@ class QRMS_Admin {
 	 *
 	 * @param string[] $active         Aktif modül slug'ları.
 	 * @param bool     $has_shortcodes Kayıtlı kısa kod var mı?
-	 * @return array<int,array{title:string,icon:string,accent:string,cards:array,total:int,active:int}>
+	 * @return array<int,array{title:string,desc:string,icon:string,accent:string,cards:array,total:int,active:int}>
 	 */
 	public static function build_overview_groups( array $active, $has_shortcodes ) {
 		$groups  = array();
@@ -1613,6 +1656,7 @@ class QRMS_Admin {
 
 			$groups[] = array(
 				'title'  => $group['title'],
+				'desc'   => isset( $group['desc'] ) ? $group['desc'] : '',
 				'icon'   => $group['icon'],
 				'accent' => isset( $group['accent'] ) ? $group['accent'] : '',
 				'cards'  => $cards,
@@ -1653,6 +1697,7 @@ class QRMS_Admin {
 
 			$groups[] = array(
 				'title'  => __( 'Diğer Özellikler', 'qrms' ),
+				'desc'   => __( 'Henüz bir kategoriye yerleşmemiş özellikler burada listelenir.', 'qrms' ),
 				'icon'   => 'dashicons-admin-generic',
 				'cards'  => $cards,
 				'total'  => count( $missing ),
@@ -1690,7 +1735,7 @@ class QRMS_Admin {
 				'url'   => $card['url'],
 				'label' => sprintf(
 					/* translators: %d: listede gösterilmeyen ekran sayısı. */
-					__( 'Tüm araçları gör (+%d)', 'qrms' ),
+					__( 'Tüm özellikleri gör (+%d)', 'qrms' ),
 					$total - $limit
 				),
 			);
@@ -1791,7 +1836,25 @@ class QRMS_Admin {
 		 * @param array  $links {url, title} listesi.
 		 * @param string $slug  Modül slug'ı.
 		 */
-		return apply_filters( 'qrms_module_overview_links', $links, $slug );
+		$links = apply_filters( 'qrms_module_overview_links', $links, $slug );
+
+		// Liste modüllerin kendi kayıtlarından ve bir filtreden gelir: eksik
+		// anahtarlı bir kalem kartı basarken "undefined index" uyarısı
+		// üretirdi. Yalnızca adresi ve başlığı olan kalemler kalır.
+		$clean = array();
+
+		foreach ( (array) $links as $link ) {
+			if ( ! is_array( $link ) || empty( $link['url'] ) || empty( $link['title'] ) ) {
+				continue;
+			}
+
+			$clean[] = array(
+				'url'   => (string) $link['url'],
+				'title' => (string) $link['title'],
+			);
+		}
+
+		return $clean;
 	}
 
 	/**
@@ -1871,7 +1934,8 @@ class QRMS_Admin {
 
 		if ( $is( 'restoran-menu' ) && function_exists( 'qmo_yayinlanan_urun_sayisi' ) ) {
 			$status[] = array(
-				'label'  => __( 'Toplam Ürün', 'qrms' ),
+				'label'  => __( 'Menüdeki Ürünler', 'qrms' ),
+				'desc'   => __( 'Menünüzde kayıtlı toplam ürün', 'qrms' ),
 				'value'  => (int) qmo_yayinlanan_urun_sayisi(),
 				'url'    => admin_url( 'edit.php?post_type=rma_menu_item' ),
 				'accent' => '#8c8f94',
@@ -1887,7 +1951,8 @@ class QRMS_Admin {
 			}
 
 			$status[] = array(
-				'label'  => __( 'Toplam Masa', 'qrms' ),
+				'label'  => __( 'Tanımlı Masalar', 'qrms' ),
+				'desc'   => __( 'Sisteme tanımlı masa sayısı', 'qrms' ),
 				'value'  => $masa_sayisi,
 				'url'    => self::get_module_page_url( 'qr-masa' ),
 				'accent' => '#8c8f94',
@@ -1902,13 +1967,15 @@ class QRMS_Admin {
 			$analiz_url = self::get_module_page_url( 'qr-analiz' );
 
 			$status[] = array(
-				'label'  => __( 'Bugünkü Görüntüleme', 'qrms' ),
+				'label'  => __( 'Bugünkü Menü Görüntülemeleri', 'qrms' ),
+				'desc'   => __( 'Bugünkü menü görüntülenme sayısı', 'qrms' ),
 				'value'  => isset( $ozet['mv_bugun'] ) ? (int) $ozet['mv_bugun'] : 0,
 				'url'    => $analiz_url,
 				'accent' => '#8c8f94',
 			);
 			$status[] = array(
-				'label'  => __( 'Aktif Masalar', 'qrms' ),
+				'label'  => __( 'Şu An Aktif Masalar', 'qrms' ),
+				'desc'   => __( 'Şu anda aktif olan masa oturumları', 'qrms' ),
 				'value'  => isset( $ozet['masa_gun'] ) ? (int) $ozet['masa_gun'] : 0,
 				'url'    => $analiz_url,
 				'accent' => '#8c8f94',
@@ -1921,7 +1988,8 @@ class QRMS_Admin {
 				: admin_url( 'admin.php?page=qrms-yf-odul&tab=codes&status=active' );
 
 			$status[] = array(
-				'label'  => __( 'Aktif Kampanyalar', 'qrms' ),
+				'label'  => __( 'Yayındaki Kampanyalar', 'qrms' ),
+				'desc'   => __( 'Yayında olan kampanyalar', 'qrms' ),
 				'value'  => (int) qrm_reward_active_code_count(),
 				'url'    => $url,
 				'accent' => '#8c8f94',
@@ -1979,8 +2047,8 @@ class QRMS_Admin {
 
 		self::render_hub(
 			array(
-				'title'       => __( 'QR Menü — Genel Bakış', 'qrms' ),
-				'intro'       => __( 'Restoranınızın menüsünü, müşterilerinizi ve masa işlemlerini buradan yönetin.', 'qrms' ),
+				'title'       => __( 'QR Menü Kontrol Merkezi', 'qrms' ),
+				'intro'       => __( 'Restoranınızın menüsünü, masa işlemlerini, müşteri deneyimini ve sistem ayarlarını tek yerden yönetin.', 'qrms' ),
 				'class'       => 'qrms-overview',
 				'notice'      => $notice,
 				'stats'       => self::get_overview_stats( $active ),
