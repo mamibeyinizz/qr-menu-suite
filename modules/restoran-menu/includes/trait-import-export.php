@@ -36,21 +36,53 @@ trait RMA_Import_Export_Trait {
             $allowed_allergens = array_keys( $this->get_allergen_definitions() );
             $meat_options      = $this->get_meat_origin_options();
 
+            // Satırlar önce ayrıştırılır: hem eşleştirme haritasının kurulması
+            // hem asıl işleme aynı ayrıştırılmış veriden beslenir.
+            $parsed_rows = [];
             foreach ( $lines as $i => $line ) {
                 if ( $i === 0 || empty( trim( $line ) ) ) continue;
                 $d     = str_getcsv( $line, $delimiter );
                 $title = sanitize_text_field( $d[0] ?? '' );
                 if ( empty( $title ) ) continue;
+                $parsed_rows[] = $d;
+            }
 
-                $pid = wp_insert_post( [
+            // BULGU: Aynı CSV dosyası tekrar yüklendiğinde her satır için
+            // koşulsuz wp_insert_post() çağrılıyor, ürünler çoğalıyordu.
+            // Döngüden ÖNCE tek sorguda "başlık+kategori anahtarı => ürün ID"
+            // haritası kurulur; satır başına arama sorgusu açılmaz. Kategori
+            // de anahtara dahildir: aynı adlı ama farklı kategorideki ürünler
+            // yanlışlıkla birleşmemeli (bkz. csv_dedup_key()).
+            $existing_map = $this->csv_import_existing_map( array_map( function ( $d ) {
+                return [ 'title' => sanitize_text_field( $d[0] ?? '' ), 'cats' => $d[4] ?? '' ];
+            }, $parsed_rows ) );
+
+            foreach ( $parsed_rows as $d ) {
+                $title = sanitize_text_field( $d[0] ?? '' );
+
+                $anahtar  = $this->csv_dedup_key( $title, $d[4] ?? '' );
+                $hedef_id = isset( $existing_map[ $anahtar ] ) ? $existing_map[ $anahtar ] : 0;
+
+                $postarr = [
                     'post_title'   => $title,
                     'post_content' => wp_kses_post( $d[1] ?? '' ),
                     'post_excerpt' => sanitize_textarea_field( $d[2] ?? '' ),
                     'post_status'  => 'publish',
                     'post_type'    => 'rma_menu_item',
-                ] );
+                ];
+
+                if ( $hedef_id ) {
+                    $postarr['ID'] = $hedef_id;
+                    $pid           = wp_update_post( $postarr );
+                } else {
+                    $pid = wp_insert_post( $postarr );
+                }
 
                 if ( $pid && ! is_wp_error( $pid ) ) {
+                    // Aynı dosyada aynı satır (başlık+kategori) tekrar geçerse
+                    // ikinci bir ürün açılmaz, az önce işlenenin üzerine yazılır.
+                    $existing_map[ $anahtar ] = $pid;
+
                     // Fiyat — negatif/metin/biçimsiz sütun değeri diğer alanlar
                     // gibi ham sanitize_text_field ile yazılmaz; geçersizse
                     // ürün boş fiyatla (fiyat belirtilmemiş) içe aktarılır.
@@ -335,6 +367,107 @@ trait RMA_Import_Export_Trait {
         return function_exists( 'mb_strtolower' )
             ? mb_strtolower( $title, 'UTF-8' )
             : strtolower( $title );
+    }
+
+    /**
+     * Ana CSV içe aktarımı için eşleştirme anahtarı: başlık + kategori seti.
+     *
+     * Yalnızca başlığa göre eşleştirmek (import_title_map()'in JSON yedeği
+     * için yaptığı gibi) burada YANLIŞ olurdu: aynı isimli ama farklı
+     * kategorilerdeki iki ürün (ör. "Çorba" hem "Çorbalar" hem "Tatlılar"
+     * kategorisinde) yanlışlıkla tek üründe birleşirdi. Kategori seti de
+     * anahtara dahil edilir; sıra ve harf büyüklüğü sonucu değiştirmez
+     * (aynı import_title_key() normalizasyonu kategori adlarına da uygulanır).
+     *
+     * Saf fonksiyon — doğrudan test edilir.
+     *
+     * @param string $title          Ürün başlığı.
+     * @param string $categories_raw CSV'nin kategori sütunu (virgülle ayrılmış).
+     * @return string
+     */
+    public function csv_dedup_key( $title, $categories_raw ) {
+        $cats = array_filter( array_map( 'trim', explode( ',', (string) $categories_raw ) ) );
+        $cats = array_unique( array_map( [ $this, 'import_title_key' ], $cats ) );
+        sort( $cats );
+
+        return $this->import_title_key( $title ) . "\x1e" . implode( "\x1f", $cats );
+    }
+
+    /**
+     * Ana CSV içe aktarımı için "başlık+kategori anahtarı => ürün ID" haritası.
+     *
+     * import_title_map() ile aynı desen (tek IN(...) sorgusu, 200'lük
+     * parçalar, satır başına tarama yok); farkı csv_dedup_key() ile
+     * kategoriyi de anahtara katmasıdır. Eşleşen ürünlerin kategori terimleri
+     * update_object_term_cache() ile TEK sorguda önbelleğe alınır, ardından
+     * get_the_terms() ek sorgu açmadan cache'ten okur.
+     *
+     * @param array $rows Her biri ['title' => string, 'cats' => string] dizisi.
+     * @return array<string,int> Anahtar => ürün ID.
+     */
+    private function csv_import_existing_map( array $rows ) {
+        global $wpdb;
+
+        $basliklar = [];
+
+        foreach ( $rows as $row ) {
+            $title = isset( $row['title'] ) ? sanitize_text_field( $row['title'] ) : '';
+
+            if ( '' === $title ) continue;
+
+            $basliklar[ $this->import_title_key( $title ) ] = $title;
+        }
+
+        if ( empty( $basliklar ) ) {
+            return [];
+        }
+
+        $post_ids    = [];
+        $title_by_id = [];
+
+        foreach ( array_chunk( array_values( $basliklar ), 200 ) as $parca ) {
+            $yer_tutucu = implode( ', ', array_fill( 0, count( $parca ), '%s' ) );
+
+            $satirlar = $wpdb->get_results(
+                $wpdb->prepare(
+                    "SELECT ID, post_title FROM {$wpdb->posts}
+                     WHERE post_type = 'rma_menu_item'
+                       AND post_status != 'trash'
+                       AND post_title IN ({$yer_tutucu})
+                     ORDER BY ID ASC",
+                    $parca
+                ),
+                ARRAY_A
+            );
+
+            foreach ( (array) $satirlar as $satir ) {
+                $pid                 = (int) $satir['ID'];
+                $post_ids[]          = $pid;
+                $title_by_id[ $pid ] = $satir['post_title'];
+            }
+        }
+
+        if ( empty( $post_ids ) ) {
+            return [];
+        }
+
+        // Kategori terimlerini tek sorguda önbelleğe al (satır başına sorgu yok).
+        update_object_term_cache( $post_ids, 'rma_menu_item' );
+
+        $harita = [];
+
+        foreach ( $post_ids as $pid ) {
+            $terms     = get_the_terms( $pid, 'rma_category' );
+            $cat_names = is_array( $terms ) ? wp_list_pluck( $terms, 'name' ) : [];
+            $anahtar   = $this->csv_dedup_key( $title_by_id[ $pid ], implode( ',', $cat_names ) );
+
+            // Aynı anahtarda birden çok ürün varsa EN KÜÇÜK ID kazanır (ORDER BY ID ASC + ilk gelen kazanır).
+            if ( ! isset( $harita[ $anahtar ] ) ) {
+                $harita[ $anahtar ] = $pid;
+            }
+        }
+
+        return $harita;
     }
 
     /**
