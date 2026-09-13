@@ -86,7 +86,7 @@ function qrms_cs_shortcode( $atts ) {
 	?>
 	<?php // Dış sarmalayıcı sayfa genişliğine yayılır; kart zemini onda, liste .qrms-cs-inner'da ortalanır. ?>
 	<div class="<?php echo esc_attr( $wrap_class ); ?>">
-	<?php // Kart, başlık ve alt not liste DIŞINDA durur: renk değişkenleri de burada, kapsayıcıda toplanır. ?>
+	<?php // Kart ve başlık liste DIŞINDA durur: renk değişkenleri de burada, kapsayıcıda toplanır. ?>
 	<div class="qrms-cs-card"<?php echo qrms_cs_inline_style_attr(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- esc_attr içeride. ?>>
 		<div class="qrms-cs-inner">
 		<div class="qrms-cs-head">
@@ -137,11 +137,6 @@ function qrms_cs_shortcode( $atts ) {
 			</li>
 		<?php endforeach; ?>
 	</ul>
-
-		<p class="qrms-cs-note">
-			<span class="qrms-cs-note-dot" aria-hidden="true"></span>
-			<?php echo esc_html( qrms_cs_cevir( __( 'Sipariş ve rezervasyon için bizi arayın', 'qrms' ) ) ); ?>
-		</p>
 		</div>
 	</div>
 	</div>

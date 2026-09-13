@@ -2987,12 +2987,15 @@ qrms_test(
 		QRMS_Admin::render_module_page( 'qr-calisma-saatleri' );
 		$html = ob_get_clean();
 
-		qrms_assert_contains( 'QR Çalışma Saatleri', $html, 'başlık' );
+		qrms_assert_contains( 'Çalışma Saatleri', $html, 'başlık' );
 		qrms_assert_contains( 'name="qrms_cs[monday][closed]"', $html, 'pazartesi kapalı' );
-		qrms_assert_contains( '[qr_calisma_saatleri]', $html, 'kısa kod' );
-		// Varsayılan artık kutulu (konteyner genişliği); kenardan kenara
-		// istenirse fullwidth="1" ile opt-in edilir.
-		qrms_assert_contains( '[qr_calisma_saatleri fullwidth="1"]', $html, 'tam genişlik opt-in kısa kodu' );
+		// Kısa kod BİLGİ KUTUSU yönetim sayfasından kaldırıldı: aynı bilgi
+		// (fullwidth="1" opt-in'i dâhil) Kısa Kodlar rehberinde duruyor,
+		// kayıt module.php'deki QRMS_Shortcodes::register çağrısındadır.
+		qrms_assert_false(
+			false !== strpos( $html, '<code>[qr_calisma_saatleri]</code>' ),
+			'kısa kod kutusu kaldırıldı'
+		);
 		qrms_assert_false(
 			false !== strpos( $html, 'Bu özellik yakında burada olacak.' ),
 			'placeholder basılmamalı'

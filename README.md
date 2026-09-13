@@ -1026,8 +1026,11 @@ basılmaz; stylesheet'teki `var(--qrms-cs-today, #c9a84c)` geri düşüşü devr
 kalır. Bu yüzden modül güncellendiğinde hiçbir sitenin görünümü değişmez —
 testi de var ("hiç renk seçilmemişken çıktı eskisiyle birebir aynıdır").
 
-Dokuz renk alanı: **arka plan**, **kenar rengi**, **yazı rengi**, bugünün
-vurgusu, bugünün satır zemini, gün adı, saat metni, kapalı gün, satır ayracı.
+Dokuz renk alanı: **liste arka planı**, **kenarlık rengi**, **genel yazı
+rengi**, bugünün vurgu rengi, bugünün satır arka planı, gün adı rengi, saat
+metni rengi, kapalı gün rengi, satır ayırıcı rengi. (Etiketler UX revizyonunda
+sadeleşti; option anahtarları — `bg`, `border`, `text`, `today`, `today_bg`,
+`day`, `hours`, `closed`, `divider` — değişmedi.)
 Alan işaretlemesi restoran-menu'nün renk seçicisiyle aynı
 (`data-default-color` taşıyan metin kutusu + `wpColorPicker`). Gün adı ve saat
 için ayrı renk seçilmemişse iç içe `var()` zinciriyle önce genel yazı rengine,
@@ -1061,6 +1064,36 @@ Saat metni iki yerde üretiliyor — sayfa açılışında PHP (`qrms_cs_format_
 değişiklikte JS. Metinlerin kendisi `wp_localize_script` ile PHP'den geçer
 (çeviri tek yerde kalır); dallanma (kapalı / açılış-kapanış eşitse 24 saat /
 aralık) iki tarafta da aynıdır ve **ikisi birden testle** doğrulanır.
+
+### QR Çalışma Saatleri — yönetim ekranının UX revizyonu
+
+Ön yüz çıktısı ve kayıt yapısı olduğu gibi kaldı; değişen yalnızca yönetim
+ekranı oldu. Option anahtarları (`qrms_calisma_saatleri`,
+`qrms_calisma_saatleri_renkler`), form alan adları (`qrms_cs[...]`,
+`qrms_cs_renk[...]`), nonce ve yetki kontrolü aynıdır.
+
+| Ne | Nasıl |
+| --- | --- |
+| Gün kartları | Yedi gün, tam sırasıyla ve her biri kendi kartında kaldı — tabloya indirgenmedi. Kart artık gün adı + **durum etiketi** (Açık / Kapalı / 24 saat açık) ve sağda "Kapalı" anahtarı taşıyor; alan başlıkları "Açılış saati" / "Kapanış saati" |
+| Uzun yardım metni | Her kartta tekrarlanan iki cümle tek bir yere, "Haftalık plan" başlığının altına taşındı |
+| Hızlı işlemler | Kaynak gün seçilir; saatleri **hafta içine**, **hafta sonuna** ya da **tüm günlere** kopyalanır, tüm günler tek dokunuşla açılıp kapatılır. Her toplu işlem tek adımlık **geri al** bırakır ve "kaydetmeyi unutmayın" bildirimi gösterir. Kutu `hidden` basılır, JS açar: çalışmayan düğme hiç görünmez |
+| Kaydetme | Düğme "Değişiklikleri kaydet"; kaydedilmemiş değişiklik varsa hem satır içi uyarı hem `beforeunload` sorusu çıkar |
+| Kısa kod kutusu | Yönetim sayfasından kaldırıldı. Kısa kodun kendisi, `QRMS_Shortcodes` kaydı ve `fullwidth="1"` opt-in'i **Kısa Kodlar** rehberinde duruyor |
+| Alt not | Kartın altındaki "Sipariş ve rezervasyon için bizi arayın" satırı hem önizlemeden hem ön yüzden kaldırıldı (önizleme kısa kodun kendisi olduğu için tek kaldırma yeri kısa koddu); CSS'i ve çeviri kataloğundaki kaynak metni de silindi |
+| Düzen | Mobilde tek sütun, 783px'ten sonra gün kartları yan yana, 1200px'ten sonra ayarlar solda / **canlı önizleme sağda yapışkan**. Önizleme sütunu 420px: kartın kendi tasarımının sıkışmadığı en dar ölçü — daha darında "Bugün" etiketi saatin üstüne binerdi |
+
+**Kapalı gün artık alanları kilitlemiyor** — bu bir veri kaybı düzeltmesi.
+Eski ekran kapalı günün saat alanlarını `disabled` basıyordu; disabled alan
+gönderilmez ve `qrms_cs_sanitize()` boş değeri varsayılanla (09:00–22:00)
+doldurur. Yani kapalı bir gün her kayıtta restoranın kendi saatlerini
+siliyordu ve gün yeniden açıldığında saatler varsayılana dönmüş oluyordu.
+Alanlar artık yalnızca soluklaşır (odaklanınca tekrar netleşir), değerler
+gönderilmeye devam eder. Testi var.
+
+CSS yalnızca bu modülün sayfasına iner: her seçici `.qrms-cs-` ile başlar,
+WordPress'in genel admin görünümüne kural yazılmaz. Izgaralar kırılım yerine
+kapsayıcıya bakar (`auto-fit` + `min()`), çünkü aynı gün kartı iki farklı
+sütun genişliğinde çıkıyor. 320–1920px arasında yatay kaydırma yok.
 
 ### Açılış Ekranı (`qr-acilis-ekrani`)
 
