@@ -1295,3 +1295,228 @@ qrms_test(
 		qrms_assert_same( 'Post updated.', $mesajlar['rma_menu_item'][1], 'geçerli kayıtta mesaj değişmez' );
 	}
 );
+
+/* =====================================================================
+   MALZEME BAZLI TOPLU AKTARIM (CSV) — FİYAT DOĞRULAMA BYPASS'I
+   handle_ingredient_csv_import_confirm() fiyat sütununu sanitize_text_field()
+   ile doğrudan yazıyordu; admin form, ana CSV ve JSON import'ta zaten
+   uygulanan sanitize_price_value() bu yolda eksikti (Docker'da -321 ve
+   5000000 gibi değerlerin kaydedildiği canlı olarak doğrulanmıştı).
+   Harness, GERÇEK trait metodunu (RMA_Urunum_Yok_Admin_Trait) hiç
+   değiştirmeden çalıştırır; `wp_redirect(...); exit;` çiftindeki `exit`'e
+   stub ortamında hiç ulaşılmaz — wp_redirect() bunun yerine
+   QRMS_Test_Redirect fırlatır (bkz. tests/stubs-wordpress.php,
+   wp_safe_redirect() ile aynı desen), akış burada yakalanıp devam eder.
+===================================================================== */
+
+require_once QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/urunum-yok/trait-admin.php';
+
+if ( ! class_exists( 'RMA_Test_Ingredient_CSV_Harness' ) ) {
+	class RMA_Test_Ingredient_CSV_Harness {
+		use RMA_Urunum_Yok_Admin_Trait;
+		use RMA_Helpers_Trait;
+
+		// trait-helpers.php'deki self::RMA_CACHE_VERSION_OPTION çağrıları
+		// için: gerçek değeri qr-menu.php::Restaurant_Menu_Automation'da
+		// tanımlıdır, trait kendi başına sabit taşımaz.
+		const RMA_CACHE_VERSION_OPTION = 'rma_cache_version';
+	}
+}
+
+/**
+ * handle_ingredient_csv_import_confirm() akışını gerçek trait metoduyla
+ * çalıştırır: önizleme transient'ini handle_ingredient_csv_import_preview()
+ * ile aynı biçimde kurar, nonce'u geçirir, metodu çağırır ve
+ * wp_redirect()'in fırlattığı istisnadan hedef adresi döner.
+ *
+ * @param object $harness RMA_Urunum_Yok_Admin_Trait + RMA_Helpers_Trait kullanan nesne.
+ * @param array  $rows    Önizlemenin ürettiği biçimde satırlar (pid/category/price/ingredients).
+ * @return string Yönlendirme adresi (query string dahil).
+ * @throws Exception Metot yönlendirmeden dönmezse (beklenmeyen durum).
+ */
+function qrms_run_ingredient_csv_confirm( $harness, array $rows ) {
+	$token = 'test-token';
+
+	set_transient(
+		'qmo_uy_csv_' . $token,
+		array(
+			'rows'            => $rows,
+			'eslesen'         => count( $rows ),
+			'eslesmeyen'      => array(),
+			'yeni_malzemeler' => array(),
+			'user'            => get_current_user_id(),
+		),
+		15 * MINUTE_IN_SECONDS
+	);
+
+	$_POST['qmo_uy_csv_confirm_nonce'] = wp_create_nonce( 'qmo_uy_csv_confirm' );
+	$_POST['qmo_uy_csv_token']         = $token;
+
+	try {
+		$harness->handle_ingredient_csv_import_confirm();
+	} catch ( QRMS_Test_Redirect $e ) {
+		return $e->getMessage();
+	}
+
+	throw new Exception( 'handle_ingredient_csv_import_confirm() yönlendirmeden dönmedi' );
+}
+
+echo "\nMalzeme Bazlı Toplu Aktarım (CSV) — fiyat doğrulama bypass'ı (BULGU: fiyat sanitize_text_field() ile doğrudan yazılıyordu)\n";
+
+qrms_test(
+	'malzeme CSV onayı: geçerli fiyatlar (0, 120, 120.50, 999999.99) sanitize_price_value() üzerinden doğru kaydedilir',
+	function () {
+		$h = new RMA_Test_Ingredient_CSV_Harness();
+
+		$pids = array(
+			'sifir'     => 601,
+			'yuz_yirmi' => 602,
+			'ondalikli' => 603,
+			'ust_sinir' => 604,
+		);
+		foreach ( $pids as $pid ) {
+			$GLOBALS['qrms_test']['post_types'][ $pid ] = 'rma_menu_item';
+		}
+
+		$rows = array(
+			array( 'pid' => $pids['sifir'], 'category' => '', 'price' => '0', 'ingredients' => array() ),
+			array( 'pid' => $pids['yuz_yirmi'], 'category' => '', 'price' => '120', 'ingredients' => array() ),
+			array( 'pid' => $pids['ondalikli'], 'category' => '', 'price' => '120.50', 'ingredients' => array() ),
+			array( 'pid' => $pids['ust_sinir'], 'category' => '', 'price' => '999999.99', 'ingredients' => array() ),
+		);
+
+		$location = qrms_run_ingredient_csv_confirm( $h, $rows );
+
+		qrms_assert_contains( 'qmo_uy_csv_uygulandi=4', $location, 'dört satır da işlendi sayılır' );
+		qrms_assert_contains( 'qmo_uy_fiyat_gecersiz=0', $location, 'geçerli fiyatlarda sayaç sıfır kalır' );
+
+		qrms_assert_same( '0', get_post_meta( $pids['sifir'], 'rma_price', true ), '"0" kabul edilip kaydedildi' );
+		qrms_assert_same( '120', get_post_meta( $pids['yuz_yirmi'], 'rma_price', true ), '"120" kabul edilip kaydedildi' );
+		qrms_assert_same( '120.50', get_post_meta( $pids['ondalikli'], 'rma_price', true ), '"120.50" kabul edilip kaydedildi' );
+		qrms_assert_same( '999999.99', get_post_meta( $pids['ust_sinir'], 'rma_price', true ), 'üst sınırın tam değeri kabul edilip kaydedildi' );
+	}
+);
+
+qrms_test(
+	'malzeme CSV onayı: geçersiz fiyatlar reddedilir — mevcut üründe eski fiyat korunur, fiyatsız üründe boş kalır',
+	function () {
+		$h = new RMA_Test_Ingredient_CSV_Harness();
+
+		$vakalar = array(
+			'ust_sinir_asan' => array( 'pid' => 611, 'eski' => '55.00', 'gecersiz' => '1000000' ),
+			'uc_ondalik'     => array( 'pid' => 612, 'eski' => '60.00', 'gecersiz' => '999999.999' ),
+			'negatif'        => array( 'pid' => 613, 'eski' => '75.00', 'gecersiz' => '-321' ),
+			'metin'          => array( 'pid' => 614, 'eski' => '80.00', 'gecersiz' => 'abc' ),
+			'virgullu'       => array( 'pid' => 615, 'eski' => '85.00', 'gecersiz' => '12,50' ),
+			'html'           => array( 'pid' => 616, 'eski' => '90.00', 'gecersiz' => '<b>90</b>' ),
+			'js'             => array( 'pid' => 617, 'eski' => '95.00', 'gecersiz' => '<script>alert(1)</script>' ),
+		);
+		$fiyatsiz_pid = 618;
+
+		$rows = array();
+		foreach ( $vakalar as $vaka ) {
+			$GLOBALS['qrms_test']['post_types'][ $vaka['pid'] ] = 'rma_menu_item';
+			update_post_meta( $vaka['pid'], 'rma_price', $vaka['eski'] );
+			$rows[] = array( 'pid' => $vaka['pid'], 'category' => '', 'price' => $vaka['gecersiz'], 'ingredients' => array() );
+		}
+		$GLOBALS['qrms_test']['post_types'][ $fiyatsiz_pid ] = 'rma_menu_item';
+		$rows[] = array( 'pid' => $fiyatsiz_pid, 'category' => '', 'price' => 'xyz', 'ingredients' => array() );
+
+		$location = qrms_run_ingredient_csv_confirm( $h, $rows );
+
+		qrms_assert_contains( 'qmo_uy_csv_uygulandi=8', $location, 'sekiz satır da eşleşip işlendi (fiyat hariç)' );
+		qrms_assert_contains( 'qmo_uy_fiyat_gecersiz=8', $location, 'sekiz satırın da fiyatı geçersiz sayıldı' );
+
+		foreach ( $vakalar as $ad => $vaka ) {
+			qrms_assert_same(
+				$vaka['eski'],
+				get_post_meta( $vaka['pid'], 'rma_price', true ),
+				'"' . $vaka['gecersiz'] . '" reddedildi, eski fiyat (' . $ad . ') korundu'
+			);
+		}
+		qrms_assert_same( '', get_post_meta( $fiyatsiz_pid, 'rma_price', true ), 'fiyatı hiç olmayan üründe geçersiz değer yazılmadı, boş kaldı' );
+	}
+);
+
+qrms_test(
+	'malzeme CSV onayı: boş fiyat sütunu dokunulmadan geçilir — sayaca eklenmez, mevcut fiyat aynen kalır',
+	function () {
+		$h   = new RMA_Test_Ingredient_CSV_Harness();
+		$pid = 619;
+
+		$GLOBALS['qrms_test']['post_types'][ $pid ] = 'rma_menu_item';
+		update_post_meta( $pid, 'rma_price', '50.00' );
+
+		$rows = array(
+			array( 'pid' => $pid, 'category' => '', 'price' => '', 'ingredients' => array() ),
+		);
+
+		$location = qrms_run_ingredient_csv_confirm( $h, $rows );
+
+		qrms_assert_contains( 'qmo_uy_fiyat_gecersiz=0', $location, 'boş fiyat geçersiz sayılmaz (eski davranış korunur)' );
+		qrms_assert_same( '50.00', get_post_meta( $pid, 'rma_price', true ), 'boş sütun eski fiyata dokunmadı' );
+	}
+);
+
+qrms_test(
+	'malzeme CSV onayı: geçersiz fiyatlı satırda malzeme, kategori, kalori ve vegan bilgisi korunur',
+	function () {
+		$h   = new RMA_Test_Ingredient_CSV_Harness();
+		$pid = 621;
+
+		$GLOBALS['qrms_test']['post_types'][ $pid ] = 'rma_menu_item';
+		update_post_meta( $pid, 'rma_price', '75.00' );
+		update_post_meta( $pid, 'rma_calories', '250' );
+		update_post_meta( $pid, 'rma_is_vegan', '1' );
+
+		$rows = array(
+			array(
+				'pid'         => $pid,
+				'category'    => 'Ana Yemek',
+				'price'       => '-321',
+				'ingredients' => array( 'domates', 'peynir' ),
+			),
+		);
+
+		qrms_run_ingredient_csv_confirm( $h, $rows );
+
+		qrms_assert_same( '75.00', get_post_meta( $pid, 'rma_price', true ), 'geçersiz fiyat yazılmadı, eski fiyat korundu' );
+		qrms_assert_same( '250', get_post_meta( $pid, 'rma_calories', true ), 'kalori bilgisi fiyattan bağımsız korundu' );
+		qrms_assert_same( '1', get_post_meta( $pid, 'rma_is_vegan', true ), 'vegan bilgisi fiyattan bağımsız korundu' );
+
+		qrms_assert_true( isset( $GLOBALS['qrms_test']['terms']['rma_category']['Ana Yemek'] ), 'kategori fiyattan bağımsız oluşturuldu' );
+		$kat_id = $GLOBALS['qrms_test']['terms']['rma_category']['Ana Yemek'];
+		qrms_assert_same( array( $kat_id ), $GLOBALS['qrms_test']['object_terms'][ $pid ]['rma_category'], 'kategori ataması fiyattan bağımsız uygulandı' );
+
+		qrms_assert_true( isset( $GLOBALS['qrms_test']['terms']['rma_ingredient']['domates'] ), 'malzeme (domates) fiyattan bağımsız oluşturuldu' );
+		qrms_assert_true( isset( $GLOBALS['qrms_test']['terms']['rma_ingredient']['peynir'] ), 'malzeme (peynir) fiyattan bağımsız oluşturuldu' );
+		$ing_ids = array(
+			$GLOBALS['qrms_test']['terms']['rma_ingredient']['domates'],
+			$GLOBALS['qrms_test']['terms']['rma_ingredient']['peynir'],
+		);
+		qrms_assert_same( $ing_ids, $GLOBALS['qrms_test']['object_terms'][ $pid ]['rma_ingredient'], 'malzeme ataması fiyattan bağımsız uygulandı' );
+	}
+);
+
+qrms_test(
+	'kaynak kod güvencesi: handle_ingredient_csv_import_confirm() fiyatı sanitize_price_value() üzerinden yazıyor',
+	function () {
+		$kaynak = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/urunum-yok/trait-admin.php' );
+
+		$baslangic = strpos( $kaynak, 'function handle_ingredient_csv_import_confirm' );
+		qrms_assert_true( false !== $baslangic, 'fonksiyon bulunamadı' );
+
+		// Dosyadaki SON metot olduğu için dosya sonuna kadar alınması güvenlidir.
+		$govde = substr( $kaynak, $baslangic );
+
+		qrms_assert_contains(
+			'$this->sanitize_price_value( $row[\'price\'] )',
+			$govde,
+			'ortak fiyat doğrulaması kullanılıyor (BULGU: eskiden sanitize_text_field() ile doğrudan yazılıyordu)'
+		);
+		qrms_assert_true(
+			false === strpos( $govde, 'update_post_meta( $pid, \'rma_price\', sanitize_text_field( $row[\'price\']' ),
+			'eski, doğrulamasız yazma satırı geri gelmemiş'
+		);
+	}
+);
