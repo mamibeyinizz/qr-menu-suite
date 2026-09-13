@@ -401,7 +401,12 @@ qrms_test(
 		// önce eşitlik (status), sonra sıralama (created_at).
 		$liste = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/frontend/reviews-list.php' );
 
-		qrms_assert_contains( 'WHERE status = 1 ORDER BY created_at DESC', $liste, 'ön yüz sorgusu' );
+		// WHERE ve ORDER BY parçaları artık ayrı yardımcı fonksiyonlarda
+		// (fotoğraf filtresi EXISTS alt sorgusuyla kolon çakışmasını önlemek
+		// için 'r.' alias'lı) kurulduğundan kaynakta bitişik metin olarak
+		// durmuyor; her parça kendi tanımında ayrı doğrulanır.
+		qrms_assert_contains( "'r.status = 1'", $liste, 'ön yüz sorgusu — durum eşitliği önce' );
+		qrms_assert_contains( "'r.created_at DESC, r.id DESC'", $liste, 'ön yüz sorgusu — sıralama sonra' );
 
 		// Yönetim sorgusu artık dinamik kurulur (sekme + durum filtresi); sütun
 		// sırası üretilen SQL üzerinden doğrulanır.

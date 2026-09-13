@@ -258,7 +258,7 @@ qrms_test(
 
 		$sorgu = $db->son_sorgu();
 
-		qrms_assert_true( false !== strpos( $sorgu, 'WHERE status = 1' ), 'yalnızca onaylılar' );
+		qrms_assert_true( false !== strpos( $sorgu, 'WHERE r.status = 1' ), 'yalnızca onaylılar' );
 		// Sayfa boyutundan BİR FAZLA istenir: fazladan satır "daha var mı?"
 		// sorusunu ayrı bir COUNT sorgusu olmadan cevaplar.
 		qrms_assert_true( false !== strpos( $sorgu, 'LIMIT 4' ), 'LIMIT = boyut + 1' );
@@ -768,7 +768,7 @@ qrms_test(
 			'her sütun için bir format'
 		);
 		qrms_assert_same(
-			array( '%f', '%d', '%d', '%d', '%d', '%d', '%s', '%s', '%s', '%s', '%d', '%d', '%s' ),
+			array( '%f', '%d', '%d', '%d', '%d', '%d', '%s', '%s', '%s', '%s', '%d', '%d', '%s', '%d', '%s', '%s' ),
 			$veri['format'],
 			'formatlar sütun sırasına göre'
 		);
@@ -787,6 +787,12 @@ qrms_test(
 				'is_anonymous',
 				'status',
 				'form_source',
+				// KVKK/pazarlama rızası takibi: table_id çözülmediğinde
+				// (bu testte 'A12' bir gerçek masaya eşlenmiyor) sona
+				// koşulsuz eklenen 3 sütun.
+				'consent_marketing',
+				'consent_at',
+				'consent_text_hash',
 			),
 			array_keys( $veri['data'] ),
 			'sütun sırası formatla aynı'

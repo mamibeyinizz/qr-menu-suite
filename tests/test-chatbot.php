@@ -476,7 +476,7 @@ qrms_test(
 		qrms_assert_contains( 'name="gemini_bot_icon"', $html, 'ikon' );
 		qrms_assert_contains( 'qmo_chatbot_nonce', $html, 'nonce' );
 		qrms_assert_contains( 'Kaydet', $html, 'Kaydet' );
-		qrms_assert_contains( "submit_button( 'Kaydet', 'primary', 'qmo_chatbot_kaydet' )", file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/includes/admin/admin-sayfa.php' ), 'Kaydet düğmesi adı' );
+		qrms_assert_contains( "submit_button( __( 'Değişiklikleri Kaydet', 'qrms' ), 'primary qmo-cb-save-btn', 'qmo_chatbot_kaydet', false )", file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/includes/admin/admin-sayfa.php' ), 'Kaydet düğmesi adı' );
 		qrms_assert_false( false !== strpos( $html, 'name="gemini_api_key"' ), 'API anahtarı bu sayfada değil' );
 	}
 );
@@ -641,8 +641,8 @@ qrms_test(
 		$html = ob_get_clean();
 
 		qrms_assert_contains( 'name="qmo_chatbot_auto_inject"', $html, 'form alanı' );
-		qrms_assert_contains( 'tüm sayfalarda otomatik göster', $html, 'etiket' );
-		qrms_assert_contains( 'wp_footer', $html, 'açıklama' );
+		qrms_assert_contains( 'Asistanı otomatik göster', $html, 'etiket' );
+		qrms_assert_contains( 'AI Menü Asistanını sitenizde otomatik olarak müşterilerinize gösterin.', $html, 'açıklama' );
 
 		$boot = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/chatbot.php' );
 		qrms_assert_contains( "add_action( 'wp_footer', 'qmo_chatbot_footer_bas'", $boot, 'footer kancası' );
@@ -656,11 +656,11 @@ qrms_test(
 		$kimlik  = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/includes/admin/admin-sayfa.php' );
 		$gorunum = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/includes/admin/sayfa-gorunum.php' );
 
-		qrms_assert_contains( 'Kutu içi ipucu metni', $kimlik, 'ipucu etiketi' );
-		qrms_assert_contains( 'Açma butonu yazısı', $kimlik, 'açma butonu' );
+		qrms_assert_contains( 'Mesaj Kutusu İpucu', $kimlik, 'ipucu etiketi' );
+		qrms_assert_contains( 'Açma butonu yazısı', $gorunum, 'açma butonu' );
 		qrms_assert_contains( 'qmo_chatbot_option_ac_kapa', $kimlik, 'option aç/kapa yardımcısı' );
-		qrms_assert_contains( 'İkon yanında metin', $gorunum, 'ikon etiketi' );
-		qrms_assert_contains( 'name="gemini_show_toggle_text"', $gorunum, 'ikon etiketi alanı' );
+		qrms_assert_contains( 'Kapalı halde ikonun yanında asistan adı görünsün.', $gorunum, 'ikon etiketi' );
+		qrms_assert_contains( "qmo_chatbot_option_ac_kapa( 'gemini_show_toggle_text'", $gorunum, 'ikon etiketi alanı' );
 		qrms_assert_contains( 'Köşe yumuşaklığı', $gorunum, 'köşe' );
 		qrms_assert_contains( 'name="gemini_icon_size"', $gorunum, 'eski boyut alanı' );
 		qrms_assert_contains( 'name="gemini_border_radius"', $gorunum, 'eski köşe alanı' );
@@ -679,9 +679,9 @@ qrms_test(
 		qrms_assert_contains( 'qmo_chatbot_welcome_btn', $gorunum, 'karşılama butonu alanı' );
 		qrms_assert_contains( "'qmo_chatbot_welcome_btn'", file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/includes/class-ayarlar.php' ), 'karşılama varsayılanı' );
 		qrms_assert_contains( 'Yukarı-aşağı süzülme', $gorunum, 'süzülme hareketi' );
-		qrms_assert_contains( 'gemini-chat-overlay', $gorunum, 'önizleme penceresi ön yüz sınıfları' );
-		qrms_assert_contains( 'gemini-chat-toggle-btn', $gorunum, 'önizleme ikonu ön yüz sınıfı' );
-		qrms_assert_contains( 'qmo_chatbot_ikon_svg', $gorunum, 'ortak ikon kaynağı' );
+		qrms_assert_contains( 'gemini-chat-overlay', $kimlik, 'önizleme penceresi ön yüz sınıfları' );
+		qrms_assert_contains( 'gemini-chat-toggle-btn', $kimlik, 'önizleme ikonu ön yüz sınıfı' );
+		qrms_assert_contains( 'qmo_chatbot_ikon_svg', $kimlik, 'ortak ikon kaynağı' );
 
 		$ikonlar = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/includes/class-ayarlar.php' );
 		qrms_assert_contains( 'viewBox="0 0 24 24"', $ikonlar, '24 viewBox' );

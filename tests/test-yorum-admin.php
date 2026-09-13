@@ -468,14 +468,17 @@ qrms_test(
 qrms_test(
 	'yorum PHP iskeleti review köprüsüyle sarılı; honeypot çevrilmez',
 	function () {
-		$form = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/frontend/form-render.php' );
+		$form  = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/frontend/form-render.php' );
+		$steps = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/frontend/form-steps.php' );
 		$liste = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/frontend/shortcode-reviews.php' );
 		$kart  = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/frontend/reviews-list.php' );
 		$popup = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/rewards/popup-render.php' );
 		$cf    = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/forms/render.php' );
 
-		qrms_assert_contains( "qrm_ceviri_review(__('Devam Et →', 'qrms'))", $form, 'Devam Et' );
-		qrms_assert_contains( "qrm_ceviri_review(__('← Geri', 'qrms'))", $form, 'Geri' );
+		// Çok adımlı form navigasyonu (Devam Et / Geri) ayrı bir dosyaya
+		// (form-steps.php) çıkarıldı; honeypot ve diğer alanlar form-render.php'de kaldı.
+		qrms_assert_contains( "qrm_ceviri_review(__('Devam Et →', 'qrms'))", $steps, 'Devam Et' );
+		qrms_assert_contains( "qrm_ceviri_review(__('← Geri', 'qrms'))", $steps, 'Geri' );
 		qrms_assert_contains( "qrm_ceviri_review(__('Gönder', 'qrms'))", $form, 'Gönder' );
 		qrms_assert_contains( "qrm_ceviri_review(__('Güvenlik sorusu:', 'qrms'))", $form, 'captcha' );
 		qrms_assert_contains( "qrm_ceviri_review(__('0 (5__) ___ __ __', 'qrms'))", $form, 'telefon maskesi' );
@@ -497,6 +500,7 @@ qrms_test(
 	'yorum JS metin() yedeği korur; AJAX rma_get_current_lang zincirinde',
 	function () {
 		$js    = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/frontend/form-script.php' );
+		$steps = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/frontend/form-steps.php' );
 		$ajax  = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/ajax/submit-review.php' );
 		$cagri = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/ajax/rewards.php' );
 		$sec   = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/security.php' );
@@ -505,7 +509,9 @@ qrms_test(
 		qrms_assert_contains( 'qrm_ceviri_review_js_metinleri', $js, 'JS yükü' );
 		qrms_assert_contains( 'function metin(anahtar, yedek)', $js, 'metin köprüsü' );
 		qrms_assert_contains( "metin('genericError'", $js, 'generic yedek' );
-		qrms_assert_contains( "metin('rateRequired'", $js, 'kriter yedek' );
+		// rateRequired kontrolü çok adımlı form navigasyonuyla birlikte
+		// form-steps.php'ye taşındı.
+		qrms_assert_contains( "metin('rateRequired'", $steps, 'kriter yedek' );
 		qrms_assert_contains( "metin('thanks'", $js, 'teşekkür yedek' );
 		qrms_assert_contains( "metin('loading'", $js, 'yükleniyor yedek' );
 		qrms_assert_contains( "credentials: 'same-origin'", $js, 'cookie gider' );

@@ -501,7 +501,12 @@ qrms_test(
 		$css = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/assets/css/admin.css' );
 		qrms_assert_contains( '.qrm-table-scroll', $css, 'ortak kaydırma sarmalayıcısı' );
 		qrms_assert_contains( '.qrm-reward-codes-table', $css, 'ödül kodları 1150px kart' );
-		qrms_assert_contains( ".qrm-review-workflow-table .qrm-wf-controls {\n\t\tflex-wrap: wrap;\n\t\tmax-width: none;", $css, 'iş akışı kontrolleri kartta 190px ile sıkışmaz' );
+		// Seçici .qrm-review-workflow-table değil, bu dosyadaki genel kuralla
+		// (.qrm-reviews-screen) taşınıyor; koşulsuz max-width:none temel
+		// kuralda, flex-wrap:wrap ise 1100px kart eşiğinde — iki ayrı blok.
+		qrms_assert_contains( ".qrm-reviews-screen .qrm-wf-controls {\n\tgap: var(--qrm-space-2);\n\tmax-width: none;\n}", $css, 'iş akışı kontrolleri 190px sabit genişliğinden kurtarılır' );
+		qrms_assert_contains( "@media screen and ( max-width: 1100px ) {", $css, 'kart eşiği tablet\'e yükseltildi' );
+		qrms_assert_contains( "\t.qrm-reviews-screen .qrm-wf-controls {\n\t\talign-items: center;\n\t\tflex-direction: row;\n\t\tflex-wrap: wrap;\n\t}", $css, 'iş akışı kontrolleri kartta 190px ile sıkışmaz' );
 
 		$reports = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/admin/reports.php' );
 		qrms_assert_contains( 'qrm-table-scroll', $reports, 'masa özeti tablosu kaydırılır' );
