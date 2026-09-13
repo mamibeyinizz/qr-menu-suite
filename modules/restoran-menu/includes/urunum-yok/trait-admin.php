@@ -454,6 +454,13 @@ trait RMA_Urunum_Yok_Admin_Trait {
         if ( isset( $_GET['qmo_uy_csv_uygulandi'] ) ) {
             printf( '<div class="updated"><p><strong>%d</strong> ürün güncellendi.</p></div>', (int) $_GET['qmo_uy_csv_uygulandi'] );
         }
+        $fiyat_gecersiz = intval( $_GET['qmo_uy_fiyat_gecersiz'] ?? 0 );
+        if ( $fiyat_gecersiz > 0 ) {
+            printf(
+                '<div class="notice notice-warning"><p><strong>%d</strong> üründe dosyadaki fiyat geçersiz (negatif veya sayısal olmayan bir değer) olduğu için atlandı; eski fiyat korundu.</p></div>',
+                $fiyat_gecersiz
+            );
+        }
 
         $token   = isset( $_GET['qmo_uy_csv_token'] ) ? sanitize_text_field( wp_unslash( $_GET['qmo_uy_csv_token'] ) ) : '';
         $preview = $token ? get_transient( 'qmo_uy_csv_' . $token ) : false;
@@ -719,9 +726,10 @@ trait RMA_Urunum_Yok_Admin_Trait {
         if ( function_exists( 'set_time_limit' ) ) @set_time_limit( 0 );
         wp_defer_term_counting( true );
 
-        $ing_cache = [];
-        $cat_cache = [];
-        $updated   = 0;
+        $ing_cache      = [];
+        $cat_cache      = [];
+        $updated        = 0;
+        $fiyat_gecersiz = 0;
 
         foreach ( $preview['rows'] as $row ) {
             $pid = (int) ( $row['pid'] ?? 0 );
@@ -732,7 +740,12 @@ trait RMA_Urunum_Yok_Admin_Trait {
             if ( ! current_user_can( 'edit_post', $pid ) ) continue;
 
             if ( '' !== trim( (string) $row['price'] ) ) {
-                update_post_meta( $pid, 'rma_price', sanitize_text_field( $row['price'] ) );
+                $fiyat = $this->sanitize_price_value( $row['price'] );
+                if ( null === $fiyat ) {
+                    $fiyat_gecersiz++;
+                } else {
+                    update_post_meta( $pid, 'rma_price', $fiyat );
+                }
             }
 
             if ( '' !== trim( (string) $row['category'] ) ) {
@@ -763,7 +776,16 @@ trait RMA_Urunum_Yok_Admin_Trait {
         wp_defer_term_counting( false );
         $this->force_bump_cache_version();
 
-        wp_redirect( $this->admin_page_url( 'qrms-rm-diger', [ 'qmo_uy_csv_uygulandi' => $updated ], 'rma-malzeme-aktar' ) );
+        wp_redirect(
+            $this->admin_page_url(
+                'qrms-rm-diger',
+                [
+                    'qmo_uy_csv_uygulandi'   => $updated,
+                    'qmo_uy_fiyat_gecersiz'  => $fiyat_gecersiz,
+                ],
+                'rma-malzeme-aktar'
+            )
+        );
         exit;
     }
 }

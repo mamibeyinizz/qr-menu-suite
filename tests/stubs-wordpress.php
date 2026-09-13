@@ -199,6 +199,18 @@ function add_filter( $hook, $callback, $priority = 10, $args = 1 ) {
 }
 
 /**
+ * Şu an "çalışıyor" sayılan filtre adı. Gerçek WordPress'te apply_filters()
+ * bunu otomatik izler; bu stub'da testler register_setting() sanitize
+ * callback'i gibi current_filter()'a bakan kodu doğrudan çağırmadan önce
+ * $GLOBALS['qrms_test']['current_filter'] değerini elle ayarlar.
+ *
+ * @return string
+ */
+function current_filter() {
+	return $GLOBALS['qrms_test']['current_filter'] ?? '';
+}
+
+/**
  * Zamanlanmış cron var mı?
  *
  * @param string $hook Hook adı.
@@ -571,6 +583,16 @@ function sanitize_text_field( $value ) {
 }
 
 /**
+ * Tüm HTML etiketlerini temizler (basitleştirilmiş yaklaşım).
+ *
+ * @param string $value Değer.
+ * @return string
+ */
+function wp_strip_all_tags( $value ) {
+	return trim( strip_tags( (string) $value ) ); // phpcs:ignore WordPress.WP.AlternativeFunctions.strip_tags_strip_tags
+}
+
+/**
  * Slash temizler.
  *
  * @param mixed $value Değer.
@@ -898,6 +920,24 @@ function submit_button( $text = 'Kaydet' ) {
  * @return bool
  */
 function wp_safe_redirect( $location ) {
+	$GLOBALS['qrms_test']['redirects'][] = $location;
+
+	throw new QRMS_Test_Redirect( $location );
+}
+
+/**
+ * Yönlendirme (testte sadece kaydedilir).
+ *
+ * wp_safe_redirect() ile aynı davranışı taklit eder: üretim kodundaki
+ * `wp_redirect(...); exit;` çiftinde `exit`'e hiç ulaşılmadan burada
+ * fırlatılan istisnayla akış kesilir — admin-post işleyicileri (ör.
+ * handle_ingredient_csv_import_confirm) gerçek gövdeleriyle test edilebilir.
+ *
+ * @param string $location Adres.
+ * @param int    $status   HTTP durumu (testte dikkate alınmaz).
+ * @return bool
+ */
+function wp_redirect( $location, $status = 302 ) {
 	$GLOBALS['qrms_test']['redirects'][] = $location;
 
 	throw new QRMS_Test_Redirect( $location );
@@ -1954,6 +1994,73 @@ function wp_count_posts( $type = 'post' ) {
  */
 function get_terms( $args = array() ) {
 	return isset( $GLOBALS['qrms_test']['term_names'] ) ? $GLOBALS['qrms_test']['term_names'] : array();
+}
+
+/**
+ * Terim var mı? Testte $GLOBALS['qrms_test']['terms'][taksonomi][ad] = term_id
+ * eşlemesine bakar; wp_insert_term() aynı eşlemeye yazar.
+ *
+ * @param string $term     Terim adı.
+ * @param string $taxonomy Taksonomi.
+ * @return array|false
+ */
+function term_exists( $term, $taxonomy = '' ) {
+	if ( isset( $GLOBALS['qrms_test']['terms'][ $taxonomy ][ $term ] ) ) {
+		$id = $GLOBALS['qrms_test']['terms'][ $taxonomy ][ $term ];
+		return array(
+			'term_id'          => $id,
+			'term_taxonomy_id' => $id,
+		);
+	}
+	return false;
+}
+
+/**
+ * Yeni terim oluşturur (testte otomatik artan sahte ID ile).
+ *
+ * @param string $term     Terim adı.
+ * @param string $taxonomy Taksonomi.
+ * @param array  $args     (Testte dikkate alınmaz.)
+ * @return array
+ */
+function wp_insert_term( $term, $taxonomy, $args = array() ) {
+	if ( ! isset( $GLOBALS['qrms_test']['terms'][ $taxonomy ] ) ) {
+		$GLOBALS['qrms_test']['terms'][ $taxonomy ] = array();
+	}
+
+	$id = 1000 + count( $GLOBALS['qrms_test']['terms'][ $taxonomy ] );
+	$GLOBALS['qrms_test']['terms'][ $taxonomy ][ $term ] = $id;
+
+	return array(
+		'term_id'          => $id,
+		'term_taxonomy_id' => $id,
+	);
+}
+
+/**
+ * Nesneye terim atar. Testte $GLOBALS['qrms_test']['object_terms'][nesne_id][taksonomi]
+ * altında son atanan terim ID listesi olarak saklanır.
+ *
+ * @param int    $object_id Nesne kimliği.
+ * @param mixed  $terms     Terim ID'leri.
+ * @param string $taxonomy  Taksonomi.
+ * @param bool   $append    (Testte dikkate alınmaz.)
+ * @return array
+ */
+function wp_set_object_terms( $object_id, $terms, $taxonomy, $append = false ) {
+	$GLOBALS['qrms_test']['object_terms'][ $object_id ][ $taxonomy ] = (array) $terms;
+
+	return (array) $terms;
+}
+
+/**
+ * Terim sayaç güncellemelerini erteler (testte no-op).
+ *
+ * @param bool $defer
+ * @return bool
+ */
+function wp_defer_term_counting( $defer ) {
+	return true;
 }
 
 /**

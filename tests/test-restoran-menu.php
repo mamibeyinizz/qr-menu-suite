@@ -1112,3 +1112,411 @@ qrms_test(
 		qrms_assert_contains( "kart.classList.toggle('selected', e.target.checked)", $js, 'sınıf checked ile eşitlenir' );
 	}
 );
+
+/* =====================================================================
+   FİYAT DOĞRULAMASI / RENK AYARLARI (CSS INJECTION) / BOŞ ÜRÜN ADI
+   Denetim raporunda "Kritik" işaretlenen üç bulgunun düzeltme testleri.
+   Harness sınıfları, ilgili trait'in WP'ye bağımlı diğer metodlarını
+   (RMA_Filtre/RMA_Tukendi vb.) tetiklemeden yalnızca test edilen durumsuz
+   yardımcıları çağırabilmek için tanımlanır.
+===================================================================== */
+
+require_once QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-helpers.php';
+require_once QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-post-types.php';
+
+if ( ! class_exists( 'RMA_Test_Ayar_Harness' ) ) {
+	class RMA_Test_Ayar_Harness {
+		use RMA_Helpers_Trait;
+	}
+}
+
+if ( ! class_exists( 'RMA_Test_Baslik_Harness' ) ) {
+	class RMA_Test_Baslik_Harness {
+		use RMA_Post_Types_Trait;
+		public $rma_baslik_gecersiz = false;
+		public $rma_fiyat_gecersiz  = false;
+	}
+}
+
+echo "\nÜrün Fiyatı — doğrulama (BULGU: negatif/metin fiyat kaydedilebiliyordu)\n";
+
+qrms_test(
+	'geçerli fiyat formatları kabul edilir',
+	function () {
+		$h = new RMA_Test_Ayar_Harness();
+		qrms_assert_same( '245.50', $h->sanitize_price_value( '245.50' ), 'ondalıklı' );
+		qrms_assert_same( '245', $h->sanitize_price_value( '245' ), 'tam sayı' );
+		qrms_assert_same( '0', $h->sanitize_price_value( '0' ), 'sıfır kabul edilir (ücretsiz/dahil ürün)' );
+		qrms_assert_same( '', $h->sanitize_price_value( '' ), 'boş = fiyat belirtilmemiş, geçerli kalır' );
+		qrms_assert_same( '', $h->sanitize_price_value( '   ' ), 'yalnız boşluk da boşa eşit' );
+	}
+);
+
+qrms_test(
+	'negatif fiyat reddedilir',
+	function () {
+		$h = new RMA_Test_Ayar_Harness();
+		qrms_assert_same( null, $h->sanitize_price_value( '-50' ), 'negatif tam sayı' );
+		qrms_assert_same( null, $h->sanitize_price_value( '-0.01' ), 'negatif ondalık' );
+	}
+);
+
+qrms_test(
+	'metinsel/biçimsiz fiyat reddedilir',
+	function () {
+		$h = new RMA_Test_Ayar_Harness();
+		qrms_assert_same( null, $h->sanitize_price_value( 'abc yüz lira' ), 'düz metin' );
+		qrms_assert_same( null, $h->sanitize_price_value( '245,50' ), 'virgüllü — beklenen biçim nokta' );
+		qrms_assert_same( null, $h->sanitize_price_value( '1e3' ), 'bilimsel gösterim kabul edilmez' );
+		qrms_assert_same( null, $h->sanitize_price_value( '245.5.5' ), 'birden fazla nokta' );
+		qrms_assert_same( null, $h->sanitize_price_value( '<script>alert(1)</script>' ), 'HTML/JS payload' );
+	}
+);
+
+qrms_test(
+	'fiyat üst sınırı (999999.99) doğru uygulanır (BULGU: üst sınır yoktu)',
+	function () {
+		$h = new RMA_Test_Ayar_Harness();
+		qrms_assert_same( '999999.99', $h->sanitize_price_value( '999999.99' ), 'sınırın tam üstü kabul edilir' );
+		qrms_assert_same( null, $h->sanitize_price_value( '1000000' ), 'sınırı aşan tam sayı reddedilir' );
+		qrms_assert_same( null, $h->sanitize_price_value( '999999.999' ), 'üç ondalık zaten biçim hatası — reddedilir' );
+		qrms_assert_same( null, $h->sanitize_price_value( '9999999999999999999' ), 'aşırı büyük sayı reddedilir' );
+	}
+);
+
+echo "\nMenü Görünümü Renkleri — CSS injection ve HEX doğrulama (BULGU: menü CSS ile gizlenebiliyordu)\n";
+
+qrms_test(
+	"CSS injection payload'ı reddedilir, alan güvenli boş değere düşer",
+	function () {
+		$h = new RMA_Test_Ayar_Harness();
+		$GLOBALS['qrms_test']['current_filter'] = 'sanitize_option_rma_color_settings';
+
+		$temiz = $h->sanitize_settings_array( array( 'accent' => 'red;}body{display:none!important}/*' ) );
+		qrms_assert_same( '', $temiz['accent'], 'CSS bağlamından kaçış süzülür' );
+
+		$temiz2 = $h->sanitize_settings_array( array( 'accent' => '<style>body{display:none}</style>' ) );
+		qrms_assert_same( '', $temiz2['accent'], 'style etiketi süzülür' );
+	}
+);
+
+qrms_test(
+	'geçersiz HEX değerleri reddedilir, geçerli HEX değerleri aynen kaydedilir',
+	function () {
+		$h = new RMA_Test_Ayar_Harness();
+		$GLOBALS['qrms_test']['current_filter'] = 'sanitize_option_rma_color_settings';
+
+		qrms_assert_same( '', $h->sanitize_settings_array( array( 'bg' => '#zzzzzz' ) )['bg'], 'geçersiz karakter' );
+		qrms_assert_same( '', $h->sanitize_settings_array( array( 'bg' => '#12345' ) )['bg'], 'yanlış uzunluk' );
+		qrms_assert_same( '#1a2b3c', $h->sanitize_settings_array( array( 'bg' => '#1a2b3c' ) )['bg'], 'geçerli 6 haneli hex' );
+		qrms_assert_same( '#abc', $h->sanitize_settings_array( array( 'bg' => '#abc' ) )['bg'], 'geçerli 3 haneli hex' );
+	}
+);
+
+qrms_test(
+	'nav tasarımında "transparent" hazır tema değeri korunur, renk dışı alanlar bozulmaz',
+	function () {
+		$h = new RMA_Test_Ayar_Harness();
+		$GLOBALS['qrms_test']['current_filter'] = 'sanitize_option_rma_nav_design_settings';
+
+		$temiz = $h->sanitize_settings_array(
+			array(
+				'border_color' => 'transparent',
+				'font_weight'  => '600',
+				'sticky'       => '1',
+			)
+		);
+		qrms_assert_same( 'transparent', $temiz['border_color'], "Koyu Minimal temasının kenarlığı korunur" );
+		qrms_assert_same( '600', $temiz['font_weight'], 'renk dışı alan eskisi gibi geçer' );
+		qrms_assert_same( '1', $temiz['sticky'], 'checkbox alanı etkilenmez' );
+	}
+);
+
+echo "\nÜrün Adı Zorunluluğu — sessiz veri kaybı düzeltmesi (BULGU: boş başlıkla fiyat kayboluyordu)\n";
+
+qrms_test(
+	"boş ürün adıyla kayıt auto-draft'ta kalır ve hata bayrağı ayarlanır",
+	function () {
+		$h = new RMA_Test_Baslik_Harness();
+
+		$data = $h->block_empty_title_save(
+			array(
+				'post_type'    => 'rma_menu_item',
+				'post_title'   => '',
+				'post_content' => 'bir açıklama',
+				'post_status'  => 'draft',
+			),
+			array( 'ID' => 0 )
+		);
+
+		qrms_assert_same( 'auto-draft', $data['post_status'], "içerik dolu olsa da auto-draft'ta kalır (fiyat/açıklama gerçek bir taslağa sızmaz)" );
+		qrms_assert_true( $h->rma_baslik_gecersiz, 'hata bayrağı ayarlandı' );
+	}
+);
+
+qrms_test(
+	'geçerli başlıkla kayıt akışı değişmez',
+	function () {
+		$h = new RMA_Test_Baslik_Harness();
+
+		$girdi = array(
+			'post_type'    => 'rma_menu_item',
+			'post_title'   => 'Karışık Izgara',
+			'post_content' => 'açıklama',
+			'post_status'  => 'publish',
+		);
+		$data = $h->block_empty_title_save( $girdi, array( 'ID' => 0 ) );
+
+		qrms_assert_same( $girdi, $data, 'başlık doluyken veri hiç değiştirilmez' );
+		qrms_assert_false( $h->rma_baslik_gecersiz, 'hata bayrağı ayarlanmaz' );
+	}
+);
+
+qrms_test(
+	'boş başlıkta WordPress\'in yanıltıcı "kaydedildi" mesajı boşaltılır',
+	function () {
+		$h                       = new RMA_Test_Baslik_Harness();
+		$_GET['rma_baslik_hata'] = '1';
+		$_GET['message']         = '1';
+
+		$mesajlar = $h->suppress_success_message_on_error( array( 'rma_menu_item' => array( 1 => 'Post updated.' ) ) );
+
+		qrms_assert_same( '', $mesajlar['rma_menu_item'][1], 'yanıltıcı başarı metni boşaltıldı' );
+	}
+);
+
+qrms_test(
+	'hata yokken normal "kaydedildi" mesajı olduğu gibi kalır',
+	function () {
+		$h = new RMA_Test_Baslik_Harness();
+
+		$mesajlar = $h->suppress_success_message_on_error( array( 'rma_menu_item' => array( 1 => 'Post updated.' ) ) );
+
+		qrms_assert_same( 'Post updated.', $mesajlar['rma_menu_item'][1], 'geçerli kayıtta mesaj değişmez' );
+	}
+);
+
+/* =====================================================================
+   MALZEME BAZLI TOPLU AKTARIM (CSV) — FİYAT DOĞRULAMA BYPASS'I
+   handle_ingredient_csv_import_confirm() fiyat sütununu sanitize_text_field()
+   ile doğrudan yazıyordu; admin form, ana CSV ve JSON import'ta zaten
+   uygulanan sanitize_price_value() bu yolda eksikti (Docker'da -321 ve
+   5000000 gibi değerlerin kaydedildiği canlı olarak doğrulanmıştı).
+   Harness, GERÇEK trait metodunu (RMA_Urunum_Yok_Admin_Trait) hiç
+   değiştirmeden çalıştırır; `wp_redirect(...); exit;` çiftindeki `exit`'e
+   stub ortamında hiç ulaşılmaz — wp_redirect() bunun yerine
+   QRMS_Test_Redirect fırlatır (bkz. tests/stubs-wordpress.php,
+   wp_safe_redirect() ile aynı desen), akış burada yakalanıp devam eder.
+===================================================================== */
+
+require_once QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/urunum-yok/trait-admin.php';
+
+if ( ! class_exists( 'RMA_Test_Ingredient_CSV_Harness' ) ) {
+	class RMA_Test_Ingredient_CSV_Harness {
+		use RMA_Urunum_Yok_Admin_Trait;
+		use RMA_Helpers_Trait;
+
+		// trait-helpers.php'deki self::RMA_CACHE_VERSION_OPTION çağrıları
+		// için: gerçek değeri qr-menu.php::Restaurant_Menu_Automation'da
+		// tanımlıdır, trait kendi başına sabit taşımaz.
+		const RMA_CACHE_VERSION_OPTION = 'rma_cache_version';
+	}
+}
+
+/**
+ * handle_ingredient_csv_import_confirm() akışını gerçek trait metoduyla
+ * çalıştırır: önizleme transient'ini handle_ingredient_csv_import_preview()
+ * ile aynı biçimde kurar, nonce'u geçirir, metodu çağırır ve
+ * wp_redirect()'in fırlattığı istisnadan hedef adresi döner.
+ *
+ * @param object $harness RMA_Urunum_Yok_Admin_Trait + RMA_Helpers_Trait kullanan nesne.
+ * @param array  $rows    Önizlemenin ürettiği biçimde satırlar (pid/category/price/ingredients).
+ * @return string Yönlendirme adresi (query string dahil).
+ * @throws Exception Metot yönlendirmeden dönmezse (beklenmeyen durum).
+ */
+function qrms_run_ingredient_csv_confirm( $harness, array $rows ) {
+	$token = 'test-token';
+
+	set_transient(
+		'qmo_uy_csv_' . $token,
+		array(
+			'rows'            => $rows,
+			'eslesen'         => count( $rows ),
+			'eslesmeyen'      => array(),
+			'yeni_malzemeler' => array(),
+			'user'            => get_current_user_id(),
+		),
+		15 * MINUTE_IN_SECONDS
+	);
+
+	$_POST['qmo_uy_csv_confirm_nonce'] = wp_create_nonce( 'qmo_uy_csv_confirm' );
+	$_POST['qmo_uy_csv_token']         = $token;
+
+	try {
+		$harness->handle_ingredient_csv_import_confirm();
+	} catch ( QRMS_Test_Redirect $e ) {
+		return $e->getMessage();
+	}
+
+	throw new Exception( 'handle_ingredient_csv_import_confirm() yönlendirmeden dönmedi' );
+}
+
+echo "\nMalzeme Bazlı Toplu Aktarım (CSV) — fiyat doğrulama bypass'ı (BULGU: fiyat sanitize_text_field() ile doğrudan yazılıyordu)\n";
+
+qrms_test(
+	'malzeme CSV onayı: geçerli fiyatlar (0, 120, 120.50, 999999.99) sanitize_price_value() üzerinden doğru kaydedilir',
+	function () {
+		$h = new RMA_Test_Ingredient_CSV_Harness();
+
+		$pids = array(
+			'sifir'     => 601,
+			'yuz_yirmi' => 602,
+			'ondalikli' => 603,
+			'ust_sinir' => 604,
+		);
+		foreach ( $pids as $pid ) {
+			$GLOBALS['qrms_test']['post_types'][ $pid ] = 'rma_menu_item';
+		}
+
+		$rows = array(
+			array( 'pid' => $pids['sifir'], 'category' => '', 'price' => '0', 'ingredients' => array() ),
+			array( 'pid' => $pids['yuz_yirmi'], 'category' => '', 'price' => '120', 'ingredients' => array() ),
+			array( 'pid' => $pids['ondalikli'], 'category' => '', 'price' => '120.50', 'ingredients' => array() ),
+			array( 'pid' => $pids['ust_sinir'], 'category' => '', 'price' => '999999.99', 'ingredients' => array() ),
+		);
+
+		$location = qrms_run_ingredient_csv_confirm( $h, $rows );
+
+		qrms_assert_contains( 'qmo_uy_csv_uygulandi=4', $location, 'dört satır da işlendi sayılır' );
+		qrms_assert_contains( 'qmo_uy_fiyat_gecersiz=0', $location, 'geçerli fiyatlarda sayaç sıfır kalır' );
+
+		qrms_assert_same( '0', get_post_meta( $pids['sifir'], 'rma_price', true ), '"0" kabul edilip kaydedildi' );
+		qrms_assert_same( '120', get_post_meta( $pids['yuz_yirmi'], 'rma_price', true ), '"120" kabul edilip kaydedildi' );
+		qrms_assert_same( '120.50', get_post_meta( $pids['ondalikli'], 'rma_price', true ), '"120.50" kabul edilip kaydedildi' );
+		qrms_assert_same( '999999.99', get_post_meta( $pids['ust_sinir'], 'rma_price', true ), 'üst sınırın tam değeri kabul edilip kaydedildi' );
+	}
+);
+
+qrms_test(
+	'malzeme CSV onayı: geçersiz fiyatlar reddedilir — mevcut üründe eski fiyat korunur, fiyatsız üründe boş kalır',
+	function () {
+		$h = new RMA_Test_Ingredient_CSV_Harness();
+
+		$vakalar = array(
+			'ust_sinir_asan' => array( 'pid' => 611, 'eski' => '55.00', 'gecersiz' => '1000000' ),
+			'uc_ondalik'     => array( 'pid' => 612, 'eski' => '60.00', 'gecersiz' => '999999.999' ),
+			'negatif'        => array( 'pid' => 613, 'eski' => '75.00', 'gecersiz' => '-321' ),
+			'metin'          => array( 'pid' => 614, 'eski' => '80.00', 'gecersiz' => 'abc' ),
+			'virgullu'       => array( 'pid' => 615, 'eski' => '85.00', 'gecersiz' => '12,50' ),
+			'html'           => array( 'pid' => 616, 'eski' => '90.00', 'gecersiz' => '<b>90</b>' ),
+			'js'             => array( 'pid' => 617, 'eski' => '95.00', 'gecersiz' => '<script>alert(1)</script>' ),
+		);
+		$fiyatsiz_pid = 618;
+
+		$rows = array();
+		foreach ( $vakalar as $vaka ) {
+			$GLOBALS['qrms_test']['post_types'][ $vaka['pid'] ] = 'rma_menu_item';
+			update_post_meta( $vaka['pid'], 'rma_price', $vaka['eski'] );
+			$rows[] = array( 'pid' => $vaka['pid'], 'category' => '', 'price' => $vaka['gecersiz'], 'ingredients' => array() );
+		}
+		$GLOBALS['qrms_test']['post_types'][ $fiyatsiz_pid ] = 'rma_menu_item';
+		$rows[] = array( 'pid' => $fiyatsiz_pid, 'category' => '', 'price' => 'xyz', 'ingredients' => array() );
+
+		$location = qrms_run_ingredient_csv_confirm( $h, $rows );
+
+		qrms_assert_contains( 'qmo_uy_csv_uygulandi=8', $location, 'sekiz satır da eşleşip işlendi (fiyat hariç)' );
+		qrms_assert_contains( 'qmo_uy_fiyat_gecersiz=8', $location, 'sekiz satırın da fiyatı geçersiz sayıldı' );
+
+		foreach ( $vakalar as $ad => $vaka ) {
+			qrms_assert_same(
+				$vaka['eski'],
+				get_post_meta( $vaka['pid'], 'rma_price', true ),
+				'"' . $vaka['gecersiz'] . '" reddedildi, eski fiyat (' . $ad . ') korundu'
+			);
+		}
+		qrms_assert_same( '', get_post_meta( $fiyatsiz_pid, 'rma_price', true ), 'fiyatı hiç olmayan üründe geçersiz değer yazılmadı, boş kaldı' );
+	}
+);
+
+qrms_test(
+	'malzeme CSV onayı: boş fiyat sütunu dokunulmadan geçilir — sayaca eklenmez, mevcut fiyat aynen kalır',
+	function () {
+		$h   = new RMA_Test_Ingredient_CSV_Harness();
+		$pid = 619;
+
+		$GLOBALS['qrms_test']['post_types'][ $pid ] = 'rma_menu_item';
+		update_post_meta( $pid, 'rma_price', '50.00' );
+
+		$rows = array(
+			array( 'pid' => $pid, 'category' => '', 'price' => '', 'ingredients' => array() ),
+		);
+
+		$location = qrms_run_ingredient_csv_confirm( $h, $rows );
+
+		qrms_assert_contains( 'qmo_uy_fiyat_gecersiz=0', $location, 'boş fiyat geçersiz sayılmaz (eski davranış korunur)' );
+		qrms_assert_same( '50.00', get_post_meta( $pid, 'rma_price', true ), 'boş sütun eski fiyata dokunmadı' );
+	}
+);
+
+qrms_test(
+	'malzeme CSV onayı: geçersiz fiyatlı satırda malzeme, kategori, kalori ve vegan bilgisi korunur',
+	function () {
+		$h   = new RMA_Test_Ingredient_CSV_Harness();
+		$pid = 621;
+
+		$GLOBALS['qrms_test']['post_types'][ $pid ] = 'rma_menu_item';
+		update_post_meta( $pid, 'rma_price', '75.00' );
+		update_post_meta( $pid, 'rma_calories', '250' );
+		update_post_meta( $pid, 'rma_is_vegan', '1' );
+
+		$rows = array(
+			array(
+				'pid'         => $pid,
+				'category'    => 'Ana Yemek',
+				'price'       => '-321',
+				'ingredients' => array( 'domates', 'peynir' ),
+			),
+		);
+
+		qrms_run_ingredient_csv_confirm( $h, $rows );
+
+		qrms_assert_same( '75.00', get_post_meta( $pid, 'rma_price', true ), 'geçersiz fiyat yazılmadı, eski fiyat korundu' );
+		qrms_assert_same( '250', get_post_meta( $pid, 'rma_calories', true ), 'kalori bilgisi fiyattan bağımsız korundu' );
+		qrms_assert_same( '1', get_post_meta( $pid, 'rma_is_vegan', true ), 'vegan bilgisi fiyattan bağımsız korundu' );
+
+		qrms_assert_true( isset( $GLOBALS['qrms_test']['terms']['rma_category']['Ana Yemek'] ), 'kategori fiyattan bağımsız oluşturuldu' );
+		$kat_id = $GLOBALS['qrms_test']['terms']['rma_category']['Ana Yemek'];
+		qrms_assert_same( array( $kat_id ), $GLOBALS['qrms_test']['object_terms'][ $pid ]['rma_category'], 'kategori ataması fiyattan bağımsız uygulandı' );
+
+		qrms_assert_true( isset( $GLOBALS['qrms_test']['terms']['rma_ingredient']['domates'] ), 'malzeme (domates) fiyattan bağımsız oluşturuldu' );
+		qrms_assert_true( isset( $GLOBALS['qrms_test']['terms']['rma_ingredient']['peynir'] ), 'malzeme (peynir) fiyattan bağımsız oluşturuldu' );
+		$ing_ids = array(
+			$GLOBALS['qrms_test']['terms']['rma_ingredient']['domates'],
+			$GLOBALS['qrms_test']['terms']['rma_ingredient']['peynir'],
+		);
+		qrms_assert_same( $ing_ids, $GLOBALS['qrms_test']['object_terms'][ $pid ]['rma_ingredient'], 'malzeme ataması fiyattan bağımsız uygulandı' );
+	}
+);
+
+qrms_test(
+	'kaynak kod güvencesi: handle_ingredient_csv_import_confirm() fiyatı sanitize_price_value() üzerinden yazıyor',
+	function () {
+		$kaynak = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/urunum-yok/trait-admin.php' );
+
+		$baslangic = strpos( $kaynak, 'function handle_ingredient_csv_import_confirm' );
+		qrms_assert_true( false !== $baslangic, 'fonksiyon bulunamadı' );
+
+		// Dosyadaki SON metot olduğu için dosya sonuna kadar alınması güvenlidir.
+		$govde = substr( $kaynak, $baslangic );
+
+		qrms_assert_contains(
+			'$this->sanitize_price_value( $row[\'price\'] )',
+			$govde,
+			'ortak fiyat doğrulaması kullanılıyor (BULGU: eskiden sanitize_text_field() ile doğrudan yazılıyordu)'
+		);
+		qrms_assert_true(
+			false === strpos( $govde, 'update_post_meta( $pid, \'rma_price\', sanitize_text_field( $row[\'price\']' ),
+			'eski, doğrulamasız yazma satırı geri gelmemiş'
+		);
+	}
+);

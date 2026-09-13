@@ -628,9 +628,25 @@
 		basliklariKur();
 		kategoriyiKur();
 		temelBilgileriKur();
+		zorunluAlanlariKur();
 
 		document.querySelectorAll( '.qrms-pe-secim' ).forEach( secimKur );
 		document.querySelectorAll( '[data-qrms-pe-collapse]' ).forEach( bolumKur );
+	}
+
+	/**
+	 * Ürün adını tarayıcı seviyesinde zorunlu kılar: boşken "Kaydet"/"Yayınla"
+	 * tıklanırsa form hiç gönderilmez, tarayıcı kendi native uyarısını
+	 * gösterip alana odaklanır. Sunucu tarafı kontrol save_menu_item_meta()
+	 * içindedir; bu yalnızca istemci tarafı ilk savunma hattıdır.
+	 *
+	 * @return {void}
+	 */
+	function zorunluAlanlariKur() {
+		var baslik = document.getElementById( 'title' );
+		if ( baslik ) {
+			baslik.required = true;
+		}
 	}
 
 	if ( 'loading' === document.readyState ) {

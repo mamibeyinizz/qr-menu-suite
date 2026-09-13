@@ -61,13 +61,18 @@ function qrms_reset() {
 	$GLOBALS['qrms_test']['http_calls'] = array();
 	$GLOBALS['qrms_test']['can']        = true;
 	$GLOBALS['qrms_test']['can_map']    = array();
+	$GLOBALS['qrms_test']['can_edit_post'] = array();
 	$GLOBALS['qrms_test']['logged_in']  = false;
+	$GLOBALS['qrms_test']['post_types']    = array();
+	$GLOBALS['qrms_test']['terms']        = array();
+	$GLOBALS['qrms_test']['object_terms'] = array();
 	$GLOBALS['qrms_test']['styles']     = array();
 	$GLOBALS['qrms_test']['scripts']    = array();
 	$GLOBALS['qrms_test']['inline_styles'] = array();
 	$GLOBALS['qrms_test']['localized']     = array();
 	$GLOBALS['qrms_test']['settings']       = array();
 	$GLOBALS['qrms_test']['settings_fields'] = array();
+	$GLOBALS['qrms_test']['current_filter'] = '';
 
 	$GLOBALS['menu']                    = array();
 	$GLOBALS['submenu']                 = array();

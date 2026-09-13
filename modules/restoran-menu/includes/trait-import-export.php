@@ -51,8 +51,13 @@ trait RMA_Import_Export_Trait {
                 ] );
 
                 if ( $pid && ! is_wp_error( $pid ) ) {
+                    // Fiyat — negatif/metin/biçimsiz sütun değeri diğer alanlar
+                    // gibi ham sanitize_text_field ile yazılmaz; geçersizse
+                    // ürün boş fiyatla (fiyat belirtilmemiş) içe aktarılır.
+                    $gecerli_fiyat = $this->sanitize_price_value( $d[3] ?? '' );
+                    update_post_meta( $pid, 'rma_price', null === $gecerli_fiyat ? '' : $gecerli_fiyat );
+
                     $meta_map = [
-                        'rma_price'             => $d[3]  ?? '',
                         'rma_spicy_level'       => $d[5]  ?? '',
                         'rma_calories'          => $d[6]  ?? '',
                         'rma_grams'             => $d[7]  ?? '',
@@ -438,9 +443,10 @@ trait RMA_Import_Export_Trait {
         }
 
         global $wpdb;
-        $updated = 0;
-        $created = 0;
-        $atlanan = 0;   // Üzerinde yetki olmayan ürünler (ezilmeden geçilir).
+        $updated        = 0;
+        $created        = 0;
+        $atlanan        = 0;   // Üzerinde yetki olmayan ürünler (ezilmeden geçilir).
+        $fiyat_gecersiz = 0;   // rma_price geçersiz olduğu için atlanan satırlar (eski/boş fiyat korunur).
 
         if ( function_exists( 'set_time_limit' ) ) @set_time_limit( 0 );
 
@@ -516,11 +522,31 @@ trait RMA_Import_Export_Trait {
                 $baslik_haritasi[ $this->import_title_key( $title ) ] = (int) $pid;
             }
 
-            // Meta alanları — sadece rma_ önekli olanlar, item içinde gelenlerle üzerine yazılır
+            // Meta alanları — sadece rma_ önekli olanlar, item içinde gelenlerle üzerine yazılır.
+            // rma_price BURADA İŞLENMEZ: admin formu ve CSV import ile aynı
+            // sanitize_price_value() doğrulamasından geçmesi için aşağıda ayrı
+            // ele alınıyor (bkz. BULGU: JSON yedeğiyle negatif/metin fiyat
+            // doğrulamasız kaydedilebiliyordu).
             if ( ! empty( $item['meta'] ) && is_array( $item['meta'] ) ) {
                 foreach ( $item['meta'] as $key => $val ) {
                     if ( strpos( $key, 'rma_' ) !== 0 ) continue;
+                    if ( 'rma_price' === $key ) continue;
                     update_post_meta( $pid, sanitize_key( $key ), is_scalar( $val ) ? sanitize_text_field( $val ) : $val );
+                }
+
+                if ( array_key_exists( 'rma_price', $item['meta'] ) ) {
+                    $fiyat_ham = $item['meta']['rma_price'];
+                    $fiyat     = is_scalar( $fiyat_ham ) ? $this->sanitize_price_value( $fiyat_ham ) : null;
+
+                    if ( null === $fiyat ) {
+                        // Geçersiz (negatif/metin/biçimsiz) değer kaydedilmez;
+                        // mevcut üründe eski fiyat korunur, yeni üründe fiyat
+                        // boş kalır (rma_price meta'sı hiç yazılmaz) — admin
+                        // formu ve CSV import ile aynı güvenli davranış.
+                        $fiyat_gecersiz++;
+                    } else {
+                        update_post_meta( $pid, 'rma_price', $fiyat );
+                    }
                 }
             }
 
@@ -582,7 +608,12 @@ trait RMA_Import_Export_Trait {
         wp_redirect(
             $this->admin_page_url(
                 'qrms-rm-diger',
-                [ 'rma_updated' => $updated, 'rma_created' => $created, 'rma_atlanan' => $atlanan ],
+                [
+                    'rma_updated'        => $updated,
+                    'rma_created'        => $created,
+                    'rma_atlanan'        => $atlanan,
+                    'rma_fiyat_gecersiz' => $fiyat_gecersiz,
+                ],
                 'rma-yedekleme'
             )
         );
@@ -604,6 +635,14 @@ trait RMA_Import_Export_Trait {
                 printf(
                     '<div class="notice notice-warning"><p><strong>%d</strong> ürün, üzerinde düzenleme yetkiniz olmadığı için atlandı.</p></div>',
                     $atlanan
+                );
+            }
+
+            $fiyat_gecersiz = intval( $_GET['rma_fiyat_gecersiz'] ?? 0 );
+            if ( $fiyat_gecersiz > 0 ) {
+                printf(
+                    '<div class="notice notice-warning"><p><strong>%d</strong> üründe dosyadaki fiyat geçersiz (negatif veya sayısal olmayan bir değer) olduğu için atlandı; varsa eski fiyat korundu, yoksa fiyat boş bırakıldı.</p></div>',
+                    $fiyat_gecersiz
                 );
             }
         }

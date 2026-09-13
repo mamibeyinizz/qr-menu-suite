@@ -89,6 +89,12 @@ class Restaurant_Menu_Automation {
 
     private static $instance = null;
 
+    // save_menu_item_meta() / block_empty_title_save() içinde ayarlanır,
+    // aynı istek içinde flag_save_errors_redirect() ve
+    // suppress_success_message_on_error() tarafından okunur.
+    private $rma_baslik_gecersiz = false;
+    private $rma_fiyat_gecersiz  = false;
+
     public static function get_instance() {
         if ( null === self::$instance ) {
             self::$instance = new self();
@@ -100,6 +106,24 @@ class Restaurant_Menu_Automation {
         add_action( 'init',                  [ $this, 'register_post_types' ] );
         add_action( 'add_meta_boxes',        [ $this, 'add_menu_item_meta_boxes' ] );
         add_action( 'save_post',             [ $this, 'save_menu_item_meta' ] );
+
+        /* -----------------------------------------------------------------
+           ÜRÜN ADI ZORUNLU + GEÇERSİZ FİYAT GERİ BİLDİRİMİ
+           save_menu_item_meta() boş başlıkta meta kaydını atlar,
+           block_empty_title_save() (wp_insert_post_data) çekirdeğin başlığı/
+           içeriği/durumu değiştirmesini engeller; ikisi de aynı isteklik
+           bayrakları (rma_baslik_gecersiz / rma_fiyat_gecersiz) ayarlar,
+           flag_save_errors_redirect() bunları redirect'e taşır,
+           suppress_success_message_on_error() + render_save_error_notices()
+           kullanıcıya doğru geri bildirimi gösterir.
+        ----------------------------------------------------------------- */
+        add_filter( 'wp_insert_post_data',        [ $this, 'block_empty_title_save' ], 10, 2 );
+        // Başlıkla BİRLİKTE açıklama/excerpt de boşken çekirdek kaydı
+        // wp_insert_post_data'ya hiç ulaştırmadan durdurur (bkz. flag_empty_content_error()).
+        add_filter( 'wp_insert_post_empty_content', [ $this, 'flag_empty_content_error' ], 10, 2 );
+        add_filter( 'redirect_post_location', [ $this, 'flag_save_errors_redirect' ] );
+        add_filter( 'post_updated_messages', [ $this, 'suppress_success_message_on_error' ], 20 );
+        add_action( 'admin_notices',         [ $this, 'render_save_error_notices' ] );
 
         /* -----------------------------------------------------------------
            PORSİYON / EKSTRA / SERVİS SAATİ / ÖZEL ROZET

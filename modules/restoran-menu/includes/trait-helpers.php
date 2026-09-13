@@ -394,9 +394,18 @@ trait RMA_Helpers_Trait {
         if ( isset( $this->rma_memo['nav_design'] ) ) {
             return $this->rma_memo['nav_design'];
         }
+        $defaults = $this->get_nav_design_defaults();
         $saved    = get_option( 'rma_nav_design_settings', [] );
         $filtered = array_filter( (array) $saved, fn( $v ) => $v !== '' && $v !== null );
-        $this->rma_memo['nav_design'] = array_merge( $this->get_nav_design_defaults(), $filtered );
+        $nd       = array_merge( $defaults, $filtered );
+
+        // "border_color" hazır temalardan biri için bilinçli olarak 'transparent'
+        // olabilir; sanitize_color_value() bunu hex'in yanında ayrıca kabul eder.
+        foreach ( array( 'bg', 'text', 'active', 'border_color' ) as $renk_alani ) {
+            $nd[ $renk_alani ] = $this->sanitize_color_value( $nd[ $renk_alani ], $defaults[ $renk_alani ] );
+        }
+
+        $this->rma_memo['nav_design'] = $nd;
         return $this->rma_memo['nav_design'];
     }
 
@@ -425,8 +434,19 @@ trait RMA_Helpers_Trait {
         if ( isset( $this->rma_memo['colors'] ) ) {
             return $this->rma_memo['colors'];
         }
-        $saved = get_option( 'rma_color_settings', [] );
-        $this->rma_memo['colors'] = array_merge( $this->get_color_defaults(), array_filter( (array) $saved ) );
+        $defaults = $this->get_color_defaults();
+        $saved    = get_option( 'rma_color_settings', [] );
+        $merged   = array_merge( $defaults, array_filter( (array) $saved ) );
+
+        // Kayıt anında sanitize_settings_array() zaten hex/whitelist uyguluyor;
+        // burada TEKRAR doğrulanması, kayıttan önce (eski sürüm/doğrudan DB
+        // yazımı) DB'ye girmiş olabilecek güvensiz bir değerin CSS'e çıkmasını
+        // engelliyor (bkz. sanitize_color_value()).
+        foreach ( $defaults as $key => $def ) {
+            $merged[ $key ] = $this->sanitize_color_value( $merged[ $key ] ?? $def, $def );
+        }
+
+        $this->rma_memo['colors'] = $merged;
         return $this->rma_memo['colors'];
     }
 
@@ -469,6 +489,12 @@ trait RMA_Helpers_Trait {
             if ( ! in_array( $typo[ $font_alani ], $font_beyaz_liste, true ) ) {
                 $typo[ $font_alani ] = $this->get_typo_defaults()[ $font_alani ];
             }
+        }
+
+        // Renk alanları da aynı gerekçeyle (yukarıdaki font notu) hex/whitelist
+        // ile tekrar doğrulanır — bkz. sanitize_color_value().
+        foreach ( array( 'heading_color', 'body_color', 'desc_color', 'price_color' ) as $renk_alani ) {
+            $typo[ $renk_alani ] = $this->sanitize_color_value( $typo[ $renk_alani ], $this->get_typo_defaults()[ $renk_alani ] );
         }
 
         $this->rma_memo['typo'] = $typo;
@@ -539,14 +565,92 @@ trait RMA_Helpers_Trait {
 
     /**
      * Ayar dizilerini güvenli biçimde temizler (Settings API sanitize callback).
+     *
+     * register_setting() bu metodu `sanitize_option_{$option}` filtresi olarak
+     * bağlar, bu yüzden current_filter() ile hangi option'ın temizlendiği
+     * (rma_color_settings / rma_typo_settings / rma_nav_design_settings)
+     * belirlenip yalnızca bilinen renk alanlarına hex/whitelist doğrulaması
+     * uygulanır; geri kalan alanlar (font, aralık, radyo, checkbox) eskisi
+     * gibi sanitize_text_field ile geçer — davranış değişmez.
      */
     public function sanitize_settings_array( $input ) {
         if ( ! is_array( $input ) ) return [];
+
+        $renk_alanlari = [
+            'sanitize_option_rma_color_settings'      => array_keys( $this->get_color_defaults() ),
+            'sanitize_option_rma_typo_settings'        => [ 'heading_color', 'body_color', 'desc_color', 'price_color' ],
+            'sanitize_option_rma_nav_design_settings'  => [ 'bg', 'text', 'active', 'border_color' ],
+        ];
+        $renkler = $renk_alanlari[ current_filter() ] ?? [];
+
         $clean = [];
         foreach ( $input as $key => $val ) {
             $key = sanitize_key( $key );
-            $clean[ $key ] = is_scalar( $val ) ? sanitize_text_field( (string) $val ) : '';
+            if ( ! is_scalar( $val ) ) {
+                $clean[ $key ] = '';
+                continue;
+            }
+            $clean[ $key ] = in_array( $key, $renkler, true )
+                ? $this->sanitize_color_value( (string) $val, '' )
+                : sanitize_text_field( (string) $val );
         }
         return $clean;
+    }
+
+    /**
+     * Bir renk değerini güvenli hâle getirir: geçerli HEX (#rgb/#rrggbb) veya
+     * literal "transparent" kabul edilir (Koyu Minimal hazır temasının
+     * border_color değeri) — CSS bağlamından kaçışa izin veren `;`, `{`, `}`
+     * gibi karakterler içeren her şey reddedilip $varsayilan'a düşürülür.
+     *
+     * @param mixed  $deger      Ham değer.
+     * @param string $varsayilan Geçersizse dönecek güvenli değer.
+     * @return string
+     */
+    private function sanitize_color_value( $deger, $varsayilan = '' ) {
+        $deger = trim( (string) $deger );
+
+        if ( '' === $deger ) {
+            return $varsayilan;
+        }
+        if ( 0 === strcasecmp( $deger, 'transparent' ) ) {
+            return 'transparent';
+        }
+        $hex = sanitize_hex_color( $deger );
+
+        return $hex ? $hex : $varsayilan;
+    }
+
+    /**
+     * Ürün taban fiyatını (`rma_price`) doğrular — hem ürün ekle/düzenle
+     * ekranından (trait-post-types.php) hem CSV toplu içe aktarımdan
+     * (trait-import-export.php) TEK bu yardımcı üzerinden geçer.
+     *
+     * Boş dize geçerlidir ve olduğu gibi döner: kombin ürünlerde ve fiyatı
+     * kasıtlı boş bırakılan kayıtlarda "fiyat belirtilmemiş" anlamına gelir
+     * (bkz. class-kampanya.php `'' === $bilgi['ham']`). "0" da geçerlidir —
+     * ücretsiz/dahil ürünler için kullanılabilir. Negatif değerler, metin ve
+     * biçimsiz her şey reddedilir.
+     *
+     * @param mixed $deger Ham (POST/CSV) değer.
+     * @return string|null Geçerliyse temizlenmiş fiyat metni, değilse null.
+     */
+    public function sanitize_price_value( $deger ) {
+        $deger = trim( (string) $deger );
+
+        if ( '' === $deger ) {
+            return '';
+        }
+        // Negatif olmayan tam sayı veya en fazla 2 ondalıklı sayı: "0", "245", "245.5", "245.50".
+        if ( ! preg_match( '/^\d+(\.\d{1,2})?$/', $deger ) ) {
+            return null;
+        }
+        // Üst sınır: 999.999,99 ₺ — yanlışlıkla fazladan sıfır eklenmiş
+        // (örn. 100000000000) bir fiyatın menüde anlamsız görünmesini önler.
+        if ( (float) $deger > 999999.99 ) {
+            return null;
+        }
+
+        return $deger;
     }
 }
