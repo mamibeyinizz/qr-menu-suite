@@ -112,7 +112,7 @@ trait RMA_Post_Types_Trait {
                 <label class="qrms-pe-label" for="rma_price"><?php esc_html_e( 'Fiyat', 'qrms' ); ?></label>
                 <div class="qrms-pe-affix">
                     <input type="number" id="rma_price" name="rma_price" class="qrms-pe-input" inputmode="decimal"
-                           min="0" step="0.01"
+                           min="0" max="999999.99" step="0.01"
                            value="<?php echo esc_attr( $price_val ); ?>" placeholder="0">
                     <span class="qrms-pe-affix-son" aria-hidden="true">₺</span>
                 </div>

@@ -645,6 +645,11 @@ trait RMA_Helpers_Trait {
         if ( ! preg_match( '/^\d+(\.\d{1,2})?$/', $deger ) ) {
             return null;
         }
+        // Üst sınır: 999.999,99 ₺ — yanlışlıkla fazladan sıfır eklenmiş
+        // (örn. 100000000000) bir fiyatın menüde anlamsız görünmesini önler.
+        if ( (float) $deger > 999999.99 ) {
+            return null;
+        }
 
         return $deger;
     }

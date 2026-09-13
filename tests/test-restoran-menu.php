@@ -1169,6 +1169,18 @@ qrms_test(
 		qrms_assert_same( null, $h->sanitize_price_value( '245,50' ), 'virgüllü — beklenen biçim nokta' );
 		qrms_assert_same( null, $h->sanitize_price_value( '1e3' ), 'bilimsel gösterim kabul edilmez' );
 		qrms_assert_same( null, $h->sanitize_price_value( '245.5.5' ), 'birden fazla nokta' );
+		qrms_assert_same( null, $h->sanitize_price_value( '<script>alert(1)</script>' ), 'HTML/JS payload' );
+	}
+);
+
+qrms_test(
+	'fiyat üst sınırı (999999.99) doğru uygulanır (BULGU: üst sınır yoktu)',
+	function () {
+		$h = new RMA_Test_Ayar_Harness();
+		qrms_assert_same( '999999.99', $h->sanitize_price_value( '999999.99' ), 'sınırın tam üstü kabul edilir' );
+		qrms_assert_same( null, $h->sanitize_price_value( '1000000' ), 'sınırı aşan tam sayı reddedilir' );
+		qrms_assert_same( null, $h->sanitize_price_value( '999999.999' ), 'üç ondalık zaten biçim hatası — reddedilir' );
+		qrms_assert_same( null, $h->sanitize_price_value( '9999999999999999999' ), 'aşırı büyük sayı reddedilir' );
 	}
 );
 
