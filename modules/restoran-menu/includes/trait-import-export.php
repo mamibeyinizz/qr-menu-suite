@@ -51,8 +51,13 @@ trait RMA_Import_Export_Trait {
                 ] );
 
                 if ( $pid && ! is_wp_error( $pid ) ) {
+                    // Fiyat — negatif/metin/biçimsiz sütun değeri diğer alanlar
+                    // gibi ham sanitize_text_field ile yazılmaz; geçersizse
+                    // ürün boş fiyatla (fiyat belirtilmemiş) içe aktarılır.
+                    $gecerli_fiyat = $this->sanitize_price_value( $d[3] ?? '' );
+                    update_post_meta( $pid, 'rma_price', null === $gecerli_fiyat ? '' : $gecerli_fiyat );
+
                     $meta_map = [
-                        'rma_price'             => $d[3]  ?? '',
                         'rma_spicy_level'       => $d[5]  ?? '',
                         'rma_calories'          => $d[6]  ?? '',
                         'rma_grams'             => $d[7]  ?? '',

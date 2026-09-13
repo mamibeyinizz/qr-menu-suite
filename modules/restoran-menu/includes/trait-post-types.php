@@ -111,7 +111,8 @@ trait RMA_Post_Types_Trait {
             <div class="qrms-pe-field qrms-pe-field--price" data-qrms-pe-slot="fiyat">
                 <label class="qrms-pe-label" for="rma_price"><?php esc_html_e( 'Fiyat', 'qrms' ); ?></label>
                 <div class="qrms-pe-affix">
-                    <input type="text" id="rma_price" name="rma_price" class="qrms-pe-input" inputmode="decimal"
+                    <input type="number" id="rma_price" name="rma_price" class="qrms-pe-input" inputmode="decimal"
+                           min="0" step="0.01"
                            value="<?php echo esc_attr( $price_val ); ?>" placeholder="0">
                     <span class="qrms-pe-affix-son" aria-hidden="true">₺</span>
                 </div>
@@ -312,12 +313,33 @@ trait RMA_Post_Types_Trait {
         if ( wp_is_post_revision( $post_id ) ) return;
         if ( ! current_user_can( 'edit_post', $post_id ) ) return;
 
-        $fields     = [ 'rma_price', 'rma_calories', 'rma_grams', 'rma_protein', 'rma_carbs', 'rma_fat', 'rma_prep_time' ];
+        // Ürün adı boşsa kayıt tamamen engellenir: WordPress çekirdeği başlıksız
+        // bir postu (içerik/excerpt de boşsa) auto-draft'a düşürür, ama fiyat
+        // gibi meta alanları yine de sessizce yazardı. rma_baslik_gecersiz
+        // bayrağı redirect_post_location/admin_notices üzerinden kullanıcıya
+        // açık bir hata gösterir (bkz. flag_empty_title_redirect()).
+        if ( '' === trim( (string) wp_unslash( $_POST['post_title'] ?? '' ) ) ) {
+            $this->rma_baslik_gecersiz = true;
+            return;
+        }
+
+        $fields     = [ 'rma_calories', 'rma_grams', 'rma_protein', 'rma_carbs', 'rma_fat', 'rma_prep_time' ];
         $checkboxes = [ 'rma_is_vegan', 'rma_is_vegetarian', 'rma_is_gluten_free', 'rma_is_sugar_free', 'rma_badge_popular', 'rma_badge_new', 'rma_badge_recommended', 'rma_badge_discount', 'rma_active', 'rma_contains_alcohol', 'rma_contains_pork' ];
 
         foreach ( $fields as $field ) {
             if ( isset( $_POST[ $field ] ) ) {
                 update_post_meta( $post_id, $field, sanitize_text_field( $_POST[ $field ] ) );
+            }
+        }
+
+        // Fiyat — negatif/metin/biçimsiz değer KAYDEDİLMEZ, eski değer korunur;
+        // kullanıcıya redirect_post_location/admin_notices ile açık hata gösterilir.
+        if ( isset( $_POST['rma_price'] ) ) {
+            $gecerli_fiyat = $this->sanitize_price_value( wp_unslash( $_POST['rma_price'] ) );
+            if ( null === $gecerli_fiyat ) {
+                $this->rma_fiyat_gecersiz = true;
+            } else {
+                update_post_meta( $post_id, 'rma_price', $gecerli_fiyat );
             }
         }
 
@@ -352,5 +374,138 @@ trait RMA_Post_Types_Trait {
         $posted_allergens   = isset( $_POST['rma_allergens'] ) ? array_map( 'sanitize_text_field', (array) $_POST['rma_allergens'] ) : [];
         $posted_allergens   = array_values( array_intersect( $posted_allergens, $allowed_allergens ) );
         wp_set_object_terms( $post_id, $posted_allergens, 'rma_allergen', false );
+    }
+
+    /**
+     * Ürün adı boşken WordPress'in post satırını ESKİ hâliyle korur.
+     *
+     * Mevcut (daha önce başlığı olan) bir ürün için: başlık/içerik/excerpt/
+     * durum eskisiyle değiştirilir — kayıt fiilen no-op'a döner, ürün
+     * bozulmaz. Henüz hiç kaydedilmemiş (auto-draft) bir ürün içinse durum
+     * auto-draft'ta bırakılır — WordPress'in "başlıksız gerçek taslak
+     * oluşmaz" kuralıyla tutarlı, sadece içerik/excerpt doluyken de
+     * uygulanır (çekirdek yalnızca üçü de boşken bunu yapar).
+     *
+     * save_menu_item_meta() (generic 'save_post') bu bayrağı görüp meta
+     * kaydını da atlar; flag_save_errors_redirect() kullanıcıya açık bir
+     * hata gösterir.
+     *
+     * @param array $data    Kaydedilecek, slashlanmış post alanları.
+     * @param array $postarr Ham $_POST tabanlı post dizisi.
+     * @return array
+     */
+    public function block_empty_title_save( $data, $postarr ) {
+        if ( 'rma_menu_item' !== ( $data['post_type'] ?? '' ) ) {
+            return $data;
+        }
+        if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) {
+            return $data;
+        }
+        if ( '' !== trim( wp_strip_all_tags( (string) $data['post_title'] ) ) ) {
+            return $data;
+        }
+
+        $post_id = ! empty( $postarr['ID'] ) ? (int) $postarr['ID'] : 0;
+        $eski    = $post_id ? get_post( $post_id ) : null;
+
+        if ( $eski && 'auto-draft' !== $eski->post_status ) {
+            $data['post_title']   = $eski->post_title;
+            $data['post_content'] = $eski->post_content;
+            $data['post_excerpt'] = $eski->post_excerpt;
+            $data['post_status']  = $eski->post_status;
+            $data['post_name']    = $eski->post_name;
+        } else {
+            // Henüz kaydedilmemiş (auto-draft) ürün: durum auto-draft'ta kalır
+            // VE içerik/excerpt de yazılmaz — aksi hâlde başlıksız gerçek bir
+            // taslak oluşmasa da açıklama gibi alanlar görünmez bir auto-draft
+            // satırına sızardı (kayıt fiilen kısmen gerçekleşmiş olurdu).
+            $data['post_status']  = 'auto-draft';
+            $data['post_content'] = '';
+            $data['post_excerpt'] = '';
+        }
+
+        $this->rma_baslik_gecersiz = true;
+
+        return $data;
+    }
+
+    /**
+     * Başlık İLE birlikte açıklama ve excerpt de boşken WordPress çekirdeği
+     * `wp_insert_post_empty_content` ile kaydı `wp_insert_post_data`'ya HİÇ
+     * ULAŞTIRMADAN erkenden durdurur (bkz. wp-includes/post.php). Bu durumda
+     * block_empty_title_save() hiç çalışmaz; post satırı zaten dokunulmadan
+     * kalır (çekirdek zaten veri kaybını engelliyor), ama redirect_post()
+     * yine de "Post published/updated" mesajını basar. Bu kanca yalnızca
+     * bayrağı ayarlayıp kullanıcıya doğru geri bildirimi sağlar — çekirdeğin
+     * kararını (`$maybe_empty`) DEĞİŞTİRMEZ.
+     *
+     * @param bool  $maybe_empty Çekirdeğin "içerik boş mu" kararı.
+     * @param array $postarr     Ham post dizisi.
+     * @return bool Değiştirilmeden geri döner.
+     */
+    public function flag_empty_content_error( $maybe_empty, $postarr ) {
+        if ( $maybe_empty && 'rma_menu_item' === ( $postarr['post_type'] ?? '' )
+            && ! ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE )
+        ) {
+            $this->rma_baslik_gecersiz = true;
+        }
+        return $maybe_empty;
+    }
+
+    /**
+     * post.php'nin standart "kaydedildi" yönlendirmesine, save_menu_item_meta()
+     * ve block_empty_title_save() tarafından ayarlanmış hata bayraklarını
+     * query parametresi olarak ekler.
+     *
+     * @param string $location Yönlendirme adresi.
+     * @return string
+     */
+    public function flag_save_errors_redirect( $location ) {
+        if ( $this->rma_baslik_gecersiz ) {
+            $location = add_query_arg( 'rma_baslik_hata', '1', $location );
+        }
+        if ( $this->rma_fiyat_gecersiz ) {
+            $location = add_query_arg( 'rma_fiyat_hata', '1', $location );
+        }
+        return $location;
+    }
+
+    /**
+     * Başlık/fiyat hatası varken WordPress'in "Post updated." vb. yanıltıcı
+     * başarı metnini boşaltır; gerçek hata render_save_error_notices() ile
+     * ayrı ve net biçimde gösterilir.
+     *
+     * @param array $messages Çekirdek mesaj dizisi (post_type => [index => metin]).
+     * @return array
+     */
+    public function suppress_success_message_on_error( $messages ) {
+        if ( ! isset( $_GET['rma_baslik_hata'] ) && ! isset( $_GET['rma_fiyat_hata'] ) ) {
+            return $messages;
+        }
+        // edit-form-advanced.php yalnızca $messages['rma_menu_item'] TAMAMEN
+        // tanımsızsa 'post' dizisine düşer (bkz. wp-admin/edit-form-advanced.php);
+        // bu yüzden ilgili indeksi var olsun/olmasın DOĞRUDAN boşaltmak gerekir —
+        // aksi hâlde çekirdek "Post published/updated" metnini basmaya devam eder.
+        $index = isset( $_GET['message'] ) ? (int) $_GET['message'] : 0;
+        $messages['rma_menu_item'][ $index ] = '';
+        return $messages;
+    }
+
+    /**
+     * Ürün ekle/düzenle ekranında başlık/fiyat hatası varsa açık bir uyarı basar.
+     *
+     * @return void
+     */
+    public function render_save_error_notices() {
+        $screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
+        if ( ! $screen || 'rma_menu_item' !== $screen->post_type ) {
+            return;
+        }
+        if ( isset( $_GET['rma_baslik_hata'] ) ) {
+            echo '<div class="notice notice-error"><p>' . esc_html__( 'Ürün adı boş bırakılamaz. Hiçbir bilgi kaydedilmedi; lütfen ürün adını girip tekrar kaydedin.', 'qrms' ) . '</p></div>';
+        }
+        if ( isset( $_GET['rma_fiyat_hata'] ) ) {
+            echo '<div class="notice notice-error"><p>' . esc_html__( 'Girilen fiyat geçersiz (negatif veya sayısal olmayan bir değer). Fiyat güncellenmedi, önceki değer korundu.', 'qrms' ) . '</p></div>';
+        }
     }
 }

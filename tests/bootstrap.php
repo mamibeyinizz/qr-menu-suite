@@ -68,6 +68,7 @@ function qrms_reset() {
 	$GLOBALS['qrms_test']['localized']     = array();
 	$GLOBALS['qrms_test']['settings']       = array();
 	$GLOBALS['qrms_test']['settings_fields'] = array();
+	$GLOBALS['qrms_test']['current_filter'] = '';
 
 	$GLOBALS['menu']                    = array();
 	$GLOBALS['submenu']                 = array();

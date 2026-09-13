@@ -1112,3 +1112,174 @@ qrms_test(
 		qrms_assert_contains( "kart.classList.toggle('selected', e.target.checked)", $js, 'sınıf checked ile eşitlenir' );
 	}
 );
+
+/* =====================================================================
+   FİYAT DOĞRULAMASI / RENK AYARLARI (CSS INJECTION) / BOŞ ÜRÜN ADI
+   Denetim raporunda "Kritik" işaretlenen üç bulgunun düzeltme testleri.
+   Harness sınıfları, ilgili trait'in WP'ye bağımlı diğer metodlarını
+   (RMA_Filtre/RMA_Tukendi vb.) tetiklemeden yalnızca test edilen durumsuz
+   yardımcıları çağırabilmek için tanımlanır.
+===================================================================== */
+
+require_once QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-helpers.php';
+require_once QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-post-types.php';
+
+if ( ! class_exists( 'RMA_Test_Ayar_Harness' ) ) {
+	class RMA_Test_Ayar_Harness {
+		use RMA_Helpers_Trait;
+	}
+}
+
+if ( ! class_exists( 'RMA_Test_Baslik_Harness' ) ) {
+	class RMA_Test_Baslik_Harness {
+		use RMA_Post_Types_Trait;
+		public $rma_baslik_gecersiz = false;
+		public $rma_fiyat_gecersiz  = false;
+	}
+}
+
+echo "\nÜrün Fiyatı — doğrulama (BULGU: negatif/metin fiyat kaydedilebiliyordu)\n";
+
+qrms_test(
+	'geçerli fiyat formatları kabul edilir',
+	function () {
+		$h = new RMA_Test_Ayar_Harness();
+		qrms_assert_same( '245.50', $h->sanitize_price_value( '245.50' ), 'ondalıklı' );
+		qrms_assert_same( '245', $h->sanitize_price_value( '245' ), 'tam sayı' );
+		qrms_assert_same( '0', $h->sanitize_price_value( '0' ), 'sıfır kabul edilir (ücretsiz/dahil ürün)' );
+		qrms_assert_same( '', $h->sanitize_price_value( '' ), 'boş = fiyat belirtilmemiş, geçerli kalır' );
+		qrms_assert_same( '', $h->sanitize_price_value( '   ' ), 'yalnız boşluk da boşa eşit' );
+	}
+);
+
+qrms_test(
+	'negatif fiyat reddedilir',
+	function () {
+		$h = new RMA_Test_Ayar_Harness();
+		qrms_assert_same( null, $h->sanitize_price_value( '-50' ), 'negatif tam sayı' );
+		qrms_assert_same( null, $h->sanitize_price_value( '-0.01' ), 'negatif ondalık' );
+	}
+);
+
+qrms_test(
+	'metinsel/biçimsiz fiyat reddedilir',
+	function () {
+		$h = new RMA_Test_Ayar_Harness();
+		qrms_assert_same( null, $h->sanitize_price_value( 'abc yüz lira' ), 'düz metin' );
+		qrms_assert_same( null, $h->sanitize_price_value( '245,50' ), 'virgüllü — beklenen biçim nokta' );
+		qrms_assert_same( null, $h->sanitize_price_value( '1e3' ), 'bilimsel gösterim kabul edilmez' );
+		qrms_assert_same( null, $h->sanitize_price_value( '245.5.5' ), 'birden fazla nokta' );
+	}
+);
+
+echo "\nMenü Görünümü Renkleri — CSS injection ve HEX doğrulama (BULGU: menü CSS ile gizlenebiliyordu)\n";
+
+qrms_test(
+	"CSS injection payload'ı reddedilir, alan güvenli boş değere düşer",
+	function () {
+		$h = new RMA_Test_Ayar_Harness();
+		$GLOBALS['qrms_test']['current_filter'] = 'sanitize_option_rma_color_settings';
+
+		$temiz = $h->sanitize_settings_array( array( 'accent' => 'red;}body{display:none!important}/*' ) );
+		qrms_assert_same( '', $temiz['accent'], 'CSS bağlamından kaçış süzülür' );
+
+		$temiz2 = $h->sanitize_settings_array( array( 'accent' => '<style>body{display:none}</style>' ) );
+		qrms_assert_same( '', $temiz2['accent'], 'style etiketi süzülür' );
+	}
+);
+
+qrms_test(
+	'geçersiz HEX değerleri reddedilir, geçerli HEX değerleri aynen kaydedilir',
+	function () {
+		$h = new RMA_Test_Ayar_Harness();
+		$GLOBALS['qrms_test']['current_filter'] = 'sanitize_option_rma_color_settings';
+
+		qrms_assert_same( '', $h->sanitize_settings_array( array( 'bg' => '#zzzzzz' ) )['bg'], 'geçersiz karakter' );
+		qrms_assert_same( '', $h->sanitize_settings_array( array( 'bg' => '#12345' ) )['bg'], 'yanlış uzunluk' );
+		qrms_assert_same( '#1a2b3c', $h->sanitize_settings_array( array( 'bg' => '#1a2b3c' ) )['bg'], 'geçerli 6 haneli hex' );
+		qrms_assert_same( '#abc', $h->sanitize_settings_array( array( 'bg' => '#abc' ) )['bg'], 'geçerli 3 haneli hex' );
+	}
+);
+
+qrms_test(
+	'nav tasarımında "transparent" hazır tema değeri korunur, renk dışı alanlar bozulmaz',
+	function () {
+		$h = new RMA_Test_Ayar_Harness();
+		$GLOBALS['qrms_test']['current_filter'] = 'sanitize_option_rma_nav_design_settings';
+
+		$temiz = $h->sanitize_settings_array(
+			array(
+				'border_color' => 'transparent',
+				'font_weight'  => '600',
+				'sticky'       => '1',
+			)
+		);
+		qrms_assert_same( 'transparent', $temiz['border_color'], "Koyu Minimal temasının kenarlığı korunur" );
+		qrms_assert_same( '600', $temiz['font_weight'], 'renk dışı alan eskisi gibi geçer' );
+		qrms_assert_same( '1', $temiz['sticky'], 'checkbox alanı etkilenmez' );
+	}
+);
+
+echo "\nÜrün Adı Zorunluluğu — sessiz veri kaybı düzeltmesi (BULGU: boş başlıkla fiyat kayboluyordu)\n";
+
+qrms_test(
+	"boş ürün adıyla kayıt auto-draft'ta kalır ve hata bayrağı ayarlanır",
+	function () {
+		$h = new RMA_Test_Baslik_Harness();
+
+		$data = $h->block_empty_title_save(
+			array(
+				'post_type'    => 'rma_menu_item',
+				'post_title'   => '',
+				'post_content' => 'bir açıklama',
+				'post_status'  => 'draft',
+			),
+			array( 'ID' => 0 )
+		);
+
+		qrms_assert_same( 'auto-draft', $data['post_status'], "içerik dolu olsa da auto-draft'ta kalır (fiyat/açıklama gerçek bir taslağa sızmaz)" );
+		qrms_assert_true( $h->rma_baslik_gecersiz, 'hata bayrağı ayarlandı' );
+	}
+);
+
+qrms_test(
+	'geçerli başlıkla kayıt akışı değişmez',
+	function () {
+		$h = new RMA_Test_Baslik_Harness();
+
+		$girdi = array(
+			'post_type'    => 'rma_menu_item',
+			'post_title'   => 'Karışık Izgara',
+			'post_content' => 'açıklama',
+			'post_status'  => 'publish',
+		);
+		$data = $h->block_empty_title_save( $girdi, array( 'ID' => 0 ) );
+
+		qrms_assert_same( $girdi, $data, 'başlık doluyken veri hiç değiştirilmez' );
+		qrms_assert_false( $h->rma_baslik_gecersiz, 'hata bayrağı ayarlanmaz' );
+	}
+);
+
+qrms_test(
+	'boş başlıkta WordPress\'in yanıltıcı "kaydedildi" mesajı boşaltılır',
+	function () {
+		$h                       = new RMA_Test_Baslik_Harness();
+		$_GET['rma_baslik_hata'] = '1';
+		$_GET['message']         = '1';
+
+		$mesajlar = $h->suppress_success_message_on_error( array( 'rma_menu_item' => array( 1 => 'Post updated.' ) ) );
+
+		qrms_assert_same( '', $mesajlar['rma_menu_item'][1], 'yanıltıcı başarı metni boşaltıldı' );
+	}
+);
+
+qrms_test(
+	'hata yokken normal "kaydedildi" mesajı olduğu gibi kalır',
+	function () {
+		$h = new RMA_Test_Baslik_Harness();
+
+		$mesajlar = $h->suppress_success_message_on_error( array( 'rma_menu_item' => array( 1 => 'Post updated.' ) ) );
+
+		qrms_assert_same( 'Post updated.', $mesajlar['rma_menu_item'][1], 'geçerli kayıtta mesaj değişmez' );
+	}
+);

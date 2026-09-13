@@ -199,6 +199,18 @@ function add_filter( $hook, $callback, $priority = 10, $args = 1 ) {
 }
 
 /**
+ * Şu an "çalışıyor" sayılan filtre adı. Gerçek WordPress'te apply_filters()
+ * bunu otomatik izler; bu stub'da testler register_setting() sanitize
+ * callback'i gibi current_filter()'a bakan kodu doğrudan çağırmadan önce
+ * $GLOBALS['qrms_test']['current_filter'] değerini elle ayarlar.
+ *
+ * @return string
+ */
+function current_filter() {
+	return $GLOBALS['qrms_test']['current_filter'] ?? '';
+}
+
+/**
  * Zamanlanmış cron var mı?
  *
  * @param string $hook Hook adı.
@@ -567,6 +579,16 @@ function sanitize_title( $baslik ) {
  * @return string
  */
 function sanitize_text_field( $value ) {
+	return trim( strip_tags( (string) $value ) ); // phpcs:ignore WordPress.WP.AlternativeFunctions.strip_tags_strip_tags
+}
+
+/**
+ * Tüm HTML etiketlerini temizler (basitleştirilmiş yaklaşım).
+ *
+ * @param string $value Değer.
+ * @return string
+ */
+function wp_strip_all_tags( $value ) {
 	return trim( strip_tags( (string) $value ) ); // phpcs:ignore WordPress.WP.AlternativeFunctions.strip_tags_strip_tags
 }
 
