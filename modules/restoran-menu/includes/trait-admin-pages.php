@@ -364,85 +364,184 @@ trait RMA_Admin_Pages_Trait {
     }
 
     /**
-     * Hub üstündeki özet kartları: tükendi, okunmayan yorum, bugünkü görüntüleme.
+     * Hub üstündeki beş özet kartı — hepsi Menü Yönetimi verisidir.
+     *
+     * Sıra restoran sahibinin günlük akışına göredir: önce menünün büyüklüğü
+     * (ürün), sonra satışı doğrudan etkileyen durum (tükenen), sonra menünün
+     * iskeleti (kategori) ve pazarlama yüzeyleri (kampanya, öne çıkan).
+     *
+     * Sayaçların tamamı modülün KENDİ mevcut kaynaklarından okunur; bu ekran
+     * için yeni bir sayaç/tablo üretilmez:
+     *   - ürün       => qmo_yayinlanan_urun_sayisi()   (Genel Bakış ile aynı)
+     *   - tükenen    => qmo_urunum_yok_eksik_ozet()    (sol menü rozetiyle aynı)
+     *   - kategori   => rma_category terim sayısı
+     *   - kampanya   => RMA_Kampanya::aktif()          (durum + zaman penceresi)
+     *   - öne çıkan  => qmo_slide grupları + elle seçilmiş öneri ürünleri
      *
      * @param array{toplam:int,malzemeler:array,elle:int,elle_ids?:int[]} $uy_ozet Ürünüm Yok özeti.
-     * @return array<int,array{label:string,value:string|int,url:string,accent:string}>
+     * @return array<int,array{label:string,value:string|int,hint:string,icon:string,url:string,accent:string,class?:string}>
      */
     private function get_hub_stats( $uy_ozet ) {
-        $unread = $this->hub_unread_comment_count();
-        $views  = $this->hub_today_view_count();
-
-        $unread_url = function_exists( 'qrm_pro_admin_url' )
-            ? qrm_pro_admin_url( 'qrms-yf-formlar', array( 'tab' => 'submissions' ) )
-            : admin_url( 'admin.php?page=qrms-yf-formlar&tab=submissions' );
-
-        $analiz_url = class_exists( 'QRMS_Admin' )
-            ? QRMS_Admin::get_module_page_url( 'qr-analiz' )
-            : admin_url( 'admin.php?page=qrms-module-qr-analiz' );
+        $urunler   = function_exists( 'qmo_yayinlanan_urun_sayisi' ) ? qmo_yayinlanan_urun_sayisi() : 0;
+        $tukenen   = isset( $uy_ozet['toplam'] ) ? (int) $uy_ozet['toplam'] : 0;
+        $kategori  = $this->hub_category_count();
+        $kampanya  = $this->hub_active_campaign_count();
+        $one_cikan = $this->hub_featured_product_count();
 
         return [
             [
+                'label'  => __( 'Menüdeki Ürünler', 'qrms' ),
+                'value'  => $urunler,
+                'hint'   => __( 'Menünüzde kayıtlı toplam ürün', 'qrms' ),
+                'icon'   => 'dashicons-list-view',
+                'url'    => admin_url( 'edit.php?post_type=rma_menu_item' ),
+                'accent' => '#c9a84c',
+            ],
+            [
                 'label'  => __( 'Tükenen Ürünler', 'qrms' ),
-                'value'  => $uy_ozet['toplam'],
-                'url'    => $uy_ozet['toplam'] > 0 ? $this->admin_page_url( 'qrms-rm-urunum-yok' ) : '',
-                'accent' => $uy_ozet['toplam'] > 0 ? '#e11d48' : '#10b981',
+                'value'  => $tukenen,
+                'hint'   => __( 'Satışa kapalı veya tükenmiş ürünler', 'qrms' ),
+                'icon'   => 'dashicons-warning',
+                'url'    => $this->admin_page_url( 'qrms-rm-urunum-yok' ),
+                'accent' => $tukenen > 0 ? '#e11d48' : '#10b981',
+                // Renk tek başına sinyal sayılmaz: sıfırdan büyükken kutu
+                // ayrıca zeminiyle de ayrışır (bkz. hub.css).
+                'class'  => $tukenen > 0 ? 'rma-hub-stat-attention' : '',
             ],
             [
-                'label'  => __( 'Okunmamış Yorumlar', 'qrms' ),
-                'value'  => sprintf(
-                    /* translators: %d: okunmamış yorum sayısı. */
-                    __( '%d okunmamış yorum', 'qrms' ),
-                    $unread
-                ),
-                'url'    => $unread_url,
-                'accent' => $unread > 0 ? '#f59e0b' : '#10b981',
+                'label'  => __( 'Kategori Sayısı', 'qrms' ),
+                'value'  => $kategori,
+                'hint'   => __( 'Menünüzde tanımlı kategori', 'qrms' ),
+                'icon'   => 'dashicons-category',
+                'url'    => admin_url( 'edit-tags.php?taxonomy=rma_category&post_type=rma_menu_item' ),
+                'accent' => '#c9a84c',
             ],
             [
-                'label'  => __( 'Bugün Görüntülenme', 'qrms' ),
-                'value'  => $views,
-                'url'    => $analiz_url,
+                'label'  => __( 'Aktif Kampanyalar', 'qrms' ),
+                'value'  => $kampanya,
+                'hint'   => __( 'Yayında olan kampanyalar', 'qrms' ),
+                'icon'   => 'dashicons-tag',
+                'url'    => $this->admin_page_url( 'qrms-rm-kampanya' ),
+                'accent' => '#c9a84c',
+            ],
+            [
+                'label'  => __( 'Öne Çıkan Ürünler', 'qrms' ),
+                'value'  => $one_cikan,
+                'hint'   => __( 'Menüde öne çıkarılan ürünler', 'qrms' ),
+                'icon'   => 'dashicons-star-filled',
+                'url'    => $this->admin_page_url( 'qrms-rm-one-cikanlar' ),
                 'accent' => '#c9a84c',
             ],
         ];
     }
 
     /**
-     * Yorum & Feedback formlarındaki okunmamış gönderim sayısı.
+     * Menüde tanımlı kategori sayısı — "Kategoriler" ekranındaki liste.
      *
-     * Modülün kendi qrm_cf_unread_total() sayacını kullanır (transient +
-     * istek içi memo); yoksa 0 döner. Başka modüle yazılmaz.
+     * hide_empty = false: ürünü olmayan kategori de menüde tanımlıdır ve
+     * Kategoriler ekranında görünür; kart o ekranla aynı sayıyı göstermeli.
      *
      * @return int
      */
-    private function hub_unread_comment_count() {
-        if ( function_exists( 'qrm_cf_unread_total' ) ) {
-            return (int) qrm_cf_unread_total();
+    private function hub_category_count() {
+        if ( ! taxonomy_exists( 'rma_category' ) ) {
+            return 0;
         }
-        return 0;
+
+        $sayi = wp_count_terms(
+            [
+                'taxonomy'   => 'rma_category',
+                'hide_empty' => false,
+            ]
+        );
+
+        return is_wp_error( $sayi ) ? 0 : (int) $sayi;
     }
 
     /**
-     * QR Analiz tablosundaki bugünkü menü görüntüleme sayısı.
+     * Şu an gerçekten yayında olan kampanya sayısı.
      *
-     * İstatistikler Genel Bakış ile AYNI kova: genel_bakis()['mv_bugun'].
-     * Ayrı COUNT + transient ikinci bir sayı üretirdi; kullanıcı iki ekranda
-     * farklı rakam görürdü.
+     * Kampanya motorunun KENDİ durum mantığı kullanılır (RMA_Kampanya::aktif
+     * => RMA_Kampanya_DB::aktif_mi): yalnızca `status = active` olan VE
+     * başlangıç/bitiş tarihi, gün maskesi ve saat aralığı penceresine uyan
+     * kayıt sayılır; taslak, pasifleştirilmiş ve süresi geçmiş kampanyalar
+     * elenir. Motor "aynı anda tek kampanya" kuralıyla çalıştığı için sonuç
+     * 0 veya 1'dir (bkz. RMA_Kampanya_DB::aktiflestir) — kart bu yüzden
+     * uydurma bir toplam değil, motorun gerçek cevabını gösterir.
+     *
+     * Ek sorgu doğurmaz: aktif kayıt transient + istek içi memo ile okunur.
      *
      * @return int
      */
-    private function hub_today_view_count() {
-        if ( ! class_exists( 'QRMS_Analitik' ) || ! method_exists( 'QRMS_Analitik', 'genel_bakis' ) ) {
+    private function hub_active_campaign_count() {
+        if ( ! class_exists( 'RMA_Kampanya' ) || ! method_exists( 'RMA_Kampanya', 'aktif' ) ) {
             return 0;
         }
 
-        if ( method_exists( 'QRMS_Analitik', 'tablo_var_mi' ) && ! QRMS_Analitik::tablo_var_mi() ) {
+        return RMA_Kampanya::aktif() ? 1 : 0;
+    }
+
+    /**
+     * "Öne Çıkanlar" ekranında ELLE öne çıkarılmış ürün sayısı.
+     *
+     * İki gerçek kaynak birleştirilir (aynı ürün iki yerde de seçilmişse bir
+     * kez sayılır):
+     *   1. Öne Çıkan Slider grupları — `qmo_slide` başına en fazla 4 ürün
+     *      (`_qmo_slide_urun_1..4`).
+     *   2. Öneriler bölümü YALNIZCA `manual` modundayken seçilen ürünler
+     *      (`rma_suggestions_settings['manual_ids']`). `system` modunda öneri
+     *      listesi saate göre kategoriden türetilir; sabit bir ürün kümesi
+     *      yoktur, bu yüzden sayıya katılmaz — uydurma sayı üretilmez.
+     *
+     * Silinmiş veya yayından kaldırılmış ürünler tek sorguda elenir; kart
+     * menüde gerçekten görünen ürünü sayar.
+     *
+     * @return int
+     */
+    private function hub_featured_product_count() {
+        $idler = [];
+
+        if ( class_exists( 'QMO_Slide_CPT' ) && post_type_exists( 'qmo_slide' ) ) {
+            // get_published_slides() meta önbelleğini ısıtır; aşağıdaki
+            // get_post_meta çağrıları ek sorgu doğurmaz.
+            foreach ( QMO_Slide_CPT::get_published_slides() as $slide ) {
+                for ( $i = 1; $i <= 4; $i++ ) {
+                    $pid = (int) get_post_meta( $slide->ID, '_qmo_slide_urun_' . $i, true );
+                    if ( $pid > 0 ) {
+                        $idler[ $pid ] = true;
+                    }
+                }
+            }
+        }
+
+        $oneri = get_option( 'rma_suggestions_settings', [] );
+        if ( is_array( $oneri ) && 'manual' === ( $oneri['mode'] ?? 'system' ) ) {
+            foreach ( (array) ( $oneri['manual_ids'] ?? [] ) as $pid ) {
+                $pid = (int) $pid;
+                if ( $pid > 0 ) {
+                    $idler[ $pid ] = true;
+                }
+            }
+        }
+
+        if ( empty( $idler ) ) {
             return 0;
         }
 
-        $bakis = QRMS_Analitik::genel_bakis();
+        $gecerli = get_posts(
+            [
+                'post_type'              => 'rma_menu_item',
+                'post_status'            => 'publish',
+                'post__in'               => array_keys( $idler ),
+                'posts_per_page'         => -1,
+                'fields'                 => 'ids',
+                'no_found_rows'          => true,
+                'update_post_meta_cache' => false,
+                'update_post_term_cache' => false,
+            ]
+        );
 
-        return isset( $bakis['mv_bugun'] ) ? (int) $bakis['mv_bugun'] : 0;
+        return is_array( $gecerli ) ? count( $gecerli ) : 0;
     }
 
     public function register_settings() {

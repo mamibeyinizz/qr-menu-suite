@@ -728,11 +728,28 @@ body.qrms-login,
 	}
 }
 
-/* Caps Lock uyarısı (JS ekler). */
+/*
+ * Caps Lock uyarısı (JS ekler).
+ *
+ * VARSAYILAN GİZLİ. Eskiden burada koşulsuz `display:block` vardı; bu kural
+ * tarayıcının `[hidden] { display: none }` kuralından daha yüksek özgüllüğe
+ * sahip olduğu için uyarı, JS `hidden` yapmış olsa bile Caps Lock kapalıyken
+ * ekranda kalıyordu. Görünürlük artık yalnızca `.qrms-caps-acik` sınıfıyla
+ * açılır; `[hidden]` kuralı da aynı özgüllükte yeniden yazılır.
+ */
 .qrms-login .qrms-caps {
-	display: block;
+	display: none;
 	margin: 7px 0 0;
 	color: var(--qrms-lg-vurgu);
 	font-size: 12.5px;
 	font-weight: 600;
+	line-height: 1.35;
+}
+
+.qrms-login .qrms-caps.qrms-caps-acik {
+	display: block;
+}
+
+.qrms-login .qrms-caps[hidden] {
+	display: none;
 }

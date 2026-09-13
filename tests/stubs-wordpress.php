@@ -2029,6 +2029,23 @@ function taxonomy_exists( $taksonomi ) {
 }
 
 /**
+ * Taksonomideki terim sayısı. (Testte
+ * $GLOBALS['qrms_test']['term_counts'][taksonomi]; yoksa 0.)
+ *
+ * WP 5.6+ dizi imzası kullanılır: wp_count_terms( [ 'taxonomy' => ... ] ).
+ *
+ * @param array $args Sorgu argümanları.
+ * @return int
+ */
+function wp_count_terms( $args = array() ) {
+	$taksonomi = isset( $args['taxonomy'] ) ? (string) $args['taxonomy'] : '';
+
+	return isset( $GLOBALS['qrms_test']['term_counts'][ $taksonomi ] )
+		? (int) $GLOBALS['qrms_test']['term_counts'][ $taksonomi ]
+		: 0;
+}
+
+/**
  * Kanca kaç kez çalıştı?
  *
  * @param string $tag Kanca adı.

@@ -62,7 +62,7 @@ foreach ( $ciftler as $hedef_dil => $kaynak_dil ) {
 	);
 
 	rma_bakim_log( '' );
-	rma_bakim_log( "--- {$hedef_dil} ({$kaynak_dil} ile aynı): " . count( $kayitlar ) . ' kayıt ---" );
+	rma_bakim_log( "--- {$hedef_dil} ({$kaynak_dil} ile aynı): " . count( $kayitlar ) . ' kayıt ---' );
 
 	foreach ( $kayitlar as $k ) {
 		rma_bakim_log(

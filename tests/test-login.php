@@ -553,3 +553,127 @@ qrms_test(
 		qrms_assert_contains( "add_filter( 'authenticate', array( __CLASS__, 'reddet_asilan_deneme' ), 0 )", $kaynak, 'deneme sınırı authenticate filtresinde' );
 	}
 );
+
+qrms_test(
+	'CAPS LOCK: uyarı varsayılan olarak gizlidir, yalnızca sınıfla açılır',
+	function () {
+		$css = file_get_contents( QRMS_PLUGIN_DIR . 'assets/css/login.css' );
+
+		// KÖK SEBEP: `.qrms-login .qrms-caps { display: block }` kuralı,
+		// tarayıcının `[hidden] { display: none }` kuralından daha yüksek
+		// özgüllükte olduğu için JS `hidden = true` yapsa bile uyarı ekranda
+		// kalıyordu — Caps Lock kapalıyken "Caps Lock açık" görünüyordu.
+		$blok = substr( $css, strpos( $css, '.qrms-login .qrms-caps {' ) );
+		$blok = substr( $blok, 0, strpos( $blok, '}' ) + 1 );
+
+		qrms_assert_contains( 'display: none;', $blok, 'varsayılan gizli' );
+		qrms_assert_false( false !== strpos( $blok, 'display: block;' ), 'koşulsuz görünürlük yok' );
+		qrms_assert_contains( '.qrms-login .qrms-caps.qrms-caps-acik {', $css, 'görünürlük sınıfa bağlı' );
+		qrms_assert_contains( '.qrms-login .qrms-caps[hidden] {', $css, '[hidden] aynı özgüllükte yeniden yazılır' );
+	}
+);
+
+qrms_test(
+	'CAPS LOCK: sanal klavyede yanlış uyarı gösterilmez, uyarı tek kez oluşturulur',
+	function () {
+		$js = file_get_contents( QRMS_PLUGIN_DIR . 'assets/js/login.js' );
+
+		// Sanal klavye elemesi: IME (keyCode 229 / isComposing), boş `code`,
+		// "Unidentified" tuş ve sentetik olaylar değerlendirmeye alınmaz.
+		qrms_assert_contains( '229 === olay.keyCode', $js, 'IME olayları elenir' );
+		qrms_assert_contains( 'olay.isComposing', $js, 'kompozisyon olayları elenir' );
+		qrms_assert_contains( '! olay.code', $js, 'sanal klavyede boş code elenir' );
+		qrms_assert_contains( "'Unidentified' === olay.key", $js, 'tanımsız tuş elenir' );
+		qrms_assert_contains( 'false === olay.isTrusted', $js, 'sentetik olay elenir' );
+
+		// Shift/karakter çelişkisi tarayıcıdan bağımsız kesin kanıttır.
+		qrms_assert_contains( '( tus === buyuk ) !== !! olay.shiftKey', $js, 'harf/shift çelişkisi kanıtı' );
+
+		// Tek eleman: betik iki kez çalışsa da ikinci uyarı eklenmez.
+		qrms_assert_contains( "document.getElementById( 'qrms-caps-uyari' )", $js, 'mevcut uyarı yeniden kullanılır' );
+
+		// keydown + keyup + blur/focus birlikte yönetilir.
+		foreach ( array( "addEventListener( 'keydown', tus )", "addEventListener( 'keyup', tus )", "alan.addEventListener( 'blur'", "alan.addEventListener( 'focus'" ) as $kanca ) {
+			qrms_assert_contains( $kanca, $js, $kanca . ' bağlanır' );
+		}
+
+		// Uyarı bir <span>'dır; forma veya gönderime dokunmaz.
+		qrms_assert_false( false !== strpos( $js, 'preventDefault' ), 'gönderim engellenmez' );
+	}
+);
+
+qrms_test(
+	'KABA KUVVET: kilitliyken sayaç artmaz, kilit süresiz uzamaz',
+	function () {
+		qrms_reset();
+
+		$anahtar = 'qrms_login_deneme_' . md5( '0.0.0.0' );
+
+		// Sınıra kadar her başarısız deneme sayacı bir artırır.
+		for ( $i = 0; $i < QRMS_Login::DENEME_SINIRI; $i++ ) {
+			QRMS_Login::basarisiz_denemeyi_kaydet();
+		}
+
+		qrms_assert_same( QRMS_Login::DENEME_SINIRI, (int) get_transient( $anahtar ), 'sınıra kadar sayılır' );
+		qrms_assert_true( is_wp_error( QRMS_Login::reddet_asilan_deneme( null ) ), 'sınırda kilitlenir' );
+
+		// KRİTİK: kilitliyken gelen istekler de wp_login_failed tetikler.
+		// Sayaç orada da artsaydı transient'in ömrü her botta yenilenir ve
+		// saldırı sürdükçe MEŞRU yönetici de asla giremezdi.
+		for ( $i = 0; $i < 50; $i++ ) {
+			QRMS_Login::basarisiz_denemeyi_kaydet();
+		}
+
+		qrms_assert_same( QRMS_Login::DENEME_SINIRI, (int) get_transient( $anahtar ), 'kilitliyken sayaç sabit kalır' );
+
+		QRMS_Login::basarili_giriste_sayaci_sil();
+		qrms_assert_same( 0, (int) get_transient( $anahtar ), 'başarılı girişte sayaç silinir' );
+	}
+);
+
+qrms_test(
+	'KULLANICI ADI SIZINTISI: users site haritası kapalı, şifre sıfırlama tek tip yanıt verir',
+	function () {
+		qrms_assert_false( QRMS_Login::kullanici_site_haritasini_kaldir( 'saglayici', 'users' ), 'users haritası kaldırılır' );
+		qrms_assert_same( 'saglayici', QRMS_Login::kullanici_site_haritasini_kaldir( 'saglayici', 'posts' ), 'diğer haritalara dokunulmaz' );
+
+		$kaynak = file_get_contents( QRMS_PLUGIN_DIR . 'includes/class-qrms-login.php' );
+
+		qrms_assert_contains( "add_action( 'lostpassword_post', array( __CLASS__, 'sifirlama_sizintisini_kapat' ), 10, 2 )", $kaynak, 'sıfırlama kancası bağlanır' );
+
+		// Yalnızca "böyle bir hesap yok" hatası maskelenir; boş alan uyarısı
+		// gibi diğer hatalar kullanıcıya gösterilmeye devam eder.
+		qrms_assert_contains( "in_array( 'invalidcombo', \$hatalar->get_error_codes(), true )", $kaynak, 'yalnızca invalidcombo maskelenir' );
+		qrms_assert_contains( 'wp_safe_redirect( $hedef );', $kaynak, 'dış alan adına yönlendirilmez' );
+	}
+);
+
+qrms_test(
+	'CSS DEĞİŞKENLERİ: bozuk renk ve adres <style> bloğundan çıkamaz',
+	function () {
+		$s = array_merge(
+			QRMS_Login::defaults(),
+			array(
+				'vurgu'         => '#c9a84c; } </style><script>alert(1)</script><style>{',
+				'arkaplan_tip'  => 'gorsel',
+			)
+		);
+
+		$css = QRMS_Login::css_variables( $s, 'https://restoran.test/a.jpg");}</style><script>x', '' );
+
+		// CSS bildiriminden veya <style> bloğundan çıkmayı mümkün kılan hiçbir
+		// karakter çıktıda kalmaz.
+		foreach ( array( '<', '>', '{', '}', '"', "'" ) as $tehlike ) {
+			qrms_assert_false( false !== strpos( $css, $tehlike ), $tehlike . ' basılmaz' );
+		}
+
+		// url() bildirimi tam olarak kapanır: adresin içinde parantez kalmaz.
+		preg_match( '/--qrms-lg-bg-image: url\(([^;]*)\);?/', $css, $eslesme );
+		qrms_assert_true( ! empty( $eslesme ), 'görsel değişkeni basılır' );
+		qrms_assert_false( false !== strpos( $eslesme[1], '(' ), 'adreste açılış parantezi yok' );
+		qrms_assert_false( false !== strpos( $eslesme[1], ')' ), 'adres url() bildirimini erken kapatamaz' );
+
+		// Geçersiz renk sessizce varsayılana düşer, tasarım bozulmaz.
+		qrms_assert_contains( '--qrms-lg-vurgu: #c9a84c', $css, 'geçersiz renk varsayılana döner' );
+	}
+);

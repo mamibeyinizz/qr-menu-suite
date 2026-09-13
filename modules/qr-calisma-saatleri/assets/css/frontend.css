@@ -230,29 +230,6 @@
 }
 
 /* ---------------------------------------------------------------------------
-   Alt bilgi
-   ------------------------------------------------------------------------ */
-
-.qrms-cs-note {
-	align-items: center;
-	border-top: 1px solid var(--qrms-cs-line);
-	display: flex;
-	font-size: 12px;
-	gap: 8px;
-	margin: 14px 0 0;
-	opacity: 0.75;
-	padding: 12px 0 0;
-}
-
-.qrms-cs-note-dot {
-	background: #56d18e;
-	border-radius: 50%;
-	flex: 0 0 auto;
-	height: 6px;
-	width: 6px;
-}
-
-/* ---------------------------------------------------------------------------
    Dar ekran — gün adı ve saat AYNI satırda kalır, taşma olmaz.
    ------------------------------------------------------------------------ */
 
