@@ -157,8 +157,6 @@ trait RMA_Helpers_Trait {
        yazılır — sayfa yükünde autoload edilen veri büyümez.
     ----------------------------------------------------------------- */
 
-    const RMA_CACHE_VERSION_OPTION = 'rma_cache_version';
-
     /**
      * Menü önbelleğinin geçerli sürüm damgası.
      */

@@ -1,0 +1,58 @@
+Dosya yükleme, XSS ve SQLi dinamik test kanıtları
+====================================================
+
+A) Dosya yükleme (qrmgm_upload_image, admin nonce+manage_options)
+---------------------------------------------------------------------
+1) evil.jpg  içerik: "<?php phpinfo(); ?>" MIME iddiası image/jpeg
+   -> {"success":false,"data":{"message":"Desteklenmeyen dosya türü."}}  HTTP 200 (reddedildi)
+2) evil.php.jpg (çift uzantı) aynı PHP içerik
+   -> aynı ret mesajı
+3) evil.php (gerçek uzantı) aynı içerik
+   -> aynı ret mesajı
+4) evil.svg (<script>alert(document.cookie)</script> içeren SVG)
+   -> aynı ret mesajı
+5) real.png (gerçek, geçerli 1x1 PNG)
+   -> {"success":true,"data":{"id":14}}  HTTP 200 (kabul edildi — beklenen davranış)
+6) Aynı yükleme, Subscriber cookie'siyle (admin'in nonce'unu kullanarak)
+   -> gövde "-1", HTTP 403 (nonce kullanıcıya bağlı olduğu için de reddedildi)
+7) IDOR: section_id = gerçek bir "page" post ID'si (galeri bölümü DEĞİL)
+   -> {"success":false,"data":{"message":"Geçersiz bölüm."}}  (is_post_type() kontrolü çalıştı)
+
+SONUÇ: wp_check_filetype_and_ext() gerçek içerik doğrulaması yapıyor; uzantı/MIME
+istemci tarafından ne iddia edilirse edilsin PHP/SVG içerik geçmiyor.
+
+B) Stored XSS (yorum sistemi)
+---------------------------------------------------------------------
+DB'ye doğrudan (AJAX katmanını atlayarak, sadece ÇIKTI escaping'ini test etmek için)
+şu payload'lar yazıldı:
+  comment       = "<script>alert(1)</script> SENTETIK XSS gövde testi"
+  customer_name = "SENTETIK<img src=x onerror=alert(2)>"
+
+Ön yüz ([qr_menu_reviews] shortcode'lu sayfa) ve admin "Tüm Yorumlar" ekranı
+render edildi. Ham HTML çıktısında arandı:
+  "<script>alert(1)</script>"  -> BULUNAMADI (0 eşleşme, ham/parse edilebilir hâliyle)
+  "&lt;script&gt;alert(1)&lt;/script&gt;" -> BULUNDU (HTML-entity kodlanmış, güvenli)
+  customer_name alanı da aynı şekilde "&lt;img src=x onerror=alert(2)&gt;" olarak
+  kodlanmış durumda; tarayıcı bunu görünür metin olarak basar, tag olarak
+  YORUMLAMAZ.
+=> Stored XSS YOK. esc_html() doğru uygulanmış (hem ön yüz hem admin).
+
+C) SQL Injection (ödül kodu arama, canlı AJAX üzerinden)
+---------------------------------------------------------------------
+code = "' OR '1'='1"
+  -> {"success":false,"found":false,"message":"Böyle bir kod bulunamadı."}
+code = "x' UNION SELECT user_login,user_pass,1,1,1 FROM wp_users -- "
+  -> {"success":false,"found":false,"message":"Böyle bir kod bulunamadı."}
+Her iki payload da normal "bulunamadı" cevabı üretti; SQL hatası, ekstra satır
+veya farklı davranış YOK. $wpdb->prepare() beklendiği gibi çalışıyor.
+
+D) Yorum gönderim formu (canlı, spam-guard'lı) — SQLi/XSS payload denemesi
+---------------------------------------------------------------------
+Gerçek [qr_menu_reviews] formu üzerinden qrm_submit_review'a XSS+SQLi karışık
+payload (comment, customer_name, table_no alanlarında) gönderilmeye çalışıldı.
+İlk deneme captcha eşleşmediği için reddedildi; doğru captcha ile ikinci deneme
+IP bazlı "Çok sık gönderim yapıyorsunuz" hız sınırına takıldı (qrm_pro_rate_limit_guard /
+cooldown). Görev kuralları tekrar deneme/brute-force'u yasakladığı için ısrar
+edilmedi — bu, hız sınırlayıcının GERÇEKTEN VE HIZLA devreye girdiğinin dinamik
+kanıtıdır (bkz. RATE-LIMIT bölümü). Aynı payload'ların çıktı güvenliği doğrudan
+DB yazımıyla (madde B) ayrıca doğrulandı.

@@ -140,15 +140,34 @@ function qrm_reward_ajax_admin_selftest() {
 // Admin / kasiyer: "Kod Sorgula" kutusu
 add_action('wp_ajax_qrm_reward_admin_lookup', 'qrm_reward_ajax_admin_lookup');
 function qrm_reward_ajax_admin_lookup() {
-    if (!current_user_can('edit_posts')) {
-        wp_send_json(['success' => false, 'message' => 'Bu işlem için yetkiniz yok.']);
-    }
+    // 1) Nonce.
     check_ajax_referer('qrm_reward_cashier', 'nonce');
 
-    // GÜVENLİK: bu uç müşteri e-postasını döndürüyor ve hiçbir hız sınırı
-    // yoktu; edit_posts taşıyan bir hesap kodu brute-force ederek e-posta
-    // toplayabilirdi. Aynı IP sınırlayıcı (qrm_reward_rate_limit) diğer ödül
-    // uçlarında zaten kullanılıyor.
+    // 2) Giriş kontrolü — wp_ajax_ öneki (nopriv değil) oturumsuz isteği bu
+    // fonksiyona zaten hiç ulaştırmaz; açık kontrol denetimi kolaylaştırmak
+    // için tutulur.
+    if (!is_user_logged_in()) {
+        wp_send_json(['success' => false, 'message' => 'Bu işlem için giriş yapmalısınız.']);
+        return;
+    }
+
+    // 3) Özel yetki — GÜVENLİK (BULGU-001): eskiden edit_posts (Contributor/
+    // Author dahil her rolde var) kontrol ediliyordu; müşteri e-postası
+    // döndüren bu uç artık yalnızca qrm_manage_rewards taşıyan hesaplara açık.
+    // manage_options OR'u geriye dönük uyumluluk için (bkz. capabilities.php).
+    if (!current_user_can(QRM_REWARD_CAP) && !current_user_can('manage_options')) {
+        wp_send_json(['success' => false, 'message' => 'Bu işlem için yetkiniz yok.']);
+        return;
+    }
+
+    // 4) Restoran/şube sahipliği: eklenti tek-site/tek-restoran modelindedir;
+    // ödül kodları şube/restoran kimliğiyle ayrılmaz, ek bir sahiplik kontrolü
+    // gerekmez (N/A).
+
+    // 5) Girdi doğrulama + hız sınırı. GÜVENLİK: bu uç müşteri e-postasını
+    // döndürüyor ve hiçbir hız sınırı yoktu; yetkili bir hesap kodu
+    // brute-force ederek e-posta toplayabilirdi. Aynı IP sınırlayıcı
+    // (qrm_reward_rate_limit) diğer ödül uçlarında zaten kullanılıyor.
     $limit = qrm_reward_rate_limit(20, 300);
     if (true !== $limit) {
         wp_send_json(['success' => false, 'message' => $limit]);
@@ -186,11 +205,26 @@ function qrm_reward_ajax_admin_lookup() {
 // Kasiyer: geçerli kodu tek tıkla kullanıldı işaretle
 add_action('wp_ajax_qrm_reward_cashier_mark_used', 'qrm_reward_ajax_cashier_mark_used');
 function qrm_reward_ajax_cashier_mark_used() {
-    if (!current_user_can('edit_posts')) {
-        wp_send_json(['success' => false, 'message' => 'Bu işlem için yetkiniz yok.']);
-    }
+    // 1) Nonce.
     check_ajax_referer('qrm_reward_cashier', 'nonce');
 
+    // 2) Giriş kontrolü (bkz. qrm_reward_ajax_admin_lookup üstündeki not).
+    if (!is_user_logged_in()) {
+        wp_send_json(['success' => false, 'message' => 'Bu işlem için giriş yapmalısınız.']);
+        return;
+    }
+
+    // 3) Özel yetki — GÜVENLİK (BULGU-001): eskiden edit_posts kontrol
+    // ediliyordu; bir ödül kodunu kalıcı olarak "kullanıldı" işaretleyen bu
+    // uç artık yalnızca qrm_manage_rewards taşıyan hesaplara açık.
+    if (!current_user_can(QRM_REWARD_CAP) && !current_user_can('manage_options')) {
+        wp_send_json(['success' => false, 'message' => 'Bu işlem için yetkiniz yok.']);
+        return;
+    }
+
+    // 4) Restoran/şube sahipliği: N/A (bkz. yukarıdaki fonksiyon).
+
+    // 5) Girdi doğrulama + hız sınırı.
     $limit = qrm_reward_rate_limit(20, 300);
     if (true !== $limit) {
         wp_send_json(['success' => false, 'message' => $limit]);

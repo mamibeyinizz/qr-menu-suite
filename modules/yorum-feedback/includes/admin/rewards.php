@@ -12,7 +12,11 @@ function qrm_reward_admin_page() {
     $view_kasa = isset($_GET['view']) && sanitize_key(wp_unslash($_GET['view'])) === 'kasa';
 
     if ($view_kasa) {
-        if (!current_user_can('edit_posts')) {
+        // GÜVENLİK (BULGU-001): eskiden edit_posts (Contributor/Author dahil
+        // her rolde var) kontrol ediliyordu; bu görünüm AJAX uçlarıyla aynı
+        // nonce'u (qrm_reward_cashier) kullandığı için kapısı da aynı özel
+        // capability ile korunur (bkz. includes/rewards/capabilities.php).
+        if (!current_user_can(QRM_REWARD_CAP) && !current_user_can('manage_options')) {
             wp_die(esc_html__('Bu sayfayı görüntüleme yetkiniz yok.', 'qrms'));
         }
         qrm_reward_admin_cashier_view();

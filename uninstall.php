@@ -132,5 +132,22 @@ foreach ( array( '\_rma\_%', 'rma\_%', '\_qrms\_%', '\_qmo\_%' ) as $qrms_meta_o
 	);
 }
 
+/* -------------------------------------------------------------------------
+ * 5) ROL CAPABILITY'LERİ
+ *
+ * qrm_manage_rewards (BULGU-001 düzeltmesi) rol tablosuna işlenir; option
+ * silme bunu temizlemez. Yalnızca bu eklentinin eklediği rollere dokunulur,
+ * rolün kendisi veya başka capability'leri silinmez.
+ * ---------------------------------------------------------------------- */
+
+if ( function_exists( 'get_role' ) ) {
+	foreach ( wp_roles()->roles as $qrms_rol_slug => $qrms_rol_verisi ) {
+		$qrms_rol = get_role( $qrms_rol_slug );
+		if ( $qrms_rol && $qrms_rol->has_cap( 'qrm_manage_rewards' ) ) {
+			$qrms_rol->remove_cap( 'qrm_manage_rewards' );
+		}
+	}
+}
+
 // Nesne önbelleği eski option'ları tutmasın.
 wp_cache_flush();

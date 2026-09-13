@@ -250,6 +250,7 @@ require_once QRM_PRO_PATH . 'includes/review-media.php';
 
 // Ödül modülü (kurulum fonksiyonu install.php içinden çağrıldığı için önce yüklenir)
 require_once QRM_PRO_PATH . 'includes/rewards/db.php';
+require_once QRM_PRO_PATH . 'includes/rewards/capabilities.php';
 require_once QRM_PRO_PATH . 'includes/rewards/functions.php';
 require_once QRM_PRO_PATH . 'includes/rewards/events.php';
 require_once QRM_PRO_PATH . 'includes/rewards/popup-render.php';

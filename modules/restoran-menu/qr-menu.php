@@ -66,6 +66,11 @@ require_once __DIR__ . '/includes/urunum-yok/trait-admin.php';
 ===================================================================== */
 class Restaurant_Menu_Automation {
 
+    // PHP 7.4 uyumluluğu: trait'ler sabit tanımlayamaz (PHP 8.2+ özelliği);
+    // RMA_Helpers_Trait bu sabiti self:: üzerinden kullandığı için burada
+    // tanımlı olması yeterli.
+    const RMA_CACHE_VERSION_OPTION = 'rma_cache_version';
+
     use RMA_Helpers_Trait;
     use RMA_Post_Types_Trait;
     use RMA_Admin_Columns_Trait;

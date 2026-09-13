@@ -714,7 +714,10 @@ qrms_test(
 		qrms_assert_contains( "'taxonomy' => 'rma_category'", $php, 'kategori şartı' );
 		qrms_assert_contains( 'Mercimek Çorbası', $php, 'boş menü yedeği' );
 		qrms_assert_contains( 'RMA_Kampanya::fiyat_yazi', $php, 'modül fiyat biçimi' );
-		qrms_assert_false( false !== strpos( $php, 'wc_price' ), 'Woo fiyatı kullanılmaz' );
+		// Ham strpos('wc_price') yanlış pozitif verir: kelime, "WooCommerce
+		// wc_price değil" açıklamasında yorum olarak da geçiyor. Gerçek bir
+		// çağrı aranır (açan parantezle), yorum metni eşleşmez.
+		qrms_assert_false( 1 === preg_match( '/\bwc_price\s*\(/', $php ), 'Woo fiyatı kullanılmaz' );
 		qrms_assert_contains( 'rma-cp-shuffle', $php, 'yenile düğmesi' );
 
 		qrms_assert_contains( 'function ajax_color_preview_item', $ajax, 'AJAX uç' );
@@ -767,12 +770,14 @@ qrms_test(
 
 		// ID doğrudan POST'tan geliyordu; tip kontrolü olmadan bu uçlar galeri
 		// dışındaki HERHANGİ bir post'u silebilir/durumunu değiştirebilirdi.
-		qrms_assert_contains( 'self::CPT_SECTION !== get_post_type( $id )', $kaynak, 'bölüm silme/durum/sıralama tip kontrolü' );
+		// Kontrol artık ortak is_post_type() yardımcısına çıkarıldı (DRY);
+		// doğrudan self::CPT_SECTION !== get_post_type() deseni kalmadı.
+		qrms_assert_contains( 'private function is_post_type( int $id, string $type ): bool', $kaynak, 'ortak tip kontrolü yardımcısı' );
 		qrms_assert_contains( 'self::CPT_IMAGE !== get_post_type( $id )', $kaynak, 'görsel silme tip kontrolü' );
 
 		// En az 3 farklı uçta (sil, durum değiştir, sırala) kontrol geçmeli.
 		qrms_assert_true(
-			substr_count( $kaynak, 'self::CPT_SECTION !== get_post_type( $id )' ) >= 3,
+			substr_count( $kaynak, ', self::CPT_SECTION )' ) >= 3,
 			'bölüm kontrolü birden çok uçta'
 		);
 	}

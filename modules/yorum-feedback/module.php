@@ -143,7 +143,13 @@ function qrms_module_yorum_feedback_admin_menu() {
 	}
 
 	foreach ( qrm_pro_admin_pages() as $slug => $page ) {
-		$capability = ( 'qrms-yf-odul' === $slug ) ? 'edit_posts' : QRMS_Admin::CAPABILITY;
+		// GÜVENLİK (BULGU-001): bu satır yalnızca "Google & Ödüller" sayfasının
+		// menü görünürlüğünü belirler; sayfanın kendi içindeki ?view=kasa
+		// kapısıyla aynı özel capability kullanılır (bkz.
+		// includes/rewards/capabilities.php, includes/admin/rewards.php).
+		// Migration Administrator rolüne bu capability'yi otomatik ekler,
+		// bu yüzden mevcut yöneticiler menü satırını görmeye devam eder.
+		$capability = ( 'qrms-yf-odul' === $slug ) ? QRM_REWARD_CAP : QRMS_Admin::CAPABILITY;
 		add_submenu_page(
 			$parent,
 			$page['title'],

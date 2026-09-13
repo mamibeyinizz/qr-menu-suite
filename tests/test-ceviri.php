@@ -328,8 +328,13 @@ qrms_test(
 		qrms_assert_same( 'Adınız Soyadınız', qrm_ceviri_form_alan( 3, 'Adınız Soyadınız' ), 'tablo yok alan' );
 		qrms_assert_same( 'Şikayet', qrm_ceviri_cf_form( 1, 'title', 'Şikayet' ), 'tablo yok cf_form' );
 
+		// Chatbot artık ortak rma_ceviri_bayat_uyari_metni() yerine kendi
+		// kompakt, JS ile canlı geçiş yapan "mevcut/değişti" rozetini
+		// (qmo_chatbot_ceviri_rozet) kullanıyor; aynı $adet<1 → boş mantığını
+		// koruyor, ayrıca statik uyarı kutusundan daha iyi bir UX sunuyor.
 		$bot = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/includes/admin/admin-sayfa.php' );
-		qrms_assert_contains( 'rma_ceviri_bayat_uyari_metni', $bot, 'chatbot uyarı' );
+		qrms_assert_contains( 'function qmo_chatbot_ceviri_rozet', $bot, 'chatbot uyarı' );
+		qrms_assert_contains( 'Bu metin değiştirildi', $bot, 'chatbot bayat rozet metni' );
 
 		$hfb = file_get_contents( QRMS_PLUGIN_DIR . 'modules/header-footer-builder/includes/trait-admin.php' );
 		qrms_assert_contains( 'hfb_ceviri_bayat_uyari', $hfb, 'HFB uyarı' );
