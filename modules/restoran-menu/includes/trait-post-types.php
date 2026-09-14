@@ -335,9 +335,11 @@ trait RMA_Post_Types_Trait {
         // Fiyat — negatif/metin/biçimsiz değer KAYDEDİLMEZ, eski değer korunur;
         // kullanıcıya redirect_post_location/admin_notices ile açık hata gösterilir.
         if ( isset( $_POST['rma_price'] ) ) {
-            $gecerli_fiyat = $this->sanitize_price_value( wp_unslash( $_POST['rma_price'] ) );
+            $fiyat_ust_sinir_asildi = false;
+            $gecerli_fiyat          = $this->sanitize_price_value( wp_unslash( $_POST['rma_price'] ), $fiyat_ust_sinir_asildi );
             if ( null === $gecerli_fiyat ) {
-                $this->rma_fiyat_gecersiz = true;
+                $this->rma_fiyat_gecersiz         = true;
+                $this->rma_fiyat_ust_sinir_asildi = $fiyat_ust_sinir_asildi;
             } else {
                 update_post_meta( $post_id, 'rma_price', $gecerli_fiyat );
             }
@@ -465,7 +467,13 @@ trait RMA_Post_Types_Trait {
             $location = add_query_arg( 'rma_baslik_hata', '1', $location );
         }
         if ( $this->rma_fiyat_gecersiz ) {
-            $location = add_query_arg( 'rma_fiyat_hata', '1', $location );
+            // Üst sınır aşımı ile biçim/negatif hatası ayrı bir değerle taşınır;
+            // render_save_error_notices() buna göre doğru mesajı seçer.
+            $location = add_query_arg(
+                'rma_fiyat_hata',
+                ! empty( $this->rma_fiyat_ust_sinir_asildi ) ? 'ust_sinir' : '1',
+                $location
+            );
         }
         return $location;
     }
@@ -505,7 +513,11 @@ trait RMA_Post_Types_Trait {
             echo '<div class="notice notice-error"><p>' . esc_html__( 'Ürün adı boş bırakılamaz. Hiçbir bilgi kaydedilmedi; lütfen ürün adını girip tekrar kaydedin.', 'qrms' ) . '</p></div>';
         }
         if ( isset( $_GET['rma_fiyat_hata'] ) ) {
-            echo '<div class="notice notice-error"><p>' . esc_html__( 'Girilen fiyat geçersiz (negatif veya sayısal olmayan bir değer). Fiyat güncellenmedi, önceki değer korundu.', 'qrms' ) . '</p></div>';
+            if ( 'ust_sinir' === $_GET['rma_fiyat_hata'] ) {
+                echo '<div class="notice notice-error"><p>' . esc_html__( 'Girilen fiyat izin verilen azami değeri (999.999,99) aşıyor. Fiyat güncellenmedi, önceki değer korundu.', 'qrms' ) . '</p></div>';
+            } else {
+                echo '<div class="notice notice-error"><p>' . esc_html__( 'Girilen fiyat geçersiz (negatif veya sayısal olmayan bir değer). Fiyat güncellenmedi, önceki değer korundu.', 'qrms' ) . '</p></div>';
+            }
         }
     }
 }

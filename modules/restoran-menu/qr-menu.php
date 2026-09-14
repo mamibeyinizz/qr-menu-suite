@@ -92,8 +92,9 @@ class Restaurant_Menu_Automation {
     // save_menu_item_meta() / block_empty_title_save() içinde ayarlanır,
     // aynı istek içinde flag_save_errors_redirect() ve
     // suppress_success_message_on_error() tarafından okunur.
-    private $rma_baslik_gecersiz = false;
-    private $rma_fiyat_gecersiz  = false;
+    private $rma_baslik_gecersiz        = false;
+    private $rma_fiyat_gecersiz         = false;
+    private $rma_fiyat_ust_sinir_asildi = false;
 
     public static function get_instance() {
         if ( null === self::$instance ) {

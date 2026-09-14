@@ -25,6 +25,13 @@ trait RMA_Import_Export_Trait {
             $delimiter = ( strpos( $lines[0] ?? '', ';' ) !== false ) ? ';' : ',';
             $imported  = 0;
 
+            // Fiyatı geçersiz (negatif/metin/biçimsiz veya 999.999,99 üst
+            // sınırını aşan) satırlar sessizce boş fiyatla içe aktarılır;
+            // admin ekranına kaç satırın etkilendiği ve mümkünse hangi
+            // satırlar olduğu bildirilir (bkz. render_csv_import_page()).
+            $fiyat_gecersiz          = 0;
+            $fiyat_gecersiz_satirlar = [];
+
             // PERF: Terim sayacı her wp_set_object_terms çağrısında yeniden
             // hesaplanıyordu (satır × kategori kadar UPDATE). Toplu içe
             // aktarım boyunca ertelenir, sonunda tek seferde güncellenir.
@@ -44,7 +51,11 @@ trait RMA_Import_Export_Trait {
                 $d     = str_getcsv( $line, $delimiter );
                 $title = sanitize_text_field( $d[0] ?? '' );
                 if ( empty( $title ) ) continue;
-                $parsed_rows[] = $d;
+                // Admin bildiriminde hangi CSV satırının etkilendiğini
+                // gösterebilmek için dosyadaki gerçek satır numarası (1 tabanlı)
+                // sayısal sütun indekslerini bozmayan bir string anahtarla saklanır.
+                $d['_rma_satir_no'] = $i + 1;
+                $parsed_rows[]      = $d;
             }
 
             // BULGU: Aynı CSV dosyası tekrar yüklendiğinde her satır için
@@ -83,11 +94,25 @@ trait RMA_Import_Export_Trait {
                     // ikinci bir ürün açılmaz, az önce işlenenin üzerine yazılır.
                     $existing_map[ $anahtar ] = $pid;
 
-                    // Fiyat — negatif/metin/biçimsiz sütun değeri diğer alanlar
-                    // gibi ham sanitize_text_field ile yazılmaz; geçersizse
-                    // ürün boş fiyatla (fiyat belirtilmemiş) içe aktarılır.
+                    // Fiyat — negatif/metin/biçimsiz veya 999.999,99 üst
+                    // sınırını aşan sütun değeri diğer alanlar gibi ham
+                    // sanitize_text_field ile yazılmaz. Güncellenen (mevcut)
+                    // üründe eski fiyat KORUNUR — meta'ya hiç dokunulmaz;
+                    // yeni üründe geçersiz fiyat kaydedilmez (boş kalır).
+                    // Etkilenen satır sayısı admin ekranına yansıtılır (bkz.
+                    // render_csv_import_page()).
                     $gecerli_fiyat = $this->sanitize_price_value( $d[3] ?? '' );
-                    update_post_meta( $pid, 'rma_price', null === $gecerli_fiyat ? '' : $gecerli_fiyat );
+                    if ( null === $gecerli_fiyat ) {
+                        $fiyat_gecersiz++;
+                        if ( count( $fiyat_gecersiz_satirlar ) < 20 ) {
+                            $fiyat_gecersiz_satirlar[] = (int) ( $d['_rma_satir_no'] ?? 0 );
+                        }
+                        if ( ! $hedef_id ) {
+                            update_post_meta( $pid, 'rma_price', '' );
+                        }
+                    } else {
+                        update_post_meta( $pid, 'rma_price', $gecerli_fiyat );
+                    }
 
                     $meta_map = [
                         'rma_spicy_level'       => $d[5]  ?? '',
@@ -147,7 +172,15 @@ trait RMA_Import_Export_Trait {
             wp_defer_term_counting( false );
             $this->force_bump_cache_version();
 
-            wp_redirect( $this->admin_page_url( 'qrms-rm-diger', [ 'imported' => $imported ], 'rma-ice-disa-aktar' ) );
+            $redirect_args = [ 'imported' => $imported ];
+            if ( $fiyat_gecersiz > 0 ) {
+                $redirect_args['rma_csv_fiyat_gecersiz'] = $fiyat_gecersiz;
+                if ( $fiyat_gecersiz_satirlar ) {
+                    $redirect_args['rma_csv_fiyat_satirlar'] = implode( ',', $fiyat_gecersiz_satirlar );
+                }
+            }
+
+            wp_redirect( $this->admin_page_url( 'qrms-rm-diger', $redirect_args, 'rma-ice-disa-aktar' ) );
             exit;
         }
         wp_redirect( $this->admin_page_url( 'qrms-rm-diger', [ 'csv_error' => 2 ], 'rma-ice-disa-aktar' ) );
@@ -191,6 +224,26 @@ trait RMA_Import_Export_Trait {
     public function render_csv_import_page() {
         if ( isset( $_GET['imported'] ) ) echo '<div class="updated"><p><strong>' . intval( $_GET['imported'] ) . '</strong> ürün aktarıldı.</p></div>';
         if ( isset( $_GET['csv_error'] ) ) echo '<div class="error"><p>Dosya yükleme hatası.</p></div>';
+
+        $fiyat_gecersiz = intval( $_GET['rma_csv_fiyat_gecersiz'] ?? 0 );
+        if ( $fiyat_gecersiz > 0 ) {
+            // Satır numaraları yalnızca intval() ile süzülmüş tam sayılardan
+            // oluşur; çıktıya doğrudan kullanıcı girdisi yansımaz (XSS'siz).
+            $satirlar_ham = (string) ( $_GET['rma_csv_fiyat_satirlar'] ?? '' );
+            $satir_no_dizisi = array_filter( array_map( 'intval', explode( ',', $satirlar_ham ) ) );
+
+            $satir_metni = '';
+            if ( $satir_no_dizisi ) {
+                $satir_metni = ' Etkilenen satır(lar): ' . esc_html( implode( ', ', $satir_no_dizisi ) )
+                    . ( $fiyat_gecersiz > count( $satir_no_dizisi ) ? ' ve diğerleri.' : '.' );
+            }
+
+            printf(
+                '<div class="notice notice-warning"><p><strong>%d</strong> satırda fiyat geçersiz (negatif, sayısal olmayan veya izin verilen 999.999,99 üst sınırını aşan bir değer) olduğu için atlandı; güncellenen üründe eski fiyat korundu, yeni üründe fiyat boş bırakıldı.%s</p></div>',
+                $fiyat_gecersiz,
+                $satir_metni
+            );
+        }
 
         $columns = $this->get_csv_columns();
         $sample  = [

@@ -26,10 +26,12 @@
  */
 
 require_once QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-import-export.php';
+require_once QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-helpers.php';
 
 if ( ! class_exists( 'RMA_Menu_Test_Import' ) ) {
 	class RMA_Menu_Test_Import {
 		use RMA_Import_Export_Trait;
+		use RMA_Helpers_Trait;
 	}
 }
 
@@ -204,5 +206,172 @@ qrms_test(
 			$kaynak,
 			'fiyat hâlâ sanitize_price_value() üzerinden doğrulanıyor'
 		);
+	}
+);
+
+/* =====================================================================
+   BULGU-AUDIT-03 — Ana CSV içe aktarımında fiyat üst sınırı aşımı için de
+   admin geri bildirimi yoktu.
+   handle_csv_import() geçersiz (biçim/negatif/üst sınır) fiyatlı satırları
+   sessizce boş fiyatla içe aktarıyor, kaç satırın etkilendiğine dair hiçbir
+   sayaç/uyarı admin ekranına yansımıyordu. Düzeltme: $fiyat_gecersiz sayacı
+   + ilk 20 satır numarası redirect ile taşınır, render_csv_import_page()
+   bunu güvenli (esc_html + intval süzülmüş) bir uyarı olarak basar.
+   wp_insert_post()/wp_update_post()'a bağımlı asıl akış bu projede izlenen
+   yöntemle (kaynak koda karşı) doğrulanır; render_csv_import_page() ise
+   wp_insert_post'a bağımlı olmadığı için GERÇEKTEN çalıştırılıp çıktısı
+   test edilir.
+===================================================================== */
+
+echo "\nAna CSV İçe Aktarımı — Geçersiz Fiyat Admin Geri Bildirimi (BULGU-AUDIT-03)\n";
+
+qrms_test(
+	'kaynak kod: geçersiz fiyat satırları sayılıyor, satır numarası saklanıyor',
+	function () {
+		$kaynak = file_get_contents(
+			QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-import-export.php'
+		);
+
+		$fonksiyon_basi = strpos( $kaynak, 'function handle_csv_import()' );
+		$fonksiyon_sonu = strpos( $kaynak, "\n    /**\n     * CSV sütunları" );
+		$govde          = substr( $kaynak, $fonksiyon_basi, $fonksiyon_sonu - $fonksiyon_basi );
+
+		qrms_assert_contains( '$fiyat_gecersiz          = 0;', $govde, 'sayaç sıfırla başlatılıyor' );
+		qrms_assert_contains( '$fiyat_gecersiz_satirlar = [];', $govde, 'satır listesi sıfırla başlatılıyor' );
+		qrms_assert_contains( "\$d['_rma_satir_no'] = \$i + 1;", $govde, 'gerçek dosya satır numarası saklanıyor' );
+		qrms_assert_contains( '$fiyat_gecersiz++;', $govde, 'geçersiz fiyatta sayaç artırılıyor' );
+		qrms_assert_contains(
+			"\$fiyat_gecersiz_satirlar[] = (int) ( \$d['_rma_satir_no'] ?? 0 );",
+			$govde,
+			'satır numarası (int olarak) listeye ekleniyor'
+		);
+
+		$sayac_konumu = strpos( $govde, '$fiyat_gecersiz++;' );
+		$sanitize_konumu = strpos( $govde, "\$gecerli_fiyat = \$this->sanitize_price_value( \$d[3] ?? '' );" );
+		qrms_assert_true( $sanitize_konumu < $sayac_konumu, 'sayaç yalnızca doğrulamadan SONRA artırılıyor' );
+	}
+);
+
+qrms_test(
+	'kaynak kod: güncellenen (mevcut) üründe eski fiyat korunuyor, yeni üründe geçersiz fiyat kaydedilmiyor',
+	function () {
+		$kaynak = file_get_contents(
+			QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-import-export.php'
+		);
+
+		$fonksiyon_basi = strpos( $kaynak, 'function handle_csv_import()' );
+		$fonksiyon_sonu = strpos( $kaynak, "\n    /**\n     * CSV sütunları" );
+		$govde          = substr( $kaynak, $fonksiyon_basi, $fonksiyon_sonu - $fonksiyon_basi );
+
+		// null === $gecerli_fiyat dalı: sadece YENİ ürün (hedef_id yok) için
+		// boş meta yazılır; mevcut (güncellenen) ürüne rma_price hiç dokunulmaz.
+		$fiyat_blok_basi = strpos( $govde, '$gecerli_fiyat = $this->sanitize_price_value(' );
+		$fiyat_blok_sonu = strpos( $govde, '$meta_map = [' );
+		$fiyat_blok      = substr( $govde, $fiyat_blok_basi, $fiyat_blok_sonu - $fiyat_blok_basi );
+
+		qrms_assert_contains( 'if ( ! $hedef_id ) {', $fiyat_blok, 'yalnızca yeni ürün dalında meta yazılıyor' );
+		qrms_assert_contains( "update_post_meta( \$pid, 'rma_price', '' );", $fiyat_blok, 'yeni üründe geçersiz fiyat boş kaydediliyor' );
+		qrms_assert_contains( "update_post_meta( \$pid, 'rma_price', \$gecerli_fiyat );", $fiyat_blok, 'geçerli fiyat hâlâ doğrudan kaydediliyor' );
+
+		// "! $hedef_id" kontrolü olmadan koşulsuz bir update_post_meta çağrısı
+		// (eski davranış — güncellenen üründe de eski fiyatı siliyordu) kalmamalı.
+		qrms_assert_false(
+			false !== strpos( $fiyat_blok, "'rma_price', null === \$gecerli_fiyat ? '' : \$gecerli_fiyat" ),
+			'eski koşulsuz üzerine yazma deseni kaldırıldı'
+		);
+	}
+);
+
+qrms_test(
+	'kaynak kod: redirect geçersiz fiyat sayacını ve satır listesini admin ekranına taşıyor',
+	function () {
+		$kaynak = file_get_contents(
+			QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-import-export.php'
+		);
+
+		qrms_assert_contains( "\$redirect_args['rma_csv_fiyat_gecersiz'] = \$fiyat_gecersiz;", $kaynak, 'sayaç redirect argümanına ekleniyor' );
+		qrms_assert_contains( "\$redirect_args['rma_csv_fiyat_satirlar'] = implode( ',', \$fiyat_gecersiz_satirlar );", $kaynak, 'satır listesi redirect argümanına ekleniyor' );
+		qrms_assert_contains( "if ( \$fiyat_gecersiz > 0 ) {", $kaynak, 'sayaç sıfırken redirect kirletilmiyor' );
+	}
+);
+
+if ( ! class_exists( 'RMA_Test_CSV_Page_Harness' ) ) {
+	class RMA_Test_CSV_Page_Harness {
+		use RMA_Import_Export_Trait;
+		use RMA_Helpers_Trait;
+	}
+}
+
+qrms_test(
+	'render_csv_import_page(): geçersiz fiyat yokken hiçbir uyarı basılmaz (regresyon)',
+	function () {
+		$h = new RMA_Test_CSV_Page_Harness();
+		$_GET = array( 'imported' => 5 );
+
+		ob_start();
+		$h->render_csv_import_page();
+		$html = ob_get_clean();
+
+		qrms_assert_contains( '<strong>5</strong> ürün aktarıldı.', $html, 'mevcut başarı bildirimi bozulmadı' );
+		qrms_assert_false( false !== strpos( $html, 'notice-warning' ), 'geçersiz fiyat yokken uyarı basılmaz' );
+	}
+);
+
+qrms_test(
+	'render_csv_import_page(): geçersiz fiyat sayacı ve satır numaraları güvenli biçimde basılır',
+	function () {
+		$h    = new RMA_Test_CSV_Page_Harness();
+		$_GET = array(
+			'imported'                 => 12,
+			'rma_csv_fiyat_gecersiz'   => 3,
+			'rma_csv_fiyat_satirlar'   => '2,5,9',
+		);
+
+		ob_start();
+		$h->render_csv_import_page();
+		$html = ob_get_clean();
+
+		qrms_assert_contains( '<strong>12</strong> ürün aktarıldı.', $html, 'geçerli satırların içe aktarımı engellenmedi' );
+		qrms_assert_contains( 'notice-warning', $html, 'geçersiz fiyat uyarısı basıldı' );
+		qrms_assert_contains( '<strong>3</strong> satırda fiyat geçersiz', $html, 'sayaç doğru gösteriliyor' );
+		qrms_assert_contains( 'Etkilenen sat', $html, 'satır numaraları listeleniyor' );
+		qrms_assert_contains( '2, 5, 9', $html, 'satır numaraları doğru sırayla basılıyor' );
+		qrms_assert_false( false !== strpos( $html, 've diğerleri' ), 'tüm satırlar listelendiğinde "ve diğerleri" eklenmez' );
+	}
+);
+
+qrms_test(
+	'render_csv_import_page(): 20\'den fazla etkilenen satırda "ve diğerleri" eklenir',
+	function () {
+		$h    = new RMA_Test_CSV_Page_Harness();
+		$_GET = array(
+			'rma_csv_fiyat_gecersiz' => 25,
+			'rma_csv_fiyat_satirlar' => implode( ',', range( 2, 21 ) ), // yalnızca ilk 20 satır saklanır
+		);
+
+		ob_start();
+		$h->render_csv_import_page();
+		$html = ob_get_clean();
+
+		qrms_assert_contains( '<strong>25</strong> satırda fiyat geçersiz', $html, 'gerçek toplam sayı gösteriliyor' );
+		qrms_assert_contains( 've diğerleri', $html, 'listelenmeyen satırlar için özet eklenir' );
+	}
+);
+
+qrms_test(
+	'render_csv_import_page(): satır parametresine enjekte edilen HTML/JS süzülür (XSS güvenliği)',
+	function () {
+		$h    = new RMA_Test_CSV_Page_Harness();
+		$_GET = array(
+			'rma_csv_fiyat_gecersiz' => 2,
+			'rma_csv_fiyat_satirlar' => '5,<script>alert(1)</script>',
+		);
+
+		ob_start();
+		$h->render_csv_import_page();
+		$html = ob_get_clean();
+
+		qrms_assert_false( false !== strpos( $html, '<script>' ), 'ham script etiketi çıktıya sızmaz' );
+		qrms_assert_contains( '<strong>2</strong> satırda fiyat geçersiz', $html, 'sayaç yine de doğru basılır' );
 	}
 );

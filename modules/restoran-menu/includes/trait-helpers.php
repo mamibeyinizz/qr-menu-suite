@@ -632,11 +632,17 @@ trait RMA_Helpers_Trait {
      * ücretsiz/dahil ürünler için kullanılabilir. Negatif değerler, metin ve
      * biçimsiz her şey reddedilir.
      *
-     * @param mixed $deger Ham (POST/CSV) değer.
+     * @param mixed $deger            Ham (POST/CSV) değer.
+     * @param bool  $ust_sinir_asildi Referansla döner: reddin nedeni üst sınır
+     *                                aşımıysa true, biçim/negatif hatasıysa false
+     *                                olur. Çağıran taraf reddin nedenine göre
+     *                                farklı bir mesaj göstermek istemiyorsa
+     *                                parametre atlanabilir.
      * @return string|null Geçerliyse temizlenmiş fiyat metni, değilse null.
      */
-    public function sanitize_price_value( $deger ) {
-        $deger = trim( (string) $deger );
+    public function sanitize_price_value( $deger, &$ust_sinir_asildi = false ) {
+        $ust_sinir_asildi = false;
+        $deger            = trim( (string) $deger );
 
         if ( '' === $deger ) {
             return '';
@@ -648,6 +654,7 @@ trait RMA_Helpers_Trait {
         // Üst sınır: 999.999,99 ₺ — yanlışlıkla fazladan sıfır eklenmiş
         // (örn. 100000000000) bir fiyatın menüde anlamsız görünmesini önler.
         if ( (float) $deger > 999999.99 ) {
+            $ust_sinir_asildi = true;
             return null;
         }
 
