@@ -247,7 +247,11 @@ JS;
     public static function ajax_search_items() {
         check_ajax_referer( 'qmo_search_items', 'security' );
         if ( ! current_user_can( 'edit_posts' ) ) {
-            wp_send_json( [ 'results' => [] ] );
+            // API STANDARDIZASYONU (BULGU-AUDIT-04): capability reddi artık
+            // HTTP 403 döner (öncesinde varsayılan 200 idi); gövde şekli
+            // (results:[]) korunur.
+            wp_send_json( [ 'results' => [] ], 403 );
+            return;
         }
 
         $term      = sanitize_text_field( wp_unslash( $_GET['q'] ?? '' ) );

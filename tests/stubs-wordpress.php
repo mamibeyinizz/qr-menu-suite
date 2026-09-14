@@ -1748,11 +1748,19 @@ function check_ajax_referer( $action = -1, $query = false ) {
  * isteği sonlandırır; stub bunu yapmaz, çağıran kodun kendi return'üne
  * güvenilir.
  *
- * @param mixed $response Yanıt.
+ * $status_code, gerçek WP çekirdeğindeki gibi verildiğinde status_header()
+ * çağırır — testler HTTP durumunu $GLOBALS['qrms_test']['status_header']
+ * üzerinden diğer status_header() kullanımlarıyla aynı şekilde doğrular.
+ *
+ * @param mixed    $response    Yanıt.
+ * @param int|null $status_code HTTP durum kodu (ops.).
  * @return void
  */
-function wp_send_json( $response ) {
+function wp_send_json( $response, $status_code = null ) {
 	$GLOBALS['qrms_test']['json'] = $response;
+	if ( null !== $status_code ) {
+		status_header( $status_code );
+	}
 }
 
 /**
