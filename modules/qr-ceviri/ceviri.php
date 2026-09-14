@@ -2,7 +2,7 @@
 /**
  * Plugin Name: QRMenu Premium Dropdown Translator
  * Description: CSV ile toplu yönetilen, veritabanı tabanlı çoklu dil çeviri sistemi. Sunucu tarafında render eder (?lang=), çeviri API'sine bağlanmaz.
- * Version: 2.0.0
+ * Version: 2.1.0
  * Author: QRMenu Official
  *
  * v2.0.0 ile Google Translate widget'ı kaldırıldı. Artık çeviriler
