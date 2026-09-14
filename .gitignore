@@ -1,1 +1,5 @@
 tests/docker/.env
+
+# Production packaging output (generated ZIPs, never committed).
+build/dist/
+*.zip
