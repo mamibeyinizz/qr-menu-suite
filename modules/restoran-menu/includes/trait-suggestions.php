@@ -6,7 +6,7 @@ trait RMA_Suggestions_Trait {
 
     public function ajax_save_suggestions() {
         check_ajax_referer( 'rma_admin_nonce', 'security' );
-        if ( ! current_user_can( 'manage_options' ) ) wp_send_json_error();
+        if ( ! current_user_can( 'manage_options' ) ) { wp_send_json_error( null, 403 ); return; }
 
         $mode       = sanitize_text_field( $_POST['mode'] ?? 'system' );
         $manual_ids = isset( $_POST['manual_ids'] ) ? array_map( 'intval', (array) $_POST['manual_ids'] ) : [];

@@ -2912,7 +2912,7 @@ class QRMS_Analitik {
 		check_ajax_referer( self::NONCE_CSV, 'security' );
 
 		if ( ! current_user_can( QRMS_Admin::CAPABILITY ) ) {
-			wp_die( esc_html__( 'Yetkiniz yok.', 'qrms' ) );
+			wp_die( esc_html__( 'Yetkiniz yok.', 'qrms' ), '', array( 'response' => 403 ) );
 		}
 
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- check_ajax_referer yukarıda.

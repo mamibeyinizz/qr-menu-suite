@@ -675,7 +675,8 @@ trait RMA_Kampanya_Admin_Trait {
         $yetki = class_exists( 'QRMS_Admin' ) ? QRMS_Admin::CAPABILITY : 'manage_options';
 
         if ( ! current_user_can( $yetki ) ) {
-            wp_send_json_error( 'yetki' );
+            wp_send_json_error( 'yetki', 403 );
+            return;
         }
 
         $ayarlar = RMA_Kampanya_DB::ayarlari_temizle( $this->kampanya_form_verisi() );
