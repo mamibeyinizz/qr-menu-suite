@@ -429,13 +429,24 @@ function admin_url( $path = '' ) {
 }
 
 /**
- * Adrese query arg ekler (yalnızca dizi biçimli çağrı desteklenir).
+ * Adrese query arg ekler. WordPress'teki gibi iki çağrı biçimini de destekler:
+ * dizi biçimi add_query_arg( array $args, $url ) ve tekli anahtar/değer biçimi
+ * add_query_arg( $key, $value, $url ).
  *
- * @param array  $args Eklenecek argümanlar.
- * @param string $url  Temel adres.
+ * @param array|string $args_or_key Dizi biçiminde argümanlar, ya da tekli
+ *                                  biçimde anahtar adı.
+ * @param mixed        $value_or_url Tekli biçimde değer; dizi biçiminde adres.
+ * @param string       $url Tekli biçimde adres.
  * @return string
  */
-function add_query_arg( array $args, $url = '' ) {
+function add_query_arg( $args_or_key, $value_or_url = '', $url = '' ) {
+	if ( is_array( $args_or_key ) ) {
+		$args = $args_or_key;
+		$url  = $value_or_url;
+	} else {
+		$args = array( $args_or_key => $value_or_url );
+	}
+
 	$parcalar = explode( '?', (string) $url, 2 );
 	$mevcut   = array();
 

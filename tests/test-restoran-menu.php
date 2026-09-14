@@ -1133,8 +1133,34 @@ if ( ! class_exists( 'RMA_Test_Ayar_Harness' ) ) {
 if ( ! class_exists( 'RMA_Test_Baslik_Harness' ) ) {
 	class RMA_Test_Baslik_Harness {
 		use RMA_Post_Types_Trait;
-		public $rma_baslik_gecersiz = false;
-		public $rma_fiyat_gecersiz  = false;
+		use RMA_Helpers_Trait;
+		public $rma_baslik_gecersiz        = false;
+		public $rma_fiyat_gecersiz         = false;
+		public $rma_fiyat_ust_sinir_asildi = false;
+	}
+}
+
+if ( ! function_exists( 'wp_is_post_revision' ) ) {
+	/**
+	 * save_menu_item_meta() bunu erken çıkış kontrolü olarak çağırır; testte
+	 * hiçbir kayıt gerçek bir revizyon olmadığı için sabit false yeterli.
+	 */
+	function wp_is_post_revision( $post_id ) {
+		return false;
+	}
+}
+
+if ( ! function_exists( 'get_current_screen' ) ) {
+	/**
+	 * render_save_error_notices() yalnızca doğru post type ekranında basar;
+	 * gerçek WP'de bunu sağlayan get_current_screen() bu ortamda yok, testler
+	 * $GLOBALS['qrms_test']['current_screen_post_type'] ile kontrol eder.
+	 */
+	function get_current_screen() {
+		if ( ! isset( $GLOBALS['qrms_test']['current_screen_post_type'] ) ) {
+			return null;
+		}
+		return (object) array( 'post_type' => $GLOBALS['qrms_test']['current_screen_post_type'] );
 	}
 }
 
@@ -1181,6 +1207,160 @@ qrms_test(
 		qrms_assert_same( null, $h->sanitize_price_value( '1000000' ), 'sınırı aşan tam sayı reddedilir' );
 		qrms_assert_same( null, $h->sanitize_price_value( '999999.999' ), 'üç ondalık zaten biçim hatası — reddedilir' );
 		qrms_assert_same( null, $h->sanitize_price_value( '9999999999999999999' ), 'aşırı büyük sayı reddedilir' );
+	}
+);
+
+/* =====================================================================
+   BULGU-AUDIT-02 — Fiyat üst sınırı aşıldığında hata mesajı yanıltıcıydı
+   sanitize_price_value() hem biçim/negatif hatasında hem üst sınır
+   aşımında aynı null'ı döndürüyordu; admin ekranı ikisi için de tek ve
+   genel "geçersiz (negatif veya sayısal olmayan)" mesajını basıyordu.
+   Düzeltme: sanitize_price_value() ikinci (by-ref) parametreyle red
+   nedenini ayırt eder; save_menu_item_meta()/flag_save_errors_redirect()/
+   render_save_error_notices() zincirinde bu bilgi taşınır.
+===================================================================== */
+
+echo "\nFiyat Üst Sınırı Hata Mesajı — reddin nedeni ayırt edilir (BULGU-AUDIT-02)\n";
+
+qrms_test(
+	'sanitize_price_value(): üst sınır aşımında ikinci parametre true olur',
+	function () {
+		$h = new RMA_Test_Ayar_Harness();
+
+		$ust_sinir_asildi = false;
+		qrms_assert_same( null, $h->sanitize_price_value( '1000000', $ust_sinir_asildi ), 'sınırı aşan değer reddedilir' );
+		qrms_assert_true( $ust_sinir_asildi, 'red nedeni üst sınır aşımı olarak işaretlendi' );
+	}
+);
+
+qrms_test(
+	'sanitize_price_value(): negatif/metin/biçim hatasında ikinci parametre false kalır',
+	function () {
+		$h = new RMA_Test_Ayar_Harness();
+
+		$ust_sinir_asildi = true; // kasıtlı yanlış başlangıç: fonksiyon sıfırlamalı.
+		qrms_assert_same( null, $h->sanitize_price_value( '-50', $ust_sinir_asildi ), 'negatif değer reddedilir' );
+		qrms_assert_false( $ust_sinir_asildi, 'negatif değerde üst sınır bayrağı false' );
+
+		$ust_sinir_asildi = true;
+		qrms_assert_same( null, $h->sanitize_price_value( 'abc', $ust_sinir_asildi ), 'metinsel değer reddedilir' );
+		qrms_assert_false( $ust_sinir_asildi, 'metinsel değerde üst sınır bayrağı false' );
+	}
+);
+
+qrms_test(
+	'sanitize_price_value(): geçerli fiyatta ikinci parametre false, davranış değişmez',
+	function () {
+		$h = new RMA_Test_Ayar_Harness();
+
+		$ust_sinir_asildi = true;
+		qrms_assert_same( '245.50', $h->sanitize_price_value( '245.50', $ust_sinir_asildi ), 'geçerli fiyat aynen kabul edilir' );
+		qrms_assert_false( $ust_sinir_asildi, 'geçerli fiyatta bayrak false' );
+
+		// İkinci parametre atlanırsa (admin formu/CSV import gibi eski çağrı
+		// biçimi) davranış hiç değişmemeli.
+		qrms_assert_same( '245.50', $h->sanitize_price_value( '245.50' ), 'parametresiz çağrı eskisi gibi çalışır' );
+		qrms_assert_same( null, $h->sanitize_price_value( '1000000' ), 'parametresiz çağrıda üst sınır hâlâ reddedilir' );
+	}
+);
+
+qrms_test(
+	'save_menu_item_meta(): üst sınırı aşan fiyatta ayrı bayrak (rma_fiyat_ust_sinir_asildi) ayarlanır',
+	function () {
+		$h       = new RMA_Test_Baslik_Harness();
+		$_POST   = array(
+			'rma_meta_nonce' => wp_create_nonce( 'rma_save_meta' ),
+			'post_title'     => 'Karışık Izgara',
+			'rma_price'      => '5000000',
+		);
+
+		$h->save_menu_item_meta( 123 );
+
+		qrms_assert_true( $h->rma_fiyat_gecersiz, 'genel fiyat hatası bayrağı ayarlandı' );
+		qrms_assert_true( $h->rma_fiyat_ust_sinir_asildi, 'üst sınır aşımı ayrıca işaretlendi' );
+		qrms_assert_same( '', get_post_meta( 123, 'rma_price', true ), 'geçersiz fiyat meta\'ya yazılmadı' );
+	}
+);
+
+qrms_test(
+	'save_menu_item_meta(): negatif/metinsel fiyatta üst sınır bayrağı ayarlanmaz (davranış korunur)',
+	function () {
+		$h     = new RMA_Test_Baslik_Harness();
+		$_POST = array(
+			'rma_meta_nonce' => wp_create_nonce( 'rma_save_meta' ),
+			'post_title'     => 'Karışık Izgara',
+			'rma_price'      => '-50',
+		);
+
+		$h->save_menu_item_meta( 124 );
+
+		qrms_assert_true( $h->rma_fiyat_gecersiz, 'genel fiyat hatası bayrağı ayarlandı' );
+		qrms_assert_false( $h->rma_fiyat_ust_sinir_asildi, 'negatif değerde üst sınır bayrağı ayarlanmaz' );
+	}
+);
+
+qrms_test(
+	'save_menu_item_meta(): geçerli fiyatta hiçbir hata bayrağı ayarlanmaz (regresyon)',
+	function () {
+		$h     = new RMA_Test_Baslik_Harness();
+		$_POST = array(
+			'rma_meta_nonce' => wp_create_nonce( 'rma_save_meta' ),
+			'post_title'     => 'Karışık Izgara',
+			'rma_price'      => '245.50',
+		);
+
+		$h->save_menu_item_meta( 125 );
+
+		qrms_assert_false( $h->rma_fiyat_gecersiz, 'hata bayrağı yok' );
+		qrms_assert_false( $h->rma_fiyat_ust_sinir_asildi, 'üst sınır bayrağı yok' );
+		qrms_assert_same( '245.50', get_post_meta( 125, 'rma_price', true ), 'geçerli fiyat kaydedildi' );
+	}
+);
+
+qrms_test(
+	'flag_save_errors_redirect(): üst sınır aşımı ve biçim hatası farklı sorgu değeriyle taşınır',
+	function () {
+		$h                                = new RMA_Test_Baslik_Harness();
+		$h->rma_fiyat_gecersiz            = true;
+		$h->rma_fiyat_ust_sinir_asildi    = true;
+		$konum = $h->flag_save_errors_redirect( 'http://example.test/wp-admin/post.php' );
+		qrms_assert_contains( 'rma_fiyat_hata=ust_sinir', $konum, 'üst sınır aşımı ayrı değerle işaretlenir' );
+
+		$h2                             = new RMA_Test_Baslik_Harness();
+		$h2->rma_fiyat_gecersiz         = true;
+		$h2->rma_fiyat_ust_sinir_asildi = false;
+		$konum2 = $h2->flag_save_errors_redirect( 'http://example.test/wp-admin/post.php' );
+		qrms_assert_contains( 'rma_fiyat_hata=1', $konum2, 'biçim/negatif hatası eski genel değerle işaretlenir' );
+	}
+);
+
+qrms_test(
+	'render_save_error_notices(): üst sınır aşımında spesifik mesaj, diğer hatalarda genel mesaj basılır',
+	function () {
+		$GLOBALS['qrms_test']['current_screen_post_type'] = 'rma_menu_item';
+
+		$h                       = new RMA_Test_Baslik_Harness();
+		$_GET['rma_fiyat_hata']  = 'ust_sinir';
+		ob_start();
+		$h->render_save_error_notices();
+		$html = ob_get_clean();
+		qrms_assert_contains( 'azami değeri (999.999,99) aşıyor', $html, 'üst sınır mesajı gösterildi' );
+		qrms_assert_false(
+			false !== strpos( $html, 'negatif veya sayısal olmayan' ),
+			'genel mesaj üst sınır durumunda basılmadı'
+		);
+
+		$_GET['rma_fiyat_hata'] = '1';
+		ob_start();
+		$h->render_save_error_notices();
+		$html2 = ob_get_clean();
+		qrms_assert_contains( 'negatif veya sayısal olmayan bir değer', $html2, 'biçim/negatif hatasında eski genel mesaj korunur' );
+		qrms_assert_false(
+			false !== strpos( $html2, 'azami değeri' ),
+			'üst sınır mesajı biçim hatası durumunda basılmadı'
+		);
+
+		unset( $GLOBALS['qrms_test']['current_screen_post_type'] );
 	}
 );
 
