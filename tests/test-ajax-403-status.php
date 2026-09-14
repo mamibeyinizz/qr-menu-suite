@@ -60,6 +60,7 @@ require_once QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/settings.php';
 
 require_once QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-helpers.php';
 require_once QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-ajax.php';
+require_once QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-suggestions.php';
 require_once QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/class-tukendi.php';
 require_once QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/admin-kombin-meta.php';
 
@@ -504,6 +505,89 @@ qrms_test(
 			"wp_send_json( [\n            'results'    => \$results,\n            'pagination' => [ 'more' => \$page < (int) \$query->max_num_pages ],\n        ] );",
 			$src,
 			'başarılı yanıtın çağrısı (gövde + durum kodu) birebir korunuyor'
+		);
+	}
+);
+
+/* =========================================================================
+   6) Final-release güvenlik taraması (2026-09-14) — BULGU-AUDIT-04'ün ilk
+   turda ATLADIĞI 3 uç. Aynı desen: capability reddinde artık HTTP 403.
+
+   - RMA_Suggestions_Trait::ajax_save_suggestions() (trait-suggestions.php)
+   - RMA_Kampanya_Admin_Trait::ajax_kampanya_onizleme() (trait-kampanya-admin.php)
+   - QRMS_Analitik::ajax_csv() (class-qrms-analitik.php)
+========================================================================= */
+
+if ( ! class_exists( 'RMA_Test_Suggestions_Harness' ) ) {
+	class RMA_Test_Suggestions_Harness {
+		use RMA_Helpers_Trait;
+		use RMA_Suggestions_Trait;
+
+		const RMA_CACHE_VERSION_OPTION = 'rma_cache_version';
+	}
+}
+
+qrms_test(
+	'ajax_save_suggestions: manage_options yetkisi yoksa artık 403 döner (önceden 200 idi)',
+	function () {
+		$h = new RMA_Test_Suggestions_Harness();
+		$GLOBALS['qrms_test']['can_map']['manage_options'] = false;
+		$_POST['mode'] = 'manual';
+
+		$h->ajax_save_suggestions();
+
+		$json = $GLOBALS['qrms_test']['json'];
+		qrms_assert_false( $json['success'], 'yetkisiz istek reddedilir' );
+		qrms_assert_same( 403, $json['status'], 'wp_send_json_error() 403 durum kodunu taşır' );
+	}
+);
+
+qrms_test(
+	'ajax_save_suggestions: yetkili istek 200 kalır, ayar gerçekten kaydedilir (gerileme yok)',
+	function () {
+		$h = new RMA_Test_Suggestions_Harness();
+		$GLOBALS['qrms_test']['can_map']['manage_options'] = true;
+		$_POST['mode']       = 'manual';
+		$_POST['manual_ids'] = array( '5', '9' );
+
+		$h->ajax_save_suggestions();
+
+		$json = $GLOBALS['qrms_test']['json'];
+		qrms_assert_true( $json['success'], 'yetkili istek başarılı' );
+		qrms_assert_true( empty( $GLOBALS['qrms_test']['status_header'] ), 'başarılı yanıtta durum kodu değişmedi (varsayılan 200)' );
+		qrms_assert_same(
+			array(
+				'mode'       => 'manual',
+				'manual_ids' => array( 5, 9 ),
+			),
+			get_option( 'rma_suggestions_settings' ),
+			'ayar gerçekten kaydedildi — davranış değişmedi'
+		);
+	}
+);
+
+qrms_test(
+	'ajax_kampanya_onizleme: yetkisizlik dalına 403 eklendi (kaynak-kod doğrulaması — RMA_Kampanya_DB/WP_Query bu test paketinde stub\'lanmadığından gerçek çalıştırma yapılmaz, bkz. yukarıdaki ajax_search_items ile aynı gerekçe)',
+	function () {
+		$src = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-kampanya-admin.php' );
+
+		qrms_assert_contains(
+			"if ( ! current_user_can( \$yetki ) ) {\n            wp_send_json_error( 'yetki', 403 );\n            return;\n        }",
+			$src,
+			'ajax_kampanya_onizleme capability reddi artık 403 döner'
+		);
+	}
+);
+
+qrms_test(
+	'QRMS_Analitik::ajax_csv: yetkisizlik dalına 403 eklendi (kaynak-kod doğrulaması — CSV akışı bu test paketinde stub\'lanmayan $wpdb sorguları içerir)',
+	function () {
+		$src = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/class-qrms-analitik.php' );
+
+		qrms_assert_contains(
+			"if ( ! current_user_can( QRMS_Admin::CAPABILITY ) ) {\n\t\t\twp_die( esc_html__( 'Yetkiniz yok.', 'qrms' ), '', array( 'response' => 403 ) );\n\t\t}",
+			$src,
+			'ajax_csv capability reddi artık HTTP 403 ile sonlanıyor (diğer qrms_analitik_* uçlarıyla ve saklama_formu ile aynı desen)'
 		);
 	}
 );
