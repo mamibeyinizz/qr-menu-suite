@@ -103,7 +103,12 @@ function qrm_reward_ajax_request_code() {
 add_action('wp_ajax_qrm_reward_admin_selftest', 'qrm_reward_ajax_admin_selftest');
 function qrm_reward_ajax_admin_selftest() {
     if (!current_user_can('manage_options')) {
-        wp_send_json(['show_reward' => false, 'message' => 'Bu işlem için yetkiniz yok.']);
+        // GÜVENLİK/API STANDARDIZASYONU (BULGU-AUDIT-04): capability reddi
+        // artık HTTP 403 döner (öncesinde varsayılan 200 ile success alanı
+        // olmayan bu gövde döndürülüyordu). Gövde şekli (show_reward/message)
+        // ve yetki kontrolü DEĞİŞMEDİ, yalnızca durum kodu eklendi.
+        wp_send_json(['show_reward' => false, 'message' => 'Bu işlem için yetkiniz yok.'], 403);
+        return;
     }
     check_ajax_referer('qrm_reward_admin', 'nonce');
 
@@ -147,7 +152,9 @@ function qrm_reward_ajax_admin_lookup() {
     // fonksiyona zaten hiç ulaştırmaz; açık kontrol denetimi kolaylaştırmak
     // için tutulur.
     if (!is_user_logged_in()) {
-        wp_send_json(['success' => false, 'message' => 'Bu işlem için giriş yapmalısınız.']);
+        // API STANDARDIZASYONU (BULGU-AUDIT-04): yetkisizlik reddi artık
+        // HTTP 403 döner; gövde şekli (success/message) korunur.
+        wp_send_json(['success' => false, 'message' => 'Bu işlem için giriş yapmalısınız.'], 403);
         return;
     }
 
@@ -156,7 +163,8 @@ function qrm_reward_ajax_admin_lookup() {
     // döndüren bu uç artık yalnızca qrm_manage_rewards taşıyan hesaplara açık.
     // manage_options OR'u geriye dönük uyumluluk için (bkz. capabilities.php).
     if (!current_user_can(QRM_REWARD_CAP) && !current_user_can('manage_options')) {
-        wp_send_json(['success' => false, 'message' => 'Bu işlem için yetkiniz yok.']);
+        // API STANDARDIZASYONU (BULGU-AUDIT-04): bkz. yukarıdaki not.
+        wp_send_json(['success' => false, 'message' => 'Bu işlem için yetkiniz yok.'], 403);
         return;
     }
 
@@ -210,7 +218,8 @@ function qrm_reward_ajax_cashier_mark_used() {
 
     // 2) Giriş kontrolü (bkz. qrm_reward_ajax_admin_lookup üstündeki not).
     if (!is_user_logged_in()) {
-        wp_send_json(['success' => false, 'message' => 'Bu işlem için giriş yapmalısınız.']);
+        // API STANDARDIZASYONU (BULGU-AUDIT-04): bkz. qrm_reward_ajax_admin_lookup.
+        wp_send_json(['success' => false, 'message' => 'Bu işlem için giriş yapmalısınız.'], 403);
         return;
     }
 
@@ -218,7 +227,8 @@ function qrm_reward_ajax_cashier_mark_used() {
     // ediliyordu; bir ödül kodunu kalıcı olarak "kullanıldı" işaretleyen bu
     // uç artık yalnızca qrm_manage_rewards taşıyan hesaplara açık.
     if (!current_user_can(QRM_REWARD_CAP) && !current_user_can('manage_options')) {
-        wp_send_json(['success' => false, 'message' => 'Bu işlem için yetkiniz yok.']);
+        // API STANDARDIZASYONU (BULGU-AUDIT-04): bkz. qrm_reward_ajax_admin_lookup.
+        wp_send_json(['success' => false, 'message' => 'Bu işlem için yetkiniz yok.'], 403);
         return;
     }
 

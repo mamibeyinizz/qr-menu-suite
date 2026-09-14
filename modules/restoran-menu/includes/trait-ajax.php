@@ -13,7 +13,13 @@ trait RMA_Ajax_Trait {
     public function ajax_color_preview_item() {
         check_ajax_referer( 'rma_admin_nonce', 'security' );
         if ( ! current_user_can( 'edit_posts' ) ) {
-            wp_send_json_error();
+            // API STANDARDIZASYONU (BULGU-AUDIT-04): capability reddi artık
+            // HTTP 403 döner (öncesinde varsayılan 200 idi). Gerçek
+            // WordPress'te wp_send_json_error() zaten wp_die() ile isteği
+            // sonlandırır; bu return, o garantiye açıkça dayanmak yerine
+            // (rewards.php'deki eşdeğer capability reddiyle aynı desen).
+            wp_send_json_error( null, 403 );
+            return;
         }
 
         $exclude = isset( $_POST['exclude'] ) ? (int) $_POST['exclude'] : 0;
@@ -28,7 +34,10 @@ trait RMA_Ajax_Trait {
             wp_send_json_error();
         }
         if ( ! current_user_can( 'edit_post', $post_id ) ) {
-            wp_send_json_error();
+            // API STANDARDIZASYONU (BULGU-AUDIT-04): capability reddi artık
+            // HTTP 403 döner (öncesinde varsayılan 200 idi).
+            wp_send_json_error( null, 403 );
+            return;
         }
 
         // Whitelist: yalnızca '0' veya '1' kabul edilir
@@ -51,7 +60,10 @@ trait RMA_Ajax_Trait {
             wp_send_json_error();
         }
         if ( ! current_user_can( 'edit_post', $post_id ) ) {
-            wp_send_json_error();
+            // API STANDARDIZASYONU (BULGU-AUDIT-04): capability reddi artık
+            // HTTP 403 döner (öncesinde varsayılan 200 idi).
+            wp_send_json_error( null, 403 );
+            return;
         }
 
         RMA_Tukendi::kaydet( $post_id, ( $_POST['status'] ?? '' ) === '1' );
@@ -61,7 +73,9 @@ trait RMA_Ajax_Trait {
 
     public function ajax_save_category_order() {
         check_ajax_referer( 'rma_admin_nonce', 'security' );
-        if ( ! current_user_can( 'manage_categories' ) ) wp_send_json_error();
+        // API STANDARDIZASYONU (BULGU-AUDIT-04): capability reddi artık
+        // HTTP 403 döner (öncesinde varsayılan 200 idi).
+        if ( ! current_user_can( 'manage_categories' ) ) { wp_send_json_error( null, 403 ); return; }
         if ( isset( $_POST['order'] ) ) {
             foreach ( array_map( 'intval', $_POST['order'] ) as $i => $tid ) {
                 update_term_meta( $tid, 'rma_cat_order', $i );
