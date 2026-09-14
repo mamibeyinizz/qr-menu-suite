@@ -16,6 +16,13 @@
 
 set -euo pipefail
 
+for cmd in git tar zip mktemp find; do
+    if ! command -v "$cmd" >/dev/null 2>&1; then
+        echo "Error: required command '$cmd' not found in PATH." >&2
+        exit 1
+    fi
+done
+
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
@@ -39,6 +46,10 @@ if [[ -z "$VERSION" ]]; then
 fi
 if [[ -z "$VERSION" ]]; then
     echo "Error: could not determine plugin version from $MAIN_FILE." >&2
+    exit 1
+fi
+if [[ ! "$VERSION" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]]; then
+    echo "Error: plugin version '$VERSION' contains unexpected characters." >&2
     exit 1
 fi
 
@@ -86,6 +97,11 @@ mkdir -p "$STAGE_DIR"
 
 # Export only tracked, committed files (HEAD) minus the excludes above.
 git archive HEAD -- . "${EXCLUDES[@]}" | tar -x -C "$STAGE_DIR"
+
+if [[ ! -f "$STAGE_DIR/$MAIN_FILE" ]]; then
+    echo "Error: $MAIN_FILE missing from staged archive — packaging excludes may be misconfigured." >&2
+    exit 1
+fi
 
 mkdir -p "$OUT_DIR"
 ZIP_PATH="$OUT_DIR/${SLUG}-${VERSION}.zip"
