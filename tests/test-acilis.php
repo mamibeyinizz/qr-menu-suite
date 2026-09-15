@@ -521,7 +521,8 @@ qrms_test(
 		// katalogda da yoksa Türkçesi basılır.
 		qrms_assert_contains( 'data-sp-en="Follow us"', $html, 'boş çeviri katalogdan tamamlanır' );
 		// Görünen metin her zaman Türkçedir; dili istemci seçer.
-		qrms_assert_contains( '>Menüye Git</a>', $html, 'sunucu Türkçeyi basar' );
+		qrms_assert_contains( 'class="splash-cta-label"', $html, 'CTA etiket sarmalayıcı' );
+		qrms_assert_contains( '>Menüye Git</span>', $html, 'sunucu Türkçeyi basar' );
 	}
 );
 
@@ -1029,7 +1030,8 @@ qrms_test(
 		qrms_assert_contains( 'data-sp-de="Kontakt"', $html, 'Almanca rozet' );
 		qrms_assert_contains( 'data-sp-de="Folgen Sie uns"', $html, 'Almanca ayraç' );
 		qrms_assert_contains( 'data-sp-lang-select-de="Sprache wählen (%s)"', $html, 'Almanca bayrak etiketi' );
-		qrms_assert_contains( '>Menüye Git</a>', $html, 'sunucu yine Türkçeyi basar' );
+		qrms_assert_contains( 'class="splash-cta-label"', $html, 'CTA etiket sarmalayıcı' );
+		qrms_assert_contains( '>Menüye Git</span>', $html, 'sunucu yine Türkçeyi basar' );
 	}
 );
 

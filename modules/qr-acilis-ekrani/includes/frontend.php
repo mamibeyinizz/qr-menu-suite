@@ -287,7 +287,26 @@ trait QRMS_AE_Frontend {
                         // optimizasyon eklentisi bozdu, overlay cache'te eksik kaldı vb.)
                         // sayfa sonsuza kadar gizli kalmasın. JS normal çalıştığında
                         // dismissSplash() bu zamanlayıcıyı iptal eder.
+                        function splashRevealBackgroundImages() {
+                            document.querySelectorAll('#custom-splash-overlay .splash-bg-img').forEach(function (img) {
+                                function mark() {
+                                    img.classList.add('is-loaded');
+                                }
+                                if (img.complete && img.naturalWidth > 0) {
+                                    mark();
+                                } else {
+                                    img.addEventListener('load', mark, { once: true });
+                                    img.addEventListener('error', mark, { once: true });
+                                }
+                            });
+                        }
+                        if (document.readyState === 'loading') {
+                            document.addEventListener('DOMContentLoaded', splashRevealBackgroundImages);
+                        } else {
+                            splashRevealBackgroundImages();
+                        }
                         window.__splashFailsafe = setTimeout(function () {
+                            splashRevealBackgroundImages();
                             var overlay = document.getElementById('custom-splash-overlay');
                             if (!overlay || getComputedStyle(overlay).display === 'none') {
                                 document.documentElement.classList.remove('splash-loading');

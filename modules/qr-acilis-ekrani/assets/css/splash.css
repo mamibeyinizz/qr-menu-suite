@@ -267,9 +267,9 @@ html.splash-loading #custom-splash-overlay { display: block !important; visibili
 
 #custom-splash-overlay.splash-scheme-light .splash-bg-overlay {
     background: linear-gradient(to bottom,
-        rgba(0, 0, 0, 0.20) 0%,
-        rgba(255, 255, 255, 0.04) 26%,
-        rgba(255, 255, 255, 0.42) 62%,
+        rgba(0, 0, 0, 0.28) 0%,
+        rgba(255, 255, 255, 0.06) 24%,
+        rgba(255, 255, 255, 0.44) 62%,
         rgba(255, 255, 255, calc(0.30 + var(--sp-overlay, 0.55))) 100%);
 }
 
