@@ -67,6 +67,21 @@
         return document.getElementById('custom-splash-overlay');
     }
 
+    function markBackgroundImagesLoaded(root) {
+        if (!root) return;
+        root.querySelectorAll('.splash-bg-img').forEach(function (img) {
+            function markLoaded() {
+                img.classList.add('is-loaded');
+            }
+            if (img.complete && img.naturalWidth > 0) {
+                markLoaded();
+            } else {
+                img.addEventListener('load', markLoaded, { once: true });
+                img.addEventListener('error', markLoaded, { once: true });
+            }
+        });
+    }
+
     function clearHeadFailsafe() {
         if (window.__splashFailsafe) {
             clearTimeout(window.__splashFailsafe);
@@ -415,6 +430,7 @@
             removeLoadingState();
             // Dil düğmesi önizlemede de çalışır (çerezsiz): yönetici
             // İngilizce hâli nasıl görünüyor diye bakabilmeli.
+            markBackgroundImagesLoaded(overlay);
             initLang(overlay, true);
             initCeviri(overlay, true);
             return;
@@ -616,6 +632,8 @@
                 first.focus();
             }
         });
+
+        markBackgroundImagesLoaded(overlay);
 
         // Giriş animasyonu tek seferliktir: bitince sınıf kaldırılır, böylece
         // geride sürekli compositing yapan bir katman kalmaz. Eleman temel
