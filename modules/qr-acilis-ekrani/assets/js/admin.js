@@ -226,7 +226,7 @@
 
         // Yalnızca CTA ve ayracın görünür bir metni vardır; dil seçici
         // kapalıyken canlı güncelleme onlarda yedek seçiciyle sürer.
-        var yedek = { btn1: '.splash-cta', divider: '.splash-divider-label' };
+        var yedek = { btn1: '.splash-cta-label', divider: '.splash-divider-label' };
 
         [1, 2, 3, 4, 5].forEach(function (i) {
             bindLangText('button_text_' + i, 'btn' + i, 'tr', yedek['btn' + i]);

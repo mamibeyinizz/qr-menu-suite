@@ -27,6 +27,12 @@ trait QRMS_AE_Icons {
             // Wifi
             'wifi' => '<path d="M5 12.6a11 11 0 0 1 14 0M1.5 9.1a16 16 0 0 1 21 0M8.5 16.1a6 6 0 0 1 7 0"/><path d="M12 19.5h.01"/>',
 
+            // Menüye Git CTA — çatal-bıçak (restoran bağlamı)
+            'menu' => '<path d="M6 2v7a3 3 0 0 0 6 0V2"/><path d="M9 9v13"/><path d="M18 2v4a4 4 0 0 1-4 4v11"/>',
+
+            // CTA sağ ok
+            'arrow-right' => '<path d="M5 12h14"/><path d="m13 6 6 6-6 6"/>',
+
             // Instagram - yuvarlak köşeli kare + lens + flaş noktası
             'instagram' => '<rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><path d="M17.2 6.8h.01"/>',
 

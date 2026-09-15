@@ -235,6 +235,19 @@ html.splash-loading #custom-splash-overlay { display: block !important; visibili
     /* Üst kısmı önceliklendirir; ürün görseli tepeden kırpılmaz. */
     object-position: center 35%;
     z-index: 0;
+    /* Zemin rengi (--sp-bg) altta kalır; görsel yüklenince yumuşak geçiş. */
+    opacity: 0;
+    transition: opacity 0.4s ease;
+}
+
+#custom-splash-overlay .splash-bg-img.is-loaded {
+    opacity: 1;
+}
+
+@media (min-aspect-ratio: 1/1) {
+    #custom-splash-overlay .splash-bg-img {
+        object-position: center center;
+    }
 }
 
 /* Okunabilirlik katmanı: TEK gradient, blur YOK.
@@ -245,10 +258,11 @@ html.splash-loading #custom-splash-overlay { display: block !important; visibili
     z-index: 1;
     pointer-events: none;
     background: linear-gradient(to bottom,
-        rgba(0, 0, 0, 0.34) 0%,
-        rgba(0, 0, 0, 0.06) 26%,
-        rgba(0, 0, 0, 0.42) 62%,
-        rgba(0, 0, 0, calc(0.30 + var(--sp-overlay, 0.55))) 100%);
+        rgba(0, 0, 0, 0.38) 0%,
+        rgba(0, 0, 0, 0.08) 24%,
+        rgba(0, 0, 0, 0.18) 48%,
+        rgba(0, 0, 0, 0.46) 72%,
+        rgba(0, 0, 0, calc(0.32 + var(--sp-overlay, 0.55))) 100%);
 }
 
 #custom-splash-overlay.splash-scheme-light .splash-bg-overlay {
@@ -323,17 +337,27 @@ html.splash-loading #custom-splash-overlay { display: block !important; visibili
     max-width: 74cqw;
     z-index: 0;
     line-height: 0;
+    padding: 4px 12px;
+    border-radius: 12px;
+}
+
+/* Fotoğraf arka planında logo şeridi şeffafken marka kaybolmasın. */
+#custom-splash-overlay.splash-has-bg .sp-logo-wrap {
+    background: rgba(0, 0, 0, 0.24);
+    box-shadow: 0 2px 14px rgba(0, 0, 0, 0.22);
+    border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 #custom-splash-overlay .splash-logo img {
     display: block;
     /* Şerit büyüdükçe logo da büyür; şeridin içinde her zaman nefes payı kalır. */
-    max-height: calc(var(--sp-logo-bar-h, 96px) - 24px);
+    max-height: calc(var(--sp-logo-bar-h, 96px) - 28px);
     max-width: min(280px, 74vw);
     max-width: min(280px, 74cqw);
     width: auto;
     height: auto;
     object-fit: contain;
+    filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.35));
 }
 
 /* ---------------- İçerik sütunu (alttan sabit) ---------------- */
@@ -360,17 +384,8 @@ html.splash-loading #custom-splash-overlay { display: block !important; visibili
     width: 100%;
 }
 
-/* Dikey ritim: tek tip gap yerine her blok kendi üst boşluğunu taşır,
-   böylece gruplar birbirinden ayrışır. */
-/* Aksiyon satırı artık ikon+etiket bloğu taşıdığı için ~15px daha yüksek.
-   CTA'nın ÜSTÜNDEKİ boşluk kısılı kalır (20 -> 14).
-
-   CTA + 4'lü grid yukarı alındı: yığın alttan sabitlendiği için CTA'nın
-   ALTINDAKİ boşlukları büyütmek ikiliyi yukarı taşır ve alttaki ödeme
-   alanına daha fazla nefes payı bırakır. Değerler sabit px değil, ekran
-   yüksekliğiyle oranlı clamp(): küçük telefonlarda eski aralığa yakın
-   kalır, uzun ekranlarda kayma belirginleşir. */
-#custom-splash-overlay .splash-cta { margin-top: 14px; }
+/* Dikey ritim: birincil CTA üstte; hızlı erişim onun altında. */
+#custom-splash-overlay .splash-actions { margin-top: clamp(16px, 3vh, 22px); margin-top: clamp(16px, 3cqh, 22px); }
 #custom-splash-overlay .splash-social { margin-top: 14px; }
 #custom-splash-overlay .splash-stack > :first-child { margin-top: 0; }
 
@@ -418,13 +433,14 @@ html.splash-loading #custom-splash-overlay { display: block !important; visibili
 /* ---------------- Birincil CTA ---------------- */
 
 #custom-splash-overlay .splash-cta {
-    display: flex;
+    display: grid;
+    grid-template-columns: 22px 1fr 22px;
     align-items: center;
-    justify-content: center;
+    column-gap: 10px;
     width: 100%;
-    height: 56px;
-    /* İç boşluk ayarı kaldırıldı; CTA yüksekliği + yatay padding sabittir. */
-    padding: 0 20px;
+    min-height: 56px;
+    height: auto;
+    padding: 14px 18px;
     border-radius: 28px;
     /* CTA'yı ayıran şey dolgu koyuluğu değil, tam opak kenarlıktır.
        --sp-cta-bg admin'den gelir: varsayılan olarak vurgu rengi + buton
@@ -437,7 +453,9 @@ html.splash-loading #custom-splash-overlay { display: block !important; visibili
     /* Birincil aksiyonun rozetlerden ayrıştığı yer: rozetlerde yalnızca ince
        bir inset highlight varken CTA vurgu renginden beslenen yumuşak bir
        yükseklik taşır. Parlama değil, yükseklik — neon yok. */
-    box-shadow: var(--sp-glass-shadow), 0 8px 22px -14px rgba(var(--sp-accent-rgb, 0, 115, 170), 0.45);
+    box-shadow: var(--sp-glass-shadow),
+        0 10px 28px -12px rgba(var(--sp-accent-rgb, 0, 115, 170), 0.52),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
     /* Yazı rengi yönetimden gelir; açık şemada beyaz kalmışsa PHP tarafı
        okunabilir koyu tona düşürür (bkz. cta_text_color). */
     color: var(--sp-cta-text, var(--sp-text));
@@ -449,7 +467,34 @@ html.splash-loading #custom-splash-overlay { display: block !important; visibili
     text-decoration: none;
     text-align: center;
     cursor: pointer;
-    transition: transform 120ms ease, box-shadow 160ms ease;
+    transition: transform 120ms ease, box-shadow 160ms ease, border-color 160ms ease;
+}
+
+#custom-splash-overlay .splash-cta-label {
+    grid-column: 2;
+    min-width: 0;
+    text-align: center;
+    line-height: 1.2;
+}
+
+#custom-splash-overlay .splash-cta-icon {
+    grid-column: 1;
+    justify-self: start;
+}
+
+#custom-splash-overlay .splash-cta-arrow {
+    grid-column: 3;
+    justify-self: end;
+    opacity: 0.85;
+}
+
+#custom-splash-overlay .splash-cta-icon,
+#custom-splash-overlay .splash-cta-arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.92;
+    width: 22px;
 }
 
 #custom-splash-overlay .splash-cta:active { transform: scale(0.98); }
@@ -923,6 +968,10 @@ html.splash-loading #custom-splash-overlay { display: block !important; visibili
     #custom-splash-overlay {
         --sp-glass-blur: blur(7px) saturate(140%);
     }
+    #custom-splash-overlay .splash-bg-img {
+        transition: none;
+        opacity: 1;
+    }
     #custom-splash-overlay,
     #custom-splash-overlay .splash-stack,
     #custom-splash-overlay .splash-cta,
@@ -992,7 +1041,7 @@ html.splash-loading #custom-splash-overlay { display: block !important; visibili
 
     /* Dikey ritim: clamp() tabanları (26px/24px) 520px'lik önizleme
        yüksekliğinde fazla geniş kalıyordu. */
-    #custom-splash-overlay .splash-cta { margin-top: 10px; }
+    #custom-splash-overlay .splash-actions { margin-top: 12px; }
     #custom-splash-overlay .splash-divider { margin-top: 12px; }
     #custom-splash-overlay .splash-social { margin-top: 10px; }
     #custom-splash-overlay .splash-pay-row { margin-top: 12px; }

@@ -439,7 +439,7 @@ trait QRMS_AE_Frontend {
 
     /**
      * Aksiyon rozetleri: btn2/btn3/btn4 (link) + btn5 (wifi modal).
-     * CTA'nın ÜSTÜNDE, tek satır, asla sarmaz (4x56 + 3x14 = 266px).
+     * Birincil CTA'nın ALTINDA, tek satır; dar ekranda @container ile 2×2'ye düşer.
      *
      * Linki boş olan rozet DOM'a hiç girmez; kalanlar ortalı durur.
      */
@@ -492,6 +492,19 @@ trait QRMS_AE_Frontend {
             . '</div>';
 
         return $items;
+    }
+
+    /**
+     * "Menüye Git" birincil CTA içeriği: çatal-bıçak + metin + ok.
+     *
+     * @param array  $opts     Ayarlar.
+     * @param string $cta_text Görünen metin.
+     * @return string HTML (span veya bağlantı içine gömülür).
+     */
+    private function render_cta_inner($opts, $cta_text) {
+        return '<span class="splash-cta-icon" aria-hidden="true">' . $this->icon_svg('menu', 20) . '</span>'
+            . '<span class="splash-cta-label"' . $this->lang_data($opts, 'btn1', $cta_text) . '>' . esc_html($cta_text) . '</span>'
+            . '<span class="splash-cta-arrow" aria-hidden="true">' . $this->icon_svg('arrow-right', 18) . '</span>';
     }
 
     /**
@@ -733,7 +746,7 @@ trait QRMS_AE_Frontend {
                 </div>
                 <div class="sp-logo-wrap">
                     <?php if ($logo_url): ?>
-                        <img src="<?php echo esc_url($logo_url); ?>" alt="" />
+                        <img src="<?php echo esc_url($logo_url); ?>" alt="" decoding="async" />
                     <?php endif; ?>
                 </div>
                 <div class="splash-logo-side splash-logo-side-end">
@@ -745,14 +758,14 @@ trait QRMS_AE_Frontend {
                 <?php // Giriş animasyonu blur'suz bu sarmalayıcıda çalışır; biter bitmez JS sınıfı kaldırır. ?>
                 <div class="splash-stack is-animating <?php echo $animation_class; ?>">
 
-                    <?php if (!empty($action_badges)): ?>
-                        <div class="splash-actions"><?php echo implode('', $action_badges); ?></div>
+                    <?php if ($cta_link): ?>
+                        <a href="<?php echo esc_url($cta_link); ?>" class="splash-cta" data-splash-dismiss="1" data-splash-action="menu"><?php echo $this->render_cta_inner($opts, $cta_text); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></a>
+                    <?php else: ?>
+                        <span class="splash-cta is-disabled"><?php echo $this->render_cta_inner($opts, $cta_text); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></span>
                     <?php endif; ?>
 
-                    <?php if ($cta_link): ?>
-                        <a href="<?php echo esc_url($cta_link); ?>" class="splash-cta" data-splash-dismiss="1" data-splash-action="menu"<?php echo $this->lang_data($opts, 'btn1', $cta_text); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>><?php echo esc_html($cta_text); ?></a>
-                    <?php else: ?>
-                        <span class="splash-cta is-disabled"<?php echo $this->lang_data($opts, 'btn1', $cta_text); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>><?php echo esc_html($cta_text); ?></span>
+                    <?php if (!empty($action_badges)): ?>
+                        <div class="splash-actions"><?php echo implode('', $action_badges); ?></div>
                     <?php endif; ?>
 
                     <?php if ($show_divider): ?>
@@ -821,9 +834,9 @@ trait QRMS_AE_Frontend {
                 <?php $this->output_splash($opts, true); ?>
             </div>
             <p class="qrms-ae-preview-note">
-                Ana sayfadaki ekranın küçültülmüş hâli. Renk ve ölçü ayarları anında,
-                görsel/rozet gibi yapı değişiklikleri kaydettikten sonra yansır.
-                Önizlemede çerez yazılmaz, yönlendirme çalışmaz.
+                Ana sayfadaki ekranın küçültülmüş hâli. Renk, karartma ve ölçü ayarları anında;
+                logo ile arka plan birlikte bu çerçevede görünür. Görsel/rozet gibi yapı
+                değişiklikleri kaydettikten sonra yansır. Önizlemede çerez yazılmaz, yönlendirme çalışmaz.
                 <button type="button" class="button button-small qrms-ae-preview-replay">Animasyonu tekrar oynat</button>
             </p>
         </div>
