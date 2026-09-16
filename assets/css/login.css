@@ -600,7 +600,6 @@ body.qrms-login,
 		padding-right: 6vw;
 	}
 
-	.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) .qrms-login-brand,
 	.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) .qrms-lp-brand {
 		position: absolute;
 		left: 0;
@@ -609,6 +608,34 @@ body.qrms-login,
 		width: 48%;
 		margin: 0;
 		padding: 0 5vw;
+		display: flex;
+		flex-direction: column;
+		justify-content: center;
+		text-align: left;
+	}
+
+	/*
+	 * Önizlemede (.qrms-lp-brand, yukarıda) marka bloğu #login'in KARDEŞİ
+	 * olduğu için left:0/width:48% doğrudan kapsayıcıya (.qrms-lp) göre
+	 * çalışır. Gerçek giriş ekranında ise WordPress çekirdeği
+	 * login_message çıktısını (bkz. wp-login.php login_header()) doğrudan
+	 * #login'in İÇİNE basar; .qrms-login-brand bu yüzden #login'in
+	 * ÇOCUĞUDUR, kardeşi değil. #login kendisi position:relative
+	 * olduğundan (bkz. "3. KART") yukarıdaki kuralı burada da kullanmak
+	 * bloğu #login'e göre sol üst köşeye, yani kartla AYNI alana
+	 * konumlandırır — form üzerine biner ve tıklanamaz hale gelir. Bu
+	 * yüzden ayrı bir kural: konumlandırma bağlamı yine #login'dir, ama
+	 * blok kartın SOLUNA, kutunun DIŞINA (right:100%) yerleştirilir —
+	 * kartla artık hiçbir genişlikte çakışmaz.
+	 */
+	.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) #login > .qrms-login-brand {
+		position: absolute;
+		top: 50%;
+		right: 100%;
+		transform: translateY(-50%);
+		margin: 0 5vw 0 0;
+		width: min(38vw, 480px);
+		padding: 0;
 		display: flex;
 		flex-direction: column;
 		justify-content: center;
