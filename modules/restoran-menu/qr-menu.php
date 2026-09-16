@@ -242,6 +242,10 @@ class Restaurant_Menu_Automation {
         add_action( 'untrashed_post',          [ $this, 'maybe_bump_cache_on_post' ], 20, 2 );
         add_action( 'added_post_meta',         [ $this, 'maybe_bump_cache_on_meta' ], 20, 3 );
         add_action( 'updated_post_meta',       [ $this, 'maybe_bump_cache_on_meta' ], 20, 3 );
+        // Öne çıkan görsel kaldırılırken (delete_post_thumbnail) yalnızca
+        // bu kanca tetiklenir; kart görselinin menüde güncel kalması için
+        // diğer ikisiyle aynı geri çağrıya bağlanır (bkz. maybe_bump_cache_on_meta).
+        add_action( 'deleted_post_meta',       [ $this, 'maybe_bump_cache_on_meta' ], 20, 3 );
         add_action( 'set_object_terms',        [ $this, 'maybe_bump_cache_on_terms' ], 20, 4 );
         add_action( 'created_rma_category',    [ $this, 'bump_cache_version' ], 20 );
         add_action( 'edited_rma_category',     [ $this, 'bump_cache_version' ], 20 );

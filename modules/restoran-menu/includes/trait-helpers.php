@@ -213,9 +213,10 @@ trait RMA_Helpers_Trait {
     }
 
     /**
-     * Meta güncellemelerinde önbelleği tazeler. Yalnızca rma_ önekli ve
-     * görünümü etkileyen anahtarlar dikkate alınır; rma_views sayacı
-     * hariç tutulur (her ürün görüntülemesinde önbelleği düşürürdü).
+     * Meta güncellemelerinde önbelleği tazeler. rma_ önekli, görünümü
+     * etkileyen anahtarlar ve `_thumbnail_id` (öne çıkan görsel) dikkate
+     * alınır; rma_views sayacı hariç tutulur (her ürün görüntülemesinde
+     * önbelleği düşürürdü).
      *
      * @param int    $meta_id
      * @param int    $object_id
@@ -223,9 +224,14 @@ trait RMA_Helpers_Trait {
      */
     public function maybe_bump_cache_on_meta( $meta_id, $object_id, $meta_key ) {
         $key = (string) $meta_key;
-        // `rma_active` gibi düz anahtarlar ve `_rma_tukendi` gibi gizli
-        // (alt çizgili) anahtarlar görünümü etkiler. rma_views sayacı değil.
-        if ( 0 !== strpos( $key, 'rma_' ) && 0 !== strpos( $key, '_rma_' ) ) return;
+        // `rma_active` gibi düz anahtarlar, `_rma_tukendi` gibi gizli (alt
+        // çizgili) anahtarlar ve öne çıkan görsel (`_thumbnail_id`, rma_
+        // önekini taşımaz ama kart görselini doğrudan belirler) görünümü
+        // etkiler. rma_views sayacı değil.
+        $goruntuyu_etkiler = '_thumbnail_id' === $key
+            || 0 === strpos( $key, 'rma_' )
+            || 0 === strpos( $key, '_rma_' );
+        if ( ! $goruntuyu_etkiler ) return;
         if ( 'rma_views' === $key ) return;
         if ( get_post_type( $object_id ) !== 'rma_menu_item' ) return;
         $this->bump_cache_version();
