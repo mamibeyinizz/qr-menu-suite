@@ -49,7 +49,78 @@ trait QRMGM_Frontend_Trait {
 
 		if ( did_action( 'elementor/loaded' ) || class_exists( '\Elementor\Plugin' ) ) {
 			$data = get_post_meta( $post->ID, '_elementor_data', true );
-			if ( is_string( $data ) && false !== strpos( $data, 'qrmenu_gallery' ) ) {
+			if ( $this->elementor_data_contains( 'qrmenu_gallery', $data ) ) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Bir `_elementor_data` JSON'unda etiket doğrudan mı yoksa Elementor'un
+	 * "Global Widget" / "Şablon Ekle" (Insert Template) referansı üzerinden
+	 * mi geçiyor arar.
+	 *
+	 * `[qrmenu_gallery]` sayfanın kendi verisinde DEĞİL, bir Global
+	 * Widget/Bölüm veya "Şablon Ekle" widget'ı referansının işaret ettiği
+	 * AYRI bir Elementor Library post'unun verisinde olabilir. Bu metod o
+	 * referansı bulup hedef post'un verisini de tarar.
+	 *
+	 * VARSAYIM (gerçek Elementor Pro ortamında doğrulanmadı): referanslar
+	 * JSON'da "template_id"/"templateID"/"templateId" anahtarlarından
+	 * biriyle sayısal bir ID olarak durur. Eşleşme bulunamazsa metod
+	 * sessizce `false` döner; davranış önceki düz metin taramasına geriler.
+	 *
+	 * Güvenlik: `$stack` ile döngü koruması, `$depth` ile 3 seviyelik sabit
+	 * sınır, `static $cache` ile aynı şablon ID'sinin verisi istek boyunca
+	 * yalnızca bir kez okunur. Yalnızca referans verilen ID'ler çözülür;
+	 * `elementor_library` toplu taranmaz.
+	 *
+	 * @param string     $tag   Aranan kısa kod etiketi.
+	 * @param string     $data  Taranacak ham `_elementor_data` JSON metni.
+	 * @param array<int> $stack Geçerli çağrı zincirindeki şablon ID'leri.
+	 * @param int        $depth Geçerli derinlik.
+	 * @return bool
+	 */
+	private function elementor_data_contains( $tag, $data, array $stack = array(), $depth = 0 ): bool {
+		static $cache = array();
+
+		if ( ! is_string( $data ) || '' === $data ) {
+			return false;
+		}
+
+		if ( false !== strpos( $data, $tag ) ) {
+			return true;
+		}
+
+		if ( $depth >= 3 ) {
+			return false;
+		}
+
+		if ( ! preg_match_all( '/"template(?:_id|ID|Id)"\s*:\s*"?(\d+)"?/', $data, $matches ) ) {
+			return false;
+		}
+
+		foreach ( array_unique( $matches[1] ) as $template_id ) {
+			$template_id = (int) $template_id;
+
+			if ( $template_id <= 0 || in_array( $template_id, $stack, true ) ) {
+				continue;
+			}
+
+			if ( ! array_key_exists( $template_id, $cache ) ) {
+				$raw = get_post_meta( $template_id, '_elementor_data', true );
+				$cache[ $template_id ] = ( is_string( $raw ) && '' !== $raw ) ? $raw : false;
+			}
+
+			$referenced_data = $cache[ $template_id ];
+
+			if ( false === $referenced_data ) {
+				continue;
+			}
+
+			if ( $this->elementor_data_contains( $tag, $referenced_data, array_merge( $stack, array( $template_id ) ), $depth + 1 ) ) {
 				return true;
 			}
 		}

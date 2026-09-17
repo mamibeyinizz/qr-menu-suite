@@ -34,12 +34,14 @@ class QMO_Shortcode_Banner_Slider {
             return;
         }
 
-        // Elementor'un Shortcode widget'ına yazılan kısa kod post_content'te
-        // görünmez; render_shortcode() içindeki geç (wp_head sonrası) yedek
-        // çağrıya düşmemesi için _elementor_data de taranır.
+        // Elementor'un Shortcode widget'ına (veya bir Global Widget/Şablon
+        // Ekle referansına — bkz. rma_elementor_data_contains()) yazılan
+        // kısa kod post_content'te görünmez; render_shortcode() içindeki
+        // geç (wp_head sonrası) yedek çağrıya düşmemesi için _elementor_data
+        // de taranır.
         if ( did_action( 'elementor/loaded' ) || class_exists( '\Elementor\Plugin' ) ) {
             $data = get_post_meta( $post->ID, '_elementor_data', true );
-            if ( is_string( $data ) && false !== strpos( $data, self::SHORTCODE ) ) {
+            if ( rma_elementor_data_contains( self::SHORTCODE, $data ) ) {
                 self::enqueue_styles();
             }
         }

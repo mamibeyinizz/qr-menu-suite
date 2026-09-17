@@ -113,7 +113,7 @@ trait QRMS_HFB_Frontend {
 
 				if ( $this->elementor_loaded() ) {
 					$data = get_post_meta( $post->ID, '_elementor_data', true );
-					if ( is_string( $data ) && false !== strpos( $data, $tag ) ) {
+					if ( $this->elementor_data_contains( $tag, $data ) ) {
 						return true;
 					}
 				}
