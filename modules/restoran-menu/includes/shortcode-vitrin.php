@@ -54,11 +54,21 @@ class RMA_Vitrin_Shortcode {
             return;
         }
 
-        if ( ! has_shortcode( $post->post_content, self::SHORTCODE ) ) {
+        if ( has_shortcode( $post->post_content, self::SHORTCODE ) ) {
+            self::enqueue_assets();
             return;
         }
 
-        self::enqueue_assets();
+        // Elementor'un Shortcode widget'ına yazılan kısa kod post_content'te
+        // görünmez, yalnızca _elementor_data JSON'unda ham metin olarak
+        // durur. Bu kontrol olmadan CSS render() içindeki geç (wp_head
+        // sonrası) yedek çağrıya düşer.
+        if ( did_action( 'elementor/loaded' ) || class_exists( '\Elementor\Plugin' ) ) {
+            $data = get_post_meta( $post->ID, '_elementor_data', true );
+            if ( is_string( $data ) && false !== strpos( $data, self::SHORTCODE ) ) {
+                self::enqueue_assets();
+            }
+        }
     }
 
     /**

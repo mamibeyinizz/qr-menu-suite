@@ -107,8 +107,22 @@ if ( ! function_exists( 'qmo_icerikten_yukle' ) ) {
 			'qr_garson_hesap' => 'qmo-garson-hesap',
 		);
 
+		// Elementor yüklüyse, kısa kodun Shortcode widget'ına yazılmış olma
+		// ihtimaline karşı _elementor_data bir kez okunur; post_content'te
+		// bulunamayan bir kısa kod bu veride ham metin olarak durabilir.
+		// Bu kontrol olmadan varlıklar qmo_asset_enqueue()'nun geç (wp_head
+		// sonrası) çağrılarına kalırdı.
+		$elementor_data = null;
+		if ( did_action( 'elementor/loaded' ) || class_exists( '\Elementor\Plugin' ) ) {
+			$ham = get_post_meta( $post->ID, '_elementor_data', true );
+			$elementor_data = is_string( $ham ) ? $ham : null;
+		}
+
 		foreach ( $eslesme as $kisa_kod => $handle ) {
-			if ( ! has_shortcode( $post->post_content, $kisa_kod ) ) {
+			$var_mi = has_shortcode( $post->post_content, $kisa_kod )
+				|| ( null !== $elementor_data && false !== strpos( $elementor_data, $kisa_kod ) );
+
+			if ( ! $var_mi ) {
 				continue;
 			}
 			if ( 'qmo-chatbot' === $handle && function_exists( 'qmo_chatbot_onyuz_yuklensin_mi' ) && ! qmo_chatbot_onyuz_yuklensin_mi() ) {

@@ -12,13 +12,58 @@ trait QRMGM_Frontend_Trait {
 	public function maybe_frontend_assets(): void {
 		wp_register_style( 'qrmgm-front', false );
 		wp_register_script( 'qrmgm-front', false, [], QRMGM_VERSION, true );
+
+		// Kısa kod bu istekte kesin olarak tespit edilebiliyorsa (normal
+		// sayfa içeriği veya Elementor'un Shortcode widget'ı) CSS/JS'i
+		// burada, wp_head'den önce enqueue et — böylece <link> ilk paint'ten
+		// önce basılır. Tespit edilemezse (ör. Elementor Theme Builder
+		// şablonu, arşiv, dinamik render) render_shortcode() içindeki
+		// ensure_frontend_assets() çağrısı geriye dönük uyumlu yedek olarak
+		// kalır.
+		if ( $this->should_load_gallery_assets() ) {
+			$this->ensure_frontend_assets();
+		}
+	}
+
+	/**
+	 * Bu istekte `[qrmenu_gallery]` render edilecek mi?
+	 *
+	 * Yalnızca geçerli tekil yazının kendi `post_content`'ine ve (Elementor
+	 * yüklüyse) `_elementor_data`'sına bakar; bu iki kaynağın dışında bir
+	 * yerde (ör. Theme Builder şablonu) kullanılan galeri hâlâ
+	 * ensure_frontend_assets()'in render anındaki yedek çağrısıyla
+	 * çalışmaya devam eder.
+	 *
+	 * @return bool
+	 */
+	private function should_load_gallery_assets(): bool {
+		$post = get_post();
+
+		if ( ! $post instanceof WP_Post ) {
+			return false;
+		}
+
+		if ( has_shortcode( $post->post_content, 'qrmenu_gallery' ) ) {
+			return true;
+		}
+
+		if ( did_action( 'elementor/loaded' ) || class_exists( '\Elementor\Plugin' ) ) {
+			$data = get_post_meta( $post->ID, '_elementor_data', true );
+			if ( is_string( $data ) && false !== strpos( $data, 'qrmenu_gallery' ) ) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	/**
 	 * Kısa kod render edilirken CSS/JS'i bir kez enqueue eder.
 	 *
 	 * Elementor gibi oluşturucularda kısa kod post_content'te görünmez;
-	 * bu yüzden varlıklar has_shortcode ile değil, render sırasında basılır.
+	 * bu yüzden varlıklar yalnızca has_shortcode ile değil, gerekirse
+	 * render sırasında da (yedek olarak) basılır — bkz.
+	 * should_load_gallery_assets() ve maybe_frontend_assets().
 	 */
 	private function ensure_frontend_assets(): void {
 		static $done = false;

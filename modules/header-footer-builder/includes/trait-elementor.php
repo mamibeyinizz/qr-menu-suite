@@ -105,6 +105,76 @@ trait QRMS_HFB_Elementor {
 	}
 
 	/**
+	 * Elementor Pro Theme Builder şablonlarından biri (header/footer/tekil/
+	 * arşiv/arama/404) verilen kısa kod etiketini içeriyor mu?
+	 *
+	 * `[hfb_header]` / `[hfb_footer]` çoğunlukla sitenin TÜM sayfalarında
+	 * görünür ve genelde geçerli sayfanın kendi `post_content`'inde değil,
+	 * ayrı bir Theme Builder şablonunda (ya da tema dosyasına gömülü
+	 * `do_shortcode()` çağrısında) bulunur. Arşiv/ana sayfa gibi
+	 * `is_singular()` olmayan isteklerde tespit edilebilecek tek yol budur.
+	 * Elementor Pro API'sine class_exists()/method_exists() ile temkinli
+	 * erişilir; herhangi bir katman eksikse sessizce false döner —
+	 * `maybe_enqueue_frontend_assets()` yine yalnızca 'yedek' enqueue'ya
+	 * (shortcode callback) güvenmeye devam eder.
+	 *
+	 * @param string $tag Kısa kod etiketi.
+	 * @return bool
+	 */
+	public function theme_builder_documents_contain( $tag ) {
+		if ( ! $this->elementor_loaded() ) {
+			return false;
+		}
+
+		if ( ! class_exists( '\ElementorPro\Modules\ThemeBuilder\Module' ) ) {
+			return false;
+		}
+
+		try {
+			$module = \ElementorPro\Modules\ThemeBuilder\Module::instance();
+
+			if ( ! $module || ! method_exists( $module, 'get_conditions_manager' ) ) {
+				return false;
+			}
+
+			$manager = $module->get_conditions_manager();
+
+			if ( ! $manager || ! method_exists( $manager, 'get_documents_for_location' ) ) {
+				return false;
+			}
+
+			foreach ( array( 'header', 'footer', 'single', 'archive', 'search-results', '404' ) as $location ) {
+				$documents = $manager->get_documents_for_location( $location );
+
+				if ( empty( $documents ) ) {
+					continue;
+				}
+
+				foreach ( (array) $documents as $document ) {
+					$doc_id = ( is_object( $document ) && method_exists( $document, 'get_main_id' ) )
+						? (int) $document->get_main_id()
+						: ( is_numeric( $document ) ? (int) $document : 0 );
+
+					if ( ! $doc_id ) {
+						continue;
+					}
+
+					$data = get_post_meta( $doc_id, '_elementor_data', true );
+					if ( is_string( $data ) && false !== strpos( $data, $tag ) ) {
+						return true;
+					}
+				}
+			}
+		} catch ( \Exception $e ) {
+			return false;
+		} catch ( \Error $e ) {
+			return false;
+		}
+
+		return false;
+	}
+
+	/**
 	 * Bu bölüm bu istekte render edilmeli mi?
 	 *
 	 * İki fren: (a) aynı istekte ikinci kez çağrı, (b) Elementor Theme

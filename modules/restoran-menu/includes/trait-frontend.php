@@ -33,8 +33,83 @@ trait RMA_Frontend_Trait {
             }
         }
 
+        // $post'un kendi içeriği/Elementor verisi boş kalabilir: widget bir
+        // Elementor Pro Theme Builder şablonunda (header/footer/tekil/arşiv)
+        // kullanılıyorsa, o veri $post->ID'de değil şablonun KENDİ post'unda
+        // durur. Bu dal yalnızca gerekince (önceki kontrol bulamadıysa) ve
+        // yalnızca Elementor yüklüyse çalışır; Elementor Pro yoksa veya API
+        // beklenenden farklıysa theme_builder_has_menu_widget() sessizce
+        // false döner ve mevcut "yedek enqueue" (shortcode_menu vb.) devreye
+        // girer — davranış hiçbir zaman kırılmaz, yalnızca genişler.
+        if ( ! $result && ( did_action( 'elementor/loaded' ) || class_exists( '\Elementor\Plugin' ) ) ) {
+            $result = $this->theme_builder_has_menu_widget();
+        }
+
         $this->rma_memo['should_load_assets'] = $result;
         return $result;
+    }
+
+    /**
+     * Elementor Pro Theme Builder şablonlarından biri (header/footer/tekil/
+     * arşiv/arama/404) menü widget'ını içeriyor mu?
+     *
+     * `get_post_meta( $post->ID, '_elementor_data' )` yalnızca GÜNCEL
+     * yazının kendi verisine bakar; widget site geneli bir Theme Builder
+     * şablonundaysa (ayrı bir post) bu yoldan hiç görünmez — bu da FOUC'un
+     * asıl nedenidir (bkz. analiz raporu). Elementor Pro API'sine
+     * class_exists()/method_exists() ile temkinli erişilir; herhangi bir
+     * katman eksikse, sürüm uyuşmazlığı varsa veya bir istisna oluşursa
+     * sessizce false döner.
+     *
+     * @return bool
+     */
+    private function theme_builder_has_menu_widget() {
+        if ( ! class_exists( '\ElementorPro\Modules\ThemeBuilder\Module' ) ) {
+            return false;
+        }
+
+        try {
+            $module = \ElementorPro\Modules\ThemeBuilder\Module::instance();
+
+            if ( ! $module || ! method_exists( $module, 'get_conditions_manager' ) ) {
+                return false;
+            }
+
+            $manager = $module->get_conditions_manager();
+
+            if ( ! $manager || ! method_exists( $manager, 'get_documents_for_location' ) ) {
+                return false;
+            }
+
+            foreach ( array( 'header', 'footer', 'single', 'archive', 'search-results', '404' ) as $location ) {
+                $documents = $manager->get_documents_for_location( $location );
+
+                if ( empty( $documents ) ) {
+                    continue;
+                }
+
+                foreach ( (array) $documents as $document ) {
+                    $doc_id = ( is_object( $document ) && method_exists( $document, 'get_main_id' ) )
+                        ? (int) $document->get_main_id()
+                        : ( is_numeric( $document ) ? (int) $document : 0 );
+
+                    if ( ! $doc_id ) {
+                        continue;
+                    }
+
+                    $data = get_post_meta( $doc_id, '_elementor_data', true );
+                    if ( is_string( $data ) && false !== strpos( $data, 'rma_menu_widget' ) ) {
+                        return true;
+                    }
+                }
+            }
+        } catch ( \Exception $e ) {
+            return false;
+        } catch ( \Error $e ) {
+            return false;
+        }
+
+        return false;
     }
 
     public function frontend_scripts_styles() {
