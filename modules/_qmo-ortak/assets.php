@@ -74,6 +74,80 @@ add_action( 'wp_enqueue_scripts', 'qmo_varliklari_kaydet', 5 );
 add_action( 'wp_enqueue_scripts', 'qmo_icerikten_yukle', 6 );
 
 /**
+ * Bir `_elementor_data` JSON'unda etiket doğrudan mı yoksa Elementor'un
+ * "Global Widget" / "Şablon Ekle" (Insert Template) referansı üzerinden mi
+ * geçiyor arar.
+ *
+ * Kısa kod sayfanın kendi verisinde DEĞİL, bir Global Widget/Bölüm veya
+ * "Şablon Ekle" widget'ı referansının işaret ettiği AYRI bir Elementor
+ * Library post'unun verisinde olabilir. Bu fonksiyon o referansı bulup
+ * hedef post'un verisini de tarar.
+ *
+ * VARSAYIM (gerçek Elementor Pro ortamında doğrulanmadı): referanslar
+ * JSON'da "template_id"/"templateID"/"templateId" anahtarlarından biriyle
+ * sayısal bir ID olarak durur. Eşleşme bulunamazsa fonksiyon sessizce
+ * `false` döner; davranış önceki düz metin taramasına geriler.
+ *
+ * Güvenlik: `$stack` ile döngü koruması (A→B→A bir dalda tekrar
+ * işlenmez), `$depth` ile 3 seviyelik sabit sınır, `static $cache` ile
+ * aynı şablon ID'sinin verisi istek boyunca yalnızca bir kez okunur.
+ * Yalnızca referans verilen ID'ler çözülür; `elementor_library` toplu
+ * taranmaz.
+ *
+ * @param string     $tag   Aranan kısa kod etiketi.
+ * @param string     $data  Taranacak ham `_elementor_data` JSON metni.
+ * @param array<int> $stack Geçerli çağrı zincirindeki şablon ID'leri.
+ * @param int        $depth Geçerli derinlik.
+ * @return bool
+ */
+if ( ! function_exists( 'qmo_elementor_data_contains' ) ) {
+	function qmo_elementor_data_contains( $tag, $data, array $stack = array(), $depth = 0 ) {
+		static $cache = array();
+
+		if ( ! is_string( $data ) || '' === $data ) {
+			return false;
+		}
+
+		if ( false !== strpos( $data, $tag ) ) {
+			return true;
+		}
+
+		if ( $depth >= 3 ) {
+			return false;
+		}
+
+		if ( ! preg_match_all( '/"template(?:_id|ID|Id)"\s*:\s*"?(\d+)"?/', $data, $matches ) ) {
+			return false;
+		}
+
+		foreach ( array_unique( $matches[1] ) as $template_id ) {
+			$template_id = (int) $template_id;
+
+			if ( $template_id <= 0 || in_array( $template_id, $stack, true ) ) {
+				continue;
+			}
+
+			if ( ! array_key_exists( $template_id, $cache ) ) {
+				$raw = get_post_meta( $template_id, '_elementor_data', true );
+				$cache[ $template_id ] = ( is_string( $raw ) && '' !== $raw ) ? $raw : false;
+			}
+
+			$referenced_data = $cache[ $template_id ];
+
+			if ( false === $referenced_data ) {
+				continue;
+			}
+
+			if ( qmo_elementor_data_contains( $tag, $referenced_data, array_merge( $stack, array( $template_id ) ), $depth + 1 ) ) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+}
+
+/**
  * Yazı içeriğinde kısa kod varsa varlıkları normal sırada (head) yükle.
  *
  * Kısa kod içinden enqueue etmek de çalışır (WordPress geç eklenen
@@ -107,8 +181,22 @@ if ( ! function_exists( 'qmo_icerikten_yukle' ) ) {
 			'qr_garson_hesap' => 'qmo-garson-hesap',
 		);
 
+		// Elementor yüklüyse, kısa kodun Shortcode widget'ına yazılmış olma
+		// ihtimaline karşı _elementor_data bir kez okunur; post_content'te
+		// bulunamayan bir kısa kod bu veride ham metin olarak durabilir.
+		// Bu kontrol olmadan varlıklar qmo_asset_enqueue()'nun geç (wp_head
+		// sonrası) çağrılarına kalırdı.
+		$elementor_data = null;
+		if ( did_action( 'elementor/loaded' ) || class_exists( '\Elementor\Plugin' ) ) {
+			$ham = get_post_meta( $post->ID, '_elementor_data', true );
+			$elementor_data = is_string( $ham ) ? $ham : null;
+		}
+
 		foreach ( $eslesme as $kisa_kod => $handle ) {
-			if ( ! has_shortcode( $post->post_content, $kisa_kod ) ) {
+			$var_mi = has_shortcode( $post->post_content, $kisa_kod )
+				|| ( null !== $elementor_data && qmo_elementor_data_contains( $kisa_kod, $elementor_data ) );
+
+			if ( ! $var_mi ) {
 				continue;
 			}
 			if ( 'qmo-chatbot' === $handle && function_exists( 'qmo_chatbot_onyuz_yuklensin_mi' ) && ! qmo_chatbot_onyuz_yuklensin_mi() ) {

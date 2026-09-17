@@ -2,6 +2,91 @@
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
+/**
+ * Bir `_elementor_data` JSON'unda etiket doğrudan mı yoksa Elementor'un
+ * "Global Widget" / "Şablon Ekle" (Insert Template) referansı üzerinden mi
+ * geçiyor arar.
+ *
+ * b04d185'teki düz `strpos()` kontrolleri yalnızca widget/kısa kod JSON'u
+ * sayfanın KENDİ verisine GÖMÜLÜYSE eşleşir. Elementor'da bir widget/bölüm
+ * "Global" olarak kaydedilip yeniden kullanıldığında veya "Şablon Ekle"
+ * widget'ıyla başka bir Elementor Library şablonuna referans verildiğinde,
+ * sayfanın verisinde widget'ın kendisi DEĞİL yalnızca bir şablon ID
+ * referansı durur; gerçek içerik o ID'nin KENDİ `_elementor_data`'sındadır.
+ *
+ * VARSAYIM (gerçek Elementor Pro ortamında doğrulanmadı): bu referanslar
+ * JSON içinde "template_id" / "templateID" / "templateId" anahtarlarından
+ * biriyle sayısal bir ID olarak durur. Bu, Elementor'un genel "Şablon Ekle"
+ * widget'ı ve global widget/bölüm mekanizması için bilinen, yaygın
+ * isimlendirmedir; ancak sürüme göre farklılaşabilir. Anahtar hiç
+ * eşleşmezse fonksiyon güvenle `false` döner — davranış b04d185'teki düz
+ * metin taramasına geri düşer, hiçbir şey kırılmaz.
+ *
+ * Güvenlik önlemleri:
+ * - `$stack`: geçerli çağrı zincirindeki ID'leri tutar; bir ID kendi
+ *   zincirinde tekrar görünürse (A→B→A) o dal sessizce atlanır (döngü
+ *   koruması).
+ * - `$depth`: 3 seviyeden sonra iniş durur (savunma amaçlı ikinci sınır).
+ * - `static $cache`: aynı şablon ID'sinin `_elementor_data`'sı istek
+ *   boyunca yalnızca BİR kez `get_post_meta()` ile okunur; sonraki tüm
+ *   çağrılar (farklı kısa kod etiketleri dahil) önbellekten okur.
+ *
+ * Bu fonksiyon yalnızca sayfanın/şablonun KENDİ verisinde bulduğu ID'leri
+ * çözer; hiçbir zaman tüm `elementor_library` kayıtlarını taramaz.
+ *
+ * @param string     $tag   Aranan kısa kod/widget etiketi.
+ * @param string     $data  Taranacak ham `_elementor_data` JSON metni.
+ * @param array<int> $stack Geçerli çağrı zincirindeki şablon ID'leri (döngü koruması).
+ * @param int        $depth Geçerli derinlik.
+ * @return bool
+ */
+if ( ! function_exists( 'rma_elementor_data_contains' ) ) {
+    function rma_elementor_data_contains( $tag, $data, array $stack = array(), $depth = 0 ) {
+        static $cache = array();
+
+        if ( ! is_string( $data ) || '' === $data ) {
+            return false;
+        }
+
+        if ( false !== strpos( $data, $tag ) ) {
+            return true;
+        }
+
+        if ( $depth >= 3 ) {
+            return false;
+        }
+
+        if ( ! preg_match_all( '/"template(?:_id|ID|Id)"\s*:\s*"?(\d+)"?/', $data, $matches ) ) {
+            return false;
+        }
+
+        foreach ( array_unique( $matches[1] ) as $template_id ) {
+            $template_id = (int) $template_id;
+
+            if ( $template_id <= 0 || in_array( $template_id, $stack, true ) ) {
+                continue;
+            }
+
+            if ( ! array_key_exists( $template_id, $cache ) ) {
+                $raw = get_post_meta( $template_id, '_elementor_data', true );
+                $cache[ $template_id ] = ( is_string( $raw ) && '' !== $raw ) ? $raw : false;
+            }
+
+            $referenced_data = $cache[ $template_id ];
+
+            if ( false === $referenced_data ) {
+                continue;
+            }
+
+            if ( rma_elementor_data_contains( $tag, $referenced_data, array_merge( $stack, array( $template_id ) ), $depth + 1 ) ) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+}
+
 trait RMA_Frontend_Trait {
 
     private $assets_loaded = false;
@@ -27,14 +112,89 @@ trait RMA_Frontend_Trait {
                 $result = true;
             } elseif ( did_action( 'elementor/loaded' ) || class_exists( '\Elementor\Plugin' ) ) {
                 $elementor_data = get_post_meta( $post->ID, '_elementor_data', true );
-                if ( $elementor_data && strpos( $elementor_data, 'rma_menu_widget' ) !== false ) {
+                if ( $elementor_data && rma_elementor_data_contains( 'rma_menu_widget', $elementor_data ) ) {
                     $result = true;
                 }
             }
         }
 
+        // $post'un kendi içeriği/Elementor verisi boş kalabilir: widget bir
+        // Elementor Pro Theme Builder şablonunda (header/footer/tekil/arşiv)
+        // kullanılıyorsa, o veri $post->ID'de değil şablonun KENDİ post'unda
+        // durur. Bu dal yalnızca gerekince (önceki kontrol bulamadıysa) ve
+        // yalnızca Elementor yüklüyse çalışır; Elementor Pro yoksa veya API
+        // beklenenden farklıysa theme_builder_has_menu_widget() sessizce
+        // false döner ve mevcut "yedek enqueue" (shortcode_menu vb.) devreye
+        // girer — davranış hiçbir zaman kırılmaz, yalnızca genişler.
+        if ( ! $result && ( did_action( 'elementor/loaded' ) || class_exists( '\Elementor\Plugin' ) ) ) {
+            $result = $this->theme_builder_has_menu_widget();
+        }
+
         $this->rma_memo['should_load_assets'] = $result;
         return $result;
+    }
+
+    /**
+     * Elementor Pro Theme Builder şablonlarından biri (header/footer/tekil/
+     * arşiv/arama/404) menü widget'ını içeriyor mu?
+     *
+     * `get_post_meta( $post->ID, '_elementor_data' )` yalnızca GÜNCEL
+     * yazının kendi verisine bakar; widget site geneli bir Theme Builder
+     * şablonundaysa (ayrı bir post) bu yoldan hiç görünmez — bu da FOUC'un
+     * asıl nedenidir (bkz. analiz raporu). Elementor Pro API'sine
+     * class_exists()/method_exists() ile temkinli erişilir; herhangi bir
+     * katman eksikse, sürüm uyuşmazlığı varsa veya bir istisna oluşursa
+     * sessizce false döner.
+     *
+     * @return bool
+     */
+    private function theme_builder_has_menu_widget() {
+        if ( ! class_exists( '\ElementorPro\Modules\ThemeBuilder\Module' ) ) {
+            return false;
+        }
+
+        try {
+            $module = \ElementorPro\Modules\ThemeBuilder\Module::instance();
+
+            if ( ! $module || ! method_exists( $module, 'get_conditions_manager' ) ) {
+                return false;
+            }
+
+            $manager = $module->get_conditions_manager();
+
+            if ( ! $manager || ! method_exists( $manager, 'get_documents_for_location' ) ) {
+                return false;
+            }
+
+            foreach ( array( 'header', 'footer', 'single', 'archive', 'search-results', '404' ) as $location ) {
+                $documents = $manager->get_documents_for_location( $location );
+
+                if ( empty( $documents ) ) {
+                    continue;
+                }
+
+                foreach ( (array) $documents as $document ) {
+                    $doc_id = ( is_object( $document ) && method_exists( $document, 'get_main_id' ) )
+                        ? (int) $document->get_main_id()
+                        : ( is_numeric( $document ) ? (int) $document : 0 );
+
+                    if ( ! $doc_id ) {
+                        continue;
+                    }
+
+                    $data = get_post_meta( $doc_id, '_elementor_data', true );
+                    if ( rma_elementor_data_contains( 'rma_menu_widget', $data ) ) {
+                        return true;
+                    }
+                }
+            }
+        } catch ( \Exception $e ) {
+            return false;
+        } catch ( \Error $e ) {
+            return false;
+        }
+
+        return false;
     }
 
     public function frontend_scripts_styles() {

@@ -90,31 +90,37 @@ trait QRMS_HFB_Frontend {
 	/**
 	 * İçerik veya Elementor verisinde kısa kod arar.
 	 *
+	 * `is_singular()` yalnızca geçerli isteğin TEKİL bir yazı/sayfa olduğu
+	 * durumları kapsar; ana sayfa (yazı listesi), arşivler, arama sonuçları
+	 * ve 404 gibi durumlarda taranacak tek bir `post_content` yoktur. Header
+	 * ve footer tam olarak bu sayfalarda da (hatta çoğunlukla SADECE
+	 * bunlarda) görünmesi gereken bileşenler olduğu için, bu durumlarda
+	 * tespit Elementor Pro Theme Builder şablon meta verisine bakılarak
+	 * yapılır (bkz. theme_builder_documents_contain()). Statik ön sayfa da
+	 * dahil gerçek tekil sayfalarda önceki davranış aynen korunur.
+	 *
 	 * @param string $tag Kısa kod etiketi.
 	 * @return bool
 	 */
 	private function page_has_hfb_shortcode( $tag ) {
-		if ( ! is_singular() ) {
-			return false;
-		}
+		if ( is_singular() ) {
+			$post = get_post();
 
-		$post = get_post();
-		if ( ! $post ) {
-			return false;
-		}
+			if ( $post ) {
+				if ( has_shortcode( $post->post_content, $tag ) ) {
+					return true;
+				}
 
-		if ( has_shortcode( $post->post_content, $tag ) ) {
-			return true;
-		}
-
-		if ( $this->elementor_loaded() ) {
-			$data = get_post_meta( $post->ID, '_elementor_data', true );
-			if ( is_string( $data ) && false !== strpos( $data, $tag ) ) {
-				return true;
+				if ( $this->elementor_loaded() ) {
+					$data = get_post_meta( $post->ID, '_elementor_data', true );
+					if ( $this->elementor_data_contains( $tag, $data ) ) {
+						return true;
+					}
+				}
 			}
 		}
 
-		return false;
+		return $this->theme_builder_documents_contain( $tag );
 	}
 
 	/**

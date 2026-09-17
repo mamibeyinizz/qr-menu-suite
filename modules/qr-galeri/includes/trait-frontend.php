@@ -12,13 +12,129 @@ trait QRMGM_Frontend_Trait {
 	public function maybe_frontend_assets(): void {
 		wp_register_style( 'qrmgm-front', false );
 		wp_register_script( 'qrmgm-front', false, [], QRMGM_VERSION, true );
+
+		// Kısa kod bu istekte kesin olarak tespit edilebiliyorsa (normal
+		// sayfa içeriği veya Elementor'un Shortcode widget'ı) CSS/JS'i
+		// burada, wp_head'den önce enqueue et — böylece <link> ilk paint'ten
+		// önce basılır. Tespit edilemezse (ör. Elementor Theme Builder
+		// şablonu, arşiv, dinamik render) render_shortcode() içindeki
+		// ensure_frontend_assets() çağrısı geriye dönük uyumlu yedek olarak
+		// kalır.
+		if ( $this->should_load_gallery_assets() ) {
+			$this->ensure_frontend_assets();
+		}
+	}
+
+	/**
+	 * Bu istekte `[qrmenu_gallery]` render edilecek mi?
+	 *
+	 * Yalnızca geçerli tekil yazının kendi `post_content`'ine ve (Elementor
+	 * yüklüyse) `_elementor_data`'sına bakar; bu iki kaynağın dışında bir
+	 * yerde (ör. Theme Builder şablonu) kullanılan galeri hâlâ
+	 * ensure_frontend_assets()'in render anındaki yedek çağrısıyla
+	 * çalışmaya devam eder.
+	 *
+	 * @return bool
+	 */
+	private function should_load_gallery_assets(): bool {
+		$post = get_post();
+
+		if ( ! $post instanceof WP_Post ) {
+			return false;
+		}
+
+		if ( has_shortcode( $post->post_content, 'qrmenu_gallery' ) ) {
+			return true;
+		}
+
+		if ( did_action( 'elementor/loaded' ) || class_exists( '\Elementor\Plugin' ) ) {
+			$data = get_post_meta( $post->ID, '_elementor_data', true );
+			if ( $this->elementor_data_contains( 'qrmenu_gallery', $data ) ) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Bir `_elementor_data` JSON'unda etiket doğrudan mı yoksa Elementor'un
+	 * "Global Widget" / "Şablon Ekle" (Insert Template) referansı üzerinden
+	 * mi geçiyor arar.
+	 *
+	 * `[qrmenu_gallery]` sayfanın kendi verisinde DEĞİL, bir Global
+	 * Widget/Bölüm veya "Şablon Ekle" widget'ı referansının işaret ettiği
+	 * AYRI bir Elementor Library post'unun verisinde olabilir. Bu metod o
+	 * referansı bulup hedef post'un verisini de tarar.
+	 *
+	 * VARSAYIM (gerçek Elementor Pro ortamında doğrulanmadı): referanslar
+	 * JSON'da "template_id"/"templateID"/"templateId" anahtarlarından
+	 * biriyle sayısal bir ID olarak durur. Eşleşme bulunamazsa metod
+	 * sessizce `false` döner; davranış önceki düz metin taramasına geriler.
+	 *
+	 * Güvenlik: `$stack` ile döngü koruması, `$depth` ile 3 seviyelik sabit
+	 * sınır, `static $cache` ile aynı şablon ID'sinin verisi istek boyunca
+	 * yalnızca bir kez okunur. Yalnızca referans verilen ID'ler çözülür;
+	 * `elementor_library` toplu taranmaz.
+	 *
+	 * @param string     $tag   Aranan kısa kod etiketi.
+	 * @param string     $data  Taranacak ham `_elementor_data` JSON metni.
+	 * @param array<int> $stack Geçerli çağrı zincirindeki şablon ID'leri.
+	 * @param int        $depth Geçerli derinlik.
+	 * @return bool
+	 */
+	private function elementor_data_contains( $tag, $data, array $stack = array(), $depth = 0 ): bool {
+		static $cache = array();
+
+		if ( ! is_string( $data ) || '' === $data ) {
+			return false;
+		}
+
+		if ( false !== strpos( $data, $tag ) ) {
+			return true;
+		}
+
+		if ( $depth >= 3 ) {
+			return false;
+		}
+
+		if ( ! preg_match_all( '/"template(?:_id|ID|Id)"\s*:\s*"?(\d+)"?/', $data, $matches ) ) {
+			return false;
+		}
+
+		foreach ( array_unique( $matches[1] ) as $template_id ) {
+			$template_id = (int) $template_id;
+
+			if ( $template_id <= 0 || in_array( $template_id, $stack, true ) ) {
+				continue;
+			}
+
+			if ( ! array_key_exists( $template_id, $cache ) ) {
+				$raw = get_post_meta( $template_id, '_elementor_data', true );
+				$cache[ $template_id ] = ( is_string( $raw ) && '' !== $raw ) ? $raw : false;
+			}
+
+			$referenced_data = $cache[ $template_id ];
+
+			if ( false === $referenced_data ) {
+				continue;
+			}
+
+			if ( $this->elementor_data_contains( $tag, $referenced_data, array_merge( $stack, array( $template_id ) ), $depth + 1 ) ) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	/**
 	 * Kısa kod render edilirken CSS/JS'i bir kez enqueue eder.
 	 *
 	 * Elementor gibi oluşturucularda kısa kod post_content'te görünmez;
-	 * bu yüzden varlıklar has_shortcode ile değil, render sırasında basılır.
+	 * bu yüzden varlıklar yalnızca has_shortcode ile değil, gerekirse
+	 * render sırasında da (yedek olarak) basılır — bkz.
+	 * should_load_gallery_assets() ve maybe_frontend_assets().
 	 */
 	private function ensure_frontend_assets(): void {
 		static $done = false;

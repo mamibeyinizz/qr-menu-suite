@@ -16,9 +16,23 @@ class QMO_Shortcode_Slider {
 
         $post = get_post();
         if ( ! $post instanceof WP_Post ) return;
-        if ( ! has_shortcode( $post->post_content, 'qmo_one_cikan_slider' ) ) return;
 
-        self::enqueue_styles();
+        if ( has_shortcode( $post->post_content, 'qmo_one_cikan_slider' ) ) {
+            self::enqueue_styles();
+            return;
+        }
+
+        // Elementor'un Shortcode widget'ına (veya bir Global Widget/Şablon
+        // Ekle referansına — bkz. rma_elementor_data_contains()) yazılan
+        // kısa kod post_content'te görünmez; render_shortcode() içindeki
+        // geç (wp_head sonrası) yedek çağrıya düşmemesi için _elementor_data
+        // de taranır.
+        if ( did_action( 'elementor/loaded' ) || class_exists( '\Elementor\Plugin' ) ) {
+            $data = get_post_meta( $post->ID, '_elementor_data', true );
+            if ( rma_elementor_data_contains( 'qmo_one_cikan_slider', $data ) ) {
+                self::enqueue_styles();
+            }
+        }
     }
 
     private static function enqueue_styles() {

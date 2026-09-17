@@ -41,6 +41,7 @@ require_once __DIR__ . '/test-csv-import-dedup.php';
 require_once __DIR__ . '/test-hfb.php';
 require_once __DIR__ . '/test-banner.php';
 require_once __DIR__ . '/test-hfb-onbellek.php';
+require_once __DIR__ . '/test-fouc-global-widget.php';
 require_once __DIR__ . '/test-iletisim.php';
 require_once __DIR__ . '/test-yorum-form-builder.php';
 require_once __DIR__ . '/test-reward-capability.php';

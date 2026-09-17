@@ -33,6 +33,80 @@ trait QRMS_HFB_Elementor {
 	}
 
 	/**
+	 * Bir `_elementor_data` JSON'unda etiket doğrudan mı yoksa Elementor'un
+	 * "Global Widget" / "Şablon Ekle" (Insert Template) referansı üzerinden
+	 * mi geçiyor arar.
+	 *
+	 * `[hfb_header]`/`[hfb_footer]` sayfanın kendi verisinde DEĞİL, bir
+	 * Global Widget/Bölüm veya "Şablon Ekle" widget'ı referansının işaret
+	 * ettiği AYRI bir Elementor Library post'unun verisinde olabilir. Bu
+	 * metod, o referansı bulup hedef post'un verisini de tarar.
+	 *
+	 * VARSAYIM (gerçek Elementor Pro ortamında doğrulanmadı): referanslar
+	 * JSON'da "template_id"/"templateID"/"templateId" anahtarlarından
+	 * biriyle sayısal bir ID olarak durur — Elementor'un bilinen, yaygın
+	 * isimlendirmesi budur, ancak sürüme göre değişebilir. Eşleşme
+	 * bulunamazsa metod sessizce `false` döner; davranış önceki düz metin
+	 * taramasına geriler, hiçbir şey kırılmaz.
+	 *
+	 * Güvenlik: `$stack` ile döngü koruması (A→B→A bir dalda tekrar
+	 * işlenmez), `$depth` ile ikinci bir sabit sınır (3 seviye), `static
+	 * $cache` ile aynı şablon ID'sinin `_elementor_data`'sı istek boyunca
+	 * yalnızca bir kez okunur. Yalnızca sayfanın/şablonun KENDİ verisinde
+	 * bulunan ID'ler çözülür; `elementor_library` toplu taranmaz.
+	 *
+	 * @param string     $tag   Aranan kısa kod etiketi.
+	 * @param string     $data  Taranacak ham `_elementor_data` JSON metni.
+	 * @param array<int> $stack Geçerli çağrı zincirindeki şablon ID'leri.
+	 * @param int        $depth Geçerli derinlik.
+	 * @return bool
+	 */
+	public function elementor_data_contains( $tag, $data, array $stack = array(), $depth = 0 ) {
+		static $cache = array();
+
+		if ( ! is_string( $data ) || '' === $data ) {
+			return false;
+		}
+
+		if ( false !== strpos( $data, $tag ) ) {
+			return true;
+		}
+
+		if ( $depth >= 3 ) {
+			return false;
+		}
+
+		if ( ! preg_match_all( '/"template(?:_id|ID|Id)"\s*:\s*"?(\d+)"?/', $data, $matches ) ) {
+			return false;
+		}
+
+		foreach ( array_unique( $matches[1] ) as $template_id ) {
+			$template_id = (int) $template_id;
+
+			if ( $template_id <= 0 || in_array( $template_id, $stack, true ) ) {
+				continue;
+			}
+
+			if ( ! array_key_exists( $template_id, $cache ) ) {
+				$raw = get_post_meta( $template_id, '_elementor_data', true );
+				$cache[ $template_id ] = ( is_string( $raw ) && '' !== $raw ) ? $raw : false;
+			}
+
+			$referenced_data = $cache[ $template_id ];
+
+			if ( false === $referenced_data ) {
+				continue;
+			}
+
+			if ( $this->elementor_data_contains( $tag, $referenced_data, array_merge( $stack, array( $template_id ) ), $depth + 1 ) ) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
 	 * Elementor editör veya önizleme modunda mıyız?
 	 *
 	 * Editörde modül render EDİLİR (kullanıcı ne düzenlediğini görsün) ama
@@ -102,6 +176,76 @@ trait QRMS_HFB_Elementor {
 		} catch ( \Error $e ) {
 			return false;
 		}
+	}
+
+	/**
+	 * Elementor Pro Theme Builder şablonlarından biri (header/footer/tekil/
+	 * arşiv/arama/404) verilen kısa kod etiketini içeriyor mu?
+	 *
+	 * `[hfb_header]` / `[hfb_footer]` çoğunlukla sitenin TÜM sayfalarında
+	 * görünür ve genelde geçerli sayfanın kendi `post_content`'inde değil,
+	 * ayrı bir Theme Builder şablonunda (ya da tema dosyasına gömülü
+	 * `do_shortcode()` çağrısında) bulunur. Arşiv/ana sayfa gibi
+	 * `is_singular()` olmayan isteklerde tespit edilebilecek tek yol budur.
+	 * Elementor Pro API'sine class_exists()/method_exists() ile temkinli
+	 * erişilir; herhangi bir katman eksikse sessizce false döner —
+	 * `maybe_enqueue_frontend_assets()` yine yalnızca 'yedek' enqueue'ya
+	 * (shortcode callback) güvenmeye devam eder.
+	 *
+	 * @param string $tag Kısa kod etiketi.
+	 * @return bool
+	 */
+	public function theme_builder_documents_contain( $tag ) {
+		if ( ! $this->elementor_loaded() ) {
+			return false;
+		}
+
+		if ( ! class_exists( '\ElementorPro\Modules\ThemeBuilder\Module' ) ) {
+			return false;
+		}
+
+		try {
+			$module = \ElementorPro\Modules\ThemeBuilder\Module::instance();
+
+			if ( ! $module || ! method_exists( $module, 'get_conditions_manager' ) ) {
+				return false;
+			}
+
+			$manager = $module->get_conditions_manager();
+
+			if ( ! $manager || ! method_exists( $manager, 'get_documents_for_location' ) ) {
+				return false;
+			}
+
+			foreach ( array( 'header', 'footer', 'single', 'archive', 'search-results', '404' ) as $location ) {
+				$documents = $manager->get_documents_for_location( $location );
+
+				if ( empty( $documents ) ) {
+					continue;
+				}
+
+				foreach ( (array) $documents as $document ) {
+					$doc_id = ( is_object( $document ) && method_exists( $document, 'get_main_id' ) )
+						? (int) $document->get_main_id()
+						: ( is_numeric( $document ) ? (int) $document : 0 );
+
+					if ( ! $doc_id ) {
+						continue;
+					}
+
+					$data = get_post_meta( $doc_id, '_elementor_data', true );
+					if ( $this->elementor_data_contains( $tag, $data ) ) {
+						return true;
+					}
+				}
+			}
+		} catch ( \Exception $e ) {
+			return false;
+		} catch ( \Error $e ) {
+			return false;
+		}
+
+		return false;
 	}
 
 	/**
