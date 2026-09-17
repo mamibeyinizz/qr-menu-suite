@@ -274,6 +274,10 @@ function setActiveBtn(slug, scrollBtn) {
     qsa('.rma-nav-btn', nav).forEach(function (btn) {
         var isActive = btn.getAttribute('data-slug') === slug;
         btn.classList.toggle('active', isActive);
+        // Görsel "aktif" durumun ekran okuyucudaki karşılığı. Yalnızca
+        // bildirim amaçlıdır; davranış ve sınıf mantığı değişmez.
+        if (isActive) btn.setAttribute('aria-current', 'true');
+        else btn.removeAttribute('aria-current');
         if (isActive) active = btn;
     });
 
@@ -783,6 +787,7 @@ function rebuildNav(cats, hasSuggestions) {
         var suggBtn = document.createElement('button');
         suggBtn.type = 'button';
         suggBtn.className = 'rma-nav-btn rma-suggestions-btn active';
+        suggBtn.setAttribute('aria-current', 'true');
         suggBtn.setAttribute('data-slug', '__suggestions__');
         suggBtn.textContent = rmaText('suggestions', 'Öneriler');
         frag.appendChild(suggBtn);
@@ -792,6 +797,7 @@ function rebuildNav(cats, hasSuggestions) {
         var btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'rma-nav-btn' + (!hasSuggestions && i === 0 ? ' active' : '');
+        if (!hasSuggestions && i === 0) btn.setAttribute('aria-current', 'true');
         btn.setAttribute('data-slug', cat.slug);
         btn.textContent = cat.name;
         frag.appendChild(btn);

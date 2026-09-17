@@ -277,6 +277,21 @@ trait RMA_Frontend_Trait {
             add_filter( 'wp_resource_hints', [ $this, 'font_resource_hints' ], 10, 2 );
         }
 
+        /*
+         * "Kategori Başlığı Rengi" (renk ayarı) ile "Başlık Rengi" (tipografi
+         * ayarı) aynı öğeyi hedefliyor. CSS tarafında zincir şöyle kuruldu:
+         *     color: var(--rma-section-title, var(--rma-heading-color))
+         * Bu zincirin çalışabilmesi için --rma-section-title yalnızca
+         * restoran sahibi varsayılandan FARKLI bir değer seçtiyse basılır;
+         * aksi halde tanımsız bırakılıp tipografi ayarının yürürlükte kalması
+         * sağlanır. (Daha önce token basılıyor ama CSS'te hiç okunmuyordu —
+         * yani renk ayarının ön yüzde hiçbir etkisi yoktu.)
+         */
+        $color_defaults    = $this->get_color_defaults();
+        $section_title_var = ( $c['section_title'] !== $color_defaults['section_title'] )
+            ? "    --rma-section-title:   {$c['section_title']};\n"
+            : '';
+
         $css_dynamic = "
 :root {
     --rma-bg:              {$c['bg']};
@@ -290,8 +305,7 @@ trait RMA_Frontend_Trait {
     --rma-modal-bg:        {$c['modal_bg']};
     --rma-filter-btn-border: {$c['filter_btn_border']};
     --rma-filter-btn-text:   {$c['filter_btn_text']};
-    --rma-section-title:   {$c['section_title']};
-    --rma-radius:          14px;
+{$section_title_var}    --rma-radius:          14px;
     --rma-gold-glow:       0 0 18px color-mix(in srgb,{$c['accent']} 35%,transparent);
     --rma-shadow:          0 8px 32px rgba(0,0,0,0.45);
     --rma-font-display:    '{$t['heading_font']}',system-ui,sans-serif;
@@ -456,11 +470,34 @@ JSCODE;
     <?php // Aktif filtre chip'leri — istemcide basılır, boşken gizli kalır. ?>
     <div id="rma-active-chips" class="rma-active-chips" role="status" aria-live="polite" hidden></div>
 
+    <?php
+    /*
+     * role="tablist" BİLİNÇLİ OLARAK KALDIRILDI.
+     *
+     * Butonlar sekme değil, sayfa içi atlama bağlantısıdır: rma-frontend.js
+     * tıklamada ilgili bölüme kaydırır (scrollToSection), bir tab panelini
+     * göstermez/gizlemez. Gerçek tab semantiği için role="tab" +
+     * aria-selected + aria-controls + ok tuşlarıyla dolaşım (roving
+     * tabindex) gerekirdi; bunların hiçbiri yok. Rolü yerinde bırakmak
+     * ekran okuyucuya "içinde hiç sekme olmayan sekme listesi" duyuruyor ve
+     * <nav> landmark'ını da yutuyordu. Kaldırılınca öğe doğal
+     * "gezinme" landmark'ına döner; aktif kategori aria-current ile
+     * bildirilir (bkz. setActiveBtn).
+     */
+    ?>
     <div class="rma-nav-wrapper">
-        <nav class="rma-nav" id="rma-nav" aria-label="<?php echo esc_attr( $this->t( 'Menü kategorileri' ) ); ?>" role="tablist"></nav>
+        <nav class="rma-nav" id="rma-nav" aria-label="<?php echo esc_attr( $this->t( 'Menü kategorileri' ) ); ?>"></nav>
     </div>
 
-    <div class="rma-content" id="rma-content" role="main"></div>
+    <?php
+    /*
+     * role="main" KALDIRILDI: kısa kod bir sayfa şablonunun içine gömülür ve
+     * sayfada zaten bir <main> bulunur. İkinci bir "main" landmark'ı ekran
+     * okuyucuda yinelenen/çakışan bölge olarak duyuruluyordu. Kaldırmak
+     * yalnızca semantiği düzeltir; hiçbir CSS/JS bu role'e bağlı değildir.
+     */
+    ?>
+    <div class="rma-content" id="rma-content"></div>
     <div class="rma-loader" id="rma-loader" aria-live="polite" aria-label="<?php echo esc_attr( $this->t( 'Yükleniyor' ) ); ?>"><?php echo esc_html( $this->t( 'Menü yükleniyor' ) ); ?></div>
 
 </div>
