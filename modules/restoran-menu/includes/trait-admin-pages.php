@@ -47,8 +47,8 @@ trait RMA_Admin_Pages_Trait {
                 'icon'       => 'dashicons-tag',
             ],
             'qrms-rm-kampanya-banner' => [
-                'title'      => 'Kampanya Banner',
-                'menu_title' => 'Kampanya Banner',
+                'title'      => 'Kampanya Görselleri',
+                'menu_title' => 'Kampanya Görselleri',
                 'hub_title'  => __( 'Kampanya Görselleri', 'qrms' ),
                 'render'     => 'render_kampanya_banner_page',
                 'desc'       => __( 'Menünüzün üst kısmında kampanyalarınızı ve özel fırsatlarınızı öne çıkarın.', 'qrms' ),

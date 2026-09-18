@@ -152,8 +152,14 @@ qrms_test(
 
 		// Liste olduğu gibi taşındı: kısa kod notu ve iki eylem butonu.
 		qrms_assert_contains( '[qmo_banner_slider]', $banner, 'kısa kod açıklaması' );
-		qrms_assert_contains( 'Yeni Kampanya Ekle', $banner, 'ekleme butonu' );
-		qrms_assert_contains( 'Tüm Kampanyaları Yönet', $banner, 'yönetim butonu' );
+		qrms_assert_contains( 'qmo-banner-yeni-panel', $banner, 'satır içi yeni kampanya paneli' );
+		qrms_assert_contains( 'ajax_banner_kampanya_olustur', $banner, 'inline oluşturma ucu' );
+		qrms_assert_contains( '+ Yeni kampanya görseli', $banner, 'ekleme butonu' );
+		qrms_assert_contains( 'Kampanyalara dön', $banner, 'geri dön metni' );
+		qrms_assert_false( strpos( $banner, 'Yeni Kampanya Ekle' ) !== false, 'post-new.php birincil CTA değil' );
+		qrms_assert_false( strpos( $banner, 'Sinemaskop' ) !== false, 'sinemaskop etiketi kaldırıldı' );
+		qrms_assert_contains( 'qmo-banner-oran-secici', $banner, 'oran kart seçici' );
+		qrms_assert_contains( 'render_banner_oran_kartlari', $banner, 'oran kart helper' );
 
 		// Veri katmanı DEĞİŞMEDİ: CPT ve meta anahtarları sabit üzerinden.
 		qrms_assert_contains( 'QMO_Banner_CPT::POST_TYPE', $banner, 'CPT slug\'ı sabitten' );
@@ -1714,7 +1720,44 @@ qrms_test(
 );
 
 qrms_test(
-	'bekleyen_sayisi_oranlar(): aynı kayıt iki oran için bekliyorsa bir kez sayılır',
+	'wp_ajax_qmo_banner_kampanya_olustur kaydı ve CPT olustur_kayit',
+	function () {
+		$boot  = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/qr-menu.php' );
+		$banner = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-kampanya-banner-admin.php' );
+		$cpt   = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/admin-cpt-banner.php' );
+
+		qrms_assert_contains( "add_action( 'wp_ajax_qmo_banner_kampanya_olustur', [ \$this, 'ajax_banner_kampanya_olustur' ] );", $boot, 'AJAX kancası' );
+		qrms_assert_contains( 'check_ajax_referer( $this->banner_kampanya_olustur_nonce_action', $banner, 'nonce' );
+		qrms_assert_contains( 'QMO_Banner_CPT::olustur_kayit', $banner, 'CPT oluşturma helper' );
+		qrms_assert_contains( 'public static function olustur_kayit', $cpt, 'olustur_kayit tanımlı' );
+	}
+);
+
+qrms_test(
+	'oran UX metinleri: ux_baslik ve piksel etiketi',
+	function () {
+		$oranlar = QMO_Banner_Slider_Settings::oranlar();
+
+		qrms_assert_same( 'Geniş Banner', $oranlar['16:9']['ux_baslik'], '16:9 UX başlık' );
+		qrms_assert_same( 'Ultra Geniş', $oranlar['21:9']['ux_baslik'], '21:9 UX başlık' );
+		qrms_assert_contains( '1600×900', QMO_Banner_Slider_Settings::oran_px_etiketi( '16:9' ), 'piksel etiketi' );
+	}
+);
+
+qrms_test(
+	'banner admin UX: geniş önizleme sütunu ve pending durumu',
+	function () {
+		$css = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/css/admin-ui.css' );
+		$js  = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/js/admin-ui.js' );
+
+		qrms_assert_contains( 'minmax(560px, 720px)', $css, 'geniş banner önizleme sütunu' );
+		qrms_assert_contains( 'is-pending', $css, 'pending stili' );
+		qrms_assert_contains( 'setPreviewPending', $js, 'pending JS' );
+		qrms_assert_contains( 'initBannerOranSecici', $js, 'oran kart JS' );
+	}
+);
+
+qrms_test(
 	function () {
 		QMO_Banner_Slider_Settings::kaydet( array( 'oran' => '16:9', 'oran_mobil_farkli' => '1', 'oran_mobil' => '4:3' ) );
 		// İki oran için de kırpma yok → bekleyen_sayisi(oran) her oranda +1 (toplam 2).

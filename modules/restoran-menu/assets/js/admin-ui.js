@@ -542,6 +542,10 @@
                     $item.find('[data-satir-thumb]').css('objectPosition', data.odak_css);
                 }
             });
+
+            $item.find('.rma-kb-satir-gorsel-kutu')
+                .removeClass('is-odak-merkez is-odak-ust is-odak-alt is-odak-sol is-odak-sag')
+                .addClass('is-odak-' + $sel.val());
         });
 
         var frame = null;
@@ -577,6 +581,118 @@
 
             frame.open();
         });
+    }
+
+    function initBannerOranSecici() {
+        $('.qmo-banner-oran-secici').each(function () {
+            var $wrap = $(this);
+            var selectId = $wrap.data('oran-select');
+            var $select = $('#' + selectId);
+
+            if (!$select.length) {
+                return;
+            }
+
+            $wrap.on('change', 'input[type="radio"]', function () {
+                var val = $(this).val();
+                $select.val(val);
+                $wrap.find('.qmo-banner-oran-kart').removeClass('is-selected');
+                $(this).closest('.qmo-banner-oran-kart').addClass('is-selected');
+                $select.trigger('change');
+            });
+        });
+    }
+
+    function initBannerInlineCreate() {
+        var cfg = window.QMO_BANNER_PREVIEW || {};
+        var inline = cfg.inlineCreate || null;
+        var $toggle = $('#qmo-banner-yeni-toggle');
+        var $panel = $('#qmo-banner-yeni-panel');
+
+        if (!$toggle.length || !$panel.length || !inline) {
+            return;
+        }
+
+        var frame = null;
+
+        function panelAcik(acik) {
+            $panel.prop('hidden', !acik);
+            $toggle.attr('aria-expanded', acik ? 'true' : 'false');
+        }
+
+        $toggle.on('click', function () {
+            panelAcik($panel.prop('hidden'));
+        });
+
+        $('#qmo-banner-yeni-iptal').on('click', function () {
+            panelAcik(false);
+        });
+
+        $('#qmo-banner-yeni-gorsel-sec').on('click', function (e) {
+            e.preventDefault();
+
+            if (!window.wp || !window.wp.media) {
+                return;
+            }
+
+            frame = window.wp.media({
+                title: 'Kampanya Görseli Seç',
+                button: { text: 'Bu görseli kullan' },
+                library: { type: 'image' },
+                multiple: false
+            });
+
+            frame.on('select', function () {
+                var a = frame.state().get('selection').first().toJSON();
+                $('#qmo-banner-yeni-gorsel').val(a.id);
+                $('#qmo-banner-yeni-gorsel-ad').text(a.filename || a.title || 'Seçildi');
+            });
+
+            frame.open();
+        });
+
+        $('#qmo-banner-yeni-kaydet').on('click', function () {
+            var $durum = $('#qmo-banner-yeni-durum');
+            $durum.text('Kaydediliyor…');
+
+            $.post(AJAX_URL, {
+                action: inline.action,
+                nonce: inline.nonce,
+                baslik: $('#qmo-banner-yeni-baslik').val(),
+                gorsel: $('#qmo-banner-yeni-gorsel').val(),
+                link: $('#qmo-banner-yeni-link').val(),
+                odak: $('#qmo-banner-yeni-odak').val() || 'merkez'
+            }).done(function (r) {
+                if (!r || !r.success) {
+                    $durum.text((r && r.data && r.data.message) || 'Kaydedilemedi');
+                    return;
+                }
+
+                if (r.data.reload) {
+                    window.location.href = r.data.reload;
+                    return;
+                }
+
+                window.location.reload();
+            }).fail(function () {
+                $durum.text('Kaydedilemedi');
+            });
+        });
+    }
+
+    function initKbTabsScrollHint() {
+        var tabs = document.querySelector('.rma-kb-tabs');
+
+        if (!tabs) {
+            return;
+        }
+
+        function guncelle() {
+            tabs.classList.toggle('is-scrollable', tabs.scrollWidth > tabs.clientWidth + 2);
+        }
+
+        guncelle();
+        window.addEventListener('resize', guncelle);
     }
 
     /* -----------------------------------------------------------------
@@ -1429,6 +1545,31 @@
             $durum.text(metin);
         }
 
+        function setPreviewPending(bekliyor) {
+            $frame.toggleClass('is-pending', !!bekliyor);
+        }
+
+        function updateCropGuide() {
+            var $guide = $('#qmo-banner-crop-guide');
+            if (!$guide.length) {
+                return;
+            }
+
+            $guide.prop('hidden', mode === 'mobile');
+        }
+
+        function maybeMobilePreview() {
+            if (!$('#qmo-banner-oran-mobil-farkli').is(':checked')) {
+                return;
+            }
+
+            var $btn = $form.find('.rma-vitrin-preview-btn[data-preview-mode="mobile"]');
+
+            if ($btn.length && mode !== 'mobile') {
+                $btn.trigger('click');
+            }
+        }
+
         function previewAjaxPayload() {
             return {
                 action: cfg.action,
@@ -1458,11 +1599,15 @@
         function fetchAjaxPreview() {
             var seq = ++ajaxSeq;
 
+            setPreviewPending(true);
+
             $.post(cfg.ajaxUrl, previewAjaxPayload())
                 .done(function (resp) {
                     if (seq !== ajaxSeq) {
                         return;
                     }
+
+                    setPreviewPending(false);
 
                     if (!resp || !resp.success || !resp.data) {
                         setPreviewDurum('Önizleme güncellenemedi. Sayfayı yenileyip tekrar deneyin.', 'hata');
@@ -1473,13 +1618,17 @@
                     mountIframe(resp.data.html || '');
 
                     if (resp.data.durum === 'bekliyor') {
-                        setPreviewDurum('Bazı görseller seçilen oran için henüz kırpılmamış.', 'uyari');
+                        setPreviewDurum('Bazı görseller seçilen oran için henüz hazır değil.', 'uyari');
                     }
+
+                    updateCropGuide();
                 })
                 .fail(function () {
                     if (seq !== ajaxSeq) {
                         return;
                     }
+
+                    setPreviewPending(false);
                     setPreviewDurum('Önizleme güncellenemedi. Sayfayı yenileyip tekrar deneyin.', 'hata');
                 });
         }
@@ -1487,6 +1636,7 @@
         function applyDeviceMode() {
             $stage.toggleClass('is-mobile-mode', mode === 'mobile');
             mountIframe(lastKokHtml);
+            updateCropGuide();
         }
 
         $form.on(
@@ -1501,6 +1651,9 @@
             'change',
             '#qmo-banner-oran, #qmo-banner-oran-mobil, #qmo-banner-oran-mobil-farkli, #qmo-banner-gecis, #qmo-banner-show-nav, #qmo-banner-show-dots, #qmo-banner-show-title, #qmo-banner-autoplay',
             function () {
+                if (this.id === 'qmo-banner-oran-mobil-farkli' && $(this).is(':checked')) {
+                    maybeMobilePreview();
+                }
                 scheduleAjaxPreview();
             }
         );
@@ -1542,6 +1695,7 @@
 
         mountIframe(lastKokHtml);
         applyCssOnlyPreview();
+        updateCropGuide();
         initVitrinPreviewSticky();
     }
 
@@ -2195,6 +2349,9 @@
         initCategorySorter();
         initBannerOrder();
         initBannerRowEditor();
+        initBannerOranSecici();
+        initBannerInlineCreate();
+        initKbTabsScrollHint();
         initPalettes();
         initNavPreview();
         initColorPreview();

@@ -88,8 +88,8 @@ function qrms_module_restoran_menu_init() {
 			),
 			array(
 				'tag'   => 'qmo_banner_slider',
-				'title' => __( 'Kampanya Banner', 'qrms' ),
-				'desc'  => __( 'Sayfanın en üstünde tam genişlikte, kendi kendine dönen kampanya görselleri. İçeriği "Kampanya Banner" ekranından yönetilir.', 'qrms' ),
+				'title' => __( 'Kampanya Görselleri', 'qrms' ),
+				'desc'  => __( 'Sayfanın en üstünde tam genişlikte, kendi kendine dönen kampanya görselleri. İçeriği "Kampanya Görselleri" ekranından yönetilir.', 'qrms' ),
 				'attrs' => array(
 					array(
 						'name'    => 'autoplay',
@@ -377,6 +377,10 @@ function qrms_module_restoran_menu_admin_assets() {
 				'desktopWidth' => 1280,
 				'mobileWidth'  => 390,
 				'debounceMs'   => 220,
+				'inlineCreate' => array(
+					'action' => 'qmo_banner_kampanya_olustur',
+					'nonce'  => wp_create_nonce( 'qmo_banner_kampanya_olustur' ),
+				),
 				'assets'       => array(
 					'css'   => $url . 'includes/frontend-banner-slider.css',
 					'js'    => $url . 'includes/frontend-banner-slider.js?v=' . QRMS_Helpers::asset_version( $banner_js ),

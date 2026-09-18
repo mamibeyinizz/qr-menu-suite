@@ -1877,6 +1877,15 @@
     overflow: visible;
 }
 
+.rma-admin:has(#qmo-banner-form) {
+    --rma-vitrin-sticky-top: 32px;
+    overflow: visible;
+}
+
+.rma-admin:has(#qmo-banner-form)::before {
+    border-radius: 14px 14px 0 0;
+}
+
 .rma-admin:has(#rma-vitrin-form)::before {
     border-radius: 14px 14px 0 0;
 }
@@ -1989,6 +1998,10 @@
         grid-template-columns: minmax(0, 1fr) minmax(300px, 420px);
     }
 
+    .rma-admin:has(#qmo-banner-form) .rma-vitrin-layout-wrap {
+        grid-template-columns: minmax(0, 1fr) minmax(560px, 720px);
+    }
+
     .rma-vitrin-layout-preview {
         position: sticky;
         top: var(--rma-vitrin-sticky-top);
@@ -2016,6 +2029,14 @@
         max-height: none;
         min-width: 0;
         width: 100%;
+    }
+
+    .rma-admin:has(#qmo-banner-form) .rma-vitrin-layout-preview {
+        order: -1;
+    }
+
+    .rma-admin:has(#qmo-banner-form) .rma-vitrin-layout-fields {
+        order: 0;
     }
 
     .rma-vitrin-preview-card {
@@ -2102,6 +2123,174 @@
 
 .qmo-banner-preview-durum.is-hata {
     color: #d63638;
+}
+
+.qmo-banner-preview-frame.is-pending {
+    opacity: 0.72;
+}
+
+.qmo-banner-preview-frame.is-pending::after {
+    color: var(--rma-a-muted);
+    content: 'Önizleme güncelleniyor…';
+    display: block;
+    font-size: 12px;
+    margin-top: 6px;
+    text-align: center;
+}
+
+.qmo-banner-oran-native {
+    border: 0;
+    clip: rect(0 0 0 0);
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    padding: 0;
+    position: absolute;
+    white-space: nowrap;
+    width: 1px;
+}
+
+.qmo-banner-oran-grid {
+    display: grid;
+    gap: 10px;
+    grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+    margin-top: 4px;
+}
+
+.qmo-banner-oran-kart {
+    background: var(--rma-a-surface-2);
+    border: 1px solid var(--rma-a-border);
+    border-radius: 10px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-height: 44px;
+    padding: 10px;
+    transition: border-color .15s ease, background .15s ease;
+}
+
+.qmo-banner-oran-kart input {
+    clip: rect(0 0 0 0);
+    position: absolute;
+}
+
+.qmo-banner-oran-kart.is-selected,
+.qmo-banner-oran-kart:has(input:checked) {
+    background: var(--rma-a-accent-soft);
+    border-color: var(--rma-a-accent);
+}
+
+.qmo-banner-oran-kutu {
+    background: linear-gradient(135deg, #0d2b22, #1e3d2f);
+    border: 1px solid var(--rma-a-accent-dim);
+    border-radius: 4px;
+    max-height: 52px;
+    width: 100%;
+}
+
+.qmo-banner-oran-baslik {
+    color: var(--rma-a-text);
+    display: block;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.qmo-banner-oran-kullanim,
+.qmo-banner-oran-teknik {
+    color: var(--rma-a-muted);
+    display: block;
+    font-size: 11px;
+    line-height: 1.35;
+}
+
+.qmo-banner-crop-guide {
+    border: 2px solid var(--rma-a-accent);
+    box-shadow: 0 0 0 9999px rgba(10, 10, 12, 0.35);
+    inset: 12% 8%;
+    pointer-events: none;
+    position: absolute;
+    z-index: 2;
+}
+
+.qmo-banner-crop-guide[hidden] {
+    display: none !important;
+}
+
+.rma-kb-satir-gorsel-kutu.is-crop-preview {
+    overflow: hidden;
+    position: relative;
+}
+
+.rma-kb-satir-gorsel-kutu.is-crop-preview::after {
+    box-shadow: inset 0 0 0 2px #c9a84c;
+    content: '';
+    inset: 0;
+    pointer-events: none;
+    position: absolute;
+    z-index: 2;
+}
+
+.rma-kb-satir-gorsel-kutu.is-odak-ust::before {
+    background: linear-gradient(to bottom, transparent 0%, transparent 28%, rgba(0, 0, 0, 0.45) 28%);
+    content: '';
+    inset: 0;
+    pointer-events: none;
+    position: absolute;
+    z-index: 1;
+}
+
+.rma-kb-satir-gorsel-kutu.is-odak-alt::before {
+    background: linear-gradient(to top, transparent 0%, transparent 28%, rgba(0, 0, 0, 0.45) 28%);
+    content: '';
+    inset: 0;
+    pointer-events: none;
+    position: absolute;
+    z-index: 1;
+}
+
+.rma-kb-satir-gorsel-kutu.is-odak-sol::before {
+    background: linear-gradient(to right, transparent 0%, transparent 28%, rgba(0, 0, 0, 0.45) 28%);
+    content: '';
+    inset: 0;
+    pointer-events: none;
+    position: absolute;
+    z-index: 1;
+}
+
+.rma-kb-satir-gorsel-kutu.is-odak-sag::before {
+    background: linear-gradient(to left, transparent 0%, transparent 28%, rgba(0, 0, 0, 0.45) 28%);
+    content: '';
+    inset: 0;
+    pointer-events: none;
+    position: absolute;
+    z-index: 1;
+}
+
+.rma-kb-yeni-panel {
+    margin-top: 18px;
+}
+
+.rma-kb-teknik-not {
+    margin-top: 10px;
+}
+
+.rma-kb-teknik-not summary {
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.rma-kb-tabs.is-scrollable {
+    mask-image: linear-gradient(to right, #000 calc(100% - 18px), transparent);
+    padding-right: 8px;
+}
+
+@media screen and (max-width: 360px) {
+    .rma-admin a.rma-kb-tab {
+        font-size: 11px;
+        min-height: 38px;
+        padding: 0 11px;
+    }
 }
 
 /* ---------------------------------------------------------------------

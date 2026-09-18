@@ -45,6 +45,9 @@ trait RMA_Kampanya_Banner_Admin_Trait {
     /** Liste satırından görsel/odak güncelleme ucunun nonce eylemi. */
     private $banner_satir_nonce_action = 'qmo_banner_satir_kaydet';
 
+    /** Sihirbaz içinden yeni kampanya görseli oluşturma ucunun nonce eylemi. */
+    private $banner_kampanya_olustur_nonce_action = 'qmo_banner_kampanya_olustur';
+
     /** Canlı önizleme (kaydedilmemiş oran) AJAX ucunun nonce eylemi. */
     private $banner_onizleme_nonce_action = 'qmo_banner_onizleme';
 
@@ -102,8 +105,8 @@ trait RMA_Kampanya_Banner_Admin_Trait {
     private function banner_adimlari() {
         return array(
             'ozet'        => array( 'no' => 1, 'etiket' => 'Genel Bakış', 'baslik' => 'Genel Bakış' ),
-            'kampanyalar' => array( 'no' => 2, 'etiket' => 'Kampanyalar', 'baslik' => 'Kampanyalar ve Banner Ayarları' ),
-            'olustur'     => array( 'no' => 3, 'etiket' => 'Görsel Üret', 'baslik' => 'Toplu Kampanya Görseli Oluştur' ),
+            'kampanyalar' => array( 'no' => 2, 'etiket' => 'Kampanya Görselleri', 'baslik' => 'Kampanya Görselleri ve Görünüm' ),
+            'olustur'     => array( 'no' => 3, 'etiket' => 'Görsel Üret', 'baslik' => 'Hazır Şablonla Görsel Üret' ),
         );
     }
 
@@ -149,8 +152,8 @@ trait RMA_Kampanya_Banner_Admin_Trait {
      */
     public function render_kampanya_banner_page() {
         $this->page_header(
-            'Kampanya Banner',
-            'Sayfanın en üstünde tam genişlikte dönen kampanya görselleri. Görsellerin kendisi, görünüm ayarları ve hazır görsel üretme aracı bu üç adımda toplandı.'
+            'Kampanya Görselleri',
+            'Menünüzün üstünde dönen kampanya görsellerini ekleyin, sıralayın ve görünümünü ayarlayın. İsterseniz hazır şablonla yeni görsel de üretebilirsiniz.'
         );
 
         $this->render_banner_wizard_section();
@@ -194,7 +197,7 @@ trait RMA_Kampanya_Banner_Admin_Trait {
              * Adresler ve `banner_adim` query arg'ı birebir aynı.
              */
             ?>
-            <nav class="rma-kb-tabs" aria-label="Kampanya Banner bölümleri">
+            <nav class="rma-kb-tabs" aria-label="Kampanya görselleri bölümleri">
                 <?php foreach ( $adimlar as $anahtar => $bilgi ) : ?>
                     <a class="rma-kb-tab<?php echo $anahtar === $adim ? ' is-active' : ''; ?>"
                        href="<?php echo esc_url( $this->banner_wizard_url( $anahtar ) ); ?>"
@@ -274,8 +277,8 @@ trait RMA_Kampanya_Banner_Admin_Trait {
         <div class="rma-kb-nav-grid">
             <a class="rma-kb-nav-card" href="<?php echo esc_url( $this->banner_wizard_url( 'kampanyalar' ) ); ?>">
                 <span class="dashicons dashicons-images-alt2" aria-hidden="true"></span>
-                <span class="rma-kb-nav-title">Kampanyalar</span>
-                <span class="rma-kb-nav-desc">Kampanya görsellerini ekleyin, sırasını ve bağlantısını düzenleyin; banner'ın oranını, geçişini, oklarını ve başlığını ayarlayın.</span>
+                <span class="rma-kb-nav-title">Kampanya Görselleri</span>
+                <span class="rma-kb-nav-desc">Görselleri ekleyin, sıralayın ve tıklanınca gidilecek bağlantıyı belirleyin; banner oranı, geçişi ve okları burada ayarlanır.</span>
                 <span class="rma-kb-nav-git">Kampanyalara git &rarr;</span>
             </a>
             <a class="rma-kb-nav-card" href="<?php echo esc_url( $this->banner_wizard_url( 'olustur' ) ); ?>">
@@ -369,21 +372,25 @@ trait RMA_Kampanya_Banner_Admin_Trait {
         ?>
         <div class="rma-card" id="rma-banner">
             <div class="rma-vitrin-list-head">
-                <h3 class="rma-card-title">Aktif Kampanyalar</h3>
+                <h3 class="rma-card-title">Kampanya Görselleri</h3>
                 <a class="button" href="<?php echo esc_url( $this->banner_wizard_url( 'olustur' ) ); ?>">Hazır şablonla görsel üret</a>
             </div>
-            <p class="rma-card-desc">Sayfanın en üstünde tam genişlikte dönen kampanya görselleri. Görseli seçilmemiş kayıtlar gösterilmez. Küçük resimler ön yüzde görünecek kadrajın aynısıdır.</p>
+            <p class="rma-card-desc">Menü üstünde dönen görseller buradan yönetilir. Görseli olmayan kayıtlar ziyaretçiye gösterilmez. Küçük resim, sitede görünecek kadrajın önizlemesidir; altın çerçeve kalacak alanı gösterir.</p>
 
             <?php if ( $kirpma && $bekleyen > 0 ) : ?>
                 <div class="rma-kb-kirpma-uyari">
                     <p>
-                        <strong><?php echo (int) $bekleyen; ?> kampanya görseli</strong> güncel <?php echo esc_html( $oran_metni ); ?> oranına göre sunucuda kırpılmamış.
-                        Bu görseller ön yüzde yalnızca tarayıcı tarafından kesilir; slaytlar birbirini tutmayabilir.
+                        <strong><?php echo (int) $bekleyen; ?> görsel</strong> seçtiğiniz oran için henüz hazır değil.
+                        Fotoğraf banner alanına tam oturmayabilir; aşağıdaki düğmeyle hepsini güncelleyin veya listede odağı değiştirin.
                     </p>
-                    <a class="button button-primary" href="<?php echo esc_url( $this->banner_kirp_url() ); ?>">Tüm görselleri yeniden kırp</a>
+                    <a class="button button-primary" href="<?php echo esc_url( $this->banner_kirp_url() ); ?>">Tüm görselleri banner oranına uydur</a>
+                    <details class="rma-kb-teknik-not">
+                        <summary>Teknik bilgi</summary>
+                        <p class="description rma-desc">Görseller sunucuda seçilen en-boy oranına kırpılır. Eski oranla yüklenmiş dosyalar tarayıcıda geçici kesilir; hepsini aynı hizaya getirmek için toplu güncelleme gerekir.</p>
+                    </details>
                 </div>
             <?php elseif ( $kirpma && $toplam > 0 ) : ?>
-                <p class="rma-card-desc rma-kb-kirpma-ok">Tüm kampanya görselleri güncel <?php echo esc_html( $oran_metni ); ?> oranına göre hazır.</p>
+                <p class="rma-card-desc rma-kb-kirpma-ok">Tüm görseller güncel <?php echo esc_html( $oran_metni ); ?> oranına hazır.</p>
             <?php endif; ?>
 
             <?php if ( empty( $banners ) ) : ?>
@@ -409,7 +416,7 @@ trait RMA_Kampanya_Banner_Admin_Trait {
                         $kirpma_durum = $kirpma ? QMO_Banner_Kirpma::banner_durumu( (int) $banner->ID ) : 'gorsel-yok';
                         ?>
                         <li class="rma-kb-satir" data-banner-id="<?php echo (int) $banner->ID; ?>">
-                            <span class="rma-kb-satir-gorsel-kutu" style="aspect-ratio:<?php echo esc_attr( $oran_css ); ?>;">
+                            <span class="rma-kb-satir-gorsel-kutu is-crop-preview is-odak-<?php echo esc_attr( $odak ); ?>" style="aspect-ratio:<?php echo esc_attr( $oran_css ); ?>;">
                                 <?php if ( '' !== $onizleme ) : ?>
                                     <img class="rma-kb-satir-thumb" src="<?php echo esc_url( $onizleme ); ?>" alt=""
                                          style="object-position:<?php echo esc_attr( $odak_css ); ?>;" data-satir-thumb>
@@ -440,7 +447,7 @@ trait RMA_Kampanya_Banner_Admin_Trait {
 
                                 <?php if ( $kirpma && $gorsel_id ) : ?>
                                     <span class="rma-kb-satir-alan">
-                                        <label class="rma-kb-satir-etiket" for="rma-kb-odak-<?php echo (int) $banner->ID; ?>">Kırpma odağı</label>
+                                        <label class="rma-kb-satir-etiket" for="rma-kb-odak-<?php echo (int) $banner->ID; ?>">Odak (hangi bölüm kalsın)</label>
                                         <select class="rma-kb-satir-odak" id="rma-kb-odak-<?php echo (int) $banner->ID; ?>" data-satir-odak>
                                             <?php foreach ( QMO_Banner_Kirpma::odaklar() as $odak_anahtar => $odak_bilgi ) : ?>
                                                 <option value="<?php echo esc_attr( $odak_anahtar ); ?>"
@@ -493,9 +500,11 @@ trait RMA_Kampanya_Banner_Admin_Trait {
                 <p class="rma-kb-durum" id="rma-banner-durum" role="status" aria-live="polite"></p>
             <?php endif; ?>
 
+            <?php $this->render_banner_yeni_kampanya_panel(); ?>
+
             <p class="rma-actions">
-                <a class="button button-primary" href="<?php echo esc_url( admin_url( 'post-new.php?post_type=' . QMO_Banner_CPT::POST_TYPE ) ); ?>">Yeni Kampanya Ekle</a>
-                <a class="button" href="<?php echo esc_url( admin_url( 'edit.php?post_type=' . QMO_Banner_CPT::POST_TYPE ) ); ?>">Tüm Kampanyaları Yönet</a>
+                <button type="button" class="button button-secondary" id="qmo-banner-yeni-toggle" aria-expanded="false" aria-controls="qmo-banner-yeni-panel">+ Yeni kampanya görseli</button>
+                <a class="button" href="<?php echo esc_url( admin_url( 'edit.php?post_type=' . QMO_Banner_CPT::POST_TYPE ) ); ?>">Tüm kayıtları WordPress'te aç</a>
             </p>
         </div>
         <?php
@@ -531,6 +540,157 @@ trait RMA_Kampanya_Banner_Admin_Trait {
         }
 
         return (string) wp_get_attachment_image_url( $gorsel_id, 'large' );
+    }
+
+    /**
+     * Sihirbaz içinde yeni kampanya görseli ekleme paneli (post-new.php yerine).
+     *
+     * @return void
+     */
+    private function render_banner_yeni_kampanya_panel() {
+        $odaklar = class_exists( 'QMO_Banner_Kirpma' ) ? QMO_Banner_Kirpma::odaklar() : array();
+        ?>
+        <div class="rma-card rma-kb-yeni-panel" id="qmo-banner-yeni-panel" hidden>
+            <h4 class="rma-section-title">Yeni kampanya görseli</h4>
+            <p class="rma-card-desc">Kampanya adı, görsel ve isteğe bağlı bağlantıyı buradan kaydedin; WordPress kayıt ekranına gitmenize gerek kalmaz.</p>
+            <table class="form-table rma-form-table">
+                <tr>
+                    <th><label for="qmo-banner-yeni-baslik">Kampanya adı</label></th>
+                    <td>
+                        <input type="text" id="qmo-banner-yeni-baslik" class="regular-text" maxlength="120" autocomplete="off">
+                    </td>
+                </tr>
+                <tr>
+                    <th>Görsel</th>
+                    <td>
+                        <input type="hidden" id="qmo-banner-yeni-gorsel" value="">
+                        <button type="button" class="button" id="qmo-banner-yeni-gorsel-sec">Görsel seç</button>
+                        <span class="rma-kb-yeni-gorsel-ad" id="qmo-banner-yeni-gorsel-ad"></span>
+                    </td>
+                </tr>
+                <tr>
+                    <th><label for="qmo-banner-yeni-link">Banner tıklanınca gidilecek bağlantı</label></th>
+                    <td>
+                        <input type="url" id="qmo-banner-yeni-link" class="regular-text widefat" placeholder="https://">
+                    </td>
+                </tr>
+                <?php if ( ! empty( $odaklar ) ) : ?>
+                    <tr>
+                        <th><label for="qmo-banner-yeni-odak">Odak</label></th>
+                        <td>
+                            <select id="qmo-banner-yeni-odak" class="rma-select-wide">
+                                <?php foreach ( $odaklar as $odak_anahtar => $odak_bilgi ) : ?>
+                                    <option value="<?php echo esc_attr( $odak_anahtar ); ?>"><?php echo esc_html( $odak_bilgi['etiket'] ); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                            <p class="description rma-desc">Yüz, yemek veya logo kenarda kalıyorsa odağı o yöne alın.</p>
+                        </td>
+                    </tr>
+                <?php endif; ?>
+            </table>
+            <p class="rma-actions">
+                <button type="button" class="button button-primary" id="qmo-banner-yeni-kaydet">Kampanya görselini kaydet</button>
+                <button type="button" class="button" id="qmo-banner-yeni-iptal">İptal</button>
+            </p>
+            <p class="rma-kb-durum" id="qmo-banner-yeni-durum" role="status" aria-live="polite"></p>
+        </div>
+        <?php
+    }
+
+    /**
+     * En-boy oranı seçici kartları (form değeri gizli select ile aynı kalır).
+     *
+     * @param string $select_id       Select öğesinin id'si.
+     * @param string $name_attr       Form name attribute.
+     * @param string $secili          Seçili oran anahtarı.
+     * @param array  $oran_kaynak     QMO_Banner_Slider_Settings::oranlar() veya mobil_oranlar().
+     * @return void
+     */
+    private function render_banner_oran_kartlari( $select_id, $name_attr, $secili, array $oran_kaynak ) {
+        ?>
+        <div class="qmo-banner-oran-secici" data-oran-select="<?php echo esc_attr( $select_id ); ?>">
+            <select name="<?php echo esc_attr( $name_attr ); ?>" id="<?php echo esc_attr( $select_id ); ?>" class="qmo-banner-oran-native" tabindex="-1" aria-hidden="true">
+                <?php foreach ( $oran_kaynak as $oran_anahtar => $oran_bilgi ) : ?>
+                    <option value="<?php echo esc_attr( $oran_anahtar ); ?>"
+                            data-oran-css="<?php echo esc_attr( $oran_bilgi['css'] ); ?>"
+                            <?php selected( $secili, $oran_anahtar ); ?>><?php echo esc_html( $oran_bilgi['etiket'] ); ?></option>
+                <?php endforeach; ?>
+            </select>
+            <div class="qmo-banner-oran-grid" role="radiogroup" aria-label="Banner en-boy oranı">
+                <?php foreach ( $oran_kaynak as $oran_anahtar => $oran_bilgi ) :
+                    $baslik   = isset( $oran_bilgi['ux_baslik'] ) ? $oran_bilgi['ux_baslik'] : $oran_anahtar;
+                    $kullanim = isset( $oran_bilgi['ux_kullanim'] ) ? $oran_bilgi['ux_kullanim'] : '';
+                    $px       = class_exists( 'QMO_Banner_Slider_Settings' ) ? QMO_Banner_Slider_Settings::oran_px_etiketi( $oran_anahtar ) : '';
+                    ?>
+                    <label class="qmo-banner-oran-kart<?php echo $secili === $oran_anahtar ? ' is-selected' : ''; ?>">
+                        <input type="radio"
+                               name="<?php echo esc_attr( $select_id ); ?>_kart"
+                               value="<?php echo esc_attr( $oran_anahtar ); ?>"
+                               data-oran-css="<?php echo esc_attr( $oran_bilgi['css'] ); ?>"
+                               <?php checked( $secili, $oran_anahtar ); ?>>
+                        <span class="qmo-banner-oran-kutu" style="aspect-ratio:<?php echo esc_attr( $oran_bilgi['css'] ); ?>;" aria-hidden="true"></span>
+                        <span class="qmo-banner-oran-metin">
+                            <span class="qmo-banner-oran-baslik"><?php echo esc_html( $baslik ); ?></span>
+                            <?php if ( '' !== $kullanim ) : ?>
+                                <span class="qmo-banner-oran-kullanim"><?php echo esc_html( $kullanim ); ?></span>
+                            <?php endif; ?>
+                            <span class="qmo-banner-oran-teknik"><?php echo esc_html( $oran_anahtar ); ?><?php echo '' !== $px ? ' · ' . esc_html( $px ) : ''; ?></span>
+                        </span>
+                    </label>
+                <?php endforeach; ?>
+            </div>
+        </div>
+        <?php
+    }
+
+    /**
+     * `wp_ajax_qmo_banner_kampanya_olustur` — sihirbazdan yeni kampanya kaydı.
+     *
+     * @return void
+     */
+    public function ajax_banner_kampanya_olustur() {
+        check_ajax_referer( $this->banner_kampanya_olustur_nonce_action, 'nonce' );
+
+        $yetki = class_exists( 'QRMS_Admin' ) ? QRMS_Admin::CAPABILITY : 'manage_options';
+
+        if ( ! current_user_can( $yetki ) ) {
+            wp_send_json_error( array( 'message' => 'Bu işlem için yetkiniz yok.' ), 403 );
+        }
+
+        if ( ! class_exists( 'QMO_Banner_CPT' ) ) {
+            wp_send_json_error( array( 'message' => 'Bileşen yüklü değil.' ), 500 );
+        }
+
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- olustur_kayit sanitize eder.
+        $baslik = isset( $_POST['baslik'] ) ? wp_unslash( $_POST['baslik'] ) : '';
+
+        $gorsel_id = isset( $_POST['gorsel'] ) ? absint( wp_unslash( $_POST['gorsel'] ) ) : 0;
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- esc_url_raw olustur_kayit içinde.
+        $link = isset( $_POST['link'] ) ? wp_unslash( $_POST['link'] ) : '';
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- odak() beyaz listeye çeker.
+        $odak = isset( $_POST['odak'] ) ? wp_unslash( $_POST['odak'] ) : 'merkez';
+
+        $sonuc = QMO_Banner_CPT::olustur_kayit(
+            array(
+                'baslik'    => $baslik,
+                'gorsel_id' => $gorsel_id,
+                'link'      => $link,
+                'odak'      => $odak,
+                'durum'     => 'publish',
+            )
+        );
+
+        if ( is_wp_error( $sonuc ) ) {
+            wp_send_json_error( array( 'message' => $sonuc->get_error_message() ), 400 );
+        }
+
+        wp_send_json_success(
+            array(
+                'id'      => (int) $sonuc,
+                'message' => 'Kampanya görseli eklendi.',
+                'reload'  => $this->banner_wizard_url( 'kampanyalar', array( 'banner_msg' => 'kampanya_eklendi' ) ),
+            )
+        );
     }
 
     /* -----------------------------------------------------------------
@@ -600,7 +760,8 @@ trait RMA_Kampanya_Banner_Admin_Trait {
 
         $mesajlar = array(
             'kaydedildi' => array( 'success', 'Banner görünümü kaydedildi.' ),
-            'oran_degisti' => array( 'warning', 'Banner görünümü kaydedildi. En-boy oranı değiştiği için mevcut görsellerin yeni orana göre yeniden kırpılması gerekiyor — aşağıdaki “Tüm görselleri yeniden kırp” düğmesini kullanın.' ),
+            'kampanya_eklendi' => array( 'success', 'Yeni kampanya görseli eklendi.' ),
+            'oran_degisti' => array( 'warning', 'Banner görünümü kaydedildi. En-boy oranı değişti — listedeki görselleri yeni orana uydurmanız gerekebilir.' ),
         );
 
         if ( 'kirpildi' === $durum ) {
@@ -1035,7 +1196,7 @@ trait RMA_Kampanya_Banner_Admin_Trait {
             <?php wp_nonce_field( $this->banner_nonce_action ); ?>
             <input type="hidden" name="action" value="qmo_banner_ayar_kaydet">
 
-            <h3 class="rma-kb-subheading">Banner Görünümü</h3>
+            <h3 class="rma-kb-subheading">Görünüm ayarları</h3>
             <p class="rma-card-desc">Kaydettikten sonra banner'ın bulunduğu her sayfaya yansır.</p>
 
             <div class="rma-vitrin-steps" id="qmo-banner-steps" role="tablist" aria-label="Banner görünüm ayarları">
@@ -1054,21 +1215,14 @@ trait RMA_Kampanya_Banner_Admin_Trait {
                 <div class="rma-vitrin-layout-fields">
                     <div class="rma-card rma-vitrin-step" data-step="1" data-step-title="Oran ve Geçiş">
                         <h2 class="rma-card-title">1. Oran ve Geçiş</h2>
-                        <p class="rma-card-desc">Banner alanının yüksekliği en-boy oranıyla belirlenir. Yüklenen görseller kaydedilirken <strong>sunucuda</strong> bu orana kırpılır (orijinal dosya korunur), böylece hangi oranda yüklenmiş olurlarsa olsunlar tüm slaytlar aynı görünür. 16:9 için önerilen boyut 1600x900px; 21:9 ve 3:1 seçilince yükseklik o orana göre düşer.</p>
-                        <p class="description rma-desc">Oranı sonradan değiştirirseniz mevcut görsellerin yeni orana göre yeniden kırpılması gerekir; kaydettikten sonra yukarıdaki listede tek tıklık bir düğme çıkar.</p>
+                        <p class="rma-card-desc">Banner yüksekliği seçtiğiniz oranla belirlenir. Fotoğraflar kaydederken bu alana sığacak şekilde kesilir; orijinal dosya korunur.</p>
+                        <p class="description rma-desc">Oranı değiştirirseniz mevcut görselleri yeni orana uydurmanız gerekir; kaydettikten sonra listede toplu güncelleme düğmesi görünür.</p>
 
                         <table class="form-table rma-form-table">
                             <tr>
-                                <th><label for="qmo-banner-oran">En-boy oranı</label></th>
+                                <th><span id="qmo-banner-oran-label">Bilgisayarda banner şekli</span></th>
                                 <td>
-                                    <select name="qmo_banner_slider_settings[oran]" id="qmo-banner-oran" class="rma-select-wide">
-                                        <?php foreach ( QMO_Banner_Slider_Settings::oranlar() as $oran_anahtar => $oran_bilgi ) : ?>
-                                            <option value="<?php echo esc_attr( $oran_anahtar ); ?>"
-                                                    data-oran-css="<?php echo esc_attr( $oran_bilgi['css'] ); ?>"
-                                                    <?php selected( $ayar['oran'], $oran_anahtar ); ?>><?php echo esc_html( $oran_bilgi['etiket'] ); ?></option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                    <p class="description rma-desc">Dar bir şerit istiyorsanız 21:9 ya da 3:1 seçin; görselleriniz sunucuda o orana yeniden kırpılır.</p>
+                                    <?php $this->render_banner_oran_kartlari( 'qmo-banner-oran', 'qmo_banner_slider_settings[oran]', $ayar['oran'], QMO_Banner_Slider_Settings::oranlar() ); ?>
                                 </td>
                             </tr>
                             <tr>
@@ -1081,20 +1235,13 @@ trait RMA_Kampanya_Banner_Admin_Trait {
                                                aria-controls="qmo-banner-oran-mobil-alan"
                                                aria-expanded="<?php echo $ayar['oran_mobil_farkli'] ? 'true' : 'false'; ?>"
                                                <?php checked( 1, $ayar['oran_mobil_farkli'] ); ?>>
-                                        <span>Mobilde farklı oran kullan</span>
+                                        <span>Telefonda farklı banner şekli kullan</span>
                                     </label>
-                                    <p class="description rma-desc">Kapalıyken telefonda da yukarıdaki oran kullanılır. Geniş bir oran (21:9, 3:1) telefonda çok ince bir şeride dönüşür; burayı açıp 4:3 ya da 1:1 seçerseniz telefon için <strong>ayrı bir kırpma üretilir</strong>.</p>
+                                    <p class="description rma-desc">Geniş bir oran telefonda çok ince bir şerit olabilir; burayı açıp kare veya klasik oran seçebilirsiniz.</p>
 
                                     <div id="qmo-banner-oran-mobil-alan" class="rma-kb-kosullu"<?php echo $ayar['oran_mobil_farkli'] ? '' : ' hidden'; ?>>
-                                        <label class="rma-kb-satir-etiket" for="qmo-banner-oran-mobil">Telefonda en-boy oranı</label>
-                                        <select name="qmo_banner_slider_settings[oran_mobil]" id="qmo-banner-oran-mobil" class="rma-select-wide">
-                                            <?php foreach ( QMO_Banner_Slider_Settings::mobil_oranlar() as $oran_anahtar => $oran_bilgi ) : ?>
-                                                <option value="<?php echo esc_attr( $oran_anahtar ); ?>"
-                                                        data-oran-css="<?php echo esc_attr( $oran_bilgi['css'] ); ?>"
-                                                        <?php selected( $ayar['oran_mobil'], $oran_anahtar ); ?>><?php echo esc_html( $oran_bilgi['etiket'] ); ?></option>
-                                            <?php endforeach; ?>
-                                        </select>
-                                        <p class="description rma-desc">Bilgisayardakiyle aynı oranı seçerseniz ikinci kırpma üretilmez.</p>
+                                        <span class="rma-kb-satir-etiket" id="qmo-banner-oran-mobil-label">Telefonda banner şekli</span>
+                                        <?php $this->render_banner_oran_kartlari( 'qmo-banner-oran-mobil', 'qmo_banner_slider_settings[oran_mobil]', $ayar['oran_mobil'], QMO_Banner_Slider_Settings::mobil_oranlar() ); ?>
                                     </div>
                                 </td>
                             </tr>
@@ -1147,7 +1294,11 @@ trait RMA_Kampanya_Banner_Admin_Trait {
                                             <option value="<?php echo (int) $ms; ?>" <?php selected( (int) $ayar['autoplay'], (int) $ms ); ?>><?php echo esc_html( $etiket ); ?></option>
                                         <?php endforeach; ?>
                                     </select>
-                                    <p class="description rma-desc">Bir kampanya ekranda ne kadar bekleyecek. Kısa koda <code>autoplay="0"</code> yazılırsa o sayfada bu ayar ezilir.</p>
+                                    <p class="description rma-desc">Sayfa düzeninde otomatik geçişi kapatmak için buradan “Kapalı” seçin.</p>
+                                    <details class="rma-kb-teknik-not">
+                                        <summary>Teknik bilgi</summary>
+                                        <p class="description rma-desc">Belirli bir sayfada farklı bir süre istiyorsanız kısa kod bloğunda otomatik geçiş süresini sayfa bazında değiştirebilirsiniz.</p>
+                                    </details>
                                 </td>
                             </tr>
                         </table>
@@ -1261,6 +1412,7 @@ trait RMA_Kampanya_Banner_Admin_Trait {
 
                         <div class="rma-vitrin-preview-stage" id="qmo-banner-preview-stage">
                             <div class="qmo-banner-preview-frame" id="qmo-banner-preview-frame">
+                                <div class="qmo-banner-crop-guide" id="qmo-banner-crop-guide" aria-hidden="true"></div>
                                 <iframe id="qmo-banner-preview-iframe"
                                         class="qmo-banner-preview-iframe"
                                         title="<?php echo esc_attr( 'Kampanya banner canlı önizleme' ); ?>"
@@ -1414,7 +1566,7 @@ trait RMA_Kampanya_Banner_Admin_Trait {
                                                 <?php selected( $ayar['oran'], $oran_anahtar ); ?>><?php echo esc_html( $oran_bilgi['etiket'] ); ?></option>
                                     <?php endforeach; ?>
                                 </select>
-                                <p class="description rma-desc">Varsayılan olarak banner'ınızın 2. adımdaki oranı seçilidir; aynı oranı seçmek kırpılmayı önler.</p>
+                                <p class="description rma-desc">Varsayılan olarak görünüm ayarlarındaki oran seçilidir.</p>
                             </td>
                         </tr>
                     </table>
@@ -1441,7 +1593,7 @@ trait RMA_Kampanya_Banner_Admin_Trait {
 
                     <p class="rma-actions">
                         <button type="button" class="button button-primary" id="qmo-banner-uret-btn">Kampanyayı Oluştur</button>
-                        <a class="button" href="<?php echo esc_url( $this->banner_wizard_url( 'kampanyalar' ) ); ?>">2. adıma dön</a>
+                        <a class="button" href="<?php echo esc_url( $this->banner_wizard_url( 'kampanyalar' ) ); ?>">Kampanyalara dön</a>
                     </p>
                     <div class="rma-kb-uret-sonuc" id="qmo-banner-uret-sonuc" role="status" aria-live="polite"></div>
                 </div>

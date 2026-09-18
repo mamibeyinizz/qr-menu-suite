@@ -105,12 +105,49 @@ class QMO_Banner_Slider_Settings {
      */
     public static function oranlar() {
         return array(
-            '16:9' => array( 'etiket' => '16:9 — Geniş (varsayılan)', 'css' => '16 / 9' ),
-            '21:9' => array( 'etiket' => '21:9 — Sinemaskop (daha ince şerit)', 'css' => '21 / 9' ),
-            '3:1'  => array( 'etiket' => '3:1 — İnce şerit', 'css' => '3 / 1' ),
-            '4:3'  => array( 'etiket' => '4:3 — Yüksek', 'css' => '4 / 3' ),
-            '1:1'  => array( 'etiket' => '1:1 — Kare', 'css' => '1 / 1' ),
+            '16:9' => array(
+                'etiket'      => 'Geniş Banner — 16:9',
+                'css'         => '16 / 9',
+                'ux_baslik'   => 'Geniş Banner',
+                'ux_kullanim' => 'Menü üstü ve ana kampanya alanı',
+            ),
+            '21:9' => array(
+                'etiket'      => 'Ultra Geniş — 21:9',
+                'css'         => '21 / 9',
+                'ux_baslik'   => 'Ultra Geniş',
+                'ux_kullanim' => 'İnce yatay kampanya şeritleri',
+            ),
+            '3:1'  => array(
+                'etiket'      => 'Banner Şeridi — 3:1',
+                'css'         => '3 / 1',
+                'ux_baslik'   => 'Banner Şeridi',
+                'ux_kullanim' => 'Dar yatay alanlar',
+            ),
+            '4:3'  => array(
+                'etiket'      => 'Klasik — 4:3',
+                'css'         => '4 / 3',
+                'ux_baslik'   => 'Klasik',
+                'ux_kullanim' => 'Daha yüksek görsel alanı',
+            ),
+            '1:1'  => array(
+                'etiket'      => 'Kare — 1:1',
+                'css'         => '1 / 1',
+                'ux_baslik'   => 'Kare',
+                'ux_kullanim' => 'Kare vitrin ve sosyal paylaşım uyumu',
+            ),
         );
+    }
+
+    /**
+     * Oran seçici kartlarında gösterilecek piksel boyutu metni.
+     *
+     * @param string $anahtar oranlar() anahtarı.
+     * @return string
+     */
+    public static function oran_px_etiketi( $anahtar ) {
+        $px = self::onerilen_px( $anahtar );
+
+        return (int) $px[0] . '×' . (int) $px[1] . ' px';
     }
 
     /**
