@@ -32,7 +32,10 @@
     background: var(--rma-nav-bg);
     border-bottom: 1px solid var(--rma-nav-border);
     scrollbar-width: none;
-    padding: var(--rma-nav-pt) 12px var(--rma-nav-pb);
+    /* Sol-sağ boşluk ön yüzde ortak ray değişkeninden gelir; admin canlı
+       önizlemesinde değişken tanımlı olmadığı için eski 12px yürürlükte
+       kalır ve önizleme görünümü değişmez. */
+    padding: var(--rma-nav-pt) var(--rma-gutter, 12px) var(--rma-nav-pb);
     box-sizing: border-box;
     width: 100%;
     -webkit-overflow-scrolling: touch;
@@ -47,8 +50,28 @@
 
 .rma-nav::-webkit-scrollbar { display:none; }
 
+/* Sağ kenar yumuşatması: kaydırma çubuğu gizli olduğu için kategorilerin
+   sağda devam ettiğine dair hiçbir ipucu yoktu. Maske yalnızca son 20px'i
+   etkiler; nav'ın sonunda en az bir gutter kadar iç boşluk bulunduğundan
+   sona kaydırıldığında yazıya değil o boşluğa denk gelir — içerik gizlenmez.
+
+   :not(.is-sticky) ZORUNLU: maskenin boyama alanı border-box'tır, sabitlenmiş
+   nav'ın dışarı taşan gölgesini (ve altındaki 2px'lik accent çizgisini)
+   kırpardı. Yalnızca ön yüzde uygulanır; admin canlı önizlemesi etkilenmez. */
+.rma-wrap .rma-nav:not(.is-sticky) {
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 20px), transparent);
+            mask-image: linear-gradient(to right, #000 calc(100% - 20px), transparent);
+}
+
 .rma-nav-btn {
     padding: var(--rma-nav-btn-pv) var(--rma-nav-btn-ph);
+    /* Admin'in dikey padding ayarı korunur; min-height yalnızca dokunma
+       hedefi için bir TABAN kurar, ayar bunun üstüne çıkabilir.
+       display DEĞİŞTİRİLMEZ: "nokta" aktif göstergesi (::after) ve
+       Öneriler'in ✦ ön eki (::before) buton akışına bağlıdır; flex'e
+       çevrilirse ikisi de yan yana kayar. <button> içeriğini zaten
+       dikeyde ortalar, min-height tek başına yeterlidir. */
+    min-height: 44px;
     background: none;
     border: none !important;
     outline: none !important;
@@ -70,6 +93,15 @@
 }
 
 .rma-nav-btn:hover { color: var(--rma-text); }
+
+/* Kategori butonlarında `outline:none !important` tema odak rengini
+   engelliyordu ama klavye kullanıcısını da köre bırakıyordu. Odak
+   yalnızca klavyeyle gezilirken ve QRMS accent'iyle geri veriliyor. */
+.rma-nav-btn:focus-visible {
+    outline: 2px solid var(--rma-nav-active) !important;
+    outline-offset: -2px !important;
+    color: var(--rma-text) !important;
+}
 
 .rma-nav-btn.rma-suggestions-btn { color: var(--rma-nav-active); font-weight: 700; }
 .rma-nav-btn.rma-suggestions-btn::before { content:'✦ '; font-size:.68em; opacity:.85; }

@@ -56,11 +56,43 @@
 }
 .rma-wrap > * { position:relative; z-index:1; }
 
+/* =====================================================================
+   BİLEŞEN TOKENLARI (component scope)
+
+   Bunlar admin ayarı DEĞİLDİR: admin'den gelen :root tokenlarından
+   (card / border / text / accent) türetilir ya da salt yerleşim
+   değeridir. Böylece restoran sahibi renk/font değiştirdiğinde arama
+   yüzeyi, hizalama rayı ve kontrol yüksekliği kendiliğinden uyum sağlar
+   ve hiçbir yerde aynı değer ikinci kez yazılmaz.
+
+   --rma-gutter      : toolbar / nav / başlık / grid / chip ortak sol-sağ rayı
+   --rma-control-h   : arama + filtre butonu ortak yüksekliği (dokunma hedefi)
+   --rma-field-bg    : form yüzeyi — karttan bir ton ayrışır
+   --rma-field-border: form çerçevesi — --rma-border'dan bir ton belirgin
+   --rma-rail        : masaüstünde içeriğin hizalandığı azami genişlik
+===================================================================== */
+.rma-wrap {
+    --rma-gutter: 16px;
+    --rma-control-h: 46px;
+    --rma-rail: 1360px;
+    /* color-mix desteklenmeyen tarayıcılarda yürürlükte kalan yedek. */
+    --rma-field-bg: var(--rma-card);
+    --rma-field-border: var(--rma-border);
+}
+@supports (color: color-mix(in srgb, #000 50%, #fff)) {
+    .rma-wrap {
+        --rma-field-bg: color-mix(in srgb, var(--rma-text) 6%, var(--rma-card));
+        --rma-field-border: color-mix(in srgb, var(--rma-text) 16%, var(--rma-border));
+    }
+}
+@media (min-width:768px)  { .rma-wrap { --rma-gutter: 20px; --rma-control-h: 44px; } }
+@media (min-width:1024px) { .rma-wrap { --rma-gutter: 24px; } }
+
 .rma-toolbar {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 14px 16px 13px;
+    padding: 12px var(--rma-gutter);
     background: var(--rma-toolbar-bg);
     width: 100%;
     flex-wrap: nowrap;
@@ -79,29 +111,33 @@
 }
 .rma-search-icon {
     position: absolute !important;
-    left: 18px !important;
+    left: 14px !important;
     top: 50% !important;
     transform: translateY(-50%) !important;
     color: var(--rma-desc) !important;
     pointer-events: none !important;
-    width: 15px !important;
-    height: 15px !important;
+    width: 16px !important;
+    height: 16px !important;
     flex-shrink: 0 !important;
     z-index: 2 !important;
-    opacity: 0.55 !important;
+    opacity: 0.8 !important;
 }
 .rma-search-input {
     width: 100% !important;
-    padding: 10px 16px 10px 58px !important;
-    border: 1px solid var(--rma-border) !important;
-    border-radius: 10px !important;
-    background: var(--rma-card) !important;
+    /* İkon 14px'ten başlayıp 16px genişlikte: metin 40px'te başlar,
+       ikonla arasında dengeli 10px kalır (eskiden 40px boşluk vardı). */
+    padding: 0 14px 0 40px !important;
+    border: 1px solid var(--rma-field-border) !important;
+    border-radius: 12px !important;
+    background: var(--rma-field-bg) !important;
     color: var(--rma-text) !important;
     font-family: var(--rma-font-body) !important;
-    font-size: 0.86rem !important;
+    /* 16px ALTINA İNMEMELİ: iOS Safari daha küçük punto bir alana odaklanınca
+       viewport'u zorla büyütür ve kullanıcı menü düzeninden çıkamaz. */
+    font-size: 16px !important;
     font-weight: 400 !important;
     line-height: 1.4 !important;
-    height: 42px !important;
+    height: var(--rma-control-h) !important;
     outline: none !important;
     transition: border-color .25s, box-shadow .25s !important;
     text-overflow: ellipsis !important;
@@ -111,32 +147,40 @@
     appearance: none !important;
     letter-spacing: 0.01em !important;
 }
-.rma-search-input::placeholder { color: var(--rma-desc); opacity:1; }
-.rma-search-input:focus { border-color: var(--rma-accent); box-shadow: var(--rma-gold-glow); }
+/* Zoom riski yalnızca dokunmatik/mobilde: masaüstünde tipografi ölçeği korunur. */
+@media (min-width:768px) {
+    .rma-search-input { font-size: 0.9rem !important; }
+}
+.rma-search-input::placeholder { color: var(--rma-desc); opacity:.9; }
+.rma-search-input:focus { border-color: var(--rma-accent) !important; box-shadow: var(--rma-gold-glow) !important; }
 
 .rma-filter-trigger {
     display: flex;
     align-items: center;
-    gap: 6px;
-    padding: 0 16px;
+    justify-content: center;
+    gap: 7px;
+    padding: 0 15px;
     border: 1px solid var(--rma-border);
-    border-radius: 10px;
-    background: var(--rma-card);
+    border-radius: 12px;
+    background: var(--rma-field-bg);
     color: var(--rma-desc);
     font-family: var(--rma-font-body);
-    font-size: 0.82rem;
+    font-size: 0.84rem;
     font-weight: 600;
     cursor: pointer;
     white-space: nowrap;
     flex-shrink: 0;
     transition: border-color .25s, color .25s, box-shadow .25s, background .25s;
-    height: 40px;
+    height: var(--rma-control-h);
     -webkit-appearance: none;
     appearance: none;
     position: relative;
     letter-spacing: .01em;
 }
-.rma-filter-trigger svg { width:13px; height:13px; flex-shrink:0; }
+.rma-filter-trigger svg { width:15px; height:15px; flex-shrink:0; opacity:.85; }
+.rma-filter-trigger:hover svg,
+.rma-filter-trigger.active svg,
+.rma-filter-trigger.has-selection svg { opacity:1; }
 .rma-filter-trigger:hover,
 .rma-filter-trigger.active {
     border-color: var(--rma-accent);
@@ -497,50 +541,98 @@
 .rma-panel-btn-apply:active { transform: translateY(0) !important; }
 
 
+/* Filtre butonu tema CSS'ine karşı korunur ama ADMIN ayarları (çerçeve +
+   metin rengi) yürürlükte kalır. :not() zinciri önemli: eskiden koşulsuz
+   `box-shadow:none !important` yazıldığı için hover/active durumundaki
+   görsel geri bildirim sessizce ölüyordu. */
+.rma-wrap .rma-filter-trigger:not(:hover):not(.active):not(.has-selection) {
+    box-shadow: none !important;
+}
 .rma-wrap .rma-filter-trigger {
     border-color: var(--rma-filter-btn-border) !important;
     color: var(--rma-filter-btn-text) !important;
     outline: none !important;
-    box-shadow: none !important;
 }
 .rma-wrap .rma-filter-trigger:hover,
 .rma-wrap .rma-filter-trigger.active,
 .rma-wrap .rma-filter-trigger.has-selection {
     border-color: var(--rma-accent) !important;
     color: var(--rma-accent) !important;
+    /* Glow değil, 1px'lik sakin bir halka: ikincil kontrol olarak kalır. */
+    box-shadow: 0 0 0 1px var(--rma-accent-dim) !important;
+}
+
+/* =====================================================================
+   ODAK GÖSTERGESİ + TEMA İZOLASYONU
+
+   Menüdeki etkileşimli öğelerin çoğunda tema CSS'ine karşı
+   `outline:none !important` yazılıydı; bu, temanın pembe/mor odak
+   halkasını engellerken klavye kullanıcısını da tamamen köre bırakıyordu.
+   Burada odak YALNIZCA klavye ile gezilirken (:focus-visible) geri
+   veriliyor ve rengi QRMS accent'inden geliyor.
+
+   Kurallar `.rma-wrap` kapsamındadır; `:where()` iç seçiciye özgüllük
+   katmadığı için bileşenlerin kendi kuralları ezilmez. Global
+   button/input/a/* seçicisi KULLANILMAZ.
+===================================================================== */
+.rma-wrap :where(button, input, select, textarea, [tabindex]):focus-visible {
+    outline: 2px solid var(--rma-accent) !important;
+    outline-offset: 2px !important;
+}
+.rma-wrap .rma-search-input:focus-visible { outline-offset: 1px !important; }
+.rma-wrap .rma-card:focus-visible {
+    border-color: var(--rma-accent);
+    outline-offset: -2px !important;
 }
 
 
-.rma-content { box-sizing:border-box; width:100%; }
-.rma-section  { scroll-margin-top: calc(var(--rma-nav-h) + 14px); }
+/* Masaüstünde içerik kontrollü bir genişlikte ortalanır; arka plan
+   (.rma-wrap) tam genişlikte kalır. Kolon sistemi aynen korunur, yalnızca
+   1360px üstünde kartların gereksiz yere gerilmesi engellenir. */
+.rma-content {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: calc(var(--rma-rail) + 2 * var(--rma-gutter));
+    margin-inline: auto;
+}
+/* Bölümün sabit nav altında kalmaması için bırakılacak güvenli boşluk.
+   TEK KAYNAK: rma-frontend.js içindeki sectionScrollMargin() bu değeri
+   buradan okur, kendi sabitini tutmaz. --rma-nav-h nav'ın ölçülen gerçek
+   yüksekliğidir (updateNavHeightVar), sabit bir tahmin değildir. */
+.rma-section  { scroll-margin-top: calc(var(--rma-nav-h) + 16px); }
 
+/* Tüm bölüm başlıkları aynı sistem: aynı ölçek (admin'in heading_size
+   değeri), aynı ikon çizgisi, aynı divider, aynı ray. "Öneriler" yalnızca
+   accent rengiyle ayrışır — nav'daki kategori adıyla görsel yarışı azaltır. */
 .rma-section-title {
     font-family: var(--rma-font-display);
     font-size: var(--rma-heading-size);
     font-weight: var(--rma-heading-weight);
     font-style: var(--rma-heading-style);
-    margin: 28px 14px 12px;
-    color: var(--rma-heading-color);
+    margin: 26px var(--rma-gutter) 12px;
+    color: var(--rma-section-title, var(--rma-heading-color));
     display: flex;
     align-items: center;
     gap: 12px;
     letter-spacing: -.02em;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
 }
 .rma-section-title::before { content:''; display:block; width:22px; height:1px; background: linear-gradient(90deg, var(--rma-accent), transparent); flex-shrink:0; }
-.rma-section-title::after  { content:''; flex:1; height:1px; background: linear-gradient(90deg, var(--rma-border), transparent); }
-.rma-section-title.rma-suggestions-title { color: var(--rma-accent); font-size: calc(var(--rma-heading-size) * 1.06); }
-.rma-section-title.rma-suggestions-title::before { width:28px; background: linear-gradient(90deg, var(--rma-accent), color-mix(in srgb, var(--rma-accent) 30%, transparent)); }
+.rma-section-title::after  { content:''; flex:1 0 24px; height:1px; background: linear-gradient(90deg, var(--rma-border), transparent); opacity:.6; }
+.rma-section-title.rma-suggestions-title { color: var(--rma-accent); }
+.rma-section-title.rma-suggestions-title::before { background: linear-gradient(90deg, var(--rma-accent), transparent); }
 
 .rma-grid {
     display: grid;
     grid-template-columns: 1fr;
     gap: 10px;
-    padding: 0 10px 14px;
+    padding: 0 var(--rma-gutter) 14px;
     box-sizing: border-box;
     width: 100%;
 }
-@media (min-width:600px)  { .rma-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; padding: 0 14px 16px; } }
-@media (min-width:1024px) { .rma-grid { grid-template-columns: repeat(3, 1fr); gap: 14px; padding: 0 18px 18px; } }
+@media (min-width:600px)  { .rma-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; padding-bottom: 16px; } }
+@media (min-width:1024px) { .rma-grid { grid-template-columns: repeat(3, 1fr); gap: 14px; padding-bottom: 18px; } }
 @media (min-width:1400px) { .rma-grid { grid-template-columns: repeat(4, 1fr); } }
 
 .rma-card {
@@ -591,14 +683,30 @@
 }
 .rma-card:hover .rma-card-img { transform: scale(1.06); }
 
-.rma-card-badges { position: absolute; top: 5px; left: 4px; display: flex; flex-direction: column; gap: 3px; z-index: 2; }
-.rma-badge { font-family: var(--rma-font-body); font-size: .52rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: #0a0a0a; padding: 2px 5px; border-radius: 3px; line-height: 1.4; }
-.rma-badge.new         { background:linear-gradient(135deg,#27ae60,#1a8c48); color:#fff; }
-.rma-badge.popular     { background:linear-gradient(135deg,var(--rma-accent),#a07830); }
-.rma-badge.discount    { background:linear-gradient(135deg,#c0392b,#96281b); color:#fff; }
-.rma-badge.recommended { background:linear-gradient(135deg,#8e44ad,#6c3483); color:#fff; }
+/* Rozetler: veri asla gizlenmez, yalnızca sunumu sakinleştirilir.
+   - Gradient yerine düz renk (premium algı = daha az efekt).
+   - Dikey yığın yerine yatay sarma: 5-6 rozetli bir üründe eskiden her
+     rozet ayrı satıra iniyor ve görselin tamamını kaplıyordu; artık aynı
+     rozetler 2 satıra sığar, görselin alt yarısı açık kalır. Rozet
+     GİZLENMEZ — yalnızca yerleşimi değişir.
+   - .52rem (~8px) okunmuyordu; .6rem + daha dar letter-spacing. */
+.rma-card-badges {
+    position: absolute;
+    top: 5px; left: 5px;
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    gap: 3px;
+    z-index: 2;
+    max-width: calc(100% - 10px);
+}
+.rma-badge { font-family: var(--rma-font-body); font-size: .6rem; font-weight: 700; letter-spacing: .02em; text-transform: uppercase; color: #0a0a0a; padding: 2px 6px; border-radius: 4px; line-height: 1.35; white-space: nowrap; }
+.rma-badge.new         { background:#1f8f4d; color:#fff; }
+.rma-badge.popular     { background:var(--rma-accent); }
+.rma-badge.discount    { background:#a83226; color:#fff; }
+.rma-badge.recommended { background:#6d4592; color:#fff; }
 /* Aktif fiyat kampanyası indirimse otomatik basılır (bkz. RMA_Kampanya::rozet_html). */
-.rma-badge.campaign    { background:linear-gradient(135deg,#e74c3c,#b03a2e); color:#fff; }
+.rma-badge.campaign    { background:#c0392b; color:#fff; }
 
 /* Tükendi: ürün menüde kalır ama soluk görünür. Rozet görselin alt
    şeridindedir — kart gövdesindeki başlık/fiyat satırını itmez. */
@@ -680,13 +788,33 @@
 @media (min-width:600px)  { .rma-card-body { padding: 13px 14px; gap: 4px; } }
 @media (min-width:1024px) { .rma-card-body { padding: 14px 15px 14px 13px; gap: 5px; } }
 
-.rma-card-title { font-family: var(--rma-font-body); font-size: var(--rma-body-size); font-weight: var(--rma-body-weight); margin: 0; color: var(--rma-body-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.3; letter-spacing: -.01em; }
-.rma-card-desc { font-size: var(--rma-desc-size); font-weight: 400; color: var(--rma-desc-color); margin: 0; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-@media (max-width:340px) { .rma-card-desc { display:none; } }
+/* Ürün adı birinci öncelikli bilgidir: tek satıra kırpılmaz, en fazla iki
+   satıra sarar. overflow-wrap uzun Türkçe bileşik adların taşmasını önler. */
+.rma-card-title {
+    font-family: var(--rma-font-body);
+    font-size: var(--rma-body-size);
+    font-weight: var(--rma-body-weight);
+    margin: 0;
+    color: var(--rma-body-color);
+    line-height: 1.32;
+    letter-spacing: -.01em;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+}
+/* Açıklama dar ekranda tek satıra iner — bilgi gizlenmez, ölçeklenir. */
+.rma-card-desc { font-size: var(--rma-desc-size); font-weight: 400; color: var(--rma-desc-color); margin: 0; line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+@media (min-width:600px) { .rma-card-desc { -webkit-line-clamp: 2; } }
 
 .rma-card-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 3px; gap: 6px; }
 .rma-card-price { font-family: var(--rma-font-price); font-size: var(--rma-price-size); font-weight: 700; color: var(--rma-price-color); letter-spacing: -.02em; line-height: 1; }
-.rma-card-price-group { display:flex; align-items:baseline; gap:7px; flex-wrap:wrap; }
+/* Fiyat birincil, hazırlanış süresi ikincildir. Süre HTML'de fiyatla aynı
+   grubun içinde basılır (bkz. render_card) — yapıyı değiştirmeden, süreyi
+   `margin-inline-start:auto` ile satırın sonuna iterek ve dar ekranda ayrı
+   satıra alarak hiyerarşi CSS tarafında kurulur. */
+.rma-card-price-group { display:flex; align-items:baseline; column-gap:8px; row-gap:2px; flex-wrap:wrap; flex:1 1 auto; min-width:0; }
 .qmo-kombin-old-price { color: var(--rma-desc); font-size: .88em; font-weight: 500; text-decoration: line-through; }
 .qmo-kombin-new-price { color: #c9a84c; font-family: var(--rma-font-price); font-size: var(--rma-price-size); font-weight: 700; letter-spacing: -.02em; line-height: 1; }
 .rma-modal-price .qmo-kombin-old-price { margin-right: 7px; }
@@ -699,8 +827,8 @@
 .rma-card-price-group .rma-price-old + .rma-price-new { color: #c9a84c; }
 .rma-modal-price .rma-price-old { margin-right: 7px; }
 .rma-modal-price .rma-price-new { color: #c9a84c; }
-.rma-card-prep { display:inline-flex; align-items:center; gap:3px; font-size:.7rem; font-weight:600; color: var(--rma-desc); opacity:.85; }
-.rma-card-prep svg { flex-shrink:0; opacity:.8; }
+.rma-card-prep { display:inline-flex; align-items:center; gap:4px; margin-inline-start:auto; font-size:.68rem; font-weight:500; color: var(--rma-desc); opacity:.7; white-space:nowrap; flex-shrink:0; }
+.rma-card-prep svg { flex-shrink:0; opacity:.75; }
 .rma-card-arrow { width: 20px; height: 20px; border-radius: 50%; border: 1px solid var(--rma-border); display: flex; align-items: center; justify-content: center; color: var(--rma-desc); font-size: .72rem; transition: border-color .2s, color .2s, background .2s; flex-shrink: 0; }
 .rma-card:hover .rma-card-arrow { border-color: var(--rma-accent); color: var(--rma-accent); background: var(--rma-accent-dim); }
 
@@ -737,7 +865,7 @@
     gap: 8px;
     align-items: center;
     padding-block: 10px 2px;
-    padding-inline: 0;
+    padding-inline: var(--rma-gutter);
 }
 .rma-active-chips[hidden] { display: none; }
 
@@ -897,6 +1025,10 @@
 @media (prefers-reduced-motion: reduce) {
     .rma-card, .rma-section-title, .rma-modal-box, .rma-panel-sheet, .rma-panel-overlay { animation: none !important; }
     .rma-modal-inner, .rma-card, .rma-card-img { transition: none !important; }
+    /* Yumuşak kaydırma da hareket duyarlılığı kapsamındadır: kategoriye
+       atlama ve nav'ın kendini ortalaması artık anında gerçekleşir. */
+    .rma-wrap, .rma-wrap .rma-nav { scroll-behavior: auto !important; }
+    .rma-wrap .rma-nav-btn, .rma-wrap .rma-search-input, .rma-wrap .rma-filter-trigger, .rma-wrap .rma-card-arrow { transition: none !important; }
     .rma-modal-img-wrap::before { animation: none !important; transition: none !important; }
     .rma-modal-img { transition: none !important; }}
 .rma-modal-close { position:absolute; top:10px; right:12px; width:30px; height:30px; border-radius:50%; background:rgba(255,255,255,0.08); border:1px solid var(--rma-border); display:flex; align-items:center; justify-content:center; color:var(--rma-desc); cursor:pointer; z-index:2; font-size:15px; line-height:1; transition:background .2s, color .2s; }
@@ -950,14 +1082,30 @@
 .rma-qr-notice-banner { display:flex; align-items:center; gap:8px; background:rgba(0,0,0,0.03); border:1px solid rgba(0,0,0,0.08); border-radius:8px; padding:10px 14px; font-size:.78rem; color:#666; }
 
 @media (min-width:768px) {
-    .rma-toolbar { padding: 16px 18px 14px; gap:12px; }
-    .rma-section-title { margin: 32px 18px 14px; }
+    .rma-toolbar { padding-block: 14px; gap:12px; }
+    .rma-section-title { margin-block: 30px 14px; }
     .rma-panel-sheet { max-width: 440px; left: auto; right: 0; border-left: 1px solid var(--rma-border); animation: rmaPanelInDesktop .3s cubic-bezier(0.22, 1, 0.36, 1); }
     @keyframes rmaPanelInDesktop { from { opacity: 0; transform: translateX(40px); } to { opacity: 1; transform: translateX(0); } }
 }
 @media (min-width:1024px) {
-    .rma-toolbar { padding: 18px 22px 16px; }
-    .rma-section-title { margin: 36px 22px 16px; }
+    .rma-toolbar { padding-block: 16px; }
+    .rma-section-title { margin-block: 34px 16px; }
+}
+
+/* =====================================================================
+   GENİŞ EKRAN HİZA RAYI
+
+   Toolbar ve kategori navigasyonu tam genişlikte şerit olarak kalır
+   (arka planları admin'den yönetiliyor), fakat İÇERİKLERİ grid ile aynı
+   düşey raya oturur. Böylece 1440px+ ekranlarda arama kutusu ve ilk
+   kategori, ürün kartlarıyla aynı hizada başlar.
+===================================================================== */
+@media (min-width:1400px) {
+    .rma-wrap .rma-toolbar,
+    .rma-wrap .rma-nav,
+    .rma-wrap .rma-active-chips {
+        padding-inline: max(var(--rma-gutter), calc((100% - var(--rma-rail)) / 2));
+    }
 }
 
 /* =====================================================================
