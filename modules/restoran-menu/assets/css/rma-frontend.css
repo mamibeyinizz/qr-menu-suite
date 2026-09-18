@@ -595,7 +595,11 @@
     max-width: calc(var(--rma-rail) + 2 * var(--rma-gutter));
     margin-inline: auto;
 }
-.rma-section  { scroll-margin-top: calc(var(--rma-nav-h) + 14px); }
+/* Bölümün sabit nav altında kalmaması için bırakılacak güvenli boşluk.
+   TEK KAYNAK: rma-frontend.js içindeki sectionScrollMargin() bu değeri
+   buradan okur, kendi sabitini tutmaz. --rma-nav-h nav'ın ölçülen gerçek
+   yüksekliğidir (updateNavHeightVar), sabit bir tahmin değildir. */
+.rma-section  { scroll-margin-top: calc(var(--rma-nav-h) + 16px); }
 
 /* Tüm bölüm başlıkları aynı sistem: aynı ölçek (admin'in heading_size
    değeri), aynı ikon çizgisi, aynı divider, aynı ray. "Öneriler" yalnızca

@@ -293,11 +293,61 @@ function setActiveBtn(slug, scrollBtn) {
 
 var unlockTimer = null;
 
+/**
+ * Bölümün güvenli üst boşluğu.
+ *
+ * Tek kaynak CSS'tir: `.rma-section { scroll-margin-top: calc(var(--rma-nav-h) + 16px) }`.
+ * Burada okunarak JS'te ikinci bir sabit tutulması önlenir; --rma-nav-h
+ * zaten updateNavHeightVar() ile ölçülen gerçek nav yüksekliğidir.
+ *
+ * @param {Element} section Hedef bölüm.
+ * @return {number} Bölümün üstünde bırakılacak piksel boşluğu.
+ */
+function sectionScrollMargin(section) {
+    var m = 0;
+    if (window.getComputedStyle) {
+        m = parseFloat(window.getComputedStyle(section).scrollMarginTop) || 0;
+    }
+    return m > 0 ? m : navHeight() + 16;
+}
+
 function scrollToSection(slug) {
     var section = qs('.rma-section[data-cat-slug="' + (window.CSS && CSS.escape ? CSS.escape(slug) : slug) + '"]', content);
     if (!section) return;
 
-    var target = Math.max(0, docTop(section) - navHeight() - 12);
+    /*
+     * ÇİFT OFFSET DÜZELTMESİ
+     *
+     * Nav sabitlendiğinde (.is-sticky) akıştan çıkar ve yerini korumak için
+     * .rma-nav-wrapper'a navH kadar padding-top eklenir; sabitlik çözülünce
+     * bu padding kaldırılır. Yani bölümlerin BELGE konumu, sabitlik durumu
+     * değiştiği anda navH kadar kayar.
+     *
+     * Eski hesap (docTop - navH - 12) hedefi ÖLÇÜM ANINDAKİ düzene göre
+     * buluyordu; yumuşak kaydırma sürerken sabitlik durumu değişince içerik
+     * navH kadar kayıyor ve hedef bölüm ya nav'ın altında kalıyor ya da
+     * gereğinden çok aşağıda duruyordu.
+     *
+     * Çözüm: önce telafi padding'i çıkarılarak bölümün sabitlikten bağımsız
+     * konumu (base) bulunur, sonra kaydırma BİTTİĞİNDE nav'ın sabit olup
+     * olmayacağı hesaba katılarak hedef üretilir. İki durumda da bölümün
+     * üstünde tam olarak scroll-margin-top kadar boşluk kalır.
+     */
+    var navH = navHeight();
+    var pad  = ( navWrapper && parseFloat(navWrapper.style.paddingTop) ) || 0;
+    var base = docTop(section) - pad;
+    var gap  = sectionScrollMargin(section);
+
+    // 1) Nav hedefte SABİT kalacaksa: telafi padding'i yürürlükte olacağı
+    //    için bölüm navH kadar aşağıda olur.
+    var target = base + navH - gap;
+
+    // 2) Hesaplanan konum nav'ın sabitlenme eşiğinin üstündeyse nav akışta
+    //    kalır; telafi padding'i olmaz. (Bu dalda target her zaman eşiğin
+    //    altında çıkar, dolayısıyla iki dal birbiriyle çelişmez.)
+    if (!STICKY_ON || target < navOffsetTop) target = base - gap;
+
+    target = Math.max(0, target);
     state.scrollLocked = true;
     window.scrollTo({ top: target, behavior: 'smooth' });
 
