@@ -1,109 +1,89 @@
 /**
- * Kampanya banner iframe yüksekliği — davranış regresyonu (Node + jsdom).
+ * H1 regression guard — banner preview iframe content height calculation.
  *
- * Amaç: oran/cihaz değişince yükseklik hem artabilir hem azalabilir;
- * documentElement.scrollHeight ile tek yönde şişme olmamalı.
+ * NOT a real Chromium/layout test: no aspect-ratio, ResizeObserver, iframe
+ * lifecycle, or picture/source selection. Uses plain object mocks for
+ * querySelector + getBoundingClientRect only.
+ *
+ * Guards against reintroducing ratchet logic such as:
+ *   Math.max(previousIframeHeight, documentElement.scrollHeight)
+ * which would keep iframe height at 960 when the banner root measures 427.
  */
-import { JSDOM } from 'jsdom';
 import core from '../modules/restoran-menu/assets/js/banner-preview-iframe-core.js';
 
 const { buildIframeDocument, computeIframeContentHeight } = core;
 
-function ratioHeight(vw, ratio) {
-    const parts = String(ratio).split(':').map(Number);
-    const w = parts[0] || 16;
-    const h = parts[1] || 9;
-    return Math.ceil((vw * h) / w);
+/**
+ * Minimal Document-like stub: stale scrollHeight simulates a tall iframe shell.
+ *
+ * @param {number} rootHeight        .qmo-banner-root getBoundingClientRect height
+ * @param {number} [staleScrollHeight] inflated document/body scrollHeight
+ * @return {object}
+ */
+function mockDoc(rootHeight, staleScrollHeight) {
+    const scroll = typeof staleScrollHeight === 'number' ? staleScrollHeight : rootHeight;
+    const root = {
+        getBoundingClientRect: () => ({
+            width: 1280,
+            height: rootHeight,
+            top: 0,
+            left: 0,
+            right: 1280,
+            bottom: rootHeight
+        })
+    };
+
+    return {
+        querySelector(sel) {
+            return sel === '.qmo-banner-root' ? root : null;
+        },
+        documentElement: { scrollHeight: scroll },
+        body: { scrollHeight: scroll }
+    };
 }
 
-function docWithBanner(vw, ratio, previousIframeHeight) {
-    const html = buildIframeDocument({
-        kokHtml: '<div class="qmo-banner-root"></div>',
-        viewportWidth: vw,
-        assets: {}
-    });
-    const dom = new JSDOM(html, { pretendToBeVisual: true });
-    const doc = dom.window.document;
-    const root = doc.querySelector('.qmo-banner-root');
-    const h = ratioHeight(vw, ratio);
-    root.style.width = vw + 'px';
-    root.style.height = h + 'px';
-    root.getBoundingClientRect = () => ({
-        width: vw,
-        height: h,
-        top: 0,
-        left: 0,
-        right: vw,
-        bottom: h
-    });
-
-    if (previousIframeHeight) {
-        doc.documentElement.style.height = previousIframeHeight + 'px';
-        doc.body.style.minHeight = previousIframeHeight + 'px';
-        Object.defineProperty(doc.documentElement, 'scrollHeight', {
-            configurable: true,
-            get: () => previousIframeHeight
-        });
-        Object.defineProperty(doc.body, 'scrollHeight', {
-            configurable: true,
-            get: () => previousIframeHeight
-        });
-    }
-
-    return { doc, expected: h };
+/** Old ratchet approach this suite must not match production compute. */
+function legacyRatchetHeight(rootHeight, staleScrollHeight) {
+    return Math.max(staleScrollHeight, rootHeight);
 }
 
-function assertDecrease(label, vw, fromRatio, toRatio) {
-    const first = docWithBanner(vw, fromRatio, 0);
-    const h1 = computeIframeContentHeight(first.doc, vw);
-    const second = docWithBanner(vw, toRatio, h1);
-    const h2 = computeIframeContentHeight(second.doc, vw);
+function assertHeight(label, rootHeight, staleScrollHeight, viewportWidth, expected) {
+    const doc = mockDoc(rootHeight, staleScrollHeight);
+    const result = computeIframeContentHeight(doc, viewportWidth);
 
-    if (!(h2 < h1)) {
-        throw new Error(`${label}: beklenen küçülme yok (${h1} → ${h2})`);
+    if (result !== expected) {
+        throw new Error(`${label}: beklenen ${expected}, gelen ${result}`);
     }
-    if (h2 !== second.expected) {
-        throw new Error(`${label}: kök ölçümü ${second.expected}, sonuç ${h2}`);
+
+    const ratchet = legacyRatchetHeight(rootHeight, staleScrollHeight);
+    if (ratchet !== expected && result === ratchet) {
+        throw new Error(`${label}: ratchet mantığı geri gelmiş (${ratchet})`);
     }
 }
 
-function assertChange(label, vw, fromRatio, toRatio, direction) {
-    const first = docWithBanner(vw, fromRatio, 0);
-    const h1 = computeIframeContentHeight(first.doc, vw);
-    const second = docWithBanner(vw, toRatio, h1);
-    const h2 = computeIframeContentHeight(second.doc, vw);
+// Explicit H1 scenarios (stale scrollHeight must not win over root measurement).
+assertHeight('960 shell → root 427', 427, 960, 1280, 427);
+assertHeight('720 shell → root 549', 549, 720, 1280, 549);
+assertHeight('427 shell → root 720', 720, 427, 1280, 720);
 
-    if (direction === 'down' && !(h2 < h1)) {
-        throw new Error(`${label}: beklenen azalma yok (${h1} → ${h2})`);
+function assertTransition(label, vw, fromRoot, toRoot) {
+    const first = computeIframeContentHeight(mockDoc(fromRoot, 0), vw);
+    const second = computeIframeContentHeight(mockDoc(toRoot, first), vw);
+
+    if (toRoot < fromRoot && !(second < first)) {
+        throw new Error(`${label}: küçülme yok (${first} → ${second})`);
     }
-    if (direction === 'up' && !(h2 > h1)) {
-        throw new Error(`${label}: beklenen artış yok (${h1} → ${h2})`);
+    if (toRoot > fromRoot && !(second > first)) {
+        throw new Error(`${label}: büyüme yok (${first} → ${second})`);
+    }
+    if (second !== toRoot) {
+        throw new Error(`${label}: kök ${toRoot}, sonuç ${second}`);
     }
 }
 
-const vwDesktop = 1280;
-const vwMobile = 390;
-
-assertDecrease('16:9 → 21:9', vwDesktop, '16:9', '21:9');
-assertChange('21:9 → 4:3', vwDesktop, '21:9', '4:3', 'up');
-assertDecrease('4:3 → 3:1', vwDesktop, '4:3', '3:1');
-assertChange('3:1 → 16:9', vwDesktop, '3:1', '16:9', 'up');
-
-const desk = docWithBanner(vwDesktop, '16:9', 0);
-const deskH = computeIframeContentHeight(desk.doc, vwDesktop);
-const mob = docWithBanner(vwMobile, '16:9', deskH);
-const mobH = computeIframeContentHeight(mob.doc, vwMobile);
-if (!(mobH < deskH)) {
-    throw new Error(`desktop → mobile: ${deskH} → ${mobH}`);
-}
-
-const mob2 = docWithBanner(vwMobile, '16:9', 0);
-const mobH2 = computeIframeContentHeight(mob2.doc, vwMobile);
-const desk2 = docWithBanner(vwDesktop, '16:9', mobH2);
-const deskH2 = computeIframeContentHeight(desk2.doc, vwDesktop);
-if (!(deskH2 > mobH2)) {
-    throw new Error(`mobile → desktop: ${mobH2} → ${deskH2}`);
-}
+assertTransition('16:9→21:9 (720→549 @1280)', 1280, 720, 549);
+assertTransition('21:9→4:3 (549→960 @1280)', 1280, 549, 960);
+assertTransition('desktop→mobile (720→219 @390)', 390, 720, 219);
 
 if (buildIframeDocument({ kokHtml: '<div></div>', viewportWidth: 1280, assets: {} }).includes('min-height:100vh')) {
     throw new Error('buildIframeDocument hâlâ body min-height:100vh içeriyor');
