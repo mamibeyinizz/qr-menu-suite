@@ -64,6 +64,10 @@ function qrms_reset() {
 	$GLOBALS['qrms_test']['can_edit_post'] = array();
 	$GLOBALS['qrms_test']['logged_in']  = false;
 	$GLOBALS['qrms_test']['post_types']    = array();
+	// Ek (attachment) metadata'sı: wp_get_attachment_metadata /
+	// wp_get_attachment_image_src taklitleri buradan okur. Testler arası
+	// sızmasın diye sıfırlanır.
+	$GLOBALS['qrms_test']['attachment_meta'] = array();
 	$GLOBALS['qrms_test']['terms']        = array();
 	$GLOBALS['qrms_test']['object_terms'] = array();
 	$GLOBALS['qrms_test']['styles']     = array();

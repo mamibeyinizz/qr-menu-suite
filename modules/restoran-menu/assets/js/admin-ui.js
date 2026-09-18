@@ -384,6 +384,35 @@
        en az bağımlılıklı karşılığıdır (jquery-ui-sortable gerekmez).
        Kaynak tek: menu_order (ön yüz kısa kodu da bunu okur).
     ----------------------------------------------------------------- */
+    /**
+     * Kampanya listesinin ortak durum satırı.
+     *
+     * Hedef öğe PHP'de `role="status" aria-live="polite"` ile basılır, yani
+     * metin yazıldığı anda ekran okuyucu odağı çalmadan okur. Aynı metin
+     * ikinci kez yazılacaksa önce boşaltılır — aksi hâlde bazı okuyucular
+     * "değişmedi" deyip tekrar okumaz.
+     *
+     * @param {string}  metin Gösterilecek kısa mesaj.
+     * @param {boolean} hata  true ise hata görünümü.
+     */
+    function bannerDurum(metin, hata) {
+        var $kutu = $('#rma-banner-durum');
+        if (!$kutu.length) return;
+
+        $kutu.removeClass('is-hata').text('');
+
+        window.setTimeout(function () {
+            $kutu.toggleClass('is-hata', !!hata).text(metin);
+        }, 50);
+
+        if (!hata) {
+            window.clearTimeout($kutu.data('gizle-timer'));
+            $kutu.data('gizle-timer', window.setTimeout(function () {
+                $kutu.text('');
+            }, 4000));
+        }
+    }
+
     function initBannerOrder() {
         var $list = $('[data-banner-sira]');
         if (!$list.length) return;
@@ -411,8 +440,10 @@
                 action: 'qmo_banner_sira_kaydet',
                 order: order,
                 security: NONCE
+            }).done(function () {
+                bannerDurum('Sıra kaydedildi');
             }).fail(function () {
-                alert('Sıra kaydedilemedi.');
+                bannerDurum('Sıra kaydedilemedi', true);
             });
         }
 
@@ -439,6 +470,113 @@
         });
 
         guncelleUi();
+    }
+
+    /* -----------------------------------------------------------------
+       KAMPANYA LİSTESİ — SATIR İÇİ ODAK VE GÖRSEL
+
+       Kırpma odağını ve görseli, WordPress'in ayrı kayıt ekranına gitmeden
+       değiştirir. Yazma işini sunucudaki qmo_banner_satir_kaydet ucu yapar;
+       o uç CPT ekranındaki save_meta ile aynı beyaz liste/doğrulama
+       kurallarını uygular ve kaydettikten sonra kırpmayı yeniden üretir.
+       CPT ekranındaki alanlar yerinde durur — burası ikinci bir yol.
+    ----------------------------------------------------------------- */
+    function initBannerRowEditor() {
+        var $list = $('[data-banner-sira]');
+        if (!$list.length) return;
+
+        var nonce = $list.data('satir-nonce');
+        if (!nonce) return;
+
+        /* Görseli olmayan satırda <img> hiç basılmaz (src="" ikinci bir
+           istek doğururdu); ilk görsel seçildiğinde burada oluşturulur. */
+        function thumbOgesi($item) {
+            var $img = $item.find('[data-satir-thumb]');
+            if ($img.length) return $img;
+
+            $img = $('<img class="rma-kb-satir-thumb" alt="" data-satir-thumb>');
+            $item.find('.rma-kb-satir-gorsel-kutu').append($img);
+
+            return $img;
+        }
+
+        function satirKaydet($item, veri, basarili) {
+            var istek = $.extend({
+                action: 'qmo_banner_satir_kaydet',
+                nonce: nonce,
+                banner: $item.data('banner-id')
+            }, veri);
+
+            $item.addClass('is-kaydediyor');
+
+            $.post(AJAX_URL, istek).done(function (r) {
+                if (!r || !r.success) {
+                    bannerDurum((r && r.data && r.data.message) || 'Kaydedilemedi', true);
+                    return;
+                }
+                if (typeof basarili === 'function') basarili(r.data);
+                bannerDurum(r.data.message || 'Kaydedildi');
+            }).fail(function () {
+                bannerDurum('Kaydedilemedi', true);
+            }).always(function () {
+                $item.removeClass('is-kaydediyor');
+            });
+        }
+
+        /* Odak değişince küçük resim hemen o kenardan kırpılmış görünür;
+           sunucunun ürettiği dosya bir sonraki yüklemede zaten bunun
+           aynısıdır, ama yanıt gelen URL ile de tazelenir. */
+        $list.on('change', '[data-satir-odak]', function () {
+            var $sel = $(this);
+            var $item = $sel.closest('li[data-banner-id]');
+            var secili = $sel.get(0).options[$sel.get(0).selectedIndex];
+            var css = (secili && secili.getAttribute('data-odak-css')) || 'center center';
+
+            $item.find('[data-satir-thumb]').css('objectPosition', css);
+
+            satirKaydet($item, { odak: $sel.val() }, function (data) {
+                if (data.thumb) {
+                    $item.find('[data-satir-thumb]').attr('src', data.thumb).prop('hidden', false);
+                }
+                if (data.odak_css) {
+                    $item.find('[data-satir-thumb]').css('objectPosition', data.odak_css);
+                }
+            });
+        });
+
+        var frame = null;
+
+        $list.on('click', '[data-satir-gorsel-sec]', function (e) {
+            e.preventDefault();
+
+            if (!window.wp || !window.wp.media) return;
+
+            var $item = $(this).closest('li[data-banner-id]');
+            var $btn = $(this);
+
+            frame = window.wp.media({
+                title: 'Kampanya Görseli Seç',
+                button: { text: 'Bu görseli kullan' },
+                library: { type: 'image' },
+                multiple: false
+            });
+
+            frame.on('select', function () {
+                var a = frame.state().get('selection').first().toJSON();
+
+                satirKaydet($item, { gorsel: a.id }, function (data) {
+                    var $img = thumbOgesi($item);
+                    if (data.thumb) {
+                        $img.attr('src', data.thumb);
+                        $item.find('.rma-kb-satir-bos').remove();
+                    }
+                    if (data.odak_css) $img.css('objectPosition', data.odak_css);
+                    $btn.text('Görseli değiştir');
+                });
+            });
+
+            frame.open();
+        });
     }
 
     /* -----------------------------------------------------------------
@@ -1127,10 +1265,38 @@
             return $el.length ? $el.val() : fallback;
         }
 
+        /* "Mobilde farklı oran kullan" kutusu: kapalıyken mobil oran alanı
+           gizlenir ve mobil oran masaüstünün aynısı sayılır. aria-expanded
+           kutunun üzerinde, aria-controls ile alanı gösterir. */
+        function mobilOranAlani() {
+            var $kutu = $('#qmo-banner-oran-mobil-farkli');
+            if (!$kutu.length) return false;
+
+            var acik = $kutu.is(':checked');
+            $kutu.attr('aria-expanded', acik ? 'true' : 'false');
+            $('#qmo-banner-oran-mobil-alan').prop('hidden', !acik);
+
+            return acik;
+        }
+
+        function oranCssDegeri(id, yedek) {
+            var $sel = $('#' + id);
+            if (!$sel.length) return yedek;
+            return $sel.find('option:selected').data('oran-css') || yedek;
+        }
+
         function applyPreview() {
-            var $oran = $('#qmo-banner-oran');
-            var oranCss = $oran.length ? $oran.find('option:selected').data('oran-css') : '16 / 9';
-            previewEl.style.setProperty('--qmo-banner-oran', oranCss || '16 / 9');
+            var oranCss = oranCssDegeri('qmo-banner-oran', '16 / 9');
+            var mobilAcik = mobilOranAlani();
+            var mobilCss = mobilAcik ? oranCssDegeri('qmo-banner-oran-mobil', oranCss) : oranCss;
+
+            previewEl.style.setProperty('--qmo-banner-oran-mobil', mobilCss);
+
+            /* Önizleme kutusu her zaman 720px'in altında olduğu için
+               ön yüzdeki @container kuralı burada sürekli geçerli olurdu.
+               Bu yüzden seçili modun oranı --qmo-banner-oran'a da yazılır;
+               gerçek ön yüzde ayrım yine CSS'in işidir. */
+            previewEl.style.setProperty('--qmo-banner-oran', mode === 'mobile' ? mobilCss : oranCss);
 
             var sizeDesktop = fieldVal('qmo-banner-title-size', 32);
             var sizeMobile  = fieldVal('qmo-banner-title-size-mobile', 20);
@@ -1163,7 +1329,7 @@
 
         $form.on(
             'input change',
-            '#qmo-banner-oran, #qmo-banner-gecis, #qmo-banner-show-nav, #qmo-banner-show-dots, #qmo-banner-show-title, #qmo-banner-title-font, #qmo-banner-title-color, #qmo-banner-title-size, #qmo-banner-title-size-mobile, #qmo-banner-title-weight',
+            '#qmo-banner-oran, #qmo-banner-oran-mobil, #qmo-banner-oran-mobil-farkli, #qmo-banner-gecis, #qmo-banner-show-nav, #qmo-banner-show-dots, #qmo-banner-show-title, #qmo-banner-title-font, #qmo-banner-title-color, #qmo-banner-title-size, #qmo-banner-title-size-mobile, #qmo-banner-title-weight',
             applyPreview
         );
 
@@ -1848,6 +2014,7 @@
         initTukendiToggle();
         initCategorySorter();
         initBannerOrder();
+        initBannerRowEditor();
         initPalettes();
         initNavPreview();
         initColorPreview();

@@ -1536,6 +1536,74 @@ function wp_get_attachment_image_url( $id, $size = 'thumbnail' ) {
 }
 
 /**
+ * Ek dosyanın metadata'sı. Testte $GLOBALS['qrms_test']['attachment_meta'][id].
+ *
+ * Gerçek WordPress'te olduğu gibi: kayıt yoksa false döner, varsa
+ * width/height ve (varsa) sizes dizisini taşıyan diziyi döndürür.
+ *
+ * @param int $id Ek dosya kimliği.
+ * @return array|false
+ */
+function wp_get_attachment_metadata( $id ) {
+	$id = absint( $id );
+
+	return isset( $GLOBALS['qrms_test']['attachment_meta'][ $id ] )
+		? $GLOBALS['qrms_test']['attachment_meta'][ $id ]
+		: false;
+}
+
+/**
+ * Ek dosyanın metadata'sını yazar.
+ *
+ * @param int   $id   Ek dosya kimliği.
+ * @param array $data Metadata.
+ * @return bool
+ */
+function wp_update_attachment_metadata( $id, $data ) {
+	$GLOBALS['qrms_test']['attachment_meta'][ absint( $id ) ] = $data;
+
+	return true;
+}
+
+/**
+ * Ek dosyanın belirli boyuttaki kaynağı.
+ *
+ * Gerçek WordPress davranışını taklit eder: istenen boyut metadata'nın
+ * `sizes` dizisinde kayıtlıysa O kaydın dosyası ve ölçüleri döner; değilse
+ * tam boyuta düşülür. QMO_Banner_Kirpma::gorsel() döndürülen genişliği
+ * kayıtla karşılaştırarak "ek boyut gerçekten çözüldü mü" kontrolü yapar,
+ * bu yüzden ölçülerin kayıtla birebir olması şart.
+ *
+ * @param int    $id   Ek dosya kimliği.
+ * @param string $size Boyut adı.
+ * @return array{0:string,1:int,2:int,3:bool}|false
+ */
+function wp_get_attachment_image_src( $id, $size = 'thumbnail' ) {
+	$id   = absint( $id );
+	$meta = wp_get_attachment_metadata( $id );
+
+	if ( ! $id ) {
+		return false;
+	}
+
+	if ( is_array( $meta ) && ! empty( $meta['sizes'][ $size ] ) && is_array( $meta['sizes'][ $size ] ) ) {
+		$kayit = $meta['sizes'][ $size ];
+
+		return array(
+			'https://restoran.test/wp-content/uploads/' . (string) $kayit['file'],
+			(int) $kayit['width'],
+			(int) $kayit['height'],
+			true,
+		);
+	}
+
+	$en  = ( is_array( $meta ) && ! empty( $meta['width'] ) ) ? (int) $meta['width'] : 0;
+	$boy = ( is_array( $meta ) && ! empty( $meta['height'] ) ) ? (int) $meta['height'] : 0;
+
+	return array( wp_get_attachment_image_url( $id, 'full' ), $en, $boy, false );
+}
+
+/**
  * Ek dosyanın srcset'i.
  *
  * @param int    $id   Ek dosya kimliği.

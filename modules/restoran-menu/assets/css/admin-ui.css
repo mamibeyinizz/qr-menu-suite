@@ -3223,6 +3223,322 @@ a.rma-vitrin-step-btn:focus {
     margin-left: 6px;
 }
 
+/* ---------------------------------------------------------------
+   BÖLÜM SEKMELERİ (.rma-kb-tabs)
+
+   Ayar formunun gerçek stepper'ı (.rma-vitrin-step*) ile BİLEREK farklı
+   bir görünüm: 2. bölümde ikisi aynı anda ekranda ve birbirinin aynısı
+   olduklarında "iki ayrı adım sayacı" izlenimi doğuyordu. Sekmeler
+   pastille, stepper ise alt çizgili numaralı şerittir.
+
+   Ayrıca .rma-vitrin-steps'in ≤480px'deki display:none kuralı buraya
+   UYGULANMAZ: bu şerit sayfanın tek gezinme aracı, telefonda da görünür
+   kalmalı (yatay kaydırılır).
+--------------------------------------------------------------- */
+.rma-kb-tabs {
+    display: flex;
+    gap: 6px;
+    margin: 0 0 22px;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+}
+
+.rma-admin a.rma-kb-tab {
+    align-items: center;
+    background: var(--rma-a-surface-2);
+    border: 1px solid var(--rma-a-border);
+    border-radius: 999px;
+    color: var(--rma-a-text-soft);
+    display: inline-flex;
+    flex: 0 0 auto;
+    font-size: 13px;
+    font-weight: 600;
+    justify-content: center;
+    min-height: 40px;
+    padding: 0 16px;
+    text-decoration: none;
+    transition: border-color .15s ease, background .15s ease, color .15s ease;
+    white-space: nowrap;
+}
+
+.rma-admin a.rma-kb-tab:hover {
+    border-color: var(--rma-a-accent-dim);
+    color: var(--rma-a-text);
+}
+
+.rma-admin a.rma-kb-tab.is-active {
+    background: var(--rma-a-accent);
+    border-color: var(--rma-a-accent);
+    color: #101010;
+}
+
+.rma-admin a.rma-kb-tab:focus-visible {
+    box-shadow: none;
+    outline: 2px solid var(--rma-a-accent);
+    outline-offset: 2px;
+}
+
+/* ---------------------------------------------------------------
+   "BANNER'I SAYFAYA EKLE" — katlanır kısa kod kutusu
+
+   Teknik bilgi ikinci seviyede: kapalıyken tek satır, açılınca iki
+   satır yönerge + tek kopyala düğmesi. <details> kullanıldığı için
+   aç/kapa durumunu ve aria-expanded'ı tarayıcı yönetir.
+--------------------------------------------------------------- */
+.rma-kb-kisa-kod {
+    background: var(--rma-a-surface-2);
+    border: 1px solid var(--rma-a-border);
+    border-radius: 8px;
+    margin: 16px 0 0;
+    padding: 0;
+}
+
+.rma-kb-kisa-kod-baslik {
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    list-style-position: inside;
+    min-height: 44px;
+    padding: 12px 14px;
+}
+
+.rma-kb-kisa-kod-baslik:focus-visible {
+    outline: 2px solid var(--rma-a-accent);
+    outline-offset: -2px;
+}
+
+.rma-kb-kisa-kod-govde {
+    border-top: 1px solid var(--rma-a-border-soft);
+    padding: 12px 14px 14px;
+}
+
+.rma-kb-kisa-kod-nerede {
+    color: var(--rma-a-muted);
+    font-size: 13px;
+    list-style: disc;
+    margin: 0 0 12px;
+    padding-left: 18px;
+}
+
+.rma-kb-kisa-kod-nerede li {
+    margin: 0 0 4px;
+}
+
+/* Checkbox'a bağlı koşullu alan (ör. mobil oran seçimi). */
+.rma-kb-kosullu {
+    border-left: 2px solid var(--rma-a-border);
+    margin-top: 10px;
+    padding-left: 12px;
+}
+
+.rma-kb-kosullu[hidden] {
+    display: none;
+}
+
+/* ---------------------------------------------------------------
+   KAMPANYA LİSTESİ (.rma-kb-liste)
+
+   Satırdaki küçük resim ön yüzdeki KADRAJIN aynısıdır: kutu banner'ın
+   en-boy oranında, görsel kırpılmış sürümden, object-position kaydın
+   odağından gelir (hepsi PHP'de QMO_Banner_Kirpma'dan okunur).
+--------------------------------------------------------------- */
+.rma-kb-liste {
+    display: grid;
+    gap: 10px;
+    list-style: none;
+    margin: 0 0 12px;
+    padding: 0;
+}
+
+.rma-kb-satir {
+    align-items: flex-start;
+    background: var(--rma-a-surface-2);
+    border: 1px solid var(--rma-a-border);
+    border-radius: 10px;
+    display: flex;
+    gap: 14px;
+    margin: 0;
+    padding: 12px;
+}
+
+.rma-kb-satir.is-kaydediyor {
+    opacity: .6;
+}
+
+.rma-kb-satir-gorsel-kutu {
+    background: #0d0d10;
+    border-radius: 6px;
+    display: block;
+    flex: 0 0 auto;
+    overflow: hidden;
+    position: relative;
+    width: 120px;
+}
+
+.rma-kb-satir-thumb {
+    display: block;
+    height: 100%;
+    object-fit: cover;
+    width: 100%;
+}
+
+.rma-kb-satir-bos {
+    align-items: center;
+    color: var(--rma-a-muted);
+    display: flex;
+    font-size: 11px;
+    inset: 0;
+    justify-content: center;
+    position: absolute;
+    text-align: center;
+}
+
+.rma-kb-satir-bilgi {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+}
+
+.rma-kb-satir-ad {
+    font-size: 14px;
+    font-weight: 600;
+    word-break: break-word;
+}
+
+.rma-kb-rozetler {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.rma-kb-rozet {
+    background: var(--rma-a-surface);
+    border: 1px solid var(--rma-a-border);
+    border-radius: 999px;
+    color: var(--rma-a-muted);
+    font-size: 11px;
+    line-height: 1.6;
+    padding: 1px 8px;
+    white-space: nowrap;
+}
+
+.rma-kb-rozet.is-yayinda {
+    border-color: var(--rma-a-accent-dim);
+    color: var(--rma-a-accent-hi);
+}
+
+.rma-kb-rozet.is-uyari {
+    border-color: #dba617;
+    color: #996800;
+    white-space: normal;
+}
+
+.rma-kb-satir-alan {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.rma-kb-satir-etiket {
+    color: var(--rma-a-muted);
+    display: inline-block;
+    font-size: 12px;
+}
+
+.rma-admin .rma-kb-satir-odak {
+    font-size: 13px;
+    max-width: 100%;
+    min-height: 32px;
+}
+
+.rma-kb-satir-eylemler {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+/* Sıra sütunu satırın sağ ucuna yaslanır (flex-direction: row iken). */
+.rma-kb-satir .rma-banner-sira {
+    margin-left: auto;
+}
+
+/* Sıra/satır kaydetme geri bildirimi — role="status" ile basılır. */
+.rma-kb-durum {
+    color: var(--rma-a-accent-hi);
+    font-size: 13px;
+    font-weight: 600;
+    margin: 0 0 12px;
+    min-height: 20px;
+}
+
+.rma-kb-durum:empty {
+    margin: 0;
+    min-height: 0;
+}
+
+.rma-kb-durum.is-hata {
+    color: #d63638;
+}
+
+/* Parmakla kullanım: ▲▼ düğmeleri dokunmatik cihazda 44x44px olur.
+   Fare/trackpad'de eski kompakt boyut korunur — masaüstünde devasa
+   düğmeye gerek yok. */
+@media (pointer: coarse) {
+    .rma-admin .rma-banner-sira-btn {
+        font-size: 12px;
+        height: 44px;
+        min-height: 44px;
+        min-width: 44px;
+        width: 44px;
+    }
+
+    /* Dikey yığılmış iki 44px düğme 88px yükseklik demek; parmakla
+       kullanılan cihazda yan yana dururlar. */
+    .rma-kb-satir .rma-banner-sira-btns {
+        flex-direction: row;
+        gap: 8px;
+    }
+
+    .rma-admin a.rma-kb-tab {
+        min-height: 44px;
+    }
+
+    .rma-admin .rma-kb-satir-btn,
+    .rma-admin .rma-kb-satir-odak {
+        min-height: 44px;
+    }
+}
+
+@media screen and (max-width: 782px) {
+    .rma-kb-satir {
+        flex-wrap: wrap;
+    }
+
+    .rma-kb-satir-gorsel-kutu {
+        width: 96px;
+    }
+
+    /* Sıra sütunu alt satıra düşer ve tam genişlikte, yatay durur:
+       dikey yığılmış ▲▼ dar ekranda gereksiz yükseklik yaratıyordu. */
+    .rma-kb-satir .rma-banner-sira {
+        border-top: 1px solid var(--rma-a-border-soft);
+        flex: 1 1 100%;
+        justify-content: space-between;
+        margin-left: 0;
+        padding-top: 8px;
+        width: 100%;
+    }
+
+    .rma-kb-satir .rma-banner-sira-btns {
+        flex-direction: row;
+        gap: 8px;
+    }
+}
+
 /* =====================================================================
    TÜKENEN ÜRÜNLER — kompakt, aksiyon odaklı ekran
    Yalnızca bu ekranın .rma-uy-screen sarmalayıcısı altında çalışır;

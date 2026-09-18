@@ -214,6 +214,9 @@ class Restaurant_Menu_Automation {
         add_action( 'admin_post_qmo_banner_ayar_kaydet', [ $this, 'handle_banner_settings_save' ] );
         add_action( 'wp_ajax_qmo_banner_gorsel_olustur', [ $this, 'ajax_banner_gorsel_olustur' ] );
         add_action( 'wp_ajax_qmo_banner_sira_kaydet', [ 'QMO_Banner_CPT', 'ajax_save_order' ] );
+        // Liste satırından görsel/odak güncelleme; sıra ucundan ayrıdır ve
+        // onun davranışına dokunmaz.
+        add_action( 'wp_ajax_qmo_banner_satir_kaydet', [ $this, 'ajax_banner_satir_kaydet' ] );
 
         // Sunucu tarafı kırpmanın geriye dönük ucu: eskiden yüklenmiş
         // (yalnızca CSS ile kesilen) görselleri güncel orana göre yeniden

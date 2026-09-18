@@ -113,7 +113,9 @@ class QMO_Banner_CPT {
             $odak_css = QMO_Banner_Kirpma::odak_css( $odak );
 
             if ( $image_id ) {
-                $durum  = QMO_Banner_Kirpma::durum( $image_id, $oran, $odak );
+                // Aktif oranların TAMAMI (masaüstü + varsa mobil) üzerinden
+                // hesaplanır; biri bile eksikse "bekliyor" görünür.
+                $durum  = QMO_Banner_Kirpma::banner_durumu( $post->ID );
                 $gorsel = QMO_Banner_Kirpma::gorsel( $image_id, $oran, $odak );
 
                 if ( $gorsel ) {
@@ -404,7 +406,7 @@ JS;
         // Eski (henüz sunucuda kırpılmamış) görseller burada da işaretlenir:
         // kullanıcı WordPress'in kendi liste ekranındayken de hangi kaydın
         // yeniden kırpılması gerektiğini görür.
-        if ( class_exists( 'QMO_Banner_Kirpma' ) && 'bekliyor' === QMO_Banner_Kirpma::durum( $image_id, null, QMO_Banner_Kirpma::banner_odagi( $post_id ) ) ) {
+        if ( class_exists( 'QMO_Banner_Kirpma' ) && 'bekliyor' === QMO_Banner_Kirpma::banner_durumu( $post_id ) ) {
             echo '<br /><span style="color:#996800;font-size:11px;">Güncel orana kırpılmadı</span>';
         }
     }
@@ -475,11 +477,27 @@ JS;
             $px   = QMO_Banner_Slider_Settings::onerilen_px( $oran );
         }
 
-        return sprintf(
+        $not = sprintf(
             'Önerilen boyut: %dx%dpx (%s), JPG/WEBP, maksimum 300KB. Farklı orandaki görseller kaydedilirken SUNUCUDA bu orana kırpılır; orijinal dosyanız korunur.',
             (int) $px[0],
             (int) $px[1],
             $oran
         );
+
+        // Mobil oran açık ve farklıysa aynı görselden ikinci bir kırpma daha
+        // üretilir; kullanıcı bunu yükleme anında bilsin.
+        if ( class_exists( 'QMO_Banner_Slider_Settings' ) && QMO_Banner_Slider_Settings::mobil_oran_farkli() ) {
+            $mobil    = QMO_Banner_Slider_Settings::oran_mobil();
+            $mobil_px = QMO_Banner_Slider_Settings::onerilen_px( $mobil );
+
+            $not .= sprintf(
+                ' Telefon için ayrıca %dx%dpx (%s) kırpması üretilir.',
+                (int) $mobil_px[0],
+                (int) $mobil_px[1],
+                $mobil
+            );
+        }
+
+        return $not;
     }
 }

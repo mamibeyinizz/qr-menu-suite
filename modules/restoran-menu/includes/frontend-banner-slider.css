@@ -89,6 +89,14 @@ a.qmo-banner-slide:focus-visible {
     outline-offset: -4px;
 }
 
+/* Mobil oran açıkken kısa kod <img>'i bir <picture> ile sarar. display:
+   contents kutu üretmez: <img> yine .qmo-banner-slide'ın doğrudan çocuğu
+   gibi konumlanır, aşağıdaki position:absolute kuralı olduğu gibi çalışır.
+   Mobil oran kapalıyken <picture> hiç basılmaz. */
+.qmo-banner-picture {
+    display: contents;
+}
+
 .qmo-banner-img {
     /* Akıştan çıkarılır: intrinsic en-boy oranı slaydın kutusunu
        büyütmez.
@@ -344,7 +352,36 @@ a.qmo-banner-slide:focus-visible {
     position: absolute;
 }
 
-/* Dar kapsayıcıda başlık ve oklar küçülür. */
+/* ---------------------------------------------------------------------
+   MOBİL ORAN — VIEWPORT kırılımı (@media), kapsayıcı kırılımı DEĞİL
+
+   Bu kural bilerek @container değil @media altında: kutunun oranını
+   belirleyen kırılım, kısa kodun <picture><source media="..."> ile hangi
+   dosyayı verdiğini belirleyen kırılımla AYNI referansa bakmak zorunda.
+   <source media> yalnızca viewport sorgusu kabul ettiği için oran kararı
+   da viewport'a bağlandı.
+
+   Ayrışsalardı ne olurdu: dar bir Elementor kolonunda (kapsayıcı 500px,
+   viewport 1200px) @container eşleşir, <source media> eşleşmez; kutu
+   mobil orana geçerken tarayıcı masaüstü kırpmasını indirirdi ve
+   object-fit onu yanlardan keserdi — yani "mobil oran" yalnızca CSS
+   ezmesi olur, sunucudaki mobil kırpma hiç kullanılmazdı.
+
+   Sayı QMO_Banner_Slider_Settings::MOBIL_KIRILIM ile aynı olmalıdır
+   (CSS PHP okuyamaz; eşitlik testle doğrulanır).
+
+   "Mobilde farklı oran kullan" kapalıyken --qmo-banner-oran-mobil
+   masaüstü oranının aynısı basılır, yani bu kural hiçbir şeyi değiştirmez.
+--------------------------------------------------------------------- */
+@media (max-width: 720px) {
+    .qmo-banner-viewport {
+        aspect-ratio: var(--qmo-banner-oran-mobil, var(--qmo-banner-oran, 16 / 9));
+    }
+}
+
+/* Dar KAPSAYICIDA başlık ve oklar küçülür. Buradaki kurallar "ne kadar
+   yer var" sorusudur ve hiçbir dosya seçimini etkilemez; bu yüzden
+   kapsayıcı sorgusunda kalmaları doğrudur. */
 @container qmo-banner (max-width: 720px) {
     /* Gutter daraldıkça slaytlar arası boşluk onun daha büyük bir payını
        yiyor: 375px'te %6 gutter 22,5px, gap 8px, geriye görünen komşu

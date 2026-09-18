@@ -1322,6 +1322,9 @@ trait RMA_Admin_Pages_Trait {
         // bağımsız betiğiyle gelir. (Suite kuruluysa aynı varlıklar
         // module.php'den kuyruğa girer.)
         if ( 'qrms-rm-kampanya-banner' === $page ) {
+            // Kampanya listesindeki "Görseli değiştir" wp.media kullanır.
+            wp_enqueue_media();
+
             wp_enqueue_style(
                 'qmo-banner-slider',
                 RMA_PLUGIN_URL . 'includes/frontend-banner-slider.css',

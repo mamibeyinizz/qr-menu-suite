@@ -130,6 +130,16 @@ class QMO_Shortcode_Banner_Slider {
             $img_h   = (int) $oran_px[1];
         }
 
+        // Mobil oran masaüstünden farklıysa dar ekrana AYRI dosya verilir.
+        // Kırılım CSS'teki @media kuralıyla AYNI referansa (viewport) ve aynı
+        // sayıya bağlıdır — tek kaynak MOBIL_KIRILIM. Kapsayıcı sorgusu
+        // kullanılamaz: <source media> yalnızca viewport sorgusu kabul eder,
+        // ikisi ayrı referansa bakarsa kutu ile dosya çelişir.
+        $mobil_medya = class_exists( 'QMO_Banner_Slider_Settings' )
+            ? QMO_Banner_Slider_Settings::mobil_medya()
+            : '(max-width: 720px)';
+        $mobil_var   = class_exists( 'QMO_Banner_Slider_Settings' ) && QMO_Banner_Slider_Settings::mobil_oran_farkli( $ayar );
+
         $kok_sinif = 'qmo-banner-root';
         if ( 'fade' === $gecis ) {
             $kok_sinif .= ' is-fade';
@@ -158,6 +168,8 @@ class QMO_Shortcode_Banner_Slider {
                     <?php if ( 'a' === $tag ) : ?>href="<?php echo esc_url( $banner['link'] ); ?>" rel="noopener"<?php endif; ?>
                     role="group" aria-roledescription="slayt" aria-label="<?php echo esc_attr( $label ); ?>"
                     data-qmo-banner-slide="<?php echo esc_attr( (string) $index ); ?>">
+                    <?php $mobil_kaynak = $mobil_var && '' !== $banner['mobil_img']; ?>
+                    <?php if ( $mobil_kaynak ) : ?><picture class="qmo-banner-picture"><source media="<?php echo esc_attr( $mobil_medya ); ?>" srcset="<?php echo esc_url( $banner['mobil_img'] ); ?>"><?php endif; ?>
                     <img src="<?php echo esc_url( $banner['img'] ); ?>"
                          <?php if ( '' !== $banner['srcset'] ) : ?>srcset="<?php echo esc_attr( $banner['srcset'] ); ?>" sizes="100vw"<?php endif; ?>
                          alt="<?php echo esc_attr( $banner['alt'] ); ?>"
@@ -165,7 +177,7 @@ class QMO_Shortcode_Banner_Slider {
                          <?php if ( '' !== $banner['odak'] ) : ?>style="object-position:<?php echo esc_attr( $banner['odak'] ); ?>;"<?php endif; ?>
                          width="<?php echo (int) $img_w; ?>" height="<?php echo (int) $img_h; ?>"
                          loading="<?php echo 0 === $index ? 'eager' : 'lazy'; ?>"
-                         decoding="async">
+                         decoding="async"><?php if ( $mobil_kaynak ) : ?></picture><?php endif; ?>
                     <?php if ( $show_title && '' !== $banner['title'] ) : ?>
                         <span class="qmo-banner-caption">
                             <span class="qmo-banner-title"><?php echo esc_html( $banner['title'] ); ?></span>
@@ -207,11 +219,18 @@ class QMO_Shortcode_Banner_Slider {
      * Görseli olmayan (ya da eki silinmiş) kayıt sessizce atlanır; hiç
      * kalmazsa render_shortcode() boş döner.
      *
-     * @return array<int,array{img:string,srcset:string,alt:string,title:string,link:string,odak:string}>
+     * @return array<int,array{img:string,srcset:string,alt:string,title:string,link:string,odak:string,mobil_img:string}>
      */
     private static function build_banner_payloads() {
         $banners = [];
-        $oran    = class_exists( 'QMO_Banner_Slider_Settings' ) ? QMO_Banner_Slider_Settings::get()['oran'] : '16:9';
+        $ayar    = class_exists( 'QMO_Banner_Slider_Settings' ) ? QMO_Banner_Slider_Settings::get() : array( 'oran' => '16:9' );
+        $oran    = $ayar['oran'];
+
+        // Mobil oran masaüstüyle aynıysa ikinci bir çözümleme hiç yapılmaz:
+        // ne ek sorgu, ne ek dosya, ne <picture>.
+        $mobil_oran = ( class_exists( 'QMO_Banner_Slider_Settings' ) && QMO_Banner_Slider_Settings::mobil_oran_farkli( $ayar ) )
+            ? QMO_Banner_Slider_Settings::oran_mobil( $ayar )
+            : '';
 
         foreach ( QMO_Banner_CPT::get_published_banners() as $post ) {
             $image_id = (int) get_post_meta( $post->ID, QMO_Banner_CPT::META_IMAGE, true );
@@ -221,9 +240,10 @@ class QMO_Shortcode_Banner_Slider {
             // dosya düzeyinde aynı orandadır, dolayısıyla hepsi aynı
             // biçimde görünür. Kırpma yoksa (eski kayıt ya da görsel
             // zaten doğru oranda) orijinale düşülür.
-            $kirpildi = false;
-            $odak_css = 'center center';
-            $img      = '';
+            $kirpildi  = false;
+            $odak_css  = 'center center';
+            $img       = '';
+            $mobil_img = '';
 
             if ( class_exists( 'QMO_Banner_Kirpma' ) ) {
                 $odak     = QMO_Banner_Kirpma::banner_odagi( $post->ID );
@@ -234,6 +254,22 @@ class QMO_Shortcode_Banner_Slider {
                     $img      = $gorsel['url'];
                     $kirpildi = ! empty( $gorsel['kirpildi'] );
                 }
+
+                // Mobil sürüm, MOBİL ORANA GERÇEKTEN UYAN dosyadır:
+                // kırpılmış sürüm varsa o, kaynak zaten mobil orandaysa
+                // orijinalin kendisi. Ölçüt "yeni bir kırpma dosyası
+                // üretildi mi" DEĞİLDİR — natif 4:3 bir görselde kırpma
+                // üretilmez ama orijinal zaten doğrudur ve kullanılmalıdır.
+                // Uymayan dosya (kırpma bekleniyor) null döner; o zaman
+                // <source> hiç basılmaz ve tarayıcı masaüstü dosyasına
+                // düşer — yönetimde de "bekliyor" uyarısı görünür.
+                if ( '' !== $mobil_oran ) {
+                    $mobil = QMO_Banner_Kirpma::oranli_gorsel( $image_id, $mobil_oran, $odak );
+
+                    if ( $mobil && '' !== $mobil['url'] ) {
+                        $mobil_img = (string) $mobil['url'];
+                    }
+                }
             }
 
             if ( '' === $img ) {
@@ -241,6 +277,13 @@ class QMO_Shortcode_Banner_Slider {
             }
 
             if ( '' === $img ) continue;
+
+            // Mobil dosya masaüstüyle aynıysa <source> basmanın faydası yok
+            // (kaynak her iki orana da uyuyor demektir); gereksiz bir
+            // kaynak adayı üretmeden tek <img> ile devam edilir.
+            if ( $mobil_img === $img ) {
+                $mobil_img = '';
+            }
 
             $alt = (string) get_post_meta( $image_id, '_wp_attachment_image_alt', true );
             if ( '' === trim( $alt ) ) {
@@ -262,6 +305,9 @@ class QMO_Shortcode_Banner_Slider {
                 // Kırpılmış dosyada kadraj zaten doğru; object-position
                 // yalnızca henüz kırpılmamış eski görsellerde işe yarar.
                 'odak'   => $kirpildi ? '' : $odak_css,
+                // Dar ekrana verilecek ayrı dosya; mobil oran masaüstüyle
+                // aynıysa ya da kırpma henüz üretilmemişse boş kalır.
+                'mobil_img' => $mobil_img,
             ];
         }
 
