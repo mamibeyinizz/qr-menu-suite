@@ -586,19 +586,10 @@
     function initBannerOranSecici() {
         $('.qmo-banner-oran-secici').each(function () {
             var $wrap = $(this);
-            var selectId = $wrap.data('oran-select');
-            var $select = $('#' + selectId);
-
-            if (!$select.length) {
-                return;
-            }
 
             $wrap.on('change', 'input[type="radio"]', function () {
-                var val = $(this).val();
-                $select.val(val);
                 $wrap.find('.qmo-banner-oran-kart').removeClass('is-selected');
                 $(this).closest('.qmo-banner-oran-kart').addClass('is-selected');
-                $select.trigger('change');
             });
         });
     }
@@ -652,7 +643,15 @@
         });
 
         $('#qmo-banner-yeni-kaydet').on('click', function () {
+            var $btn = $(this);
+            if ($btn.prop('disabled')) {
+                return;
+            }
+
             var $durum = $('#qmo-banner-yeni-durum');
+            var navigating = false;
+
+            $btn.prop('disabled', true);
             $durum.text('Kaydediliyor…');
 
             $.post(AJAX_URL, {
@@ -668,6 +667,7 @@
                     return;
                 }
 
+                navigating = true;
                 if (r.data.reload) {
                     window.location.href = r.data.reload;
                     return;
@@ -676,6 +676,10 @@
                 window.location.reload();
             }).fail(function () {
                 $durum.text('Kaydedilemedi');
+            }).always(function () {
+                if (!navigating) {
+                    $btn.prop('disabled', false);
+                }
             });
         });
     }
@@ -1383,6 +1387,12 @@
         var lastKokHtml = (window.QMO_BANNER_PREVIEW_INITIAL && window.QMO_BANNER_PREVIEW_INITIAL.kokHtml) || '';
 
         function fieldVal(id, fallback) {
+            var $secici = $('.qmo-banner-oran-secici[data-oran-select="' + id + '"]');
+            if ($secici.length) {
+                var oran = $secici.find('input[type="radio"]:checked').val();
+                return oran !== undefined ? oran : fallback;
+            }
+
             var $el = $('#' + id);
             return $el.length ? $el.val() : fallback;
         }
@@ -1405,6 +1415,12 @@
         }
 
         function oranCssDegeri(id, yedek) {
+            var $secici = $('.qmo-banner-oran-secici[data-oran-select="' + id + '"]');
+            if ($secici.length) {
+                var css = $secici.find('input[type="radio"]:checked').data('oran-css');
+                return css || yedek;
+            }
+
             var $sel = $('#' + id);
             if (!$sel.length) {
                 return yedek;
@@ -1649,7 +1665,7 @@
 
         $form.on(
             'change',
-            '#qmo-banner-oran, #qmo-banner-oran-mobil, #qmo-banner-oran-mobil-farkli, #qmo-banner-gecis, #qmo-banner-show-nav, #qmo-banner-show-dots, #qmo-banner-show-title, #qmo-banner-autoplay',
+            '.qmo-banner-oran-secici input[type="radio"], #qmo-banner-oran-mobil-farkli, #qmo-banner-gecis, #qmo-banner-show-nav, #qmo-banner-show-dots, #qmo-banner-show-title, #qmo-banner-autoplay',
             function () {
                 if (this.id === 'qmo-banner-oran-mobil-farkli' && $(this).is(':checked')) {
                     maybeMobilePreview();

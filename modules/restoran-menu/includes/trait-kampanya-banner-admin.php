@@ -598,25 +598,19 @@ trait RMA_Kampanya_Banner_Admin_Trait {
     }
 
     /**
-     * En-boy oranı seçici kartları (form değeri gizli select ile aynı kalır).
+     * En-boy oranı seçici kartları (radyo grubu form alanıdır; JS yalnızca önizlemeyi günceller).
      *
-     * @param string $select_id       Select öğesinin id'si.
+     * @param string $select_id       Grup tanımlayıcısı (data-oran-select / önizleme JS).
      * @param string $name_attr       Form name attribute.
      * @param string $secili          Seçili oran anahtarı.
      * @param array  $oran_kaynak     QMO_Banner_Slider_Settings::oranlar() veya mobil_oranlar().
      * @return void
      */
     private function render_banner_oran_kartlari( $select_id, $name_attr, $secili, array $oran_kaynak ) {
+        $labelledby = 'qmo-banner-oran-mobil' === $select_id ? 'qmo-banner-oran-mobil-label' : 'qmo-banner-oran-label';
         ?>
-        <div class="qmo-banner-oran-secici" data-oran-select="<?php echo esc_attr( $select_id ); ?>">
-            <select name="<?php echo esc_attr( $name_attr ); ?>" id="<?php echo esc_attr( $select_id ); ?>" class="qmo-banner-oran-native" tabindex="-1" aria-hidden="true">
-                <?php foreach ( $oran_kaynak as $oran_anahtar => $oran_bilgi ) : ?>
-                    <option value="<?php echo esc_attr( $oran_anahtar ); ?>"
-                            data-oran-css="<?php echo esc_attr( $oran_bilgi['css'] ); ?>"
-                            <?php selected( $secili, $oran_anahtar ); ?>><?php echo esc_html( $oran_bilgi['etiket'] ); ?></option>
-                <?php endforeach; ?>
-            </select>
-            <div class="qmo-banner-oran-grid" role="radiogroup" aria-label="Banner en-boy oranı">
+        <div class="qmo-banner-oran-secici" id="<?php echo esc_attr( $select_id ); ?>" data-oran-select="<?php echo esc_attr( $select_id ); ?>">
+            <div class="qmo-banner-oran-grid" role="radiogroup" aria-labelledby="<?php echo esc_attr( $labelledby ); ?>">
                 <?php foreach ( $oran_kaynak as $oran_anahtar => $oran_bilgi ) :
                     $baslik   = isset( $oran_bilgi['ux_baslik'] ) ? $oran_bilgi['ux_baslik'] : $oran_anahtar;
                     $kullanim = isset( $oran_bilgi['ux_kullanim'] ) ? $oran_bilgi['ux_kullanim'] : '';
@@ -624,7 +618,7 @@ trait RMA_Kampanya_Banner_Admin_Trait {
                     ?>
                     <label class="qmo-banner-oran-kart<?php echo $secili === $oran_anahtar ? ' is-selected' : ''; ?>">
                         <input type="radio"
-                               name="<?php echo esc_attr( $select_id ); ?>_kart"
+                               name="<?php echo esc_attr( $name_attr ); ?>"
                                value="<?php echo esc_attr( $oran_anahtar ); ?>"
                                data-oran-css="<?php echo esc_attr( $oran_bilgi['css'] ); ?>"
                                <?php checked( $secili, $oran_anahtar ); ?>>

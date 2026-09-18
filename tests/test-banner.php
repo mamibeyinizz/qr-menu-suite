@@ -109,6 +109,8 @@ qrms_test(
 		$sayfa    = file_get_contents( $dizin . 'trait-admin-pages.php' );
 		$kampanya = file_get_contents( $dizin . 'trait-kampanya-admin.php' );
 		$banner   = file_get_contents( $dizin . 'trait-kampanya-banner-admin.php' );
+		$js       = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/js/admin-ui.js' );
+		$css      = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/css/admin-ui.css' );
 
 		// Fiyat Kampanyaları sayfasında banner'dan eser kalmadı.
 		// (Dosyada yalnızca "buraya geri eklenmemeli" notu kalır; kod kalmadı.)
@@ -160,6 +162,15 @@ qrms_test(
 		qrms_assert_false( strpos( $banner, 'Sinemaskop' ) !== false, 'sinemaskop etiketi kaldırıldı' );
 		qrms_assert_contains( 'qmo-banner-oran-secici', $banner, 'oran kart seçici' );
 		qrms_assert_contains( 'render_banner_oran_kartlari', $banner, 'oran kart helper' );
+		qrms_assert_contains( "render_banner_oran_kartlari( 'qmo-banner-oran', 'qmo_banner_slider_settings[oran]'", $banner, 'masaüstü oran form alanı bağlantısı' );
+		qrms_assert_contains( "render_banner_oran_kartlari( 'qmo-banner-oran-mobil', 'qmo_banner_slider_settings[oran_mobil]'", $banner, 'mobil oran form alanı bağlantısı' );
+		qrms_assert_contains( 'name="<?php echo esc_attr( $name_attr ); ?>"', $banner, 'oran radyosu gönderilen name' );
+		qrms_assert_contains( 'aria-labelledby="<?php echo esc_attr( $labelledby ); ?>"', $banner, 'oran grubu aria-labelledby' );
+		qrms_assert_contains( 'qmo-banner-oran-mobil-label', $banner, 'mobil oran grubu etiket kimliği' );
+		qrms_assert_contains( 'qmo-banner-oran-label', $banner, 'masaüstü oran grubu etiket kimliği' );
+		qrms_assert_false( strpos( $banner, 'qmo-banner-oran-native' ) !== false, 'gizli select kaldırıldı' );
+		qrms_assert_contains( 'prop(\'disabled\', true)', $js, 'satır içi kaydet çift tıklama koruması' );
+		qrms_assert_contains( ':has(input:focus-visible)', $css, 'oran kart klavye odağı' );
 
 		// Veri katmanı DEĞİŞMEDİ: CPT ve meta anahtarları sabit üzerinden.
 		qrms_assert_contains( 'QMO_Banner_CPT::POST_TYPE', $banner, 'CPT slug\'ı sabitten' );
@@ -391,7 +402,7 @@ qrms_test(
 		qrms_assert_contains( 'Shortcode” widget', $banner, 'Elementor yönergesi' );
 		qrms_assert_contains( 'Kısa Kod” bloğuna', $banner, 'blok editör yönergesi' );
 		// autoplay="0" ipucu ana açıklamadan çıktı, ayarının yanında kaldı.
-		qrms_assert_contains( 'Kısa koda <code>autoplay="0"</code> yazılırsa o sayfada bu ayar ezilir.', $banner, 'teknik ipucu ilgili alanın yanında' );
+		qrms_assert_contains( 'kısa kod bloğunda otomatik geçiş süresini sayfa bazında değiştirebilirsiniz', $banner, 'teknik ipucu ilgili alanın yanında' );
 
 		/* LİSTE: küçük resim ön yüzün basacağı kırpılmış dosyadan gelir. */
 		qrms_assert_contains( 'private function banner_satir_onizleme(', $banner, 'satır önizleme yardımcısı' );
@@ -973,7 +984,7 @@ qrms_test(
 		// İki kapsam: tek kayıt ve tümü.
 		qrms_assert_contains( 'QMO_Banner_Kirpma::toplu_kirp()', $banner, 'toplu kırpma' );
 		qrms_assert_contains( 'QMO_Banner_Kirpma::banner_kirp( $banner_id )', $banner, 'tek kayıt kırpma' );
-		qrms_assert_contains( 'Tüm görselleri yeniden kırp', $banner, 'toplu düğme' );
+		qrms_assert_contains( 'Tüm görselleri banner oranına uydur', $banner, 'toplu düğme' );
 		qrms_assert_contains( 'Yeniden kırp', $banner, 'satır düğmesi' );
 
 		// Satır eylemi bir <span> içinde durduğu için <form> değil nonce'lu
@@ -1000,7 +1011,7 @@ qrms_test(
 
 		// Oran sonradan değişirse kullanıcı bilgilendirilir.
 		qrms_assert_contains( "'oran_degisti'", $banner, 'oran değişimi bildirimi' );
-		qrms_assert_contains( 'yeniden kırpılması gerekiyor', $banner, 'bildirim metni' );
+		qrms_assert_contains( 'yeni orana uydurmanız gerekebilir', $banner, 'bildirim metni' );
 
 		// Durum rozetlerinin stili admin CSS\'inde tanımlı.
 		$css = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/css/admin-ui.css' );
@@ -1758,6 +1769,7 @@ qrms_test(
 );
 
 qrms_test(
+	'bekleyen_sayisi_oranlar(): aynı kayıt iki oran için bekliyorsa bir kez sayılır',
 	function () {
 		QMO_Banner_Slider_Settings::kaydet( array( 'oran' => '16:9', 'oran_mobil_farkli' => '1', 'oran_mobil' => '4:3' ) );
 		// İki oran için de kırpma yok → bekleyen_sayisi(oran) her oranda +1 (toplam 2).
