@@ -45,6 +45,9 @@ trait RMA_Kampanya_Banner_Admin_Trait {
     /** Liste satırından görsel/odak güncelleme ucunun nonce eylemi. */
     private $banner_satir_nonce_action = 'qmo_banner_satir_kaydet';
 
+    /** Canlı önizleme (kaydedilmemiş oran) AJAX ucunun nonce eylemi. */
+    private $banner_onizleme_nonce_action = 'qmo_banner_onizleme';
+
     /*
      * Sabitler `const` değil metottur: trait sabitleri PHP 8.2 ile geldi,
      * eklentinin alt sınırı ise PHP 7.4 (bkz. qr-menu-suite.php başlığı).
@@ -757,6 +760,121 @@ trait RMA_Kampanya_Banner_Admin_Trait {
                 'thumb'    => $this->banner_satir_onizleme( $gorsel, $ayar['oran'], $odak ),
                 'odak_css' => class_exists( 'QMO_Banner_Kirpma' ) ? QMO_Banner_Kirpma::odak_css( $odak ) : 'center center',
                 'message'  => 'Kaydedildi',
+            )
+        );
+    }
+
+    /**
+     * `wp_ajax_qmo_banner_onizleme` — form KAYDEDİLMEDEN, oran/mobil oran
+     * seçimleriyle kısa kodun üreteceği HTML'in canlı önizlemesi.
+     *
+     * NEDEN AYRI UÇ: ayar formu 2. adımdaki oran/mobil oran seçimi
+     * değiştiğinde kullanıcı sonucu kaydetmeden görebilmeli. Ayarlar
+     * option'a YAZILMAZ, kırpma dosyası ÜRETİLMEZ — yalnızca hâlihazırda
+     * var olan kırpmalar (QMO_Banner_Kirpma::gorsel()/oranli_gorsel(), her
+     * ikisi de salt okunur) okunur. HTML, render_shortcode()'un kullandığı
+     * AYNI renderer'dan (QMO_Shortcode_Banner_Slider::payloadlar() →
+     * kok_html()) üretilir; ikinci bir HTML üretim yolu yoktur.
+     *
+     * @return void
+     */
+    public function ajax_banner_onizleme() {
+        check_ajax_referer( $this->banner_onizleme_nonce_action, 'nonce' );
+
+        $yetki = class_exists( 'QRMS_Admin' ) ? QRMS_Admin::CAPABILITY : 'manage_options';
+
+        if ( ! current_user_can( $yetki ) ) {
+            wp_send_json_error( array( 'message' => 'Bu işlem için yetkiniz yok.' ), 403 );
+            return;
+        }
+
+        $ayar = class_exists( 'QMO_Banner_Slider_Settings' )
+            ? QMO_Banner_Slider_Settings::get()
+            : array(
+                'show_nav'   => 0,
+                'show_dots'  => 1,
+                'show_title' => 0,
+                'gecis'      => 'slide',
+                'autoplay'   => 4500,
+                'oran'       => '16:9',
+            );
+
+        // Ham girdi hiçbir zaman doğrudan kullanılmaz: oran/oran_mobil
+        // yalnızca QMO_Banner_Slider_Settings::oranlar() beyaz listesindeki
+        // bir anahtarsa kabul edilir — GEÇERSİZ oran sessizce varsayılana
+        // çekilmez, istek reddedilir (kullanıcı yönetimdeki listede
+        // OLMAYAN bir şey seçemeyeceğinden bu yalnızca bozuk/kurcalanmış
+        // isteklerde tetiklenir). oran_mobil_farkli yalnızca '0'/'1' kabul
+        // eder. Sonuç YALNIZCA bu istek boyunca bellekte tutulan $ayar'a
+        // yazılır — kaydedilmez.
+        $beyaz_liste = class_exists( 'QMO_Banner_Slider_Settings' ) ? array_keys( QMO_Banner_Slider_Settings::oranlar() ) : array();
+
+        if ( isset( $_POST['oran'] ) ) {
+            // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- aşağıda beyaz listeyle karşılaştırılıyor.
+            $ham_oran = trim( (string) wp_unslash( $_POST['oran'] ) );
+
+            if ( ! in_array( $ham_oran, $beyaz_liste, true ) ) {
+                wp_send_json_error( array( 'message' => 'Geçersiz oran.' ), 400 );
+                return;
+            }
+
+            $ayar['oran'] = $ham_oran;
+        }
+
+        if ( isset( $_POST['oran_mobil'] ) ) {
+            // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- aşağıda beyaz listeyle karşılaştırılıyor.
+            $ham_mobil = trim( (string) wp_unslash( $_POST['oran_mobil'] ) );
+
+            if ( ! in_array( $ham_mobil, $beyaz_liste, true ) ) {
+                wp_send_json_error( array( 'message' => 'Geçersiz mobil oran.' ), 400 );
+                return;
+            }
+
+            $ayar['oran_mobil'] = $ham_mobil;
+        }
+
+        if ( isset( $_POST['oran_mobil_farkli'] ) ) {
+            // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- aşağıda '0'/'1' ile karşılaştırılıyor.
+            $ham_farkli = trim( (string) wp_unslash( $_POST['oran_mobil_farkli'] ) );
+
+            if ( '0' !== $ham_farkli && '1' !== $ham_farkli ) {
+                wp_send_json_error( array( 'message' => 'Geçersiz değer.' ), 400 );
+                return;
+            }
+
+            $ayar['oran_mobil_farkli'] = (int) $ham_farkli;
+        }
+
+        $banners = QMO_Shortcode_Banner_Slider::payloadlar( $ayar );
+        $html    = QMO_Shortcode_Banner_Slider::kok_html(
+            $banners,
+            $ayar,
+            array(
+                'autoplay' => (int) $ayar['autoplay'],
+                'betik'    => false,
+            )
+        );
+
+        // "durum": önizlenen oranlar için sunucuda kırpma bekleyen banner
+        // var mı (salt okunur — bkz. QMO_Banner_Kirpma::bekleyen_sayisi(),
+        // kırpma ÜRETMEZ, yalnızca mevcut ek meta'sını okur).
+        $durum = 'hazir';
+
+        if ( class_exists( 'QMO_Banner_Kirpma' ) && class_exists( 'QMO_Banner_CPT' ) && class_exists( 'QMO_Banner_Slider_Settings' ) ) {
+            $banner_kayitlari = QMO_Banner_CPT::get_published_banners();
+            $bekleyen         = 0;
+
+            foreach ( QMO_Banner_Slider_Settings::aktif_oranlar( $ayar ) as $aktif_oran ) {
+                $bekleyen += QMO_Banner_Kirpma::bekleyen_sayisi( $aktif_oran, $banner_kayitlari );
+            }
+
+            $durum = $bekleyen > 0 ? 'bekliyor' : 'hazir';
+        }
+
+        wp_send_json_success(
+            array(
+                'html'  => $html,
+                'durum' => $durum,
             )
         );
     }

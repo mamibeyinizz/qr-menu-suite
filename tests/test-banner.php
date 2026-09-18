@@ -1255,6 +1255,478 @@ qrms_test(
 	}
 );
 
+/* =============================================================================
+ * FAZ 2 AŞAMA 1+2 — payloadlar() → kok_html() → render_shortcode() TEK
+ * RENDERER + wp_ajax_qmo_banner_onizleme (kaydedilmemiş oran canlı önizleme)
+ *
+ * Buradan itibaren QMO_Shortcode_Banner_Slider ve
+ * RMA_Kampanya_Banner_Admin_Trait GERÇEKTEN yüklenip çalıştırılır — yalnızca
+ * kaynak metin karşılaştırması değil. QMO_Banner_CPT::get_published_banners()
+ * bir WP_Query açtığından ve bu test paketinde WP_Query'nin genel bir
+ * stub'ı bulunmadığından (bkz. test-ajax-403-status.php başlık yorumu),
+ * burada YALNIZCA banner sorgusunun kullandığı dar argüman kümesini
+ * (post_type + post_status) destekleyen minimal bir taklit tanımlanır. Bu
+ * ekleme geriye dönük NÖTRDÜR: WP_Query daha önce hiçbir yerde tanımlı
+ * olmadığından hiçbir mevcut test onu gerçekten çalıştırmıyordu (çalıştırsaydı
+ * zaten "Class WP_Query not found" ile fatal verip paket kırmızı olurdu).
+ * ========================================================================= */
+
+if ( ! defined( 'QMO_PLUGIN_DIR' ) ) {
+	define( 'QMO_PLUGIN_DIR', QRMS_PLUGIN_DIR . 'modules/restoran-menu/' );
+}
+if ( ! defined( 'QMO_PLUGIN_URL' ) ) {
+	define( 'QMO_PLUGIN_URL', 'https://example.test/wp-content/plugins/qr-menu-suite/modules/restoran-menu/' );
+}
+
+require_once QRMS_PLUGIN_DIR . 'modules/_qmo-ortak/helpers.php';
+require_once QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/shortcode-banner-slider.php';
+require_once QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-kampanya-banner-admin.php';
+
+if ( ! class_exists( 'WP_Query' ) ) {
+	/**
+	 * QMO_Banner_CPT::query_banners()'ın kullandığı argümanlar (post_type,
+	 * post_status[]) için minimal taklit. Ayrı bir kayıt mekanizması İCAT
+	 * ETMEZ — mevcut $GLOBALS['qrms_test']['post_types'] ve get_post_status()
+	 * stub'larını okur.
+	 */
+	class WP_Query {
+		/** @var array */
+		public $posts = array();
+
+		public function __construct( $args = array() ) {
+			$post_type = isset( $args['post_type'] ) ? $args['post_type'] : '';
+			$statuslar = isset( $args['post_status'] ) ? (array) $args['post_status'] : array( 'publish' );
+			$tipler    = isset( $GLOBALS['qrms_test']['post_types'] ) ? $GLOBALS['qrms_test']['post_types'] : array();
+
+			$idler = array();
+			foreach ( $tipler as $id => $tip ) {
+				if ( $tip !== $post_type ) continue;
+				if ( ! in_array( get_post_status( $id ), $statuslar, true ) ) continue;
+				$idler[] = $id;
+			}
+
+			sort( $idler, SORT_NUMERIC );
+
+			$this->posts = array_map(
+				function ( $id ) {
+					$baslik = isset( $GLOBALS['qrms_test']['post_title'][ $id ] ) ? $GLOBALS['qrms_test']['post_title'][ $id ] : '';
+					return (object) array(
+						'ID'         => $id,
+						'post_title' => $baslik,
+						'post_type'  => $GLOBALS['qrms_test']['post_types'][ $id ],
+					);
+				},
+				$idler
+			);
+		}
+	}
+}
+
+if ( ! class_exists( 'RMA_Test_Banner_Onizleme_Harness' ) ) {
+	/**
+	 * ajax_banner_onizleme() dışında hiçbir admin sayfası bağımlılığı
+	 * gerektirmez; test-ajax-403-status.php'deki RMA_Test_Ajax403_Harness
+	 * ile aynı desen — trait YALNIZ BAŞINA `use` edilebilir bir sınıfa alınır.
+	 */
+	class RMA_Test_Banner_Onizleme_Harness {
+		use RMA_Kampanya_Banner_Admin_Trait;
+	}
+}
+
+/**
+ * Banner CPT kaydını, ek metadata'sıyla birlikte kurar; qrms_banner_kayit_kur()'a
+ * (yukarıda tanımlı) başlık ekler — WP_Query taklidinin post_title alanı bunu okur.
+ *
+ * @param int    $banner_id Banner kimliği.
+ * @param int    $ek_id     Ek kimliği.
+ * @param string $baslik    Banner başlığı (alt metin yedeği).
+ * @param string $odak      Odak anahtarı.
+ * @return void
+ */
+function qrms_banner_yayinla( $banner_id, $ek_id, $baslik = 'Test Banner', $odak = 'merkez' ) {
+	qrms_banner_kayit_kur( $banner_id, $ek_id, $odak );
+	$GLOBALS['qrms_test']['post_title'][ $banner_id ] = $baslik;
+}
+
+qrms_test(
+	'payloadlar(): gerçek çalıştırma — tek banner, kırpılmamış orijinal, mobil oran kapalı',
+	function () {
+		QMO_Banner_Slider_Settings::kaydet( array( 'oran' => '16:9' ) );
+
+		qrms_banner_ek_kur( 501, 1600, 900 ); // zaten 16:9, kırpma gerekmiyor.
+		qrms_banner_yayinla( 601, 501, 'Yaz Kampanyası' );
+
+		$banners = QMO_Shortcode_Banner_Slider::payloadlar();
+
+		qrms_assert_same( 1, count( $banners ), 'tek yayınlanmış banner' );
+		qrms_assert_same( 'Yaz Kampanyası', $banners[0]['alt'], 'alt metin yedeği başlığa düşer' );
+		qrms_assert_same( '', $banners[0]['mobil_img'], 'mobil oran kapalıyken mobil dosya yok' );
+		qrms_assert_true( '' !== $banners[0]['img'], 'görsel URL çözüldü' );
+	}
+);
+
+qrms_test(
+	'payloadlar(): HENÜZ KAYDEDİLMEMİŞ $ayar override\'ı ile çağrılınca kayıtlı ayarı DEĞİL, verileni kullanır',
+	function () {
+		// Kayıtlı ayar 16:9/mobil KAPALI — override 16:9 masaüstü, mobil 4:3
+		// AÇIK. payloadlar() override'ı almasaydı ikinci çağrı da mobil_img
+		// boş dönerdi (kayıtlı ayarda mobil oran hiç aranmaz).
+		QMO_Banner_Slider_Settings::kaydet( array( 'oran' => '16:9', 'oran_mobil_farkli' => '0' ) );
+
+		$sizes = array_merge(
+			qrms_banner_kirpma_kaydi( '16:9', 1000, 563 ),
+			qrms_banner_kirpma_kaydi( '4:3', 1000, 750 )
+		);
+		qrms_banner_ek_kur( 502, 1000, 1000, $sizes );
+		qrms_banner_yayinla( 602, 502 );
+
+		$kayitli_ayar    = QMO_Banner_Slider_Settings::get();
+		$banners_kayitli = QMO_Shortcode_Banner_Slider::payloadlar( $kayitli_ayar );
+		qrms_assert_same( '', $banners_kayitli[0]['mobil_img'], 'kayıtlı ayarda mobil kapalı — mobil dosya yok' );
+
+		$override                       = $kayitli_ayar;
+		$override['oran_mobil_farkli']  = 1;
+		$override['oran_mobil']         = '4:3';
+
+		$banners_override = QMO_Shortcode_Banner_Slider::payloadlar( $override );
+		qrms_assert_true( '' !== $banners_override[0]['mobil_img'], 'HENÜZ KAYDEDİLMEMİŞ override ile mobil dosya çözülür' );
+		qrms_assert_false(
+			$banners_override[0]['mobil_img'] === $banners_override[0]['img'],
+			'mobil ve masaüstü farklı dosyalar — override gerçekten etkiledi'
+		);
+
+		// Kayıtlı ayar bu çağrılardan ETKİLENMEDİ.
+		qrms_assert_same( '0', (string) QMO_Banner_Slider_Settings::get()['oran_mobil_farkli'], 'option değişmedi' );
+	}
+);
+
+qrms_test(
+	'kok_html(): temel markup sözleşmesi — kök/viewport/track/slide sınıfları, data ve ARIA öznitelikleri korunur',
+	function () {
+		$banners = array(
+			array( 'img' => 'https://x.test/a.jpg', 'srcset' => '', 'alt' => 'A', 'title' => 'A', 'link' => '', 'odak' => '', 'mobil_img' => '' ),
+			array( 'img' => 'https://x.test/b.jpg', 'srcset' => '', 'alt' => 'B', 'title' => 'B', 'link' => '', 'odak' => '', 'mobil_img' => '' ),
+		);
+		$ayar = array_merge( QMO_Banner_Slider_Settings::varsayilanlar(), array( 'show_nav' => 1, 'show_dots' => 1 ) );
+
+		$html = QMO_Shortcode_Banner_Slider::kok_html( $banners, $ayar, array( 'betik' => false ) );
+
+		qrms_assert_contains( 'class="qmo-banner-root is-peek"', $html, 'kök sınıf + peek (count>1)' );
+		qrms_assert_contains( 'qmo-banner-viewport', $html, 'viewport' );
+		qrms_assert_contains( 'data-qmo-banner-track', $html, 'track data attribute' );
+		qrms_assert_same( 2, substr_count( $html, 'data-qmo-banner-slide="' ), 'iki slayt basıldı' );
+		qrms_assert_contains( 'data-qmo-banner-slide="0"', $html, 'slayt index data attribute' );
+		qrms_assert_contains( 'role="region"', $html, 'ARIA region' );
+		qrms_assert_contains( 'aria-roledescription="karusel"', $html, 'ARIA karusel' );
+		qrms_assert_contains( 'qmo-banner-nav', $html, 'birden fazla banner + show_nav=1 → ok basılır' );
+		qrms_assert_contains( 'role="tablist"', $html, 'birden fazla banner + show_dots=1 → nokta basılır' );
+		qrms_assert_false( strpos( $html, '<script' ) !== false, 'betik=false → script basılmaz' );
+	}
+);
+
+qrms_test(
+	'kok_html(): betik=true (varsayılan) <script> etiketini basar; tek banner ise nav/dots/peek basılmaz',
+	function () {
+		$banners = array(
+			array( 'img' => 'https://x.test/a.jpg', 'srcset' => '', 'alt' => 'A', 'title' => 'A', 'link' => '', 'odak' => '', 'mobil_img' => '' ),
+		);
+		$ayar = array_merge( QMO_Banner_Slider_Settings::varsayilanlar(), array( 'show_nav' => 1, 'show_dots' => 1 ) );
+
+		$html = QMO_Shortcode_Banner_Slider::kok_html( $banners, $ayar );
+
+		qrms_assert_contains( '<script src=', $html, 'betik varsayılan true' );
+		qrms_assert_false( strpos( $html, 'is-peek' ) !== false, 'tek banner → peek yok' );
+		qrms_assert_false( strpos( $html, 'qmo-banner-nav' ) !== false, 'tek banner → ok basılmaz (show_nav=1 olsa bile)' );
+		qrms_assert_false( strpos( $html, 'role="tablist"' ) !== false, 'tek banner → nokta basılmaz' );
+	}
+);
+
+qrms_test(
+	'kok_html(): mobil <source> yalnızca mobil oran açık VE mobil_img doluyken basılır',
+	function () {
+		$ayar_kapali = array_merge( QMO_Banner_Slider_Settings::varsayilanlar(), array( 'oran' => '16:9', 'oran_mobil_farkli' => 0 ) );
+		$ayar_acik   = array_merge( QMO_Banner_Slider_Settings::varsayilanlar(), array( 'oran' => '16:9', 'oran_mobil_farkli' => 1, 'oran_mobil' => '4:3' ) );
+
+		$banner_mobilli = array( array( 'img' => 'https://x.test/desktop.jpg', 'srcset' => '', 'alt' => 'A', 'title' => 'A', 'link' => '', 'odak' => '', 'mobil_img' => 'https://x.test/mobile.jpg' ) );
+
+		$html_acik   = QMO_Shortcode_Banner_Slider::kok_html( $banner_mobilli, $ayar_acik, array( 'betik' => false ) );
+		$html_kapali = QMO_Shortcode_Banner_Slider::kok_html( $banner_mobilli, $ayar_kapali, array( 'betik' => false ) );
+
+		qrms_assert_contains( '<picture class="qmo-banner-picture">', $html_acik, 'mobil oran açık + mobil dosya var → <picture> basılır' );
+		qrms_assert_contains( '<source media="(max-width: 720px)" srcset="https://x.test/mobile.jpg">', $html_acik, 'kaynak dosya ve kırılım doğru' );
+		qrms_assert_false( strpos( $html_kapali, '<picture' ) !== false, 'mobil oran kapalıyken AYNI payload <picture> basmaz' );
+
+		$banner_mobilsiz = array( array( 'img' => 'https://x.test/desktop.jpg', 'srcset' => '', 'alt' => 'A', 'title' => 'A', 'link' => '', 'odak' => '', 'mobil_img' => '' ) );
+		$html_bos        = QMO_Shortcode_Banner_Slider::kok_html( $banner_mobilsiz, $ayar_acik, array( 'betik' => false ) );
+		qrms_assert_false( strpos( $html_bos, '<picture' ) !== false, 'mobil oran açık ama mobil_img boş (crop eksik) → <picture> basılmaz' );
+	}
+);
+
+qrms_test(
+	'kok_html(): odak/object-position yalnızca dolu geldiğinde basılır (kırpılmış banner style basmaz)',
+	function () {
+		$ayar = QMO_Banner_Slider_Settings::varsayilanlar();
+
+		$odakli = array( array( 'img' => 'https://x.test/a.jpg', 'srcset' => '', 'alt' => 'A', 'title' => 'A', 'link' => '', 'odak' => 'top center', 'mobil_img' => '' ) );
+		$html   = QMO_Shortcode_Banner_Slider::kok_html( $odakli, $ayar, array( 'betik' => false ) );
+		qrms_assert_contains( 'style="object-position:top center;"', $html, 'odak doluysa inline style basılır' );
+
+		$kirpilmis = array( array( 'img' => 'https://x.test/a.jpg', 'srcset' => '', 'alt' => 'A', 'title' => 'A', 'link' => '', 'odak' => '', 'mobil_img' => '' ) );
+		$html2     = QMO_Shortcode_Banner_Slider::kok_html( $kirpilmis, $ayar, array( 'betik' => false ) );
+		qrms_assert_false( strpos( $html2, 'object-position' ) !== false, 'kırpılmış banner (odak boş) style basmaz' );
+	}
+);
+
+qrms_test(
+	'kok_html(): link varsa <a>, yoksa <div>; autoplay opsiyon ile ezilir, verilmezse $ayar[autoplay] kullanılır',
+	function () {
+		$ayar = array_merge( QMO_Banner_Slider_Settings::varsayilanlar(), array( 'autoplay' => 4500 ) );
+
+		$linkli = array( array( 'img' => 'https://x.test/a.jpg', 'srcset' => '', 'alt' => 'A', 'title' => 'A', 'link' => 'https://x.test/kampanya', 'odak' => '', 'mobil_img' => '' ) );
+		$html   = QMO_Shortcode_Banner_Slider::kok_html( $linkli, $ayar, array( 'betik' => false ) );
+		qrms_assert_contains( '<a class="qmo-banner-slide', $html, 'link varsa <a>' );
+		qrms_assert_contains( 'href="https://x.test/kampanya"', $html, 'href doğru' );
+
+		$linksiz = array( array( 'img' => 'https://x.test/a.jpg', 'srcset' => '', 'alt' => 'A', 'title' => 'A', 'link' => '', 'odak' => '', 'mobil_img' => '' ) );
+		$html2   = QMO_Shortcode_Banner_Slider::kok_html( $linksiz, $ayar, array( 'betik' => false ) );
+		qrms_assert_contains( '<div class="qmo-banner-slide', $html2, 'link yoksa <div>' );
+
+		$html3 = QMO_Shortcode_Banner_Slider::kok_html( $linksiz, $ayar, array( 'betik' => false, 'autoplay' => 0 ) );
+		qrms_assert_contains( 'data-autoplay="0"', $html3, 'opsiyon autoplay değerini ezer' );
+
+		$html4 = QMO_Shortcode_Banner_Slider::kok_html( $linksiz, $ayar );
+		qrms_assert_contains( 'data-autoplay="4500"', $html4, 'opsiyon verilmezse $ayar[autoplay] kullanılır' );
+	}
+);
+
+qrms_test(
+	'render_shortcode(): gerçek çalıştırma — payloadlar()+kok_html() zincirini kullanır, kısa kod autoplay niteliği ayarı ezer',
+	function () {
+		QMO_Banner_Slider_Settings::kaydet( array( 'oran' => '16:9', 'autoplay' => 4500 ) );
+		qrms_banner_ek_kur( 503, 1600, 900 );
+		qrms_banner_yayinla( 603, 503, 'Kış Kampanyası' );
+
+		$html = QMO_Shortcode_Banner_Slider::render_shortcode( array() );
+		qrms_assert_contains( 'qmo-banner-root', $html, 'kısa kod markup üretti' );
+		qrms_assert_contains( 'data-autoplay="4500"', $html, 'nitelik verilmezse ayar kullanılır' );
+		qrms_assert_contains( '<script src=', $html, 'ön yüzde betik basılır (betik=true varsayılan)' );
+
+		$html2 = QMO_Shortcode_Banner_Slider::render_shortcode( array( 'autoplay' => '0' ) );
+		qrms_assert_contains( 'data-autoplay="0"', $html2, 'kısa kod niteliği ayarı ezer' );
+
+		// Görsel yoksa boş döner (mevcut sözleşme korunuyor).
+		$GLOBALS['qrms_test']['post_types'] = array();
+		qrms_assert_same( '', QMO_Shortcode_Banner_Slider::render_shortcode( array() ), 'banner yoksa boş dize' );
+	}
+);
+
+/* ---------------------------------------------------------------------------
+ * wp_ajax_qmo_banner_onizleme — canlı önizleme AJAX ucu
+ * ------------------------------------------------------------------------ */
+
+qrms_test(
+	'ajax_banner_onizleme: yetkisiz kullanıcı 403 döner, renderer hiç çalışmaz',
+	function () {
+		$h = new RMA_Test_Banner_Onizleme_Harness();
+		$GLOBALS['qrms_test']['can_map']['manage_options'] = false;
+		$_POST['oran'] = '16:9';
+
+		$h->ajax_banner_onizleme();
+
+		$json = $GLOBALS['qrms_test']['json'];
+		qrms_assert_false( $json['success'], 'yetkisiz istek reddedilir' );
+		qrms_assert_same( 403, $json['status'], 'HTTP 403' );
+		qrms_assert_true( ! isset( $json['data']['html'] ), 'renderer hiç çalışmadı — html alanı yok' );
+	}
+);
+
+qrms_test(
+	'ajax_banner_onizleme: geçersiz oran reddedilir (whitelist dışı değer kabul edilmez)',
+	function () {
+		$h = new RMA_Test_Banner_Onizleme_Harness();
+		$GLOBALS['qrms_test']['can_map']['manage_options'] = true;
+		$_POST['oran'] = '99:1';
+
+		$h->ajax_banner_onizleme();
+
+		$json = $GLOBALS['qrms_test']['json'];
+		qrms_assert_false( $json['success'], 'geçersiz oran reddedilir' );
+		qrms_assert_same( 400, $json['status'], 'HTTP 400' );
+		qrms_assert_true( ! isset( $json['data']['html'] ), 'renderer çalışmadı' );
+	}
+);
+
+qrms_test(
+	'ajax_banner_onizleme: geçersiz oran_mobil reddedilir',
+	function () {
+		$h = new RMA_Test_Banner_Onizleme_Harness();
+		$GLOBALS['qrms_test']['can_map']['manage_options'] = true;
+		$_POST['oran_mobil'] = 'kirli-girdi';
+
+		$h->ajax_banner_onizleme();
+
+		$json = $GLOBALS['qrms_test']['json'];
+		qrms_assert_false( $json['success'], 'geçersiz mobil oran reddedilir' );
+		qrms_assert_same( 400, $json['status'], 'HTTP 400' );
+	}
+);
+
+qrms_test(
+	'ajax_banner_onizleme: oran_mobil_farkli yalnızca "0"/"1" kabul eder',
+	function () {
+		$h = new RMA_Test_Banner_Onizleme_Harness();
+		$GLOBALS['qrms_test']['can_map']['manage_options'] = true;
+		$_POST['oran_mobil_farkli'] = '2';
+
+		$h->ajax_banner_onizleme();
+
+		$json = $GLOBALS['qrms_test']['json'];
+		qrms_assert_false( $json['success'], '0/1 dışı değer reddedilir' );
+		qrms_assert_same( 400, $json['status'], 'HTTP 400' );
+	}
+);
+
+qrms_test(
+	'ajax_banner_onizleme: geçerli oran → html+durum döner, kok_html() gerçekten kullanılır, AYAR KAYDEDİLMEZ',
+	function () {
+		QMO_Banner_Slider_Settings::kaydet( array( 'oran' => '16:9', 'oran_mobil_farkli' => '0' ) );
+		qrms_banner_ek_kur( 504, 1600, 900 );
+		qrms_banner_yayinla( 604, 504, 'Yılbaşı Kampanyası' );
+
+		$onceki_option = get_option( 'qmo_banner_slider_settings' );
+
+		$h = new RMA_Test_Banner_Onizleme_Harness();
+		$GLOBALS['qrms_test']['can_map']['manage_options'] = true;
+		$_POST['oran']              = '4:3';
+		$_POST['oran_mobil_farkli'] = '1';
+		$_POST['oran_mobil']        = '1:1';
+
+		$h->ajax_banner_onizleme();
+
+		$json = $GLOBALS['qrms_test']['json'];
+		qrms_assert_true( $json['success'], 'geçerli istek başarılı' );
+		qrms_assert_true( isset( $json['data']['html'] ) && '' !== $json['data']['html'], 'html alanı dolu' );
+		qrms_assert_true( isset( $json['data']['durum'] ), 'durum alanı var' );
+		qrms_assert_contains( 'qmo-banner-root', $json['data']['html'], 'HTML gerçekten kok_html() çıktısı' );
+		qrms_assert_false( strpos( $json['data']['html'], '<script' ) !== false, 'önizleme <script> basmaz (betik=false)' );
+		qrms_assert_contains( '--qmo-banner-oran:4 / 3', $json['data']['html'], 'ÖVERRİDE oran (4:3) HTML üzerinde etkili — kaydedilmemiş değer render edildi' );
+
+		// Ayar option'a YAZILMADI: değer aynı kaldı.
+		qrms_assert_same( $onceki_option, get_option( 'qmo_banner_slider_settings' ), 'ayar KAYDEDİLMEDİ' );
+		qrms_assert_same( '16:9', get_option( 'qmo_banner_slider_settings' )['oran'], 'kayıtlı oran hâlâ 16:9' );
+	}
+);
+
+qrms_test(
+	'ajax_banner_onizleme: kayıtlı ayarda mobil oran KAPALI iken, HENÜZ KAYDEDİLMEMİŞ mobil oran override\'ı önizlemede <picture> üretir (gerçek çalıştırma)',
+	function () {
+		// Kayıtlı ayar mobil oranı KAPALI tutuyor — kayıtlı ayarla render
+		// edilseydi <picture> hiç basılmazdı; bu, override'ın GERÇEKTEN
+		// kullanıldığının kanıtıdır.
+		QMO_Banner_Slider_Settings::kaydet( array( 'oran' => '16:9', 'oran_mobil_farkli' => '0', 'oran_mobil' => '16:9' ) );
+
+		$sizes = array_merge(
+			qrms_banner_kirpma_kaydi( '16:9', 1000, 563 ),
+			qrms_banner_kirpma_kaydi( '4:3', 1000, 750 )
+		);
+		qrms_banner_ek_kur( 505, 1000, 1000, $sizes );
+		qrms_banner_yayinla( 605, 505 );
+
+		$h = new RMA_Test_Banner_Onizleme_Harness();
+		$GLOBALS['qrms_test']['can_map']['manage_options'] = true;
+		$_POST['oran_mobil_farkli'] = '1';
+		$_POST['oran_mobil']        = '4:3';
+
+		$h->ajax_banner_onizleme();
+
+		$json = $GLOBALS['qrms_test']['json'];
+		qrms_assert_true( $json['success'], 'istek başarılı' );
+		qrms_assert_contains( '<picture class="qmo-banner-picture">', $json['data']['html'], 'kaydedilmemiş mobil oran önizlemede etkili — <picture> basıldı' );
+
+		// Kayıtlı ayar bu istekten ETKİLENMEDİ.
+		qrms_assert_same( '0', (string) QMO_Banner_Slider_Settings::get()['oran_mobil_farkli'], 'kayıtlı ayar değişmedi' );
+	}
+);
+
+qrms_test(
+	'ajax_banner_onizleme: natif mobil oranlı kaynak — kırpma dosyası üretilmeden mobil kaynak orijinalden çözülür (SENARYO 1 ile aynı veri, uçtan uca)',
+	function () {
+		QMO_Banner_Slider_Settings::kaydet( array( 'oran' => '16:9', 'oran_mobil_farkli' => '1', 'oran_mobil' => '4:3' ) );
+
+		// Kaynak 1200x900 = tam 4:3; yalnızca 16:9 kırpması var.
+		qrms_banner_ek_kur( 506, 1200, 900, qrms_banner_kirpma_kaydi( '16:9', 1200, 675 ) );
+		qrms_banner_yayinla( 606, 506 );
+
+		$h = new RMA_Test_Banner_Onizleme_Harness();
+		$GLOBALS['qrms_test']['can_map']['manage_options'] = true;
+
+		$h->ajax_banner_onizleme();
+
+		$json = $GLOBALS['qrms_test']['json'];
+		qrms_assert_true( $json['success'], 'istek başarılı' );
+		qrms_assert_contains( '<picture', $json['data']['html'], 'natif mobil oranlı kaynak yine de <picture> ile sunulur (orijinal dosya)' );
+		qrms_assert_same( 'hazir', $json['data']['durum'], 'kırpma bekleyen yok — 4:3 zaten uygun, 16:9 hazır' );
+	}
+);
+
+qrms_test(
+	'ajax_banner_onizleme: mobil kırpma EKSİK — kaynak mobil oranda değil, <picture> hiç basılmaz ve durum bekliyor döner; kırpma dosyası ÜRETİLMEZ',
+	function () {
+		QMO_Banner_Slider_Settings::kaydet( array( 'oran' => '16:9', 'oran_mobil_farkli' => '1', 'oran_mobil' => '4:3' ) );
+
+		// Kare kaynak, YALNIZCA 16:9 kırpması var — 4:3 EKSİK.
+		qrms_banner_ek_kur( 507, 1000, 1000, qrms_banner_kirpma_kaydi( '16:9', 1000, 563 ) );
+		qrms_banner_yayinla( 607, 507 );
+
+		$h = new RMA_Test_Banner_Onizleme_Harness();
+		$GLOBALS['qrms_test']['can_map']['manage_options'] = true;
+
+		$h->ajax_banner_onizleme();
+
+		$json = $GLOBALS['qrms_test']['json'];
+		qrms_assert_true( $json['success'], 'istek başarılı (kırpma eksikliği hata değildir)' );
+		qrms_assert_false( strpos( $json['data']['html'], '<picture' ) !== false, 'uymayan dosya kullanılmaz — <picture> basılmaz' );
+		qrms_assert_same( 'bekliyor', $json['data']['durum'], 'kırpma bekleyen olarak işaretlenir' );
+
+		// Kırpma dosyası ÜRETİLMEDİ — meta hâlâ sadece 16:9 içeriyor.
+		$meta = $GLOBALS['qrms_test']['attachment_meta'][507];
+		qrms_assert_true( ! isset( $meta['sizes'][ QMO_Banner_Kirpma::boyut_adi( '4:3' ) ] ), 'AJAX önizleme kırpma dosyası ÜRETMEDİ' );
+	}
+);
+
+qrms_test(
+	'ajax_banner_onizleme: kaynak kodda ikinci bir HTML üretim yolu yok, kırpma üretimi/ayar kaydı çağrılmaz, nonce capability\'den önce kontrol edilir',
+	function () {
+		$src = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-kampanya-banner-admin.php' );
+
+		$fonksiyon_basi = strpos( $src, 'public function ajax_banner_onizleme()' );
+		qrms_assert_true( false !== $fonksiyon_basi, 'fonksiyon var' );
+
+		$fonksiyon_sonu = strpos( $src, "\n    }\n", $fonksiyon_basi );
+		$govde          = substr( $src, $fonksiyon_basi, $fonksiyon_sonu - $fonksiyon_basi );
+
+		qrms_assert_contains( 'QMO_Shortcode_Banner_Slider::payloadlar(', $govde, 'TEK renderer: payloadlar() kullanılır' );
+		qrms_assert_contains( 'QMO_Shortcode_Banner_Slider::kok_html(', $govde, 'TEK renderer: kok_html() kullanılır' );
+		qrms_assert_false( strpos( $govde, 'ob_start(' ) !== false, 'ikinci bir HTML üretimi (kendi ob_start) yok' );
+		qrms_assert_false( strpos( $govde, '::kaydet(' ) !== false, 'ayar kaydedilmiyor' );
+		qrms_assert_false( strpos( $govde, 'update_option(' ) !== false, 'option doğrudan yazılmıyor' );
+		qrms_assert_false( strpos( $govde, '::kirp(' ) !== false, 'kırpma üretimi yok' );
+		qrms_assert_false( strpos( $govde, 'banner_kirp(' ) !== false, 'toplu kırpma üretimi yok' );
+
+		$nonce_pos = strpos( $govde, 'check_ajax_referer' );
+		$cap_pos   = strpos( $govde, 'current_user_can' );
+		qrms_assert_true( false !== $nonce_pos && false !== $cap_pos && $nonce_pos < $cap_pos, 'nonce kontrolü capability kontrolünden ÖNCE' );
+	}
+);
+
+qrms_test(
+	'wp_ajax_qmo_banner_onizleme kaydı qr-menu.php\'de doğru handler\'a bağlı',
+	function () {
+		$boot = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/qr-menu.php' );
+		qrms_assert_contains( "add_action( 'wp_ajax_qmo_banner_onizleme', [ \$this, 'ajax_banner_onizleme' ] );", $boot, 'AJAX kancası kayıtlı' );
+	}
+);
+
 
 /* ---------------------------------------------------------------------------
  * 24. HFB — "Yeni Blok Ekle" listesi, canlı önizleme yükü, önbellek temizliği
