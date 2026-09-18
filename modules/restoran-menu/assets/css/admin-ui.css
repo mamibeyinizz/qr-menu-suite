@@ -2063,9 +2063,26 @@
     width: 100%;
 }
 
-.rma-vitrin-preview-stage .qmo-banner-nav-btn,
-.rma-vitrin-preview-stage .qmo-banner-dot {
-    pointer-events: none;
+/* Kampanya banner önizlemesi iframe içinde gerçek frontend kontrollerini kullanır. */
+
+.qmo-banner-preview-frame {
+    margin: 0 auto;
+    max-width: 100%;
+    overflow: hidden;
+    position: relative;
+    width: 100%;
+}
+
+.qmo-banner-preview-iframe {
+    background: #0a0a0c;
+    border: 0;
+    display: block;
+    transform-origin: top left;
+    vertical-align: top;
+}
+
+.rma-vitrin-preview-stage.is-mobile-mode .qmo-banner-preview-frame {
+    max-width: 100%;
 }
 
 /* ---------------------------------------------------------------------

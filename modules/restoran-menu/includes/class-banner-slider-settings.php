@@ -274,17 +274,17 @@ class QMO_Banner_Slider_Settings {
      * @return string
      */
     public static function css_degiskenleri( $ayar = null ) {
-        $a = is_array( $ayar ) ? $ayar : self::get();
+        $a = is_array( $ayar ) ? self::sanitize( array_merge( self::get(), $ayar ) ) : self::get();
 
         return sprintf(
             '--qmo-banner-oran:%1$s;--qmo-banner-oran-mobil:%8$s;--qmo-banner-title-font:%2$s;--qmo-banner-title-color:%3$s;--qmo-banner-title-size:%4$dpx;--qmo-banner-title-size-mobile:%5$dpx;--qmo-banner-title-weight:%6$d;--qmo-banner-title-align:%7$s;',
-            self::oran_css( $a['oran'] ),
-            self::font_stack( $a['title_font'] ),
-            $a['title_color'],
-            (int) $a['title_size'],
-            (int) $a['title_size_mobile'],
-            (int) $a['title_weight'],
-            $a['title_align'],
+            self::oran_css( $a['oran'] ?? self::varsayilanlar()['oran'] ),
+            self::font_stack( $a['title_font'] ?? self::varsayilanlar()['title_font'] ),
+            $a['title_color'] ?? self::varsayilanlar()['title_color'],
+            (int) ( $a['title_size'] ?? self::varsayilanlar()['title_size'] ),
+            (int) ( $a['title_size_mobile'] ?? self::varsayilanlar()['title_size_mobile'] ),
+            (int) ( $a['title_weight'] ?? self::varsayilanlar()['title_weight'] ),
+            $a['title_align'] ?? self::varsayilanlar()['title_align'],
             self::oran_css( self::oran_mobil( $a ) )
         );
     }

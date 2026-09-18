@@ -1282,46 +1282,6 @@ require_once QRMS_PLUGIN_DIR . 'modules/_qmo-ortak/helpers.php';
 require_once QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/shortcode-banner-slider.php';
 require_once QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-kampanya-banner-admin.php';
 
-if ( ! class_exists( 'WP_Query' ) ) {
-	/**
-	 * QMO_Banner_CPT::query_banners()'ın kullandığı argümanlar (post_type,
-	 * post_status[]) için minimal taklit. Ayrı bir kayıt mekanizması İCAT
-	 * ETMEZ — mevcut $GLOBALS['qrms_test']['post_types'] ve get_post_status()
-	 * stub'larını okur.
-	 */
-	class WP_Query {
-		/** @var array */
-		public $posts = array();
-
-		public function __construct( $args = array() ) {
-			$post_type = isset( $args['post_type'] ) ? $args['post_type'] : '';
-			$statuslar = isset( $args['post_status'] ) ? (array) $args['post_status'] : array( 'publish' );
-			$tipler    = isset( $GLOBALS['qrms_test']['post_types'] ) ? $GLOBALS['qrms_test']['post_types'] : array();
-
-			$idler = array();
-			foreach ( $tipler as $id => $tip ) {
-				if ( $tip !== $post_type ) continue;
-				if ( ! in_array( get_post_status( $id ), $statuslar, true ) ) continue;
-				$idler[] = $id;
-			}
-
-			sort( $idler, SORT_NUMERIC );
-
-			$this->posts = array_map(
-				function ( $id ) {
-					$baslik = isset( $GLOBALS['qrms_test']['post_title'][ $id ] ) ? $GLOBALS['qrms_test']['post_title'][ $id ] : '';
-					return (object) array(
-						'ID'         => $id,
-						'post_title' => $baslik,
-						'post_type'  => $GLOBALS['qrms_test']['post_types'][ $id ],
-					);
-				},
-				$idler
-			);
-		}
-	}
-}
-
 if ( ! class_exists( 'RMA_Test_Banner_Onizleme_Harness' ) ) {
 	/**
 	 * ajax_banner_onizleme() dışında hiçbir admin sayfası bağımlılığı
@@ -1724,6 +1684,80 @@ qrms_test(
 	function () {
 		$boot = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/qr-menu.php' );
 		qrms_assert_contains( "add_action( 'wp_ajax_qmo_banner_onizleme', [ \$this, 'ajax_banner_onizleme' ] );", $boot, 'AJAX kancası kayıtlı' );
+		qrms_assert_false( strpos( $boot, 'wp_ajax_nopriv_qmo_banner_onizleme' ) !== false, 'önizleme ucu herkese açık DEĞİL' );
+	}
+);
+
+qrms_test(
+	'onizleme_belgesi(): viewport + gerçek CSS/JS URL\'leri iframe belgesine yazılır',
+	function () {
+		$kok = '<div class="qmo-banner-root" data-qmo-banner-slider></div>';
+		$doc = QMO_Shortcode_Banner_Slider::onizleme_belgesi(
+			$kok,
+			390,
+			array(
+				'css'   => 'https://example.test/css.css',
+				'js'    => 'https://example.test/js.js',
+				'fonts' => 'https://example.test/fonts.css',
+			)
+		);
+
+		qrms_assert_contains( 'width=390', $doc, 'mobil sanal viewport' );
+		qrms_assert_contains( 'css.css', $doc, 'CSS bağlantısı' );
+		qrms_assert_contains( 'js.js', $doc, 'JS betiği' );
+		qrms_assert_contains( $kok, $doc, 'kok_html aynen gövdede' );
+	}
+);
+
+qrms_test(
+	'bekleyen_sayisi_oranlar(): aynı kayıt iki oran için bekliyorsa bir kez sayılır',
+	function () {
+		QMO_Banner_Slider_Settings::kaydet( array( 'oran' => '16:9', 'oran_mobil_farkli' => '1', 'oran_mobil' => '4:3' ) );
+		qrms_banner_ek_kur( 508, 1000, 1000, qrms_banner_kirpma_kaydi( '16:9', 1000, 563 ) );
+		qrms_banner_yayinla( 608, 508 );
+
+		$banners = QMO_Banner_CPT::get_published_banners();
+		$tek     = QMO_Banner_Kirpma::bekleyen_sayisi_oranlar( array( '16:9', '4:3' ), $banners );
+		$toplam  = QMO_Banner_Kirpma::bekleyen_sayisi( '16:9', $banners ) + QMO_Banner_Kirpma::bekleyen_sayisi( '4:3', $banners );
+
+		qrms_assert_same( 1, $tek, 'kayıt başına bir' );
+		qrms_assert_true( $toplam >= 1, 'oran başına toplam en az bir (çift sayım riski)' );
+		qrms_assert_true( $tek <= $toplam, 'optimize sayım çift sayımdan büyük olmaz' );
+	}
+);
+
+qrms_test(
+	'ajax_banner_onizleme: show_title POST override kaydedilmeden HTML\'e yansır',
+	function () {
+		QMO_Banner_Slider_Settings::kaydet( array( 'show_title' => 0, 'oran' => '16:9' ) );
+		qrms_banner_ek_kur( 509, 1600, 900 );
+		qrms_banner_yayinla( 609, 509, 'Başlık Test' );
+
+		$h = new RMA_Test_Banner_Onizleme_Harness();
+		$GLOBALS['qrms_test']['can_map']['manage_options'] = true;
+		$_POST['show_title'] = '1';
+
+		$h->ajax_banner_onizleme();
+
+		$json = $GLOBALS['qrms_test']['json'];
+		qrms_assert_true( $json['success'], 'istek başarılı' );
+		qrms_assert_contains( 'qmo-banner-caption', $json['data']['html'], 'başlık açıkken caption basılır' );
+		qrms_assert_same( 0, (int) QMO_Banner_Slider_Settings::get()['show_title'], 'kayıtlı ayar değişmedi' );
+	}
+);
+
+qrms_test(
+	'Faz 3: admin banner önizlemesi iframe + nonce + AJAX bağlantısı kodda mevcut',
+	function () {
+		$modul = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/module.php' );
+		$trait = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-kampanya-banner-admin.php' );
+		$js    = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/js/admin-ui.js' );
+
+		qrms_assert_contains( 'QMO_BANNER_PREVIEW', $modul, 'nonce/config wp_localize_script ile' );
+		qrms_assert_contains( "wp_create_nonce( 'qmo_banner_onizleme' )", $modul, 'doğru nonce eylemi' );
+		qrms_assert_contains( 'qmo-banner-preview-iframe', $trait, 'iframe önizleme' );
+		qrms_assert_contains( 'buildIframeDocument', $js, 'gerçek frontend belgesi' );
+		qrms_assert_contains( 'scheduleAjaxPreview', $js, 'debounce AJAX' );
 	}
 );
 

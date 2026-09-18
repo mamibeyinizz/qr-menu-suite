@@ -845,6 +845,8 @@ trait RMA_Kampanya_Banner_Admin_Trait {
             $ayar['oran_mobil_farkli'] = (int) $ham_farkli;
         }
 
+        $ayar = $this->banner_onizleme_post_ayar_birlestir( $ayar );
+
         $banners = QMO_Shortcode_Banner_Slider::payloadlar( $ayar );
         $html    = QMO_Shortcode_Banner_Slider::kok_html(
             $banners,
@@ -862,11 +864,10 @@ trait RMA_Kampanya_Banner_Admin_Trait {
 
         if ( class_exists( 'QMO_Banner_Kirpma' ) && class_exists( 'QMO_Banner_CPT' ) && class_exists( 'QMO_Banner_Slider_Settings' ) ) {
             $banner_kayitlari = QMO_Banner_CPT::get_published_banners();
-            $bekleyen         = 0;
-
-            foreach ( QMO_Banner_Slider_Settings::aktif_oranlar( $ayar ) as $aktif_oran ) {
-                $bekleyen += QMO_Banner_Kirpma::bekleyen_sayisi( $aktif_oran, $banner_kayitlari );
-            }
+            $bekleyen         = QMO_Banner_Kirpma::bekleyen_sayisi_oranlar(
+                QMO_Banner_Slider_Settings::aktif_oranlar( $ayar ),
+                $banner_kayitlari
+            );
 
             $durum = $bekleyen > 0 ? 'bekliyor' : 'hazir';
         }
@@ -901,6 +902,61 @@ trait RMA_Kampanya_Banner_Admin_Trait {
             add_query_arg( $args, admin_url( 'admin-post.php' ) ),
             $this->banner_kirp_nonce_action
         );
+    }
+
+    /**
+     * Önizleme AJAX isteğindeki görünüm alanlarını bellekteki $ayar ile birleştirir.
+     *
+     * Yalnızca tanınan anahtarlar sanitize edilir; option/meta YAZILMAZ.
+     *
+     * @param array $ayar Mevcut birleşik ayar.
+     * @return array
+     */
+    private function banner_onizleme_post_ayar_birlestir( array $ayar ) {
+        if ( ! class_exists( 'QMO_Banner_Slider_Settings' ) ) {
+            return $ayar;
+        }
+
+        $ham = array();
+
+        $bayraklar = array( 'show_nav', 'show_dots', 'show_title' );
+        foreach ( $bayraklar as $anahtar ) {
+            if ( isset( $_POST[ $anahtar ] ) ) {
+                // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- sanitize() içinde bayrak().
+                $ham[ $anahtar ] = wp_unslash( $_POST[ $anahtar ] );
+            }
+        }
+
+        if ( isset( $_POST['gecis'] ) ) {
+            // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- sanitize() gecis().
+            $ham['gecis'] = wp_unslash( $_POST['gecis'] );
+        }
+
+        if ( isset( $_POST['autoplay'] ) ) {
+            // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- sanitize() autoplay().
+            $ham['autoplay'] = wp_unslash( $_POST['autoplay'] );
+        }
+
+        $metin_alanlar = array(
+            'title_font',
+            'title_color',
+            'title_size',
+            'title_size_mobile',
+            'title_weight',
+            'title_align',
+        );
+        foreach ( $metin_alanlar as $anahtar ) {
+            if ( isset( $_POST[ $anahtar ] ) ) {
+                // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- sanitize().
+                $ham[ $anahtar ] = wp_unslash( $_POST[ $anahtar ] );
+            }
+        }
+
+        if ( empty( $ham ) ) {
+            return $ayar;
+        }
+
+        return QMO_Banner_Slider_Settings::sanitize( array_merge( $ayar, $ham ) );
     }
 
     /**
@@ -955,10 +1011,19 @@ trait RMA_Kampanya_Banner_Admin_Trait {
      */
     private function render_banner_ayar_formu() {
         $ayar = QMO_Banner_Slider_Settings::get();
-        $stil = QMO_Banner_Slider_Settings::css_degiskenleri( $ayar );
 
         $onizleme_gorsel = $this->banner_onizleme_gorseli();
-        $ornek_baslik    = 'Yaz Kampanyası';
+        $banner_payload  = QMO_Shortcode_Banner_Slider::payloadlar( $ayar );
+        $onizleme_kok    = ! empty( $banner_payload )
+            ? QMO_Shortcode_Banner_Slider::kok_html(
+                $banner_payload,
+                $ayar,
+                array(
+                    'autoplay' => (int) $ayar['autoplay'],
+                    'betik'    => false,
+                )
+            )
+            : '';
 
         $adimlar = array(
             1 => array( 'Biçim', 'Oran ve Geçiş' ),
@@ -1189,45 +1254,34 @@ trait RMA_Kampanya_Banner_Admin_Trait {
                         <h2 class="rma-card-title">Canlı Önizleme</h2>
                         <p class="rma-card-desc">Soldaki her değişiklik anında yansır. <?php echo '' === $onizleme_gorsel ? 'Henüz görselli bir kampanya yok; yer tutucu gösteriliyor.' : 'Yayındaki ilk kampanya görseliniz kullanılıyor.'; ?></p>
 
-                        <div class="rma-vitrin-preview-toggle">
-                            <button type="button" class="button rma-vitrin-preview-btn is-active" data-preview-mode="desktop">Masaüstü Önizleme</button>
-                            <button type="button" class="button rma-vitrin-preview-btn" data-preview-mode="mobile">Mobil Önizleme</button>
+                        <div class="rma-vitrin-preview-toggle" role="group" aria-label="Önizleme cihazı">
+                            <button type="button" class="button rma-vitrin-preview-btn is-active" data-preview-mode="desktop" aria-pressed="true">Masaüstü Önizleme</button>
+                            <button type="button" class="button rma-vitrin-preview-btn" data-preview-mode="mobile" aria-pressed="false">Mobil Önizleme</button>
                         </div>
 
                         <div class="rma-vitrin-preview-stage" id="qmo-banner-preview-stage">
-                            <div class="qmo-banner-root<?php echo 'fade' === $ayar['gecis'] ? ' is-fade' : ''; ?>"
-                                 id="qmo-banner-preview"
-                                 style="<?php echo esc_attr( $stil ); ?>">
-                                <div class="qmo-banner-viewport">
-                                    <div class="qmo-banner-track">
-                                        <div class="qmo-banner-slide is-active">
-                                            <?php if ( '' !== $onizleme_gorsel ) : ?>
-                                                <img src="<?php echo esc_url( $onizleme_gorsel ); ?>" alt="" class="qmo-banner-img">
-                                            <?php else : ?>
-                                                <span class="qmo-banner-img qmo-banner-preview-empty" aria-hidden="true">1600 &times; 900</span>
-                                            <?php endif; ?>
-                                            <span class="qmo-banner-caption"<?php echo $ayar['show_title'] ? '' : ' style="display:none;"'; ?> data-qmo-banner-caption>
-                                                <span class="qmo-banner-title"><?php echo esc_html( $ornek_baslik ); ?></span>
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="qmo-banner-nav"<?php echo $ayar['show_nav'] ? '' : ' style="display:none;"'; ?> data-qmo-banner-nav aria-hidden="true">
-                                    <button type="button" class="qmo-banner-nav-btn qmo-banner-nav-prev" tabindex="-1">&#8249;</button>
-                                    <button type="button" class="qmo-banner-nav-btn qmo-banner-nav-next" tabindex="-1">&#8250;</button>
-                                </div>
-                                <div class="qmo-banner-dots"<?php echo $ayar['show_dots'] ? '' : ' style="display:none;"'; ?> data-qmo-banner-dots aria-hidden="true">
-                                    <span class="qmo-banner-dot is-active"></span>
-                                    <span class="qmo-banner-dot"></span>
-                                    <span class="qmo-banner-dot"></span>
-                                </div>
+                            <div class="qmo-banner-preview-frame" id="qmo-banner-preview-frame">
+                                <iframe id="qmo-banner-preview-iframe"
+                                        class="qmo-banner-preview-iframe"
+                                        title="<?php echo esc_attr( 'Kampanya banner canlı önizleme' ); ?>"
+                                        tabindex="0"></iframe>
                             </div>
+                            <p class="qmo-banner-preview-durum screen-reader-text" id="qmo-banner-preview-durum" aria-live="polite"></p>
                         </div>
                     </div>
                 </div>
             </div>
         </form>
         <?php
+        wp_add_inline_script(
+            'rma-admin-ui',
+            'window.QMO_BANNER_PREVIEW_INITIAL=' . wp_json_encode(
+                array(
+                    'kokHtml' => $onizleme_kok,
+                )
+            ) . ';',
+            'before'
+        );
     }
 
     /* -----------------------------------------------------------------

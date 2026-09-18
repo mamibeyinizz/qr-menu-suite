@@ -256,10 +256,13 @@ class QMO_Shortcode_Banner_Slider {
      */
     public static function payloadlar( $ayar = null ) {
         $banners = [];
-        $ayar    = is_array( $ayar )
-            ? $ayar
-            : ( class_exists( 'QMO_Banner_Slider_Settings' ) ? QMO_Banner_Slider_Settings::get() : array( 'oran' => '16:9' ) );
-        $oran    = $ayar['oran'];
+        $temel   = class_exists( 'QMO_Banner_Slider_Settings' )
+            ? QMO_Banner_Slider_Settings::get()
+            : array( 'oran' => '16:9' );
+        $ayar    = is_array( $ayar ) ? array_merge( $temel, $ayar ) : $temel;
+        $oran    = class_exists( 'QMO_Banner_Slider_Settings' )
+            ? QMO_Banner_Slider_Settings::oran( $ayar['oran'] ?? '16:9' )
+            : (string) ( $ayar['oran'] ?? '16:9' );
 
         // Mobil oran masaüstüyle aynıysa ikinci bir çözümleme hiç yapılmaz:
         // ne ek sorgu, ne ek dosya, ne <picture>.
@@ -347,5 +350,38 @@ class QMO_Shortcode_Banner_Slider {
         }
 
         return $banners;
+    }
+
+    /**
+     * Admin canlı önizleme iframe'i için izole HTML belgesi.
+     *
+     * Kök markup kok_html() çıktısıdır; CSS/JS gerçek frontend varlıklarıdır.
+     * Viewport genişliği iframe'in iç referansını (720px kırılımı, <picture>)
+     * belirler — admin sarmalayıcı CSS'i bu belgeye sızmaz.
+     *
+     * @param string $kok_html       kok_html() çıktısı (betik=false).
+     * @param int    $viewport_px    Sanal viewport genişliği (1280 veya 390).
+     * @param array  $asset_urls     css, js, fonts URL'leri.
+     * @return string
+     */
+    public static function onizleme_belgesi( $kok_html, $viewport_px, array $asset_urls ) {
+        $viewport_px = max( 320, min( 4096, (int) $viewport_px ) );
+        $css         = isset( $asset_urls['css'] ) ? esc_url( (string) $asset_urls['css'] ) : '';
+        $js          = isset( $asset_urls['js'] ) ? esc_url( (string) $asset_urls['js'] ) : '';
+        $fonts       = isset( $asset_urls['fonts'] ) ? esc_url( (string) $asset_urls['fonts'] ) : '';
+        $govde       = is_string( $kok_html ) ? trim( $kok_html ) : '';
+
+        if ( '' === $govde ) {
+            $govde = '<div class="qmo-banner-root" style="aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;background:#0d0d10;color:#c9a84c;font-family:system-ui,sans-serif;"><span>Henüz görselli kampanya yok</span></div>';
+        }
+
+        return '<!DOCTYPE html><html lang="tr"><head><meta charset="utf-8">'
+            . '<meta name="viewport" content="width=' . $viewport_px . '">'
+            . ( '' !== $fonts ? '<link rel="stylesheet" href="' . $fonts . '">' : '' )
+            . ( '' !== $css ? '<link rel="stylesheet" href="' . $css . '">' : '' )
+            . '<style>html,body{margin:0;padding:0;background:#0a0a0c;}body{min-height:100vh;}</style>'
+            . '</head><body>' . $govde
+            . ( '' !== $js ? '<script src="' . $js . '" defer></script>' : '' )
+            . '</body></html>';
     }
 }

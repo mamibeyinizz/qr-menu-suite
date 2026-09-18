@@ -722,6 +722,41 @@ class QMO_Banner_Kirpma {
     }
 
     /**
+     * Verilen oran listesinde kırpma bekleyen banner sayısı (kayıt başına bir).
+     *
+     * Önizleme AJAX'ında aktif_oranlar() için tek geçişte sayım; oran
+     * başına bekleyen_sayisi() toplamı aynı kaydı iki kez sayabilir.
+     *
+     * @param string[]      $oranlar Oran anahtarları.
+     * @param WP_Post[]|null $banners  Yayınlanmış liste; null ise sorgulanır.
+     * @return int
+     */
+    public static function bekleyen_sayisi_oranlar( array $oranlar, $banners = null ) {
+        if ( empty( $oranlar ) ) {
+            return 0;
+        }
+
+        if ( ! is_array( $banners ) ) {
+            $banners = QMO_Banner_CPT::get_published_banners();
+        }
+
+        $sayi = 0;
+
+        foreach ( $banners as $banner ) {
+            $banner_id = (int) $banner->ID;
+
+            foreach ( $oranlar as $oran ) {
+                if ( 'bekliyor' === self::banner_durumu( $banner_id, $oran ) ) {
+                    $sayi++;
+                    break;
+                }
+            }
+        }
+
+        return $sayi;
+    }
+
+    /**
      * Oran anahtarını doğrular; null gelirse kayıtlı ayarı okur.
      *
      * @param string|null $oran Ham oran.

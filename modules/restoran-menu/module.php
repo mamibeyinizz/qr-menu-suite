@@ -357,6 +357,25 @@ function qrms_module_restoran_menu_admin_assets() {
 			QRMS_Helpers::asset_version( $modul . 'assets/js/banner-olustur.js' ),
 			true
 		);
+
+		$banner_js = $modul . 'includes/frontend-banner-slider.js';
+		wp_localize_script(
+			'rma-admin-ui',
+			'QMO_BANNER_PREVIEW',
+			array(
+				'ajaxUrl'      => admin_url( 'admin-ajax.php' ),
+				'action'       => 'qmo_banner_onizleme',
+				'nonce'        => wp_create_nonce( 'qmo_banner_onizleme' ),
+				'desktopWidth' => 1280,
+				'mobileWidth'  => 390,
+				'debounceMs'   => 220,
+				'assets'       => array(
+					'css'   => $url . 'includes/frontend-banner-slider.css',
+					'js'    => $url . 'includes/frontend-banner-slider.js?v=' . QRMS_Helpers::asset_version( $banner_js ),
+					'fonts' => 'https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap',
+				),
+			)
+		);
 	}
 
 	// Ürün Vitrini formundaki canlı önizleme, frontend'in GERÇEK vitrin.css'ini

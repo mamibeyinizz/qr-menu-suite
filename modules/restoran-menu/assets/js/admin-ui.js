@@ -1251,26 +1251,35 @@
        kullandığı için sahte bir stil yoktur.
     ----------------------------------------------------------------- */
     function initBannerPreview() {
-        var $form    = $('#qmo-banner-form');
-        var $stage   = $('#qmo-banner-preview-stage');
-        var $preview = $('#qmo-banner-preview');
+        var cfg = window.QMO_BANNER_PREVIEW || null;
+        var $form = $('#qmo-banner-form');
+        var $stage = $('#qmo-banner-preview-stage');
+        var $frame = $('#qmo-banner-preview-frame');
+        var $iframe = $('#qmo-banner-preview-iframe');
 
-        if (!$form.length || !$preview.length) return;
+        if (!cfg || !$form.length || !$iframe.length || !$frame.length) {
+            return;
+        }
 
         var mode = 'desktop';
-        var previewEl = $preview.get(0);
+        var ajaxTimer = null;
+        var ajaxSeq = 0;
+        var lastKokHtml = (window.QMO_BANNER_PREVIEW_INITIAL && window.QMO_BANNER_PREVIEW_INITIAL.kokHtml) || '';
 
         function fieldVal(id, fallback) {
             var $el = $('#' + id);
             return $el.length ? $el.val() : fallback;
         }
 
-        /* "Mobilde farklı oran kullan" kutusu: kapalıyken mobil oran alanı
-           gizlenir ve mobil oran masaüstünün aynısı sayılır. aria-expanded
-           kutunun üzerinde, aria-controls ile alanı gösterir. */
+        function viewportWidth() {
+            return mode === 'mobile' ? cfg.mobileWidth : cfg.desktopWidth;
+        }
+
         function mobilOranAlani() {
             var $kutu = $('#qmo-banner-oran-mobil-farkli');
-            if (!$kutu.length) return false;
+            if (!$kutu.length) {
+                return false;
+            }
 
             var acik = $kutu.is(':checked');
             $kutu.attr('aria-expanded', acik ? 'true' : 'false');
@@ -1281,87 +1290,218 @@
 
         function oranCssDegeri(id, yedek) {
             var $sel = $('#' + id);
-            if (!$sel.length) return yedek;
+            if (!$sel.length) {
+                return yedek;
+            }
             return $sel.find('option:selected').data('oran-css') || yedek;
         }
 
-        function applyPreview() {
+        function buildIframeDocument(kokHtml) {
+            var vw = viewportWidth();
+            var assets = cfg.assets || {};
+            var css = assets.css || '';
+            var js = assets.js || '';
+            var fonts = assets.fonts || '';
+            var govde = kokHtml && String(kokHtml).trim() ? String(kokHtml).trim() : '';
+
+            if (!govde) {
+                govde = '<div class="qmo-banner-root" style="aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;background:#0d0d10;color:#c9a84c;font-family:system-ui,sans-serif;"><span>Henüz görselli kampanya yok</span></div>';
+            }
+
+            return '<!DOCTYPE html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=' + vw + '">'
+                + (fonts ? '<link rel="stylesheet" href="' + fonts + '">' : '')
+                + (css ? '<link rel="stylesheet" href="' + css + '">' : '')
+                + '<style>html,body{margin:0;padding:0;background:#0a0a0c;}body{min-height:100vh;}</style>'
+                + '</head><body>' + govde
+                + (js ? '<script src="' + js + '" defer><\/script>' : '')
+                + '</body></html>';
+        }
+
+        function iframeRoot() {
+            var doc = $iframe[0].contentDocument;
+            return doc ? doc.querySelector('.qmo-banner-root') : null;
+        }
+
+        function resizeIframe() {
+            var vw = viewportWidth();
+            var avail = $frame.innerWidth() || vw;
+            var scale = Math.min(1, avail / vw);
+            var doc = $iframe[0].contentDocument;
+            var height = vw * 0.45;
+
+            if (doc && doc.body) {
+                height = Math.max(doc.body.scrollHeight, doc.documentElement.scrollHeight, height);
+            }
+
+            $iframe.css({
+                width: vw + 'px',
+                height: height + 'px',
+                transform: 'scale(' + scale + ')',
+                marginBottom: -(height * (1 - scale)) + 'px'
+            });
+            $frame.css('height', (height * scale) + 'px');
+        }
+
+        function mountIframe(kokHtml) {
+            lastKokHtml = kokHtml || '';
+            var doc = $iframe[0].contentDocument;
+
+            if (!doc) {
+                return;
+            }
+
+            doc.open();
+            doc.write(buildIframeDocument(lastKokHtml));
+            doc.close();
+
+            $iframe.one('load', function () {
+                resizeIframe();
+                applyCssOnlyPreview();
+            });
+            setTimeout(function () {
+                resizeIframe();
+                applyCssOnlyPreview();
+            }, 60);
+            setTimeout(resizeIframe, 350);
+        }
+
+        function applyCssOnlyPreview() {
+            var root = iframeRoot();
+            if (!root) {
+                return;
+            }
+
             var oranCss = oranCssDegeri('qmo-banner-oran', '16 / 9');
             var mobilAcik = mobilOranAlani();
             var mobilCss = mobilAcik ? oranCssDegeri('qmo-banner-oran-mobil', oranCss) : oranCss;
 
-            previewEl.style.setProperty('--qmo-banner-oran-mobil', mobilCss);
-
-            /* Önizleme kutusu her zaman 720px'in altında olduğu için
-               ön yüzdeki @container kuralı burada sürekli geçerli olurdu.
-               Bu yüzden seçili modun oranı --qmo-banner-oran'a da yazılır;
-               gerçek ön yüzde ayrım yine CSS'in işidir. */
-            previewEl.style.setProperty('--qmo-banner-oran', mode === 'mobile' ? mobilCss : oranCss);
+            root.style.setProperty('--qmo-banner-oran-mobil', mobilCss);
+            root.style.setProperty('--qmo-banner-oran', mode === 'mobile' ? mobilCss : oranCss);
 
             var sizeDesktop = fieldVal('qmo-banner-title-size', 32);
-            var sizeMobile  = fieldVal('qmo-banner-title-size-mobile', 20);
-            var size        = mode === 'mobile' ? sizeMobile : sizeDesktop;
+            var sizeMobile = fieldVal('qmo-banner-title-size-mobile', 20);
+            var size = mode === 'mobile' ? sizeMobile : sizeDesktop;
 
-            /* Önizleme sütunu 720px'in altında olduğu için container query
-               her zaman mobil puntoyu yazardı. Seçili modun puntosunu
-               HER İKİ değişkene de basıyoruz ki CQ önizlemeyi bozmasın;
-               gerçek ön yüzde CSS yine --qmo-banner-title-size-mobile'a
-               geçer (bkz. frontend-banner-slider.css). */
-            previewEl.style.setProperty('--qmo-banner-title-size', size + 'px');
-            previewEl.style.setProperty('--qmo-banner-title-size-mobile', size + 'px');
-            previewEl.style.setProperty('--qmo-banner-title-weight', fieldVal('qmo-banner-title-weight', 600));
-            previewEl.style.setProperty('--qmo-banner-title-align', vitrinAlignVal('qmo-banner-title-align'));
+            root.style.setProperty('--qmo-banner-title-size', size + 'px');
+            root.style.setProperty('--qmo-banner-title-size-mobile', size + 'px');
+            root.style.setProperty('--qmo-banner-title-weight', fieldVal('qmo-banner-title-weight', 600));
+            root.style.setProperty('--qmo-banner-title-align', vitrinAlignVal('qmo-banner-title-align'));
 
             var font = String(fieldVal('qmo-banner-title-font', 'Playfair Display'));
-            previewEl.style.setProperty('--qmo-banner-title-font', SLIDER_FONT_STACKS[font] || SLIDER_FONT_STACKS['Playfair Display']);
+            root.style.setProperty('--qmo-banner-title-font', SLIDER_FONT_STACKS[font] || SLIDER_FONT_STACKS['Playfair Display']);
 
             var titleColor = fieldVal('qmo-banner-title-color', '#f5f0e8');
-            previewEl.style.setProperty('--qmo-banner-title-color', titleColor ? titleColor : '#f5f0e8');
+            root.style.setProperty('--qmo-banner-title-color', titleColor ? titleColor : '#f5f0e8');
 
-            $preview.toggleClass('is-fade', fieldVal('qmo-banner-gecis', 'slide') === 'fade');
+            root.classList.toggle('is-fade', fieldVal('qmo-banner-gecis', 'slide') === 'fade');
+            root.setAttribute('data-gecis', fieldVal('qmo-banner-gecis', 'slide'));
+            root.setAttribute('data-autoplay', String(fieldVal('qmo-banner-autoplay', 4500)));
+        }
 
-            $preview.find('[data-qmo-banner-caption]').toggle($('#qmo-banner-show-title').is(':checked'));
-            $preview.find('[data-qmo-banner-nav]').toggle($('#qmo-banner-show-nav').is(':checked'));
-            $preview.find('[data-qmo-banner-dots]').toggle($('#qmo-banner-show-dots').is(':checked'));
+        function previewAjaxPayload() {
+            return {
+                action: cfg.action,
+                nonce: cfg.nonce,
+                oran: fieldVal('qmo-banner-oran', '16:9'),
+                oran_mobil: fieldVal('qmo-banner-oran-mobil', '16:9'),
+                oran_mobil_farkli: mobilOranAlani() ? '1' : '0',
+                gecis: fieldVal('qmo-banner-gecis', 'slide'),
+                autoplay: fieldVal('qmo-banner-autoplay', 4500),
+                show_nav: $('#qmo-banner-show-nav').is(':checked') ? '1' : '0',
+                show_dots: $('#qmo-banner-show-dots').is(':checked') ? '1' : '0',
+                show_title: $('#qmo-banner-show-title').is(':checked') ? '1' : '0',
+                title_font: fieldVal('qmo-banner-title-font', 'Playfair Display'),
+                title_color: fieldVal('qmo-banner-title-color', '#f5f0e8'),
+                title_size: fieldVal('qmo-banner-title-size', 32),
+                title_size_mobile: fieldVal('qmo-banner-title-size-mobile', 20),
+                title_weight: fieldVal('qmo-banner-title-weight', 600),
+                title_align: vitrinAlignVal('qmo-banner-title-align')
+            };
+        }
 
+        function scheduleAjaxPreview() {
+            clearTimeout(ajaxTimer);
+            ajaxTimer = setTimeout(fetchAjaxPreview, cfg.debounceMs || 220);
+        }
+
+        function fetchAjaxPreview() {
+            var seq = ++ajaxSeq;
+
+            $.post(cfg.ajaxUrl, previewAjaxPayload())
+                .done(function (resp) {
+                    if (seq !== ajaxSeq || !resp || !resp.success || !resp.data) {
+                        return;
+                    }
+
+                    mountIframe(resp.data.html || '');
+
+                    var $durum = $('#qmo-banner-preview-durum');
+                    if ($durum.length && resp.data.durum === 'bekliyor') {
+                        $durum.text('Bazı görseller seçilen oran için henüz kırpılmamış.');
+                    } else if ($durum.length) {
+                        $durum.text('');
+                    }
+                });
+        }
+
+        function applyDeviceMode() {
             $stage.toggleClass('is-mobile-mode', mode === 'mobile');
+            mountIframe(lastKokHtml);
         }
 
         $form.on(
             'input change',
-            '#qmo-banner-oran, #qmo-banner-oran-mobil, #qmo-banner-oran-mobil-farkli, #qmo-banner-gecis, #qmo-banner-show-nav, #qmo-banner-show-dots, #qmo-banner-show-title, #qmo-banner-title-font, #qmo-banner-title-color, #qmo-banner-title-size, #qmo-banner-title-size-mobile, #qmo-banner-title-weight',
-            applyPreview
+            '#qmo-banner-title-font, #qmo-banner-title-color, #qmo-banner-title-size, #qmo-banner-title-size-mobile, #qmo-banner-title-weight',
+            function () {
+                applyCssOnlyPreview();
+            }
+        );
+
+        $form.on(
+            'change',
+            '#qmo-banner-oran, #qmo-banner-oran-mobil, #qmo-banner-oran-mobil-farkli, #qmo-banner-gecis, #qmo-banner-show-nav, #qmo-banner-show-dots, #qmo-banner-show-title, #qmo-banner-autoplay',
+            function () {
+                scheduleAjaxPreview();
+            }
         );
 
         $form.on('change', '.rma-align-input', function () {
             $(this).closest('.rma-align-group').find('.rma-align-btn').each(function () {
                 $(this).toggleClass('is-selected', $(this).find('.rma-align-input').is(':checked'));
             });
-            applyPreview();
+            applyCssOnlyPreview();
         });
 
         if (typeof $.fn.wpColorPicker === 'function') {
             var $color = $('#qmo-banner-title-color');
             if ($color.length) {
                 $color.wpColorPicker({
-                    change: function (event, ui) {
-                        previewEl.style.setProperty('--qmo-banner-title-color', ui.color.toString());
+                    change: function () {
+                        applyCssOnlyPreview();
                     },
                     clear: function () {
-                        previewEl.style.setProperty('--qmo-banner-title-color', '#f5f0e8');
+                        applyCssOnlyPreview();
                     }
                 });
             }
         }
 
         $form.on('click', '.rma-vitrin-preview-btn', function () {
-            mode = $(this).data('preview-mode');
-            $form.find('.rma-vitrin-preview-btn').removeClass('is-active');
-            $(this).addClass('is-active');
-            applyPreview();
+            mode = $(this).data('preview-mode') || 'desktop';
+            $form.find('.rma-vitrin-preview-btn').removeClass('is-active').attr('aria-pressed', 'false');
+            $(this).addClass('is-active').attr('aria-pressed', 'true');
+            applyDeviceMode();
+            applyCssOnlyPreview();
         });
 
-        applyPreview();
+        if (window.ResizeObserver) {
+            new ResizeObserver(resizeIframe).observe($frame[0]);
+        } else {
+            $(window).on('resize', resizeIframe);
+        }
+
+        mountIframe(lastKokHtml);
+        applyCssOnlyPreview();
         initVitrinPreviewSticky();
     }
 
