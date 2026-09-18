@@ -2085,6 +2085,25 @@
     max-width: 100%;
 }
 
+.qmo-banner-preview-durum {
+    font-size: 12px;
+    line-height: 1.4;
+    margin: 8px 0 0;
+    min-height: 0;
+}
+
+.qmo-banner-preview-durum:empty {
+    margin: 0;
+}
+
+.qmo-banner-preview-durum.is-uyari {
+    color: #996800;
+}
+
+.qmo-banner-preview-durum.is-hata {
+    color: #d63638;
+}
+
 /* ---------------------------------------------------------------------
    VİTRİN FORMU — ADIM ADIM (STEPPER)
 

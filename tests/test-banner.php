@@ -1689,23 +1689,29 @@ qrms_test(
 );
 
 qrms_test(
-	'onizleme_belgesi(): viewport + gerçek CSS/JS URL\'leri iframe belgesine yazılır',
+	'banner preview iframe core: buildIframeDocument tek üretim yolu (viewport, varlıklar, min-height yok)',
 	function () {
-		$kok = '<div class="qmo-banner-root" data-qmo-banner-slider></div>';
-		$doc = QMO_Shortcode_Banner_Slider::onizleme_belgesi(
-			$kok,
-			390,
-			array(
-				'css'   => 'https://example.test/css.css',
-				'js'    => 'https://example.test/js.js',
-				'fonts' => 'https://example.test/fonts.css',
-			)
-		);
+		$core_path = QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/js/banner-preview-iframe-core.js';
+		$js        = file_get_contents( $core_path );
+		$admin_js  = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/js/admin-ui.js' );
 
-		qrms_assert_contains( 'width=390', $doc, 'mobil sanal viewport' );
-		qrms_assert_contains( 'css.css', $doc, 'CSS bağlantısı' );
-		qrms_assert_contains( 'js.js', $doc, 'JS betiği' );
-		qrms_assert_contains( $kok, $doc, 'kok_html aynen gövdede' );
+		qrms_assert_contains( 'function buildIframeDocument', $js, 'core dosyası mevcut' );
+		qrms_assert_contains( 'QMO_BANNER_PREVIEW_IFRAME_CORE', $admin_js, 'admin-ui core kullanır' );
+		qrms_assert_false( strpos( $js, 'min-height:100vh' ) !== false, 'body min-height kaldırıldı' );
+		qrms_assert_false( method_exists( 'QMO_Shortcode_Banner_Slider', 'onizleme_belgesi' ), 'ölü PHP renderer kaldırıldı' );
+
+		$node = trim( (string) shell_exec( 'command -v node' ) );
+		qrms_assert_true( '' !== $node, 'Node.js gerekli (yükseklik davranış testi)' );
+
+		$tests_dir = QRMS_PLUGIN_DIR . 'tests';
+		if ( ! is_dir( $tests_dir . '/node_modules/jsdom' ) && is_file( $tests_dir . '/package.json' ) ) {
+			shell_exec( 'cd ' . escapeshellarg( $tests_dir ) . ' && npm install --silent 2>/dev/null' );
+		}
+
+		$test_script = QRMS_PLUGIN_DIR . 'tests/banner-preview-iframe-height.mjs';
+		$cmd         = escapeshellarg( $node ) . ' ' . escapeshellarg( $test_script ) . ' 2>&1';
+		$out         = shell_exec( $cmd );
+		qrms_assert_contains( 'banner-preview-iframe-height: OK', (string) $out, 'iframe yüksekliği küçülebilir (Node/jsdom)' );
 	}
 );
 
@@ -1713,7 +1719,8 @@ qrms_test(
 	'bekleyen_sayisi_oranlar(): aynı kayıt iki oran için bekliyorsa bir kez sayılır',
 	function () {
 		QMO_Banner_Slider_Settings::kaydet( array( 'oran' => '16:9', 'oran_mobil_farkli' => '1', 'oran_mobil' => '4:3' ) );
-		qrms_banner_ek_kur( 508, 1000, 1000, qrms_banner_kirpma_kaydi( '16:9', 1000, 563 ) );
+		// İki oran için de kırpma yok → bekleyen_sayisi(oran) her oranda +1 (toplam 2).
+		qrms_banner_ek_kur( 508, 1000, 1000 );
 		qrms_banner_yayinla( 608, 508 );
 
 		$banners = QMO_Banner_CPT::get_published_banners();
@@ -1721,8 +1728,8 @@ qrms_test(
 		$toplam  = QMO_Banner_Kirpma::bekleyen_sayisi( '16:9', $banners ) + QMO_Banner_Kirpma::bekleyen_sayisi( '4:3', $banners );
 
 		qrms_assert_same( 1, $tek, 'kayıt başına bir' );
-		qrms_assert_true( $toplam >= 1, 'oran başına toplam en az bir (çift sayım riski)' );
-		qrms_assert_true( $tek <= $toplam, 'optimize sayım çift sayımdan büyük olmaz' );
+		qrms_assert_same( 2, $toplam, 'oran başına toplam iki (çift sayım farkı)' );
+		qrms_assert_true( $tek < $toplam, 'optimize sayım çift sayımı engeller' );
 	}
 );
 
@@ -1758,6 +1765,36 @@ qrms_test(
 		qrms_assert_contains( 'qmo-banner-preview-iframe', $trait, 'iframe önizleme' );
 		qrms_assert_contains( 'buildIframeDocument', $js, 'gerçek frontend belgesi' );
 		qrms_assert_contains( 'scheduleAjaxPreview', $js, 'debounce AJAX' );
+		qrms_assert_contains( 'setPreviewDurum', $js, 'AJAX hata geri bildirimi' );
+		qrms_assert_contains( '.fail(function', $js, 'AJAX fail işleyicisi' );
+		qrms_assert_false( strpos( $js, "setAttribute( 'data-gecis'" ) !== false, 'ölü data-gecis yazımı yok' );
+		qrms_assert_false( strpos( $js, "setAttribute( 'data-autoplay'" ) !== false, 'ölü data-autoplay yazımı yok' );
+	}
+);
+
+qrms_test(
+	'WP_Query stub: menu_order ASC sonra ID sıralaması banner sorgusuna uyar',
+	function () {
+		$GLOBALS['qrms_test']['post_types'][901] = QMO_Banner_CPT::POST_TYPE;
+		$GLOBALS['qrms_test']['post_types'][902] = QMO_Banner_CPT::POST_TYPE;
+		$GLOBALS['qrms_test']['post_status'][901] = 'publish';
+		$GLOBALS['qrms_test']['post_status'][902] = 'publish';
+		$GLOBALS['qrms_test']['menu_order'][901] = 5;
+		$GLOBALS['qrms_test']['menu_order'][902] = 2;
+
+		$q = new WP_Query(
+			array(
+				'post_type'   => QMO_Banner_CPT::POST_TYPE,
+				'post_status' => array( 'publish' ),
+				'orderby'     => array(
+					'menu_order' => 'ASC',
+					'ID'         => 'ASC',
+				),
+			)
+		);
+
+		qrms_assert_same( 902, (int) $q->posts[0]->ID, 'düşük menu_order önce' );
+		qrms_assert_same( 901, (int) $q->posts[1]->ID, 'yüksek menu_order sonra' );
 	}
 );
 

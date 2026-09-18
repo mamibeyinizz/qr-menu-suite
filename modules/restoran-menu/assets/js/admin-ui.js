@@ -1296,25 +1296,18 @@
             return $sel.find('option:selected').data('oran-css') || yedek;
         }
 
-        function buildIframeDocument(kokHtml) {
-            var vw = viewportWidth();
-            var assets = cfg.assets || {};
-            var css = assets.css || '';
-            var js = assets.js || '';
-            var fonts = assets.fonts || '';
-            var govde = kokHtml && String(kokHtml).trim() ? String(kokHtml).trim() : '';
+        var previewCore = window.QMO_BANNER_PREVIEW_IFRAME_CORE || {};
 
-            if (!govde) {
-                govde = '<div class="qmo-banner-root" style="aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;background:#0d0d10;color:#c9a84c;font-family:system-ui,sans-serif;"><span>Henüz görselli kampanya yok</span></div>';
+        function buildIframeDocument(kokHtml) {
+            if (typeof previewCore.buildIframeDocument === 'function') {
+                return previewCore.buildIframeDocument({
+                    kokHtml: kokHtml,
+                    viewportWidth: viewportWidth(),
+                    assets: cfg.assets || {}
+                });
             }
 
-            return '<!DOCTYPE html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=' + vw + '">'
-                + (fonts ? '<link rel="stylesheet" href="' + fonts + '">' : '')
-                + (css ? '<link rel="stylesheet" href="' + css + '">' : '')
-                + '<style>html,body{margin:0;padding:0;background:#0a0a0c;}body{min-height:100vh;}</style>'
-                + '</head><body>' + govde
-                + (js ? '<script src="' + js + '" defer><\/script>' : '')
-                + '</body></html>';
+            return '';
         }
 
         function iframeRoot() {
@@ -1329,8 +1322,8 @@
             var doc = $iframe[0].contentDocument;
             var height = vw * 0.45;
 
-            if (doc && doc.body) {
-                height = Math.max(doc.body.scrollHeight, doc.documentElement.scrollHeight, height);
+            if (typeof previewCore.computeIframeContentHeight === 'function') {
+                height = previewCore.computeIframeContentHeight(doc, vw, height);
             }
 
             $iframe.css({
@@ -1342,10 +1335,24 @@
             $frame.css('height', (height * scale) + 'px');
         }
 
+        function replacePreviewIframe() {
+            var title = $iframe.attr('title') || 'Kampanya banner canlı önizleme';
+            var $next = $('<iframe>', {
+                id: 'qmo-banner-preview-iframe',
+                'class': 'qmo-banner-preview-iframe',
+                title: title,
+                tabindex: 0
+            });
+
+            $iframe.replaceWith($next);
+            $iframe = $next;
+        }
+
         function mountIframe(kokHtml) {
             lastKokHtml = kokHtml || '';
-            var doc = $iframe[0].contentDocument;
+            replacePreviewIframe();
 
+            var doc = $iframe[0].contentDocument;
             if (!doc) {
                 return;
             }
@@ -1355,14 +1362,17 @@
             doc.close();
 
             $iframe.one('load', function () {
-                resizeIframe();
                 applyCssOnlyPreview();
+                resizeIframe();
             });
             setTimeout(function () {
-                resizeIframe();
                 applyCssOnlyPreview();
+                resizeIframe();
             }, 60);
-            setTimeout(resizeIframe, 350);
+            setTimeout(function () {
+                applyCssOnlyPreview();
+                resizeIframe();
+            }, 350);
         }
 
         function applyCssOnlyPreview() {
@@ -1394,8 +1404,29 @@
             root.style.setProperty('--qmo-banner-title-color', titleColor ? titleColor : '#f5f0e8');
 
             root.classList.toggle('is-fade', fieldVal('qmo-banner-gecis', 'slide') === 'fade');
-            root.setAttribute('data-gecis', fieldVal('qmo-banner-gecis', 'slide'));
-            root.setAttribute('data-autoplay', String(fieldVal('qmo-banner-autoplay', 4500)));
+            resizeIframe();
+        }
+
+        function setPreviewDurum(metin, tur) {
+            var $durum = $('#qmo-banner-preview-durum');
+            if (!$durum.length) {
+                return;
+            }
+
+            $durum.removeClass('is-hata is-uyari');
+
+            if (!metin) {
+                $durum.text('');
+                return;
+            }
+
+            if (tur === 'hata') {
+                $durum.addClass('is-hata');
+            } else if (tur === 'uyari') {
+                $durum.addClass('is-uyari');
+            }
+
+            $durum.text(metin);
         }
 
         function previewAjaxPayload() {
@@ -1429,18 +1460,27 @@
 
             $.post(cfg.ajaxUrl, previewAjaxPayload())
                 .done(function (resp) {
-                    if (seq !== ajaxSeq || !resp || !resp.success || !resp.data) {
+                    if (seq !== ajaxSeq) {
                         return;
                     }
 
+                    if (!resp || !resp.success || !resp.data) {
+                        setPreviewDurum('Önizleme güncellenemedi. Sayfayı yenileyip tekrar deneyin.', 'hata');
+                        return;
+                    }
+
+                    setPreviewDurum('');
                     mountIframe(resp.data.html || '');
 
-                    var $durum = $('#qmo-banner-preview-durum');
-                    if ($durum.length && resp.data.durum === 'bekliyor') {
-                        $durum.text('Bazı görseller seçilen oran için henüz kırpılmamış.');
-                    } else if ($durum.length) {
-                        $durum.text('');
+                    if (resp.data.durum === 'bekliyor') {
+                        setPreviewDurum('Bazı görseller seçilen oran için henüz kırpılmamış.', 'uyari');
                     }
+                })
+                .fail(function () {
+                    if (seq !== ajaxSeq) {
+                        return;
+                    }
+                    setPreviewDurum('Önizleme güncellenemedi. Sayfayı yenileyip tekrar deneyin.', 'hata');
                 });
         }
 

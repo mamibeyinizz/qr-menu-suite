@@ -1266,7 +1266,7 @@ trait RMA_Kampanya_Banner_Admin_Trait {
                                         title="<?php echo esc_attr( 'Kampanya banner canlı önizleme' ); ?>"
                                         tabindex="0"></iframe>
                             </div>
-                            <p class="qmo-banner-preview-durum screen-reader-text" id="qmo-banner-preview-durum" aria-live="polite"></p>
+                            <p class="qmo-banner-preview-durum rma-kb-durum" id="qmo-banner-preview-durum" aria-live="polite"></p>
                         </div>
                     </div>
                 </div>

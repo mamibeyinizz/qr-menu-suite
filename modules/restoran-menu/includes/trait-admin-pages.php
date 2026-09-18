@@ -1294,6 +1294,15 @@ trait RMA_Admin_Pages_Trait {
         }
 
         wp_enqueue_script(
+            'qmo-banner-preview-iframe-core',
+            RMA_PLUGIN_URL . 'assets/js/banner-preview-iframe-core.js',
+            [],
+            $this->asset_version( 'assets/js/banner-preview-iframe-core.js' ),
+            true
+        );
+        $deps[] = 'qmo-banner-preview-iframe-core';
+
+        wp_enqueue_script(
             'rma-admin-ui',
             RMA_PLUGIN_URL . 'assets/js/admin-ui.js',
             $deps,

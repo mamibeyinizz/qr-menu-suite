@@ -2350,7 +2350,30 @@ if ( ! class_exists( 'WP_Query' ) ) {
 				$idler[] = $id;
 			}
 
-			sort( $idler, SORT_NUMERIC );
+			$orderby = isset( $args['orderby'] ) ? $args['orderby'] : 'ID';
+			if ( is_array( $orderby ) ) {
+				usort(
+					$idler,
+					function ( $a, $b ) use ( $orderby ) {
+						foreach ( $orderby as $alan => $yon ) {
+							$asc = ( 'DESC' !== strtoupper( (string) $yon ) );
+							$va  = 'menu_order' === $alan
+								? (int) ( $GLOBALS['qrms_test']['menu_order'][ $a ] ?? 0 )
+								: (int) $a;
+							$vb  = 'menu_order' === $alan
+								? (int) ( $GLOBALS['qrms_test']['menu_order'][ $b ] ?? 0 )
+								: (int) $b;
+							if ( $va === $vb ) {
+								continue;
+							}
+							return $asc ? ( $va <=> $vb ) : ( $vb <=> $va );
+						}
+						return $a <=> $b;
+					}
+				);
+			} else {
+				sort( $idler, SORT_NUMERIC );
+			}
 
 			$this->posts = array_map(
 				function ( $id ) {
@@ -2359,6 +2382,7 @@ if ( ! class_exists( 'WP_Query' ) ) {
 						'ID'         => $id,
 						'post_title' => $baslik,
 						'post_type'  => $GLOBALS['qrms_test']['post_types'][ $id ],
+						'menu_order' => (int) ( $GLOBALS['qrms_test']['menu_order'][ $id ] ?? 0 ),
 					);
 				},
 				$idler
