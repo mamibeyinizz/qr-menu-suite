@@ -397,6 +397,38 @@ class QMO_Banner_Kirpma {
     }
 
     /**
+     * Hedef orana GERÇEKTEN uyan görsel (yoksa null).
+     *
+     * gorsel() ile farkı: gorsel() kırpma bulamazsa sessizce ORİJİNALE
+     * düşer — orijinal hedef oranda olmasa bile. Bu, "bu dosya hedef
+     * orandadır" güvencesi isteyen çağıranlar için yanlıştır; kısa kodun
+     * mobil <source>'u böyle bir çağırandır: yanlış oranlı bir dosyayı
+     * mobil orana ayarlı kutuya vermek, kadrajı tarayıcının kesmesine
+     * bırakmak demektir.
+     *
+     * İKİ KABUL EDİLEN DURUM:
+     *   'hazir' — bu oran/odak için kırpılmış dosya var; o dosya döner.
+     *   'uygun' — kaynak ZATEN hedef orandadır (kırpma üretilmemiştir,
+     *             üretilmesi de gerekmez); orijinal döner ve doğrudur.
+     * 'bekliyor' (kırpma gerekiyor ama yok) ve 'gorsel-yok' null döner.
+     *
+     * @param int         $ek_id Attachment ID.
+     * @param string|null $oran  Oran anahtarı; null ise kayıtlı ayar.
+     * @param string      $odak  Odak anahtarı.
+     * @return array{url:string,en:int,boy:int,kirpildi:bool}|null
+     */
+    public static function oranli_gorsel( $ek_id, $oran = null, $odak = 'merkez' ) {
+        $oran  = self::gecerli_oran( $oran );
+        $durum = self::durum( $ek_id, $oran, $odak );
+
+        if ( 'hazir' !== $durum && 'uygun' !== $durum ) {
+            return null;
+        }
+
+        return self::gorsel( $ek_id, $oran, $odak );
+    }
+
+    /**
      * Eki hedef orana SUNUCU TARAFINDA kırpar ve ek boyut olarak kaydeder.
      *
      * Kaynak zaten hedef orandaysa dosya üretilmez (bkz. TOLERANS).
@@ -506,10 +538,38 @@ class QMO_Banner_Kirpma {
     }
 
     /**
-     * Bir banner kaydının görselini güncel orana göre kırpar.
+     * Kırpma üretilecek oranların listesi.
+     *
+     * $oran verilmişse YALNIZCA o oran işlenir (tek kayıt / tek oran
+     * çağrıları böyle davranmaya devam eder). null ise kayıtlı ayardaki
+     * TÜM aktif oranlar döner: masaüstü ve — yalnızca gerçekten farklıysa —
+     * mobil. Mobil oran kapalı ya da masaüstüyle aynıysa liste tek
+     * elemanlıdır, yani ayar eklenmeden önceki davranışın aynısıdır.
+     *
+     * @param string|null $oran Tek oran anahtarı ya da null.
+     * @return string[]
+     */
+    private static function oran_listesi( $oran = null ) {
+        if ( null !== $oran ) {
+            return array( self::gecerli_oran( $oran ) );
+        }
+
+        if ( ! class_exists( 'QMO_Banner_Slider_Settings' ) ) {
+            return array( '16:9' );
+        }
+
+        return QMO_Banner_Slider_Settings::aktif_oranlar();
+    }
+
+    /**
+     * Bir banner kaydının görselini güncel oran(lar)a göre kırpar.
+     *
+     * $oran null ise masaüstü ve (varsa) mobil oranın ikisi için de kırpma
+     * üretilir; oranlar aynıysa tek dosya üretilir. Herhangi biri hata
+     * verirse ilk hata döner, diğer oran yine denenir.
      *
      * @param int         $banner_id Banner (CPT) kayıt ID'si.
-     * @param string|null $oran      Oran anahtarı; null ise kayıtlı ayar.
+     * @param string|null $oran      Oran anahtarı; null ise aktif oranların hepsi.
      * @return true|WP_Error|null null = kayıtta görsel yok.
      */
     public static function banner_kirp( $banner_id, $oran = null ) {
@@ -519,7 +579,56 @@ class QMO_Banner_Kirpma {
             return null;
         }
 
-        return self::kirp( $ek_id, $oran, self::banner_odagi( $banner_id ) );
+        $odak = self::banner_odagi( $banner_id );
+        $hata = null;
+
+        foreach ( self::oran_listesi( $oran ) as $hedef ) {
+            $islem = self::kirp( $ek_id, $hedef, $odak );
+
+            if ( is_wp_error( $islem ) && null === $hata ) {
+                $hata = $islem;
+            }
+        }
+
+        return null === $hata ? true : $hata;
+    }
+
+    /**
+     * Bir banner kaydının aktif oranların TAMAMI için kırpma durumu.
+     *
+     * Satır rozetleri ve toplu uyarı bunu kullanır: tek bir oran "bekliyor"
+     * ise kayıt bekliyordur. Hepsi kaynakla zaten uyumluysa "uygun",
+     * aksi hâlde "hazir".
+     *
+     * @param int         $banner_id Banner (CPT) kayıt ID'si.
+     * @param string|null $oran      Oran anahtarı; null ise aktif oranların hepsi.
+     * @return string 'gorsel-yok'|'bekliyor'|'hazir'|'uygun'
+     */
+    public static function banner_durumu( $banner_id, $oran = null ) {
+        $ek_id = (int) get_post_meta( (int) $banner_id, QMO_Banner_CPT::META_IMAGE, true );
+
+        if ( $ek_id < 1 ) {
+            return 'gorsel-yok';
+        }
+
+        $odak    = self::banner_odagi( $banner_id );
+        $durumlar = array();
+
+        foreach ( self::oran_listesi( $oran ) as $hedef ) {
+            $durumlar[] = self::durum( $ek_id, $hedef, $odak );
+        }
+
+        if ( in_array( 'gorsel-yok', $durumlar, true ) ) {
+            return 'gorsel-yok';
+        }
+        if ( in_array( 'bekliyor', $durumlar, true ) ) {
+            return 'bekliyor';
+        }
+        if ( in_array( 'hazir', $durumlar, true ) ) {
+            return 'hazir';
+        }
+
+        return 'uygun';
     }
 
     /**
@@ -534,9 +643,9 @@ class QMO_Banner_Kirpma {
      * @return array{ok:int,atlandi:int,hata:int,mesaj:string}
      */
     public static function toplu_kirp( $oran = null ) {
-        $oran   = self::gecerli_oran( $oran );
-        $sonuc  = array( 'ok' => 0, 'atlandi' => 0, 'hata' => 0, 'mesaj' => '' );
-        $hatali = array();
+        $oranlar = self::oran_listesi( $oran );
+        $sonuc   = array( 'ok' => 0, 'atlandi' => 0, 'hata' => 0, 'mesaj' => '' );
+        $hatali  = array();
 
         foreach ( QMO_Banner_CPT::get_admin_banners() as $banner ) {
             $ek_id = (int) get_post_meta( $banner->ID, QMO_Banner_CPT::META_IMAGE, true );
@@ -546,22 +655,39 @@ class QMO_Banner_Kirpma {
                 continue;
             }
 
-            $odak = self::banner_odagi( $banner->ID );
+            $odak    = self::banner_odagi( $banner->ID );
+            $islendi = false;
+            $kayit_hatasi = null;
 
-            if ( 'bekliyor' !== self::durum( $ek_id, $oran, $odak ) ) {
-                $sonuc['atlandi']++;
-                continue;
+            // Kayıt başına sayılır: iki oranın biri bekliyorsa kayıt bir kez
+            // "kırpıldı" olarak raporlanır; hiçbiri beklemiyorsa atlanır.
+            foreach ( $oranlar as $hedef ) {
+                if ( 'bekliyor' !== self::durum( $ek_id, $hedef, $odak ) ) {
+                    continue;
+                }
+
+                $islem = self::kirp( $ek_id, $hedef, $odak );
+
+                if ( is_wp_error( $islem ) ) {
+                    $kayit_hatasi = $islem;
+                    continue;
+                }
+
+                $islendi = true;
             }
 
-            $islem = self::kirp( $ek_id, $oran, $odak );
-
-            if ( is_wp_error( $islem ) ) {
+            if ( null !== $kayit_hatasi ) {
                 $sonuc['hata']++;
-                $hatali[] = $islem->get_error_message();
+                $hatali[] = $kayit_hatasi->get_error_message();
                 continue;
             }
 
-            $sonuc['ok']++;
+            if ( $islendi ) {
+                $sonuc['ok']++;
+                continue;
+            }
+
+            $sonuc['atlandi']++;
         }
 
         $sonuc['mesaj'] = $hatali ? (string) $hatali[0] : '';
@@ -570,14 +696,16 @@ class QMO_Banner_Kirpma {
     }
 
     /**
-     * Güncel orana göre kırpılmayı bekleyen banner sayısı.
+     * Kırpılmayı bekleyen banner sayısı (aktif oranların tamamı için).
      *
-     * @param string|null   $oran    Oran anahtarı; null ise kayıtlı ayar.
+     * Kayıt başına sayılır: masaüstü ve mobil oranın ikisi de bekliyorsa
+     * kayıt bir kez sayılır. $oran verilirse yalnızca o oran bakılır.
+     *
+     * @param string|null   $oran    Oran anahtarı; null ise aktif oranların hepsi.
      * @param WP_Post[]|null $banners Zaten çekilmiş liste; null ise sorgulanır.
      * @return int
      */
     public static function bekleyen_sayisi( $oran = null, $banners = null ) {
-        $oran = self::gecerli_oran( $oran );
         $sayi = 0;
 
         if ( ! is_array( $banners ) ) {
@@ -585,13 +713,7 @@ class QMO_Banner_Kirpma {
         }
 
         foreach ( $banners as $banner ) {
-            $ek_id = (int) get_post_meta( $banner->ID, QMO_Banner_CPT::META_IMAGE, true );
-
-            if ( $ek_id < 1 ) {
-                continue;
-            }
-
-            if ( 'bekliyor' === self::durum( $ek_id, $oran, self::banner_odagi( $banner->ID ) ) ) {
+            if ( 'bekliyor' === self::banner_durumu( (int) $banner->ID, $oran ) ) {
                 $sayi++;
             }
         }

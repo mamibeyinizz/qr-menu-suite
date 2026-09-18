@@ -330,6 +330,10 @@ function qrms_module_restoran_menu_admin_assets() {
 	// desen); iki font ailesi de yüklüdür ki hem önizleme hem 3. adımda
 	// canvas ile üretilen görsel doğru yazı tipiyle çizilsin.
 	if ( 'qrms-rm-kampanya-banner' === $page ) {
+		// Kampanya listesindeki "Görseli değiştir" wp.media çerçevesini
+		// açar; CPT ekranındaki seçicinin aynısı, farklı yerde.
+		wp_enqueue_media();
+
 		wp_enqueue_style(
 			'qmo-banner-slider',
 			$url . 'includes/frontend-banner-slider.css',

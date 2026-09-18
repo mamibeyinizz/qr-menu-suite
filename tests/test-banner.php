@@ -355,6 +355,231 @@ qrms_test(
 );
 
 qrms_test(
+	'yönetim UX: tek gezinme şeridi, katlanır kısa kod, satır içi odak/görsel, erişilebilir durum',
+	function () {
+		$dizin   = QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/';
+		$banner  = file_get_contents( $dizin . 'trait-kampanya-banner-admin.php' );
+		$boot    = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/qr-menu.php' );
+		$js      = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/js/admin-ui.js' );
+		$css     = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/css/admin-ui.css' );
+
+		/* ADIM KARMAŞASI: dış gezinme artık numaralı "adım" değil sekme.
+		   Ayar formunun GERÇEK stepper'ı (Biçim/Gezinme/Başlık) yerinde
+		   durur; ekranda yalnızca bir adım sayacı kalır. */
+		qrms_assert_contains( 'class="rma-kb-tabs"', $banner, 'sekme şeridi' );
+		qrms_assert_false( strpos( $banner, 'Adım <?php echo (int) $adimlar' ) !== false, 'dış şeritte adım sayacı yok' );
+		qrms_assert_false( strpos( $banner, '2. adıma git' ) !== false, 'kartlarda adım numarası yok' );
+		// Form stepper'ı korundu.
+		qrms_assert_contains( 'id="qmo-banner-steps"', $banner, 'ayar formu stepper\'ı duruyor' );
+		qrms_assert_contains( 'Adım 1/<?php echo (int) count( $adimlar ); ?>', $banner, 'form stepper sayacı duruyor' );
+		// Sekme şeridi .rma-vitrin-steps değil: o sınıf ≤480px'de gizleniyor
+		// ve telefonda gezinmeyi tamamen yok ediyordu.
+		qrms_assert_contains( '.rma-kb-tabs {', $css, 'sekme stili' );
+		qrms_assert_contains( 'a.rma-kb-tab {', $css, 'sekme düğmesi stili' );
+
+		/* KISA KOD: tek yerde, katlanır bir bölümün içinde. */
+		qrms_assert_same( 1, substr_count( $banner, '[qmo_banner_slider]' ), 'kısa kod ekranda tek yerde' );
+		qrms_assert_contains( 'private function render_banner_shortcode_kutusu()', $banner, 'katlanır kutu' );
+		qrms_assert_contains( '<details class="rma-kb-kisa-kod">', $banner, 'details ile katlanır' );
+		qrms_assert_contains( 'Banner\'ı Sayfaya Ekle', $banner, 'başlık' );
+		qrms_assert_contains( 'Shortcode” widget', $banner, 'Elementor yönergesi' );
+		qrms_assert_contains( 'Kısa Kod” bloğuna', $banner, 'blok editör yönergesi' );
+		// autoplay="0" ipucu ana açıklamadan çıktı, ayarının yanında kaldı.
+		qrms_assert_contains( 'Kısa koda <code>autoplay="0"</code> yazılırsa o sayfada bu ayar ezilir.', $banner, 'teknik ipucu ilgili alanın yanında' );
+
+		/* LİSTE: küçük resim ön yüzün basacağı kırpılmış dosyadan gelir. */
+		qrms_assert_contains( 'private function banner_satir_onizleme(', $banner, 'satır önizleme yardımcısı' );
+		qrms_assert_contains( 'QMO_Banner_Kirpma::gorsel(', $banner, 'kırpılmış sürüm okunur' );
+		qrms_assert_contains( 'QMO_Banner_Kirpma::banner_odagi(', $banner, 'odak mevcut metadan okunur' );
+		qrms_assert_false( strpos( $banner, "wp_get_attachment_image_url( \$gorsel_id, 'thumbnail' )" ) !== false, 'kare WP thumbnail kaldırıldı' );
+		qrms_assert_contains( 'data-satir-odak', $banner, 'satır içi odak seçici' );
+		qrms_assert_contains( 'data-satir-gorsel-sec', $banner, 'satır içi görsel değiştirme' );
+
+		/* YENİ AJAX UCU: mevcut sıra ucundan ayrı, nonce + yetki + meta
+		   doğrulaması mevcut save_meta ile aynı kurallarda. */
+		qrms_assert_contains( 'wp_ajax_qmo_banner_satir_kaydet', $boot, 'satır ucu kayıtlı' );
+		qrms_assert_contains( 'public function ajax_banner_satir_kaydet()', $banner, 'işleyici' );
+		qrms_assert_contains( 'check_ajax_referer( $this->banner_satir_nonce_action', $banner, 'nonce' );
+		qrms_assert_contains( "current_user_can( 'edit_post', \$banner_id )", $banner, 'kayıt bazlı yetki' );
+		qrms_assert_contains( 'QMO_Banner_Kirpma::odak( wp_unslash( $_POST[\'odak\'] ) )', $banner, 'odak beyaz listeden' );
+		// Mevcut sıra ucu DEĞİŞMEDİ.
+		qrms_assert_contains( 'wp_ajax_qmo_banner_sira_kaydet', $boot, 'sıra ucu duruyor' );
+		qrms_assert_contains( 'qmo_banner_sira_kaydet', $js, 'sıra AJAX eylemi duruyor' );
+
+		/* ERİŞİLEBİLİRLİK: durum mesajı role="status", ▲▼ dokunmatikte 44px. */
+		qrms_assert_contains( 'role="status" aria-live="polite"', $banner, 'erişilebilir durum satırı' );
+		qrms_assert_contains( 'function bannerDurum(', $js, 'durum yazıcısı' );
+		qrms_assert_contains( "bannerDurum('Sıra kaydedildi')", $js, 'sıra geri bildirimi' );
+		qrms_assert_contains( 'aria-controls="qmo-banner-oran-mobil-alan"', $banner, 'koşullu alan ilişkisi' );
+		qrms_assert_contains( 'aria-expanded', $banner, 'kutu durumu duyurulur' );
+		qrms_assert_contains( '.rma-admin .rma-banner-sira-btn {', $css, 'dokunmatik ok boyutu' );
+		qrms_assert_contains( 'min-width: 44px', $css, '44px dokunma hedefi' );
+	}
+);
+
+/* ---------------------------------------------------------------------------
+ * Kampanya Banner — MOBİL ORAN (oran_mobil)
+ *
+ * Kural: mobil oran "ayrı bir kavram" değil, aynı oran kümesinden dar ekran
+ * için yapılan İKİNCİ bir seçimdir. Kapalıyken ya da masaüstüyle aynı oran
+ * seçiliyken sistem ayar eklenmeden önceki gibi davranmalıdır — ikinci kırpma
+ * doğmamalı, eski kayıtlar "eksik kırpma" görünmemelidir.
+ * ------------------------------------------------------------------------ */
+
+qrms_test(
+	'oran_mobil varsayılanı kapalı: mobil oran masaüstüyle aynı, tek kırpma',
+	function () {
+		$v = QMO_Banner_Slider_Settings::varsayilanlar();
+
+		qrms_assert_same( 0, $v['oran_mobil_farkli'], 'kutu varsayılan olarak kapalı' );
+		qrms_assert_same( '16:9', $v['oran_mobil'], 'mobil oran varsayılanı masaüstüyle aynı' );
+
+		// Option hiç yokken (eski kurulum) davranış birebir eskisi gibi.
+		$ayar = QMO_Banner_Slider_Settings::get();
+
+		qrms_assert_same( '16:9', QMO_Banner_Slider_Settings::oran_mobil( $ayar ), 'mobil oran masaüstü oranına düşer' );
+		qrms_assert_false( QMO_Banner_Slider_Settings::mobil_oran_farkli( $ayar ), 'fark yok' );
+		qrms_assert_same( array( '16:9' ), QMO_Banner_Slider_Settings::aktif_oranlar( $ayar ), 'tek aktif oran = tek kırpma' );
+	}
+);
+
+qrms_test(
+	'oran_mobil kapalıyken saklanan mobil oran YOK SAYILIR (eski kayıtlar eksik kırpma görünmez)',
+	function () {
+		// Kullanıcı kutuyu açıp 1:1 seçmiş, sonra kutuyu kapatmış olabilir:
+		// seçim saklanır ama geçerli DEĞİLDİR.
+		$temiz = QMO_Banner_Slider_Settings::sanitize(
+			array(
+				'oran'              => '21:9',
+				'oran_mobil_farkli' => 0,
+				'oran_mobil'        => '1:1',
+			)
+		);
+
+		qrms_assert_same( '1:1', $temiz['oran_mobil'], 'seçim kaybolmaz' );
+		qrms_assert_same( '21:9', QMO_Banner_Slider_Settings::oran_mobil( $temiz ), 'ama geçerli olan masaüstü oranı' );
+		qrms_assert_false( QMO_Banner_Slider_Settings::mobil_oran_farkli( $temiz ), 'kutu kapalıyken fark yok' );
+		qrms_assert_same( array( '21:9' ), QMO_Banner_Slider_Settings::aktif_oranlar( $temiz ), 'ikinci kırpma üretilmez' );
+	}
+);
+
+qrms_test(
+	'oran_mobil açık ve FARKLI: ikinci oran gerçekten aktif',
+	function () {
+		$temiz = QMO_Banner_Slider_Settings::sanitize(
+			array(
+				'oran'              => '3:1',
+				'oran_mobil_farkli' => '1',
+				'oran_mobil'        => '4:3',
+			)
+		);
+
+		qrms_assert_same( '4:3', QMO_Banner_Slider_Settings::oran_mobil( $temiz ), 'mobil oran seçilen değer' );
+		qrms_assert_true( QMO_Banner_Slider_Settings::mobil_oran_farkli( $temiz ), 'fark var' );
+		qrms_assert_same( array( '3:1', '4:3' ), QMO_Banner_Slider_Settings::aktif_oranlar( $temiz ), 'iki ayrı kırpma' );
+
+		// Beyaz liste mobil oranda da geçerli.
+		$bozuk = QMO_Banner_Slider_Settings::sanitize(
+			array( 'oran_mobil_farkli' => '1', 'oran_mobil' => '9:16' )
+		);
+		qrms_assert_same( '16:9', $bozuk['oran_mobil'], 'bilinmeyen mobil oran varsayılana düşer' );
+	}
+);
+
+qrms_test(
+	'oran_mobil açık ama AYNI oran: gereksiz ikinci kırpma üretilmez',
+	function () {
+		$temiz = QMO_Banner_Slider_Settings::sanitize(
+			array(
+				'oran'              => '21:9',
+				'oran_mobil_farkli' => '1',
+				'oran_mobil'        => '21:9',
+			)
+		);
+
+		qrms_assert_true( 1 === (int) $temiz['oran_mobil_farkli'], 'kutu işaretli kalır' );
+		qrms_assert_false( QMO_Banner_Slider_Settings::mobil_oran_farkli( $temiz ), 'aynı oran seçilince fark yok' );
+		qrms_assert_same( array( '21:9' ), QMO_Banner_Slider_Settings::aktif_oranlar( $temiz ), 'tek kırpma yeterli' );
+	}
+);
+
+qrms_test(
+	'mobil oran CSS değişkeni, kırpma listesi ve kısa kod <picture> yoluna bağlanır',
+	function () {
+		$dizin = QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/';
+
+		// Kök öğeye her zaman iki değişken de basılır; kapalıyken ikisi aynıdır.
+		$ayni = QMO_Banner_Slider_Settings::css_degiskenleri(
+			QMO_Banner_Slider_Settings::sanitize( array( 'oran' => '16:9' ) )
+		);
+		qrms_assert_contains( '--qmo-banner-oran:16 / 9', $ayni, 'masaüstü oranı' );
+		qrms_assert_contains( '--qmo-banner-oran-mobil:16 / 9', $ayni, 'kapalıyken mobil oran masaüstüyle aynı' );
+
+		$farkli = QMO_Banner_Slider_Settings::css_degiskenleri(
+			QMO_Banner_Slider_Settings::sanitize(
+				array( 'oran' => '3:1', 'oran_mobil_farkli' => '1', 'oran_mobil' => '1:1' )
+			)
+		);
+		qrms_assert_contains( '--qmo-banner-oran:3 / 1', $farkli, 'masaüstü 3:1' );
+		qrms_assert_contains( '--qmo-banner-oran-mobil:1 / 1', $farkli, 'mobil 1:1' );
+
+		/* CSS: MOBİL ORAN KURALI @media ALTINDA OLMALI, @container ALTINDA DEĞİL.
+		   Gerekçe: kutunun oranını belirleyen kırılım ile kısa kodun
+		   <source media> ile dosya seçtiği kırılım aynı referansa (viewport)
+		   bakmak zorunda. @container altında kalsaydı dar bir Elementor
+		   kolonunda kutu mobil orana geçer, tarayıcı masaüstü dosyasını
+		   indirirdi. */
+		$css = file_get_contents( $dizin . 'frontend-banner-slider.css' );
+		qrms_assert_contains( 'var(--qmo-banner-oran-mobil, var(--qmo-banner-oran, 16 / 9))', $css, 'mobil oran CSS kuralı' );
+
+		$media_blok = strpos( $css, '@media (max-width: 720px)' );
+		$cq_blok    = strpos( $css, '@container qmo-banner (max-width: 720px)' );
+		$oran_kural = strpos( $css, 'aspect-ratio: var(--qmo-banner-oran-mobil' );
+
+		qrms_assert_true( false !== $media_blok, 'mobil oran için viewport kırılımı var' );
+		qrms_assert_true( false !== $cq_blok, 'kapsayıcı kırılımı (punto/ok/peek) korundu' );
+		qrms_assert_true( $oran_kural > $media_blok, 'oran kuralı @media bloğunda başlıyor' );
+		qrms_assert_true( $oran_kural < $cq_blok, 'oran kuralı @container bloğundan ÖNCE — içinde değil' );
+		// @container bloğunda mobil oran değişkenine hiç dokunulmamalı.
+		qrms_assert_false(
+			strpos( substr( $css, $cq_blok ), '--qmo-banner-oran-mobil' ) !== false,
+			'kapsayıcı sorgusu oran kararı vermiyor'
+		);
+		// Masaüstü oranı hâlâ viewport'un temel kuralı.
+		qrms_assert_contains( 'aspect-ratio: var(--qmo-banner-oran, 16 / 9)', $css, 'masaüstü oranı değişmedi' );
+		qrms_assert_contains( '.qmo-banner-picture', $css, 'picture display:contents' );
+
+		// Kırılım TEK KAYNAK: PHP sabiti ile CSS'teki sayı aynı olmalı.
+		qrms_assert_same( 720, QMO_Banner_Slider_Settings::MOBIL_KIRILIM, 'kırılım sabiti' );
+		qrms_assert_same( '(max-width: 720px)', QMO_Banner_Slider_Settings::mobil_medya(), 'medya sorgusu metni' );
+
+		// Kırpma: aktif oranların TAMAMI için üretilir, tek oran çağrısı korunur.
+		$kirpma = file_get_contents( $dizin . 'class-banner-kirpma.php' );
+		qrms_assert_contains( 'QMO_Banner_Slider_Settings::aktif_oranlar()', $kirpma, 'aktif oran listesi tek kaynaktan' );
+		qrms_assert_contains( 'private static function oran_listesi(', $kirpma, 'oran listesi yardımcısı' );
+		qrms_assert_contains( 'foreach ( self::oran_listesi( $oran ) as $hedef )', $kirpma, 'her aktif oran için kırpma' );
+		// Boyut adı ORAN BAŞINA: mobil kırpma kendi adıyla yaşar, masaüstünü ezmez.
+		qrms_assert_contains( "return 'qmo-banner-' . str_replace( ':', 'x', self::gecerli_oran( \$oran ) );", $kirpma, 'kırpma isimlendirmesi korundu' );
+
+		/* Kısa kod: mobil dosya seçimi "yeni kırpma üretildi mi" ölçütüne
+		   DEĞİL, "bu dosya gerçekten mobil oranda mı" ölçütüne bağlı.
+		   Davranışın kendisi aşağıdaki oranli_gorsel() testlerinde
+		   doğrulanıyor; burada yalnızca kısa kodun doğru fonksiyona
+		   bağlandığı ve eski hatalı koşulun geri gelmediği kontrol edilir. */
+		$kod = file_get_contents( $dizin . 'shortcode-banner-slider.php' );
+		qrms_assert_contains( 'QMO_Banner_Slider_Settings::mobil_oran_farkli( $ayar )', $kod, 'kısa kod farkı kontrol eder' );
+		qrms_assert_contains( '<source media="', $kod, 'mobil kaynak' );
+		qrms_assert_contains( 'QMO_Banner_Kirpma::oranli_gorsel( $image_id, $mobil_oran, $odak )', $kod, 'orana uyan dosya çözülür' );
+		qrms_assert_false(
+			strpos( $kod, "! empty( \$mobil['kirpildi'] )" ) !== false,
+			'eski hatalı "yalnızca kırpıldıysa" koşulu kaldırıldı'
+		);
+		qrms_assert_contains( 'QMO_Banner_Slider_Settings::mobil_medya()', $kod, 'kırılım tek kaynaktan okunur' );
+		qrms_assert_contains( 'if ( $mobil_img === $img )', $kod, 'aynı dosyada <source> basılmaz' );
+	}
+);
+
+qrms_test(
 	'banner kaydet() option\'a yazar, get() geri okur',
 	function () {
 		qrms_reset();
@@ -751,10 +976,18 @@ qrms_test(
 		qrms_assert_false( strpos( $banner, 'banner_kirp_formu' ) !== false, 'span içinde form yok' );
 
 		// Satır başına durum rozeti: kullanıcı hangi görselin eski
-		// olduğunu görmeden bırakılmaz.
-		qrms_assert_contains( 'QMO_Banner_Kirpma::durum(', $banner, 'liste durumu okur' );
+		// olduğunu görmeden bırakılmaz. Durum artık TEK oran için değil,
+		// aktif oranların tamamı (masaüstü + varsa mobil) için hesaplanır —
+		// bu yüzden satır durum(] yerine banner_durumu() okur.
+		qrms_assert_contains( 'QMO_Banner_Kirpma::banner_durumu(', $banner, 'liste durumu okur' );
 		qrms_assert_contains( 'rma-kb-kirpma-rozet', $banner, 'durum rozeti' );
 		qrms_assert_contains( 'QMO_Banner_Kirpma::bekleyen_sayisi(', $banner, 'bekleyen sayısı' );
+
+		// banner_durumu() tek oranlı durum() üzerine kuruludur; eski
+		// fonksiyon kaldırılmadı (kırpma sınıfı ve testleri onu kullanır).
+		$kirpma_src = file_get_contents( $dizin . 'class-banner-kirpma.php' );
+		qrms_assert_contains( 'public static function banner_durumu(', $kirpma_src, 'toplu durum fonksiyonu' );
+		qrms_assert_contains( 'public static function durum(', $kirpma_src, 'tek oran durumu korundu' );
 
 		// WordPress\'in kendi liste ekranı da uyarır.
 		qrms_assert_contains( 'Güncel orana kırpılmadı', $cpt, 'CPT liste sütunu uyarısı' );
@@ -767,6 +1000,258 @@ qrms_test(
 		$css = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/css/admin-ui.css' );
 		qrms_assert_contains( '.rma-kb-kirpma-rozet', $css, 'rozet stili' );
 		qrms_assert_contains( '.rma-kb-kirpma-uyari', $css, 'uyarı kutusu stili' );
+	}
+);
+
+/* ---------------------------------------------------------------------------
+ * MOBİL KAYNAK SEÇİMİ — GERÇEK DAVRANIŞ (string değil)
+ *
+ * Buradaki testler QMO_Banner_Kirpma'yı gerçekten çalıştırır: ek metadata'sı
+ * stub'lara yazılır, durum()/gorsel()/oranli_gorsel() çağrılır ve dönen
+ * DOSYA karşılaştırılır. Böylece "mobil <source> hangi durumda basılır"
+ * sorusu implementasyon metnine değil davranışa bağlanır.
+ * ------------------------------------------------------------------------ */
+
+require_once QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/admin-cpt-banner.php';
+
+/**
+ * Test için sahte bir ek (attachment) kurar.
+ *
+ * @param int   $ek_id Ek kimliği.
+ * @param int   $en    Kaynak genişlik.
+ * @param int   $boy   Kaynak yükseklik.
+ * @param array $sizes Metadata'daki ek boyutlar (kırpmalar).
+ * @return void
+ */
+function qrms_banner_ek_kur( $ek_id, $en, $boy, array $sizes = array() ) {
+	$GLOBALS['qrms_test']['post_types'][ $ek_id ] = 'attachment';
+
+	$meta = array( 'width' => (int) $en, 'height' => (int) $boy );
+
+	if ( $sizes ) {
+		$meta['sizes'] = $sizes;
+	}
+
+	$GLOBALS['qrms_test']['attachment_meta'][ $ek_id ] = $meta;
+}
+
+/**
+ * Bir orana ait sahte kırpma kaydı üretir (kirp()'in yazdığıyla aynı şekil).
+ *
+ * @param string $oran Oran anahtarı.
+ * @param int    $en   Kırpma genişliği.
+ * @param int    $boy  Kırpma yüksekliği.
+ * @param string $odak Odak anahtarı.
+ * @return array
+ */
+function qrms_banner_kirpma_kaydi( $oran, $en, $boy, $odak = 'merkez' ) {
+	return array(
+		QMO_Banner_Kirpma::boyut_adi( $oran ) => array(
+			'file'      => 'banner-' . str_replace( ':', 'x', $oran ) . '.jpg',
+			'width'     => (int) $en,
+			'height'    => (int) $boy,
+			'mime-type' => 'image/jpeg',
+			'qmo_odak'  => $odak,
+		),
+	);
+}
+
+/**
+ * Bir banner kaydını (CPT) görsel ve odakla kurar.
+ *
+ * @param int    $banner_id Banner kimliği.
+ * @param int    $ek_id     Ek kimliği.
+ * @param string $odak      Odak anahtarı.
+ * @return void
+ */
+function qrms_banner_kayit_kur( $banner_id, $ek_id, $odak = 'merkez' ) {
+	$GLOBALS['qrms_test']['post_types'][ $banner_id ] = QMO_Banner_CPT::POST_TYPE;
+
+	update_post_meta( $banner_id, QMO_Banner_CPT::META_IMAGE, $ek_id );
+	update_post_meta( $banner_id, QMO_Banner_Kirpma::META_ODAK, $odak );
+}
+
+qrms_test(
+	'SENARYO 1 — kaynak NATİF mobil oranda: mobil kaynak orijinalden gelir',
+	function () {
+		// Masaüstü 16:9, mobil 4:3. Kaynak 1200x900 = tam 4:3.
+		QMO_Banner_Slider_Settings::kaydet(
+			array( 'oran' => '16:9', 'oran_mobil_farkli' => '1', 'oran_mobil' => '4:3' )
+		);
+
+		// 4:3 için kırpma YOK (gerekmiyor); 16:9 için kırpma var.
+		qrms_banner_ek_kur( 41, 1200, 900, qrms_banner_kirpma_kaydi( '16:9', 1200, 675 ) );
+		qrms_banner_kayit_kur( 401, 41 );
+
+		// Durum: mobil oran kaynağa zaten uyuyor.
+		qrms_assert_same( 'uygun', QMO_Banner_Kirpma::durum( 41, '4:3', 'merkez' ), 'kaynak zaten 4:3' );
+		qrms_assert_same( 'hazir', QMO_Banner_Kirpma::durum( 41, '16:9', 'merkez' ), '16:9 kırpması hazır' );
+
+		// ASIL DÜZELTME: kırpma dosyası üretilmemiş olmasına rağmen mobil
+		// kaynak çözülebiliyor ve ORİJİNALDİR.
+		$mobil = QMO_Banner_Kirpma::oranli_gorsel( 41, '4:3', 'merkez' );
+		qrms_assert_true( is_array( $mobil ), 'mobil kaynak çözüldü' );
+		qrms_assert_false( $mobil['kirpildi'], 'kırpma dosyası yok — orijinal kullanılıyor' );
+		qrms_assert_same( wp_get_attachment_image_url( 41, 'full' ), $mobil['url'], 'orijinal dosya' );
+
+		// Masaüstü kaynağı kırpılmış dosyadır ve mobilden FARKLIDIR:
+		// yani kısa kod <source> basar.
+		$masaustu = QMO_Banner_Kirpma::oranli_gorsel( 41, '16:9', 'merkez' );
+		qrms_assert_true( $masaustu['kirpildi'], '16:9 kırpması kullanılıyor' );
+		qrms_assert_false( $masaustu['url'] === $mobil['url'], 'iki oran iki farklı dosya' );
+
+		// Kayıt "bekliyor" görünmemeli: iki oran da çözülüyor.
+		qrms_assert_same( 'hazir', QMO_Banner_Kirpma::banner_durumu( 401 ), 'kayıt hazır' );
+		qrms_assert_same( 0, QMO_Banner_Kirpma::bekleyen_sayisi( null, array( (object) array( 'ID' => 401 ) ) ), 'bekleyen yok' );
+
+		qrms_reset();
+	}
+);
+
+qrms_test(
+	'SENARYO 2 — mobil kırpma mevcut: mobil kaynak kırpılmış dosyadan gelir',
+	function () {
+		QMO_Banner_Slider_Settings::kaydet(
+			array( 'oran' => '16:9', 'oran_mobil_farkli' => '1', 'oran_mobil' => '4:3' )
+		);
+
+		// Kare kaynak; iki oran için de kırpma üretilmiş.
+		$sizes = array_merge(
+			qrms_banner_kirpma_kaydi( '16:9', 1000, 563 ),
+			qrms_banner_kirpma_kaydi( '4:3', 1000, 750 )
+		);
+		qrms_banner_ek_kur( 42, 1000, 1000, $sizes );
+		qrms_banner_kayit_kur( 402, 42 );
+
+		qrms_assert_same( 'hazir', QMO_Banner_Kirpma::durum( 42, '4:3', 'merkez' ), '4:3 kırpması hazır' );
+
+		$mobil    = QMO_Banner_Kirpma::oranli_gorsel( 42, '4:3', 'merkez' );
+		$masaustu = QMO_Banner_Kirpma::oranli_gorsel( 42, '16:9', 'merkez' );
+
+		qrms_assert_true( $mobil['kirpildi'], 'mobil kırpma kullanılıyor' );
+		qrms_assert_same( 750, $mobil['boy'], 'mobil dosya 4:3 yüksekliğinde' );
+		qrms_assert_same( 563, $masaustu['boy'], 'masaüstü dosya 16:9 yüksekliğinde' );
+		qrms_assert_false( $mobil['url'] === $masaustu['url'], 'iki ayrı dosya' );
+
+		qrms_assert_same( 'hazir', QMO_Banner_Kirpma::banner_durumu( 402 ), 'kayıt hazır' );
+
+		qrms_reset();
+	}
+);
+
+qrms_test(
+	'SENARYO 3 — mobil kırpma yok ve kaynak mobil oranda değil: <source> basılmaz, durum bekliyor',
+	function () {
+		QMO_Banner_Slider_Settings::kaydet(
+			array( 'oran' => '16:9', 'oran_mobil_farkli' => '1', 'oran_mobil' => '4:3' )
+		);
+
+		// Kare kaynak; YALNIZCA 16:9 kırpması var.
+		qrms_banner_ek_kur( 43, 1000, 1000, qrms_banner_kirpma_kaydi( '16:9', 1000, 563 ) );
+		qrms_banner_kayit_kur( 403, 43 );
+
+		qrms_assert_same( 'bekliyor', QMO_Banner_Kirpma::durum( 43, '4:3', 'merkez' ), '4:3 kırpması eksik' );
+
+		// gorsel() burada SESSİZCE orijinale düşerdi — yanlış oranlı dosya.
+		$ham = QMO_Banner_Kirpma::gorsel( 43, '4:3', 'merkez' );
+		qrms_assert_true( is_array( $ham ), 'gorsel() yine de bir şey döndürür' );
+		qrms_assert_false( $ham['kirpildi'], 'döndürdüğü orijinaldir' );
+
+		// oranli_gorsel() bunu KABUL ETMEZ: mobil <source> hiç basılmaz ve
+		// tarayıcı masaüstü dosyasına düşer.
+		qrms_assert_true( null === QMO_Banner_Kirpma::oranli_gorsel( 43, '4:3', 'merkez' ), 'uymayan dosya reddedilir' );
+
+		// Kullanıcı bunu yönetimde görür.
+		qrms_assert_same( 'bekliyor', QMO_Banner_Kirpma::banner_durumu( 403 ), 'kayıt bekliyor' );
+		qrms_assert_same( 1, QMO_Banner_Kirpma::bekleyen_sayisi( null, array( (object) array( 'ID' => 403 ) ) ), 'bekleyen sayılır' );
+
+		qrms_reset();
+	}
+);
+
+qrms_test(
+	'SENARYO 4 — mobil oran KAPALI: eski kayıtlar eski davranışın aynısı',
+	function () {
+		// Kutu kapalı ama saklı bir mobil oran var (kullanıcı açıp kapatmış).
+		QMO_Banner_Slider_Settings::kaydet(
+			array( 'oran' => '16:9', 'oran_mobil_farkli' => '0', 'oran_mobil' => '4:3' )
+		);
+
+		// Kare kaynak, yalnızca 16:9 kırpması — 4:3 kırpması YOK.
+		qrms_banner_ek_kur( 44, 1000, 1000, qrms_banner_kirpma_kaydi( '16:9', 1000, 563 ) );
+		qrms_banner_kayit_kur( 404, 44 );
+
+		// Tek aktif oran: 4:3'ün eksikliği kaydı BEKLİYOR yapmaz.
+		qrms_assert_same( array( '16:9' ), QMO_Banner_Slider_Settings::aktif_oranlar(), 'tek aktif oran' );
+		qrms_assert_same( 'hazir', QMO_Banner_Kirpma::banner_durumu( 404 ), 'eski kayıt hazır görünür' );
+		qrms_assert_same( 0, QMO_Banner_Kirpma::bekleyen_sayisi( null, array( (object) array( 'ID' => 404 ) ) ), 'bekleyen yok' );
+
+		// Sonuç tek oranlı eski çağrıyla birebir aynı.
+		qrms_assert_same(
+			QMO_Banner_Kirpma::durum( 44, '16:9', 'merkez' ),
+			QMO_Banner_Kirpma::banner_durumu( 404 ),
+			'toplu durum tek oran durumuyla aynı'
+		);
+
+		qrms_reset();
+	}
+);
+
+qrms_test(
+	'SENARYO 5 — mobil oran masaüstüyle AYNI: ikinci kırpma da <source> da doğmaz',
+	function () {
+		QMO_Banner_Slider_Settings::kaydet(
+			array( 'oran' => '16:9', 'oran_mobil_farkli' => '1', 'oran_mobil' => '16:9' )
+		);
+
+		qrms_banner_ek_kur( 45, 1000, 1000, qrms_banner_kirpma_kaydi( '16:9', 1000, 563 ) );
+		qrms_banner_kayit_kur( 405, 45 );
+
+		qrms_assert_false( QMO_Banner_Slider_Settings::mobil_oran_farkli(), 'fark yok' );
+		qrms_assert_same( array( '16:9' ), QMO_Banner_Slider_Settings::aktif_oranlar(), 'tek kırpma' );
+		qrms_assert_same( 'hazir', QMO_Banner_Kirpma::banner_durumu( 405 ), 'kayıt hazır' );
+
+		// Aynı oran istendiğinde iki çözümleme AYNI dosyayı verir; kısa kod
+		// bu durumda <source> basmaz (mobil_img === img kontrolü).
+		$masaustu = QMO_Banner_Kirpma::oranli_gorsel( 45, '16:9', 'merkez' );
+		$mobil    = QMO_Banner_Kirpma::oranli_gorsel( 45, QMO_Banner_Slider_Settings::oran_mobil(), 'merkez' );
+		qrms_assert_same( $masaustu['url'], $mobil['url'], 'aynı dosya' );
+
+		qrms_reset();
+	}
+);
+
+qrms_test(
+	'SENARYO 6 — dar kapsayıcı + geniş viewport: oran kararı ile dosya seçimi aynı referansa bakar',
+	function () {
+		$css = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/frontend-banner-slider.css' );
+		$kod = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/shortcode-banner-slider.php' );
+
+		/* Senaryo: viewport 1200px, Elementor kolonu 500px.
+		   Eski hâlde @container (500 <= 720) eşleşip kutuyu mobil orana
+		   alıyor, <source media> (1200 > 720) eşleşmiyordu → mobil oranlı
+		   kutuya masaüstü kırpması giriyordu.
+
+		   Düzeltme: oran kuralı @media'ya taşındı. Artık bu senaryoda
+		   İKİSİ DE eşleşmez → kutu masaüstü oranında, dosya masaüstü
+		   kırpması. Çelişki yapısal olarak imkânsız hâle geldi. */
+		$oran_kural = strpos( $css, 'aspect-ratio: var(--qmo-banner-oran-mobil' );
+		$cq_blok    = strpos( $css, '@container qmo-banner (max-width: 720px)' );
+
+		qrms_assert_true( false !== $oran_kural, 'mobil oran kuralı var' );
+		qrms_assert_true( $oran_kural < $cq_blok, 'oran kuralı kapsayıcı bloğunun dışında' );
+
+		// İki taraf da AYNI sayıyı kullanıyor ve sayı tek kaynaktan geliyor.
+		qrms_assert_contains( '@media (max-width: ' . QMO_Banner_Slider_Settings::MOBIL_KIRILIM . 'px)', $css, 'CSS kırılımı' );
+		qrms_assert_contains( 'QMO_Banner_Slider_Settings::mobil_medya()', $kod, 'kısa kod aynı kaynaktan okur' );
+		qrms_assert_same( '(max-width: 720px)', QMO_Banner_Slider_Settings::mobil_medya(), 'aynı sorgu metni' );
+
+		// Kapsayıcı sorgusu hâlâ duruyor ama YALNIZCA yerleşim için:
+		// punto, ok boyutu ve peek. Hiçbiri dosya seçmez.
+		$cq_govde = substr( $css, $cq_blok );
+		qrms_assert_contains( '--qmo-banner-peek: 7.5%', $cq_govde, 'peek kapsayıcıya bağlı kaldı' );
+		qrms_assert_contains( '--qmo-banner-title-size-mobile', $cq_govde, 'punto kapsayıcıya bağlı kaldı' );
+		qrms_assert_false( strpos( $cq_govde, 'aspect-ratio' ) !== false, 'kapsayıcı sorgusu oran belirlemiyor' );
 	}
 );
 

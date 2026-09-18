@@ -36,6 +36,43 @@ class QMO_Banner_Slider_Settings {
     const MAX_AUTOPLAY = 15000;
 
     /**
+     * Mobil oranın devreye girdiği kırılım (px) — TEK KAYNAK.
+     *
+     * NEDEN VIEWPORT, NEDEN KAPSAYICI DEĞİL: mobil oran iki yerde birden
+     * karar verir — (a) kutunun yüksekliği (CSS aspect-ratio), (b) hangi
+     * dosyanın indirileceği (<picture><source media>). `<source media>`
+     * yalnızca VIEWPORT sorgusu kabul eder; kapsayıcı sorgusu (@container)
+     * yazılamaz. İkisi farklı referansa bakarsa çelişirler: dar bir
+     * Elementor kolonunda (kapsayıcı 500px, viewport 1200px) CSS mobil
+     * oranı uygular ama tarayıcı masaüstü dosyasını indirir; masaüstü
+     * kırpması mobil oranlı kutuya girer ve object-fit onu yanlardan keser.
+     *
+     * Bu yüzden ORAN kararı tek referansa, viewport'a bağlandı: CSS'te
+     * @media, HTML'de <source media> aynı sayıyı kullanır ve asla
+     * ayrışamazlar. "Telefonda oran" ayarının anlamı da zaten cihaz
+     * genişliğidir, kapsayıcı genişliği değil.
+     *
+     * Kapsayıcıya bağlı kalan kurallar (başlık puntosu, ok boyutu, peek)
+     * @container altında durmaya devam eder: onlar "ne kadar yer var"
+     * sorusudur ve hiçbir dosya seçimini etkilemezler.
+     *
+     * CSS aynı sayıyı kendi dosyasında tekrar eder (CSS PHP okuyamaz);
+     * ikisinin eşitliği testle doğrulanır.
+     */
+    const MOBIL_KIRILIM = 720;
+
+    /**
+     * Mobil kırılımın medya sorgusu metni.
+     *
+     * Hem kısa koddaki <source media> hem de testler buradan okur.
+     *
+     * @return string
+     */
+    public static function mobil_medya() {
+        return '(max-width: ' . (int) self::MOBIL_KIRILIM . 'px)';
+    }
+
+    /**
      * Banner başlığı için yazı tipi seçenekleri.
      *
      * Kısa kodun yüklediği fontlar: Playfair Display (başlık) ve Manrope
@@ -74,6 +111,20 @@ class QMO_Banner_Slider_Settings {
             '4:3'  => array( 'etiket' => '4:3 — Yüksek', 'css' => '4 / 3' ),
             '1:1'  => array( 'etiket' => '1:1 — Kare', 'css' => '1 / 1' ),
         );
+    }
+
+    /**
+     * Mobil en-boy oranı seçenekleri.
+     *
+     * Masaüstü oranlarının AYNISIDIR (ayrı bir liste tutulmaz): mobil oran
+     * "başka bir kavram" değil, aynı oran kümesinden dar ekran için yapılan
+     * ikinci bir seçimdir. Ayrı metot olmasının tek nedeni çağıranın niyetini
+     * okunur kılmaktır.
+     *
+     * @return array<string,array{etiket:string,css:string}>
+     */
+    public static function mobil_oranlar() {
+        return self::oranlar();
     }
 
     /**
@@ -117,6 +168,12 @@ class QMO_Banner_Slider_Settings {
      * Kampanyası" gibi), görselin üstüne basılması istenmeden açılmaz.
      * Geçiş/oran/autoplay eski davranışın birebir karşılığıdır.
      *
+     * oran_mobil_farkli=0: mobil oran KAPALI gelir; kapalıyken mobil oran
+     * masaüstü oranının aynısıdır ve ikinci bir kırpma hiç üretilmez —
+     * yani mevcut kurulumlar bu ayarla birlikte hiçbir şey değiştirmez.
+     * oran_mobil yalnızca kutu işaretliyken okunur; kapalıyken de saklanır
+     * ki kullanıcı kutuyu kapatıp açınca seçimi kaybolmasın.
+     *
      * @return array<string,int|string>
      */
     public static function varsayilanlar() {
@@ -126,6 +183,8 @@ class QMO_Banner_Slider_Settings {
             'show_title'        => 0,
             'gecis'             => 'slide',
             'oran'              => '16:9',
+            'oran_mobil_farkli' => 0,
+            'oran_mobil'        => '16:9',
             'autoplay'          => 4500,
             'title_font'        => 'Playfair Display',
             'title_color'       => '#f5f0e8',
@@ -196,6 +255,8 @@ class QMO_Banner_Slider_Settings {
             'show_title'        => self::bayrak( $ham['show_title'] ?? 0 ),
             'gecis'             => self::gecis( $ham['gecis'] ?? $v['gecis'] ),
             'oran'              => self::oran( $ham['oran'] ?? $v['oran'] ),
+            'oran_mobil_farkli' => self::bayrak( $ham['oran_mobil_farkli'] ?? 0 ),
+            'oran_mobil'        => self::oran( $ham['oran_mobil'] ?? $v['oran_mobil'] ),
             'autoplay'          => self::autoplay( $ham['autoplay'] ?? $v['autoplay'], $v['autoplay'] ),
             'title_font'        => self::yazi_tipi( $ham['title_font'] ?? $v['title_font'] ),
             'title_color'       => $renk,
@@ -216,15 +277,69 @@ class QMO_Banner_Slider_Settings {
         $a = is_array( $ayar ) ? $ayar : self::get();
 
         return sprintf(
-            '--qmo-banner-oran:%1$s;--qmo-banner-title-font:%2$s;--qmo-banner-title-color:%3$s;--qmo-banner-title-size:%4$dpx;--qmo-banner-title-size-mobile:%5$dpx;--qmo-banner-title-weight:%6$d;--qmo-banner-title-align:%7$s;',
+            '--qmo-banner-oran:%1$s;--qmo-banner-oran-mobil:%8$s;--qmo-banner-title-font:%2$s;--qmo-banner-title-color:%3$s;--qmo-banner-title-size:%4$dpx;--qmo-banner-title-size-mobile:%5$dpx;--qmo-banner-title-weight:%6$d;--qmo-banner-title-align:%7$s;',
             self::oran_css( $a['oran'] ),
             self::font_stack( $a['title_font'] ),
             $a['title_color'],
             (int) $a['title_size'],
             (int) $a['title_size_mobile'],
             (int) $a['title_weight'],
-            $a['title_align']
+            $a['title_align'],
+            self::oran_css( self::oran_mobil( $a ) )
         );
+    }
+
+    /**
+     * Dar ekranda GEÇERLİ olan oran anahtarı.
+     *
+     * Kutu kapalıysa masaüstü oranının aynısıdır — yani "mobil oran yok"
+     * diye ayrı bir durum yoktur, yalnızca "mobil oran masaüstüyle aynı"
+     * vardır. Kırpma, CSS ve kısa kod hep bu tek kaynaktan okur.
+     *
+     * @param array|null $ayar get() çıktısı; null ise taze okunur.
+     * @return string
+     */
+    public static function oran_mobil( $ayar = null ) {
+        $a = is_array( $ayar ) ? $ayar : self::get();
+
+        if ( empty( $a['oran_mobil_farkli'] ) ) {
+            return self::oran( $a['oran'] ?? '16:9' );
+        }
+
+        return self::oran( $a['oran_mobil'] ?? ( $a['oran'] ?? '16:9' ) );
+    }
+
+    /**
+     * Mobil oran masaüstünden gerçekten farklı mı?
+     *
+     * TEK KARAR NOKTASI: ikinci kırpmanın üretilip üretilmeyeceği, kısa kodun
+     * <picture> basıp basmayacağı ve yönetimdeki "mobil" rozeti hep buna
+     * bakar. Kutu işaretli ama aynı oran seçilmişse cevap yine false'tur —
+     * gereksiz ikinci kırpma bu yüzden hiç doğmaz.
+     *
+     * @param array|null $ayar get() çıktısı; null ise taze okunur.
+     * @return bool
+     */
+    public static function mobil_oran_farkli( $ayar = null ) {
+        $a = is_array( $ayar ) ? $ayar : self::get();
+
+        return self::oran( $a['oran'] ?? '16:9' ) !== self::oran_mobil( $a );
+    }
+
+    /**
+     * Kırpma üretilmesi gereken oranların tamamı (tekrarsız).
+     *
+     * Mobil oran masaüstüyle aynıyken tek elemanlıdır; bu, ayar eklenmeden
+     * önceki davranışın birebir aynısıdır (eski kayıtlar "eksik kırpma"
+     * görünmez).
+     *
+     * @param array|null $ayar get() çıktısı; null ise taze okunur.
+     * @return string[]
+     */
+    public static function aktif_oranlar( $ayar = null ) {
+        $a = is_array( $ayar ) ? $ayar : self::get();
+
+        return array_values( array_unique( array( self::oran( $a['oran'] ?? '16:9' ), self::oran_mobil( $a ) ) ) );
     }
 
     /**
