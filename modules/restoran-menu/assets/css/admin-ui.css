@@ -1879,6 +1879,8 @@
 
 .rma-admin:has(#qmo-banner-form) {
     --rma-vitrin-sticky-top: 32px;
+    container-name: qmo-banner-admin;
+    container-type: inline-size;
     overflow: visible;
 }
 
@@ -1998,11 +2000,28 @@
         grid-template-columns: minmax(0, 1fr) minmax(300px, 420px);
     }
 
-    .rma-admin:has(#qmo-banner-form) .rma-vitrin-layout-wrap {
-        grid-template-columns: minmax(0, 1fr) minmax(560px, 720px);
+    /* Kampanya banner: vitrin 420px kuralını kullanma; genişlik konteyner sorgusuyla. */
+    #qmo-banner-form > .rma-vitrin-layout-wrap {
+        grid-template-columns: minmax(0, 1fr);
     }
 
     .rma-vitrin-layout-preview {
+        position: sticky;
+        top: var(--rma-vitrin-sticky-top);
+    }
+
+    /* Kampanya banner: yapışkan yalnızca iki sütun konteyner sorgusunda açılır. */
+    #qmo-banner-form .rma-vitrin-layout-preview {
+        position: static;
+    }
+}
+
+@container qmo-banner-admin (min-width: 980px) {
+    #qmo-banner-form > .rma-vitrin-layout-wrap {
+        grid-template-columns: minmax(400px, 1fr) minmax(560px, 720px);
+    }
+
+    #qmo-banner-form .rma-vitrin-layout-preview {
         position: sticky;
         top: var(--rma-vitrin-sticky-top);
     }
@@ -2031,20 +2050,39 @@
         width: 100%;
     }
 
-    .rma-admin:has(#qmo-banner-form) .rma-vitrin-layout-preview {
-        order: -1;
-    }
-
-    .rma-admin:has(#qmo-banner-form) .rma-vitrin-layout-fields {
-        order: 0;
-    }
-
     .rma-vitrin-preview-card {
         max-height: none;
         overflow: visible;
     }
 
     .rma-vitrin-preview-stage {
+        overflow: visible;
+    }
+}
+
+@container qmo-banner-admin (max-width: 979px) {
+    #qmo-banner-form .rma-vitrin-layout-fields,
+    #qmo-banner-form .rma-vitrin-layout-preview {
+        max-height: none;
+        min-width: 0;
+        width: 100%;
+    }
+
+    #qmo-banner-form .rma-vitrin-layout-preview {
+        order: -1;
+        position: static;
+    }
+
+    #qmo-banner-form .rma-vitrin-layout-fields {
+        order: 0;
+    }
+
+    #qmo-banner-form .rma-vitrin-preview-card {
+        max-height: none;
+        overflow: visible;
+    }
+
+    #qmo-banner-form .rma-vitrin-preview-stage {
         overflow: visible;
     }
 }
@@ -2129,15 +2167,6 @@
     opacity: 0.72;
 }
 
-.qmo-banner-preview-frame.is-pending::after {
-    color: var(--rma-a-muted);
-    content: 'Önizleme güncelleniyor…';
-    display: block;
-    font-size: 12px;
-    margin-top: 6px;
-    text-align: center;
-}
-
 .qmo-banner-oran-native {
     border: 0;
     clip: rect(0 0 0 0);
@@ -2207,19 +2236,6 @@
     display: block;
     font-size: 11px;
     line-height: 1.35;
-}
-
-.qmo-banner-crop-guide {
-    border: 2px solid var(--rma-a-accent);
-    box-shadow: 0 0 0 9999px rgba(10, 10, 12, 0.35);
-    inset: 12% 8%;
-    pointer-events: none;
-    position: absolute;
-    z-index: 2;
-}
-
-.qmo-banner-crop-guide[hidden] {
-    display: none !important;
 }
 
 .rma-kb-satir-gorsel-kutu.is-crop-preview {

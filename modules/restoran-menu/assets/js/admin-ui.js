@@ -1563,15 +1563,9 @@
 
         function setPreviewPending(bekliyor) {
             $frame.toggleClass('is-pending', !!bekliyor);
-        }
-
-        function updateCropGuide() {
-            var $guide = $('#qmo-banner-crop-guide');
-            if (!$guide.length) {
-                return;
+            if (bekliyor) {
+                setPreviewDurum('Önizleme güncelleniyor…');
             }
-
-            $guide.prop('hidden', mode === 'mobile');
         }
 
         function maybeMobilePreview() {
@@ -1637,7 +1631,6 @@
                         setPreviewDurum('Bazı görseller seçilen oran için henüz hazır değil.', 'uyari');
                     }
 
-                    updateCropGuide();
                 })
                 .fail(function () {
                     if (seq !== ajaxSeq) {
@@ -1652,7 +1645,6 @@
         function applyDeviceMode() {
             $stage.toggleClass('is-mobile-mode', mode === 'mobile');
             mountIframe(lastKokHtml);
-            updateCropGuide();
         }
 
         $form.on(
@@ -1667,8 +1659,15 @@
             'change',
             '.qmo-banner-oran-secici input[type="radio"], #qmo-banner-oran-mobil-farkli, #qmo-banner-gecis, #qmo-banner-show-nav, #qmo-banner-show-dots, #qmo-banner-show-title, #qmo-banner-autoplay',
             function () {
-                if (this.id === 'qmo-banner-oran-mobil-farkli' && $(this).is(':checked')) {
-                    maybeMobilePreview();
+                if (this.id === 'qmo-banner-oran-mobil-farkli') {
+                    if ($(this).is(':checked')) {
+                        maybeMobilePreview();
+                    } else {
+                        var $desktopBtn = $form.find('.rma-vitrin-preview-btn[data-preview-mode="desktop"]');
+                        if ($desktopBtn.length && mode !== 'desktop') {
+                            $desktopBtn.trigger('click');
+                        }
+                    }
                 }
                 scheduleAjaxPreview();
             }
@@ -1711,7 +1710,6 @@
 
         mountIframe(lastKokHtml);
         applyCssOnlyPreview();
-        updateCropGuide();
         initVitrinPreviewSticky();
     }
 

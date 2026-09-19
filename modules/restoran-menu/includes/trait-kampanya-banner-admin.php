@@ -1406,7 +1406,6 @@ trait RMA_Kampanya_Banner_Admin_Trait {
 
                         <div class="rma-vitrin-preview-stage" id="qmo-banner-preview-stage">
                             <div class="qmo-banner-preview-frame" id="qmo-banner-preview-frame">
-                                <div class="qmo-banner-crop-guide" id="qmo-banner-crop-guide" aria-hidden="true"></div>
                                 <iframe id="qmo-banner-preview-iframe"
                                         class="qmo-banner-preview-iframe"
                                         title="<?php echo esc_attr( 'Kampanya banner canlı önizleme' ); ?>"
