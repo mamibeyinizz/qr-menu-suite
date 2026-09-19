@@ -1,4 +1,5 @@
 tests/docker/.env
+tests/node_modules/
 
 # Production packaging output (generated ZIPs, never committed).
 build/dist/

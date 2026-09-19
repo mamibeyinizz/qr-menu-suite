@@ -218,6 +218,12 @@ class Restaurant_Menu_Automation {
         // onun davranışına dokunmaz.
         add_action( 'wp_ajax_qmo_banner_satir_kaydet', [ $this, 'ajax_banner_satir_kaydet' ] );
 
+        // Ayar formunun 2. adımı: henüz kaydedilmemiş oran/mobil oran
+        // seçimleriyle canlı önizleme. Ayarı KAYDETMEZ, kırpma ÜRETMEZ —
+        // bkz. trait-kampanya-banner-admin.php ajax_banner_onizleme().
+        add_action( 'wp_ajax_qmo_banner_onizleme', [ $this, 'ajax_banner_onizleme' ] );
+        add_action( 'wp_ajax_qmo_banner_kampanya_olustur', [ $this, 'ajax_banner_kampanya_olustur' ] );
+
         // Sunucu tarafı kırpmanın geriye dönük ucu: eskiden yüklenmiş
         // (yalnızca CSS ile kesilen) görselleri güncel orana göre yeniden
         // kırpar. Bkz. QMO_Banner_Kirpma.

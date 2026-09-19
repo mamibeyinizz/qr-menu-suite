@@ -36,8 +36,10 @@
  * yakalama noktasıdır). İki istisna, bu projede WP_Query kullanan HER
  * akış için izlenen mevcut yöntemle (bkz. test-csv-import-dedup.php başlık
  * yorumu) kaynak metnine karşı doğrulanır, çünkü bu test paketinde
- * WP_Query'nin bir stub'ı YOKTUR — doğrudan çağrılırsa "class WP_Query
- * not found" ile fatal verir:
+ * WP_Query için minimal bir stub vardır (tests/stubs-wordpress.php — banner
+ * CPT sorguları ve menu_order sıralaması). Yine de bazı akışlarda başarı
+ * dalı ağır sorgu/veri bağımlılığı taşıdığından yalnızca kaynak metniyle
+ * doğrulanır:
  *   - QMO_Kombin_Meta::ajax_search_items() başarı dalı (new WP_Query(...)
  *     içerir); yetkisizlik dalı WP_Query'ye ulaşmadan erken döndüğü için
  *     O davranışsal olarak test edilir, yalnızca başarı dalının durum
@@ -496,7 +498,7 @@ qrms_test(
 );
 
 qrms_test(
-	'QMO_Kombin_Meta::ajax_search_items: başarı dalı bu PR ile değişmedi (kaynak-kod doğrulaması — bu test paketinde WP_Query stub\'ı yok)',
+	'QMO_Kombin_Meta::ajax_search_items: başarı dalı bu PR ile değişmedi (kaynak-kod doğrulaması — başarı dalı tam davranış testi kapsam dışı)',
 	function () {
 		$src = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/admin-kombin-meta.php' );
 
@@ -567,7 +569,7 @@ qrms_test(
 );
 
 qrms_test(
-	'ajax_kampanya_onizleme: yetkisizlik dalına 403 eklendi (kaynak-kod doğrulaması — RMA_Kampanya_DB/WP_Query bu test paketinde stub\'lanmadığından gerçek çalıştırma yapılmaz, bkz. yukarıdaki ajax_search_items ile aynı gerekçe)',
+	'ajax_kampanya_onizleme: yetkisizlik dalına 403 eklendi (kaynak-kod doğrulaması — başarı dalı tam davranış testi kapsam dışı, bkz. ajax_search_items)',
 	function () {
 		$src = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-kampanya-admin.php' );
 

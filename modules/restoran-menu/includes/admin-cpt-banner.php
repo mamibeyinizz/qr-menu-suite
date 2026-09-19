@@ -45,16 +45,16 @@ class QMO_Banner_CPT {
     public static function register_post_type() {
         register_post_type( self::POST_TYPE, [
             'labels' => [
-                'name'          => 'Kampanya Banner',
-                'singular_name' => 'Banner',
-                'menu_name'     => 'Kampanya Banner',
-                'add_new'       => 'Banner Ekle',
-                'add_new_item'  => 'Yeni Banner Ekle',
-                'edit_item'     => 'Banner Düzenle',
-                'new_item'      => 'Yeni Banner',
-                'view_item'     => 'Banner Görüntüle',
-                'search_items'  => 'Banner Ara',
-                'not_found'     => 'Banner bulunamadı',
+                'name'          => 'Kampanya Görselleri',
+                'singular_name' => 'Kampanya Görseli',
+                'menu_name'     => 'Kampanya Görselleri',
+                'add_new'       => 'Kampanya Görseli Ekle',
+                'add_new_item'  => 'Yeni Kampanya Görseli',
+                'edit_item'     => 'Kampanya Görselini Düzenle',
+                'new_item'      => 'Yeni Kampanya Görseli',
+                'view_item'     => 'Kampanya Görselini Görüntüle',
+                'search_items'  => 'Kampanya Görseli Ara',
+                'not_found'     => 'Kampanya görseli bulunamadı',
             ],
             'public'              => false,
             'publicly_queryable'  => false,
@@ -163,10 +163,10 @@ class QMO_Banner_CPT {
         </div>
 
         <p style="margin-top:18px;">
-            <label for="qmo_banner_link"><strong>Bağlantı (opsiyonel)</strong></label><br />
+            <label for="qmo_banner_link"><strong>Banner tıklanınca gidilecek bağlantı</strong> <span class="description">(isteğe bağlı)</span></label><br />
             <input type="url" id="qmo_banner_link" name="<?php echo esc_attr( self::META_LINK ); ?>" value="<?php echo esc_attr( $link ); ?>" class="widefat" placeholder="https://" />
         </p>
-        <p class="description">Doldurulursa banner tıklanabilir olur ve bu adrese yönlendirir. Boş bırakılırsa banner yalnızca görsel olarak gösterilir.</p>
+        <p class="description">Doldurursanız ziyaretçi görsele tıkladığında bu adrese gider. Boş bırakırsanız görsel yalnızca gösterilir.</p>
         <?php
     }
 
@@ -239,6 +239,86 @@ class QMO_Banner_CPT {
         } else {
             delete_post_meta( $post_id, self::META_LINK );
         }
+    }
+
+    /**
+     * Yönetimden yeni kampanya görseli kaydı oluşturur (CPT ekranına gitmeden).
+     *
+     * @param array $args {
+     *     @type string $baslik   Kampanya adı.
+     *     @type int    $gorsel_id Ek ID (0 = görsel yok).
+     *     @type string $link     URL.
+     *     @type string $odak     Kırpma odağı anahtarı.
+     *     @type string $durum    post_status (varsayılan publish).
+     * }
+     * @return int|\WP_Error Post ID veya hata.
+     */
+    public static function olustur_kayit( array $args ) {
+        $baslik = isset( $args['baslik'] ) ? sanitize_text_field( (string) $args['baslik'] ) : '';
+
+        if ( '' === $baslik ) {
+            return new WP_Error( 'bos_baslik', 'Kampanya adı gerekli.' );
+        }
+
+        $gorsel_id = isset( $args['gorsel_id'] ) ? absint( $args['gorsel_id'] ) : 0;
+
+        if ( $gorsel_id < 1 || ! self::is_valid_image( $gorsel_id ) ) {
+            return new WP_Error( 'gorsel_gerekli', 'Kampanya görseli seçmelisin.' );
+        }
+
+        $durum = isset( $args['durum'] ) ? sanitize_key( (string) $args['durum'] ) : 'publish';
+
+        if ( ! in_array( $durum, array( 'publish', 'draft', 'pending' ), true ) ) {
+            $durum = 'publish';
+        }
+
+        $post_id = wp_insert_post(
+            array(
+                'post_type'   => self::POST_TYPE,
+                'post_title'  => $baslik,
+                'post_status' => $durum,
+                'menu_order'  => self::sonraki_menu_order(),
+            ),
+            true
+        );
+
+        if ( is_wp_error( $post_id ) ) {
+            return $post_id;
+        }
+
+        if ( class_exists( 'QMO_Banner_Kirpma' ) ) {
+            $odak = isset( $args['odak'] ) ? QMO_Banner_Kirpma::odak( (string) $args['odak'] ) : 'merkez';
+            update_post_meta( $post_id, QMO_Banner_Kirpma::META_ODAK, $odak );
+        }
+
+        update_post_meta( $post_id, self::META_IMAGE, $gorsel_id );
+
+        if ( class_exists( 'QMO_Banner_Kirpma' ) ) {
+            QMO_Banner_Kirpma::banner_kirp( $post_id );
+        }
+
+        $link = isset( $args['link'] ) ? esc_url_raw( (string) $args['link'] ) : '';
+
+        if ( '' !== $link ) {
+            update_post_meta( $post_id, self::META_LINK, $link );
+        }
+
+        return (int) $post_id;
+    }
+
+    /**
+     * Yeni kayıt için bir sonraki menu_order değeri.
+     *
+     * @return int
+     */
+    private static function sonraki_menu_order() {
+        $son = 0;
+
+        foreach ( self::get_admin_banners() as $banner ) {
+            $son = max( $son, (int) $banner->menu_order );
+        }
+
+        return $son + 1;
     }
 
     /**

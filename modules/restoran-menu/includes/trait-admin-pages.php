@@ -47,8 +47,8 @@ trait RMA_Admin_Pages_Trait {
                 'icon'       => 'dashicons-tag',
             ],
             'qrms-rm-kampanya-banner' => [
-                'title'      => 'Kampanya Banner',
-                'menu_title' => 'Kampanya Banner',
+                'title'      => 'Kampanya Görselleri',
+                'menu_title' => 'Kampanya Görselleri',
                 'hub_title'  => __( 'Kampanya Görselleri', 'qrms' ),
                 'render'     => 'render_kampanya_banner_page',
                 'desc'       => __( 'Menünüzün üst kısmında kampanyalarınızı ve özel fırsatlarınızı öne çıkarın.', 'qrms' ),
@@ -1292,6 +1292,15 @@ trait RMA_Admin_Pages_Trait {
             wp_enqueue_media();
             $deps[] = 'inline-edit-post';
         }
+
+        wp_enqueue_script(
+            'qmo-banner-preview-iframe-core',
+            RMA_PLUGIN_URL . 'assets/js/banner-preview-iframe-core.js',
+            [],
+            $this->asset_version( 'assets/js/banner-preview-iframe-core.js' ),
+            true
+        );
+        $deps[] = 'qmo-banner-preview-iframe-core';
 
         wp_enqueue_script(
             'rma-admin-ui',

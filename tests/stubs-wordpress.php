@@ -2320,6 +2320,77 @@ function esc_textarea( $text ) {
 	return htmlspecialchars( (string) $text, ENT_QUOTES );
 }
 
+if ( ! class_exists( 'WP_Query' ) ) {
+	/**
+	 * Test stub — QMO_Banner_CPT::query_banners() için minimal WP_Query taklidi.
+	 *
+	 * Gerçek WP_Query genişletilmez; yalnızca post_type + post_status filtreler
+	 * $GLOBALS['qrms_test']['post_types'] kayıtlarını okur.
+	 */
+	class WP_Query {
+		/** @var array */
+		public $posts = array();
+
+		/**
+		 * @param array $args Sorgu argümanları.
+		 */
+		public function __construct( $args = array() ) {
+			$post_type = isset( $args['post_type'] ) ? $args['post_type'] : '';
+			$statuslar = isset( $args['post_status'] ) ? (array) $args['post_status'] : array( 'publish' );
+			$tipler    = isset( $GLOBALS['qrms_test']['post_types'] ) ? $GLOBALS['qrms_test']['post_types'] : array();
+
+			$idler = array();
+			foreach ( $tipler as $id => $tip ) {
+				if ( $tip !== $post_type ) {
+					continue;
+				}
+				if ( ! in_array( get_post_status( $id ), $statuslar, true ) ) {
+					continue;
+				}
+				$idler[] = $id;
+			}
+
+			$orderby = isset( $args['orderby'] ) ? $args['orderby'] : 'ID';
+			if ( is_array( $orderby ) ) {
+				usort(
+					$idler,
+					function ( $a, $b ) use ( $orderby ) {
+						foreach ( $orderby as $alan => $yon ) {
+							$asc = ( 'DESC' !== strtoupper( (string) $yon ) );
+							$va  = 'menu_order' === $alan
+								? (int) ( $GLOBALS['qrms_test']['menu_order'][ $a ] ?? 0 )
+								: (int) $a;
+							$vb  = 'menu_order' === $alan
+								? (int) ( $GLOBALS['qrms_test']['menu_order'][ $b ] ?? 0 )
+								: (int) $b;
+							if ( $va === $vb ) {
+								continue;
+							}
+							return $asc ? ( $va <=> $vb ) : ( $vb <=> $va );
+						}
+						return $a <=> $b;
+					}
+				);
+			} else {
+				sort( $idler, SORT_NUMERIC );
+			}
+
+			$this->posts = array_map(
+				function ( $id ) {
+					$baslik = isset( $GLOBALS['qrms_test']['post_title'][ $id ] ) ? $GLOBALS['qrms_test']['post_title'][ $id ] : '';
+					return (object) array(
+						'ID'         => $id,
+						'post_title' => $baslik,
+						'post_type'  => $GLOBALS['qrms_test']['post_types'][ $id ],
+						'menu_order' => (int) ( $GLOBALS['qrms_test']['menu_order'][ $id ] ?? 0 ),
+					);
+				},
+				$idler
+			);
+		}
+	}
+}
+
 require_once QRMS_PLUGIN_DIR . 'includes/class-helpers.php';
 require_once QRMS_PLUGIN_DIR . 'includes/class-license-client.php';
 require_once QRMS_PLUGIN_DIR . 'includes/class-module-loader.php';

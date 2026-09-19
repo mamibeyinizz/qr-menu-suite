@@ -529,17 +529,10 @@
         $list.on('change', '[data-satir-odak]', function () {
             var $sel = $(this);
             var $item = $sel.closest('li[data-banner-id]');
-            var secili = $sel.get(0).options[$sel.get(0).selectedIndex];
-            var css = (secili && secili.getAttribute('data-odak-css')) || 'center center';
-
-            $item.find('[data-satir-thumb]').css('objectPosition', css);
 
             satirKaydet($item, { odak: $sel.val() }, function (data) {
                 if (data.thumb) {
                     $item.find('[data-satir-thumb]').attr('src', data.thumb).prop('hidden', false);
-                }
-                if (data.odak_css) {
-                    $item.find('[data-satir-thumb]').css('objectPosition', data.odak_css);
                 }
             });
         });
@@ -570,13 +563,207 @@
                         $img.attr('src', data.thumb);
                         $item.find('.rma-kb-satir-bos').remove();
                     }
-                    if (data.odak_css) $img.css('objectPosition', data.odak_css);
                     $btn.text('Görseli değiştir');
                 });
             });
 
             frame.open();
         });
+    }
+
+    function initBannerOranSecici() {
+        $('.qmo-banner-oran-secici').each(function () {
+            var $wrap = $(this);
+
+            $wrap.on('change', 'input[type="radio"]', function () {
+                $wrap.find('.qmo-banner-oran-kart').removeClass('is-selected');
+                $(this).closest('.qmo-banner-oran-kart').addClass('is-selected');
+            });
+        });
+    }
+
+    function initBannerInlineCreate() {
+        var cfg = window.QMO_BANNER_PREVIEW || {};
+        var inline = cfg.inlineCreate || null;
+        var $toggle = $('#qmo-banner-yeni-toggle');
+        var $panel = $('#qmo-banner-yeni-panel');
+
+        if (!$toggle.length || !$panel.length || !inline) {
+            return;
+        }
+
+        var frame = null;
+
+        function panelAcik(acik) {
+            $panel.prop('hidden', !acik);
+            $toggle.attr('aria-expanded', acik ? 'true' : 'false');
+        }
+
+        $toggle.on('click', function () {
+            panelAcik($panel.prop('hidden'));
+        });
+
+        $('#qmo-banner-yeni-iptal').on('click', function () {
+            panelAcik(false);
+        });
+
+        var $baslik = $('#qmo-banner-yeni-baslik');
+        var $baslikHata = $('#qmo-banner-yeni-baslik-hata');
+        var $gorselHata = $('#qmo-banner-yeni-gorsel-hata');
+        var $gorselInput = $('#qmo-banner-yeni-gorsel');
+
+        function inlineAlanHataTemizle($input, $hata) {
+            if ($input && $input.length) {
+                $input.removeClass('rma-input-hata').removeAttr('aria-invalid');
+            }
+            if ($hata && $hata.length) {
+                $hata.prop('hidden', true).text('');
+            }
+        }
+
+        function inlineAlanHataGoster($input, $hata, metin) {
+            if ($input && $input.length) {
+                $input.addClass('rma-input-hata').attr('aria-invalid', 'true');
+            }
+            if ($hata && $hata.length) {
+                $hata.prop('hidden', false).text(metin);
+            }
+        }
+
+        function inlineDurumTemizle($durum) {
+            $durum.removeClass('is-hata is-basari').text('');
+        }
+
+        function inlineDurumGoster($durum, metin, tur) {
+            $durum.removeClass('is-hata is-basari is-bekliyor');
+            if (tur === 'hata') {
+                $durum.addClass('is-hata');
+            } else if (tur === 'basari') {
+                $durum.addClass('is-basari');
+            } else if (tur === 'bekliyor') {
+                $durum.addClass('is-bekliyor');
+            }
+            $durum.text(metin);
+        }
+
+        $baslik.on('input', function () {
+            if ($.trim($baslik.val()) !== '') {
+                inlineAlanHataTemizle($baslik, $baslikHata);
+            }
+        });
+
+        $('#qmo-banner-yeni-gorsel-sec').on('click', function (e) {
+            e.preventDefault();
+
+            if (!window.wp || !window.wp.media) {
+                return;
+            }
+
+            frame = window.wp.media({
+                title: 'Kampanya Görseli Seç',
+                button: { text: 'Bu görseli kullan' },
+                library: { type: 'image' },
+                multiple: false
+            });
+
+            frame.on('select', function () {
+                var a = frame.state().get('selection').first().toJSON();
+                $gorselInput.val(a.id);
+                $('#qmo-banner-yeni-gorsel-ad').text(a.filename || a.title || 'Seçildi');
+                inlineAlanHataTemizle($gorselInput, $gorselHata);
+            });
+
+            frame.open();
+        });
+
+        $('#qmo-banner-yeni-kaydet').on('click', function () {
+            var $btn = $(this);
+            if ($btn.prop('disabled')) {
+                return;
+            }
+
+            var $durum = $('#qmo-banner-yeni-durum');
+            var navigating = false;
+            var baslik = $.trim($baslik.val());
+            var gorsel = parseInt($gorselInput.val(), 10) || 0;
+            var gecerli = true;
+
+            inlineDurumTemizle($durum);
+            inlineAlanHataTemizle($baslik, $baslikHata);
+            inlineAlanHataTemizle($gorselInput, $gorselHata);
+
+            if (baslik === '') {
+                inlineAlanHataGoster($baslik, $baslikHata, 'Kampanya adı gerekli.');
+                gecerli = false;
+            }
+
+            if (gorsel < 1) {
+                inlineAlanHataGoster($gorselInput, $gorselHata, 'Kampanya görseli seçmelisin.');
+                gecerli = false;
+            }
+
+            if (!gecerli) {
+                if (baslik === '') {
+                    $baslik.trigger('focus');
+                } else {
+                    $('#qmo-banner-yeni-gorsel-sec').trigger('focus');
+                }
+                return;
+            }
+
+            $btn.prop('disabled', true);
+            inlineDurumGoster($durum, 'Kaydediliyor…', 'bekliyor');
+
+            $.post(AJAX_URL, {
+                action: inline.action,
+                nonce: inline.nonce,
+                baslik: baslik,
+                gorsel: gorsel,
+                link: $('#qmo-banner-yeni-link').val(),
+                odak: $('#qmo-banner-yeni-odak').val() || 'merkez'
+            }).done(function (r) {
+                if (!r || !r.success) {
+                    var mesaj = (r && r.data && r.data.message) || 'Kaydedilemedi';
+                    if (mesaj === 'Kampanya adı gerekli.') {
+                        inlineAlanHataGoster($baslik, $baslikHata, mesaj);
+                    } else if (mesaj === 'Kampanya görseli seçmelisin.') {
+                        inlineAlanHataGoster($gorselInput, $gorselHata, mesaj);
+                    } else {
+                        inlineDurumGoster($durum, mesaj, 'hata');
+                    }
+                    return;
+                }
+
+                navigating = true;
+                if (r.data.reload) {
+                    window.location.href = r.data.reload;
+                    return;
+                }
+
+                window.location.reload();
+            }).fail(function () {
+                inlineDurumGoster($durum, 'Kaydedilemedi', 'hata');
+            }).always(function () {
+                if (!navigating) {
+                    $btn.prop('disabled', false);
+                }
+            });
+        });
+    }
+
+    function initKbTabsScrollHint() {
+        var tabs = document.querySelector('.rma-kb-tabs');
+
+        if (!tabs) {
+            return;
+        }
+
+        function guncelle() {
+            tabs.classList.toggle('is-scrollable', tabs.scrollWidth > tabs.clientWidth + 2);
+        }
+
+        guncelle();
+        window.addEventListener('resize', guncelle);
     }
 
     /* -----------------------------------------------------------------
@@ -1251,26 +1438,41 @@
        kullandığı için sahte bir stil yoktur.
     ----------------------------------------------------------------- */
     function initBannerPreview() {
-        var $form    = $('#qmo-banner-form');
-        var $stage   = $('#qmo-banner-preview-stage');
-        var $preview = $('#qmo-banner-preview');
+        var cfg = window.QMO_BANNER_PREVIEW || null;
+        var $form = $('#qmo-banner-form');
+        var $stage = $('#qmo-banner-preview-stage');
+        var $frame = $('#qmo-banner-preview-frame');
+        var $iframe = $('#qmo-banner-preview-iframe');
 
-        if (!$form.length || !$preview.length) return;
+        if (!cfg || !$form.length || !$iframe.length || !$frame.length) {
+            return;
+        }
 
         var mode = 'desktop';
-        var previewEl = $preview.get(0);
+        var ajaxTimer = null;
+        var ajaxSeq = 0;
+        var lastKokHtml = (window.QMO_BANNER_PREVIEW_INITIAL && window.QMO_BANNER_PREVIEW_INITIAL.kokHtml) || '';
 
         function fieldVal(id, fallback) {
+            var $secici = $('.qmo-banner-oran-secici[data-oran-select="' + id + '"]');
+            if ($secici.length) {
+                var oran = $secici.find('input[type="radio"]:checked').val();
+                return oran !== undefined ? oran : fallback;
+            }
+
             var $el = $('#' + id);
             return $el.length ? $el.val() : fallback;
         }
 
-        /* "Mobilde farklı oran kullan" kutusu: kapalıyken mobil oran alanı
-           gizlenir ve mobil oran masaüstünün aynısı sayılır. aria-expanded
-           kutunun üzerinde, aria-controls ile alanı gösterir. */
+        function viewportWidth() {
+            return mode === 'mobile' ? cfg.mobileWidth : cfg.desktopWidth;
+        }
+
         function mobilOranAlani() {
             var $kutu = $('#qmo-banner-oran-mobil-farkli');
-            if (!$kutu.length) return false;
+            if (!$kutu.length) {
+                return false;
+            }
 
             var acik = $kutu.is(':checked');
             $kutu.attr('aria-expanded', acik ? 'true' : 'false');
@@ -1280,88 +1482,305 @@
         }
 
         function oranCssDegeri(id, yedek) {
+            var $secici = $('.qmo-banner-oran-secici[data-oran-select="' + id + '"]');
+            if ($secici.length) {
+                var css = $secici.find('input[type="radio"]:checked').data('oran-css');
+                return css || yedek;
+            }
+
             var $sel = $('#' + id);
-            if (!$sel.length) return yedek;
+            if (!$sel.length) {
+                return yedek;
+            }
             return $sel.find('option:selected').data('oran-css') || yedek;
         }
 
-        function applyPreview() {
+        var previewCore = window.QMO_BANNER_PREVIEW_IFRAME_CORE || {};
+
+        function buildIframeDocument(kokHtml) {
+            if (typeof previewCore.buildIframeDocument === 'function') {
+                return previewCore.buildIframeDocument({
+                    kokHtml: kokHtml,
+                    viewportWidth: viewportWidth(),
+                    assets: cfg.assets || {}
+                });
+            }
+
+            return '';
+        }
+
+        function iframeRoot() {
+            var doc = $iframe[0].contentDocument;
+            return doc ? doc.querySelector('.qmo-banner-root') : null;
+        }
+
+        function resizeIframe() {
+            var vw = viewportWidth();
+            var avail = $frame.innerWidth() || vw;
+            var scale = Math.min(1, avail / vw);
+            var doc = $iframe[0].contentDocument;
+            var height = vw * 0.45;
+
+            if (typeof previewCore.computeIframeContentHeight === 'function') {
+                height = previewCore.computeIframeContentHeight(doc, vw, height);
+            }
+
+            $iframe.css({
+                width: vw + 'px',
+                height: height + 'px',
+                transform: 'scale(' + scale + ')',
+                marginBottom: -(height * (1 - scale)) + 'px'
+            });
+            $frame.css('height', (height * scale) + 'px');
+        }
+
+        function replacePreviewIframe() {
+            var title = $iframe.attr('title') || 'Kampanya banner canlı önizleme';
+            var $next = $('<iframe>', {
+                id: 'qmo-banner-preview-iframe',
+                'class': 'qmo-banner-preview-iframe',
+                title: title,
+                tabindex: 0
+            });
+
+            $iframe.replaceWith($next);
+            $iframe = $next;
+        }
+
+        function mountIframe(kokHtml) {
+            lastKokHtml = kokHtml || '';
+            replacePreviewIframe();
+
+            var doc = $iframe[0].contentDocument;
+            if (!doc) {
+                return;
+            }
+
+            doc.open();
+            doc.write(buildIframeDocument(lastKokHtml));
+            doc.close();
+
+            $iframe.one('load', function () {
+                applyCssOnlyPreview();
+                resizeIframe();
+            });
+            setTimeout(function () {
+                applyCssOnlyPreview();
+                resizeIframe();
+            }, 60);
+            setTimeout(function () {
+                applyCssOnlyPreview();
+                resizeIframe();
+            }, 350);
+        }
+
+        function applyCssOnlyPreview() {
+            var root = iframeRoot();
+            if (!root) {
+                return;
+            }
+
             var oranCss = oranCssDegeri('qmo-banner-oran', '16 / 9');
             var mobilAcik = mobilOranAlani();
             var mobilCss = mobilAcik ? oranCssDegeri('qmo-banner-oran-mobil', oranCss) : oranCss;
 
-            previewEl.style.setProperty('--qmo-banner-oran-mobil', mobilCss);
-
-            /* Önizleme kutusu her zaman 720px'in altında olduğu için
-               ön yüzdeki @container kuralı burada sürekli geçerli olurdu.
-               Bu yüzden seçili modun oranı --qmo-banner-oran'a da yazılır;
-               gerçek ön yüzde ayrım yine CSS'in işidir. */
-            previewEl.style.setProperty('--qmo-banner-oran', mode === 'mobile' ? mobilCss : oranCss);
+            root.style.setProperty('--qmo-banner-oran-mobil', mobilCss);
+            root.style.setProperty('--qmo-banner-oran', mode === 'mobile' ? mobilCss : oranCss);
 
             var sizeDesktop = fieldVal('qmo-banner-title-size', 32);
-            var sizeMobile  = fieldVal('qmo-banner-title-size-mobile', 20);
-            var size        = mode === 'mobile' ? sizeMobile : sizeDesktop;
+            var sizeMobile = fieldVal('qmo-banner-title-size-mobile', 20);
+            var size = mode === 'mobile' ? sizeMobile : sizeDesktop;
 
-            /* Önizleme sütunu 720px'in altında olduğu için container query
-               her zaman mobil puntoyu yazardı. Seçili modun puntosunu
-               HER İKİ değişkene de basıyoruz ki CQ önizlemeyi bozmasın;
-               gerçek ön yüzde CSS yine --qmo-banner-title-size-mobile'a
-               geçer (bkz. frontend-banner-slider.css). */
-            previewEl.style.setProperty('--qmo-banner-title-size', size + 'px');
-            previewEl.style.setProperty('--qmo-banner-title-size-mobile', size + 'px');
-            previewEl.style.setProperty('--qmo-banner-title-weight', fieldVal('qmo-banner-title-weight', 600));
-            previewEl.style.setProperty('--qmo-banner-title-align', vitrinAlignVal('qmo-banner-title-align'));
+            root.style.setProperty('--qmo-banner-title-size', size + 'px');
+            root.style.setProperty('--qmo-banner-title-size-mobile', size + 'px');
+            root.style.setProperty('--qmo-banner-title-weight', fieldVal('qmo-banner-title-weight', 600));
+            root.style.setProperty('--qmo-banner-title-align', vitrinAlignVal('qmo-banner-title-align'));
 
             var font = String(fieldVal('qmo-banner-title-font', 'Playfair Display'));
-            previewEl.style.setProperty('--qmo-banner-title-font', SLIDER_FONT_STACKS[font] || SLIDER_FONT_STACKS['Playfair Display']);
+            root.style.setProperty('--qmo-banner-title-font', SLIDER_FONT_STACKS[font] || SLIDER_FONT_STACKS['Playfair Display']);
 
             var titleColor = fieldVal('qmo-banner-title-color', '#f5f0e8');
-            previewEl.style.setProperty('--qmo-banner-title-color', titleColor ? titleColor : '#f5f0e8');
+            root.style.setProperty('--qmo-banner-title-color', titleColor ? titleColor : '#f5f0e8');
 
-            $preview.toggleClass('is-fade', fieldVal('qmo-banner-gecis', 'slide') === 'fade');
+            root.classList.toggle('is-fade', fieldVal('qmo-banner-gecis', 'slide') === 'fade');
+            resizeIframe();
+        }
 
-            $preview.find('[data-qmo-banner-caption]').toggle($('#qmo-banner-show-title').is(':checked'));
-            $preview.find('[data-qmo-banner-nav]').toggle($('#qmo-banner-show-nav').is(':checked'));
-            $preview.find('[data-qmo-banner-dots]').toggle($('#qmo-banner-show-dots').is(':checked'));
+        function setPreviewDurum(metin, tur) {
+            var $durum = $('#qmo-banner-preview-durum');
+            if (!$durum.length) {
+                return;
+            }
 
+            $durum.removeClass('is-hata is-uyari is-bekliyor is-basari');
+
+            if (!metin) {
+                $durum.text('');
+                return;
+            }
+
+            if (tur === 'hata') {
+                $durum.addClass('is-hata');
+            } else if (tur === 'uyari') {
+                $durum.addClass('is-uyari');
+            } else if (tur === 'bekliyor') {
+                $durum.addClass('is-bekliyor');
+            } else if (tur === 'basari') {
+                $durum.addClass('is-basari');
+            }
+
+            $durum.text(metin);
+        }
+
+        function setPreviewPending(bekliyor) {
+            $frame.toggleClass('is-pending', !!bekliyor);
+            if (bekliyor) {
+                setPreviewDurum('Önizleme güncelleniyor…', 'bekliyor');
+            }
+        }
+
+        function maybeMobilePreview() {
+            if (!$('#qmo-banner-oran-mobil-farkli').is(':checked')) {
+                return;
+            }
+
+            var $btn = $form.find('.rma-vitrin-preview-btn[data-preview-mode="mobile"]');
+
+            if ($btn.length && mode !== 'mobile') {
+                $btn.trigger('click');
+            }
+        }
+
+        function previewAjaxPayload() {
+            return {
+                action: cfg.action,
+                nonce: cfg.nonce,
+                oran: fieldVal('qmo-banner-oran', '16:9'),
+                oran_mobil: fieldVal('qmo-banner-oran-mobil', '16:9'),
+                oran_mobil_farkli: mobilOranAlani() ? '1' : '0',
+                gecis: fieldVal('qmo-banner-gecis', 'slide'),
+                autoplay: fieldVal('qmo-banner-autoplay', 4500),
+                show_nav: $('#qmo-banner-show-nav').is(':checked') ? '1' : '0',
+                show_dots: $('#qmo-banner-show-dots').is(':checked') ? '1' : '0',
+                show_title: $('#qmo-banner-show-title').is(':checked') ? '1' : '0',
+                title_font: fieldVal('qmo-banner-title-font', 'Playfair Display'),
+                title_color: fieldVal('qmo-banner-title-color', '#f5f0e8'),
+                title_size: fieldVal('qmo-banner-title-size', 32),
+                title_size_mobile: fieldVal('qmo-banner-title-size-mobile', 20),
+                title_weight: fieldVal('qmo-banner-title-weight', 600),
+                title_align: vitrinAlignVal('qmo-banner-title-align')
+            };
+        }
+
+        function scheduleAjaxPreview() {
+            clearTimeout(ajaxTimer);
+            ajaxTimer = setTimeout(fetchAjaxPreview, cfg.debounceMs || 220);
+        }
+
+        function fetchAjaxPreview() {
+            var seq = ++ajaxSeq;
+
+            setPreviewPending(true);
+
+            $.post(cfg.ajaxUrl, previewAjaxPayload())
+                .done(function (resp) {
+                    if (seq !== ajaxSeq) {
+                        return;
+                    }
+
+                    setPreviewPending(false);
+
+                    if (!resp || !resp.success || !resp.data) {
+                        setPreviewDurum('Önizleme güncellenemedi. Sayfayı yenileyip tekrar deneyin.', 'hata');
+                        return;
+                    }
+
+                    setPreviewDurum('');
+                    mountIframe(resp.data.html || '');
+
+                    if (resp.data.durum === 'bekliyor') {
+                        setPreviewDurum('Bazı görseller seçilen oran için henüz hazır değil.', 'uyari');
+                    }
+
+                })
+                .fail(function () {
+                    if (seq !== ajaxSeq) {
+                        return;
+                    }
+
+                    setPreviewPending(false);
+                    setPreviewDurum('Önizleme güncellenemedi. Sayfayı yenileyip tekrar deneyin.', 'hata');
+                });
+        }
+
+        function applyDeviceMode() {
             $stage.toggleClass('is-mobile-mode', mode === 'mobile');
+            mountIframe(lastKokHtml);
         }
 
         $form.on(
             'input change',
-            '#qmo-banner-oran, #qmo-banner-oran-mobil, #qmo-banner-oran-mobil-farkli, #qmo-banner-gecis, #qmo-banner-show-nav, #qmo-banner-show-dots, #qmo-banner-show-title, #qmo-banner-title-font, #qmo-banner-title-color, #qmo-banner-title-size, #qmo-banner-title-size-mobile, #qmo-banner-title-weight',
-            applyPreview
+            '#qmo-banner-title-font, #qmo-banner-title-color, #qmo-banner-title-size, #qmo-banner-title-size-mobile, #qmo-banner-title-weight',
+            function () {
+                applyCssOnlyPreview();
+            }
+        );
+
+        $form.on(
+            'change',
+            '.qmo-banner-oran-secici input[type="radio"], #qmo-banner-oran-mobil-farkli, #qmo-banner-gecis, #qmo-banner-show-nav, #qmo-banner-show-dots, #qmo-banner-show-title, #qmo-banner-autoplay',
+            function () {
+                if (this.id === 'qmo-banner-oran-mobil-farkli') {
+                    if ($(this).is(':checked')) {
+                        maybeMobilePreview();
+                    } else {
+                        var $desktopBtn = $form.find('.rma-vitrin-preview-btn[data-preview-mode="desktop"]');
+                        if ($desktopBtn.length && mode !== 'desktop') {
+                            $desktopBtn.trigger('click');
+                        }
+                    }
+                }
+                scheduleAjaxPreview();
+            }
         );
 
         $form.on('change', '.rma-align-input', function () {
             $(this).closest('.rma-align-group').find('.rma-align-btn').each(function () {
                 $(this).toggleClass('is-selected', $(this).find('.rma-align-input').is(':checked'));
             });
-            applyPreview();
+            applyCssOnlyPreview();
         });
 
         if (typeof $.fn.wpColorPicker === 'function') {
             var $color = $('#qmo-banner-title-color');
             if ($color.length) {
                 $color.wpColorPicker({
-                    change: function (event, ui) {
-                        previewEl.style.setProperty('--qmo-banner-title-color', ui.color.toString());
+                    change: function () {
+                        applyCssOnlyPreview();
                     },
                     clear: function () {
-                        previewEl.style.setProperty('--qmo-banner-title-color', '#f5f0e8');
+                        applyCssOnlyPreview();
                     }
                 });
             }
         }
 
         $form.on('click', '.rma-vitrin-preview-btn', function () {
-            mode = $(this).data('preview-mode');
-            $form.find('.rma-vitrin-preview-btn').removeClass('is-active');
-            $(this).addClass('is-active');
-            applyPreview();
+            mode = $(this).data('preview-mode') || 'desktop';
+            $form.find('.rma-vitrin-preview-btn').removeClass('is-active').attr('aria-pressed', 'false');
+            $(this).addClass('is-active').attr('aria-pressed', 'true');
+            applyDeviceMode();
+            applyCssOnlyPreview();
         });
 
-        applyPreview();
+        if (window.ResizeObserver) {
+            new ResizeObserver(resizeIframe).observe($frame[0]);
+        } else {
+            $(window).on('resize', resizeIframe);
+        }
+
+        mountIframe(lastKokHtml);
+        applyCssOnlyPreview();
         initVitrinPreviewSticky();
     }
 
@@ -2015,6 +2434,9 @@
         initCategorySorter();
         initBannerOrder();
         initBannerRowEditor();
+        initBannerOranSecici();
+        initBannerInlineCreate();
+        initKbTabsScrollHint();
         initPalettes();
         initNavPreview();
         initColorPreview();

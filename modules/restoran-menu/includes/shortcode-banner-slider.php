@@ -75,11 +75,6 @@ class QMO_Shortcode_Banner_Slider {
     }
 
     public static function render_shortcode( $atts ) {
-        $banners = self::build_banner_payloads();
-        if ( empty( $banners ) ) return '';
-
-        self::enqueue_styles();
-
         $ayar = class_exists( 'QMO_Banner_Slider_Settings' )
             ? QMO_Banner_Slider_Settings::get()
             : array(
@@ -88,7 +83,13 @@ class QMO_Shortcode_Banner_Slider {
                 'show_title' => 0,
                 'gecis'      => 'slide',
                 'autoplay'   => 4500,
+                'oran'       => '16:9',
             );
+
+        $banners = self::payloadlar( $ayar );
+        if ( empty( $banners ) ) return '';
+
+        self::enqueue_styles();
 
         // Kısa kod niteliği yönetim varsayılanını ezer; nitelik hiç
         // yazılmamışsa ayar geçerlidir (eski [qmo_banner_slider autoplay="0"]
@@ -108,13 +109,37 @@ class QMO_Shortcode_Banner_Slider {
             $autoplay = min( 15000, max( 1500, $autoplay ) );
         }
 
+        return self::kok_html( $banners, $ayar, array( 'autoplay' => $autoplay ) );
+    }
+
+    /**
+     * Frontend HTML'ini üreten TEK yer.
+     *
+     * render_shortcode() ve AJAX önizleme ucu (bkz.
+     * RMA_Kampanya_Banner_Admin_Trait::ajax_banner_onizleme()) BURAYA
+     * düşer; ikinci bir HTML üretim yolu yoktur. `$ayar` kaydedilmiş
+     * ayarlar OLMAK ZORUNDA DEĞİLDİR — önizleme ucu henüz kaydedilmemiş
+     * oran/oran_mobil/oran_mobil_farkli değerleriyle çağırır.
+     *
+     * @param array $banners payloadlar() çıktısı.
+     * @param array $ayar    QMO_Banner_Slider_Settings::get() şeklinde bir dizi.
+     * @param array $opsiyon {
+     *     @type int  $autoplay Otomatik geçiş (ms); verilmezse $ayar['autoplay'].
+     *     @type bool $betik    Alt kısımdaki <script> etiketi basılsın mı (varsayılan true).
+     * }
+     * @return string
+     */
+    public static function kok_html( array $banners, array $ayar, array $opsiyon = array() ) {
         $count = count( $banners );
+
+        $autoplay = isset( $opsiyon['autoplay'] ) ? (int) $opsiyon['autoplay'] : (int) ( $ayar['autoplay'] ?? 0 );
+        $betik    = ! isset( $opsiyon['betik'] ) || $opsiyon['betik'];
 
         $show_nav   = ! empty( $ayar['show_nav'] ) && $count > 1;
         $show_dots  = ! empty( $ayar['show_dots'] ) && $count > 1;
         $show_title = ! empty( $ayar['show_title'] );
         $gecis      = class_exists( 'QMO_Banner_Slider_Settings' )
-            ? QMO_Banner_Slider_Settings::gecis( $ayar['gecis'] )
+            ? QMO_Banner_Slider_Settings::gecis( $ayar['gecis'] ?? 'slide' )
             : 'slide';
 
         $stil = class_exists( 'QMO_Banner_Slider_Settings' ) ? QMO_Banner_Slider_Settings::css_degiskenleri( $ayar ) : '';
@@ -125,7 +150,7 @@ class QMO_Shortcode_Banner_Slider {
         $img_w = 1600;
         $img_h = 900;
         if ( class_exists( 'QMO_Banner_Slider_Settings' ) ) {
-            $oran_px = QMO_Banner_Slider_Settings::onerilen_px( $ayar['oran'] );
+            $oran_px = QMO_Banner_Slider_Settings::onerilen_px( $ayar['oran'] ?? null );
             $img_w   = (int) $oran_px[0];
             $img_h   = (int) $oran_px[1];
         }
@@ -208,7 +233,9 @@ class QMO_Shortcode_Banner_Slider {
         </div>
     <?php endif; ?>
 </div>
+<?php if ( $betik ) : ?>
 <script src="<?php echo esc_url( self::script_url() ); ?>" defer></script>
+<?php endif; ?>
         <?php
         return trim( ob_get_clean() );
     }
@@ -219,12 +246,23 @@ class QMO_Shortcode_Banner_Slider {
      * Görseli olmayan (ya da eki silinmiş) kayıt sessizce atlanır; hiç
      * kalmazsa render_shortcode() boş döner.
      *
+     * AJAX önizleme ucu (bkz. ajax_banner_onizleme()) henüz KAYDEDİLMEMİŞ
+     * oran/oran_mobil değerleriyle çağırabilsin diye `$ayar` dışarıdan
+     * verilebilir; verilmezse kayıtlı ayar okunur — davranış eskisiyle
+     * birebir aynıdır.
+     *
+     * @param array|null $ayar QMO_Banner_Slider_Settings::get() şeklinde bir dizi; null ise kayıtlı ayar okunur.
      * @return array<int,array{img:string,srcset:string,alt:string,title:string,link:string,odak:string,mobil_img:string}>
      */
-    private static function build_banner_payloads() {
+    public static function payloadlar( $ayar = null ) {
         $banners = [];
-        $ayar    = class_exists( 'QMO_Banner_Slider_Settings' ) ? QMO_Banner_Slider_Settings::get() : array( 'oran' => '16:9' );
-        $oran    = $ayar['oran'];
+        $temel   = class_exists( 'QMO_Banner_Slider_Settings' )
+            ? QMO_Banner_Slider_Settings::get()
+            : array( 'oran' => '16:9' );
+        $ayar    = is_array( $ayar ) ? array_merge( $temel, $ayar ) : $temel;
+        $oran    = class_exists( 'QMO_Banner_Slider_Settings' )
+            ? QMO_Banner_Slider_Settings::oran( $ayar['oran'] ?? '16:9' )
+            : (string) ( $ayar['oran'] ?? '16:9' );
 
         // Mobil oran masaüstüyle aynıysa ikinci bir çözümleme hiç yapılmaz:
         // ne ek sorgu, ne ek dosya, ne <picture>.
@@ -313,4 +351,5 @@ class QMO_Shortcode_Banner_Slider {
 
         return $banners;
     }
+
 }

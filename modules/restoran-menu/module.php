@@ -88,8 +88,8 @@ function qrms_module_restoran_menu_init() {
 			),
 			array(
 				'tag'   => 'qmo_banner_slider',
-				'title' => __( 'Kampanya Banner', 'qrms' ),
-				'desc'  => __( 'Sayfanın en üstünde tam genişlikte, kendi kendine dönen kampanya görselleri. İçeriği "Kampanya Banner" ekranından yönetilir.', 'qrms' ),
+				'title' => __( 'Kampanya Görselleri', 'qrms' ),
+				'desc'  => __( 'Sayfanın en üstünde tam genişlikte, kendi kendine dönen kampanya görselleri. İçeriği "Kampanya Görselleri" ekranından yönetilir.', 'qrms' ),
 				'attrs' => array(
 					array(
 						'name'    => 'autoplay',
@@ -315,6 +315,14 @@ function qrms_module_restoran_menu_admin_assets() {
 	}
 
 	wp_enqueue_style( 'rma-admin-ui', $url . 'assets/css/admin-ui.css', array(), QRMS_Helpers::asset_version( $modul . 'assets/css/admin-ui.css' ) );
+	wp_enqueue_script(
+		'qmo-banner-preview-iframe-core',
+		$url . 'assets/js/banner-preview-iframe-core.js',
+		array(),
+		QRMS_Helpers::asset_version( $modul . 'assets/js/banner-preview-iframe-core.js' ),
+		true
+	);
+	$deps[] = 'qmo-banner-preview-iframe-core';
 	wp_enqueue_script( 'rma-admin-ui', $url . 'assets/js/admin-ui.js', $deps, QRMS_Helpers::asset_version( $modul . 'assets/js/admin-ui.js' ), true );
 
 	// Görünüm sayfasındaki canlı önizleme, frontend'in gerçek nav
@@ -356,6 +364,29 @@ function qrms_module_restoran_menu_admin_assets() {
 			array(),
 			QRMS_Helpers::asset_version( $modul . 'assets/js/banner-olustur.js' ),
 			true
+		);
+
+		$banner_js = $modul . 'includes/frontend-banner-slider.js';
+		wp_localize_script(
+			'rma-admin-ui',
+			'QMO_BANNER_PREVIEW',
+			array(
+				'ajaxUrl'      => admin_url( 'admin-ajax.php' ),
+				'action'       => 'qmo_banner_onizleme',
+				'nonce'        => wp_create_nonce( 'qmo_banner_onizleme' ),
+				'desktopWidth' => 1280,
+				'mobileWidth'  => 390,
+				'debounceMs'   => 220,
+				'inlineCreate' => array(
+					'action' => 'qmo_banner_kampanya_olustur',
+					'nonce'  => wp_create_nonce( 'qmo_banner_kampanya_olustur' ),
+				),
+				'assets'       => array(
+					'css'   => $url . 'includes/frontend-banner-slider.css',
+					'js'    => $url . 'includes/frontend-banner-slider.js?v=' . QRMS_Helpers::asset_version( $banner_js ),
+					'fonts' => 'https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap',
+				),
+			)
 		);
 	}
 
