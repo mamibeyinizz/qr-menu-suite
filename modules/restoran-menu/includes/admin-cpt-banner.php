@@ -260,6 +260,12 @@ class QMO_Banner_CPT {
             return new WP_Error( 'bos_baslik', 'Kampanya adı gerekli.' );
         }
 
+        $gorsel_id = isset( $args['gorsel_id'] ) ? absint( $args['gorsel_id'] ) : 0;
+
+        if ( $gorsel_id < 1 || ! self::is_valid_image( $gorsel_id ) ) {
+            return new WP_Error( 'gorsel_gerekli', 'Kampanya görseli seçmelisin.' );
+        }
+
         $durum = isset( $args['durum'] ) ? sanitize_key( (string) $args['durum'] ) : 'publish';
 
         if ( ! in_array( $durum, array( 'publish', 'draft', 'pending' ), true ) ) {
@@ -285,14 +291,10 @@ class QMO_Banner_CPT {
             update_post_meta( $post_id, QMO_Banner_Kirpma::META_ODAK, $odak );
         }
 
-        $gorsel_id = isset( $args['gorsel_id'] ) ? absint( $args['gorsel_id'] ) : 0;
+        update_post_meta( $post_id, self::META_IMAGE, $gorsel_id );
 
-        if ( $gorsel_id > 0 && self::is_valid_image( $gorsel_id ) ) {
-            update_post_meta( $post_id, self::META_IMAGE, $gorsel_id );
-
-            if ( class_exists( 'QMO_Banner_Kirpma' ) ) {
-                QMO_Banner_Kirpma::banner_kirp( $post_id );
-            }
+        if ( class_exists( 'QMO_Banner_Kirpma' ) ) {
+            QMO_Banner_Kirpma::banner_kirp( $post_id );
         }
 
         $link = isset( $args['link'] ) ? esc_url_raw( (string) $args['link'] ) : '';

@@ -2155,12 +2155,24 @@
     margin: 0;
 }
 
+.qmo-banner-preview-durum.is-bekliyor {
+    color: var(--rma-a-accent-hi);
+    font-weight: 600;
+}
+
 .qmo-banner-preview-durum.is-uyari {
     color: #996800;
+    font-weight: 600;
 }
 
 .qmo-banner-preview-durum.is-hata {
     color: #d63638;
+    font-weight: 600;
+}
+
+.qmo-banner-preview-durum.is-basari {
+    color: #1a7f37;
+    font-weight: 600;
 }
 
 .qmo-banner-preview-frame.is-pending {
@@ -2216,11 +2228,16 @@
 }
 
 .qmo-banner-oran-kutu {
+    aspect-ratio: 16 / 9;
     background: linear-gradient(135deg, #0d2b22, #1e3d2f);
     border: 1px solid var(--rma-a-accent-dim);
     border-radius: 4px;
+    display: block;
+    height: auto;
+    margin-inline: auto;
     max-height: 52px;
-    width: 100%;
+    max-width: 100%;
+    width: auto;
 }
 
 .qmo-banner-oran-baslik {
@@ -2236,56 +2253,6 @@
     display: block;
     font-size: 11px;
     line-height: 1.35;
-}
-
-.rma-kb-satir-gorsel-kutu.is-crop-preview {
-    overflow: hidden;
-    position: relative;
-}
-
-.rma-kb-satir-gorsel-kutu.is-crop-preview::after {
-    box-shadow: inset 0 0 0 2px #c9a84c;
-    content: '';
-    inset: 0;
-    pointer-events: none;
-    position: absolute;
-    z-index: 2;
-}
-
-.rma-kb-satir-gorsel-kutu.is-odak-ust::before {
-    background: linear-gradient(to bottom, transparent 0%, transparent 28%, rgba(0, 0, 0, 0.45) 28%);
-    content: '';
-    inset: 0;
-    pointer-events: none;
-    position: absolute;
-    z-index: 1;
-}
-
-.rma-kb-satir-gorsel-kutu.is-odak-alt::before {
-    background: linear-gradient(to top, transparent 0%, transparent 28%, rgba(0, 0, 0, 0.45) 28%);
-    content: '';
-    inset: 0;
-    pointer-events: none;
-    position: absolute;
-    z-index: 1;
-}
-
-.rma-kb-satir-gorsel-kutu.is-odak-sol::before {
-    background: linear-gradient(to right, transparent 0%, transparent 28%, rgba(0, 0, 0, 0.45) 28%);
-    content: '';
-    inset: 0;
-    pointer-events: none;
-    position: absolute;
-    z-index: 1;
-}
-
-.rma-kb-satir-gorsel-kutu.is-odak-sag::before {
-    background: linear-gradient(to left, transparent 0%, transparent 28%, rgba(0, 0, 0, 0.45) 28%);
-    content: '';
-    inset: 0;
-    pointer-events: none;
-    position: absolute;
-    z-index: 1;
 }
 
 .rma-kb-yeni-panel {
@@ -3625,8 +3592,7 @@ a.rma-vitrin-step-btn:focus {
 
 .rma-kb-satir-thumb {
     display: block;
-    height: 100%;
-    object-fit: cover;
+    height: auto;
     width: 100%;
 }
 
@@ -3728,6 +3694,50 @@ a.rma-vitrin-step-btn:focus {
 
 .rma-kb-durum.is-hata {
     color: #d63638;
+}
+
+.rma-kb-durum.is-bekliyor {
+    color: var(--rma-a-accent-hi);
+}
+
+.rma-kb-durum.is-basari {
+    color: #1a7f37;
+}
+
+.rma-kb-alan-hata {
+    align-items: flex-start;
+    color: #d63638;
+    display: flex;
+    font-size: 12px;
+    font-weight: 600;
+    gap: 6px;
+    line-height: 1.4;
+    margin: 6px 0 0;
+}
+
+.rma-kb-alan-hata::before {
+    content: '⚠';
+    flex: 0 0 auto;
+    font-size: 13px;
+    line-height: 1.2;
+}
+
+.rma-kb-alan-hata:empty,
+.rma-kb-alan-hata[hidden] {
+    display: none;
+    margin: 0;
+}
+
+.rma-kb-yeni-panel input.rma-input-hata,
+.rma-kb-yeni-panel input[aria-invalid="true"] {
+    border-color: #d63638;
+    box-shadow: 0 0 0 1px #d63638;
+}
+
+.rma-kb-yeni-panel input.rma-input-hata:focus,
+.rma-kb-yeni-panel input[aria-invalid="true"]:focus {
+    border-color: #d63638;
+    box-shadow: 0 0 0 1px #d63638, 0 0 0 2px rgba(214, 54, 56, 0.25);
 }
 
 /* Parmakla kullanım: ▲▼ düğmeleri dokunmatik cihazda 44x44px olur.

@@ -1741,6 +1741,24 @@ qrms_test(
 		qrms_assert_contains( 'check_ajax_referer( $this->banner_kampanya_olustur_nonce_action', $banner, 'nonce' );
 		qrms_assert_contains( 'QMO_Banner_CPT::olustur_kayit', $banner, 'CPT oluşturma helper' );
 		qrms_assert_contains( 'public static function olustur_kayit', $cpt, 'olustur_kayit tanımlı' );
+		qrms_assert_contains( 'gorsel_gerekli', $cpt, 'görsel zorunluluğu' );
+		qrms_assert_contains( 'Kampanya görseli seçmelisin.', $cpt, 'görsel hata metni' );
+	}
+);
+
+qrms_test(
+	'olustur_kayit: görsel olmadan kayıt oluşturmaz',
+	function () {
+		$sonuc = QMO_Banner_CPT::olustur_kayit(
+			array(
+				'baslik'    => 'Test kampanya',
+				'gorsel_id' => 0,
+			)
+		);
+
+		qrms_assert_true( is_wp_error( $sonuc ), 'WP_Error döner' );
+		qrms_assert_same( 'gorsel_gerekli', $sonuc->get_error_code(), 'hata kodu' );
+		qrms_assert_same( 'Kampanya görseli seçmelisin.', $sonuc->get_error_message(), 'hata metni' );
 	}
 );
 
@@ -1758,13 +1776,18 @@ qrms_test(
 qrms_test(
 	'banner admin UX: geniş önizleme sütunu ve pending durumu',
 	function () {
-		$css = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/css/admin-ui.css' );
-		$js  = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/js/admin-ui.js' );
+		$css   = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/css/admin-ui.css' );
+		$js    = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/js/admin-ui.js' );
+		$trait = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-kampanya-banner-admin.php' );
 
 		qrms_assert_contains( 'minmax(560px, 720px)', $css, 'geniş banner önizleme sütunu' );
 		qrms_assert_contains( 'is-pending', $css, 'pending stili' );
+		qrms_assert_contains( 'is-bekliyor', $css, 'önizleme bekliyor rengi' );
 		qrms_assert_contains( 'setPreviewPending', $js, 'pending JS' );
 		qrms_assert_contains( 'initBannerOranSecici', $js, 'oran kart JS' );
+		qrms_assert_contains( '.qmo-banner-oran-kutu {', $css, 'oran swatch kuralı' );
+		qrms_assert_contains( 'margin-inline: auto', $css, 'oran swatch ortalanır' );
+		qrms_assert_contains( 'Yaptığınız değişiklikler önizlemeye anında yansır.', $trait, 'önizleme yardım metni' );
 	}
 );
 

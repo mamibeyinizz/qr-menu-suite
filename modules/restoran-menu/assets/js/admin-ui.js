@@ -529,23 +529,12 @@
         $list.on('change', '[data-satir-odak]', function () {
             var $sel = $(this);
             var $item = $sel.closest('li[data-banner-id]');
-            var secili = $sel.get(0).options[$sel.get(0).selectedIndex];
-            var css = (secili && secili.getAttribute('data-odak-css')) || 'center center';
-
-            $item.find('[data-satir-thumb]').css('objectPosition', css);
 
             satirKaydet($item, { odak: $sel.val() }, function (data) {
                 if (data.thumb) {
                     $item.find('[data-satir-thumb]').attr('src', data.thumb).prop('hidden', false);
                 }
-                if (data.odak_css) {
-                    $item.find('[data-satir-thumb]').css('objectPosition', data.odak_css);
-                }
             });
-
-            $item.find('.rma-kb-satir-gorsel-kutu')
-                .removeClass('is-odak-merkez is-odak-ust is-odak-alt is-odak-sol is-odak-sag')
-                .addClass('is-odak-' + $sel.val());
         });
 
         var frame = null;
@@ -574,7 +563,6 @@
                         $img.attr('src', data.thumb);
                         $item.find('.rma-kb-satir-bos').remove();
                     }
-                    if (data.odak_css) $img.css('objectPosition', data.odak_css);
                     $btn.text('Görseli değiştir');
                 });
             });
@@ -619,6 +607,51 @@
             panelAcik(false);
         });
 
+        var $baslik = $('#qmo-banner-yeni-baslik');
+        var $baslikHata = $('#qmo-banner-yeni-baslik-hata');
+        var $gorselHata = $('#qmo-banner-yeni-gorsel-hata');
+        var $gorselInput = $('#qmo-banner-yeni-gorsel');
+
+        function inlineAlanHataTemizle($input, $hata) {
+            if ($input && $input.length) {
+                $input.removeClass('rma-input-hata').removeAttr('aria-invalid');
+            }
+            if ($hata && $hata.length) {
+                $hata.prop('hidden', true).text('');
+            }
+        }
+
+        function inlineAlanHataGoster($input, $hata, metin) {
+            if ($input && $input.length) {
+                $input.addClass('rma-input-hata').attr('aria-invalid', 'true');
+            }
+            if ($hata && $hata.length) {
+                $hata.prop('hidden', false).text(metin);
+            }
+        }
+
+        function inlineDurumTemizle($durum) {
+            $durum.removeClass('is-hata is-basari').text('');
+        }
+
+        function inlineDurumGoster($durum, metin, tur) {
+            $durum.removeClass('is-hata is-basari is-bekliyor');
+            if (tur === 'hata') {
+                $durum.addClass('is-hata');
+            } else if (tur === 'basari') {
+                $durum.addClass('is-basari');
+            } else if (tur === 'bekliyor') {
+                $durum.addClass('is-bekliyor');
+            }
+            $durum.text(metin);
+        }
+
+        $baslik.on('input', function () {
+            if ($.trim($baslik.val()) !== '') {
+                inlineAlanHataTemizle($baslik, $baslikHata);
+            }
+        });
+
         $('#qmo-banner-yeni-gorsel-sec').on('click', function (e) {
             e.preventDefault();
 
@@ -635,8 +668,9 @@
 
             frame.on('select', function () {
                 var a = frame.state().get('selection').first().toJSON();
-                $('#qmo-banner-yeni-gorsel').val(a.id);
+                $gorselInput.val(a.id);
                 $('#qmo-banner-yeni-gorsel-ad').text(a.filename || a.title || 'Seçildi');
+                inlineAlanHataTemizle($gorselInput, $gorselHata);
             });
 
             frame.open();
@@ -650,20 +684,53 @@
 
             var $durum = $('#qmo-banner-yeni-durum');
             var navigating = false;
+            var baslik = $.trim($baslik.val());
+            var gorsel = parseInt($gorselInput.val(), 10) || 0;
+            var gecerli = true;
+
+            inlineDurumTemizle($durum);
+            inlineAlanHataTemizle($baslik, $baslikHata);
+            inlineAlanHataTemizle($gorselInput, $gorselHata);
+
+            if (baslik === '') {
+                inlineAlanHataGoster($baslik, $baslikHata, 'Kampanya adı gerekli.');
+                gecerli = false;
+            }
+
+            if (gorsel < 1) {
+                inlineAlanHataGoster($gorselInput, $gorselHata, 'Kampanya görseli seçmelisin.');
+                gecerli = false;
+            }
+
+            if (!gecerli) {
+                if (baslik === '') {
+                    $baslik.trigger('focus');
+                } else {
+                    $('#qmo-banner-yeni-gorsel-sec').trigger('focus');
+                }
+                return;
+            }
 
             $btn.prop('disabled', true);
-            $durum.text('Kaydediliyor…');
+            inlineDurumGoster($durum, 'Kaydediliyor…', 'bekliyor');
 
             $.post(AJAX_URL, {
                 action: inline.action,
                 nonce: inline.nonce,
-                baslik: $('#qmo-banner-yeni-baslik').val(),
-                gorsel: $('#qmo-banner-yeni-gorsel').val(),
+                baslik: baslik,
+                gorsel: gorsel,
                 link: $('#qmo-banner-yeni-link').val(),
                 odak: $('#qmo-banner-yeni-odak').val() || 'merkez'
             }).done(function (r) {
                 if (!r || !r.success) {
-                    $durum.text((r && r.data && r.data.message) || 'Kaydedilemedi');
+                    var mesaj = (r && r.data && r.data.message) || 'Kaydedilemedi';
+                    if (mesaj === 'Kampanya adı gerekli.') {
+                        inlineAlanHataGoster($baslik, $baslikHata, mesaj);
+                    } else if (mesaj === 'Kampanya görseli seçmelisin.') {
+                        inlineAlanHataGoster($gorselInput, $gorselHata, mesaj);
+                    } else {
+                        inlineDurumGoster($durum, mesaj, 'hata');
+                    }
                     return;
                 }
 
@@ -675,7 +742,7 @@
 
                 window.location.reload();
             }).fail(function () {
-                $durum.text('Kaydedilemedi');
+                inlineDurumGoster($durum, 'Kaydedilemedi', 'hata');
             }).always(function () {
                 if (!navigating) {
                     $btn.prop('disabled', false);
@@ -1545,7 +1612,7 @@
                 return;
             }
 
-            $durum.removeClass('is-hata is-uyari');
+            $durum.removeClass('is-hata is-uyari is-bekliyor is-basari');
 
             if (!metin) {
                 $durum.text('');
@@ -1556,6 +1623,10 @@
                 $durum.addClass('is-hata');
             } else if (tur === 'uyari') {
                 $durum.addClass('is-uyari');
+            } else if (tur === 'bekliyor') {
+                $durum.addClass('is-bekliyor');
+            } else if (tur === 'basari') {
+                $durum.addClass('is-basari');
             }
 
             $durum.text(metin);
@@ -1564,7 +1635,7 @@
         function setPreviewPending(bekliyor) {
             $frame.toggleClass('is-pending', !!bekliyor);
             if (bekliyor) {
-                setPreviewDurum('Önizleme güncelleniyor…');
+                setPreviewDurum('Önizleme güncelleniyor…', 'bekliyor');
             }
         }
 

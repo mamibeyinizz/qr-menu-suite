@@ -416,10 +416,9 @@ trait RMA_Kampanya_Banner_Admin_Trait {
                         $kirpma_durum = $kirpma ? QMO_Banner_Kirpma::banner_durumu( (int) $banner->ID ) : 'gorsel-yok';
                         ?>
                         <li class="rma-kb-satir" data-banner-id="<?php echo (int) $banner->ID; ?>">
-                            <span class="rma-kb-satir-gorsel-kutu is-crop-preview is-odak-<?php echo esc_attr( $odak ); ?>" style="aspect-ratio:<?php echo esc_attr( $oran_css ); ?>;">
+                            <span class="rma-kb-satir-gorsel-kutu">
                                 <?php if ( '' !== $onizleme ) : ?>
-                                    <img class="rma-kb-satir-thumb" src="<?php echo esc_url( $onizleme ); ?>" alt=""
-                                         style="object-position:<?php echo esc_attr( $odak_css ); ?>;" data-satir-thumb>
+                                    <img class="rma-kb-satir-thumb" src="<?php echo esc_url( $onizleme ); ?>" alt="" data-satir-thumb>
                                 <?php else : ?>
                                     <span class="rma-kb-satir-bos" aria-hidden="true">Görsel yok</span>
                                 <?php endif; ?>
@@ -436,7 +435,16 @@ trait RMA_Kampanya_Banner_Admin_Trait {
 
                                 <span class="rma-kb-rozetler">
                                     <span class="rma-kb-rozet<?php echo $yayinda ? ' is-yayinda' : ' is-taslak'; ?>"><?php echo esc_html( $durum_etiket ); ?></span>
-                                    <span class="rma-kb-rozet"><?php echo esc_html( $oran_metni ); ?></span>
+                                    <span class="rma-kb-rozet"><?php echo esc_html( $oran_metni ); ?> oranına kırpıldı</span>
+                                    <?php
+                                    if ( $kirpma && $gorsel_id ) {
+                                        $odaklar_liste = QMO_Banner_Kirpma::odaklar();
+                                        $odak_etiket = isset( $odaklar_liste[ $odak ]['etiket'] ) ? (string) $odaklar_liste[ $odak ]['etiket'] : '';
+                                        if ( '' !== $odak_etiket ) {
+                                            echo '<span class="rma-kb-rozet">Odak: ' . esc_html( $odak_etiket ) . '</span>';
+                                        }
+                                    }
+                                    ?>
                                     <?php if ( ! $gorsel_id ) : ?>
                                         <span class="rma-kb-rozet is-uyari">Görsel seçilmemiş — gösterilmez</span>
                                     <?php endif; ?>
@@ -557,15 +565,17 @@ trait RMA_Kampanya_Banner_Admin_Trait {
                 <tr>
                     <th><label for="qmo-banner-yeni-baslik">Kampanya adı</label></th>
                     <td>
-                        <input type="text" id="qmo-banner-yeni-baslik" class="regular-text" maxlength="120" autocomplete="off">
+                        <input type="text" id="qmo-banner-yeni-baslik" class="regular-text" maxlength="120" autocomplete="off" aria-describedby="qmo-banner-yeni-baslik-hata">
+                        <p class="rma-kb-alan-hata" id="qmo-banner-yeni-baslik-hata" role="alert" aria-live="assertive" hidden></p>
                     </td>
                 </tr>
                 <tr>
                     <th>Görsel</th>
                     <td>
-                        <input type="hidden" id="qmo-banner-yeni-gorsel" value="">
+                        <input type="hidden" id="qmo-banner-yeni-gorsel" value="" aria-describedby="qmo-banner-yeni-gorsel-hata">
                         <button type="button" class="button" id="qmo-banner-yeni-gorsel-sec">Görsel seç</button>
                         <span class="rma-kb-yeni-gorsel-ad" id="qmo-banner-yeni-gorsel-ad"></span>
+                        <p class="rma-kb-alan-hata" id="qmo-banner-yeni-gorsel-hata" role="alert" aria-live="assertive" hidden></p>
                     </td>
                 </tr>
                 <tr>
@@ -1397,7 +1407,7 @@ trait RMA_Kampanya_Banner_Admin_Trait {
                 <div class="rma-vitrin-layout-preview">
                     <div class="rma-card rma-vitrin-preview-card">
                         <h2 class="rma-card-title">Canlı Önizleme</h2>
-                        <p class="rma-card-desc">Soldaki her değişiklik anında yansır. <?php echo '' === $onizleme_gorsel ? 'Henüz görselli bir kampanya yok; yer tutucu gösteriliyor.' : 'Yayındaki ilk kampanya görseliniz kullanılıyor.'; ?></p>
+                        <p class="rma-card-desc">Yaptığınız değişiklikler önizlemeye anında yansır. <?php echo '' === $onizleme_gorsel ? 'Henüz görselli bir kampanya yok; yer tutucu gösteriliyor.' : 'Yayındaki ilk kampanya görseliniz kullanılıyor.'; ?></p>
 
                         <div class="rma-vitrin-preview-toggle" role="group" aria-label="Önizleme cihazı">
                             <button type="button" class="button rma-vitrin-preview-btn is-active" data-preview-mode="desktop" aria-pressed="true">Masaüstü Önizleme</button>
