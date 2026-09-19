@@ -80,13 +80,13 @@ if ( ! function_exists( 'qmo_cagri_butonlari_html' ) ) {
 			<?php if ( 'hesap' !== $tip ) : ?>
 				<button type="button" class="qmo-cagri-btn qmo-cagri-btn--garson" data-qmo-cagri="garson">
 					<span class="qmo-cagri-ikon" aria-hidden="true">🛎️</span>
-					<span><?php echo esc_html( qmo_ceviri_chat( __( 'Garson Çağır', 'qrms' ) ) ); ?></span>
+					<span class="qmo-cagri-etiket"><?php echo esc_html( qmo_ceviri_chat( __( 'Garson Çağır', 'qrms' ) ) ); ?></span>
 				</button>
 			<?php endif; ?>
 			<?php if ( 'garson' !== $tip ) : ?>
 				<button type="button" class="qmo-cagri-btn qmo-cagri-btn--hesap" data-qmo-cagri="hesap">
 					<span class="qmo-cagri-ikon" aria-hidden="true">🧾</span>
-					<span><?php echo esc_html( qmo_ceviri_chat( __( 'Hesap İste', 'qrms' ) ) ); ?></span>
+					<span class="qmo-cagri-etiket"><?php echo esc_html( qmo_ceviri_chat( __( 'Hesap İste', 'qrms' ) ) ); ?></span>
 				</button>
 			<?php endif; ?>
 			<p class="qmo-cagri-durum" hidden></p>
