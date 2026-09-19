@@ -4,7 +4,7 @@
  *
  * Liste görünümü (aktif kampanya kartı + geçmiş) ve kampanya formu. Kaydetme,
  * aktifleştirme ve geri alma AJAX değil `admin_post_` + nonce + redirect ile
- * yapılır (modüldeki vitrin ekranının deseninin aynısı). Yalnızca CANLI
+ * yapılır (modüldeki diğer sihirbaz ekranlarının deseninin aynısı). Yalnızca CANLI
  * ÖNİZLEME AJAX'tır: kaydedilmemiş form değerleriyle çalışması gerekir.
  *
  * İndirim akışında fiyat verisine dokunulmaz; yalnızca kural kaydı ve
@@ -547,7 +547,7 @@ trait RMA_Kampanya_Admin_Trait {
     /**
      * Seçilebilecek ürünler (manuel kapsam listesi).
      *
-     * Sorgu deseni vitrin ekranının aynısı: post/meta/terim cache'leri toplu
+     * Sorgu deseni render_suggestions_page()'in aynısı: post/meta/terim cache'leri toplu
      * ısıtılır, ürün başına ek sorgu doğmaz.
      *
      * @return array<int,array{id:int,title:string,category:string,fiyat:string}>

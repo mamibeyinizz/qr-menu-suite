@@ -859,27 +859,27 @@ qrms_test(
 );
 
 qrms_test(
-	'ürün vitrini canlı önizlemesi masaüstünde sticky, overflow ata kırmaz',
+	'sihirbaz canlı önizlemesi masaüstünde sticky, overflow ata kırmaz',
 	function () {
 		$css = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/css/admin-ui.css' );
 		$css = preg_replace( '#/\*.*?\*/#s', '', $css );
 
 		qrms_assert_true(
-			(bool) preg_match( '/\.rma-admin:has\(#rma-vitrin-form\)\s*\{[^}]*overflow:\s*visible/s', $css ),
+			(bool) preg_match( '/\.rma-admin:has\(#qmo-banner-form\)\s*\{[^}]*overflow:\s*visible/s', $css ),
 			'sticky ata overflow visible'
 		);
 		qrms_assert_contains( '@media screen and (min-width: 1024px)', $css, 'sticky masaüstü breakpoint' );
 		qrms_assert_contains( 'position: sticky', $css, 'önizleme sticky' );
 		qrms_assert_contains( 'max-height: calc(100vh - var(--rma-vitrin-sticky-top) - 16px)', $css, 'viewport yüksekliği' );
 
-		$php = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-vitrin-admin.php' );
+		$php = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-slider-admin.php' );
 		qrms_assert_true(
-			strpos( $php, 'rma-vitrin-layout-wrap' ) < strpos( $php, '1. Vitrin Adı' ),
+			strpos( $php, 'rma-vitrin-layout-wrap' ) < strpos( $php, '1. Ok Navigasyonu' ),
 			'önizleme sütunu tüm formu sarar'
 		);
 		qrms_assert_true(
-			strpos( $php, '6. Kayma Davranışı' ) < strpos( $php, 'rma-vitrin-layout-preview' ),
-			'kayma bölümü sol sütunda, önizlemeden önce'
+			strpos( $php, '2. Slide Başlığı' ) < strpos( $php, 'rma-vitrin-layout-preview' ),
+			'ayar bölümleri sol sütunda, önizlemeden önce'
 		);
 
 		$js = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/js/admin-ui.js' );
@@ -967,7 +967,6 @@ qrms_test(
 			"__( 'Görünüm', 'qrms' )",
 			'qrms-rm-gorunum',
 			'qrms-rm-one-cikanlar',
-			'qrms-rm-vitrin',
 			'qrms-rm-diger',
 		);
 		$onceki = -1;
@@ -1171,7 +1170,6 @@ function qrms_submenu_ham_liste() {
 		qrms_submenu_satiri( 'Genel Ayarlar', QRMS_Admin::SETTINGS_SLUG ),
 		qrms_submenu_satiri( 'Görünüm', 'qrms-rm-gorunum' ),
 		qrms_submenu_satiri( 'Öne Çıkanlar', 'qrms-rm-one-cikanlar' ),
-		qrms_submenu_satiri( 'Ürün Vitrini', 'qrms-rm-vitrin' ),
 		qrms_submenu_satiri( 'Diğer Ayarlar', 'qrms-rm-diger' ),
 		qrms_submenu_satiri( 'Kurulum', 'qrms-wizard' ),
 	);
@@ -1224,7 +1222,6 @@ qrms_test(
 				'edit.php?post_type=rma_menu_item',
 				'qrms-rm-gorunum',
 				'qrms-rm-one-cikanlar',
-				'qrms-rm-vitrin',
 				'qrms-rm-diger',
 				'qrms-wizard',
 			),
@@ -1921,7 +1918,6 @@ qrms_test(
 			"__( 'Görünüm', 'qrms' )",
 			'qrms-rm-gorunum',
 			'qrms-rm-one-cikanlar',
-			'qrms-rm-vitrin',
 			'qrms-rm-diger',
 		);
 		$onceki = -1;
@@ -2493,271 +2489,80 @@ qrms_test(
 );
 
 /* ---------------------------------------------------------------------------
- * 6b. Ürün Vitrini — ayar temizliği
+ * 6b. Ürün Vitrini — KALDIRILDI (regresyon)
  *
- * Sınıf yalnızca tanım içerir (dosya kapsamında kanca kaydetmez), bu yüzden
- * doğrudan require edilebilir. Test edilenler $wpdb'ye dokunmayan saf
- * dönüşümler: yönetim formundan gelen ham girdiyi şemaya uygun değerlere
- * çeviren yol.
+ * Özellik 1.1.0 sonrası tamamen çıkarıldı. Buradaki testler geri sızmayı
+ * yakalar: dosyalar, kısa kod, admin sayfası ve tablolar geri gelmemeli;
+ * eski tablolar ise güncellemede bir kez düşürülmeli.
  * ------------------------------------------------------------------------ */
 
-require_once QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/class-vitrin-db.php';
+require_once QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/class-vitrin-temizlik.php';
 
-echo "\nÜrün Vitrini ayarları\n";
-
-qrms_test(
-	'sütun ve satır sayısı şemanın sınırlarına kırpılır',
-	function () {
-		$temiz = RMA_Vitrin_DB::ayarlari_temizle(
-			array(
-				'title'        => 'Şefin Önerileri',
-				'grid_columns' => 99,
-				'grid_rows'    => 0,
-			)
-		);
-
-		qrms_assert_same( RMA_Vitrin_DB::MAX_COLUMNS, $temiz['grid_columns'], 'üst sınır' );
-		qrms_assert_same( RMA_Vitrin_DB::MIN_ROWS, $temiz['grid_rows'], 'alt sınır' );
-		qrms_assert_same( 'Şefin Önerileri', $temiz['title'], 'başlık korunur' );
-	}
-);
+echo "\nÜrün Vitrini — kaldırıldı\n";
 
 qrms_test(
-	'mobil sütun sayısı kendi sınırlarına kırpılır, masaüstü sütunundan bağımsızdır',
+	'vitrin dosyaları, kısa kodu ve admin sayfası repoda yok',
 	function () {
-		$temiz = RMA_Vitrin_DB::ayarlari_temizle(
+		foreach (
 			array(
-				'grid_columns'   => 6,
-				'mobile_columns' => 99,
-			)
-		);
-
-		qrms_assert_same( RMA_Vitrin_DB::MAX_MOBILE_COLUMNS, $temiz['mobile_columns'], 'üst sınır' );
-		qrms_assert_same( 6, $temiz['grid_columns'], 'masaüstü sütunu etkilenmez' );
-
-		$bozuk = RMA_Vitrin_DB::ayarlari_temizle( array( 'mobile_columns' => 'çok' ) );
-		qrms_assert_same( 2, $bozuk['mobile_columns'], 'varsayılana düşer' );
-
-		$sifir = RMA_Vitrin_DB::ayarlari_temizle( array( 'mobile_columns' => 0 ) );
-		qrms_assert_same( RMA_Vitrin_DB::MIN_MOBILE_COLUMNS, $sifir['mobile_columns'], 'alt sınır' );
-	}
-);
-
-qrms_test(
-	'mobil satır sayısı kendi sınırlarına kırpılır, masaüstü satırından bağımsızdır',
-	function () {
-		$temiz = RMA_Vitrin_DB::ayarlari_temizle(
-			array(
-				'grid_rows'   => 3,
-				'mobile_rows' => 99,
-			)
-		);
-
-		qrms_assert_same( RMA_Vitrin_DB::MAX_MOBILE_ROWS, $temiz['mobile_rows'], 'üst sınır' );
-		qrms_assert_same( 3, $temiz['grid_rows'], 'masaüstü satırı etkilenmez' );
-
-		$sifir = RMA_Vitrin_DB::ayarlari_temizle( array( 'mobile_rows' => 0 ) );
-		qrms_assert_same( RMA_Vitrin_DB::MIN_MOBILE_ROWS, $sifir['mobile_rows'], 'alt sınır' );
-	}
-);
-
-qrms_test(
-	'kart boyutu ayarları (boşluk, min-genişlik, görsel oranı) masaüstü/mobil ayrı sınırlanır',
-	function () {
-		$temiz = RMA_Vitrin_DB::ayarlari_temizle(
-			array(
-				'desktop_gap'         => 9999,
-				'desktop_card_min'    => 1,
-				'desktop_image_ratio' => 1,
-				'mobile_gap'          => -5,
-				'mobile_card_min'     => 9999,
-				'mobile_image_ratio'  => 9999,
-			)
-		);
-
-		qrms_assert_same( RMA_Vitrin_DB::MAX_GAP, $temiz['desktop_gap'], 'masaüstü boşluk üst sınırı' );
-		qrms_assert_same( RMA_Vitrin_DB::MIN_DESKTOP_CARD_MIN, $temiz['desktop_card_min'], 'masaüstü min-genişlik alt sınırı' );
-		qrms_assert_same( RMA_Vitrin_DB::MIN_IMAGE_RATIO, $temiz['desktop_image_ratio'], 'masaüstü görsel oranı alt sınırı' );
-		qrms_assert_same( RMA_Vitrin_DB::MIN_GAP, $temiz['mobile_gap'], 'mobil boşluk alt sınırı' );
-		qrms_assert_same( RMA_Vitrin_DB::MAX_MOBILE_CARD_MIN, $temiz['mobile_card_min'], 'mobil min-genişlik üst sınırı — masaüstünden bağımsız' );
-		qrms_assert_same( RMA_Vitrin_DB::MAX_IMAGE_RATIO, $temiz['mobile_image_ratio'], 'mobil görsel oranı üst sınırı' );
-
-		$bozuk = RMA_Vitrin_DB::ayarlari_temizle( array( 'desktop_gap' => 'çok' ) );
-		qrms_assert_same( 16, $bozuk['desktop_gap'], 'varsayılana düşer' );
-	}
-);
-
-qrms_test(
-	'yazı tipi ayarları sınırlanır; kalınlık/hizalama/font beyaz listeden geçer',
-	function () {
-		$temiz = RMA_Vitrin_DB::ayarlari_temizle(
-			array(
-				'title_size'          => 999,
-				'title_size_mobile'   => 999,
-				'price_size'          => 1,
-				'price_size_mobile'   => 1,
-				'title_weight'        => 850,
-				'title_align'         => 'justify',
-				'title_font'          => 'Comic Sans',
-			)
-		);
-
-		// Mobil aralık masaüstünden BAĞIMSIZ ve daha dardır: dar kartta
-		// büyük ad iki satırı aşıp kırpılır.
-		qrms_assert_same( RMA_Vitrin_DB::MAX_FONT_SIZE, $temiz['title_size'], 'masaüstü üst sınır' );
-		qrms_assert_same( RMA_Vitrin_DB::MAX_MOBILE_FONT_SIZE, $temiz['title_size_mobile'], 'mobil üst sınır' );
-		qrms_assert_same( RMA_Vitrin_DB::MIN_FONT_SIZE, $temiz['price_size'], 'masaüstü alt sınır' );
-		qrms_assert_same( RMA_Vitrin_DB::MIN_MOBILE_FONT_SIZE, $temiz['price_size_mobile'], 'mobil alt sınır' );
-
-		// Beyaz liste dışı değerler CSS'e yazılmadan önce varsayılana düşer.
-		qrms_assert_same( 600, $temiz['title_weight'], 'kalınlık varsayılana düşer' );
-		qrms_assert_same( 'left', $temiz['title_align'], 'hizalama varsayılana düşer' );
-		qrms_assert_same( '', $temiz['title_font'], 'bilinmeyen font tema fontuna düşer' );
-
-		$gecerli = RMA_Vitrin_DB::ayarlari_temizle(
-			array(
-				'title_weight' => 700,
-				'title_align'  => 'center',
-				'title_font'   => 'Playfair Display',
-				'price_align'  => 'right',
-			)
-		);
-
-		qrms_assert_same( 700, $gecerli['title_weight'], 'geçerli kalınlık korunur' );
-		qrms_assert_same( 'center', $gecerli['title_align'], 'geçerli hizalama korunur' );
-		qrms_assert_same( 'Playfair Display', $gecerli['title_font'], 'geçerli font korunur' );
-		qrms_assert_same( 'flex-end', RMA_Vitrin_DB::hizalama_justify( $gecerli['price_align'] ), 'fiyat hizası flex karşılığına çevrilir' );
-
-		// Varsayılanlar ayar eklenmeden önceki sabit .95rem ≈ 15px görünümü
-		// korur: eski vitrinler güncellemeyle birlikte değişmez.
-		$vars = RMA_Vitrin_DB::varsayilanlar();
-		qrms_assert_same( 15, $vars['title_size'], 'masaüstü varsayılanı eski görünümle aynı' );
-		qrms_assert_same( 700, $vars['price_weight'], 'fiyat kalınlığı eski görünümle aynı' );
-	}
-);
-
-qrms_test(
-	'yazı tipi listesi tek kaynaktır; yalnızca Google fontları istek doğurur',
-	function () {
-		$tipler = RMA_Vitrin_DB::yazi_tipleri();
-
-		// Tema fontu ve sistem yığınları dış istek yapmamalı — vitrin
-		// gereksiz bir font indirmesi başlatmaz.
-		qrms_assert_same( '', $tipler['']['google'], 'tema fontu istek doğurmaz' );
-		qrms_assert_same( '', $tipler['system']['google'], 'sistem fontu istek doğurmaz' );
-		qrms_assert_same( '', $tipler['Georgia']['google'], 'Georgia istek doğurmaz' );
-		qrms_assert_true( '' !== $tipler['Playfair Display']['google'], 'Playfair Google fontu' );
-
-		// Spec, menü modülünün haritasıyla birebir aynı olmalı: iki modül
-		// aynı sayfadaysa tarayıcı aynı adresi ikinci kez indirmesin.
-		$menu = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-frontend.php' );
-		foreach ( array( 'Playfair Display', 'Inter', 'Poppins', 'Montserrat' ) as $aile ) {
-			qrms_assert_contains( "'" . $tipler[ $aile ]['google'] . "'", $menu, $aile . ': menüyle aynı spec' );
+				'modules/restoran-menu/includes/class-vitrin-db.php',
+				'modules/restoran-menu/includes/shortcode-vitrin.php',
+				'modules/restoran-menu/includes/trait-vitrin-admin.php',
+				'modules/restoran-menu/assets/css/vitrin.css',
+				'modules/restoran-menu/assets/js/vitrin.js',
+			) as $dosya
+		) {
+			qrms_assert_false( file_exists( QRMS_PLUGIN_DIR . $dosya ), $dosya . ' silinmiş' );
 		}
 
-		// Frontend CSS değişkenleri ve admin önizlemesi aynı isimleri kullanır.
-		$css = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/css/vitrin.css' );
-		$js  = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/js/admin-ui.js' );
+		qrms_assert_false( class_exists( 'RMA_Vitrin_DB' ), 'RMA_Vitrin_DB yok' );
+		qrms_assert_false( class_exists( 'RMA_Vitrin_Shortcode' ), 'RMA_Vitrin_Shortcode yok' );
 
-		foreach ( array( '--qrms-vitrin-card-font', '--qrms-vitrin-title-size', '--qrms-vitrin-price-justify' ) as $degisken ) {
-			qrms_assert_contains( $degisken, $css, $degisken . ' frontend' );
-			qrms_assert_contains( $degisken, $js, $degisken . ' önizleme' );
+		$modul = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/module.php' );
+		$pages = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-admin-pages.php' );
+		$qrmenu = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/qr-menu.php' );
+
+		foreach ( array( 'qrms_urun_vitrini', 'qrms-rm-vitrin', 'render_showcase_page' ) as $iz ) {
+			qrms_assert_true( false === strpos( $modul, $iz ), $iz . ' module.php\'de yok' );
+			qrms_assert_true( false === strpos( $pages, $iz ), $iz . ' sayfa tablosunda yok' );
+			qrms_assert_true( false === strpos( $qrmenu, $iz ), $iz . ' qr-menu.php\'de yok' );
 		}
 
-		// Mobil değerler breakpoint'te temel değişkenlere çevrilir (kart
-		// boyutu ayarlarındaki desenin aynısı).
-		qrms_assert_contains( '--qrms-vitrin-title-size: var(--qrms-vitrin-title-size-mobile)', $css, 'mobil boyut devri' );
+		foreach ( array( 'admin_post_rma_vitrin_kaydet', 'admin_post_rma_vitrin_sil', 'handle_vitrin_save', 'handle_vitrin_delete' ) as $uc ) {
+			qrms_assert_true( false === strpos( $qrmenu, $uc ), $uc . ' kaydı yok' );
+		}
 	}
 );
 
 qrms_test(
-	'kaydetme sihirbazdan çıkıp vitrin listesine döner',
+	'eski vitrin tabloları tek seferlik göçle düşürülür, diğer tablolara dokunulmaz',
 	function () {
-		// Sihirbazın son adımı kaydetmektir; kullanıcıyı düzenleme formuna
-		// geri atmak onu aynı sihirbazın 1. adımında bırakıyor ve kaydın
-		// gerçekleşip gerçekleşmediğini belirsiz kılıyordu.
-		$php = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-vitrin-admin.php' );
-
-		qrms_assert_contains(
-			"wp_safe_redirect( \$this->vitrin_url( array( 'vitrin_msg' => 'kaydedildi' ) ) );",
-			$php,
-			'liste adresine yönlendirir'
-		);
-		qrms_assert_false(
-			strpos( $php, "'vitrin' => \$kayit_id, 'vitrin_msg' => 'kaydedildi'" ) !== false,
-			'düzenleme formuna geri dönmez'
-		);
-
-		// Yetki/nonce akışı değişmedi: her iki handler da aynı ortak
-		// girişten geçer.
-		qrms_assert_contains( '$this->vitrin_yetki_kontrol();', $php, 'nonce + yetki kontrolü yerinde' );
-		qrms_assert_contains( 'check_admin_referer( $this->vitrin_nonce_action )', $php, 'nonce eylemi aynı' );
-
-		// Bildirim listede basılır.
-		qrms_assert_true(
-			strpos( $php, '$this->vitrin_notice();' ) < strpos( $php, 'Vitrinlerim' ),
-			'liste ekranı bildirimi basar'
-		);
-		qrms_assert_contains( "'kaydedildi' => array( 'success', 'Vitrin kaydedildi.' )", $php, 'başarı bildirimi' );
-	}
-);
-
-qrms_test(
-	'kayma hızı sınırlanır, sayı olmayan girdi varsayılana düşer',
-	function () {
-		$hizli = RMA_Vitrin_DB::ayarlari_temizle( array( 'autoplay_speed' => 10 ) );
-		qrms_assert_same( RMA_Vitrin_DB::MIN_SPEED, $hizli['autoplay_speed'], 'alt sınır' );
-
-		$yavas = RMA_Vitrin_DB::ayarlari_temizle( array( 'autoplay_speed' => 999999 ) );
-		qrms_assert_same( RMA_Vitrin_DB::MAX_SPEED, $yavas['autoplay_speed'], 'üst sınır' );
-
-		$bozuk = RMA_Vitrin_DB::ayarlari_temizle( array( 'autoplay_speed' => 'hızlı' ) );
-		qrms_assert_same( 4000, $bozuk['autoplay_speed'], 'varsayılana düşer' );
-	}
-);
-
-qrms_test(
-	'işaretlenmemiş kutular 0, işaretliler 1 olur',
-	function () {
-		// İşaretsiz checkbox $_POST'a hiç gelmez; handler 0 geçirir.
-		$kapali = RMA_Vitrin_DB::ayarlari_temizle( array() );
-		qrms_assert_same( 0, $kapali['autoplay'], 'otomatik kayma kapalı' );
-		qrms_assert_same( 0, $kapali['drag_enabled'], 'sürükleme kapalı' );
-
-		$acik = RMA_Vitrin_DB::ayarlari_temizle( array( 'autoplay' => '1', 'show_price' => 'on' ) );
-		qrms_assert_same( 1, $acik['autoplay'], 'otomatik kayma açık' );
-		qrms_assert_same( 1, $acik['show_price'], 'fiyat açık' );
-	}
-);
-
-qrms_test(
-	'boş başlık yerine varsayılan ad konur',
-	function () {
-		// Şemada title NOT NULL; boş bırakılırsa liste ekranında adsız bir
-		// satır görünürdü.
-		$temiz = RMA_Vitrin_DB::ayarlari_temizle( array( 'title' => '   ' ) );
-
-		qrms_assert_same( 'Ürün Vitrini', $temiz['title'], 'varsayılan ad' );
-	}
-);
-
-qrms_test(
-	'ürün sırası temizlenir: sıra korunur, tekrar ve geçersiz kayıt düşer',
-	function () {
-		// Sıra formdan virgüllü dize olarak gelir (gizli #rma-vitrin-order).
-		qrms_assert_same(
-			array( 12, 5, 40 ),
-			RMA_Vitrin_DB::urun_idlerini_temizle( '12,5,12,0,40,-3,abc' ),
-			'dize girdi'
-		);
+		$temizlik = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/class-vitrin-temizlik.php' );
 
 		qrms_assert_same(
-			array( 7, 9 ),
-			RMA_Vitrin_DB::urun_idlerini_temizle( array( '7', 9, '9' ) ),
-			'dizi girdi'
+			array( 'rma_showcases', 'rma_showcase_items' ),
+			RMA_Vitrin_Temizlik::tablolar(),
+			'yalnızca vitrin tabloları'
 		);
+		qrms_assert_same( 'rma_vitrin_db_version', RMA_Vitrin_Temizlik::ESKI_VERSION_OPTION, 'eski sürüm option\'ı' );
 
-		qrms_assert_same( array(), RMA_Vitrin_DB::urun_idlerini_temizle( '' ), 'boş girdi' );
+		qrms_assert_contains( 'DROP TABLE IF EXISTS', $temizlik, 'tablo düşürme' );
+		qrms_assert_contains( 'delete_option( self::ESKI_VERSION_OPTION )', $temizlik, 'option temizliği' );
+		// Idempotent: bayrak varsa hiçbir sorgu çalışmaz.
+		qrms_assert_contains( 'if ( get_option( self::BAYRAK_OPTION ) ) {', $temizlik, 'bir kez çalışır' );
+		qrms_assert_contains( "update_option( self::BAYRAK_OPTION, '1', false )", $temizlik, 'bayrak autoload dışı' );
+
+		// Kampanya / banner / slider verisine dokunulmaz.
+		foreach ( array( 'rma_campaigns', 'rma_price_campaign_snapshot', 'qmo_slider', 'qmo_banner' ) as $yabanci ) {
+			qrms_assert_true( false === strpos( $temizlik, $yabanci ), $yabanci . ' göçte geçmiyor' );
+		}
+
+		$modul = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/module.php' );
+		qrms_assert_contains( "array( 'RMA_Vitrin_Temizlik', 'belki_temizle' )", $modul, 'admin_init kancası' );
+
+		$uninstall = file_get_contents( QRMS_PLUGIN_DIR . 'uninstall.php' );
+		qrms_assert_contains( "'rma_showcases'", $uninstall, 'uninstall tablo listesi' );
+		qrms_assert_contains( "'rma_showcase_items'", $uninstall, 'uninstall alt tablo' );
 	}
 );
 
@@ -2858,7 +2663,7 @@ qrms_test(
 		$css = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/frontend-slider.css' );
 		$php = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/shortcode-slider.php' );
 		$js  = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/js/admin-ui.js' );
-		$admin = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-vitrin-admin.php' );
+		$admin = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-slider-admin.php' );
 
 		foreach ( array( '--qmo-slider-title-font', '--qmo-slider-title-color', '--qmo-slider-title-size', '--qmo-slider-title-size-mobile', '--qmo-slider-title-weight', '--qmo-slider-title-align' ) as $degisken ) {
 			qrms_assert_contains( $degisken, $css, $degisken . ' frontend' );
@@ -3212,12 +3017,12 @@ qrms_test(
 			'restoran-menu',
 			array(
 				array(
-					'tag'   => 'qrms_urun_vitrini',
-					'title' => 'Ürün Vitrini',
-					'desc'  => 'Seçtiğiniz ürünleri kayan bir şeritte gösterir.',
-					'usage' => '[qrms_urun_vitrini id="1"]',
-					'note'  => 'Vitrin numarası zorunludur.',
-					'attrs' => array( array( 'name' => 'id', 'default' => '', 'desc' => 'Vitrin numarası.' ) ),
+					'tag'   => 'qmo_banner_slider',
+					'title' => 'Kampanya Görselleri',
+					'desc'  => 'Sayfanın üstünde kendi kendine dönen kampanya görselleri.',
+					'usage' => '[qmo_banner_slider autoplay="4500"]',
+					'note'  => 'Otomatik geçişi kapatmak için 0 yazın.',
+					'attrs' => array( array( 'name' => 'autoplay', 'default' => '4500', 'desc' => 'Görseller arası bekleme.' ) ),
 				),
 			)
 		);
@@ -3227,9 +3032,9 @@ qrms_test(
 		$html = ob_get_clean();
 
 		qrms_assert_contains( 'Menü Yönetimi', $html, 'modül başlığı' );
-		qrms_assert_contains( '[qrms_urun_vitrini id=', $html, 'örnek kullanım' );
+		qrms_assert_contains( '[qmo_banner_slider autoplay=', $html, 'örnek kullanım' );
 		qrms_assert_contains( 'data-qrms-copy=', $html, 'kopyala butonu' );
-		qrms_assert_contains( 'Vitrin numarası zorunludur.', $html, 'koşul notu' );
+		qrms_assert_contains( 'Otomatik geçişi kapatmak için 0 yazın.', $html, 'koşul notu' );
 		qrms_assert_contains( 'Parametreler', $html, 'parametre başlığı' );
 	}
 );
@@ -3286,8 +3091,9 @@ qrms_test(
 /**
  * Kaynak ağacında GERÇEKTEN kayıtlı olan kısa kod adları.
  *
- * add_shortcode() çağrılarını tarar. Tek dolaylı çağrı shortcode-vitrin.php
- * içindeki `self::SHORTCODE` sabitidir; o da aynı dosyadan çözülür.
+ * add_shortcode() çağrılarını tarar. Tek dolaylı çağrı
+ * shortcode-banner-slider.php içindeki `self::SHORTCODE` sabitidir; o da
+ * aynı dosyadan çözülür.
  *
  * @return string[]
  */
@@ -3355,7 +3161,7 @@ qrms_test(
 		$kaynakta   = qrms_kaynaktaki_kisa_kodlar();
 		$bildirilen = qrms_bildirilen_kisa_kodlar();
 
-		qrms_assert_same( 21, count( $kaynakta ), 'kaynaktaki kısa kod sayısı' );
+		qrms_assert_same( 20, count( $kaynakta ), 'kaynaktaki kısa kod sayısı' );
 		qrms_assert_same( $kaynakta, $bildirilen, 'bildirilen liste kaynakla aynı' );
 	}
 );

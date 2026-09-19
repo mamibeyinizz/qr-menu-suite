@@ -4,7 +4,7 @@
    ok navigasyonu · kaydırma/solma geçişi · peek · swipe ·
    prefers-reduced-motion
 
-   Ürün vitrini slider'ının betiğinden (frontend-slider.js) bağımsızdır;
+   Öne çıkan slider'ın betiğinden (frontend-slider.js) bağımsızdır;
    yalnızca kendi kökünü (data-qmo-banner-slider) sürer.
 ===================================================================== */
 (function () {

@@ -70,7 +70,6 @@ qrms_test(
 		// yalnızca Elementor gerçekten yüklüyken devreye girmeli.)
 		$korumali_dosyalar = array(
 			'modules/restoran-menu/includes/trait-frontend.php',
-			'modules/restoran-menu/includes/shortcode-vitrin.php',
 			'modules/restoran-menu/includes/shortcode-slider.php',
 			'modules/restoran-menu/includes/shortcode-banner-slider.php',
 			'modules/qr-galeri/includes/trait-frontend.php',
@@ -309,9 +308,6 @@ qrms_test(
 		qrms_assert_contains( "rma_elementor_data_contains( 'rma_menu_widget', \$elementor_data )", $rma, 'should_load_assets() çözücüyü kullanıyor' );
 		qrms_assert_contains( "rma_elementor_data_contains( 'rma_menu_widget', \$data )", $rma, 'theme_builder_has_menu_widget() çözücüyü kullanıyor' );
 		qrms_assert_contains( 'enqueue_frontend_assets()', $rma, 'restoran-menu render-anı fallback hâlâ duruyor' );
-
-		$vitrin = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/shortcode-vitrin.php' );
-		qrms_assert_contains( 'rma_elementor_data_contains( self::SHORTCODE, $data )', $vitrin, 'vitrin çözücüyü kullanıyor' );
 
 		$slider = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/shortcode-slider.php' );
 		qrms_assert_contains( "rma_elementor_data_contains( 'qmo_one_cikan_slider', \$data )", $slider, 'slider çözücüyü kullanıyor' );

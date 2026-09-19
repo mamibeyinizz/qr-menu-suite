@@ -50,6 +50,11 @@ $qrms_tablolar = array(
 	'qrm_tables',
 	'rma_price_campaign_snapshot',
 	'rma_ceviri',
+	// Kaldırılan "Ürün Vitrini" özelliğinin kalıntıları — normalde
+	// güncellemede RMA_Vitrin_Temizlik tarafından düşürülür; eklenti hiç
+	// yönetim paneline uğramadan silinirse burada temizlenir.
+	'rma_showcases',
+	'rma_showcase_items',
 );
 
 foreach ( $qrms_tablolar as $qrms_tablo ) {

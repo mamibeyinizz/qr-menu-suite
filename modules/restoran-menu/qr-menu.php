@@ -32,8 +32,8 @@ require_once __DIR__ . '/includes/trait-suggestions.php';
 require_once __DIR__ . '/includes/trait-frontend.php';
 require_once __DIR__ . '/includes/trait-ajax.php';
 require_once __DIR__ . '/includes/trait-category-fields.php';
-require_once __DIR__ . '/includes/class-vitrin-db.php';
-require_once __DIR__ . '/includes/trait-vitrin-admin.php';
+require_once __DIR__ . '/includes/class-vitrin-temizlik.php';
+require_once __DIR__ . '/includes/trait-slider-admin.php';
 require_once __DIR__ . '/includes/class-kampanya-db.php';
 require_once __DIR__ . '/includes/class-kampanya.php';
 require_once __DIR__ . '/includes/trait-kampanya-admin.php';
@@ -45,15 +45,14 @@ require_once __DIR__ . '/includes/class-servis-saati.php';
 require_once __DIR__ . '/includes/class-ozel-rozet.php';
 require_once __DIR__ . '/includes/trait-secenek-admin.php';
 require_once __DIR__ . '/includes/class-urun-editor.php';
-require_once __DIR__ . '/includes/shortcode-vitrin.php';
 require_once __DIR__ . '/qmo-one-cikan-slider.php';
 
 /* -----------------------------------------------------------------
    "ÜRÜNÜM YOK" — malzeme bazlı stok katmanı.
    Mevcut CPT/taksonomi/render dosyalarının HİÇBİRİNE dokunmadan, üzerine
    eklenen ayrı bir katman (bkz. includes/urunum-yok/). Standalone
-   sınıflar kendi hook'larını kendi init()'inde kaydeder (RMA_Vitrin_Shortcode
-   ile aynı desen); yalnızca admin ekranları trait olarak sınıfa eklenir.
+   sınıflar kendi hook'larını kendi init()'inde kaydeder; yalnızca admin
+   ekranları trait olarak sınıfa eklenir.
 ----------------------------------------------------------------- */
 require_once __DIR__ . '/includes/urunum-yok/class-ingredient-taxonomy.php';
 require_once __DIR__ . '/includes/urunum-yok/class-stock.php';
@@ -81,7 +80,7 @@ class Restaurant_Menu_Automation {
     use RMA_Frontend_Trait;
     use RMA_Ajax_Trait;
     use RMA_Category_Fields_Trait;
-    use RMA_Vitrin_Admin_Trait;
+    use RMA_Slider_Admin_Trait;
     use RMA_Kampanya_Admin_Trait;
     use RMA_Kampanya_Banner_Admin_Trait;
     use RMA_Urunum_Yok_Admin_Trait;
@@ -181,20 +180,18 @@ class Restaurant_Menu_Automation {
         add_action( 'wp_ajax_rma_save_suggestions',          [ $this, 'ajax_save_suggestions' ] );
 
         /* -----------------------------------------------------------------
-           ÜRÜN VİTRİNİ
-           Menü temasından bağımsız, kendi kısa kodu olan vitrin bileşeni.
-           Kaydetme/silme admin-post üzerinden gider (bkz. trait-vitrin-admin).
+           ÖNE ÇIKAN SLIDER
+           Görünüm ayarları admin-post üzerinden gider
+           (bkz. trait-slider-admin.php).
         ----------------------------------------------------------------- */
-        add_action( 'admin_post_rma_vitrin_kaydet', [ $this, 'handle_vitrin_save' ] );
-        add_action( 'admin_post_rma_vitrin_sil',    [ $this, 'handle_vitrin_delete' ] );
         add_action( 'admin_post_qmo_slider_kaydet', [ $this, 'handle_slider_settings_save' ] );
 
         /* -----------------------------------------------------------------
            TOPLU FİYAT KAMPANYASI
            Ürün fiyatına HİÇ dokunulmaz: kural ayrı bir kayıtta durur, menüdeki
            fiyat her render'da orijinal fiyat + kural birleştirilerek üretilir
-           (bkz. class-kampanya.php). Kaydetme/geri alma vitrindeki gibi
-           admin-post üzerinden; yalnızca önizleme AJAX'tır, çünkü henüz
+           (bkz. class-kampanya.php). Kaydetme/geri alma admin-post
+           üzerinden; yalnızca önizleme AJAX'tır, çünkü henüz
            kaydedilmemiş form değerleriyle çalışması gerekir.
         ----------------------------------------------------------------- */
         add_action( 'admin_post_rma_kampanya_kaydet',  [ $this, 'handle_kampanya_save' ] );
@@ -288,9 +285,6 @@ class Restaurant_Menu_Automation {
 }
 
 Restaurant_Menu_Automation::get_instance();
-
-// Vitrin kısa kodu ve varlıkları — sınıftan bağımsız, kendi kancalarını kurar.
-RMA_Vitrin_Shortcode::init();
 
 // "Ürünüm Yok" katmanı — taksonomi, stok motoru, cron ve rozet köprüleri de
 // kendi kancalarını kendi init()'lerinde kurar.

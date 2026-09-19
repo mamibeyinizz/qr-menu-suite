@@ -12,7 +12,7 @@
  * doğrudan yazılır; kayıt `status = applied` ile yalnızca tarihçe tutulur.
  *
  * Şema, modülün mevcut "ana tablo + alt tablo" desenini izler
- * (bkz. class-vitrin-db.php).
+ * (bkz. modules/yorum-feedback/includes/forms/db.php).
  *
  * Dosyanın "SAF HESAP" bölümündeki fonksiyonların WordPress'e hiçbir
  * bağımlılığı yoktur — hem yönetim önizlemesi hem ön yüz render'ı hem de
@@ -71,7 +71,7 @@ class RMA_Kampanya_DB {
      * Tabloları oluşturur/tazeler.
      *
      * Suite modüllerinin kendi register_activation_hook'u yoktur (loader
-     * plugins_loaded'da yükler), bu yüzden vitrin tablosundaki gibi sürüm
+     * plugins_loaded'da yükler), bu yüzden sürüm
      * guard'ıyla admin_init'ten çağrılır.
      *
      * @return void

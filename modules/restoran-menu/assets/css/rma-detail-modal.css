@@ -1,14 +1,14 @@
 /* =====================================================================
-   ÜRÜN DETAY MODALI — Vitrin ve Slider için paylaşılan hafif modal.
+   ÜRÜN DETAY MODALI — Öne Çıkan Slider için hafif modal.
 
    "Menü Görünümü" (rma-frontend.css) içindeki `#rma-modal` ile AYNI
    AJAX uç noktasını (`rma_get_product_details`) ve aynı iç HTML
    yapısını (`.rma-modal-img-wrap`, `.rma-modal-body`, …) kullanır,
-   ama Vitrin/Slider ana menüden bağımsız sayfalarda da görünebildiği
+   ama slider ana menüden bağımsız sayfalarda da görünebildiği
    için menünün `--rma-*` tema değişkenlerine bağlı KALMAZ — kendi
    sabit renk paletini taşır. İç içerik kuralları `.qrms-detail-inner`
    altında tutulur ki aynı sayfada rma-frontend.css de yüklüyse (ör.
-   vitrin ana menü sayfasına gömülüyse) iki stil seti çakışmasın.
+   slider ana menü sayfasına gömülüyse) iki stil seti çakışmasın.
 ===================================================================== */
 
 .qrms-detail-overlay {

@@ -269,7 +269,7 @@ qrms_test(
 );
 
 qrms_test(
-	'ön yüzdeki DÖRT fiyat noktası da tek kaynaktan besleniyor',
+	'ön yüzdeki fiyat noktalarının hepsi tek kaynaktan besleniyor',
 	function () {
 		// Kampanya mimarisinin temel güvencesi: hiçbir gösterim noktası
 		// fiyatı ham meta'dan okumaz, hepsi RMA_Kampanya::fiyat_html()
@@ -278,7 +278,6 @@ qrms_test(
 		$noktalar = array(
 			'includes/trait-frontend.php'    => 'menü kartı',
 			'includes/trait-ajax.php'        => 'ürün modalı',
-			'includes/shortcode-vitrin.php'  => 'ürün vitrini',
 			'includes/shortcode-slider.php'  => 'öne çıkan slider',
 		);
 
@@ -509,7 +508,7 @@ qrms_test(
 );
 
 qrms_test(
-	'menü sorgusu tükendi ürünleri gizlemez; kart ve vitrin işareti basar',
+	'menü sorgusu tükendi ürünleri gizlemez; kart ve slider işareti basar',
 	function () {
 		$ajax = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-ajax.php' );
 		qrms_assert_contains( "'key' => 'rma_active'", $ajax, 'gizleme hâlâ rma_active' );
@@ -521,9 +520,6 @@ qrms_test(
 		$kart = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-frontend.php' );
 		qrms_assert_contains( 'is-tukendi', $kart, 'kart sınıfı' );
 		qrms_assert_contains( 'RMA_Tukendi::rozet_html', $kart, 'kart rozeti' );
-
-		$vitrin = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/shortcode-vitrin.php' );
-		qrms_assert_contains( 'RMA_Tukendi::urun_tukendi', $vitrin, 'vitrin durumu' );
 
 		$slider = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/shortcode-slider.php' );
 		qrms_assert_contains( 'RMA_Tukendi::urun_tukendi', $slider, 'slider durumu' );
@@ -650,7 +646,7 @@ qrms_test(
 
 /* P2 çeviri testleri (birleşme sonrası taşındı) */
 
-echo "\nQR Çeviri (P2 vitrin / slider / banner)\n";
+echo "\nQR Çeviri (P2 slider / banner)\n";
 
 require_once QRMS_PLUGIN_DIR . 'modules/qr-ceviri/includes/ui-stringler.php';
 require_once QRMS_PLUGIN_DIR . 'modules/qr-ceviri/includes/fiyat.php';
@@ -659,24 +655,20 @@ require_once QRMS_PLUGIN_DIR . 'modules/qr-ceviri/includes/veri-kaynaklar.php';
 require_once QRMS_PLUGIN_DIR . 'modules/qr-ceviri/includes/kaynaklar.php';
 
 qrms_test(
-	'vitrin slider banner aria ui_string; biçim dizesi sayı korur',
+	'slider banner aria ui_string; biçim dizesi sayı korur',
 	function () {
-		$vit = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/shortcode-vitrin.php' );
 		$sld = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/shortcode-slider.php' );
 		$ban = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/shortcode-banner-slider.php' );
 		$ui  = rma_ceviri_varsayilan_ui_metinleri();
 
-		qrms_assert_contains( "qmo_ceviri_ui( __( 'Önceki', 'qrms' ) )", $vit, 'vitrin önceki' );
-		qrms_assert_contains( "qmo_ceviri_ui( __( 'Sonraki', 'qrms' ) )", $vit, 'vitrin sonraki' );
-		qrms_assert_contains( "qmo_ceviri_ui( __( '%d ürün — kaydırarak gezinin', 'qrms' ) )", $vit, 'vitrin biçim' );
 		qrms_assert_contains( "qmo_ceviri_ui( __( 'Slide navigasyonu', 'qrms' ) )", $sld, 'slider nav' );
+		qrms_assert_contains( "qmo_ceviri_ui( __( 'Sonraki slide', 'qrms' ) )", $sld, 'slider sonraki' );
 		qrms_assert_contains( "qmo_ceviri_ui( __( 'Önceki slide', 'qrms' ) )", $sld, 'slider önceki' );
 		qrms_assert_contains( "qmo_ceviri_ui( __( 'Kampanya banner\\'ları', 'qrms' ) )", $ban, 'banner bölge' );
 		qrms_assert_contains( "qmo_ceviri_ui( __( '%d. banner', 'qrms' ) )", $ban, 'banner biçim' );
 		qrms_assert_same( '3. banner', sprintf( qmo_ceviri_ui( '%d. banner' ), 3 ), 'sayı korunur' );
-		qrms_assert_same( '2 ürün — kaydırarak gezinin', sprintf( qmo_ceviri_ui( '%d ürün — kaydırarak gezinin' ), 2 ), 'ürün sayı' );
 
-		foreach ( array( 'Önceki', 'Sonraki', '%d. banner', 'Banner seçimi' ) as $metin ) {
+		foreach ( array( '%d. banner', 'Banner seçimi' ) as $metin ) {
 			qrms_assert_true( in_array( $metin, $ui, true ), $metin );
 		}
 	}
@@ -686,13 +678,13 @@ qrms_test(
 	'detay modal Kapat RMA_MODAL_CFG.i18n; splash Dil data-sp-attr',
 	function () {
 		$js    = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/js/rma-detail-modal.js' );
-		$vit   = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/shortcode-vitrin.php' );
+		$sld   = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/shortcode-slider.php' );
 		$front = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-acilis-ekrani/includes/frontend.php' );
 		$i18n  = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-acilis-ekrani/includes/i18n.php' );
 
 		qrms_assert_contains( 'RMA_MODAL_CFG.i18n.kapat', $js, 'JS kapat' );
 		qrms_assert_false( (bool) preg_match( '/aria-label="Kapat"/', $js ), 'sabit Kapat yok' );
-		qrms_assert_contains( "qmo_ceviri_ui( __( 'Kapat', 'qrms' ) )", $vit, 'vitrin cfg' );
+		qrms_assert_contains( "qmo_ceviri_ui( __( 'Kapat', 'qrms' ) )", $sld, 'slider cfg' );
 		qrms_assert_contains( "lang_data( \$opts, 'lang_group', 'Dil', 'aria-label' )", $front, 'splash Dil attr' );
 		qrms_assert_contains( 'aria-label="Dil"', $front, 'splash TR yedek' );
 		qrms_assert_contains( "'lang_group'", $i18n, 'katalog anahtarı' );

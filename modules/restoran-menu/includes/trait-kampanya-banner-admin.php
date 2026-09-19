@@ -12,7 +12,7 @@
  * bölümü trait-kampanya-admin.php içinde (fiyat kampanyası ekranının altında),
  * görünüm ayarları ise ayrı bir sayfada (qrms-rm-banner-ayar). Her ikisi de
  * buraya toplandı. Modülün mevcut deseni "konuya özel trait" olduğu için
- * (trait-vitrin-admin.php, trait-kampanya-admin.php, urunum-yok/trait-admin.php)
+ * (trait-slider-admin.php, trait-kampanya-admin.php, urunum-yok/trait-admin.php)
  * bu iş de kendi trait'ine alındı: trait-admin-pages.php zaten ~1000 satır ve
  * modülün TÜM sayfa iskeletini taşıyor, banner'ın ~900 satırı orayı okunmaz
  * hâle getirirdi.
@@ -1349,7 +1349,7 @@ trait RMA_Kampanya_Banner_Admin_Trait {
                         <h3 class="rma-section-title">Masaüstü</h3>
                         <table class="form-table rma-form-table">
                             <?php
-                            $this->vitrin_font_size_row(
+                            $this->rma_font_size_row(
                                 'qmo-banner-title-size',
                                 'qmo_banner_slider_settings[title_size]',
                                 (int) $ayar['title_size'],
@@ -1364,7 +1364,7 @@ trait RMA_Kampanya_Banner_Admin_Trait {
                         <h3 class="rma-section-title">Mobil</h3>
                         <table class="form-table rma-form-table">
                             <?php
-                            $this->vitrin_font_size_row(
+                            $this->rma_font_size_row(
                                 'qmo-banner-title-size-mobile',
                                 'qmo_banner_slider_settings[title_size_mobile]',
                                 (int) $ayar['title_size_mobile'],
@@ -1379,14 +1379,14 @@ trait RMA_Kampanya_Banner_Admin_Trait {
                         <h3 class="rma-section-title">Kalınlık ve hizalama</h3>
                         <table class="form-table rma-form-table">
                             <?php
-                            $this->vitrin_weight_row(
+                            $this->rma_weight_row(
                                 'qmo-banner-title-weight',
                                 'qmo_banner_slider_settings[title_weight]',
                                 (int) $ayar['title_weight'],
                                 'Font kalınlığı',
                                 '400 sakin, 600 varsayılan, 700 daha vurgulu.'
                             );
-                            $this->vitrin_align_row(
+                            $this->rma_align_row(
                                 'qmo-banner-title-align',
                                 'qmo_banner_slider_settings[title_align]',
                                 (string) $ayar['title_align'],

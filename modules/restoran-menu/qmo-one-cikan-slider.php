@@ -25,7 +25,7 @@ require_once __DIR__ . '/includes/admin-cpt-slide.php';
 require_once __DIR__ . '/includes/class-slider-settings.php';
 require_once __DIR__ . '/includes/shortcode-slider.php';
 
-// Kampanya banner slider'ı: ürün vitrininden bağımsız, kendi CPT'si ve
+// Kampanya banner slider'ı: öne çıkan slider'dan bağımsız, kendi CPT'si ve
 // varlıklarıyla çalışan ayrı modül.
 require_once __DIR__ . '/includes/admin-cpt-banner.php';
 require_once __DIR__ . '/includes/class-banner-slider-settings.php';

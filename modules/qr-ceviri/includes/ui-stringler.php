@@ -143,10 +143,9 @@ if ( ! function_exists( 'rma_ceviri_varsayilan_ui_metinleri' ) ) {
 			'-{n} ₺',
 			'%{n}',
 
-			/* Vitrin / slider / banner aria */
+			/* Slider / banner aria */
 			'Önceki',
 			'Sonraki',
-			'%d ürün — kaydırarak gezinin',
 			'Slide navigasyonu',
 			'Önceki slide',
 			'Sonraki slide',

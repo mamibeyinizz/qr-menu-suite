@@ -31,13 +31,6 @@ trait RMA_Admin_Pages_Trait {
                 'desc'       => __( 'Menünüzün üst kısmında öne çıkaracağınız ürünleri ve slider alanını yönetin.', 'qrms' ),
                 'icon'       => 'dashicons-star-filled',
             ],
-            'qrms-rm-vitrin' => [
-                'title'      => 'Ürün Vitrini',
-                'menu_title' => 'Ürün Vitrini',
-                'render'     => 'render_showcase_page',
-                'desc'       => __( 'Seçtiğiniz ürünleri dikkat çekici bir vitrinde gösterin.', 'qrms' ),
-                'icon'       => 'dashicons-slides',
-            ],
             'qrms-rm-kampanya' => [
                 'title'      => 'Kampanyalar',
                 'menu_title' => 'Kampanyalar',
@@ -153,7 +146,6 @@ trait RMA_Admin_Pages_Trait {
                 'cards' => [
                     $from_sub( $this, 'qrms-rm-gorunum' ),
                     $from_sub( $this, 'qrms-rm-one-cikanlar' ),
-                    $from_sub( $this, 'qrms-rm-vitrin' ),
                     $from_sub( $this, 'qrms-rm-diger' ),
                 ],
             ],
