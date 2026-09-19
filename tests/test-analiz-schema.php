@@ -567,11 +567,9 @@ qrms_test(
 		// Menünün tamamını kapsayan bir kampanyada bu, tek işlemde yüzlerce
 		// sorgu demekti.
 		$kampanya = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/class-kampanya-db.php' );
-		$vitrin   = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/class-vitrin-db.php' );
 		$formlar  = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/forms/functions.php' );
 
 		qrms_assert_contains( 'INSERT INTO {$tablo} (campaign_id, product_id, original_price)', $kampanya, 'kampanya toplu' );
-		qrms_assert_contains( 'INSERT INTO {$urunler} (showcase_id, product_id, sort_order)', $vitrin, 'vitrin toplu' );
 		qrms_assert_contains( 'INSERT INTO $table (form_id, field_key', $formlar, 'form alanları toplu' );
 
 		// Parçalama olmadan tek dev sorgu max_allowed_packet'e takılabilir.

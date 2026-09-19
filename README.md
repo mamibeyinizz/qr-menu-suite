@@ -555,7 +555,6 @@ ekranındaki kartlardan gidilir:
 | Alerjenler | `edit-tags.php?taxonomy=rma_allergen` |
 | Görünüm | `qrms-rm-gorunum` |
 | Öne Çıkanlar | `qrms-rm-one-cikanlar` |
-| Ürün Vitrini | `qrms-rm-vitrin` |
 | Malzemeler | `edit-tags.php?taxonomy=rma_ingredient` |
 | Ürünüm Yok | `qrms-rm-urunum-yok` |
 | Seçenek & Rozet | `qrms-rm-secenekler` |
@@ -843,8 +842,8 @@ fiyat tanım gereği aynıdır.
 
 Ön yüzde eski fiyat üstü çizili, yeni fiyat yanında görünür
 (`.rma-price-old` / `.rma-price-new`); indirim kampanyalarında ürün kartına
-otomatik rozet eklenir. Gösterim dört yüzeyde de aynı kaynaktan gelir: menü
-kartı, ürün detay modalı, ürün vitrini ve öne çıkan slider. Kombin ürünlerde
+otomatik rozet eklenir. Gösterim üç yüzeyde de aynı kaynaktan gelir: menü
+kartı, ürün detay modalı ve öne çıkan slider. Kombin ürünlerde
 kampanya paket fiyatına uygulanır ve üstü çizili fiyat kampanya öncesi paket
 fiyatı olur — bir kartta iki ayrı üstü çizili fiyat çıkmaz.
 

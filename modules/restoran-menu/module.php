@@ -43,7 +43,7 @@ function qrms_module_restoran_menu_init() {
 	require_once __DIR__ . '/qr-menu.php';
 
 	// Kısa kod rehberine bildirim. add_shortcode() çağrıları dosya kapsamında
-	// (qr-menu.php, shortcode-vitrin.php, shortcode-slider.php,
+	// (qr-menu.php, shortcode-slider.php,
 	// shortcode-banner-slider.php) yapılır; rehber
 	// yalnızca bu tek kayıttan beslenir.
 	QRMS_Shortcodes::register(
@@ -58,19 +58,6 @@ function qrms_module_restoran_menu_init() {
 						'name'    => 'show_search',
 						'default' => 'yes',
 						'desc'    => __( 'Arama kutusunu gizlemek için "no" yazın.', 'qrms' ),
-					),
-				),
-			),
-			array(
-				'tag'   => 'qrms_urun_vitrini',
-				'title' => __( 'Ürün Vitrini', 'qrms' ),
-				'desc'  => __( 'Seçtiğiniz ürünleri kayan bir vitrin şeridinde gösterir. Her vitrinin kendi numarası vardır.', 'qrms' ),
-				'usage' => '[qrms_urun_vitrini id="1"]',
-				'attrs' => array(
-					array(
-						'name'    => 'id',
-						'default' => '',
-						'desc'    => __( 'Vitrin numarası — Ürün Vitrini ekranından öğrenin. Zorunludur.', 'qrms' ),
 					),
 				),
 			),
@@ -129,12 +116,15 @@ function qrms_module_restoran_menu_init() {
 		// QRMS_Admin::register_menu() öncelik 10'da çalışır.
 		add_action( 'admin_menu', 'qrms_module_restoran_menu_admin_menu', 20 );
 
-		// Ürün Vitrini tabloları. Suite modüllerinin kendi
+		// Kampanya tabloları. Suite modüllerinin kendi
 		// register_activation_hook'u yok (loader plugins_loaded'da yükler),
 		// bu yüzden qr-ceviri'deki gibi sürüm guard'ıyla kurulur: option
 		// güncelse hiçbir şey yapılmaz, tek bir get_option maliyeti kalır.
-		add_action( 'admin_init', array( 'RMA_Vitrin_DB', 'belki_kur' ) );
 		add_action( 'admin_init', array( 'RMA_Kampanya_DB', 'belki_kur' ) );
+
+		// Kaldırılan "Ürün Vitrini" özelliğinin tablo/option kalıntıları —
+		// bir kez temizlenir, sonrasında tek get_option maliyeti kalır.
+		add_action( 'admin_init', array( 'RMA_Vitrin_Temizlik', 'belki_temizle' ) );
 		add_filter( 'parent_file', 'qrms_module_restoran_menu_parent_file' );
 		add_filter( 'submenu_file', 'qrms_module_restoran_menu_submenu_file' );
 	}
@@ -390,36 +380,9 @@ function qrms_module_restoran_menu_admin_assets() {
 		);
 	}
 
-	// Ürün Vitrini formundaki canlı önizleme, frontend'in GERÇEK vitrin.css'ini
-	// kullanır (sahte bir önizleme stili yerine) — bkz. initVitrinPreview()
-	// admin-ui.js içinde ve render_vitrin_preview_cards() trait-vitrin-admin.php'de.
-	if ( 'qrms-rm-vitrin' === $page ) {
-		wp_enqueue_style( 'rma-vitrin', $url . 'assets/css/vitrin.css', array( 'rma-admin-ui' ), QRMS_Helpers::asset_version( $modul . 'assets/css/vitrin.css' ) );
-
-		// "5. Yazı Tipi" adımındaki seçimler önizlemede GERÇEK fontuyla
-		// görünsün diye listedeki Google aileleri bu tek admin ekranında
-		// yüklenir; ön yüzde yalnızca SEÇİLEN aile indirilir
-		// (bkz. RMA_Vitrin_Shortcode::maybe_enqueue_font).
-		$aileler = array();
-		foreach ( RMA_Vitrin_DB::yazi_tipleri() as $font_bilgi ) {
-			if ( '' !== $font_bilgi['google'] ) {
-				$aileler[] = 'family=' . $font_bilgi['google'];
-			}
-		}
-
-		if ( ! empty( $aileler ) ) {
-			wp_enqueue_style(
-				'rma-vitrin-fonts',
-				'https://fonts.googleapis.com/css2?' . implode( '&', array_unique( $aileler ) ) . '&display=swap',
-				array(),
-				null
-			);
-		}
-	}
-
 	// Öne Çıkan Slider görünüm sihirbazının canlı önizlemesi, frontend'in
-	// GERÇEK frontend-slider.css'ini kullanır (vitrin önizlemesindeki
-	// aynı desen). Playfair + Manrope admin'de her ikisi de yüklüdür ki
+	// GERÇEK frontend-slider.css'ini kullanır (sahte bir önizleme stili
+	// yerine). Playfair + Manrope admin'de her ikisi de yüklüdür ki
 	// açılır listedeki değişim anında görünsün.
 	if ( 'qrms-rm-one-cikanlar' === $page ) {
 		wp_enqueue_style(

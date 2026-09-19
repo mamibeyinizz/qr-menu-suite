@@ -358,7 +358,7 @@ if ( ! function_exists( 'qmo_masa_cache_temizle' ) ) {
  * Bir ayar kaydedildiğinde ön yüz çıktısı değişir, ama sayfa çoğu kurulumda
  * bir önbellek katmanının arkasındadır: kullanıcı "Kaydet" deyip sayfayı
  * yenilese bile eski HTML'i görür ve değişikliğin kaydedilmediğini sanır.
- * Bu yüzden kayıt akışları (HFB, vitrin, banner…) kayıttan HEMEN SONRA
+ * Bu yüzden kayıt akışları (HFB, slider, banner…) kayıttan HEMEN SONRA
  * burayı çağırır.
  *
  * Eklenti temizlikleri koşulludur: kurulu olmayan eklenti sessizce atlanır,

@@ -1,19 +1,19 @@
 /* =====================================================================
-   ÜRÜN DETAY MODALI — Vitrin ve Slider için paylaşılan hafif modal.
+   ÜRÜN DETAY MODALI — Öne Çıkan Slider için hafif modal.
 
    Ana menünün (`rma-frontend.js`) kart-arası kaydırmalı modalından
-   BAĞIMSIZDIR: Vitrin/Slider ana menü şortkodu hiç sayfada olmadan da
+   BAĞIMSIZDIR: slider ana menü şortkodu hiç sayfada olmadan da
    çalışabildiği için kendi minimal aç/kapat mantığını taşır. İçerik,
    ana menüyle AYNI uç noktadan (`rma_get_product_details`) gelir —
    görsel, açıklama, alerjen, rozet… hepsi tek yerden (trait-ajax.php)
    üretilir.
 
-   Sayfada birden çok Vitrin/Slider olsa da bu dosya bir kez yüklenir
+   Sayfada birden çok slider olsa da bu dosya bir kez yüklenir
    (wp_enqueue_script tekilleştirir) ve tek paylaşımlı modal DOM'u
    ilk açılışta oluşturulur.
 
    Beklenen global: window.RMA_MODAL_CFG = { ajaxUrl, nonce, lang }
-   (shortcode-vitrin.php / shortcode-slider.php tarafından basılır).
+   (shortcode-slider.php tarafından basılır).
 ===================================================================== */
 (function (global) {
     'use strict';

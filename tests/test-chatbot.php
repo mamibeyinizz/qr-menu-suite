@@ -85,7 +85,7 @@ qrms_test(
 		qrms_assert_contains( "'.rma-modal-price'", $js, 'fiyat class\'ı durur' );
 		qrms_assert_contains( "'.rma-price-new, .qmo-kombin-new-price'", $js, 'yalnızca güncel fiyat span\'i' );
 		qrms_assert_contains( 'fiyatMetni', $js, 'kampanyalı fiyatta eski+yeni birleşmez' );
-		qrms_assert_contains( "'.rma-card, .qrms-vitrin-card, .qmo-slider-product'", $js, 'vitrin/slider kartı da modal yakalar' );
+		qrms_assert_contains( "'.rma-card, .qmo-slider-product'", $js, 'slider kartı da modal yakalar' );
 		qrms_assert_contains( 'qmoSepet.endpoint', $js, 'sipariş qmoSepet.endpoint üzerinden gider' );
 		qrms_assert_contains( 'qmo_sepet_olay', $js, 'sepet analitik ucu' );
 		qrms_assert_contains( 'analitikKuyrukla', $js, 'sepet olayları kuyruklanır' );

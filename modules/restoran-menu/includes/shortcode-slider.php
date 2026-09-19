@@ -57,12 +57,12 @@ class QMO_Shortcode_Slider {
     }
 
     /**
-     * Ürün detay modalını (Vitrin ile paylaşılan) kuyruğa alır.
+     * Ürün detay modalını kuyruğa alır.
      *
      * Slaytlardaki ürünler tıklanınca `rma-detail-modal.js` bu modalı
      * açar ve ana menüyle AYNI uç noktayı (`rma_get_product_details`)
      * çağırır — bkz. modules/restoran-menu/includes/trait-ajax.php ve
-     * shortcode-vitrin.php::enqueue_modal_config() (aynı desen).
+     * Modal yapılandırması tek yerden basılır.
      *
      * @return void
      */

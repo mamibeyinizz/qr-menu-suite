@@ -2,12 +2,12 @@
 /**
  * Kampanya Banner (qmo_banner_slider) — görünüm ayarları.
  *
- * Banner tek bir kısa koddur (vitrin gibi örnek başına satır yok), bu
+ * Banner tek bir kısa koddur (örnek başına ayrı satır yok), bu
  * yüzden ayarlar wp_options'ta durur. Temizlik WordPress'e bağımlılığı
  * olmayan saf dönüşümlerdir — doğrudan test edilir.
  *
  * Desen QMO_Slider_Settings'in aynısıdır; ayrı bir sınıf olmasının nedeni
- * iki modülün (ürün vitrini slider'ı ve kampanya banner'ı) birbirinden
+ * iki modülün (öne çıkan slider ve kampanya banner'ı) birbirinden
  * tamamen bağımsız kalması: alan kümeleri, sınırları ve varsayılanları
  * farklıdır.
  *

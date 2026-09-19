@@ -2,7 +2,7 @@
 /**
  * [qmo_banner_slider] — sayfa başındaki tam genişlik kampanya banner'ı.
  *
- * Ürün vitrini slider'ından (shortcode-slider.php) tamamen bağımsızdır:
+ * Öne çıkan slider'dan (shortcode-slider.php) tamamen bağımsızdır:
  * kendi CPT'si, kendi varlıkları, kendi betiği vardır; ortak tek şey
  * dosya/enqueue desenidir. Görseli olan yayınlanmış banner yoksa modül
  * sessizce hiç basılmaz.

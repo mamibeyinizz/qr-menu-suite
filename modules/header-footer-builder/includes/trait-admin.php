@@ -4,7 +4,7 @@
  *
  * Sayfa tek bir formdur; sekmeler (Header / Footer / Dil / Hamburger)
  * yalnızca görsel gruplamadır ve JS ile sayfa yenilenmeden değişir.
- * Her sekmenin içinde vitrin modülündeki gibi numaralı adımlar vardır
+ * Her sekmenin içinde restoran menü sihirbazlarındaki gibi numaralı adımlar vardır
  * (Geri Dön / Devam Et); adımlar da görseldir — gizli adımların alanları
  * DOM'da kalır, tek "Kaydet" tüm sekmeleri birden yazar.
  *
@@ -1647,7 +1647,7 @@ trait QRMS_HFB_Admin {
 	}
 
 	/**
-	 * Px slider satırı — vitrin_font_size_row() deseninin hfb karşılığı.
+	 * Px slider satırı — rma_font_size_row() deseninin hfb karşılığı.
 	 *
 	 * @param string $id        Alan id'si.
 	 * @param string $name      Form alanı adı.
@@ -1748,7 +1748,7 @@ trait QRMS_HFB_Admin {
 	}
 
 	/**
-	 * wp-color-picker alanı — vitrin "Vitrin Arka Plan Rengi" deseninin aynısı.
+	 * wp-color-picker alanı — restoran menü sihirbazlarındaki renk alanı deseninin aynısı.
 	 *
 	 * @param string $id          Alan id'si.
 	 * @param string $name        Form alanı adı.
@@ -1802,7 +1802,7 @@ trait QRMS_HFB_Admin {
 	}
 
 	/**
-	 * Sol/Orta/Sağ hizalama buton grubu — vitrin_align_row() deseninin hfb karşılığı.
+	 * Sol/Orta/Sağ hizalama buton grubu — rma_align_row() deseninin hfb karşılığı.
 	 *
 	 * @param string $id       Grubun id ön eki.
 	 * @param string $name     Form alanı adı.

@@ -9,7 +9,7 @@
  * Zam işlemleri bu sınıftan geçmez: fiyatlar doğrudan `rma_price` (kombin
  * ürünlerde `_qmo_kombin_fiyat`) alanına kalıcı yazılır (bkz. trait-kampanya-admin).
  *
- * Modülün DÖRT fiyat gösterim noktası (menü kartı, ürün modalı, ürün vitrini,
+ * Modülün fiyat gösterim noktaları (menü kartı, ürün modalı,
  * öne çıkan slider) bu sınıfın tek girişini kullanır: fiyat_html().
  *
  * @package QR_Menu_Suite

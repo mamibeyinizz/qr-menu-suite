@@ -178,7 +178,7 @@
 /*
  * Grup başlıkları: kart ızgarasını "Menü Yönetimi / Menü İçeriği / Görünüm"
  * bölümlerine ayırır (bkz. get_hub_cards()). Serif marka fontu, projede
- * zaten Ürün Vitrini'nin başlık fontu olarak sabit tanımlı (bkz.
+ * zaten Öne Çıkan Slider'ın başlık fontu olarak sabit tanımlı (bkz.
  * frontend-slider.css --qmo-font-display); rengi kart başlığıyla
  * (.qrms-hub-card-title) aynı ink tonu, ayırıcı çizgiler ise kart
  * açıklama ayırıcısıyla (.qrms-hub-desc) aynı muted gold tonu kullanır —

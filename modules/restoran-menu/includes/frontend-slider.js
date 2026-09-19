@@ -18,7 +18,7 @@
     var nextBtn = root.querySelector('.qmo-slider-nav-next');
 
     /* Ürün detayı: kart tıklanınca/Enter-Space ile paylaşımlı modal açılır
-       (bkz. rma-detail-modal.js, vitrin.js ile aynı desen). */
+       (bkz. rma-detail-modal.js). */
     var products = root.querySelectorAll('.qmo-slider-product');
     for (var p = 0; p < products.length; p++) {
         (function (card) {

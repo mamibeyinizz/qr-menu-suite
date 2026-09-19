@@ -437,7 +437,7 @@
 				var ekstralar = ekstraSecimi( body );
 				var fy        = taban + porsiyon.fark + ekstraToplami( ekstralar );
 
-				// Dış kapsayıcı: vitrin/slider modalı .qrms-detail-box üretir;
+				// Dış kapsayıcı: slider modalı .qrms-detail-box üretir;
 				// ana menü modalı hâlâ .rma-modal-box. Görsel class'ı
 				// (.rma-modal-img) AJAX içeriğinde değişmedi.
 				var kutu    = body.closest( '.qrms-detail-box, .rma-modal-box' ) || document;
@@ -498,7 +498,7 @@
 	}
 
 	function modalAcikMi() {
-		// Dış kapsayıcı qrms-detail-* (vitrin/slider); iç içerik hâlâ
+		// Dış kapsayıcı qrms-detail-* (slider); iç içerik hâlâ
 		// .rma-modal-body. Ana menü modalının eski overlay/box adları da
 		// durur — o şablon değişmedi.
 		var m = document.querySelector( '.qrms-detail-overlay, .qrms-detail-box, .rma-modal-overlay, .rma-modal-box, .rma-modal-body' );
@@ -798,8 +798,8 @@
 	send.addEventListener( 'click', gonder );
 
 	document.addEventListener( 'click', function ( e ) {
-		// Ana menü .rma-card; vitrin .qrms-vitrin-card; slider .qmo-slider-product.
-		var kart = e.target.closest ? e.target.closest( '.rma-card, .qrms-vitrin-card, .qmo-slider-product' ) : null;
+		// Ana menü .rma-card; slider .qmo-slider-product.
+		var kart = e.target.closest ? e.target.closest( '.rma-card, .qmo-slider-product' ) : null;
 		if ( kart ) {
 			sonKartId = parseInt( kart.getAttribute( 'data-id' ), 10 ) || 0;
 			modaliYakala();
@@ -814,7 +814,7 @@
 	} );
 
 	// Modal kapandığında çubuğu geri getir (yalnızca gizliyken çalışır).
-	// Açıkken de yokla: vitrin AJAX'ı .qrms-detail-inner'a .rma-modal-body
+	// Açıkken de yokla: slider AJAX'ı .qrms-detail-inner'a .rma-modal-body
 	// basınca modalEkle o elemanı bulsun.
 	// Sekme arka plandayken (visibilitychange 'hidden') yoklama atlanır —
 	// müşteri sekmeyi uzun süre açık bıraktığında gereksiz CPU/pil tüketimi

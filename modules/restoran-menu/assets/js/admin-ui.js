@@ -941,240 +941,6 @@
         });
     }
 
-    /* -----------------------------------------------------------------
-       ÜRÜN VİTRİNİ — SEÇİM, SIRALAMA VE KISA KOD
-
-       Sıra ayrı bir AJAX ucuna yazılmaz: sortable her değişimde gizli
-       #rma-vitrin-order alanını tazeler, form gönderilirken sıra da
-       birlikte gider (bkz. trait-vitrin-admin.php).
-    ----------------------------------------------------------------- */
-    function vitrinSyncOrder() {
-        var ids = [];
-        $('#rma-vitrin-sortable .rma-vitrin-chip').each(function () {
-            ids.push($(this).data('id'));
-        });
-        $('#rma-vitrin-order').val(ids.join(','));
-        $('.rma-vitrin-empty').toggle(ids.length === 0);
-        vitrinRenderPreviewCards();
-    }
-
-    /**
-     * Ürün havuzundaki her satırın ad/görsel/fiyat verisini id'ye göre
-     * haritalar (bkz. trait-vitrin-admin.php data-title/data-img/data-price).
-     * Satırlar sayfa yüklendiğinde sabitlendiği için tek seferde çıkarılıp
-     * önbelleğe alınır.
-     *
-     * @return Object<string,{title:string,img:string,price:string}>
-     */
-    var vitrinProductMapCache = null;
-
-    function vitrinBuildProductMap() {
-        if (vitrinProductMapCache) return vitrinProductMapCache;
-
-        var map = {};
-        $('.rma-vitrin-pool-row').each(function () {
-            var $row = $(this);
-            map[String($row.data('id'))] = {
-                title: String($row.data('title') || ''),
-                img: String($row.data('img') || ''),
-                price: String($row.data('price') || '')
-            };
-        });
-
-        vitrinProductMapCache = map;
-        return map;
-    }
-
-    /**
-     * Canlı önizleme kartlarını (#rma-vitrin-preview .qrms-vitrin-viewport)
-     * o an "Vitrindeki Sıra" listesinde duran ürünlerin GERÇEK verisiyle
-     * yeniden çizer — trait-vitrin-admin.php render_vitrin_preview_card()
-     * ile BİREBİR aynı markup/sınıflar kullanılır ki vitrin.css'ten aynı
-     * şekilde boyansın.
-     *
-     * Yer tutucu kartlar YALNIZCA hiç ürün seçilmemişken gösterilir; ürün
-     * seçiliyse önizleme sadece o seçimi gösterir (6'ya tamamlanmaz).
-     * "Vitrindeki Sıra" listesi DOM'da kaldığı sürece (adımlar arası
-     * geçişte yalnızca display:none olur, kaldırılmaz) bu state hiç
-     * kaybolmaz.
-     */
-    function vitrinRenderPreviewCards() {
-        var $viewport = $('#rma-vitrin-preview .qrms-vitrin-viewport');
-        if (!$viewport.length) return;
-
-        var map = vitrinBuildProductMap();
-        var azami = 8;
-
-        var ids = [];
-        $('#rma-vitrin-sortable .rma-vitrin-chip').each(function () {
-            ids.push(String($(this).data('id')));
-        });
-
-        var kartlar = [];
-        if (ids.length === 0) {
-            for (var i = 0; i < 6; i++) kartlar.push(null);
-        } else {
-            ids.slice(0, azami).forEach(function (id) {
-                kartlar.push(map[id] || null);
-            });
-        }
-
-        $viewport.empty();
-
-        kartlar.forEach(function (urun) {
-            var $card = $('<article class="qrms-vitrin-card"></article>');
-            var $media = $('<div class="qrms-vitrin-media"></div>');
-
-            if (urun && urun.img) {
-                $media.append($('<img class="qrms-vitrin-img" alt="">').attr('src', urun.img));
-            } else {
-                $media.append('<span class="qrms-vitrin-img qrms-vitrin-img-empty" aria-hidden="true">◆</span>');
-            }
-
-            var $body = $('<div class="qrms-vitrin-body"></div>');
-            $body.append($('<h3 class="qrms-vitrin-title"></h3>').text(urun ? urun.title : 'Ürün Adı'));
-            // Fiyat kampanya/kombin işaretlemesi (ör. üstü çizili eski fiyat)
-            // barındırabileceği için .html() ile yazılır; kaynağı kendi
-            // sunucu render'ımız (data-price), kullanıcı girdisi değil.
-            $body.append($('<p class="qrms-vitrin-price"></p>').html(urun && urun.price ? urun.price : '₺0,00'));
-
-            $card.append($media, $body);
-            $viewport.append($card);
-        });
-    }
-
-    function vitrinChip($row) {
-        var id  = $row.data('id');
-        var $li = $('<li class="rma-vitrin-chip"></li>').attr('data-id', id);
-
-        $li.append('<span class="rma-vitrin-drag" aria-hidden="true">⋮⋮</span>');
-        // Küçük görsel havuzdaki satırdan klonlanır — yeniden indirilmez.
-        $li.append($row.find('.rma-vitrin-thumb').first().clone());
-        $li.append($('<span class="rma-vitrin-chip-title"></span>').text($row.find('.rma-vitrin-pool-title').text()));
-        $li.append('<button type="button" class="rma-vitrin-remove" aria-label="Vitrinden çıkar">&times;</button>');
-
-        return $li;
-    }
-
-    function initVitrinPicker() {
-        var $form = $('#rma-vitrin-form');
-        if (!$form.length) return;
-
-        var $sortable = $('#rma-vitrin-sortable');
-
-        if (typeof $.fn.sortable === 'function') {
-            $sortable.sortable({
-                items: '.rma-vitrin-chip',
-                handle: '.rma-vitrin-drag',
-                placeholder: 'rma-vitrin-placeholder',
-                forcePlaceholderSize: true,
-                tolerance: 'pointer',
-                update: vitrinSyncOrder
-            });
-        }
-
-        // Havuzdaki işaret kutusu: seçilince sıraya eklenir, kaldırılınca çıkar.
-        $form.on('change', '.rma-vitrin-cb', function () {
-            var $row = $(this).closest('.rma-vitrin-pool-row');
-            var id   = $row.data('id');
-
-            $row.toggleClass('is-selected', this.checked);
-
-            if (this.checked) {
-                if (!$sortable.find('.rma-vitrin-chip[data-id="' + id + '"]').length) {
-                    $sortable.append(vitrinChip($row));
-                }
-            } else {
-                $sortable.find('.rma-vitrin-chip[data-id="' + id + '"]').remove();
-            }
-
-            vitrinSyncOrder();
-        });
-
-        // Sıradaki "×": kaydı çıkarır ve havuzdaki kutunun işaretini kaldırır.
-        $form.on('click', '.rma-vitrin-remove', function () {
-            var $chip = $(this).closest('.rma-vitrin-chip');
-            var id    = $chip.data('id');
-
-            $form.find('.rma-vitrin-pool-row[data-id="' + id + '"]')
-                 .removeClass('is-selected')
-                 .find('.rma-vitrin-cb').prop('checked', false);
-
-            $chip.remove();
-            vitrinSyncOrder();
-        });
-
-        // Arama — sunucuya gitmeden havuzu süzer.
-        $form.on('input', '#rma-vitrin-search', function () {
-            // $.trim değil: jQuery 4'te kaldırıldı, native karşılığı her sürümde var.
-            var q = String(this.value).trim().toLowerCase();
-
-            $form.find('.rma-vitrin-pool-row').each(function () {
-                var title = String($(this).data('title') || '').toLowerCase();
-                $(this).toggleClass('is-hidden', q !== '' && title.indexOf(q) === -1);
-            });
-        });
-
-        vitrinSyncOrder();
-    }
-
-    /* -----------------------------------------------------------------
-       ÜRÜN VİTRİNİ — CANLI ÖNİZLEME
-
-       "3. Düzen" ve "4. Kart Boyutu" alanlarındaki her değişiklik, sayfa
-       yenilenmeden #rma-vitrin-preview'e yansır. Önizleme gerçek
-       vitrin.css'i kullandığı için burada yapılan tek şey, seçilen moda
-       (masaüstü/mobil) göre doğru alan grubunu okuyup aynı CSS
-       değişkenlerine ('--qrms-vitrin-*') yazmak — desen NAV_VARS/
-       syncPreview() ile aynı (bkz. yukarısı).
-    ----------------------------------------------------------------- */
-    var VITRIN_PREVIEW_FIELDS = {
-        desktop: {
-            cols:         'rma-vitrin-cols',
-            rows:         'rma-vitrin-rows',
-            gap:          'rma-vitrin-desktop-gap',
-            cardMin:      'rma-vitrin-desktop-card-min',
-            ratio:        'rma-vitrin-desktop-ratio',
-            titleSize:    'rma-vitrin-title-size',
-            titleWeight:  'rma-vitrin-title-weight',
-            titleAlign:   'rma-vitrin-title-align',
-            priceSize:    'rma-vitrin-price-size',
-            priceWeight:  'rma-vitrin-price-weight',
-            priceAlign:   'rma-vitrin-price-align'
-        },
-        mobile: {
-            cols:         'rma-vitrin-mobile-cols',
-            rows:         'rma-vitrin-mobile-rows',
-            gap:          'rma-vitrin-mobile-gap',
-            cardMin:      'rma-vitrin-mobile-card-min',
-            ratio:        'rma-vitrin-mobile-ratio',
-            titleSize:    'rma-vitrin-title-size-mobile',
-            titleWeight:  'rma-vitrin-title-weight-mobile',
-            titleAlign:   'rma-vitrin-title-align-mobile',
-            priceSize:    'rma-vitrin-price-size-mobile',
-            priceWeight:  'rma-vitrin-price-weight-mobile',
-            priceAlign:   'rma-vitrin-price-align-mobile'
-        }
-    };
-
-    /* Yazı tipi açılır listesinin CSS karşılıkları — RMA_Vitrin_DB::yazi_tipleri()
-       ile BİREBİR aynı yığınlar. Önizlemenin sunucuya gitmeden doğru fontu
-       göstermesi için burada da duruyor; kaynak liste PHP tarafındadır. */
-    var VITRIN_FONT_STACKS = {
-        '':                  'inherit',
-        'system':            'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
-        'Playfair Display':  "'Playfair Display', Georgia, serif",
-        'Manrope':           "'Manrope', system-ui, sans-serif",
-        'Inter':             "'Inter', system-ui, sans-serif",
-        'Poppins':           "'Poppins', system-ui, sans-serif",
-        'Montserrat':        "'Montserrat', system-ui, sans-serif",
-        'Georgia':           'Georgia, "Times New Roman", serif'
-    };
-
-    /* Fiyat satırı flex olduğu için hizalama justify-content'e çevrilir
-       (bkz. vitrin.css --qrms-vitrin-price-justify). */
-    var VITRIN_JUSTIFY = { left: 'flex-start', center: 'center', right: 'flex-end' };
-
     /**
      * Hizalama buton grubunun (radio) o anki değeri.
      *
@@ -1184,129 +950,6 @@
     function vitrinAlignVal(id) {
         var $secili = $('.rma-align-input[data-align-field="' + id + '"]:checked');
         return $secili.length ? String($secili.val()) : 'left';
-    }
-
-    function initVitrinPreview() {
-        var $form  = $('#rma-vitrin-form');
-        var $stage = $('#rma-vitrin-preview-stage');
-        var $preview = $('#rma-vitrin-preview');
-
-        if (!$form.length || !$preview.length) return;
-
-        var mode = 'desktop';
-        var previewEl = $preview.get(0);
-
-        function fieldVal(id, fallback) {
-            var $el = $('#' + id);
-            return $el.length ? $el.val() : fallback;
-        }
-
-        function applyPreview() {
-            var f = VITRIN_PREVIEW_FIELDS[mode];
-            var m = VITRIN_PREVIEW_FIELDS.mobile;
-
-            previewEl.style.setProperty('--qrms-vitrin-cols', fieldVal(f.cols, 4));
-            previewEl.style.setProperty('--qrms-vitrin-rows', fieldVal(f.rows, 1));
-            previewEl.style.setProperty('--qrms-vitrin-gap', fieldVal(f.gap, 16) + 'px');
-            previewEl.style.setProperty('--qrms-vitrin-card-min', fieldVal(f.cardMin, 200) + 'px');
-            previewEl.style.setProperty('--qrms-vitrin-image-ratio', fieldVal(f.ratio, 100));
-
-            // vitrin.css'in GERÇEK dar ekran medya sorgusu (<1023px) admin
-            // penceresi kendisi o kadar darsa yine devreye girer; --mobile-*
-            // değişkenleri burada da her zaman güncel tutulur ki o durumda
-            // "Masaüstü Önizleme" seçiliyken bile boş/tanımsız değere düşmesin.
-            previewEl.style.setProperty('--qrms-vitrin-mobile-cols', fieldVal(m.cols, 2));
-            previewEl.style.setProperty('--qrms-vitrin-mobile-rows', fieldVal(m.rows, 1));
-            previewEl.style.setProperty('--qrms-vitrin-mobile-gap', fieldVal(m.gap, 12) + 'px');
-            previewEl.style.setProperty('--qrms-vitrin-mobile-card-min', fieldVal(m.cardMin, 132) + 'px');
-            previewEl.style.setProperty('--qrms-vitrin-mobile-image-ratio', fieldVal(m.ratio, 100));
-
-            var bg = fieldVal('rma-vitrin-bg-color', '');
-            previewEl.style.setProperty('--qrms-vitrin-bg', bg ? bg : 'transparent');
-
-            /* Yazı tipi ayarları. Boyut/kalınlık/hizalama seçili moddan
-               okunur; mobil karşılıkları burada da her zaman yazılır (kart
-               boyutu ayarlarındaki aynı gerekçe: admin penceresi 1023px'in
-               altındaysa vitrin.css'in gerçek medya sorgusu devreye girer). */
-            previewEl.style.setProperty('--qrms-vitrin-title-size', fieldVal(f.titleSize, 15) + 'px');
-            previewEl.style.setProperty('--qrms-vitrin-title-weight', fieldVal(f.titleWeight, 600));
-            previewEl.style.setProperty('--qrms-vitrin-title-align', vitrinAlignVal(f.titleAlign));
-            previewEl.style.setProperty('--qrms-vitrin-price-size', fieldVal(f.priceSize, 15) + 'px');
-            previewEl.style.setProperty('--qrms-vitrin-price-weight', fieldVal(f.priceWeight, 700));
-            previewEl.style.setProperty('--qrms-vitrin-price-justify', VITRIN_JUSTIFY[vitrinAlignVal(f.priceAlign)]);
-
-            previewEl.style.setProperty('--qrms-vitrin-title-size-mobile', fieldVal(m.titleSize, 14) + 'px');
-            previewEl.style.setProperty('--qrms-vitrin-title-weight-mobile', fieldVal(m.titleWeight, 600));
-            previewEl.style.setProperty('--qrms-vitrin-title-align-mobile', vitrinAlignVal(m.titleAlign));
-            previewEl.style.setProperty('--qrms-vitrin-price-size-mobile', fieldVal(m.priceSize, 14) + 'px');
-            previewEl.style.setProperty('--qrms-vitrin-price-weight-mobile', fieldVal(m.priceWeight, 700));
-            previewEl.style.setProperty('--qrms-vitrin-price-justify-mobile', VITRIN_JUSTIFY[vitrinAlignVal(m.priceAlign)]);
-
-            var font = String(fieldVal('rma-vitrin-title-font', ''));
-            previewEl.style.setProperty('--qrms-vitrin-card-font', VITRIN_FONT_STACKS[font] || 'inherit');
-
-            var titleColor = fieldVal('rma-vitrin-title-color', '');
-            previewEl.style.setProperty('--qrms-vitrin-title-color', titleColor ? titleColor : 'var(--qrms-vitrin-text)');
-
-            var priceColor = fieldVal('rma-vitrin-price-color', '');
-            previewEl.style.setProperty('--qrms-vitrin-price-color', priceColor ? priceColor : 'var(--qrms-vitrin-accent)');
-
-            $stage.toggleClass('is-mobile-mode', mode === 'mobile');
-            $stage.toggleClass('is-price-hidden', !$('#rma-vitrin-show-price').is(':checked'));
-        }
-
-        var allFieldIds = [];
-        $.each(VITRIN_PREVIEW_FIELDS, function (_, f) {
-            $.each(f, function (_, id) { allFieldIds.push('#' + id); });
-        });
-
-        // Hizalama grubu radio'dur: id'leri alan listesine değil, sınıfına
-        // göre bağlanır (aynı ad altında üç girdi vardır).
-        $form.on('input change', allFieldIds.join(', ') + ', #rma-vitrin-show-price, #rma-vitrin-bg-color, #rma-vitrin-title-font, #rma-vitrin-title-color, #rma-vitrin-price-color', applyPreview);
-
-        $form.on('change', '.rma-align-input', function () {
-            $(this).closest('.rma-align-group').find('.rma-align-btn').each(function () {
-                $(this).toggleClass('is-selected', $(this).find('.rma-align-input').is(':checked'));
-            });
-            applyPreview();
-        });
-
-        // wpColorPicker Iris ile sürüklenirken text input'un value'su henüz
-        // güncellenmemiş olabilir (bkz. initColorPickers'taki aynı not) —
-        // taze değeri ui.color'dan alıp doğrudan CSS değişkenine yazıyoruz.
-        // Renk seçicileri aynı desenle kurulur: her biri kendi CSS
-        // değişkenini yazar, temizlenince vitrin.css'in varsayılanına döner.
-        var colorFields = [
-            { id: 'rma-vitrin-bg-color',    varName: '--qrms-vitrin-bg',          bos: 'transparent' },
-            { id: 'rma-vitrin-title-color', varName: '--qrms-vitrin-title-color', bos: 'var(--qrms-vitrin-text)' },
-            { id: 'rma-vitrin-price-color', varName: '--qrms-vitrin-price-color', bos: 'var(--qrms-vitrin-accent)' }
-        ];
-
-        if (typeof $.fn.wpColorPicker === 'function') {
-            colorFields.forEach(function (alan) {
-                var $input = $('#' + alan.id);
-                if (!$input.length) return;
-
-                $input.wpColorPicker({
-                    change: function (event, ui) {
-                        previewEl.style.setProperty(alan.varName, ui.color.toString());
-                    },
-                    clear: function () {
-                        previewEl.style.setProperty(alan.varName, alan.bos);
-                    }
-                });
-            });
-        }
-
-        $form.on('click', '.rma-vitrin-preview-btn', function () {
-            mode = $(this).data('preview-mode');
-            $('.rma-vitrin-preview-btn').removeClass('is-active');
-            $(this).addClass('is-active');
-            applyPreview();
-        });
-
-        applyPreview();
-        initVitrinPreviewSticky();
     }
 
     /**
@@ -1339,8 +982,7 @@
     /* -----------------------------------------------------------------
        ÖNE ÇIKAN SLIDER — CANLI ÖNİZLEME
 
-       Vitrin önizlemesindeki desenin aynısı: form değerleri
-       --qmo-slider-title-* değişkenlerine yazılır; ok/başlık aç-kapa
+       Form değerleri --qmo-slider-title-* değişkenlerine yazılır; ok/başlık aç-kapa
        sınıfları kök öğede açılıp kapanır. Önizleme gerçek
        frontend-slider.css'i kullandığı için sahte bir stil yoktur.
     ----------------------------------------------------------------- */
@@ -1785,14 +1427,14 @@
     }
 
     /* -----------------------------------------------------------------
-       ÜRÜN VİTRİNİ — ADIM ADIM (STEPPER)
+       SİHİRBAZ ADIMLARI (STEPPER)
 
-       Saf UI bölmesi: .rma-vitrin-step kartları DOM'da hep birlikte
-       kalır, yalnızca aktif olmayanlar gizlenir (display:none). Böylece
-       hiçbir form alanı submit'ten düşmez, hiçbir ayar adımlar arası
-       geçişte kaybolmaz — kaydetme her zaman TÜM adımların verisini
-       gönderir (bkz. trait-vitrin-admin.php handle_vitrin_save() ve
-       handle_slider_settings_save()). Gerçek bir "wizard validation"
+       Öne Çıkan Slider ve Kampanya Görselleri formlarının ortak adım
+       şeridi. Saf UI bölmesi: .rma-vitrin-step kartları DOM'da hep
+       birlikte kalır, yalnızca aktif olmayanlar gizlenir (display:none).
+       Böylece hiçbir form alanı submit'ten düşmez, hiçbir ayar adımlar
+       arası geçişte kaybolmaz — kaydetme her zaman TÜM adımların
+       verisini gönderir. Gerçek bir "wizard validation"
        yoktur: adımlar arasında serbestçe ileri/geri/atlama yapılabilir.
     ----------------------------------------------------------------- */
     function initFormStepper($form) {
@@ -1846,8 +1488,7 @@
         goster(1);
     }
 
-    function initVitrinStepper() {
-        initFormStepper($('#rma-vitrin-form'));
+    function initFormSteppers() {
         initFormStepper($('#qmo-slider-form'));
         initFormStepper($('#qmo-banner-form'));
     }
@@ -2016,7 +1657,6 @@
             secimiSenkronla();
         });
 
-        // Seçili ürün satırı vitrin seçicisiyle aynı vurguyu alır.
         $form.on('change', '.rma-kmp-urun-cb', function () {
             $(this).closest('.rma-vitrin-pool-row').toggleClass('is-selected', $(this).is(':checked'));
         });
@@ -2443,11 +2083,9 @@
         initNavDesignPresets();
         initSuggestions();
         initCsvSample();
-        initVitrinPicker();
-        initVitrinPreview();
         initSliderPreview();
         initBannerPreview();
-        initVitrinStepper();
+        initFormSteppers();
         initShortcodeCopy();
         initKampanya();
         initQuickEdit();

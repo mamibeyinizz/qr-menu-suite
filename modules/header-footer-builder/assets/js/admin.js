@@ -89,7 +89,7 @@
    * Her sekme kendi adımlarını taşır. Toplam, DOM'daki `.hfb-step`
    * kartlarından okunur (footer 5, header 4, hamburger 4, dil 1);
    * sabit bir "4/4" yoktur. Kartlar display:none ile gizlenir, submit
-   * tüm adımların verisini gönderir — vitrin initVitrinStepper ile
+   * tüm adımların verisini gönderir — admin-ui.js initFormSteppers ile
    * aynı sözleşme, ayrı "adım kaydet" yoktur.
    *
    * Son adımda "Devam Et" gizlenir; Kaydet formun altındadır.

@@ -2,7 +2,7 @@
 /**
  * Öne Çıkan Slider (qmo_one_cikan_slider) — görünüm ayarları.
  *
- * Slider tek bir kısa koddur (vitrin gibi örnek başına satır yok), bu
+ * Slider tek bir kısa koddur (örnek başına ayrı satır yok), bu
  * yüzden ayarlar wp_options'ta durur. Temizlik WordPress'e bağımlılığı
  * olmayan saf dönüşümlerdir — doğrudan test edilir.
  *
@@ -106,7 +106,7 @@ class QMO_Slider_Settings {
      *
      * Checkbox işaretli değilse POST'a hiç gelmez — 0 yazılır. Renk
      * geçersizse varsayılana düşer (boş bırakılınca başlık kaybolmasın
-     * diye vitrindeki "boş = CSS varsayılanı" davranışından farklı).
+     * diye "boş = CSS varsayılanı" davranışından farklı).
      * Font beyaz listede yoksa Playfair'e çekilir.
      *
      * @param array $ham Ham dizi.
