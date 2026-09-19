@@ -24,11 +24,19 @@
 	font-size: 15px;
 	color: #fff;
 	box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+	transition: background-color 0.2s ease, opacity 0.2s ease;
 }
 
-.qmo-cagri-btn:disabled {
+.qmo-cagri-btn:disabled,
+.qmo-cagri-btn.is-disabled {
 	opacity: 0.65;
 	cursor: wait;
+}
+
+.qmo-cagri-btn.is-success {
+	background: #1b5e20;
+	cursor: default;
+	opacity: 1;
 }
 
 .qmo-cagri-btn--garson {
@@ -37,6 +45,12 @@
 
 .qmo-cagri-btn--hesap {
 	background: #8a2be2;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.qmo-cagri-btn {
+		transition: none;
+	}
 }
 
 .qmo-cagri-durum {

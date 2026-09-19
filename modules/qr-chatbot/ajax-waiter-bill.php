@@ -107,10 +107,14 @@ if ( ! function_exists( 'qmo_cagri_gonder' ) ) {
 			wp_send_json_error( array( 'msg' => qmo_ceviri_chat( __( 'Çağrı iletilemedi, lütfen tekrar deneyin.', 'qrms' ) ) ), 500 );
 		}
 
+		// 'cooldown': frontend'in başarı sonrası kilit süresini backend'deki
+		// gerçek hız sınırıyla senkronlaması için eklenir (additive — eski
+		// istemciler bu alanı okumaz, kırılmaz).
 		wp_send_json_success(
 			array(
-				'msg'   => qmo_ceviri_chat( __( 'İletildi', 'qrms' ) ),
-				'mesaj' => qmo_ceviri_chat( __( 'Talep alındı.', 'qrms' ) ),
+				'msg'      => qmo_ceviri_chat( __( 'İletildi', 'qrms' ) ),
+				'mesaj'    => qmo_ceviri_chat( __( 'Talep alındı.', 'qrms' ) ),
+				'cooldown' => $saniye,
 			)
 		);
 	}
