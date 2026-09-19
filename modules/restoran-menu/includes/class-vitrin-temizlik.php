@@ -45,11 +45,20 @@ class RMA_Vitrin_Temizlik {
             return;
         }
 
+        $yetki = class_exists( 'QRMS_Admin' ) ? QRMS_Admin::CAPABILITY : 'manage_options';
+
+        if ( ! current_user_can( $yetki ) ) {
+            return;
+        }
+
         self::temizle();
     }
 
     /**
      * Vitrin tablolarını düşürür ve özelliğe ait option'ları siler.
+     *
+     * Herhangi bir DROP başarısız olursa (query() false döner) bayrak
+     * yazılmaz; böylece temizlik sonraki admin_init'te tekrar denenir.
      *
      * @return void
      */
@@ -60,7 +69,11 @@ class RMA_Vitrin_Temizlik {
             $ad = $wpdb->prefix . $tablo;
 
             // Tablo adı sabit listeden gelir, kullanıcı girdisi değildir.
-            $wpdb->query( "DROP TABLE IF EXISTS `{$ad}`" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery
+            $sonuc = $wpdb->query( "DROP TABLE IF EXISTS `{$ad}`" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery
+
+            if ( false === $sonuc ) {
+                return;
+            }
         }
 
         delete_option( self::ESKI_VERSION_OPTION );
