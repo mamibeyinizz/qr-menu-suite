@@ -7,7 +7,9 @@
  *     istemci istediği masa numarasını gönderebiliyor, başka masaya çağrı
  *     düşürebiliyordu. Şimdi doğrulanmış oturum cookie'sinden okunuyor.
  *   - Her istek nonce + geçerli oturum ister.
- *   - IP + masa bazlı hız sınırı: aynı çağrı 60 saniyede bir.
+ *   - IP + masa bazlı hız sınırı: garson çağrısı 60 saniyede bir, hesap
+ *     isteği 180 saniyede bir (qmo_cagri_bekleme filtresiyle değiştirilebilir
+ *     — bkz. qmo_cagri_gonder()).
  *
  * @package QR_Menu_Official
  */
@@ -77,8 +79,21 @@ if ( ! function_exists( 'qmo_cagri_gonder' ) ) {
 			wp_send_json_error( array( 'msg' => qmo_ceviri_chat( __( 'Çağrı sistemi şu anda kullanılamıyor.', 'qrms' ) ) ), 503 );
 		}
 
-		// Hız sınırı: aynı masa + aynı IP, 60 saniyede bir çağrı.
-		$saniye = (int) apply_filters( 'qmo_cagri_bekleme', 60, $tip );
+		// Hız sınırı: aynı masa + aynı IP.
+		//
+		// Garson: 60sn — spam koruması, backend davranışı DEĞİŞMEDİ.
+		// Hesap: 180sn — 60sn'lik eski pencere hem hız sınırı hem de
+		// frontend'in "✓ İstendi" görünürlük süresi olarak kullanılıyordu
+		// (bkz. buttons.js cooldownBaslat, yanıttaki 'cooldown' alanını okur);
+		// ama hesabın gerçekten getirilmesi genelde 60sn'den uzun sürer, bu
+		// yüzden buton 60. saniyede sessizce "Hesap İste"ye dönüp istek hiç
+		// yapılmamış gibi yanlış bir sinyal veriyordu. Bu, rate-limit'i
+		// gevşetmek İÇİN değil, rate-limit'in zaten temsil ettiği "bu istek
+		// hâlâ işleniyor" penceresini gerçeğe daha yakın kılmak içindir — aynı
+		// $saniye hem hız sınırına hem yanıttaki cooldown'a gider, iki ayrı
+		// sistem icat edilmedi. Aynı filtreyle (tip parametresiyle) her
+		// zamanki gibi override edilebilir.
+		$saniye = (int) apply_filters( 'qmo_cagri_bekleme', ( 'hesap' === $tip ? 180 : 60 ), $tip );
 		if ( ! qmo_hiz_siniri( 'cagri_' . $tip, $masa, $saniye ) ) {
 			wp_send_json_error( array( 'msg' => qmo_ceviri_chat( __( 'Çağrınız iletildi, lütfen bekleyin.', 'qrms' ) ) ), 429 );
 		}

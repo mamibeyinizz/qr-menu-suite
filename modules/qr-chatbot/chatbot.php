@@ -152,9 +152,13 @@ if ( ! function_exists( 'qmo_chat_js_metinleri' ) ) {
 			'tekrarDene'         => qmo_ceviri_chat( __( 'Tekrar Dene', 'qrms' ) ),
 			// Sticky footer / kısa kod garson-hesap butonlarının state metinleri (buttons.js).
 			'garsonCagriliyor'   => qmo_ceviri_chat( __( 'Çağrılıyor...', 'qrms' ) ),
-			'garsonCagrildiBtn'  => qmo_ceviri_chat( __( '✓ Garson Çağrıldı', 'qrms' ) ),
+			// "✓ Garson Çağrıldı" yerine kısa "✓ Çağrıldı": 320px sticky footer
+			// genişliğinde (2 buton yan yana, nowrap) uzun metin butonun kendi
+			// kutusundan taşıyordu (gerçek tarayıcı ölçümüyle doğrulandı).
+			// Buton bağlamı (ikon + konum) zaten hangi eylem olduğunu taşıyor.
+			'garsonCagrildiBtn'  => qmo_ceviri_chat( __( '✓ Çağrıldı', 'qrms' ) ),
 			'hesapIsteniyor'     => qmo_ceviri_chat( __( 'İsteniyor...', 'qrms' ) ),
-			'hesapIstendiBtn'    => qmo_ceviri_chat( __( '✓ Hesap İstendi', 'qrms' ) ),
+			'hesapIstendiBtn'    => qmo_ceviri_chat( __( '✓ İstendi', 'qrms' ) ),
 		);
 	}
 }

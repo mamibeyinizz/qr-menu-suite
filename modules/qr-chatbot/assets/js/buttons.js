@@ -51,7 +51,11 @@
 	 * @param {string} [durumMetni] loading/success için görünen metin.
 	 */
 	function durumUygula( btn, durum, durumMetni ) {
-		var span = btn.querySelector( 'span' );
+		// '.qmo-cagri-etiket': shortcode-buttons.php'de ikon da bir <span>
+		// olduğu için (qmo-cagri-ikon) isimsiz 'span' seçici ikonu ezip
+		// state metnini yanlış yere yazıyordu. HFB footer (trait-frontend.php)
+		// tek span'ine de aynı class eklendi; ikisi de bu seçiciyle çalışır.
+		var span = btn.querySelector( '.qmo-cagri-etiket' );
 
 		if ( 'idle' === durum ) {
 			var zamanlayici = cooldownZamanlayicilari.get( btn );
@@ -138,8 +142,8 @@
 		istek( { action: action } ).then( function ( yanit ) {
 			if ( yanit && yanit.success ) {
 				durumUygula( btn, 'success', 'hesap' === tip
-					? metin( 'hesapIstendiBtn', '✓ Hesap İstendi' )
-					: metin( 'garsonCagrildiBtn', '✓ Garson Çağrıldı' ) );
+					? metin( 'hesapIstendiBtn', '✓ İstendi' )
+					: metin( 'garsonCagrildiBtn', '✓ Çağrıldı' ) );
 				yaz( bar, 'hesap' === tip
 					? metin( 'hesapIletildi', 'Hesap talebiniz iletildi.' )
 					: metin( 'garsonIletildi', 'Garson çağrınız iletildi.' ), false );

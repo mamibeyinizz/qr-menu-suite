@@ -25,6 +25,8 @@
 
 require_once QRMS_PLUGIN_DIR . 'modules/_qmo-ortak/class-qmo-firestore.php';
 require_once QRMS_PLUGIN_DIR . 'modules/qr-chatbot/ajax-waiter-bill.php';
+require_once QRMS_PLUGIN_DIR . 'modules/_qmo-ortak/assets.php';
+require_once QRMS_PLUGIN_DIR . 'modules/qr-chatbot/includes/shortcode-buttons.php';
 
 echo "\nGarson Çağır / Hesap İste — UX state revizyonu\n";
 
@@ -146,7 +148,7 @@ qrms_test(
 
 		$json = $GLOBALS['qrms_test']['json'];
 		qrms_assert_true( $json['success'], 'başarılı' );
-		qrms_assert_same( 60, $json['data']['cooldown'], 'hesap için de aynı öntanımlı pencere' );
+		qrms_assert_same( 180, $json['data']['cooldown'], 'hesap için öntanımlı pencere garsondan uzun (180sn) — bkz. FIX #3' );
 
 		$govde = $GLOBALS['qrms_test']['http_calls'][0]['args']['body'];
 		qrms_assert_true( false !== strpos( $govde, '"tip":{"stringValue":"hesap"}' ), 'tip hesap' );
@@ -173,6 +175,39 @@ qrms_test(
 		// qrms_reset() her qrms_test() başında action/filter defterini
 		// temizler; bu yüzden burada remove_filter() gerekmez (stub'da yok).
 		qrms_assert_same( 15, $GLOBALS['qrms_test']['json']['data']['cooldown'], 'filtrelenmiş pencere yanıta yansır' );
+	}
+);
+
+qrms_test(
+	'FIX #3: hesap ve garson öntanımlı cooldown\'ları FARKLI (garson 60sn korunur, hesap 180sn\'e çıkar), her ikisi de qmo_cagri_bekleme ile override edilebilir kalır',
+	function () {
+		qrms_gh_oturum_kur( 'masa-204' );
+		qrms_gh_firestore_hazir();
+		qrms_gh_wpdb();
+		qmo_ajax_garson_cagir();
+		$garsonCooldown = $GLOBALS['qrms_test']['json']['data']['cooldown'];
+
+		qrms_gh_oturum_kur( 'masa-205' );
+		qrms_gh_firestore_hazir();
+		qrms_gh_wpdb();
+		qmo_ajax_hesap_iste();
+		$hesapCooldown = $GLOBALS['qrms_test']['json']['data']['cooldown'];
+
+		qrms_assert_same( 60, $garsonCooldown, 'garsonun mevcut rate-limit davranışı DEĞİŞMEDİ' );
+		qrms_assert_same( 180, $hesapCooldown, 'hesap için UX cooldown\'ı garsondan uzun' );
+		qrms_assert_true( $hesapCooldown > $garsonCooldown, 'hesap süresi garsondan gerçekten uzun' );
+
+		// Aynı filtre mekanizması hâlâ HER İKİ tipi de override edebilir —
+		// yeni bir sistem icat edilmedi, sadece varsayılan değişti.
+		qrms_gh_oturum_kur( 'masa-206' );
+		qrms_gh_firestore_hazir();
+		qrms_gh_wpdb();
+		$ozelFiltre = function ( $saniye, $tip ) {
+			return 'hesap' === $tip ? 30 : $saniye;
+		};
+		add_filter( 'qmo_cagri_bekleme', $ozelFiltre, 10, 2 );
+		qmo_ajax_hesap_iste();
+		qrms_assert_same( 30, $GLOBALS['qrms_test']['json']['data']['cooldown'], 'operatör filtreyle yeni varsayılanı da ezebilir' );
 	}
 );
 
@@ -213,6 +248,11 @@ qrms_test(
 		qrms_assert_contains( '$sess = qmo_oturum_zorla();', $php, 'nonce+oturum zorlanır' );
 		qrms_assert_contains( "\$masa = \$sess['masa'];", $php, 'masa DOĞRULANMIŞ oturumdan okunur' );
 		qrms_assert_contains( "qmo_hiz_siniri( 'cagri_' . \$tip, \$masa, \$saniye )", $php, 'masa+IP hız sınırı korunur' );
+		qrms_assert_contains(
+			"apply_filters( 'qmo_cagri_bekleme', ( 'hesap' === \$tip ? 180 : 60 ), \$tip )",
+			$php,
+			'FIX #3: aynı filtre mekanizması, tip bazlı yeni varsayılan (garson 60 korunur, hesap 180)'
+		);
 		qrms_assert_contains(
 			"wp_send_json_error( array( 'msg' => qmo_ceviri_chat( __( 'Çağrınız iletildi, lütfen bekleyin.', 'qrms' ) ) ), 429 )",
 			$php,
@@ -255,6 +295,66 @@ qrms_test(
 );
 
 qrms_test(
+	'FIX #1: buttons.js etiket span\'ini SINIFLA seçer (ikon span\'ini ezmez); shortcode ve HFB markup\'ı bu sınıfı taşır',
+	function () {
+		$js       = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/assets/js/buttons.js' );
+		$shortcode = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/includes/shortcode-buttons.php' );
+		$hfb      = file_get_contents( QRMS_PLUGIN_DIR . 'modules/header-footer-builder/includes/trait-frontend.php' );
+
+		qrms_assert_contains(
+			"var span = btn.querySelector( '.qmo-cagri-etiket' );",
+			$js,
+			'seçici artık isimsiz \'span\' değil, açık .qmo-cagri-etiket class\'ı — ikon span\'i (qmo-cagri-ikon) artık asla eşleşmez'
+		);
+		qrms_assert_false( false !== strpos( $js, "querySelector( 'span' )" ), 'isimsiz/belirsiz span seçici kalmadı' );
+		qrms_assert_false(
+			(bool) preg_match( '/querySelector\\(\\s*[\'"]span:(last-of-type|not|first)/', $js ),
+			':last-of-type / :not gibi kırılgan CSS seçici hilesi kullanılmadı — açık class kullanılıyor'
+		);
+
+		// shortcode-buttons.php: ikon VE etiket ayrı class'lara sahip, ikisi de span ama artık birbirinden ayırt edilebilir.
+		qrms_assert_contains( 'class="qmo-cagri-ikon"', $shortcode, 'ikon span\'i kendi class\'ında kalır' );
+		qrms_assert_same(
+			2,
+			substr_count( $shortcode, 'class="qmo-cagri-etiket"' ),
+			'iki buton (garson+hesap), her birinde tam bir etiket span\'i'
+		);
+
+		// HFB footer: ikon <svg> (span değil), tek span'e de AYNI class eklendi —
+		// böylece JS'in tek seçicisi iki farklı markup şeklinde de çalışır.
+		qrms_assert_same(
+			2,
+			substr_count( $hfb, "<span class=\"qmo-cagri-etiket\">" ),
+			'HFB\'nin iki butonunda da (garson+hesap) etiket span\'i aynı class\'ı taşır'
+		);
+	}
+);
+
+qrms_test(
+	'FIX #1 (gerçek render): qmo_cagri_butonlari_html() ürettiği GERÇEK HTML\'de ikon ve etiket ayrı elemanlar, ikon metni bozulmuyor',
+	function () {
+		$GLOBALS['qrms_test']['options'][ QMO_Oturum::OPT_KEY ] = 'test-hmac-anahtari-garson-hesap-ux-icin-yeterince-uzun';
+		$_COOKIE[ QMO_Oturum::COOKIE ] = QMO_Oturum::token_uret( 'masa-210' );
+
+		$html = qmo_cagri_butonlari_html( 'ikili' );
+
+		qrms_assert_true( '' !== $html, 'oturum geçerliyken buton HTML\'i üretilir' );
+		qrms_assert_same( 2, substr_count( $html, 'qmo-cagri-ikon' ), 'iki ikon span\'i (garson🛎️ + hesap🧾)' );
+		qrms_assert_same( 2, substr_count( $html, 'qmo-cagri-etiket' ), 'iki etiket span\'i' );
+		// Emoji hâlâ SADECE ikon span'inin içinde — etiket span'i emoji taşımaz,
+		// yani JS ileride etiketi güncellediğinde ikonun kendisine dokunmaz.
+		qrms_assert_true(
+			(bool) preg_match( '/<span class="qmo-cagri-ikon"[^>]*>\x{1F6CE}\x{FE0F}<\/span>\s*<span class="qmo-cagri-etiket">Garson Çağır<\/span>/u', $html ),
+			'garson: ikon span\'i emoji taşır, HEMEN ARDINDAN ayrı etiket span\'i metni taşır'
+		);
+		qrms_assert_true(
+			(bool) preg_match( '/<span class="qmo-cagri-ikon"[^>]*>\x{1F9FE}<\/span>\s*<span class="qmo-cagri-etiket">Hesap İste<\/span>/u', $html ),
+			'hesap: aynı yapı'
+		);
+	}
+);
+
+qrms_test(
 	'buttons.js: loading sırasında çift tıklama/rapid-click korumalı (disabled kontrolü + native disabled attribute)',
 	function () {
 		$js = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/assets/js/buttons.js' );
@@ -276,6 +376,22 @@ qrms_test(
 		qrms_assert_contains( 'function cooldownBaslat(', $js, 'cooldown zamanlayıcısı merkezi fonksiyon' );
 		qrms_assert_contains( 'cooldownBaslat( btn, yanit.data && yanit.data.cooldown )', $js, 'backend cooldown metadata\'sı okunur' );
 		qrms_assert_contains( 'COOLDOWN_YEDEK_SN = 60', $js, 'sunucu cooldown göndermezse aynı öntanımlı pencereye düşer' );
+	}
+);
+
+qrms_test(
+	'FIX #2: success metinleri kısaltıldı (mobil 320px\'te gerçek Chromium ölçümünde butonun kendi kutusunu taşıyordu)',
+	function () {
+		$js = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/assets/js/buttons.js' );
+
+		qrms_assert_contains( "metin( 'garsonCagrildiBtn', '✓ Çağrıldı' )", $js, 'garson success yedek metni kısaltıldı' );
+		qrms_assert_contains( "metin( 'hesapIstendiBtn', '✓ İstendi' )", $js, 'hesap success yedek metni kısaltıldı' );
+		qrms_assert_false( false !== strpos( $js, '✓ Garson Çağrıldı' ), 'eski uzun metin JS\'de kalmadı' );
+		qrms_assert_false( false !== strpos( $js, '✓ Hesap İstendi' ), 'eski uzun metin JS\'de kalmadı' );
+		// Butonun temel boyutu/görünümü DEĞİŞMEDİ — yalnızca metin kısaldı,
+		// overflow:hidden/ellipsis gibi bir "safety net" eklenmedi (gerçek
+		// ölçümde kısaltma tek başına yeterliydi).
+		qrms_assert_false( false !== strpos( $js, 'text-overflow' ), 'ellipsis fallback\'ine gerek kalmadı' );
 	}
 );
 
@@ -345,7 +461,7 @@ qrms_test(
 		$katalog = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-ceviri/includes/ui-stringler.php' );
 		$boot    = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/chatbot.php' );
 
-		foreach ( array( 'Çağrılıyor...', 'İsteniyor...', '✓ Garson Çağrıldı', '✓ Hesap İstendi' ) as $metin ) {
+		foreach ( array( 'Çağrılıyor...', 'İsteniyor...', '✓ Çağrıldı', '✓ İstendi' ) as $metin ) {
 			qrms_assert_contains( "'" . $metin . "'", $katalog, $metin . ' çeviri kataloğunda (chat modülü)' );
 		}
 
