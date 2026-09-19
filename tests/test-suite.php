@@ -46,6 +46,7 @@ require_once __DIR__ . '/test-iletisim.php';
 require_once __DIR__ . '/test-yorum-form-builder.php';
 require_once __DIR__ . '/test-reward-capability.php';
 require_once __DIR__ . '/test-ajax-403-status.php';
+require_once __DIR__ . '/test-vitrin-temizlik.php';
 
 if ( empty( $GLOBALS['qrms_failures'] ) ) {
 	echo "\033[32mTüm testler geçti\033[0m (" . $GLOBALS['qrms_assertions'] . " doğrulama)\n\n";

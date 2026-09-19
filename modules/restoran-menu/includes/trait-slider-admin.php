@@ -103,6 +103,7 @@ trait RMA_Slider_Admin_Trait {
      * @return void
      */
     private function rma_align_row( $id, $name, $deger, $etiket, $aciklama ) {
+        $deger = strtolower( trim( (string) $deger ) );
         $deger = in_array( $deger, array( 'left', 'center', 'right' ), true ) ? $deger : 'left';
 
         // İkonlar: üç çizgi, hizaya göre kaydırılmış (WordPress'in kendi
