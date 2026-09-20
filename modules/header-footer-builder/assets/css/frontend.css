@@ -1237,8 +1237,9 @@ body.hfb-scroll-locked {
   width: 100%;
 }
 
-/* V3 — sticky garson/hesap: admin --hfb-btn-* değişkenleri öncelikli; glossy efekt yok. */
+/* V3.1 — sticky garson/hesap: admin --hfb-btn-* öncelikli; düz premium yüzey, glossy/inset yok. */
 .hfb-footer__call-wrap:has(.qmo-cagri-bar) .hfb-footer__call-btn {
+  -webkit-tap-highlight-color: transparent;
   align-items: center;
   background-image: none;
   background-blend-mode: normal;
@@ -1258,7 +1259,7 @@ body.hfb-scroll-locked {
   line-height: 1;
   min-height: 44px;
   min-width: 0;
-  padding: 0 12px;
+  padding: 0 14px;
   text-decoration: none;
   transform: none;
   transition: transform 0.18s ease, border-color 0.2s ease, background-color 0.2s ease, color 0.2s ease;
@@ -1267,14 +1268,14 @@ body.hfb-scroll-locked {
 
 .hfb-footer__call-wrap:has(.qmo-cagri-bar) .hfb-footer__call-btn--primary {
   background-color: var(--hfb-btn-bg, var(--hfb-gold));
-  border: 1px solid color-mix(in srgb, var(--hfb-btn-bg, var(--hfb-gold)) 72%, #000);
-  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 14%, transparent);
+  border: 1px solid var(--hfb-btn-bg, var(--hfb-gold));
+  box-shadow: none;
   color: var(--hfb-btn-color, var(--hfb-ink));
 }
 
 .hfb-footer__call-wrap:has(.qmo-cagri-bar) .hfb-footer__call-btn--secondary {
   background-color: var(--hfb-ink, #0a0a0c);
-  border: 1px solid color-mix(in srgb, var(--hfb-btn-bg, var(--hfb-gold)) 48%, transparent);
+  border: 1px solid color-mix(in srgb, var(--hfb-btn-bg, var(--hfb-gold)) 30%, transparent);
   color: var(--hfb-btn-bg, var(--hfb-gold));
 }
 
@@ -1324,17 +1325,17 @@ body.hfb-scroll-locked {
 
 @media (hover: hover) {
   .hfb-footer__call-wrap:has(.qmo-cagri-bar) .hfb-footer__call-btn--primary:hover {
-    background-color: color-mix(in srgb, var(--hfb-btn-bg, var(--hfb-gold)) 92%, #fff);
-    border-color: color-mix(in srgb, var(--hfb-btn-bg, var(--hfb-gold)) 78%, #000);
-    box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 18%, transparent);
+    background-color: color-mix(in srgb, var(--hfb-btn-bg, var(--hfb-gold)) 96%, #fff);
+    border-color: var(--hfb-btn-bg, var(--hfb-gold));
+    box-shadow: none;
     color: var(--hfb-btn-color, var(--hfb-ink));
     filter: none;
     transform: none;
   }
 
   .hfb-footer__call-wrap:has(.qmo-cagri-bar) .hfb-footer__call-btn--secondary:hover {
-    background-color: color-mix(in srgb, var(--hfb-ink, #0a0a0c) 88%, var(--hfb-btn-bg, var(--hfb-gold)));
-    border-color: color-mix(in srgb, var(--hfb-btn-bg, var(--hfb-gold)) 65%, transparent);
+    background-color: color-mix(in srgb, var(--hfb-ink, #0a0a0c) 94%, var(--hfb-btn-bg, var(--hfb-gold)));
+    border-color: color-mix(in srgb, var(--hfb-btn-bg, var(--hfb-gold)) 42%, transparent);
     color: var(--hfb-btn-bg, var(--hfb-gold));
     filter: none;
     transform: none;
