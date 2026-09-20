@@ -1212,12 +1212,10 @@ body.hfb-scroll-locked {
  */
 .hfb-footer__call-wrap:has(.qmo-cagri-bar),
 .hfb-footer__call-wrap:has(.hfb-footer__call--warn) {
-  -webkit-backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
   background: rgba(10, 10, 12, 0.82);
-  border-top: 1px solid rgba(201, 168, 76, 0.28);
+  border-top: 1px solid color-mix(in srgb, var(--hfb-gold) 22%, transparent);
   bottom: 0;
-  box-shadow: 0 -6px 22px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 -2px 14px rgba(0, 0, 0, 0.22);
   display: flex;
   gap: 10px;
   left: 0;
@@ -1239,16 +1237,14 @@ body.hfb-scroll-locked {
   width: 100%;
 }
 
+/* V3 — sticky garson/hesap: admin --hfb-btn-* değişkenleri öncelikli; glossy efekt yok. */
 .hfb-footer__call-wrap:has(.qmo-cagri-bar) .hfb-footer__call-btn {
   align-items: center;
-  background-blend-mode: overlay;
-  background-color: var(--hfb-btn-bg, var(--hfb-gold));
-  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(0, 0, 0, 0.18));
-  border: 1px solid color-mix(in srgb, var(--hfb-btn-bg, var(--hfb-gold)) 50%, transparent);
-  border-radius: 12px;
+  background-image: none;
+  background-blend-mode: normal;
+  border-radius: var(--hfb-btn-radius, 12px);
   box-shadow: none;
   box-sizing: border-box;
-  color: var(--hfb-btn-color, var(--hfb-ink));
   display: inline-flex;
   filter: none;
   flex: 1 1 0;
@@ -1258,26 +1254,44 @@ body.hfb-scroll-locked {
   gap: 8px;
   height: 44px;
   justify-content: center;
-  letter-spacing: 0.2px;
+  letter-spacing: 0.01em;
   line-height: 1;
   min-height: 44px;
   min-width: 0;
   padding: 0 12px;
   text-decoration: none;
   transform: none;
-  transition: transform 0.18s ease, border-color 0.2s ease, background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+  transition: transform 0.18s ease, border-color 0.2s ease, background-color 0.2s ease, color 0.2s ease;
   white-space: nowrap;
+}
+
+.hfb-footer__call-wrap:has(.qmo-cagri-bar) .hfb-footer__call-btn--primary {
+  background-color: var(--hfb-btn-bg, var(--hfb-gold));
+  border: 1px solid color-mix(in srgb, var(--hfb-btn-bg, var(--hfb-gold)) 72%, #000);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 14%, transparent);
+  color: var(--hfb-btn-color, var(--hfb-ink));
+}
+
+.hfb-footer__call-wrap:has(.qmo-cagri-bar) .hfb-footer__call-btn--secondary {
+  background-color: var(--hfb-ink, #0a0a0c);
+  border: 1px solid color-mix(in srgb, var(--hfb-btn-bg, var(--hfb-gold)) 48%, transparent);
+  color: var(--hfb-btn-bg, var(--hfb-gold));
 }
 
 .hfb-footer__call-wrap:has(.qmo-cagri-bar) .hfb-footer__call-btn .hfb-icon--call {
   color: currentColor;
   flex-shrink: 0;
-  height: 17px;
-  width: 17px;
+  height: 1.15em;
+  width: 1.15em;
+}
+
+.hfb-footer__call-wrap:has(.qmo-cagri-bar) .hfb-footer__call-btn:focus-visible {
+  outline: 2px solid var(--hfb-btn-bg, var(--hfb-gold));
+  outline-offset: 2px;
 }
 
 .hfb-footer__call-wrap:has(.qmo-cagri-bar) .hfb-footer__call-btn:active {
-  transform: scale(0.97);
+  transform: scale(0.98);
 }
 
 .hfb-footer__call-wrap:has(.qmo-cagri-bar) .hfb-footer__call-btn.is-disabled,
@@ -1293,8 +1307,8 @@ body.hfb-scroll-locked {
 .hfb-footer__call-wrap:has(.qmo-cagri-bar) .hfb-footer__call-btn.is-success {
   background-blend-mode: normal;
   background-color: #1b5e20;
-  background-image: linear-gradient(180deg, #2e7d32, #1b5e20);
-  border-color: #66bb6a;
+  background-image: none;
+  border-color: #3d8f45;
   color: #fff;
   /* .is-success cooldown boyunca native disabled ile birlikte durur (bkz.
      buttons.js); üstteki :disabled kuralının opacity:0.5'i olmasa da
@@ -1309,20 +1323,27 @@ body.hfb-scroll-locked {
 }
 
 @media (hover: hover) {
-  .hfb-footer__call-wrap:has(.qmo-cagri-bar) .hfb-footer__call-btn:hover {
-    background-color: var(--hfb-btn-bg, var(--hfb-gold));
-    background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.28), rgba(0, 0, 0, 0.08));
-    border-color: color-mix(in srgb, var(--hfb-btn-bg, var(--hfb-gold)) 85%, #fff);
-    box-shadow: 0 6px 18px color-mix(in srgb, var(--hfb-btn-bg, var(--hfb-gold)) 35%, transparent);
+  .hfb-footer__call-wrap:has(.qmo-cagri-bar) .hfb-footer__call-btn--primary:hover {
+    background-color: color-mix(in srgb, var(--hfb-btn-bg, var(--hfb-gold)) 92%, #fff);
+    border-color: color-mix(in srgb, var(--hfb-btn-bg, var(--hfb-gold)) 78%, #000);
+    box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 18%, transparent);
     color: var(--hfb-btn-color, var(--hfb-ink));
     filter: none;
     transform: none;
   }
 
+  .hfb-footer__call-wrap:has(.qmo-cagri-bar) .hfb-footer__call-btn--secondary:hover {
+    background-color: color-mix(in srgb, var(--hfb-ink, #0a0a0c) 88%, var(--hfb-btn-bg, var(--hfb-gold)));
+    border-color: color-mix(in srgb, var(--hfb-btn-bg, var(--hfb-gold)) 65%, transparent);
+    color: var(--hfb-btn-bg, var(--hfb-gold));
+    filter: none;
+    transform: none;
+  }
+
   .hfb-footer__call-wrap:has(.qmo-cagri-bar) .hfb-footer__call-btn.is-success:hover {
-    background-image: linear-gradient(180deg, #2e7d32, #1b5e20);
-    border-color: #66bb6a;
-    box-shadow: 0 6px 18px rgba(46, 125, 50, 0.35);
+    background-color: #1f6b28;
+    border-color: #3d8f45;
+    box-shadow: none;
     color: #fff;
   }
 }

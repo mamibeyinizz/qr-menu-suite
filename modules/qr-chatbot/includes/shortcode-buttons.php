@@ -89,7 +89,7 @@ if ( ! function_exists( 'qmo_cagri_butonlari_html' ) ) {
 					<span class="qmo-cagri-etiket"><?php echo esc_html( qmo_ceviri_chat( __( 'Hesap İste', 'qrms' ) ) ); ?></span>
 				</button>
 			<?php endif; ?>
-			<p class="qmo-cagri-durum" hidden></p>
+			<p class="qmo-cagri-durum" role="status" aria-live="polite" hidden></p>
 		</div>
 		<?php
 		return ob_get_clean();

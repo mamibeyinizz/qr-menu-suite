@@ -1661,9 +1661,11 @@ qrms_test(
 		qrms_assert_contains( 'padding-bottom: calc(66px + env(safe-area-inset-bottom, 0px))', $css, 'footer scroll payı' );
 		qrms_assert_contains( "\nbody:has(.hfb-footer__call-wrap .qmo-cagri-bar):not(.wp-admin),", $css, 'body ink rengi overscroll' );
 		qrms_assert_contains( "\n.wp-admin .hfb-footer__call-wrap:has(.qmo-cagri-bar),", $css, 'admin önizlemesi akışta kalır' );
-		qrms_assert_contains( 'border-radius: 12px', $css, 'köşeli-yuvarlak buton' );
+		qrms_assert_contains( 'border-radius: var(--hfb-btn-radius', $css, 'sticky CTA köşe admin değişkeni' );
+		qrms_assert_contains( 'hfb-footer__call-btn--primary', $css, 'V3 primary CTA' );
+		qrms_assert_contains( 'hfb-footer__call-btn--secondary', $css, 'V3 secondary CTA' );
 		qrms_assert_contains( 'flex: 1 1 0', $css, 'iki buton eşit genişlik' );
-		qrms_assert_contains( 'transform: scale(0.97)', $css, ':active dokunma' );
+		qrms_assert_contains( 'transform: scale(0.98)', $css, ':active dokunma' );
 		qrms_assert_contains( 'background: rgba(10, 10, 12, 0.82)', $css, 'sticky bar zemini' );
 		qrms_assert_true( false === strpos( $css, 'border-radius: 50px' ), 'sabit 50px radius yok' );
 		qrms_assert_true( false === strpos( $css, '#d4af37' ), 'hardcoded altın yok' );

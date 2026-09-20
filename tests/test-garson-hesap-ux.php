@@ -425,6 +425,10 @@ qrms_test(
 		qrms_assert_contains( 'span.textContent = durumMetni', $js, 'buton metni textContent ile basılır' );
 		qrms_assert_false( false !== strpos( $js, 'console.' ), 'prodüksiyon kodunda console.* yok' );
 		qrms_assert_contains( '<button type="button"', $php, 'butonlar native <button> — klavye (Enter/Space) tarayıcı tarafından desteklenir' );
+		qrms_assert_contains( 'role="status" aria-live="polite"', $php, 'durum satırı ekran okuyucuya duyurulur' );
+		$hfb = file_get_contents( QRMS_PLUGIN_DIR . 'modules/header-footer-builder/includes/trait-frontend.php' );
+		qrms_assert_contains( 'hfb-footer__call-btn--primary', $hfb, 'HFB garson primary sınıfı' );
+		qrms_assert_contains( 'hfb-footer__call-btn--secondary', $hfb, 'HFB hesap secondary sınıfı' );
 	}
 );
 

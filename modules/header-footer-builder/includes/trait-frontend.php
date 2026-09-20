@@ -884,13 +884,13 @@ trait QRMS_HFB_Frontend {
 		// işaretler (bkz. shortcode-buttons.php — orada ikon da bir span
 		// olduğu için isimsiz 'span' seçici ikonu ezebiliyordu).
 		$html  = '<div class="hfb-footer__call qmo-cagri-bar">';
-		$html .= '<button type="button" class="hfb-btn hfb-footer__call-btn"' . ( $live ? ' data-qmo-cagri="garson"' : '' ) . '>';
+		$html .= '<button type="button" class="hfb-btn hfb-footer__call-btn hfb-footer__call-btn--primary"' . ( $live ? ' data-qmo-cagri="garson"' : '' ) . '>';
 		$html .= $this->call_button_icon_svg( 'garson' );
 		$html .= '<span class="qmo-cagri-etiket">' . esc_html( $garson ) . '</span></button>';
-		$html .= '<button type="button" class="hfb-btn hfb-footer__call-btn"' . ( $live ? ' data-qmo-cagri="hesap"' : '' ) . '>';
+		$html .= '<button type="button" class="hfb-btn hfb-footer__call-btn hfb-footer__call-btn--secondary"' . ( $live ? ' data-qmo-cagri="hesap"' : '' ) . '>';
 		$html .= $this->call_button_icon_svg( 'hesap' );
 		$html .= '<span class="qmo-cagri-etiket">' . esc_html( $hesap ) . '</span></button>';
-		$html .= '<p class="qmo-cagri-durum" hidden></p>';
+		$html .= '<p class="qmo-cagri-durum" role="status" aria-live="polite" hidden></p>';
 		$html .= '</div>';
 
 		return $html;
