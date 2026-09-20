@@ -898,10 +898,11 @@ body.hfb-scroll-locked {
 }
 
 .hfb-footer-wrap .hfb-footer__call-btn.is-success {
-  background-color: #1d7a4c;
-  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(0, 0, 0, 0.08));
-  border-color: #15803d;
-  color: #fff;
+  background-color: color-mix(in srgb, var(--hfb-gold) 18%, var(--hfb-ink));
+  background-image: none;
+  border-color: var(--hfb-gold);
+  color: var(--hfb-gold-soft);
+  opacity: 1;
 }
 
 .hfb-footer-wrap .hfb-footer__call-btn .hfb-btn-spinner {
@@ -1212,18 +1213,16 @@ body.hfb-scroll-locked {
  */
 .hfb-footer__call-wrap:has(.qmo-cagri-bar),
 .hfb-footer__call-wrap:has(.hfb-footer__call--warn) {
-  -webkit-backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
-  background: rgba(10, 10, 12, 0.82);
-  border-top: 1px solid rgba(201, 168, 76, 0.28);
+  background: var(--hfb-ink, #0a0a0c);
+  border-top: 1px solid var(--hfb-border);
   bottom: 0;
-  box-shadow: 0 -6px 22px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 -1px 0 color-mix(in srgb, var(--hfb-gold) 14%, transparent);
   display: flex;
-  gap: 10px;
+  gap: 12px;
   left: 0;
   margin: 0;
   max-width: none;
-  padding: 8px 12px calc(8px + env(safe-area-inset-bottom, 0px));
+  padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0px));
   position: fixed;
   right: 0;
   z-index: 9999;
@@ -1233,7 +1232,7 @@ body.hfb-scroll-locked {
 .hfb-footer__call-wrap:has(.hfb-footer__call--warn) .hfb-footer__call {
   display: flex;
   flex: 1 1 auto;
-  gap: 10px;
+  gap: 12px;
   justify-content: stretch;
   min-width: 0;
   width: 100%;
@@ -1241,43 +1240,64 @@ body.hfb-scroll-locked {
 
 .hfb-footer__call-wrap:has(.qmo-cagri-bar) .hfb-footer__call-btn {
   align-items: center;
-  background-blend-mode: overlay;
-  background-color: var(--hfb-btn-bg, var(--hfb-gold));
-  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(0, 0, 0, 0.18));
-  border: 1px solid color-mix(in srgb, var(--hfb-btn-bg, var(--hfb-gold)) 50%, transparent);
-  border-radius: 12px;
+  background-image: none;
+  border-radius: 14px;
   box-shadow: none;
   box-sizing: border-box;
-  color: var(--hfb-btn-color, var(--hfb-ink));
   display: inline-flex;
   filter: none;
   flex: 1 1 0;
-  font-family: var(--hfb-btn-font, inherit);
-  font-size: var(--hfb-btn-size, 14px);
-  font-weight: var(--hfb-btn-weight, 600);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 14px;
+  font-weight: 600;
   gap: 8px;
-  height: 44px;
+  height: 50px;
   justify-content: center;
-  letter-spacing: 0.2px;
-  line-height: 1;
-  min-height: 44px;
+  line-height: 1.15;
+  min-height: 48px;
   min-width: 0;
   padding: 0 12px;
   text-decoration: none;
   transform: none;
-  transition: transform 0.18s ease, border-color 0.2s ease, background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
   white-space: nowrap;
 }
 
+/* Primary — Garson Çağır */
+.hfb-footer__call-wrap:has(.qmo-cagri-bar) .hfb-footer__call-btn[data-qmo-cagri="garson"] {
+  background-color: var(--hfb-gold);
+  border: 1px solid var(--hfb-gold);
+  color: var(--hfb-ink);
+}
+
+/* Secondary — Hesap İste */
+.hfb-footer__call-wrap:has(.qmo-cagri-bar) .hfb-footer__call-btn[data-qmo-cagri="hesap"] {
+  background-color: var(--hfb-ink);
+  border: 1px solid var(--hfb-gold);
+  color: var(--hfb-text);
+}
+
 .hfb-footer__call-wrap:has(.qmo-cagri-bar) .hfb-footer__call-btn .hfb-icon--call {
-  color: currentColor;
   flex-shrink: 0;
-  height: 17px;
-  width: 17px;
+  height: 21px;
+  width: 21px;
+}
+
+.hfb-footer__call-wrap:has(.qmo-cagri-bar) .hfb-footer__call-btn[data-qmo-cagri="hesap"] .hfb-icon--call {
+  color: var(--hfb-gold);
+}
+
+.hfb-footer__call-wrap:has(.qmo-cagri-bar) .hfb-footer__call-btn[data-qmo-cagri="garson"] .hfb-icon--call {
+  color: currentColor;
+}
+
+.hfb-footer__call-wrap:has(.qmo-cagri-bar) .hfb-footer__call-btn:focus-visible {
+  outline: 2px solid var(--hfb-gold-soft);
+  outline-offset: 2px;
 }
 
 .hfb-footer__call-wrap:has(.qmo-cagri-bar) .hfb-footer__call-btn:active {
-  transform: scale(0.97);
+  transform: scale(0.98);
 }
 
 .hfb-footer__call-wrap:has(.qmo-cagri-bar) .hfb-footer__call-btn.is-disabled,
@@ -1292,38 +1312,63 @@ body.hfb-scroll-locked {
 
 .hfb-footer__call-wrap:has(.qmo-cagri-bar) .hfb-footer__call-btn.is-success {
   background-blend-mode: normal;
-  background-color: #1b5e20;
-  background-image: linear-gradient(180deg, #2e7d32, #1b5e20);
-  border-color: #66bb6a;
-  color: #fff;
+  background-color: color-mix(in srgb, var(--hfb-gold) 22%, var(--hfb-ink));
+  background-image: none;
+  border-color: var(--hfb-gold);
+  color: var(--hfb-gold-soft);
   /* .is-success cooldown boyunca native disabled ile birlikte durur (bkz.
      buttons.js); üstteki :disabled kuralının opacity:0.5'i olmasa da
      ezilir, aksi halde başarı state'i soluk/kapalı görünür. */
   opacity: 1;
 }
 
+.hfb-footer__call-wrap:has(.qmo-cagri-bar) .hfb-footer__call-btn.is-success .hfb-icon--call {
+  color: var(--hfb-gold);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .hfb-footer__call-wrap:has(.qmo-cagri-bar) .hfb-footer__call-btn {
     transition: none;
   }
+
+  .hfb-footer__call-wrap:has(.qmo-cagri-bar) .hfb-footer__call-btn:active {
+    transform: none;
+  }
 }
 
 @media (hover: hover) {
-  .hfb-footer__call-wrap:has(.qmo-cagri-bar) .hfb-footer__call-btn:hover {
-    background-color: var(--hfb-btn-bg, var(--hfb-gold));
-    background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.28), rgba(0, 0, 0, 0.08));
-    border-color: color-mix(in srgb, var(--hfb-btn-bg, var(--hfb-gold)) 85%, #fff);
-    box-shadow: 0 6px 18px color-mix(in srgb, var(--hfb-btn-bg, var(--hfb-gold)) 35%, transparent);
-    color: var(--hfb-btn-color, var(--hfb-ink));
-    filter: none;
-    transform: none;
+  .hfb-footer__call-wrap:has(.qmo-cagri-bar) .hfb-footer__call-btn[data-qmo-cagri="garson"]:hover {
+    background-color: var(--hfb-gold-soft);
+    border-color: var(--hfb-gold-soft);
+    color: var(--hfb-ink);
+  }
+
+  .hfb-footer__call-wrap:has(.qmo-cagri-bar) .hfb-footer__call-btn[data-qmo-cagri="hesap"]:hover {
+    background-color: color-mix(in srgb, var(--hfb-gold) 10%, var(--hfb-ink));
+    border-color: var(--hfb-gold-soft);
+    color: var(--hfb-text);
   }
 
   .hfb-footer__call-wrap:has(.qmo-cagri-bar) .hfb-footer__call-btn.is-success:hover {
-    background-image: linear-gradient(180deg, #2e7d32, #1b5e20);
-    border-color: #66bb6a;
-    box-shadow: 0 6px 18px rgba(46, 125, 50, 0.35);
-    color: #fff;
+    background-color: color-mix(in srgb, var(--hfb-gold) 28%, var(--hfb-ink));
+    border-color: var(--hfb-gold-soft);
+    color: var(--hfb-gold-soft);
+  }
+}
+
+@media (min-width: 769px) {
+  body:not(.wp-admin) .hfb-footer__call-wrap:has(.qmo-cagri-bar) {
+    border-left: 1px solid var(--hfb-border);
+    border-right: 1px solid var(--hfb-border);
+    left: 50%;
+    max-width: 440px;
+    right: auto;
+    transform: translateX(-50%);
+  }
+
+  .hfb-footer__call-wrap:has(.qmo-cagri-bar) .hfb-footer__call-btn {
+    height: 46px;
+    min-height: 44px;
   }
 }
 
@@ -1334,7 +1379,7 @@ body.hfb-scroll-locked {
  */
 body:not(.wp-admin) .hfb-footer-wrap:has(.hfb-footer__call-wrap .qmo-cagri-bar) .hfb-footer,
 body:not(.wp-admin) .hfb-footer-wrap:has(.hfb-footer__call-wrap .hfb-footer__call--warn) .hfb-footer {
-  padding-bottom: calc(66px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
 }
 
 html:has(.hfb-footer__call-wrap .qmo-cagri-bar):not(.wp-admin),
