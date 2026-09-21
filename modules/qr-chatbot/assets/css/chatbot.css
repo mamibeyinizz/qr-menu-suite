@@ -20,6 +20,7 @@
 	--gm-bottom: 140px;
 	--gm-side: 20px;
 	--gm-window: 380px;
+	--gm-icon-size: 50px;
 	position: relative;
 	z-index: var(--gm-z);
 	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -29,18 +30,18 @@
 .gemini-chat-toggle-btn {
 	position: fixed;
 	z-index: var(--gm-z);
-	right: var(--gm-side, 20px);
+	right: max(var(--gm-side, 20px), env(safe-area-inset-right, 0px));
 	left: auto;
 }
 .gm-pos-left .gemini-teaser,
 .gm-pos-left .gemini-chat-toggle-btn,
 .gemini-chat-overlay.gm-pos-left {
 	right: auto;
-	left: var(--gm-side, 20px);
+	left: max(var(--gm-side, 20px), env(safe-area-inset-left, 0px));
 }
 
 .gemini-teaser {
-	bottom: calc(var(--gm-bottom) + var(--gm-icon-size, 48px) + 12px);
+	bottom: calc(var(--gm-bottom) + var(--gm-icon-size, 50px) + 12px + env(safe-area-inset-bottom, 0px));
 	max-width: 240px;
 	background: var(--gm-chat-bg, #fff);
 	color: var(--gm-text, #1a1a1a);
@@ -67,36 +68,46 @@
 }
 
 .gemini-chat-toggle-btn {
-	bottom: var(--gm-bottom);
-	min-width: var(--gm-icon-size, 48px);
-	height: var(--gm-icon-size, 48px);
-	padding: var(--gm-toggle-pad, 0);
-	border: 0;
+	--gm-fab-gold: var(--gm-toggle-text, #E8C766);
+	bottom: calc(var(--gm-bottom) + env(safe-area-inset-bottom, 0px));
+	box-sizing: border-box;
+	width: var(--gm-icon-size, 50px);
+	height: var(--gm-icon-size, 50px);
+	min-width: 44px;
+	min-height: 44px;
+	padding: 0;
+	border: 1px solid rgba(232, 199, 102, 0.45);
+	border: 1px solid color-mix(in srgb, var(--gm-fab-gold) 45%, transparent);
 	border-radius: 999px;
-	background: var(--gm-toggle-bg, var(--gm-header-bg, #6b21a8));
-	color: var(--gm-toggle-text, #fff);
-	box-shadow: 0 8px 22px rgba(0, 0, 0, 0.22);
+	background: var(--gm-toggle-bg, #0B0E0C);
+	color: var(--gm-fab-gold);
+	box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28);
 	cursor: pointer;
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	gap: 8px;
-	font-weight: 700;
-	font-size: 13px;
 	overflow: visible;
+	-webkit-tap-highlight-color: transparent;
+	transition: border-color 0.22s ease, box-shadow 0.22s ease;
+}
+.gemini-chat-toggle-btn .gemini-toggle-label {
+	display: none !important;
 }
 .gemini-chat-toggle-btn .gemini-icon-wrapper {
-	width: calc(var(--gm-icon-size, 48px) * 0.58);
-	height: calc(var(--gm-icon-size, 48px) * 0.58);
+	width: 24px;
+	height: 24px;
 	display: flex;
 	align-items: center;
 	justify-content: center;
+	flex-shrink: 0;
+	transition: filter 0.22s ease, transform 0.12s ease;
 }
 .gemini-chat-toggle-btn img,
 .gemini-chat-toggle-btn svg {
 	width: 100%;
 	height: 100%;
 	object-fit: contain;
+	display: block;
 }
 
 .gemini-chat-toggle-btn .gm-attn-core {
@@ -107,6 +118,7 @@
 	width: 100%;
 	height: 100%;
 	border-radius: inherit;
+	z-index: 1;
 }
 
 .gemini-chat-toggle-btn .gm-attn-ring {
@@ -116,10 +128,50 @@
 	border: 2px solid currentColor;
 	opacity: 0;
 	pointer-events: none;
+	display: none;
+}
+.gemini-chat-toggle-btn.gm-attn-pulse .gm-attn-ring {
+	display: block;
 }
 
-.gemini-chat-toggle-btn:hover .gm-attn-core {
-	transform: scale(1.08);
+.gemini-chat-toggle-btn:hover {
+	border-color: rgba(232, 199, 102, 0.7);
+	border-color: color-mix(in srgb, var(--gm-fab-gold) 70%, transparent);
+	box-shadow: 0 4px 16px rgba(0, 0, 0, 0.32), 0 0 10px 1px rgba(232, 199, 102, 0.18);
+	box-shadow: 0 4px 16px rgba(0, 0, 0, 0.32), 0 0 10px 1px color-mix(in srgb, var(--gm-fab-gold) 22%, transparent);
+}
+.gemini-chat-toggle-btn:hover .gemini-icon-wrapper {
+	filter: brightness(1.08);
+}
+
+.gemini-chat-toggle-btn:active .gemini-icon-wrapper {
+	transform: scale(0.96);
+}
+
+.gemini-chat-toggle-btn:focus {
+	outline: none;
+}
+.gemini-chat-toggle-btn:focus-visible {
+	outline: 2px solid var(--gm-fab-gold);
+	outline-offset: 3px;
+}
+
+.gemini-chat-toggle-btn.gm-attn-breath::before {
+	content: "";
+	position: absolute;
+	inset: 0;
+	border-radius: inherit;
+	pointer-events: none;
+	z-index: 0;
+	box-shadow: 0 0 0 0 rgba(232, 199, 102, 0);
+	animation: gm-attn-breath 4.2s ease-in-out infinite;
+}
+
+.gemini-chat-toggle-btn .gm-attn-spark {
+	opacity: 0.35;
+	animation: gm-attn-spark 6.5s ease-in-out infinite;
+	transform-box: fill-box;
+	transform-origin: center;
 }
 
 .gemini-chat-toggle-btn.gm-attn-pulse .gm-attn-core {
@@ -643,6 +695,24 @@ body.gm-scroll-kilit { position: fixed; width: 100%; }
 	0%, 100% { transform: translateY(0); }
 	50% { transform: translateY(-6px); }
 }
+@keyframes gm-attn-breath {
+	0%, 100% {
+		box-shadow: 0 0 0 0 rgba(232, 199, 102, 0);
+	}
+	50% {
+		box-shadow: 0 0 12px 1px rgba(232, 199, 102, 0.22);
+	}
+}
+@keyframes gm-attn-spark {
+	0%, 10%, 100% {
+		opacity: 0.35;
+		filter: none;
+	}
+	5% {
+		opacity: 1;
+		filter: drop-shadow(0 0 1.5px currentColor);
+	}
+}
 @keyframes gm-teaser-in {
 	from { opacity: 0; transform: translateY(8px); }
 	to { opacity: 1; transform: translateY(0); }
@@ -670,9 +740,14 @@ body.gm-scroll-kilit { position: fixed; width: 100%; }
 
 @media (prefers-reduced-motion: reduce) {
 	.gemini-toggle-btn .gm-attn-core,
+	.gemini-chat-toggle-btn,
+	.gemini-chat-toggle-btn::before,
 	.gemini-chat-toggle-btn .gm-attn-core,
 	.gemini-chat-toggle-btn .gm-attn-ring,
+	.gemini-chat-toggle-btn .gm-attn-spark,
 	.gemini-chat-toggle-btn:hover .gm-attn-core,
+	.gemini-chat-toggle-btn:hover .gemini-icon-wrapper,
+	.gemini-chat-toggle-btn:active .gemini-icon-wrapper,
 	.gemini-teaser,
 	.gemini-chat-overlay.gemini-acik,
 	.gemini-header-status::before,
@@ -681,6 +756,11 @@ body.gm-scroll-kilit { position: fixed; width: 100%; }
 	.gemini-chat-header .gemini-icon-wrapper::after {
 		animation: none !important;
 		transform: none !important;
+		filter: none !important;
+		transition: none !important;
+	}
+	.gemini-chat-toggle-btn .gm-attn-spark {
+		opacity: 0.85;
 	}
 }
 

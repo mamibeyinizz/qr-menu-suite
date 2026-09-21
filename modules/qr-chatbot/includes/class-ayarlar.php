@@ -34,13 +34,13 @@ function qmo_chatbot_aktif_mi() {
 function qmo_chatbot_yeni_varsayilanlar() {
 	return array(
 		QMO_CHATBOT_OPT_AKTIF              => 'yes',
-		'qmo_chatbot_icon_preset'          => 'bubble',
-		'qmo_chatbot_icon_color'           => '#ffffff',
-		'qmo_chatbot_icon_bg_color'        => '#8a2be2',
+		'qmo_chatbot_icon_preset'          => 'spark',
+		'qmo_chatbot_icon_color'           => '#E8C766',
+		'qmo_chatbot_icon_bg_color'        => '#0B0E0C',
 		'qmo_chatbot_icon_size_preset'     => 'medium',
 		'qmo_chatbot_position'             => 'right',
 		'qmo_chatbot_offset'               => 'mid',
-		'qmo_chatbot_attention'            => 'none',
+		'qmo_chatbot_attention'            => 'breath',
 		'qmo_chatbot_badge'                => 'yes',
 		'qmo_chatbot_advanced_colors'      => 'no',
 		'qmo_chatbot_color_overrides'      => array(),
@@ -49,7 +49,7 @@ function qmo_chatbot_yeni_varsayilanlar() {
 		'qmo_chatbot_welcome_screen'       => 'no',
 		'qmo_chatbot_welcome_intro'        => 'Menü, öneriler ve sipariş için buradayım.',
 		'qmo_chatbot_welcome_btn'          => 'Sohbete Başla',
-		'qmo_chatbot_teaser'               => 'yes',
+		'qmo_chatbot_teaser'               => 'no',
 		'qmo_chatbot_teaser_text'          => 'Bir şey sormak ister misiniz?',
 		'qmo_chatbot_teaser_delay'         => 4,
 		'qmo_chatbot_quick_max'            => 5,
@@ -95,7 +95,7 @@ function qmo_chatbot_ayar( $anahtar ) {
 function qmo_chatbot_boyut_haritasi() {
 	return array(
 		'small'  => 36,
-		'medium' => 48,
+		'medium' => 50,
 		'large'  => 64,
 	);
 }
@@ -149,6 +149,10 @@ function qmo_chatbot_hazir_ikonlar() {
 	$ortak = 'viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"';
 
 	return array(
+		'spark'    => array(
+			'label' => __( 'Kıvılcımlı sohbet', 'qrms' ),
+			'svg'   => '<svg ' . $ortak . '><path d="M4.6 6.4h10.6A2.15 2.15 0 0 1 17.35 8.55v6.1A2.15 2.15 0 0 1 15.2 16.8H9.15L5.7 19.4v-2.6H4.6A2.15 2.15 0 0 1 2.45 14.65v-6.1A2.15 2.15 0 0 1 4.6 6.4z"/><circle cx="7.15" cy="11.35" r="0.85" fill="currentColor" stroke="none"/><circle cx="10.05" cy="11.35" r="0.85" fill="currentColor" stroke="none"/><path d="M6.9 13.85h5.4"/><path class="gm-attn-spark" fill="currentColor" stroke="none" d="M19.15 2.2l.72 1.78 1.78.72-1.78.72-.72 1.78-.72-1.78-1.78-.72 1.78-.72z"/></svg>',
+		),
 		'bubble'   => array(
 			'label' => __( 'Sohbet balonu', 'qrms' ),
 			'svg'   => '<svg ' . $ortak . '><path d="M7.5 4.5h9A2.5 2.5 0 0 1 19 7v7a2.5 2.5 0 0 1-2.5 2.5H11l-4.5 3v-3H7.5A2.5 2.5 0 0 1 5 14V7A2.5 2.5 0 0 1 7.5 4.5z"/><path d="M8.5 9h7M8.5 12.5h4.5"/></svg>',

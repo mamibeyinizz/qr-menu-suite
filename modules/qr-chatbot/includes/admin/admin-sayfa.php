@@ -1061,12 +1061,12 @@ if ( ! function_exists( 'qmo_chatbot_onizleme_blogu' ) ) {
 		$ekran_on     = 'yes' === qmo_chatbot_ayar( 'qmo_chatbot_welcome_screen' );
 		$giris_metin  = (string) qmo_chatbot_ayar( 'qmo_chatbot_welcome_intro' );
 		$basla_metin  = (string) qmo_chatbot_ayar( 'qmo_chatbot_welcome_btn' );
-		$metin_goster = 'yes' === get_option( 'gemini_show_toggle_text', 'no' );
 		$konum_sinif  = 'left' === $konum ? 'gm-pos-left' : 'gm-pos-right';
 		$attn_map     = array(
-			'pulse' => 'gm-attn-pulse',
-			'shake' => 'gm-attn-shake',
-			'float' => 'gm-attn-float',
+			'breath' => 'gm-attn-breath',
+			'pulse'  => 'gm-attn-pulse',
+			'shake'  => 'gm-attn-shake',
+			'float'  => 'gm-attn-float',
 		);
 		$attn_sinif   = isset( $attn_map[ $hareket ] ) ? $attn_map[ $hareket ] : '';
 		$sorular      = function_exists( 'qmo_chatbot_sorulari_aktif' ) ? qmo_chatbot_sorulari_aktif() : array();
@@ -1097,13 +1097,13 @@ if ( ! function_exists( 'qmo_chatbot_onizleme_blogu' ) ) {
 							<span data-preview-teaser-text><?php echo esc_html( $teaser_metin ); ?></span>
 						</div>
 
-						<div class="gemini-chat-toggle-btn<?php echo $attn_sinif ? ' ' . esc_attr( $attn_sinif ) : ''; ?>" role="button" tabindex="0" aria-label="<?php echo esc_attr( $bot_adi ); ?>">
+						<div class="gemini-chat-toggle-btn<?php echo $attn_sinif ? ' ' . esc_attr( $attn_sinif ) : ''; ?>" role="button" tabindex="0" aria-label="<?php echo esc_attr( __( 'Menü asistanını aç', 'qrms' ) ); ?>">
 							<span class="gm-attn-core">
 								<span class="gm-attn-ring" aria-hidden="true"></span>
-								<div class="gemini-icon-wrapper" data-preview-icon><?php echo $onizleme_ikon; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- SVG kses / esc_url. ?></div>
+								<div class="gemini-icon-wrapper" data-preview-icon aria-hidden="true"><?php echo $onizleme_ikon; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- SVG kses / esc_url. ?></div>
 							</span>
 							<span class="gemini-unread-badge" <?php echo $rozet_on ? '' : 'hidden'; ?>>1</span>
-							<span class="gemini-toggle-label" data-preview-toggle-label <?php echo $metin_goster ? '' : 'hidden'; ?>><?php echo esc_html( $bot_adi ); ?></span>
+							<span class="gemini-toggle-label" data-preview-toggle-label hidden><?php echo esc_html( $bot_adi ); ?></span>
 						</div>
 
 						<div class="gemini-chat-overlay <?php echo esc_attr( $konum_sinif ); ?>">
