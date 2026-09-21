@@ -420,7 +420,8 @@ qrms_test(
 		$php = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/includes/shortcode-buttons.php' );
 
 		qrms_assert_contains( "btn.setAttribute( 'aria-label', durumMetni )", $js, 'her state için aria-label güncellenir' );
-		qrms_assert_contains( "btn.removeAttribute( 'aria-label' )", $js, 'idle\'da aria-label temizlenir (orijinal metin span\'de yeterli)' );
+		qrms_assert_contains( "btn.dataset.qmoIdleAria", $js, 'idle aria-label HTML\'den saklanır' );
+		qrms_assert_contains( "btn.removeAttribute( 'aria-label' )", $js, 'idle aria yoksa temizlenir' );
 		qrms_assert_false( false !== strpos( $js, '.innerHTML' ), 'DOM güncellemeleri innerHTML kullanmaz (XSS riski yok), textContent kullanılır' );
 		qrms_assert_contains( 'span.textContent = durumMetni', $js, 'buton metni textContent ile basılır' );
 		qrms_assert_false( false !== strpos( $js, 'console.' ), 'prodüksiyon kodunda console.* yok' );

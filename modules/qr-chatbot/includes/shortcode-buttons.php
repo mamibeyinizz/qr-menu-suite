@@ -78,13 +78,13 @@ if ( ! function_exists( 'qmo_cagri_butonlari_html' ) ) {
 		?>
 		<div class="qmo-cagri-bar qmo-cagri-bar--<?php echo esc_attr( $tip ); ?>">
 			<?php if ( 'hesap' !== $tip ) : ?>
-				<button type="button" class="qmo-cagri-btn qmo-cagri-btn--garson" data-qmo-cagri="garson">
+				<button type="button" class="qmo-cagri-btn qmo-cagri-btn--garson" data-qmo-cagri="garson" aria-label="<?php echo esc_attr( qmo_ceviri_chat( __( 'Garson çağır', 'qrms' ) ) ); ?>">
 					<span class="qmo-cagri-ikon" aria-hidden="true">🛎️</span>
 					<span class="qmo-cagri-etiket"><?php echo esc_html( qmo_ceviri_chat( __( 'Garson Çağır', 'qrms' ) ) ); ?></span>
 				</button>
 			<?php endif; ?>
 			<?php if ( 'garson' !== $tip ) : ?>
-				<button type="button" class="qmo-cagri-btn qmo-cagri-btn--hesap" data-qmo-cagri="hesap">
+				<button type="button" class="qmo-cagri-btn qmo-cagri-btn--hesap" data-qmo-cagri="hesap" aria-label="<?php echo esc_attr( qmo_ceviri_chat( __( 'Hesap iste', 'qrms' ) ) ); ?>">
 					<span class="qmo-cagri-ikon" aria-hidden="true">🧾</span>
 					<span class="qmo-cagri-etiket"><?php echo esc_html( qmo_ceviri_chat( __( 'Hesap İste', 'qrms' ) ) ); ?></span>
 				</button>

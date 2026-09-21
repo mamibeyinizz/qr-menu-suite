@@ -99,7 +99,6 @@ if ( ! function_exists( 'qmo_chatbot_html_uret' ) ) {
 			$placeholder = rma_ceviri_option( 'gemini_placeholder_text', $placeholder );
 			$karsilama   = rma_ceviri_option( 'gemini_welcome_text', $karsilama );
 		}
-		$metin_goster = 'yes' === get_option( 'gemini_show_toggle_text', 'no' );
 		$ikon_url     = get_option( 'gemini_bot_icon', '' );
 		$cihaz        = function_exists( 'qmo_chatbot_ayar' ) ? qmo_chatbot_ayar( 'qmo_chatbot_devices' ) : 'both';
 		$mesai_disi   = function_exists( 'qmo_chatbot_mesai_disi_mi' ) && qmo_chatbot_mesai_disi_mi();
@@ -146,18 +145,15 @@ if ( ! function_exists( 'qmo_chatbot_html_uret' ) ) {
 				</div>
 			<?php endif; ?>
 
-			<div class="gemini-chat-toggle-btn<?php echo $attn_sinif ? ' ' . esc_attr( $attn_sinif ) : ''; ?>" role="button" tabindex="0" aria-label="<?php echo esc_attr( $bot_adi ); ?>">
+			<div class="gemini-chat-toggle-btn<?php echo $attn_sinif ? ' ' . esc_attr( $attn_sinif ) : ''; ?>" role="button" tabindex="0" aria-label="<?php echo esc_attr( qmo_ceviri_chat( __( 'Menü asistanını aç', 'qrms' ) ) ); ?>">
 				<span class="gm-attn-core">
 					<span class="gm-attn-ring" aria-hidden="true"></span>
-					<div class="gemini-icon-wrapper">
+					<div class="gemini-icon-wrapper" aria-hidden="true">
 						<?php qmo_chatbot_ikon( $ikon_url ); ?>
 					</div>
 				</span>
 				<?php if ( $rozet ) : ?>
 					<span class="gemini-unread-badge" hidden>1</span>
-				<?php endif; ?>
-				<?php if ( $metin_goster ) : ?>
-					<span><?php echo esc_html( $bot_adi ); ?></span>
 				<?php endif; ?>
 			</div>
 
@@ -320,7 +316,7 @@ if ( ! function_exists( 'qmo_chatbot_degiskenleri' ) ) {
 
 		$ikon_boyut = max( 30, (int) get_option( 'gemini_icon_size', 24 ) );
 		$radius     = max( 4, (int) get_option( 'gemini_border_radius', 16 ) );
-		$toggle_pad = ( 'yes' === get_option( 'gemini_show_toggle_text', 'no' ) ) ? '13px 26px 13px 14px' : '14px';
+		$toggle_pad = '0';
 		$konum      = function_exists( 'qmo_chatbot_ayar' ) ? qmo_chatbot_ayar( 'qmo_chatbot_position' ) : 'right';
 		$yuk        = function_exists( 'qmo_chatbot_ayar' ) ? qmo_chatbot_ayar( 'qmo_chatbot_offset' ) : 'mid';
 		$yuk_map    = function_exists( 'qmo_chatbot_yukseklik_haritasi' ) ? qmo_chatbot_yukseklik_haritasi() : array( 'mid' => 108 );

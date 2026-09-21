@@ -13,8 +13,20 @@
 	--qmo-gold2: #e8c766;
 	--qmo-txt: #f5f5f0;
 	--qmo-mut: #9a9a94;
+	--qmo-bar-h: 50px;
+	--qmo-bar-gap: 8px;
 
 	font-family: "Manrope", -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+html:has(#qmo-sepet-root) {
+	--qmo-bar-h: 50px;
+	--qmo-bar-gap: 8px;
+}
+
+html:has(#qmo-bar.qmo-on) {
+	--qmo-bottom-ui-height: calc(var(--hfb-call-bar-h, 0px) + var(--qmo-bar-gap, 8px) + var(--qmo-bar-h, 50px));
+	--qmo-bottom-safe-space: calc(16px + env(safe-area-inset-bottom, 0px));
 }
 
 .qmo-add {
@@ -70,22 +82,23 @@
 	font-size: 14px;
 }
 
-/* Alt sabit sepet çubuğu */
+/* Alt sabit sepet dock'u — birincil aksiyon */
 .qmo-bar {
 	position: fixed;
 	left: 12px;
 	right: 12px;
-	bottom: calc(74px + env(safe-area-inset-bottom, 0px));
+	bottom: calc(var(--hfb-call-bar-h, 0px) + var(--qmo-bar-gap, 8px) + env(safe-area-inset-bottom, 0px));
 	z-index: 2147482700;
 	display: none;
 	align-items: center;
 	justify-content: space-between;
 	gap: 10px;
-	padding: 11px 16px;
-	border: 1px solid rgba(201, 168, 76, 0.35);
+	min-height: 48px;
+	padding: 10px 14px;
+	border: 1px solid rgba(201, 168, 76, 0.4);
 	border-radius: 14px;
 	background: rgba(12, 12, 15, 0.97);
-	box-shadow: 0 8px 28px rgba(0, 0, 0, 0.5);
+	box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4);
 	cursor: pointer;
 	transition: opacity 0.18s ease, transform 0.18s ease;
 }
@@ -124,10 +137,21 @@
 }
 
 .qmo-bar-r {
+	display: flex;
+	align-items: center;
+	gap: 6px;
 	color: var(--qmo-gold2);
 	font-weight: 700;
 	font-size: 14px;
 	white-space: nowrap;
+}
+
+.qmo-bar-go {
+	color: var(--qmo-gold2);
+	font-size: 18px;
+	font-weight: 400;
+	line-height: 1;
+	opacity: 0.8;
 }
 
 /* Çekmece */
@@ -386,7 +410,7 @@
 	position: fixed;
 	left: 50%;
 	transform: translateX(-50%);
-	bottom: calc(140px + env(safe-area-inset-bottom, 0px));
+	bottom: calc(var(--qmo-bottom-ui-height, 50px) + var(--qmo-bottom-safe-space, 16px) + 8px);
 	z-index: 2147482703;
 	background: #16161a;
 	border: 1px solid rgba(201, 168, 76, 0.5);
@@ -404,7 +428,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-	.qmo-dr {
+	.qmo-dr,
+	.qmo-bar {
 		transition: none;
 	}
 }

@@ -17,6 +17,7 @@
     margin-right: -50vw;
     box-sizing: border-box;
     overflow-x: hidden;
+    padding-bottom: calc(var(--qmo-bottom-ui-height, 0px) + var(--qmo-bottom-safe-space, 0px));
 }
 /* Elementor/Gutenberg içinde full-bleed (100vw/-50vw) hack'i KULLANILMAZ:
    bu hesap, dikey scrollbar genişliğine ve en yakın konumlanmış

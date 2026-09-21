@@ -726,6 +726,7 @@ qrms_test(
 		$metinler = rma_ceviri_modul_stringleri( 'chat' );
 		$beklenen = array(
 			'Asistanı kullanmak için masanızdaki QR kodu okutun.',
+			'Menü asistanını aç',
 			'Çevrimiçi',
 			'Kapat',
 			'Gönder',
@@ -770,6 +771,7 @@ qrms_test(
 		$btn = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/includes/shortcode-buttons.php' );
 		$hfb = file_get_contents( QRMS_PLUGIN_DIR . 'modules/header-footer-builder/includes/trait-frontend.php' );
 
+		qrms_assert_contains( "qmo_ceviri_chat( __( 'Menü asistanını aç', 'qrms' ) )", $bot, 'FAB aria-label' );
 		qrms_assert_contains( "qmo_ceviri_chat( __( 'Çevrimiçi', 'qrms' ) )", $bot, 'Çevrimiçi' );
 		qrms_assert_contains( "qmo_ceviri_chat( __( 'Kapat', 'qrms' ) )", $bot, 'Kapat' );
 		qrms_assert_false( (bool) preg_match( "/esc_attr_e\(\s*'Kapat'/", $bot ), 'teaser Kapat esc_attr_e kalmadı' );

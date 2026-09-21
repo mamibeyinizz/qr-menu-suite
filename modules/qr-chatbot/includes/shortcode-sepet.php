@@ -216,7 +216,10 @@ if ( ! function_exists( 'qmo_sepet_shortcode' ) ) {
 					<span class="qmo-bar-badge" id="qmo-badge">0</span>
 					<span id="qmo-bar-txt"><?php echo esc_html( qmo_ceviri_cart( __( 'Sepet', 'qrms' ) ) ); ?></span>
 				</div>
-				<div class="qmo-bar-r" id="qmo-bar-tot"><?php echo esc_html( function_exists( 'rma_ceviri_fiyat' ) ? rma_ceviri_fiyat( 0 ) : '0 ₺' ); ?></div>
+				<div class="qmo-bar-r">
+					<span id="qmo-bar-tot"><?php echo esc_html( function_exists( 'rma_ceviri_fiyat' ) ? rma_ceviri_fiyat( 0 ) : '0 ₺' ); ?></span>
+					<span class="qmo-bar-go" aria-hidden="true">›</span>
+				</div>
 			</div>
 
 			<div class="qmo-ov" id="qmo-ov"></div>

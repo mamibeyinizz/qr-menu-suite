@@ -1658,15 +1658,19 @@ qrms_test(
 		qrms_assert_contains( "\n.hfb-footer__call-wrap:has(.hfb-footer__call--warn) {", $css, 'uyarı wrap her viewport\'ta sticky' );
 		qrms_assert_contains( 'position: fixed', $css, 'ekrana sabit' );
 		qrms_assert_contains( "\nbody:not(.wp-admin) .hfb-footer-wrap:has(.hfb-footer__call-wrap .qmo-cagri-bar) .hfb-footer,", $css, 'footer scroll payı body yerine' );
-		qrms_assert_contains( 'padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px))', $css, 'footer scroll payı' );
+		qrms_assert_contains(
+			'padding-bottom: calc(var(--qmo-bottom-ui-height, var(--hfb-call-bar-h, 48px)) + var(--qmo-bottom-safe-space, 16px))',
+			$css,
+			'footer scroll payı token ile'
+		);
 		qrms_assert_contains( "\nbody:has(.hfb-footer__call-wrap .qmo-cagri-bar):not(.wp-admin),", $css, 'body ink rengi overscroll' );
 		qrms_assert_contains( "\n.wp-admin .hfb-footer__call-wrap:has(.qmo-cagri-bar),", $css, 'admin önizlemesi akışta kalır' );
-		qrms_assert_contains( 'border-radius: 14px', $css, 'köşeli-yuvarlak buton (V2)' );
-		qrms_assert_contains( 'flex: 1 1 0', $css, 'iki buton eşit genişlik' );
+		qrms_assert_contains( 'flex: 0 1 auto', $css, 'Garson/Hesap ikincil, içerik genişliği' );
 		qrms_assert_contains( 'transform: scale(0.98)', $css, ':active dokunma' );
 		qrms_assert_contains( 'background: var(--hfb-ink, #0a0a0c)', $css, 'sticky bar zemini (düz yüzey)' );
-		qrms_assert_contains( '[data-qmo-cagri="garson"]', $css, 'birincil garson hiyerarşisi' );
-		qrms_assert_contains( '[data-qmo-cagri="hesap"]', $css, 'ikincil hesap hiyerarşisi' );
+		qrms_assert_contains( '[data-qmo-cagri="garson"]', $css, 'garson seçicisi durur' );
+		qrms_assert_contains( '[data-qmo-cagri="hesap"]', $css, 'hesap seçicisi durur' );
+		qrms_assert_contains( "color: var(--hfb-muted, #8f8a82)", $css, 'Garson/Hesap ikincil muted' );
 		qrms_assert_true( false === strpos( $css, 'border-radius: 50px' ), 'sabit 50px radius yok' );
 		qrms_assert_true( false === strpos( $css, '#d4af37' ), 'hardcoded altın yok' );
 		qrms_assert_contains( 'container-name: hfb-footer', $css, 'footer kap sorgusu durur' );

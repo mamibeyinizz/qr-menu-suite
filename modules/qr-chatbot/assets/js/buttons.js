@@ -65,7 +65,11 @@
 			}
 			btn.disabled = false;
 			btn.removeAttribute( 'aria-busy' );
-			btn.removeAttribute( 'aria-label' );
+			if ( btn.dataset.qmoIdleAria ) {
+				btn.setAttribute( 'aria-label', btn.dataset.qmoIdleAria );
+			} else {
+				btn.removeAttribute( 'aria-label' );
+			}
 			btn.classList.remove( 'is-success', 'is-disabled' );
 			if ( span && btn.dataset.qmoIdleLabel ) {
 				span.textContent = btn.dataset.qmoIdleLabel;
@@ -77,6 +81,12 @@
 		// cooldown sonunda veya hatada buna geri dönülür.
 		if ( span && ! btn.dataset.qmoIdleLabel ) {
 			btn.dataset.qmoIdleLabel = span.textContent;
+		}
+		if ( ! btn.dataset.qmoIdleAria ) {
+			var idleAria = btn.getAttribute( 'aria-label' );
+			if ( idleAria ) {
+				btn.dataset.qmoIdleAria = idleAria;
+			}
 		}
 
 		if ( 'loading' === durum ) {
