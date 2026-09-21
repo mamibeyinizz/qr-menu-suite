@@ -1,0 +1,29 @@
+/**
+ * Sabit/floating ön yüz katmanları — tam ekran panel açıkken geçici gizleme.
+ *
+ * Durum mevcut JS sınıflarından okunur (.hfb-mobile-panel.is-open,
+ * .rma-panel-sheet.open). DOM kaldırma veya JS state çoğaltması yok.
+ */
+
+body:has(.hfb-mobile-panel.is-open) .gemini-teaser,
+body:has(.hfb-mobile-panel.is-open) .gemini-chat-toggle-btn,
+body:has(.hfb-mobile-panel.is-open) .qmo-bar,
+body:has(.hfb-mobile-panel.is-open) .qmo-ov,
+body:has(.hfb-mobile-panel.is-open) .qmo-dr,
+body:has(.hfb-mobile-panel.is-open) .hfb-footer__call-wrap:has(.qmo-cagri-bar),
+body:has(.hfb-mobile-panel.is-open) .qmo-cagri-bar {
+	visibility: hidden !important;
+	pointer-events: none !important;
+}
+
+body:has(.rma-panel-sheet.open) .gemini-teaser,
+body:has(.rma-panel-sheet.open) .gemini-chat-toggle-btn,
+body:has(.rma-panel-sheet.open) .gemini-chat-overlay.gemini-acik,
+body:has(.rma-panel-sheet.open) .qmo-bar,
+body:has(.rma-panel-sheet.open) .qmo-ov,
+body:has(.rma-panel-sheet.open) .qmo-dr,
+body:has(.rma-panel-sheet.open) .hfb-footer__call-wrap:has(.qmo-cagri-bar),
+body:has(.rma-panel-sheet.open) .qmo-cagri-bar {
+	visibility: hidden !important;
+	pointer-events: none !important;
+}

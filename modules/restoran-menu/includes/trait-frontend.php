@@ -206,7 +206,11 @@ trait RMA_Frontend_Trait {
         if ( $this->assets_loaded ) return;
         $this->assets_loaded = true;
 
-        wp_register_style( 'rma-style', RMA_PLUGIN_URL . 'assets/css/rma-frontend.css', [], $this->asset_version( 'assets/css/rma-frontend.css' ) );
+        if ( function_exists( 'qmo_varliklari_kaydet' ) ) {
+            qmo_varliklari_kaydet();
+        }
+
+        wp_register_style( 'rma-style', RMA_PLUGIN_URL . 'assets/css/rma-frontend.css', [ 'qmo-floating-layers' ], $this->asset_version( 'assets/css/rma-frontend.css' ) );
         wp_enqueue_style( 'rma-style' );
 
         // Kayar kategori navigasyonu ayrı bir dosyada: admin'deki canlı
