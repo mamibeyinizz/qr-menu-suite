@@ -898,10 +898,11 @@ body.hfb-scroll-locked {
 }
 
 .hfb-footer-wrap .hfb-footer__call-btn.is-success {
-  background-color: #1d7a4c;
-  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(0, 0, 0, 0.08));
-  border-color: #15803d;
-  color: #fff;
+  background-color: color-mix(in srgb, var(--hfb-gold) 18%, var(--hfb-ink));
+  background-image: none;
+  border-color: var(--hfb-gold);
+  color: var(--hfb-gold-soft);
+  opacity: 1;
 }
 
 .hfb-footer-wrap .hfb-footer__call-btn .hfb-btn-spinner {
@@ -1212,16 +1213,16 @@ body.hfb-scroll-locked {
  */
 .hfb-footer__call-wrap:has(.qmo-cagri-bar),
 .hfb-footer__call-wrap:has(.hfb-footer__call--warn) {
-  background: rgba(10, 10, 12, 0.82);
-  border-top: 1px solid color-mix(in srgb, var(--hfb-gold) 22%, transparent);
+  background: var(--hfb-ink, #0a0a0c);
+  border-top: 1px solid var(--hfb-border);
   bottom: 0;
-  box-shadow: 0 -2px 14px rgba(0, 0, 0, 0.22);
+  box-shadow: 0 -1px 0 color-mix(in srgb, var(--hfb-gold) 14%, transparent);
   display: flex;
-  gap: 10px;
+  gap: 12px;
   left: 0;
   margin: 0;
   max-width: none;
-  padding: 8px 12px calc(8px + env(safe-area-inset-bottom, 0px));
+  padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0px));
   position: fixed;
   right: 0;
   z-index: 9999;
@@ -1231,7 +1232,7 @@ body.hfb-scroll-locked {
 .hfb-footer__call-wrap:has(.hfb-footer__call--warn) .hfb-footer__call {
   display: flex;
   flex: 1 1 auto;
-  gap: 10px;
+  gap: 12px;
   justify-content: stretch;
   min-width: 0;
   width: 100%;
@@ -1241,9 +1242,9 @@ body.hfb-scroll-locked {
 .hfb-footer__call-wrap:has(.qmo-cagri-bar) .hfb-footer__call-btn {
   -webkit-tap-highlight-color: transparent;
   align-items: center;
-  background-image: none;
   background-blend-mode: normal;
-  border-radius: var(--hfb-btn-radius, 12px);
+  background-image: none;
+  border-radius: var(--hfb-btn-radius, 14px);
   box-shadow: none;
   box-sizing: border-box;
   display: inline-flex;
@@ -1253,11 +1254,11 @@ body.hfb-scroll-locked {
   font-size: var(--hfb-btn-size, 14px);
   font-weight: var(--hfb-btn-weight, 600);
   gap: 8px;
-  height: 44px;
+  height: 50px;
   justify-content: center;
   letter-spacing: 0.01em;
-  line-height: 1;
-  min-height: 44px;
+  line-height: 1.15;
+  min-height: 48px;
   min-width: 0;
   padding: 0 14px;
   text-decoration: none;
@@ -1321,6 +1322,10 @@ body.hfb-scroll-locked {
   .hfb-footer__call-wrap:has(.qmo-cagri-bar) .hfb-footer__call-btn {
     transition: none;
   }
+
+  .hfb-footer__call-wrap:has(.qmo-cagri-bar) .hfb-footer__call-btn:active {
+    transform: none;
+  }
 }
 
 @media (hover: hover) {
@@ -1349,6 +1354,22 @@ body.hfb-scroll-locked {
   }
 }
 
+@media (min-width: 769px) {
+  body:not(.wp-admin) .hfb-footer__call-wrap:has(.qmo-cagri-bar) {
+    border-left: 1px solid var(--hfb-border);
+    border-right: 1px solid var(--hfb-border);
+    left: 50%;
+    max-width: 440px;
+    right: auto;
+    transform: translateX(-50%);
+  }
+
+  .hfb-footer__call-wrap:has(.qmo-cagri-bar) .hfb-footer__call-btn {
+    height: 46px;
+    min-height: 44px;
+  }
+}
+
 /*
  * Sabit çubuk için scroll payı <body>'ye değil .hfb-footer'a yazılır;
  * footer zaten koyu zemin taşıdığı için mobilde altta beyaz sızıntı olmaz.
@@ -1356,7 +1377,7 @@ body.hfb-scroll-locked {
  */
 body:not(.wp-admin) .hfb-footer-wrap:has(.hfb-footer__call-wrap .qmo-cagri-bar) .hfb-footer,
 body:not(.wp-admin) .hfb-footer-wrap:has(.hfb-footer__call-wrap .hfb-footer__call--warn) .hfb-footer {
-  padding-bottom: calc(66px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
 }
 
 html:has(.hfb-footer__call-wrap .qmo-cagri-bar):not(.wp-admin),
