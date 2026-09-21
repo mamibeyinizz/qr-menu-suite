@@ -43,9 +43,15 @@ if ( ! function_exists( 'qmo_varliklari_kaydet' ) ) {
 			QRMS_Helpers::asset_version( 'modules/_qmo-ortak/assets/css/oturum-kutu.css' )
 		);
 		wp_register_style(
+			'qmo-floating-layers',
+			$ortak . 'css/floating-layer-states.css',
+			array(),
+			QRMS_Helpers::asset_version( 'modules/_qmo-ortak/assets/css/floating-layer-states.css' )
+		);
+		wp_register_style(
 			'qmo-chatbot',
 			$chatbot . 'css/chatbot.css',
-			array(),
+			array( 'qmo-floating-layers' ),
 			QRMS_Helpers::asset_version( 'modules/qr-chatbot/assets/css/chatbot.css' )
 		);
 

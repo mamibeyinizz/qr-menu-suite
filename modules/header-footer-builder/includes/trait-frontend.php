@@ -132,12 +132,16 @@ trait QRMS_HFB_Frontend {
 	 * @return void
 	 */
 	public function enqueue_frontend_styles() {
+		if ( function_exists( 'qmo_varliklari_kaydet' ) ) {
+			qmo_varliklari_kaydet();
+		}
+
 		$base = 'modules/header-footer-builder/assets/';
 
 		wp_enqueue_style(
 			'hfb-frontend',
 			QRMS_PLUGIN_URL . $base . 'css/frontend.css',
-			array(),
+			array( 'qmo-floating-layers' ),
 			QRMS_Helpers::asset_version( $base . 'css/frontend.css' )
 		);
 

@@ -98,7 +98,7 @@ if ( ! function_exists( 'qmo_chatbot_buton_varliklarini_kaydet' ) ) {
 		// yorum satırına almıştı (dosya henüz yoktu); kayıt burada yapılır.
 		$sepet_css = QRMS_Helpers::asset_version( 'modules/qr-chatbot/assets/css/sepet.css' );
 		$sepet_js  = QRMS_Helpers::asset_version( 'modules/qr-chatbot/assets/js/sepet.js' );
-		wp_register_style( 'qmo-sepet', $url . 'css/sepet.css', array(), $sepet_css );
+		wp_register_style( 'qmo-sepet', $url . 'css/sepet.css', array( 'qmo-floating-layers' ), $sepet_css );
 		wp_register_script( 'qmo-sepet', $url . 'js/sepet.js', array(), $sepet_js, true );
 	}
 }

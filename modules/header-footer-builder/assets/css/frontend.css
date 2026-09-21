@@ -440,7 +440,8 @@ body.hfb-scroll-locked {
   pointer-events: none;
   position: fixed;
   visibility: hidden;
-  z-index: 99999;
+  /* Sepet/sohbet (2147482700+) üstünde; splash (9999999) altında kalır. */
+  z-index: 2147483646;
 }
 
 .hfb-mobile-panel.is-open {
