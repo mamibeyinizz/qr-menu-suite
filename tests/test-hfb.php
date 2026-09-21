@@ -1659,7 +1659,7 @@ qrms_test(
 		qrms_assert_contains( 'position: fixed', $css, 'ekrana sabit' );
 		qrms_assert_contains( "\nbody:not(.wp-admin) .hfb-footer-wrap:has(.hfb-footer__call-wrap .qmo-cagri-bar) .hfb-footer,", $css, 'footer scroll payı body yerine' );
 		qrms_assert_contains(
-			'padding-bottom: calc(var(--qmo-bottom-ui-height, var(--hfb-call-bar-h, 48px)) + var(--qmo-bottom-safe-space, 16px))',
+			'padding-bottom: calc(var(--qmo-bottom-ui-height, var(--hfb-svc-row-h, 0px)) + var(--qmo-bottom-safe-space, 16px))',
 			$css,
 			'footer scroll payı token ile'
 		);
@@ -1667,7 +1667,7 @@ qrms_test(
 		qrms_assert_contains( "\n.wp-admin .hfb-footer__call-wrap:has(.qmo-cagri-bar),", $css, 'admin önizlemesi akışta kalır' );
 		qrms_assert_contains( 'flex: 0 1 auto', $css, 'Garson/Hesap ikincil, içerik genişliği' );
 		qrms_assert_contains( 'transform: scale(0.98)', $css, ':active dokunma' );
-		qrms_assert_contains( 'background: var(--hfb-ink, #0a0a0c)', $css, 'sticky bar zemini (düz yüzey)' );
+		qrms_assert_contains( 'background: transparent', $css, 'servis satırı zeminsiz, bar değil' );
 		qrms_assert_contains( '[data-qmo-cagri="garson"]', $css, 'garson seçicisi durur' );
 		qrms_assert_contains( '[data-qmo-cagri="hesap"]', $css, 'hesap seçicisi durur' );
 		qrms_assert_contains( "color: var(--hfb-muted, #8f8a82)", $css, 'Garson/Hesap ikincil muted' );

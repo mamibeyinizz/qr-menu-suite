@@ -95,16 +95,28 @@ body:not(.wp-admin) .gemini-chat-toggle-btn .gemini-toggle-label {
 }
 
 html:has(.hfb-footer__call-wrap .qmo-cagri-bar) {
-	--gm-fab-bottom: calc(var(--hfb-call-bar-h, 48px) + 12px + env(safe-area-inset-bottom, 0px));
+	--gm-fab-bottom: calc(var(--hfb-svc-row-h, 44px) + 12px + env(safe-area-inset-bottom, 0px));
 }
 html:has(#qmo-bar.qmo-on) {
 	--gm-fab-bottom: calc(
-		var(--hfb-call-bar-h, 0px)
-		+ var(--qmo-bar-gap, 8px)
+		var(--qmo-bar-gap, 8px)
 		+ var(--qmo-bar-h, 50px)
+		+ var(--hfb-svc-row-h, 0px)
 		+ 12px
 		+ env(safe-area-inset-bottom, 0px)
 	);
+}
+
+/*
+ * Sepet çekmecesi açıkken (#qmo-dr.qmo-on / #qmo-ov.qmo-on — sepet.js ac())
+ * FAB ve teaser gerçekten görünmez: display:none a11y ağacından ve
+ * odak sırasından çıkarır. z-index / opacity / pointer-events ile gizlenmez.
+ */
+html:has(#qmo-dr.qmo-on) .gemini-chat-toggle-btn,
+html:has(#qmo-ov.qmo-on) .gemini-chat-toggle-btn,
+html:has(#qmo-dr.qmo-on) .gemini-teaser,
+html:has(#qmo-ov.qmo-on) .gemini-teaser {
+	display: none !important;
 }
 .gemini-chat-toggle-btn .gemini-icon-wrapper {
 	width: calc(var(--gm-icon-size, 48px) * 0.58);

@@ -32,7 +32,13 @@ html:has(#qmo-sepet-root) {
 }
 
 html:has(#qmo-bar.qmo-on) {
-	--qmo-bottom-ui-height: calc(var(--hfb-call-bar-h, 0px) + var(--qmo-bar-gap, 8px) + var(--qmo-bar-h, 50px));
+	--qmo-bottom-ui-height: calc(
+		var(--qmo-bar-gap, 8px)
+		+ var(--qmo-bar-h, 50px)
+		+ var(--hfb-svc-row-h, 0px)
+		+ 12px
+		+ 50px
+	);
 	--qmo-bottom-safe-space: calc(16px + env(safe-area-inset-bottom, 0px));
 }
 

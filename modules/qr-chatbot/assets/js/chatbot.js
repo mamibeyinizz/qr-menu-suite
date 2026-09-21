@@ -117,6 +117,35 @@
 
 	/* ------------------------------------------------------------------ */
 
+	function sepetCekmeceAcikMi() {
+		var dr = document.getElementById( 'qmo-dr' );
+		var ov = document.getElementById( 'qmo-ov' );
+		return ( !!( dr && dr.classList.contains( 'qmo-on' ) ) ) || ( !!( ov && ov.classList.contains( 'qmo-on' ) ) );
+	}
+
+	function chatbotFabA11ySepet() {
+		var gizli = sepetCekmeceAcikMi();
+		if ( gizli ) {
+			acButon.setAttribute( 'aria-hidden', 'true' );
+			acButon.setAttribute( 'tabindex', '-1' );
+			if ( document.activeElement === acButon ) {
+				acButon.blur();
+			}
+			if ( teaser ) {
+				teaser.setAttribute( 'aria-hidden', 'true' );
+			}
+			if ( overlay.classList.contains( 'gemini-acik' ) ) {
+				kapat();
+			}
+		} else {
+			acButon.removeAttribute( 'aria-hidden' );
+			acButon.setAttribute( 'tabindex', '0' );
+			if ( teaser ) {
+				teaser.removeAttribute( 'aria-hidden' );
+			}
+		}
+	}
+
 	function kilitle() {
 		if ( document.documentElement.classList.contains( 'gm-scroll-kilit' ) ) {
 			return;
@@ -128,6 +157,9 @@
 	}
 
 	function ac() {
+		if ( sepetCekmeceAcikMi() ) {
+			return;
+		}
 		kilitle();
 		if ( kapaliMi ) {
 			teaserGizle();
@@ -1116,4 +1148,18 @@
 	// Karşılama ekranı gizleme kararından SONRA çalışır: restore edilecek
 	// bir geçmiş varsa sohbetHazir() burada log/input'u tekrar açar.
 	gecmisYukle();
+
+	/* Sepet çekmecesi (#qmo-dr / #qmo-ov .qmo-on) mevcut sepet.js state'i.
+	   Yeni class eklenmez; FAB aria-hidden + tabindex çekmeceye bağlanır. */
+	( function sepetCekmeceIzle() {
+		var hedefler = [ document.getElementById( 'qmo-dr' ), document.getElementById( 'qmo-ov' ) ].filter( Boolean );
+		if ( ! hedefler.length || typeof MutationObserver === 'undefined' ) {
+			return;
+		}
+		var mo = new MutationObserver( chatbotFabA11ySepet );
+		hedefler.forEach( function ( el ) {
+			mo.observe( el, { attributes: true, attributeFilter: [ 'class' ] } );
+		} );
+		chatbotFabA11ySepet();
+	}() );
 }() );

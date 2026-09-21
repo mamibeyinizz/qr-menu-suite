@@ -1205,59 +1205,82 @@ body.hfb-scroll-locked {
 /*
  * Alt sabit katman yükseklikleri. Sepet dock'u, chatbot FAB ve menü
  * kaydırma payı (rma-frontend.css) aynı token'ları okur. Yalnızca çağrı
- * çubuğu varken html'e yazılır.
+ * aksiyonları varken html'e yazılır.
+ *
+ * Garson/Hesap artık ayrı 48px bottom bar değil: --hfb-call-bar-h 0 kalır
+ * (sepet dock'u bunun üstüne oturmaz). Dokunma satırı --hfb-svc-row-h.
  */
 html:has(.hfb-footer__call-wrap .qmo-cagri-bar),
 html:has(.hfb-footer__call-wrap .hfb-footer__call--warn) {
-  --hfb-call-bar-h: 48px;
-  --qmo-bottom-ui-height: var(--hfb-call-bar-h);
+  --hfb-call-bar-h: 0px;
+  --hfb-svc-row-h: 44px;
+  --qmo-bottom-ui-height: calc(var(--hfb-svc-row-h, 44px) + 12px + 50px);
   --qmo-bottom-safe-space: calc(16px + env(safe-area-inset-bottom, 0px));
 }
 
 /*
- * Garson/hesap (veya oturumsuz uyarı) çubuğu HER viewport genişliğinde
- * ekranın altına sabitlenir: mobil, tablet ve masaüstü aynı davranır.
- * Referans: .qmo-cagri-bar / .qmo-cagri-btn — modules/qr-chatbot/includes/
- * shortcode-buttons.php + assets/css/buttons.css ([qr_garson_hesap] / [ikili_buton]).
- * Yalnızca .hfb-footer__call-wrap sabitlenir; footer'ın diğer sütunları
- * (logo, hızlı menü, çalışma saatleri, iletişim) normal akışta kalır.
+ * Garson/Hesap (veya oturumsuz uyarı) HER viewport'ta sabit kalır ama
+ * full-width dock/bar değildir: şeffaf, gölgesiz, kenarlıksız metin satırı.
+ * Referans: .qmo-cagri-bar — shortcode-buttons.php + buttons.css.
  * Yönetim önizlemesi (.wp-admin) viewport'u ele geçirmesin diye hariç.
  *
- * Görsel hiyerarşi: sepet dock birincil, Garson/Hesap ikincil metin aksiyonu.
+ * Konum: sepet çubuğu yokken safe-area üstü; #qmo-bar.qmo-on iken sepetin
+ * hemen üstü. Safe-area yalnızca bottom ile bir kez eklenir.
  */
 .hfb-footer__call-wrap:has(.qmo-cagri-bar),
 .hfb-footer__call-wrap:has(.hfb-footer__call--warn) {
-  background: var(--hfb-ink, #0a0a0c);
+  background: transparent;
+  border: 0;
   border-top: 0;
-  bottom: 0;
+  bottom: env(safe-area-inset-bottom, 0px);
   box-shadow: none;
   display: flex;
   gap: 0;
-  left: 0;
+  left: 50%;
   margin: 0;
-  max-width: none;
-  padding: 2px 12px calc(2px + env(safe-area-inset-bottom, 0px));
+  max-width: min(440px, calc(100vw - 24px));
+  padding: 0;
+  pointer-events: none;
   position: fixed;
-  right: 0;
+  right: auto;
+  transform: translateX(-50%);
+  width: max-content;
   z-index: 9999;
+}
+
+html:has(#qmo-bar.qmo-on) body:not(.wp-admin) .hfb-footer__call-wrap:has(.qmo-cagri-bar),
+html:has(#qmo-bar.qmo-on) body:not(.wp-admin) .hfb-footer__call-wrap:has(.hfb-footer__call--warn) {
+  bottom: calc(var(--qmo-bar-gap, 8px) + var(--qmo-bar-h, 50px) + env(safe-area-inset-bottom, 0px));
 }
 
 .hfb-footer__call-wrap:has(.qmo-cagri-bar) .hfb-footer__call,
 .hfb-footer__call-wrap:has(.hfb-footer__call--warn) .hfb-footer__call {
   display: flex;
-  flex: 1 1 auto;
-  gap: 4px;
+  flex: 0 1 auto;
+  flex-wrap: nowrap;
+  gap: 0;
   justify-content: center;
   min-width: 0;
-  width: 100%;
+  position: relative;
+  width: max-content;
+}
+
+.hfb-footer__call-wrap:has(.qmo-cagri-bar) .qmo-cagri-durum {
+  clip: rect(0 0 0 0);
+  height: 1px;
+  overflow: hidden;
+  position: absolute;
+  width: 1px;
 }
 
 .hfb-footer__call-wrap:has(.qmo-cagri-bar) .hfb-footer__call-btn {
   align-items: center;
+  background: transparent;
+  background-blend-mode: normal;
   background-color: transparent;
   background-image: none;
   border: 0;
-  border-radius: 8px;
+  border-radius: 0;
   box-shadow: none;
   box-sizing: border-box;
   color: var(--hfb-muted, #8f8a82);
@@ -1265,25 +1288,29 @@ html:has(.hfb-footer__call-wrap .hfb-footer__call--warn) {
   filter: none;
   flex: 0 1 auto;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   gap: 6px;
   height: auto;
   justify-content: center;
-  line-height: 1.15;
+  line-height: 1.2;
   min-height: 44px;
-  min-width: 0;
-  padding: 0 10px;
+  min-width: 44px;
+  padding: 10px 8px;
+  pointer-events: auto;
   text-decoration: none;
   transform: none;
-  transition: background-color 0.2s ease, color 0.2s ease;
+  transition: color 0.2s ease;
   white-space: nowrap;
 }
 
 .hfb-footer__call-wrap:has(.qmo-cagri-bar) .hfb-footer__call-btn[data-qmo-cagri="garson"],
 .hfb-footer__call-wrap:has(.qmo-cagri-bar) .hfb-footer__call-btn[data-qmo-cagri="hesap"] {
+  background: transparent;
   background-color: transparent;
+  background-image: none;
   border: 0;
+  box-shadow: none;
   color: var(--hfb-muted, #8f8a82);
 }
 
@@ -1329,11 +1356,14 @@ html:has(.hfb-footer__call-wrap .hfb-footer__call--warn) {
 }
 
 .hfb-footer__call-wrap:has(.qmo-cagri-bar) .hfb-footer__call-btn.is-success {
+  background: transparent;
   background-blend-mode: normal;
-  background-color: color-mix(in srgb, var(--hfb-gold) 22%, var(--hfb-ink));
+  background-color: transparent;
   background-image: none;
-  border-color: var(--hfb-gold);
-  color: var(--hfb-gold-soft);
+  border: 0;
+  border-color: transparent;
+  box-shadow: none;
+  color: var(--hfb-muted, #8f8a82);
   /* .is-success cooldown boyunca native disabled ile birlikte durur (bkz.
      buttons.js); üstteki :disabled kuralının opacity:0.5'i olmasa da
      ezilir, aksi halde başarı state'i soluk/kapalı görünür. */
@@ -1341,7 +1371,7 @@ html:has(.hfb-footer__call-wrap .hfb-footer__call--warn) {
 }
 
 .hfb-footer__call-wrap:has(.qmo-cagri-bar) .hfb-footer__call-btn.is-success .hfb-icon--call {
-  color: var(--hfb-gold);
+  color: currentColor;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1355,17 +1385,25 @@ html:has(.hfb-footer__call-wrap .hfb-footer__call--warn) {
 }
 
 @media (hover: hover) {
+  .hfb-footer__call-wrap:has(.qmo-cagri-bar) .hfb-footer__call-btn:hover,
   .hfb-footer__call-wrap:has(.qmo-cagri-bar) .hfb-footer__call-btn[data-qmo-cagri="garson"]:hover,
   .hfb-footer__call-wrap:has(.qmo-cagri-bar) .hfb-footer__call-btn[data-qmo-cagri="hesap"]:hover {
-    background-color: color-mix(in srgb, var(--hfb-gold) 8%, var(--hfb-ink));
+    background: transparent;
+    background-color: transparent;
+    background-image: none;
     border-color: transparent;
+    box-shadow: none;
     color: var(--hfb-text);
+    filter: none;
+    transform: none;
   }
 
   .hfb-footer__call-wrap:has(.qmo-cagri-bar) .hfb-footer__call-btn.is-success:hover {
-    background-color: color-mix(in srgb, var(--hfb-gold) 28%, var(--hfb-ink));
-    border-color: var(--hfb-gold-soft);
-    color: var(--hfb-gold-soft);
+    background: transparent;
+    background-color: transparent;
+    border-color: transparent;
+    box-shadow: none;
+    color: var(--hfb-text);
   }
 }
 
@@ -1375,6 +1413,7 @@ html:has(.hfb-footer__call-wrap .hfb-footer__call--warn) {
     max-width: 440px;
     right: auto;
     transform: translateX(-50%);
+    width: max-content;
   }
 
   .hfb-footer__call-wrap:has(.qmo-cagri-bar) .hfb-footer__call-btn {
@@ -1386,11 +1425,11 @@ html:has(.hfb-footer__call-wrap .hfb-footer__call--warn) {
  * Sabit çubuk için scroll payı <body>'ye değil .hfb-footer'a yazılır;
  * footer zaten koyu zemin taşıdığı için mobilde altta beyaz sızıntı olmaz.
  * iOS rubber-band / overscroll için html+body rengi footer ink ile eşlenir.
- * Yükseklik --qmo-bottom-ui-height (çağrı + varsa sepet dock) + nefes + safe-area.
+ * Yükseklik --qmo-bottom-ui-height (servis satırı + varsa sepet dock + FAB) + nefes + safe-area.
  */
 body:not(.wp-admin) .hfb-footer-wrap:has(.hfb-footer__call-wrap .qmo-cagri-bar) .hfb-footer,
 body:not(.wp-admin) .hfb-footer-wrap:has(.hfb-footer__call-wrap .hfb-footer__call--warn) .hfb-footer {
-  padding-bottom: calc(var(--qmo-bottom-ui-height, var(--hfb-call-bar-h, 48px)) + var(--qmo-bottom-safe-space, 16px));
+  padding-bottom: calc(var(--qmo-bottom-ui-height, var(--hfb-svc-row-h, 0px)) + var(--qmo-bottom-safe-space, 16px));
 }
 
 html:has(.hfb-footer__call-wrap .qmo-cagri-bar):not(.wp-admin),

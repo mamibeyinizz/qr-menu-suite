@@ -116,9 +116,10 @@ function qmo_chatbot_kose_haritasi() {
 /**
  * Yerden yükseklik → alt boşluk yedeği.
  *
- * HFB çağrı çubuğu veya sepet dock'u varken gerçek konum chatbot.css
- * içinde `--hfb-call-bar-h` / `--qmo-bar-h` ile hesaplanır. Bu harita
- * o katmanlar yokken `--gm-bottom` değerini üretir.
+ * HFB servis satırı veya sepet dock'u varken gerçek konum chatbot.css
+ * içinde `--hfb-svc-row-h` / `--qmo-bar-h` ile hesaplanır. Bu harita
+ * o katmanlar yokken `--gm-bottom` değerini üretir. Sepet çekmecesi
+ * açıkken (#qmo-dr.qmo-on) FAB gizlenir; konum yalnızca kapalı halde.
  *
  * @return array<string,int>
  */

@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+	<title>Bottom dock UX fixture</title>
+	<link rel="stylesheet" href="/modules/header-footer-builder/assets/css/frontend.css">
+	<link rel="stylesheet" href="/modules/qr-chatbot/assets/css/chatbot.css">
+	<link rel="stylesheet" href="/modules/qr-chatbot/assets/css/sepet.css">
+	<link rel="stylesheet" href="/modules/restoran-menu/assets/css/rma-frontend.css">
+	<style>
+		body { margin: 0; background: #0a0a0c; color: #f5f0e8; min-height: 1400px; }
+		.rma-wrap { min-height: 900px; }
+		.rma-last-cta {
+			display: block;
+			margin: 40px 16px;
+			padding: 14px;
+			background: #c9a84c;
+			color: #0a0a0c;
+			text-align: center;
+			border-radius: 10px;
+		}
+	</style>
+</head>
+<body>
+	<div class="rma-wrap">
+		<div class="rma-card" data-id="1" style="height: 400px;">Ürün</div>
+		<button type="button" class="rma-last-cta" id="last-cta">Sepete Ekle</button>
+	</div>
+
+	<footer class="hfb-footer-wrap">
+		<div class="hfb-footer">
+			<div class="hfb-footer__call-wrap">
+				<div class="hfb-footer__call qmo-cagri-bar">
+					<button type="button" class="hfb-btn hfb-footer__call-btn" data-qmo-cagri="garson" aria-label="Garson Çağır">
+						<svg class="hfb-icon hfb-icon--call" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+						<span class="qmo-cagri-etiket">Garson Çağır</span>
+					</button>
+					<button type="button" class="hfb-btn hfb-footer__call-btn" data-qmo-cagri="hesap" aria-label="Hesap İste">
+						<svg class="hfb-icon hfb-icon--call" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M8 7h8M8 11h8M8 15h5"/></svg>
+						<span class="qmo-cagri-etiket">Hesap İste</span>
+					</button>
+					<p class="qmo-cagri-durum" hidden></p>
+				</div>
+			</div>
+		</div>
+	</footer>
+
+	<div class="gemini-shortcode-container">
+		<div class="gemini-teaser" hidden>Teaser</div>
+		<div class="gemini-chat-toggle-btn" role="button" tabindex="0" aria-label="Menü asistanını aç">
+			<span class="gm-attn-core">
+				<span class="gm-attn-ring" aria-hidden="true"></span>
+				<div class="gemini-icon-wrapper" aria-hidden="true">💬</div>
+			</span>
+		</div>
+		<div class="gemini-chat-overlay gm-device-phone">
+			<div class="gemini-chat-header">
+				<div class="gemini-chat-header-left"></div>
+				<button type="button" class="gemini-chat-close" aria-label="Kapat">&times;</button>
+			</div>
+			<div class="gemini-chat-log"></div>
+			<div class="gemini-chat-input-area">
+				<input class="gemini-chat-input" type="text">
+				<button type="button" class="gemini-chat-send">Gönder</button>
+			</div>
+		</div>
+	</div>
+
+	<div class="qmo-sepet-root" id="qmo-sepet-root">
+		<div class="qmo-bar qmo-on" id="qmo-bar" role="button" tabindex="0" aria-label="Sepeti aç">
+			<div class="qmo-bar-l">
+				<span class="qmo-bar-badge" id="qmo-badge">1</span>
+				<span id="qmo-bar-txt">Sepet</span>
+			</div>
+			<div class="qmo-bar-r">
+				<span id="qmo-bar-tot">295 ₺</span>
+				<span class="qmo-bar-go" aria-hidden="true">›</span>
+			</div>
+		</div>
+		<div class="qmo-ov" id="qmo-ov"></div>
+		<div class="qmo-dr" id="qmo-dr" role="dialog" aria-label="Sepet">
+			<div class="qmo-dr-h">
+				<h3 id="qmo-dr-title">Sepetiniz</h3>
+				<button type="button" class="qmo-x" id="qmo-x" aria-label="Kapat">×</button>
+			</div>
+			<div class="qmo-list" id="qmo-list"></div>
+			<div class="qmo-ft">
+				<div class="qmo-tot">
+					<b id="qmo-t-top">Toplam</b>
+					<span id="qmo-tot">295 ₺</span>
+				</div>
+				<div class="qmo-yak" id="qmo-yak"></div>
+				<div class="qmo-tl" id="qmo-tl-not"></div>
+				<button type="button" class="qmo-send" id="qmo-send">Siparişi Gönder</button>
+			</div>
+		</div>
+		<div class="qmo-toast" id="qmo-toast"></div>
+	</div>
+
+	<script>
+	window.qmoChatShared = {
+		istek: function () { return Promise.resolve( { success: true, data: { cooldown: 60 } } ); },
+		metin: function ( k, d ) { return d; }
+	};
+	window.qmoData = { nonce: 'n', ajaxUrl: '/ajax', oturumAnahtari: 't' };
+	window.qmoSepet = { kur: { USD: 0.03, EUR: 0.028 }, analitik: false, ajaxUrl: '', nonce: '', endpoint: '/r', restNonce: 'n', i18n: {}, para: { fiyat: { tr: '{n} ₺' } } };
+	</script>
+	<script src="/modules/qr-chatbot/assets/js/chatbot.js"></script>
+	<pre id="out" hidden></pre>
+</body>
+</html>

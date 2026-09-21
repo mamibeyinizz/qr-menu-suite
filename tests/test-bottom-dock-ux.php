@@ -51,8 +51,12 @@ qrms_test(
 		qrms_assert_contains( 'max-width: 52px;', $css, 'FAB tavanı' );
 		qrms_assert_contains( 'max-height: 52px;', $css, 'FAB tavanı boy' );
 		qrms_assert_contains( 'body:not(.wp-admin) .gemini-chat-toggle-btn .gemini-toggle-label', $css, 'ön yüzde etiket gizlenir' );
-		qrms_assert_contains( 'html:has(#qmo-bar.qmo-on)', $css, 'sepet açıkken FAB konumu' );
+		qrms_assert_contains( 'html:has(#qmo-bar.qmo-on)', $css, 'sepet çubuğu görünürken FAB konumu' );
+		qrms_assert_contains( 'html:has(#qmo-dr.qmo-on) .gemini-chat-toggle-btn', $css, 'çekmece açıkken FAB gizlenir' );
+		qrms_assert_contains( 'html:has(#qmo-ov.qmo-on) .gemini-chat-toggle-btn', $css, 'overlay açıkken FAB gizlenir' );
+		qrms_assert_contains( 'display: none !important', $css, 'çekmecede FAB display none' );
 		qrms_assert_contains( '--gm-fab-bottom', $css, 'FAB alt token' );
+		qrms_assert_contains( '--hfb-svc-row-h', $css, 'servis satırı FAB hesabına girer' );
 		qrms_assert_contains( 'env(safe-area-inset-bottom, 0px)', $css, 'iOS safe-area' );
 		qrms_assert_contains( '@media (prefers-reduced-motion: reduce)', $css, 'reduced motion durur' );
 	}
@@ -72,7 +76,8 @@ qrms_test(
 		qrms_assert_contains( 'id="qmo-bar-tot"', $php, 'toplam id korunur (JS textContent)' );
 		qrms_assert_contains( '--qmo-bar-h', $css, 'dock yükseklik token' );
 		qrms_assert_contains( '--qmo-bottom-ui-height', $css, 'ortak alt UI token' );
-		qrms_assert_contains( 'var(--hfb-call-bar-h, 0px)', $css, 'çağrı çubuğu üstüne oturur' );
+		qrms_assert_contains( 'var(--hfb-call-bar-h, 0px)', $css, 'eski çağrı bar yüksekliği 0 yedeği (dock alta oturur)' );
+		qrms_assert_contains( 'var(--hfb-svc-row-h, 0px)', $css, 'servis satırı kaydırma payına girer' );
 		qrms_assert_contains( "bar.addEventListener( 'click', ac )", $js, 'mevcut tıklama durur' );
 		qrms_assert_same( 1, substr_count( $js, "bar.addEventListener( 'click', ac )" ), 'tek bar click dinleyicisi' );
 	}
@@ -91,6 +96,12 @@ qrms_test(
 		qrms_assert_contains( 'hfb-icon--call', $hfb, 'mevcut SVG ikon' );
 		qrms_assert_contains( 'aria-label="\' . esc_attr( $garson )', $hfb, 'garson aria-label' );
 		qrms_assert_contains( 'color: var(--hfb-muted, #8f8a82)', $css, 'ikincil muted renk' );
+		qrms_assert_contains( 'background: transparent', $css, 'servis satırı zeminsiz' );
+		qrms_assert_contains( 'width: max-content', $css, 'full-width bar değil' );
+		qrms_assert_contains( 'pointer-events: none', $css, 'wrap tıklanabilir dock değil' );
+		qrms_assert_contains( 'font-size: 14px', $css, 'ikincil 14px metin' );
+		qrms_assert_contains( '--hfb-call-bar-h: 0px', $css, '48px bar yüksekliği layout\'a eklenmez' );
+		qrms_assert_contains( '--hfb-svc-row-h: 44px', $css, 'dokunma satırı 44px' );
 		qrms_assert_contains( "add_action( 'wp_ajax_garson_cagir'", $ajax, 'garson_cagir action' );
 		qrms_assert_contains( "add_action( 'wp_ajax_hesap_iste'", $ajax, 'hesap_iste action' );
 		qrms_assert_contains( "add_action( 'wp_ajax_qrservis_call'", $ajax, 'qrservis_call action' );
@@ -111,7 +122,8 @@ qrms_test(
 			'rma-wrap token payı'
 		);
 		qrms_assert_false( false !== strpos( $rma, 'padding-bottom: 150px' ), 'kör 150px yok' );
-		qrms_assert_contains( '--hfb-call-bar-h: 48px', $hfb, 'çağrı çubuğu yüksekliği token' );
+		qrms_assert_contains( '--hfb-call-bar-h: 0px', $hfb, 'eski 48px bar token\'ı layout\'a eklenmez' );
+		qrms_assert_contains( '--hfb-svc-row-h: 44px', $hfb, 'servis dokunma satırı token' );
 		qrms_assert_contains( '--qmo-bottom-ui-height', $hfb, 'ortak yükseklik token HFB\'de' );
 		qrms_assert_contains( 'env(safe-area-inset-bottom, 0px)', $hfb, 'safe-area HFB\'de' );
 	}
@@ -132,5 +144,41 @@ qrms_test(
 		qrms_assert_contains( "add_shortcode( 'ikili_buton'", $btn, 'ikili shortcode' );
 		qrms_assert_contains( "add_shortcode( 'qr_garson_hesap'", $btn, 'alias shortcode' );
 		qrms_assert_contains( 'qrservis/v1/order', $ord, 'sipariş REST' );
+	}
+);
+
+qrms_test(
+	'sepet çekmecesi açıkken chatbot gizlenir: mevcut #qmo-dr.qmo-on state, aria-hidden, odak yok',
+	function () {
+		$css = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/assets/css/chatbot.css' );
+		$js  = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/assets/js/chatbot.js' );
+		$sep = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/assets/js/sepet.js' );
+		$php = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/includes/shortcode-chatbot.php' );
+
+		qrms_assert_contains( "ov.classList.add( 'qmo-on' )", $sep, 'çekmece açılınca overlay qmo-on' );
+		qrms_assert_contains( "dr.classList.add( 'qmo-on' )", $sep, 'çekmece açılınca drawer qmo-on' );
+		qrms_assert_contains( "ov.classList.remove( 'qmo-on' )", $sep, 'kapanınca overlay class kalkar' );
+		qrms_assert_contains( "dr.classList.remove( 'qmo-on' )", $sep, 'kapanınca drawer class kalkar' );
+
+		qrms_assert_contains( 'function sepetCekmeceAcikMi()', $js, 'mevcut çekmece state okunur' );
+		qrms_assert_contains( "dr.classList.contains( 'qmo-on' )", $js, 'qmo-dr.qmo-on kullanılır' );
+		qrms_assert_contains( "setAttribute( 'aria-hidden', 'true' )", $js, 'çekmece açıkken aria-hidden' );
+		qrms_assert_contains( "removeAttribute( 'aria-hidden' )", $js, 'çekmece kapanınca aria-hidden kalkar' );
+		qrms_assert_contains( "setAttribute( 'tabindex', '-1' )", $js, 'çekmece açıkken odak dışı' );
+		qrms_assert_contains( "setAttribute( 'tabindex', '0' )", $js, 'kapanınca tabindex geri gelir' );
+		qrms_assert_contains( 'chatbotFabA11ySepet', $js, 'a11y senkron fonksiyonu' );
+		qrms_assert_contains( 'MutationObserver', $js, 'çekmece class değişimini izler' );
+		qrms_assert_contains( 'if ( sepetCekmeceAcikMi() )', $js, 'çekmece açıkken FAB açılmaz' );
+
+		qrms_assert_contains(
+			"qmo_ceviri_chat( __( 'Menü asistanını aç', 'qrms' ) )",
+			$php,
+			'aria-label Menü asistanını aç korunur'
+		);
+		qrms_assert_false( false !== strpos( $js, "aria-label', 'Menü asistanını aç" ), 'JS aria-label üzerine yazmaz' );
+
+		qrms_assert_contains( 'html:has(#qmo-dr.qmo-on) .gemini-teaser', $css, 'teaser da gizlenir' );
+		qrms_assert_false( (bool) preg_match( '/#qmo-dr\.qmo-on[^{]{0,200}opacity:\s*0/', $css ), 'opacity ile yarı gizleme yok' );
+		qrms_assert_false( (bool) preg_match( '/#qmo-dr\.qmo-on[^{]{0,200}visibility:\s*hidden/', $css ), 'visibility hidden değil, display none' );
 	}
 );
