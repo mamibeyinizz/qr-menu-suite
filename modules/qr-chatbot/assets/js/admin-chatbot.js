@@ -208,17 +208,13 @@
 		return false;
 	}
 
-	function toggleMetinAcikMi() {
-		return acikMi( 'gemini_show_toggle_text', 'toggleText' );
-	}
-
 	function deger( id, yedek ) {
 		var el = document.getElementById( id );
 		return el && el.value ? el.value : ( yedek || '' );
 	}
 
 	function ikonHtml() {
-		var preset = deger( 'qmo_chatbot_icon_preset', initial.iconPreset || 'bubble' );
+		var preset = deger( 'qmo_chatbot_icon_preset', initial.iconPreset || 'spark' );
 		var url = deger( 'gemini_bot_icon', initial.iconUrl || '' );
 		if ( 'custom' === preset && url ) {
 			return '<img src="' + url.replace( /"/g, '' ) + '" alt="" />';
@@ -308,18 +304,17 @@
 		var kose = secili( 'qmo_chatbot_radius_preset', 'radiusPreset' ) || 'soft';
 		var radiusPx = ( cfg.radii && cfg.radii[ kose ] ) ? cfg.radii[ kose ] : 16;
 		var boyut = secili( 'qmo_chatbot_icon_size_preset', 'iconSizePreset' ) || 'medium';
-		var iconPx = ( cfg.sizes && cfg.sizes[ boyut ] ) ? cfg.sizes[ boyut ] : 48;
+		var iconPx = ( cfg.sizes && cfg.sizes[ boyut ] ) ? cfg.sizes[ boyut ] : 50;
 		var off = secili( 'qmo_chatbot_offset', 'offset' ) || 'mid';
 		var bottomPx = ( cfg.offsets && cfg.offsets[ off ] ) ? cfg.offsets[ off ] : 108;
 		var genis = secili( 'qmo_chatbot_window_width', 'windowWidth' ) || 'normal';
 		var windowPx = ( cfg.widths && cfg.widths[ genis ] ) ? cfg.widths[ genis ] : 380;
 		var konum = secili( 'qmo_chatbot_position', 'position' ) || 'right';
-		var hareket = secili( 'qmo_chatbot_attention', 'attention' ) || 'none';
-		var attnMap = { pulse: 'gm-attn-pulse', shake: 'gm-attn-shake', float: 'gm-attn-float' };
+		var hareket = secili( 'qmo_chatbot_attention', 'attention' ) || 'breath';
+		var attnMap = { breath: 'gm-attn-breath', pulse: 'gm-attn-pulse', shake: 'gm-attn-shake', float: 'gm-attn-float' };
 		var welcomeOn = acikMi( 'qmo_chatbot_welcome_screen', 'welcomeScreen' );
 		var teaserOn = acikMi( 'qmo_chatbot_teaser', 'teaser' );
 		var badgeOn = acikMi( 'qmo_chatbot_badge', 'badge' );
-		var toggleTextOn = toggleMetinAcikMi();
 		var acik = 'open' === state.mode;
 		var girisGoster = acik && welcomeOn && ! state.welcomeStarted;
 		var html = ikonHtml();
@@ -351,7 +346,7 @@
 			degiskenYaz( el, '--gm-side', '16px' );
 			degiskenYaz( el, '--gm-window', windowPx + 'px' );
 			degiskenYaz( el, '--gm-z', '2' );
-			degiskenYaz( el, '--gm-toggle-pad', toggleTextOn ? '13px 26px 13px 14px' : '14px' );
+			degiskenYaz( el, '--gm-toggle-pad', '0' );
 			el.classList.toggle( 'gm-pos-left', 'left' === konum );
 			el.classList.toggle( 'gm-pos-right', 'left' !== konum );
 		} );
@@ -392,17 +387,18 @@
 		}
 
 		if ( toggle ) {
-			toggle.classList.remove( 'gm-attn-pulse', 'gm-attn-shake', 'gm-attn-float' );
+			toggle.classList.remove( 'gm-attn-breath', 'gm-attn-pulse', 'gm-attn-shake', 'gm-attn-float' );
 			if ( attnMap[ hareket ] ) {
 				toggle.classList.add( attnMap[ hareket ] );
 			}
+			toggle.setAttribute( 'aria-label', 'Menü asistanını aç' );
 		}
 		if ( badge ) {
 			badge.hidden = ! badgeOn;
 		}
 		var toggleLabel = root.querySelector( '[data-preview-toggle-label]' );
 		if ( toggleLabel ) {
-			toggleLabel.hidden = ! toggleTextOn;
+			toggleLabel.hidden = true;
 			toggleLabel.textContent = deger( 'gemini_bot_name', initial.botName || 'Asistan' );
 		}
 		if ( teaser ) {

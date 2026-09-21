@@ -376,6 +376,7 @@ if ( ! function_exists( 'rma_ceviri_modul_kaynak_metinleri' ) ) {
 			),
 			'chat'    => array(
 				'Asistanı kullanmak için masanızdaki QR kodu okutun.',
+				'Menü asistanını aç',
 				'Çevrimiçi',
 				'Kapat',
 				'Gönder',

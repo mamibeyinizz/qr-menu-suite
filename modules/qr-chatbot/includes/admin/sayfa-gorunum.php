@@ -149,7 +149,7 @@ function qmo_chatbot_sayfa_gorunum() {
 					<tr>
 						<th scope="row"><?php esc_html_e( 'Dikkat çekme hareketi', 'qrms' ); ?></th>
 						<td>
-							<?php qmo_chatbot_secenek_grup( 'qmo_chatbot_attention', $hareket, array( 'none' => __( 'Yok', 'qrms' ), 'pulse' => __( 'Hafif nabız', 'qrms' ), 'shake' => __( 'Sallanma', 'qrms' ), 'float' => __( 'Yukarı-aşağı süzülme', 'qrms' ) ) ); ?>
+							<?php qmo_chatbot_secenek_grup( 'qmo_chatbot_attention', $hareket, array( 'none' => __( 'Yok', 'qrms' ), 'breath' => __( 'Nefes (önerilen)', 'qrms' ), 'pulse' => __( 'Hafif nabız', 'qrms' ), 'shake' => __( 'Sallanma', 'qrms' ), 'float' => __( 'Yukarı-aşağı süzülme', 'qrms' ) ) ); ?>
 						</td>
 					</tr>
 					<tr>
