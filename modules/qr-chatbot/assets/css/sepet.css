@@ -6,6 +6,13 @@
  * olduğu için kart üstü form yerleşimi bozuyordu.
  */
 
+.qmo-sepet-root,
+.qmo-sepet-root *,
+.qmo-sepet-root *::before,
+.qmo-sepet-root *::after {
+	box-sizing: border-box;
+}
+
 .qmo-sepet-root {
 	--qmo-bg: #0a0a0c;
 	--qmo-card: #16161a;
@@ -93,8 +100,9 @@ html:has(#qmo-bar.qmo-on) {
 	align-items: center;
 	justify-content: space-between;
 	gap: 10px;
-	min-height: 48px;
-	padding: 10px 14px;
+	height: var(--qmo-bar-h, 50px);
+	min-height: var(--qmo-bar-h, 50px);
+	padding: 0 14px;
 	border: 1px solid rgba(201, 168, 76, 0.4);
 	border-radius: 14px;
 	background: rgba(12, 12, 15, 0.97);
