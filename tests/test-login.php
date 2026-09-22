@@ -372,6 +372,7 @@ qrms_test(
 		qrms_assert_contains( 'font-size: 16px', $css, 'input yazı boyu' );
 		qrms_assert_contains( 'env(safe-area-inset-bottom)', $css, 'çentik payı' );
 		qrms_assert_contains( 'prefers-reduced-motion', $css, 'hareket tercihi' );
+		qrms_assert_contains( 'grid-template-columns', $css, 'masaüstü iki sütun grid' );
 	}
 );
 

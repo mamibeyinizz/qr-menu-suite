@@ -223,6 +223,38 @@ body.qrms-premium-shell-active {
 	border-top: 1px solid rgba(201, 168, 76, 0.15);
 }
 
+.qrms-shell__wp-admin-link {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	margin: 4px 8px 10px;
+	padding: 10px 12px;
+	border-radius: 10px;
+	border: 1px dashed rgba(201, 168, 76, 0.35);
+	background: rgba(12, 18, 14, 0.45);
+	color: var(--qrms-shell-text-muted);
+	text-decoration: none;
+	font-size: 12.5px;
+	font-weight: 600;
+	transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.qrms-shell__wp-admin-link:hover,
+.qrms-shell__wp-admin-link:focus {
+	color: var(--qrms-shell-gold-light);
+	border-color: rgba(201, 168, 76, 0.55);
+	background: rgba(201, 168, 76, 0.08);
+	outline: 0;
+}
+
+.qrms-shell__wp-admin-icon {
+	flex-shrink: 0;
+	width: 18px;
+	height: 18px;
+	font-size: 18px;
+	opacity: 0.85;
+}
+
 .qrms-shell__account {
 	display: flex;
 	align-items: center;

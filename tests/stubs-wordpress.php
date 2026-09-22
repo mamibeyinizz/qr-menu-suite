@@ -82,6 +82,19 @@ class WP_Error {
 	}
 }
 
+/** Basit WP_User taklidi (login_redirect testleri). */
+class WP_User {
+	/**
+	 * @var int
+	 */
+	public $ID = 0;
+
+	/**
+	 * @var string
+	 */
+	public $display_name = '';
+}
+
 /**
  * WP_Error mi?
  *
@@ -762,6 +775,31 @@ function current_user_can( $capability, ...$args ) {
 	}
 
 	return (bool) $GLOBALS['qrms_test']['can'];
+}
+
+/**
+ * Belirli bir kullanıcı için yetki (login_redirect testleri).
+ *
+ * @param object $user        Kullanıcı (WP_User taklidi).
+ * @param string $capability  Yetki.
+ * @return bool
+ */
+function user_can( $user, $capability, ...$args ) {
+	if ( ! is_object( $user ) ) {
+		return false;
+	}
+
+	$user_id = isset( $user->ID ) ? (int) $user->ID : 0;
+
+	if ( isset( $GLOBALS['qrms_test']['user_can'][ $user_id ][ $capability ] ) ) {
+		return (bool) $GLOBALS['qrms_test']['user_can'][ $user_id ][ $capability ];
+	}
+
+	if ( get_current_user_id() === $user_id ) {
+		return current_user_can( $capability, ...$args );
+	}
+
+	return false;
 }
 
 /**
@@ -2398,6 +2436,7 @@ require_once QRMS_PLUGIN_DIR . 'includes/class-wizard.php';
 require_once QRMS_PLUGIN_DIR . 'includes/class-shortcodes.php';
 require_once QRMS_PLUGIN_DIR . 'includes/class-admin.php';
 require_once QRMS_PLUGIN_DIR . 'includes/class-admin-shell.php';
+require_once QRMS_PLUGIN_DIR . 'includes/class-admin-shell-auth.php';
 require_once QRMS_PLUGIN_DIR . 'includes/class-qrms-login.php';
 require_once QRMS_PLUGIN_DIR . 'includes/class-query-monitor.php';
 require_once QRMS_PLUGIN_DIR . 'includes/class-qrms-hata-sayfalari.php';

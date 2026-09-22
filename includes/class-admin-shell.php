@@ -284,6 +284,12 @@ class QRMS_Admin_Shell {
 					<?php if ( ! ( class_exists( 'QRMS_SP_Rol' ) && QRMS_SP_Rol::yalniz_servis_mi() ) ) : ?>
 						<?php self::render_nav_item( self::get_settings_nav_item() ); ?>
 					<?php endif; ?>
+					<?php if ( current_user_can( 'manage_options' ) && ! ( class_exists( 'QRMS_SP_Rol' ) && QRMS_SP_Rol::yalniz_servis_mi() ) ) : ?>
+						<a class="qrms-shell__wp-admin-link" href="<?php echo esc_url( QRMS_Admin_Shell_Auth::wordpress_admin_url() ); ?>">
+							<span class="qrms-shell__wp-admin-icon dashicons dashicons-wordpress" aria-hidden="true"></span>
+							<span class="qrms-shell__wp-admin-label"><?php esc_html_e( 'WordPress Yönetimi', 'qrms' ); ?></span>
+						</a>
+					<?php endif; ?>
 					<div class="qrms-shell__account">
 						<span class="qrms-shell__account-avatar" aria-hidden="true"><?php echo esc_html( self::user_initials( $user ) ); ?></span>
 						<span class="qrms-shell__account-meta">

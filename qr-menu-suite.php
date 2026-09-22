@@ -29,6 +29,7 @@ require_once QRMS_PLUGIN_DIR . 'includes/class-wizard.php';
 require_once QRMS_PLUGIN_DIR . 'includes/class-shortcodes.php';
 require_once QRMS_PLUGIN_DIR . 'includes/class-admin.php';
 require_once QRMS_PLUGIN_DIR . 'includes/class-admin-shell.php';
+require_once QRMS_PLUGIN_DIR . 'includes/class-admin-shell-auth.php';
 require_once QRMS_PLUGIN_DIR . 'includes/class-qrms-login.php';
 require_once QRMS_PLUGIN_DIR . 'includes/class-query-monitor.php';
 require_once QRMS_PLUGIN_DIR . 'includes/class-qrms-hata-sayfalari.php';
@@ -44,6 +45,7 @@ function qrms_bootstrap() {
 	QRMS_Wizard::init();
 	QRMS_Admin::init();
 	QRMS_Admin_Shell::init();
+	QRMS_Admin_Shell_Auth::init();
 
 	// Özel giriş adresi + giriş ekranı görünümü. İsteği plugins_loaded'da
 	// yakalaması gerektiği için erken kaydedilir; kendi içinde kapalıysa

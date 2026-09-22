@@ -594,10 +594,83 @@ body.qrms-login,
  */
 @media (min-width: 1024px) {
 
+	/*
+	 * Gerçek giriş: iki sütunlu grid — marka solda, form kartı sağda (dengeli,
+	 * boşluk az). Önizleme (.qrms-lp) aşağıdaki kurallarla ayrı tutulur.
+	 */
+	body.qrms-login.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) minmax(360px, 440px);
+		align-items: center;
+		column-gap: clamp(28px, 4vw, 72px);
+		justify-content: center;
+		box-sizing: border-box;
+		width: 100%;
+		max-width: 1180px;
+		margin-left: auto;
+		margin-right: auto;
+		padding: 48px clamp(20px, 4vw, 56px);
+	}
+
+	body.qrms-login.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) #login {
+		display: contents;
+	}
+
+	body.qrms-login.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) #login > .qrms-login-brand {
+		grid-column: 1;
+		grid-row: 1;
+		position: static;
+		top: auto;
+		right: auto;
+		transform: none;
+		margin: 0;
+		width: auto;
+		max-width: 52ch;
+		padding: 0 clamp(0px, 2vw, 16px) 0 0;
+		display: flex;
+		flex-direction: column;
+		justify-content: center;
+		text-align: left;
+		align-self: center;
+	}
+
+	body.qrms-login.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) #login > h1,
+	body.qrms-login.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) #login > form,
+	body.qrms-login.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) #login > .message,
+	body.qrms-login.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) #login > .notice {
+		grid-column: 2;
+		width: 100%;
+		margin-left: 0;
+		margin-right: 0;
+	}
+
+	body.qrms-login.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) #login > h1 {
+		margin-bottom: 22px;
+	}
+
+	body.qrms-login.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) #login > form {
+		box-sizing: border-box;
+		width: 100%;
+		margin: 0;
+		padding: 40px 36px 32px;
+		background: var(--qrms-lg-kart);
+		border: 1px solid var(--qrms-lg-kart-cizgi);
+		border-radius: var(--qrms-lg-radius);
+	}
+
+	body.qrms-login-golge.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) #login > form {
+		box-shadow: var(--qrms-lg-golge);
+	}
+
+	body.qrms-login-cam.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) #login > form {
+		-webkit-backdrop-filter: blur(18px) saturate(1.2);
+		backdrop-filter: blur(18px) saturate(1.2);
+	}
+
 	.qrms-login-duzen-bolunmus.qrms-login:not(.qrms-lp-mobil) {
 		align-items: center;
-		justify-content: flex-end;
-		padding-right: 6vw;
+		justify-content: center;
+		padding-right: 0;
 	}
 
 	.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) .qrms-lp-brand {
@@ -614,35 +687,6 @@ body.qrms-login,
 		text-align: left;
 	}
 
-	/*
-	 * Önizlemede (.qrms-lp-brand, yukarıda) marka bloğu #login'in KARDEŞİ
-	 * olduğu için left:0/width:48% doğrudan kapsayıcıya (.qrms-lp) göre
-	 * çalışır. Gerçek giriş ekranında ise WordPress çekirdeği
-	 * login_message çıktısını (bkz. wp-login.php login_header()) doğrudan
-	 * #login'in İÇİNE basar; .qrms-login-brand bu yüzden #login'in
-	 * ÇOCUĞUDUR, kardeşi değil. #login kendisi position:relative
-	 * olduğundan (bkz. "3. KART") yukarıdaki kuralı burada da kullanmak
-	 * bloğu #login'e göre sol üst köşeye, yani kartla AYNI alana
-	 * konumlandırır — form üzerine biner ve tıklanamaz hale gelir. Bu
-	 * yüzden ayrı bir kural: konumlandırma bağlamı yine #login'dir, ama
-	 * blok kartın SOLUNA, kutunun DIŞINA (right:100%) yerleştirilir —
-	 * kartla artık hiçbir genişlikte çakışmaz.
-	 */
-	.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) #login > .qrms-login-brand {
-		position: absolute;
-		top: 50%;
-		right: 100%;
-		transform: translateY(-50%);
-		margin: 0 5vw 0 0;
-		width: min(38vw, 480px);
-		padding: 0;
-		display: flex;
-		flex-direction: column;
-		justify-content: center;
-		text-align: left;
-	}
-
-	/* Marka panelini formdan ayıran yumuşak dikey çizgi. */
 	.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) .qrms-login-brand::after,
 	.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) .qrms-lp-brand::after {
 		content: "";
@@ -672,16 +716,21 @@ body.qrms-login,
 		font-size: 15px;
 	}
 
-	/* Kart ve altındaki bağlantılar sağ yarıda kalır. */
-	.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) #login,
 	.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) .qrms-lp-box,
 	.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) #backtoblog,
 	.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) .qrms-lp-geri,
 	.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) .qrms-login-footer,
 	.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) #login_error,
-	.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) .language-switcher {
-		margin-left: 52%;
+	.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) .language-switcher,
+	body.qrms-login.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) #nav,
+	body.qrms-login.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) #backtoblog,
+	body.qrms-login.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) .qrms-login-footer,
+	body.qrms-login.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) #login_error,
+	body.qrms-login.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) .language-switcher {
+		grid-column: 2;
+		margin-left: 0;
 		margin-right: 0;
+		justify-self: stretch;
 	}
 }
 

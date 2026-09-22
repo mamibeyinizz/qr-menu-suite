@@ -3240,3 +3240,94 @@ qrms_test(
 		unset( $_GET );
 	}
 );
+
+qrms_test(
+	'login_redirect yönetici genel wp-admin yerine QRMS overview',
+	function () {
+		$user = new WP_User();
+		$user->ID = 7;
+		$GLOBALS['qrms_test']['user_can'] = array(
+			7 => array(
+				'manage_options' => true,
+			),
+		);
+
+		$hedef = QRMS_Admin_Shell_Auth::resolve_login_redirect(
+			admin_url(),
+			'',
+			$user
+		);
+
+		qrms_assert_same(
+			admin_url( 'admin.php?page=' . QRMS_Admin::MENU_SLUG ),
+			$hedef,
+			'varsayılan dashboard → overview'
+		);
+
+		$korunan = QRMS_Admin_Shell_Auth::resolve_login_redirect(
+			admin_url( 'plugins.php' ),
+			admin_url( 'plugins.php' ),
+			$user
+		);
+
+		qrms_assert_same( admin_url( 'plugins.php' ), $korunan, 'plugins.php korunur' );
+
+		unset( $GLOBALS['qrms_test']['user_can'] );
+	}
+);
+
+qrms_test(
+	'login_redirect servis personeli panele gider',
+	function () {
+		require_once QRMS_PLUGIN_DIR . 'modules/qr-servis-paneli/includes/class-qrms-sp-rol.php';
+
+		if ( ! defined( 'QRMS_SP_PANEL_SAYFA' ) ) {
+			define( 'QRMS_SP_PANEL_SAYFA', 'qrms-module-qr-servis-paneli' );
+		}
+
+		$user = new WP_User();
+		$user->ID = 9;
+		$GLOBALS['qrms_test']['user_can'] = array(
+			9 => array(
+				'manage_options'       => false,
+				QRMS_SP_Rol::YETENEK => true,
+			),
+		);
+
+		$hedef = QRMS_Admin_Shell_Auth::resolve_login_redirect(
+			admin_url(),
+			admin_url(),
+			$user
+		);
+
+		qrms_assert_same(
+			admin_url( 'admin.php?page=' . QRMS_SP_PANEL_SAYFA ),
+			$hedef,
+			'servis paneli'
+		);
+
+		unset( $GLOBALS['qrms_test']['user_can'] );
+	}
+);
+
+qrms_test(
+	'is_generic_wp_admin_dashboard_url derin admin linklerini ayırt eder',
+	function () {
+		qrms_assert_true( QRMS_Admin_Shell_Auth::is_generic_wp_admin_dashboard_url( '' ), 'boş' );
+		qrms_assert_true( QRMS_Admin_Shell_Auth::is_generic_wp_admin_dashboard_url( admin_url() ), 'admin kök' );
+		qrms_assert_true(
+			QRMS_Admin_Shell_Auth::is_generic_wp_admin_dashboard_url( admin_url( 'index.php' ) ),
+			'index.php'
+		);
+		qrms_assert_false(
+			QRMS_Admin_Shell_Auth::is_generic_wp_admin_dashboard_url( admin_url( 'plugins.php' ) ),
+			'plugins'
+		);
+		qrms_assert_false(
+			QRMS_Admin_Shell_Auth::is_generic_wp_admin_dashboard_url(
+				admin_url( 'admin.php?page=' . QRMS_Admin::MENU_SLUG )
+			),
+			'overview derin link'
+		);
+	}
+);
