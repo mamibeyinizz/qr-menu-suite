@@ -889,7 +889,7 @@ qrms_test(
 );
 
 qrms_test(
-	'restoran menü hub ızgarası sabit 3 sütun; özet şeridi 5 kart ve telefonda kaydırılır',
+	'restoran menü hub ızgarası sabit 3 sütun; özet şeridi 5 kart mobilde 2+1 stack',
 	function () {
 		$css = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/css/hub.css' );
 
@@ -904,15 +904,14 @@ qrms_test(
 		qrms_assert_contains( 'repeat(3, minmax(0, 1fr))', $css, 'tablette 3 + 2 düzeni' );
 		qrms_assert_contains( 'repeat(2, minmax(0, 1fr))', $css, 'dar tablette iki sütun' );
 		qrms_assert_contains( '@media screen and (max-width: 600px)', $css, 'telefon kırılımı' );
-		qrms_assert_contains( 'overflow-x: auto', $css, 'telefonda yalnızca şerit kayar' );
-		qrms_assert_contains( 'scroll-snap-type: x proximity', $css, 'kart hizalı kaydırma' );
-		qrms_assert_contains( 'scrollbar-width: none', $css, 'kaydırma çubuğu gizli' );
-		qrms_assert_contains( '.rma-hub .qrms-hub-stats::-webkit-scrollbar', $css, 'webkit çubuğu gizli' );
-		qrms_assert_contains( 'flex: 0 0 clamp(158px, 64%, 212px)', $css, 'sonraki kart kenardan görünür' );
+		qrms_assert_contains( '.rma-hub .qrms-hub-stat:nth-child(5)', $css, 'beşinci kart mobilde tam genişlik' );
+		qrms_assert_contains( 'grid-column: 1 / -1', $css, 'son stat full width' );
+		qrms_assert_false( false !== strpos( $css, 'overflow-x: auto' ), 'yatay kaydırma yok' );
 		qrms_assert_contains( '.rma-hub .qrms-hub-stat-hint', $css, 'yardımcı metin stili' );
 		qrms_assert_contains( '.rma-hub .rma-hub-stat-attention', $css, 'tükenen vurgusu modüle özel' );
 		qrms_assert_contains( '.rma-hub .qrms-stat-value', $css, 'ortak değer class' );
-		qrms_assert_contains( 'font-size: 26px', $css, 'özet değer boyutu' );
+		qrms_assert_contains( 'font-size: 28px', $css, 'özet değer boyutu' );
+		qrms_assert_contains( '--qrms-rm-forest:', $css, 'forest token' );
 		// Şeridi kapsülleyen her kural .rma-hub ile başlar; ortak hub'lar etkilenmez.
 		preg_match_all( '/^\s*(\.[a-z][^,{]*)/mi', $css, $secici );
 		foreach ( $secici[1] as $sec ) {
@@ -1932,8 +1931,8 @@ qrms_test(
 
 		$css = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/css/hub.css' );
 		qrms_assert_contains( '.rma-hub .qrms-hub-group-title', $css, 'grup başlığı kuralı' );
-		qrms_assert_contains( "font-family: 'Playfair Display', Georgia, serif;", $css, 'serif marka fontu' );
-		qrms_assert_contains( 'color: #1d2327;', $css, 'kart başlığıyla aynı ink rengi' );
+		qrms_assert_contains( 'font-family: Georgia, "Times New Roman", serif;', $css, 'serif marka fontu' );
+		qrms_assert_contains( 'color: var(--qrms-rm-forest);', $css, 'forest ink rengi' );
 		qrms_assert_contains( 'rgba(201, 168, 76,', $css, 'ayırıcıda muted gold tonu' );
 		qrms_assert_contains( '.rma-hub .qrms-hub-group-title:first-of-type', $css, 'ilk grupta fazla boşluk yok' );
 	}

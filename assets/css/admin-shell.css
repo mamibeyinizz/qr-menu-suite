@@ -471,6 +471,15 @@ body.qrms-premium-shell-active .qrms-shell__content .qrms-hub {
 	padding: 0;
 }
 
+body.qrms-premium-shell-active .qrms-shell__content .rma-hub {
+	--qrms-hub-accent: #c9a84c;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .rma-hub .qrms-hub-hint,
+body.qrms-premium-shell-active .qrms-shell__content .rma-hub .qrms-hub-notice {
+	margin-bottom: 20px;
+}
+
 body.qrms-premium-shell-active .qrms-shell__content .qrms-hub-intro {
 	color: rgba(13, 43, 34, 0.72);
 }
