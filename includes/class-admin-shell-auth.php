@@ -76,10 +76,30 @@ class QRMS_Admin_Shell_Auth {
 	 * @return bool
 	 */
 	public static function should_force_qrms_overview( $redirect_to, $requested_redirect_to ) {
-		$requested = is_string( $requested_redirect_to ) ? trim( $requested_redirect_to ) : '';
-		$candidate = '' !== $requested ? $requested : (string) $redirect_to;
+		$candidates = array();
 
-		return self::is_generic_wp_admin_dashboard_url( $candidate );
+		foreach ( array( $redirect_to, $requested_redirect_to ) as $raw ) {
+			if ( ! is_string( $raw ) ) {
+				continue;
+			}
+
+			$trimmed = trim( $raw );
+			if ( '' !== $trimmed ) {
+				$candidates[] = $trimmed;
+			}
+		}
+
+		if ( empty( $candidates ) ) {
+			return true;
+		}
+
+		foreach ( $candidates as $url ) {
+			if ( ! self::is_generic_wp_admin_dashboard_url( $url ) ) {
+				return false;
+			}
+		}
+
+		return true;
 	}
 
 	/**
@@ -95,30 +115,126 @@ class QRMS_Admin_Shell_Auth {
 			return true;
 		}
 
-		$parts = wp_parse_url( $url );
-		if ( ! is_array( $parts ) ) {
+		$query = '';
+		$path  = self::normalize_login_redirect_path( $url, $query );
+
+		if ( null === $path ) {
 			return false;
 		}
 
-		$path  = isset( $parts['path'] ) ? untrailingslashit( (string) $parts['path'] ) : '';
-		$query = isset( $parts['query'] ) ? (string) $parts['query'] : '';
-
 		if ( '' === $path ) {
-			return true;
-		}
-
-		$admin_root = untrailingslashit( (string) wp_parse_url( admin_url(), PHP_URL_PATH ) );
-		$index_path = untrailingslashit( (string) wp_parse_url( admin_url( 'index.php' ), PHP_URL_PATH ) );
-
-		if ( $path === $admin_root || $path === $index_path ) {
 			return self::is_benign_dashboard_query( $query );
 		}
 
-		if ( preg_match( '#/wp-admin/?$#i', $path ) ) {
+		$admin_root = self::normalized_admin_root_path();
+		$index_path = self::normalized_admin_index_path();
+		$admin_php  = $admin_root . '/admin.php';
+
+		if ( $path === $admin_root || $path === $index_path || $path === $admin_php ) {
 			return self::is_benign_dashboard_query( $query );
 		}
 
 		return false;
+	}
+
+	/**
+	 * Canonical wp-admin root path (leading slash, no trailing slash).
+	 *
+	 * @return string
+	 */
+	private static function normalized_admin_root_path() {
+		return untrailingslashit( (string) wp_parse_url( admin_url(), PHP_URL_PATH ) );
+	}
+
+	/**
+	 * Canonical dashboard index.php path.
+	 *
+	 * @return string
+	 */
+	private static function normalized_admin_index_path() {
+		return untrailingslashit( (string) wp_parse_url( admin_url( 'index.php' ), PHP_URL_PATH ) );
+	}
+
+	/**
+	 * Normalizes login redirect targets (absolute, root-relative, WP-relative wp-admin/).
+	 *
+	 * @param string $url        Raw redirect value.
+	 * @param string $query_out  Query string extracted from the URL (by reference).
+	 * @return string|null Normalized path, empty string if URL is path-less, null if unrecognized.
+	 */
+	private static function normalize_login_redirect_path( $url, &$query_out ) {
+		$query_out = '';
+		$url       = trim( (string) $url );
+
+		if ( '' === $url ) {
+			return '';
+		}
+
+		// WordPress core uses this exact relative dashboard shorthand in wp-login.php.
+		if ( 'wp-admin/' === $url ) {
+			return self::normalized_admin_root_path();
+		}
+
+		$relative = ltrim( $url, '/' );
+		$rel_core = untrailingslashit( strtolower( $relative ) );
+
+		if ( 'wp-admin' === $rel_core ) {
+			return self::normalized_admin_root_path();
+		}
+
+		if ( 'wp-admin/index.php' === $rel_core ) {
+			self::extract_query_from_url( $url, $query_out );
+
+			return self::normalized_admin_index_path();
+		}
+
+		$parts = wp_parse_url( $url );
+		if ( ! is_array( $parts ) ) {
+			return null;
+		}
+
+		if ( isset( $parts['query'] ) ) {
+			$query_out = (string) $parts['query'];
+		}
+
+		if ( ! isset( $parts['scheme'] ) && ! isset( $parts['host'] ) ) {
+			$path = isset( $parts['path'] ) ? (string) $parts['path'] : $relative;
+
+			if ( '' === $path && '' !== $relative && false !== strpos( $url, '?' ) ) {
+				self::extract_query_from_url( $url, $query_out );
+				$path = $relative;
+			}
+
+			$path = '/' . ltrim( $path, '/' );
+			$rel  = ltrim( $path, '/' );
+			$rel_core = untrailingslashit( strtolower( $rel ) );
+
+			if ( 'wp-admin' === $rel_core || 'wp-admin/index.php' === $rel_core ) {
+				return 'wp-admin/index.php' === $rel_core
+					? self::normalized_admin_index_path()
+					: self::normalized_admin_root_path();
+			}
+
+			return untrailingslashit( $path );
+		}
+
+		$path = isset( $parts['path'] ) ? untrailingslashit( (string) $parts['path'] ) : '';
+
+		return '' === $path ? '' : $path;
+	}
+
+	/**
+	 * @param string $url       Full URL possibly containing a query string.
+	 * @param string $query_out Query string (by reference).
+	 * @return void
+	 */
+	private static function extract_query_from_url( $url, &$query_out ) {
+		$pos = strpos( (string) $url, '?' );
+		if ( false === $pos ) {
+			return;
+		}
+
+		$query_out = substr( (string) $url, $pos + 1 );
 	}
 
 	/**
@@ -136,6 +252,10 @@ class QRMS_Admin_Shell_Auth {
 		}
 
 		unset( $args['wp_lang'] );
+
+		if ( isset( $args['page'] ) && '' !== (string) $args['page'] ) {
+			return false;
+		}
 
 		return empty( $args );
 	}

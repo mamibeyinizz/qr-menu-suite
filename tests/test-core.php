@@ -3277,6 +3277,119 @@ qrms_test(
 );
 
 qrms_test(
+	'login_redirect göreli wp-admin ve index dashboard hedeflerini overview yapar',
+	function () {
+		$user = new WP_User();
+		$user->ID = 8;
+		$GLOBALS['qrms_test']['user_can'] = array(
+			8 => array(
+				'manage_options' => true,
+			),
+		);
+
+		$overview = admin_url( 'admin.php?page=' . QRMS_Admin::MENU_SLUG );
+
+		$varyantlar = array(
+			array( 'wp-admin/', 'wp-admin/' ),
+			array( '/wp-admin/', '/wp-admin/' ),
+			array( 'wp-admin/index.php', 'wp-admin/index.php' ),
+			array( admin_url( 'index.php' ), '' ),
+			array( admin_url(), '' ),
+			array( '', '' ),
+		);
+
+		foreach ( $varyantlar as $i => $cift ) {
+			list( $redirect_to, $requested ) = $cift;
+			$hedef = QRMS_Admin_Shell_Auth::resolve_login_redirect( $redirect_to, $requested, $user );
+			qrms_assert_same( $overview, $hedef, 'overview zorlanır #' . ( $i + 1 ) );
+		}
+
+		unset( $GLOBALS['qrms_test']['user_can'] );
+	}
+);
+
+qrms_test(
+	'login_redirect deep admin hedefleri overview ile ezilmez',
+	function () {
+		$user = new WP_User();
+		$user->ID = 10;
+		$GLOBALS['qrms_test']['user_can'] = array(
+			10 => array(
+				'manage_options' => true,
+			),
+		);
+
+		$plugins = admin_url( 'plugins.php' );
+		qrms_assert_same(
+			$plugins,
+			QRMS_Admin_Shell_Auth::resolve_login_redirect( $plugins, $plugins, $user ),
+			'plugins.php'
+		);
+
+		$overview_deep = admin_url( 'admin.php?page=' . QRMS_Admin::MENU_SLUG );
+		qrms_assert_same(
+			$overview_deep,
+			QRMS_Admin_Shell_Auth::resolve_login_redirect( $overview_deep, $overview_deep, $user ),
+			'zaten overview slug'
+		);
+
+		unset( $GLOBALS['qrms_test']['user_can'] );
+	}
+);
+
+qrms_test(
+	'is_generic_wp_admin_dashboard_url derin admin linklerini ayırt eder',
+	function () {
+		qrms_assert_true( QRMS_Admin_Shell_Auth::is_generic_wp_admin_dashboard_url( '' ), 'boş' );
+		qrms_assert_true( QRMS_Admin_Shell_Auth::is_generic_wp_admin_dashboard_url( admin_url() ), 'admin kök' );
+		qrms_assert_true(
+			QRMS_Admin_Shell_Auth::is_generic_wp_admin_dashboard_url( admin_url( 'index.php' ) ),
+			'index.php'
+		);
+		qrms_assert_true( QRMS_Admin_Shell_Auth::is_generic_wp_admin_dashboard_url( '/wp-admin/' ), '/wp-admin/' );
+		qrms_assert_true( QRMS_Admin_Shell_Auth::is_generic_wp_admin_dashboard_url( 'wp-admin/' ), 'wp-admin/' );
+		qrms_assert_true(
+			QRMS_Admin_Shell_Auth::is_generic_wp_admin_dashboard_url( 'wp-admin/index.php' ),
+			'wp-admin/index.php'
+		);
+		qrms_assert_false(
+			QRMS_Admin_Shell_Auth::is_generic_wp_admin_dashboard_url( admin_url( 'plugins.php' ) ),
+			'plugins'
+		);
+		qrms_assert_false(
+			QRMS_Admin_Shell_Auth::is_generic_wp_admin_dashboard_url(
+				admin_url( 'admin.php?page=' . QRMS_Admin::MENU_SLUG )
+			),
+			'overview derin link'
+		);
+	}
+);
+
+qrms_test(
+	'should_force_qrms_overview requested ve redirect_to birlikte güvenli değerlendirilir',
+	function () {
+		qrms_assert_true(
+			QRMS_Admin_Shell_Auth::should_force_qrms_overview( admin_url(), 'wp-admin/' ),
+			'ikisi de generic'
+		);
+		qrms_assert_false(
+			QRMS_Admin_Shell_Auth::should_force_qrms_overview(
+				admin_url( 'plugins.php' ),
+				admin_url( 'plugins.php' )
+			),
+			'deep hedef'
+		);
+		qrms_assert_false(
+			QRMS_Admin_Shell_Auth::should_force_qrms_overview(
+				admin_url( 'plugins.php' ),
+				'wp-admin/'
+			),
+			'çelişkide deep korunur'
+		);
+	}
+);
+
+qrms_test(
 	'login_redirect servis personeli panele gider',
 	function () {
 		require_once QRMS_PLUGIN_DIR . 'modules/qr-servis-paneli/includes/class-qrms-sp-rol.php';
@@ -3307,27 +3420,5 @@ qrms_test(
 		);
 
 		unset( $GLOBALS['qrms_test']['user_can'] );
-	}
-);
-
-qrms_test(
-	'is_generic_wp_admin_dashboard_url derin admin linklerini ayırt eder',
-	function () {
-		qrms_assert_true( QRMS_Admin_Shell_Auth::is_generic_wp_admin_dashboard_url( '' ), 'boş' );
-		qrms_assert_true( QRMS_Admin_Shell_Auth::is_generic_wp_admin_dashboard_url( admin_url() ), 'admin kök' );
-		qrms_assert_true(
-			QRMS_Admin_Shell_Auth::is_generic_wp_admin_dashboard_url( admin_url( 'index.php' ) ),
-			'index.php'
-		);
-		qrms_assert_false(
-			QRMS_Admin_Shell_Auth::is_generic_wp_admin_dashboard_url( admin_url( 'plugins.php' ) ),
-			'plugins'
-		);
-		qrms_assert_false(
-			QRMS_Admin_Shell_Auth::is_generic_wp_admin_dashboard_url(
-				admin_url( 'admin.php?page=' . QRMS_Admin::MENU_SLUG )
-			),
-			'overview derin link'
-		);
 	}
 );
