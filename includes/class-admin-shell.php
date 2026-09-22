@@ -1,6 +1,6 @@
 <?php
 /**
- * Premium admin shell — presentation layer for QRMS screens (Phase 1: overview only).
+ * Premium admin shell — presentation layer for QRMS admin screens.
  *
  * @package QR_Menu_Suite
  */
@@ -12,7 +12,7 @@ if ( ! defined( 'QRMS_PREMIUM_SHELL' ) ) {
 }
 
 /**
- * Wraps selected QRMS admin pages in the premium SaaS chrome.
+ * Wraps QRMS admin screens in the premium SaaS chrome.
  */
 class QRMS_Admin_Shell {
 
@@ -29,7 +29,7 @@ class QRMS_Admin_Shell {
 	}
 
 	/**
-	 * Feature flag: master switch (scope is still overview-only in this phase).
+	 * Feature flag master switch.
 	 *
 	 * @return bool
 	 */
@@ -43,7 +43,7 @@ class QRMS_Admin_Shell {
 	}
 
 	/**
-	 * Shell active on this request (Phase 1: Genel Bakış only).
+	 * Shell active on this request.
 	 *
 	 * @return bool
 	 */
@@ -52,22 +52,79 @@ class QRMS_Admin_Shell {
 			return false;
 		}
 
-		if ( ! is_admin() || ! current_user_can( QRMS_Admin::CAPABILITY ) ) {
+		if ( ! is_admin() ) {
 			return false;
 		}
 
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '';
+		if ( class_exists( 'QRMS_SP_Rol' ) && QRMS_SP_Rol::yalniz_servis_mi() ) {
+			return self::is_servis_panel_screen();
+		}
 
-		$active = ( QRMS_Admin::MENU_SLUG === $page );
+		if ( ! current_user_can( QRMS_Admin::CAPABILITY ) ) {
+			return false;
+		}
+
+		$active = self::is_qrms_admin_screen();
 
 		/**
 		 * Whether the premium shell should wrap the current admin screen.
 		 *
-		 * @param bool   $active  Default overview-only in Phase 1.
-		 * @param string $page    Current `page` query arg.
+		 * @param bool   $active Default from QRMS screen detection.
+		 * @param string $page   Current `page` query arg (may be empty on native screens).
 		 */
-		return (bool) apply_filters( 'qrms_premium_shell_active', $active, $page );
+		return (bool) apply_filters( 'qrms_premium_shell_active', $active, self::get_request_page() );
+	}
+
+	/**
+	 * Whether the current user is on the servis panel screen only.
+	 *
+	 * @return bool
+	 */
+	public static function is_servis_panel_screen() {
+		if ( ! defined( 'QRMS_SP_PANEL_SAYFA' ) ) {
+			return false;
+		}
+
+		return QRMS_SP_PANEL_SAYFA === self::get_request_page();
+	}
+
+	/**
+	 * QRMS plugin admin screen (suite pages, subpages, hybrid native menu screens).
+	 *
+	 * @return bool
+	 */
+	public static function is_qrms_admin_screen() {
+		$page = self::get_request_page();
+
+		if ( QRMS_Admin::is_plugin_screen() ) {
+			return true;
+		}
+
+		if ( '' !== $page && QRMS_Admin::is_module_subpage( $page ) ) {
+			return true;
+		}
+
+		return self::is_native_hybrid_screen();
+	}
+
+	/**
+	 * Restoran Menü native WordPress CPT/taxonomy screens (hybrid shell).
+	 *
+	 * @return bool
+	 */
+	public static function is_native_hybrid_screen() {
+		return function_exists( 'qrms_module_restoran_menu_ekranimiz_mi' )
+			&& qrms_module_restoran_menu_ekranimiz_mi();
+	}
+
+	/**
+	 * Current admin `page` query argument.
+	 *
+	 * @return string
+	 */
+	public static function get_request_page() {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		return isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '';
 	}
 
 	/**
@@ -76,7 +133,7 @@ class QRMS_Admin_Shell {
 	 * @return string
 	 */
 	private static function chrome_hide_css() {
-		return 'body.qrms-premium-shell-active #adminmenuback,'
+		$css = 'body.qrms-premium-shell-active #adminmenuback,'
 			. 'body.qrms-premium-shell-active #adminmenuwrap,'
 			. 'body.qrms-premium-shell-active #wpadminbar{'
 			. 'position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;'
@@ -86,9 +143,14 @@ class QRMS_Admin_Shell {
 			. 'body.qrms-premium-shell-active #wpbody-content{margin:0;padding:0;}'
 			. 'body.qrms-premium-shell-active #wpcontent{margin-left:0!important;}'
 			. 'body.qrms-premium-shell-active #wpbody-content{padding-bottom:0;}'
-			. 'body.qrms-premium-shell-active #wpfooter,'
-			. 'body.qrms-premium-shell-active #screen-meta,'
-			. 'body.qrms-premium-shell-active #screen-meta-links{display:none;}';
+			. 'body.qrms-premium-shell-active #wpfooter{display:none;}';
+
+		if ( ! self::is_native_hybrid_screen() ) {
+			$css .= 'body.qrms-premium-shell-active #screen-meta,'
+				. 'body.qrms-premium-shell-active #screen-meta-links{display:none;}';
+		}
+
+		return $css;
 	}
 
 	/**
@@ -100,7 +162,17 @@ class QRMS_Admin_Shell {
 			return $classes;
 		}
 
-		return trim( $classes . ' qrms-premium-shell qrms-premium-shell-active' );
+		$classes .= ' qrms-premium-shell qrms-premium-shell-active';
+
+		if ( self::is_native_hybrid_screen() ) {
+			$classes .= ' qrms-premium-shell-hybrid';
+		}
+
+		if ( class_exists( 'QRMS_SP_Rol' ) && QRMS_SP_Rol::yalniz_servis_mi() ) {
+			$classes .= ' qrms-premium-shell-servis';
+		}
+
+		return trim( $classes );
 	}
 
 	/**
@@ -110,6 +182,8 @@ class QRMS_Admin_Shell {
 		if ( ! self::is_active() ) {
 			return;
 		}
+
+		self::ensure_qrms_admin_assets();
 
 		wp_enqueue_style(
 			'qrms-admin-shell',
@@ -140,6 +214,34 @@ class QRMS_Admin_Shell {
 	}
 
 	/**
+	 * Loads shared QRMS admin assets when the screen is hybrid/native (admin.css is otherwise skipped).
+	 *
+	 * @return void
+	 */
+	private static function ensure_qrms_admin_assets() {
+		if ( wp_style_is( 'qrms-admin', 'enqueued' ) ) {
+			return;
+		}
+
+		wp_enqueue_style( 'dashicons' );
+
+		wp_enqueue_style(
+			'qrms-admin',
+			QRMS_PLUGIN_URL . 'assets/css/admin.css',
+			array(),
+			QRMS_Helpers::asset_version( 'assets/css/admin.css' )
+		);
+
+		wp_enqueue_script(
+			'qrms-admin',
+			QRMS_PLUGIN_URL . 'assets/js/admin.js',
+			array(),
+			QRMS_Helpers::asset_version( 'assets/js/admin.js' ),
+			true
+		);
+	}
+
+	/**
 	 * Opens shell markup (content area stays open until admin_footer).
 	 *
 	 * @return void
@@ -149,8 +251,17 @@ class QRMS_Admin_Shell {
 			return;
 		}
 
-		$user = wp_get_current_user();
-		$nav  = self::get_primary_nav();
+		$user   = wp_get_current_user();
+		$nav    = self::build_sidebar_nav();
+		$header = self::get_header_context();
+		$role   = ( class_exists( 'QRMS_SP_Rol' ) && QRMS_SP_Rol::yalniz_servis_mi() )
+			? __( 'Servis Personeli', 'qrms' )
+			: __( 'Yönetici', 'qrms' );
+
+		$content_class = 'qrms-shell__content';
+		if ( self::is_native_hybrid_screen() ) {
+			$content_class .= ' qrms-shell__content--hybrid';
+		}
 		?>
 		<div class="qrms-shell" id="qrms-shell">
 			<div class="qrms-shell__backdrop" id="qrms-shell-backdrop" hidden aria-hidden="true"></div>
@@ -165,17 +276,19 @@ class QRMS_Admin_Shell {
 				<nav class="qrms-shell__nav" aria-label="<?php esc_attr_e( 'Panel', 'qrms' ); ?>">
 					<ul class="qrms-shell__nav-list">
 						<?php foreach ( $nav as $item ) : ?>
-							<?php self::render_nav_item( $item ); ?>
+							<?php self::render_sidebar_row( $item ); ?>
 						<?php endforeach; ?>
 					</ul>
 				</nav>
 				<div class="qrms-shell__sidebar-foot">
-					<?php self::render_nav_item( self::get_settings_nav_item() ); ?>
+					<?php if ( ! ( class_exists( 'QRMS_SP_Rol' ) && QRMS_SP_Rol::yalniz_servis_mi() ) ) : ?>
+						<?php self::render_nav_item( self::get_settings_nav_item() ); ?>
+					<?php endif; ?>
 					<div class="qrms-shell__account">
 						<span class="qrms-shell__account-avatar" aria-hidden="true"><?php echo esc_html( self::user_initials( $user ) ); ?></span>
 						<span class="qrms-shell__account-meta">
 							<span class="qrms-shell__account-name"><?php echo esc_html( $user->display_name ); ?></span>
-							<span class="qrms-shell__account-role"><?php esc_html_e( 'Yönetici', 'qrms' ); ?></span>
+							<span class="qrms-shell__account-role"><?php echo esc_html( $role ); ?></span>
 						</span>
 					</div>
 				</div>
@@ -190,8 +303,8 @@ class QRMS_Admin_Shell {
 							<span class="qrms-shell__sr-only"><?php echo esc_html( self::l10n( 'openMenu' ) ); ?></span>
 						</button>
 						<div class="qrms-shell__titles">
-							<p class="qrms-shell__breadcrumb"><?php esc_html_e( 'Genel Bakış', 'qrms' ); ?></p>
-							<h1 class="qrms-shell__title"><?php esc_html_e( 'QR Menü Kontrol Merkezi', 'qrms' ); ?></h1>
+							<p class="qrms-shell__breadcrumb"><?php echo esc_html( $header['breadcrumb'] ); ?></p>
+							<h1 class="qrms-shell__title"><?php echo esc_html( $header['title'] ); ?></h1>
 						</div>
 					</div>
 					<div class="qrms-shell__header-end">
@@ -201,7 +314,7 @@ class QRMS_Admin_Shell {
 						</div>
 					</div>
 				</header>
-				<div class="qrms-shell__content" id="qrms-shell-content">
+				<div class="<?php echo esc_attr( $content_class ); ?>" id="qrms-shell-content">
 		<?php
 	}
 
@@ -235,86 +348,314 @@ class QRMS_Admin_Shell {
 	}
 
 	/**
-	 * Primary sidebar items (Phase 1: real URLs where modules exist).
+	 * Sidebar rows from existing menu groups (license + capability aware).
 	 *
 	 * @return array<int,array<string,mixed>>
 	 */
-	private static function get_primary_nav() {
-		$active_modules = QRMS_License_Client::get_active_modules();
-		$is_mod         = static function ( $slug ) use ( $active_modules ) {
-			return in_array( $slug, $active_modules, true );
-		};
+	private static function build_sidebar_nav() {
+		if ( class_exists( 'QRMS_SP_Rol' ) && QRMS_SP_Rol::yalniz_servis_mi() ) {
+			return array(
+				self::nav_link_item(
+					defined( 'QRMS_SP_PANEL_SAYFA' ) ? QRMS_SP_PANEL_SAYFA : QRMS_Admin::get_module_page_slug( 'qr-servis-paneli' ),
+					__( 'Servis Paneli', 'qrms' ),
+					true
+				),
+			);
+		}
 
-		$items = array(
-			array(
-				'label'   => __( 'Genel Bakış', 'qrms' ),
-				'url'     => admin_url( 'admin.php?page=' . QRMS_Admin::MENU_SLUG ),
-				'current' => true,
-				'icon'    => 'overview',
-			),
-			array(
-				'label'    => __( 'Menü', 'qrms' ),
-				'url'      => $is_mod( 'restoran-menu' ) ? admin_url( 'admin.php?page=' . QRMS_Admin::get_module_page_slug( 'restoran-menu' ) ) : '',
-				'disabled' => ! $is_mod( 'restoran-menu' ),
-				'icon'     => 'menu',
-			),
-			array(
-				'label'    => __( 'Masalar', 'qrms' ),
-				'url'      => $is_mod( 'qr-masa' ) ? admin_url( 'admin.php?page=' . QRMS_Admin::get_module_page_slug( 'qr-masa' ) ) : '',
-				'disabled' => ! $is_mod( 'qr-masa' ),
-				'icon'     => 'tables',
-			),
-			array(
-				'label'    => __( 'Siparişler', 'qrms' ),
-				'url'      => '',
-				'disabled' => true,
-				'note'     => __( 'Yakında', 'qrms' ),
-				'icon'     => 'orders',
-			),
-			array(
-				'label'    => __( 'Servis', 'qrms' ),
-				'url'      => $is_mod( 'qr-servis-paneli' ) ? admin_url( 'admin.php?page=' . QRMS_Admin::get_module_page_slug( 'qr-servis-paneli' ) ) : '',
-				'disabled' => ! $is_mod( 'qr-servis-paneli' ),
-				'icon'     => 'service',
-			),
-			array(
-				'label'    => __( 'Müşteriler', 'qrms' ),
-				'url'      => $is_mod( 'yorum-feedback' ) ? admin_url( 'admin.php?page=' . QRMS_Admin::get_module_page_slug( 'yorum-feedback' ) ) : '',
-				'disabled' => ! $is_mod( 'yorum-feedback' ),
-				'icon'     => 'customers',
-			),
-			array(
-				'label'    => __( 'AI', 'qrms' ),
-				'url'      => $is_mod( 'qr-chatbot' ) ? admin_url( 'admin.php?page=' . QRMS_Admin::get_module_page_slug( 'qr-chatbot' ) ) : '',
-				'disabled' => ! $is_mod( 'qr-chatbot' ),
-				'icon'     => 'ai',
-			),
-			array(
-				'label'    => __( 'Analitik', 'qrms' ),
-				'url'      => $is_mod( 'qr-analiz' ) ? admin_url( 'admin.php?page=' . QRMS_Admin::get_module_page_slug( 'qr-analiz' ) ) : '',
-				'disabled' => ! $is_mod( 'qr-analiz' ),
-				'icon'     => 'analytics',
-			),
-		);
+		$ctx   = self::resolve_screen_context();
+		$rows  = array();
+		$rows[] = self::nav_link_item( QRMS_Admin::MENU_SLUG, __( 'Genel Bakış', 'qrms' ), self::is_nav_current( QRMS_Admin::MENU_SLUG, $ctx ) );
+
+		foreach ( QRMS_Admin::get_menu_groups() as $group ) {
+			$group_items = array();
+
+			foreach ( (array) $group['items'] as $page_slug ) {
+				if ( QRMS_Admin::MENU_SLUG === $page_slug || QRMS_Admin::SETTINGS_SLUG === $page_slug ) {
+					continue;
+				}
+
+				if ( ! self::user_can_view_menu_slug( $page_slug ) ) {
+					continue;
+				}
+
+				$group_items[] = self::nav_link_item(
+					$page_slug,
+					self::label_for_menu_slug( $page_slug ),
+					self::is_nav_current( $page_slug, $ctx )
+				);
+			}
+
+			if ( empty( $group_items ) ) {
+				continue;
+			}
+
+			$rows[] = array(
+				'type'  => 'group',
+				'title' => isset( $group['title'] ) ? (string) $group['title'] : '',
+			);
+
+			foreach ( $group_items as $item ) {
+				$rows[] = $item;
+			}
+		}
 
 		/**
-		 * Premium shell primary navigation items.
+		 * Premium shell sidebar rows (after defaults).
 		 *
-		 * @param array $items Nav item definitions.
+		 * @param array $rows  Nav rows (links + group headers).
+		 * @param array $ctx   Screen context from resolve_screen_context().
 		 */
-		return apply_filters( 'qrms_premium_shell_nav', $items );
+		return apply_filters( 'qrms_premium_shell_nav', $rows, $ctx );
+	}
+
+	/**
+	 * @param string $page_slug Menu row slug.
+	 * @param string $label     Link label.
+	 * @param bool   $current   Active state.
+	 * @return array<string,mixed>
+	 */
+	private static function nav_link_item( $page_slug, $label, $current ) {
+		return array(
+			'type'     => 'link',
+			'label'    => $label,
+			'url'      => admin_url( 'admin.php?page=' . rawurlencode( $page_slug ) ),
+			'current'  => $current,
+			'dashicon' => QRMS_Admin::get_menu_row_icon( $page_slug ),
+		);
+	}
+
+	/**
+	 * @param string $page_slug Admin menu row slug.
+	 * @return bool
+	 */
+	private static function user_can_view_menu_slug( $page_slug ) {
+		if ( QRMS_Admin::MENU_SLUG === $page_slug ) {
+			return current_user_can( QRMS_Admin::CAPABILITY );
+		}
+
+		if ( QRMS_Admin::SETTINGS_SLUG === $page_slug ) {
+			return current_user_can( QRMS_Admin::CAPABILITY );
+		}
+
+		if ( QRMS_Admin::SHORTCODES_SLUG === $page_slug ) {
+			return QRMS_Shortcodes::has_any() && current_user_can( QRMS_Admin::CAPABILITY );
+		}
+
+		$prefix = QRMS_Admin::MODULE_PAGE_PREFIX;
+		if ( 0 !== strpos( (string) $page_slug, $prefix ) ) {
+			return false;
+		}
+
+		$module = substr( (string) $page_slug, strlen( $prefix ) );
+		if ( ! QRMS_Helpers::is_valid_module( $module ) ) {
+			return false;
+		}
+
+		if ( ! in_array( $module, QRMS_License_Client::get_active_modules(), true ) ) {
+			return false;
+		}
+
+		return current_user_can( QRMS_Admin::get_module_page_capability( $module ) );
+	}
+
+	/**
+	 * @param string $page_slug Menu row slug.
+	 * @return string
+	 */
+	private static function label_for_menu_slug( $page_slug ) {
+		if ( QRMS_Admin::SHORTCODES_SLUG === $page_slug ) {
+			return __( 'Entegrasyonlar & Kısa Kodlar', 'qrms' );
+		}
+
+		$prefix = QRMS_Admin::MODULE_PAGE_PREFIX;
+		if ( 0 === strpos( (string) $page_slug, $prefix ) ) {
+			$module = substr( (string) $page_slug, strlen( $prefix ) );
+			if ( QRMS_Helpers::is_valid_module( $module ) ) {
+				return QRMS_Helpers::get_module_name( $module );
+			}
+		}
+
+		return (string) $page_slug;
+	}
+
+	/**
+	 * @return array{page:string,module:string,group:string}
+	 */
+	private static function resolve_screen_context() {
+		$page   = self::get_request_page();
+		$module = '';
+
+		if ( '' !== $page ) {
+			$module = QRMS_Admin::get_subpage_owner_module( $page );
+			if ( '' === $module ) {
+				$module = self::module_slug_for_hub_page( $page );
+			}
+		}
+
+		if ( self::is_native_hybrid_screen() ) {
+			$module = 'restoran-menu';
+		}
+
+		return array(
+			'page'   => $page,
+			'module' => $module,
+			'group'  => self::group_title_for_module( $module, $page ),
+		);
+	}
+
+	/**
+	 * @param string $page Hub `page` slug.
+	 * @return string Module slug or empty.
+	 */
+	private static function module_slug_for_hub_page( $page ) {
+		$prefix = QRMS_Admin::MODULE_PAGE_PREFIX;
+		if ( 0 !== strpos( (string) $page, $prefix ) ) {
+			return '';
+		}
+
+		$module = substr( (string) $page, strlen( $prefix ) );
+
+		return QRMS_Helpers::is_valid_module( $module ) ? $module : '';
+	}
+
+	/**
+	 * @param string $menu_slug Menu row slug.
+	 * @param array  $ctx       Screen context.
+	 * @return bool
+	 */
+	private static function is_nav_current( $menu_slug, array $ctx ) {
+		if ( (string) $menu_slug === (string) $ctx['page'] ) {
+			return true;
+		}
+
+		if ( '' !== $ctx['module'] ) {
+			return $menu_slug === QRMS_Admin::get_module_page_slug( $ctx['module'] );
+		}
+
+		return false;
+	}
+
+	/**
+	 * @param string $module Module slug (may be empty).
+	 * @param string $page   Current page slug.
+	 * @return string
+	 */
+	private static function group_title_for_module( $module, $page ) {
+		if ( QRMS_Admin::MENU_SLUG === $page ) {
+			return __( 'Genel Bakış', 'qrms' );
+		}
+
+		if ( QRMS_Admin::SETTINGS_SLUG === $page ) {
+			return __( 'Sistem', 'qrms' );
+		}
+
+		if ( QRMS_Admin::SHORTCODES_SLUG === $page ) {
+			return __( 'Sistem', 'qrms' );
+		}
+
+		foreach ( QRMS_Admin::get_nav_groups() as $group ) {
+			foreach ( (array) $group['items'] as $item ) {
+				$slug = self::nav_item_to_menu_slug( $item );
+				if ( '' === $slug ) {
+					continue;
+				}
+
+				if ( $slug === $page ) {
+					return isset( $group['overview_title'] ) ? (string) $group['overview_title'] : (string) $group['title'];
+				}
+
+				if ( '' !== $module ) {
+					$item_module = QRMS_Helpers::is_valid_module( $item ) ? $item : self::module_slug_for_hub_page( $slug );
+					if ( $module === $item_module ) {
+						return isset( $group['overview_title'] ) ? (string) $group['overview_title'] : (string) $group['title'];
+					}
+				}
+			}
+		}
+
+		if ( '' !== $module ) {
+			return QRMS_Helpers::get_module_name( $module );
+		}
+
+		return __( 'QR Menü', 'qrms' );
+	}
+
+	/**
+	 * Mirrors QRMS_Admin nav item → menu slug (public helpers only).
+	 *
+	 * @param string $item Nav group item key.
+	 * @return string
+	 */
+	private static function nav_item_to_menu_slug( $item ) {
+		if ( QRMS_Helpers::is_valid_module( $item ) ) {
+			return QRMS_Admin::get_module_page_slug( $item );
+		}
+
+		if ( QRMS_Admin::OVERVIEW_CORE_SHORTCODES === $item ) {
+			return QRMS_Admin::SHORTCODES_SLUG;
+		}
+
+		if ( QRMS_Admin::OVERVIEW_CORE_SETTINGS === $item ) {
+			return QRMS_Admin::SETTINGS_SLUG;
+		}
+
+		if ( QRMS_Admin::MENU_SLUG === $item ) {
+			return QRMS_Admin::MENU_SLUG;
+		}
+
+		return (string) $item;
+	}
+
+	/**
+	 * @return array{breadcrumb:string,title:string}
+	 */
+	private static function get_header_context() {
+		$ctx = self::resolve_screen_context();
+
+		$title = function_exists( 'get_admin_page_title' ) ? get_admin_page_title() : '';
+		if ( '' === $title && isset( $GLOBALS['title'] ) ) {
+			$title = (string) $GLOBALS['title'];
+		}
+
+		if ( QRMS_Admin::MENU_SLUG === $ctx['page'] && '' === trim( $title ) ) {
+			$title = __( 'QR Menü Kontrol Merkezi', 'qrms' );
+		}
+
+		if ( '' === trim( $title ) && '' !== $ctx['module'] ) {
+			$title = QRMS_Helpers::get_module_name( $ctx['module'] );
+		}
+
+		return array(
+			'breadcrumb' => $ctx['group'],
+			'title'      => $title,
+		);
 	}
 
 	/**
 	 * @return array<string,mixed>
 	 */
 	private static function get_settings_nav_item() {
-		return array(
-			'label'   => __( 'Ayarlar', 'qrms' ),
-			'url'     => admin_url( 'admin.php?page=' . QRMS_Admin::SETTINGS_SLUG ),
-			'icon'    => 'settings',
-			'current' => false,
+		return self::nav_link_item(
+			QRMS_Admin::SETTINGS_SLUG,
+			__( 'Ayarlar', 'qrms' ),
+			QRMS_Admin::SETTINGS_SLUG === self::get_request_page()
 		);
+	}
+
+	/**
+	 * @param array<string,mixed> $row Nav row.
+	 * @return void
+	 */
+	private static function render_sidebar_row( array $row ) {
+		if ( isset( $row['type'] ) && 'group' === $row['type'] ) {
+			echo '<li class="qrms-shell__nav-group" role="presentation">';
+			echo '<span class="qrms-shell__nav-group-title">' . esc_html( isset( $row['title'] ) ? (string) $row['title'] : '' ) . '</span>';
+			echo '</li>';
+			return;
+		}
+
+		self::render_nav_item( $row );
 	}
 
 	/**
@@ -323,40 +664,26 @@ class QRMS_Admin_Shell {
 	 */
 	private static function render_nav_item( array $item ) {
 		$label    = isset( $item['label'] ) ? (string) $item['label'] : '';
-		$icon     = isset( $item['icon'] ) ? (string) $item['icon'] : '';
 		$current  = ! empty( $item['current'] );
-		$disabled = ! empty( $item['disabled'] ) || empty( $item['url'] );
-		$note     = isset( $item['note'] ) ? (string) $item['note'] : '';
+		$url      = isset( $item['url'] ) ? (string) $item['url'] : '';
+		$dashicon = isset( $item['dashicon'] ) ? (string) $item['dashicon'] : '';
 
 		$classes = 'qrms-shell__nav-item';
 		if ( $current ) {
 			$classes .= ' is-current';
 		}
-		if ( $disabled ) {
-			$classes .= ' is-disabled';
-		}
 
 		echo '<li class="' . esc_attr( $classes ) . '">';
+		echo '<a class="qrms-shell__nav-link" href="' . esc_url( $url ) . '">';
 
-		if ( $disabled ) {
-			echo '<span class="qrms-shell__nav-link">';
+		if ( '' !== $dashicon ) {
+			echo '<span class="qrms-shell__nav-icon dashicons ' . esc_attr( $dashicon ) . '" aria-hidden="true"></span>';
 		} else {
-			echo '<a class="qrms-shell__nav-link" href="' . esc_url( $item['url'] ) . '">';
+			echo '<span class="qrms-shell__nav-icon" aria-hidden="true"></span>';
 		}
 
-		echo '<span class="qrms-shell__nav-icon qrms-shell__nav-icon--' . esc_attr( $icon ) . '" aria-hidden="true"></span>';
 		echo '<span class="qrms-shell__nav-label">' . esc_html( $label ) . '</span>';
-
-		if ( '' !== $note ) {
-			echo '<span class="qrms-shell__nav-note">' . esc_html( $note ) . '</span>';
-		}
-
-		if ( $disabled ) {
-			echo '</span>';
-		} else {
-			echo '</a>';
-		}
-
+		echo '</a>';
 		echo '</li>';
 	}
 

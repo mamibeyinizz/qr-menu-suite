@@ -3187,3 +3187,56 @@ qrms_test(
 		qrms_assert_false( false !== strpos( $blok, 'type="text"' ), 'düz metin tipi kalmadı' );
 	}
 );
+
+echo "Premium admin shell\n";
+
+qrms_test(
+	'get_subpage_owner_module alt sayfayı modüle bağlar',
+	function () {
+		QRMS_Admin::register_module_subpage( 'qr-analiz', 'qrms-an-genel', 'strlen' );
+
+		qrms_assert_same( 'qr-analiz', QRMS_Admin::get_subpage_owner_module( 'qrms-an-genel' ), 'sahip modül' );
+		qrms_assert_same( '', QRMS_Admin::get_subpage_owner_module( 'yok-boyle-sayfa' ), 'bilinmeyen' );
+	}
+);
+
+qrms_test(
+	'is_qrms_admin_screen plugin ve alt sayfa sluglarını kapsar',
+	function () {
+		$GLOBALS['qrms_test']['is_admin'] = true;
+		$GLOBALS['qrms_test']['can']      = true;
+
+		$_GET = array( 'page' => QRMS_Admin::MENU_SLUG );
+		qrms_assert_true( QRMS_Admin_Shell::is_qrms_admin_screen(), 'overview' );
+
+		QRMS_Admin::register_module_subpage( 'qr-galeri', 'qrmgm-settings', 'strlen' );
+		$_GET = array( 'page' => 'qrmgm-settings' );
+		qrms_assert_true( QRMS_Admin_Shell::is_qrms_admin_screen(), 'galeri alt sayfası' );
+
+		$_GET = array( 'page' => 'plugins.php' );
+		qrms_assert_false( QRMS_Admin_Shell::is_qrms_admin_screen(), 'çekirdek ekran' );
+
+		unset( $_GET );
+	}
+);
+
+qrms_test(
+	'QRMS_PREMIUM_SHELL kapalıyken shell aktif değil',
+	function () {
+		$GLOBALS['qrms_test']['is_admin'] = true;
+		$GLOBALS['qrms_test']['can']      = true;
+		$_GET                             = array( 'page' => QRMS_Admin::MENU_SLUG );
+
+		add_filter(
+			'qrms_premium_shell_enabled',
+			static function () {
+				return false;
+			},
+			99
+		);
+
+		qrms_assert_false( QRMS_Admin_Shell::is_active(), 'flag kapalı' );
+
+		unset( $_GET );
+	}
+);

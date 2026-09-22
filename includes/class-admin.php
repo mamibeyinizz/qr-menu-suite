@@ -314,6 +314,21 @@ class QRMS_Admin {
 	}
 
 	/**
+	 * Kayıtlı bir alt sayfanın sahibi modülün slug'ı (yoksa boş string).
+	 *
+	 * Premium shell ve dış tüketicilerin alt sayfayı modüle bağlaması içindir;
+	 * routing veya yetki mantığı değişmez.
+	 *
+	 * @param string $page_slug Alt sayfa slug'ı.
+	 * @return string
+	 */
+	public static function get_subpage_owner_module( $page_slug ) {
+		return isset( self::$module_subpages[ $page_slug ] )
+			? (string) self::$module_subpages[ $page_slug ]
+			: '';
+	}
+
+	/**
 	 * Bir modülün başlangıç (hub) sayfasının tam adresi.
 	 *
 	 * @param string $module_slug Modül slug'ı.
