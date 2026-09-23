@@ -1237,6 +1237,49 @@ trait RMA_Admin_Pages_Trait {
         </div>
     <?php }
 
+    /**
+     * Premium shell sunumu — yalnızca ürün listesi (presentation only).
+     *
+     * @return void
+     */
+    private function boot_products_list_presentation() {
+        static $booted = false;
+
+        if ( $booted ) {
+            return;
+        }
+
+        $booted = true;
+
+        add_filter( 'admin_body_class', array( $this, 'products_list_body_class' ) );
+        add_action( 'admin_notices', array( $this, 'render_products_list_back_link' ), 0 );
+    }
+
+    /**
+     * @param string $classes Admin body classes.
+     * @return string
+     */
+    public function products_list_body_class( $classes ) {
+        return $classes . ' rma-premium-products-list ';
+    }
+
+    /**
+     * Hub'a dönüş — QRMS alt sayfa standardı.
+     *
+     * @return void
+     */
+    public function render_products_list_back_link() {
+        if ( ! class_exists( 'QRMS_Admin_Shell' ) || ! QRMS_Admin_Shell::is_active() ) {
+            return;
+        }
+
+        if ( ! class_exists( 'QRMS_Admin' ) ) {
+            return;
+        }
+
+        QRMS_Admin::render_subpage_back_link( 'restoran-menu' );
+    }
+
     public function admin_scripts( $hook ) {
         // Yalnızca eklentinin kendi ekranlarında yükle — diğer tüm admin
         // sayfalarına gereksiz script/stil enjeksiyonu engellenir.
@@ -1255,6 +1298,10 @@ trait RMA_Admin_Pages_Trait {
         // Ürün ekleme/düzenleme ve taksonomi ekranlarında hiçbir işlevi yok,
         // oralarda artık yüklenmiyor.
         $is_list = ( 'edit' === $screen->base );
+
+        if ( $is_list ) {
+            $this->boot_products_list_presentation();
+        }
 
         // Porsiyon/ekstra/servis saati arayüzü ürün DÜZENLEME ekranında ve
         // kategori formunda da gerekir; oralarda admin-ui.js yüklenmez.
@@ -1288,6 +1335,15 @@ trait RMA_Admin_Pages_Trait {
                 [],
                 $this->asset_version( 'assets/css/rma-admin-list.css' )
             );
+
+            if ( class_exists( 'QRMS_Admin_Shell' ) && QRMS_Admin_Shell::is_active() ) {
+                wp_enqueue_style(
+                    'rma-admin-shell-bridge',
+                    RMA_PLUGIN_URL . 'assets/css/admin-shell-bridge.css',
+                    array( 'rma-admin-list', 'qrms-admin-shell' ),
+                    $this->asset_version( 'assets/css/admin-shell-bridge.css' )
+                );
+            }
 
             // Hızlı Düzenle görsel seçici (wp.media) + satır açma kancası.
             wp_enqueue_media();

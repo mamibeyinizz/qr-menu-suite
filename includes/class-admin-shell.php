@@ -614,9 +614,32 @@ class QRMS_Admin_Shell {
 	}
 
 	/**
+	 * Native ürün listesi (edit.php?post_type=rma_menu_item).
+	 *
+	 * @return bool
+	 */
+	private static function is_menu_item_list_screen() {
+		$screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
+
+		return $screen && 'edit' === $screen->base && 'rma_menu_item' === $screen->post_type;
+	}
+
+	/**
 	 * @return array{breadcrumb:string,title:string}
 	 */
 	private static function get_header_context() {
+		if ( self::is_menu_item_list_screen() ) {
+			return array(
+				'breadcrumb' => sprintf(
+					/* translators: 1: hub group label, 2: module line label */
+					__( '%1$s / %2$s', 'qrms' ),
+					__( 'Menü Yönetimi', 'qrms' ),
+					__( 'Restoran Menü', 'qrms' )
+				),
+				'title'      => __( 'Ürünler', 'qrms' ),
+			);
+		}
+
 		$ctx = self::resolve_screen_context();
 
 		$title = function_exists( 'get_admin_page_title' ) ? get_admin_page_title() : '';

@@ -1,6 +1,7 @@
 /* =====================================================================
    Restoran Menü — premium shell bridge (presentation only)
-   Screens: Menü Görünümü, Kampanyalar, Ekstralar & Rozetler (qrms-rm-secenekler)
+   Screens: Menü Görünümü, Kampanyalar, Ekstralar & Rozetler (qrms-rm-secenekler),
+   Diğer Ayarlar, Ürün listesi (native edit.php?post_type=rma_menu_item)
    Forest / gold / off-white under body.qrms-premium-shell-active
 ===================================================================== */
 
@@ -9,7 +10,8 @@
    — kampanya listesi: .rma-kmp-durum
    — kampanya formu: .rma-kmp-form-wrap
    — ekstralar/rozetler: .rma-secenek-sayfa
-   — diğer ayarlar: .rma-anchor-nav (yalnızca qrms-rm-diger) */
+   — diğer ayarlar: .rma-anchor-nav (yalnızca qrms-rm-diger)
+   — ürün listesi: body.post-type-rma_menu_item.edit-php (+ .rma-premium-products-list) */
 
 body.qrms-premium-shell-active .qrms-shell__content:has(.wrap.rma-admin .rma-color-preview-dock),
 body.qrms-premium-shell-active .qrms-shell__content:has(.wrap.rma-admin .rma-kmp-durum),
@@ -1163,6 +1165,392 @@ body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-anc
 	body.qrms-premium-shell-active .qrms-shell__content:has(.wrap.rma-admin .rma-anchor-nav) .qrms-back-link,
 	body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-anchor-nav) .rma-anchor-nav a,
 	body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-anchor-nav) .rma-actions .button-primary {
+		transition: none;
+	}
+}
+
+/* =====================================================================
+   ÜRÜN LİSTESİ — native edit.php?post_type=rma_menu_item (hybrid shell)
+   Scope: premium shell + hybrid + CPT list only. No #adminmenu / global .wp-admin.
+===================================================================== */
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.post-type-rma_menu_item.edit-php.rma-premium-products-list {
+	--qrms-rm-forest: #0d2b22;
+	--qrms-rm-forest-mid: #173226;
+	--qrms-rm-forest-soft: #1e3d2f;
+	--qrms-rm-gold: #c9a84c;
+	--qrms-rm-gold-light: #e8c766;
+	--qrms-rm-offwhite: #f4f1e8;
+	--qrms-rm-ink-muted: rgba(13, 43, 34, 0.62);
+	--qrms-rm-border: rgba(13, 43, 34, 0.1);
+	--qrms-rm-shadow: 0 1px 2px rgba(13, 43, 34, 0.06), 0 8px 24px rgba(13, 43, 34, 0.05);
+}
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.post-type-rma_menu_item.edit-php.rma-premium-products-list .qrms-shell__content--hybrid {
+	background: var(--qrms-rm-offwhite);
+	min-width: 0;
+}
+
+/* —— Geri navigasyon —— */
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.post-type-rma_menu_item.edit-php.rma-premium-products-list .qrms-subpage-nav {
+	align-items: flex-start;
+	flex-direction: column;
+	gap: 6px;
+	margin: 0 0 16px;
+	max-width: 100%;
+}
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.post-type-rma_menu_item.edit-php.rma-premium-products-list .qrms-subpage-sep,
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.post-type-rma_menu_item.edit-php.rma-premium-products-list .qrms-subpage-current {
+	display: none;
+}
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.post-type-rma_menu_item.edit-php.rma-premium-products-list .qrms-back-link {
+	background: #fff;
+	border: 1px solid var(--qrms-rm-border);
+	border-radius: 999px;
+	box-shadow: var(--qrms-rm-shadow);
+	color: var(--qrms-rm-forest-mid);
+	display: inline-flex;
+	font-size: 14px;
+	font-weight: 600;
+	gap: 6px;
+	min-height: 44px;
+	padding: 0 16px 0 12px;
+	text-decoration: none;
+	transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.post-type-rma_menu_item.edit-php.rma-premium-products-list .qrms-back-link:hover,
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.post-type-rma_menu_item.edit-php.rma-premium-products-list .qrms-back-link:focus {
+	background: var(--qrms-rm-offwhite);
+	border-color: rgba(201, 168, 76, 0.45);
+	color: var(--qrms-rm-forest);
+}
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.post-type-rma_menu_item.edit-php.rma-premium-products-list .qrms-back-link:focus-visible {
+	outline: 2px solid var(--qrms-rm-gold);
+	outline-offset: 2px;
+}
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.post-type-rma_menu_item.edit-php.rma-premium-products-list .qrms-back-link .dashicons {
+	color: var(--qrms-rm-gold);
+}
+
+/* —— Tek H1: shell başlığı; native başlık erişilebilirlik için sr-only —— */
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.post-type-rma_menu_item.edit-php.rma-premium-products-list .wrap > h1.wp-heading-inline {
+	border: 0;
+	clip: rect(1px, 1px, 1px, 1px);
+	clip-path: inset(50%);
+	height: 1px;
+	margin: -1px;
+	overflow: hidden;
+	padding: 0;
+	position: absolute;
+	white-space: nowrap;
+	width: 1px;
+}
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.post-type-rma_menu_item.edit-php.rma-premium-products-list .wrap {
+	box-sizing: border-box;
+	margin-top: 0;
+	max-width: 100%;
+	min-width: 0;
+	position: relative;
+}
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.post-type-rma_menu_item.edit-php.rma-premium-products-list .wrap > hr.wp-header-end {
+	display: none;
+}
+
+/* —— Primary CTA: Ürün Ekle —— */
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.post-type-rma_menu_item.edit-php.rma-premium-products-list .wrap > a.page-title-action {
+	background: var(--qrms-rm-forest);
+	border: 1px solid var(--qrms-rm-forest);
+	border-radius: 999px;
+	box-shadow: var(--qrms-rm-shadow);
+	color: var(--qrms-rm-offwhite);
+	display: inline-flex;
+	align-items: center;
+	font-size: 14px;
+	font-weight: 600;
+	line-height: 1.2;
+	margin: 0 0 16px;
+	min-height: 44px;
+	padding: 10px 20px;
+	text-decoration: none;
+	transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.post-type-rma_menu_item.edit-php.rma-premium-products-list .wrap > a.page-title-action:hover,
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.post-type-rma_menu_item.edit-php.rma-premium-products-list .wrap > a.page-title-action:focus {
+	background: var(--qrms-rm-forest-mid);
+	border-color: var(--qrms-rm-gold);
+	color: #fff;
+}
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.post-type-rma_menu_item.edit-php.rma-premium-products-list .wrap > a.page-title-action:focus-visible {
+	outline: 2px solid var(--qrms-rm-gold-light);
+	outline-offset: 2px;
+}
+
+/* —— Screen Options (hybrid — işlev korunur) —— */
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.post-type-rma_menu_item.edit-php.rma-premium-products-list #screen-meta {
+	margin: 0 0 12px;
+	max-width: 100%;
+}
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.post-type-rma_menu_item.edit-php.rma-premium-products-list #screen-meta-links {
+	margin-bottom: 8px;
+}
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.post-type-rma_menu_item.edit-php.rma-premium-products-list #screen-options-link-wrap a,
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.post-type-rma_menu_item.edit-php.rma-premium-products-list #contextual-help-link-wrap a {
+	border-radius: 8px;
+	color: var(--qrms-rm-forest-mid);
+}
+
+/* —— View sekmeleri —— */
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.post-type-rma_menu_item.edit-php.rma-premium-products-list .wrap .subsubsub {
+	border-bottom: 1px solid var(--qrms-rm-border);
+	color: var(--qrms-rm-ink-muted);
+	display: flex;
+	flex-wrap: wrap;
+	float: none;
+	gap: 4px 12px;
+	margin: 0 0 16px;
+	padding: 0 0 12px;
+}
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.post-type-rma_menu_item.edit-php.rma-premium-products-list .wrap .subsubsub a {
+	border-radius: 999px;
+	color: var(--qrms-rm-forest-mid);
+	display: inline-block;
+	font-size: 13px;
+	font-weight: 600;
+	line-height: 1.3;
+	padding: 8px 14px;
+	text-decoration: none;
+	transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.post-type-rma_menu_item.edit-php.rma-premium-products-list .wrap .subsubsub a:hover,
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.post-type-rma_menu_item.edit-php.rma-premium-products-list .wrap .subsubsub a:focus {
+	background: rgba(201, 168, 76, 0.12);
+	color: var(--qrms-rm-forest);
+}
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.post-type-rma_menu_item.edit-php.rma-premium-products-list .wrap .subsubsub a.current {
+	background: var(--qrms-rm-forest);
+	color: var(--qrms-rm-offwhite);
+}
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.post-type-rma_menu_item.edit-php.rma-premium-products-list .wrap .subsubsub .count {
+	color: inherit;
+	font-weight: 500;
+	opacity: 0.85;
+}
+
+/* —— Tablenav —— */
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.post-type-rma_menu_item.edit-php.rma-premium-products-list .tablenav {
+	background: #fff;
+	border: 1px solid var(--qrms-rm-border);
+	border-radius: 12px;
+	box-shadow: var(--qrms-rm-shadow);
+	box-sizing: border-box;
+	clear: both;
+	margin: 0 0 12px;
+	max-width: 100%;
+	padding: 12px 14px;
+}
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.post-type-rma_menu_item.edit-php.rma-premium-products-list .tablenav.top {
+	margin-bottom: 16px;
+}
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.post-type-rma_menu_item.edit-php.rma-premium-products-list .tablenav .actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px 10px;
+	margin-bottom: 8px;
+}
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.post-type-rma_menu_item.edit-php.rma-premium-products-list .tablenav .actions select,
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.post-type-rma_menu_item.edit-php.rma-premium-products-list .tablenav .actions .button {
+	border-radius: 8px;
+	min-height: 40px;
+}
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.post-type-rma_menu_item.edit-php.rma-premium-products-list .tablenav .actions .button {
+	border-color: var(--qrms-rm-border);
+	color: var(--qrms-rm-forest-mid);
+}
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.post-type-rma_menu_item.edit-php.rma-premium-products-list .tablenav .actions .button:hover,
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.post-type-rma_menu_item.edit-php.rma-premium-products-list .tablenav .actions .button:focus {
+	border-color: rgba(201, 168, 76, 0.55);
+	color: var(--qrms-rm-forest);
+}
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.post-type-rma_menu_item.edit-php.rma-premium-products-list .tablenav .tablenav-pages {
+	color: var(--qrms-rm-ink-muted);
+	float: none;
+	margin-top: 4px;
+}
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.post-type-rma_menu_item.edit-php.rma-premium-products-list .search-box input[type="search"] {
+	border: 1px solid var(--qrms-rm-border);
+	border-radius: 8px;
+	min-height: 40px;
+	padding: 8px 12px;
+}
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.post-type-rma_menu_item.edit-php.rma-premium-products-list .search-box input[type="submit"].button {
+	background: var(--qrms-rm-forest);
+	border-color: var(--qrms-rm-forest);
+	border-radius: 8px;
+	color: var(--qrms-rm-offwhite);
+	min-height: 40px;
+	padding: 0 16px;
+}
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.post-type-rma_menu_item.edit-php.rma-premium-products-list .search-box input[type="submit"].button:hover,
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.post-type-rma_menu_item.edit-php.rma-premium-products-list .search-box input[type="submit"].button:focus {
+	background: var(--qrms-rm-forest-mid);
+	border-color: var(--qrms-rm-gold);
+}
+
+/* —— Tablo —— */
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.post-type-rma_menu_item.edit-php.rma-premium-products-list .wp-list-table {
+	background: #fff;
+	border: 1px solid var(--qrms-rm-border);
+	border-collapse: separate;
+	border-radius: 12px;
+	border-spacing: 0;
+	box-shadow: var(--qrms-rm-shadow);
+	color: var(--qrms-rm-forest-mid);
+	margin-bottom: 16px;
+	max-width: 100%;
+	overflow: hidden;
+}
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.post-type-rma_menu_item.edit-php.rma-premium-products-list .wp-list-table thead th,
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.post-type-rma_menu_item.edit-php.rma-premium-products-list .wp-list-table thead td {
+	background: var(--qrms-rm-offwhite);
+	border-bottom: 1px solid var(--qrms-rm-border);
+	color: var(--qrms-rm-forest);
+	font-size: 12px;
+	font-weight: 700;
+	letter-spacing: 0.04em;
+	padding: 12px 10px;
+	text-transform: uppercase;
+}
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.post-type-rma_menu_item.edit-php.rma-premium-products-list .wp-list-table tbody tr {
+	transition: background-color 0.12s ease;
+}
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.post-type-rma_menu_item.edit-php.rma-premium-products-list .wp-list-table tbody tr:hover,
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.post-type-rma_menu_item.edit-php.rma-premium-products-list .wp-list-table tbody tr:focus-within {
+	background: rgba(244, 241, 232, 0.65);
+}
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.post-type-rma_menu_item.edit-php.rma-premium-products-list .wp-list-table tbody td,
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.post-type-rma_menu_item.edit-php.rma-premium-products-list .wp-list-table tbody th {
+	border-bottom: 1px solid rgba(13, 43, 34, 0.06);
+	padding: 12px 10px;
+	vertical-align: middle;
+}
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.post-type-rma_menu_item.edit-php.rma-premium-products-list .wp-list-table tbody tr:last-child td,
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.post-type-rma_menu_item.edit-php.rma-premium-products-list .wp-list-table tbody tr:last-child th {
+	border-bottom: 0;
+}
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.post-type-rma_menu_item.edit-php.rma-premium-products-list .wp-list-table .row-actions {
+	color: var(--qrms-rm-ink-muted);
+	font-size: 12px;
+	gap: 4px;
+}
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.post-type-rma_menu_item.edit-php.rma-premium-products-list .wp-list-table .row-actions a {
+	color: var(--qrms-rm-forest-mid);
+}
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.post-type-rma_menu_item.edit-php.rma-premium-products-list .wp-list-table .row-actions a:hover,
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.post-type-rma_menu_item.edit-php.rma-premium-products-list .wp-list-table .row-actions a:focus {
+	color: var(--qrms-rm-gold);
+}
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.post-type-rma_menu_item.edit-php.rma-premium-products-list .wp-list-table .check-column {
+	padding-left: 12px;
+	width: 2.5em;
+}
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.post-type-rma_menu_item.edit-php.rma-premium-products-list .wp-list-table .column-rma_status,
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.post-type-rma_menu_item.edit-php.rma-premium-products-list .wp-list-table .column-rma_tukendi {
+	text-align: center;
+}
+
+/* Kontrollü yatay scroll — sayfa değil, tablo alanı */
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.post-type-rma_menu_item.edit-php.rma-premium-products-list form#posts-filter {
+	max-width: 100%;
+	overflow-x: auto;
+	-webkit-overflow-scrolling: touch;
+}
+
+/* —— Mobil / tablet —— */
+
+@media screen and (max-width: 1023px) {
+	body.qrms-premium-shell-active.qrms-premium-shell-hybrid.post-type-rma_menu_item.edit-php.rma-premium-products-list .qrms-back-link {
+		justify-content: center;
+		width: 100%;
+	}
+
+	body.qrms-premium-shell-active.qrms-premium-shell-hybrid.post-type-rma_menu_item.edit-php.rma-premium-products-list .wrap > a.page-title-action {
+		justify-content: center;
+		text-align: center;
+		width: 100%;
+	}
+}
+
+@media screen and (max-width: 782px) {
+	body.qrms-premium-shell-active.qrms-premium-shell-hybrid.post-type-rma_menu_item.edit-php.rma-premium-products-list .tablenav {
+		padding: 10px 12px;
+	}
+
+	body.qrms-premium-shell-active.qrms-premium-shell-hybrid.post-type-rma_menu_item.edit-php.rma-premium-products-list .tablenav .actions select,
+	body.qrms-premium-shell-active.qrms-premium-shell-hybrid.post-type-rma_menu_item.edit-php.rma-premium-products-list .tablenav .actions .button,
+	body.qrms-premium-shell-active.qrms-premium-shell-hybrid.post-type-rma_menu_item.edit-php.rma-premium-products-list .search-box input[type="search"],
+	body.qrms-premium-shell-active.qrms-premium-shell-hybrid.post-type-rma_menu_item.edit-php.rma-premium-products-list .search-box input[type="submit"].button {
+		min-height: 44px;
+		width: 100%;
+	}
+
+	body.qrms-premium-shell-active.qrms-premium-shell-hybrid.post-type-rma_menu_item.edit-php.rma-premium-products-list .search-box {
+		float: none;
+		margin: 8px 0 0;
+		width: 100%;
+	}
+
+	body.qrms-premium-shell-active.qrms-premium-shell-hybrid.post-type-rma_menu_item.edit-php.rma-premium-products-list .wrap .subsubsub a {
+		min-height: 44px;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	body.qrms-premium-shell-active.qrms-premium-shell-hybrid.post-type-rma_menu_item.edit-php.rma-premium-products-list .qrms-back-link,
+	body.qrms-premium-shell-active.qrms-premium-shell-hybrid.post-type-rma_menu_item.edit-php.rma-premium-products-list .wrap > a.page-title-action,
+	body.qrms-premium-shell-active.qrms-premium-shell-hybrid.post-type-rma_menu_item.edit-php.rma-premium-products-list .wrap .subsubsub a,
+	body.qrms-premium-shell-active.qrms-premium-shell-hybrid.post-type-rma_menu_item.edit-php.rma-premium-products-list .wp-list-table tbody tr {
 		transition: none;
 	}
 }
