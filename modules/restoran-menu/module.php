@@ -319,6 +319,12 @@ function qrms_module_restoran_menu_admin_assets() {
 	// stylesheet'ini kullanır; aktif gösterge CSS'inin dört varyantı da
 	// ekranın kendi kaynağından (get_nav_indicator_css) gelir.
 	if ( 'qrms-rm-gorunum' === $page ) {
+		wp_enqueue_style(
+			'rma-admin-shell-bridge',
+			$url . 'assets/css/admin-shell-bridge.css',
+			array( 'rma-admin-ui', 'qrms-admin-shell' ),
+			QRMS_Helpers::asset_version( $modul . 'assets/css/admin-shell-bridge.css' )
+		);
 		wp_enqueue_style( 'rma-nav', $url . 'assets/css/rma-nav.css', array( 'rma-admin-ui' ), QRMS_Helpers::asset_version( $modul . 'assets/css/rma-nav.css' ) );
 		wp_add_inline_style( 'rma-nav', $rma->get_nav_preview_css() );
 	}

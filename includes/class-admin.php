@@ -903,11 +903,26 @@ class QRMS_Admin {
 		if ( $current === $module_name ) {
 			$current = '';
 		}
+
+		/**
+		 * Alt sayfadaki geri bağlantısının görünen metni.
+		 *
+		 * Varsayılan: «{Modül adı}'ne Dön» (hub'a dönüş).
+		 *
+		 * @param string $label       Bağlantı metni.
+		 * @param string $module_slug Modül slug'ı.
+		 */
+		$back_label = (string) apply_filters(
+			'qrms_subpage_back_label',
+			/* translators: %s: module hub name, e.g. Menü Yönetimi */
+			sprintf( __( '%s\'ne Dön', 'qrms' ), $module_name ),
+			$module_slug
+		);
 		?>
 		<div class="qrms-subpage-nav">
 			<a class="qrms-back-link" href="<?php echo esc_url( $url ); ?>">
 				<span class="dashicons dashicons-arrow-left-alt2" aria-hidden="true"></span>
-				<?php echo esc_html( $module_name ); ?>
+				<?php echo esc_html( $back_label ); ?>
 			</a>
 			<?php if ( '' !== $current ) : ?>
 				<span class="qrms-subpage-sep" aria-hidden="true">&gt;</span>

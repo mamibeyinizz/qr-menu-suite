@@ -1483,6 +1483,7 @@ qrms_test(
 
 		qrms_assert_contains( 'qrms-back-link', $html, 'geri bağlantısı' );
 		qrms_assert_contains( 'Menü Yönetimi', $html, 'modül adı' );
+		qrms_assert_contains( 'ne Dön', $html, 'geri metni' );
 		qrms_assert_contains( 'qrms-subpage-current', $html, 'aktif sayfa breadcrumb\'da' );
 		qrms_assert_contains( 'Görünüm', $html, 'aktif sayfa adı' );
 		qrms_assert_contains( 'page=' . QRMS_Admin::get_module_page_slug( 'restoran-menu' ), $html, 'hub adresi' );

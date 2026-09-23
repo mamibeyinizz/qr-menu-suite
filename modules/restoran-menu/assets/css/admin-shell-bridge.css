@@ -1,0 +1,320 @@
+/* =====================================================================
+   Menü Görünümü — premium shell bridge (admin.php?page=qrms-rm-gorunum)
+   Presentation only: forest / gold / off-white under QRMS premium shell.
+   Scoped via .rma-color-preview-dock (yalnızca bu ekranda vardır).
+===================================================================== */
+
+body.qrms-premium-shell-active .qrms-shell__content:has(.wrap.rma-admin .rma-color-preview-dock) {
+	--qrms-rm-forest: #0d2b22;
+	--qrms-rm-forest-mid: #173226;
+	--qrms-rm-forest-soft: #1e3d2f;
+	--qrms-rm-gold: #c9a84c;
+	--qrms-rm-gold-light: #e8c766;
+	--qrms-rm-offwhite: #f4f1e8;
+	--qrms-rm-ink-muted: rgba(13, 43, 34, 0.62);
+	--qrms-rm-border: rgba(13, 43, 34, 0.1);
+	--qrms-rm-shadow: 0 1px 2px rgba(13, 43, 34, 0.06), 0 8px 24px rgba(13, 43, 34, 0.05);
+	min-width: 0;
+}
+
+/* —— Geri navigasyon (hub standardı) —— */
+
+body.qrms-premium-shell-active .qrms-shell__content:has(.wrap.rma-admin .rma-color-preview-dock) .qrms-subpage-nav {
+	align-items: flex-start;
+	flex-direction: column;
+	gap: 6px;
+	margin: 0 0 16px;
+	max-width: 1200px;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content:has(.wrap.rma-admin .rma-color-preview-dock) .qrms-subpage-sep,
+body.qrms-premium-shell-active .qrms-shell__content:has(.wrap.rma-admin .rma-color-preview-dock) .qrms-subpage-current {
+	display: none;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content:has(.wrap.rma-admin .rma-color-preview-dock) .qrms-back-link {
+	background: #fff;
+	border: 1px solid var(--qrms-rm-border);
+	border-radius: 999px;
+	box-shadow: var(--qrms-rm-shadow);
+	color: var(--qrms-rm-forest-mid);
+	font-size: 14px;
+	font-weight: 600;
+	gap: 6px;
+	min-height: 44px;
+	padding: 0 16px 0 12px;
+	transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content:has(.wrap.rma-admin .rma-color-preview-dock) .qrms-back-link:hover,
+body.qrms-premium-shell-active .qrms-shell__content:has(.wrap.rma-admin .rma-color-preview-dock) .qrms-back-link:focus {
+	background: var(--qrms-rm-offwhite);
+	border-color: rgba(201, 168, 76, 0.45);
+	color: var(--qrms-rm-forest);
+}
+
+body.qrms-premium-shell-active .qrms-shell__content:has(.wrap.rma-admin .rma-color-preview-dock) .qrms-back-link:focus-visible {
+	outline: 2px solid var(--qrms-rm-gold);
+	outline-offset: 2px;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content:has(.wrap.rma-admin .rma-color-preview-dock) .qrms-back-link .dashicons {
+	color: var(--qrms-rm-gold);
+}
+
+body.qrms-premium-shell-active .qrms-shell__content:has(.wrap.rma-admin .rma-color-preview-dock) .qrms-modnav {
+	margin-left: 0;
+	margin-right: 0;
+	max-width: 1200px;
+}
+
+/* —— Ana panel: koyu .rma-admin → shell uyumlu açık yüzey —— */
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) {
+	--rma-a-accent: var(--qrms-rm-gold);
+	--rma-a-accent-soft: rgba(201, 168, 76, 0.14);
+	--rma-a-accent-dim: rgba(201, 168, 76, 0.38);
+	--rma-a-accent-hi: var(--qrms-rm-gold-light);
+	--rma-a-page: var(--qrms-rm-offwhite);
+	--rma-a-surface: #fff;
+	--rma-a-surface-2: #faf8f2;
+	--rma-a-raised: #f0ebe0;
+	--rma-a-border: var(--qrms-rm-border);
+	--rma-a-border-soft: rgba(13, 43, 34, 0.08);
+	--rma-a-text: var(--qrms-rm-forest);
+	--rma-a-text-soft: rgba(13, 43, 34, 0.82);
+	--rma-a-muted: var(--qrms-rm-ink-muted);
+	--rma-a-radius: 12px;
+
+	background: var(--qrms-rm-offwhite);
+	border: 1px solid var(--qrms-rm-border);
+	border-radius: 16px;
+	box-shadow: var(--qrms-rm-shadow);
+	margin: 0 auto 24px;
+	max-width: 1200px;
+	padding: 28px clamp(16px, 3vw, 32px) 32px;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock)::before {
+	background: linear-gradient(90deg, var(--qrms-rm-gold), rgba(201, 168, 76, 0.12) 55%, transparent);
+	height: 3px;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) h1 {
+	color: var(--qrms-rm-forest);
+	font-size: clamp(22px, 2.4vw, 28px);
+	font-weight: 700;
+	letter-spacing: -0.02em;
+	line-height: 1.2;
+	margin-bottom: 8px;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) h1::before {
+	content: none;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) .rma-admin-intro {
+	color: var(--qrms-rm-ink-muted);
+	font-size: 15px;
+	line-height: 1.55;
+	margin-bottom: 28px;
+	max-width: 52ch;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) .rma-card {
+	box-shadow: var(--qrms-rm-shadow);
+	max-width: none;
+	padding: clamp(18px, 2.5vw, 28px);
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) .rma-card-title {
+	font-size: 16px;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) .rma-card-desc,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) .description.rma-desc {
+	color: var(--qrms-rm-ink-muted);
+	line-height: 1.55;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) .rma-section-title {
+	color: var(--qrms-rm-forest-mid);
+}
+
+/* Form: okunabilirlik ve dokunmatik hedefler */
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) .form-table th {
+	color: var(--qrms-rm-forest);
+	font-size: 14px;
+	font-weight: 600;
+	padding-bottom: 12px;
+	padding-top: 14px;
+	vertical-align: top;
+	width: 220px;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) .form-table td {
+	padding-bottom: 14px;
+	padding-top: 10px;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) .rma-select-wide,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) .rma-select-narrow,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) input[type="text"]:not(.rma-color-picker) {
+	max-width: 100%;
+	min-height: 44px;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) .rma-details {
+	border: 1px solid var(--qrms-rm-border);
+	border-radius: var(--rma-a-radius);
+	margin-top: 8px;
+	padding: 4px 14px 10px;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) .rma-details summary {
+	cursor: pointer;
+	font-weight: 600;
+	min-height: 44px;
+	padding: 10px 0;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) .rma-range-row {
+	align-items: center;
+	gap: 12px;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) input[type="range"] {
+	min-height: 28px;
+}
+
+/* Butonlar */
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) .button-primary {
+	background: var(--qrms-rm-forest-mid);
+	border-color: var(--qrms-rm-forest-mid);
+	border-radius: 10px;
+	box-shadow: none;
+	font-weight: 600;
+	min-height: 44px;
+	padding: 0 22px;
+	transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) .button-primary:hover,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) .button-primary:focus {
+	background: var(--qrms-rm-forest-soft);
+	border-color: var(--qrms-rm-forest-soft);
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) .rma-sticky-save {
+	border-top-color: var(--qrms-rm-border);
+	max-width: none;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) .rma-theme-card,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) .rma-choice {
+	transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) .rma-theme-card.is-selected,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) .rma-choice.is-selected {
+	border-color: var(--qrms-rm-gold);
+	box-shadow: 0 0 0 1px rgba(201, 168, 76, 0.35);
+}
+
+/* Canlı önizleme çerçevesi */
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) .rma-color-preview-dock {
+	background: #fff;
+	border-color: var(--qrms-rm-border);
+	box-shadow: var(--qrms-rm-shadow);
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) .rma-cp-shuffle {
+	min-height: 44px;
+	padding: 8px 0;
+}
+
+/* —— İki sütun: form + renk önizlemesi (masaüstü) —— */
+
+@media screen and (min-width: 1024px) {
+	body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) form:first-of-type {
+		align-items: start;
+		column-gap: 24px;
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) minmax(260px, 340px);
+	}
+
+	body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) form:first-of-type > .rma-color-preview-dock {
+		align-self: start;
+		grid-column: 2;
+		grid-row: 1 / -1;
+		margin-bottom: 0;
+		max-width: none;
+		position: sticky;
+		top: 24px;
+		width: 100%;
+	}
+
+	body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) form:first-of-type > :not(.rma-color-preview-dock) {
+		grid-column: 1;
+		min-width: 0;
+	}
+}
+
+/* Tablet: tek sütun, önizleme form akışında */
+
+@media screen and (min-width: 768px) and (max-width: 1023px) {
+	body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) .rma-color-preview-dock {
+		position: sticky;
+		top: 16px;
+	}
+}
+
+/* Mobil: taşma yok, tablo tek sütun */
+
+@media screen and (max-width: 782px) {
+	body.qrms-premium-shell-active .qrms-shell__content:has(.wrap.rma-admin .rma-color-preview-dock) .qrms-back-link {
+		max-width: 100%;
+	}
+
+	body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) {
+		margin-right: 0;
+		padding-left: 16px;
+		padding-right: 16px;
+	}
+
+	body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) .rma-color-preview-dock {
+		position: relative;
+		top: auto;
+	}
+
+	body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) .form-table,
+	body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) .form-table tbody,
+	body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) .form-table tr,
+	body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) .form-table th,
+	body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) .form-table td {
+		display: block;
+		width: 100%;
+	}
+
+	body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) .form-table th {
+		padding-bottom: 6px;
+	}
+}
+
+@media screen and (max-width: 480px) {
+	body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) {
+		border-radius: 12px;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	body.qrms-premium-shell-active .qrms-shell__content:has(.wrap.rma-admin .rma-color-preview-dock) .qrms-back-link,
+	body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) .rma-theme-card,
+	body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) .rma-choice,
+	body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) .button-primary {
+		transition: none;
+	}
+}
