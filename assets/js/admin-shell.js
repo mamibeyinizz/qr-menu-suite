@@ -15,9 +15,57 @@
 
 	var mqDesktop = window.matchMedia( '(min-width: 1024px)' );
 	var resizeTimer = null;
+	var lockedScrollY = 0;
+	var touchMoveBlocked = false;
 
 	function isDesktop() {
 		return mqDesktop.matches;
+	}
+
+	function lockPageScroll() {
+		if ( isDesktop() || body.classList.contains( 'qrms-shell-scroll-locked' ) ) {
+			return;
+		}
+
+		lockedScrollY = window.scrollY || window.pageYOffset || 0;
+		document.documentElement.classList.add( 'qrms-shell-scroll-locked' );
+		body.classList.add( 'qrms-shell-scroll-locked' );
+		body.style.position = 'fixed';
+		body.style.top = '-' + lockedScrollY + 'px';
+		body.style.left = '0';
+		body.style.right = '0';
+		body.style.width = '100%';
+		touchMoveBlocked = true;
+	}
+
+	function unlockPageScroll() {
+		if ( ! body.classList.contains( 'qrms-shell-scroll-locked' ) ) {
+			touchMoveBlocked = false;
+			return;
+		}
+
+		var restoreY = lockedScrollY;
+		document.documentElement.classList.remove( 'qrms-shell-scroll-locked' );
+		body.classList.remove( 'qrms-shell-scroll-locked' );
+		body.style.position = '';
+		body.style.top = '';
+		body.style.left = '';
+		body.style.right = '';
+		body.style.width = '';
+		touchMoveBlocked = false;
+		window.scrollTo( 0, restoreY );
+	}
+
+	function onDocumentTouchMove( event ) {
+		if ( ! touchMoveBlocked || isDesktop() ) {
+			return;
+		}
+
+		if ( event.target.closest && event.target.closest( '#qrms-shell-sidebar' ) ) {
+			return;
+		}
+
+		event.preventDefault();
 	}
 
 	function setOpen( open ) {
@@ -38,8 +86,10 @@
 
 		if ( open && ! isDesktop() ) {
 			sidebar.setAttribute( 'aria-modal', 'true' );
+			lockPageScroll();
 		} else {
 			sidebar.removeAttribute( 'aria-modal' );
+			unlockPageScroll();
 		}
 	}
 
@@ -99,6 +149,8 @@
 	}
 
 	window.addEventListener( 'resize', debouncedResize, { passive: true } );
+
+	document.addEventListener( 'touchmove', onDocumentTouchMove, { passive: false } );
 
 	sidebar.addEventListener( 'click', function ( event ) {
 		var link = event.target.closest( 'a.qrms-shell__nav-link' );

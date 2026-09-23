@@ -98,9 +98,11 @@ body.qrms-premium-shell-active {
 
 .qrms-shell__nav {
 	flex: 1 1 auto;
+	min-height: 0;
 	overflow-y: auto;
 	overflow-x: hidden;
 	-webkit-overflow-scrolling: touch;
+	overscroll-behavior: contain;
 }
 
 .qrms-shell__nav-list {
@@ -499,6 +501,16 @@ body.qrms-premium-shell-active .qrms-shell__content .qrms-hub-intro {
 /* Tablet: collapsible sidebar */
 
 @media screen and (max-width: 1023px) {
+	html.qrms-shell-scroll-locked,
+	body.qrms-premium-shell-active.qrms-shell-scroll-locked {
+		overflow: hidden;
+		height: 100%;
+	}
+
+	body.qrms-premium-shell-active.qrms-shell-scroll-locked {
+		width: 100%;
+	}
+
 	body.qrms-premium-shell-active.qrms-shell-sidebar-open .qrms-shell__sidebar {
 		transform: translateX(0);
 	}
@@ -512,6 +524,11 @@ body.qrms-premium-shell-active .qrms-shell__content .qrms-hub-intro {
 		top: 0;
 		left: 0;
 		bottom: 0;
+		max-height: 100vh;
+		height: 100vh;
+		height: 100dvh;
+		overflow: hidden;
+		overscroll-behavior: contain;
 		transform: translateX(-105%);
 		transition: transform 0.22s ease;
 		box-shadow: 8px 0 32px rgba(0, 0, 0, 0.2);
@@ -519,10 +536,15 @@ body.qrms-premium-shell-active .qrms-shell__content .qrms-hub-intro {
 
 	body.qrms-premium-shell-active.qrms-shell-sidebar-open .qrms-shell__backdrop {
 		display: block;
+		touch-action: none;
 	}
 
 	body.qrms-premium-shell-active.qrms-shell-sidebar-open .qrms-shell__backdrop[hidden] {
 		display: block;
+	}
+
+	body.qrms-premium-shell-active.qrms-shell-sidebar-open .qrms-shell__main {
+		touch-action: none;
 	}
 
 	body.qrms-premium-shell-active .qrms-shell__sidebar-foot .qrms-shell__account {
@@ -564,5 +586,9 @@ body.qrms-premium-shell-active .qrms-shell__content .qrms-hub-intro {
 	.qrms-shell__sidebar,
 	.qrms-shell__backdrop {
 		transition: none !important;
+	}
+
+	body.qrms-premium-shell-active.qrms-shell-scroll-locked {
+		transition: none;
 	}
 }
