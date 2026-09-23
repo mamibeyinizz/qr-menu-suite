@@ -1,10 +1,17 @@
 /* =====================================================================
-   Menü Görünümü — premium shell bridge (admin.php?page=qrms-rm-gorunum)
-   Presentation only: forest / gold / off-white under QRMS premium shell.
-   Scoped via .rma-color-preview-dock (yalnızca bu ekranda vardır).
+   Restoran Menü — premium shell bridge (presentation only)
+   Screens: Menü Görünümü (qrms-rm-gorunum), Kampanyalar (qrms-rm-kampanya)
+   Forest / gold / off-white under body.qrms-premium-shell-active
 ===================================================================== */
 
-body.qrms-premium-shell-active .qrms-shell__content:has(.wrap.rma-admin .rma-color-preview-dock) {
+/* Ekran tanıyıcıları (sayfaya özgü, DOM/JS selector değiştirilmez) */
+/* — gorunum: .rma-color-preview-dock
+   — kampanya listesi: .rma-kmp-durum
+   — kampanya formu: .rma-kmp-form-wrap */
+
+body.qrms-premium-shell-active .qrms-shell__content:has(.wrap.rma-admin .rma-color-preview-dock),
+body.qrms-premium-shell-active .qrms-shell__content:has(.wrap.rma-admin .rma-kmp-durum),
+body.qrms-premium-shell-active .qrms-shell__content:has(.wrap.rma-admin .rma-kmp-form-wrap) {
 	--qrms-rm-forest: #0d2b22;
 	--qrms-rm-forest-mid: #173226;
 	--qrms-rm-forest-soft: #1e3d2f;
@@ -19,7 +26,9 @@ body.qrms-premium-shell-active .qrms-shell__content:has(.wrap.rma-admin .rma-col
 
 /* —— Geri navigasyon (hub standardı) —— */
 
-body.qrms-premium-shell-active .qrms-shell__content:has(.wrap.rma-admin .rma-color-preview-dock) .qrms-subpage-nav {
+body.qrms-premium-shell-active .qrms-shell__content:has(.wrap.rma-admin .rma-color-preview-dock) .qrms-subpage-nav,
+body.qrms-premium-shell-active .qrms-shell__content:has(.wrap.rma-admin .rma-kmp-durum) .qrms-subpage-nav,
+body.qrms-premium-shell-active .qrms-shell__content:has(.wrap.rma-admin .rma-kmp-form-wrap) .qrms-subpage-nav {
 	align-items: flex-start;
 	flex-direction: column;
 	gap: 6px;
@@ -28,11 +37,17 @@ body.qrms-premium-shell-active .qrms-shell__content:has(.wrap.rma-admin .rma-col
 }
 
 body.qrms-premium-shell-active .qrms-shell__content:has(.wrap.rma-admin .rma-color-preview-dock) .qrms-subpage-sep,
-body.qrms-premium-shell-active .qrms-shell__content:has(.wrap.rma-admin .rma-color-preview-dock) .qrms-subpage-current {
+body.qrms-premium-shell-active .qrms-shell__content:has(.wrap.rma-admin .rma-color-preview-dock) .qrms-subpage-current,
+body.qrms-premium-shell-active .qrms-shell__content:has(.wrap.rma-admin .rma-kmp-durum) .qrms-subpage-sep,
+body.qrms-premium-shell-active .qrms-shell__content:has(.wrap.rma-admin .rma-kmp-durum) .qrms-subpage-current,
+body.qrms-premium-shell-active .qrms-shell__content:has(.wrap.rma-admin .rma-kmp-form-wrap) .qrms-subpage-sep,
+body.qrms-premium-shell-active .qrms-shell__content:has(.wrap.rma-admin .rma-kmp-form-wrap) .qrms-subpage-current {
 	display: none;
 }
 
-body.qrms-premium-shell-active .qrms-shell__content:has(.wrap.rma-admin .rma-color-preview-dock) .qrms-back-link {
+body.qrms-premium-shell-active .qrms-shell__content:has(.wrap.rma-admin .rma-color-preview-dock) .qrms-back-link,
+body.qrms-premium-shell-active .qrms-shell__content:has(.wrap.rma-admin .rma-kmp-durum) .qrms-back-link,
+body.qrms-premium-shell-active .qrms-shell__content:has(.wrap.rma-admin .rma-kmp-form-wrap) .qrms-back-link {
 	background: #fff;
 	border: 1px solid var(--qrms-rm-border);
 	border-radius: 999px;
@@ -47,22 +62,32 @@ body.qrms-premium-shell-active .qrms-shell__content:has(.wrap.rma-admin .rma-col
 }
 
 body.qrms-premium-shell-active .qrms-shell__content:has(.wrap.rma-admin .rma-color-preview-dock) .qrms-back-link:hover,
-body.qrms-premium-shell-active .qrms-shell__content:has(.wrap.rma-admin .rma-color-preview-dock) .qrms-back-link:focus {
+body.qrms-premium-shell-active .qrms-shell__content:has(.wrap.rma-admin .rma-color-preview-dock) .qrms-back-link:focus,
+body.qrms-premium-shell-active .qrms-shell__content:has(.wrap.rma-admin .rma-kmp-durum) .qrms-back-link:hover,
+body.qrms-premium-shell-active .qrms-shell__content:has(.wrap.rma-admin .rma-kmp-durum) .qrms-back-link:focus,
+body.qrms-premium-shell-active .qrms-shell__content:has(.wrap.rma-admin .rma-kmp-form-wrap) .qrms-back-link:hover,
+body.qrms-premium-shell-active .qrms-shell__content:has(.wrap.rma-admin .rma-kmp-form-wrap) .qrms-back-link:focus {
 	background: var(--qrms-rm-offwhite);
 	border-color: rgba(201, 168, 76, 0.45);
 	color: var(--qrms-rm-forest);
 }
 
-body.qrms-premium-shell-active .qrms-shell__content:has(.wrap.rma-admin .rma-color-preview-dock) .qrms-back-link:focus-visible {
+body.qrms-premium-shell-active .qrms-shell__content:has(.wrap.rma-admin .rma-color-preview-dock) .qrms-back-link:focus-visible,
+body.qrms-premium-shell-active .qrms-shell__content:has(.wrap.rma-admin .rma-kmp-durum) .qrms-back-link:focus-visible,
+body.qrms-premium-shell-active .qrms-shell__content:has(.wrap.rma-admin .rma-kmp-form-wrap) .qrms-back-link:focus-visible {
 	outline: 2px solid var(--qrms-rm-gold);
 	outline-offset: 2px;
 }
 
-body.qrms-premium-shell-active .qrms-shell__content:has(.wrap.rma-admin .rma-color-preview-dock) .qrms-back-link .dashicons {
+body.qrms-premium-shell-active .qrms-shell__content:has(.wrap.rma-admin .rma-color-preview-dock) .qrms-back-link .dashicons,
+body.qrms-premium-shell-active .qrms-shell__content:has(.wrap.rma-admin .rma-kmp-durum) .qrms-back-link .dashicons,
+body.qrms-premium-shell-active .qrms-shell__content:has(.wrap.rma-admin .rma-kmp-form-wrap) .qrms-back-link .dashicons {
 	color: var(--qrms-rm-gold);
 }
 
-body.qrms-premium-shell-active .qrms-shell__content:has(.wrap.rma-admin .rma-color-preview-dock) .qrms-modnav {
+body.qrms-premium-shell-active .qrms-shell__content:has(.wrap.rma-admin .rma-color-preview-dock) .qrms-modnav,
+body.qrms-premium-shell-active .qrms-shell__content:has(.wrap.rma-admin .rma-kmp-durum) .qrms-modnav,
+body.qrms-premium-shell-active .qrms-shell__content:has(.wrap.rma-admin .rma-kmp-form-wrap) .qrms-modnav {
 	margin-left: 0;
 	margin-right: 0;
 	max-width: 1200px;
@@ -70,7 +95,9 @@ body.qrms-premium-shell-active .qrms-shell__content:has(.wrap.rma-admin .rma-col
 
 /* —— Ana panel: koyu .rma-admin → shell uyumlu açık yüzey —— */
 
-body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) {
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock),
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-durum),
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-form-wrap) {
 	--rma-a-accent: var(--qrms-rm-gold);
 	--rma-a-accent-soft: rgba(201, 168, 76, 0.14);
 	--rma-a-accent-dim: rgba(201, 168, 76, 0.38);
@@ -95,12 +122,16 @@ body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-col
 	padding: 28px clamp(16px, 3vw, 32px) 32px;
 }
 
-body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock)::before {
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock)::before,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-durum)::before,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-form-wrap)::before {
 	background: linear-gradient(90deg, var(--qrms-rm-gold), rgba(201, 168, 76, 0.12) 55%, transparent);
 	height: 3px;
 }
 
-body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) h1 {
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) h1,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-durum) h1,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-form-wrap) h1 {
 	color: var(--qrms-rm-forest);
 	font-size: clamp(22px, 2.4vw, 28px);
 	font-weight: 700;
@@ -109,11 +140,15 @@ body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-col
 	margin-bottom: 8px;
 }
 
-body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) h1::before {
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) h1::before,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-durum) h1::before,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-form-wrap) h1::before {
 	content: none;
 }
 
-body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) .rma-admin-intro {
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) .rma-admin-intro,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-durum) .rma-admin-intro,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-form-wrap) .rma-admin-intro {
 	color: var(--qrms-rm-ink-muted);
 	font-size: 15px;
 	line-height: 1.55;
@@ -121,29 +156,38 @@ body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-col
 	max-width: 52ch;
 }
 
-body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) .rma-card {
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) .rma-card,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-durum) .rma-card,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-form-wrap) .rma-card {
 	box-shadow: var(--qrms-rm-shadow);
 	max-width: none;
 	padding: clamp(18px, 2.5vw, 28px);
 }
 
-body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) .rma-card-title {
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) .rma-card-title,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-durum) .rma-card-title,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-form-wrap) .rma-card-title {
 	font-size: 16px;
 }
 
 body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) .rma-card-desc,
-body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) .description.rma-desc {
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) .description.rma-desc,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-durum) .rma-card-desc,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-durum) .description.rma-desc,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-form-wrap) .rma-card-desc,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-form-wrap) .description.rma-desc,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-form-wrap) .rma-kmp-field-help {
 	color: var(--qrms-rm-ink-muted);
 	line-height: 1.55;
 }
 
-body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) .rma-section-title {
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) .rma-section-title,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-form-wrap) .rma-section-title {
 	color: var(--qrms-rm-forest-mid);
 }
 
-/* Form: okunabilirlik ve dokunmatik hedefler */
-
-body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) .form-table th {
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) .form-table th,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-form-wrap) .form-table th {
 	color: var(--qrms-rm-forest);
 	font-size: 14px;
 	font-weight: 600;
@@ -153,14 +197,19 @@ body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-col
 	width: 220px;
 }
 
-body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) .form-table td {
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) .form-table td,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-form-wrap) .form-table td {
 	padding-bottom: 14px;
 	padding-top: 10px;
 }
 
 body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) .rma-select-wide,
 body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) .rma-select-narrow,
-body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) input[type="text"]:not(.rma-color-picker) {
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) input[type="text"]:not(.rma-color-picker),
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-form-wrap) .rma-select-wide,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-form-wrap) .rma-kmp-select,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-form-wrap) .rma-kmp-input-baslik,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-form-wrap) .rma-vitrin-search {
 	max-width: 100%;
 	min-height: 44px;
 }
@@ -179,22 +228,28 @@ body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-col
 	padding: 10px 0;
 }
 
-body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) .rma-range-row {
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) .rma-range-row,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-form-wrap) .rma-range-row {
 	align-items: center;
 	gap: 12px;
 }
 
-body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) input[type="range"] {
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) input[type="range"],
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-form-wrap) input[type="range"] {
 	min-height: 28px;
 }
 
-/* Butonlar */
+/* Birincil / ikincil butonlar */
 
-body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) .button-primary {
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) .button-primary,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-durum) .button-primary,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-form-wrap) .button-primary,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-form-wrap) .rma-kmp-btn-primary:not([disabled]) {
 	background: var(--qrms-rm-forest-mid);
 	border-color: var(--qrms-rm-forest-mid);
 	border-radius: 10px;
 	box-shadow: none;
+	color: #fff;
 	font-weight: 600;
 	min-height: 44px;
 	padding: 0 22px;
@@ -202,9 +257,28 @@ body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-col
 }
 
 body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) .button-primary:hover,
-body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) .button-primary:focus {
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) .button-primary:focus,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-durum) .button-primary:hover,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-durum) .button-primary:focus,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-form-wrap) .button-primary:hover,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-form-wrap) .button-primary:focus,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-form-wrap) .rma-kmp-btn-primary:not([disabled]):hover,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-form-wrap) .rma-kmp-btn-primary:not([disabled]):focus {
 	background: var(--qrms-rm-forest-soft);
 	border-color: var(--qrms-rm-forest-soft);
+	color: #fff;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-durum) .button:not(.button-primary),
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-form-wrap) .rma-kmp-btn-secondary,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-form-wrap) .rma-kmp-btn-cancel,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-form-wrap) .button-secondary.rma-kmp-onizle-btn {
+	background: #fff;
+	border-color: var(--qrms-rm-border);
+	border-radius: 10px;
+	color: var(--qrms-rm-forest-mid);
+	font-weight: 600;
+	min-height: 44px;
 }
 
 body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) .rma-sticky-save {
@@ -213,17 +287,19 @@ body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-col
 }
 
 body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) .rma-theme-card,
-body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) .rma-choice {
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) .rma-choice,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-form-wrap) .rma-kmp-choice {
 	transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 
 body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) .rma-theme-card.is-selected,
-body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) .rma-choice.is-selected {
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) .rma-choice.is-selected,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-form-wrap) .rma-kmp-choice.is-selected {
 	border-color: var(--qrms-rm-gold);
 	box-shadow: 0 0 0 1px rgba(201, 168, 76, 0.35);
 }
 
-/* Canlı önizleme çerçevesi */
+/* —— Menü Görünümü: canlı önizleme —— */
 
 body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) .rma-color-preview-dock {
 	background: #fff;
@@ -235,8 +311,6 @@ body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-col
 	min-height: 44px;
 	padding: 8px 0;
 }
-
-/* —— İki sütun: form + renk önizlemesi (masaüstü) —— */
 
 @media screen and (min-width: 1024px) {
 	body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) form:first-of-type {
@@ -263,8 +337,6 @@ body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-col
 	}
 }
 
-/* Tablet: tek sütun, önizleme form akışında */
-
 @media screen and (min-width: 768px) and (max-width: 1023px) {
 	body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) .rma-color-preview-dock {
 		position: sticky;
@@ -272,14 +344,169 @@ body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-col
 	}
 }
 
-/* Mobil: taşma yok, tablo tek sütun */
+/* —— Kampanyalar: liste ve form —— */
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-durum) .rma-kmp-durum.is-aktif {
+	background: #fff;
+	border-color: rgba(201, 168, 76, 0.35);
+	box-shadow: var(--qrms-rm-shadow), inset 4px 0 0 var(--qrms-rm-gold);
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-durum) .rma-kmp-rozet {
+	background: rgba(201, 168, 76, 0.12);
+	border-color: rgba(201, 168, 76, 0.35);
+	color: var(--qrms-rm-forest-mid);
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-durum) .rma-kmp-status-pill {
+	border-radius: 999px;
+	display: inline-block;
+	font-size: 11px;
+	font-weight: 700;
+	letter-spacing: 0.03em;
+	line-height: 1.3;
+	margin-top: 6px;
+	padding: 4px 10px;
+	text-transform: uppercase;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-durum) .rma-kmp-status-pill--aktif {
+	background: rgba(63, 191, 103, 0.14);
+	color: #1a6b3a;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-durum) .rma-kmp-status-pill--planlandi {
+	background: rgba(201, 168, 76, 0.16);
+	color: #6b5520;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-durum) .rma-kmp-status-pill--taslak {
+	background: rgba(13, 43, 34, 0.08);
+	color: var(--qrms-rm-ink-muted);
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-durum) .rma-kmp-status-pill--uygulandi,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-durum) .rma-kmp-status-pill--uygulandi-zam {
+	background: rgba(13, 43, 34, 0.1);
+	color: var(--qrms-rm-forest-mid);
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-durum) .rma-kmp-tablo {
+	background: #fff;
+	border: 1px solid var(--qrms-rm-border);
+	border-radius: var(--rma-a-radius);
+	border-collapse: separate;
+	border-spacing: 0;
+	overflow: hidden;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-durum) .rma-kmp-tablo thead th {
+	background: var(--qrms-rm-offwhite);
+	border-bottom: 1px solid var(--qrms-rm-border);
+	color: var(--qrms-rm-ink-muted);
+	font-size: 11px;
+	padding: 12px 14px;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-durum) .rma-kmp-tablo tbody td {
+	padding: 14px;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-durum) .rma-kmp-tablo tbody tr:last-child td {
+	border-bottom: 0;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-durum) .rma-kmp-tablo td[data-label="Kural"] {
+	color: var(--qrms-rm-forest);
+	font-weight: 600;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-durum) .rma-vitrin-list-head {
+	align-items: center;
+	gap: 12px;
+	margin-bottom: 18px;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-durum) .rma-vitrin-list-head > a.button[href*="kampanya=yeni"] {
+	background: var(--qrms-rm-forest-mid);
+	border-color: var(--qrms-rm-forest-mid);
+	color: #fff;
+	flex-shrink: 0;
+	font-weight: 600;
+	min-height: 44px;
+	padding: 0 18px;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-durum) .rma-vitrin-list-head > a.button[href*="kampanya=yeni"]:hover,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-durum) .rma-vitrin-list-head > a.button[href*="kampanya=yeni"]:focus {
+	background: var(--qrms-rm-forest-soft);
+	border-color: var(--qrms-rm-forest-soft);
+	color: #fff;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-durum) .rma-kmp-islem .button.rma-btn-danger {
+	border-radius: 8px;
+	min-height: 40px;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-form-wrap) .rma-kmp-form-wrap {
+	max-width: none;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-form-wrap) .rma-kmp-nav-back {
+	background: #fff;
+	border-color: var(--qrms-rm-border);
+	box-shadow: var(--qrms-rm-shadow);
+	color: var(--qrms-rm-forest-mid);
+	font-size: 13px;
+	font-weight: 600;
+	min-height: 44px;
+	padding: 0 16px;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-form-wrap) .rma-kmp-nav-back:hover,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-form-wrap) .rma-kmp-nav-back:focus {
+	border-color: rgba(201, 168, 76, 0.45);
+	color: var(--qrms-rm-forest);
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-form-wrap) .rma-kmp-onizleme-vurgu {
+	border-color: rgba(201, 168, 76, 0.35);
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-form-wrap) .rma-kmp-submit {
+	border-top: 1px solid var(--qrms-rm-border);
+	margin-top: 8px;
+	padding-top: 18px;
+}
+
+@media screen and (min-width: 768px) {
+	body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-form-wrap) .rma-kmp-alanlar {
+		display: grid;
+		gap: 16px 20px;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+}
+
+@media screen and (min-width: 1024px) {
+	body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-form-wrap) .rma-kmp-submit .rma-kmp-btn-primary {
+		margin-left: auto;
+		min-width: 220px;
+	}
+}
+
+/* Mobil: taşma yok */
 
 @media screen and (max-width: 782px) {
-	body.qrms-premium-shell-active .qrms-shell__content:has(.wrap.rma-admin .rma-color-preview-dock) .qrms-back-link {
+	body.qrms-premium-shell-active .qrms-shell__content:has(.wrap.rma-admin .rma-color-preview-dock) .qrms-back-link,
+	body.qrms-premium-shell-active .qrms-shell__content:has(.wrap.rma-admin .rma-kmp-durum) .qrms-back-link,
+	body.qrms-premium-shell-active .qrms-shell__content:has(.wrap.rma-admin .rma-kmp-form-wrap) .qrms-back-link {
 		max-width: 100%;
 	}
 
-	body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) {
+	body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock),
+	body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-durum),
+	body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-form-wrap) {
 		margin-right: 0;
 		padding-left: 16px;
 		padding-right: 16px;
@@ -302,19 +529,50 @@ body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-col
 	body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) .form-table th {
 		padding-bottom: 6px;
 	}
+
+	body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-durum) .rma-vitrin-list-head {
+		align-items: stretch;
+		flex-direction: column;
+	}
+
+	body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-durum) .rma-vitrin-list-head > a.button[href*="kampanya=yeni"] {
+		justify-content: center;
+		text-align: center;
+		width: 100%;
+	}
+
+	body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-form-wrap) .rma-kmp-kapsam-tek-satir,
+	body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-form-wrap) .rma-kmp-secim-yon,
+	body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-form-wrap) .rma-kmp-secim-tur {
+		flex-direction: column;
+	}
+
+	body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-form-wrap) .rma-kmp-submit .button {
+		flex: 1 1 100%;
+		justify-content: center;
+		text-align: center;
+		width: 100%;
+	}
 }
 
 @media screen and (max-width: 480px) {
-	body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) {
+	body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock),
+	body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-durum),
+	body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-form-wrap) {
 		border-radius: 12px;
 	}
 }
 
 @media (prefers-reduced-motion: reduce) {
 	body.qrms-premium-shell-active .qrms-shell__content:has(.wrap.rma-admin .rma-color-preview-dock) .qrms-back-link,
+	body.qrms-premium-shell-active .qrms-shell__content:has(.wrap.rma-admin .rma-kmp-durum) .qrms-back-link,
+	body.qrms-premium-shell-active .qrms-shell__content:has(.wrap.rma-admin .rma-kmp-form-wrap) .qrms-back-link,
 	body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) .rma-theme-card,
 	body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) .rma-choice,
-	body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) .button-primary {
+	body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) .button-primary,
+	body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-form-wrap) .rma-kmp-choice,
+	body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-durum) .button-primary,
+	body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-form-wrap) .rma-kmp-btn-primary {
 		transition: none;
 	}
 }

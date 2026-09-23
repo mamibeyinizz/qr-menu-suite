@@ -190,11 +190,10 @@ trait RMA_Kampanya_Admin_Trait {
                             <tr<?php echo $zam_kaydi ? ' class="rma-kmp-zam-kayit"' : ''; ?>>
                                 <td data-label="Kampanya">
                                     <strong><?php echo esc_html( $k->title ); ?></strong>
-                                    <?php if ( $zam_kaydi ) : ?>
-                                        <span class="rma-kmp-rozet rma-kmp-rozet-kalici">🔺 Zam (kalıcı, <?php echo esc_html( $this->kampanya_tarih( $k->applied_at ) ); ?>)</span>
-                                    <?php elseif ( 'applied' === $k->status ) : ?>
-                                        <span class="rma-kmp-rozet rma-kmp-rozet-kalici">Uygulandı — kalıcı</span>
-                                    <?php endif; ?>
+                                    <?php
+                                    $durum_goster = $this->kampanya_liste_durum_gosterimi( $k );
+                                    ?>
+                                    <span class="rma-kmp-status-pill rma-kmp-status-pill--<?php echo esc_attr( $durum_goster['slug'] ); ?>"><?php echo esc_html( $durum_goster['label'] ); ?></span>
                                 </td>
                                 <td data-label="Kural"><?php echo esc_html( RMA_Kampanya_DB::kural_metni( $k ) ); ?></td>
                                 <td data-label="Kapsam"><?php echo esc_html( $this->kampanya_kapsam_metni( $k ) ); ?></td>
@@ -288,6 +287,58 @@ trait RMA_Kampanya_Admin_Trait {
         }
 
         return mysql2date( 'j F Y, H:i', $tarih );
+    }
+
+    /**
+     * Liste satırında gösterilecek durum etiketi (yalnızca sunum).
+     *
+     * İş mantığı değişmez; mevcut status/direction/zaman alanları okunur.
+     *
+     * @param object $kampanya Kampanya kaydı.
+     * @return array{slug:string,label:string}
+     */
+    private function kampanya_liste_durum_gosterimi( $kampanya ) {
+        $status = (string) ( $kampanya->status ?? 'passive' );
+
+        if ( 'applied' === $status && 'increase' === ( $kampanya->direction ?? '' ) ) {
+            $label = 'Zam uygulandı';
+            if ( ! empty( $kampanya->applied_at ) ) {
+                $label .= ' · ' . $this->kampanya_tarih( $kampanya->applied_at );
+            }
+
+            return array(
+                'slug'  => 'uygulandi-zam',
+                'label' => $label,
+            );
+        }
+
+        if ( 'applied' === $status ) {
+            return array(
+                'slug'  => 'uygulandi',
+                'label' => 'Uygulandı',
+            );
+        }
+
+        if ( 'active' === $status ) {
+            $zaman = function_exists( 'current_time' ) ? current_time( 'timestamp' ) : time();
+
+            if ( RMA_Kampanya_DB::aktif_mi( $kampanya, $zaman ) ) {
+                return array(
+                    'slug'  => 'aktif',
+                    'label' => 'Aktif',
+                );
+            }
+
+            return array(
+                'slug'  => 'planlandi',
+                'label' => 'Planlandı',
+            );
+        }
+
+        return array(
+            'slug'  => 'taslak',
+            'label' => 'Taslak',
+        );
     }
 
     /* -----------------------------------------------------------------
