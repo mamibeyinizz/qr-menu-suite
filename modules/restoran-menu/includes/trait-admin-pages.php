@@ -285,11 +285,12 @@ trait RMA_Admin_Pages_Trait {
     /**
      * Sayfa başlığı + açıklama + (varsa) geri bağlantısı.
      *
-     * @param string $title Sayfa başlığı.
-     * @param string $intro Kısa açıklama.
+     * @param string $title  Sayfa başlığı.
+     * @param string $intro  Kısa açıklama.
+     * @param string $kicker Üst etiket (premium shell; boş bırakılırsa basılmaz).
      * @return void
      */
-    private function page_header( $title, $intro = '' ) {
+    private function page_header( $title, $intro = '', $kicker = '' ) {
         echo '<div class="wrap rma-admin">';
 
         // Suite kuruluysa "geri" bağlantısını QRMS_Admin her alt sayfanın
@@ -297,6 +298,10 @@ trait RMA_Admin_Pages_Trait {
         // ikilerdi. Suite yoksa (eski tekil eklenti) tek kaynak burasıdır.
         if ( ! class_exists( 'QRMS_Admin' ) ) {
             echo '<a class="rma-back-link" href="' . esc_url( $this->hub_url() ) . '">&larr; Restoran Menü</a>';
+        }
+
+        if ( '' !== $kicker ) {
+            echo '<p class="rma-premium-page-kicker">' . esc_html( $kicker ) . '</p>';
         }
 
         echo '<h1>' . esc_html( $title ) . '</h1>';
@@ -1108,9 +1113,13 @@ trait RMA_Admin_Pages_Trait {
     ----------------------------------------------------------------- */
 
     public function render_other_settings_page() {
+        $diger = $this->get_subpages()['qrms-rm-diger'];
+        $kicker = isset( $diger['hub_title'] ) ? (string) $diger['hub_title'] : '';
+
         $this->page_header(
             'Diğer Ayarlar',
-            'Sık kullanılmayan işlemler burada. İhtiyacınız olan bölüme aşağıdan geçebilirsiniz.'
+            'Sık kullanılmayan işlemler burada. İhtiyacınız olan bölüme aşağıdan geçebilirsiniz.',
+            $kicker
         );
         ?>
         <nav class="rma-anchor-nav" aria-label="Sayfa bölümleri">

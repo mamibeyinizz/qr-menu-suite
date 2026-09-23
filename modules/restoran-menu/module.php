@@ -318,7 +318,7 @@ function qrms_module_restoran_menu_admin_assets() {
 	// Görünüm sayfasındaki canlı önizleme, frontend'in gerçek nav
 	// stylesheet'ini kullanır; aktif gösterge CSS'inin dört varyantı da
 	// ekranın kendi kaynağından (get_nav_indicator_css) gelir.
-	if ( in_array( $page, array( 'qrms-rm-gorunum', 'qrms-rm-kampanya', 'qrms-rm-secenekler' ), true ) ) {
+	if ( in_array( $page, array( 'qrms-rm-gorunum', 'qrms-rm-kampanya', 'qrms-rm-secenekler', 'qrms-rm-diger' ), true ) ) {
 		wp_enqueue_style(
 			'rma-admin-shell-bridge',
 			$url . 'assets/css/admin-shell-bridge.css',
