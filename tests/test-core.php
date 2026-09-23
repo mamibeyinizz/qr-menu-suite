@@ -1961,6 +1961,21 @@ qrms_test(
 );
 
 qrms_test(
+	'öne çıkanlar ekranı yalnızca kendi slug\'ında admin-shell-bridge yükler',
+	function () {
+		$modul = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/module.php' );
+		$shell = file_get_contents( QRMS_PLUGIN_DIR . 'includes/class-admin-shell.php' );
+		$bridge = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/css/admin-shell-bridge.css' );
+
+		qrms_assert_contains( "'qrms-rm-one-cikanlar' === \$page", $modul, 'bridge slug koşulu' );
+		qrms_assert_contains( 'is_one_cikanlar_screen', $shell, 'shell başlık yardımcısı' );
+		qrms_assert_contains( __( 'Öne Çıkanlar', 'qrms' ), $shell, 'shell sayfa başlığı' );
+		qrms_assert_contains( ':has(#rma-oneriler)', $bridge, 'bridge öneriler işaretçisi' );
+		qrms_assert_contains( '#qmo-slider-form', $bridge, 'bridge slider form stilleri' );
+	}
+);
+
+qrms_test(
 	'hub kartlarında emoji ikon kullanılmaz',
 	function () {
 		$css = file_get_contents( QRMS_PLUGIN_DIR . 'assets/css/admin.css' );

@@ -645,6 +645,15 @@ class QRMS_Admin_Shell {
 	}
 
 	/**
+	 * Öne Çıkanlar modül alt sayfası.
+	 *
+	 * @return bool
+	 */
+	private static function is_one_cikanlar_screen() {
+		return 'qrms-rm-one-cikanlar' === self::get_request_page();
+	}
+
+	/**
 	 * @return array{breadcrumb:string,title:string}
 	 */
 	private static function get_header_context() {
@@ -684,6 +693,18 @@ class QRMS_Admin_Shell {
 					__( 'Restoran Menü', 'qrms' )
 				),
 				'title'      => __( 'Tükenen Ürünler', 'qrms' ),
+			);
+		}
+
+		if ( self::is_one_cikanlar_screen() ) {
+			return array(
+				'breadcrumb' => sprintf(
+					/* translators: 1: hub group label, 2: module line label */
+					__( '%1$s / %2$s', 'qrms' ),
+					__( 'Menü Yönetimi', 'qrms' ),
+					__( 'Restoran Menü', 'qrms' )
+				),
+				'title'      => __( 'Öne Çıkanlar', 'qrms' ),
 			);
 		}
 
