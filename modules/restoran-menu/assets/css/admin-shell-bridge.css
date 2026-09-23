@@ -11,7 +11,8 @@
    — kampanya formu: .rma-kmp-form-wrap
    — ekstralar/rozetler: .rma-secenek-sayfa
    — diğer ayarlar: .rma-anchor-nav (yalnızca qrms-rm-diger)
-   — ürün listesi: body.post-type-rma_menu_item.edit-php (+ .rma-premium-products-list) */
+   — ürün listesi: body.post-type-rma_menu_item.edit-php (+ .rma-premium-products-list)
+   — ürün ekle/düzenle: body.qrms-product-editor.post-type-rma_menu_item */
 
 body.qrms-premium-shell-active .qrms-shell__content:has(.wrap.rma-admin .rma-color-preview-dock),
 body.qrms-premium-shell-active .qrms-shell__content:has(.wrap.rma-admin .rma-kmp-durum),
@@ -1551,6 +1552,266 @@ body.qrms-premium-shell-active.qrms-premium-shell-hybrid.post-type-rma_menu_item
 	body.qrms-premium-shell-active.qrms-premium-shell-hybrid.post-type-rma_menu_item.edit-php.rma-premium-products-list .wrap > a.page-title-action,
 	body.qrms-premium-shell-active.qrms-premium-shell-hybrid.post-type-rma_menu_item.edit-php.rma-premium-products-list .wrap .subsubsub a,
 	body.qrms-premium-shell-active.qrms-premium-shell-hybrid.post-type-rma_menu_item.edit-php.rma-premium-products-list .wp-list-table tbody tr {
+		transition: none;
+	}
+}
+
+/* =====================================================================
+   ÜRÜN EKLE / DÜZENLE — post-new.php & post.php (hybrid + qrms-product-editor)
+   Scope: shell + hybrid + product editor body class only.
+===================================================================== */
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.qrms-product-editor.post-type-rma_menu_item {
+	--qrms-rm-forest: #0d2b22;
+	--qrms-rm-forest-mid: #173226;
+	--qrms-rm-forest-soft: #1e3d2f;
+	--qrms-rm-gold: #c9a84c;
+	--qrms-rm-gold-light: #e8c766;
+	--qrms-rm-offwhite: #f4f1e8;
+	--qrms-rm-ink-muted: rgba(13, 43, 34, 0.62);
+	--qrms-rm-border: rgba(13, 43, 34, 0.1);
+	--qrms-rm-shadow: 0 1px 2px rgba(13, 43, 34, 0.06), 0 8px 24px rgba(13, 43, 34, 0.05);
+	--pe-accent: var(--qrms-rm-gold);
+	--pe-accent-soft: rgba(201, 168, 76, 0.14);
+	--pe-accent-hi: var(--qrms-rm-gold-light);
+	--pe-page: var(--qrms-rm-offwhite);
+	--pe-surface: #fff;
+	--pe-surface-2: #faf8f2;
+	--pe-border: var(--qrms-rm-border);
+	--pe-text: var(--qrms-rm-forest);
+	--pe-text-soft: rgba(13, 43, 34, 0.82);
+	--pe-muted: var(--qrms-rm-ink-muted);
+	background: var(--qrms-rm-offwhite);
+}
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.qrms-product-editor.post-type-rma_menu_item .qrms-shell__content--hybrid {
+	background: var(--qrms-rm-offwhite);
+	min-width: 0;
+	overflow-x: hidden;
+}
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.qrms-product-editor.post-type-rma_menu_item #wpbody-content {
+	max-width: 100%;
+	min-width: 0;
+	overflow-x: hidden;
+}
+
+/* —— Geri navigasyon —— */
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.qrms-product-editor.post-type-rma_menu_item .qrms-subpage-nav {
+	align-items: flex-start;
+	flex-direction: column;
+	gap: 6px;
+	margin: 0 0 16px;
+	max-width: 100%;
+}
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.qrms-product-editor.post-type-rma_menu_item .qrms-back-link {
+	background: #fff;
+	border: 1px solid var(--qrms-rm-border);
+	border-radius: 999px;
+	box-shadow: var(--qrms-rm-shadow);
+	color: var(--qrms-rm-forest-mid);
+	display: inline-flex;
+	font-size: 14px;
+	font-weight: 600;
+	gap: 6px;
+	min-height: 44px;
+	padding: 0 16px 0 12px;
+	text-decoration: none;
+	transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.qrms-product-editor.post-type-rma_menu_item .qrms-back-link:hover,
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.qrms-product-editor.post-type-rma_menu_item .qrms-back-link:focus {
+	background: var(--qrms-rm-offwhite);
+	border-color: rgba(201, 168, 76, 0.45);
+	color: var(--qrms-rm-forest);
+}
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.qrms-product-editor.post-type-rma_menu_item .qrms-back-link:focus-visible {
+	outline: 2px solid var(--qrms-rm-gold);
+	outline-offset: 2px;
+}
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.qrms-product-editor.post-type-rma_menu_item .qrms-back-link .dashicons {
+	color: var(--qrms-rm-gold);
+}
+
+/* —— Tek görünür H1 (shell); native WP başlık sr-only —— */
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.qrms-product-editor.post-type-rma_menu_item .wrap > h1.wp-heading-inline {
+	border: 0;
+	clip: rect(1px, 1px, 1px, 1px);
+	clip-path: inset(50%);
+	height: 1px;
+	margin: -1px;
+	overflow: hidden;
+	padding: 0;
+	position: absolute;
+	white-space: nowrap;
+	width: 1px;
+}
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.qrms-product-editor.post-type-rma_menu_item .wrap {
+	margin-top: 0;
+	max-width: 100%;
+	min-width: 0;
+}
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.qrms-product-editor.post-type-rma_menu_item .wrap > hr.wp-header-end {
+	margin-bottom: 12px;
+}
+
+/* —— Screen Options —— */
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.qrms-product-editor.post-type-rma_menu_item #screen-meta {
+	margin: 0 0 12px;
+	max-width: 100%;
+}
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.qrms-product-editor.post-type-rma_menu_item #screen-meta-links {
+	margin-bottom: 8px;
+}
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.qrms-product-editor.post-type-rma_menu_item #screen-options-link-wrap a,
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.qrms-product-editor.post-type-rma_menu_item #contextual-help-link-wrap a {
+	border-radius: 8px;
+	color: var(--qrms-rm-forest-mid);
+}
+
+/* —— Meta kutuları / kartlar (urun-editor ile uyum) —— */
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.qrms-product-editor.post-type-rma_menu_item #poststuff {
+	max-width: 100%;
+	min-width: 0;
+}
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.qrms-product-editor.post-type-rma_menu_item #poststuff .postbox,
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.qrms-product-editor.post-type-rma_menu_item .qrms-pe-kart {
+	border-color: var(--qrms-rm-border);
+	box-shadow: var(--qrms-rm-shadow);
+}
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.qrms-product-editor.post-type-rma_menu_item #poststuff .postbox > .postbox-header {
+	border-bottom-color: var(--qrms-rm-border);
+}
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.qrms-product-editor.post-type-rma_menu_item #poststuff .postbox > .postbox-header h2::before {
+	background: var(--qrms-rm-gold);
+}
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.qrms-product-editor.post-type-rma_menu_item .qrms-pe-ust-not {
+	color: var(--qrms-rm-ink-muted);
+}
+
+/* —— Yayınla / Kaydet —— */
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.qrms-product-editor.post-type-rma_menu_item #submitdiv.postbox {
+	border-color: var(--qrms-rm-border);
+}
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.qrms-product-editor.post-type-rma_menu_item #submitdiv #major-publishing-actions {
+	border-top-color: var(--qrms-rm-border);
+}
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.qrms-product-editor.post-type-rma_menu_item #publishing-action .button-primary,
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.qrms-product-editor.post-type-rma_menu_item #publishing-action #publish {
+	background: var(--qrms-rm-forest);
+	border-color: var(--qrms-rm-forest);
+	border-radius: 999px;
+	box-shadow: var(--qrms-rm-shadow);
+	color: var(--qrms-rm-offwhite);
+	font-weight: 600;
+	min-height: 44px;
+	padding: 8px 22px;
+	transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.qrms-product-editor.post-type-rma_menu_item #publishing-action .button-primary:hover,
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.qrms-product-editor.post-type-rma_menu_item #publishing-action .button-primary:focus,
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.qrms-product-editor.post-type-rma_menu_item #publishing-action #publish:hover,
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.qrms-product-editor.post-type-rma_menu_item #publishing-action #publish:focus {
+	background: var(--qrms-rm-forest-mid);
+	border-color: var(--qrms-rm-gold);
+	color: #fff;
+}
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.qrms-product-editor.post-type-rma_menu_item #publishing-action .button-primary:focus-visible,
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.qrms-product-editor.post-type-rma_menu_item #publishing-action #publish:focus-visible {
+	outline: 2px solid var(--qrms-rm-gold-light);
+	outline-offset: 2px;
+}
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.qrms-product-editor.post-type-rma_menu_item #submitdiv .button {
+	border-radius: 8px;
+	min-height: 40px;
+}
+
+/* —— Dokunma hedefleri —— */
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.qrms-product-editor.post-type-rma_menu_item .qrms-pe-pill,
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.qrms-product-editor.post-type-rma_menu_item .qrms-pe-anahtar,
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.qrms-product-editor.post-type-rma_menu_item .qrms-pe-radyo-kart,
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.qrms-product-editor.post-type-rma_menu_item .qrms-pe-secim-tetik {
+	min-height: 44px;
+}
+
+/* —— Kombin Select2 (presentation only) —— */
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.qrms-product-editor.post-type-rma_menu_item .select2-container {
+	max-width: 100%;
+}
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.qrms-product-editor.post-type-rma_menu_item .select2-container--open .select2-dropdown {
+	z-index: 100050;
+}
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.qrms-product-editor.post-type-rma_menu_item #qmo-kombin-fields {
+	max-width: 100%;
+	min-width: 0;
+}
+
+/* —— TinyMCE çevresi —— */
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.qrms-product-editor.post-type-rma_menu_item #postdivrich.qrms-pe-kart {
+	overflow: hidden;
+}
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.qrms-product-editor.post-type-rma_menu_item #wp-content-wrap,
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.qrms-product-editor.post-type-rma_menu_item #wp-content-editor-container {
+	max-width: 100%;
+}
+
+@media screen and (max-width: 1023px) {
+	body.qrms-premium-shell-active.qrms-premium-shell-hybrid.qrms-product-editor.post-type-rma_menu_item .qrms-back-link {
+		justify-content: center;
+		width: 100%;
+	}
+
+	body.qrms-premium-shell-active.qrms-premium-shell-hybrid.qrms-product-editor.post-type-rma_menu_item #publishing-action .button-primary,
+	body.qrms-premium-shell-active.qrms-premium-shell-hybrid.qrms-product-editor.post-type-rma_menu_item #publishing-action #publish {
+		width: 100%;
+	}
+}
+
+@media screen and (max-width: 782px) {
+	body.qrms-premium-shell-active.qrms-premium-shell-hybrid.qrms-product-editor.post-type-rma_menu_item #submitdiv .button,
+	body.qrms-premium-shell-active.qrms-premium-shell-hybrid.qrms-product-editor.post-type-rma_menu_item .qmo-uy-yeni .button {
+		min-height: 44px;
+	}
+
+	body.qrms-premium-shell-active.qrms-premium-shell-hybrid.qrms-product-editor.post-type-rma_menu_item .qrms-pe-input,
+	body.qrms-premium-shell-active.qrms-premium-shell-hybrid.qrms-product-editor.post-type-rma_menu_item .qrms-pe-select {
+		min-height: 44px;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	body.qrms-premium-shell-active.qrms-premium-shell-hybrid.qrms-product-editor.post-type-rma_menu_item .qrms-back-link,
+	body.qrms-premium-shell-active.qrms-premium-shell-hybrid.qrms-product-editor.post-type-rma_menu_item #publishing-action .button-primary,
+	body.qrms-premium-shell-active.qrms-premium-shell-hybrid.qrms-product-editor.post-type-rma_menu_item #publishing-action #publish,
+	body.qrms-premium-shell-active.qrms-premium-shell-hybrid.qrms-product-editor.post-type-rma_menu_item #poststuff .postbox {
 		transition: none;
 	}
 }

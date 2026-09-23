@@ -625,6 +625,17 @@ class QRMS_Admin_Shell {
 	}
 
 	/**
+	 * Native ürün ekle/düzenle (post-new.php / post.php).
+	 *
+	 * @return bool
+	 */
+	private static function is_menu_item_edit_screen() {
+		$screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
+
+		return $screen && 'post' === $screen->base && 'rma_menu_item' === $screen->post_type;
+	}
+
+	/**
 	 * @return array{breadcrumb:string,title:string}
 	 */
 	private static function get_header_context() {
@@ -637,6 +648,21 @@ class QRMS_Admin_Shell {
 					__( 'Restoran Menü', 'qrms' )
 				),
 				'title'      => __( 'Ürünler', 'qrms' ),
+			);
+		}
+
+		if ( self::is_menu_item_edit_screen() ) {
+			$screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
+			$is_new = $screen && 'add' === $screen->action;
+
+			return array(
+				'breadcrumb' => sprintf(
+					/* translators: 1: hub group label, 2: module line label */
+					__( '%1$s / %2$s', 'qrms' ),
+					__( 'Menü Yönetimi', 'qrms' ),
+					__( 'Restoran Menü', 'qrms' )
+				),
+				'title'      => $is_new ? __( 'Yeni Ürün', 'qrms' ) : __( 'Ürünü Düzenle', 'qrms' ),
 			);
 		}
 

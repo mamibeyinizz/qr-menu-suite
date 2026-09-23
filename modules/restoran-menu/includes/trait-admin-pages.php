@@ -1280,6 +1280,44 @@ trait RMA_Admin_Pages_Trait {
         QRMS_Admin::render_subpage_back_link( 'restoran-menu' );
     }
 
+    /**
+     * Premium shell sunumu — ürün ekle/düzenle (presentation only).
+     *
+     * @return void
+     */
+    private function boot_products_edit_presentation() {
+        static $booted = false;
+
+        if ( $booted ) {
+            return;
+        }
+
+        $booted = true;
+
+        add_action( 'admin_notices', array( $this, 'render_products_edit_back_link' ), 0 );
+    }
+
+    /**
+     * Ürün listesine dönüş — QRMS back-link standardı.
+     *
+     * @return void
+     */
+    public function render_products_edit_back_link() {
+        if ( ! class_exists( 'QRMS_Admin_Shell' ) || ! QRMS_Admin_Shell::is_active() ) {
+            return;
+        }
+
+        $url = admin_url( 'edit.php?post_type=rma_menu_item' );
+        ?>
+        <div class="qrms-subpage-nav">
+            <a class="qrms-back-link" href="<?php echo esc_url( $url ); ?>">
+                <span class="dashicons dashicons-arrow-left-alt2" aria-hidden="true"></span>
+                <?php echo esc_html__( 'Ürünler\'e Dön', 'qrms' ); ?>
+            </a>
+        </div>
+        <?php
+    }
+
     public function admin_scripts( $hook ) {
         // Yalnızca eklentinin kendi ekranlarında yükle — diğer tüm admin
         // sayfalarına gereksiz script/stil enjeksiyonu engellenir.
@@ -1297,10 +1335,24 @@ trait RMA_Admin_Pages_Trait {
         // gerekir — ayar sayfaları ve ürün listesi (Göster/Gizle anahtarı).
         // Ürün ekleme/düzenleme ve taksonomi ekranlarında hiçbir işlevi yok,
         // oralarda artık yüklenmiyor.
-        $is_list = ( 'edit' === $screen->base );
+        $is_list   = ( 'edit' === $screen->base );
+        $is_product_edit = ( 'post' === $screen->base );
 
         if ( $is_list ) {
             $this->boot_products_list_presentation();
+        }
+
+        if ( $is_product_edit ) {
+            $this->boot_products_edit_presentation();
+
+            if ( class_exists( 'QRMS_Admin_Shell' ) && QRMS_Admin_Shell::is_active() ) {
+                wp_enqueue_style(
+                    'rma-admin-shell-bridge',
+                    RMA_PLUGIN_URL . 'assets/css/admin-shell-bridge.css',
+                    array( 'qrms-admin-shell' ),
+                    $this->asset_version( 'assets/css/admin-shell-bridge.css' )
+                );
+            }
         }
 
         // Porsiyon/ekstra/servis saati arayüzü ürün DÜZENLEME ekranında ve
