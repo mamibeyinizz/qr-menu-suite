@@ -1940,6 +1940,27 @@ qrms_test(
 );
 
 qrms_test(
+	'tükenen ürünler ekranı yalnızca kendi slug\'ında admin-shell-bridge yükler',
+	function () {
+		$modul = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/module.php' );
+		$shell = file_get_contents( QRMS_PLUGIN_DIR . 'includes/class-admin-shell.php' );
+		$bridge = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/css/admin-shell-bridge.css' );
+
+		qrms_assert_contains( "'qrms-rm-urunum-yok' === \$page", $modul, 'bridge slug koşulu' );
+		qrms_assert_contains( 'rma-admin-shell-bridge', $modul, 'bridge handle' );
+		qrms_assert_false(
+			false !== strpos( $modul, "'qrms-rm-urunum-yok', 'qrms-rm-gorunum'" ),
+			'urunum-yok gorunum dizisine eklenmemiş'
+		);
+		qrms_assert_contains( 'is_urunum_yok_screen', $shell, 'shell başlık yardımcısı' );
+		qrms_assert_contains( __( 'Tükenen Ürünler', 'qrms' ), $shell, 'shell sayfa başlığı' );
+		qrms_assert_contains( '.rma-uy-screen', $bridge, 'bridge ekran işaretçisi' );
+		qrms_assert_same( 0, preg_match( '/^\\.wp-admin/m', $bridge ), 'bridge global .wp-admin yok' );
+		qrms_assert_same( 0, preg_match( '/^#adminmenu/m', $bridge ), 'bridge global #adminmenu yok' );
+	}
+);
+
+qrms_test(
 	'hub kartlarında emoji ikon kullanılmaz',
 	function () {
 		$css = file_get_contents( QRMS_PLUGIN_DIR . 'assets/css/admin.css' );
