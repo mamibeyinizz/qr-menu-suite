@@ -405,6 +405,13 @@ function qrms_module_restoran_menu_admin_assets() {
 				),
 			)
 		);
+
+		wp_enqueue_style(
+			'rma-admin-shell-bridge',
+			$url . 'assets/css/admin-shell-bridge.css',
+			array( 'rma-admin-ui', 'qrms-admin-shell', 'qmo-banner-slider' ),
+			QRMS_Helpers::asset_version( $modul . 'assets/css/admin-shell-bridge.css' )
+		);
 	}
 
 	// Öne Çıkan Slider görünüm sihirbazının canlı önizlemesi, frontend'in

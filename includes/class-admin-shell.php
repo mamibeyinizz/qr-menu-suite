@@ -654,6 +654,15 @@ class QRMS_Admin_Shell {
 	}
 
 	/**
+	 * Kampanya Görselleri modül alt sayfası.
+	 *
+	 * @return bool
+	 */
+	private static function is_kampanya_banner_screen() {
+		return 'qrms-rm-kampanya-banner' === self::get_request_page();
+	}
+
+	/**
 	 * @return array{breadcrumb:string,title:string}
 	 */
 	private static function get_header_context() {
@@ -705,6 +714,18 @@ class QRMS_Admin_Shell {
 					__( 'Restoran Menü', 'qrms' )
 				),
 				'title'      => __( 'Öne Çıkanlar', 'qrms' ),
+			);
+		}
+
+		if ( self::is_kampanya_banner_screen() ) {
+			return array(
+				'breadcrumb' => sprintf(
+					/* translators: 1: hub group label, 2: module line label */
+					__( '%1$s / %2$s', 'qrms' ),
+					__( 'Menü Yönetimi', 'qrms' ),
+					__( 'Restoran Menü', 'qrms' )
+				),
+				'title'      => __( 'Kampanya Görselleri', 'qrms' ),
 			);
 		}
 

@@ -2,7 +2,7 @@
    Restoran Menü — premium shell bridge (presentation only)
    Screens: Menü Görünümü, Kampanyalar, Ekstralar & Rozetler (qrms-rm-secenekler),
    Diğer Ayarlar, Tükenen Ürünler (qrms-rm-urunum-yok), Öne Çıkanlar (#rma-oneriler),
-   Ürün listesi (native edit.php?post_type=rma_menu_item)
+   Kampanya Görselleri (.rma-kb-wizard), Ürün listesi (native edit.php?post_type=rma_menu_item)
    Forest / gold / off-white under body.qrms-premium-shell-active
 ===================================================================== */
 
@@ -14,6 +14,7 @@
    — diğer ayarlar: .rma-anchor-nav (yalnızca qrms-rm-diger)
    — tükenen ürünler: .rma-uy-screen (yalnızca qrms-rm-urunum-yok)
    — öne çıkanlar: #rma-oneriler (yalnızca qrms-rm-one-cikanlar)
+   — kampanya görselleri: .rma-kb-wizard (yalnızca qrms-rm-kampanya-banner)
    — ürün listesi: body.post-type-rma_menu_item.edit-php (+ .rma-premium-products-list)
    — ürün ekle/düzenle: body.qrms-product-editor.post-type-rma_menu_item */
 
@@ -23,7 +24,8 @@ body.qrms-premium-shell-active .qrms-shell__content:has(.wrap.rma-admin .rma-kmp
 body.qrms-premium-shell-active .qrms-shell__content:has(.wrap.rma-admin .rma-secenek-sayfa),
 body.qrms-premium-shell-active .qrms-shell__content:has(.wrap.rma-admin .rma-anchor-nav),
 body.qrms-premium-shell-active .qrms-shell__content:has(.wrap.rma-admin .rma-uy-screen),
-body.qrms-premium-shell-active .qrms-shell__content:has(#rma-oneriler) {
+body.qrms-premium-shell-active .qrms-shell__content:has(#rma-oneriler),
+body.qrms-premium-shell-active .qrms-shell__content:has(.rma-kb-wizard) {
 	--qrms-rm-forest: #0d2b22;
 	--qrms-rm-forest-mid: #173226;
 	--qrms-rm-forest-soft: #1e3d2f;
@@ -1143,7 +1145,8 @@ body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-anc
 	body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-secenek-sayfa),
 	body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-anchor-nav),
 	body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-uy-screen),
-	body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(#rma-oneriler) {
+	body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(#rma-oneriler),
+	body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) {
 		border-radius: 12px;
 	}
 }
@@ -2001,6 +2004,424 @@ body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(#rma-one
 	body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(#rma-oneriler) #rma-oneriler .rma-choice,
 	body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(#rma-oneriler) #rma-save-suggestions,
 	body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(#rma-oneriler) #qmo-slider-form .rma-vitrin-step-nav .button {
+		transition: none;
+	}
+}
+
+/* —— Kampanya Görselleri (qrms-rm-kampanya-banner) —— */
+
+body.qrms-premium-shell-active .qrms-shell__content:has(.rma-kb-wizard) .qrms-subpage-nav {
+	align-items: flex-start;
+	flex-direction: column;
+	gap: 6px;
+	margin: 0 0 16px;
+	max-width: 1200px;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content:has(.rma-kb-wizard) .qrms-subpage-sep,
+body.qrms-premium-shell-active .qrms-shell__content:has(.rma-kb-wizard) .qrms-subpage-current {
+	display: none;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content:has(.rma-kb-wizard) .qrms-back-link {
+	background: #fff;
+	border: 1px solid var(--qrms-rm-border);
+	border-radius: 999px;
+	box-shadow: var(--qrms-rm-shadow);
+	color: var(--qrms-rm-forest-mid);
+	font-size: 14px;
+	font-weight: 600;
+	gap: 6px;
+	min-height: 44px;
+	padding: 0 16px 0 12px;
+	transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content:has(.rma-kb-wizard) .qrms-back-link:hover,
+body.qrms-premium-shell-active .qrms-shell__content:has(.rma-kb-wizard) .qrms-back-link:focus {
+	background: var(--qrms-rm-offwhite);
+	border-color: rgba(201, 168, 76, 0.45);
+	color: var(--qrms-rm-forest);
+}
+
+body.qrms-premium-shell-active .qrms-shell__content:has(.rma-kb-wizard) .qrms-back-link:focus-visible {
+	outline: 2px solid var(--qrms-rm-gold);
+	outline-offset: 2px;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content:has(.rma-kb-wizard) .qrms-back-link .dashicons {
+	color: var(--qrms-rm-gold);
+}
+
+body.qrms-premium-shell-active .qrms-shell__content:has(.rma-kb-wizard) .qrms-modnav {
+	margin-left: 0;
+	margin-right: 0;
+	max-width: 1200px;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) {
+	--rma-a-accent: var(--qrms-rm-gold);
+	--rma-a-accent-soft: rgba(201, 168, 76, 0.14);
+	--rma-a-accent-dim: rgba(201, 168, 76, 0.38);
+	--rma-a-accent-hi: var(--qrms-rm-gold-light);
+	--rma-a-page: var(--qrms-rm-offwhite);
+	--rma-a-surface: #fff;
+	--rma-a-surface-2: #faf8f2;
+	--rma-a-raised: #f0ebe0;
+	--rma-a-border: var(--qrms-rm-border);
+	--rma-a-border-soft: rgba(13, 43, 34, 0.08);
+	--rma-a-text: var(--qrms-rm-forest);
+	--rma-a-text-soft: rgba(13, 43, 34, 0.82);
+	--rma-a-muted: var(--qrms-rm-ink-muted);
+	--rma-a-radius: 12px;
+
+	background: var(--qrms-rm-offwhite);
+	border: 1px solid var(--qrms-rm-border);
+	border-radius: 16px;
+	box-shadow: var(--qrms-rm-shadow);
+	margin: 0 auto 24px;
+	max-width: 1200px;
+	min-width: 0;
+	overflow: visible;
+	padding: 28px clamp(16px, 3vw, 32px) 32px;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard)::before {
+	background: linear-gradient(90deg, var(--qrms-rm-gold), rgba(201, 168, 76, 0.12) 55%, transparent);
+	height: 3px;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) > h1 {
+	border: 0;
+	clip: rect(1px, 1px, 1px, 1px);
+	clip-path: inset(50%);
+	height: 1px;
+	margin: -1px;
+	overflow: hidden;
+	padding: 0;
+	position: absolute;
+	white-space: nowrap;
+	width: 1px;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) > .rma-admin-intro {
+	color: var(--qrms-rm-ink-muted);
+	font-size: 15px;
+	line-height: 1.55;
+	margin: 0 0 20px;
+	max-width: 52ch;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) .notice,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) > .updated,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) > .error {
+	background: #fff;
+	border: 1px solid var(--qrms-rm-border);
+	border-left-width: 4px;
+	border-radius: var(--rma-a-radius);
+	box-shadow: var(--qrms-rm-shadow);
+	color: var(--qrms-rm-forest);
+	margin: 0 0 16px;
+	padding: 12px 16px;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) .notice-success,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) > .updated {
+	border-left-color: #10b981;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) .notice-error,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) > .error {
+	border-left-color: #c0392b;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) .rma-kb-wizard {
+	min-width: 0;
+	overflow: visible;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) .rma-kb-tabs {
+	gap: 8px;
+	margin-bottom: 20px;
+	max-width: 100%;
+	overflow-x: auto;
+	overflow-y: hidden;
+	-webkit-overflow-scrolling: touch;
+	scrollbar-width: thin;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) a.rma-kb-tab {
+	background: #fff;
+	border: 1px solid var(--qrms-rm-border);
+	border-radius: 999px;
+	color: var(--qrms-rm-forest-mid);
+	flex: 0 0 auto;
+	font-weight: 600;
+	min-height: 44px;
+	padding: 0 18px;
+	white-space: nowrap;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) a.rma-kb-tab:hover,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) a.rma-kb-tab:focus {
+	border-color: rgba(201, 168, 76, 0.45);
+	color: var(--qrms-rm-forest);
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) a.rma-kb-tab.is-active {
+	background: var(--qrms-rm-forest);
+	border-color: var(--qrms-rm-forest);
+	color: #fff;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) .rma-card,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) .rma-kb-nav-card,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) #qmo-banner-form .rma-vitrin-step {
+	background: #fff;
+	border: 1px solid var(--qrms-rm-border);
+	border-radius: var(--rma-a-radius);
+	box-shadow: var(--qrms-rm-shadow);
+	margin-bottom: 16px;
+	padding: clamp(18px, 2.5vw, 24px);
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) .rma-card-title,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) .rma-kb-subheading,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) .rma-kb-nav-title {
+	color: var(--qrms-rm-forest);
+	font-weight: 700;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) .rma-card-desc,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) .rma-kb-nav-desc,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) .description.rma-desc {
+	color: var(--qrms-rm-ink-muted);
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) .rma-kb-ozet {
+	background: #fff;
+	border: 1px solid var(--qrms-rm-border);
+	border-radius: var(--rma-a-radius);
+	padding: 12px 16px;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) .rma-kb-ozet-etiket {
+	color: var(--qrms-rm-ink-muted);
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) .rma-kb-ozet-deger {
+	color: var(--qrms-rm-forest);
+	font-weight: 700;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) .rma-kb-onizleme {
+	border: 1px solid var(--qrms-rm-border);
+	border-radius: var(--rma-a-radius);
+	overflow: hidden;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) .rma-kb-nav-grid {
+	gap: 12px;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) .rma-kb-nav-card:hover,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) .rma-kb-nav-card:focus {
+	border-color: rgba(201, 168, 76, 0.45);
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) .rma-kb-nav-git {
+	color: var(--qrms-rm-gold);
+	font-weight: 600;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) .rma-kb-liste {
+	border: 1px solid var(--qrms-rm-border);
+	border-radius: var(--rma-a-radius);
+	max-width: 100%;
+	overflow-x: auto;
+	overflow-y: visible;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) .rma-kb-satir {
+	border-bottom: 1px solid var(--qrms-rm-border);
+	gap: 12px;
+	min-width: min(100%, 640px);
+	padding: 12px 14px;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) .rma-kb-satir:last-child {
+	border-bottom: 0;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) .rma-kb-satir:hover {
+	background: rgba(244, 241, 232, 0.65);
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) .rma-kb-rozet.is-yayinda {
+	background: rgba(16, 185, 129, 0.12);
+	color: #0d2b22;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) .rma-kb-rozet.is-taslak {
+	background: rgba(13, 43, 34, 0.08);
+	color: var(--qrms-rm-forest-mid);
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) #qmo-banner-form {
+	margin-top: 8px;
+	min-width: 0;
+	overflow: visible;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) #qmo-banner-form .rma-vitrin-steps {
+	background: var(--qrms-rm-offwhite);
+	border: 1px solid var(--qrms-rm-border);
+	border-radius: 999px;
+	gap: 6px;
+	margin-bottom: 12px;
+	padding: 6px;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) #qmo-banner-form .rma-vitrin-step-btn {
+	border-radius: 999px;
+	color: var(--qrms-rm-forest-mid);
+	min-height: 44px;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) #qmo-banner-form .rma-vitrin-step-btn.is-active {
+	background: #fff;
+	border-color: rgba(201, 168, 76, 0.45);
+	color: var(--qrms-rm-forest);
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) #qmo-banner-form .rma-vitrin-layout-wrap {
+	gap: 20px;
+	min-width: 0;
+	overflow: visible;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) #qmo-banner-form .rma-vitrin-layout-fields,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) #qmo-banner-form .rma-vitrin-layout-preview {
+	min-width: 0;
+	overflow: visible;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) #qmo-banner-form .rma-vitrin-preview-card {
+	border: 1px solid var(--qrms-rm-border);
+	box-shadow: var(--qrms-rm-shadow);
+	overflow: visible;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) #qmo-banner-form .rma-vitrin-preview-stage,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) #qmo-banner-form .qmo-banner-preview-frame {
+	border: 1px solid var(--qrms-rm-border);
+	border-radius: var(--rma-a-radius);
+	max-width: 100%;
+	overflow: visible;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) #qmo-banner-form .qmo-banner-preview-iframe {
+	max-width: 100%;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) #qmo-banner-form .rma-vitrin-preview-btn.is-active {
+	background: var(--qrms-rm-forest);
+	border-color: var(--qrms-rm-forest);
+	color: #fff;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) input[type="text"],
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) select,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) textarea {
+	border: 1px solid var(--qrms-rm-border);
+	border-radius: 10px;
+	color: var(--qrms-rm-forest);
+	max-width: 100%;
+	min-height: 44px;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) .rma-check-row {
+	color: var(--qrms-rm-forest);
+	min-height: 44px;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) .qmo-banner-oran-kart.is-selected,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) .qmo-banner-oran-secici .qmo-banner-oran-kart.is-selected {
+	border-color: var(--qrms-rm-gold);
+	box-shadow: 0 0 0 3px rgba(201, 168, 76, 0.2);
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) .button-primary,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) input[type="submit"].button-primary {
+	background: var(--qrms-rm-forest);
+	border-color: var(--qrms-rm-forest);
+	border-radius: 999px;
+	font-weight: 600;
+	min-height: 44px;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) .button-primary:hover,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) .button-primary:focus,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) input[type="submit"].button-primary:hover,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) input[type="submit"].button-primary:focus {
+	border-color: var(--qrms-rm-gold);
+	box-shadow: 0 0 0 3px rgba(201, 168, 76, 0.25);
+	color: #fff;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) .button:not(.button-primary) {
+	background: #fff;
+	border: 1px solid var(--qrms-rm-border);
+	border-radius: 999px;
+	color: var(--qrms-rm-forest-mid);
+	font-weight: 600;
+	min-height: 44px;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) .rma-kb-kisa-kod {
+	background: #fff;
+	border-color: var(--qrms-rm-border);
+}
+
+@media screen and (max-width: 1023px) {
+	body.qrms-premium-shell-active .qrms-shell__content:has(.rma-kb-wizard) .qrms-back-link {
+		justify-content: center;
+		width: 100%;
+	}
+
+	body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) .button,
+	body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) .button-primary,
+	body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) input[type="submit"] {
+		justify-content: center;
+		text-align: center;
+		width: 100%;
+	}
+}
+
+@media screen and (max-width: 782px) {
+	body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) {
+		padding-left: 16px;
+		padding-right: 16px;
+	}
+
+	body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) #qmo-banner-form .form-table,
+	body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) #qmo-banner-form .form-table tbody,
+	body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) #qmo-banner-form .form-table tr,
+	body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) #qmo-banner-form .form-table th,
+	body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) #qmo-banner-form .form-table td {
+		display: block;
+		width: 100%;
+	}
+
+	body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) .rma-kb-nav-grid {
+		grid-template-columns: 1fr;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	body.qrms-premium-shell-active .qrms-shell__content:has(.rma-kb-wizard) .qrms-back-link,
+	body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) a.rma-kb-tab,
+	body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) .button {
 		transition: none;
 	}
 }

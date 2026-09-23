@@ -1976,6 +1976,23 @@ qrms_test(
 );
 
 qrms_test(
+	'kampanya görselleri ekranı yalnızca kendi slug\'ında admin-shell-bridge yükler',
+	function () {
+		$modul = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/module.php' );
+		$shell = file_get_contents( QRMS_PLUGIN_DIR . 'includes/class-admin-shell.php' );
+		$bridge = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/css/admin-shell-bridge.css' );
+
+		qrms_assert_contains( "'qrms-rm-kampanya-banner' === \$page", $modul, 'banner slug koşulu' );
+		qrms_assert_contains( 'rma-admin-shell-bridge', $modul, 'bridge handle banner bloğunda' );
+		qrms_assert_contains( 'is_kampanya_banner_screen', $shell, 'shell başlık yardımcısı' );
+		qrms_assert_contains( __( 'Kampanya Görselleri', 'qrms' ), $shell, 'shell sayfa başlığı' );
+		qrms_assert_contains( ':has(.rma-kb-wizard)', $bridge, 'bridge sihirbaz işaretçisi' );
+		qrms_assert_contains( '#qmo-banner-form', $bridge, 'bridge banner form stilleri' );
+		qrms_assert_contains( '.qmo-banner-preview-iframe', $bridge, 'iframe kapsayıcı güvenliği' );
+	}
+);
+
+qrms_test(
 	'hub kartlarında emoji ikon kullanılmaz',
 	function () {
 		$css = file_get_contents( QRMS_PLUGIN_DIR . 'assets/css/admin.css' );
