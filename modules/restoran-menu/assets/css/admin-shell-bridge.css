@@ -2866,6 +2866,8 @@ body.qrms-premium-shell-active.qrms-premium-shell-hybrid.post-type-rma_menu_item
 ===================================================================== */
 
 body.qrms-premium-shell-active.qrms-premium-shell-hybrid.qrms-product-editor.post-type-rma_menu_item {
+	/* JS (urun-editor.js) overwrites with measured .qrms-shell__header height. */
+	--qrms-pe-shell-header-offset: var(--qrms-shell-header-h, 64px);
 	--qrms-rm-forest: #0d2b22;
 	--qrms-rm-forest-mid: #173226;
 	--qrms-rm-forest-soft: #1e3d2f;
@@ -2903,6 +2905,14 @@ body.qrms-premium-shell-active.qrms-premium-shell-hybrid.qrms-product-editor.pos
 /* WP #wp-content-editor-tools / TinyMCE fixed bars use z-index ~999–1000; shell header was 100. */
 body.qrms-premium-shell-active.qrms-premium-shell-hybrid.qrms-product-editor.post-type-rma_menu_item .qrms-shell__header {
 	z-index: 1100;
+}
+
+/*
+ * editor-expand: WP sets #wp-content-editor-tools position:fixed; top:0 inline.
+ * Keep it below the premium header (z-index above) via top offset — see urun-editor.js.
+ */
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.qrms-product-editor.post-type-rma_menu_item.wp-editor-expand #wp-content-editor-tools {
+	z-index: 1000;
 }
 
 /* —— Geri navigasyon —— */

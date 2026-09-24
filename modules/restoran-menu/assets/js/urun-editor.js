@@ -612,6 +612,147 @@
 	}
 
 	/* =============================================================
+	   5. WP EDİTÖR SABİT TOOLBAR — premium shell header ofseti
+	============================================================= */
+
+	/**
+	 * Ölçülen premium shell üst çubuğu yüksekliği (px).
+	 *
+	 * @return {number} Piksel.
+	 */
+	function premiumShellHeaderYukseklik() {
+		var header = document.querySelector( '.qrms-shell__header' );
+
+		if ( ! header ) {
+			return 0;
+		}
+
+		return Math.ceil( header.getBoundingClientRect().height );
+	}
+
+	/**
+	 * --qrms-pe-shell-header-offset değişkenini günceller.
+	 *
+	 * @return {number} Piksel ofset.
+	 */
+	function premiumShellHeaderOfsetiniGuncelle() {
+		var px = premiumShellHeaderYukseklik();
+
+		document.body.style.setProperty( '--qrms-pe-shell-header-offset', px + 'px' );
+
+		return px;
+	}
+
+	/**
+	 * WP editor-expand sabit #wp-content-editor-tools çubuğunu premium header
+	 * altına hizalar (inline top:0 WordPress tarafından sürekli yazılır).
+	 *
+	 * @return {void}
+	 */
+	function wpEditorSabitToolbarOfsetiniKur() {
+		var tools = document.getElementById( 'wp-content-editor-tools' );
+		var header = document.querySelector( '.qrms-shell__header' );
+
+		if ( ! tools || ! header ) {
+			return;
+		}
+
+		var rafId = null;
+
+		/**
+		 * Öğe position:fixed ise top değerini ayarlar.
+		 *
+		 * @param {HTMLElement|null} el Öğe.
+		 * @param {number} px Üst ofset (px).
+		 * @return {void}
+		 */
+		function sabitTopAyarla( el, px ) {
+			if ( ! el ) {
+				return;
+			}
+
+			var stil = window.getComputedStyle( el );
+
+			if ( 'fixed' !== el.style.position && 'fixed' !== stil.position ) {
+				return;
+			}
+
+			var topPx = px + 'px';
+
+			if ( el.style.top !== topPx ) {
+				el.style.top = topPx;
+			}
+		}
+
+		/**
+		 * Sabit toolbar top değerini senkronize eder (WP editor-expand ile aynı zincir).
+		 *
+		 * @return {void}
+		 */
+		function senkronize() {
+			var ofset = premiumShellHeaderOfsetiniGuncelle();
+			var stil = window.getComputedStyle( tools );
+
+			if ( 'fixed' !== tools.style.position && 'fixed' !== stil.position ) {
+				return;
+			}
+
+			var wrap = document.getElementById( 'wp-content-wrap' );
+			var toolsHeight = tools.offsetHeight || 0;
+			var menuBar = wrap ? wrap.querySelector( '.mce-menubar' ) : null;
+			var visualTop = wrap ? wrap.querySelector( '.mce-toolbar-grp' ) : null;
+			var textTop = document.getElementById( 'ed_toolbar' );
+			var menuBarHeight = menuBar && menuBar.offsetHeight ? menuBar.offsetHeight : 0;
+
+			/* WP editor-expand: gizli menubar yüksekliği sayılmaz. */
+			if ( menuBarHeight < 3 ) {
+				menuBarHeight = 0;
+			}
+
+			sabitTopAyarla( tools, ofset );
+			sabitTopAyarla( menuBar, ofset + toolsHeight );
+			sabitTopAyarla( visualTop, ofset + toolsHeight + menuBarHeight );
+			sabitTopAyarla( textTop, ofset + toolsHeight + menuBarHeight );
+		}
+
+		/**
+		 * Scroll/resize ile gelen tekrarları tek karede toplar.
+		 *
+		 * @return {void}
+		 */
+		function planliSenkronize() {
+			if ( rafId ) {
+				return;
+			}
+
+			rafId = window.requestAnimationFrame( function () {
+				rafId = null;
+				senkronize();
+			} );
+		}
+
+		premiumShellHeaderOfsetiniGuncelle();
+
+		if ( 'undefined' !== typeof ResizeObserver ) {
+			new ResizeObserver( planliSenkronize ).observe( header );
+		}
+
+		window.addEventListener( 'resize', planliSenkronize );
+
+		if ( 'undefined' !== typeof MutationObserver ) {
+			new MutationObserver( planliSenkronize ).observe( tools, {
+				attributes: true,
+				attributeFilter: [ 'style', 'class' ],
+			} );
+		}
+
+		window.addEventListener( 'scroll', planliSenkronize, { passive: true } );
+		window.addEventListener( 'load', planliSenkronize );
+		document.addEventListener( 'tinymce-editor-init', planliSenkronize );
+		planliSenkronize();
+	}
+
+	/* =============================================================
 	   BAŞLAT
 	============================================================= */
 
@@ -629,6 +770,7 @@
 		kategoriyiKur();
 		temelBilgileriKur();
 		zorunluAlanlariKur();
+		wpEditorSabitToolbarOfsetiniKur();
 
 		document.querySelectorAll( '.qrms-pe-secim' ).forEach( secimKur );
 		document.querySelectorAll( '[data-qrms-pe-collapse]' ).forEach( bolumKur );

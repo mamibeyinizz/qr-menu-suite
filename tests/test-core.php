@@ -2028,6 +2028,7 @@ qrms_test(
 	'ürün editöründe premium shell header WP fixed editor toolbar üstünde',
 	function () {
 		$bridge = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/css/admin-shell-bridge.css' );
+		$js     = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/js/urun-editor.js' );
 
 		qrms_assert_same(
 			1,
@@ -2037,6 +2038,11 @@ qrms_test(
 			),
 			'shell header z-index WP editor tools (1000) üzerinde'
 		);
+
+		qrms_assert_contains( '--qrms-pe-shell-header-offset', $bridge, 'shell header ofset CSS değişkeni' );
+		qrms_assert_contains( 'wp-content-editor-tools', $js, 'sabit WP editor toolbar ofseti' );
+		qrms_assert_contains( 'qrms-pe-shell-header-offset', $js, 'ölçülen header yüksekliği JS ile yazılır' );
+		qrms_assert_contains( '.qrms-shell__header', $js, 'gerçek shell header ölçümü' );
 	}
 );
 
