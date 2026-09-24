@@ -897,6 +897,110 @@
 	}
 
 	/**
+	 * WP editor-expand scroll-down dalında #wp-content-editor-tools mutlak mı?
+	 *
+	 * QRMS scroll pinEnd ile WP pinEnd aynı formül; eldeki konum (mutlak + T_wp)
+	 * WP'nin sabitten mutlağa geçtiğini gösterir — scroll piksel toleransı eklenmez.
+	 *
+	 * @param {Object}      pin            shellEditorPinDurumu().
+	 * @param {HTMLElement} tools          #wp-content-editor-tools.
+	 * @param {number}      shellHeaderPx H.
+	 * @return {boolean} WP mutlak alt faz mı.
+	 */
+	function editorToolbarWpMutlakAsamasinda( pin, tools, shellHeaderPx ) {
+		if ( ! pin || ! pin.canPin || ! tools || ! shellHeaderPx ) {
+			return false;
+		}
+
+		if ( ! editorAracMutlakMi( tools ) ) {
+			return false;
+		}
+
+		var windowPos = window.pageYOffset || document.documentElement.scrollTop || 0;
+
+		if ( windowPos > pin.pinEnd ) {
+			return true;
+		}
+
+		var wrap = document.getElementById( 'wp-content-wrap' );
+		var tops = shellEditorMutlakAltTopDegerleri( pin, shellHeaderPx, wrap );
+
+		if ( ! tops ) {
+			return false;
+		}
+
+		var mevcutTop = editorInlineTopSayi( tools );
+
+		if ( mevcutTop === null ) {
+			return false;
+		}
+
+		if ( Math.abs( mevcutTop - tops.T_wp ) <= 1.5 ) {
+			return true;
+		}
+
+		if ( Math.abs( mevcutTop - tops.tools ) <= 0.5 ) {
+			return true;
+		}
+
+		return false;
+	}
+
+	/**
+	 * Sabit (fixed) fazda toolbar QRMS hedefinde mi?
+	 *
+	 * @param {HTMLElement} tools          #wp-content-editor-tools.
+	 * @param {number}      shellHeaderPx H.
+	 * @return {boolean} Stabil mi.
+	 */
+	function editorToolbarSabitFazStabilMi( tools, shellHeaderPx ) {
+		if ( ! tools || ! shellHeaderPx || ! editorAracSabitMi( tools ) ) {
+			return false;
+		}
+
+		if ( editorToolbarViewportHeaderAltinda( tools, shellHeaderPx ) ) {
+			return false;
+		}
+
+		var toolsTop = editorInlineTopSayi( tools );
+
+		if ( toolsTop === null ) {
+			return false;
+		}
+
+		return toolsTop >= shellHeaderPx - 0.5;
+	}
+
+	/**
+	 * Mutlak alt fazda toolbar T_qrms hedefinde mi?
+	 *
+	 * @param {Object}      pin            shellEditorPinDurumu().
+	 * @param {HTMLElement} tools          #wp-content-editor-tools.
+	 * @param {number}      shellHeaderPx H.
+	 * @return {boolean} Stabil mi.
+	 */
+	function editorToolbarMutlakAltFazStabilMi( pin, tools, shellHeaderPx ) {
+		if ( ! pin || ! tools || ! shellHeaderPx || ! editorAracMutlakMi( tools ) ) {
+			return false;
+		}
+
+		var wrap = document.getElementById( 'wp-content-wrap' );
+		var tops = shellEditorMutlakAltTopDegerleri( pin, shellHeaderPx, wrap );
+
+		if ( ! tops ) {
+			return false;
+		}
+
+		var mevcutTop = editorInlineTopSayi( tools );
+
+		if ( mevcutTop === null || Math.abs( mevcutTop - tops.tools ) > 0.5 ) {
+			return false;
+		}
+
+		return ! editorToolbarViewportHeaderAltinda( tools, shellHeaderPx );
+	}
+
+	/**
 	 * WP editor-expand "aşağı kaydır" mutlak konumuna (H−A) süreklilik ofseti ekler.
 	 *
 	 * Mutlak `top` editor sarmalayıcısına göre belgede konumlanır; viewport konumu
@@ -972,17 +1076,24 @@
 			return false;
 		}
 
+		if ( editorToolbarWpMutlakAsamasinda( pin, tools, ofset ) ) {
+			return false;
+		}
+
 		var windowPos = window.pageYOffset || document.documentElement.scrollTop || 0;
 		var pinAraliginda = windowPos >= pin.pinStart && windowPos <= pin.pinEnd;
 		var ustCikisBandi = windowPos >= pin.pinStart - ofset && windowPos < pin.pinStart;
-		/* Alt geçiş: WP pinEnd sonrası mutlak konum (shellEditorAltPinMutlakSenkronize); sabit uzatma yok. */
 		var gecisBandinda = pinAraliginda || ustCikisBandi;
 
-		if ( pin.shouldPin ) {
+		if ( ! gecisBandinda && ! pin.shouldPin ) {
+			return false;
+		}
+
+		if ( editorAracMutlakMi( tools ) ) {
 			return true;
 		}
 
-		if ( ! gecisBandinda ) {
+		if ( editorToolbarSabitFazStabilMi( tools, ofset ) ) {
 			return false;
 		}
 
@@ -1014,34 +1125,15 @@
 			return false;
 		}
 
-		var windowPos = window.pageYOffset || document.documentElement.scrollTop || 0;
-
-		if ( windowPos <= pin.pinEnd ) {
+		if ( ! editorToolbarWpMutlakAsamasinda( pin, tools, shellHeaderPx ) ) {
 			return false;
 		}
 
-		if ( editorAracSabitMi( tools ) ) {
+		if ( editorToolbarMutlakAltFazStabilMi( pin, tools, shellHeaderPx ) ) {
 			return false;
 		}
 
-		if ( ! editorAracMutlakMi( tools ) ) {
-			return false;
-		}
-
-		var wrap = document.getElementById( 'wp-content-wrap' );
-		var tops = shellEditorMutlakAltTopDegerleri( pin, shellHeaderPx, wrap );
-
-		if ( ! tops ) {
-			return false;
-		}
-
-		var mevcutTop = editorInlineTopSayi( tools );
-
-		if ( mevcutTop === null || Math.abs( mevcutTop - tops.tools ) > 0.5 ) {
-			return true;
-		}
-
-		return editorToolbarViewportHeaderAltinda( tools, shellHeaderPx );
+		return true;
 	}
 
 	/**
@@ -1053,7 +1145,15 @@
 	 * @return {boolean} Düzeltme gerekli mi.
 	 */
 	function qrmsEditorPinAraligiKonumDuzeltmeli( pin, tools, shellHeaderPx ) {
-		if ( ! pin || ! pin.canPin || ! pin.shouldPin || ! tools || ! shellHeaderPx ) {
+		if ( ! pin || ! pin.canPin || ! tools || ! shellHeaderPx ) {
+			return false;
+		}
+
+		if ( editorToolbarWpMutlakAsamasinda( pin, tools, shellHeaderPx ) ) {
+			return false;
+		}
+
+		if ( ! pin.shouldPin ) {
 			return false;
 		}
 
@@ -1061,19 +1161,7 @@
 			return true;
 		}
 
-		if ( editorToolbarViewportHeaderAltinda( tools, shellHeaderPx ) ) {
-			return true;
-		}
-
-		if ( editorAracSabitMi( tools ) ) {
-			var toolsTop = editorInlineTopSayi( tools );
-
-			if ( toolsTop !== null && toolsTop < shellHeaderPx - 0.5 ) {
-				return true;
-			}
-		}
-
-		return false;
+		return ! editorToolbarSabitFazStabilMi( tools, shellHeaderPx );
 	}
 
 	/**
@@ -1157,14 +1245,8 @@
 			try {
 				islem();
 			} finally {
-				window.requestAnimationFrame( function () {
+				window.queueMicrotask( function () {
 					qrmsPeStyleYaziliyor = false;
-
-					var ofset = premiumShellHeaderYukseklik();
-
-					if ( ofset && editorToolbarDuzeltmeGerekli( ofset ) ) {
-						planliSenkronize();
-					}
 				} );
 			}
 		}
@@ -1217,17 +1299,15 @@
 				pin = shellEditorPinDurumu( shellHeaderPx );
 			}
 
-			if ( qrmsEditorSabitlemeli( pin, tools, shellHeaderPx ) || qrmsEditorPinAraligiKonumDuzeltmeli( pin, tools, shellHeaderPx ) ) {
-				shellEditorErkenSabitle( pin, shellHeaderPx, tools );
-				return;
-			}
-
-			var windowPos = window.pageYOffset || document.documentElement.scrollTop || 0;
-
-			if ( pin && pin.canPin && windowPos > pin.pinEnd && editorAracMutlakMi( tools ) ) {
+			if ( editorToolbarWpMutlakAsamasinda( pin, tools, shellHeaderPx ) ) {
 				if ( qrmsEditorMutlakAltKonumDuzeltmeli( pin, tools, shellHeaderPx ) ) {
 					shellEditorAltPinMutlakSenkronize( pin, shellHeaderPx, tools );
 				}
+				return;
+			}
+
+			if ( qrmsEditorSabitlemeli( pin, tools, shellHeaderPx ) || qrmsEditorPinAraligiKonumDuzeltmeli( pin, tools, shellHeaderPx ) ) {
+				shellEditorErkenSabitle( pin, shellHeaderPx, tools );
 				return;
 			}
 
@@ -1253,14 +1333,11 @@
 		}
 
 		/**
-		 * WP style yazımından hemen sonra senkron uygular (pinEnd / MO / scroll).
-		 *
-		 * WP editor-expand scroll adjust'i 100ms debounce ile gelebilir; bu yol
-		 * aynı olayı garanti etmez, yalnızca mevcut DOM stiline en hızlı tepkiyi verir.
+		 * Tek düzeltme turu (senkron); yalnızca dış olaylardan çağrılır.
 		 *
 		 * @return {void}
 		 */
-		function editorToolbarAcilSenkron() {
+		function editorToolbarDisSenkron() {
 			var shellHeaderPx = premiumShellHeaderYukseklik();
 
 			if ( ! shellHeaderPx || ! editorToolbarDuzeltmeGerekli( shellHeaderPx ) ) {
@@ -1328,7 +1405,7 @@
 						return;
 					}
 
-					editorToolbarAcilSenkron();
+					editorToolbarDisSenkron();
 				} );
 			}
 
@@ -1396,11 +1473,8 @@
 		function planliSenkronizeScrollSonrasi() {
 			window.clearTimeout( scrollSonrasiZamanlayici );
 			scrollSonrasiZamanlayici = window.setTimeout( function () {
-				var ofset = premiumShellHeaderYukseklik();
-
-				if ( ofset && editorToolbarDuzeltmeGerekli( ofset ) ) {
-					planliSenkronize();
-				}
+				scrollSonrasiZamanlayici = null;
+				editorToolbarDisSenkron();
 			}, 130 );
 		}
 
@@ -1417,8 +1491,6 @@
 			var jq = window.jQuery;
 
 			jq( window ).off( 'scroll.qrms-pe' );
-			jq( window ).on( 'scroll.qrms-pe', editorToolbarAcilSenkron );
-			jq( window ).on( 'scroll.qrms-pe', planliSenkronize );
 			jq( window ).on( 'scroll.qrms-pe', planliSenkronizeScrollSonrasi );
 		}
 
@@ -1453,11 +1525,10 @@
 
 			jq( document ).on( 'editor-classchange.qrms-pe', function () {
 				editorToolbarStilGozlemcisiKur();
-				editorToolbarAcilSenkron();
-				planliSenkronize();
+				editorToolbarDisSenkron();
 				planliSenkronizeScrollSonrasi();
 				window.queueMicrotask( function () {
-					editorToolbarAcilSenkron();
+					editorToolbarDisSenkron();
 				} );
 			} );
 

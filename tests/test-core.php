@@ -2056,8 +2056,21 @@ qrms_test(
 		qrms_assert_contains( 'shellEditorAltPinMutlakSenkronize', $js, 'pinEnd sonrası mutlak toolbar sürekliliği' );
 		qrms_assert_contains( 'qrmsEditorMutlakAltKonumDuzeltmeli', $js, 'pinEnd alt mutlak konum denetimi' );
 		qrms_assert_contains( 'qrmsEditorPinAraligiKonumDuzeltmeli', $js, 'pin aralığı Visual/Code mutlak sızıntısı' );
-		qrms_assert_contains( 'editorToolbarAcilSenkron', $js, 'pinEnd/MO acil senkron yolu' );
+		qrms_assert_contains( 'editorToolbarWpMutlakAsamasinda', $js, 'WP mutlak faz DOM otoritesi' );
+		qrms_assert_contains( 'editorToolbarSabitFazStabilMi', $js, 'sabit faz stabil durumu' );
+		qrms_assert_contains( 'editorToolbarMutlakAltFazStabilMi', $js, 'mutlak alt faz stabil durumu' );
+		qrms_assert_contains( 'editorToolbarDisSenkron', $js, 'dış olay senkron yolu' );
 		qrms_assert_contains( 'queueMicrotask', $js, 'Visual/Code classchange microtask senkronu' );
+		qrms_assert_same(
+			0,
+			preg_match( '/qrmsPeStilYaz[\s\S]*?planliSenkronize\s*\(\s*\)/', $js ),
+			'QRMS stil yazımı sonrası kendi kendine rAF zinciri yok'
+		);
+		qrms_assert_same(
+			0,
+			preg_match( "/on\\(\\s*'scroll\\.qrms-pe'\\s*,\\s*planliSenkronize\\s*\\)/", $js ),
+			'scroll başına planliSenkronize rAF yok'
+		);
 		qrms_assert_same(
 			0,
 			preg_match( '/altCikisBandi/', $js ),
