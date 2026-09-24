@@ -2061,10 +2061,30 @@ qrms_test(
 		qrms_assert_contains( 'editorToolbarMutlakAltFazStabilMi', $js, 'mutlak alt faz stabil durumu' );
 		qrms_assert_contains( 'editorToolbarDisSenkron', $js, 'dış olay senkron yolu' );
 		qrms_assert_contains( 'queueMicrotask', $js, 'Visual/Code classchange microtask senkronu' );
+		$qrms_pe_stil_yaz_pos = strpos( $js, 'function qrmsPeStilYaz' );
+		qrms_assert_false( false === $qrms_pe_stil_yaz_pos, 'qrmsPeStilYaz fonksiyonu' );
+		$qrms_pe_stil_yaz_brace = strpos( $js, '{', $qrms_pe_stil_yaz_pos );
+		qrms_assert_false( false === $qrms_pe_stil_yaz_brace, 'qrmsPeStilYaz gövdesi' );
+		$qrms_pe_stil_yaz_derinlik = 0;
+		$qrms_pe_stil_yaz_govde   = '';
+		$qrms_pe_stil_yaz_uzunluk = strlen( $js );
+		for ( $qrms_pe_stil_yaz_i = $qrms_pe_stil_yaz_brace; $qrms_pe_stil_yaz_i < $qrms_pe_stil_yaz_uzunluk; $qrms_pe_stil_yaz_i++ ) {
+			$qrms_pe_stil_yaz_karakter = $js[ $qrms_pe_stil_yaz_i ];
+			if ( '{' === $qrms_pe_stil_yaz_karakter ) {
+				$qrms_pe_stil_yaz_derinlik++;
+			} elseif ( '}' === $qrms_pe_stil_yaz_karakter ) {
+				$qrms_pe_stil_yaz_derinlik--;
+				if ( 0 === $qrms_pe_stil_yaz_derinlik ) {
+					$qrms_pe_stil_yaz_govde = substr( $js, $qrms_pe_stil_yaz_pos, $qrms_pe_stil_yaz_i - $qrms_pe_stil_yaz_pos + 1 );
+					break;
+				}
+			}
+		}
+		qrms_assert_false( '' === $qrms_pe_stil_yaz_govde, 'qrmsPeStilYaz gövdesi çıkarılamadı' );
 		qrms_assert_same(
 			0,
-			preg_match( '/qrmsPeStilYaz[\s\S]*?planliSenkronize\s*\(\s*\)/', $js ),
-			'QRMS stil yazımı sonrası kendi kendine rAF zinciri yok'
+			preg_match( '/planliSenkronize\s*\(\s*\)/', $qrms_pe_stil_yaz_govde ),
+			'qrmsPeStilYaz gövdesinde planliSenkronize yok'
 		);
 		qrms_assert_same(
 			0,
