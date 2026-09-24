@@ -2025,6 +2025,22 @@ qrms_test(
 );
 
 qrms_test(
+	'ürün editöründe premium shell header WP fixed editor toolbar üstünde',
+	function () {
+		$bridge = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/css/admin-shell-bridge.css' );
+
+		qrms_assert_same(
+			1,
+			preg_match(
+				'/qrms-product-editor\.post-type-rma_menu_item \.qrms-shell__header\s*\{[^}]*z-index:\s*1100/s',
+				$bridge
+			),
+			'shell header z-index WP editor tools (1000) üzerinde'
+		);
+	}
+);
+
+qrms_test(
 	'hub kartlarında emoji ikon kullanılmaz',
 	function () {
 		$css = file_get_contents( QRMS_PLUGIN_DIR . 'assets/css/admin.css' );

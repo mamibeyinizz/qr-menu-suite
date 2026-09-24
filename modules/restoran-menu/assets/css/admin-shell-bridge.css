@@ -2900,6 +2900,11 @@ body.qrms-premium-shell-active.qrms-premium-shell-hybrid.qrms-product-editor.pos
 	overflow-x: clip;
 }
 
+/* WP #wp-content-editor-tools / TinyMCE fixed bars use z-index ~999–1000; shell header was 100. */
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid.qrms-product-editor.post-type-rma_menu_item .qrms-shell__header {
+	z-index: 1100;
+}
+
 /* —— Geri navigasyon —— */
 
 body.qrms-premium-shell-active.qrms-premium-shell-hybrid.qrms-product-editor.post-type-rma_menu_item .qrms-subpage-nav {
