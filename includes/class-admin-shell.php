@@ -290,13 +290,7 @@ class QRMS_Admin_Shell {
 							<span class="qrms-shell__wp-admin-label"><?php esc_html_e( 'WordPress Yönetimi', 'qrms' ); ?></span>
 						</a>
 					<?php endif; ?>
-					<div class="qrms-shell__account">
-						<span class="qrms-shell__account-avatar" aria-hidden="true"><?php echo esc_html( self::user_initials( $user ) ); ?></span>
-						<span class="qrms-shell__account-meta">
-							<span class="qrms-shell__account-name"><?php echo esc_html( $user->display_name ); ?></span>
-							<span class="qrms-shell__account-role"><?php echo esc_html( $role ); ?></span>
-						</span>
-					</div>
+					<?php self::render_account_control( $user, $role, 'sidebar' ); ?>
 				</div>
 			</aside>
 			<div class="qrms-shell__main">
@@ -314,10 +308,7 @@ class QRMS_Admin_Shell {
 						</div>
 					</div>
 					<div class="qrms-shell__header-end">
-						<div class="qrms-shell__header-account">
-							<span class="qrms-shell__account-avatar qrms-shell__account-avatar--sm" aria-hidden="true"><?php echo esc_html( self::user_initials( $user ) ); ?></span>
-							<span class="qrms-shell__account-name"><?php echo esc_html( $user->display_name ); ?></span>
-						</div>
+						<?php self::render_account_control( $user, $role, 'header' ); ?>
 					</div>
 				</header>
 				<div class="<?php echo esc_attr( $content_class ); ?>" id="qrms-shell-content">
@@ -341,16 +332,68 @@ class QRMS_Admin_Shell {
 	}
 
 	/**
-	 * @param string $key openMenu|closeMenu.
+	 * @param string $key openMenu|closeMenu|accountMenu|logout.
 	 * @return string
 	 */
 	private static function l10n( $key ) {
 		$map = array(
-			'openMenu'  => __( 'Menüyü aç', 'qrms' ),
-			'closeMenu' => __( 'Menüyü kapat', 'qrms' ),
+			'openMenu'    => __( 'Menüyü aç', 'qrms' ),
+			'closeMenu'   => __( 'Menüyü kapat', 'qrms' ),
+			'accountMenu' => __( 'Hesap menüsü', 'qrms' ),
+			'logout'      => __( 'Çıkış Yap', 'qrms' ),
 		);
 
 		return isset( $map[ $key ] ) ? $map[ $key ] : '';
+	}
+
+	/**
+	 * Sidebar / header hesap kontrolü (dropdown + güvenli çıkış).
+	 *
+	 * @param WP_User $user       Oturum.
+	 * @param string  $role       Görünen rol etiketi.
+	 * @param string  $placement  sidebar|header.
+	 * @return void
+	 */
+	private static function render_account_control( $user, $role, $placement ) {
+		$placement = 'header' === $placement ? 'header' : 'sidebar';
+		$menu_id   = 'qrms-shell-account-menu-' . $placement;
+		$trigger_id = 'qrms-shell-account-trigger-' . $placement;
+		$logout_url = QRMS_Admin_Shell_Auth::shell_logout_url();
+		$initials   = self::user_initials( $user );
+		$name       = $user->display_name;
+		?>
+		<div class="qrms-shell__account-wrap qrms-shell__account-wrap--<?php echo esc_attr( $placement ); ?>">
+			<button
+				type="button"
+				class="qrms-shell__account-trigger"
+				id="<?php echo esc_attr( $trigger_id ); ?>"
+				aria-expanded="false"
+				aria-haspopup="true"
+				aria-controls="<?php echo esc_attr( $menu_id ); ?>"
+			>
+				<span class="qrms-shell__account-avatar<?php echo 'header' === $placement ? ' qrms-shell__account-avatar--sm' : ''; ?>" aria-hidden="true"><?php echo esc_html( $initials ); ?></span>
+				<?php if ( 'sidebar' === $placement ) : ?>
+					<span class="qrms-shell__account-meta">
+						<span class="qrms-shell__account-name"><?php echo esc_html( $name ); ?></span>
+						<span class="qrms-shell__account-role"><?php echo esc_html( $role ); ?></span>
+					</span>
+				<?php else : ?>
+					<span class="qrms-shell__account-name"><?php echo esc_html( $name ); ?></span>
+				<?php endif; ?>
+				<span class="qrms-shell__sr-only"><?php echo esc_html( self::l10n( 'accountMenu' ) ); ?></span>
+			</button>
+			<div class="qrms-shell__account-menu" id="<?php echo esc_attr( $menu_id ); ?>" role="menu" hidden>
+				<div class="qrms-shell__account-menu-meta" role="none">
+					<span class="qrms-shell__account-name"><?php echo esc_html( $name ); ?></span>
+					<span class="qrms-shell__account-role"><?php echo esc_html( $role ); ?></span>
+				</div>
+				<div class="qrms-shell__account-menu-divider" role="separator"></div>
+				<a class="qrms-shell__account-logout" role="menuitem" href="<?php echo esc_url( $logout_url ); ?>">
+					<?php echo esc_html( self::l10n( 'logout' ) ); ?>
+				</a>
+			</div>
+		</div>
+		<?php
 	}
 
 	/**

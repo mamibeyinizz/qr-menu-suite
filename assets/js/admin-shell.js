@@ -172,5 +172,112 @@
 		}
 	} );
 
+	var accountWraps = document.querySelectorAll( '.qrms-shell__account-wrap' );
+	var openAccountMenu = null;
+
+	function closeAccountMenu( restoreFocus ) {
+		if ( ! openAccountMenu ) {
+			return;
+		}
+
+		var trigger = openAccountMenu.trigger;
+		var menu = openAccountMenu.menu;
+
+		menu.hidden = true;
+		trigger.setAttribute( 'aria-expanded', 'false' );
+		openAccountMenu = null;
+
+		if ( restoreFocus && trigger ) {
+			window.requestAnimationFrame( function () {
+				try {
+					trigger.focus( { preventScroll: true } );
+				} catch ( err ) {
+					trigger.focus();
+				}
+			} );
+		}
+	}
+
+	function openAccountMenuFor( wrap ) {
+		var trigger = wrap.querySelector( '.qrms-shell__account-trigger' );
+		var menu = wrap.querySelector( '.qrms-shell__account-menu' );
+
+		if ( ! trigger || ! menu ) {
+			return;
+		}
+
+		if ( openAccountMenu && openAccountMenu.wrap !== wrap ) {
+			closeAccountMenu( false );
+		}
+
+		menu.hidden = false;
+		trigger.setAttribute( 'aria-expanded', 'true' );
+		openAccountMenu = { wrap: wrap, trigger: trigger, menu: menu };
+	}
+
+	function toggleAccountMenu( wrap ) {
+		if ( openAccountMenu && openAccountMenu.wrap === wrap ) {
+			closeAccountMenu( true );
+			return;
+		}
+
+		openAccountMenuFor( wrap );
+	}
+
+	accountWraps.forEach( function ( wrap ) {
+		var trigger = wrap.querySelector( '.qrms-shell__account-trigger' );
+		var menu = wrap.querySelector( '.qrms-shell__account-menu' );
+
+		if ( ! trigger || ! menu ) {
+			return;
+		}
+
+		trigger.addEventListener( 'click', function ( event ) {
+			event.stopPropagation();
+			toggleAccountMenu( wrap );
+		} );
+
+		trigger.addEventListener( 'keydown', function ( event ) {
+			if ( 'Enter' === event.key || ' ' === event.key ) {
+				event.preventDefault();
+				toggleAccountMenu( wrap );
+			}
+		} );
+
+		menu.addEventListener( 'keydown', function ( event ) {
+			if ( 'Escape' === event.key ) {
+				event.preventDefault();
+				event.stopPropagation();
+				closeAccountMenu( true );
+			}
+		} );
+	} );
+
+	document.addEventListener( 'click', function ( event ) {
+		if ( ! openAccountMenu ) {
+			return;
+		}
+
+		if ( openAccountMenu.wrap.contains( event.target ) ) {
+			return;
+		}
+
+		closeAccountMenu( true );
+	} );
+
+	function onKeyDownWithAccount( event ) {
+		if ( openAccountMenu && 'Escape' === event.key ) {
+			event.preventDefault();
+			event.stopPropagation();
+			closeAccountMenu( true );
+			return;
+		}
+
+		onKeyDown( event );
+	}
+
+	document.removeEventListener( 'keydown', onKeyDown );
+	document.addEventListener( 'keydown', onKeyDownWithAccount );
+
 	setOpen( false );
 }() );

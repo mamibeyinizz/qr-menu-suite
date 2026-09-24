@@ -257,6 +257,49 @@ body.qrms-premium-shell-active {
 	opacity: 0.85;
 }
 
+.qrms-shell__account-wrap {
+	position: relative;
+}
+
+.qrms-shell__account-wrap--sidebar {
+	display: flex;
+	width: 100%;
+	padding: 12px 8px 4px;
+}
+
+.qrms-shell__account-trigger {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	margin: 0;
+	padding: 0;
+	border: 0;
+	background: transparent;
+	cursor: pointer;
+	font: inherit;
+	color: inherit;
+	text-align: left;
+	width: 100%;
+	border-radius: 8px;
+}
+
+.qrms-shell__account-trigger:focus-visible {
+	outline: 2px solid var(--qrms-shell-gold);
+	outline-offset: 2px;
+}
+
+.qrms-shell__account-wrap--header .qrms-shell__account-trigger {
+	width: auto;
+	padding: 6px 10px;
+	border-radius: 999px;
+	background: var(--qrms-shell-cream);
+	border: 1px solid rgba(13, 43, 34, 0.08);
+}
+
+.qrms-shell__account-wrap--header .qrms-shell__account-trigger:focus-visible {
+	outline-offset: 3px;
+}
+
 .qrms-shell__account {
 	display: flex;
 	align-items: center;
@@ -303,6 +346,72 @@ body.qrms-premium-shell-active {
 .qrms-shell__account-role {
 	font-size: 11px;
 	color: var(--qrms-shell-text-muted);
+}
+
+.qrms-shell__account-menu {
+	position: absolute;
+	z-index: 220;
+	min-width: 220px;
+	max-width: min(280px, calc(100vw - 24px));
+	padding: 8px 0;
+	background: #fff;
+	border: 1px solid rgba(13, 43, 34, 0.1);
+	border-radius: 10px;
+	box-shadow: 0 12px 32px rgba(13, 43, 34, 0.14);
+}
+
+.qrms-shell__account-menu-meta {
+	padding: 8px 14px 6px;
+}
+
+.qrms-shell__account-menu-meta .qrms-shell__account-name {
+	display: block;
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--qrms-shell-forest);
+}
+
+.qrms-shell__account-menu-meta .qrms-shell__account-role {
+	display: block;
+	margin-top: 2px;
+}
+
+.qrms-shell__account-menu-divider {
+	height: 1px;
+	margin: 4px 0;
+	background: rgba(13, 43, 34, 0.08);
+}
+
+.qrms-shell__account-logout {
+	display: block;
+	padding: 10px 14px;
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--qrms-shell-forest);
+	text-decoration: none;
+	border-radius: 0;
+}
+
+.qrms-shell__account-logout:hover,
+.qrms-shell__account-logout:focus-visible {
+	background: rgba(13, 43, 34, 0.05);
+	color: var(--qrms-shell-forest);
+	outline: none;
+}
+
+.qrms-shell__account-logout:focus-visible {
+	box-shadow: inset 0 0 0 2px var(--qrms-shell-gold);
+}
+
+.qrms-shell__account-wrap--sidebar .qrms-shell__account-menu {
+	left: 0;
+	right: 0;
+	bottom: calc(100% + 8px);
+}
+
+.qrms-shell__account-wrap--header .qrms-shell__account-menu {
+	top: calc(100% + 8px);
+	right: 0;
 }
 
 .qrms-shell__main {
@@ -386,6 +495,11 @@ body.qrms-premium-shell-active {
 
 .qrms-shell__header-end {
 	flex-shrink: 0;
+}
+
+.qrms-shell__header-end .qrms-shell__account-wrap--header .qrms-shell__account-name {
+	color: var(--qrms-shell-forest);
+	font-size: 13px;
 }
 
 .qrms-shell__header-account {
@@ -547,7 +661,7 @@ body.qrms-premium-shell-active .qrms-shell__content .qrms-hub-intro {
 		touch-action: none;
 	}
 
-	body.qrms-premium-shell-active .qrms-shell__sidebar-foot .qrms-shell__account {
+	body.qrms-premium-shell-active .qrms-shell__sidebar-foot .qrms-shell__account-wrap--sidebar {
 		display: none;
 	}
 }
@@ -577,7 +691,7 @@ body.qrms-premium-shell-active .qrms-shell__content .qrms-hub-intro {
 		padding: 12px 14px 24px;
 	}
 
-	.qrms-shell__header-account .qrms-shell__account-name {
+	.qrms-shell__account-wrap--header .qrms-shell__account-name {
 		display: none;
 	}
 }

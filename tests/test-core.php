@@ -2123,6 +2123,34 @@ qrms_test(
 );
 
 qrms_test(
+	'premium shell hesap menüsü ve güvenli çıkış (Fix 6)',
+	function () {
+		$shell = file_get_contents( QRMS_PLUGIN_DIR . 'includes/class-admin-shell.php' );
+		$auth  = file_get_contents( QRMS_PLUGIN_DIR . 'includes/class-admin-shell-auth.php' );
+		$js    = file_get_contents( QRMS_PLUGIN_DIR . 'assets/js/admin-shell.js' );
+		$css   = file_get_contents( QRMS_PLUGIN_DIR . 'assets/css/admin-shell.css' );
+
+		qrms_assert_contains( 'render_account_control', $shell, 'hesap kontrolü render' );
+		qrms_assert_contains( 'qrms-shell__account-trigger', $shell, 'erişilebilir hesap düğmesi' );
+		qrms_assert_contains( 'aria-haspopup="true"', $shell, 'hesap popup ARIA' );
+		qrms_assert_contains( 'qrms-shell__account-logout', $shell, 'çıkış bağlantısı' );
+		qrms_assert_contains( 'shell_logout_url', $auth, 'shell logout URL üretici' );
+		qrms_assert_contains( 'wp_logout_url', $auth, 'WordPress logout mekanizması' );
+		qrms_assert_contains( 'QRMS_Login::login_url', $auth, 'çıkış sonrası QRMS giriş hedefi' );
+		qrms_assert_contains( 'yalniz_servis_mi() ) ) :', $shell, 'service-only WordPress Yönetimi kapısı korunur' );
+		qrms_assert_contains( 'render_account_control', $shell, 'service-only dahil hesap kontrolü' );
+		qrms_assert_contains( 'closeAccountMenu', $js, 'hesap menüsü kapanışı' );
+		qrms_assert_contains( 'aria-expanded', $js, 'hesap menüsü expanded durumu' );
+		qrms_assert_contains( 'qrms-shell__account-menu', $css, 'hesap dropdown stilleri' );
+		qrms_assert_same(
+			0,
+			preg_match( '/jQuery\s*\(/', $js ),
+			'shell JS jQuery kullanmaz'
+		);
+	}
+);
+
+qrms_test(
 	'hub kartlarında emoji ikon kullanılmaz',
 	function () {
 		$css = file_get_contents( QRMS_PLUGIN_DIR . 'assets/css/admin.css' );

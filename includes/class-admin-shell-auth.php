@@ -284,6 +284,23 @@ class QRMS_Admin_Shell_Auth {
 	}
 
 	/**
+	 * Premium shell «Çıkış Yap» — WordPress logout + QRMS giriş ekranına dönüş.
+	 *
+	 * Oturum/nonce işlemi çekirdek `wp_logout_url()` ile kalır; yalnızca hedef adres shell UX içindir.
+	 *
+	 * @return string
+	 */
+	public static function shell_logout_url() {
+		$redirect = home_url( '/' );
+
+		if ( class_exists( 'QRMS_Login' ) && method_exists( 'QRMS_Login', 'login_url' ) ) {
+			$redirect = QRMS_Login::login_url();
+		}
+
+		return wp_logout_url( $redirect );
+	}
+
+	/**
 	 * @param WP_Admin_Bar $wp_admin_bar Admin bar instance.
 	 * @return void
 	 */
