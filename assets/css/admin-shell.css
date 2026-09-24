@@ -573,6 +573,11 @@ body.qrms-premium-shell-active {
 body.qrms-premium-shell-active .qrms-shell__content .qrms-hub-heading,
 body.qrms-premium-shell-active .qrms-shell__content .qrms-title,
 body.qrms-premium-shell-active .qrms-shell__content .qmo-baslik,
+body.qrms-premium-shell-active .qrms-shell__content .qmo-cb-hero-title,
+body.qrms-premium-shell-active .qrms-shell__content .qrm-page-title,
+body.qrms-premium-shell-active .qrms-shell__content .qrae-title,
+body.qrms-premium-shell-active .qrms-shell__content .qrms-an-title,
+body.qrms-premium-shell-active .qrms-shell__content .qrm-cf-wrap .qrm-cf-head h1,
 body.qrms-premium-shell-active .qrms-shell__content .wrap > h1,
 body.qrms-premium-shell-active .qrms-shell__content--hybrid .wrap > h1.wp-heading-inline {
 	position: absolute;

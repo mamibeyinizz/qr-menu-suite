@@ -2241,6 +2241,44 @@ qrms_test(
 );
 
 qrms_test(
+	'premium shell kalan modül H1 başlıkları (Fix 10A.1)',
+	function () {
+		$css = file_get_contents( QRMS_PLUGIN_DIR . 'assets/css/admin-shell.css' );
+
+		$scoped_selectors = array(
+			'.qmo-cb-hero-title',
+			'.qrm-page-title',
+			'.qrae-title',
+			'.qrms-an-title',
+			'.qrm-cf-wrap .qrm-cf-head h1',
+		);
+
+		foreach ( $scoped_selectors as $selector ) {
+			qrms_assert_contains(
+				'body.qrms-premium-shell-active .qrms-shell__content ' . $selector,
+				$css,
+				'shell kapsamlı duplicate H1 gizleme: ' . $selector
+			);
+		}
+
+		qrms_assert_same(
+			1,
+			preg_match(
+				'/body\\.qrms-premium-shell-active \\.qrms-shell__content \\.qrms-hub-heading,[\\s\\S]*?\\.qmo-cb-hero-title,[\\s\\S]*?clip:\\s*rect\\(\\s*0\\s*,\\s*0\\s*,\\s*0\\s*,\\s*0\\s*\\)/s',
+				$css
+			),
+			'Fix 10A clip standardı modül hero başlıklarında'
+		);
+
+		qrms_assert_same(
+			0,
+			preg_match( '/body\\.qrms-premium-shell-active[^{]*\\{\\s*[^}]*\\bh1\\b[^}]*\\}/s', $css ),
+			'shell scope altında riskli global h1 override yok'
+		);
+	}
+);
+
+qrms_test(
 	'premium shell WordPress chrome ve Screen Options (Fix 9)',
 	function () {
 		$shell = file_get_contents( QRMS_PLUGIN_DIR . 'includes/class-admin-shell.php' );
