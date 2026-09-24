@@ -2151,6 +2151,49 @@ qrms_test(
 );
 
 qrms_test(
+	'premium shell forest birincil CTA kontrastı (Fix 7)',
+	function () {
+		$bridge = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/css/admin-shell-bridge.css' );
+
+		qrms_assert_contains(
+			'body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin .button-primary',
+			$bridge,
+			'shell kapsamlı birincil CTA seçici'
+		);
+		qrms_assert_contains(
+			'color: var(--qrms-rm-offwhite)',
+			$bridge,
+			'forest CTA okunabilir metin rengi'
+		);
+		qrms_assert_contains(
+			':has(.rma-kb-wizard) .button-primary',
+			$bridge,
+			'kampanya banner wizard birincil CTA'
+		);
+		qrms_assert_contains(
+			':has(#rma-oneriler) #qmo-slider-form .rma-vitrin-step-nav .button-primary',
+			$bridge,
+			'öne çıkanlar Devam Et birincil CTA'
+		);
+		qrms_assert_contains(
+			'outline: 2px solid var(--qrms-rm-gold)',
+			$bridge,
+			'birincil CTA focus-visible outline'
+		);
+
+		$cta_block_start = strpos( $bridge, 'Birincil CTA metni: admin-ui.css' );
+		qrms_assert_true( false !== $cta_block_start, 'Fix 7 CTA kontrast bloğu' );
+		$cta_block = substr( $bridge, (int) $cta_block_start, 2800 );
+		$cta_block = preg_replace( '/\\/\\*[\\s\\S]*?\\*\\//', '', $cta_block );
+		qrms_assert_same(
+			0,
+			preg_match( '/color\s*:\s*#0a0a0a/i', $cta_block ),
+			'Fix 7 CTA bloğu eski #0a0a0a metnini geri getirmez'
+		);
+	}
+);
+
+qrms_test(
 	'hub kartlarında emoji ikon kullanılmaz',
 	function () {
 		$css = file_get_contents( QRMS_PLUGIN_DIR . 'assets/css/admin.css' );

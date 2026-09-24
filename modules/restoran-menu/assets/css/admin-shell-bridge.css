@@ -38,6 +38,49 @@ body.qrms-premium-shell-active .qrms-shell__content:has(.rma-kb-wizard) {
 	min-width: 0;
 }
 
+/*
+ * Birincil CTA metni: admin-ui.css `.rma-admin .button-primary { color:#0a0a0a }`
+ * altın zemin içindir. Bridge forest/forest-mid zemininde aynı metin ~1.3:1 kontrast
+ * verir; premium shell kapsamında okunabilir off-white kullan.
+ */
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin .button-primary,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin input[type="submit"].button-primary,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin a.button.button-primary,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin .rma-kmp-btn-primary:not([disabled]) {
+	color: var(--qrms-rm-offwhite);
+	text-shadow: none;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin .button-primary:hover,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin .button-primary:focus,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin .button-primary:active,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin input[type="submit"].button-primary:hover,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin input[type="submit"].button-primary:focus,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin input[type="submit"].button-primary:active,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin a.button.button-primary:hover,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin a.button.button-primary:focus,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin a.button.button-primary:active,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin .rma-kmp-btn-primary:not([disabled]):hover,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin .rma-kmp-btn-primary:not([disabled]):focus,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin .rma-kmp-btn-primary:not([disabled]):active {
+	color: var(--qrms-rm-offwhite);
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin .button-primary:focus-visible,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin input[type="submit"].button-primary:focus-visible,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin a.button.button-primary:focus-visible {
+	outline: 2px solid var(--qrms-rm-gold);
+	outline-offset: 2px;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin .button-primary[disabled],
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin .button-primary:disabled,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin input[type="submit"].button-primary[disabled],
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin .rma-kmp-btn-primary[disabled] {
+	color: var(--qrms-rm-ink-muted);
+	opacity: 0.78;
+}
+
 /* —— Geri navigasyon (hub standardı) —— */
 
 body.qrms-premium-shell-active .qrms-shell__content:has(.wrap.rma-admin .rma-color-preview-dock) .qrms-subpage-nav,
