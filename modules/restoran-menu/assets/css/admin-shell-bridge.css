@@ -2297,10 +2297,50 @@ body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-
 body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) #qmo-banner-form .rma-vitrin-layout-wrap {
 	gap: 20px;
 	min-width: 0;
-	overflow: visible;
+	overflow: hidden;
 }
 
-body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) #qmo-banner-form .rma-vitrin-layout-fields,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) #qmo-banner-form .rma-vitrin-layout-fields {
+	box-sizing: border-box;
+	max-width: 100%;
+	min-width: 0;
+	overflow-x: clip;
+	overflow-y: visible;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) #qmo-banner-form .rma-vitrin-layout-fields > .rma-card {
+	box-sizing: border-box;
+	max-width: 100%;
+	min-width: 0;
+	overflow-x: clip;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) #qmo-banner-form .rma-vitrin-layout-fields .rma-form-table {
+	table-layout: fixed;
+	width: 100%;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) #qmo-banner-form .rma-vitrin-layout-fields .form-table th {
+	max-width: 42%;
+	width: 42%;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) #qmo-banner-form .rma-vitrin-layout-fields .form-table td {
+	min-width: 0;
+	overflow-wrap: anywhere;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) #qmo-banner-form .rma-vitrin-layout-fields .qmo-banner-oran-grid {
+	grid-template-columns: repeat(auto-fill, minmax(min(100%, 132px), 1fr));
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) #qmo-banner-form .rma-vitrin-layout-fields .rma-select-wide {
+	box-sizing: border-box;
+	max-width: 100%;
+	min-width: 0;
+	width: 100%;
+}
+
 body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) #qmo-banner-form .rma-vitrin-layout-preview {
 	min-width: 0;
 	overflow: visible;
@@ -2317,17 +2357,25 @@ body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-
 	border: 1px solid var(--qrms-rm-border);
 	border-radius: var(--rma-a-radius);
 	max-width: 100%;
-	overflow: visible;
+	overflow: hidden;
 }
 
+/* resizeIframe() sets inline width (1280) + transform scale; max-width:100% shrinks layout width first → double scale. */
 body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) #qmo-banner-form .qmo-banner-preview-iframe {
-	max-width: 100%;
+	max-width: none;
 }
 
 body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) #qmo-banner-form .rma-vitrin-preview-btn.is-active {
 	background: var(--qrms-rm-forest);
 	border-color: var(--qrms-rm-forest);
 	color: #fff;
+}
+
+/* Premium shell: admin-ui 400px+560px tracks overflow the content column; use flexible tracks. */
+@container qmo-banner-admin (min-width: 980px) {
+	body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) #qmo-banner-form > .rma-vitrin-layout-wrap {
+		grid-template-columns: minmax(0, 1fr) minmax(280px, 420px);
+	}
 }
 
 body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kb-wizard) input[type="text"],

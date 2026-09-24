@@ -1989,6 +1989,7 @@ qrms_test(
 		qrms_assert_contains( ':has(.rma-kb-wizard)', $bridge, 'bridge sihirbaz işaretçisi' );
 		qrms_assert_contains( '#qmo-banner-form', $bridge, 'bridge banner form stilleri' );
 		qrms_assert_contains( '.qmo-banner-preview-iframe', $bridge, 'iframe kapsayıcı güvenliği' );
+		qrms_assert_contains( 'max-width: none', $bridge, 'iframe ölçekleme: CSS max-width JS inline width ezmez' );
 	}
 );
 
