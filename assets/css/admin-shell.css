@@ -523,6 +523,9 @@ body.qrms-premium-shell-active {
 	text-transform: uppercase;
 	letter-spacing: 0.08em;
 	color: rgba(13, 43, 34, 0.55);
+	max-width: 100%;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 .qrms-shell__title {
@@ -565,7 +568,10 @@ body.qrms-premium-shell-active {
 }
 
 body.qrms-premium-shell-active .qrms-shell__content .qrms-hub-heading,
-body.qrms-premium-shell-active .qrms-shell__content .qrms-title {
+body.qrms-premium-shell-active .qrms-shell__content .qrms-title,
+body.qrms-premium-shell-active .qrms-shell__content .qmo-baslik,
+body.qrms-premium-shell-active .qrms-shell__content .wrap > h1,
+body.qrms-premium-shell-active .qrms-shell__content--hybrid .wrap > h1.wp-heading-inline {
 	position: absolute;
 	width: 1px;
 	height: 1px;

@@ -2183,6 +2183,25 @@ qrms_test(
 );
 
 qrms_test(
+	'premium shell H1 ve geri navigasyon tutarlılığı (Fix 10A)',
+	function () {
+		$shell = file_get_contents( QRMS_PLUGIN_DIR . 'includes/class-admin-shell.php' );
+		$admin = file_get_contents( QRMS_PLUGIN_DIR . 'includes/class-admin.php' );
+		$css   = file_get_contents( QRMS_PLUGIN_DIR . 'assets/css/admin-shell.css' );
+
+		qrms_assert_contains( 'resolve_subpage_back_label', $admin, 'açık geri etiket eşlemesi' );
+		qrms_assert_contains( 'Yorumlar & Geri Bildirim', $admin, 'Geri Bildirim Türkçe geri etiketi' );
+		qrms_assert_contains( 'qr-ceviri', $admin, 'Çeviriler modül geri etiketi' );
+		qrms_assert_contains( 'Menü Performansı', $admin, 'Performans Türkçe geri etiketi' );
+		qrms_assert_contains( 'qrms-analiz-ayarlar', $admin, 'Firebase sayfa geri URL eşlemesi' );
+		qrms_assert_contains( 'render_native_hybrid_back_link', $shell, 'hybrid taxonomy/banner geri linki' );
+		qrms_assert_contains( 'build_shell_breadcrumb', $shell, 'shell breadcrumb standardı' );
+		qrms_assert_contains( '.qrms-shell__content .wrap > h1', $css, 'duplicate H1 visually hidden' );
+		qrms_assert_contains( 'text-overflow: ellipsis', $css, 'breadcrumb taşma kontrolü' );
+	}
+);
+
+qrms_test(
 	'premium shell WordPress chrome ve Screen Options (Fix 9)',
 	function () {
 		$shell = file_get_contents( QRMS_PLUGIN_DIR . 'includes/class-admin-shell.php' );

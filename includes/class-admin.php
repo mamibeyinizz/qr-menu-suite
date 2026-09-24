@@ -870,6 +870,81 @@ class QRMS_Admin {
 	}
 
 	/**
+	 * Alt sayfadaki geri bağlantısının hedefi (açık eşleme + hub yedek).
+	 *
+	 * @param string $module_slug Modül slug'ı.
+	 * @param string $page_slug   İstek `page` slug'ı (boşsa otomatik).
+	 * @return string
+	 */
+	public static function resolve_subpage_back_url( $module_slug, $page_slug = '' ) {
+		$page_slug = '' !== (string) $page_slug ? (string) $page_slug : self::get_current_page();
+
+		$url_map = array(
+			'qrms-analiz-ayarlar'  => self::get_module_page_url( 'qr-masa-oturum-guvenligi' ),
+			'qrms-guvenlik-oturum' => self::get_module_page_url( 'qr-masa-oturum-guvenligi' ),
+		);
+
+		if ( isset( $url_map[ $page_slug ] ) ) {
+			return $url_map[ $page_slug ];
+		}
+
+		return self::get_module_page_url( $module_slug );
+	}
+
+	/**
+	 * Alt sayfadaki geri bağlantı metni (Türkçe — otomatik ek algoritması yok).
+	 *
+	 * @param string $module_slug Modül slug'ı.
+	 * @param string $page_slug   İstek `page` slug'ı (boşsa otomatik).
+	 * @return string
+	 */
+	public static function resolve_subpage_back_label( $module_slug, $page_slug = '' ) {
+		$page_slug = '' !== (string) $page_slug ? (string) $page_slug : self::get_current_page();
+
+		$page_labels = array(
+			'qrms-analiz-ayarlar'      => __( 'Masa Oturumu Güvenliği\'ne Dön', 'qrms' ),
+			'qrms-guvenlik-oturum'     => __( 'Masa Oturumu Güvenliği\'ne Dön', 'qrms' ),
+			'qrms-rm-gorunum'          => __( 'Menü Yönetimi\'ne Dön', 'qrms' ),
+			'qrms-rm-kampanya'         => __( 'Menü Yönetimi\'ne Dön', 'qrms' ),
+			'qrms-rm-secenekler'       => __( 'Menü Yönetimi\'ne Dön', 'qrms' ),
+			'qrms-rm-diger'            => __( 'Menü Yönetimi\'ne Dön', 'qrms' ),
+			'qrms-rm-urunum-yok'       => __( 'Menü Yönetimi\'ne Dön', 'qrms' ),
+			'qrms-rm-one-cikanlar'     => __( 'Menü Yönetimi\'ne Dön', 'qrms' ),
+			'qrms-rm-kampanya-banner'  => __( 'Menü Yönetimi\'ne Dön', 'qrms' ),
+		);
+
+		if ( isset( $page_labels[ $page_slug ] ) ) {
+			return $page_labels[ $page_slug ];
+		}
+
+		$module_labels = array(
+			'restoran-menu'            => __( 'Menü Yönetimi\'ne Dön', 'qrms' ),
+			'yorum-feedback'           => __( 'Yorumlar & Geri Bildirim\'e Dön', 'qrms' ),
+			'qr-masa'                  => __( 'QR Kodlar\'a Dön', 'qrms' ),
+			'qr-analiz'                => __( 'Menü Analizleri\'ne Dön', 'qrms' ),
+			'qr-galeri'                => __( 'Fotoğraf Galerisi\'ne Dön', 'qrms' ),
+			'qr-ceviri'                => __( 'Diller & Çeviriler\'e Dön', 'qrms' ),
+			'qr-chatbot'               => __( 'AI Menü Asistanı\'na Dön', 'qrms' ),
+			'qr-calisma-saatleri'      => __( 'Çalışma Saatleri\'ne Dön', 'qrms' ),
+			'qr-masa-oturum-guvenligi' => __( 'Masa Oturumu Güvenliği\'ne Dön', 'qrms' ),
+			'qr-acilis-ekrani'         => __( 'Karşılama Ekranı\'na Dön', 'qrms' ),
+			'header-footer-builder'    => __( 'Header & Footer\'a Dön', 'qrms' ),
+			'qr-servis-paneli'         => __( 'Servis Paneli\'ne Dön', 'qrms' ),
+			'qr-menu-muhendisligi'     => __( 'Menü Performansı\'na Dön', 'qrms' ),
+		);
+
+		if ( isset( $module_labels[ $module_slug ] ) ) {
+			return $module_labels[ $module_slug ];
+		}
+
+		return sprintf(
+			/* translators: %s: module hub name */
+			__( '%s\'e Dön', 'qrms' ),
+			QRMS_Helpers::get_module_name( $module_slug )
+		);
+	}
+
+	/**
 	 * Alt sayfanın en üstündeki "← Modül Adı > Aktif sayfa" breadcrumb'ı.
 	 *
 	 * Sol menüde artık alt satır olmadığı için modüle dönüşün tek yolu budur;
@@ -894,7 +969,11 @@ class QRMS_Admin {
 		 * @param string $url         Modülün hub adresi.
 		 * @param string $module_slug Alt sayfanın sahibi modül.
 		 */
-		$url = (string) apply_filters( 'qrms_subpage_back_url', self::get_module_page_url( $module_slug ), $module_slug );
+		$url = (string) apply_filters(
+			'qrms_subpage_back_url',
+			self::resolve_subpage_back_url( $module_slug ),
+			$module_slug
+		);
 
 		if ( '' === $current && isset( $GLOBALS['title'] ) ) {
 			$current = (string) $GLOBALS['title'];
@@ -914,8 +993,7 @@ class QRMS_Admin {
 		 */
 		$back_label = (string) apply_filters(
 			'qrms_subpage_back_label',
-			/* translators: %s: module hub name, e.g. Menü Yönetimi */
-			sprintf( __( '%s\'ne Dön', 'qrms' ), $module_name ),
+			self::resolve_subpage_back_label( $module_slug ),
 			$module_slug
 		);
 		?>

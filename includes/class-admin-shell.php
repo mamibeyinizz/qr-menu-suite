@@ -25,6 +25,7 @@ class QRMS_Admin_Shell {
 		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_assets' ) );
 		add_filter( 'admin_body_class', array( __CLASS__, 'body_class' ) );
 		add_action( 'admin_notices', array( __CLASS__, 'render_open' ), -99999 );
+		add_action( 'admin_notices', array( __CLASS__, 'render_native_hybrid_back_link' ), 0 );
 		add_action( 'admin_footer', array( __CLASS__, 'render_close' ), 99999 );
 	}
 
@@ -750,10 +751,10 @@ class QRMS_Admin_Shell {
 		if ( self::is_urunum_yok_screen() ) {
 			return array(
 				'breadcrumb' => sprintf(
-					/* translators: 1: hub group label, 2: module line label */
+					/* translators: 1: hub group label, 2: screen title */
 					__( '%1$s / %2$s', 'qrms' ),
 					__( 'Menü Yönetimi', 'qrms' ),
-					__( 'Restoran Menü', 'qrms' )
+					__( 'Tükenen Ürünler', 'qrms' )
 				),
 				'title'      => __( 'Tükenen Ürünler', 'qrms' ),
 			);
@@ -762,10 +763,10 @@ class QRMS_Admin_Shell {
 		if ( self::is_one_cikanlar_screen() ) {
 			return array(
 				'breadcrumb' => sprintf(
-					/* translators: 1: hub group label, 2: module line label */
+					/* translators: 1: hub group label, 2: screen title */
 					__( '%1$s / %2$s', 'qrms' ),
 					__( 'Menü Yönetimi', 'qrms' ),
-					__( 'Restoran Menü', 'qrms' )
+					__( 'Öne Çıkanlar', 'qrms' )
 				),
 				'title'      => __( 'Öne Çıkanlar', 'qrms' ),
 			);
@@ -774,12 +775,40 @@ class QRMS_Admin_Shell {
 		if ( self::is_kampanya_banner_screen() ) {
 			return array(
 				'breadcrumb' => sprintf(
-					/* translators: 1: hub group label, 2: module line label */
+					/* translators: 1: hub group label, 2: screen title */
 					__( '%1$s / %2$s', 'qrms' ),
 					__( 'Menü Yönetimi', 'qrms' ),
-					__( 'Restoran Menü', 'qrms' )
+					__( 'Kampanya Görselleri', 'qrms' )
 				),
 				'title'      => __( 'Kampanya Görselleri', 'qrms' ),
+			);
+		}
+
+		$taxonomy = self::get_restoran_taxonomy_screen_context();
+		if ( null !== $taxonomy ) {
+			return array(
+				'breadcrumb' => self::breadcrumb_join(
+					array(
+						__( 'Menü Yönetimi', 'qrms' ),
+						__( 'Restoran Menü', 'qrms' ),
+						$taxonomy['label'],
+					)
+				),
+				'title'      => $taxonomy['label'],
+			);
+		}
+
+		$banner = self::get_banner_cpt_screen_context();
+		if ( null !== $banner ) {
+			return array(
+				'breadcrumb' => self::breadcrumb_join(
+					array(
+						__( 'Menü Yönetimi', 'qrms' ),
+						__( 'Restoran Menü', 'qrms' ),
+						$banner['breadcrumb_leaf'],
+					)
+				),
+				'title'      => $banner['title'],
 			);
 		}
 
@@ -799,9 +828,200 @@ class QRMS_Admin_Shell {
 		}
 
 		return array(
-			'breadcrumb' => $ctx['group'],
+			'breadcrumb' => self::build_shell_breadcrumb( $ctx, $title ),
 			'title'      => $title,
 		);
+	}
+
+	/**
+	 * Breadcrumb parçalarını " / " ile birleştirir.
+	 *
+	 * @param string[] $parts Etiketler.
+	 * @return string
+	 */
+	private static function breadcrumb_join( array $parts ) {
+		$clean = array();
+
+		foreach ( $parts as $part ) {
+			$part = trim( (string) $part );
+			if ( '' !== $part ) {
+				$clean[] = $part;
+			}
+		}
+
+		return implode( ' / ', $clean );
+	}
+
+	/**
+	 * Shell üst breadcrumb — grup, modül hub ve alt sayfa tutarlılığı.
+	 *
+	 * @param array  $ctx   resolve_screen_context() çıktısı.
+	 * @param string $title Görünen sayfa başlığı.
+	 * @return string
+	 */
+	private static function build_shell_breadcrumb( array $ctx, $title ) {
+		$group  = isset( $ctx['group'] ) ? (string) $ctx['group'] : '';
+		$module = isset( $ctx['module'] ) ? (string) $ctx['module'] : '';
+		$page   = isset( $ctx['page'] ) ? (string) $ctx['page'] : '';
+
+		if ( 'qrms-analiz-ayarlar' === $page || 'qrms-guvenlik-oturum' === $page ) {
+			return self::breadcrumb_join(
+				array(
+					$group,
+					__( 'Masa Oturumu Güvenliği', 'qrms' ),
+					$title,
+				)
+			);
+		}
+
+		if ( 'restoran-menu' === $module && class_exists( 'QRMS_Admin' ) ) {
+			$hub_slug = QRMS_Admin::get_module_page_slug( 'restoran-menu' );
+
+			if ( $page === $hub_slug ) {
+				return self::breadcrumb_join(
+					array(
+						__( 'Menü Yönetimi', 'qrms' ),
+						__( 'Restoran Menü', 'qrms' ),
+					)
+				);
+			}
+
+			if ( '' !== $page && QRMS_Admin::is_module_subpage( $page ) ) {
+				return self::breadcrumb_join(
+					array(
+						__( 'Menü Yönetimi', 'qrms' ),
+						$title,
+					)
+				);
+			}
+		}
+
+		if ( '' !== $module && class_exists( 'QRMS_Admin' ) ) {
+			$hub_slug = QRMS_Admin::get_module_page_slug( $module );
+			$hub_name = QRMS_Helpers::get_module_name( $module );
+
+			if ( '' !== $page && QRMS_Admin::is_module_subpage( $page ) ) {
+				return self::breadcrumb_join( array( $group, $hub_name, $title ) );
+			}
+
+			if ( $page === $hub_slug ) {
+				return self::breadcrumb_join( array( $group, $hub_name ) );
+			}
+
+			return self::breadcrumb_join( array( $group, $hub_name ) );
+		}
+
+		return $group;
+	}
+
+	/**
+	 * Restoran menü taxonomy ekranı bağlamı (hybrid).
+	 *
+	 * @return array{label:string,back_url:string,back_label:string}|null
+	 */
+	private static function get_restoran_taxonomy_screen_context() {
+		global $pagenow;
+
+		if ( ! self::is_native_hybrid_screen() ) {
+			return null;
+		}
+
+		if ( 'edit-tags.php' !== $pagenow && 'term.php' !== $pagenow ) {
+			return null;
+		}
+
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$taxonomy = isset( $_GET['taxonomy'] ) ? sanitize_key( wp_unslash( $_GET['taxonomy'] ) ) : '';
+
+		if ( ! in_array( $taxonomy, array( 'rma_category', 'rma_allergen', 'rma_ingredient' ), true ) ) {
+			return null;
+		}
+
+		$tax_obj = get_taxonomy( $taxonomy );
+		$label   = ( $tax_obj && isset( $tax_obj->labels->name ) ) ? (string) $tax_obj->labels->name : $taxonomy;
+
+		return array(
+			'label'       => $label,
+			'back_url'    => QRMS_Admin::get_module_page_url( 'restoran-menu' ),
+			'back_label'  => __( 'Menü Yönetimi\'ne Dön', 'qrms' ),
+		);
+	}
+
+	/**
+	 * Banner / slider CPT ekranı bağlamı (hybrid).
+	 *
+	 * @return array{title:string,breadcrumb_leaf:string,back_url:string,back_label:string}|null
+	 */
+	private static function get_banner_cpt_screen_context() {
+		$screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
+
+		if ( ! $screen || ! in_array( $screen->post_type, array( 'qmo_slide', 'qmo_banner_slide' ), true ) ) {
+			return null;
+		}
+
+		if ( 'qmo_slide' === $screen->post_type ) {
+			return array(
+				'title'           => __( 'Öne Çıkan Slider', 'qrms' ),
+				'breadcrumb_leaf' => __( 'Öne Çıkanlar', 'qrms' ),
+				'back_url'        => admin_url( 'admin.php?page=qrms-rm-one-cikanlar' ),
+				'back_label'      => __( 'Öne Çıkanlar\'a Dön', 'qrms' ),
+			);
+		}
+
+		return array(
+			'title'           => __( 'Kampanya Banner', 'qrms' ),
+			'breadcrumb_leaf' => __( 'Kampanya Görselleri', 'qrms' ),
+			'back_url'        => admin_url( 'admin.php?page=qrms-rm-kampanya-banner' ),
+			'back_label'      => __( 'Kampanya Görselleri\'ne Dön', 'qrms' ),
+		);
+	}
+
+	/**
+	 * Hybrid native ekranlarda eksik geri bağlantısı (taxonomy, banner CPT).
+	 *
+	 * @return void
+	 */
+	public static function render_native_hybrid_back_link() {
+		if ( ! self::is_active() || ! self::is_native_hybrid_screen() ) {
+			return;
+		}
+
+		if ( self::is_menu_item_list_screen() || self::is_menu_item_edit_screen() ) {
+			return;
+		}
+
+		$page = self::get_request_page();
+		if ( class_exists( 'QRMS_Admin' ) && '' !== $page && QRMS_Admin::is_module_subpage( $page ) ) {
+			return;
+		}
+
+		$back = null;
+
+		$taxonomy = self::get_restoran_taxonomy_screen_context();
+		if ( null !== $taxonomy ) {
+			$back = $taxonomy;
+		} else {
+			$banner = self::get_banner_cpt_screen_context();
+			if ( null !== $banner ) {
+				$back = array(
+					'back_url'   => $banner['back_url'],
+					'back_label' => $banner['back_label'],
+				);
+			}
+		}
+
+		if ( null === $back ) {
+			return;
+		}
+
+		?>
+		<div class="qrms-subpage-nav">
+			<a class="qrms-back-link" href="<?php echo esc_url( $back['back_url'] ); ?>">
+				<span class="dashicons dashicons-arrow-left-alt2" aria-hidden="true"></span>
+				<?php echo esc_html( $back['back_label'] ); ?>
+			</a>
+		</div>
+		<?php
 	}
 
 	/**

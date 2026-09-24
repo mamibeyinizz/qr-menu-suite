@@ -854,11 +854,15 @@ if ( ! function_exists( 'qmo_chatbot_sayfa_basligi' ) ) {
 			wp_die( 'Bu sayfaya erişim yetkiniz yok.' );
 		}
 
-		echo '<div class="qrms-subpage-nav">';
-		echo '<a class="qrms-back-link" href="' . esc_url( qmo_chatbot_hub_url() ) . '">';
-		echo '<span class="dashicons dashicons-arrow-left-alt2" aria-hidden="true"></span>';
-		echo esc_html__( 'AI Menü Asistanı', 'qrms' );
-		echo '</a></div>';
+		if ( class_exists( 'QRMS_Admin' ) ) {
+			QRMS_Admin::render_subpage_back_link( 'qr-chatbot' );
+		} else {
+			echo '<div class="qrms-subpage-nav">';
+			echo '<a class="qrms-back-link" href="' . esc_url( qmo_chatbot_hub_url() ) . '">';
+			echo '<span class="dashicons dashicons-arrow-left-alt2" aria-hidden="true"></span>';
+			echo esc_html__( 'AI Menü Asistanı\'na Dön', 'qrms' );
+			echo '</a></div>';
+		}
 
 		// Modülün bölümleri arasındaki ORTAK yatay şerit. Sayfa kaydı
 		// sarmalanmadığı için (bkz. module.php) burada elle basılır; şeridin

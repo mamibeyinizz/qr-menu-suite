@@ -1312,7 +1312,7 @@ trait RMA_Admin_Pages_Trait {
         <div class="qrms-subpage-nav">
             <a class="qrms-back-link" href="<?php echo esc_url( $url ); ?>">
                 <span class="dashicons dashicons-arrow-left-alt2" aria-hidden="true"></span>
-                <?php echo esc_html__( 'Ürünler\'e Dön', 'qrms' ); ?>
+			<?php echo esc_html__( 'Ürünlere Dön', 'qrms' ); ?>
             </a>
         </div>
         <?php
