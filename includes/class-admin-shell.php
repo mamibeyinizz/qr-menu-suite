@@ -143,7 +143,8 @@ class QRMS_Admin_Shell {
 			. 'body.qrms-premium-shell-active #wpbody-content{margin:0;padding:0;}'
 			. 'body.qrms-premium-shell-active #wpcontent{margin-left:0!important;}'
 			. 'body.qrms-premium-shell-active #wpbody-content{padding-bottom:0;}'
-			. 'body.qrms-premium-shell-active #wpfooter{display:none;}';
+			. 'body.qrms-premium-shell-active #wpfooter{display:none;}'
+			. 'html.wp-toolbar:has(body.qrms-premium-shell-active){padding-top:0!important;}';
 
 		if ( ! self::is_native_hybrid_screen() ) {
 			$css .= 'body.qrms-premium-shell-active #screen-meta,'

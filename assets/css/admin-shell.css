@@ -587,6 +587,65 @@ body.qrms-premium-shell-hybrid .qrms-shell__content--hybrid .wrap {
 	max-width: none;
 }
 
+/*
+ * Fix 9 — Native/hybrid WordPress Screen Options + wp-toolbar offset (premium shell only).
+ * #screen-meta* precedes #qrms-shell in #wpbody-content; absolute placement keeps shell flush
+ * while Screen Options stay usable below the sticky shell header.
+ */
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid #wpbody-content {
+	position: relative;
+}
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid #screen-meta-links {
+	box-sizing: border-box;
+	float: none;
+	left: calc(var(--qrms-shell-sidebar-w, 260px) + 20px);
+	margin: 0;
+	max-width: none;
+	padding: 0;
+	position: absolute;
+	right: 20px;
+	top: var(--qrms-shell-header-h, 64px);
+	z-index: 95;
+}
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid #screen-meta {
+	box-sizing: border-box;
+	float: none;
+	left: calc(var(--qrms-shell-sidebar-w, 260px) + 20px);
+	margin: 0;
+	max-width: none;
+	position: absolute;
+	right: 20px;
+	top: calc(var(--qrms-shell-header-h, 64px) + 36px);
+	z-index: 95;
+}
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid #screen-options-link-wrap a,
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid #contextual-help-link-wrap a {
+	border-radius: 8px;
+}
+
+body.qrms-premium-shell-active.qrms-premium-shell-hybrid .qrms-shell__content--hybrid {
+	padding-top: 48px;
+}
+
+@media screen and (max-width: 1023px) {
+	body.qrms-premium-shell-active.qrms-premium-shell-hybrid #screen-meta-links,
+	body.qrms-premium-shell-active.qrms-premium-shell-hybrid #screen-meta {
+		left: 20px;
+		right: 20px;
+	}
+}
+
+@media screen and (max-width: 767px) {
+	body.qrms-premium-shell-active.qrms-premium-shell-hybrid #screen-meta-links,
+	body.qrms-premium-shell-active.qrms-premium-shell-hybrid #screen-meta {
+		left: 14px;
+		right: 14px;
+	}
+}
+
 .qrms-shell__nav-group {
 	margin: 14px 0 6px;
 	padding: 0 8px;

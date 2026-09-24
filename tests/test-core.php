@@ -2183,6 +2183,45 @@ qrms_test(
 );
 
 qrms_test(
+	'premium shell WordPress chrome ve Screen Options (Fix 9)',
+	function () {
+		$shell = file_get_contents( QRMS_PLUGIN_DIR . 'includes/class-admin-shell.php' );
+		$css   = file_get_contents( QRMS_PLUGIN_DIR . 'assets/css/admin-shell.css' );
+
+		qrms_assert_contains(
+			'html.wp-toolbar:has(body.qrms-premium-shell-active){padding-top:0!important;}',
+			$shell,
+			'scoped wp-toolbar üst boşluk sıfırlama (inline chrome)'
+		);
+		qrms_assert_same(
+			0,
+			preg_match( '/html\\.wp-toolbar\\s*\\{\\s*padding-top\\s*:\\s*0/i', $css ),
+			'admin-shell.css global html.wp-toolbar override yok'
+		);
+		qrms_assert_contains(
+			'body.qrms-premium-shell-active.qrms-premium-shell-hybrid #screen-meta-links',
+			$css,
+			'hybrid Screen Options links konumlandırma'
+		);
+		qrms_assert_contains(
+			'position: absolute',
+			$css,
+			'Screen Options shell üstüne binmesin diye absolute yerleşim'
+		);
+		qrms_assert_contains(
+			'top: var(--qrms-shell-header-h, 64px)',
+			$css,
+			'Screen Options shell header altı'
+		);
+		qrms_assert_contains(
+			'body.qrms-premium-shell-active.qrms-premium-shell-hybrid #wpbody-content',
+			$css,
+			'hybrid wpbody-content positioning context'
+		);
+	}
+);
+
+qrms_test(
 	'premium shell forest birincil CTA kontrastı (Fix 7)',
 	function () {
 		$bridge = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/css/admin-shell-bridge.css' );
