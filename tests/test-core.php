@@ -2183,6 +2183,34 @@ qrms_test(
 );
 
 qrms_test(
+	'premium shell drawer viewport a11y senkronu (Fix 8.2)',
+	function () {
+		$js = file_get_contents( QRMS_PLUGIN_DIR . 'assets/js/admin-shell.js' );
+
+		qrms_assert_contains( 'function syncShellViewportState', $js, 'viewport drawer a11y helper' );
+		qrms_assert_contains( 'syncShellViewportState();', $js, 'onViewportChange ortak senkron' );
+		qrms_assert_contains(
+			"setOpen( body.classList.contains( 'qrms-shell-sidebar-open' ) )",
+			$js,
+			'mobile dönüşte kapalı drawer inert yeniden uygulanır'
+		);
+		qrms_assert_same(
+			1,
+			preg_match(
+				'/function syncShellViewportState\\(\\)[\\s\\S]*?if \\(\\s*isDesktop\\(\\)\\s*\\)[\\s\\S]*?syncDrawerA11yState\\(\\s*false\\s*\\)/s',
+				$js
+			),
+			'desktop geçişte inert/aria-hidden temizlenir'
+		);
+		qrms_assert_same(
+			0,
+			preg_match( '/function onViewportChange\\(\\)[\\s\\S]*?if \\(\\s*isDesktop\\(\\)\\s*\\)[\\s\\S]*?closeDrawer\\(\\s*false\\s*\\)[\\s\\S]*?\\}\\s*\\}/s', $js ),
+			'onViewportChange yalnızca desktop closeDrawer ile sınırlı değil'
+		);
+	}
+);
+
+qrms_test(
 	'premium shell desktop sidebar drawer-top regression (Fix 8.1)',
 	function () {
 		$css = file_get_contents( QRMS_PLUGIN_DIR . 'assets/css/admin-shell.css' );

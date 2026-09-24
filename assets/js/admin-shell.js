@@ -297,10 +297,22 @@
 		closeDrawer( true );
 	}
 
-	function onViewportChange() {
+	/**
+	 * Keep drawer a11y (inert, aria-hidden, trap) aligned with viewport + open state.
+	 * Required after 1023↔1024 transitions when closeDrawer() skips setOpen() while already closed.
+	 */
+	function syncShellViewportState() {
 		if ( isDesktop() ) {
 			closeDrawer( false );
+			syncDrawerA11yState( false );
+			return;
 		}
+
+		setOpen( body.classList.contains( 'qrms-shell-sidebar-open' ) );
+	}
+
+	function onViewportChange() {
+		syncShellViewportState();
 	}
 
 	function debouncedResize() {
