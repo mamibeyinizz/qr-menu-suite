@@ -2151,6 +2151,38 @@ qrms_test(
 );
 
 qrms_test(
+	'premium shell drawer erişilebilirliği (Fix 8)',
+	function () {
+		$shell = file_get_contents( QRMS_PLUGIN_DIR . 'includes/class-admin-shell.php' );
+		$js    = file_get_contents( QRMS_PLUGIN_DIR . 'assets/js/admin-shell.js' );
+		$css   = file_get_contents( QRMS_PLUGIN_DIR . 'assets/css/admin-shell.css' );
+
+		qrms_assert_contains( 'qrms-shell-drawer-close', $shell, 'drawer kapat düğmesi markup' );
+		qrms_assert_contains( 'closeMenu', $shell, 'drawer kapat aria-label kaynağı' );
+		qrms_assert_contains( 'aria-controls="qrms-shell-sidebar"', $shell, 'toggle aria-controls' );
+		qrms_assert_contains( 'qrms-shell__drawer-close', $css, 'drawer kapat düğmesi stilleri' );
+		qrms_assert_contains( 'getDrawerFocusables', $js, 'drawer focusable listesi' );
+		qrms_assert_contains( 'onDrawerTrapKeyDown', $js, 'drawer Tab focus trap' );
+		qrms_assert_contains( 'focusin', $js, 'drawer focus containment' );
+		qrms_assert_contains( "setAttribute( 'role', 'dialog' )", $js, 'drawer role=dialog' );
+		qrms_assert_contains( "setAttribute( 'inert', '' )", $js, 'kapalı drawer inert' );
+		qrms_assert_contains( 'focusDrawerCloseWithoutScroll', $js, 'açılışta kapat düğmesine focus' );
+		qrms_assert_contains( 'restoreDrawerOpenerFocus', $js, 'kapanışta toggle focus restore' );
+		qrms_assert_contains( 'detachDrawerTrap', $js, 'drawer trap temizliği' );
+		qrms_assert_same(
+			0,
+			preg_match( '/setInterval\s*\(/', $js ),
+			'drawer a11y setInterval kullanmaz'
+		);
+		qrms_assert_same(
+			0,
+			preg_match( '/MutationObserver/', $js ),
+			'drawer a11y MutationObserver kullanmaz'
+		);
+	}
+);
+
+qrms_test(
 	'premium shell forest birincil CTA kontrastı (Fix 7)',
 	function () {
 		$bridge = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/css/admin-shell-bridge.css' );
@@ -2181,10 +2213,12 @@ qrms_test(
 			'birincil CTA focus-visible outline'
 		);
 
-		$cta_block_start = strpos( $bridge, 'Birincil CTA metni: admin-ui.css' );
+		$cta_block_start = strpos(
+			$bridge,
+			'body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin .button-primary'
+		);
 		qrms_assert_true( false !== $cta_block_start, 'Fix 7 CTA kontrast bloğu' );
-		$cta_block = substr( $bridge, (int) $cta_block_start, 2800 );
-		$cta_block = preg_replace( '/\\/\\*[\\s\\S]*?\\*\\//', '', $cta_block );
+		$cta_block = substr( $bridge, (int) $cta_block_start, 2200 );
 		qrms_assert_same(
 			0,
 			preg_match( '/color\s*:\s*#0a0a0a/i', $cta_block ),

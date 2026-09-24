@@ -8,6 +8,7 @@
 	var sidebar = document.getElementById( 'qrms-shell-sidebar' );
 	var backdrop = document.getElementById( 'qrms-shell-backdrop' );
 	var toggle = document.getElementById( 'qrms-shell-menu-toggle' );
+	var drawerClose = document.getElementById( 'qrms-shell-drawer-close' );
 
 	if ( ! body || ! sidebar || ! toggle ) {
 		return;
@@ -17,6 +18,10 @@
 	var resizeTimer = null;
 	var lockedScrollY = 0;
 	var touchMoveBlocked = false;
+	var drawerTrapKeyDown = null;
+	var drawerFocusInHandler = null;
+
+	var FOCUSABLE_SELECTOR = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 	function isDesktop() {
 		return mqDesktop.matches;
@@ -68,6 +73,150 @@
 		event.preventDefault();
 	}
 
+	function focusElementWithoutScroll( el ) {
+		if ( ! el ) {
+			return;
+		}
+
+		try {
+			el.focus( { preventScroll: true } );
+		} catch ( err ) {
+			el.focus();
+		}
+	}
+
+	function focusToggleWithoutScroll() {
+		focusElementWithoutScroll( toggle );
+	}
+
+	function focusDrawerCloseWithoutScroll() {
+		focusElementWithoutScroll( drawerClose || toggle );
+	}
+
+	function getDrawerFocusables() {
+		var nodes = sidebar.querySelectorAll( FOCUSABLE_SELECTOR );
+		var list = [];
+		var i;
+
+		for ( i = 0; i < nodes.length; i++ ) {
+			var el = nodes[ i ];
+
+			if ( el.hasAttribute( 'hidden' ) ) {
+				continue;
+			}
+
+			if ( 'none' === window.getComputedStyle( el ).display ) {
+				continue;
+			}
+
+			if ( ! el.getClientRects().length ) {
+				continue;
+			}
+
+			list.push( el );
+		}
+
+		return list;
+	}
+
+	function onDrawerTrapKeyDown( event ) {
+		if ( ! body.classList.contains( 'qrms-shell-sidebar-open' ) || isDesktop() ) {
+			return;
+		}
+
+		if ( 'Tab' !== event.key ) {
+			return;
+		}
+
+		var focusables = getDrawerFocusables();
+		if ( ! focusables.length ) {
+			event.preventDefault();
+			focusDrawerCloseWithoutScroll();
+			return;
+		}
+
+		var first = focusables[ 0 ];
+		var last = focusables[ focusables.length - 1 ];
+		var active = document.activeElement;
+
+		if ( event.shiftKey ) {
+			if ( active === first || ! sidebar.contains( active ) ) {
+				event.preventDefault();
+				focusElementWithoutScroll( last );
+			}
+			return;
+		}
+
+		if ( active === last || ! sidebar.contains( active ) ) {
+			event.preventDefault();
+			focusElementWithoutScroll( first );
+		}
+	}
+
+	function onDrawerFocusIn( event ) {
+		if ( ! body.classList.contains( 'qrms-shell-sidebar-open' ) || isDesktop() ) {
+			return;
+		}
+
+		if ( sidebar.contains( event.target ) ) {
+			return;
+		}
+
+		focusDrawerCloseWithoutScroll();
+	}
+
+	function attachDrawerTrap() {
+		if ( drawerTrapKeyDown ) {
+			return;
+		}
+
+		drawerTrapKeyDown = onDrawerTrapKeyDown;
+		drawerFocusInHandler = onDrawerFocusIn;
+		document.addEventListener( 'keydown', drawerTrapKeyDown );
+		document.addEventListener( 'focusin', drawerFocusInHandler );
+	}
+
+	function detachDrawerTrap() {
+		if ( drawerTrapKeyDown ) {
+			document.removeEventListener( 'keydown', drawerTrapKeyDown );
+			drawerTrapKeyDown = null;
+		}
+
+		if ( drawerFocusInHandler ) {
+			document.removeEventListener( 'focusin', drawerFocusInHandler );
+			drawerFocusInHandler = null;
+		}
+	}
+
+	function syncDrawerA11yState( open ) {
+		if ( isDesktop() ) {
+			sidebar.removeAttribute( 'inert' );
+			sidebar.removeAttribute( 'aria-hidden' );
+			sidebar.removeAttribute( 'role' );
+			sidebar.removeAttribute( 'aria-modal' );
+			detachDrawerTrap();
+			return;
+		}
+
+		if ( open ) {
+			sidebar.removeAttribute( 'inert' );
+			sidebar.setAttribute( 'aria-hidden', 'false' );
+			sidebar.setAttribute( 'role', 'dialog' );
+			sidebar.setAttribute( 'aria-modal', 'true' );
+			attachDrawerTrap();
+			window.requestAnimationFrame( function () {
+				focusDrawerCloseWithoutScroll();
+			} );
+			return;
+		}
+
+		sidebar.setAttribute( 'inert', '' );
+		sidebar.setAttribute( 'aria-hidden', 'true' );
+		sidebar.removeAttribute( 'role' );
+		sidebar.removeAttribute( 'aria-modal' );
+		detachDrawerTrap();
+	}
+
 	function setOpen( open ) {
 		body.classList.toggle( 'qrms-shell-sidebar-open', open );
 		toggle.setAttribute( 'aria-expanded', open ? 'true' : 'false' );
@@ -85,43 +234,58 @@
 		}
 
 		if ( open && ! isDesktop() ) {
-			sidebar.setAttribute( 'aria-modal', 'true' );
 			lockPageScroll();
 		} else {
-			sidebar.removeAttribute( 'aria-modal' );
 			unlockPageScroll();
 		}
+
+		syncDrawerA11yState( open && ! isDesktop() );
 	}
 
-	function closeDrawer() {
-		setOpen( false );
+	function restoreDrawerOpenerFocus() {
+		window.requestAnimationFrame( function () {
+			focusToggleWithoutScroll();
+		} );
+	}
+
+	function closeDrawer( restoreFocus ) {
+		var shouldRestore = restoreFocus !== false;
+
+		if ( body.classList.contains( 'qrms-shell-sidebar-open' ) ) {
+			setOpen( false );
+		}
+
+		if ( shouldRestore ) {
+			restoreDrawerOpenerFocus();
+		}
 	}
 
 	function openDrawer() {
 		if ( isDesktop() ) {
 			return;
 		}
+
+		if ( openAccountMenu ) {
+			closeAccountMenu( false );
+		}
+
 		setOpen( true );
 	}
 
 	function onToggleClick() {
 		if ( body.classList.contains( 'qrms-shell-sidebar-open' ) ) {
-			closeDrawer();
+			closeDrawer( false );
 		} else {
 			openDrawer();
 		}
 	}
 
 	function onBackdropClick() {
-		closeDrawer();
+		closeDrawer( true );
 	}
 
-	function focusToggleWithoutScroll() {
-		try {
-			toggle.focus( { preventScroll: true } );
-		} catch ( err ) {
-			toggle.focus();
-		}
+	function onDrawerCloseClick() {
+		closeDrawer( true );
 	}
 
 	function onKeyDown( event ) {
@@ -130,15 +294,12 @@
 		}
 
 		event.preventDefault();
-		closeDrawer();
-		window.requestAnimationFrame( function () {
-			focusToggleWithoutScroll();
-		} );
+		closeDrawer( true );
 	}
 
 	function onViewportChange() {
 		if ( isDesktop() ) {
-			closeDrawer();
+			closeDrawer( false );
 		}
 	}
 
@@ -149,11 +310,13 @@
 
 	toggle.addEventListener( 'click', onToggleClick );
 
+	if ( drawerClose ) {
+		drawerClose.addEventListener( 'click', onDrawerCloseClick );
+	}
+
 	if ( backdrop ) {
 		backdrop.addEventListener( 'click', onBackdropClick );
 	}
-
-	document.addEventListener( 'keydown', onKeyDown );
 
 	if ( 'function' === typeof mqDesktop.addEventListener ) {
 		mqDesktop.addEventListener( 'change', onViewportChange );
@@ -168,7 +331,7 @@
 	sidebar.addEventListener( 'click', function ( event ) {
 		var link = event.target.closest( 'a.qrms-shell__nav-link' );
 		if ( link && ! isDesktop() ) {
-			closeDrawer();
+			closeDrawer( true );
 		}
 	} );
 
@@ -189,11 +352,7 @@
 
 		if ( restoreFocus && trigger ) {
 			window.requestAnimationFrame( function () {
-				try {
-					trigger.focus( { preventScroll: true } );
-				} catch ( err ) {
-					trigger.focus();
-				}
+				focusElementWithoutScroll( trigger );
 			} );
 		}
 	}
@@ -216,6 +375,10 @@
 	}
 
 	function toggleAccountMenu( wrap ) {
+		if ( body.classList.contains( 'qrms-shell-sidebar-open' ) && ! isDesktop() ) {
+			return;
+		}
+
 		if ( openAccountMenu && openAccountMenu.wrap === wrap ) {
 			closeAccountMenu( true );
 			return;
@@ -276,7 +439,6 @@
 		onKeyDown( event );
 	}
 
-	document.removeEventListener( 'keydown', onKeyDown );
 	document.addEventListener( 'keydown', onKeyDownWithAccount );
 
 	setOpen( false );
