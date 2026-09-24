@@ -2891,13 +2891,13 @@ body.qrms-premium-shell-active.qrms-premium-shell-hybrid.qrms-product-editor.pos
 body.qrms-premium-shell-active.qrms-premium-shell-hybrid.qrms-product-editor.post-type-rma_menu_item .qrms-shell__content--hybrid {
 	background: var(--qrms-rm-offwhite);
 	min-width: 0;
-	overflow-x: hidden;
+	overflow-x: clip;
 }
 
 body.qrms-premium-shell-active.qrms-premium-shell-hybrid.qrms-product-editor.post-type-rma_menu_item #wpbody-content {
 	max-width: 100%;
 	min-width: 0;
-	overflow-x: hidden;
+	overflow-x: clip;
 }
 
 /* —— Geri navigasyon —— */

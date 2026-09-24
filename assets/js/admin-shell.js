@@ -116,11 +116,24 @@
 		closeDrawer();
 	}
 
-	function onKeyDown( event ) {
-		if ( 'Escape' === event.key && body.classList.contains( 'qrms-shell-sidebar-open' ) ) {
-			closeDrawer();
+	function focusToggleWithoutScroll() {
+		try {
+			toggle.focus( { preventScroll: true } );
+		} catch ( err ) {
 			toggle.focus();
 		}
+	}
+
+	function onKeyDown( event ) {
+		if ( 'Escape' !== event.key || ! body.classList.contains( 'qrms-shell-sidebar-open' ) ) {
+			return;
+		}
+
+		event.preventDefault();
+		closeDrawer();
+		window.requestAnimationFrame( function () {
+			focusToggleWithoutScroll();
+		} );
 	}
 
 	function onViewportChange() {

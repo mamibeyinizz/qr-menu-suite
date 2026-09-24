@@ -1994,6 +1994,37 @@ qrms_test(
 );
 
 qrms_test(
+	'premium shell drawer Escape ve ürün editör sticky taşma düzeltmeleri',
+	function () {
+		$js     = file_get_contents( QRMS_PLUGIN_DIR . 'assets/js/admin-shell.js' );
+		$bridge = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/css/admin-shell-bridge.css' );
+
+		qrms_assert_contains( 'preventScroll: true', $js, 'drawer Escape toggle focus scroll yapmaz' );
+		qrms_assert_contains(
+			'qrms-product-editor.post-type-rma_menu_item #wpbody-content',
+			$bridge,
+			'ürün editör wpbody kapsamı'
+		);
+		qrms_assert_same(
+			0,
+			preg_match(
+				'/qrms-product-editor\.post-type-rma_menu_item #wpbody-content\s*\{[^}]*overflow-x:\s*hidden/s',
+				$bridge
+			),
+			'wpbody overflow-x:hidden sticky scroll konteyneri oluşturmaz'
+		);
+		qrms_assert_same(
+			1,
+			preg_match(
+				'/qrms-product-editor\.post-type-rma_menu_item #wpbody-content\s*\{[^}]*overflow-x:\s*clip/s',
+				$bridge
+			),
+			'wpbody yatay taşma clip ile kesilir'
+		);
+	}
+);
+
+qrms_test(
 	'hub kartlarında emoji ikon kullanılmaz',
 	function () {
 		$css = file_get_contents( QRMS_PLUGIN_DIR . 'assets/css/admin.css' );
