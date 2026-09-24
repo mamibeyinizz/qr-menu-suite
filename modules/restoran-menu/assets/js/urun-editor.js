@@ -666,6 +666,35 @@
 	 * @param {string|null}    widthPxStr Genişlik veya null.
 	 * @return {void}
 	 */
+	/**
+	 * Inline top değerini sayıya çevirir.
+	 *
+	 * @param {HTMLElement|null} el Öğe.
+	 * @return {number|null} Piksel veya bilinmiyorsa null.
+	 */
+	function editorInlineTopSayi( el ) {
+		if ( ! el || ! el.style.top ) {
+			return null;
+		}
+
+		var sayi = parseFloat( el.style.top );
+
+		return isNaN( sayi ) ? null : sayi;
+	}
+
+	/**
+	 * @param {HTMLElement|null} el Öğe.
+	 * @param {number}            ofset Shell header (px).
+	 * @return {boolean} Header altında mı.
+	 */
+	function editorToolbarViewportHeaderAltinda( el, ofset ) {
+		if ( ! el || ! ofset ) {
+			return false;
+		}
+
+		return el.getBoundingClientRect().top < ofset - 0.5;
+	}
+
 	function editorAracKonumAyarla( el, topPxStr, widthPxStr ) {
 		if ( ! el ) {
 			return;
@@ -740,8 +769,9 @@
 			};
 		}
 
+		/* pinStart: header-aware (WP adminBarHeight=0 yerine ofset). pinEnd: WP ile aynı alt sınır. */
 		var pinStart = topPos - toolsHeight - ofset;
-		var pinEnd = topPos - toolsHeight - ofset + editorHeight - buffer;
+		var pinEnd = topPos - toolsHeight + editorHeight - buffer;
 
 		return {
 			canPin: true,
@@ -767,17 +797,33 @@
 			return false;
 		}
 
+		var windowPos = window.pageYOffset || document.documentElement.scrollTop || 0;
+		var pinAraliginda = windowPos >= pin.pinStart && windowPos <= pin.pinEnd;
+		var ustCikisBandi = windowPos >= pin.pinStart - ofset && windowPos < pin.pinStart;
+		var altCikisBandi = windowPos > pin.pinEnd && windowPos <= pin.pinEnd + ofset;
+		var gecisBandinda = pinAraliginda || ustCikisBandi || altCikisBandi;
+
 		if ( pin.shouldPin ) {
 			return true;
 		}
 
-		var windowPos = window.pageYOffset || document.documentElement.scrollTop || 0;
-
-		if ( windowPos < pin.pinStart || windowPos > pin.pinEnd ) {
+		if ( ! gecisBandinda ) {
 			return false;
 		}
 
-		return tools.getBoundingClientRect().top < ofset - 0.5;
+		if ( editorToolbarViewportHeaderAltinda( tools, ofset ) ) {
+			return true;
+		}
+
+		if ( editorAracSabitMi( tools ) ) {
+			var toolsTop = editorInlineTopSayi( tools );
+
+			if ( toolsTop !== null && toolsTop < ofset - 0.5 ) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	/**
@@ -844,6 +890,117 @@
 		}
 
 		var rafId = null;
+		var scrollSonrasiZamanlayici = null;
+		var qrmsPeStyleYaziliyor = false;
+		var toolbarStilGozlemcisi = null;
+		var toolbarStilGozlemlenen = [];
+
+		/**
+		 * QRMS kaynaklı style yazımı sırasında gözlemciyi susturur.
+		 *
+		 * @param {Function} islem Yazım işlemi.
+		 * @return {void}
+		 */
+		function qrmsPeStilYaz( islem ) {
+			qrmsPeStyleYaziliyor = true;
+
+			try {
+				islem();
+			} finally {
+				window.requestAnimationFrame( function () {
+					qrmsPeStyleYaziliyor = false;
+				} );
+			}
+		}
+
+		/**
+		 * WP debounce sonrası veya mutation sonrası düzeltme gerekli mi?
+		 *
+		 * @param {number} ofset Shell header (px).
+		 * @return {boolean} Gerekli mi.
+		 */
+		function editorToolbarDuzeltmeGerekli( ofset ) {
+			var pin = shellEditorPinDurumu( ofset );
+
+			if ( qrmsEditorSabitlemeli( pin, tools, ofset ) ) {
+				return true;
+			}
+
+			if ( ! pin || ! pin.canPin || ! editorAracSabitMi( tools ) ) {
+				return false;
+			}
+
+			var toolsTop = editorInlineTopSayi( tools );
+
+			if ( toolsTop === null || toolsTop >= ofset - 0.5 ) {
+				return false;
+			}
+
+			var windowPos = window.pageYOffset || document.documentElement.scrollTop || 0;
+
+			return windowPos >= pin.pinStart - ofset && windowPos <= pin.pinEnd + ofset;
+		}
+
+		/**
+		 * Toolbar style hedeflerini tek MutationObserver'a ekler (geç gelen TinyMCE DOM dahil).
+		 *
+		 * @return {void}
+		 */
+		function editorToolbarStilGozlemHedefleriEkle() {
+			var wrap = document.getElementById( 'wp-content-wrap' );
+
+			if ( ! wrap || ! toolbarStilGozlemcisi ) {
+				return;
+			}
+
+			var hedefler = [
+				tools,
+				wrap.querySelector( '.mce-menubar' ),
+				wrap.querySelector( '.mce-toolbar-grp' ),
+				document.getElementById( 'ed_toolbar' ),
+			].filter( Boolean );
+
+			hedefler.forEach( function ( el ) {
+				if ( toolbarStilGozlemlenen.indexOf( el ) !== -1 ) {
+					return;
+				}
+
+				toolbarStilGozlemcisi.observe( el, {
+					attributes: true,
+					attributeFilter: [ 'style' ],
+				} );
+				toolbarStilGozlemlenen.push( el );
+			} );
+		}
+
+		/**
+		 * Dar kapsamlı style MutationObserver (WP afterScroll adjust dahil).
+		 *
+		 * @return {void}
+		 */
+		function editorToolbarStilGozlemcisiKur() {
+			if ( typeof MutationObserver === 'undefined' ) {
+				return;
+			}
+
+			if ( ! toolbarStilGozlemcisi ) {
+				toolbarStilGozlemcisi = new MutationObserver( function () {
+					if ( qrmsPeStyleYaziliyor ) {
+						return;
+					}
+
+					var ofset = premiumShellHeaderYukseklik();
+
+					if ( ! ofset || ! editorToolbarDuzeltmeGerekli( ofset ) ) {
+						return;
+					}
+
+					planliSenkronize();
+				} );
+			}
+
+			editorToolbarStilGozlemHedefleriEkle();
+		}
 
 		/**
 		 * Öğe position:fixed ise top değerini ayarlar.
@@ -873,31 +1030,37 @@
 			var ofset = premiumShellHeaderOfsetiniGuncelle();
 			var pin = shellEditorPinDurumu( ofset );
 
-			if ( qrmsEditorSabitlemeli( pin, tools, ofset ) ) {
-				shellEditorErkenSabitle( pin, ofset, tools );
+			if ( ! editorToolbarDuzeltmeGerekli( ofset ) ) {
 				return;
 			}
 
-			if ( ! editorAracSabitMi( tools ) ) {
-				return;
-			}
+			qrmsPeStilYaz( function () {
+				if ( qrmsEditorSabitlemeli( pin, tools, ofset ) ) {
+					shellEditorErkenSabitle( pin, ofset, tools );
+					return;
+				}
 
-			var wrap = document.getElementById( 'wp-content-wrap' );
-			var toolsHeight = tools.offsetHeight || 0;
-			var menuBar = wrap ? wrap.querySelector( '.mce-menubar' ) : null;
-			var visualTop = wrap ? wrap.querySelector( '.mce-toolbar-grp' ) : null;
-			var textTop = document.getElementById( 'ed_toolbar' );
-			var menuBarHeight = menuBar && menuBar.offsetHeight ? menuBar.offsetHeight : 0;
+				if ( ! editorAracSabitMi( tools ) ) {
+					return;
+				}
 
-			/* WP editor-expand: gizli menubar yüksekliği sayılmaz. */
-			if ( menuBarHeight < 3 ) {
-				menuBarHeight = 0;
-			}
+				var wrap = document.getElementById( 'wp-content-wrap' );
+				var toolsHeight = tools.offsetHeight || 0;
+				var menuBar = wrap ? wrap.querySelector( '.mce-menubar' ) : null;
+				var visualTop = wrap ? wrap.querySelector( '.mce-toolbar-grp' ) : null;
+				var textTop = document.getElementById( 'ed_toolbar' );
+				var menuBarHeight = menuBar && menuBar.offsetHeight ? menuBar.offsetHeight : 0;
 
-			sabitTopAyarla( tools, ofset );
-			sabitTopAyarla( menuBar, ofset + toolsHeight );
-			sabitTopAyarla( visualTop, ofset + toolsHeight + menuBarHeight );
-			sabitTopAyarla( textTop, ofset + toolsHeight + menuBarHeight );
+				/* WP editor-expand: gizli menubar yüksekliği sayılmaz. */
+				if ( menuBarHeight < 3 ) {
+					menuBarHeight = 0;
+				}
+
+				sabitTopAyarla( tools, ofset );
+				sabitTopAyarla( menuBar, ofset + toolsHeight );
+				sabitTopAyarla( visualTop, ofset + toolsHeight + menuBarHeight );
+				sabitTopAyarla( textTop, ofset + toolsHeight + menuBarHeight );
+			} );
 		}
 
 		/**
@@ -916,24 +1079,77 @@
 			} );
 		}
 
+		/**
+		 * WP editor-expand afterScroll (100ms) sonrası için tek düzeltme.
+		 *
+		 * @return {void}
+		 */
+		function planliSenkronizeScrollSonrasi() {
+			window.clearTimeout( scrollSonrasiZamanlayici );
+			scrollSonrasiZamanlayici = window.setTimeout( function () {
+				var ofset = premiumShellHeaderYukseklik();
+
+				if ( ofset && editorToolbarDuzeltmeGerekli( ofset ) ) {
+					planliSenkronize();
+				}
+			}, 130 );
+		}
+
+		/**
+		 * editor-expand scroll dinleyicilerini tekilleştirir (yalnızca scroll.qrms-pe).
+		 *
+		 * @return {void}
+		 */
+		function editorExpandScrollBagla() {
+			if ( ! window.jQuery ) {
+				return;
+			}
+
+			var jq = window.jQuery;
+
+			jq( window ).off( 'scroll.qrms-pe' );
+			jq( window ).on( 'scroll.qrms-pe', planliSenkronize );
+			jq( window ).on( 'scroll.qrms-pe', planliSenkronizeScrollSonrasi );
+		}
+
+		/**
+		 * editor-expand scroll dinleyicilerini kaldırır.
+		 *
+		 * @return {void}
+		 */
+		function editorExpandScrollCoz() {
+			if ( ! window.jQuery ) {
+				return;
+			}
+
+			window.jQuery( window ).off( 'scroll.qrms-pe' );
+			window.clearTimeout( scrollSonrasiZamanlayici );
+		}
+
 		premiumShellHeaderOfsetiniGuncelle();
 
 		if ( window.jQuery ) {
 			var jq = window.jQuery;
 
 			jq( document ).on( 'editor-expand-on.qrms-pe', function () {
-				jq( window ).on( 'scroll.qrms-pe', planliSenkronize );
+				editorExpandScrollBagla();
+				editorToolbarStilGozlemcisiKur();
 				planliSenkronize();
 			} );
 
 			jq( document ).on( 'editor-expand-off.qrms-pe', function () {
-				jq( window ).off( 'scroll.qrms-pe' );
+				editorExpandScrollCoz();
 			} );
 
-			jq( document ).on( 'editor-classchange.qrms-pe', planliSenkronize );
+			jq( document ).on( 'editor-classchange.qrms-pe', function () {
+				editorToolbarStilGozlemcisiKur();
+				planliSenkronize();
+				planliSenkronizeScrollSonrasi();
+			} );
 
 			if ( jq( '#postdivrich' ).hasClass( 'wp-editor-expand' ) ) {
-				jq( window ).on( 'scroll.qrms-pe', planliSenkronize );
+				editorExpandScrollBagla();
+				editorToolbarStilGozlemcisiKur();
 			}
 		}
 
@@ -943,7 +1159,10 @@
 
 		window.addEventListener( 'resize', planliSenkronize );
 		window.addEventListener( 'load', planliSenkronize );
-		document.addEventListener( 'tinymce-editor-init', planliSenkronize );
+		document.addEventListener( 'tinymce-editor-init', function () {
+			editorToolbarStilGozlemcisiKur();
+			planliSenkronize();
+		} );
 		planliSenkronize();
 	}
 

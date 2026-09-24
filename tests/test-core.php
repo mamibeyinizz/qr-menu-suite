@@ -2052,6 +2052,17 @@ qrms_test(
 		qrms_assert_contains( 'qrmsEditorSabitlemeli', $js, 'header-aware sabitleme kararı' );
 		qrms_assert_contains( 'editor-classchange.qrms-pe', $js, 'Visual/Code geçişi senkronu' );
 		qrms_assert_contains( 'scroll.qrms-pe', $js, 'editor-expand scroll senkronu' );
+		qrms_assert_contains( 'attributeFilter: [ \'style\' ]', $js, 'dar toolbar style gözlemcisi' );
+		qrms_assert_contains( 'editorToolbarDuzeltmeGerekli', $js, 'gereksiz stil yazımı önlenir' );
+		qrms_assert_contains( 'qrmsPeStyleYaziliyor', $js, 'gözlemci döngü koruması' );
+		qrms_assert_contains( "off( 'scroll.qrms-pe' )", $js, 'scroll.qrms-pe çift bağlama önlenir' );
+		qrms_assert_contains( 'editorExpandScrollBagla', $js, 'scroll yaşam döngüsü tekilleştirilir' );
+		qrms_assert_contains( 'editorToolbarStilGozlemHedefleriEkle', $js, 'geç gelen TinyMCE toolbar hedefleri' );
+		qrms_assert_same(
+			1,
+			preg_match_all( '/toolbarStilGozlemcisi\s*=\s*new\s+MutationObserver/', $js, $matches ),
+			'ürün editör toolbar için tek MutationObserver'
+		);
 	}
 );
 
