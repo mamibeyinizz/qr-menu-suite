@@ -13,6 +13,7 @@
  *  2. Katlanabilir bölümler
  *  3. "Temel Bilgiler" kartı — fiyat, kategori ve görsel kutularının taşınması
  *  4. Başlık/açıklama alanlarının etiketlenmesi
+ *  5. WP editor-expand sabit toolbar — premium shell header ofseti
  */
 
 ( function () {
@@ -644,6 +645,191 @@
 	}
 
 	/**
+	 * Öğe position:fixed mi?
+	 *
+	 * @param {HTMLElement|null} el Öğe.
+	 * @return {boolean} Sabit mi.
+	 */
+	function editorAracSabitMi( el ) {
+		if ( ! el ) {
+			return false;
+		}
+
+		return 'fixed' === el.style.position || 'fixed' === window.getComputedStyle( el ).position;
+	}
+
+	/**
+	 * Sabit katman konumunu yalnızca değişiklik gerektiğinde yazır (top her zaman "Npx").
+	 *
+	 * @param {HTMLElement|null} el        Öğe.
+	 * @param {string}         topPxStr   Örn. "82px".
+	 * @param {string|null}    widthPxStr Genişlik veya null.
+	 * @return {void}
+	 */
+	function editorAracKonumAyarla( el, topPxStr, widthPxStr ) {
+		if ( ! el ) {
+			return;
+		}
+
+		if ( 'fixed' !== el.style.position ) {
+			el.style.position = 'fixed';
+		}
+
+		if ( el.style.top !== topPxStr ) {
+			el.style.top = topPxStr;
+		}
+
+		if ( widthPxStr && el.style.width !== widthPxStr ) {
+			el.style.width = widthPxStr;
+		}
+	}
+
+	/**
+	 * editor-expand sabitleme aralığını shell header ile hesaplar (tüm genişlikler).
+	 *
+	 * @param {number} ofset Shell header yüksekliği (px).
+	 * @return {Object|null} Durum veya geçersiz.
+	 */
+	function shellEditorPinDurumu( ofset ) {
+		var jq = window.jQuery;
+
+		if ( ! jq || ! ofset ) {
+			return null;
+		}
+
+		var $wrap = jq( '#postdivrich' );
+
+		if ( ! $wrap.length || ! $wrap.hasClass( 'wp-editor-expand' ) ) {
+			return null;
+		}
+
+		var $contentWrap = jq( '#wp-content-wrap' );
+		var $tools = jq( '#wp-content-editor-tools' );
+		var visual = $contentWrap.hasClass( 'tmce-active' );
+		var mceEditor = window.tinymce && window.tinymce.get( 'content' );
+
+		if ( mceEditor ) {
+			visual = visual && ! mceEditor.isHidden();
+		}
+
+		var $top = visual ? $contentWrap.find( '.mce-toolbar-grp' ) : jq( '#ed_toolbar' );
+
+		if ( ! $top.length ) {
+			return null;
+		}
+
+		var $editor = visual ? $contentWrap.find( '.mce-edit-area' ) : jq( '#content' );
+		var windowPos = jq( window ).scrollTop();
+		var toolsHeight = $tools.outerHeight() || 0;
+		var topPos = $top.parent().offset().top;
+		var editorHeight = $editor.outerHeight() || 0;
+		var topHeight = visual ? ( $contentWrap.find( '.mce-toolbar-grp' ).outerHeight() || 0 ) : ( jq( '#ed_toolbar' ).outerHeight() || 0 );
+		var autoresizeMinHeight = 300;
+		var buffer = autoresizeMinHeight;
+		var canPin = visual ? autoresizeMinHeight + topHeight : autoresizeMinHeight + 20;
+
+		canPin = editorHeight > ( canPin + 5 );
+
+		if ( ! canPin ) {
+			return {
+				canPin: false,
+				shouldPin: false,
+				visual: visual,
+				toolsHeight: toolsHeight,
+				contentWrapWidth: $contentWrap.width(),
+			};
+		}
+
+		var pinStart = topPos - toolsHeight - ofset;
+		var pinEnd = topPos - toolsHeight - ofset + editorHeight - buffer;
+
+		return {
+			canPin: true,
+			shouldPin: windowPos >= pinStart && windowPos <= pinEnd,
+			pinStart: pinStart,
+			pinEnd: pinEnd,
+			visual: visual,
+			toolsHeight: toolsHeight,
+			contentWrapWidth: $contentWrap.width(),
+		};
+	}
+
+	/**
+	 * QRMS header-aware sabitleme gerekli mi (geçiş bandı dahil)?
+	 *
+	 * @param {Object}            pin   shellEditorPinDurumu() çıktısı.
+	 * @param {HTMLElement}       tools #wp-content-editor-tools.
+	 * @param {number}            ofset Shell header (px).
+	 * @return {boolean} Gerekli mi.
+	 */
+	function qrmsEditorSabitlemeli( pin, tools, ofset ) {
+		if ( ! pin || ! tools || ! ofset || ! pin.canPin ) {
+			return false;
+		}
+
+		if ( pin.shouldPin ) {
+			return true;
+		}
+
+		var windowPos = window.pageYOffset || document.documentElement.scrollTop || 0;
+
+		if ( windowPos < pin.pinStart || windowPos > pin.pinEnd ) {
+			return false;
+		}
+
+		return tools.getBoundingClientRect().top < ofset - 0.5;
+	}
+
+	/**
+	 * Shell header altında sabit toolbar zincirini yalnızca gerektiğinde uygular.
+	 *
+	 * @param {Object}      pin   shellEditorPinDurumu() çıktısı.
+	 * @param {number}      ofset Shell header yüksekliği (px).
+	 * @param {HTMLElement} tools #wp-content-editor-tools.
+	 * @return {void}
+	 */
+	function shellEditorErkenSabitle( pin, ofset, tools ) {
+		var wrap = document.getElementById( 'wp-content-wrap' );
+
+		if ( ! pin || ! tools || ! wrap ) {
+			return;
+		}
+
+		var contentWrapWidth = pin.contentWrapWidth;
+		var toolsHeight = pin.toolsHeight;
+		var visual = pin.visual;
+		var menuBar = wrap.querySelector( '.mce-menubar' );
+		var menuBarHeight = menuBar ? menuBar.offsetHeight : 0;
+		var borderWidth = 1;
+		var topBar = visual ? wrap.querySelector( '.mce-toolbar-grp' ) : document.getElementById( 'ed_toolbar' );
+		var genislikTam = contentWrapWidth + 'px';
+		var genislikIc = ( contentWrapWidth - ( borderWidth * 2 ) ) + 'px';
+		var topTools = ofset + 'px';
+		var topMenu = ( ofset + toolsHeight ) + 'px';
+		var topFormat = ( ofset + toolsHeight + menuBarHeight ) + 'px';
+		var formatGenislik = genislikIc;
+
+		if ( menuBarHeight < 3 ) {
+			menuBarHeight = 0;
+			topFormat = ( ofset + toolsHeight ) + 'px';
+		}
+
+		if ( topBar && ! visual ) {
+			formatGenislik = ( contentWrapWidth - ( borderWidth * 2 ) - ( topBar.offsetWidth - topBar.clientWidth ) ) + 'px';
+		}
+
+		editorAracKonumAyarla( tools, topTools, genislikTam );
+
+		if ( visual && menuBar ) {
+			editorAracKonumAyarla( menuBar, topMenu, genislikIc );
+		}
+
+		if ( topBar ) {
+			editorAracKonumAyarla( topBar, topFormat, formatGenislik );
+		}
+	}
+
+	/**
 	 * WP editor-expand sabit #wp-content-editor-tools çubuğunu premium header
 	 * altına hizalar (inline top:0 WordPress tarafından sürekli yazılır).
 	 *
@@ -667,13 +853,7 @@
 		 * @return {void}
 		 */
 		function sabitTopAyarla( el, px ) {
-			if ( ! el ) {
-				return;
-			}
-
-			var stil = window.getComputedStyle( el );
-
-			if ( 'fixed' !== el.style.position && 'fixed' !== stil.position ) {
+			if ( ! el || ! editorAracSabitMi( el ) ) {
 				return;
 			}
 
@@ -691,9 +871,14 @@
 		 */
 		function senkronize() {
 			var ofset = premiumShellHeaderOfsetiniGuncelle();
-			var stil = window.getComputedStyle( tools );
+			var pin = shellEditorPinDurumu( ofset );
 
-			if ( 'fixed' !== tools.style.position && 'fixed' !== stil.position ) {
+			if ( qrmsEditorSabitlemeli( pin, tools, ofset ) ) {
+				shellEditorErkenSabitle( pin, ofset, tools );
+				return;
+			}
+
+			if ( ! editorAracSabitMi( tools ) ) {
 				return;
 			}
 
@@ -733,20 +918,30 @@
 
 		premiumShellHeaderOfsetiniGuncelle();
 
+		if ( window.jQuery ) {
+			var jq = window.jQuery;
+
+			jq( document ).on( 'editor-expand-on.qrms-pe', function () {
+				jq( window ).on( 'scroll.qrms-pe', planliSenkronize );
+				planliSenkronize();
+			} );
+
+			jq( document ).on( 'editor-expand-off.qrms-pe', function () {
+				jq( window ).off( 'scroll.qrms-pe' );
+			} );
+
+			jq( document ).on( 'editor-classchange.qrms-pe', planliSenkronize );
+
+			if ( jq( '#postdivrich' ).hasClass( 'wp-editor-expand' ) ) {
+				jq( window ).on( 'scroll.qrms-pe', planliSenkronize );
+			}
+		}
+
 		if ( 'undefined' !== typeof ResizeObserver ) {
 			new ResizeObserver( planliSenkronize ).observe( header );
 		}
 
 		window.addEventListener( 'resize', planliSenkronize );
-
-		if ( 'undefined' !== typeof MutationObserver ) {
-			new MutationObserver( planliSenkronize ).observe( tools, {
-				attributes: true,
-				attributeFilter: [ 'style', 'class' ],
-			} );
-		}
-
-		window.addEventListener( 'scroll', planliSenkronize, { passive: true } );
 		window.addEventListener( 'load', planliSenkronize );
 		document.addEventListener( 'tinymce-editor-init', planliSenkronize );
 		planliSenkronize();

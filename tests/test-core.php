@@ -2043,6 +2043,15 @@ qrms_test(
 		qrms_assert_contains( 'wp-content-editor-tools', $js, 'sabit WP editor toolbar ofseti' );
 		qrms_assert_contains( 'qrms-pe-shell-header-offset', $js, 'ölçülen header yüksekliği JS ile yazılır' );
 		qrms_assert_contains( '.qrms-shell__header', $js, 'gerçek shell header ölçümü' );
+		qrms_assert_same(
+			0,
+			preg_match( '/jQuery\.fn\.outerHeight\s*=/', $js ),
+			'jQuery.fn.outerHeight değiştirilmez'
+		);
+		qrms_assert_contains( 'shellEditorPinDurumu', $js, 'shell header sabitleme eşiği' );
+		qrms_assert_contains( 'qrmsEditorSabitlemeli', $js, 'header-aware sabitleme kararı' );
+		qrms_assert_contains( 'editor-classchange.qrms-pe', $js, 'Visual/Code geçişi senkronu' );
+		qrms_assert_contains( 'scroll.qrms-pe', $js, 'editor-expand scroll senkronu' );
 	}
 );
 
