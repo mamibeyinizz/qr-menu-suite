@@ -2050,6 +2050,29 @@ qrms_test(
 		);
 		qrms_assert_contains( 'shellEditorPinDurumu', $js, 'shell header sabitleme eşiği' );
 		qrms_assert_contains( 'qrmsEditorSabitlemeli', $js, 'header-aware sabitleme kararı' );
+		qrms_assert_contains( 'wpEditorExpandAdminBarYukseklik', $js, 'WP editor-expand adminBarHeight (A) kuralı' );
+		qrms_assert_contains( 'shellEditorMutlakAltTopDegerleri', $js, 'T_qrms = T_wp + (H-A) hesabı' );
+		qrms_assert_contains( 'delta: delta', $js, 'süreklilik ofseti H−A' );
+		qrms_assert_contains( 'shellEditorAltPinMutlakSenkronize', $js, 'pinEnd sonrası mutlak toolbar sürekliliği' );
+		qrms_assert_contains( 'qrmsEditorMutlakAltKonumDuzeltmeli', $js, 'pinEnd alt mutlak konum denetimi' );
+		qrms_assert_contains( 'qrmsEditorPinAraligiKonumDuzeltmeli', $js, 'pin aralığı Visual/Code mutlak sızıntısı' );
+		qrms_assert_contains( 'editorToolbarAcilSenkron', $js, 'pinEnd/MO acil senkron yolu' );
+		qrms_assert_contains( 'queueMicrotask', $js, 'Visual/Code classchange microtask senkronu' );
+		qrms_assert_same(
+			0,
+			preg_match( '/altCikisBandi/', $js ),
+			'pinEnd sonrası sabit toolbar uzatma bandı kaldırıldı'
+		);
+		qrms_assert_same(
+			0,
+			preg_match( '/setInterval\s*\(/', $js ),
+			'toolbar ofseti için polling yok'
+		);
+		qrms_assert_same(
+			0,
+			preg_match( '/observe\s*\(\s*document\.body/', $js ),
+			'body geniş MutationObserver yok'
+		);
 		qrms_assert_contains( 'editor-classchange.qrms-pe', $js, 'Visual/Code geçişi senkronu' );
 		qrms_assert_contains( 'scroll.qrms-pe', $js, 'editor-expand scroll senkronu' );
 		qrms_assert_contains( 'attributeFilter: [ \'style\' ]', $js, 'dar toolbar style gözlemcisi' );
