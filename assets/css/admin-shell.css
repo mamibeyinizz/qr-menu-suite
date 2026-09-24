@@ -69,13 +69,16 @@ body.qrms-premium-shell-active {
 	margin-bottom: 16px;
 }
 
-.qrms-shell__drawer-top {
-	display: contents;
-}
+/* Desktop: drawer-top normal wrapper (Fix 8.1 — avoid display:contents flex regression). */
+@media screen and (min-width: 1024px) {
+	body.qrms-premium-shell-active .qrms-shell__drawer-top {
+		display: block;
+	}
 
-.qrms-shell__drawer-top .qrms-shell__brand {
-	flex: 1 1 auto;
-	min-width: 0;
+	body.qrms-premium-shell-active .qrms-shell__drawer-top .qrms-shell__brand {
+		flex: 0 0 auto;
+		min-width: 0;
+	}
 }
 
 .qrms-shell__drawer-close {
@@ -782,7 +785,9 @@ body.qrms-premium-shell-active .qrms-shell__content .qrms-hub-intro {
 
 	body.qrms-premium-shell-active .qrms-shell__drawer-top .qrms-shell__brand {
 		border-bottom: 0;
+		flex: 1 1 auto;
 		margin-bottom: 0;
+		min-width: 0;
 		padding-bottom: 4px;
 	}
 

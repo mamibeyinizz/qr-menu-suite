@@ -2183,6 +2183,45 @@ qrms_test(
 );
 
 qrms_test(
+	'premium shell desktop sidebar drawer-top regression (Fix 8.1)',
+	function () {
+		$css = file_get_contents( QRMS_PLUGIN_DIR . 'assets/css/admin-shell.css' );
+
+		qrms_assert_same(
+			0,
+			preg_match( '/\\.qrms-shell__drawer-top\\s*\\{[^}]*display:\\s*contents/s', $css ),
+			'global display:contents drawer-top yok'
+		);
+		qrms_assert_contains(
+			'body.qrms-premium-shell-active .qrms-shell__drawer-top .qrms-shell__brand',
+			$css,
+			'desktop brand seçici'
+		);
+		qrms_assert_contains(
+			'@media screen and (min-width: 1024px)',
+			$css,
+			'desktop drawer-top media scope'
+		);
+		qrms_assert_same(
+			1,
+			preg_match(
+				'/@media screen and \\(min-width: 1024px\\)[\\s\\S]*?\\.qrms-shell__drawer-top \\.qrms-shell__brand\\s*\\{[^}]*flex:\\s*0\\s+0\\s+auto/s',
+				$css
+			),
+			'desktop brand flex büyümesi kapalı'
+		);
+		qrms_assert_same(
+			1,
+			preg_match(
+				'/@media screen and \\(max-width: 1023px\\)[\\s\\S]*?\\.qrms-shell__drawer-top \\.qrms-shell__brand\\s*\\{[^}]*flex:\\s*1\\s+1\\s+auto/s',
+				$css
+			),
+			'mobile drawer brand flex layout korunur'
+		);
+	}
+);
+
+qrms_test(
 	'premium shell H1 ve geri navigasyon tutarlılığı (Fix 10A)',
 	function () {
 		$shell = file_get_contents( QRMS_PLUGIN_DIR . 'includes/class-admin-shell.php' );
