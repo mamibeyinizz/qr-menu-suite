@@ -93,6 +93,19 @@ class QRMS_Admin_Shell {
 	}
 
 	/**
+	 * Premium shell hybrid ürün ekle/düzenle (native post.php) ekranı.
+	 *
+	 * @return bool
+	 */
+	public static function is_hybrid_product_editor_screen() {
+		if ( ! self::is_active() || ! self::is_native_hybrid_screen() ) {
+			return false;
+		}
+
+		return class_exists( 'RMA_Urun_Editor' ) && RMA_Urun_Editor::ekran_mi();
+	}
+
+	/**
 	 * Whether the current user is on the servis panel screen only.
 	 *
 	 * @return bool

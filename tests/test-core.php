@@ -2334,6 +2334,26 @@ qrms_test(
 );
 
 qrms_test(
+	'premium shell hybrid product editor native H1 a11y (Fix 10A.2.1)',
+	function () {
+		$shell  = file_get_contents( QRMS_PLUGIN_DIR . 'includes/class-admin-shell.php' );
+		$editor = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/class-urun-editor.php' );
+
+		qrms_assert_contains( 'function is_hybrid_product_editor_screen', $shell, 'hybrid ürün editörü tespiti' );
+		qrms_assert_contains( 'is_native_hybrid_screen', $shell, 'hybrid shell scope' );
+		qrms_assert_contains( 'mark_native_wp_heading_a11y_hidden', $editor, 'native wp-heading-inline a11y gizleme' );
+		qrms_assert_contains( 'is_hybrid_product_editor_screen', $editor, 'shell scope ile sınırlı' );
+		qrms_assert_contains( '.wrap > h1.wp-heading-inline', $editor, 'yalnızca wrap başlığı hedeflenir' );
+		qrms_assert_contains( 'qrms-shell__title', $editor, 'shell H1 korunur' );
+		qrms_assert_same(
+			0,
+			preg_match( '/duplicate_page_title_a11y_attr/', $editor ),
+			'Fix 10A.2 helper ürün editöründe değiştirilmedi'
+		);
+	}
+);
+
+qrms_test(
 	'premium shell WordPress chrome ve Screen Options (Fix 9)',
 	function () {
 		$shell = file_get_contents( QRMS_PLUGIN_DIR . 'includes/class-admin-shell.php' );
