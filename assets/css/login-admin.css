@@ -326,6 +326,35 @@
 	min-height: 46px;
 }
 
+/* Merkezi logo bilgi kutusu (yalnızca Giriş ayarları sekmesi). */
+
+.qrms-login-ayar .qrms-login-central-logo-notice__body {
+	margin-top: 4px;
+}
+
+.qrms-login-ayar .qrms-login-central-logo-notice__preview {
+	display: inline-block;
+	margin: 8px 0 12px;
+	padding: 10px 14px;
+	background: #f6f7f7;
+	border: 1px solid #dcdcde;
+	border-radius: 8px;
+	line-height: 0;
+}
+
+.qrms-login-ayar .qrms-login-central-logo-notice__preview img {
+	display: block;
+	max-width: 160px;
+	max-height: 72px;
+	width: auto;
+	height: auto;
+	object-fit: contain;
+}
+
+.qrms-login-ayar .qrms-login-central-logo-notice__preview--legacy {
+	opacity: 0.92;
+}
+
 /* -------------------------------------------------------------------------
  * Dar ekran
  * ---------------------------------------------------------------------- */

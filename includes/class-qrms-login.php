@@ -242,7 +242,9 @@ class QRMS_Login {
 		}
 
 		$v['arkaplan_gorsel']   = isset( $raw['arkaplan_gorsel'] ) ? absint( $raw['arkaplan_gorsel'] ) : 0;
-		$v['logo']              = isset( $raw['logo'] ) ? absint( $raw['logo'] ) : 0;
+		$v['logo']              = isset( $raw['logo'] )
+			? absint( $raw['logo'] )
+			: ( isset( $eski['logo'] ) ? absint( $eski['logo'] ) : 0 );
 		$v['arkaplan_karartma'] = self::clamp( isset( $raw['arkaplan_karartma'] ) ? $raw['arkaplan_karartma'] : 55, 0, 90 );
 		$v['arkaplan_bulanik']  = self::clamp( isset( $raw['arkaplan_bulanik'] ) ? $raw['arkaplan_bulanik'] : 0, 0, 20 );
 		$v['logo_yukseklik']    = self::clamp( isset( $raw['logo_yukseklik'] ) ? $raw['logo_yukseklik'] : 64, 24, 160 );
@@ -1044,6 +1046,25 @@ class QRMS_Login {
 	----------------------------------------------------------------- */
 
 	/**
+	 * Görünüm için çözülmüş logo ek ID'si (merkezi marka → legacy).
+	 *
+	 * Option yazmaz; yalnızca okuma ve çözümleme yapar.
+	 *
+	 * @param array $s Login ayarları (logo anahtarı içermeli).
+	 * @return int
+	 */
+	public static function effective_logo_id( array $s ) {
+		$s      = array_merge( self::defaults(), $s );
+		$legacy = (int) $s['logo'];
+
+		if ( class_exists( 'QRMS_Brand_Identity' ) ) {
+			return (int) QRMS_Brand_Identity::resolve_logo_id( $legacy );
+		}
+
+		return $legacy;
+	}
+
+	/**
 	 * Ayarlardan CSS değişkeni bloğu üretir.
 	 *
 	 * Saf fonksiyondur (WordPress durumu okumaz, yalnızca verilen ayarları
@@ -1140,7 +1161,9 @@ class QRMS_Login {
 			$siniflar[] = 'qrms-login-geri-gizli';
 		}
 
-		if ( ! empty( $s['logo'] ) ) {
+		$logo_url = self::attachment_url( self::effective_logo_id( $s ) );
+
+		if ( '' !== $logo_url ) {
 			$siniflar[] = 'qrms-login-logolu';
 		}
 
@@ -1155,6 +1178,8 @@ class QRMS_Login {
 	public static function enqueue_login_assets() {
 		$s = self::get_settings();
 
+		$logo_url = self::attachment_url( self::effective_logo_id( $s ) );
+
 		wp_enqueue_style(
 			'qrms-login',
 			QRMS_PLUGIN_URL . 'assets/css/login.css',
@@ -1162,7 +1187,7 @@ class QRMS_Login {
 			QRMS_Helpers::asset_version( 'assets/css/login.css' )
 		);
 
-		wp_add_inline_style( 'qrms-login', ':root, body.login { ' . self::css_variables( $s, self::attachment_url( $s['arkaplan_gorsel'] ), self::attachment_url( $s['logo'] ) ) . ' }' );
+		wp_add_inline_style( 'qrms-login', ':root, body.login { ' . self::css_variables( $s, self::attachment_url( $s['arkaplan_gorsel'] ), $logo_url ) . ' }' );
 
 		wp_enqueue_script(
 			'qrms-login',

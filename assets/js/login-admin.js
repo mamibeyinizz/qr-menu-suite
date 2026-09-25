@@ -148,7 +148,6 @@
 			var $gizli  = $kap.find( 'input[type="hidden"]' );
 			var $gorsel = $kap.find( '.qrms-medya-onizleme' );
 			var deg     = $gizli.data( 'onizleme-var' );
-			var tur     = $kap.data( 'medya' );
 			var kutu;
 
 			$kap.on( 'click', '.qrms-medya-sec', function ( olay ) {
@@ -168,10 +167,6 @@
 						$gizli.val( ek.id );
 						$gorsel.html( '<img src="' + ek.url + '" alt="">' );
 						degiskenYaz( deg, 'url(' + ek.url + ')' );
-
-						if ( 'logo' === tur ) {
-							$onizleme.addClass( 'qrms-login-logolu' );
-						}
 					} );
 				}
 
@@ -184,10 +179,6 @@
 				$gizli.val( 0 );
 				$gorsel.empty();
 				degiskenYaz( deg, 'none' );
-
-				if ( 'logo' === tur ) {
-					$onizleme.removeClass( 'qrms-login-logolu' );
-				}
 			} );
 		} );
 
