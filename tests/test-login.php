@@ -678,3 +678,134 @@ qrms_test(
 		qrms_assert_contains( '--qrms-lg-vurgu: #c9a84c', $css, 'geçersiz renk varsayılana döner' );
 	}
 );
+
+echo "\nGiriş ekranı — merkezi logo\n";
+
+qrms_test(
+	'merkezi logo çözümleme (A–E)',
+	function () {
+		delete_option( QRMS_Brand_Identity::OPTION );
+		update_option( QRMS_Login::OPTION, array( 'logo' => 200 ) );
+
+		qrms_assert_same( 200, QRMS_Login::effective_logo_id( array( 'logo' => 200 ) ), 'B: merkezi yok legacy' );
+
+		update_option( QRMS_Brand_Identity::OPTION, array( 'logo' => 100 ) );
+		qrms_assert_same( 100, QRMS_Login::effective_logo_id( array( 'logo' => 200 ) ), 'A: merkezi + legacy' );
+		qrms_assert_same( 100, QRMS_Login::effective_logo_id( array( 'logo' => 0 ) ), 'D: merkezi + legacy 0' );
+
+		$GLOBALS['qrms_test']['missing_attachment_ids'][999] = true;
+		update_option( QRMS_Brand_Identity::OPTION, array( 'logo' => 999 ) );
+		qrms_assert_same( 200, QRMS_Login::effective_logo_id( array( 'logo' => 200 ) ), 'C: geçersiz merkezi legacy' );
+		unset( $GLOBALS['qrms_test']['missing_attachment_ids'][999] );
+
+		delete_option( QRMS_Brand_Identity::OPTION );
+		qrms_assert_same( 0, QRMS_Login::effective_logo_id( array( 'logo' => 0 ) ), 'E: logo yok' );
+
+		qrms_assert_same( 200, (int) get_option( QRMS_Login::OPTION )['logo'], 'F: legacy DB dokunulmadı' );
+	}
+);
+
+qrms_test(
+	'qrms-login-logolu merkezi ve legacy ile senkron (G–H)',
+	function () {
+		delete_option( QRMS_Brand_Identity::OPTION );
+
+		$siniflar = QRMS_Login::skin_classes( array( 'logo' => 0 ) );
+		qrms_assert_false( in_array( 'qrms-login-logolu', $siniflar, true ), 'logo yok sınıf yok' );
+
+		update_option( QRMS_Brand_Identity::OPTION, array( 'logo' => 100 ) );
+		$siniflar = QRMS_Login::skin_classes( array( 'logo' => 0 ) );
+		qrms_assert_true( in_array( 'qrms-login-logolu', $siniflar, true ), 'G: central-only sınıf' );
+
+		$GLOBALS['qrms_test']['missing_attachment_ids'][999] = true;
+		update_option( QRMS_Brand_Identity::OPTION, array( 'logo' => 999 ) );
+		$siniflar = QRMS_Login::skin_classes( array( 'logo' => 200 ) );
+		qrms_assert_true( in_array( 'qrms-login-logolu', $siniflar, true ), 'H: invalid central + legacy' );
+		unset( $GLOBALS['qrms_test']['missing_attachment_ids'][999] );
+
+		delete_option( QRMS_Brand_Identity::OPTION );
+	}
+);
+
+qrms_test(
+	'logo URL ve sınıf aynı kaynaktan (I–L)',
+	function () {
+		update_option( QRMS_Brand_Identity::OPTION, array( 'logo' => 100 ) );
+
+		update_option(
+			QRMS_Login::OPTION,
+			array(
+				'logo'           => 200,
+				'logo_yukseklik' => 80,
+				'baslik'         => 'Özel Başlık',
+				'alt_metin'      => 'Özel alt',
+			)
+		);
+
+		$s = QRMS_Login::get_settings();
+
+		$resolved = QRMS_Login::effective_logo_id( $s );
+		$url      = QRMS_Login::attachment_url( $resolved );
+		$css      = QRMS_Login::css_variables( $s, '', $url );
+		$siniflar = QRMS_Login::skin_classes( $s );
+
+		qrms_assert_contains( '/100-full.jpg', $url, 'I: merkezi URL' );
+		qrms_assert_contains( '--qrms-lg-logo: url(https://restoran.test/wp-content/uploads/100-full.jpg)', $css, 'I: CSS merkezi' );
+		qrms_assert_true( in_array( 'qrms-login-logolu', $siniflar, true ), 'I: sınıf var' );
+		qrms_assert_contains( '--qrms-lg-logo-h: 80px', $css, 'J: yükseklik korunur' );
+
+		$mesaj = QRMS_Login::login_message( '' );
+		qrms_assert_contains( 'Özel Başlık', $mesaj, 'K: baslik' );
+		qrms_assert_contains( 'Özel alt', $mesaj, 'L: alt_metin' );
+
+		update_option( QRMS_Login::OPTION, array() );
+
+		delete_option( QRMS_Brand_Identity::OPTION );
+	}
+);
+
+qrms_test(
+	'sanitize logo POST yoksa legacy korunur (M–N)',
+	function () {
+		$eski = array_merge( QRMS_Login::defaults(), array( 'logo' => 200 ) );
+
+		$yeni = QRMS_Login::sanitize_settings( array( 'slug' => 'qrm' ), $eski );
+		qrms_assert_same( 200, $yeni['logo'], 'M: logo korunur' );
+
+		update_option( QRMS_Login::OPTION, array( 'logo' => 200 ) );
+		update_option( QRMS_Brand_Identity::OPTION, array( 'logo' => 100 ) );
+
+		$yeni2 = QRMS_Login::sanitize_settings( array( 'slug' => 'qrm' ), $eski );
+		qrms_assert_same( 200, $yeni2['logo'], 'N: merkezi ayarlanırken legacy korunur' );
+		qrms_assert_same( 200, (int) QRMS_Login::get_settings()['logo'], 'N: option hâlâ 200' );
+
+		delete_option( QRMS_Brand_Identity::OPTION );
+		update_option( QRMS_Login::OPTION, array() );
+	}
+);
+
+qrms_test(
+	'geriye dönük dört durum (STATE 1–4)',
+	function () {
+		delete_option( QRMS_Brand_Identity::OPTION );
+		update_option( QRMS_Login::OPTION, array( 'logo' => 200 ) );
+		qrms_assert_same( 200, QRMS_Login::effective_logo_id( QRMS_Login::get_settings() ), 'STATE 1' );
+
+		update_option( QRMS_Brand_Identity::OPTION, array( 'logo' => 100 ) );
+		qrms_assert_same( 100, QRMS_Login::effective_logo_id( QRMS_Login::get_settings() ), 'STATE 2' );
+		qrms_assert_same( 200, (int) get_option( QRMS_Login::OPTION )['logo'], 'STATE 2 DB' );
+
+		$GLOBALS['qrms_test']['missing_attachment_ids'][888] = true;
+		update_option( QRMS_Brand_Identity::OPTION, array( 'logo' => 888 ) );
+		qrms_assert_same( 200, QRMS_Login::effective_logo_id( QRMS_Login::get_settings() ), 'STATE 3' );
+		unset( $GLOBALS['qrms_test']['missing_attachment_ids'][888] );
+
+		delete_option( QRMS_Brand_Identity::OPTION );
+		update_option( QRMS_Login::OPTION, array( 'logo' => 0 ) );
+		qrms_assert_same( 0, QRMS_Login::effective_logo_id( QRMS_Login::get_settings() ), 'STATE 4' );
+		$siniflar = QRMS_Login::skin_classes( QRMS_Login::get_settings() );
+		qrms_assert_false( in_array( 'qrms-login-logolu', $siniflar, true ), 'STATE 4 sınıf yok' );
+
+		update_option( QRMS_Login::OPTION, array() );
+	}
+);

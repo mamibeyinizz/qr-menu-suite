@@ -1261,7 +1261,10 @@ trait QRMS_HFB_Frontend {
 	 * @return string
 	 */
 	private function render_brand( $opts, $context ) {
-		$id   = isset( $opts['logo'] ) ? (int) $opts['logo'] : 0;
+		$legacy = isset( $opts['logo'] ) ? (int) $opts['logo'] : 0;
+		$id     = class_exists( 'QRMS_Brand_Identity' )
+			? QRMS_Brand_Identity::resolve_logo_id( $legacy )
+			: $legacy;
 		$home = esc_url( home_url( '/' ) );
 
 		if ( $id > 0 ) {

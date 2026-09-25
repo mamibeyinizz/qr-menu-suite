@@ -1570,7 +1570,15 @@ function selected( $selected, $current = true, $echo = true ) {
 function wp_get_attachment_image_url( $id, $size = 'thumbnail' ) {
 	$id = absint( $id );
 
-	return $id ? 'https://restoran.test/wp-content/uploads/' . $id . '-' . $size . '.jpg' : '';
+	if ( ! $id ) {
+		return '';
+	}
+
+	if ( isset( $GLOBALS['qrms_test']['missing_attachment_ids'][ $id ] ) ) {
+		return '';
+	}
+
+	return 'https://restoran.test/wp-content/uploads/' . $id . '-' . $size . '.jpg';
 }
 
 /**

@@ -26,7 +26,7 @@ function qrms_login_ayar_sayfasi() {
 	$slug_hata = isset( $_GET['slug_hata'] ) ? sanitize_text_field( wp_unslash( $_GET['slug_hata'] ) ) : '';
 
 	$arkaplan_url = QRMS_Login::attachment_url( $s['arkaplan_gorsel'] );
-	$logo_url     = QRMS_Login::attachment_url( $s['logo'] );
+	$logo_url     = QRMS_Login::attachment_url( QRMS_Login::effective_logo_id( $s ) );
 	?>
 	<div class="qrms-login-ayar">
 
@@ -223,18 +223,7 @@ function qrms_login_ayar_sayfasi() {
 					<div class="qrms-card">
 						<h2 class="qrms-card-title"><?php esc_html_e( 'Marka', 'qrms' ); ?></h2>
 
-						<div class="qrms-field qrms-medya" data-medya="logo">
-							<span class="qrms-field-label"><?php esc_html_e( 'Logo', 'qrms' ); ?></span>
-							<div class="qrms-medya-onizleme">
-								<?php if ( '' !== $logo_url ) : ?>
-									<img src="<?php echo esc_url( $logo_url ); ?>" alt="">
-								<?php endif; ?>
-							</div>
-							<input type="hidden" name="qrms_login[logo]" value="<?php echo esc_attr( $s['logo'] ); ?>" data-onizleme-var="--qrms-lg-logo">
-							<button type="button" class="button qrms-medya-sec"><?php esc_html_e( 'Logo seç', 'qrms' ); ?></button>
-							<button type="button" class="button-link qrms-medya-sil"><?php esc_html_e( 'Kaldır', 'qrms' ); ?></button>
-							<p class="qrms-muted"><?php esc_html_e( 'Boş bırakırsanız site adı yazıyla görünür.', 'qrms' ); ?></p>
-						</div>
+						<?php qrms_login_render_central_brand_logo_notice( $s ); ?>
 
 						<div class="qrms-field">
 							<label for="qrms-login-logo-h"><?php esc_html_e( 'Logo yüksekliği', 'qrms' ); ?> <span class="qrms-deger" data-icin="qrms-login-logo-h"><?php echo esc_html( $s['logo_yukseklik'] ); ?>px</span></label>
@@ -359,6 +348,49 @@ function qrms_login_ayar_sayfasi() {
 
 			</div>
 		</form>
+	</div>
+	<?php
+}
+
+/**
+ * Merkezi restoran logosu bilgisi (Login'de ikinci logo seçici yok).
+ *
+ * @param array<string,mixed> $s Mevcut login ayarları (legacy fallback önizlemesi için).
+ * @return void
+ */
+function qrms_login_render_central_brand_logo_notice( $s ) {
+	$marka_url  = admin_url( 'admin.php?page=' . QRMS_Admin::SETTINGS_SLUG . '&tab=marka' );
+	$central    = class_exists( 'QRMS_Brand_Identity' ) ? QRMS_Brand_Identity::get_logo_id() : 0;
+	$gecerli    = $central > 0 && class_exists( 'QRMS_Brand_Identity' ) && QRMS_Brand_Identity::attachment_is_valid_logo( $central );
+	$onizleme   = $gecerli ? QRMS_Brand_Identity::get_logo_url( 'thumbnail' ) : '';
+	$legacy_id  = isset( $s['logo'] ) ? absint( $s['logo'] ) : 0;
+	$legacy_url = ( ! $gecerli && $legacy_id > 0 ) ? QRMS_Login::attachment_url( $legacy_id ) : '';
+	?>
+	<div class="qrms-field qrms-login-central-logo-notice">
+		<span class="qrms-field-label"><?php esc_html_e( 'Logo', 'qrms' ); ?></span>
+		<div class="qrms-login-central-logo-notice__body">
+			<?php if ( $gecerli ) : ?>
+				<p class="qrms-muted"><?php esc_html_e( 'Merkezi logo kullanılıyor.', 'qrms' ); ?></p>
+				<?php if ( '' !== $onizleme ) : ?>
+					<div class="qrms-login-central-logo-notice__preview">
+						<img src="<?php echo esc_url( $onizleme ); ?>" alt="">
+					</div>
+				<?php endif; ?>
+			<?php else : ?>
+				<p class="qrms-muted"><?php esc_html_e( 'Merkezi logo henüz ayarlanmadı.', 'qrms' ); ?></p>
+				<p class="qrms-muted"><?php esc_html_e( 'Kayıtlı Login logosu merkezi logo ayarlanana kadar fallback olarak kullanılabilir.', 'qrms' ); ?></p>
+				<?php if ( '' !== $legacy_url ) : ?>
+					<div class="qrms-login-central-logo-notice__preview qrms-login-central-logo-notice__preview--legacy">
+						<img src="<?php echo esc_url( $legacy_url ); ?>" alt="">
+					</div>
+				<?php endif; ?>
+			<?php endif; ?>
+			<p class="qrms-muted">
+				<?php esc_html_e( 'Logo, Restoran Markası ayarlarından yönetilir.', 'qrms' ); ?>
+				<a href="<?php echo esc_url( $marka_url ); ?>"><?php esc_html_e( 'Restoran Markası ayarları', 'qrms' ); ?></a>
+			</p>
+			<p class="qrms-muted"><?php esc_html_e( 'Logo seçilmezse site adı yazıyla görünür.', 'qrms' ); ?></p>
+		</div>
 	</div>
 	<?php
 }

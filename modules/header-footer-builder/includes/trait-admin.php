@@ -136,11 +136,11 @@ trait QRMS_HFB_Admin {
 		<div class="qrms-card hfb-step" data-step="1" data-step-title="<?php esc_attr_e( 'Logo Boyutu', 'qrms' ); ?>">
 			<h2 class="qrms-card-title"><?php esc_html_e( '1. Logo Boyutu', 'qrms' ); ?></h2>
 			<p class="description">
-				<?php esc_html_e( 'Logo görselini yükleyin; genişlik ve yükseklik masaüstü, tablet ve mobil için ayrı ayarlanır. Logo seçilmezse QR ikonu ve iki satırlık marka yazısı kullanılır.', 'qrms' ); ?>
+				<?php esc_html_e( 'Logo görseli Restoran Markası ayarlarından yönetilir; burada genişlik ve yükseklik masaüstü, tablet ve mobil için ayrı ayarlanır. Logo yoksa QR ikonu ve iki satırlık marka yazısı kullanılır.', 'qrms' ); ?>
 			</p>
 
 			<h3 class="hfb-section-title"><?php esc_html_e( 'Genel', 'qrms' ); ?></h3>
-			<?php $this->render_media_field( 'hfb_header_logo', __( 'Logo (isteğe bağlı)', 'qrms' ), (int) $opts['logo'] ); ?>
+			<?php $this->render_central_brand_logo_notice(); ?>
 
 			<div class="qrms-field">
 				<label class="qrms-label" for="hfb_header_brand_line1"><?php esc_html_e( 'Marka — üst satır', 'qrms' ); ?></label>
@@ -384,7 +384,7 @@ trait QRMS_HFB_Admin {
 			<p class="description"><?php esc_html_e( 'Logo, marka adı ve kısa açıklama — bu, Yerleşim adımına eklediğiniz her Logo bloğunda aynı görünen tek, paylaşılan içeriktir. Bloğun sütundaki hizalaması Yerleşim adımından ayarlanır.', 'qrms' ); ?></p>
 
 			<h3 class="hfb-section-title"><?php esc_html_e( 'Genel', 'qrms' ); ?></h3>
-			<?php $this->render_media_field( 'hfb_footer_logo', __( 'Logo (isteğe bağlı)', 'qrms' ), (int) $opts['logo'] ); ?>
+			<?php $this->render_central_brand_logo_notice(); ?>
 
 			<div class="qrms-field">
 				<label class="qrms-label" for="hfb_footer_brand_line1"><?php esc_html_e( 'Marka — üst satır', 'qrms' ); ?></label>
@@ -2116,6 +2116,47 @@ trait QRMS_HFB_Admin {
 			</div>
 			<?php
 		endforeach;
+	}
+
+	/**
+	 * Medya yükleme alanı.
+	 *
+	 * @param string $name  Alan adı.
+	 * @param string $label Etiket.
+	 * @param int    $id    Ek ID.
+	 * @return void
+	 */
+	/**
+	 * Merkezi restoran logosu bilgisi (HFB'de ikinci logo seçici yok).
+	 *
+	 * @return void
+	 */
+	private function render_central_brand_logo_notice() {
+		$marka_url = admin_url( 'admin.php?page=' . QRMS_Admin::SETTINGS_SLUG . '&tab=marka' );
+		$central   = class_exists( 'QRMS_Brand_Identity' ) ? QRMS_Brand_Identity::get_logo_id() : 0;
+		$gecerli   = $central > 0 && class_exists( 'QRMS_Brand_Identity' ) && QRMS_Brand_Identity::attachment_is_valid_logo( $central );
+		$onizleme  = $gecerli ? QRMS_Brand_Identity::get_logo_url( 'thumbnail' ) : '';
+		?>
+		<div class="qrms-field hfb-central-logo-notice">
+			<span class="qrms-label"><?php esc_html_e( 'Logo', 'qrms' ); ?></span>
+			<div class="hfb-central-logo-notice__body">
+				<?php if ( $gecerli ) : ?>
+					<p class="qrms-muted"><?php esc_html_e( 'Merkezi logo kullanılıyor.', 'qrms' ); ?></p>
+					<?php if ( '' !== $onizleme ) : ?>
+						<div class="hfb-central-logo-notice__preview">
+							<img src="<?php echo esc_url( $onizleme ); ?>" alt="">
+						</div>
+					<?php endif; ?>
+				<?php else : ?>
+					<p class="qrms-muted"><?php esc_html_e( 'Merkezi logo henüz ayarlanmadı. Kayıtlı eski logo varsa kullanılmaya devam eder.', 'qrms' ); ?></p>
+				<?php endif; ?>
+				<p>
+					<?php esc_html_e( 'Logo, Sistem Ayarları → Restoran Markası bölümünden yönetilir.', 'qrms' ); ?>
+					<a href="<?php echo esc_url( $marka_url ); ?>"><?php esc_html_e( 'Restoran Markası ayarları', 'qrms' ); ?></a>
+				</p>
+			</div>
+		</div>
+		<?php
 	}
 
 	/**

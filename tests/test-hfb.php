@@ -1972,4 +1972,157 @@ qrms_test(
 	}
 );
 
+qrms_test(
+	'merkezi marka: central geçerliyse header, hamburger ve footer aynı logoyu kullanır',
+	function () {
+		$hfb = qrms_hfb();
+
+		update_option(
+			QRMS_Brand_Identity::OPTION,
+			array(
+				'logo'   => 100,
+				'ad'     => '',
+				'alt_ad' => '',
+			)
+		);
+		update_option(
+			'hfb_header_options',
+			array_merge(
+				$hfb->get_header_options(),
+				array( 'logo' => 200 )
+			)
+		);
+		update_option(
+			'hfb_footer_options',
+			array_merge(
+				$hfb->get_footer_options(),
+				array( 'logo' => 300 )
+			)
+		);
+
+		$header = $hfb->render_header( $hfb->get_header_options(), $hfb->get_hamburger_options() );
+		$footer = $hfb->render_footer( $hfb->get_footer_options() );
+
+		qrms_assert_contains( '/100-medium.jpg', $header, 'header merkezi logo' );
+		qrms_assert_contains( '/100-medium.jpg', $footer, 'footer merkezi logo' );
+		qrms_assert_false( strpos( $header, '/200-medium.jpg' ), 'header legacy basılmaz' );
+		qrms_assert_false( strpos( $footer, '/300-medium.jpg' ), 'footer legacy basılmaz' );
+		qrms_assert_contains( 'hfb-mobile-panel', $header, 'hamburger panel' );
+		qrms_assert_contains( '/100-medium.jpg', $header, 'hamburger aynı marka html' );
+		qrms_assert_same( 200, (int) get_option( 'hfb_header_options' )['logo'], 'header legacy depo' );
+		qrms_assert_same( 300, (int) get_option( 'hfb_footer_options' )['logo'], 'footer legacy depo' );
+	}
+);
+
+qrms_test(
+	'merkezi marka: central yoksa header ve footer legacy logoları',
+	function () {
+		$hfb = qrms_hfb();
+
+		delete_option( QRMS_Brand_Identity::OPTION );
+		update_option(
+			'hfb_header_options',
+			array_merge( $hfb->get_header_options(), array( 'logo' => 200 ) )
+		);
+		update_option(
+			'hfb_footer_options',
+			array_merge( $hfb->get_footer_options(), array( 'logo' => 300 ) )
+		);
+
+		$header = $hfb->render_header( $hfb->get_header_options() );
+		$footer = $hfb->render_footer( $hfb->get_footer_options() );
+
+		qrms_assert_contains( '/200-medium.jpg', $header, 'header legacy' );
+		qrms_assert_contains( '/300-medium.jpg', $footer, 'footer legacy' );
+	}
+);
+
+qrms_test(
+	'merkezi marka: logo yoksa HFB QR/metin fallback',
+	function () {
+		$hfb = qrms_hfb();
+
+		delete_option( QRMS_Brand_Identity::OPTION );
+		update_option(
+			'hfb_header_options',
+			array_merge( $hfb->get_header_options(), array( 'logo' => 0 ) )
+		);
+
+		$html = $hfb->render_header( $hfb->get_header_options() );
+
+		qrms_assert_contains( 'hfb-brand__mark', $html, 'QR ikon fallback' );
+		qrms_assert_false( strpos( $html, 'hfb-brand--image' ), 'görsel modu değil' );
+	}
+);
+
+qrms_test(
+	'merkezi marka: silinmiş central attachment legacyye düşer',
+	function () {
+		$hfb = qrms_hfb();
+
+		update_option( QRMS_Brand_Identity::OPTION, array( 'logo' => 999 ) );
+		$GLOBALS['qrms_test']['missing_attachment_ids'][999] = true;
+		update_option(
+			'hfb_header_options',
+			array_merge( $hfb->get_header_options(), array( 'logo' => 200 ) )
+		);
+		update_option(
+			'hfb_footer_options',
+			array_merge( $hfb->get_footer_options(), array( 'logo' => 300 ) )
+		);
+
+		$header = $hfb->render_header( $hfb->get_header_options() );
+		$footer = $hfb->render_footer( $hfb->get_footer_options() );
+
+		qrms_assert_contains( '/200-medium.jpg', $header, 'header legacy' );
+		qrms_assert_contains( '/300-medium.jpg', $footer, 'footer legacy' );
+
+		unset( $GLOBALS['qrms_test']['missing_attachment_ids'][999] );
+	}
+);
+
+qrms_test(
+	'merkezi marka: HFB kaydı legacy logo option değerlerini değiştirmez',
+	function () {
+		$hfb = qrms_hfb();
+
+		update_option(
+			'hfb_header_options',
+			array_merge( $hfb->get_header_options(), array( 'logo' => 200, 'brand_line1' => 'Eski Üst' ) )
+		);
+		update_option(
+			'hfb_footer_options',
+			array_merge( $hfb->get_footer_options(), array( 'logo' => 300 ) )
+		);
+
+		$hfb->save_settings(
+			array(
+				'hfb_header_brand_line1' => 'Yeni Üst',
+				'hfb_footer_brand_line1' => 'Footer Üst',
+			)
+		);
+
+		qrms_assert_same( 200, (int) get_option( 'hfb_header_options' )['logo'], 'header logo korunur' );
+		qrms_assert_same( 300, (int) get_option( 'hfb_footer_options' )['logo'], 'footer logo korunur' );
+		qrms_assert_same( 'Yeni Üst', get_option( 'hfb_header_options' )['brand_line1'], 'diğer alan kaydolur' );
+	}
+);
+
+qrms_test(
+	'merkezi marka: adminde bağımsız logo seçici yok, merkezi bilgi kutusu var',
+	function () {
+		$hfb = qrms_hfb();
+		$GLOBALS['qrms_test']['can'] = true;
+
+		ob_start();
+		$hfb->render_admin_page();
+		$html = ob_get_clean();
+
+		qrms_assert_false( strpos( $html, 'name="hfb_header_logo"' ), 'header logo input yok' );
+		qrms_assert_false( strpos( $html, 'name="hfb_footer_logo"' ), 'footer logo input yok' );
+		qrms_assert_contains( 'hfb-central-logo-notice', $html, 'merkezi logo kutusu' );
+		qrms_assert_contains( 'tab=marka', $html, 'restoran markası linki' );
+	}
+);
+
 echo "\nQR Çeviri (P1 yönetici verisi)\n";
