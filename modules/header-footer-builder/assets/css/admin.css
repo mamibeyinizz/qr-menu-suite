@@ -677,6 +677,17 @@
   max-width: 120px;
 }
 
+.hfb-wrap .hfb-central-logo-notice__preview {
+  margin: 0.5rem 0;
+}
+
+.hfb-wrap .hfb-central-logo-notice__preview img {
+  border: 1px solid #dcdcde;
+  border-radius: 6px;
+  height: auto;
+  max-width: 120px;
+}
+
 .hfb-wrap .hfb-social-row {
   align-items: center;
   display: grid;

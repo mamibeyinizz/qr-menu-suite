@@ -31,6 +31,22 @@ qrms_test(
 );
 
 qrms_test(
+	'resolve_logo_id merkezi ve legacy önceliği',
+	function () {
+		update_option( QRMS_Brand_Identity::OPTION, array( 'logo' => 100 ) );
+		qrms_assert_same( 100, QRMS_Brand_Identity::resolve_logo_id( 200 ), 'geçerli merkezi' );
+
+		delete_option( QRMS_Brand_Identity::OPTION );
+		qrms_assert_same( 200, QRMS_Brand_Identity::resolve_logo_id( 200 ), 'merkezi yok' );
+
+		update_option( QRMS_Brand_Identity::OPTION, array( 'logo' => 999 ) );
+		$GLOBALS['qrms_test']['missing_attachment_ids'][999] = true;
+		qrms_assert_same( 200, QRMS_Brand_Identity::resolve_logo_id( 200 ), 'geçersiz merkezi legacy' );
+		unset( $GLOBALS['qrms_test']['missing_attachment_ids'][999] );
+	}
+);
+
+qrms_test(
 	'helper logo url ve ad',
 	function () {
 		update_option(

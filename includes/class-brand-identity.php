@@ -111,6 +111,51 @@ class QRMS_Brand_Identity {
 	}
 
 	/**
+	 * Merkezi logo geçerliyse onu, değilse legacy attachment ID'sini döndürür.
+	 *
+	 * HFB option'larını okumaz; legacy değer çağıran tarafından verilir.
+	 *
+	 * @param int $legacy_id Bağlamdaki mevcut logo (ör. hfb_header_options['logo']).
+	 * @return int
+	 */
+	public static function resolve_logo_id( $legacy_id ) {
+		$legacy_id = absint( $legacy_id );
+		$central   = self::get_logo_id();
+
+		if ( $central > 0 && self::attachment_is_valid_logo( $central ) ) {
+			return $central;
+		}
+
+		return $legacy_id;
+	}
+
+	/**
+	 * Attachment ID görüntü olarak kullanılabilir mi?
+	 *
+	 * @param int $attachment_id Ek dosya kimliği.
+	 * @return bool
+	 */
+	public static function attachment_is_valid_logo( $attachment_id ) {
+		$attachment_id = absint( $attachment_id );
+
+		if ( ! $attachment_id ) {
+			return false;
+		}
+
+		if ( function_exists( 'wp_attachment_is_image' ) && ! wp_attachment_is_image( $attachment_id ) ) {
+			return false;
+		}
+
+		if ( ! function_exists( 'wp_get_attachment_image_url' ) ) {
+			return false;
+		}
+
+		$url = wp_get_attachment_image_url( $attachment_id, 'full' );
+
+		return '' !== $url;
+	}
+
+	/**
 	 * Ana logo URL'si (çözülmüş; yoksa boş).
 	 *
 	 * @param string $size WordPress görsel boyutu.
