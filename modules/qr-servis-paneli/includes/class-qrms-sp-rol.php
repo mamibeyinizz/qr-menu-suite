@@ -93,8 +93,6 @@ class QRMS_SP_Rol {
 			return;
 		}
 
-		add_action( 'admin_menu', array( __CLASS__, 'menuyu_temizle' ), 999 );
-		add_action( 'admin_init', array( __CLASS__, 'yonlendir' ) );
 		add_action( 'wp_before_admin_bar_render', array( __CLASS__, 'arac_cubugu' ) );
 		add_filter( 'show_admin_bar', '__return_true' );
 	}
@@ -105,6 +103,10 @@ class QRMS_SP_Rol {
 	 * @return void
 	 */
 	public static function menuyu_temizle() {
+		if ( ! self::yalniz_servis_mi() ) {
+			return;
+		}
+
 		global $menu;
 
 		if ( ! is_array( $menu ) ) {
@@ -138,6 +140,10 @@ class QRMS_SP_Rol {
 	 * @return void
 	 */
 	public static function yonlendir() {
+		if ( ! self::yalniz_servis_mi() ) {
+			return;
+		}
+
 		if ( wp_doing_ajax() || ( defined( 'DOING_CRON' ) && DOING_CRON ) ) {
 			return;
 		}
@@ -153,6 +159,33 @@ class QRMS_SP_Rol {
 
 		// Profil ekranı serbest: personel kendi şifresini değiştirebilmeli.
 		if ( in_array( $pagenow, array( 'profile.php', 'admin-post.php' ), true ) ) {
+			return;
+		}
+
+		wp_safe_redirect( add_query_arg( 'page', QRMS_SP_PANEL_SAYFA, admin_url( 'admin.php' ) ) );
+		exit;
+	}
+
+	/**
+	 * menu.php erişim reddi admin_init'ten önce çalışır; servis-only için panele yönlendir.
+	 *
+	 * @return void
+	 */
+	public static function erisim_reddedildi_yonlendir() {
+		if ( ! self::yalniz_servis_mi() ) {
+			return;
+		}
+
+		if ( wp_doing_ajax() || ( defined( 'DOING_CRON' ) && DOING_CRON ) ) {
+			return;
+		}
+
+		global $pagenow;
+
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$page = isset( $_GET['page'] ) ? sanitize_key( wp_unslash( $_GET['page'] ) ) : '';
+
+		if ( 'admin.php' === $pagenow && QRMS_SP_PANEL_SAYFA === $page ) {
 			return;
 		}
 

@@ -272,6 +272,23 @@ qrms_test(
 );
 
 qrms_test(
+	'Fix 10A.3: servis deep URL yönlendirme admin_init\'te kayıtlı, callback içinde yalniz_servis_mi',
+	function () {
+		$modul = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-servis-paneli/module.php' );
+		$rol   = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-servis-paneli/includes/class-qrms-sp-rol.php' );
+
+		qrms_assert_contains( "add_action( 'admin_init', array( 'QRMS_SP_Rol', 'yonlendir' ), 0 )", $modul, 'yonlendir init sonrası auth ile kayıtlı' );
+		qrms_assert_contains( "add_action( 'admin_menu', array( 'QRMS_SP_Rol', 'menuyu_temizle' ), 999 )", $modul, 'menu temizleme kayıtlı' );
+		qrms_assert_contains( "add_action( 'admin_page_access_denied', array( 'QRMS_SP_Rol', 'erisim_reddedildi_yonlendir' ), 0 )", $modul, 'menu.php erişim reddi önce panele yönlendir' );
+		qrms_assert_contains( 'if ( ! self::yalniz_servis_mi() )', $rol, 'yonlendir ve menu guard' );
+		qrms_assert_false(
+			false !== strpos( $rol, "add_action( 'admin_init', array( __CLASS__, 'yonlendir' )" ),
+			'paneli_sadelestir artık yonlendir kaydetmez'
+		);
+	}
+);
+
+qrms_test(
 	'GÜVENLİK: register_menu ve render_module_page sabit CAPABILITY yerine per-modül yetkiyi kullanır',
 	function () {
 		$kaynak = file_get_contents( QRMS_PLUGIN_DIR . 'includes/class-admin.php' );

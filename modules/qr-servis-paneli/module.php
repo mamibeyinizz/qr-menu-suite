@@ -40,6 +40,10 @@ function qrms_module_qr_servis_paneli_init() {
 		return;
 	}
 
+	add_action( 'admin_init', array( 'QRMS_SP_Rol', 'yonlendir' ), 0 );
+	add_action( 'admin_menu', array( 'QRMS_SP_Rol', 'menuyu_temizle' ), 999 );
+	add_action( 'admin_page_access_denied', array( 'QRMS_SP_Rol', 'erisim_reddedildi_yonlendir' ), 0 );
+
 	require_once __DIR__ . '/includes/ajax.php';
 	require_once __DIR__ . '/includes/admin/panel-sayfasi.php';
 	require_once __DIR__ . '/includes/admin/ayarlar-sayfasi.php';
