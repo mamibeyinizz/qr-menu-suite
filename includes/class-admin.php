@@ -2227,6 +2227,10 @@ class QRMS_Admin {
 				'label' => __( 'Giriş Ekranı', 'qrms' ),
 				'icon'  => 'dashicons-lock',
 			),
+			'marka' => array(
+				'label' => __( 'Restoran Markası', 'qrms' ),
+				'icon'  => 'dashicons-format-image',
+			),
 		);
 	}
 
@@ -2273,6 +2277,8 @@ class QRMS_Admin {
 			<?php
 			if ( 'giris' === $aktif ) {
 				QRMS_Login::render_settings_tab();
+			} elseif ( 'marka' === $aktif ) {
+				QRMS_Brand_Identity::render_settings_tab();
 			} else {
 				self::render_settings_genel();
 			}
