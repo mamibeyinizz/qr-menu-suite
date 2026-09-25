@@ -12,7 +12,7 @@ function qrm_reward_admin_cashier_view() {
     $kasa_url = qrm_pro_admin_url('qrms-yf-odul', ['view' => 'kasa']);
     ?>
     <div class="wrap qrm-pro-wrap qrm-reward-kasa-wrap">
-        <h1><?php esc_html_e('Ödül Kodu Doğrulama', 'qrms'); ?></h1>
+        <h1<?php echo QRMS_Admin_Shell::duplicate_page_title_a11y_attr(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>><?php esc_html_e('Ödül Kodu Doğrulama', 'qrms'); ?></h1>
         <p class="qrm-lead"><?php esc_html_e('Müşterinin indirim kodunu girin; geçerliyse tek tıkla kullanıldı işaretleyin.', 'qrms'); ?></p>
 
         <div class="qrm-card qrm-reward-kasa-card">

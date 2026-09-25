@@ -314,6 +314,21 @@ class QRMS_Admin {
 	}
 
 	/**
+	 * Kayıtlı bir alt sayfanın sahibi modülün slug'ı (yoksa boş string).
+	 *
+	 * Premium shell ve dış tüketicilerin alt sayfayı modüle bağlaması içindir;
+	 * routing veya yetki mantığı değişmez.
+	 *
+	 * @param string $page_slug Alt sayfa slug'ı.
+	 * @return string
+	 */
+	public static function get_subpage_owner_module( $page_slug ) {
+		return isset( self::$module_subpages[ $page_slug ] )
+			? (string) self::$module_subpages[ $page_slug ]
+			: '';
+	}
+
+	/**
 	 * Bir modülün başlangıç (hub) sayfasının tam adresi.
 	 *
 	 * @param string $module_slug Modül slug'ı.
@@ -855,6 +870,81 @@ class QRMS_Admin {
 	}
 
 	/**
+	 * Alt sayfadaki geri bağlantısının hedefi (açık eşleme + hub yedek).
+	 *
+	 * @param string $module_slug Modül slug'ı.
+	 * @param string $page_slug   İstek `page` slug'ı (boşsa otomatik).
+	 * @return string
+	 */
+	public static function resolve_subpage_back_url( $module_slug, $page_slug = '' ) {
+		$page_slug = '' !== (string) $page_slug ? (string) $page_slug : self::get_current_page();
+
+		$url_map = array(
+			'qrms-analiz-ayarlar'  => self::get_module_page_url( 'qr-masa-oturum-guvenligi' ),
+			'qrms-guvenlik-oturum' => self::get_module_page_url( 'qr-masa-oturum-guvenligi' ),
+		);
+
+		if ( isset( $url_map[ $page_slug ] ) ) {
+			return $url_map[ $page_slug ];
+		}
+
+		return self::get_module_page_url( $module_slug );
+	}
+
+	/**
+	 * Alt sayfadaki geri bağlantı metni (Türkçe — otomatik ek algoritması yok).
+	 *
+	 * @param string $module_slug Modül slug'ı.
+	 * @param string $page_slug   İstek `page` slug'ı (boşsa otomatik).
+	 * @return string
+	 */
+	public static function resolve_subpage_back_label( $module_slug, $page_slug = '' ) {
+		$page_slug = '' !== (string) $page_slug ? (string) $page_slug : self::get_current_page();
+
+		$page_labels = array(
+			'qrms-analiz-ayarlar'      => __( 'Masa Oturumu Güvenliği\'ne Dön', 'qrms' ),
+			'qrms-guvenlik-oturum'     => __( 'Masa Oturumu Güvenliği\'ne Dön', 'qrms' ),
+			'qrms-rm-gorunum'          => __( 'Menü Yönetimi\'ne Dön', 'qrms' ),
+			'qrms-rm-kampanya'         => __( 'Menü Yönetimi\'ne Dön', 'qrms' ),
+			'qrms-rm-secenekler'       => __( 'Menü Yönetimi\'ne Dön', 'qrms' ),
+			'qrms-rm-diger'            => __( 'Menü Yönetimi\'ne Dön', 'qrms' ),
+			'qrms-rm-urunum-yok'       => __( 'Menü Yönetimi\'ne Dön', 'qrms' ),
+			'qrms-rm-one-cikanlar'     => __( 'Menü Yönetimi\'ne Dön', 'qrms' ),
+			'qrms-rm-kampanya-banner'  => __( 'Menü Yönetimi\'ne Dön', 'qrms' ),
+		);
+
+		if ( isset( $page_labels[ $page_slug ] ) ) {
+			return $page_labels[ $page_slug ];
+		}
+
+		$module_labels = array(
+			'restoran-menu'            => __( 'Menü Yönetimi\'ne Dön', 'qrms' ),
+			'yorum-feedback'           => __( 'Yorumlar & Geri Bildirim\'e Dön', 'qrms' ),
+			'qr-masa'                  => __( 'QR Kodlar\'a Dön', 'qrms' ),
+			'qr-analiz'                => __( 'Menü Analizleri\'ne Dön', 'qrms' ),
+			'qr-galeri'                => __( 'Fotoğraf Galerisi\'ne Dön', 'qrms' ),
+			'qr-ceviri'                => __( 'Diller & Çeviriler\'e Dön', 'qrms' ),
+			'qr-chatbot'               => __( 'AI Menü Asistanı\'na Dön', 'qrms' ),
+			'qr-calisma-saatleri'      => __( 'Çalışma Saatleri\'ne Dön', 'qrms' ),
+			'qr-masa-oturum-guvenligi' => __( 'Masa Oturumu Güvenliği\'ne Dön', 'qrms' ),
+			'qr-acilis-ekrani'         => __( 'Karşılama Ekranı\'na Dön', 'qrms' ),
+			'header-footer-builder'    => __( 'Header & Footer\'a Dön', 'qrms' ),
+			'qr-servis-paneli'         => __( 'Servis Paneli\'ne Dön', 'qrms' ),
+			'qr-menu-muhendisligi'     => __( 'Menü Performansı\'na Dön', 'qrms' ),
+		);
+
+		if ( isset( $module_labels[ $module_slug ] ) ) {
+			return $module_labels[ $module_slug ];
+		}
+
+		return sprintf(
+			/* translators: %s: module hub name */
+			__( '%s\'e Dön', 'qrms' ),
+			QRMS_Helpers::get_module_name( $module_slug )
+		);
+	}
+
+	/**
 	 * Alt sayfanın en üstündeki "← Modül Adı > Aktif sayfa" breadcrumb'ı.
 	 *
 	 * Sol menüde artık alt satır olmadığı için modüle dönüşün tek yolu budur;
@@ -879,7 +969,11 @@ class QRMS_Admin {
 		 * @param string $url         Modülün hub adresi.
 		 * @param string $module_slug Alt sayfanın sahibi modül.
 		 */
-		$url = (string) apply_filters( 'qrms_subpage_back_url', self::get_module_page_url( $module_slug ), $module_slug );
+		$url = (string) apply_filters(
+			'qrms_subpage_back_url',
+			self::resolve_subpage_back_url( $module_slug ),
+			$module_slug
+		);
 
 		if ( '' === $current && isset( $GLOBALS['title'] ) ) {
 			$current = (string) $GLOBALS['title'];
@@ -888,11 +982,25 @@ class QRMS_Admin {
 		if ( $current === $module_name ) {
 			$current = '';
 		}
+
+		/**
+		 * Alt sayfadaki geri bağlantısının görünen metni.
+		 *
+		 * Varsayılan: «{Modül adı}'ne Dön» (hub'a dönüş).
+		 *
+		 * @param string $label       Bağlantı metni.
+		 * @param string $module_slug Modül slug'ı.
+		 */
+		$back_label = (string) apply_filters(
+			'qrms_subpage_back_label',
+			self::resolve_subpage_back_label( $module_slug ),
+			$module_slug
+		);
 		?>
 		<div class="qrms-subpage-nav">
 			<a class="qrms-back-link" href="<?php echo esc_url( $url ); ?>">
 				<span class="dashicons dashicons-arrow-left-alt2" aria-hidden="true"></span>
-				<?php echo esc_html( $module_name ); ?>
+				<?php echo esc_html( $back_label ); ?>
 			</a>
 			<?php if ( '' !== $current ) : ?>
 				<span class="qrms-subpage-sep" aria-hidden="true">&gt;</span>
@@ -952,7 +1060,7 @@ class QRMS_Admin {
 		}
 		?>
 		<div class="<?php echo esc_attr( $wrap ); ?>" <?php echo $style; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>
-			<h1 class="qrms-hub-heading"><?php echo esc_html( $args['title'] ); ?></h1>
+			<h1 class="qrms-hub-heading"<?php echo QRMS_Admin_Shell::duplicate_page_title_a11y_attr(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>><?php echo esc_html( $args['title'] ); ?></h1>
 
 			<?php if ( '' !== $args['intro'] ) : ?>
 				<p class="qrms-hub-intro"><?php echo esc_html( $args['intro'] ); ?></p>
@@ -2091,7 +2199,7 @@ class QRMS_Admin {
 		}
 		?>
 		<div class="wrap qrms-wrap">
-			<h1 class="qrms-title"><?php echo esc_html( QRMS_Helpers::get_module_name( $slug ) ); ?></h1>
+			<h1 class="qrms-title"<?php echo QRMS_Admin_Shell::duplicate_page_title_a11y_attr(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>><?php echo esc_html( QRMS_Helpers::get_module_name( $slug ) ); ?></h1>
 
 			<div class="qrms-card">
 				<p class="qrms-muted"><?php esc_html_e( 'Bu özellik yakında burada olacak.', 'qrms' ); ?></p>
@@ -2147,7 +2255,7 @@ class QRMS_Admin {
 		$aktif = self::get_current_settings_tab();
 		?>
 		<div class="wrap qrms-wrap">
-			<h1 class="qrms-title"><?php esc_html_e( 'Sistem Ayarları', 'qrms' ); ?></h1>
+			<h1 class="qrms-title"<?php echo QRMS_Admin_Shell::duplicate_page_title_a11y_attr(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>><?php esc_html_e( 'Sistem Ayarları', 'qrms' ); ?></h1>
 
 			<nav class="qrms-tabs" aria-label="<?php esc_attr_e( 'Ayar sekmeleri', 'qrms' ); ?>">
 				<?php foreach ( self::get_settings_tabs() as $slug => $tab ) : ?>

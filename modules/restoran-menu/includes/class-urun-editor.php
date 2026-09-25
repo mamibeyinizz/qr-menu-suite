@@ -34,6 +34,7 @@ class RMA_Urun_Editor {
 		add_filter( 'admin_body_class', array( __CLASS__, 'body_class' ) );
 		add_action( 'edit_form_top', array( __CLASS__, 'basligi_tamamla' ) );
 		add_action( 'edit_form_after_title', array( __CLASS__, 'temel_bilgiler_karti' ) );
+		add_action( 'admin_print_footer_scripts', array( __CLASS__, 'mark_native_wp_heading_a11y_hidden' ), 5 );
 	}
 
 	/**
@@ -122,6 +123,30 @@ class RMA_Urun_Editor {
 		}
 
 		return trim( $classes . ' ' . self::KAPSAM );
+	}
+
+	/**
+	 * Core `h1.wp-heading-inline` duplicates shell title on hybrid product editor.
+	 * WordPress prints the heading; mark it decorative for the accessibility tree only.
+	 *
+	 * @return void
+	 */
+	public static function mark_native_wp_heading_a11y_hidden() {
+		if ( ! class_exists( 'QRMS_Admin_Shell' ) || ! QRMS_Admin_Shell::is_hybrid_product_editor_screen() ) {
+			return;
+		}
+
+		if ( function_exists( 'wp_print_inline_script_tag' ) ) {
+			wp_print_inline_script_tag(
+				'(function(){var h=document.querySelector(".wrap > h1.wp-heading-inline");if(h&&!h.classList.contains("qrms-shell__title")){h.setAttribute("aria-hidden","true");}}());',
+				array(
+					'id' => 'qrms-pe-native-wp-heading-a11y',
+				)
+			);
+			return;
+		}
+
+		echo '<script id="qrms-pe-native-wp-heading-a11y">(function(){var h=document.querySelector(".wrap > h1.wp-heading-inline");if(h&&!h.classList.contains("qrms-shell__title")){h.setAttribute("aria-hidden","true");}}());</script>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 	}
 
 	/**

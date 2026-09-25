@@ -64,7 +64,7 @@ if ( ! function_exists( 'qmo_masalar_sayfasi' ) ) {
 		$masalar = QMO_Masalar::hepsi();
 		?>
 		<div class="wrap qmo-wrap">
-			<h1 class="wp-heading-inline">QR Kodlar</h1>
+			<h1 class="wp-heading-inline"<?php echo QRMS_Admin_Shell::duplicate_page_title_a11y_attr(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>QR Kodlar</h1>
 			<hr class="wp-header-end">
 
 			<?php if ( $bildirim ) : ?>

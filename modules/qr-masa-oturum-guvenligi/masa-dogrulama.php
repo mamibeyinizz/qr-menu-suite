@@ -238,7 +238,7 @@ if ( ! function_exists( 'qmo_kilit_ekrani' ) ) {
 <body>
 	<div class="qmo-kilit-kart">
 		<div class="qmo-kilit-ikon">🔒</div>
-		<h1><?php echo esc_html( $metin['baslik'] ); ?></h1>
+			<h1<?php echo QRMS_Admin_Shell::duplicate_page_title_a11y_attr(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>><?php echo esc_html( $metin['baslik'] ); ?></h1>
 		<p><?php echo esc_html( $metin['mesaj'] ); ?></p>
 	</div>
 </body>

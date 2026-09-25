@@ -530,7 +530,7 @@ if ( ! function_exists( 'qrmenu_trans_page' ) ) {
 		rma_ceviri_import_bildirimleri();
 		?>
 		<div class="wrap qrc-wrap">
-			<h1 class="qrc-heading"><span class="dashicons dashicons-translation" aria-hidden="true"></span> QR Çeviri</h1>
+			<h1 class="qrc-heading"<?php echo QRMS_Admin_Shell::duplicate_page_title_a11y_attr(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>><span class="dashicons dashicons-translation" aria-hidden="true"></span> QR Çeviri</h1>
 			<p class="description qrc-limit">
 				Klasik (tek sayfa) görünüm. Günlük iş için sol menüdeki kart ızgarasını
 				kullanın — her adım kendi ayarını kaydeder.

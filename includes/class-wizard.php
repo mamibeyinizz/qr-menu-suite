@@ -225,7 +225,7 @@ class QRMS_Wizard {
 		?>
 		<div class="wrap qrms-wrap qrms-wizard">
 			<div class="qrms-card">
-				<h1 class="qrms-title"><?php esc_html_e( 'QR Menu Suite Kurulumu', 'qrms' ); ?></h1>
+				<h1 class="qrms-title"<?php echo QRMS_Admin_Shell::duplicate_page_title_a11y_attr(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>><?php esc_html_e( 'QR Menu Suite Kurulumu', 'qrms' ); ?></h1>
 
 				<?php if ( is_array( $result ) && 'active' === $result['status'] ) : ?>
 					<?php self::render_success( $result['modules'] ); ?>

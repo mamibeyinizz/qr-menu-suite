@@ -9,10 +9,10 @@
 defined( 'ABSPATH' ) || exit;
 ?>
 <div class="wrap qrmgm-wrap">
-	<h1 class="qrmgm-title">
+	<div class="qrmgm-title">
 		Galeri Bölümleri
 		<button type="button" class="button button-primary" id="qrmgm-new-section">+ Yeni Bölüm Ekle</button>
-	</h1>
+	</div>
 
 	<table class="widefat striped qrmgm-table" id="qrmgm-sections-table">
 		<thead>

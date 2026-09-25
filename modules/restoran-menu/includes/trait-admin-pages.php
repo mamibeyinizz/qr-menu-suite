@@ -285,11 +285,12 @@ trait RMA_Admin_Pages_Trait {
     /**
      * Sayfa başlığı + açıklama + (varsa) geri bağlantısı.
      *
-     * @param string $title Sayfa başlığı.
-     * @param string $intro Kısa açıklama.
+     * @param string $title  Sayfa başlığı.
+     * @param string $intro  Kısa açıklama.
+     * @param string $kicker Üst etiket (premium shell; boş bırakılırsa basılmaz).
      * @return void
      */
-    private function page_header( $title, $intro = '' ) {
+    private function page_header( $title, $intro = '', $kicker = '' ) {
         echo '<div class="wrap rma-admin">';
 
         // Suite kuruluysa "geri" bağlantısını QRMS_Admin her alt sayfanın
@@ -299,7 +300,12 @@ trait RMA_Admin_Pages_Trait {
             echo '<a class="rma-back-link" href="' . esc_url( $this->hub_url() ) . '">&larr; Restoran Menü</a>';
         }
 
-        echo '<h1>' . esc_html( $title ) . '</h1>';
+        if ( '' !== $kicker ) {
+            echo '<p class="rma-premium-page-kicker">' . esc_html( $kicker ) . '</p>';
+        }
+
+        $shell_dup = ( class_exists( 'QRMS_Admin_Shell' ) ? QRMS_Admin_Shell::duplicate_page_title_a11y_attr() : '' );
+        echo '<h1' . $shell_dup . '>' . esc_html( $title ) . '</h1>';
         if ( '' !== $intro ) {
             echo '<p class="rma-admin-intro">' . esc_html( $intro ) . '</p>';
         }
@@ -1108,9 +1114,13 @@ trait RMA_Admin_Pages_Trait {
     ----------------------------------------------------------------- */
 
     public function render_other_settings_page() {
+        $diger = $this->get_subpages()['qrms-rm-diger'];
+        $kicker = isset( $diger['hub_title'] ) ? (string) $diger['hub_title'] : '';
+
         $this->page_header(
             'Diğer Ayarlar',
-            'Sık kullanılmayan işlemler burada. İhtiyacınız olan bölüme aşağıdan geçebilirsiniz.'
+            'Sık kullanılmayan işlemler burada. İhtiyacınız olan bölüme aşağıdan geçebilirsiniz.',
+            $kicker
         );
         ?>
         <nav class="rma-anchor-nav" aria-label="Sayfa bölümleri">
@@ -1228,6 +1238,87 @@ trait RMA_Admin_Pages_Trait {
         </div>
     <?php }
 
+    /**
+     * Premium shell sunumu — yalnızca ürün listesi (presentation only).
+     *
+     * @return void
+     */
+    private function boot_products_list_presentation() {
+        static $booted = false;
+
+        if ( $booted ) {
+            return;
+        }
+
+        $booted = true;
+
+        add_filter( 'admin_body_class', array( $this, 'products_list_body_class' ) );
+        add_action( 'admin_notices', array( $this, 'render_products_list_back_link' ), 0 );
+    }
+
+    /**
+     * @param string $classes Admin body classes.
+     * @return string
+     */
+    public function products_list_body_class( $classes ) {
+        return $classes . ' rma-premium-products-list ';
+    }
+
+    /**
+     * Hub'a dönüş — QRMS alt sayfa standardı.
+     *
+     * @return void
+     */
+    public function render_products_list_back_link() {
+        if ( ! class_exists( 'QRMS_Admin_Shell' ) || ! QRMS_Admin_Shell::is_active() ) {
+            return;
+        }
+
+        if ( ! class_exists( 'QRMS_Admin' ) ) {
+            return;
+        }
+
+        QRMS_Admin::render_subpage_back_link( 'restoran-menu' );
+    }
+
+    /**
+     * Premium shell sunumu — ürün ekle/düzenle (presentation only).
+     *
+     * @return void
+     */
+    private function boot_products_edit_presentation() {
+        static $booted = false;
+
+        if ( $booted ) {
+            return;
+        }
+
+        $booted = true;
+
+        add_action( 'admin_notices', array( $this, 'render_products_edit_back_link' ), 0 );
+    }
+
+    /**
+     * Ürün listesine dönüş — QRMS back-link standardı.
+     *
+     * @return void
+     */
+    public function render_products_edit_back_link() {
+        if ( ! class_exists( 'QRMS_Admin_Shell' ) || ! QRMS_Admin_Shell::is_active() ) {
+            return;
+        }
+
+        $url = admin_url( 'edit.php?post_type=rma_menu_item' );
+        ?>
+        <div class="qrms-subpage-nav">
+            <a class="qrms-back-link" href="<?php echo esc_url( $url ); ?>">
+                <span class="dashicons dashicons-arrow-left-alt2" aria-hidden="true"></span>
+			<?php echo esc_html__( 'Ürünlere Dön', 'qrms' ); ?>
+            </a>
+        </div>
+        <?php
+    }
+
     public function admin_scripts( $hook ) {
         // Yalnızca eklentinin kendi ekranlarında yükle — diğer tüm admin
         // sayfalarına gereksiz script/stil enjeksiyonu engellenir.
@@ -1245,7 +1336,25 @@ trait RMA_Admin_Pages_Trait {
         // gerekir — ayar sayfaları ve ürün listesi (Göster/Gizle anahtarı).
         // Ürün ekleme/düzenleme ve taksonomi ekranlarında hiçbir işlevi yok,
         // oralarda artık yüklenmiyor.
-        $is_list = ( 'edit' === $screen->base );
+        $is_list   = ( 'edit' === $screen->base );
+        $is_product_edit = ( 'post' === $screen->base );
+
+        if ( $is_list ) {
+            $this->boot_products_list_presentation();
+        }
+
+        if ( $is_product_edit ) {
+            $this->boot_products_edit_presentation();
+
+            if ( class_exists( 'QRMS_Admin_Shell' ) && QRMS_Admin_Shell::is_active() ) {
+                wp_enqueue_style(
+                    'rma-admin-shell-bridge',
+                    RMA_PLUGIN_URL . 'assets/css/admin-shell-bridge.css',
+                    array( 'qrms-admin-shell' ),
+                    $this->asset_version( 'assets/css/admin-shell-bridge.css' )
+                );
+            }
+        }
 
         // Porsiyon/ekstra/servis saati arayüzü ürün DÜZENLEME ekranında ve
         // kategori formunda da gerekir; oralarda admin-ui.js yüklenmez.
@@ -1279,6 +1388,15 @@ trait RMA_Admin_Pages_Trait {
                 [],
                 $this->asset_version( 'assets/css/rma-admin-list.css' )
             );
+
+            if ( class_exists( 'QRMS_Admin_Shell' ) && QRMS_Admin_Shell::is_active() ) {
+                wp_enqueue_style(
+                    'rma-admin-shell-bridge',
+                    RMA_PLUGIN_URL . 'assets/css/admin-shell-bridge.css',
+                    array( 'rma-admin-list', 'qrms-admin-shell' ),
+                    $this->asset_version( 'assets/css/admin-shell-bridge.css' )
+                );
+            }
 
             // Hızlı Düzenle görsel seçici (wp.media) + satır açma kancası.
             wp_enqueue_media();

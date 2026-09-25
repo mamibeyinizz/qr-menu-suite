@@ -31,7 +31,7 @@ function qrms_sp_panel_sayfasi() {
 	?>
 	<div class="wrap qrms-wrap qrms-sp">
 		<div class="qrms-sp-ust">
-			<h1 class="qrms-title"><?php esc_html_e( 'Servis Paneli', 'qrms' ); ?></h1>
+			<h1 class="qrms-title"<?php echo QRMS_Admin_Shell::duplicate_page_title_a11y_attr(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>><?php esc_html_e( 'Servis Paneli', 'qrms' ); ?></h1>
 
 			<div class="qrms-sp-arac">
 				<button type="button" class="button qrms-sp-ses" aria-pressed="false">

@@ -889,7 +889,7 @@ qrms_test(
 );
 
 qrms_test(
-	'restoran menü hub ızgarası sabit 3 sütun; özet şeridi 5 kart ve telefonda kaydırılır',
+	'restoran menü hub ızgarası sabit 3 sütun; özet şeridi 5 kart mobilde 2+1 stack',
 	function () {
 		$css = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/css/hub.css' );
 
@@ -904,15 +904,14 @@ qrms_test(
 		qrms_assert_contains( 'repeat(3, minmax(0, 1fr))', $css, 'tablette 3 + 2 düzeni' );
 		qrms_assert_contains( 'repeat(2, minmax(0, 1fr))', $css, 'dar tablette iki sütun' );
 		qrms_assert_contains( '@media screen and (max-width: 600px)', $css, 'telefon kırılımı' );
-		qrms_assert_contains( 'overflow-x: auto', $css, 'telefonda yalnızca şerit kayar' );
-		qrms_assert_contains( 'scroll-snap-type: x proximity', $css, 'kart hizalı kaydırma' );
-		qrms_assert_contains( 'scrollbar-width: none', $css, 'kaydırma çubuğu gizli' );
-		qrms_assert_contains( '.rma-hub .qrms-hub-stats::-webkit-scrollbar', $css, 'webkit çubuğu gizli' );
-		qrms_assert_contains( 'flex: 0 0 clamp(158px, 64%, 212px)', $css, 'sonraki kart kenardan görünür' );
+		qrms_assert_contains( '.rma-hub .qrms-hub-stat:nth-child(5)', $css, 'beşinci kart mobilde tam genişlik' );
+		qrms_assert_contains( 'grid-column: 1 / -1', $css, 'son stat full width' );
+		qrms_assert_false( false !== strpos( $css, 'overflow-x: auto' ), 'yatay kaydırma yok' );
 		qrms_assert_contains( '.rma-hub .qrms-hub-stat-hint', $css, 'yardımcı metin stili' );
 		qrms_assert_contains( '.rma-hub .rma-hub-stat-attention', $css, 'tükenen vurgusu modüle özel' );
 		qrms_assert_contains( '.rma-hub .qrms-stat-value', $css, 'ortak değer class' );
-		qrms_assert_contains( 'font-size: 26px', $css, 'özet değer boyutu' );
+		qrms_assert_contains( 'font-size: 28px', $css, 'özet değer boyutu' );
+		qrms_assert_contains( '--qrms-rm-forest:', $css, 'forest token' );
 		// Şeridi kapsülleyen her kural .rma-hub ile başlar; ortak hub'lar etkilenmez.
 		preg_match_all( '/^\s*(\.[a-z][^,{]*)/mi', $css, $secici );
 		foreach ( $secici[1] as $sec ) {
@@ -1484,6 +1483,7 @@ qrms_test(
 
 		qrms_assert_contains( 'qrms-back-link', $html, 'geri bağlantısı' );
 		qrms_assert_contains( 'Menü Yönetimi', $html, 'modül adı' );
+		qrms_assert_contains( 'ne Dön', $html, 'geri metni' );
 		qrms_assert_contains( 'qrms-subpage-current', $html, 'aktif sayfa breadcrumb\'da' );
 		qrms_assert_contains( 'Görünüm', $html, 'aktif sayfa adı' );
 		qrms_assert_contains( 'page=' . QRMS_Admin::get_module_page_slug( 'restoran-menu' ), $html, 'hub adresi' );
@@ -1932,10 +1932,508 @@ qrms_test(
 
 		$css = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/css/hub.css' );
 		qrms_assert_contains( '.rma-hub .qrms-hub-group-title', $css, 'grup başlığı kuralı' );
-		qrms_assert_contains( "font-family: 'Playfair Display', Georgia, serif;", $css, 'serif marka fontu' );
-		qrms_assert_contains( 'color: #1d2327;', $css, 'kart başlığıyla aynı ink rengi' );
+		qrms_assert_contains( 'font-family: Georgia, "Times New Roman", serif;', $css, 'serif marka fontu' );
+		qrms_assert_contains( 'color: var(--qrms-rm-forest);', $css, 'forest ink rengi' );
 		qrms_assert_contains( 'rgba(201, 168, 76,', $css, 'ayırıcıda muted gold tonu' );
 		qrms_assert_contains( '.rma-hub .qrms-hub-group-title:first-of-type', $css, 'ilk grupta fazla boşluk yok' );
+	}
+);
+
+qrms_test(
+	'tükenen ürünler ekranı yalnızca kendi slug\'ında admin-shell-bridge yükler',
+	function () {
+		$modul = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/module.php' );
+		$shell = file_get_contents( QRMS_PLUGIN_DIR . 'includes/class-admin-shell.php' );
+		$bridge = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/css/admin-shell-bridge.css' );
+
+		qrms_assert_contains( "'qrms-rm-urunum-yok' === \$page", $modul, 'bridge slug koşulu' );
+		qrms_assert_contains( 'rma-admin-shell-bridge', $modul, 'bridge handle' );
+		qrms_assert_false(
+			false !== strpos( $modul, "'qrms-rm-urunum-yok', 'qrms-rm-gorunum'" ),
+			'urunum-yok gorunum dizisine eklenmemiş'
+		);
+		qrms_assert_contains( 'is_urunum_yok_screen', $shell, 'shell başlık yardımcısı' );
+		qrms_assert_contains( __( 'Tükenen Ürünler', 'qrms' ), $shell, 'shell sayfa başlığı' );
+		qrms_assert_contains( '.rma-uy-screen', $bridge, 'bridge ekran işaretçisi' );
+		qrms_assert_same( 0, preg_match( '/^\\.wp-admin/m', $bridge ), 'bridge global .wp-admin yok' );
+		qrms_assert_same( 0, preg_match( '/^#adminmenu/m', $bridge ), 'bridge global #adminmenu yok' );
+	}
+);
+
+qrms_test(
+	'öne çıkanlar ekranı yalnızca kendi slug\'ında admin-shell-bridge yükler',
+	function () {
+		$modul = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/module.php' );
+		$shell = file_get_contents( QRMS_PLUGIN_DIR . 'includes/class-admin-shell.php' );
+		$bridge = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/css/admin-shell-bridge.css' );
+
+		qrms_assert_contains( "'qrms-rm-one-cikanlar' === \$page", $modul, 'bridge slug koşulu' );
+		qrms_assert_contains( 'is_one_cikanlar_screen', $shell, 'shell başlık yardımcısı' );
+		qrms_assert_contains( __( 'Öne Çıkanlar', 'qrms' ), $shell, 'shell sayfa başlığı' );
+		qrms_assert_contains( ':has(#rma-oneriler)', $bridge, 'bridge öneriler işaretçisi' );
+		qrms_assert_contains( '#qmo-slider-form', $bridge, 'bridge slider form stilleri' );
+	}
+);
+
+qrms_test(
+	'kampanya görselleri ekranı yalnızca kendi slug\'ında admin-shell-bridge yükler',
+	function () {
+		$modul = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/module.php' );
+		$shell = file_get_contents( QRMS_PLUGIN_DIR . 'includes/class-admin-shell.php' );
+		$bridge = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/css/admin-shell-bridge.css' );
+
+		qrms_assert_contains( "'qrms-rm-kampanya-banner' === \$page", $modul, 'banner slug koşulu' );
+		qrms_assert_contains( 'rma-admin-shell-bridge', $modul, 'bridge handle banner bloğunda' );
+		qrms_assert_contains( 'is_kampanya_banner_screen', $shell, 'shell başlık yardımcısı' );
+		qrms_assert_contains( __( 'Kampanya Görselleri', 'qrms' ), $shell, 'shell sayfa başlığı' );
+		qrms_assert_contains( ':has(.rma-kb-wizard)', $bridge, 'bridge sihirbaz işaretçisi' );
+		qrms_assert_contains( '#qmo-banner-form', $bridge, 'bridge banner form stilleri' );
+		qrms_assert_contains( '.qmo-banner-preview-iframe', $bridge, 'iframe kapsayıcı güvenliği' );
+		qrms_assert_contains( 'max-width: none', $bridge, 'iframe ölçekleme: CSS max-width JS inline width ezmez' );
+	}
+);
+
+qrms_test(
+	'premium shell drawer Escape ve ürün editör sticky taşma düzeltmeleri',
+	function () {
+		$js     = file_get_contents( QRMS_PLUGIN_DIR . 'assets/js/admin-shell.js' );
+		$bridge = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/css/admin-shell-bridge.css' );
+
+		qrms_assert_contains( 'preventScroll: true', $js, 'drawer Escape toggle focus scroll yapmaz' );
+		qrms_assert_contains(
+			'qrms-product-editor.post-type-rma_menu_item #wpbody-content',
+			$bridge,
+			'ürün editör wpbody kapsamı'
+		);
+		qrms_assert_same(
+			0,
+			preg_match(
+				'/qrms-product-editor\.post-type-rma_menu_item #wpbody-content\s*\{[^}]*overflow-x:\s*hidden/s',
+				$bridge
+			),
+			'wpbody overflow-x:hidden sticky scroll konteyneri oluşturmaz'
+		);
+		qrms_assert_same(
+			1,
+			preg_match(
+				'/qrms-product-editor\.post-type-rma_menu_item #wpbody-content\s*\{[^}]*overflow-x:\s*clip/s',
+				$bridge
+			),
+			'wpbody yatay taşma clip ile kesilir'
+		);
+	}
+);
+
+qrms_test(
+	'ürün editöründe premium shell header WP fixed editor toolbar üstünde',
+	function () {
+		$bridge = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/css/admin-shell-bridge.css' );
+		$js     = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/js/urun-editor.js' );
+
+		qrms_assert_same(
+			1,
+			preg_match(
+				'/qrms-product-editor\.post-type-rma_menu_item \.qrms-shell__header\s*\{[^}]*z-index:\s*1100/s',
+				$bridge
+			),
+			'shell header z-index WP editor tools (1000) üzerinde'
+		);
+
+		qrms_assert_contains( '--qrms-pe-shell-header-offset', $bridge, 'shell header ofset CSS değişkeni' );
+		qrms_assert_contains( 'wp-content-editor-tools', $js, 'sabit WP editor toolbar ofseti' );
+		qrms_assert_contains( 'qrms-pe-shell-header-offset', $js, 'ölçülen header yüksekliği JS ile yazılır' );
+		qrms_assert_contains( '.qrms-shell__header', $js, 'gerçek shell header ölçümü' );
+		qrms_assert_same(
+			0,
+			preg_match( '/jQuery\.fn\.outerHeight\s*=/', $js ),
+			'jQuery.fn.outerHeight değiştirilmez'
+		);
+		qrms_assert_contains( 'shellEditorPinDurumu', $js, 'shell header sabitleme eşiği' );
+		qrms_assert_contains( 'qrmsEditorSabitlemeli', $js, 'header-aware sabitleme kararı' );
+		qrms_assert_contains( 'wpEditorExpandAdminBarYukseklik', $js, 'WP editor-expand adminBarHeight (A) kuralı' );
+		qrms_assert_contains( 'shellEditorMutlakAltTopDegerleri', $js, 'T_qrms = T_wp + (H-A) hesabı' );
+		qrms_assert_contains( 'delta: delta', $js, 'süreklilik ofseti H−A' );
+		qrms_assert_contains( 'shellEditorAltPinMutlakSenkronize', $js, 'pinEnd sonrası mutlak toolbar sürekliliği' );
+		qrms_assert_contains( 'qrmsEditorMutlakAltKonumDuzeltmeli', $js, 'pinEnd alt mutlak konum denetimi' );
+		qrms_assert_contains( 'qrmsEditorPinAraligiKonumDuzeltmeli', $js, 'pin aralığı Visual/Code mutlak sızıntısı' );
+		qrms_assert_contains( 'editorToolbarWpMutlakAsamasinda', $js, 'WP mutlak faz DOM otoritesi' );
+		qrms_assert_contains( 'editorToolbarSabitFazStabilMi', $js, 'sabit faz stabil durumu' );
+		qrms_assert_contains( 'editorToolbarMutlakAltFazStabilMi', $js, 'mutlak alt faz stabil durumu' );
+		qrms_assert_contains( 'editorToolbarDisSenkron', $js, 'dış olay senkron yolu' );
+		qrms_assert_contains( 'queueMicrotask', $js, 'Visual/Code classchange microtask senkronu' );
+		$qrms_pe_stil_yaz_pos = strpos( $js, 'function qrmsPeStilYaz' );
+		qrms_assert_false( false === $qrms_pe_stil_yaz_pos, 'qrmsPeStilYaz fonksiyonu' );
+		$qrms_pe_stil_yaz_brace = strpos( $js, '{', $qrms_pe_stil_yaz_pos );
+		qrms_assert_false( false === $qrms_pe_stil_yaz_brace, 'qrmsPeStilYaz gövdesi' );
+		$qrms_pe_stil_yaz_derinlik = 0;
+		$qrms_pe_stil_yaz_govde   = '';
+		$qrms_pe_stil_yaz_uzunluk = strlen( $js );
+		for ( $qrms_pe_stil_yaz_i = $qrms_pe_stil_yaz_brace; $qrms_pe_stil_yaz_i < $qrms_pe_stil_yaz_uzunluk; $qrms_pe_stil_yaz_i++ ) {
+			$qrms_pe_stil_yaz_karakter = $js[ $qrms_pe_stil_yaz_i ];
+			if ( '{' === $qrms_pe_stil_yaz_karakter ) {
+				$qrms_pe_stil_yaz_derinlik++;
+			} elseif ( '}' === $qrms_pe_stil_yaz_karakter ) {
+				$qrms_pe_stil_yaz_derinlik--;
+				if ( 0 === $qrms_pe_stil_yaz_derinlik ) {
+					$qrms_pe_stil_yaz_govde = substr( $js, $qrms_pe_stil_yaz_pos, $qrms_pe_stil_yaz_i - $qrms_pe_stil_yaz_pos + 1 );
+					break;
+				}
+			}
+		}
+		qrms_assert_false( '' === $qrms_pe_stil_yaz_govde, 'qrmsPeStilYaz gövdesi çıkarılamadı' );
+		qrms_assert_same(
+			0,
+			preg_match( '/planliSenkronize\s*\(\s*\)/', $qrms_pe_stil_yaz_govde ),
+			'qrmsPeStilYaz gövdesinde planliSenkronize yok'
+		);
+		qrms_assert_same(
+			0,
+			preg_match( "/on\\(\\s*'scroll\\.qrms-pe'\\s*,\\s*planliSenkronize\\s*\\)/", $js ),
+			'scroll başına planliSenkronize rAF yok'
+		);
+		qrms_assert_same(
+			0,
+			preg_match( '/altCikisBandi/', $js ),
+			'pinEnd sonrası sabit toolbar uzatma bandı kaldırıldı'
+		);
+		qrms_assert_same(
+			0,
+			preg_match( '/setInterval\s*\(/', $js ),
+			'toolbar ofseti için polling yok'
+		);
+		qrms_assert_same(
+			0,
+			preg_match( '/observe\s*\(\s*document\.body/', $js ),
+			'body geniş MutationObserver yok'
+		);
+		qrms_assert_contains( 'editor-classchange.qrms-pe', $js, 'Visual/Code geçişi senkronu' );
+		qrms_assert_contains( 'scroll.qrms-pe', $js, 'editor-expand scroll senkronu' );
+		qrms_assert_contains( 'attributeFilter: [ \'style\' ]', $js, 'dar toolbar style gözlemcisi' );
+		qrms_assert_contains( 'editorToolbarDuzeltmeGerekli', $js, 'gereksiz stil yazımı önlenir' );
+		qrms_assert_contains( 'qrmsPeStyleYaziliyor', $js, 'gözlemci döngü koruması' );
+		qrms_assert_contains( "off( 'scroll.qrms-pe' )", $js, 'scroll.qrms-pe çift bağlama önlenir' );
+		qrms_assert_contains( 'editorExpandScrollBagla', $js, 'scroll yaşam döngüsü tekilleştirilir' );
+		qrms_assert_contains( 'editorToolbarStilGozlemHedefleriEkle', $js, 'geç gelen TinyMCE toolbar hedefleri' );
+		qrms_assert_same(
+			1,
+			preg_match_all( '/toolbarStilGozlemcisi\s*=\s*new\s+MutationObserver/', $js, $matches ),
+			'ürün editör toolbar için tek MutationObserver'
+		);
+	}
+);
+
+qrms_test(
+	'premium shell hesap menüsü ve güvenli çıkış (Fix 6)',
+	function () {
+		$shell = file_get_contents( QRMS_PLUGIN_DIR . 'includes/class-admin-shell.php' );
+		$auth  = file_get_contents( QRMS_PLUGIN_DIR . 'includes/class-admin-shell-auth.php' );
+		$js    = file_get_contents( QRMS_PLUGIN_DIR . 'assets/js/admin-shell.js' );
+		$css   = file_get_contents( QRMS_PLUGIN_DIR . 'assets/css/admin-shell.css' );
+
+		qrms_assert_contains( 'render_account_control', $shell, 'hesap kontrolü render' );
+		qrms_assert_contains( 'qrms-shell__account-trigger', $shell, 'erişilebilir hesap düğmesi' );
+		qrms_assert_contains( 'aria-haspopup="true"', $shell, 'hesap popup ARIA' );
+		qrms_assert_contains( 'qrms-shell__account-logout', $shell, 'çıkış bağlantısı' );
+		qrms_assert_contains( 'shell_logout_url', $auth, 'shell logout URL üretici' );
+		qrms_assert_contains( 'wp_logout_url', $auth, 'WordPress logout mekanizması' );
+		qrms_assert_contains( 'QRMS_Login::login_url', $auth, 'çıkış sonrası QRMS giriş hedefi' );
+		qrms_assert_contains( 'yalniz_servis_mi() ) ) :', $shell, 'service-only WordPress Yönetimi kapısı korunur' );
+		qrms_assert_contains( 'render_account_control', $shell, 'service-only dahil hesap kontrolü' );
+		qrms_assert_contains( 'closeAccountMenu', $js, 'hesap menüsü kapanışı' );
+		qrms_assert_contains( 'aria-expanded', $js, 'hesap menüsü expanded durumu' );
+		qrms_assert_contains( 'qrms-shell__account-menu', $css, 'hesap dropdown stilleri' );
+		qrms_assert_same(
+			0,
+			preg_match( '/jQuery\s*\(/', $js ),
+			'shell JS jQuery kullanmaz'
+		);
+	}
+);
+
+qrms_test(
+	'premium shell drawer erişilebilirliği (Fix 8)',
+	function () {
+		$shell = file_get_contents( QRMS_PLUGIN_DIR . 'includes/class-admin-shell.php' );
+		$js    = file_get_contents( QRMS_PLUGIN_DIR . 'assets/js/admin-shell.js' );
+		$css   = file_get_contents( QRMS_PLUGIN_DIR . 'assets/css/admin-shell.css' );
+
+		qrms_assert_contains( 'qrms-shell-drawer-close', $shell, 'drawer kapat düğmesi markup' );
+		qrms_assert_contains( 'closeMenu', $shell, 'drawer kapat aria-label kaynağı' );
+		qrms_assert_contains( 'aria-controls="qrms-shell-sidebar"', $shell, 'toggle aria-controls' );
+		qrms_assert_contains( 'qrms-shell__drawer-close', $css, 'drawer kapat düğmesi stilleri' );
+		qrms_assert_contains( 'getDrawerFocusables', $js, 'drawer focusable listesi' );
+		qrms_assert_contains( 'onDrawerTrapKeyDown', $js, 'drawer Tab focus trap' );
+		qrms_assert_contains( 'focusin', $js, 'drawer focus containment' );
+		qrms_assert_contains( "setAttribute( 'role', 'dialog' )", $js, 'drawer role=dialog' );
+		qrms_assert_contains( "setAttribute( 'inert', '' )", $js, 'kapalı drawer inert' );
+		qrms_assert_contains( 'focusDrawerCloseWithoutScroll', $js, 'açılışta kapat düğmesine focus' );
+		qrms_assert_contains( 'restoreDrawerOpenerFocus', $js, 'kapanışta toggle focus restore' );
+		qrms_assert_contains( 'detachDrawerTrap', $js, 'drawer trap temizliği' );
+		qrms_assert_same(
+			0,
+			preg_match( '/setInterval\s*\(/', $js ),
+			'drawer a11y setInterval kullanmaz'
+		);
+		qrms_assert_same(
+			0,
+			preg_match( '/MutationObserver/', $js ),
+			'drawer a11y MutationObserver kullanmaz'
+		);
+	}
+);
+
+qrms_test(
+	'premium shell drawer viewport a11y senkronu (Fix 8.2)',
+	function () {
+		$js = file_get_contents( QRMS_PLUGIN_DIR . 'assets/js/admin-shell.js' );
+
+		qrms_assert_contains( 'function syncShellViewportState', $js, 'viewport drawer a11y helper' );
+		qrms_assert_contains( 'syncShellViewportState();', $js, 'onViewportChange ortak senkron' );
+		qrms_assert_contains(
+			"setOpen( body.classList.contains( 'qrms-shell-sidebar-open' ) )",
+			$js,
+			'mobile dönüşte kapalı drawer inert yeniden uygulanır'
+		);
+		qrms_assert_same(
+			1,
+			preg_match(
+				'/function syncShellViewportState\\(\\)[\\s\\S]*?if \\(\\s*isDesktop\\(\\)\\s*\\)[\\s\\S]*?syncDrawerA11yState\\(\\s*false\\s*\\)/s',
+				$js
+			),
+			'desktop geçişte inert/aria-hidden temizlenir'
+		);
+		qrms_assert_same(
+			0,
+			preg_match( '/function onViewportChange\\(\\)[\\s\\S]*?if \\(\\s*isDesktop\\(\\)\\s*\\)[\\s\\S]*?closeDrawer\\(\\s*false\\s*\\)[\\s\\S]*?\\}\\s*\\}/s', $js ),
+			'onViewportChange yalnızca desktop closeDrawer ile sınırlı değil'
+		);
+	}
+);
+
+qrms_test(
+	'premium shell desktop sidebar drawer-top regression (Fix 8.1)',
+	function () {
+		$css = file_get_contents( QRMS_PLUGIN_DIR . 'assets/css/admin-shell.css' );
+
+		qrms_assert_same(
+			0,
+			preg_match( '/\\.qrms-shell__drawer-top\\s*\\{[^}]*display:\\s*contents/s', $css ),
+			'global display:contents drawer-top yok'
+		);
+		qrms_assert_contains(
+			'body.qrms-premium-shell-active .qrms-shell__drawer-top .qrms-shell__brand',
+			$css,
+			'desktop brand seçici'
+		);
+		qrms_assert_contains(
+			'@media screen and (min-width: 1024px)',
+			$css,
+			'desktop drawer-top media scope'
+		);
+		qrms_assert_same(
+			1,
+			preg_match(
+				'/@media screen and \\(min-width: 1024px\\)[\\s\\S]*?\\.qrms-shell__drawer-top \\.qrms-shell__brand\\s*\\{[^}]*flex:\\s*0\\s+0\\s+auto/s',
+				$css
+			),
+			'desktop brand flex büyümesi kapalı'
+		);
+		qrms_assert_same(
+			1,
+			preg_match(
+				'/@media screen and \\(max-width: 1023px\\)[\\s\\S]*?\\.qrms-shell__drawer-top \\.qrms-shell__brand\\s*\\{[^}]*flex:\\s*1\\s+1\\s+auto/s',
+				$css
+			),
+			'mobile drawer brand flex layout korunur'
+		);
+	}
+);
+
+qrms_test(
+	'premium shell H1 ve geri navigasyon tutarlılığı (Fix 10A)',
+	function () {
+		$shell = file_get_contents( QRMS_PLUGIN_DIR . 'includes/class-admin-shell.php' );
+		$admin = file_get_contents( QRMS_PLUGIN_DIR . 'includes/class-admin.php' );
+		$css   = file_get_contents( QRMS_PLUGIN_DIR . 'assets/css/admin-shell.css' );
+
+		qrms_assert_contains( 'resolve_subpage_back_label', $admin, 'açık geri etiket eşlemesi' );
+		qrms_assert_contains( 'Yorumlar & Geri Bildirim', $admin, 'Geri Bildirim Türkçe geri etiketi' );
+		qrms_assert_contains( 'qr-ceviri', $admin, 'Çeviriler modül geri etiketi' );
+		qrms_assert_contains( 'Menü Performansı', $admin, 'Performans Türkçe geri etiketi' );
+		qrms_assert_contains( 'qrms-analiz-ayarlar', $admin, 'Firebase sayfa geri URL eşlemesi' );
+		qrms_assert_contains( 'render_native_hybrid_back_link', $shell, 'hybrid taxonomy/banner geri linki' );
+		qrms_assert_contains( 'build_shell_breadcrumb', $shell, 'shell breadcrumb standardı' );
+		qrms_assert_contains( '.qrms-shell__content .wrap > h1', $css, 'duplicate H1 visually hidden' );
+		qrms_assert_contains( 'text-overflow: ellipsis', $css, 'breadcrumb taşma kontrolü' );
+	}
+);
+
+qrms_test(
+	'premium shell kalan modül H1 başlıkları (Fix 10A.1)',
+	function () {
+		$css = file_get_contents( QRMS_PLUGIN_DIR . 'assets/css/admin-shell.css' );
+
+		$scoped_selectors = array(
+			'.qmo-cb-hero-title',
+			'.qrm-page-title',
+			'.qrae-title',
+			'.qrms-an-title',
+			'.qrm-cf-wrap .qrm-cf-head h1',
+		);
+
+		foreach ( $scoped_selectors as $selector ) {
+			qrms_assert_contains(
+				'body.qrms-premium-shell-active .qrms-shell__content ' . $selector,
+				$css,
+				'shell kapsamlı duplicate H1 gizleme: ' . $selector
+			);
+		}
+
+		qrms_assert_same(
+			1,
+			preg_match(
+				'/body\\.qrms-premium-shell-active \\.qrms-shell__content \\.qrms-hub-heading,[\\s\\S]*?\\.qmo-cb-hero-title,[\\s\\S]*?clip:\\s*rect\\(\\s*0\\s*,\\s*0\\s*,\\s*0\\s*,\\s*0\\s*\\)/s',
+				$css
+			),
+			'Fix 10A clip standardı modül hero başlıklarında'
+		);
+
+		qrms_assert_same(
+			0,
+			preg_match( '/body\\.qrms-premium-shell-active[^{]*\\{\\s*[^}]*\\bh1\\b[^}]*\\}/s', $css ),
+			'shell scope altında riskli global h1 override yok'
+		);
+	}
+);
+
+qrms_test(
+	'premium shell duplicate module H1 accessibility tree (Fix 10A.2)',
+	function () {
+		$shell   = file_get_contents( QRMS_PLUGIN_DIR . 'includes/class-admin-shell.php' );
+		$chatbot = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/includes/admin/admin-sayfa.php' );
+		$forms   = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/admin/forms-list.php' );
+		$analiz  = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/genel-sayfasi.php' );
+		$acilis  = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-acilis-ekrani/includes/admin.php' );
+		$rma     = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-admin-pages.php' );
+
+		qrms_assert_contains( 'function duplicate_page_title_a11y_attr', $shell, 'shell duplicate title helper' );
+		qrms_assert_contains( "return ' aria-hidden=\"true\"';", $shell, 'premium shell aktifken aria-hidden' );
+		qrms_assert_contains( 'if ( ! self::is_active() )', $shell, 'shell kapalıyken attr basılmaz' );
+		qrms_assert_contains( 'qmo-cb-hero-title', $chatbot, 'AI asistan hero başlığı' );
+		qrms_assert_contains( 'duplicate_page_title_a11y_attr', $chatbot, 'chatbot duplicate H1 a11y' );
+		qrms_assert_contains( 'duplicate_page_title_a11y_attr', $forms, 'formlar duplicate H1 a11y' );
+		qrms_assert_contains( 'duplicate_page_title_a11y_attr', $analiz, 'analitik duplicate H1 a11y' );
+		qrms_assert_contains( 'duplicate_page_title_a11y_attr', $acilis, 'karşılama duplicate H1 a11y' );
+		qrms_assert_contains( 'duplicate_page_title_a11y_attr', $rma, 'restoran menü page_header duplicate H1 a11y' );
+		qrms_assert_same(
+			0,
+			preg_match( '/<h1 class="qrms-shell__title"[^>]*aria-hidden/s', $shell ),
+			'shell H1 aria-hidden almaz'
+		);
+	}
+);
+
+qrms_test(
+	'premium shell hybrid product editor native H1 a11y (Fix 10A.2.1)',
+	function () {
+		$shell  = file_get_contents( QRMS_PLUGIN_DIR . 'includes/class-admin-shell.php' );
+		$editor = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/class-urun-editor.php' );
+
+		qrms_assert_contains( 'function is_hybrid_product_editor_screen', $shell, 'hybrid ürün editörü tespiti' );
+		qrms_assert_contains( 'is_native_hybrid_screen', $shell, 'hybrid shell scope' );
+		qrms_assert_contains( 'mark_native_wp_heading_a11y_hidden', $editor, 'native wp-heading-inline a11y gizleme' );
+		qrms_assert_contains( 'is_hybrid_product_editor_screen', $editor, 'shell scope ile sınırlı' );
+		qrms_assert_contains( '.wrap > h1.wp-heading-inline', $editor, 'yalnızca wrap başlığı hedeflenir' );
+		qrms_assert_contains( 'qrms-shell__title', $editor, 'shell H1 korunur' );
+		qrms_assert_same(
+			0,
+			preg_match( '/duplicate_page_title_a11y_attr/', $editor ),
+			'Fix 10A.2 helper ürün editöründe değiştirilmedi'
+		);
+	}
+);
+
+qrms_test(
+	'premium shell WordPress chrome ve Screen Options (Fix 9)',
+	function () {
+		$shell = file_get_contents( QRMS_PLUGIN_DIR . 'includes/class-admin-shell.php' );
+		$css   = file_get_contents( QRMS_PLUGIN_DIR . 'assets/css/admin-shell.css' );
+
+		qrms_assert_contains(
+			'html.wp-toolbar:has(body.qrms-premium-shell-active){padding-top:0!important;}',
+			$shell,
+			'scoped wp-toolbar üst boşluk sıfırlama (inline chrome)'
+		);
+		qrms_assert_same(
+			0,
+			preg_match( '/html\\.wp-toolbar\\s*\\{\\s*padding-top\\s*:\\s*0/i', $css ),
+			'admin-shell.css global html.wp-toolbar override yok'
+		);
+		qrms_assert_contains(
+			'body.qrms-premium-shell-active.qrms-premium-shell-hybrid #screen-meta-links',
+			$css,
+			'hybrid Screen Options links konumlandırma'
+		);
+		qrms_assert_contains(
+			'position: absolute',
+			$css,
+			'Screen Options shell üstüne binmesin diye absolute yerleşim'
+		);
+		qrms_assert_contains(
+			'top: var(--qrms-shell-header-h, 64px)',
+			$css,
+			'Screen Options shell header altı'
+		);
+		qrms_assert_contains(
+			'body.qrms-premium-shell-active.qrms-premium-shell-hybrid #wpbody-content',
+			$css,
+			'hybrid wpbody-content positioning context'
+		);
+	}
+);
+
+qrms_test(
+	'premium shell forest birincil CTA kontrastı (Fix 7)',
+	function () {
+		$bridge = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/css/admin-shell-bridge.css' );
+
+		qrms_assert_contains(
+			'body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin .button-primary',
+			$bridge,
+			'shell kapsamlı birincil CTA seçici'
+		);
+		qrms_assert_contains(
+			'color: var(--qrms-rm-offwhite)',
+			$bridge,
+			'forest CTA okunabilir metin rengi'
+		);
+		qrms_assert_contains(
+			':has(.rma-kb-wizard) .button-primary',
+			$bridge,
+			'kampanya banner wizard birincil CTA'
+		);
+		qrms_assert_contains(
+			':has(#rma-oneriler) #qmo-slider-form .rma-vitrin-step-nav .button-primary',
+			$bridge,
+			'öne çıkanlar Devam Et birincil CTA'
+		);
+		qrms_assert_contains(
+			'outline: 2px solid var(--qrms-rm-gold)',
+			$bridge,
+			'birincil CTA focus-visible outline'
+		);
+
+		$cta_block_start = strpos(
+			$bridge,
+			'body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin .button-primary'
+		);
+		qrms_assert_true( false !== $cta_block_start, 'Fix 7 CTA kontrast bloğu' );
+		$cta_block = substr( $bridge, (int) $cta_block_start, 2200 );
+		qrms_assert_same(
+			0,
+			preg_match( '/color\s*:\s*#0a0a0a/i', $cta_block ),
+			'Fix 7 CTA bloğu eski #0a0a0a metnini geri getirmez'
+		);
 	}
 );
 
@@ -3185,5 +3683,240 @@ qrms_test(
 
 		qrms_assert_contains( 'type="password"', $blok, 'alan password tipinde' );
 		qrms_assert_false( false !== strpos( $blok, 'type="text"' ), 'düz metin tipi kalmadı' );
+	}
+);
+
+echo "Premium admin shell\n";
+
+qrms_test(
+	'get_subpage_owner_module alt sayfayı modüle bağlar',
+	function () {
+		QRMS_Admin::register_module_subpage( 'qr-analiz', 'qrms-an-genel', 'strlen' );
+
+		qrms_assert_same( 'qr-analiz', QRMS_Admin::get_subpage_owner_module( 'qrms-an-genel' ), 'sahip modül' );
+		qrms_assert_same( '', QRMS_Admin::get_subpage_owner_module( 'yok-boyle-sayfa' ), 'bilinmeyen' );
+	}
+);
+
+qrms_test(
+	'is_qrms_admin_screen plugin ve alt sayfa sluglarını kapsar',
+	function () {
+		$GLOBALS['qrms_test']['is_admin'] = true;
+		$GLOBALS['qrms_test']['can']      = true;
+
+		$_GET = array( 'page' => QRMS_Admin::MENU_SLUG );
+		qrms_assert_true( QRMS_Admin_Shell::is_qrms_admin_screen(), 'overview' );
+
+		QRMS_Admin::register_module_subpage( 'qr-galeri', 'qrmgm-settings', 'strlen' );
+		$_GET = array( 'page' => 'qrmgm-settings' );
+		qrms_assert_true( QRMS_Admin_Shell::is_qrms_admin_screen(), 'galeri alt sayfası' );
+
+		$_GET = array( 'page' => 'plugins.php' );
+		qrms_assert_false( QRMS_Admin_Shell::is_qrms_admin_screen(), 'çekirdek ekran' );
+
+		unset( $_GET );
+	}
+);
+
+qrms_test(
+	'QRMS_PREMIUM_SHELL kapalıyken shell aktif değil',
+	function () {
+		$GLOBALS['qrms_test']['is_admin'] = true;
+		$GLOBALS['qrms_test']['can']      = true;
+		$_GET                             = array( 'page' => QRMS_Admin::MENU_SLUG );
+
+		add_filter(
+			'qrms_premium_shell_enabled',
+			static function () {
+				return false;
+			},
+			99
+		);
+
+		qrms_assert_false( QRMS_Admin_Shell::is_active(), 'flag kapalı' );
+
+		unset( $_GET );
+	}
+);
+
+qrms_test(
+	'login_redirect yönetici genel wp-admin yerine QRMS overview',
+	function () {
+		$user = new WP_User();
+		$user->ID = 7;
+		$GLOBALS['qrms_test']['user_can'] = array(
+			7 => array(
+				'manage_options' => true,
+			),
+		);
+
+		$hedef = QRMS_Admin_Shell_Auth::resolve_login_redirect(
+			admin_url(),
+			'',
+			$user
+		);
+
+		qrms_assert_same(
+			admin_url( 'admin.php?page=' . QRMS_Admin::MENU_SLUG ),
+			$hedef,
+			'varsayılan dashboard → overview'
+		);
+
+		$korunan = QRMS_Admin_Shell_Auth::resolve_login_redirect(
+			admin_url( 'plugins.php' ),
+			admin_url( 'plugins.php' ),
+			$user
+		);
+
+		qrms_assert_same( admin_url( 'plugins.php' ), $korunan, 'plugins.php korunur' );
+
+		unset( $GLOBALS['qrms_test']['user_can'] );
+	}
+);
+
+qrms_test(
+	'login_redirect göreli wp-admin ve index dashboard hedeflerini overview yapar',
+	function () {
+		$user = new WP_User();
+		$user->ID = 8;
+		$GLOBALS['qrms_test']['user_can'] = array(
+			8 => array(
+				'manage_options' => true,
+			),
+		);
+
+		$overview = admin_url( 'admin.php?page=' . QRMS_Admin::MENU_SLUG );
+
+		$varyantlar = array(
+			array( 'wp-admin/', 'wp-admin/' ),
+			array( '/wp-admin/', '/wp-admin/' ),
+			array( 'wp-admin/index.php', 'wp-admin/index.php' ),
+			array( admin_url( 'index.php' ), '' ),
+			array( admin_url(), '' ),
+			array( '', '' ),
+		);
+
+		foreach ( $varyantlar as $i => $cift ) {
+			list( $redirect_to, $requested ) = $cift;
+			$hedef = QRMS_Admin_Shell_Auth::resolve_login_redirect( $redirect_to, $requested, $user );
+			qrms_assert_same( $overview, $hedef, 'overview zorlanır #' . ( $i + 1 ) );
+		}
+
+		unset( $GLOBALS['qrms_test']['user_can'] );
+	}
+);
+
+qrms_test(
+	'login_redirect deep admin hedefleri overview ile ezilmez',
+	function () {
+		$user = new WP_User();
+		$user->ID = 10;
+		$GLOBALS['qrms_test']['user_can'] = array(
+			10 => array(
+				'manage_options' => true,
+			),
+		);
+
+		$plugins = admin_url( 'plugins.php' );
+		qrms_assert_same(
+			$plugins,
+			QRMS_Admin_Shell_Auth::resolve_login_redirect( $plugins, $plugins, $user ),
+			'plugins.php'
+		);
+
+		$overview_deep = admin_url( 'admin.php?page=' . QRMS_Admin::MENU_SLUG );
+		qrms_assert_same(
+			$overview_deep,
+			QRMS_Admin_Shell_Auth::resolve_login_redirect( $overview_deep, $overview_deep, $user ),
+			'zaten overview slug'
+		);
+
+		unset( $GLOBALS['qrms_test']['user_can'] );
+	}
+);
+
+qrms_test(
+	'is_generic_wp_admin_dashboard_url derin admin linklerini ayırt eder',
+	function () {
+		qrms_assert_true( QRMS_Admin_Shell_Auth::is_generic_wp_admin_dashboard_url( '' ), 'boş' );
+		qrms_assert_true( QRMS_Admin_Shell_Auth::is_generic_wp_admin_dashboard_url( admin_url() ), 'admin kök' );
+		qrms_assert_true(
+			QRMS_Admin_Shell_Auth::is_generic_wp_admin_dashboard_url( admin_url( 'index.php' ) ),
+			'index.php'
+		);
+		qrms_assert_true( QRMS_Admin_Shell_Auth::is_generic_wp_admin_dashboard_url( '/wp-admin/' ), '/wp-admin/' );
+		qrms_assert_true( QRMS_Admin_Shell_Auth::is_generic_wp_admin_dashboard_url( 'wp-admin/' ), 'wp-admin/' );
+		qrms_assert_true(
+			QRMS_Admin_Shell_Auth::is_generic_wp_admin_dashboard_url( 'wp-admin/index.php' ),
+			'wp-admin/index.php'
+		);
+		qrms_assert_false(
+			QRMS_Admin_Shell_Auth::is_generic_wp_admin_dashboard_url( admin_url( 'plugins.php' ) ),
+			'plugins'
+		);
+		qrms_assert_false(
+			QRMS_Admin_Shell_Auth::is_generic_wp_admin_dashboard_url(
+				admin_url( 'admin.php?page=' . QRMS_Admin::MENU_SLUG )
+			),
+			'overview derin link'
+		);
+	}
+);
+
+qrms_test(
+	'should_force_qrms_overview requested ve redirect_to birlikte güvenli değerlendirilir',
+	function () {
+		qrms_assert_true(
+			QRMS_Admin_Shell_Auth::should_force_qrms_overview( admin_url(), 'wp-admin/' ),
+			'ikisi de generic'
+		);
+		qrms_assert_false(
+			QRMS_Admin_Shell_Auth::should_force_qrms_overview(
+				admin_url( 'plugins.php' ),
+				admin_url( 'plugins.php' )
+			),
+			'deep hedef'
+		);
+		qrms_assert_false(
+			QRMS_Admin_Shell_Auth::should_force_qrms_overview(
+				admin_url( 'plugins.php' ),
+				'wp-admin/'
+			),
+			'çelişkide deep korunur'
+		);
+	}
+);
+
+qrms_test(
+	'login_redirect servis personeli panele gider',
+	function () {
+		require_once QRMS_PLUGIN_DIR . 'modules/qr-servis-paneli/includes/class-qrms-sp-rol.php';
+
+		if ( ! defined( 'QRMS_SP_PANEL_SAYFA' ) ) {
+			define( 'QRMS_SP_PANEL_SAYFA', 'qrms-module-qr-servis-paneli' );
+		}
+
+		$user = new WP_User();
+		$user->ID = 9;
+		$GLOBALS['qrms_test']['user_can'] = array(
+			9 => array(
+				'manage_options'       => false,
+				QRMS_SP_Rol::YETENEK => true,
+			),
+		);
+
+		$hedef = QRMS_Admin_Shell_Auth::resolve_login_redirect(
+			admin_url(),
+			admin_url(),
+			$user
+		);
+
+		qrms_assert_same(
+			admin_url( 'admin.php?page=' . QRMS_SP_PANEL_SAYFA ),
+			$hedef,
+			'servis paneli'
+		);
+
+		unset( $GLOBALS['qrms_test']['user_can'] );
 	}
 );

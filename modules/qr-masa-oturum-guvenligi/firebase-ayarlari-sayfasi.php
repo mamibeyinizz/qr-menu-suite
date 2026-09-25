@@ -40,7 +40,7 @@ if ( ! function_exists( 'qmo_analiz_ayar_sayfasi' ) ) {
 		$analiz_aktif = in_array( 'qr-analiz', QRMS_License_Client::get_active_modules(), true );
 		?>
 		<div class="wrap qmo-wrap">
-			<h1>Firebase &amp; Şube Ayarları</h1>
+			<h1<?php echo QRMS_Admin_Shell::duplicate_page_title_a11y_attr(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>Firebase &amp; Şube Ayarları</h1>
 
 			<?php settings_errors(); ?>
 

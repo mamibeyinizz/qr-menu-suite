@@ -478,7 +478,7 @@ if ( ! function_exists( 'qrms_analitik_sayfa_urunler' ) ) {
 
 			<div class="qrms-an-header">
 				<div class="qrms-an-header-text">
-					<h1 class="qrms-an-title"><?php esc_html_e( 'Ürünler', 'qrms' ); ?></h1>
+					<h1 class="qrms-an-title"<?php echo QRMS_Admin_Shell::duplicate_page_title_a11y_attr(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>><?php esc_html_e( 'Ürünler', 'qrms' ); ?></h1>
 					<p class="qrms-an-subtitle">
 						<?php esc_html_e( 'Hangi ürünler ilgi görüyor, hangileri menüde öylece duruyor.', 'qrms' ); ?>
 					</p>

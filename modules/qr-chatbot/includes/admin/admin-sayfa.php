@@ -746,7 +746,7 @@ if ( ! function_exists( 'qmo_chatbot_ayar_sayfasi' ) ) {
 		/* Hero: kimlik + durum + ana aksiyonlar. */
 		echo '<section class="qmo-cb-hero">';
 		echo '<div class="qmo-cb-hero-main">';
-		echo '<h1 class="qmo-cb-hero-title">' . esc_html__( 'AI Menü Asistanı', 'qrms' ) . '</h1>';
+		echo '<h1 class="qmo-cb-hero-title"' . QRMS_Admin_Shell::duplicate_page_title_a11y_attr() . '>' . esc_html__( 'AI Menü Asistanı', 'qrms' ) . '</h1>';
 		echo '<p class="qmo-cb-hero-desc">' . esc_html__( 'Misafirlerinizin menünüz hakkında sorularını yapay zekâ ile yanıtlayın, ürünleri keşfetmelerini ve siparişe daha hızlı ulaşmalarını sağlayın.', 'qrms' ) . '</p>';
 		$acik_sinif = $ai_hazir ? 'ok' : 'uyari';
 		$acik_metin = $ai_hazir ? __( 'Aktif', 'qrms' ) : __( 'Yapılandırma gerekiyor', 'qrms' );
@@ -854,11 +854,15 @@ if ( ! function_exists( 'qmo_chatbot_sayfa_basligi' ) ) {
 			wp_die( 'Bu sayfaya erişim yetkiniz yok.' );
 		}
 
-		echo '<div class="qrms-subpage-nav">';
-		echo '<a class="qrms-back-link" href="' . esc_url( qmo_chatbot_hub_url() ) . '">';
-		echo '<span class="dashicons dashicons-arrow-left-alt2" aria-hidden="true"></span>';
-		echo esc_html__( 'AI Menü Asistanı', 'qrms' );
-		echo '</a></div>';
+		if ( class_exists( 'QRMS_Admin' ) ) {
+			QRMS_Admin::render_subpage_back_link( 'qr-chatbot' );
+		} else {
+			echo '<div class="qrms-subpage-nav">';
+			echo '<a class="qrms-back-link" href="' . esc_url( qmo_chatbot_hub_url() ) . '">';
+			echo '<span class="dashicons dashicons-arrow-left-alt2" aria-hidden="true"></span>';
+			echo esc_html__( 'AI Menü Asistanı\'na Dön', 'qrms' );
+			echo '</a></div>';
+		}
 
 		// Modülün bölümleri arasındaki ORTAK yatay şerit. Sayfa kaydı
 		// sarmalanmadığı için (bkz. module.php) burada elle basılır; şeridin
@@ -868,7 +872,7 @@ if ( ! function_exists( 'qmo_chatbot_sayfa_basligi' ) ) {
 		}
 
 		echo '<div class="wrap qmo-wrap">';
-		echo '<h1 class="qmo-baslik">' . esc_html( $title ) . '</h1>';
+		echo '<h1 class="qmo-baslik"' . QRMS_Admin_Shell::duplicate_page_title_a11y_attr() . '>' . esc_html( $title ) . '</h1>';
 		if ( '' !== $intro ) {
 			echo '<p class="qmo-aciklama">' . esc_html( $intro ) . '</p>';
 		}

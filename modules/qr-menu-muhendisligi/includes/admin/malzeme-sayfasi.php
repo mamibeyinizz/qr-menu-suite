@@ -28,7 +28,7 @@ function qrms_mm_malzeme_sayfasi() {
 	$birimler   = QRMS_MM_Maliyet::birimler();
 	?>
 	<div class="wrap qrms-wrap qrms-mm">
-		<h1 class="qrms-title"><?php esc_html_e( 'Malzeme Fiyatları', 'qrms' ); ?></h1>
+		<h1 class="qrms-title"<?php echo QRMS_Admin_Shell::duplicate_page_title_a11y_attr(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>><?php esc_html_e( 'Malzeme Fiyatları', 'qrms' ); ?></h1>
 
 		<?php if ( is_array( $sonuc ) ) : ?>
 			<div class="qrms-alert qrms-alert-success">

@@ -22,7 +22,7 @@ function qrms_sp_ayarlar_sayfasi() {
 	$hazir      = QRMS_SP_Veri::hazir_mi();
 	?>
 	<div class="wrap qrms-wrap qrms-sp">
-		<h1 class="qrms-title"><?php esc_html_e( 'Servis Paneli Ayarları', 'qrms' ); ?></h1>
+		<h1 class="qrms-title"<?php echo QRMS_Admin_Shell::duplicate_page_title_a11y_attr(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>><?php esc_html_e( 'Servis Paneli Ayarları', 'qrms' ); ?></h1>
 
 		<?php if ( $kaydedildi ) : ?>
 			<div class="qrms-alert qrms-alert-success">
