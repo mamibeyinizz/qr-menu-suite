@@ -298,13 +298,7 @@ class QRMS_Admin_Shell {
 			<div class="qrms-shell__backdrop" id="qrms-shell-backdrop" hidden aria-hidden="true"></div>
 			<aside class="qrms-shell__sidebar" id="qrms-shell-sidebar" aria-label="<?php esc_attr_e( 'QR Menü ana gezinme', 'qrms' ); ?>">
 				<div class="qrms-shell__drawer-top">
-					<div class="qrms-shell__brand">
-						<span class="qrms-shell__brand-mark" aria-hidden="true"></span>
-						<span class="qrms-shell__brand-text">
-							<span class="qrms-shell__brand-name"><?php esc_html_e( 'QR MENU', 'qrms' ); ?></span>
-							<span class="qrms-shell__brand-sub"><?php esc_html_e( 'OFFICIAL', 'qrms' ); ?></span>
-						</span>
-					</div>
+					<?php QRMS_Brand_Identity::render_shell_brand(); ?>
 					<button
 						type="button"
 						class="qrms-shell__drawer-close"
