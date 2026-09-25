@@ -141,6 +141,7 @@ trait QRMS_HFB_Admin {
 
 			<h3 class="hfb-section-title"><?php esc_html_e( 'Genel', 'qrms' ); ?></h3>
 			<?php $this->render_central_brand_logo_notice(); ?>
+			<?php $this->render_central_brand_name_notice(); ?>
 
 			<div class="qrms-field">
 				<label class="qrms-label" for="hfb_header_brand_line1"><?php esc_html_e( 'Marka — üst satır', 'qrms' ); ?></label>
@@ -385,6 +386,7 @@ trait QRMS_HFB_Admin {
 
 			<h3 class="hfb-section-title"><?php esc_html_e( 'Genel', 'qrms' ); ?></h3>
 			<?php $this->render_central_brand_logo_notice(); ?>
+			<?php $this->render_central_brand_name_notice(); ?>
 
 			<div class="qrms-field">
 				<label class="qrms-label" for="hfb_footer_brand_line1"><?php esc_html_e( 'Marka — üst satır', 'qrms' ); ?></label>
@@ -2152,6 +2154,42 @@ trait QRMS_HFB_Admin {
 				<?php endif; ?>
 				<p>
 					<?php esc_html_e( 'Logo, Sistem Ayarları → Restoran Markası bölümünden yönetilir.', 'qrms' ); ?>
+					<a href="<?php echo esc_url( $marka_url ); ?>"><?php esc_html_e( 'Restoran Markası ayarları', 'qrms' ); ?></a>
+				</p>
+			</div>
+		</div>
+		<?php
+	}
+
+	/**
+	 * Merkezi marka adı / kısa ad bilgisi (HFB'de ikinci marka metin kaynağı yok).
+	 *
+	 * @return void
+	 */
+	private function render_central_brand_name_notice() {
+		if ( ! class_exists( 'QRMS_Brand_Identity' ) ) {
+			return;
+		}
+
+		$marka_url = admin_url( 'admin.php?page=' . QRMS_Admin::SETTINGS_SLUG . '&tab=marka' );
+		$ad        = trim( QRMS_Brand_Identity::get_name() );
+		$alt_ad    = trim( QRMS_Brand_Identity::get_short_name() );
+
+		if ( '' === $ad && '' === $alt_ad ) {
+			return;
+		}
+		?>
+		<div class="qrms-field hfb-central-name-notice">
+			<span class="qrms-label"><?php esc_html_e( 'Marka metni', 'qrms' ); ?></span>
+			<div class="hfb-central-name-notice__body">
+				<p class="qrms-muted"><?php esc_html_e( 'Merkezi marka adı kullanılıyor. Değiştirmek için Marka Ayarları\'na gidin.', 'qrms' ); ?></p>
+				<?php if ( '' !== $ad ) : ?>
+					<p class="qrms-muted"><strong><?php esc_html_e( 'Üst satır:', 'qrms' ); ?></strong> <?php echo esc_html( $ad ); ?></p>
+				<?php endif; ?>
+				<?php if ( '' !== $alt_ad ) : ?>
+					<p class="qrms-muted"><strong><?php esc_html_e( 'Alt satır:', 'qrms' ); ?></strong> <?php echo esc_html( $alt_ad ); ?></p>
+				<?php endif; ?>
+				<p>
 					<a href="<?php echo esc_url( $marka_url ); ?>"><?php esc_html_e( 'Restoran Markası ayarları', 'qrms' ); ?></a>
 				</p>
 			</div>

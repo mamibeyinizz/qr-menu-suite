@@ -224,6 +224,7 @@ function qrms_login_ayar_sayfasi() {
 						<h2 class="qrms-card-title"><?php esc_html_e( 'Marka', 'qrms' ); ?></h2>
 
 						<?php qrms_login_render_central_brand_logo_notice( $s ); ?>
+						<?php qrms_login_render_central_brand_name_notice(); ?>
 
 						<div class="qrms-field">
 							<label for="qrms-login-logo-h"><?php esc_html_e( 'Logo yüksekliği', 'qrms' ); ?> <span class="qrms-deger" data-icin="qrms-login-logo-h"><?php echo esc_html( $s['logo_yukseklik'] ); ?>px</span></label>
@@ -309,8 +310,8 @@ function qrms_login_ayar_sayfasi() {
 							<div id="qrms-lp" class="qrms-lp <?php echo esc_attr( implode( ' ', QRMS_Login::skin_classes( $s ) ) ); ?>"
 								style="<?php echo esc_attr( QRMS_Login::css_variables( $s, $arkaplan_url, $logo_url ) ); ?>">
 								<div class="qrms-lp-brand">
-									<h2 class="qrms-lp-brand-title"><?php echo esc_html( '' !== $s['baslik'] ? $s['baslik'] : get_bloginfo( 'name' ) ); ?></h2>
-									<p class="qrms-lp-brand-text"><?php echo esc_html( $s['alt_metin'] ); ?></p>
+									<h2 class="qrms-lp-brand-title"><?php echo esc_html( QRMS_Login::effective_brand_title( $s ) ); ?></h2>
+									<p class="qrms-lp-brand-text"><?php echo esc_html( QRMS_Login::effective_brand_subtitle( $s ) ); ?></p>
 								</div>
 
 								<div class="qrms-lp-box">
@@ -390,6 +391,42 @@ function qrms_login_render_central_brand_logo_notice( $s ) {
 				<a href="<?php echo esc_url( $marka_url ); ?>"><?php esc_html_e( 'Restoran Markası ayarları', 'qrms' ); ?></a>
 			</p>
 			<p class="qrms-muted"><?php esc_html_e( 'Logo seçilmezse site adı yazıyla görünür.', 'qrms' ); ?></p>
+		</div>
+	</div>
+	<?php
+}
+
+/**
+ * Merkezi marka adı / kısa ad bilgisi (Login'de ikinci marka metin kaynağı yok).
+ *
+ * @return void
+ */
+function qrms_login_render_central_brand_name_notice() {
+	if ( ! class_exists( 'QRMS_Brand_Identity' ) ) {
+		return;
+	}
+
+	$marka_url = admin_url( 'admin.php?page=' . QRMS_Admin::SETTINGS_SLUG . '&tab=marka' );
+	$ad        = trim( QRMS_Brand_Identity::get_name() );
+	$alt_ad    = trim( QRMS_Brand_Identity::get_short_name() );
+
+	if ( '' === $ad && '' === $alt_ad ) {
+		return;
+	}
+	?>
+	<div class="qrms-field qrms-login-central-name-notice">
+		<span class="qrms-field-label"><?php esc_html_e( 'Marka metni', 'qrms' ); ?></span>
+		<div class="qrms-login-central-name-notice__body">
+			<p class="qrms-muted"><?php esc_html_e( 'Merkezi marka adı kullanılıyor. Değiştirmek için Marka Ayarları\'na gidin.', 'qrms' ); ?></p>
+			<?php if ( '' !== $ad ) : ?>
+				<p class="qrms-muted"><strong><?php esc_html_e( 'Başlık:', 'qrms' ); ?></strong> <?php echo esc_html( $ad ); ?></p>
+			<?php endif; ?>
+			<?php if ( '' !== $alt_ad ) : ?>
+				<p class="qrms-muted"><strong><?php esc_html_e( 'Alt metin:', 'qrms' ); ?></strong> <?php echo esc_html( $alt_ad ); ?></p>
+			<?php endif; ?>
+			<p class="qrms-muted">
+				<a href="<?php echo esc_url( $marka_url ); ?>"><?php esc_html_e( 'Restoran Markası ayarları', 'qrms' ); ?></a>
+			</p>
 		</div>
 	</div>
 	<?php

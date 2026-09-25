@@ -1286,7 +1286,10 @@ trait QRMS_HFB_Frontend {
 		$defaults = 'header' === $context ? $this->header_defaults : $this->footer_defaults;
 		$prefix   = 'header' === $context ? 'hfb_header' : 'hfb_footer';
 
-		$line1_raw = isset( $opts['brand_line1'] ) ? trim( (string) $opts['brand_line1'] ) : '';
+		$legacy_line1 = isset( $opts['brand_line1'] ) ? trim( (string) $opts['brand_line1'] ) : '';
+		$line1_raw    = class_exists( 'QRMS_Brand_Identity' )
+			? QRMS_Brand_Identity::resolve_name( $legacy_line1 )
+			: $legacy_line1;
 		if ( '' === $line1_raw ) {
 			$line1 = get_bloginfo( 'name' );
 		} else {
@@ -1297,8 +1300,11 @@ trait QRMS_HFB_Frontend {
 			);
 		}
 
-		$line2 = '';
-		$line2_raw = isset( $opts['brand_line2'] ) ? trim( (string) $opts['brand_line2'] ) : '';
+		$line2          = '';
+		$legacy_line2   = isset( $opts['brand_line2'] ) ? trim( (string) $opts['brand_line2'] ) : '';
+		$line2_raw      = class_exists( 'QRMS_Brand_Identity' )
+			? QRMS_Brand_Identity::resolve_short_name( $legacy_line2 )
+			: $legacy_line2;
 		if ( '' !== $line2_raw ) {
 			$line2 = $this->hfb_cevir_option_varsayilan(
 				$line2_raw,

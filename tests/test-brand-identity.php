@@ -31,6 +31,46 @@ qrms_test(
 );
 
 qrms_test(
+	'resolve_name ve resolve_short_name merkezi ve legacy önceliği',
+	function () {
+		update_option(
+			QRMS_Brand_Identity::OPTION,
+			array(
+				'ad'     => 'Merkezi Ad',
+				'alt_ad' => 'Merkezi Alt',
+			)
+		);
+
+		qrms_assert_same( 'Merkezi Ad', QRMS_Brand_Identity::resolve_name( 'Legacy Üst' ), 'A: merkezi ad' );
+		qrms_assert_same( 'Merkezi Alt', QRMS_Brand_Identity::resolve_short_name( 'Legacy Alt' ), 'A: merkezi alt' );
+
+		update_option(
+			QRMS_Brand_Identity::OPTION,
+			array(
+				'ad'     => 'Sadece Ad',
+				'alt_ad' => '',
+			)
+		);
+		qrms_assert_same( 'Sadece Ad', QRMS_Brand_Identity::resolve_name( 'Legacy Üst' ), 'B: merkezi ad only' );
+		qrms_assert_same( 'Legacy Alt', QRMS_Brand_Identity::resolve_short_name( 'Legacy Alt' ), 'B: legacy alt fallback' );
+
+		update_option(
+			QRMS_Brand_Identity::OPTION,
+			array(
+				'ad'     => '',
+				'alt_ad' => 'Sadece Alt',
+			)
+		);
+		qrms_assert_same( 'Legacy Üst', QRMS_Brand_Identity::resolve_name( 'Legacy Üst' ), 'C: legacy üst' );
+		qrms_assert_same( 'Sadece Alt', QRMS_Brand_Identity::resolve_short_name( 'Legacy Alt' ), 'C: merkezi alt only' );
+
+		delete_option( QRMS_Brand_Identity::OPTION );
+		qrms_assert_same( 'Legacy Üst', QRMS_Brand_Identity::resolve_name( 'Legacy Üst' ), 'E: merkezi boş legacy' );
+		qrms_assert_same( 'Legacy Alt', QRMS_Brand_Identity::resolve_short_name( 'Legacy Alt' ), 'E: merkezi boş legacy alt' );
+	}
+);
+
+qrms_test(
 	'resolve_logo_id merkezi ve legacy önceliği',
 	function () {
 		update_option( QRMS_Brand_Identity::OPTION, array( 'logo' => 100 ) );

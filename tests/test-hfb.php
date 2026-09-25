@@ -2109,6 +2109,129 @@ qrms_test(
 );
 
 qrms_test(
+	'merkezi marka metni: central ad + alt_ad HFB header/footer metin fallback',
+	function () {
+		$hfb = qrms_hfb();
+
+		delete_option( QRMS_Brand_Identity::OPTION );
+		update_option(
+			'hfb_header_options',
+			array_merge(
+				$hfb->get_header_options(),
+				array(
+					'logo'        => 0,
+					'brand_line1' => 'Legacy Üst',
+					'brand_line2' => 'Legacy Alt',
+				)
+			)
+		);
+		update_option(
+			'hfb_footer_options',
+			array_merge(
+				$hfb->get_footer_options(),
+				array(
+					'logo'        => 0,
+					'brand_line1' => 'Footer Legacy',
+					'brand_line2' => 'Footer Alt',
+				)
+			)
+		);
+
+		$header_legacy = $hfb->render_header( $hfb->get_header_options() );
+		$footer_legacy = $hfb->render_footer( $hfb->get_footer_options() );
+		qrms_assert_contains( 'Legacy Üst', $header_legacy, 'merkezi yok header üst' );
+		qrms_assert_contains( 'Legacy Alt', $header_legacy, 'merkezi yok header alt' );
+		qrms_assert_contains( 'Footer Legacy', $footer_legacy, 'merkezi yok footer üst' );
+
+		update_option(
+			QRMS_Brand_Identity::OPTION,
+			array(
+				'ad'     => 'Merkezi Cafe',
+				'alt_ad' => 'Since 2020',
+			)
+		);
+
+		$header = $hfb->render_header( $hfb->get_header_options() );
+		$footer = $hfb->render_footer( $hfb->get_footer_options() );
+
+		qrms_assert_contains( 'Merkezi Cafe', $header, 'central üst header' );
+		qrms_assert_contains( 'Since 2020', $header, 'central alt header' );
+		qrms_assert_false( strpos( $header, 'Legacy Üst' ), 'legacy üst basılmaz' );
+		qrms_assert_contains( 'Merkezi Cafe', $footer, 'central üst footer' );
+		qrms_assert_contains( 'Since 2020', $footer, 'central alt footer' );
+		qrms_assert_same( 'Legacy Üst', get_option( 'hfb_header_options' )['brand_line1'], 'legacy DB korunur' );
+		qrms_assert_same( 'Footer Legacy', get_option( 'hfb_footer_options' )['brand_line1'], 'footer legacy DB' );
+
+		update_option(
+			QRMS_Brand_Identity::OPTION,
+			array(
+				'ad'     => 'Sadece Merkezi',
+				'alt_ad' => '',
+			)
+		);
+		$header_b = $hfb->render_header( $hfb->get_header_options() );
+		qrms_assert_contains( 'Sadece Merkezi', $header_b, 'B: merkezi ad' );
+		qrms_assert_contains( 'Legacy Alt', $header_b, 'B: legacy alt satır fallback' );
+
+		delete_option( QRMS_Brand_Identity::OPTION );
+	}
+);
+
+qrms_test(
+	'merkezi marka metni: logo davranışı değişmez (metin merkezileştirme)',
+	function () {
+		$hfb = qrms_hfb();
+
+		update_option(
+			QRMS_Brand_Identity::OPTION,
+			array(
+				'logo'   => 100,
+				'ad'     => 'Görünmez Metin',
+				'alt_ad' => 'Alt',
+			)
+		);
+		update_option(
+			'hfb_header_options',
+			array_merge( $hfb->get_header_options(), array( 'logo' => 200 ) )
+		);
+
+		$html = $hfb->render_header( $hfb->get_header_options() );
+
+		qrms_assert_contains( '/100-medium.jpg', $html, 'merkezi logo korunur' );
+		qrms_assert_false( strpos( $html, 'Görünmez Metin' ), 'logo modunda metin yok' );
+		qrms_assert_false( strpos( $html, 'hfb-brand__line' ), 'iki satır marka yok' );
+
+		delete_option( QRMS_Brand_Identity::OPTION );
+	}
+);
+
+qrms_test(
+	'merkezi marka metni: adminde merkezi marka adı bilgi kutusu',
+	function () {
+		$hfb = qrms_hfb();
+		$GLOBALS['qrms_test']['can'] = true;
+
+		update_option(
+			QRMS_Brand_Identity::OPTION,
+			array(
+				'ad'     => 'Admin Merkezi',
+				'alt_ad' => 'Admin Alt',
+			)
+		);
+
+		ob_start();
+		$hfb->render_admin_page();
+		$html = ob_get_clean();
+
+		qrms_assert_contains( 'hfb-central-name-notice', $html, 'merkezi marka metni kutusu' );
+		qrms_assert_contains( 'Merkezi marka adı kullanılıyor', $html, 'açıklama metni' );
+		qrms_assert_contains( 'Admin Merkezi', $html, 'önizleme ad' );
+
+		delete_option( QRMS_Brand_Identity::OPTION );
+	}
+);
+
+qrms_test(
 	'merkezi marka: adminde bağımsız logo seçici yok, merkezi bilgi kutusu var',
 	function () {
 		$hfb = qrms_hfb();

@@ -679,6 +679,67 @@ qrms_test(
 	}
 );
 
+echo "\nGiriş ekranı — merkezi marka metni\n";
+
+qrms_test(
+	'merkezi marka metni: başlık ve alt metin çözümleme (A–E)',
+	function () {
+		delete_option( QRMS_Brand_Identity::OPTION );
+		update_option(
+			QRMS_Login::OPTION,
+			array(
+				'baslik'    => 'Legacy Başlık',
+				'alt_metin' => 'Legacy Alt',
+			)
+		);
+
+		$s = QRMS_Login::get_settings();
+		qrms_assert_same( 'Legacy Başlık', QRMS_Login::effective_brand_title( $s ), 'E: legacy başlık' );
+		qrms_assert_same( 'Legacy Alt', QRMS_Login::effective_brand_subtitle( $s ), 'E: legacy alt' );
+
+		update_option(
+			QRMS_Brand_Identity::OPTION,
+			array(
+				'ad'     => 'Merkezi Başlık',
+				'alt_ad' => 'Merkezi Alt',
+			)
+		);
+		qrms_assert_same( 'Merkezi Başlık', QRMS_Login::effective_brand_title( $s ), 'A: merkezi başlık' );
+		qrms_assert_same( 'Merkezi Alt', QRMS_Login::effective_brand_subtitle( $s ), 'A: merkezi alt' );
+
+		$mesaj = QRMS_Login::login_message( '' );
+		qrms_assert_contains( 'Merkezi Başlık', $mesaj, 'login_message başlık' );
+		qrms_assert_contains( 'Merkezi Alt', $mesaj, 'login_message alt' );
+		qrms_assert_false( strpos( $mesaj, 'Legacy Başlık' ), 'legacy başlık basılmaz' );
+
+		update_option(
+			QRMS_Brand_Identity::OPTION,
+			array(
+				'ad'     => 'Sadece Merkezi',
+				'alt_ad' => '',
+			)
+		);
+		qrms_assert_same( 'Sadece Merkezi', QRMS_Login::effective_brand_title( $s ), 'B: merkezi ad' );
+		qrms_assert_same( 'Legacy Alt', QRMS_Login::effective_brand_subtitle( $s ), 'B: legacy alt fallback' );
+
+		update_option(
+			QRMS_Brand_Identity::OPTION,
+			array(
+				'ad'     => '',
+				'alt_ad' => 'Sadece Alt',
+			)
+		);
+		qrms_assert_same( 'Legacy Başlık', QRMS_Login::effective_brand_title( $s ), 'C: legacy başlık' );
+		qrms_assert_same( 'Sadece Alt', QRMS_Login::effective_brand_subtitle( $s ), 'C: merkezi alt' );
+
+		qrms_assert_same( 'Legacy Başlık', get_option( QRMS_Login::OPTION )['baslik'], 'legacy DB başlık korunur' );
+		qrms_assert_same( 'Legacy Alt', get_option( QRMS_Login::OPTION )['alt_metin'], 'legacy DB alt korunur' );
+
+		delete_option( QRMS_Brand_Identity::OPTION );
+		update_option( QRMS_Login::OPTION, array() );
+	}
+);
+
 echo "\nGiriş ekranı — merkezi logo\n";
 
 qrms_test(

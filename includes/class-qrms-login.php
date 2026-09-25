@@ -1065,6 +1065,46 @@ class QRMS_Login {
 	}
 
 	/**
+	 * Görünüm için çözülmüş marka başlığı (merkezi marka → legacy → site adı).
+	 *
+	 * @param array $s Login ayarları.
+	 * @return string
+	 */
+	public static function effective_brand_title( array $s ) {
+		$s      = array_merge( self::defaults(), $s );
+		$legacy = isset( $s['baslik'] ) ? (string) $s['baslik'] : '';
+
+		if ( class_exists( 'QRMS_Brand_Identity' ) ) {
+			$resolved = QRMS_Brand_Identity::resolve_name( $legacy );
+		} else {
+			$resolved = trim( $legacy );
+		}
+
+		if ( '' !== $resolved ) {
+			return $resolved;
+		}
+
+		return (string) get_bloginfo( 'name' );
+	}
+
+	/**
+	 * Görünüm için çözülmüş marka alt metni (merkezi kısa ad → legacy).
+	 *
+	 * @param array $s Login ayarları.
+	 * @return string
+	 */
+	public static function effective_brand_subtitle( array $s ) {
+		$s      = array_merge( self::defaults(), $s );
+		$legacy = isset( $s['alt_metin'] ) ? (string) $s['alt_metin'] : '';
+
+		if ( class_exists( 'QRMS_Brand_Identity' ) ) {
+			return QRMS_Brand_Identity::resolve_short_name( $legacy );
+		}
+
+		return trim( $legacy );
+	}
+
+	/**
 	 * Ayarlardan CSS değişkeni bloğu üretir.
 	 *
 	 * Saf fonksiyondur (WordPress durumu okumaz, yalnızca verilen ayarları
@@ -1249,9 +1289,7 @@ class QRMS_Login {
 	 * @return string
 	 */
 	public static function header_text() {
-		$s = self::get_settings();
-
-		return '' !== $s['baslik'] ? $s['baslik'] : get_bloginfo( 'name' );
+		return self::effective_brand_title( self::get_settings() );
 	}
 
 	/**
@@ -1266,8 +1304,8 @@ class QRMS_Login {
 	public static function login_message( $message ) {
 		$s = self::get_settings();
 
-		$baslik = '' !== $s['baslik'] ? $s['baslik'] : get_bloginfo( 'name' );
-		$alt    = $s['alt_metin'];
+		$baslik = self::effective_brand_title( $s );
+		$alt    = self::effective_brand_subtitle( $s );
 
 		$html  = '<div class="qrms-login-brand">';
 		$html .= '<h2 class="qrms-login-brand-title">' . esc_html( $baslik ) . '</h2>';
