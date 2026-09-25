@@ -182,6 +182,7 @@ class RMA_Tukendi {
                         'mesaj'     => self::mesaj(),
                         'item_id'   => $item_id,
                         'item_name' => (string) get_post_field( 'post_title', $item_id ),
+                        'reason'    => 'stock_unavailable',
                     );
                 }
 
@@ -207,6 +208,7 @@ class RMA_Tukendi {
                     'mesaj'     => self::mesaj(),
                     'item_id'   => (int) $urun['id'],
                     'item_name' => (string) $urun['name'],
+                    'reason'    => 'stock_unavailable',
                 );
             }
         }

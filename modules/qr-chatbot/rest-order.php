@@ -161,7 +161,8 @@ if ( ! function_exists( 'qmo_rest_order' ) ) {
 		qmo_cookie_yaz( QMO_Oturum::token_uret( $sess['masa'], $sess['issued'] ) );
 
 		// 2) Girdi + Firestore yazımı (chatbot ucu da aynı işlevi kullanır).
-		$sonuc = qmo_siparis_isle( $masa, $req->get_param( 'items' ), $req->get_param( 'dil' ) );
+		$session_id = function_exists( 'qmo_masa_session_id' ) ? qmo_masa_session_id( $sess ) : '';
+		$sonuc      = qmo_siparis_isle( $masa, $req->get_param( 'items' ), $req->get_param( 'dil' ), $session_id );
 
 		return new WP_REST_Response(
 			array(
@@ -277,6 +278,53 @@ if ( ! function_exists( 'qmo_siparis_kalem_coz' ) ) {
 }
 
 /**
+ * Sipariş anındaki sunucu birim fiyatı (kampanya + kombin taban + porsiyon farkı).
+ *
+ * Ekstra fiyatlar ve kasa indirimleri dahil değildir.
+ *
+ * @param int    $item_id   Ürün ID.
+ * @param string $urun_adi  Kalem adı (porsiyon eki parantez içinde olabilir).
+ * @return float|null
+ */
+if ( ! function_exists( 'qmo_siparis_kalem_unit_price' ) ) {
+	function qmo_siparis_kalem_unit_price( $item_id, $urun_adi ) {
+		$item_id = absint( $item_id );
+		if ( $item_id < 1 || ! class_exists( 'RMA_Kampanya' ) ) {
+			return null;
+		}
+
+		$bilgi = RMA_Kampanya::fiyat_bilgisi( $item_id );
+		if ( $bilgi['aktif'] && null !== $bilgi['yeni'] ) {
+			$birim = (float) $bilgi['yeni'];
+		} elseif ( null !== $bilgi['orijinal'] ) {
+			$birim = (float) $bilgi['orijinal'];
+		} elseif ( is_numeric( $bilgi['ham'] ) ) {
+			$birim = (float) $bilgi['ham'];
+		} else {
+			return null;
+		}
+
+		$porsiyon = '';
+		$ad       = (string) $urun_adi;
+		if ( preg_match( '/^(.*?)\s*\(([^()]*)\)\s*$/u', $ad, $eslesme ) ) {
+			$porsiyon = trim( $eslesme[2] );
+		}
+
+		if ( '' !== $porsiyon && class_exists( 'RMA_Porsiyon' ) ) {
+			foreach ( (array) RMA_Porsiyon::gosterim_listesi( $item_id ) as $satir ) {
+				$satir_ad = isset( $satir['ad'] ) ? (string) $satir['ad'] : '';
+				if ( '' !== $satir_ad && 0 === strcasecmp( $satir_ad, $porsiyon ) ) {
+					$birim += (float) ( $satir['fark'] ?? 0 );
+					break;
+				}
+			}
+		}
+
+		return max( 0.0, $birim );
+	}
+}
+
+/**
  * Siparişi doğrula ve Firestore'a yaz.
  *
  * Hem REST ucu hem chatbot AJAX ucu buraya düşer — böylece sipariş mantığı
@@ -284,13 +332,14 @@ if ( ! function_exists( 'qmo_siparis_kalem_coz' ) ) {
  *
  * ÖNEMLİ: $masa daima doğrulanmış oturumdan gelir, istemciden değil.
  *
- * @param string $masa  Masa slug'ı (doğrulanmış).
- * @param mixed  $items Ürün listesi.
- * @param mixed  $dil   Not dili.
+ * @param string $masa       Masa slug'ı (doğrulanmış).
+ * @param mixed  $items      Ürün listesi.
+ * @param mixed  $dil        Not dili.
+ * @param string $session_id Analitik QMO oturumu (s_…); boş olabilir.
  * @return array{success:bool,msg:string,http:int}
  */
 if ( ! function_exists( 'qmo_siparis_isle' ) ) {
-	function qmo_siparis_isle( $masa, $items, $dil ) {
+	function qmo_siparis_isle( $masa, $items, $dil, $session_id = '' ) {
 
 		// Firebase yapılandırması.
 		if ( ! QMO_Firestore::hazir_mi() ) {
@@ -393,20 +442,36 @@ if ( ! function_exists( 'qmo_siparis_isle' ) ) {
 			);
 		}
 
+		$order_id   = wp_generate_uuid4();
+		$session_id = is_string( $session_id ) ? $session_id : '';
+
 		// Restoran menü "Tükendi" durumu siparişi burada keser (varsa).
 		$engel = apply_filters( 'qmo_siparis_onay_oncesi', null, $temiz );
 		$mesaj = '';
 		$engel_id = 0;
 		$engel_ad = '';
+		$engel_reason = 'unknown';
 		if ( is_array( $engel ) ) {
 			$mesaj    = isset( $engel['mesaj'] ) ? (string) $engel['mesaj'] : '';
 			$engel_id = isset( $engel['item_id'] ) ? absint( $engel['item_id'] ) : 0;
 			$engel_ad = isset( $engel['item_name'] ) ? sanitize_text_field( (string) $engel['item_name'] ) : '';
+			if ( ! empty( $engel['reason'] ) ) {
+				$engel_reason = sanitize_key( (string) $engel['reason'] );
+			}
 		} elseif ( is_string( $engel ) && '' !== $engel ) {
 			$mesaj = $engel;
 		}
 		if ( '' !== $mesaj ) {
-			qmo_analitik_siparis_engeli_yaz( $masa, $engel_id, $engel_ad );
+			qmo_analitik_siparis_engeli_yaz(
+				$masa,
+				$engel_id,
+				$engel_ad,
+				array(
+					'order_id'   => $order_id,
+					'session_id' => $session_id,
+					'reason'     => $engel_reason,
+				)
+			);
 			return array(
 				'success' => false,
 				'msg'     => $mesaj,
@@ -446,7 +511,8 @@ if ( ! function_exists( 'qmo_siparis_isle' ) ) {
 				'notDili'      => array( 'stringValue' => $dil ),
 				'items'        => array( 'arrayValue' => array( 'values' => $fs_items ) ),
 				'createdAt'    => array( 'timestampValue' => gmdate( 'Y-m-d\TH:i:s\Z' ) ),
-			)
+			),
+			$order_id
 		);
 
 		qmo_db_geri_baglan( $db_kapali );
@@ -456,10 +522,56 @@ if ( ! function_exists( 'qmo_siparis_isle' ) ) {
 		// $wpdb->insert sessizce false dönerdi. Ürün çözümlemesi de buradadır
 		// (get_post). Firestore beklenmeden analitik atlanmaz — her deneme
 		// bir tipe düşer.
-		$olay_tip = is_wp_error( $res ) ? 'order_failed' : 'order_sent';
-		qmo_analitik_siparis_yaz( $olay_tip, $masa, $temiz );
+		$olay_tip    = 'order_sent';
+		$fail_reason = '';
+		$doc_name    = '';
+		$fs_hata     = is_wp_error( $res );
 
-		if ( is_wp_error( $res ) ) {
+		if ( $fs_hata ) {
+			$kod = $res->get_error_code();
+			if ( 'firestore_conflict' === $kod ) {
+				$oku = QMO_Firestore::call_oku( $order_id );
+				if ( ! is_wp_error( $oku ) ) {
+					$olay_tip = 'order_sent';
+					$fs_hata  = false;
+					$doc_name = QMO_Firestore::call_doc_yolu( $order_id );
+				} else {
+					$olay_tip    = 'order_failed';
+					$fail_reason = 'unconfirmed';
+				}
+			} elseif ( 'firestore_transport' === $kod ) {
+				$oku = QMO_Firestore::call_oku( $order_id );
+				if ( ! is_wp_error( $oku ) ) {
+					$olay_tip = 'order_sent';
+					$fs_hata  = false;
+					$doc_name = QMO_Firestore::call_doc_yolu( $order_id );
+				} elseif ( is_wp_error( $oku ) && 'bulunamadi' === $oku->get_error_code() ) {
+					$olay_tip    = 'order_failed';
+					$fail_reason = 'firestore_not_created';
+				} else {
+					$olay_tip    = 'order_failed';
+					$fail_reason = 'unconfirmed';
+				}
+			} else {
+				$olay_tip    = 'order_failed';
+				$fail_reason = 'unconfirmed';
+			}
+		} else {
+			$doc_name = $res['name'];
+		}
+
+		qmo_analitik_siparis_yaz(
+			$olay_tip,
+			$masa,
+			$temiz,
+			array(
+				'order_id'   => $order_id,
+				'session_id' => $session_id,
+				'reason'     => $fail_reason,
+			)
+		);
+
+		if ( $fs_hata ) {
 			qmo_log( 'Sipariş yazılamadı: ' . $res->get_error_message() );
 			return array(
 				'success' => false,
@@ -467,8 +579,6 @@ if ( ! function_exists( 'qmo_siparis_isle' ) ) {
 				'http'    => 500,
 			);
 		}
-
-		$doc_name = $res['name'];
 
 		// Çevrilecek not var mı?
 		$ceviri_gerekli = false;
@@ -509,10 +619,11 @@ if ( ! function_exists( 'qmo_siparis_isle' ) ) {
  * @param string $tip   order_sent | order_failed.
  * @param string $masa  Masa slug'ı.
  * @param array  $temiz Temizlenmiş kalemler.
+ * @param array  $meta  order_id, session_id, reason (isteğe bağlı).
  * @return void
  */
 if ( ! function_exists( 'qmo_analitik_siparis_yaz' ) ) {
-	function qmo_analitik_siparis_yaz( $tip, $masa, $temiz ) {
+	function qmo_analitik_siparis_yaz( $tip, $masa, $temiz, $meta = array() ) {
 		if ( ! class_exists( 'QRMS_Analitik' ) ) {
 			return;
 		}
@@ -522,6 +633,11 @@ if ( ! function_exists( 'qmo_analitik_siparis_yaz' ) ) {
 		if ( ! in_array( $tip, array( 'order_sent', 'order_failed' ), true ) ) {
 			return;
 		}
+
+		$meta = is_array( $meta ) ? $meta : array();
+		$order_id   = isset( $meta['order_id'] ) ? (string) $meta['order_id'] : '';
+		$session_id = isset( $meta['session_id'] ) ? (string) $meta['session_id'] : '';
+		$reason     = isset( $meta['reason'] ) ? (string) $meta['reason'] : '';
 
 		foreach ( (array) $temiz as $it ) {
 			if ( ! is_array( $it ) ) {
@@ -538,19 +654,37 @@ if ( ! function_exists( 'qmo_analitik_siparis_yaz' ) ) {
 
 			$adet = isset( $it['adet'] ) ? max( 1, min( 999, absint( $it['adet'] ) ) ) : 1;
 
-			qmo_analitik_yaz(
-				array(
-					'event_type'    => $tip,
-					'item_id'       => isset( $alan['item_id'] ) ? (int) $alan['item_id'] : 0,
-					'item_name'     => isset( $alan['item_name'] ) && '' !== $alan['item_name'] ? $alan['item_name'] : $ad,
-					'category_name' => isset( $alan['category_name'] ) ? $alan['category_name'] : '',
-					// Kalem başına TEK satır yazılır; adet ayrı sütunda durur.
-					// Menü mühendisliği raporu popülerliği bu sütundan sayar.
-					'qty'           => $adet,
-					'price'         => isset( $alan['price'] ) ? (float) $alan['price'] : 0.0,
-					'masa_no'       => $masa,
-				)
+			$item_id_kalem = isset( $it['item_id'] ) ? absint( $it['item_id'] ) : ( isset( $alan['item_id'] ) ? (int) $alan['item_id'] : 0 );
+			$unit_price    = function_exists( 'qmo_siparis_kalem_unit_price' )
+				? qmo_siparis_kalem_unit_price( $item_id_kalem, isset( $it['urunAdi'] ) ? (string) $it['urunAdi'] : $ad )
+				: null;
+
+			$kayit = array(
+				'event_type'    => $tip,
+				'item_id'       => isset( $alan['item_id'] ) ? (int) $alan['item_id'] : 0,
+				'item_name'     => isset( $alan['item_name'] ) && '' !== $alan['item_name'] ? $alan['item_name'] : $ad,
+				'category_name' => isset( $alan['category_name'] ) ? $alan['category_name'] : '',
+				// Kalem başına TEK satır yazılır; adet ayrı sütunda durur.
+				// Menü mühendisliği raporu popülerliği bu sütundan sayar.
+				'qty'           => $adet,
+				'price'         => isset( $alan['price'] ) ? (float) $alan['price'] : 0.0,
+				'masa_no'       => $masa,
 			);
+
+			if ( '' !== $order_id ) {
+				$kayit['order_id'] = $order_id;
+			}
+			if ( '' !== $session_id ) {
+				$kayit['session_id'] = $session_id;
+			}
+			if ( '' !== $reason && 'order_failed' === $tip ) {
+				$kayit['reason'] = $reason;
+			}
+			if ( null !== $unit_price ) {
+				$kayit['unit_price'] = $unit_price;
+			}
+
+			qmo_analitik_yaz( $kayit );
 		}
 	}
 }
@@ -561,10 +695,11 @@ if ( ! function_exists( 'qmo_analitik_siparis_yaz' ) ) {
  * @param string $masa     Masa slug'ı.
  * @param int    $item_id  Engelleyen ürün.
  * @param string $item_ad  Engelleyen ürün adı.
+ * @param array  $meta     order_id, session_id, reason (isteğe bağlı).
  * @return void
  */
 if ( ! function_exists( 'qmo_analitik_siparis_engeli_yaz' ) ) {
-	function qmo_analitik_siparis_engeli_yaz( $masa, $item_id, $item_ad ) {
+	function qmo_analitik_siparis_engeli_yaz( $masa, $item_id, $item_ad, $meta = array() ) {
 		if ( ! class_exists( 'QRMS_Analitik' ) ) {
 			return;
 		}
@@ -576,16 +711,28 @@ if ( ! function_exists( 'qmo_analitik_siparis_engeli_yaz' ) ) {
 			$alan = qmo_analitik_urun_ada_gore( $item_ad );
 		}
 
-		qmo_analitik_yaz(
-			array(
-				'event_type'    => 'order_blocked',
-				'item_id'       => isset( $alan['item_id'] ) ? (int) $alan['item_id'] : $item_id,
-				'item_name'     => isset( $alan['item_name'] ) && '' !== $alan['item_name'] ? $alan['item_name'] : sanitize_text_field( (string) $item_ad ),
-				'category_name' => isset( $alan['category_name'] ) ? $alan['category_name'] : '',
-				'price'         => isset( $alan['price'] ) ? (float) $alan['price'] : 0.0,
-				'masa_no'       => $masa,
-			)
+		$meta = is_array( $meta ) ? $meta : array();
+
+		$kayit = array(
+			'event_type'    => 'order_blocked',
+			'item_id'       => isset( $alan['item_id'] ) ? (int) $alan['item_id'] : $item_id,
+			'item_name'     => isset( $alan['item_name'] ) && '' !== $alan['item_name'] ? $alan['item_name'] : sanitize_text_field( (string) $item_ad ),
+			'category_name' => isset( $alan['category_name'] ) ? $alan['category_name'] : '',
+			'price'         => isset( $alan['price'] ) ? (float) $alan['price'] : 0.0,
+			'masa_no'       => $masa,
 		);
+
+		if ( ! empty( $meta['order_id'] ) ) {
+			$kayit['order_id'] = (string) $meta['order_id'];
+		}
+		if ( ! empty( $meta['session_id'] ) ) {
+			$kayit['session_id'] = (string) $meta['session_id'];
+		}
+		if ( ! empty( $meta['reason'] ) ) {
+			$kayit['reason'] = sanitize_key( (string) $meta['reason'] );
+		}
+
+		qmo_analitik_yaz( $kayit );
 	}
 }
 

@@ -452,6 +452,7 @@ class RMA_Servis_Saati {
 					'mesaj'     => self::mesaj( $id ),
 					'item_id'   => $id,
 					'item_name' => get_post_field( 'post_title', $id ),
+					'reason'    => 'service_hours',
 				);
 			}
 		}
