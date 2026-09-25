@@ -434,6 +434,7 @@ body.qrms-premium-shell-active {
 .qrms-shell__account-menu-meta .qrms-shell__account-role {
 	display: block;
 	margin-top: 2px;
+	color: #1a1a1a;
 }
 
 .qrms-shell__account-menu-divider {

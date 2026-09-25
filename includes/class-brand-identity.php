@@ -219,14 +219,25 @@ class QRMS_Brand_Identity {
 			return;
 		}
 
-		$display_name = '' !== $name ? $name : self::get_fallback_name();
-		$display_sub  = '' !== $sub ? $sub : self::get_fallback_sub_name();
+		$has_name = '' !== $name;
+		$has_sub  = '' !== $sub;
+
+		if ( ! $has_name && ! $has_sub ) {
+			$name = self::get_fallback_name();
+			$sub  = self::get_fallback_sub_name();
+			$has_name = true;
+			$has_sub  = true;
+		}
 		?>
 		<div class="qrms-shell__brand">
 			<span class="qrms-shell__brand-mark" aria-hidden="true"></span>
 			<span class="qrms-shell__brand-text">
-				<span class="qrms-shell__brand-name"><?php echo esc_html( $display_name ); ?></span>
-				<span class="qrms-shell__brand-sub"><?php echo esc_html( $display_sub ); ?></span>
+				<?php if ( $has_name ) : ?>
+					<span class="qrms-shell__brand-name"><?php echo esc_html( $name ); ?></span>
+				<?php endif; ?>
+				<?php if ( $has_sub ) : ?>
+					<span class="qrms-shell__brand-sub"><?php echo esc_html( $sub ); ?></span>
+				<?php endif; ?>
 			</span>
 		</div>
 		<?php

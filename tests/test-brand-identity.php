@@ -112,6 +112,91 @@ qrms_test(
 );
 
 qrms_test(
+	'shell marka: logo yok + yalnızca ad (OFFICIAL yedek gösterilmez)',
+	function () {
+		update_option(
+			QRMS_Brand_Identity::OPTION,
+			array(
+				'logo'   => 0,
+				'ad'     => 'Lezzet Sokağı',
+				'alt_ad' => '',
+			)
+		);
+
+		ob_start();
+		QRMS_Brand_Identity::render_shell_brand();
+		$html = ob_get_clean();
+
+		qrms_assert_contains( 'Lezzet Sokağı', $html, 'marka adı' );
+		qrms_assert_false( strpos( $html, 'OFFICIAL' ), 'boş alt_ad için OFFICIAL yedek yok' );
+		qrms_assert_false( strpos( $html, 'qrms-shell__brand-sub' ), 'alt satır öğesi basılmaz' );
+	}
+);
+
+qrms_test(
+	'shell marka: logo yok + yalnızca alt_ad',
+	function () {
+		update_option(
+			QRMS_Brand_Identity::OPTION,
+			array(
+				'logo'   => 0,
+				'ad'     => '',
+				'alt_ad' => 'Fine Dining',
+			)
+		);
+
+		ob_start();
+		QRMS_Brand_Identity::render_shell_brand();
+		$html = ob_get_clean();
+
+		qrms_assert_contains( 'Fine Dining', $html, 'alt satır' );
+		qrms_assert_false( strpos( $html, 'QR MENU' ), 'boş ad için QR MENU yedek yok' );
+		qrms_assert_false( strpos( $html, 'qrms-shell__brand-name' ), 'üst satır öğesi basılmaz' );
+	}
+);
+
+qrms_test(
+	'shell marka: logo yok + boş ad ve alt_ad tam yedek',
+	function () {
+		update_option(
+			QRMS_Brand_Identity::OPTION,
+			array(
+				'logo'   => 0,
+				'ad'     => '',
+				'alt_ad' => '',
+			)
+		);
+
+		ob_start();
+		QRMS_Brand_Identity::render_shell_brand();
+		$html = ob_get_clean();
+
+		qrms_assert_contains( 'QR MENU', $html, 'yedek üst' );
+		qrms_assert_contains( 'OFFICIAL', $html, 'yedek alt' );
+	}
+);
+
+qrms_test(
+	'hesap dropdown rol rengi yalnızca menü meta içinde koyu',
+	function () {
+		$css = file_get_contents( QRMS_PLUGIN_DIR . 'assets/css/admin-shell.css' );
+
+		qrms_assert_contains(
+			'.qrms-shell__account-menu-meta .qrms-shell__account-role',
+			$css,
+			'scoped selector'
+		);
+		qrms_assert_true(
+			(bool) preg_match(
+				'/\.qrms-shell__account-menu-meta \.qrms-shell__account-role\s*\{[^}]*color:\s*#1a1a1a/i',
+				$css
+			),
+			'dropdown rol rengi #1a1a1a'
+		);
+	}
+);
+
+qrms_test(
 	'ayar sekmesi kayıtlı',
 	function () {
 		$tabs = QRMS_Admin::get_settings_tabs();
