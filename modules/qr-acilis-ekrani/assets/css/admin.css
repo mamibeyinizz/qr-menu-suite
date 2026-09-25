@@ -1207,6 +1207,37 @@
 	}
 }
 
+/* ---------------- Merkezi logo bilgisi (Phase 2.2) ---------------- */
+
+.qrms-ae-wrap .qrms-ae-central-logo-notice__body {
+	margin-top: var(--qrae-space-2);
+}
+
+.qrms-ae-wrap .qrms-ae-central-logo-notice__preview {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	margin: var(--qrae-space-2) 0;
+	padding: var(--qrae-space-2);
+	background: var(--qrae-surface-2);
+	border: 1px solid var(--qrae-border);
+	border-radius: var(--qrae-radius-sm);
+	max-width: 200px;
+}
+
+.qrms-ae-wrap .qrms-ae-central-logo-notice__preview img {
+	display: block;
+	max-width: 100%;
+	max-height: 80px;
+	width: auto;
+	height: auto;
+	object-fit: contain;
+}
+
+.qrms-ae-wrap .qrms-ae-central-logo-notice__preview--legacy {
+	opacity: 0.92;
+}
+
 /* ---------------- Hareket azaltma ---------------- */
 
 @media (prefers-reduced-motion: reduce) {

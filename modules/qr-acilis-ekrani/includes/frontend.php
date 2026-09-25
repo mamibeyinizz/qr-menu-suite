@@ -690,7 +690,13 @@ trait QRMS_AE_Frontend {
     }
 
     private function output_splash($opts, $is_preview = false) {
-        $logo_url        = $opts['logo'] ? wp_get_attachment_image_url($opts['logo'], 'medium') : '';
+        $legacy_logo_id = isset( $opts['logo'] ) ? (int) $opts['logo'] : 0;
+        $resolved_logo  = class_exists( 'QRMS_Brand_Identity' )
+            ? QRMS_Brand_Identity::resolve_logo_id( $legacy_logo_id )
+            : $legacy_logo_id;
+        $logo_url       = $resolved_logo > 0
+            ? wp_get_attachment_image_url( $resolved_logo, 'medium' )
+            : '';
         $animation_class = esc_attr($opts['animation_type']);
 
         $dismiss_minutes  = absint($opts['dismiss_duration']);

@@ -690,14 +690,7 @@ trait QRMS_AE_Admin {
 		/* ---------- Marka ---------- */
 		$this->card_open( __( 'Marka', 'qrms' ), __( 'Logonuz ve ekranın üstündeki şerit.', 'qrms' ) );
 
-		$this->field_open(
-			array(
-				'label' => __( 'Logo', 'qrms' ),
-				'hint'  => __( 'Üst şeritte ortalanır. Şeffaf arkaplanlı PNG veya SVG kullanın.', 'qrms' ),
-			)
-		);
-		$this->image_upload_field( 'logo', $options['logo'], 'is-logo' );
-		$this->field_close();
+		$this->render_central_brand_logo_notice( $options );
 
 		$this->range_field(
 			array(
@@ -1634,6 +1627,49 @@ trait QRMS_AE_Admin {
 	 * @param string $warn          JS uyarı kuralının adı.
 	 * @return void
 	 */
+	/**
+	 * Merkezi restoran logosu bilgisi (Splash'ta ikinci logo seçici yok).
+	 *
+	 * @param array<string,mixed> $options Mevcut ayarlar (legacy fallback önizlemesi için).
+	 * @return void
+	 */
+	private function render_central_brand_logo_notice( $options ) {
+		$marka_url   = admin_url( 'admin.php?page=' . QRMS_Admin::SETTINGS_SLUG . '&tab=marka' );
+		$central     = class_exists( 'QRMS_Brand_Identity' ) ? QRMS_Brand_Identity::get_logo_id() : 0;
+		$gecerli     = $central > 0 && class_exists( 'QRMS_Brand_Identity' ) && QRMS_Brand_Identity::attachment_is_valid_logo( $central );
+		$onizleme    = $gecerli ? QRMS_Brand_Identity::get_logo_url( 'thumbnail' ) : '';
+		$legacy_id   = isset( $options['logo'] ) ? absint( $options['logo'] ) : 0;
+		$legacy_url  = ( ! $gecerli && $legacy_id > 0 ) ? wp_get_attachment_image_url( $legacy_id, 'thumbnail' ) : '';
+		?>
+		<div class="qrae-field qrms-ae-central-logo-notice">
+			<span class="qrae-label"><?php esc_html_e( 'Logo', 'qrms' ); ?></span>
+			<p class="qrae-hint"><?php esc_html_e( 'Üst şeritte ortalanır. Şeffaf arkaplanlı PNG veya SVG önerilir.', 'qrms' ); ?></p>
+			<div class="qrms-ae-central-logo-notice__body">
+				<?php if ( $gecerli ) : ?>
+					<p class="qrae-hint"><?php esc_html_e( 'Merkezi logo kullanılıyor.', 'qrms' ); ?></p>
+					<?php if ( '' !== $onizleme ) : ?>
+						<div class="qrms-ae-central-logo-notice__preview">
+							<img src="<?php echo esc_url( $onizleme ); ?>" alt="">
+						</div>
+					<?php endif; ?>
+				<?php else : ?>
+					<p class="qrae-hint"><?php esc_html_e( 'Merkezi logo henüz ayarlanmadı.', 'qrms' ); ?></p>
+					<p class="qrae-hint"><?php esc_html_e( 'Mevcut Splash logosu merkezi logo ayarlanana kadar fallback olarak kullanılabilir.', 'qrms' ); ?></p>
+					<?php if ( '' !== $legacy_url ) : ?>
+						<div class="qrms-ae-central-logo-notice__preview qrms-ae-central-logo-notice__preview--legacy">
+							<img src="<?php echo esc_url( $legacy_url ); ?>" alt="">
+						</div>
+					<?php endif; ?>
+				<?php endif; ?>
+				<p class="qrae-hint">
+					<?php esc_html_e( 'Logo, Restoran Markası ayarlarından yönetilir.', 'qrms' ); ?>
+					<a href="<?php echo esc_url( $marka_url ); ?>"><?php esc_html_e( 'Restoran Markası ayarları', 'qrms' ); ?></a>
+				</p>
+			</div>
+		</div>
+		<?php
+	}
+
 	private function image_upload_field( $name, $value, $preview_class = '', $warn = '' ) {
 		$value   = absint( $value );
 		$img_url = $value ? wp_get_attachment_image_url( $value, 'medium' ) : '';

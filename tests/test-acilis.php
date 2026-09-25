@@ -1619,4 +1619,171 @@ qrms_test(
 	}
 );
 
+echo "\nAçılış Ekranı — merkezi marka logosu\n";
+
+/**
+ * Splash önizleme HTML'i (output_splash ile aynı zincir).
+ *
+ * @return string
+ */
+function qrms_ae_splash_preview_html() {
+	ob_start();
+	qrms_ae()->render_splash_preview();
+
+	return ob_get_clean();
+}
+
+qrms_test(
+	'merkezi marka: central geçerliyse splash merkezi logoyu kullanır',
+	function () {
+		update_option(
+			QRMS_Brand_Identity::OPTION,
+			array(
+				'logo'   => 100,
+				'ad'     => '',
+				'alt_ad' => '',
+			)
+		);
+		update_option( 'splash_screen_options', array( 'logo' => 200 ) );
+
+		$html = qrms_ae_splash_preview_html();
+
+		qrms_assert_contains( '/100-medium.jpg', $html, 'splash merkezi logo' );
+		qrms_assert_false( strpos( $html, '/200-medium.jpg' ), 'legacy basılmaz' );
+		qrms_assert_same( 200, (int) get_option( 'splash_screen_options' )['logo'], 'legacy depo' );
+	}
+);
+
+qrms_test(
+	'merkezi marka: central yoksa splash legacy logosunu kullanır',
+	function () {
+		delete_option( QRMS_Brand_Identity::OPTION );
+		update_option( 'splash_screen_options', array( 'logo' => 200 ) );
+
+		$html = qrms_ae_splash_preview_html();
+
+		qrms_assert_contains( '/200-medium.jpg', $html, 'splash legacy' );
+	}
+);
+
+qrms_test(
+	'merkezi marka: logo yoksa splash boş logo alanı (metin/QR fallback yok)',
+	function () {
+		delete_option( QRMS_Brand_Identity::OPTION );
+		update_option( 'splash_screen_options', array( 'logo' => 0 ) );
+
+		$html = qrms_ae_splash_preview_html();
+
+		qrms_assert_contains( 'sp-logo-wrap', $html, 'logo sarmalayıcı' );
+		qrms_assert_false( strpos( $html, '-medium.jpg' ), 'logo görseli yok' );
+		qrms_assert_contains( 'splash-logo', $html, 'şerit durur' );
+	}
+);
+
+qrms_test(
+	'merkezi marka: silinmiş central attachment splash legacyye düşer',
+	function () {
+		update_option( QRMS_Brand_Identity::OPTION, array( 'logo' => 999 ) );
+		$GLOBALS['qrms_test']['missing_attachment_ids'][999] = true;
+		update_option( 'splash_screen_options', array( 'logo' => 200 ) );
+
+		$html = qrms_ae_splash_preview_html();
+
+		qrms_assert_contains( '/200-medium.jpg', $html, 'splash legacy' );
+		qrms_assert_false( strpos( $html, '/999-medium.jpg' ), 'geçersiz merkezi basılmaz' );
+
+		unset( $GLOBALS['qrms_test']['missing_attachment_ids'][999] );
+	}
+);
+
+qrms_test(
+	'merkezi marka: central kaldırıldığında splash tekrar legacy kullanır',
+	function () {
+		update_option( QRMS_Brand_Identity::OPTION, array( 'logo' => 100 ) );
+		update_option( 'splash_screen_options', array( 'logo' => 200 ) );
+
+		qrms_assert_contains( '/100-medium.jpg', qrms_ae_splash_preview_html(), 'önce merkezi' );
+
+		delete_option( QRMS_Brand_Identity::OPTION );
+
+		qrms_assert_contains( '/200-medium.jpg', qrms_ae_splash_preview_html(), 'sonra legacy' );
+	}
+);
+
+qrms_test(
+	'merkezi marka: görünüm kaydı splash legacy logo option değerini değiştirmez',
+	function () {
+		update_option(
+			QRMS_Brand_Identity::OPTION,
+			array(
+				'logo'   => 100,
+				'ad'     => '',
+				'alt_ad' => '',
+			)
+		);
+		update_option(
+			'splash_screen_options',
+			array(
+				'logo'            => 200,
+				'logo_bar_height' => 96,
+			)
+		);
+
+		qrms_ae_submit(
+			'qrms-ae-gorunum',
+			array(
+				'logo_bar_height' => 120,
+				'bg_color'        => '#141210',
+			)
+		);
+
+		$opts = get_option( 'splash_screen_options' );
+		qrms_assert_same( 200, (int) $opts['logo'], 'legacy logo korunur' );
+		qrms_assert_same( 120, (int) $opts['logo_bar_height'], 'diğer alan kaydolur' );
+	}
+);
+
+qrms_test(
+	'merkezi marka: adminde logo media seçici yok, merkezi bilgi kutusu var',
+	function () {
+		$GLOBALS['qrms_test']['can'] = true;
+		update_option(
+			QRMS_Brand_Identity::OPTION,
+			array(
+				'logo'   => 100,
+				'ad'     => '',
+				'alt_ad' => '',
+			)
+		);
+
+		ob_start();
+		qrms_ae()->render_qrms_ae_gorunum();
+		$html = ob_get_clean();
+
+		qrms_assert_false( strpos( $html, 'name="logo"' ), 'logo input yok' );
+		qrms_assert_false( strpos( $html, 'data-target="logo"' ), 'logo medya seçici yok' );
+		qrms_assert_contains( 'qrms-ae-central-logo-notice', $html, 'merkezi logo kutusu' );
+		qrms_assert_contains( 'Merkezi logo kullanılıyor', $html, 'merkezi mesaj' );
+		qrms_assert_contains( 'tab=marka', $html, 'restoran markası linki' );
+	}
+);
+
+qrms_test(
+	'merkezi marka: central yokken admin fallback bilgisi ve legacy önizleme',
+	function () {
+		$GLOBALS['qrms_test']['can'] = true;
+		delete_option( QRMS_Brand_Identity::OPTION );
+		update_option( 'splash_screen_options', array( 'logo' => 200 ) );
+
+		ob_start();
+		qrms_ae()->render_qrms_ae_gorunum();
+		$html = ob_get_clean();
+
+		qrms_assert_false( strpos( $html, 'name="logo"' ), 'logo input yok' );
+		qrms_assert_contains( 'Merkezi logo henüz ayarlanmadı', $html, 'bilgi mesajı' );
+		qrms_assert_contains( 'fallback olarak kullanılabilir', $html, 'legacy açıklaması' );
+		qrms_assert_contains( '/200-thumbnail.jpg', $html, 'legacy thumb' );
+	}
+);
+
 echo "\nQR Çeviri (P0 köprü / chatbot)\n";
