@@ -98,7 +98,7 @@ if ( ! function_exists( 'qmo_oturum_ayar_sayfasi' ) ) {
 		$opt = QMO_Oturum::OPT;
 		?>
 		<div class="wrap qmo-wrap">
-			<h1 class="qmo-baslik">Oturum Limitleri</h1>
+			<h1 class="qmo-baslik"<?php echo QRMS_Admin_Shell::duplicate_page_title_a11y_attr(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>Oturum Limitleri</h1>
 
 			<p class="qmo-aciklama">
 				Masa QR'ı ile giren cihazlara süreli oturum verilir. Limitler dolunca chatbot,

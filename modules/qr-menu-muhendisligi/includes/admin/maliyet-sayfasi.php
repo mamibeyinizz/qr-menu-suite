@@ -68,7 +68,7 @@ function qrms_mm_maliyet_sayfasi() {
 	$malzemeler = qrms_mm_malzeme_listesi();
 	?>
 	<div class="wrap qrms-wrap qrms-mm">
-		<h1 class="qrms-title"><?php esc_html_e( 'Ürün Maliyetleri', 'qrms' ); ?></h1>
+		<h1 class="qrms-title"<?php echo QRMS_Admin_Shell::duplicate_page_title_a11y_attr(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>><?php esc_html_e( 'Ürün Maliyetleri', 'qrms' ); ?></h1>
 
 		<p class="qrms-muted">
 			<?php esc_html_e( 'Maliyet KDV hariç, tek porsiyon için girilir. Reçete kullanırsanız maliyet malzeme fiyatlarından hesaplanır ve alan salt okunur olur.', 'qrms' ); ?>

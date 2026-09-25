@@ -28,7 +28,7 @@ function qrm_pro_admin_settings() {
     $settings = qrm_pro_get_settings();
     ?>
     <div class="wrap qrm-pro-wrap">
-        <h1>Ayarlar &amp; Puanlama</h1>
+        <h1<?php echo QRMS_Admin_Shell::duplicate_page_title_a11y_attr(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>Ayarlar &amp; Puanlama</h1>
         <?php
         if (function_exists('rma_ceviri_option_alan_dil_sayisi')) {
             $ceviri_n = rma_ceviri_option_alan_dil_sayisi(array(

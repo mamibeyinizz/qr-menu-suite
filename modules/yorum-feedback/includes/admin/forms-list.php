@@ -42,7 +42,7 @@ function qrm_cf_admin_forms_page() {
     <div class="wrap qrm-cf-wrap">
         <div class="qrm-cf-head">
             <div>
-                <h1><?php esc_html_e('Formlar', 'qrms'); ?></h1>
+                <h1<?php echo QRMS_Admin_Shell::duplicate_page_title_a11y_attr(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>><?php esc_html_e('Formlar', 'qrms'); ?></h1>
                 <p class="qrm-cf-sub"><?php esc_html_e('Kendi oluşturduğunuz formlar. Kısa kodla sayfaya yerleştirin, gönderimleri buradan takip edin.', 'qrms'); ?></p>
             </div>
             <a class="qrm-cf-btn-primary" href="<?php echo esc_url(qrm_cf_admin_url(['view' => 'edit'])); ?>">

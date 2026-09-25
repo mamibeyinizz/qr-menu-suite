@@ -77,6 +77,22 @@ class QRMS_Admin_Shell {
 	}
 
 	/**
+	 * Markup for module page titles that duplicate the shell header H1.
+	 *
+	 * Visual title stays for layout/CSS (Fix 10A.1); premium shell screens
+	 * expose a single real H1 in the accessibility tree (h1.qrms-shell__title).
+	 *
+	 * @return string Leading space + aria-hidden attribute, or empty when shell is off.
+	 */
+	public static function duplicate_page_title_a11y_attr() {
+		if ( ! self::is_active() ) {
+			return '';
+		}
+
+		return ' aria-hidden="true"';
+	}
+
+	/**
 	 * Whether the current user is on the servis panel screen only.
 	 *
 	 * @return bool

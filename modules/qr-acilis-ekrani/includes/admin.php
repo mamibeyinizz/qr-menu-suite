@@ -213,7 +213,7 @@ trait QRMS_AE_Admin {
 					<p class="qrae-eyebrow">
 						<a href="<?php echo esc_url( QRMS_Admin::get_module_page_url( 'qr-acilis-ekrani' ) ); ?>"><?php esc_html_e( 'Karşılama Ekranı', 'qrms' ); ?></a>
 					</p>
-					<h1 class="qrae-title"><?php echo esc_html( $page['title'] ); ?></h1>
+					<h1 class="qrae-title"<?php echo QRMS_Admin_Shell::duplicate_page_title_a11y_attr(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>><?php echo esc_html( $page['title'] ); ?></h1>
 					<p class="qrae-lead"><?php echo esc_html( $page['desc'] ); ?></p>
 				</div>
 			</div>

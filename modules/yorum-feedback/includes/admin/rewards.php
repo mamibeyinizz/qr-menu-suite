@@ -44,7 +44,7 @@ function qrm_reward_admin_page() {
     if (!in_array($sub, ['kurulum', 'popup', 'sablonlar'], true)) $sub = 'kurulum';
     ?>
     <div class="wrap qrm-pro-wrap">
-        <h1>Google &amp; Ödül Sistemi</h1>
+        <h1<?php echo QRMS_Admin_Shell::duplicate_page_title_a11y_attr(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>Google &amp; Ödül Sistemi</h1>
 
         <?php foreach ($notices as $n): ?>
             <div class="notice notice-<?php echo esc_attr($n['type']); ?> is-dismissible"><p><?php echo wp_kses_post($n['text']); ?></p></div>

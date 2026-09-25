@@ -1060,7 +1060,7 @@ class QRMS_Admin {
 		}
 		?>
 		<div class="<?php echo esc_attr( $wrap ); ?>" <?php echo $style; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>
-			<h1 class="qrms-hub-heading"><?php echo esc_html( $args['title'] ); ?></h1>
+			<h1 class="qrms-hub-heading"<?php echo QRMS_Admin_Shell::duplicate_page_title_a11y_attr(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>><?php echo esc_html( $args['title'] ); ?></h1>
 
 			<?php if ( '' !== $args['intro'] ) : ?>
 				<p class="qrms-hub-intro"><?php echo esc_html( $args['intro'] ); ?></p>
@@ -2199,7 +2199,7 @@ class QRMS_Admin {
 		}
 		?>
 		<div class="wrap qrms-wrap">
-			<h1 class="qrms-title"><?php echo esc_html( QRMS_Helpers::get_module_name( $slug ) ); ?></h1>
+			<h1 class="qrms-title"<?php echo QRMS_Admin_Shell::duplicate_page_title_a11y_attr(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>><?php echo esc_html( QRMS_Helpers::get_module_name( $slug ) ); ?></h1>
 
 			<div class="qrms-card">
 				<p class="qrms-muted"><?php esc_html_e( 'Bu özellik yakında burada olacak.', 'qrms' ); ?></p>
@@ -2255,7 +2255,7 @@ class QRMS_Admin {
 		$aktif = self::get_current_settings_tab();
 		?>
 		<div class="wrap qrms-wrap">
-			<h1 class="qrms-title"><?php esc_html_e( 'Sistem Ayarları', 'qrms' ); ?></h1>
+			<h1 class="qrms-title"<?php echo QRMS_Admin_Shell::duplicate_page_title_a11y_attr(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>><?php esc_html_e( 'Sistem Ayarları', 'qrms' ); ?></h1>
 
 			<nav class="qrms-tabs" aria-label="<?php esc_attr_e( 'Ayar sekmeleri', 'qrms' ); ?>">
 				<?php foreach ( self::get_settings_tabs() as $slug => $tab ) : ?>

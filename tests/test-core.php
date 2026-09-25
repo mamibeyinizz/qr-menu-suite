@@ -2307,6 +2307,33 @@ qrms_test(
 );
 
 qrms_test(
+	'premium shell duplicate module H1 accessibility tree (Fix 10A.2)',
+	function () {
+		$shell   = file_get_contents( QRMS_PLUGIN_DIR . 'includes/class-admin-shell.php' );
+		$chatbot = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/includes/admin/admin-sayfa.php' );
+		$forms   = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/admin/forms-list.php' );
+		$analiz  = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/genel-sayfasi.php' );
+		$acilis  = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-acilis-ekrani/includes/admin.php' );
+		$rma     = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-admin-pages.php' );
+
+		qrms_assert_contains( 'function duplicate_page_title_a11y_attr', $shell, 'shell duplicate title helper' );
+		qrms_assert_contains( "return ' aria-hidden=\"true\"';", $shell, 'premium shell aktifken aria-hidden' );
+		qrms_assert_contains( 'if ( ! self::is_active() )', $shell, 'shell kapalıyken attr basılmaz' );
+		qrms_assert_contains( 'qmo-cb-hero-title', $chatbot, 'AI asistan hero başlığı' );
+		qrms_assert_contains( 'duplicate_page_title_a11y_attr', $chatbot, 'chatbot duplicate H1 a11y' );
+		qrms_assert_contains( 'duplicate_page_title_a11y_attr', $forms, 'formlar duplicate H1 a11y' );
+		qrms_assert_contains( 'duplicate_page_title_a11y_attr', $analiz, 'analitik duplicate H1 a11y' );
+		qrms_assert_contains( 'duplicate_page_title_a11y_attr', $acilis, 'karşılama duplicate H1 a11y' );
+		qrms_assert_contains( 'duplicate_page_title_a11y_attr', $rma, 'restoran menü page_header duplicate H1 a11y' );
+		qrms_assert_same(
+			0,
+			preg_match( '/<h1 class="qrms-shell__title"[^>]*aria-hidden/s', $shell ),
+			'shell H1 aria-hidden almaz'
+		);
+	}
+);
+
+qrms_test(
 	'premium shell WordPress chrome ve Screen Options (Fix 9)',
 	function () {
 		$shell = file_get_contents( QRMS_PLUGIN_DIR . 'includes/class-admin-shell.php' );

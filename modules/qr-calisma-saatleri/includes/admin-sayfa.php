@@ -77,7 +77,7 @@ function qrms_cs_admin_sayfasi() {
 	$fields = qrms_cs_color_fields();
 	?>
 	<div class="wrap qrms-wrap qrms-cs-wrap">
-		<h1 class="qrms-title"><?php esc_html_e( 'Çalışma Saatleri', 'qrms' ); ?></h1>
+		<h1 class="qrms-title"<?php echo QRMS_Admin_Shell::duplicate_page_title_a11y_attr(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>><?php esc_html_e( 'Çalışma Saatleri', 'qrms' ); ?></h1>
 
 		<p class="qrms-muted qrms-cs-lead">
 			<?php esc_html_e( 'Restoranınızın haftalık çalışma saatlerini belirleyin. Kapalı olduğunuz günleri işaretleyebilir, gece yarısını aşan çalışma saatlerini de tanımlayabilirsiniz.', 'qrms' ); ?>

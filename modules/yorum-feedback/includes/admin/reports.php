@@ -351,7 +351,7 @@ function qrm_pro_admin_reports_page() {
     $report_url = add_query_arg(['view' => 'rapor'], $self_url);
     ?>
     <div class="wrap qrm-pro-wrap">
-        <h1><?php esc_html_e('Tüm Yorumlar', 'qrms'); ?></h1>
+        <h1<?php echo QRMS_Admin_Shell::duplicate_page_title_a11y_attr(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>><?php esc_html_e('Tüm Yorumlar', 'qrms'); ?></h1>
 
         <?php qrm_pro_admin_dashboard_view_tabs('rapor'); ?>
 

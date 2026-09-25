@@ -304,7 +304,8 @@ trait RMA_Admin_Pages_Trait {
             echo '<p class="rma-premium-page-kicker">' . esc_html( $kicker ) . '</p>';
         }
 
-        echo '<h1>' . esc_html( $title ) . '</h1>';
+        $shell_dup = ( class_exists( 'QRMS_Admin_Shell' ) ? QRMS_Admin_Shell::duplicate_page_title_a11y_attr() : '' );
+        echo '<h1' . $shell_dup . '>' . esc_html( $title ) . '</h1>';
         if ( '' !== $intro ) {
             echo '<p class="rma-admin-intro">' . esc_html( $intro ) . '</p>';
         }

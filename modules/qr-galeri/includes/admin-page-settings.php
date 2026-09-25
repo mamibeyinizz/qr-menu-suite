@@ -85,7 +85,7 @@ $nav_preset_json = wp_json_encode( array_map(
 $preview_anim = empty( $s['animations'] ) ? '0' : '1';
 ?>
 <div class="wrap qrmgm-wrap qrmgm-settings-wrap">
-	<h1 class="qrmgm-title">Galeri Ayarları</h1>
+	<h1 class="qrmgm-title"<?php echo QRMS_Admin_Shell::duplicate_page_title_a11y_attr(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>Galeri Ayarları</h1>
 
 	<form method="post" id="qrmgm-settings-form" class="qrmgm-settings-form" data-qrmgm-nav-presets="<?php echo esc_attr( $nav_preset_json ); ?>">
 		<?php wp_nonce_field( 'qrmgm_save_settings_action', 'qrmgm_settings_nonce' ); ?>

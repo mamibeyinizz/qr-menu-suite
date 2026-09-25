@@ -27,7 +27,7 @@ function qrms_mm_rapor_sayfasi() {
 	$ozet  = $rapor['ozet'];
 	?>
 	<div class="wrap qrms-wrap qrms-mm">
-		<h1 class="qrms-title"><?php esc_html_e( 'Menü Performansı Raporu', 'qrms' ); ?></h1>
+		<h1 class="qrms-title"<?php echo QRMS_Admin_Shell::duplicate_page_title_a11y_attr(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>><?php esc_html_e( 'Menü Performansı Raporu', 'qrms' ); ?></h1>
 
 		<?php qrms_mm_filtre_cubugu( $args ); ?>
 

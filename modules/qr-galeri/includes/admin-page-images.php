@@ -13,7 +13,7 @@ defined( 'ABSPATH' ) || exit;
 $sections_page = 'qrmgm-sections';
 ?>
 <div class="wrap qrmgm-wrap">
-	<h1 class="qrmgm-title">Tüm Görseller</h1>
+	<h1 class="qrmgm-title"<?php echo QRMS_Admin_Shell::duplicate_page_title_a11y_attr(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>Tüm Görseller</h1>
 
 	<div class="qrmgm-toolbar">
 		<label>Bölüm:

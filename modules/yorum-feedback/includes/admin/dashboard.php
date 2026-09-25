@@ -480,7 +480,7 @@ function qrm_pro_admin_dashboard() {
     ?>
     <div class="wrap qrm-pro-wrap qrm-reviews-screen">
         <div class="qrm-page-head">
-            <h1 class="qrm-page-title"><?php esc_html_e('Tüm Yorumlar', 'qrms'); ?></h1>
+            <h1 class="qrm-page-title"<?php echo QRMS_Admin_Shell::duplicate_page_title_a11y_attr(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>><?php esc_html_e('Tüm Yorumlar', 'qrms'); ?></h1>
             <p class="qrm-page-sub">
                 <?php
                 printf(

@@ -56,7 +56,7 @@ trait QRMS_HFB_Admin {
 		}
 		?>
 		<div class="wrap qrms-wrap hfb-wrap">
-			<h1 class="qrms-title"><?php esc_html_e( 'Header & Footer', 'qrms' ); ?></h1>
+			<h1 class="qrms-title"<?php echo QRMS_Admin_Shell::duplicate_page_title_a11y_attr(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>><?php esc_html_e( 'Header & Footer', 'qrms' ); ?></h1>
 
 			<p class="qrms-muted">
 				<?php esc_html_e( 'Header, footer ve hamburger menüsünün içeriğini ve tasarımını yapılandırın. Elementor Shortcode widget\'ına [hfb_header] ve [hfb_footer] kısa kodlarını ekleyin.', 'qrms' ); ?>
