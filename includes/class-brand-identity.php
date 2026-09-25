@@ -192,6 +192,42 @@ class QRMS_Brand_Identity {
 	}
 
 	/**
+	 * Merkezi marka adı doluysa onu, değilse legacy üst satırı döndürür.
+	 *
+	 * Option yazmaz; yalnızca okuma ve çözümleme yapar.
+	 *
+	 * @param string $legacy_line1 Bağlamdaki mevcut üst satır (ör. brand_line1, baslik).
+	 * @return string
+	 */
+	public static function resolve_name( $legacy_line1 ) {
+		$central = trim( self::get_name() );
+
+		if ( '' !== $central ) {
+			return $central;
+		}
+
+		return trim( (string) $legacy_line1 );
+	}
+
+	/**
+	 * Merkezi kısa marka adı doluysa onu, değilse legacy alt satırı döndürür.
+	 *
+	 * Option yazmaz; yalnızca okuma ve çözümleme yapar.
+	 *
+	 * @param string $legacy_line2 Bağlamdaki mevcut alt satır (ör. brand_line2, alt_metin).
+	 * @return string
+	 */
+	public static function resolve_short_name( $legacy_line2 ) {
+		$central = trim( self::get_short_name() );
+
+		if ( '' !== $central ) {
+			return $central;
+		}
+
+		return trim( (string) $legacy_line2 );
+	}
+
+	/**
 	 * Shell yedek üst satır.
 	 *
 	 * @return string
