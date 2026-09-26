@@ -70,6 +70,7 @@ foreach ( $qrms_tablolar as $qrms_tablo ) {
 
 $qrms_kancalar = array(
 	'qrms_analitik_temizlik',
+	'qrms_siparis_iptal_uzlastirma',
 	'qrms_lisans_kontrol',
 	'qrms_mm_recete_yenile',
 	'qmo_uy_supurge',

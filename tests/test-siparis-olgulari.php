@@ -84,10 +84,83 @@ class QRMS_Siparis_Test_Wpdb {
 			return is_array( $next ) ? $next : array();
 		}
 
+		if ( false !== strpos( $sql, 'ilk_gonderim' )
+			|| ( false !== strpos( $sql, "event_type = 'order_sent'" ) && false !== strpos( $sql, 'NOT EXISTS' ) ) ) {
+			return $this->aday_sonuclari( $sql );
+		}
+
 		$cikti = array();
 		foreach ( $this->store as $satir ) {
 			$cikti[] = $satir;
 		}
+		return $cikti;
+	}
+
+	/**
+	 * Phase 3 aday sorgusunu bellek içi store'dan yanıtlar.
+	 *
+	 * @param string $sql Hazırlanmış SQL.
+	 * @return array<int,array<string,string>>
+	 */
+	private function aday_sonuclari( $sql ) {
+		$since = '1970-01-01 00:00:00';
+		if ( preg_match( "/created_at >= '([^']+)'/", $sql, $eslesme ) ) {
+			$since = $eslesme[1];
+		}
+
+		$limit = 50;
+		if ( preg_match( '/LIMIT (\d+)/', $sql, $eslesme ) ) {
+			$limit = (int) $eslesme[1];
+		}
+
+		$iptal = array();
+		foreach ( $this->store as $satir ) {
+			if ( 'order_cancelled' !== ( $satir['event_type'] ?? '' ) ) {
+				continue;
+			}
+			$oid = isset( $satir['order_id'] ) ? trim( (string) $satir['order_id'] ) : '';
+			if ( '' !== $oid ) {
+				$iptal[ $oid ] = true;
+			}
+		}
+
+		$grup = array();
+		foreach ( $this->store as $satir ) {
+			if ( 'order_sent' !== ( $satir['event_type'] ?? '' ) ) {
+				continue;
+			}
+			if ( ! array_key_exists( 'order_id', $satir ) || null === $satir['order_id'] ) {
+				continue;
+			}
+			$oid = trim( (string) $satir['order_id'] );
+			if ( '' === $oid ) {
+				continue;
+			}
+			if ( isset( $iptal[ $oid ] ) ) {
+				continue;
+			}
+			$ca = isset( $satir['created_at'] ) ? (string) $satir['created_at'] : '';
+			if ( $ca < $since ) {
+				continue;
+			}
+			if ( ! isset( $grup[ $oid ] ) || $ca < $grup[ $oid ] ) {
+				$grup[ $oid ] = $ca;
+			}
+		}
+
+		asort( $grup );
+
+		$cikti = array();
+		foreach ( $grup as $oid => $ca ) {
+			if ( count( $cikti ) >= $limit ) {
+				break;
+			}
+			$cikti[] = array(
+				'order_id'     => $oid,
+				'ilk_gonderim' => $ca,
+			);
+		}
+
 		return $cikti;
 	}
 
@@ -353,6 +426,11 @@ qrms_test(
 		$fs = file_get_contents( QRMS_PLUGIN_DIR . 'modules/_qmo-ortak/class-qmo-firestore.php' );
 		qrms_assert_contains( 'firestore_conflict', $fs, '409 ayrımı' );
 		qrms_assert_contains( 'documentId=', $fs, 'custom document ID' );
+
+		$uzl = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/class-qrms-siparis-iptal-uzlastirma.php' );
+		qrms_assert_contains( 'function belgeden_yaz', $uzl, 'Phase 2 yazım' );
+		qrms_assert_contains( 'function iptal_olayi_var_mi', $uzl, 'Phase 2 tekillik' );
+		qrms_assert_false( false !== strpos( $uzl, 'call_listele' ), 'Phase 3 listeleme yok' );
 	}
 );
 

@@ -57,6 +57,7 @@ function qrms_module_qr_analiz_init() {
 	require_once __DIR__ . '/class-qrms-siparis-olgulari.php';
 	require_once __DIR__ . '/class-qrms-siparis-iptal-uzlastirma.php';
 	QRMS_Analitik::init();
+	QRMS_Siparis_Iptal_Uzlastirma::init();
 
 	if ( is_admin() ) {
 		// Paylaşılan filtre bağlamı: kategori sayfaları arasında taşınan
