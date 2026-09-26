@@ -102,6 +102,7 @@ function qrms_deactivate() {
 	// temizlenir (sınıfı yalnızca bunun için yüklemeye değmez). Chatbot geçmiş
 	// temizliği için de aynı gerekçe geçerli.
 	wp_clear_scheduled_hook( 'qrms_analitik_temizlik' );
+	wp_clear_scheduled_hook( 'qrms_siparis_iptal_uzlastirma' );
 	wp_clear_scheduled_hook( 'qmo_chatbot_gecmis_temizle' );
 
 	require_once QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/urunum-yok/class-cron.php';

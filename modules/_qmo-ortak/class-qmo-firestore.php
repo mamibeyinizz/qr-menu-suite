@@ -494,10 +494,11 @@ if ( ! class_exists( 'QMO_Firestore' ) ) {
 		/**
 		 * Bir çağrı/sipariş belgesini okur.
 		 *
-		 * @param string $doc_id Belge kimliği (yol değil, yalnızca son parça).
+		 * @param string $doc_id  Belge kimliği (yol değil, yalnızca son parça).
+		 * @param int    $timeout HTTP zaman aşımı (saniye); varsayılan 15.
 		 * @return array|WP_Error Normalize edilmiş belge.
 		 */
-		public static function call_oku( $doc_id ) {
+		public static function call_oku( $doc_id, $timeout = 15 ) {
 			$doc_id = preg_replace( '/[^A-Za-z0-9_-]/', '', (string) $doc_id );
 
 			if ( '' === $doc_id ) {
@@ -514,11 +515,13 @@ if ( ! class_exists( 'QMO_Firestore' ) ) {
 				return new WP_Error( 'proje', 'Firebase proje kimliği bulunamadı.' );
 			}
 
+			$timeout = max( 1, min( 15, (int) $timeout ) );
+
 			$url  = "https://firestore.googleapis.com/v1/projects/{$project}/databases/(default)/documents/calls/{$doc_id}";
 			$resp = wp_remote_get(
 				$url,
 				array(
-					'timeout' => 15,
+					'timeout' => $timeout,
 					'headers' => array( 'Authorization' => 'Bearer ' . $token ),
 				)
 			);
