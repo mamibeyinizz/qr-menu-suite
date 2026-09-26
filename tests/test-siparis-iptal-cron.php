@@ -52,6 +52,22 @@ function qrms_p3_get_sayisi() {
 }
 
 /**
+ * GET edilen order_id sırası.
+ *
+ * @return string[]
+ */
+function qrms_p3_get_oid_sirasi() {
+	$oids = array();
+	foreach ( $GLOBALS['qrms_test']['http_calls'] as $cagri ) {
+		$url = isset( $cagri['url'] ) ? (string) $cagri['url'] : '';
+		if ( preg_match( '#/documents/calls/([^/?]+)#', $url, $eslesme ) ) {
+			$oids[] = $eslesme[1];
+		}
+	}
+	return $oids;
+}
+
+/**
  * Durum haritasına göre call_oku yanıtı üretir.
  *
  * @param array<string,string> $durumlar order_id => durum|404|timeout|auth|500.
@@ -136,6 +152,7 @@ qrms_test(
 		qrms_assert_same( 1, count( $wpdb->queries ), 'tek aday sorgusu' );
 		qrms_assert_contains( 'event_type = \'order_sent\'', $wpdb->queries[0], 'order_sent' );
 		qrms_assert_contains( 'NOT EXISTS', $wpdb->queries[0], 'iptal anti-join' );
+		qrms_assert_contains( 'ORDER BY ilk_gonderim ASC, s.order_id ASC', $wpdb->queries[0], 'deterministik sıra' );
 		qrms_assert_contains( 'LIMIT', $wpdb->queries[0], 'limit' );
 	}
 );
@@ -480,5 +497,251 @@ qrms_test(
 
 		$aralik = QRMS_Siparis_Iptal_Uzlastirma::cron_araliklari( array() );
 		qrms_assert_same( 300, $aralik[ QRMS_Siparis_Iptal_Uzlastirma::CRON_ARALIK ]['interval'], '5 dk' );
+	}
+);
+
+qrms_test(
+	'P3-21. 20 aktif order: tur2 ilk 10 tekrar öne geçmiyor',
+	function () {
+		$wpdb   = qrms_p3_hazir();
+		$harita = array();
+		for ( $i = 1; $i <= 20; $i++ ) {
+			$oid = sprintf( 'ord-p3-rr-%02d-1111-2222-3333-4444444', $i );
+			qrms_p3_sent( $wpdb, $oid, sprintf( '2026-09-26 11:%02d:00', $i ) );
+			$harita[ $oid ] = 'bekliyor';
+		}
+		$GLOBALS['qrms_test']['http'] = qrms_p3_http( $harita );
+
+		$ozet1 = QRMS_Siparis_Iptal_Uzlastirma::tur();
+		$ilk1  = qrms_p3_get_oid_sirasi();
+		qrms_assert_same( 10, $ozet1['get'], 'tur1 GET tavanı' );
+		qrms_assert_true( count( $ilk1 ) >= 1, 'tur1 GET var' );
+
+		$GLOBALS['qrms_test']['http_calls'] = array();
+		$ozet2 = QRMS_Siparis_Iptal_Uzlastirma::tur();
+		$ilk2  = qrms_p3_get_oid_sirasi();
+		qrms_assert_same( 10, $ozet2['get'], 'tur2 GET tavanı' );
+		qrms_assert_true( count( $ilk2 ) >= 1, 'tur2 GET var' );
+		qrms_assert_false( $ilk1[0] === $ilk2[0], 'tur2 aynı ilk GET ile başlamaz' );
+	}
+);
+
+qrms_test(
+	'P3-22. ilk 10 skip-cache iken 11. aday GET edilir',
+	function () {
+		$wpdb   = qrms_p3_hazir();
+		$harita = array();
+		for ( $i = 1; $i <= 12; $i++ ) {
+			$oid = sprintf( 'ord-p3-sk-%02d-1111-2222-3333-4444444', $i );
+			qrms_p3_sent( $wpdb, $oid, sprintf( '2026-09-26 11:%02d:00', $i ) );
+			$harita[ $oid ] = 'bekliyor';
+			if ( $i <= 10 ) {
+				set_transient( QRMS_Siparis_Iptal_Uzlastirma::skip_anahtar( $oid ), 1, 300 );
+			}
+		}
+		$GLOBALS['qrms_test']['http'] = qrms_p3_http( $harita );
+
+		QRMS_Siparis_Iptal_Uzlastirma::tur();
+		$oids = qrms_p3_get_oid_sirasi();
+		qrms_assert_same( 'ord-p3-sk-11-1111-2222-3333-4444444', $oids[0], '11. aday ilk GET' );
+		qrms_assert_false( in_array( 'ord-p3-sk-01-1111-2222-3333-4444444', $oids, true ), 'skip edilen GET yok' );
+		qrms_assert_true( count( $oids ) <= 10, 'batch tavanı' );
+	}
+);
+
+qrms_test(
+	'P3-23. 11. aday Firestore iptal -> order_cancelled',
+	function () {
+		$wpdb   = qrms_p3_hazir();
+		$harita = array();
+		$onbir  = 'ord-p3-i11-1111-2222-3333-444444444';
+		for ( $i = 1; $i <= 12; $i++ ) {
+			$oid = sprintf( 'ord-p3-i%02d-1111-2222-3333-444444444', $i );
+			if ( 11 === $i ) {
+				$oid = $onbir;
+			}
+			qrms_p3_sent( $wpdb, $oid, sprintf( '2026-09-26 11:%02d:00', $i ) );
+			$harita[ $oid ] = ( $oid === $onbir ) ? 'iptal' : 'bekliyor';
+			if ( $i <= 10 ) {
+				set_transient( QRMS_Siparis_Iptal_Uzlastirma::skip_anahtar( $oid ), 1, 300 );
+			}
+		}
+		$GLOBALS['qrms_test']['http'] = qrms_p3_http( $harita );
+
+		QRMS_Siparis_Iptal_Uzlastirma::tur();
+		qrms_assert_same( 1, count( $wpdb->inserts ), 'tek iptal' );
+		qrms_assert_same( 'order_cancelled', $wpdb->inserts[0]['event_type'], 'tip' );
+		qrms_assert_same( $onbir, $wpdb->inserts[0]['order_id'], '11. sipariş' );
+	}
+);
+
+qrms_test(
+	'P3-24. yeni order cursor ring ile starvation olmaz',
+	function () {
+		$wpdb = qrms_p3_hazir();
+		// order_id sütunu 36 karakter; kaydet() keser — tam eşleşme için kısa id.
+		$eski = 'ord-p3-nw-a-1111-2222-3333-444444444';
+		$yeni = 'ord-p3-nw-b-1111-2222-3333-444444444';
+		qrms_p3_sent( $wpdb, $eski, '2026-09-26 11:01:00' );
+		qrms_p3_sent( $wpdb, $yeni, '2026-09-26 12:30:00' );
+		QRMS_Siparis_Iptal_Uzlastirma::imlec_yaz(
+			array(
+				'order_id'     => $eski,
+				'ilk_gonderim' => '2026-09-26 11:01:00',
+			)
+		);
+		set_transient( QRMS_Siparis_Iptal_Uzlastirma::skip_anahtar( $eski ), 1, 300 );
+		$GLOBALS['qrms_test']['http'] = qrms_p3_http(
+			array(
+				$eski => 'bekliyor',
+				$yeni => 'iptal',
+			)
+		);
+
+		$ozet = QRMS_Siparis_Iptal_Uzlastirma::tur();
+		qrms_assert_same( 1, $ozet['get'], 'yeni aday GET edildi' );
+		qrms_assert_same( 1, $ozet['yazilan'], 'iptal yazildi' );
+		$iptal = false;
+		foreach ( $wpdb->inserts as $satir ) {
+			if ( 'order_cancelled' === ( $satir['event_type'] ?? '' ) && $yeni === ( $satir['order_id'] ?? '' ) ) {
+				$iptal = true;
+			}
+		}
+		qrms_assert_true( $iptal, 'yeni sipariş iptali bulundu' );
+	}
+);
+
+qrms_test(
+	'P3-25. fopen/flock başarısız -> job no-op',
+	function () {
+		$uzl = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/class-qrms-siparis-iptal-uzlastirma.php' );
+		qrms_assert_contains( 'if ( ! $fp ) {', $uzl, 'fopen zorunlu' );
+		qrms_assert_contains( 'return false;', $uzl, 'kilitsiz devam yok' );
+	}
+);
+
+qrms_test(
+	'P3-26. timeout/transport -> cancellation yok',
+	function () {
+		$wpdb = qrms_p3_hazir();
+		$oid  = 'ord-p3-tr2-1111-2222-3333-44444444444';
+		qrms_p3_sent( $wpdb, $oid );
+		$GLOBALS['qrms_test']['http'] = qrms_p3_http( array( $oid => 'timeout' ) );
+
+		QRMS_Siparis_Iptal_Uzlastirma::tur();
+		qrms_assert_same( 0, count( $wpdb->inserts ), 'transport iptal değil' );
+	}
+);
+
+qrms_test(
+	'P3-27. Phase 1 + Phase 2 + P3-1..20 suite içinde yeşil',
+	function () {
+		qrms_assert_true( class_exists( 'QRMS_Siparis_Iptal_Uzlastirma' ), 'sınıf yüklü' );
+		qrms_assert_true( method_exists( 'QRMS_Siparis_Iptal_Uzlastirma', 'belgeden_yaz' ), 'Phase 2' );
+	}
+);
+
+qrms_test(
+	'P3-28. tur sonunda son GET imlec olarak kaydedilir',
+	function () {
+		$wpdb = qrms_p3_hazir();
+		for ( $i = 1; $i <= 3; $i++ ) {
+			$oid = sprintf( 'ord-p3-im-%02d-1111-2222-3333-4444444', $i );
+			qrms_p3_sent( $wpdb, $oid, sprintf( '2026-09-26 11:0%d:00', $i ) );
+		}
+		$harita = array();
+		for ( $i = 1; $i <= 3; $i++ ) {
+			$harita[ sprintf( 'ord-p3-im-%02d-1111-2222-3333-4444444', $i ) ] = 'bekliyor';
+		}
+		$GLOBALS['qrms_test']['http'] = qrms_p3_http( $harita );
+		delete_option( QRMS_Siparis_Iptal_Uzlastirma::IMLEC_OPT );
+
+		QRMS_Siparis_Iptal_Uzlastirma::tur();
+		$imlec = QRMS_Siparis_Iptal_Uzlastirma::imlec_oku();
+		$oids  = qrms_p3_get_oid_sirasi();
+		qrms_assert_true( is_array( $imlec ), 'imlec var' );
+		qrms_assert_same( end( $oids ), $imlec['order_id'], 'son GET imlec' );
+	}
+);
+
+qrms_test(
+	'P3-29. skip edilen aday imlec olmaz',
+	function () {
+		$wpdb = qrms_p3_hazir();
+		$a    = 'ord-p3-sk2-a-1111-2222-3333-4444444444';
+		$b    = 'ord-p3-sk2-b-1111-2222-3333-4444444444';
+		qrms_p3_sent( $wpdb, $a, '2026-09-26 11:01:00' );
+		qrms_p3_sent( $wpdb, $b, '2026-09-26 11:02:00' );
+		set_transient( QRMS_Siparis_Iptal_Uzlastirma::skip_anahtar( $a ), 1, 300 );
+		$GLOBALS['qrms_test']['http'] = qrms_p3_http(
+			array(
+				$a => 'bekliyor',
+				$b => 'bekliyor',
+			)
+		);
+		delete_option( QRMS_Siparis_Iptal_Uzlastirma::IMLEC_OPT );
+
+		QRMS_Siparis_Iptal_Uzlastirma::tur();
+		$imlec = QRMS_Siparis_Iptal_Uzlastirma::imlec_oku();
+		qrms_assert_same( $b, $imlec['order_id'], 'skip edilen imlec değil' );
+	}
+);
+
+qrms_test(
+	'P3-30. imlec sonda -> ring başa sarar',
+	function () {
+		$wpdb = qrms_p3_hazir();
+		$a    = 'ord-p3-rg-a-1111-2222-3333-44444444444';
+		$b    = 'ord-p3-rg-b-1111-2222-3333-44444444444';
+		$c    = 'ord-p3-rg-c-1111-2222-3333-44444444444';
+		qrms_p3_sent( $wpdb, $a, '2026-09-26 11:01:00' );
+		qrms_p3_sent( $wpdb, $b, '2026-09-26 11:02:00' );
+		qrms_p3_sent( $wpdb, $c, '2026-09-26 11:03:00' );
+		QRMS_Siparis_Iptal_Uzlastirma::imlec_yaz(
+			array(
+				'order_id'     => $c,
+				'ilk_gonderim' => '2026-09-26 11:03:00',
+			)
+		);
+		$halka = QRMS_Siparis_Iptal_Uzlastirma::aday_halkasi( 50 );
+		qrms_assert_same( $a, $halka[0]['order_id'], 'sonrası başa sarar' );
+		qrms_assert_same( $b, $halka[1]['order_id'], 'sıra korunur' );
+	}
+);
+
+qrms_test(
+	'P3-31. (ilk_gonderim, order_id) sırası deterministik',
+	function () {
+		$liste = array(
+			array( 'order_id' => 'ord-z', 'ilk_gonderim' => '2026-09-26 11:00:00' ),
+			array( 'order_id' => 'ord-a', 'ilk_gonderim' => '2026-09-26 11:00:00' ),
+			array( 'order_id' => 'ord-m', 'ilk_gonderim' => '2026-09-26 10:00:00' ),
+		);
+		usort( $liste, array( 'QRMS_Siparis_Iptal_Uzlastirma', 'aday_karsilastir' ) );
+		qrms_assert_same( 'ord-m', $liste[0]['order_id'], 'önce zaman' );
+		qrms_assert_same( 'ord-a', $liste[1]['order_id'], 'sonra order_id ASC' );
+		qrms_assert_same( 'ord-z', $liste[2]['order_id'], 'son' );
+	}
+);
+
+qrms_test(
+	'P3-32. call_oku cron timeout kalan bütçeyi aşmaz',
+	function () {
+		$wpdb = qrms_p3_hazir();
+		$oid  = 'ord-p3-to-b-1111-2222-3333-44444444444';
+		qrms_p3_sent( $wpdb, $oid );
+		$GLOBALS['qrms_test']['http'] = function ( $url, $args = array() ) use ( $oid ) {
+			qrms_assert_true( isset( $args['timeout'] ), 'timeout geçildi' );
+			qrms_assert_true( (int) $args['timeout'] <= 8, 'bütçe tavanı' );
+			return qrms_p3_http( array( $oid => 'bekliyor' ) )( $url, $args );
+		};
+		add_filter(
+			'qrms_iptal_uzlastirma_sure',
+			function () {
+				return 8;
+			}
+		);
+
+		QRMS_Siparis_Iptal_Uzlastirma::tur();
 	}
 );

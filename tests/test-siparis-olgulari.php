@@ -148,17 +148,27 @@ class QRMS_Siparis_Test_Wpdb {
 			}
 		}
 
-		asort( $grup );
-
 		$cikti = array();
 		foreach ( $grup as $oid => $ca ) {
-			if ( count( $cikti ) >= $limit ) {
-				break;
-			}
 			$cikti[] = array(
 				'order_id'     => $oid,
 				'ilk_gonderim' => $ca,
 			);
+		}
+
+		usort(
+			$cikti,
+			function ( $a, $b ) {
+				$ca = strcmp( $a['ilk_gonderim'], $b['ilk_gonderim'] );
+				if ( 0 !== $ca ) {
+					return $ca;
+				}
+				return strcmp( $a['order_id'], $b['order_id'] );
+			}
+		);
+
+		if ( count( $cikti ) > $limit ) {
+			$cikti = array_slice( $cikti, 0, $limit );
 		}
 
 		return $cikti;

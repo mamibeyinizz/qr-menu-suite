@@ -58,6 +58,9 @@ class QRMS_Siparis_Iptal_Uzlastirma {
 	/** Skip-cache transient öneki (ardına sanitize order_id). */
 	const SKIP_ONEK = 'qrms_iu_skip_';
 
+	/** Tur imleci option'ı (ilk_gonderim + order_id). */
+	const IMLEC_OPT = 'qrms_iu_imlec';
+
 	/**
 	 * Non-blocking flock tutamacı (tur süresince).
 	 *
@@ -392,7 +395,7 @@ class QRMS_Siparis_Iptal_Uzlastirma {
 					    AND c.order_id = s.order_id
 				   )
 				 GROUP BY s.order_id
-				 ORDER BY ilk_gonderim ASC
+				 ORDER BY ilk_gonderim ASC, s.order_id ASC
 				 LIMIT %d",
 				$since,
 				$limit
@@ -419,6 +422,139 @@ class QRMS_Siparis_Iptal_Uzlastirma {
 		}
 
 		return $cikti;
+	}
+
+	/**
+	 * İmleç sonrasından başlayan deterministik aday halkası (round-robin).
+	 *
+	 * @param int $limit SQL tavanı.
+	 * @return array<int,array{order_id:string,ilk_gonderim:string}>
+	 */
+	public static function aday_halkasi( $limit = self::ADAY_TARAMA ) {
+		$liste = self::adaylar( $limit );
+		$sayi  = count( $liste );
+
+		if ( $sayi < 1 ) {
+			return array();
+		}
+
+		usort( $liste, array( __CLASS__, 'aday_karsilastir' ) );
+
+		$imlec = self::imlec_oku();
+		$bas   = 0;
+
+		if ( is_array( $imlec ) && ! empty( $imlec['order_id'] ) ) {
+			$indeks = self::aday_indeks( $liste, $imlec );
+
+			if ( null !== $indeks ) {
+				$bas = ( $indeks + 1 ) % $sayi;
+			} else {
+				foreach ( $liste as $i => $satir ) {
+					if ( self::aday_karsilastir( $satir, $imlec ) > 0 ) {
+						$bas = $i;
+						break;
+					}
+				}
+			}
+		}
+
+		$halka = array();
+
+		for ( $j = 0; $j < $sayi; $j++ ) {
+			$halka[] = $liste[ ( $bas + $j ) % $sayi ];
+		}
+
+		return $halka;
+	}
+
+	/**
+	 * Aday sıralama: ilk_gonderim, order_id.
+	 *
+	 * @param array{order_id:string,ilk_gonderim:string} $a Sol.
+	 * @param array{order_id:string,ilk_gonderim:string} $b Sağ.
+	 * @return int
+	 */
+	public static function aday_karsilastir( $a, $b ) {
+		$ca = strcmp( (string) ( $a['ilk_gonderim'] ?? '' ), (string) ( $b['ilk_gonderim'] ?? '' ) );
+
+		if ( 0 !== $ca ) {
+			return $ca;
+		}
+
+		return strcmp( (string) ( $a['order_id'] ?? '' ), (string) ( $b['order_id'] ?? '' ) );
+	}
+
+	/**
+	 * İmleç ile aynı aday mı?
+	 *
+	 * @param array{order_id:string,ilk_gonderim:string} $aday   Aday.
+	 * @param array{order_id:string,ilk_gonderim:string} $imlec  İmleç.
+	 * @return bool
+	 */
+	public static function aday_imlec_ayni( $aday, $imlec ) {
+		return 0 === self::aday_karsilastir( $aday, $imlec );
+	}
+
+	/**
+	 * Listede imleç satırının indeksi.
+	 *
+	 * @param array<int,array{order_id:string,ilk_gonderim:string}> $liste Adaylar.
+	 * @param array{order_id:string,ilk_gonderim:string}          $imlec  İmleç.
+	 * @return int|null
+	 */
+	public static function aday_indeks( array $liste, array $imlec ) {
+		foreach ( $liste as $i => $satir ) {
+			if ( self::aday_imlec_ayni( $satir, $imlec ) ) {
+				return (int) $i;
+			}
+		}
+
+		return null;
+	}
+
+	/**
+	 * Kayıtlı tur imlecini okur.
+	 *
+	 * @return array{order_id:string,ilk_gonderim:string}|null
+	 */
+	public static function imlec_oku() {
+		$ham = get_option( self::IMLEC_OPT, null );
+
+		if ( ! is_array( $ham ) ) {
+			return null;
+		}
+
+		$order_id = preg_replace( '/[^A-Za-z0-9_-]/', '', (string) ( $ham['order_id'] ?? '' ) );
+		if ( '' === $order_id ) {
+			return null;
+		}
+
+		return array(
+			'order_id'     => $order_id,
+			'ilk_gonderim' => isset( $ham['ilk_gonderim'] ) ? (string) $ham['ilk_gonderim'] : '',
+		);
+	}
+
+	/**
+	 * Tur imlecini yazar (son gerçek GET).
+	 *
+	 * @param array{order_id:string,ilk_gonderim:string} $aday Aday.
+	 * @return void
+	 */
+	public static function imlec_yaz( array $aday ) {
+		$order_id = preg_replace( '/[^A-Za-z0-9_-]/', '', (string) ( $aday['order_id'] ?? '' ) );
+		if ( '' === $order_id ) {
+			return;
+		}
+
+		update_option(
+			self::IMLEC_OPT,
+			array(
+				'order_id'     => $order_id,
+				'ilk_gonderim' => isset( $aday['ilk_gonderim'] ) ? (string) $aday['ilk_gonderim'] : '',
+			),
+			false
+		);
 	}
 
 	/**
@@ -457,12 +593,13 @@ class QRMS_Siparis_Iptal_Uzlastirma {
 			$tarama = (int) apply_filters( 'qrms_iptal_uzlastirma_aday_sinir', self::ADAY_TARAMA );
 			$tarama = max( $batch, min( 100, $tarama ) );
 
-			$adaylar     = self::adaylar( $tarama );
+			$adaylar      = self::aday_halkasi( $tarama );
 			$ozet['aday'] = count( $adaylar );
-			$bas         = self::simdi();
+			$bas          = self::simdi();
 
 			foreach ( $adaylar as $satir ) {
-				if ( ( self::simdi() - $bas ) >= $butce ) {
+				$kalan = $butce - ( self::simdi() - $bas );
+				if ( $kalan <= 0 ) {
 					$ozet['kesme'] = 'sure';
 					break;
 				}
@@ -482,8 +619,10 @@ class QRMS_Siparis_Iptal_Uzlastirma {
 					break;
 				}
 
-				$belge = QMO_Firestore::call_oku( $order_id );
+				$timeout = min( 15, max( 1, (int) floor( $kalan ) ) );
+				$belge   = QMO_Firestore::call_oku( $order_id, $timeout );
 				++$ozet['get'];
+				self::imlec_yaz( $satir );
 
 				$sinif = self::oku_sinifi( $belge );
 
@@ -566,20 +705,22 @@ class QRMS_Siparis_Iptal_Uzlastirma {
 		$dosya = $dizin . '/qrms-iu-job.lock';
 		$fp    = @fopen( $dosya, 'c' );
 
-		if ( $fp ) {
-			if ( ! flock( $fp, LOCK_EX | LOCK_NB ) ) {
-				fclose( $fp );
-				return false;
-			}
-
-			if ( false !== get_transient( self::KILIT ) ) {
-				flock( $fp, LOCK_UN );
-				fclose( $fp );
-				return false;
-			}
-
-			self::$kilit_fp = $fp;
+		if ( ! $fp ) {
+			return false;
 		}
+
+		if ( ! flock( $fp, LOCK_EX | LOCK_NB ) ) {
+			fclose( $fp );
+			return false;
+		}
+
+		if ( false !== get_transient( self::KILIT ) ) {
+			flock( $fp, LOCK_UN );
+			fclose( $fp );
+			return false;
+		}
+
+		self::$kilit_fp = $fp;
 
 		set_transient( self::KILIT, 1, self::KILIT_TTL );
 
@@ -594,9 +735,9 @@ class QRMS_Siparis_Iptal_Uzlastirma {
 	public static function kilit_birak() {
 		delete_transient( self::KILIT );
 
-		if ( is_resource( self::$kilit_fp ) ) {
-			flock( self::$kilit_fp, LOCK_UN );
-			fclose( self::$kilit_fp );
+		if ( self::$kilit_fp ) {
+			@flock( self::$kilit_fp, LOCK_UN );
+			@fclose( self::$kilit_fp );
 		}
 
 		self::$kilit_fp = null;
