@@ -298,9 +298,10 @@ if ( ! function_exists( 'qrms_module_qr_analiz_hub_ozet' ) ) {
 	/**
 	 * Hub'ın üstündeki özet kutuları.
 	 *
-	 * Dördü de genel_bakis()'in TEK çağrısından çıkar; o metot sekiz kovayı
-	 * iki indeksli sorguda toplar (gerekçesi kendi gövdesindeki uzun yorumda).
-	 * Kutular ayrı ayrı sorulsaydı hub açılışı dört ek tarama demek olurdu.
+	 * Dördü de genel_bakis()'in TEK çağrısından çıkar; o metot tarihli yedi
+	 * kovayı tek indeksli aralık sorgusunda toplar (gerekçesi
+	 * QRMS_Analitik::genel_bakis() yorumunda). Kutular ayrı ayrı sorulsaydı
+	 * hub açılışı dört ek tarama demek olurdu.
 	 *
 	 * @return array<int,array{label:string,value:string,url:string,accent:string}>
 	 */
