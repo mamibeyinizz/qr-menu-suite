@@ -17,8 +17,12 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 class QMO_Chatbot_DB {
 
-	const SURUM = '1.2';
+	const SURUM = '1.3';
 	const OPT   = 'qmo_chatbot_db_surum';
+
+	/** Append-only recommendation attribution olayları. */
+	const REC_EVENT_SHOWN    = 'shown';
+	const REC_EVENT_CART_ADD = 'cart_add';
 
 	/**
 	 * Sürüm eşleşmiyorsa şemayı kurar.
@@ -74,6 +78,16 @@ class QMO_Chatbot_DB {
 	}
 
 	/**
+	 * Phase 4 — recommendation attribution olay tablosu.
+	 *
+	 * @return string
+	 */
+	public static function recommendation_events_tablosu() {
+		global $wpdb;
+		return $wpdb->prefix . 'qmo_chatbot_recommendation_events';
+	}
+
+	/**
 	 * Canlı sohbet (eskalasyon) takip tablosu.
 	 *
 	 * @return string
@@ -106,6 +120,7 @@ class QMO_Chatbot_DB {
 		$bilin    = self::bilinmeyen_tablosu();
 		$kural    = self::oneri_kural_tablosu();
 		$log      = self::oneri_log_tablosu();
+		$rec      = self::recommendation_events_tablosu();
 		$canli    = self::canli_tablosu();
 		$personel = self::personel_mesaj_tablosu();
 
@@ -169,6 +184,22 @@ class QMO_Chatbot_DB {
 				KEY oturum (oturum_id),
 				KEY urun (urun_id),
 				KEY durum_tarih (durum, created_at)
+			) {$collate};"
+		);
+
+		dbDelta(
+			"CREATE TABLE {$rec} (
+				id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+				ref_id varchar(36) NOT NULL DEFAULT '',
+				event_type varchar(20) NOT NULL DEFAULT '',
+				product_id bigint(20) unsigned NOT NULL,
+				session_id varchar(36) NOT NULL DEFAULT '',
+				source varchar(20) DEFAULT NULL,
+				created_at datetime NOT NULL,
+				PRIMARY KEY  (id),
+				KEY idx_ref_id (ref_id),
+				KEY idx_session_product_time (session_id, product_id, created_at),
+				KEY idx_ref_event (ref_id, event_type)
 			) {$collate};"
 		);
 
@@ -940,5 +971,382 @@ class QMO_Chatbot_DB {
 		}
 
 		return $rapor;
+	}
+
+	/**
+	 * Opaque recommendation instance kimliği üretir (sunucu).
+	 *
+	 * @return string
+	 */
+	public static function recommendation_ref_uret() {
+		if ( function_exists( 'wp_generate_uuid4' ) ) {
+			return substr( sanitize_text_field( wp_generate_uuid4() ), 0, 36 );
+		}
+
+		return substr( wp_hash( uniqid( 'rec', true ) . wp_rand() ), 0, 36 );
+	}
+
+	/**
+	 * Recommendation attribution olayı ekler (append-only).
+	 *
+	 * @param string      $ref_id     Instance kimliği.
+	 * @param string      $event_type shown|cart_add.
+	 * @param int         $product_id Ürün kimliği.
+	 * @param string      $session_id Canonical s_… oturumu.
+	 * @param string|null $source     ai|kural (shown için).
+	 * @return bool
+	 */
+	public static function recommendation_event_ekle( $ref_id, $event_type, $product_id, $session_id, $source = null ) {
+		global $wpdb;
+
+		self::sema_kontrol();
+
+		$ref_id = substr( sanitize_text_field( (string) $ref_id ), 0, 36 );
+		if ( strlen( $ref_id ) < 8 ) {
+			return false;
+		}
+
+		$event_type = sanitize_key( (string) $event_type );
+		if ( ! in_array( $event_type, array( self::REC_EVENT_SHOWN, self::REC_EVENT_CART_ADD ), true ) ) {
+			return false;
+		}
+
+		$product_id = absint( $product_id );
+		if ( $product_id < 1 ) {
+			return false;
+		}
+
+		$session_id = substr( sanitize_text_field( (string) $session_id ), 0, 36 );
+		if ( '' === $session_id || 0 !== strpos( $session_id, 's_' ) ) {
+			return false;
+		}
+
+		$kaynak = null;
+		if ( null !== $source && '' !== (string) $source ) {
+			$kaynak = sanitize_key( (string) $source );
+			if ( ! in_array( $kaynak, array( 'ai', 'kural' ), true ) ) {
+				$kaynak = 'ai';
+			}
+		}
+
+		$veri = array(
+			'ref_id'     => $ref_id,
+			'event_type' => $event_type,
+			'product_id' => $product_id,
+			'session_id' => $session_id,
+			'created_at' => current_time( 'mysql' ),
+		);
+		$format = array( '%s', '%s', '%d', '%s', '%s' );
+
+		if ( null !== $kaynak ) {
+			$veri['source'] = $kaynak;
+			$format[]       = '%s';
+		} else {
+			$veri['source'] = null;
+			$format[]       = '%s';
+		}
+
+		$tablo = self::recommendation_events_tablosu();
+		$sonuc = $wpdb->insert( $tablo, $veri, $format );
+
+		return false !== $sonuc;
+	}
+
+	/**
+	 * Gösterim (shown) kayıtlarını ref_id listesi için yükler.
+	 *
+	 * @param string[] $ref_ids Ref kimlikleri.
+	 * @return array<string,array{ref_id:string,product_id:int,session_id:string,event_type:string,created_at:string}>
+	 */
+	public static function recommendation_shown_refleri( array $ref_ids ) {
+		global $wpdb;
+
+		self::sema_kontrol();
+
+		$ref_ids = array_values(
+			array_unique(
+				array_filter(
+					array_map(
+						function ( $id ) {
+							return substr( sanitize_text_field( (string) $id ), 0, 36 );
+						},
+						$ref_ids
+					)
+				)
+			)
+		);
+
+		if ( empty( $ref_ids ) ) {
+			return array();
+		}
+
+		$tablo  = self::recommendation_events_tablosu();
+		$yer    = implode( ', ', array_fill( 0, count( $ref_ids ), '%s' ) );
+		$args   = $ref_ids;
+		$args[] = self::REC_EVENT_SHOWN;
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPlaceholder
+		$sql = "SELECT ref_id, product_id, session_id, event_type, created_at
+		          FROM {$tablo}
+		         WHERE ref_id IN ({$yer})
+		           AND event_type = %s";
+
+		$satirlar = $wpdb->get_results( $wpdb->prepare( $sql, $args ), ARRAY_A );
+
+		$cikti = array();
+		foreach ( (array) $satirlar as $satir ) {
+			if ( ! is_array( $satir ) || empty( $satir['ref_id'] ) ) {
+				continue;
+			}
+			$cikti[ (string) $satir['ref_id'] ] = array(
+				'ref_id'     => (string) $satir['ref_id'],
+				'product_id' => (int) $satir['product_id'],
+				'session_id' => (string) $satir['session_id'],
+				'event_type' => (string) $satir['event_type'],
+				'created_at' => (string) $satir['created_at'],
+			);
+		}
+
+		return $cikti;
+	}
+
+	/**
+	 * Bu ref için cart_add attribution zaten var mı?
+	 *
+	 * @param string $ref_id Ref kimliği.
+	 * @return bool
+	 */
+	public static function recommendation_cart_attribution_var_mi( $ref_id ) {
+		global $wpdb;
+
+		self::sema_kontrol();
+
+		$ref_id = substr( sanitize_text_field( (string) $ref_id ), 0, 36 );
+		if ( '' === $ref_id ) {
+			return true;
+		}
+
+		$tablo = self::recommendation_events_tablosu();
+		$var   = $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT id FROM {$tablo} WHERE ref_id = %s AND event_type = %s LIMIT 1",
+				$ref_id,
+				self::REC_EVENT_CART_ADD
+			)
+		);
+
+		return ! empty( $var );
+	}
+
+	/**
+	 * Doğrulanmış chatbot kart cart_add attribution yazar.
+	 *
+	 * @param string $ref_id     İstemciden gelen ref (doğrulanır).
+	 * @param int    $product_id Sepet ürün kimliği.
+	 * @param string $session_id Canonical oturum (s_…).
+	 * @return bool
+	 */
+	public static function recommendation_cart_attribution_kaydet( $ref_id, $product_id, $session_id ) {
+		$ref_id     = substr( sanitize_text_field( (string) $ref_id ), 0, 36 );
+		$product_id = absint( $product_id );
+		$session_id = substr( sanitize_text_field( (string) $session_id ), 0, 36 );
+
+		if ( '' === $ref_id || $product_id < 1 || '' === $session_id || 0 !== strpos( $session_id, 's_' ) ) {
+			return false;
+		}
+
+		if ( self::recommendation_cart_attribution_var_mi( $ref_id ) ) {
+			return false;
+		}
+
+		$shown = self::recommendation_shown_refleri( array( $ref_id ) );
+		if ( empty( $shown[ $ref_id ] ) ) {
+			return false;
+		}
+
+		$kayit = $shown[ $ref_id ];
+		if ( (int) $kayit['product_id'] !== $product_id ) {
+			return false;
+		}
+		if ( (string) $kayit['session_id'] !== $session_id ) {
+			return false;
+		}
+
+		return self::recommendation_event_ekle(
+			$ref_id,
+			self::REC_EVENT_CART_ADD,
+			$product_id,
+			$session_id,
+			null
+		);
+	}
+
+	/**
+	 * Gözlemsel order_sent ilişkisi: aynı session + ürün, sipariş zamanı >= cart_add.
+	 *
+	 * Causal iddia değildir; yalnızca analitik satırlarına bakar.
+	 *
+	 * @param string $ref_id Recommendation instance.
+	 * @return bool
+	 */
+	public static function recommendation_gozlemsel_order_sent_var_mi( $ref_id ) {
+		global $wpdb;
+
+		if ( ! class_exists( 'QRMS_Analitik' ) ) {
+			return false;
+		}
+
+		self::sema_kontrol();
+
+		$ref_id = substr( sanitize_text_field( (string) $ref_id ), 0, 36 );
+		if ( '' === $ref_id ) {
+			return false;
+		}
+
+		$tablo_rec = self::recommendation_events_tablosu();
+		$cart      = $wpdb->get_row(
+			$wpdb->prepare(
+				"SELECT product_id, session_id, created_at FROM {$tablo_rec}
+				 WHERE ref_id = %s AND event_type = %s LIMIT 1",
+				$ref_id,
+				self::REC_EVENT_CART_ADD
+			),
+			ARRAY_A
+		);
+
+		if ( ! is_array( $cart ) || empty( $cart['session_id'] ) ) {
+			return false;
+		}
+
+		$analitik = QRMS_Analitik::tablo();
+		$var      = $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT id FROM {$analitik}
+				 WHERE event_type = 'order_sent'
+				   AND session_id = %s
+				   AND item_id = %d
+				   AND created_at >= %s
+				 LIMIT 1",
+				(string) $cart['session_id'],
+				(int) $cart['product_id'],
+				(string) $cart['created_at']
+			)
+		);
+
+		return ! empty( $var );
+	}
+
+	/**
+	 * Verilen ref_id'lerden cart_add attribution'ı olanları döner.
+	 *
+	 * @param string[] $ref_ids Ref listesi.
+	 * @return array<string,bool> ref_id => true
+	 */
+	public static function recommendation_cart_refleri( array $ref_ids ) {
+		global $wpdb;
+
+		self::sema_kontrol();
+
+		$ref_ids = array_values(
+			array_unique(
+				array_filter(
+					array_map(
+						function ( $id ) {
+							return substr( sanitize_text_field( (string) $id ), 0, 36 );
+						},
+						$ref_ids
+					)
+				)
+			)
+		);
+
+		if ( empty( $ref_ids ) ) {
+			return array();
+		}
+
+		$tablo = self::recommendation_events_tablosu();
+		$yer   = implode( ', ', array_fill( 0, count( $ref_ids ), '%s' ) );
+		$args  = $ref_ids;
+		$args[] = self::REC_EVENT_CART_ADD;
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$sql = "SELECT ref_id FROM {$tablo} WHERE ref_id IN ({$yer}) AND event_type = %s";
+
+		$kolon = $wpdb->get_col( $wpdb->prepare( $sql, $args ) );
+
+		$cikti = array();
+		foreach ( (array) $kolon as $ref ) {
+			$cikti[ (string) $ref ] = true;
+		}
+
+		return $cikti;
+	}
+
+	/**
+	 * Toplu sepet olaylarından doğrulanmış recommendation cart_add yazar.
+	 *
+	 * @param array<int,array<string,mixed>> $olaylar    cart_add olayları.
+	 * @param string                         $session_id Canonical s_… oturumu.
+	 * @return void
+	 */
+	public static function recommendation_sepet_olaylari_isle( array $olaylar, $session_id ) {
+		$session_id = substr( sanitize_text_field( (string) $session_id ), 0, 36 );
+		if ( '' === $session_id || 0 !== strpos( $session_id, 's_' ) ) {
+			return;
+		}
+
+		$refs = array();
+		foreach ( $olaylar as $o ) {
+			if ( ! is_array( $o ) ) {
+				continue;
+			}
+			$tip = isset( $o['tip'] ) ? sanitize_key( (string) $o['tip'] ) : '';
+			if ( 'cart_add' !== $tip ) {
+				continue;
+			}
+			$ref = isset( $o['ref_id'] ) ? substr( sanitize_text_field( (string) $o['ref_id'] ), 0, 36 ) : '';
+			if ( '' !== $ref ) {
+				$refs[] = $ref;
+			}
+		}
+
+		if ( empty( $refs ) ) {
+			return;
+		}
+
+		$shown_map  = self::recommendation_shown_refleri( $refs );
+		$cart_mevcut = self::recommendation_cart_refleri( $refs );
+
+		foreach ( $olaylar as $o ) {
+			if ( ! is_array( $o ) ) {
+				continue;
+			}
+			$tip = isset( $o['tip'] ) ? sanitize_key( (string) $o['tip'] ) : '';
+			if ( 'cart_add' !== $tip ) {
+				continue;
+			}
+
+			$ref = isset( $o['ref_id'] ) ? substr( sanitize_text_field( (string) $o['ref_id'] ), 0, 36 ) : '';
+			if ( '' === $ref || ! isset( $shown_map[ $ref ] ) || isset( $cart_mevcut[ $ref ] ) ) {
+				continue;
+			}
+
+			$id = isset( $o['item_id'] ) ? absint( $o['item_id'] ) : 0;
+			if ( $id < 1 ) {
+				continue;
+			}
+
+			$kayit = $shown_map[ $ref ];
+			if ( (int) $kayit['product_id'] !== $id ) {
+				continue;
+			}
+			if ( (string) $kayit['session_id'] !== $session_id ) {
+				continue;
+			}
+
+			if ( self::recommendation_event_ekle( $ref, self::REC_EVENT_CART_ADD, $id, $session_id, null ) ) {
+				$cart_mevcut[ $ref ] = true;
+			}
+		}
 	}
 }
