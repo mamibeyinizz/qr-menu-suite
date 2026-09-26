@@ -1019,6 +1019,45 @@ class QMO_Chatbot_DB {
 	}
 
 	/**
+	 * İstemciden gelen ref_id'yi doğrular.
+	 *
+	 * Yalnızca string kabul edilir; dizi/nesne/sayı string'e çevrilmeden
+	 * reddedilir (Array to string conversion yok). Biçim
+	 * recommendation_ref_uret() çıktısıdır: UUID (8-4-4-4-12 hex) veya
+	 * yedek yolun 32 hex'i.
+	 *
+	 * @param mixed $ref_id Ham değer.
+	 * @return string Geçerli ref ya da ''.
+	 */
+	public static function recommendation_ref_dogrula( $ref_id ) {
+		if ( ! is_string( $ref_id ) ) {
+			return '';
+		}
+
+		if ( ! preg_match( '/^(?:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|[0-9a-f]{32})$/i', $ref_id ) ) {
+			return '';
+		}
+
+		return $ref_id;
+	}
+
+	/**
+	 * Son sorgu hatası UNIQUE ihlali mi (MySQL 1062)?
+	 *
+	 * @return bool
+	 */
+	private static function yinelenen_anahtar_hatasi_mi() {
+		global $wpdb;
+
+		// Hata kodu dil bağımsızdır; last_error metni sunucu lc_messages'a göre çevrilebilir.
+		if ( isset( $wpdb->dbh ) && $wpdb->dbh instanceof mysqli ) {
+			return 1062 === mysqli_errno( $wpdb->dbh ); // phpcs:ignore WordPress.DB.RestrictedFunctions.mysql_mysqli_errno -- wpdb errno sunmuyor.
+		}
+
+		return 0 === stripos( (string) $wpdb->last_error, 'Duplicate entry' );
+	}
+
+	/**
 	 * Recommendation attribution olayı ekler (append-only).
 	 *
 	 * @param string      $ref_id     Instance kimliği.
@@ -1032,6 +1071,10 @@ class QMO_Chatbot_DB {
 		global $wpdb;
 
 		self::sema_kontrol();
+
+		if ( ! is_scalar( $ref_id ) ) {
+			return false;
+		}
 
 		$ref_id = substr( sanitize_text_field( (string) $ref_id ), 0, 36 );
 		if ( strlen( $ref_id ) < 8 ) {
@@ -1079,7 +1122,21 @@ class QMO_Chatbot_DB {
 		}
 
 		$tablo = self::recommendation_events_tablosu();
-		$sonuc = $wpdb->insert( $tablo, $veri, $format );
+
+		if ( self::REC_EVENT_CART_ADD !== $event_type ) {
+			return false !== $wpdb->insert( $tablo, $veri, $format );
+		}
+
+		// cart_add yarışında ikinci insert uniq_ref_event'e takılır: beklenen
+		// idempotency durumu, hata basılmaz/loglanmaz (SQL, ref_id, session_id
+		// yanıta sızmasın). Başka DB hataları wpdb'nin normal raporlamasına döner.
+		$onceki = $wpdb->suppress_errors( true );
+		$sonuc  = $wpdb->insert( $tablo, $veri, $format );
+		$wpdb->suppress_errors( $onceki );
+
+		if ( false === $sonuc && '' !== (string) $wpdb->last_error && ! self::yinelenen_anahtar_hatasi_mi() ) {
+			$wpdb->print_error( $wpdb->last_error );
+		}
 
 		return false !== $sonuc;
 	}
@@ -1179,7 +1236,7 @@ class QMO_Chatbot_DB {
 	 * @return bool
 	 */
 	public static function recommendation_cart_attribution_kaydet( $ref_id, $product_id, $session_id ) {
-		$ref_id     = substr( sanitize_text_field( (string) $ref_id ), 0, 36 );
+		$ref_id     = self::recommendation_ref_dogrula( $ref_id );
 		$product_id = absint( $product_id );
 		$session_id = substr( sanitize_text_field( (string) $session_id ), 0, 36 );
 
@@ -1336,7 +1393,7 @@ class QMO_Chatbot_DB {
 			if ( 'cart_add' !== $tip ) {
 				continue;
 			}
-			$ref = isset( $o['ref_id'] ) ? substr( sanitize_text_field( (string) $o['ref_id'] ), 0, 36 ) : '';
+			$ref = isset( $o['ref_id'] ) ? self::recommendation_ref_dogrula( $o['ref_id'] ) : '';
 			if ( '' !== $ref ) {
 				$refs[] = $ref;
 			}
@@ -1358,7 +1415,7 @@ class QMO_Chatbot_DB {
 				continue;
 			}
 
-			$ref = isset( $o['ref_id'] ) ? substr( sanitize_text_field( (string) $o['ref_id'] ), 0, 36 ) : '';
+			$ref = isset( $o['ref_id'] ) ? self::recommendation_ref_dogrula( $o['ref_id'] ) : '';
 			if ( '' === $ref || ! isset( $shown_map[ $ref ] ) || isset( $cart_mevcut[ $ref ] ) ) {
 				continue;
 			}

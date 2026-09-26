@@ -23,6 +23,33 @@ class QRMS_P4_Test_Wpdb {
 	public $store      = array();
 	public $inserts    = array();
 	public $next_id    = 1;
+	public $last_error = '';
+	public $printed    = array();
+	public $suppress   = false;
+	public $fail_next  = '';
+
+	public function suppress_errors( $suppress = true ) {
+		$onceki         = $this->suppress;
+		$this->suppress = (bool) $suppress;
+		return $onceki;
+	}
+
+	/**
+	 * Gerçek wpdb::print_error gibi: suppress açıkken hiçbir şey basmaz/loglamaz.
+	 */
+	public function print_error( $str = '' ) {
+		if ( $this->suppress ) {
+			return false;
+		}
+		$this->printed[] = '' !== $str ? $str : $this->last_error;
+		return true;
+	}
+
+	private function hata( $mesaj ) {
+		$this->last_error = $mesaj;
+		$this->print_error();
+		return false;
+	}
 
 	public function prepare( $sql, ...$args ) {
 		if ( 1 === count( $args ) && is_array( $args[0] ) ) {
@@ -44,12 +71,18 @@ class QRMS_P4_Test_Wpdb {
 
 	public function insert( $table, $data, $format = null ) {
 		unset( $format );
+		$this->last_error = '';
+		if ( '' !== $this->fail_next ) {
+			$mesaj           = $this->fail_next;
+			$this->fail_next = '';
+			return $this->hata( $mesaj );
+		}
 		if ( false !== strpos( (string) $table, 'recommendation_events' ) ) {
 			$ref  = isset( $data['ref_id'] ) ? (string) $data['ref_id'] : '';
 			$type = isset( $data['event_type'] ) ? (string) $data['event_type'] : '';
 			foreach ( $this->rec_events as $row ) {
 				if ( $ref === (string) ( $row['ref_id'] ?? '' ) && $type === (string) ( $row['event_type'] ?? '' ) ) {
-					return false;
+					return $this->hata( "Duplicate entry '{$ref}-{$type}' for key 'uniq_ref_event'" );
 				}
 			}
 		}
@@ -519,5 +552,136 @@ qrms_test(
 			}
 		}
 		qrms_assert_same( 1, $cart, 'batch duplicate yok sayılır' );
+	}
+);
+
+/**
+ * Bir ref için cart_add satır sayısı.
+ *
+ * @param QRMS_P4_Test_Wpdb $wpdb Test wpdb.
+ * @param string            $ref  Ref.
+ * @return int
+ */
+function qrms_p4_cart_sayisi( $wpdb, $ref ) {
+	$n = 0;
+	foreach ( $wpdb->rec_events as $row ) {
+		if ( 'cart_add' === ( $row['event_type'] ?? '' ) && $ref === ( $row['ref_id'] ?? '' ) ) {
+			++$n;
+		}
+	}
+	return $n;
+}
+
+qrms_test(
+	'P4-21. non-scalar / biçimsiz ref_id → attribution yok, PHP uyarısı yok, geçerli ref korunur',
+	function () {
+		$wpdb = qrms_p4_wpdb();
+		$sid  = qrms_p4_session();
+		$ref  = 'cccccccc-dddd-4eee-8fff-000000000000';
+		QMO_Chatbot_DB::recommendation_event_ekle( $ref, QMO_Chatbot_DB::REC_EVENT_SHOWN, 10, $sid, 'ai' );
+
+		$uyarilar = array();
+		set_error_handler(
+			function ( $no, $str ) use ( &$uyarilar ) {
+				$uyarilar[] = $str;
+				return true;
+			}
+		);
+
+		$gecersiz = array(
+			array( 'a' => 1 ),
+			array( $ref ),
+			(object) array( 'ref' => $ref ),
+			12345678,
+			1.5,
+			true,
+			null,
+			"x' OR '1'='1",
+			str_repeat( 'a', 500 ),
+			$ref . 'x',
+			'fake-ref-not-in-db-123456789012345',
+		);
+		$olaylar = array();
+		foreach ( $gecersiz as $deger ) {
+			$olaylar[] = array(
+				'tip'     => 'cart_add',
+				'item_id' => 10,
+				'ref_id'  => $deger,
+			);
+		}
+		QMO_Chatbot_DB::recommendation_sepet_olaylari_isle( $olaylar, $sid );
+		foreach ( $gecersiz as $deger ) {
+			qrms_assert_false( QMO_Chatbot_DB::recommendation_cart_attribution_kaydet( $deger, 10, $sid ), 'kaydet reddi' );
+		}
+		qrms_assert_false( QMO_Chatbot_DB::recommendation_event_ekle( array( $ref ), QMO_Chatbot_DB::REC_EVENT_CART_ADD, 10, $sid, null ), 'event_ekle dizi reddi' );
+
+		restore_error_handler();
+
+		qrms_assert_same( array(), $uyarilar, 'PHP uyarısı/notice yok' );
+		qrms_assert_same( 0, qrms_p4_cart_sayisi( $wpdb, $ref ), 'geçersiz ref attribution yazmaz' );
+		qrms_assert_same( '', QMO_Chatbot_DB::recommendation_ref_dogrula( array( $ref ) ), 'dizi → boş' );
+		qrms_assert_same( $ref, QMO_Chatbot_DB::recommendation_ref_dogrula( $ref ), 'UUID geçerli' );
+		qrms_assert_same( str_repeat( 'f', 32 ), QMO_Chatbot_DB::recommendation_ref_dogrula( str_repeat( 'f', 32 ) ), 'yedek 32 hex geçerli' );
+
+		QMO_Chatbot_DB::recommendation_sepet_olaylari_isle(
+			array(
+				array(
+					'tip'     => 'cart_add',
+					'item_id' => 10,
+					'ref_id'  => $ref,
+				),
+			),
+			$sid
+		);
+		qrms_assert_same( 1, qrms_p4_cart_sayisi( $wpdb, $ref ), 'geçerli UUID attribution çalışır' );
+
+		$analitik = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/ajax-sepet-analitik.php' );
+		qrms_assert_true(
+			strpos( $analitik, 'recommendation_sepet_olaylari_isle' ) < strpos( $analitik, 'qmo_analitik_yaz' ),
+			'attribution normal analitik akışından bağımsız, akış devam eder'
+		);
+	}
+);
+
+qrms_test(
+	'P4-22. duplicate cart_add → DB hatası basılmaz/loglanmaz, tek event kalır',
+	function () {
+		$wpdb = qrms_p4_wpdb();
+		$sid  = qrms_p4_session();
+		$ref  = 'dddddddd-eeee-4fff-8000-111111111111';
+		QMO_Chatbot_DB::recommendation_event_ekle( $ref, QMO_Chatbot_DB::REC_EVENT_SHOWN, 10, $sid, 'ai' );
+
+		qrms_assert_true( QMO_Chatbot_DB::recommendation_event_ekle( $ref, QMO_Chatbot_DB::REC_EVENT_CART_ADD, 10, $sid, null ), 'ilk cart_add' );
+
+		ob_start();
+		// Yarışın kaybedeni: ön kontrolden geçmiş ikinci insert UNIQUE'e takılır.
+		$ikinci = QMO_Chatbot_DB::recommendation_event_ekle( $ref, QMO_Chatbot_DB::REC_EVENT_CART_ADD, 10, $sid, null );
+		$cikti  = ob_get_clean();
+
+		qrms_assert_false( $ikinci, 'ikinci cart_add false (best-effort)' );
+		qrms_assert_same( 0 === stripos( $wpdb->last_error, 'Duplicate entry' ), true, 'gerçekten UNIQUE ihlali oluştu' );
+		qrms_assert_same( array(), $wpdb->printed, 'duplicate hata basılmadı/loglanmadı' );
+		qrms_assert_same( '', $cikti, 'yanıta çıktı sızmadı' );
+		qrms_assert_false( $wpdb->suppress, 'suppress_errors önceki haline döndü' );
+		qrms_assert_same( 1, qrms_p4_cart_sayisi( $wpdb, $ref ), 'tek cart_add' );
+	}
+);
+
+qrms_test(
+	'P4-23. duplicate dışı DB hatası cart_add için normal raporlanır; shown davranışı değişmez',
+	function () {
+		$wpdb = qrms_p4_wpdb();
+		$sid  = qrms_p4_session();
+		$ref  = 'eeeeeeee-ffff-4000-8111-222222222222';
+		QMO_Chatbot_DB::recommendation_event_ekle( $ref, QMO_Chatbot_DB::REC_EVENT_SHOWN, 10, $sid, 'ai' );
+
+		$wpdb->fail_next = 'Lost connection to MySQL server during query';
+		qrms_assert_false( QMO_Chatbot_DB::recommendation_event_ekle( $ref, QMO_Chatbot_DB::REC_EVENT_CART_ADD, 10, $sid, null ), 'hata → false' );
+		qrms_assert_same( array( 'Lost connection to MySQL server during query' ), $wpdb->printed, 'gerçek hata raporlandı' );
+		qrms_assert_false( $wpdb->suppress, 'suppress_errors önceki haline döndü' );
+
+		$wpdb->printed = array();
+		qrms_assert_false( QMO_Chatbot_DB::recommendation_event_ekle( $ref, QMO_Chatbot_DB::REC_EVENT_SHOWN, 10, $sid, 'ai' ), 'shown duplicate false' );
+		qrms_assert_same( 1, count( $wpdb->printed ), 'shown hata davranışı değişmedi (suppress yok)' );
 	}
 );
