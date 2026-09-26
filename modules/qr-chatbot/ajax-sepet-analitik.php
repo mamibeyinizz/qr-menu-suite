@@ -38,31 +38,24 @@ if ( ! function_exists( 'qmo_ajax_sepet_olay' ) ) {
 			$olaylar = array();
 		}
 
-		if ( is_array( $olaylar ) && function_exists( 'qmo_chatbot_oneri_durum_sessiz' ) ) {
-			$oturum    = function_exists( 'qmo_oturum' ) ? qmo_oturum() : array();
-			$oturum_id = function_exists( 'qmo_chatbot_ziyaretci_anahtar' )
-				? qmo_chatbot_ziyaretci_anahtar( is_array( $oturum ) ? $oturum : array() )
-				: '';
+		if ( ! is_array( $olaylar ) ) {
+			$olaylar = array();
+		}
 
-			if ( '' !== $oturum_id ) {
-				foreach ( array_slice( $olaylar, 0, 40 ) as $o ) {
-					if ( ! is_array( $o ) ) {
-						continue;
-					}
-					$tip = isset( $o['tip'] ) ? sanitize_key( (string) $o['tip'] ) : '';
-					$id  = isset( $o['item_id'] ) ? absint( $o['item_id'] ) : 0;
-					if ( 'cart_add' === $tip && $id > 0 ) {
-						qmo_chatbot_oneri_durum_sessiz( $oturum_id, $id, 'sepete' );
-					}
-				}
-			}
+		$olaylar = array_slice( $olaylar, 0, 40 );
+
+		$oturum = function_exists( 'qmo_oturum' ) ? qmo_oturum() : array();
+		$session_id = ( is_array( $oturum ) && function_exists( 'qmo_masa_session_id' ) )
+			? qmo_masa_session_id( $oturum )
+			: '';
+
+		if ( class_exists( 'QMO_Chatbot_DB' ) && '' !== $session_id ) {
+			QMO_Chatbot_DB::recommendation_sepet_olaylari_isle( $olaylar, $session_id );
 		}
 
 		if ( ! class_exists( 'QRMS_Analitik' ) ) {
 			wp_send_json_success();
 		}
-
-		$oturum = qmo_oturum();
 
 		if ( ! is_array( $oturum ) || empty( $oturum['masa'] ) ) {
 			wp_send_json_success();
@@ -77,12 +70,7 @@ if ( ! function_exists( 'qmo_ajax_sepet_olay' ) ) {
 			wp_send_json_success();
 		}
 
-		if ( ! is_array( $olaylar ) ) {
-			wp_send_json_success();
-		}
-
-		$olaylar = array_slice( $olaylar, 0, 40 );
-		$izinli  = array( 'cart_add', 'cart_remove' );
+		$izinli = array( 'cart_add', 'cart_remove' );
 
 		foreach ( $olaylar as $o ) {
 			if ( ! is_array( $o ) ) {
@@ -102,16 +90,20 @@ if ( ! function_exists( 'qmo_ajax_sepet_olay' ) ) {
 				continue;
 			}
 
-			qmo_analitik_yaz(
-				array(
-					'event_type'    => $tip,
-					'item_id'       => $alan['item_id'],
-					'item_name'     => $alan['item_name'],
-					'category_name' => $alan['category_name'],
-					'price'         => isset( $alan['price'] ) ? (float) $alan['price'] : 0.0,
-					'masa_no'       => $masa,
-				)
+			$kayit = array(
+				'event_type'    => $tip,
+				'item_id'       => $alan['item_id'],
+				'item_name'     => $alan['item_name'],
+				'category_name' => $alan['category_name'],
+				'price'         => isset( $alan['price'] ) ? (float) $alan['price'] : 0.0,
+				'masa_no'       => $masa,
 			);
+
+			if ( '' !== $session_id ) {
+				$kayit['session_id'] = $session_id;
+			}
+
+			qmo_analitik_yaz( $kayit );
 		}
 
 		wp_send_json_success();

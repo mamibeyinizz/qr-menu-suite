@@ -232,15 +232,19 @@
 		} catch ( e ) {}
 	}
 
-	function sepetAnalitik( pid ) {
+	function sepetAnalitik( pid, refId ) {
 		pid = parseInt( pid, 10 ) || 0;
 		if ( ! pid || typeof qmoSepet === 'undefined' || ! qmoSepet.analitik || ! qmoSepet.ajaxUrl || ! qmoSepet.nonce ) {
 			return;
 		}
+		var olay = { tip: 'cart_add', item_id: pid };
+		if ( refId ) {
+			olay.ref_id = String( refId );
+		}
 		var govde = new URLSearchParams();
 		govde.append( 'action', 'qmo_sepet_olay' );
 		govde.append( 'nonce', qmoSepet.nonce );
-		govde.append( 'olaylar', JSON.stringify( [ { tip: 'cart_add', item_id: pid } ] ) );
+		govde.append( 'olaylar', JSON.stringify( [ olay ] ) );
 		fetch( qmoSepet.ajaxUrl, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
@@ -302,7 +306,7 @@
 		}
 
 		sepetKaydet( s );
-		sepetAnalitik( pid );
+		sepetAnalitik( pid, urun.ref_id || '' );
 		sepetCubuguGuncelle();
 		return true;
 	}
