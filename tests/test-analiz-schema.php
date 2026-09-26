@@ -9,8 +9,8 @@
 
 echo "\nQR Analiz — genel bakış tek sorgu\n";
 
-/** genel_bakis()'in beklediği satır ve pc_tumu sayacı. */
-function qrms_analitik_besle( $wpdb, $satir = array(), $pc_tumu = 900 ) {
+/** genel_bakis()'in beklediği tek aggregate satırı. */
+function qrms_analitik_besle( $wpdb, $satir = array() ) {
 	$wpdb->rows[] = array_merge(
 		array(
 			'mv_bugun' => 12,
@@ -23,21 +23,22 @@ function qrms_analitik_besle( $wpdb, $satir = array(), $pc_tumu = 900 ) {
 		),
 		$satir
 	);
-	$wpdb->vars[] = $pc_tumu;
 }
 
 qrms_test(
-	'sekiz ayrı COUNT sorgusu ikiye indi',
+	'genel_bakis tek indeksli aralık sorgusu kullanır',
 	function () {
 		$wpdb = qrms_sayan_wpdb();
 		qrms_analitik_besle( $wpdb );
 
 		$genel = QRMS_Analitik::genel_bakis();
 
-		qrms_assert_same( 2, count( $wpdb->queries ), 'toplam sorgu sayısı' );
+		qrms_assert_same( 1, count( $wpdb->queries ), 'toplam sorgu sayısı' );
 		qrms_assert_same( 12, $genel['mv_bugun'], 'bugünkü görüntüleme' );
-		qrms_assert_same( 900, $genel['pc_tumu'], 'tüm zamanlar tıklama' );
+		qrms_assert_same( 5, $genel['pc_bugun'], 'bugünkü tıklama' );
+		qrms_assert_same( 30, $genel['pc_hafta'], 'haftalık tıklama' );
 		qrms_assert_same( 4, $genel['masa_gun'], 'bugün hareket eden masa' );
+		qrms_assert_false( array_key_exists( 'pc_tumu', $genel ), 'pc_tumu kaldırıldı' );
 	}
 );
 
@@ -61,13 +62,7 @@ qrms_test(
 		$beklenen   = min( $ay_basi, $hafta_basi );
 
 		qrms_assert_contains( $beklenen . ' 00:00:00', $wpdb->queries[0], 'alt sınır en eski kovayı kapsıyor' );
-
-		// Tarih sınırı OLMAYAN tek kova ayrı ve index-only sayımdır.
-		qrms_assert_contains( "COUNT(*)", $wpdb->queries[1], 'pc_tumu ayrı sayım' );
-		qrms_assert_false(
-			false !== strpos( $wpdb->queries[1], 'created_at' ),
-			'pc_tumu tarih koşulu taşımaz'
-		);
+		qrms_assert_same( 1, count( $wpdb->queries ), 'tarihsiz pc_tumu sorgusu yok' );
 	}
 );
 
@@ -85,8 +80,7 @@ qrms_test(
 				'pc_hafta' => null,
 				'uv_bugun' => null,
 				'masa_gun' => null,
-			),
-			0
+			)
 		);
 
 		$genel = QRMS_Analitik::genel_bakis();
@@ -247,17 +241,15 @@ qrms_test(
 );
 
 qrms_test(
-	'masa filtresi İKİ sorguya birden uygulanır',
+	'masa filtresi genel_bakis aralık sorgusuna uygulanır',
 	function () {
 		$wpdb = qrms_sayan_wpdb();
 		qrms_analitik_besle( $wpdb );
 
 		QRMS_Analitik::genel_bakis( 'masa-3' );
 
-		// Filtre yalnızca birine uygulanırsa pc_tumu bütün masaları sayar ve
-		// panel seçili masa için yanlış bir toplam gösterir.
+		qrms_assert_same( 1, count( $wpdb->queries ), 'tek sorgu' );
 		qrms_assert_contains( "masa_no = 'masa-3'", $wpdb->queries[0], 'aralık sorgusunda filtre' );
-		qrms_assert_contains( "masa_no = 'masa-3'", $wpdb->queries[1], 'pc_tumu sorgusunda filtre' );
 	}
 );
 

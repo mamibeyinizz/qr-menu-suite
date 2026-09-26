@@ -1689,23 +1689,11 @@ class QRMS_Analitik {
 		$ay     = $wpdb->prepare( 'created_at >= %s', gmdate( 'Y-m-01', self::simdi() ) . ' 00:00:00' );
 
 		/*
-		 * SEKİZ ayrı COUNT sorgusu yerine İKİ sorgu — ve ikisi de indeksli.
-		 *
-		 * Ara bir sürümde bunlar tek sorguya indirilmişti; bağlantı sayısı
-		 * açısından doğruydu ama SORGU SÜRESİ açısından geriye gidişti: WHERE
-		 * kalmayınca MySQL 90 günlük tablonun tamamını satır satır taramak
-		 * zorunda kalıyordu. Oysa sekiz kovadan yedisi tarih sınırlıdır ve
-		 * idx_date / idx_td üzerinden dar bir aralıkla karşılanabilir.
-		 *
-		 * Bölünme bu yüzden şöyle:
-		 *   1) Tarihli yedi kova, ortak alt sınırı olan TEK bir aralık
-		 *      taramasında toplanır (koşullar SUM/COUNT DISTINCT + CASE'e taşınır).
-		 *   2) Tarih sınırı olmayan tek kova (pc_tumu) ayrı kalır; idx_type
-		 *      üzerinden index-only sayım yapar, satırlara hiç inmez.
-		 *
-		 * Alt sınır min(ay başı, hafta başı)'dır: ayın ilk günlerinde "son 7
-		 * gün" penceresi önceki aya taşar, sabit olarak ay başı alınsaydı o
-		 * günler sayımdan düşerdi.
+		 * Yedi kova tek indeksli aralık taramasında toplanır (koşullar SUM /
+		 * COUNT DISTINCT + CASE içinde). Ara bir sürümde tüm kovalar tek
+		 * sorguda WHERE'siz yazılmıştı; bağlantı sayısı düşerdi ama MySQL
+		 * tablonun tamamını satır satır tarıyordu. Alt sınır min(ay başı,
+		 * hafta başı)'dır: ayın ilk günlerinde "son 7 gün" önceki aya taşar.
 		 */
 		$alt_sinir = min(
 			gmdate( 'Y-m-01', self::simdi() ),
@@ -1728,10 +1716,6 @@ class QRMS_Analitik {
 			 WHERE {$sinir_kosul}{$masa_ek}",
 			ARRAY_A
 		);
-
-		$pc_tumu = (int) $wpdb->get_var(
-			"SELECT COUNT(*) FROM {$tablo} WHERE event_type='product_click'{$masa_ek}"
-		);
 		// phpcs:enable
 
 		$sonuc = array(
@@ -1740,7 +1724,6 @@ class QRMS_Analitik {
 			'mv_ay'    => 0,
 			'pc_bugun' => 0,
 			'pc_hafta' => 0,
-			'pc_tumu'  => $pc_tumu,
 			'uv_bugun' => 0,
 			'masa_gun' => 0,
 		);
@@ -1752,10 +1735,6 @@ class QRMS_Analitik {
 
 		// Aralıkta hiç satır yoksa SUM() NULL döner; (int) hepsini sıfıra indirir.
 		foreach ( $sonuc as $anahtar => $varsayilan ) {
-			if ( 'pc_tumu' === $anahtar ) {
-				continue;
-			}
-
 			$sonuc[ $anahtar ] = isset( $satir[ $anahtar ] ) ? (int) $satir[ $anahtar ] : 0;
 		}
 
