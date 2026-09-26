@@ -54,6 +54,8 @@ function qrms_module_qr_analiz_init() {
 	// görüntülemelerini ve ürün tıklamalarını masa bazında kaydeder. İzleme
 	// ön yüzde de çalışmak zorunda olduğu için is_admin() dışındadır.
 	require_once __DIR__ . '/class-qrms-analitik.php';
+	require_once __DIR__ . '/class-qrms-siparis-olgulari.php';
+	require_once __DIR__ . '/class-qrms-siparis-iptal-uzlastirma.php';
 	QRMS_Analitik::init();
 
 	if ( is_admin() ) {
