@@ -19,7 +19,7 @@ function qrms_sepet_ui_aralik() {
 }
 
 /**
- * qrms_analitik_sepet_verisi için üç sıralı DB yanıtı hazırlar.
+ * qrms_analitik_sepet_verisi için iki sıralı DB yanıtı hazırlar (birleşik sepet+huni, kesin ozet).
  *
  * @param array<int,array<string,mixed>> $gruplar sepet_olay_gruplari satırları.
  * @param array<string,mixed>            $huni    huni_ozeti satırı.
@@ -32,8 +32,21 @@ function qrms_sepet_ui_wpdb( array $gruplar, array $huni, array $kesin ) {
 	QRMS_Analitik::sepet_onbellegini_temizle();
 	qrms_analitik_onbellek_sifirla();
 
-	$wpdb->results[] = $gruplar;
-	$wpdb->rows[]    = $huni;
+	$birlesik = array(
+		array_merge(
+			array( '_row_kind' => '_huni' ),
+			$huni
+		),
+	);
+
+	foreach ( $gruplar as $satir ) {
+		$birlesik[] = array_merge(
+			array( '_row_kind' => '_grup' ),
+			$satir
+		);
+	}
+
+	$wpdb->results[] = $birlesik;
 	$wpdb->results[] = $kesin;
 
 	return $wpdb;
@@ -215,8 +228,8 @@ qrms_test(
 
 		qrms_analitik_sepet_verisi( qrms_sepet_ui_aralik(), 'masa-z' );
 
-		qrms_assert_contains( "s.created_at BETWEEN '2026-03-10 00:00:00' AND '2026-03-10 23:59:59'", $wpdb->queries[2], 'tarih aralığı' );
-		qrms_assert_contains( "s.masa_no = 'masa-z'", $wpdb->queries[2], 'masa filtresi' );
+		qrms_assert_contains( "s.created_at BETWEEN '2026-03-10 00:00:00' AND '2026-03-10 23:59:59'", $wpdb->queries[1], 'tarih aralığı' );
+		qrms_assert_contains( "s.masa_no = 'masa-z'", $wpdb->queries[1], 'masa filtresi' );
 	}
 );
 

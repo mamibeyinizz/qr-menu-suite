@@ -427,7 +427,8 @@ if ( ! function_exists( 'qrms_analitik_sepet_verisi' ) ) {
 	 * Sayfanın bütün bölümlerinin verisi — TEK yerde toplanır.
 	 *
 	 * Ekran (AJAX) ve CSV aynı fonksiyondan beslenir. İstek içi önbellek:
-	 * aynı aralık+masa için ikinci çağrı sorgu açmaz.
+	 * aynı aralık+masa için ikinci çağrı sorgu açmaz. Veritabanı: birleşik
+	 * sepet+huni (1) + QRMS_Siparis_Olgulari::ozet (1).
 	 *
 	 * @param array  $aralik QRMS_Analitik_Filtre::aralik() çıktısı.
 	 * @param string $masa   Masa filtresi.

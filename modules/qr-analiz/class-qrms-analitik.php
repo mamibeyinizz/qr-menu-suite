@@ -97,11 +97,11 @@ class QRMS_Analitik {
 	const OTURUM_SAAT = 2;
 
 	/**
-	 * Sepet olay gruplarının istek içi önbelleği (aralık+masa anahtarlı).
+	 * Sepet grupları + huni özetinin istek içi önbelleği (aralık+masa anahtarlı).
 	 *
-	 * @var array<string,array<int,array<string,mixed>>>
+	 * @var array<string,array{gruplar:array<int,array<string,mixed>>,huni:array{view:int,click:int,cart:int,orders:int}}>
 	 */
-	private static $sepet_grup_onbellegi = array();
+	private static $sepet_huni_onbellegi = array();
 
 	/**
 	 * İzleme kaydı için doğrulanan nonce eylemi.
@@ -1752,16 +1752,16 @@ class QRMS_Analitik {
 	 */
 	public static function genel_bakis_onbellegini_temizle() {
 		self::$genel_bakis_onbellegi = array();
-		self::$sepet_grup_onbellegi  = array();
+		self::$sepet_huni_onbellegi  = array();
 	}
 
 	/**
-	 * Sepet olay gruplarının istek içi önbelleğini boşaltır.
+	 * Sepet olay grupları + huni istek içi önbelleğini boşaltır.
 	 *
 	 * @return void
 	 */
 	public static function sepet_onbellegini_temizle() {
-		self::$sepet_grup_onbellegi = array();
+		self::$sepet_huni_onbellegi = array();
 	}
 
 	/**
@@ -2363,23 +2363,21 @@ class QRMS_Analitik {
 	}
 
 	/**
-	 * Sepet/sipariş olaylarının oturum+tip+ürün grupları — TEK sorgu.
+	 * Sepet grupları ve huni özetini tek rma_analytics taramasında yükler.
 	 *
-	 * WHERE event_type IN (...) AND created_at BETWEEN ... idx_td'yi
-	 * (masa filtresi varken idx_masa_td'yi) aralık taraması olarak kullanır.
-	 * Oturum kimliği SQL'de üretilir: ip_hash + masa_no + 2 saatlik pencere.
-	 * Eşleştirme (terk, dönüşüm) PHP tarafındadır; bu metot N+1 üretemez.
+	 * WITH base AS (...) altında huni (tek satır) ve sepet GROUP BY UNION ALL ile
+	 * bir round-trip'te alınır. _row_kind yalnızca PHP ayrıştırması içindir.
 	 *
 	 * @param string $bas  Aralık başlangıcı (MySQL biçimi).
 	 * @param string $bit  Aralık bitişi (MySQL biçimi).
 	 * @param string $masa Masa filtresi.
-	 * @return array<int,array<string,mixed>>
+	 * @return array{gruplar:array<int,array<string,mixed>>,huni:array{view:int,click:int,cart:int,orders:int}}
 	 */
-	public static function sepet_olay_gruplari( $bas, $bit, $masa = '' ) {
+	private static function sepet_huni_birlikte_yukle( $bas, $bit, $masa = '' ) {
 		$anahtar = $bas . '|' . $bit . '|' . (string) $masa;
 
-		if ( isset( self::$sepet_grup_onbellegi[ $anahtar ] ) ) {
-			return self::$sepet_grup_onbellegi[ $anahtar ];
+		if ( isset( self::$sepet_huni_onbellegi[ $anahtar ] ) ) {
+			return self::$sepet_huni_onbellegi[ $anahtar ];
 		}
 
 		global $wpdb;
@@ -2390,35 +2388,78 @@ class QRMS_Analitik {
 		$saat    = max( 1, (int) self::OTURUM_SAAT );
 
 		$pencere = "CONCAT(DATE_FORMAT(created_at, '%Y-%m-%d '), LPAD(FLOOR(HOUR(created_at) / {$saat}) * {$saat}, 2, '0'))";
+		$oturum  = "CONCAT(ip_hash,'|',masa_no,'|',pencere)";
 
 		/*
-		 * Beş olay tipi idx_td'nin ilk sütununda eşitliktir; IN + BETWEEN
-		 * aralık taramasına izin verir. Yeni bir indeks gerekmedi.
+		 * Yedi olay tipi tek base kümesi; huni ve sepet aggregation'ları ayrı
+		 * event_type filtreleriyle eski iki sorguyla aynı sonucu verir.
 		 */
 		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$ham = $wpdb->get_results(
-			"SELECT ip_hash, masa_no,
-				{$pencere} AS pencere,
-				event_type,
-				item_id,
+			"WITH base AS (
+				SELECT ip_hash, masa_no, event_type, item_id, item_name, category_name,
+					qty, price, created_at,
+					{$pencere} AS pencere
+				FROM {$tablo}
+				WHERE event_type IN (
+					'menu_view','product_click','cart_add','cart_remove',
+					'order_sent','order_failed','order_blocked'
+				)
+				AND {$kosul}{$masa_ek}
+			)
+			SELECT '_huni' AS _row_kind,
+				NULL AS ip_hash, NULL AS masa_no, NULL AS pencere, NULL AS event_type, NULL AS item_id,
+				NULL AS item_name, NULL AS category_name,
+				NULL AS adet, NULL AS gercek_adet, NULL AS ciro, NULL AS ilk, NULL AS son,
+				COUNT(DISTINCT CASE WHEN event_type='menu_view'     THEN {$oturum} END) AS view,
+				COUNT(DISTINCT CASE WHEN event_type='product_click' THEN {$oturum} END) AS click,
+				COUNT(DISTINCT CASE WHEN event_type='cart_add'      THEN {$oturum} END) AS cart,
+				COUNT(DISTINCT CASE WHEN event_type='order_sent'    THEN {$oturum} END) AS orders
+			FROM base
+			UNION ALL
+			SELECT '_grup' AS _row_kind,
+				ip_hash, masa_no, pencere, event_type, item_id,
 				SUBSTRING(MAX(CONCAT(created_at, item_name)), 20) AS item_name,
 				SUBSTRING(MAX(CONCAT(created_at, category_name)), 20) AS category_name,
 				COUNT(*) AS adet,
 				SUM(qty) AS gercek_adet,
 				SUM(qty * price) AS ciro,
 				MIN(created_at) AS ilk,
-				MAX(created_at) AS son
-			 FROM {$tablo}
-			 WHERE event_type IN ('cart_add','cart_remove','order_sent','order_failed','order_blocked')
-			   AND {$kosul}{$masa_ek}
-			 GROUP BY ip_hash, masa_no, {$pencere}, event_type, item_id",
+				MAX(created_at) AS son,
+				NULL AS view, NULL AS click, NULL AS cart, NULL AS orders
+			FROM base
+			WHERE event_type IN ('cart_add','cart_remove','order_sent','order_failed','order_blocked')
+			GROUP BY ip_hash, masa_no, pencere, event_type, item_id",
 			ARRAY_A
 		);
 
-		$sonuc = array();
+		$huni = array(
+			'view'   => 0,
+			'click'  => 0,
+			'cart'   => 0,
+			'orders' => 0,
+		);
+		$gruplar = array();
 
 		foreach ( (array) $ham as $r ) {
-			$sonuc[] = array(
+			if ( ! is_array( $r ) ) {
+				continue;
+			}
+
+			$kind = isset( $r['_row_kind'] ) ? (string) $r['_row_kind'] : '';
+
+			if ( '_huni' === $kind ) {
+				foreach ( $huni as $anahtar_huni => $varsayilan ) {
+					$huni[ $anahtar_huni ] = isset( $r[ $anahtar_huni ] ) ? (int) $r[ $anahtar_huni ] : 0;
+				}
+				continue;
+			}
+
+			if ( '_grup' !== $kind ) {
+				continue;
+			}
+
+			$gruplar[] = array(
 				'ip_hash'       => isset( $r['ip_hash'] ) ? (string) $r['ip_hash'] : '',
 				'masa_no'       => isset( $r['masa_no'] ) ? (string) $r['masa_no'] : '',
 				'pencere'       => isset( $r['pencere'] ) ? (string) $r['pencere'] : '',
@@ -2434,9 +2475,33 @@ class QRMS_Analitik {
 			);
 		}
 
-		self::$sepet_grup_onbellegi[ $anahtar ] = $sonuc;
+		$paket = array(
+			'gruplar' => $gruplar,
+			'huni'    => $huni,
+		);
 
-		return $sonuc;
+		self::$sepet_huni_onbellegi[ $anahtar ] = $paket;
+
+		return $paket;
+	}
+
+	/**
+	 * Sepet/sipariş olaylarının oturum+tip+ürün grupları — TEK sorgu.
+	 *
+	 * WHERE event_type IN (...) AND created_at BETWEEN ... idx_td'yi
+	 * (masa filtresi varken idx_masa_td'yi) aralık taraması olarak kullanır.
+	 * Oturum kimliği SQL'de üretilir: ip_hash + masa_no + 2 saatlik pencere.
+	 * Eşleştirme (terk, dönüşüm) PHP tarafındadır; bu metot N+1 üretemez.
+	 *
+	 * @param string $bas  Aralık başlangıcı (MySQL biçimi).
+	 * @param string $bit  Aralık bitişi (MySQL biçimi).
+	 * @param string $masa Masa filtresi.
+	 * @return array<int,array<string,mixed>>
+	 */
+	public static function sepet_olay_gruplari( $bas, $bit, $masa = '' ) {
+		$paket = self::sepet_huni_birlikte_yukle( $bas, $bit, $masa );
+
+		return $paket['gruplar'];
 	}
 
 	/**
@@ -2453,45 +2518,9 @@ class QRMS_Analitik {
 	 * @return array{view:int,click:int,cart:int,orders:int}
 	 */
 	public static function huni_ozeti( $bas, $bit, $masa = '' ) {
-		global $wpdb;
+		$paket = self::sepet_huni_birlikte_yukle( $bas, $bit, $masa );
 
-		$tablo   = self::tablo();
-		$masa_ek = self::masa_sql( $masa );
-		$kosul   = $wpdb->prepare( 'created_at BETWEEN %s AND %s', $bas, $bit );
-		$saat    = max( 1, (int) self::OTURUM_SAAT );
-
-		$pencere = "CONCAT(DATE_FORMAT(created_at, '%Y-%m-%d '), LPAD(FLOOR(HOUR(created_at) / {$saat}) * {$saat}, 2, '0'))";
-		$oturum  = "CONCAT(ip_hash,'|',masa_no,'|',{$pencere})";
-
-		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		$satir = $wpdb->get_row(
-			"SELECT
-				COUNT(DISTINCT CASE WHEN event_type='menu_view'     THEN {$oturum} END) AS view,
-				COUNT(DISTINCT CASE WHEN event_type='product_click' THEN {$oturum} END) AS click,
-				COUNT(DISTINCT CASE WHEN event_type='cart_add'      THEN {$oturum} END) AS cart,
-				COUNT(DISTINCT CASE WHEN event_type='order_sent'    THEN {$oturum} END) AS orders
-			 FROM {$tablo}
-			 WHERE event_type IN ('menu_view','product_click','cart_add','order_sent')
-			   AND {$kosul}{$masa_ek}",
-			ARRAY_A
-		);
-
-		$sonuc = array(
-			'view'   => 0,
-			'click'  => 0,
-			'cart'   => 0,
-			'orders' => 0,
-		);
-
-		if ( ! is_array( $satir ) ) {
-			return $sonuc;
-		}
-
-		foreach ( $sonuc as $anahtar => $varsayilan ) {
-			$sonuc[ $anahtar ] = isset( $satir[ $anahtar ] ) ? (int) $satir[ $anahtar ] : 0;
-		}
-
-		return $sonuc;
+		return $paket['huni'];
 	}
 
 	/**

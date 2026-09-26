@@ -1228,6 +1228,14 @@ qrms_test(
 		$wpdb            = qrms_sayan_wpdb();
 		$wpdb->results[] = array(
 			array(
+				'_row_kind' => '_huni',
+				'view'      => 1,
+				'click'     => 0,
+				'cart'      => 1,
+				'orders'    => 0,
+			),
+			array(
+				'_row_kind'     => '_grup',
 				'ip_hash'       => 'x',
 				'masa_no'       => 'masa-1',
 				'pencere'       => '2026-03-10 12',
@@ -1248,7 +1256,10 @@ qrms_test(
 
 		qrms_assert_same( 1, count( $wpdb->queries ), 'tek sorgu' );
 		qrms_assert_contains( 'created_at BETWEEN', $wpdb->queries[0], 'idx_td/idx_date aralığı' );
-		qrms_assert_contains( "event_type IN ('cart_add','cart_remove','order_sent','order_failed','order_blocked')", $wpdb->queries[0], 'beş olay tipi' );
+		qrms_assert_contains( 'WITH base AS', $wpdb->queries[0], 'ortak taban kümesi' );
+		qrms_assert_contains( "'menu_view','product_click'", $wpdb->queries[0], 'yedi olay tipi birleşik tarama' );
+		qrms_assert_contains( "'_huni' AS _row_kind", $wpdb->queries[0], 'huni dalı' );
+		qrms_assert_contains( "'_grup' AS _row_kind", $wpdb->queries[0], 'sepet dalı' );
 		qrms_assert_contains( 'GROUP BY ip_hash, masa_no', $wpdb->queries[0], 'oturum gruplaması SQL\'de' );
 		qrms_assert_contains( "masa_no = 'masa-1'", $wpdb->queries[0], 'masa filtresi idx_masa_td' );
 		qrms_assert_false( false !== strpos( $wpdb->queries[0], 'LIMIT %d OFFSET' ), 'OFFSET yok' );
@@ -1267,13 +1278,135 @@ qrms_test(
 			'masa-1'
 		);
 		qrms_assert_same( 1, $veri['ozet']['cart_add'], 'hesaplama gruplardan' );
-		// Üç sorgu: sepet_olay_gruplari + huni_ozeti + QRMS_Siparis_Olgulari::ozet.
-		// Hepsi indeksli aralık taramasıdır; N+1 değildir.
-		qrms_assert_same( 3, count( $wpdb->queries ), 'veri fonksiyonu huni + kesin olgular için iki ek sorgu açar' );
-		qrms_assert_contains( 'order_sent', $wpdb->queries[2], 'kesin ozet sent taraması' );
+		// İki sorgu: birleşik sepet+huni + QRMS_Siparis_Olgulari::ozet.
+		qrms_assert_same( 2, count( $wpdb->queries ), 'birleşik sepet+huni ve kesin olgular' );
+		qrms_assert_contains( 'order_sent', $wpdb->queries[1], 'kesin ozet sent taraması' );
+		qrms_assert_same( 1, $veri['huni']['cart'], 'huni aynı istekte birleşik sorgudan' );
+
+		QRMS_Analitik::huni_ozeti( '2026-03-10 00:00:00', '2026-03-10 23:59:59', 'masa-1' );
+		qrms_assert_same( 2, count( $wpdb->queries ), 'huni tekrar çağrısı sepet_huni önbelleğinden' );
 		qrms_assert_true( array_key_exists( 'siparis_olgulari', $veri ), 'kesin fact response alanı' );
 
 		qrms_assert_same( 1, count( $grup ), 'grup satırı' );
+	}
+);
+
+qrms_test(
+	'Phase 5.3: birleşik sepet+huni — yedi event fixture ayrıştırma ve önbellek',
+	function () {
+		$wpdb = qrms_sayan_wpdb();
+		$wpdb->results[] = array(
+			array(
+				'_row_kind' => '_huni',
+				'view'      => 2,
+				'click'     => 1,
+				'cart'      => 1,
+				'orders'    => 1,
+			),
+			array(
+				'_row_kind'     => '_grup',
+				'ip_hash'       => 'h1',
+				'masa_no'       => 'm',
+				'pencere'       => '2026-03-10 10',
+				'event_type'    => 'cart_add',
+				'item_id'       => 1,
+				'item_name'     => 'Latte',
+				'category_name' => 'İçecek',
+				'adet'          => 2,
+				'gercek_adet'   => 3,
+				'ciro'          => 90.0,
+				'ilk'           => '2026-03-10 10:01:00',
+				'son'           => '2026-03-10 10:02:00',
+			),
+			array(
+				'_row_kind'     => '_grup',
+				'ip_hash'       => 'h1',
+				'masa_no'       => 'm',
+				'pencere'       => '2026-03-10 10',
+				'event_type'    => 'cart_remove',
+				'item_id'       => 1,
+				'item_name'     => '',
+				'category_name' => '',
+				'adet'          => 1,
+				'gercek_adet'   => 1,
+				'ciro'          => 0.0,
+				'ilk'           => '2026-03-10 10:03:00',
+				'son'           => '2026-03-10 10:03:00',
+			),
+			array(
+				'_row_kind'     => '_grup',
+				'ip_hash'       => 'h2',
+				'masa_no'       => 'm',
+				'pencere'       => '2026-03-10 12',
+				'event_type'    => 'order_sent',
+				'item_id'       => 5,
+				'item_name'     => 'Pizza',
+				'category_name' => 'Ana',
+				'adet'          => 1,
+				'gercek_adet'   => 2,
+				'ciro'          => 120.0,
+				'ilk'           => '2026-03-10 12:30:00',
+				'son'           => '2026-03-10 12:30:00',
+			),
+			array(
+				'_row_kind'     => '_grup',
+				'ip_hash'       => 'h3',
+				'masa_no'       => 'm',
+				'pencere'       => '2026-03-10 14',
+				'event_type'    => 'order_failed',
+				'item_id'       => 0,
+				'item_name'     => '',
+				'category_name' => '',
+				'adet'          => 1,
+				'gercek_adet'   => 0,
+				'ciro'          => 0.0,
+				'ilk'           => '2026-03-10 14:00:00',
+				'son'           => '2026-03-10 14:00:00',
+			),
+			array(
+				'_row_kind'     => '_grup',
+				'ip_hash'       => 'h4',
+				'masa_no'       => 'm',
+				'pencere'       => '2026-03-10 16',
+				'event_type'    => 'order_blocked',
+				'item_id'       => 9,
+				'item_name'     => 'X',
+				'category_name' => '',
+				'adet'          => 1,
+				'gercek_adet'   => 1,
+				'ciro'          => 50.0,
+				'ilk'           => '2026-03-10 16:00:00',
+				'son'           => '2026-03-10 16:00:00',
+			),
+		);
+
+		QRMS_Analitik::sepet_onbellegini_temizle();
+
+		$bas = '2026-03-10 00:00:00';
+		$bit = '2026-03-10 23:59:59';
+
+		$gruplar = QRMS_Analitik::sepet_olay_gruplari( $bas, $bit, 'm' );
+		$huni    = QRMS_Analitik::huni_ozeti( $bas, $bit, 'm' );
+
+		qrms_assert_same( 1, count( $wpdb->queries ), 'sepet sonra huni tek birleşik sorgu' );
+		qrms_assert_same( 5, count( $gruplar ), 'beş sepet event grubu' );
+		qrms_assert_same( 2, $huni['view'], 'huni view' );
+		qrms_assert_same( 1, $huni['click'], 'huni click' );
+		qrms_assert_same( 1, $huni['cart'], 'huni cart' );
+		qrms_assert_same( 1, $huni['orders'], 'huni orders' );
+		qrms_assert_false( array_key_exists( '_row_kind', $gruplar[0] ), 'discriminator public gruplara sızmaz' );
+
+		$beklenen_huni = array(
+			'view'   => 2,
+			'click'  => 1,
+			'cart'   => 1,
+			'orders' => 1,
+		);
+		qrms_assert_same( $beklenen_huni, $huni, 'huni sözleşmesi' );
+
+		$hesap = qrms_analitik_sepet_hesapla( $gruplar, 1, 0 );
+		qrms_assert_same( 2, $hesap['ozet']['cart_add'], 'cart_add olay adedi gruplardan' );
+		qrms_assert_same( 120.0, $hesap['ozet']['ciro'], 'order_sent ciro' );
 	}
 );
 
