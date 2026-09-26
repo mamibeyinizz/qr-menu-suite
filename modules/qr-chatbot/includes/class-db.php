@@ -935,40 +935,93 @@ class QMO_Chatbot_DB {
 
 		self::sema_kontrol();
 
-		$tablo = self::oneri_log_tablosu();
-		$bas   = sanitize_text_field( $bas ) . ' 00:00:00';
-		$bit   = sanitize_text_field( $bit ) . ' 23:59:59';
+		$tablo_log = self::oneri_log_tablosu();
+		$tablo_rec = self::recommendation_events_tablosu();
+		$bas       = sanitize_text_field( $bas ) . ' 00:00:00';
+		$bit       = sanitize_text_field( $bit ) . ' 23:59:59';
 
-		$satirlar = $wpdb->get_results(
+		$legacy_satirlar = $wpdb->get_results(
 			$wpdb->prepare(
 				"SELECT urun_id,
 					SUM(CASE WHEN durum = 'gosterildi' THEN 1 ELSE 0 END) AS gosterildi,
-					SUM(CASE WHEN durum = 'sepete' THEN 1 ELSE 0 END) AS sepete,
 					SUM(CASE WHEN durum = 'siparis' THEN 1 ELSE 0 END) AS siparis
-				FROM {$tablo}
+				FROM {$tablo_log}
 				WHERE created_at >= %s AND created_at <= %s
-				GROUP BY urun_id
-				ORDER BY urun_id ASC",
+				GROUP BY urun_id",
 				$bas,
 				$bit
 			)
 		);
 
-		if ( ! is_array( $satirlar ) ) {
+		$sepete_satirlar = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT product_id AS urun_id, COUNT(DISTINCT ref_id) AS sepete
+				FROM {$tablo_rec}
+				WHERE event_type = %s AND created_at >= %s AND created_at <= %s
+				GROUP BY product_id",
+				self::REC_EVENT_CART_ADD,
+				$bas,
+				$bit
+			)
+		);
+
+		if ( ! is_array( $legacy_satirlar ) ) {
+			$legacy_satirlar = array();
+		}
+		if ( ! is_array( $sepete_satirlar ) ) {
+			$sepete_satirlar = array();
+		}
+
+		$urunler = array();
+
+		foreach ( $legacy_satirlar as $satir ) {
+			$urun_id = (int) $satir->urun_id;
+			if ( $urun_id < 1 ) {
+				continue;
+			}
+			if ( ! isset( $urunler[ $urun_id ] ) ) {
+				$urunler[ $urun_id ] = array(
+					'gosterildi' => 0,
+					'sepete'     => 0,
+					'siparis'    => 0,
+				);
+			}
+			$urunler[ $urun_id ]['gosterildi'] = (int) $satir->gosterildi;
+			$urunler[ $urun_id ]['siparis']    = (int) $satir->siparis;
+		}
+
+		foreach ( $sepete_satirlar as $satir ) {
+			$urun_id = (int) $satir->urun_id;
+			if ( $urun_id < 1 ) {
+				continue;
+			}
+			if ( ! isset( $urunler[ $urun_id ] ) ) {
+				$urunler[ $urun_id ] = array(
+					'gosterildi' => 0,
+					'sepete'     => 0,
+					'siparis'    => 0,
+				);
+			}
+			$urunler[ $urun_id ]['sepete'] = (int) $satir->sepete;
+		}
+
+		if ( empty( $urunler ) ) {
 			return array();
 		}
 
+		ksort( $urunler, SORT_NUMERIC );
+
 		$rapor = array();
-		foreach ( $satirlar as $satir ) {
-			$gosterildi = (int) $satir->gosterildi;
-			$sepete     = (int) $satir->sepete;
-			$siparis    = (int) $satir->siparis;
+		foreach ( $urunler as $urun_id => $metrik ) {
+			$gosterildi = (int) $metrik['gosterildi'];
+			$sepete     = (int) $metrik['sepete'];
+			$siparis    = (int) $metrik['siparis'];
 			$rapor[]    = array(
-				'urun_id'        => (int) $satir->urun_id,
-				'gosterildi'     => $gosterildi,
-				'sepete'         => $sepete,
-				'siparis'        => $siparis,
-				'donusum_orani'  => $gosterildi > 0 ? round( $siparis / $gosterildi, 4 ) : 0.0,
+				'urun_id'       => (int) $urun_id,
+				'gosterildi'    => $gosterildi,
+				'sepete'        => $sepete,
+				'siparis'       => $siparis,
+				'donusum_orani' => $gosterildi > 0 ? round( $siparis / $gosterildi, 4 ) : 0.0,
 			);
 		}
 
