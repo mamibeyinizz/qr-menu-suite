@@ -30,6 +30,7 @@ require_once __DIR__ . '/test-recommendation-attribution.php';
 require_once __DIR__ . '/test-oneri-rapor.php';
 require_once __DIR__ . '/test-analiz.php';
 require_once __DIR__ . '/test-siparis-olgulari.php';
+require_once __DIR__ . '/test-sepet-siparis-olgulari-ui.php';
 require_once __DIR__ . '/test-siparis-iptal-cron.php';
 require_once __DIR__ . '/test-masa-yorum.php';
 require_once __DIR__ . '/test-analiz-izleme.php';

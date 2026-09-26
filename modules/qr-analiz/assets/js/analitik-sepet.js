@@ -33,7 +33,9 @@
 	}
 
 	function kartHtml( kart ) {
-		return '<div class="qrms-an-card">' +
+		var ipucu = kart.ipucu ? ' title="' + ORTAK.esc( kart.ipucu ) + '"' : '';
+
+		return '<div class="qrms-an-card"' + ipucu + '>' +
 			'<span class="qrms-an-card-tag">' + ORTAK.esc( CFG.aralikEtiketi || '' ) + '</span>' +
 			'<span class="qrms-an-card-icon dashicons ' + ORTAK.esc( kart.ikon ) + '" aria-hidden="true"></span>' +
 			'<div class="qrms-an-card-label">' + ORTAK.esc( kart.etiket ) + '</div>' +
@@ -53,7 +55,24 @@
 		return html + '</div>';
 	}
 
-	function kartlariBas( ozet ) {
+	function qrSiparisAltMetni( olgular ) {
+		var alt = metin(
+			'qrOrderAmountNote',
+			'Sipariş kimliği ve birim fiyatı kayıtlı gönderimlerden hesaplanır; iptal edilen siparişler düşülür.'
+		);
+		var iptal = parseInt( olgular.iptal_sayisi, 10 ) || 0;
+
+		if ( iptal > 0 ) {
+			alt += ' · ' + metin( 'cancelledSummary', 'İptal' ) + ': ' +
+				ORTAK.sayi( iptal ) + ' ' + metin( 'cancelledOrders', 'sipariş' ) +
+				' · ' + ORTAK.para( olgular.iptal_tutari );
+		}
+
+		return alt;
+	}
+
+	function kartlariBas( ozet, olgular ) {
+		olgular = olgular || {};
 		var hacim = [
 			{
 				ikon: 'dashicons-cart',
@@ -91,6 +110,16 @@
 			}
 		];
 		var para = [
+			{
+				ikon: 'dashicons-tag',
+				etiket: metin( 'cardQrOrderAmount', 'QR sipariş tutarı' ),
+				deger: ORTAK.para( olgular.siparis_tutari ),
+				alt: qrSiparisAltMetni( olgular ),
+				ipucu: metin(
+					'qrOrderAmountTooltip',
+					'QR menü analitik olaylarından hesaplanır. Ödeme veya muhasebe kaydı değildir. Eski kayıtlar (sipariş kimliği veya birim fiyat eksik) bu tutara dahil edilmez.'
+				)
+			},
 			{
 				ikon: 'dashicons-money-alt',
 				etiket: metin( 'cardRevenue', 'Ciro' ),
@@ -435,7 +464,7 @@
 		var bos  = !! veri.bos;
 
 		bosKutuBas( bos );
-		kartlariBas( ozet );
+		kartlariBas( ozet, veri.siparis_olgulari );
 		huniBas( veri.huni, bos );
 		veriPanelleriniAyarla( bos );
 

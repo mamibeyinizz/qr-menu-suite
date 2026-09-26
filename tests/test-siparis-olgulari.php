@@ -547,16 +547,17 @@ qrms_test(
 );
 
 qrms_test(
-	'sepet approximate sorgusu bu fazda değişmedi',
+	'sepet approximate sorgusu değişmedi; kesin olgular ayrı ozet() ile eklenir',
 	function () {
 		$sepet = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/sepet-sayfasi.php' );
 		$an    = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/class-qrms-analitik.php' );
+		$js    = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/assets/js/analitik-sepet.js' );
 		qrms_assert_contains( "event_type IN ('cart_add','cart_remove','order_sent','order_failed','order_blocked')", $an, 'sepet grupları aynı' );
 		qrms_assert_contains( 'SUM(qty * price) AS ciro', $an, 'eski ciro sorgusu duruyor' );
 		qrms_assert_contains( 'Yaklaşık kimlik', $sepet, 'approximate oturum notu' );
-		qrms_assert_false(
-			false !== strpos( $sepet, 'QRMS_Siparis_Olgulari' ),
-			'sepet UI olguları karıştırmaz'
-		);
+		qrms_assert_contains( 'QRMS_Siparis_Olgulari::ozet', $sepet, 'kesin fact qrms_analitik_sepet_verisi içinde' );
+		qrms_assert_contains( "'siparis_olgulari'", $sepet, 'response anahtarı' );
+		qrms_assert_contains( 'siparis_olgulari', $js, 'UI kesin alanı okur' );
+		qrms_assert_contains( 'cardQrOrderAmount', $js, 'QR sipariş tutarı kartı' );
 	}
 );

@@ -432,6 +432,9 @@ if ( ! function_exists( 'qrms_analitik_sepet_verisi' ) ) {
 	 * @param array  $aralik QRMS_Analitik_Filtre::aralik() çıktısı.
 	 * @param string $masa   Masa filtresi.
 	 * @param int    $limit  Tablo satır tavanı (0 = hepsi).
+	 * Dönüşe `siparis_olgulari` eklenir (QRMS_Siparis_Olgulari::ozet); mevcut
+	 * `ozet` legacy ciro alanları değişmez.
+	 *
 	 * @return array<string,mixed>
 	 */
 	function qrms_analitik_sepet_verisi( array $aralik, $masa = '', $limit = QRMS_ANALITIK_SEPET_LIMIT ) {
@@ -447,6 +450,12 @@ if ( ! function_exists( 'qrms_analitik_sepet_verisi' ) ) {
 
 		$veri         = qrms_analitik_sepet_hesapla( $gruplar, $gun, $limit );
 		$veri['huni'] = QRMS_Analitik::huni_ozeti( $aralik['bas'], $aralik['bit'], $masa );
+
+		if ( ! class_exists( 'QRMS_Siparis_Olgulari', false ) ) {
+			require_once __DIR__ . '/class-qrms-siparis-olgulari.php';
+		}
+
+		$veri['siparis_olgulari'] = QRMS_Siparis_Olgulari::ozet( $aralik['bas'], $aralik['bit'], $masa );
 
 		$kutu[ $anahtar ] = $veri;
 
