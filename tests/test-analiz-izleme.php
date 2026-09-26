@@ -181,6 +181,7 @@ qrms_test(
 		qrms_assert_same( 365, QRMS_Analitik::saklama_gun_tip( 'reward_issued' ), 'ödül uzun' );
 		qrms_assert_same( 365, QRMS_Analitik::saklama_gun_tip( 'order_sent' ), 'sipariş uzun' );
 		qrms_assert_same( 365, QRMS_Analitik::saklama_gun_tip( 'order_blocked' ), 'engel uzun' );
+		qrms_assert_same( 365, QRMS_Analitik::saklama_gun_tip( 'order_cancelled' ), 'iptal uzun' );
 		qrms_assert_same( 90, QRMS_Analitik::saklama_gun_tip( 'menu_view' ), 'tanımsız varsayılan' );
 		qrms_assert_same( 90, QRMS_Analitik::saklama_gun_tip( 'waiter_call' ), 'çağrı varsayılan' );
 

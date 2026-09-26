@@ -368,6 +368,12 @@ class QRMS_SP_Veri {
 		}
 
 		if ( $gercek !== $eski ) {
+			if ( 'siparis' === ( isset( $mevcut['tip'] ) ? sanitize_key( (string) $mevcut['tip'] ) : '' )
+				&& 'iptal' === $gercek
+				&& class_exists( 'QRMS_Siparis_Iptal_Uzlastirma' ) ) {
+				QRMS_Siparis_Iptal_Uzlastirma::uzlastir( $id, $mevcut );
+			}
+
 			return new WP_Error(
 				'cakisma',
 				__( 'Bu kayıt başka biri tarafından güncellenmiş. Liste yenileniyor.', 'qrms' )
@@ -388,6 +394,11 @@ class QRMS_SP_Veri {
 
 		if ( is_wp_error( $sonuc ) ) {
 			return $sonuc;
+		}
+
+		$tip = isset( $mevcut['tip'] ) ? sanitize_key( (string) $mevcut['tip'] ) : '';
+		if ( 'siparis' === $tip && 'iptal' === $yeni && class_exists( 'QRMS_Siparis_Iptal_Uzlastirma' ) ) {
+			QRMS_Siparis_Iptal_Uzlastirma::uzlastir( $id );
 		}
 
 		// GÜVENLİK: masa oturumunun epoch'u yalnızca masa SİLİNDİĞİNDE

@@ -27,6 +27,7 @@ require_once __DIR__ . '/test-servis-paneli.php';
 require_once __DIR__ . '/test-core.php';
 require_once __DIR__ . '/test-chatbot.php';
 require_once __DIR__ . '/test-analiz.php';
+require_once __DIR__ . '/test-siparis-olgulari.php';
 require_once __DIR__ . '/test-masa-yorum.php';
 require_once __DIR__ . '/test-analiz-izleme.php';
 require_once __DIR__ . '/test-masa.php';
