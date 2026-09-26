@@ -40,9 +40,9 @@ if ( class_exists( 'QRMS_Analitik' ) ) {
 class QRMS_Analitik {
 
 	/**
-	 * Şema sürümü. masa_no sütunu 1.1 ile geldi, price sütunu 1.3 ile.
+	 * Şema sürümü. masa_no 1.1, price 1.3, order contract alanları 1.4.
 	 */
-	const DB_SURUM = '1.3';
+	const DB_SURUM = '1.4';
 
 	/**
 	 * Şema sürümünün tutulduğu option.
@@ -205,7 +205,7 @@ class QRMS_Analitik {
 		'menu_filter'     => 30,
 		'order_sent'      => 365,
 		'order_blocked'   => 365,
-		'order_failed'    => 180,
+		'order_failed'    => 365,
 		'review_submit'   => 180,
 		'form_submit'     => 180,
 		'reward_issued'   => 365,
@@ -259,7 +259,7 @@ class QRMS_Analitik {
 			'cart_add'         => __( 'Sepete ekleme', 'qrms' ),
 			'cart_remove'      => __( 'Sepetten çıkarma', 'qrms' ),
 			'order_sent'       => __( 'Sipariş gönderildi', 'qrms' ),
-			'order_failed'     => __( 'Sipariş başarısız', 'qrms' ),
+			'order_failed'     => __( 'Sipariş teyit edilemedi', 'qrms' ),
 			'order_blocked'    => __( 'Sipariş engellendi', 'qrms' ),
 			'waiter_call'      => __( 'Garson çağrısı', 'qrms' ),
 			'bill_request'     => __( 'Hesap isteği', 'qrms' ),
@@ -986,7 +986,11 @@ class QRMS_Analitik {
 				category_name varchar(255) NOT NULL DEFAULT '',
 				qty smallint(5) unsigned NOT NULL DEFAULT 1,
 				price decimal(10,2) NOT NULL DEFAULT 0,
+				unit_price decimal(10,2) DEFAULT NULL,
 				masa_no varchar(64) NOT NULL DEFAULT '',
+				order_id varchar(36) DEFAULT NULL,
+				session_id varchar(64) DEFAULT NULL,
+				reason varchar(32) DEFAULT NULL,
 				ip_hash varchar(32) NOT NULL DEFAULT '',
 				created_at datetime NOT NULL,
 				PRIMARY KEY  (id),
@@ -995,7 +999,9 @@ class QRMS_Analitik {
 				KEY idx_date (created_at),
 				KEY idx_td (event_type,created_at),
 				KEY idx_masa (masa_no),
-				KEY idx_masa_td (masa_no,event_type,created_at)
+				KEY idx_masa_td (masa_no,event_type,created_at),
+				KEY idx_order_id (order_id),
+				KEY idx_session_id (session_id)
 			) {$collate};"
 		);
 	}
@@ -1138,11 +1144,13 @@ class QRMS_Analitik {
 				// menü mühendisliği raporu satış adedini buradan okur
 				// (adetsiz hesaplanan popülerlik yanlış sonuç verir).
 				'qty'           => 1,
-				// Kalemin yazım anındaki BİRİM fiyatı (rma_price). Kampanya/
-				// porsiyon farkları hesaba katılmaz — ciro bu yüzden yaklaşıktır,
-				// tıpkı oturumun yaklaşık olması gibi.
+				// Taban/list fiyat (rma_price); sipariş anı fiyatı unit_price'ta.
 				'price'         => 0.0,
+				'unit_price'    => null,
 				'masa_no'       => self::masa_belirle(),
+				'order_id'      => null,
+				'session_id'    => null,
+				'reason'        => null,
 				'ip_hash'       => self::ip_hash(),
 				'created_at'    => current_time( 'mysql' ),
 			);
@@ -1176,20 +1184,57 @@ class QRMS_Analitik {
 				$satir['price'] = max( 0.0, min( 99999999.99, (float) $satir['price'] ) );
 			}
 
+			if ( array_key_exists( 'unit_price', $satir ) && null !== $satir['unit_price'] ) {
+				$satir['unit_price'] = max( 0.0, min( 99999999.99, (float) $satir['unit_price'] ) );
+			}
+
+			if ( array_key_exists( 'order_id', $satir ) && null !== $satir['order_id'] ) {
+				$satir['order_id'] = substr( sanitize_text_field( (string) $satir['order_id'] ), 0, 36 );
+			}
+
+			if ( array_key_exists( 'session_id', $satir ) && null !== $satir['session_id'] ) {
+				$sid = substr( sanitize_text_field( (string) $satir['session_id'] ), 0, 64 );
+				if ( 0 === strpos( $sid, 'i_' ) ) {
+					$sid = '';
+				}
+				$satir['session_id'] = $sid;
+			}
+
+			if ( array_key_exists( 'reason', $satir ) && null !== $satir['reason'] ) {
+				$satir['reason'] = substr( sanitize_key( (string) $satir['reason'] ), 0, 32 );
+			}
+
 			if ( isset( $satir['masa_no'] ) ) {
 				$satir['masa_no'] = self::masa_temizle( $satir['masa_no'] );
 			}
 
-			/*
-			 * Biçim dizisi $varsayilan'ın ANAHTAR SIRASINI izler
-			 * (array_merge sırayı korur): event_type, item_id, item_name,
-			 * category_name, qty, price, masa_no, ip_hash, created_at.
-			 */
+			$format_map = array(
+				'event_type'    => '%s',
+				'item_id'       => '%d',
+				'item_name'     => '%s',
+				'category_name' => '%s',
+				'qty'           => '%d',
+				'price'         => '%f',
+				'unit_price'    => '%f',
+				'masa_no'       => '%s',
+				'order_id'      => '%s',
+				'session_id'    => '%s',
+				'reason'        => '%s',
+				'ip_hash'       => '%s',
+				'created_at'    => '%s',
+			);
+			$formats    = array();
+			foreach ( array_keys( $satir ) as $alan ) {
+				if ( isset( $format_map[ $alan ] ) ) {
+					$formats[] = $format_map[ $alan ];
+				}
+			}
+
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 			$wpdb->insert(
 				self::tablo(),
 				$satir,
-				array( '%s', '%d', '%s', '%s', '%d', '%f', '%s', '%s', '%s' )
+				$formats
 			);
 		} catch ( Exception $e ) {
 			return;
@@ -3387,7 +3432,7 @@ class QRMS_Analitik {
 		fputcsv( $cikti, array( 'Terk oranı %', $ozet['terk_oran'] ), ';' );
 		fputcsv( $cikti, array( 'Engellenen sipariş', $ozet['blocked'] ), ';' );
 		fputcsv( $cikti, array( 'Başarısız sipariş (oturum)', $ozet['failed'] ), ';' );
-		fputcsv( $cikti, array( 'Ciro (gerçekleşen)', $ozet['ciro'] ), ';' );
+		fputcsv( $cikti, array( 'Ciro (QR menü fiyatları)', $ozet['ciro'] ), ';' );
 		fputcsv( $cikti, array( 'Sepette bekleyen tutar', $ozet['sepet_potansiyeli'] ), ';' );
 		fputcsv( $cikti, array( 'Ortalama sepet tutarı', $ozet['ort_sepet_tutari'] ), ';' );
 		fputcsv( $cikti, array( 'Kaçan ciro (engellenen)', $ozet['kacan_ciro'] ), ';' );

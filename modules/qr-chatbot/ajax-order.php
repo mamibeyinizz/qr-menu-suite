@@ -34,7 +34,8 @@ if ( ! function_exists( 'qmo_ajax_bot_siparis' ) ) {
 
 		// Chatbot zaten Türkçe ürün adı + Türkçe not üretiyor; dil 'tr'
 		// işaretlenir (ekstra çeviri turuna gerek yok).
-		$sonuc = qmo_siparis_isle( $sess['masa'], $items, 'tr' );
+		$session_id = function_exists( 'qmo_masa_session_id' ) ? qmo_masa_session_id( $sess ) : '';
+		$sonuc      = qmo_siparis_isle( $sess['masa'], $items, 'tr', $session_id );
 
 		if ( $sonuc['success'] ) {
 			if ( function_exists( 'qmo_chatbot_oneri_durum_sessiz' ) && function_exists( 'qmo_chatbot_siparis_urun_id' ) ) {

@@ -689,7 +689,7 @@ if ( ! function_exists( 'qmo_oturum_uyari_kutusu' ) ) {
  * Yazım QRMS_Analitik::kaydet() üzerinden gider; yeni INSERT yolu açılmaz.
  * Başarısızlık yutulur — çağıranın akışı kesilmesin.
  *
- * @param array $satir event_type ve isteğe bağlı item_id / item_name / category_name / price / masa_no.
+ * @param array $satir event_type ve isteğe bağlı item_id / item_name / category_name / price / unit_price / masa_no / order_id / session_id / reason.
  * @return void
  */
 if ( ! function_exists( 'qmo_analitik_yaz' ) ) {
@@ -703,6 +703,28 @@ if ( ! function_exists( 'qmo_analitik_yaz' ) ) {
 		} catch ( Exception $e ) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch
 			return;
 		}
+	}
+}
+
+/**
+ * QMO masa oturumu için analitik session_id (s_…); IP yedeklenmez.
+ *
+ * @param array|false|null $sess qmo_oturum() çıktısı.
+ * @return string Boş = oturum yok.
+ */
+if ( ! function_exists( 'qmo_masa_session_id' ) ) {
+	function qmo_masa_session_id( $sess = null ) {
+		if ( null === $sess ) {
+			$sess = function_exists( 'qmo_oturum' ) ? qmo_oturum() : false;
+		}
+		if ( ! is_array( $sess ) || empty( $sess['masa'] ) ) {
+			return '';
+		}
+		$issued = isset( $sess['issued'] ) ? (string) $sess['issued'] : '';
+		if ( '' === $issued ) {
+			return '';
+		}
+		return 's_' . md5( $sess['masa'] . '_' . $issued );
 	}
 }
 

@@ -1276,3 +1276,37 @@ qrms_test(
 		delete_transient( 'qmo_sepet_kur' );
 	}
 );
+
+echo "\nP0 order contract (kaynak)\n";
+
+qrms_test(
+	'sipariş akışı order_id, session_id ve Firestore belirsizlik doğrulaması içerir',
+	function () {
+		$rest = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/rest-order.php' );
+		qrms_assert_contains( 'wp_generate_uuid4()', $rest, 'order_id üretimi' );
+		qrms_assert_contains( '$order_id', $rest, 'Firestore custom document ID' );
+		qrms_assert_contains( 'firestore_conflict', $rest, '409 sonrası okuma' );
+		qrms_assert_contains( 'firestore_transport', $rest, 'timeout sonrası okuma' );
+		qrms_assert_contains( 'firestore_not_created', $rest, '404 teyit yolu' );
+		qrms_assert_contains( 'qmo_masa_session_id', $rest, 'REST session_id' );
+
+		$yardimci = file_get_contents( QRMS_PLUGIN_DIR . 'modules/_qmo-ortak/helpers.php' );
+		qrms_assert_contains( 'function qmo_masa_session_id', $yardimci, 'canonical session köprüsü' );
+	}
+);
+
+require_once QRMS_PLUGIN_DIR . 'modules/_qmo-ortak/helpers.php';
+
+qrms_test(
+	'qmo_masa_session_id yalnızca s_ öneki üretir',
+	function () {
+		$sid = qmo_masa_session_id(
+			array(
+				'masa'   => 'masa-9',
+				'issued' => 1700000000,
+			)
+		);
+		qrms_assert_same( 's_' . md5( 'masa-9_1700000000' ), $sid, 'canonical oturum' );
+		qrms_assert_false( 0 === strpos( $sid, 'i_' ), 'IP yedeklenmez' );
+	}
+);

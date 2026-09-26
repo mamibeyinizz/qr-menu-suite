@@ -1153,6 +1153,23 @@ function wp_generate_password( $length = 12, $special_chars = true, $extra_speci
 }
 
 /**
+ * UUID v4 (test stub).
+ *
+ * @return string
+ */
+function wp_generate_uuid4() {
+	$hex = bin2hex( random_bytes( 16 ) );
+	return sprintf(
+		'%s-%s-%s-%s-%s',
+		substr( $hex, 0, 8 ),
+		substr( $hex, 8, 4 ),
+		'4' . substr( $hex, 13, 3 ),
+		dechex( ( hexdec( substr( $hex, 16, 2 ) ) & 0x3f ) | 0x80 ) . substr( $hex, 18, 2 ),
+		substr( $hex, 20, 12 )
+	);
+}
+
+/**
  * Tuzlanmış hash.
  *
  * @param string $data   Veri.

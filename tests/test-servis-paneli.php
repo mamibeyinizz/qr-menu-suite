@@ -57,6 +57,118 @@ qrms_test(
 );
 
 qrms_test(
+	'call_yaz isteğe bağlı documentId ile calls oluşturur',
+	function () {
+		$proje = 'test-order-doc';
+		update_option(
+			'qmo_firebase_sa',
+			wp_json_encode(
+				array(
+					'client_email' => 'svc@test.iam.gserviceaccount.com',
+					'private_key'  => 'test',
+					'project_id'   => $proje,
+				)
+			)
+		);
+		set_transient(
+			'qmo_gcp_token_' . substr( md5( QMO_Firestore::SCOPE_DATASTORE ), 0, 12 ),
+			'test-token',
+			3500
+		);
+
+		$doc_id = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+		$GLOBALS['qrms_test']['http'] = function ( $url ) use ( $proje, $doc_id ) {
+			qrms_assert_contains( 'documentId=' . rawurlencode( $doc_id ), $url, 'custom belge kimliği' );
+			return array(
+				'response' => array( 'code' => 200 ),
+				'body'     => wp_json_encode(
+					array( 'name' => "projects/{$proje}/databases/(default)/documents/calls/{$doc_id}" )
+				),
+			);
+		};
+
+		$res = QMO_Firestore::call_yaz(
+			array(
+				'masaNo' => array( 'stringValue' => 'masa-1' ),
+			),
+			$doc_id
+		);
+
+		qrms_assert_true( ! is_wp_error( $res ), 'yazım başarılı' );
+		qrms_assert_contains( $doc_id, $res['name'], 'belge yolu' );
+	}
+);
+
+qrms_test(
+	'call_yaz 409 ALREADY_EXISTS firestore_conflict döner',
+	function () {
+		$proje = 'test-order-409';
+		update_option(
+			'qmo_firebase_sa',
+			wp_json_encode(
+				array(
+					'client_email' => 'svc@test.iam.gserviceaccount.com',
+					'private_key'  => 'test',
+					'project_id'   => $proje,
+				)
+			)
+		);
+		set_transient(
+			'qmo_gcp_token_' . substr( md5( QMO_Firestore::SCOPE_DATASTORE ), 0, 12 ),
+			'test-token',
+			3500
+		);
+
+		$GLOBALS['qrms_test']['http'] = function () {
+			return array(
+				'response' => array( 'code' => 409 ),
+				'body'     => wp_json_encode(
+					array(
+						'error' => array(
+							'status' => 'ALREADY_EXISTS',
+						),
+					)
+				),
+			);
+		};
+
+		$res = QMO_Firestore::call_yaz( array( 'tip' => array( 'stringValue' => 'siparis' ) ), 'dup-id' );
+		qrms_assert_true( is_wp_error( $res ), 'hata' );
+		qrms_assert_same( 'firestore_conflict', $res->get_error_code(), '409 ayrımı' );
+	}
+);
+
+qrms_test(
+	'call_yaz transport hatası firestore_transport döner',
+	function () {
+		$proje = 'test-order-transport';
+		update_option(
+			'qmo_firebase_sa',
+			wp_json_encode(
+				array(
+					'client_email' => 'svc@test.iam.gserviceaccount.com',
+					'private_key'  => 'test',
+					'project_id'   => $proje,
+				)
+			)
+		);
+		set_transient(
+			'qmo_gcp_token_' . substr( md5( QMO_Firestore::SCOPE_DATASTORE ), 0, 12 ),
+			'test-token',
+			3500
+		);
+
+		$GLOBALS['qrms_test']['http'] = function () {
+			return new WP_Error( 'http_request_failed', 'cURL error 28: Timeout' );
+		};
+
+		$res = QMO_Firestore::call_yaz( array( 'tip' => array( 'stringValue' => 'siparis' ) ), 't-id' );
+		qrms_assert_true( is_wp_error( $res ), 'hata' );
+		qrms_assert_same( 'firestore_transport', $res->get_error_code(), 'transport ayrımı' );
+	}
+);
+
+qrms_test(
 	'panel kaydı normalize edilir, eksik alanlar varsayılana düşer',
 	function () {
 		$kayit = QRMS_SP_Veri::normalize(

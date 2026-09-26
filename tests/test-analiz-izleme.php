@@ -381,9 +381,11 @@ qrms_test(
 		// DB_SURUM değişimine bakarak tetikler. Sürüm artmadan kalsaydı
 		// mevcut kurulumlar sütunu hiç görmezdi.
 		$sema = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/class-qrms-analitik.php' );
-		qrms_assert_contains( "const DB_SURUM = '1.3'", $sema, 'şema sürümü price eklemesiyle artırıldı' );
+		qrms_assert_contains( "const DB_SURUM = '1.4'", $sema, 'şema sürümü order contract ile artırıldı' );
 		qrms_assert_contains( 'qty smallint', $sema, 'qty sütunu CREATE TABLE içinde' );
 		qrms_assert_contains( 'price decimal', $sema, 'price sütunu CREATE TABLE içinde' );
+		qrms_assert_contains( 'unit_price decimal', $sema, 'unit_price sütunu CREATE TABLE içinde' );
+		qrms_assert_contains( 'order_id varchar', $sema, 'order_id sütunu CREATE TABLE içinde' );
 	}
 );
 
