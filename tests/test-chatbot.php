@@ -68,6 +68,8 @@ qrms_test(
 		qrms_assert_contains( "class_exists( 'QRMS_Analitik' )", $php, 'analitik yoksa no-op' );
 		qrms_assert_contains( 'qmo_analitik_urun_alani', $php, 'yayın ürünü doğrulanır' );
 		qrms_assert_contains( 'qmo_analitik_yaz', $php, 'kaydet köprüsü' );
+		qrms_assert_contains( 'qmo_masa_session_id', $php, 'Phase 4 session_id' );
+		qrms_assert_false( false !== strpos( $php, 'qmo_chatbot_oneri_durum_sessiz' ), 'menu cart legacy mutate yok' );
 		qrms_assert_false( false !== strpos( $php, "\$_POST['masa" ), 'istemci masasına güvenilmez' );
 	}
 );
@@ -1096,7 +1098,8 @@ qrms_test(
 	function () {
 		$php = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/includes/class-db.php' );
 
-		qrms_assert_contains( "const SURUM = '1.2'", $php, 'şema sürümü bump edildi' );
+		qrms_assert_contains( "const SURUM = '1.3.1'", $php, 'şema sürümü bump edildi' );
+		qrms_assert_contains( 'qmo_chatbot_recommendation_events', $php, 'Phase 4 recommendation events tablosu' );
 		qrms_assert_contains( 'qmo_chatbot_canli', $php, 'canlı tablosu' );
 		qrms_assert_contains( 'qmo_chatbot_personel_mesaj', $php, 'personel mesaj tablosu' );
 		qrms_assert_contains( 'UNIQUE KEY idx_oturum', $php, 'oturum başına tek satır' );

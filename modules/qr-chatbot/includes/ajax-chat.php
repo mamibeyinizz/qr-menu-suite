@@ -157,13 +157,12 @@ if ( ! function_exists( 'qmo_ajax_chat' ) ) {
 		qmo_chatbot_gecmis_yaz( $sess, $message, $cevap );
 		$cevap = qmo_chat_eskalasyon_uygula( $cevap );
 		qmo_chatbot_canli_takip_guncelle( $sess, $message, $cevap );
-		qmo_chat_oneri_gosterim_logla( $cevap, $sess, $message, $decoded_history );
 
 		qmo_ajax_chat_sse_gonder(
 			array(
 				'done'    => true,
 				'mesaj'   => $cevap,
-				'urunler' => qmo_chat_yanit_urunleri( $cevap ),
+				'urunler' => qmo_chat_recommendation_yanit_kartlari( $cevap, $sess, $message, $decoded_history ),
 			)
 		);
 		exit;
@@ -984,9 +983,34 @@ if ( ! function_exists( 'qmo_chat_urun_etiketi_talimati' ) ) {
  */
 if ( ! function_exists( 'qmo_chat_yanit_urunleri' ) ) {
 	function qmo_chat_yanit_urunleri( $cevap ) {
+		return qmo_chat_recommendation_yanit_kartlari( $cevap, array(), '', array() );
+	}
+}
+
+/**
+ * Geçerli recommendation kartları + Phase 4 ref_id / shown olayları.
+ *
+ * @param string $cevap   Model yanıtı.
+ * @param array  $sess    Masa oturumu.
+ * @param string $message Kullanıcı mesajı.
+ * @param array  $history Sohbet geçmişi.
+ * @return array<int,array<string,mixed>>
+ */
+if ( ! function_exists( 'qmo_chat_recommendation_yanit_kartlari' ) ) {
+	function qmo_chat_recommendation_yanit_kartlari( $cevap, $sess, $message, $history ) {
 		if ( ! preg_match_all( '/\[URUN:(\d+)\]/', (string) $cevap, $eslesmeler ) ) {
 			return array();
 		}
+
+		$session_id = ( is_array( $sess ) && function_exists( 'qmo_masa_session_id' ) )
+			? qmo_masa_session_id( $sess )
+			: '';
+		$phase4     = ( '' !== $session_id && 0 === strpos( $session_id, 's_' ) );
+
+		$oturum_id = function_exists( 'qmo_chatbot_ziyaretci_anahtar' )
+			? qmo_chatbot_ziyaretci_anahtar( is_array( $sess ) ? $sess : array() )
+			: '';
+		$masa      = is_array( $sess ) && isset( $sess['masa'] ) ? (string) $sess['masa'] : '';
 
 		$liste = array();
 		$gorul = array();
@@ -997,9 +1021,30 @@ if ( ! function_exists( 'qmo_chat_yanit_urunleri' ) ) {
 			}
 			$gorul[ $id ] = true;
 			$kart         = qmo_chat_urun_karti_bilgisi( $id );
-			if ( $kart ) {
-				$liste[] = $kart;
+			if ( ! $kart ) {
+				continue;
 			}
+
+			if ( '' !== $oturum_id ) {
+				$kaynak = qmo_chat_oneri_urun_kaynagi( $id, $message, $history );
+				qmo_chatbot_oneri_logla_sessiz( $oturum_id, $masa, $id, $kaynak, 'gosterildi' );
+			}
+
+			if ( $phase4 && class_exists( 'QMO_Chatbot_DB' ) ) {
+				$ref_id = QMO_Chatbot_DB::recommendation_ref_uret();
+				$kaynak = qmo_chat_oneri_urun_kaynagi( $id, $message, $history );
+				if ( QMO_Chatbot_DB::recommendation_event_ekle(
+					$ref_id,
+					QMO_Chatbot_DB::REC_EVENT_SHOWN,
+					$id,
+					$session_id,
+					$kaynak
+				) ) {
+					$kart['ref_id'] = $ref_id;
+				}
+			}
+
+			$liste[] = $kart;
 		}
 
 		return $liste;
