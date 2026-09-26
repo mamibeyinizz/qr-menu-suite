@@ -17,7 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 class QMO_Chatbot_DB {
 
-	const SURUM = '1.3';
+	const SURUM = '1.3.1';
 	const OPT   = 'qmo_chatbot_db_surum';
 
 	/** Append-only recommendation attribution olayları. */
@@ -126,6 +126,8 @@ class QMO_Chatbot_DB {
 
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 
+		self::recommendation_events_dedupe_yinelenen();
+
 		dbDelta(
 			"CREATE TABLE {$mesaj} (
 				id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
@@ -199,7 +201,7 @@ class QMO_Chatbot_DB {
 				PRIMARY KEY  (id),
 				KEY idx_ref_id (ref_id),
 				KEY idx_session_product_time (session_id, product_id, created_at),
-				KEY idx_ref_event (ref_id, event_type)
+				UNIQUE KEY uniq_ref_event (ref_id, event_type)
 			) {$collate};"
 		);
 
@@ -971,6 +973,36 @@ class QMO_Chatbot_DB {
 		}
 
 		return $rapor;
+	}
+
+	/**
+	 * Aynı (ref_id, event_type) yinelenen satırları temizler (upgrade öncesi).
+	 *
+	 * Her grupta en düşük id kalır; cart_add yarışından doğmuş duplicate'ler
+	 * UNIQUE indeks eklenmeden önce kaldırılır.
+	 *
+	 * @return void
+	 */
+	public static function recommendation_events_dedupe_yinelenen() {
+		global $wpdb;
+
+		$tablo = self::recommendation_events_tablosu();
+		$like  = $wpdb->esc_like( $tablo );
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$var = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $like ) );
+		if ( $var !== $tablo ) {
+			return;
+		}
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$wpdb->query(
+			"DELETE e1 FROM {$tablo} e1
+			 INNER JOIN {$tablo} e2
+			   ON e1.ref_id = e2.ref_id
+			  AND e1.event_type = e2.event_type
+			  AND e1.id > e2.id"
+		);
 	}
 
 	/**

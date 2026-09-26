@@ -44,8 +44,17 @@ class QRMS_P4_Test_Wpdb {
 
 	public function insert( $table, $data, $format = null ) {
 		unset( $format );
+		if ( false !== strpos( (string) $table, 'recommendation_events' ) ) {
+			$ref  = isset( $data['ref_id'] ) ? (string) $data['ref_id'] : '';
+			$type = isset( $data['event_type'] ) ? (string) $data['event_type'] : '';
+			foreach ( $this->rec_events as $row ) {
+				if ( $ref === (string) ( $row['ref_id'] ?? '' ) && $type === (string) ( $row['event_type'] ?? '' ) ) {
+					return false;
+				}
+			}
+		}
 		$data['id'] = $this->next_id++;
-		if ( false !== strpos( $table, 'recommendation_events' ) ) {
+		if ( false !== strpos( (string) $table, 'recommendation_events' ) ) {
 			$this->rec_events[] = $data;
 		} else {
 			$this->inserts[] = $data;
@@ -451,5 +460,64 @@ qrms_test(
 		qrms_assert_false( false !== strpos( $order, 'recommendation_event' ), 'Phase4 event bot yolunda yok' );
 		$analitik = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/ajax-sepet-analitik.php' );
 		qrms_assert_contains( 'recommendation_sepet_olaylari_isle', $analitik, 'yalnız sepet olay' );
+	}
+);
+
+qrms_test(
+	'P4-19. aynı ref_id için ikinci cart_add DB duplicate reddedilir (concurrency invariant)',
+	function () {
+		$wpdb = qrms_p4_wpdb();
+		$sid  = qrms_p4_session();
+		$ref  = '99999999-aaaa-bbbb-cccc-dddddddddddd';
+		QMO_Chatbot_DB::recommendation_event_ekle( $ref, QMO_Chatbot_DB::REC_EVENT_SHOWN, 10, $sid, 'ai' );
+		qrms_assert_true(
+			QMO_Chatbot_DB::recommendation_event_ekle( $ref, QMO_Chatbot_DB::REC_EVENT_CART_ADD, 10, $sid, null ),
+			'il cart_add'
+		);
+		qrms_assert_false(
+			QMO_Chatbot_DB::recommendation_event_ekle( $ref, QMO_Chatbot_DB::REC_EVENT_CART_ADD, 10, $sid, null ),
+			'ikinci cart_add reddi'
+		);
+		$cart = 0;
+		foreach ( $wpdb->rec_events as $row ) {
+			if ( 'cart_add' === ( $row['event_type'] ?? '' ) && $ref === ( $row['ref_id'] ?? '' ) ) {
+				++$cart;
+			}
+		}
+		qrms_assert_same( 1, $cart, 'tek cart_add' );
+		$php = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/includes/class-db.php' );
+		qrms_assert_contains( 'UNIQUE KEY uniq_ref_event (ref_id, event_type)', $php, 'DB unique' );
+	}
+);
+
+qrms_test(
+	'P4-20. duplicate cart_add batch ikinci deneme sessiz (sepet olayları)',
+	function () {
+		$wpdb = qrms_p4_wpdb();
+		$sid  = qrms_p4_session();
+		$ref  = '88888888-aaaa-bbbb-cccc-dddddddddddd';
+		QMO_Chatbot_DB::recommendation_event_ekle( $ref, QMO_Chatbot_DB::REC_EVENT_SHOWN, 10, $sid, 'ai' );
+		QMO_Chatbot_DB::recommendation_sepet_olaylari_isle(
+			array(
+				array(
+					'tip'     => 'cart_add',
+					'item_id' => 10,
+					'ref_id'  => $ref,
+				),
+				array(
+					'tip'     => 'cart_add',
+					'item_id' => 10,
+					'ref_id'  => $ref,
+				),
+			),
+			$sid
+		);
+		$cart = 0;
+		foreach ( $wpdb->rec_events as $row ) {
+			if ( 'cart_add' === ( $row['event_type'] ?? '' ) && $ref === ( $row['ref_id'] ?? '' ) ) {
+				++$cart;
+			}
+		}
+		qrms_assert_same( 1, $cart, 'batch duplicate yok sayılır' );
 	}
 );

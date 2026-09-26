@@ -1098,7 +1098,7 @@ qrms_test(
 	function () {
 		$php = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/includes/class-db.php' );
 
-		qrms_assert_contains( "const SURUM = '1.3'", $php, 'şema sürümü bump edildi' );
+		qrms_assert_contains( "const SURUM = '1.3.1'", $php, 'şema sürümü bump edildi' );
 		qrms_assert_contains( 'qmo_chatbot_recommendation_events', $php, 'Phase 4 recommendation events tablosu' );
 		qrms_assert_contains( 'qmo_chatbot_canli', $php, 'canlı tablosu' );
 		qrms_assert_contains( 'qmo_chatbot_personel_mesaj', $php, 'personel mesaj tablosu' );
