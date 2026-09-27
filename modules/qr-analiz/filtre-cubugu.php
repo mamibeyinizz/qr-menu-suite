@@ -49,16 +49,24 @@ if ( ! function_exists( 'qrms_analitik_filtre_cubugu' ) ) {
 	 * @return void
 	 */
 	function qrms_analitik_filtre_cubugu( $sayfa ) {
-		$aktif   = QRMS_Analitik_Filtre::donem();
-		$masa    = QRMS_Analitik_Filtre::masa();
-		$aralik  = QRMS_Analitik_Filtre::aralik();
+		$baglam  = QRMS_Analitik_Filtre::baglam();
+		$aktif   = $baglam['donem'];
+		$masa    = $baglam['masa'];
+		$aralik  = QRMS_Analitik_Filtre::aralik( $baglam );
 		$masalar = QRMS_Analitik::masa_secenekleri();
+		$aralik_hata = QRMS_Analitik_Filtre::aralik_hata_mesaji( $baglam );
 
 		// "Özel aralık" düğmesi bir tarih seçmeden anlamlı bir adres üretemez;
 		// tıklandığında formu açar. Form zaten açıksa (dönem "ozel") kapanmaz.
 		$ozel_acik = ( 'ozel' === $aktif );
 		?>
 		<div class="qrms-an-filtre" data-donem="<?php echo esc_attr( $aktif ); ?>">
+
+			<?php if ( '' !== $aralik_hata ) : ?>
+				<div class="notice notice-error qrms-an-filtre-hata" role="alert">
+					<p><?php echo esc_html( $aralik_hata ); ?></p>
+				</div>
+			<?php endif; ?>
 
 			<div class="qrms-an-filtre-satir">
 				<span class="qrms-an-filtre-label" id="qrms-an-donem-label">

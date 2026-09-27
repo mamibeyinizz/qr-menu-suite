@@ -300,6 +300,20 @@ function qrms_module_qr_analiz_ortak_betik() {
 		QRMS_Helpers::asset_version( 'modules/qr-analiz/assets/js/analitik-ortak.js' ),
 		true
 	);
+
+	$baglam = QRMS_Analitik_Filtre::baglam();
+
+	wp_localize_script(
+		'qrms-analitik-ortak',
+		'qrmsAnalitikFiltre',
+		array(
+			'aralikGecersiz' => QRMS_Analitik_Filtre::aralik_asimi_mi( $baglam ),
+			'ozelMaxGun'     => QRMS_Analitik_Filtre::ozel_max_gun(),
+			'i18n'           => array(
+				'aralikAsimi' => QRMS_Analitik_Filtre::aralik_hata_mesaji( $baglam ),
+			),
+		)
+	);
 }
 
 /**

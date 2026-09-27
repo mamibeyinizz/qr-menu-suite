@@ -2730,6 +2730,22 @@ class QRMS_Analitik {
 		}
 	}
 
+	/**
+	 * Filtre aralığı geçersizse JSON hata yanıtı gönderir.
+	 *
+	 * @param array $ham Ham POST/GET alanları.
+	 * @return array Çözülmüş bağlam (engel yoksa).
+	 */
+	private static function ajax_filtre_kontrol( array $ham ) {
+		$engel = QRMS_Analitik_Filtre::aralik_engeli( $ham );
+
+		if ( null !== $engel ) {
+			wp_send_json_error( $engel, 400 );
+		}
+
+		return QRMS_Analitik_Filtre::coz( $ham );
+	}
+
 	/* -----------------------------------------------------------------
 	   AJAX UÇLARI
 	----------------------------------------------------------------- */
@@ -2775,7 +2791,7 @@ class QRMS_Analitik {
 		$ham = (array) wp_unslash( $_POST );
 		// phpcs:enable
 
-		$baglam = QRMS_Analitik_Filtre::coz( $ham );
+		$baglam = self::ajax_filtre_kontrol( $ham );
 		$aralik = QRMS_Analitik_Filtre::aralik( $ham );
 		$sayfa  = isset( $ham['usayfa'] ) ? max( 1, (int) $ham['usayfa'] ) : 1;
 
@@ -2811,7 +2827,7 @@ class QRMS_Analitik {
 		$ham = (array) wp_unslash( $_POST );
 		// phpcs:enable
 
-		$baglam  = QRMS_Analitik_Filtre::coz( $ham );
+		$baglam  = self::ajax_filtre_kontrol( $ham );
 		$aralik  = QRMS_Analitik_Filtre::aralik( $ham );
 		$kirilim = QRMS_Analitik_Filtre::kirilim( $ham );
 		$onceki  = QRMS_Analitik_Filtre::onceki_baslangic( $ham );
@@ -2845,7 +2861,7 @@ class QRMS_Analitik {
 		$ham = (array) wp_unslash( $_POST );
 		// phpcs:enable
 
-		$baglam = QRMS_Analitik_Filtre::coz( $ham );
+		$baglam = self::ajax_filtre_kontrol( $ham );
 		$aralik = QRMS_Analitik_Filtre::aralik( $ham );
 
 		wp_send_json_success(
@@ -2879,7 +2895,7 @@ class QRMS_Analitik {
 		$ham = (array) wp_unslash( $_POST );
 		// phpcs:enable
 
-		$baglam = QRMS_Analitik_Filtre::coz( $ham );
+		$baglam = self::ajax_filtre_kontrol( $ham );
 		$aralik = QRMS_Analitik_Filtre::aralik( $ham );
 
 		wp_send_json_success(
@@ -2913,7 +2929,7 @@ class QRMS_Analitik {
 		$ham = (array) wp_unslash( $_POST );
 		// phpcs:enable
 
-		$baglam  = QRMS_Analitik_Filtre::coz( $ham );
+		$baglam  = self::ajax_filtre_kontrol( $ham );
 		$aralik  = QRMS_Analitik_Filtre::aralik( $ham );
 		$kirilim = QRMS_Analitik_Filtre::kirilim( $ham );
 
@@ -2949,7 +2965,7 @@ class QRMS_Analitik {
 		$ham = (array) wp_unslash( $_POST );
 		// phpcs:enable
 
-		$baglam = QRMS_Analitik_Filtre::coz( $ham );
+		$baglam = self::ajax_filtre_kontrol( $ham );
 		$aralik = QRMS_Analitik_Filtre::aralik( $ham );
 
 		wp_send_json_success(
@@ -2980,6 +2996,16 @@ class QRMS_Analitik {
 
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- check_ajax_referer yukarıda.
 		$ham = (array) wp_unslash( $_GET );
+
+		$engel = QRMS_Analitik_Filtre::aralik_engeli( $ham );
+
+		if ( null !== $engel ) {
+			wp_die(
+				esc_html( $engel['mesaj'] ),
+				'',
+				array( 'response' => 400 )
+			);
+		}
 
 		// KATEGORİ BAZLI İNDİRME. Her kategori sayfası kendi verisini indirir;
 		// parametre verilmezse eski (dönem bazlı) davranış aynen sürer —

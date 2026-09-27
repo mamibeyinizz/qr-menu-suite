@@ -58,6 +58,18 @@ class QRMS_Analitik_Filtre {
 	const MASA_UZUNLUK = 64;
 
 	/**
+	 * Özel aralığın (donem=ozel) azami gün sayısı (uçlar dahil).
+	 *
+	 * Hazır dönemler (bugun, hafta, ay) bu sınıra tabi değildir.
+	 */
+	const OZEL_MAX_GUN = 31;
+
+	/**
+	 * Geçerli özel aralık gün sayısı üst sınırını aştığında bağlam hata kodu.
+	 */
+	const HATA_ARALIK_ASIMI = 'aralik_asimi';
+
+	/**
 	 * İstek içi önbellek: $_GET yalnızca bir kez çözülür.
 	 *
 	 * @var array|null
@@ -67,7 +79,7 @@ class QRMS_Analitik_Filtre {
 	/**
 	 * Geçerli isteğin filtre bağlamı.
 	 *
-	 * @return array{donem:string,masa:string,bas:string,bit:string}
+	 * @return array{donem:string,masa:string,bas:string,bit:string,hata:string,istenen_gun:int,max_gun:int}
 	 */
 	public static function baglam() {
 		if ( null === self::$baglam ) {
@@ -112,7 +124,7 @@ class QRMS_Analitik_Filtre {
 	 *   - Dönem "ozel" değilse tarihler taşınmaz; URL'de artık kalmaz.
 	 *
 	 * @param array $kaynak Ham değerler ($_GET ya da benzeri).
-	 * @return array{donem:string,masa:string,bas:string,bit:string}
+	 * @return array{donem:string,masa:string,bas:string,bit:string,hata:string,istenen_gun:int,max_gun:int}
 	 */
 	public static function coz( array $kaynak ) {
 		$donem = self::anahtar( $kaynak, self::ARG_DONEM );
@@ -137,11 +149,90 @@ class QRMS_Analitik_Filtre {
 			$bit   = $takas;
 		}
 
+		$hata        = '';
+		$istenen_gun = 0;
+		$max_gun     = 0;
+
+		if ( 'ozel' === $donem ) {
+			$max_gun     = self::ozel_max_gun();
+			$istenen_gun = self::gun_sayisi( $bas, $bit );
+
+			if ( $istenen_gun > $max_gun ) {
+				$hata = self::HATA_ARALIK_ASIMI;
+			}
+		}
+
 		return array(
-			'donem' => $donem,
-			'masa'  => self::masa_temizle( self::anahtar( $kaynak, self::ARG_MASA ) ),
-			'bas'   => $bas,
-			'bit'   => $bit,
+			'donem'       => $donem,
+			'masa'        => self::masa_temizle( self::anahtar( $kaynak, self::ARG_MASA ) ),
+			'bas'         => $bas,
+			'bit'         => $bit,
+			'hata'        => $hata,
+			'istenen_gun' => $istenen_gun,
+			'max_gun'     => $max_gun,
+		);
+	}
+
+	/**
+	 * Özel aralık için geçerli azami gün sayısı (yalnızca donem=ozel).
+	 *
+	 * @return int Pozitif tam sayı; sıfır veya negatif filtre değerleri yok sayılır.
+	 */
+	public static function ozel_max_gun() {
+		$max = (int) apply_filters( 'qrms_analitik_ozel_max_gun', self::OZEL_MAX_GUN );
+
+		return max( 1, $max );
+	}
+
+	/**
+	 * Bağlam özel aralık üst sınırını aşıyor mu?
+	 *
+	 * @param array|null $baglam coz() çıktısı (boş bırakılırsa aktif bağlam).
+	 * @return bool
+	 */
+	public static function aralik_asimi_mi( $baglam = null ) {
+		$baglam = is_array( $baglam ) ? $baglam : self::baglam();
+
+		return self::HATA_ARALIK_ASIMI === ( $baglam['hata'] ?? '' );
+	}
+
+	/**
+	 * Aralık aşımı için kullanıcıya gösterilecek mesaj.
+	 *
+	 * @param array|null $baglam coz() çıktısı.
+	 * @return string Boş string hata yoksa.
+	 */
+	public static function aralik_hata_mesaji( $baglam = null ) {
+		if ( ! self::aralik_asimi_mi( $baglam ) ) {
+			return '';
+		}
+
+		$baglam = is_array( $baglam ) ? $baglam : self::baglam();
+		$max    = isset( $baglam['max_gun'] ) ? (int) $baglam['max_gun'] : self::ozel_max_gun();
+
+		return sprintf(
+			/* translators: %d: azami gün sayısı (uçlar dahil). */
+			__( 'Özel tarih aralığı en fazla %d gün olabilir. Lütfen daha kısa bir aralık seçin.', 'qrms' ),
+			$max
+		);
+	}
+
+	/**
+	 * AJAX/CSV için aralık engeli (merkezi).
+	 *
+	 * @param array $kaynak Ham istek alanları.
+	 * @return array{mesaj:string,kod:string}|null Engel yoksa null.
+	 */
+	public static function aralik_engeli( array $kaynak ) {
+		$baglam = self::coz( $kaynak );
+
+		if ( ! self::aralik_asimi_mi( $baglam ) ) {
+			return null;
+		}
+
+		return array(
+			'mesaj' => self::aralik_hata_mesaji( $baglam ),
+			'kod'   => self::HATA_ARALIK_ASIMI,
 		);
 	}
 
