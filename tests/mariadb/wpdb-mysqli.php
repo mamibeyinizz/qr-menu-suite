@@ -98,7 +98,6 @@ class QRMS_MariaDB_Wpdb {
 	 * @return array<int, object|array<string, mixed>>
 	 */
 	public function get_results( $sql, $mode = null ) {
-		unset( $mode );
 		$this->queries[] = $sql;
 		$res             = $this->dbh->query( $sql );
 		if ( false === $res ) {
@@ -106,8 +105,14 @@ class QRMS_MariaDB_Wpdb {
 			return array();
 		}
 		$rows = array();
-		while ( $row = $res->fetch_object() ) {
-			$rows[] = $row;
+		if ( ARRAY_A === $mode ) {
+			while ( $row = $res->fetch_assoc() ) {
+				$rows[] = $row;
+			}
+		} else {
+			while ( $row = $res->fetch_object() ) {
+				$rows[] = $row;
+			}
 		}
 		$res->free();
 		return $rows;

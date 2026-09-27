@@ -81,6 +81,7 @@ function qrms_mariadb_apply_schema( mysqli $mysqli ) {
  */
 function qrms_mariadb_reset_data( mysqli $mysqli ) {
 	$mysqli->query( 'SET FOREIGN_KEY_CHECKS=0' );
+	$mysqli->query( 'TRUNCATE TABLE wp_qmo_chatbot_oneri_log' );
 	$mysqli->query( 'TRUNCATE TABLE wp_qmo_chatbot_recommendation_events' );
 	$mysqli->query( 'TRUNCATE TABLE wp_rma_analytics' );
 	$mysqli->query( 'SET FOREIGN_KEY_CHECKS=1' );
@@ -97,28 +98,53 @@ function qrms_mariadb_bind_wpdb( QRMS_MariaDB_Wpdb $wpdb ) {
 }
 
 /**
- * Production oneri_rapor_atfedilen_siparis() çıktısı.
+ * Production attribution engine (gerçek SQL).
  *
  * @param string $bas_ymd Y-m-d.
  * @param string $bit_ymd Y-m-d.
- * @return array<int,int> urun_id => atfedilen
- * @throws ReflectionException
+ * @return array<string,mixed>
  */
-function qrms_mariadb_atfedilen_map( $bas_ymd, $bit_ymd ) {
+function qrms_mariadb_attribution( $bas_ymd, $bit_ymd ) {
 	$bas = sanitize_text_field( $bas_ymd ) . ' 00:00:00';
 	$bit = sanitize_text_field( $bit_ymd ) . ' 23:59:59';
-	$ref = new ReflectionMethod( 'QMO_Chatbot_DB', 'oneri_rapor_atfedilen_siparis' );
-	$ref->setAccessible( true );
-	return $ref->invoke( null, $bas, $bit );
+	return QMO_Chatbot_DB::recommendation_attribution_hesapla( $bas, $bit );
 }
 
 /**
- * @param int $product_id Ürün.
- * @param array<int,int> $map atfedilen map.
- * @return int
+ * @param array<string,mixed> $attr Engine çıktısı.
+ * @param int                 $product_id Ürün.
+ * @return array<string,mixed>
  */
-function qrms_mariadb_atfedilen_for_product( $product_id, array $map ) {
-	return (int) ( $map[ (int) $product_id ] ?? 0 );
+function qrms_mariadb_attribution_urun( array $attr, $product_id ) {
+	$urunler = isset( $attr['urunler'] ) && is_array( $attr['urunler'] ) ? $attr['urunler'] : array();
+	$pid     = (int) $product_id;
+	if ( $pid < 1 || ! isset( $urunler[ $pid ] ) || ! is_array( $urunler[ $pid ] ) ) {
+		return array(
+			'atfedilen_siparis_tekil' => 0,
+			'atfedilen_kalem'         => 0,
+			'atfedilen_birim'         => 0,
+			'atfedilen_tutar'         => 0.0,
+		);
+	}
+	return $urunler[ $pid ];
+}
+
+/**
+ * Son çalıştırılan attribution SQL (EXPLAIN için).
+ *
+ * @return string
+ */
+function qrms_mariadb_last_attribution_sql() {
+	global $wpdb;
+	if ( ! isset( $wpdb->queries ) || ! is_array( $wpdb->queries ) ) {
+		return '';
+	}
+	foreach ( array_reverse( $wpdb->queries ) as $sql ) {
+		if ( false !== strpos( (string) $sql, 'line_attrib' ) ) {
+			return (string) $sql;
+		}
+	}
+	return '';
 }
 
 /**
@@ -169,38 +195,6 @@ function qrms_mariadb_analytics( QRMS_MariaDB_Wpdb $wpdb, array $row ) {
 		$row
 	);
 	$wpdb->insert( $wpdb->prefix . 'rma_analytics', $data );
-}
-
-/**
- * Production attribution JOIN SQL (EXPLAIN için).
- *
- * @param string $bas_ymd Başlangıç günü.
- * @param string $bit_ymd Bitiş günü.
- * @return string
- */
-function qrms_mariadb_attribution_sql_prepared( $bas_ymd, $bit_ymd ) {
-	global $wpdb;
-	$bas = $bas_ymd . ' 00:00:00';
-	$bit = $bit_ymd . ' 23:59:59';
-	$tablo_rec = $wpdb->prefix . 'qmo_chatbot_recommendation_events';
-	$analitik  = $wpdb->prefix . 'rma_analytics';
-	return $wpdb->prepare(
-		"SELECT cart.product_id AS urun_id, COUNT(DISTINCT cart.ref_id) AS atfedilen
-		FROM {$tablo_rec} cart
-		INNER JOIN {$analitik} o
-		  ON o.event_type = 'order_sent'
-		 AND o.session_id = cart.session_id
-		 AND o.item_id = cart.product_id
-		 AND o.created_at >= cart.created_at
-		 AND o.created_at >= %s
-		WHERE cart.event_type = %s
-		  AND cart.created_at >= %s AND cart.created_at <= %s
-		GROUP BY cart.product_id",
-		$bas,
-		QMO_Chatbot_DB::REC_EVENT_CART_ADD,
-		$bas,
-		$bit
-	);
 }
 
 /**

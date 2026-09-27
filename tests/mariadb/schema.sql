@@ -3,8 +3,23 @@
 
 SET NAMES utf8mb4;
 
+DROP TABLE IF EXISTS wp_qmo_chatbot_oneri_log;
 DROP TABLE IF EXISTS wp_qmo_chatbot_recommendation_events;
 DROP TABLE IF EXISTS wp_rma_analytics;
+
+CREATE TABLE wp_qmo_chatbot_oneri_log (
+	id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+	oturum_id varchar(64) NOT NULL DEFAULT '',
+	masa_no varchar(32) NOT NULL DEFAULT '',
+	urun_id bigint(20) unsigned NOT NULL,
+	kaynak varchar(20) NOT NULL DEFAULT 'ai',
+	durum varchar(20) NOT NULL DEFAULT 'gosterildi',
+	created_at datetime NOT NULL,
+	PRIMARY KEY (id),
+	KEY oturum (oturum_id),
+	KEY urun (urun_id),
+	KEY durum_tarih (durum, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE wp_rma_analytics (
 	id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
