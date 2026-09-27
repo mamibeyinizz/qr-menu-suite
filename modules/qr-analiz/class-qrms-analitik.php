@@ -666,6 +666,7 @@ class QRMS_Analitik {
 				}
 
 				if ( $butce <= 0 || ( microtime( true ) - $baslar ) >= $butce ) {
+					$toplam += self::recommendation_events_temizligi( $baslar, $butce );
 					return $toplam;
 				}
 			}
@@ -675,7 +676,29 @@ class QRMS_Analitik {
 			}
 		}
 
+		$toplam += self::recommendation_events_temizligi( $baslar, $butce );
+
 		return $toplam;
+	}
+
+	/**
+	 * Kalan süre bütçesiyle chatbot recommendation_events saklamasını uygular.
+	 *
+	 * @param float $baslar microtime(true) tur başlangıcı.
+	 * @param int   $butce  Toplam saniye bütçesi.
+	 * @return int Silinen satır.
+	 */
+	private static function recommendation_events_temizligi( $baslar, $butce ) {
+		if ( ! class_exists( 'QMO_Chatbot_DB' ) ) {
+			return 0;
+		}
+
+		$kalan = $butce <= 0 ? null : max( 0.0, (float) $butce - ( microtime( true ) - $baslar ) );
+		if ( null !== $kalan && $kalan <= 0 ) {
+			return 0;
+		}
+
+		return QMO_Chatbot_DB::recommendation_events_eski_sil( null, $kalan );
 	}
 
 	/**

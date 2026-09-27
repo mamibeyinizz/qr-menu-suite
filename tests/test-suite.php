@@ -28,6 +28,7 @@ require_once __DIR__ . '/test-core.php';
 require_once __DIR__ . '/test-chatbot.php';
 require_once __DIR__ . '/test-recommendation-attribution.php';
 require_once __DIR__ . '/test-oneri-rapor.php';
+require_once __DIR__ . '/test-recommendation-retention.php';
 require_once __DIR__ . '/test-analiz.php';
 require_once __DIR__ . '/test-siparis-olgulari.php';
 require_once __DIR__ . '/test-sepet-siparis-olgulari-ui.php';

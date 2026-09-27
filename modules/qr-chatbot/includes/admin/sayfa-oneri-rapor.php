@@ -52,61 +52,70 @@ function qmo_chatbot_sayfa_oneri_rapor() {
 		$baslangic = gmdate( 'Y-m-d', strtotime( '-30 days' ) );
 	}
 
-	$ham     = QMO_Chatbot_DB::oneri_rapor( $baslangic, $bitis );
+	$ham      = QMO_Chatbot_DB::oneri_rapor( $baslangic, $bitis );
 	$satirlar = array();
 	$ozet     = array(
-		'gosterildi' => 0,
-		'sepete'     => 0,
-		'siparis'    => 0,
-		'ciro'       => 0.0,
+		'gosterildi'               => 0,
+		'sepete'                   => 0,
+		'atfedilen_siparis'        => 0,
+		'dogrudan_chatbot_siparis' => 0,
+		'ciro'                     => 0.0,
+	);
+
+	$atfedilen_aciklama = __(
+		'Aynı oturum ve ürün için recommendation sepete ekleme sonrası gerçekleşen order_sent ile gözlemsel ilişki; kesin sipariş bağı değildir.',
+		'qrms'
 	);
 
 	foreach ( $ham as $satir ) {
 		$urun_id    = (int) $satir['urun_id'];
 		$gosterildi = (int) $satir['gosterildi'];
 		$sepete     = (int) $satir['sepete'];
-		$siparis    = (int) $satir['siparis'];
+		$atfedilen  = (int) $satir['atfedilen_siparis'];
+		$bot        = (int) $satir['dogrudan_chatbot_siparis'];
 		$fiyat      = qmo_chatbot_oneri_urun_fiyat_sayi( $urun_id );
-		$ciro       = $siparis * $fiyat;
+		$ciro       = $atfedilen * $fiyat;
 		$ad         = get_the_title( $urun_id );
 		if ( '' === $ad ) {
 			$ad = '#' . $urun_id;
 		}
 
 		$satirlar[] = array(
-			'urun_id'        => $urun_id,
-			'ad'             => $ad,
-			'gosterildi'     => $gosterildi,
-			'sepete'         => $sepete,
-			'siparis'        => $siparis,
-			'donusum_orani'  => $gosterildi > 0 ? round( ( $siparis / $gosterildi ) * 100, 1 ) : 0.0,
-			'ciro'           => $ciro,
-			'fiyat_metin'    => function_exists( 'rma_ceviri_fiyat' ) ? rma_ceviri_fiyat( $fiyat ) : (string) $fiyat,
+			'urun_id'                  => $urun_id,
+			'ad'                       => $ad,
+			'gosterildi'               => $gosterildi,
+			'sepete'                   => $sepete,
+			'atfedilen_siparis'        => $atfedilen,
+			'dogrudan_chatbot_siparis' => $bot,
+			'donusum_orani'            => $gosterildi > 0 ? round( ( $atfedilen / $gosterildi ) * 100, 1 ) : 0.0,
+			'ciro'                     => $ciro,
+			'fiyat_metin'              => function_exists( 'rma_ceviri_fiyat' ) ? rma_ceviri_fiyat( $fiyat ) : (string) $fiyat,
 		);
 
-		$ozet['gosterildi'] += $gosterildi;
-		$ozet['sepete']     += $sepete;
-		$ozet['siparis']    += $siparis;
-		$ozet['ciro']       += $ciro;
+		$ozet['gosterildi']               += $gosterildi;
+		$ozet['sepete']                   += $sepete;
+		$ozet['atfedilen_siparis']        += $atfedilen;
+		$ozet['dogrudan_chatbot_siparis'] += $bot;
+		$ozet['ciro']                     += $ciro;
 	}
 
 	usort(
 		$satirlar,
 		function ( $a, $b ) {
 			if ( $a['ciro'] === $b['ciro'] ) {
-				return $b['siparis'] - $a['siparis'];
+				return $b['atfedilen_siparis'] - $a['atfedilen_siparis'];
 			}
 			return ( $a['ciro'] > $b['ciro'] ) ? -1 : 1;
 		}
 	);
 
 	$ozet['donusum'] = $ozet['gosterildi'] > 0
-		? round( ( $ozet['siparis'] / $ozet['gosterildi'] ) * 100, 1 )
+		? round( ( $ozet['atfedilen_siparis'] / $ozet['gosterildi'] ) * 100, 1 )
 		: 0.0;
 
 	qmo_chatbot_sayfa_basligi(
 		__( 'Öneri Raporu', 'qrms' ),
-		__( 'Ürün önerilerinin sepete ve siparişe dönüşüm performansı.', 'qrms' )
+		__( 'Ürün önerilerinin sepete ve atfedilen siparişe dönüşüm performansı.', 'qrms' )
 	);
 	?>
 	<form method="get" action="<?php echo esc_url( admin_url( 'admin.php' ) ); ?>" class="qmo-cb-filtre">
@@ -130,8 +139,12 @@ function qmo_chatbot_sayfa_oneri_rapor() {
 			<strong class="qmo-cb-rapor-deger"><?php echo esc_html( number_format_i18n( $ozet['sepete'] ) ); ?></strong>
 		</div>
 		<div class="qmo-cb-rapor-kart">
-			<span class="qmo-cb-rapor-etiket"><?php esc_html_e( 'Siparişe dönen', 'qrms' ); ?></span>
-			<strong class="qmo-cb-rapor-deger"><?php echo esc_html( number_format_i18n( $ozet['siparis'] ) ); ?></strong>
+			<span class="qmo-cb-rapor-etiket" title="<?php echo esc_attr( $atfedilen_aciklama ); ?>"><?php esc_html_e( 'Atfedilen sipariş', 'qrms' ); ?></span>
+			<strong class="qmo-cb-rapor-deger"><?php echo esc_html( number_format_i18n( $ozet['atfedilen_siparis'] ) ); ?></strong>
+		</div>
+		<div class="qmo-cb-rapor-kart">
+			<span class="qmo-cb-rapor-etiket"><?php esc_html_e( 'Doğrudan chatbot siparişi', 'qrms' ); ?></span>
+			<strong class="qmo-cb-rapor-deger"><?php echo esc_html( number_format_i18n( $ozet['dogrudan_chatbot_siparis'] ) ); ?></strong>
 		</div>
 		<div class="qmo-cb-rapor-kart">
 			<span class="qmo-cb-rapor-etiket"><?php esc_html_e( 'Dönüşüm oranı', 'qrms' ); ?></span>
@@ -157,21 +170,23 @@ function qmo_chatbot_sayfa_oneri_rapor() {
 				<th><?php esc_html_e( 'Ürün', 'qrms' ); ?></th>
 				<th><?php esc_html_e( 'Gösterildi', 'qrms' ); ?></th>
 				<th><?php esc_html_e( 'Sepete', 'qrms' ); ?></th>
-				<th><?php esc_html_e( 'Sipariş', 'qrms' ); ?></th>
+				<th title="<?php echo esc_attr( $atfedilen_aciklama ); ?>"><?php esc_html_e( 'Atfedilen sipariş', 'qrms' ); ?></th>
+				<th><?php esc_html_e( 'Doğrudan chatbot siparişi', 'qrms' ); ?></th>
 				<th><?php esc_html_e( 'Dönüşüm %', 'qrms' ); ?></th>
 				<th><?php esc_html_e( 'Tahmini ciro', 'qrms' ); ?></th>
 			</tr>
 		</thead>
 		<tbody>
 			<?php if ( empty( $satirlar ) ) : ?>
-				<tr><td colspan="6"><?php esc_html_e( 'Seçilen aralıkta kayıt yok.', 'qrms' ); ?></td></tr>
+				<tr><td colspan="7"><?php esc_html_e( 'Seçilen aralıkta kayıt yok.', 'qrms' ); ?></td></tr>
 			<?php else : ?>
 				<?php foreach ( $satirlar as $satir ) : ?>
 					<tr>
 						<td><?php echo esc_html( $satir['ad'] ); ?></td>
 						<td><?php echo esc_html( number_format_i18n( $satir['gosterildi'] ) ); ?></td>
 						<td><?php echo esc_html( number_format_i18n( $satir['sepete'] ) ); ?></td>
-						<td><?php echo esc_html( number_format_i18n( $satir['siparis'] ) ); ?></td>
+						<td><?php echo esc_html( number_format_i18n( $satir['atfedilen_siparis'] ) ); ?></td>
+						<td><?php echo esc_html( number_format_i18n( $satir['dogrudan_chatbot_siparis'] ) ); ?></td>
 						<td><?php echo esc_html( $satir['donusum_orani'] ); ?>%</td>
 						<td>
 							<?php
