@@ -1136,9 +1136,16 @@ class QMO_Chatbot_DB {
 	/**
 	 * Gözlemsel atfedilen sipariş — toplu SQL (N+1 yok).
 	 *
+	 * Atfedilen sipariş, recommendation ref seviyesinde, aynı oturum + ürün + zaman
+	 * ilişkisine göre gözlemsel olarak atfedilen recommendation instance sayısını ifade eder
+	 * (COUNT(DISTINCT cart_add ref_id)). Aynı gerçek order_sent olayı birden fazla
+	 * recommendation ref'iyle eşleşebilir; benzersiz gerçek sipariş sayısı değildir.
+	 *
+	 * Eşleşme: canonical session_id, product_id = item_id, order_sent.created_at >= cart_add.created_at.
+	 *
 	 * @param string $bas Datetime (cart_add alt sınırı).
 	 * @param string $bit Datetime (cart_add üst sınırı).
-	 * @return array<int,int> urun_id => adet
+	 * @return array<int,int> urun_id => adet (ref bazlı atfedilen instance).
 	 */
 	private static function oneri_rapor_atfedilen_siparis( $bas, $bit ) {
 		global $wpdb;
@@ -1187,9 +1194,12 @@ class QMO_Chatbot_DB {
 	 * Gösterildi: cutover öncesi legacy + cutover sonrası events shown (asla toplama yok).
 	 * Ana dönüşüm: atfedilen_siparis / gosterildi. Doğrudan bot siparişi ayrı KPI.
 	 *
+	 * `atfedilen_siparis`: ref seviyesinde gözlemsel instance sayısı (DISTINCT cart_add ref_id);
+	 * benzersiz order_sent veya gerçek sipariş adedi değildir.
+	 *
 	 * @param string $bas Başlangıç tarihi (Y-m-d).
 	 * @param string $bit Bitiş tarihi (Y-m-d).
-	 * @return array
+	 * @return array<int, array<string, mixed>> urun_id, gosterildi, sepete, atfedilen_siparis, dogrudan_chatbot_siparis, donusum_orani.
 	 */
 	public static function oneri_rapor( $bas, $bit ) {
 		self::sema_kontrol();
@@ -1606,7 +1616,9 @@ class QMO_Chatbot_DB {
 	/**
 	 * Gözlemsel order_sent ilişkisi: aynı session + ürün, sipariş zamanı >= cart_add.
 	 *
-	 * Causal iddia değildir; yalnızca analitik satırlarına bakar.
+	 * Causal iddia değildir; yalnızca analitik satırlarına bakar. Tek ref için bool döner;
+	 * rapordaki atfedilen_siparis toplu COUNT(DISTINCT ref_id) ile aynı kurala dayanır (ref başına
+	 * en fazla bir instance; aynı order_sent birden fazla ref ile eşleşebilir).
 	 *
 	 * @param string $ref_id Recommendation instance.
 	 * @return bool

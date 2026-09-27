@@ -63,7 +63,7 @@ function qmo_chatbot_sayfa_oneri_rapor() {
 	);
 
 	$atfedilen_aciklama = __(
-		'Aynı oturum ve ürün için recommendation sepete ekleme sonrası gerçekleşen order_sent ile gözlemsel ilişki; kesin sipariş bağı değildir.',
+		'Recommendation üzerinden sepete eklenen ürünün, aynı oturum ve ürün için daha sonra gerçekleşen order_sent olayıyla gözlemsel olarak ilişkilendirilmesidir. Benzersiz gerçek sipariş sayısı değildir.',
 		'qrms'
 	);
 

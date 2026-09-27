@@ -2,6 +2,9 @@
 /**
  * Öneri Raporu — Phase 6.1 lifecycle + recommendation_events (#269).
  *
+ * atfedilen_siparis: COUNT(DISTINCT cart_add ref_id), session+ürün+zaman gözlemsel eşleşme;
+ * benzersiz order_sent adedi değildir (aynı order_sent birden fazla ref ile sayılabilir).
+ *
  * @package QR_Menu_Suite
  */
 
