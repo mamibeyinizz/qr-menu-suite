@@ -19,6 +19,37 @@ require_once QRMS_PLUGIN_DIR . 'modules/qr-analiz/acilis-sayfasi.php';
 require_once QRMS_PLUGIN_DIR . 'modules/qr-analiz/sistem-sayfasi.php';
 require_once QRMS_PLUGIN_DIR . 'modules/qr-analiz/hub-sayfasi.php';
 
+if ( ! function_exists( 'qrms_huni_funnel_sorgu_sayisi' ) ) {
+	/**
+	 * @param QRMS_Sayan_Wpdb $wpdb Sayaçlı taklit.
+	 * @return int
+	 */
+	function qrms_huni_funnel_sorgu_sayisi( $wpdb ) {
+		$sayi = 0;
+
+		foreach ( $wpdb->queries as $sql ) {
+			if ( false !== strpos( $sql, "event_type IN ('menu_view','product_click','cart_add','order_sent')" )
+				&& false !== strpos( $sql, 'COUNT(DISTINCT CASE WHEN event_type' ) ) {
+				$sayi++;
+			}
+		}
+
+		return $sayi;
+	}
+}
+
+if ( ! function_exists( 'qrms_huni_onbellek_anahtari' ) ) {
+	/**
+	 * @param string $bas  Aralık başı.
+	 * @param string $bit  Aralık sonu.
+	 * @param string $masa Masa filtresi.
+	 * @return string
+	 */
+	function qrms_huni_onbellek_anahtari( $bas, $bit, $masa ) {
+		return QRMS_Analitik::HUNI_ONBELLEK_ANAHTAR . '|' . $bas . '|' . $bit . '|' . (string) $masa;
+	}
+}
+
 echo "\nQR Analiz sayfaları\n";
 
 qrms_test(
@@ -1274,6 +1305,194 @@ qrms_test(
 		qrms_assert_true( array_key_exists( 'siparis_olgulari', $veri ), 'kesin fact response alanı' );
 
 		qrms_assert_same( 1, count( $grup ), 'grup satırı' );
+	}
+);
+
+echo "\nQR Analiz — huni_ozeti persistent cache\n";
+
+qrms_test(
+	'huni_ozeti: ilk çağrı MISS — SQL çalışır, transient yazılır',
+	function () {
+		$wpdb         = qrms_sayan_wpdb();
+		$wpdb->rows[] = array(
+			'view'   => 11,
+			'click'  => 7,
+			'cart'   => 3,
+			'orders' => 2,
+		);
+
+		$bas  = '2026-03-10 00:00:00';
+		$bit  = '2026-03-10 23:59:59';
+		$masa = 'masa-1';
+		$key  = qrms_huni_onbellek_anahtari( $bas, $bit, $masa );
+
+		$sonuc = QRMS_Analitik::huni_ozeti( $bas, $bit, $masa );
+
+		qrms_assert_same( 1, qrms_huni_funnel_sorgu_sayisi( $wpdb ), 'tek huni SQL' );
+		qrms_assert_same(
+			array(
+				'view'   => 11,
+				'click'  => 7,
+				'cart'   => 3,
+				'orders' => 2,
+			),
+			$sonuc,
+			'sonuç'
+		);
+		qrms_assert_same( $sonuc, get_transient( $key ), 'cache set' );
+	}
+);
+
+qrms_test(
+	'huni_ozeti: aynı (bas,bit,masa) HIT — huni SQL yok',
+	function () {
+		$wpdb = qrms_sayan_wpdb();
+		$bas  = '2026-03-11 00:00:00';
+		$bit  = '2026-03-11 23:59:59';
+		$masa = 'masa-2';
+
+		$wpdb->rows[] = array(
+			'view'   => 1,
+			'click'  => 0,
+			'cart'   => 0,
+			'orders' => 0,
+		);
+
+		$ilk = QRMS_Analitik::huni_ozeti( $bas, $bit, $masa );
+		qrms_assert_same( 1, qrms_huni_funnel_sorgu_sayisi( $wpdb ), 'ilk miss' );
+
+		$ikinci = QRMS_Analitik::huni_ozeti( $bas, $bit, $masa );
+		qrms_assert_same( 1, qrms_huni_funnel_sorgu_sayisi( $wpdb ), 'ikinci hit: ek huni SQL yok' );
+		qrms_assert_same( $ilk, $ikinci, 'aynı sonuç' );
+	}
+);
+
+qrms_test(
+	'huni_ozeti: farklı masa ve aralık ayrı cache anahtarı — ayrı SQL',
+	function () {
+		$wpdb = qrms_sayan_wpdb();
+		$bas  = '2026-03-12 00:00:00';
+		$bit  = '2026-03-12 23:59:59';
+
+		$wpdb->rows[] = array( 'view' => 1, 'click' => 0, 'cart' => 0, 'orders' => 0 );
+		QRMS_Analitik::huni_ozeti( $bas, $bit, 'masa-a' );
+
+		$wpdb->rows[] = array( 'view' => 2, 'click' => 0, 'cart' => 0, 'orders' => 0 );
+		QRMS_Analitik::huni_ozeti( $bas, $bit, 'masa-b' );
+
+		$wpdb->rows[] = array( 'view' => 3, 'click' => 0, 'cart' => 0, 'orders' => 0 );
+		QRMS_Analitik::huni_ozeti( '2026-03-13 00:00:00', $bit, 'masa-a' );
+
+		qrms_assert_same( 3, qrms_huni_funnel_sorgu_sayisi( $wpdb ), 'üç ayrı miss' );
+		qrms_assert_true( false !== get_transient( qrms_huni_onbellek_anahtari( $bas, $bit, 'masa-a' ) ), 'masa-a' );
+		qrms_assert_true( false !== get_transient( qrms_huni_onbellek_anahtari( $bas, $bit, 'masa-b' ) ), 'masa-b' );
+	}
+);
+
+qrms_test(
+	'huni_ozeti: v1 anahtarı — eski sürüm transient okunmaz',
+	function () {
+		$wpdb = qrms_sayan_wpdb();
+		$bas  = '2026-03-14 00:00:00';
+		$bit  = '2026-03-14 23:59:59';
+
+		set_transient(
+			'qrms_huni_v0|' . $bas . '|' . $bit . '|',
+			array(
+				'view'   => 99,
+				'click'  => 99,
+				'cart'   => 99,
+				'orders' => 99,
+			),
+			300
+		);
+
+		$wpdb->rows[] = array( 'view' => 4, 'click' => 1, 'cart' => 0, 'orders' => 0 );
+		$sonuc        = QRMS_Analitik::huni_ozeti( $bas, $bit, '' );
+
+		qrms_assert_same( 1, qrms_huni_funnel_sorgu_sayisi( $wpdb ), 'v0 kullanılmadı' );
+		qrms_assert_same( 4, $sonuc['view'], 'SQL sonucu' );
+	}
+);
+
+qrms_test(
+	'huni_ozeti: bozuk cache — SQL fallback',
+	function () {
+		$wpdb = qrms_sayan_wpdb();
+		$bas  = '2026-03-15 00:00:00';
+		$bit  = '2026-03-15 23:59:59';
+		$key  = qrms_huni_onbellek_anahtari( $bas, $bit, '' );
+
+		set_transient( $key, 'bozuk', 300 );
+
+		$wpdb->rows[] = array( 'view' => 6, 'click' => 0, 'cart' => 0, 'orders' => 0 );
+		$sonuc        = QRMS_Analitik::huni_ozeti( $bas, $bit, '' );
+
+		qrms_assert_same( 1, qrms_huni_funnel_sorgu_sayisi( $wpdb ), 'fallback SQL' );
+		qrms_assert_same( 6, $sonuc['view'], 'doğru sonuç' );
+	}
+);
+
+qrms_test(
+	'huni_ozeti: transient yok (miss) — SQL fallback',
+	function () {
+		$wpdb = qrms_sayan_wpdb();
+		$bas  = '2026-03-16 00:00:00';
+		$bit  = '2026-03-16 23:59:59';
+
+		qrms_assert_false( get_transient( qrms_huni_onbellek_anahtari( $bas, $bit, '' ) ), 'boş cache' );
+
+		$wpdb->rows[] = array( 'view' => 2, 'click' => 1, 'cart' => 0, 'orders' => 0 );
+		$sonuc        = QRMS_Analitik::huni_ozeti( $bas, $bit, '' );
+
+		qrms_assert_same( 1, qrms_huni_funnel_sorgu_sayisi( $wpdb ), 'SQL çalıştı' );
+		qrms_assert_same( 2, $sonuc['view'], 'sonuç' );
+	}
+);
+
+qrms_test(
+	'huni_ozeti: boş masa ile dolu masa cache çakışmaz',
+	function () {
+		$wpdb = qrms_sayan_wpdb();
+		$bas  = '2026-03-17 00:00:00';
+		$bit  = '2026-03-17 23:59:59';
+
+		$wpdb->rows[] = array( 'view' => 8, 'click' => 0, 'cart' => 0, 'orders' => 0 );
+		$tum          = QRMS_Analitik::huni_ozeti( $bas, $bit, '' );
+
+		$wpdb->rows[] = array( 'view' => 1, 'click' => 0, 'cart' => 0, 'orders' => 0 );
+		$tek          = QRMS_Analitik::huni_ozeti( $bas, $bit, 'm1' );
+
+		qrms_assert_same( 2, qrms_huni_funnel_sorgu_sayisi( $wpdb ), 'iki miss' );
+		qrms_assert_same( 8, $tum['view'], 'tüm masalar' );
+		qrms_assert_same( 1, $tek['view'], 'tek masa' );
+		qrms_assert_same( $tum, get_transient( qrms_huni_onbellek_anahtari( $bas, $bit, '' ) ), 'boş masa key' );
+	}
+);
+
+qrms_test(
+	'qrms_analitik_sepet_verisi istek içi önbelleği huni persistent cache ile uyumlu',
+	function () {
+		$wpdb = qrms_sayan_wpdb();
+
+		$wpdb->results[] = array();
+		$wpdb->rows[]    = array( 'view' => 0, 'click' => 0, 'cart' => 0, 'orders' => 0 );
+		$wpdb->rows[]    = array( 'siparis_tutari' => 0, 'iptal_sayisi' => 0, 'iptal_tutari' => 0 );
+
+		qrms_analitik_onbellek_sifirla();
+		QRMS_Analitik::sepet_onbellegini_temizle();
+
+		$aralik = array(
+			'bas' => '2026-03-18 00:00:00',
+			'bit' => '2026-03-18 23:59:59',
+			'gun' => 1,
+		);
+
+		qrms_analitik_sepet_verisi( $aralik, '' );
+		$sorgu = count( $wpdb->queries );
+		qrms_analitik_sepet_verisi( $aralik, '' );
+
+		qrms_assert_same( $sorgu, count( $wpdb->queries ), 'ikinci sepet_verisi ek sorgu açmaz' );
 	}
 );
 
