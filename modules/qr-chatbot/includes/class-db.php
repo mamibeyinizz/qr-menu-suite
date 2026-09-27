@@ -1397,7 +1397,15 @@ class QMO_Chatbot_DB {
 	 *
 	 * @param string $bas Başlangıç tarihi (Y-m-d).
 	 * @param string $bit Bitiş tarihi (Y-m-d).
-	 * @return array<int, array<string, mixed>>
+	 * @return array{
+	 *   urunler: array<int, array<string, mixed>>,
+	 *   ozet: array{
+	 *     atfedilen_siparis_tekil: int,
+	 *     atfedilen_kalem: int,
+	 *     atfedilen_birim: int,
+	 *     atfedilen_tutar: float
+	 *   }
+	 * }
 	 */
 	public static function oneri_rapor( $bas, $bit ) {
 		self::sema_kontrol();
@@ -1433,8 +1441,19 @@ class QMO_Chatbot_DB {
 			)
 		);
 
+		$attr_ozet = (array) ( $attr['ozet'] ?? array() );
+		$ozet      = array(
+			'atfedilen_siparis_tekil' => (int) ( $attr_ozet['atfedilen_siparis_tekil'] ?? 0 ),
+			'atfedilen_kalem'         => (int) ( $attr_ozet['atfedilen_kalem'] ?? 0 ),
+			'atfedilen_birim'         => (int) ( $attr_ozet['atfedilen_birim'] ?? 0 ),
+			'atfedilen_tutar'         => (float) ( $attr_ozet['atfedilen_tutar'] ?? 0.0 ),
+		);
+
 		if ( empty( $urun_ids ) ) {
-			return array();
+			return array(
+				'urunler' => array(),
+				'ozet'    => $ozet,
+			);
 		}
 
 		sort( $urun_ids, SORT_NUMERIC );
@@ -1463,7 +1482,55 @@ class QMO_Chatbot_DB {
 			);
 		}
 
-		return $rapor;
+		return array(
+			'urunler' => $rapor,
+			'ozet'    => $ozet,
+		);
+	}
+
+	/**
+	 * oneri_rapor() ürün satırları (yeni ve eski dizi şeklinde geriye dönük uyum).
+	 *
+	 * @param array<string, mixed>|array<int, array<string, mixed>> $rapor oneri_rapor çıktısı.
+	 * @return array<int, array<string, mixed>>
+	 */
+	public static function oneri_rapor_urunler( $rapor ) {
+		if ( is_array( $rapor ) && array_key_exists( 'urunler', $rapor ) ) {
+			return is_array( $rapor['urunler'] ) ? $rapor['urunler'] : array();
+		}
+
+		return is_array( $rapor ) ? $rapor : array();
+	}
+
+	/**
+	 * oneri_rapor() global attribution özet KPI'ları.
+	 *
+	 * @param array<string, mixed> $rapor oneri_rapor çıktısı.
+	 * @return array{
+	 *   atfedilen_siparis_tekil: int,
+	 *   atfedilen_kalem: int,
+	 *   atfedilen_birim: int,
+	 *   atfedilen_tutar: float
+	 * }
+	 */
+	public static function oneri_rapor_ozet_attribution( $rapor ) {
+		$bos = array(
+			'atfedilen_siparis_tekil' => 0,
+			'atfedilen_kalem'         => 0,
+			'atfedilen_birim'         => 0,
+			'atfedilen_tutar'         => 0.0,
+		);
+
+		if ( ! is_array( $rapor ) || ! isset( $rapor['ozet'] ) || ! is_array( $rapor['ozet'] ) ) {
+			return $bos;
+		}
+
+		return array(
+			'atfedilen_siparis_tekil' => (int) ( $rapor['ozet']['atfedilen_siparis_tekil'] ?? 0 ),
+			'atfedilen_kalem'         => (int) ( $rapor['ozet']['atfedilen_kalem'] ?? 0 ),
+			'atfedilen_birim'         => (int) ( $rapor['ozet']['atfedilen_birim'] ?? 0 ),
+			'atfedilen_tutar'         => (float) ( $rapor['ozet']['atfedilen_tutar'] ?? 0.0 ),
+		);
 	}
 
 	/**
