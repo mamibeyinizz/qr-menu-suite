@@ -119,6 +119,16 @@ class QRMS_Analitik {
 	const CRON_TEMIZLIK = 'qrms_analitik_temizlik';
 
 	/**
+	 * Dönüşüm hunisi (huni_ozeti) transient anahtar öneki — sürüm bump ile düşer.
+	 */
+	const HUNI_ONBELLEK_ANAHTAR = 'qrms_huni_v1';
+
+	/**
+	 * huni_ozeti() sonuç önbelleği (saniye).
+	 */
+	const HUNI_ONBELLEK_TTL = 300;
+
+	/**
 	 * Ham analitik kaydının varsayılan saklama süresi (gün).
 	 *
 	 * Tablo her menü görüntülemesi ve ürün tıklamasında büyür; saklama
@@ -2455,6 +2465,30 @@ class QRMS_Analitik {
 	public static function huni_ozeti( $bas, $bit, $masa = '' ) {
 		global $wpdb;
 
+		$masa    = (string) $masa;
+		$anahtar = self::HUNI_ONBELLEK_ANAHTAR . '|' . $bas . '|' . $bit . '|' . $masa;
+		$onbellek = get_transient( $anahtar );
+
+		if ( is_array( $onbellek ) ) {
+			$gecerli = true;
+
+			foreach ( array( 'view', 'click', 'cart', 'orders' ) as $alan ) {
+				if ( ! array_key_exists( $alan, $onbellek ) || ! is_numeric( $onbellek[ $alan ] ) ) {
+					$gecerli = false;
+					break;
+				}
+			}
+
+			if ( $gecerli ) {
+				return array(
+					'view'   => (int) $onbellek['view'],
+					'click'  => (int) $onbellek['click'],
+					'cart'   => (int) $onbellek['cart'],
+					'orders' => (int) $onbellek['orders'],
+				);
+			}
+		}
+
 		$tablo   = self::tablo();
 		$masa_ek = self::masa_sql( $masa );
 		$kosul   = $wpdb->prepare( 'created_at BETWEEN %s AND %s', $bas, $bit );
@@ -2487,9 +2521,11 @@ class QRMS_Analitik {
 			return $sonuc;
 		}
 
-		foreach ( $sonuc as $anahtar => $varsayilan ) {
-			$sonuc[ $anahtar ] = isset( $satir[ $anahtar ] ) ? (int) $satir[ $anahtar ] : 0;
+		foreach ( $sonuc as $anahtar_sonuc => $varsayilan ) {
+			$sonuc[ $anahtar_sonuc ] = isset( $satir[ $anahtar_sonuc ] ) ? (int) $satir[ $anahtar_sonuc ] : 0;
 		}
+
+		set_transient( $anahtar, $sonuc, self::HUNI_ONBELLEK_TTL );
 
 		return $sonuc;
 	}
