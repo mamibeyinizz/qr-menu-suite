@@ -96,7 +96,31 @@
 	 * @param {Function} tamam Başarılı yanıt işleyicisi.
 	 * @param {Function} hata  Hata işleyicisi (opsiyonel).
 	 */
+	function aralikGecersizMi() {
+		return !!( window.qrmsAnalitikFiltre && window.qrmsAnalitikFiltre.aralikGecersiz );
+	}
+
+	function aralikGecersizMesaji() {
+		var cfg = window.qrmsAnalitikFiltre || {};
+
+		return ( cfg.i18n && cfg.i18n.aralikAsimi ) ? cfg.i18n.aralikAsimi : '';
+	}
+
 	function post( adres, veri, tamam, hata ) {
+		if ( aralikGecersizMi() ) {
+			if ( hata ) {
+				hata( {
+					success: false,
+					data: {
+						mesaj: aralikGecersizMesaji(),
+						kod: 'aralik_asimi'
+					}
+				} );
+			}
+
+			return;
+		}
+
 		var xhr  = new XMLHttpRequest();
 		var govd = [];
 		var k;
@@ -258,6 +282,41 @@
 				ozel.hidden = ! ozel.hidden;
 				ozelAc.setAttribute( 'aria-expanded', ozel.hidden ? 'false' : 'true' );
 			} );
+
+			ozel.addEventListener( 'submit', function ( olay ) {
+				var maxGun = window.qrmsAnalitikFiltre ? parseInt( window.qrmsAnalitikFiltre.ozelMaxGun, 10 ) : 31;
+				var basEl  = ozel.querySelector( '#qrms-an-bas' );
+				var bitEl  = ozel.querySelector( '#qrms-an-bit' );
+
+				if ( ! basEl || ! bitEl || ! basEl.value || ! bitEl.value ) {
+					return;
+				}
+
+				var bas = new Date( basEl.value + 'T00:00:00' );
+				var bit = new Date( bitEl.value + 'T00:00:00' );
+
+				if ( isNaN( bas.getTime() ) || isNaN( bit.getTime() ) ) {
+					return;
+				}
+
+				if ( bas > bit ) {
+					var takas = bas;
+					bas = bit;
+					bit = takas;
+				}
+
+				var gun = Math.floor( ( bit.getTime() - bas.getTime() ) / 86400000 ) + 1;
+
+				if ( gun > maxGun ) {
+					olay.preventDefault();
+
+					var mesaj = aralikGecersizMesaji();
+
+					if ( mesaj ) {
+						window.alert( mesaj );
+					}
+				}
+			} );
 		}
 	}
 
@@ -270,6 +329,7 @@
 		oranSinifi: oranSinifi,
 		tarih: tarih,
 		post: post,
+		aralikGecersizMi: aralikGecersizMi,
 		bosDurum: bosDurum,
 		hucre: hucre,
 		acilirBolum: acilirBolum,

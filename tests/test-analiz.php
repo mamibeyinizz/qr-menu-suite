@@ -2034,3 +2034,199 @@ qrms_test(
 		);
 	}
 );
+
+echo "\nQR Analiz — özel aralık üst sınırı (31 gün)\n";
+
+qrms_test(
+	'özel aralık: bugun/hafta/ay geçerli, ay 31 günlük ayda sınır tetiklenmez',
+	function () {
+		$bugun = QRMS_Analitik_Filtre::coz( array( 'donem' => 'bugun' ) );
+		qrms_assert_same( '', $bugun['hata'], 'bugun hatasız' );
+		qrms_assert_same( 1, QRMS_Analitik_Filtre::aralik( $bugun )['gun'], 'bugun 1 gün' );
+
+		$hafta = QRMS_Analitik_Filtre::coz( array( 'donem' => 'hafta' ) );
+		qrms_assert_same( '', $hafta['hata'], 'hafta hatasız' );
+		qrms_assert_same( 7, QRMS_Analitik_Filtre::aralik( $hafta )['gun'], 'hafta 7 gün' );
+
+		$onceki = isset( $GLOBALS['qrms_test']['now'] ) ? $GLOBALS['qrms_test']['now'] : null;
+		$GLOBALS['qrms_test']['now'] = strtotime( '2026-01-31 12:00:00 UTC' );
+
+		$ay = QRMS_Analitik_Filtre::coz( array( 'donem' => 'ay' ) );
+		qrms_assert_same( '', $ay['hata'], 'ay hatasız' );
+		qrms_assert_same( 31, QRMS_Analitik_Filtre::aralik( $ay )['gun'], 'ay 31 günlük ay' );
+
+		if ( null === $onceki ) {
+			unset( $GLOBALS['qrms_test']['now'] );
+		} else {
+			$GLOBALS['qrms_test']['now'] = $onceki;
+		}
+	}
+);
+
+qrms_test(
+	'özel aralık: 31 gün geçerli, 32 gün aralik_asimi, bugune düşmez',
+	function () {
+		$otuz_bir = QRMS_Analitik_Filtre::coz(
+			array(
+				'donem' => 'ozel',
+				'bas'   => '2026-01-01',
+				'bit'   => '2026-01-31',
+			)
+		);
+		qrms_assert_same( 'ozel', $otuz_bir['donem'], '31 günlük özel dönem' );
+		qrms_assert_same( '', $otuz_bir['hata'], '31 gün geçerli' );
+		qrms_assert_same( 31, $otuz_bir['istenen_gun'], 'istenen gün' );
+		qrms_assert_same( 31, QRMS_Analitik_Filtre::aralik( $otuz_bir )['gun'], 'aralik gün' );
+
+		$otuz_iki = QRMS_Analitik_Filtre::coz(
+			array(
+				'donem' => 'ozel',
+				'bas'   => '2026-01-01',
+				'bit'   => '2026-02-01',
+			)
+		);
+		qrms_assert_same( 'ozel', $otuz_iki['donem'], 'aşımda özel kalır' );
+		qrms_assert_same( QRMS_Analitik_Filtre::HATA_ARALIK_ASIMI, $otuz_iki['hata'], 'aşım kodu' );
+		qrms_assert_same( 32, $otuz_iki['istenen_gun'], '32 gün hesaplanır' );
+		qrms_assert_same( 31, $otuz_iki['max_gun'], 'üst sınır 31' );
+		qrms_assert_true( QRMS_Analitik_Filtre::aralik_asimi_mi( $otuz_iki ), 'aşım bayrağı' );
+		qrms_assert_same( '2026-01-01', $otuz_iki['bas'], 'bas korunur' );
+		qrms_assert_same( '2026-02-01', $otuz_iki['bit'], 'bit korunur' );
+
+		$ters = QRMS_Analitik_Filtre::coz(
+			array(
+				'donem' => 'ozel',
+				'bas'   => '2026-02-01',
+				'bit'   => '2026-01-01',
+			)
+		);
+		qrms_assert_same( QRMS_Analitik_Filtre::HATA_ARALIK_ASIMI, $ters['hata'], 'ters 32 gün takas sonrası aşım' );
+
+		$eksik = QRMS_Analitik_Filtre::coz(
+			array(
+				'donem' => 'ozel',
+				'bas'   => '2026-01-01',
+			)
+		);
+		qrms_assert_same( 'bugun', $eksik['donem'], 'eksik tarih eski davranış' );
+		qrms_assert_same( '', $eksik['hata'], 'eksik tarih aşım değil' );
+	}
+);
+
+qrms_test(
+	'özel aralık: aralik_engeli merkezi CSV/AJAX için mesaj döndürür',
+	function () {
+		$engel = QRMS_Analitik_Filtre::aralik_engeli(
+			array(
+				'donem' => 'ozel',
+				'bas'   => '2026-01-01',
+				'bit'   => '2026-09-27',
+			)
+		);
+
+		qrms_assert_true( is_array( $engel ), 'engel dizisi' );
+		qrms_assert_same( QRMS_Analitik_Filtre::HATA_ARALIK_ASIMI, $engel['kod'], 'kod' );
+		qrms_assert_contains( '31', $engel['mesaj'], 'mesajda üst sınır' );
+
+		$gecerli = QRMS_Analitik_Filtre::aralik_engeli(
+			array(
+				'donem' => 'ozel',
+				'bas'   => '2026-03-01',
+				'bit'   => '2026-03-31',
+			)
+		);
+		qrms_assert_true( null === $gecerli, '31 günlük özel engel yok' );
+	}
+);
+
+qrms_test(
+	'özel aralık: aşımda sepet verisi sorgusu açılmaz (engel katmanı)',
+	function () {
+		$engel = QRMS_Analitik_Filtre::aralik_engeli(
+			array(
+				'donem' => 'ozel',
+				'bas'   => '2026-01-01',
+				'bit'   => '2026-09-27',
+				'masa'  => 'masa-1',
+			)
+		);
+		qrms_assert_true( null !== $engel, 'masa ile de engellenir' );
+
+		$wpdb = qrms_sayan_wpdb();
+		QRMS_Analitik::sepet_onbellegini_temizle();
+		qrms_analitik_onbellek_sifirla();
+
+		if ( null === $engel ) {
+			qrms_analitik_sepet_verisi(
+				array(
+					'bas' => '2026-01-01 00:00:00',
+					'bit' => '2026-09-27 23:59:59',
+					'gun' => 31,
+				),
+				'masa-1'
+			);
+		}
+
+		qrms_assert_same( 0, count( $wpdb->queries ), 'aşımda sepet SQL yok' );
+
+		$gecerli = QRMS_Analitik_Filtre::aralik_engeli(
+			array(
+				'donem' => 'ozel',
+				'bas'   => '2026-03-01',
+				'bit'   => '2026-03-31',
+				'masa'  => 'masa-1',
+			)
+		);
+		qrms_assert_true( null === $gecerli, '31 günlük özel geçerli' );
+	}
+);
+
+qrms_test(
+	'özel aralık: ajax_filtre_kontrol merkezi (kaynak kodu)',
+	function () {
+		$sinif = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/class-qrms-analitik.php' );
+		qrms_assert_contains( 'function ajax_filtre_kontrol', $sinif, 'merkezi kontrol' );
+		qrms_assert_contains( 'QRMS_Analitik_Filtre::aralik_engeli', $sinif, 'filtre engeli' );
+		qrms_assert_contains( 'self::ajax_filtre_kontrol( $ham )', $sinif, 'ajax uçları' );
+		qrms_assert_contains( 'wp_die(', $sinif, 'csv engeli' );
+	}
+);
+
+qrms_test(
+	'özel aralık: qrms_analitik_ozel_max_gun filtresi pozitif tam sayıya sıkışır',
+	function () {
+		$onceki = isset( $GLOBALS['qrms_test']['actions']['qrms_analitik_ozel_max_gun'] )
+			? $GLOBALS['qrms_test']['actions']['qrms_analitik_ozel_max_gun']
+			: null;
+
+		$GLOBALS['qrms_test']['actions']['qrms_analitik_ozel_max_gun'] = array(
+			static function () {
+				return 7;
+			},
+		);
+
+		qrms_assert_same( 7, QRMS_Analitik_Filtre::ozel_max_gun(), 'filtre 7' );
+
+		$b = QRMS_Analitik_Filtre::coz(
+			array(
+				'donem' => 'ozel',
+				'bas'   => '2026-03-01',
+				'bit'   => '2026-03-10',
+			)
+		);
+		qrms_assert_same( QRMS_Analitik_Filtre::HATA_ARALIK_ASIMI, $b['hata'], '10 gün 7 üstünde' );
+
+		$GLOBALS['qrms_test']['actions']['qrms_analitik_ozel_max_gun'] = array(
+			static function () {
+				return 0;
+			},
+		);
+		qrms_assert_same( 1, QRMS_Analitik_Filtre::ozel_max_gun(), 'sıfır filtre yok sayılır' );
+
+		if ( null === $onceki ) {
+			unset( $GLOBALS['qrms_test']['actions']['qrms_analitik_ozel_max_gun'] );
+		} else {
+			$GLOBALS['qrms_test']['actions']['qrms_analitik_ozel_max_gun'] = $onceki;
+		}
+	}
+);
