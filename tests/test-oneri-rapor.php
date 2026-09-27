@@ -336,12 +336,12 @@ function qrms_oneri_rapor_wpdb() {
 }
 
 /**
- * @param array<int, array<string, mixed>> $rapor oneri_rapor çıktısı.
- * @param int                              $urun_id Ürün kimliği.
+ * @param array<string, mixed>|array<int, array<string, mixed>> $rapor oneri_rapor çıktısı.
+ * @param int                                                   $urun_id Ürün kimliği.
  * @return array<string, mixed>|null
  */
 function qrms_oneri_rapor_satir( array $rapor, $urun_id ) {
-	foreach ( $rapor as $satir ) {
+	foreach ( QMO_Chatbot_DB::oneri_rapor_urunler( $rapor ) as $satir ) {
 		if ( (int) $satir['urun_id'] === (int) $urun_id ) {
 			return $satir;
 		}
@@ -837,5 +837,234 @@ qrms_test(
 	'P61 cutover constant',
 	function () {
 		qrms_assert_same( '2026-09-26', QMO_Chatbot_DB::RECOMMENDATION_REPORT_CUTOVER_DATE, 'cutover' );
+	}
+);
+
+echo "\nÖneri Raporu — Phase 6.2 Report/KPI\n";
+
+qrms_test(
+	'RK-A. tek order / tek attributed product → global tekil=1',
+	function () use ( $bas_post, $bit_post ) {
+		$wpdb    = qrms_oneri_rapor_wpdb();
+		$session = 's_rk_a';
+		$ref     = 'rk-a1111-2222-3333-4444-555555555555';
+		$wpdb->rec_events[] = array(
+			'ref_id'     => $ref,
+			'event_type' => 'cart_add',
+			'product_id' => 9101,
+			'session_id' => $session,
+			'created_at' => '2026-09-27 10:00:00',
+		);
+		$wpdb->analytics_events[] = array(
+			'event_type' => 'order_sent',
+			'session_id' => $session,
+			'item_id'    => 9101,
+			'order_id'   => 'rk-order-a',
+			'qty'        => 1,
+			'unit_price' => 12.5,
+			'created_at' => '2026-09-27 10:30:00',
+		);
+		$rapor = QMO_Chatbot_DB::oneri_rapor( $bas_post, $bit_post );
+		$ozet  = QMO_Chatbot_DB::oneri_rapor_ozet_attribution( $rapor );
+		qrms_assert_same( 1, $ozet['atfedilen_siparis_tekil'], 'global tekil' );
+		qrms_assert_same( 1, qrms_oneri_rapor_satir( $rapor, 9101 )['atfedilen_siparis'], 'ürün tekil' );
+		qrms_assert_same( 12.5, $ozet['atfedilen_tutar'], 'global tutar' );
+	}
+);
+
+qrms_test(
+	'RK-B. tek order / iki attributed product → global tekil=1 (kritik)',
+	function () use ( $bas_post, $bit_post ) {
+		$wpdb    = qrms_oneri_rapor_wpdb();
+		$session = 's_rk_b';
+		$oid     = 'rk-order-b';
+		$wpdb->rec_events[] = array(
+			'ref_id'     => 'rk-b1111-2222-3333-4444-555555555555',
+			'event_type' => 'cart_add',
+			'product_id' => 9102,
+			'session_id' => $session,
+			'created_at' => '2026-09-27 11:00:00',
+		);
+		$wpdb->rec_events[] = array(
+			'ref_id'     => 'rk-b2222-2222-3333-4444-555555555555',
+			'event_type' => 'cart_add',
+			'product_id' => 9103,
+			'session_id' => $session,
+			'created_at' => '2026-09-27 11:01:00',
+		);
+		$wpdb->analytics_events[] = array(
+			'event_type' => 'order_sent',
+			'session_id' => $session,
+			'item_id'    => 9102,
+			'order_id'   => $oid,
+			'qty'        => 1,
+			'unit_price' => 10,
+			'created_at' => '2026-09-27 11:30:00',
+		);
+		$wpdb->analytics_events[] = array(
+			'event_type' => 'order_sent',
+			'session_id' => $session,
+			'item_id'    => 9103,
+			'order_id'   => $oid,
+			'qty'        => 1,
+			'unit_price' => 20,
+			'created_at' => '2026-09-27 11:31:00',
+		);
+		$rapor = QMO_Chatbot_DB::oneri_rapor( $bas_post, $bit_post );
+		$ozet  = QMO_Chatbot_DB::oneri_rapor_ozet_attribution( $rapor );
+		qrms_assert_same( 1, qrms_oneri_rapor_satir( $rapor, 9102 )['atfedilen_siparis'], 'ürün A tekil' );
+		qrms_assert_same( 1, qrms_oneri_rapor_satir( $rapor, 9103 )['atfedilen_siparis'], 'ürün B tekil' );
+		qrms_assert_same( 1, $ozet['atfedilen_siparis_tekil'], 'global tekil (çift sayım yok)' );
+		qrms_assert_same( 30.0, $ozet['atfedilen_tutar'], 'tutar toplamı' );
+		$urun_toplam = (int) qrms_oneri_rapor_satir( $rapor, 9102 )['atfedilen_siparis']
+			+ (int) qrms_oneri_rapor_satir( $rapor, 9103 )['atfedilen_siparis'];
+		qrms_assert_true( $urun_toplam !== $ozet['atfedilen_siparis_tekil'], 'ürün toplamı global tekil değil' );
+	}
+);
+
+qrms_test(
+	'RK-C. birden fazla order → DISTINCT order sayısı',
+	function () use ( $bas_post, $bit_post ) {
+		$wpdb = qrms_oneri_rapor_wpdb();
+		foreach ( array( 'rk-c1', 'rk-c2' ) as $i => $suffix ) {
+			$session = 's_rk_c_' . $suffix;
+			$wpdb->rec_events[] = array(
+				'ref_id'     => 'rk-c' . $i . '111-2222-3333-4444-555555555555',
+				'event_type' => 'cart_add',
+				'product_id' => 9104,
+				'session_id' => $session,
+				'created_at' => '2026-09-27 12:0' . $i . ':00',
+			);
+			$wpdb->analytics_events[] = array(
+				'event_type' => 'order_sent',
+				'session_id' => $session,
+				'item_id'    => 9104,
+				'order_id'   => 'rk-order-' . $suffix,
+				'qty'        => 1,
+				'unit_price' => 5,
+				'created_at' => '2026-09-27 12:3' . $i . ':00',
+			);
+		}
+		$ozet = QMO_Chatbot_DB::oneri_rapor_ozet_attribution( QMO_Chatbot_DB::oneri_rapor( $bas_post, $bit_post ) );
+		qrms_assert_same( 2, $ozet['atfedilen_siparis_tekil'], 'iki tekil sipariş' );
+	}
+);
+
+qrms_test(
+	'RK-D. qty>1 → atfedilen_birim MIN kuralı',
+	function () use ( $bas_post, $bit_post ) {
+		$wpdb    = qrms_oneri_rapor_wpdb();
+		$session = 's_rk_d';
+		$wpdb->rec_events[] = array(
+			'ref_id'     => 'rk-d1111-2222-3333-4444-555555555555',
+			'event_type' => 'cart_add',
+			'product_id' => 9105,
+			'session_id' => $session,
+			'created_at' => '2026-09-27 13:00:00',
+		);
+		$wpdb->analytics_events[] = array(
+			'event_type' => 'order_sent',
+			'session_id' => $session,
+			'item_id'    => 9105,
+			'order_id'   => 'rk-order-d',
+			'qty'        => 3,
+			'unit_price' => 4,
+			'created_at' => '2026-09-27 13:30:00',
+		);
+		$ozet  = QMO_Chatbot_DB::oneri_rapor_ozet_attribution( QMO_Chatbot_DB::oneri_rapor( $bas_post, $bit_post ) );
+		$satir = qrms_oneri_rapor_satir( QMO_Chatbot_DB::oneri_rapor( $bas_post, $bit_post ), 9105 );
+		qrms_assert_same( 1, $satir['atfedilen_birim'], 'birim' );
+		qrms_assert_same( 1, $ozet['atfedilen_birim'], 'global birim' );
+	}
+);
+
+qrms_test(
+	'RK-E. NULL unit_price → birim korunur, tutar=0',
+	function () use ( $bas_post, $bit_post ) {
+		$wpdb    = qrms_oneri_rapor_wpdb();
+		$session = 's_rk_e';
+		$wpdb->rec_events[] = array(
+			'ref_id'     => 'rk-e1111-2222-3333-4444-555555555555',
+			'event_type' => 'cart_add',
+			'product_id' => 9106,
+			'session_id' => $session,
+			'created_at' => '2026-09-27 14:00:00',
+		);
+		$wpdb->analytics_events[] = array(
+			'event_type' => 'order_sent',
+			'session_id' => $session,
+			'item_id'    => 9106,
+			'order_id'   => 'rk-order-e',
+			'qty'        => 1,
+			'unit_price' => null,
+			'created_at' => '2026-09-27 14:30:00',
+		);
+		$satir = qrms_oneri_rapor_satir( QMO_Chatbot_DB::oneri_rapor( $bas_post, $bit_post ), 9106 );
+		$ozet  = QMO_Chatbot_DB::oneri_rapor_ozet_attribution( QMO_Chatbot_DB::oneri_rapor( $bas_post, $bit_post ) );
+		qrms_assert_same( 1, $satir['atfedilen_birim'], 'birim' );
+		qrms_assert_same( 0.0, $satir['atfedilen_tutar'], 'ürün tutar' );
+		qrms_assert_same( 0.0, $ozet['atfedilen_tutar'], 'global tutar' );
+	}
+);
+
+qrms_test(
+	'RK-F. cancelled order → attribution yok',
+	function () use ( $bas_post, $bit_post ) {
+		$wpdb    = qrms_oneri_rapor_wpdb();
+		$session = 's_rk_f';
+		$oid     = 'rk-order-f';
+		$wpdb->rec_events[] = array(
+			'ref_id'     => 'rk-f1111-2222-3333-4444-555555555555',
+			'event_type' => 'cart_add',
+			'product_id' => 9107,
+			'session_id' => $session,
+			'created_at' => '2026-09-27 15:00:00',
+		);
+		$wpdb->analytics_events[] = array(
+			'event_type' => 'order_sent',
+			'session_id' => $session,
+			'item_id'    => 9107,
+			'order_id'   => $oid,
+			'qty'        => 1,
+			'unit_price' => 9,
+			'created_at' => '2026-09-27 15:30:00',
+		);
+		$wpdb->analytics_events[] = array(
+			'event_type' => 'order_cancelled',
+			'order_id'   => $oid,
+			'created_at' => '2026-09-27 15:35:00',
+		);
+		$ozet = QMO_Chatbot_DB::oneri_rapor_ozet_attribution( QMO_Chatbot_DB::oneri_rapor( $bas_post, $bit_post ) );
+		qrms_assert_same( 0, $ozet['atfedilen_siparis_tekil'], 'iptal' );
+	}
+);
+
+qrms_test(
+	'RK-G. doğrudan chatbot KPI attribution ile karışmaz',
+	function () use ( $bas_pre, $bit_pre ) {
+		$wpdb = qrms_oneri_rapor_wpdb();
+		$wpdb->oneri_log[] = array(
+			'urun_id'    => 9108,
+			'durum'      => 'siparis',
+			'created_at' => '2026-03-05 10:00:00',
+		);
+		$rapor = QMO_Chatbot_DB::oneri_rapor( $bas_pre, $bit_pre );
+		$satir = qrms_oneri_rapor_satir( $rapor, 9108 );
+		$ozet  = QMO_Chatbot_DB::oneri_rapor_ozet_attribution( $rapor );
+		qrms_assert_same( 1, $satir['dogrudan_chatbot_siparis'], 'bot' );
+		qrms_assert_same( 0, $satir['atfedilen_siparis'], 'atfedilen' );
+		qrms_assert_same( 0, $ozet['atfedilen_siparis_tekil'], 'global atfedilen' );
+	}
+);
+
+qrms_test(
+	'RK-H. admin rapor UI — Tahmini ciro yok, liste fiyatı tutarı var',
+	function () {
+		$php = (string) file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/includes/admin/sayfa-oneri-rapor.php' );
+		qrms_assert_false( false !== strpos( $php, 'Tahmini ciro' ), 'Tahmini ciro kaldırıldı' );
+		qrms_assert_false( false !== strpos( $php, 'qmo_chatbot_oneri_urun_fiyat_sayi' ), 'güncel fiyat helper yok' );
+		qrms_assert_false( false !== strpos( $php, 'rma_get_effective_price' ), 'effective price yok' );
+		qrms_assert_contains( 'Atfedilen Tutar (Liste Fiyatı)', $php, 'yeni tutar etiketi' );
+		qrms_assert_contains( 'oneri_rapor_ozet_attribution', $php, 'global özet kaynağı' );
 	}
 );

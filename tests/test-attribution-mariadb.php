@@ -398,7 +398,7 @@ qrms_test(
 		update_option( QMO_Chatbot_DB::OPT, QMO_Chatbot_DB::SURUM );
 		$rapor = QMO_Chatbot_DB::oneri_rapor( $bas_post, $bit_post );
 		$satir = null;
-		foreach ( $rapor as $row ) {
+		foreach ( QMO_Chatbot_DB::oneri_rapor_urunler( $rapor ) as $row ) {
 			if ( (int) $row['urun_id'] === 2015 ) {
 				$satir = $row;
 				break;
