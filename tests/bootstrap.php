@@ -12,6 +12,13 @@
 
 require_once __DIR__ . '/stubs-wordpress.php';
 
+if ( ! defined( 'ARRAY_A' ) ) {
+	define( 'ARRAY_A', 'ARRAY_A' );
+}
+if ( ! defined( 'OBJECT' ) ) {
+	define( 'OBJECT', 'OBJECT' );
+}
+
 $GLOBALS['qrms_assertions'] = 0;
 $GLOBALS['qrms_failures']   = array();
 $GLOBALS['qrms_current']    = '';

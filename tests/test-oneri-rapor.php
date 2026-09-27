@@ -2,8 +2,7 @@
 /**
  * Öneri Raporu — Phase 6.1 lifecycle + recommendation_events (#269).
  *
- * atfedilen_siparis: COUNT(DISTINCT cart_add ref_id), session+ürün+zaman gözlemsel eşleşme;
- * benzersiz order_sent adedi değildir (aynı order_sent birden fazla ref ile sayılabilir).
+ * Stub ortamı Phase 6.2 order-line attribution engine ile uyumlu simülasyon kullanır.
  *
  * @package QR_Menu_Suite
  */
@@ -69,13 +68,15 @@ class QRMS_Oneri_Rapor_Wpdb {
 	}
 
 	/**
+	 * Phase 6.2 attribution engine — bellek içi satır çıktısı (MariaDB SQL ile aynı kurallar).
+	 *
 	 * @param string $bas Alt sınır.
 	 * @param string $bit Üst sınır.
-	 * @return array<int, object>
+	 * @return array<int, array<string, mixed>>
 	 */
-	private function atfedilen_aggregate( $bas, $bit ) {
-		$refs_by_product = array();
-		foreach ( $this->rec_events as $row ) {
+	private function attribution_engine_lines( $bas, $bit ) {
+		$carts = array();
+		foreach ( $this->rec_events as $i => $row ) {
 			if ( 'cart_add' !== (string) ( $row['event_type'] ?? '' ) ) {
 				continue;
 			}
@@ -83,57 +84,135 @@ class QRMS_Oneri_Rapor_Wpdb {
 			if ( $t < $bas || $t > $bit ) {
 				continue;
 			}
-			$ref     = (string) ( $row['ref_id'] ?? '' );
-			$session = (string) ( $row['session_id'] ?? '' );
-			$product = (int) ( $row['product_id'] ?? 0 );
-			if ( '' === $ref || '' === $session || $product < 1 ) {
-				continue;
-			}
-			$matched = false;
-			foreach ( $this->analytics_events as $ev ) {
-				if ( 'order_sent' !== ( $ev['event_type'] ?? '' ) ) {
-					continue;
-				}
-				if ( (string) $ev['session_id'] !== $session ) {
-					continue;
-				}
-				if ( (int) ( $ev['item_id'] ?? 0 ) !== $product ) {
-					continue;
-				}
-				if ( (string) ( $ev['created_at'] ?? '' ) < $t ) {
-					continue;
-				}
-				$matched = true;
-				break;
-			}
-			if ( ! $matched ) {
-				continue;
-			}
-			if ( ! isset( $refs_by_product[ $product ] ) ) {
-				$refs_by_product[ $product ] = array();
-			}
-			$refs_by_product[ $product ][ $ref ] = true;
+			$carts[] = array(
+				'cart_row_id' => $i,
+				'ref_id'      => (string) ( $row['ref_id'] ?? '' ),
+				'product_id'  => (int) ( $row['product_id'] ?? 0 ),
+				'session_id'  => (string) ( $row['session_id'] ?? '' ),
+				'cart_at'     => $t,
+			);
 		}
+
+		$cancelled = array();
+		foreach ( $this->analytics_events as $ev ) {
+			if ( 'order_cancelled' === ( $ev['event_type'] ?? '' ) ) {
+				$oid = (string) ( $ev['order_id'] ?? '' );
+				if ( '' !== $oid ) {
+					$cancelled[ $oid ] = true;
+				}
+			}
+		}
+
+		$lines = array();
+		foreach ( $this->analytics_events as $i => $ev ) {
+			if ( 'order_sent' !== ( $ev['event_type'] ?? '' ) ) {
+				continue;
+			}
+			$oid = (string) ( $ev['order_id'] ?? '' );
+			if ( '' === $oid || isset( $cancelled[ $oid ] ) ) {
+				continue;
+			}
+			$t = (string) ( $ev['created_at'] ?? '' );
+			if ( $t < $bas ) {
+				continue;
+			}
+			$key = (string) $ev['session_id'] . "\0" . (int) ( $ev['item_id'] ?? 0 ) . "\0" . $oid;
+			if ( ! isset( $lines[ $key ] ) ) {
+				$lines[ $key ] = array(
+					'session_id'  => (string) ( $ev['session_id'] ?? '' ),
+					'item_id'     => (int) ( $ev['item_id'] ?? 0 ),
+					'order_id'    => $oid,
+					'line_at'     => $t,
+					'line_row_id' => $i,
+					'line_qty'    => (int) ( $ev['qty'] ?? 1 ),
+					'unit_price'  => array_key_exists( 'unit_price', $ev ) ? $ev['unit_price'] : null,
+				);
+			} else {
+				$lines[ $key ]['line_qty'] += (int) ( $ev['qty'] ?? 1 );
+				if ( $t < $lines[ $key ]['line_at'] ) {
+					$lines[ $key ]['line_at']     = $t;
+					$lines[ $key ]['line_row_id'] = $i;
+					$lines[ $key ]['unit_price']  = array_key_exists( 'unit_price', $ev ) ? $ev['unit_price'] : null;
+				}
+			}
+		}
+
+		$ref_first = array();
+		foreach ( $carts as $cart ) {
+			$best = null;
+			foreach ( $lines as $line ) {
+				if ( $line['session_id'] !== $cart['session_id'] || $line['item_id'] !== $cart['product_id'] ) {
+					continue;
+				}
+				if ( $line['line_at'] < $cart['cart_at'] ) {
+					continue;
+				}
+				if ( null === $best
+					|| $line['line_at'] < $best['line_at']
+					|| ( $line['line_at'] === $best['line_at'] && $line['line_row_id'] < $best['line_row_id'] ) ) {
+					$best = $line;
+				}
+			}
+			if ( null !== $best ) {
+				$ref_first[] = array_merge( $cart, $best );
+			}
+		}
+
+		$grouped = array();
+		foreach ( $ref_first as $rf ) {
+			$gkey = $rf['product_id'] . "\0" . $rf['session_id'] . "\0" . $rf['order_id'] . "\0" . $rf['item_id'];
+			if ( ! isset( $grouped[ $gkey ] ) ) {
+				$grouped[ $gkey ] = array(
+					'product_id' => $rf['product_id'],
+					'session_id' => $rf['session_id'],
+					'order_id'   => $rf['order_id'],
+					'item_id'    => $rf['item_id'],
+					'line_qty'   => $rf['line_qty'],
+					'unit_price' => $rf['unit_price'],
+					'ref_count'  => 0,
+				);
+			}
+			++$grouped[ $gkey ]['ref_count'];
+		}
+
 		$out = array();
-		foreach ( $refs_by_product as $uid => $refs ) {
-			$out[] = (object) array(
-				'urun_id'   => $uid,
-				'atfedilen' => count( $refs ),
+		foreach ( $grouped as $g ) {
+			$units = min( (int) $g['line_qty'], (int) $g['ref_count'] );
+			if ( $units < 1 ) {
+				continue;
+			}
+			$price = $g['unit_price'];
+			$rev   = ( null === $price || '' === $price ) ? 0.0 : $units * (float) $price;
+			$out[] = array(
+				'product_id'         => (int) $g['product_id'],
+				'session_id'         => (string) $g['session_id'],
+				'order_id'           => (string) $g['order_id'],
+				'item_id'            => (int) $g['item_id'],
+				'attributed_units'   => $units,
+				'attributed_revenue' => $rev,
+				'unit_price'         => $price,
 			);
 		}
 		return $out;
 	}
 
 	public function get_results( $sql, $mode = null ) {
-		unset( $mode );
 		$this->queries[] = $sql;
 
-		if ( false !== strpos( $sql, 'INNER JOIN' ) && false !== strpos( $sql, 'order_sent' ) ) {
+		if ( false !== strpos( $sql, 'line_attrib' ) ) {
 			list( $bas, $bit ) = $this->tarih_araligi( $sql );
-			if ( '' === $bas ) {
+			if ( '' === $bas || '' === $bit ) {
 				return array();
 			}
-			return $this->atfedilen_aggregate( $bas, $bit );
+			$lines = $this->attribution_engine_lines( $bas, $bit );
+			if ( ARRAY_A === $mode ) {
+				return $lines;
+			}
+			$objs = array();
+			foreach ( $lines as $line ) {
+				$objs[] = (object) $line;
+			}
+			return $objs;
 		}
 
 		list( $bas, $bit ) = $this->tarih_araligi( $sql );
@@ -468,7 +547,7 @@ qrms_test(
 		$end   = strpos( $php, 'public static function recommendation_events_eski_sil', $start );
 		qrms_assert_true( false !== $start && false !== $end, 'oneri_rapor gövdesi' );
 		$govde = substr( $php, $start, $end - $start );
-		qrms_assert_contains( 'oneri_rapor_atfedilen_siparis', $php, 'toplu atfedilen' );
+		qrms_assert_contains( 'recommendation_attribution_hesapla', $php, 'order-line attribution engine' );
 		qrms_assert_false(
 			false !== strpos( $govde, 'recommendation_gozlemsel_order_sent_var_mi' ),
 			'N+1 helper döngüsü yok'
@@ -571,6 +650,7 @@ qrms_test(
 			'event_type' => 'order_sent',
 			'session_id' => $session,
 			'item_id'    => 9009,
+			'order_id'   => 'p61-c9-order',
 			'created_at' => '2026-09-27 10:30:00',
 		);
 		$satir = qrms_oneri_rapor_satir( QMO_Chatbot_DB::oneri_rapor( $bas_post, $bit_post ), 9009 );
@@ -689,6 +769,7 @@ qrms_test(
 				'event_type' => 'order_sent',
 				'session_id' => $session,
 				'item_id'    => 9017,
+				'order_id'   => 'p61-c17-' . $i,
 				'created_at' => '2026-09-27 09:30:00',
 			);
 		}
@@ -742,6 +823,7 @@ qrms_test(
 			'event_type' => 'order_sent',
 			'session_id' => 's_c19',
 			'item_id'    => 9019,
+			'order_id'   => 'p61-c19-order',
 			'created_at' => '2026-09-28 10:30:00',
 		);
 		$satir = qrms_oneri_rapor_satir( QMO_Chatbot_DB::oneri_rapor( '2026-09-20', '2026-09-30' ), 9019 );

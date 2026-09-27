@@ -1134,57 +1134,255 @@ class QMO_Chatbot_DB {
 	}
 
 	/**
-	 * Gözlemsel atfedilen sipariş — toplu SQL (N+1 yok).
+	 * Phase 6.2 — order-line attribution engine (gözlemsel, nedensellik iddiası yok).
 	 *
-	 * Atfedilen sipariş, recommendation ref seviyesinde, aynı oturum + ürün + zaman
-	 * ilişkisine göre gözlemsel olarak atfedilen recommendation instance sayısını ifade eder
-	 * (COUNT(DISTINCT cart_add ref_id)). Aynı gerçek order_sent olayı birden fazla
-	 * recommendation ref'iyle eşleşebilir; benzersiz gerçek sipariş sayısı değildir.
-	 *
-	 * Eşleşme: canonical session_id, product_id = item_id, order_sent.created_at >= cart_add.created_at.
+	 * Kohort: cart_add.created_at ∈ [bas, bit].
+	 * Her ref → aynı session+ürün kapsamında ilk sonraki uygun (order_id, item_id) satırı.
+	 * İptal: order_cancelled olan order_id hariç. Birim: MIN(line_qty, ref_count). Tutar: unit_price × birim (NULL fiyat → 0).
 	 *
 	 * @param string $bas Datetime (cart_add alt sınırı).
 	 * @param string $bit Datetime (cart_add üst sınırı).
-	 * @return array<int,int> urun_id => adet (ref bazlı atfedilen instance).
+	 * @return array{
+	 *   ozet: array{atfedilen_siparis_tekil:int,atfedilen_kalem:int,atfedilen_birim:int,atfedilen_tutar:float},
+	 *   urunler: array<int,array{atfedilen_siparis_tekil:int,atfedilen_kalem:int,atfedilen_birim:int,atfedilen_tutar:float}>,
+	 *   satirlar: array<int,array<string,mixed>>
+	 * }
 	 */
-	private static function oneri_rapor_atfedilen_siparis( $bas, $bit ) {
-		global $wpdb;
+	public static function recommendation_attribution_hesapla( $bas, $bit ) {
+		$bos = array(
+			'ozet'     => array(
+				'atfedilen_siparis_tekil' => 0,
+				'atfedilen_kalem'         => 0,
+				'atfedilen_birim'         => 0,
+				'atfedilen_tutar'         => 0.0,
+			),
+			'urunler'  => array(),
+			'satirlar' => array(),
+		);
 
 		if ( ! class_exists( 'QRMS_Analitik' ) || ! QRMS_Analitik::tablo_var_mi() ) {
-			return array();
+			return $bos;
 		}
+
+		global $wpdb;
 
 		$tablo_rec = self::recommendation_events_tablosu();
 		$analitik  = QRMS_Analitik::tablo();
+		$bas       = sanitize_text_field( (string) $bas );
+		$bit       = sanitize_text_field( (string) $bit );
 
-		$rows = $wpdb->get_results(
-			$wpdb->prepare(
-				"SELECT cart.product_id AS urun_id, COUNT(DISTINCT cart.ref_id) AS atfedilen
-				FROM {$tablo_rec} cart
-				INNER JOIN {$analitik} o
-				  ON o.event_type = 'order_sent'
-				 AND o.session_id = cart.session_id
-				 AND o.item_id = cart.product_id
-				 AND o.created_at >= cart.created_at
-				 AND o.created_at >= %s
-				WHERE cart.event_type = %s
-				  AND cart.created_at >= %s AND cart.created_at <= %s
-				GROUP BY cart.product_id",
-				$bas,
-				self::REC_EVENT_CART_ADD,
-				$bas,
-				$bit
+		$sql = "WITH carts AS (
+				SELECT id AS cart_row_id, ref_id, product_id, session_id, created_at AS cart_at
+				FROM {$tablo_rec}
+				WHERE event_type = %s
+				  AND created_at >= %s AND created_at <= %s
+			),
+			lines_base AS (
+				SELECT
+					o.session_id,
+					o.item_id,
+					o.order_id,
+					MIN(o.created_at) AS line_at,
+					MIN(o.id) AS line_row_id,
+					SUM(o.qty) AS line_qty
+				FROM {$analitik} o
+				WHERE o.event_type = 'order_sent'
+				  AND o.order_id IS NOT NULL
+				  AND o.order_id <> ''
+				  AND o.created_at >= %s
+				GROUP BY o.session_id, o.item_id, o.order_id
+			),
+			eligible_lines AS (
+				SELECT lb.*
+				FROM lines_base lb
+				WHERE NOT EXISTS (
+					SELECT 1 FROM {$analitik} c
+					WHERE c.event_type = 'order_cancelled'
+					  AND c.order_id = lb.order_id
+				)
+			),
+			lines_priced AS (
+				SELECT
+					l.session_id,
+					l.item_id,
+					l.order_id,
+					l.line_at,
+					l.line_row_id,
+					l.line_qty,
+					(
+						SELECT o2.unit_price
+						FROM {$analitik} o2
+						WHERE o2.event_type = 'order_sent'
+						  AND o2.session_id = l.session_id
+						  AND o2.item_id = l.item_id
+						  AND o2.order_id = l.order_id
+						ORDER BY o2.created_at ASC, o2.id ASC
+						LIMIT 1
+					) AS unit_price
+				FROM eligible_lines l
+			),
+			ref_match AS (
+				SELECT
+					c.ref_id,
+					c.product_id,
+					c.session_id,
+					c.cart_at,
+					c.cart_row_id,
+					lp.order_id,
+					lp.item_id,
+					lp.line_at,
+					lp.line_row_id,
+					lp.line_qty,
+					lp.unit_price,
+					ROW_NUMBER() OVER (
+						PARTITION BY c.ref_id
+						ORDER BY lp.line_at ASC, lp.line_row_id ASC
+					) AS ref_ord
+				FROM carts c
+				INNER JOIN lines_priced lp
+				  ON lp.session_id = c.session_id
+				 AND lp.item_id = c.product_id
+				 AND lp.line_at >= c.cart_at
+			),
+			ref_first AS (
+				SELECT * FROM ref_match WHERE ref_ord = 1
+			),
+			line_refs AS (
+				SELECT
+					rf.product_id,
+					rf.session_id,
+					rf.order_id,
+					rf.item_id,
+					MAX(rf.line_qty) AS line_qty,
+					MAX(rf.unit_price) AS unit_price,
+					COUNT(*) AS consumed_ref_count
+				FROM ref_first rf
+				GROUP BY rf.product_id, rf.session_id, rf.order_id, rf.item_id
+			),
+			line_attrib AS (
+				SELECT
+					product_id,
+					session_id,
+					order_id,
+					item_id,
+					line_qty,
+					consumed_ref_count,
+					LEAST(line_qty, consumed_ref_count) AS attributed_units,
+					unit_price,
+					CASE
+						WHEN unit_price IS NULL THEN 0
+						ELSE LEAST(line_qty, consumed_ref_count) * unit_price
+					END AS attributed_revenue
+				FROM line_refs
 			)
+			SELECT
+				product_id,
+				session_id,
+				order_id,
+				item_id,
+				attributed_units,
+				attributed_revenue,
+				unit_price
+			FROM line_attrib";
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		$prepared = $wpdb->prepare(
+			$sql,
+			self::REC_EVENT_CART_ADD,
+			$bas,
+			$bit,
+			$bas
 		);
 
-		$out = array();
-		foreach ( (array) $rows as $row ) {
-			$uid = (int) $row->urun_id;
-			if ( $uid > 0 ) {
-				$out[ $uid ] = (int) $row->atfedilen;
-			}
+		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$rows = $wpdb->get_results( $prepared, ARRAY_A );
+
+		if ( ! is_array( $rows ) || empty( $rows ) ) {
+			return $bos;
 		}
 
+		$satirlar = array();
+		$urunler  = array();
+		$orders   = array();
+		$lines    = 0;
+		$birim    = 0;
+		$tutar    = 0.0;
+
+		foreach ( $rows as $row ) {
+			if ( ! is_array( $row ) ) {
+				continue;
+			}
+			$pid   = (int) ( $row['product_id'] ?? 0 );
+			$oid   = (string) ( $row['order_id'] ?? '' );
+			$units = (int) ( $row['attributed_units'] ?? 0 );
+			$rev   = (float) ( $row['attributed_revenue'] ?? 0 );
+			if ( $pid < 1 || '' === $oid || $units < 1 ) {
+				continue;
+			}
+
+			$satirlar[] = array(
+				'product_id'         => $pid,
+				'session_id'         => (string) ( $row['session_id'] ?? '' ),
+				'order_id'           => $oid,
+				'item_id'            => (int) ( $row['item_id'] ?? 0 ),
+				'attributed_units'   => $units,
+				'attributed_revenue' => $rev,
+				'unit_price'         => isset( $row['unit_price'] ) ? $row['unit_price'] : null,
+			);
+
+			$orders[ $oid ] = true;
+			++$lines;
+			$birim += $units;
+			$tutar += $rev;
+
+			if ( ! isset( $urunler[ $pid ] ) ) {
+				$urunler[ $pid ] = array(
+					'atfedilen_siparis_tekil' => 0,
+					'atfedilen_kalem'         => 0,
+					'atfedilen_birim'         => 0,
+					'atfedilen_tutar'         => 0.0,
+					'_orders'                 => array(),
+				);
+			}
+			$urunler[ $pid ]['_orders'][ $oid ]           = true;
+			++$urunler[ $pid ]['atfedilen_kalem'];
+			$urunler[ $pid ]['atfedilen_birim']         += $units;
+			$urunler[ $pid ]['atfedilen_tutar']         += $rev;
+		}
+
+		foreach ( $urunler as $pid => $metrik ) {
+			$urunler[ $pid ]['atfedilen_siparis_tekil'] = count( $metrik['_orders'] );
+			unset( $urunler[ $pid ]['_orders'] );
+		}
+
+		return array(
+			'ozet'     => array(
+				'atfedilen_siparis_tekil' => count( $orders ),
+				'atfedilen_kalem'         => $lines,
+				'atfedilen_birim'         => $birim,
+				'atfedilen_tutar'         => $tutar,
+			),
+			'urunler'  => $urunler,
+			'satirlar' => $satirlar,
+		);
+	}
+
+	/**
+	 * Ürün bazlı tekil atfedilen sipariş (DISTINCT order_id).
+	 *
+	 * @param string $bas Datetime (cart_add kohort alt sınırı).
+	 * @param string $bit Datetime (cart_add kohort üst sınırı).
+	 * @return array<int,int> urun_id => atfedilen_siparis_tekil
+	 */
+	private static function oneri_rapor_atfedilen_siparis( $bas, $bit ) {
+		$sonuc = self::recommendation_attribution_hesapla( $bas, $bit );
+		$out   = array();
+		foreach ( (array) ( $sonuc['urunler'] ?? array() ) as $uid => $metrik ) {
+			$uid = (int) $uid;
+			if ( $uid > 0 ) {
+				$out[ $uid ] = (int) ( $metrik['atfedilen_siparis_tekil'] ?? 0 );
+			}
+		}
 		return $out;
 	}
 
@@ -1194,12 +1392,12 @@ class QMO_Chatbot_DB {
 	 * Gösterildi: cutover öncesi legacy + cutover sonrası events shown (asla toplama yok).
 	 * Ana dönüşüm: atfedilen_siparis / gosterildi. Doğrudan bot siparişi ayrı KPI.
 	 *
-	 * `atfedilen_siparis`: ref seviyesinde gözlemsel instance sayısı (DISTINCT cart_add ref_id);
-	 * benzersiz order_sent veya gerçek sipariş adedi değildir.
+	 * `atfedilen_siparis`: ürün bazlı tekil sipariş adedi (= atfedilen_siparis_tekil, DISTINCT order_id).
+	 * `atfedilen_birim`: recommendation-attributed quantity (MIN qty/ref kuralı).
 	 *
 	 * @param string $bas Başlangıç tarihi (Y-m-d).
 	 * @param string $bit Bitiş tarihi (Y-m-d).
-	 * @return array<int, array<string, mixed>> urun_id, gosterildi, sepete, atfedilen_siparis, dogrudan_chatbot_siparis, donusum_orani.
+	 * @return array<int, array<string, mixed>>
 	 */
 	public static function oneri_rapor( $bas, $bit ) {
 		self::sema_kontrol();
@@ -1221,15 +1419,16 @@ class QMO_Chatbot_DB {
 			}
 		}
 
-		$sepete_map   = self::oneri_rapor_recommendation_sepete( $tam['bas'], $tam['bit'] );
-		$atfedilen_map = self::oneri_rapor_atfedilen_siparis( $tam['bas'], $tam['bit'] );
-		$bot_map      = self::oneri_rapor_dogrudan_bot_siparis( $tam['bas'], $tam['bit'] );
+		$sepete_map = self::oneri_rapor_recommendation_sepete( $tam['bas'], $tam['bit'] );
+		$attr       = self::recommendation_attribution_hesapla( $tam['bas'], $tam['bit'] );
+		$attr_urun  = (array) ( $attr['urunler'] ?? array() );
+		$bot_map    = self::oneri_rapor_dogrudan_bot_siparis( $tam['bas'], $tam['bit'] );
 
 		$urun_ids = array_unique(
 			array_merge(
 				array_keys( $gosterildi_map ),
 				array_keys( $sepete_map ),
-				array_keys( $atfedilen_map ),
+				array_keys( $attr_urun ),
 				array_keys( $bot_map )
 			)
 		);
@@ -1245,16 +1444,22 @@ class QMO_Chatbot_DB {
 			$urun_id    = (int) $urun_id;
 			$gosterildi = (int) ( $gosterildi_map[ $urun_id ] ?? 0 );
 			$sepete     = (int) ( $sepete_map[ $urun_id ] ?? 0 );
-			$atfedilen  = (int) ( $atfedilen_map[ $urun_id ] ?? 0 );
 			$bot        = (int) ( $bot_map[ $urun_id ] ?? 0 );
+			$a_metrik   = isset( $attr_urun[ $urun_id ] ) && is_array( $attr_urun[ $urun_id ] ) ? $attr_urun[ $urun_id ] : array();
+			$siparis    = (int) ( $a_metrik['atfedilen_siparis_tekil'] ?? 0 );
+			$birim      = (int) ( $a_metrik['atfedilen_birim'] ?? 0 );
 
 			$rapor[] = array(
 				'urun_id'                  => $urun_id,
 				'gosterildi'               => $gosterildi,
 				'sepete'                   => $sepete,
-				'atfedilen_siparis'        => $atfedilen,
+				'atfedilen_siparis'        => $siparis,
+				'atfedilen_siparis_tekil'  => $siparis,
+				'atfedilen_kalem'          => (int) ( $a_metrik['atfedilen_kalem'] ?? 0 ),
+				'atfedilen_birim'          => $birim,
+				'atfedilen_tutar'          => (float) ( $a_metrik['atfedilen_tutar'] ?? 0.0 ),
 				'dogrudan_chatbot_siparis' => $bot,
-				'donusum_orani'            => $gosterildi > 0 ? round( $atfedilen / $gosterildi, 4 ) : 0.0,
+				'donusum_orani'            => $gosterildi > 0 ? round( $siparis / $gosterildi, 4 ) : 0.0,
 			);
 		}
 
