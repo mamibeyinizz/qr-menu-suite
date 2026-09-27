@@ -17,12 +17,23 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 class QMO_Chatbot_DB {
 
-	const SURUM = '1.3.1';
+	const SURUM = '1.3.2';
 	const OPT   = 'qmo_chatbot_db_surum';
 
 	/** Append-only recommendation attribution olayları. */
 	const REC_EVENT_SHOWN    = 'shown';
 	const REC_EVENT_CART_ADD = 'cart_add';
+
+	/**
+	 * Öneri raporunda legacy gösterildi ile events `shown` kaynağının sınır günü (Y-m-d).
+	 * PR #268 merge kanıtı: 2026-09-26; cutover gününde rapor yalnızca events `shown` kullanır.
+	 */
+	const RECOMMENDATION_REPORT_CUTOVER_DATE = '2026-09-26';
+
+	/** recommendation_events shown/cart_add saklama (qrms_analitik_temizlik entegrasyonu). */
+	const RECOMMENDATION_EVENTS_SAKLAMA_GUN = 90;
+
+	const RECOMMENDATION_EVENTS_SAKLAMA_PARCA = 5000;
 
 	/**
 	 * Sürüm eşleşmiyorsa şemayı kurar.
@@ -201,6 +212,7 @@ class QMO_Chatbot_DB {
 				PRIMARY KEY  (id),
 				KEY idx_ref_id (ref_id),
 				KEY idx_session_product_time (session_id, product_id, created_at),
+				KEY idx_event_time (event_type, created_at),
 				UNIQUE KEY uniq_ref_event (ref_id, event_type)
 			) {$collate};"
 		);
@@ -924,39 +936,184 @@ class QMO_Chatbot_DB {
 	}
 
 	/**
-	 * Tarih aralığında ürün bazlı öneri raporu (sayılar ve dönüşüm oranı).
+	 * Öneri raporu cutover günü (Y-m-d).
 	 *
-	 * @param string $bas Başlangıç tarihi (Y-m-d).
-	 * @param string $bit Bitiş tarihi (Y-m-d).
-	 * @return array
+	 * @return string
 	 */
-	public static function oneri_rapor( $bas, $bit ) {
+	public static function recommendation_report_cutover_date() {
+		return (string) apply_filters(
+			'qmo_recommendation_report_cutover_date',
+			self::RECOMMENDATION_REPORT_CUTOVER_DATE
+		);
+	}
+
+	/**
+	 * Rapor aralığını cutover'a göre gösterildi segmentlerine böler.
+	 *
+	 * Legacy gösterildi yalnızca cutover öncesi günler; events shown cutover ve sonrası.
+	 * Sepete / atfedilen / doğrudan bot siparişi tam seçilen aralıkta kalır.
+	 *
+	 * @param string $bas_ymd Başlangıç (Y-m-d).
+	 * @param string $bit_ymd Bitiş (Y-m-d).
+	 * @return array<string, array<string, string>|null>
+	 */
+	public static function oneri_rapor_aralik_bol( $bas_ymd, $bit_ymd ) {
+		$bas_ymd = sanitize_text_field( (string) $bas_ymd );
+		$bit_ymd = sanitize_text_field( (string) $bit_ymd );
+		$cutover = self::recommendation_report_cutover_date();
+
+		$full_bas = $bas_ymd . ' 00:00:00';
+		$full_bit = $bit_ymd . ' 23:59:59';
+
+		$legacy_shown = null;
+		if ( $bas_ymd < $cutover ) {
+			$legacy_bit_ymd = gmdate( 'Y-m-d', strtotime( $cutover . ' -1 day' ) );
+			if ( $bit_ymd < $legacy_bit_ymd ) {
+				$legacy_bit_ymd = $bit_ymd;
+			}
+			$legacy_shown = array(
+				'bas' => $full_bas,
+				'bit' => $legacy_bit_ymd . ' 23:59:59',
+			);
+		}
+
+		$event_shown = null;
+		if ( $bit_ymd >= $cutover ) {
+			$event_bas = ( $bas_ymd >= $cutover ) ? $full_bas : ( $cutover . ' 00:00:00' );
+			$event_shown = array(
+				'bas' => $event_bas,
+				'bit' => $full_bit,
+			);
+		}
+
+		return array(
+			'legacy_shown' => $legacy_shown,
+			'event_shown'  => $event_shown,
+			'tam_aralik'   => array(
+				'bas' => $full_bas,
+				'bit' => $full_bit,
+			),
+		);
+	}
+
+	/**
+	 * Ürün bazlı legacy gösterildi (cutover öncesi segment).
+	 *
+	 * @param string $bas Datetime.
+	 * @param string $bit Datetime.
+	 * @return array<int,int> urun_id => adet
+	 */
+	private static function oneri_rapor_legacy_gosterildi( $bas, $bit ) {
 		global $wpdb;
 
-		self::sema_kontrol();
-
-		$tablo_log = self::oneri_log_tablosu();
-		$tablo_rec = self::recommendation_events_tablosu();
-		$bas       = sanitize_text_field( $bas ) . ' 00:00:00';
-		$bit       = sanitize_text_field( $bit ) . ' 23:59:59';
-
-		$legacy_satirlar = $wpdb->get_results(
+		$tablo = self::oneri_log_tablosu();
+		$rows  = $wpdb->get_results(
 			$wpdb->prepare(
-				"SELECT urun_id,
-					SUM(CASE WHEN durum = 'gosterildi' THEN 1 ELSE 0 END) AS gosterildi,
-					SUM(CASE WHEN durum = 'siparis' THEN 1 ELSE 0 END) AS siparis
-				FROM {$tablo_log}
-				WHERE created_at >= %s AND created_at <= %s
+				"SELECT urun_id, COUNT(*) AS gosterildi
+				FROM {$tablo}
+				WHERE durum = 'gosterildi'
+				  AND created_at >= %s AND created_at <= %s
 				GROUP BY urun_id",
 				$bas,
 				$bit
 			)
 		);
 
-		$sepete_satirlar = $wpdb->get_results(
+		$out = array();
+		foreach ( (array) $rows as $row ) {
+			$uid = (int) $row->urun_id;
+			if ( $uid > 0 ) {
+				$out[ $uid ] = (int) $row->gosterildi;
+			}
+		}
+
+		return $out;
+	}
+
+	/**
+	 * Ürün bazlı events shown (COUNT DISTINCT ref_id).
+	 *
+	 * @param string $bas Datetime.
+	 * @param string $bit Datetime.
+	 * @return array<int,int>
+	 */
+	private static function oneri_rapor_events_shown( $bas, $bit ) {
+		global $wpdb;
+
+		$tablo = self::recommendation_events_tablosu();
+		$rows  = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT product_id AS urun_id, COUNT(DISTINCT ref_id) AS gosterildi
+				FROM {$tablo}
+				WHERE event_type = %s
+				  AND created_at >= %s AND created_at <= %s
+				GROUP BY product_id",
+				self::REC_EVENT_SHOWN,
+				$bas,
+				$bit
+			)
+		);
+
+		$out = array();
+		foreach ( (array) $rows as $row ) {
+			$uid = (int) $row->urun_id;
+			if ( $uid > 0 ) {
+				$out[ $uid ] = (int) $row->gosterildi;
+			}
+		}
+
+		return $out;
+	}
+
+	/**
+	 * Ürün bazlı doğrudan chatbot siparişi (legacy oneri_log siparis).
+	 *
+	 * @param string $bas Datetime.
+	 * @param string $bit Datetime.
+	 * @return array<int,int>
+	 */
+	private static function oneri_rapor_dogrudan_bot_siparis( $bas, $bit ) {
+		global $wpdb;
+
+		$tablo = self::oneri_log_tablosu();
+		$rows  = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT urun_id, COUNT(*) AS siparis
+				FROM {$tablo}
+				WHERE durum = 'siparis'
+				  AND created_at >= %s AND created_at <= %s
+				GROUP BY urun_id",
+				$bas,
+				$bit
+			)
+		);
+
+		$out = array();
+		foreach ( (array) $rows as $row ) {
+			$uid = (int) $row->urun_id;
+			if ( $uid > 0 ) {
+				$out[ $uid ] = (int) $row->siparis;
+			}
+		}
+
+		return $out;
+	}
+
+	/**
+	 * Ürün bazlı recommendation cart_add (COUNT DISTINCT ref_id).
+	 *
+	 * @param string $bas Datetime.
+	 * @param string $bit Datetime.
+	 * @return array<int,int>
+	 */
+	private static function oneri_rapor_recommendation_sepete( $bas, $bit ) {
+		global $wpdb;
+
+		$tablo = self::recommendation_events_tablosu();
+		$rows  = $wpdb->get_results(
 			$wpdb->prepare(
 				"SELECT product_id AS urun_id, COUNT(DISTINCT ref_id) AS sepete
-				FROM {$tablo_rec}
+				FROM {$tablo}
 				WHERE event_type = %s AND created_at >= %s AND created_at <= %s
 				GROUP BY product_id",
 				self::REC_EVENT_CART_ADD,
@@ -965,67 +1122,200 @@ class QMO_Chatbot_DB {
 			)
 		);
 
-		if ( ! is_array( $legacy_satirlar ) ) {
-			$legacy_satirlar = array();
-		}
-		if ( ! is_array( $sepete_satirlar ) ) {
-			$sepete_satirlar = array();
-		}
-
-		$urunler = array();
-
-		foreach ( $legacy_satirlar as $satir ) {
-			$urun_id = (int) $satir->urun_id;
-			if ( $urun_id < 1 ) {
-				continue;
+		$out = array();
+		foreach ( (array) $rows as $row ) {
+			$uid = (int) $row->urun_id;
+			if ( $uid > 0 ) {
+				$out[ $uid ] = (int) $row->sepete;
 			}
-			if ( ! isset( $urunler[ $urun_id ] ) ) {
-				$urunler[ $urun_id ] = array(
-					'gosterildi' => 0,
-					'sepete'     => 0,
-					'siparis'    => 0,
-				);
-			}
-			$urunler[ $urun_id ]['gosterildi'] = (int) $satir->gosterildi;
-			$urunler[ $urun_id ]['siparis']    = (int) $satir->siparis;
 		}
 
-		foreach ( $sepete_satirlar as $satir ) {
-			$urun_id = (int) $satir->urun_id;
-			if ( $urun_id < 1 ) {
-				continue;
-			}
-			if ( ! isset( $urunler[ $urun_id ] ) ) {
-				$urunler[ $urun_id ] = array(
-					'gosterildi' => 0,
-					'sepete'     => 0,
-					'siparis'    => 0,
-				);
-			}
-			$urunler[ $urun_id ]['sepete'] = (int) $satir->sepete;
-		}
+		return $out;
+	}
 
-		if ( empty( $urunler ) ) {
+	/**
+	 * Gözlemsel atfedilen sipariş — toplu SQL (N+1 yok).
+	 *
+	 * Atfedilen sipariş, recommendation ref seviyesinde, aynı oturum + ürün + zaman
+	 * ilişkisine göre gözlemsel olarak atfedilen recommendation instance sayısını ifade eder
+	 * (COUNT(DISTINCT cart_add ref_id)). Aynı gerçek order_sent olayı birden fazla
+	 * recommendation ref'iyle eşleşebilir; benzersiz gerçek sipariş sayısı değildir.
+	 *
+	 * Eşleşme: canonical session_id, product_id = item_id, order_sent.created_at >= cart_add.created_at.
+	 *
+	 * @param string $bas Datetime (cart_add alt sınırı).
+	 * @param string $bit Datetime (cart_add üst sınırı).
+	 * @return array<int,int> urun_id => adet (ref bazlı atfedilen instance).
+	 */
+	private static function oneri_rapor_atfedilen_siparis( $bas, $bit ) {
+		global $wpdb;
+
+		if ( ! class_exists( 'QRMS_Analitik' ) || ! QRMS_Analitik::tablo_var_mi() ) {
 			return array();
 		}
 
-		ksort( $urunler, SORT_NUMERIC );
+		$tablo_rec = self::recommendation_events_tablosu();
+		$analitik  = QRMS_Analitik::tablo();
+
+		$rows = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT cart.product_id AS urun_id, COUNT(DISTINCT cart.ref_id) AS atfedilen
+				FROM {$tablo_rec} cart
+				INNER JOIN {$analitik} o
+				  ON o.event_type = 'order_sent'
+				 AND o.session_id = cart.session_id
+				 AND o.item_id = cart.product_id
+				 AND o.created_at >= cart.created_at
+				 AND o.created_at >= %s
+				WHERE cart.event_type = %s
+				  AND cart.created_at >= %s AND cart.created_at <= %s
+				GROUP BY cart.product_id",
+				$bas,
+				self::REC_EVENT_CART_ADD,
+				$bas,
+				$bit
+			)
+		);
+
+		$out = array();
+		foreach ( (array) $rows as $row ) {
+			$uid = (int) $row->urun_id;
+			if ( $uid > 0 ) {
+				$out[ $uid ] = (int) $row->atfedilen;
+			}
+		}
+
+		return $out;
+	}
+
+	/**
+	 * Tarih aralığında ürün bazlı öneri raporu (sayılar ve dönüşüm oranı).
+	 *
+	 * Gösterildi: cutover öncesi legacy + cutover sonrası events shown (asla toplama yok).
+	 * Ana dönüşüm: atfedilen_siparis / gosterildi. Doğrudan bot siparişi ayrı KPI.
+	 *
+	 * `atfedilen_siparis`: ref seviyesinde gözlemsel instance sayısı (DISTINCT cart_add ref_id);
+	 * benzersiz order_sent veya gerçek sipariş adedi değildir.
+	 *
+	 * @param string $bas Başlangıç tarihi (Y-m-d).
+	 * @param string $bit Bitiş tarihi (Y-m-d).
+	 * @return array<int, array<string, mixed>> urun_id, gosterildi, sepete, atfedilen_siparis, dogrudan_chatbot_siparis, donusum_orani.
+	 */
+	public static function oneri_rapor( $bas, $bit ) {
+		self::sema_kontrol();
+
+		$bas_ymd = sanitize_text_field( $bas );
+		$bit_ymd = sanitize_text_field( $bit );
+		$bol     = self::oneri_rapor_aralik_bol( $bas_ymd, $bit_ymd );
+		$tam     = $bol['tam_aralik'];
+
+		$gosterildi_map = array();
+		if ( is_array( $bol['legacy_shown'] ) ) {
+			foreach ( self::oneri_rapor_legacy_gosterildi( $bol['legacy_shown']['bas'], $bol['legacy_shown']['bit'] ) as $uid => $n ) {
+				$gosterildi_map[ $uid ] = ( $gosterildi_map[ $uid ] ?? 0 ) + $n;
+			}
+		}
+		if ( is_array( $bol['event_shown'] ) ) {
+			foreach ( self::oneri_rapor_events_shown( $bol['event_shown']['bas'], $bol['event_shown']['bit'] ) as $uid => $n ) {
+				$gosterildi_map[ $uid ] = ( $gosterildi_map[ $uid ] ?? 0 ) + $n;
+			}
+		}
+
+		$sepete_map   = self::oneri_rapor_recommendation_sepete( $tam['bas'], $tam['bit'] );
+		$atfedilen_map = self::oneri_rapor_atfedilen_siparis( $tam['bas'], $tam['bit'] );
+		$bot_map      = self::oneri_rapor_dogrudan_bot_siparis( $tam['bas'], $tam['bit'] );
+
+		$urun_ids = array_unique(
+			array_merge(
+				array_keys( $gosterildi_map ),
+				array_keys( $sepete_map ),
+				array_keys( $atfedilen_map ),
+				array_keys( $bot_map )
+			)
+		);
+
+		if ( empty( $urun_ids ) ) {
+			return array();
+		}
+
+		sort( $urun_ids, SORT_NUMERIC );
 
 		$rapor = array();
-		foreach ( $urunler as $urun_id => $metrik ) {
-			$gosterildi = (int) $metrik['gosterildi'];
-			$sepete     = (int) $metrik['sepete'];
-			$siparis    = (int) $metrik['siparis'];
-			$rapor[]    = array(
-				'urun_id'       => (int) $urun_id,
-				'gosterildi'    => $gosterildi,
-				'sepete'        => $sepete,
-				'siparis'       => $siparis,
-				'donusum_orani' => $gosterildi > 0 ? round( $siparis / $gosterildi, 4 ) : 0.0,
+		foreach ( $urun_ids as $urun_id ) {
+			$urun_id    = (int) $urun_id;
+			$gosterildi = (int) ( $gosterildi_map[ $urun_id ] ?? 0 );
+			$sepete     = (int) ( $sepete_map[ $urun_id ] ?? 0 );
+			$atfedilen  = (int) ( $atfedilen_map[ $urun_id ] ?? 0 );
+			$bot        = (int) ( $bot_map[ $urun_id ] ?? 0 );
+
+			$rapor[] = array(
+				'urun_id'                  => $urun_id,
+				'gosterildi'               => $gosterildi,
+				'sepete'                   => $sepete,
+				'atfedilen_siparis'        => $atfedilen,
+				'dogrudan_chatbot_siparis' => $bot,
+				'donusum_orani'            => $gosterildi > 0 ? round( $atfedilen / $gosterildi, 4 ) : 0.0,
 			);
 		}
 
 		return $rapor;
+	}
+
+	/**
+	 * Eski recommendation_events shown/cart_add kayıtlarını parça parça siler.
+	 *
+	 * qmo_chatbot_gecmis_temizle yalnızca oneri_log (~30 gün) temizler; post-cutover
+	 * gösterildi events tablosundan geldiği için bu saklama ayrı tutulur.
+	 *
+	 * @param int      $gun            Gün (varsayılan RECOMMENDATION_EVENTS_SAKLAMA_GUN).
+	 * @param float|null $butce_saniye Kalan süre bütçesi; null = bütçesiz.
+	 * @return int Silinen satır sayısı.
+	 */
+	public static function recommendation_events_eski_sil( $gun = null, $butce_saniye = null ) {
+		global $wpdb;
+
+		self::sema_kontrol();
+
+		if ( null === $gun ) {
+			$gun = self::RECOMMENDATION_EVENTS_SAKLAMA_GUN;
+		}
+
+		$gun = absint( $gun );
+		if ( $gun < 1 ) {
+			return 0;
+		}
+
+		$tablo = self::recommendation_events_tablosu();
+		$sinir = gmdate( 'Y-m-d H:i:s', time() - ( $gun * DAY_IN_SECONDS ) );
+		$parca = self::RECOMMENDATION_EVENTS_SAKLAMA_PARCA;
+		$basla = microtime( true );
+		$toplam = 0;
+
+		foreach ( array( self::REC_EVENT_SHOWN, self::REC_EVENT_CART_ADD ) as $tip ) {
+			while ( true ) {
+				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+				$silinen = (int) $wpdb->query(
+					$wpdb->prepare(
+						"DELETE FROM {$tablo} WHERE event_type = %s AND created_at < %s LIMIT %d",
+						$tip,
+						$sinir,
+						$parca
+					)
+				);
+
+				$toplam += $silinen;
+
+				if ( $silinen < $parca ) {
+					break;
+				}
+
+				if ( null !== $butce_saniye && $butce_saniye > 0 && ( microtime( true ) - $basla ) >= $butce_saniye ) {
+					return $toplam;
+				}
+			}
+		}
+
+		return $toplam;
 	}
 
 	/**
@@ -1326,7 +1616,9 @@ class QMO_Chatbot_DB {
 	/**
 	 * Gözlemsel order_sent ilişkisi: aynı session + ürün, sipariş zamanı >= cart_add.
 	 *
-	 * Causal iddia değildir; yalnızca analitik satırlarına bakar.
+	 * Causal iddia değildir; yalnızca analitik satırlarına bakar. Tek ref için bool döner;
+	 * rapordaki atfedilen_siparis toplu COUNT(DISTINCT ref_id) ile aynı kurala dayanır (ref başına
+	 * en fazla bir instance; aynı order_sent birden fazla ref ile eşleşebilir).
 	 *
 	 * @param string $ref_id Recommendation instance.
 	 * @return bool
