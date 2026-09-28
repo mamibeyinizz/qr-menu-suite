@@ -195,6 +195,182 @@ if ( ! function_exists( 'qmo_log_critical' ) ) {
 }
 
 /**
+ * Sipariş idempotency kaydı TTL (saniye).
+ *
+ * @return int
+ */
+if ( ! function_exists( 'qmo_idempotency_ttl' ) ) {
+	function qmo_idempotency_ttl() {
+		return 30 * MINUTE_IN_SECONDS;
+	}
+}
+
+/**
+ * İstemci idempotency anahtarını doğrular (UUID v4).
+ *
+ * @param string $key Ham anahtar.
+ * @return string Geçerli anahtar veya boş.
+ */
+if ( ! function_exists( 'qmo_idempotency_key_dogrula' ) ) {
+	function qmo_idempotency_key_dogrula( $key ) {
+		$key = strtolower( trim( (string) $key ) );
+		if ( '' === $key || strlen( $key ) > 36 ) {
+			return '';
+		}
+		if ( ! preg_match( '/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/', $key ) ) {
+			return '';
+		}
+		return $key;
+	}
+}
+
+/**
+ * Idempotency anahtarını Firestore order_id / documentId olarak normalize eder.
+ *
+ * @param string $key Doğrulanmış UUID v4.
+ * @return string
+ */
+if ( ! function_exists( 'qmo_idempotency_order_id' ) ) {
+	function qmo_idempotency_order_id( $key ) {
+		$key = qmo_idempotency_key_dogrula( $key );
+		if ( '' === $key ) {
+			return '';
+		}
+		$doc = preg_replace( '/[^A-Za-z0-9_-]/', '', $key );
+		return is_string( $doc ) ? $doc : '';
+	}
+}
+
+/**
+ * Sipariş gövdesi için kararlı hash (masa + dil + kalemler).
+ *
+ * @param string              $masa  Doğrulanmış masa slug.
+ * @param string              $dil   Dil kodu.
+ * @param array<int, array>   $temiz Temizlenmiş kalemler.
+ * @return string
+ */
+if ( ! function_exists( 'qmo_siparis_idempotency_hash' ) ) {
+	function qmo_siparis_idempotency_hash( $masa, $dil, array $temiz ) {
+		$lines = array();
+		foreach ( $temiz as $it ) {
+			if ( ! is_array( $it ) ) {
+				continue;
+			}
+			$lines[] = array(
+				'item_id' => (int) ( $it['item_id'] ?? 0 ),
+				'adet'    => (int) ( $it['adet'] ?? 0 ),
+				'not'     => (string) ( $it['not'] ?? '' ),
+				'urunAdi' => (string) ( $it['urunAdi'] ?? '' ),
+			);
+		}
+		usort(
+			$lines,
+			function ( $a, $b ) {
+				$cmp = ( $a['item_id'] <=> $b['item_id'] );
+				if ( 0 !== $cmp ) {
+					return $cmp;
+				}
+				return strcmp( $a['urunAdi'], $b['urunAdi'] );
+			}
+		);
+		return hash(
+			'sha256',
+			wp_json_encode(
+				array(
+					'masa'  => sanitize_title( (string) $masa ),
+					'dil'   => (string) $dil,
+					'items' => $lines,
+				)
+			)
+		);
+	}
+}
+
+/**
+ * Idempotency transient anahtarı.
+ *
+ * @param string $idempotency_key Doğrulanmış UUID.
+ * @return string
+ */
+if ( ! function_exists( 'qmo_idempotency_transient_anahtar' ) ) {
+	function qmo_idempotency_transient_anahtar( $idempotency_key ) {
+		return 'qmo_idem_' . md5( (string) $idempotency_key );
+	}
+}
+
+/**
+ * Bilinen idempotency anahtarı için replay / devam / yeni sipariş durumu.
+ *
+ * @param string $idempotency_key UUID v4.
+ * @param string $masa            Oturumdan gelen masa.
+ * @param string $body_hash       qmo_siparis_idempotency_hash çıktısı.
+ * @return array{type:string,order_id?:string,response?:array{success:bool,msg:string,http:int}}
+ */
+if ( ! function_exists( 'qmo_siparis_idempotent_durum' ) ) {
+	function qmo_siparis_idempotent_durum( $idempotency_key, $masa, $body_hash ) {
+		$order_id = qmo_idempotency_order_id( $idempotency_key );
+		if ( '' === $order_id ) {
+			return array( 'type' => 'invalid' );
+		}
+
+		$tkey = qmo_idempotency_transient_anahtar( $idempotency_key );
+		$rec  = get_transient( $tkey );
+		$masa = sanitize_title( (string) $masa );
+
+		if ( is_array( $rec ) ) {
+			if ( ! empty( $rec['masa'] ) && (string) $rec['masa'] !== $masa ) {
+				return array(
+					'type'     => 'masa_mismatch',
+					'order_id' => $order_id,
+				);
+			}
+			if ( ! empty( $rec['body_hash'] ) && (string) $rec['body_hash'] !== (string) $body_hash ) {
+				return array(
+					'type'     => 'body_mismatch',
+					'order_id' => $order_id,
+				);
+			}
+		} else {
+			set_transient(
+				$tkey,
+				array(
+					'masa'      => $masa,
+					'body_hash' => (string) $body_hash,
+				),
+				qmo_idempotency_ttl()
+			);
+			return array(
+				'type'     => 'new',
+				'order_id' => $order_id,
+			);
+		}
+
+		if ( class_exists( 'QMO_Firestore' ) && QMO_Firestore::hazir_mi() ) {
+			$oku = QMO_Firestore::call_oku( $order_id, 5 );
+			if ( ! is_wp_error( $oku ) ) {
+				$analitik_tamam = class_exists( 'QRMS_Analitik' ) && QRMS_Analitik::siparis_olayi_kayitli_mi( $order_id );
+				if ( $analitik_tamam ) {
+					return array(
+						'type'     => 'replay',
+						'order_id' => $order_id,
+						'response' => array(
+							'success' => true,
+							'msg'     => '',
+							'http'    => 200,
+						),
+					);
+				}
+			}
+		}
+
+		return array(
+			'type'     => 'continue',
+			'order_id' => $order_id,
+		);
+	}
+}
+
+/**
  * Geçerli masa oturumunu döndürür.
  *
  * @return array{masa:string,issued:int,last:int,epoch:int}|false
