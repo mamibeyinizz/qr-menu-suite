@@ -158,6 +158,43 @@ if ( ! function_exists( 'qmo_log' ) ) {
 }
 
 /**
+ * Kritik operasyonel hata — WP_DEBUG kapalı production'da da error_log'a yazılır.
+ *
+ * @param string               $olay    Kısa olay adı.
+ * @param array<string, mixed> $alanlar İsteğe bağlı correlation alanları (PII yok).
+ * @return void
+ */
+if ( ! function_exists( 'qmo_log_critical' ) ) {
+	function qmo_log_critical( $olay, array $alanlar = array() ) {
+		$olay = sanitize_text_field( (string) $olay );
+		if ( '' === $olay ) {
+			$olay = 'critical';
+		}
+
+		$parcalar = array( $olay );
+		foreach ( $alanlar as $anahtar => $deger ) {
+			if ( ! is_scalar( $deger ) ) {
+				continue;
+			}
+			$anahtar = sanitize_key( (string) $anahtar );
+			if ( '' === $anahtar ) {
+				continue;
+			}
+			$metin = sanitize_text_field( (string) $deger );
+			if ( '' === $metin ) {
+				continue;
+			}
+			if ( strlen( $metin ) > 200 ) {
+				$metin = substr( $metin, 0, 200 );
+			}
+			$parcalar[] = $anahtar . '=' . $metin;
+		}
+
+		error_log( '[QR Menu Official][CRITICAL] ' . implode( ' | ', $parcalar ) );
+	}
+}
+
+/**
  * Geçerli masa oturumunu döndürür.
  *
  * @return array{masa:string,issued:int,last:int,epoch:int}|false

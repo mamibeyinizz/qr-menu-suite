@@ -1149,19 +1149,18 @@ class QMO_Chatbot_DB {
 	 * }
 	 */
 	public static function recommendation_attribution_hesapla( $bas, $bit ) {
-		$bos = array(
-			'ozet'     => array(
-				'atfedilen_siparis_tekil' => 0,
-				'atfedilen_kalem'         => 0,
-				'atfedilen_birim'         => 0,
-				'atfedilen_tutar'         => 0.0,
-			),
-			'urunler'  => array(),
-			'satirlar' => array(),
-		);
+		if ( ! class_exists( 'QRMS_Analitik' ) ) {
+			if ( function_exists( 'qmo_log_critical' ) ) {
+				qmo_log_critical( 'Attribution query skipped', array( 'reason' => 'analytics_module_missing' ) );
+			}
+			return self::recommendation_attribution_bos_sonuc( true );
+		}
 
-		if ( ! class_exists( 'QRMS_Analitik' ) || ! QRMS_Analitik::tablo_var_mi() ) {
-			return $bos;
+		if ( ! QRMS_Analitik::tablo_var_mi() ) {
+			if ( function_exists( 'qmo_log_critical' ) ) {
+				qmo_log_critical( 'Attribution query skipped', array( 'reason' => 'analytics_table_missing' ) );
+			}
+			return self::recommendation_attribution_bos_sonuc( true );
 		}
 
 		global $wpdb;
@@ -1297,8 +1296,18 @@ class QMO_Chatbot_DB {
 		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$rows = $wpdb->get_results( $prepared, ARRAY_A );
 
+		if ( null === $rows && '' !== (string) $wpdb->last_error ) {
+			if ( function_exists( 'qmo_log_critical' ) ) {
+				qmo_log_critical(
+					'Attribution query failed',
+					array( 'db' => (string) $wpdb->last_error )
+				);
+			}
+			return self::recommendation_attribution_bos_sonuc( true );
+		}
+
 		if ( ! is_array( $rows ) || empty( $rows ) ) {
-			return $bos;
+			return self::recommendation_attribution_bos_sonuc( false );
 		}
 
 		$satirlar = array();
@@ -1355,7 +1364,7 @@ class QMO_Chatbot_DB {
 			unset( $urunler[ $pid ]['_orders'] );
 		}
 
-		return array(
+		$sonuc = array(
 			'ozet'     => array(
 				'atfedilen_siparis_tekil' => count( $orders ),
 				'atfedilen_kalem'         => $lines,
@@ -1364,6 +1373,29 @@ class QMO_Chatbot_DB {
 			),
 			'urunler'  => $urunler,
 			'satirlar' => $satirlar,
+		);
+		$sonuc['sorgu_hatasi'] = false;
+
+		return $sonuc;
+	}
+
+	/**
+	 * Attribution engine boş sonuç şablonu (veri yok vs sorgu hatası ayrımı).
+	 *
+	 * @param bool $sorgu_hatasi true = operasyonel/sorgu hatası; false = gerçekten veri yok.
+	 * @return array<string, mixed>
+	 */
+	private static function recommendation_attribution_bos_sonuc( $sorgu_hatasi ) {
+		return array(
+			'sorgu_hatasi' => (bool) $sorgu_hatasi,
+			'ozet'         => array(
+				'atfedilen_siparis_tekil' => 0,
+				'atfedilen_kalem'         => 0,
+				'atfedilen_birim'         => 0,
+				'atfedilen_tutar'         => 0.0,
+			),
+			'urunler'      => array(),
+			'satirlar'     => array(),
 		);
 	}
 
@@ -1428,9 +1460,10 @@ class QMO_Chatbot_DB {
 		}
 
 		$sepete_map = self::oneri_rapor_recommendation_sepete( $tam['bas'], $tam['bit'] );
-		$attr       = self::recommendation_attribution_hesapla( $tam['bas'], $tam['bit'] );
-		$attr_urun  = (array) ( $attr['urunler'] ?? array() );
-		$bot_map    = self::oneri_rapor_dogrudan_bot_siparis( $tam['bas'], $tam['bit'] );
+		$attr          = self::recommendation_attribution_hesapla( $tam['bas'], $tam['bit'] );
+		$sorgu_hatasi  = ! empty( $attr['sorgu_hatasi'] );
+		$attr_urun     = (array) ( $attr['urunler'] ?? array() );
+		$bot_map       = self::oneri_rapor_dogrudan_bot_siparis( $tam['bas'], $tam['bit'] );
 
 		$urun_ids = array_unique(
 			array_merge(
@@ -1451,8 +1484,9 @@ class QMO_Chatbot_DB {
 
 		if ( empty( $urun_ids ) ) {
 			return array(
-				'urunler' => array(),
-				'ozet'    => $ozet,
+				'urunler'       => array(),
+				'ozet'          => $ozet,
+				'sorgu_hatasi'  => $sorgu_hatasi,
 			);
 		}
 
@@ -1483,8 +1517,9 @@ class QMO_Chatbot_DB {
 		}
 
 		return array(
-			'urunler' => $rapor,
-			'ozet'    => $ozet,
+			'urunler'      => $rapor,
+			'ozet'         => $ozet,
+			'sorgu_hatasi' => $sorgu_hatasi,
 		);
 	}
 

@@ -560,7 +560,7 @@ if ( ! function_exists( 'qmo_siparis_isle' ) ) {
 			$doc_name = $res['name'];
 		}
 
-		$analitik_tamam = qmo_analitik_siparis_yaz(
+		qmo_analitik_siparis_yaz(
 			$olay_tip,
 			$masa,
 			$temiz,
@@ -572,17 +572,20 @@ if ( ! function_exists( 'qmo_siparis_isle' ) ) {
 		);
 
 		if ( $fs_hata ) {
-			qmo_log( 'Sipariş yazılamadı: ' . $res->get_error_message() );
+			qmo_log_critical(
+				'Firestore order write failed',
+				array(
+					'order_id'   => $order_id,
+					'session_id' => $session_id,
+					'masa'       => $masa,
+					'code'       => is_wp_error( $res ) ? $res->get_error_code() : '',
+					'error'      => is_wp_error( $res ) ? $res->get_error_message() : '',
+				)
+			);
 			return array(
 				'success' => false,
 				'msg'     => qmo_ceviri_chat( __( 'Sipariş iletilemedi, lütfen garsona bildirin.', 'qrms' ) ),
 				'http'    => 500,
-			);
-		}
-
-		if ( ! $analitik_tamam ) {
-			qmo_log(
-				'Sipariş Firestore\'da oluşturuldu ancak sipariş analitiği yazılamadı (order_id=' . $order_id . ').'
 			);
 		}
 
@@ -645,7 +648,8 @@ if ( ! function_exists( 'qmo_analitik_siparis_yaz' ) ) {
 		$session_id = isset( $meta['session_id'] ) ? (string) $meta['session_id'] : '';
 		$reason     = isset( $meta['reason'] ) ? (string) $meta['reason'] : '';
 
-		$tamam = true;
+		$tamam      = true;
+		$failed_ids = array();
 
 		foreach ( (array) $temiz as $it ) {
 			if ( ! is_array( $it ) ) {
@@ -694,7 +698,27 @@ if ( ! function_exists( 'qmo_analitik_siparis_yaz' ) ) {
 
 			if ( ! qmo_analitik_yaz( $kayit ) ) {
 				$tamam = false;
+				$log_item_id = (int) ( $kayit['item_id'] ?? 0 );
+				if ( $log_item_id > 0 ) {
+					$failed_ids[ $log_item_id ] = true;
+				}
 			}
+		}
+
+		if ( ! $tamam && function_exists( 'qmo_log_critical' ) ) {
+			$log_ctx = array(
+				'event_type' => $tip,
+				'order_id'   => $order_id,
+				'session_id' => $session_id,
+				'masa'       => $masa,
+			);
+			if ( ! empty( $failed_ids ) ) {
+				$log_ctx['failed_item_ids'] = implode( ',', array_keys( $failed_ids ) );
+			}
+			qmo_log_critical(
+				empty( $failed_ids ) ? 'Order analytics write failure' : 'Order analytics partial failure',
+				$log_ctx
+			);
 		}
 
 		return $tamam;

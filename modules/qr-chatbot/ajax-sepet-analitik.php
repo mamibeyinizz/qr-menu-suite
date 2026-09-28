@@ -70,7 +70,8 @@ if ( ! function_exists( 'qmo_ajax_sepet_olay' ) ) {
 			wp_send_json_success();
 		}
 
-		$izinli = array( 'cart_add', 'cart_remove' );
+		$izinli      = array( 'cart_add', 'cart_remove' );
+		$fail_sayisi = 0;
 
 		foreach ( $olaylar as $o ) {
 			if ( ! is_array( $o ) ) {
@@ -103,7 +104,20 @@ if ( ! function_exists( 'qmo_ajax_sepet_olay' ) ) {
 				$kayit['session_id'] = $session_id;
 			}
 
-			qmo_analitik_yaz( $kayit );
+			if ( ! qmo_analitik_yaz( $kayit ) ) {
+				++$fail_sayisi;
+			}
+		}
+
+		if ( $fail_sayisi > 0 && function_exists( 'qmo_log_critical' ) ) {
+			qmo_log_critical(
+				'Cart analytics batch write failures',
+				array(
+					'failed_count' => $fail_sayisi,
+					'session_id'   => $session_id,
+					'masa'         => $masa,
+				)
+			);
 		}
 
 		wp_send_json_success();
