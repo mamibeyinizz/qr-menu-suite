@@ -583,4 +583,234 @@ if ( qrms_mariadb_available() ) {
 			$mysqli->close();
 		}
 	);
+
+	echo "\nPhase 6.5-B — MariaDB runtime hardening (post-merge)\n";
+
+	qrms_test(
+		'6.5-B MariaDB legacy uq_order_event_item → uq_order_event_line migration',
+		function () {
+			$mysqli = qrms_mariadb_connect();
+			if ( ! $mysqli ) {
+				qrms_assert_true( false, 'mysqli' );
+				return;
+			}
+			qrms_mariadb_apply_schema( $mysqli );
+			qrms_mariadb_reset_data( $mysqli );
+			qrms_mariadb_analytics_legacy_unique_state( $mysqli );
+
+			qrms_assert_true(
+				qrms_mariadb_index_exists( $mysqli, 'wp_rma_analytics', QRMS_Analitik::UQ_ORDER_EVENT_ITEM ),
+				'legacy indeks kuruldu'
+			);
+			qrms_assert_false(
+				qrms_mariadb_index_exists( $mysqli, 'wp_rma_analytics', QRMS_Analitik::UQ_ORDER_EVENT_LINE ),
+				'line UNIQUE henüz yok'
+			);
+
+			$wpdb = new QRMS_MariaDB_Wpdb( $mysqli );
+			qrms_mariadb_bind_wpdb( $wpdb );
+
+			$lk = qmo_siparis_line_keys_from_items(
+				array( array( 'urunAdi' => 'Migr', 'adet' => 1, 'notOrijinal' => '', 'notTr' => '' ) )
+			)[0]['line_key'];
+			$oid = '65b00000-0000-4000-8000-000000000010';
+			$row = array(
+				'event_type'    => 'order_sent',
+				'order_id'      => $oid,
+				'line_key'      => $lk,
+				'item_id'       => 501,
+				'item_name'     => 'Migr',
+				'qty'           => 1,
+				'price'         => 5,
+				'masa_no'       => 'm-mig',
+				'ip_hash'       => 'mig',
+				'created_at'    => '2026-09-28 14:00:00',
+			);
+			qrms_assert_true( QRMS_Analitik::kaydet( $row ), 'legacy indeks altında insert' );
+
+			$failed_lk = qmo_siparis_line_keys_from_items(
+				array( array( 'urunAdi' => 'Fail', 'adet' => 2, 'notOrijinal' => 'n', 'notTr' => 'n' ) )
+			)[0]['line_key'];
+			$failed = array_merge(
+				$row,
+				array(
+					'event_type' => 'order_failed',
+					'line_key'   => $failed_lk,
+					'item_id'    => 502,
+					'item_name'  => 'Fail',
+					'reason'     => 'unconfirmed',
+				)
+			);
+			qrms_assert_true( QRMS_Analitik::kaydet( $failed ), 'failed satır legacy altında' );
+
+			$before_cnt = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM wp_rma_analytics' );
+			$before_ids = array_map(
+				static function ( $row ) {
+					return (int) $row['id'];
+				},
+				$wpdb->get_results( 'SELECT id FROM wp_rma_analytics ORDER BY id ASC', ARRAY_A )
+			);
+			qrms_assert_same( 2, $before_cnt, 'migration öncesi iki satır' );
+
+			QRMS_Analitik::sema_kontrol();
+
+			qrms_assert_false(
+				qrms_mariadb_index_exists( $mysqli, 'wp_rma_analytics', QRMS_Analitik::UQ_ORDER_EVENT_ITEM ),
+				'legacy indeks kaldırıldı'
+			);
+			qrms_assert_true(
+				qrms_mariadb_index_exists( $mysqli, 'wp_rma_analytics', QRMS_Analitik::UQ_ORDER_EVENT_LINE ),
+				'line UNIQUE eklendi'
+			);
+			qrms_assert_same(
+				array( 'order_id', 'event_type', 'line_key' ),
+				qrms_mariadb_index_columns( $mysqli, 'wp_rma_analytics', QRMS_Analitik::UQ_ORDER_EVENT_LINE ),
+				'line UNIQUE sütunları'
+			);
+
+			$after_cnt = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM wp_rma_analytics' );
+			$after_ids = array_map(
+				static function ( $row ) {
+					return (int) $row['id'];
+				},
+				$wpdb->get_results( 'SELECT id FROM wp_rma_analytics ORDER BY id ASC', ARRAY_A )
+			);
+			qrms_assert_same( $before_cnt, $after_cnt, 'satırlar silinmedi' );
+			qrms_assert_same( $before_ids, $after_ids, 'satır kimlikleri korundu' );
+
+			QRMS_Analitik::sema_kontrol();
+			qrms_assert_true(
+				qrms_mariadb_index_exists( $mysqli, 'wp_rma_analytics', QRMS_Analitik::UQ_ORDER_EVENT_LINE ),
+				'ikinci sema_kontrol idempotent'
+			);
+			qrms_assert_false(
+				qrms_mariadb_index_exists( $mysqli, 'wp_rma_analytics', QRMS_Analitik::UQ_ORDER_EVENT_ITEM ),
+				'legacy geri gelmedi'
+			);
+
+			$mysqli->close();
+		}
+	);
+
+	qrms_test(
+		'6.5-B MariaDB aynı line_key farklı order_id birlikte yaşar',
+		function () {
+			$mysqli = qrms_mariadb_connect();
+			if ( ! $mysqli ) {
+				qrms_assert_true( false, 'mysqli' );
+				return;
+			}
+			qrms_mariadb_apply_schema( $mysqli );
+			qrms_mariadb_reset_data( $mysqli );
+			$wpdb = new QRMS_MariaDB_Wpdb( $mysqli );
+			qrms_mariadb_bind_wpdb( $wpdb );
+
+			$lk   = qmo_siparis_line_keys_from_items(
+				array( array( 'urunAdi' => 'Shared', 'adet' => 1, 'notOrijinal' => '', 'notTr' => '' ) )
+			)[0]['line_key'];
+			$oid1 = '65b00000-0000-4000-8000-000000000011';
+			$oid2 = '65b00000-0000-4000-8000-000000000012';
+			$base = array(
+				'event_type' => 'order_sent',
+				'line_key'   => $lk,
+				'item_id'    => 77,
+				'item_name'  => 'Shared',
+				'qty'        => 1,
+				'price'      => 1,
+				'masa_no'    => 'm',
+				'ip_hash'    => 'x',
+				'created_at' => '2026-09-28 15:00:00',
+			);
+
+			foreach ( array( $oid1 => 'bir', $oid2 => 'iki' ) as $oid => $label ) {
+				$satir = array_merge( $base, array( 'order_id' => $oid ) );
+				qrms_assert_true( QRMS_Analitik::kaydet( $satir ), 'insert ' . $label );
+			}
+
+			$lk_cnt = (int) $wpdb->get_var(
+				$wpdb->prepare(
+					"SELECT COUNT(*) FROM wp_rma_analytics WHERE line_key = %s AND event_type = 'order_sent'",
+					$lk
+				)
+			);
+			qrms_assert_same( 2, $lk_cnt, 'aynı line_key iki order_id' );
+
+			$name1 = $wpdb->get_var(
+				$wpdb->prepare(
+					"SELECT item_name FROM wp_rma_analytics WHERE order_id = %s AND line_key = %s LIMIT 1",
+					$oid1,
+					$lk
+				)
+			);
+			$name2 = $wpdb->get_var(
+				$wpdb->prepare(
+					"SELECT item_name FROM wp_rma_analytics WHERE order_id = %s AND line_key = %s LIMIT 1",
+					$oid2,
+					$lk
+				)
+			);
+			qrms_assert_same( 'Shared', (string) $name1, 'oid1 kendi satırı' );
+			qrms_assert_same( 'Shared', (string) $name2, 'oid2 kendi satırı' );
+
+			$dup = array_merge( $base, array( 'order_id' => $oid1 ) );
+			qrms_assert_true( QRMS_Analitik::kaydet( $dup ), 'oid1 duplicate idempotent' );
+			$oid1_cnt = (int) $wpdb->get_var(
+				$wpdb->prepare(
+					"SELECT COUNT(*) FROM wp_rma_analytics WHERE order_id = %s AND line_key = %s",
+					$oid1,
+					$lk
+				)
+			);
+			qrms_assert_same( 1, $oid1_cnt, 'oid1 hâlâ tek satır' );
+
+			$mysqli->close();
+		}
+	);
+
+	qrms_test(
+		'6.5-B MariaDB order_failed retry idempotent',
+		function () {
+			$mysqli = qrms_mariadb_connect();
+			if ( ! $mysqli ) {
+				qrms_assert_true( false, 'mysqli' );
+				return;
+			}
+			qrms_mariadb_apply_schema( $mysqli );
+			qrms_mariadb_reset_data( $mysqli );
+			$wpdb = new QRMS_MariaDB_Wpdb( $mysqli );
+			qrms_mariadb_bind_wpdb( $wpdb );
+
+			$oid = '65b00000-0000-4000-8000-000000000013';
+			$lk  = qmo_siparis_line_keys_from_items(
+				array( array( 'urunAdi' => 'Retry', 'adet' => 1, 'notOrijinal' => '', 'notTr' => '' ) )
+			)[0]['line_key'];
+			$failed = array(
+				'event_type' => 'order_failed',
+				'order_id'   => $oid,
+				'line_key'   => $lk,
+				'item_id'    => 88,
+				'item_name'  => 'Retry',
+				'qty'        => 1,
+				'price'      => 0,
+				'masa_no'    => 'm',
+				'ip_hash'    => 'r',
+				'reason'     => 'unconfirmed',
+				'created_at' => '2026-09-28 16:00:00',
+			);
+
+			qrms_assert_true( QRMS_Analitik::kaydet( $failed ), 'ilk order_failed' );
+			qrms_assert_true( QRMS_Analitik::kaydet( $failed ), 'retry idempotent true' );
+
+			$cnt = (int) $wpdb->get_var(
+				$wpdb->prepare(
+					"SELECT COUNT(*) FROM wp_rma_analytics WHERE order_id = %s AND event_type = 'order_failed'",
+					$oid
+				)
+			);
+			qrms_assert_same( 1, $cnt, 'tek failed satır' );
+			qrms_assert_true( QRMS_Analitik::siparis_olayi_var_mi( $oid, 'order_failed' ), 'olay kayıtlı' );
+
+			$mysqli->close();
+		}
+	);
 }

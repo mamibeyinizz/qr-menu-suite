@@ -234,3 +234,93 @@ function qrms_mariadb_show_create( mysqli $mysqli, $table ) {
 	$res->free();
 	return isset( $row['Create Table'] ) ? (string) $row['Create Table'] : '';
 }
+
+/**
+ * information_schema üzerinden indeks var mı?
+ *
+ * @param mysqli $mysqli     Bağlantı.
+ * @param string $table      Tablo adı (prefix dahil).
+ * @param string $index_name Indeks adı.
+ * @return bool
+ */
+function qrms_mariadb_index_exists( mysqli $mysqli, $table, $index_name ) {
+	$table      = preg_replace( '/[^a-z0-9_]/i', '', (string) $table );
+	$index_name = preg_replace( '/[^a-z0-9_]/i', '', (string) $index_name );
+	if ( '' === $table || '' === $index_name ) {
+		return false;
+	}
+	$sql = "SELECT 1 FROM information_schema.STATISTICS
+		WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND INDEX_NAME = ? LIMIT 1";
+	$stmt = $mysqli->prepare( $sql );
+	if ( ! $stmt ) {
+		return false;
+	}
+	$stmt->bind_param( 'ss', $table, $index_name );
+	$stmt->execute();
+	$res = $stmt->get_result();
+	$ok  = $res && null !== $res->fetch_row();
+	if ( $res ) {
+		$res->free();
+	}
+	$stmt->close();
+	return $ok;
+}
+
+/**
+ * Indeks sütunlarını SEQ_IN_INDEX sırasıyla döndürür.
+ *
+ * @param mysqli $mysqli     Bağlantı.
+ * @param string $table      Tablo.
+ * @param string $index_name Indeks.
+ * @return array<int, string>
+ */
+function qrms_mariadb_index_columns( mysqli $mysqli, $table, $index_name ) {
+	$table      = preg_replace( '/[^a-z0-9_]/i', '', (string) $table );
+	$index_name = preg_replace( '/[^a-z0-9_]/i', '', (string) $index_name );
+	$cols       = array();
+	if ( '' === $table || '' === $index_name ) {
+		return $cols;
+	}
+	$sql = "SELECT COLUMN_NAME FROM information_schema.STATISTICS
+		WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND INDEX_NAME = ?
+		ORDER BY SEQ_IN_INDEX ASC";
+	$stmt = $mysqli->prepare( $sql );
+	if ( ! $stmt ) {
+		return $cols;
+	}
+	$stmt->bind_param( 'ss', $table, $index_name );
+	$stmt->execute();
+	$res = $stmt->get_result();
+	if ( $res ) {
+		while ( $row = $res->fetch_assoc() ) {
+			$cols[] = (string) $row['COLUMN_NAME'];
+		}
+		$res->free();
+	}
+	$stmt->close();
+	return $cols;
+}
+
+/**
+ * Production öncesi durum: uq_order_event_item (order_id, event_type, item_id).
+ * Mevcut uq_order_event_line kaldırılır (varsa).
+ *
+ * @param mysqli $mysqli Bağlantı.
+ * @return void
+ * @throws Exception ALTER hatası.
+ */
+function qrms_mariadb_analytics_legacy_unique_state( mysqli $mysqli ) {
+	$table = 'wp_rma_analytics';
+	if ( qrms_mariadb_index_exists( $mysqli, $table, QRMS_Analitik::UQ_ORDER_EVENT_LINE ) ) {
+		if ( ! $mysqli->query( 'ALTER TABLE `' . $table . '` DROP INDEX `' . QRMS_Analitik::UQ_ORDER_EVENT_LINE . '`' ) ) {
+			throw new Exception( 'legacy sim: drop line index: ' . $mysqli->error );
+		}
+	}
+	if ( ! qrms_mariadb_index_exists( $mysqli, $table, QRMS_Analitik::UQ_ORDER_EVENT_ITEM ) ) {
+		if ( ! $mysqli->query(
+			'ALTER TABLE `' . $table . '` ADD UNIQUE KEY `' . QRMS_Analitik::UQ_ORDER_EVENT_ITEM . '` (order_id, event_type, item_id)'
+		) ) {
+			throw new Exception( 'legacy sim: add item index: ' . $mysqli->error );
+		}
+	}
+}
