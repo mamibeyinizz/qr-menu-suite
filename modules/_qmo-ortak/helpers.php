@@ -687,21 +687,21 @@ if ( ! function_exists( 'qmo_oturum_uyari_kutusu' ) ) {
  * Bir analitik olayını sessizce kaydeder.
  *
  * Yazım QRMS_Analitik::kaydet() üzerinden gider; yeni INSERT yolu açılmaz.
- * Başarısızlık yutulur — çağıranın akışı kesilmesin.
+ * Başarısızlık çoğu çağrıda yutulur — sipariş/sepet akışı kesilmesin.
  *
  * @param array $satir event_type ve isteğe bağlı item_id / item_name / category_name / price / unit_price / masa_no / order_id / session_id / reason.
- * @return void
+ * @return bool
  */
 if ( ! function_exists( 'qmo_analitik_yaz' ) ) {
 	function qmo_analitik_yaz( array $satir ) {
 		if ( ! class_exists( 'QRMS_Analitik' ) ) {
-			return;
+			return false;
 		}
 
 		try {
-			QRMS_Analitik::kaydet( $satir );
+			return (bool) QRMS_Analitik::kaydet( $satir );
 		} catch ( Exception $e ) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch
-			return;
+			return false;
 		}
 	}
 }
