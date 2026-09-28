@@ -435,7 +435,22 @@ qrms_test(
 		qrms_assert_contains( 'line_key varchar', $sema, 'line_key sütunu' );
 		qrms_assert_contains( 'UNIQUE KEY uq_order_event_line (order_id,event_type,line_key)', $sema, 'repo UNIQUE' );
 		qrms_assert_contains( 'UNIQUE KEY uq_order_event_line (order_id, event_type, line_key)', $sql, 'test schema UNIQUE' );
-		qrms_assert_contains( 'DROP INDEX ' . 'uq_order_event_item', $sema, 'eski UNIQUE kaldırma' );
+		qrms_assert_same(
+			'uq_order_event_item',
+			( new ReflectionClassConstant( 'QRMS_Analitik', 'UQ_ORDER_EVENT_ITEM' ) )->getValue(),
+			'eski UNIQUE adı'
+		);
+		$migr  = new ReflectionMethod( 'QRMS_Analitik', 'unique_indeks_dene' );
+		$govde = implode(
+			'',
+			array_slice(
+				file( $migr->getFileName() ),
+				$migr->getStartLine() - 1,
+				$migr->getEndLine() - $migr->getStartLine() + 1
+			)
+		);
+		qrms_assert_contains( 'indeks_var_mi( self::UQ_ORDER_EVENT_ITEM )', $govde, 'eski UNIQUE varlık kontrolü' );
+		qrms_assert_contains( "' DROP INDEX ' . self::UQ_ORDER_EVENT_ITEM", $govde, 'eski UNIQUE kaldırma' );
 		qrms_assert_contains( 'siparis_analitik_yinelenen_var_mi', $sema, 'duplicate tespit' );
 		qrms_assert_contains( 'firestore_items', $rest, 'FS-first analytics' );
 		qrms_assert_contains( 'qmo_siparis_line_keys_from_items', file_get_contents( QRMS_PLUGIN_DIR . 'modules/_qmo-ortak/helpers.php' ), 'line keys helper' );
@@ -470,7 +485,7 @@ if ( qrms_mariadb_available() ) {
 			$wpdb = new QRMS_MariaDB_Wpdb( $mysqli );
 			qrms_mariadb_bind_wpdb( $wpdb );
 
-			$oid = 'ord-65b-mdb-1111-2222-3333-444444444444';
+			$oid = '65b00000-0000-4000-8000-000000000001';
 			$lk  = qmo_siparis_line_keys_from_items(
 				array( array( 'urunAdi' => 'MDB', 'adet' => 1, 'notOrijinal' => '', 'notTr' => '' ) )
 			)[0]['line_key'];
@@ -532,7 +547,7 @@ if ( qrms_mariadb_available() ) {
 			$wpdb = new QRMS_MariaDB_Wpdb( $mysqli );
 			qrms_mariadb_bind_wpdb( $wpdb );
 
-			$oid  = 'ord-65b-mdb-2222-3333-4444-555555555555';
+			$oid  = '65b00000-0000-4000-8000-000000000002';
 			$keys = qmo_siparis_line_keys_from_items(
 				array(
 					array( 'urunAdi' => 'Küçük', 'adet' => 1, 'notOrijinal' => 'x', 'notTr' => '' ),
