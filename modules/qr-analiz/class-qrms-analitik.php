@@ -1161,11 +1161,11 @@ class QRMS_Analitik {
 	 * aktifken yüklendiği için çağıran `class_exists( 'QRMS_Analitik' )`
 	 * ile bakar — yoksa sessizce hiç gelinmez.
 	 *
-	 * Insert başarısız olursa yutulur: analitik, sipariş/sepet akışını
-	 * kesmesin ve kullanıcıya hata basılmasın.
+	 * Insert başarısız olursa false döner; çağıran sipariş/sepet akışını
+	 * kesmemek için hatayı yutabilir.
 	 *
 	 * @param array $satir Sütun => değer.
-	 * @return void
+	 * @return bool
 	 */
 	public static function kaydet( array $satir ) {
 		global $wpdb;
@@ -1267,13 +1267,15 @@ class QRMS_Analitik {
 			}
 
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-			$wpdb->insert(
+			$sonuc = $wpdb->insert(
 				self::tablo(),
 				$satir,
 				$formats
 			);
+
+			return false !== $sonuc;
 		} catch ( Exception $e ) {
-			return;
+			return false;
 		}
 	}
 

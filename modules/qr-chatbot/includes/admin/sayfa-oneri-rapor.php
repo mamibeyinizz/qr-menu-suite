@@ -27,10 +27,10 @@ function qmo_chatbot_sayfa_oneri_rapor() {
 	$baslangic = isset( $_GET['baslangic'] ) ? sanitize_text_field( wp_unslash( $_GET['baslangic'] ) ) : '';
 
 	if ( '' === $bitis ) {
-		$bitis = gmdate( 'Y-m-d' );
+		$bitis = current_time( 'Y-m-d' );
 	}
 	if ( '' === $baslangic ) {
-		$baslangic = gmdate( 'Y-m-d', strtotime( '-30 days' ) );
+		$baslangic = wp_date( 'Y-m-d', strtotime( '-30 days', current_time( 'timestamp' ) ) );
 	}
 
 	$rapor_ham     = QMO_Chatbot_DB::oneri_rapor( $baslangic, $bitis );

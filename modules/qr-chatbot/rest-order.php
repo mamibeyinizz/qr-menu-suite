@@ -560,7 +560,7 @@ if ( ! function_exists( 'qmo_siparis_isle' ) ) {
 			$doc_name = $res['name'];
 		}
 
-		qmo_analitik_siparis_yaz(
+		$analitik_tamam = qmo_analitik_siparis_yaz(
 			$olay_tip,
 			$masa,
 			$temiz,
@@ -577,6 +577,12 @@ if ( ! function_exists( 'qmo_siparis_isle' ) ) {
 				'success' => false,
 				'msg'     => qmo_ceviri_chat( __( 'Sipariş iletilemedi, lütfen garsona bildirin.', 'qrms' ) ),
 				'http'    => 500,
+			);
+		}
+
+		if ( ! $analitik_tamam ) {
+			qmo_log(
+				'Sipariş Firestore\'da oluşturuldu ancak sipariş analitiği yazılamadı (order_id=' . $order_id . ').'
 			);
 		}
 
@@ -620,24 +626,26 @@ if ( ! function_exists( 'qmo_siparis_isle' ) ) {
  * @param string $masa  Masa slug'ı.
  * @param array  $temiz Temizlenmiş kalemler.
  * @param array  $meta  order_id, session_id, reason (isteğe bağlı).
- * @return void
+ * @return bool Tüm kalemler yazıldıysa true.
  */
 if ( ! function_exists( 'qmo_analitik_siparis_yaz' ) ) {
 	function qmo_analitik_siparis_yaz( $tip, $masa, $temiz, $meta = array() ) {
 		if ( ! class_exists( 'QRMS_Analitik' ) ) {
-			return;
+			return false;
 		}
 
 		$tip = sanitize_key( (string) $tip );
 
 		if ( ! in_array( $tip, array( 'order_sent', 'order_failed' ), true ) ) {
-			return;
+			return false;
 		}
 
 		$meta = is_array( $meta ) ? $meta : array();
 		$order_id   = isset( $meta['order_id'] ) ? (string) $meta['order_id'] : '';
 		$session_id = isset( $meta['session_id'] ) ? (string) $meta['session_id'] : '';
 		$reason     = isset( $meta['reason'] ) ? (string) $meta['reason'] : '';
+
+		$tamam = true;
 
 		foreach ( (array) $temiz as $it ) {
 			if ( ! is_array( $it ) ) {
@@ -684,8 +692,12 @@ if ( ! function_exists( 'qmo_analitik_siparis_yaz' ) ) {
 				$kayit['unit_price'] = $unit_price;
 			}
 
-			qmo_analitik_yaz( $kayit );
+			if ( ! qmo_analitik_yaz( $kayit ) ) {
+				$tamam = false;
+			}
 		}
+
+		return $tamam;
 	}
 }
 

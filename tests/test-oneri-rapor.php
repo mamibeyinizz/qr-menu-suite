@@ -1058,6 +1058,19 @@ qrms_test(
 );
 
 qrms_test(
+	'Phase 6.3-A. öneri raporu varsayılan tarihler site timezone (gmdate yok)',
+	function () {
+		$php = (string) file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/includes/admin/sayfa-oneri-rapor.php' );
+		qrms_assert_contains( "current_time( 'Y-m-d' )", $php, 'varsayılan bitiş WP yerel gün' );
+		qrms_assert_contains( "wp_date( 'Y-m-d', strtotime( '-30 days', current_time( 'timestamp' ) ) )", $php, 'varsayılan başlangıç son 30 gün' );
+		qrms_assert_false(
+			(bool) preg_match( "/if\s*\(\s*''\s*===\s*\$bitis\s*\)[^{]*gmdate\s*\(\s*'Y-m-d'/", $php ),
+			'varsayılan bitiş UTC gmdate kullanmaz'
+		);
+	}
+);
+
+qrms_test(
 	'RK-H. admin rapor UI — Tahmini ciro yok, liste fiyatı tutarı var',
 	function () {
 		$php = (string) file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/includes/admin/sayfa-oneri-rapor.php' );

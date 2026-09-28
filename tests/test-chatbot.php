@@ -1299,6 +1299,27 @@ qrms_test(
 	}
 );
 
+qrms_test(
+	'Phase 6.3-B. Firestore başarılı + analitik yazım hatası loglanır, HTTP success korunur',
+	function () {
+		$rest = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/rest-order.php' );
+		qrms_assert_contains( '$analitik_tamam = qmo_analitik_siparis_yaz', $rest, 'analitik sonucu yakalanır' );
+		qrms_assert_contains( 'sipariş analitiği yazılamadı', $rest, 'gözlemlenebilir log mesajı' );
+		qrms_assert_contains( 'function qmo_analitik_siparis_yaz', $rest, 'sipariş analitik yazıcı' );
+		qrms_assert_contains( 'return $tamam', $rest, 'kalem yazımı bool döner' );
+
+		$analitik = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/class-qrms-analitik.php' );
+		qrms_assert_contains( 'public static function kaydet( array $satir )', $analitik, 'kaydet' );
+		qrms_assert_contains( 'return false !== $sonuc', $analitik, 'insert sonucu bool' );
+
+		$fs_hata_pos = strpos( $rest, 'if ( $fs_hata )' );
+		$log_pos     = strpos( $rest, 'sipariş analitiği yazılamadı' );
+		$success_pos = strpos( $rest, "'success' => true" );
+		qrms_assert_true( false !== $fs_hata_pos && false !== $log_pos && false !== $success_pos, 'akış parçaları' );
+		qrms_assert_true( $log_pos > $fs_hata_pos && $success_pos > $log_pos, 'analitik log FS hata dönüşünden sonra, success korunur' );
+	}
+);
+
 require_once QRMS_PLUGIN_DIR . 'modules/_qmo-ortak/helpers.php';
 
 qrms_test(
