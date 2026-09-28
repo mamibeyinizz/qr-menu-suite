@@ -47,7 +47,8 @@ function qrms_module_qr_chatbot_init() {
 
 	QRMS_Shortcodes::register(
 		'qr-chatbot',
-		array(
+		function () {
+			return array(
 			array(
 				'tag'   => 'gemini_chatbot',
 				'title' => __( 'AI Asistan', 'qrms' ),
@@ -84,7 +85,8 @@ function qrms_module_qr_chatbot_init() {
 				'desc'  => __( 'Ürün detayından sepete ekleme, alt sepet çubuğu ve siparişi mutfağa gönderme.', 'qrms' ),
 				'note'  => __( 'Yalnızca müşteri masadaki QR kodu okuttuysa görünür; yöneticiler test için her zaman görür. Oturum yoksa hiçbir şey basılmaz. Menünün altına otomatik eklemek için Restoran Menü → Diğer Ayarlar içindeki "Sepet ile Sipariş" anahtarını açın; bu kısa kod ayrıca herhangi bir sayfaya elle de yazılabilir.', 'qrms' ),
 			),
-		)
+			);
+		}
 	);
 
 	if ( is_admin() ) {

@@ -422,6 +422,7 @@ qrms_test(
 	function () {
 		update_option( 'qrms_active_modules', array( 'header-footer-builder' ) );
 		qrms_hfb()->register_hooks();
+		do_action( 'init' );
 
 		$gruplar = QRMS_Shortcodes::all();
 		qrms_assert_true( isset( $gruplar['header-footer-builder'] ), 'modül kayıtlı' );

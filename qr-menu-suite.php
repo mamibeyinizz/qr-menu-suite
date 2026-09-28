@@ -72,7 +72,7 @@ qrms_bootstrap();
 function qrms_load_textdomain() {
 	load_plugin_textdomain( 'qrms', false, dirname( plugin_basename( QRMS_PLUGIN_FILE ) ) . '/languages' );
 }
-add_action( 'init', 'qrms_load_textdomain' );
+add_action( 'init', 'qrms_load_textdomain', 0 );
 
 /**
  * Aktivasyon: günlük lisans cron'unu kur, kurulum yapılmamışsa sihirbaza

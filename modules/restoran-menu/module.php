@@ -48,7 +48,8 @@ function qrms_module_restoran_menu_init() {
 	// yalnızca bu tek kayıttan beslenir.
 	QRMS_Shortcodes::register(
 		'restoran-menu',
-		array(
+		function () {
+			return array(
 			array(
 				'tag'   => 'restaurant_menu',
 				'title' => __( 'Restoran Menüsü', 'qrms' ),
@@ -97,7 +98,8 @@ function qrms_module_restoran_menu_init() {
 					),
 				),
 			),
-		)
+			);
+		}
 	);
 
 	if ( is_admin() ) {

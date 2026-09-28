@@ -26,18 +26,20 @@ function qrms_module_qr_ceviri_init() {
 
 	QRMS_Shortcodes::register(
 		'qr-ceviri',
-		array(
-			array(
-				'tag'   => 'qrmenu_flags_only',
-				'title' => __( 'Dil Seçici (yalnızca bayrak)', 'qrms' ),
-				'desc'  => __( 'Menü dilini değiştiren kare bayrak butonu. Dar alanlar için.', 'qrms' ),
-			),
-			array(
-				'tag'   => 'qrmenu_flags_text',
-				'title' => __( 'Dil Seçici (bayrak + dil adı)', 'qrms' ),
-				'desc'  => __( 'Menü dilini değiştiren, bayrağın yanında dil adını da yazan seçici.', 'qrms' ),
-			),
-		)
+		function () {
+			return array(
+				array(
+					'tag'   => 'qrmenu_flags_only',
+					'title' => __( 'Dil Seçici (yalnızca bayrak)', 'qrms' ),
+					'desc'  => __( 'Menü dilini değiştiren kare bayrak butonu. Dar alanlar için.', 'qrms' ),
+				),
+				array(
+					'tag'   => 'qrmenu_flags_text',
+					'title' => __( 'Dil Seçici (bayrak + dil adı)', 'qrms' ),
+					'desc'  => __( 'Menü dilini değiştiren, bayrağın yanında dil adını da yazan seçici.', 'qrms' ),
+				),
+			);
+		}
 	);
 
 	if ( is_admin() ) {
