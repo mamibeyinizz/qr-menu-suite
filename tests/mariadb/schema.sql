@@ -32,6 +32,7 @@ CREATE TABLE wp_rma_analytics (
 	unit_price decimal(10,2) DEFAULT NULL,
 	masa_no varchar(64) NOT NULL DEFAULT '',
 	order_id varchar(36) DEFAULT NULL,
+	line_key varchar(72) DEFAULT NULL,
 	session_id varchar(64) DEFAULT NULL,
 	reason varchar(32) DEFAULT NULL,
 	ip_hash varchar(32) NOT NULL DEFAULT '',
@@ -44,7 +45,8 @@ CREATE TABLE wp_rma_analytics (
 	KEY idx_masa (masa_no),
 	KEY idx_masa_td (masa_no,event_type,created_at),
 	KEY idx_order_id (order_id),
-	KEY idx_session_id (session_id)
+	KEY idx_session_id (session_id),
+	UNIQUE KEY uq_order_event_line (order_id, event_type, line_key)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE wp_qmo_chatbot_recommendation_events (

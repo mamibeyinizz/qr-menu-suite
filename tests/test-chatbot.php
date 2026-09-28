@@ -1328,21 +1328,22 @@ qrms_test(
 	'Phase 6.5-A. explicit idempotency key, replay, analytics skip, rate limit sırası',
 	function () {
 		$rest = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/rest-order.php' );
+		$yardimci = file_get_contents( QRMS_PLUGIN_DIR . 'modules/_qmo-ortak/helpers.php' );
 		qrms_assert_contains( 'function qmo_siparis_isle_govde', $rest, 'idempotency gövde' );
 		qrms_assert_contains( 'qmo_idempotency_key_dogrula', $rest, 'key doğrulama' );
 		qrms_assert_contains( 'qmo_siparis_idempotent_durum', $rest, 'replay durumu' );
 		qrms_assert_contains( 'body_mismatch', $rest, 'aynı key farklı body' );
-		qrms_assert_contains( 'siparis_olayi_kayitli_mi', $rest, 'analytics duplicate skip' );
+		qrms_assert_contains( 'firestore_items', $rest, 'analytics Firestore-first line identity' );
+		qrms_assert_contains( 'qmo_siparis_line_keys_from_items', $yardimci, 'line_key üretimi' );
 		qrms_assert_contains( 'qmo_kilitli_calistir', $rest, 'concurrent key lock' );
 		qrms_assert_contains( 'Idempotency-Key', $rest, 'REST header' );
 		qrms_assert_contains( "'new' === \$durum['type']", $rest, 'rate limit yalnızca yeni key' );
-
-		$yardimci = file_get_contents( QRMS_PLUGIN_DIR . 'modules/_qmo-ortak/helpers.php' );
 		qrms_assert_contains( 'function qmo_siparis_idempotency_hash', $yardimci, 'body hash' );
 		qrms_assert_contains( 'function qmo_idempotency_order_id', $yardimci, 'order_id from key' );
 
 		$analitik = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/class-qrms-analitik.php' );
-		qrms_assert_contains( 'function siparis_olayi_kayitli_mi', $analitik, 'order_id analitik kontrol' );
+		qrms_assert_contains( 'function siparis_olayi_var_mi', $analitik, 'order_id event analitik kontrol' );
+		qrms_assert_contains( 'qmo_siparis_canonical_firestore', $yardimci, 'Firestore kanonik hash' );
 
 		$sepet = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/assets/js/sepet.js' );
 		qrms_assert_contains( 'siparisIdempotencyKey', $sepet, 'web key lifecycle' );
