@@ -1058,6 +1058,20 @@ qrms_test(
 );
 
 qrms_test(
+	'Phase 6.4-D. attribution sorgu hatası rapor sorgu_hatasi bayrağı',
+	function () {
+		$db = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/includes/class-db.php' );
+		qrms_assert_contains( 'recommendation_attribution_bos_sonuc', $db, 'bos sonuc helper' );
+		qrms_assert_contains( "'sorgu_hatasi'", $db, 'sorgu_hatasi alanı' );
+		qrms_assert_contains( 'Attribution query failed', $db, 'query failure critical log' );
+
+		$ui = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/includes/admin/sayfa-oneri-rapor.php' );
+		qrms_assert_contains( 'rapor_sorgu_hata', $ui, 'admin sorgu hata durumu' );
+		qrms_assert_contains( 'Veritabanı sorgusunda bir hata oluştu', $ui, 'admin hata mesajı' );
+	}
+);
+
+qrms_test(
 	'Phase 6.3-A. öneri raporu varsayılan tarihler site timezone (gmdate yok)',
 	function () {
 		$php = (string) file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/includes/admin/sayfa-oneri-rapor.php' );

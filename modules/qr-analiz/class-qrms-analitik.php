@@ -1273,10 +1273,55 @@ class QRMS_Analitik {
 				$formats
 			);
 
-			return false !== $sonuc;
+			if ( false === $sonuc ) {
+				self::kayit_hatasi_logla( $satir, (string) $wpdb->last_error );
+				return false;
+			}
+
+			return true;
 		} catch ( Exception $e ) {
+			$log_satir = isset( $satir ) && is_array( $satir ) ? $satir : array();
+			self::kayit_hatasi_logla( $log_satir, 'exception' );
 			return false;
 		}
+	}
+
+	/**
+	 * Analytics insert hatasını operasyonel loga yaz (PII / ürün adı yok).
+	 *
+	 * @param array<string, mixed> $satir   Kayıt alanları.
+	 * @param string               $db_hata Kısa DB/exception etiketi.
+	 * @return void
+	 */
+	private static function kayit_hatasi_logla( array $satir, $db_hata ) {
+		if ( ! function_exists( 'qmo_log_critical' ) ) {
+			return;
+		}
+
+		$tip = isset( $satir['event_type'] ) ? sanitize_key( (string) $satir['event_type'] ) : '';
+		// Sipariş kalemleri: kalem bazlı gürültü yerine qmo_analitik_siparis_yaz() özet loglar.
+		if ( in_array( $tip, array( 'order_sent', 'order_failed' ), true ) ) {
+			return;
+		}
+
+		$ctx = array();
+		if ( ! empty( $satir['event_type'] ) ) {
+			$ctx['event_type'] = (string) $satir['event_type'];
+		}
+		if ( ! empty( $satir['order_id'] ) ) {
+			$ctx['order_id'] = (string) $satir['order_id'];
+		}
+		if ( ! empty( $satir['item_id'] ) ) {
+			$ctx['item_id'] = (int) $satir['item_id'];
+		}
+		if ( ! empty( $satir['session_id'] ) ) {
+			$ctx['session_id'] = (string) $satir['session_id'];
+		}
+		if ( '' !== $db_hata ) {
+			$ctx['db'] = $db_hata;
+		}
+
+		qmo_log_critical( 'Analytics insert failed', $ctx );
 	}
 
 	/**

@@ -1300,23 +1300,38 @@ qrms_test(
 );
 
 qrms_test(
-	'Phase 6.3-B. Firestore başarılı + analitik yazım hatası loglanır, HTTP success korunur',
+	'Phase 6.3-B / 6.4-B. sipariş analitiği bool + critical log, HTTP success korunur',
 	function () {
 		$rest = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/rest-order.php' );
-		qrms_assert_contains( '$analitik_tamam = qmo_analitik_siparis_yaz', $rest, 'analitik sonucu yakalanır' );
-		qrms_assert_contains( 'sipariş analitiği yazılamadı', $rest, 'gözlemlenebilir log mesajı' );
+		qrms_assert_contains( 'qmo_analitik_siparis_yaz(', $rest, 'sipariş analitik yazıcı çağrısı' );
+		qrms_assert_contains( 'Order analytics partial failure', $rest, 'kısmi analitik critical log' );
 		qrms_assert_contains( 'function qmo_analitik_siparis_yaz', $rest, 'sipariş analitik yazıcı' );
 		qrms_assert_contains( 'return $tamam', $rest, 'kalem yazımı bool döner' );
 
 		$analitik = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/class-qrms-analitik.php' );
-		qrms_assert_contains( 'public static function kaydet( array $satir )', $analitik, 'kaydet' );
-		qrms_assert_contains( 'return false !== $sonuc', $analitik, 'insert sonucu bool' );
+		qrms_assert_contains( 'kayit_hatasi_logla', $analitik, 'insert failure log' );
+
+		$yardimci = file_get_contents( QRMS_PLUGIN_DIR . 'modules/_qmo-ortak/helpers.php' );
+		qrms_assert_contains( 'function qmo_log_critical', $yardimci, 'production critical log' );
 
 		$fs_hata_pos = strpos( $rest, 'if ( $fs_hata )' );
-		$log_pos     = strpos( $rest, 'sipariş analitiği yazılamadı' );
+		$log_pos     = strpos( $rest, 'Firestore order write failed' );
 		$success_pos = strpos( $rest, "'success' => true" );
 		qrms_assert_true( false !== $fs_hata_pos && false !== $log_pos && false !== $success_pos, 'akış parçaları' );
-		qrms_assert_true( $log_pos > $fs_hata_pos && $success_pos > $log_pos, 'analitik log FS hata dönüşünden sonra, success korunur' );
+		qrms_assert_true( $log_pos > $fs_hata_pos, 'FS critical log hata dönüşünde' );
+	}
+);
+
+qrms_test(
+	'Phase 6.4-A. qmo_log_critical WP_DEBUG olmadan error_log kullanır',
+	function () {
+		$php = file_get_contents( QRMS_PLUGIN_DIR . 'modules/_qmo-ortak/helpers.php' );
+		qrms_assert_contains( 'function qmo_log_critical', $php, 'critical helper' );
+		qrms_assert_contains( '[CRITICAL]', $php, 'critical prefix' );
+		qrms_assert_false(
+			(bool) preg_match( '/function qmo_log_critical[\s\S]*?if\s*\(\s*defined\s*\(\s*[\'"]WP_DEBUG[\'"]\s*\)/', $php ),
+			'critical log WP_DEBUG ile sınırlanmaz'
+		);
 	}
 );
 

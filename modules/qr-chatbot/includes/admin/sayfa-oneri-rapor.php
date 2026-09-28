@@ -33,8 +33,9 @@ function qmo_chatbot_sayfa_oneri_rapor() {
 		$baslangic = wp_date( 'Y-m-d', strtotime( '-30 days', current_time( 'timestamp' ) ) );
 	}
 
-	$rapor_ham     = QMO_Chatbot_DB::oneri_rapor( $baslangic, $bitis );
-	$attr_ozet     = QMO_Chatbot_DB::oneri_rapor_ozet_attribution( $rapor_ham );
+	$rapor_ham      = QMO_Chatbot_DB::oneri_rapor( $baslangic, $bitis );
+	$rapor_sorgu_hata = is_array( $rapor_ham ) && ! empty( $rapor_ham['sorgu_hatasi'] );
+	$attr_ozet      = QMO_Chatbot_DB::oneri_rapor_ozet_attribution( $rapor_ham );
 	$urun_satirlari = QMO_Chatbot_DB::oneri_rapor_urunler( $rapor_ham );
 
 	$satirlar = array();
@@ -114,6 +115,18 @@ function qmo_chatbot_sayfa_oneri_rapor() {
 		__( 'Ürün önerilerinin sepete ve atfedilen siparişe dönüşüm performansı.', 'qrms' )
 	);
 	?>
+	<?php if ( $rapor_sorgu_hata ) : ?>
+		<div class="notice notice-error">
+			<p>
+				<?php
+				esc_html_e(
+					'Rapor verisi alınamadı. Veritabanı sorgusunda bir hata oluştu veya gerekli analitik tablosu kullanılamıyor. Tekrar deneyin veya sistem yöneticisini bilgilendirin.',
+					'qrms'
+				);
+				?>
+			</p>
+		</div>
+	<?php endif; ?>
 	<form method="get" action="<?php echo esc_url( admin_url( 'admin.php' ) ); ?>" class="qmo-cb-filtre">
 		<input type="hidden" name="page" value="qrms-chatbot-oneri-rapor">
 		<label><?php esc_html_e( 'Başlangıç', 'qrms' ); ?>
@@ -179,7 +192,17 @@ function qmo_chatbot_sayfa_oneri_rapor() {
 		</thead>
 		<tbody>
 			<?php if ( empty( $satirlar ) ) : ?>
-				<tr><td colspan="8"><?php esc_html_e( 'Seçilen aralıkta kayıt yok.', 'qrms' ); ?></td></tr>
+				<tr>
+					<td colspan="8">
+						<?php
+						if ( $rapor_sorgu_hata ) {
+							esc_html_e( 'Atfedilen sipariş verileri yüklenemedi (sorgu hatası).', 'qrms' );
+						} else {
+							esc_html_e( 'Seçilen aralıkta kayıt yok.', 'qrms' );
+						}
+						?>
+					</td>
+				</tr>
 			<?php else : ?>
 				<?php foreach ( $satirlar as $satir ) : ?>
 					<tr>
