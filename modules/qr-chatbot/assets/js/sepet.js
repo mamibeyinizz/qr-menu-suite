@@ -35,6 +35,18 @@
 	var analitikKuyruk = [];
 	var analitikTimer = null;
 	var sonKartId = 0;
+	var siparisIdempotencyKey = '';
+
+	function yeniIdempotencyKey() {
+		if ( typeof crypto !== 'undefined' && crypto.randomUUID ) {
+			return crypto.randomUUID();
+		}
+		return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace( /[xy]/g, function ( c ) {
+			var r = Math.random() * 16 | 0;
+			var v = c === 'x' ? r : ( r & 0x3 | 0x8 );
+			return v.toString( 16 );
+		} );
+	}
 
 	function analitikAcik() {
 		return !!( qmoSepet && qmoSepet.analitik && qmoSepet.ajaxUrl && qmoSepet.nonce );
@@ -742,6 +754,10 @@
 			return;
 		}
 
+		if ( ! siparisIdempotencyKey ) {
+			siparisIdempotencyKey = yeniIdempotencyKey();
+		}
+
 		analitikGonder();
 		send.disabled = true;
 
@@ -749,7 +765,8 @@
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
-				'X-WP-Nonce': qmoSepet.restNonce
+				'X-WP-Nonce': qmoSepet.restNonce,
+				'Idempotency-Key': siparisIdempotencyKey
 			},
 			credentials: 'same-origin',
 			body: JSON.stringify( {
@@ -778,6 +795,7 @@
 		} ).then( function ( res ) {
 			send.disabled = false;
 			if ( res && res.success ) {
+				siparisIdempotencyKey = '';
 				yaz( [] );
 				kapat();
 				toast( T( 'gonderildi' ) );

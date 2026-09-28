@@ -162,7 +162,17 @@ if ( ! function_exists( 'qmo_rest_order' ) ) {
 
 		// 2) Girdi + Firestore yazımı (chatbot ucu da aynı işlevi kullanır).
 		$session_id = function_exists( 'qmo_masa_session_id' ) ? qmo_masa_session_id( $sess ) : '';
-		$sonuc      = qmo_siparis_isle( $masa, $req->get_param( 'items' ), $req->get_param( 'dil' ), $session_id );
+		$idem_key   = $req->get_header( 'idempotency_key' );
+		if ( ! is_string( $idem_key ) || '' === trim( $idem_key ) ) {
+			$idem_key = $req->get_header( 'Idempotency-Key' );
+		}
+		$sonuc      = qmo_siparis_isle(
+			$masa,
+			$req->get_param( 'items' ),
+			$req->get_param( 'dil' ),
+			$session_id,
+			is_string( $idem_key ) ? $idem_key : ''
+		);
 
 		return new WP_REST_Response(
 			array(
@@ -335,11 +345,43 @@ if ( ! function_exists( 'qmo_siparis_kalem_unit_price' ) ) {
  * @param string $masa       Masa slug'ı (doğrulanmış).
  * @param mixed  $items      Ürün listesi.
  * @param mixed  $dil        Not dili.
- * @param string $session_id Analitik QMO oturumu (s_…); boş olabilir.
+ * @param string $session_id       Analitik QMO oturumu (s_…); boş olabilir.
+ * @param string $idempotency_key  İsteğe bağlı UUID v4 (web/chatbot); yoksa legacy UUID order_id.
  * @return array{success:bool,msg:string,http:int}
  */
 if ( ! function_exists( 'qmo_siparis_isle' ) ) {
-	function qmo_siparis_isle( $masa, $items, $dil, $session_id = '' ) {
+	function qmo_siparis_isle( $masa, $items, $dil, $session_id = '', $idempotency_key = '' ) {
+
+		$idem_ham = trim( (string) $idempotency_key );
+
+		$calistir = function () use ( $masa, $items, $dil, $session_id, $idem_ham ) {
+			return qmo_siparis_isle_govde( $masa, $items, $dil, $session_id, $idem_ham );
+		};
+
+		$idem_key = function_exists( 'qmo_idempotency_key_dogrula' )
+			? qmo_idempotency_key_dogrula( $idem_ham )
+			: '';
+
+		if ( '' !== $idem_key ) {
+			return qmo_kilitli_calistir( 'qmo_idem_lock_' . md5( $idem_key ), $calistir );
+		}
+
+		return $calistir();
+	}
+}
+
+/**
+ * Sipariş işleme gövdesi (idempotency kilidi içinde veya legacy).
+ *
+ * @param string $masa       Masa slug'ı.
+ * @param mixed  $items      Ürün listesi.
+ * @param mixed  $dil        Not dili.
+ * @param string $session_id Analitik oturum.
+ * @param string $idem_ham   Ham idempotency anahtarı.
+ * @return array{success:bool,msg:string,http:int}
+ */
+if ( ! function_exists( 'qmo_siparis_isle_govde' ) ) {
+	function qmo_siparis_isle_govde( $masa, $items, $dil, $session_id, $idem_ham = '' ) {
 
 		// Firebase yapılandırması.
 		if ( ! QMO_Firestore::hazir_mi() ) {
@@ -347,15 +389,6 @@ if ( ! function_exists( 'qmo_siparis_isle' ) ) {
 				'success' => false,
 				'msg'     => 'Sipariş sistemi yapılandırılmamış.',
 				'http'    => 500,
-			);
-		}
-
-		// Hız sınırı: masa + IP başına 10 sn'de 1 sipariş.
-		if ( ! qmo_hiz_siniri( 'order', $masa, 10 ) ) {
-			return array(
-				'success' => false,
-				'msg'     => 'Siparişiniz alındı, lütfen bekleyin.',
-				'http'    => 429,
 			);
 		}
 
@@ -442,8 +475,59 @@ if ( ! function_exists( 'qmo_siparis_isle' ) ) {
 			);
 		}
 
-		$order_id   = wp_generate_uuid4();
+		$idem_key = function_exists( 'qmo_idempotency_key_dogrula' )
+			? qmo_idempotency_key_dogrula( $idem_ham )
+			: '';
+
+		if ( '' !== $idem_ham && '' === $idem_key ) {
+			return array(
+				'success' => false,
+				'msg'     => qmo_ceviri_chat( __( 'Geçersiz sipariş', 'qrms' ) ),
+				'http'    => 400,
+			);
+		}
+
 		$session_id = is_string( $session_id ) ? $session_id : '';
+		$order_id = wp_generate_uuid4();
+
+		if ( '' !== $idem_key ) {
+			$body_hash = qmo_siparis_idempotency_hash( $masa, $dil, $temiz );
+			$durum     = qmo_siparis_idempotent_durum( $idem_key, $masa, $body_hash );
+
+			if ( 'masa_mismatch' === $durum['type'] ) {
+				return array(
+					'success' => false,
+					'msg'     => qmo_ceviri_chat( __( 'Güvenlik doğrulaması başarısız. Lütfen sayfayı yenileyin.', 'qrms' ) ),
+					'http'    => 403,
+				);
+			}
+			if ( 'body_mismatch' === $durum['type'] ) {
+				return array(
+					'success' => false,
+					'msg'     => qmo_ceviri_chat( __( 'Geçersiz sipariş', 'qrms' ) ),
+					'http'    => 409,
+				);
+			}
+			if ( 'replay' === $durum['type'] && isset( $durum['response'] ) && is_array( $durum['response'] ) ) {
+				return $durum['response'];
+			}
+
+			$order_id = isset( $durum['order_id'] ) ? (string) $durum['order_id'] : qmo_idempotency_order_id( $idem_key );
+
+			if ( 'new' === $durum['type'] && ! qmo_hiz_siniri( 'order', $masa, 10 ) ) {
+				return array(
+					'success' => false,
+					'msg'     => qmo_ceviri_chat( __( 'Lütfen birkaç saniye bekleyip tekrar deneyin.', 'qrms' ) ),
+					'http'    => 429,
+				);
+			}
+		} elseif ( ! qmo_hiz_siniri( 'order', $masa, 10 ) ) {
+			return array(
+				'success' => false,
+				'msg'     => qmo_ceviri_chat( __( 'Lütfen birkaç saniye bekleyip tekrar deneyin.', 'qrms' ) ),
+				'http'    => 429,
+			);
+		}
 
 		// Restoran menü "Tükendi" durumu siparişi burada keser (varsa).
 		$engel = apply_filters( 'qmo_siparis_onay_oncesi', null, $temiz );
@@ -560,16 +644,23 @@ if ( ! function_exists( 'qmo_siparis_isle' ) ) {
 			$doc_name = $res['name'];
 		}
 
-		qmo_analitik_siparis_yaz(
-			$olay_tip,
-			$masa,
-			$temiz,
-			array(
-				'order_id'   => $order_id,
-				'session_id' => $session_id,
-				'reason'     => $fail_reason,
-			)
-		);
+		$analytics_yaz = true;
+		if ( class_exists( 'QRMS_Analitik' ) && QRMS_Analitik::siparis_olayi_kayitli_mi( $order_id ) ) {
+			$analytics_yaz = false;
+		}
+
+		if ( $analytics_yaz ) {
+			qmo_analitik_siparis_yaz(
+				$olay_tip,
+				$masa,
+				$temiz,
+				array(
+					'order_id'   => $order_id,
+					'session_id' => $session_id,
+					'reason'     => $fail_reason,
+				)
+			);
+		}
 
 		if ( $fs_hata ) {
 			qmo_log_critical(

@@ -1047,6 +1047,37 @@ class QRMS_Analitik {
 	----------------------------------------------------------------- */
 
 	/**
+	 * order_id için sipariş analitik olayı (order_sent / order_failed) var mı?
+	 *
+	 * @param string $order_id Sipariş kimliği.
+	 * @return bool
+	 */
+	public static function siparis_olayi_kayitli_mi( $order_id ) {
+		if ( ! self::tablo_var_mi() ) {
+			return false;
+		}
+
+		$order_id = substr( sanitize_text_field( (string) $order_id ), 0, 36 );
+		if ( '' === $order_id ) {
+			return false;
+		}
+
+		global $wpdb;
+
+		$tablo = self::tablo();
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$bulundu = $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT 1 FROM {$tablo} WHERE order_id = %s AND event_type IN ('order_sent', 'order_failed') LIMIT 1",
+				$order_id
+			)
+		);
+
+		return '1' === (string) $bulundu;
+	}
+
+	/**
 	 * Ziyaretçi IP'sinin tuzlanmış kısa hash'i.
 	 *
 	 * Ham IP hiçbir zaman saklanmaz. Hash biçimi eski eklentiyle birebir aynı
