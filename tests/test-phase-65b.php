@@ -813,4 +813,70 @@ if ( qrms_mariadb_available() ) {
 			$mysqli->close();
 		}
 	);
+
+	qrms_test(
+		'6.5-B MariaDB yinelenen line_key grubu UNIQUE migration engeller, veri korunur',
+		function () {
+			$mysqli = qrms_mariadb_connect();
+			if ( ! $mysqli ) {
+				qrms_assert_true( false, 'mysqli' );
+				return;
+			}
+			qrms_mariadb_apply_schema( $mysqli );
+			qrms_mariadb_reset_data( $mysqli );
+			if ( qrms_mariadb_index_exists( $mysqli, 'wp_rma_analytics', QRMS_Analitik::UQ_ORDER_EVENT_LINE ) ) {
+				$mysqli->query(
+					'ALTER TABLE wp_rma_analytics DROP INDEX `' . QRMS_Analitik::UQ_ORDER_EVENT_LINE . '`'
+				);
+			}
+
+			$oid = '65b00000-0000-4000-8000-000000000014';
+			$lk  = qmo_siparis_line_keys_from_items(
+				array( array( 'urunAdi' => 'Dup', 'adet' => 1, 'notOrijinal' => '', 'notTr' => '' ) )
+			)[0]['line_key'];
+			$base = array(
+				'event_type'    => 'order_sent',
+				'order_id'      => $oid,
+				'line_key'      => $lk,
+				'item_id'       => 901,
+				'item_name'     => 'Dup',
+				'qty'           => 1,
+				'price'         => 1,
+				'masa_no'       => 'm',
+				'ip_hash'       => 'd',
+				'created_at'    => '2026-09-28 17:00:00',
+			);
+			for ( $i = 0; $i < 2; $i++ ) {
+				qrms_mariadb_analytics( new QRMS_MariaDB_Wpdb( $mysqli ), $base );
+			}
+
+			$wpdb = new QRMS_MariaDB_Wpdb( $mysqli );
+			qrms_mariadb_bind_wpdb( $wpdb );
+			delete_transient( QRMS_Analitik::UQ_BLOCKED_TRANSIENT );
+
+			qrms_assert_true( QRMS_Analitik::siparis_analitik_yinelenen_var_mi(), 'duplicate grup var' );
+			$before = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM wp_rma_analytics' );
+			qrms_assert_same( 2, $before, 'iki yinelenen satır' );
+
+			QRMS_Analitik::unique_indeks_dene();
+
+			qrms_assert_false(
+				qrms_mariadb_index_exists( $mysqli, 'wp_rma_analytics', QRMS_Analitik::UQ_ORDER_EVENT_LINE ),
+				'UNIQUE eklenmedi (blocked)'
+			);
+			$after = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM wp_rma_analytics' );
+			qrms_assert_same( $before, $after, 'veri silinmedi' );
+
+			$mysqli->close();
+		}
+	);
+
+	qrms_test(
+		'6.5-B line_key NULL legacy satırlar yinelenen kontrolü dışında (tasarım)',
+		function () {
+			$sema = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/class-qrms-analitik.php' );
+			qrms_assert_contains( 'line_key IS NOT NULL AND line_key', $sema, 'NULL legacy hariç' );
+			qrms_assert_contains( 'line_key varchar(72) DEFAULT NULL', $sema, 'NULL line_key korunur' );
+		}
+	);
 }
