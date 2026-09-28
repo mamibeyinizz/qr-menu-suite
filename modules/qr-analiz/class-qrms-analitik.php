@@ -40,9 +40,24 @@ if ( class_exists( 'QRMS_Analitik' ) ) {
 class QRMS_Analitik {
 
 	/**
-	 * Şema sürümü. masa_no 1.1, price 1.3, order contract alanları 1.4.
+	 * Şema sürümü. masa_no 1.1, price 1.3, order contract 1.4, line_key UNIQUE 1.6.
 	 */
-	const DB_SURUM = '1.4';
+	const DB_SURUM = '1.6';
+
+	/**
+	 * Sipariş analitik satırları için UNIQUE indeks adı (order_id, event_type, line_key).
+	 */
+	const UQ_ORDER_EVENT_LINE = 'uq_order_event_line';
+
+	/**
+	 * Eski (güvensiz) UNIQUE indeks — migration ile kaldırılır.
+	 */
+	const UQ_ORDER_EVENT_ITEM = 'uq_order_event_item';
+
+	/**
+	 * UNIQUE indeks engeli teşhis transient'i (yinelenen veri varken indeks eklenmez).
+	 */
+	const UQ_BLOCKED_TRANSIENT = 'qrms_analitik_uq_blocked';
 
 	/**
 	 * Şema sürümünün tutulduğu option.
@@ -987,12 +1002,21 @@ class QRMS_Analitik {
 	 * @return void
 	 */
 	public static function sema_kontrol() {
-		if ( self::DB_SURUM === get_option( self::DB_OPT ) ) {
-			return;
+		$stored = (string) get_option( self::DB_OPT, '' );
+
+		// Sürüm damgası 1.4 olsa bile fiziksel tablo eski kalabilir (dbDelta atlanmış);
+		// order_id yoksa yeniden dbDelta çalıştırılır.
+		if (
+			self::DB_SURUM !== $stored
+			|| ! self::sutun_var_mi( 'order_id' )
+			|| ! self::sutun_var_mi( 'line_key' )
+		) {
+			self::tablo_kur();
+			update_option( self::DB_OPT, self::DB_SURUM, false );
+			self::istatistik_onbellegini_temizle();
 		}
 
-		self::tablo_kur();
-		update_option( self::DB_OPT, self::DB_SURUM, false );
+		self::unique_indeks_dene();
 	}
 
 	/**
@@ -1025,6 +1049,7 @@ class QRMS_Analitik {
 				unit_price decimal(10,2) DEFAULT NULL,
 				masa_no varchar(64) NOT NULL DEFAULT '',
 				order_id varchar(36) DEFAULT NULL,
+				line_key varchar(72) DEFAULT NULL,
 				session_id varchar(64) DEFAULT NULL,
 				reason varchar(32) DEFAULT NULL,
 				ip_hash varchar(32) NOT NULL DEFAULT '',
@@ -1037,9 +1062,177 @@ class QRMS_Analitik {
 				KEY idx_masa (masa_no),
 				KEY idx_masa_td (masa_no,event_type,created_at),
 				KEY idx_order_id (order_id),
-				KEY idx_session_id (session_id)
+				KEY idx_session_id (session_id),
+				UNIQUE KEY uq_order_event_line (order_id,event_type,line_key)
 			) {$collate};"
 		);
+	}
+
+	/**
+	 * Tabloda sütun var mı?
+	 *
+	 * @param string $sutun Sütun adı.
+	 * @return bool
+	 */
+	public static function sutun_var_mi( $sutun ) {
+		if ( ! self::tablo_var_mi() ) {
+			return false;
+		}
+
+		global $wpdb;
+
+		$tablo = self::tablo();
+		$sutun = preg_replace( '/[^a-z0-9_]/i', '', (string) $sutun );
+		if ( '' === $sutun ) {
+			return false;
+		}
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$kolonlar = $wpdb->get_results(
+			$wpdb->prepare( "SHOW COLUMNS FROM {$tablo} LIKE %s", $sutun ),
+			ARRAY_A
+		);
+
+		return is_array( $kolonlar ) && ! empty( $kolonlar );
+	}
+
+	/**
+	 * Tabloda indeks var mı?
+	 *
+	 * @param string $indeks Indeks adı.
+	 * @return bool
+	 */
+	public static function indeks_var_mi( $indeks ) {
+		if ( ! self::tablo_var_mi() ) {
+			return false;
+		}
+
+		global $wpdb;
+
+		$tablo  = self::tablo();
+		$indeks = preg_replace( '/[^a-z0-9_]/i', '', (string) $indeks );
+		if ( '' === $indeks ) {
+			return false;
+		}
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$bulundu = $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT 1 FROM information_schema.STATISTICS
+				 WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s AND INDEX_NAME = %s LIMIT 1",
+				$tablo,
+				$indeks
+			)
+		);
+
+		return '1' === (string) $bulundu;
+	}
+
+	/**
+	 * order_id + line_key dolu satırlarda (order_id, event_type, line_key) yinelenen grup var mı?
+	 *
+	 * UNIQUE indeks eklenmeden önce kontrol edilir; otomatik silme yapılmaz.
+	 * line_key IS NULL legacy satırlar bu kontrolün dışında kalır.
+	 *
+	 * @return bool
+	 */
+	public static function siparis_analitik_yinelenen_var_mi() {
+		if ( ! self::tablo_var_mi() || ! self::sutun_var_mi( 'order_id' ) || ! self::sutun_var_mi( 'line_key' ) ) {
+			return false;
+		}
+
+		global $wpdb;
+
+		$tablo = self::tablo();
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$say = $wpdb->get_var(
+			"SELECT 1 FROM {$tablo}
+			 WHERE order_id IS NOT NULL AND order_id <> ''
+			   AND line_key IS NOT NULL AND line_key <> ''
+			 GROUP BY order_id, event_type, line_key
+			 HAVING COUNT(*) > 1
+			 LIMIT 1"
+		);
+
+		return '1' === (string) $say;
+	}
+
+	/**
+	 * UNIQUE indeksi güvenli şekilde ekler (yinelenen veri varsa atlanır).
+	 *
+	 * Eski uq_order_event_item indeksi kaldırılır; veri silinmez.
+	 *
+	 * @return void
+	 */
+	public static function unique_indeks_dene() {
+		if ( ! self::tablo_var_mi() || ! self::sutun_var_mi( 'order_id' ) || ! self::sutun_var_mi( 'line_key' ) ) {
+			return;
+		}
+
+		global $wpdb;
+
+		$tablo = self::tablo();
+
+		if ( self::indeks_var_mi( self::UQ_ORDER_EVENT_ITEM ) ) {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$wpdb->query( 'ALTER TABLE ' . $tablo . ' DROP INDEX ' . self::UQ_ORDER_EVENT_ITEM );
+		}
+
+		if ( self::indeks_var_mi( self::UQ_ORDER_EVENT_LINE ) ) {
+			delete_transient( self::UQ_BLOCKED_TRANSIENT );
+			return;
+		}
+
+		if ( self::siparis_analitik_yinelenen_var_mi() ) {
+			if ( ! get_transient( self::UQ_BLOCKED_TRANSIENT ) && function_exists( 'qmo_log_critical' ) ) {
+				qmo_log_critical(
+					'Analytics UNIQUE index blocked by duplicate rows',
+					array(
+						'index'   => self::UQ_ORDER_EVENT_LINE,
+						'columns' => 'order_id,event_type,line_key',
+					)
+				);
+				set_transient( self::UQ_BLOCKED_TRANSIENT, 1, DAY_IN_SECONDS );
+			}
+			return;
+		}
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$wpdb->query(
+			'ALTER TABLE ' . $tablo . ' ADD UNIQUE KEY ' . self::UQ_ORDER_EVENT_LINE . ' (order_id, event_type, line_key)'
+		);
+
+		if ( self::indeks_var_mi( self::UQ_ORDER_EVENT_LINE ) ) {
+			delete_transient( self::UQ_BLOCKED_TRANSIENT );
+			self::istatistik_onbellegini_temizle();
+			return;
+		}
+
+		if ( function_exists( 'qmo_log_critical' ) && '' !== (string) $wpdb->last_error ) {
+			qmo_log_critical(
+				'Analytics UNIQUE index migration failed',
+				array(
+					'index' => self::UQ_ORDER_EVENT_LINE,
+					'db'    => (string) $wpdb->last_error,
+				)
+			);
+		}
+	}
+
+	/**
+	 * Son INSERT hatası UNIQUE ihlali mi (MySQL/MariaDB 1062)?
+	 *
+	 * @return bool
+	 */
+	private static function yinelenen_anahtar_hatasi_mi() {
+		global $wpdb;
+
+		if ( isset( $wpdb->dbh ) && $wpdb->dbh instanceof mysqli ) {
+			return 1062 === mysqli_errno( $wpdb->dbh ); // phpcs:ignore WordPress.DB.RestrictedFunctions.mysql_mysqli_errno -- wpdb errno sunmuyor.
+		}
+
+		return 0 === stripos( (string) $wpdb->last_error, 'Duplicate entry' );
 	}
 
 	/* -----------------------------------------------------------------
@@ -1047,18 +1240,24 @@ class QRMS_Analitik {
 	----------------------------------------------------------------- */
 
 	/**
-	 * order_id için sipariş analitik olayı (order_sent / order_failed) var mı?
+	 * Belirli order_id + event_type için analitik satırı var mı?
 	 *
-	 * @param string $order_id Sipariş kimliği.
+	 * @param string $order_id   Sipariş kimliği.
+	 * @param string $event_type order_sent | order_failed.
 	 * @return bool
 	 */
-	public static function siparis_olayi_kayitli_mi( $order_id ) {
+	public static function siparis_olayi_var_mi( $order_id, $event_type ) {
 		if ( ! self::tablo_var_mi() ) {
 			return false;
 		}
 
 		$order_id = substr( sanitize_text_field( (string) $order_id ), 0, 36 );
 		if ( '' === $order_id ) {
+			return false;
+		}
+
+		$event_type = sanitize_key( (string) $event_type );
+		if ( ! in_array( $event_type, array( 'order_sent', 'order_failed' ), true ) ) {
 			return false;
 		}
 
@@ -1069,12 +1268,23 @@ class QRMS_Analitik {
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$bulundu = $wpdb->get_var(
 			$wpdb->prepare(
-				"SELECT 1 FROM {$tablo} WHERE order_id = %s AND event_type IN ('order_sent', 'order_failed') LIMIT 1",
-				$order_id
+				"SELECT 1 FROM {$tablo} WHERE order_id = %s AND event_type = %s LIMIT 1",
+				$order_id,
+				$event_type
 			)
 		);
 
 		return '1' === (string) $bulundu;
+	}
+
+	/**
+	 * order_id için başarılı sipariş analitiği (order_sent) var mı?
+	 *
+	 * @param string $order_id Sipariş kimliği.
+	 * @return bool
+	 */
+	public static function siparis_olayi_kayitli_mi( $order_id ) {
+		return self::siparis_olayi_var_mi( $order_id, 'order_sent' );
 	}
 
 	/**
@@ -1259,6 +1469,11 @@ class QRMS_Analitik {
 				$satir['order_id'] = substr( sanitize_text_field( (string) $satir['order_id'] ), 0, 36 );
 			}
 
+			if ( array_key_exists( 'line_key', $satir ) && null !== $satir['line_key'] ) {
+				$lk = sanitize_text_field( (string) $satir['line_key'] );
+				$satir['line_key'] = substr( $lk, 0, 72 );
+			}
+
 			if ( array_key_exists( 'session_id', $satir ) && null !== $satir['session_id'] ) {
 				$sid = substr( sanitize_text_field( (string) $satir['session_id'] ), 0, 64 );
 				if ( 0 === strpos( $sid, 'i_' ) ) {
@@ -1285,6 +1500,7 @@ class QRMS_Analitik {
 				'unit_price'    => '%f',
 				'masa_no'       => '%s',
 				'order_id'      => '%s',
+				'line_key'      => '%s',
 				'session_id'    => '%s',
 				'reason'        => '%s',
 				'ip_hash'       => '%s',
@@ -1305,6 +1521,17 @@ class QRMS_Analitik {
 			);
 
 			if ( false === $sonuc ) {
+				$tip       = isset( $satir['event_type'] ) ? sanitize_key( (string) $satir['event_type'] ) : '';
+				$order_oid = isset( $satir['order_id'] ) ? trim( (string) $satir['order_id'] ) : '';
+				$line_key  = isset( $satir['line_key'] ) ? trim( (string) $satir['line_key'] ) : '';
+				if (
+					in_array( $tip, array( 'order_sent', 'order_failed' ), true )
+					&& '' !== $order_oid
+					&& '' !== $line_key
+					&& self::yinelenen_anahtar_hatasi_mi()
+				) {
+					return true;
+				}
 				self::kayit_hatasi_logla( $satir, (string) $wpdb->last_error );
 				return false;
 			}

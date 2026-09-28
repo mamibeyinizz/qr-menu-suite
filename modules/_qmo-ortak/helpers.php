@@ -242,7 +242,383 @@ if ( ! function_exists( 'qmo_idempotency_order_id' ) ) {
 }
 
 /**
+ * Tek sipariş kalemi için Firestore ile uyumlu kanonik satır.
+ *
+ * @param string $urun_adi      Ürün adı.
+ * @param mixed  $adet          Adet.
+ * @param string $not_orijinal  Orijinal not.
+ * @param string $not_tr        Türkçe not yedeği.
+ * @return array{urunAdi:string,adet:int,not:string}
+ */
+if ( ! function_exists( 'qmo_siparis_canonical_satir' ) ) {
+	function qmo_siparis_canonical_satir( $urun_adi, $adet, $not_orijinal = '', $not_tr = '' ) {
+		$ad = preg_replace( '/\s+/u', ' ', trim( (string) $urun_adi ) );
+		$adet = max( 1, min( 20, (int) $adet ) );
+		$not_o = trim( (string) $not_orijinal );
+		$not   = '' !== $not_o ? $not_o : trim( (string) $not_tr );
+		$not   = mb_substr( $not, 0, 200 );
+
+		return array(
+			'urunAdi' => $ad,
+			'adet'    => $adet,
+			'not'     => $not,
+		);
+	}
+}
+
+/**
+ * Kanonik satır listesi + masa/dil için SHA-256.
+ *
+ * @param string              $masa  Masa slug.
+ * @param string              $dil   Dil kodu.
+ * @param array<int, array>   $lines qmo_siparis_canonical_satir çıktıları.
+ * @return string
+ */
+if ( ! function_exists( 'qmo_siparis_canonical_hash' ) ) {
+	function qmo_siparis_canonical_hash( $masa, $dil, array $lines ) {
+		$dil = substr( sanitize_text_field( (string) $dil ), 0, 5 );
+		if ( '' === $dil ) {
+			$dil = 'tr';
+		}
+
+		usort(
+			$lines,
+			function ( $a, $b ) {
+				$cmp = strcmp( (string) ( $a['urunAdi'] ?? '' ), (string) ( $b['urunAdi'] ?? '' ) );
+				if ( 0 !== $cmp ) {
+					return $cmp;
+				}
+				$cmp = ( (int) ( $a['adet'] ?? 0 ) <=> (int) ( $b['adet'] ?? 0 ) );
+				if ( 0 !== $cmp ) {
+					return $cmp;
+				}
+				return strcmp( (string) ( $a['not'] ?? '' ), (string) ( $b['not'] ?? '' ) );
+			}
+		);
+
+		return hash(
+			'sha256',
+			wp_json_encode(
+				array(
+					'masa'  => sanitize_title( (string) $masa ),
+					'dil'   => $dil,
+					'items' => $lines,
+				)
+			)
+		);
+	}
+}
+
+/**
+ * İstek gövdesinden kanonik hash (itemId kullanılmaz).
+ *
+ * @param string              $masa  Masa.
+ * @param string              $dil   Dil.
+ * @param array<int, array>   $temiz Temiz kalemler.
+ * @return string
+ */
+if ( ! function_exists( 'qmo_siparis_canonical_hash_istek' ) ) {
+	function qmo_siparis_canonical_hash_istek( $masa, $dil, array $temiz ) {
+		$lines = array();
+		foreach ( $temiz as $it ) {
+			if ( ! is_array( $it ) ) {
+				continue;
+			}
+			$lines[] = qmo_siparis_canonical_satir(
+				$it['urunAdi'] ?? '',
+				$it['adet'] ?? 1,
+				$it['not'] ?? '',
+				$it['not'] ?? ''
+			);
+		}
+		return qmo_siparis_canonical_hash( $masa, $dil, $lines );
+	}
+}
+
+/**
+ * Firestore calls/{order_id} belgesinden kanonik hash.
+ *
+ * @param array<string,mixed> $doc QMO_Firestore::belge_coz çıktısı.
+ * @return array{hash:string,masa:string,dil:string}|null Güvenli değilse null.
+ */
+if ( ! function_exists( 'qmo_siparis_canonical_firestore' ) ) {
+	function qmo_siparis_canonical_firestore( array $doc ) {
+		if ( ! isset( $doc['masaNo'] ) || ! is_scalar( $doc['masaNo'] ) ) {
+			return null;
+		}
+
+		$masa = sanitize_title( (string) $doc['masaNo'] );
+		if ( '' === $masa ) {
+			return null;
+		}
+
+		$dil = isset( $doc['notDili'] ) ? substr( sanitize_text_field( (string) $doc['notDili'] ), 0, 5 ) : 'tr';
+		if ( '' === $dil ) {
+			$dil = 'tr';
+		}
+
+		$items = isset( $doc['items'] ) && is_array( $doc['items'] ) ? $doc['items'] : null;
+		if ( null === $items || empty( $items ) ) {
+			return null;
+		}
+
+		$lines = array();
+		foreach ( $items as $it ) {
+			if ( ! is_array( $it ) ) {
+				return null;
+			}
+			if ( ! isset( $it['urunAdi'] ) || ! is_scalar( $it['urunAdi'] ) ) {
+				return null;
+			}
+			if ( ! isset( $it['adet'] ) ) {
+				return null;
+			}
+			$lines[] = qmo_siparis_canonical_satir(
+				$it['urunAdi'],
+				$it['adet'],
+				$it['notOrijinal'] ?? '',
+				$it['notTr'] ?? ''
+			);
+		}
+
+		return array(
+			'hash' => qmo_siparis_canonical_hash( $masa, $dil, $lines ),
+			'masa' => $masa,
+			'dil'  => $dil,
+		);
+	}
+}
+
+/**
+ * Tek sipariş kalemi için kanonik satır hash'i (sıra bağımsız; occurrence ayrı eklenir).
+ *
+ * @param array{urunAdi:string,adet:int,not:string} $canonical_satir qmo_siparis_canonical_satir çıktısı.
+ * @return string 64 karakter hex SHA-256.
+ */
+if ( ! function_exists( 'qmo_siparis_line_hash_tek' ) ) {
+	function qmo_siparis_line_hash_tek( array $canonical_satir ) {
+		return hash(
+			'sha256',
+			wp_json_encode(
+				array(
+					'urunAdi' => (string) ( $canonical_satir['urunAdi'] ?? '' ),
+					'adet'    => (int) ( $canonical_satir['adet'] ?? 1 ),
+					'not'     => (string) ( $canonical_satir['not'] ?? '' ),
+				)
+			)
+		);
+	}
+}
+
+/**
+ * Kanonik satır karşılaştırması (deterministik sıralama / eşitlik).
+ *
+ * @param array{urunAdi:string,adet:int,not:string} $a Kanonik satır.
+ * @param array{urunAdi:string,adet:int,not:string} $b Kanonik satır.
+ * @return int strcmp benzeri.
+ */
+if ( ! function_exists( 'qmo_siparis_canonical_satir_cmp' ) ) {
+	function qmo_siparis_canonical_satir_cmp( array $a, array $b ) {
+		$cmp = strcmp( (string) ( $a['urunAdi'] ?? '' ), (string) ( $b['urunAdi'] ?? '' ) );
+		if ( 0 !== $cmp ) {
+			return $cmp;
+		}
+		$cmp = ( (int) ( $a['adet'] ?? 0 ) <=> (int) ( $b['adet'] ?? 0 ) );
+		if ( 0 !== $cmp ) {
+			return $cmp;
+		}
+		return strcmp( (string) ( $a['not'] ?? '' ), (string) ( $b['not'] ?? '' ) );
+	}
+}
+
+/**
+ * Firestore items[] kalemi → kanonik satır.
+ *
+ * @param array<string,mixed> $it FS item.
+ * @return array{urunAdi:string,adet:int,not:string}
+ */
+if ( ! function_exists( 'qmo_siparis_canonical_satir_fs_item' ) ) {
+	function qmo_siparis_canonical_satir_fs_item( array $it ) {
+		return qmo_siparis_canonical_satir(
+			$it['urunAdi'] ?? '',
+			$it['adet'] ?? 1,
+			$it['notOrijinal'] ?? '',
+			$it['notTr'] ?? ''
+		);
+	}
+}
+
+/**
+ * Temiz istek kalemi → kanonik satır.
+ *
+ * @param array<string,mixed> $it Temiz kalem.
+ * @return array{urunAdi:string,adet:int,not:string}
+ */
+if ( ! function_exists( 'qmo_siparis_canonical_satir_temiz_item' ) ) {
+	function qmo_siparis_canonical_satir_temiz_item( array $it ) {
+		$not = $it['not'] ?? '';
+		return qmo_siparis_canonical_satir(
+			$it['urunAdi'] ?? '',
+			$it['adet'] ?? 1,
+			$not,
+			$not
+		);
+	}
+}
+
+/**
+ * Firestore / fallback items[] için line_key listesi (çıktı sırası = kaynak sırası).
+ *
+ * line_key occurrence, kanonik satırların deterministik sıralamasına göre atanır;
+ * client / Firestore dizi permütasyonundan bağımsızdır (aynı multiset → aynı key set).
+ *
+ * @param array<int, array<string,mixed>> $items call_oku / belge_coz items[].
+ * @return array<int, array{line_key:string,urunAdi:string,adet:int,not:string,canonical:array}>
+ */
+if ( ! function_exists( 'qmo_siparis_line_keys_from_items' ) ) {
+	function qmo_siparis_line_keys_from_items( array $items ) {
+		$indexed = array();
+		$seq     = 0;
+
+		foreach ( $items as $it ) {
+			if ( ! is_array( $it ) ) {
+				continue;
+			}
+			$canon     = qmo_siparis_canonical_satir_fs_item( $it );
+			$indexed[] = array(
+				'seq'   => $seq,
+				'canon' => $canon,
+			);
+			++$seq;
+		}
+
+		if ( empty( $indexed ) ) {
+			return array();
+		}
+
+		$sortable = $indexed;
+		usort(
+			$sortable,
+			function ( $a, $b ) {
+				return qmo_siparis_canonical_satir_cmp( $a['canon'], $b['canon'] );
+			}
+		);
+
+		$counts         = array();
+		$key_by_seq     = array();
+		foreach ( $sortable as $row ) {
+			$base = qmo_siparis_line_hash_tek( $row['canon'] );
+			$occ  = isset( $counts[ $base ] ) ? (int) $counts[ $base ] : 0;
+			$counts[ $base ] = $occ + 1;
+			$key_by_seq[ (int) $row['seq'] ] = $base . ':' . $occ;
+		}
+
+		$out = array();
+		foreach ( $indexed as $row ) {
+			$canon = $row['canon'];
+			$out[] = array(
+				'line_key'  => (string) ( $key_by_seq[ (int) $row['seq'] ] ?? '' ),
+				'urunAdi'   => $canon['urunAdi'],
+				'adet'      => $canon['adet'],
+				'not'       => $canon['not'],
+				'canonical' => $canon,
+			);
+		}
+
+		return $out;
+	}
+}
+
+/**
+ * Temiz kalemleri Firestore items sırasına göre item_id ile eşleştirir (kanonik + occurrence).
+ *
+ * @param array<int, array<string,mixed>> $fs_items   Firestore items[].
+ * @param array<int, array<string,mixed>> $temiz_list Temiz kalemler.
+ * @return array<int, int> FS sıra indeksi => item_id (0 = çözülemedi).
+ */
+if ( ! function_exists( 'qmo_siparis_temiz_item_ids_for_fs_items' ) ) {
+	function qmo_siparis_temiz_item_ids_for_fs_items( array $fs_items, array $temiz_list ) {
+		$temiz_canon = array();
+		foreach ( array_values( $temiz_list ) as $ti => $it ) {
+			if ( ! is_array( $it ) ) {
+				continue;
+			}
+			$temiz_canon[ $ti ] = qmo_siparis_canonical_satir_temiz_item( $it );
+		}
+
+		$used_temiz = array();
+		$fs_occ     = array();
+		$sonuc      = array();
+		$fs_seq     = 0;
+
+		foreach ( $fs_items as $it ) {
+			if ( ! is_array( $it ) ) {
+				continue;
+			}
+			$fs_canon = qmo_siparis_canonical_satir_fs_item( $it );
+			$base     = qmo_siparis_line_hash_tek( $fs_canon );
+			$occ      = isset( $fs_occ[ $base ] ) ? (int) $fs_occ[ $base ] : 0;
+			$fs_occ[ $base ] = $occ + 1;
+
+			$adaylar = array();
+			foreach ( $temiz_canon as $ti => $tc ) {
+				if ( ! empty( $used_temiz[ $ti ] ) ) {
+					continue;
+				}
+				if ( 0 === qmo_siparis_canonical_satir_cmp( $fs_canon, $tc ) ) {
+					$adaylar[] = $ti;
+				}
+			}
+
+			$id = 0;
+			if ( ! empty( $adaylar ) ) {
+				sort( $adaylar, SORT_NUMERIC );
+				if ( isset( $adaylar[ $occ ] ) ) {
+					$pick = (int) $adaylar[ $occ ];
+					$used_temiz[ $pick ] = true;
+					$id                  = isset( $temiz_list[ $pick ]['item_id'] ) ? absint( $temiz_list[ $pick ]['item_id'] ) : 0;
+				}
+			}
+
+			$sonuc[ $fs_seq ] = $id;
+			++$fs_seq;
+		}
+
+		return $sonuc;
+	}
+}
+
+/**
+ * Temiz istek kalemlerini Firestore items[] biçimine çevirir (sıra korunur).
+ *
+ * Firestore belgesi henüz okunamadığında analytics line identity, Firestore'a
+ * yazılan items[] ile aynı sıra/kanonik kaynaktan üretilir.
+ *
+ * @param array<int, array<string,mixed>> $temiz qmo_siparis_isle temiz kalemler.
+ * @return array<int, array<string,mixed>>
+ */
+if ( ! function_exists( 'qmo_siparis_firestore_items_from_temiz' ) ) {
+	function qmo_siparis_firestore_items_from_temiz( array $temiz ) {
+		$items = array();
+		foreach ( $temiz as $it ) {
+			if ( ! is_array( $it ) ) {
+				continue;
+			}
+			$items[] = array(
+				'urunAdi'     => $it['urunAdi'] ?? '',
+				'adet'        => $it['adet'] ?? 1,
+				'notOrijinal' => $it['not'] ?? '',
+				'notTr'       => $it['not'] ?? '',
+			);
+		}
+		return $items;
+	}
+}
+
+/**
  * Sipariş gövdesi için kararlı hash (masa + dil + kalemler).
+ *
+ * Firestore ile karşılaştırılabilir kanonik gövde kullanır (itemId yok).
  *
  * @param string              $masa  Doğrulanmış masa slug.
  * @param string              $dil   Dil kodu.
@@ -251,38 +627,7 @@ if ( ! function_exists( 'qmo_idempotency_order_id' ) ) {
  */
 if ( ! function_exists( 'qmo_siparis_idempotency_hash' ) ) {
 	function qmo_siparis_idempotency_hash( $masa, $dil, array $temiz ) {
-		$lines = array();
-		foreach ( $temiz as $it ) {
-			if ( ! is_array( $it ) ) {
-				continue;
-			}
-			$lines[] = array(
-				'item_id' => (int) ( $it['item_id'] ?? 0 ),
-				'adet'    => (int) ( $it['adet'] ?? 0 ),
-				'not'     => (string) ( $it['not'] ?? '' ),
-				'urunAdi' => (string) ( $it['urunAdi'] ?? '' ),
-			);
-		}
-		usort(
-			$lines,
-			function ( $a, $b ) {
-				$cmp = ( $a['item_id'] <=> $b['item_id'] );
-				if ( 0 !== $cmp ) {
-					return $cmp;
-				}
-				return strcmp( $a['urunAdi'], $b['urunAdi'] );
-			}
-		);
-		return hash(
-			'sha256',
-			wp_json_encode(
-				array(
-					'masa'  => sanitize_title( (string) $masa ),
-					'dil'   => (string) $dil,
-					'items' => $lines,
-				)
-			)
-		);
+		return qmo_siparis_canonical_hash_istek( $masa, $dil, $temiz );
 	}
 }
 
@@ -313,9 +658,52 @@ if ( ! function_exists( 'qmo_siparis_idempotent_durum' ) ) {
 			return array( 'type' => 'invalid' );
 		}
 
-		$tkey = qmo_idempotency_transient_anahtar( $idempotency_key );
-		$rec  = get_transient( $tkey );
-		$masa = sanitize_title( (string) $masa );
+		$masa     = sanitize_title( (string) $masa );
+		$body_hash = (string) $body_hash;
+		$tkey     = qmo_idempotency_transient_anahtar( $idempotency_key );
+		$rec      = get_transient( $tkey );
+
+		$replay_yanit = array(
+			'type'     => 'replay',
+			'order_id' => $order_id,
+			'response' => array(
+				'success' => true,
+				'msg'     => '',
+				'http'    => 200,
+			),
+		);
+
+		if ( class_exists( 'QMO_Firestore' ) && QMO_Firestore::hazir_mi() ) {
+			$oku = QMO_Firestore::call_oku( $order_id, 5 );
+			if ( ! is_wp_error( $oku ) && is_array( $oku ) ) {
+				$kanon = qmo_siparis_canonical_firestore( $oku );
+				if ( null === $kanon ) {
+					return array(
+						'type'     => 'firestore_invalid',
+						'order_id' => $order_id,
+					);
+				}
+				if ( $kanon['masa'] !== $masa ) {
+					return array(
+						'type'     => 'masa_mismatch',
+						'order_id' => $order_id,
+					);
+				}
+				if ( $kanon['hash'] !== $body_hash ) {
+					return array(
+						'type'     => 'body_mismatch',
+						'order_id' => $order_id,
+					);
+				}
+				if ( class_exists( 'QRMS_Analitik' ) && QRMS_Analitik::siparis_olayi_var_mi( $order_id, 'order_sent' ) ) {
+					return $replay_yanit;
+				}
+				return array(
+					'type'     => 'continue',
+					'order_id' => $order_id,
+				);
+			}
+		}
 
 		if ( is_array( $rec ) ) {
 			if ( ! empty( $rec['masa'] ) && (string) $rec['masa'] !== $masa ) {
@@ -324,7 +712,7 @@ if ( ! function_exists( 'qmo_siparis_idempotent_durum' ) ) {
 					'order_id' => $order_id,
 				);
 			}
-			if ( ! empty( $rec['body_hash'] ) && (string) $rec['body_hash'] !== (string) $body_hash ) {
+			if ( ! empty( $rec['body_hash'] ) && (string) $rec['body_hash'] !== $body_hash ) {
 				return array(
 					'type'     => 'body_mismatch',
 					'order_id' => $order_id,
@@ -335,7 +723,7 @@ if ( ! function_exists( 'qmo_siparis_idempotent_durum' ) ) {
 				$tkey,
 				array(
 					'masa'      => $masa,
-					'body_hash' => (string) $body_hash,
+					'body_hash' => $body_hash,
 				),
 				qmo_idempotency_ttl()
 			);
@@ -343,24 +731,6 @@ if ( ! function_exists( 'qmo_siparis_idempotent_durum' ) ) {
 				'type'     => 'new',
 				'order_id' => $order_id,
 			);
-		}
-
-		if ( class_exists( 'QMO_Firestore' ) && QMO_Firestore::hazir_mi() ) {
-			$oku = QMO_Firestore::call_oku( $order_id, 5 );
-			if ( ! is_wp_error( $oku ) ) {
-				$analitik_tamam = class_exists( 'QRMS_Analitik' ) && QRMS_Analitik::siparis_olayi_kayitli_mi( $order_id );
-				if ( $analitik_tamam ) {
-					return array(
-						'type'     => 'replay',
-						'order_id' => $order_id,
-						'response' => array(
-							'success' => true,
-							'msg'     => '',
-							'http'    => 200,
-						),
-					);
-				}
-			}
 		}
 
 		return array(
@@ -1018,6 +1388,63 @@ if ( ! function_exists( 'qmo_analitik_urun_ada_gore' ) ) {
 			if ( ! empty( $alan ) ) {
 				return $alan;
 			}
+		}
+
+		return array(
+			'item_id'       => 0,
+			'item_name'     => $ad,
+			'category_name' => '',
+			'price'         => 0.0,
+		);
+	}
+}
+
+/**
+ * Ürün adından menü kaydı; birden fazla yayın adayı varsa belirsiz (item_id=0).
+ *
+ * Sipariş analitiğinde kanonik eşleşme yokken kullanılır — sessiz ilk eşleşme yok.
+ *
+ * @param string $ad Ürün adı.
+ * @return array{item_id:int,item_name:string,category_name:string,price:float}
+ */
+if ( ! function_exists( 'qmo_analitik_urun_ada_gore_belirsiz_guvenli' ) ) {
+	function qmo_analitik_urun_ada_gore_belirsiz_guvenli( $ad ) {
+		$ad = sanitize_text_field( (string) $ad );
+
+		if ( '' === $ad ) {
+			return array(
+				'item_id'       => 0,
+				'item_name'     => '',
+				'category_name' => '',
+				'price'         => 0.0,
+			);
+		}
+
+		$posts = get_posts(
+			array(
+				'post_type'              => 'rma_menu_item',
+				'post_status'            => 'publish',
+				'title'                  => $ad,
+				'posts_per_page'         => 2,
+				'no_found_rows'          => true,
+				'ignore_sticky_posts'    => true,
+				'update_post_meta_cache' => false,
+			)
+		);
+
+		if ( count( $posts ) !== 1 || ! isset( $posts[0]->ID ) ) {
+			return array(
+				'item_id'       => 0,
+				'item_name'     => $ad,
+				'category_name' => '',
+				'price'         => 0.0,
+			);
+		}
+
+		$alan = qmo_analitik_urun_alani( (int) $posts[0]->ID );
+
+		if ( ! empty( $alan ) ) {
+			return $alan;
 		}
 
 		return array(

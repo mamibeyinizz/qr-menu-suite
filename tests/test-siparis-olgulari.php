@@ -430,7 +430,7 @@ qrms_test(
 		qrms_assert_contains( "'reason'", $rest, 'reason' );
 
 		$sema = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-analiz/class-qrms-analitik.php' );
-		qrms_assert_contains( "const DB_SURUM = '1.4'", $sema, 'şema 1.4' );
+		qrms_assert_contains( "const DB_SURUM = '1.6'", $sema, 'şema 1.6' );
 		qrms_assert_contains( 'order_cancelled', $sema, 'iptal tipi şemada' );
 
 		$fs = file_get_contents( QRMS_PLUGIN_DIR . 'modules/_qmo-ortak/class-qmo-firestore.php' );

@@ -29,6 +29,10 @@ function qrms_mariadb_connect() {
 	$pass = qrms_mariadb_env( 'QRMS_MARIADB_PASSWORD', 'qrms_test_pw' );
 	$db   = qrms_mariadb_env( 'QRMS_MARIADB_NAME', 'qrms_test' );
 
+	// WordPress wpdb ile aynı: PHP 8.1+ varsayılanı (ERROR|STRICT) exception fırlatır;
+	// production 1062 idempotency yolu false + errno bekler.
+	mysqli_report( MYSQLI_REPORT_OFF );
+
 	$mysqli = mysqli_init();
 	if ( ! $mysqli ) {
 		return null;
