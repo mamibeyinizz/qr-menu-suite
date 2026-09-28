@@ -164,4 +164,17 @@ class QRMS_MariaDB_Wpdb {
 		}
 		return (int) $this->dbh->insert_id;
 	}
+
+	/**
+	 * @param string $sql SQL.
+	 * @return int|false
+	 */
+	public function query( $sql ) {
+		$this->queries[] = $sql;
+		if ( ! $this->dbh->query( $sql ) ) {
+			$this->last_error = $this->dbh->error;
+			return false;
+		}
+		return true;
+	}
 }
