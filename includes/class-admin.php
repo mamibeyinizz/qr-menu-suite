@@ -393,6 +393,55 @@ class QRMS_Admin {
 	}
 
 	/**
+	 * WordPress komut paletinde (Ctrl+K, WP 6.9+) görünmeyecek slug'lar.
+	 *
+	 * Sayfalar add_submenu_page ile kayıtlı kalır; yalnızca $submenu'den
+	 * düşürülür. Zamanlama QRMS_Wizard::hide_page_from_menu ile aynıdır:
+	 * route çözüldükten sonra, admin-header başlığı okunmadan önce, komut
+	 * paleti verisi toplanmadan önce (current_screen).
+	 *
+	 * @return string[]
+	 */
+	public static function get_command_palette_hidden_slugs() {
+		$slugs = array();
+
+		if ( defined( 'QRMS_ANALITIK_SAYFA' ) ) {
+			$slugs[] = QRMS_ANALITIK_SAYFA;
+		}
+		if ( defined( 'QRMS_ANALITIK_KLASIK_SAYFA' ) ) {
+			$slugs[] = QRMS_ANALITIK_KLASIK_SAYFA;
+		}
+
+		/**
+		 * Komut paletinden gizlenecek yönetim sayfası slug'ları.
+		 *
+		 * @param string[] $slugs Varsayılan liste (analitik legacy yönlendirmeleri).
+		 */
+		return array_values( array_unique( apply_filters( 'qrms_command_palette_hidden_slugs', $slugs ) ) );
+	}
+
+	/**
+	 * Legacy / yönlendirme-only sayfaları komut paletinden düşürür.
+	 *
+	 * Sol menü gizlemesi admin_head'de kalır (hide_module_subpages); o kanca
+	 * komut paleti için geç kalır. Burada yalnızca get_command_palette_hidden_slugs()
+	 * listesi hedeflenir — kayıt ve 302 yönlendirmeler değişmez.
+	 *
+	 * @return void
+	 */
+	public static function hide_command_palette_slugs() {
+		$page = self::get_current_page();
+
+		foreach ( self::get_command_palette_hidden_slugs() as $slug ) {
+			remove_submenu_page( self::MENU_SLUG, $slug );
+
+			if ( $page === $slug ) {
+				$GLOBALS['title'] = __( 'Menü Analitiği', 'qrms' );
+			}
+		}
+	}
+
+	/**
 	 * Modül alt sayfalarını sol menüden düşürür.
 	 *
 	 * ZAMANLAMA — bu metodun `admin_head`'e bağlı olması bilinçlidir ve
@@ -1361,6 +1410,7 @@ class QRMS_Admin {
 		add_action( 'admin_menu', array( __CLASS__, 'ensure_menu_registered' ), 999 );
 		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_assets' ) );
 		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_menu_assets' ) );
+		add_action( 'current_screen', array( __CLASS__, 'hide_command_palette_slugs' ) );
 
 		// Modül alt sayfaları menüden yalnızca boyanmadan hemen önce düşürülür;
 		// gerekçe için hide_module_subpages() başlığına bakın. Gruplama aynı

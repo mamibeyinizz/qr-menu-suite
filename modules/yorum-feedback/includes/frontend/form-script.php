@@ -2,6 +2,66 @@
 if (!defined('ABSPATH')) exit;
 
 /**
+ * Ön yüz form betiğini wp_footer'da bas (the_content && kaçırmasını önler).
+ *
+ * @param string $js       Ham JS gövdesi (script etiketi olmadan).
+ * @param string $script_id Benzersiz HTML id özniteliği.
+ * @return string wp_footer kaçırıldıysa satır içi çıktı; aksi hâlde boş.
+ */
+function qrm_pro_queue_form_script($js, $script_id = 'qrm-pro-form') {
+    $js = trim((string) $js);
+    if ($js === '') {
+        return '';
+    }
+
+    $script_id = sanitize_key((string) $script_id);
+    if ($script_id === '') {
+        $script_id = 'qrm-pro-form';
+    }
+
+    if (!isset($GLOBALS['qrm_pro_form_scripts']) || !is_array($GLOBALS['qrm_pro_form_scripts'])) {
+        $GLOBALS['qrm_pro_form_scripts'] = [];
+    }
+    $GLOBALS['qrm_pro_form_scripts'][$script_id] = $js;
+
+    if (did_action('wp_footer')) {
+        return qrm_pro_print_form_script_tag($js, $script_id);
+    }
+
+    if (!has_action('wp_footer', 'qrm_pro_print_form_scripts_footer')) {
+        add_action('wp_footer', 'qrm_pro_print_form_scripts_footer', 25);
+    }
+
+    return '';
+}
+
+/**
+ * @param string $js
+ * @param string $script_id
+ * @return string
+ */
+function qrm_pro_print_form_script_tag($js, $script_id) {
+    if (function_exists('wp_print_inline_script_tag')) {
+        ob_start();
+        wp_print_inline_script_tag($js, ['id' => $script_id]);
+        return ob_get_clean();
+    }
+
+    return '<script id="' . esc_attr($script_id) . '">' . $js . '</script>';
+}
+
+/** wp_footer: sıraya alınmış form betiklerini bir kez basar. */
+function qrm_pro_print_form_scripts_footer() {
+    if (empty($GLOBALS['qrm_pro_form_scripts']) || !is_array($GLOBALS['qrm_pro_form_scripts'])) {
+        return;
+    }
+
+    foreach ($GLOBALS['qrm_pro_form_scripts'] as $script_id => $js) {
+        echo qrm_pro_print_form_script_tag($js, $script_id); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+    }
+}
+
+/**
  * Yorum/iletişim formunun ön yüz script'i.
  *
  * @param array $settings Eklenti ayarları.
@@ -26,9 +86,10 @@ function qrm_pro_render_form_script($settings, $js_limit = 0, $has_list = true, 
     }
     $media_enabled = !empty($list_opts['media_enabled']);
 
+    $script_id = $has_list ? 'qrm-pro-reviews-form' : 'qrm-pro-contact-form';
+
     ob_start();
     ?>
-    <script>
     (function() {
         var qrmI18n = <?php echo wp_json_encode(qrm_ceviri_review_js_metinleri(), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
         function metin(anahtar, yedek) {
@@ -461,7 +522,6 @@ function qrm_pro_render_form_script($settings, $js_limit = 0, $has_list = true, 
             <?php if ($has_list): ?>initReviewsList();<?php endif; ?>
         });
     })();
-    </script>
     <?php
-    return ob_get_clean();
+    return qrm_pro_queue_form_script(ob_get_clean(), $script_id);
 }
