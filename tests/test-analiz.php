@@ -357,8 +357,8 @@ qrms_test(
 
 		qrms_assert_same( 1, count( $eski ), 'eski adres bir kez kayıtlı' );
 
-		// Üst menü '' — satır sol menüde hiç görünmez, yalnızca adres çalışır.
-		qrms_assert_same( '', $eski[0]['parent'], 'gizli sayfa' );
+		// Üst menü suite kökü — satır hide_module_subpages ile düşer, adres çalışır.
+		qrms_assert_same( QRMS_Admin::MENU_SLUG, $eski[0]['parent'], 'gizli sayfa' );
 
 		try {
 			qrms_module_qr_analiz_eski_adresi_yonlendir();
