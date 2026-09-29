@@ -80,6 +80,7 @@ function qrms_module_qr_analiz_init() {
 		QRMS_Admin::register_module_page( 'qr-analiz', 'qrms_module_qr_analiz_hub' );
 
 		add_action( 'admin_menu', 'qrms_module_qr_analiz_admin_menu', 20 );
+		add_action( 'admin_init', 'qrms_module_qr_analiz_eski_adresi_belki_yonlendir' );
 
 		// Alt sayfaların "geri" bağlantısı da aktif filtreyi taşımalı; aksi
 		// hâlde kullanıcı hub'a döndüğünde seçimi sıfırlanırdı.
@@ -158,10 +159,10 @@ const QRMS_ANALITIK_SAYFA = 'qrms-analiz-panel';
  * sol menüde görünmemeleri hide_module_subpages() ile, route çözüldükten sonra
  * sağlanır. Menüye yeni satır eklenmez — menü tek seviyeli kalır.
  *
- * Eski panel adresi (QRMS_ANALITIK_SAYFA) üst menüsüz kaydedilir: null yerine
- * '' kullanılır, ikisi de aynı (admin_page_<slug>) hook'unu üretir ama ''
- * PHP 8.1+ üzerinde plugin_basename() içindeki null deprecation uyarısını
- * doğurmaz.
+ * Eski panel adresleri (QRMS_ANALITIK_SAYFA, QRMS_ANALITIK_KLASIK_SAYFA) diğer
+ * kategori alt sayfalarıyla aynı üst menüde kayıtlıdır; sol menüde görünmemeleri
+ * hide_module_subpages() ile sağlanır. Üst menü '' kullanılmaz — PHP 8.1
+ * admin-header.php strip_tags(null) uyarısına yol açar.
  *
  * @return void
  */
@@ -201,14 +202,42 @@ function qrms_module_qr_analiz_admin_menu() {
 	// İkisi de hub'a yönlendirir — yer imleri ve dış bağlantılar kırılmaz.
 	foreach ( array( QRMS_ANALITIK_SAYFA, QRMS_ANALITIK_KLASIK_SAYFA ) as $eski ) {
 		add_submenu_page(
-			'',
+			QRMS_Admin::MENU_SLUG,
 			__( 'Menü Analitiği', 'qrms' ),
 			__( 'Menü Analitiği', 'qrms' ),
 			QRMS_Admin::CAPABILITY,
 			$eski,
-			'qrms_module_qr_analiz_eski_adresi_yonlendir'
+			'qrms_module_qr_analiz_eski_adresi_belki_yonlendir'
 		);
 	}
+}
+
+/**
+ * Eski analitik slug'larına gelindiyse çıktıdan önce hub'a yönlendirir.
+ *
+ * Sayfa callback'i admin-header'dan sonra çalıştığı için yönlendirme burada
+ * yapılır (bkz. qr-acilis-ekrani maybe_redirect_legacy_pages).
+ *
+ * @return void
+ */
+function qrms_module_qr_analiz_eski_adresi_belki_yonlendir() {
+	// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Yönlendirme; durum değişmez.
+	if ( ! isset( $_GET['page'] ) ) {
+		return;
+	}
+
+	// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+	$slug = sanitize_key( wp_unslash( $_GET['page'] ) );
+
+	if ( QRMS_ANALITIK_SAYFA !== $slug && QRMS_ANALITIK_KLASIK_SAYFA !== $slug ) {
+		return;
+	}
+
+	if ( ! current_user_can( QRMS_Admin::CAPABILITY ) ) {
+		return;
+	}
+
+	qrms_module_qr_analiz_eski_adresi_yonlendir();
 }
 
 /**
