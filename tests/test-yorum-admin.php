@@ -501,6 +501,18 @@ qrms_test(
 );
 
 qrms_test(
+	'form-script wp_footer kuyruğu the_content && kaçırmasını önler',
+	function () {
+		$js = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/frontend/form-script.php' );
+
+		qrms_assert_contains( 'function qrm_pro_queue_form_script', $js, 'footer kuyruğu' );
+		qrms_assert_contains( 'wp_print_inline_script_tag', $js, 'filtresiz script etiketi' );
+		qrms_assert_contains( 'return qrm_pro_queue_form_script(ob_get_clean()', $js, 'shortcode çıktısına gömülmez' );
+		qrms_assert_false( false !== strpos( $js, "ob_start();\n    ?>\n    <script>" ), 'render gövdesi script etiketi açmaz' );
+	}
+);
+
+qrms_test(
 	'yorum JS metin() yedeği korur; AJAX rma_get_current_lang zincirinde',
 	function () {
 		$js    = file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/frontend/form-script.php' );

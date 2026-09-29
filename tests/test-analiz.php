@@ -233,6 +233,26 @@ qrms_test(
 );
 
 qrms_test(
+	'legacy analitik slug\'ları komut paleti listesinde yok (current_screen)',
+	function () {
+		require_once QRMS_PLUGIN_DIR . 'modules/qr-analiz/module.php';
+
+		$GLOBALS['submenu'][ QRMS_Admin::MENU_SLUG ] = array(
+			qrms_submenu_satiri( 'İstatistikler', QRMS_Admin::get_module_page_slug( 'qr-analiz' ) ),
+		);
+
+		qrms_module_qr_analiz_admin_menu();
+
+		QRMS_Admin::hide_command_palette_slugs();
+
+		$sluglar = qrms_registered_submenu_slugs();
+
+		qrms_assert_false( in_array( QRMS_ANALITIK_SAYFA, $sluglar, true ), 'eski panel komut paletinde görünmez' );
+		qrms_assert_false( in_array( QRMS_ANALITIK_KLASIK_SAYFA, $sluglar, true ), 'klasik komut paletinde görünmez' );
+	}
+);
+
+qrms_test(
 	'paylaşılan filtre her bağlantıya yapışır, varsayılanda adres temiz kalır',
 	function () {
 		// Dokunulmamış filtre: adreslerde gereksiz arg yok.
