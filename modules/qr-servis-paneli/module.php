@@ -29,7 +29,9 @@ function qrms_module_qr_servis_paneli_init() {
 	require_once __DIR__ . '/includes/class-qrms-sp-veri.php';
 	require_once __DIR__ . '/includes/class-qrms-sp-rol.php';
 
-	QRMS_SP_Rol::kur();
+	// Rol kurulumu `init`'te: `add_role()` içindeki qrms çevirisi metin alanı
+	// yüklendikten (init 0) sonra çalışmalıdır.
+	add_action( 'init', array( 'QRMS_SP_Rol', 'kur' ), 1 );
 
 	// Sadeleştirme `init`'te başlar: yetenek kontrolü plugins_loaded'da
 	// yapılırsa geçerli kullanıcı, `determine_current_user` filtresini
