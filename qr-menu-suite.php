@@ -72,9 +72,7 @@ qrms_bootstrap();
 function qrms_load_textdomain() {
 	load_plugin_textdomain( 'qrms', false, dirname( plugin_basename( QRMS_PLUGIN_FILE ) ) . '/languages' );
 }
-// Modül yükleyici plugins_loaded (20) sırasında __() kullanır; init'ten önce
-// yükleme _load_textdomain_just_in_time uyarısını önler (WP 6.7+).
-add_action( 'plugins_loaded', 'qrms_load_textdomain', 0 );
+add_action( 'init', 'qrms_load_textdomain', 0 );
 
 /**
  * Aktivasyon: günlük lisans cron'unu kur, kurulum yapılmamışsa sihirbaza

@@ -16,9 +16,10 @@ defined( 'ABSPATH' ) || exit;
  * yalnızca bu defteri basar. Liste statik değildir — lisansta aktif olmayan
  * bir modülün kısa kodları hiç görünmez, çünkü modülün init'i hiç çalışmaz.
  *
- * Kayıt `plugins_loaded` (öncelik 20) sırasında yapılır; `admin_menu` ve sayfa
- * render'ı bundan sonra çalıştığı için zamanlama doğrudur — modül sayfası
- * kaydındaki (QRMS_Admin::register_module_page) desenin aynısı.
+ * Modül init'i `plugins_loaded` (öncelik 20) sırasında çalışır; `qrms` metin
+ * alanı ise WordPress 6.7+ ile yalnızca `init` sonrasında kullanılmalıdır.
+ * Çeviri gerektiren kayıtlar closure ile `init` (öncelik 1) kancasında
+ * işlenir; testlerde düz dizi kaydı anında kalır.
  */
 class QRMS_Shortcodes {
 
@@ -40,12 +41,30 @@ class QRMS_Shortcodes {
 	 *   note   Ek koşul (ör. "geçerli masa oturumu gerektirir").
 	 *   attrs  Parametreler: name, default, desc.
 	 *
-	 * @param string $modul_slug Modül slug'ı.
-	 * @param array  $kodlar     Kısa kod tanımları.
+	 * @param string         $modul_slug Modül slug'ı.
+	 * @param array|Closure  $kodlar     Kısa kod tanımları veya bunları üreten closure.
 	 * @return void
 	 */
-	public static function register( $modul_slug, array $kodlar ) {
+	public static function register( $modul_slug, $kodlar ) {
 		if ( ! QRMS_Helpers::is_valid_module( $modul_slug ) ) {
+			return;
+		}
+
+		if ( $kodlar instanceof Closure ) {
+			$commit = function () use ( $modul_slug, $kodlar ) {
+				self::register( $modul_slug, $kodlar() );
+			};
+
+			if ( did_action( 'init' ) ) {
+				$commit();
+			} else {
+				add_action( 'init', $commit, 1 );
+			}
+
+			return;
+		}
+
+		if ( ! is_array( $kodlar ) ) {
 			return;
 		}
 

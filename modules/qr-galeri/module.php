@@ -40,7 +40,8 @@ function qrms_module_qr_galeri_init() {
 
 	QRMS_Shortcodes::register(
 		'qr-galeri',
-		array(
+		function () {
+			return array(
 			array(
 				'tag'   => 'qrmenu_gallery',
 				'title' => __( 'Galeri', 'qrms' ),
@@ -79,7 +80,8 @@ function qrms_module_qr_galeri_init() {
 					),
 				),
 			),
-		)
+			);
+		}
 	);
 
 	if ( is_admin() ) {

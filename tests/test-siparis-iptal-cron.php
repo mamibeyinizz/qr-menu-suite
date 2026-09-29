@@ -497,6 +497,11 @@ qrms_test(
 
 		$aralik = QRMS_Siparis_Iptal_Uzlastirma::cron_araliklari( array() );
 		qrms_assert_same( 300, $aralik[ QRMS_Siparis_Iptal_Uzlastirma::CRON_ARALIK ]['interval'], '5 dk' );
+		qrms_assert_same(
+			QRMS_Siparis_Iptal_Uzlastirma::CRON_ARALIK_ETIKET,
+			$aralik[ QRMS_Siparis_Iptal_Uzlastirma::CRON_ARALIK ]['display'],
+			'display etiketi'
+		);
 	}
 );
 

@@ -716,6 +716,14 @@ function esc_js( $text ) {
  * @return string
  */
 function __( $text, $domain = 'default' ) {
+	if ( ! empty( $GLOBALS['qrms_test']['track_translate'] ) ) {
+		$GLOBALS['qrms_test']['translate_calls'][] = array(
+			'text'   => $text,
+			'domain' => $domain,
+			'hook'   => $GLOBALS['qrms_test']['current_filter'] ?? '',
+		);
+	}
+
 	return $text;
 }
 
@@ -2452,6 +2460,87 @@ if ( ! class_exists( 'WP_Query' ) ) {
 			);
 		}
 	}
+}
+
+/**
+ * Testte rol kaydı (WP add_role/remove_role/get_role).
+ */
+class QRMS_Test_WP_Role {
+	/**
+	 * Rol anahtarı.
+	 *
+	 * @var string
+	 */
+	public $name;
+
+	/**
+	 * Yetenekler.
+	 *
+	 * @var array<string,bool>
+	 */
+	public $capabilities = array();
+
+	/**
+	 * @param string               $name Rol anahtarı.
+	 * @param array<string,bool> $caps Yetenekler.
+	 */
+	public function __construct( $name, $caps = array() ) {
+		$this->name         = $name;
+		$this->capabilities = $caps;
+	}
+
+	/**
+	 * @param string $cap   Yetenek.
+	 * @param bool   $grant Verilsin mi.
+	 * @return void
+	 */
+	public function add_cap( $cap, $grant = true ) {
+		$this->capabilities[ $cap ] = $grant;
+		if ( isset( $GLOBALS['qrms_test']['roles'][ $this->name ] ) ) {
+			$GLOBALS['qrms_test']['roles'][ $this->name ]['caps'][ $cap ] = $grant;
+		}
+	}
+}
+
+/**
+ * @param string               $role         Rol anahtarı.
+ * @param string               $display_name Görünen ad.
+ * @param array<string,bool> $caps         Yetenekler.
+ * @return QRMS_Test_WP_Role|null
+ */
+function add_role( $role, $display_name, $caps = array() ) {
+	if ( ! isset( $GLOBALS['qrms_test']['roles'] ) ) {
+		$GLOBALS['qrms_test']['roles'] = array();
+	}
+
+	$GLOBALS['qrms_test']['roles'][ $role ] = array(
+		'name' => $display_name,
+		'caps' => $caps,
+	);
+
+	return new QRMS_Test_WP_Role( $role, $caps );
+}
+
+/**
+ * @param string $role Rol anahtarı.
+ * @return void
+ */
+function remove_role( $role ) {
+	unset( $GLOBALS['qrms_test']['roles'][ $role ] );
+}
+
+/**
+ * @param string $role Rol anahtarı.
+ * @return QRMS_Test_WP_Role|null
+ */
+function get_role( $role ) {
+	if ( empty( $GLOBALS['qrms_test']['roles'][ $role ] ) ) {
+		return null;
+	}
+
+	$kayit = $GLOBALS['qrms_test']['roles'][ $role ];
+
+	return new QRMS_Test_WP_Role( $role, $kayit['caps'] );
 }
 
 require_once QRMS_PLUGIN_DIR . 'includes/class-helpers.php';

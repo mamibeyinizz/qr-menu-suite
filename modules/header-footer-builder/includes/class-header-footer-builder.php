@@ -418,18 +418,20 @@ class QRMS_Header_Footer_Builder {
 
 		QRMS_Shortcodes::register(
 			self::MODULE,
-			array(
-				array(
-					'tag'   => 'hfb_header',
-					'title' => __( 'Header', 'qrms' ),
-					'desc'  => __( 'Yapılandırılmış header bileşenini sayfaya yerleştirir. Elementor Shortcode widget\'ında kullanın.', 'qrms' ),
-				),
-				array(
-					'tag'   => 'hfb_footer',
-					'title' => __( 'Footer', 'qrms' ),
-					'desc'  => __( 'Yapılandırılmış footer bileşenini sayfaya yerleştirir. Elementor Shortcode widget\'ında kullanın.', 'qrms' ),
-				),
-			)
+			function () {
+				return array(
+					array(
+						'tag'   => 'hfb_header',
+						'title' => __( 'Header', 'qrms' ),
+						'desc'  => __( 'Yapılandırılmış header bileşenini sayfaya yerleştirir. Elementor Shortcode widget\'ında kullanın.', 'qrms' ),
+					),
+					array(
+						'tag'   => 'hfb_footer',
+						'title' => __( 'Footer', 'qrms' ),
+						'desc'  => __( 'Yapılandırılmış footer bileşenini sayfaya yerleştirir. Elementor Shortcode widget\'ında kullanın.', 'qrms' ),
+					),
+				);
+			}
 		);
 
 		add_action( 'wp_enqueue_scripts', array( $this, 'maybe_enqueue_frontend_assets' ) );

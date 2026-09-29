@@ -29,6 +29,15 @@ class QRMS_Siparis_Iptal_Uzlastirma {
 	/** cron_schedules anahtarı (~5 dakika). */
 	const CRON_ARALIK = 'qrms_iptal_uzlastirma';
 
+	/**
+	 * cron_schedules `display` metni (kaynak dil).
+	 *
+	 * wp_get_schedules() ilk çağrıda sonucu önbelleğe alır; modül yüklemesi
+	 * sırasında wp_schedule_event() bu filtreyi init öncesinde tetikleyebilir.
+	 * Burada __() kullanılmaz — aksi hâlde qrms için _load_textdomain_just_in_time uyarısı oluşur.
+	 */
+	const CRON_ARALIK_ETIKET = 'QR sipariş iptal uzlaştırma (5 dakika)';
+
 	/** Cron aralığı (saniye). */
 	const ARALIK_SANIYE = 300;
 
@@ -286,7 +295,7 @@ class QRMS_Siparis_Iptal_Uzlastirma {
 		if ( ! isset( $schedules[ self::CRON_ARALIK ] ) ) {
 			$schedules[ self::CRON_ARALIK ] = array(
 				'interval' => self::ARALIK_SANIYE,
-				'display'  => __( 'QR sipariş iptal uzlaştırma (5 dakika)', 'qrms' ),
+				'display'  => self::CRON_ARALIK_ETIKET,
 			);
 		}
 

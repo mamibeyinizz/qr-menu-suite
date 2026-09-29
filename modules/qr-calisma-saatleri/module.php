@@ -29,7 +29,8 @@ function qrms_module_qr_calisma_saatleri_init() {
 
 	QRMS_Shortcodes::register(
 		'qr-calisma-saatleri',
-		array(
+		function () {
+			return array(
 			array(
 				'tag'   => 'qr_calisma_saatleri',
 				'title' => __( 'Çalışma Saatleri', 'qrms' ),
@@ -47,7 +48,8 @@ function qrms_module_qr_calisma_saatleri_init() {
 					),
 				),
 			),
-		)
+			);
+		}
 	);
 
 	add_action( 'wp_enqueue_scripts', 'qrms_cs_register_frontend_assets' );

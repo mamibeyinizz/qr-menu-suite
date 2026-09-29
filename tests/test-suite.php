@@ -25,6 +25,7 @@ require_once __DIR__ . '/test-menu-muhendisligi.php';
 require_once __DIR__ . '/test-servis-paneli.php';
 
 require_once __DIR__ . '/test-core.php';
+require_once __DIR__ . '/test-textdomain-lifecycle.php';
 require_once __DIR__ . '/test-chatbot.php';
 require_once __DIR__ . '/test-phase-65b.php';
 require_once __DIR__ . '/test-recommendation-attribution.php';

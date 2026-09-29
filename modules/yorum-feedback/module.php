@@ -75,7 +75,8 @@ function qrms_module_yorum_feedback_init() {
 
 	QRMS_Shortcodes::register(
 		'yorum-feedback',
-		array(
+		function () {
+			return array(
 			array(
 				'tag'   => 'qr_menu_reviews',
 				'title' => __( 'Yorum Formu ve Listesi', 'qrms' ),
@@ -99,7 +100,8 @@ function qrms_module_yorum_feedback_init() {
 					),
 				),
 			),
-		)
+			);
+		}
 	);
 
 	if ( is_admin() ) {
