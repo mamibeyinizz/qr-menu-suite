@@ -50,15 +50,15 @@ trait RMA_Admin_Pages_Trait {
             'qrms-rm-secenekler' => [
                 'title'      => 'Ekstralar & Ürün Rozetleri',
                 'menu_title' => 'Ekstralar & Ürün Rozetleri',
-                'hub_title'  => __( 'Ekstralar & Etiketler', 'qrms' ),
+                'hub_title'  => __( 'Ekstralar & Ürün Rozetleri', 'qrms' ),
                 'render'     => 'render_secenekler_page',
-                'desc'       => __( 'Ürün seçeneklerini ve menüde göstereceğiniz etiketleri yönetin.', 'qrms' ),
+                'desc'       => __( 'Ürün seçeneklerini ve menüde göstereceğiniz rozetleri yönetin.', 'qrms' ),
                 'icon'       => 'dashicons-editor-ul',
             ],
             'qrms-rm-diger' => [
                 'title'      => 'Diğer Ayarlar',
                 'menu_title' => 'Diğer Ayarlar',
-                'hub_title'  => __( 'Menü Araçları', 'qrms' ),
+                'hub_title'  => __( 'Diğer Ayarlar', 'qrms' ),
                 'render'     => 'render_other_settings_page',
                 'desc'       => __( 'Sepet, kategori sıralaması, toplu ürün ve malzeme aktarımı ile menü yedekleme araçlarını yönetin.', 'qrms' ),
                 'icon'       => 'dashicons-admin-tools',
@@ -66,7 +66,7 @@ trait RMA_Admin_Pages_Trait {
             'qrms-rm-urunum-yok' => [
                 'title'      => 'Tükenen Ürünler',
                 'menu_title' => 'Tükenen Ürünler',
-                'hub_title'  => __( 'Ürün Durumu', 'qrms' ),
+                'hub_title'  => __( 'Tükenen Ürünler', 'qrms' ),
                 'render'     => 'render_urunum_yok_page',
                 'desc'       => __( 'Tükenen ürünleri yönetin ve belirlediğiniz saatte otomatik olarak yeniden satışa açın.', 'qrms' ),
                 'icon'       => 'dashicons-clock',
@@ -156,8 +156,8 @@ trait RMA_Admin_Pages_Trait {
      * Genel Bakış kartındaki alt bağlantılar — hub kartlarıyla AYNI kaynak.
      *
      * get_hub_cards() sırası korunur; alt sayfa başlığı title'dır (hub
-     * "Ürün Durumu" / menü "Görünüm" derken Genel Bakış "Ürünüm Yok" /
-     * "Menü Görünümü" der). overview_title varsa doğrudan kartlarda kullanılır.
+     * kartı kısa menü adı kullanırken Genel Bakış tam sayfa adını gösterir).
+     * overview_title varsa doğrudan kartlarda kullanılır.
      *
      * @return array<int,array{url:string,title:string}>
      */
@@ -297,7 +297,7 @@ trait RMA_Admin_Pages_Trait {
         // önüne kendisi basar (register_module_subpage); burada basmak onu
         // ikilerdi. Suite yoksa (eski tekil eklenti) tek kaynak burasıdır.
         if ( ! class_exists( 'QRMS_Admin' ) ) {
-            echo '<a class="rma-back-link" href="' . esc_url( $this->hub_url() ) . '">&larr; Restoran Menü</a>';
+            echo '<a class="rma-back-link" href="' . esc_url( $this->hub_url() ) . '">&larr; Menü Yönetimi</a>';
         }
 
         if ( '' !== $kicker ) {
@@ -1114,13 +1114,9 @@ trait RMA_Admin_Pages_Trait {
     ----------------------------------------------------------------- */
 
     public function render_other_settings_page() {
-        $diger = $this->get_subpages()['qrms-rm-diger'];
-        $kicker = isset( $diger['hub_title'] ) ? (string) $diger['hub_title'] : '';
-
         $this->page_header(
             'Diğer Ayarlar',
-            'Sık kullanılmayan işlemler burada. İhtiyacınız olan bölüme aşağıdan geçebilirsiniz.',
-            $kicker
+            'Sık kullanılmayan işlemler burada. İhtiyacınız olan bölüme aşağıdan geçebilirsiniz.'
         );
         ?>
         <nav class="rma-anchor-nav" aria-label="Sayfa bölümleri">

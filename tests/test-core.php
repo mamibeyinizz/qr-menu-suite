@@ -926,7 +926,7 @@ qrms_test(
 		$php = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-admin-pages.php' );
 
 		qrms_assert_contains( "'hub_title'  => 'Menü Görünümü'", $php, 'Görünüm netleşir' );
-		qrms_assert_contains( "__( 'Ürün Durumu', 'qrms' )", $php, 'hub → Ürün Durumu' );
+		qrms_assert_contains( "__( 'Tükenen Ürünler', 'qrms' )", $php, 'hub → Tükenen Ürünler' );
 		qrms_assert_contains( "'title'      => 'Tükenen Ürünler'", $php, 'alt sayfa → Tükenen Ürünler' );
 		qrms_assert_contains( "isset( \$page['hub_title'] ) ? \$page['hub_title'] : \$page['menu_title']", $php, 'hub başlığı alt sayfa adını bozmaz' );
 		qrms_assert_contains( "__( 'Tükenen Ürünler', 'qrms' )", $php, 'tükenen ürün özet kartı' );
