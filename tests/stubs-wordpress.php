@@ -2000,7 +2000,18 @@ function is_singular() {
  *
  * @return null
  */
-function get_post() {
+function get_post( $post = null, $output = OBJECT, $filter = 'raw' ) {
+	unset( $output, $filter );
+
+	if ( is_object( $post ) ) {
+		return $post;
+	}
+
+	$id = (int) $post;
+	if ( $id > 0 && isset( $GLOBALS['qrms_test']['posts_by_id'][ $id ] ) ) {
+		return $GLOBALS['qrms_test']['posts_by_id'][ $id ];
+	}
+
 	return null;
 }
 

@@ -1787,9 +1787,14 @@
 
         var $boxes = $row.find('ul.rma_allergen-checklist :checkbox');
         $boxes.prop('checked', false);
-        if (ids.length) {
-            $boxes.val(ids);
+        if (!ids.length) {
+            return;
         }
+        $boxes.each(function () {
+            if (ids.indexOf(String(this.value)) !== -1) {
+                this.checked = true;
+            }
+        });
     }
 
     function initQuickEdit() {
