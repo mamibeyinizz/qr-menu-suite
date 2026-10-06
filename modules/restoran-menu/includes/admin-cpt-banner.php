@@ -368,9 +368,34 @@ class QMO_Banner_CPT {
         wp_send_json_success( array( 'count' => $sira - 1 ) );
     }
 
-    private static function is_valid_image( $id ) {
-        $post = get_post( $id );
-        return $post instanceof WP_Post && 'attachment' === $post->post_type;
+    /**
+     * Medya kütüphanesinde duran, silinmemiş bir görsel eki mi?
+     *
+     * PDF/video gibi ekler ve geçersiz ID reddedilir; yalnızca image MIME
+     * kabul edilir. CPT kaydı, satır AJAX'ı ve canvas üretimi aynı kapıyı
+     * kullanır.
+     *
+     * @param int $id Ek kimliği.
+     * @return bool
+     */
+    public static function is_valid_image( $id ) {
+        $id = absint( $id );
+
+        if ( $id < 1 ) {
+            return false;
+        }
+
+        if ( 'attachment' !== get_post_type( $id ) ) {
+            return false;
+        }
+
+        if ( function_exists( 'wp_attachment_is_image' ) ) {
+            return (bool) wp_attachment_is_image( $id );
+        }
+
+        $mime = function_exists( 'get_post_mime_type' ) ? get_post_mime_type( $id ) : '';
+
+        return is_string( $mime ) && 0 === strpos( $mime, 'image/' );
     }
 
     public static function admin_scripts( $hook ) {

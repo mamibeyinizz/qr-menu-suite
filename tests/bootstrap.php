@@ -51,6 +51,13 @@ function qrms_reset() {
 	// add_shortcode() taklidinin defteri de aynı nedenle sıfırlanır; aksi
 	// hâlde bir testte kaydedilen kısa kod sonraki testte "kurulu" görünür.
 	$GLOBALS['qrms_test']['post_meta']  = array();
+	$GLOBALS['qrms_test']['posts_by_id'] = array();
+	$GLOBALS['qrms_test']['next_post_id'] = 9000;
+	$GLOBALS['qrms_test']['post_mime'] = array();
+	$GLOBALS['qrms_test']['post_parent'] = array();
+	$GLOBALS['qrms_test']['attachment_file'] = array();
+	$GLOBALS['qrms_test']['uploaded_files'] = array();
+	unset( $GLOBALS['qrms_test']['wp_insert_post_error'], $GLOBALS['qrms_test']['wp_upload_bits_error'], $GLOBALS['qrms_test']['wp_insert_post_error_types'] );
 	$GLOBALS['qrms_test']['shortcodes'] = array();
 	$GLOBALS['qrms_test']['json']       = null;
 	$GLOBALS['qrms_test']['is_admin']   = false;

@@ -82,6 +82,44 @@ class WP_Error {
 	}
 }
 
+/** Basit WP_Post taklidi. */
+class WP_Post {
+	/**
+	 * @var int
+	 */
+	public $ID = 0;
+
+	/**
+	 * @var string
+	 */
+	public $post_type = 'post';
+
+	/**
+	 * @var string
+	 */
+	public $post_title = '';
+
+	/**
+	 * @var string
+	 */
+	public $post_status = 'publish';
+
+	/**
+	 * @var string
+	 */
+	public $post_mime_type = '';
+
+	/**
+	 * @var int
+	 */
+	public $post_parent = 0;
+
+	/**
+	 * @var int
+	 */
+	public $menu_order = 0;
+}
+
 /** Basit WP_User taklidi (login_redirect testleri). */
 class WP_User {
 	/**
@@ -194,6 +232,20 @@ function delete_transient( $name ) {
 function add_action( $hook, $callback, $priority = 10, $args = 1 ) {
 	$GLOBALS['qrms_test']['actions'][ $hook ][]    = $callback;
 	$GLOBALS['qrms_test']['priorities'][ $hook ][] = $priority;
+
+	return true;
+}
+
+/**
+ * Kanca kaldırır (testte no-op yeter).
+ *
+ * @param string   $hook     Hook.
+ * @param callable $callback Callback.
+ * @param int      $priority Öncelik.
+ * @return bool
+ */
+function remove_action( $hook, $callback, $priority = 10 ) {
+	unset( $hook, $callback, $priority );
 
 	return true;
 }
@@ -624,6 +676,16 @@ function wp_strip_all_tags( $value ) {
  */
 function wp_unslash( $value ) {
 	return is_string( $value ) ? stripslashes( $value ) : $value;
+}
+
+/**
+ * Slash ekler (testte kimlik dönüşü yeter).
+ *
+ * @param mixed $value Değer.
+ * @return mixed
+ */
+function wp_slash( $value ) {
+	return $value;
 }
 
 /**
@@ -1637,6 +1699,314 @@ function wp_update_attachment_metadata( $id, $data ) {
 }
 
 /**
+ * Ek metadata üretimi. Testte ölçü varsa onu, yoksa 1x1 PNG varsayar.
+ *
+ * @param int    $id   Ek kimliği.
+ * @param string $file Dosya yolu.
+ * @return array
+ */
+function wp_generate_attachment_metadata( $id, $file ) {
+	$olcu = is_string( $file ) && is_readable( $file ) ? @getimagesize( $file ) : false;
+
+	return array(
+		'width'  => is_array( $olcu ) ? (int) $olcu[0] : 1,
+		'height' => is_array( $olcu ) ? (int) $olcu[1] : 1,
+		'file'   => is_string( $file ) ? basename( $file ) : (string) $id . '.png',
+	);
+}
+
+/**
+ * Ek MIME türü.
+ *
+ * @param int $post_id Ek kimliği.
+ * @return string|false
+ */
+function get_post_mime_type( $post_id = 0 ) {
+	$id = (int) $post_id;
+
+	if ( isset( $GLOBALS['qrms_test']['post_mime'][ $id ] ) ) {
+		return $GLOBALS['qrms_test']['post_mime'][ $id ];
+	}
+
+	$post = get_post( $id );
+	if ( $post && ! empty( $post->post_mime_type ) ) {
+		return (string) $post->post_mime_type;
+	}
+
+	if ( isset( $GLOBALS['qrms_test']['post_types'][ $id ] ) && 'attachment' === $GLOBALS['qrms_test']['post_types'][ $id ] ) {
+		return 'image/jpeg';
+	}
+
+	return false;
+}
+
+/**
+ * Ek bir görsel mi?
+ *
+ * @param int $post_id Ek kimliği.
+ * @return bool
+ */
+function wp_attachment_is_image( $post_id = 0 ) {
+	$mime = get_post_mime_type( $post_id );
+
+	return is_string( $mime ) && 0 === strpos( $mime, 'image/' );
+}
+
+/**
+ * Yazı ekler.
+ *
+ * @param array $postarr Alanlar.
+ * @param bool  $wp_error Hata nesnesi dönsün mü.
+ * @return int|WP_Error
+ */
+function wp_insert_post( $postarr, $wp_error = false ) {
+	if ( ! empty( $GLOBALS['qrms_test']['wp_insert_post_error'] ) ) {
+		$err = new WP_Error( 'db_insert_error', 'Kayıt oluşturulamadı.' );
+
+		return $wp_error ? $err : 0;
+	}
+
+	$tip_kontrol = isset( $postarr['post_type'] ) ? (string) $postarr['post_type'] : '';
+	if ( $tip_kontrol && ! empty( $GLOBALS['qrms_test']['wp_insert_post_error_types'][ $tip_kontrol ] ) ) {
+		$err = new WP_Error( 'db_insert_error', 'Kayıt oluşturulamadı.' );
+
+		return $wp_error ? $err : 0;
+	}
+
+	$postarr = is_array( $postarr ) ? $postarr : array();
+	$id      = isset( $postarr['ID'] ) ? absint( $postarr['ID'] ) : 0;
+
+	if ( $id < 1 ) {
+		$id = isset( $GLOBALS['qrms_test']['next_post_id'] ) ? (int) $GLOBALS['qrms_test']['next_post_id'] : 9000;
+		$GLOBALS['qrms_test']['next_post_id'] = $id + 1;
+	}
+
+	qrms_test_yaziyi_yaz( $id, $postarr );
+
+	return $id;
+}
+
+/**
+ * Yazı günceller.
+ *
+ * @param array $postarr Alanlar.
+ * @return int
+ */
+function wp_update_post( $postarr = array() ) {
+	$id = isset( $postarr['ID'] ) ? absint( $postarr['ID'] ) : 0;
+
+	if ( $id < 1 ) {
+		return 0;
+	}
+
+	$mevcut = isset( $GLOBALS['qrms_test']['posts_by_id'][ $id ] ) ? (array) $GLOBALS['qrms_test']['posts_by_id'][ $id ] : array( 'ID' => $id );
+	qrms_test_yaziyi_yaz( $id, array_merge( $mevcut, $postarr ) );
+
+	return $id;
+}
+
+/**
+ * Test yazı kutusunu doldurur.
+ *
+ * @param int   $id      Kimlik.
+ * @param array $postarr Alanlar.
+ * @return void
+ */
+function qrms_test_yaziyi_yaz( $id, array $postarr ) {
+	$id    = (int) $id;
+	$tip   = isset( $postarr['post_type'] ) ? (string) $postarr['post_type'] : ( isset( $GLOBALS['qrms_test']['post_types'][ $id ] ) ? (string) $GLOBALS['qrms_test']['post_types'][ $id ] : 'post' );
+	$baslik = isset( $postarr['post_title'] ) ? (string) $postarr['post_title'] : ( $GLOBALS['qrms_test']['post_title'][ $id ] ?? '' );
+	$durum  = isset( $postarr['post_status'] ) ? (string) $postarr['post_status'] : ( $GLOBALS['qrms_test']['post_status'][ $id ] ?? 'publish' );
+	$mime   = isset( $postarr['post_mime_type'] ) ? (string) $postarr['post_mime_type'] : ( $GLOBALS['qrms_test']['post_mime'][ $id ] ?? '' );
+	$parent = isset( $postarr['post_parent'] ) ? (int) $postarr['post_parent'] : (int) ( $GLOBALS['qrms_test']['post_parent'][ $id ] ?? 0 );
+	$sira   = isset( $postarr['menu_order'] ) ? (int) $postarr['menu_order'] : (int) ( $GLOBALS['qrms_test']['menu_order'][ $id ] ?? 0 );
+
+	$GLOBALS['qrms_test']['post_types'][ $id ]  = $tip;
+	$GLOBALS['qrms_test']['post_title'][ $id ]  = $baslik;
+	$GLOBALS['qrms_test']['post_status'][ $id ] = $durum;
+	$GLOBALS['qrms_test']['menu_order'][ $id ]  = $sira;
+	$GLOBALS['qrms_test']['post_parent'][ $id ] = $parent;
+
+	if ( '' !== $mime ) {
+		$GLOBALS['qrms_test']['post_mime'][ $id ] = $mime;
+	}
+
+	$nesne                 = new WP_Post();
+	$nesne->ID             = $id;
+	$nesne->post_type      = $tip;
+	$nesne->post_title     = $baslik;
+	$nesne->post_status    = $durum;
+	$nesne->post_mime_type = $mime;
+	$nesne->post_parent    = $parent;
+	$nesne->menu_order     = $sira;
+
+	$GLOBALS['qrms_test']['posts_by_id'][ $id ] = $nesne;
+}
+
+/**
+ * Medya eki ekler.
+ *
+ * @param array       $args Alanlar.
+ * @param string|false $file Dosya yolu.
+ * @return int
+ */
+function wp_insert_attachment( $args, $file = false ) {
+	$args               = is_array( $args ) ? $args : array();
+	$args['post_type']  = 'attachment';
+	$args['post_status'] = isset( $args['post_status'] ) ? $args['post_status'] : 'inherit';
+
+	$id = wp_insert_post( $args, false );
+
+	if ( $id && is_string( $file ) && '' !== $file ) {
+		$GLOBALS['qrms_test']['attachment_file'][ $id ] = $file;
+	}
+
+	return $id;
+}
+
+/**
+ * Ekin disk yolu.
+ *
+ * @param int  $id         Ek.
+ * @param bool $unfiltered Yok sayılır.
+ * @return string|false
+ */
+function get_attached_file( $id, $unfiltered = false ) {
+	unset( $unfiltered );
+	$id = absint( $id );
+
+	if ( $id && ! empty( $GLOBALS['qrms_test']['attachment_file'][ $id ] ) ) {
+		return $GLOBALS['qrms_test']['attachment_file'][ $id ];
+	}
+
+	return false;
+}
+
+/**
+ * Dosyayı yükleme dizinine yazar.
+ *
+ * @param string      $name       Dosya adı.
+ * @param null|string $deprecated Yok sayılır.
+ * @param string      $bits       İçerik.
+ * @return array
+ */
+function wp_upload_bits( $name, $deprecated, $bits ) {
+	unset( $deprecated );
+
+	if ( ! empty( $GLOBALS['qrms_test']['wp_upload_bits_error'] ) ) {
+		return array(
+			'error' => (string) $GLOBALS['qrms_test']['wp_upload_bits_error'],
+		);
+	}
+
+	$dir  = sys_get_temp_dir() . '/qrms-banner-uploads';
+	if ( ! is_dir( $dir ) ) {
+		mkdir( $dir, 0777, true );
+	}
+
+	$path = $dir . '/' . preg_replace( '/[^a-zA-Z0-9._-]/', '-', (string) $name );
+	$ok   = false !== file_put_contents( $path, $bits );
+
+	if ( ! $ok ) {
+		return array( 'error' => 'yazilamadi' );
+	}
+
+	$GLOBALS['qrms_test']['uploaded_files'][] = $path;
+
+	return array(
+		'file'  => $path,
+		'url'   => 'https://restoran.test/wp-content/uploads/' . basename( $path ),
+		'error' => false,
+	);
+}
+
+/**
+ * Dosya siler.
+ *
+ * @param string $file Yol.
+ * @return bool
+ */
+function wp_delete_file( $file ) {
+	if ( is_string( $file ) && is_file( $file ) ) {
+		return unlink( $file );
+	}
+
+	return false;
+}
+
+/**
+ * Görsel editörü. Test ortamında GD/Imagick yok; kırpma WP_Error döner,
+ * banner kaydı yine tamamlanır.
+ *
+ * @param string $path Yol.
+ * @return WP_Error
+ */
+function wp_get_image_editor( $path ) {
+	unset( $path );
+
+	return new WP_Error( 'image_no_editor', 'Görsel editörü yok.' );
+}
+
+/**
+ * Eki siler.
+ *
+ * @param int  $id    Kimlik.
+ * @param bool $force Zorla.
+ * @return WP_Post|false
+ */
+function wp_delete_attachment( $id, $force = false ) {
+	unset( $force );
+	$id = absint( $id );
+
+	if ( $id < 1 ) {
+		return false;
+	}
+
+	if ( ! empty( $GLOBALS['qrms_test']['attachment_file'][ $id ] ) ) {
+		wp_delete_file( $GLOBALS['qrms_test']['attachment_file'][ $id ] );
+		unset( $GLOBALS['qrms_test']['attachment_file'][ $id ] );
+	}
+
+	$onceki = isset( $GLOBALS['qrms_test']['posts_by_id'][ $id ] ) ? $GLOBALS['qrms_test']['posts_by_id'][ $id ] : false;
+
+	unset(
+		$GLOBALS['qrms_test']['posts_by_id'][ $id ],
+		$GLOBALS['qrms_test']['post_types'][ $id ],
+		$GLOBALS['qrms_test']['post_mime'][ $id ],
+		$GLOBALS['qrms_test']['attachment_meta'][ $id ]
+	);
+
+	return $onceki ? $onceki : false;
+}
+
+/**
+ * Düzenleme bağlantısı.
+ *
+ * @param int    $id  Yazı.
+ * @param string $ctx Bağlam.
+ * @return string
+ */
+function get_edit_post_link( $id = 0, $ctx = 'display' ) {
+	unset( $ctx );
+
+	return 'https://restoran.test/wp-admin/post.php?post=' . absint( $id ) . '&action=edit';
+}
+
+if ( ! function_exists( 'wp_is_post_revision' ) ) {
+	/**
+	 * Testte revizyon yok.
+	 *
+	 * @param int $post_id Yazı.
+	 * @return false
+	 */
+	function wp_is_post_revision( $post_id ) {
+		unset( $post_id );
+
+		return false;
+	}
+}
+
+/**
  * Ek dosyanın belirli boyuttaki kaynağı.
  *
  * Gerçek WordPress davranışını taklit eder: istenen boyut metadata'nın
@@ -1996,11 +2366,26 @@ function is_singular() {
 }
 
 /**
- * Geçerli yazı. (Testlerde yok.)
+ * Yazı. Testte $GLOBALS['qrms_test']['posts_by_id'][id].
  *
- * @return null
+ * @param int|WP_Post|null $post   Yazı veya kimlik.
+ * @param string           $output Yok sayılır.
+ * @param string           $filter Yok sayılır.
+ * @return WP_Post|null
  */
-function get_post() {
+function get_post( $post = null, $output = null, $filter = 'raw' ) {
+	unset( $output, $filter );
+
+	if ( null === $post ) {
+		return null;
+	}
+
+	$id = is_object( $post ) && isset( $post->ID ) ? (int) $post->ID : (int) $post;
+
+	if ( $id > 0 && isset( $GLOBALS['qrms_test']['posts_by_id'][ $id ] ) ) {
+		return $GLOBALS['qrms_test']['posts_by_id'][ $id ];
+	}
+
 	return null;
 }
 
