@@ -83,16 +83,28 @@ trait RMA_Kampanya_Admin_Trait {
             'geri'          => array( 'success', 'Kampanya geri alındı. Tüm ürünler orijinal fiyatlarına döndü.' ),
             'silindi'       => array( 'success', 'Kampanya silindi.' ),
             'hata'          => array( 'error', 'Kampanya kaydedilemedi. Lütfen tekrar deneyin.' ),
+            'gecersiz_tarih' => array( 'error', 'Kampanya tarihleri geçersiz. Lütfen alanları kontrol edip tekrar deneyin.' ),
         );
 
         if ( ! isset( $mesajlar[ $durum ] ) ) {
             return;
         }
 
+        $metin = $mesajlar[ $durum ][1];
+
+        if ( 'gecersiz_tarih' === $durum ) {
+            $ozel = get_transient( 'rma_kmp_bounce_msg_' . get_current_user_id() );
+
+            if ( is_string( $ozel ) && '' !== $ozel ) {
+                $metin = $ozel;
+                delete_transient( 'rma_kmp_bounce_msg_' . get_current_user_id() );
+            }
+        }
+
         printf(
             '<div class="notice notice-%1$s is-dismissible"><p>%2$s</p></div>',
             esc_attr( $mesajlar[ $durum ][0] ),
-            esc_html( $mesajlar[ $durum ][1] )
+            esc_html( $metin )
         );
     }
 
@@ -117,10 +129,16 @@ trait RMA_Kampanya_Admin_Trait {
         $aktif  = null;
         $gecmis = array();
 
+        $simdi = function_exists( 'current_time' ) ? current_time( 'timestamp' ) : time();
+
         foreach ( $hepsi as $k ) {
             // Yalnızca indirim kampanyaları "aktif kural" olarak gösterilir.
             if ( 'active' === $k->status && 'decrease' === ( $k->direction ?? '' ) && null === $aktif ) {
-                $aktif = $k;
+                if ( RMA_Kampanya_DB::aktif_mi( $k, $simdi ) ) {
+                    $aktif = $k;
+                } else {
+                    $gecmis[] = $k;
+                }
                 continue;
             }
 
@@ -148,6 +166,7 @@ trait RMA_Kampanya_Admin_Trait {
                         <td data-label="Kural"><strong><?php echo esc_html( RMA_Kampanya_DB::kural_metni( $aktif ) ); ?></strong></td>
                         <td data-label="Kapsam"><?php echo esc_html( $this->kampanya_kapsam_metni( $aktif ) ); ?></td>
                         <td data-label="Uygulandı"><?php echo esc_html( $this->kampanya_tarih( $aktif->applied_at ) ); ?></td>
+                        <td data-label="Tarih aralığı"><?php echo esc_html( RMA_Kampanya_DB::tarih_araligi_metni( $aktif ) ); ?></td>
                         <td data-label="Etkilenen"><?php echo (int) $aktif->affected_count; ?> ürün</td>
                     </tr>
                 </table>
@@ -180,6 +199,7 @@ trait RMA_Kampanya_Admin_Trait {
                             <th>Kural</th>
                             <th>Kapsam</th>
                             <th>Son çalıştığı zaman</th>
+                            <th>Tarih aralığı</th>
                             <th>İşlemler</th>
                         </tr>
                     </thead>
@@ -204,6 +224,7 @@ trait RMA_Kampanya_Admin_Trait {
                                         : 'Hiç uygulanmadı';
                                     ?>
                                 </td>
+                                <td data-label="Tarih aralığı"><?php echo esc_html( RMA_Kampanya_DB::tarih_araligi_metni( $k ) ); ?></td>
                                 <td data-label="İşlemler" class="rma-kmp-islem">
                                     <?php if ( ! $zam_kaydi && 'applied' !== $k->status ) : ?>
                                         <a class="button" href="<?php echo esc_url( $this->kampanya_url( array( 'kampanya' => (int) $k->id ) ) ); ?>">Düzenle</a>
@@ -361,6 +382,8 @@ trait RMA_Kampanya_Admin_Trait {
             exit;
         }
 
+        $bounce = $this->kampanya_form_bounce_al();
+
         $deger = array(
             'title'          => $yeni ? '' : $kayit->title,
             'calc_type'      => $yeni ? $v['calc_type'] : $kayit->calc_type,
@@ -370,7 +393,13 @@ trait RMA_Kampanya_Admin_Trait {
             'scope_type'     => $yeni ? $v['scope_type'] : $kayit->scope_type,
             'scope_ids'      => $yeni ? array() : RMA_Kampanya_DB::id_listesi_temizle( $kayit->scope_ids ),
             'show_old_price' => $yeni ? 1 : (int) $kayit->show_old_price,
+            'starts_at'      => $yeni ? '' : RMA_Kampanya_DB::mysql_to_datetime_local( $kayit->starts_at ?? '' ),
+            'ends_at'        => $yeni ? '' : RMA_Kampanya_DB::mysql_to_datetime_local( $kayit->ends_at ?? '' ),
         );
+
+        if ( is_array( $bounce ) ) {
+            $deger = array_merge( $deger, $bounce );
+        }
 
         $zam_modu = 'increase' === $deger['direction'];
         $aktif_mi = ! $yeni && 'active' === $kayit->status;
@@ -544,7 +573,26 @@ trait RMA_Kampanya_Admin_Trait {
             </div>
 
             <div class="rma-card rma-kmp-adim rma-kmp-indirim-ekstra"<?php echo $zam_modu ? ' style="display:none;"' : ''; ?>>
-                <h2 class="rma-card-title">4. Müşteri Ne Görsün?</h2>
+                <h2 class="rma-card-title">4. Ne Zaman Geçerli?</h2>
+                <p class="rma-card-desc">Boş bırakılan alanlar sınırsız demektir. Site saat dilimi WordPress ayarlarından alınır.</p>
+                <div class="rma-kmp-alanlar rma-kmp-tarih-alanlari">
+                    <div class="rma-kmp-field">
+                        <label for="rma-kmp-starts-at" class="rma-kmp-field-label">Başlangıç tarihi</label>
+                        <input type="datetime-local" name="starts_at" id="rma-kmp-starts-at" class="rma-kmp-datetime"
+                               value="<?php echo esc_attr( $deger['starts_at'] ); ?>">
+                        <p class="rma-kmp-field-help">Kampanya bu tarih ve saatten önce menüde uygulanmaz.</p>
+                    </div>
+                    <div class="rma-kmp-field">
+                        <label for="rma-kmp-ends-at" class="rma-kmp-field-label">Bitiş tarihi</label>
+                        <input type="datetime-local" name="ends_at" id="rma-kmp-ends-at" class="rma-kmp-datetime"
+                               value="<?php echo esc_attr( $deger['ends_at'] ); ?>">
+                        <p class="rma-kmp-field-help">Bu tarih ve saatten sonra kampanya otomatik olarak geçersiz sayılır.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rma-card rma-kmp-adim rma-kmp-indirim-ekstra"<?php echo $zam_modu ? ' style="display:none;"' : ''; ?>>
+                <h2 class="rma-card-title">5. Müşteri Ne Görsün?</h2>
                 <label class="rma-check-row">
                     <input type="checkbox" name="show_old_price" value="1" <?php checked( 1, $deger['show_old_price'] ); ?>>
                     <span>Eski fiyat üstü çizili olarak görünsün</span>
@@ -555,7 +603,7 @@ trait RMA_Kampanya_Admin_Trait {
             <div class="rma-card rma-kmp-adim rma-kmp-onizleme-vurgu" id="rma-kmp-onizleme-kart">
                 <div class="rma-kmp-onizleme-head">
                     <div>
-                        <h2 class="rma-card-title"><?php echo $zam_modu ? '4. Önizleme' : '5. Önizleme'; ?></h2>
+                        <h2 class="rma-card-title"><?php echo $zam_modu ? '4. Önizleme' : '6. Önizleme'; ?></h2>
                         <p class="rma-card-desc rma-kmp-onizleme-aciklama">Uygulamadan önce fiyat değişikliklerini kontrol edin.</p>
                     </div>
                     <span class="rma-kmp-zorunlu-rozet">Önizleme zorunlu</span>
@@ -856,7 +904,51 @@ trait RMA_Kampanya_Admin_Trait {
             'scope_type'     => isset( $_POST['scope_type'] ) ? sanitize_key( wp_unslash( $_POST['scope_type'] ) ) : '',
             'scope_ids'      => isset( $_POST['scope_ids'] ) ? sanitize_text_field( wp_unslash( $_POST['scope_ids'] ) ) : '',
             'show_old_price' => isset( $_POST['show_old_price'] ) ? wp_unslash( $_POST['show_old_price'] ) : 0,
+            'starts_at'      => isset( $_POST['starts_at'] ) ? sanitize_text_field( wp_unslash( $_POST['starts_at'] ) ) : '',
+            'ends_at'        => isset( $_POST['ends_at'] ) ? sanitize_text_field( wp_unslash( $_POST['ends_at'] ) ) : '',
         );
+    }
+
+    /**
+     * Tarih doğrulama hatasından sonra formu doldurmak için geçici veri saklar.
+     *
+     * @param array $ham kampanya_form_verisi() çıktısı.
+     * @return void
+     */
+    private function kampanya_form_bounce_kaydet( array $ham ) {
+        $anahtar = 'rma_kmp_bounce_' . get_current_user_id();
+        set_transient( $anahtar, $ham, 5 * MINUTE_IN_SECONDS );
+    }
+
+    /**
+     * Bounce verisini okur ve siler (tek kullanımlık).
+     *
+     * @return array|null
+     */
+    private function kampanya_form_bounce_al() {
+        $anahtar = 'rma_kmp_bounce_' . get_current_user_id();
+        $veri    = get_transient( $anahtar );
+
+        if ( false === $veri || ! is_array( $veri ) ) {
+            return null;
+        }
+
+        delete_transient( $anahtar );
+
+        $izinli = array( 'title', 'calc_type', 'direction', 'amount', 'rounding', 'scope_type', 'scope_ids', 'show_old_price', 'starts_at', 'ends_at' );
+        $temiz  = array();
+
+        foreach ( $izinli as $alan ) {
+            if ( array_key_exists( $alan, $veri ) ) {
+                $temiz[ $alan ] = $veri[ $alan ];
+            }
+        }
+
+        if ( isset( $temiz['scope_ids'] ) && is_string( $temiz['scope_ids'] ) && '' !== $temiz['scope_ids'] ) {
+            $temiz['scope_ids'] = RMA_Kampanya_DB::id_listesi_temizle( $temiz['scope_ids'] );
+        }
+
+        return $temiz;
     }
 
     /**
@@ -869,7 +961,25 @@ trait RMA_Kampanya_Admin_Trait {
 
         $id      = isset( $_POST['kampanya_id'] ) ? absint( wp_unslash( $_POST['kampanya_id'] ) ) : 0;
         $uygula  = isset( $_POST['uygula'] ) && '1' === (string) wp_unslash( $_POST['uygula'] );
-        $ayarlar = RMA_Kampanya_DB::ayarlari_temizle( $this->kampanya_form_verisi() );
+        $ham     = $this->kampanya_form_verisi();
+        $ayarlar = RMA_Kampanya_DB::ayarlari_temizle( $ham );
+
+        $tarih_hata = RMA_Kampanya_DB::tarih_araligi_hatasi( $ayarlar['starts_at'], $ayarlar['ends_at'] );
+
+        if ( '' !== $tarih_hata ) {
+            $this->kampanya_form_bounce_kaydet( $ham );
+            set_transient( 'rma_kmp_bounce_msg_' . get_current_user_id(), $tarih_hata, 5 * MINUTE_IN_SECONDS );
+
+            $hedef = $this->kampanya_url(
+                array(
+                    'kampanya' => $id > 0 ? (int) $id : 'yeni',
+                    'kmp_msg'  => 'gecersiz_tarih',
+                )
+            );
+
+            wp_safe_redirect( $hedef );
+            exit;
+        }
 
         $kayit_id = RMA_Kampanya_DB::kaydet( $id, $ayarlar );
 

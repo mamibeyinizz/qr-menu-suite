@@ -224,6 +224,55 @@ qrms_test(
 );
 
 qrms_test(
+	'kampanya tarih alanları formdan MySQL\'e çevrilir ve doğrulanır',
+	function () {
+		$mysql = RMA_Kampanya_DB::datetime_local_to_mysql( '2026-03-15T18:30' );
+		qrms_assert_same( '2026-03-15 18:30:00', $mysql, 'datetime-local → mysql' );
+		qrms_assert_same( '2026-03-15T18:30', RMA_Kampanya_DB::mysql_to_datetime_local( $mysql ), 'mysql → datetime-local' );
+		qrms_assert_same( null, RMA_Kampanya_DB::datetime_local_to_mysql( '' ), 'boş başlangıç' );
+
+		qrms_assert_same( '', RMA_Kampanya_DB::tarih_araligi_hatasi( null, null ), 'sınırsız geçerli' );
+		qrms_assert_same(
+			'Bitiş tarihi başlangıç tarihinden önce olamaz.',
+			RMA_Kampanya_DB::tarih_araligi_hatasi( '2026-03-20 10:00:00', '2026-03-10 10:00:00' ),
+			'ters aralık'
+		);
+		qrms_assert_same(
+			'Başlangıç ve bitiş aynı anda olamaz. Bitiş, başlangıçtan sonra olmalıdır.',
+			RMA_Kampanya_DB::tarih_araligi_hatasi( '2026-03-10 10:00:00', '2026-03-10 10:00:00' ),
+			'aynı an'
+		);
+
+		$zaman = strtotime( '2026-03-15 12:00:00 UTC' );
+		$kural = array(
+			'status'    => 'active',
+			'starts_at' => '2026-03-10 00:00:00',
+			'ends_at'   => '2026-03-20 23:59:00',
+		);
+		qrms_assert_true( RMA_Kampanya_DB::aktif_mi( $kural, $zaman ), 'aralık içi' );
+		qrms_assert_false(
+			RMA_Kampanya_DB::aktif_mi( $kural, strtotime( '2026-03-25 12:00:00 UTC' ) ),
+			'aralık sonrası'
+		);
+
+		$temiz = RMA_Kampanya_DB::ayarlari_temizle(
+			array(
+				'title'     => 'Test',
+				'starts_at' => '2026-04-01T09:00',
+				'ends_at'   => '',
+			)
+		);
+		qrms_assert_same( '2026-04-01 09:00:00', $temiz['starts_at'], 'ayarlari_temizle başlangıç' );
+		qrms_assert_same( null, $temiz['ends_at'], 'ayarlari_temizle boş bitiş' );
+
+		$admin = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-kampanya-admin.php' );
+		qrms_assert_contains( 'name="starts_at"', $admin, 'form başlangıç alanı' );
+		qrms_assert_contains( 'name="ends_at"', $admin, 'form bitiş alanı' );
+		qrms_assert_contains( 'tarih_araligi_hatasi', $admin, 'kaydetmede tarih doğrulama' );
+	}
+);
+
+qrms_test(
 	'kural metni yönetim ekranında okunur biçimde çıkar',
 	function () {
 		qrms_assert_same(
