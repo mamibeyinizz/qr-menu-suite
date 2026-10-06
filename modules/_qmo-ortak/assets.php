@@ -319,8 +319,11 @@ if ( ! function_exists( 'qmo_js_verisi_ekle' ) ) {
 		// oneri/mesaj tablolarında oturum_id olarak saklanan aynı türetilmiş
 		// değer — ham oturum cookie'si httponly'dir, JS'e hiç gitmez).
 		if ( 'qmo-chatbot' === $handle && function_exists( 'qmo_chatbot_ziyaretci_anahtar' ) ) {
-			$sess                     = function_exists( 'qmo_oturum' ) ? qmo_oturum() : false;
-			$veri['oturumAnahtari']   = qmo_chatbot_ziyaretci_anahtar( $sess ? $sess : array() );
+			$sess                   = function_exists( 'qmo_oturum' ) ? qmo_oturum() : false;
+			$veri['oturumAnahtari'] = qmo_chatbot_ziyaretci_anahtar( $sess ? $sess : array() );
+			$veri['masa']           = ( is_array( $sess ) && ! empty( $sess['masa'] ) )
+				? sanitize_title( (string) $sess['masa'] )
+				: '';
 		}
 
 		wp_localize_script( $handle, 'qmoData', $veri );

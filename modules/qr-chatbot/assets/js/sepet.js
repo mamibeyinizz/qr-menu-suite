@@ -5,7 +5,9 @@
  *  - Ürün detay modalına not + adet + "Sepete Ekle" bloğu enjekte eder.
  *  - Alt sabit sepet çubuğu + açılır çekmece: adet düzenleme, ürün notu,
  *    silme, "Siparişi Gönder".
- *  - Sepet sessionStorage'da tutulur (masa oturumuyla birlikte yaşar).
+ *  - Sepet sessionStorage'da tutulur; anahtar HMAC oturumundaki masa
+ *    slug'ına bağlıdır (qmoSepet.masa). Masa değişince eski sepet
+ *    yeni masaya taşınmaz. Ham qr_masa_token httponly'dir, JS okumaz.
  *  - Fiyat TL sabittir; seçili dile göre yaklaşık karşılık ikinci satırda
  *    gösterilir (ar/en/ru → USD, de/fr → EUR, tr → gizli).
  *  - Siparişi REST ucuna gönderir; masa oturum cookie'si tarayıcıca
@@ -21,7 +23,28 @@
 	KOK.dataset.qmoInit = '1';
 
 	var KUR = qmoSepet.kur; // { USD: x, EUR: y } — 1 TL karşılığı
-	var KEY = 'qmo_sepet';
+
+	function sepetMasa() {
+		var masa = ( typeof qmoSepet !== 'undefined' && qmoSepet.masa ) ? String( qmoSepet.masa ) : '';
+		masa = masa.replace( /^\s+|\s+$/g, '' ).slice( 0, 64 );
+		if ( ! masa || masa.indexOf( ':' ) !== -1 ) {
+			return '';
+		}
+		return masa;
+	}
+
+	function sepetAnahtari() {
+		var masa = sepetMasa();
+		return masa ? ( 'qmo_sepet:' + masa ) : 'qmo_sepet';
+	}
+
+	var KEY = sepetAnahtari();
+	// Kapsamsız eski anahtar masa değişince yanlış masaya yapışmasın.
+	if ( sepetMasa() ) {
+		try {
+			sessionStorage.removeItem( 'qmo_sepet' );
+		} catch ( e ) {}
+	}
 
 	/* ---- analitik: cart_add / cart_remove ----
 	   HACİM: her tıklamada AJAX, wp_rma_analytics'i şişirir. Bu yüzden

@@ -217,9 +217,28 @@
 			.trim();
 	}
 
+	function sepetMasa() {
+		var masa = '';
+		if ( typeof qmoSepet !== 'undefined' && qmoSepet.masa ) {
+			masa = String( qmoSepet.masa );
+		} else if ( typeof qmoData !== 'undefined' && qmoData.masa ) {
+			masa = String( qmoData.masa );
+		}
+		masa = masa.replace( /^\s+|\s+$/g, '' ).slice( 0, 64 );
+		if ( ! masa || masa.indexOf( ':' ) !== -1 ) {
+			return '';
+		}
+		return masa;
+	}
+
+	function sepetAnahtari() {
+		var masa = sepetMasa();
+		return masa ? ( 'qmo_sepet:' + masa ) : 'qmo_sepet';
+	}
+
 	function sepetOku() {
 		try {
-			var v = JSON.parse( sessionStorage.getItem( 'qmo_sepet' ) || '[]' );
+			var v = JSON.parse( sessionStorage.getItem( sepetAnahtari() ) || '[]' );
 			return Array.isArray( v ) ? v : [];
 		} catch ( e ) {
 			return [];
@@ -228,7 +247,7 @@
 
 	function sepetKaydet( s ) {
 		try {
-			sessionStorage.setItem( 'qmo_sepet', JSON.stringify( s ) );
+			sessionStorage.setItem( sepetAnahtari(), JSON.stringify( s ) );
 		} catch ( e ) {}
 	}
 
