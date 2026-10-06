@@ -126,6 +126,26 @@
     border-radius: 20px 20px 0 0;
 }
 
+.qrms-detail-inner .rma-modal-img.rma-img-placeholder {
+    object-fit: unset;
+    position: relative;
+    background:
+        radial-gradient(120% 80% at 50% 0%, color-mix(in srgb, var(--rma-accent, #c9a84c) 18%, transparent), transparent 60%),
+        #141417;
+}
+.qrms-detail-inner .rma-modal-img.rma-img-placeholder::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 18px;
+    height: 18px;
+    box-sizing: border-box;
+    border: 1.5px solid var(--rma-accent, #c9a84c);
+    opacity: .55;
+    transform: translate(-50%, -50%) rotate(45deg);
+}
+
 @media (min-width: 640px) {
     .qrms-detail-inner .rma-modal-img { height: 260px; }
 }

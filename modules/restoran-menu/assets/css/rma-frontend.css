@@ -683,6 +683,37 @@
 }
 .rma-card:hover .rma-card-img { transform: scale(1.06); }
 
+/* Görselsiz ürün: harici placeholder yok. Kart yüksekliği wrap'ın
+   min-height'ından gelir; baklava vurgu mevcut --rma-accent token'ıdır. */
+.rma-card-img-wrap.is-placeholder {
+    background:
+        radial-gradient(120% 90% at 50% 0%, color-mix(in srgb, var(--rma-accent) 16%, transparent), transparent 58%),
+        var(--rma-card);
+}
+.rma-img-placeholder {
+    display: block;
+    pointer-events: none;
+}
+.rma-card-img-wrap .rma-img-placeholder {
+    position: absolute;
+    inset: 0;
+}
+.rma-img-placeholder::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 16px;
+    height: 16px;
+    box-sizing: border-box;
+    border: 1.5px solid var(--rma-accent);
+    opacity: .55;
+    transform: translate(-50%, -50%) rotate(45deg);
+}
+.rma-card:hover .rma-card-img-wrap.is-placeholder .rma-img-placeholder {
+    transform: none;
+}
+
 /* Rozetler: veri asla gizlenmez, yalnızca sunumu sakinleştirilir.
    - Gradient yerine düz renk (premium algı = daha az efekt).
    - Dikey yığın yerine yatay sarma: 5-6 rozetli bir üründe eskiden her
@@ -1035,6 +1066,12 @@
 .rma-modal-close:hover { background:var(--rma-accent); color:#0a0a0a; border-color:var(--rma-accent); }
 .rma-modal-img { width:100%; height:230px; object-fit:cover; display:block; border-radius:22px 22px 0 0; position:relative; z-index:1; transition:opacity .26s ease; }
 @media (min-width:640px) { .rma-modal-img { border-radius:20px 20px 0 0; height:260px; } }
+.rma-modal-img.rma-img-placeholder {
+    object-fit: unset;
+    background:
+        radial-gradient(120% 80% at 50% 0%, color-mix(in srgb, var(--rma-accent) 18%, transparent), transparent 60%),
+        var(--rma-modal-bg, var(--rma-card));
+}
 .rma-modal-img-wrap { position:relative; overflow:hidden; background:var(--rma-modal-bg); }
 .rma-modal-img-wrap::after { content:''; position:absolute; bottom:0; left:0; right:0; height:70px; background:linear-gradient(0deg,var(--rma-modal-bg),transparent); pointer-events:none; z-index:2; }
 

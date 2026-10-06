@@ -800,11 +800,7 @@ trait RMA_Ajax_Trait {
         $src      = $thumb_id ? wp_get_attachment_image_src( $thumb_id, 'large' ) : false;
 
         if ( ! $src || empty( $src[0] ) ) {
-            return sprintf(
-                '<img src="%s" class="rma-modal-img" alt="%s" width="600" height="380" fetchpriority="high" decoding="async">',
-                esc_url( 'https://placehold.co/600x380/111111/c9a84c?text=%E2%97%86' ),
-                esc_attr( $alt )
-            );
+            return '<div class="rma-modal-img rma-img-placeholder" role="presentation"></div>';
         }
 
         $srcset     = wp_get_attachment_image_srcset( $thumb_id, 'large' );
