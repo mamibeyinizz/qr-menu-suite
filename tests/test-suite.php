@@ -38,6 +38,7 @@ require_once __DIR__ . '/test-siparis-iptal-cron.php';
 require_once __DIR__ . '/test-masa-yorum.php';
 require_once __DIR__ . '/test-analiz-izleme.php';
 require_once __DIR__ . '/test-masa.php';
+require_once __DIR__ . '/test-cart-masa-oturum.php';
 require_once __DIR__ . '/test-yorum-admin.php';
 require_once __DIR__ . '/test-acilis.php';
 require_once __DIR__ . '/test-ceviri.php';
