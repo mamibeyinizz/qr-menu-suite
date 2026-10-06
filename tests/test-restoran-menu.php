@@ -1692,3 +1692,108 @@ qrms_test(
 		);
 	}
 );
+
+echo "\nRM-004 — Public CPT / archive yüzeyi kapatılır, kısa kod menüsü durur\n";
+
+qrms_test(
+	'rma_menu_item ön yüzde sorgulanmaz, rewrite slug değişmez',
+	function () {
+		$kaynak = file_get_contents(
+			QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-post-types.php'
+		);
+
+		qrms_assert_contains( "'publicly_queryable'  => false", $kaynak, 'CPT public query kapalı' );
+		qrms_assert_contains( "'exclude_from_search' => true", $kaynak, 'arama dışı' );
+		qrms_assert_contains( "'show_in_nav_menus'   => false", $kaynak, 'nav menüde yok' );
+		qrms_assert_contains( "'slug' => 'menu-item'", $kaynak, 'CPT slug duruyor' );
+
+		$allerjen_blok = substr( $kaynak, strpos( $kaynak, "register_taxonomy( 'rma_allergen'" ) );
+		qrms_assert_contains( "'query_var'         => false", $allerjen_blok, 'alerjen query_var' );
+		qrms_assert_contains( "'publicly_queryable'=> false", $allerjen_blok, 'alerjen publicly_queryable' );
+
+		$kategori_blok = substr( $kaynak, strpos( $kaynak, "register_taxonomy( 'rma_category'" ), strpos( $kaynak, "register_taxonomy( 'rma_allergen'" ) - strpos( $kaynak, "register_taxonomy( 'rma_category'" ) );
+		qrms_assert_contains( "'query_var'         => false", $kategori_blok, 'kategori query_var' );
+
+		$malzeme = file_get_contents(
+			QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/urunum-yok/class-ingredient-taxonomy.php'
+		);
+		qrms_assert_contains( "'query_var'          => false", $malzeme, 'malzeme query_var kapalı' );
+		qrms_assert_contains( "'publicly_queryable' => false", $malzeme, 'malzeme publicly_queryable' );
+
+		$boot = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/qr-menu.php' );
+		qrms_assert_contains(
+			"add_action( 'template_redirect',     [ \$this, 'redirect_public_menu_content' ], 0 )",
+			$boot,
+			'yönlendirme 404 yakalayıcısından önce'
+		);
+	}
+);
+
+qrms_test(
+	'AJAX menü ve modal hâlâ kısa kod uçlarını kullanır (regresyon)',
+	function () {
+		$ajax  = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/qr-menu.php' );
+		$js    = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/js/rma-frontend.js' );
+		$front = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-frontend.php' );
+
+		qrms_assert_contains( 'wp_ajax_rma_load_items', $ajax, 'liste AJAX durur' );
+		qrms_assert_contains( 'wp_ajax_rma_get_product_details', $ajax, 'detay AJAX durur' );
+		qrms_assert_contains( 'wp_ajax_nopriv_rma_load_items', $ajax, 'ziyaretçi liste AJAX' );
+		qrms_assert_contains( "action      : 'rma_load_items'", $js, 'frontend listeyi AJAX ile çeker' );
+		qrms_assert_contains( "action: 'rma_get_product_details'", $js, 'frontend detayı AJAX ile çeker' );
+		qrms_assert_contains( 'restaurant_menu', $front, 'kısa kod menüsü durur' );
+		qrms_assert_false( false !== strpos( $js, '/menu-item/' ), 'kartlar CPT permalinkine gitmez' );
+	}
+);
+
+qrms_test(
+	'anasayfa ve admin CPT/arşiv yönlendirmesine girmez',
+	function () {
+		$h = new RMA_Test_Baslik_Harness();
+
+		$_SERVER['REQUEST_URI'] = '/';
+		qrms_assert_false( $h->is_public_menu_surface_request(), 'kök menü yolu değil' );
+
+		$_SERVER['REQUEST_URI'] = '/?rma_allergen=sut';
+		qrms_assert_false( $h->is_public_menu_surface_request(), 'query_var kapalıyken kök+parametre arşiv değil' );
+
+		$GLOBALS['qrms_test']['is_admin']    = true;
+		$GLOBALS['qrms_test']['is_singular'] = 'rma_menu_item';
+		$h->redirect_public_menu_content();
+		qrms_assert_true( empty( $GLOBALS['qrms_test']['redirects'] ), 'admin atlanır' );
+	}
+);
+
+qrms_test(
+	'/menu-item/ ve taksonomi arşivi anasayfadaki menüye alınır',
+	function () {
+		$h = new RMA_Test_Baslik_Harness();
+
+		$_SERVER['REQUEST_URI'] = '/menu-item/qa-test-urun-01-cigkofte/';
+		qrms_assert_true( $h->request_path_is_legacy_menu_rewrite(), 'eski CPT yolu' );
+
+		$_SERVER['REQUEST_URI'] = '/menu-category/corbalar/';
+		qrms_assert_true( $h->request_path_is_legacy_menu_rewrite(), 'kategori pretty permalink' );
+
+		$yonlendi               = false;
+		$_SERVER['REQUEST_URI'] = '/menu-item/foo/';
+		try {
+			$h->redirect_public_menu_content();
+		} catch ( QRMS_Test_Redirect $e ) {
+			$yonlendi = true;
+			qrms_assert_same( 'https://restoran.test/', $e->getMessage(), 'anasayfa menüsü' );
+		}
+		qrms_assert_true( $yonlendi, 'CPT yolu yönlendirildi' );
+
+		$yonlendi                              = false;
+		$_SERVER['REQUEST_URI']                = '/';
+		$GLOBALS['qrms_test']['is_tax']        = 'rma_allergen';
+		try {
+			$h->redirect_public_menu_content();
+		} catch ( QRMS_Test_Redirect $e ) {
+			$yonlendi = true;
+			qrms_assert_same( 'https://restoran.test/', $e->getMessage(), 'alerjen arşivi menüye' );
+		}
+		qrms_assert_true( $yonlendi, 'tax archive yönlendirildi' );
+	}
+);

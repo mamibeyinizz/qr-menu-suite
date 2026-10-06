@@ -1987,11 +1987,79 @@ function has_shortcode( $content, $tag ) {
 }
 
 /**
- * Tekil içerik görüntüleniyor mu? (Testlerde her zaman hayır.)
+ * Tekil içerik görüntüleniyor mu?
  *
+ * Varsayılan hayır. Testler `$GLOBALS['qrms_test']['is_singular']` ile
+ * post tipi (string) verirse eşleşir.
+ *
+ * @param string|string[] $post_types Post tipi süzgeci.
  * @return bool
  */
-function is_singular() {
+function is_singular( $post_types = '' ) {
+	$current = $GLOBALS['qrms_test']['is_singular'] ?? '';
+	if ( '' === $current || false === $current ) {
+		return false;
+	}
+	if ( '' === $post_types ) {
+		return true;
+	}
+	$current_types = is_array( $current ) ? $current : array( $current );
+	foreach ( (array) $post_types as $type ) {
+		if ( in_array( $type, $current_types, true ) ) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+/**
+ * Taksonomi arşivi mi?
+ *
+ * @param string|string[] $taxonomy Taksonomi süzgeci.
+ * @param mixed           $term     Kullanılmıyor.
+ * @return bool
+ */
+function is_tax( $taxonomy = '', $term = '' ) {
+	unset( $term );
+	$current = $GLOBALS['qrms_test']['is_tax'] ?? '';
+	if ( '' === $current || false === $current ) {
+		return false;
+	}
+	if ( '' === $taxonomy ) {
+		return true;
+	}
+	$current_tax = is_array( $current ) ? $current : array( $current );
+	foreach ( (array) $taxonomy as $tax ) {
+		if ( in_array( $tax, $current_tax, true ) ) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+/**
+ * CPT arşivi mi?
+ *
+ * @param string|string[] $post_types Post tipi süzgeci.
+ * @return bool
+ */
+function is_post_type_archive( $post_types = '' ) {
+	$current = $GLOBALS['qrms_test']['is_post_type_archive'] ?? '';
+	if ( '' === $current || false === $current ) {
+		return false;
+	}
+	if ( '' === $post_types ) {
+		return true;
+	}
+	$current_types = is_array( $current ) ? $current : array( $current );
+	foreach ( (array) $post_types as $type ) {
+		if ( in_array( $type, $current_types, true ) ) {
+			return true;
+		}
+	}
+
 	return false;
 }
 

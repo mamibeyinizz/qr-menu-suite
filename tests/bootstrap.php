@@ -56,6 +56,11 @@ function qrms_reset() {
 	$GLOBALS['qrms_test']['is_admin']   = false;
 	$GLOBALS['qrms_test']['is_404']     = false;
 	$GLOBALS['qrms_test']['is_rtl']     = false;
+	unset(
+		$GLOBALS['qrms_test']['is_singular'],
+		$GLOBALS['qrms_test']['is_tax'],
+		$GLOBALS['qrms_test']['is_post_type_archive']
+	);
 	$GLOBALS['qrms_test']['doing_ajax'] = false;
 	$GLOBALS['qrms_test']['doing_cron'] = false;
 	unset( $GLOBALS['qrms_test']['status_header'], $GLOBALS['qrms_test']['nocache_headers'] );

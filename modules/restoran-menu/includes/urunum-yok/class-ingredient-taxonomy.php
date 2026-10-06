@@ -47,7 +47,10 @@ class RMA_Ingredient_Taxonomy {
             'show_admin_column'  => false,
             'show_in_quick_edit' => false,
             'meta_box_cb'        => false, // Kendi meta kutumuzda gösterilir.
-            'query_var'          => true,
+            'public'             => false,
+            'publicly_queryable' => false,
+            'show_in_nav_menus'  => false,
+            'query_var'          => false,
             'rewrite'            => false,
         ] );
     }
