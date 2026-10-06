@@ -1992,6 +1992,8 @@ qrms_test(
 		qrms_assert_true( $yonlendi, 'tax archive yönlendirildi' );
 	}
 );
+
+/* =====================================================================
    RM-005 — Görselsiz ürün kartı/modalı üçüncü taraf placehold.co kullanmaz.
    Slider kısa kodu bu görevin kapsamı dışındadır.
 ===================================================================== */

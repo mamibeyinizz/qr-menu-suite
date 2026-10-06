@@ -54,6 +54,8 @@ function qrms_reset() {
 	$GLOBALS['qrms_test']['posts_by_id'] = array();
 	$GLOBALS['qrms_test']['next_post_id'] = 9000;
 	$GLOBALS['qrms_test']['post_mime'] = array();
+	$GLOBALS['qrms_test']['post_content'] = array();
+	$GLOBALS['qrms_test']['post_excerpt'] = array();
 	$GLOBALS['qrms_test']['post_parent'] = array();
 	$GLOBALS['qrms_test']['attachment_file'] = array();
 	$GLOBALS['qrms_test']['uploaded_files'] = array();

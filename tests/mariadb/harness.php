@@ -31,6 +31,10 @@ function qrms_mariadb_connect() {
 
 	// WordPress wpdb ile aynı: PHP 8.1+ varsayılanı (ERROR|STRICT) exception fırlatır;
 	// production 1062 idempotency yolu false + errno bekler.
+	if ( ! function_exists( 'mysqli_init' ) || ! function_exists( 'mysqli_report' ) ) {
+		return null;
+	}
+
 	mysqli_report( MYSQLI_REPORT_OFF );
 
 	$mysqli = mysqli_init();

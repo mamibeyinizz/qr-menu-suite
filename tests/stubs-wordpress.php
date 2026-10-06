@@ -107,6 +107,16 @@ class WP_Post {
 	/**
 	 * @var string
 	 */
+	public $post_content = '';
+
+	/**
+	 * @var string
+	 */
+	public $post_excerpt = '';
+
+	/**
+	 * @var string
+	 */
 	public $post_mime_type = '';
 
 	/**
@@ -1737,6 +1747,12 @@ function get_post_mime_type( $post_id = 0 ) {
 		return 'image/jpeg';
 	}
 
+	// Banner testleri mime'i açık yazar (PDF/geçersiz). Yazılmamış kimlikler
+	// (login/marka logosu) görsel kabul edilir; silinmiş ekler missing listesindedir.
+	if ( $id > 0 && empty( $GLOBALS['qrms_test']['missing_attachment_ids'][ $id ] ) ) {
+		return 'image/jpeg';
+	}
+
 	return false;
 }
 
@@ -1816,6 +1832,8 @@ function qrms_test_yaziyi_yaz( $id, array $postarr ) {
 	$id    = (int) $id;
 	$tip   = isset( $postarr['post_type'] ) ? (string) $postarr['post_type'] : ( isset( $GLOBALS['qrms_test']['post_types'][ $id ] ) ? (string) $GLOBALS['qrms_test']['post_types'][ $id ] : 'post' );
 	$baslik = isset( $postarr['post_title'] ) ? (string) $postarr['post_title'] : ( $GLOBALS['qrms_test']['post_title'][ $id ] ?? '' );
+	$icerik = isset( $postarr['post_content'] ) ? (string) $postarr['post_content'] : ( $GLOBALS['qrms_test']['post_content'][ $id ] ?? ( isset( $GLOBALS['qrms_test']['posts_by_id'][ $id ]->post_content ) ? (string) $GLOBALS['qrms_test']['posts_by_id'][ $id ]->post_content : '' ) );
+	$ozet   = isset( $postarr['post_excerpt'] ) ? (string) $postarr['post_excerpt'] : ( $GLOBALS['qrms_test']['post_excerpt'][ $id ] ?? ( isset( $GLOBALS['qrms_test']['posts_by_id'][ $id ]->post_excerpt ) ? (string) $GLOBALS['qrms_test']['posts_by_id'][ $id ]->post_excerpt : '' ) );
 	$durum  = isset( $postarr['post_status'] ) ? (string) $postarr['post_status'] : ( $GLOBALS['qrms_test']['post_status'][ $id ] ?? 'publish' );
 	$mime   = isset( $postarr['post_mime_type'] ) ? (string) $postarr['post_mime_type'] : ( $GLOBALS['qrms_test']['post_mime'][ $id ] ?? '' );
 	$parent = isset( $postarr['post_parent'] ) ? (int) $postarr['post_parent'] : (int) ( $GLOBALS['qrms_test']['post_parent'][ $id ] ?? 0 );
@@ -1823,6 +1841,8 @@ function qrms_test_yaziyi_yaz( $id, array $postarr ) {
 
 	$GLOBALS['qrms_test']['post_types'][ $id ]  = $tip;
 	$GLOBALS['qrms_test']['post_title'][ $id ]  = $baslik;
+	$GLOBALS['qrms_test']['post_content'][ $id ] = $icerik;
+	$GLOBALS['qrms_test']['post_excerpt'][ $id ] = $ozet;
 	$GLOBALS['qrms_test']['post_status'][ $id ] = $durum;
 	$GLOBALS['qrms_test']['menu_order'][ $id ]  = $sira;
 	$GLOBALS['qrms_test']['post_parent'][ $id ] = $parent;
@@ -1835,6 +1855,8 @@ function qrms_test_yaziyi_yaz( $id, array $postarr ) {
 	$nesne->ID             = $id;
 	$nesne->post_type      = $tip;
 	$nesne->post_title     = $baslik;
+	$nesne->post_content   = $icerik;
+	$nesne->post_excerpt   = $ozet;
 	$nesne->post_status    = $durum;
 	$nesne->post_mime_type = $mime;
 	$nesne->post_parent    = $parent;
