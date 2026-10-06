@@ -71,6 +71,15 @@ function qrms_login_ayar_sayfasi() {
 						<p class="qrms-muted">
 							<?php esc_html_e( 'Açtığınızda yönetim paneline yalnızca aşağıdaki adresten girilir. wp-login.php ve oturum açılmadan istenen wp-admin adresleri 404 döner.', 'qrms' ); ?>
 						</p>
+						<p class="qrms-muted">
+							<?php
+							printf(
+								/* translators: 1: müşteri menüsü URL, 2: giriş slug örneği */
+								esc_html__( 'Müşteri QR menüsü site kökünde kalır (%1$s). Bu adres yalnızca personel girişi içindir; QR kodlar ve menü linkleri kök URL kullanmaya devam eder.', 'qrms' ),
+								esc_html( QRMS_Login::public_menu_url() )
+							);
+							?>
+						</p>
 
 						<div class="qrms-field">
 							<label for="qrms-login-slug"><?php esc_html_e( 'Adres', 'qrms' ); ?></label>

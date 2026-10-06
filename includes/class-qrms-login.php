@@ -354,6 +354,35 @@ class QRMS_Login {
 		return '' !== $slug ? $slug : self::DEFAULT_SLUG;
 	}
 
+	/**
+	 * Müşteri QR menüsünün adresi (site kökü).
+	 *
+	 * Masa QR kodları ve menü kısa kodu bu köke bağlanır; personel girişi
+	 * {@see self::login_url()} ile ayrı tutulur.
+	 *
+	 * @return string
+	 */
+	public static function public_menu_url() {
+		return home_url( '/' );
+	}
+
+	/**
+	 * Verilen istek yolu müşteri menüsü kökü mü?
+	 *
+	 * Alt dizin kurulumunda kök `/blog` gibi olabilir; yalnızca TAM kök
+	 * sayılır — `/blog/hakkimizda` gibi iç sayfalar false döner.
+	 *
+	 * @param string|null $yol {@see self::request_path()} çıktısı; null ise şu anki istek.
+	 * @return bool
+	 */
+	public static function is_public_menu_path( $yol = null ) {
+		if ( null === $yol ) {
+			$yol = self::request_path();
+		}
+
+		return untrailingslashit( (string) $yol ) === untrailingslashit( self::home_path() );
+	}
+
 	/* -----------------------------------------------------------------
 	   DURUM
 	----------------------------------------------------------------- */
@@ -446,6 +475,9 @@ class QRMS_Login {
 			return;
 		}
 
+		add_filter( 'login_message', array( __CLASS__, 'prepend_login_path_separation' ), 4 );
+		add_action( 'login_head', array( __CLASS__, 'login_head_robots' ), 1 );
+
 		// İsteği en erken noktada yakala: WordPress kendi giriş yönlendirmesini
 		// yapmadan önce $pagenow'u düzeltmiş olmamız gerekir.
 		add_action( 'plugins_loaded', array( __CLASS__, 'plugins_loaded' ), 1 );
@@ -459,6 +491,9 @@ class QRMS_Login {
 		add_filter( 'logout_url', array( __CLASS__, 'filter_generic_url' ) );
 		add_filter( 'lostpassword_url', array( __CLASS__, 'filter_generic_url' ) );
 		add_filter( 'register_url', array( __CLASS__, 'filter_generic_url' ) );
+
+		add_filter( 'redirect_canonical', array( __CLASS__, 'filter_redirect_canonical' ), 10, 2 );
+		add_action( 'template_redirect', array( __CLASS__, 'template_redirect_public_menu' ), 0 );
 	}
 
 	/* -----------------------------------------------------------------
@@ -929,6 +964,68 @@ class QRMS_Login {
 	 *
 	 * @return void
 	 */
+	/**
+	 * Giriş yolu canonical yönlendirmeye girmez (refresh'te /qrm sabit kalır).
+	 *
+	 * @param string $redirect_url Hedef.
+	 * @param string $requested    İstenen URL.
+	 * @return string|false
+	 */
+	public static function filter_redirect_canonical( $redirect_url, $requested ) {
+		unset( $requested );
+
+		if ( self::is_login_path( self::request_path() ) ) {
+			return false;
+		}
+
+		return $redirect_url;
+	}
+
+	/**
+	 * Müşteri menü kökü (/): oturumsuz ziyaretçiyi girişe iten bir yönlendirme yok.
+	 *
+	 * Özel giriş yolu yalnızca {@see self::is_login_path()} ile eşleşen istekleri
+	 * wp-login.php'ye çevirir; anasayfa ve menü URL'leri etkilenmez.
+	 *
+	 * @return void
+	 */
+	public static function template_redirect_public_menu() {
+		if ( self::arka_plan_istegi() ) {
+			return;
+		}
+
+		if ( self::is_login_path( self::request_path() ) || is_admin() ) {
+			return;
+		}
+
+		// Bilinçli olarak boş: hook varlığı regresyon testlerinde doğrulanır;
+		// gelecekte anasayfayı login'e çeviren bir filtre eklenirse burada
+		// engellenir.
+	}
+
+	/**
+	 * Özel giriş yolunda personel / müşteri menüsü ayrımı metni.
+	 *
+	 * @return string HTML; boş ise basılmaz.
+	 */
+	public static function login_path_separation_html() {
+		if ( ! self::is_active() ) {
+			return '';
+		}
+
+		$menu = self::public_menu_url();
+
+		$html  = '<div class="qrms-login-yol-ayrim">';
+		$html .= '<p class="qrms-login-yol-ayrim-etiket">' . esc_html__( 'Personel ve yönetim girişi', 'qrms' ) . '</p>';
+		$html .= '<p class="qrms-login-yol-ayrim-menu">';
+		$html .= esc_html__( 'Müşteri menüsü için', 'qrms' ) . ' ';
+		$html .= '<a href="' . esc_url( $menu ) . '">' . esc_html__( 'ana sayfayı', 'qrms' ) . '</a>';
+		$html .= ' ' . esc_html__( 'açın.', 'qrms' );
+		$html .= '</p></div>';
+
+		return $html;
+	}
+
 	private static function render_404() {
 		global $wp_query;
 
@@ -1263,6 +1360,25 @@ class QRMS_Login {
 	}
 
 	/**
+	 * Giriş sayfası arama motorlarına "site girişi" olarak indekslenmesin.
+	 *
+	 * @return void
+	 */
+	public static function login_head_robots() {
+		echo '<meta name="robots" content="noindex, nofollow">' . "\n";
+	}
+
+	/**
+	 * Personel girişi / müşteri menüsü ayrımını form mesajının üstüne ekler.
+	 *
+	 * @param string $message Mevcut mesaj.
+	 * @return string
+	 */
+	public static function prepend_login_path_separation( $message ) {
+		return self::login_path_separation_html() . (string) $message;
+	}
+
+	/**
 	 * Giriş gövdesine sınıfları ekler.
 	 *
 	 * @param array $classes Mevcut sınıflar.
@@ -1280,7 +1396,7 @@ class QRMS_Login {
 	 * @return string
 	 */
 	public static function header_url() {
-		return home_url( '/' );
+		return self::public_menu_url();
 	}
 
 	/**

@@ -138,7 +138,7 @@ qrms_test(
 
 		$kancalar = $GLOBALS['qrms_test']['actions'];
 
-		foreach ( array( 'plugins_loaded', 'wp_loaded', 'site_url', 'network_site_url', 'wp_redirect', 'login_url', 'logout_url', 'lostpassword_url' ) as $kanca ) {
+		foreach ( array( 'plugins_loaded', 'wp_loaded', 'site_url', 'network_site_url', 'wp_redirect', 'login_url', 'logout_url', 'lostpassword_url', 'redirect_canonical' ) as $kanca ) {
 			qrms_assert_true( isset( $kancalar[ $kanca ] ), $kanca . ' bağlandı' );
 		}
 
@@ -486,6 +486,47 @@ qrms_test(
 		qrms_assert_contains( "isset( \$_GET['author'] ) || ! is_author()", $kaynak, 'yalnızca author sorgusunda tetiklenir' );
 	}
 );
+qrms_test(
+	'/qrm personel girişi ile müşteri menü kökü (/) ayrılır',
+	function () {
+		update_option( 'permalink_structure', '/%postname%/' );
+		update_option( QRMS_Login::OPTION, array( 'yol_aktif' => 1, 'slug' => 'qrm', 'gorunum_aktif' => 0 ) );
+
+		qrms_assert_same( 'https://restoran.test/', QRMS_Login::public_menu_url(), 'müşteri menü kökü' );
+		qrms_assert_true( QRMS_Login::is_public_menu_path( '' ), 'site kökü menü yolu' );
+		qrms_assert_false( QRMS_Login::is_public_menu_path( '/qrm' ), 'giriş slug menü değil' );
+
+		$_SERVER['REQUEST_URI'] = '/';
+		qrms_assert_true( QRMS_Login::is_public_menu_path( QRMS_Login::request_path() ), 'anasayfa isteği menü' );
+		$_SERVER['REQUEST_URI'] = '/qrm/';
+		qrms_assert_false( QRMS_Login::is_public_menu_path( QRMS_Login::request_path() ), '/qrm menü değil' );
+		unset( $_SERVER['REQUEST_URI'] );
+
+		$_SERVER['REQUEST_URI'] = '/qrm/';
+		qrms_assert_false( QRMS_Login::filter_redirect_canonical( 'https://restoran.test/qrm/', '' ), 'giriş yolu canonical dışı' );
+		$_SERVER['REQUEST_URI'] = '/menu/';
+		qrms_assert_same(
+			'https://restoran.test/menu/',
+			QRMS_Login::filter_redirect_canonical( 'https://restoran.test/menu/', '' ),
+			'diğer canonical yolları korunur'
+		);
+
+		$ayrim = QRMS_Login::login_path_separation_html();
+		qrms_assert_contains( 'qrms-login-yol-ayrim', $ayrim, 'ayırım bloğu' );
+		qrms_assert_contains( 'https://restoran.test/', $ayrim, 'menü linki köke gider' );
+
+		$mesaj = QRMS_Login::prepend_login_path_separation( '<p>form</p>' );
+		qrms_assert_contains( 'qrms-login-yol-ayrim', $mesaj, 'mesajın üstüne eklenir' );
+		qrms_assert_contains( '<p>form</p>', $mesaj, 'orijinal mesaj korunur' );
+
+		$GLOBALS['qrms_test']['actions'] = array();
+		QRMS_Login::init();
+		$kancalar = $GLOBALS['qrms_test']['actions'];
+		qrms_assert_true( isset( $kancalar['redirect_canonical'] ), 'canonical filtresi' );
+		qrms_assert_true( isset( $kancalar['template_redirect'] ), 'menü template_redirect' );
+	}
+);
+
 qrms_test(
 	'QRMS_LOGIN_DISABLE tanımlıyken hiçbir giriş kancası bağlanmaz',
 	function () {

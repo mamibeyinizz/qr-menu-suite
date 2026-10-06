@@ -293,7 +293,7 @@ class QRMS_Admin_Shell_Auth {
 	public static function shell_logout_url() {
 		$redirect = home_url( '/' );
 
-		if ( class_exists( 'QRMS_Login' ) && method_exists( 'QRMS_Login', 'login_url' ) ) {
+		if ( class_exists( 'QRMS_Login' ) && method_exists( 'QRMS_Login', 'login_url' ) && QRMS_Login::is_active() ) {
 			$redirect = QRMS_Login::login_url();
 		}
 
