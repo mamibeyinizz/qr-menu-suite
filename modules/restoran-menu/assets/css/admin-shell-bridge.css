@@ -266,9 +266,23 @@ body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-col
 body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-form-wrap) .rma-select-wide,
 body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-form-wrap) .rma-kmp-select,
 body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-form-wrap) .rma-kmp-input-baslik,
-body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-form-wrap) .rma-vitrin-search {
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-form-wrap) .rma-vitrin-search,
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-form-wrap) .rma-kmp-datetime {
 	max-width: 100%;
 	min-height: 44px;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-form-wrap) .rma-kmp-tarih-alanlari {
+	display: grid;
+	gap: 16px;
+	grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+	margin-top: 8px;
+}
+
+body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-kmp-form-wrap) .rma-kmp-datetime {
+	border: 1px solid var(--qrms-rm-border);
+	border-radius: 10px;
+	padding: 8px 12px;
 }
 
 body.qrms-premium-shell-active .qrms-shell__content .wrap.rma-admin:has(.rma-color-preview-dock) .rma-details {
