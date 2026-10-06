@@ -208,6 +208,23 @@
 }
 .rma-filter-badge.visible { display:flex; }
 
+/* 320–359px: "Filtrele" etiketi arama kutusunu sıkıştırır. İkon + aria-label
+   kalır; masaüstü/390px görünümü değişmez. */
+@media (max-width: 359px) {
+    .rma-filter-trigger {
+        width: var(--rma-control-h);
+        min-width: var(--rma-control-h);
+        padding-inline: 0;
+        gap: 0;
+    }
+    .rma-filter-trigger-label { display: none; }
+    .rma-filter-badge {
+        position: absolute;
+        top: 4px;
+        right: 4px;
+    }
+}
+
 .rma-panel-overlay {
     display: none;
     position: fixed;
@@ -270,6 +287,8 @@
     display: flex;
     align-items: center;
     gap: 10px;
+    min-width: 0;
+    overflow-wrap: anywhere;
 }
 .rma-panel-title-dot {
     width: 6px;
@@ -279,8 +298,8 @@
     flex-shrink: 0;
 }
 .rma-panel-close {
-    width: 34px !important;
-    height: 34px !important;
+    width: 44px !important;
+    height: 44px !important;
     border-radius: 50% !important;
     background: var(--rma-card) !important;
     border: 1px solid var(--rma-border) !important;
@@ -416,7 +435,7 @@
     grid-template-columns: repeat(3, 1fr);
     gap: 8px;
 }
-@media (max-width: 360px) { .rma-filter-cards { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 360px) { .rma-filter-cards { grid-template-columns: repeat(2, 1fr); } }
 .rma-filter-card {
     display: flex;
     flex-direction: column;
@@ -486,6 +505,7 @@
     flex-shrink: 0;
     display: flex;
     gap: 8px;
+    min-width: 0;
     background: var(--rma-bg);
     position: sticky;
     bottom: 0;
@@ -496,6 +516,10 @@
     display: block;
     width: 100%;
     height: 100%;
+}
+.rma-panel-btn-reset,
+.rma-panel-btn-apply {
+    min-width: 0;
 }
 .rma-panel-btn-reset {
     flex: 1 !important;
@@ -1062,7 +1086,7 @@
     .rma-wrap .rma-nav-btn, .rma-wrap .rma-search-input, .rma-wrap .rma-filter-trigger, .rma-wrap .rma-card-arrow { transition: none !important; }
     .rma-modal-img-wrap::before { animation: none !important; transition: none !important; }
     .rma-modal-img { transition: none !important; }}
-.rma-modal-close { position:absolute; top:10px; right:12px; width:30px; height:30px; border-radius:50%; background:rgba(255,255,255,0.08); border:1px solid var(--rma-border); display:flex; align-items:center; justify-content:center; color:var(--rma-desc); cursor:pointer; z-index:2; font-size:15px; line-height:1; transition:background .2s, color .2s; }
+.rma-modal-close { position:absolute; top:8px; right:8px; width:44px; height:44px; border-radius:50%; background:rgba(255,255,255,0.08); border:1px solid var(--rma-border); display:flex; align-items:center; justify-content:center; color:var(--rma-desc); cursor:pointer; z-index:2; font-size:15px; line-height:1; transition:background .2s, color .2s; }
 .rma-modal-close:hover { background:var(--rma-accent); color:#0a0a0a; border-color:var(--rma-accent); }
 .rma-modal-img { width:100%; height:230px; object-fit:cover; display:block; border-radius:22px 22px 0 0; position:relative; z-index:1; transition:opacity .26s ease; }
 @media (min-width:640px) { .rma-modal-img { border-radius:20px 20px 0 0; height:260px; } }
@@ -1100,11 +1124,11 @@
 }
 .rma-modal-img-wrap.rma-img-loading .rma-modal-img { opacity:0; }
 @keyframes rmaShimmer { from { background-position:120% 0; } to { background-position:-120% 0; } }
-.rma-modal-body { padding:18px 20px 26px; }
-.rma-modal-title { font-family: var(--rma-font-display); font-size: var(--rma-modal-title-size); font-weight: 700; margin:0 0 7px; color:var(--rma-text); letter-spacing:-.02em; line-height:1.2; font-style: normal; }
-.rma-modal-price { font-family: var(--rma-font-price); font-size:1.28rem; font-weight:700; color:var(--rma-price-color); margin:0 0 14px; display:flex; align-items:center; gap:8px; letter-spacing: -.02em; }
+.rma-modal-body { padding:18px 20px 26px; box-sizing: border-box; min-width: 0; }
+.rma-modal-title { font-family: var(--rma-font-display); font-size: var(--rma-modal-title-size); font-weight: 700; margin:0 0 7px; color:var(--rma-text); letter-spacing:-.02em; line-height:1.2; font-style: normal; overflow-wrap: anywhere; }
+.rma-modal-price { font-family: var(--rma-font-price); font-size:1.28rem; font-weight:700; color:var(--rma-price-color); margin:0 0 14px; display:flex; align-items:center; flex-wrap:wrap; gap:8px; letter-spacing: -.02em; min-width: 0; }
 .rma-modal-price::before { content:''; display:block; width:16px; height:1px; background:var(--rma-accent); }
-.rma-modal-desc { font-size:.88rem; font-weight:400; color:var(--rma-desc); line-height:1.7; margin-bottom:18px; border-bottom:1px solid var(--rma-border); padding-bottom:16px; }
+.rma-modal-desc { font-size:.88rem; font-weight:400; color:var(--rma-desc); line-height:1.7; margin-bottom:18px; border-bottom:1px solid var(--rma-border); padding-bottom:16px; overflow-wrap: anywhere; }
 .rma-attrs { display:flex; gap:6px; flex-wrap:wrap; }
 .rma-attr { background:rgba(201,168,76,0.07); border:1px solid rgba(201,168,76,0.22); padding:5px 11px; border-radius:20px; font-size:.76rem; font-weight:600; color:var(--rma-accent); letter-spacing:.01em; }
 .rma-compliance-row { margin-top:8px; }
@@ -1222,8 +1246,12 @@
     border-radius: 10px;
     cursor: pointer;
     display: inline-flex;
+    flex-wrap: wrap;
     gap: 6px;
+    max-width: 100%;
+    min-height: 44px;
     padding: 8px 13px;
+    position: relative;
 }
 .rma-porsiyon-sec input { position: absolute; opacity: 0; pointer-events: none; }
 .rma-porsiyon-sec:has(input:checked) {
@@ -1233,7 +1261,7 @@
 /* :has() desteklemeyen tarayıcılar için yedek: seçili porsiyonun adı
    yine de vurgu rengine döner, seçim görünmez kalmaz. */
 .rma-porsiyon-sec input:checked ~ .rma-porsiyon-ad { color: var(--rma-accent, #c9a84c); }
-.rma-porsiyon-ad { color: var(--rma-text, #f5f0e8); font-size: .84rem; font-weight: 600; }
+.rma-porsiyon-ad { color: var(--rma-text, #f5f0e8); font-size: .84rem; font-weight: 600; overflow-wrap: anywhere; }
 .rma-porsiyon-fark { color: var(--rma-accent, #c9a84c); font-size: .8rem; font-weight: 700; }
 
 /* ---- Ekstra (yan ürün) ---- */
@@ -1271,9 +1299,11 @@
     cursor: pointer;
     display: flex;
     gap: 10px;
+    min-height: 44px;
+    min-width: 0;
     padding: 8px 0;
 }
 .rma-ekstra-sec + .rma-ekstra-sec { border-top: 1px solid rgba(255, 255, 255, .05); }
 .rma-ekstra-sec input { accent-color: var(--rma-accent, #c9a84c); height: 18px; width: 18px; }
-.rma-ekstra-ad { color: var(--rma-text, #f5f0e8); flex: 1; font-size: .85rem; }
-.rma-ekstra-fiyat { color: var(--rma-accent, #c9a84c); font-size: .82rem; font-weight: 700; }
+.rma-ekstra-ad { color: var(--rma-text, #f5f0e8); flex: 1; font-size: .85rem; min-width: 0; overflow-wrap: anywhere; }
+.rma-ekstra-fiyat { color: var(--rma-accent, #c9a84c); font-size: .82rem; font-weight: 700; flex-shrink: 0; }

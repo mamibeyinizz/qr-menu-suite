@@ -71,6 +71,34 @@ qrms_test(
 );
 
 qrms_test(
+	'ürün modalı açıkken FAB, sepet ve call bar gizlenir',
+	function () {
+		$css   = file_get_contents( QRMS_PLUGIN_DIR . 'modules/_qmo-ortak/assets/css/floating-layer-states.css' );
+		$state = '.rma-modal-overlay.open';
+
+		qrms_floating_layer_assert_hidden( $css, $state, '.gemini-chat-toggle-btn' );
+		qrms_floating_layer_assert_hidden( $css, $state, '.gemini-chat-overlay.gemini-acik' );
+		qrms_floating_layer_assert_hidden( $css, $state, '.qmo-bar' );
+		qrms_floating_layer_assert_hidden( $css, $state, '.hfb-footer__call-wrap:has(.qmo-cagri-bar)' );
+		qrms_floating_layer_assert_hidden( $css, '.qrms-detail-overlay.open', '.gemini-chat-toggle-btn' );
+	}
+);
+
+qrms_test(
+	'sepet çekmecesi açıkken chatbot FAB gizlenir, çekmece kalır',
+	function () {
+		$css = file_get_contents( QRMS_PLUGIN_DIR . 'modules/_qmo-ortak/assets/css/floating-layer-states.css' );
+		qrms_floating_layer_assert_hidden( $css, '.qmo-dr.qmo-on', '.gemini-chat-toggle-btn' );
+		qrms_floating_layer_assert_hidden( $css, '.qmo-dr.qmo-on', '.gemini-teaser' );
+		qrms_assert_false(
+			false !== strpos( $css, 'body:has(.qmo-dr.qmo-on) .qmo-dr {' ) ||
+			false !== strpos( $css, 'body:has(.qmo-dr.qmo-on) .qmo-dr,' ),
+			'çekmece kendini gizlemez'
+		);
+	}
+);
+
+qrms_test(
 	'hamburger paneli sepet/sohbet z-index üstünde',
 	function () {
 		$css = file_get_contents( QRMS_PLUGIN_DIR . 'modules/header-footer-builder/assets/css/frontend.css' );

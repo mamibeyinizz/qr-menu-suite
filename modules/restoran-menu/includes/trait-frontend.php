@@ -466,7 +466,7 @@ JSCODE;
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
             </svg>
-            <?php echo esc_html( $this->t( 'Filtrele' ) ); ?>
+            <span class="rma-filter-trigger-label"><?php echo esc_html( $this->t( 'Filtrele' ) ); ?></span>
             <span id="rma-filter-badge" class="rma-filter-badge" aria-live="polite">0</span>
         </button>
     </div>
