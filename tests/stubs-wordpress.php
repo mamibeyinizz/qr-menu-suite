@@ -2068,23 +2068,37 @@ function is_post_type_archive( $post_types = '' ) {
  *
  * @return null
  */
-function get_post( $post_id = null, $output = OBJECT, $filter = 'raw' ) {
-	if ( null === $post_id ) {
+function get_post( $post = null, $output = OBJECT, $filter = 'raw' ) {
+	unset( $output, $filter );
+
+	if ( is_object( $post ) ) {
+		return $post;
+	}
+
+	if ( null === $post ) {
 		return null;
 	}
 
-	$id = (int) $post_id;
-	if ( $id < 1 || ! isset( $GLOBALS['qrms_test']['post_types'][ $id ] ) ) {
+	$id = (int) $post;
+	if ( $id < 1 ) {
 		return null;
 	}
 
-	return (object) array(
-		'ID'         => $id,
-		'post_type'  => $GLOBALS['qrms_test']['post_types'][ $id ],
-		'post_title' => isset( $GLOBALS['qrms_test']['post_title'][ $id ] )
-			? (string) $GLOBALS['qrms_test']['post_title'][ $id ]
-			: '',
-	);
+	if ( isset( $GLOBALS['qrms_test']['posts_by_id'][ $id ] ) ) {
+		return $GLOBALS['qrms_test']['posts_by_id'][ $id ];
+	}
+
+	if ( isset( $GLOBALS['qrms_test']['post_types'][ $id ] ) ) {
+		return (object) array(
+			'ID'         => $id,
+			'post_type'  => $GLOBALS['qrms_test']['post_types'][ $id ],
+			'post_title' => isset( $GLOBALS['qrms_test']['post_title'][ $id ] )
+				? (string) $GLOBALS['qrms_test']['post_title'][ $id ]
+				: '',
+		);
+	}
+
+	return null;
 }
 
 /**

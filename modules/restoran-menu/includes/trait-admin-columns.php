@@ -126,37 +126,117 @@ trait RMA_Admin_Columns_Trait {
     }
 
     public function duplicate_post_action() {
-        if ( ! isset( $_GET['post'], $_GET['nonce'] ) ) wp_die( 'Güvenlik hatası.' );
-        $post_id = intval( $_GET['post'] );
-        if ( ! wp_verify_nonce( $_GET['nonce'], 'rma_duplicate_post_' . $post_id ) ) wp_die( 'Güvenlik hatası.' );
-        if ( ! current_user_can( 'edit_post', $post_id ) ) wp_die( 'Yetkiniz yok.' );
+        if ( ! isset( $_GET['post'], $_GET['nonce'] ) ) {
+            wp_die( 'Güvenlik hatası.' );
+        }
+
+        $post_id = absint( wp_unslash( $_GET['post'] ) );
+        $nonce   = sanitize_text_field( wp_unslash( $_GET['nonce'] ) );
+
+        if ( $post_id < 1 || ! wp_verify_nonce( $nonce, 'rma_duplicate_post_' . $post_id ) ) {
+            wp_die( 'Güvenlik hatası.' );
+        }
+        if ( ! current_user_can( 'edit_post', $post_id ) ) {
+            wp_die( 'Yetkiniz yok.' );
+        }
 
         $post = get_post( $post_id );
-        if ( ! $post ) wp_die( 'Ürün bulunamadı.' );
-
-        $new_id = wp_insert_post( [
-            'post_title'   => $post->post_title . ' (Kopya)',
-            'post_content' => $post->post_content,
-            'post_excerpt' => $post->post_excerpt,
-            'post_status'  => 'publish',
-            'post_type'    => $post->post_type,
-        ] );
-
-        if ( $new_id ) {
-            foreach ( get_post_custom( $post_id ) as $key => $values ) {
-                foreach ( $values as $value ) add_post_meta( $new_id, $key, maybe_unserialize( $value ) );
-            }
-            update_post_meta( $new_id, 'rma_active', '1' );
-            RMA_Tukendi::kaydet( $new_id, false );
-            foreach ( get_object_taxonomies( $post->post_type ) as $tax ) {
-                wp_set_object_terms( $new_id, wp_get_object_terms( $post_id, $tax, [ 'fields' => 'slugs' ] ), $tax, false );
-            }
-            $thumb = get_post_thumbnail_id( $post_id );
-            if ( $thumb ) set_post_thumbnail( $new_id, $thumb );
-            wp_redirect( admin_url( 'edit.php?post_type=rma_menu_item' ) );
-            exit;
+        if ( ! $post || 'rma_menu_item' !== $post->post_type ) {
+            wp_die( 'Ürün bulunamadı.' );
         }
-        wp_die( 'Çoğaltma başarısız.' );
+
+        $new_id = $this->duplicate_menu_item( $post );
+        if ( is_wp_error( $new_id ) || (int) $new_id < 1 ) {
+            wp_die( 'Çoğaltma başarısız.' );
+        }
+
+        wp_safe_redirect( admin_url( 'post.php?action=edit&post=' . (int) $new_id ) );
+        exit;
+    }
+
+    /**
+     * Menü ürününün katalog verisini yeni bir yazıya kopyalar.
+     *
+     * Kopyalanır: başlık/içerik/özet, ürün meta (fiyat, porsiyon, extra,
+     * rozet, kombin ilişkileri…), taksonomiler, öne çıkan görsel (aynı
+     * attachment ID — dosya çoğaltılmaz).
+     *
+     * Kopyalanmaz: düzenleme kilidi, görüntüleme sayacı, thumbnail meta
+     * satırının çifti (görsel set_post_thumbnail ile yazılır).
+     *
+     * Tasarım: kopya menüde görünür (`rma_active=1`) ve stokta kabul edilir.
+     *
+     * @param WP_Post $post Kaynak ürün.
+     * @return int|WP_Error Yeni yazı ID.
+     */
+    public function duplicate_menu_item( $post ) {
+        if ( ! $post || empty( $post->ID ) || 'rma_menu_item' !== $post->post_type ) {
+            return new WP_Error( 'rma_duplicate_invalid', 'Ürün bulunamadı.' );
+        }
+
+        $new_id = wp_insert_post(
+            array(
+                'post_title'   => $post->post_title . ' (Kopya)',
+                'post_content' => $post->post_content,
+                'post_excerpt' => $post->post_excerpt,
+                'post_status'  => 'publish',
+                'post_type'    => 'rma_menu_item',
+            ),
+            true
+        );
+
+        if ( is_wp_error( $new_id ) || (int) $new_id < 1 ) {
+            return is_wp_error( $new_id ) ? $new_id : new WP_Error( 'rma_duplicate_insert', 'Çoğaltma başarısız.' );
+        }
+
+        $new_id = (int) $new_id;
+
+        foreach ( (array) get_post_custom( $post->ID ) as $key => $values ) {
+            if ( $this->duplicate_meta_atlanir( (string) $key ) ) {
+                continue;
+            }
+            foreach ( (array) $values as $value ) {
+                add_post_meta( $new_id, $key, maybe_unserialize( $value ) );
+            }
+        }
+
+        update_post_meta( $new_id, 'rma_active', '1' );
+        if ( class_exists( 'RMA_Tukendi' ) ) {
+            RMA_Tukendi::kaydet( $new_id, false );
+        }
+
+        foreach ( get_object_taxonomies( $post->post_type ) as $tax ) {
+            $terimler = wp_get_object_terms( $post->ID, $tax, array( 'fields' => 'slugs' ) );
+            if ( is_wp_error( $terimler ) ) {
+                continue;
+            }
+            wp_set_object_terms( $new_id, $terimler, $tax, false );
+        }
+
+        $thumb = (int) get_post_thumbnail_id( $post->ID );
+        if ( $thumb > 0 ) {
+            set_post_thumbnail( $new_id, $thumb );
+        }
+
+        return $new_id;
+    }
+
+    /**
+     * Çoğaltmada atlanan meta anahtarları (işlemsel / çekirdek kilitleri).
+     *
+     * @param string $key Meta anahtarı.
+     * @return bool
+     */
+    private function duplicate_meta_atlanir( $key ) {
+        if ( '' === $key ) {
+            return true;
+        }
+
+        if ( 'rma_views' === $key || '_thumbnail_id' === $key ) {
+            return true;
+        }
+
+        return ( 0 === strpos( $key, '_edit_' ) || 0 === strpos( $key, '_wp_' ) );
     }
 
     /* -----------------------------------------------------------------
@@ -236,7 +316,7 @@ trait RMA_Admin_Columns_Trait {
                 <span class="title"><?php echo esc_html( 'Görsel' ); ?></span>
                 <div class="rma-qe-image-controls">
                     <img class="rma-qe-thumb-preview" src="" alt="" width="60" height="60" hidden />
-                    <input type="hidden" name="rma_qe_thumbnail_id" class="rma-qe-thumb-id" value="0" />
+                    <input type="hidden" name="rma_qe_thumbnail_id" class="rma-qe-thumb-id" value="" />
                     <p class="rma-qe-image-buttons">
                         <button type="button" class="button rma-qe-select-image"><?php echo esc_html( 'Görsel Seç' ); ?></button>
                         <button type="button" class="button rma-qe-remove-image" hidden><?php echo esc_html( 'Kaldır' ); ?></button>
@@ -287,19 +367,24 @@ trait RMA_Admin_Columns_Trait {
             return;
         }
 
-        if ( isset( $_POST['rma_qe_thumbnail_id'] ) ) {
-            $thumb_id = absint( wp_unslash( $_POST['rma_qe_thumbnail_id'] ) );
-            if ( $thumb_id > 0 ) {
-                set_post_thumbnail( $post_id, $thumb_id );
-            } else {
-                delete_post_thumbnail( $post_id );
+        if ( array_key_exists( 'rma_qe_thumbnail_id', $_POST ) ) {
+            $thumb_ham = sanitize_text_field( wp_unslash( $_POST['rma_qe_thumbnail_id'] ) );
+            // Boş = JS satırı doldurmadı; mevcut görseli koru. "0" = kaldır.
+            if ( '' !== $thumb_ham ) {
+                $thumb_id = absint( $thumb_ham );
+                if ( $thumb_id > 0 ) {
+                    if ( 'attachment' === get_post_type( $thumb_id ) ) {
+                        set_post_thumbnail( $post_id, $thumb_id );
+                    }
+                } else {
+                    delete_post_thumbnail( $post_id );
+                }
             }
         }
 
-        $term_ids = [];
         if ( isset( $_POST['rma_qe_allergens'] ) && is_array( $_POST['rma_qe_allergens'] ) ) {
             $term_ids = array_values( array_filter( array_map( 'absint', wp_unslash( $_POST['rma_qe_allergens'] ) ) ) );
+            wp_set_object_terms( $post_id, $term_ids, 'rma_allergen', false );
         }
-        wp_set_object_terms( $post_id, $term_ids, 'rma_allergen', false );
     }
 }
