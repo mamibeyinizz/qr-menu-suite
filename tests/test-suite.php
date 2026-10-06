@@ -46,6 +46,7 @@ require_once __DIR__ . '/test-calisma-saatleri.php';
 require_once __DIR__ . '/test-restoran-menu.php';
 require_once __DIR__ . '/test-elementor-widget.php';
 require_once __DIR__ . '/test-quick-edit-copy.php';
+require_once __DIR__ . '/test-hub-title-consistency.php';
 require_once __DIR__ . '/test-restoran-secenek.php';
 require_once __DIR__ . '/test-fiyat-zinciri.php';
 require_once __DIR__ . '/test-servis-saati.php';

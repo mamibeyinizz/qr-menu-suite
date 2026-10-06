@@ -747,10 +747,10 @@ class QRMS_Admin_Shell {
 		if ( self::is_menu_item_list_screen() ) {
 			return array(
 				'breadcrumb' => sprintf(
-					/* translators: 1: hub group label, 2: module line label */
+					/* translators: 1: module hub name, 2: screen title */
 					__( '%1$s / %2$s', 'qrms' ),
 					__( 'Menü Yönetimi', 'qrms' ),
-					__( 'Restoran Menü', 'qrms' )
+					__( 'Ürünler', 'qrms' )
 				),
 				'title'      => __( 'Ürünler', 'qrms' ),
 			);
@@ -762,12 +762,12 @@ class QRMS_Admin_Shell {
 
 			return array(
 				'breadcrumb' => sprintf(
-					/* translators: 1: hub group label, 2: module line label */
+					/* translators: 1: module hub name, 2: screen title */
 					__( '%1$s / %2$s', 'qrms' ),
 					__( 'Menü Yönetimi', 'qrms' ),
-					__( 'Restoran Menü', 'qrms' )
+					$is_new ? __( 'Ürün Ekle', 'qrms' ) : __( 'Ürünü Düzenle', 'qrms' )
 				),
-				'title'      => $is_new ? __( 'Yeni Ürün', 'qrms' ) : __( 'Ürünü Düzenle', 'qrms' ),
+				'title'      => $is_new ? __( 'Ürün Ekle', 'qrms' ) : __( 'Ürünü Düzenle', 'qrms' ),
 			);
 		}
 
@@ -813,7 +813,6 @@ class QRMS_Admin_Shell {
 				'breadcrumb' => self::breadcrumb_join(
 					array(
 						__( 'Menü Yönetimi', 'qrms' ),
-						__( 'Restoran Menü', 'qrms' ),
 						$taxonomy['label'],
 					)
 				),
@@ -827,7 +826,6 @@ class QRMS_Admin_Shell {
 				'breadcrumb' => self::breadcrumb_join(
 					array(
 						__( 'Menü Yönetimi', 'qrms' ),
-						__( 'Restoran Menü', 'qrms' ),
 						$banner['breadcrumb_leaf'],
 					)
 				),
@@ -904,7 +902,6 @@ class QRMS_Admin_Shell {
 				return self::breadcrumb_join(
 					array(
 						__( 'Menü Yönetimi', 'qrms' ),
-						__( 'Restoran Menü', 'qrms' ),
 					)
 				);
 			}
@@ -960,8 +957,16 @@ class QRMS_Admin_Shell {
 			return null;
 		}
 
+		$hub_labels = array(
+			'rma_category'   => __( 'Kategoriler', 'qrms' ),
+			'rma_allergen'   => __( 'Alerjenler', 'qrms' ),
+			'rma_ingredient' => __( 'Malzemeler', 'qrms' ),
+		);
+
 		$tax_obj = get_taxonomy( $taxonomy );
-		$label   = ( $tax_obj && isset( $tax_obj->labels->name ) ) ? (string) $tax_obj->labels->name : $taxonomy;
+		$label   = isset( $hub_labels[ $taxonomy ] )
+			? $hub_labels[ $taxonomy ]
+			: ( ( $tax_obj && isset( $tax_obj->labels->name ) ) ? (string) $tax_obj->labels->name : $taxonomy );
 
 		return array(
 			'label'       => $label,
@@ -992,7 +997,7 @@ class QRMS_Admin_Shell {
 		}
 
 		return array(
-			'title'           => __( 'Kampanya Banner', 'qrms' ),
+			'title'           => __( 'Kampanya Görselleri', 'qrms' ),
 			'breadcrumb_leaf' => __( 'Kampanya Görselleri', 'qrms' ),
 			'back_url'        => admin_url( 'admin.php?page=qrms-rm-kampanya-banner' ),
 			'back_label'      => __( 'Kampanya Görselleri\'ne Dön', 'qrms' ),
@@ -1000,16 +1005,12 @@ class QRMS_Admin_Shell {
 	}
 
 	/**
-	 * Hybrid native ekranlarda eksik geri bağlantısı (taxonomy, banner CPT).
+	 * Hybrid native ekranlarda eksik geri bağlantısı (ürün listesi/düzenleme, taxonomy, banner CPT).
 	 *
 	 * @return void
 	 */
 	public static function render_native_hybrid_back_link() {
 		if ( ! self::is_active() || ! self::is_native_hybrid_screen() ) {
-			return;
-		}
-
-		if ( self::is_menu_item_list_screen() || self::is_menu_item_edit_screen() ) {
 			return;
 		}
 
@@ -1019,6 +1020,13 @@ class QRMS_Admin_Shell {
 		}
 
 		$back = null;
+
+		if ( self::is_menu_item_list_screen() || self::is_menu_item_edit_screen() ) {
+			$back = array(
+				'back_url'   => QRMS_Admin::get_module_page_url( 'restoran-menu' ),
+				'back_label' => __( 'Menü Yönetimi\'ne Dön', 'qrms' ),
+			);
+		}
 
 		$taxonomy = self::get_restoran_taxonomy_screen_context();
 		if ( null !== $taxonomy ) {
