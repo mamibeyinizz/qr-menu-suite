@@ -55,10 +55,10 @@
 
 .qrms-detail-close {
     position: absolute;
-    top: 10px;
-    right: 12px;
-    width: 30px;
-    height: 30px;
+    top: 8px;
+    right: 8px;
+    width: 44px;
+    height: 44px;
     border-radius: 50%;
     background: rgba(255, 255, 255, .08);
     border: 1px solid #2a2a30;
@@ -158,6 +158,7 @@
     color: #f2f2f2;
     letter-spacing: -.02em;
     line-height: 1.2;
+    overflow-wrap: anywhere;
 }
 
 .qrms-detail-inner .rma-modal-price {
@@ -167,8 +168,10 @@
     margin: 0 0 14px;
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
     gap: 8px;
     letter-spacing: -.02em;
+    min-width: 0;
 }
 
 .qrms-detail-inner .rma-modal-price .rma-price-old,
