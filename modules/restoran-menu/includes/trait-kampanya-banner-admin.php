@@ -871,16 +871,19 @@ trait RMA_Kampanya_Banner_Admin_Trait {
 
         if ( ! current_user_can( $yetki ) ) {
             wp_send_json_error( array( 'message' => 'Bu işlem için yetkiniz yok.' ), 403 );
+            return;
         }
 
         $banner_id = isset( $_POST['banner'] ) ? absint( wp_unslash( $_POST['banner'] ) ) : 0;
 
         if ( $banner_id < 1 || get_post_type( $banner_id ) !== QMO_Banner_CPT::POST_TYPE ) {
             wp_send_json_error( array( 'message' => 'Kampanya bulunamadı.' ), 400 );
+            return;
         }
 
         if ( ! current_user_can( 'edit_post', $banner_id ) ) {
             wp_send_json_error( array( 'message' => 'Bu kampanyayı düzenleme yetkiniz yok.' ), 403 );
+            return;
         }
 
         $degisti = false;
@@ -895,7 +898,7 @@ trait RMA_Kampanya_Banner_Admin_Trait {
         if ( isset( $_POST['gorsel'] ) ) {
             $gorsel_id = absint( wp_unslash( $_POST['gorsel'] ) );
 
-            if ( $gorsel_id > 0 && 'attachment' === get_post_type( $gorsel_id ) ) {
+            if ( $gorsel_id > 0 && QMO_Banner_CPT::is_valid_image( $gorsel_id ) ) {
                 update_post_meta( $banner_id, QMO_Banner_CPT::META_IMAGE, $gorsel_id );
                 $degisti = true;
             } elseif ( 0 === $gorsel_id ) {
@@ -903,11 +906,13 @@ trait RMA_Kampanya_Banner_Admin_Trait {
                 $degisti = true;
             } else {
                 wp_send_json_error( array( 'message' => 'Seçilen görsel geçerli değil.' ), 400 );
+                return;
             }
         }
 
         if ( ! $degisti ) {
             wp_send_json_error( array( 'message' => 'Değiştirilecek bir şey gönderilmedi.' ), 400 );
+            return;
         }
 
         // Kırpma CPT ekranındaki akışın aynısı: aktif oranların hepsi için
@@ -1633,10 +1638,12 @@ trait RMA_Kampanya_Banner_Admin_Trait {
 
         if ( ! current_user_can( $yetki ) ) {
             wp_send_json_error( array( 'message' => 'Bu işlem için yetkiniz yok.' ), 403 );
+            return;
         }
 
         if ( ! post_type_exists( QMO_Banner_CPT::POST_TYPE ) ) {
             wp_send_json_error( array( 'message' => 'Kampanya banner içerik türü kayıtlı değil.' ), 400 );
+            return;
         }
 
         $baslik = isset( $_POST['baslik'] ) ? sanitize_text_field( wp_unslash( $_POST['baslik'] ) ) : '';
@@ -1651,21 +1658,25 @@ trait RMA_Kampanya_Banner_Admin_Trait {
 
         if ( 0 !== strpos( $veri, $onek ) ) {
             wp_send_json_error( array( 'message' => 'Görsel verisi beklenen biçimde değil.' ), 400 );
+            return;
         }
 
         $ham = base64_decode( substr( $veri, strlen( $onek ) ), true );
 
         if ( false === $ham || '' === $ham ) {
             wp_send_json_error( array( 'message' => 'Görsel verisi çözülemedi.' ), 400 );
+            return;
         }
 
         if ( strlen( $ham ) > self::banner_uretim_max_byte() ) {
             wp_send_json_error( array( 'message' => 'Üretilen görsel çok büyük.' ), 400 );
+            return;
         }
 
         // PNG dosya imzası — data URI'de yazan MIME'a güvenilmez.
         if ( "\x89PNG\r\n\x1a\n" !== substr( $ham, 0, 8 ) ) {
             wp_send_json_error( array( 'message' => 'Görsel verisi bir PNG değil.' ), 400 );
+            return;
         }
 
         $dosya_adi = 'qmo-kampanya-' . sanitize_title( $baslik ) . '-' . time() . '.png';
@@ -1673,6 +1684,7 @@ trait RMA_Kampanya_Banner_Admin_Trait {
 
         if ( ! empty( $yuklenen['error'] ) ) {
             wp_send_json_error( array( 'message' => $yuklenen['error'] ), 500 );
+            return;
         }
 
         // Dosyaya yazıldıktan sonraki son doğrulama: gerçekten PNG mi?
@@ -1681,6 +1693,7 @@ trait RMA_Kampanya_Banner_Admin_Trait {
         if ( empty( $olcu ) || IMAGETYPE_PNG !== (int) ( $olcu[2] ?? 0 ) ) {
             wp_delete_file( $yuklenen['file'] );
             wp_send_json_error( array( 'message' => 'Yüklenen dosya geçerli bir PNG değil.' ), 400 );
+            return;
         }
 
         $ek_id = wp_insert_attachment(
@@ -1696,10 +1709,16 @@ trait RMA_Kampanya_Banner_Admin_Trait {
         if ( ! $ek_id || is_wp_error( $ek_id ) ) {
             wp_delete_file( $yuklenen['file'] );
             wp_send_json_error( array( 'message' => 'Görsel medya kütüphanesine eklenemedi.' ), 500 );
+            return;
         }
 
-        require_once ABSPATH . 'wp-admin/includes/image.php';
-        wp_update_attachment_metadata( $ek_id, wp_generate_attachment_metadata( $ek_id, $yuklenen['file'] ) );
+        $image_php = ABSPATH . 'wp-admin/includes/image.php';
+        if ( is_readable( $image_php ) ) {
+            require_once $image_php;
+        }
+        if ( function_exists( 'wp_generate_attachment_metadata' ) && function_exists( 'wp_update_attachment_metadata' ) ) {
+            wp_update_attachment_metadata( $ek_id, wp_generate_attachment_metadata( $ek_id, $yuklenen['file'] ) );
+        }
 
         // Yeni kampanya en sona düşsün: mevcut en büyük sıra + 1.
         $sira = 0;
@@ -1720,11 +1739,26 @@ trait RMA_Kampanya_Banner_Admin_Trait {
             true
         );
 
-        if ( is_wp_error( $kayit_id ) ) {
-            wp_send_json_error( array( 'message' => $kayit_id->get_error_message() ), 500 );
+        if ( ! $kayit_id || is_wp_error( $kayit_id ) ) {
+            if ( function_exists( 'wp_delete_attachment' ) ) {
+                wp_delete_attachment( (int) $ek_id, true );
+            } else {
+                wp_delete_file( $yuklenen['file'] );
+            }
+            $mesaj = is_wp_error( $kayit_id ) ? $kayit_id->get_error_message() : 'Kampanya kaydı oluşturulamadı.';
+            wp_send_json_error( array( 'message' => $mesaj ), 500 );
+            return;
         }
 
         update_post_meta( $kayit_id, QMO_Banner_CPT::META_IMAGE, (int) $ek_id );
+
+        // Ek, banner kaydının çocuğu olsun: medya kütüphanesi "bu yazıya yüklendi" bağını kurar.
+        wp_update_post(
+            array(
+                'ID'          => (int) $ek_id,
+                'post_parent' => (int) $kayit_id,
+            )
+        );
 
         // Üretilen görsel seçilen oranda çizilir; ama kullanıcı araçta
         // banner ayarından FARKLI bir oran seçmiş olabilir. Elle yüklenen
