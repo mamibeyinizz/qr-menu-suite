@@ -2068,8 +2068,23 @@ function is_post_type_archive( $post_types = '' ) {
  *
  * @return null
  */
-function get_post() {
-	return null;
+function get_post( $post_id = null, $output = OBJECT, $filter = 'raw' ) {
+	if ( null === $post_id ) {
+		return null;
+	}
+
+	$id = (int) $post_id;
+	if ( $id < 1 || ! isset( $GLOBALS['qrms_test']['post_types'][ $id ] ) ) {
+		return null;
+	}
+
+	return (object) array(
+		'ID'         => $id,
+		'post_type'  => $GLOBALS['qrms_test']['post_types'][ $id ],
+		'post_title' => isset( $GLOBALS['qrms_test']['post_title'][ $id ] )
+			? (string) $GLOBALS['qrms_test']['post_title'][ $id ]
+			: '',
+	);
 }
 
 /**

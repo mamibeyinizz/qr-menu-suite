@@ -1530,10 +1530,12 @@ qrms_test(
    wp_safe_redirect() ile aynı desen), akış burada yakalanıp devam eder.
 ===================================================================== */
 
+require_once QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-import-export.php';
 require_once QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/urunum-yok/trait-admin.php';
 
 if ( ! class_exists( 'RMA_Test_Ingredient_CSV_Harness' ) ) {
 	class RMA_Test_Ingredient_CSV_Harness {
+		use RMA_Import_Export_Trait;
 		use RMA_Urunum_Yok_Admin_Trait;
 		use RMA_Helpers_Trait;
 
@@ -1581,6 +1583,150 @@ function qrms_run_ingredient_csv_confirm( $harness, array $rows ) {
 
 	throw new Exception( 'handle_ingredient_csv_import_confirm() yönlendirmeden dönmedi' );
 }
+
+/**
+ * handle_ingredient_csv_import_preview() akışını gerçek trait metoduyla çalıştırır.
+ *
+ * @param object $harness RMA_Test_Ingredient_CSV_Harness.
+ * @param string $csv_body UTF-8 CSV içeriği (başlık satırı dahil).
+ * @return array Önizleme transient verisi.
+ */
+function qrms_run_ingredient_csv_preview( $harness, $csv_body ) {
+	$tmp = tempnam( sys_get_temp_dir(), 'qmo_uy_csv_' );
+	if ( false === $tmp ) {
+		throw new Exception( 'geçici CSV dosyası oluşturulamadı' );
+	}
+	file_put_contents( $tmp, $csv_body );
+
+	$_FILES['qmo_uy_csv_file'] = array(
+		'tmp_name' => $tmp,
+		'error'    => UPLOAD_ERR_OK,
+	);
+	$_POST['qmo_uy_csv_nonce'] = wp_create_nonce( 'qmo_uy_csv_import' );
+
+	try {
+		$harness->handle_ingredient_csv_import_preview();
+	} catch ( QRMS_Test_Redirect $e ) {
+		$location = $e->getMessage();
+		if ( preg_match( '/[?&]qmo_uy_csv_token=([^&#]+)/', $location, $m ) ) {
+			$token   = rawurldecode( $m[1] );
+			$preview = get_transient( 'qmo_uy_csv_' . $token );
+			@unlink( $tmp );
+			if ( ! is_array( $preview ) ) {
+				throw new Exception( 'önizleme transient bulunamadı' );
+			}
+			return $preview;
+		}
+		@unlink( $tmp );
+		throw new Exception( 'önizleme yönlendirmesinde token yok: ' . $location );
+	}
+
+	@unlink( $tmp );
+	throw new Exception( 'handle_ingredient_csv_import_preview() yönlendirmeden dönmedi' );
+}
+
+echo "\nMalzeme Bazlı Toplu Aktarım (CSV) — boş / yalnızca ID satırları (BULGU: 612;;;; geçerli sayılıyordu)\n";
+
+qrms_test(
+	'malzeme CSV önizleme: 612;;;; ve tamamen boş satırlar yok sayılır, geçerli satır eşleşir',
+	function () {
+		$h = new RMA_Test_Ingredient_CSV_Harness();
+
+		$pid = 720;
+		$GLOBALS['qrms_test']['post_types'][ $pid ] = 'rma_menu_item';
+		$GLOBALS['qrms_test']['term_names']       = array();
+
+		$csv = "ID;Başlık;Kategori;Fiyat;Malzemeler\n"
+			. ";;;;\n"
+			. "612;;;;\n"
+			. "\n"
+			. $pid . ";Güncellenecek;;55;domates\n"
+			. ";;;;\n";
+
+		$preview = qrms_run_ingredient_csv_preview( $h, $csv );
+
+		qrms_assert_same( 1, $preview['eslesen'], 'yalnızca dolu satır eşleşir' );
+		qrms_assert_same( 1, count( $preview['rows'] ), 'önizleme satır listesinde tek kayıt' );
+		qrms_assert_same( $pid, (int) $preview['rows'][0]['pid'], 'doğru ürün eşleşti' );
+		qrms_assert_same( array(), $preview['eslesmeyen'], 'boş satırlar eşleşmeyen listesine düşmez' );
+	}
+);
+
+qrms_test(
+	'malzeme CSV önizleme: yalnızca başlık dolu satır (opsiyonel alanlar boş) içerik olarak kabul edilir',
+	function () {
+		$h = new RMA_Test_Ingredient_CSV_Harness();
+
+		$GLOBALS['wpdb'] = new class() extends QRMS_Sayan_Wpdb {
+			public $posts = 'wp_posts';
+
+			public function get_results( $sql, $output = OBJECT ) {
+				$this->queries[] = $sql;
+				return array();
+			}
+		};
+		$GLOBALS['qrms_test']['term_names'] = array();
+
+		$csv = "ID;Başlık;Kategori;Fiyat;Malzemeler\n"
+			. "0;Sadece Başlık;;;\n";
+
+		$preview = qrms_run_ingredient_csv_preview( $h, $csv );
+
+		qrms_assert_same( 0, $preview['eslesen'], 'eşleşen ürün yok' );
+		qrms_assert_same( array( 'Sadece Başlık' ), $preview['eslesmeyen'], 'başlık dolu satır eşleşmeyen olarak raporlanır (sahte boş satır değil)' );
+	}
+);
+
+qrms_test(
+	'malzeme CSV: yalnızca ID içeren satır içerik taşımaz (612;;;;)',
+	function () {
+		$h      = new RMA_Test_Ingredient_CSV_Harness();
+		$metod  = new ReflectionMethod( $h, 'ingredient_csv_row_has_importable_payload' );
+		$metod->setAccessible( true );
+
+		qrms_assert_false(
+			$metod->invoke( $h, '', '', '', array() ),
+			'tamamen boş alanlar'
+		);
+		qrms_assert_false(
+			$metod->invoke( $h, '', '', '', array() ),
+			'612;;;; benzeri: başlık/kategori/fiyat/malzeme yok'
+		);
+		qrms_assert_true(
+			$metod->invoke( $h, 'Domates', '', '', array() ),
+			'yalnızca başlık dolu'
+		);
+		qrms_assert_true(
+			$metod->invoke( $h, '', '', '45', array() ),
+			'yalnızca fiyat dolu'
+		);
+		qrms_assert_true(
+			$metod->invoke( $h, '', '', '', array( 'domates' ) ),
+			'yalnızca malzeme dolu'
+		);
+	}
+);
+
+qrms_test(
+	'malzeme CSV onayı: yalnızca ID içeren satır uygulanmaz — malzemeler silinmez, sayaç artmaz',
+	function () {
+		$h   = new RMA_Test_Ingredient_CSV_Harness();
+		$pid = 722;
+
+		$GLOBALS['qrms_test']['post_types'][ $pid ] = 'rma_menu_item';
+		$GLOBALS['qrms_test']['terms']['rma_ingredient']['domates'] = 9001;
+		$GLOBALS['qrms_test']['object_terms'][ $pid ]['rma_ingredient'] = array( 9001 );
+
+		$rows = array(
+			array( 'pid' => $pid, 'category' => '', 'price' => '', 'ingredients' => array() ),
+		);
+
+		$location = qrms_run_ingredient_csv_confirm( $h, $rows );
+
+		qrms_assert_contains( 'qmo_uy_csv_uygulandi=0', $location, 'içeriksiz satır güncelleme sayılmaz' );
+		qrms_assert_same( array( 9001 ), $GLOBALS['qrms_test']['object_terms'][ $pid ]['rma_ingredient'], 'mevcut malzemeler korunur' );
+	}
+);
 
 echo "\nMalzeme Bazlı Toplu Aktarım (CSV) — fiyat doğrulama bypass'ı (BULGU: fiyat sanitize_text_field() ile doğrudan yazılıyordu)\n";
 
