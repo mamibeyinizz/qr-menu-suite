@@ -2136,7 +2136,7 @@ qrms_test(
 		qrms_assert_contains( 'qrms-shell__account-logout', $shell, 'çıkış bağlantısı' );
 		qrms_assert_contains( 'shell_logout_url', $auth, 'shell logout URL üretici' );
 		qrms_assert_contains( 'wp_logout_url', $auth, 'WordPress logout mekanizması' );
-		qrms_assert_contains( 'QRMS_Login::login_url', $auth, 'çıkış sonrası QRMS giriş hedefi' );
+		qrms_assert_contains( 'QRMS_Login::is_active()', $auth, 'çıkış yalnızca özel giriş yolunda login\'e döner' );
 		qrms_assert_contains( 'yalniz_servis_mi() ) ) :', $shell, 'service-only WordPress Yönetimi kapısı korunur' );
 		qrms_assert_contains( 'render_account_control', $shell, 'service-only dahil hesap kontrolü' );
 		qrms_assert_contains( 'closeAccountMenu', $js, 'hesap menüsü kapanışı' );
