@@ -2,8 +2,9 @@
 /**
  * REST: POST /wp-json/qrservis/v1/order — müşteri siparişi.
  *
- * Girdi (JSON): { items:[{urunAdi, adet, not}], dil }
+ * Girdi (JSON): { items:[{urunAdi, adet, not, itemId, ekstralar?}], dil }
  * Masa CLIENT'TAN ALINMAZ; doğrulanmış HMAC oturum cookie'sinden okunur.
+ * İstemci birim fiyatı yok sayılır; extra adları katalogdan yeniden fiyatlanır.
  *
  * @package QR_Menu_Official
  */
@@ -288,16 +289,18 @@ if ( ! function_exists( 'qmo_siparis_kalem_coz' ) ) {
 }
 
 /**
- * Sipariş anındaki sunucu birim fiyatı (kampanya + kombin taban + porsiyon farkı).
+ * Sipariş anındaki sunucu birim fiyatı (kampanya + kombin taban + porsiyon farkı + katalog ekstraları).
  *
- * Ekstra fiyatlar ve kasa indirimleri dahil değildir.
+ * İstemci birim fiyatına güvenilmez. Extra adları ürün kataloğuna karşı
+ * doğrulanır; uydurma extra ve istemcinin gönderdiği extra tutarı yok sayılır.
  *
- * @param int    $item_id   Ürün ID.
- * @param string $urun_adi  Kalem adı (porsiyon eki parantez içinde olabilir).
+ * @param int    $item_id        Ürün ID.
+ * @param string $urun_adi       Kalem adı (porsiyon eki parantez içinde olabilir).
+ * @param mixed  $ekstra_adlari  Extra ad listesi (isteğe bağlı).
  * @return float|null
  */
 if ( ! function_exists( 'qmo_siparis_kalem_unit_price' ) ) {
-	function qmo_siparis_kalem_unit_price( $item_id, $urun_adi ) {
+	function qmo_siparis_kalem_unit_price( $item_id, $urun_adi, $ekstra_adlari = array() ) {
 		$item_id = absint( $item_id );
 		if ( $item_id < 1 || ! class_exists( 'RMA_Kampanya' ) ) {
 			return null;
@@ -330,7 +333,47 @@ if ( ! function_exists( 'qmo_siparis_kalem_unit_price' ) ) {
 			}
 		}
 
+		if ( class_exists( 'RMA_Ekstra' ) ) {
+			$birim += RMA_Ekstra::secim_toplami( $item_id, $ekstra_adlari );
+		}
+
 		return max( 0.0, $birim );
+	}
+}
+
+/**
+ * Sipariş kaleminden extra adlarını toplar (JSON alan + not öneki).
+ *
+ * @param array $kalem Ham kalem.
+ * @return string[]
+ */
+if ( ! function_exists( 'qmo_siparis_ekstra_adlari' ) ) {
+	function qmo_siparis_ekstra_adlari( $kalem ) {
+		$adlar = array();
+
+		if ( ! is_array( $kalem ) ) {
+			return $adlar;
+		}
+
+		if ( isset( $kalem['ekstralar'] ) && is_array( $kalem['ekstralar'] ) ) {
+			foreach ( $kalem['ekstralar'] as $satir ) {
+				if ( is_array( $satir ) ) {
+					$ad = isset( $satir['ad'] ) ? (string) $satir['ad'] : '';
+				} else {
+					$ad = (string) $satir;
+				}
+				$ad = trim( sanitize_text_field( $ad ) );
+				if ( '' !== $ad ) {
+					$adlar[] = $ad;
+				}
+			}
+		}
+
+		if ( class_exists( 'RMA_Ekstra' ) ) {
+			$adlar = array_merge( $adlar, RMA_Ekstra::nottan_adlar( $kalem['not'] ?? '' ) );
+		}
+
+		return $adlar;
 	}
 }
 
@@ -439,11 +482,24 @@ if ( ! function_exists( 'qmo_siparis_isle_govde' ) ) {
 				$item_id = $urun['id'];
 			}
 
+			$ekstra_adlari = function_exists( 'qmo_siparis_ekstra_adlari' )
+				? qmo_siparis_ekstra_adlari( $it )
+				: array();
+			if ( $item_id > 0 && class_exists( 'RMA_Ekstra' ) ) {
+				$ekstra_adlari = array_map(
+					static function ( $s ) {
+						return $s['ad'];
+					},
+					RMA_Ekstra::dogrula_secim( $item_id, $ekstra_adlari )
+				);
+			}
+
 			$temiz[] = array(
-				'urunAdi'  => $ad,
-				'adet'     => $adet,
-				'not'      => $not,
-				'item_id'  => $item_id,
+				'urunAdi'    => $ad,
+				'adet'       => $adet,
+				'not'        => $not,
+				'item_id'    => $item_id,
+				'ekstralar'  => $ekstra_adlari,
 			);
 		}
 		if ( $cozulmedi ) {
@@ -794,8 +850,20 @@ if ( ! function_exists( 'qmo_analitik_siparis_yaz' ) ) {
 			$adet = isset( $line['adet'] ) ? max( 1, min( 999, absint( $line['adet'] ) ) ) : 1;
 
 			$item_id_kalem = $id > 0 ? $id : ( isset( $alan['item_id'] ) ? (int) $alan['item_id'] : 0 );
+			$ekstra_adlari = array();
+			if ( isset( $temiz_list[ $idx ]['ekstralar'] ) && is_array( $temiz_list[ $idx ]['ekstralar'] ) ) {
+				$ekstra_adlari = $temiz_list[ $idx ]['ekstralar'];
+			} elseif ( class_exists( 'RMA_Ekstra' ) ) {
+				$not_ham = '';
+				if ( isset( $line['notOrijinal'] ) ) {
+					$not_ham = (string) $line['notOrijinal'];
+				} elseif ( isset( $line['not'] ) ) {
+					$not_ham = (string) $line['not'];
+				}
+				$ekstra_adlari = RMA_Ekstra::nottan_adlar( $not_ham );
+			}
 			$unit_price    = function_exists( 'qmo_siparis_kalem_unit_price' )
-				? qmo_siparis_kalem_unit_price( $item_id_kalem, $ad )
+				? qmo_siparis_kalem_unit_price( $item_id_kalem, $ad, $ekstra_adlari )
 				: null;
 
 			$kayit = array(
