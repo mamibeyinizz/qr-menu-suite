@@ -771,21 +771,29 @@
 			credentials: 'same-origin',
 			body: JSON.stringify( {
 				dil: dil(),
-				// Porsiyon ürün adının parçası, ekstralar ise notun başında
-				// gider: sipariş ucu (rest-order.php) yalnızca urunAdi/adet/
-				// not/itemId alanlarını tanır, mutfak fişi bunları basar.
+				// Porsiyon ürün adının parçasıdır. Extra adları mutfak
+				// notunun başına yazılır ve ayrıca isim listesi olarak
+				// gider; sipariş ucu katalog fiyatını yeniden hesaplar,
+				// istemci extra tutarına güvenmez.
 				items: s.map( function ( x ) {
 					var ad  = x.porsiyon ? x.ad + ' (' + x.porsiyon + ')' : x.ad;
 					var not = x.not || '';
+					var extraAdlar = ( x.ekstralar || [] ).map( function ( e ) {
+						return e && e.ad ? String( e.ad ) : '';
+					} ).filter( Boolean );
 
-					if ( x.ekstralar && x.ekstralar.length ) {
-						var ek = T( 'ekstra' ) + ': ' + x.ekstralar.map( function ( e ) {
-							return e.ad;
-						} ).join( ', ' );
+					if ( extraAdlar.length ) {
+						var ek = T( 'ekstra' ) + ': ' + extraAdlar.join( ', ' );
 						not = not ? ek + ' — ' + not : ek;
 					}
 
-					return { urunAdi: ad, adet: x.adet, not: not.slice( 0, 200 ), itemId: x.pid || 0 };
+					return {
+						urunAdi: ad,
+						adet: x.adet,
+						not: not.slice( 0, 200 ),
+						itemId: x.pid || 0,
+						ekstralar: extraAdlar
+					};
 				} )
 			} )
 		} ).then( function ( r ) {

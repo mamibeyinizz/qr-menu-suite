@@ -347,6 +347,7 @@ qrms_test(
 		qrms_assert_true( false !== strpos( $js, "getAttribute( 'data-fark' )" ), 'porsiyon farkı data-fark' );
 		qrms_assert_true( false !== strpos( $js, "data-siparis-kapali" ), 'servis dışı/tükendi ürüne ekleme bloğu basılmaz' );
 		qrms_assert_true( false !== strpos( $js, 'imzaUret' ), 'porsiyon+ekstra kombinasyonu ayrı satır' );
+		qrms_assert_true( false !== strpos( $js, 'ekstralar: extraAdlar' ), 'siparişe extra adları gider, tutar değil' );
 	}
 );
 

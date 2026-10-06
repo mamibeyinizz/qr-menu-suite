@@ -272,6 +272,130 @@ class RMA_Ekstra {
 	}
 
 	/**
+	 * Seçilen ekstra adlarını ürün kataloğuna karşı doğrular.
+	 *
+	 * İstemci fiyatına güvenilmez: yalnızca bu üründe tanımlı adlar kalır,
+	 * katalog yazımı ve fiyatı kullanılır. Bilinmeyen ad (uydurma extra)
+	 * sessizce düşer. Azami seçim RMA_Ekstra::AZAMI_SECIM.
+	 *
+	 * @param int   $post_id Ürün ID.
+	 * @param mixed $adlar   Ham ad listesi (string veya {ad:}).
+	 * @return array<int,array{ad:string,fiyat:float}>
+	 */
+	public static function dogrula_secim( $post_id, $adlar ) {
+		$katalog = array();
+
+		foreach ( self::gruplar( $post_id ) as $grup ) {
+			foreach ( (array) ( $grup['urunler'] ?? array() ) as $urun ) {
+				$ad = isset( $urun['ad'] ) ? (string) $urun['ad'] : '';
+				if ( '' === $ad ) {
+					continue;
+				}
+				$anahtar = function_exists( 'mb_strtolower' ) ? mb_strtolower( $ad, 'UTF-8' ) : strtolower( $ad );
+				if ( ! isset( $katalog[ $anahtar ] ) ) {
+					$katalog[ $anahtar ] = array(
+						'ad'    => $ad,
+						'fiyat' => (float) ( $urun['fiyat'] ?? 0 ),
+					);
+				}
+			}
+		}
+
+		$ham = array();
+		if ( is_array( $adlar ) ) {
+			$ham = $adlar;
+		} elseif ( is_string( $adlar ) && '' !== $adlar ) {
+			$ham = array( $adlar );
+		}
+
+		$secim   = array();
+		$kullan = array();
+
+		foreach ( $ham as $satir ) {
+			if ( is_array( $satir ) ) {
+				$ad = isset( $satir['ad'] ) ? (string) $satir['ad'] : '';
+			} else {
+				$ad = (string) $satir;
+			}
+			$ad = trim( sanitize_text_field( $ad ) );
+			if ( '' === $ad ) {
+				continue;
+			}
+
+			$anahtar = function_exists( 'mb_strtolower' ) ? mb_strtolower( $ad, 'UTF-8' ) : strtolower( $ad );
+			if ( ! isset( $katalog[ $anahtar ] ) || isset( $kullan[ $anahtar ] ) ) {
+				continue;
+			}
+
+			$kullan[ $anahtar ] = true;
+			$secim[]            = $katalog[ $anahtar ];
+
+			if ( count( $secim ) >= self::AZAMI_SECIM ) {
+				break;
+			}
+		}
+
+		return $secim;
+	}
+
+	/**
+	 * Doğrulanmış ekstra seçiminin katalog fiyat toplamı.
+	 *
+	 * @param int   $post_id Ürün ID.
+	 * @param mixed $adlar   Ham ad listesi.
+	 * @return float
+	 */
+	public static function secim_toplami( $post_id, $adlar ) {
+		$toplam = 0.0;
+
+		foreach ( self::dogrula_secim( $post_id, $adlar ) as $satir ) {
+			$toplam += (float) $satir['fiyat'];
+		}
+
+		return round( $toplam, 2 );
+	}
+
+	/**
+	 * Sipariş notunun extra önek satırından ad çıkarır ("Ekstra: Peynir, Sos — not").
+	 *
+	 * @param string $not Müşteri notu.
+	 * @return string[]
+	 */
+	public static function nottan_adlar( $not ) {
+		$not = trim( (string) $not );
+		if ( '' === $not ) {
+			return array();
+		}
+
+		$ilk = $not;
+		if ( preg_match( '/^(.*?)(?:\s+[—–]\s+|\s+ - \s+)(.*)$/u', $not, $eslesme ) ) {
+			$ilk = trim( $eslesme[1] );
+		}
+
+		if ( ! preg_match( '/:\s*(.+)$/u', $ilk, $eslesme ) ) {
+			return array();
+		}
+
+		$parcalar = preg_split( '/\s*,\s*/u', trim( $eslesme[1] ) );
+		if ( ! is_array( $parcalar ) ) {
+			return array();
+		}
+
+		$adlar = array();
+		foreach ( $parcalar as $ad ) {
+			$ad = trim( sanitize_text_field( (string) $ad ) );
+			if ( '' !== $ad ) {
+				$adlar[] = $ad;
+			}
+			if ( count( $adlar ) >= self::AZAMI_SECIM ) {
+				break;
+			}
+		}
+
+		return $adlar;
+	}
+
+	/**
 	 * Üründe ekstra var mı?
 	 *
 	 * @param int $post_id Ürün ID.
