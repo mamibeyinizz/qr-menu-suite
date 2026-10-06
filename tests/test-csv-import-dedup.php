@@ -232,28 +232,22 @@ qrms_test(
 			QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-import-export.php'
 		);
 
-		$fonksiyon_basi = strpos( $kaynak, 'function handle_csv_import()' );
-		$fonksiyon_sonu = strpos( $kaynak, "\n    /**\n     * CSV sütunları" );
-		$govde          = substr( $kaynak, $fonksiyon_basi, $fonksiyon_sonu - $fonksiyon_basi );
+		qrms_assert_contains( "\$d['_rma_satir_no'] = \$i + 1;", $kaynak, 'gerçek dosya satır numarası saklanıyor' );
+		qrms_assert_contains( "\$out['fiyat_gecersiz']++;", $kaynak, 'geçersiz fiyatta sayaç artırılıyor' );
+		qrms_assert_contains( "\$out['fiyat_satirlar'][] = \$i + 1;", $kaynak, 'satır numarası listeye ekleniyor' );
 
-		qrms_assert_contains( '$fiyat_gecersiz          = 0;', $govde, 'sayaç sıfırla başlatılıyor' );
-		qrms_assert_contains( '$fiyat_gecersiz_satirlar = [];', $govde, 'satır listesi sıfırla başlatılıyor' );
-		qrms_assert_contains( "\$d['_rma_satir_no'] = \$i + 1;", $govde, 'gerçek dosya satır numarası saklanıyor' );
-		qrms_assert_contains( '$fiyat_gecersiz++;', $govde, 'geçersiz fiyatta sayaç artırılıyor' );
-		qrms_assert_contains(
-			"\$fiyat_gecersiz_satirlar[] = (int) ( \$d['_rma_satir_no'] ?? 0 );",
-			$govde,
-			'satır numarası (int olarak) listeye ekleniyor'
-		);
+		$collect_basi = strpos( $kaynak, 'function csv_collect_import_rows(' );
+		$collect_sonu = strpos( $kaynak, 'function csv_import_result_notice(' );
+		$collect      = substr( $kaynak, $collect_basi, $collect_sonu - $collect_basi );
 
-		$sayac_konumu = strpos( $govde, '$fiyat_gecersiz++;' );
-		$sanitize_konumu = strpos( $govde, "\$gecerli_fiyat = \$this->sanitize_price_value( \$d[3] ?? '' );" );
-		qrms_assert_true( $sanitize_konumu < $sayac_konumu, 'sayaç yalnızca doğrulamadan SONRA artırılıyor' );
+		$sayac_konumu    = strpos( $collect, "\$out['fiyat_gecersiz']++;" );
+		$sanitize_konumu = strpos( $collect, "\$gecerli_fiyat      = \$this->sanitize_price_value( \$d[3] ?? '' );" );
+		qrms_assert_true( false !== $sanitize_konumu && $sanitize_konumu < $sayac_konumu, 'sayaç yalnızca doğrulamadan SONRA artırılıyor' );
 	}
 );
 
 qrms_test(
-	'kaynak kod: güncellenen (mevcut) üründe eski fiyat korunuyor, yeni üründe geçersiz fiyat kaydedilmiyor',
+	'kaynak kod: geçersiz fiyatlı satır yazılmaz, geçerli fiyat kaydedilir',
 	function () {
 		$kaynak = file_get_contents(
 			QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-import-export.php'
@@ -263,22 +257,21 @@ qrms_test(
 		$fonksiyon_sonu = strpos( $kaynak, "\n    /**\n     * CSV sütunları" );
 		$govde          = substr( $kaynak, $fonksiyon_basi, $fonksiyon_sonu - $fonksiyon_basi );
 
-		// null === $gecerli_fiyat dalı: sadece YENİ ürün (hedef_id yok) için
-		// boş meta yazılır; mevcut (güncellenen) ürüne rma_price hiç dokunulmaz.
 		$fiyat_blok_basi = strpos( $govde, '$gecerli_fiyat = $this->sanitize_price_value(' );
 		$fiyat_blok_sonu = strpos( $govde, '$meta_map = [' );
 		$fiyat_blok      = substr( $govde, $fiyat_blok_basi, $fiyat_blok_sonu - $fiyat_blok_basi );
 
-		qrms_assert_contains( 'if ( ! $hedef_id ) {', $fiyat_blok, 'yalnızca yeni ürün dalında meta yazılıyor' );
-		qrms_assert_contains( "update_post_meta( \$pid, 'rma_price', '' );", $fiyat_blok, 'yeni üründe geçersiz fiyat boş kaydediliyor' );
+		qrms_assert_contains( 'if ( null === $gecerli_fiyat ) {', $fiyat_blok, 'geçersiz fiyat ayrı dal' );
+		qrms_assert_contains( 'continue;', $fiyat_blok, 'geçersiz fiyat satırı yazılmadan atlanır' );
 		qrms_assert_contains( "update_post_meta( \$pid, 'rma_price', \$gecerli_fiyat );", $fiyat_blok, 'geçerli fiyat hâlâ doğrudan kaydediliyor' );
-
-		// "! $hedef_id" kontrolü olmadan koşulsuz bir update_post_meta çağrısı
-		// (eski davranış — güncellenen üründe de eski fiyatı siliyordu) kalmamalı.
 		qrms_assert_false(
-			false !== strpos( $fiyat_blok, "'rma_price', null === \$gecerli_fiyat ? '' : \$gecerli_fiyat" ),
-			'eski koşulsuz üzerine yazma deseni kaldırıldı'
+			false !== strpos( $fiyat_blok, "update_post_meta( \$pid, 'rma_price', '' )" ),
+			'geçersiz fiyat boş meta olarak yazılmaz'
 		);
+
+		$continue_konumu = strpos( $govde, 'if ( null === $gecerli_fiyat ) {' );
+		$insert_konumu   = strpos( $govde, 'wp_insert_post( $postarr )' );
+		qrms_assert_true( $continue_konumu < $insert_konumu, 'fiyat reddi insert öncesinde' );
 	}
 );
 
@@ -306,14 +299,33 @@ qrms_test(
 	'render_csv_import_page(): geçersiz fiyat yokken hiçbir uyarı basılmaz (regresyon)',
 	function () {
 		$h = new RMA_Test_CSV_Page_Harness();
-		$_GET = array( 'imported' => 5 );
+		$_GET = array(
+			'imported'      => 5,
+			'rma_csv_sonuc' => 'ok',
+		);
 
 		ob_start();
 		$h->render_csv_import_page();
 		$html = ob_get_clean();
 
-		qrms_assert_contains( '<strong>5</strong> ürün aktarıldı.', $html, 'mevcut başarı bildirimi bozulmadı' );
+		qrms_assert_contains( '<strong>5</strong> ürün başarıyla aktarıldı.', $html, 'mevcut başarı bildirimi bozulmadı' );
 		qrms_assert_false( false !== strpos( $html, 'notice-warning' ), 'geçersiz fiyat yokken uyarı basılmaz' );
+		qrms_assert_contains( 'updated', $html, 'tam başarı yeşil bildiridir' );
+	}
+);
+
+qrms_test(
+	'render_csv_import_page(): kalıntı imported=1 tek başına başarı basmaz (RM-003)',
+	function () {
+		$h    = new RMA_Test_CSV_Page_Harness();
+		$_GET = array( 'imported' => 1 );
+
+		ob_start();
+		$h->render_csv_import_page();
+		$html = ob_get_clean();
+
+		qrms_assert_false( false !== strpos( $html, 'ürün aktarıldı' ), 'query string kalıntısı yeşil başarı üretmez' );
+		qrms_assert_false( false !== strpos( $html, 'updated' ), 'kalıntıda success notice yok' );
 	}
 );
 
@@ -322,7 +334,9 @@ qrms_test(
 	function () {
 		$h    = new RMA_Test_CSV_Page_Harness();
 		$_GET = array(
-			'imported'                 => 12,
+			'imported'                 => 9,
+			'rma_csv_sonuc'            => 'partial',
+			'rma_csv_hatali'           => 3,
 			'rma_csv_fiyat_gecersiz'   => 3,
 			'rma_csv_fiyat_satirlar'   => '2,5,9',
 		);
@@ -331,7 +345,7 @@ qrms_test(
 		$h->render_csv_import_page();
 		$html = ob_get_clean();
 
-		qrms_assert_contains( '<strong>12</strong> ürün aktarıldı.', $html, 'geçerli satırların içe aktarımı engellenmedi' );
+		qrms_assert_contains( '<strong>9</strong> ürün aktarıldı, <strong>3</strong> satır hata nedeniyle atlandı.', $html, 'kısmi sonuç doğru sayıları gösterir' );
 		qrms_assert_contains( 'notice-warning', $html, 'geçersiz fiyat uyarısı basıldı' );
 		qrms_assert_contains( '<strong>3</strong> satırda fiyat geçersiz', $html, 'sayaç doğru gösteriliyor' );
 		qrms_assert_contains( 'Etkilenen sat', $html, 'satır numaraları listeleniyor' );
@@ -373,5 +387,172 @@ qrms_test(
 
 		qrms_assert_false( false !== strpos( $html, '<script>' ), 'ham script etiketi çıktıya sızmaz' );
 		qrms_assert_contains( '<strong>2</strong> satırda fiyat geçersiz', $html, 'sayaç yine de doğru basılır' );
+	}
+);
+
+echo "\nAna CSV İçe Aktarımı — RM-003 yanıltıcı başarı mesajı\n";
+
+qrms_test(
+	'RM-003: geçerli örnek CSV tek satır olarak kabul edilir (TEST 1)',
+	function () {
+		$h       = new RMA_Test_CSV_Page_Harness();
+		$columns = $h->get_csv_columns();
+		$header  = implode( ',', array_map( static function ( $col ) {
+			return $col[0];
+		}, $columns ) );
+		$row     = implode( ',', array_map( static function ( $col ) {
+			return $col[2];
+		}, $columns ) );
+
+		$hazir = $h->csv_collect_import_rows( $header . "\n" . $row );
+		$ozet  = $h->csv_import_result_notice( count( $hazir['rows'] ), $hazir['hatali'], $hazir['atlanan'], $hazir['error'] );
+
+		qrms_assert_same( 0, $hazir['error'], 'başlık kabul edilir' );
+		qrms_assert_same( 1, count( $hazir['rows'] ), 'bir ürün satırı' );
+		qrms_assert_same( 0, $hazir['hatali'], 'hata yok' );
+		qrms_assert_same( 'ok', $ozet['sonuc'], 'tam başarı' );
+		qrms_assert_same( '1 ürün başarıyla aktarıldı.', $ozet['message'], 'sayı doğru' );
+	}
+);
+
+qrms_test(
+	'RM-003: Başlık kolonu yoksa import fail olur, satır yazılmaz (TEST 2)',
+	function () {
+		$h     = new RMA_Test_CSV_Page_Harness();
+		$hazir = $h->csv_collect_import_rows( "not,a,valid\nfoo\n" );
+		$ozet  = $h->csv_import_result_notice( 0, 0, 0, $hazir['error'] );
+
+		qrms_assert_same( 3, $hazir['error'], 'gerekli kolon hatası' );
+		qrms_assert_same( 0, count( $hazir['rows'] ), 'junk satır ürün olmaz' );
+		qrms_assert_same( 'fail', $ozet['sonuc'], 'FAIL' );
+		qrms_assert_contains( 'Gerekli kolonlar eksik', $ozet['message'], 'açık hata' );
+		qrms_assert_false( false !== strpos( $ozet['message'], '1 ürün' ), 'yanıltıcı 1 ürün yok' );
+	}
+);
+
+qrms_test(
+	'RM-003: boş satır başarı sayısını şişirmez (TEST 3)',
+	function () {
+		$h     = new RMA_Test_CSV_Page_Harness();
+		$csv   = "Başlık,İçerik,Özet,Fiyat\nÇorba,,,10\n\nAdana,,,20";
+		$hazir = $h->csv_collect_import_rows( $csv );
+		$ozet  = $h->csv_import_result_notice( count( $hazir['rows'] ), $hazir['hatali'], $hazir['atlanan'], $hazir['error'] );
+
+		qrms_assert_same( 2, count( $hazir['rows'] ), 'iki ürün' );
+		qrms_assert_same( 1, $hazir['atlanan'], 'bir boş satır atlandı' );
+		qrms_assert_same( 0, $hazir['hatali'], 'boş satır hata değildir' );
+		qrms_assert_same( 'ok', $ozet['sonuc'], 'boş satır tam başarıyı bozmaz' );
+		qrms_assert_same( '2 ürün başarıyla aktarıldı.', $ozet['message'], 'sayaç gerçek ürün sayısı' );
+	}
+);
+
+qrms_test(
+	'RM-003: başlığı boş satır reddedilir (TEST 4)',
+	function () {
+		$h     = new RMA_Test_CSV_Page_Harness();
+		$csv   = "Başlık,İçerik,Özet,Fiyat\n,,,10\nGerçek Ürün,,,15\n";
+		$hazir = $h->csv_collect_import_rows( $csv );
+		$ozet  = $h->csv_import_result_notice( count( $hazir['rows'] ), $hazir['hatali'], $hazir['atlanan'], $hazir['error'] );
+
+		qrms_assert_same( 1, count( $hazir['rows'] ), 'yalnızca başlıklı satır' );
+		qrms_assert_same( 1, $hazir['hatali'], 'eksik başlık hatalı' );
+		qrms_assert_same( 'partial', $ozet['sonuc'], 'kısmi sonuç' );
+		qrms_assert_same( '1 ürün aktarıldı, 1 satır hata nedeniyle atlandı.', $ozet['message'], 'kısmi metin' );
+	}
+);
+
+qrms_test(
+	'RM-003: geçersiz fiyat satırı başarı sayılmaz ve yazılmaz (TEST 5)',
+	function () {
+		$h     = new RMA_Test_CSV_Page_Harness();
+		$csv   = "Başlık,İçerik,Özet,Fiyat\nKötü Fiyat,,,abc\nİyi Ürün,,,40\n";
+		$hazir = $h->csv_collect_import_rows( $csv );
+		$ozet  = $h->csv_import_result_notice( count( $hazir['rows'] ), $hazir['hatali'], $hazir['atlanan'], $hazir['error'] );
+
+		qrms_assert_same( 1, count( $hazir['rows'] ), 'yalnızca geçerli fiyat yazılır' );
+		qrms_assert_same( 'İyi Ürün', $hazir['rows'][0][0], 'kalan satır doğru ürün' );
+		qrms_assert_same( 1, $hazir['fiyat_gecersiz'], 'fiyat hatası sayıldı' );
+		qrms_assert_same( 1, $hazir['hatali'], 'satır hatalı' );
+		qrms_assert_same( 'partial', $ozet['sonuc'], 'kısmi' );
+		qrms_assert_false( false !== strpos( $ozet['message'], '2 ürün' ), 'geçersiz satır başarıya eklenmez' );
+	}
+);
+
+qrms_test(
+	'RM-003: karışık CSV 3 başarılı / 2 hatalı raporlar (TEST 6)',
+	function () {
+		$h   = new RMA_Test_CSV_Page_Harness();
+		$csv = "Başlık,İçerik,Özet,Fiyat,Kategori\n"
+			. "Bir,,,10,A\n"
+			. "İki,,,abc,A\n"
+			. "Üç,,,20,A\n"
+			. ",sadece açıklama,,30,A\n"
+			. "Beş,,,40,A\n";
+		$hazir = $h->csv_collect_import_rows( $csv );
+		$ozet  = $h->csv_import_result_notice( count( $hazir['rows'] ), $hazir['hatali'], $hazir['atlanan'], $hazir['error'] );
+
+		qrms_assert_same( 3, count( $hazir['rows'] ), 'üç geçerli satır' );
+		qrms_assert_same( 2, $hazir['hatali'], 'iki hatalı satır' );
+		qrms_assert_same( 'partial', $ozet['sonuc'], 'PARTIAL' );
+		qrms_assert_same( '3 ürün aktarıldı, 2 satır hata nedeniyle atlandı.', $ozet['message'], 'gerçek dağılım' );
+	}
+);
+
+qrms_test(
+	'RM-003: tamamen hatalı CSV 0 başarı ve açık fail (TEST 7)',
+	function () {
+		$h     = new RMA_Test_CSV_Page_Harness();
+		$csv   = "Başlık,İçerik,Özet,Fiyat\nA,,,abc\nB,,,-5\n";
+		$hazir = $h->csv_collect_import_rows( $csv );
+		$ozet  = $h->csv_import_result_notice( count( $hazir['rows'] ), $hazir['hatali'], $hazir['atlanan'], $hazir['error'] );
+
+		qrms_assert_same( 0, count( $hazir['rows'] ), 'hiç satır yazılmaz' );
+		qrms_assert_same( 2, $hazir['hatali'], 'iki hata' );
+		qrms_assert_same( 'fail', $ozet['sonuc'], 'FAIL' );
+		qrms_assert_contains( '0 ürün aktarıldı', $ozet['message'], 'sıfır başarı açık' );
+		qrms_assert_false( false !== strpos( $ozet['message'], '1 ürün aktarıldı' ), 'yanıltıcı 1 yok' );
+
+		$yalniz_baslik = $h->csv_collect_import_rows( "Başlık\n" );
+		$ozet_bos      = $h->csv_import_result_notice(
+			count( $yalniz_baslik['rows'] ),
+			$yalniz_baslik['hatali'],
+			$yalniz_baslik['atlanan'],
+			$yalniz_baslik['error']
+		);
+		qrms_assert_same( 'fail', $ozet_bos['sonuc'], 'yalnız başlık fail' );
+		qrms_assert_contains( 'Aktarılacak geçerli satır bulunamadı', $ozet_bos['message'], 'boş veri açık' );
+	}
+);
+
+qrms_test(
+	'RM-003: noktalı virgül ayırıcı ve eski sütun sırası hâlâ çalışır',
+	function () {
+		$h     = new RMA_Test_CSV_Page_Harness();
+		$csv   = "Başlık;İçerik;Özet;Fiyat;Kategori\nMercimek;Ev yapımı;;95;Çorbalar\n";
+		$hazir = $h->csv_collect_import_rows( $csv );
+
+		qrms_assert_same( ';', $hazir['delimiter'], 'noktalı virgül algılanır' );
+		qrms_assert_same( 0, $hazir['error'], 'başlık geçerli' );
+		qrms_assert_same( 1, count( $hazir['rows'] ), 'satır alınır' );
+		qrms_assert_same( 'Mercimek', $hazir['rows'][0][0], 'başlık konum 0' );
+		qrms_assert_same( '95', $hazir['rows'][0][3], 'fiyat konum 3' );
+	}
+);
+
+qrms_test(
+	'kaynak kod: başarı sayacı rma_csv_sonuc ile taşınır, leftover imported yetmez',
+	function () {
+		$kaynak = file_get_contents(
+			QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-import-export.php'
+		);
+		$js     = file_get_contents(
+			QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/js/admin-ui.js'
+		);
+
+		qrms_assert_contains( '$this->csv_collect_import_rows( $content )', $kaynak, 'ayrıştırma tek yerde' );
+		qrms_assert_contains( "'rma_csv_sonuc'  => \$ozet['sonuc']", $kaynak, 'sonuç kodu redirectte' );
+		qrms_assert_contains( 'rma_csv_sonuc', $js, 'sonuç query arg URL\'den temizlenir' );
+		qrms_assert_contains( 'rma_csv_hatali', $js, 'hata sayacı temizlenir' );
+		qrms_assert_contains( 'rma_csv_fiyat_gecersiz', $js, 'fiyat uyarısı query kalıntısı bırakmaz' );
 	}
 );
