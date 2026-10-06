@@ -534,6 +534,32 @@ trait RMA_Urunum_Yok_Admin_Trait {
         return $deger;
     }
 
+    /**
+     * Malzeme CSV satırında içerik var mı?
+     *
+     * Yalnızca ID (ör. 612;;;;) veya tamamen boş alanlar geçerli kayıt değildir;
+     * başlık, kategori, fiyat veya malzeme listesinden en az biri dolu olmalıdır.
+     *
+     * @param string $title
+     * @param string $category
+     * @param string $price
+     * @param array  $ingredients
+     * @return bool
+     */
+    private function ingredient_csv_row_has_importable_payload( $title, $category, $price, array $ingredients ) {
+        if ( '' !== trim( (string) $title ) ) {
+            return true;
+        }
+        if ( '' !== trim( (string) $category ) ) {
+            return true;
+        }
+        if ( '' !== trim( (string) $price ) ) {
+            return true;
+        }
+
+        return ! empty( $ingredients );
+    }
+
     public function handle_ingredient_csv_export() {
         if ( ! isset( $_GET['_wpnonce'] ) || ! wp_verify_nonce( $_GET['_wpnonce'], 'qmo_uy_csv_export' ) ) {
             wp_die( 'Güvenlik doğrulaması başarısız.' );
@@ -627,16 +653,23 @@ trait RMA_Urunum_Yok_Admin_Trait {
             $d     = str_getcsv( $line, $delimiter );
             $id    = isset( $d[0] ) ? (int) trim( (string) $d[0] ) : 0;
             $title = isset( $d[1] ) ? sanitize_text_field( $d[1] ) : '';
+            $category    = isset( $d[2] ) ? (string) $d[2] : '';
+            $price       = isset( $d[3] ) ? (string) $d[3] : '';
+            $ingredients = isset( $d[4] ) ? array_values( array_filter( array_map( 'trim', explode( '|', $d[4] ) ) ) ) : [];
 
-            if ( 0 === $id && '' === $title ) continue;
-            if ( 0 === $id && '' !== $title ) $titles_needed[] = $title;
+            if ( ! $this->ingredient_csv_row_has_importable_payload( $title, $category, $price, $ingredients ) ) {
+                continue;
+            }
+            if ( 0 === $id && '' !== $title ) {
+                $titles_needed[] = $title;
+            }
 
             $parsed[] = [
                 'id'          => $id,
                 'title'       => $title,
-                'category'    => isset( $d[2] ) ? (string) $d[2] : '',
-                'price'       => isset( $d[3] ) ? (string) $d[3] : '',
-                'ingredients' => isset( $d[4] ) ? array_values( array_filter( array_map( 'trim', explode( '|', $d[4] ) ) ) ) : [],
+                'category'    => $category,
+                'price'       => $price,
+                'ingredients' => $ingredients,
             ];
         }
 
@@ -738,6 +771,15 @@ trait RMA_Urunum_Yok_Admin_Trait {
             // ürünün tipi ve o ürün üzerindeki yetki doğrulanır.
             if ( 'rma_menu_item' !== get_post_type( $pid ) ) continue;
             if ( ! current_user_can( 'edit_post', $pid ) ) continue;
+
+            if ( ! $this->ingredient_csv_row_has_importable_payload(
+                '',
+                (string) ( $row['category'] ?? '' ),
+                (string) ( $row['price'] ?? '' ),
+                is_array( $row['ingredients'] ?? null ) ? $row['ingredients'] : []
+            ) ) {
+                continue;
+            }
 
             if ( '' !== trim( (string) $row['price'] ) ) {
                 $fiyat = $this->sanitize_price_value( $row['price'] );
