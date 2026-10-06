@@ -16,21 +16,25 @@ trait RMA_Import_Export_Trait {
         if ( isset( $_FILES['rma_csv_file'] ) && $_FILES['rma_csv_file']['error'] === UPLOAD_ERR_OK ) {
             $content = file_get_contents( $_FILES['rma_csv_file']['tmp_name'] );
             if ( false === $content ) {
-                wp_redirect( $this->admin_page_url( 'qrms-rm-diger', [ 'csv_error' => 2 ], 'rma-ice-disa-aktar' ) );
+                wp_redirect( $this->admin_page_url( 'qrms-rm-diger', [ 'csv_error' => 2, 'rma_csv_sonuc' => 'fail' ], 'rma-ice-disa-aktar' ) );
                 exit;
             }
-            $content   = preg_replace( "/^\xEF\xBB\xBF/", '', $content );
-            $content   = str_replace( [ "\r\n", "\r" ], "\n", $content );
-            $lines     = explode( "\n", $content );
-            $delimiter = ( strpos( $lines[0] ?? '', ';' ) !== false ) ? ';' : ',';
-            $imported  = 0;
 
-            // Fiyatı geçersiz (negatif/metin/biçimsiz veya 999.999,99 üst
-            // sınırını aşan) satırlar sessizce boş fiyatla içe aktarılır;
-            // admin ekranına kaç satırın etkilendiği ve mümkünse hangi
-            // satırlar olduğu bildirilir (bkz. render_csv_import_page()).
-            $fiyat_gecersiz          = 0;
-            $fiyat_gecersiz_satirlar = [];
+            $hazir = $this->csv_collect_import_rows( $content );
+            if ( 3 === (int) $hazir['error'] ) {
+                wp_redirect( $this->admin_page_url( 'qrms-rm-diger', [
+                    'csv_error'     => 3,
+                    'rma_csv_sonuc' => 'fail',
+                ], 'rma-ice-disa-aktar' ) );
+                exit;
+            }
+
+            $imported                = 0;
+            $hatali                  = (int) $hazir['hatali'];
+            $atlanan                 = (int) $hazir['atlanan'];
+            $fiyat_gecersiz          = (int) $hazir['fiyat_gecersiz'];
+            $fiyat_gecersiz_satirlar = $hazir['fiyat_satirlar'];
+            $parsed_rows             = $hazir['rows'];
 
             // PERF: Terim sayacı her wp_set_object_terms çağrısında yeniden
             // hesaplanıyordu (satır × kategori kadar UPDATE). Toplu içe
@@ -42,21 +46,6 @@ trait RMA_Import_Export_Trait {
             $term_cache        = [];
             $allowed_allergens = array_keys( $this->get_allergen_definitions() );
             $meat_options      = $this->get_meat_origin_options();
-
-            // Satırlar önce ayrıştırılır: hem eşleştirme haritasının kurulması
-            // hem asıl işleme aynı ayrıştırılmış veriden beslenir.
-            $parsed_rows = [];
-            foreach ( $lines as $i => $line ) {
-                if ( $i === 0 || empty( trim( $line ) ) ) continue;
-                $d     = str_getcsv( $line, $delimiter );
-                $title = sanitize_text_field( $d[0] ?? '' );
-                if ( empty( $title ) ) continue;
-                // Admin bildiriminde hangi CSV satırının etkilendiğini
-                // gösterebilmek için dosyadaki gerçek satır numarası (1 tabanlı)
-                // sayısal sütun indekslerini bozmayan bir string anahtarla saklanır.
-                $d['_rma_satir_no'] = $i + 1;
-                $parsed_rows[]      = $d;
-            }
 
             // BULGU: Aynı CSV dosyası tekrar yüklendiğinde her satır için
             // koşulsuz wp_insert_post() çağrılıyor, ürünler çoğalıyordu.
@@ -70,6 +59,20 @@ trait RMA_Import_Export_Trait {
 
             foreach ( $parsed_rows as $d ) {
                 $title = sanitize_text_field( $d[0] ?? '' );
+
+                // Fiyat — negatif/metin/biçimsiz veya 999.999,99 üst sınırını
+                // aşan sütun değeri başarı sayılmaz ve satır yazılmaz. Boş
+                // fiyat (belirtilmemiş) geçerlidir. csv_collect_import_rows()
+                // bu satırları zaten ayıklar; burada ikinci kez doğrulanır.
+                $gecerli_fiyat = $this->sanitize_price_value( $d[3] ?? '' );
+                if ( null === $gecerli_fiyat ) {
+                    $fiyat_gecersiz++;
+                    $hatali++;
+                    if ( count( $fiyat_gecersiz_satirlar ) < 20 ) {
+                        $fiyat_gecersiz_satirlar[] = (int) ( $d['_rma_satir_no'] ?? 0 );
+                    }
+                    continue;
+                }
 
                 $anahtar  = $this->csv_dedup_key( $title, $d[4] ?? '' );
                 $hedef_id = isset( $existing_map[ $anahtar ] ) ? $existing_map[ $anahtar ] : 0;
@@ -94,25 +97,7 @@ trait RMA_Import_Export_Trait {
                     // ikinci bir ürün açılmaz, az önce işlenenin üzerine yazılır.
                     $existing_map[ $anahtar ] = $pid;
 
-                    // Fiyat — negatif/metin/biçimsiz veya 999.999,99 üst
-                    // sınırını aşan sütun değeri diğer alanlar gibi ham
-                    // sanitize_text_field ile yazılmaz. Güncellenen (mevcut)
-                    // üründe eski fiyat KORUNUR — meta'ya hiç dokunulmaz;
-                    // yeni üründe geçersiz fiyat kaydedilmez (boş kalır).
-                    // Etkilenen satır sayısı admin ekranına yansıtılır (bkz.
-                    // render_csv_import_page()).
-                    $gecerli_fiyat = $this->sanitize_price_value( $d[3] ?? '' );
-                    if ( null === $gecerli_fiyat ) {
-                        $fiyat_gecersiz++;
-                        if ( count( $fiyat_gecersiz_satirlar ) < 20 ) {
-                            $fiyat_gecersiz_satirlar[] = (int) ( $d['_rma_satir_no'] ?? 0 );
-                        }
-                        if ( ! $hedef_id ) {
-                            update_post_meta( $pid, 'rma_price', '' );
-                        }
-                    } else {
-                        update_post_meta( $pid, 'rma_price', $gecerli_fiyat );
-                    }
+                    update_post_meta( $pid, 'rma_price', $gecerli_fiyat );
 
                     $meta_map = [
                         'rma_spicy_level'       => $d[5]  ?? '',
@@ -166,13 +151,23 @@ trait RMA_Import_Export_Trait {
                     if ( $allergen_slugs ) wp_set_object_terms( $pid, $allergen_slugs, 'rma_allergen' );
 
                     $imported++;
+                } else {
+                    $hatali++;
                 }
             }
 
             wp_defer_term_counting( false );
             $this->force_bump_cache_version();
 
-            $redirect_args = [ 'imported' => $imported ];
+            $ozet = $this->csv_import_result_notice( $imported, $hatali, $atlanan, 0 );
+            $redirect_args = [
+                'rma_csv_sonuc'  => $ozet['sonuc'],
+                'imported'       => $imported,
+                'rma_csv_hatali' => $hatali,
+            ];
+            if ( $atlanan > 0 ) {
+                $redirect_args['rma_csv_atlanan'] = $atlanan;
+            }
             if ( $fiyat_gecersiz > 0 ) {
                 $redirect_args['rma_csv_fiyat_gecersiz'] = $fiyat_gecersiz;
                 if ( $fiyat_gecersiz_satirlar ) {
@@ -183,7 +178,7 @@ trait RMA_Import_Export_Trait {
             wp_redirect( $this->admin_page_url( 'qrms-rm-diger', $redirect_args, 'rma-ice-disa-aktar' ) );
             exit;
         }
-        wp_redirect( $this->admin_page_url( 'qrms-rm-diger', [ 'csv_error' => 2 ], 'rma-ice-disa-aktar' ) );
+        wp_redirect( $this->admin_page_url( 'qrms-rm-diger', [ 'csv_error' => 2, 'rma_csv_sonuc' => 'fail' ], 'rma-ice-disa-aktar' ) );
         exit;
     }
 
@@ -221,9 +216,236 @@ trait RMA_Import_Export_Trait {
         ];
     }
 
+    /**
+     * CSV başlık satırının ilk sütunu "Başlık" mı?
+     *
+     * Konumsal sütun düzeni değişmez; yalnızca dosyanın ürün CSV'si
+     * olup olmadığı ayırt edilir. BOM, tırnak ve harf büyüklüğü yok sayılır.
+     *
+     * @param string $header_line İlk satır.
+     * @param string $delimiter   Ayırıcı.
+     * @return bool
+     */
+    public function csv_header_has_required_columns( $header_line, $delimiter = ',' ) {
+        $hucreler = str_getcsv( (string) $header_line, $delimiter );
+        $ilk      = $this->csv_normalize_header_label( $hucreler[0] ?? '' );
+
+        return 'baslik' === $ilk;
+    }
+
+    /**
+     * Başlık hücresini karşılaştırılabilir anahtara indirger.
+     *
+     * @param string $cell Ham hücre.
+     * @return string
+     */
+    public function csv_normalize_header_label( $cell ) {
+        $cell = preg_replace( "/^\xEF\xBB\xBF/", '', (string) $cell );
+        $cell = trim( $cell, " \t\n\r\0\x0B\"'" );
+        $cell = str_replace( [ 'İ', 'I', 'ı' ], [ 'i', 'i', 'i' ], $cell );
+        if ( function_exists( 'mb_strtolower' ) ) {
+            $cell = mb_strtolower( $cell, 'UTF-8' );
+        } else {
+            $cell = strtolower( $cell );
+        }
+
+        $ascii = [ 'ş' => 's', 'ğ' => 'g', 'ü' => 'u', 'ö' => 'o', 'ç' => 'c', 'â' => 'a' ];
+
+        return strtr( $cell, $ascii );
+    }
+
+    /**
+     * Ayrıştırılmış CSV satırında en az bir dolu hücre var mı?
+     *
+     * @param array $d str_getcsv çıktısı.
+     * @return bool
+     */
+    public function csv_row_has_values( array $d ) {
+        foreach ( $d as $key => $val ) {
+            if ( '_rma_satir_no' === $key ) {
+                continue;
+            }
+            if ( '' !== trim( (string) $val ) ) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Ham CSV metnini aktarılabilir satırlara ve hata/atlama sayaçlarına ayırır.
+     *
+     * Ürün yazmaz. handle_csv_import() yalnızca buradan geçen satırları
+     * insert/update eder; başarı sayacı bu yüzden gerçek kayıtlara dayanır.
+     *
+     * @param string $content Ham dosya içeriği.
+     * @return array{error:int,delimiter:string,rows:array,hatali:int,atlanan:int,fiyat_gecersiz:int,fiyat_satirlar:int[]}
+     */
+    public function csv_collect_import_rows( $content ) {
+        $content   = preg_replace( "/^\xEF\xBB\xBF/", '', (string) $content );
+        $content   = str_replace( [ "\r\n", "\r" ], "\n", $content );
+        $lines     = explode( "\n", $content );
+        $delimiter = ( strpos( $lines[0] ?? '', ';' ) !== false ) ? ';' : ',';
+
+        $out = [
+            'error'          => 0,
+            'delimiter'      => $delimiter,
+            'rows'           => [],
+            'hatali'         => 0,
+            'atlanan'        => 0,
+            'fiyat_gecersiz' => 0,
+            'fiyat_satirlar' => [],
+        ];
+
+        if ( ! $this->csv_header_has_required_columns( $lines[0] ?? '', $delimiter ) ) {
+            $out['error'] = 3;
+            return $out;
+        }
+
+        foreach ( $lines as $i => $line ) {
+            if ( 0 === $i ) {
+                continue;
+            }
+            if ( '' === trim( $line ) ) {
+                $out['atlanan']++;
+                continue;
+            }
+
+            $d     = str_getcsv( $line, $delimiter );
+            $title = sanitize_text_field( $d[0] ?? '' );
+            if ( '' === $title ) {
+                if ( $this->csv_row_has_values( $d ) ) {
+                    $out['hatali']++;
+                } else {
+                    $out['atlanan']++;
+                }
+                continue;
+            }
+
+            $d['_rma_satir_no'] = $i + 1;
+            $gecerli_fiyat      = $this->sanitize_price_value( $d[3] ?? '' );
+            if ( null === $gecerli_fiyat ) {
+                $out['fiyat_gecersiz']++;
+                $out['hatali']++;
+                if ( count( $out['fiyat_satirlar'] ) < 20 ) {
+                    $out['fiyat_satirlar'][] = $i + 1;
+                }
+                continue;
+            }
+
+            $out['rows'][] = $d;
+        }
+
+        return $out;
+    }
+
+    /**
+     * Import sonucunu kullanıcıya gösterilecek seviye + metne çevirir.
+     *
+     * imported yalnızca gerçekten oluşturulan/güncellenen ürün sayısıdır.
+     * isset(imported) tek başına başarı değildir (RM-003).
+     *
+     * @param int $imported  Başarılı ürün.
+     * @param int $hatali    Reddedilen satır.
+     * @param int $atlanan   Boş satır.
+     * @param int $csv_error 0, 2 (dosya), 3 (kolon).
+     * @return array{sonuc:string,level:string,message:string}
+     */
+    public function csv_import_result_notice( $imported, $hatali, $atlanan = 0, $csv_error = 0 ) {
+        unset( $atlanan );
+        $imported  = (int) $imported;
+        $hatali    = (int) $hatali;
+        $csv_error = (int) $csv_error;
+
+        if ( 2 === $csv_error ) {
+            return [
+                'sonuc'   => 'fail',
+                'level'   => 'error',
+                'message' => 'CSV aktarımı başarısız. Dosya yüklenemedi veya okunamadı.',
+            ];
+        }
+        if ( 3 === $csv_error ) {
+            return [
+                'sonuc'   => 'fail',
+                'level'   => 'error',
+                'message' => 'CSV aktarımı başarısız. Gerekli kolonlar eksik.',
+            ];
+        }
+        if ( $imported > 0 && 0 === $hatali ) {
+            return [
+                'sonuc'   => 'ok',
+                'level'   => 'success',
+                'message' => sprintf( '%d ürün başarıyla aktarıldı.', $imported ),
+            ];
+        }
+        if ( $imported > 0 && $hatali > 0 ) {
+            return [
+                'sonuc'   => 'partial',
+                'level'   => 'warning',
+                'message' => sprintf( '%d ürün aktarıldı, %d satır hata nedeniyle atlandı.', $imported, $hatali ),
+            ];
+        }
+        if ( 0 === $imported && $hatali > 0 ) {
+            return [
+                'sonuc'   => 'fail',
+                'level'   => 'error',
+                'message' => sprintf( 'CSV aktarımı başarısız. 0 ürün aktarıldı, %d satır hata nedeniyle atlandı.', $hatali ),
+            ];
+        }
+
+        return [
+            'sonuc'   => 'fail',
+            'level'   => 'error',
+            'message' => 'CSV aktarımı başarısız. Aktarılacak geçerli satır bulunamadı.',
+        ];
+    }
+
+    /**
+     * Redirect query arg'larından CSV sonuç bildirimini basar.
+     *
+     * Yalnızca rma_csv_sonuc veya csv_error varken basılır; eski
+     * ?imported=1 kalıntısı yeşil başarı üretmez.
+     *
+     * @return void
+     */
+    private function render_csv_import_result_notices() {
+        $csv_error = intval( $_GET['csv_error'] ?? 0 );
+        $sonuc     = sanitize_key( (string) ( $_GET['rma_csv_sonuc'] ?? '' ) );
+
+        if ( $csv_error <= 0 && '' === $sonuc ) {
+            return;
+        }
+
+        $imported = intval( $_GET['imported'] ?? 0 );
+        $hatali   = intval( $_GET['rma_csv_hatali'] ?? 0 );
+        $atlanan  = intval( $_GET['rma_csv_atlanan'] ?? 0 );
+        $ozet     = $this->csv_import_result_notice( $imported, $hatali, $atlanan, $csv_error );
+
+        $class = 'error';
+        if ( 'success' === $ozet['level'] ) {
+            $class = 'updated';
+        } elseif ( 'warning' === $ozet['level'] ) {
+            $class = 'notice notice-warning';
+        }
+
+        $sayi_html = preg_replace_callback(
+            '/\b(\d+)\b/',
+            static function ( $m ) {
+                return '<strong>' . $m[1] . '</strong>';
+            },
+            $ozet['message']
+        );
+
+        printf(
+            '<div class="%s"><p>%s</p></div>',
+            esc_attr( $class ),
+            wp_kses( $sayi_html, [ 'strong' => [] ] )
+        );
+    }
+
     public function render_csv_import_page() {
-        if ( isset( $_GET['imported'] ) ) echo '<div class="updated"><p><strong>' . intval( $_GET['imported'] ) . '</strong> ürün aktarıldı.</p></div>';
-        if ( isset( $_GET['csv_error'] ) ) echo '<div class="error"><p>Dosya yükleme hatası.</p></div>';
+        $this->render_csv_import_result_notices();
 
         $fiyat_gecersiz = intval( $_GET['rma_csv_fiyat_gecersiz'] ?? 0 );
         if ( $fiyat_gecersiz > 0 ) {
@@ -239,7 +461,7 @@ trait RMA_Import_Export_Trait {
             }
 
             printf(
-                '<div class="notice notice-warning"><p><strong>%d</strong> satırda fiyat geçersiz (negatif, sayısal olmayan veya izin verilen 999.999,99 üst sınırını aşan bir değer) olduğu için atlandı; güncellenen üründe eski fiyat korundu, yeni üründe fiyat boş bırakıldı.%s</p></div>',
+                '<div class="notice notice-warning"><p><strong>%d</strong> satırda fiyat geçersiz (negatif, sayısal olmayan veya izin verilen 999.999,99 üst sınırını aşan bir değer) olduğu için satır aktarılmadı.%s</p></div>',
                 $fiyat_gecersiz,
                 $satir_metni
             );
