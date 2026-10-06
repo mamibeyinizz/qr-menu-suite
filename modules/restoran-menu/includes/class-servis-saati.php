@@ -175,11 +175,12 @@ class RMA_Servis_Saati {
 	public static function saati_temizle( $ham ) {
 		$ham = trim( (string) $ham );
 
-		if ( ! preg_match( '/^([01]\d|2[0-3]):([0-5]\d)$/', $ham ) ) {
+		// type="time" bazı tarayıcılarda HH:MM:SS gönderir; saniye düşülür.
+		if ( ! preg_match( '/^([01]\d|2[0-3]):([0-5]\d)(?::[0-5]\d)?$/', $ham, $eslesme ) ) {
 			return '';
 		}
 
-		return $ham;
+		return $eslesme[1] . ':' . $eslesme[2];
 	}
 
 	/* =============================================================
@@ -203,15 +204,42 @@ class RMA_Servis_Saati {
 	}
 
 	/**
+	 * Site saat dilimindeki "şimdi" (WordPress `current_time( 'timestamp' )`).
+	 *
+	 * Tarayıcı saati, PHP default timezone ve UTC kullanılmaz. Testler
+	 * public bir kanca veya URL parametresi açmadan `$GLOBALS['qrms_test']['now']`
+	 * üzerinden `current_time()` taklidini sabitler — üretim yolu aynıdır.
+	 *
+	 * @return int Site duvar saati Unix damgası (WP current_time semantiği).
+	 */
+	public static function simdi() {
+		return function_exists( 'current_time' ) ? (int) current_time( 'timestamp' ) : time();
+	}
+
+	/**
+	 * İstek içi kural önbelleğini boşaltır (test veya kayıt sonrası).
+	 *
+	 * @return void
+	 */
+	public static function sifirla() {
+		self::$memo = array();
+	}
+
+	/**
 	 * Kural şu an geçerli mi? Gece yarısını aşan pencereler desteklenir.
 	 *
+	 * Sınırlar: başlangıç dahil, bitiş hariç.
+	 * Aynı gün: bas <= dakika < bit.
+	 * Gece yarısını aşan (bas > bit): seçili günde dakika >= bas,
+	 * veya bir önceki gün seçiliyse dakika < bit.
+	 *
 	 * @param array    $kural  Kural dizisi.
-	 * @param int|null $zaman  Test için sabit zaman damgası (site saati).
+	 * @param int|null $zaman  Site saati damgası; null ise self::simdi().
 	 * @return bool
 	 */
 	public static function pencerede_mi( array $kural, $zaman = null ) {
 		if ( null === $zaman ) {
-			$zaman = function_exists( 'current_time' ) ? current_time( 'timestamp' ) : time();
+			$zaman = self::simdi();
 		}
 
 		$gun     = (int) gmdate( 'N', $zaman );
@@ -360,7 +388,7 @@ class RMA_Servis_Saati {
 			return '0';
 		}
 
-		$simdi = function_exists( 'current_time' ) ? current_time( 'timestamp' ) : time();
+		$simdi = self::simdi();
 
 		// Beş dakikalık kova: pencere sınırı en geç 5 dakikada yansır.
 		return (string) (int) floor( $simdi / ( 5 * 60 ) );

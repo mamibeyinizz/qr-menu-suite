@@ -2080,6 +2080,10 @@ function get_posts( $args = array() ) {
  * @return array|false
  */
 function get_the_terms( $post_id, $taxonomy ) {
+	if ( ! empty( $GLOBALS['qrms_test']['post_terms'][ $post_id ][ $taxonomy ] ) ) {
+		return $GLOBALS['qrms_test']['post_terms'][ $post_id ][ $taxonomy ];
+	}
+
 	if ( empty( $GLOBALS['qrms_test']['terms'][ $post_id ] ) ) {
 		return false;
 	}
@@ -2111,6 +2115,54 @@ function get_the_title( $post_id = 0 ) {
 	$post = get_post( $post_id );
 
 	return ( $post && isset( $post->post_title ) ) ? (string) $post->post_title : '';
+}
+
+/**
+ * Yazı alanı. Testte get_post() üzerinden okunur.
+ *
+ * @param string $field   Alan adı.
+ * @param int    $post_id Yazı kimliği.
+ * @return string
+ */
+function get_post_field( $field, $post_id = 0 ) {
+	$post = get_post( $post_id );
+
+	if ( ! $post || ! isset( $post->$field ) ) {
+		return '';
+	}
+
+	return (string) $post->$field;
+}
+
+/**
+ * Terim meta.
+ *
+ * @param int    $term_id Terim kimliği.
+ * @param string $key     Anahtar.
+ * @param bool   $single  Tek değer.
+ * @return mixed
+ */
+function get_term_meta( $term_id, $key = '', $single = true ) {
+	unset( $single );
+	$meta = isset( $GLOBALS['qrms_test']['term_meta'][ $term_id ] )
+		? $GLOBALS['qrms_test']['term_meta'][ $term_id ]
+		: array();
+
+	return isset( $meta[ $key ] ) ? $meta[ $key ] : '';
+}
+
+/**
+ * Terim meta yazar.
+ *
+ * @param int    $term_id Terim kimliği.
+ * @param string $key     Anahtar.
+ * @param mixed  $value   Değer.
+ * @return bool
+ */
+function update_term_meta( $term_id, $key, $value ) {
+	$GLOBALS['qrms_test']['term_meta'][ $term_id ][ $key ] = $value;
+
+	return true;
 }
 
 /**
