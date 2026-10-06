@@ -188,7 +188,7 @@ trait RMA_Secenek_Admin_Trait {
 
 			<h4 class="rma-secenek-h"><span class="qrms-pe-sec-ikon" aria-hidden="true">🕒</span><?php esc_html_e( 'Servis Saati', 'qrms' ); ?></h4>
 			<p class="rma-secenek-not">
-				<?php esc_html_e( 'Saat dışında ürün menüde kalır, "Servis dışı" etiketiyle görünür ve sepete eklenemez.', 'qrms' ); ?>
+				<?php esc_html_e( 'Saat dışında ürün menüde kalır, "Servis dışı" etiketiyle görünür ve sepete eklenemez. Saatler WordPress site saat dilimine göredir (Ayarlar → Genel); tarayıcı saati kullanılmaz. Bitiş saati dahil değildir. Başlangıç bitişten büyükse pencere gece yarısını aşar (ör. 18:00–02:00). İşaretlenmeyen günler kapalıdır. Gün başına tek aralık vardır.', 'qrms' ); ?>
 			</p>
 
 			<div class="qrms-pe-radyo-kartlar">
@@ -298,8 +298,8 @@ trait RMA_Secenek_Admin_Trait {
 			<?php endforeach; ?>
 		</div>
 		<p class="rma-servis-saatler">
-			<label>Başlangıç <input type="time" name="<?php echo esc_attr( $onek ); ?>_bas" value="<?php echo esc_attr( $bas ); ?>"></label>
-			<label>Bitiş <input type="time" name="<?php echo esc_attr( $onek ); ?>_bit" value="<?php echo esc_attr( $bit ); ?>"></label>
+			<label>Başlangıç <input type="time" step="60" name="<?php echo esc_attr( $onek ); ?>_bas" value="<?php echo esc_attr( $bas ); ?>"></label>
+			<label>Bitiş <input type="time" step="60" name="<?php echo esc_attr( $onek ); ?>_bit" value="<?php echo esc_attr( $bit ); ?>"></label>
 		</p>
 		<?php
 	}
@@ -350,6 +350,8 @@ trait RMA_Secenek_Admin_Trait {
 		update_post_meta( $post_id, RMA_Servis_Saati::META_GUNLER, RMA_Servis_Saati::gunleri_temizle( wp_unslash( $_POST['rma_servis_gunler'] ?? array() ) ) );
 		update_post_meta( $post_id, RMA_Servis_Saati::META_BAS, RMA_Servis_Saati::saati_temizle( wp_unslash( $_POST['rma_servis_bas'] ?? '' ) ) );
 		update_post_meta( $post_id, RMA_Servis_Saati::META_BIT, RMA_Servis_Saati::saati_temizle( wp_unslash( $_POST['rma_servis_bit'] ?? '' ) ) );
+
+		RMA_Servis_Saati::sifirla();
 	}
 
 	/* =============================================================
@@ -381,6 +383,8 @@ trait RMA_Secenek_Admin_Trait {
 				<p class="description">
 					Örnek: kahvaltı için Pazartesi–Cuma, 07:00–11:00. Saat dışında ürünler menüde kalır,
 					"Servis dışı" etiketiyle gösterilir ve sepete eklenemez.
+					Saatler WordPress site saat dilimine göredir; bitiş dahil değildir.
+					Başlangıç bitişten büyükse pencere gece yarısını aşar. İşaretlenmeyen günler kapalıdır.
 				</p>
 			</td>
 		</tr>
@@ -408,6 +412,7 @@ trait RMA_Secenek_Admin_Trait {
 		update_term_meta( $term_id, RMA_Servis_Saati::TERIM_BAS, RMA_Servis_Saati::saati_temizle( wp_unslash( $_POST['rma_cat_servis_bas'] ?? '' ) ) );
 		update_term_meta( $term_id, RMA_Servis_Saati::TERIM_BIT, RMA_Servis_Saati::saati_temizle( wp_unslash( $_POST['rma_cat_servis_bit'] ?? '' ) ) );
 
+		RMA_Servis_Saati::sifirla();
 		$this->bump_cache_version();
 	}
 

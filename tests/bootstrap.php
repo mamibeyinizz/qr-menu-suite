@@ -84,7 +84,14 @@ function qrms_reset() {
 	// sızmasın diye sıfırlanır.
 	$GLOBALS['qrms_test']['attachment_meta'] = array();
 	$GLOBALS['qrms_test']['terms']        = array();
+	$GLOBALS['qrms_test']['post_terms']   = array();
+	$GLOBALS['qrms_test']['term_meta']    = array();
 	$GLOBALS['qrms_test']['object_terms'] = array();
+	unset( $GLOBALS['qrms_test']['now'] );
+
+	if ( class_exists( 'RMA_Servis_Saati' ) && method_exists( 'RMA_Servis_Saati', 'sifirla' ) ) {
+		RMA_Servis_Saati::sifirla();
+	}
 	$GLOBALS['qrms_test']['styles']     = array();
 	$GLOBALS['qrms_test']['scripts']    = array();
 	$GLOBALS['qrms_test']['inline_styles'] = array();

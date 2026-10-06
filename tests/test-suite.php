@@ -48,6 +48,7 @@ require_once __DIR__ . '/test-elementor-widget.php';
 require_once __DIR__ . '/test-quick-edit-copy.php';
 require_once __DIR__ . '/test-restoran-secenek.php';
 require_once __DIR__ . '/test-fiyat-zinciri.php';
+require_once __DIR__ . '/test-servis-saati.php';
 require_once __DIR__ . '/test-yorum-istatistik.php';
 require_once __DIR__ . '/test-analiz-schema.php';
 require_once __DIR__ . '/test-csv-import-dedup.php';
