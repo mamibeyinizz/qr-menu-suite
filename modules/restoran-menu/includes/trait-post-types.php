@@ -314,7 +314,7 @@ trait RMA_Post_Types_Trait {
                 </h3>
                 <div class="qrms-pe-sec-govde">
                     <label class="qrms-pe-anahtar">
-                        <input type="checkbox" name="rma_active" value="1" <?php checked( get_post_meta( $post->ID, 'rma_active', true ), '1' ); ?>>
+                        <input type="checkbox" name="rma_active" value="1" <?php checked( get_post_meta( $post->ID, 'rma_active', true ) !== '0' ); ?>>
                         <span class="qrms-pe-anahtar-metin">
                             <strong><?php esc_html_e( 'Menüde göster', 'qrms' ); ?></strong>
                             <em><?php esc_html_e( 'Kapatılırsa ürün menüden tamamen kalkar.', 'qrms' ); ?></em>

@@ -279,7 +279,7 @@ trait RMA_Helpers_Trait {
         // Markup revizyonu: içerik değişmese bile üretilen HTML değiştiğinde
         // (örn. modal görselinin srcset/fetchpriority nitelikleri) eski
         // transient'lerin TTL'i dolmadan geçersizleşmesi için elle artırılır.
-        $parts['__m']    = '3';
+        $parts['__m']    = '4';
         // Aktif fiyat kampanyası anahtara girer: kampanya açıldığında,
         // kapandığında ya da kuralı değiştiğinde önbelleğe alınmış menü
         // HTML'i kendiliğinden geçersizleşir (bkz. RMA_Kampanya::imza).
@@ -328,6 +328,36 @@ trait RMA_Helpers_Trait {
             $this->rma_memo['cache_enabled'] = (bool) apply_filters( 'rma_cache_enabled', $enabled );
         }
         return $this->rma_memo['cache_enabled'];
+    }
+
+    /**
+     * Ürün müşteri menüsünde görünsün mü?
+     *
+     * Admin listesindeki Göster/Gizle anahtarı boş meta'yı görünür sayar
+     * (`'' => '1'`). Menü sorgusu yalnızca `rma_active = 1` isteyince
+     * meta'sı hiç yazılmamış yayınlanmış ürünler (ör. kayıt kancası
+     * atlanan otomatik taslak) listede açık görünüp AJAX'ta yok oluyordu.
+     * Yalnızca açık `'0'` gizler.
+     *
+     * @param int $post_id Ürün ID.
+     * @return bool
+     */
+    public function urun_menude_gorunur( $post_id ) {
+        return '0' !== (string) get_post_meta( (int) $post_id, 'rma_active', true );
+    }
+
+    /**
+     * Menü / öneri WP_Query için görünürlük klozu.
+     *
+     * @return array
+     */
+    public function rma_active_gorunur_meta_query() {
+        return [
+            'relation' => 'OR',
+            // urun_menude_gorunur ile aynı: '0' dışındaki her değer görünür.
+            [ 'key' => 'rma_active', 'value' => '0', 'compare' => '!=' ],
+            [ 'key' => 'rma_active', 'compare' => 'NOT EXISTS' ],
+        ];
     }
 
     /**

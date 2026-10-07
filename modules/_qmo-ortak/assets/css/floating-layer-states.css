@@ -40,17 +40,16 @@ body:has(.rma-panel-sheet.open) #qmo-sepet-root .qmo-dr .qmo-send {
 	pointer-events: none !important;
 }
 
+/* Ürün modalı (999990) chatbot FAB (2147482800) altında kalır — FAB gizlenir.
+   Sepet çubuğu/çekmece (#297: 2147482700/2702) modalın üstünde kasıtlıdır:
+   modalda sepete ekleyince toplam okunur ve çekmece açılır. */
 body:has(.rma-modal-overlay.open) .gemini-teaser,
 body:has(.rma-modal-overlay.open) .gemini-chat-toggle-btn,
 body:has(.rma-modal-overlay.open) .gemini-chat-overlay.gemini-acik,
-body:has(.rma-modal-overlay.open) .qmo-bar,
-body:has(.rma-modal-overlay.open) .qmo-ov,
-body:has(.rma-modal-overlay.open) .qmo-dr,
 body:has(.rma-modal-overlay.open) .qmo-toast,
 body:has(.rma-modal-overlay.open) .hfb-footer__call-wrap:has(.qmo-cagri-bar),
 body:has(.rma-modal-overlay.open) .hfb-footer__call-wrap:has(.hfb-footer__call--warn),
-body:has(.rma-modal-overlay.open) .qmo-cagri-bar,
-body:has(.rma-modal-overlay.open) #qmo-sepet-root .qmo-dr .qmo-send {
+body:has(.rma-modal-overlay.open) .qmo-cagri-bar {
 	visibility: hidden !important;
 	pointer-events: none !important;
 }
@@ -58,14 +57,10 @@ body:has(.rma-modal-overlay.open) #qmo-sepet-root .qmo-dr .qmo-send {
 body:has(.qrms-detail-overlay.open) .gemini-teaser,
 body:has(.qrms-detail-overlay.open) .gemini-chat-toggle-btn,
 body:has(.qrms-detail-overlay.open) .gemini-chat-overlay.gemini-acik,
-body:has(.qrms-detail-overlay.open) .qmo-bar,
-body:has(.qrms-detail-overlay.open) .qmo-ov,
-body:has(.qrms-detail-overlay.open) .qmo-dr,
 body:has(.qrms-detail-overlay.open) .qmo-toast,
 body:has(.qrms-detail-overlay.open) .hfb-footer__call-wrap:has(.qmo-cagri-bar),
 body:has(.qrms-detail-overlay.open) .hfb-footer__call-wrap:has(.hfb-footer__call--warn),
-body:has(.qrms-detail-overlay.open) .qmo-cagri-bar,
-body:has(.qrms-detail-overlay.open) #qmo-sepet-root .qmo-dr .qmo-send {
+body:has(.qrms-detail-overlay.open) .qmo-cagri-bar {
 	visibility: hidden !important;
 	pointer-events: none !important;
 }

@@ -214,7 +214,7 @@ class QMO_Shortcode_Slider {
 
             $post = get_post( $product_id );
             if ( ! $post || $post->post_type !== 'rma_menu_item' || $post->post_status !== 'publish' ) continue;
-            if ( get_post_meta( $product_id, 'rma_active', true ) !== '1' ) continue;
+            if ( '0' === (string) get_post_meta( $product_id, 'rma_active', true ) ) continue;
 
             $title = get_the_title( $product_id );
             $excerpt_raw = (string) get_post_field( 'post_excerpt', $product_id );

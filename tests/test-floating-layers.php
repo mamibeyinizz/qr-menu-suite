@@ -71,16 +71,19 @@ qrms_test(
 );
 
 qrms_test(
-	'ürün modalı açıkken FAB, sepet ve call bar gizlenir',
+	'ürün modalı açıkken FAB ve call bar gizlenir, sepet kalır (QA-F1-03)',
 	function () {
 		$css   = file_get_contents( QRMS_PLUGIN_DIR . 'modules/_qmo-ortak/assets/css/floating-layer-states.css' );
 		$state = '.rma-modal-overlay.open';
 
 		qrms_floating_layer_assert_hidden( $css, $state, '.gemini-chat-toggle-btn' );
 		qrms_floating_layer_assert_hidden( $css, $state, '.gemini-chat-overlay.gemini-acik' );
-		qrms_floating_layer_assert_hidden( $css, $state, '.qmo-bar' );
 		qrms_floating_layer_assert_hidden( $css, $state, '.hfb-footer__call-wrap:has(.qmo-cagri-bar)' );
 		qrms_floating_layer_assert_hidden( $css, '.qrms-detail-overlay.open', '.gemini-chat-toggle-btn' );
+		qrms_assert_false( false !== strpos( $css, 'body:has(.rma-modal-overlay.open) .qmo-bar' ), 'menü modalı sepet çubuğunu gizlemez' );
+		qrms_assert_false( false !== strpos( $css, 'body:has(.rma-modal-overlay.open) .qmo-dr' ), 'menü modalı çekmeceyi gizlemez' );
+		qrms_assert_false( false !== strpos( $css, 'body:has(.qrms-detail-overlay.open) .qmo-bar' ), 'detay modalı sepet çubuğunu gizlemez' );
+		qrms_assert_false( false !== strpos( $css, 'body:has(.qrms-detail-overlay.open) .qmo-dr' ), 'detay modalı çekmeceyi gizlemez' );
 	}
 );
 
