@@ -545,9 +545,16 @@
 	}
 
 	function barGizle( v ) {
-		if ( bar ) {
-			bar.classList.toggle( 'qmo-gizle', !! v );
+		if ( ! bar ) {
+			return;
 		}
+		// Sepette ürün varken çubuğu gizleme: modal açıkken de toplam
+		// okunur ve çubuğa tıklanınca çekmece açılır. Boş sepet + modal
+		// hâlâ gizler (alt sayfa modalı ile çakışmasın).
+		if ( v && oku().length > 0 ) {
+			v = false;
+		}
+		bar.classList.toggle( 'qmo-gizle', !! v );
 	}
 
 	/* Performans: sürekli DOM dinlemek yerine, ürün kartına dokununca modal
@@ -748,6 +755,9 @@
 		}
 
 		bar.classList.toggle( 'qmo-on', n > 0 );
+		if ( n > 0 ) {
+			barGizle( false );
+		}
 		if ( 0 === n ) {
 			kapat();
 		}

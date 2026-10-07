@@ -557,10 +557,51 @@ qrms_test(
 );
 
 qrms_test(
+	'QA-F1-01: boş rma_active menüde görünür, yalnızca 0 gizler; kategorisiz ürün elenmez',
+	function () {
+		$yardimci = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-helpers.php' );
+		$ajax     = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-ajax.php' );
+		$detay    = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-post-types.php' );
+		$oneri    = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-suggestions.php' );
+		$slider   = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/shortcode-slider.php' );
+
+		qrms_assert_contains( 'function urun_menude_gorunur', $yardimci, 'görünürlük yardımcısı' );
+		qrms_assert_contains( "return '0' !== (string) get_post_meta", $yardimci, 'yalnızca açık 0 gizler' );
+		qrms_assert_contains( "'compare' => 'NOT EXISTS'", $yardimci, 'meta yoksa menüye alınır' );
+		qrms_assert_contains( "'value' => '0', 'compare' => '!='", $yardimci, 'boş veya 1 görünür, yalnızca 0 elenir' );
+		qrms_assert_contains( 'rma_active_gorunur_meta_query()', $ajax, 'menü sorgusu ortak kloz' );
+		qrms_assert_contains( 'urun_menude_gorunur', $ajax, 'detay AJAX aynı kural' );
+		qrms_assert_contains( '$uncat', $ajax, 'kategorisiz ürünler Diğer bölümüne gider' );
+		qrms_assert_contains( "data-cat-slug=\"diger\"", $ajax, 'kategorisiz slug' );
+		qrms_assert_contains( "get_post_meta( \$post->ID, 'rma_active', true ) !== '0'", $detay, 'form varsayılanı açık' );
+		qrms_assert_contains( 'rma_active_gorunur_meta_query()', $oneri, 'öneri havuzu aynı kloz' );
+		qrms_assert_contains( "'0' === (string) get_post_meta( \$product_id, 'rma_active', true )", $slider, 'slider yalnızca 0 gizler' );
+		qrms_assert_contains( "\$parts['__m']    = '4'", $yardimci, 'eski menü transient geçersiz' );
+
+		$GLOBALS['qrms_test']['post_meta'][714]['rma_active'] = '1';
+		$GLOBALS['qrms_test']['post_meta'][715]['rma_active'] = '0';
+		unset( $GLOBALS['qrms_test']['post_meta'][716]['rma_active'] );
+		$GLOBALS['qrms_test']['post_meta'][717]['rma_active'] = '';
+
+		require_once QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-helpers.php';
+		if ( ! class_exists( 'RMA_Menu_Gorunurluk_Test' ) ) {
+			class RMA_Menu_Gorunurluk_Test {
+				use RMA_Helpers_Trait;
+			}
+		}
+		$h = new RMA_Menu_Gorunurluk_Test();
+		qrms_assert_true( $h->urun_menude_gorunur( 714 ), 'Menüde göster açık' );
+		qrms_assert_false( $h->urun_menude_gorunur( 715 ), 'Menüde göster kapalı' );
+		qrms_assert_true( $h->urun_menude_gorunur( 716 ), 'meta yok = görünür (admin ile aynı)' );
+		qrms_assert_true( $h->urun_menude_gorunur( 717 ), 'boş string meta = görünür' );
+	}
+);
+
+qrms_test(
 	'menü sorgusu tükendi ürünleri gizlemez; kart ve slider işareti basar',
 	function () {
 		$ajax = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-ajax.php' );
-		qrms_assert_contains( "'key' => 'rma_active'", $ajax, 'gizleme hâlâ rma_active' );
+		qrms_assert_contains( 'rma_active_gorunur_meta_query', $ajax, 'gizleme rma_active görünürlük klozu' );
 		qrms_assert_false(
 			(bool) preg_match( "/'key'\s*=>\s*'_rma_tukendi'/", $ajax ),
 			'tükendi meta_query filtresi değil'

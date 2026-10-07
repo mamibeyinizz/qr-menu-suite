@@ -88,6 +88,16 @@ qrms_test(
 		qrms_assert_contains( "'.rma-price-new, .qmo-kombin-new-price'", $js, 'yalnızca güncel fiyat span\'i' );
 		qrms_assert_contains( 'fiyatMetni', $js, 'kampanyalı fiyatta eski+yeni birleşmez' );
 		qrms_assert_contains( "'.rma-card, .qmo-slider-product'", $js, 'slider kartı da modal yakalar' );
+		qrms_assert_contains( 'v && oku().length > 0', $js, 'QA-F1-03: dolu sepet modalda çubuğu gizlemez' );
+		qrms_assert_contains( 'if ( n > 0 )', $js, 'çizim sonrası çubuk tekrar görünür' );
+		$css = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/assets/css/sepet.css' );
+		qrms_assert_contains( 'z-index: 2147482700', $css, '#297 sepet çubuğu z-index korunur' );
+		qrms_assert_contains( 'z-index: 2147482702', $css, '#297 çekmece z-index korunur' );
+		qrms_assert_contains( 'body:has(.qmo-bar.qmo-on:not(.qmo-gizle)) .rma-modal-box', $css, 'modal alt boşluk çubuğa yer açar' );
+		$layers = file_get_contents( QRMS_PLUGIN_DIR . 'modules/_qmo-ortak/assets/css/floating-layer-states.css' );
+		qrms_assert_false( false !== strpos( $layers, 'body:has(.rma-modal-overlay.open) .qmo-bar' ), 'ortak katman modalda sepeti gizlemez' );
+		$chat = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/assets/css/chatbot.css' );
+		qrms_assert_contains( '--gm-z: 2147482800', $chat, 'chatbot FAB sepetin üstünde kalır' );
 		qrms_assert_contains( 'qmoSepet.endpoint', $js, 'sipariş qmoSepet.endpoint üzerinden gider' );
 		qrms_assert_contains( 'qmo_sepet_olay', $js, 'sepet analitik ucu' );
 		qrms_assert_contains( 'analitikKuyrukla', $js, 'sepet olayları kuyruklanır' );

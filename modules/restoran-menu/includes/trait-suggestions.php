@@ -43,7 +43,7 @@ trait RMA_Suggestions_Trait {
             'update_post_term_cache' => true,
             'orderby'                => 'title',
             'order'                  => 'ASC',
-            'meta_query'             => [ [ 'key' => 'rma_active', 'value' => '1', 'compare' => '=' ] ],
+            'meta_query'             => [ $this->rma_active_gorunur_meta_query() ],
         ] );
 
         $all_items = $items_query->posts;

@@ -107,6 +107,13 @@
 	display: flex;
 }
 
+/* Modal (999990) alt sayfa; çubuk zaten 2147482700. Sepette ürün varken
+   çubuk görünür kalır — alt sayfa içeriği çubuğun altında kalmasın. */
+body:has(.qmo-bar.qmo-on:not(.qmo-gizle)) .rma-modal-box,
+body:has(.qmo-bar.qmo-on:not(.qmo-gizle)) .qrms-detail-box {
+	padding-bottom: 88px;
+}
+
 .qmo-bar-l {
 	display: flex;
 	align-items: center;

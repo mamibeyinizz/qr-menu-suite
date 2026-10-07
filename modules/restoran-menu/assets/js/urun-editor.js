@@ -1584,10 +1584,45 @@
 	 * @return {void}
 	 */
 	function zorunluAlanlariKur() {
-		var baslik = document.getElementById( 'title' );
-		if ( baslik ) {
-			baslik.required = true;
+		var form = document.getElementById( 'post' );
+
+		/**
+		 * #title'a required basar. editor-expand alanı yenileyince bayrak
+		 * düşebildiği için kayıt anında da tekrar uygulanır.
+		 *
+		 * @return {HTMLInputElement|null} Başlık alanı.
+		 */
+		function basligiZorunluYap() {
+			var baslik = document.getElementById( 'title' );
+			if ( baslik ) {
+				baslik.required = true;
+				baslik.setAttribute( 'required', 'required' );
+			}
+			return baslik;
 		}
+
+		basligiZorunluYap();
+
+		if ( ! form || form.getAttribute( 'data-qrms-baslik-zorunlu' ) ) {
+			return;
+		}
+
+		form.setAttribute( 'data-qrms-baslik-zorunlu', '1' );
+		form.addEventListener( 'submit', function ( e ) {
+			var baslik = basligiZorunluYap();
+			if ( ! baslik ) {
+				return;
+			}
+			if ( '' !== String( baslik.value || '' ).trim() ) {
+				return;
+			}
+			e.preventDefault();
+			e.stopPropagation();
+			if ( typeof baslik.reportValidity === 'function' ) {
+				baslik.reportValidity();
+			}
+			baslik.focus();
+		}, true );
 	}
 
 	if ( 'loading' === document.readyState ) {

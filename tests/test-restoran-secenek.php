@@ -410,6 +410,13 @@ qrms_test(
 		qrms_assert_contains( "document.body.classList.contains( 'qrms-product-editor' )", $js, 'JS kapsam kontrolü' );
 		qrms_assert_false( false !== strpos( $js, 'fetch(' ), 'açılır liste için sunucuya istek atılmaz' );
 		qrms_assert_false( false !== strpos( $js, 'ajax' ), 'AJAX eklenmedi' );
+
+		qrms_assert_contains( 'function zorunluAlanlariKur', $js, 'QA-F1-02: başlık zorunlu kurulumu' );
+		qrms_assert_contains( 'baslik.required = true', $js, 'QA-F1-02: #title required' );
+		qrms_assert_contains( "form.addEventListener( 'submit'", $js, 'QA-F1-02: kayıtta tekrar uygulanır' );
+		qrms_assert_contains( 'reportValidity', $js, 'QA-F1-02: native tarayıcı uyarısı' );
+		qrms_assert_contains( "data-qrms-baslik-zorunlu", $js, 'QA-F1-02: çift bağlanmaz' );
+		qrms_assert_contains( 'function basliklariKur', $js, 'görsel ürün adı #title senkronu durur' );
 	}
 );
 

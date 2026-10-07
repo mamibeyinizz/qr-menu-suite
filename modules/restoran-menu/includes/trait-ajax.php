@@ -242,7 +242,10 @@ trait RMA_Ajax_Trait {
             'update_post_term_cache' => true,
             'meta_query'             => [
                 'relation' => 'AND',
-                [ 'key' => 'rma_active', 'value' => '1', 'compare' => '=' ],
+                // Admin listesi boş rma_active'i "görünür" sayar ('' => '1').
+                // Yalnızca value=1, meta hiç yazılmamış yayınlanmış ürünü
+                // menüden düşürürdü. Gizli ürün hâlâ rma_active=0 ile elenir.
+                $this->rma_active_gorunur_meta_query(),
             ],
         ];
 
@@ -579,7 +582,7 @@ trait RMA_Ajax_Trait {
             wp_send_json_error();
             die();
         }
-        if ( get_post_meta( $id, 'rma_active', true ) !== '1' ) {
+        if ( ! $this->urun_menude_gorunur( $id ) ) {
             wp_send_json_error();
             die();
         }
