@@ -24,7 +24,7 @@
        basıldıktan sonra bu arg'lar URL'den düşürülür; böylece sayfa
        yenilendiğinde eski bildirim tekrar görünmez.
     ----------------------------------------------------------------- */
-    var NOTICE_ARGS = [ 'imported', 'csv_error', 'rma_updated', 'rma_created', 'rma_backup_error' ];
+    var NOTICE_ARGS = [ 'imported', 'csv_error', 'rma_updated', 'rma_created', 'rma_backup_error', 'rma_csv_sonuc', 'rma_csv_hatali', 'rma_csv_atlanan', 'rma_csv_fiyat_gecersiz', 'rma_csv_fiyat_satirlar' ];
 
     function stripNoticeArgs() {
         if ( ! window.history || ! window.history.replaceState ) return;
@@ -1787,9 +1787,14 @@
 
         var $boxes = $row.find('ul.rma_allergen-checklist :checkbox');
         $boxes.prop('checked', false);
-        if (ids.length) {
-            $boxes.val(ids);
+        if (!ids.length) {
+            return;
         }
+        $boxes.each(function () {
+            if (ids.indexOf(String(this.value)) !== -1) {
+                this.checked = true;
+            }
+        });
     }
 
     function initQuickEdit() {

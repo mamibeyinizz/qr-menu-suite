@@ -51,11 +51,25 @@ function qrms_reset() {
 	// add_shortcode() taklidinin defteri de aynı nedenle sıfırlanır; aksi
 	// hâlde bir testte kaydedilen kısa kod sonraki testte "kurulu" görünür.
 	$GLOBALS['qrms_test']['post_meta']  = array();
+	$GLOBALS['qrms_test']['posts_by_id'] = array();
+	$GLOBALS['qrms_test']['next_post_id'] = 9000;
+	$GLOBALS['qrms_test']['post_mime'] = array();
+	$GLOBALS['qrms_test']['post_content'] = array();
+	$GLOBALS['qrms_test']['post_excerpt'] = array();
+	$GLOBALS['qrms_test']['post_parent'] = array();
+	$GLOBALS['qrms_test']['attachment_file'] = array();
+	$GLOBALS['qrms_test']['uploaded_files'] = array();
+	unset( $GLOBALS['qrms_test']['wp_insert_post_error'], $GLOBALS['qrms_test']['wp_upload_bits_error'], $GLOBALS['qrms_test']['wp_insert_post_error_types'] );
 	$GLOBALS['qrms_test']['shortcodes'] = array();
 	$GLOBALS['qrms_test']['json']       = null;
 	$GLOBALS['qrms_test']['is_admin']   = false;
 	$GLOBALS['qrms_test']['is_404']     = false;
 	$GLOBALS['qrms_test']['is_rtl']     = false;
+	unset(
+		$GLOBALS['qrms_test']['is_singular'],
+		$GLOBALS['qrms_test']['is_tax'],
+		$GLOBALS['qrms_test']['is_post_type_archive']
+	);
 	$GLOBALS['qrms_test']['doing_ajax'] = false;
 	$GLOBALS['qrms_test']['doing_cron'] = false;
 	unset( $GLOBALS['qrms_test']['status_header'], $GLOBALS['qrms_test']['nocache_headers'] );
@@ -76,7 +90,14 @@ function qrms_reset() {
 	// sızmasın diye sıfırlanır.
 	$GLOBALS['qrms_test']['attachment_meta'] = array();
 	$GLOBALS['qrms_test']['terms']        = array();
+	$GLOBALS['qrms_test']['post_terms']   = array();
+	$GLOBALS['qrms_test']['term_meta']    = array();
 	$GLOBALS['qrms_test']['object_terms'] = array();
+	unset( $GLOBALS['qrms_test']['now'] );
+
+	if ( class_exists( 'RMA_Servis_Saati' ) && method_exists( 'RMA_Servis_Saati', 'sifirla' ) ) {
+		RMA_Servis_Saati::sifirla();
+	}
 	$GLOBALS['qrms_test']['styles']     = array();
 	$GLOBALS['qrms_test']['scripts']    = array();
 	$GLOBALS['qrms_test']['inline_styles'] = array();

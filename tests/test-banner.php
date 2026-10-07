@@ -100,6 +100,23 @@ qrms_test(
 );
 
 qrms_test(
+	'öne çıkan slider CPT init içinde kaçırılmaz',
+	function () {
+		// REGRESYON RM-001/RM-002: QMO_Slide_CPT::init() boot() içinden
+		// `init` öncelik 20'de çağrılır. Yalnızca add_action('init') bırakılırsa
+		// register_post_type bu istekte hiç çalışmaz; banner CPT did_action
+		// ile bunu düzeltmişti, slide CPT aynı deseni kullanmalı.
+		$dizin = QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/';
+		$slide = file_get_contents( $dizin . 'admin-cpt-slide.php' );
+		$banner = file_get_contents( $dizin . 'admin-cpt-banner.php' );
+
+		qrms_assert_contains( "did_action( 'init' )", $slide, 'slide CPT init kaçmışsa doğrudan register' );
+		qrms_assert_contains( 'self::register_post_type()', $slide, 'slide CPT doğrudan kayıt' );
+		qrms_assert_contains( "did_action( 'init' )", $banner, 'banner CPT aynı desen' );
+	}
+);
+
+qrms_test(
 	'banner yönetimi kendi sayfasında, Fiyat Kampanyaları ve Menü Görünümü temiz',
 	function () {
 		// İSİMLENDİRME: "Kampanya" = banner görselleri, "Fiyat Kampanyası" =

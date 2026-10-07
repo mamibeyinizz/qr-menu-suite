@@ -495,6 +495,45 @@ body.qrms-login,
 	border-bottom-color: color-mix(in srgb, var(--qrms-lg-vurgu) 50%, transparent);
 }
 
+.qrms-login-yol-ayrim {
+	position: relative;
+	z-index: 2;
+	margin: 0 0 18px;
+	padding: 12px 14px;
+	border-radius: 12px;
+	border: 1px solid var(--qrms-lg-kart-cizgi);
+	background: color-mix(in srgb, var(--qrms-lg-kart) 88%, transparent);
+	text-align: center;
+}
+
+.qrms-login-yol-ayrim-etiket {
+	margin: 0 0 6px;
+	font-size: 13px;
+	font-weight: 600;
+	letter-spacing: 0.02em;
+	text-transform: uppercase;
+	color: var(--qrms-lg-metin);
+}
+
+.qrms-login-yol-ayrim-menu {
+	margin: 0;
+	font-size: 14px;
+	line-height: 1.45;
+	color: var(--qrms-lg-metin2);
+}
+
+.qrms-login-yol-ayrim-menu a {
+	color: var(--qrms-lg-vurgu);
+	font-weight: 600;
+	text-decoration: none;
+	border-bottom: 1px solid color-mix(in srgb, var(--qrms-lg-vurgu) 45%, transparent);
+}
+
+.qrms-login-yol-ayrim-menu a:hover,
+.qrms-login-yol-ayrim-menu a:focus {
+	color: var(--qrms-lg-vurgu2);
+}
+
 .qrms-login #backtoblog,
 .qrms-login .qrms-lp-geri {
 	position: relative;

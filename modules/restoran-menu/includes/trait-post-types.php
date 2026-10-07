@@ -29,7 +29,12 @@ trait RMA_Post_Types_Trait {
             'menu_icon'     => 'dashicons-media-document',
             'supports'      => [ 'title', 'editor', 'thumbnail', 'excerpt' ],
             'has_archive'   => false,
-            'rewrite'       => [ 'slug' => 'menu-item' ],
+            // Müşteri menüsü [restaurant_menu] kısa kodudur; tema single/
+            // arşivi (/menu-item/...) ayrı bir public yüzey olmamalı (RM-004).
+            'publicly_queryable'  => false,
+            'exclude_from_search' => true,
+            'show_in_nav_menus'   => false,
+            'rewrite'             => [ 'slug' => 'menu-item' ],
         ] );
 
         register_taxonomy( 'rma_category', [ 'rma_menu_item' ], [
@@ -46,7 +51,10 @@ trait RMA_Post_Types_Trait {
             ],
             'show_ui'           => true,
             'show_admin_column' => true,
-            'query_var'         => true,
+            'public'            => false,
+            'publicly_queryable'=> false,
+            'show_in_nav_menus' => false,
+            'query_var'         => false,
             'rewrite'           => [ 'slug' => 'menu-category' ],
         ] );
 
@@ -62,9 +70,73 @@ trait RMA_Post_Types_Trait {
             'show_admin_column' => false,
             'show_in_quick_edit'=> false,
             'meta_box_cb'       => false, // Özel checklist "Ürün Detayları" kutusunda gösterilir
-            'query_var'         => true,
+            'public'            => false,
+            'publicly_queryable'=> false,
+            'show_in_nav_menus' => false,
+            'query_var'         => false,
             'rewrite'           => false,
         ] );
+    }
+
+    /**
+     * Tema single/arşivinin müşteri menüsü gibi durmasını engeller (RM-004).
+     *
+     * Gerçek menü [restaurant_menu] kısa kodudur (AJAX + modal). CPT/taksonomi
+     * public sorgusu veya eski /menu-item/ yolu anasayfadaki menüye alınır;
+     * çıplak tema şablonu basılmaz. 404'e düşürmek yerine menüye yönlendirilir.
+     *
+     * @return void
+     */
+    public function redirect_public_menu_content() {
+        if ( is_admin() || wp_doing_ajax() || wp_doing_cron() ) {
+            return;
+        }
+        if ( defined( 'REST_REQUEST' ) && REST_REQUEST ) {
+            return;
+        }
+        if ( ! $this->is_public_menu_surface_request() ) {
+            return;
+        }
+
+        wp_safe_redirect( home_url( '/' ), 302 );
+        exit;
+    }
+
+    /**
+     * İstek WordPress'in ham menü CPT/taksonomi yüzeyinde mi?
+     *
+     * @return bool
+     */
+    public function is_public_menu_surface_request() {
+        if ( function_exists( 'is_singular' ) && is_singular( 'rma_menu_item' ) ) {
+            return true;
+        }
+        if ( function_exists( 'is_post_type_archive' ) && is_post_type_archive( 'rma_menu_item' ) ) {
+            return true;
+        }
+        if ( function_exists( 'is_tax' ) && is_tax( array( 'rma_category', 'rma_allergen', 'rma_ingredient' ) ) ) {
+            return true;
+        }
+
+        return $this->request_path_is_legacy_menu_rewrite();
+    }
+
+    /**
+     * Eski pretty permalink (/menu-item/…, /menu-category/…) hâlâ mı isteniyor?
+     *
+     * publicly_queryable kapatılınca WP bunları 404 sayabilir; yol yine
+     * menüye alınır ki kullanıcı markalı 404 veya tema arşivi görmesin.
+     *
+     * @return bool
+     */
+    public function request_path_is_legacy_menu_rewrite() {
+        $uri  = isset( $_SERVER['REQUEST_URI'] ) ? (string) $_SERVER['REQUEST_URI'] : '';
+        $path = wp_parse_url( $uri, PHP_URL_PATH );
+        if ( ! is_string( $path ) || '' === $path || '/' === $path ) {
+            return false;
+        }
+
+        return (bool) preg_match( '#/(menu-item|menu-category)(/|$)#', $path );
     }
 
     /* -----------------------------------------------------------------

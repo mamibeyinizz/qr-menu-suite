@@ -104,6 +104,7 @@ class Restaurant_Menu_Automation {
 
     private function __construct() {
         add_action( 'init',                  [ $this, 'register_post_types' ] );
+        add_action( 'template_redirect',     [ $this, 'redirect_public_menu_content' ], 0 );
         add_action( 'add_meta_boxes',        [ $this, 'add_menu_item_meta_boxes' ] );
         add_action( 'save_post',             [ $this, 'save_menu_item_meta' ] );
 

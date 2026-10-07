@@ -1048,6 +1048,11 @@ function rmaPrepImage(idx) {
     if (!img) return;
 
     var holder = img.parentNode;
+    if (img.classList && img.classList.contains('rma-img-placeholder')) {
+        if (holder && holder.classList) holder.classList.remove('rma-img-loading');
+        return;
+    }
+
     var card   = rmaCards[idx];
     var thumb  = card ? qs('.rma-card-img', card) : null;
     var ph     = thumb ? (thumb.currentSrc || thumb.src) : '';

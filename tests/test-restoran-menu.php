@@ -224,6 +224,55 @@ qrms_test(
 );
 
 qrms_test(
+	'kampanya tarih alanları formdan MySQL\'e çevrilir ve doğrulanır',
+	function () {
+		$mysql = RMA_Kampanya_DB::datetime_local_to_mysql( '2026-03-15T18:30' );
+		qrms_assert_same( '2026-03-15 18:30:00', $mysql, 'datetime-local → mysql' );
+		qrms_assert_same( '2026-03-15T18:30', RMA_Kampanya_DB::mysql_to_datetime_local( $mysql ), 'mysql → datetime-local' );
+		qrms_assert_same( null, RMA_Kampanya_DB::datetime_local_to_mysql( '' ), 'boş başlangıç' );
+
+		qrms_assert_same( '', RMA_Kampanya_DB::tarih_araligi_hatasi( null, null ), 'sınırsız geçerli' );
+		qrms_assert_same(
+			'Bitiş tarihi başlangıç tarihinden önce olamaz.',
+			RMA_Kampanya_DB::tarih_araligi_hatasi( '2026-03-20 10:00:00', '2026-03-10 10:00:00' ),
+			'ters aralık'
+		);
+		qrms_assert_same(
+			'Başlangıç ve bitiş aynı anda olamaz. Bitiş, başlangıçtan sonra olmalıdır.',
+			RMA_Kampanya_DB::tarih_araligi_hatasi( '2026-03-10 10:00:00', '2026-03-10 10:00:00' ),
+			'aynı an'
+		);
+
+		$zaman = strtotime( '2026-03-15 12:00:00 UTC' );
+		$kural = array(
+			'status'    => 'active',
+			'starts_at' => '2026-03-10 00:00:00',
+			'ends_at'   => '2026-03-20 23:59:00',
+		);
+		qrms_assert_true( RMA_Kampanya_DB::aktif_mi( $kural, $zaman ), 'aralık içi' );
+		qrms_assert_false(
+			RMA_Kampanya_DB::aktif_mi( $kural, strtotime( '2026-03-25 12:00:00 UTC' ) ),
+			'aralık sonrası'
+		);
+
+		$temiz = RMA_Kampanya_DB::ayarlari_temizle(
+			array(
+				'title'     => 'Test',
+				'starts_at' => '2026-04-01T09:00',
+				'ends_at'   => '',
+			)
+		);
+		qrms_assert_same( '2026-04-01 09:00:00', $temiz['starts_at'], 'ayarlari_temizle başlangıç' );
+		qrms_assert_same( null, $temiz['ends_at'], 'ayarlari_temizle boş bitiş' );
+
+		$admin = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-kampanya-admin.php' );
+		qrms_assert_contains( 'name="starts_at"', $admin, 'form başlangıç alanı' );
+		qrms_assert_contains( 'name="ends_at"', $admin, 'form bitiş alanı' );
+		qrms_assert_contains( 'tarih_araligi_hatasi', $admin, 'kaydetmede tarih doğrulama' );
+	}
+);
+
+qrms_test(
 	'kural metni yönetim ekranında okunur biçimde çıkar',
 	function () {
 		qrms_assert_same(
@@ -1481,10 +1530,12 @@ qrms_test(
    wp_safe_redirect() ile aynı desen), akış burada yakalanıp devam eder.
 ===================================================================== */
 
+require_once QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-import-export.php';
 require_once QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/urunum-yok/trait-admin.php';
 
 if ( ! class_exists( 'RMA_Test_Ingredient_CSV_Harness' ) ) {
 	class RMA_Test_Ingredient_CSV_Harness {
+		use RMA_Import_Export_Trait;
 		use RMA_Urunum_Yok_Admin_Trait;
 		use RMA_Helpers_Trait;
 
@@ -1532,6 +1583,150 @@ function qrms_run_ingredient_csv_confirm( $harness, array $rows ) {
 
 	throw new Exception( 'handle_ingredient_csv_import_confirm() yönlendirmeden dönmedi' );
 }
+
+/**
+ * handle_ingredient_csv_import_preview() akışını gerçek trait metoduyla çalıştırır.
+ *
+ * @param object $harness RMA_Test_Ingredient_CSV_Harness.
+ * @param string $csv_body UTF-8 CSV içeriği (başlık satırı dahil).
+ * @return array Önizleme transient verisi.
+ */
+function qrms_run_ingredient_csv_preview( $harness, $csv_body ) {
+	$tmp = tempnam( sys_get_temp_dir(), 'qmo_uy_csv_' );
+	if ( false === $tmp ) {
+		throw new Exception( 'geçici CSV dosyası oluşturulamadı' );
+	}
+	file_put_contents( $tmp, $csv_body );
+
+	$_FILES['qmo_uy_csv_file'] = array(
+		'tmp_name' => $tmp,
+		'error'    => UPLOAD_ERR_OK,
+	);
+	$_POST['qmo_uy_csv_nonce'] = wp_create_nonce( 'qmo_uy_csv_import' );
+
+	try {
+		$harness->handle_ingredient_csv_import_preview();
+	} catch ( QRMS_Test_Redirect $e ) {
+		$location = $e->getMessage();
+		if ( preg_match( '/[?&]qmo_uy_csv_token=([^&#]+)/', $location, $m ) ) {
+			$token   = rawurldecode( $m[1] );
+			$preview = get_transient( 'qmo_uy_csv_' . $token );
+			@unlink( $tmp );
+			if ( ! is_array( $preview ) ) {
+				throw new Exception( 'önizleme transient bulunamadı' );
+			}
+			return $preview;
+		}
+		@unlink( $tmp );
+		throw new Exception( 'önizleme yönlendirmesinde token yok: ' . $location );
+	}
+
+	@unlink( $tmp );
+	throw new Exception( 'handle_ingredient_csv_import_preview() yönlendirmeden dönmedi' );
+}
+
+echo "\nMalzeme Bazlı Toplu Aktarım (CSV) — boş / yalnızca ID satırları (BULGU: 612;;;; geçerli sayılıyordu)\n";
+
+qrms_test(
+	'malzeme CSV önizleme: 612;;;; ve tamamen boş satırlar yok sayılır, geçerli satır eşleşir',
+	function () {
+		$h = new RMA_Test_Ingredient_CSV_Harness();
+
+		$pid = 720;
+		$GLOBALS['qrms_test']['post_types'][ $pid ] = 'rma_menu_item';
+		$GLOBALS['qrms_test']['term_names']       = array();
+
+		$csv = "ID;Başlık;Kategori;Fiyat;Malzemeler\n"
+			. ";;;;\n"
+			. "612;;;;\n"
+			. "\n"
+			. $pid . ";Güncellenecek;;55;domates\n"
+			. ";;;;\n";
+
+		$preview = qrms_run_ingredient_csv_preview( $h, $csv );
+
+		qrms_assert_same( 1, $preview['eslesen'], 'yalnızca dolu satır eşleşir' );
+		qrms_assert_same( 1, count( $preview['rows'] ), 'önizleme satır listesinde tek kayıt' );
+		qrms_assert_same( $pid, (int) $preview['rows'][0]['pid'], 'doğru ürün eşleşti' );
+		qrms_assert_same( array(), $preview['eslesmeyen'], 'boş satırlar eşleşmeyen listesine düşmez' );
+	}
+);
+
+qrms_test(
+	'malzeme CSV önizleme: yalnızca başlık dolu satır (opsiyonel alanlar boş) içerik olarak kabul edilir',
+	function () {
+		$h = new RMA_Test_Ingredient_CSV_Harness();
+
+		$GLOBALS['wpdb'] = new class() extends QRMS_Sayan_Wpdb {
+			public $posts = 'wp_posts';
+
+			public function get_results( $sql, $output = OBJECT ) {
+				$this->queries[] = $sql;
+				return array();
+			}
+		};
+		$GLOBALS['qrms_test']['term_names'] = array();
+
+		$csv = "ID;Başlık;Kategori;Fiyat;Malzemeler\n"
+			. "0;Sadece Başlık;;;\n";
+
+		$preview = qrms_run_ingredient_csv_preview( $h, $csv );
+
+		qrms_assert_same( 0, $preview['eslesen'], 'eşleşen ürün yok' );
+		qrms_assert_same( array( 'Sadece Başlık' ), $preview['eslesmeyen'], 'başlık dolu satır eşleşmeyen olarak raporlanır (sahte boş satır değil)' );
+	}
+);
+
+qrms_test(
+	'malzeme CSV: yalnızca ID içeren satır içerik taşımaz (612;;;;)',
+	function () {
+		$h      = new RMA_Test_Ingredient_CSV_Harness();
+		$metod  = new ReflectionMethod( $h, 'ingredient_csv_row_has_importable_payload' );
+		$metod->setAccessible( true );
+
+		qrms_assert_false(
+			$metod->invoke( $h, '', '', '', array() ),
+			'tamamen boş alanlar'
+		);
+		qrms_assert_false(
+			$metod->invoke( $h, '', '', '', array() ),
+			'612;;;; benzeri: başlık/kategori/fiyat/malzeme yok'
+		);
+		qrms_assert_true(
+			$metod->invoke( $h, 'Domates', '', '', array() ),
+			'yalnızca başlık dolu'
+		);
+		qrms_assert_true(
+			$metod->invoke( $h, '', '', '45', array() ),
+			'yalnızca fiyat dolu'
+		);
+		qrms_assert_true(
+			$metod->invoke( $h, '', '', '', array( 'domates' ) ),
+			'yalnızca malzeme dolu'
+		);
+	}
+);
+
+qrms_test(
+	'malzeme CSV onayı: yalnızca ID içeren satır uygulanmaz — malzemeler silinmez, sayaç artmaz',
+	function () {
+		$h   = new RMA_Test_Ingredient_CSV_Harness();
+		$pid = 722;
+
+		$GLOBALS['qrms_test']['post_types'][ $pid ] = 'rma_menu_item';
+		$GLOBALS['qrms_test']['terms']['rma_ingredient']['domates'] = 9001;
+		$GLOBALS['qrms_test']['object_terms'][ $pid ]['rma_ingredient'] = array( 9001 );
+
+		$rows = array(
+			array( 'pid' => $pid, 'category' => '', 'price' => '', 'ingredients' => array() ),
+		);
+
+		$location = qrms_run_ingredient_csv_confirm( $h, $rows );
+
+		qrms_assert_contains( 'qmo_uy_csv_uygulandi=0', $location, 'içeriksiz satır güncelleme sayılmaz' );
+		qrms_assert_same( array( 9001 ), $GLOBALS['qrms_test']['object_terms'][ $pid ]['rma_ingredient'], 'mevcut malzemeler korunur' );
+	}
+);
 
 echo "\nMalzeme Bazlı Toplu Aktarım (CSV) — fiyat doğrulama bypass'ı (BULGU: fiyat sanitize_text_field() ile doğrudan yazılıyordu)\n";
 
@@ -1690,5 +1885,338 @@ qrms_test(
 			false === strpos( $govde, 'update_post_meta( $pid, \'rma_price\', sanitize_text_field( $row[\'price\']' ),
 			'eski, doğrulamasız yazma satırı geri gelmemiş'
 		);
+	}
+);
+
+echo "\nRM-004 — Public CPT / archive yüzeyi kapatılır, kısa kod menüsü durur\n";
+
+qrms_test(
+	'rma_menu_item ön yüzde sorgulanmaz, rewrite slug değişmez',
+	function () {
+		$kaynak = file_get_contents(
+			QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-post-types.php'
+		);
+
+		qrms_assert_contains( "'publicly_queryable'  => false", $kaynak, 'CPT public query kapalı' );
+		qrms_assert_contains( "'exclude_from_search' => true", $kaynak, 'arama dışı' );
+		qrms_assert_contains( "'show_in_nav_menus'   => false", $kaynak, 'nav menüde yok' );
+		qrms_assert_contains( "'slug' => 'menu-item'", $kaynak, 'CPT slug duruyor' );
+
+		$allerjen_blok = substr( $kaynak, strpos( $kaynak, "register_taxonomy( 'rma_allergen'" ) );
+		qrms_assert_contains( "'query_var'         => false", $allerjen_blok, 'alerjen query_var' );
+		qrms_assert_contains( "'publicly_queryable'=> false", $allerjen_blok, 'alerjen publicly_queryable' );
+
+		$kategori_blok = substr( $kaynak, strpos( $kaynak, "register_taxonomy( 'rma_category'" ), strpos( $kaynak, "register_taxonomy( 'rma_allergen'" ) - strpos( $kaynak, "register_taxonomy( 'rma_category'" ) );
+		qrms_assert_contains( "'query_var'         => false", $kategori_blok, 'kategori query_var' );
+
+		$malzeme = file_get_contents(
+			QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/urunum-yok/class-ingredient-taxonomy.php'
+		);
+		qrms_assert_contains( "'query_var'          => false", $malzeme, 'malzeme query_var kapalı' );
+		qrms_assert_contains( "'publicly_queryable' => false", $malzeme, 'malzeme publicly_queryable' );
+
+		$boot = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/qr-menu.php' );
+		qrms_assert_contains(
+			"add_action( 'template_redirect',     [ \$this, 'redirect_public_menu_content' ], 0 )",
+			$boot,
+			'yönlendirme 404 yakalayıcısından önce'
+		);
+	}
+);
+
+qrms_test(
+	'AJAX menü ve modal hâlâ kısa kod uçlarını kullanır (regresyon)',
+	function () {
+		$ajax  = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/qr-menu.php' );
+		$js    = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/js/rma-frontend.js' );
+		$front = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-frontend.php' );
+
+		qrms_assert_contains( 'wp_ajax_rma_load_items', $ajax, 'liste AJAX durur' );
+		qrms_assert_contains( 'wp_ajax_rma_get_product_details', $ajax, 'detay AJAX durur' );
+		qrms_assert_contains( 'wp_ajax_nopriv_rma_load_items', $ajax, 'ziyaretçi liste AJAX' );
+		qrms_assert_contains( "action      : 'rma_load_items'", $js, 'frontend listeyi AJAX ile çeker' );
+		qrms_assert_contains( "action: 'rma_get_product_details'", $js, 'frontend detayı AJAX ile çeker' );
+		qrms_assert_contains( 'restaurant_menu', $front, 'kısa kod menüsü durur' );
+		qrms_assert_false( false !== strpos( $js, '/menu-item/' ), 'kartlar CPT permalinkine gitmez' );
+	}
+);
+
+qrms_test(
+	'anasayfa ve admin CPT/arşiv yönlendirmesine girmez',
+	function () {
+		$h = new RMA_Test_Baslik_Harness();
+
+		$_SERVER['REQUEST_URI'] = '/';
+		qrms_assert_false( $h->is_public_menu_surface_request(), 'kök menü yolu değil' );
+
+		$_SERVER['REQUEST_URI'] = '/?rma_allergen=sut';
+		qrms_assert_false( $h->is_public_menu_surface_request(), 'query_var kapalıyken kök+parametre arşiv değil' );
+
+		$GLOBALS['qrms_test']['is_admin']    = true;
+		$GLOBALS['qrms_test']['is_singular'] = 'rma_menu_item';
+		$h->redirect_public_menu_content();
+		qrms_assert_true( empty( $GLOBALS['qrms_test']['redirects'] ), 'admin atlanır' );
+	}
+);
+
+qrms_test(
+	'/menu-item/ ve taksonomi arşivi anasayfadaki menüye alınır',
+	function () {
+		$h = new RMA_Test_Baslik_Harness();
+
+		$_SERVER['REQUEST_URI'] = '/menu-item/qa-test-urun-01-cigkofte/';
+		qrms_assert_true( $h->request_path_is_legacy_menu_rewrite(), 'eski CPT yolu' );
+
+		$_SERVER['REQUEST_URI'] = '/menu-category/corbalar/';
+		qrms_assert_true( $h->request_path_is_legacy_menu_rewrite(), 'kategori pretty permalink' );
+
+		$yonlendi               = false;
+		$_SERVER['REQUEST_URI'] = '/menu-item/foo/';
+		try {
+			$h->redirect_public_menu_content();
+		} catch ( QRMS_Test_Redirect $e ) {
+			$yonlendi = true;
+			qrms_assert_same( 'https://restoran.test/', $e->getMessage(), 'anasayfa menüsü' );
+		}
+		qrms_assert_true( $yonlendi, 'CPT yolu yönlendirildi' );
+
+		$yonlendi                              = false;
+		$_SERVER['REQUEST_URI']                = '/';
+		$GLOBALS['qrms_test']['is_tax']        = 'rma_allergen';
+		try {
+			$h->redirect_public_menu_content();
+		} catch ( QRMS_Test_Redirect $e ) {
+			$yonlendi = true;
+			qrms_assert_same( 'https://restoran.test/', $e->getMessage(), 'alerjen arşivi menüye' );
+		}
+		qrms_assert_true( $yonlendi, 'tax archive yönlendirildi' );
+	}
+);
+
+/* =====================================================================
+   RM-005 — Görselsiz ürün kartı/modalı üçüncü taraf placehold.co kullanmaz.
+   Slider kısa kodu bu görevin kapsamı dışındadır.
+===================================================================== */
+
+require_once QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-frontend.php';
+require_once QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-ajax.php';
+require_once QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/class-kampanya.php';
+require_once QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/class-servis-saati.php';
+require_once QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/class-ozel-rozet.php';
+
+if ( ! function_exists( 'get_post_thumbnail_id' ) ) {
+	/**
+	 * WordPress eşdeğeri: öne çıkan görsel ek ID'si `_thumbnail_id` metasından.
+	 *
+	 * @param int $post_id Ürün ID.
+	 * @return int
+	 */
+	function get_post_thumbnail_id( $post_id ) {
+		return (int) get_post_meta( $post_id, '_thumbnail_id', true );
+	}
+}
+
+if ( ! function_exists( 'get_the_post_thumbnail_url' ) ) {
+	/**
+	 * WordPress eşdeğeri: öne çıkan görsel URL'si; yoksa false.
+	 *
+	 * @param int    $post_id Ürün ID.
+	 * @param string $size    Boyut.
+	 * @return string|false
+	 */
+	function get_the_post_thumbnail_url( $post_id, $size = 'post-thumbnail' ) {
+		$thumb_id = get_post_thumbnail_id( $post_id );
+
+		if ( $thumb_id < 1 ) {
+			return false;
+		}
+
+		$url = wp_get_attachment_image_url( $thumb_id, $size );
+
+		return ( is_string( $url ) && '' !== $url ) ? $url : false;
+	}
+}
+
+if ( ! function_exists( 'get_post_field' ) ) {
+	/**
+	 * Test taklidi: $GLOBALS['qrms_test']['post_fields'][id][field].
+	 *
+	 * @param string $field   Alan.
+	 * @param int    $post_id Ürün ID.
+	 * @return string
+	 */
+	function get_post_field( $field, $post_id ) {
+		$post_id = (int) $post_id;
+
+		return isset( $GLOBALS['qrms_test']['post_fields'][ $post_id ][ $field ] )
+			? (string) $GLOBALS['qrms_test']['post_fields'][ $post_id ][ $field ]
+			: '';
+	}
+}
+
+if ( ! class_exists( 'RMA_Test_Product_Image_Harness' ) ) {
+	class RMA_Test_Product_Image_Harness {
+		use RMA_Frontend_Trait;
+		use RMA_Ajax_Trait;
+		use RMA_Helpers_Trait;
+
+		const RMA_CACHE_VERSION_OPTION = 'rma_cache_version';
+	}
+}
+
+/**
+ * Özel metot çıktısı.
+ *
+ * @param object $harness Nesne.
+ * @param string $method  Metot.
+ * @param array  $args    Argümanlar.
+ * @return mixed
+ */
+function qrms_invoke_rma_private( $harness, $method, array $args = array() ) {
+	$ref = new ReflectionMethod( $harness, $method );
+	$ref->setAccessible( true );
+
+	return $ref->invokeArgs( $harness, $args );
+}
+
+echo "\nRM-005 — Görselsiz ürün placeholder (placehold.co kaldırıldı)\n";
+
+qrms_test(
+	'ürün kartı ve detay AJAX kaynakları placehold.co kullanmaz; yerel placeholder basar',
+	function () {
+		$kart  = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-frontend.php' );
+		$ajax  = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-ajax.php' );
+		$css   = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/css/rma-frontend.css' );
+		$modal = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/css/rma-detail-modal.css' );
+		$js    = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/js/rma-frontend.js' );
+
+		$kart_govde = substr( $kart, strpos( $kart, 'function render_card' ) );
+		$kart_govde = substr( $kart_govde, 0, strpos( $kart_govde, "\n    }" ) + 6 );
+		$modal_govde = substr( $ajax, strpos( $ajax, 'function render_modal_image' ) );
+		$modal_govde = substr( $modal_govde, 0, strpos( $modal_govde, "\n    }" ) + 6 );
+
+		qrms_assert_false( false !== strpos( $kart_govde, 'placehold.co' ), 'kart render placehold.co yok' );
+		qrms_assert_false( false !== strpos( $modal_govde, 'placehold.co' ), 'modal render placehold.co yok' );
+		qrms_assert_false( false !== strpos( $kart, 'placehold.co' ), 'trait-frontend.php placehold.co yok' );
+		qrms_assert_false( false !== strpos( $ajax, 'placehold.co' ), 'trait-ajax.php placehold.co yok' );
+
+		qrms_assert_contains( 'rma-img-placeholder', $kart_govde, 'kart yerel placeholder' );
+		qrms_assert_contains( 'is-placeholder', $kart_govde, 'kart wrap sınıfı' );
+		qrms_assert_contains( 'class="rma-card-img"', $kart_govde, 'gerçek görsel sınıfı duruyor' );
+		qrms_assert_contains( 'rma-modal-img rma-img-placeholder', $modal_govde, 'modal yerel placeholder' );
+		qrms_assert_contains( 'class="rma-modal-img"', $modal_govde, 'gerçek modal görseli duruyor' );
+
+		qrms_assert_contains( '.rma-card-img-wrap.is-placeholder', $css, 'kart placeholder zemini' );
+		qrms_assert_contains( '.rma-img-placeholder::before', $css, 'kart placeholder işareti' );
+		qrms_assert_contains( 'min-height: 96px', $css, 'kart görsel alanı yüksekliği' );
+		qrms_assert_contains( '.rma-modal-img.rma-img-placeholder', $css, 'modal placeholder zemini' );
+		qrms_assert_contains( '.qrms-detail-inner .rma-modal-img.rma-img-placeholder', $modal, 'paylaşılan detay modal placeholder' );
+
+		qrms_assert_contains( "contains('rma-img-placeholder')", $js, 'JS placeholder erken çıkış' );
+		qrms_assert_contains( "querySelector('img.rma-modal-img')", $js, 'ısıtma yalnızca gerçek img' );
+	}
+);
+
+qrms_test(
+	'görseli olan ürün kartında gerçek thumbnail, görselsizde yerel placeholder çıkar',
+	function () {
+		$h = new RMA_Test_Product_Image_Harness();
+
+		$GLOBALS['qrms_test']['post_fields'][801] = array(
+			'post_title'   => 'Mercimek Çorbası',
+			'post_excerpt' => 'Sıcak servis',
+			'post_content' => '',
+		);
+		$GLOBALS['qrms_test']['post_fields'][802] = array(
+			'post_title'   => 'Ayran',
+			'post_excerpt' => 'Ev yapımı',
+			'post_content' => '',
+		);
+
+		update_post_meta( 801, '_thumbnail_id', 9001 );
+		$GLOBALS['qrms_test']['attachment_meta'][9001] = array(
+			'width'  => 220,
+			'height' => 220,
+			'file'   => 'mercimek.jpg',
+			'sizes'  => array(
+				'thumbnail' => array(
+					'file'   => 'mercimek-150x150.jpg',
+					'width'  => 150,
+					'height' => 150,
+				),
+			),
+		);
+
+		$gorselli   = qrms_invoke_rma_private( $h, 'render_card', array( 801 ) );
+		$gorselsiz  = qrms_invoke_rma_private( $h, 'render_card', array( 802 ) );
+
+		qrms_assert_contains( 'class="rma-card-img"', $gorselli, 'gerçek ürün görseli' );
+		qrms_assert_contains( '9001-thumbnail.jpg', $gorselli, 'thumbnail URL' );
+		qrms_assert_false( false !== strpos( $gorselli, 'placehold.co' ), 'gorselli kart placehold.co yok' );
+		qrms_assert_false( false !== strpos( $gorselli, 'is-placeholder' ), 'gorselli kartta placeholder sınıfı yok' );
+		qrms_assert_false( false !== strpos( $gorselli, 'rma-img-placeholder' ), 'gorselli kartta placeholder yok' );
+
+		qrms_assert_contains( 'rma-card-img-wrap is-placeholder', $gorselsiz, 'placeholder wrap' );
+		qrms_assert_contains( 'class="rma-img-placeholder"', $gorselsiz, 'yerel placeholder işareti' );
+		qrms_assert_false( false !== strpos( $gorselsiz, '<img' ), 'görselsiz kartta img yok' );
+		qrms_assert_false( false !== strpos( $gorselsiz, 'placehold.co' ), 'görselsiz kart placehold.co yok' );
+
+		update_post_meta( 802, '_thumbnail_id', 9002 );
+		$GLOBALS['qrms_test']['attachment_meta'][9002] = array(
+			'width'  => 220,
+			'height' => 220,
+			'file'   => 'ayran.jpg',
+			'sizes'  => array(
+				'thumbnail' => array(
+					'file'   => 'ayran-150x150.jpg',
+					'width'  => 150,
+					'height' => 150,
+				),
+			),
+		);
+		$sonradan = qrms_invoke_rma_private( $h, 'render_card', array( 802 ) );
+		qrms_assert_contains( '9002-thumbnail.jpg', $sonradan, 'sonradan eklenen gerçek görsel' );
+		qrms_assert_false( false !== strpos( $sonradan, 'is-placeholder' ), 'görsel eklenince placeholder kalkar' );
+
+		update_post_meta( 801, '_thumbnail_id', 0 );
+		$kaldirildi = qrms_invoke_rma_private( $h, 'render_card', array( 801 ) );
+		qrms_assert_contains( 'is-placeholder', $kaldirildi, 'görsel kalkınca placeholder döner' );
+		qrms_assert_false( false !== strpos( $kaldirildi, '9001-thumbnail.jpg' ), 'eski thumbnail URL yok' );
+	}
+);
+
+qrms_test(
+	'ürün detay modalında görselsiz ürün yerel placeholder, görselli ürün gerçek large görsel basar',
+	function () {
+		$h = new RMA_Test_Product_Image_Harness();
+
+		$html_bos = qrms_invoke_rma_private( $h, 'render_modal_image', array( 811, 'Ayran' ) );
+		qrms_assert_contains( 'rma-modal-img rma-img-placeholder', $html_bos, 'modal placeholder' );
+		qrms_assert_false( false !== strpos( $html_bos, '<img' ), 'görselsiz modalda img yok' );
+		qrms_assert_false( false !== strpos( $html_bos, 'placehold.co' ), 'modal placehold.co yok' );
+
+		update_post_meta( 812, '_thumbnail_id', 9010 );
+		$GLOBALS['qrms_test']['attachment_meta'][9010] = array(
+			'width'  => 1200,
+			'height' => 800,
+			'file'   => 'pide.jpg',
+			'sizes'  => array(
+				'large' => array(
+					'file'   => 'pide-1024x683.jpg',
+					'width'  => 1024,
+					'height' => 683,
+				),
+			),
+		);
+
+		$html_gorsel = qrms_invoke_rma_private( $h, 'render_modal_image', array( 812, 'Pide' ) );
+		qrms_assert_contains( 'class="rma-modal-img"', $html_gorsel, 'gerçek modal img' );
+		qrms_assert_contains( 'pide-1024x683.jpg', $html_gorsel, 'large görsel URL' );
+		qrms_assert_false( false !== strpos( $html_gorsel, 'rma-img-placeholder' ), 'gorselli modalda placeholder yok' );
+		qrms_assert_false( false !== strpos( $html_gorsel, 'placehold.co' ), 'gorselli modal placehold.co yok' );
+
+		update_post_meta( 812, '_thumbnail_id', 0 );
+		$html_kaldir = qrms_invoke_rma_private( $h, 'render_modal_image', array( 812, 'Pide' ) );
+		qrms_assert_contains( 'rma-img-placeholder', $html_kaldir, 'görsel kalkınca modal placeholder' );
 	}
 );

@@ -183,6 +183,11 @@ if ( ! function_exists( 'qmo_sepet_shortcode' ) ) {
 			qmo_asset_enqueue( 'qmo-sepet' );
 		}
 
+		$oturum = function_exists( 'qmo_oturum' ) ? qmo_oturum() : false;
+		$masa   = ( is_array( $oturum ) && ! empty( $oturum['masa'] ) )
+			? sanitize_title( (string) $oturum['masa'] )
+			: '';
+
 		wp_localize_script(
 			'qmo-sepet',
 			'qmoSepet',
@@ -193,6 +198,9 @@ if ( ! function_exists( 'qmo_sepet_shortcode' ) ) {
 				'ajaxUrl'   => admin_url( 'admin-ajax.php' ),
 				'nonce'     => wp_create_nonce( QMO_NONCE_ACTION ),
 				'analitik'  => class_exists( 'QRMS_Analitik' ),
+				// HMAC oturumundaki slug; sepet.js depolama anahtarı buna bağlı.
+				// Ham çerez httponly olduğu için JS buradan okur, çerezden değil.
+				'masa'      => $masa,
 				// Tüm diller: menü sayfası cache'lenebilir; tek dil ilk
 				// ziyaretçiyi kilitler (splash data-sp-* ile aynı gerekçe).
 				// Boşsa sepet.js iç tablosu yedek. Modül kapalıysa [].

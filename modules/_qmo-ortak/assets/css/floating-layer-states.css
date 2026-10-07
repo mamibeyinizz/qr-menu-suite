@@ -2,7 +2,12 @@
  * Sabit/floating ön yüz katmanları — tam ekran panel açıkken geçici gizleme.
  *
  * Durum mevcut JS sınıflarından okunur (.hfb-mobile-panel.is-open,
- * .rma-panel-sheet.open). DOM kaldırma veya JS state çoğaltması yok.
+ * .rma-panel-sheet.open, .rma-modal-overlay.open, .qrms-detail-overlay.open,
+ * .qmo-dr.qmo-on). DOM kaldırma veya JS state çoğaltması yok.
+ *
+ * Kök neden: chatbot FAB z-index 2147482800, sepet çekmecesi 2147482702,
+ * ürün modalı 999990. Üst katman gizlenmezse dar ekranda kapatma / sepete
+ * ekle / adet kontrollerinin üstüne biner.
  */
 
 body:has(.hfb-mobile-panel.is-open) .gemini-teaser,
@@ -31,6 +36,45 @@ body:has(.rma-panel-sheet.open) .hfb-footer__call-wrap:has(.qmo-cagri-bar),
 body:has(.rma-panel-sheet.open) .hfb-footer__call-wrap:has(.hfb-footer__call--warn),
 body:has(.rma-panel-sheet.open) .qmo-cagri-bar,
 body:has(.rma-panel-sheet.open) #qmo-sepet-root .qmo-dr .qmo-send {
+	visibility: hidden !important;
+	pointer-events: none !important;
+}
+
+body:has(.rma-modal-overlay.open) .gemini-teaser,
+body:has(.rma-modal-overlay.open) .gemini-chat-toggle-btn,
+body:has(.rma-modal-overlay.open) .gemini-chat-overlay.gemini-acik,
+body:has(.rma-modal-overlay.open) .qmo-bar,
+body:has(.rma-modal-overlay.open) .qmo-ov,
+body:has(.rma-modal-overlay.open) .qmo-dr,
+body:has(.rma-modal-overlay.open) .qmo-toast,
+body:has(.rma-modal-overlay.open) .hfb-footer__call-wrap:has(.qmo-cagri-bar),
+body:has(.rma-modal-overlay.open) .hfb-footer__call-wrap:has(.hfb-footer__call--warn),
+body:has(.rma-modal-overlay.open) .qmo-cagri-bar,
+body:has(.rma-modal-overlay.open) #qmo-sepet-root .qmo-dr .qmo-send {
+	visibility: hidden !important;
+	pointer-events: none !important;
+}
+
+body:has(.qrms-detail-overlay.open) .gemini-teaser,
+body:has(.qrms-detail-overlay.open) .gemini-chat-toggle-btn,
+body:has(.qrms-detail-overlay.open) .gemini-chat-overlay.gemini-acik,
+body:has(.qrms-detail-overlay.open) .qmo-bar,
+body:has(.qrms-detail-overlay.open) .qmo-ov,
+body:has(.qrms-detail-overlay.open) .qmo-dr,
+body:has(.qrms-detail-overlay.open) .qmo-toast,
+body:has(.qrms-detail-overlay.open) .hfb-footer__call-wrap:has(.qmo-cagri-bar),
+body:has(.qrms-detail-overlay.open) .hfb-footer__call-wrap:has(.hfb-footer__call--warn),
+body:has(.qrms-detail-overlay.open) .qmo-cagri-bar,
+body:has(.qrms-detail-overlay.open) #qmo-sepet-root .qmo-dr .qmo-send {
+	visibility: hidden !important;
+	pointer-events: none !important;
+}
+
+/* Sepet çekmecesi chatbot'un altındadır; çekmece açıkken FAB'ı gizle.
+   Çekmece / overlay / call bar kendi yerinde kalır. */
+body:has(.qmo-dr.qmo-on) .gemini-teaser,
+body:has(.qmo-dr.qmo-on) .gemini-chat-toggle-btn,
+body:has(.qmo-dr.qmo-on) .gemini-chat-overlay.gemini-acik {
 	visibility: hidden !important;
 	pointer-events: none !important;
 }

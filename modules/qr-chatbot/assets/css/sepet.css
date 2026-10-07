@@ -60,14 +60,18 @@
 	justify-content: space-between;
 	gap: 10px;
 	margin-top: 10px;
+	min-width: 0;
+	flex-wrap: wrap;
 }
 
 .qmo-md .qmo-add {
 	margin-top: 0;
-	flex: 1;
+	flex: 1 1 8rem;
+	min-width: 0;
 	justify-content: center;
 	padding: 12px 14px;
 	font-size: 14px;
+	min-height: 44px;
 }
 
 /* Alt sabit sepet çubuğu */
@@ -88,6 +92,9 @@
 	box-shadow: 0 8px 28px rgba(0, 0, 0, 0.5);
 	cursor: pointer;
 	transition: opacity 0.18s ease, transform 0.18s ease;
+	box-sizing: border-box;
+	min-width: 0;
+	max-width: calc(100% - 24px);
 }
 
 .qmo-bar.qmo-gizle {
@@ -107,6 +114,8 @@
 	color: var(--qmo-txt);
 	font-weight: 600;
 	font-size: 14px;
+	min-width: 0;
+	overflow-wrap: anywhere;
 }
 
 .qmo-bar-badge {
@@ -157,6 +166,8 @@
 	max-height: 82vh;
 	display: flex;
 	flex-direction: column;
+	box-sizing: border-box;
+	max-width: 100%;
 }
 
 .qmo-dr.qmo-on {
@@ -168,6 +179,8 @@
 	align-items: center;
 	justify-content: space-between;
 	padding: 16px 18px 10px;
+	gap: 8px;
+	min-width: 0;
 }
 
 .qmo-dr-h h3 {
@@ -175,6 +188,8 @@
 	color: var(--qmo-gold2);
 	font: 700 18px "Playfair Display", serif;
 	letter-spacing: 0.3px;
+	min-width: 0;
+	overflow-wrap: anywhere;
 }
 
 .qmo-x {
@@ -183,7 +198,13 @@
 	color: var(--qmo-mut);
 	font-size: 22px;
 	cursor: pointer;
-	padding: 4px 8px;
+	padding: 0;
+	width: 44px;
+	height: 44px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
 }
 
 .qmo-list {
@@ -204,7 +225,9 @@
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
+	flex-wrap: wrap;
 	gap: 8px;
+	min-width: 0;
 }
 
 .qmo-it-img {
@@ -220,8 +243,9 @@
 	color: var(--qmo-txt);
 	font-weight: 700;
 	font-size: 14px;
-	flex: 1;
+	flex: 1 1 8rem;
 	min-width: 0;
+	overflow-wrap: anywhere;
 }
 
 /* Porsiyon ve ekstra seçimi — ürün adının altındaki ikinci satır. */
@@ -232,6 +256,8 @@
 	font-weight: 500;
 	line-height: 1.4;
 	margin-top: 2px;
+	overflow-wrap: anywhere;
+	white-space: normal;
 }
 
 .qmo-it-fy {
@@ -239,6 +265,7 @@
 	font-weight: 700;
 	font-size: 13px;
 	white-space: nowrap;
+	flex: 0 0 auto;
 }
 
 .qmo-it-yak {
@@ -254,11 +281,12 @@
 	border: 1px solid rgba(201, 168, 76, 0.4);
 	border-radius: 9px;
 	overflow: hidden;
+	flex: 0 0 auto;
 }
 
 .qmo-st button {
-	width: 32px;
-	height: 30px;
+	width: 44px;
+	height: 44px;
 	background: rgba(201, 168, 76, 0.12);
 	border: 0;
 	color: var(--qmo-gold2);
@@ -281,7 +309,13 @@
 	color: #e5534b;
 	font-size: 16px;
 	cursor: pointer;
-	padding: 4px 6px;
+	padding: 0;
+	width: 44px;
+	height: 44px;
+	flex: 0 0 auto;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
 }
 
 .qmo-not {

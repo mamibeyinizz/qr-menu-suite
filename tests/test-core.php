@@ -926,7 +926,7 @@ qrms_test(
 		$php = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/trait-admin-pages.php' );
 
 		qrms_assert_contains( "'hub_title'  => 'Menü Görünümü'", $php, 'Görünüm netleşir' );
-		qrms_assert_contains( "__( 'Ürün Durumu', 'qrms' )", $php, 'hub → Ürün Durumu' );
+		qrms_assert_contains( "__( 'Tükenen Ürünler', 'qrms' )", $php, 'hub → Tükenen Ürünler' );
 		qrms_assert_contains( "'title'      => 'Tükenen Ürünler'", $php, 'alt sayfa → Tükenen Ürünler' );
 		qrms_assert_contains( "isset( \$page['hub_title'] ) ? \$page['hub_title'] : \$page['menu_title']", $php, 'hub başlığı alt sayfa adını bozmaz' );
 		qrms_assert_contains( "__( 'Tükenen Ürünler', 'qrms' )", $php, 'tükenen ürün özet kartı' );
@@ -2136,7 +2136,7 @@ qrms_test(
 		qrms_assert_contains( 'qrms-shell__account-logout', $shell, 'çıkış bağlantısı' );
 		qrms_assert_contains( 'shell_logout_url', $auth, 'shell logout URL üretici' );
 		qrms_assert_contains( 'wp_logout_url', $auth, 'WordPress logout mekanizması' );
-		qrms_assert_contains( 'QRMS_Login::login_url', $auth, 'çıkış sonrası QRMS giriş hedefi' );
+		qrms_assert_contains( 'QRMS_Login::is_active()', $auth, 'çıkış yalnızca özel giriş yolunda login\'e döner' );
 		qrms_assert_contains( 'yalniz_servis_mi() ) ) :', $shell, 'service-only WordPress Yönetimi kapısı korunur' );
 		qrms_assert_contains( 'render_account_control', $shell, 'service-only dahil hesap kontrolü' );
 		qrms_assert_contains( 'closeAccountMenu', $js, 'hesap menüsü kapanışı' );

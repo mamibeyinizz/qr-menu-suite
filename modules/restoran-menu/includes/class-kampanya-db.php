@@ -218,6 +218,18 @@ class RMA_Kampanya_DB {
         // değişince eski liste taşınmasın diye burada temizlenir.
         $idler = ( 'all' === $kapsam ) ? array() : self::id_listesi_temizle( $ham['scope_ids'] ?? '' );
 
+        $starts_at = self::datetime_local_to_mysql( $ham['starts_at'] ?? '' );
+        $ends_at   = self::datetime_local_to_mysql( $ham['ends_at'] ?? '' );
+
+        // Geçersiz tarih girdisi (dolu ama çözülemedi) sessizce yutulmaz — kayıt reddedilir.
+        $starts_ham = trim( (string) ( $ham['starts_at'] ?? '' ) );
+        $ends_ham   = trim( (string) ( $ham['ends_at'] ?? '' ) );
+
+        if ( ( '' !== $starts_ham && null === $starts_at ) || ( '' !== $ends_ham && null === $ends_at ) ) {
+            $starts_at = false;
+            $ends_at   = false;
+        }
+
         return array(
             'title'          => '' !== $baslik ? $baslik : 'Fiyat Kampanyası',
             'calc_type'      => $tur,
@@ -227,7 +239,119 @@ class RMA_Kampanya_DB {
             'scope_type'     => $kapsam,
             'scope_ids'      => implode( ',', $idler ),
             'show_old_price' => self::bayrak( $ham['show_old_price'] ?? 0 ),
+            'starts_at'      => $starts_at,
+            'ends_at'        => $ends_at,
         );
+    }
+
+    /**
+     * datetime-local girdisini MySQL datetime'a çevirir (site duvar saati).
+     *
+     * Boş girdi null döner. `aktif_mi()` ile uyum için damga() aynı UTC-etiketli
+     * strtotime desenini kullanır — WordPress `current_time( 'timestamp' )` ile
+     * tutarlı kalır.
+     *
+     * @param string $raw 'Y-m-d\TH:i' biçimi.
+     * @return string|null MySQL datetime ya da null (boş).
+     */
+    public static function datetime_local_to_mysql( $raw ) {
+        $raw = trim( (string) $raw );
+
+        if ( '' === $raw ) {
+            return null;
+        }
+
+        if ( ! preg_match( '/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/', $raw ) ) {
+            return null;
+        }
+
+        $normalized = str_replace( 'T', ' ', $raw ) . ':00';
+        $ts         = strtotime( $normalized . ' UTC' );
+
+        if ( false === $ts ) {
+            return null;
+        }
+
+        return gmdate( 'Y-m-d H:i:s', $ts );
+    }
+
+    /**
+     * MySQL datetime'ı datetime-local input değerine çevirir.
+     *
+     * @param string|null $mysql MySQL datetime.
+     * @return string Boş veya 'Y-m-d\TH:i'.
+     */
+    public static function mysql_to_datetime_local( $mysql ) {
+        $mysql = trim( (string) $mysql );
+
+        if ( '' === $mysql || '0000-00-00 00:00:00' === $mysql ) {
+            return '';
+        }
+
+        $ts = strtotime( $mysql . ' UTC' );
+
+        if ( false === $ts ) {
+            return '';
+        }
+
+        return gmdate( 'Y-m-d\TH:i', $ts );
+    }
+
+    /**
+     * Başlangıç/bitiş tarih çiftini doğrular.
+     *
+     * @param string|null|false $starts_at MySQL datetime, null (sınırsız) veya false (geçersiz girdi).
+     * @param string|null|false $ends_at   MySQL datetime, null (sınırsız) veya false (geçersiz girdi).
+     * @return string Hata yoksa boş dize.
+     */
+    public static function tarih_araligi_hatasi( $starts_at, $ends_at ) {
+        if ( false === $starts_at || false === $ends_at ) {
+            return 'Tarih alanları geçerli bir tarih ve saat içermelidir.';
+        }
+
+        $basla = self::damga( $starts_at );
+        $bitis = self::damga( $ends_at );
+
+        if ( null !== $basla && null !== $bitis ) {
+            if ( $bitis < $basla ) {
+                return 'Bitiş tarihi başlangıç tarihinden önce olamaz.';
+            }
+
+            if ( $bitis === $basla ) {
+                return 'Başlangıç ve bitiş aynı anda olamaz. Bitiş, başlangıçtan sonra olmalıdır.';
+            }
+        }
+
+        return '';
+    }
+
+    /**
+     * Kampanya tarih aralığının okunur özet metni.
+     *
+     * @param array|object $kampanya Kampanya kaydı.
+     * @return string
+     */
+    public static function tarih_araligi_metni( $kampanya ) {
+        $k       = (array) $kampanya;
+        $basla   = trim( (string) ( $k['starts_at'] ?? '' ) );
+        $bitis   = trim( (string) ( $k['ends_at'] ?? '' ) );
+        $bos     = static function ( $t ) {
+            return '' === $t || '0000-00-00 00:00:00' === $t;
+        };
+
+        if ( $bos( $basla ) && $bos( $bitis ) ) {
+            return 'Süresiz';
+        }
+
+        if ( ! $bos( $basla ) && $bos( $bitis ) ) {
+            return $basla . ' tarihinden itibaren';
+        }
+
+        if ( $bos( $basla ) && ! $bos( $bitis ) ) {
+            return $bitis . ' tarihine kadar';
+        }
+
+        return $basla . ' — ' . $bitis;
     }
 
     /**
@@ -690,6 +814,7 @@ class RMA_Kampanya_DB {
 
         if ( $id > 0 && self::getir( $id ) ) {
             $wpdb->update( $tablo, $veri, array( 'id' => $id ), $format, array( '%d' ) );
+            self::tarihleri_yaz( $id, $ayarlar );
 
             // Aktif kampanyanın kuralı değişmiş olabilir; önbellek satırın
             // kendisini sakladığı için burada da geçersizlenmeli.
@@ -707,7 +832,51 @@ class RMA_Kampanya_DB {
             return 0;
         }
 
-        return (int) $wpdb->insert_id;
+        $yeni_id = (int) $wpdb->insert_id;
+        self::tarihleri_yaz( $yeni_id, $ayarlar );
+
+        return $yeni_id;
+    }
+
+    /**
+     * starts_at / ends_at sütunlarını yazır (NULL destekli).
+     *
+     * @param int   $id      Kampanya ID.
+     * @param array $ayarlar ayarlari_temizle() çıktısı (starts_at, ends_at anahtarları).
+     * @return void
+     */
+    public static function tarihleri_yaz( $id, array $ayarlar ) {
+        global $wpdb;
+
+        $id = (int) $id;
+
+        if ( $id <= 0 ) {
+            return;
+        }
+
+        $tablo = self::tablo();
+
+        foreach ( array( 'starts_at', 'ends_at' ) as $alan ) {
+            if ( ! array_key_exists( $alan, $ayarlar ) ) {
+                continue;
+            }
+
+            $deger = $ayarlar[ $alan ];
+
+            if ( null === $deger || false === $deger ) {
+                // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- tablo/sütun sabit.
+                $wpdb->query( $wpdb->prepare( "UPDATE {$tablo} SET {$alan} = NULL WHERE id = %d", $id ) );
+                continue;
+            }
+
+            $wpdb->update(
+                $tablo,
+                array( $alan => (string) $deger ),
+                array( 'id' => $id ),
+                array( '%s' ),
+                array( '%d' )
+            );
+        }
     }
 
     /**

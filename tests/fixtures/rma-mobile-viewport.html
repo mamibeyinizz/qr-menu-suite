@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QR Restoran Menü — mobil viewport fixture</title>
+<style>
+:root {
+    --rma-bg: #0a0a0c;
+    --rma-card: #16161a;
+    --rma-text: #f5f0e8;
+    --rma-border: #2a2a30;
+    --rma-accent: #c9a84c;
+    --rma-accent-dim: rgba(201,168,76,.4);
+    --rma-desc: #9a9a94;
+    --rma-toolbar-bg: #0a0a0c;
+    --rma-modal-bg: #141417;
+    --rma-filter-btn-border: #2a2a30;
+    --rma-filter-btn-text: #9a9a94;
+    --rma-radius: 14px;
+    --rma-gold-glow: 0 0 18px rgba(201,168,76,.35);
+    --rma-shadow: 0 8px 32px rgba(0,0,0,.45);
+    --rma-font-display: system-ui, sans-serif;
+    --rma-font-body: system-ui, sans-serif;
+    --rma-font-price: system-ui, sans-serif;
+    --rma-body-size: 0.95rem;
+    --rma-body-weight: 600;
+    --rma-body-color: #f5f0e8;
+    --rma-desc-size: 0.78rem;
+    --rma-desc-color: #9a9a94;
+    --rma-price-size: 0.95rem;
+    --rma-price-color: #c9a84c;
+    --rma-heading-size: 1.05rem;
+    --rma-heading-weight: 700;
+    --rma-heading-style: normal;
+    --rma-heading-color: #f5f0e8;
+    --rma-modal-title-size: 1.32rem;
+    --rma-nav-bg: #0a0a0c;
+    --rma-nav-text: #9a9a94;
+    --rma-nav-active: #c9a84c;
+    --rma-nav-border: #2a2a30;
+    --rma-nav-pt: 8px;
+    --rma-nav-pb: 8px;
+    --rma-nav-btn-ph: 12px;
+    --rma-nav-btn-pv: 8px;
+    --rma-nav-btn-gap: 4px;
+    --rma-nav-font-size: 0.86rem;
+    --rma-nav-font-weight: 600;
+    --rma-nav-h: 52px;
+}
+html, body { margin: 0; background: #0a0a0c; }
+body { font-family: system-ui, sans-serif; }
+</style>
+<link rel="stylesheet" href="../../modules/_qmo-ortak/assets/css/floating-layer-states.css">
+<link rel="stylesheet" href="../../modules/restoran-menu/assets/css/rma-frontend.css">
+<link rel="stylesheet" href="../../modules/restoran-menu/assets/css/rma-nav.css">
+<link rel="stylesheet" href="../../modules/qr-chatbot/assets/css/sepet.css">
+<link rel="stylesheet" href="../../modules/qr-chatbot/assets/css/chatbot.css">
+</head>
+<body>
+<div class="rma-wrap">
+    <div class="rma-toolbar">
+        <div class="rma-search-wrap">
+            <svg class="rma-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="rma-search" class="rma-search-input" placeholder="Ürün ara…" aria-label="Menüde ara">
+        </div>
+        <button id="rma-filter-trigger" class="rma-filter-trigger" type="button" aria-label="Filtrele ve Sırala">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+            <span class="rma-filter-trigger-label">Filtrele</span>
+            <span class="rma-filter-badge visible">2</span>
+        </button>
+    </div>
+    <div class="rma-nav-wrapper">
+        <nav class="rma-nav" aria-label="Menü kategorileri">
+            <button class="rma-nav-btn rma-suggestions-btn" type="button">Öneriler</button>
+            <button class="rma-nav-btn" type="button">Başlangıçlar</button>
+            <button class="rma-nav-btn" type="button">Ana Yemekler</button>
+            <button class="rma-nav-btn" type="button">Tatlılar ve İçecekler</button>
+        </nav>
+    </div>
+    <div class="rma-content">
+        <h2 class="rma-section-title">Ana Yemekler</h2>
+        <div class="rma-grid">
+            <article class="rma-card">
+                <div class="rma-card-img-wrap">
+                    <div class="rma-card-badges"><span class="rma-badge campaign">%10</span></div>
+                </div>
+                <div class="rma-card-body">
+                    <h3 class="rma-card-title">Adana Kebap Özel Uzun İsimli Kampanyalı Ürün</h3>
+                    <p class="rma-card-desc">Acılı kıyma, köz biber, lavaş</p>
+                    <div class="rma-card-footer">
+                        <div class="rma-card-price-group">
+                            <span class="rma-price-old">320,00 ₺</span>
+                            <span class="rma-price-new">288,00 ₺</span>
+                            <span class="rma-card-prep">15 dk</span>
+                        </div>
+                        <span class="rma-card-arrow">›</span>
+                    </div>
+                </div>
+            </article>
+            <article class="rma-card">
+                <div class="rma-card-img-wrap"></div>
+                <div class="rma-card-body">
+                    <h3 class="rma-card-title">Çiğköfte</h3>
+                    <div class="rma-card-footer">
+                        <div class="rma-card-price-group"><span class="rma-card-price">150,00 ₺</span></div>
+                        <span class="rma-card-arrow">›</span>
+                    </div>
+                </div>
+            </article>
+        </div>
+    </div>
+</div>
+
+<div class="rma-panel-overlay" id="rma-panel-overlay"></div>
+<div class="rma-panel-sheet" id="rma-panel-sheet" role="dialog">
+    <div class="rma-panel-header">
+        <div class="rma-panel-title"><span class="rma-panel-title-dot"></span>Filtrele ve Sırala</div>
+        <button class="rma-panel-close" type="button" aria-label="Kapat">✕</button>
+    </div>
+    <div class="rma-panel-body">
+        <div class="rma-filter-cards">
+            <label class="rma-filter-card"><input type="checkbox"><span class="rma-filter-card-name">Glütensiz</span></label>
+            <label class="rma-filter-card"><input type="checkbox"><span class="rma-filter-card-name">Vejetaryen</span></label>
+            <label class="rma-filter-card"><input type="checkbox"><span class="rma-filter-card-name">Vegan</span></label>
+            <label class="rma-filter-card"><input type="checkbox"><span class="rma-filter-card-name">Laktozsuz</span></label>
+        </div>
+    </div>
+    <div class="rma-panel-footer">
+        <button class="rma-panel-btn-reset" type="button">Sıfırla</button>
+        <button class="rma-panel-btn-apply" type="button">Uygula</button>
+    </div>
+</div>
+
+<div class="rma-modal-overlay" id="rma-modal">
+    <div class="rma-modal-box">
+        <button class="rma-modal-close" type="button" aria-label="Kapat">✕</button>
+        <div class="rma-modal-img-wrap"><div class="rma-modal-img" style="background:#222;height:230px;"></div></div>
+        <div class="rma-modal-body">
+            <h2 class="rma-modal-title">Adana Kebap Özel Uzun İsimli Kampanyalı Ürün Supercalifragilistic</h2>
+            <div class="rma-modal-price"><span class="rma-price-old">320,00 ₺</span><span class="rma-price-new">288,00 ₺</span></div>
+            <div class="rma-porsiyon">
+                <div class="rma-porsiyon-liste">
+                    <label class="rma-porsiyon-sec"><input type="radio" name="p" checked><span class="rma-porsiyon-ad">Standart</span></label>
+                    <label class="rma-porsiyon-sec"><input type="radio" name="p"><span class="rma-porsiyon-ad">Büyük</span><span class="rma-porsiyon-fark">+40 ₺</span></label>
+                </div>
+            </div>
+            <div class="rma-ekstra">
+                <div class="rma-ekstra-govde">
+                    <label class="rma-ekstra-sec"><input type="checkbox"><span class="rma-ekstra-ad">Ketçap ve ekstra uzun sos adı</span><span class="rma-ekstra-fiyat">+5 ₺</span></label>
+                </div>
+            </div>
+            <div class="qmo-md">
+                <div class="qmo-md-row">
+                    <div class="qmo-st"><button type="button">−</button><span>1</span><button type="button">+</button></div>
+                    <button type="button" class="qmo-add">+ Sepet</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="qmo-sepet-root" id="qmo-sepet-root">
+    <div class="qmo-bar qmo-on" id="qmo-bar">
+        <div class="qmo-bar-l"><span class="qmo-bar-badge">2</span> ürün</div>
+        <div class="qmo-bar-r">438,00 ₺</div>
+    </div>
+    <div class="qmo-ov" id="qmo-ov"></div>
+    <div class="qmo-dr" id="qmo-dr">
+        <div class="qmo-dr-h">
+            <h3>Sepetiniz</h3>
+            <button class="qmo-x" type="button" aria-label="Kapat">×</button>
+        </div>
+        <div class="qmo-list">
+            <div class="qmo-it">
+                <div class="qmo-it-top">
+                    <div class="qmo-it-ad">Adana Kebap Özel Uzun İsimli Kampanyalı Ürün<br><small class="qmo-it-secim">Büyük · Ekstra: Ketçap</small></div>
+                    <div class="qmo-st"><button type="button">−</button><span>2</span><button type="button">+</button></div>
+                    <div class="qmo-it-fy">576,00 ₺</div>
+                    <button type="button" class="qmo-del" aria-label="Sil">🗑</button>
+                </div>
+            </div>
+        </div>
+        <div class="qmo-ft">
+            <div class="qmo-tot"><b>Toplam</b><span>576,00 ₺</span></div>
+            <button type="button" class="qmo-send">Siparişi Gönder</button>
+        </div>
+    </div>
+</div>
+
+<div class="gemini-shortcode-container gm-device-phone">
+    <button type="button" class="gemini-chat-toggle-btn" aria-label="Menü asistanını aç"></button>
+</div>
+<div class="hfb-footer__call-wrap">
+    <div class="hfb-footer__call qmo-cagri-bar">
+        <button type="button" class="hfb-footer__call-btn hfb-footer__call-btn--primary" style="min-height:44px;flex:1;">Garson Çağır</button>
+        <button type="button" class="hfb-footer__call-btn" style="min-height:44px;flex:1;">Hesap İste</button>
+    </div>
+</div>
+
+<script>
+function measure() {
+    var w = window.innerWidth;
+    var offenders = [];
+    document.querySelectorAll('body *').forEach(function (el) {
+        var r = el.getBoundingClientRect();
+        if (r.width > w + 1) {
+            offenders.push(el.className || el.tagName);
+        }
+    });
+    var pageOverflow = document.documentElement.scrollWidth > document.documentElement.clientWidth + 1;
+    var report = {
+        innerWidth: w,
+        innerHeight: window.innerHeight,
+        scrollWidth: document.documentElement.scrollWidth,
+        clientWidth: document.documentElement.clientWidth,
+        pageOverflow: pageOverflow,
+        overflowing: offenders.slice(0, 12),
+        closeW: (document.querySelector('.rma-modal-close') || {}).offsetWidth || 0,
+        stepperBtn: (document.querySelector('.qmo-st button') || {}).offsetWidth || 0,
+        filterW: (document.querySelector('.rma-filter-trigger') || {}).offsetWidth || 0,
+        searchW: (document.querySelector('.rma-search-input') || {}).offsetWidth || 0
+    };
+    document.body.setAttribute('data-qa', JSON.stringify(report));
+    var pre = document.getElementById('qa-report');
+    if (pre) pre.textContent = JSON.stringify(report, null, 2);
+}
+window.addEventListener('load', measure);
+</script>
+<pre id="qa-report" style="position:fixed;left:0;bottom:0;z-index:9;max-height:30vh;overflow:auto;background:#111;color:#c9a84c;font:11px/1.3 monospace;padding:8px;margin:0;width:100%;box-sizing:border-box;"></pre>
+</body>
+</html>

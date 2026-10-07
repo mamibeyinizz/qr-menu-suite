@@ -466,7 +466,7 @@ JSCODE;
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
             </svg>
-            <?php echo esc_html( $this->t( 'Filtrele' ) ); ?>
+            <span class="rma-filter-trigger-label"><?php echo esc_html( $this->t( 'Filtrele' ) ); ?></span>
             <span id="rma-filter-badge" class="rma-filter-badge" aria-live="polite">0</span>
         </button>
     </div>
@@ -640,7 +640,7 @@ JSCODE;
     }
 
     private function render_card( $id ) {
-        $img   = get_the_post_thumbnail_url( $id, 'thumbnail' ) ?: 'https://placehold.co/220x220/111111/c9a84c?text=%E2%97%86';
+        $img = get_the_post_thumbnail_url( $id, 'thumbnail' );
 
         // Ham post alanları kullanılıyor: CSV'deki title/excerpt/content
         // sütunlarıyla birebir aynı metin, dolayısıyla çeviri eşleşmesi kesin.
@@ -701,11 +701,22 @@ JSCODE;
         // birebir aynısı. Bkz. class-kampanya.php.
         $price_inner = RMA_Kampanya::fiyat_html( $id, [ 'sinif' => 'rma-card-price' ] );
 
+        $has_img = is_string( $img ) && '' !== $img;
+        if ( $has_img ) {
+            $img_html = sprintf(
+                '<img src="%s" class="rma-card-img" alt="%s" loading="lazy" decoding="async" width="220" height="220">',
+                esc_url( $img ),
+                esc_attr( $title )
+            );
+        } else {
+            $img_html = '<span class="rma-img-placeholder" aria-hidden="true"></span>';
+        }
+
         return sprintf(
             '<div class="%s" data-id="%d"%s tabindex="0" role="button" aria-label="%s">
-                <div class="rma-card-img-wrap">
+                <div class="rma-card-img-wrap%s">
                     <div class="rma-card-badges">%s</div>
-                    <img src="%s" class="rma-card-img" alt="%s" loading="lazy" decoding="async" width="220" height="220">
+                    %s
                     %s
                 </div>
                 <div class="rma-card-body">
@@ -724,9 +735,9 @@ JSCODE;
             $id,
             ( $tukendi ? ' data-tukendi="1"' : '' ) . ( $servis_disi ? ' data-servis-disi="1"' : '' ),
             esc_attr( $aria_label ),
+            $has_img ? '' : ' is-placeholder',
             $badges,
-            esc_url( $img ),
-            esc_attr( $title ),
+            $img_html,
             $tukendi_rozet,
             esc_html( $title ),
             esc_html( $desc ),

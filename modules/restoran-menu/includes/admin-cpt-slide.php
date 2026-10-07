@@ -8,7 +8,19 @@ class QMO_Slide_CPT {
     const NONCE_FIELD  = 'qmo_slide_nonce';
 
     public static function init() {
-        add_action( 'init', [ __CLASS__, 'register_post_type' ] );
+        // init() `init` kancasının içinden çağrılır (QMO_One_Cikan_Slider::boot,
+        // öncelik 20). O noktada `init`in varsayılan 10. önceliği geçmiş
+        // olduğundan yeni eklenen bir 10'luk kanca bu istekte artık çalışmaz;
+        // CPT doğrudan kaydedilir. Daha erken bir çağrı olursa normal kanca
+        // yolu kullanılır. Kampanya banner CPT'si (admin-cpt-banner.php) aynı
+        // nedenle aynı deseni kullanır — aksi halde qmo_slide hiç register
+        // olmaz, admin UI ve [qmo_one_cikan_slider] pratikte ölür (RM-001/002).
+        if ( did_action( 'init' ) ) {
+            self::register_post_type();
+        } else {
+            add_action( 'init', [ __CLASS__, 'register_post_type' ] );
+        }
+
         add_action( 'add_meta_boxes', [ __CLASS__, 'add_meta_boxes' ] );
         add_action( 'save_post_qmo_slide', [ __CLASS__, 'save_meta' ] );
         add_action( 'admin_enqueue_scripts', [ __CLASS__, 'admin_scripts' ] );
