@@ -1402,6 +1402,12 @@ qrms_test(
 		qrms_assert_contains( 'function withSessionParams(href)', $js, 'masa/lang taşıma yardımcı fonksiyonu' );
 		qrms_assert_contains( "params.set(k, cur.get(k))", $js, 'eksik masa/lang eklenir' );
 		qrms_assert_contains( 'window.location.href = href;', $js, 'masa taşınan hedefe gerçek navigasyon' );
+		qrms_assert_contains( 'function processAutoAction()', $js, 'auto-redirect fonksiyonu' );
+		qrms_assert_contains(
+			'var dest = withSessionParams(ceviri.applyToUrl(checkOverlay.getAttribute(\'data-redirect-url\') || redirectUrl));',
+			$js,
+			'auto-redirect CTA ile aynı withSessionParams yolunu kullanır'
+		);
 	}
 );
 
