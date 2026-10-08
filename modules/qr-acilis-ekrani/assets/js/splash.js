@@ -527,7 +527,7 @@
             var checkOverlay = getOverlay();
             if (!checkOverlay) return;
 
-            var dest = ceviri.applyToUrl(checkOverlay.getAttribute('data-redirect-url') || redirectUrl);
+            var dest = withSessionParams(ceviri.applyToUrl(checkOverlay.getAttribute('data-redirect-url') || redirectUrl));
             var currentPath = window.location.href.split('#')[0].replace(/\/$/, '');
             var targetPath = dest.split('#')[0].replace(/\/$/, '');
 
