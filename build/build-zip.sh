@@ -65,6 +65,8 @@ EXCLUDES=(
     ':(exclude)scripts/**'
     ':(exclude)build'
     ':(exclude)build/**'
+    ':(exclude)README.md'
+    ':(exclude)**/*.sh'
     ':(exclude).github'
     ':(exclude).github/**'
     ':(exclude).git*'

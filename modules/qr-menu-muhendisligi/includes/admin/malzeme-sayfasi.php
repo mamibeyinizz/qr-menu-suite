@@ -49,7 +49,7 @@ function qrms_mm_malzeme_sayfasi() {
 		<?php endif; ?>
 
 		<p class="qrms-muted">
-			<?php esc_html_e( 'Fiyatı girilmeyen malzeme reçete hesabında sıfır sayılır. Birimi seçtiğinizde reçetede hangi ölçüyle yazacağınız yanında görünür.', 'qrms' ); ?>
+			<?php esc_html_e( 'Fiyatı boş bırakılan malzemeyi içeren reçeteli ürünün maliyeti eksik sayılır ve ürün matriste yer almaz; gerçekten ücretsiz bir malzeme için 0 yazın. Birimi seçtiğinizde reçetede hangi ölçüyle yazacağınız yanında görünür.', 'qrms' ); ?>
 		</p>
 
 		<?php if ( empty( $malzemeler ) ) : ?>
