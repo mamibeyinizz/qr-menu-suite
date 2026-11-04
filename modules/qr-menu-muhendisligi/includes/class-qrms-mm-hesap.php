@@ -170,7 +170,9 @@ class QRMS_MM_Hesap {
 			if ( null === $fiyat || '' === $fiyat || (float) $fiyat <= 0 ) {
 				$sebep = __( 'Fiyat girilmemiş', 'qrms' );
 			} elseif ( null === $maliyet || '' === $maliyet ) {
-				$sebep = __( 'Maliyet girilmemiş', 'qrms' );
+				$sebep = ! empty( $satir['recete_eksik'] )
+					? __( 'Reçetede fiyatı eksik malzeme var', 'qrms' )
+					: __( 'Maliyet girilmemiş', 'qrms' );
 			}
 
 			if ( '' !== $sebep ) {

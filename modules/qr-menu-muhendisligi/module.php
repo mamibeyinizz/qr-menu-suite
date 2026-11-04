@@ -48,6 +48,9 @@ function qrms_module_qr_menu_muhendisligi_init() {
 	// Malzeme fiyatı toplu güncellemesi sınırı aştığında arka plana atılır.
 	add_action( 'qrms_mm_recete_yenile', array( 'QRMS_MM_Maliyet', 'receteleri_yenile' ) );
 
+	// Sürüm yükseltmesi: reçete maliyetleri bir kez, cron'da ve parçalı yeniden hesaplanır.
+	add_action( 'admin_init', array( 'QRMS_MM_Maliyet', 'yukselt' ) );
+
 	if ( ! is_admin() ) {
 		return;
 	}

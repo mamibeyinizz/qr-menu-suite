@@ -122,6 +122,7 @@ class QRMS_MM_Rapor {
 				'category_name' => $urun['category_name'],
 				'fiyat'         => $urun['fiyat'],
 				'maliyet'       => $urun['maliyet'],
+				'recete_eksik'  => $urun['recete_eksik'],
 				'satis'         => $say['satis'],
 				'sepet'         => $say['sepet'],
 				'tik'           => $say['tik'],
@@ -179,6 +180,7 @@ class QRMS_MM_Rapor {
 				'category_name' => $kat,
 				'fiyat'         => QRMS_MM_Maliyet::fiyat( $post->ID ),
 				'maliyet'       => QRMS_MM_Maliyet::maliyet( $post->ID ),
+				'recete_eksik'  => QRMS_MM_Maliyet::recete_eksik( $post->ID ),
 			);
 		}
 
@@ -189,6 +191,11 @@ class QRMS_MM_Rapor {
 
 	/**
 	 * Aralıktaki olay sayıları — TEK toplu sorgu.
+	 *
+	 * İptal tanımı class-db.php (recommendation_attribution_hesapla) ile
+	 * aynıdır: aynı order_id için `order_cancelled` olayı varsa o siparişin
+	 * `order_sent` satırları satışa yazılmaz. İptal olayı sipariş bazlıdır
+	 * (satır bazlı kısmi iptal yazılmıyor).
 	 *
 	 * @param int $gun Kaç günlük aralık.
 	 * @return array<int,array{satis:int,sepet:int,tik:int}>
@@ -210,10 +217,15 @@ class QRMS_MM_Rapor {
 				        SUM(CASE WHEN event_type = 'order_sent'    THEN qty ELSE 0 END) AS satis,
 				        SUM(CASE WHEN event_type = 'cart_add'      THEN 1   ELSE 0 END) AS sepet,
 				        SUM(CASE WHEN event_type = 'product_click' THEN 1   ELSE 0 END) AS tik
-				   FROM {$tablo}
+				   FROM {$tablo} t
 				  WHERE created_at >= %s
 				    AND item_id > 0
 				    AND event_type IN ('order_sent', 'cart_add', 'product_click')
+				    AND ( event_type <> 'order_sent' OR NOT EXISTS (
+				            SELECT 1 FROM {$tablo} c
+				             WHERE c.event_type = 'order_cancelled'
+				               AND c.order_id = t.order_id
+				        ) )
 				  GROUP BY item_id",
 				$baslangic
 			),

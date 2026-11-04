@@ -63,6 +63,17 @@ class QRMS_MM_Maliyet {
 	/** Sayfalama imleci (option). */
 	const OPTION_RECETE_YENILE_OFFSET = 'qrms_mm_recete_yenile_offset';
 
+	/** Reçete maliyetlerinin yeniden hesaplandığı son şema sürümü (option). */
+	const OPTION_RECETE_SURUM = 'qrms_mm_recete_surum';
+
+	/**
+	 * Güncel reçete hesap sürümü.
+	 *
+	 * 2: fiyatsız malzeme 0 TL sayılmaz (maliyet meta'sı silinir); bilinçli
+	 * 0 TL fiyat saklanır. Mevcut reçeteli ürünler bir kez yeniden hesaplanır.
+	 */
+	const RECETE_SURUM = 2;
+
 	/**
 	 * Malzeme taksonomisinin adı.
 	 *
@@ -200,9 +211,11 @@ class QRMS_MM_Maliyet {
 			$birim = isset( $birimler[ $birim ] ) ? $birim : 'kg';
 			$fiyat = self::sayi( isset( $satir['fiyat'] ) ? $satir['fiyat'] : 0 );
 
-			// Fiyatı sıfır olan malzeme hiç saklanmaz: option şişmesin ve
-			// "girilmemiş" ile "bedava" ayırt edilebilsin.
-			if ( $fiyat <= 0 ) {
+			// Boş bırakılan alan saklanmaz ("girilmemiş"); bilinçli yazılan 0
+			// saklanır ("bedava"). Negatif fiyat geçersizdir.
+			$ham_fiyat = isset( $satir['fiyat'] ) ? trim( (string) $satir['fiyat'] ) : '';
+
+			if ( '' === $ham_fiyat || $fiyat < 0 ) {
 				continue;
 			}
 
@@ -257,7 +270,7 @@ class QRMS_MM_Maliyet {
 	 * @param array $recete    Temizlenmiş reçete satırları.
 	 * @param array $fiyatlar  Malzeme fiyatları (term_id => [birim, fiyat]).
 	 * @param int   $fire      Fire yüzdesi (0–50).
-	 * @return float
+	 * @return float|null Fiyatı girilmemiş malzeme varsa null (0 TL sayılmaz).
 	 */
 	public static function recete_maliyeti( array $recete, array $fiyatlar, $fire = 0 ) {
 		$birimler = self::birimler();
@@ -267,7 +280,7 @@ class QRMS_MM_Maliyet {
 			$term_id = isset( $satir['term_id'] ) ? (int) $satir['term_id'] : 0;
 
 			if ( ! isset( $fiyatlar[ $term_id ] ) ) {
-				continue; // Fiyatı girilmemiş malzeme sıfır sayılır.
+				return null; // Fiyatı girilmemiş malzeme: maliyet hesaplanamaz.
 			}
 
 			$birim = $fiyatlar[ $term_id ]['birim'];
@@ -303,6 +316,16 @@ class QRMS_MM_Maliyet {
 		}
 
 		return (float) $ham;
+	}
+
+	/**
+	 * Reçeteli ürünün maliyeti eksik malzeme fiyatı yüzünden mi hesaplanamadı?
+	 *
+	 * @param int $post_id Ürün.
+	 * @return bool
+	 */
+	public static function recete_eksik( $post_id ) {
+		return 'recete' === self::kaynak( $post_id ) && null === self::maliyet( $post_id );
 	}
 
 	/**
@@ -377,7 +400,7 @@ class QRMS_MM_Maliyet {
 	 *
 	 * @param int   $post_id Ürün.
 	 * @param array $recete  Ham reçete satırları.
-	 * @return float Hesaplanan maliyet.
+	 * @return float|null Hesaplanan maliyet; eksik malzeme fiyatı varsa null.
 	 */
 	public static function recete_yaz( $post_id, $recete ) {
 		$post_id = absint( $post_id );
@@ -395,7 +418,7 @@ class QRMS_MM_Maliyet {
 		$maliyet = self::recete_maliyeti( $temiz, self::malzeme_fiyatlari(), $ayar['fire_yuzdesi'] );
 
 		update_post_meta( $post_id, self::META_RECETE, $temiz );
-		update_post_meta( $post_id, self::META_MALIYET, $maliyet );
+		self::maliyet_meta_yaz( $post_id, $maliyet );
 		update_post_meta( $post_id, self::META_KAYNAK, 'recete' );
 		self::onbellek_temizle();
 
@@ -441,6 +464,7 @@ class QRMS_MM_Maliyet {
 		if ( empty( $idler ) ) {
 			delete_option( self::OPTION_RECETE_YENILE_OFFSET );
 			wp_clear_scheduled_hook( self::CRON_RECETE_YENILE );
+			update_option( self::OPTION_RECETE_SURUM, self::RECETE_SURUM );
 
 			return 0;
 		}
@@ -456,11 +480,7 @@ class QRMS_MM_Maliyet {
 				continue;
 			}
 
-			update_post_meta(
-				$id,
-				self::META_MALIYET,
-				self::recete_maliyeti( $recete, $fiyatlar, $ayar['fire_yuzdesi'] )
-			);
+			self::maliyet_meta_yaz( $id, self::recete_maliyeti( $recete, $fiyatlar, $ayar['fire_yuzdesi'] ) );
 
 			++$sayi;
 		}
@@ -496,13 +516,56 @@ class QRMS_MM_Maliyet {
 
 		delete_option( self::OPTION_RECETE_YENILE_OFFSET );
 		wp_clear_scheduled_hook( self::CRON_RECETE_YENILE );
+		update_option( self::OPTION_RECETE_SURUM, self::RECETE_SURUM );
 
 		return $sayi;
+	}
+
+	/**
+	 * Sürüm yükseltmesi: reçeteli ürünlerin maliyetini bir kez yeniden hesaplatır.
+	 *
+	 * İş istekte DEĞİL, cron'da ve receteleri_yenile()'nin parçalı akışıyla
+	 * (TOPLU_SINIR) yapılır; böylece büyük menülerde yönetim isteği zaman
+	 * aşımına düşmez. Sürüm option'ı yalnızca iş TAMAMEN bittiğinde yazılır
+	 * (receteleri_yenile içinde), bu yüzden yarıda kalan iş sonraki istekte
+	 * yeniden zamanlanır; zamanlanmış iş varken ikinci kez zamanlanmaz.
+	 *
+	 * @return void
+	 */
+	public static function yukselt() {
+		if ( (int) get_option( self::OPTION_RECETE_SURUM, 0 ) >= self::RECETE_SURUM ) {
+			return;
+		}
+
+		if ( wp_next_scheduled( self::CRON_RECETE_YENILE ) ) {
+			return;
+		}
+
+		delete_option( self::OPTION_RECETE_YENILE_OFFSET );
+		wp_schedule_single_event( time() + 30, self::CRON_RECETE_YENILE );
 	}
 
 	/* -----------------------------------------------------------------
 	   YARDIMCILAR
 	----------------------------------------------------------------- */
+
+	/**
+	 * Reçeteden hesaplanan maliyeti yazar; null ise meta silinir ve ürün
+	 * "maliyeti girilmemiş" yoluna düşer (matrise alınmaz).
+	 *
+	 * @param int        $post_id Ürün.
+	 * @param float|null $maliyet Hesaplanan maliyet.
+	 * @return void
+	 */
+	private static function maliyet_meta_yaz( $post_id, $maliyet ) {
+		if ( null === $maliyet ) {
+			delete_post_meta( $post_id, self::META_MALIYET );
+
+			return;
+		}
+
+		update_post_meta( $post_id, self::META_MALIYET, $maliyet );
+	}
 
 	/**
 	 * Kullanıcının yazdığı sayıyı float'a çevirir.

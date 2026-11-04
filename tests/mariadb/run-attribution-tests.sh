@@ -29,3 +29,4 @@ export QRMS_MARIADB_PASSWORD="${QRMS_MARIADB_PASSWORD:-qrms_test_pw}"
 
 cd "$REPO"
 php tests/test-attribution-mariadb.php
+php tests/test-mm-olaylar-mariadb.php

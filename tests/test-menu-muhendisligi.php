@@ -249,9 +249,35 @@ qrms_test(
 		// %10 fire -> 54 * 1,10 = 59,40
 		qrms_assert_same( 59.4, QRMS_MM_Maliyet::recete_maliyeti( $recete, $fiyatlar, 10 ), 'fireli' );
 
-		// Fiyatı girilmemiş malzeme sıfır sayılır, hesabı çökertmez.
+		// Fiyatı girilmemiş malzeme 0 TL sayılmaz: maliyet hesaplanamaz (null).
 		$eksik = array( array( 'term_id' => 99, 'miktar' => 500 ) );
-		qrms_assert_same( 0.0, QRMS_MM_Maliyet::recete_maliyeti( $eksik, $fiyatlar, 0 ), 'fiyatsız malzeme' );
+		qrms_assert_same( null, QRMS_MM_Maliyet::recete_maliyeti( $eksik, $fiyatlar, 0 ), 'fiyatsız malzeme' );
+
+		// Tek bir eksik malzeme bile toplamı null yapar (kısmi toplam gösterilmez).
+		$karisik = array_merge( $recete, $eksik );
+		qrms_assert_same( null, QRMS_MM_Maliyet::recete_maliyeti( $karisik, $fiyatlar, 10 ), 'karışık reçete' );
+
+		// Bilinçli 0 TL fiyat 0 TL sayılır.
+		$bedava = array( 5 => array( 'birim' => 'kg', 'fiyat' => 0.0 ) );
+		qrms_assert_same( 0.0, QRMS_MM_Maliyet::recete_maliyeti( array( array( 'term_id' => 5, 'miktar' => 500 ) ), $bedava, 0 ), 'bilinçli 0 TL' );
+	}
+);
+
+qrms_test(
+	'reçetesi eksik malzemeli ürün matrise girmez ve sebebi yazılır',
+	function () {
+		$a = qrms_mm_satir( 1, 'Tam', 100, 40, 50 );
+		$b = qrms_mm_satir( 2, 'Eksik Reçete', 100, null, 50 );
+		$b['recete_eksik'] = true;
+		$c = qrms_mm_satir( 3, 'Manuel Boş', 100, null, 50 );
+		$d = qrms_mm_satir( 4, 'Bedava Reçete', 100, 0.0, 50 );
+
+		$sonuc = QRMS_MM_Hesap::hesapla( array( $a, $b, $c, $d ), array() );
+
+		qrms_assert_same( null, qrms_mm_bul( $sonuc, 'Eksik Reçete' ), 'eksik reçete matriste yok' );
+		qrms_assert_true( null !== qrms_mm_bul( $sonuc, 'Bedava Reçete' ), '0 TL bilinçli maliyet matriste' );
+		qrms_assert_same( 'Reçetede fiyatı eksik malzeme var', $sonuc['eksik'][0]['sebep'], 'sebep' );
+		qrms_assert_same( 'Maliyet girilmemiş', $sonuc['eksik'][1]['sebep'], 'manuel boş sebebi değişmedi' );
 	}
 );
 
@@ -297,7 +323,20 @@ qrms_test(
 		qrms_assert_same( 80.5, $malzeme[3]['fiyat'], 'virgüllü fiyat' );
 		qrms_assert_same( 'lt', $malzeme[3]['birim'], 'birim korunur' );
 		qrms_assert_same( 'kg', $malzeme[4]['birim'], 'bilinmeyen birim kg olur' );
-		qrms_assert_false( isset( $malzeme[5] ), 'sıfır fiyat saklanmaz' );
+		qrms_assert_same( 0.0, $malzeme[5]['fiyat'], 'bilinçli 0 fiyat saklanır' );
+
+		$bos = QRMS_MM_Maliyet::malzeme_temizle(
+			array(
+				6 => array( 'birim' => 'kg', 'fiyat' => '' ),      // girilmemiş
+				7 => array( 'birim' => 'kg' ),                      // alan hiç yok
+				8 => array( 'birim' => 'kg', 'fiyat' => '-5' ),     // geçersiz
+				9 => array( 'birim' => 'kg', 'fiyat' => '0,00' ),   // bilinçli 0
+			)
+		);
+		qrms_assert_false( isset( $bos[6] ), 'boş fiyat saklanmaz' );
+		qrms_assert_false( isset( $bos[7] ), 'alanı olmayan saklanmaz' );
+		qrms_assert_false( isset( $bos[8] ), 'negatif saklanmaz' );
+		qrms_assert_true( isset( $bos[9] ), '0,00 bilinçli fiyat saklanır' );
 		qrms_assert_false( isset( $malzeme[0] ), 'terimsiz satır düşer' );
 	}
 );
@@ -353,6 +392,25 @@ qrms_test(
 		qrms_assert_same( 50.0, QRMS_MM_Maliyet::maliyet( 7 ), 'meta yazıldı' );
 		qrms_assert_same( 'recete', QRMS_MM_Maliyet::kaynak( 7 ), 'kaynak reçete' );
 		qrms_assert_same( 1, count( QRMS_MM_Maliyet::recete( 7 ) ), 'reçete saklandı' );
+
+		// Fiyatsız malzemeli reçete: maliyet meta'sı silinir, ürün "eksik" olur.
+		$m = QRMS_MM_Maliyet::recete_yaz( 8, array( array( 'term_id' => 1, 'miktar' => 100 ), array( 'term_id' => 99, 'miktar' => 50 ) ) );
+		qrms_assert_same( null, $m, 'eksik malzemede null döner' );
+		qrms_assert_same( null, QRMS_MM_Maliyet::maliyet( 8 ), 'maliyet meta yok' );
+		qrms_assert_same( 'recete', QRMS_MM_Maliyet::kaynak( 8 ), 'kaynak reçete kalır' );
+		qrms_assert_true( QRMS_MM_Maliyet::recete_eksik( 8 ), 'recete_eksik true' );
+		qrms_assert_false( QRMS_MM_Maliyet::recete_eksik( 7 ), 'tam fiyatlı reçete eksik değil' );
+
+		// Eksik malzemenin fiyatı sonradan girilince yenileme maliyeti geri yazar.
+		update_option(
+			QRMS_MM_Maliyet::OPTION_MALZEME,
+			array( 1 => array( 'birim' => 'kg', 'fiyat' => 200.0 ), 99 => array( 'birim' => 'kg', 'fiyat' => 100.0 ) )
+		);
+		$GLOBALS['qrms_test']['posts'] = array( 8 );
+		QRMS_MM_Maliyet::receteleri_yenile();
+		$GLOBALS['qrms_test']['posts'] = array();
+		qrms_assert_same( 25.0, QRMS_MM_Maliyet::maliyet( 8 ), '100g×200 + 50g×100 = 25' );
+		qrms_assert_false( QRMS_MM_Maliyet::recete_eksik( 8 ), 'fiyat girilince eksik kalkar' );
 
 		// Boş reçete manuel moda döndürür; alan yeniden yazılabilir olmalı.
 		QRMS_MM_Maliyet::recete_yaz( 7, array() );
@@ -415,6 +473,117 @@ qrms_test(
 
 		$GLOBALS['qrms_test']['actions']['qrms_mm_toplu_sinir'] = array();
 		unset( $GLOBALS['qrms_test']['doing_action'], $GLOBALS['qrms_test']['posts'] );
+	}
+);
+
+qrms_test(
+	'malzeme formu POST yolu: boş alan saklanmaz, 0 ve 0,00 bilinçli 0.0 olarak saklanır',
+	function () {
+		require_once QRMS_PLUGIN_DIR . 'modules/qr-menu-muhendisligi/includes/admin/malzeme-sayfasi.php';
+
+		$eski_post = $_POST;
+		$GLOBALS['qrms_test']['can'] = true;
+		$GLOBALS['qrms_test']['posts'] = array();
+
+		// Tarayıcının gönderdiği biçim: boş input '' olarak gelir.
+		$_POST = array(
+			'qrms_mm_malzeme_kaydet' => '1',
+			'malzeme'                => array(
+				11 => array( 'birim' => 'kg', 'fiyat' => '' ),        // boş bırakıldı
+				12 => array( 'birim' => 'kg', 'fiyat' => '0' ),       // bilinçli 0
+				13 => array( 'birim' => 'lt', 'fiyat' => '0,00' ),    // bilinçli 0 (virgüllü)
+				14 => array( 'birim' => 'kg', 'fiyat' => '  ' ),      // yalnız boşluk
+				15 => array( 'birim' => 'adet', 'fiyat' => '2,5' ),   // normal
+			),
+		);
+
+		$sonuc = qrms_mm_malzeme_kaydet();
+		$kayit = get_option( QRMS_MM_Maliyet::OPTION_MALZEME, array() );
+		$_POST = $eski_post;
+
+		qrms_assert_true( is_array( $sonuc ), 'handler çalıştı' );
+		qrms_assert_false( isset( $kayit[11] ), 'boş alan option\'a yazılmadı' );
+		qrms_assert_false( isset( $kayit[14] ), 'boşluk-only alan yazılmadı' );
+		qrms_assert_same( 0.0, $kayit[12]['fiyat'], '"0" -> 0.0' );
+		qrms_assert_same( 0.0, $kayit[13]['fiyat'], '"0,00" -> 0.0' );
+		qrms_assert_same( 'lt', $kayit[13]['birim'], 'birim korunur' );
+		qrms_assert_same( 2.5, $kayit[15]['fiyat'], 'normal fiyat' );
+		qrms_assert_same( 3, $sonuc['malzeme'], 'kaydedilen malzeme sayısı' );
+
+		// Reçete: bilinçli 0 -> 0 TL, boş -> null (eksik).
+		$f = QRMS_MM_Maliyet::malzeme_fiyatlari();
+		qrms_assert_same( 0.0, QRMS_MM_Maliyet::recete_maliyeti( array( array( 'term_id' => 12, 'miktar' => 100 ) ), $f, 0 ), 'bedava malzeme 0 TL' );
+		qrms_assert_same( null, QRMS_MM_Maliyet::recete_maliyeti( array( array( 'term_id' => 11, 'miktar' => 100 ) ), $f, 0 ), 'boş bırakılan malzeme eksik' );
+
+		// Formda varsayılan value="0" ya da JS dönüşümü OLMAMALI.
+		$sablon = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-menu-muhendisligi/includes/admin/malzeme-sayfasi.php' );
+		qrms_assert_contains( "\$fiyat = isset( \$fiyatlar[ \$term_id ]['fiyat'] ) ? \$fiyatlar[ \$term_id ]['fiyat'] : '';", $sablon, 'kayıt yoksa input boş render edilir' );
+		$js = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-menu-muhendisligi/assets/js/admin.js' );
+		qrms_assert_false( false !== strpos( $js, '[fiyat]' ), 'JS fiyat alanına dokunmaz' );
+
+		update_option( QRMS_MM_Maliyet::OPTION_MALZEME, array() );
+	}
+);
+
+qrms_test(
+	'sürüm yükseltmesi: reçete yenileme bir kez, cron\'da, parçalı ve idempotent',
+	function () {
+		add_filter(
+			'qrms_mm_toplu_sinir',
+			function () {
+				return 5;
+			}
+		);
+		update_option( QRMS_MM_Maliyet::OPTION_MALZEME, array( 1 => array( 'birim' => 'kg', 'fiyat' => 100.0 ) ) );
+		update_option( QRMS_MM_Maliyet::OPTION_AYAR, array( 'fire_yuzdesi' => 0 ) );
+		delete_option( QRMS_MM_Maliyet::OPTION_RECETE_SURUM );
+
+		// 12 ürün: eski sürümden kalma, hatalı (0 TL) maliyetli; 3'ü fiyatsız malzemeli.
+		foreach ( range( 1, 12 ) as $id ) {
+			$term = $id <= 3 ? 99 : 1;
+			update_post_meta( $id, QRMS_MM_Maliyet::META_KAYNAK, 'recete' );
+			update_post_meta( $id, QRMS_MM_Maliyet::META_RECETE, array( array( 'term_id' => $term, 'miktar' => 100 ) ) );
+			update_post_meta( $id, QRMS_MM_Maliyet::META_MALIYET, 0.0 );
+		}
+		$GLOBALS['qrms_test']['posts'] = range( 1, 12 );
+		$GLOBALS['qrms_test']['cron']  = array();
+
+		// 1) Yükseltme isteği işi YAPMAZ, yalnızca zamanlar.
+		QRMS_MM_Maliyet::yukselt();
+		qrms_assert_true( (bool) wp_next_scheduled( QRMS_MM_Maliyet::CRON_RECETE_YENILE ), 'cron zamanlandı' );
+		qrms_assert_same( 0.0, QRMS_MM_Maliyet::maliyet( 4 ), 'istek içinde hesap yapılmadı' );
+
+		// 2) Zamanlanmışken ikinci çağrı yeniden zamanlamaz / bozmaz.
+		$zaman = wp_next_scheduled( QRMS_MM_Maliyet::CRON_RECETE_YENILE );
+		QRMS_MM_Maliyet::yukselt();
+		qrms_assert_same( $zaman, wp_next_scheduled( QRMS_MM_Maliyet::CRON_RECETE_YENILE ), 'tekrar zamanlanmadı' );
+
+		// 3) Cron çalışır: 5+5+2 parça, sürüm yalnızca BİTİNCE yazılır.
+		$GLOBALS['qrms_test']['doing_action'] = QRMS_MM_Maliyet::CRON_RECETE_YENILE;
+		$GLOBALS['qrms_test']['cron']         = array();
+		qrms_assert_same( -1, QRMS_MM_Maliyet::receteleri_yenile(), 'parça 1 sürüyor' );
+		qrms_assert_same( 0, (int) get_option( QRMS_MM_Maliyet::OPTION_RECETE_SURUM, 0 ), 'bitmeden sürüm yazılmadı' );
+		qrms_assert_same( -1, QRMS_MM_Maliyet::receteleri_yenile(), 'parça 2 sürüyor' );
+		qrms_assert_same( 2, QRMS_MM_Maliyet::receteleri_yenile(), 'parça 3 bitirir' );
+		unset( $GLOBALS['qrms_test']['doing_action'] );
+
+		qrms_assert_same( QRMS_MM_Maliyet::RECETE_SURUM, (int) get_option( QRMS_MM_Maliyet::OPTION_RECETE_SURUM ), 'sürüm yazıldı' );
+		qrms_assert_same( null, QRMS_MM_Maliyet::maliyet( 2 ), 'fiyatsız malzemeli ürün 0 TL\'den çıktı' );
+		qrms_assert_true( QRMS_MM_Maliyet::recete_eksik( 2 ), 'eksik işaretlendi' );
+		qrms_assert_same( 10.0, QRMS_MM_Maliyet::maliyet( 12 ), 'fiyatlı ürün doğru' );
+
+		// 4) Sürüm eşleşince tekrar zamanlanmaz (idempotent).
+		$GLOBALS['qrms_test']['cron'] = array();
+		QRMS_MM_Maliyet::yukselt();
+		qrms_assert_false( (bool) wp_next_scheduled( QRMS_MM_Maliyet::CRON_RECETE_YENILE ), 'ikinci yükseltme no-op' );
+
+		// 5) Modül kancası kayıtlı.
+		$modul = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-menu-muhendisligi/module.php' );
+		qrms_assert_contains( "add_action( 'admin_init', array( 'QRMS_MM_Maliyet', 'yukselt' ) )", $modul, 'admin_init kancası' );
+
+		$GLOBALS['qrms_test']['actions']['qrms_mm_toplu_sinir'] = array();
+		unset( $GLOBALS['qrms_test']['posts'] );
+		update_option( QRMS_MM_Maliyet::OPTION_MALZEME, array() );
 	}
 );
 

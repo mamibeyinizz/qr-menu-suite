@@ -1318,6 +1318,34 @@ fiyatı → **adet**. Fire yüzdesi hesabın sonuna eklenir. Kullanıcının yaz
 sayı `QRMS_MM_Maliyet::sayi()` ile okunur — Türkçe klavyede ondalık ayracı
 virgüldür, "12,50" yazan kullanıcının maliyeti 12 TL'ye yuvarlanmamalı.
 
+#### Sürüm notu — doğruluk düzeltmeleri (S1, S3)
+
+**S1 — İptal edilen siparişler artık satış sayılmaz.** Rapor, aynı `order_id`
+için `order_cancelled` olayı bulunan siparişlerin `order_sent` satırlarını
+dışarıda bırakır (Öneri Raporu attribution sorgusuyla aynı tanım). İptal olayı
+sipariş bazlıdır; satır bazlı kısmi iptal yazılmadığı için desteklenmez.
+
+**S3 — Fiyatı girilmemiş malzeme artık 0 TL sayılmaz.** Reçetesinde fiyatsız
+malzeme olan ürünün maliyeti hesaplanamaz: maliyet kaydı silinir, ürün matrise
+alınmaz ve "Reçetede fiyatı eksik malzeme var" uyarısıyla listelenir. Malzeme
+fiyat formunda boş bırakılan alan "girilmemiş", bilinçli yazılan `0` / `0,00`
+"ücretsiz" demektir ve saklanır.
+
+**Bilinmesi gerekenler**
+
+- Bu düzeltme **eski 0 fiyatlı malzemeleri eksik gösterecek.** Eski sürüm `0`
+  yazılan fiyatı kaydetmiyordu; bu malzemeleri içeren reçeteli ürünler,
+  malzeme fiyatı Malzeme Fiyatları ekranında `0` olarak yeniden girilene kadar
+  matristen çıkar ve uyarı alır.
+- **`order_id`'siz eski satırlar iptalden etkilenmez.** İptal olayı siparişe
+  `order_id` ile bağlanır; bu alanı taşımayan eski `order_sent` satırları
+  iptal edilmiş olsa bile satış sayılmaya devam eder.
+- Yükseltmede reçeteli ürünlerin maliyeti **bir kez** yeniden hesaplanır
+  (`qrms_mm_recete_surum` option'ı). İş istekte değil, cron'da ve
+  `qrms_mm_toplu_sinir` (varsayılan 500) boyutunda parçalar hâlinde çalışır;
+  tamamen bitince option yazılır. `DISABLE_WP_CRON` açıksa Malzeme Fiyatları
+  ekranında "Fiyatları Kaydet" aynı yenilemeyi çalıştırır.
+
 #### Ekranlar
 
 Hub (4 kart) + Rapor + Ürün Maliyetleri + Malzeme Fiyatları + Ayarlar.

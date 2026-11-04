@@ -171,6 +171,9 @@ function qrms_mm_maliyet_satiri( array $urun, array $malzemeler ) {
 				<?php echo $receteli ? 'readonly' : ''; ?>
 				aria-label="<?php esc_attr_e( 'Maliyet', 'qrms' ); ?>">
 			<span class="qrms-mm-durum" aria-live="polite"></span>
+			<?php if ( ! empty( $urun['recete_eksik'] ) ) : ?>
+				<span class="qrms-mm-uyari"><?php esc_html_e( 'Reçetede fiyatı eksik malzeme var', 'qrms' ); ?></span>
+			<?php endif; ?>
 		</td>
 		<td data-etiket="<?php esc_attr_e( 'Katkı payı', 'qrms' ); ?>" class="qrms-mm-katki">
 			<?php echo esc_html( null === $katki ? '—' : qrms_mm_para( $katki ) ); ?>
