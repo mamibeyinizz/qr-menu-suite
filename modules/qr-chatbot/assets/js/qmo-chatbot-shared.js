@@ -7,11 +7,22 @@
 ( function ( global ) {
 	'use strict';
 
+	// Önbellekten gelen sayfada nonce tazelenene kadar bekle (taze-anahtar.js).
+	function tazeBekle() {
+		return global.qmoTazeHazir || Promise.resolve();
+	}
+
 	function istek( veri ) {
 		if ( typeof qmoData === 'undefined' ) {
 			return Promise.reject();
 		}
 
+		return tazeBekle().then( function () {
+			return istekGonder( veri );
+		} );
+	}
+
+	function istekGonder( veri ) {
 		var govde = new URLSearchParams();
 		govde.append( 'nonce', qmoData.nonce );
 		Object.keys( veri ).forEach( function ( k ) {

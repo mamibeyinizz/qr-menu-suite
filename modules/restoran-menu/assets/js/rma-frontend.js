@@ -114,6 +114,18 @@ function encodeForm(data) {
  * @param {Function} cb   cb(json|null, status) — json ayrıştırılamazsa null.
  */
 function postForm(data, cb) {
+    // Önbellekten gelen sayfada nonce tazelenene kadar bekle (taze-anahtar.js);
+    // taze sayfada qmoTazeHazir zaten çözülmüş gelir, gecikme olmaz.
+    if (window.qmoTazeHazir && !data.__taze) {
+        window.qmoTazeHazir.then(function () {
+            if (data.security) data.security = NONCE;
+            data.__taze = 1;
+            postForm(data, cb);
+        });
+        return;
+    }
+    delete data.__taze;
+
     var xhr = new XMLHttpRequest();
     xhr.open('POST', AJAX_URL, true);
     xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded; charset=UTF-8');

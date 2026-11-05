@@ -159,6 +159,12 @@ if ( ! function_exists( 'qmo_chat_js_metinleri' ) ) {
 			'garsonCagrildiBtn'  => qmo_ceviri_chat( __( '✓ Çağrıldı', 'qrms' ) ),
 			'hesapIsteniyor'     => qmo_ceviri_chat( __( 'İsteniyor...', 'qrms' ) ),
 			'hesapIstendiBtn'    => qmo_ceviri_chat( __( '✓ İstendi', 'qrms' ) ),
+			// Model [CALL_BILL] üretmeden "hesabı getiriyorum" dediğinde
+			// gösterilen onay butonu (chatbot.js hesapBalonu).
+			'hesapSorusu'        => qmo_ceviri_chat( __( 'Hesap talebinizi iletmek için dokunun:', 'qrms' ) ),
+			'hesapIste'          => qmo_ceviri_chat( __( 'Hesap İste', 'qrms' ) ),
+			'hesapIstendi'       => qmo_ceviri_chat( __( 'Hesap istendi ✓', 'qrms' ) ),
+			'siparisZatenIletildi' => qmo_ceviri_chat( __( 'Bu sipariş az önce iletildi; tekrar gönderilmedi.', 'qrms' ) ),
 		);
 	}
 }

@@ -390,19 +390,32 @@
 
 @media screen and (min-width: 961px) {
 
+	/* Genel .qrms-wrap 640px tek sütunluk form ekranları içindir; kanban
+	   beş sütunu bu genişliğe sığdıramaz. */
+	.qrms-wrap.qrms-sp {
+		max-width: none;
+	}
+
 	.qrms-sp-sekmeler {
 		display: none;
 	}
 
 	.qrms-sp-kanban {
 		display: grid;
-		grid-template-columns: repeat( 4, minmax( 0, 1fr ) );
+		/* Beş durum: bekliyor, hazırlanıyor, serviste, tamamlandı, iptal. */
+		grid-template-columns: repeat( 5, minmax( 0, 1fr ) );
 		gap: 14px;
 		align-items: start;
 	}
 
-	/* Sekme seçimi masaüstünde sütun gizlemez. */
-	.qrms-sp-kanban[data-aktif] .qrms-sp-sutun {
+	/*
+	 * Sekme seçimi masaüstünde sütun gizlemez. Seçici, mobildeki gizleme
+	 * kuralıyla (.qrms-sp-kanban[data-aktif="…"] .qrms-sp-sutun:not(…),
+	 * özgüllük 0,4,0) en az aynı özgüllükte olmalı; aksi hâlde masaüstünde
+	 * yalnızca aktif sekmenin sütunu görünür ve sekme çubuğu gizli olduğu
+	 * için diğer durumlara geçen kartlar ekrandan kaybolur.
+	 */
+	.qrms-sp-kanban[data-aktif] .qrms-sp-sutun[data-durum] {
 		display: block;
 	}
 
@@ -433,4 +446,21 @@
 		min-height: 48px;
 		font-size: 14px;
 	}
+}
+
+/* Kalem tutarı ve sipariş toplamı (birimFiyat olan kayıtlarda). */
+.qrms-sp-kalem-fiyat {
+	margin-left: auto;
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+	color: #50575e;
+}
+
+.qrms-sp-toplam {
+	margin-top: 6px;
+	padding-top: 6px;
+	border-top: 1px dashed #dcdcde;
+	font-weight: 600;
+	text-align: right;
+	font-variant-numeric: tabular-nums;
 }

@@ -176,6 +176,7 @@ function qrms_sp_admin_assets() {
 				'geri'         => __( 'Geri', 'qrms' ),
 				'iptal'        => __( 'İptal', 'qrms' ),
 				'not'          => __( 'Not', 'qrms' ),
+				'toplam'       => __( 'Toplam', 'qrms' ),
 				'hata'         => __( 'İşlem yapılamadı.', 'qrms' ),
 				'cakisma'      => __( 'Bu kayıt başka biri tarafından güncellenmiş. Liste yenileniyor.', 'qrms' ),
 			),

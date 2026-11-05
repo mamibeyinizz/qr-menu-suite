@@ -288,3 +288,57 @@ function qrms_cs_format_day( $day ) {
 		$close
 	);
 }
+
+/* -------------------------------------------------------------------------
+ * Kapalıyken QR sipariş engeli (isteğe bağlı, varsayılan KAPALI)
+ * ---------------------------------------------------------------------- */
+
+if ( ! defined( 'QRMS_CS_ENGEL_OPTION' ) ) {
+	define( 'QRMS_CS_ENGEL_OPTION', 'qrms_calisma_saatleri_siparis_engeli' );
+}
+
+/**
+ * Restoran kapalıyken QR sipariş engeli açık mı?
+ *
+ * Varsayılan kapalıdır: kapanıştan sonra servise devam eden işletmeler
+ * güncellemeyle birlikte sipariş kaybetmesin. Garson/hesap çağrıları bu
+ * ayardan etkilenmez — masada oturan müşteri kapanıştan sonra da hesabı
+ * isteyebilmeli.
+ *
+ * @return bool
+ */
+function qrms_cs_siparis_engeli_acik() {
+	return '1' === (string) get_option( QRMS_CS_ENGEL_OPTION, '0' );
+}
+
+/**
+ * `qmo_siparis_onay_oncesi` filtresi: kapalıyken siparişi keser.
+ *
+ * Önceki bir engel (tükendi, servis saati) varsa ona dokunmaz.
+ *
+ * @param string|array|null $engel    Önceki filtrenin sonucu.
+ * @param array             $kalemler Sipariş kalemleri (kullanılmaz).
+ * @return string|array|null
+ */
+function qrms_cs_siparis_filtresi( $engel, $kalemler = array() ) {
+	unset( $kalemler );
+
+	if ( ( is_array( $engel ) && ! empty( $engel['mesaj'] ) ) || ( is_string( $engel ) && '' !== $engel ) ) {
+		return $engel;
+	}
+
+	if ( ! qrms_cs_siparis_engeli_acik() || qrms_cs_is_open_at() ) {
+		return $engel;
+	}
+
+	$mesaj = __( 'Restoranımız şu an kapalı; QR ile sipariş alınamıyor.', 'qrms' );
+	if ( function_exists( 'qmo_ceviri_chat' ) ) {
+		$mesaj = qmo_ceviri_chat( $mesaj );
+	}
+
+	return array(
+		'mesaj'  => $mesaj,
+		'reason' => 'closed',
+	);
+}
+add_filter( 'qmo_siparis_onay_oncesi', 'qrms_cs_siparis_filtresi', 5, 2 );

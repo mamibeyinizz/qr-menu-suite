@@ -277,7 +277,12 @@ function qrm_pro_render_form_script($settings, $js_limit = 0, $has_list = true, 
                 fd.append('action', 'qrm_submit_review');
                 appendLang(fd);
 
-                fetch(qrmCfg.ajaxUrl, { method: 'POST', credentials: 'same-origin', body: fd })
+                // Önbellekli sayfada nonce/zaman damgası tazelenene kadar bekle (taze-anahtar.js).
+                (window.qmoTazeHazir || Promise.resolve()).then(function() {
+                        var tv = window.qmoTazeVeri;
+                        if (tv && tv.yorumNonce) { fd.set('qrm_review_nonce', tv.yorumNonce); fd.set('qrm_ts', tv.yorumTs); }
+                        return fetch(qrmCfg.ajaxUrl, { method: 'POST', credentials: 'same-origin', body: fd });
+                    })
                     .then(function(r) { return r.json(); })
                     .then(function(res) {
                         if (!res || !res.success) {
@@ -452,7 +457,7 @@ function qrm_pro_render_form_script($settings, $js_limit = 0, $has_list = true, 
 
                 var fd = new FormData();
                 fd.append('action', 'qrm_load_reviews');
-                fd.append('nonce', qrmCfg.loadNonce);
+                fd.append('nonce', (window.qmoTazeVeri && window.qmoTazeVeri.yorumYukle) || qrmCfg.loadNonce);
                 fd.append('qrm_sort', state.sort);
                 if (state.star > 0) fd.append('qrm_star', String(state.star));
                 if (state.photos) fd.append('qrm_photos', '1');

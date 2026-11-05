@@ -438,10 +438,34 @@
 			box.appendChild( not );
 			box.appendChild( row );
 
+			/* Canlı tutar: porsiyon/ekstra/adet değişince modaldaki taban
+			   fiyat (.rma-modal-price) sabit kalıyordu; müşteri ödeyeceği
+			   tutarı ancak sepette görüyordu. Hesap, ekleme anındakiyle
+			   aynı formüldür (taban + porsiyon farkı + ekstralar) × adet. */
+			var ekleEtiket = ekle.textContent;
+			function tutarGuncelle() {
+				var tabanA = parseFloat( body.getAttribute( 'data-fiyat' ) );
+				var tabanT = isNaN( tabanA ) ? fiyatSayi( fiyatMetni( body.querySelector( '.rma-modal-price' ) ) ) : tabanA;
+				var p      = porsiyonSecimi( body );
+				var e      = ekstraSecimi( body );
+				var adetN  = parseInt( adetEl.textContent, 10 ) || 1;
+				if ( ! tabanT || ( ! p.fark && ! e.length && adetN < 2 ) ) {
+					ekle.textContent = ekleEtiket;
+					return;
+				}
+				ekle.textContent = ekleEtiket + ' · ' + fiyatGoster( ( tabanT + p.fark + ekstraToplami( e ) ) * adetN );
+			}
+			body.addEventListener( 'change', function ( ev ) {
+				if ( ev.target && ev.target.closest && ev.target.closest( '[data-rma-porsiyon], [data-rma-ekstra]' ) ) {
+					tutarGuncelle();
+				}
+			} );
+
 			eksi.addEventListener( 'click', function () {
 				var v = parseInt( adetEl.textContent, 10 );
 				if ( v > 1 ) {
 					adetEl.textContent = v - 1;
+					tutarGuncelle();
 				}
 			} );
 
@@ -449,6 +473,7 @@
 				var v = parseInt( adetEl.textContent, 10 );
 				if ( v < 20 ) {
 					adetEl.textContent = v + 1;
+					tutarGuncelle();
 				}
 			} );
 
@@ -794,41 +819,44 @@
 		analitikGonder();
 		send.disabled = true;
 
-		fetch( qmoSepet.endpoint, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-				'X-WP-Nonce': qmoSepet.restNonce,
-				'Idempotency-Key': siparisIdempotencyKey
-			},
-			credentials: 'same-origin',
-			body: JSON.stringify( {
-				dil: dil(),
-				// Porsiyon ürün adının parçasıdır. Extra adları mutfak
-				// notunun başına yazılır ve ayrıca isim listesi olarak
-				// gider; sipariş ucu katalog fiyatını yeniden hesaplar,
-				// istemci extra tutarına güvenmez.
-				items: s.map( function ( x ) {
-					var ad  = x.porsiyon ? x.ad + ' (' + x.porsiyon + ')' : x.ad;
-					var not = x.not || '';
-					var extraAdlar = ( x.ekstralar || [] ).map( function ( e ) {
-						return e && e.ad ? String( e.ad ) : '';
-					} ).filter( Boolean );
+		// Önbellekli sayfada nonce/oturum tazelenene kadar bekle (taze-anahtar.js).
+		( window.qmoTazeHazir || Promise.resolve() ).then( function () {
+			return fetch( qmoSepet.endpoint, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					'X-WP-Nonce': qmoSepet.restNonce,
+					'Idempotency-Key': siparisIdempotencyKey
+				},
+				credentials: 'same-origin',
+				body: JSON.stringify( {
+					dil: dil(),
+					// Porsiyon ürün adının parçasıdır. Extra adları mutfak
+					// notunun başına yazılır ve ayrıca isim listesi olarak
+					// gider; sipariş ucu katalog fiyatını yeniden hesaplar,
+					// istemci extra tutarına güvenmez.
+					items: s.map( function ( x ) {
+						var ad  = x.porsiyon ? x.ad + ' (' + x.porsiyon + ')' : x.ad;
+						var not = x.not || '';
+						var extraAdlar = ( x.ekstralar || [] ).map( function ( e ) {
+							return e && e.ad ? String( e.ad ) : '';
+						} ).filter( Boolean );
 
-					if ( extraAdlar.length ) {
-						var ek = T( 'ekstra' ) + ': ' + extraAdlar.join( ', ' );
-						not = not ? ek + ' — ' + not : ek;
-					}
+						if ( extraAdlar.length ) {
+							var ek = T( 'ekstra' ) + ': ' + extraAdlar.join( ', ' );
+							not = not ? ek + ' — ' + not : ek;
+						}
 
-					return {
-						urunAdi: ad,
-						adet: x.adet,
-						not: not.slice( 0, 200 ),
-						itemId: x.pid || 0,
-						ekstralar: extraAdlar
-					};
+						return {
+							urunAdi: ad,
+							adet: x.adet,
+							not: not.slice( 0, 200 ),
+							itemId: x.pid || 0,
+							ekstralar: extraAdlar
+						};
+					} )
 				} )
-			} )
+			} );
 		} ).then( function ( r ) {
 			return r.json().catch( function () {
 				return { success: false };

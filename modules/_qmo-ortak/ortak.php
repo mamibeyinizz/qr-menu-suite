@@ -43,6 +43,7 @@ require_once __DIR__ . '/class-qmo-firestore.php';
 require_once __DIR__ . '/helpers.php';
 require_once __DIR__ . '/color-defaults.php';
 require_once __DIR__ . '/assets.php';
+require_once __DIR__ . '/taze-anahtar.php';
 
 // Firebase service-account JSON'u ve Gemini anahtarı autoload dışında tutulur:
 // her istekte alloptions'a yüklenmeleri, bir option dökümünü ya da başka bir

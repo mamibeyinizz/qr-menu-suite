@@ -73,3 +73,12 @@ body:has(.qmo-dr.qmo-on) .gemini-chat-overlay.gemini-acik {
 	visibility: hidden !important;
 	pointer-events: none !important;
 }
+
+/* Ödül / Google yorum penceresi (yorum-feedback, z-index 999999) açıkken
+   chatbot düğmesi ve sepet çubuğu pencerenin köşesine biniyordu. */
+body:has(#qrmRewardPopup:not([hidden])) .gemini-teaser,
+body:has(#qrmRewardPopup:not([hidden])) .gemini-chat-toggle-btn,
+body:has(#qrmRewardPopup:not([hidden])) .qmo-bar {
+	visibility: hidden !important;
+	pointer-events: none !important;
+}

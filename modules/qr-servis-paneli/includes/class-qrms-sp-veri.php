@@ -282,6 +282,8 @@ class QRMS_SP_Veri {
 					// Türkçe çevirisini notTr alanına yazar. İkisi de gösterilir.
 					'not'   => isset( $kalem['notOrijinal'] ) ? (string) $kalem['notOrijinal'] : '',
 					'notTr' => isset( $kalem['notTr'] ) ? (string) $kalem['notTr'] : '',
+					// Sipariş anındaki sunucu birim fiyatı; eski kayıtlarda yok (null).
+					'fiyat' => isset( $kalem['birimFiyat'] ) && is_numeric( $kalem['birimFiyat'] ) ? (float) $kalem['birimFiyat'] : null,
 				);
 			}
 		}

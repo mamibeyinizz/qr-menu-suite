@@ -80,6 +80,7 @@ if ( ! function_exists( 'qmo_ajax_chat' ) ) {
 			. qmo_chat_siparis_talimati()
 			. qmo_chat_menu_talimati( $message, $decoded_history )
 			. qmo_chat_urun_etiketi_talimati()
+			. qmo_chat_calisma_saati_talimati()
 			. qmo_chat_bilemedi_talimati();
 
 		// Çok adımlı sipariş onay akışının çalışabilmesi için önceki turlar
@@ -777,10 +778,64 @@ if ( ! function_exists( 'qmo_chat_oneri_katalog_cpt' ) ) {
 				'dahil'    => get_post_meta( $post->ID, '_qmo_oneri_dahil', true ),
 				'agirlik'  => max( 0, min( 100, $agir ) ),
 				'tukendi'  => qmo_chat_oneri_tukendi_mi( $post->ID ),
-			);
+			) + qmo_chat_urun_ek_bilgi( $post->ID );
 		}
 
 		return $katalog;
+	}
+}
+
+/**
+ * Ürünün diyet rozetleri, alerjenleri, kalorisi ve servis saati.
+ *
+ * Asistan bunlar olmadan "glütensiz ne var?" sorusuna "bilgi yok" diyordu;
+ * menüde ise ürünlerin üzerinde rozet olarak görünüyorlardı. Boş alanlar
+ * eklenmez (prompt'u şişirmemek için).
+ *
+ * @param int $post_id Ürün kimliği.
+ * @return array<string,mixed>
+ */
+if ( ! function_exists( 'qmo_chat_urun_ek_bilgi' ) ) {
+	function qmo_chat_urun_ek_bilgi( $post_id ) {
+		$ek = array();
+
+		$etiketler = array(
+			'rma_is_vegan'       => 'Vegan',
+			'rma_is_vegetarian'  => 'Vejetaryen',
+			'rma_is_gluten_free' => 'Glütensiz',
+			'rma_is_sugar_free'  => 'Şekersiz',
+		);
+		$ozellik = array();
+		foreach ( $etiketler as $meta => $ad ) {
+			if ( '1' === (string) get_post_meta( $post_id, $meta, true ) ) {
+				$ozellik[] = $ad;
+			}
+		}
+		if ( $ozellik ) {
+			$ek['ozellikler'] = $ozellik;
+		}
+
+		if ( taxonomy_exists( 'rma_allergen' ) ) {
+			$alerjen = wp_get_post_terms( $post_id, 'rma_allergen', array( 'fields' => 'names' ) );
+			if ( is_array( $alerjen ) && $alerjen ) {
+				$ek['alerjenler'] = array_values( $alerjen );
+			}
+		}
+
+		$kalori = get_post_meta( $post_id, 'rma_calories', true );
+		if ( is_numeric( $kalori ) && (float) $kalori > 0 ) {
+			$ek['kalori'] = (string) $kalori;
+		}
+
+		if ( class_exists( 'RMA_Servis_Saati' ) ) {
+			$aciklama = RMA_Servis_Saati::aciklama( $post_id );
+			if ( '' !== $aciklama ) {
+				$ek['servisSaati'] = $aciklama;
+				$ek['servisDisi']  = RMA_Servis_Saati::servis_disi_mi( $post_id );
+			}
+		}
+
+		return $ek;
 	}
 }
 
@@ -852,8 +907,11 @@ if ( ! function_exists( 'qmo_chat_oneri_havuza_uygun_mu' ) ) {
 			return false;
 		}
 
-		// Ürün bazlı servis saati meta'sı repoda yok. qrms_cs_is_open_at()
-		// yalnızca restoran düzeyinde çalışır; ürün kısıtı için kullanılmaz.
+		// Servis saati dışındaki ürün (ör. kahvaltı 08:00–11:00) önerilmez;
+		// sipariş ucu zaten qmo_siparis_onay_oncesi filtresiyle keser.
+		if ( ! empty( $urun['servisDisi'] ) ) {
+			return false;
+		}
 
 		return true;
 	}
@@ -886,12 +944,21 @@ if ( ! function_exists( 'qmo_chat_oneri_tukendi_mi' ) ) {
  */
 if ( ! function_exists( 'qmo_chat_oneri_json_satir' ) ) {
 	function qmo_chat_oneri_json_satir( $urun ) {
-		return array(
+		$satir = array(
 			'kategori' => isset( $urun['kategori'] ) ? (string) $urun['kategori'] : '',
 			'urunAdi'  => isset( $urun['urunAdi'] ) ? (string) $urun['urunAdi'] : '',
 			'aciklama' => isset( $urun['aciklama'] ) ? (string) $urun['aciklama'] : '',
 			'fiyat'    => isset( $urun['fiyat'] ) ? (string) $urun['fiyat'] : '',
 		);
+
+		// İsteğe bağlı alanlar yalnızca doluysa (bkz. qmo_chat_urun_ek_bilgi).
+		foreach ( array( 'ozellikler', 'alerjenler', 'kalori', 'servisSaati' ) as $anahtar ) {
+			if ( ! empty( $urun[ $anahtar ] ) ) {
+				$satir[ $anahtar ] = $urun[ $anahtar ];
+			}
+		}
+
+		return $satir;
 	}
 }
 
@@ -961,6 +1028,46 @@ if ( ! function_exists( 'qmo_chat_oneri_prompt_satir' ) ) {
 		$satir       = qmo_chat_oneri_json_satir( $urun );
 		$satir['id'] = isset( $urun['id'] ) ? (int) $urun['id'] : 0;
 		return $satir;
+	}
+}
+
+/**
+ * Çalışma saatleri talimatı (Çalışma Saatleri modülü varsa).
+ *
+ * Asistan "kaça kadar açıksınız?" sorusuna "bilgi yok" diyordu; veri aynı
+ * eklentide tek kaynakta (qrms_cs_get) duruyor.
+ *
+ * @return string
+ */
+if ( ! function_exists( 'qmo_chat_calisma_saati_talimati' ) ) {
+	function qmo_chat_calisma_saati_talimati() {
+		if ( ! function_exists( 'qrms_cs_get' ) || ! function_exists( 'qrms_cs_day_keys' ) || ! function_exists( 'qrms_cs_day_labels' ) ) {
+			return '';
+		}
+
+		$saatler  = qrms_cs_get();
+		$etiket   = qrms_cs_day_labels();
+		$satirlar = array();
+		foreach ( qrms_cs_day_keys() as $gun ) {
+			$g  = isset( $saatler[ $gun ] ) && is_array( $saatler[ $gun ] ) ? $saatler[ $gun ] : array();
+			$ad = isset( $etiket[ $gun ] ) ? $etiket[ $gun ] : $gun;
+			if ( ! empty( $g['closed'] ) || empty( $g['open'] ) || empty( $g['close'] ) ) {
+				$satirlar[] = $ad . ': kapalı';
+				continue;
+			}
+			// Açılış = kapanış → 24 saat açık (modül kuralı).
+			$satirlar[] = $ad . ': ' . ( $g['open'] === $g['close'] ? '24 saat açık' : $g['open'] . '–' . $g['close'] );
+		}
+		if ( ! $satirlar ) {
+			return '';
+		}
+
+		$durum = '';
+		if ( function_exists( 'qrms_cs_is_open_at' ) ) {
+			$durum = qrms_cs_is_open_at() ? ' Şu an açığız.' : ' Şu an kapalıyız.';
+		}
+
+		return "\n\nÇALIŞMA SAATLERİ (müşteri sorarsa bu bilgiyi kullan):" . $durum . "\n" . implode( "\n", $satirlar );
 	}
 }
 

@@ -630,15 +630,29 @@ if ( ! function_exists( 'qmo_siparis_isle_govde' ) ) {
 		// siparişi anında görsün. Çeviri arka planda tamamlanır.
 		$fs_items = array();
 		foreach ( $temiz as $it ) {
+			$alanlar = array(
+				'urunAdi'     => array( 'stringValue' => $it['urunAdi'] ),
+				'adet'        => array( 'integerValue' => (string) $it['adet'] ),
+				'notOrijinal' => array( 'stringValue' => $it['not'] ),
+				'notTr'       => array( 'stringValue' => $it['not'] ),
+				'ceviri_hata' => array( 'booleanValue' => false ),
+			);
+
+			// Sunucu birim fiyatı (kampanya + porsiyon + ekstra): Servis
+			// Paneli kalem ve sipariş toplamını gösterebilsin. İstemci
+			// fiyatı kullanılmaz; çözülemezse alan hiç yazılmaz.
+			$birim = qmo_siparis_kalem_unit_price(
+				isset( $it['item_id'] ) ? $it['item_id'] : 0,
+				$it['urunAdi'],
+				isset( $it['ekstralar'] ) ? $it['ekstralar'] : array()
+			);
+			if ( null !== $birim ) {
+				$alanlar['birimFiyat'] = array( 'doubleValue' => round( (float) $birim, 2 ) );
+			}
+
 			$fs_items[] = array(
 				'mapValue' => array(
-					'fields' => array(
-						'urunAdi'     => array( 'stringValue' => $it['urunAdi'] ),
-						'adet'        => array( 'integerValue' => (string) $it['adet'] ),
-						'notOrijinal' => array( 'stringValue' => $it['not'] ),
-						'notTr'       => array( 'stringValue' => $it['not'] ),
-						'ceviri_hata' => array( 'booleanValue' => false ),
-					),
+					'fields' => $alanlar,
 				),
 			);
 		}

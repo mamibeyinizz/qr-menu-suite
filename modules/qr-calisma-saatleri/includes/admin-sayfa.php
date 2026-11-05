@@ -33,6 +33,8 @@ function qrms_cs_handle_save() {
 
 	update_option( QRMS_CS_COLORS_OPTION, qrms_cs_sanitize_colors( $renkler ) );
 
+	update_option( QRMS_CS_ENGEL_OPTION, empty( $_POST['qrms_cs_siparis_engeli'] ) ? '0' : '1', false );
+
 	return true;
 }
 
@@ -211,6 +213,17 @@ function qrms_cs_admin_sayfasi() {
 								</div>
 							<?php endforeach; ?>
 						</div>
+					</div>
+
+					<div class="qrms-card qrms-cs-engel">
+						<h2 class="qrms-card-title"><?php esc_html_e( 'Kapalıyken sipariş', 'qrms' ); ?></h2>
+						<label class="qrms-checkbox">
+							<input type="checkbox" name="qrms_cs_siparis_engeli" value="1" <?php checked( qrms_cs_siparis_engeli_acik() ); ?>>
+							<?php esc_html_e( 'Restoran kapalıyken QR menüden sipariş alma', 'qrms' ); ?>
+						</label>
+						<p class="qrms-muted">
+							<?php esc_html_e( 'Açıkken, yukarıdaki saatlerin dışında gelen sepet ve asistan siparişleri reddedilir ve müşteriye restoranın kapalı olduğu söylenir. Garson çağırma ve hesap isteme etkilenmez.', 'qrms' ); ?>
+						</p>
 					</div>
 
 					<div class="qrms-card qrms-cs-colors">

@@ -380,7 +380,12 @@ function qrm_cf_render_form_script($form, $s) {
             data.append('action', 'qrm_submit_custom_form');
             if (currentLang) data.append('lang', currentLang);
 
-            fetch(ajaxUrl, { method: 'POST', body: data, credentials: 'same-origin' })
+            // Önbellekli sayfada nonce/zaman damgası tazelenene kadar bekle (taze-anahtar.js).
+            (window.qmoTazeHazir || Promise.resolve()).then(function(){
+                    var tv = window.qmoTazeVeri;
+                    if (tv && tv.formNonce) { data.set('qrm_cf_nonce', tv.formNonce); data.set('qrm_ts', tv.yorumTs); }
+                    return fetch(ajaxUrl, { method: 'POST', body: data, credentials: 'same-origin' });
+                })
                 .then(function(r){ return r.json(); })
                 .then(function(res){
                     if (btn) { btn.disabled = false; }

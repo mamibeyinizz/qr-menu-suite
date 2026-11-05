@@ -426,6 +426,102 @@
 		return grup;
 	}
 
+	/* Hesap niyeti: model [CALL_BILL] etiketini üretmeyi atlarsa müşteri
+	   "hesabınız geliyor" yanıtı alıp boşuna bekliyordu (çağrı hiç
+	   gitmiyordu). Kullanıcı mesajı açıkça hesap istiyorsa ve yanıtta etiket
+	   yoksa tek dokunuşluk bir onay butonu gösterilir; otomatik çağrı
+	   yapılmaz (yanlış pozitif riski). Fiyat soruları ("hesap ne kadar")
+	   eşleşmez. */
+	var HESAP_NIYETI = /(hesab[ıi]\s*(iste|getir|al|öde|ode|ver|rica|lütfen|lutfen)|hesap\s*(iste|lütfen|lutfen|rica|getir)|^\s*hesap(ı|i|ımız|imiz)?\s*[.!?]*\s*$|\bthe bill\b|\bbill,?\s*please\b|\bcheck,?\s*please\b|\brechnung\b|\bl'addition\b|\bla cuenta\b|\bil conto\b|сч[её]т|الحساب)/i;
+
+	function hesapBalonu( mesajMetni ) {
+		var grup = document.createElement( 'div' );
+		grup.className = 'gemini-msg-grup';
+
+		if ( mesajMetni ) {
+			var el = document.createElement( 'div' );
+			el.className = 'gemini-msg-bubble gemini-msg-bot';
+			metinParcala( el, mesajMetni );
+			grup.appendChild( el );
+		}
+
+		var kutu = document.createElement( 'div' );
+		kutu.className = 'gemini-eskalasyon';
+
+		var soru = document.createElement( 'p' );
+		soru.className = 'gemini-eskalasyon-metin';
+		soru.textContent = metin( 'hesapSorusu', 'Hesap talebinizi iletmek için dokunun:' );
+		kutu.appendChild( soru );
+
+		var btn = document.createElement( 'button' );
+		btn.type = 'button';
+		btn.className = 'gemini-eskalasyon-btn';
+		btn.textContent = metin( 'hesapIste', 'Hesap İste' );
+
+		btn.addEventListener( 'click', function () {
+			if ( btn.disabled ) {
+				return;
+			}
+			btn.disabled = true;
+			istek( { action: 'hesap_iste' } ).then( function ( yanit ) {
+				if ( yanit && yanit.success ) {
+					btn.textContent = metin( 'hesapIstendi', 'Hesap istendi ✓' );
+					return;
+				}
+				btn.disabled = false;
+				var hata = ( yanit && yanit.data ) ? yanit.data : metin( 'istekIletilemedi', 'İstek iletilemedi, lütfen tekrar deneyin.' );
+				balon( 'string' === typeof hata ? hata : ( hata.mesaj || hata.msg || metin( 'istekIletilemedi', 'İstek iletilemedi, lütfen tekrar deneyin.' ) ), 'bot', true );
+			} ).catch( function () {
+				btn.disabled = false;
+				balon( metin( 'baglantiHatasi', 'Bağlantı hatası oluştu.' ), 'bot', true );
+			} );
+		} );
+
+		kutu.appendChild( btn );
+		grup.appendChild( kutu );
+
+		if ( log ) {
+			log.appendChild( grup );
+			log.scrollTop = log.scrollHeight;
+		}
+		return grup;
+	}
+
+	/* Mükerrer bot siparişi koruması: model aynı [SIPARIS] bloğunu ardışık
+	   yanıtlarda tekrar üretebiliyor ("Evet" → "Evet onaylıyorum"); her
+	   yanıtta yeni idempotency anahtarı üretildiği için sunucu ikisini ayrı
+	   sipariş sayıyordu. Aynı içerik kısa pencere içinde yeniden gönderilmez. */
+	var MUKERRER_PENCERE_MS = 2 * 60 * 1000;
+
+	function siparisImzasi( urunler ) {
+		return JSON.stringify( urunler.map( function ( u ) {
+			u = u || {};
+			return [
+				String( u.urunAdi || u.ad || '' ).toLocaleLowerCase( 'tr' ).trim(),
+				parseInt( u.adet, 10 ) || 1,
+				String( u.not || '' ).trim()
+			];
+		} ).sort() );
+	}
+
+	function sonBotSiparisOku() {
+		try {
+			return JSON.parse( sessionStorage.getItem( 'qmoBotSonSiparis' ) || 'null' );
+		} catch ( e ) {
+			return null;
+		}
+	}
+
+	function sonBotSiparisYaz( kayit ) {
+		try {
+			if ( kayit ) {
+				sessionStorage.setItem( 'qmoBotSonSiparis', JSON.stringify( kayit ) );
+			} else {
+				sessionStorage.removeItem( 'qmoBotSonSiparis' );
+			}
+		} catch ( e ) {}
+	}
+
 	function eskalasyonBalonu( mesajMetni ) {
 		var grup = document.createElement( 'div' );
 		grup.className = 'gemini-msg-grup';
@@ -803,10 +899,13 @@
 			cagriGonder( 'garson_cagir' );
 		}
 
+		var hesapCagrildi = false;
 		if ( cevap.indexOf( '[CALL_BILL]' ) !== -1 ) {
 			cevap = cevap.replace( '[CALL_BILL]', '' ).trim();
 			cagriGonder( 'hesap_iste' );
+			hesapCagrildi = true;
 		}
+		var hesapButonu = ! hesapCagrildi && HESAP_NIYETI.test( String( mesaj || '' ) );
 
 		if ( cevap.indexOf( '[BILEMEDI]' ) !== -1 ) {
 			cevap = cevap.replace( /\[BILEMEDI\]/g, '' ).trim();
@@ -822,7 +921,14 @@
 			cevap = cevap.replace( eslesme[ 0 ], '' ).trim();
 			try {
 				var siparisUrunler = JSON.parse( eslesme[ 1 ].trim() );
+				var imza  = Array.isArray( siparisUrunler ) ? siparisImzasi( siparisUrunler ) : '';
+				var onceki = sonBotSiparisOku();
+				if ( imza && onceki && onceki.imza === imza && ( Date.now() - onceki.zaman ) < MUKERRER_PENCERE_MS ) {
+					balon( metin( 'siparisZatenIletildi', 'Bu sipariş az önce iletildi; tekrar gönderilmedi.' ), 'bot', true );
+					siparisUrunler = [];
+				}
 				if ( Array.isArray( siparisUrunler ) && siparisUrunler.length ) {
+					sonBotSiparisYaz( { imza: imza, zaman: Date.now() } );
 					var siparisIdempotencyKey = ( typeof crypto !== 'undefined' && crypto.randomUUID )
 						? crypto.randomUUID()
 						: ( 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace( /[xy]/g, function ( c ) {
@@ -836,6 +942,7 @@
 						idempotency_key: siparisIdempotencyKey
 					} ).then( function ( sy ) {
 						if ( ! sy || ! sy.success ) {
+							sonBotSiparisYaz( null );
 							var msg = metin( 'siparisIletilemedi', 'Siparişiniz iletilemedi, lütfen garsona bildirin.' );
 							if ( sy && sy.data ) {
 								if ( 'string' === typeof sy.data ) {
@@ -847,6 +954,7 @@
 							balon( msg, 'bot', true );
 						}
 					} ).catch( function () {
+						sonBotSiparisYaz( null );
 						balon( metin( 'siparisIletilemedi', 'Siparişiniz iletilemedi, lütfen garsona bildirin.' ), 'bot', true );
 					} );
 				}
@@ -868,6 +976,8 @@
 		if ( eskalasyon ) {
 			eskalasyonBalonu( cevap );
 			personelYoklamaBaslat();
+		} else if ( hesapButonu ) {
+			hesapBalonu( cevap );
 		} else if ( urunler.length ) {
 			botBalonu( cevap, urunler );
 		} else {
@@ -906,6 +1016,12 @@
 			return Promise.reject();
 		}
 
+		return ( window.qmoTazeHazir || Promise.resolve() ).then( function () {
+			return gonderIstekStreamAg( mesaj, yaziyorEl, akim );
+		} );
+	}
+
+	function gonderIstekStreamAg( mesaj, yaziyorEl, akim ) {
 		var govde = new URLSearchParams();
 		govde.append( 'nonce', qmoData.nonce );
 		govde.append( 'action', 'gemini_chat_req' );

@@ -20,6 +20,15 @@
 
 		extra = extra || {};
 
+		// Önbellekli sayfada nonce tazelenene kadar bekle (taze-anahtar.js).
+		if ( global.qmoTazeHazir && ! extra.__taze ) {
+			global.qmoTazeHazir.then( function () {
+				extra.__taze = 1;
+				yaz( tip, extra );
+			} );
+			return;
+		}
+
 		var govde = new URLSearchParams();
 		govde.append( 'action', 'qrms_analitik_onyuz' );
 		govde.append( 'nonce', CFG.nonce );

@@ -194,6 +194,14 @@
 	   Kart üretimi
 	--------------------------------------------------------------- */
 
+	function paraYaz( n ) {
+		try {
+			return new Intl.NumberFormat( 'tr-TR', { style: 'currency', currency: 'TRY', maximumFractionDigits: 2 } ).format( n );
+		} catch ( e ) {
+			return n.toFixed( 2 ) + ' ₺';
+		}
+	}
+
 	function metinDugumu( etiket, sinif, icerik ) {
 		var el = document.createElement( etiket );
 
@@ -259,11 +267,21 @@
 			var liste = document.createElement( 'ul' );
 			liste.className = 'qrms-sp-kalemler';
 
+			var toplam    = 0;
+			var fiyatliMi = true;
+
 			kayit.kalemler.forEach( function ( kalem ) {
 				var li = document.createElement( 'li' );
 
 				li.appendChild( metinDugumu( 'span', 'qrms-sp-adet', kalem.adet + '×' ) );
 				li.appendChild( metinDugumu( 'span', 'qrms-sp-kalem-ad', kalem.ad ) );
+
+				if ( 'number' === typeof kalem.fiyat ) {
+					toplam += kalem.fiyat * kalem.adet;
+					li.appendChild( metinDugumu( 'span', 'qrms-sp-kalem-fiyat', paraYaz( kalem.fiyat * kalem.adet ) ) );
+				} else {
+					fiyatliMi = false;
+				}
 
 				// Çeviri varsa ve orijinalden farklıysa ikisi de gösterilir:
 				// mutfak Türkçesini okur, garson misafire kendi dilinde döner.
@@ -281,6 +299,12 @@
 			} );
 
 			kart.appendChild( liste );
+
+			// Toplam yalnızca tüm kalemlerin fiyatı biliniyorsa (eski
+			// kayıtlarda birimFiyat yok; eksik toplam yanıltıcı olurdu).
+			if ( fiyatliMi && toplam > 0 ) {
+				kart.appendChild( metinDugumu( 'div', 'qrms-sp-toplam', ( M.toplam || 'Toplam' ) + ': ' + paraYaz( toplam ) ) );
+			}
 		}
 
 		if ( kayit.personel ) {

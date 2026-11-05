@@ -105,7 +105,10 @@
             + '&security=' + encodeURIComponent(cfg.nonce || '')
             + '&lang=' + encodeURIComponent(cfg.lang || 'tr');
 
-        xhr.send(params);
+        // Önbellekli sayfada nonce tazelenene kadar bekle (taze-anahtar.js).
+        (global.qmoTazeHazir || Promise.resolve()).then(function () {
+            xhr.send(params.replace(/&security=[^&]*/, '&security=' + encodeURIComponent(cfg.nonce || '')));
+        });
     }
 
     function analitikDetay(id) {

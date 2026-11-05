@@ -780,3 +780,102 @@ body.gm-scroll-kilit { position: fixed; width: 100%; }
 		border-radius: 0;
 	}
 }
+
+/* -------------------------------------------------------------------------
+ * Tema / Elementor Kit buton stillerine karşı koruma
+ *
+ * Elementor Kit global buton stili `.elementor-kit-N button` (0,1,1) ve
+ * `:hover` (0,2,1) özgüllüğündedir; yukarıdaki tek sınıflı kurallar (0,1,0)
+ * ona yenilip butonlar tema renginde çerçeveli, yazısı kutunun dibine
+ * kaymış görünüyordu. Aynı değerler pencere kapsamıyla (0,2,0 / 0,3,0)
+ * yeniden uygulanır; görünüm değişmez, yalnızca sızıntı kesilir.
+ * ---------------------------------------------------------------------- */
+
+.gemini-chat-overlay .gemini-chat-close,
+.gemini-chat-overlay .gemini-chat-close:focus {
+	width: 36px;
+	height: 36px;
+	padding: 0;
+	border: 0;
+	border-radius: 50%;
+	background: transparent;
+	color: inherit;
+	line-height: 1;
+	text-transform: none;
+	box-shadow: none;
+}
+.gemini-chat-overlay .gemini-chat-close:hover {
+	border: 0;
+	background: rgba(255, 255, 255, 0.16);
+	color: inherit;
+}
+
+.gemini-chat-overlay .gemini-urun-sepete,
+.gemini-chat-overlay .gemini-urun-sepete:hover,
+.gemini-chat-overlay .gemini-urun-sepete:focus,
+.gemini-chat-overlay .gemini-urun-sepete:active {
+	width: 100%;
+	height: 40px;
+	padding: 0 12px;
+	border: 0;
+	border-radius: var(--gm-radius, 16px);
+	background: var(--gm-send-bg, var(--gm-header-bg, #6b21a8));
+	color: var(--gm-send-icon, #fff);
+	line-height: 40px;
+	text-transform: none;
+	box-shadow: none;
+}
+.gemini-chat-overlay .gemini-urun-sepete.is-eklendi,
+.gemini-chat-overlay .gemini-urun-sepete:disabled {
+	background: var(--gm-bot-bg, #f3f0f8);
+	color: var(--gm-bot-text, var(--gm-text));
+}
+
+.gemini-chat-overlay .gemini-eskalasyon-btn,
+.gemini-chat-overlay .gemini-eskalasyon-btn:hover,
+.gemini-chat-overlay .gemini-eskalasyon-btn:focus,
+.gemini-chat-overlay .gemini-retry-btn,
+.gemini-chat-overlay .gemini-retry-btn:hover,
+.gemini-chat-overlay .gemini-retry-btn:focus {
+	padding: 9px 18px;
+	border: 0;
+	border-radius: 999px;
+	background: var(--gm-header-bg, #8a2be2);
+	color: var(--gm-header-text, #fff);
+	line-height: normal;
+	text-transform: none;
+	box-shadow: none;
+}
+
+.gemini-chat-overlay .gemini-quick-reply,
+.gemini-chat-overlay .gemini-quick-reply:focus {
+	padding: 9px 16px;
+	border: 1px solid var(--gm-border, #e8e4f0);
+	border-radius: 999px;
+	background: var(--gm-input-bg, #fff);
+	color: var(--gm-text);
+	line-height: normal;
+	text-transform: none;
+	box-shadow: none;
+}
+.gemini-chat-overlay .gemini-quick-reply:hover,
+.gemini-chat-overlay .gemini-quick-reply:active {
+	border: 1px solid var(--gm-border, #e8e4f0);
+	background: var(--gm-input-bg, #fff);
+	background: color-mix(in srgb, var(--gm-header-bg) 8%, var(--gm-input-bg, #fff));
+	color: var(--gm-text);
+}
+
+.gemini-chat-overlay .gemini-chat-send,
+.gemini-chat-overlay .gemini-chat-send:hover,
+.gemini-chat-overlay .gemini-chat-send:focus {
+	width: 46px;
+	min-width: 46px;
+	height: 46px;
+	padding: 0;
+	border: 0;
+	border-radius: 14px;
+	background: var(--gm-send-bg, var(--gm-header-bg));
+	color: var(--gm-send-icon, #fff);
+	box-shadow: none;
+}

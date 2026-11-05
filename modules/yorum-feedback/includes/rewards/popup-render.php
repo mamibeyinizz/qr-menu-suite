@@ -392,7 +392,7 @@ function qrm_reward_render_popup($settings, $auto_open = false) {
             if (!reviewId) return;
             var fd = new FormData();
             fd.append('action', 'qrm_reward_log_event');
-            fd.append('nonce', cfg.nonce);
+            fd.append('nonce', (window.qmoTazeVeri && window.qmoTazeVeri.odul) || cfg.nonce);
             fd.append('review_id', reviewId);
             fd.append('claim', claim);
             fd.append('event', event);
@@ -629,7 +629,7 @@ function qrm_reward_render_popup($settings, $auto_open = false) {
 
             var fd = new FormData();
             fd.append('action', 'qrm_reward_request_code');
-            fd.append('nonce', cfg.nonce);
+            fd.append('nonce', (window.qmoTazeVeri && window.qmoTazeVeri.odul) || cfg.nonce);
             fd.append('email', value);
             fd.append('review_id', reviewId);
             fd.append('claim', claim);

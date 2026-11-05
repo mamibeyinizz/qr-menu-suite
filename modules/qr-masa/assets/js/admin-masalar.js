@@ -48,7 +48,10 @@
 	function masaPdfSayfasiCiz( doc, ad, dataUri ) {
 		doc.setFontSize( 40 );
 		doc.text( ad, 105, 40, { align: 'center' } );
-		doc.addImage( dataUri, 'PNG', 35, 60, 140, 140 );
+		// 'FAST' (Flate) sıkıştırma: jsPDF PNG'yi ham piksele açıp sıkıştırmadan
+		// gömüyordu — 800×800 QR sayfa başına ~2,5 MB, 25 masa 64 MB idi.
+		// Siyah-beyaz QR deseninde Flate kayıpsızdır ve boyutu ~%99 düşürür.
+		doc.addImage( dataUri, 'PNG', 35, 60, 140, 140, undefined, 'FAST' );
 		doc.setFontSize( 14 );
 		doc.text( 'Lutfen kameraniza okutunuz', 105, 220, { align: 'center' } );
 	}
@@ -152,7 +155,7 @@
 							return;
 						}
 
-						var doc = new window.jspdf.jsPDF();
+						var doc = new window.jspdf.jsPDF( { compress: true } );
 						masaPdfSayfasiCiz( doc, ad, dataUri );
 						doc.save( dosyaAdi + '-QR.pdf' );
 					} );
@@ -174,7 +177,7 @@
 					return;
 				}
 
-				var doc = new window.jspdf.jsPDF();
+				var doc = new window.jspdf.jsPDF( { compress: true } );
 
 				hazirVeri.forEach( function ( veri, index ) {
 					if ( index > 0 ) {
