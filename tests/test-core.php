@@ -129,6 +129,49 @@ qrms_test(
 );
 
 qrms_test(
+	'imza: imzasız / başka anahtarlı / başka alan adlı / değiştirilmiş cevap kabul edilmez',
+	function () {
+		update_option( 'qrms_active_modules', array( 'qr-galeri' ) );
+		delete_option( 'qrms_revoke_since' );
+
+		// 1) İmzasız "active".
+		qrms_mock_http( 200, array( 'status' => 'active', 'modules' => qrms_all_modules(), 'sig' => null ) );
+		$r = qrms_validate_license( 'ANAHTAR', 'https://full.qrmenuofficial.com' );
+		qrms_assert_same( 'unreachable', $r['status'], 'imzasız cevap reddedilmeli' );
+		qrms_assert_same( array( 'qr-galeri' ), get_option( 'qrms_active_modules' ), 'modüller değişmemeli' );
+
+		// 2) Başka anahtarla imzalı.
+		$evil = sodium_crypto_sign_keypair();
+		$mods = qrms_all_modules();
+		$dom  = QRMS_Helpers::get_site_domain();
+		$sig  = base64_encode( sodium_crypto_sign_detached( QRMS_License_Client::signed_message( 'active', $dom, $mods ), sodium_crypto_sign_secretkey( $evil ) ) );
+		qrms_mock_http( 200, array( 'status' => 'active', 'modules' => $mods, 'domain' => $dom, 'sig' => $sig ) );
+		$r = qrms_validate_license( 'ANAHTAR', 'https://full.qrmenuofficial.com' );
+		qrms_assert_same( 'unreachable', $r['status'], 'yabancı imza reddedilmeli' );
+
+		// 3) Geçerli imza ama başka alan adı için üretilmiş (tekrar oynatma).
+		$good = sodium_crypto_sign_secretkey( $GLOBALS['qrms_test_sign_key'] );
+		$sig  = base64_encode( sodium_crypto_sign_detached( QRMS_License_Client::signed_message( 'active', 'baska-site.com', $mods ), $good ) );
+		qrms_mock_http( 200, array( 'status' => 'active', 'modules' => $mods, 'domain' => 'baska-site.com', 'sig' => $sig ) );
+		$r = qrms_validate_license( 'ANAHTAR', 'https://full.qrmenuofficial.com' );
+		qrms_assert_same( 'unreachable', $r['status'], 'başka alan adı reddedilmeli' );
+
+		// 4) Geçerli imza, ama modül listesi sonradan şişirilmiş.
+		$sig = base64_encode( sodium_crypto_sign_detached( QRMS_License_Client::signed_message( 'active', $dom, array( 'qr-masa' ) ), $good ) );
+		qrms_mock_http( 200, array( 'status' => 'active', 'modules' => $mods, 'domain' => $dom, 'sig' => $sig ) );
+		$r = qrms_validate_license( 'ANAHTAR', 'https://full.qrmenuofficial.com' );
+		qrms_assert_same( 'unreachable', $r['status'], 'değiştirilmiş liste reddedilmeli' );
+		qrms_assert_same( array( 'qr-galeri' ), get_option( 'qrms_active_modules' ), 'modüller hiç değişmemeli' );
+		qrms_assert_same( 0, QRMS_License_Client::get_revoke_since(), 'reddedilen cevap süre başlatmaz' );
+
+		// 5) Doğru imzalı cevap kabul edilir.
+		qrms_mock_http( 200, array( 'status' => 'active', 'modules' => array( 'qr-masa' ) ) );
+		$r = qrms_validate_license( 'ANAHTAR', 'https://full.qrmenuofficial.com' );
+		qrms_assert_same( 'active', $r['status'], 'doğru imza kabul' );
+	}
+);
+
+qrms_test(
 	'domain_mismatch → modüller korunur',
 	function () {
 		update_option( 'qrms_active_modules', array( 'qr-galeri' ) );

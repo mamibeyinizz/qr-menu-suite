@@ -27,18 +27,22 @@ alanı varsayılan olarak `https://qrmenuofficial.com` gelir; farklı bir
 | `200 {"status":"domain_mismatch"}` | Anahtar başka alan adına kayıtlı |
 | `200 {"status":"active","modules":[...]}` | Aktif, modül listesi döner |
 
-### Fail-safe davranışı
+### Doğrulama ve kısıtlama
 
-`qrms_active_modules` **yalnızca** sunucudan `active` + yeni `modules` dizisi
-geldiğinde değişir. `invalid`, `inactive`, `domain_mismatch` veya
-`unreachable` durumlarında modül listesine dokunulmaz; sadece
-`qrms_last_status` güncellenir. Sunucu erişilemez durumda kaldığında site
-çalışmaya devam eder — sert kilitleme yoktur.
+- **İmza:** Sunucu cevabı `status`, `domain`, `modules` ve Ed25519 `sig` alanlarını
+  taşır. İmzalanan mesaj: `"qrms1\n" + status + "\n" + domain + "\n" + implode(",", modules)`.
+  İmza eklentideki açık anahtarla (`QRMS_License_Client::PUBLIC_KEY`) doğrulanır.
+  İmzasız, bozuk imzalı veya başka alan adı için üretilmiş cevap `unreachable`
+  sayılır: modüller ne açılır ne kapanır. Sunucu 404 `invalid` gibi hata
+  cevaplarını da imzalamalıdır.
+- **Geçersiz lisans:** Sunucu `inactive` / `invalid` / `expired` /
+  `domain_mismatch` derse 24 saatlik süre başlar (`qrms_revoke_since`); süre
+  dolunca `get_active_modules()` boş döner, modüller kapanır. `active` cevabı
+  süreyi siler ve modülleri geri getirir.
+- **Sunucuya ulaşılamama:** `unreachable` hiçbir şeyi değiştirmez, site çalışır.
 
 Günde bir kez `qrms_daily_license_sync` cron'u kayıtlı anahtarla sessizce
-yeniden doğrulama yapar. Durum sorunluysa ve son sağlıklı senkronizasyondan
-bu yana 3 günden fazla geçtiyse, **sadece plugin ekranlarında** kapatılabilir
-bir bilgilendirme notice'ı gösterilir.
+yeniden doğrulama yapar.
 
 ### Kullanılan option'lar
 
@@ -50,6 +54,7 @@ bir bilgilendirme notice'ı gösterilir.
 | `qrms_last_sync` | Sunucudan en son cevap alınan an |
 | `qrms_last_status` | `active` / `inactive` / `domain_mismatch` / `invalid` / `unreachable` |
 | `qrms_last_active_sync` | En son `active` cevabının alındığı an (notice zamanlaması) |
+| `qrms_revoke_since` | Lisansın ilk geçersiz sayıldığı an (24 saat süre başlangıcı) |
 | `qrms_license_notice` | Arka plan senkronizasyonunun bıraktığı durum bayrağı |
 | `qrms_setup_completed` | Sihirbaz tamamlandı mı? |
 | `splash_screen_options` | Açılış Ekranı modülünün tüm ayarları (bağımsız eklentiden taşınırken ad korundu) |
