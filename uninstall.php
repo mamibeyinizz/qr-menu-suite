@@ -71,7 +71,7 @@ foreach ( $qrms_tablolar as $qrms_tablo ) {
 $qrms_kancalar = array(
 	'qrms_analitik_temizlik',
 	'qrms_siparis_iptal_uzlastirma',
-	'qrms_lisans_kontrol',
+	'qrms_daily_license_sync',
 	'qrms_mm_recete_yenile',
 	'qmo_uy_supurge',
 	'qmo_uy_tekil_aktive',
@@ -92,8 +92,11 @@ foreach ( $qrms_kancalar as $qrms_kanca ) {
 
 $qrms_optionlar = array(
 	'qrms_active_modules',
-	'qrms_license_key',
-	'qrms_license_status',
+	'qrms_api_key',
+	'qrms_last_status',
+	'qrms_last_sync',
+	'qrms_last_active_sync',
+	'qrms_license_notice',
 	'qrms_server_url',
 	'qrms_db_version',
 	'qrms_uninstall_veri_sil',

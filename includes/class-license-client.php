@@ -65,6 +65,8 @@ class QRMS_License_Client {
 	public static function init() {
 		add_action( self::CRON_HOOK, array( __CLASS__, 'run_daily_sync' ) );
 		add_action( 'admin_notices', array( __CLASS__, 'maybe_render_notice' ) );
+		// Aktivasyon çalışmadan kurulan/güncellenen sitelerde cron'u kendini onarır.
+		add_action( 'admin_init', array( __CLASS__, 'schedule_cron' ) );
 	}
 
 	/**
@@ -283,13 +285,15 @@ class QRMS_License_Client {
 	private static function store_result( $status, $modules, $api_key, $server_url, $reached ) {
 		$now = time();
 
-		// Kullanıcının girdiği key/sunucu her denemede saklanır ki cron aynı
-		// bilgilerle devam edebilsin.
-		if ( '' !== $api_key ) {
-			update_option( self::OPT_API_KEY, $api_key );
-		}
+		// Anahtar/sunucu yalnızca doğrulanınca (veya hiç kayıt yokken) saklanır;
+		// aksi halde yanlış bir deneme çalışan anahtarı ezer.
+		if ( 'active' === $status || '' === self::get_api_key() ) {
+			if ( '' !== $api_key ) {
+				update_option( self::OPT_API_KEY, $api_key );
+			}
 
-		update_option( self::OPT_SERVER_URL, $server_url );
+			update_option( self::OPT_SERVER_URL, $server_url );
+		}
 		update_option( self::OPT_LAST_STATUS, $status );
 
 		if ( $reached ) {
@@ -342,7 +346,7 @@ class QRMS_License_Client {
 	/**
 	 * Bilgilendirme notice'ı gösterilmeli mi?
 	 *
-	 * Koşul: son durum sorunlu (unreachable/invalid/inactive/domain_mismatch) VE
+	 * Koşul: son durum sorunlu (unreachable/invalid/inactive/domain_mismatch/expired) VE
 	 * sağlıklı son senkronizasyondan bu yana 3 günden fazla geçmiş.
 	 *
 	 * @return bool
@@ -350,7 +354,7 @@ class QRMS_License_Client {
 	public static function should_show_notice() {
 		$status = self::get_last_status();
 
-		if ( ! in_array( $status, array( 'unreachable', 'invalid', 'inactive', 'domain_mismatch' ), true ) ) {
+		if ( ! in_array( $status, array( 'unreachable', 'invalid', 'inactive', 'domain_mismatch', 'expired' ), true ) ) {
 			return false;
 		}
 
