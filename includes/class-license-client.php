@@ -33,6 +33,22 @@ class QRMS_License_Client {
 	const OPT_NOTICE_FLAG = 'qrms_license_notice';
 
 	/**
+	 * Sunucu lisansı geçersiz saydığı ilk anın zaman damgası ("active" gelince silinir).
+	 */
+	const OPT_REVOKE_SINCE = 'qrms_revoke_since';
+
+	/**
+	 * Lisans geçersiz sayıldıktan sonra modüllerin açık kalacağı süre (saniye).
+	 */
+	const REVOKE_GRACE = DAY_IN_SECONDS;
+
+	/**
+	 * Sunucunun lisansı geçersiz saydığı durumlar. "unreachable" bunlara dahil
+	 * DEĞİL: sunucuya ulaşılamaması modül kapatmaz.
+	 */
+	const REVOKING_STATUSES = array( 'inactive', 'invalid', 'domain_mismatch', 'expired' );
+
+	/**
 	 * Günlük senkronizasyon cron hook'u.
 	 */
 	const CRON_HOOK = 'qrms_daily_license_sync';
@@ -41,6 +57,13 @@ class QRMS_License_Client {
 	 * Varsayılan lisans sunucusu adresi (wizard'da değiştirilebilir).
 	 */
 	const DEFAULT_SERVER_URL = 'https://qrmenuofficial.com';
+
+	/**
+	 * Lisans sunucusunun Ed25519 açık anahtarı (base64). Sunucu cevapları bu
+	 * anahtarla doğrulanır; imzasız/bozuk cevap "unreachable" sayılır.
+	 * Test/özel kurulum için QRMS_LICENSE_PUBKEY sabitiyle geçersiz kılınabilir.
+	 */
+	const PUBLIC_KEY = 'HVJpYbCZfwMXCOL6+yDPPz1Pjk+Nn71zRG31fg0Y8i4=';
 
 	/**
 	 * Doğrulama endpoint yolu.
@@ -65,6 +88,8 @@ class QRMS_License_Client {
 	public static function init() {
 		add_action( self::CRON_HOOK, array( __CLASS__, 'run_daily_sync' ) );
 		add_action( 'admin_notices', array( __CLASS__, 'maybe_render_notice' ) );
+		// Aktivasyon çalışmadan kurulan/güncellenen sitelerde cron'u kendini onarır.
+		add_action( 'admin_init', array( __CLASS__, 'schedule_cron' ) );
 	}
 
 	/**
@@ -113,7 +138,44 @@ class QRMS_License_Client {
 	 * @return string[]
 	 */
 	public static function get_active_modules() {
+		// Geçersiz lisans + 24 saatlik süre dolduysa modüller kendiliğinden kapanır.
+		// Kontrol okuma anında yapılır (cron beklenmez); saklanan liste silinmez.
+		if ( self::is_lapsed() ) {
+			return array();
+		}
+
 		return QRMS_Helpers::sanitize_module_list( get_option( self::OPT_MODULES, array() ) );
+	}
+
+	/**
+	 * Sunucunun lisansı ilk geçersiz saydığı an.
+	 *
+	 * @return int Unix zaman damgası, geçerli/belirsiz durumda 0.
+	 */
+	public static function get_revoke_since() {
+		return (int) get_option( self::OPT_REVOKE_SINCE, 0 );
+	}
+
+	/**
+	 * Modüllerin kapanacağı an (geçersiz sayılma + 24 saat).
+	 *
+	 * @return int Unix zaman damgası, süre işlemiyorsa 0.
+	 */
+	public static function get_revoke_deadline() {
+		$since = self::get_revoke_since();
+
+		return $since > 0 ? $since + self::REVOKE_GRACE : 0;
+	}
+
+	/**
+	 * Lisans geçersiz sayıldı ve 24 saatlik süre doldu mu?
+	 *
+	 * @return bool
+	 */
+	public static function is_lapsed() {
+		$deadline = self::get_revoke_deadline();
+
+		return $deadline > 0 && time() >= $deadline;
 	}
 
 	/**
@@ -137,9 +199,10 @@ class QRMS_License_Client {
 	/**
 	 * Lisansı sunucuda doğrular ve sonucu option'lara yazar (senkron istek).
 	 *
-	 * Fail-safe: qrms_active_modules SADECE "active" cevabında güncellenir.
-	 * invalid / inactive / domain_mismatch / expired / unreachable
-	 * durumlarında mevcut modül listesine dokunulmaz.
+	 * qrms_active_modules SADECE "active" cevabında güncellenir.
+	 * invalid / inactive / domain_mismatch / expired durumlarında liste
+	 * 24 saat boyunca korunur, sonra get_active_modules() boş döner.
+	 * unreachable durumunda hiçbir şey değişmez (sunucu hatası kapatmaz).
 	 *
 	 * @param string $api_key    API anahtarı.
 	 * @param string $server_url Lisans sunucusu kök adresi.
@@ -188,6 +251,13 @@ class QRMS_License_Client {
 		$body   = json_decode( (string) wp_remote_retrieve_body( $response ), true );
 		$status = ( is_array( $body ) && isset( $body['status'] ) ) ? sanitize_key( (string) $body['status'] ) : '';
 
+		// İmzasız, bozuk imzalı ya da başka alan adı için üretilmiş cevap
+		// (sahte sunucu / tekrar oynatma) "ulaşılamadı" gibi ele alınır: modülleri
+		// ne açar ne kapatır.
+		if ( ! self::verify_signature( $body, $domain ) ) {
+			return self::store_result( 'unreachable', null, $api_key, $server_url, false );
+		}
+
 		// Beklenmeyen/bozuk cevap da "ulaşılamadı" gibi ele alınır.
 		if ( ! in_array( $status, array( 'active', 'inactive', 'domain_mismatch', 'invalid', 'expired' ), true ) ) {
 			return self::store_result( 'unreachable', null, $api_key, $server_url, false );
@@ -200,6 +270,59 @@ class QRMS_License_Client {
 		}
 
 		return self::store_result( $status, $modules, $api_key, $server_url, true );
+	}
+
+	/**
+	 * İmzalanan mesaj: sürüm, durum, alan adı ve modül listesi.
+	 *
+	 * @param string   $status  Durum.
+	 * @param string   $domain  Site alan adı.
+	 * @param string[] $modules Sunucunun gönderdiği modül listesi (olduğu gibi).
+	 * @return string
+	 */
+	public static function signed_message( $status, $domain, array $modules ) {
+		return "qrms1\n" . $status . "\n" . $domain . "\n" . implode( ',', $modules );
+	}
+
+	/**
+	 * Sunucu cevabının Ed25519 imzasını doğrular.
+	 *
+	 * @param mixed  $body   Çözülmüş JSON gövdesi.
+	 * @param string $domain Bu sitenin alan adı (cevap bu alan adına bağlı olmalı).
+	 * @return bool
+	 */
+	private static function verify_signature( $body, $domain ) {
+		if ( ! is_array( $body ) || empty( $body['sig'] ) || ! is_string( $body['sig'] )
+			|| ! isset( $body['status'], $body['domain'] ) || ! is_string( $body['domain'] )
+			|| ! function_exists( 'sodium_crypto_sign_verify_detached' ) ) {
+			return false;
+		}
+
+		if ( strtolower( $body['domain'] ) !== $domain ) {
+			return false;
+		}
+
+		$modules = isset( $body['modules'] ) && is_array( $body['modules'] ) ? $body['modules'] : array();
+
+		foreach ( $modules as $slug ) {
+			if ( ! is_string( $slug ) ) {
+				return false;
+			}
+		}
+
+		$sig = base64_decode( $body['sig'], true );
+		$key = base64_decode( defined( 'QRMS_LICENSE_PUBKEY' ) ? QRMS_LICENSE_PUBKEY : self::PUBLIC_KEY, true );
+
+		if ( false === $sig || false === $key
+			|| SODIUM_CRYPTO_SIGN_BYTES !== strlen( $sig ) || SODIUM_CRYPTO_SIGN_PUBLICKEYBYTES !== strlen( $key ) ) {
+			return false;
+		}
+
+		return sodium_crypto_sign_verify_detached(
+			$sig,
+			self::signed_message( (string) $body['status'], $domain, $modules ),
+			$key
+		);
 	}
 
 	/**
@@ -283,13 +406,15 @@ class QRMS_License_Client {
 	private static function store_result( $status, $modules, $api_key, $server_url, $reached ) {
 		$now = time();
 
-		// Kullanıcının girdiği key/sunucu her denemede saklanır ki cron aynı
-		// bilgilerle devam edebilsin.
-		if ( '' !== $api_key ) {
-			update_option( self::OPT_API_KEY, $api_key );
-		}
+		// Anahtar/sunucu yalnızca doğrulanınca (veya hiç kayıt yokken) saklanır;
+		// aksi halde yanlış bir deneme çalışan anahtarı ezer.
+		if ( 'active' === $status || '' === self::get_api_key() ) {
+			if ( '' !== $api_key ) {
+				update_option( self::OPT_API_KEY, $api_key );
+			}
 
-		update_option( self::OPT_SERVER_URL, $server_url );
+			update_option( self::OPT_SERVER_URL, $server_url );
+		}
 		update_option( self::OPT_LAST_STATUS, $status );
 
 		if ( $reached ) {
@@ -301,8 +426,14 @@ class QRMS_License_Client {
 			update_option( self::OPT_MODULES, $modules );
 			update_option( self::OPT_LAST_ACTIVE_SYNC, $now );
 			delete_option( self::OPT_NOTICE_FLAG );
+			delete_option( self::OPT_REVOKE_SINCE );
 		} else {
 			update_option( self::OPT_NOTICE_FLAG, $status );
+
+			// 24 saatlik süre ilk geçersiz cevapta başlar; tekrarlayan cevaplar sıfırlamaz.
+			if ( in_array( $status, self::REVOKING_STATUSES, true ) && self::get_revoke_since() <= 0 ) {
+				update_option( self::OPT_REVOKE_SINCE, $now );
+			}
 		}
 
 		return array(
@@ -342,7 +473,7 @@ class QRMS_License_Client {
 	/**
 	 * Bilgilendirme notice'ı gösterilmeli mi?
 	 *
-	 * Koşul: son durum sorunlu (unreachable/invalid/inactive/domain_mismatch) VE
+	 * Koşul: son durum sorunlu (unreachable/invalid/inactive/domain_mismatch/expired) VE
 	 * sağlıklı son senkronizasyondan bu yana 3 günden fazla geçmiş.
 	 *
 	 * @return bool
@@ -350,7 +481,7 @@ class QRMS_License_Client {
 	public static function should_show_notice() {
 		$status = self::get_last_status();
 
-		if ( ! in_array( $status, array( 'unreachable', 'invalid', 'inactive', 'domain_mismatch' ), true ) ) {
+		if ( ! in_array( $status, array( 'unreachable', 'invalid', 'inactive', 'domain_mismatch', 'expired' ), true ) ) {
 			return false;
 		}
 
@@ -381,7 +512,23 @@ class QRMS_License_Client {
 			return;
 		}
 
-		if ( ! self::should_show_notice() ) {
+		if ( self::get_revoke_since() <= 0 && ! self::should_show_notice() ) {
+			return;
+		}
+
+		if ( self::get_revoke_since() > 0 ) {
+			$label = QRMS_Helpers::get_status_label( self::get_last_status() );
+
+			if ( self::is_lapsed() ) {
+				/* translators: %s: lisans durumu. */
+				$text = sprintf( __( 'Lisansınız geçersiz (%s) ve 24 saatlik süre doldu; modülleriniz kapatıldı. Lisansı Genel Ayarlar\'tan yeniden doğrulayın.', 'qrms' ), $label );
+			} else {
+				/* translators: 1: lisans durumu, 2: kapanma zamanı. */
+				$text = sprintf( __( 'Lisansınız geçersiz (%1$s). Modülleriniz %2$s tarihinde kapanacak. Lisansı Genel Ayarlar\'tan yeniden doğrulayın.', 'qrms' ), $label, QRMS_Helpers::format_datetime( self::get_revoke_deadline() ) );
+			}
+
+			printf( '<div class="notice notice-error qrms-notice"><p>%s</p></div>', esc_html( $text ) );
+
 			return;
 		}
 

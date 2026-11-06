@@ -12,6 +12,10 @@
 
 require_once __DIR__ . '/stubs-wordpress.php';
 
+// Lisans cevap imzası testi: her çalıştırmada geçici anahtar çifti.
+$GLOBALS['qrms_test_sign_key'] = sodium_crypto_sign_keypair();
+define( 'QRMS_LICENSE_PUBKEY', base64_encode( sodium_crypto_sign_publickey( $GLOBALS['qrms_test_sign_key'] ) ) );
+
 if ( ! defined( 'ARRAY_A' ) ) {
 	define( 'ARRAY_A', 'ARRAY_A' );
 }
@@ -212,6 +216,24 @@ function qrms_assert_contains( $needle, $haystack, $message = '' ) {
  * @return void
  */
 function qrms_mock_http( $code, array $body ) {
+	// Gövde 'sig' içermiyorsa test anahtarıyla imzalanır (gerçek sunucu gibi).
+	// 'sig' => null: imzasız cevabı taklit eder.
+	if ( ! array_key_exists( 'sig', $body ) ) {
+		$body['domain'] = QRMS_Helpers::get_site_domain();
+		$body['sig']    = base64_encode(
+			sodium_crypto_sign_detached(
+				QRMS_License_Client::signed_message(
+					(string) $body['status'],
+					$body['domain'],
+					isset( $body['modules'] ) ? $body['modules'] : array()
+				),
+				sodium_crypto_sign_secretkey( $GLOBALS['qrms_test_sign_key'] )
+			)
+		);
+	} elseif ( null === $body['sig'] ) {
+		unset( $body['sig'] );
+	}
+
 	$GLOBALS['qrms_test']['http'] = array(
 		'response' => array( 'code' => $code ),
 		'body'     => wp_json_encode( $body ),
