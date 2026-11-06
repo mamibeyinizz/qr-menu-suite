@@ -268,7 +268,10 @@ function qrm_pro_input_css($v, $scope = '') {
         ['.qrm-input-group label', 'display: block; font-weight: 600; margin-bottom: 8px; font-size: 14px; opacity: 0.9;'],
         ['.qrm-input-group input[type="text"], .qrm-input-group input[type="tel"], .qrm-input-group textarea', $input_body],
         ['.qrm-input-group input[type="text"]:focus, .qrm-input-group input[type="tel"]:focus, .qrm-input-group textarea:focus', $input_focus],
-        ['.qrm-honeypot', 'position: absolute !important; left: -9999px !important; top: -9999px; width:1px; height:1px; overflow:hidden;'],
+        // Bot tuzağı ekran dışı DEĞİL, kırpılarak gizlenir: left:-9999px sağdan
+        // sola dillerde (ar/he/fa) kaydırılabilir taşma yaratıyor, belge ~10.000px
+        // genişleyip mobilde sayfa simsiyah/boş görünüyordu.
+        ['.qrm-honeypot', 'position: absolute !important; width: 1px !important; height: 1px !important; margin: -1px !important; padding: 0 !important; border: 0 !important; overflow: hidden !important; clip: rect(0 0 0 0) !important; clip-path: inset(50%) !important; white-space: nowrap !important;'],
 
         // --- Buton ---
         ['.qrm-btn', "background: $btn; color: $btn_tx; border: none; padding: 16px 32px; border-radius: $r; font-size: 16px; font-weight: 600; cursor: pointer; width: 100%; text-transform: uppercase; letter-spacing: 0.5px; transition: transform .15s ease, box-shadow .15s ease, opacity .2s ease; display:flex; align-items:center; justify-content:center; gap:10px;"],

@@ -422,3 +422,11 @@ a.qmo-banner-slide:focus-visible {
         transition: none;
     }
 }
+
+/* Sağdan sola diller (ar/he/fa): flex izi sağdan başlar, JS ise sola doğru
+   (negatif translateX) kaydırır; slaytlar görünür alanın dışına düşüp banner
+   boş görünüyordu. Görsel slayt şeridi yön bağımsızdır, iz LTR tutulur. */
+[dir="rtl"] .qmo-banner-root .qmo-banner-viewport,
+[dir="rtl"] .qmo-banner-root .qmo-banner-track {
+    direction: ltr;
+}

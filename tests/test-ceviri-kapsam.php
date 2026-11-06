@@ -289,3 +289,21 @@ qrms_test(
 		delete_option( 'hfb_footer_options' );
 	}
 );
+
+qrms_test(
+	'RTL: ön yüzde ekran dışına -9999px itilen öğe yok; banner izi LTR',
+	function () {
+		// left:-9999px sağdan sola dillerde kaydırılabilir taşma yaratır
+		// (canlı: Arapça'da belge 10.389px, mobilde ekran simsiyah).
+		$dosyalar = array(
+			'modules/yorum-feedback/includes/frontend/form-render.php',
+			'modules/yorum-feedback/includes/rewards/popup-render.php',
+			'modules/yorum-feedback/includes/forms/render.php',
+		);
+		foreach ( $dosyalar as $dosya ) {
+			qrms_assert_false( strpos( file_get_contents( QRMS_PLUGIN_DIR . $dosya ), '-9999px' ), 'ekran dışı konum yok: ' . $dosya );
+		}
+		qrms_assert_contains( 'clip-path: inset(50%)', file_get_contents( QRMS_PLUGIN_DIR . 'modules/yorum-feedback/includes/frontend/form-render.php' ), 'tuzak alanı kırpılarak gizli' );
+		qrms_assert_contains( '[dir="rtl"] .qmo-banner-root .qmo-banner-track', file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/frontend-banner-slider.css' ), 'banner RTL' );
+	}
+);

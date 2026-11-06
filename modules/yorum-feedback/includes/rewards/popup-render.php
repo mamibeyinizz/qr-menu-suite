@@ -669,8 +669,11 @@ function qrm_reward_render_popup($settings, $auto_open = false) {
             var ta = document.createElement('textarea');
             ta.value = text;
             ta.setAttribute('readonly', '');
-            ta.style.position = 'absolute';
-            ta.style.left = '-9999px';
+            // Ekran dışına (-9999px) itmek RTL dillerde sayfayı yatay kaydırıyordu.
+            ta.style.position = 'fixed';
+            ta.style.top = '0';
+            ta.style.left = '0';
+            ta.style.opacity = '0';
             document.body.appendChild(ta);
             ta.select();
             try { document.execCommand('copy'); cb(); } catch (e) {}
