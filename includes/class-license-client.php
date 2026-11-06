@@ -33,6 +33,22 @@ class QRMS_License_Client {
 	const OPT_NOTICE_FLAG = 'qrms_license_notice';
 
 	/**
+	 * Sunucu lisansı geçersiz saydığı ilk anın zaman damgası ("active" gelince silinir).
+	 */
+	const OPT_REVOKE_SINCE = 'qrms_revoke_since';
+
+	/**
+	 * Lisans geçersiz sayıldıktan sonra modüllerin açık kalacağı süre (saniye).
+	 */
+	const REVOKE_GRACE = DAY_IN_SECONDS;
+
+	/**
+	 * Sunucunun lisansı geçersiz saydığı durumlar. "unreachable" bunlara dahil
+	 * DEĞİL: sunucuya ulaşılamaması modül kapatmaz.
+	 */
+	const REVOKING_STATUSES = array( 'inactive', 'invalid', 'domain_mismatch', 'expired' );
+
+	/**
 	 * Günlük senkronizasyon cron hook'u.
 	 */
 	const CRON_HOOK = 'qrms_daily_license_sync';
@@ -115,7 +131,44 @@ class QRMS_License_Client {
 	 * @return string[]
 	 */
 	public static function get_active_modules() {
+		// Geçersiz lisans + 24 saatlik süre dolduysa modüller kendiliğinden kapanır.
+		// Kontrol okuma anında yapılır (cron beklenmez); saklanan liste silinmez.
+		if ( self::is_lapsed() ) {
+			return array();
+		}
+
 		return QRMS_Helpers::sanitize_module_list( get_option( self::OPT_MODULES, array() ) );
+	}
+
+	/**
+	 * Sunucunun lisansı ilk geçersiz saydığı an.
+	 *
+	 * @return int Unix zaman damgası, geçerli/belirsiz durumda 0.
+	 */
+	public static function get_revoke_since() {
+		return (int) get_option( self::OPT_REVOKE_SINCE, 0 );
+	}
+
+	/**
+	 * Modüllerin kapanacağı an (geçersiz sayılma + 24 saat).
+	 *
+	 * @return int Unix zaman damgası, süre işlemiyorsa 0.
+	 */
+	public static function get_revoke_deadline() {
+		$since = self::get_revoke_since();
+
+		return $since > 0 ? $since + self::REVOKE_GRACE : 0;
+	}
+
+	/**
+	 * Lisans geçersiz sayıldı ve 24 saatlik süre doldu mu?
+	 *
+	 * @return bool
+	 */
+	public static function is_lapsed() {
+		$deadline = self::get_revoke_deadline();
+
+		return $deadline > 0 && time() >= $deadline;
 	}
 
 	/**
@@ -139,9 +192,10 @@ class QRMS_License_Client {
 	/**
 	 * Lisansı sunucuda doğrular ve sonucu option'lara yazar (senkron istek).
 	 *
-	 * Fail-safe: qrms_active_modules SADECE "active" cevabında güncellenir.
-	 * invalid / inactive / domain_mismatch / expired / unreachable
-	 * durumlarında mevcut modül listesine dokunulmaz.
+	 * qrms_active_modules SADECE "active" cevabında güncellenir.
+	 * invalid / inactive / domain_mismatch / expired durumlarında liste
+	 * 24 saat boyunca korunur, sonra get_active_modules() boş döner.
+	 * unreachable durumunda hiçbir şey değişmez (sunucu hatası kapatmaz).
 	 *
 	 * @param string $api_key    API anahtarı.
 	 * @param string $server_url Lisans sunucusu kök adresi.
@@ -305,8 +359,14 @@ class QRMS_License_Client {
 			update_option( self::OPT_MODULES, $modules );
 			update_option( self::OPT_LAST_ACTIVE_SYNC, $now );
 			delete_option( self::OPT_NOTICE_FLAG );
+			delete_option( self::OPT_REVOKE_SINCE );
 		} else {
 			update_option( self::OPT_NOTICE_FLAG, $status );
+
+			// 24 saatlik süre ilk geçersiz cevapta başlar; tekrarlayan cevaplar sıfırlamaz.
+			if ( in_array( $status, self::REVOKING_STATUSES, true ) && self::get_revoke_since() <= 0 ) {
+				update_option( self::OPT_REVOKE_SINCE, $now );
+			}
 		}
 
 		return array(
@@ -385,7 +445,23 @@ class QRMS_License_Client {
 			return;
 		}
 
-		if ( ! self::should_show_notice() ) {
+		if ( self::get_revoke_since() <= 0 && ! self::should_show_notice() ) {
+			return;
+		}
+
+		if ( self::get_revoke_since() > 0 ) {
+			$label = QRMS_Helpers::get_status_label( self::get_last_status() );
+
+			if ( self::is_lapsed() ) {
+				/* translators: %s: lisans durumu. */
+				$text = sprintf( __( 'Lisansınız geçersiz (%s) ve 24 saatlik süre doldu; modülleriniz kapatıldı. Lisansı Genel Ayarlar\'tan yeniden doğrulayın.', 'qrms' ), $label );
+			} else {
+				/* translators: 1: lisans durumu, 2: kapanma zamanı. */
+				$text = sprintf( __( 'Lisansınız geçersiz (%1$s). Modülleriniz %2$s tarihinde kapanacak. Lisansı Genel Ayarlar\'tan yeniden doğrulayın.', 'qrms' ), $label, QRMS_Helpers::format_datetime( self::get_revoke_deadline() ) );
+			}
+
+			printf( '<div class="notice notice-error qrms-notice"><p>%s</p></div>', esc_html( $text ) );
+
 			return;
 		}
 

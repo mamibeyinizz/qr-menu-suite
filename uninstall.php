@@ -97,6 +97,7 @@ $qrms_optionlar = array(
 	'qrms_last_sync',
 	'qrms_last_active_sync',
 	'qrms_license_notice',
+	'qrms_revoke_since',
 	'qrms_server_url',
 	'qrms_db_version',
 	'qrms_uninstall_veri_sil',

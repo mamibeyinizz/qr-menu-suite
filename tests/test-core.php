@@ -79,6 +79,56 @@ qrms_test(
 );
 
 qrms_test(
+	'geçersiz lisans: 24 saat içinde modüller açık, sonra kendiliğinden kapanır',
+	function () {
+		update_option( 'qrms_active_modules', array( 'qr-galeri' ) );
+		delete_option( 'qrms_revoke_since' );
+		qrms_mock_http( 200, array( 'status' => 'expired' ) );
+
+		qrms_validate_license( 'ANAHTAR', 'https://full.qrmenuofficial.com' );
+		qrms_assert_same( array( 'qr-galeri' ), QRMS_License_Client::get_active_modules(), '24 saat içinde açık' );
+
+		update_option( 'qrms_revoke_since', time() - DAY_IN_SECONDS - 5 );
+		qrms_assert_same( array(), QRMS_License_Client::get_active_modules(), 'süre dolunca kapalı' );
+		qrms_assert_same( array( 'qr-galeri' ), get_option( 'qrms_active_modules' ), 'saklanan liste silinmez' );
+
+		// Tekrarlayan geçersiz cevap süreyi sıfırlamaz.
+		$since = QRMS_License_Client::get_revoke_since();
+		qrms_validate_license( 'ANAHTAR', 'https://full.qrmenuofficial.com' );
+		qrms_assert_same( $since, QRMS_License_Client::get_revoke_since(), 'süre sıfırlanmamalı' );
+
+		// unreachable süreyi başlatmaz/etkilemez.
+		delete_option( 'qrms_revoke_since' );
+		qrms_mock_http_error();
+		qrms_validate_license( 'ANAHTAR', 'https://full.qrmenuofficial.com' );
+		qrms_assert_same( 0, QRMS_License_Client::get_revoke_since(), 'unreachable süre başlatmaz' );
+
+		// active cevabı süreyi siler ve modülleri geri getirir.
+		update_option( 'qrms_revoke_since', time() - 3 * DAY_IN_SECONDS );
+		qrms_mock_http( 200, array( 'status' => 'active', 'modules' => array( 'qr-masa' ) ) );
+		qrms_validate_license( 'ANAHTAR', 'https://full.qrmenuofficial.com' );
+		qrms_assert_same( 0, QRMS_License_Client::get_revoke_since(), 'active süreyi siler' );
+		qrms_assert_same( array( 'qr-masa' ), QRMS_License_Client::get_active_modules(), 'modüller geri gelir' );
+	}
+);
+
+qrms_test(
+	'yanlış anahtar çalışan anahtarı ezmez; expired bildirim üretir',
+	function () {
+		update_option( 'qrms_api_key', 'IYI-ANAHTAR' );
+		update_option( 'qrms_last_status', 'expired' );
+		update_option( 'qrms_last_active_sync', time() - 4 * DAY_IN_SECONDS );
+		qrms_mock_http( 200, array( 'status' => 'invalid' ) );
+
+		qrms_validate_license( 'YANLIS', 'https://baska.example.com' );
+
+		qrms_assert_same( 'IYI-ANAHTAR', get_option( 'qrms_api_key' ), 'anahtar korunmalı' );
+		update_option( 'qrms_last_status', 'expired' );
+		qrms_assert_true( QRMS_License_Client::should_show_notice(), 'expired bildirimi' );
+	}
+);
+
+qrms_test(
 	'domain_mismatch → modüller korunur',
 	function () {
 		update_option( 'qrms_active_modules', array( 'qr-galeri' ) );
