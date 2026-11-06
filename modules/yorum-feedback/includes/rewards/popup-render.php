@@ -669,7 +669,7 @@ function qrm_reward_render_popup($settings, $auto_open = false) {
             var ta = document.createElement('textarea');
             ta.value = text;
             ta.setAttribute('readonly', '');
-            // Ekran dışına (-9999px) itmek RTL dillerde sayfayı yatay kaydırıyordu.
+            // Ekran dışına (büyük negatif left) itmek RTL dillerde sayfayı yatay kaydırıyordu.
             ta.style.position = 'fixed';
             ta.style.top = '0';
             ta.style.left = '0';
