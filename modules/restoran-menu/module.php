@@ -446,3 +446,91 @@ function qrms_module_restoran_menu_admin_assets() {
 		'before'
 	);
 }
+
+/**
+ * Restoran Menü'nün ön yüz metinlerini çeviri kataloğuna (ui_string) ekler.
+ *
+ * Menü sınıfları metinleri rma_ceviri_ui() (sabit 'ui_string' kataloğu)
+ * üzerinden çevirir. Katalogda olmayan metin CSV dışa aktarımına çıkmaz ve
+ * hiçbir dilde çevrilemez; filtre paneli, porsiyon/ekstra seçimi ve servis
+ * saati metinleri ile yöneticinin girdiği ekstra grup/ürün ve özel rozet
+ * adları bu yüzden her dilde Türkçe kalıyordu.
+ *
+ * Yalnızca dışa aktarma / yönetim ekranlarında çağrılır (anahtar metinden
+ * türetilir, ön yüz araması kataloğa bakmaz).
+ *
+ * @param string[] $metinler Mevcut katalog.
+ * @return string[]
+ */
+function qrms_restoran_menu_ceviri_katalogu( $metinler ) {
+	$ek = array(
+		// Filtre paneli ve aktif filtre çipleri (trait-frontend.php).
+		'Sırala',
+		'Alerjenleri Hariç Tut',
+		'En az (kcal)',
+		'En çok (kcal)',
+		'Sınırsız',
+		'En az',
+		'En çok',
+		'Ürün Özellikleri',
+		'Tümünü temizle',
+		'Filtreyi kaldır',
+		'Kalori',
+		'Fiyat',
+		'en çok',
+		'en az',
+		'Bu filtrelerle eşleşen ürün bulunamadı.',
+		'Filtreleri temizle',
+		// Porsiyon / ekstra (class-porsiyon.php, class-ekstra.php).
+		'Standart',
+		'Porsiyon',
+		'Ekstra ekle',
+		'Ücretsiz',
+		// Servis saati (class-servis-saati.php).
+		'Servis saatleri:',
+		'Her gün',
+		'Hafta içi',
+		'Hafta sonu',
+		'Bu ürün şu an servis edilmiyor',
+	);
+
+	if ( class_exists( 'RMA_Filtre' ) ) {
+		foreach ( RMA_Filtre::siralama_secenekleri() as $secenek ) {
+			$ek[] = isset( $secenek['label'] ) ? $secenek['label'] : '';
+		}
+		foreach ( RMA_Filtre::ozellik_kartlari() as $kart ) {
+			$ek[] = isset( $kart['label'] ) ? $kart['label'] : '';
+		}
+		$ek = array_merge( $ek, array_values( RMA_Filtre::aci_seviyeleri() ) );
+	}
+
+	// Et menşei seçenekleri (trait-helpers.php get_meat_origin_options; boş anahtar hariç).
+	$ek = array_merge(
+		$ek,
+		array( 'Dana Eti', 'Kuzu / Koyun Eti', 'Tavuk Eti', 'Hindi Eti', 'Balık', 'Deniz Ürünü', 'Karışık (Birden Fazla Et Türü)' )
+	);
+
+	if ( class_exists( 'RMA_Servis_Saati' ) ) {
+		$ek = array_merge( $ek, array_values( RMA_Servis_Saati::gunler() ) );
+	}
+
+	// Yöneticinin girdiği veriler: ekstra liste adları/ürünleri, özel rozetler.
+	if ( class_exists( 'RMA_Ekstra' ) ) {
+		foreach ( RMA_Ekstra::listeler() as $liste ) {
+			$ek[] = isset( $liste['ad'] ) ? $liste['ad'] : '';
+			foreach ( isset( $liste['urunler'] ) ? (array) $liste['urunler'] : array() as $urun ) {
+				$ek[] = isset( $urun['ad'] ) ? $urun['ad'] : '';
+			}
+		}
+	}
+	if ( class_exists( 'RMA_Ozel_Rozet' ) ) {
+		foreach ( RMA_Ozel_Rozet::tanimlar() as $rozet ) {
+			$ek[] = isset( $rozet['ad'] ) ? $rozet['ad'] : '';
+		}
+	}
+
+	$ek = array_filter( array_map( 'trim', array_map( 'strval', $ek ) ), 'strlen' );
+
+	return array_values( array_unique( array_merge( (array) $metinler, $ek ) ) );
+}
+add_filter( 'rma_ceviri_ui_metinleri', 'qrms_restoran_menu_ceviri_katalogu' );

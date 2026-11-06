@@ -94,3 +94,51 @@ function qrms_module_qr_galeri_init() {
 		);
 	}
 }
+
+/**
+ * Galeri bölüm başlık ve açıklamalarını çeviri kataloğuna ekler.
+ *
+ * Ön yüz bölüm başlığını/açıklamasını rma_ceviri_modul( 'gallery', … )
+ * ile, yani sabit 'gallery' kataloğu üzerinden çevirir. Bölümler
+ * yöneticinin girdiği veri olduğu için katalogda yer almıyor, CSV dışa
+ * aktarımına hiç çıkmıyor ve hiçbir dilde çevrilemiyordu (bölüm CPT'si
+ * show_ui=false olduğundan "ürün" kapsamına da girmez). Yalnızca dışa
+ * aktarma / yönetim ekranlarında çalışır.
+ *
+ * @param array<string,string[]> $katalog Tip => metinler.
+ * @return array<string,string[]>
+ */
+function qrms_galeri_ceviri_katalogu( $katalog ) {
+	if ( ! class_exists( 'QRMenu_Gallery_Manager' ) || ! post_type_exists( QRMenu_Gallery_Manager::CPT_SECTION ) ) {
+		return $katalog;
+	}
+
+	$bolumler = get_posts(
+		array(
+			'post_type'      => QRMenu_Gallery_Manager::CPT_SECTION,
+			'post_status'    => 'publish',
+			'posts_per_page' => -1,
+			'no_found_rows'  => true,
+		)
+	);
+
+	$ek = array();
+	foreach ( $bolumler as $bolum ) {
+		$ek[] = $bolum->post_title;
+
+		$aciklama = trim( (string) $bolum->post_excerpt );
+		if ( '' === $aciklama ) {
+			$aciklama = trim( (string) get_post_meta( $bolum->ID, '_qrmgm_desc', true ) );
+		}
+		$ek[] = $aciklama;
+	}
+
+	$ek = array_filter( array_map( 'trim', array_map( 'strval', $ek ) ), 'strlen' );
+	if ( $ek ) {
+		$mevcut             = isset( $katalog['gallery'] ) ? (array) $katalog['gallery'] : array();
+		$katalog['gallery'] = array_values( array_unique( array_merge( $mevcut, $ek ) ) );
+	}
+
+	return $katalog;
+}
+add_filter( 'rma_ceviri_modul_kaynak_metinleri', 'qrms_galeri_ceviri_katalogu' );

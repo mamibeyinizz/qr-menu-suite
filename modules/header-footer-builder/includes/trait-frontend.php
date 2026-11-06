@@ -588,6 +588,9 @@ trait QRMS_HFB_Frontend {
 
 		$variant = isset( $block['variant'] ) && 'small' === $block['variant'] ? 'small' : 'body';
 
+		// Yönetici metni; kataloğa hfb_ceviri_katalogu() ekler (ui_string, metinden anahtar).
+		$content = $this->hfb_cevir_ui( $content );
+
 		return '<div class="hfb-fb hfb-fb--text hfb-fb--text-' . esc_attr( $variant ) . '">' . nl2br( esc_html( $content ), false ) . '</div>';
 	}
 
@@ -639,6 +642,7 @@ trait QRMS_HFB_Frontend {
 	private function render_footer_block_menu( $block, $uid ) {
 		$menu_id = isset( $block['menu_id'] ) ? (int) $block['menu_id'] : 0;
 		$title   = isset( $block['title'] ) ? trim( (string) $block['title'] ) : '';
+		$title   = '' !== $title ? $this->hfb_cevir_ui( $title ) : '';
 		$nav     = $this->scope_nav_ids( $this->render_nav_menu( $menu_id, 'hfb-footer__menu' ), 'hfb-fm-' . sanitize_key( $uid ) . '-' );
 
 		if ( ! $nav && '' === $title ) {

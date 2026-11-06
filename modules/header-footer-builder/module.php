@@ -39,3 +39,43 @@ function qrms_hfb_footer_call_claims_page() {
 
 	return $hfb->footer_call_claims_shortcode_output();
 }
+
+/**
+ * Footer blok başlıklarını ve metin bloklarını çeviri kataloğuna ekler.
+ *
+ * Footer düzeni (satır → sütun → blok) yöneticinin yazdığı menü başlıkları
+ * ("Kurumsal") ve metin blokları içerir; bunlar çeviriden hiç geçmiyor ve
+ * her dilde Türkçe kalıyordu. Ön yüz artık bunları rma_ceviri_modul(
+ * 'ui_string', … ) ile çevirir (anahtar metinden türer); bu filtre onları
+ * CSV dışa aktarımına taşır. Yalnızca dışa aktarma / yönetim ekranlarında
+ * çalışır.
+ *
+ * @param string[] $metinler Mevcut katalog.
+ * @return string[]
+ */
+function qrms_hfb_ceviri_katalogu( $metinler ) {
+	$opts = get_option( 'hfb_footer_options', array() );
+	$rows = ( is_array( $opts ) && isset( $opts['layout']['rows'] ) && is_array( $opts['layout']['rows'] ) ) ? $opts['layout']['rows'] : array();
+
+	$ek = array();
+	foreach ( $rows as $row ) {
+		foreach ( ( isset( $row['cols'] ) && is_array( $row['cols'] ) ) ? $row['cols'] : array() as $col ) {
+			foreach ( ( isset( $col['blocks'] ) && is_array( $col['blocks'] ) ) ? $col['blocks'] : array() as $block ) {
+				if ( ! is_array( $block ) || empty( $block['type'] ) ) {
+					continue;
+				}
+				if ( 'menu' === $block['type'] && isset( $block['title'] ) ) {
+					$ek[] = $block['title'];
+				}
+				if ( 'text' === $block['type'] && isset( $block['content'] ) ) {
+					$ek[] = $block['content'];
+				}
+			}
+		}
+	}
+
+	$ek = array_filter( array_map( 'trim', array_map( 'strval', $ek ) ), 'strlen' );
+
+	return array_values( array_unique( array_merge( (array) $metinler, $ek ) ) );
+}
+add_filter( 'rma_ceviri_ui_metinleri', 'qrms_hfb_ceviri_katalogu' );

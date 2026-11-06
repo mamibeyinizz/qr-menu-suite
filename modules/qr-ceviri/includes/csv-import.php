@@ -265,6 +265,11 @@ if ( ! function_exists( 'rma_ceviri_satirlari_isle' ) ) {
 				continue;
 			}
 
+			// Dışa aktarmadaki formül koruma tırnağını geri al (bkz. rma_ceviri_csv_hucre_coz).
+			if ( function_exists( 'rma_ceviri_csv_hucre_coz' ) ) {
+				$satir = array_map( 'rma_ceviri_csv_hucre_coz', $satir );
+			}
+
 			++$rapor['toplam'];
 
 			$item_type = isset( $satir[ $sabit['item_type'] ] ) ? sanitize_key( $satir[ $sabit['item_type'] ] ) : '';

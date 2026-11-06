@@ -746,7 +746,11 @@ qrms_test(
 		$bot    = file_get_contents( QRMS_PLUGIN_DIR . 'modules/qr-chatbot/includes/shortcode-chatbot.php' );
 		$defter = rma_ceviri_option_defteri();
 
-		qrms_assert_contains( 'qmo_ceviri_chat( $uyari )', $ajax, 'yasak yedek sarıldı' );
+		// Yasak yanıtı çeviriden geçer: varsayılan metin chat kataloğundan,
+		// yöneticinin özel metni option defterinden (qmo_chatbot_ayar_cevir).
+		qrms_assert_contains( "qmo_chatbot_ayar_cevir( 'qmo_chatbot_banned_msg' )", $ajax, 'yasak yanıtı sarıldı' );
+		qrms_assert_true( isset( $defter['qmo_chatbot_banned_msg'] ), 'özel yasak yanıtı defterde' );
+		qrms_assert_true( isset( $defter['qmo_chatbot_eskalasyon_msg'] ), 'özel eskalasyon sorusu defterde' );
 		qrms_assert_true( isset( $defter['qmo_chatbot_teaser_text'] ), 'teaser' );
 		qrms_assert_true( isset( $defter['qmo_chatbot_welcome_intro'] ), 'intro' );
 		qrms_assert_true( isset( $defter['qmo_chatbot_welcome_btn'] ), 'btn' );

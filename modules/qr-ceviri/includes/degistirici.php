@@ -114,13 +114,83 @@ if ( ! function_exists( 'rma_ceviri_kapali_etiket_sayaci' ) ) {
 	}
 }
 
+/** Alt-dize değiştirmede tek bir desene konan en fazla anahtar (PCRE desen boyutu sınırı). */
+if ( ! defined( 'RMA_CEVIRI_DESEN_PARCA' ) ) {
+	define( 'RMA_CEVIRI_DESEN_PARCA', 200 );
+}
+
+/**
+ * Sözlük için kelime sınırlı alt-dize desenleri (istek içi önbellekli).
+ *
+ * Anahtarlar uzundan kısaya sıralanır (strtr gibi en uzun eşleşme önce).
+ * Eşleşmenin iki yanında harf/rakam olamaz: "En Az Karb" anahtarı
+ * "En Az Karbonhidratlı" kelimesinin ortasını yakalayıp "Lowest
+ * Carbonhidratlı" üretmez.
+ *
+ * @param string[] $sozluk orijinal => çeviri.
+ * @return array<int,string>|false Desenler; derlenemezse false (strtr'ye düşülür).
+ */
+if ( ! function_exists( 'rma_ceviri_sozluk_desenleri' ) ) {
+	function rma_ceviri_sozluk_desenleri( $sozluk ) {
+		static $onbellek = array();
+
+		$anahtarlar = array_keys( $sozluk );
+		$imza       = count( $anahtarlar ) . ':' . md5( implode( "\0", array_slice( $anahtarlar, 0, 5 ) ) . "\1" . implode( "\0", array_slice( $anahtarlar, -5 ) ) );
+
+		if ( isset( $onbellek[ $imza ] ) ) {
+			return $onbellek[ $imza ];
+		}
+
+		$anahtarlar = array_values(
+			array_filter(
+				array_map( 'strval', $anahtarlar ),
+				static function ( $a ) {
+					return '' !== $a;
+				}
+			)
+		);
+		usort(
+			$anahtarlar,
+			static function ( $a, $b ) {
+				return strlen( $b ) - strlen( $a );
+			}
+		);
+
+		$desenler = array();
+		foreach ( array_chunk( $anahtarlar, RMA_CEVIRI_DESEN_PARCA ) as $parca ) {
+			$alternatif = implode(
+				'|',
+				array_map(
+					static function ( $a ) {
+						return preg_quote( $a, '/' );
+					},
+					$parca
+				)
+			);
+			$desen = '/(?<![\p{L}\p{N}])(?:' . $alternatif . ')(?![\p{L}\p{N}])/u';
+
+			// Derlenebilir mi? (geçersiz UTF-8 / desen boyutu sınırı)
+			if ( false === @preg_match( $desen, '' ) ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+				$onbellek[ $imza ] = false;
+				return false;
+			}
+			$desenler[] = $desen;
+		}
+
+		$onbellek[ $imza ] = $desenler;
+		return $desenler;
+	}
+}
+
 /**
  * Tek bir metin düğümünü çevir.
  *
  * Önce TAM eşleşme denenir (en güvenli ve en sık durum: düğümün tamamı
- * çevrilecek metindir). Tutmazsa alt-dize geçişi yapılır: strtr() dizi ile
- * en uzun anahtarı önce dener ve değiştirdiği bölgeyi yeniden taramaz, yani
- * "Sepet" anahtarı "Sepete Ekle" çevirisinin içini bozamaz.
+ * çevrilecek metindir). Tutmazsa kelime sınırlı alt-dize geçişi yapılır:
+ * en uzun anahtar önce denenir, değiştirilen bölge yeniden taranmaz ("Sepet"
+ * anahtarı "Sepete Ekle" çevirisinin içini bozamaz) ve anahtar bir kelimenin
+ * ortasında eşleşmez ("En Az Karb" → "En Az Karbonhidratlı" içinde değişmez).
+ * Desen derlenemezse eski strtr() davranışına düşülür.
  *
  * @param string   $metin  Metin düğümü (kırpılmamış).
  * @param string[] $sozluk orijinal => çeviri.
@@ -144,7 +214,26 @@ if ( ! function_exists( 'rma_ceviri_metin_degistir' ) ) {
 				. ( $son > 0 ? substr( $metin, -$son ) : '' );
 		}
 
-		return strtr( $metin, $sozluk );
+		$desenler = rma_ceviri_sozluk_desenleri( $sozluk );
+		if ( false === $desenler ) {
+			return strtr( $metin, $sozluk );
+		}
+
+		foreach ( $desenler as $desen ) {
+			$yeni = preg_replace_callback(
+				$desen,
+				static function ( $m ) use ( $sozluk ) {
+					return isset( $sozluk[ $m[0] ] ) ? $sozluk[ $m[0] ] : $m[0];
+				},
+				$metin
+			);
+			if ( null === $yeni ) {
+				return strtr( $metin, $sozluk );
+			}
+			$metin = $yeni;
+		}
+
+		return $metin;
 	}
 }
 

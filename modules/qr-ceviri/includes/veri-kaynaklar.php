@@ -157,6 +157,20 @@ if ( ! function_exists( 'rma_ceviri_option_defteri' ) ) {
 				'anahtar'    => null,
 				'varsayilan' => 'Şu an kapalıyız, yakında görüşmek üzere.',
 			),
+			'qmo_chatbot_banned_msg'   => array(
+				'etiket'      => 'Chatbot: yasaklı konu yanıtı',
+				'option'      => 'qmo_chatbot_banned_msg',
+				'anahtar'     => null,
+				'varsayilan'  => 'Bu konuda yardımcı olamam. Menü veya sipariş hakkında sorabilirsiniz.',
+				'yalniz_ozel' => true,
+			),
+			'qmo_chatbot_eskalasyon_msg' => array(
+				'etiket'      => 'Chatbot: eskalasyon sorusu',
+				'option'      => 'qmo_chatbot_eskalasyon_msg',
+				'anahtar'     => null,
+				'varsayilan'  => 'Bu konuda emin olamadım. Garson çağırmamı ister misiniz?',
+				'yalniz_ozel' => true,
+			),
 			'hfb_footer.hours_title'   => array(
 				'etiket'     => 'Footer: çalışma saatleri başlığı',
 				'option'     => 'hfb_footer_options',

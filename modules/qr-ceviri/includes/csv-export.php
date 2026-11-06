@@ -125,6 +125,30 @@ if ( ! function_exists( 'rma_ceviri_csv_hucre_kacir' ) ) {
 }
 
 /**
+ * rma_ceviri_csv_hucre_kacir()'ın tersi: içe aktarırken koruma tırnağını kaldırır.
+ *
+ * Dışa aktarma `-{n} ₺` gibi hücrelerin başına `'` ekler. İçe aktarma bunu
+ * geri almıyordu; dışa aktar → içe aktar döngüsünden sonra çeviri tabloya
+ * `'-{n} ₺` olarak yazılıyor ve ön yüzde indirim etiketi `'-10 ₺` diye
+ * görünüyordu. Yalnızca kaçırma kuralına uyan hücre (tırnak + formül
+ * karakteri) çözülür; tırnakla başlayan gerçek metne dokunulmaz.
+ *
+ * @param mixed $deger CSV hücresi.
+ * @return mixed
+ */
+if ( ! function_exists( 'rma_ceviri_csv_hucre_coz' ) ) {
+	function rma_ceviri_csv_hucre_coz( $deger ) {
+		if ( ! is_string( $deger ) || strlen( $deger ) < 2 || "'" !== $deger[0] ) {
+			return $deger;
+		}
+
+		return in_array( $deger[1], array( '=', '+', '-', '@', "\t", "\r" ), true )
+			? substr( $deger, 1 )
+			: $deger;
+	}
+}
+
+/**
  * CSV'yi üret ve indirt.
  */
 if ( ! function_exists( 'rma_ceviri_csv_disa_aktar' ) ) {

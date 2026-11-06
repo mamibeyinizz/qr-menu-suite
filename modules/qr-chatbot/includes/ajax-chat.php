@@ -49,8 +49,9 @@ if ( ! function_exists( 'qmo_ajax_chat' ) ) {
 		}
 
 		if ( function_exists( 'qmo_chatbot_yasakli_mi' ) && qmo_chatbot_yasakli_mi( $message ) ) {
-			$uyari = function_exists( 'qmo_chatbot_ayar' ) ? qmo_chatbot_ayar( 'qmo_chatbot_banned_msg' ) : __( 'Bu konuda yardımcı olamam.', 'qrms' );
-			$uyari = qmo_ceviri_chat( $uyari );
+			$uyari = function_exists( 'qmo_chatbot_ayar_cevir' )
+				? qmo_chatbot_ayar_cevir( 'qmo_chatbot_banned_msg' )
+				: qmo_ceviri_chat( __( 'Bu konuda yardımcı olamam.', 'qrms' ) );
 			qmo_chatbot_gecmis_yaz( $sess, $message, $uyari );
 			wp_send_json_success( $uyari );
 		}

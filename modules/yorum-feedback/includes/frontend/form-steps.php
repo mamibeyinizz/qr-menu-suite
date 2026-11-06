@@ -65,7 +65,9 @@ function qrm_cf_step_label($step_num, $settings) {
         ? $settings['step_labels'] : [];
     $raw = isset($labels[$step_num]) ? trim((string) $labels[$step_num]) : '';
     if ($raw === '') {
-        $raw = sprintf(__('%d. Adım', 'qrms'), $step_num);
+        // Kalıp önce çevrilir, sonra numara basılır: "1. Adım" gibi
+        // numaralı hâli katalogda yoktur, "%d. Adım" vardır.
+        return sprintf(qrm_ceviri_review(__('%d. Adım', 'qrms')), $step_num);
     }
     return qrm_ceviri_review($raw);
 }
@@ -548,12 +550,16 @@ function qrm_pro_steps_css($v) {
  */
 function qrm_pro_steps_js_config($steps) {
     $out = [];
+    // Ekran okuyucu duyurusu ("2. adım: Bilgileriniz"). Önceden JS'e gömülü
+    // Türkçe "'. adım: '" idi ve hiçbir dilde çevrilmiyordu.
+    $duyuru = qrm_ceviri_review(__('%1$d. adım: %2$s', 'qrms'));
     foreach ((array) $steps as $step) {
         $out[] = [
             'step'     => (int) $step['step'],
             'id'       => $step['id'],
             'type'     => $step['type'],
             'label'    => $step['label'],
+            'announce' => sprintf($duyuru, (int) $step['step'], $step['label']),
             'fields'   => isset($step['fields']) ? array_values((array) $step['fields']) : [],
             'captcha'  => !empty($step['captcha']),
             'consent'  => !empty($step['consent']),
@@ -650,7 +656,7 @@ function qrm_pro_steps_wizard_js() {
                     mobileLbl.textContent = n + '/' + total + ' · ' + cfg.label;
                 }
                 if (announcer && cfg) {
-                    announcer.textContent = n + '. adım: ' + cfg.label;
+                    announcer.textContent = cfg.announce || (n + '. ' + cfg.label);
                 }
             }
 

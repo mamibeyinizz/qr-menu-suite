@@ -316,3 +316,67 @@ function qrm_pro_debug_log($message) {
     if (!is_scalar($message)) $message = wp_json_encode($message);
     error_log('[QRM] ' . $message);
 }
+
+/**
+ * Yöneticinin yazdığı form adım etiketlerini çeviri kataloğuna ekler.
+ *
+ * Adım etiketleri (Puanlama ayarlarındaki qrm_step_labels, yorum formu
+ * düzenindeki step_labels ve her özel formun step_labels'ı) ön yüzde
+ * qrm_ceviri_review() ile, yani SABİT 'review' kataloğu üzerinden
+ * çevrilir. Katalog yalnızca koddaki metinleri içerdiği için yöneticinin
+ * yazdığı "Bizi Puanlayın." gibi etiketler CSV dışa aktarımına hiç
+ * çıkmıyor, dolayısıyla hiçbir dilde çevrilemiyordu. Anahtar metinden
+ * türetildiği için (rma_ceviri_ui_anahtari) etiket değişirse eski çeviri
+ * kendiliğinden devre dışı kalır.
+ *
+ * Yalnızca dışa aktarma / yönetim ekranlarında çağrılır; ön yüz çeviri
+ * aramasını etkilemez.
+ *
+ * @param array<string,string[]> $katalog Tip => metinler.
+ * @return array<string,string[]>
+ */
+if (!function_exists('qrm_ceviri_adim_etiketleri_katalogu')) {
+    function qrm_ceviri_adim_etiketleri_katalogu($katalog) {
+        $ek = [];
+
+        if (function_exists('qrm_pro_get_settings')) {
+            $settings = qrm_pro_get_settings();
+            foreach (['qrm_step_labels'] as $alan) {
+                if (!empty($settings[$alan]) && is_array($settings[$alan])) {
+                    $ek = array_merge($ek, array_values($settings[$alan]));
+                }
+            }
+            if (function_exists('qrm_pro_get_review_form_layout')) {
+                $layout = qrm_pro_get_review_form_layout($settings);
+                if (!empty($layout['step_labels']) && is_array($layout['step_labels'])) {
+                    $ek = array_merge($ek, array_values($layout['step_labels']));
+                }
+            }
+        }
+
+        global $wpdb;
+        if (isset($wpdb) && function_exists('qrm_cf_forms_table') && function_exists('qrm_cf_get_form_settings')) {
+            $tablo = qrm_cf_forms_table();
+            $var   = function_exists('rma_ceviri_db_tablo_var_mi') ? rma_ceviri_db_tablo_var_mi($tablo) : true;
+            $formlar = $var ? $wpdb->get_results("SELECT id, settings FROM {$tablo}") : [];
+            foreach ((array) $formlar as $form) {
+                $ayar = qrm_cf_get_form_settings($form);
+                if (!empty($ayar['step_labels']) && is_array($ayar['step_labels'])) {
+                    $ek = array_merge($ek, array_values($ayar['step_labels']));
+                }
+            }
+        }
+
+        $ek = array_filter(array_map(static function ($m) {
+            return trim(sanitize_text_field((string) $m));
+        }, $ek), 'strlen');
+
+        if ($ek) {
+            $mevcut           = isset($katalog['review']) ? (array) $katalog['review'] : [];
+            $katalog['review'] = array_values(array_unique(array_merge($mevcut, $ek)));
+        }
+
+        return $katalog;
+    }
+    add_filter('rma_ceviri_modul_kaynak_metinleri', 'qrm_ceviri_adim_etiketleri_katalogu');
+}

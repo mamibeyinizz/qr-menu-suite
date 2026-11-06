@@ -88,6 +88,29 @@ function qmo_chatbot_ayar( $anahtar ) {
 }
 
 /**
+ * Yönetici tarafından düzenlenebilen chatbot mesajının çevrilmiş hâli.
+ *
+ * Varsayılan metin sabit 'chat' kataloğunda durur; yönetici metni
+ * değiştirdiyse katalogda yoktur — o durumda ayar çeviri defterinden
+ * (rma_ceviri_option, hash kapılı) çevrilir. Önceden ikisi de sabit
+ * kataloğa gidiyordu ve özel metin hiçbir dilde çevrilemiyordu.
+ *
+ * @param string $anahtar qmo_chatbot_banned_msg | qmo_chatbot_eskalasyon_msg.
+ * @return string
+ */
+function qmo_chatbot_ayar_cevir( $anahtar ) {
+	$deger      = (string) qmo_chatbot_ayar( $anahtar );
+	$varsayilan = qmo_chatbot_yeni_varsayilanlar();
+	$varsayilan = isset( $varsayilan[ $anahtar ] ) ? (string) $varsayilan[ $anahtar ] : '';
+
+	if ( '' !== $deger && $deger !== $varsayilan && function_exists( 'rma_ceviri_option' ) ) {
+		return rma_ceviri_option( $anahtar, $deger );
+	}
+
+	return function_exists( 'qmo_ceviri_chat' ) ? qmo_ceviri_chat( $deger ) : $deger;
+}
+
+/**
  * İkon boyutu hazır seçenek → piksel (gemini_icon_size ile senkron).
  *
  * @return array<string,int>
