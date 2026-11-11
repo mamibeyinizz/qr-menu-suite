@@ -220,12 +220,16 @@ function qrms_mock_http( $code, array $body ) {
 	// 'sig' => null: imzasız cevabı taklit eder.
 	if ( ! array_key_exists( 'sig', $body ) ) {
 		$body['domain'] = QRMS_Helpers::get_site_domain();
+		if ( ! isset( $body['valid_until'] ) ) {
+			$body['valid_until'] = time() + 7 * DAY_IN_SECONDS;
+		}
 		$body['sig']    = base64_encode(
 			sodium_crypto_sign_detached(
 				QRMS_License_Client::signed_message(
 					(string) $body['status'],
 					$body['domain'],
-					isset( $body['modules'] ) ? $body['modules'] : array()
+					isset( $body['modules'] ) ? $body['modules'] : array(),
+					$body['valid_until']
 				),
 				sodium_crypto_sign_secretkey( $GLOBALS['qrms_test_sign_key'] )
 			)
