@@ -34,6 +34,7 @@ require_once QRMS_PLUGIN_DIR . 'includes/class-brand-identity.php';
 require_once QRMS_PLUGIN_DIR . 'includes/class-qrms-login.php';
 require_once QRMS_PLUGIN_DIR . 'includes/class-query-monitor.php';
 require_once QRMS_PLUGIN_DIR . 'includes/class-qrms-hata-sayfalari.php';
+require_once QRMS_PLUGIN_DIR . 'includes/class-acil-durum.php';
 
 /**
  * Plugin bileşenlerinin hook'larını kaydeder.
@@ -61,6 +62,9 @@ function qrms_bootstrap() {
 	// Tema ne olursa olsun markalı 404 belgesi. Admin / AJAX / REST / cron
 	// isteklerini kendi içinde atlar.
 	QRMS_Hata_Sayfalari::init();
+
+	// Acil durum: PIN korumalı modül anahtarları + bakım modu.
+	QRMS_Acil_Durum::init();
 }
 qrms_bootstrap();
 

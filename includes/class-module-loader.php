@@ -96,6 +96,11 @@ class QRMS_Module_Loader {
 				continue; // Modül henüz paketlenmemiş: sessizce atla.
 			}
 
+			// Acil durumda kapatılan modül müşteri tarafında hiç yüklenmez.
+			if ( class_exists( 'QRMS_Acil_Durum' ) && QRMS_Acil_Durum::should_block_module( $slug ) ) {
+				continue;
+			}
+
 			require_once $file;
 
 			$callback = self::get_init_function( $slug );

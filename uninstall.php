@@ -35,6 +35,9 @@ global $wpdb;
  * 1) TABLOLAR
  * ---------------------------------------------------------------------- */
 
+delete_option( 'qrms_acil_durum' );
+delete_option( 'qrms_acil_durum_pin_hash' );
+
 $qrms_tablolar = array(
 	// Kişisel veri barındıranlar.
 	'qrm_reviews',
