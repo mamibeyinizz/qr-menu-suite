@@ -1,7 +1,8 @@
 <?php
 /**
  * Lisans istemcisi: sunucu ile konuşur, sonucu option'lara yazar, günlük
- * senkronizasyonu yönetir. Hiçbir koşulda sert kilitleme yapmaz.
+ * senkronizasyonu yönetir. Geçersiz lisansta 24 saat, imzalı onayın süresi
+ * (valid_until) dolunca modülleri kapatır.
  *
  * @package QR_Menu_Suite
  */
@@ -41,6 +42,25 @@ class QRMS_License_Client {
 	 * Lisans geçersiz sayıldıktan sonra modüllerin açık kalacağı süre (saniye).
 	 */
 	const REVOKE_GRACE = DAY_IN_SECONDS;
+
+	/**
+	 * Son imzalı "active" cevabın geçerli olduğu son an (unix). Sunucu bunu
+	 * lisans bitişi ile "şimdi + 7 gün"ün küçüğü olarak imzalar. Bu an geçince
+	 * sunucuya ulaşılsın ya da ulaşılmasın modüller kapanır; böylece sunucuyu
+	 * engellemek ya da eski bir cevabı tekrar oynatmak lisansı uzatmaz.
+	 */
+	const OPT_VALID_UNTIL = 'qrms_valid_until';
+
+	/**
+	 * valid_until hiç kaydedilmemiş (eski sürümden yükseltilmiş) kurulumlara
+	 * tanınan ilk süre: bu sürede imzalı bir "active" cevap gelmelidir.
+	 */
+	const FIRST_LEASE = 7 * DAY_IN_SECONDS;
+
+	/**
+	 * Sunucunun imzalayabileceği en uzun süre; daha ileri tarih kırpılır.
+	 */
+	const MAX_LEASE = 31 * DAY_IN_SECONDS;
 
 	/**
 	 * Sunucunun lisansı geçersiz saydığı durumlar. "unreachable" bunlara dahil
@@ -175,7 +195,44 @@ class QRMS_License_Client {
 	public static function is_lapsed() {
 		$deadline = self::get_revoke_deadline();
 
-		return $deadline > 0 && time() >= $deadline;
+		if ( $deadline > 0 && time() >= $deadline ) {
+			return true;
+		}
+
+		return self::is_lease_expired();
+	}
+
+	/**
+	 * Son imzalı "active" cevabın süresi doldu mu?
+	 *
+	 * @return bool
+	 */
+	public static function is_lease_expired() {
+		$until = self::get_valid_until();
+
+		return $until > 0 && time() >= $until;
+	}
+
+	/**
+	 * Son imzalı "active" cevabın geçerlilik sonu.
+	 *
+	 * Kayıt yoksa (eski sürümden yükseltme) ve anahtar girilmişse bir kez
+	 * FIRST_LEASE kadar ileri tarih yazılır; anahtar yoksa 0 (kurulum yok).
+	 *
+	 * @return int Unix zaman damgası ya da 0.
+	 */
+	public static function get_valid_until() {
+		$until = get_option( self::OPT_VALID_UNTIL, false );
+
+		if ( false === $until ) {
+			if ( '' === self::get_api_key() ) {
+				return 0;
+			}
+			$until = time() + self::FIRST_LEASE;
+			update_option( self::OPT_VALID_UNTIL, $until );
+		}
+
+		return (int) $until;
 	}
 
 	/**
@@ -254,7 +311,9 @@ class QRMS_License_Client {
 		// İmzasız, bozuk imzalı ya da başka alan adı için üretilmiş cevap
 		// (sahte sunucu / tekrar oynatma) "ulaşılamadı" gibi ele alınır: modülleri
 		// ne açar ne kapatır.
-		if ( ! self::verify_signature( $body, $domain ) ) {
+		$valid_until = self::verify_signature( $body, $domain );
+
+		if ( false === $valid_until ) {
 			return self::store_result( 'unreachable', null, $api_key, $server_url, false );
 		}
 
@@ -269,19 +328,21 @@ class QRMS_License_Client {
 			$modules = QRMS_Helpers::sanitize_module_list( isset( $body['modules'] ) ? $body['modules'] : array() );
 		}
 
-		return self::store_result( $status, $modules, $api_key, $server_url, true );
+		return self::store_result( $status, $modules, $api_key, $server_url, true, $valid_until );
 	}
 
 	/**
-	 * İmzalanan mesaj: sürüm, durum, alan adı ve modül listesi.
+	 * İmzalanan mesaj: sürüm, durum, alan adı, modül listesi ve geçerlilik sonu.
+	 * Sunucudaki Validator::signedMessage() ile birebir aynı olmalı.
 	 *
-	 * @param string   $status  Durum.
-	 * @param string   $domain  Site alan adı.
-	 * @param string[] $modules Sunucunun gönderdiği modül listesi (olduğu gibi).
+	 * @param string   $status      Durum.
+	 * @param string   $domain      Site alan adı.
+	 * @param string[] $modules     Sunucunun gönderdiği modül listesi (olduğu gibi).
+	 * @param int      $valid_until Cevabın geçerli olduğu son an (unix).
 	 * @return string
 	 */
-	public static function signed_message( $status, $domain, array $modules ) {
-		return "qrms1\n" . $status . "\n" . $domain . "\n" . implode( ',', $modules );
+	public static function signed_message( $status, $domain, array $modules, $valid_until = 0 ) {
+		return "qrms2\n" . $status . "\n" . $domain . "\n" . implode( ',', $modules ) . "\n" . (int) $valid_until;
 	}
 
 	/**
@@ -289,11 +350,12 @@ class QRMS_License_Client {
 	 *
 	 * @param mixed  $body   Çözülmüş JSON gövdesi.
 	 * @param string $domain Bu sitenin alan adı (cevap bu alan adına bağlı olmalı).
-	 * @return bool
+	 * @return int|false Geçerliyse imzalı valid_until, değilse false.
 	 */
 	private static function verify_signature( $body, $domain ) {
 		if ( ! is_array( $body ) || empty( $body['sig'] ) || ! is_string( $body['sig'] )
-			|| ! isset( $body['status'], $body['domain'] ) || ! is_string( $body['domain'] )
+			|| ! isset( $body['status'], $body['domain'], $body['valid_until'] ) || ! is_string( $body['domain'] )
+			|| ! is_int( $body['valid_until'] ) || $body['valid_until'] <= 0
 			|| ! function_exists( 'sodium_crypto_sign_verify_detached' ) ) {
 			return false;
 		}
@@ -318,11 +380,13 @@ class QRMS_License_Client {
 			return false;
 		}
 
-		return sodium_crypto_sign_verify_detached(
+		$ok = sodium_crypto_sign_verify_detached(
 			$sig,
-			self::signed_message( (string) $body['status'], $domain, $modules ),
+			self::signed_message( (string) $body['status'], $domain, $modules, $body['valid_until'] ),
 			$key
 		);
+
+		return $ok ? $body['valid_until'] : false;
 	}
 
 	/**
@@ -401,9 +465,10 @@ class QRMS_License_Client {
 	 * @param string        $api_key    Doğrulamada kullanılan anahtar.
 	 * @param string        $server_url Doğrulamada kullanılan sunucu adresi.
 	 * @param bool          $reached    Sunucudan geçerli bir cevap alındı mı?
+	 * @param int           $valid_until İmzalı geçerlilik sonu (yalnız active'de kullanılır).
 	 * @return array{status:string,modules:string[],message:string}
 	 */
-	private static function store_result( $status, $modules, $api_key, $server_url, $reached ) {
+	private static function store_result( $status, $modules, $api_key, $server_url, $reached, $valid_until = 0 ) {
 		$now = time();
 
 		// Anahtar/sunucu yalnızca doğrulanınca (veya hiç kayıt yokken) saklanır;
@@ -425,6 +490,7 @@ class QRMS_License_Client {
 		if ( 'active' === $status && is_array( $modules ) ) {
 			update_option( self::OPT_MODULES, $modules );
 			update_option( self::OPT_LAST_ACTIVE_SYNC, $now );
+			update_option( self::OPT_VALID_UNTIL, min( (int) $valid_until, $now + self::MAX_LEASE ) );
 			delete_option( self::OPT_NOTICE_FLAG );
 			delete_option( self::OPT_REVOKE_SINCE );
 		} else {
@@ -509,6 +575,15 @@ class QRMS_License_Client {
 		}
 
 		if ( ! QRMS_Admin::is_plugin_screen() ) {
+			return;
+		}
+
+		if ( self::is_lease_expired() && self::get_revoke_since() <= 0 ) {
+			printf(
+				'<div class="notice notice-error qrms-notice"><p>%s</p></div>',
+				esc_html__( 'Lisans sunucusundan süresi içinde onay alınamadı; modülleriniz kapatıldı. Sunucuya erişimi kontrol edip lisansı Genel Ayarlar\'tan yeniden doğrulayın.', 'qrms' )
+			);
+
 			return;
 		}
 

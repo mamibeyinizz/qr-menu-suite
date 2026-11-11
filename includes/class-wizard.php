@@ -192,6 +192,10 @@ class QRMS_Wizard {
 		check_admin_referer( self::NONCE_ACTION, 'qrms_nonce' );
 
 		$api_key    = isset( $_POST['qrms_api_key'] ) ? sanitize_text_field( wp_unslash( $_POST['qrms_api_key'] ) ) : '';
+		// Kayıtlı anahtar forma basılmaz; alan boş gönderildiyse kayıtlı olan kullanılır.
+		if ( '' === trim( $api_key ) ) {
+			$api_key = QRMS_License_Client::get_api_key();
+		}
 		$server_url = isset( $_POST['qrms_server_url'] ) ? sanitize_text_field( wp_unslash( $_POST['qrms_server_url'] ) ) : '';
 
 		if ( '' === trim( $api_key ) ) {
@@ -285,7 +289,8 @@ class QRMS_Wizard {
 
 		// Kullanıcının girdiği değerler kaybolmasın.
 		// phpcs:ignore WordPress.Security.NonceVerification.Missing
-		$api_key = isset( $_POST['qrms_api_key'] ) ? sanitize_text_field( wp_unslash( $_POST['qrms_api_key'] ) ) : QRMS_License_Client::get_api_key();
+		$api_key = isset( $_POST['qrms_api_key'] ) ? sanitize_text_field( wp_unslash( $_POST['qrms_api_key'] ) ) : '';
+		$kayitli = QRMS_License_Client::get_api_key();
 		// phpcs:ignore WordPress.Security.NonceVerification.Missing
 		$server_url = isset( $_POST['qrms_server_url'] ) ? sanitize_text_field( wp_unslash( $_POST['qrms_server_url'] ) ) : QRMS_License_Client::get_server_url();
 
@@ -319,11 +324,14 @@ class QRMS_Wizard {
 					name="qrms_api_key"
 					class="qrms-input"
 					value="<?php echo esc_attr( $api_key ); ?>"
+					<?php if ( '' !== $kayitli ) : ?>
+					placeholder="<?php echo esc_attr( sprintf( /* translators: %s: anahtarın son 4 karakteri. */ __( 'Kayıtlı anahtar (…%s) — değiştirmek için yenisini girin', 'qrms' ), substr( $kayitli, -4 ) ) ); ?>"
+					<?php endif; ?>
 					autocomplete="off"
 					autocapitalize="off"
 					autocorrect="off"
 					spellcheck="false"
-					required
+					<?php echo '' === $kayitli ? 'required' : ''; ?>
 				/>
 			</div>
 

@@ -113,6 +113,47 @@ qrms_test(
 );
 
 qrms_test(
+	'imzalı valid_until: süre dolunca sunucuya ulaşılamasa da modüller kapanır',
+	function () {
+		delete_option( 'qrms_revoke_since' );
+		update_option( 'qrms_api_key', 'ANAHTAR' );
+
+		qrms_mock_http( 200, array( 'status' => 'active', 'modules' => array( 'qr-masa' ), 'valid_until' => time() + 3600 ) );
+		qrms_validate_license( 'ANAHTAR', 'https://full.qrmenuofficial.com' );
+		qrms_assert_same( array( 'qr-masa' ), QRMS_License_Client::get_active_modules(), 'süre içinde açık' );
+
+		// Sunucu engellendi (unreachable) ve süre geçti: kapanır.
+		update_option( 'qrms_valid_until', time() - 1 );
+		qrms_mock_http_error();
+		qrms_validate_license( 'ANAHTAR', 'https://full.qrmenuofficial.com' );
+		qrms_assert_same( array(), QRMS_License_Client::get_active_modules(), 'süre dolunca kapalı' );
+
+		// Yeni imzalı active süreyi yeniler.
+		qrms_mock_http( 200, array( 'status' => 'active', 'modules' => array( 'qr-masa' ) ) );
+		qrms_validate_license( 'ANAHTAR', 'https://full.qrmenuofficial.com' );
+		qrms_assert_same( array( 'qr-masa' ), QRMS_License_Client::get_active_modules(), 'yenilenince açık' );
+
+		// Sunucu çok ileri tarih imzalasa da 31 gün ile kırpılır.
+		qrms_mock_http( 200, array( 'status' => 'active', 'modules' => array( 'qr-masa' ), 'valid_until' => time() + 400 * DAY_IN_SECONDS ) );
+		qrms_validate_license( 'ANAHTAR', 'https://full.qrmenuofficial.com' );
+		qrms_assert_true( QRMS_License_Client::get_valid_until() <= time() + 31 * DAY_IN_SECONDS, 'kırpılır' );
+
+		// valid_until'ı değiştirilmiş (imzayla uyuşmayan) cevap reddedilir.
+		$dom  = QRMS_Helpers::get_site_domain();
+		$good = sodium_crypto_sign_secretkey( $GLOBALS['qrms_test_sign_key'] );
+		$sig  = base64_encode( sodium_crypto_sign_detached( QRMS_License_Client::signed_message( 'active', $dom, array( 'qr-masa' ), time() + 60 ), $good ) );
+		qrms_mock_http( 200, array( 'status' => 'active', 'modules' => array( 'qr-masa' ), 'domain' => $dom, 'valid_until' => time() + 9 * DAY_IN_SECONDS, 'sig' => $sig ) );
+		$r = qrms_validate_license( 'ANAHTAR', 'https://full.qrmenuofficial.com' );
+		qrms_assert_same( 'unreachable', $r['status'], 'oynanmış süre' );
+
+		// Eski sürümden yükseltme: kayıt yoksa 7 günlük ilk süre yazılır.
+		delete_option( 'qrms_valid_until' );
+		$u = QRMS_License_Client::get_valid_until();
+		qrms_assert_true( $u > time() + 6 * DAY_IN_SECONDS && $u <= time() + 7 * DAY_IN_SECONDS, 'ilk süre' );
+	}
+);
+
+qrms_test(
 	'yanlış anahtar çalışan anahtarı ezmez; expired bildirim üretir',
 	function () {
 		update_option( 'qrms_api_key', 'IYI-ANAHTAR' );
