@@ -35,6 +35,7 @@ class QRMS_Acil_Durum {
 	public static function init() {
 		add_action( 'admin_menu', array( __CLASS__, 'register_menu' ), 20 );
 		add_filter( 'qrms_menu_row_slugs', array( __CLASS__, 'menu_row' ) );
+		add_filter( 'qrms_premium_shell_nav', array( __CLASS__, 'shell_nav' ) );
 		add_action( 'admin_post_qrms_acil_giris', array( __CLASS__, 'handle_login' ) );
 		add_action( 'admin_post_qrms_acil_cikis', array( __CLASS__, 'handle_logout' ) );
 		add_action( 'admin_post_qrms_acil_kaydet', array( __CLASS__, 'handle_save' ) );
@@ -222,6 +223,8 @@ class QRMS_Acil_Durum {
 		if ( function_exists( 'wp_cache_flush' ) ) {
 			wp_cache_flush();
 		}
+		// LiteSpeed Cache: ziyaretçiye eski sayfa gitmesin.
+		do_action( 'litespeed_purge_all' );
 		do_action( 'qrms_acil_durum_degisti', $state, $hedef );
 
 		// Oturumu kayıt anında uzat.
@@ -322,6 +325,28 @@ class QRMS_Acil_Durum {
 	public static function menu_row( $slugs ) {
 		$slugs[] = self::SLUG;
 		return $slugs;
+	}
+
+	/**
+	 * Eklentinin kendi sol menüsüne (premium shell) satır ekler.
+	 *
+	 * @param array $rows Menü satırları.
+	 * @return array
+	 */
+	public static function shell_nav( $rows ) {
+		if ( ! current_user_can( QRMS_Admin::CAPABILITY ) ) {
+			return $rows;
+		}
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$page   = isset( $_GET['page'] ) ? sanitize_key( $_GET['page'] ) : '';
+		$rows[] = array(
+			'type'     => 'link',
+			'label'    => __( 'Acil Durum', 'qrms' ),
+			'url'      => admin_url( 'admin.php?page=' . self::SLUG ),
+			'current'  => self::SLUG === $page,
+			'dashicon' => 'dashicons-warning',
+		);
+		return $rows;
 	}
 
 	private static function form_open( $action ) {
