@@ -2281,6 +2281,10 @@ class QRMS_Admin {
 				'label' => __( 'Restoran Markası', 'qrms' ),
 				'icon'  => 'dashicons-format-image',
 			),
+			'tasima' => array(
+				'label' => __( 'Taşıma', 'qrms' ),
+				'icon'  => 'dashicons-migrate',
+			),
 		);
 	}
 
@@ -2329,6 +2333,8 @@ class QRMS_Admin {
 				QRMS_Login::render_settings_tab();
 			} elseif ( 'marka' === $aktif ) {
 				QRMS_Brand_Identity::render_settings_tab();
+			} elseif ( 'tasima' === $aktif ) {
+				QRMS_Tasima::render_settings_tab();
 			} else {
 				self::render_settings_genel();
 			}

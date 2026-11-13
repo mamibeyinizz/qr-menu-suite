@@ -1543,6 +1543,35 @@ bize özgü ondalıklı bir değerdir; ayrıca `admin_menu` zincirinin sonunda
 Menüyü bilerek kaldıran siteler `qrms_ensure_menu_registered` filtresini `false`
 döndürerek bu emniyet kemerini kapatabilir.
 
+## Taşıma (`QRMS_Tasima`)
+
+Sistem Ayarları › **Taşıma** sekmesi. Bir sitedeki ayarları, menüyü, galeriyi, sayfaları ve görselleri
+tek JSON dosyasıyla başka siteye aktarır. WordPress'in kendi dışa aktarması eklenti ayarlarını
+(option) taşımaz ve içerik taşısa bile görsel/menü/sayfa kimlikleri yeni sitede değiştiği için
+ayarlar yanlış kayda bağlı kalırdı; bu araç kimlikleri yeni siteye göre yeniden eşler.
+
+- **Gruplar:** ayarlar · menü (ürün, kategori, alerjen) · galeri · sayfalar (+ header/footer şablonu,
+  Elementor kiti, gezinme menüleri, ön sayfa) · bannerlar. Her biri ayrı seçilir.
+- **Kimlik eşleme:** `_thumbnail_id`, `_qmo_banner_gorsel_id`, `_qrmgm_attachment_id`; ayarlarda
+  `logo`, `bg_image`, `bg_image_wide`, `arkaplan_gorsel` (görsel), `menu_id` (gezinme menüsü),
+  `manual_ids` (ürün listesi); `page_on_front`, `elementor_active_kit`; menü öğelerinin üst ve nesne
+  kimlikleri; galeri görselinin üst bölümü. Elementor JSON'daki ve içerikteki görsel adresleri
+  (boyutlu varyantlar ve `\/` kaçışlı biçim dahil) yeni siteye çevrilir. Eşleşmeyen görsel kimliği
+  `0` olur (yanlış görsele bağlanmaz) ve uyarı listesine düşer.
+- **Aynı paket tekrar yüklenirse** kayıtlar çoğalmaz: yazılar `_qrms_kaynak_id` + `_qrms_kaynak_home`,
+  görseller `_qrms_kaynak_url` ile bulunup güncellenir.
+- **Adım adım çalışır:** görseller 4'erli, yazılar 12'şerli, her istek ~18 sn ile sınırlı; ilerleme çubuğu
+  gösterilir. Durum, `uploads/qrms-tasima/` altındaki (web'e kapalı) geçici dosyada tutulur ve bitince silinir.
+- **Taşınmayanlar:** lisans anahtarı, API anahtarları (Gemini, Firebase…), şifre/PIN özetleri, durum ve
+  önbellek alanları; siparişler, yorumlar, analiz kayıtları, sohbet kayıtları ve QR masalar. İzin listesi
+  `QRMS_Tasima::secenek_izinli()` içindedir; pakette elle eklenen başka option içe aktarmada yazılmaz.
+- **Güvenlik:** yalnız JSON (`unserialize` yok); `manage_options` + nonce; görseller yalnızca paketin kaynak
+  sitesinin `/wp-content/uploads/` klasöründen ve görsel uzantılarıyla indirilir (`..`, sorgu, başka alan adı
+  reddedilir); indirme WordPress'in `wp_safe_remote_get` korumasından geçer; yazı tipi ve meta anahtarı izin
+  listesine tabidir.
+- **Test:** `php tests/tasima-test.php` (saf yardımcılar, 98 kontrol). Uçtan uca (ekleme, eşleme, tekrar
+  yükleme, bozuk paket) iki yerel WordPress arasında denendi.
+
 ## Dosya yapısı
 
 ```

@@ -35,6 +35,7 @@ require_once QRMS_PLUGIN_DIR . 'includes/class-qrms-login.php';
 require_once QRMS_PLUGIN_DIR . 'includes/class-query-monitor.php';
 require_once QRMS_PLUGIN_DIR . 'includes/class-qrms-hata-sayfalari.php';
 require_once QRMS_PLUGIN_DIR . 'includes/class-acil-durum.php';
+require_once QRMS_PLUGIN_DIR . 'includes/class-tasima.php';
 
 /**
  * Plugin bileşenlerinin hook'larını kaydeder.
@@ -65,6 +66,7 @@ function qrms_bootstrap() {
 
 	// Acil durum: PIN korumalı modül anahtarları + bakım modu.
 	QRMS_Acil_Durum::init();
+	QRMS_Tasima::init();
 }
 qrms_bootstrap();
 
