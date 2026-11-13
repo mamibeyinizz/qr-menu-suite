@@ -1061,6 +1061,8 @@ class QRMS_Tasima {
 	 * @return int
 	 */
 	private static function medya_bul( $url ) {
+		global $wpdb;
+
 		$q = get_posts(
 			array(
 				'post_type'        => 'attachment',
@@ -1072,8 +1074,31 @@ class QRMS_Tasima {
 				'meta_value'       => esc_url_raw( $url ), // phpcs:ignore WordPress.DB.SlowDBQuery
 			)
 		);
+		if ( $q ) {
+			return (int) $q[0];
+		}
 
-		return $q ? (int) $q[0] : 0;
+		// Yedek: bu araçtan önce başka yolla (ör. WordPress içe aktarıcısı) aktarılmış görsel,
+		// aynı dosya adıyla bulunur. Böylece yarım kalmış bir taşıma yeniden başlatılınca
+		// görseller ikiye katlanmaz.
+		$ad = wp_basename( (string) wp_parse_url( $url, PHP_URL_PATH ) );
+		if ( '' === $ad ) {
+			return 0;
+		}
+		$id = (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+			$wpdb->prepare(
+				"SELECT m.post_id FROM {$wpdb->postmeta} m INNER JOIN {$wpdb->posts} p ON p.ID = m.post_id
+				 WHERE m.meta_key = '_wp_attached_file' AND ( m.meta_value = %s OR m.meta_value LIKE %s ) AND p.post_type = 'attachment'
+				 ORDER BY m.post_id ASC LIMIT 1",
+				$ad,
+				'%/' . $wpdb->esc_like( $ad )
+			)
+		);
+		if ( $id ) {
+			update_post_meta( $id, '_qrms_kaynak_url', esc_url_raw( $url ) );
+		}
+
+		return $id;
 	}
 
 	/**
@@ -1121,7 +1146,25 @@ class QRMS_Tasima {
 				'post_author'  => get_current_user_id(),
 			);
 
-			$mevcut = self::yazi_bul( $tip, (int) $y['id'], $kaynak['home'] );
+			$menu_idler = array();
+			if ( 'nav_menu_item' === $tip && ! empty( $y['terimler']['nav_menu'] ) ) {
+				foreach ( (array) $y['terimler']['nav_menu'] as $eski_menu ) {
+					if ( isset( $d['harita']['terim'][ (int) $eski_menu ] ) ) {
+						$menu_idler[] = $d['harita']['terim'][ (int) $eski_menu ];
+					}
+				}
+			}
+			$nesne = 0;
+			if ( 'nav_menu_item' === $tip ) {
+				$tur = isset( $y['meta']['_menu_item_type'][0] ) ? (string) $y['meta']['_menu_item_type'][0] : '';
+				$obj = isset( $y['meta']['_menu_item_object_id'][0] ) ? (int) $y['meta']['_menu_item_object_id'][0] : 0;
+				if ( 'post_type' === $tur && isset( $d['harita']['yazi'][ $obj ] ) ) {
+					$nesne = $d['harita']['yazi'][ $obj ];
+				} elseif ( 'taxonomy' === $tur && isset( $d['harita']['terim'][ $obj ] ) ) {
+					$nesne = $d['harita']['terim'][ $obj ];
+				}
+			}
+			$mevcut = self::yazi_bul( $tip, (int) $y['id'], $kaynak['home'], (string) $y['slug'], (string) $y['baslik'], $menu_idler, $nesne );
 			if ( $mevcut ) {
 				$alanlar['ID'] = $mevcut;
 				$yeni          = wp_update_post( wp_slash( $alanlar ), true );
@@ -1204,9 +1247,13 @@ class QRMS_Tasima {
 	 * @param string $tip      Yazı tipi.
 	 * @param int    $kaynak_id Kaynak kimliği.
 	 * @param string $home     Kaynak ana adresi.
+	 * @param string $slug     Yazı slug'ı (yedek eşleme için).
+	 * @param string $baslik   Yazı başlığı (menü öğesi yedeği için).
+	 * @param int[]  $menu_idler Menü öğesinin bu sitedeki menü terim kimlikleri.
+	 * @param int    $nesne    Menü öğesinin bu sitedeki bağlı nesne kimliği (0: bilinmiyor).
 	 * @return int
 	 */
-	private static function yazi_bul( $tip, $kaynak_id, $home ) {
+	private static function yazi_bul( $tip, $kaynak_id, $home, $slug = '', $baslik = '', array $menu_idler = array(), $nesne = 0 ) {
 		$q = get_posts(
 			array(
 				'post_type'        => $tip,
@@ -1219,6 +1266,55 @@ class QRMS_Tasima {
 					array( 'key' => '_qrms_kaynak_id', 'value' => $kaynak_id, 'type' => 'NUMERIC' ),
 					array( 'key' => '_qrms_kaynak_home', 'value' => $home ),
 				),
+			)
+		);
+
+		if ( $q ) {
+			return (int) $q[0];
+		}
+
+		// Yedek: bu araçtan önce başka yolla aktarılmış kayıt, aynı tip + aynı slug ile bulunur
+		// (gezinme menüsü öğelerinin slug'ı kimlik olduğundan onlara uygulanmaz).
+		if ( 'nav_menu_item' === $tip ) {
+			// Menü öğesi: aynı menüde aynı başlık ve aynı tür.
+			if ( ! $menu_idler ) {
+				return 0;
+			}
+			$arama = array(
+				'post_type'        => 'nav_menu_item',
+				'post_status'      => 'any',
+				'numberposts'      => 1,
+				'fields'           => 'ids',
+				'suppress_filters' => true,
+				'tax_query'        => array( // phpcs:ignore WordPress.DB.SlowDBQuery
+					array( 'taxonomy' => 'nav_menu', 'field' => 'term_id', 'terms' => array_map( 'intval', $menu_idler ) ),
+				),
+			);
+			if ( '' !== $baslik ) {
+				$arama['title'] = $baslik;
+			} elseif ( $nesne > 0 ) {
+				// Sayfa/kategori öğelerinin başlığı boştur; bağlı olduğu nesneyle eşle.
+				$arama['meta_query'] = array( // phpcs:ignore WordPress.DB.SlowDBQuery
+					array( 'key' => '_menu_item_object_id', 'value' => $nesne, 'type' => 'NUMERIC' ),
+				);
+			} else {
+				return 0;
+			}
+			$q = get_posts( $arama );
+
+			return $q ? (int) $q[0] : 0;
+		}
+		if ( '' === $slug ) {
+			return 0;
+		}
+		$q = get_posts(
+			array(
+				'post_type'        => $tip,
+				'post_status'      => 'any',
+				'name'             => $slug,
+				'numberposts'      => 1,
+				'fields'           => 'ids',
+				'suppress_filters' => true,
 			)
 		);
 
