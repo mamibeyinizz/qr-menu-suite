@@ -1572,6 +1572,23 @@ ayarlar yanlış kayda bağlı kalırdı; bu araç kimlikleri yeni siteye göre 
 - **Test:** `php tests/tasima-test.php` (saf yardımcılar, 98 kontrol). Uçtan uca (ekleme, eşleme, tekrar
   yükleme, bozuk paket) iki yerel WordPress arasında denendi.
 
+## Menü araması ve "Menüde Bulunamayan Aramalar" (Analiz › Ürünler)
+
+**Arama** (`rma_load_items`, sunucu tarafı): başlık, içerik, özet, kategori adı ve — menü başka dildeyse —
+ürün/kategori çevirilerinde aranır. Noktasız `ı` iki tarafta `i`'ye katlanır (sıralamaya göre `ı`, `i`'ye eşit
+sayılmaz; "acili", "kahvalti" bulunur). En fazla 6 kelime, 60 karakter. İstemci yalnız son isteğin yanıtını basar
+(`loadSeq`) ve kullanıcı kutuya yazarken kutuyu ezmez.
+
+**Bulunamayan arama kaydı:** filtresiz bir arama hiçbir ürün bulamazsa sunucu `rma_arama_bulunamadi` eylemini
+tetikler; Analiz modülü `menu_search_miss` olayı yazar (kelime `qrms_analitik_arama_kelimesi()` ile temizlenir:
+HTML, emoji, tek harf, yalnız sayı atılır; 60 karakter). Kelime, ziyaretçiyi **IP'ye değil** istemcinin arama
+oturumu kimliğine (`sid`, sessionStorage, kişisel veri yok; `session_id` sütununda `ara_` önekli) bağlar.
+Aynı oturumun 10 sn içindeki harf harf yazımı ("sus" → "sush" → "sushi") ve `ı`/`i` varyantları **okuma anında**
+`qrms_analitik_arama_birlestir()` ile tek kelimeye indirilir (yazma anında istekler üst üste bindiği için
+güvenilmezdi). Rapor: Ürünler sayfası, en çok aranandan ilk 25; CSV'de ayrı bölüm. Saklama 180 gün.
+
+**Test:** `php tests/arama-kelime-test.php` (54 kontrol).
+
 ## Dosya yapısı
 
 ```
