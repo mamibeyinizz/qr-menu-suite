@@ -208,8 +208,10 @@ trait RMA_Ajax_Trait {
              *
              * @param string $search Aranan metin (en fazla 60 karakter, temizlenmiş).
              * @param string $lang   Menünün o anki dili.
+             * @param string $sid    İstemcinin arama oturumu kimliği ([a-z0-9], en çok 24; boş olabilir).
              */
-            do_action( 'rma_arama_bulunamadi', $search, $this->current_lang() );
+            $arama_sid = substr( preg_replace( '/[^a-z0-9]/', '', strtolower( (string) ( $_POST['sid'] ?? '' ) ) ), 0, 24 );
+            do_action( 'rma_arama_bulunamadi', $search, $this->current_lang(), $arama_sid );
         }
 
         $this->flush_stray_output();

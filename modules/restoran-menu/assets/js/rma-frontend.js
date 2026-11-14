@@ -778,6 +778,18 @@ function restoreSearchValue() {
 ----------------------------------------------------------------- */
 var loadSeq = 0;
 
+// Arama oturumu kimliği: sayfa/sekme başına rastgele, kişisel veri taşımaz. Analiz, aynı
+// ziyaretçinin harf harf yazdığı kelimeyi tek aramaya indirmek için kullanır; IP'ye
+// güvenilmez (paylaşımlı Wi-Fi'de herkes tek IP, bazı ağlarda istek başına değişir).
+var rmaSid = (function () {
+    var yeni = function () { return Math.random().toString(36).slice(2, 12) + Math.random().toString(36).slice(2, 6); };
+    try {
+        var s = sessionStorage.getItem('rma_sid');
+        if (!s) { s = yeni(); sessionStorage.setItem('rma_sid', s); }
+        return s;
+    } catch (e) { return yeni(); }
+})();
+
 function loadAll(ilkYukleme) {
     // Hızlı yazarken birden çok istek uçuşta olabilir; yalnızca SON isteğin yanıtı
     // ekrana basılır. Yoksa geç dönen eski bir yanıt (ör. "kebap") yeni aramanın
@@ -800,6 +812,7 @@ function loadAll(ilkYukleme) {
         suggest_cfg : JSON.stringify(typeof SUGGEST_CFG !== 'undefined' ? SUGGEST_CFG : {}),
         lang        : rmaLang(),
         masa        : rmaMasa(),
+        sid         : rmaSid,
         ilk_yukleme : ilkYukleme ? '1' : ''
     }, function (res, status) {
         if (seq !== loadSeq) return;

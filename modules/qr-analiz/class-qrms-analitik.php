@@ -331,7 +331,7 @@ class QRMS_Analitik {
 		}
 
 		// Menü araması hiçbir ürün bulamadığında (restoran-menu, rma_load_items).
-		add_action( 'rma_arama_bulunamadi', array( __CLASS__, 'izle_arama_bulunamadi' ), 10, 2 );
+		add_action( 'rma_arama_bulunamadi', array( __CLASS__, 'izle_arama_bulunamadi' ), 10, 3 );
 
 		add_action( 'wp_ajax_qrms_analitik_genel', array( __CLASS__, 'ajax_genel' ) );
 		add_action( 'wp_ajax_qrms_analitik_urunler', array( __CLASS__, 'ajax_urunler' ) );
@@ -1628,9 +1628,10 @@ class QRMS_Analitik {
 	 *
 	 * @param string $arama Aranan metin (menü modülünün temizlediği).
 	 * @param string $dil   Menünün dili.
+	 * @param string $sid   İstemcinin arama oturumu kimliği (boşsa IP karması kullanılır).
 	 * @return void
 	 */
-	public static function izle_arama_bulunamadi( $arama, $dil = '' ) {
+	public static function izle_arama_bulunamadi( $arama, $dil = '', $sid = '' ) {
 		global $wpdb;
 
 		unset( $dil );
@@ -1641,7 +1642,11 @@ class QRMS_Analitik {
 			return;
 		}
 
-		$anahtar = 'qrms_ams_' . substr( md5( self::ip_hash() ), 0, 20 );
+		// Ziyaretçi kimliği: istemcinin arama oturumu (yoksa IP karması). IP'ye tek başına
+		// güvenilmez: paylaşımlı Wi-Fi'de herkes tek IP, bazı ağlarda istek başına değişir.
+		$sid       = preg_match( '/^[a-z0-9]{6,24}$/', (string) $sid ) ? 'ara_' . $sid : '';
+		$ziyaretci = '' !== $sid ? $sid : self::ip_hash();
+		$anahtar   = 'qrms_ams_' . substr( md5( $ziyaretci ), 0, 20 );
 		$son     = get_transient( $anahtar );
 		$simdi   = time();
 
@@ -1674,7 +1679,13 @@ class QRMS_Analitik {
 			}
 		}
 
-		if ( ! self::kaydet( array( 'event_type' => 'menu_search_miss', 'item_name' => $kelime ) ) ) {
+		$satir = array( 'event_type' => 'menu_search_miss', 'item_name' => $kelime );
+
+		if ( '' !== $sid ) {
+			$satir['session_id'] = $sid;
+		}
+
+		if ( ! self::kaydet( $satir ) ) {
 			return;
 		}
 
@@ -2953,7 +2964,7 @@ class QRMS_Analitik {
 
 		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$ham = $wpdb->get_results(
-			"SELECT item_name, ip_hash, created_at
+			"SELECT item_name, ip_hash, session_id, created_at
 			 FROM {$tablo}
 			 WHERE event_type = 'menu_search_miss' AND item_name <> '' AND {$kosul}{$masa_ek}
 			 ORDER BY created_at DESC
@@ -2966,7 +2977,8 @@ class QRMS_Analitik {
 		foreach ( (array) $ham as $r ) {
 			$sonuc[] = array(
 				'kelime' => (string) $r['item_name'],
-				'ip'     => (string) $r['ip_hash'],
+				// Ziyaretçi anahtarı: arama oturumu varsa o, yoksa (eski kayıtlar) IP karması.
+				'ip'     => ! empty( $r['session_id'] ) ? (string) $r['session_id'] : (string) $r['ip_hash'],
 				't'      => (int) strtotime( (string) $r['created_at'] ),
 			);
 		}
