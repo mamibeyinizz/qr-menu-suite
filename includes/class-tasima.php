@@ -1547,6 +1547,10 @@ class QRMS_Tasima {
 		// QR masalar: slug'a göre ekle/güncelle (silme yok).
 		$masalar = isset( $d['paket']['masalar'] ) ? (array) $d['paket']['masalar'] : array();
 		if ( $masalar ) {
+			// Tablo, QR Kodlar sayfası ilk açıldığında kurulur; hiç açılmamış sitede burada kur.
+			if ( class_exists( 'QMO_Masalar' ) && ! QMO_Masalar::tablo_var_mi() ) {
+				QMO_Masalar::tablo_kur();
+			}
 			if ( ! class_exists( 'QMO_Masalar' ) || ! QMO_Masalar::tablo_var_mi() ) {
 				$d['uyarilar'][] = __( 'QR Kodlar modülü bu sitede etkin değil; masalar atlandı.', 'qrms' );
 			} else {
