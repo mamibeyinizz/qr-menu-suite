@@ -27,9 +27,11 @@ esit( 'adana kebap', $f( '  Adana   Kebap  ' ), 'fazla boşluk' );
 esit( 'sushi', $f( "\tsushi\n" ), 'sekme/yeni satır' );
 
 // Türkçe harfler: ı ve İ i'ye katlanır; ç ş ü ö ğ korunur.
-esit( 'kahvalti', $f( 'Kahvaltı' ), 'ı → i' );
-esit( 'kahvalti', $f( 'KAHVALTI' ), 'KAHVALTI' );
-esit( 'kahvalti', $f( 'kahvalti' ), 'kahvalti (aynı kelime, tek grup)' );
+esit( 'kahvaltı', $f( 'Kahvaltı' ), 'yazılmış küçük ı korunur' );
+esit( 'kahvalti', $f( 'KAHVALTI' ), 'KAHVALTI → i (büyük I)' );
+esit( 'kahvalti', $f( 'kahvalti' ), 'kahvalti' );
+esit( 'kahvalti', qrms_analitik_arama_katla( 'kahvaltı' ), 'katlama: ı → i' );
+esit( 'kahvalti', qrms_analitik_arama_katla( 'kahvalti' ), 'katlama: i aynı' );
 esit( 'iskender', $f( 'İskender' ), 'İ → i' );
 esit( 'iskender', $f( 'İSKENDER' ), 'İSKENDER' );
 esit( 'çorba', $f( 'Çorba' ), 'ç korunur' );
@@ -69,6 +71,29 @@ esit( 60, mb_strlen( $uzun, 'UTF-8' ), '60 karakter sınırı' );
 $uzun2 = $f( str_repeat( 'ş', 100 ) );
 esit( 60, mb_strlen( $uzun2, 'UTF-8' ), 'çok baytlı harflerde de 60 karakter' );
 esit( true, 'ş' === mb_substr( $uzun2, 59, 1, 'UTF-8' ), 'karakter ortasından kesilmez' );
+
+// 12) Birleştirme (okuma anı).
+$k = function ( $kelime, $ip, $t ) { return array( 'kelime' => $kelime, 'ip' => $ip, 't' => $t ); };
+$b = 'qrms_analitik_arama_birlestir';
+
+esit( array( 'sushi' => 1 ), $b( array( $k( 'sus', 'a', 0 ), $k( 'sush', 'a', 1 ), $k( 'sushi', 'a', 2 ) ) ), 'harf harf yazım tek kayıt' );
+esit( array( 'sushi' => 1 ), $b( array( $k( 'sushi', 'a', 5 ), $k( 'sus', 'a', 0 ), $k( 'sush', 'a', 2 ) ) ), 'sırasız girdi de zincirlenir' );
+esit( array( 'sushi' => 1 ), $b( array( $k( 'sushi', 'a', 0 ), $k( 'sush', 'a', 1 ) ) ), 'geri silme önceki kelimeyi bozmaz' );
+esit( array( 'sushi' => 1 ), $b( array( $k( 'sushi', 'a', 0 ), $k( 'sushi', 'a', 3 ) ) ), 'pencere içindeki tekrar tek sayılır' );
+esit( array( 'sushi' => 2 ), $b( array( $k( 'sushi', 'a', 0 ), $k( 'sushi', 'a', 30 ) ) ), 'pencere dışındaki tekrar ayrı arama' );
+esit( array( 'sus' => 1, 'sushi' => 1 ), $b( array( $k( 'sus', 'a', 0 ), $k( 'sushi', 'a', 60 ) ) ), 'önek ilişkili ama pencere dışı: ayrı' );
+esit( array( 'sushi' => 2 ), $b( array( $k( 'sushi', 'a', 0 ), $k( 'sushi', 'b', 0 ) ) ), 'farklı ziyaretçiler ayrı sayılır' );
+esit( array( 'lahmacun' => 1, 'ramen' => 1 ), $b( array( $k( 'ramen', 'a', 1 ), $k( 'lahmacun', 'a', 0 ) ) ), 'ilgisiz kelimeler ayrı (eşitlikte alfabetik)' );
+esit( array( 'kahvaltı' => 2 ), $b( array( $k( 'kahvaltı', 'a', 0 ), $k( 'kahvalti', 'b', 0 ) ) ), 'ı/i varyantları birleşir, noktasız ı görünür' );
+esit( array( 'kahvalti' => 3 ), $b( array( $k( 'kahvalti', 'a', 0 ), $k( 'kahvaltı', 'b', 0 ), $k( 'kahvalti', 'c', 0 ) ) ), 'baskın yazım gösterilir, adet varyantların toplamı' );
+esit(
+	array( 'wifi şifresi' => 1 ),
+	$b( array( $k( 'w', 'a', 0 ), $k( 'wi', 'a', 1 ), $k( 'wif', 'a', 2 ), $k( 'wifi', 'a', 3 ), $k( 'wifi ş', 'a', 4 ), $k( 'wifi şifresi', 'a', 6 ) ) ),
+	'uzun zincir'
+);
+esit( array( 'a' => 3 ), $b( array( $k( 'a', 'x', 0 ), $k( 'a', 'y', 0 ), $k( 'a', 'z', 0 ) ) ), 'üç ziyaretçi aynı kelime' );
+esit( array(), $b( array() ), 'boş girdi' );
+esit( array(), $b( array( array( 'kelime' => '', 'ip' => 'a', 't' => 0 ), array( 'kelime' => 'x' ), 'metin' ) ), 'bozuk satırlar atlanır' );
 
 echo $hata ? "\n$hata / $say BAŞARISIZ\n" : "$say / $say geçti\n";
 exit( $hata ? 1 : 0 );

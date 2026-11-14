@@ -51,6 +51,10 @@ const QRMS_ANALITIK_URUN_TAVANI = 2000;
 /**
  * Bir sayfada gösterilecek ürün sayısı.
  */
+// Arama kelimesi temizleme/birleştirme (saf fonksiyonlar). Bu dosyanın veri fonksiyonu onlara
+// dayanır; modül yükleyicisi dışında (test, CLI) çağrılırsa da hazır olsun.
+require_once __DIR__ . '/arama-kelime.php';
+
 const QRMS_ANALITIK_URUN_SAYFA = 50;
 
 if ( ! function_exists( 'qrms_analitik_yayindaki_urunler' ) ) {
@@ -352,53 +356,27 @@ if ( ! function_exists( 'qrms_analitik_filtre_kullanimi' ) ) {
 if ( ! function_exists( 'qrms_analitik_arama_kullanimi' ) ) {
 
 	/**
-	 * Menüde bulunamayan aramalar.
+	 * Menüde bulunamayan aramalar — liste ve paylar.
 	 *
-	 * Kaynak, menü araması hiçbir ürün bulamadığında yazılan `menu_search_miss`
-	 * olaylarıdır (item_name = temizlenmiş kelime). Tek GROUP BY'dan gelen
-	 * sayaçlar kelime başına toplanır, en çok aranandan başlayarak ilk 25'i verilir.
+	 * Girdi, qrms_analitik_arama_birlestir() çıktısıdır (harf harf yazım ve yazım
+	 * varyantları zaten tek kelimeye indirilmiş, adede göre sıralı). Burada yalnızca
+	 * pay hesaplanır ve en çok aranan ilk $limit kelime verilir.
 	 *
-	 * @param array $sayaclar QRMS_Analitik::olay_sayaclari() çıktısı.
-	 * @param int   $limit    En fazla kaç kelime (0 = hepsi).
+	 * @param array<string,int> $birlesik Kelime => adet.
+	 * @param int               $limit    En fazla kaç kelime (0 = hepsi).
 	 * @return array{satirlar:array<int,array{kelime:string,adet:int,pay:int}>,toplam:int,farkli:int}
 	 */
-	function qrms_analitik_arama_kullanimi( array $sayaclar, $limit = 25 ) {
-		$sayim  = array();
-		$toplam = 0;
-
-		foreach ( $sayaclar as $r ) {
-			if ( ! is_array( $r ) || 'menu_search_miss' !== ( $r['event_type'] ?? '' ) ) {
-				continue;
-			}
-
-			$kelime = (string) ( $r['item_name'] ?? '' );
-			$adet   = (int) ( $r['adet'] ?? 0 );
-
-			if ( '' === $kelime || $adet <= 0 ) {
-				continue;
-			}
-
-			$sayim[ $kelime ] = ( $sayim[ $kelime ] ?? 0 ) + $adet;
-			$toplam          += $adet;
-		}
-
-		// Eşitlikte alfabetik: sıra her yenilemede aynı kalsın.
-		uksort(
-			$sayim,
-			function ( $a, $b ) use ( $sayim ) {
-				return $sayim[ $b ] <=> $sayim[ $a ] ?: strcmp( $a, $b );
-			}
-		);
-
-		$farkli = count( $sayim );
+	function qrms_analitik_arama_kullanimi( array $birlesik, $limit = 25 ) {
+		$toplam = (int) array_sum( $birlesik );
+		$farkli = count( $birlesik );
 
 		if ( $limit > 0 ) {
-			$sayim = array_slice( $sayim, 0, (int) $limit, true );
+			$birlesik = array_slice( $birlesik, 0, (int) $limit, true );
 		}
 
 		$satirlar = array();
 
-		foreach ( $sayim as $kelime => $adet ) {
+		foreach ( $birlesik as $kelime => $adet ) {
 			$satirlar[] = array(
 				'kelime' => (string) $kelime,
 				'adet'   => (int) $adet,
@@ -486,7 +464,7 @@ if ( ! function_exists( 'qrms_analitik_urun_verisi' ) ) {
 		// Detay oranı ve filtre kullanımı AYNI sorgudan okunur: olay_sayaclari()
 		// tek GROUP BY yapar, üçüncü bir tip eklemek ek sorgu doğurmaz.
 		$olaylar = QRMS_Analitik::olay_sayaclari(
-			array( 'product_click', 'item_detail_open', 'menu_filter', 'menu_search_miss' ),
+			array( 'product_click', 'item_detail_open', 'menu_filter' ),
 			$aralik['bas'],
 			$aralik['bit'],
 			$masa
@@ -510,7 +488,10 @@ if ( ! function_exists( 'qrms_analitik_urun_verisi' ) ) {
 			'kategorisiz' => $dagilim['kategorisiz'],
 			'detay'       => $detay,
 			'filtreler'   => qrms_analitik_filtre_kullanimi( $olaylar ),
-			'aramalar'    => qrms_analitik_arama_kullanimi( $olaylar, $limit > 0 ? 25 : 0 ),
+			'aramalar'    => qrms_analitik_arama_kullanimi(
+				qrms_analitik_arama_birlestir( QRMS_Analitik::arama_kayitlari( $aralik['bas'], $aralik['bit'], $masa ) ),
+				$limit > 0 ? 25 : 0
+			),
 		);
 	}
 }

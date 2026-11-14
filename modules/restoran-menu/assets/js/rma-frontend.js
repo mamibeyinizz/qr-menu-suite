@@ -767,7 +767,10 @@ window.addEventListener('popstate', function () {
 
 function restoreSearchValue() {
     var input = qs('#rma-search');
-    if (input && state.search) input.value = state.search;
+    // Kullanıcı kutuya yazarken DOKUNMA: yanıt, isteğin gönderildiği andaki metinle döner;
+    // o sırada yazılan harfler varsa bu atama onları silerdi (yavaş yazan ya da yavaş
+    // bağlantıdaki kullanıcıda "wifi" → "wi" olurdu).
+    if (input && state.search && document.activeElement !== input) input.value = state.search;
 }
 
 /* -----------------------------------------------------------------

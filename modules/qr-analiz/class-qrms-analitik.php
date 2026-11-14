@@ -2932,6 +2932,49 @@ class QRMS_Analitik {
 	}
 
 	/**
+	 * Menüde bulunamayan aramaların ham kayıtları (kelime, ziyaretçi, zaman).
+	 *
+	 * Kelime başına GROUP BY yetmez: aynı ziyaretçinin harf harf yazdığı kelime ve yazım
+	 * varyantları okuma anında birleştirilir (bkz. qrms_analitik_arama_birlestir). Yalnız
+	 * "bulunamayan arama" satırları okunur ve 5000'le sınırlıdır; sınır en yeni kayıtlardan
+	 * keser, rapor yine doğru çalışır.
+	 *
+	 * @param string $bas  Aralık başı (Y-m-d H:i:s).
+	 * @param string $bit  Aralık sonu.
+	 * @param string $masa Masa filtresi.
+	 * @return array<int,array{kelime:string,ip:string,t:int}>
+	 */
+	public static function arama_kayitlari( $bas, $bit, $masa = '' ) {
+		global $wpdb;
+
+		$tablo   = self::tablo();
+		$masa_ek = self::masa_sql( $masa );
+		$kosul   = $wpdb->prepare( 'created_at BETWEEN %s AND %s', $bas, $bit );
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$ham = $wpdb->get_results(
+			"SELECT item_name, ip_hash, created_at
+			 FROM {$tablo}
+			 WHERE event_type = 'menu_search_miss' AND item_name <> '' AND {$kosul}{$masa_ek}
+			 ORDER BY created_at DESC
+			 LIMIT 5000",
+			ARRAY_A
+		);
+
+		$sonuc = array();
+
+		foreach ( (array) $ham as $r ) {
+			$sonuc[] = array(
+				'kelime' => (string) $r['item_name'],
+				'ip'     => (string) $r['ip_hash'],
+				't'      => (int) strtotime( (string) $r['created_at'] ),
+			);
+		}
+
+		return $sonuc;
+	}
+
+	/**
 	 * Verilen olay tiplerinin (tip, item_name) sayaçları — TEK sorgu.
 	 *
 	 * WHERE event_type IN (...) AND created_at BETWEEN idx_td (masa

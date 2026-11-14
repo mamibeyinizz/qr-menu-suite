@@ -625,6 +625,7 @@ qrms_test(
 		$wpdb->vars[]    = 0;        // kategorisiz sayımı
 		$wpdb->results[] = array();  // olay_sayaclari detay
 		$wpdb->results[] = array();  // urun_siralamasi
+		$wpdb->results[] = array();  // arama_kayitlari (menüde bulunamayan aramalar)
 
 		$veri = qrms_analitik_urun_verisi(
 			array(
@@ -638,10 +639,10 @@ qrms_test(
 		);
 
 		// Ürün sayısı 40 olmasına rağmen sorgu sayısı SABİT kalır: bir
-		// get_posts + beş analitik sorgusu (sayaçlar, dağılım, kategorisiz
-		// sayımı, detay açılışı, en çok tıklananlar).
+		// get_posts + altı analitik sorgusu (sayaçlar, dağılım, kategorisiz
+		// sayımı, detay açılışı, en çok tıklananlar, bulunamayan aramalar).
 		qrms_assert_same( 1, $GLOBALS['qrms_test']['get_posts_calls'], 'tek ürün sorgusu' );
-		qrms_assert_same( 5, count( $wpdb->queries ), 'sabit sayıda analitik sorgusu' );
+		qrms_assert_same( 6, count( $wpdb->queries ), 'sabit sayıda analitik sorgusu' );
 
 		// Sayfalama: 40 üründen ilk 25'i.
 		qrms_assert_same( 25, count( $veri['enaz'] ), 'sayfa boyu' );
