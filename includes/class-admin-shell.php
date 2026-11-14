@@ -25,6 +25,8 @@ class QRMS_Admin_Shell {
 		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_assets' ) );
 		add_filter( 'admin_body_class', array( __CLASS__, 'body_class' ) );
 		add_action( 'admin_notices', array( __CLASS__, 'render_open' ), -99999 );
+		// Panel ekranlarında başka eklentilerin reklam/anket bildirimleri (Elementor, UAE…) basılmaz.
+		add_action( 'in_admin_header', array( __CLASS__, 'yabanci_bildirimleri_kaldir' ), PHP_INT_MAX );
 		add_action( 'admin_notices', array( __CLASS__, 'render_native_hybrid_back_link' ), 0 );
 		add_action( 'admin_footer', array( __CLASS__, 'render_close' ), 99999 );
 	}
@@ -233,6 +235,28 @@ class QRMS_Admin_Shell {
 			true
 		);
 
+		if ( class_exists( 'QRMS_Ozellik_Arama' ) && QRMS_Ozellik_Arama::dizin() ) {
+			wp_enqueue_script(
+				'qrms-ozellik-arama',
+				QRMS_PLUGIN_URL . 'assets/js/ozellik-arama.js',
+				array(),
+				QRMS_Helpers::asset_version( 'assets/js/ozellik-arama.js' ),
+				true
+			);
+
+			wp_localize_script(
+				'qrms-ozellik-arama',
+				'qrmsOzAra',
+				array(
+					'dizin' => QRMS_Ozellik_Arama::dizin(),
+					'metin' => array(
+						'yok'   => __( 'Sonuç yok. Başka bir kelime deneyin (ör. sipariş, logo, saat).', 'qrms' ),
+						'sonuc' => __( '%d sonuç', 'qrms' ),
+					),
+				)
+			);
+		}
+
 		wp_localize_script(
 			'qrms-admin-shell',
 			'qrmsShell',
@@ -342,11 +366,55 @@ class QRMS_Admin_Shell {
 							<h1 class="qrms-shell__title"><?php echo esc_html( $header['title'] ); ?></h1>
 						</div>
 					</div>
+					<?php self::render_ozellik_arama(); ?>
 					<div class="qrms-shell__header-end">
 						<?php self::render_account_control( $user, $role, 'header' ); ?>
 					</div>
 				</header>
 				<div class="<?php echo esc_attr( $content_class ); ?>" id="qrms-shell-content">
+		<?php
+	}
+
+	/**
+	 * Başlıktaki özellik arama kutusu (dizin boşsa basılmaz).
+	 *
+	 * @return void
+	 */
+	public static function render_ozellik_arama() {
+		if ( ! class_exists( 'QRMS_Ozellik_Arama' ) || ! QRMS_Ozellik_Arama::dizin() ) {
+			return;
+		}
+		?>
+		<div class="qrms-oz" id="qrms-oz" role="search">
+			<button type="button" class="qrms-oz__ac" id="qrms-oz-ac" aria-controls="qrms-oz-kutu" aria-expanded="false">
+				<span class="dashicons dashicons-search" aria-hidden="true"></span>
+				<span class="qrms-shell__sr-only"><?php esc_html_e( 'Özellik ara', 'qrms' ); ?></span>
+			</button>
+			<div class="qrms-oz__kutu" id="qrms-oz-kutu">
+				<span class="qrms-oz__ikon dashicons dashicons-search" aria-hidden="true"></span>
+				<label class="qrms-shell__sr-only" for="qrms-oz-girdi"><?php esc_html_e( 'Özellik ara', 'qrms' ); ?></label>
+				<input
+					type="search"
+					id="qrms-oz-girdi"
+					class="qrms-oz__girdi"
+					placeholder="<?php esc_attr_e( 'Özellik ara… (ör. masa, çeviri, kampanya)', 'qrms' ); ?>"
+					autocomplete="off"
+					spellcheck="false"
+					enterkeyhint="go"
+					role="combobox"
+					aria-autocomplete="list"
+					aria-expanded="false"
+					aria-controls="qrms-oz-liste"
+				>
+				<kbd class="qrms-oz__kisayol" aria-hidden="true">/</kbd>
+				<button type="button" class="qrms-oz__kapat" id="qrms-oz-kapat">
+					<span aria-hidden="true">×</span>
+					<span class="qrms-shell__sr-only"><?php esc_html_e( 'Aramayı kapat', 'qrms' ); ?></span>
+				</button>
+				<ul class="qrms-oz__liste" id="qrms-oz-liste" role="listbox" hidden></ul>
+				<p class="qrms-shell__sr-only" id="qrms-oz-durum" role="status" aria-live="polite"></p>
+			</div>
+		</div>
 		<?php
 	}
 
@@ -491,6 +559,98 @@ class QRMS_Admin_Shell {
 		 * @param array $ctx   Screen context from resolve_screen_context().
 		 */
 		return apply_filters( 'qrms_premium_shell_nav', $rows, $ctx );
+	}
+
+	/**
+	 * Kenar çubuğu satırları (özellik araması dizini için).
+	 *
+	 * @return array<int,array<string,mixed>>
+	 */
+	public static function arama_nav_satirlari() {
+		return self::build_sidebar_nav();
+	}
+
+	/**
+	 * Panel (kabuk) ekranlarında, bu eklentinin dışındaki kodun bildirimlerini kaldırır.
+	 *
+	 * Elementor'un "Web tasarımının geleceği", Ultimate Addons'un "Help shape the future" gibi
+	 * reklam/anket kutuları restoran sahibinin panelini dolduruyordu. Bir geri çağrının
+	 * tanımlandığı dosya bu eklentinin klasöründe değilse kaldırılır (kendi lisans ve
+	 * kaydetme bildirimlerimiz kalır). Yalnız panel ekranlarını etkiler; WordPress
+	 * yönetiminin diğer sayfaları ve WordPress güncelleme ekranı olduğu gibi kalır.
+	 *
+	 * @return void
+	 */
+	public static function yabanci_bildirimleri_kaldir() {
+		global $wp_filter;
+
+		if ( ! self::is_active() ) {
+			return;
+		}
+
+		/**
+		 * Panelde başka eklentilerin bildirimleri gizlensin mi?
+		 *
+		 * @param bool $gizle Varsayılan true.
+		 */
+		if ( ! apply_filters( 'qrms_panel_yabanci_bildirimleri_gizle', true ) ) {
+			return;
+		}
+
+		$kok = wp_normalize_path( QRMS_PLUGIN_DIR );
+
+		foreach ( array( 'admin_notices', 'all_admin_notices', 'network_admin_notices', 'user_admin_notices' ) as $kanca ) {
+			if ( empty( $wp_filter[ $kanca ] ) || ! is_object( $wp_filter[ $kanca ] ) ) {
+				continue;
+			}
+
+			foreach ( (array) $wp_filter[ $kanca ]->callbacks as $oncelik => $geri_cagrilar ) {
+				foreach ( (array) $geri_cagrilar as $kayit ) {
+					if ( empty( $kayit['function'] ) ) {
+						continue;
+					}
+
+					$dosya = self::geri_cagri_dosyasi( $kayit['function'] );
+
+					// Dosyası bulunamayan (ör. dahili PHP fonksiyonu) geri çağrıya dokunulmaz.
+					if ( '' === $dosya || 0 === strpos( wp_normalize_path( $dosya ), $kok ) ) {
+						continue;
+					}
+
+					remove_action( $kanca, $kayit['function'], $oncelik );
+				}
+			}
+		}
+	}
+
+	/**
+	 * Bir geri çağrının tanımlandığı dosya.
+	 *
+	 * @param mixed $geri_cagri Geri çağrı.
+	 * @return string
+	 */
+	private static function geri_cagri_dosyasi( $geri_cagri ) {
+		try {
+			if ( is_string( $geri_cagri ) && false !== strpos( $geri_cagri, '::' ) ) {
+				$geri_cagri = explode( '::', $geri_cagri, 2 );
+			}
+
+			if ( is_array( $geri_cagri ) && 2 === count( $geri_cagri ) ) {
+				$yansima = new ReflectionMethod( $geri_cagri[0], (string) $geri_cagri[1] );
+			} elseif ( is_string( $geri_cagri ) || $geri_cagri instanceof Closure ) {
+				$yansima = new ReflectionFunction( $geri_cagri );
+			} elseif ( is_object( $geri_cagri ) && method_exists( $geri_cagri, '__invoke' ) ) {
+				$yansima = new ReflectionMethod( $geri_cagri, '__invoke' );
+			} else {
+				return '';
+			}
+
+			$dosya = $yansima->getFileName();
+
+			return is_string( $dosya ) ? $dosya : '';
+		} catch ( ReflectionException $e ) {
+			return '';
+		}
 	}
 
 	/**

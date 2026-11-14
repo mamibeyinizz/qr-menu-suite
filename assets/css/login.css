@@ -1241,3 +1241,21 @@ body.qrms-login #login #backtoblog a {
 body.qrms-login-tema-acik.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) #login > form {
 	background: #fffefb;
 }
+
+/*
+ * Bölünmüş düzende ARKA PLAN GÖRSELİ: marka metni krem renktedir; görsel açık tonluysa ve
+ * karartma düşük ayarlanmışsa başlık/etiket okunmuyordu. Karartma en az %55 uygulanır
+ * (ayar daha yüksekse o geçerli), açık temanın beyaz katmanı da burada kullanılmaz.
+ */
+body.qrms-login-bg-gorsel.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil)::after {
+	background: rgba(0, 0, 0, 0.6);
+	background:
+		radial-gradient(60% 55% at 22% 18%, color-mix(in srgb, var(--qrms-lg-vurgu) 18%, transparent) 0%, transparent 70%),
+		linear-gradient(180deg, rgba(0, 0, 0, 0) 40%, rgba(0, 0, 0, 0.25) 100%),
+		rgba(0, 0, 0, max(var(--qrms-lg-karartma), 0.55));
+}
+
+/* Panelde kart zaten "Personel girişi" diyor: yol ayrımının ikinci etiketi tekrardır. */
+body.qrms-login .qrms-login-panel .qrms-login-yol-ayrim-etiket {
+	display: none;
+}
