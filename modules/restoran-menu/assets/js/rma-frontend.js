@@ -821,6 +821,17 @@ function loadAll(ilkYukleme) {
             return;
         }
 
+        // 429: istek sınırı doldu (aynı çıkış adresinden çok sayıda istek). Sayfayı yenilemek
+        // durumu kötüleştirir; kısa bir bekleme sonrası kendiliğinden bir kez daha denenir.
+        if (status === 429) {
+            showEmpty(rmaText('rateLimit', 'Çok hızlı işlem yaptınız. Birkaç saniye içinde yeniden deneniyor…'));
+            if (!state.rateRetryBekliyor) {
+                state.rateRetryBekliyor = true;
+                setTimeout(function () { state.rateRetryBekliyor = false; if (seq === loadSeq) loadAll(); }, 4000);
+            }
+            return;
+        }
+
         // Bayat nonce (önbellek) durumunda sayfayı EN FAZLA BİR KEZ yenile.
         // Guard olmadan kalıcı 403 sonsuz reload döngüsüne yol açar.
         var reloaded = false;
