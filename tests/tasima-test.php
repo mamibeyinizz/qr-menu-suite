@@ -148,5 +148,32 @@ foreach ( array(
 	esit( false, QRMS_Tasima::medya_url_guvenli( $u, $ku ), "güvensiz: $u" );
 }
 
+// 10) Çeviri kimlikleri.
+$h = array( 'yazi' => array( 40 => 900, 313 => 901, 17 => 902 ), 'terim' => array( 1 => 50, 17 => 51 ) );
+esit( 900, QRMS_Tasima::ceviri_kimlik_cevir( 'product', 40, $h ), 'ürün kimliği eşlenir' );
+esit( 901, QRMS_Tasima::ceviri_kimlik_cevir( 'nav_menu', 313, $h ), 'menü öğesi kimliği eşlenir' );
+esit( 902, QRMS_Tasima::ceviri_kimlik_cevir( 'elementor', 17, $h ), 'sayfa kimliği eşlenir' );
+esit( 51, QRMS_Tasima::ceviri_kimlik_cevir( 'category', 17, $h ), 'kategori terim kimliği eşlenir' );
+esit( 0, QRMS_Tasima::ceviri_kimlik_cevir( 'ui_string', 0, $h ), 'sabit metin 0 kalır' );
+esit( null, QRMS_Tasima::ceviri_kimlik_cevir( 'product', 99999, $h ), 'eşlenmeyen ürün atlanır (yanlış ürüne yazılmaz)' );
+esit( null, QRMS_Tasima::ceviri_kimlik_cevir( 'form_field', 3, $h ), 'başka modül tablosu taşınmaz' );
+esit( null, QRMS_Tasima::ceviri_kimlik_cevir( 'category', 40, $h ), 'ürün kimliği terim tablosuna karışmaz' );
+$iyi = array( 'id' => 1, 'tip' => 'product', 'alan' => 'title', 'dil' => 'en', 'orijinal' => 'a', 'ceviri' => 'b' );
+esit( true, QRMS_Tasima::ceviri_satiri_gecerli( $iyi ), 'geçerli satır' );
+esit( true, QRMS_Tasima::ceviri_satiri_gecerli( array_merge( $iyi, array( 'dil' => 'zh-CN' ) ) ), 'zh-CN geçerli' );
+foreach ( array(
+	array_merge( $iyi, array( 'dil' => 'tr' ) ),
+	array_merge( $iyi, array( 'dil' => "en'; DROP" ) ),
+	array_merge( $iyi, array( 'tip' => 'Bad Type!' ) ),
+	array_merge( $iyi, array( 'tip' => str_repeat( 'a', 21 ) ) ),
+	array_merge( $iyi, array( 'alan' => '' ) ),
+	array_merge( $iyi, array( 'alan' => str_repeat( 'x', 192 ) ) ),
+	array_merge( $iyi, array( 'ceviri' => array( 'x' ) ) ),
+	array( 'tip' => 'product' ),
+	'metin',
+) as $i => $bozuk ) {
+	esit( false, QRMS_Tasima::ceviri_satiri_gecerli( $bozuk ), "geçersiz satır #$i" );
+}
+
 echo $hata ? "\n$hata / $say BAŞARISIZ\n" : "$say / $say geçti\n";
 exit( $hata ? 1 : 0 );

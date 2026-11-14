@@ -60,6 +60,11 @@ class QRMS_Tasima {
 				'tipler' => array( 'page', 'elementor-hf', 'elementor_library', 'nav_menu_item' ),
 				'taxlar' => array( 'nav_menu' ),
 			),
+			'ceviriler' => array(
+				'etiket' => __( 'Diller ve çeviriler (ürün, kategori, sayfa, menü ve arayüz metinleri)', 'qrms' ),
+				'tipler' => array(),
+				'taxlar' => array(),
+			),
 			'bannerlar' => array(
 				'etiket' => __( 'Bannerlar ve açılış slaytları', 'qrms' ),
 				'tipler' => array( 'qmo_slide', 'qmo_banner_slide' ),
@@ -116,6 +121,51 @@ class QRMS_Tasima {
 		$yasak = '/(api_key|apikey|secret|hash|pin$|_pin|license|lisans|_sa$|firebase|menu_json_data|db_surum|version|cache|hmac|token|branch_id|session|salt|password|parola)/i';
 
 		return ! preg_match( $yasak, $ad );
+	}
+
+	/** Yazı (post) kimliğiyle anahtarlı çeviri tipleri. */
+	const CEVIRI_YAZI_TIPLERI = array( 'product', 'nav_menu', 'elementor' );
+
+	/** Terim kimliğiyle anahtarlı çeviri tipleri. */
+	const CEVIRI_TERIM_TIPLERI = array( 'category', 'allergen' );
+
+	/**
+	 * Bir çeviri satırının hedef sitedeki kimliğini verir.
+	 *
+	 * @param string $tip     Çeviri öğe tipi.
+	 * @param int    $eski_id Kaynak sitedeki kimlik (0: sabit metin).
+	 * @param array  $harita  array('yazi' => [...], 'terim' => [...]).
+	 * @return int|null Hedef kimlik; 0 sabit metin; null: eşlenemedi (satır atlanır).
+	 */
+	public static function ceviri_kimlik_cevir( $tip, $eski_id, array $harita ) {
+		$eski_id = (int) $eski_id;
+		if ( 0 === $eski_id ) {
+			return 0;
+		}
+		if ( in_array( $tip, self::CEVIRI_YAZI_TIPLERI, true ) ) {
+			return isset( $harita['yazi'][ $eski_id ] ) ? (int) $harita['yazi'][ $eski_id ] : null;
+		}
+		if ( in_array( $tip, self::CEVIRI_TERIM_TIPLERI, true ) ) {
+			return isset( $harita['terim'][ $eski_id ] ) ? (int) $harita['terim'][ $eski_id ] : null;
+		}
+
+		// Başka modüllerin tabloları (yorum formları vb.) bu pakette taşınmaz.
+		return null;
+	}
+
+	/**
+	 * Çeviri satırı geçerli mi (paket güvenilmez kabul edilir)?
+	 *
+	 * @param mixed $r Satır.
+	 * @return bool
+	 */
+	public static function ceviri_satiri_gecerli( $r ) {
+		return is_array( $r )
+			&& isset( $r['tip'], $r['alan'], $r['dil'], $r['orijinal'], $r['ceviri'] )
+			&& is_string( $r['tip'] ) && preg_match( '/^[a-z0-9_]{1,20}$/', $r['tip'] )
+			&& is_string( $r['alan'] ) && '' !== $r['alan'] && strlen( $r['alan'] ) <= 191
+			&& is_string( $r['dil'] ) && 'tr' !== $r['dil'] && preg_match( '/^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,4})?$/', $r['dil'] )
+			&& is_string( $r['orijinal'] ) && is_string( $r['ceviri'] );
 	}
 
 	/**
@@ -428,6 +478,7 @@ class QRMS_Tasima {
 			'ozel'            => array(),
 			'terimler'        => array(),
 			'yazilar'         => array(),
+			'ceviriler'       => array(),
 			'medya'           => array(),
 		);
 
@@ -523,6 +574,21 @@ class QRMS_Tasima {
 				'page_on_front'        => (int) get_option( 'page_on_front' ),
 				'elementor_active_kit' => (int) get_option( 'elementor_active_kit' ),
 			);
+		}
+
+		// Çeviri tablosu (kimlikler içe aktarmada yeniden eşlenir).
+		if ( in_array( 'ceviriler', $secili, true ) && class_exists( 'RMA_Ceviri_Tablo' ) && RMA_Ceviri_Tablo::tablo_var_mi() ) {
+			$satirlar = $wpdb->get_results( 'SELECT item_id, item_type, field, lang_code, original_text, translated_text FROM ' . RMA_Ceviri_Tablo::tablo() . ' ORDER BY item_type, item_id, field, lang_code', ARRAY_A ); // phpcs:ignore WordPress.DB
+			foreach ( (array) $satirlar as $r ) {
+				$paket['ceviriler'][] = array(
+					'id'       => (int) $r['item_id'],
+					'tip'      => $r['item_type'],
+					'alan'     => $r['field'],
+					'dil'      => $r['lang_code'],
+					'orijinal' => $r['original_text'],
+					'ceviri'   => $r['translated_text'],
+				);
+			}
 		}
 
 		self::medya_topla( $paket );
@@ -804,6 +870,9 @@ class QRMS_Tasima {
 		if ( ! in_array( 'ayarlar', $secili, true ) ) {
 			$paket['secenekler'] = array();
 		}
+		$paket['ceviriler'] = in_array( 'ceviriler', $secili, true ) && isset( $paket['ceviriler'] ) && is_array( $paket['ceviriler'] )
+			? array_values( array_filter( $paket['ceviriler'], array( __CLASS__, 'ceviri_satiri_gecerli' ) ) )
+			: array();
 		if ( ! in_array( 'sayfalar', $secili, true ) ) {
 			$paket['ozel'] = array();
 		}
@@ -815,7 +884,7 @@ class QRMS_Tasima {
 			'imlec'    => 0,
 			'harita'   => array( 'terim' => array(), 'yazi' => array(), 'ek' => array(), 'medya' => array() ),
 			'uyarilar' => array(),
-			'sayac'    => array( 'terim' => 0, 'medya' => 0, 'yeni' => 0, 'guncel' => 0 ),
+			'sayac'    => array( 'terim' => 0, 'medya' => 0, 'yeni' => 0, 'guncel' => 0, 'ceviri' => 0, 'ceviri_atlanan' => 0 ),
 		);
 		if ( ! self::durum_yaz( $token, $durum ) ) {
 			wp_send_json_error( array( 'mesaj' => __( 'Durum dosyası yazılamadı.', 'qrms' ) ) );
@@ -828,6 +897,7 @@ class QRMS_Tasima {
 					'terim'    => count( $paket['terimler'] ),
 					'medya'    => count( isset( $paket['medya'] ) ? (array) $paket['medya'] : array() ),
 					'yazi'     => count( $paket['yazilar'] ),
+					'ceviri'   => count( $paket['ceviriler'] ),
 					'secenek'  => count( $paket['secenekler'] ),
 				),
 				'kaynak' => $kaynak['home'],
@@ -871,6 +941,9 @@ class QRMS_Tasima {
 				break;
 			case 'yazilar':
 				$mesaj = self::faz_yazilar( $durum );
+				break;
+			case 'ceviriler':
+				$mesaj = self::faz_ceviriler( $durum );
 				break;
 			case 'son':
 				$mesaj = self::faz_son( $durum );
@@ -1049,6 +1122,52 @@ class QRMS_Tasima {
 					return array( (int) ( $a['ust'] > 0 ), (int) $a['id'] ) <=> array( (int) ( $b['ust'] > 0 ), (int) $b['id'] );
 				}
 			);
+		}
+
+		return $mesaj;
+	}
+
+	/**
+	 * Çevirileri yazar (kimlikler yeni siteye göre çevrilir).
+	 *
+	 * @param array $d Durum (referans).
+	 * @return string
+	 */
+	private static function faz_ceviriler( array &$d ) {
+		$satirlar = isset( $d['paket']['ceviriler'] ) ? array_values( (array) $d['paket']['ceviriler'] ) : array();
+		$baslar   = microtime( true );
+		$harita   = array( 'yazi' => $d['harita']['yazi'], 'terim' => $d['harita']['terim'] );
+
+		if ( $satirlar && ! class_exists( 'RMA_Ceviri_Tablo' ) ) {
+			$d['uyarilar'][] = __( 'Çeviri modülü bu sitede etkin değil; çeviriler atlandı.', 'qrms' );
+			$d['sayac']['ceviri_atlanan'] += count( $satirlar );
+			$d['imlec'] = count( $satirlar );
+		}
+
+		$adim = 0;
+		while ( $d['imlec'] < count( $satirlar ) && $adim < 600 && ( microtime( true ) - $baslar ) < self::ADIM_SURE ) {
+			$r = $satirlar[ $d['imlec'] ];
+			$d['imlec']++;
+			$adim++;
+
+			$yeni_id = self::ceviri_kimlik_cevir( (string) $r['tip'], (int) $r['id'], $harita );
+			if ( null === $yeni_id ) {
+				$d['sayac']['ceviri_atlanan']++;
+				continue;
+			}
+			if ( RMA_Ceviri_Tablo::upsert( $yeni_id, (string) $r['tip'], (string) $r['alan'], (string) $r['dil'], (string) $r['orijinal'], wp_kses_post( (string) $r['ceviri'] ) ) ) {
+				$d['sayac']['ceviri']++;
+			}
+		}
+
+		$mesaj = sprintf( /* translators: 1: done, 2: total */ __( 'Çeviriler: %1$d / %2$d', 'qrms' ), min( $d['imlec'], count( $satirlar ) ), count( $satirlar ) );
+
+		if ( $d['imlec'] >= count( $satirlar ) ) {
+			$d['faz']   = 'son';
+			$d['imlec'] = 0;
+			if ( function_exists( 'rma_ceviri_onbellek_temizle' ) ) {
+				rma_ceviri_onbellek_temizle();
+			}
 		}
 
 		return $mesaj;
@@ -1234,7 +1353,7 @@ class QRMS_Tasima {
 		$mesaj = sprintf( /* translators: 1: done, 2: total */ __( 'İçerik: %1$d / %2$d', 'qrms' ), min( $d['imlec'], count( $yazilar ) ), count( $yazilar ) );
 
 		if ( $d['imlec'] >= count( $yazilar ) ) {
-			$d['faz']   = 'son';
+			$d['faz']   = 'ceviriler';
 			$d['imlec'] = 0;
 		}
 
@@ -1466,9 +1585,10 @@ class QRMS_Tasima {
 				v.append('action', 'qrms_tasima_adim');
 				v.append('token', token);
 				return istek(v).then(function (s) {
-					var yuzde = { terimler: 5, medya: 5, yazilar: 45, son: 90 }[s.faz] || 0;
+					var yuzde = { terimler: 5, medya: 5, yazilar: 45, ceviriler: 80, son: 95 }[s.faz] || 0;
 					if (s.faz === 'medya' && toplam.medya) { yuzde = 5 + Math.round(40 * s.imlec / toplam.medya); }
-					if (s.faz === 'yazilar' && toplam.yazi) { yuzde = 45 + Math.round(45 * s.imlec / toplam.yazi); }
+					if (s.faz === 'yazilar' && toplam.yazi) { yuzde = 45 + Math.round(35 * s.imlec / toplam.yazi); }
+					if (s.faz === 'ceviriler' && toplam.ceviri) { yuzde = 80 + Math.round(15 * s.imlec / toplam.ceviri); }
 					bar.value = s.bitti ? 100 : yuzde;
 					yazMetin(s.mesaj);
 					uyari.innerHTML = '';
@@ -1490,7 +1610,7 @@ class QRMS_Tasima {
 					.then(function (h) { return adim(h.token, h.toplam); })
 					.then(function (s) {
 						var c = s.sayac || {};
-						yazMetin(<?php echo wp_json_encode( __( 'Tamamlandı. Yeni:', 'qrms' ) ); ?> + ' ' + (c.yeni || 0) + ', ' + <?php echo wp_json_encode( __( 'güncellenen:', 'qrms' ) ); ?> + ' ' + (c.guncel || 0) + ', ' + <?php echo wp_json_encode( __( 'görsel:', 'qrms' ) ); ?> + ' ' + (c.medya || 0) + ', ' + <?php echo wp_json_encode( __( 'ayar:', 'qrms' ) ); ?> + ' ' + (c.secenek || 0));
+						yazMetin(<?php echo wp_json_encode( __( 'Tamamlandı. Yeni:', 'qrms' ) ); ?> + ' ' + (c.yeni || 0) + ', ' + <?php echo wp_json_encode( __( 'güncellenen:', 'qrms' ) ); ?> + ' ' + (c.guncel || 0) + ', ' + <?php echo wp_json_encode( __( 'görsel:', 'qrms' ) ); ?> + ' ' + (c.medya || 0) + ', ' + <?php echo wp_json_encode( __( 'çeviri:', 'qrms' ) ); ?> + ' ' + (c.ceviri || 0) + ', ' + <?php echo wp_json_encode( __( 'ayar:', 'qrms' ) ); ?> + ' ' + (c.secenek || 0));
 					})
 					.catch(function (err) { yazMetin(err.message); })
 					.then(function () { btn.disabled = false; });
