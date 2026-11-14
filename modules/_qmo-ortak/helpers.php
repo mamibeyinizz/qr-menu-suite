@@ -1120,8 +1120,22 @@ if ( ! function_exists( 'qmo_sayac_arttir' ) ) {
 		return (int) qmo_kilitli_calistir(
 			$key,
 			function () use ( $key, $ttl ) {
-				$n = (int) get_transient( $key ) + 1;
-				set_transient( $key, $n, $ttl );
+				// Sabit pencere: pencere başlangıcı saklanır, süre kalan zamana göre verilir.
+				// Her istekte süreyi yeniden kuran sayaç, sınır dolunca istemci denemeye
+				// devam ettiği sürece hiç açılmıyordu.
+				$simdi = time();
+				$kayit = get_transient( $key );
+
+				if ( is_array( $kayit ) && isset( $kayit['n'], $kayit['t'] ) && ( $simdi - (int) $kayit['t'] ) < $ttl ) {
+					$n = (int) $kayit['n'] + 1;
+					$t = (int) $kayit['t'];
+				} else {
+					$n = 1;
+					$t = $simdi;
+				}
+
+				set_transient( $key, array( 'n' => $n, 't' => $t ), max( 1, $ttl - ( $simdi - $t ) ) );
+
 				return $n;
 			}
 		);

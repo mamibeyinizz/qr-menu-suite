@@ -592,8 +592,21 @@ trait RMA_Ajax_Trait {
             wp_cache_add( $key, 0, 'rma_rl', MINUTE_IN_SECONDS );
             $n = wp_cache_incr( $key, 1, 'rma_rl' );
         } else {
-            $n = (int) get_transient( $key ) + 1;
-            set_transient( $key, $n, MINUTE_IN_SECONDS );
+            // SABİT PENCERE: sayaç, pencerenin başlangıcıyla birlikte saklanır ve süre
+            // kalan zamana göre ayarlanır. Eskiden her istek (engellenenler dahil) süreyi
+            // 60 sn'ye yeniden kuruyordu; sınır bir kez dolunca istemci dakikada bir kez
+            // bile denese hiç açılmıyordu. Restoran Wi-Fi'sinde tüm misafirler tek adrestir,
+            // bu da menünün kalıcı olarak kilitlenmesi demekti.
+            $simdi = time();
+            $kayit = get_transient( $key );
+            if ( is_array( $kayit ) && isset( $kayit['n'], $kayit['t'] ) && ( $simdi - (int) $kayit['t'] ) < MINUTE_IN_SECONDS ) {
+                $n = (int) $kayit['n'] + 1;
+                $t = (int) $kayit['t'];
+            } else {
+                $n = 1;
+                $t = $simdi;
+            }
+            set_transient( $key, array( 'n' => $n, 't' => $t ), max( 1, MINUTE_IN_SECONDS - ( $simdi - $t ) ) );
         }
 
         if ( $n > $limit ) {
