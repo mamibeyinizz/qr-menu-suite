@@ -53,6 +53,7 @@ function qrms_module_qr_analiz_init() {
 	// Menü analitiği: restoran-menu modülünün AJAX uçlarına takılıp menü
 	// görüntülemelerini ve ürün tıklamalarını masa bazında kaydeder. İzleme
 	// ön yüzde de çalışmak zorunda olduğu için is_admin() dışındadır.
+	require_once __DIR__ . '/arama-kelime.php';
 	require_once __DIR__ . '/class-qrms-analitik.php';
 	require_once __DIR__ . '/class-qrms-siparis-olgulari.php';
 	require_once __DIR__ . '/class-qrms-siparis-iptal-uzlastirma.php';
@@ -478,6 +479,9 @@ function qrms_module_qr_analiz_urunler_assets() {
 				'filterName'      => __( 'Filtre', 'qrms' ),
 				'useCount'        => __( 'Kullanım', 'qrms' ),
 				'noFilters'       => __( 'Seçili dönemde filtre kullanımı kaydedilmemiş.', 'qrms' ),
+				'searchTerm'      => __( 'Aranan kelime', 'qrms' ),
+				'searchCount'     => __( 'Arama sayısı', 'qrms' ),
+				'noSearchMiss'    => __( 'Seçili dönemde menüde bulunamayan bir arama olmadı. Müşterileriniz aradığını menünüzde buluyor.', 'qrms' ),
 			),
 		)
 	);

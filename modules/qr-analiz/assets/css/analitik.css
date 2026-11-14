@@ -1912,3 +1912,34 @@
 		min-height: 44px;
 	}
 }
+
+/* Menüde bulunamayan aramalar: işletmeye yönelik öneri çağrısı. Altın zemin, koyu metin (kontrast >= 4.5:1). */
+.qrms-an-panel .qrms-an-cta {
+	display: flex;
+	align-items: flex-start;
+	gap: 10px;
+	margin: 0 var(--qrms-an-gutter) 12px;
+	padding: 12px 14px;
+	background: #fbf6e6;
+	border: 1px solid #ecdca4;
+	border-left: 4px solid var(--qrms-an-gold);
+	border-radius: 8px;
+	color: #4a3a0b;
+	font-size: 14px;
+	line-height: 1.5;
+}
+
+.qrms-an-panel .qrms-an-cta[hidden] {
+	display: none;
+}
+
+.qrms-an-panel .qrms-an-cta .dashicons {
+	flex: 0 0 auto;
+	margin-top: 1px;
+	color: #7f6419;
+}
+
+.qrms-an-panel .qrms-an-cta strong {
+	display: block;
+	color: #3a2d06;
+}

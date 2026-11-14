@@ -198,6 +198,20 @@ trait RMA_Ajax_Trait {
             }
         }
 
+        // Analitik: filtresiz bir arama hiçbir ürün bulamadıysa bu, menüde olmayan
+        // bir şey arandığı anlamına gelir. Sunucu tarafında, sonuç sayısı bilindiği
+        // için tetiklenir (istemci beacon'ı sahtelenebilirdi); önbellekten gelse de çalışır.
+        // Dinleyici yoksa (Analiz modülü kapalı) hiçbir şey olmaz.
+        if ( '' !== $search && isset( $payload['bulunan'] ) && 0 === (int) $payload['bulunan'] && empty( $payload['filtreli'] ) ) {
+            /**
+             * Menüde karşılığı olmayan bir arama yapıldı.
+             *
+             * @param string $search Aranan metin (en fazla 60 karakter, temizlenmiş).
+             * @param string $lang   Menünün o anki dili.
+             */
+            do_action( 'rma_arama_bulunamadi', $search, $this->current_lang() );
+        }
+
         $this->flush_stray_output();
         wp_send_json_success( $payload );
     }
@@ -270,8 +284,16 @@ trait RMA_Ajax_Trait {
 
         $search_filter = null;
         if ( ! empty( $search ) ) {
-            $search_terms = preg_split( '/\s+/', $search, -1, PREG_SPLIT_NO_EMPTY );
+            // En fazla 6 kelime: 60 karakterlik girdiyle 30 kelimelik bir sorgu
+            // üretilemesin (her kelime birkaç alt sorgu demektir).
+            $search_terms = array_slice( preg_split( '/\s+/', $search, -1, PREG_SPLIT_NO_EMPTY ), 0, 6 );
             $search_terms = array_map( 'sanitize_text_field', $search_terms );
+
+            // Arama dilini sunucu belirler (önbellek anahtarındaki `__lang` ile aynı kaynak).
+            $search_lang  = $this->current_lang();
+            $ceviri_tablo = ( $search_lang && 'tr' !== $search_lang && class_exists( 'RMA_Ceviri_Tablo' ) && RMA_Ceviri_Tablo::tablo_var_mi() )
+                ? RMA_Ceviri_Tablo::tablo()
+                : '';
 
             // Filtre YALNIZCA kendi sorgumuza uygulanır: aşağıdaki
             // 'rma_search' sorgu değişkeni imza görevi görür. Böylece bu
@@ -279,17 +301,52 @@ trait RMA_Ajax_Trait {
             // Elementor) yanlışlıkla etkilenmez.
             $base['rma_search'] = 1;
 
-            $search_filter = function ( $where, $query ) use ( $search_terms ) {
+            $search_filter = function ( $where, $query ) use ( $search_terms, $search_lang, $ceviri_tablo ) {
                 if ( ! $query instanceof WP_Query || ! $query->get( 'rma_search' ) ) return $where;
 
                 global $wpdb;
                 $clauses = [];
                 foreach ( $search_terms as $term ) {
-                    $like      = '%' . $wpdb->esc_like( $term ) . '%';
-                    $clauses[] = $wpdb->prepare(
-                        "( {$wpdb->posts}.post_title LIKE %s OR {$wpdb->posts}.post_content LIKE %s OR {$wpdb->posts}.post_excerpt LIKE %s )",
-                        $like, $like, $like
+                    // Noktasız "ı": Türkçe klavyesiz yazan misafir "acili", "kahvalti"
+                    // yazar ama menüde "Acılı", "Kahvaltı" yazar. Harf duyarsız
+                    // sıralamalar ı'yı i ile eşitlemez (sıralamaya göre değişir), bu yüzden
+                    // iki taraf da açıkça i'ye katlanır. Diğer aksanlar (ç ş ü ö ğ) zaten
+                    // sıralama tarafından katlanır.
+                    $like = '%' . $wpdb->esc_like( str_replace( 'ı', 'i', $term ) ) . '%';
+                    $alan = [];
+                    foreach ( [ 'post_title', 'post_content', 'post_excerpt' ] as $kolon ) {
+                        $alan[] = $wpdb->prepare( "REPLACE( {$wpdb->posts}.{$kolon}, 'ı', 'i' ) LIKE %s", $like );
+                    }
+
+                    // Kategori adı ("içecek", "tatlı", "salata" yazan müşteri o kategorinin ürünlerini bekler).
+                    $alan[] = $wpdb->prepare(
+                        "{$wpdb->posts}.ID IN ( SELECT tr.object_id FROM {$wpdb->term_relationships} tr
+                            INNER JOIN {$wpdb->term_taxonomy} tt ON tt.term_taxonomy_id = tr.term_taxonomy_id AND tt.taxonomy = 'rma_category'
+                            INNER JOIN {$wpdb->terms} t ON t.term_id = tt.term_id
+                            WHERE REPLACE( t.name, 'ı', 'i' ) LIKE %s )",
+                        $like
                     );
+
+                    // Menü başka dilde gösteriliyorsa ürün ve kategori ÇEVİRİLERİNDE de ara:
+                    // İngilizce arayüzde "Filter coffee" görünür, müşteri "coffee" yazar.
+                    if ( '' !== $ceviri_tablo ) {
+                        $alan[] = $wpdb->prepare(
+                            "{$wpdb->posts}.ID IN ( SELECT item_id FROM {$ceviri_tablo}
+                                WHERE item_type = 'product' AND lang_code = %s AND REPLACE( translated_text, 'ı', 'i' ) LIKE %s )",
+                            $search_lang,
+                            $like
+                        );
+                        $alan[] = $wpdb->prepare(
+                            "{$wpdb->posts}.ID IN ( SELECT tr.object_id FROM {$wpdb->term_relationships} tr
+                                INNER JOIN {$wpdb->term_taxonomy} tt ON tt.term_taxonomy_id = tr.term_taxonomy_id AND tt.taxonomy = 'rma_category'
+                                WHERE tt.term_id IN ( SELECT item_id FROM {$ceviri_tablo}
+                                    WHERE item_type = 'category' AND lang_code = %s AND REPLACE( translated_text, 'ı', 'i' ) LIKE %s ) )",
+                            $search_lang,
+                            $like
+                        );
+                    }
+
+                    $clauses[] = '( ' . implode( ' OR ', $alan ) . ' )';
                 }
                 $where .= ' AND ( ' . implode( ' AND ', $clauses ) . ' )';
                 return $where;
@@ -460,6 +517,9 @@ trait RMA_Ajax_Trait {
                 'html'            => $empty,
                 'categories'      => [],
                 'has_suggestions' => false,
+                // Analitik: sonuç sayısı ve filtre/aralık kullanılıp kullanılmadığı.
+                'bulunan'         => 0,
+                'filtreli'        => (bool) ( $filters || $php_ctx ),
             ];
         }
 
@@ -467,6 +527,8 @@ trait RMA_Ajax_Trait {
             'html'            => $html,
             'categories'      => $returned_cats,
             'has_suggestions' => $has_suggestions,
+            'bulunan'         => count( $all_posts ),
+            'filtreli'        => (bool) ( $filters || $php_ctx ),
         ];
     }
 

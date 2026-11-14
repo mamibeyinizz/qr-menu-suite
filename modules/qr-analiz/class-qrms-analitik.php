@@ -228,6 +228,7 @@ class QRMS_Analitik {
 		'gallery_view'    => 30,
 		'lang_switch'     => 30,
 		'menu_filter'     => 30,
+		'menu_search_miss' => 180,
 		'order_sent'      => 365,
 		'order_blocked'   => 365,
 		'order_failed'    => 365,
@@ -268,6 +269,7 @@ class QRMS_Analitik {
 		'form_submit',
 		'item_detail_open',
 		'menu_filter',
+		'menu_search_miss',
 	);
 
 	/**
@@ -301,6 +303,7 @@ class QRMS_Analitik {
 			'review_submit'    => __( 'Yorum gönderimi', 'qrms' ),
 			'form_submit'      => __( 'Form gönderimi', 'qrms' ),
 			'menu_filter'      => __( 'Menü filtresi kullanımı', 'qrms' ),
+			'menu_search_miss' => __( 'Menüde bulunamayan arama', 'qrms' ),
 		);
 
 		return isset( $etiketler[ $tip ] ) ? $etiketler[ $tip ] : $tip;
@@ -326,6 +329,9 @@ class QRMS_Analitik {
 				add_action( "wp_ajax_{$on_ek}rma_get_product_details", array( __CLASS__, 'izle_urun_tiklama' ), 5 );
 			}
 		}
+
+		// Menü araması hiçbir ürün bulamadığında (restoran-menu, rma_load_items).
+		add_action( 'rma_arama_bulunamadi', array( __CLASS__, 'izle_arama_bulunamadi' ), 10, 2 );
 
 		add_action( 'wp_ajax_qrms_analitik_genel', array( __CLASS__, 'ajax_genel' ) );
 		add_action( 'wp_ajax_qrms_analitik_urunler', array( __CLASS__, 'ajax_urunler' ) );
@@ -1606,6 +1612,73 @@ class QRMS_Analitik {
 		$nonce = isset( $_POST['security'] ) ? sanitize_text_field( wp_unslash( $_POST['security'] ) ) : '';
 
 		return '' !== $nonce && (bool) wp_verify_nonce( $nonce, self::NONCE_TAKIP );
+	}
+
+	/**
+	 * Menüde karşılığı olmayan bir arama: kelimeyi kaydeder.
+	 *
+	 * Müşteri bir kelimeyi harf harf yazar ("s", "su", "sus", "sush", "sushi");
+	 * aramanın her duraksaması sunucuya gider ve ara kelimelerin çoğu da sonuçsuz
+	 * kalır. Hepsini ayrı kayıt yazmak listeyi "sus", "sush" gibi kırıntılarla
+	 * doldurur. Bu yüzden AYNI ziyaretçinin 10 sn içindeki devam eden yazımı tek
+	 * satırda birleştirilir:
+	 *  - yeni kelime öncekinin devamıysa ("sush" → "sushi"): önceki satır güncellenir;
+	 *  - önceki kelime yeninin devamıysa (geri silme) ya da aynıysa: yeni satır yazılmaz;
+	 *  - aksi hâlde yeni satır yazılır.
+	 *
+	 * @param string $arama Aranan metin (menü modülünün temizlediği).
+	 * @param string $dil   Menünün dili.
+	 * @return void
+	 */
+	public static function izle_arama_bulunamadi( $arama, $dil = '' ) {
+		global $wpdb;
+
+		unset( $dil );
+
+		$kelime = qrms_analitik_arama_kelimesi( $arama );
+
+		if ( '' === $kelime ) {
+			return;
+		}
+
+		$anahtar = 'qrms_ams_' . substr( md5( self::ip_hash() ), 0, 20 );
+		$son     = get_transient( $anahtar );
+		$simdi   = time();
+
+		if ( is_array( $son ) && isset( $son['k'], $son['id'], $son['t'] ) && ( $simdi - (int) $son['t'] ) <= 10 ) {
+			$onceki = (string) $son['k'];
+
+			if ( $onceki === $kelime || 0 === strpos( $onceki, $kelime ) ) {
+				return; // Tekrar ya da geri silme.
+			}
+
+			if ( 0 === strpos( $kelime, $onceki ) ) {
+				// Yazmaya devam ediyor: önceki satırı genişlet.
+				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+				$etkilenen = $wpdb->update(
+					self::tablo(),
+					array( 'item_name' => $kelime ),
+					array(
+						'id'         => (int) $son['id'],
+						'event_type' => 'menu_search_miss',
+					),
+					array( '%s' ),
+					array( '%d', '%s' )
+				);
+
+				if ( false !== $etkilenen ) {
+					set_transient( $anahtar, array( 'k' => $kelime, 'id' => (int) $son['id'], 't' => $simdi ), 30 );
+				}
+
+				return;
+			}
+		}
+
+		if ( ! self::kaydet( array( 'event_type' => 'menu_search_miss', 'item_name' => $kelime ) ) ) {
+			return;
+		}
+
+		set_transient( $anahtar, array( 'k' => $kelime, 'id' => (int) $wpdb->insert_id, 't' => $simdi ), 30 );
 	}
 
 	/**
@@ -3568,6 +3641,14 @@ class QRMS_Analitik {
 		}
 
 		$detay = isset( $veri['detay'] ) ? $veri['detay'] : array();
+		fputcsv( $cikti, array(), ';' );
+		fputcsv( $cikti, array( 'MENÜDE BULUNAMAYAN ARAMALAR' ), ';' );
+		fputcsv( $cikti, array( 'Aranan kelime', 'Arama sayısı', 'Pay %' ), ';' );
+
+		foreach ( isset( $veri['aramalar']['satirlar'] ) ? $veri['aramalar']['satirlar'] : array() as $satir ) {
+			fputcsv( $cikti, array( $satir['kelime'], $satir['adet'], $satir['pay'] ), ';' );
+		}
+
 		fputcsv( $cikti, array(), ';' );
 		fputcsv( $cikti, array( 'DETAY MODALI AÇILMA ORANI' ), ';' );
 		fputcsv( $cikti, array( 'Detay açılışı', isset( $detay['open'] ) ? $detay['open'] : 0 ), ';' );

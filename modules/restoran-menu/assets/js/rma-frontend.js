@@ -773,7 +773,13 @@ function restoreSearchValue() {
 /* -----------------------------------------------------------------
    MENÜYÜ YÜKLE
 ----------------------------------------------------------------- */
+var loadSeq = 0;
+
 function loadAll(ilkYukleme) {
+    // Hızlı yazarken birden çok istek uçuşta olabilir; yalnızca SON isteğin yanıtı
+    // ekrana basılır. Yoksa geç dönen eski bir yanıt (ör. "kebap") yeni aramanın
+    // ("tiramisu") sonucunu ezer ve kutudaki metinle ekran çelişir.
+    var seq = ++loadSeq;
     content.innerHTML = '';
     sectionTops = [];
     loader.style.display = 'block';
@@ -793,6 +799,7 @@ function loadAll(ilkYukleme) {
         masa        : rmaMasa(),
         ilk_yukleme : ilkYukleme ? '1' : ''
     }, function (res, status) {
+        if (seq !== loadSeq) return;
         loader.style.display = 'none';
 
         if (res && res.success && res.data) {

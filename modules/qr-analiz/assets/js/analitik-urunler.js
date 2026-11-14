@@ -244,6 +244,67 @@
 	}
 
 	/* -----------------------------------------------------------------
+	   MENÜDE BULUNAMAYAN ARAMALAR
+
+	   Kelimeler sunucuda temizlenmiş ve kelime başına toplanmış gelir.
+	   "Müşterileriniz menünüzde olmayan ürünleri arattı" çağrısı yalnızca
+	   gerçekten kayıt varken gösterilir; kayıt yokken bu cümle yanlış olurdu.
+	----------------------------------------------------------------- */
+
+	function aramalariBas( veri ) {
+		if ( ! el.arama ) {
+			return;
+		}
+
+		veri = veri || {};
+
+		var satirlar = veri.satirlar || [];
+
+		if ( el.aramaCta ) {
+			el.aramaCta.hidden = ! satirlar.length;
+		}
+
+		if ( ! satirlar.length ) {
+			el.arama.innerHTML = ORTAK.bosDurum(
+				'dashicons-search',
+				metin( 'noSearchMiss', 'Seçili dönemde menüde bulunamayan bir arama olmadı. Müşterileriniz aradığını menünüzde buluyor.' )
+			);
+			return;
+		}
+
+		var basliklar = [
+			metin( 'searchTerm', 'Aranan kelime' ),
+			metin( 'searchCount', 'Arama sayısı' ),
+			metin( 'share', 'Pay' )
+		];
+
+		var enBuyuk = 1;
+
+		satirlar.forEach( function ( a ) {
+			enBuyuk = Math.max( enBuyuk, parseInt( a.adet, 10 ) || 0 );
+		} );
+
+		var govde = '';
+
+		satirlar.forEach( function ( a ) {
+			var genislik = Math.max( Math.round( ( ( parseInt( a.adet, 10 ) || 0 ) / enBuyuk ) * 100 ), 1 );
+
+			govde += '<tr>' +
+				ORTAK.hucre( basliklar[ 0 ], '<strong>' + ORTAK.esc( a.kelime ) + '</strong>' ) +
+				ORTAK.hucre( basliklar[ 1 ], '<span class="qrms-an-val-gold">' + ORTAK.sayi( a.adet ) + '</span>' ) +
+				ORTAK.hucre(
+					basliklar[ 2 ],
+					'<span class="qrms-an-progress"><span class="qrms-an-progress-bg">' +
+					'<span class="qrms-an-progress-fill" style="width:' + genislik + '%"></span></span>' +
+					'<span class="qrms-an-progress-pct">%' + ORTAK.sayi( a.pay ) + '</span></span>'
+				) +
+				'</tr>';
+		} );
+
+		el.arama.innerHTML = ORTAK.tabloIskelet( basliklar, govde, '' );
+	}
+
+	/* -----------------------------------------------------------------
 	   FİLTRE KULLANIMI
 
 	   Sunucu anahtarları okunur etikete çevirip sıralı gönderir; burada
@@ -398,6 +459,7 @@
 				kategorileriBas( veri.kategoriler, veri.kategorisiz );
 				detayBas( veri.detay || {} );
 				filtreleriBas( veri.filtreler || {} );
+				aramalariBas( veri.aramalar || {} );
 			},
 			function () {
 				state.yukleniyor = false;
@@ -412,6 +474,12 @@
 				}
 				if ( el.filters ) {
 					el.filters.innerHTML = '';
+				}
+				if ( el.arama ) {
+					el.arama.innerHTML = '';
+				}
+				if ( el.aramaCta ) {
+					el.aramaCta.hidden = true;
 				}
 			}
 		);
@@ -430,6 +498,8 @@
 		el.detayCards = $( 'qrms-an-detay-cards' );
 		el.detayBos   = $( 'qrms-an-detay-bos' );
 		el.filters    = $( 'qrms-an-filters' );
+		el.arama      = $( 'qrms-an-arama' );
+		el.aramaCta   = $( 'qrms-an-arama-cta' );
 
 		el.wrap.addEventListener( 'click', function ( olay ) {
 			var onceki = olay.target.closest( '.qrms-an-pager-prev' );

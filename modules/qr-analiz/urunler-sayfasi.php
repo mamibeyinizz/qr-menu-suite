@@ -349,6 +349,71 @@ if ( ! function_exists( 'qrms_analitik_filtre_kullanimi' ) ) {
 	}
 }
 
+if ( ! function_exists( 'qrms_analitik_arama_kullanimi' ) ) {
+
+	/**
+	 * Menüde bulunamayan aramalar.
+	 *
+	 * Kaynak, menü araması hiçbir ürün bulamadığında yazılan `menu_search_miss`
+	 * olaylarıdır (item_name = temizlenmiş kelime). Tek GROUP BY'dan gelen
+	 * sayaçlar kelime başına toplanır, en çok aranandan başlayarak ilk 25'i verilir.
+	 *
+	 * @param array $sayaclar QRMS_Analitik::olay_sayaclari() çıktısı.
+	 * @param int   $limit    En fazla kaç kelime (0 = hepsi).
+	 * @return array{satirlar:array<int,array{kelime:string,adet:int,pay:int}>,toplam:int,farkli:int}
+	 */
+	function qrms_analitik_arama_kullanimi( array $sayaclar, $limit = 25 ) {
+		$sayim  = array();
+		$toplam = 0;
+
+		foreach ( $sayaclar as $r ) {
+			if ( ! is_array( $r ) || 'menu_search_miss' !== ( $r['event_type'] ?? '' ) ) {
+				continue;
+			}
+
+			$kelime = (string) ( $r['item_name'] ?? '' );
+			$adet   = (int) ( $r['adet'] ?? 0 );
+
+			if ( '' === $kelime || $adet <= 0 ) {
+				continue;
+			}
+
+			$sayim[ $kelime ] = ( $sayim[ $kelime ] ?? 0 ) + $adet;
+			$toplam          += $adet;
+		}
+
+		// Eşitlikte alfabetik: sıra her yenilemede aynı kalsın.
+		uksort(
+			$sayim,
+			function ( $a, $b ) use ( $sayim ) {
+				return $sayim[ $b ] <=> $sayim[ $a ] ?: strcmp( $a, $b );
+			}
+		);
+
+		$farkli = count( $sayim );
+
+		if ( $limit > 0 ) {
+			$sayim = array_slice( $sayim, 0, (int) $limit, true );
+		}
+
+		$satirlar = array();
+
+		foreach ( $sayim as $kelime => $adet ) {
+			$satirlar[] = array(
+				'kelime' => (string) $kelime,
+				'adet'   => (int) $adet,
+				'pay'    => $toplam > 0 ? (int) round( ( $adet / $toplam ) * 100 ) : 0,
+			);
+		}
+
+		return array(
+			'satirlar' => $satirlar,
+			'toplam'   => $toplam,
+			'farkli'   => $farkli,
+		);
+	}
+}
+
 if ( ! function_exists( 'qrms_analitik_filtre_etiketleri' ) ) {
 
 	/**
@@ -421,7 +486,7 @@ if ( ! function_exists( 'qrms_analitik_urun_verisi' ) ) {
 		// Detay oranı ve filtre kullanımı AYNI sorgudan okunur: olay_sayaclari()
 		// tek GROUP BY yapar, üçüncü bir tip eklemek ek sorgu doğurmaz.
 		$olaylar = QRMS_Analitik::olay_sayaclari(
-			array( 'product_click', 'item_detail_open', 'menu_filter' ),
+			array( 'product_click', 'item_detail_open', 'menu_filter', 'menu_search_miss' ),
 			$aralik['bas'],
 			$aralik['bit'],
 			$masa
@@ -445,6 +510,7 @@ if ( ! function_exists( 'qrms_analitik_urun_verisi' ) ) {
 			'kategorisiz' => $dagilim['kategorisiz'],
 			'detay'       => $detay,
 			'filtreler'   => qrms_analitik_filtre_kullanimi( $olaylar ),
+			'aramalar'    => qrms_analitik_arama_kullanimi( $olaylar, $limit > 0 ? 25 : 0 ),
 		);
 	}
 }
@@ -573,6 +639,26 @@ if ( ! function_exists( 'qrms_analitik_sayfa_urunler' ) ) {
 					<?php esc_html_e( 'Menüdeki "Filtrele" panelinde Uygula\'ya basıldığında seçili her filtre bir kez sayılır. Müşterilerin en çok hangi diyet, alerjen ve fiyat ihtiyacıyla geldiğini gösterir.', 'qrms' ); ?>
 				</p>
 				<div id="qrms-an-filters"></div>
+			</div>
+
+			<div class="qrms-an-panel" id="qrms-an-arama-panel">
+				<div class="qrms-an-panel-header">
+					<h2 class="qrms-an-panel-title">
+						<span class="dashicons dashicons-search" aria-hidden="true"></span>
+						<?php esc_html_e( 'Menüde Bulunamayan Aramalar', 'qrms' ); ?>
+					</h2>
+				</div>
+				<p class="qrms-an-cta" id="qrms-an-arama-cta" hidden>
+					<span class="dashicons dashicons-lightbulb" aria-hidden="true"></span>
+					<span>
+						<strong><?php esc_html_e( 'Müşterileriniz menünüzde olmayan ürünleri arattı.', 'qrms' ); ?></strong>
+						<?php esc_html_e( 'Bu ürünleri menünüze eklemek satışlarınızı artırmanıza yardımcı olabilir.', 'qrms' ); ?>
+					</span>
+				</p>
+				<p class="qrms-an-panel-note">
+					<?php esc_html_e( 'Menüdeki arama kutusuna yazılan ve hiçbir ürünle eşleşmeyen kelimeler, en çok aranandan başlayarak. Aynı ziyaretçinin harf harf yazdığı kelime tek kayıt sayılır.', 'qrms' ); ?>
+				</p>
+				<div id="qrms-an-arama"></div>
 			</div>
 		</div>
 		<?php
