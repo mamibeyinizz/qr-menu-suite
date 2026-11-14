@@ -175,5 +175,13 @@ foreach ( array(
 	esit( false, QRMS_Tasima::ceviri_satiri_gecerli( $bozuk ), "geçersiz satır #$i" );
 }
 
+// 11) Masa satırı.
+foreach ( array( array( 'ad' => 'Masa 1', 'slug' => 'masa-1' ), array( 'ad' => 'VIP Salon', 'slug' => 'vip-salon' ), array( 'ad' => 'Ak\u0131ll\u0131', 'slug' => 'ak%c4%b1ll%c4%b1' ), array( 'ad' => '1', 'slug' => '1' ) ) as $m ) {
+	esit( true, QRMS_Tasima::masa_satiri_gecerli( $m ), 'masa geçerli: ' . $m['slug'] );
+}
+foreach ( array( array( 'ad' => '', 'slug' => 'x' ), array( 'ad' => 'a', 'slug' => '' ), array( 'ad' => 'a', 'slug' => 'Büyük Harf' ), array( 'ad' => 'a', 'slug' => "x';--" ), array( 'ad' => 'a', 'slug' => '../x' ), array( 'ad' => str_repeat( 'a', 101 ), 'slug' => 'x' ), array( 'ad' => 'a', 'slug' => str_repeat( 'a', 101 ) ), array( 'ad' => array(), 'slug' => 'x' ), array( 'ad' => 'a' ), 'metin' ) as $i => $m ) {
+	esit( false, QRMS_Tasima::masa_satiri_gecerli( $m ), "masa geçersiz #$i" );
+}
+
 echo $hata ? "\n$hata / $say BAŞARISIZ\n" : "$say / $say geçti\n";
 exit( $hata ? 1 : 0 );

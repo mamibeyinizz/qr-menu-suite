@@ -60,6 +60,11 @@ class QRMS_Tasima {
 				'tipler' => array( 'page', 'elementor-hf', 'elementor_library', 'nav_menu_item' ),
 				'taxlar' => array( 'nav_menu' ),
 			),
+			'masalar'   => array(
+				'etiket' => __( 'QR masalar (masa adları ve adresleri; QR kodlar bu sitenin adresiyle üretilir)', 'qrms' ),
+				'tipler' => array(),
+				'taxlar' => array(),
+			),
 			'ceviriler' => array(
 				'etiket' => __( 'Diller ve çeviriler (ürün, kategori, sayfa, menü ve arayüz metinleri)', 'qrms' ),
 				'tipler' => array(),
@@ -121,6 +126,19 @@ class QRMS_Tasima {
 		$yasak = '/(api_key|apikey|secret|hash|pin$|_pin|license|lisans|_sa$|firebase|menu_json_data|db_surum|version|cache|hmac|token|branch_id|session|salt|password|parola)/i';
 
 		return ! preg_match( $yasak, $ad );
+	}
+
+	/**
+	 * Masa satırı geçerli mi? (ad ve slug; slug QR adresinde kullanılır).
+	 *
+	 * @param mixed $r Satır.
+	 * @return bool
+	 */
+	public static function masa_satiri_gecerli( $r ) {
+		return is_array( $r )
+			&& isset( $r['ad'], $r['slug'] )
+			&& is_string( $r['ad'] ) && '' !== trim( $r['ad'] ) && strlen( $r['ad'] ) <= 100
+			&& is_string( $r['slug'] ) && 1 === preg_match( '/^[a-z0-9%_\-]{1,100}$/', $r['slug'] );
 	}
 
 	/** Yazı (post) kimliğiyle anahtarlı çeviri tipleri. */
@@ -479,6 +497,7 @@ class QRMS_Tasima {
 			'terimler'        => array(),
 			'yazilar'         => array(),
 			'ceviriler'       => array(),
+			'masalar'         => array(),
 			'medya'           => array(),
 		);
 
@@ -574,6 +593,13 @@ class QRMS_Tasima {
 				'page_on_front'        => (int) get_option( 'page_on_front' ),
 				'elementor_active_kit' => (int) get_option( 'elementor_active_kit' ),
 			);
+		}
+
+		// QR masalar (yalnız ad ve slug; oturum anahtarları taşınmaz).
+		if ( in_array( 'masalar', $secili, true ) && class_exists( 'QMO_Masalar' ) && QMO_Masalar::tablo_var_mi() ) {
+			foreach ( (array) $wpdb->get_results( 'SELECT table_name, table_slug FROM ' . QMO_Masalar::tablo() . ' ORDER BY id ASC', ARRAY_A ) as $m ) { // phpcs:ignore WordPress.DB
+				$paket['masalar'][] = array( 'ad' => $m['table_name'], 'slug' => $m['table_slug'] );
+			}
 		}
 
 		// Çeviri tablosu (kimlikler içe aktarmada yeniden eşlenir).
@@ -870,6 +896,9 @@ class QRMS_Tasima {
 		if ( ! in_array( 'ayarlar', $secili, true ) ) {
 			$paket['secenekler'] = array();
 		}
+		$paket['masalar']   = in_array( 'masalar', $secili, true ) && isset( $paket['masalar'] ) && is_array( $paket['masalar'] )
+			? array_values( array_filter( $paket['masalar'], array( __CLASS__, 'masa_satiri_gecerli' ) ) )
+			: array();
 		$paket['ceviriler'] = in_array( 'ceviriler', $secili, true ) && isset( $paket['ceviriler'] ) && is_array( $paket['ceviriler'] )
 			? array_values( array_filter( $paket['ceviriler'], array( __CLASS__, 'ceviri_satiri_gecerli' ) ) )
 			: array();
@@ -884,7 +913,7 @@ class QRMS_Tasima {
 			'imlec'    => 0,
 			'harita'   => array( 'terim' => array(), 'yazi' => array(), 'ek' => array(), 'medya' => array() ),
 			'uyarilar' => array(),
-			'sayac'    => array( 'terim' => 0, 'medya' => 0, 'yeni' => 0, 'guncel' => 0, 'ceviri' => 0, 'ceviri_atlanan' => 0 ),
+			'sayac'    => array( 'terim' => 0, 'medya' => 0, 'yeni' => 0, 'guncel' => 0, 'ceviri' => 0, 'ceviri_atlanan' => 0, 'masa' => 0 ),
 		);
 		if ( ! self::durum_yaz( $token, $durum ) ) {
 			wp_send_json_error( array( 'mesaj' => __( 'Durum dosyası yazılamadı.', 'qrms' ) ) );
@@ -898,6 +927,7 @@ class QRMS_Tasima {
 					'medya'    => count( isset( $paket['medya'] ) ? (array) $paket['medya'] : array() ),
 					'yazi'     => count( $paket['yazilar'] ),
 					'ceviri'   => count( $paket['ceviriler'] ),
+					'masa'     => count( $paket['masalar'] ),
 					'secenek'  => count( $paket['secenekler'] ),
 				),
 				'kaynak' => $kaynak['home'],
@@ -1514,6 +1544,31 @@ class QRMS_Tasima {
 			}
 		}
 
+		// QR masalar: slug'a göre ekle/güncelle (silme yok).
+		$masalar = isset( $d['paket']['masalar'] ) ? (array) $d['paket']['masalar'] : array();
+		if ( $masalar ) {
+			if ( ! class_exists( 'QMO_Masalar' ) || ! QMO_Masalar::tablo_var_mi() ) {
+				$d['uyarilar'][] = __( 'QR Kodlar modülü bu sitede etkin değil; masalar atlandı.', 'qrms' );
+			} else {
+				foreach ( $masalar as $m ) {
+					if ( ! self::masa_satiri_gecerli( $m ) ) {
+						continue;
+					}
+					$wpdb->query( // phpcs:ignore WordPress.DB
+						$wpdb->prepare(
+							'INSERT INTO ' . QMO_Masalar::tablo() . ' (table_name, table_slug) VALUES (%s, %s) ON DUPLICATE KEY UPDATE table_name = VALUES(table_name)',
+							sanitize_text_field( $m['ad'] ),
+							$m['slug']
+						)
+					);
+					if ( function_exists( 'qmo_masa_cache_temizle' ) ) {
+						qmo_masa_cache_temizle( $m['slug'] );
+					}
+					$d['sayac']['masa']++;
+				}
+			}
+		}
+
 		// Önbellekler.
 		update_option( 'rma_cache_version', time() );
 		if ( class_exists( '\Elementor\Plugin' ) && isset( \Elementor\Plugin::$instance->files_manager ) ) {
@@ -1610,7 +1665,7 @@ class QRMS_Tasima {
 					.then(function (h) { return adim(h.token, h.toplam); })
 					.then(function (s) {
 						var c = s.sayac || {};
-						yazMetin(<?php echo wp_json_encode( __( 'Tamamlandı. Yeni:', 'qrms' ) ); ?> + ' ' + (c.yeni || 0) + ', ' + <?php echo wp_json_encode( __( 'güncellenen:', 'qrms' ) ); ?> + ' ' + (c.guncel || 0) + ', ' + <?php echo wp_json_encode( __( 'görsel:', 'qrms' ) ); ?> + ' ' + (c.medya || 0) + ', ' + <?php echo wp_json_encode( __( 'çeviri:', 'qrms' ) ); ?> + ' ' + (c.ceviri || 0) + ', ' + <?php echo wp_json_encode( __( 'ayar:', 'qrms' ) ); ?> + ' ' + (c.secenek || 0));
+						yazMetin(<?php echo wp_json_encode( __( 'Tamamlandı. Yeni:', 'qrms' ) ); ?> + ' ' + (c.yeni || 0) + ', ' + <?php echo wp_json_encode( __( 'güncellenen:', 'qrms' ) ); ?> + ' ' + (c.guncel || 0) + ', ' + <?php echo wp_json_encode( __( 'görsel:', 'qrms' ) ); ?> + ' ' + (c.medya || 0) + ', ' + <?php echo wp_json_encode( __( 'çeviri:', 'qrms' ) ); ?> + ' ' + (c.ceviri || 0) + ', ' + <?php echo wp_json_encode( __( 'masa:', 'qrms' ) ); ?> + ' ' + (c.masa || 0) + ', ' + <?php echo wp_json_encode( __( 'ayar:', 'qrms' ) ); ?> + ' ' + (c.secenek || 0));
 					})
 					.catch(function (err) { yazMetin(err.message); })
 					.then(function () { btn.disabled = false; });
