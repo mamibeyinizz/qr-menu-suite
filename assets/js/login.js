@@ -1,7 +1,7 @@
 /**
  * QR Menu Suite — giriş ekranı davranışları.
  *
- * Form WordPress'in kendi formudur; burada yalnızca üç küçük iyileştirme
+ * Form WordPress'in kendi formudur; burada yalnızca birkaç küçük iyileştirme
  * yapılır. Hiçbiri girişin ön koşulu değildir: betik yüklenmezse ekran
  * eksiksiz çalışmaya devam eder.
  *
@@ -217,6 +217,31 @@
 		} );
 	}
 
+	/**
+	 * Kart başlığını giriş formunun içine taşır.
+	 *
+	 * wp-login.php formu için bir kanca sunmaz; başlık formdan önce basılır ve burada
+	 * kartın (formun) ilk çocuğu yapılır. Giriş formu yoksa (parola sıfırlama, kayıt)
+	 * başlık kaldırılır: "Tekrar hoş geldiniz" o sayfalarda yanlış olurdu.
+	 */
+	function kartBasligi() {
+		var baslik = document.querySelector( '.qrms-login-kart-baslik' );
+
+		if ( ! baslik ) {
+			return;
+		}
+
+		var form = document.getElementById( 'loginform' );
+
+		if ( ! form ) {
+			baslik.parentNode.removeChild( baslik );
+			return;
+		}
+
+		form.insertBefore( baslik, form.firstChild );
+		baslik.hidden = false;
+	}
+
 	function odakla() {
 		if ( window.matchMedia && window.matchMedia( '(pointer: coarse)' ).matches ) {
 			return;
@@ -231,6 +256,10 @@
 
 	function baslat() {
 		// Bir iyileştirmedeki hata diğerlerini ve GİRİŞİ durdurmasın.
+		try {
+			kartBasligi();
+		} catch ( hata ) {}
+
 		try {
 			capsUyarisi( document.getElementById( 'user_pass' ) );
 		} catch ( hata ) {}

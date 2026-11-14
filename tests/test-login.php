@@ -372,7 +372,12 @@ qrms_test(
 		qrms_assert_contains( 'font-size: 16px', $css, 'input yazı boyu' );
 		qrms_assert_contains( 'env(safe-area-inset-bottom)', $css, 'çentik payı' );
 		qrms_assert_contains( 'prefers-reduced-motion', $css, 'hareket tercihi' );
-		qrms_assert_contains( 'grid-template-columns', $css, 'masaüstü iki sütun grid' );
+		// Masaüstü: tam ekran bölünmüş düzen (sabit sol marka paneli + sağda form sütunu).
+		// Eskiden body kendisi ızgara + max-width 1180 idi; kenarlarda boş şerit kalıyordu.
+		qrms_assert_contains( '.qrms-login-panel', $css, 'sol marka paneli' );
+		qrms_assert_contains( '@media (min-width: 1024px)', $css, 'masaüstü kırılımı' );
+		qrms_assert_contains( 'position: fixed;', $css, 'sol panel sabit' );
+		qrms_assert_true( false === strpos( $css, 'max-width: 1180px' ), 'body artık 1180px ile sınırlanmaz (kenar şeritleri)' );
 	}
 );
 

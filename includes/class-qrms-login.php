@@ -148,12 +148,12 @@ class QRMS_Login {
 			// Görünüm.
 			'gorunum_aktif'     => 1,
 			'duzen'             => 'bolunmus',
-			'tema'              => 'koyu',
+			'tema'              => 'acik',
 			'vurgu'             => '#c9a84c',
 			'vurgu2'            => '#e8c874',
 			'arkaplan_tip'      => 'gradyan',
-			'arkaplan_renk'     => '#0f1115',
-			'arkaplan_renk2'    => '#1c222c',
+			'arkaplan_renk'     => '#0d2b22',
+			'arkaplan_renk2'    => '#173226',
 			'arkaplan_gorsel'   => 0,
 			'arkaplan_karartma' => 55,
 			'arkaplan_bulanik'  => 0,
@@ -229,7 +229,7 @@ class QRMS_Login {
 		$v['duzen']  = in_array( $duzen, array( 'merkez', 'bolunmus' ), true ) ? $duzen : 'bolunmus';
 
 		$tema        = isset( $raw['tema'] ) ? sanitize_key( $raw['tema'] ) : '';
-		$v['tema']   = in_array( $tema, array( 'acik', 'koyu', 'otomatik' ), true ) ? $tema : 'koyu';
+		$v['tema']   = in_array( $tema, array( 'acik', 'koyu', 'otomatik' ), true ) ? $tema : 'acik';
 
 		$tip                 = isset( $raw['arkaplan_tip'] ) ? sanitize_key( $raw['arkaplan_tip'] ) : '';
 		$v['arkaplan_tip']   = in_array( $tip, array( 'renk', 'gradyan', 'gorsel' ), true ) ? $tip : 'gradyan';
@@ -1375,6 +1375,12 @@ class QRMS_Login {
 	 * @return string
 	 */
 	public static function prepend_login_path_separation( $message ) {
+		// Görünüm açıksa yol ayrımı marka panelinin içinde basılır (bkz. login_message());
+		// ikinci kez eklenmez.
+		if ( self::is_skin_active() ) {
+			return $message;
+		}
+
 		return self::login_path_separation_html() . (string) $message;
 	}
 
@@ -1423,7 +1429,14 @@ class QRMS_Login {
 		$baslik = self::effective_brand_title( $s );
 		$alt    = self::effective_brand_subtitle( $s );
 
-		$html  = '<div class="qrms-login-brand">';
+		// Sol marka paneli. Dar ekranda ve "merkez" düzende `display: contents` olduğu için
+		// içindekiler eskisi gibi kartın üstünde akar; geniş ekranda bölünmüş düzenin sol
+		// yarısı olur (bkz. login.css §8). Panel DOM'da formdan ÖNCE durur: ekran okuyucu
+		// önce markayı, sonra formu okur.
+		$html  = '<aside class="qrms-login-panel">';
+		$html .= '<div class="qrms-login-panel-logo" aria-hidden="true"></div>';
+		$html .= '<div class="qrms-login-brand">';
+		$html .= '<p class="qrms-login-brand-etiket">' . esc_html__( 'QR Menü Kontrol Merkezi', 'qrms' ) . '</p>';
 		$html .= '<h2 class="qrms-login-brand-title">' . esc_html( $baslik ) . '</h2>';
 
 		if ( '' !== $alt ) {
@@ -1431,8 +1444,26 @@ class QRMS_Login {
 		}
 
 		$html .= '</div>';
+		$html .= self::login_path_separation_html();
+		$html .= '</aside>';
+		// Kart başlığı: JS formun içine taşır (wp-login.php formu bir kanca sunmaz); JS yoksa gizli kalır.
+		$html .= self::form_ust();
 
 		return $html . $message;
+	}
+
+	/**
+	 * Kartın üst başlığı. login.js bunu giriş formunun ilk çocuğu olarak taşır; giriş
+	 * formu olmayan sayfalarda (parola sıfırlama, kayıt) kaldırır.
+	 *
+	 * @return string
+	 */
+	public static function form_ust() {
+		return '<div class="qrms-login-kart-baslik" hidden>'
+			. '<p class="qrms-login-kart-etiket">' . esc_html__( 'Personel girişi', 'qrms' ) . '</p>'
+			. '<h2 class="qrms-login-kart-h">' . esc_html__( 'Tekrar hoş geldiniz', 'qrms' ) . '</h2>'
+			. '<p class="qrms-login-kart-alt">' . esc_html__( 'Devam etmek için hesabınızla giriş yapın.', 'qrms' ) . '</p>'
+			. '</div>';
 	}
 
 	/**

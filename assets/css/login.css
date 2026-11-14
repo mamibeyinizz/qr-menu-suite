@@ -21,8 +21,14 @@
 .qrms-login {
 	--qrms-lg-vurgu: #c9a84c;
 	--qrms-lg-vurgu2: #e8c874;
-	--qrms-lg-bg1: #0f1115;
-	--qrms-lg-bg2: #1c222c;
+	/* Dashboard (admin-shell.css) ile aynı orman yeşili. */
+	--qrms-lg-bg1: #0d2b22;
+	--qrms-lg-bg2: #173226;
+	/* Metin olarak kullanılan vurgu: koyu zeminde vurgunun kendisi, açık zeminde koyultulmuşu. */
+	--qrms-lg-vurgu-metin: var(--qrms-lg-vurgu);
+	/* Bölünmüş düzende sağ yarının zemini ve sol panelin genişliği. */
+	--qrms-lg-sag: #0a110e;
+	--qrms-lg-sol: 52%;
 	--qrms-lg-karartma: 0.55;
 	--qrms-lg-bulanik: 0;
 	--qrms-lg-radius: 18px;
@@ -41,6 +47,8 @@
 }
 
 .qrms-login-tema-acik {
+	--qrms-lg-sag: #f4f1e8;
+	--qrms-lg-vurgu-metin: color-mix(in srgb, var(--qrms-lg-vurgu) 55%, #1a1405);
 	--qrms-lg-kart: rgba(255, 255, 255, 0.9);
 	--qrms-lg-kart-cizgi: rgba(15, 17, 21, 0.08);
 	--qrms-lg-metin: #14181f;
@@ -54,6 +62,8 @@
 
 @media (prefers-color-scheme: light) {
 	.qrms-login-tema-otomatik {
+		--qrms-lg-sag: #f4f1e8;
+		--qrms-lg-vurgu-metin: color-mix(in srgb, var(--qrms-lg-vurgu) 55%, #1a1405);
 		--qrms-lg-kart: rgba(255, 255, 255, 0.9);
 		--qrms-lg-kart-cizgi: rgba(15, 17, 21, 0.08);
 		--qrms-lg-metin: #14181f;
@@ -128,7 +138,13 @@ html:has(body.qrms-login) {
 		rgba(0, 0, 0, var(--qrms-lg-karartma));
 }
 
+/* Açık temada beyaz karartma yalnız ARKA PLAN GÖRSELİNİN okunurluğu içindir. Düz renk/gradyanda
+   (varsayılan: orman yeşili) beyaz katman rengi gri-yeşile yıkıyordu; orada yalnız vurgu ışıması kalır. */
 .qrms-login-tema-acik::after {
+	background: radial-gradient(60% 55% at 22% 18%, color-mix(in srgb, var(--qrms-lg-vurgu) 22%, transparent) 0%, transparent 70%);
+}
+
+.qrms-login-tema-acik.qrms-login-bg-gorsel::after {
 	background: rgba(255, 255, 255, var(--qrms-lg-karartma));
 	background:
 		radial-gradient(60% 55% at 22% 18%, color-mix(in srgb, var(--qrms-lg-vurgu) 18%, transparent) 0%, transparent 70%),
@@ -634,76 +650,209 @@ body.qrms-login,
 @media (min-width: 1024px) {
 
 	/*
-	 * Gerçek giriş: iki sütunlu grid — marka solda, form kartı sağda (dengeli,
-	 * boşluk az). Önizleme (.qrms-lp) aşağıdaki kurallarla ayrı tutulur.
+	 * Gerçek giriş: TAM EKRAN bölünmüş düzen. Sol yarı marka paneli (arka plan katmanları yalnız
+	 * oraya biner), sağ yarı tema yüzeyi üzerinde form kartı. Eskiden `body` kendisi 1180px ile
+	 * sınırlanıp ortalanıyordu: arka plan body'de olduğu için kenarlarda boş (beyaz) şeritler
+	 * kalıyor, sütunlar farklı yükseklikte hizalanıyordu.
 	 */
 	body.qrms-login.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) {
-		display: grid;
-		grid-template-columns: minmax(0, 1fr) minmax(360px, 440px);
-		align-items: center;
-		column-gap: clamp(28px, 4vw, 72px);
-		justify-content: center;
+		display: block;
 		box-sizing: border-box;
 		width: 100%;
-		max-width: 1180px;
-		margin-left: auto;
-		margin-right: auto;
-		padding: 48px clamp(20px, 4vw, 56px);
-	}
-
-	body.qrms-login.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) #login {
-		display: contents;
-	}
-
-	body.qrms-login.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) #login > .qrms-login-brand {
-		grid-column: 1;
-		grid-row: 1;
-		position: static;
-		top: auto;
-		right: auto;
-		transform: none;
+		max-width: none;
+		min-height: 100vh;
+		min-height: 100dvh;
 		margin: 0;
-		width: auto;
-		max-width: 52ch;
-		padding: 0 clamp(0px, 2vw, 16px) 0 0;
+		padding: 0;
+		background: var(--qrms-lg-sag);
+	}
+
+	body.qrms-login.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil)::before,
+	body.qrms-login.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil)::after {
+		inset: 0 auto 0 0;
+		width: var(--qrms-lg-sol);
+	}
+
+	/*
+	 * Sol panel TEMADAN BAĞIMSIZ koyudur. Açık temada taban kural beyaz karartma basar
+	 * (tek sütunlu görünüm için); bölünmüş düzende bu, orman yeşilini gri-yeşile yıkıyordu.
+	 * Düz renk/gradyanda yalnız vurgu ışıması kalır; görselde okunurluk için karartma da biner.
+	 */
+	body.qrms-login.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil)::after {
+		background: radial-gradient(60% 55% at 22% 18%, color-mix(in srgb, var(--qrms-lg-vurgu) 20%, transparent) 0%, transparent 70%);
+	}
+
+	body.qrms-login-bg-gorsel.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil)::after {
+		background:
+			radial-gradient(60% 55% at 22% 18%, color-mix(in srgb, var(--qrms-lg-vurgu) 20%, transparent) 0%, transparent 70%),
+			rgba(0, 0, 0, var(--qrms-lg-karartma));
+	}
+
+	/* Sağ yarı: form sütunu. Kart görünümü #login'den formun kendisine geçer. */
+	body.qrms-login.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) #login {
 		display: flex;
 		flex-direction: column;
+		align-items: center;
 		justify-content: center;
-		text-align: left;
-		align-self: center;
+		box-sizing: border-box;
+		width: calc(100% - var(--qrms-lg-sol));
+		min-height: 100vh;
+		min-height: 100dvh;
+		margin: 0 0 0 var(--qrms-lg-sol);
+		padding: 56px clamp(24px, 5vw, 80px);
+		background: none;
+		border: 0;
+		border-radius: 0;
+		box-shadow: none;
+		-webkit-backdrop-filter: none;
+		backdrop-filter: none;
+		animation: none;
 	}
 
-	body.qrms-login.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) #login > h1,
+	/* WordPress'in h1'i sayfanın ana başlığıdır: görsel olarak panelde (marka) gösterilir,
+	   ekran okuyucuya açık kalır. */
+	body.qrms-login.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) #login > h1 {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		margin: -1px;
+		padding: 0;
+		overflow: hidden;
+		clip: rect(0 0 0 0);
+		white-space: nowrap;
+	}
+
 	body.qrms-login.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) #login > form,
 	body.qrms-login.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) #login > .message,
-	body.qrms-login.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) #login > .notice {
-		grid-column: 2;
-		width: 100%;
+	body.qrms-login.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) #login > .notice,
+	body.qrms-login.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) #login > #login_error,
+	body.qrms-login.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) #login > #nav,
+	body.qrms-login.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) #login > #backtoblog,
+	body.qrms-login.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) .qrms-login-footer,
+	body.qrms-login.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) .language-switcher {
+		width: min(100%, 460px);
 		margin-left: 0;
 		margin-right: 0;
 	}
 
-	body.qrms-login.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) #login > h1 {
-		margin-bottom: 22px;
-	}
-
 	body.qrms-login.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) #login > form {
 		box-sizing: border-box;
-		width: 100%;
-		margin: 0;
-		padding: 40px 36px 32px;
+		margin-top: 0;
+		padding: 44px 40px 36px;
 		background: var(--qrms-lg-kart);
 		border: 1px solid var(--qrms-lg-kart-cizgi);
-		border-radius: var(--qrms-lg-radius);
+		border-radius: 22px;
 	}
 
 	body.qrms-login-golge.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) #login > form {
-		box-shadow: var(--qrms-lg-golge);
+		box-shadow: 0 1px 2px rgba(13, 43, 34, 0.05), 0 28px 56px -16px rgba(13, 43, 34, 0.22);
 	}
 
 	body.qrms-login-cam.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) #login > form {
 		-webkit-backdrop-filter: blur(18px) saturate(1.2);
 		backdrop-filter: blur(18px) saturate(1.2);
+	}
+
+	/* Sol marka paneli: sabit, tam yükseklik; logo üstte, marka ortada, yol ayrımı altta. */
+	body.qrms-login.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) .qrms-login-panel {
+		position: fixed;
+		inset: 0 auto 0 0;
+		z-index: 3;
+		box-sizing: border-box;
+		display: flex;
+		flex-direction: column;
+		justify-content: space-between;
+		gap: 32px;
+		width: var(--qrms-lg-sol);
+		padding: clamp(40px, 5vw, 72px) clamp(40px, 5vw, 88px);
+		color: #f4f1e8;
+		overflow: hidden;
+	}
+
+	/* Çok hafif halka dokusu (sağ alt köşeden yayılır); yalnız süs, içeriği etkilemez. */
+	body.qrms-login.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) .qrms-login-panel {
+		background-image: repeating-radial-gradient(circle at 105% 108%, rgba(244, 241, 232, 0.04) 0, rgba(244, 241, 232, 0.04) 1px, transparent 1px, transparent 46px);
+	}
+
+	/* İnce altın ayraç: iki yarıyı birbirinden ayırır. */
+	body.qrms-login.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) .qrms-login-panel::after {
+		content: "";
+		position: absolute;
+		top: 0;
+		right: 0;
+		bottom: 0;
+		width: 1px;
+		background: linear-gradient(to bottom, transparent, color-mix(in srgb, var(--qrms-lg-vurgu) 55%, transparent) 30%, color-mix(in srgb, var(--qrms-lg-vurgu) 55%, transparent) 70%, transparent);
+	}
+
+	body.qrms-login.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) .qrms-login-panel-logo {
+		display: none;
+		flex: 0 0 auto;
+		height: var(--qrms-lg-logo-h);
+		background: var(--qrms-lg-logo, none) left center / contain no-repeat;
+	}
+
+	body.qrms-login-logolu.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) .qrms-login-panel-logo {
+		display: block;
+	}
+
+	/* Logo yoksa panel üst boşluğu dengeler: marka ortada kalır. */
+	body.qrms-login:not(.qrms-login-logolu).qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) .qrms-login-panel::before {
+		content: "";
+		flex: 0 0 auto;
+		height: 1px;
+	}
+
+	body.qrms-login.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) .qrms-login-panel .qrms-login-brand {
+		position: static;
+		width: auto;
+		max-width: 34rem;
+		/* Logo ile yol ayrımı arasında dikey ortala. */
+		margin: auto 0;
+		padding: 0;
+		text-align: left;
+		transform: none;
+		animation: none;
+	}
+
+	body.qrms-login.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) .qrms-login-brand::after {
+		content: none;
+	}
+
+	body.qrms-login.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) .qrms-login-brand-title {
+		margin: 0 0 16px;
+		color: #f4f1e8;
+		font-size: clamp(34px, 3.4vw, 56px);
+		font-weight: 800;
+		line-height: 1.08;
+		letter-spacing: -0.025em;
+		text-wrap: balance;
+	}
+
+	body.qrms-login.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) .qrms-login-brand-text {
+		max-width: 38ch;
+		color: rgba(244, 241, 232, 0.76);
+		font-size: 17px;
+		line-height: 1.6;
+	}
+
+	/* Yol ayrımı: panelin altında sakin bir kutu. */
+	body.qrms-login.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) .qrms-login-panel .qrms-login-yol-ayrim {
+		margin: 0;
+		max-width: 34rem;
+		padding: 16px 20px;
+		text-align: left;
+		background: rgba(244, 241, 232, 0.06);
+		border: 1px solid rgba(244, 241, 232, 0.14);
+		border-radius: 16px;
+	}
+
+	body.qrms-login.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) .qrms-login-panel .qrms-login-yol-ayrim-etiket {
+		color: var(--qrms-lg-vurgu);
+	}
+
+	body.qrms-login.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) .qrms-login-panel .qrms-login-yol-ayrim-menu {
+		color: rgba(244, 241, 232, 0.8);
 	}
 
 	.qrms-login-duzen-bolunmus.qrms-login:not(.qrms-lp-mobil) {
@@ -867,4 +1016,228 @@ body.qrms-login,
 
 .qrms-login .qrms-caps[hidden] {
 	display: none;
+}
+
+/* -------------------------------------------------------------------------
+ * 11. PREMIUM CİLA (gerçek giriş ekranı; önizleme yapısı ayrı kalır)
+ * ---------------------------------------------------------------------- */
+
+/* Sol marka paneli dar ekranda ve "merkez" düzende görünmez bir sarmalayıcıdır:
+   içindekiler kartın üstünde eskisi gibi akar. Logo yalnız bölünmüş düzende basılır. */
+.qrms-login-panel {
+	display: contents;
+}
+
+.qrms-login-panel-logo {
+	display: none;
+}
+
+.qrms-login .qrms-login-brand-etiket {
+	margin: 0 0 10px;
+	color: var(--qrms-lg-vurgu);
+	font-size: 12px;
+	font-weight: 700;
+	letter-spacing: 0.14em;
+	line-height: 1.3;
+	text-transform: uppercase;
+}
+
+/* Kart başlığı: PHP formdan önce basar, login.js formun içine taşır (bkz. kartBasligi). */
+.qrms-login-kart-baslik {
+	margin: 0 0 28px;
+	text-align: left;
+}
+
+.qrms-login-kart-baslik[hidden] {
+	display: none;
+}
+
+.qrms-login-kart-etiket {
+	margin: 0 0 8px;
+	color: var(--qrms-lg-vurgu-metin);
+	font-size: 12px;
+	font-weight: 700;
+	letter-spacing: 0.1em;
+	line-height: 1.3;
+	text-transform: uppercase;
+}
+
+.qrms-login-kart-h {
+	margin: 0 0 6px;
+	color: var(--qrms-lg-metin);
+	font-size: 28px;
+	font-weight: 800;
+	line-height: 1.15;
+	letter-spacing: -0.02em;
+}
+
+.qrms-login-kart-alt {
+	margin: 0;
+	color: var(--qrms-lg-metin2);
+	font-size: 14.5px;
+	line-height: 1.55;
+}
+
+/* Alanlar ve düğme: daha ferah, dokunma hedefi 52px. */
+body.qrms-login #login input[type="text"],
+body.qrms-login #login input[type="email"],
+body.qrms-login #login input[type="password"] {
+	height: 52px;
+	padding: 0 16px;
+	border-radius: 12px;
+	line-height: 50px;
+}
+
+body.qrms-login-tema-acik #login input[type="text"],
+body.qrms-login-tema-acik #login input[type="email"],
+body.qrms-login-tema-acik #login input[type="password"] {
+	background: #fff;
+	border-color: rgba(13, 43, 34, 0.18);
+}
+
+body.qrms-login #login .wp-hide-pw {
+	width: 52px;
+	height: 52px;
+}
+
+body.qrms-login #login label {
+	margin-bottom: 8px;
+	color: var(--qrms-lg-metin);
+	font-size: 13px;
+	font-weight: 700;
+}
+
+body.qrms-login #login #wp-submit,
+body.qrms-login #login .button-primary {
+	min-height: 52px;
+	line-height: 52px;
+	border-radius: 12px;
+	font-size: 15.5px;
+}
+
+/* Hata/bilgi kutuları. */
+body.qrms-login #login #login_error {
+	background: color-mix(in srgb, #e05252 9%, var(--qrms-lg-kart));
+	border: 1px solid color-mix(in srgb, #e05252 28%, transparent);
+	border-left: 3px solid #e05252;
+	border-radius: 12px;
+}
+
+body.qrms-login #login .message,
+body.qrms-login #login .notice {
+	border-radius: 12px;
+}
+
+/* Bağlantılar: klavye odağı görünür. */
+body.qrms-login #login a:focus-visible,
+body.qrms-login #login button:focus-visible,
+body.qrms-login #login input:focus-visible {
+	outline: 2px solid var(--qrms-lg-vurgu);
+	outline-offset: 2px;
+}
+
+body.qrms-login #login #nav a,
+body.qrms-login #login #backtoblog a {
+	display: inline-flex;
+	align-items: center;
+	min-height: 44px;
+	padding: 0 6px;
+}
+
+/* Tablet/mobil: marka kartın üstünde, soldan hizalı değil ortalı; yol ayrımı sade. */
+@media (max-width: 1023px) {
+
+	/*
+	 * Bölünmüş düzen dar ekranda: orman yeşili zeminde krem marka, altında AYRI beyaz form kartı
+	 * (masaüstündeki ile aynı dil). Eskiden her şey tek bir kartın içine gömülüydü. "Merkez"
+	 * düzen eskisi gibi tek kartlı kalır.
+	 */
+	body.qrms-login.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) #login {
+		width: min(100%, 460px);
+		padding: 0;
+		background: none;
+		border: 0;
+		border-radius: 0;
+		box-shadow: none;
+		-webkit-backdrop-filter: none;
+		backdrop-filter: none;
+	}
+
+	body.qrms-login.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) #login > form {
+		box-sizing: border-box;
+		padding: 28px 22px 24px;
+		background: var(--qrms-lg-kart);
+		border: 1px solid var(--qrms-lg-kart-cizgi);
+		border-radius: 20px;
+	}
+
+	body.qrms-login-golge.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) #login > form {
+		box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08), 0 24px 48px -16px rgba(0, 0, 0, 0.45);
+	}
+
+	body.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) .qrms-login-brand-title,
+	body.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) #login h1 a {
+		color: #f4f1e8;
+	}
+
+	body.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) .qrms-login-brand-text,
+	body.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) .qrms-login-footer,
+	body.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) #nav a,
+	body.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) #backtoblog a {
+		color: rgba(244, 241, 232, 0.78);
+	}
+
+	body.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) .qrms-login-panel .qrms-login-yol-ayrim {
+		background: rgba(244, 241, 232, 0.07);
+		border-color: rgba(244, 241, 232, 0.16);
+	}
+
+	body.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) .qrms-login-panel .qrms-login-yol-ayrim-etiket {
+		color: var(--qrms-lg-vurgu);
+	}
+
+	body.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) .qrms-login-panel .qrms-login-yol-ayrim-menu {
+		color: rgba(244, 241, 232, 0.82);
+	}
+
+	/* Kart ve zemin aynı yeşili paylaşır: dar ekranda sağ yüzey yok, gövde gradyanı görünür. */
+	body.qrms-login.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) {
+		background: var(--qrms-lg-bg1);
+	}
+
+	.qrms-login-panel .qrms-login-brand {
+		margin-bottom: 20px;
+	}
+
+	.qrms-login-panel .qrms-login-yol-ayrim {
+		margin-bottom: 20px;
+		padding: 10px 14px;
+	}
+
+	.qrms-login-kart-h {
+		font-size: 24px;
+	}
+
+	.qrms-login-kart-baslik {
+		margin-bottom: 22px;
+	}
+}
+
+@media (min-width: 1024px) and (max-width: 1279px) {
+
+	body.qrms-login.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) {
+		--qrms-lg-sol: 46%;
+	}
+}
+
+@media (min-width: 1700px) {
+
+	body.qrms-login.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) {
+		--qrms-lg-sol: 50%;
+	}
+}
+
+/* Açık temada kart DOLU beyazdır: yarı saydam beyaz, yeşil zeminde (dar ekran) griye dönüyordu. */
+body.qrms-login-tema-acik.qrms-login-duzen-bolunmus:not(.qrms-lp-mobil) #login > form {
+	background: #fffefb;
 }
