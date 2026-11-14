@@ -83,7 +83,7 @@ class QRMS_License_Client {
 	 * anahtarla doğrulanır; imzasız/bozuk cevap "unreachable" sayılır.
 	 * Test/özel kurulum için QRMS_LICENSE_PUBKEY sabitiyle geçersiz kılınabilir.
 	 */
-	const PUBLIC_KEY = 'HVJpYbCZfwMXCOL6+yDPPz1Pjk+Nn71zRG31fg0Y8i4=';
+	const PUBLIC_KEY = 'WQe3oPEgBn7Ug7ErMltHUznoegVIzuDcl0v4e6V9KT8=';
 
 	/**
 	 * Doğrulama endpoint yolu.
