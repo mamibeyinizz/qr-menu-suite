@@ -224,7 +224,7 @@ body.qrms-premium-shell-active #qrms-shell-content .wp-list-table tbody :is(td, 
 body.qrms-premium-shell-active #qrms-shell-content .wp-list-table tbody .check-column { padding-top: 14px; }
 
 /* Ürün adı bağlantısı satır içi kalır (onay kutusuyla aynı hizada); dokunma alanı dolgu ile büyür. */
-body.qrms-premium-shell-active #qrms-shell-content .wp-list-table .row-title { display: inline; padding-block: 11px; }
+body.qrms-premium-shell-active #qrms-shell-content .wp-list-table .row-title { display: inline; padding-block: 13px; }
 
 /* Liste araması düğmeleri (Ürünlerde Ara, Kategorilerde Ara…): tek tip, marka rengi dolu. */
 body.qrms-premium-shell-active #qrms-shell-content #search-submit {
