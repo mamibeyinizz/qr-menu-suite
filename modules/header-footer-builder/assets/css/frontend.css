@@ -1647,7 +1647,9 @@ body:has(.hfb-footer__call-wrap .hfb-footer__call--warn):not(.wp-admin) {
 
 /* Yuvarlak ikonlar 36px görünür kalır; çevresindeki görünmez pay ile dokunma alanı 44px. */
 .hfb-footer-wrap .hfb-social__link,
-.hfb-header-wrap .hfb-social__link { position: relative; }
+.hfb-header-wrap .hfb-social__link { position: relative; z-index: 1; }
+/* Payın alt/üst kısmı komşu bloğun altında kalıp kırpılmasın. */
+.hfb-footer-wrap .hfb-social { padding-block: 4px; }
 .hfb-footer-wrap .hfb-social__link::after,
 .hfb-header-wrap .hfb-social__link::after {
   content: "";
@@ -1656,5 +1658,5 @@ body:has(.hfb-footer__call-wrap .hfb-footer__call--warn):not(.wp-admin) {
   border-radius: 50%;
 }
 /* Dil düğmesi (36px görünüm) için aynı görünmez pay. İkonlar arası 8px boşluk payları çakıştırmaz. */
-.hfb-header-wrap .qrmenu-current-btn { position: relative; }
+.hfb-header-wrap .qrmenu-current-btn { position: relative; z-index: 1; }
 .hfb-header-wrap .qrmenu-current-btn::after { content: ""; position: absolute; inset: -4px; border-radius: 8px; }
