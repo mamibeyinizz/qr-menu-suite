@@ -1657,6 +1657,9 @@ body:has(.hfb-footer__call-wrap .hfb-footer__call--warn):not(.wp-admin) {
   inset: -6px; /* dolgu kutusundan: 34 + 12 = 46px (kenarlık dahil 36px görünümün çevresi) */
   border-radius: 50%;
 }
-/* Dil düğmesi (36px görünüm) için aynı görünmez pay. İkonlar arası 8px boşluk payları çakıştırmaz. */
-.hfb-header-wrap .qrmenu-current-btn { position: relative; z-index: 1; }
-.hfb-header-wrap .qrmenu-current-btn::after { content: ""; position: absolute; inset: -6px; border-radius: 8px; }
+/* Dil düğmesi: header tasarımı 44px'tir; çeviri modülünün "yalnız bayrak" stili (36px) onu eziyordu. */
+.hfb-header-wrap .qrmenu-flags-only-mod .qrmenu-current-btn,
+.hfb-header-wrap .qrmenu-current-btn {
+  min-width: 44px;
+  min-height: 44px;
+}
