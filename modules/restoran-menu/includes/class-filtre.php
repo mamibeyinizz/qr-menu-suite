@@ -217,6 +217,78 @@ class RMA_Filtre {
      * @param int   $tavan   Kabul edilen azami değer.
      * @return array{0:int,1:int}
      */
+    /**
+     * Arama metnindeki fiyat ifadesini ayıklar (saf fonksiyon).
+     *
+     * Tanınanlar: "100 tl altı", "100 altında", "100₺'den ucuz", "150 tl üstü",
+     * "200 ve üzeri", "100-200 tl", "100 tl" (bütçe: en fazla). Para birimi ya da
+     * "altı/üstü" sözcüğü olmayan çıplak sayı ("7up", "33") metin araması kalır.
+     *
+     * @param string $metin Arama metni.
+     * @return array{metin:string,min:int,max:int}
+     */
+    public static function arama_fiyat_ayikla( $metin ) {
+        $metin = (string) $metin;
+        $min   = 0;
+        $max   = 0;
+        $para  = '(?:\s*(?:tl|try|₺|lira))?';
+        $ek    = "(?:\s*['’]?\s*(?:den|dan|ten|tan))?";
+
+        $kalip = array(
+            // Aralık.
+            '/(\d{1,5})\s*(?:tl|₺)?\s*[-–]\s*(\d{1,5})' . $para . '/iu' => 'aralik',
+            // En fazla.
+            '/(\d{1,5})' . $para . $ek . '\s*(?:ve\s+)?(?:alt[ıi](?:nda)?|ucuz|az|kadar)\b/iu' => 'max',
+            // En az.
+            '/(\d{1,5})' . $para . $ek . '\s*(?:ve\s+)?(?:[üu]st[üu]|[üu]zeri(?:nde)?|pahal[ıi]|fazla)\b/iu' => 'min',
+            // Para birimli çıplak sayı = bütçe.
+            '/(\d{1,5})\s*(?:tl|try|₺|lira)\b|₺\s*(\d{1,5})/iu' => 'butce',
+        );
+
+        foreach ( $kalip as $re => $tip ) {
+            if ( ! preg_match( $re, $metin, $m ) ) {
+                continue;
+            }
+            $a = isset( $m[1] ) && '' !== $m[1] ? (int) $m[1] : ( isset( $m[2] ) ? (int) $m[2] : 0 );
+            if ( 'aralik' === $tip ) {
+                $min = min( $a, (int) $m[2] );
+                $max = max( $a, (int) $m[2] );
+            } elseif ( 'min' === $tip ) {
+                $min = $a;
+            } else {
+                $max = $a;
+            }
+            $metin = preg_replace( $re, ' ', $metin, 1 );
+            break;
+        }
+
+        $tavan = self::FIYAT_TAVAN;
+        return array(
+            'metin' => trim( preg_replace( '/\s+/u', ' ', $metin ) ),
+            'min'   => max( 0, min( $min, $tavan ) ),
+            'max'   => max( 0, min( $max, $tavan ) ),
+        );
+    }
+
+    /**
+     * "glutensiz", "sütsüz", "fıstıksız", "gluten-free" gibi kelimeden kök (saf fonksiyon).
+     *
+     * @param string $kelime Kelime.
+     * @return string Kök; olumsuzluk eki yoksa boş.
+     */
+    public static function arama_olumsuz_kok( $kelime ) {
+        $k = function_exists( 'mb_strtolower' ) ? mb_strtolower( trim( (string) $kelime ), 'UTF-8' ) : strtolower( trim( (string) $kelime ) );
+
+        if ( preg_match( '/^(.{3,})[-\s]?(?:free|frei)$/u', $k, $m ) ) {
+            return rtrim( $m[1], '-' );
+        }
+        if ( preg_match( '/^(.{3,}?)(?:s[ıi]z|s[uü]z)$/u', $k, $m ) ) {
+            return $m[1];
+        }
+
+        return '';
+    }
+
     public static function temizle_aralik( $min_ham, $max_ham, $tavan ) {
         $tavan = max( 0, (int) $tavan );
         $min   = self::sayiya( $min_ham, $tavan );

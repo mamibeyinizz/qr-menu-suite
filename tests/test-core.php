@@ -4072,3 +4072,29 @@ qrms_test(
 		qrms_assert_same( '<h2>A</h2><h2>B</h2>', QRMS_Admin_Shell::basliklari_duzenle( '<h3>A</h3><h3>B</h3>', 'X' ), 'kardeşler aynı seviyede' );
 	}
 );
+
+qrms_test(
+	'menü araması: fiyat ifadesi ayıklanır, çıplak sayı metin kalır; olumsuz kök bulunur',
+	function () {
+		if ( ! class_exists( 'RMA_Filtre' ) ) {
+			require_once QRMS_PLUGIN_DIR . 'modules/restoran-menu/includes/class-filtre.php';
+		}
+		$f = RMA_Filtre::arama_fiyat_ayikla( 'tatlı 100 tl altı' );
+		qrms_assert_same( array( 'metin' => 'tatlı', 'min' => 0, 'max' => 100 ), $f, 'en fazla' );
+		$f = RMA_Filtre::arama_fiyat_ayikla( "150₺'den pahalı" );
+		qrms_assert_same( 150, $f['min'], 'en az (pahalı)' );
+		$f = RMA_Filtre::arama_fiyat_ayikla( '200 ve üzeri kebap' );
+		qrms_assert_same( array( 'metin' => 'kebap', 'min' => 200, 'max' => 0 ), $f, 've üzeri' );
+		$f = RMA_Filtre::arama_fiyat_ayikla( '100-250 tl' );
+		qrms_assert_same( array( 'metin' => '', 'min' => 100, 'max' => 250 ), $f, 'aralık' );
+		$f = RMA_Filtre::arama_fiyat_ayikla( 'kahve 80 tl' );
+		qrms_assert_same( array( 'metin' => 'kahve', 'min' => 0, 'max' => 80 ), $f, 'bütçe' );
+		$f = RMA_Filtre::arama_fiyat_ayikla( '7up 33' );
+		qrms_assert_same( array( 'metin' => '7up 33', 'min' => 0, 'max' => 0 ), $f, 'çıplak sayı metin kalır' );
+		qrms_assert_same( 'gluten', RMA_Filtre::arama_olumsuz_kok( 'Glutensiz' ), 'glutensiz' );
+		qrms_assert_same( 'süt', RMA_Filtre::arama_olumsuz_kok( 'sütsüz' ), 'sütsüz' );
+		qrms_assert_same( 'fıstık', RMA_Filtre::arama_olumsuz_kok( 'fıstıksız' ), 'fıstıksız' );
+		qrms_assert_same( 'gluten', RMA_Filtre::arama_olumsuz_kok( 'gluten-free' ), 'gluten-free' );
+		qrms_assert_same( '', RMA_Filtre::arama_olumsuz_kok( 'kebap' ), 'ek yok' );
+	}
+);

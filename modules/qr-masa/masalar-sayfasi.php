@@ -85,9 +85,8 @@ if ( ! function_exists( 'qmo_masalar_sayfasi' ) ) {
 						<button type="submit" name="qmo_masa_ekle" value="1" class="button button-primary">Oluştur</button>
 					</form>
 					<p class="description">
-						Her masa için ana sayfanıza yönlenen <code>/?masa=masa-1</code> biçiminde
-						parametreli özel bir QR kod üretilir. Masa adı bir <strong>metin</strong> slug'a
-						dönüşür (<code>Masa 31</code> → <code>masa-31</code>, <code>VIP Salon</code> → <code>vip-salon</code>).
+						Her masaya kendi QR kodu üretilir. Müşteri kodu okuttuğunda menünüz açılır ve
+						hangi masada oturduğu bilinir (örneğin garson çağrısı doğru masaya düşer).
 					</p>
 				</div>
 
@@ -97,8 +96,8 @@ if ( ! function_exists( 'qmo_masalar_sayfasi' ) ) {
 						<?php wp_nonce_field( 'qmo_masa_toplu_ekle', 'qmo_toplu_nonce' ); ?>
 
 						<div class="qmo-field">
-							<label for="qmo-onek">Slug öneki</label>
-							<input type="text" id="qmo-onek" name="onek" value="" placeholder="Örn: ic-masa" required class="regular-text">
+							<label for="qmo-onek">Masa adı başlangıcı</label>
+							<input type="text" id="qmo-onek" name="onek" value="" placeholder="Örn: Bahçe" required class="regular-text">
 						</div>
 
 						<div class="qmo-field-row">
@@ -117,9 +116,9 @@ if ( ! function_exists( 'qmo_masalar_sayfasi' ) ) {
 						<button type="submit" name="qmo_masa_toplu_ekle" value="1" class="button button-primary">Masaları Oluştur</button>
 					</form>
 					<p class="description">
-						Numaralı masaları tek seferde açar: <code>ic-masa</code> öneki ve 1–10 aralığı
-						<code>ic-masa-1</code> … <code>ic-masa-10</code> masalarını oluşturur. Zaten var olan
-						masalar atlanır, tek seferde en fazla <?php echo (int) QMO_Masalar::TOPLU_AZAMI; ?> masa açılır.
+						Numaralı masaları tek seferde açar: örneğin “Bahçe” ve 1–10 yazarsanız
+						Bahçe 1 … Bahçe 10 masaları oluşur. Zaten olan masalar atlanır; tek seferde en fazla
+						<?php echo (int) QMO_Masalar::TOPLU_AZAMI; ?> masa açılır.
 					</p>
 				</div>
 			</div>
@@ -156,7 +155,7 @@ if ( ! function_exists( 'qmo_masalar_sayfasi' ) ) {
 					<tr>
 						<th style="width:50px;">ID</th>
 						<th>Masa Adı</th>
-						<th>URL Parametresi</th>
+						<th>QR adresi</th>
 						<th style="width:100px;">QR Kod</th>
 						<th style="width:280px;">İndirme & İşlemler</th>
 					</tr>
@@ -187,7 +186,7 @@ if ( ! function_exists( 'qmo_masalar_sayfasi' ) ) {
 										<button type="button" class="button button-small qmo-edit-cancel">İptal</button>
 									</form>
 								</td>
-								<td data-label="URL Parametresi"><code><?php echo esc_html( $hedef ); ?></code></td>
+								<td data-label="QR adresi"><code><?php echo esc_html( $hedef ); ?></code></td>
 								<td data-label="QR Kod"><img class="qmo-qr-preview" src="" alt="QR"></td>
 								<td data-label="İşlemler">
 									<button type="button" class="button qmo-edit-toggle qmo-action-btn">
@@ -304,7 +303,7 @@ if ( ! function_exists( 'qmo_masalar_islem' ) ) {
 			}
 			return array(
 				'tip'   => 'success',
-				'mesaj' => 'Masa adı güncellendi. QR kodun hedef adresi (URL parametresi) değişmedi.',
+				'mesaj' => 'Masa adı güncellendi. Masadaki QR kod aynen çalışmaya devam eder, yeniden yazdırmanız gerekmez.',
 			);
 		}
 

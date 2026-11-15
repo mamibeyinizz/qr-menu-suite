@@ -481,6 +481,12 @@ function qrms_restoran_menu_ceviri_katalogu( $metinler ) {
 		'en az',
 		'Bu filtrelerle eşleşen ürün bulunamadı.',
 		'Filtreleri temizle',
+		// Menü araması (sonuçsuz durum, ekran okuyucu durumu, temizle düğmesi).
+		'“%s” menüde bulunamadı.',
+		'Farklı bir kelime deneyin; ürün, kategori, malzeme ya da “100 tl altı” gibi fiyat yazabilirsiniz.',
+		'Aramayı temizle',
+		'%d ürün bulundu',
+		'Sonuç bulunamadı',
 		// Porsiyon / ekstra (class-porsiyon.php, class-ekstra.php).
 		'Standart',
 		'Porsiyon',

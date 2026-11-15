@@ -163,3 +163,62 @@ body.qrms-premium-shell-active #qrms-shell-content :is(.wp-list-table, .subsubsu
 body.qrms-premium-shell-active #qrms-shell-content :is(.wp-list-table, .subsubsub) a:not(.button):not([class*="btn"]):not(.current):not([aria-current]):hover { color: var(--qa-gold-ink); }
 body.qrms-premium-shell-active #qrms-shell-content .wp-list-table .row-title { font-size: var(--qa-fs-govde); font-weight: 700; }
 body.qrms-premium-shell-active #qrms-shell-content .tablenav-pages a.button { color: var(--qa-link); border-color: #c9cfca; }
+
+/* ===================== Mobil düzen (≤782) ===================== */
+@media (max-width: 782px) {
+	/* Menü düğmesi sıkışmasın; breadcrumb yalnız bir üst bölüm. */
+	body.qrms-premium-shell-active .qrms-shell__menu-toggle { flex: none; }
+	body.qrms-premium-shell-active .qrms-shell__titles { min-width: 0; flex: 1 1 auto; }
+	body.qrms-premium-shell-active .qrms-shell__bc-ust { display: none; }
+	body.qrms-premium-shell-active .qrms-shell__breadcrumb { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+	body.qrms-premium-shell-active .qrms-shell__title { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+	/* Gereksiz WordPress "Ekran ayarları" düğmesi. */
+	body.qrms-premium-shell-active #screen-meta-links,
+	body.qrms-premium-shell-active #screen-meta { display: none !important; }
+
+	/* Özet kartları ikili (Menü Yönetimi ile aynı). */
+	body.qrms-premium-shell-active #qrms-shell-content .qrms-hub-stats:not(.qrms-hub-stats-stacked),
+	body.qrms-premium-shell-active #qrms-shell-content .qrms-hub-stats-row-items { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+	/* Kaydırılan sekme şeritleri: sağ kenarda solma = "devamı var" ipucu. */
+	body.qrms-premium-shell-active #qrms-shell-content :is(.qrms-modnav, .nav-tab-wrapper, [class*="subtabs"], [class*="tabs"]):not(.qrms-oz *) {
+		overflow-x: auto; scrollbar-width: none; scroll-snap-type: x proximity;
+		-webkit-mask-image: linear-gradient(90deg, #000 82%, transparent);
+		mask-image: linear-gradient(90deg, #000 82%, transparent);
+	}
+	body.qrms-premium-shell-active #qrms-shell-content :is(.qrms-modnav, .nav-tab-wrapper).is-sonda { -webkit-mask-image: none; mask-image: none; }
+	body.qrms-premium-shell-active #qrms-shell-content .qrms-modnav > * { scroll-snap-align: start; flex: none; }
+}
+@media (max-width: 359px) {
+	body.qrms-premium-shell-active #qrms-shell-content .qrms-hub-stats-row-items { grid-template-columns: 1fr; }
+}
+
+/* Yön kutusu varken hub giriş paragrafı aynı şeyi tekrar ediyordu. */
+body.qrms-premium-shell-active #qrms-shell-content:has(> .qrms-yon) :is(.qrms-hub-intro, .qrms-overview-intro) { display: none; }
+
+/* Analiz dönem seçimi: hepsi aynı düğme rolü. */
+body.qrms-premium-shell-active #qrms-shell-content :is(.qrms-an-donem, button.qrms-an-donem) {
+	font-size: var(--qa-fs-buton); font-weight: 700; min-height: 44px; display: inline-flex; align-items: center; justify-content: center;
+}
+body.qrms-premium-shell-active #qrms-shell-content .qrms-an-filtre-ozet { font-size: var(--qa-fs-yardim); color: var(--qa-ink-soft); font-variant-numeric: tabular-nums; }
+body.qrms-premium-shell-active #qrms-shell-content .qrms-an-filtre-ozet__etiket { font-weight: 700; margin-right: 4px; }
+body.qrms-premium-shell-active #qrms-shell-content .qrae-preview-collapse { min-height: 44px; padding-inline: 16px; }
+
+/* Marka rengi düğmeler (WordPress mavisi yok). */
+body.qrms-premium-shell-active #qrms-shell-content :is(.button-primary, input[type="submit"].button-primary):not([class*="onizleme"] *) {
+	background: var(--qrms-shell-forest, #0d2b22); border-color: var(--qrms-shell-forest, #0d2b22); color: #fff; box-shadow: none; text-shadow: none;
+}
+body.qrms-premium-shell-active #qrms-shell-content :is(.button-primary, input[type="submit"].button-primary):hover { background: #173226; border-color: #173226; color: #fff; }
+body.qrms-premium-shell-active #qrms-shell-content .button:not(.button-primary):not(.wp-color-result):not([class*="onizleme"] *) { color: var(--qa-link); border-color: #b9c2bc; }
+body.qrms-premium-shell-active #qrms-shell-content .button:not(.button-primary):not(.wp-color-result):hover { color: var(--qa-gold-ink); border-color: var(--qa-gold-ink); }
+body.qrms-premium-shell-active #qrms-shell-content :is(.button, input, select, textarea, a):focus-visible { outline: 2px solid var(--qa-gold-ink); outline-offset: 2px; box-shadow: none; }
+
+/* Ürün Ekle: kutu başlıkları sola, altın bağlantı okunur renkte. */
+body.qrms-premium-shell-active #qrms-shell-content .postbox-header { justify-content: flex-start; }
+body.qrms-premium-shell-active #qrms-shell-content .postbox-header .hndle { justify-content: flex-start; text-align: left; flex: 1 1 auto; }
+body.qrms-premium-shell-active #qrms-shell-content .taxonomy-add-new { color: var(--qa-gold-ink); font-size: var(--qa-fs-etiket); font-weight: 700; }
+
+/* Ürün listesi: onay kutusu ürün adıyla aynı hizada. */
+body.qrms-premium-shell-active #qrms-shell-content .wp-list-table tbody :is(td, th) { vertical-align: top; }
+body.qrms-premium-shell-active #qrms-shell-content .wp-list-table tbody .check-column { padding-top: 14px; }

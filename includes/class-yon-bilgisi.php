@@ -222,8 +222,11 @@ class QRMS_Yon_Bilgisi {
 		</details>
 		<script>
 		(function(){var d=document.getElementById(<?php echo wp_json_encode( $id ); ?>);if(!d)return;var k='qrmsYonKapali:'+d.getAttribute('data-yon');
-		try{if(localStorage.getItem(k)==='1')d.removeAttribute('open');}catch(e){}
-		d.addEventListener('toggle',function(){try{d.open?localStorage.removeItem(k):localStorage.setItem(k,'1');}catch(e){}});})();
+		var v=null;try{v=localStorage.getItem(k);}catch(e){}
+		/* Telefonda ilk ekranın yarısını kaplamasın: kullanıcı açmadıysa kapalı başlar. */
+		var dar=window.matchMedia&&window.matchMedia('(max-width: 782px)').matches;
+		if(v==='1'||(dar&&v!=='0'))d.removeAttribute('open');
+		d.addEventListener('toggle',function(){try{localStorage.setItem(k,d.open?'0':'1');}catch(e){}});})();
 		</script>
 		<?php
 	}

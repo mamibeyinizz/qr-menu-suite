@@ -380,6 +380,8 @@ trait RMA_Frontend_Trait {
             'empty'       => $this->t( 'Ürün bulunamadı.' ),
             'loadError'   => $this->t( 'Yükleme hatası oluştu. Lütfen sayfayı yenileyin.' ),
             'reloading'   => $this->t( 'Sayfa yenileniyor…' ),
+            'searchFound' => $this->t( '%d ürün bulundu' ),
+            'searchNone'  => $this->t( 'Sonuç bulunamadı' ),
             'lang'        => $this->current_lang(),
             // Aktif filtre chip'leri ve boş durum — yalnızca JS'te basılır.
             'clearAll'    => $this->t( 'Tümünü temizle' ),
@@ -455,12 +457,16 @@ JSCODE;
 
     <div class="rma-toolbar"<?php echo $show_search ? '' : ' style="justify-content:flex-end;"'; ?>>
         <?php if ( $show_search ) : ?>
-        <div class="rma-search-wrap">
+        <form class="rma-search-wrap" role="search" action="#" onsubmit="return false;">
             <svg class="rma-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
             </svg>
-            <input type="text" id="rma-search" class="rma-search-input" placeholder="<?php echo esc_attr( $this->t( 'Ürün ara…' ) ); ?>" autocomplete="off" aria-label="<?php echo esc_attr( $this->t( 'Menüde ara' ) ); ?>">
-        </div>
+            <input type="search" id="rma-search" class="rma-search-input" placeholder="<?php echo esc_attr( $this->t( 'Ürün ara…' ) ); ?>" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="search" inputmode="search" maxlength="60" aria-label="<?php echo esc_attr( $this->t( 'Menüde ara' ) ); ?>" aria-describedby="rma-search-durum">
+            <button type="button" class="rma-search-clear" id="rma-search-clear" hidden aria-label="<?php echo esc_attr( $this->t( 'Aramayı temizle' ) ); ?>">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+            <p class="rma-sr-only" id="rma-search-durum" role="status" aria-live="polite"></p>
+        </form>
         <?php endif; ?>
         <button id="rma-filter-trigger" class="rma-filter-trigger" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="rma-panel-sheet" aria-label="<?php echo esc_attr( $this->t( 'Filtrele ve Sırala' ) ); ?>">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">

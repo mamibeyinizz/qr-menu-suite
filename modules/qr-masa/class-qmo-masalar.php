@@ -249,6 +249,12 @@ if ( ! class_exists( 'QMO_Masalar' ) ) {
 				return '';
 			}
 
+			// Önce sahibin yazdığı biçim ("Bahçe" → "Bahçe 7"); slug'ı tutmuyorsa eski okunabilir biçim.
+			$ham = trim( preg_replace( '/\s+/u', ' ', wp_strip_all_tags( (string) $onek ) ) ) . ' ' . (int) $no;
+			if ( trim( (string) $onek ) !== sanitize_title( (string) $onek ) && sanitize_title( $ham ) === $slug ) {
+				return $ham;
+			}
+
 			$okunabilir = ucwords( str_replace( '-', ' ', sanitize_title( (string) $onek ) ) ) . ' ' . (int) $no;
 
 			return sanitize_title( $okunabilir ) === $slug ? $okunabilir : $slug;

@@ -111,10 +111,15 @@ if ( ! function_exists( 'qrms_analitik_filtre_cubugu' ) ) {
 					<?php endforeach; ?>
 				</div>
 
+				<?php
+				$bas_ts = strtotime( substr( $aralik['bas'], 0, 10 ) );
+				$bit_ts = strtotime( substr( $aralik['bit'], 0, 10 ) );
+				?>
 				<span class="qrms-an-filtre-ozet">
-					<?php echo esc_html( substr( $aralik['bas'], 0, 10 ) ); ?>
+					<span class="qrms-an-filtre-ozet__etiket"><?php esc_html_e( 'Gösterilen:', 'qrms' ); ?></span>
+					<?php echo esc_html( date_i18n( 'j M Y', $bas_ts ) ); ?>
 					<?php if ( substr( $aralik['bas'], 0, 10 ) !== substr( $aralik['bit'], 0, 10 ) ) : ?>
-						&ndash; <?php echo esc_html( substr( $aralik['bit'], 0, 10 ) ); ?>
+						&ndash; <?php echo esc_html( date_i18n( 'j M Y', $bit_ts ) ); ?>
 					<?php endif; ?>
 				</span>
 			</div>

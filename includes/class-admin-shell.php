@@ -29,6 +29,37 @@ class QRMS_Admin_Shell {
 		add_action( 'in_admin_header', array( __CLASS__, 'yabanci_bildirimleri_kaldir' ), PHP_INT_MAX );
 		add_action( 'admin_notices', array( __CLASS__, 'render_native_hybrid_back_link' ), 0 );
 		add_action( 'admin_footer', array( __CLASS__, 'render_close' ), 99999 );
+		add_action( 'load-edit-tags.php', array( __CLASS__, 'terim_metinlerini_sadelestir' ) );
+		add_action( 'load-term.php', array( __CLASS__, 'terim_metinlerini_sadelestir' ) );
+	}
+
+	/**
+	 * Menü kategorisi/alerjen/malzeme ekranında WordPress'in blog odaklı açıklamaları
+	 * (Jazz → Bebop örneği, "slug" anlatımı) restoran diline çevrilir.
+	 *
+	 * @return void
+	 */
+	public static function terim_metinlerini_sadelestir() {
+		$tax = isset( $_GET['taxonomy'] ) ? sanitize_key( wp_unslash( $_GET['taxonomy'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		if ( 0 !== strpos( $tax, 'rma_' ) ) {
+			return;
+		}
+
+		$metin = array(
+			'The name is how it appears on your site.' => __( 'Menüde görünecek ad (ör. Çorbalar).', 'qrms' ),
+			'The &#8220;slug&#8221; is the URL-friendly version of the name. It is usually all lowercase and contains only letters, numbers, and hyphens.' => __( 'Boş bırakabilirsiniz; sistem addan otomatik oluşturur.', 'qrms' ),
+			'Assign a parent term to create a hierarchy. The term Jazz, for example, would be the parent of Bebop and Big Band.' => __( 'Alt kategori yapmak için seçin (ör. “Sıcak İçecekler” altında “Çaylar”). Çoğu menüde gerekmez.', 'qrms' ),
+			'The description is not prominent by default; however, some themes may show it.' => __( 'İsteğe bağlı kısa açıklama; menüde kategori başlığının altında görünebilir.', 'qrms' ),
+		);
+
+		add_filter(
+			'gettext',
+			function ( $ceviri, $asil, $alan ) use ( $metin ) {
+				return ( 'default' === $alan && isset( $metin[ $asil ] ) ) ? $metin[ $asil ] : $ceviri;
+			},
+			10,
+			3
+		);
 	}
 
 	/**
@@ -371,7 +402,7 @@ class QRMS_Admin_Shell {
 							<span class="qrms-shell__sr-only"><?php echo esc_html( self::l10n( 'openMenu' ) ); ?></span>
 						</button>
 						<div class="qrms-shell__titles">
-							<p class="qrms-shell__breadcrumb"><?php echo esc_html( $header['breadcrumb'] ); ?></p>
+							<?php self::render_breadcrumb( (string) $header['breadcrumb'], (string) $header['title'] ); ?>
 							<h1 class="qrms-shell__title"><?php echo esc_html( $header['title'] ); ?></h1>
 						</div>
 					</div>
@@ -520,6 +551,33 @@ class QRMS_Admin_Shell {
 		}
 
 		return $sonuc;
+	}
+
+	/**
+	 * Breadcrumb: sayfa başlığını tekrar etmez (başlık hemen altında H1); mobilde
+	 * yalnız bir üst bölüm görünür (uzun yol menü düğmesini sıkıştırıyordu).
+	 *
+	 * @param string $yol    "Grup / Modül / Sayfa".
+	 * @param string $baslik Sayfa başlığı.
+	 * @return void
+	 */
+	private static function render_breadcrumb( $yol, $baslik ) {
+		$parcalar = array_values( array_filter( array_map( 'trim', explode( ' / ', $yol ) ), 'strlen' ) );
+		$katla    = function ( $t ) {
+			return function_exists( 'mb_strtolower' ) ? mb_strtolower( trim( $t ), 'UTF-8' ) : strtolower( trim( $t ) );
+		};
+
+		while ( count( $parcalar ) > 1 && $katla( end( $parcalar ) ) === $katla( $baslik ) ) {
+			array_pop( $parcalar );
+		}
+		// Tek parça ve başlıkla aynıysa (ör. "Genel Bakış") yine de bağlam olarak kalır.
+
+		$son = array_pop( $parcalar );
+		echo '<p class="qrms-shell__breadcrumb">';
+		foreach ( $parcalar as $p ) {
+			echo '<span class="qrms-shell__bc-ust">' . esc_html( $p ) . ' / </span>';
+		}
+		echo '<span class="qrms-shell__bc-son">' . esc_html( (string) $son ) . '</span></p>';
 	}
 
 	/**
@@ -1360,7 +1418,8 @@ class QRMS_Admin_Shell {
 
 		$back = null;
 
-		if ( self::is_menu_item_list_screen() || self::is_menu_item_edit_screen() ) {
+		// Ürün ekle/düzenle ekranı kendi "Ürünlere Dön" bağlantısını basar; ikinci bağlantı gereksiz.
+		if ( self::is_menu_item_list_screen() ) {
 			$back = array(
 				'back_url'   => QRMS_Admin::get_module_page_url( 'restoran-menu' ),
 				'back_label' => __( 'Menü Yönetimi\'ne Dön', 'qrms' ),

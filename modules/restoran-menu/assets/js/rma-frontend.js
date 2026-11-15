@@ -742,6 +742,7 @@ document.addEventListener('keydown', function (e) {
 document.addEventListener('input', function (e) {
     if (!e.target || e.target.id !== 'rma-search') return;
     clearTimeout(searchTimer);
+    rmaTemizleGoster();
     var val = String(e.target.value || '').trim();
     searchTimer = setTimeout(function () {
         if (val !== state.search) { state.search = val; loadAll(); }
@@ -765,12 +766,50 @@ window.addEventListener('popstate', function () {
 
 } /* bindEvents */
 
+// Arama kutusu: temizle düğmesi, Enter = klavyeyi kapat, Esc = temizle, ekran okuyucu durumu.
+function rmaTemizleGoster() {
+    var input = qs('#rma-search'), btn = qs('#rma-search-clear');
+    if (input && btn) btn.hidden = !String(input.value || '').length;
+}
+function rmaAramayiTemizle(odakla) {
+    var input = qs('#rma-search');
+    if (!input) return;
+    input.value = '';
+    rmaTemizleGoster();
+    clearTimeout(searchTimer);
+    if (state.search !== '') { state.search = ''; loadAll(); }
+    if (odakla) input.focus();
+}
+function rmaAramaDurumu(data) {
+    var el = qs('#rma-search-durum');
+    if (!el) return;
+    if (!state.search) { el.textContent = ''; return; }
+    var n = data && typeof data.bulunan !== 'undefined' ? parseInt(data.bulunan, 10) || 0 : null;
+    if (n === null) return;
+    el.textContent = n > 0
+        ? rmaText('searchFound', '%d ürün bulundu').replace('%d', n)
+        : rmaText('searchNone', 'Sonuç bulunamadı');
+}
+document.addEventListener('click', function (e) {
+    var t = e.target && e.target.closest ? e.target.closest('#rma-search-clear, .rma-empty-arama-temizle') : null;
+    if (!t) return;
+    e.preventDefault();
+    e.stopPropagation();
+    rmaAramayiTemizle(true);
+}, true);
+document.addEventListener('keydown', function (e) {
+    if (!e.target || e.target.id !== 'rma-search') return;
+    if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); }
+    else if (e.key === 'Escape' && e.target.value) { e.preventDefault(); e.stopPropagation(); rmaAramayiTemizle(true); }
+}, true);
+
 function restoreSearchValue() {
     var input = qs('#rma-search');
     // Kullanıcı kutuya yazarken DOKUNMA: yanıt, isteğin gönderildiği andaki metinle döner;
     // o sırada yazılan harfler varsa bu atama onları silerdi (yavaş yazan ya da yavaş
     // bağlantıdaki kullanıcıda "wifi" → "wi" olurdu).
     if (input && state.search && document.activeElement !== input) input.value = state.search;
+    rmaTemizleGoster();
 }
 
 /* -----------------------------------------------------------------
@@ -848,6 +887,7 @@ function loadAll(ilkYukleme) {
     function sonucuBas(data) {
         bitir();
         content.innerHTML = data.html;
+        rmaAramaDurumu(data);
         rebuildNav(data.categories, data.has_suggestions);
         recalcNavOffset();
         measureSections();

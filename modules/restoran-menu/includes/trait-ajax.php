@@ -137,6 +137,22 @@ trait RMA_Ajax_Trait {
             'price' => RMA_Filtre::temizle_aralik( $_POST['price_min'] ?? '', $_POST['price_max'] ?? '', RMA_Filtre::FIYAT_TAVAN ),
         ];
 
+        // Aramada fiyat ifadesi ("100 tl altı", "150 üstü", "100-200 tl"): fiyat aralığına
+        // çevrilir, metin aramasından çıkarılır. Müşterinin filtre panelinde seçtiği
+        // aralık önceliklidir (yalnız boş taraflar doldurulur).
+        if ( '' !== $search && preg_match( '/\d/', $search ) ) {
+            $fiyat = RMA_Filtre::arama_fiyat_ayikla( $search );
+            if ( $fiyat['min'] || $fiyat['max'] ) {
+                $search = $fiyat['metin'];
+                if ( ! $ranges['price'][0] && $fiyat['min'] ) {
+                    $ranges['price'][0] = $fiyat['min'];
+                }
+                if ( ! $ranges['price'][1] && $fiyat['max'] ) {
+                    $ranges['price'][1] = $fiyat['max'];
+                }
+            }
+        }
+
         $suggest_cfg_raw = $_POST['suggest_cfg'] ?? [];
         if ( is_string( $suggest_cfg_raw ) ) {
             $suggest_cfg = json_decode( stripslashes( $suggest_cfg_raw ), true ) ?? [];
@@ -303,7 +319,22 @@ trait RMA_Ajax_Trait {
             // Elementor) yanlışlıkla etkilenmez.
             $base['rma_search'] = 1;
 
-            $search_filter = function ( $where, $query ) use ( $search_terms, $search_lang, $ceviri_tablo ) {
+            // "glutensiz", "sütsüz": kökü bir alerjen/malzeme adıyla eşleşiyorsa o alerjeni
+            // İÇERMEYEN ürünler aranır. Eşleşmeyen kök (ör. "lezzetsiz") olağan metin aramasıdır;
+            // yoksa NOT IN boş kümeyle bütün menüyü döndürürdü.
+            $olumsuz = [];
+            foreach ( $search_terms as $term ) {
+                $kok = RMA_Filtre::arama_olumsuz_kok( $term );
+                if ( '' === $kok ) {
+                    continue;
+                }
+                $var = get_terms( [ 'taxonomy' => [ 'rma_allergen', 'rma_ingredient' ], 'name__like' => $kok, 'fields' => 'ids', 'hide_empty' => false, 'number' => 1 ] );
+                if ( ! is_wp_error( $var ) && $var ) {
+                    $olumsuz[ $term ] = $kok;
+                }
+            }
+
+            $search_filter = function ( $where, $query ) use ( $search_terms, $search_lang, $ceviri_tablo, $olumsuz ) {
                 if ( ! $query instanceof WP_Query || ! $query->get( 'rma_search' ) ) return $where;
 
                 global $wpdb;
@@ -328,6 +359,26 @@ trait RMA_Ajax_Trait {
                             WHERE REPLACE( t.name, 'ı', 'i' ) LIKE %s )",
                         $like
                     );
+
+                    // Alerjen ve malzeme adı ("fıstık", "domates", "gluten").
+                    $alan[] = $wpdb->prepare(
+                        "{$wpdb->posts}.ID IN ( SELECT tr.object_id FROM {$wpdb->term_relationships} tr
+                            INNER JOIN {$wpdb->term_taxonomy} tt ON tt.term_taxonomy_id = tr.term_taxonomy_id AND tt.taxonomy IN ( 'rma_allergen', 'rma_ingredient' )
+                            INNER JOIN {$wpdb->terms} t ON t.term_id = tt.term_id
+                            WHERE REPLACE( t.name, 'ı', 'i' ) LIKE %s )",
+                        $like
+                    );
+
+                    // Olumsuz arama ("glutensiz"): o alerjen/malzemeyi içermeyen ürünler.
+                    if ( isset( $olumsuz[ $term ] ) ) {
+                        $alan[] = $wpdb->prepare(
+                            "{$wpdb->posts}.ID NOT IN ( SELECT tr.object_id FROM {$wpdb->term_relationships} tr
+                                INNER JOIN {$wpdb->term_taxonomy} tt ON tt.term_taxonomy_id = tr.term_taxonomy_id AND tt.taxonomy IN ( 'rma_allergen', 'rma_ingredient' )
+                                INNER JOIN {$wpdb->terms} t ON t.term_id = tt.term_id
+                                WHERE REPLACE( t.name, 'ı', 'i' ) LIKE %s )",
+                            $wpdb->esc_like( str_replace( 'ı', 'i', $olumsuz[ $term ] ) ) . '%'
+                        );
+                    }
 
                     // Menü başka dilde gösteriliyorsa ürün ve kategori ÇEVİRİLERİNDE de ara:
                     // İngilizce arayüzde "Filter coffee" görünür, müşteri "coffee" yazar.
@@ -514,6 +565,19 @@ trait RMA_Ajax_Trait {
                   . '<button type="button" class="rma-empty-reset">' . esc_html( $this->t( 'Filtreleri temizle' ) ) . '</button>'
                   . '</div>'
                 : '<div class="rma-empty">' . esc_html( $this->t( 'Ürün bulunamadı.' ) ) . '</div>';
+
+            // Metin araması sonuçsuzsa: aranan kelime gösterilir ve tek dokunuşla temizlenir.
+            if ( '' !== (string) $search && ! ( $filters || $php_ctx ) ) {
+                $empty = '<div class="rma-empty rma-empty-arama">'
+                    . '<p class="rma-empty-arama__baslik">' . sprintf(
+                        /* translators: %s: aranan kelime */
+                        esc_html( $this->t( '“%s” menüde bulunamadı.' ) ),
+                        '<strong>' . esc_html( $search ) . '</strong>'
+                    ) . '</p>'
+                    . '<p class="rma-empty-arama__ipucu">' . esc_html( $this->t( 'Farklı bir kelime deneyin; ürün, kategori, malzeme ya da “100 tl altı” gibi fiyat yazabilirsiniz.' ) ) . '</p>'
+                    . '<button type="button" class="rma-empty-reset rma-empty-arama-temizle">' . esc_html( $this->t( 'Aramayı temizle' ) ) . '</button>'
+                    . '</div>';
+            }
 
             return [
                 'html'            => $empty,

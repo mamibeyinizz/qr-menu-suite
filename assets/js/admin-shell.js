@@ -455,3 +455,26 @@
 
 	setOpen( false );
 }() );
+
+/* Mobil sekme şeritleri: aktif sekme görünür olsun; sona gelince "devamı var" solması kalksın. */
+(function () {
+	function kur() {
+		var seritler = document.querySelectorAll('#qrms-shell-content .qrms-modnav, #qrms-shell-content .nav-tab-wrapper');
+		Array.prototype.forEach.call(seritler, function (s) {
+			var guncelle = function () {
+				s.classList.toggle('is-sonda', s.scrollLeft + s.clientWidth >= s.scrollWidth - 4);
+			};
+			var aktif = s.querySelector('.is-current, .nav-tab-active, [aria-current]');
+			if (aktif && s.scrollWidth > s.clientWidth) {
+				s.scrollLeft = Math.max(0, aktif.offsetLeft - 16);
+			}
+			guncelle();
+			s.addEventListener('scroll', guncelle, { passive: true });
+		});
+	}
+	if (document.readyState === 'loading') {
+		document.addEventListener('DOMContentLoaded', kur);
+	} else {
+		kur();
+	}
+})();

@@ -89,7 +89,7 @@ qrms_test(
 		qrms_assert_contains( "__( 'Ürün Ekle', 'qrms' )", $shell, 'ürün ekle shell başlığı hub kartıyla aynı' );
 		qrms_assert_contains( "__( 'Kategoriler', 'qrms' )", $shell, 'kategori shell başlığı hub kartıyla aynı' );
 		qrms_assert_contains( "__( 'Kampanya Görselleri', 'qrms' )", $shell, 'banner CPT başlığı hub kartıyla aynı' );
-		qrms_assert_contains( 'is_menu_item_list_screen() || self::is_menu_item_edit_screen()', $shell, 'ürün listesi/düzenleme geri bağlantısı' );
+		qrms_assert_contains( 'if ( self::is_menu_item_list_screen() ) {', $shell, 'ürün listesi geri bağlantısı (düzenleme ekranı kendi "Ürünlere Dön"ünü basar)' );
 		qrms_assert_contains( "__( 'Menü Yönetimi\'ne Dön', 'qrms' )", $shell, 'hybrid geri Menü Yönetimi' );
 		qrms_assert_contains( 'overflow-wrap: anywhere', $css, 'mobil kart başlığı taşmaz' );
 
