@@ -652,8 +652,39 @@ trait RMA_Ajax_Trait {
         if ( $limit < 1 ) return;
 
         $ip  = isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) ) : '';
-        $key = 'rma_rl_' . $anahtar . '_' . md5( $ip );
 
+        // ZİYARETÇİ BAŞINA: restoran Wi-Fi'sinde bütün masalar tek IP'den çıkar; sınır
+        // yalnız IP'ye bağlıyken 60 hak bütün salonla paylaşılıyordu. Tarayıcının sekme
+        // başına ürettiği oturum kimliği (sid) varsa sayaç IP+sid'e bağlanır: her telefonun
+        // kendi hakkı olur. sid'i her istekte değiştiren bir bot için IP başına ayrıca
+        // daha yüksek bir TOPLAM tavan vardır (varsayılan sınırın 30 katı; 80 masalı dolu salon da sığar).
+        $sid = substr( preg_replace( '/[^a-z0-9]/', '', strtolower( (string) ( $_POST['sid'] ?? '' ) ) ), 0, 24 ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
+        if ( strlen( $sid ) >= 8 ) {
+            $toplam_limit = (int) apply_filters( 'rma_ip_toplam_rate_limit', $limit * 30, $anahtar );
+            if ( $toplam_limit > 0 && $this->rma_sayac( 'rma_rl_' . $anahtar . '_ip_' . md5( $ip ) ) > $toplam_limit ) {
+                $this->flush_stray_output();
+                wp_send_json_error( [ 'kod' => 'limit' ], 429 );
+                die();
+            }
+            $key = 'rma_rl_' . $anahtar . '_' . md5( $ip . '|' . $sid );
+        } else {
+            $key = 'rma_rl_' . $anahtar . '_' . md5( $ip );
+        }
+
+        if ( $this->rma_sayac( $key ) > $limit ) {
+            $this->flush_stray_output();
+            wp_send_json_error( [ 'kod' => 'limit' ], 429 );
+            die();
+        }
+    }
+
+    /**
+     * Dakikalık sabit pencere sayacı; yeni değeri döndürür.
+     *
+     * @param string $key Sayaç anahtarı.
+     * @return int
+     */
+    private function rma_sayac( $key ) {
         if ( wp_using_ext_object_cache() ) {
             wp_cache_add( $key, 0, 'rma_rl', MINUTE_IN_SECONDS );
             $n = wp_cache_incr( $key, 1, 'rma_rl' );
@@ -675,11 +706,7 @@ trait RMA_Ajax_Trait {
             set_transient( $key, array( 'n' => $n, 't' => $t ), max( 1, MINUTE_IN_SECONDS - ( $simdi - $t ) ) );
         }
 
-        if ( $n > $limit ) {
-            $this->flush_stray_output();
-            wp_send_json_error( [ 'kod' => 'limit' ], 429 );
-            die();
-        }
+        return (int) $n;
     }
 
     /**

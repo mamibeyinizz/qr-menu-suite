@@ -1129,7 +1129,7 @@ function rmaReleaseScrollRestoration() {
 function rmaFetch(id, prefetch, cb) {
     if (rmaCache[id]) { cb(rmaCache[id]); return; }
 
-    var payload = { action: 'rma_get_product_details', id: id, security: NONCE, lang: rmaLang(), masa: rmaMasa() };
+    var payload = { action: 'rma_get_product_details', id: id, security: NONCE, lang: rmaLang(), masa: rmaMasa(), sid: rmaSid };
     if (prefetch) payload.prefetch = '1';
 
     postForm(payload, function (res) {
