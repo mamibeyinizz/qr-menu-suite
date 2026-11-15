@@ -4054,3 +4054,21 @@ qrms_test(
 		unset( $GLOBALS['qrms_test']['user_can'] );
 	}
 );
+
+qrms_test(
+	'panel başlık düzeni: tek H1, atlama yok, kardeşler aynı seviye, boş başlık ve maket korunur',
+	function () {
+		$h = '<h1 class="wp-heading-inline" aria-hidden="true">Menü Yönetimi</h1><h2 class="g">Menü Yönetimi</h2><h3>Kart</h3><h3></h3>'
+			. '<h3>A</h3><h3>B</h3><h5>c</h5><h1>Başka</h1><script>var t="<h1>x</h1>";</script><div class="qrms-lp-onizleme"><h1 class="qrms-lp-t">P</h1></div>';
+		$o = QRMS_Admin_Shell::basliklari_duzenle( $h, 'Menü Yönetimi' );
+		qrms_assert_contains( '<div class="qrms-baslik-tekrar wp-heading-inline" aria-hidden="true">Menü Yönetimi</div>', $o, 'tekrar eden H1 gizlenir' );
+		qrms_assert_contains( '<h2 class="qrms-shell__sr-only g">Menü Yönetimi</h2>', $o, 'tekrar eden bölüm başlığı yalnız ekran okuyucuda' );
+		qrms_assert_contains( '<h3>Kart</h3>', $o, 'kart seviyesi korunur' );
+		qrms_assert_contains( '<div></div>', $o, 'boş başlık kalkar' );
+		qrms_assert_contains( '<h3>B</h3><h4>c</h4>', $o, 'H3→H5 atlaması H4 olur' );
+		qrms_assert_contains( '<h2>Başka</h2>', $o, 'farklı metinli H1 H2 olur' );
+		qrms_assert_contains( 'var t="<h1>x</h1>";', $o, 'script içi dokunulmaz' );
+		qrms_assert_contains( '<h1 class="qrms-lp-t">P</h1>', $o, 'maket dokunulmaz' );
+		qrms_assert_same( '<h2>A</h2><h2>B</h2>', QRMS_Admin_Shell::basliklari_duzenle( '<h3>A</h3><h3>B</h3>', 'X' ), 'kardeşler aynı seviyede' );
+	}
+);

@@ -442,7 +442,7 @@ class QRMS_Admin_Shell {
 		};
 
 		$hedef  = $katla( $baslik );
-		$onceki = 1;
+		$yigin  = array(); // [ [orijinal seviye, yeni seviye], ... ] — kardeşler aynı seviyeyi alır.
 		$ilk    = true;
 
 		// Dokunulmayacak bloklar parçalara ayrılır; yalnız çift indeksli parçalar işlenir.
@@ -466,7 +466,7 @@ class QRMS_Admin_Shell {
 
 			$sonuc .= preg_replace_callback(
 				'#<h([1-6])(\s[^>]*)?>(.*?)</h\1\s*>#is',
-				function ( $m ) use ( $katla, $hedef, &$onceki, &$ilk ) {
+				function ( $m ) use ( $katla, $hedef, &$yigin, &$ilk ) {
 					$seviye = (int) $m[1];
 					$ozn    = isset( $m[2] ) ? (string) $m[2] : '';
 					$ic     = $m[3];
@@ -495,8 +495,13 @@ class QRMS_Admin_Shell {
 						$seviye = 2;
 					}
 
-					$seviye = max( 2, min( $seviye, $onceki + 1 ) );
-					$onceki = $seviye;
+					// Üstteki eşit/derin başlıklar kapanır; yeni seviye = ebeveyn + 1 (H1 panelde).
+					while ( $yigin && end( $yigin )[0] >= $seviye ) {
+						array_pop( $yigin );
+					}
+					$yeni    = $yigin ? min( 6, end( $yigin )[1] + 1 ) : 2;
+					$yigin[] = array( $seviye, $yeni );
+					$seviye  = $yeni;
 
 					// İlk bölüm başlığı panel başlığını tekrar ediyorsa ekrandan kalkar ama
 					// ekran okuyucu için yerinde durur (alttaki kartların seviyesi bozulmasın).
