@@ -1346,11 +1346,12 @@ class QRMS_Admin_Shell {
 	 */
 	public static function render_native_hybrid_back_link() {
 		static $basildi = false;
-		if ( $basildi || ! self::is_active() || ! self::is_native_hybrid_screen() ) {
+		if ( $basildi || QRMS_Admin::$geri_baglanti_basildi || ! self::is_active() || ! self::is_native_hybrid_screen() ) {
 			return;
 		}
 		// admin_notices bazı ekranlarda (başka eklenti yeniden tetikleyince) iki kez çalışır.
-		$basildi = true;
+		$basildi                           = true;
+		QRMS_Admin::$geri_baglanti_basildi = true;
 
 		$page = self::get_request_page();
 		if ( class_exists( 'QRMS_Admin' ) && '' !== $page && QRMS_Admin::is_module_subpage( $page ) ) {

@@ -1003,7 +1003,22 @@ class QRMS_Admin {
 	 * @param string $module_slug Modül slug'ı.
 	 * @return void
 	 */
+	/**
+	 * Bu istekte geri bağlantısı basıldı mı (aynı ekranda iki kaynaktan basılmasın).
+	 *
+	 * @var bool
+	 */
+	public static $geri_baglanti_basildi = false;
+
 	public static function render_subpage_back_link( $module_slug ) {
+		$bildirimde = function_exists( 'doing_action' ) && doing_action( 'admin_notices' );
+		if ( $bildirimde && self::$geri_baglanti_basildi ) {
+			return;
+		}
+		if ( $bildirimde ) {
+			self::$geri_baglanti_basildi = true;
+		}
+
 		$module_name = QRMS_Helpers::get_module_name( $module_slug );
 		$current     = function_exists( 'get_admin_page_title' ) ? get_admin_page_title() : '';
 
