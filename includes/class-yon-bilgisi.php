@@ -40,14 +40,7 @@ class QRMS_Yon_Bilgisi {
 					array( __( 'Biten ürünleri Tükenen Ürünler’den tek dokunuşla kapatın.', 'qrms' ), 'qrms-rm-urunum-yok' ),
 				),
 			),
-			'qr-masa'                  => array(
-				'ozet'    => __( 'Her masaya özel QR kod üretir; hangi masadan sipariş ve çağrı geldiğini bilirsiniz.', 'qrms' ),
-				'adimlar' => array(
-					array( __( 'Masalarınızı ekleyin (tek tek ya da toplu).', 'qrms' ), '' ),
-					array( __( 'QR kodları indirip yazdırın, her masaya kendi kodunu koyun.', 'qrms' ), '' ),
-					array( __( 'Bir kodu telefonla okutup masanın doğru göründüğünü deneyin.', 'qrms' ), '' ),
-				),
-			),
+			// qr-masa: sayfanın kendisi zaten adım adım (Tek Masa / Toplu Oluştur); kutu gereksiz tekrardı.
 			'qr-servis-paneli'         => array(
 				'ozet'    => __( 'Garson çağrıları, hesap istekleri ve siparişler bu ekrana düşer.', 'qrms' ),
 				'adimlar' => array(
