@@ -778,6 +778,18 @@ function restoreSearchValue() {
 ----------------------------------------------------------------- */
 var loadSeq = 0;
 
+// Son 20 sorgunun yanıtı (sayfa ömrü boyunca). Menü bir oturumda değişmez; değişse bile
+// sayfa yenilenince sıfırlanır.
+var rmaSonucOnbellek = {};
+var rmaOnbellekSira  = [];
+function rmaOnbellegeYaz(k, data) {
+    if (!rmaSonucOnbellek[k]) {
+        rmaOnbellekSira.push(k);
+        if (rmaOnbellekSira.length > 20) delete rmaSonucOnbellek[rmaOnbellekSira.shift()];
+    }
+    rmaSonucOnbellek[k] = data;
+}
+
 // Arama oturumu kimliği: sayfa/sekme başına rastgele, kişisel veri taşımaz. Analiz, aynı
 // ziyaretçinin harf harf yazdığı kelimeyi tek aramaya indirmek için kullanır; IP'ye
 // güvenilmez (paylaşımlı Wi-Fi'de herkes tek IP, bazı ağlarda istek başına değişir).
@@ -795,9 +807,54 @@ function loadAll(ilkYukleme) {
     // ekrana basılır. Yoksa geç dönen eski bir yanıt (ör. "kebap") yeni aramanın
     // ("tiramisu") sonucunu ezer ve kutudaki metinle ekran çelişir.
     var seq = ++loadSeq;
-    content.innerHTML = '';
-    sectionTops = [];
-    loader.style.display = 'block';
+
+    // Titreme yok: liste zaten doluysa eski sonuçlar yerinde kalır (soluklaşır) ve
+    // yanıt gelince TEK seferde değiştirilir. Boş ekran yalnız ilk yüklemede görünür.
+    var yenile = !!content.firstElementChild && !ilkYukleme;
+    var params = {
+        filters     : state.activeFilters,
+        sort_by     : state.sortBy,
+        search      : state.search,
+        cal_min     : state.calMin,
+        cal_max     : state.calMax,
+        price_min   : state.priceMin,
+        price_max   : state.priceMax,
+        lang        : rmaLang(),
+        masa        : rmaMasa()
+    };
+    var anahtar = JSON.stringify(params);
+
+    // Aynı sorgu az önce yanıtlandıysa (ör. harf silip geri yazma) ağ beklenmez.
+    if (yenile && rmaSonucOnbellek[anahtar]) {
+        sonucuBas(rmaSonucOnbellek[anahtar]);
+        return;
+    }
+
+    if (yenile) {
+        content.classList.add('rma-content--yenileniyor');
+        content.setAttribute('aria-busy', 'true');
+    } else {
+        content.innerHTML = '';
+        sectionTops = [];
+        loader.style.display = 'block';
+    }
+
+    function bitir() {
+        loader.style.display = 'none';
+        content.classList.remove('rma-content--yenileniyor');
+        content.removeAttribute('aria-busy');
+    }
+
+    function sonucuBas(data) {
+        bitir();
+        content.innerHTML = data.html;
+        rebuildNav(data.categories, data.has_suggestions);
+        recalcNavOffset();
+        measureSections();
+        onScroll();
+        restoreSearchValue();
+        watchContentSize();
+    }
 
     postForm({
         action      : 'rma_load_items',
@@ -816,17 +873,12 @@ function loadAll(ilkYukleme) {
         ilk_yukleme : ilkYukleme ? '1' : ''
     }, function (res, status) {
         if (seq !== loadSeq) return;
-        loader.style.display = 'none';
+        bitir();
 
         if (res && res.success && res.data) {
             try { sessionStorage.removeItem('rmaReloadGuard'); } catch (e) {}
-            content.innerHTML = res.data.html;
-            rebuildNav(res.data.categories, res.data.has_suggestions);
-            recalcNavOffset();
-            measureSections();
-            onScroll();
-            restoreSearchValue();
-            watchContentSize();
+            rmaOnbellegeYaz(anahtar, res.data);
+            sonucuBas(res.data);
             return;
         }
 

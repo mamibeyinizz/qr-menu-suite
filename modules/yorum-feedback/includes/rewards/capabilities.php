@@ -188,7 +188,10 @@ function qrm_reward_cap_kasiyer_notice() {
     qrm_reward_cap_notice_basildi(true);
 
     printf(
-        '<div class="notice notice-warning is-dismissible"><p>%s</p></div>',
-        esc_html__('QR Menü Suite: Kasiyer rolü otomatik olarak tespit edilemedi. Kasiyer kullanıcılarının ödül yönetimini kullanabilmesi için "qrm_manage_rewards" yetkisini uygun özel role manuel olarak atayın.', 'qrms')
+        '<div class="notice notice-info is-dismissible"><p><strong>%1$s</strong> %2$s <a href="%3$s">%4$s</a></p></div>',
+        esc_html__('Ödülleri şimdilik yalnız yöneticiler onaylayabilir.', 'qrms'),
+        esc_html__('Kasada çalışan personelin de müşteri ödüllerini onaylamasını istiyorsanız, onlara ayrı bir kullanıcı hesabı açın; kurulum yardımı için bizimle iletişime geçin. Tek başınıza yönetiyorsanız bu mesajı kapatabilirsiniz.', 'qrms'),
+        esc_url(admin_url('user-new.php')),
+        esc_html__('Personel hesabı ekle →', 'qrms')
     );
 }

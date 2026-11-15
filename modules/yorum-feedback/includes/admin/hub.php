@@ -34,8 +34,8 @@ function qrm_pro_admin_hub() {
     $notice = '';
     if (!$stats['table_ok']) {
         $notice = '<div class="notice notice-error"><p><strong>'
-            . esc_html__('Yorum tablosu veritabanında bulunamadı.', 'qrms') . '</strong> '
-            . esc_html__('Bu yüzden hiçbir yorum listelenemiyor. Genel Ayarlar sayfasından lisansı yeniden doğrulayın; sorun sürerse veritabanı kullanıcısının tablo oluşturma yetkisi olmayabilir.', 'qrms')
+            . esc_html__('Yorumlar şu an kaydedilemiyor.', 'qrms') . '</strong> '
+            . esc_html__('Kurulum tamamlanamamış. Sistem Ayarları › Genel sayfasında "Lisansı doğrula" düğmesine bir kez basın; sorun sürerse bizimle ya da hosting firmanızla iletişime geçin.', 'qrms')
             . '</p></div>';
     } else {
         $notice = qrm_pro_hub_empty_hint($stats, $cf_totals);

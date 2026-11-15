@@ -887,8 +887,8 @@ class QRMS_Analitik {
 		if ( ! $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $tablo ) ) ) {
 			$bulgu[] = array(
 				'tip'    => 'kritik',
-				'baslik' => __( 'Analitik tablosu veritabanında yok', 'qrms' ),
-				'mesaj'  => __( 'Tablo kurulamamış olabilir (veritabanı kullanıcısının tablo oluşturma yetkisi yoksa bu olur). Genel Ayarlar sayfasından lisansı yeniden doğrulayın; sorun sürerse hosting sağlayıcınıza danışın.', 'qrms' ),
+				'baslik' => __( 'İstatistikler kaydedilemiyor', 'qrms' ),
+				'mesaj'  => __( 'Kurulum tamamlanamamış. Sistem Ayarları › Genel sayfasında "Lisansı doğrula" düğmesine bir kez basın; sorun sürerse bizimle ya da hosting firmanızla iletişime geçin.', 'qrms' ),
 				'url'    => admin_url( 'admin.php?page=' . QRMS_Admin::SETTINGS_SLUG ),
 				'etiket' => __( 'Genel Ayarlar', 'qrms' ),
 			);
@@ -927,10 +927,10 @@ class QRMS_Analitik {
 
 			$bulgu[] = array(
 				'tip'    => 'uyari',
-				'baslik' => __( 'Kayıtların hiçbirinde masa bilgisi yok', 'qrms' ),
+				'baslik' => __( 'Hangi masadan bakıldığı henüz görünmüyor', 'qrms' ),
 				'mesaj'  => 0 === $kayitli
-					? __( 'QR Masa modülünde hiç masa tanımlı değil. Adreste ?masa=… olsa bile, kayıtlı olmayan bir masa güvenlik gereği yok sayılır ve hareket "Masasız" olarak yazılır. Önce masalarınızı oluşturun, sonra QR kodlarını o masalardan üretin.', 'qrms' )
-					: __( 'Masalarınız tanımlı ama gelen hareketlerin hiçbiri bir masaya bağlanamadı. Müşterilerin okuttuğu QR kodların adresinde ?masa=… parametresi olduğundan ve slug\'ın QR Masa\'daki masayla birebir aynı yazıldığından emin olun.', 'qrms' ),
+					? __( 'Menünüz görüntüleniyor ama henüz hiç masa oluşturmadınız. Masa bazlı rapor için QR Masa sayfasından masalarınızı ekleyin ve masalara o sayfadan indirdiğiniz QR kodlarını koyun.', 'qrms' )
+					: __( 'Masalarınız var ama misafirler menüye masa QR koduyla gelmiyor gibi görünüyor (örneğin genel bir QR ya da bağlantı kullanılıyor). Masalara QR Masa sayfasından indirdiğiniz, masaya özel QR kodlarını koyun; eski QR kodlarını kaldırın.', 'qrms' ),
 				'url'    => QRMS_Admin::get_module_page_url( 'qr-masa' ),
 				'etiket' => __( 'QR Masa\'yı aç', 'qrms' ),
 			);

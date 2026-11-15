@@ -373,6 +373,30 @@ class QRMS_Admin_Shell {
 				</header>
 				<div class="<?php echo esc_attr( $content_class ); ?>" id="qrms-shell-content">
 		<?php
+		self::render_yon_bilgisi();
+	}
+
+	/**
+	 * Genel bakış ve modül ana sayfalarında "Nereden başlamalıyım?" kutusu.
+	 *
+	 * @return void
+	 */
+	private static function render_yon_bilgisi() {
+		if ( ! class_exists( 'QRMS_Yon_Bilgisi' ) || ( class_exists( 'QRMS_SP_Rol' ) && QRMS_SP_Rol::yalniz_servis_mi() ) ) {
+			return;
+		}
+
+		$page = self::get_request_page();
+
+		if ( QRMS_Admin::MENU_SLUG === $page ) {
+			QRMS_Yon_Bilgisi::render( '_genel' );
+			return;
+		}
+
+		$modul = self::module_slug_for_hub_page( $page );
+		if ( '' !== $modul ) {
+			QRMS_Yon_Bilgisi::render( $modul );
+		}
 	}
 
 	/**

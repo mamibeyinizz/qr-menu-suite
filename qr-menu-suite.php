@@ -37,6 +37,7 @@ require_once QRMS_PLUGIN_DIR . 'includes/class-qrms-hata-sayfalari.php';
 require_once QRMS_PLUGIN_DIR . 'includes/class-acil-durum.php';
 require_once QRMS_PLUGIN_DIR . 'includes/class-tasima.php';
 require_once QRMS_PLUGIN_DIR . 'includes/class-ozellik-arama.php';
+require_once QRMS_PLUGIN_DIR . 'includes/class-yon-bilgisi.php';
 
 /**
  * Plugin bileşenlerinin hook'larını kaydeder.

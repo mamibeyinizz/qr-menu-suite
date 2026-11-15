@@ -51,7 +51,7 @@ function qrms_module_qr_galeri_init() {
 					array(
 						'name'    => 'section',
 						'default' => '',
-						'desc'    => __( 'Tek bir bölümü göstermek için bölümün slug\'ı. Boş bırakırsanız hepsi listelenir.', 'qrms' ),
+						'desc'    => __( 'Yalnız bir bölümü göstermek için bölümün kısa adı (ör. teras). Boş bırakırsanız hepsi listelenir.', 'qrms' ),
 					),
 					array(
 						'name'    => 'columns',

@@ -1307,3 +1307,9 @@
 .rma-ekstra-sec input { accent-color: var(--rma-accent, #c9a84c); height: 18px; width: 18px; }
 .rma-ekstra-ad { color: var(--rma-text, #f5f0e8); flex: 1; font-size: .85rem; min-width: 0; overflow-wrap: anywhere; }
 .rma-ekstra-fiyat { color: var(--rma-accent, #c9a84c); font-size: .82rem; font-weight: 700; flex-shrink: 0; }
+
+/* Arama/filtre yenilemesi: eski sonuçlar yerinde kalır, ancak gecikme uzarsa soluklaşır
+   (hızlı yanıtta hiç görünmez → titreme yok). */
+.rma-content { transition: opacity .18s ease; }
+.rma-content.rma-content--yenileniyor { opacity: .55; transition-delay: .15s; pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { .rma-content { transition: none; } }

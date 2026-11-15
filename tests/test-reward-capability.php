@@ -225,9 +225,9 @@ qrms_test(
 		qrm_reward_cap_kasiyer_notice();
 		$out = ob_get_clean();
 
-		qrms_assert_contains( 'notice-warning', $out, 'uyarı stiliyle basılır' );
-		qrms_assert_contains( 'qrm_manage_rewards', $out, 'hangi capability atanacağı açıkça belirtilir' );
-		qrms_assert_contains( 'Kasiyer', $out, 'Türkçe, anlaşılır metin' );
+		qrms_assert_contains( 'notice-info', $out, 'bilgi stiliyle basılır (hata değil)' );
+		qrms_assert_true( false === strpos( $out, 'qrm_manage_rewards' ), 'teknik yetki adı restoran sahibine gösterilmez' );
+		qrms_assert_contains( 'Personel hesabı ekle', $out, 'ne yapılacağını söyleyen bağlantı' );
 	}
 );
 

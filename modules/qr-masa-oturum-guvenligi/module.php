@@ -93,7 +93,7 @@ function qrms_module_qr_masa_oturum_guvenligi_sayfalar() {
 		QRMS_GUVENLIK_FIREBASE_SAYFA => array(
 			'title'  => __( 'Firebase & Şube Ayarları', 'qrms' ),
 			'render' => 'qmo_analiz_ayar_sayfasi',
-			'desc'   => __( 'Uygulamanın (müdür/garson paneli) kullandığı REST uçlarının yapılandırması.', 'qrms' ),
+			'desc'   => __( 'Müdür ve garson mobil uygulamasının bağlantı ayarları. Uygulama kullanmıyorsanız dokunmanıza gerek yok.', 'qrms' ),
 			'icon'   => 'dashicons-admin-generic',
 		),
 	);
