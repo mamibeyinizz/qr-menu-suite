@@ -1643,7 +1643,7 @@ body:has(.hfb-footer__call-wrap .hfb-footer__call--warn):not(.wp-admin) {
   align-items: center;
   box-sizing: border-box;
 }
-.hfb-footer-wrap .hfb-footer__contact { display: inline-flex; }
+.hfb-footer-wrap .hfb-footer__contact { display: flex; width: fit-content; max-width: 100%; }
 
 /* Yuvarlak ikonlar 36px görünür kalır; çevresindeki görünmez pay ile dokunma alanı 44px. */
 .hfb-footer-wrap .hfb-social__link,
