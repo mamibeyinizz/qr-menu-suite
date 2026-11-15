@@ -97,10 +97,11 @@ body.qrms-premium-shell-active #qrms-shell-content label:has(> input[type="check
 body.qrms-premium-shell-active #qrms-shell :is(a, a:hover, a:focus, a:active, a:visited) {
 	text-decoration: none;
 }
-body.qrms-premium-shell-active #qrms-shell-content a:not(.button):not([class*="btn"]):not([class*="card"]):not([class*="onizleme"] *) {
+/* Renk yalnız düz metin bağlantılarına: düğme gibi boyanmış bağlantıların (Ürün Ekle, sekmeler) yazı rengine dokunulmaz. */
+body.qrms-premium-shell-active #qrms-shell-content :is(p, li:not(.subsubsub li):not([class*="tab"]), td, .description, label, .notice) > a:not(.button):not([class*="btn"]):not([class*="card"]):not([class*="action"]) {
 	font-weight: 600; color: var(--qa-link);
 }
-body.qrms-premium-shell-active #qrms-shell-content a:not(.button):not([class*="btn"]):not([class*="card"]):hover { color: var(--qa-gold-ink); }
+body.qrms-premium-shell-active #qrms-shell-content :is(p, li:not(.subsubsub li):not([class*="tab"]), td, .description, label, .notice) > a:not(.button):not([class*="btn"]):not([class*="card"]):not([class*="action"]):hover { color: var(--qa-gold-ink); }
 
 /* 8 — Buton (en az 44px dokunma hedefi) */
 body.qrms-premium-shell-active #qrms-shell-content :is(.button, button:not([class*="dashicons"]):not(.notice-dismiss):not([aria-hidden="true"]), input[type="submit"], input[type="button"], [class*="-btn"]:is(a, button)):not([class*="onizleme"] *):not([class*="preview"] *):not(.wp-color-result):not(.qrms-oz__kapat) {
@@ -110,7 +111,7 @@ body.qrms-premium-shell-active #qrms-shell-content :is(.button, button:not([clas
 body.qrms-premium-shell-active #qrms-shell-content .button { padding-inline: 16px; }
 
 /* 11 — Üst etiket */
-body.qrms-premium-shell-active :is(.qrms-shell__breadcrumb, #qrms-shell-content th, #qrms-shell-content [class*="stat-label"], #qrms-shell-content [class*="card-label"], #qrms-shell-content [class*="eyebrow"]):not([class*="onizleme"] *) {
+body.qrms-premium-shell-active :is(.qrms-shell__breadcrumb, #qrms-shell-content thead th, #qrms-shell-content tfoot th, #qrms-shell-content [class*="stat-label"], #qrms-shell-content [class*="card-label"], #qrms-shell-content [class*="eyebrow"]):not([class*="onizleme"] *) {
 	font-size: var(--qa-fs-ust); font-weight: 700; line-height: 1.3; letter-spacing: 0.08em; text-transform: uppercase; color: var(--qa-ink-soft);
 }
 
@@ -118,8 +119,6 @@ body.qrms-premium-shell-active :is(.qrms-shell__breadcrumb, #qrms-shell-content 
 body.qrms-premium-shell-active #qrms-shell-content :is(.row-actions a, .wp-list-table td a, .wp-list-table th a, .qrms-hub-links a, .subsubsub a, .tablenav a, .qrms-back-link, [class*="links"] a, .qrms-tab, [class*="modnav"] a, .qrms-subpage a) {
 	display: inline-flex; align-items: center; min-height: 44px;
 }
-body.qrms-premium-shell-active #qrms-shell-content :is(input[type="checkbox"], input[type="radio"]) { width: 22px; height: 22px; }
-body.qrms-premium-shell-active #qrms-shell-content .check-column { min-width: 44px; }
 body.qrms-premium-shell-active #qrms-shell-content .check-column :is(label, input) { cursor: pointer; }
 
 /* Sayılar */
@@ -140,7 +139,7 @@ body.qrms-premium-shell-active #qrms-shell-content [class*="link-external"] { fo
 body.qrms-premium-shell-active #qrms-shell-content .qrae-label { font-size: var(--qa-fs-etiket); font-weight: 600; }
 
 /* Dokunma hedefleri (ek): sekmeler, tablo bağlantıları, yön adımları, önizleme kontrolleri. */
-body.qrms-premium-shell-active #qrms-shell-content :is(.nav-tab, table a:not(.button), .qrms-yon__link, .hfb-preview__mode-btn, .hfb-preview__open-panel, .hfb-preview__refresh, [class*="sayfa"]:is(a, button)) {
+body.qrms-premium-shell-active #qrms-shell-content :is(.nav-tab, table a:not(.button), .hfb-preview__mode-btn, .hfb-preview__open-panel, .hfb-preview__refresh, [class*="sayfa"]:is(a, button)) {
 	display: inline-flex; align-items: center; min-height: 44px; box-sizing: border-box;
 }
 /* Metin içi bağlantılar: satır düzenini bozmadan dokunma alanı büyür. */
@@ -155,3 +154,6 @@ body.qrms-premium-shell-active #qrms-shell-content :is(.wp-picker-container .wp-
 body.qrms-premium-shell-active #qrms-shell-content :is(summary, [class*="aksiyon-metin"]):not([class*="onizleme"] *) { font-size: var(--qa-fs-yardim); }
 body.qrms-premium-shell-active #qrms-shell-content summary { min-height: 44px; display: flex; align-items: center; }
 body.qrms-premium-shell-active #qrms-shell-content summary.qrms-yon__baslik { display: flex; }
+
+/* Yön adımı: ok metinle aynı satırda kalsın (inline-flex oku ayırıyordu). */
+body.qrms-premium-shell-active #qrms-shell-content .qrms-yon__link { display: inline; padding-block: 11px; }
