@@ -1632,3 +1632,29 @@ body:has(.hfb-footer__call-wrap .hfb-footer__call--warn):not(.wp-admin) {
     animation: none;
   }
 }
+
+/* Dokunma hedefleri (en az 44px): müşteri telefonda menü bağlantısına, telefona ve
+   e-postaya parmakla rahat basabilsin. Görsel boyut korunur; yükseklik dikey dolgu ile
+   gelir, aradaki boşluk bu yüzden 0'a iner (liste görsel olarak yine aynı aralıkta). */
+.hfb-footer-wrap .hfb-footer__menu { gap: 0; }
+.hfb-footer-wrap .hfb-footer__menu a,
+.hfb-footer-wrap .hfb-footer__contact {
+  min-height: 44px;
+  align-items: center;
+  box-sizing: border-box;
+}
+.hfb-footer-wrap .hfb-footer__contact { display: inline-flex; }
+
+/* Yuvarlak ikonlar 36px görünür kalır; çevresindeki görünmez pay ile dokunma alanı 44px. */
+.hfb-footer-wrap .hfb-social__link,
+.hfb-header-wrap .hfb-social__link { position: relative; }
+.hfb-footer-wrap .hfb-social__link::after,
+.hfb-header-wrap .hfb-social__link::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+}
+/* Dil düğmesi (36px görünüm) için aynı görünmez pay. İkonlar arası 8px boşluk payları çakıştırmaz. */
+.hfb-header-wrap .qrmenu-current-btn { position: relative; }
+.hfb-header-wrap .qrmenu-current-btn::after { content: ""; position: absolute; inset: -4px; border-radius: 8px; }
