@@ -52,6 +52,22 @@ class QRMS_Admin_Shell {
 			'The description is not prominent by default; however, some themes may show it.' => __( 'İsteğe bağlı kısa açıklama; menüde kategori başlığının altında görünebilir.', 'qrms' ),
 		);
 
+		// WordPress 6.6+: açıklamalar taksonomi etiketlerinden basılır (kayıtta çevrilmiş olur).
+		$tax_nesne = get_taxonomy( $tax );
+		if ( $tax_nesne && isset( $tax_nesne->labels ) ) {
+			$etiket = array(
+				'name_field_description'   => 'The name is how it appears on your site.',
+				'slug_field_description'   => 'The &#8220;slug&#8221; is the URL-friendly version of the name. It is usually all lowercase and contains only letters, numbers, and hyphens.',
+				'parent_field_description' => 'Assign a parent term to create a hierarchy. The term Jazz, for example, would be the parent of Bebop and Big Band.',
+				'desc_field_description'   => 'The description is not prominent by default; however, some themes may show it.',
+			);
+			foreach ( $etiket as $alan => $asil ) {
+				if ( property_exists( $tax_nesne->labels, $alan ) ) {
+					$tax_nesne->labels->{$alan} = $metin[ $asil ];
+				}
+			}
+		}
+
 		add_filter(
 			'gettext',
 			function ( $ceviri, $asil, $alan ) use ( $metin ) {
