@@ -159,7 +159,7 @@ body.qrms-premium-shell-active #qrms-shell-content summary.qrms-yon__baslik { di
 body.qrms-premium-shell-active #qrms-shell-content .qrms-yon__link { display: inline; padding-block: 11px; }
 
 /* Liste tablosu bağlantıları marka renginde (WordPress mavisi değil). */
-body.qrms-premium-shell-active #qrms-shell-content :is(.wp-list-table, .subsubsub, .tablenav) a:not(.button):not([class*="btn"]) { color: var(--qa-link); }
-body.qrms-premium-shell-active #qrms-shell-content :is(.wp-list-table, .subsubsub) a:not(.button):not([class*="btn"]):hover { color: var(--qa-gold-ink); }
+body.qrms-premium-shell-active #qrms-shell-content :is(.wp-list-table, .subsubsub, .tablenav) a:not(.button):not([class*="btn"]):not(.current):not([aria-current]) { color: var(--qa-link); }
+body.qrms-premium-shell-active #qrms-shell-content :is(.wp-list-table, .subsubsub) a:not(.button):not([class*="btn"]):not(.current):not([aria-current]):hover { color: var(--qa-gold-ink); }
 body.qrms-premium-shell-active #qrms-shell-content .wp-list-table .row-title { font-size: var(--qa-fs-govde); font-weight: 700; }
 body.qrms-premium-shell-active #qrms-shell-content .tablenav-pages a.button { color: var(--qa-link); border-color: #c9cfca; }
