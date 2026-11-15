@@ -163,6 +163,10 @@
 	gap: 6px;
 }
 
+.qmo-wrap .qmo-edit-form[hidden] {
+	display: none;
+}
+
 .qmo-wrap .qmo-edit-input {
 	max-width: 220px;
 	min-width: 0;

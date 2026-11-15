@@ -133,9 +133,21 @@ if ( ! function_exists( 'qmo_masalar_sayfasi' ) ) {
 					<button type="button" class="qmo-chip is-active" data-grup="">
 						Tümü <span class="qmo-chip-sayi"><?php echo (int) count( $masalar ); ?></span>
 					</button>
+					<?php
+					// Çipte adresteki biçim ("bahce") yerine masanın görünen adı ("Bahçe") yazılır:
+					// gruptaki ilk masanın adından sondaki numara atılır.
+					$grup_etiket = array();
+					foreach ( (array) $masalar as $t ) {
+						$g = isset( $t->table_slug ) ? QMO_Masalar::grup_adi( (string) $t->table_slug ) : '';
+						if ( '' !== $g && ! isset( $grup_etiket[ $g ] ) && ! empty( $t->table_name ) ) {
+							$ad = trim( preg_replace( '/[\s\-_]*\d+$/u', '', (string) $t->table_name ) );
+							$grup_etiket[ $g ] = '' !== $ad ? $ad : $g;
+						}
+					}
+					?>
 					<?php foreach ( $gruplar as $grup => $adet ) : ?>
 						<button type="button" class="qmo-chip" data-grup="<?php echo esc_attr( $grup ); ?>">
-							<?php echo esc_html( $grup ); ?> <span class="qmo-chip-sayi"><?php echo (int) $adet; ?></span>
+							<?php echo esc_html( isset( $grup_etiket[ $grup ] ) ? $grup_etiket[ $grup ] : $grup ); ?> <span class="qmo-chip-sayi"><?php echo (int) $adet; ?></span>
 						</button>
 					<?php endforeach; ?>
 				</div>

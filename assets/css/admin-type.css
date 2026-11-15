@@ -231,3 +231,6 @@ body.qrms-premium-shell-active #qrms-shell-content #search-submit {
 	background: var(--qrms-shell-forest, #0d2b22); border-color: var(--qrms-shell-forest, #0d2b22); color: #fff;
 }
 body.qrms-premium-shell-active #qrms-shell-content #search-submit:hover { background: #173226; border-color: #173226; color: #fff; }
+
+/* [hidden] her zaman kazanır: display veren modül/ölçek kuralları gizli öğeyi açmasın. */
+body.qrms-premium-shell-active #qrms-shell-content [hidden] { display: none !important; }
