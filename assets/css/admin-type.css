@@ -1,0 +1,132 @@
+/**
+ * QR Menu Suite — panel tipografi ölçeği (tek kaynak).
+ *
+ * Tüm modüller aynı 11 rolü kullanır; boyut ve kalınlık büyükten küçüğe iner.
+ * Kapsam: premium panel içeriği (#qrms-shell-content) ve başlık şeridi.
+ * Kapsam dışı: önizleme/maket alanları ([class*="onizleme"], [class*="preview"]).
+ *
+ * Roller (masaüstü / mobil ≤782, kalınlık, satır aralığı):
+ *  1 Sayfa başlığı  h1 (yalnız panel)   26 / 22  800  1.2
+ *  2 Metrik sayı    span                24 / 22  800  1.1  tabular
+ *  3 Bölüm başlığı  h2                  20 / 18  700  1.3
+ *  4 Kart başlığı   h3                  17 / 16  700  1.35
+ *  5 Alt başlık     h4–h6               15       700  1.4
+ *  6 Gövde          p, li               15       400  1.55
+ *  7 Form alanı     input/select        16       400  1.4
+ *  8 Buton                              14 / 15  700  1.2  ≥44px
+ *  9 Etiket/bağlantı label, a           14       600  1.4
+ * 10 Yardımcı       açıklama, hücre     13       400  1.45
+ * 11 Üst etiket     breadcrumb, th      12       700  1.3  BÜYÜK HARF .08em
+ */
+
+@font-face { font-family: "Manrope"; font-style: normal; font-weight: 200 800; font-display: swap; src: url("../fonts/manrope-var-latin-ext.woff2") format("woff2"); unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+@font-face { font-family: "Manrope"; font-style: normal; font-weight: 200 800; font-display: swap; src: url("../fonts/manrope-var-latin.woff2") format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+
+body.qrms-premium-shell-active {
+	--qa-font: "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
+	--qa-fs-sayfa: 26px;  --qa-fs-metrik: 24px; --qa-fs-bolum: 20px; --qa-fs-kart: 17px;
+	--qa-fs-alt: 15px;    --qa-fs-govde: 15px;  --qa-fs-alan: 16px;  --qa-fs-buton: 14px;
+	--qa-fs-etiket: 14px; --qa-fs-yardim: 13px; --qa-fs-ust: 12px;
+	--qa-ink: #16231d;
+	--qa-ink-soft: #4b5a52;
+	--qa-gold-ink: #7f6419;
+	--qa-link: #173226;
+	font-family: var(--qa-font);
+}
+@media (max-width: 782px) {
+	body.qrms-premium-shell-active {
+		--qa-fs-sayfa: 22px; --qa-fs-metrik: 22px; --qa-fs-bolum: 18px; --qa-fs-kart: 16px; --qa-fs-buton: 15px;
+	}
+}
+
+/* Yazı tipi: panelin tamamı Manrope (ikon fontları ve kod hariç). */
+body.qrms-premium-shell-active #qrms-shell :is(div, p, span, a, li, label, td, th, h1, h2, h3, h4, h5, h6, strong, b, em, small, summary, legend, button, input, select, textarea, option):not(.dashicons):not([class*="dashicons-"]):not([class^="ab-"]):not([class*="onizleme"] *):not([class*="preview"] *):not(.qrms-lp *) {
+	font-family: var(--qa-font);
+}
+
+/* 1 — Sayfa başlığı */
+body.qrms-premium-shell-active .qrms-shell__title {
+	font-size: var(--qa-fs-sayfa); font-weight: 800; line-height: 1.2; letter-spacing: -0.01em; color: var(--qa-ink);
+}
+
+/* Modülün kendi H1'i panel başlığının tekrarıdır: görünmez (erişilebilirlik ağacında zaten gizliydi). */
+body.qrms-premium-shell-active #qrms-shell-content .qrms-baslik-tekrar { display: none !important; }
+
+/* 2 — Metrik sayı */
+body.qrms-premium-shell-active #qrms-shell-content :is(.qrms-hub-stat-value, .qrms-stat-value, .qrms-an-card-value, .qrm-score-value, .qrms-mm-kutu-sayi, .qrms-detail-value) {
+	font-size: var(--qa-fs-metrik); font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums; color: var(--qa-ink);
+}
+
+/* 3–5 — Başlıklar (seviyeler sunucuda sıraya sokulur; bkz. QRMS_Admin_Shell::basliklari_duzenle) */
+body.qrms-premium-shell-active #qrms-shell-content h2:not([class*="onizleme"] *):not([class*="preview"] *) {
+	font-size: var(--qa-fs-bolum); font-weight: 700; line-height: 1.3; letter-spacing: -0.005em; text-transform: none; color: var(--qa-ink); text-wrap: balance;
+}
+body.qrms-premium-shell-active #qrms-shell-content h3:not([class*="onizleme"] *):not([class*="preview"] *) {
+	font-size: var(--qa-fs-kart); font-weight: 700; line-height: 1.35; letter-spacing: 0; text-transform: none; color: var(--qa-ink); text-wrap: balance;
+}
+body.qrms-premium-shell-active #qrms-shell-content :is(h4, h5, h6):not([class*="onizleme"] *):not([class*="preview"] *) {
+	font-size: var(--qa-fs-alt); font-weight: 700; line-height: 1.4; letter-spacing: 0; text-transform: none; color: var(--qa-ink);
+}
+
+/* 6 — Gövde */
+body.qrms-premium-shell-active #qrms-shell-content :is(p, li, dd):not([class*="onizleme"] *):not([class*="preview"] *) {
+	font-size: var(--qa-fs-govde); font-weight: 400; line-height: 1.55; text-wrap: pretty;
+}
+
+/* 10 — Yardımcı metin (açıklama, ipucu, tablo hücresi) */
+body.qrms-premium-shell-active #qrms-shell-content :is(.description, [class*="-desc"], [class*="-hint"], [class*="muted"], [class*="aciklama"], small, td, .qrms-overview-group-count, .qrms-overview-state):not([class*="onizleme"] *):not([class*="preview"] *) {
+	font-size: var(--qa-fs-yardim); line-height: 1.45;
+}
+body.qrms-premium-shell-active #qrms-shell-content :is(.description, [class*="-desc"], [class*="-hint"], [class*="muted"], [class*="aciklama"], small) {
+	font-weight: 400; color: var(--qa-ink-soft);
+}
+
+/* 7 — Form alanı (16px: iOS yakınlaştırmasını önler) */
+body.qrms-premium-shell-active #qrms-shell-content :is(input[type="text"], input[type="search"], input[type="email"], input[type="url"], input[type="tel"], input[type="number"], input[type="password"], input[type="date"], input[type="time"], select, textarea):not([class*="onizleme"] *) {
+	font-size: var(--qa-fs-alan); font-weight: 400; line-height: 1.4; min-height: 44px;
+}
+body.qrms-premium-shell-active #qrms-shell-content textarea { min-height: 88px; }
+
+/* 9 — Etiket ve bağlantı */
+body.qrms-premium-shell-active #qrms-shell-content label:not([class*="onizleme"] *):not(.screen-reader-text):not(.qrms-shell__sr-only) {
+	font-size: var(--qa-fs-etiket); font-weight: 600; line-height: 1.4;
+}
+body.qrms-premium-shell-active #qrms-shell-content label:has(> input[type="checkbox"], > input[type="radio"]) {
+	font-size: var(--qa-fs-govde); font-weight: 400;
+}
+body.qrms-premium-shell-active #qrms-shell :is(a, a:hover, a:focus, a:active, a:visited) {
+	text-decoration: none;
+}
+body.qrms-premium-shell-active #qrms-shell-content a:not(.button):not([class*="btn"]):not([class*="card"]):not([class*="onizleme"] *) {
+	font-weight: 600; color: var(--qa-link);
+}
+body.qrms-premium-shell-active #qrms-shell-content a:not(.button):not([class*="btn"]):not([class*="card"]):hover { color: var(--qa-gold-ink); }
+
+/* 8 — Buton (en az 44px dokunma hedefi) */
+body.qrms-premium-shell-active #qrms-shell-content :is(.button, button:not([class*="dashicons"]):not(.notice-dismiss):not([aria-hidden="true"]), input[type="submit"], input[type="button"], [class*="-btn"]:is(a, button)):not([class*="onizleme"] *):not([class*="preview"] *):not(.wp-color-result):not(.qrms-oz__kapat) {
+	font-size: var(--qa-fs-buton); font-weight: 700; line-height: 1.2; min-height: 44px;
+	display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box;
+}
+body.qrms-premium-shell-active #qrms-shell-content .button { padding-inline: 16px; }
+
+/* 11 — Üst etiket */
+body.qrms-premium-shell-active :is(.qrms-shell__breadcrumb, #qrms-shell-content th, #qrms-shell-content [class*="stat-label"], #qrms-shell-content [class*="card-label"], #qrms-shell-content [class*="eyebrow"]):not([class*="onizleme"] *) {
+	font-size: var(--qa-fs-ust); font-weight: 700; line-height: 1.3; letter-spacing: 0.08em; text-transform: uppercase; color: var(--qa-ink-soft);
+}
+
+/* Dokunma hedefleri: liste tablosu ve kart bağlantıları */
+body.qrms-premium-shell-active #qrms-shell-content :is(.row-actions a, .wp-list-table td a, .wp-list-table th a, .qrms-hub-links a, .subsubsub a, .tablenav a, .qrms-back-link, [class*="links"] a, .qrms-tab, [class*="modnav"] a, .qrms-subpage a) {
+	display: inline-flex; align-items: center; min-height: 44px;
+}
+body.qrms-premium-shell-active #qrms-shell-content :is(input[type="checkbox"], input[type="radio"]) { width: 22px; height: 22px; }
+body.qrms-premium-shell-active #qrms-shell-content .check-column { min-width: 44px; }
+body.qrms-premium-shell-active #qrms-shell-content .check-column :is(label, input) { cursor: pointer; }
+
+/* Sayılar */
+body.qrms-premium-shell-active #qrms-shell-content :is(td, [class*="sayi"], [class*="count"], [class*="price"], [class*="fiyat"]) { font-variant-numeric: tabular-nums; }
+
+/* Ekrandan kaldırılan ama ekran okuyucuda kalan başlıklar (modül stilleri ezmesin). */
+body.qrms-premium-shell-active #qrms-shell-content .qrms-shell__sr-only {
+	position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; margin: -1px !important;
+	border: 0 !important; overflow: hidden !important; clip: rect(0, 0, 0, 0) !important; white-space: nowrap !important;
+}

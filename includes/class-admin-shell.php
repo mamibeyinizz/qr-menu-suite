@@ -227,6 +227,15 @@ class QRMS_Admin_Shell {
 
 		wp_add_inline_style( 'qrms-admin-shell', self::chrome_hide_css() );
 
+		// Tek tipografi ölçeği: modül stillerinden SONRA yüklenir (bağımlılık değil, admin_print_styles sırası).
+		wp_enqueue_style(
+			'qrms-admin-type',
+			QRMS_PLUGIN_URL . 'assets/css/admin-type.css',
+			array( 'qrms-admin-shell' ),
+			QRMS_Helpers::asset_version( 'assets/css/admin-type.css' )
+		);
+		add_action( 'admin_head', array( __CLASS__, 'font_preload' ), 1 );
+
 		wp_enqueue_script(
 			'qrms-admin-shell',
 			QRMS_PLUGIN_URL . 'assets/js/admin-shell.js',
@@ -374,6 +383,138 @@ class QRMS_Admin_Shell {
 				<div class="<?php echo esc_attr( $content_class ); ?>" id="qrms-shell-content">
 		<?php
 		self::render_yon_bilgisi();
+
+		self::$sayfa_basligi = (string) $header['title'];
+		if ( apply_filters( 'qrms_panel_baslik_duzeni', true ) ) {
+			ob_start();
+			self::$tampon_seviyesi = ob_get_level();
+		}
+	}
+
+	/**
+	 * Panel başlığı (render_close'da tekrar eden H1'i tanımak için).
+	 *
+	 * @var string
+	 */
+	private static $sayfa_basligi = '';
+
+	/**
+	 * render_open'ın açtığı çıktı tamponunun seviyesi (0: açılmadı).
+	 *
+	 * @var int
+	 */
+	private static $tampon_seviyesi = 0;
+
+	/**
+	 * Manrope'u erken yükler (Türkçe harfler latin-ext dosyasından gelir).
+	 *
+	 * @return void
+	 */
+	public static function font_preload() {
+		foreach ( array( 'manrope-var-latin.woff2', 'manrope-var-latin-ext.woff2' ) as $dosya ) {
+			printf( '<link rel="preload" href="%s" as="font" type="font/woff2" crossorigin>' . "\n", esc_url( QRMS_PLUGIN_URL . 'assets/fonts/' . $dosya ) );
+		}
+	}
+
+	/**
+	 * Sayfa içeriğindeki başlıkları tek hiyerarşiye sokar.
+	 *
+	 * - Tek H1 paneldedir: içerikteki H1, panel başlığıyla aynıysa gizlenir
+	 *   (.qrms-baslik-tekrar), farklıysa H2 olur.
+	 * - Seviye atlanmaz: bir başlık, öncekinden en fazla bir seviye derin olabilir (H1→H3 ⇒ H2).
+	 * - Boş başlıklar (metinsiz) başlık olmaktan çıkar (div).
+	 * - Sayfanın ilk başlığı panel başlığını tekrar ediyorsa gizlenir.
+	 * - Önizleme/maket alanları ile script/template/textarea içerikleri dokunulmaz.
+	 *
+	 * @param string $html İçerik.
+	 * @param string $baslik Panel başlığı.
+	 * @return string
+	 */
+	public static function basliklari_duzenle( $html, $baslik ) {
+		if ( '' === $html || false === stripos( $html, '<h' ) ) {
+			return $html;
+		}
+
+		$katla = function ( $t ) {
+			$t = html_entity_decode( wp_strip_all_tags( (string) $t ), ENT_QUOTES, 'UTF-8' );
+			$t = preg_replace( '/[^\p{L}\p{N}]+/u', ' ', $t );
+			return trim( function_exists( 'mb_strtolower' ) ? mb_strtolower( $t, 'UTF-8' ) : strtolower( $t ) );
+		};
+
+		$hedef  = $katla( $baslik );
+		$onceki = 1;
+		$ilk    = true;
+
+		// Dokunulmayacak bloklar parçalara ayrılır; yalnız çift indeksli parçalar işlenir.
+		$parcalar = preg_split( '#(<(script|template|textarea|style)\b[^>]*>.*?</\2>)#is', $html, -1, PREG_SPLIT_DELIM_CAPTURE );
+		if ( ! is_array( $parcalar ) ) {
+			return $html;
+		}
+
+		$sonuc = '';
+		$adet  = count( $parcalar );
+		for ( $i = 0; $i < $adet; $i++ ) {
+			$p = $parcalar[ $i ];
+			// DELIM_CAPTURE: [metin, blok, etiket-adı, metin, blok, etiket-adı, ...].
+			if ( 1 === $i % 3 ) {
+				$sonuc .= $p;
+				continue;
+			}
+			if ( 2 === $i % 3 ) {
+				continue;
+			}
+
+			$sonuc .= preg_replace_callback(
+				'#<h([1-6])(\s[^>]*)?>(.*?)</h\1\s*>#is',
+				function ( $m ) use ( $katla, $hedef, &$onceki, &$ilk ) {
+					$seviye = (int) $m[1];
+					$ozn    = isset( $m[2] ) ? (string) $m[2] : '';
+					$ic     = $m[3];
+
+					if ( preg_match( '/class\s*=\s*["\'][^"\']*(onizleme|preview|qrms-lp-)/i', $ozn ) ) {
+						return $m[0];
+					}
+
+					$metin = $katla( $ic );
+
+					if ( '' === $metin ) {
+						return '<div' . $ozn . '>' . $ic . '</div>';
+					}
+
+					$gizle = function ( $ozn ) {
+						if ( preg_match( '/class\s*=\s*(["\'])/i', $ozn ) ) {
+							return preg_replace( '/class\s*=\s*(["\'])/i', 'class=$1qrms-baslik-tekrar ', $ozn, 1 );
+						}
+						return $ozn . ' class="qrms-baslik-tekrar"';
+					};
+
+					if ( 1 === $seviye ) {
+						if ( '' !== $hedef && ( $metin === $hedef || false !== strpos( $ozn, 'aria-hidden' ) ) ) {
+							return '<div' . $gizle( $ozn ) . '>' . $ic . '</div>';
+						}
+						$seviye = 2;
+					}
+
+					$seviye = max( 2, min( $seviye, $onceki + 1 ) );
+					$onceki = $seviye;
+
+					// İlk bölüm başlığı panel başlığını tekrar ediyorsa ekrandan kalkar ama
+					// ekran okuyucu için yerinde durur (alttaki kartların seviyesi bozulmasın).
+					if ( $ilk && '' !== $hedef && $metin === $hedef ) {
+						$ilk = false;
+						$ozn = preg_match( '/class\s*=\s*["\']/i', $ozn )
+							? preg_replace( '/class\s*=\s*(["\'])/i', 'class=$1qrms-shell__sr-only ', $ozn, 1 )
+							: $ozn . ' class="qrms-shell__sr-only"';
+					}
+					$ilk = false;
+
+					return '<h' . $seviye . $ozn . '>' . $ic . '</h' . $seviye . '>';
+				},
+				$p
+			);
+		}
+
+		return $sonuc;
 	}
 
 	/**
@@ -450,6 +591,11 @@ class QRMS_Admin_Shell {
 	public static function render_close() {
 		if ( ! self::is_active() ) {
 			return;
+		}
+
+		if ( self::$tampon_seviyesi > 0 && ob_get_level() === self::$tampon_seviyesi ) {
+			self::$tampon_seviyesi = 0;
+			echo self::basliklari_duzenle( (string) ob_get_clean(), self::$sayfa_basligi ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- zaten basılmış sayfa çıktısı.
 		}
 		?>
 				</div>

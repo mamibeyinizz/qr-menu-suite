@@ -3183,7 +3183,7 @@ a.rma-vitrin-step-btn:focus {
 }
 
 .rma-kb-sablon-metin {
-    font-family: Georgia, 'Times New Roman', serif;
+    font-family: inherit;
     font-size: 20px;
 }
 

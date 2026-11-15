@@ -2066,7 +2066,7 @@ qrms_test(
 
 		$css = file_get_contents( QRMS_PLUGIN_DIR . 'modules/restoran-menu/assets/css/hub.css' );
 		qrms_assert_contains( '.rma-hub .qrms-hub-group-title', $css, 'grup başlığı kuralı' );
-		qrms_assert_contains( 'font-family: Georgia, "Times New Roman", serif;', $css, 'serif marka fontu' );
+		qrms_assert_true( false === strpos( $css, "Georgia" ), "serif yok: panel tek yazı tipi (Manrope) kullanır" );
 		qrms_assert_contains( 'color: var(--qrms-rm-forest);', $css, 'forest ink rengi' );
 		qrms_assert_contains( 'rgba(201, 168, 76,', $css, 'ayırıcıda muted gold tonu' );
 		qrms_assert_contains( '.rma-hub .qrms-hub-group-title:first-of-type', $css, 'ilk grupta fazla boşluk yok' );

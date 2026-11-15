@@ -148,7 +148,7 @@
 .rma-hub .qrms-hub-group-title {
 	border-bottom: 1px solid rgba(201, 168, 76, 0.28);
 	color: var(--qrms-rm-forest);
-	font-family: Georgia, "Times New Roman", serif;
+	font-family: inherit;
 	font-size: 20px;
 	font-weight: 600;
 	letter-spacing: -0.01em;
