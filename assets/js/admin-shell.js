@@ -462,6 +462,7 @@
 		var seritler = document.querySelectorAll('#qrms-shell-content .qrms-modnav, #qrms-shell-content .nav-tab-wrapper');
 		Array.prototype.forEach.call(seritler, function (s) {
 			var guncelle = function () {
+				s.classList.toggle('is-tasiyor', s.scrollWidth > s.clientWidth + 4);
 				s.classList.toggle('is-sonda', s.scrollLeft + s.clientWidth >= s.scrollWidth - 4);
 			};
 			var aktif = s.querySelector('.is-current, .nav-tab-active, [aria-current]');
@@ -470,6 +471,7 @@
 			}
 			guncelle();
 			s.addEventListener('scroll', guncelle, { passive: true });
+			window.addEventListener('resize', guncelle, { passive: true });
 		});
 	}
 	if (document.readyState === 'loading') {

@@ -182,12 +182,12 @@ body.qrms-premium-shell-active #qrms-shell-content .tablenav-pages a.button { co
 	body.qrms-premium-shell-active #qrms-shell-content .qrms-hub-stats-row-items { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
 	/* Kaydırılan sekme şeritleri: sağ kenarda solma = "devamı var" ipucu. */
-	body.qrms-premium-shell-active #qrms-shell-content :is(.qrms-modnav, .nav-tab-wrapper, [class*="subtabs"], [class*="tabs"]):not(.qrms-oz *) {
-		overflow-x: auto; scrollbar-width: none; scroll-snap-type: x proximity;
+	/* Solma yalnız gerçekten taşan şeritte (JS .is-tasiyor ekler); alt satıra geçen sekme grupları soluklaşmaz. */
+	body.qrms-premium-shell-active #qrms-shell-content .is-tasiyor:not(.is-sonda) {
 		-webkit-mask-image: linear-gradient(90deg, #000 82%, transparent);
 		mask-image: linear-gradient(90deg, #000 82%, transparent);
 	}
-	body.qrms-premium-shell-active #qrms-shell-content :is(.qrms-modnav, .nav-tab-wrapper).is-sonda { -webkit-mask-image: none; mask-image: none; }
+	body.qrms-premium-shell-active #qrms-shell-content :is(.qrms-modnav, .nav-tab-wrapper) { scrollbar-width: none; scroll-snap-type: x proximity; }
 	body.qrms-premium-shell-active #qrms-shell-content .qrms-modnav > * { scroll-snap-align: start; flex: none; }
 }
 @media (max-width: 359px) {
