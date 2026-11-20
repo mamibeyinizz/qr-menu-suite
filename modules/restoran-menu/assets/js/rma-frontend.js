@@ -36,7 +36,7 @@ var state = {
 
 var wrap, filterTrigger, filterBadge, chipBar,
     panelOverlay, panelSheet,
-    nav, navWrapper, content, loader, modal, modalBox;
+    nav, navWrapper, navBlur, content, loader, modal, modalBox;
 
 // Panel açılmadan önce odakta olan öğe: kapanışta odak oraya döner.
 var panelLastFocus = null;
@@ -205,10 +205,24 @@ function updateNavHeightVar() {
     document.documentElement.style.setProperty('--rma-nav-h', navHeight() + 'px');
 }
 
+/*
+ * Bulanık arka plan KAYAN nav'ın üstünde değil, kardeş bir katmanda durur.
+ * iOS WebKit, yatay kaydırılan bir öğenin kendi üzerindeki backdrop-filter'ı
+ * çocuklarına da uygular: kategori butonları silinir, geriye yalnızca aktif
+ * butonun bulanık altın parıltısı kalırdı. Katmanın çocuğu olmadığı için
+ * bulanıklaşacak içeriği de yoktur; yalnızca arkadaki sayfayı bulandırır.
+ */
+function syncNavBlur() {
+    if (!navBlur || !nav) return;
+    navBlur.classList.toggle('is-sticky', nav.classList.contains('is-sticky'));
+    navBlur.style.transform = nav.style.transform;
+}
+
 function recalcNavOffset() {
     if (!STICKY_ON || !nav) return;
     nav.classList.remove('is-sticky');
     nav.style.transform = '';
+    syncNavBlur();
     if (navWrapper) navWrapper.style.paddingTop = '0px';
     navOffsetTop = navWrapper ? docTop(navWrapper) : 0;
     updateNavHeightVar();
@@ -264,6 +278,7 @@ function onScroll() {
             updateNavHeightVar();
         }
     }
+    syncNavBlur();
     if (!state.scrollLocked) syncNavOnScroll(top, navH);
 }
 
@@ -1559,6 +1574,14 @@ function init() {
     loader        = qs('#rma-loader');
     modal         = qs('#rma-modal');
     modalBox      = modal ? qs('.rma-modal-box', modal) : null;
+
+    // Sabit nav'ın bulanık arka plan katmanı (yalnızca sabitlik açıkken).
+    if (STICKY_ON && navWrapper && nav) {
+        navBlur = document.createElement('div');
+        navBlur.className = 'rma-nav-blur';
+        navBlur.setAttribute('aria-hidden', 'true');
+        navWrapper.insertBefore(navBlur, nav);
+    }
 
     // Menü bu sayfada yoksa hiçbir dinleyici kurma. (Örn. yalnızca
     // [rma_qr_notice] kısa kodunun bulunduğu sayfalar.)

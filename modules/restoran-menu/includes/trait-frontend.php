@@ -232,8 +232,27 @@ trait RMA_Frontend_Trait {
 
         $sticky_css = '';
         if ( $nd['sticky'] === '1' ) {
-            $blur_rule  = $nd['blur'] === '1'
-                ? 'backdrop-filter: blur(20px) saturate(200%); -webkit-backdrop-filter: blur(20px) saturate(200%);'
+            /*
+             * Bulanıklık nav'ın KENDİSİNE değil, JS'in eklediği .rma-nav-blur
+             * kardeş katmanına uygulanır. Kaydırılan (overflow-x:auto) bir
+             * öğedeki backdrop-filter iOS'ta içindeki butonları da bulanıklaştırıp
+             * siliyordu. Bulanıklık kapalıysa katmanın stili hiç basılmaz.
+             */
+            $blur_css = $nd['blur'] === '1'
+                ? "
+.rma-nav-blur {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: var(--rma-nav-h);
+    z-index: 89;
+    pointer-events: none;
+    backdrop-filter: blur(20px) saturate(200%);
+    -webkit-backdrop-filter: blur(20px) saturate(200%);
+}
+.rma-nav-blur.is-sticky { display: block; }"
                 : '';
             $sticky_css = "
 .rma-nav.is-sticky {
@@ -244,11 +263,10 @@ trait RMA_Frontend_Trait {
     width: 100% !important;
     max-width: 100% !important;
     background: color-mix(in srgb, var(--rma-nav-bg) 92%, transparent) !important;
-    {$blur_rule}
     border-bottom: 1px solid var(--rma-nav-border);
     box-shadow: 0 4px 28px rgba(0,0,0,0.55), 0 2px 0 var(--rma-nav-active) !important;
     z-index: 90 !important;
-}";
+}{$blur_css}";
         }
 
         $fonts_needed    = array_unique( [ $t['heading_font'], $t['body_font'], $t['price_font'] ] );
