@@ -650,6 +650,19 @@ if ( ! function_exists( 'qmo_siparis_isle_govde' ) ) {
 				$alanlar['birimFiyat'] = array( 'doubleValue' => round( (float) $birim, 2 ) );
 			}
 
+			// Mutfak/Bar yönlendirmesi: ürün kimliği ve hazırlık istasyonu
+			// sunucuda damgalanır; istemciye güvenilmez. Çözülemeyen kalem
+			// 'yok' olur (istasyona gitmez, garson görür).
+			$kalem_id = isset( $it['item_id'] ) ? absint( $it['item_id'] ) : 0;
+			if ( $kalem_id > 0 ) {
+				$alanlar['itemId'] = array( 'stringValue' => (string) $kalem_id );
+			}
+			$alanlar['istasyon'] = array(
+				'stringValue' => ( $kalem_id > 0 && class_exists( 'RMA_Istasyon' ) )
+					? RMA_Istasyon::urun_istasyonu( $kalem_id )
+					: 'yok',
+			);
+
 			$fs_items[] = array(
 				'mapValue' => array(
 					'fields' => $alanlar,

@@ -39,6 +39,7 @@ require_once __DIR__ . '/includes/class-kampanya.php';
 require_once __DIR__ . '/includes/trait-kampanya-admin.php';
 require_once __DIR__ . '/includes/trait-kampanya-banner-admin.php';
 require_once __DIR__ . '/includes/class-tukendi.php';
+require_once __DIR__ . '/includes/class-istasyon.php';
 require_once __DIR__ . '/includes/class-porsiyon.php';
 require_once __DIR__ . '/includes/class-ekstra.php';
 require_once __DIR__ . '/includes/class-servis-saati.php';
@@ -265,6 +266,7 @@ class Restaurant_Menu_Automation {
         // Chatbot / REST sipariş ucu varsa tükendi ürünleri orada kesilir.
         // Filtre chatbot modülünde tanımlıdır; modül yoksa kanca no-op'dur.
         add_filter( 'qmo_siparis_onay_oncesi', [ 'RMA_Tukendi', 'siparis_filtresi' ], 10, 2 );
+        RMA_Istasyon::init();
 
         /* -----------------------------------------------------------------
            SEPET İLE SİPARİŞ — Diğer Ayarlar sayfasındaki aç/kapa anahtarı.
