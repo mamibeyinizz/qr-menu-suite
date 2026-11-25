@@ -8,7 +8,7 @@
  *
  * Admin/müdür uygulamada "kullanıcı ekle" dediğinde app buraya istek atar.
  * Endpoint çağıranın Firebase ID token'ını doğrular, rolünü kontrol eder
- * (admin her şeyi, müdür sadece kendi şubesine garson), sonra service
+ * (admin her şeyi, müdür sadece kendi şubesine garson/mutfak/bar), sonra service
  * account ile hem Auth hesabını hem Firestore users dokümanını oluşturur.
  *
  * @package QR_Menu_Official
@@ -124,7 +124,35 @@ if ( ! function_exists( 'qmo_rest_create_user' ) ) {
 				400
 			);
 		}
-		if ( strlen( $sifre ) < 6 || ! in_array( $rol, array( 'garson', 'mudur' ), true ) || '' === $branch_id ) {
+		// Rol modeli: müdür tek rollüdür; personel rolleri (garson/mutfak/bar)
+		// çoklu atanabilir. Birincil `rol` istemciden DEĞİL, `roller`
+		// listesinden sunucuda türetilir (öncelik: garson > mutfak > bar).
+		// Eski istemci uyumu: `roller` yoksa tek `rol` değeri kullanılır.
+		$izinli_roller = array( 'garson', 'mutfak', 'bar' );
+		$roller_ham    = $req->get_param( 'roller' );
+		if ( ! is_array( $roller_ham ) ) {
+			$roller_ham = ( '' !== $rol && 'mudur' !== $rol ) ? array( $rol ) : array();
+		}
+		$roller = array();
+		foreach ( $roller_ham as $r ) {
+			$r = is_string( $r ) ? strtolower( trim( $r ) ) : '';
+			if ( in_array( $r, $izinli_roller, true ) && ! in_array( $r, $roller, true ) ) {
+				$roller[] = $r;
+			}
+		}
+		if ( 'mudur' === $rol ) {
+			$roller = array();
+		} else {
+			$rol = '';
+			foreach ( $izinli_roller as $oncelik ) {
+				if ( in_array( $oncelik, $roller, true ) ) {
+					$rol = $oncelik;
+					break;
+				}
+			}
+		}
+
+		if ( strlen( $sifre ) < 6 || '' === $rol || '' === $branch_id ) {
 			return new WP_REST_Response(
 				array(
 					'success' => false,
@@ -161,11 +189,12 @@ if ( ! function_exists( 'qmo_rest_create_user' ) ) {
 		// 5) Yetkilendirme.
 		$izin = false;
 		if ( 'admin' === $caller['rol'] ) {
-			// Admin her şubeye garson veya müdür ekleyebilir.
+			// Admin her şubeye personel veya müdür ekleyebilir.
 			$izin = true;
 		} elseif ( 'mudur' === $caller['rol'] ) {
-			// Müdür sadece kendi şubesine garson ekleyebilir.
-			$izin = ( 'garson' === $rol && $branch_id === $caller['branchId'] );
+			// Müdür sadece kendi şubesine personel (garson/mutfak/bar) ekler;
+			// müdür oluşturamaz.
+			$izin = ( 'mudur' !== $rol && '' !== $caller['branchId'] && $branch_id === $caller['branchId'] );
 		}
 		if ( ! $izin ) {
 			return new WP_REST_Response(
@@ -243,6 +272,18 @@ if ( ! function_exists( 'qmo_rest_create_user' ) ) {
 						'fields' => array(
 							'kullaniciAdi' => array( 'stringValue' => $kullanici_adi ),
 							'rol'          => array( 'stringValue' => $rol ),
+							'roller'       => array(
+								'arrayValue' => empty( $roller )
+									? new stdClass()
+									: array(
+										'values' => array_map(
+											static function ( $r ) {
+												return array( 'stringValue' => $r );
+											},
+											$roller
+										),
+									),
+							),
 							'branchId'     => array( 'stringValue' => $branch_id ),
 							'ad'           => array( 'stringValue' => $ad ),
 							'fcmToken'     => array( 'stringValue' => '' ),
