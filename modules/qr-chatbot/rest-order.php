@@ -390,15 +390,17 @@ if ( ! function_exists( 'qmo_siparis_ekstra_adlari' ) ) {
  * @param mixed  $dil        Not dili.
  * @param string $session_id       Analitik QMO oturumu (s_…); boş olabilir.
  * @param string $idempotency_key  İsteğe bağlı UUID v4 (web/chatbot); yoksa legacy UUID order_id.
+ * @param array  $ek               Personel siparişi eki (yalnızca qrservis/v1/staff-order doldurur):
+ *                                 personel=true, uid, ad, not, sube{mutfakAktif,barAktif}.
  * @return array{success:bool,msg:string,http:int}
  */
 if ( ! function_exists( 'qmo_siparis_isle' ) ) {
-	function qmo_siparis_isle( $masa, $items, $dil, $session_id = '', $idempotency_key = '' ) {
+	function qmo_siparis_isle( $masa, $items, $dil, $session_id = '', $idempotency_key = '', $ek = array() ) {
 
 		$idem_ham = trim( (string) $idempotency_key );
 
-		$calistir = function () use ( $masa, $items, $dil, $session_id, $idem_ham ) {
-			return qmo_siparis_isle_govde( $masa, $items, $dil, $session_id, $idem_ham );
+		$calistir = function () use ( $masa, $items, $dil, $session_id, $idem_ham, $ek ) {
+			return qmo_siparis_isle_govde( $masa, $items, $dil, $session_id, $idem_ham, $ek );
 		};
 
 		$idem_key = function_exists( 'qmo_idempotency_key_dogrula' )
@@ -424,7 +426,7 @@ if ( ! function_exists( 'qmo_siparis_isle' ) ) {
  * @return array{success:bool,msg:string,http:int}
  */
 if ( ! function_exists( 'qmo_siparis_isle_govde' ) ) {
-	function qmo_siparis_isle_govde( $masa, $items, $dil, $session_id, $idem_ham = '' ) {
+	function qmo_siparis_isle_govde( $masa, $items, $dil, $session_id, $idem_ham = '', $ek = array() ) {
 
 		// Firebase yapılandırması.
 		if ( ! QMO_Firestore::hazir_mi() ) {
@@ -674,20 +676,56 @@ if ( ! function_exists( 'qmo_siparis_isle_govde' ) ) {
 		// boyunca kullanılmayacağı için bırakılır.
 		$db_kapali = qmo_db_serbest_birak();
 
-		$res = QMO_Firestore::call_yaz(
-			array(
-				'branchId'     => array( 'stringValue' => QMO_Firestore::branch_id() ),
-				'masaNo'       => array( 'stringValue' => (string) $masa ),
-				'tip'          => array( 'stringValue' => 'siparis' ),
-				'durum'        => array( 'stringValue' => 'bekliyor' ),
-				'onaylayanUid' => array( 'stringValue' => '' ),
-				'onaylayanAd'  => array( 'stringValue' => '' ),
-				'notDili'      => array( 'stringValue' => $dil ),
-				'items'        => array( 'arrayValue' => array( 'values' => $fs_items ) ),
-				'createdAt'    => array( 'timestampValue' => gmdate( 'Y-m-d\TH:i:s\Z' ) ),
-			),
-			$order_id
+		$call_alanlari = array(
+			'branchId'     => array( 'stringValue' => QMO_Firestore::branch_id() ),
+			'masaNo'       => array( 'stringValue' => (string) $masa ),
+			'tip'          => array( 'stringValue' => 'siparis' ),
+			'durum'        => array( 'stringValue' => 'bekliyor' ),
+			'onaylayanUid' => array( 'stringValue' => '' ),
+			'onaylayanAd'  => array( 'stringValue' => '' ),
+			'notDili'      => array( 'stringValue' => $dil ),
+			'items'        => array( 'arrayValue' => array( 'values' => $fs_items ) ),
+			'createdAt'    => array( 'timestampValue' => gmdate( 'Y-m-d\TH:i:s\Z' ) ),
 		);
+
+		// Personel siparişi (garson/müdür): otomatik onaylıdır ve aktif
+		// istasyonlara doğrudan düşer. Müşteri akışında $ek boştur; bu blok
+		// hiç çalışmaz.
+		if ( ! empty( $ek['personel'] ) ) {
+			$call_alanlari['durum']        = array( 'stringValue' => 'onaylandi' );
+			$call_alanlari['onaylayanUid'] = array( 'stringValue' => (string) $ek['uid'] );
+			$call_alanlari['onaylayanAd']  = array( 'stringValue' => (string) $ek['ad'] );
+			$call_alanlari['onaylandiAt']  = array( 'timestampValue' => gmdate( 'Y-m-d\TH:i:s\Z' ) );
+			$call_alanlari['kaynak']       = array( 'stringValue' => 'personel' );
+			$call_alanlari['olusturanUid'] = array( 'stringValue' => (string) $ek['uid'] );
+			$call_alanlari['olusturanAd']  = array( 'stringValue' => (string) $ek['ad'] );
+
+			if ( ! empty( $ek['not'] ) ) {
+				$call_alanlari['siparisNotu'] = array( 'stringValue' => (string) $ek['not'] );
+			}
+
+			$sube        = isset( $ek['sube'] ) && is_array( $ek['sube'] ) ? $ek['sube'] : array();
+			$istasyonlar = array();
+			foreach ( $temiz as $it ) {
+				$ist = ( ! empty( $it['item_id'] ) && class_exists( 'RMA_Istasyon' ) )
+					? RMA_Istasyon::urun_istasyonu( $it['item_id'] )
+					: 'yok';
+				if ( ( 'mutfak' === $ist && ! empty( $sube['mutfakAktif'] ) ) || ( 'bar' === $ist && ! empty( $sube['barAktif'] ) ) ) {
+					$istasyonlar[ $ist ] = array(
+						'mapValue' => array(
+							'fields' => array(
+								'durum' => array( 'stringValue' => 'bekliyor' ),
+							),
+						),
+					);
+				}
+			}
+			if ( ! empty( $istasyonlar ) ) {
+				$call_alanlari['istasyonlar'] = array( 'mapValue' => array( 'fields' => $istasyonlar ) );
+			}
+		}
+
+		$res = QMO_Firestore::call_yaz( $call_alanlari, $order_id );
 
 		qmo_db_geri_baglan( $db_kapali );
 

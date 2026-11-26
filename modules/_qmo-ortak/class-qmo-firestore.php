@@ -254,7 +254,7 @@ if ( ! class_exists( 'QMO_Firestore' ) ) {
 		 * @param string $token   Access token.
 		 * @param string $project Proje kimliği.
 		 * @param string $uid     Kullanıcı kimliği.
-		 * @return array{rol:string,branchId:string}|WP_Error
+		 * @return array{rol:string,branchId:string,ad:string,aktif:bool}|WP_Error
 		 */
 		public static function kullanici_doc( $token, $project, $uid ) {
 			$uid  = rawurlencode( $uid );
@@ -277,6 +277,41 @@ if ( ! class_exists( 'QMO_Firestore' ) ) {
 			return array(
 				'rol'      => $f['rol']['stringValue'] ?? '',
 				'branchId' => $f['branchId']['stringValue'] ?? '',
+				'ad'       => $f['ad']['stringValue'] ?? '',
+				// Alan yoksa aktif sayılır (eski kayıtlar); açıkça false ise pasif.
+				'aktif'    => ! isset( $f['aktif']['booleanValue'] ) || (bool) $f['aktif']['booleanValue'],
+			);
+		}
+
+		/**
+		 * Şube dokümanındaki Mutfak/Bar ayarlarını oku.
+		 *
+		 * @param string $token     Access token.
+		 * @param string $project   Proje kimliği.
+		 * @param string $branch_id Şube doküman kimliği.
+		 * @return array{mutfakAktif:bool,barAktif:bool}|WP_Error
+		 */
+		public static function sube_ayarlari( $token, $project, $branch_id ) {
+			$branch_id = rawurlencode( (string) $branch_id );
+			$url       = "https://firestore.googleapis.com/v1/projects/{$project}/databases/(default)/documents/branches/{$branch_id}";
+			$resp      = wp_remote_get(
+				$url,
+				array(
+					'timeout' => 15,
+					'headers' => array( 'Authorization' => 'Bearer ' . $token ),
+				)
+			);
+			if ( is_wp_error( $resp ) ) {
+				return $resp;
+			}
+			if ( 200 !== wp_remote_retrieve_response_code( $resp ) ) {
+				return new WP_Error( 'nobranch', 'Şube kaydı bulunamadı' );
+			}
+			$d = json_decode( wp_remote_retrieve_body( $resp ), true );
+			$f = $d['fields'] ?? array();
+			return array(
+				'mutfakAktif' => ! empty( $f['mutfakAktif']['booleanValue'] ),
+				'barAktif'    => ! empty( $f['barAktif']['booleanValue'] ),
 			);
 		}
 
