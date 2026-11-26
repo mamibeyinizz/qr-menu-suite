@@ -29,6 +29,54 @@ class QRMS_SP_Veri {
 	const ONBELLEK_ANAHTAR = 'qrms_sp_liste';
 
 	/**
+	 * Firestore'daki durumu panel durumuna çevirir.
+	 *
+	 * Mobil uygulama `onaylandi / hazirlaniyor / hazir / teslim` sözlüğünü,
+	 * bu panel `hazirlaniyor / serviste / tamamlandi` sözlüğünü kullanır.
+	 * Tanınmayan değer eskisi gibi "bekliyor" sayılır.
+	 *
+	 * @param mixed $ham Firestore `durum` değeri.
+	 * @return string
+	 */
+	public static function panel_durumu( $ham ) {
+		$durum = sanitize_key( (string) $ham );
+		$harita = array(
+			'onaylandi' => 'hazirlaniyor',
+			'hazir'     => 'serviste',
+			'teslim'    => 'tamamlandi',
+		);
+
+		if ( isset( $harita[ $durum ] ) ) {
+			$durum = $harita[ $durum ];
+		}
+
+		return isset( self::akis()[ $durum ] ) ? $durum : 'bekliyor';
+	}
+
+	/**
+	 * Panel durumunu Firestore'a yazılacak değere çevirir.
+	 *
+	 * Yalnızca SİPARİŞ kayıtlarında mobil uygulamanın sözlüğüne çevrilir;
+	 * garson/hesap çağrılarında panel değeri aynen yazılır (eski davranış).
+	 *
+	 * @param string $panel Panel durumu.
+	 * @param string $tip   Kayıt tipi.
+	 * @return string
+	 */
+	public static function firestore_durumu( $panel, $tip ) {
+		if ( 'siparis' !== $tip ) {
+			return $panel;
+		}
+
+		$harita = array(
+			'serviste'   => 'hazir',
+			'tamamlandi' => 'teslim',
+		);
+
+		return isset( $harita[ $panel ] ) ? $harita[ $panel ] : $panel;
+	}
+
+	/**
 	 * Durum akışı: hangi durumdan hangilerine geçilebilir?
 	 *
 	 * Geçerli olmayan sıçramalar (ör. "bekliyor" → "tamamlandi") reddedilir;
@@ -259,11 +307,7 @@ class QRMS_SP_Veri {
 			return null;
 		}
 
-		$durum = isset( $doc['durum'] ) ? sanitize_key( (string) $doc['durum'] ) : 'bekliyor';
-
-		if ( ! isset( self::akis()[ $durum ] ) ) {
-			$durum = 'bekliyor';
-		}
+		$durum = self::panel_durumu( isset( $doc['durum'] ) ? $doc['durum'] : 'bekliyor' );
 
 		$masa_slug = isset( $doc['masaNo'] ) ? (string) $doc['masaNo'] : '';
 
@@ -363,11 +407,7 @@ class QRMS_SP_Veri {
 			return $mevcut;
 		}
 
-		$gercek = isset( $mevcut['durum'] ) ? sanitize_key( (string) $mevcut['durum'] ) : 'bekliyor';
-
-		if ( ! isset( self::akis()[ $gercek ] ) ) {
-			$gercek = 'bekliyor';
-		}
+		$gercek = self::panel_durumu( isset( $mevcut['durum'] ) ? $mevcut['durum'] : 'bekliyor' );
 
 		if ( $gercek !== $eski ) {
 			if ( 'siparis' === ( isset( $mevcut['tip'] ) ? sanitize_key( (string) $mevcut['tip'] ) : '' )
@@ -387,7 +427,7 @@ class QRMS_SP_Veri {
 		$sonuc = QMO_Firestore::call_guncelle(
 			$id,
 			array(
-				'durum'        => array( 'stringValue' => $yeni ),
+				'durum'        => array( 'stringValue' => self::firestore_durumu( $yeni, isset( $mevcut['tip'] ) ? sanitize_key( (string) $mevcut['tip'] ) : '' ) ),
 				'onaylayanUid' => array( 'stringValue' => (string) get_current_user_id() ),
 				'onaylayanAd'  => array( 'stringValue' => $kullanici ? (string) $kullanici->display_name : '' ),
 				'guncellendi'  => array( 'timestampValue' => gmdate( 'Y-m-d\TH:i:s\Z' ) ),
