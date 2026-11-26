@@ -32,6 +32,7 @@ require_once QMO_CHATBOT_DIR . 'includes/shortcode-sepet.php';
 // yüklenir. Garson/hesap çağrıları QMO_Firestore üzerinden yazar.
 require_once QMO_CHATBOT_DIR . 'rest-order.php';
 require_once QMO_CHATBOT_DIR . 'rest-staff.php';
+require_once QMO_CHATBOT_DIR . 'rest-menu-yonetim.php';
 require_once QMO_CHATBOT_DIR . 'ajax-order.php';
 require_once QMO_CHATBOT_DIR . 'ajax-waiter-bill.php';
 require_once QMO_CHATBOT_DIR . 'ajax-sepet-analitik.php';
