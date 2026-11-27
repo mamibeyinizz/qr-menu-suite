@@ -31,14 +31,63 @@
 	// değil) tutulur; bir sonraki tıklamadan önceki zamanlayıcı temizlenir.
 	var cooldownZamanlayicilari = new WeakMap();
 
+	// Sabit, güvenilir SVG sabitleri (kullanıcı verisi içermez).
+	var IKON_TIK = '<svg class="qmo-cagri-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+	var IKON_UNLEM = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 7v6M12 17h.01"/></svg>';
+	var TOAST_SURE_MS = 2400;
+
+	var toastKok = null;
+	var toastZamanlayici = null;
+
+	/**
+	 * Butonun hemen üstünde 2.4 sn'lik bildirim kutusu gösterir. Eskiden alt
+	 * çubukta kalıcı duran düz yazı yerine kullanılır; ekran okuyucu için
+	 * yazı yine .qmo-cagri-durum içinde (görsel olarak gizli) güncellenir.
+	 */
+	function toastGoster( bar, mesaj, hataMi ) {
+		if ( ! toastKok ) {
+			toastKok = document.createElement( 'div' );
+			toastKok.className = 'qmo-cagri-toast';
+			toastKok.setAttribute( 'aria-hidden', 'true' );
+			toastKok.innerHTML = '<div class="qmo-cagri-toast__kutu"><span class="qmo-cagri-toast__ikon"></span><span class="qmo-cagri-toast__metin"></span></div>';
+			document.body.appendChild( toastKok );
+		}
+
+		// Sabit alt çubuğun (veya satır içi çubuğun) tam üstüne hizala.
+		var ref = bar.closest( '.hfb-footer__call-wrap' ) || bar;
+		var r = ref.getBoundingClientRect();
+		toastKok.style.bottom = Math.max( 0, window.innerHeight - r.top ) + 12 + 'px';
+
+		toastKok.classList.toggle( 'is-hata', !! hataMi );
+		toastKok.querySelector( '.qmo-cagri-toast__ikon' ).innerHTML = hataMi ? IKON_UNLEM : IKON_TIK;
+		toastKok.querySelector( '.qmo-cagri-toast__metin' ).textContent = mesaj;
+
+		// Animasyonu baştan başlat (art arda gösterimde de oynasın).
+		toastKok.classList.remove( 'is-acik' );
+		void toastKok.offsetWidth;
+		toastKok.classList.add( 'is-acik' );
+
+		clearTimeout( toastZamanlayici );
+		toastZamanlayici = setTimeout( function () {
+			toastKok.classList.remove( 'is-acik' );
+		}, TOAST_SURE_MS );
+	}
+
 	function yaz( bar, metin, hataMi ) {
 		var el = bar.querySelector( '.qmo-cagri-durum' );
-		if ( ! el ) {
-			return;
+		if ( el ) {
+			el.hidden = false;
+			el.textContent = metin;
+			el.classList.toggle( 'is-hata', !! hataMi );
 		}
-		el.hidden = false;
-		el.textContent = metin;
-		el.classList.toggle( 'is-hata', !! hataMi );
+		toastGoster( bar, metin, hataMi );
+	}
+
+	function tikTemizle( btn ) {
+		var eski = btn.querySelector( '.qmo-cagri-check' );
+		if ( eski ) {
+			eski.remove();
+		}
 	}
 
 	/**
@@ -67,6 +116,7 @@
 			btn.removeAttribute( 'aria-busy' );
 			btn.removeAttribute( 'aria-label' );
 			btn.classList.remove( 'is-success', 'is-disabled' );
+			tikTemizle( btn );
 			if ( span && btn.dataset.qmoIdleLabel ) {
 				span.textContent = btn.dataset.qmoIdleLabel;
 			}
@@ -89,6 +139,12 @@
 			btn.removeAttribute( 'aria-busy' );
 			btn.classList.remove( 'is-disabled' );
 			btn.classList.add( 'is-success' );
+			// İkonun yerine çizilerek beliren tik; etiketteki "✓" karakteri
+			// çift tik olmasın diye kırpılır.
+			durumMetni = String( durumMetni ).replace( /^\s*✓\s*/, '' );
+			if ( ! btn.querySelector( '.qmo-cagri-check' ) ) {
+				btn.insertAdjacentHTML( 'afterbegin', IKON_TIK );
+			}
 		}
 
 		if ( span ) {
