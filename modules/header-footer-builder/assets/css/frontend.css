@@ -1307,6 +1307,11 @@ body.hfb-scroll-locked {
   transform: none;
 }
 
+/* Yükleniyor: soluk "ölü" buton yerine canlı, sadece tıklanamaz. */
+.hfb-footer__call-wrap:has(.qmo-cagri-bar) .hfb-footer__call-btn.is-loading {
+  opacity: 0.9;
+}
+
 .hfb-footer__call-wrap:has(.qmo-cagri-bar) .hfb-footer__call-btn.is-success {
   background-blend-mode: normal;
   /* Yeşil dolgu yok: marka yüzeyi korunur, sadece altın çerçeve + tik ile

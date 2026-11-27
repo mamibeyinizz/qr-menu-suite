@@ -34,7 +34,10 @@
 	// Sabit, güvenilir SVG sabitleri (kullanıcı verisi içermez).
 	var IKON_TIK = '<svg class="qmo-cagri-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
 	var IKON_UNLEM = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 7v6M12 17h.01"/></svg>';
+	var IKON_SPINNER = '<svg class="qmo-cagri-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9" /></svg>';
+	// Hata mesajı okunabilsin diye başarıdan uzun kalır.
 	var TOAST_SURE_MS = 2400;
+	var TOAST_HATA_SURE_MS = 4200;
 
 	var toastKok = null;
 	var toastZamanlayici = null;
@@ -70,7 +73,7 @@
 		clearTimeout( toastZamanlayici );
 		toastZamanlayici = setTimeout( function () {
 			toastKok.classList.remove( 'is-acik' );
-		}, TOAST_SURE_MS );
+		}, hataMi ? TOAST_HATA_SURE_MS : TOAST_SURE_MS );
 	}
 
 	function yaz( bar, metin, hataMi ) {
@@ -84,9 +87,9 @@
 	}
 
 	function tikTemizle( btn ) {
-		var eski = btn.querySelector( '.qmo-cagri-check' );
-		if ( eski ) {
-			eski.remove();
+		var eski = btn.querySelectorAll( '.qmo-cagri-check, .qmo-cagri-spin' );
+		for ( var i = 0; i < eski.length; i++ ) {
+			eski[ i ].remove();
 		}
 	}
 
@@ -115,7 +118,8 @@
 			btn.disabled = false;
 			btn.removeAttribute( 'aria-busy' );
 			btn.removeAttribute( 'aria-label' );
-			btn.classList.remove( 'is-success', 'is-disabled' );
+			btn.classList.remove( 'is-success', 'is-disabled', 'is-loading' );
+			btn.style.removeProperty( '--qmo-cd' );
 			tikTemizle( btn );
 			if ( span && btn.dataset.qmoIdleLabel ) {
 				span.textContent = btn.dataset.qmoIdleLabel;
@@ -132,19 +136,23 @@
 		if ( 'loading' === durum ) {
 			btn.disabled = true;
 			btn.setAttribute( 'aria-busy', 'true' );
-			btn.classList.add( 'is-disabled' );
+			btn.classList.add( 'is-disabled', 'is-loading' );
 			btn.classList.remove( 'is-success' );
+			tikTemizle( btn );
+			btn.insertAdjacentHTML( 'afterbegin', IKON_SPINNER );
 		} else if ( 'success' === durum ) {
 			btn.disabled = true;
 			btn.removeAttribute( 'aria-busy' );
-			btn.classList.remove( 'is-disabled' );
+			btn.classList.remove( 'is-disabled', 'is-loading' );
 			btn.classList.add( 'is-success' );
+			tikTemizle( btn );
+			if ( navigator.vibrate ) {
+				navigator.vibrate( 25 );
+			}
 			// İkonun yerine çizilerek beliren tik; etiketteki "✓" karakteri
 			// çift tik olmasın diye kırpılır.
 			durumMetni = String( durumMetni ).replace( /^\s*✓\s*/, '' );
-			if ( ! btn.querySelector( '.qmo-cagri-check' ) ) {
-				btn.insertAdjacentHTML( 'afterbegin', IKON_TIK );
-			}
+			btn.insertAdjacentHTML( 'afterbegin', IKON_TIK );
 		}
 
 		if ( span ) {
@@ -171,6 +179,10 @@
 		if ( mevcut ) {
 			clearTimeout( mevcut );
 		}
+
+		// Butonun altındaki ince çubuk bu süre boyunca boşalır: kullanıcı
+		// butonun neden kilitli olduğunu ve ne zaman açılacağını görür.
+		btn.style.setProperty( '--qmo-cd', sn + 's' );
 
 		cooldownZamanlayicilari.set( btn, setTimeout( function () {
 			cooldownZamanlayicilari.delete( btn );

@@ -79,6 +79,50 @@
 	display: none;
 }
 
+/* Yükleniyor: ikon yerine dönen halka. */
+.qmo-cagri-btn.is-loading .qmo-cagri-ikon,
+.hfb-footer__call-btn.is-loading .hfb-icon--call {
+	display: none;
+}
+
+.qmo-cagri-spin {
+	flex-shrink: 0;
+	width: 1.15em;
+	height: 1.15em;
+	animation: qmo-cagri-don 0.7s linear infinite;
+}
+
+/* Bekleme süresi çubuğu: başarı durumunda butonun altında boşalır. */
+.qmo-cagri-btn.is-success,
+.hfb-footer__call-btn.is-success {
+	position: relative;
+	overflow: hidden;
+}
+
+.qmo-cagri-btn.is-success::after,
+.hfb-footer__call-btn.is-success::after {
+	content: "";
+	position: absolute;
+	left: 14px;
+	right: 14px;
+	bottom: 0;
+	height: 2px;
+	border-radius: 2px;
+	background: currentColor;
+	opacity: 0.55;
+	transform-origin: left center;
+	animation: qmo-cagri-bekle var(--qmo-cd, 60s) linear forwards;
+}
+
+@keyframes qmo-cagri-don {
+	to { transform: rotate(360deg); }
+}
+
+@keyframes qmo-cagri-bekle {
+	from { transform: scaleX(1); }
+	to { transform: scaleX(0); }
+}
+
 .qmo-cagri-check {
 	flex-shrink: 0;
 	width: 1.2em;
@@ -171,6 +215,10 @@
 	.qmo-cagri-check path {
 		animation: none;
 		stroke-dashoffset: 0;
+	}
+
+	.qmo-cagri-spin {
+		animation-duration: 1.6s;
 	}
 
 	.qmo-cagri-toast {
