@@ -1309,10 +1309,12 @@ body.hfb-scroll-locked {
 
 .hfb-footer__call-wrap:has(.qmo-cagri-bar) .hfb-footer__call-btn.is-success {
   background-blend-mode: normal;
-  background-color: #1b5e20;
+  /* Yeşil dolgu yok: marka yüzeyi korunur, sadece altın çerçeve + tik ile
+     "tamamlandı" hissi verilir. */
+  background-color: color-mix(in srgb, var(--hfb-btn-bg, var(--hfb-gold)) 8%, var(--hfb-ink, #0a0a0c));
   background-image: none;
-  border-color: #3d8f45;
-  color: #fff;
+  border-color: color-mix(in srgb, var(--hfb-btn-bg, var(--hfb-gold)) 55%, transparent);
+  color: var(--hfb-btn-bg, var(--hfb-gold));
   /* .is-success cooldown boyunca native disabled ile birlikte durur (bkz.
      buttons.js); üstteki :disabled kuralının opacity:0.5'i olmasa da
      ezilir, aksi halde başarı state'i soluk/kapalı görünür. */
@@ -1348,10 +1350,10 @@ body.hfb-scroll-locked {
   }
 
   .hfb-footer__call-wrap:has(.qmo-cagri-bar) .hfb-footer__call-btn.is-success:hover {
-    background-color: #1f6b28;
-    border-color: #3d8f45;
+    background-color: color-mix(in srgb, var(--hfb-btn-bg, var(--hfb-gold)) 8%, var(--hfb-ink, #0a0a0c));
+    border-color: color-mix(in srgb, var(--hfb-btn-bg, var(--hfb-gold)) 55%, transparent);
     box-shadow: none;
-    color: #fff;
+    color: var(--hfb-btn-bg, var(--hfb-gold));
   }
 }
 
